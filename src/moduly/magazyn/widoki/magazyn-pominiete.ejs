@@ -1,0 +1,60 @@
+<%# MAGAZYN — czego panel NIE zamienil we wzor i dlaczego.
+
+    ⚠️⚠️ TEN EKRAN ISTNIEJE PO TO, ZEBY ROBOTA NIE UTONELA W RZECZACH CELOWYCH. Pominietych
+    jest okolo 473, z czego 447 to oferty Allegro, ktore wzorow nie zakladaja Z ZALOZENIA
+    (wzor powstaje z katalogu sklepu, a oferte wiaze sie z nim recznie). Realnej roboty jest
+    okolo 26. Plaska lista utopilaby te 26 w tamtych 447, a pierwsza reakcja na ekran pelen
+    „pominietych" brzmi „to blad, napraw".
+
+    ⚠️ WIDOK NICZEGO NIE ROZSTRZYGA: powody pisze domain/wzor-z-produktu.js, grupuje i ustawia
+    w kolejnosci domain/magazyn-pominiete.js. Tutaj zostaje wylacznie rysowanie.
+
+    ⚠️ ANI JEDNEGO KOLORU WPROST — wszystko z palety w layout-oms.ejs (dwa motywy). %>
+
+<%# Powrot na ZAWEZONA liste, z ktorej tu wszedl operator (4.13d) — `adresPowrotu` jest juz
+    zwalidowany w trasie (`bezpiecznyWroc`), tak samo jak na karcie wzoru i w hurcie. %>
+<p class="wroc"><a href="<%= adresPowrotu %>">← Wróć do magazynu</a></p>
+
+<div class="glowa-ekranu">
+  <h1>Pominięte przy tworzeniu wzorów</h1>
+  <% if (utworzone !== null) { %>
+    <span class="krok">właśnie powstało wzorów: <strong><%= utworzone %></strong></span>
+  <% } %>
+</div>
+
+<% if (!grupy.length) { %>
+  <div class="pusta-strona">
+    <h2>Nic nie zostało pominięte</h2>
+    <p>
+      Każdy produkt z lustra sklepów ma już swój wzór albo powiązanie. Jeśli spodziewałeś się
+      tu czegoś więcej, zacznij od odczytu katalogów.
+    </p>
+  </div>
+<% } %>
+
+<% grupy.forEach(function (g) { %>
+  <section class="panel">
+    <div class="panel-glowa">
+      <h2><%= g.celowo ? 'Tak ma być' : 'Do zrobienia' %> — <%= g.ile %> poz.</h2>
+      <%# Powod idzie DOSLOWNIE z domeny — ten sam napis, ktory rozstrzygnal o pominieciu. %>
+      <span class="dopisek"><%= g.powod %></span>
+    </div>
+    <div class="panel-cialo">
+      <% if (g.celowo) { %>
+        <%# Grupa CELOWA jest zwinieta: ma byc policzalna i sprawdzalna, ale nie ma zabierac
+            ekranu rzeczom, ktore czekaja na czlowieka. Zwinieta, a NIE ukryta — kto chce
+            sprawdzic, co dokladnie odpadlo, ma to jedno klikniecie dalej. %>
+        <p class="wyjasnienie">
+          Te pozycje nie zakładają wzorów <strong>z założenia</strong> i nie ma tu nic do
+          naprawienia. Ofertę wiąże się z wzorem ręcznie — wzór powstaje z katalogu sklepu.
+        </p>
+        <details class="drobne">
+          <summary>Pokaż wszystkie (<%= g.ile %>)</summary>
+          <%- include('_magazyn-pominiete-lista.ejs', { produkty: g.produkty }) %>
+        </details>
+      <% } else { %>
+        <%- include('_magazyn-pominiete-lista.ejs', { produkty: g.produkty }) %>
+      <% } %>
+    </div>
+  </section>
+<% }); %>

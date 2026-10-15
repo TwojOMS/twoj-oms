@@ -1,0 +1,66 @@
+<%# Poprawka kosztu WPISANEGO RĘCZNIE (Facebook, Google, Anthropic, zakupy zagraniczne,
+    paragony). Osobny ekran, a nie formularz w wierszu tabeli — z jednego powodu:
+
+      ⚠️ USUNIĘCIE stoi TUTAJ, dwa kliknięcia od listy. Kasowanie jest nieodwracalne
+      (dokumentu nie ma w KSeF, więc nic go nie odtworzy), a przycisk „Usuń" w wierszu
+      tabeli sąsiadowałby z przyciskiem „Przypisz" wciskanym po kilka razy dziennie.
+
+    ⚠️ DOKUMENT Z KSeF NIE MA JAK TU TRAFIĆ — trasa oddaje 404 (web/routes/koszty.js), a lista
+    nie pokazuje przy nim odnośnika. Panel jest lustrem KSeF-u: treść dokumentu jest po stronie
+    sprzedawcy, a skasowany wiersz wróciłby dopiero po ręcznym cofnięciu pobierania o miesiące.
+
+    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w layout-oms.ejs. %>
+
+<div class="glowa-ekranu">
+  <h1>Koszt spoza KSeF</h1>
+  <span class="krok">wpisany ręcznie — tego dokumentu nie ma w KSeF</span>
+</div>
+
+<section class="panel">
+  <div class="panel-glowa">
+    <h2><%= wiersz.sprzedawca_nazwa %> · <%= wiersz.numer_dokumentu %></h2>
+    <span class="dopisek">wystawiony <%= wiersz.data_wystawienia %></span>
+  </div>
+  <div class="panel-cialo">
+    <form method="post" action="/koszty/reczne/<%= encodeURIComponent(wiersz.ksef_number) %>">
+      <input type="hidden" name="miesiac" value="<%= miesiac %>">
+      <%# Kwota idzie z bazy DOSŁOWNIE, w postaci kanonicznej ('246.00') — a nie zapisana
+          po polsku. To jest pole do POPRAWIENIA, a nie liczba do przeczytania: gdyby wracało
+          „246,00 zł", operator odesłałby ten napis z powrotem i musiałby go rozbierać
+          `naWierszReczny`. Bierzemy NETTO, bo to ono jest kosztem (netto = brutto przy
+          odwrotnym obciążeniu — patrz domain/koszt-reczny.js). %>
+      <%- include('_koszt-reczny-pola.ejs', {
+        firmy,
+        w: { firma, dataWystawienia: wiersz.data_wystawienia, kwota: wiersz.netto },
+      }) %>
+      <div class="pola-w-rzedzie">
+        <button class="btn btn--glowny" type="submit">Zapisz poprawkę</button>
+        <a class="btn" href="/koszty?miesiac=<%= miesiac %>">Wróć bez zmian</a>
+      </div>
+    </form>
+
+    <p class="wyjasnienie">
+      Kategoria bierze się z wybranej firmy i przypina się <strong>do tego jednego
+      dokumentu</strong> — inaczej niż przy fakturach z KSeF, gdzie idzie po NIP-ie sprzedawcy
+      i obejmuje wszystkie jego dokumenty. Sprzedawca bez polskiego NIP-u nie ma jak trafić
+      do tamtej mapy. Zmiana firmy zmienia więc także sprzedawcę i kategorię tego kosztu.
+    </p>
+  </div>
+</section>
+
+<section class="panel panel--groza">
+  <div class="panel-glowa panel-glowa--groza">
+    <h2>Usuń ten koszt</h2>
+    <span class="dopisek">bez odwrotu</span>
+  </div>
+  <div class="panel-cialo">
+    <p class="pasek-blokada">
+      Tego dokumentu <strong>nie ma w KSeF</strong>, więc nic go nie odtworzy — po usunięciu
+      trzeba go wpisać od nowa. Suma miesiąca zmniejszy się o <%= wiersz.netto %> <%= wiersz.waluta %>.
+    </p>
+    <form method="post" action="/koszty/reczne/<%= encodeURIComponent(wiersz.ksef_number) %>/usun">
+      <input type="hidden" name="miesiac" value="<%= miesiac %>">
+      <button class="btn" type="submit">Usuń koszt</button>
+    </form>
+  </div>
+</section>

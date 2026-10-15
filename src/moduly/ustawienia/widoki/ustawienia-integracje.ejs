@@ -1,0 +1,79 @@
+<h1><%= tylkoReklamy ? 'Integracje reklam' : 'Integracje' %></h1>
+
+<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
+<% if (blad) { %><div class="pas-uprzedzenie"><p><strong>Nie udało się rozpocząć wiązania.</strong> <%= blad %></p></div><% } %>
+
+<% if (tylkoReklamy) { %>
+<div class="ust-sekcja">
+  <p><a href="/ustawienia/integracje">← Wszystkie integracje</a></p>
+  <p>Każde źródło działa niezależnie. Brak połączenia nie zatrzymuje zamówień ani wysyłki.</p>
+  <% zrodlaReklam.forEach((zrodlo) => { %>
+    <section class="ust-kanal">
+      <h2><%= zrodlo.etykieta %></h2>
+      <% if (!zrodlo.stan.length) { %>
+        <p><strong>Niepodłączone</strong></p>
+        <p><%= zrodlo.typ === 'google_ads' ? 'Opcjonalny odczyt statusów i budżetów wymaga dostępu do Google Ads API.' : 'Podłącz własne konto, aby zobaczyć jego dzienne statystyki reklam.' %></p>
+        <p>Potrzebne: konto źródła, kanał OMS i poświadczenie tylko do odczytu zapisane w sekretach serwera.</p>
+        <textarea id="prompt-<%= zrodlo.typ %>" readonly rows="7" style="width:100%"><%= zrodlo.prompt %></textarea>
+        <button class="ust-przycisk" type="button" onclick="this.previousElementSibling.select(); document.execCommand('copy')">Skopiuj prompt dla agenta</button>
+      <% } else { %>
+        <% zrodlo.stan.forEach((polaczenie) => { %>
+          <p><strong><%= polaczenie.stan?.kodBledu ? 'Błąd' : polaczenie.stan?.ostatniSukcesAt ? 'Działa' : 'Weryfikacja' %></strong> — konto <%= polaczenie.kontoId %>, kanał <%= polaczenie.kanal ?? 'nieprzypisany' %></p>
+          <% if (polaczenie.stan?.ostatniSukcesAt) { %><p>Ostatni udany odczyt: <%= polaczenie.stan.ostatniSukcesAt %></p><% } %>
+          <% if (polaczenie.stan?.kodBledu) { %><p>Kod błędu: <%= polaczenie.stan.kodBledu %></p><% } %>
+          <% if (mozeKonfigurowacReklamy) { %>
+            <form method="post" action="/ustawienia/integracje/reklamy/test">
+              <input type="hidden" name="polaczenieId" value="<%= polaczenie.id %>">
+              <button class="ust-przycisk" type="submit">Test odczytu</button>
+            </form>
+          <% } %>
+        <% }); %>
+      <% } %>
+    </section>
+  <% }); %>
+  <% if (mozeKonfigurowacReklamy && formularzSekretu) { %>
+    <h2>Dodaj połączenie</h2>
+    <form method="post" action="/ustawienia/integracje/reklamy/zapisz">
+      <label>Źródło <select name="typ"><option value="ga4">Google przez GA4</option><option value="meta">Meta</option></select></label>
+      <label>ID konta lub właściwości <input name="kontoId" required></label>
+      <label>Kanał OMS <input name="kanal" required></label>
+      <label>Poświadczenie <textarea name="tresc" required></textarea></label>
+      <button class="ust-przycisk" type="submit">Zapisz połączenie</button>
+    </form>
+  <% } else if (mozeKonfigurowacReklamy) { %>
+    <p>Poświadczenie zapisz bezpośrednio w sekretach serwera. Formularz jest dostępny tylko przez zaufane HTTPS z podłączonym magazynem sekretów.</p>
+  <% } %>
+</div>
+<% } else { %>
+<p><a href="/ustawienia/integracje/reklamy">Reklamy: Google przez GA4, Google Ads API i Meta</a></p>
+<div class="ust-sekcja">
+  <h2>Kanały Allegro</h2>
+  <% if (!kanaly.length) { %>
+    <p class="pusto-sekcja">Ten panel nie ma skonfigurowanych kanałów Allegro.</p>
+  <% } %>
+  <% kanaly.forEach((kanal) => { %>
+    <div class="ust-kanal">
+      <p>
+        <strong><%= kanal.stan.kanal %></strong> —
+        <% if (kanal.stan.pilne) { %><span class="uwaga">nie działa</span>
+        <% } else if (kanal.stan.uprzedzenie) { %>wkrótce przestanie działać
+        <% } else { %>działa<%= kanal.stan.zostaloDni != null ? ` (połączenie ważne jeszcze ${kanal.stan.zostaloDni} dni)` : '' %><% } %>
+      </p>
+      <p>Konto Allegro: <strong><%= kanal.stan.kontoAllegro ?? 'nieznane' %></strong></p>
+      <% if (kanal.stan.powod) { %><p><%= kanal.stan.powod %></p><% } %>
+      <% if (kanal.wiazanie) { %>
+        <div class="pas-uprzedzenie">
+          <p><strong>Wiązanie w toku.</strong> Otwórz link, zaloguj się na właściwe konto Allegro i przepisz kod.</p>
+          <p><a href="<%= kanal.wiazanie.adres %>" target="_blank" rel="noopener noreferrer"><%= kanal.wiazanie.adres %></a></p>
+          <p>Kod: <strong style="font-size:1.3rem;letter-spacing:.1em"><%= kanal.wiazanie.userCode %></strong></p>
+          <% if (kanal.wiazanie.blad) { %><p class="uwaga"><%= kanal.wiazanie.blad %></p><% } %>
+        </div>
+      <% } else if (kanal.stan.wolnoWiazac) { %>
+        <form method="post" action="/ustawienia/kanaly/<%= kanal.stan.kanal %>/wiazanie">
+          <button class="ust-przycisk" type="submit">Połącz z Allegro</button>
+        </form>
+      <% } %>
+    </div>
+  <% }); %>
+</div>
+<% } %>

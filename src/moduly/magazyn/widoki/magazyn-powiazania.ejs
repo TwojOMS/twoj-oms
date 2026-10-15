@@ -1,0 +1,268 @@
+<%# MAGAZYN — POWIAZANIE OFERT ALLEGRO Z WZORAMI.
+
+    PO CO TEN EKRAN. Lustro trzyma 447 ofert Allegro i wszystkie maja `wzor_id IS NULL`.
+    Wzor powstaje z katalogu SKLEPU, a oferte wiaze sie z nim RECZNIE: pole `external` jest
+    na Allegro puste we wszystkich ofertach, a nazwy sa sprzedazowe. Jedyna pomoca jest
+    ranking po nazwie — i to jest wszystko, czym ten ekran jest.
+
+    ⚠️⚠️ WIDOK NICZEGO NIE LICZY I NICZEGO NIE ROZSTRZYGA. Kandydaci, procenty, wspolne
+    slowa, nazwy kanalow, adresy sortujace i pozycje listy podpowiedzi przychodza POLICZONE
+    (domain/dopasowanie-ofert.js, web/routes/magazyn.js) — ta sama zasada, co w
+    magazyn-lista.ejs i faktury.ejs.
+
+    ⚠️⚠️ ANI JEDNEGO PROGU NA TYM EKRANIE. Zmierzone na prawdziwych danych: w kubelku
+    0,50–0,67 siedza trafienia POPRAWNE (`Zakaz palenia papierosów…` → `Zakaz palenia - 64cm`,
+    `STOP…` → `STOP - szablon ostrzegawczy`, `NIE PARKOWAĆ` → `Nie parkować`). Kandydaci
+    pokazuja sie ZAWSZE, posortowani, z procentem jako PODPOWIEDZIA — nigdy nie sa ukrywani
+    ani odrzucani, i nigdzie nie ma slowa „pewne" ani „słabe", bo to sa progi przebrane
+    za etykiety.
+
+    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w layout-oms.ejs. Paleta ma
+    wariant jasny i ciemny, wiec wartosc wpisana tutaj zadzialalaby w jasnym i po cichu
+    zniknela w ciemnym (nikt nie oglada obu naraz). %>
+
+<%# Powrot na ZAWEZONA liste magazynu (4.13d) — `adresPowrotu` jest juz zwalidowany w trasie
+    (`bezpiecznyWroc`), a jedzie KAZDA droga tego ekranu: naglowkami sortujacymi, oboma
+    formularzami GET i oboma POST-ami. Inaczej dzialalby do pierwszego klikniecia. %>
+<p class="wroc"><a href="<%= adresPowrotu %>">← Wróć do magazynu</a></p>
+
+<div class="glowa-ekranu">
+  <h1>Powiązania ofert Allegro</h1>
+  <span class="krok">oferta wiąże się z wzorem ręcznie — Allegro nie niesie naszego numeru</span>
+</div>
+
+<% if (wynik) { %>
+  <%# ⚠️ EKRAN WYNIKU JEST JEDYNYM MIEJSCEM, W KTORYM WIDAC, CZEGO PANEL NIE TKNAL
+      (niezmiennik 4.13a). Ciche wyrzucenie wiersza z hurtu znaczyloby „zatwierdzilem
+      czterdziesci, weszlo trzydziesci dziewiec" — bez slowa o tym, ktore i dlaczego. %>
+  <section class="panel wynik-powiazan">
+    <div class="panel-glowa">
+      <h2>Wynik zatwierdzenia</h2>
+    </div>
+    <div class="panel-cialo">
+      <p>Powiązane oferty: <strong><%= wynik.powiazane %></strong><%
+        if (wynik.odpiete) { %> · odpięte: <strong><%= wynik.odpiete %></strong><% } %></p>
+      <% if (wynik.pominiete && wynik.pominiete.length) { %>
+        <table class="tab-pozycje">
+          <thead><tr><th>Oferta</th><th>Dlaczego pominięta</th></tr></thead>
+          <tbody>
+            <% wynik.pominiete.forEach(function (p) { %>
+              <tr><td><%= p.nazwa %></td><td><%= p.powod %></td></tr>
+            <% }); %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+  </section>
+<% } %>
+
+<%# ——— FILTRY I SZUKANIE ———————————————————————————————————————————————————————
+    Dwa formularze GET, kazdy niosacy wartosci drugiego UKRYTYMI POLAMI (niezmiennik 4.13b).
+    Formularz, ktory ma wlasne pole `kanal`, nie moze wyslac `kanal` drugi raz: Fastify
+    oddaje wtedy tablice, parser odrzuca ja do `null` i filtr znika dokladnie w tym
+    formularzu, ktory sluzy do jego ustawiania. %>
+<form class="filtry" method="get" action="/magazyn/powiazania">
+  <% ukryteWFiltrach.forEach(function (p) { %>
+    <input type="hidden" name="<%= p.name %>" value="<%= p.value %>">
+  <% }); %>
+  <div class="filtry-rzad">
+    <label class="pole-filtra">
+      <span>Konto Allegro</span>
+      <select name="kanal">
+        <option value="">Oba konta</option>
+        <% kanalyDoFiltra.forEach(function (k) { %>
+          <option value="<%= k.klucz %>"<%- filtry.kanal === k.klucz ? ' selected' : '' %>><%= k.etykieta %></option>
+        <% }); %>
+      </select>
+    </label>
+    <button class="btn btn--glowny" type="submit">Filtruj</button>
+  </div>
+  <% if (filtrowane) { %>
+    <div class="chipy">
+      <a class="chipy-wyczysc" href="<%= adresBezFiltrow %>">Wyczyść zawężenie</a>
+      <span class="wynik-filtra"><%= wiersze.length %> ofert</span>
+    </div>
+  <% } %>
+</form>
+
+<form class="szukajka" method="get" action="/magazyn/powiazania" role="search">
+  <% ukryteWSzukajce.forEach(function (p) { %>
+    <input type="hidden" name="<%= p.name %>" value="<%= p.value %>">
+  <% }); %>
+  <label class="szukajka-pole">
+    <span class="szukajka-etykieta">Szukaj oferty</span>
+    <input type="search" name="fraza" value="<%= wartosciPol.fraza %>" autocomplete="off"
+      placeholder="fragment nazwy oferty">
+  </label>
+  <button type="submit">Szukaj</button>
+</form>
+
+<%# ——— JEDNA WSPOLNA LISTA PODPOWIEDZI ——————————————————————————————————————————
+    ⚠️⚠️ RAZ NA STRONE, A NIE RAZ NA WIERSZ (rozstrzygniecie wlasciciela). 447 wierszy razy
+    ~965 wzorow to megabajty HTML-a; tu jest ~965 pozycji lacznie, a kazde pole reczne
+    pokazuje na nia atrybutem `list`.
+
+    ⚠️ NAZWA STOI W `value`, numer w nawiasie na koncu — przegladarka filtruje te liste po
+    WARTOSCI, nie po etykiecie, wiec numer w `value` dawalby liste niewyszukiwalna. %>
+<datalist id="wzory-do-wyboru">
+  <% pozycjeListy.forEach(function (p) { %>
+    <option value="<%= p.wartosc %>"><%= p.opis %></option>
+  <% }); %>
+</datalist>
+
+<%# ——— FORMULARZ ZATWIERDZENIA HURTEM ——————————————————————————————————————————
+    ⚠️⚠️ JEDEN FORMULARZ NA CALA TABELE. Zatwierdzenie hurtem jest PRZYCISKIEM, nie skutkiem
+    ubocznym wejscia na strone: wejscie tylko czyta, a wiaze dopiero to klikniecie.
+
+    Formularz bez ukrytego pola z tokenem: ochrona CSRF (src/security/csrf.js) stoi na
+    naglowkach Origin/Referer i jest hakiem globalnym. %>
+<form class="powiazania" method="post" action="/magazyn/powiazania">
+  <%# Adres powrotu przezywa TAKZE wykonana robote: obie trasy POST renderuja ten sam
+      ekran (`ekranPowiazan`), wiec bez tego pola ginalby po pierwszym powiazaniu. %>
+  <% if (adresPowrotu !== '/magazyn') { %><input type="hidden" name="wroc" value="<%= adresPowrotu %>"><% } %>
+  <div class="przewijak-tabeli">
+    <table class="tresc-lista powiazania-tabela">
+      <thead>
+        <tr>
+          <th <% if (sortowanie.nazwa.aria) { %>aria-sort="<%= sortowanie.nazwa.aria %>"<% } %>>
+            <a class="zaznacz-wszystkie" href="<%= sortowanie.nazwa.adres %>">Oferta na Allegro <%= sortowanie.nazwa.strzalka %></a>
+            <span class="magazyn-brak">/</span>
+            <a class="zaznacz-wszystkie" href="<%= sortowanie.kanal.adres %>">konto <%= sortowanie.kanal.strzalka %></a>
+          </th>
+          <th <% if (sortowanie.ocena.aria) { %>aria-sort="<%= sortowanie.ocena.aria %>"<% } %>>
+            <%# Kolejnosc po ocenie jest tu jedynym sposobem, zeby przejsc najpierw przez
+                to, co idzie szybko — ale NIE jest progiem: nic nie znika z listy. %>
+            <a class="zaznacz-wszystkie" href="<%= sortowanie.ocena.adres %>">Kandydaci <%= sortowanie.ocena.strzalka %></a>
+          </th>
+          <th>Albo wskaż wzór sam</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% wiersze.forEach(function (w) { %>
+          <tr class="wiersz-oferty">
+            <td class="komorka-oferta">
+              <div class="nazwa-oferty"><%= w.nazwa %></div>
+              <div class="sku">
+                <%= w.etykietaKanalu %><% if (w.adres) { %>
+                  · <a href="<%= w.adres %>" rel="noopener noreferrer" target="_blank">oferta</a>
+                <% } %>
+              </div>
+            </td>
+            <td class="komorka-kandydaci">
+              <%# ⚠️ „nie wiążę" jest zaznaczone z gory i JEST POTRZEBNE: panel nie ma
+                  JavaScriptu, wiec bez tej pozycji raz kliknietego wyboru nie da sie
+                  cofnac inaczej niz przeladowaniem strony. %>
+              <label class="kandydat kandydat--zaden">
+                <input type="radio" name="wzor_<%= w.id %>" value="" checked>
+                <span class="kandydat-nazwa-zadna">nie wiążę</span>
+              </label>
+              <% w.kandydaci.forEach(function (k) { %>
+                <label class="kandydat">
+                  <input type="radio" name="wzor_<%= w.id %>" value="<%= k.id %>">
+                  <span class="kandydat-nazwa"><%= k.nazwa %></span>
+                  <%# Procent jest PODPOWIEDZIA, a nie decyzja — i stoi obok wspolnych slow,
+                      bo bez nich jest liczba bez pokrycia. %>
+                  <span class="kandydat-ocena"><%= k.procent %></span>
+                  <span class="kandydat-slowa"><%= k.slowa %></span>
+                  <% if (k.sku || k.wymiary) { %>
+                    <span class="kandydat-drobne"><%= [k.sku, k.wymiary].filter(Boolean).join(' · ') %></span>
+                  <% } %>
+                </label>
+              <% }); %>
+              <% if (!w.kandydaci.length) { %>
+                <%# ⚠️ PUSTO MA POWIEDZIEC, ZE JEST PUSTO CELOWO. Sam brak kandydatow wyglada
+                    jak kolumna, ktorej cos nie doliczylo — a to jest zwyczajny wynik: nazwa
+                    sprzedazowa bywa calkiem inna od nazwy wzoru. Wiersz ZOSTAJE na liscie,
+                    bo to jest robota do wykonania, tyle ze recznie. %>
+                <span class="magazyn-brak">Żaden wzór nie ma z tą nazwą wspólnego słowa — wskaż go obok.</span>
+              <% } %>
+            </td>
+            <td class="komorka-reczna">
+              <%# ⚠️ DROGA RECZNA JEST W KAZDYM WIERSZU, takze tam, gdzie kandydaci sa —
+                  bo trzej najlepsi to nie to samo, co trzej trafni. Wpisane tu bije
+                  zaznaczonego kandydata (patrz `paryZFormularza` w routes/magazyn.js).
+                  Zla nazwa nie wiaze niczego: wiersz wraca jako pominiety, z powodem. %>
+              <input class="reczny" type="text" name="reczny_<%= w.id %>" value=""
+                list="wzory-do-wyboru" autocomplete="off" placeholder="wpisz nazwę wzoru"
+                aria-label="Wzór wskazany ręcznie dla oferty <%= w.nazwa %>">
+            </td>
+          </tr>
+        <% }); %>
+        <% if (!wiersze.length) { %>
+          <tr><td colspan="3" class="pusto">
+            <% if (filtrowane) { %>
+              Żadna oferta nie pasuje do tego zawężenia — lista nie jest pusta, tylko zapytanie nic nie trafiło.
+              <a href="<%= adresBezFiltrow %>">Wyczyść zawężenie</a>.
+            <% } else { %>
+              Żadna oferta Allegro nie czeka na powiązanie. Nowe pojawią się tu po odczycie katalogów.
+            <% } %>
+          </td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (wiersze.length) { %>
+    <div class="pola-w-rzedzie">
+      <button class="btn btn--glowny" type="submit">Powiąż zaznaczone</button>
+      <span class="wyjasnienie">
+        Zatwierdza wszystkie wiersze naraz. Wiersze zostawione na „nie wiążę" pomija.
+      </span>
+    </div>
+  <% } %>
+</form>
+
+<%# ——— JUZ POWIAZANE ————————————————————————————————————————————————————————————
+    ⚠️⚠️ WIAZANIE JEST ODWRACALNE (rozstrzygniecie wlasciciela) — a odwrocic da sie tylko to,
+    co widac. Bez tej sekcji pomylka w hurcie byla nie do cofniecia z panelu, a hurtem
+    pomylka jest hurtowa. Zwinieta, a NIE ukryta: nie ma zabierac ekranu robocie, ktora
+    dopiero czeka. %>
+<% if (juzPowiazane.length) { %>
+  <section class="panel juz-powiazane">
+    <div class="panel-glowa">
+      <h2>Już powiązane — <%= juzPowiazane.length %> poz.</h2>
+      <span class="dopisek">te oferty zniknęły z listy wyżej</span>
+    </div>
+    <div class="panel-cialo">
+      <details class="drobne">
+        <summary>Pokaż wszystkie (<%= juzPowiazane.length %>)</summary>
+        <table class="tab-pozycje">
+          <thead><tr><th>Oferta</th><th>Wzór</th><th></th></tr></thead>
+          <tbody>
+            <% juzPowiazane.forEach(function (p) { %>
+              <tr>
+                <td>
+                  <%# ⚠️ INNA KLASA NIZ W TABELI ROBOCZEJ i to nie jest kosmetyka: ta sama
+                      klasa sprawialaby, ze oferta powiazana liczylaby sie jako wiersz roboty
+                      w kazdej asercji i w kazdym liczeniu na tym ekranie. %>
+                  <div class="nazwa-powiazanej"><%= p.nazwa %></div>
+                  <div class="sku"><%= p.etykietaKanalu %></div>
+                </td>
+                <td>
+                  <%= p.wzor_nazwa %>
+                  <div class="sku"><%= p.wzor_sku ? p.wzor_sku : 'bez SKU' %></div>
+                </td>
+                <td>
+                  <%# Osobny formularz na wiersz: odpiecie jest decyzja pojedyncza i nie ma
+                      prawa jechac razem z zatwierdzeniem hurtem. %>
+                  <form method="post" action="/magazyn/powiazania/odepnij">
+                    <input type="hidden" name="id" value="<%= p.id %>">
+                    <% if (adresPowrotu !== '/magazyn') { %><input type="hidden" name="wroc" value="<%= adresPowrotu %>"><% } %>
+                    <button class="btn" type="submit">Odepnij</button>
+                  </form>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </details>
+    </div>
+  </section>
+<% } %>
+
+<p class="wyjasnienie">
+  Procent obok kandydata jest <strong>podpowiedzią, nie decyzją</strong>. Zmierzone na
+  prawdziwych nazwach: trafienia poprawne bywają nisko ocenione, bo Allegro dokleja do nazwy
+  dopisek sprzedażowy, a sklep — rozmiar i doprecyzowanie techniczne. Dlatego panel nigdy nie
+  ukrywa kandydatów i nigdy nie wiąże niczego sam.
+</p>

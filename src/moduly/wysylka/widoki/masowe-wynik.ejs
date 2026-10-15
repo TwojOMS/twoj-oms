@@ -1,0 +1,55 @@
+<%# Wynik akcji masowej. Renderowany WYLACZNIE wtedy, gdy jest o czym mowic: przy zmianie %>
+<%# statusu, ktora poszla w calosci, trasa przekierowuje na liste (zmiana jest odwracalna),%>
+<%# a po nadaniu — nigdy, bo numery listow sa jedynym potwierdzeniem operacji, ktorej nie %>
+<%# da sie powtorzyc ani cofnac. %>
+<%# ⚠️ POWROT NA ZAWEZONY WIDOK, nie na gola liste (10.09.2026). Na ten ekran trafia sie %>
+<%# wlasnie wtedy, gdy cos wymaga uwagi — odeslanie stad na „Do zrobienia" bez filtrow %>
+<%# kazaloby operatorowi odtwarzac swoja zakladke recznie, zanim wroci do reszty partii. %>
+<%# `powrot` przechodzi przez bariere w trasie (bezpiecznyPowrotNaListe). %>
+<p class="wroc"><a href="<%= powrot %>">← Wróć do listy zamówień</a></p>
+
+<div class="panel">
+  <div class="panel-glowa"><h2><%= tytul %></h2></div>
+  <div class="panel-cialo">
+    <% if (udane.length) { %>
+      <h3 class="wynik-naglowek"><%= etykietaUdanych %> — <%= udane.length %></h3>
+      <ul class="lista-wyniku">
+        <% udane.forEach(function (w) { %>
+          <li><span class="waga waga--ok">gotowe</span> <span><b><a class="link-numer" title="<%= w.numer %>" href="/zamowienia/<%= w.id %>"><%= w.numer %></a></b> — <%= w.opis %></span></li>
+        <% }); %>
+      </ul>
+    <% } %>
+
+    <% if (niedoslane.length) { %>
+      <%# ⚠️ TRZECIA KATEGORIA, NIE ODMIANA „POMINIETYCH" (K1). Tu panel ZROBIL, o co %>
+      <%# prosil operator — status w panelu jest zmieniony i nikt tego nie cofa — ale %>
+      <%# druga strona (sklep albo Allegro) tej zmiany nie przyjela, wiec klient/kupujacy %>
+      <%# widzi u siebie stary stan. Wrzucenie tego do „Pominietych" klamaloby, ze nic sie %>
+      <%# nie stalo; wrzucenie do „Udanych" chowaloby awarie. Stad wlasna sekcja. %>
+      <h3 class="wynik-naglowek">Status zapisany w panelu, ale NIE dojechał do sklepu / Allegro — <%= niedoslane.length %></h3>
+      <ul class="lista-wyniku">
+        <% niedoslane.forEach(function (n) { %>
+          <li><span class="waga waga--blokada">nie dojechało</span> <span><b><a class="link-numer" title="<%= n.numer %>" href="/zamowienia/<%= n.id %>"><%= n.numer %></a></b> — <%= n.powod %></span>
+            <form method="post" action="/zamowienia/<%= n.id %>/sync-sklep"><button class="btn btn--maly" type="submit">Spróbuj ponownie</button></form>
+          </li>
+        <% }); %>
+      </ul>
+      <p class="pusto-sekcja">Te zamówienia wróciły na listę roboczą. Po ponowieniu sprawdź wynik na karcie zamówienia.</p>
+    <% } %>
+
+    <% if (pominiete.length) { %>
+      <%# Pominiete NIE MOGA zniknac po cichu — to jest cala roznica miedzy „panel zrobil %>
+      <%# mniej, niz prosilem" a „panel zrobil mniej i powiedzial dlaczego". %>
+      <h3 class="wynik-naglowek">Pominięte — <%= pominiete.length %></h3>
+      <ul class="lista-wyniku">
+        <% pominiete.forEach(function (p) { %>
+          <li><span class="waga waga--blokada">pominięte</span> <span><b><a class="link-numer" title="<%= p.numer %>" href="/zamowienia/<%= p.id %>"><%= p.numer %></a></b> — <%= p.powod %></span></li>
+        <% }); %>
+      </ul>
+    <% } %>
+
+    <% if (!udane.length && !pominiete.length && !niedoslane.length) { %>
+      <p class="pusto-sekcja">Nic nie było zaznaczone — panel niczego nie zmienił.</p>
+    <% } %>
+  </div>
+</div>

@@ -1,0 +1,71 @@
+<%# Wynik wystawiania faktur hurtem. Renderowany ZAWSZE — po tej akcji nie ma %>
+<%# przekierowania na liste, bo numery faktur sa jedynym potwierdzeniem operacji, %>
+<%# ktorej nie da sie cofnac. %>
+<%# Widok NICZEGO NIE LICZY — kazda z czterech list (wystawione, bledy, nietkniete, %>
+<%# pominiete) przychodzi gotowa z trasy. Kazda pusta sekcja znika, a gdy „trzy" sekcje %>
+<%# operacji (wystawione/bledy/nietkniete) sa puste jednoczesnie, ekran mowi to wprost — %>
+<%# pusty ekran wyglada jak ekran, ktory sie nie wczytal (ta sama zasada, co przy pustej %>
+<%# liscie zamowien i pustym pasie dlugow w zakladce FAKTURY). %>
+<%# Powrot na zawezony widok (4.13d), nie na gola liste — z tego ekranu wraca sie do reszty %>
+<%# partii, a odtwarzanie zakladki i filtrow po kazdej porcji byloby cala robota od nowa. %>
+<p class="wroc"><a href="<%= powrot %>">← Wróć do listy zamówień</a></p>
+
+<div class="panel">
+  <div class="panel-glowa"><h2>Faktury hurtem</h2></div>
+  <div class="panel-cialo">
+    <% if (zaDuzo) { %>
+      <p class="pasek-blokada"><%= zaDuzo %></p>
+    <% } %>
+
+    <% if (wystawione.length) { %>
+      <h3 class="wynik-naglowek">Wystawione — <%= wystawione.length %></h3>
+      <ul class="lista-wyniku">
+        <% wystawione.forEach(function (w) { %>
+          <li><span class="waga waga--ok">gotowe</span> <span><b><a class="link-numer" title="<%= w.numer %>" href="<%= adresKarty(w.id) %>"><%= w.numer %></a></b> — <%= w.numerFaktury %></span></li>
+        <% }); %>
+      </ul>
+    <% } %>
+
+    <% if (bledy.length) { %>
+      <h3 class="wynik-naglowek">Nie udało się — <%= bledy.length %></h3>
+      <ul class="lista-wyniku">
+        <% bledy.forEach(function (b) { %>
+          <li><span class="waga waga--blokada">błąd</span> <span><b><a class="link-numer" title="<%= b.numer %>" href="<%= adresKarty(b.id) %>"><%= b.numer %></a></b> — <%= b.powod %></span>
+            <a class="link-edytuj" href="<%= adresKarty(b.id, 'faktura', 'dane-faktury') %>">Popraw dane do faktury</a></li>
+        <% }); %>
+      </ul>
+    <% } %>
+
+    <% if (nietkniete.length) { %>
+      <%# ⚠️ WLASNA SEKCJA, nie odmiana „pominietych": tych zamowien partia NIE DOTKNELA, %>
+      <%# bo skonczyl sie budzet czasu. Nic sie z nimi nie stalo i wystarczy powtorzyc. %>
+      <h3 class="wynik-naglowek">Nietknięte — partia nie zdążyła — <%= nietkniete.length %></h3>
+      <ul class="lista-wyniku">
+        <% nietkniete.forEach(function (n) { %>
+          <li><span class="waga waga--uwaga">nietknięte</span> <span><b><a class="link-numer" title="<%= n.numer %>" href="<%= adresKarty(n.id) %>"><%= n.numer %></a></b></span></li>
+        <% }); %>
+      </ul>
+      <p class="pusto-sekcja">Zabrakło czasu w tej partii — zaznacz je ponownie i powtórz.</p>
+    <% } %>
+
+    <% if (pominiete.length) { %>
+      <h3 class="wynik-naglowek">Pominięte — <%= pominiete.length %></h3>
+      <ul class="lista-wyniku">
+        <% pominiete.forEach(function (p) { %>
+          <li><span class="waga waga--blokada">pominięte</span> <span><b><a class="link-numer" title="<%= p.numer %>" href="<%= adresKarty(p.id) %>"><%= p.numer %></a></b> — <%= p.powod %></span></li>
+        <% }); %>
+      </ul>
+    <% } %>
+
+    <%# „Trzy sekcje" to wystawione/bledy/nietkniete — pominiete jest CZWARTA, osobna lista %>
+    <%# i moze byc niepusta, mimo ze zadna faktura nie powstala (np. wszystkie zaznaczone %>
+    <%# zamowienia byly nieoplacone). Ekran ma wtedy powiedziec wprost, ze nic nie wyszlo, %>
+    <%# a nie zmuszac operatora do liczenia pustych sekcji. %>
+    <% if (!zaDuzo && !wystawione.length && !bledy.length && !nietkniete.length) { %>
+      <p class="pusto-sekcja">
+        Nie wystawiono ani jednej faktury<% if (pominiete.length) { %> — wszystkie zaznaczone
+        zamówienia zostały pominięte, patrz wyżej<% } else { %> — nic nie było zaznaczone<% } %>.
+      </p>
+    <% } %>
+  </div>
+</div>

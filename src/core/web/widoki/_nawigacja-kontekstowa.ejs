@@ -1,0 +1,34 @@
+<% const klasyKontekstu = mobilna
+  ? 'nawigacja-kontekstowa nawigacja-kontekstowa--mobile'
+  : 'kolumna-boczna nawigacja-kontekstowa'; %>
+<% const kontekst = nawigacja && nawigacja.kontekst; %>
+<% if (kontekst) { %>
+  <<%= mobilna ? 'div' : 'aside' %> class="<%= klasyKontekstu %>">
+    <nav class="panel-statusow" aria-label="Kontekst">
+      <ul>
+        <% (statusyMenu ?? []).forEach(function (p) { %>
+          <% const klasyPozycji = [p.aktywna ? 'aktywna' : '', p.klasa || ''].filter(Boolean).join(' '); %>
+          <li<%- klasyPozycji ? ` class="${klasyPozycji}"` : '' %>>
+            <a href="<%= p.href %>">
+              <span><% if (modyfikatorStatusu(p.klucz)) { %><span class="kropka <%= modyfikatorStatusu(p.klucz) %>"></span><% } %><%= p.etykieta %></span>
+              <% if (typeof p.liczba !== 'undefined') { %><span class="licznik" data-status="<%= p.klucz %>"><%= p.liczba %></span><% } %>
+            </a>
+          </li>
+        <% }); %>
+        <% kontekst.grupy.forEach(function (grupa) { %>
+          <% if (grupa.etykieta) { %><li class="menu-kontekstowe-naglowek"><%= grupa.etykieta %></li><% } %>
+          <% grupa.pozycje.forEach(function (p) { %>
+            <li<%- p.aktywna ? ' class="aktywna"' : '' %>>
+              <a href="<%= p.href %>"><span><%= p.etykieta %></span></a>
+            </li>
+          <% }); %>
+        <% }); %>
+      </ul>
+    </nav>
+    <% if ((statusyMenu ?? []).length) { %>
+      <p class="nowe-zamowienie"><a class="btn btn--glowny" href="/zamowienia/nowe">+ Nowe zamówienie</a></p>
+    <% } %>
+  </<%= mobilna ? 'div' : 'aside' %>>
+<% } else if (!mobilna) { %>
+  <aside class="kolumna-boczna nawigacja-kontekstowa nawigacja-kontekstowa--pusta" aria-hidden="true"></aside>
+<% } %>

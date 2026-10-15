@@ -1,0 +1,26 @@
+<%# Lista pominietych pozycji JEDNEJ grupy. Wydzielona, bo rysuje sie w dwoch miejscach
+    (grupa rozwinieta i grupa zwinieta w <details>) — dwie kopie rozjechalyby sie przy
+    pierwszej zmianie kolumn, a nikt by tego nie zauwazyl: obie wygladaja tak samo,
+    dopoki sie ich nie porowna obok siebie.
+
+    Wiersz niesie NAZWE i KANAL, bo bez nich lista nie mowi, o czym mowi. %>
+<div class="przewijak-tabeli">
+  <table class="tab-pozycje">
+    <thead>
+      <tr><th>Nazwa u źródła</th><th>Kanał</th><th>SKU sklepu</th></tr>
+    </thead>
+    <tbody>
+      <% produkty.forEach(function (p) { %>
+        <tr>
+          <td><%= p.nazwa %></td>
+          <%# ⚠️ ETYKIETA, NIE SUROWY KLUCZ. Do 2026-08-11 stalo tu `p.kanal`, wiec ten ekran
+              mowil „allegro_b", a lista obok „Allegro konto B" — ten sam kanal
+              pod dwiema nazwami w tym samym panelu. Nazwa przychodzi POLICZONA z trasy
+              (`adresKanalu`), tak jak wszystko inne w tym module. %>
+          <td><%= p.etykietaKanalu %></td>
+          <td class="sku"><%= p.sku_sklepu ? p.sku_sklepu : '—' %></td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</div>

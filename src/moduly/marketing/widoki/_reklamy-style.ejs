@@ -1,0 +1,46 @@
+<style>
+  .reklamy { max-width: 1380px; margin: 0 auto; padding: 1.5rem 1.6rem 4rem; }
+  .reklamy * { box-sizing: border-box; }
+  .reklamy h1 { margin: 0 0 .35rem; font-size: clamp(1.7rem, 3vw, 2.4rem); letter-spacing: -.03em; }
+  .reklamy h2 { margin: 0 0 .7rem; font-size: 1.25rem; }
+  .reklamy h3 { margin: 0 0 .5rem; font-size: 1rem; }
+  .reklamy p { line-height: 1.55; }
+  .reklamy .opis { color: var(--tekst-przygaszony); margin: 0 0 1.2rem; }
+  .reklamy header form button { border: 1px solid var(--marka); background: var(--marka); color: #fff; border-radius: 7px; padding: .55rem .9rem; font: inherit; cursor: pointer; }
+  .reklamy-karty { display: flex; flex-wrap: wrap; gap: .3rem; margin: 1.2rem 0; border-bottom: 1px solid var(--ramka); }
+  .reklamy-karty a { display: inline-block; padding: .72rem 1rem; color: var(--tekst-przygaszony); text-decoration: none; border-bottom: 3px solid transparent; }
+  .reklamy-karty a:hover, .reklamy-karty a[aria-current="page"] { color: var(--tekst); border-color: var(--marka); }
+  .reklamy-panel { background: var(--powierzchnia); border: 1px solid var(--ramka); border-radius: 12px; padding: 1.2rem; margin: 1rem 0; }
+  .reklamy-siatka { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .8rem; }
+  .reklamy-metryka { background: var(--powierzchnia-2); border-radius: 9px; padding: 1rem; min-height: 110px; }
+  .reklamy-metryka small { display: block; color: var(--tekst-przygaszony); margin-bottom: .35rem; }
+  .reklamy-metryka strong { display: block; font-size: 1.55rem; font-variant-numeric: tabular-nums; }
+  .reklamy-metryka .powod { font-size: .82rem; color: var(--tekst-przygaszony); }
+  .reklamy-stan { display: inline-block; font-size: .78rem; font-weight: 700; border: 1px solid var(--ramka); border-radius: 999px; padding: .2rem .6rem; margin-bottom: .55rem; }
+  .reklamy-brak { border-left: 3px solid var(--marka); padding: .2rem 0 .2rem 1rem; }
+  .reklamy-filtr { display: flex; align-items: center; gap: .5rem; margin: 1rem 0; }
+  .reklamy-filtr a { border: 1px solid var(--ramka); border-radius: 6px; padding: .25rem .65rem; text-decoration: none; }
+  .reklamy-filtr a[aria-current="true"] { background: var(--powierzchnia-2); font-weight: 700; }
+  .reklamy-tabela { width: 100%; border-collapse: collapse; }
+  .reklamy-tabela th, .reklamy-tabela td { text-align: left; padding: .62rem .45rem; border-bottom: 1px solid var(--ramka); vertical-align: top; }
+  .reklamy-tabela th { color: var(--tekst-przygaszony); font-size: .8rem; }
+  .reklamy-tabela td.liczba { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  .reklamy-tabela th.liczba { text-align: right; }
+  .reklamy-przewijanie { overflow-x: auto; }
+  .reklamy-zrodlo { color: var(--tekst-przygaszony); font-size: .84rem; }
+  .reklamy-wykres { display: flex; align-items: end; gap: .35rem; height: 190px; overflow-x: auto; padding: 1rem 0 .2rem; border-bottom: 1px solid var(--ramka); }
+  .reklamy-slupki { flex: 1 0 24px; max-width: 56px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: end; gap: .3rem; }
+  .reklamy-slupki-os { height: 145px; width: 100%; display: flex; align-items: end; justify-content: center; gap: 2px; }
+  .reklamy-slupek { width: 43%; min-width: 3px; border-radius: 3px 3px 0 0; }
+  .reklamy-slupek.google { background: var(--marka); }
+  .reklamy-slupek.meta { background: #e58840; }
+  .reklamy-slupki small { font-size: .68rem; color: var(--tekst-przygaszony); white-space: nowrap; }
+  .reklamy-legenda-meta { color: #e58840; }
+  .reklamy-ranking { display: grid; gap: .5rem; margin: .75rem 0 1.2rem; }
+  .reklamy-ranking-wiersz { display: grid; grid-template-columns: minmax(120px, 1.5fr) minmax(100px, 3fr) auto; gap: .7rem; align-items: center; font-size: .85rem; }
+  .reklamy-ranking-wiersz strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .reklamy-ranking-tor { height: 10px; background: var(--powierzchnia-2); border-radius: 99px; overflow: hidden; }
+  .reklamy-ranking-tor span { display: block; height: 100%; background: var(--marka); border-radius: inherit; }
+  @media (max-width: 640px) { .reklamy-ranking-wiersz { grid-template-columns: minmax(90px, 1fr) minmax(70px, 2fr) auto; } }
+  @media (max-width: 640px) { .reklamy { padding: 1rem .8rem 3rem; } .reklamy-karty a { padding: .6rem .5rem; } }
+</style>

@@ -1,0 +1,105 @@
+<%# Wynik wysylki do KSeF. Renderowany ZAWSZE — trasa po tej operacji NIE PRZEKIEROWUJE,
+    bo ten ekran jest JEDYNYM potwierdzeniem czegos, czego nie da sie ani powtorzyc, ani
+    cofnac (ta sama zasada, co przy masowe-wynik.ejs po nadaniu paczek, tylko stawka wyzsza:
+    paczke odwola telefon do kuriera, dokumentu w KSeF nie skasuje nikt — zostaje korekta).
+
+    ⚠️ WIDOK NICZEGO NIE ROZSTRZYGA I NICZEGO NIE LICZY. Co poszlo, co pominieto i o czym
+    NIE WIADOMO — rozstrzyga services/wysylka-ksef.js. Tu sklejamy wylacznie napisy.
+
+    ⚠️⚠️ NIGDZIE NIE PISZEMY, ZE DOKUMENT „JEST W KSeF". Panel tego NIE WIE: zmierzone
+    siedemdziesiat sekund miedzy przyjeciem zlecenia przez inFakt a nadaniem numeru przez
+    organ (docblock `wyslijDokumentDoKsef` w infakt/client.js). Numer przyniesie dopiero czuwacz. %>
+
+<p class="wroc"><a href="<%= adresPowrotu %>">← Wróć do listy faktur</a></p>
+
+<div class="panel panel--groza">
+  <div class="panel-glowa panel-glowa--groza"><h2>Wysyłka do KSeF — wynik</h2></div>
+  <div class="panel-cialo">
+
+    <% if (blad) { %>
+      <%# ⚠️⚠️ DWA ROZNE BLEDY, DWA ROZNE ZDANIA — i pomylenie ich jest tu najgrozniejsze,
+          co ten ekran moze zrobic. Awaria SPRZED wysylki (nieznany miesiac, niedostepna
+          lista faktur) znaczy „nic nie poszlo" i wolno tak napisac. Awaria SAMEGO
+          WYWOLANIA znaczy WYLACZNIE „nie wiadomo": w chwili zerwanego polaczenia dokumenty
+          moga juz byc NIEODWRACALNIE w KSeF, wiec zdanie „nie udalo sie wyslac" byloby
+          klamstwem, ktore popchneloby czlowieka do ponowienia — czyli do duplikatu
+          u organu. Rozroznia je `niepewne`: sa tam dokumenty tylko wtedy, gdy panel zdazyl
+          poprosic inFakt o wysylke. %>
+      <% if (niepewne.length) { %>
+        <p class="pasek-blokada"><b>Panel nie doczekał się odpowiedzi od inFaktu:</b> <%= blad %></p>
+      <% } else { %>
+        <p class="pasek-blokada"><b>Nic nie poszło do KSeF:</b> <%= blad %></p>
+      <% } %>
+    <% } %>
+
+    <% if (wyslane.length) { %>
+      <h3 class="wynik-naglowek">Wysłano — czeka na numer KSeF — <%= wyslane.length %></h3>
+      <ul class="lista-wyniku">
+        <% wyslane.forEach(function (w) { %>
+          <li><span class="waga waga--ok">wysłano</span> <span><b><%= w.numer %></b> — zlecenie przyjęte, dokument czeka na numer KSeF</span></li>
+        <% }); %>
+      </ul>
+      <p class="wyjasnienie">
+        Panel przekazał dokumenty do inFaktu, a inFakt przekazuje je organowi. Numer KSeF
+        <b>nie pojawia się od razu</b> — zmierzone około siedemdziesiąt sekund. Pokaże się
+        na liście faktur, gdy organ potwierdzi przyjęcie; panel dopyta o to sam.
+      </p>
+      <%# ⚠️⚠️ TU STALY DWA OSTRZEZENIA O LICZBIE PRZYJETYCH — „liczby sie rozjezdzaja" i „panel
+          nie dostal liczby przyjetych" — i ZADNE nie moglo sie zapalic (recenzja calosci,
+          Finding 3). `wyslijDokumentDoKsef` wyrzucalo tresc odpowiedzi inFaktu i oddawalo `przyjete`
+          rowne DLUGOSCI TEGO, CO SAMO WYSLALO: liczba byla wiec zawsze zgodna i nigdy pusta,
+          a ekran zestawial ja sam ze soba. Wygladal na sprawdzony, chociaz nikt nic nie
+          sprawdzil — czyli robil dokladnie to, przed czym mial bronic.
+          Ekran mowi teraz WYLACZNIE to, co panel wie: ile dokumentow WYSLAL.
+          ⚠️ Zdania o liczbie przyjetej przez inFakt wolno tu dolozyc DOPIERO wtedy, gdy ksztalt
+          odpowiedzi `send.json` zostanie zaobserwowany na pierwszej nadzorowanej wysylce —
+          klient oddaje ja surowa w `odpowiedzInfaktu` (infakt/client.js). %>
+      <p class="wyjasnienie">
+        Powyższa liczba to <b>własny rachunek panelu</b>: tyle dokumentów panel wysłał.
+        Nie jest to potwierdzenie ani inFaktu, ani organu — panel nie ma dziś czego z nią
+        zestawić i niczego takiego nie udaje. Co naprawdę poszło, widać w inFakcie.
+      </p>
+    <% } %>
+
+    <% if (niepewne.length) { %>
+      <%# ⚠️⚠️ TRZECIA KATEGORIA, NIE ODMIANA „POMINIETYCH" ANI „WYSLANYCH". Panel poprosil
+          inFakt o wysylke i NIE DOSTAL ODPOWIEDZI. Wrzucenie tego do wyslanych klamaloby,
+          ze poszlo; wrzucenie do pominietych klamaloby, ze nie poszlo. Prawda brzmi
+          „nie wiadomo" i tylko ona nie wyprowadzi czlowieka w pole. %>
+      <h3 class="wynik-naglowek">NIE WIADOMO, czy poszły — <%= niepewne.length %></h3>
+      <ul class="lista-wyniku">
+        <% niepewne.forEach(function (n) { %>
+          <li><span class="waga waga--blokada">nie wiadomo</span> <span><b><%= n.numer %></b> — panel zlecił wysyłkę, ale nie doczekał się odpowiedzi</span></li>
+        <% }); %>
+      </ul>
+      <p class="pasek-blokada">
+        <b>Nie wysyłaj tych dokumentów ponownie w ciemno.</b> Zerwane połączenie nie znaczy,
+        że nic nie poszło — mogły już trafić do KSeF nieodwracalnie, a drugie zgłoszenie
+        byłoby duplikatem u organu. Otwórz inFakt, sprawdź te dokumenty i dopiero wtedy
+        zdecyduj. Panel sam niczego nie ponawia. Ślad tej próby jest w logu zamówienia.
+      </p>
+    <% } %>
+
+    <% if (pominiete.length) { %>
+      <%# Pominiete NIE MOGA zniknac po cichu — to jest cala roznica miedzy „panel wysłał
+          mniej, niż prosiłem" a „panel wysłał mniej i powiedział dlaczego". %>
+      <h3 class="wynik-naglowek">Pominięte — <%= pominiete.length %></h3>
+      <ul class="lista-wyniku">
+        <% pominiete.forEach(function (p) { %>
+          <li><span class="waga waga--blokada">pominięte</span> <span><b><%= p.numer %></b> — <%= p.powod %></span></li>
+        <% }); %>
+      </ul>
+    <% } %>
+
+    <% if (!wyslane.length && !niepewne.length && !pominiete.length && !blad) { %>
+      <p class="pusto-sekcja">Nic nie było zaznaczone — panel niczego nie wysłał.</p>
+    <% } %>
+
+    <div class="stopka-edycji">
+      <%# ⚠️ ZADNEGO PRZYCISKU „WYSLIJ PONOWNIE". Po tym ekranie jedyna droga do kolejnej
+          wysylki prowadzi przez liste i podglad — czyli przez zbior policzony OD NOWA,
+          z faktur pobranych na swiezo. %>
+      <a class="btn" href="<%= adresPowrotu %>">Wróć do listy faktur</a>
+    </div>
+  </div>
+</div>

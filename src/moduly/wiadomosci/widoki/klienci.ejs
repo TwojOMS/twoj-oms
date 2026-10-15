@@ -1,0 +1,306 @@
+<%#
+  STALI KLIENCI (21.08.2026) — slownik podmiotow, ktorych dane wpisywalo sie dotad przy
+  KAZDYM zamowieniu z osobna.
+
+  ⚠️ LISTA NA GORZE, FORMULARZ NA ZADANIE (prosba wlasciciela: „na gorze strony lista klientow
+  + przycisk Dodaj nowego klienta"). Pierwsza wersja trzymala formularz rozwiniety na stale nad
+  lista — czyli ekran, na ktory wchodzi sie ZOBACZYC baze, zaczynal od pietnastu pustych pol,
+  a to, po co sie przyszlo, bylo pod nimi.
+
+  ⚠️ JEDEN EKRAN NA LISTE I NA FORMULARZ. Osobny ekran edycji bylby druga kopia pietnastu pol
+  i rozjechalby sie z ta przy pierwszym nowym ustawieniu — a wtedy „edytuj klienta" i „dopisz
+  klienta" zaczelyby zapisywac rozne rzeczy. Formularz sie CHOWA, a nie przenosi.
+
+  ⚠️ KARTA KLIENTA (`klient.ejs`, od 21.08.2026) TEGO NIE LAMIE: ona wylacznie CZYTA — dane
+  wpisu i historie zamowien, ktorej formularz nie ma skad znac. Ani jednego pola formularza
+  tam nie ma; „Edytuj" prowadzi z powrotem TUTAJ, pod `/klienci/:id/edytuj`.
+
+  ⚠️ NIE MA TU KASOWANIA i miec nie bedzie — jest WYGASZANIE. Zamowienia zalozone z danych
+  klienta sa MIGAWKA i zostaja, wiec skasowanie wpisu niczego nie naprawia, a odbiera
+  mozliwosc sprawdzenia, skad wziely sie dane na fakturze sprzed pol roku.
+%>
+<% const wart = (v) => (v ? v : ''); %>
+<%# Dane z GUS-u NADPISUJA pola faktury, ale TYLKO W POLACH — dokladnie jak na karcie
+    zamowienia i na ekranie zakladania: operator ma zobaczyc nazwe urzedowa, zanim stanie sie
+    faktem (REGON potrafi oddac nazwe inna niz uzgodniona z klientem). %>
+<% const f = daneZGus
+     ? { ...formularz, f_firma: daneZGus.firma, f_nip: daneZGus.nip, f_ulica: daneZGus.ulica,
+         f_kod: daneZGus.kod, f_miasto: daneZGus.miasto,
+         nip: daneZGus.nip ?? formularz.nip,
+         // ⚠️ `nazwa` NADPISUJEMY WYLACZNIE WTEDY, GDY JEST PUSTA — i to jedyna asymetria
+         // wobec pol faktury. Tamte MAJA byc urzedowe; `nazwa` jest wlasna etykieta operatora
+         // na liste wyboru („PRZYKŁAD sp. z o.o."), a REGON oddaje „SPÓŁKA Z OGRANICZONĄ
+         // ODPOWIEDZIALNOŚCIĄ" w calej okazalosci. Podmiana skasowalaby krotka nazwe, po
+         // ktorej ten klient jest rozpoznawalny przy telefonie.
+         nazwa: formularz.nazwa || daneZGus.firma }
+     : formularz; %>
+
+<% if (blad) { %>
+  <p class="pasek-blokada">Nie udało się zapisać: <%= blad %></p>
+<% } %>
+<% if (komunikat) { %><p class="pasek-gus"><%= komunikat %></p><% } %>
+
+<%# ——— LISTA ————————————————————————————————————————————————————————————————————————— %>
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Stali klienci <span class="dopisek"><%= klienci.length %> w bazie</span></h2>
+    <%# ⚠️ ADRES NIESIE `#formularz`, bo formularz wychodzi POD lista — bez kotwicy klikniecie %>
+    <%# przy dluzszej bazie nie zmienia nic widocznego i wyglada na martwy przycisk. %>
+    <%# ⚠️ `btn--glowny` (21.08.2026, prosba wlasciciela: „niech sie jakos wyroznia"). To jedyna %>
+    <%# czynnosc TWORZACA na tym ekranie — reszta przyciskow prowadzi do istniejacych wpisow. %>
+    <%# Barwa z palety (`--marka` / `--na-marce`), nigdy wpisana wprost: arkusz ma wariant %>
+    <%# jasny i ciemny, wiec kolor z palca zadzialalby w jednym i zniknal w drugim. %>
+    <a class="btn btn--maly btn--glowny" href="/klienci?nowy#formularz">Dodaj nowego klienta</a>
+  </div>
+  <div class="panel-cialo">
+    <% if (!klienci.length) { %>
+      <p class="wyjasnienie">Baza jest pusta. Najszybsza droga: otwórz kartę zamówienia stałego
+        klienta i kliknij „Zapamiętaj tego klienta" — komplet danych jest tam już sprawdzony.
+        Ten formularz jest dla klientów, których zamówienia jeszcze nie ma w panelu.</p>
+    <% } else { %>
+      <table class="tab-pozycje">
+        <thead><tr><th>Klient</th><th>NIP</th><th>Ustalenia</th><th class="kol-akcje"></th></tr></thead>
+        <tbody>
+          <% klienci.forEach(function (k) { %>
+            <tr<%= edytowany && edytowany.id === k.id ? ' class="wiersz-razem"' : '' %>>
+              <td>
+                <%# ⚠️ NAZWA JEST ODNOSNIKIEM DO KARTY KLIENTA (21.08.2026, prosba wlasciciela:
+                    „klikniecie w nazwe klienta otwiera strone z jego danymi oraz historia
+                    zamowien"). Karta CZYTA — formularz zapisu otwiera osobny przycisk obok,
+                    zeby klikniecie w nazwe nie rozwijalo pietnastu pol nad reszta listy. %>
+                <a href="/klienci/<%= k.id %>"><%= k.nazwa %></a>
+                <% if (!k.aktywny) { %> <span class="znacznik">wygaszony</span><% } %>
+                <div class="sku"><%= k.klucz %></div>
+              </td>
+              <%# NIP W OSOBNEJ KOLUMNIE, mimo ze `opisKlienta` go tez wymienia: to po nim panel %>
+              <%# rozpoznaje klienta przy „Zapamietaj tego klienta", wiec jego BRAK jest %>
+              <%# informacja, ktora ma rzucac sie w oczy — a nie ginac w srodku zdania. %>
+              <td><%= k.nip || '—' %></td>
+              <%# Zdanie sklada DOMENA (`opisKlienta`) — to samo, ktore stoi pod paskiem %>
+              <%# wyboru przy zakladaniu zamowienia. Druga kopia rozjechalaby sie z tamta. %>
+              <td><span class="wyjasnienie"><%= k.opis %></span></td>
+              <td class="kol-akcje"><a class="btn btn--maly" href="/klienci/<%= k.id %>/edytuj#formularz">Edytuj</a></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+</section>
+
+<%# ——— FORMULARZ — WYLACZNIE NA ZADANIE ——————————————————————————————————————————————— %>
+<% if (otwarty) { %>
+<section class="panel panel--edycja" id="formularz">
+  <div class="panel-glowa">
+    <h2><%= edytowany ? `Klient: ${edytowany.nazwa}` : 'Nowy stały klient' %></h2>
+    <a class="link-edytuj" href="/klienci">Zamknij</a>
+  </div>
+  <div class="panel-cialo">
+    <form method="post" action="/klienci">
+      <%# ⚠️ TEN PRZYCISK MUSI STAC PIERWSZY I DLATEGO WYGLADA NA ZBEDNY — ta sama pulapka, %>
+      <%# co na ekranie zakladania zamowienia (ustalenie recenzji 2026-08-01). Enter w dowolnym %>
+      <%# polu wysyla formularz PRZYCISKIEM DOMYSLNYM, a domyslnym jest PIERWSZY submit %>
+      <%# w kolejnosci znacznikow — czyli „Pobierz z GUS" nizej. Bez tej kopii operator %>
+      <%# wpisywalby nazwe, wciskal Enter i dostawal komunikat GUS-u zamiast zapisanego klienta. %>
+      <button class="poza-okiem" tabindex="-1" aria-hidden="true">Zapisz</button>
+      <input type="hidden" name="id" value="<%= wart(f.id) %>">
+      <div class="metryczka">
+
+        <section class="panel">
+          <div class="panel-glowa"><h2>Kim jest</h2></div>
+          <div class="panel-cialo">
+            <div class="pola">
+              <label>Nazwa <span class="wyjasnienie">na listę wyboru</span>
+                <input name="nazwa" value="<%= wart(f.nazwa) %>" placeholder="np. Przykład sp. z o.o." required>
+              </label>
+              <%# Klucz wyprowadza sie z nazwy, gdy pole zostanie puste (domain/klient-staly.js) — %>
+              <%# formularz ma miec JEDNO pole obowiazkowe, nie dwa. %>
+              <label>Klucz <span class="wyjasnienie">puste = wyprowadzimy z nazwy</span>
+                <input name="klucz" value="<%= wart(f.klucz) %>" placeholder="np. przyklad">
+              </label>
+              <label>NIP <span class="wyjasnienie">po nim panel rozpoznaje klienta</span>
+                <input name="nip" value="<%= wart(f.nip) %>">
+              </label>
+              <label>Notatka wewnętrzna
+                <input name="komentarz" value="<%= wart(f.komentarz) %>" placeholder="np. dzwonić przed dostawą">
+              </label>
+              <label class="pole-przelacznik">
+                <%# Nowy wpis startuje jako aktywny — `znormalizujKlienta` czyta brak pola jako %>
+                <%# „aktywny", bo formularz nowego klienta nie ma powodu zaczynac od wygaszenia. %>
+                <input type="checkbox" name="aktywny" <%= !f.id || f.aktywny ? 'checked' : '' %>>
+                Aktywny — podpowiada się przy zakładaniu zamówienia
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-glowa"><h2>Dane do faktury</h2></div>
+          <div class="panel-cialo">
+            <%# Wynik „Pobierz z GUS" stoi NAD polami, bo rozstrzyga, czy to, co w nich, w ogole %>
+            <%# przyszlo z REGON-u — trzy rodzaje jak na karcie: „ok" (sprawdz i zapisz), „brak" %>
+            <%# (popraw NIP), „blad" (sprobuj pozniej). %>
+            <% if (komunikatGus) { %>
+              <p class="<%= komunikatGus.rodzaj === 'ok' ? 'pasek-gus' : 'pasek-uwaga' %>"><%= komunikatGus.tekst %></p>
+            <% } %>
+            <div class="pola">
+              <label>NIP na fakturze
+                <span class="pole-z-przyciskiem">
+                  <input name="f_nip" value="<%= wart(f.f_nip) %>">
+                  <%# Przycisk WYLACZNIE gdy GUS dziala — bez skonfigurowanego klucza nie ma %>
+                  <%# czego pobierac, a martwy przycisk tylko kusi. %>
+                  <%# %>
+                  <%# ⚠️ `formnovalidate` JEST TU WARUNKIEM DZIALANIA, nie ozdobnikiem: pole %>
+                  <%# „Nazwa" wyzej ma `required`, a GUS-a pyta sie WLASNIE PO TO, zeby te %>
+                  <%# nazwe poznac. Bez tego przegladarka blokowalaby zapytanie na pustym polu, %>
+                  <%# ktore ma dopiero z niego wyjsc. %>
+                  <% if (gusDziala) { %>
+                    <button class="btn btn--maly" formaction="/klienci/gus#formularz" formnovalidate
+                      title="Pobierze nazwę i adres z bazy REGON. Nic nie zapisze — wypełni pola do sprawdzenia.">Pobierz z GUS</button>
+                  <% } %>
+                </span>
+              </label>
+              <label>Nazwa firmy<input name="f_firma" value="<%= wart(f.f_firma) %>"></label>
+              <label>Ulica<input name="f_ulica" value="<%= wart(f.f_ulica) %>"></label>
+              <label>Kod pocztowy<input name="f_kod" value="<%= wart(f.f_kod) %>"></label>
+              <label>Miasto<input name="f_miasto" value="<%= wart(f.f_miasto) %>"></label>
+              <label>E-mail do faktury<input name="f_email" type="email" value="<%= wart(f.f_email) %>"></label>
+              <label class="pole-przelacznik">
+                <input type="checkbox" name="chce_fakture" <%= f.chce_fakture ? 'checked' : '' %>>
+                Zawsze chce fakturę
+              </label>
+              <%# ⚠️ NIC NIE ZAPISUJE — przestawia wartosci miedzy polami i oddaje formularz. %>
+              <%# TA SAMA funkcja, co na ekranie zakladania zamowienia %>
+              <%# (domain/nowe-zamowienie.js: skopiujFaktureDoWysylki), wiec i te same decyzje: %>
+              <%# imie, nazwisko i telefon zostaja NIETKNIETE (kurier wymaga osoby do kontaktu, %>
+              <%# a dane faktury jej nie niosa), a pusty e-mail nie kasuje tego z wysylki. %>
+              <p>
+                <button class="btn btn--maly" formaction="/klienci/kopiuj-do-wysylki#formularz" formnovalidate
+                  title="Przepisze firmę, adres i e-mail z faktury do danych wysyłki. Nic nie zapisze — wypełni pola.">Skopiuj dane do wysyłki</button>
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-glowa"><h2>Dane do wysyłki</h2></div>
+          <div class="panel-cialo">
+            <div class="pola">
+              <label>Imię i nazwisko odbiorcy<input name="w_nazwa" value="<%= wart(f.w_nazwa) %>"></label>
+              <label>Firma<input name="w_firma" value="<%= wart(f.w_firma) %>"></label>
+              <label>Ulica<input name="w_ulica" value="<%= wart(f.w_ulica) %>"></label>
+              <label>Kod pocztowy<input name="w_kod" value="<%= wart(f.w_kod) %>"></label>
+              <label>Miasto<input name="w_miasto" value="<%= wart(f.w_miasto) %>"></label>
+              <label>Telefon<input name="w_telefon" value="<%= wart(f.w_telefon) %>"></label>
+              <label>E-mail<input name="w_email" type="email" value="<%= wart(f.w_email) %>"></label>
+              <p class="wyjasnienie">Zostaw puste, jeśli paczki jadą za każdym razem gdzie indziej —
+                zapamiętany adres podstawiałby się przy każdym zamówieniu.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section class="panel">
+        <div class="panel-glowa">
+          <h2>Ustalenia handlowe</h2>
+          <span class="wyjasnienie">podstawiają się na nowe zamówienie</span>
+        </div>
+        <div class="panel-cialo">
+          <div class="pola">
+            <%# ⚠️ B2B TO KANAL RAPORTOWY. Zaznaczone tutaj podstawia sie na zamowienie jako %>
+            <%# MIGAWKA — zmiana tego pola NIE przenosi zamowien juz zalozonych miedzy %>
+            <%# kanalami i nie ma tego robic (domain/kanaly-raportowe.js). %>
+            <label class="pole-przelacznik">
+              <input type="checkbox" name="b2b" <%= f.b2b ? 'checked' : '' %>>
+              B2B — sprzedaż hurtowa (osobny kanał w raportach)
+            </label>
+            <label>Rabat (%)
+              <input name="rabat_procent" value="<%= wart(f.rabat_procent) %>" inputmode="numeric" placeholder="0">
+            </label>
+            <label>Sposób dostawy
+              <select name="metoda_wysylki">
+                <% Object.keys(dostawy).forEach(function (k) { %>
+                  <option value="<%= k %>"<%= f.metoda_wysylki === k ? ' selected' : '' %>><%= dostawy[k] %></option>
+                <% }); %>
+              </select>
+            </label>
+            <%# ⚠️ TU MIESZKA „WYSYLKA GRATIS": 0,00. To jedyne ustalenie, ktorego po wstawieniu %>
+            <%# NIE WIDAC w wypelnionym polu — zero wyglada jak pole niewypelnione — wiec %>
+            <%# `opisKlienta` wymienia je wprost pod paskiem wyboru na ekranie zakladania. %>
+            <label>Koszt dostawy (brutto)
+              <input name="koszt_dostawy_brutto" value="<%= wart(f.koszt_dostawy_brutto) %>" inputmode="decimal" placeholder="0,00">
+            </label>
+            <label>Rodzaj płatności
+              <select name="platnosc">
+                <% Object.keys(platnosci).forEach(function (k) { %>
+                  <option value="<%= k %>"<%= f.platnosc === k ? ' selected' : '' %>><%= platnosci[k] %></option>
+                <% }); %>
+              </select>
+            </label>
+            <label>Termin płatności
+              <select name="termin_platnosci">
+                <option value="">— nie uzgodniono —</option>
+                <option value="<%= terminy.przyOdbiorze %>"<%= f.termin_platnosci === terminy.przyOdbiorze ? ' selected' : '' %>>przy odbiorze</option>
+                <% terminy.dni.forEach(function (d) { %>
+                  <option value="<%= d %>"<%= String(f.termin_platnosci) === String(d) ? ' selected' : '' %>><%= d %> dni</option>
+                <% }); %>
+                <option value="<%= terminy.bezTerminu %>"<%= f.termin_platnosci === terminy.bezTerminu ? ' selected' : '' %>>płatne od razu</option>
+              </select>
+            </label>
+          </div>
+          <p class="wyjasnienie">
+            Rabat (0–<%= rabatMax %>%) wchodzi w ceny pozycji dodawanych z magazynu. Klient go nie
+            widzi — ani na potwierdzeniu przyjęcia zamówienia, ani na fakturze.
+          </p>
+        </div>
+      </section>
+
+      <%# ⚠️ WARUNKI UMOWY ZBIORCZEJ (24.08.2026) — do tego dnia mieszkaly w jednym ciagu %>
+      <%# `OMS_KLIENCI_ZBIORCZY` w pliku `.env` na NAS-ie, wiec podniesienie oplaty o zlotowke %>
+      <%# wymagalo wdrozenia. Stoja tutaj, bo sa warunkami umowy TEGO podmiotu — obok rabatu %>
+      <%# i kanalu B2B, a nie w Ustawieniach panelu (tam mieszkaja parametry panelu, jak %>
+      <%# wymiary paczki). %>
+      <section class="panel">
+        <div class="panel-glowa">
+          <h2>Rozliczenie zbiorcze</h2>
+          <span class="wyjasnienie">jedna faktura na koniec miesiąca</span>
+        </div>
+        <div class="panel-cialo">
+          <label class="pole-przelacznik">
+            <input type="checkbox" name="rozliczenie_zbiorcze" <%= f.rozliczenie_zbiorcze ? 'checked' : '' %>>
+            Rozliczany zbiorczo — zamówienia wpadają do miesięcznego okresu zamiast dostawać
+            własną fakturę
+          </label>
+          <div class="pola">
+            <label>Próg darmowej dostawy (zł)
+              <input name="prog_darmowej_dostawy" value="<%= wart(f.prog_darmowej_dostawy) %>" inputmode="decimal" placeholder="500,00">
+            </label>
+            <label>Opłata za obsługę (zł)
+              <input name="oplata_obslugi" value="<%= wart(f.oplata_obslugi) %>" inputmode="decimal" placeholder="4,00">
+            </label>
+            <label>Opłata kurierska (zł)
+              <input name="oplata_kurierska" value="<%= wart(f.oplata_kurierska) %>" inputmode="decimal" placeholder="4,00">
+            </label>
+          </div>
+          <p class="wyjasnienie">
+            Opłata odpowiada na jedno pytanie: <b>kto nadaje paczkę</b>. Klient na swojej
+            etykiecie płaci za <b>obsługę</b>, my na swojej umowie — za <b>usługę kurierską</b>,
+            a przy odbiorze osobistym nie ma ani jednego, ani drugiego. Próg liczy się od
+            wartości <b>towaru po rabacie</b>, bez kosztu dostawy i bez samych opłat.
+          </p>
+          <p class="wyjasnienie">
+            ⚠️ Po włączeniu przełącznika wszystkie trzy kwoty są wymagane. Pole zostawione
+            puste to nie „zero złotych", tylko brak ustalenia — a panel nie ma wtedy jak
+            policzyć, co doliczyć do zamówienia.
+          </p>
+        </div>
+      </section>
+
+      <div class="stopka-edycji">
+        <button class="btn btn--glowny"><%= edytowany ? 'Zapisz zmiany' : 'Dopisz klienta' %></button>
+        <a class="btn" href="/klienci">Anuluj</a>
+      </div>
+    </form>
+  </div>
+</section>
+<% } %>

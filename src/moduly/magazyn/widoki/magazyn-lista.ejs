@@ -1,0 +1,676 @@
+<%# MAGAZYN — katalog wzorow z cenami czterech kanalow.
+
+    ⚠️ WIDOK NICZEGO NIE LICZY I NICZEGO NIE ROZSTRZYGA. Wymiary w centymetrach, adres
+    miniatury, trzy stany paczkomatu, ceny w zlotowkach i nazwy kanalow przychodza POLICZONE
+    (domain/rozmiar.js, domain/miniatury.js, domain/paczkomat.js, domain/kanaly.js,
+    web/routes/magazyn.js) — ta sama zasada, co przy faktury.ejs i liscie zamowien. Druga
+    kopia reguly tutaj rozjechalaby sie z pierwsza przy pierwszej zmianie, a te wymiary
+    decyduja w Etapie 2 o tym, ktory plik jedzie na ploter.
+
+    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w layout-oms.ejs. Paleta ma
+    wariant jasny i ciemny, wiec wartosc wpisana tutaj zadzialalaby w jasnym i po cichu
+    zniknela w ciemnym (nikt nie oglada obu naraz).
+
+    ⚠️ SKU NIE MA WLASNEJ KOLUMNY — stoi POD nazwa, mniejszym drukiem (prosba wlasciciela).
+    Wzor bez SKU pokazuje w tym miejscu przygaszone „bez SKU", a nie pustke: brak numeru
+    jest informacja, nie brakiem danych. Sortowanie po SKU zyje w naglowku „Wzór". %>
+
+<div class="glowa-ekranu">
+  <h1>Magazyn</h1>
+  <span class="krok">wzory i ich obecność w kanałach sprzedaży</span>
+</div>
+
+<%# ——— KAFLE BRAKOW: postep porzadkow i nawigacja naraz —————————————————————————
+    Liczby po CALYM katalogu (nie po zawezeniu) — kafel mowi „ile roboty zostalo".
+    Kafel to zwykly odnosnik GET na filtr brak=…; aktywny linkuje na zdjecie filtra.
+    Wszystko policzone w trasie (kafleBrakow) — widok tylko wypisuje. %>
+<nav class="kafle" aria-label="Braki katalogu">
+  <% kafle.forEach(function (k) { %>
+    <a class="kafel<%= k.aktywny ? ' kafel--aktywny' : '' %><%= k.klucz === 'komplet' ? ' kafel--komplet' : '' %>"
+       href="<%= k.adres %>"<%- k.aktywny ? ' aria-current="true"' : '' %>>
+      <span class="kafel-ile"><%= k.ile %><% if (k.klucz === 'komplet') { %> / <%= k.razem %><% } %></span>
+      <span class="kafel-co"><%= k.etykieta %><% if (k.aktywny) { %> · filtr włączony<% } %><% if (k.dopisek) { %> · <%= k.dopisek %><% } %></span>
+      <% if (k.klucz === 'komplet') { %><span class="kafel-postep"><i style="width: <%= k.procent %>%"></i></span><% } %>
+    </a>
+  <% }); %>
+</nav>
+
+<%# ——— PASEK ODCZYTU ————————————————————————————————————————————————————————
+    ⚠️ Wynik odczytu MUSI byc widoczny na ekranie. Cichy blad kanalu i cichy pusty odczyt
+    daja bowiem dokladnie ten sam obraz, co sklep, w ktorym nic sie nie zmienilo — a hamulec
+    z Zadania 7 zamienia cicha katastrofe w blad TYLKO wtedy, gdy ktos ten blad pokaze.
+
+    ⚠️⚠️ ZWINIETE DO LINII (przebudowa 2026-08-25, Zadanie 3), ale `open` NIE JEST OZDOBA —
+    to regula z `opisPrzebiegu` (routes/magazyn.js, sekcja 9 przewodnika): trwanie i KAZDY
+    blad (przebiegu jako calosci albo pojedynczego kanalu) renderuja `<details>` OTWARTY,
+    bo cichy zly odczyt ma wygladac identycznie jak spokoj WYLACZNIE, gdy naprawde nic sie
+    nie stalo. Decyzja stoi w trasie (`przebieg.otworz`) — szablon tylko ja wypisuje. %>
+<details class="odczyt-szczegoly"<%- przebieg.otworz ? ' open' : '' %>>
+  <summary>
+    <b>Odczyt katalogów:</b> <%= przebieg.streszczenie %>
+    <% if (przebieg.otworz && !przebieg.trwa) { %><span class="znacznik znacznik--blad">błąd odczytu</span>
+    <% } else if (przebieg.kanaly.length && !przebieg.trwa) { %><span class="znacznik znacznik--ok"><%= przebieg.kanalyOk %></span>
+    <% } %>
+    · pominięte: <%= niepowiazane.pominiete %> · powiązania Allegro: <%= niepowiazane.ofertyAllegro %> ofert czeka
+  </summary>
+  <div class="odczyt-cialo">
+    <% if (przebieg.blad) { %>
+      <p class="pasek-blokada">Odczyt przerwany, zanim ruszył: <%= przebieg.blad %></p>
+    <% } %>
+
+    <% if (przebieg.trwa && przebieg.postep) { %>
+      <p class="wyjasnienie">
+        Czytam <strong><%= przebieg.postep.etykieta %></strong> —
+        <%= przebieg.postep.zrobione %> z <%= przebieg.postep.zTego %>.
+        Odśwież tę stronę, żeby zobaczyć, gdzie jest.
+      </p>
+    <% } %>
+
+    <% if (przebieg.kanaly.length) { %>
+      <table class="tab-pozycje">
+        <thead>
+          <tr><th>Kanał</th><th class="liczba">Zapisane</th><th class="liczba">Zniknęły</th><th>Wynik</th></tr>
+        </thead>
+        <tbody>
+          <% przebieg.kanaly.forEach(function (k) { %>
+            <tr>
+              <td><%= k.etykieta %></td>
+              <td class="liczba"><%= k.zapisane %></td>
+              <%# ⚠️ LICZBA ZNIKNIETYCH JEST JEDYNYM SYGNALEM ODCZYTU CZESCIOWEGO — sklep,
+                  ktory oddal jedna pozycje z 668, przechodzi przez hamulec (ten lapie
+                  WYLACZNIE zero) i celowo ma przechodzic: prog na ubytku uniemozliwilby
+                  wycofanie czegokolwiek ze sprzedazy. %>
+              <td class="liczba"><%= k.znikniete %></td>
+              <td>
+                <% if (k.blad) { %>
+                  <%# ⚠️ CALY KOMUNIKAT, NIE SKROT. Ten napis jest pisany dla czlowieka
+                      i mowi, CO ZROBIC („oznacz jego wiersze ręcznie") — skrocony do
+                      „błąd odczytu" zostawia tyle samo wiedzy, co brak komunikatu. %>
+                  <span class="znacznik znacznik--blad">Odczyt przerwany</span>
+                  <div class="wiersz-szczegoly"><%= k.blad %></div>
+                <% } else { %>
+                  <span class="znacznik znacznik--ok">ok</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+
+    <div class="pola-w-rzedzie">
+      <%# Formularze bez ukrytego pola z tokenem: ochrona CSRF (src/security/csrf.js) stoi
+          na naglowkach Origin/Referer i jest hakiem globalnym. %>
+      <form method="post" action="/magazyn/odswiez">
+        <%# ⚠️ Przycisk STARTUJE przebieg i strona wraca NATYCHMIAST. Pelny odczyt to setki
+            zadan HTTP i w limicie czasu zadania sie nie miesci — patrz routes/magazyn.js. %>
+        <button class="btn btn--glowny" type="submit" <%= przebieg.trwa ? 'disabled' : '' %>>
+          Odczytaj katalogi ze sklepów
+        </button>
+      </form>
+      <form method="post" action="/magazyn/utworz-wzory">
+        <%# Adres TEJ listy jedzie razem z akcja — jej wynik pokazuje sie na ekranie %>
+        <%# „pominiete", z ktorego operator wraca odnosnikiem (4.13d). %>
+        <input type="hidden" name="wroc" value="<%= adresPowrotuListy %>">
+        <button class="btn" type="submit">Utwórz wzory z niepowiązanych</button>
+      </form>
+      <a class="link-edytuj" href="<%= adresPominietych %>">Co panel pomija i dlaczego →</a>
+      <%# ⚠️ JEDYNE WEJSCIE na ekran powiazan — bez tego odnosnika trasa istnieje wylacznie
+          dla kogos, kto zna adres. Stoi WLASNIE TU, obok „pominietych": to tam widac 447
+          ofert Allegro odrzuconych z zalozenia, i to jest jedyne miejsce w panelu, w ktorym
+          czlowiek dowiaduje sie, ze te oferty w ogole czekaja na reczna robote. %>
+      <a class="link-edytuj" href="<%= adresEkranuPowiazan %>">Powiąż oferty Allegro z wzorami →</a>
+    </div>
+  </div>
+</details>
+
+<%# ——— WYSZUKIWARKA I FILTRY ——————————————————————————————————————————————————
+    ⚠️ FILTRY LACZA SIE Z FRAZA, A NIE KASUJA JEJ (niezmiennik 4.13b przewodnika). Formularz
+    GET wysyla WYLACZNIE wlasne pola, wiec kazdy z dwoch formularzy nizej niesie wartosci
+    drugiego UKRYTYMI POLAMI — inaczej klikniecie „Filtruj" gubiloby to, czego wlasciciel
+    szukal, a wpisanie frazy kasowaloby zawezenie. Zlamany raz, objawial sie jako
+    „przefiltrowana, ale ZUPELNIE INNA lista".
+
+    ⚠️ Ukryte pola przychodza POLICZONE z trasy (`ukryteWFiltrach`, `ukryteWSzukajce`) i sa
+    ROZNE dla obu formularzy: formularz, ktory ma wlasne pole `kanal`, nie moze wyslac
+    `kanal` drugi raz — Fastify oddaje wtedy tablice, parser odrzuca ja do `null` i filtr
+    znika dokladnie w formularzu, ktory sluzy do jego ustawiania.
+
+    ⚠️ `sort` i `kier` jada TA SAMA droga: sortowanie nie jest filtrem, ale bez tych dwoch
+    pol „Filtruj" na liscie ulozonej po wymiarze wracaloby do kolejnosci domyslnej. %>
+<%# ⚠️ `.pasek-zawezania` JEST CZYSTO WIZUALNY: jeden wspolny pasek zamiast dwoch osobnych
+    ramek jeden pod drugim. Formularze ZOSTAJA OSOBNE (GET nie da sie zagniezdzac ani sklejac
+    — kazdy ma wlasna akcje i wlasny zestaw ukrytych pol), wiec div tylko je opakowuje. %>
+<div class="pasek-zawezania">
+<form class="filtry" method="get" action="/magazyn">
+  <% ukryteWFiltrach.forEach(function (p) { %>
+    <input type="hidden" name="<%= p.name %>" value="<%= p.value %>">
+  <% }); %>
+  <div class="filtry-rzad">
+    <label class="pole-filtra">
+      <span>Kanał sprzedaży</span>
+      <%# Lista ZAMKNIETA i TA SAMA, ktora rysuje kolumny cen (KANALY_MAGAZYNU). Kanal
+          w filtrze bez kolumny na ekranie — albo odwrotnie — to rozjazd, ktorego nikt nie
+          zauwazy poza kims, kto policzy kolumny. %>
+      <select name="kanal">
+        <option value="">Wszystkie</option>
+        <% kanalyDoFiltra.forEach(function (k) { %>
+          <option value="<%= k.klucz %>"<%- filtry.kanal === k.klucz ? ' selected' : '' %>><%= k.etykieta %></option>
+        <% }); %>
+      </select>
+    </label>
+    <label class="pole-filtra">
+      <span>Kategoria</span>
+      <%# ⚠️ POLE WYBORU, NIE POLE TEKSTOWE, i lista idzie Z BAZY (db/magazyn.js). Filtr
+          dopasowuje CALA nazwe, a nazw sa setki — wpisana z pamieci literowka oddaje pusty
+          ekran, czyli obraz nieodrozialny od „nie ma takich wzorow".
+
+          ⚠️ Szuka we WSZYSTKICH kategoriach produktu ORAZ w kategorii glownej wzoru
+          (nadzbior — patrz warunkiWzorow). Kolumna pokazuje glowna, bo w kolumnie miesci
+          sie jedna; filtrowanie wylacznie po niej gubiloby produkt, ktory jest
+          w „Aplikacjach" jako czwartej z siedmiu. %>
+      <select name="kategoria">
+        <option value="">Wszystkie</option>
+        <% kategorieDoFiltra.forEach(function (k) { %>
+          <option value="<%= k %>"<%- filtry.kategoria === k ? ' selected' : '' %>><%= k %></option>
+        <% }); %>
+      </select>
+    </label>
+    <label class="pole-filtra">
+      <span>Paczkomat</span>
+      <%# TRZY STANY, NIE DWA: „nieoznaczone" to robota do wykonania, „nie" to decyzja
+          czlowieka — i po tym pierwszym filtruje sie wlasnie po to, zeby ja odrobic. %>
+      <select name="paczkomat">
+        <option value="">Bez znaczenia</option>
+        <% paczkomatDoFiltra.forEach(function (p) { %>
+          <option value="<%= p.klucz %>"<%- filtry.paczkomat === p.klucz ? ' selected' : '' %>><%= p.etykieta %></option>
+        <% }); %>
+      </select>
+    </label>
+    <label class="pole-filtra">
+      <span>Cena w kanale</span>
+      <%# ⚠️ ZAKRES OPISUJE JEDEN PRODUKT razem z kanalem (jeden EXISTS w zapytaniu): „PRO od
+          100 zl" nie ma pokazywac wzoru, ktory na PRO kosztuje 20 zl, a setke przekracza
+          dopiero na Allegro. Wartosci wracaja tu ZLOTOWKAMI (filtr zyje w groszach) —
+          przelicza je domena, nie ten szablon. %>
+      <span class="zakres">
+        <input type="text" name="cenaOd" value="<%= wartosci.cenaOd %>" inputmode="decimal" size="6" aria-label="Cena od">
+        <span class="myslnik">–</span>
+        <input type="text" name="cenaDo" value="<%= wartosci.cenaDo %>" inputmode="decimal" size="6" aria-label="Cena do">
+      </span>
+    </label>
+    <button class="btn btn--glowny" type="submit">Filtruj</button>
+  </div>
+  <% if (filtrowane) { %>
+    <div class="chipy">
+      <a class="chipy-wyczysc" href="<%= adresBezFiltrow %>">Wyczyść zawężenie</a>
+      <%# Liczba wynikow stoi PRZY zawezeniu, a nie pod tabela: to ona mowi, czy pusty ekran
+          jest pusty magazynem, czy filtrem. %>
+      <span class="wynik-filtra"><%= napisWynikuFiltra %></span>
+    </div>
+  <% } %>
+</form>
+
+<%# Wyszukiwarka: zwykly formularz GET, bez JavaScriptu — tak samo, jak reszta panelu.
+    Dzieki temu wynik ma WLASNY ADRES, ktory da sie odswiezyc i wkleic. Szuka po nazwie
+    i po SKU (db/magazyn.js). %>
+<form class="szukajka" method="get" action="/magazyn" role="search">
+  <% ukryteWSzukajce.forEach(function (p) { %>
+    <input type="hidden" name="<%= p.name %>" value="<%= p.value %>">
+  <% }); %>
+  <label class="szukajka-pole">
+    <span class="szukajka-etykieta">Szukaj wzoru</span>
+    <input type="search" name="fraza" value="<%= wartosci.fraza %>" autocomplete="off"
+      placeholder="nazwa wzoru albo SKU">
+  </label>
+  <button type="submit">Szukaj</button>
+  <% if (filtry.fraza) { %><a class="szukajka-wyczysc" href="<%= adresBezFiltrow %>">Wyczyść</a><% } %>
+</form>
+</div>
+
+<%# ——— BELKA AKCJI I TABELA W JEDNYM FORMULARZU ————————————————————————————————
+    Pola wyboru stoja W WIERSZACH tabeli, a belka nad nia — wiec oba musza siedziec w TYM
+    SAMYM formularzu. Formularzy nie wolno zagniezdzac, dlatego formularze filtrow (GET)
+    stoja wyzej i osobno.
+
+    ⚠️⚠️ CZTERY AKCJE W JEDNEJ BELCE (przebudowa 2026-08-25). Do 25.08 kazda stala we WLASNYM
+    panelu, jeden pod drugim: cztery pelne sekcje z naglowkami i polami czytane naraz, zanim
+    pokazal sie pierwszy wiersz tabeli. Teraz kazda jest chipem `<details name="akcja">`
+    w jednej przyklejonej belce, a wspolne `name` sprawia, ze otwarcie jednej ZAMYKA
+    pozostale — akordeon robi przegladarka, bez ani jednej linijki JavaScriptu (panel jest
+    bez niego z zalozenia). Przegladarka, ktora `name` na `<details>` nie zna, zostawi
+    otwarte dwa naraz; to jedyny skutek braku obslugi i jest nieszkodliwy.
+
+    ⚠️ ZAZNACZENIA W TABELI PRZEZYWAJA OTWIERANIE AKCJI, bo `<details>` niczego nie
+    przeladowuje. Gdyby akcje przelaczalo sie odnosnikiem (nowy adres), kazde przelaczenie
+    kasowaloby odhaczone wiersze — czyli dokladnie to, na co wlasciciel sie skarzyl.
+
+    ⚠️ CIALO OTWARTEJ AKCJI LAMIE WIERSZ BELKI POD SWOIM CHIPEM, a chipy dalszych akcji
+    schodza pod nie. Flex `order` NIE PRZECHODZI przez shadow-sloty `<details>`, wiec
+    przeniesienie ciala na koniec wiersza nie jest mozliwe bez JavaScriptu. Zachowanie jest
+    SWIADOME (sprawdzone na makiecie) — nie „poprawiac" go trikami.
+
+    ⚠️ W `<summary>` NIE WOLNO STAWIAC PRZYCISKU SUBMIT. Klikniecie w podsumowanie przelacza
+    `<details>` i przegladarki roznie rozstrzygaja, co ma sie stac z przyciskiem w srodku:
+    albo formularz wysyla sie przy samym rozwijaniu akcji, albo przycisk nie robi nic.
+    Przyciski stoja WYLACZNIE w ciele akcji, nigdy w jej naglowku.
+
+    ⚠️⚠️ FORMULARZ PROWADZI NA PODGLAD (`/magazyn/hurt`), NIGDY WPROST NA ZAPIS. Podglad jest
+    obowiazkowy i jest OSOBNA trasa: jedno klikniecie dotyka setek wzorow, a wymiar, ktory
+    tak powstanie, rozstrzyga w Etapie 2, ktory plik .mol jedzie na ploter.
+
+    ⚠️⚠️ PUSTE POLE ZNACZY „NIE RUSZAJ", ODWROTNIE NIZ NA KARCIE WZORU. Tam puste pole KASUJE
+    wartosc i jest to bezpieczne, bo czlowiek patrzy na jeden wzor. Tutaj pol jest kilka
+    naraz: gdyby puste kasowalo, ustawienie samego paczkomatu wyczyscilo by wymiary
+    i kategorie sześciuset wzorom jednym kliknieciem. Regula stoi w domain/magazyn-hurt.js.
+
+    ⚠️⚠️ ZAKRES JEDZIE Z KLIKNIETYM PRZYCISKIEM, A NIE Z POLA STOJACEGO WYZEJ — i to jest
+    poprawka wady zgloszonej przez wlasciciela wprost („nie ma opcji zaznaczania wszystkich
+    produktow, musze kliknac ponad 100 razy"). Opcja ISTNIALA: pole `<select name="zakres">`
+    z pozycja „wszystkich pasujacych do zawezenia" stalo w panelu edycji hurtem, a przyciski
+    przejecia numerow — TRZY PANELE NIZEJ. Wszystko siedzialo w jednym formularzu, wiec
+    DZIALALO; przy przycisku nie stalo jednak ani slowo o tym, skad bierze sie zakres.
+    Funkcja nie do znalezienia jest funkcja, ktorej nie ma, i jest to wada EKRANU.
+
+    ⚠️⚠️ DLATEGO KAZDA AKCJA MA PARE PRZYCISKOW `name="zakres"`, a pola wyboru zakresu NIE MA
+    JUZ WCALE. Przycisk niesie wlasne `name`/`value`, wiec zakres jedzie z klikaniem — bez
+    ani jednej linijki JavaScriptu (panel jest bez niego z zalozenia, a „zaznacz wszystkie"
+    na 965 polach wyboru bez JS nie istnieje).
+
+    ⚠️⚠️ POLA `<select name="zakres">` NIE WOLNO TU PRZYWROCIC OBOK PRZYCISKOW. Ta pulapka
+    wystapila w tym module juz raz i jest udokumentowana przy `filtryZawezenia`: parametr
+    o tej samej nazwie wyslany DWA RAZY wraca z Fastify jako TABLICA, `pole()` scina ja do
+    `null`, a zakres znika dokladnie w formularzu, ktory sluzy do jego ustawienia. Pilnuje
+    tego test (tests/oms/magazyn-zakres-akcji.test.js).
+
+    ⚠️ LICZBA STOI PRZY PRZYCISKU „dla wszystkich pasujacych" i przychodzi POLICZONA
+    (`ilePasujacych`) z TEGO SAMEGO odczytu, co tabela nizej — druga droga do tej liczby
+    rozjechalaby sie po cichu i czlowiek klikalby „277", dotykajac innego zbioru. Przycisk
+    „dla zaznaczonych" liczby NIE MA I MIEC NIE MOZE: ile pol wyboru jest odhaczonych, wie
+    wylacznie przegladarka, a serwer dowiaduje sie tego dopiero z wyslanego formularza.
+    Wypisana tam liczba bylaby zgadywaniem. %>
+<form method="post" action="/magazyn/hurt">
+  <div class="belka-akcji">
+    <span class="belka-akcji-etykieta">Zaznaczone wzory:</span>
+
+<%# ——— USTAW POLA (edycja hurtem) —————————————————————————————————————————————— %>
+    <details class="akcja" name="akcja" id="hurt-pasek">
+      <summary>Ustaw pola</summary>
+      <div class="akcja-cialo">
+        <%# ⚠️ ZAWEZENIE JEDNYM POLEM, nie siedmioma osobnymi. Ten formularz ma WLASNE pole
+            `paczkomat` (wartosc do ustawienia), a filtr ma pole `paczkomat` (czym zawezic) —
+            te same nazwy w jednym formularzu wracaja z Fastify jako TABLICA i kasuja sie
+            nawzajem, i to akurat na drodze typowej („zawez do nieoznaczonych, ustaw «nie»").
+            Skladane przez `adresMagazynu`, czyli tam, gdzie kazdy inny odnosnik ekranu.
+
+            ⚠️ POLE ZOSTAJE W CIELE TEJ AKCJI i jest JEDNO NA CALY FORMULARZ. Wyniesione do
+            belki albo powtorzone przy kazdej akcji wracaloby z Fastify jako TABLICA — czyli
+            dokladnie ta sama pulapka, ktora opisuje uwaga wyzej. %>
+        <input type="hidden" name="zawezenie" value="<%= zawezenieHurtu %>">
+
+        <%# ⚠️ POLA SA W CENTYMETRACH, BAZA TRZYMA MILIMETRY — przelicza domain/rozmiar.js,
+            TA SAMA funkcja, ktorej uzywa karta wzoru. Napis niezrozumialy ODMAWIA CALEGO
+            zapisu, nigdy nie jest zgadywany ani cicho pomijany. %>
+        <label class="pole-filtra">
+          <span>Szerokość (cm)</span>
+          <input type="text" name="szerokosc_cm" inputmode="decimal" size="6" placeholder="np. 70">
+        </label>
+        <label class="pole-filtra">
+          <span>Wysokość (cm)</span>
+          <input type="text" name="wysokosc_cm" inputmode="decimal" size="6" placeholder="np. 100">
+        </label>
+        <label class="pole-filtra">
+          <span>Kategoria główna</span>
+          <%# POLE WYBORU, NIE TEKSTOWE, i lista idzie Z BAZY — literowka wpisana z pamieci
+              ustawilaby kategorie, ktorej nie ma w zadnym sklepie, i to od razu setkom wzorow. %>
+          <select name="kategoria_glowna">
+            <option value="">— nie ruszaj —</option>
+            <% kategorieDoFiltra.forEach(function (k) { %>
+              <option value="<%= k %>"><%= k %></option>
+            <% }); %>
+          </select>
+        </label>
+        <label class="pole-filtra">
+          <span>Paczkomat</span>
+          <%# ⚠️ TRZY STANY i WYLACZNIE RECZNIE (decyzja wlasciciela): zero wyliczania
+              z wymiarow. „Nieoznaczone" jest tu OSOBNYM, JAWNYM wyborem kasujacym decyzje —
+              i jest to jedyna droga powrotu po hurtowej pomylce na setkach wzorow. Pusta
+              pozycja („nie ruszaj") znaczy CO INNEGO i musi byc od niej odrozialna. %>
+          <select name="paczkomat">
+            <option value="">— nie ruszaj —</option>
+            <% paczkomatDoHurtu.forEach(function (p) { %>
+              <option value="<%= p.klucz %>"><%= p.etykieta %></option>
+            <% }); %>
+          </select>
+        </label>
+        <label class="pole-filtra">
+          <span>Nazwa</span>
+          <%# „Teren monitorowany – 60x62cm" → „Teren monitorowany". ⚠️ WYLACZNIE W REJESTRZE
+              MAGAZYNU — nazwa NIE JEDZIE do sklepu (decyzja wlasciciela): jest zaindeksowanym
+              tytulem strony, a katalog techniczny wlasnie przeniesiono na PRO z 301. %>
+          <span class="w-linii">
+            <input type="checkbox" name="nazwa_bez_rozmiaru" value="tak" id="hurt-nazwa">
+            <label for="hurt-nazwa">skróć o rozmiar</label>
+          </span>
+        </label>
+
+        <%# ⚠️⚠️ ZAKRES JEDZIE Z KLIKNIETYM PRZYCISKIEM — patrz uwaga nad formularzem. %>
+        <div class="akcja-przyciski">
+          <button class="btn btn--glowny" type="submit" name="zakres" value="zaznaczone">
+            Pokaż, co się zmieni — dla zaznaczonych
+          </button>
+          <button class="btn" type="submit" name="zakres" value="pasujace">
+            Pokaż, co się zmieni — dla wszystkich pasujących
+            (<strong class="hurt-pasujace"><%= ilePasujacych %></strong>)
+          </button>
+        </div>
+        <p class="akcja-zasada">
+          Puste pole = „nie ruszaj tej kolumny”. Nic nie zapisuje się wprost — przycisk
+          prowadzi na podgląd zmian.
+        </p>
+      </div>
+    </details>
+
+<%# ——— NADAJ SKU ————————————————————————————————————————————————————————————————
+    ⚠️⚠️ TEN SAM FORMULARZ, CO AKCJA HURTU, I MUSI TAK BYC: pola wyboru wzorow stoja
+    w WIERSZACH tabeli nizej, a formularzy nie wolno zagniezdzac. Osobny przycisk prowadzi
+    gdzie indziej przez `formaction` — bez jednej linijki JavaScriptu, tak jak reszta panelu.
+    Skutek uboczny jest nazwany i pilnowany testem: zadanie generatora niesie pola hurtu
+    (i odwrotnie), a zadna z tych trns nie ma prawa ich uzyc — obie czytaja WYLACZNIE
+    po wlasnej bialej liscie. Zwiniecie akcji NICZEGO tu nie zmienia: `<details>` chowa pola
+    przed OKIEM, a nie przed formularzem — zamknieta akcja dalej wysyla swoje pola.
+
+    ⚠️⚠️ PRZYCISK PROWADZI NA PODGLAD (`/magazyn/sku-podglad`), NIGDY WPROST NA NADANIE.
+    Podglad jest obowiazkowy i jest OSOBNA trasa: numer nadany tutaj pojedzie w Zadaniu 15
+    do produkcyjnych sklepow i stanie sie tozsamoscia produktu. %>
+    <details class="akcja" name="akcja" id="sku-pasek">
+      <summary>Nadaj SKU</summary>
+      <div class="akcja-cialo">
+        <label class="pole-filtra">
+          <span>Wzorzec numeru</span>
+          <%# ⚠️ POLE TEKSTOWE, BO WZORZEC JEST DECYZJA, a nie wyborem z listy — ale kazdy
+              napis, ktorego generator nie rozumie, ODMAWIA calosci (domain/sku-generator.js).
+              Nierozpoznane pole w klamrach nie ma prawa wyladowac w numerze doslownie. %>
+          <input type="text" name="wzorzec" size="26" placeholder="np. STE-{kategoria}-{nnn}">
+        </label>
+        <span class="wynik-filtra">
+          {kategoria} = kategoria główna wzoru, {nnn} = kolejny numer w tej kategorii.
+        </span>
+
+        <div class="akcja-przyciski">
+          <button class="btn btn--glowny" type="submit" formaction="/magazyn/sku-podglad"
+            name="zakres" value="zaznaczone">
+            Pokaż proponowane numery — dla zaznaczonych
+          </button>
+          <button class="btn" type="submit" formaction="/magazyn/sku-podglad"
+            name="zakres" value="pasujace">
+            Pokaż proponowane numery — dla wszystkich pasujących
+            (<strong class="sku-pasujace"><%= ilePasujacych %></strong>)
+          </button>
+        </div>
+        <p class="akcja-zasada">Wzór, który ma już numer, nigdy nie dostaje nowego.</p>
+      </div>
+    </details>
+
+<%# ——— PRZEJMIJ NUMERY ZE SKLEPU ————————————————————————————————————————————————
+    ⚠️⚠️ OSOBNA AKCJA, NIE DRUGI TRYB GENERATORA. Generator WYDAJE numery nowe; ta akcja
+    NICZEGO NIE WYMYSLA — przepisuje do rejestru numer, ktory JUZ ZYJE w sklepie. Dotyczy
+    277 wzorow (czwarta czesc katalogu, zmierzone 2026-08-12), ktore naszego numeru nie
+    maja, choc ich produkt ma wlasny.
+
+    ⚠️⚠️ WLASNA AKCJA, A NIE DOPISEK POD GENERATOREM — i to nie jest kosmetyka. Dopoki
+    mieszkala w panelu „Nadanie SKU", jej zakres pochodzil z pola stojacego DWA panele
+    wyzej, a przy przycisku nie stalo o tym ani slowo. Wlasnie na niej wada sie objawila:
+    wlasciciel z 277 wzorami do przejecia napisal „musze kliknac ponad 100 razy". Wlasny
+    chip z wlasna para przyciskow jest odpowiedzia na to zgloszenie i ma nia zostac.
+
+    ⚠️⚠️ TO JEST BARIERA PRZED PIERWSZYM ZAPISEM DO SKLEPU: bez przejecia wzor dostalby
+    numer NOWY, a zapis nadpisalby nim tozsamosc produktu — cicho.
+
+    ⚠️ PROWADZI NA PODGLAD, NIGDY WPROST NA ZAPIS. %>
+    <details class="akcja" name="akcja" id="przejecie-pasek">
+      <summary>Przejmij numery</summary>
+      <div class="akcja-cialo">
+        <div class="akcja-przyciski">
+          <button class="btn btn--glowny" type="submit" formaction="/magazyn/przejmij-podglad"
+            name="zakres" value="zaznaczone">
+            Pokaż numery do przejęcia — dla zaznaczonych
+          </button>
+          <button class="btn" type="submit" formaction="/magazyn/przejmij-podglad"
+            name="zakres" value="pasujace">
+            Pokaż numery do przejęcia — dla wszystkich pasujących
+            (<strong class="przejecie-pasujace"><%= ilePasujacych %></strong>)
+          </button>
+        </div>
+        <p class="akcja-zasada">
+          Panel nic nie wymyśla — przepisuje do rejestru numer, który już żyje w sklepie.
+        </p>
+      </div>
+    </details>
+
+<%# ——— ZAPISZ DO SKLEPOW —————————————————————————————————————————————————————————
+    ⚠️⚠️ TO JEDYNY PRZYCISK W PANELU, ZA KTORYM STOI ZAPIS DO SKLEPU, KTORY SPRZEDAJE —
+    i jedyny, ktorego skutku NIE DA SIE COFNAC klknieciem. Dlatego prowadzi na PODGLAD
+    (`/magazyn/podglad-zapisu`), nigdy wprost na wysylke: wysylka ma wlasna trase, wlasny
+    przycisk i wlasny ekran wyniku.
+
+    ⚠️ PANEL WYSYLA WYLACZNIE SKU I WYMIARY. Ceny, nazwy, kategorie, zdjecia, opis i stan
+    magazynowy zostaja pod kontrola sklepu — to niezmiennik calego modulu. Do Allegro panel
+    nie pisze nic; oferty wiaze sie recznie.
+
+    ⚠️ CHIP WYGLADA JAK TRZY POZOSTALE I MA TAK WYGLADAC. Wyroznienie go barwa sugerowaloby,
+    ze to on wysyla — a wysyla dopiero przycisk na osobnym ekranie podgladu. %>
+    <details class="akcja" name="akcja" id="zapis-pasek">
+      <summary>Zapisz do sklepów</summary>
+      <div class="akcja-cialo">
+        <div class="akcja-przyciski">
+          <button class="btn btn--glowny" type="submit" formaction="/magazyn/podglad-zapisu"
+            name="zakres" value="zaznaczone">
+            Pokaż, co pojedzie do sklepów — dla zaznaczonych
+          </button>
+          <button class="btn" type="submit" formaction="/magazyn/podglad-zapisu"
+            name="zakres" value="pasujace">
+            Pokaż, co pojedzie do sklepów — dla wszystkich pasujących
+            (<strong class="zapis-pasujace"><%= ilePasujacych %></strong>)
+          </button>
+        </div>
+        <p class="akcja-zasada">
+          Wyśle wyłącznie SKU i wymiary — nigdy cen, nazw ani zdjęć; cudzego numeru nie
+          nadpisze, a taki produkt wróci jako wstrzymany.
+        </p>
+      </div>
+    </details>
+  </div>
+
+<%# ——— PASEK NAD TABELA: CO ZAWEZA / PRZELACZNIK TRYBU KOLUMN ————————————————————
+    ⚠️⚠️ DWA TRYBY JEDNEJ TABELI (przebudowa 2026-08-25). Domyslny to PORZADKI: cztery
+    kolumny cen ustepuja jednej kolumnie „Stan", ktora mowi, ILE brakuje przy wzorze — i
+    dzieki temu tabela miesci sie bez przewijania w bok. Ceny wracaja o jedno klikniecie
+    (`?widok=katalog`).
+
+    ⚠️ PRZELACZNIK JEST ZWYKLYM ODNOSNIKIEM ze skladanym w trasie adresem (`adresPrzelacznika`)
+    — panel nie ma JavaScriptu, a adres niesie zawezenie i kolejnosc, wiec przelaczenie
+    kolumn niczego nie kasuje (niezmiennik 4.13b). Napis i adres przychodza POLICZONE.
+
+    ⚠️ STOI NAD `.przewijak-tabeli`, a nie w nim: przewijak jedzie w bok razem z zawartoscia,
+    wiec przelacznik wjezdzalby czlowiekowi poza ekran przy pierwszym przewinieciu. %>
+<div class="tabela-glowa">
+  <span class="wynik-filtra"><%= opisZawezenia %></span>
+  <span class="przelacznik"><a href="<%= adresPrzelacznika %>"><%= etykietaPrzelacznika %></a></span>
+</div>
+
+<%# ——— TABELA WZOROW —————————————————————————————————————————————————————————
+    Tabela przewija sie SAMA, zamiast rozpychac strone: dziewiec kolumn i miniatury zjechaly
+    juz raz w bok razem z akcjami, czyli z rzeczami, ktore maja stac w miejscu.
+
+    ⚠️⚠️ BELKA AKCJI STOI PONAD TYM PRZEWIJAKIEM I MA TAK ZOSTAC. `position: sticky` przestaje
+    dzialac w KAZDYM przodku majacym `overflow` inny niz `visible`, a `.przewijak-tabeli` ma
+    `overflow-x: auto` — wciagniecie belki do srodka (albo owiniecie jej nowym przewijakiem)
+    odklei ja po cichu: znacznik i klasy wygladaja wtedy poprawnie, a belka zjezdza z ekranu
+    przy pierwszym przewinieciu. %>
+<div class="przewijak-tabeli">
+  <table class="tresc-lista magazyn-tabela">
+    <thead>
+      <%# Naglowek sortujacy: odnosnik, stan „po tej kolumnie sortujemy" i strzalka przychodza
+          POLICZONE z trasy (`sortowanie`). ⚠️ `aria-sort` nie jest ozdoba — nazwa sortowania
+          spoza bialej listy WRACA DO DOMYSLNEJ, wiec bez tego znacznika ekran pokazywalby
+          jedna kolejnosc, a adres twierdzil drugie. %>
+      <tr>
+        <%# „Zaznacz wszystkie" to ZWYKLY ODNOSNIK pod adres z ?zaznacz=1 (z zachowaniem
+            filtrow i kolejnosci — sklada je trasa), a NIE pole wyboru w naglowku ze skryptem.
+            Pole wyboru bez JavaScriptu niczego by nie zaznaczylo, a WYGLADALOBY, jakby
+            zaznaczylo — i to ten pozorny brak wyjscia kazal mi wczesniej napisac tu, ze
+            „naglowek jest pusty celowo". Byla to nieprawda: lista zamowien robi to samo
+            odnosnikiem od dawna. NIE zamieniac na checkbox+JS.
+
+            ⚠️ TO NIE JEST TO SAMO, CO „dla wszystkich pasujących" przy akcjach. Tamten
+            przycisk jest CALY-ALBO-NIC i liczy zbior z zawezenia; ten mechanizm zaznacza
+            wiersze, wiec pozwala odhaczyc kilka i wykonac akcje na reszcie. Oba zostaja,
+            bo odpowiadaja na dwie rozne potrzeby. %>
+        <th class="kol-zaznacz">
+          <% if (zaznaczWszystkie) { %>
+            <a class="zaznacz-wszystkie" href="<%= adresOdznaczWszystkie %>" aria-label="Odznacz wszystkie wzory na liście">odznacz</a>
+          <% } else { %>
+            <%# Napis krotki („zaznacz", nie „zaznacz wszystkie"), bo to on wyznacza szerokosc
+                calej kolumny — a ta ma byc waska. Pelne zdanie zostaje w `aria-label`. %>
+            <a class="zaznacz-wszystkie" href="<%= adresZaznaczWszystkie %>" aria-label="Zaznacz wszystkie wzory na liście">zaznacz</a>
+          <% } %>
+        </th>
+        <th class="kol-mini"></th>
+        <th class="komorka-wzor" <% if (sortowanie.nazwa.aria) { %>aria-sort="<%= sortowanie.nazwa.aria %>"<% } %>>
+          <a class="zaznacz-wszystkie" href="<%= sortowanie.nazwa.adres %>">Wzór <%= sortowanie.nazwa.strzalka %></a>
+          <%# Sortowanie po SKU nie ma wlasnej kolumny (SKU stoi pod nazwa), wiec ma wlasny
+              odnosnik TUTAJ — drugi wariant kolejnosci tej samej kolumny. %>
+          <span class="magazyn-brak">/</span>
+          <a class="zaznacz-wszystkie" href="<%= sortowanie.sku.adres %>">SKU <%= sortowanie.sku.strzalka %></a>
+        </th>
+        <th <% if (sortowanie.wysokosc.aria) { %>aria-sort="<%= sortowanie.wysokosc.aria %>"<% } %>>
+          <a class="zaznacz-wszystkie" href="<%= sortowanie.wysokosc.adres %>">Wymiary <%= sortowanie.wysokosc.strzalka %></a>
+        </th>
+        <th <% if (sortowanie.kategoria.aria) { %>aria-sort="<%= sortowanie.kategoria.aria %>"<% } %>>
+          <a class="zaznacz-wszystkie" href="<%= sortowanie.kategoria.adres %>">Kategoria główna <%= sortowanie.kategoria.strzalka %></a>
+        </th>
+        <%# KOLUMNY CEN WYLACZNIE W TRYBIE KATALOGOWYM — w porzadkach ich miejsce zajmuje
+            kolumna „Stan" na koncu wiersza. Zestaw i kolejnosc kolumn katalogu zostaja
+            DZISIEJSZE (`KANALY_MAGAZYNU`), bo ten tryb JEST dzisiejsza tabela. %>
+        <% if (widok === 'katalog') { %>
+          <% naglowkiKanalow.forEach(function (k) { %>
+            <th class="magazyn-kanal"><%= k.etykieta %></th>
+          <% }); %>
+        <% } %>
+        <th <% if (sortowanie.paczkomat.aria) { %>aria-sort="<%= sortowanie.paczkomat.aria %>"<% } %>>
+          <a class="zaznacz-wszystkie" href="<%= sortowanie.paczkomat.adres %>">Paczkomat <%= sortowanie.paczkomat.strzalka %></a>
+        </th>
+        <%# ⚠️ „STAN" SORTUJE PO LICZBIE BRAKOW (klucz `braki`) i to jest cala tresc tej
+            kolumny. Pierwsze klikniecie uklada ROSNACO — `linkiSortowania` robi tak KAZDEJ
+            kolumnie nieaktywnej i ta jednolitosc ma zostac; kolejke roboty („najwiecej
+            brakow na wierzch") daje klikniecie DRUGIE, czyli kolejnosc malejaca.
+            Odnosnik sklada `linkiSortowania` z tego samego klucza, ktory zna warstwa zapytan. %>
+        <% if (widok === 'porzadki') { %>
+          <th <% if (sortowanie.braki.aria) { %>aria-sort="<%= sortowanie.braki.aria %>"<% } %>>
+            <a class="zaznacz-wszystkie" href="<%= sortowanie.braki.adres %>">Stan <%= sortowanie.braki.strzalka %></a>
+          </th>
+        <% } %>
+      </tr>
+    </thead>
+    <tbody>
+      <% wiersze.forEach(function (w) { %>
+        <tr>
+          <%# ⚠️ ZAZNACZENIE JEST JAWNE i niesie NUMER WZORU, nie numer wiersza: kolejnosc
+              listy zmienia sie z kazdym sortowaniem, a zapis ma trafic w ten wzor, ktory
+              czlowiek klikal. Nieobecne pole = wzor niezaznaczony, i to jedyna droga:
+              puste zaznaczenie nie ma prawa znaczyc „wszystkie". %>
+          <%# `checked` odzwierciedla WYLACZNIE adres w chwili renderu (`zaznaczWszystkie`);
+              po zaladowaniu strony to przegladarka, nie adres, pamieta co jest odhaczone. %>
+          <td class="kol-zaznacz"><input type="checkbox" name="zaznaczone" value="<%= w.id %>"<%- zaznaczWszystkie ? ' checked' : '' %>></td>
+          <td class="kol-mini">
+            <% if (w.miniatura) { %>
+              <%# ⚠️ `loading="lazy"` — render to okolo 1010 wierszy po jednym zdjeciu.
+                  Samo zapytanie trwa 13 ms (zmierzone przy Zadaniu 8), wiec waskim gardlem
+                  tego ekranu sa wlasnie obrazki. Wymiary w atrybutach, zeby wiersz mial
+                  swoja wysokosc, zanim zdjecie sie wczyta, i tabela nie skakala. %>
+              <img class="mini" src="<%= w.miniatura %>" alt="" width="38" height="38" loading="lazy">
+            <% } %>
+          </td>
+          <td class="komorka-wzor">
+            <%# Nazwa prowadzi na KARTE wzoru — jedyne miejsce, w ktorym da sie ten wzor
+                poprawic, zobaczyc jego zdjecia i dopisac mu oferte. Bez tego odnosnika
+                karta istnieje wylacznie dla kogos, kto zna adres.
+                ⚠️ `w.adresKarty` niesie DALEJ adres tej listy jako „?wroc=…" (Zadanie 6),
+                zeby „Wróć do magazynu" na karcie trafil TU, a nie na goly „/magazyn" —
+                juz gotowy i zakodowany z trasy (`wierszWzoru`), widok niczego tu nie liczy. %>
+            <div><a href="<%= w.adresKarty %>"><%= w.nazwa %></a></div>
+            <%# Brak numeru katalogowego jest INFORMACJA (jest ich na starcie okolo tysiaca),
+                a nie brakiem danych — pusta linijka wygladalaby jak coś, co sie nie doczytalo. %>
+            <div class="sku"><%= w.sku ? w.sku : 'bez SKU' %></div>
+          </td>
+          <%# `kol-wymiary`: bez lamania — „70 × 100 cm" ciete na „70 × / 100 cm" wygladalo
+              na kazdym wierszu jak usterka (zlapane ogledzinami na kopii produkcyjnej bazy). %>
+          <td class="kol-wymiary"><% if (w.wymiary) { %><%= w.wymiary %><% } else { %><span class="magazyn-brak">—</span><% } %></td>
+          <td><% if (w.kategoria) { %><%= w.kategoria %><% } else { %><span class="magazyn-brak">—</span><% } %></td>
+          <% if (widok === 'katalog') { %>
+            <% w.kanaly.forEach(function (k) { %>
+              <td class="magazyn-kanal">
+                <% if (!k) { %>
+                  <%# Kanal bez produktu pokazuje KRESKE, a nie pusta komorke: pusta wyglada
+                      jak komorka, ktorej cos nie doliczylo. %>
+                  <span class="magazyn-brak">—</span>
+                <% } else if (k.adres) { %>
+                  <a href="<%= k.adres %>" rel="noopener noreferrer" target="_blank"><%= k.cena === null ? 'bez ceny' : k.cena %></a>
+                <% } else { %>
+                  <%= k.cena === null ? 'bez ceny' : k.cena %>
+                <% } %>
+              </td>
+            <% }); %>
+          <% } %>
+          <td>
+            <%# TRZY STANY, NIE DWA (domain/paczkomat.js): „nieoznaczone" to robota do
+                wykonania, „nie" to decyzja czlowieka — i te dwie rzeczy nie moga wygladac
+                tak samo. Kolor sam nie niesie znaczenia: obok zawsze stoi slowo. %>
+            <% if (w.paczkomat === 'tak') { %><span class="znacznik znacznik--ok">tak</span>
+            <% } else if (w.paczkomat === 'nie') { %><span class="znacznik znacznik--cichy">nie</span>
+            <% } else { %><span class="magazyn-brak">nieoznaczone</span><% } %>
+          </td>
+          <%# KOLUMNA „STAN" — ile brakuje przy tym wzorze. Liczba i jej odmiana przychodza
+              POLICZONE z trasy (`w.stan`), bo widok w tym module niczego nie liczy. Komplet
+              dostaje ten sam znacznik, co „paczkomat: tak" — to jest ta sama wiadomosc
+              („nic tu do zrobienia"), wiec nie ma prawa wygladac inaczej. %>
+          <% if (widok === 'porzadki') { %>
+            <td>
+              <% if (w.stan.komplet) { %><span class="znacznik znacznik--ok">komplet</span>
+              <% } else { %><span class="stan-braki"><%= w.stan.tekst %></span><% } %>
+            </td>
+          <% } %>
+        </tr>
+      <% }); %>
+      <% if (!wiersze.length) { %>
+        <%# Pusta tabela ma POWIEDZIEC, ze jest pusta — inaczej wyglada jak ekran, ktory sie
+            nie wczytal, a wtedy pierwszym odruchem jest szukanie awarii.
+
+            ⚠️⚠️ PUSTY WYNIK ZAWEZENIA TO INNY KOMUNIKAT NIZ PUSTY MAGAZYN. „Nie ma tu jeszcze
+            ani jednego wzoru" przy aktywnym filtrze jest po prostu NIEPRAWDA: katalog ma
+            ~1000 pozycji. Czlowiek czyta to jako utrate danych i idzie szukac awarii odczytu
+            — zamiast poszerzyc zawezenie, ktore sam przed chwila ustawil. Rozstrzygniecie
+            (`filtrowane`) przychodzi z trasy; szablon niczego tu nie liczy. %>
+        <%# ⚠️ SZEROKOSC LICZY TRASA (`kolumnPustej`), bo zalezy od TRYBU kolumn: siedem
+            w porzadkach, dziesiec w katalogu. Wyrazenie w szablonie rozjechaloby sie po cichu
+            przy pierwszej zmianie zestawu kolumn i komunikat przestalby siegac konca tabeli. %>
+        <tr><td colspan="<%= kolumnPustej %>" class="pusto">
+          <% if (filtrowane) { %>
+            Żaden wzór nie pasuje do tego zawężenia — katalog nie jest pusty, tylko zapytanie nic nie trafiło.
+            <a href="<%= adresBezFiltrow %>">Wyczyść zawężenie</a>.
+          <% } else { %>
+            Nie ma tu jeszcze ani jednego wzoru. Zacznij od „Odczytaj katalogi ze sklepów",
+            a potem od „Utwórz wzory z niepowiązanych".
+          <% } %>
+        </td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+</form>
+
+<p class="wyjasnienie">
+  Ceny są tym, co stoi <strong>dziś w kanale</strong> — wzór wycofany ze sprzedaży zostaje
+  na liście, ale jego cena znika z kolumny. Magazyn nie prowadzi stanów magazynowych.
+</p>

@@ -1,0 +1,480 @@
+<%# ⚠️ Przebudowa na dwie kolumny (2026-08-05), wg zatwierdzonej makiety. Ostrzezenia %>
+<%# o NIEODWRACALNOSCI (gorne i dolne) zostaly USUNIETE swiadomie — decyzja wlasciciela %>
+<%# 04.08: ekran nie ma juz nigdzie mowic, ze operacji nie da sie cofnac. Ochrona %>
+<%# TECHNICZNA zostaje NIETKNIETA: numer kolejny niesiony przez formularz (ponizej), %>
+<%# indeks czesciowy `przesylki (zamowienie_id, kolejnosc)` w bazie i odmowa DPD dla %>
+<%# powtorzonej referencji — patrz przewodnik OMS, 4.3. Zmienia sie to, co widzi %>
+<%# czlowiek, nie to, co robi panel. %>
+<% const wart = (v) => (v ? v : '—'); %>
+
+<div class="glowa-ekranu">
+  <h1>Nadanie paczki nr <%= kolejnosc %></h1>
+  <span class="krok">zamówienie <a class="link-numer" title="<%= z.numer %>" href="<%= adresKarty %>"><%= z.numer %></a></span>
+</div>
+
+<%# ⚠️ PACZKOMAT POTRAFI NADAWAC SIE DLUGO. InPost tworzy przesylke asynchronicznie: %>
+<%# panel czeka na numer listu do 30 s, a w najgorszym razie cale nadanie zajmuje ok. %>
+<%# 2,5 minuty (kurierzy/inpost.js: LIMIT_ODPYTYWANIA_MS + limity pojedynczych zadan). %>
+<%# Bez tego zdania operator widzi wylacznie kreciolek przegladarki i naturalnie klika %>
+<%# drugi raz — a to jest jedyna droga do dwoch paczek, ktorej indeks juz nie zatrzyma, %>
+<%# bo pierwsze wywolanie wciaz trwa i to ono trzyma wiersz. TRESC ZOSTAJE, zmienia sie %>
+<%# tylko klasa (pasek-uwaga zamiast goleg .uwaga), zeby pasowala do reszty panelu. %>
+<% if (metodaUzyta === 'inpost_paczkomat') { %>
+  <p class="pasek-uwaga">
+    Nadanie do paczkomatu potrafi potrwać nawet ok. 2,5 minuty — InPost przyznaje numer listu
+    z opóźnieniem. NIE klikaj drugi raz i nie zamykaj strony: jeśli numer nie zdąży przyjść,
+    karta zamówienia pokaże „przesyłka tworzona u kuriera" i przycisk „Sprawdź ponownie".
+  </p>
+<% } %>
+
+<%# Kolejna paczka do zamowienia, ktore JUZ MA paczke w drodze, to sytuacja rzadka %>
+<%# i kosztowna, wiec ekran ma ja nazwac wprost, zamiast wygladac jak zwykle nadanie. %>
+<% if (kolejnosc > 1) { %>
+  <p class="pasek-uwaga">
+    To jest KOLEJNA paczka do tego zamówienia (nr <%= kolejnosc %>) — poprzednie już istnieją u kuriera
+    i nadanie tej ich nie zastępuje ani nie anuluje. Do DPD pojedzie referencja
+    „<%= z.numer %>/<%= kolejnosc %>", bo powtórzenia samego numeru zamówienia DPD nie przyjmie.
+  </p>
+<% } %>
+
+<%# JEDEN formularz na caly ekran: adres i wymiary musza pojechac do POST RAZEM, bo od %>
+<%# Zadania „adres edytowalny" to WLASNIE ten formularz — nie zamowienie w sklepie — jest %>
+<%# zrodlem tego, co pojedzie do DPD (patrz komentarz w domain/adres-formularza.js i %>
+<%# kurierzy/dpd.js). Lista pozycji (tylko do odczytu) i stopka akcji siedza w TYM SAMYM %>
+<%# formularzu — nie maja wlasnych pol, wiec to nieszkodliwe, a przyciski zatwierdzajace %>
+<%# musza byc elementami TEGO formularza, zeby submit zadzialal. %>
+<form method="post" action="/zamowienia/<%= z.id %>/nadaj">
+  <input type="hidden" name="powrot" value="<%= powrot %>">
+  <%# ⚠️ Numer kolejny NIESIONY PRZEZ FORMULARZ — to jest ochrona przed podwojnym %>
+  <%# klknieciem. Trasa POST porownuje go z tym, ktorego panel sie spodziewa, wiec dwa %>
+  <%# szybkie wyslania tego samego formularza niosa TEN SAM numer i drugie odbija sie %>
+  <%# (o trase albo o indeks w bazie). Gdyby trasa liczyla numer sama, dwa klikniecia %>
+  <%# dostalyby numery 1 i 2 i do DPD pojechalyby DWIE prawdziwe paczki. %>
+  <input type="hidden" name="kolejnosc" value="<%= kolejnosc %>">
+  <% if (deliveryMethodIdAllegro) { %>
+    <input type="hidden" name="delivery_method_id_allegro" value="<%= deliveryMethodIdAllegro %>">
+  <% } %>
+
+  <%# ⚠️ WSKAZANIE KURIERA NIESIONE PRZEZ FORMULARZ (2026-08-07) — dokladnie tak samo, %>
+  <%# jak numer kolejny wyzej i z tego samego powodu: POST sprawdza je PONOWNIE %>
+  <%# (domain/kurier-nadania.js), bo bariera nie moze mieszkac w widoku. Puste dla %>
+  <%# zamowien spoza Allegro — wtedy pola nie ma w ogole i POST zachowuje sie jak dotad. %>
+  <% if (kurierWybrany) { %>
+    <input type="hidden" name="kurier" value="<%= kurierWybrany %>">
+  <% } %>
+
+  <div class="nadanie-kolumny">
+
+    <%# ——— LEWA KOLUMNA: odbiorca — to, co pojedzie na etykiete ——————————————————— %>
+    <section class="panel">
+      <div class="panel-glowa">
+        <h2>Odbiorca</h2>
+      </div>
+      <div class="panel-cialo">
+
+        <%# Paczkomat: kod + NAZWA automatu na samej gorze — kod jest adresem TEJ %>
+        <%# przesylki, wiec ma stac przed imieniem i nazwiskiem, nie po nich. Pole jest %>
+        <%# EDYTOWALNE: klient bywa, ze wpisuje kod w uwagach zamiast wybrac go w %>
+        <%# checkoucie, a operator poprawia go tuz przed zatwierdzeniem. Poprawka jest %>
+        <%# JEDNORAZOWA — leci prosto do InPostu przy TYM nadaniu (routes/zamowienia.js, %>
+        <%# kurierzy/inpost.js: punktOdbioru) i NIE zapisuje sie do zamowienia. Trwala %>
+        <%# korekta ma swoje miejsce w „Szczegolach zamowienia" (zamowienie.ejs) — to %>
+        <%# jest INNE pole, nie duplikat tamtego. %>
+        <% if (metodaUzyta === 'inpost_paczkomat') { %>
+          <div class="paczkomat">
+            <div class="paczkomat-glowa">Paczkomat — miejsce odbioru</div>
+            <div class="paczkomat-cialo">
+              <label for="pole-punkt-odbioru">Kod paczkomatu</label>
+              <input id="pole-punkt-odbioru" name="punkt_odbioru" value="<%= z.punkt_odbioru %>">
+              <% if (z.punkt_odbioru_opis) { %>
+                <p class="paczkomat-nazwa"><%= z.punkt_odbioru_opis %></p>
+              <% } %>
+              <p class="podpowiedz">Poprawka dotyczy tylko tej przesyłki — nie zapisuje się do zamówienia.</p>
+            </div>
+          </div>
+        <% } %>
+
+        <%# Adres jest EDYTOWALNY: operator moze poprawic zly kod, dopisac numer %>
+        <%# mieszkania albo wyslac dosylke pod inny adres, zanim zatwierdzi. Wartosci %>
+        <%# startowe pochodza z adresOdbiorcy(z) — patrz GET /zamowienia/:id/nadaj w %>
+        <%# routes/zamowienia.js. To, co operator tu zostawi w chwili zatwierdzenia, %>
+        <%# JEST adresem, ktory pojedzie do DPD — klient DPD go NIE przelicza juz %>
+        <%# ponownie z zamowienia (patrz kurierzy/dpd.js), wiec ten formularz nie jest %>
+        <%# kolejna, niezalezna kopia adresu — jest JEGO JEDYNYM zrodlem od chwili %>
+        <%# zatwierdzenia. %>
+        <div class="pola">
+          <div class="pola-para">
+            <label for="pole-nazwa">Imię i nazwisko <input id="pole-nazwa" name="nazwa" value="<%= adres.nazwa %>"></label>
+            <label for="pole-company">Firma <input id="pole-company" name="company" value="<%= adres.company %>"></label>
+          </div>
+
+          <%# ⚠️ ADRESU PRZY PACZKOMACIE NIE WOLNO USUNAC Z FORMULARZA — parsujAdresOdbiorcy %>
+          <%# (POST) odmawia przy pustej ulicy/kodzie/miescie dla KAZDEJ metody, takze %>
+          <%# paczkomatu. Przy DPD pola stoja tu wprost; przy paczkomacie schodza do %>
+          <%# <details> nizej (do paczkomatu i tak nie jada — adresem jest kod), ale to %>
+          <%# DALEJ te same pola formularza, nie druga kopia. %>
+          <% if (metodaUzyta !== 'inpost_paczkomat') { %>
+            <label for="pole-ulica">Ulica i numer
+              <input id="pole-ulica" name="ulica" value="<%= adres.ulica ?? '' %>">
+              <% if (brakujacePola.includes('ulica')) { %><span class="uwaga">BRAK — DPD wymaga tego pola</span><% } %>
+            </label>
+            <div class="pola-para">
+              <label for="pole-kod">Kod pocztowy
+                <input id="pole-kod" name="kod" value="<%= adres.kod ?? '' %>">
+                <% if (brakujacePola.includes('kod')) { %><span class="uwaga">BRAK — DPD wymaga tego pola</span><% } %>
+              </label>
+              <label for="pole-miasto">Miasto
+                <input id="pole-miasto" name="miasto" value="<%= adres.miasto ?? '' %>">
+                <% if (brakujacePola.includes('miasto')) { %><span class="uwaga">BRAK — DPD wymaga tego pola</span><% } %>
+              </label>
+            </div>
+          <% } %>
+
+          <div class="pola-para">
+            <label for="pole-phone">Telefon <input id="pole-phone" name="phone" value="<%= adres.phone ?? '' %>"></label>
+            <label for="pole-email">E-mail <input id="pole-email" name="email" value="<%= adres.email ?? '' %>"></label>
+          </div>
+        </div>
+
+        <%# Kraj CELOWO NIE jest edytowalny — panel obsluguje wylacznie przesylki krajowe %>
+        <%# (sessionType zaszyty na DOMESTIC w kurierzy/dpd.js). Ukryte pole niesie wartosc %>
+        <%# dalej, zeby odmowa dla przesylek zagranicznych w dpd.js dalej dzialala takze %>
+        <%# PO tej zmianie — gdyby pole zniklo calkowicie, kazde zamowienie wygladaloby %>
+        <%# jak krajowe (parsujAdresOdbiorcy domyslnie ustawia 'PL' pod jego nieobecnosc). %>
+        <input type="hidden" name="kraj" value="<%= adres.kraj %>">
+
+        <% if (metodaUzyta === 'inpost_paczkomat') { %>
+          <details class="adres-zwiniety">
+            <summary>Adres pocztowy z zamówienia (do paczkomatu nie jedzie)</summary>
+            <div class="pola">
+              <label for="pole-ulica">Ulica i numer
+                <input id="pole-ulica" name="ulica" value="<%= adres.ulica ?? '' %>">
+                <% if (brakujacePola.includes('ulica')) { %><span class="uwaga">BRAK — DPD wymaga tego pola</span><% } %>
+              </label>
+              <div class="pola-para">
+                <label for="pole-kod">Kod pocztowy
+                  <input id="pole-kod" name="kod" value="<%= adres.kod ?? '' %>">
+                  <% if (brakujacePola.includes('kod')) { %><span class="uwaga">BRAK — DPD wymaga tego pola</span><% } %>
+                </label>
+                <label for="pole-miasto">Miasto
+                  <input id="pole-miasto" name="miasto" value="<%= adres.miasto ?? '' %>">
+                  <% if (brakujacePola.includes('miasto')) { %><span class="uwaga">BRAK — DPD wymaga tego pola</span><% } %>
+                </label>
+              </div>
+            </div>
+          </details>
+        <% } %>
+
+        <%# ⚠️ „PONIŻEJ" BYLO NIEPRAWDA — pola adresu stoja WYZEJ, i to w OBU wariantach: %>
+        <%# przy DPD wprost w formularzu, przy paczkomacie w zwinietej sekcji <details>. %>
+        <%# Zdanie kierujace operatora w zle miejsce jest gorsze niz brak zdania: przy %>
+        <%# paczkomacie kazalo szukac pol, ktorych nie widac, dopoki sekcji sie nie rozwinie. %>
+        <% if (brakujacePola.length) { %>
+          <p class="pasek-blokada">
+            Zamówieniu brakuje danych, których DPD wymaga do nadania (<%= brakujacePola.join(', ') %>).
+            Uzupełnij je w polach adresu wyżej<% if (metodaUzyta === 'inpost_paczkomat') { %>,
+            w zwiniętej sekcji „Adres pocztowy z zamówienia"<% } %> — inaczej panel odmówi nadania.
+          </p>
+        <% } %>
+
+      </div>
+    </section>
+
+    <%# ——— PRAWA KOLUMNA: szczegoly zamowienia — fakty + pola paczki ——————————————— %>
+    <section class="panel">
+      <div class="panel-glowa">
+        <h2>Szczegóły zamówienia</h2>
+      </div>
+      <div class="panel-cialo">
+
+        <div class="fakty">
+          <div><span class="k">Nr zamówienia</span><span class="w"><a class="link-numer" title="<%= z.numer %>" href="<%= adresKarty %>"><%= z.numer %></a></span></div>
+          <%# Nazwa metody dostawy idzie WYLACZNIE ze slownika ETYKIETY_WYSYLKI %>
+          <%# (etykietaWysylki, wstrzykiwana w KAZDY widok przez web/server.js: %>
+          <%# defaultContext) — nigdy z nowego lancucha `if`. To dokladnie blad I5 z %>
+          <%# lipca, ktory wrocil raz juz przy przenoszeniu belki karty. %>
+          <div><span class="k">Metoda dostawy</span><span class="w"><%= nazwaDostawy(z) %></span></div>
+          <%# ⚠️ DRUGI WIERSZ TYLKO PRZY WSKAZANIU RECZNYM. Metoda zamowienia mowi, co %>
+          <%# wybral kupujacy na Allegro; ta linia mowi, czym NAPRAWDE nadajemy — i bez %>
+          <%# niej ekran twierdzilby „Allegro Kurier DPD" przy paczce jadacej nasza umowa. %>
+          <% if (kurierWybrany) { %>
+            <div><span class="k">Nadajemy</span><span class="w"><%= etykietaWysylki(metodaUzyta, false) %> — nasza umowa <a class="drobne" href="<%= adresNadania() %>">(zmień)</a></span></div>
+          <% } else if (adresWyboruKuriera) { %>
+            <%# ⚠️ DROGA DOMYSLNA MOWI O SOBIE WPROST. Ekran wyboru zszedl z przeplywu %>
+            <%# (19.09.2026), wiec bez tego wiersza operator nie wiedzialby, ze paczka %>
+            <%# jedzie na UMOWIE ALLEGRO — ani ze da sie to zmienic. Odnosnik jest jedynym %>
+            <%# wejsciem na dosylke nasza umowa: brakujacy produkt, zamiennik za zgubiona. %>
+            <div><span class="k">Nadajemy</span><span class="w">Wysyłam z Allegro — umowa Allegro <a class="drobne" href="<%= adresWyboruKuriera %>">(nadaj naszą umową)</a></span></div>
+          <% } %>
+        </div>
+
+        <%# Pieniadze do zainkasowania od klienta. %>
+        <%# ⚠️ Przy KOLEJNEJ paczce zdanie jest ODWROTNE i to jest najwazniejsze %>
+        <%# ostrzezenie na tym ekranie: kwota pobrania widnieje na zamowieniu, wiec %>
+        <%# operator ma pelne prawo sadzic, ze jedzie na kazdej paczce. Powtorzenie %>
+        <%# kwoty znaczyloby, ze kurier zainkasuje ja od klienta DRUGI RAZ — dlatego %>
+        <%# <cod> jedzie DOMYSLNIE tylko na paczce nr 1 (kurierzy/dpd.js), a ekran musi to %>
+        <%# powiedziec, zanim ktokolwiek kliknie. Odstepstwo (zamiennik wyrzuconej etykiety) %>
+        <%# wymaga jawnego zaznaczenia i jest opisane nizej, przy tym polu. %>
+        <%# %>
+        <%# ⚠️ Z4 (2026-08-05): przy paczce nr 1 kwota jest POLEM EDYTOWALNYM. Pole %>
+        <%# ISTNIEJE WYLACZNIE w tej galezi — obok zdania „ta paczka jedzie bez %>
+        <%# pobrania" byloby zaproszeniem do podwojnego inkasa od klienta, a przy %>
+        <%# zamowieniu bez pobrania zamienialoby przesylke przedplacona w pobraniowa. %>
+        <%# Poprawka jest JEDNORAZOWA, dokladnie jak kod paczkomatu wyzej: leci prosto %>
+        <%# do kuriera przy TYM nadaniu (routes/zamowienia.js → services/nadanie.js → %>
+        <%# kurierzy/dpd.js) i NIE zapisuje sie do zamowienia. Trwala korekta ma swoje %>
+        <%# miejsce w „Szczegolach zamowienia" na karcie — to jest INNE pole. %>
+        <%# ⚠️ Wartosc startowa to `z.kwota_pobrania`, czyli DOKLADNIE ta liczba, ktora %>
+        <%# pojechalaby do DPD, gdyby operator nic nie zmienil. Widok jej NIE LICZY %>
+        <%# sam — druga implementacja tej samej kwoty rozjechalaby sie z tamta. %>
+        <% if (z.pobranie) { %>
+          <% if (kolejnosc > 1) { %>
+            <%# ⚠️ DO 04.09.2026 BYL TU SAM CZERWONY PAS I KONIEC — pobranie na paczce N > 1 %>
+            <%# bylo NIEMOZLIWE. Zdarzenie na zamowieniu 1385 pokazalo brakujacy przypadek: %>
+            <%# klient domowil towar telefonicznie PO wydrukowaniu etykiety, etykieta poszla %>
+            <%# do kosza, a paczka nr 1 nigdy nie pojechala. Ponowne nadanie jako nr 1 jest %>
+            <%# niemozliwe (DPD zna juz gola referencje), wiec zamiennik MUSI byc paczka nr 2 — %>
+            <%# i bez pobrania kurier nie zainkasowalby ani zlotowki. %>
+            <%# %>
+            <%# ⚠️ PANEL NIE MA JAVASCRIPTU, wiec pole kwoty NIE ODSLANIA SIE po zaznaczeniu. %>
+            <%# Oba elementy stoja jawnie, a regula „kwota dziala tylko przy zaznaczonym polu" %>
+            <%# jest WYPISANA — to uczciwsze niz pole, ktore wyglada na aktywne i po cichu %>
+            <%# ginie w trasie POST (domain/pobranie-nadania.js pilnuje tego po stronie serwera). %>
+            <p class="pasek-uwaga">
+              DOMYŚLNIE TA PACZKA JEDZIE BEZ POBRANIA. Kwota <%= z.kwota_pobrania || '(brak kwoty)' %> zł należy
+              do zamówienia, a nie do paczki, i jest już na paczce nr 1 — kurier zainkasuje ją RAZ, przy tamtej
+              przesyłce. Gdyby pojechała także tutaj, klient zapłaciłby dwa razy.
+            </p>
+            <div class="pole-pieniadze">
+              <label for="pole-pobranie-tutaj">
+                <input type="checkbox" id="pole-pobranie-tutaj" name="pobranie_na_tej_paczce" value="tak">
+                Pobranie ma pojechać na TEJ paczce
+              </label>
+              <p class="podpowiedz">
+                Zaznacz <strong>wyłącznie</strong> wtedy, gdy ta paczka jest <strong>zamiennikiem</strong> paczki
+                nr 1, a nie dosyłką obok niej — czyli gdy tamta etykieta została wyrzucona i paczka nr 1 nigdy
+                nie pojedzie. Jeśli paczka nr 1 naprawdę jedzie, zaznaczenie tego pola znaczy, że
+                <strong>klient zapłaci dwa razy</strong>.
+              </p>
+              <label for="pole-kwota-pobrania">Kwota pobrania do zainkasowania</label>
+              <div class="pole-kwoty">
+                <input id="pole-kwota-pobrania" name="kwota_pobrania" value="<%= z.kwota_pobrania ?? '' %>" inputmode="decimal">
+                <span class="jednostka">zł</span>
+              </div>
+              <p class="podpowiedz">
+                Kwota działa <strong>tylko przy zaznaczonym polu powyżej</strong>. Bez zaznaczenia paczka jedzie
+                bez pobrania, a wpisana tu liczba jest ignorowana. Po nadaniu nie da się tego odkręcić inaczej
+                niż w panelu DPD.
+              </p>
+            </div>
+          <% } else { %>
+            <div class="pole-pieniadze">
+              <label for="pole-kwota-pobrania">Kwota pobrania do zainkasowania</label>
+              <div class="pole-kwoty">
+                <input id="pole-kwota-pobrania" name="kwota_pobrania" value="<%= z.kwota_pobrania ?? '' %>" inputmode="decimal">
+                <span class="jednostka">zł</span>
+              </div>
+              <%# ⚠️⚠️ DO 01.09.2026 POLE PRZY ALLEGRO STALO PUSTE (prosba właściciela o zmiane). %>
+              <%# Powodem byla niewiedza panelu: numery listow z Allegro dociagaja sie tylko %>
+              <%# dopoki `wyslane_at` jest puste, wiec karta potrafi pokazywac „brak paczek" %>
+              <%# przy paczce, ktora dawno jedzie (zam. 1120, 07.08.2026) — a podstawiona %>
+              <%# kwota czytalaby sie jak potwierdzenie panelu, ze inkaso sie NALEZY. %>
+              <%# %>
+              <%# ⚠️ TA NIEWIEDZA NIE ZNIKLA — zniklo wylacznie przepisywanie kwoty reka przy %>
+              <%# KAZDEJ allegrowej paczce (codziennie) dla scenariusza, ktory zdarzyl sie raz. %>
+              <%# Ostrzezenie zostaje w DWOCH miejscach, ktorych ta zmiana NIE DOTYKA: %>
+              <%#   1. ekran WYBORU KURIERA (nadaj-kurier.ejs) — przechodzi przez niego kazda %>
+              <%#      allegrowa paczka i mowi wprost, czego panel nie wie; %>
+              <%#   2. paczka nr 2 i dalsze — czerwony pas wyzej, a pole kwoty dziala dopiero %>
+              <%#      po jawnym zaznaczeniu „pobranie ma pojechac na TEJ paczce". %>
+              <p class="podpowiedz">
+                Wypełnione kwotą zamówienia. Zmiana dotyczy <strong>tylko tej paczki</strong> —
+                po nadaniu nie da się jej odkręcić inaczej niż w panelu DPD.
+              </p>
+            </div>
+          <% } %>
+        <% } %>
+
+        <%# ⚠️ PACZKOMAT NIE MA WYMIAROW (Zadanie 7). InPost przyjmuje SZABLON skrytki %>
+        <%# (A/B/C, kurierzy/inpost.js: SZABLONY_GABARYTU), a domyslne wymiary panelu %>
+        <%# (110×75×1 cm — plaskie arkusze szablonow malarskich) NIE MIESZCZA SIE w %>
+        <%# zadnej skrytce automatu. Dlatego to jest WYBOR ze skonczonego zbioru, %>
+        <%# zaznaczony domyslnie na A, a nie pole tekstowe z domyslna wartoscia — patrz %>
+        <%# domain/paczka.js: parsujPaczkeInpost. Dla DPD (galaz „else") ekran ma %>
+        <%# ANI JEDNEJ zmiany w polach wobec tego, co bylo. %>
+        <% if (metodaUzyta === 'inpost_paczkomat') { %>
+          <h3>Waga i gabaryt</h3>
+          <div class="pola">
+            <div class="rzad">
+              <label>Waga (kg) <input name="waga" value="<%= paczkaDomyslna.waga %>" inputmode="decimal"></label>
+            </div>
+            <div class="gabaryty">
+              <% Object.entries(gabarytyPaczkomatu).forEach(function ([litera, wymiary]) { %>
+                <label>
+                  <input type="radio" name="gabaryt" value="<%= litera %>" <%= litera === 'A' ? 'checked' : '' %>>
+                  Gabaryt <%= litera %> (<%= wymiary %>)
+                </label>
+              <% }); %>
+            </div>
+          </div>
+        <% } else if (gabarytyAllegro) { %>
+          <h3>Waga i gabaryt</h3>
+          <div class="pola">
+            <div class="rzad">
+              <label>Waga (kg) <input name="waga" value="<%= gabarytyAllegro.domyslnaWaga ?? '' %>" inputmode="decimal"></label>
+            </div>
+            <div class="gabaryty">
+              <% Object.entries(gabarytyAllegro.gabaryty).forEach(function ([litera, wysokosc]) { %>
+                <label>
+                  <input type="radio" name="gabaryt" value="<%= litera %>" <%= gabarytyAllegro.domyslnyGabaryt === litera ? 'checked' : '' %>>
+                  Gabaryt <%= litera %> (<%= gabarytyAllegro.dlugosc %> × <%= gabarytyAllegro.szerokosc %> × <%= wysokosc %> cm)
+                </label>
+              <% }); %>
+            </div>
+          </div>
+        <% } else { %>
+          <h3>Waga i wymiary</h3>
+          <div class="rzad">
+            <label>Szablon paczki
+              <select id="szablon-paczki" aria-label="Szablon paczki">
+                <option value="">Własne wymiary</option>
+                <% szablonyPaczek.szablony.forEach(function (s) { %>
+                  <option value="<%= s.id %>" data-waga="<%= s.waga %>" data-dlugosc="<%= s.dlugosc %>"
+                    data-szerokosc="<%= s.szerokosc %>" data-wysokosc="<%= s.wysokosc %>"
+                    <%= s.id === szablonyPaczek.domyslnyId ? 'selected' : '' %>><%= s.nazwa %> (<%= s.dlugosc %> × <%= s.szerokosc %> × <%= s.wysokosc %> cm, <%= s.waga %> kg)</option>
+                <% }); %>
+              </select>
+            </label>
+          </div>
+          <div class="rzad">
+            <label>Waga (kg) <input name="waga" value="<%= paczkaDomyslna.waga %>" inputmode="decimal"></label>
+            <label>Długość (cm) <input name="dlugosc" value="<%= paczkaDomyslna.dlugosc %>" inputmode="decimal"></label>
+            <label>Szerokość (cm) <input name="szerokosc" value="<%= paczkaDomyslna.szerokosc %>" inputmode="decimal"></label>
+            <label>Wysokość (cm) <input name="wysokosc" value="<%= paczkaDomyslna.wysokosc %>" inputmode="decimal"></label>
+          </div>
+          <p class="wyjasnienie">Możesz poprawić wymiary po wyborze szablonu — zmiana dotyczy tylko tej paczki.</p>
+          <script>
+            (() => {
+              const wybor = document.getElementById('szablon-paczki');
+              const formularz = wybor.closest('form');
+              const pola = ['waga', 'dlugosc', 'szerokosc', 'wysokosc'];
+              wybor.addEventListener('change', () => {
+                const opcja = wybor.selectedOptions[0];
+                if (!opcja.dataset.waga) return;
+                for (const pole of pola) formularz.elements.namedItem(pole).value = opcja.dataset[pole];
+              });
+              for (const pole of pola) {
+                formularz.elements.namedItem(pole).addEventListener('input', () => { wybor.value = ''; });
+              }
+            })();
+          </script>
+        <% } %>
+
+      </div>
+    </section>
+
+  </div>
+
+  <%# ——— ZAWARTOSC PACZKI (Zadanie 2) — TYLKO DO ODCZYTU ———————————————————————————— %>
+  <%# Widok NIE liczy niczego sam: wierszePozycji(z) + miniatura sa TE SAME funkcje, %>
+  <%# ktorych uzywa karta zamowienia (routes/zamowienia.js, trasa karty) — druga kopia %>
+  <%# reguly rozjechalaby sie z nia przy pierwszej zmianie. Zadnego formularza, zadnego %>
+  <%# „Edytuj", zadnego „Usun": edycja pozycji ma jedno miejsce i jest nim karta. %>
+  <section class="panel">
+    <div class="panel-glowa">
+      <h2>Zawartość paczki</h2>
+      <span class="dopisek">podgląd — edycja pozycji jest na karcie zamówienia</span>
+    </div>
+    <div class="panel-cialo">
+      <table class="tab-pozycje">
+        <thead>
+          <tr><th class="kol-mini"></th><th class="kol-ilosc">Ilość</th><th>Nazwa</th><th class="liczba">Cena netto</th><th class="liczba">Cena brutto</th><th class="liczba">Suma</th></tr>
+        </thead>
+        <tbody>
+          <% pozycjeKarty.forEach(function (w) { %>
+            <%# Miniatura liczona RAZ na wiersz, bo czytaja ja DWIE komorki: obrazkowa %>
+            <%# (nizej) i nazwa, ktora przejmuje odnosnik, gdy miniatury nie ma. %>
+            <%# ⚠️ KANAL I NUMER PRODUKTU IDA RAZEM ZE ZDJECIEM — to po tej parze odnajduje %>
+            <%# sie PRAWDZIWY adres miniatury w lustrze sklepow (domain/miniatura-pozycji.js). %>
+            <% var mini = miniatura(z.sklep, w.produktId, w.zdjecie); %>
+            <tr<%- w.podsumowanie ? ' class="wiersz-razem"' : '' %>>
+              <td class="kol-mini">
+                <% if (mini) { %>
+                  <%# Odnosnik z pozycji do jej zrodla — adres i podpis liczy DOMENA %>
+                  <%# (link-pozycji.js), widok ich nie sklada. Nowa karta z rel="noopener %>
+                  <%# noreferrer": operator jest w srodku pakowania i NIE MOZE stracic %>
+                  <%# ekranu nadania pod reka. %>
+                  <% if (w.linkProduktu) { %>
+                    <a href="<%= w.linkProduktu %>" target="_blank" rel="noopener noreferrer" title="<%= w.linkProduktuTytul %>">
+                      <img class="mini" src="<%= mini %>" alt="<%= w.nazwa %>" width="38" height="38" loading="lazy">
+                    </a>
+                  <% } else { %>
+                    <img class="mini" src="<%= mini %>" alt="<%= w.nazwa %>" width="38" height="38" loading="lazy">
+                  <% } %>
+                <% } %>
+              </td>
+              <td class="kol-ilosc ilosc"><%= w.podsumowanie ? '' : `${wart(w.ilosc)}×` %></td>
+              <td>
+                <%# ⚠️ TA SAMA REGULA, CO NA KARCIE (zamowienie.ejs): odnosnik wisi na %>
+                <%# miniaturze, a gdy miniatury nie ma — na nazwie. Bez drugiej polowy %>
+                <%# pozycja z Allegro nie ma na czym powiesic linku: Allegro NIE ODDAJE %>
+                <%# zdjecia pozycji (allegro-mapowanie.js), wiec adres bylby policzony, %>
+                <%# przetestowany i niewidoczny na ekranie. %>
+                <%# Pozycja SKLEPOWA ze zdjeciem BEZ ZMIAN — jedna regula, dwa nosniki, %>
+                <%# nigdy dwa naraz w jednym wierszu. %>
+                <% if (w.linkProduktu && !mini) { %>
+                  <a href="<%= w.linkProduktu %>" target="_blank" rel="noopener noreferrer"
+                     title="<%= w.linkProduktuTytul %>"><%= w.nazwa %></a>
+                <% } else { %>
+                  <%= w.nazwa %>
+                <% } %>
+                <% if (w.sku) { %><div class="sku"><%= w.sku %></div><% } %>
+                <% if (w.reczna) { %><span class="znacznik znacznik-reczny">dopisana ręcznie</span><% } %>
+                <% if (!w.podsumowanie && !w.reczna && w.polaZmienione.length) { %>
+                  <span class="znacznik znacznik-reczny">zmienione ręcznie: <%= w.polaZmienione.join(', ') %></span>
+                <% } %>
+              </td>
+              <td class="liczba"><%= w.podsumowanie ? '' : `${wart(w.cenaNetto)} zł` %></td>
+              <td class="liczba"><%= w.podsumowanie ? '' : `${wart(w.cenaBrutto)} zł` %></td>
+              <td class="liczba"><%= w.suma ?? '—' %> zł</td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <%# ——— STOPKA AKCJI (Zadanie 3) —————————————————————————————————————————————————— %>
+  <%# Dwa przyciski zatwierdzajace w TYM SAMYM formularzu, rozroznione przez %>
+  <%# `name="zatwierdzenie"` (patrz POST /zamowienia/:id/nadaj w routes/zamowienia.js): %>
+  <%# „Nadaj przesylke" tylko zapisuje numer listu, „Nadaj i drukuj" robi to samo i %>
+  <%# DODATKOWO wstawia swiezo pobrana etykiete ZPL do kolejki druku na Zebrze. Oba %>
+  <%# Przy WzA roznia sie tez NIEZMIENNYM formatem zamawianej etykiety; oba sa %>
+  <%# nieodwracalne, i wyglad ma tego NIE sugerowac inaczej. %>
+  <%# ⚠️ „Anuluj" jest LINKIEM (<a>), NIGDY <button> — button wewnatrz tego formularza %>
+  <%# wyslalby go i NADAL paczke, dokladnie to, przed czym operator chcial sie wycofac. %>
+  <%# „NADAJ I DRUKUJ" ISTNIEJE TYLKO TAM, GDZIE BEDZIE ZPL. WzA zamawia go od Allegro %>
+  <%# tylko przy tym przycisku; przy zwyklym „Nadaj" zamawia PDF. Warunek %>
+  <%# liczy DOMENA (kurier-nadania.js: nadanieDaZpl), widok go tylko czyta. %>
+  <%# ⚠️ BRAK PRZYCISKU MOWI, DLACZEGO GO NIE MA (niezmiennik 4.9) — sam znikniety przycisk %>
+  <%# kaze szukac usterki tam, gdzie jej nie ma. %>
+  <div class="stopka-akcji">
+    <button type="submit" class="btn btn--glowny" name="zatwierdzenie" value="nadaj">Nadaj przesyłkę</button>
+    <% if (bedzieZpl) { %>
+      <button type="submit" class="btn btn--drugi" name="zatwierdzenie" value="nadaj_i_drukuj">Nadaj i drukuj</button>
+    <% } %>
+    <span class="rozpychacz"></span>
+    <a class="btn btn--cichy" href="<%= adresKarty %>">Anuluj</a>
+  </div>
+  <% if (metodaUzyta.startsWith('allegro_') && bedzieZpl) { %>
+    <p class="wyjasnienie">W Allegro „Nadaj przesyłkę” zapisze PDF, a „Nadaj i drukuj” wyśle ZPL do Zebry. Po utworzeniu przesyłki nie można zmienić formatu etykiety.</p>
+  <% } %>
+  <% if (!bedzieZpl) { %>
+    <p class="wyjasnienie">
+      Etykietę tej paczki wystawia Allegro i przychodzi ona <strong>jako PDF</strong>, a kolejka
+      druku obsługuje wyłącznie etykiety ZPL — dlatego nie ma tu „Nadaj i drukuj". Po nadaniu
+      pobierz PDF z karty zamówienia i wydrukuj go z przeglądarki.
+    </p>
+  <% } %>
+</form>

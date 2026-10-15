@@ -1,0 +1,190 @@
+<%# Lista przesylek (23.08). Jeden wiersz = jedna paczka; przedmiotem jest RUCH paczki,
+    nie zamowienie — stad etap z dniami w drodze i filtr „bez ruchu" zamiast statusow
+    zamowienia. Widok NIE LICZY NICZEGO SAM: etap, dni i „bez ruchu" przychodza z trasy
+    (web/routes/przesylki.js), ktora pyta te same reguly, co pastylka na karcie i czuwacz
+    (domain/etap-przesylki.js). %>
+<link rel="stylesheet" href="/public/tabele-prz065.css">
+<section class="prz065-tabele prz065-przesylki">
+  <p class="wroc"><a href="/">← Wróć do listy zamówień</a></p>
+
+  <header class="prz065-naglowek">
+    <div>
+      <h1>Przesyłki</h1>
+      <p>Śledzenie paczek i odbiory kurierskie</p>
+    </div>
+    <a class="btn btn--cichy" href="/przesylki/podjazdy/historia">Historia podjazdów</a>
+  </header>
+
+<div class="panel prz065-powierzchnia">
+  <div class="panel-glowa prz065-ukryta-glowa"><h2>Przesyłki</h2></div>
+  <div class="panel-cialo">
+    <form class="filtry" method="get" action="/przesylki">
+      <%# ⚠️ STATUS JEDZIE UKRYTYM POLEM. Formularz idzie GET-em, wiec bez tego zatwierdzenie
+          filtra gubi chip i trasa spada na domyslne „W drodze" — operator stojacy na
+          „Doręczone" po zmianie przewoznika ladowal na innej liscie (zgloszenie 18.09). %>
+      <input type="hidden" name="pokaz" value="<%= pokaz %>">
+      <div class="filtry-rzad">
+        <label class="pole-filtra">
+          <span>Data utworzenia</span>
+          <span class="zakres">
+            <input type="date" name="od" value="<%= filtry?.od || '' %>" aria-label="Data utworzenia od">
+            <span class="myslnik">–</span>
+            <input type="date" name="do" value="<%= filtry?.do || '' %>" aria-label="Data utworzenia do">
+          </span>
+        </label>
+        <label class="pole-filtra">
+          <span>Przewoźnik</span>
+          <select name="kurier">
+            <option value="">Wszystkie</option>
+            <%# PRZ-067: prawdziwy przewoznik (DPD, InPost, DHL, ORLEN Paczka, Allegro One, Packeta),
+                wartosc = klucz. Lista z pelnego zbioru, liczona w trasie. %>
+            <% przewozcy.forEach(function (k) { %>
+              <option value="<%= k.klucz %>"<%- filtry.kurier === k.klucz ? ' selected' : '' %>><%= k.nazwa %></option>
+            <% }); %>
+          </select>
+        </label>
+        <label class="pole-filtra">
+          <span>Źródło zamówienia</span>
+          <select name="sklep">
+            <option value="">Wszystkie</option>
+            <% sklepy.forEach(function (s) { %>
+              <option value="<%= s %>"<%- filtry.sklep === s ? ' selected' : '' %>><%= s %></option>
+            <% }); %>
+          </select>
+        </label>
+        <button class="btn btn--glowny" type="submit">Filtruj</button>
+        <a class="btn btn--cichy" href="<%= adresWyczysc %>">Wyczyść filtry</a>
+      </div>
+      <%# Gotowe przedzialy — odnosniki, nie przyciski formularza: maja USTAWIC zakres i od
+          razu przeladowac liste, a nie czekac na „Filtruj". Niosa status i pozostale filtry. %>
+      <%# PRZ-067: klucz z adresu, ktorego nie ma na liscie (stara zakladka `?kurier=allegro_wza`
+          albo przewoznik bez paczek w tym oknie). Lista jest pusta — mowimy dlaczego, zamiast
+          pokazywac w rozwijanym „Wszystkie" przy pustej tabeli. %>
+      <% if (kurierNieznany) { %>
+        <p class="wyjasnienie">Przewoźnik „<%= filtry.kurier %>” nie występuje w przesyłkach z tego okresu. Wybierz przewoźnika z listy albo wyczyść filtry.</p>
+      <% } %>
+      <p class="skroty-dat prz065-skroty">
+        <% skroty.forEach(function (s) { %>
+          <a class="chip" href="<%= s.adres %>"><%= s.etykieta %></a>
+        <% }); %>
+      </p>
+    </form>
+
+    <%# Chipy filtrow z licznikami — liczniki ZAWSZE pelne (liczone przed filtrem), zeby
+        wybor jednego widoku nie chowal skali pozostalych. %>
+    <nav class="prz065-zakladki" aria-label="Etap przesyłki">
+      <p class="chipy-filtrow">
+      <a class="chip<%- pokaz === 'utworzone' ? ' chip--aktywny' : '' %>" href="<%= adresDo('utworzone') %>">Utworzone (<%= liczniki.utworzone %>)</a>
+      <a class="chip<%- pokaz === 'w_drodze' ? ' chip--aktywny' : '' %>" href="<%= adresDo('w_drodze') %>">W drodze (<%= liczniki.w_drodze %>)</a>
+      <a class="chip<%- pokaz === 'bez_ruchu' ? ' chip--aktywny' : '' %>" href="<%= adresDo('bez_ruchu') %>">Bez ruchu (<%= liczniki.bez_ruchu %>)</a>
+      <a class="chip<%- pokaz === 'doreczone' ? ' chip--aktywny' : '' %>" href="<%= adresDo('doreczone') %>">Doręczone (<%= liczniki.doreczone %>)</a>
+      <a class="chip<%- pokaz === 'ukryte' ? ' chip--aktywny' : '' %>" href="<%= adresDo('ukryte') %>">Ukryte (<%= liczniki.ukryte %>)</a>
+      <a class="chip<%- pokaz === 'wszystkie' ? ' chip--aktywny' : '' %>" href="<%= adresDo('wszystkie') %>">Wszystkie (<%= liczniki.wszystkie %>)</a>
+      </p>
+    </nav>
+
+    <% if (!wiersze.length) { %>
+      <% if (pokaz === 'ukryte') { %>
+        <p class="wyjasnienie">Nic tu nie jest ukryte. „Ukryj" służy paczkom, których żaden status nie uratuje — zamówieniom testowym i etykietom, których kurier nigdy nie podjął. Ukryta paczka wraca sama, gdy kurier ją zeskanuje.</p>
+      <% } else if (pokaz === 'utworzone') { %>
+        <p class="wyjasnienie">Nie ma przesyłek oczekujących na odbiór przez kuriera w tym zakresie.</p>
+      <% } else if (pokaz === 'w_drodze') { %>
+        <p class="wyjasnienie">Nie ma przesyłek w drodze. Paczki z przygotowaną etykietą przed odbiorem znajdziesz w „Utworzone”.</p>
+      <% } else { %>
+        <p class="wyjasnienie">Nie ma tu żadnej paczki w tym zakresie.</p>
+      <% } %>
+    <% } else { %>
+    <% if (pokaz === 'utworzone') { %>
+      <form id="podjazdy-wybor" method="get" action="/przesylki/podjazdy">
+        <button class="btn btn--cichy" id="podjazdy-zaznacz" type="button">Zaznacz wszystkie widoczne</button>
+        <button class="btn btn--glowny" type="submit">Zamów podjazd dla zaznaczonych</button>
+      </form>
+    <% } %>
+    <div class="przewijak-tabeli prz065-przewijak"><table class="tab-pozycje prz065-tabela prz065-tabela--przesylki <%= pokaz === 'utworzone' ? 'prz065-tabela--z-wyborem' : '' %>">
+      <thead>
+        <tr>
+          <% if (pokaz === 'utworzone') { %><th>Wybór</th><% } %>
+          <th>Zamówienie</th><th>Kurier</th><th>Numer listu</th>
+          <%# Kolumna daty nadania ma nazwe w naglowku, a nie slowo „nadana" powtorzone
+              w kazdym wierszu (zgloszenie właściciela 18.09). Ostatnia kolumna zostaje bez
+              naglowka celowo — mieszcza sie w niej przyciski akcji, nie dane. %>
+          <th>Etap</th><th>Ostatni ruch</th><th>Nadana</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% wiersze.forEach(function (p) { %>
+          <tr>
+            <% if (pokaz === 'utworzone') { %>
+              <td><% if (p.mozePodjazd) { %><input type="checkbox" name="ids" value="<%= p.id %>" form="podjazdy-wybor" aria-label="Wybierz przesyłkę <%= p.numer_listu %>"><% } %></td>
+            <% } %>
+            <td>
+              <% if (p.zamowienie) { %><a class="link-numer" title="<%= p.zamowienie.numer %>" href="/zamowienia/<%= p.zamowienie_id %>"><%= p.zamowienie.numer %></a>
+              <% } else { %>#<%= p.zamowienie_id %><% } %>
+            </td>
+            <%# PRZ-067: logo PRAWDZIWEGO przewoznika; pod nim nazwa uslugi Allegro (pobranie, rodzaj
+                uslugi). Przewoznik nieznany → tekst jak dawniej, nigdy puste pole. %>
+            <% if (p.przewoznik) { %>
+              <td class="prz067-kurier"><img class="prz067-logo" src="<%= p.przewoznik.logo %>" alt="<%= p.przewoznik.nazwa %>" title="<%= p.usluga || p.przewoznik.nazwa %>" height="18" loading="lazy"><% if (p.usluga) { %><span class="prz067-usluga drobne"><%= p.usluga %></span><% } %></td>
+            <% } else { %>
+              <td><%= p.kurierEtykieta %></td>
+            <% } %>
+            <%# Numer listu → strona sledzenia przewoznika w nowej karcie. Adres buduje
+                domena/przewoznik-przesylki.js (numer przez encodeURIComponent). %>
+            <% if (p.adresSledzenia) { %>
+              <td><a href="<%= p.adresSledzenia %>" target="_blank" rel="noopener noreferrer"><%= p.numer_listu %></a></td>
+            <% } else { %>
+              <td><%= p.numer_listu %></td>
+            <% } %>
+            <td>
+              <span class="prz065-status"><%= p.etykietaEtapu %></span>
+              <% if (p.bezRuchu) { %> <span class="stan-zle">bez ruchu</span><% } %>
+              <% if (p.przejeta_at) { %><br><span class="drobne">Przejęta przez przewoźnika · <%= fmtDataCzasKrotko(p.przejeta_at) %></span>
+              <% } else if (p.aktywnyPodjazd) { %><br><span class="drobne">Podjazd: <%= p.aktywnyPodjazd.stan %> · <a href="/przesylki/podjazdy/<%= p.aktywnyPodjazd.id %>">szczegóły</a></span>
+                <% if (p.podjazdPoTerminie) { %><br><span class="stan-zle">Termin podjazdu minął — brak potwierdzenia odbioru</span><% } %>
+              <% } else if (p.kurier === 'allegro_wza' && p.status === 'nadana') { %><br><span class="drobne">Brak podjazdu w OMS</span><% } %>
+            </td>
+            <td>
+              <% if (p.status_kuriera || p.status_kuriera_at) { %>
+                <%= p.status_kuriera || 'zdarzenie bez opisu' %><% if (p.status_kuriera_at) { %> (<%= fmtDataCzasKrotko(p.status_kuriera_at) %>)<% } %>
+              <% } else { %>jeszcze bez zdarzeń<% } %>
+              <% if (p.status_kuriera_blad) { %> · <span class="stan-zle">status niedostępny</span><% } %>
+              <% if (p.status_kuriera_pobrany_at) { %><br><span class="drobne">Sprawdzono <%= fmtDataCzasKrotko(p.status_kuriera_pobrany_at) %></span><% } %>
+            </td>
+            <td class="drobne"><%= fmtDataCzasKrotko(p.utworzona_at) %></td>
+            <%# Ukrycie jest dla paczek, ktorych zaden status nie uratuje: zamowienie testowe,
+                etykieta zrobiona i nigdy przez kuriera niepodjeta. Zdejmuje wiersz stad ORAZ
+                sprawe „paczka bez ruchu" z karty — inaczej zamowienie zostaloby na liscie
+                roboczej z odznaka, ktorej juz nic nie zdejmie.
+                Formularz BEZ ukrytego pola z tokenem: ochrona CSRF (src/security/csrf.js)
+                stoi na naglowku `Origin`, tak samo jak przy formularzach magazynu. %>
+            <td class="drobne">
+              <% if (p.ukryta) { %>
+                <form method="post" action="/przesylki/<%= p.id %>/przywroc">
+                  <input type="hidden" name="pokaz" value="<%= pokaz %>">
+                  <input type="hidden" name="od" value="<%= filtry?.od || '' %>">
+                  <input type="hidden" name="do" value="<%= filtry?.do || '' %>">
+                  <input type="hidden" name="kurier" value="<%= filtry?.kurier || '' %>">
+                  <input type="hidden" name="sklep" value="<%= filtry?.sklep || '' %>">
+                  <button class="btn btn--cichy btn--maly" type="submit">Przywróć</button>
+                </form>
+                <span class="drobne">ukrył: <%= p.ukryta_przez || 'operator' %></span>
+              <% } else { %>
+                <form method="post" action="/przesylki/<%= p.id %>/ukryj">
+                  <input type="hidden" name="pokaz" value="<%= pokaz %>">
+                  <input type="hidden" name="od" value="<%= filtry?.od || '' %>">
+                  <input type="hidden" name="do" value="<%= filtry?.do || '' %>">
+                  <input type="hidden" name="kurier" value="<%= filtry?.kurier || '' %>">
+                  <input type="hidden" name="sklep" value="<%= filtry?.sklep || '' %>">
+                  <button class="btn btn--cichy btn--maly" type="submit">Ukryj</button>
+                </form>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table></div>
+    <% } %>
+  </div>
+</div>
+</section>
+<% if (pokaz === 'utworzone') { %><script src="/public/podjazdy-wybor.js" defer></script><% } %>

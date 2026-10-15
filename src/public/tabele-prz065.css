@@ -1,0 +1,290 @@
+/* PRZ-065: ekran roboczy dla Przesyłek i Faktur. Paleta jest wspólna w oms-design.css. */
+.prz065-tabele {
+  --prz-surface: var(--oms-surface, var(--powierzchnia));
+  --prz-surface-muted: var(--oms-surface-muted, var(--powierzchnia-2));
+  --prz-border: var(--oms-border, var(--ramka));
+  --prz-text: var(--oms-text, var(--tekst));
+  --prz-muted: var(--oms-muted, var(--tekst-przygaszony));
+  --prz-accent: var(--oms-accent, var(--marka));
+  color: var(--prz-text);
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 4px 24px 34px;
+}
+
+.prz065-tabele .wroc { margin: 0 0 18px; font-size:1.08rem; }
+.prz065-naglowek {
+  align-items: flex-end;
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  margin: 0 0 20px;
+}
+.prz065-naglowek h1 { font-size: 25px; letter-spacing: -.035em; line-height: 1.1; margin: 0; }
+.prz065-naglowek p { color: var(--prz-muted); font-size:1.08rem; margin: 7px 0 0; }
+.prz065-tabele .panel {
+  background: var(--prz-surface);
+  border: 1px solid var(--prz-border);
+  border-radius: 8px;
+  box-shadow: none;
+}
+.prz065-tabele .panel + .panel { margin-top: 18px; }
+.prz065-tabele .panel-glowa {
+  align-items: baseline;
+  border-bottom: 1px solid var(--prz-border);
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+.prz065-tabele .panel-glowa h2 { font-size:1.25rem; letter-spacing: -.01em; margin: 0; }
+.prz065-tabele .panel-glowa .dopisek { color: var(--prz-muted); font-size:1rem; }
+.prz065-tabele .panel-cialo { padding: 0 18px 18px; }
+.prz065-przesylki .prz065-ukryta-glowa { display: none; }
+.prz065-przesylki .panel-cialo { padding-top: 17px; }
+
+.prz065-przesylki .filtry { background: transparent; border: 0; margin: 0; padding: 0; }
+.prz065-tabele .filtry-rzad { align-items: end; gap: 10px; }
+.prz065-tabele .pole-filtra > span:first-child { color: var(--prz-muted); font-size:0.92rem; font-weight: 600; }
+.prz065-tabele .pole-filtra select,
+.prz065-tabele .pole-filtra input { background: var(--prz-surface); border-color: var(--prz-border); min-height: 32px; }
+.prz065-skroty { margin: 10px 0 0; }
+.prz065-tabele .skroty-dat .chip { background: transparent; border: 0; color: var(--prz-muted); font-size:1rem; padding: 2px 0; text-decoration: underline; text-underline-offset: 3px; }
+
+.prz065-zakladki {
+  border-bottom: 1px solid var(--prz-border);
+  display: flex;
+  gap: 0;
+  margin: 19px 0 15px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.prz065-zakladki .chip {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--prz-muted);
+  display: inline-flex;
+  font-size:1rem;
+  font-weight: 600;
+  gap: 7px;
+  margin-bottom: -1px;
+  padding: 9px 12px 8px;
+  white-space: nowrap;
+}
+.prz065-zakladki .chip:hover { background: var(--prz-surface-muted); color: var(--prz-text); }
+.prz065-zakladki .chip--aktywny { border-bottom-color: var(--prz-accent); color: var(--prz-text); }
+.prz065-zakladki .chip span { color: var(--prz-muted); font-size:0.92rem; font-variant-numeric: tabular-nums; }
+.prz065-przesylki .chipy-filtrow { display: flex; gap: 0; margin: 0; }
+
+.prz065-przewijak { border: 1px solid var(--prz-border); border-radius: 6px; margin: 14px 0 0; }
+.prz065-tabela { border-collapse: collapse; font-size:1rem; width: 100%; }
+.prz065-tabela th {
+  background: var(--prz-surface-muted);
+  border-bottom: 1px solid var(--prz-border);
+  color: var(--prz-muted);
+  font-size:0.83rem;
+  font-weight: 700;
+  letter-spacing: .035em;
+  padding: 9px 10px;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.prz065-tabela td { border-bottom: 1px solid var(--prz-border); padding: 10px; vertical-align: top; }
+.prz065-tabela tbody tr:last-child td { border-bottom: 0; }
+.prz065-tabela tbody tr:hover { background: var(--prz-surface-muted); }
+.prz065-tabela .drobne, .prz065-tabela .wiersz-szczegoly, .prz065-tabela .ksef-numer { color: var(--prz-muted); font-size:0.92rem; line-height: 1.45; }
+.prz065-tabela .liczba { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.prz065-status { color: var(--prz-text); font-size:1rem; font-weight: 650; }
+.prz065-tabela .stan-zle, .prz065-tabela .termin-po, .prz065-tabela .termin-dzis { color: var(--blad-tekst, #a53e32); font-weight: 650; }
+.prz065-tabela .znacznik { background: transparent; border: 0; border-radius: 0; padding: 0; }
+.prz065-tabela .znacznik--ok { color: var(--ok-tekst); }
+.prz065-tabela .znacznik--uwaga { color: var(--uwaga-tekst); }
+.prz065-tabela .znacznik--blad { color: var(--blad-tekst, #a53e32); }
+.prz065-tabela .znacznik--cichy { color: var(--prz-muted); }
+.prz065-tabela .wiersz-razem td { background: var(--prz-surface-muted); font-weight: 700; }
+.prz065-tabele .belka-masowa { border-color: var(--prz-border); margin: 16px 0 0; }
+
+.prz065-naleznosci { border-left: 3px solid var(--uwaga-kreska, #c69a42); }
+.prz065-naleznosci .panel-glowa { border-bottom-color: var(--prz-border); }
+.prz065-faktury .panel-cialo > .wyjasnienie { color: var(--prz-muted); font-size:1rem; line-height: 1.5; }
+.prz065-faktury .filtry + .pasek-info, .prz065-faktury .filtry + .pasek-blokada { margin-top: 14px; }
+.prz065-rzadkie { margin-top: 24px !important; }
+
+/* Faktury: trzy źródła danych mają być czytane jak jedna lista robocza, nie trzy alarmy. */
+/* PRZ-074: trzy zakładki zawsze się mieszczą, a `overflow-x: auto` z `margin-bottom: -1px`
+   zakładki dawało 1 px przewijania w pionie — czyli suwak po prawej. */
+.prz065-faktury .prz065-zakladki-faktur { margin: -4px 0 16px; overflow: visible; }
+/* PRZ-074: numer KSeF zwinięty pod „w KSeF ▸”; rozwinięty łamie się w szerokości kolumny,
+   zamiast ją rozpychać. */
+.prz065-faktury .ksef-zwiniety summary { cursor: pointer; list-style: none; white-space: nowrap; }
+.prz065-faktury .ksef-zwiniety summary::-webkit-details-marker { display: none; }
+.prz065-faktury .ksef-zwiniety summary::after { color: var(--prz-muted); content: ' ▸'; font-size: .8em; }
+.prz065-faktury .ksef-zwiniety[open] summary::after { content: ' ▾'; }
+.prz065-faktury .ksef-zwiniety .ksef-numer { max-width: 9rem; overflow-wrap: anywhere; }
+.prz065-faktury .kol-data { white-space: nowrap; }
+/* PRZ-078 (pomiar na produkcji: 1091/911 px przy 1280): `nowrap` daty nie może obejmować
+   dopisku „sprzedaż …” (156 px kolumny), a numer zamówienia z Allegro to UUID — w Fakturach
+   10 znaków i „…”, pełny numer w `title` (to samo `.link-numer`, co na liście zamówień). */
+.prz065-faktury .kol-data .wiersz-szczegoly { white-space: normal; }
+.prz065-faktury .link-numer { max-width: 10ch; }
+.prz065-faktury .panel { border-radius: 6px; }
+.prz065-faktury .panel-glowa,
+.prz065-faktury .panel-glowa h2,
+.prz065-faktury .panel-glowa--groza { background: transparent; color: var(--prz-text); text-transform: none !important; }
+.prz065-faktury .panel-glowa { padding: 12px 18px 10px; }
+.prz065-faktury .panel-glowa h2 { font-size:1.17rem; font-weight: 700; letter-spacing: -.01em; }
+.prz065-faktury .panel--groza { border-left: 1px solid var(--prz-border); }
+.prz065-faktury .panel--groza .dopisek { color: var(--prz-muted); }
+.prz065-faktury .belka-masowa {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--prz-border);
+  border-radius: 6px;
+  color: var(--prz-text);
+  display: flex;
+  gap: 10px;
+  padding: 8px 10px;
+}
+.prz065-faktury .belka-masowa .belka-etykieta-masowa { color: var(--prz-muted); font-size:1rem; font-weight: 600; }
+.prz065-faktury .belka-masowa .btn--groza { background: var(--prz-accent); border-color: var(--prz-accent); color: var(--na-marce, #fff); }
+.prz065-faktury .belka-masowa .cicho { color: var(--prz-muted); font-size:0.92rem; }
+
+/* Makieta prowadzi najpierw przez etap, potem przez zawężenie danych. */
+.prz065-przesylki .panel-cialo { display: flex; flex-direction: column; }
+.prz065-przesylki .panel-cialo > .prz065-zakladki { order: 1; }
+  .prz065-przesylki .panel-cialo > .filtry { order: 2; }
+  .prz065-przesylki .panel-cialo > :not(.prz065-zakladki):not(.filtry) { order: 3; }
+
+@media (max-width: 760px) {
+  .prz065-tabele { padding: 2px 12px 24px; }
+  .prz065-naglowek { align-items: flex-start; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+  .prz065-naglowek h1 { font-size: 22px; }
+  .prz065-tabele .panel { border-radius: 6px; }
+  .prz065-tabele .panel-cialo { padding: 0 12px 14px; }
+  .prz065-przesylki .panel-cialo { padding-top: 12px; }
+  .prz065-tabele .panel-glowa { align-items: flex-start; flex-direction: column; gap: 4px; padding: 12px; }
+  .prz065-tabele .filtry-rzad { align-items: stretch; flex-direction: column; }
+  .prz065-tabele .pole-filtra { width: 100%; }
+  .prz065-tabele .pole-filtra select, .prz065-tabele .pole-filtra input { width: 100%; }
+  .prz065-zakladki { margin-left: -12px; margin-right: -12px; padding: 0 4px; }
+  .prz065-przesylki .chipy-filtrow { overflow-x: auto; scrollbar-width: thin; }
+  .prz065-zakladki .chip { padding-left: 9px; padding-right: 9px; }
+  .prz065-przewijak { margin-left: -12px; margin-right: -12px; border-left: 0; border-radius: 0; border-right: 0; }
+  .prz065-tabela th, .prz065-tabela td { padding: 9px 8px; }
+  /* .prz065-drugorzedny-pdf zostaje widoczny także na telefonie — od PRZ-074 to jedyny przycisk zestawienia. */
+  .prz065-faktury .belka-masowa { align-items: flex-start; flex-direction: column; }
+
+  /* Telefon nie dostaje miniaturowej wersji desktopowej tabeli: jeden wiersz = karta. */
+  .prz065-przesylki .prz065-przewijak { overflow: visible; }
+  .prz065-przesylki .prz065-tabela,
+  .prz065-przesylki .prz065-tabela tbody,
+  .prz065-przesylki .prz065-tabela tr,
+  .prz065-przesylki .prz065-tabela td { display: block; width: auto; }
+  .prz065-przesylki .prz065-tabela thead { display: none; }
+  .prz065-przesylki .prz065-tabela tbody tr { border-bottom: 1px solid var(--prz-border); display: grid; grid-template-columns: 1fr 1fr; padding: 9px 0; }
+  .prz065-przesylki .prz065-tabela tbody tr:last-child { border-bottom: 0; }
+  .prz065-przesylki .prz065-tabela td { border: 0; min-width: 0; padding: 6px 10px; }
+  .prz065-przesylki .prz065-tabela td::before { color: var(--prz-muted); content: ''; display: block; font-size: 9px; font-weight: 700; letter-spacing: .04em; margin-bottom: 3px; text-transform: uppercase; }
+  .prz065-przesylki .prz065-tabela td:nth-child(1)::before { content: 'Zamówienie'; }
+  .prz065-przesylki .prz065-tabela td:nth-child(2)::before { content: 'Kurier'; }
+  .prz065-przesylki .prz065-tabela td:nth-child(3)::before { content: 'Numer listu'; }
+  .prz065-przesylki .prz065-tabela td:nth-child(4)::before { content: 'Etap'; }
+  .prz065-przesylki .prz065-tabela td:nth-child(5)::before { content: 'Ostatni ruch'; }
+  .prz065-przesylki .prz065-tabela td:nth-child(6)::before { content: 'Nadana'; }
+  .prz065-przesylki .prz065-tabela td:last-child { grid-column: 1 / -1; }
+  .prz065-przesylki .prz065-tabela td:last-child::before { content: 'Działania'; }
+
+  .prz065-przesylki .prz065-tabela--z-wyborem td:nth-child(1)::before { content: 'Wybór'; }
+  .prz065-przesylki .prz065-tabela--z-wyborem td:nth-child(2)::before { content: 'Zamówienie'; }
+  .prz065-przesylki .prz065-tabela--z-wyborem td:nth-child(3)::before { content: 'Kurier'; }
+  .prz065-przesylki .prz065-tabela--z-wyborem td:nth-child(4)::before { content: 'Numer listu'; }
+  .prz065-przesylki .prz065-tabela--z-wyborem td:nth-child(5)::before { content: 'Etap'; }
+  .prz065-przesylki .prz065-tabela--z-wyborem td:nth-child(6)::before { content: 'Ostatni ruch'; }
+  .prz065-przesylki .prz065-tabela--z-wyborem td:nth-child(7)::before { content: 'Nadana'; }
+
+  .prz065-faktury .prz065-przewijak { overflow: visible; }
+  .prz065-faktury .prz065-tabela--naleznosci,
+  .prz065-faktury .prz065-tabela--naleznosci tbody,
+  .prz065-faktury .prz065-tabela--naleznosci tr,
+  .prz065-faktury .prz065-tabela--naleznosci td,
+  .prz065-faktury .prz065-tabela--dokumenty,
+  .prz065-faktury .prz065-tabela--dokumenty tbody,
+  .prz065-faktury .prz065-tabela--dokumenty tr,
+  .prz065-faktury .prz065-tabela--dokumenty td,
+  .prz065-faktury .prz065-tabela--proformy,
+  .prz065-faktury .prz065-tabela--proformy tbody,
+  .prz065-faktury .prz065-tabela--proformy tr,
+  .prz065-faktury .prz065-tabela--proformy td { display: block; width: auto; }
+  .prz065-faktury .prz065-tabela--naleznosci thead,
+  .prz065-faktury .prz065-tabela--dokumenty thead,
+  .prz065-faktury .prz065-tabela--proformy thead { display: none; }
+  .prz065-faktury .prz065-tabela--naleznosci tbody tr,
+  .prz065-faktury .prz065-tabela--dokumenty tbody tr,
+  .prz065-faktury .prz065-tabela--proformy tbody tr { border-bottom: 1px solid var(--prz-border); display: grid; grid-template-columns: 1fr 1fr; padding: 9px 0; }
+  .prz065-faktury .prz065-tabela--naleznosci tbody tr:last-child,
+  .prz065-faktury .prz065-tabela--dokumenty tbody tr:last-child,
+  .prz065-faktury .prz065-tabela--proformy tbody tr:last-child { border-bottom: 0; }
+  .prz065-faktury .prz065-tabela--naleznosci td,
+  .prz065-faktury .prz065-tabela--dokumenty td,
+  .prz065-faktury .prz065-tabela--proformy td { border: 0; min-width: 0; padding: 6px 10px; text-align: left; white-space: normal; }
+  .prz065-faktury .prz065-tabela--naleznosci td::before,
+  .prz065-faktury .prz065-tabela--dokumenty td::before,
+  .prz065-faktury .prz065-tabela--proformy td::before { color: var(--prz-muted); content: ''; display: block; font-size: 9px; font-weight: 700; letter-spacing: .04em; margin-bottom: 3px; text-transform: uppercase; }
+  .prz065-faktury .prz065-tabela td[colspan] { grid-column: 1 / -1; }
+  .prz065-faktury .prz065-tabela td[colspan]::before { display: none; }
+  .prz065-faktury .prz065-tabela .wiersz-razem { display: block; padding: 9px 10px; }
+  .prz065-faktury .prz065-tabela .wiersz-razem td { display: none; padding: 0; }
+  .prz065-faktury .prz065-tabela .wiersz-razem td:first-child,
+  .prz065-faktury .prz065-tabela .wiersz-razem td.liczba { display: inline-block; }
+  .prz065-faktury .prz065-tabela .wiersz-razem td.liczba { float: right; }
+  .prz065-faktury .prz065-tabela .wiersz-razem td::before { content: none; display: none; }
+
+  .prz065-tabela--naleznosci td:nth-child(1)::before { content: 'Termin'; }
+  .prz065-tabela--naleznosci td:nth-child(2)::before { content: 'Numer'; }
+  .prz065-tabela--naleznosci td:nth-child(3)::before { content: 'Data terminu'; }
+  .prz065-tabela--naleznosci td:nth-child(4)::before { content: 'Nabywca'; }
+  .prz065-tabela--naleznosci td:nth-child(5)::before { content: 'Pozostało'; }
+  .prz065-tabela--naleznosci td:nth-child(6)::before { content: 'Zamówienie'; }
+  .prz065-tabela--naleznosci td:nth-child(7)::before { content: 'Działania'; }
+  .prz065-tabela--dokumenty td:nth-child(1)::before { content: 'Wybór'; }
+  .prz065-tabela--dokumenty td:nth-child(2)::before { content: 'Numer dokumentu'; }
+  .prz065-tabela--dokumenty td:nth-child(3)::before { content: 'Zamówienie'; }
+  .prz065-tabela--dokumenty td:nth-child(4)::before { content: 'Data'; }
+  .prz065-tabela--dokumenty td:nth-child(5)::before { content: 'Nabywca'; }
+  .prz065-tabela--dokumenty td:nth-child(6)::before { content: 'Brutto'; }
+  .prz065-tabela--dokumenty td:nth-child(7)::before { content: 'KSeF'; }
+  .prz065-tabela--dokumenty td:nth-child(8)::before { content: 'Płatność'; }
+  .prz065-tabela--dokumenty td:nth-child(9)::before { content: 'Działania'; }
+  .prz065-tabela--proformy td:nth-child(1)::before { content: 'Numer'; }
+  .prz065-tabela--proformy td:nth-child(2)::before { content: 'Wystawiona'; }
+  .prz065-tabela--proformy td:nth-child(3)::before { content: 'Zamówienie'; }
+  .prz065-tabela--proformy td:nth-child(4)::before { content: 'Kwota'; }
+  .prz065-tabela--proformy td:nth-child(5)::before { content: 'Stan'; }
+  .prz065-tabela--proformy td:nth-child(6)::before { content: 'Działania'; }
+}
+
+/* PRZ-067: logo przewoznika w kolumnie „Kurier” (Przesylki). Stala wysokosc 18 px; najszersze
+   logo (DHL 176×39 ≈ 4,5:1) daloby przy niej ~81 px i przy 1280 px poszerzalo kolumne ze 115 do
+   122 px (zmierzone). max-width 72 px trzyma kolumne w dawnej szerokosci; DHL zmniejsza sie wtedy
+   do ~16 px wysokosci, a object-fit: contain chroni proporcje.
+   Jasne tlo z zaokragleniem: logotypy sa projektowane na biel — na ciemnym motywie bez podkladki
+   czarne „DHL”/„DPD” znikaja. Podkladka jest celowo jasna w OBU motywach. */
+.prz067-kurier { white-space: normal; }
+.prz067-logo {
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .08);
+  box-sizing: content-box;
+  display: block;
+  height: 18px;
+  max-width: 72px;
+  object-fit: contain;
+  object-position: left center;
+  padding: 2px 4px;
+  width: auto;
+}
+.prz067-usluga { display: block; line-height: 1.25; margin-top: 3px; max-width: 16ch; }

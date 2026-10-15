@@ -1,0 +1,112 @@
+<%#
+  PRZ-069: Moje konto (wlasne = true) i strona konta dla administratora (adminWidok = true, Zadanie B4).
+  E-mail i rolę zmienia wyłącznie administrator; właściciel konta zmienia imię i hasło (z obecnym hasłem).
+  Formularze bez tokenu CSRF — ochrona po nagłówku Origin, jak cały panel. Wartości wyłącznie przez znacznik escapujący.
+%>
+<% if (serwisowe) { %>
+<h1>Moje konto</h1>
+<div class="ust-sekcja">
+  <p>Konto serwisowe nie ma własnej strony — loguje się hasłem z .env.</p>
+</div>
+<% } else { %>
+<h1><%= adminWidok ? konto.imie : 'Moje konto' %></h1>
+
+<% if (zapisano) { %>
+  <div class="pas-potwierdzenie"><p><%= zapisano %></p></div>
+<% } %>
+
+<% if (blad) { %>
+  <div class="pas-uprzedzenie"><p><strong>Nie udało się zapisać.</strong> <%= blad %></p></div>
+<% } %>
+
+<div class="ust-sekcja">
+  <h2>Dane konta</h2>
+  <p>
+    Login: <strong><%= konto.login %></strong> ·
+    E-mail: <strong><%= konto.email || 'brak' %></strong> ·
+    Rola: <strong><%= konto.rola || '—' %></strong>
+    <% if (adminWidok) { %> · <%= konto.czynne ? 'czynne' : 'wyłączone' %><% if (konto.zaproszone) { %> · <strong>zaproszone</strong> (hasło jeszcze nieustawione)<% } %><% } %>
+  </p>
+</div>
+
+<% if (link) { %>
+<div class="ust-sekcja">
+  <h2>Link do ustawienia hasła</h2>
+  <div class="ust-pola">
+    <label>Link <input readonly value="<%= link %>" onfocus="this.select()" style="min-width:32em"></label>
+  </div>
+  <p class="wyjasnienie">Link widzisz tylko Ty, teraz. Działa 48 h i tylko raz. Przekaż go pracownikowi bezpiecznym kanałem.</p>
+  <% if (typeof adresZPrzegladarki !== 'undefined' && adresZPrzegladarki) { %>
+  <p class="wyjasnienie" data-uwaga="adres-z-przegladarki">Adres wzięty z Twojej przeglądarki. Jeśli pracownik otwiera panel pod innym adresem, ustaw OMS_ADRES_PANELU.</p>
+  <% } %>
+</div>
+<% } %>
+
+<% if (adminWidok) { %>
+<div class="ust-sekcja">
+  <h2>Rola</h2>
+  <form method="post" action="/ustawienia/konta/<%= konto.id %>/rola">
+    <div class="ust-pola">
+      <label>Rola
+        <select name="rola" required>
+          <% role.forEach(function (r) { %><option value="<%= r.klucz %>" <%= r.klucz === rolaKlucz ? 'selected' : '' %>><%= r.etykieta %></option><% }); %>
+        </select>
+      </label>
+    </div>
+    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zmień rolę</button></div>
+  </form>
+</div>
+
+<div class="ust-sekcja">
+  <h2>E-mail</h2>
+  <form method="post" action="/ustawienia/konta/<%= konto.id %>/email">
+    <div class="ust-pola">
+      <label>E-mail <input type="email" name="email" required value="<%= konto.email || '' %>"></label>
+    </div>
+    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zapisz e-mail</button></div>
+  </form>
+</div>
+
+<div class="ust-sekcja">
+  <h2><%= konto.zaproszone ? 'Zaproszenie' : 'Reset hasła' %></h2>
+  <% if (!konto.czynne) { %>
+    <p class="wyjasnienie">Konto jest wyłączone — włącz je na liście kont, zanim wyślesz link.</p>
+  <% } else { %>
+  <p class="wyjasnienie">Nowy link unieważnia wcześniejsze. Działa 48 h i tylko raz.</p>
+  <form method="post" action="/ustawienia/konta/<%= konto.id %>/link">
+    <div class="ust-pola" style="flex-direction:column;align-items:flex-start">
+      <label class="pole-przelacznik"><input type="radio" name="sposob" value="pokaz" checked> Pokaż link do skopiowania</label>
+      <label class="pole-przelacznik"><input type="radio" name="sposob" value="mail"> Wyślij mailem</label>
+    </div>
+    <div class="ust-akcje"><button class="ust-przycisk" type="submit"><%= konto.zaproszone ? 'Nowy link zaproszenia' : 'Link do resetu hasła' %></button></div>
+  </form>
+  <% } %>
+  <p><a href="/ustawienia/konta#konto-<%= konto.id %>">Wróć do listy kont</a></p>
+</div>
+<% } %>
+
+<% if (wlasne) { %>
+<div class="ust-sekcja">
+  <h2>Imię</h2>
+  <form method="post" action="/konto/imie">
+    <div class="ust-pola">
+      <label>Imię <input name="imie" required maxlength="60" value="<%= konto.imie %>"></label>
+    </div>
+    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zapisz imię</button></div>
+  </form>
+</div>
+
+<div class="ust-sekcja">
+  <h2>Zmiana hasła</h2>
+  <p class="wyjasnienie">Nowe hasło: co najmniej 12 znaków. Po zmianie inne urządzenia zostaną wylogowane.</p>
+  <form method="post" action="/konto/haslo">
+    <div class="ust-pola">
+      <label>Obecne hasło <input type="password" name="obecne" autocomplete="current-password" required></label>
+      <label>Nowe hasło <input type="password" name="nowe" autocomplete="new-password" minlength="12" required></label>
+      <label>Nowe hasło jeszcze raz <input type="password" name="nowe2" autocomplete="new-password" minlength="12" required></label>
+    </div>
+    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zmień hasło</button></div>
+  </form>
+</div>
+<% } %>
+<% } %>

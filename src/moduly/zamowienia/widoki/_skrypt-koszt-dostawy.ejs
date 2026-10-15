@@ -1,0 +1,47 @@
+<%# ⚠️ BEZ TEGO SKRYPTU FUNKCJA NIE ROBI TEGO, PO CO POWSTALA. Sama wartosc startowa nie %>
+<%# pomaga przy paczkomacie: operator wybiera metode PO wejsciu na ekran, wiec kwota musi %>
+<%# zmienic sie wtedy, a nie przy wczytywaniu strony. %>
+<%# %>
+<%# ⚠️ SKRYPT NIE ZNA ZADNEJ KWOTY. Mapa metoda → kwota jedzie z SERWERA, z tej samej %>
+<%# funkcji, ktora wypelnila pole (domain/ustawienia-panelu.js: kwotyDostawy). Druga kopia %>
+<%# liczb w JS bylaby dokladnie tym bledem, przed ktorym broni sie podglad sumy — tam plik %>
+<%# przegladarki i parser serwera sa PORÓWNYWANE testem, wlasnie dlatego, ze rozjazd dwoch %>
+<%# implementacji tej samej reguly jest cichy. %>
+<%# %>
+<%# ⚠️ WYPIS BEZ UCIECZKI (znacznik surowy, ten z myslnikiem) jest tu BEZPIECZNY %>
+<%# Z KONSTRUKCJI: `kwotyDostawy` formatuje wartosci z LICZBY (zl(gr)), nigdy nie przepisuje %>
+<%# tekstu z bazy — z tej funkcji wychodza wylacznie cyfry i przecinek, wiec nie ma czym %>
+<%# zamknac znacznika skryptu. %>
+<%# %>
+<%# ⚠️ W KOMENTARZU EJS NIE WOLNO WPISAC OTWIERAJACEGO ZNACZNIKA SZABLONU, nawet %>
+<%# w cudzyslowie. Skaner EJS rozpoznaje znaczniki PRZED trybami, wiec taki napis konczy %>
+<%# komentarz w polowie zdania i strona pada na „Could not find matching close tag" — %>
+<%# sprawdzone na tym pliku 17.08.2026, 500 na CALYM ekranie zakladania zamowienia. %>
+<script type="application/json" id="kwoty-dostawy"><%- JSON.stringify(kwotyDostawy) %></script>
+<script>
+  (function () {
+    var zrodlo = document.getElementById('kwoty-dostawy');
+    var dostawa = document.querySelector('select[name="dostawa"]');
+    var pole = document.querySelector('input[name="koszt_dostawy_brutto"]');
+    if (!zrodlo || !dostawa || !pole) return;
+
+    var kwoty;
+    // Zepsuta mapa wylacza WYLACZNIE podmiane kwoty — formularz dziala dalej, operator
+    // wpisuje kwote recznie, jak przed 17.08.2026.
+    try { kwoty = JSON.parse(zrodlo.textContent); } catch (e) { return; }
+
+    // ⚠️ PODMIENIAMY WYLACZNIE TO, CO SAMI WPISALISMY. Kwota wystukana przez czlowieka
+    // (klient wynegocjowal inna cene) ma przezyc zmiane metody — kasowanie jej byloby tym
+    // samym bledem, przed ktorym broni `=== undefined` po stronie serwera.
+    var nasze = Object.keys(kwoty).map(function (k) { return kwoty[k]; });
+    var wolnoPodmienic = function () {
+      return pole.value.trim() === '' || nasze.indexOf(pole.value.trim()) >= 0;
+    };
+
+    dostawa.addEventListener('change', function () {
+      if (!wolnoPodmienic()) return;
+      var kwota = kwoty[dostawa.value];
+      if (kwota !== undefined) pole.value = kwota;
+    });
+  }());
+</script>

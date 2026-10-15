@@ -1,0 +1,85 @@
+<%# EKRAN WYBORU KURIERA — stoi PRZED ekranem nadania i wylacznie dla zamowien z Allegro. %>
+<%#                                                                                        %>
+<%# ⚠️ PO CO OSOBNY EKRAN, A NIE POLE W FORMULARZU NADANIA. Od kuriera zalezy KSZTALT       %>
+<%# calego formularza: DPD chce wagi i trzech wymiarow, paczkomat — wagi, gabarytu A/B/C    %>
+<%# i kodu automatu. Panel nie ma JavaScriptu (jedyny wyjatek to przeliczanie ceny pozycji  %>
+<%# recznych), wiec przelaczanie pol na zywo odpada, a pokazanie OBU zestawow naraz         %>
+<%# znaczyloby formularz, w ktorym polowa pol jest ozdoba — czyli dokladnie to klamstwo,    %>
+<%# ktorego ten ekran ma nie powielac.                                                      %>
+<%#                                                                                         %>
+<%# ⚠️ TO NIE JEST ZDJECIE BARIERY. Paczke z Allegro nadaje sie etykieta kupiona w panelu   %>
+<%# Allegro — nasza umowa wchodzi WYLACZNIE przy dosylce albo zamienniku za zgubiona.       %>
+<%# Panel nadal odmawia nadania bez wskazania (domain/kurier-nadania.js: metodaNadania),    %>
+<%# a odmowa zyje w domenie, nie tutaj: ten ekran tylko daje czlowiekowi sposob, zeby        %>
+<%# wskazanie wyrazic. Do 07.08.2026 karta pokazywala „Nadaj paczke", ekran wypelnial       %>
+<%# komplet pol, a odmowa padala dopiero po zapakowaniu paczki.                             %>
+
+<div class="glowa-ekranu">
+  <h1>Czym nadać paczkę nr <%= kolejnosc %>?</h1>
+  <span class="krok">zamówienie <a class="link-numer" title="<%= z.numer %>" href="<%= adresKarty %>"><%= z.numer %></a></span>
+</div>
+
+<%# ⚠️⚠️ TEKST PRZEPISANY 19.09.2026, BO KLAMAL. Poprzedni mowil, ze panel kupuje etykiete %>
+<%# „tylko wtedy, gdy swiadomie kazesz mu uzyc naszej umowy" — czyli ODRADZAL droge %>
+<%# wlasciwa. Od 18.09 panel kupuje przewoz u Allegro sam (niezmiennik 4.105), a ten ekran %>
+<%# zszedl z przeplywu: staje wylacznie przy usludze nieznanej albo na jawna prosbe %>
+<%# o dosylke. Zgloszenie właściciela: przeczytal ten komunikat jako odmowe, choc przycisk %>
+<%# „Wysylam z Allegro" stal tuz pod nim. %>
+<p class="pasek-uwaga">
+  To zamówienie przyszło z <strong><%= kanal %></strong>, a kupujący wybrał
+  „<%= nazwaDostawy(z) %>".
+  <% if (maWza) { %>
+    Przewóz kupujemy <strong>u Allegro</strong> — kupujący ma go już opłacony w cenie
+    dostawy. <strong>Naszą umową</strong> nadaje się tylko wtedy, gdy paczka jest dodatkowa:
+    dosyłka brakującego produktu albo zamiennik za zgubioną.
+  <% } else { %>
+    Tej usługi panel <strong>nie umie kupić u Allegro</strong>, więc paczkę nadaje się
+    etykietą kupioną w panelu Allegro albo — jeśli to paczka dodatkowa —
+    <strong>naszą umową</strong>.
+  <% } %>
+  <% if (kolejnosc === 1) { %>
+    Panel nie widzi tu jeszcze żadnej paczki — ale to <strong>nie znaczy, że żadna nie
+    pojechała</strong>: numery listów z Allegro dociągają się tylko dopóki zamówienie nie
+    jest oznaczone jako wysłane. Sprawdź w panelu Allegro, zanim nadasz drugą.
+  <% } %>
+</p>
+
+<section class="panel">
+  <div class="panel-glowa">
+    <%# ⚠️ NAGLOWEK NIE MOWI JUZ „Nasza umowa": od 18.09 pierwsza pozycja na liscie to %>
+    <%# „Wysylam z Allegro", ktore nasza umowa NIE JEST. Naglowek twierdzacy inaczej %>
+    <%# podpisywalby przycisk kupujacy przewoz u Allegro jako nasz platny przewoz. %>
+    <h2>Czym nadać</h2>
+  </div>
+  <div class="panel-cialo">
+    <%# Zwykle odnosniki, nie formularz: wybor NICZEGO nie zmienia i niczego nie rezerwuje — %>
+    <%# prowadzi wylacznie na ekran nadania w odpowiednim wariancie. Zadanie GET jest tu     %>
+    <%# poprawne wlasnie dlatego, ze jest bez skutkow ubocznych.                             %>
+    <ul class="wybor-kuriera">
+      <% kurierzy.forEach(function (k) { %>
+        <li>
+          <a class="btn btn--glowny" href="<%= adresNadania(k.klucz) %>">
+            <%= k.etykieta %>
+          </a>
+        </li>
+      <% }); %>
+    </ul>
+
+    <% if (tylkoDpdPrzezPobranie) { %>
+      <%# Jeden kurier na liscie bez podania powodu wyglada jak usterka. Powod jest o        %>
+      <%# pieniadze: rozpoznanie 01.08.2026 pokazalo, ze na naszej umowie z InPostem nie ma  %>
+      <%# wariantu pobraniowego (44 przesylki konta, wszystkie z pustym `cod`) — paczka      %>
+      <%# poszlaby wiec do automatu BEZ INKASA i bez ani jednego bledu po drodze.            %>
+      <p class="podpowiedz">
+        Paczkomat jest niedostępny dla tej paczki, bo zamówienie jest <strong>za
+        pobraniem</strong>, a pobranie na naszej umowie z InPostem nie jest potwierdzone —
+        paczka pojechałaby bez inkasa. Przy dosyłce (paczka nr 2 i dalsze) pobranie i tak
+        nie jedzie, więc tam paczkomat będzie do wyboru.
+      </p>
+    <% } %>
+  </div>
+</section>
+
+<div class="stopka-akcji">
+  <a class="btn" href="<%= adresKarty %>">Anuluj</a>
+</div>

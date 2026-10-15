@@ -1,0 +1,47 @@
+# Piaskownica oms-proba (PRZ-072) — OMS na danych demo, tylko w sieci domowej, ZERO kluczy integracji.
+# Mieszka w /volume1/docker/oms-proba/ (osobno od produkcji w panel-zamowien/: inny projekt compose,
+# inna sieć Dockera, inny katalog danych, bez .env.oms). Obsługa wyłącznie przez deploy/proba/proba.ps1.
+#   kod/          kod z worktree (proba.ps1 wyslij) — montowany tylko do odczytu, node --watch przeładowuje
+#   dane/         oms.sqlite, proformy/, etykiety/ — skasowanie bazy + przeładowanie = świeże demo (reset)
+#   konfiguracja/ proba.env (bez sekretów; OMS_PASS losowy, gaśnie po pierwszym koncie) i konto.json (hash)
+name: oms-proba
+
+services:
+  oms-proba:
+    image: oms-proba:zaleznosci
+    build:
+      context: /volume1/docker/oms-proba/kod
+      dockerfile: deploy/proba/Dockerfile
+    container_name: oms-proba
+    restart: unless-stopped
+    # Ten sam użytkownik co produkcja (claude 1029:100): pułapka ACL Synology nie dotyczy właściciela
+    # katalogu, a sesja może skasować bazę przy resecie bez sudo.
+    user: "1029:100"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    working_dir: /app
+    env_file: /volume1/docker/oms-proba/konfiguracja/proba.env
+    environment:
+      TZ: UTC
+      OMS_PORT: "3001"
+      OMS_DB_PATH: /dane/oms.sqlite
+      OMS_PROFORMY_KATALOG: /dane/proformy
+      OMS_ETYKIETY_KATALOG: /dane/etykiety
+    # --watch-path zamiast --watch: widoki .ejs i CSS nie są importowane, a też mają przeładować.
+    command: ["node", "--watch-path=/app/kod/src", "--watch-path=/app/kod/scripts", "--watch-path=/app/kod/deploy/proba",
+      "/app/kod/deploy/proba/start.mjs"]
+    ports:
+      # Tylko LAN, tylko IPv4.
+      - "192.168.0.10:3005:3001"
+    volumes:
+      - /volume1/docker/oms-proba/kod:/app/kod:ro
+      - /volume1/docker/oms-proba/dane:/dane
+      - /volume1/docker/oms-proba/konfiguracja:/konfiguracja:ro
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "2" }

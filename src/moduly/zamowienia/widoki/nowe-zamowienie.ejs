@@ -1,0 +1,400 @@
+<%#
+  Zakladanie zamowienia recznego przy telefonie — przebudowa na formularz JEDNORAZOWY
+  (makieta wlasciciela, docs/superpowers/specs — patrz zadanie „nowe zamowienie formularz").
+  Dawny ekran zakladal puste zamowienie, a wszystko wpisywalo sie dopiero na karcie; teraz
+  jeden „Zaloz zamowienie” tworzy je razem z adresem, faktura i pozycjami.
+
+  ZERO POL OBOWIAZKOWYCH: numer nadany od razu przy telefonie jest wart wiecej niz komplet
+  danych — karta i tak zapali ostrzezenia przy nadaniu i fakturze pozniej. Trasa POST nie
+  ma wiec czego wymagac; jedyny powod odmowy to `blad` przekazany z powrotem tutaj.
+%>
+<% const wart = (v) => (v ? v : ''); %>
+<%# Przegladarka przysyla POJEDYNCZE wystapienie powtorzonej nazwy pola jako SAM NAPIS,
+    nie tablice jednoelementowa (tak dziala @fastify/formbody) — normalizujemy zawsze do
+    tablicy, zeby petla po wierszach pozycji dzialala identycznie w obu przypadkach. %>
+<% const jakoTablica = (v) => (v === undefined ? [] : (Array.isArray(v) ? v : [v])); %>
+<% const pozNazwa = jakoTablica(formularz.poz_nazwa); %>
+<% const pozSku = jakoTablica(formularz.poz_sku); %>
+<% const pozIlosc = jakoTablica(formularz.poz_ilosc); %>
+<% const pozCenaNetto = jakoTablica(formularz.poz_cena_netto); %>
+<% const pozCenaBrutto = jakoTablica(formularz.poz_cena_brutto); %>
+<% const pozProduktId = jakoTablica(formularz.poz_produkt_id); %>
+<% const pozWariantId = jakoTablica(formularz.poz_wariant_id); %>
+<% const pozCenaKatalogowa = jakoTablica(formularz.poz_cena_katalogowa); %>
+<%# Dane z GUS-u NADPISUJA to, co operator wpisal, ale TYLKO W POLACH — dokladnie jak na
+    karcie (zamowienie.ejs, sekcja „Dane do faktury”): operator ma zobaczyc nazwe urzedowa,
+    zanim stanie sie faktem (REGON potrafi oddac nazwe inna niz uzgodniona z klientem).
+    `formularz` trzyma pola z przedrostkiem `f_`, wiec zanim zlozymy je z `daneZGus`
+    (bez przedrostka), zdejmujemy go — tak samo jak `dane.faktura` na karcie. %>
+<% const fakturaBazowa = { firma: formularz.f_firma, nip: formularz.f_nip, ulica: formularz.f_ulica, kod: formularz.f_kod, miasto: formularz.f_miasto }; %>
+<% const f = daneZGus ? { ...fakturaBazowa, ...daneZGus } : fakturaBazowa; %>
+
+<p class="wroc"><a href="/">← Wróć do listy</a></p>
+
+<% if (blad) { %>
+  <p class="pasek-blokada">Nie udało się założyć zamówienia: <%= blad %></p>
+<% } %>
+
+<%# ——— BELKA: rodzaj zamowienia zamiast numeru — numer prawdziwy dostanie dopiero po zapisie. %>
+<div class="belka">
+  <span class="belka-numer">Nowe zamówienie</span>
+  <div class="belka-pole">
+    <span class="belka-etykieta">Numer</span>
+    <span class="belka-wartosc"><%= numerPodgladowy %> <span class="wyjasnienie">nadany przy zapisie</span></span>
+  </div>
+  <div class="belka-pole">
+    <span class="belka-etykieta">Kanał</span>
+    <span class="belka-wartosc">ręczne</span>
+  </div>
+  <div class="belka-pole">
+    <span class="belka-etykieta">Status po zapisie</span>
+    <span class="belka-wartosc"><span class="znacznik znacznik--nowe">nowe</span></span>
+  </div>
+  <div class="belka-rozdziel"></div>
+</div>
+
+<p class="pasek-uwaga">
+  <b>Żadne pole nie jest obowiązkowe.</b>
+  Czego nie wpiszesz przy telefonie, to zostanie na karcie puste do uzupełnienia później.
+</p>
+
+<%# JEDEN formularz obejmuje WSZYSTKO ponizej (trzy kolumny + pozycje + stopka) — dwa
+    zagniezdzone formularze sa niepoprawnym HTML-em, wiec „Pobierz z GUS” nizej wysyla
+    TEN SAM formularz pod inny adres przez `formaction`, zamiast byc osobnym formularzem. %>
+<form method="post" action="/zamowienia/nowe" data-vat="<%= stawkaVat %>">
+
+<%# ⚠️ TEN PRZYCISK MUSI STAC PIERWSZY I DLATEGO WYGLADA NA ZBEDNY (ustalenie recenzji
+    2026-08-01). Enter w dowolnym polu wysyla formularz PRZYCISKIEM DOMYSLNYM, a domyslnym
+    jest PIERWSZY przycisk typu submit w kolejnosci znacznikow — czyli „Pobierz z GUS”
+    nizej. Operator wpisywal nazwisko, wciskal Enter i zamiast zalozonego zamowienia
+    dostawal ekran z komunikatem GUS-u. Kopia glownej akcji, schowana przed okiem i przed
+    czytnikiem ekranu (prawdziwy przycisk stoi w stopce), przywraca oczekiwane zachowanie
+    Entera bez przestawiania ukladu strony. %>
+<button class="poza-okiem" tabindex="-1" aria-hidden="true">Załóż zamówienie</button>
+
+<%# ——— STALY KLIENT ————————————————————————————————————————————————————————————————— %>
+<%# ⚠️ PASEK STOI NAD POLAMI I TO NIE JEST UKLAD GRAFICZNY. „Wstaw dane" NADPISUJE oba %>
+<%# komplety pol, wiec przycisk musi byc tam, gdzie reka trafia ZANIM zacznie wpisywac. %>
+<%# Wycofanie znaczy wpisanie z powrotem — lepiej, zeby nie bylo czego wycofywac. %>
+<%# %>
+<%# ⚠️ `formaction`, jak przy „Pobierz z GUS" i „Dodaj z magazynu": to ten sam wielki %>
+<%# formularz, wiec operator nie traci ani jednego pola, a do bazy nie idzie ani jeden zapis. %>
+<% if (klienci.length) { %>
+  <section class="klient-staly" id="klient">
+    <div class="magazyn-pasek">
+      <label class="magazyn-pole">Stały klient
+        <select name="klient_klucz">
+          <option value="">— wybierz z bazy —</option>
+          <% klienci.forEach(function (k) { %>
+            <option value="<%= k.klucz %>" <%= formularz.klient_klucz === k.klucz ? 'selected' : '' %>><%= k.nazwa %></option>
+          <% }); %>
+        </select>
+      </label>
+      <button class="btn" formaction="/zamowienia/nowe/klient#klient"
+        title="Wypełni dane do faktury i do wysyłki oraz ustalenia handlowe. Nic nie zapisze.">Wstaw dane</button>
+      <% if (opisWybranego) { %><span class="klient-opis"><%= opisWybranego %></span><% } %>
+    </div>
+    <p class="wyjasnienie">Wstawienie <b>nadpisze</b> dane klienta i ustalenia poniżej. Pozycji nie dotyka.
+      Klientów dopisujesz na ekranie <a href="/klienci">Stali klienci</a> albo przyciskiem na karcie zamówienia.</p>
+  </section>
+<% } else { %>
+  <p class="wyjasnienie">Baza stałych klientów jest pusta — dopiszesz do niej klienta przyciskiem
+    „Zapamiętaj tego klienta" na karcie zamówienia albo na ekranie <a href="/klienci">Stali klienci</a>.</p>
+<% } %>
+
+<div class="metryczka">
+
+  <section class="panel">
+    <div class="panel-glowa" id="wysylka"><h2>Dane do wysyłki</h2></div>
+    <div class="panel-cialo">
+      <div class="pola">
+        <label>Imię i nazwisko<input name="w_nazwa" value="<%= wart(formularz.w_nazwa) %>" placeholder="np. Anna Kowalska"></label>
+        <label>Firma<input name="w_firma" value="<%= wart(formularz.w_firma) %>"></label>
+        <label>Ulica<input name="w_ulica" value="<%= wart(formularz.w_ulica) %>" placeholder="np. Krótka 12/3"></label>
+        <label>Kod pocztowy<input name="w_kod" value="<%= wart(formularz.w_kod) %>" placeholder="00-000"></label>
+        <label>Miasto<input name="w_miasto" value="<%= wart(formularz.w_miasto) %>"></label>
+        <label>Telefon<input name="w_telefon" value="<%= wart(formularz.w_telefon) %>" placeholder="np. 600 100 200"></label>
+        <label>E-mail<input name="w_email" type="email" value="<%= wart(formularz.w_email) %>"></label>
+        <p class="wyjasnienie">Kraj: PL — panel nadaje wyłącznie przesyłki krajowe.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-glowa" id="faktura"><h2>Dane do faktury</h2></div>
+    <div class="panel-cialo">
+      <%# Wynik „Pobierz z GUS” stoi NAD polami, bo rozstrzyga, czy to, co w nich, w ogole
+          przyszlo z REGON-u — trzy rodzaje jak na karcie: „ok” (sprawdz i zapisz), „brak”
+          (popraw NIP), „blad” (sprobuj pozniej). %>
+      <% if (komunikatGus) { %>
+        <p class="<%= komunikatGus.rodzaj === 'ok' ? 'pasek-gus' : 'pasek-uwaga' %>"><%= komunikatGus.tekst %></p>
+      <% } %>
+      <div class="pola">
+        <label class="pole-przelacznik">
+          <input type="checkbox" name="f_chce_fakture" <%= formularz.f_chce_fakture ? 'checked' : '' %>>
+          Klient chce fakturę
+        </label>
+        <label>NIP
+          <span class="pole-z-przyciskiem">
+            <input name="f_nip" value="<%= wart(f.nip) %>">
+            <%# Przycisk WYLACZNIE gdy GUS dziala — bez skonfigurowanego klucza nie ma czego
+                pobierac, a martwy przycisk tylko kusi. %>
+            <% if (gusDziala) { %>
+              <button class="btn btn--maly" formaction="/zamowienia/nowe/gus#faktura"
+                title="Pobierze nazwę i adres z bazy REGON. Nic nie zapisze — wypełni pola do sprawdzenia.">Pobierz z GUS</button>
+            <% } %>
+          </span>
+        </label>
+        <label>Nazwa firmy<input name="f_firma" value="<%= wart(f.firma) %>"></label>
+        <label>Ulica<input name="f_ulica" value="<%= wart(f.ulica) %>"></label>
+        <label>Kod pocztowy<input name="f_kod" value="<%= wart(f.kod) %>"></label>
+        <label>Miasto<input name="f_miasto" value="<%= wart(f.miasto) %>"></label>
+        <label>E-mail do faktury<input name="f_email" type="email" value="<%= wart(formularz.f_email) %>" placeholder="np. faktury@firma.pl"></label>
+        <%# ⚠️ NIC NIE ZAPISUJE — przestawia wartosci miedzy polami i oddaje formularz
+            (routes/zamowienia.js: POST /zamowienia/nowe/kopiuj-do-wysylki). Bliźniak z karty
+            MUSI zapisywac, bo tam zamowienie juz istnieje; tutaj jeszcze nie ma czego.
+            Imie, nazwisko i telefon zostaja NIETKNIETE: kurier wymaga osoby do kontaktu,
+            a dane faktury jej nie niosa. `formaction`, bo zagniezdzanie formularzy jest
+            niepoprawnym HTML-em — tak samo jak przy „Pobierz z GUS” wyzej. %>
+        <p>
+          <button class="btn btn--maly" formaction="/zamowienia/nowe/kopiuj-do-wysylki#wysylka"
+            title="Przepisze firmę, adres i e-mail z faktury do danych wysyłki. Nic nie zapisze — wypełni pola.">Skopiuj dane do wysyłki</button>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-glowa"><h2>Szczegóły zamówienia</h2></div>
+    <div class="panel-cialo">
+      <div class="pola">
+        <label>Dostawa
+          <select name="dostawa">
+            <% Object.keys(dostawy).forEach(function (klucz) { %>
+              <% const wybrana = formularz.dostawa ? formularz.dostawa === klucz : klucz === 'dpd'; %>
+              <option value="<%= klucz %>"<%= wybrana ? ' selected' : '' %>><%= dostawy[klucz] %></option>
+            <% }); %>
+          </select>
+        </label>
+        <%# ⚠️ KOD PACZKOMATU JEST ADRESEM TEJ PRZESYLKI — bez niego nie ma czego nadac.
+            Pole stoi ZAWSZE, a nie pokazuje sie po wybraniu paczkomatu: przelaczanie widoku
+            wymagaloby JavaScriptu, ktorego ten ekran nie ma poza przeliczaniem kwot.
+            Wpisane przy innej dostawie po prostu NIE ZAPISUJE SIE (domain/nowe-zamowienie.js) —
+            kod zostawiony przy DPD bylby smieciem udajacym adres. %>
+        <label>Kod paczkomatu
+          <input name="punkt_odbioru" value="<%= wart(formularz.punkt_odbioru) %>" placeholder="np. KTY01M">
+        </label>
+        <%# ⚠️ KWOTA ZGODNA Z WYBRANA METODA (17.08.2026, ustawienia panelu). Do tego dnia stalo
+            tu wpisane wprost `19,00` — takze przy paczkomacie, ktory w sklepie kosztuje 13 zl,
+            wiec operator poprawial to recznie przy kazdym takim zamowieniu. Kwoty przychodza
+            z domain/ustawienia-panelu.js, widok nie zna ani jednej liczby.
+            `=== undefined` ODROZNIA pierwsze wejscie na ekran od pola SWIADOMIE wyczyszczonego:
+            po „Pobierz z GUS”, po „Skopiuj dane do wysylki” i po odmowie zapisu formularz wraca
+            z tym, co operator naprawde mial — podstawienie kwoty drugi raz przywracaloby
+            wartosc, ktora wlasnie skasowal. %>
+        <label>Koszt dostawy (brutto)<input name="koszt_dostawy_brutto" value="<%= formularz.koszt_dostawy_brutto === undefined ? kwotyDostawy[formularz.dostawa || 'dpd'] : wart(formularz.koszt_dostawy_brutto) %>" inputmode="decimal" placeholder="0,00"></label>
+        <label>Rodzaj płatności
+          <select name="platnosc">
+            <% Object.keys(platnosci).forEach(function (klucz) { %>
+              <% const wybrana = formularz.platnosc ? formularz.platnosc === klucz : klucz === 'przelew'; %>
+              <option value="<%= klucz %>"<%= wybrana ? ' selected' : '' %>><%= platnosci[klucz] %></option>
+            <% }); %>
+          </select>
+        </label>
+        <%# Dotyczy WYLACZNIE klientow rozliczanych zbiorczo (OMS_KLIENCI_ZBIORCZY): przy
+            wlasnej etykiecie klient placi za obsluge, a nie za transport. Przy pozostalych
+            zamowieniach zaznaczenie nie zmienia niczego — patrz services/oplata.js. %>
+        <label class="pole-przelacznik">
+          <input type="checkbox" name="etykieta_klienta" <%= formularz.etykieta_klienta ? 'checked' : '' %>>
+          Klient nadaje na swojej etykiecie
+        </label>
+        <%# Dotyczy WYLACZNIE klientow rozliczanych zbiorczo: hurt jedzie do siedziby klienta
+            i dostaje fakture OD RAZU, wiec nie wchodzi do okresu miesiecznego (services/okres.js).
+            Przy pozostalych zamowieniach zaznaczenie nie zmienia niczego. %>
+        <label class="pole-przelacznik">
+          <input type="checkbox" name="hurt" <%= formularz.hurt ? 'checked' : '' %>>
+          Hurt — do siedziby klienta (faktura od razu, poza rozliczeniem miesięcznym)
+        </label>
+        <%# ——— USTALENIA HANDLOWE ——————————————————————————————————————————————— %>
+        <%# ⚠️ B2B TO KANAL RAPORTOWY, nie etykietka. Zaznaczone tutaj zostaje na zamowieniu %>
+        <%# jako MIGAWKA i od tej chwili to ono rozstrzyga, gdzie liczy sie ta sprzedaz %>
+        <%# (domain/kanaly-raportowe.js). Da sie to poprawic pozniej na karcie. %>
+        <label class="pole-przelacznik">
+          <input type="checkbox" name="b2b" <%= formularz.b2b ? 'checked' : '' %>>
+          B2B — sprzedaż hurtowa (osobny kanał w raportach)
+        </label>
+        <%# ⚠️ TERMIN UZGODNIONY Z KLIENTEM, nie wybor na fakturze. Wchodzi do maila %>
+        <%# z potwierdzeniem i podstawia sie w formularzu faktury — ale NIGDY nie wygrywa %>
+        <%# z pobraniem ani z faktem oplacenia (domain/termin-platnosci.js). %>
+        <label>Termin płatności
+          <select name="termin_platnosci">
+            <option value="">— nie uzgodniono —</option>
+            <option value="<%= terminy.przyOdbiorze %>"<%= formularz.termin_platnosci === terminy.przyOdbiorze ? ' selected' : '' %>>przy odbiorze</option>
+            <% terminy.dni.forEach(function (d) { %>
+              <option value="<%= d %>"<%= String(formularz.termin_platnosci) === String(d) ? ' selected' : '' %>><%= d %> dni</option>
+            <% }); %>
+            <option value="<%= terminy.bezTerminu %>"<%= formularz.termin_platnosci === terminy.bezTerminu ? ' selected' : '' %>>płatne od razu</option>
+          </select>
+        </label>
+        <%# ⚠️ RABAT DZIALA NA POZYCJE DODAWANE Z MAGAZYNU I TYLKO NA NIE — pozycja wpisana %>
+        <%# z reki niesie juz cene uzgodniona. Ceny licza sie przy DODAWANIU, wiec rabat %>
+        <%# wpisz PRZED szukaniem w magazynie; na karcie da sie go zmienic i przeliczyc. %>
+        <label>Rabat stałego klienta (%)
+          <input name="rabat_procent" value="<%= wart(formularz.rabat_procent) %>" inputmode="numeric" placeholder="0">
+        </label>
+        <p class="wyjasnienie">Rabat wchodzi w ceny pozycji dodawanych z magazynu (0–<%= rabatMax %>%).
+          Klient go nie widzi — ani na potwierdzeniu, ani na fakturze.</p>
+        <p class="wyjasnienie">Kwota pobrania nie ma osobnego pola — to zawsze suma z „Razem”, razem z dostawą.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<%# ——— POZYCJE ——————————————————————————————————————————————————————————————————————— %>
+<%# ⚠️ KOLUMNA „Suma” I WIERSZ „Razem” LICZA SIE W PRZEGLADARCE (07.08.2026, decyzja
+    wlasciciela: przeliczanie na zywo). Do tego dnia stalo tu zdanie, ze tego NIE robimy, bo
+    byloby to druga implementacja reguly z domain/suma-pozycji.js. Obiekcja nie znikla —
+    zostala splacona testem: tests/oms/suma-podglad.test.js puszcza plik przegladarki
+    (src/web/public/suma-podglad.js) i prawdziwy parser serwera po wspolnej tablicy
+    przypadkow i wymaga IDENTYCZNEGO wyniku. Rozjazd wywala test, nie fakture.
+    ⚠️ Podglad NIE obejmuje oplaty za obsluge klienta rozliczanego zbiorczo — decyduje o niej
+    NIP z konfiguracji SERWERA. Bez ostrzezenia na ekranie, swiadoma decyzja wlasciciela. %>
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Pozycje</h2>
+    <span class="wyjasnienie">wpisz netto albo brutto — drugie policzy się samo (VAT <%= stawkaVat %>%)</span>
+  </div>
+  <div class="panel-cialo">
+    <table class="tab-pozycje" data-podglad-kwoty>
+      <thead>
+        <tr>
+          <th class="kol-ilosc">Ilość</th>
+          <th>Nazwa</th>
+          <th>SKU</th>
+          <th class="liczba">Cena netto</th>
+          <th class="liczba">Cena brutto</th>
+          <th class="liczba">Suma</th>
+        </tr>
+      </thead>
+      <tbody>
+        <%# Stala liczba wierszy zamiast „+ Dodaj wiersz”: panel nie ma JavaScriptu poza
+            przeliczaniem netto/brutto, a dokladanie wierszy bez przeladowania strony by go
+            wymagalo. `liczbaWierszy` starcza na typowe zamowienie telefoniczne — kolejna
+            pozycja idzie na karte, juz po zapisaniu. %>
+        <% for (let i = 0; i < liczbaWierszy; i++) { %>
+          <tr>
+            <td><input class="pole-ilosc" name="poz_ilosc" value="<%= wart(pozIlosc[i]) %>" placeholder="1"></td>
+            <td><input name="poz_nazwa" value="<%= wart(pozNazwa[i]) %>" placeholder="—"></td>
+            <td><input name="poz_sku" value="<%= wart(pozSku[i]) %>" placeholder="opcjonalne">
+              <%# ⚠️ TOZSAMOSC PRODUKTU jedzie UKRYTA i wypelnia ja wylacznie „dodaj %>
+              <%# z magazynu". Dzieki niej z pozycji da sie odczytac, KTORY produkt i KTORY %>
+              <%# ROZMIAR poszedl — `produkt_id` trzyma rodzica, wiec bez wariantu wiedzy %>
+              <%# o rozmiarze nie ma nigdzie. Wiersz wpisany z reki zostawia oba puste. %>
+              <input type="hidden" name="poz_produkt_id" value="<%= wart(pozProduktId[i]) %>">
+              <input type="hidden" name="poz_wariant_id" value="<%= wart(pozWariantId[i]) %>">
+              <%# Cena SPRZED rabatu — jedzie ukryta razem z pozycja, bo bez niej zamowienie %>
+              <%# nie umialoby juz powiedziec, od czego rabat byl liczony, ani go przeliczyc. %>
+              <input type="hidden" name="poz_cena_katalogowa" value="<%= wart(pozCenaKatalogowa[i]) %>">
+            </td>
+            <td><input class="pole-cena cena-netto" name="poz_cena_netto" value="<%= wart(pozCenaNetto[i]) %>" placeholder="netto" inputmode="decimal"></td>
+            <td><input class="pole-cena" name="poz_cena_brutto" value="<%= wart(pozCenaBrutto[i]) %>" placeholder="brutto"></td>
+            <%# Wypelnia skrypt podgladu; pusta przy wierszu pustym i przy niepelnym. %>
+            <td class="liczba" data-suma-linii></td>
+          </tr>
+        <% } %>
+      </tbody>
+      <%# „Razem” STOI POZA <tbody>, bo skrypt podgladu chodzi po `tbody tr` i wierszem
+          pozycji by je uznal. Myslnik zamiast liczby znaczy „wiersz zaczety, ale niepelny” —
+          kwota mniejsza o pominiety wiersz wygladalaby na prawdziwa. %>
+      <tfoot>
+        <tr class="wiersz-razem">
+          <td class="kol-ilosc"></td>
+          <td>Razem <span class="wyjasnienie">z dostawą</span></td>
+          <td></td>
+          <td class="liczba"></td>
+          <td class="liczba"></td>
+          <td class="liczba" data-razem>—</td>
+        </tr>
+      </tfoot>
+    </table>
+    <p class="wyjasnienie">Pusty wiersz jest pomijany. Kolejne pozycje dopiszesz na karcie, po zapisaniu.</p>
+
+    <%# ——— DODAJ Z MAGAZYNU (21.08.2026) ———————————————————————————————————————————— %>
+    <%# ⚠️ TE PRZYCISKI SA CZESCIA WIELKIEGO FORMULARZA EKRANU (zagniezdzanie formularzy %>
+    <%# jest niepoprawne), wiec kieruja gdzie indziej przez `formaction`. Dzieki temu %>
+    <%# szukanie i dodawanie odsylaja CALY wpisany formularz i dostaja go z powrotem — %>
+    <%# operator przy sluchawce nie traci ani jednego pola. Dokladnie jak „Pobierz z GUS". %>
+    <section class="magazyn-szukaj" id="magazyn">
+      <% if (magazyn.dodano) { %>
+        <p class="pasek-gus">Dodano do zamówienia: <b><%= magazyn.dodano.ilosc %> ×
+          <%= magazyn.dodano.nazwa %></b> po <%= magazyn.dodano.cena_brutto %> zł
+          <span class="wyjasnienie">— pozycja jest w tabeli powyżej</span></p>
+      <% } %>
+      <div class="magazyn-pasek" id="magazyn-pasek">
+        <%# ⚠️ ZYWE SZUKANIE (htmx): po 300 ms od ostatniego klawisza panel pobiera SAME %>
+        <%# WYNIKI i podmienia `#magazyn-wyniki`. Reszta strony — razem ze wszystkim, co %>
+        <%# wpisales — nie jest renderowana od nowa, wiec nie ma czego zgubic ani dokad %>
+        <%# skoczyc. `changed` pilnuje, zeby strzalki i Ctrl nie wywolywaly zapytania. %>
+        <%# %>
+        <%# ⚠️ TO JEST ODCZYT, wiec GET: ochrona CSRF dotyczy metod zmieniajacych stan, %>
+        <%# a szukanie niczego nie zmienia. `hx-include` doklada wybrany cennik. %>
+        <label class="magazyn-pole">Dodaj z magazynu
+          <input name="magazyn" value="<%= wart(magazyn.fraza) %>" placeholder="nazwa albo SKU, np. „pieszy 70”"
+                 hx-get="/zamowienia/nowe/magazyn/wyniki"
+                 hx-trigger="keyup changed delay:300ms, search"
+                 hx-include="[name='cennik']"
+                 hx-target="#magazyn-wyniki"
+                 hx-swap="innerHTML"
+                 hx-indicator="#magazyn-pasek">
+        </label>
+        <%# ⚠️ CENNIK, NIE „KANAL" — ceny biora sie WYLACZNIE ze sklepow. Allegro ma %>
+        <%# w cenie prowizje, wiec cennikiem nie jest (domain/magazyn-do-zamowienia.js). %>
+        <label class="magazyn-pole">Cennik
+          <select name="cennik"
+                  hx-get="/zamowienia/nowe/magazyn/wyniki"
+                  hx-trigger="change"
+                  hx-include="[name='magazyn']"
+                  hx-target="#magazyn-wyniki"
+                  hx-swap="innerHTML"
+                  hx-indicator="#magazyn-pasek">
+            <% magazyn.kanaly.forEach(function (k) { %>
+              <option value="<%= k %>" <%= magazyn.cennik === k ? 'selected' : '' %>><%= magazyn.nazwy[k] %></option>
+            <% }); %>
+          </select>
+        </label>
+        <%# ⚠️ PRZYCISK ZOSTAJE. Bez htmx (wylaczony JavaScript, stara przegladarka) ekran %>
+        <%# ma dzialac dokladnie jak dotad — zywe szukanie jest ULATWIENIEM, nie warunkiem. %>
+        <button class="btn" formaction="/zamowienia/nowe/magazyn#magazyn">Szukaj</button>
+        <span class="magazyn-praca" aria-hidden="true">szukam…</span>
+      </div>
+
+      <%# ⚠️ WYNIKI SIEDZA WE WLASNYM KAWALKU — to on, i tylko on, podmienia sie w trakcie %>
+      <%# pisania. Pasek szukania ZOSTAJE nietkniety: gdyby wjezdzal razem z wynikami, %>
+      <%# kazde nacisniecie klawisza przerysowywaloby pole, w ktorym wlasnie piszesz. %>
+      <div id="magazyn-wyniki">
+        <%- include('_magazyn-wyniki-nowe.ejs', { magazyn }) %>
+      </div>
+      <p class="wyjasnienie">Ceny z <%= magazyn.nazwy[magazyn.cennik] %><% if (magazyn.odczyt) { %>,
+        katalog czytany <%= magazyn.odczyt.slice(0, 16).replace('T', ' ') %><% } else { %> — katalog tego sklepu nie był
+        jeszcze czytany, <a href="/magazyn">odczytaj go</a><% } %>. Pozycja wchodzi do pierwszego wolnego wiersza tabeli.</p>
+    </section>
+  </div>
+</section>
+
+<%# ——— STOPKA ——————————————————————————————————————————————————————————————————————— %>
+<div class="stopka-edycji">
+  <button class="btn btn--glowny">Załóż zamówienie</button>
+  <a class="btn" href="/">Anuluj</a>
+  <span class="wyjasnienie">Zapis nada numer <b><%= numerPodgladowy %></b> i otworzy kartę tego zamówienia.</span>
+</div>
+
+</form>
+
+<%- include('_skrypt-cena.ejs') %>
+<%# ⚠️ PLIK, NIE SKRYPT W STRONIE — i to jest warunek, nie styl. Test (tests/oms/suma-podglad.test.js)
+    IMPORTUJE dokladnie ten plik i porownuje jego wynik z parserem serwera; skrypt wpisany
+    w widok dalby sie sprawdzic tylko kopia, czyli pilnowalby sam siebie.
+    `type="module"` z tego samego powodu (plik ma `export`) i przy okazji odracza wykonanie
+    do konca parsowania strony — nasluchy sa wiec podpiete, gdy tabela juz istnieje. %>
+<script type="module" src="/public/suma-podglad.js"></script>
+<%- include('_skrypt-koszt-dostawy.ejs', { kwotyDostawy }) %>

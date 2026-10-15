@@ -1,0 +1,56 @@
+<%# Formularz nowego celu (spec 2026-09-13). Wzorzec: koszt-reczny.ejs.
+    ⚠️ Rytmy i mierniki przychodza Z DOMENY (RYTMY, KLUCZE_MIERNIKOW), nie z listy w tym
+    pliku. Lista wpisana tutaj recznie rozjechalaby sie z walidacja trasy i dalaby formularz
+    oferujacy opcje, ktora zapis odrzuca — blad widoczny dopiero po kliknieciu „Załóż cel". %>
+<div class="glowa-ekranu">
+  <h1>Nowy cel</h1>
+  <span class="krok">licznik z liczbą docelową albo zadanie tak/nie</span>
+</div>
+
+<% if (blad) { %><p class="pasek-blokada"><%= blad %></p><% } %>
+
+<%# ⚠️ UKLAD SEKCJI — niezmiennik 4.88b: `section.panel` ma `padding: 0`, margines daje
+    `div.panel-cialo`. Bez tej warstwy pola formularza dotykaja ramki panelu. %>
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Nowy cel</h2>
+    <span class="dopisek">puste „ile" = zadanie tak/nie</span>
+  </div>
+  <div class="panel-cialo">
+  <form method="post" action="/cele">
+    <label>Nazwa <input name="nazwa" required maxlength="120" autofocus></label>
+
+    <label>Właściciel
+      <select name="konto_id">
+        <%# Pusta wartosc = cel WSPOLNY (konto_id NULL). %>
+        <option value="">Wspólny</option>
+        <% osoby.forEach(function (o) { %><option value="<%= o.id %>"><%= o.imie %></option><% }); %>
+      </select>
+    </label>
+
+    <label>Rytm
+      <select name="rytm">
+        <% rytmy.forEach(function (r) { %><option value="<%= r %>"><%= r %></option><% }); %>
+      </select>
+    </label>
+
+    <label>Liczba docelowa
+      <input name="cel_ile" type="number" min="1" step="1" placeholder="puste = zadanie tak/nie">
+    </label>
+
+    <label>Miernik
+      <select name="miernik">
+        <% mierniki.forEach(function (m) { %><option value="<%= m.klucz %>"><%= m.etykieta %></option><% }); %>
+      </select>
+    </label>
+
+    <label>Obowiązuje od <input name="od_dnia" type="date"></label>
+    <label>Termin <input name="do_dnia" type="date"></label>
+
+    <p>
+      <button class="btn btn--glowny" type="submit">Załóż cel</button>
+      <a class="btn" href="/cele">Anuluj</a>
+    </p>
+  </form>
+  </div>
+</section>

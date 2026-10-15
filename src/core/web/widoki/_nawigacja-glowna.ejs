@@ -1,0 +1,24 @@
+<nav aria-label="Główna" class="nawigacja-glowna">
+  <ul>
+    <% nawigacja.dzialy.forEach(function (dzial) { %>
+      <li<%- dzial.aktywny ? ' class="aktywna"' : '' %>><a href="<%= dzial.href %>"><%= dzial.etykieta %></a></li>
+    <% }); %>
+  </ul>
+</nav>
+
+<details class="menu-glowne-mobile" data-menu="glowne">
+  <summary data-menu-trigger="glowne">Menu</summary>
+  <div class="menu-glowne-mobile-panel" data-menu-panel="glowne">
+    <nav aria-label="Główna — telefon">
+      <ul>
+        <% nawigacja.dzialy.forEach(function (dzial) { %>
+          <li<%- dzial.aktywny ? ' class="aktywna"' : '' %>><a href="<%= dzial.href %>"><%= dzial.etykieta %></a></li>
+        <% }); %>
+        <% if (nawigacja.ustawienia) { %>
+          <li<%- nawigacja.ustawienia.aktywna ? ' class="aktywna"' : '' %>><a href="<%= nawigacja.ustawienia.href %>"><%= nawigacja.ustawienia.etykieta %></a></li>
+        <% } %>
+      </ul>
+    </nav>
+    <%- include('_nawigacja-kontekstowa.ejs', { nawigacja, statusyMenu, mobilna: true }) %>
+  </div>
+</details>

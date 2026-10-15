@@ -1,0 +1,60 @@
+<%#
+  Ekran logowania. Renderuje sie z `bezPaska: true`, wiec layout nie rysuje gornego paska —
+  na tym ekranie nie ma dokad nawigowac, a paskiem z ikonami do zamowien i faktur kusilibysmy
+  do klikania w miejsca, ktore i tak odesla z powrotem tutaj.
+
+  ⚠️ Formularz NIE MA pola „zapamietaj mnie" i to jest decyzja, nie przeoczenie. Ciasteczko
+  jest wazne 90 dni i odnawia sie przy uzyciu, wiec „zapamietaj" bylo by pytaniem, na ktore
+  jedyna sensowna odpowiedzia jest „tak" — a pytanie o to przy kazdym logowaniu sugerowaloby,
+  ze istnieje jakis powod, zeby odpowiedziec inaczej.
+%>
+<div class="logowanie">
+  <div class="logowanie-karta">
+    <div class="logowanie-marka">
+      <strong>OMS</strong>
+      <span>Panel zamówień</span>
+    </div>
+    <h1>Zaloguj się</h1>
+    <%_ if (typeof komunikat !== 'undefined' && komunikat) { -%>
+    <p class="logowanie-komunikat" role="status" style="margin:0 0 1rem;padding:.55rem .7rem;font-size:.86rem;color:var(--ok);background:var(--ok-tlo);border-radius:6px"><%= komunikat %></p>
+    <%_ } -%>
+
+    <% if (blad === 'zablokowane') { %>
+      <p class="logowanie-blad" role="alert">
+        Za dużo nieudanych prób. Spróbuj ponownie za <%= Math.max(zostaloS, 1) %> s.
+      </p>
+    <% } else if (blad === 'zle-dane') { %>
+      <%# ⚠️ Jeden komunikat na oba przypadki. „Zly login" i „zle haslo" to dwie rozne %>
+      <%# odpowiedzi, z ktorych zgadujacy odczytuje, ze nazwe konta juz trafil. %>
+      <p class="logowanie-blad" role="alert">Nieprawidłowy login lub hasło.</p>
+    <% } %>
+
+    <%# PRZ-075: demo publiczne — wspólne konto gościa, dane jawne. `demo` jest null poza trybem próby. %>
+    <%_ if (demo) { -%>
+    <%# PRZ-083: data-demo-reset = znak instancji; nakladka „Trwa restart demo" (oms-demo.js) czeka, az sie zmieni. %>
+    <p class="logowanie-demo"<% if (demo.resetPlanowy) { %> data-demo-reset="<%= demo.resetPlanowy %>"<% } %> style="margin:0 0 1rem;padding:.55rem .7rem;font-size:.86rem;background:var(--ok-tlo);border-radius:6px">
+      Wersja demonstracyjna. Zaloguj się jako <code><%= demo.login %></code>, hasło <code><%= demo.haslo %></code>.
+      Dane są zmyślone i wracają do stanu początkowego <%= demo.reset %>.
+    </p>
+    <%_ } -%>
+    <form method="post" action="/login">
+      <input type="hidden" name="powrot" value="<%= powrot %>">
+      <label class="logowanie-pole">
+        <span>Login</span>
+        <input type="text" name="uzytkownik" autocomplete="username" autofocus required>
+      </label>
+      <label class="logowanie-pole">
+        <span>Hasło</span>
+        <input type="password" name="haslo" autocomplete="current-password" required>
+      </label>
+      <button class="logowanie-wyslij" type="submit">Zaloguj</button>
+    </form>
+
+    <p class="logowanie-stopka">
+      <%_ if (!demo) { -%>
+      Panel działa wyłącznie w sieci lokalnej.
+      <%_ } -%>
+      Zalogowanie trzyma się tego urządzenia przez 90 dni i odnawia się przy każdym wejściu.
+    </p>
+  </div>
+</div>

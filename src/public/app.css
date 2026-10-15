@@ -1,0 +1,811 @@
+/* Motyw ciemny panelu:
+   ciepła czerń pochodna Grafitu #2E2A26 zamiast niebiesko-czarnego, akcent = rozjaśniona
+   Stal (#3E5566 wprost ma za mały kontrast na ciemnym tle), typografia Work Sans.
+   Kolory TYLKO przez zmienne — widoki nie mają inline'owych kolorów,
+   więc podmiana palety w :root wystarcza na cały panel. */
+@font-face { font-family: "Work Sans"; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/worksans-400.woff2) format("woff2"); }
+@font-face { font-family: "Work Sans"; font-style: normal; font-weight: 500; font-display: swap; src: url(fonts/worksans-500.woff2) format("woff2"); }
+@font-face { font-family: "Work Sans"; font-style: normal; font-weight: 600; font-display: swap; src: url(fonts/worksans-600.woff2) format("woff2"); }
+
+:root {
+  color-scheme: dark; /* natywne kontrolki, scrollbary i autofill same robią się ciemne */
+  --bg: #201d1a;
+  --surface: #292521;
+  --surface-2: #322d27;
+  --border: #3b352e;
+  --border-mocny: #4c453c;
+  --text: #ede8e0;
+  --muted: #a69e92;
+  --akcent: #8fb0c4;
+  --akcent-kontrast: #16232c; /* tekst na tle akcentu (przyciski, kropki steppera) */
+  --akcent-tlo: rgba(143, 176, 196, .13);
+  --akcent-ramka: rgba(143, 176, 196, .45);
+  --ok: #3fb950;
+  --ok-tlo: rgba(63, 185, 80, .12);
+  --uwaga: #d29922;
+  --uwaga-tlo: rgba(210, 153, 34, .12);
+  --blad: #f85149;
+  --blad-tlo: rgba(248, 81, 73, .12);
+  --fiolet: #a78bfa;
+  --fiolet-tlo: rgba(167, 139, 250, .13);
+  --pomarancz: #f0883e;
+  --pomarancz-tlo: rgba(240, 136, 62, .13);
+  --r: 10px;
+  --cien: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 12px rgba(0, 0, 0, .25);
+}
+
+* { scrollbar-color: var(--border-mocny) transparent; }
+
+body {
+  font-family: "Work Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  margin: 0 auto;
+  padding: 0 1.25rem 1.25rem;
+  max-width: 1600px;
+  /* delikatna poświata u góry — wiąże panel kolorystycznie z akcentem */
+  background: radial-gradient(1100px 420px at 50% -180px, rgba(143, 176, 196, .06), transparent 70%) var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+a { color: var(--akcent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Górna belka: tekstowy znak panelu */
+.topbar { display: flex; align-items: center; gap: .8rem; padding: .9rem 0 .8rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border); }
+.brand { display: inline-flex; align-items: center; gap: .8rem; }
+.brand:hover { text-decoration: none; }
+.brand-wordmark { font-weight: 600; letter-spacing: .06em; font-size: 1rem; color: var(--text); white-space: nowrap; }
+.brand-wordmark .pro { color: var(--akcent); }
+.brand-wordmark .by { color: var(--muted); font-size: .72rem; font-weight: 400; letter-spacing: 0; }
+.brand-sub { color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .18em; border-left: 1px solid var(--border-mocny); padding-left: .8rem; white-space: nowrap; }
+.brand:hover .brand-sub { color: var(--akcent); }
+/* Ikony topbaru jako grupa: auto-margines na kontenerze, nie na pojedynczym linku —
+   przy dwóch linkach z margin-left:auto obie ikony rozjechałyby się po pasku. */
+.topbar-ikony { margin-left: auto; display: flex; align-items: center; gap: .7rem; }
+.topbar-link { text-decoration: none; font-size: 1.05rem; color: var(--muted); opacity: .7; }
+.topbar-link:hover { opacity: 1; color: var(--akcent); text-decoration: none; }
+
+h2 { font-size: 1.2rem; margin: .2em 0 .6em; }
+h3 { font-size: 1rem; }
+
+/* Kontrolki: natywne, ale spójne z paletą. */
+button, input, select, textarea { font-family: inherit; font-size: .95rem; color: var(--text); }
+input, select, textarea {
+  background: var(--bg);
+  border: 1px solid var(--border-mocny);
+  border-radius: 6px;
+  padding: .35em .5em;
+}
+input:focus, select:focus, textarea:focus, button:focus-visible {
+  outline: 2px solid var(--akcent);
+  outline-offset: 1px;
+  border-color: var(--akcent);
+}
+button {
+  cursor: pointer;
+  background: var(--akcent);
+  color: var(--akcent-kontrast);
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: .4em .8em;
+  transition: filter .12s ease, background .12s ease;
+}
+button:hover:not(:disabled) { filter: brightness(1.1); }
+button:disabled { background: var(--surface-2); color: var(--muted); border-color: var(--border); cursor: not-allowed; }
+button.secondary { background: var(--surface-2); color: var(--text); border-color: var(--border-mocny); }
+button.secondary:hover:not(:disabled) { border-color: var(--akcent); color: var(--akcent); }
+
+/* ——— Pulpit: zakładki wg tego, czyj jest następny ruch ——— */
+.pasek-widokow { display: flex; align-items: center; gap: .6rem; margin: 0 0 1rem; flex-wrap: wrap; }
+.zakladki { display: flex; flex-wrap: wrap; gap: .35rem; flex: 1 1 auto; }
+.zakladka {
+  display: inline-flex; align-items: center; gap: .45em;
+  border: 1px solid var(--border-mocny); border-radius: 999px;
+  padding: .3em .6em .3em .85em; color: var(--muted); font-size: .92rem;
+}
+.zakladka:hover { color: var(--text); border-color: var(--akcent); text-decoration: none; }
+.zakladka .count { background: rgba(255, 255, 255, .08); border-radius: 999px; padding: 0 .55em; font-size: .8em; line-height: 1.6; font-variant-numeric: tabular-nums; }
+.zakladka.active { background: var(--akcent-tlo); border-color: var(--akcent); color: var(--akcent); font-weight: 600; }
+.zakladka.active .count { background: rgba(143, 176, 196, .22); }
+/* Widok grafika ma własną barwę — grafik i operator patrzą na ten sam panel z różnych stron. */
+.zakladka.grafik.active { background: var(--fiolet-tlo); border-color: var(--fiolet); color: var(--fiolet); }
+.zakladka.grafik.active .count { background: rgba(167, 139, 250, .22); }
+
+.legenda-postepu { color: var(--muted); font-size: .8rem; margin: 0 0 1.1rem; }
+.legenda-postepu .d { vertical-align: -1px; margin-right: .1em; }
+
+.grafik-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .8rem; margin: .2rem 0 1.2rem; }
+.grafik-head h2 { margin: 0; font-size: 1.15rem; }
+.grafik-head h2 .znak { color: var(--fiolet); }
+.grafik-head p { margin: 0; color: var(--muted); font-size: .85rem; }
+
+/* Grupa = rodzaj roboty. Kolor paska niesie pilność, nie ozdobę. */
+.grupa { margin: 0 0 1.5rem; }
+.grupa-head { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; padding: .1rem .2rem .45rem .8rem; border-left: 3px solid var(--border-mocny); margin: 0 0 .45rem; }
+.grupa-head h3 { margin: 0; font-size: .95rem; letter-spacing: .02em; }
+.grupa-head .ile { color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; }
+.grupa-head .hint { color: var(--muted); font-size: .8rem; margin-left: auto; }
+.grupa.gr-odpowiedz .grupa-head { border-left-color: var(--blad); }
+.grupa.gr-platnosc .grupa-head { border-left-color: var(--pomarancz); }
+.grupa.gr-przypomnij .grupa-head { border-left-color: var(--uwaga); }
+.grupa.gr-ocena .grupa-head { border-left-color: var(--uwaga); }
+.grupa.gr-projekt .grupa-head { border-left-color: var(--fiolet); }
+.grupa.gr-poprawki .grupa-head { border-left-color: var(--blad); }
+.grupa.gr-uklienta .grupa-head { border-left-color: var(--border-mocny); }
+.grupa.gr-produkcja .grupa-head { border-left-color: var(--ok); }
+
+.wiersze { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; box-shadow: var(--cien); }
+.wiersz {
+  display: grid;
+  grid-template-columns: minmax(200px, 1.25fr) minmax(240px, 1.7fr) 138px 108px 24px;
+  gap: .35rem 1rem; align-items: center;
+  padding: .6rem .9rem; border-top: 1px solid var(--border); color: var(--text);
+}
+.wiersz:first-child { border-top: 0; }
+.wiersz:hover { background: var(--surface-2); text-decoration: none; }
+.wiersz .klient .nazwa { font-weight: 600; }
+.wiersz.nieodpisane .klient .nazwa { font-weight: 700; }
+.wiersz .klient .mail { display: block; color: var(--muted); font-size: .8rem; }
+.wiersz .akcja .co { font-weight: 600; font-size: .92rem; }
+.wiersz .akcja .kontekst { display: block; color: var(--muted); font-size: .8rem; }
+.wiersz .czeka-od { font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.wiersz .czeka-od strong { display: block; font-size: .95rem; color: var(--text); font-weight: 600; }
+.wiersz .czeka-od.t-uwaga strong { color: var(--uwaga); }
+.wiersz .czeka-od.t-blad strong { color: var(--blad); }
+.wiersz .dalej { color: var(--muted); text-align: right; font-size: 1.05rem; }
+.badge.nieodpisany { background: var(--akcent-tlo); color: var(--akcent); border-color: var(--akcent-ramka); }
+
+/* Pasek postępu: pięć faktów sprawy (Wycena · Akceptacja · Wpłata · Projekt · Wysyłka). */
+.dots { display: inline-flex; gap: 7px; align-items: center; }
+.d { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--border-mocny); background: transparent; display: inline-block; }
+.d.pelna { background: var(--akcent); border-color: var(--akcent); }
+.d.biezaca { border-color: var(--akcent); box-shadow: 0 0 0 3px var(--akcent-tlo); }
+.d.ostrzezenie { background: var(--uwaga); border-color: var(--uwaga); box-shadow: 0 0 0 3px var(--uwaga-tlo); }
+.d.zrobione { background: var(--ok); border-color: var(--ok); }
+
+/* Ile leży u grafika — operator ma to wiedzieć bez wchodzenia w cudzą zakładkę. */
+.u-agi { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem; border: 1px dashed rgba(167, 139, 250, .5); border-radius: var(--r); background: var(--fiolet-tlo); padding: .65rem 1rem; margin-top: 1.4rem; }
+.u-agi .kto { font-weight: 700; color: var(--fiolet); }
+.u-agi .co-tam { color: var(--muted); font-size: .9rem; }
+.u-agi .co-tam .alarm { color: var(--uwaga); }
+.u-agi .pill { margin-left: auto; color: var(--fiolet); border-color: rgba(167, 139, 250, .5); }
+.u-agi .pill:hover { color: var(--fiolet); border-color: var(--fiolet); background: rgba(167, 139, 250, .18); }
+
+.pusto-hint { color: var(--muted); font-size: .9rem; padding: 1.2rem 0; }
+/* Sprawy zamknięte widać wyłącznie w „Wszystkie" i mają nie przyciągać wzroku. */
+tr.wygaszony td { opacity: .62; }
+.tabela-otulina { overflow-x: auto; }
+td.data { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+@media (max-width: 900px) {
+  .wiersz { grid-template-columns: 1fr auto; }
+  .wiersz .postep, .wiersz .dalej { display: none; }
+}
+
+/* Góra listy: piguły statusów po lewej, wyszukiwarka po prawej. */
+.list-top { display: flex; align-items: flex-start; gap: 1rem; margin: 0 0 1rem; flex-wrap: wrap; }
+.list-top nav.pills { margin: 0; flex: 1 1 auto; }
+.list-szukaj { display: flex; align-items: center; gap: .4rem; flex: 0 1 260px; min-width: 180px; }
+.list-szukaj input[type=search] { width: 100%; border-radius: 999px; padding: .3em .9em; }
+
+/* Ręczne zapytanie (telefon) — chowane pod listą filtrów: ma być pod ręką, nie krzyczeć. */
+.nowe-zapytanie { margin: -.4rem 0 1rem; }
+.nowe-zapytanie > summary { cursor: pointer; color: var(--muted); font-size: .85rem; }
+.nowe-zapytanie > summary:hover { color: var(--akcent); }
+.nowe-zapytanie form { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-top: .6rem; }
+.nowe-zapytanie input { min-width: 15rem; }
+.nowe-zapytanie .hint { margin: .4rem 0 0; }
+
+/* Filtry listy jako piguły z licznikami */
+nav.pills { display: flex; flex-wrap: wrap; gap: .45rem; margin: 0 0 1rem; }
+.pill { display: inline-flex; align-items: center; gap: .4em; border: 1px solid var(--border-mocny); border-radius: 999px; padding: .22em .5em .22em .8em; color: var(--muted); font-size: .85rem; }
+.pill:hover { color: var(--text); border-color: var(--akcent); text-decoration: none; }
+.pill.active { background: var(--akcent-tlo); border-color: var(--akcent); color: var(--akcent); font-weight: 600; }
+.pill .count { background: rgba(255, 255, 255, .08); border-radius: 999px; padding: 0 .55em; font-size: .82em; line-height: 1.5; }
+.pill.active .count { background: rgba(143, 176, 196, .22); }
+
+table { border-collapse: separate; border-spacing: 0; width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+td, th { border-bottom: 1px solid var(--border); padding: .55rem .7rem; text-align: left; }
+th { background: var(--surface-2); font-size: .8em; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: var(--surface-2); }
+td.pusto { color: var(--muted); text-align: center; padding: 1.5rem; }
+
+/* Badge: bazowo akcentowy; statusy kart mają własne kolory (klasa st-<key>). */
+.badge { display: inline-block; padding: .12rem .6rem; border-radius: 999px; background: var(--akcent-tlo); color: var(--akcent); border: 1px solid var(--akcent-ramka); font-size: .8em; font-weight: 600; white-space: nowrap; }
+.badge.form { background: var(--surface-2); border-color: var(--border-mocny); color: var(--muted); font-weight: 400; }
+.badge.st-nowe { background: var(--akcent-tlo); color: var(--akcent); border-color: var(--akcent-ramka); }
+.badge.st-oczekiwanie { background: var(--uwaga-tlo); color: var(--uwaga); border-color: rgba(210, 153, 34, .45); }
+.badge.st-wyceniona { background: var(--fiolet-tlo); color: var(--fiolet); border-color: rgba(167, 139, 250, .45); }
+.badge.st-zaakceptowana { background: var(--ok-tlo); color: var(--ok); border-color: rgba(63, 185, 80, .45); }
+.badge.st-wplata { background: var(--pomarancz-tlo); color: var(--pomarancz); border-color: rgba(240, 136, 62, .45); }
+.badge.st-odrzucona { background: var(--blad-tlo); color: var(--blad); border-color: rgba(248, 81, 73, .45); }
+/* Ekspres: czerwona plakietka priorytetu na liście i karcie (uwaga Agi 2026-07-24). */
+.badge.st-ekspres { background: var(--blad-tlo); color: var(--blad); border-color: rgba(248, 81, 73, .6); font-weight: 700; }
+/* ETAP IV — brief projektu: podsumowanie zamówienia + folder + uwagi (uwagi Agi 2026-07-24). */
+.projekt-brief { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem 1.5rem; margin-bottom: .75rem; }
+.projekt-brief h4, .projekt-uwagi h4 { margin: .25rem 0; }
+.brief-pozycje { margin: .25rem 0; padding-left: 1.2rem; }
+.unc-row code { user-select: all; word-break: break-all; }
+.projekt-uwagi { margin-bottom: 1rem; }
+.projekt-uwagi textarea { width: 100%; box-sizing: border-box; }
+.folder-page main { max-width: 46rem; margin: 2rem auto; padding: 0 1rem; }
+@media (max-width: 44rem) { .projekt-brief { grid-template-columns: 1fr; } }
+/* ETAP I — brama grafika: oczekiwanie (amber) / OK (green) / nie da się (red). */
+.badge.gr-wait { background: var(--uwaga-tlo); color: var(--uwaga); border-color: rgba(210, 153, 34, .45); }
+.badge.gr-ok { background: var(--ok-tlo); color: var(--ok); border-color: rgba(63, 185, 80, .45); }
+.badge.gr-no { background: var(--blad-tlo); color: var(--blad); border-color: rgba(248, 81, 73, .45); }
+.grafik-box { margin: .6rem 0; padding: .6rem .75rem; border: 1px solid var(--border-mocny); border-radius: 8px; background: var(--surface-2); }
+.grafik-box > p:first-child { margin-top: 0; }
+.grafik-verdict textarea { width: 100%; box-sizing: border-box; }
+/* Odpowiedź grafika przy KAŻDYM werdykcie, nie tylko przy odmowie — często stoi w niej
+   warunek techniczny wyceny („da się, ale mostki co 4 cm"). */
+.grafik-komentarz { margin: .4rem 0 0; font-size: .9em; }
+.grafik-komentarz em { color: var(--tekst); }
+.grafik-powod { color: var(--muted); }
+.klient-email-edit { margin: .4rem 0 .2rem; }
+.klient-email-edit > summary { cursor: pointer; color: var(--muted); font-size: .85em; }
+.klient-email-edit form { margin-top: .4rem; }
+/* Ręczna korekta statusu — chowana pod paskiem postępu, ma być dostępna, nie krzykliwa. */
+.status-recznie { margin: .1rem 0 .6rem; }
+.status-recznie > summary { cursor: pointer; color: var(--muted); font-size: .85em; }
+.status-recznie form { margin-top: .4rem; }
+.status-recznie .hint { margin: .35rem 0 0; }
+.kwota { white-space: nowrap; }
+form.inline { display: inline; }
+
+/* ── Góra karty zamówienia ───────────────────────────────────────────── */
+.back { display: inline-flex; align-items: center; gap: .35em; color: var(--muted); font-size: .85rem; border-radius: 999px; padding: .18em .65em; margin-left: -.65em; }
+.back:hover { color: var(--akcent); background: var(--akcent-tlo); text-decoration: none; }
+
+.card-top {
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: .8rem 1.1rem 1rem;
+  box-shadow: var(--cien);
+  margin-bottom: 1.1rem;
+}
+.card-top .back { margin-bottom: .55rem; }
+
+.card-head { display: flex; align-items: center; gap: .85rem; flex-wrap: wrap; }
+.avatar {
+  width: 46px; height: 46px; flex: none;
+  border-radius: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 1.05rem; letter-spacing: .02em; color: var(--akcent-kontrast);
+  background: linear-gradient(135deg, var(--akcent), #b3cddd);
+}
+.who { display: flex; flex-direction: column; gap: .05rem; min-width: 0; }
+.who h2 { margin: 0; font-size: 1.35rem; letter-spacing: -.015em; line-height: 1.25; overflow-wrap: anywhere; }
+.who-mail { color: var(--muted); font-size: .88rem; overflow-wrap: anywhere; }
+.who-mail:hover { color: var(--akcent); text-decoration: none; }
+.card-head > .badge { margin-left: auto; }
+
+/* Pasek postępu: 5 statusów jako kroki; zrobione = wypełnione, bieżący = obwódka. */
+.stepper { list-style: none; display: flex; margin: 1.05rem 0 0; padding: 0; }
+.step { flex: 1; display: flex; flex-direction: column; align-items: center; gap: .35rem; position: relative; text-align: center; min-width: 0; }
+.step::before { content: ""; position: absolute; top: 12px; left: calc(-50% + 17px); right: calc(50% + 17px); height: 2px; border-radius: 1px; background: var(--border-mocny); }
+.step:first-child::before { display: none; }
+.step.done::before, .step.current::before { background: var(--akcent); }
+.step-dot {
+  width: 24px; height: 24px; border-radius: 50%; z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .72rem; font-weight: 700;
+  background: var(--surface); border: 2px solid var(--border-mocny); color: var(--muted);
+}
+.step.done .step-dot { background: var(--akcent); border-color: var(--akcent); color: var(--akcent-kontrast); }
+.step.current .step-dot { border-color: var(--akcent); color: var(--akcent); box-shadow: 0 0 0 4px var(--akcent-tlo); }
+.step-label { font-size: .72rem; color: var(--muted); line-height: 1.25; padding: 0 .3em; }
+.step.current .step-label { color: var(--text); font-weight: 600; }
+/* Wąsko: etykiety kroków nie mieszczą się obok siebie — zostaje tylko bieżąca. */
+@media (max-width: 720px) {
+  .step-label { display: none; }
+  .step.current .step-label { display: block; }
+}
+
+.card-chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .9rem; align-items: center; }
+.chip { display: inline-flex; align-items: center; gap: .3em; background: rgba(255, 255, 255, .04); border: 1px solid var(--border-mocny); border-radius: 999px; padding: .18em .7em; font-size: .8rem; }
+.chip-akcent { background: var(--akcent-tlo); border-color: var(--akcent-ramka); color: var(--akcent); font-weight: 600; }
+
+.alert { border: 1px solid; border-radius: 10px; padding: .5em .8em; margin-top: .6rem; font-size: .92em; }
+.alert-uwaga { background: var(--uwaga-tlo); border-color: rgba(210, 153, 34, .5); }
+.alert-info { background: var(--akcent-tlo); border-color: var(--akcent-ramka); }
+/* ────────────────────────────────────────────────────────────────────── */
+
+.msg { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin: 8px 0; }
+.msg.ours { background: var(--akcent-tlo); }
+.msg.theirs { background: var(--surface); }
+.msg-head { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.msg-body { white-space: pre-wrap; }
+.msg-att { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.projekty-wyslane { margin: 12px 0; }
+.projekty-wyslane h4 { margin: 0 0 8px; font-size: .9rem; }
+.projekt-wyslany { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 10px 12px; margin-bottom: 8px; }
+.projekt-wyslany-head { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.projekt-wyslany-tresc { white-space: pre-wrap; font-size: .9rem; }
+.projekt-wyslany-plik { margin: 6px 0 0; }
+.projekt-wyslany-plik.hint { color: var(--muted); font-size: .8rem; }
+.htmx-indicator { display: none; margin-left: 8px; color: var(--muted); }
+.htmx-request .htmx-indicator, .htmx-request.htmx-indicator { display: inline; }
+
+.reply-box { background: var(--surface); border: 1px solid var(--border); box-shadow: var(--cien); padding: 16px; border-radius: var(--r); width: 100%; box-sizing: border-box; }
+.reply-box textarea { width: 100%; min-height: 220px; box-sizing: border-box; }
+.reply-box input[name=subject] { width: 100%; box-sizing: border-box; }
+.warn { background: var(--blad-tlo); border: 1px solid var(--blad); color: var(--blad); padding: 8px; border-radius: 8px; margin-bottom: 8px; }
+.info-ok { background: var(--ok-tlo); border: 1px solid var(--ok); color: var(--ok); padding: 8px; border-radius: 8px; margin-bottom: 8px; }
+
+.att-thumb { max-height: 144px; max-width: 240px; border: 1px solid var(--border-mocny); border-radius: 6px; margin: 2px; vertical-align: top; }
+.msg-att a { margin-right: 8px; }
+.readiness { font-size: 0.9em; color: var(--muted); }
+
+.readiness-box { flex: 0 0 240px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: .5em .75em; }
+.readiness-box h4 { margin: 0 0 .4em; }
+.readiness-box ul { list-style: none; padding: 0; margin: 0; }
+.readiness-box li { margin: .2em 0; }
+.readiness-box .auto { color: var(--muted); }
+.readiness-box button { background: none; border: 0; color: var(--text); padding: 0 .2em 0 0; font-size: 1em; }
+.readiness-box button:hover { color: var(--akcent); }
+.etap-actions { margin: .5em 0; display: flex; gap: .5em; align-items: center; flex-wrap: wrap; }
+/* Generator wyceny otwarty => przycisk zbedny. "Anuluj" czysci #etap2-quote,
+   wiec przycisk wraca sam, bez JS-a. */
+.etap2-akcje:has(#etap2-quote:not(:empty)) #btn-wycena { display: none; }
+.reply-target:empty { display: none; }
+ul.log { font-size: .9em; color: var(--muted); }
+.etap3-last { color: var(--muted); font-size: .9em; }
+
+.etap { border: 1px solid var(--border); border-radius: var(--r); margin: 1rem 0; overflow: hidden; background: var(--surface); }
+.etap-head { margin: 0; padding: .55rem .9rem; background: var(--surface-2); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: .55rem; letter-spacing: .05em; font-size: .78rem; text-transform: uppercase; color: var(--muted); }
+.etap-head::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--akcent); flex: none; }
+/* Kolumna akcji szersza niz korespondencja: mieszcza sie w niej formularz wyceny
+   (8 kontrolek w wierszu) i lista rodzajow bez scinania do nierozroznialnego prefiksu.
+   Przy 1fr 1fr select miał 83px, a obie opcje zaczynaja sie od "szablon malarski". */
+.etap-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 1rem; padding: .75rem; align-items: start; }
+.etap-maile details.msg { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: .4em .6em; margin: .4em 0; }
+.etap-maile details.msg > summary { cursor: pointer; color: var(--muted); }
+.etap-maile .msg.theirs { border-left: 3px solid var(--akcent); padding-left: .6em; margin: .6em 0; }
+.etap-pusto { color: var(--muted); }
+/* Pas etapu jest zwijalny (<details>): otwarty jest etap biezacy wg statusu.
+   Chowamy natywny trojkat, dokladamy wlasny chevron po prawej. */
+summary.etap-head { cursor: pointer; list-style: none; user-select: none; }
+summary.etap-head::-webkit-details-marker { display: none; }
+summary.etap-head::after { content: "▸"; margin-left: auto; color: var(--muted); transition: transform .15s ease; }
+details.etap[open] > summary.etap-head::after { transform: rotate(90deg); }
+
+/* Podsumowanie zamowienia (pas ZAMOWIENIE) */
+.zamowienie-podsumowanie { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: .6rem .8rem; margin-bottom: .8rem; }
+.zamowienie-podsumowanie h4 { margin: 0 0 .4rem; }
+.pod-pozycje { margin: 0 0 .4rem; padding-left: 1.1em; }
+.pod-razem { margin: .2rem 0; }
+.pod-brak { color: var(--muted); }
+.pod-dane { margin: .5rem 0 0; padding-top: .5rem; border-top: 1px solid var(--border); font-size: .92em; }
+
+/* Formularz danych do wysylki i faktury */
+.order-form fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .5rem 0; padding: .5rem .7rem; }
+.order-form legend { padding: 0 .4em; color: var(--muted); font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; }
+.order-form label { display: flex; flex-direction: column; gap: .2em; margin: .35rem 0; font-size: .9em; }
+.order-form label.chk { flex-direction: row; align-items: center; gap: .4em; }
+.order-form label.chk input { width: auto; }
+.order-form input { width: 100%; box-sizing: border-box; }
+
+/* Sciezki realizacji zamowienia */
+.sciezka { border-top: 1px solid var(--border); margin-top: .8rem; padding-top: .6rem; }
+.sciezka h4 { margin: 0 0 .4rem; font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+/* Prog zmierzony, nie zgadniety: ponizej ~1260px kolumna akcji robi sie wezsza niz
+   wiersz wyceny i select zapada sie do kilkunastu pikseli. Wtedy pasy stackuja sie
+   i formularz dostaje pelna szerokosc strony. */
+@media (max-width: 1360px) { .etap-body { grid-template-columns: minmax(0, 1fr); } }
+
+/* Formularz wyceny: jeden wiersz = jedna pozycja, numer z licznika CSS (JS nie przenumerowuje).
+   Linia glowna ma OSIEM kolumn i tyle samo dzieci siatki:
+   ::before(nr), qty, span.qsep(x), select, nazwa, rozmiar, span.qprice, button.
+   Dziewiate dziecko `.qmeta` (netto + rabat) siedzi w DRUGIEJ linii pozycji.
+
+   ⚠️ DWIE USTERKI NAPRAWIONE 19.08.2026 (zgloszone zrzutem ekranu):
+
+   1. BRAKOWALO DZIEWIATEJ KOLUMNY. Deklaracja miala ich osiem, a wiersz dziewiec dzieci —
+      `label.qrabat` doszedl razem z rabatem na kolejny egzemplarz i nikt nie poprawil ani
+      listy kolumn, ani komentarza wyzej (tamten wyliczal osiem i po prostu POMIJAL qrabat).
+      Nadmiarowy przycisk "x" ladowal w niejawnie utworzonym drugim wierszu siatki, czyli
+      pod pozycja.
+
+   2. KAZDY WIERSZ BYL OSOBNA SIATKA, wiec kolumny nie mialy jak sie zgrac miedzy wierszami:
+      tory `auto` (numer, "x", qrabat) i `minmax(9.5em, auto)` (cena + podpowiedz netto)
+      licza sie z TRESCI, a ta rozni sie wiersz od wiersza — wlaczony rabat rozpycha swoja
+      kolumne i zabiera miejsce selectowi, ktory zapada sie do samej strzalki. Teraz siatka
+      stoi na `#quote-rows`, a wiersze pozyczaja jej tory przez `subgrid`, wiec wszystkie
+      pozycje dziela te same kolumny. To jest roznica miedzy „wierszami obok siebie" a tabela.
+
+   3. DZIEWIEC KONTROLEK NIE MIESCILO SIE W JEDNEJ LINII i tory `fr` („rodzaj", „nazwa")
+      zapadaly sie do ZERA. Podpowiedz netto i rabat zeszly do drugiej linii (`.qmeta`). */
+#quote-rows {
+  counter-reset: qrow;
+  display: grid;
+  /* OSIEM kolumn linii glownej: nr, ilosc, "x", rodzaj, nazwa, rozmiar, cena, usun.
+     select dostaje wiecej niz nazwa: rodzaje roznia sie dopiero od 17. znaku
+     ("szablon malarski wielo|jedno-razowy"), wiec zbyt waski select pokazuje
+     obu opcjom identyczny prefiks. Nazwa wlasna jest krotka i moze byc wezsza. */
+  grid-template-columns: auto 3.5em auto minmax(6em, 1.7fr) minmax(4em, 1fr) 6em auto auto;
+  gap: .55em .4em;
+}
+/* `subgrid` — kazda pozycja jest wierszem siatki nadrzednej i POZYCZA jej tory, zamiast
+   liczyc wlasne. To jest cala roznica miedzy „wierszami obok siebie" a tabela: bez tego
+   wlaczony rabat w jednej pozycji rozpychal jej kolumny i te same pola w sasiednim wierszu
+   mialy inna szerokosc. */
+.qrow {
+  counter-increment: qrow;
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  align-items: center;
+  row-gap: .25em;
+}
+/* Druga linia pozycji: to, co z ceny WYNIKA (netto, rabat na kolejny egzemplarz).
+   Zaczyna sie pod „rodzajem", zeby numer i ilosc zostaly wizualnie kolumna pozycji. */
+.qmeta { grid-column: 4 / -1; display: flex; align-items: center; gap: .9em; flex-wrap: wrap; }
+.qrow::before { content: counter(qrow) "."; color: var(--muted); font-size: .85em; }
+.qrow > * { min-width: 0; }
+.qrow input, .qrow select { box-sizing: border-box; width: 100%; }
+.qrow .qsep { color: var(--muted); }
+.qrow button { background: var(--surface-2); color: var(--muted); border-color: var(--border-mocny); padding: .3em .5em; }
+.qrow button:hover:not(:disabled) { color: var(--blad); border-color: var(--blad); }
+.qprice { display: flex; align-items: center; gap: .35em; min-width: 0; }
+.qprice input { width: 5.5em; flex: 0 0 auto; }
+.qrow .netto-hint { color: var(--muted); font-size: .75em; white-space: nowrap; }
+/* Waski ekran: wiersza w jednej linii sie nie da (8 kontrolek), wiec zamiast
+   sciskac pola do nieczytelnych kikutow — numer i "usun" w naglowku, pola pod spodem.
+   Ukrywamy TYLKO separator "x" (dziecko .qrow); "zl" siedzi w .qprice i zostaje. */
+@media (max-width: 845px) {
+  /* ⚠️ Tu .qrow MUSI miec WLASNE tory — ponizsze `grid-area` odnosza sie do kolumn wiersza,
+     a `subgrid` pozycza kolumny rodzica, ktory tu przestaje byc siatka. */
+  #quote-rows { display: block; }
+  .qrow { display: grid; grid-template-columns: auto 1fr auto; grid-column: auto; row-gap: .3em; margin: .35em 0; }
+  .qrow > .qmeta { grid-area: 6 / 2 / auto / 4; }
+  .qrow > .qsep { display: none; }
+  .qrow::before { grid-area: 1 / 1; }
+  .qrow > [name=qty] { grid-area: 1 / 2; width: 5em; } /* bez tego ilosc rozciaga sie na cala szerokosc */
+  .qrow > button { grid-area: 1 / 3; }
+  .qrow > select { grid-area: 2 / 2 / auto / 4; }
+  .qrow > [name=nazwa] { grid-area: 3 / 2 / auto / 4; }
+  .qrow > [name=rozmiar] { grid-area: 4 / 2 / auto / 4; }
+  .qrow > .qprice { grid-area: 5 / 2 / auto / 4; }
+}
+
+/* Akcja destrukcyjna: odróżniona kolorem, nie tylko confirm()-em. */
+button.danger { color: var(--blad); border-color: rgba(248, 81, 73, .45); }
+button.danger:hover:not(:disabled) { background: var(--blad-tlo); border-color: var(--blad); color: var(--blad); }
+.card-anuluj, .card-przywroc { margin-top: .75rem; }
+.card-usun { margin-top: 1.25rem; }
+
+.settings-form { max-width: 720px; }
+.settings-form fieldset.settings-grupa { border: 1px solid var(--border); border-radius: var(--r); margin: 0 0 1.25rem; padding: .4rem 1rem .6rem; background: var(--surface); }
+.settings-form fieldset.settings-grupa legend { padding: 0 .5em; color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; }
+.settings-form .setting { display: flex; flex-direction: column; gap: .25em; margin: 1.1em 0; }
+.settings-form textarea, .settings-form input { width: 100%; box-sizing: border-box; font-family: inherit; }
+.settings-form .hint { color: var(--muted); }
+.ok-msg { color: var(--ok); }
+
+/* Toast po wysylce: znika sam, bez JS-a. Parametr ?wyslano=1 w URL-u przezywa
+   przeladowanie karty, wiec potwierdzenie widac po HX-Redirect. */
+.toast {
+  position: fixed; top: 1rem; right: 1rem; z-index: 100;
+  background: var(--ok-tlo); border: 1px solid var(--ok); color: var(--ok);
+  padding: .6em 1em; border-radius: var(--r); box-shadow: var(--cien);
+  animation: toast-znika .3s ease 3.7s forwards;
+}
+@keyframes toast-znika { to { opacity: 0; visibility: hidden; } }
+
+/* Wybor toru na Etapie III — tory sa rozlaczne, wiec wybor jest widoczna decyzja. */
+.tor-wybor { margin: .75rem 0; }
+.tor-info { margin: 0 0 .5rem; font-size: .9rem; color: var(--muted); }
+.tor-biezacy { margin: .75rem 0; font-size: .9rem; display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.tor-zamkniety { color: var(--muted); font-style: italic; }
+
+/* Karta czeka na nasza odpowiedz: ostatni mail w sprawie jest od klienta. */
+tr.czeka td a { font-weight: 700; color: var(--text); }
+.new-badge {
+  font-size: .7rem; font-weight: 700; letter-spacing: .04em;
+  padding: .1rem .35rem; border-radius: 999px;
+  background: var(--akcent-tlo); color: var(--akcent);
+  border: 1px solid var(--akcent-ramka);
+}
+
+/* ——— Raporty ——— */
+.report-okres { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin: 0 0 1.25rem; }
+.report-okres .pill { text-decoration: none; padding: .22em .7em; }
+.report-zakres { color: var(--muted); font-size: .85rem; margin-left: .3rem; }
+.report-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: .75rem; margin-bottom: 1.75rem; }
+.tile {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: .2rem;
+}
+.tile-value { font-size: 1.75rem; font-weight: 700; line-height: 1.15; color: var(--text); }
+.tile-label { color: var(--text); font-size: .9rem; }
+.tile-sub { color: var(--muted); font-size: .78rem; }
+/* Bloki raportu (lejek / rozkład dzienny / płatności) — makieta
+   docs/superpowers/specs/2026-09-10-raporty-makieta.html */
+.report-blok {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 1.1rem 1.25rem; margin-bottom: 1rem;
+}
+.report-blok h2 {
+  font-size: .78rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted); margin: 0 0 1rem;
+}
+.report-nota { color: var(--muted); font-size: .78rem; line-height: 1.5; margin: .9rem 0 0; }
+
+/* Lejek: etykieta | słupek | liczba. Podlinia zajmuje dwie prawe kolumny, żeby zaczynała
+   się tam, gdzie słupek, a nie pod etykietą. */
+.lejek-row { display: grid; grid-template-columns: 150px 1fr 108px; align-items: center; gap: .7rem; margin-bottom: .5rem; }
+.lejek-lab { font-size: .9rem; color: var(--text); }
+.lejek-track { height: 26px; background: var(--surface-2); border-radius: 6px; overflow: hidden; }
+.lejek-bar { display: block; height: 100%; background: var(--akcent); border-radius: 6px; }
+.lejek-bar.odmowa { background: var(--blad); opacity: .8; }
+.lejek-num { text-align: right; font-variant-numeric: tabular-nums; font-size: .88rem; color: var(--muted); }
+.lejek-num b { font-size: 1.05rem; font-weight: 700; color: var(--text); }
+.lejek-sub { grid-column: 2 / 4; font-size: .76rem; color: var(--muted); margin: -.15rem 0 .6rem; }
+.lejek-sep { border: none; border-top: 1px dashed var(--border-mocny); margin: .9rem 0; }
+.lejek-toku {
+  background: var(--akcent-tlo); border: 1px solid var(--akcent-ramka); border-radius: 8px;
+  padding: .5rem .75rem; font-size: .82rem; color: var(--text); margin: 0 0 1rem;
+}
+
+/* Rozkład dzienny. `min-height` robi z dnia pustego widoczną kreskę — bez niej oś się rwie
+   i miesiąc z dziurami wygląda na brak danych. */
+.dni { display: flex; align-items: flex-end; gap: 3px; height: 76px; }
+.dni span { flex: 1; background: var(--akcent); border-radius: 3px 3px 0 0; min-height: 2px; opacity: .85; }
+.dni span.we { opacity: .3; }
+.dni-os { display: flex; justify-content: space-between; color: var(--muted); font-size: .7rem; margin-top: .35rem; }
+
+/* Płatności: jeden pasek dzielony na trzy. */
+.plat-pasek { display: flex; height: 32px; border-radius: 8px; overflow: hidden; gap: 2px; }
+.plat-pasek span {
+  display: flex; align-items: center; justify-content: center;
+  font-size: .78rem; font-weight: 700; color: var(--akcent-kontrast);
+}
+.plat-legenda { display: flex; gap: 1.4rem; flex-wrap: wrap; margin-top: .8rem; font-size: .85rem; color: var(--text); }
+.plat-legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: .4rem; }
+.plat-legenda em { color: var(--muted); font-style: normal; }
+.plat-pasek .plat-online, .plat-legenda i.plat-online { background: var(--akcent); }
+.plat-pasek .plat-proforma, .plat-legenda i.plat-proforma { background: var(--ok); }
+.plat-pasek .plat-przelew, .plat-legenda i.plat-przelew { background: var(--uwaga); }
+
+p.hint { color: var(--muted); font-size: .82rem; line-height: 1.5; }
+p.hint code { background: var(--surface-2); border: 1px solid var(--border); border-radius: 5px; padding: .05em .35em; font-size: .95em; }
+
+/* Historia wersji wyceny (pas WYCENA) */
+.wyceny-historia { list-style: none; margin: 0 0 .6rem; padding: 0; display: flex; flex-direction: column; gap: .3rem; }
+.wyceny-historia li { background: var(--surface-2); border: 1px solid var(--border); border-left: 3px solid var(--akcent); border-radius: 6px; padding: .35em .6em; font-size: .86rem; color: var(--text); }
+.wyceny-historia li.wygasla { border-left-color: var(--blad); color: var(--muted); }
+.wyceny-wygasla { color: var(--blad); font-weight: 600; }
+
+/* ETAP IV — projekt: formularz i strefa drag-and-drop */
+.etap4-akcje .projekt-status { margin: 0 0 .6rem; }
+.projekt-form { display: flex; flex-direction: column; gap: .5rem; margin-bottom: .8rem; }
+.projekt-form label { font-size: .82rem; color: var(--muted); }
+.projekt-form input[type=text], .projekt-form textarea { width: 100%; }
+.dropzone { position: relative; border: 2px dashed var(--border-mocny); border-radius: 8px; background: var(--surface-2); padding: 1rem; text-align: center; cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+.dropzone.drag { border-color: var(--akcent); background: var(--akcent-tlo); }
+.dropzone input[type=file] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.dropzone-hint { margin: 0; color: var(--muted); font-size: .82rem; pointer-events: none; }
+.dropzone-name { margin: .4em 0 0; color: var(--akcent); font-weight: 600; font-size: .84rem; }
+.projekt-akcje { display: flex; flex-wrap: wrap; gap: .5rem; }
+.projekt-nieoplacone { margin-top: .5rem; }
+.projekt-nieoplacone > summary { cursor: pointer; color: var(--akcent); font-weight: 600; padding: .3em 0; }
+
+/* ================================================================================= */
+/* EKRAN LOGOWANIA I SEKCJA DOSTEPU W USTAWIENIACH.                                  */
+/* Wylacznie tokeny palety PRO wprowadzonej audytem UI (ciepły grafit + jasna Stal) — */
+/* zaden kolor nie jest wpisany wprost.                                              */
+/* ================================================================================= */
+.logowanie { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
+.logowanie-karta { width: 100%; max-width: 22rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.8rem 1.6rem; }
+.logowanie-marka { font-weight: 700; letter-spacing: .06em; color: var(--text); }
+.logowanie-marka .pro { color: var(--akcent); }
+.logowanie-podtytul { margin: .15rem 0 1.4rem; font-size: .82rem; color: var(--muted); }
+.logowanie-pole { display: block; margin-bottom: .9rem; }
+.logowanie-pole span { display: block; font-size: .8rem; color: var(--muted); margin-bottom: .25rem; }
+.logowanie-pole input { width: 100%; padding: .55rem .6rem; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border-mocny); border-radius: 6px; }
+.logowanie-pole input:focus { outline: 2px solid var(--akcent); outline-offset: 1px; }
+.logowanie-wyslij { width: 100%; padding: .6rem; font: inherit; font-weight: 600; color: var(--akcent-kontrast); background: var(--akcent); border: 0; border-radius: 6px; cursor: pointer; }
+.logowanie-blad { margin: 0 0 1rem; padding: .55rem .7rem; font-size: .86rem; color: var(--blad); background: var(--blad-tlo); border-radius: 6px; }
+.logowanie-stopka { margin: 1.2rem 0 0; font-size: .78rem; color: var(--muted); }
+
+.dostep-akcje { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .6rem; }
+.dostep-uwaga { margin: .7rem 0 0; font-size: .82rem; color: var(--muted); }
+
+/* Formularz wyceny — rabat na kolejny egzemplarz */
+.qrabat { display: inline-flex; align-items: center; gap: .3em; white-space: nowrap; font-size: .85em; }
+.qrabat-pct { width: 4.5em; }
+.qrabat-etykieta { opacity: .8; }
+
+/* Karta — pozycje zamówienia złożonego przez klienta */
+.zam-pozycje { margin: .3em 0 .6em; padding-left: 1.2em; }
+.zam-pozycje .poza-wycena { font-weight: 600; }
+
+/* ================================================================================= */
+/* KARTA — UKŁAD 50/50 (przebudowa 19.08.2026, makieta zatwierdzona 18.08).           */
+/* Lewa: cała korespondencja + jeden komponer. Prawa: trzy pasy podsumowania.         */
+/* Wartości 1:1 z makiety docs/superpowers/specs/2026-08-18-karta-podzial-na-pol-*.   */
+/* ================================================================================= */
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.1rem; align-items: start; margin-top: 1rem; }
+/* Poniżej ~1100 px dwie kolumny po pół ekranu robią się nieczytelne (temat maila łamie
+   się co drugie słowo) — wtedy jedna pod drugą, korespondencja pierwsza. */
+@media (max-width: 1100px) { .split { grid-template-columns: minmax(0, 1fr); } }
+
+.kol { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--cien); }
+.kol-head { display: flex; align-items: center; gap: .6rem; padding: .7rem .9rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.kol-head h3 { margin: 0; font-size: .78rem; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.kol-body { padding: .9rem; }
+.kol .sp, .zal .sp, .tryb .sp, .folder-kafel .sp, .wersja-head .sp { margin-left: auto; }
+/* Podsumowanie jedzie z ekranem: przy długiej korespondencji operator nie musi wracać
+   na górę po numer zamówienia. Własny scroll, żeby kolumna sama się nie urwała. */
+.prawa { position: sticky; top: .8rem; max-height: calc(100vh - 1.6rem); overflow: auto; }
+@media (max-width: 1100px) { .prawa { position: static; max-height: none; } }
+
+/* ——— korespondencja ——— */
+/* ⚠️ Wysokość rośnie z oknem, ale ma podłogę i sufit. Sztywne `32rem` było za niskie na
+   każdym monitorze (zgłoszone 19.08.2026): korespondencja mieściła dwie wiadomości, a
+   komponer pod spodem i tak spychał stronę do przewijania. `70vh` daje na 1080p ~2× tyle,
+   `min-height` broni okna niskiego, a `52rem` nie pozwala rozjechać się na monitorze
+   pionowym. Start na najnowszej wiadomości robi skrypt w card.ejs. */
+.maile { display: flex; flex-direction: column; gap: .55rem; min-height: 22rem; max-height: min(70vh, 52rem); overflow: auto; padding-right: .2rem; }
+.maile .msg { margin: 0; font-size: .9rem; }
+.maile .msg.theirs { background: var(--surface-2); }
+.maile .msg.ours { background: transparent; border-style: dashed; }
+.maile details.msg > summary { cursor: pointer; color: var(--muted); font-size: .78rem; list-style: none; }
+.maile details.msg > summary::-webkit-details-marker { display: none; }
+.maile details.msg > summary::before { content: "\25B8  "; }
+.maile details.msg[open] > summary::before { content: "\25BE  "; }
+.dzien { text-align: center; font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; margin: .3rem 0; }
+
+/* ——— komponer ——— */
+.odp { border-top: 1px solid var(--border); padding: .9rem; background: var(--surface-2); border-radius: 0 0 var(--r) var(--r); }
+.odp label { display: block; font-size: .74rem; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; margin-bottom: .25rem; }
+.odp input[type=text], .odp textarea {
+  /* ⚠️ `box-sizing` MUSI tu być: w tym pliku nie ma globalnej reguły `* { box-sizing }`,
+     więc `width: 100%` + padding daje pole szersze od kolumny. Na desktopie tego nie widać
+     (kolumna ma zapas), na telefonie robi poziomy pasek przewijania przez całą kartę. */
+  width: 100%; box-sizing: border-box;
+  font: inherit; font-size: .9rem; color: var(--text); background: var(--bg);
+  border: 1px solid var(--border-mocny); border-radius: 8px; padding: .5rem .65rem; margin-bottom: .6rem;
+}
+.odp textarea { min-height: 8rem; resize: vertical; white-space: pre-wrap; }
+/* DW („do wiadomości") — zwinięte do jednego odnośnika, dopóki karta nie ma adresów w kopii. */
+.dw-zwiniete { margin: -.25rem 0 .6rem; font-size: .78rem; }
+.odp-akcje { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.odp-uwaga { font-size: .78rem; color: var(--muted); margin: .55rem 0 0; }
+.odp-uwaga.uwaga-mocna { color: var(--uwaga); }
+
+button.pr { font: inherit; font-size: .88rem; padding: .45rem .95rem; border-radius: 8px; cursor: pointer; border: 1px solid var(--border-mocny); background: var(--surface); color: var(--text); }
+button.pr:hover:not(:disabled) { border-color: var(--akcent-ramka); }
+button.pr.glowny { background: var(--akcent); border-color: var(--akcent); color: var(--akcent-kontrast); font-weight: 600; }
+/* Krok potwierdzenia ma WYGLĄDAĆ inaczej, nie tylko inaczej się nazywać — inaczej drugi
+   klik pada odruchowo, a to jest ostatni moment przed wysłaniem maila do klienta. */
+button.pr.potwierdz { background: var(--uwaga); border-color: var(--uwaga); color: var(--akcent-kontrast); font-weight: 700; }
+button.pr.ai { border-color: rgba(167, 139, 250, .5); color: var(--fiolet); }
+button.pr:disabled { opacity: .45; cursor: not-allowed; }
+button.pr.maly { font-size: .78rem; padding: .25rem .6rem; }
+button.jak-link { font: inherit; font-size: inherit; background: none; border: 0; padding: 0; color: var(--akcent); cursor: pointer; text-decoration: underline; }
+
+.tryb { display: flex; align-items: center; gap: .5rem; margin-bottom: .6rem; padding: .35rem .6rem; border-radius: 8px; font-size: .8rem;
+  background: var(--fiolet-tlo); border: 1px solid rgba(167, 139, 250, .35); color: var(--fiolet); }
+.tryb button { font: inherit; font-size: .76rem; background: none; border: 1px solid rgba(167, 139, 250, .4); color: var(--fiolet); border-radius: 6px; padding: .1rem .45rem; cursor: pointer; }
+
+/* ——— odroczona wysyłka: „Wyślij rano" i okno zaplanowanej wiadomości ———
+   Przycisk stoi obok „Wyślij", ale NIE MOŻE wyglądać jak on: to dwie różne obietnice
+   (teraz vs. o 7:00), a różnią się jednym kliknięciem. Stąd obwódka w kolorze uwagi
+   zamiast wypełnienia akcentem. Krok potwierdzenia dokłada klasę `.potwierdz` — ta
+   przemalowuje przycisk na pełną uwagę i jest wspólna z „Wyślij". */
+button.pr.rano { border-color: rgba(210, 153, 34, .55); color: var(--uwaga); background: var(--uwaga-tlo); }
+button.pr.rano:hover:not(:disabled) { border-color: var(--uwaga); }
+
+/* Okno zaplanowanej wiadomości ZASTĘPUJE komponer, więc siedzi w tym samym miejscu i ma
+   ten sam „fundament" co `.odp` — inaczej lewa kolumna urywałaby się w połowie. */
+.zapl { border-top: 1px solid var(--border); padding: .9rem; background: var(--surface-2); border-radius: 0 0 var(--r) var(--r); }
+.zapl-pas { display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem; font-size: .86rem;
+  background: var(--akcent-tlo); border: 1px solid var(--akcent-ramka); color: var(--text);
+  border-radius: 8px; padding: .45rem .7rem; margin-bottom: .7rem; }
+/* Wstrzymana wysyłka ma WYGLĄDAĆ na wstrzymaną — ten mail NIE poszedł do klienta, a karta
+   stoi z tego powodu w „Do zrobienia". Sam inny napis wzrok pomija. */
+.zapl.zapl-uwaga .zapl-pas { background: var(--uwaga-tlo); border-color: rgba(210, 153, 34, .5); color: var(--uwaga); }
+.zapl-temat { font-size: .86rem; margin: 0 0 .4rem; }
+.zapl-tresc { white-space: pre-wrap; word-break: break-word; font: inherit; font-size: .88rem;
+  background: var(--bg); border: 1px solid var(--border-mocny); border-radius: 8px;
+  padding: .5rem .65rem; margin: 0 0 .6rem; max-height: 18rem; overflow: auto; }
+.zapl-zal { list-style: none; margin: 0 0 .6rem; padding: 0; font-size: .84rem; display: flex; flex-direction: column; gap: .25rem; }
+.zapl-akcje { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.zapl-stopka { font-size: .78rem; color: var(--muted); margin: .55rem 0 0; }
+/* Odnośnik „Przywróć treść do komponera" na karcie z odwołaną wiadomością. */
+.odp-odwolana { font-size: .84rem; color: var(--uwaga); background: var(--uwaga-tlo);
+  border: 1px solid rgba(210, 153, 34, .4); border-radius: 8px; padding: .45rem .7rem; margin: 0 0 .6rem;
+  display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+
+/* ——— załączniki ——— */
+.zal-strefa { border: 1px dashed var(--border-mocny); border-radius: 8px; padding: .55rem .7rem; margin-bottom: .6rem; background: var(--bg); }
+.zal-strefa.pusta { text-align: center; color: var(--muted); font-size: .82rem; }
+.zal-strefa.drag { border-color: var(--akcent); background: var(--akcent-tlo); }
+.zal-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .35rem; }
+.zal { display: flex; align-items: center; gap: .55rem; font-size: .84rem; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: .3rem .5rem; }
+.zal .ikona { flex: none; }
+.zal .nazwa { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zal .waga { color: var(--muted); font-size: .78rem; flex: none; }
+.zal-usun { flex: none; font: inherit; font-size: .95rem; line-height: 1; background: none; border: 1px solid var(--border-mocny); color: var(--muted); border-radius: 6px; width: 1.6rem; height: 1.6rem; cursor: pointer; }
+.zal-usun:hover { border-color: var(--blad); color: var(--blad); }
+/* Plik odrzucony ZOSTAJE na liście, na czerwono i z krzyżykiem — to jest istota zgłoszonej
+   usterki: dawniej zły plik znikał z oczu, ale nie z formularza. */
+.zal.zly { border-color: rgba(248, 81, 73, .5); background: var(--blad-tlo); }
+.zal.zly .nazwa { color: var(--blad); }
+.zal-blad { font-size: .78rem; color: var(--blad); margin: .35rem 0 0; }
+.zal-dodaj { margin: .45rem 0 0; display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+
+/* ——— prawa kolumna: pasy etapów ——— */
+.sek { border: 1px solid var(--border); border-radius: 8px; margin-bottom: .7rem; overflow: hidden; background: var(--surface); }
+.sek-head { display: flex; align-items: center; gap: .5rem; padding: .5rem .7rem; background: var(--surface-2); font-size: .76rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; cursor: pointer; list-style: none; }
+.sek-head::-webkit-details-marker { display: none; }
+.sek-head::before { content: "\25B8"; font-size: .7rem; }
+.sek[open] > .sek-head::before { content: "\25BE"; }
+.sek-head .sp { margin-left: auto; letter-spacing: 0; text-transform: none; font-weight: 400; }
+.sek-body { padding: .7rem; font-size: .88rem; }
+.sek[data-stan="przyszly"] { opacity: .6; }
+.sek.aktywna { border-color: var(--akcent-ramka); }
+.sek.aktywna > .sek-head { background: var(--akcent-tlo); color: var(--akcent); }
+
+.linia { display: flex; justify-content: space-between; gap: .8rem; padding: .18rem 0; }
+.linia .k { color: var(--muted); flex: none; }
+.linia .w { text-align: right; }
+.ok-txt { color: var(--ok); }
+.uwaga-txt { color: var(--uwaga); }
+.pozycje { list-style: none; margin: 0 0 .5rem; padding: 0; font-size: .86rem; }
+.pozycje li { display: flex; justify-content: space-between; gap: .8rem; padding: .16rem 0; border-bottom: 1px dashed var(--border); }
+.pozycje li:last-child { border-bottom: 0; }
+.pozycje li.dobrany { color: var(--fiolet); }
+.razem { display: flex; justify-content: space-between; font-weight: 600; border-top: 1px solid var(--border-mocny); margin-top: .35rem; padding-top: .35rem; }
+.akcje-sek { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; margin-top: .6rem; }
+.mini { font-size: .78rem; color: var(--muted); margin: .4rem 0 0; }
+.mini-naglowek { color: var(--text); font-weight: 600; margin-top: .8rem; }
+.ostrz { border-left: 3px solid var(--uwaga); background: var(--uwaga-tlo); padding: .4rem .6rem; border-radius: 0 6px 6px 0; font-size: .82rem; margin: .5rem 0 0; }
+.gotowosc > summary { cursor: pointer; color: var(--muted); font-size: .8rem; margin-bottom: .4rem; }
+.gotowosc-lista { list-style: none; margin: 0 0 .6rem; padding: 0; font-size: .85rem; }
+.gotowosc-lista li { display: flex; align-items: center; gap: .4rem; padding: .1rem 0; }
+
+/* ——— Etap III: brief dla grafika ——— */
+.streszcz { background: var(--fiolet-tlo); border: 1px solid rgba(167, 139, 250, .35); border-radius: 8px; padding: .6rem .7rem; font-size: .86rem; margin-bottom: .8rem; }
+.streszcz > b { color: var(--fiolet); display: block; font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; margin-bottom: .3rem; }
+.streszcz-tresc { white-space: pre-wrap; }
+.auto-znak { float: right; font-size: .66rem; letter-spacing: .08em; opacity: .75; font-weight: 400; }
+.streszcz-stopka { margin-top: .45rem; padding-top: .35rem; border-top: 1px solid rgba(167, 139, 250, .25); }
+/* Akceptacja projektu przez klienta (przycisk „AKCEPTUJĘ" w mailu). Neutralna, dopóki
+   czekamy; zielona dopiero po kliknięciu klienta — kolor ma znaczyć FAKT, nie nadzieję. */
+.akceptacja-klienta { border: 1px solid var(--border-mocny); border-radius: 8px; padding: .5rem .6rem; margin: .6rem 0; font-size: .86rem; }
+.akceptacja-klienta.ok { border-color: rgba(63, 185, 80, .5); background: var(--ok-tlo); }
+.akceptacja-klienta.ok > b { color: var(--ok); }
+.akceptacja-klienta .mini { color: var(--muted); }
+
+.brief-kafle { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin: .5rem 0 .6rem; }
+.kafel { background: var(--bg); border: 1px solid var(--border-mocny); border-radius: 8px; padding: .5rem .6rem; }
+.kafel .etykieta { font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.kafel .liczba { font-size: 1.5rem; font-weight: 600; line-height: 1.15; }
+.kafel .pod { font-size: .78rem; color: var(--muted); }
+.kafel.pilny { border-color: rgba(210, 153, 34, .5); background: var(--uwaga-tlo); }
+.kafel.pilny .liczba { color: var(--uwaga); }
+.folder-kafel { display: flex; align-items: center; gap: .6rem; background: var(--bg); border: 1px solid var(--akcent-ramka); border-radius: 8px; padding: .55rem .65rem; margin-bottom: .3rem; color: var(--text); }
+.folder-kafel:hover { text-decoration: none; border-color: var(--akcent); }
+.folder-kafel .ikona { font-size: 1.4rem; flex: none; }
+.folder-kafel .nazwa { font-weight: 600; }
+.folder-kafel .pod { font-size: .78rem; color: var(--muted); word-break: break-all; }
+.tor-wybor { display: flex; gap: .4rem; margin-bottom: .4rem; }
+.tor-opcja { flex: 1; border: 1px solid var(--border-mocny); border-radius: 8px; padding: .45rem .55rem; font-size: .8rem; color: var(--muted); text-align: center; }
+.tor-opcja.wybrany { border-color: var(--akcent-ramka); background: var(--akcent-tlo); color: var(--akcent); font-weight: 600; }
+.wersje { list-style: none; margin: 0; padding: 0; }
+.wersja { border: 1px solid var(--border); border-radius: 8px; padding: .5rem .6rem; margin-bottom: .4rem; font-size: .85rem; }
+.wersja-head { display: flex; align-items: center; gap: .5rem; color: var(--muted); font-size: .78rem; }
+.wersja-head .nr { background: var(--surface-2); border: 1px solid var(--border-mocny); border-radius: 999px; padding: .05rem .45rem; color: var(--text); font-weight: 600; }
+.wersja-plik { margin-top: .35rem; }
+
+/* Formularze wsadzone w pas (dane wysyłki, uwagi do realizacji) mają się zmieścić w połowie
+   ekranu — bez tego pola z order-form.js rozpychają kolumnę i robi się scroll poziomy. */
+.sek-body input, .sek-body textarea, .sek-body select { max-width: 100%; box-sizing: border-box; }
+.sek-body .notes-box textarea { width: 100%; }
+.sek-body .log { max-height: 20rem; overflow: auto; }

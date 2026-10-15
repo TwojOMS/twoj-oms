@@ -1,0 +1,18 @@
+<%# Komorka „Zamowienie" dokumentu z inFaktu. TRZY przypadki, nie dwa — i wlasnie dlatego
+    jest to osobny wycinek, uzywany przez obie tabele zakladki (nieoplacone i faktury
+    miesiaca). Druga kopia tych galezi rozjechalaby sie przy pierwszej zmianie.
+
+    1. `zamowienie` — dokument wystawiony z karty zamowienia panelu;
+    2. `okres` — faktura ZBIORCZA klienta rozliczanego miesiecznie. Nie ma wiersza
+       w tabeli `faktury`, jej `infakt_uuid` siedzi w `okresy_rozliczeniowe`, wiec bez tej
+       galezi caly pieniadz B2B wygladalby jak dokument wystawiony poza panelem;
+    3. ⚠️ ANI JEDNO — dokument wystawiony WPROST w inFakcie. To jest NORMALNE, a nie blad:
+       panel nie jest jedynym miejscem, w ktorym wlasciciel wystawia faktury. Stad kreska,
+       a nie ostrzezenie. %>
+<% if (d.zamowienie) { %>
+  <a class="link-numer" title="<%= d.zamowienie.numer %>" href="/zamowienia/<%= d.zamowienie.id %>"><%= d.zamowienie.numer %></a>
+<% } else if (d.okres) { %>
+  <a href="/okresy/<%= d.okres.id %>"><%= d.okres.klient %> <%= d.okres.rok %>-<%= String(d.okres.miesiac).padStart(2, '0') %></a>
+<% } else { %>
+  <span class="wiersz-szczegoly">—</span>
+<% } %>

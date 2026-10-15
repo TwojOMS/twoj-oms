@@ -1,0 +1,147 @@
+<%# Zakladka CELE (spec 2026-09-13). Dwa pasy: kafle (patrzenie) + lista (robienie).
+    Spec: docs/superpowers/specs/2026-09-13-oms-cele-design.md
+
+    ⚠️⚠️ TEN PLIK NICZEGO NIE LICZY I NIGDY NIE ROBI `ile ?? 0`. Zamiana braku wiedzy
+    na zero jest DOKLADNIE ta awaria, ktorej ten ekran ma zapobiegac: „0 / 5 wzorow"
+    znaczyloby naraz „operator nic nie dodal" i „miernik padl", a na tej podstawie zapada
+    rozmowa z czlowiekiem. Stan przychodzi gotowy z domain/postep-celu.js.
+
+    ⚠️⚠️ UKLAD SEKCJI — niezmiennik 4.88b. `section.panel` MA `padding: 0`; margines daje
+    `div.panel-cialo`. Kazda sekcja to `panel` > `panel-glowa` (tytul kapitalikami
+    + `span.dopisek`) + `panel-cialo`. Pierwsza wersja tej zakladki wstawiala `h2` i tabele
+    WPROST w sekcje i wszystko dotykalo ramki — zgloszone przez właściciela tymi samymi slowami,
+    co dzien wczesniej przy STATYSTYKACH. Wzorce: raporty.ejs, koszty.ejs, faktury.ejs. %>
+<%
+  // Kreska, nie zero — patrz komentarz wyzej.
+  const LICZBA = (p) => (p.postep.ile === null ? '—' : p.postep.ile);
+  const CEL = (p) => (p.postep.celIle === null ? '' : ` / ${p.postep.celIle}`);
+%>
+<div class="glowa-ekranu">
+  <h1>Cele</h1>
+  <span class="krok">cele i zadania okresowe · stan na <%= dzisiaj %></span>
+</div>
+
+<section class="panel bez-druku">
+  <div class="panel-glowa">
+    <h2>Kogo pokazać</h2>
+  </div>
+  <div class="panel-cialo">
+    <div class="pola-w-rzedzie">
+      <a class="btn <%= kto === null ? 'btn--glowny' : '' %>" href="/cele">Wszyscy</a>
+      <% osoby.forEach(function (o) { %>
+        <a class="btn <%= kto === o.id ? 'btn--glowny' : '' %>" href="/cele?kto=<%= o.id %>"><%= o.imie %></a>
+      <% }); %>
+    </div>
+  </div>
+</section>
+
+<section class="panel pas-kafle">
+  <div class="panel-glowa">
+    <h2>Bieżący okres</h2>
+    <span class="dopisek">tylko cele czynne</span>
+  </div>
+  <div class="panel-cialo">
+    <% if (kafle.length === 0) { %>
+      <p class="pusto">Nie ma żadnego czynnego celu w tym okresie.</p>
+    <% } %>
+    <div class="kafelki">
+      <% kafle.forEach(function (p) { %>
+        <article class="kafel stan-<%= p.postep.stan %> <%= p.postep.celIle === null ? 'kafel--zadanie' : 'kafel--licznik' %>">
+          <div class="kafel-etykieta"><%= p.cel.nazwa %></div>
+
+          <% if (p.postep.celIle === null) { %>
+            <%# ZADANIE tak/nie — bez paska. `zrobione === null` znaczy „nie wiem", i to jest
+                co innego niz „niezrobione": pierwsze to zarzut wobec miernika, drugie wobec
+                czlowieka. %>
+            <div class="kafel-wartosc">
+              <%= p.postep.zrobione === null ? '—' : (p.postep.zrobione ? '✓ zrobione' : 'niezrobione') %>
+            </div>
+          <% } else { %>
+            <div class="kafel-wartosc"><%= LICZBA(p) %><%= CEL(p) %></div>
+            <% if (p.postep.procent !== null) { %>
+              <div class="cele-pasek"><span style="width: <%= p.postep.procent %>%"></span></div>
+            <% } %>
+          <% } %>
+
+          <%# „+1" wprost na kaflu: jedno klikniecie nie potrzebuje osobnego wiersza. Tylko dla
+              recznych — przy automacie klik niczego by nie zmienil, bo automat nie czyta zdarzen. %>
+          <% if (p.cel.miernik === 'reczny') { %>
+            <form method="post" action="/cele/<%= p.cel.id %>/zdarzenie" class="w-linii">
+              <input type="hidden" name="ile" value="1">
+              <button class="btn btn--maly" type="submit"><%= p.postep.celIle === null ? '✓ zrobione' : '+1' %></button>
+            </form>
+          <% } %>
+
+          <div class="kafel-dopisek"><%= p.imie %> · <%= p.nazwa %></div>
+
+          <%# ⚠️ TRZY STANY, TRZY ROZNE STOPKI. To jest cala ochrona przed falszywa zielenia
+              widziana z HTML-a: „0 / 5" i „— / 5" MUSZA sie roznic NA EKRANIE, nie tylko
+              w danych — bo to ekran, a nie dane, ogląda czlowiek. %>
+          <% if (p.postep.stan === 'nieznany') { %>
+            <div class="kafel-uwaga kafel-uwaga--blad">nie wiem — miernik nie odpowiada</div>
+          <% } else if (p.postep.stan === 'nieswiezy') { %>
+            <div class="kafel-uwaga">dane z <%= p.postep.zrodloAt %></div>
+          <% } else if (p.cel.miernik === 'reczny') { %>
+            <%# Licznik reczny mierzy KLIKANIE, nie prace. „Ostatni wpis" jest jedynym
+                sygnalem, jaki da sie na to nalozyc — i dlatego stoi na kaflu, nie w karcie. %>
+            <div class="kafel-dopisek">✋ ostatni wpis:
+              <%= p.postep.zrodloAt === null ? 'nigdy' : p.postep.zrodloAt %></div>
+          <% } else { %>
+            <div class="kafel-dopisek">⚙ automat</div>
+          <% } %>
+        </article>
+      <% }); %>
+    </div>
+  </div>
+</section>
+
+<section class="panel pas-lista">
+  <div class="panel-glowa">
+    <h2>Wszystkie cele</h2>
+    <span class="dopisek">także wygaszone</span>
+  </div>
+  <div class="panel-cialo">
+    <p><a class="btn btn--glowny" href="/cele/nowy">+ Nowy cel</a></p>
+    <table class="tabela">
+      <thead>
+        <tr><th>Cel</th><th>Właściciel</th><th>Rytm</th><th>Postęp</th><th>Termin</th><th>Akcje</th></tr>
+      </thead>
+      <tbody>
+        <% if (pozycje.length === 0) { %>
+          <%# ⚠️ colspan MUSI rownac sie liczbie <th> wyzej (6). Rozjazd widac WYLACZNIE przy
+              pustej liscie — czyli w stanie pierwszego dnia po wdrozeniu, jedynym ekranie,
+              ktory Adam zobaczy NAJPIERW. Pilnuje tego asercja w cele-ekran.test.js, ktora
+              liczy naglowki w HTML-u zamiast wierzyc stalej. %>
+          <tr><td colspan="6" class="pusto">Nie ma jeszcze żadnego celu.</td></tr>
+        <% } %>
+        <% pozycje.forEach(function (p) { %>
+          <tr class="<%= p.cel.czynny === 1 ? '' : 'wygaszony' %>">
+            <td><%= p.cel.nazwa %></td>
+            <td><%= p.imie %></td>
+            <td><%= p.cel.rytm %></td>
+            <td class="liczba stan-<%= p.postep.stan %>"><%= LICZBA(p) %><%= CEL(p) %></td>
+            <td><%= p.cel.do_dnia === null ? '—' : p.cel.do_dnia %></td>
+            <td class="akcje">
+              <% if (p.cel.czynny === 1 && p.cel.miernik === 'reczny') { %>
+                <form method="post" action="/cele/<%= p.cel.id %>/zdarzenie" class="w-linii">
+                  <input type="hidden" name="ile" value="1">
+                  <button class="btn btn--maly" type="submit"><%= p.postep.celIle === null ? '✓' : '+1' %></button>
+                </form>
+                <%# ⚠️ „Cofnij" NIE jest ozdoba: bez niego jedno omylkowe „+1" jest nieodwracalne
+                    przez ekran, a „+1" klika sie z telefonu, jednym kciukiem, w biegu. %>
+                <form method="post" action="/cele/<%= p.cel.id %>/cofnij" class="w-linii">
+                  <button class="btn btn--maly" type="submit" title="Cofnij ostatni wpis">↩</button>
+                </form>
+              <% } %>
+              <form method="post" action="/cele/<%= p.cel.id %>/czynny" class="w-linii">
+                <input type="hidden" name="czynny" value="<%= p.cel.czynny === 1 ? '0' : '1' %>">
+                <button class="btn btn--maly" type="submit"><%= p.cel.czynny === 1 ? 'wygaś' : 'przywróć' %></button>
+              </form>
+              <a class="btn btn--maly" href="/cele/<%= p.cel.id %>">karta</a>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</section>

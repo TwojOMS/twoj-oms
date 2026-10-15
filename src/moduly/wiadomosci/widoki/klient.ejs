@@ -1,0 +1,210 @@
+<%# KARTA STALEGO KLIENTA (21.08.2026, prosba wlasciciela: „kliknięcie w nazwę klienta
+    otwiera stronę z jego danymi oraz historią zamówień").
+
+    ⚠️ EKRAN JEST DO ODCZYTU. Piętnaście pól formularza dalej mieszka w JEDNYM miejscu
+    (`klienci.ejs`) i otwiera je przycisk „Edytuj" — druga kopia pól rozjechałaby się z tamtą
+    przy pierwszym nowym ustawieniu, a wtedy „popraw klienta" zapisywałoby coś innego niż
+    „dopisz klienta".
+
+    ⚠️ WIDOK NICZEGO NIE LICZY. Historia, podsumowanie i status każdego zamówienia przychodzą
+    policzone z domeny (`domain/historia-klienta.js`, `domain/status.js`) — tutaj zostaje
+    ZAPIS liczby po polsku. Druga kopia arytmetyki rozjechałaby się z pierwszą przy pierwszej
+    zmianie, a chodzi o pieniądze (ta sama zasada, co w raporty.ejs i finanse.ejs).
+
+    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w layout-oms.ejs, bo ma
+    wariant jasny i ciemny. %>
+
+<%
+  // '1234.50' → '1 234,50'. To NIE JEST arytmetyka, tylko polski zapis liczby (ta sama
+  // funkcja, co w raporty.ejs, koszty.ejs i finanse.ejs).
+  const kwota = (napis) => {
+    const s = String(napis ?? '').trim();
+    if (!s) return '';
+    const minus = s.startsWith('-');
+    const [calosc, ulamek = ''] = s.replace('-', '').split('.');
+    const gr = ulamek.length >= 2 ? ulamek : ulamek.padEnd(2, '0');
+    return `${minus ? '−' : ''}${calosc.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')},${gr}`;
+  };
+  const zlote = (gr) => kwota(zl(gr ?? 0));
+  const wart = (v) => (v ? v : '—');
+  // Liczebnik po polsku ma TRZY formy, nie dwie (ta sama funkcja, co w koszty.ejs).
+  const ile = (n, jeden, kilka, wiele) => {
+    const d = Math.abs(n) % 10;
+    const s = Math.abs(n) % 100;
+    if (n === 1) return `${n} ${jeden}`;
+    return `${n} ${d >= 2 && d <= 4 && (s < 12 || s > 14) ? kilka : wiele}`;
+  };
+  const f = klient.faktura ?? {};
+  const w = klient.wysylka ?? {};
+%>
+
+<p class="wroc"><a href="/klienci">← Wróć do stałych klientów</a></p>
+
+<div class="glowa-ekranu">
+  <h1><%= klient.nazwa %></h1>
+  <span class="krok">
+    <%= klient.klucz %>
+    <% if (klient.nip) { %> · NIP <%= klient.nip %><% } else { %> · bez NIP-u<% } %>
+    <% if (!klient.aktywny) { %> · <span class="znacznik">wygaszony</span><% } %>
+    · <a href="/klienci/<%= klient.id %>/edytuj#formularz">edytuj</a>
+  </span>
+</div>
+
+<%# ——— DANE ——————————————————————————————————————————————————————————————————————— %>
+<div class="metryczka">
+
+  <section class="panel">
+    <div class="panel-glowa">
+      <h2>Kim jest</h2>
+      <a class="link-edytuj" href="/klienci/<%= klient.id %>/edytuj#formularz">Edytuj</a>
+    </div>
+    <div class="panel-cialo">
+      <dl class="dane">
+        <dt>Klucz</dt><dd><%= klient.klucz %></dd>
+        <%# ⚠️ NIP MA WLASNY WIERSZ, mimo ze `opis` nizej tez go wymienia: to po nim panel
+            rozpoznaje klienta i po nim szuka jego zamowien, wiec jego BRAK jest informacja,
+            ktora ma rzucac sie w oczy — a nie ginac w srodku zdania. %>
+        <dt>NIP</dt><dd><%= wart(klient.nip) %></dd>
+        <dt>Kanał</dt><dd><%= klient.b2b ? 'B2B' : 'zwykły' %></dd>
+        <dt>Rabat</dt><dd><%= klient.rabat_procent ? `${klient.rabat_procent}%` : 'brak' %></dd>
+        <%# ⚠️ WIERSZ POKAZUJE SIE TYLKO PRZY ROZLICZENIU ZBIORCZYM — u zwyklego klienta
+            trzy puste kwoty byłyby pytaniem, na ktore nie ma odpowiedzi. Kwoty wymieniamy
+            WPROST, bo od 24.08 to jedyne miejsce, w ktorym w ogole widac warunki umowy
+            (wczesniej: `.env` na NAS-ie, poza zasiegiem ekranu). %>
+        <% if (klient.rozliczenie_zbiorcze) { %>
+          <dt>Rozliczenie</dt><dd><b>zbiorcze</b> — jedna faktura na koniec miesiąca</dd>
+          <dt>Darmowa dostawa</dt><dd>od <%= zl(klient.prog_darmowej_dostawy_gr) %> zł (towar po rabacie)</dd>
+          <dt>Opłaty</dt><dd>obsługa <%= zl(klient.oplata_obslugi_gr) %> zł ·
+            usługa kurierska <%= zl(klient.oplata_kurierska_gr) %> zł</dd>
+        <% } %>
+        <dt>Notatka</dt><dd><%= wart(klient.komentarz) %></dd>
+        <dt>Wpis</dt><dd><%= fmtDataCzasKrotko(klient.utworzone_at) %>
+          <% if (klient.zmienione_at && klient.zmienione_at !== klient.utworzone_at) { %>
+            <span class="wyjasnienie">· zmieniony <%= fmtDataCzasKrotko(klient.zmienione_at) %></span>
+          <% } %>
+        </dd>
+      </dl>
+      <% if (!klient.aktywny) { %>
+        <%# Wygaszony klient NIE JEST skasowany i ekran ma to mowic wprost — inaczej znacznik
+            w naglowku czyta sie jak „wpis do usuniecia". %>
+        <p class="wyjasnienie">Klient <b>wygaszony</b> — nie pokazuje się w podpowiedziach przy
+          zakładaniu zamówienia. Jego zamówienia zostają, bo są migawką danych z chwili złożenia.</p>
+      <% } %>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-glowa"><h2>Dane do faktury</h2></div>
+    <div class="panel-cialo">
+      <p class="adres">
+        <strong><%= wart(f.firma) %></strong>
+        <br><%= wart(f.ulica) %>
+        <br><%= wart(f.kod) %> <%= f.miasto ?? '' %>
+      </p>
+      <dl class="dane">
+        <dt>NIP</dt><dd><%= wart(f.nip) %></dd>
+        <dt>E-mail</dt><dd><%= wart(f.email) %></dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-glowa"><h2>Dane do wysyłki</h2></div>
+    <div class="panel-cialo">
+      <p class="adres">
+        <strong><%= wart(w.nazwa) %></strong>
+        <% if (w.firma && w.firma !== w.nazwa) { %><br><%= w.firma %><% } %>
+        <br><%= wart(w.ulica) %>
+        <br><%= wart(w.kod) %> <%= w.miasto ?? '' %>
+      </p>
+      <dl class="dane">
+        <dt>Telefon</dt><dd><%= wart(w.telefon) %></dd>
+        <dt>E-mail</dt><dd><%= wart(w.email) %></dd>
+      </dl>
+    </div>
+  </section>
+</div>
+
+<%# ——— USTALENIA ——————————————————————————————————————————————————————————————————
+    Zdanie sklada DOMENA (`opisKlienta`) — to samo, ktore stoi pod paskiem wyboru przy
+    zakladaniu zamowienia i w wierszu listy. Druga kopia rozjechalaby sie z tamtymi. %>
+<section class="panel">
+  <div class="panel-glowa"><h2>Ustalenia podstawiane na nowe zamówienie</h2></div>
+  <div class="panel-cialo">
+    <p><%= opis %></p>
+    <%# ⚠️ TO ZDANIE JEST SEDNEM CALEJ TABELI `klienci`: wpis jest ZRODLEM PODPOWIEDZI,
+        a nie stanem zamowienia. Bez niego poprawka adresu tutaj czytalaby sie jak poprawka
+        adresu na fakturze sprzed trzech tygodni. %>
+    <p class="wyjasnienie">Zamówienie trzyma <b>własną kopię</b> tych danych z chwili
+      założenia — poprawka tutaj nie rusza zamówień już złożonych ani faktur już wystawionych.</p>
+  </div>
+</section>
+
+<%# ——— HISTORIA ZAMOWIEN —————————————————————————————————————————————————————————— %>
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Historia zamówień
+      <span class="dopisek"><%= ile(podsumowanie.ile, 'zamówienie', 'zamówienia', 'zamówień') %></span>
+    </h2>
+  </div>
+  <div class="panel-cialo">
+    <% if (!klient.nip) { %>
+      <%# ⚠️ PUSTA LISTA BEZ TEGO ZDANIA CZYTALABY SIE JAK „nic nie zamawial". Panel dopasowuje
+          zamowienia po NIP-ie i tylko po nim — klient bez numeru nie ma po czym byc rozpoznany. %>
+      <p class="pasek-uwaga">Ten klient nie ma wpisanego NIP-u, a zamówienia panel dopasowuje
+        <b>wyłącznie po NIP-ie</b> — nie po nazwie ani po adresie e-mail (ten należy do
+        korespondencji: klient pisze raz z telefonu, raz przez pracownika). Dopisz NIP,
+        a historia pojawi się sama.</p>
+    <% } else if (!zamowienia.length) { %>
+      <p class="wyjasnienie">Panel nie ma ani jednego zamówienia z NIP-em <%= klient.nip %>.</p>
+    <% } else { %>
+      <div class="kafelki">
+        <div class="kafel">
+          <div class="kafel-etykieta">Zamówień</div>
+          <div class="kafel-wartosc"><%= podsumowanie.ile %></div>
+          <% if (podsumowanie.ileAnulowanych) { %>
+            <%# Anulowane liczy sie do liczby zamowien, ale NIE do sumy — inaczej „klient
+                zostawil u nas X zlotych" byloby nieprawda (domain/historia-klienta.js). %>
+            <div class="kafel-dopisek">w tym <%= podsumowanie.ileAnulowanych %> anulowanych</div>
+          <% } %>
+        </div>
+        <div class="kafel">
+          <div class="kafel-etykieta">Wartość brutto</div>
+          <div class="kafel-wartosc"><%= zlote(podsumowanie.sumaGrosze) %> zł</div>
+          <div class="kafel-dopisek">bez anulowanych, bez odjęcia zwrotów</div>
+        </div>
+        <div class="kafel">
+          <div class="kafel-etykieta">Ostatnie zamówienie</div>
+          <div class="kafel-wartosc"><%= fmtDataCzasKrotko(podsumowanie.ostatnie) %></div>
+          <div class="kafel-dopisek">pierwsze: <%= fmtDataCzasKrotko(podsumowanie.pierwsze) %></div>
+        </div>
+      </div>
+
+      <table class="tab-pozycje">
+        <thead><tr><th>Numer</th><th>Złożone</th><th>Sklep</th><th>Status</th><th class="liczba">Brutto</th></tr></thead>
+        <tbody>
+          <% zamowienia.forEach(function (z) { const st = wyliczStatus(z); %>
+            <tr>
+              <td><a class="link-numer" title="<%= z.numer %>" href="/zamowienia/<%= z.id %>"><%= z.numer %></a>
+                <% if (z.b2b) { %> <span class="znacznik">B2B</span><% } %>
+              </td>
+              <td><%= fmtDataCzasKrotko(z.utworzone_at) %></td>
+              <td><%= z.sklep %></td>
+              <%# Barwa i etykieta statusu z TYCH SAMYCH funkcji, co na liscie zamowien —
+                  ten sam status nie ma prawa wygladac tu inaczej niz po kliknieciu. %>
+              <td><span class="<%= klasaStatusu(st) %>"><%= ETYKIETY[st] ?? st %></span></td>
+              <td class="liczba"><%= kwota(z.kwota_brutto) %> zł</td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+      <%# ⚠️ GRANICA HISTORII POWIEDZIANA WPROST. Sprzedaz sprzed przejscia kanalu do panelu
+          lezy w tabeli importu z Apilo, ktora NIE MA kolumny z NIP-em — tamtych zamowien nie
+          da sie przypisac do podmiotu inaczej niz zgadywaniem po nazwie. Milczenie o tym
+          robiloby z niepelnej listy liste pelna. %>
+      <p class="wyjasnienie">Lista obejmuje zamówienia obsługiwane przez panel. Sprzedaż
+        sprzed przejścia kanału z Apilo nie ma zapisanego NIP-u, więc nie da się jej
+        przypisać do klienta — jest w <a href="/raporty">Raportach</a>, ale nie tutaj.</p>
+    <% } %>
+  </div>
+</section>

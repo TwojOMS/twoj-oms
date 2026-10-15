@@ -1,0 +1,557 @@
+<%
+  // Wyglad czterech ikon (Zadanie „strona glowna", punkt A). STAN przychodzi z domeny
+  // (domain/lista-ikony.js) — KOLOR i KSZTALT dobiera WYLACZNIE ten widok, bo to czysta
+  // prezentacja, a nie decyzja biznesowa do ochrony testem.
+  //
+  // ⚠️ Zadanie A: ksztalt ma PRZEDSTAWIAC to, co ikona reprezentuje (nie abstrakcyjny
+  // ptaszek/kolko), wiec jest teraz przypisany do KOLUMNY — banknot dla platnosci,
+  // furgonetka dla przesylki, dokument dla obu ikon faktury. STAN steruje WYLACZNIE
+  // kolorem (KLASA_IKONY) — dokladnie tak samo, jak dotad; logike i kolory zostawiamy
+  // NIETKNIETE (domain/lista-ikony.js sie nie zmienia), zmienia sie wylacznie to, co widac.
+  const KLASA_IKONY = {
+    oplacone: 'zielona',
+    nadana: 'zielona',
+    tak: 'zielona',
+    wystawiona: 'zielona',
+    nieoplacone: 'czerwona',
+    pobranie: 'pomaranczowa',
+    brak: 'szara',
+    nie: 'szara',
+    w_toku: 'czerwona',
+    zawieszona: 'czerwona',
+    do_wyjasnienia: 'czerwona',
+  };
+  // Wspolny ksztalt strony (kartka ze zlozonym gornym rogiem) dla OBU ikon faktury — dziela
+  // go celowo, zeby bylo widac, ze obie sa „dokumentem". Roznia sie WYLACZNIE tym, co jest
+  // w srodku: znak zapytania („z prosba" — chcemy wiedziec) kontra ptaszek („z ptaszkiem" —
+  // potwierdzone) — dokladnie ten przyklad z briefu, zeby stojac obok siebie NIE dalo sie
+  // ich pomylic mimo wspolnego ksztaltu strony.
+  const STRONA_SVG = '<path d="M4 1.5h8l4 4v13H4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>'
+    + '<path d="M12 1.5v4h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>';
+  const KSZTALTY_SVG = {
+    // Platnosc: banknot ze znakiem „zl" — POLSKI sklep sprzedaje w zlotych, nie w dolarach.
+    platnosc: '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">'
+      + '<rect x="1" y="4.5" width="18" height="11" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/>'
+      + '<text x="10" y="12.9" font-family="Arial, sans-serif" font-size="6.5" font-weight="700" text-anchor="middle" fill="currentColor">zł</text>'
+      + '</svg>',
+    // Przesylka: furgonetka — nadwozie, kabina ze skosna szyba, dwa kola.
+    przesylka: '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">'
+      + '<path d="M1 5.5h10.5v7.5H1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>'
+      + '<path d="M11.5 8.5h3.6l3 2.5v2h-6.6z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>'
+      + '<circle cx="5" cy="15" r="1.5" fill="currentColor"/><circle cx="15" cy="15" r="1.5" fill="currentColor"/>'
+      + '</svg>',
+    // Faktura chciana: dokument „z prosba" — znak zapytania.
+    fakturaChciana: `<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">${STRONA_SVG}`
+      + '<text x="10.2" y="15.6" font-family="Arial, sans-serif" font-size="7.5" font-weight="700" text-anchor="middle" fill="currentColor">?</text>'
+      + '</svg>',
+    // Faktura wystawiona: dokument „z ptaszkiem" — potwierdzenie.
+    fakturaWystawiona: `<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">${STRONA_SVG}`
+      + '<path d="M7 11.2l2 2 4-4.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>'
+      + '</svg>',
+  };
+  // KOLOR STATUSU (`klasaStatusu` / `modyfikatorStatusu`) przychodzi z web/klasa-statusu.js
+  // przez defaultContext — ta sama funkcja maluje status na liscie i na karcie zamowienia.
+  // `opis` trafia w atrybut HTML (title/aria-label) — escapujemy go, mimo ze dzis skladaja
+  // go wylacznie nasze wlasne funkcje domenowe, a nie tresc od klienta czy sklepu.
+  function escAtrybut(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  // `kolumna` mowi, KTORY ksztalt narysowac (co ikona przedstawia) — `ikona.stan` dalej
+  // rzadzi WYLACZNIE kolorem, tak jak przed Zadaniem A.
+  function ikonaHtml(ikona, kolumna) {
+    const klasa = KLASA_IKONY[ikona.stan] || 'szara';
+    const opis = escAtrybut(ikona.opis || '');
+    const tag = ikona.href ? 'a' : 'span';
+    const href = ikona.href ? ` href="${escAtrybut(ikona.href)}"` : '';
+    // Sledzenie u kuriera otwiera sie w NOWEJ karcie — inaczej lista robocza znika
+    // operatorowi spod reki w srodku pakowania. Ktory adres jest zewnetrzny, rozstrzyga
+    // domena (lista-ikony.js), nie ksztalt adresu. `rel` obowiazkowe przy `target=_blank`:
+    // bez niego obca strona dostaje uchwyt `window.opener` do naszej karty.
+    const nowaKarta = ikona.zewnetrzny ? ' target="_blank" rel="noopener noreferrer"' : '';
+    return `<${tag}${href}${nowaKarta} class="ikona ikona--${klasa}" title="${opis}" role="img" aria-label="${opis}">`
+      + `${KSZTALTY_SVG[kolumna]}</${tag}>`;
+  }
+%>
+<h1>Zamówienia</h1>
+<%# PRZ-082 (prośba właściciela 14.10): w trybie próby (piaskownica, demo publiczne) informacja o demo stoi NAD pasami %>
+<%# i ostrzeżeniami, na zielono — to nie awaria. Dawniej była zdaniem w akapicie synchronizacji pod nimi. %>
+<% if (proba) { %>
+  <p class="pas-demo">Wersja demonstracyjna — dane z generatora, połączenia ze sklepami, Allegro i kurierami są wyłączone.</p>
+<% } %>
+<%# ⚠️⚠️ KANAŁY WOŁAJĄCE O POMOC — PAS, NIE PRZYPIS (14.08.2026). %>
+<%# Panel WIEDZIAŁ, że kanał allegro_a nie żyje: zapisał błąd i pokazywał go zdaniem %>
+<%# obok daty synchronizacji. Nie wystarczyło — kanał był martwy siedem godzin, a awaria %>
+<%# wyszła dopiero przy nadawaniu paczki. Trzy rzeczy się zmieniają: pas jest OSOBNYM %>
+<%# blokiem, wymienia WSZYSTKIE zepsute kanały (pasek pollera pokazuje pierwszy z brzegu), %>
+<%# i mówi CO PRZESTAŁO DZIAŁAĆ zamiast przepisywać błąd techniczny. %>
+<% (typeof kanalyDoUwagi !== 'undefined' ? kanalyDoUwagi : []).forEach((k) => { %>
+  <p class="<%= k.pilne ? 'pas-awaria' : 'pas-uprzedzenie' %>">
+    <strong><%= k.pilne ? 'Kanał nie działa' : 'Kanał wkrótce przestanie działać' %>:</strong>
+    <%= k.powod %>
+    <% if (k.wolnoWiazac) { %>
+      <%# ⚠️ WYJŚCIE STOI PRZY OSTRZEŻENIU (4.9). Dopóki przycisku nie ma (Zadanie 3), %>
+      <%# mówimy WPROST, czym się to naprawia — inaczej pas jest stanem bez wyjścia. %>
+      Naprawa: połączenie kanału z Allegro na nowo.
+    <% } %>
+  </p>
+<% }); %>
+<%# TABELKA OSTRZEZEN (spec 2026-08-29): faktury bez KSeF, paczki bez ruchu, wiadomosci %>
+<%# Allegro, niedzialajace integracje. POD pasami kanalow (tamte maja wyjscie — wiazanie), %>
+<%# NAD akapitem synchronizacji. %>
+<%- include('_ostrzezenia.ejs', { ostrzezenia: typeof ostrzezenia !== 'undefined' ? ostrzezenia : [] }) %>
+<% if (!proba) { %>
+<p>
+  <%# Znacznik pollera to NASZ czas (teraz(), UTC) — fmtDataCzas przeliczy go na Warszawe. %>
+  <% if (stanPollera && stanPollera.ostatni_przebieg_at) { %>
+    Ostatnia synchronizacja: <%= fmtDataCzas(stanPollera.ostatni_przebieg_at) %>
+  <% } else { %>
+    <span class="uwaga">Brak synchronizacji — poller nie wykonał jeszcze przebiegu.</span>
+  <% } %>
+  <%# ⚠️ NAZWA KANALU PRZY BLEDZIE JEST OBOWIAZKOWA, a nie ozdobna. Od poprawki z recenzji %>
+  <%# calej galezi `stan()` oddaje pollera Z BLEDEM (bootstrap.js), a nie zawsze pierwszy %>
+  <%# sklep — wiec ten sam pasek pokazuje teraz raz awarie sklepu, raz kanalu Allegro. %>
+  <%# Bez nazwy „wygasl token" przy Allegro czytaloby sie jak awaria sklepu A i szukanie %>
+  <%# zaczeloby sie od zlego konca. `kanal` sklada trasa przez adresKanalu (domena). %>
+  <% if (stanPollera && stanPollera.ostatni_blad) { %>
+    <span class="uwaga">Błąd<%= stanPollera.kanal ? ` (${stanPollera.kanal})` : '' %>: <%= stanPollera.ostatni_blad %></span>
+  <% } %>
+</p>
+<% } %>
+<%# ⚠️ KOLUMNA BOCZNA ZESZLA DO UKLADU (layout-oms.ejs, 17.08.2026). Stala tutaj, wiec
+    istniala WYLACZNIE na tym ekranie — karta zamowienia i zakladki zostawaly bez niej.
+    Lista podaje `panelStatusow`, uklad go rysuje. %>
+  <div class="tresc-lista">
+    <%# FILTRY: zwykly formularz GET, bez JavaScriptu i bez biblioteki kalendarza — %>
+    <%# `type="date"` otwiera kalendarz przegladarki sam. Wynik ma WLASNY ADRES %>
+    <%# (?od=&do=&wysylka=&platnosc=), ktory da sie odswiezyc i wkleic. %>
+    <%# %>
+    <%# ⚠️ Filtry i fraza dzialaja RAZEM (warunek I) — patrz komentarz przy skladaniu listy %>
+    <%# w routes/zamowienia.js. Fraza zdejmuje wylacznie zakladke statusu z panelu bocznego. %>
+    <form class="filtry" method="get" action="/">
+      <%# Fraza jedzie dalej UKRYTYM polem: bez tego kliknięcie „Filtruj" gubiłoby to, %>
+      <%# czego operator szukał, a wynik wygladalby na przypadkowy. %>
+      <% if (szukaj) { %><input type="hidden" name="szukaj" value="<%= szukaj %>"><% } %>
+      <%# ⚠️ ZAKLADKA JEDZIE DALEJ UKRYTYM POLEM — bez tego klikniecie „Filtruj" na %>
+      <%# zakladce „Wyslane" skladalo adres BEZ `status` i trasa slusznie spadala %>
+      <%# do domyslnej listy roboczej. Operator widzial wtedy przefiltrowana, ale %>
+      <%# ZUPELNIE INNA liste niz ta, na ktora patrzyl. %>
+      <%# %>
+      <%# ⚠️ Formularz wyszukiwarki nizej tego pola CELOWO nie ma: fraza ma zakladke %>
+      <%# zdejmowac (uzasadnienie przy skladaniu listy w routes/zamowienia.js). %>
+      <% if (filtrStatus) { %><input type="hidden" name="status" value="<%= filtrStatus %>"><% } %>
+      <% if (pokazWszystkie) { %><input type="hidden" name="wszystkie" value="1"><% } %>
+      <% if (typeof pokazPoTerminie !== 'undefined' && pokazPoTerminie) { %><input type="hidden" name="po_terminie" value="1"><% } %>
+      <div class="filtry-rzad">
+        <label class="pole-filtra">
+          <span>Data zamówienia</span>
+          <span class="zakres">
+            <input type="date" name="od" value="<%= filtry.od || '' %>" aria-label="Data zamówienia od">
+            <span class="myslnik">–</span>
+            <input type="date" name="do" value="<%= filtry.do || '' %>" aria-label="Data zamówienia do">
+          </span>
+        </label>
+        <label class="pole-filtra">
+          <span>Sposób wysyłki</span>
+          <select name="wysylka">
+            <option value="">Wszystkie</option>
+            <% metodyDoFiltra.forEach(function (m) { %>
+              <option value="<%= m.klucz %>"<%- filtry.wysylka === m.klucz ? ' selected' : '' %>><%= m.etykieta %></option>
+            <% }); %>
+          </select>
+        </label>
+        <label class="pole-filtra">
+          <span>Sposób płatności</span>
+          <%# Lista pochodzi Z BAZY (db/filtry.js), a nie ze stalej: sklep dokłada bramki %>
+          <%# bez pytania nas o zdanie, a lista wpisana na sztywno po cichu przestalaby %>
+          <%# byc kompletem. %>
+          <select name="platnosc">
+            <option value="">Wszystkie</option>
+            <%# Kubelki ze slownika (domain/metody-platnosci.js): wartoscia jest KLUCZ %>
+            <%# kanoniczny (stabilny w zakladkach), napisem etykieta. „BLIK" i „Blik" %>
+            <%# z bazy to od 22.08 jedna opcja. %>
+            <% metodyPlatnosci.forEach(function (m) { %>
+              <option value="<%= m.klucz %>"<%- filtry.platnosc === m.klucz ? ' selected' : '' %>><%= m.etykieta %></option>
+            <% }); %>
+          </select>
+        </label>
+        <label class="pole-filtra">
+          <span>Kanał sprzedaży</span>
+          <%# Lista ZAMKNIETA, sklada ja domena (KANALY_DO_FILTRA) — inaczej niz metody %>
+          <%# platnosci wyzej, ktore ida Z BAZY. Powod jest asymetryczny: bramki platnosci %>
+          <%# doklada SKLEP, a kanaly dokladamy MY, wpisem w konfiguracji. Uzasadnienie %>
+          <%# w calosci przy KANALY_DO_FILTRA w domain/filtry-listy.js. %>
+          <%# %>
+          <%# ⚠️ „Indywidualne" NIE jest wartoscia kolumny `sklep` — to kanal wyprowadzony %>
+          <%# ze znacznika `zamowienia.indywidualne`, bo takie zamowienia wpadaja do sklepu %>
+          <%# sklepu A razem ze zwyklymi. To pole i pozycja „Indywidualne" w panelu %>
+          <%# bocznym to TEN SAM parametr adresu, a nie dwie osobne regulki. %>
+          <select name="kanal">
+            <option value="">Wszystkie</option>
+            <% kanalyDoFiltra.forEach(function (k) { %>
+              <option value="<%= k.klucz %>"<%- filtry.kanal === k.klucz ? ' selected' : '' %>><%= k.etykieta %></option>
+            <% }); %>
+          </select>
+        </label>
+        <button class="btn btn--glowny" type="submit">Filtruj</button>
+      </div>
+      <% if (chipy.length) { %>
+        <%# Kazdy chip niesie adres BEZ SIEBIE — krzyzyk to ten sam komplet filtrow %>
+        <%# z jedna wartoscia wyzerowana, a nie osobna trasa do kasowania. %>
+        <div class="chipy">
+          <% chipy.forEach(function (c) { %>
+            <span class="chip"><%= c.etykieta %> <a href="<%= c.href %>" aria-label="Usuń filtr: <%= c.etykieta %>">×</a></span>
+          <% }); %>
+          <a class="chipy-wyczysc" href="<%= adresBezFiltrow %>">Wyczyść filtry</a>
+          <%# `lacznie`, nie dlugosc tabeli: od PRZ-051 tabela to jedna strona. %>
+          <span class="wynik-filtra"><%= lacznie %> <%= lacznie === 1 ? 'zamówienie' : 'zamówień' %></span>
+        </div>
+      <% } %>
+    </form>
+    <%# Wyszukiwarka: zwykly formularz GET, bez JavaScriptu — tak samo, jak reszta panelu. %>
+    <%# Dzieki temu wynik ma WLASNY ADRES (?szukaj=...), ktory da sie odswiezyc, wrzucic %>
+    <%# w zakladki i wkleic komus w wiadomosci. Szuka po CALEJ liscie, nie po biezacej %>
+    <%# zakladce — patrz komentarz w trasie. %>
+    <form class="szukajka" method="get" action="/" role="search">
+      <%# Filtry jada dalej UKRYTYMI polami — bez tego wpisanie frazy kasowalobyby zakres dat, %>
+      <%# czyli dokladnie to, czego wlasciciel nie chce („poszukac klienta i wyswietlic jego %>
+      <%# zamowienia z okreslonego czasu"). %>
+      <%# `kanal` jedzie dalej razem z reszta filtrow — jest wpisany SWIADOMIE, tak samo %>
+      <%# jak zakres dat, wiec fraza ma go zawezac, a nie kasowac. Zdejmuje sie wylacznie %>
+      <%# zakladke statusu (nawigacja), i to jest cala roznica. %>
+      <% ['od', 'do', 'wysylka', 'platnosc', 'kanal'].forEach(function (k) { %>
+        <% if (filtry[k]) { %><input type="hidden" name="<%= k %>" value="<%= filtry[k] %>"><% } %>
+      <% }); %>
+      <label class="szukajka-pole">
+        <span class="szukajka-etykieta">Szukaj zamówienia</span>
+        <input type="search" name="szukaj" value="<%= szukaj %>" autocomplete="off"
+          placeholder="numer, klient, e-mail, telefon, NIP, produkt, list przewozowy">
+      </label>
+      <button type="submit">Szukaj</button>
+      <% if (szukaj) { %><a class="szukajka-wyczysc" href="/">Wyczyść</a><% } %>
+    </form>
+    <% if (szukaj) { %>
+      <p class="wynik-szukania">
+        <% if (lacznie) { %>
+          Wyniki dla „<%= szukaj %>”: <strong><%= lacznie %></strong> —
+          szukane w <em>całej</em> bazie, niezależnie od statusu.
+        <% } else { %>
+          Żadne zamówienie nie pasuje do „<%= szukaj %>”.
+        <% } %>
+      </p>
+    <% } %>
+    <%# Po starcie panel sprawdza indeks listy w tle (oms/db/indeks-listy.js). Do konca liczniki %>
+    <%# nie widza zmian zrobionych POZA panelem (reczny SQL, nowa wersja regul) — mowimy to, %>
+    <%# zamiast udawac, ze sa juz sprawdzone. Zmiany zrobione w panelu sa widoczne od razu. %>
+    <% if (indeksNieaktualny) { %>
+      <p class="wynik-szukania">Panel nie mógł odświeżyć listy (błąd zapisu w bazie — szczegóły w logu panelu). Lista i liczniki pokazują ostatni zapisany stan i mogą być nieaktualne.</p>
+    <% } %>
+    <%# Zamowienie, ktorego nie da sie odczytac (np. reczny SQL zostawil zly JSON), nie znika: %>
+    <%# liczy sie do „Do zrobienia", a tutaj stoi jego numer i przyczyna — dane trzeba naprawic. %>
+    <% if (uszkodzone.length) { %>
+      <p class="wynik-szukania">Tych zamówień nie daje się odczytać — są liczone w „Do zrobienia”, ale nie ma ich w tabeli, dopóki ktoś nie poprawi danych:
+        <% uszkodzone.forEach(function (u, i) { %><%= i ? '; ' : '' %><strong><%= u.numer ?? ('#' + u.id) %></strong> (<%= u.blad %>)<% }); %>.</p>
+    <% } %>
+    <% if (sprawdzanieIndeksu) { %>
+      <p class="wynik-szukania">Panel sprawdza liczniki po uruchomieniu: <%= Math.min(99, Math.floor(100 * sprawdzanieIndeksu.sprawdzone / Math.max(1, sprawdzanieIndeksu.wszystkie))) %>%.
+        Do końca mogą nie uwzględniać zmian wprowadzonych poza panelem.</p>
+    <% } %>
+    <% if (stronicowanie) { %>
+      <p class="wynik-szukania stronicowanie"><% if (stronicowanie.poprzednia) { %><a href="<%= stronicowanie.poprzednia %>">← Poprzednia</a> · <% } %>Strona <%= stronicowanie.strona %> z <%= stronicowanie.stron %> (<%= lacznie %> zamówień)<% if (stronicowanie.nastepna) { %> · <a href="<%= stronicowanie.nastepna %>">Następna →</a><% } %></p>
+    <% } %>
+    <%# ⚠️ ZAZNACZENIA I AKCJE MASOWE SA W JEDNYM FORMULARZU, a tabela siedzi W SRODKU. %>
+    <%# Inaczej byc nie moze: pola wyboru stoja w wierszach, wiec formularz obejmujacy sam %>
+    <%# pasek nie dostalby ANI JEDNEGO zaznaczenia. Pasek stoi NAD tabela (prosba %>
+    <%# wlasciciela) — w ciagu filtry → szukajka → akcje → wyniki. %>
+    <form class="masowe" method="post">
+      <%# ⚠️ ADRES POWROTU. `formaction` przyciskow jest gole, wiec bez tego pola trasa POST %>
+      <%# nie wie, na ktorym widoku stal operator — i odsylala go na gola strone glowna, %>
+      <%# czyli z „W realizacji" na „Do zrobienia" bez filtrow. Sklada je trasa %>
+      <%# (adresPowrotu), TAK SAMO jak adresy „zaznacz/odznacz wszystkie" — i celowo BEZ %>
+      <%# `zaznacz`, bo zbior po zmianie statusu jest juz inny niz przed nia. %>
+      <input type="hidden" name="powrot" value="<%= adresPowrotu %>">
+      <%# Miejsce paska jest zajete TAKZE bez zaznaczen: bez tego tabela podskakiwalaby %>
+      <%# przy pierwszym klknieciu, a o samej funkcji nie dowiedzialby sie nikt, kto o niej %>
+      <%# nie wie. Bez JavaScriptu pasek jest widoczny ZAWSZE — zatwierdzenie bez zaznaczen %>
+      <%# po prostu niczego nie zmienia (patrz trasy masowe). %>
+      <div class="belka-masowa">
+        <span class="belka-etykieta-masowa">Zaznaczone zamówienia:</span>
+        <span class="grupa">
+          <label for="masowy-status">zmień status na</label>
+          <select id="masowy-status" name="status">
+            <option value="">— wybierz —</option>
+            <% opcjeStatusu.forEach(function (o) { %>
+              <option value="<%= o.klucz %>"><%= o.etykieta %></option>
+            <% }); %>
+          </select>
+          <button class="btn btn--maly" type="submit" formaction="/zamowienia/masowe/status">Zastosuj</button>
+        </span>
+        <span class="grupa">
+          <%# „…" na koncu nie jest ozdoba: mowi, ze to NIE jest jeszcze nadanie, tylko %>
+          <%# ekran podgladu. Nadanie jest nieodwracalne, wiec przycisk nie ma prawa %>
+          <%# wygladac na wykonujacy je od razu. %>
+          <button class="btn btn--maly" type="submit" formaction="/zamowienia/masowe/nadaj-podglad">
+            Przygotuj przesyłki…
+          </button>
+        </span>
+        <% if (mozeAdres('/zamowienia/faktury-hurtem/podglad')) { %>
+        <span class="grupa">
+          <%# „…" jak wyzej: to NIE jest jeszcze wystawienie, tylko ekran podgladu. Faktury %>
+          <%# nie da sie cofnac, wiec przycisk nie ma prawa wygladac na wykonujacy ja od razu. %>
+          <button class="btn btn--maly" type="submit" formaction="/zamowienia/faktury-hurtem/podglad">
+            Wystaw faktury…
+          </button>
+        </span>
+        <% } %>
+        <%# „Wydruki" (PRZ-084, właściciel 15.10) — to samo menu, co na karcie, w miejsce samego %>
+        <%# przycisku „Specyfikacje do paczek". BEZ „…" — w odroznieniu od dwoch akcji wyzej %>
+        <%# wydruk jest odwracalny (Zadanie 8): nie zostawia sladu w bazie, wiec nie ma czego %>
+        <%# przedtem pokazywac. Klikniecie od razu oddaje gotowy PDF dla WSZYSTKICH zaznaczonych. %>
+        <%# Specyfikacja zostaje pobieraniem pliku jak dotad; lista i zestawienie otwieraja sie %>
+        <%# w nowej karcie (`formtarget`) do druku. `<details>` — panel dziala bez skryptu. %>
+        <details class="wydruki wydruki--masowe">
+          <summary class="btn btn--maly">Wydruki</summary>
+          <div class="wydruki-menu wydruki-menu--lewe">
+            <button type="submit" formaction="/zamowienia/specyfikacje.pdf">Specyfikacje do paczek</button>
+            <button type="submit" formaction="/zamowienia/lista-produktow.pdf" formtarget="_blank">Lista produktów (zbiorcza)</button>
+            <button type="submit" formaction="/zamowienia/zestawienie.pdf" formtarget="_blank">Zestawienie zamówień</button>
+          </div>
+        </details>
+      </div>
+
+    <%# Tabela ma WLASNY przewijak w poziomie. Kolumna zaznaczen i miniatury dolozyly jej %>
+    <%# szerokosci na tyle, ze na weższym ekranie zaczela rozpychac CALA strone w bok — %>
+    <%# a wtedy w bok jedzie tez pasek akcji i panel boczny, czyli rzeczy, ktore maja stac. %>
+    <div class="przewijak-tabeli">
+    <table>
+      <thead>
+        <tr><th class="kol-zazn">
+            <%# „Zaznacz wszystkie" to ZWYKLY ODNOSNIK pod adres z ?zaznacz=1 (z zachowaniem %>
+            <%# filtrow i frazy — sklada je trasa, patrz adresZaznaczWszystkie/Odznacz w %>
+            <%# routes/zamowienia.js), NIE pole wyboru w naglowku ze skryptem. Dzieki temu %>
+            <%# dziala bez JavaScriptu: kazde odswiezenie tej samej strony po prostu renderuje %>
+            <%# pola wyboru wierszy jako `checked`. Odhaczenie pojedynczego wiersza PO %>
+            <%# zaznaczeniu wszystkich dziala normalnie, bo <form class="masowe"> przy %>
+            <%# zatwierdzeniu wysyla stan pol wyboru W PRZEGLADARCE w danej chwili, a nie %>
+            <%# to, co mowi adres — adres tylko USTAWIA stan poczatkowy przy renderze. %>
+            <%# NIE zamieniac na checkbox+JS: zepsuloby to dzialanie bez JavaScriptu. %>
+            <% if (zaznaczWszystkie) { %>
+              <a class="zaznacz-wszystkie" href="<%= adresOdznaczWszystkie %>" aria-label="Odznacz wszystkie zamówienia <%= stronicowanie ? 'na tej stronie' : 'na liście' %>">odznacz</a>
+            <% } else { %>
+              <%# Napis krotki („zaznacz", nie „zaznacz wszystkie"), bo to on wyznacza %>
+              <%# szerokosc calej kolumny zaznaczen — a ta kolumna ma byc waska. Pelne %>
+              <%# zdanie zostaje w `aria-label`, dla czytnika ekranu. %>
+              <a class="zaznacz-wszystkie" href="<%= adresZaznaczWszystkie %>" aria-label="Zaznacz wszystkie zamówienia <%= stronicowanie ? 'na tej stronie' : 'na liście' %>"<%- stronicowanie ? ' title="Zaznacza tylko tę stronę (' + zamowienia.length + ' z ' + lacznie + ')"' : '' %>>zaznacz</a>
+            <% } %>
+          </th><th>Zamówienie</th><th>Klient</th><th>Produkty</th><th>Dostawa</th><th>Kwota</th><th>Ikony</th></tr>
+      </thead>
+      <tbody>
+      <% zamowienia.forEach(function (z) { %>
+        <tr id="zamowienie-<%= z.id %>"<%- z.zegar && z.zegar.poTerminie ? ' class="po-terminie"' : '' %>>
+          <td class="kol-zazn">
+            <%# Etykieta OBEJMUJACA pole wyboru (nie `for` obok) — klik w dowolne miejsce %>
+            <%# komorki przelacza pole, bez ani jednej linii skryptu. `checked` odzwierciedla %>
+            <%# WYLACZNIE adres przy renderze (zaznaczWszystkie); po zaladowaniu strony to %>
+            <%# przegladarka, nie adres, pamieta co jest odhaczone. %>
+            <label class="kol-zazn-etykieta">
+              <input type="checkbox" name="id" value="<%= z.id %>"<%- zaznaczWszystkie ? ' checked' : '' %> aria-label="Zaznacz zamówienie <%= z.numer %>">
+            </label>
+          </td>
+          <td class="komorka-zamowienie">
+            <%# ⚠️ 🔥 EKSPRES STOI PRZY NUMERZE, A NIE PRZY KANALE — i to jest sprawa
+                SZEROKOSCI KOLUMNY, nie upodobania (prosba właściciela 25.08.2026: „można
+                przenieść obok nr zamówienia, teraz kolumna robi się za szeroka").
+
+                Zmierzone w przegladarce na demie, nie oszacowane: linia `.wiersz-zrodlo`
+                ma `white-space: nowrap`, wiec jest TWARDA PODLOGA szerokosci kolumny.
+                Z odznaka ekspresu ta linia ma 194 px, bez niej 101 px, a najszersza
+                pozostala linia (data z zegarem) 150 px — przeniesienie zbija wiec podloge
+                kolumny ze 194 na 150 px.
+
+                Tutaj odznaka podlogi NIE TWORZY, bo linia numeru lamie sie normalnie:
+                numer z Allegro to UUID (max-content 316 px), ktory i tak zawija sie na
+                myslnikach. Sama odznaka ma `white-space: nowrap` z klasy `.znacznik`,
+                wiec nie rozpadnie sie w polowie napisu.
+
+                To DRUGA poprawka tej samej kolumny z tego samego powodu — pierwsza
+                (21.08) przeniosla stad date. Obie wychodza dopiero przy dlugich numerach
+                z Allegro, wiec pojawiaja sie „same", bez zmiany w kodzie tego widoku. %>
+            <a class="numer-zamowienia" href="<%= z.adresKarty %>"><%= z.numer %></a><% if (z.ekspres) { %> <span class="znacznik znacznik--ekspres">🔥 EKSPRES</span><% } %>
+            <%# Kanal, data zlozenia i status POD numerem, KAZDE W SWOJEJ LINII — jeden rzut %>
+            <%# przyszlo, bez otwierania karty. Status to WYLACZNIE `wyliczStatus()` %>
+            <%# policzony w trasie (przewodnik OMS 4.1) — widok go tu nie liczy drugi raz. %>
+            <%# Data zamowienia ze sklepu, bez sekund (Zadanie C, brief: tabela zamowien %>
+            <%# na stronie glownej = format KROTKI, WYLACZNIE tu). %>
+            <div class="wiersz-szczegoly wiersz-zrodlo">
+              <%# ⚠️ ZAMOWIENIE Z PANELU OFERT DOSTAJE WLASNA ODZNAKE OBOK SKLEPU, a nie %>
+              <%# zamiast niego — i jedno i drugie jest tu potrzebne. „sklep A" mowi, %>
+              <%# SKAD przyszlo (tam ma numer, tam wraca notatka o nadaniu, tam sie je %>
+              <%# reklamuje), „Indywidualne" mowi, CZYM jest (inna wycena, inny obieg, %>
+              <%# osobny kanal w raporcie). Sama nazwa sklepu znaczyla, ze po wybraniu %>
+              <%# kanalu „Indywidualne" cala lista pisze pod numerami „sklep A" — %>
+              <%# czyli filtr dziala, a na ekranie nie widac po czym. %>
+              <%# %>
+              <%# Etykiete sklada DOMENA (adresKanalu przez trase), nie widok — ta sama %>
+              <%# funkcja, ktora nazywa pozycje w polu wyboru filtra i w panelu bocznym. %>
+              <%# Wpisana tu na sztywno rozjechalaby sie z filtrem przy pierwszej zmianie. %>
+              <%# %>
+              <%# Klasa `znacznik` jest ta, ktorej panel uzywa juz do odznak — zadnego %>
+              <%# nowego koloru: paleta marki jest waska celowo, a kolejna barwa „tylko na %>
+              <%# to jedno" jest poczatkiem jej rozjezdzania sie. %>
+              <%# ⚠️ ZNACZNIK EKSPRESU STAL TU DO 25.08.2026 i rozpychal kolumne — ta linia ma
+                  `white-space: nowrap`, wiec wszystko, co na niej stoi, jest twarda podloga
+                  szerokosci. Przeniesiony do linii NUMERU (patrz uzasadnienie z pomiarami tam). %>
+              <%= z.kanalSprzedazy %><% if (z.indywidualne) { %> <span class="znacznik"><%= z.etykietaIndywidualnego %></span><% } %>
+            </div>
+            <%# ⚠️ DATA W OSOBNEJ LINII — prosba wlasciciela 21.08.2026 („mozna w pierwszej
+                kolumnie date przeniesc pod kanal sprzedazy"), ktora przy okazji NAPRAWIA
+                rozjazd tabeli. Zmierzone w przegladarce na zywej liscie przy oknie 1600 px:
+                kanal, odznaka i data staly w JEDNEJ linii, a ta linia ma `white-space: nowrap`
+                (bez tego data lamalaby sie w polowie). Nielamliwa linia jest TWARDA PODLOGA
+                szerokosci kolumny, wiec kolumna „Zamowienie" zajmowala 308 px, cala tabela
+                1294 px przy kontenerze 1222 px — i ostatnia kolumna („Ikony") byla ucieta.
+                Po rozdzieleniu: kolumna 209 px, tabela 1222 px, czyli miesci sie co do piksela.
+
+                ⚠️ Zjawisko wychodzi dopiero przy DLUGICH numerach z Allegro (UUID) razem
+                z dlugimi nazwami produktow — dlatego pojawilo sie samo, bez zmiany w kodzie
+                tego widoku (ostatnia byla w `f60a769`). %>
+            <div class="wiersz-szczegoly wiersz-data"><%= fmtDataCzasKrotko(z.utworzone_at) %><% if (z.zegar) { %> · <%= z.zegar.wiek %><% } %></div>
+            <%# Linia zegara — GOTOWY napis z domeny (wiek-zamowienia.js), widok tylko %>
+            <%# dobiera kolor. Brak linii = zegar nie dotyczy (wysłane/anulowane). %>
+            <% if (z.zegar) { %>
+              <div class="wiersz-szczegoly zegar<%- z.zegar.poTerminie ? ' zegar--po-terminie' : '' %>"><%= z.zegar.opis %></div>
+            <% } %>
+            <div class="wiersz-stan">
+              <span class="<%= klasaStatusu(z.status) %>"><%= etykiety[z.status] %></span>
+              <%# Anulowanie PO nadaniu albo po wystawieniu faktury: samo „Anulowane" w statusie %>
+              <%# wyglada jak sprawa zamknieta, a paczka moze byc w drodze, a faktura czekac %>
+              <%# w inFakcie na wieczorna wysylke do KSeF (albo juz wymagac korekty). %>
+              <% if (z.anulowaneZUwaga) { %>
+                <span class="uwaga">anulowane po <%= z.przesylki.length ? 'nadaniu' : 'wystawieniu faktury' %></span>
+              <% } %>
+              <%# Status zapisany w panelu, ktory NIE DOJECHAL tam, skad zamowienie przyszlo. %>
+              <%# Stoi przy statusie, bo dokladnie o statusie klamie: wiersz mowi „Wyslane", %>
+              <%# a kupujacy widzi u siebie stare „W realizacji". Tekst liczy domena %>
+              <%# (odznakaSyncStatusu), zeby lista i pasek karty nie mogly sie rozjechac. %>
+              <% if (z.odznakaSync) { %>
+                <span class="uwaga"><%= z.odznakaSync %></span>
+              <% } %>
+              <%# ⚠️ „zwrot nierozliczony" — NIE „ma zwrot". Ta druga informacja juz stoi w %>
+              <%# pastylce statusu wyzej: `wyliczStatus` oddaje 'zwrot' NA ZAWSZE, gdy %>
+              <%# `z.ma_zwrot`, wiec druga plakietka z tym samym slowem obok bylaby czystym %>
+              <%# powtorzeniem (zmierzone przy przegladzie brifu Zadania 5 wobec spec %>
+              <%# §4.4: „Odznaka na wierszu listy dla zwrotu NIEROZLICZONEGO"). `.uwaga` %>
+              <%# niesie DOKLADNIE ten sam sygnal, co przy `odznakaSync` i `anulowaneZUwaga` %>
+              <%# wyzej: „status jest koncowy, ale jest tu jeszcze robota" — ten sam powod, %>
+              <%# dla ktorego `doZrobienia` (domain/status.js) trzyma takie zamowienie na %>
+              <%# liscie roboczej. Ta sama funkcja `podsumowanieZwrotow`, co na karcie. %>
+              <% if (z.zwrotPodsumowanie && z.zwrotPodsumowanie.nierozliczonych > 0) { %>
+                <span class="uwaga">zwrot nierozliczony</span>
+              <% } %>
+            </div>
+          </td>
+          <td class="komorka-klient">
+            <%= z.klient && z.klient.company ? z.klient.company
+              : (z.klient ? ((z.klient.first_name || '') + ' ' + (z.klient.last_name || '')).trim() : '') %>
+          </td>
+          <td class="komorka-produkty">
+            <%# Ilosc PRZED nazwa (Zadanie „strona glowna", punkt B): „1× Szablon...". %>
+            <%# `p.ilosc` jest juz EFEKTYWNA (po recznych nadpisaniach) — z.pozycje idzie %>
+            <%# przez zLinii/nalozNadpisaniaPozycji w listaZamowien (db/zamowienia.js), %>
+            <%# WIDOK NICZEGO tu nie liczy sam. %>
+            <% (z.pozycje || []).forEach(function (p) { %>
+              <div class="pozycja">
+                <%# Miniatura: adres liczy DOMENA (domain/miniatura-pozycji.js), widok go nie %>
+                <%# sklada. `loading="lazy"` bo przy pelnej liscie takich obrazkow jest %>
+                <%# kilkadziesiat, a wiekszosc ponizej krawedzi ekranu. %>
+                <%# Pozycja bez zdjecia (dopisana recznie, produkt bez obrazka) NIE dostaje %>
+                <%# pustej ramki ani zepsutego obrazka — tylko sam tekst. %>
+                <%# ⚠️ KANAL I NUMER PRODUKTU IDA RAZEM ZE ZDJECIEM, bo to po tej parze %>
+                <%# odnajduje sie PRAWDZIWY adres miniatury w lustrze sklepow. Sam adres %>
+                <%# oryginalu nie wystarcza: `-150x150` doklejane do nazwy pliku dawalo na %>
+                <%# sklep A 89% pustych ramek (zmierzone 2026-08-12). %>
+                <% var mini = miniatura(z.sklep, p.produkt_id, p.zdjecie_url); %>
+                <% if (mini) { %>
+                  <img class="mini" src="<%= mini %>" alt="<%= p.nazwa %>" width="38" height="38" loading="lazy">
+                <% } %>
+                <span class="pozycja-tekst"><b><%= p.ilosc %>×</b> <%= p.nazwa %></span>
+              </div>
+            <% }); %>
+          </td>
+          <%# ⚠️ KLASA NA KOMORCE JEST TU PO TO, ZEBY DLUGA NAZWA USLUGI NIE KRADLA
+              SZEROKOSCI POZOSTALYM KOLUMNOM. Odkad kolumna pokazuje pelne nazwy Allegro
+              (25.08.2026), najdluzsza realna ma 74 znaki („Allegro Wysyłka z Polski do
+              Słowacji — Automaty Paczkowe Packeta, ORLEN Paczka"). Tabela ma `table-layout:
+              auto`, wiec kolumna o duzej szerokosci maksymalnej dostaje wiekszy udzial
+              w wolnej przestrzeni — i zabierala go „Produktom".
+              Zmierzone w przegladarce na demie przy oknie 1600 px:
+                bez ograniczenia  Produkty 330 · Klient 168 · Dostawa 175
+                z `max-width`     Produkty 349 · Klient 175 · Dostawa 141
+              Wysokosc wierszy sie NIE ZMIENIA (158 px), bo nazwe przycina `.nazwa-dostawy`. %>
+          <td class="komorka-dostawa">
+            <% if (z.metoda_wysylki === 'nieznana') { %>
+              <span class="uwaga">nieznana metoda — nadaj w Apilo</span>
+            <% } else { %>
+              <%# Nazwa metody z JEDNEGO zrodla (domain/wysylka.js: etykietaWysylki) — tego %>
+              <%# samego, ktore opisuje pozycje w polu wyboru filtra i metryczke na karcie. %>
+              <%# Wpisana tu osobno rozjechalaby sie z filtrem przy pierwszej zmianie nazwy, %>
+              <%# a dopisek „(pobranie)" sklejany na miejscu zniknalby przy pierwszym %>
+              <%# przeoczeniu — a to jest informacja o pieniadzach do zainkasowania. %>
+              <%# ⚠️ PELNA NAZWA ZOSTAJE W `title` — przyciecie jest WYLACZNIE wizualne
+                  i dotyka jednej realnej nazwy na kilkadziesiat. Bez `title` byloby to
+                  ukrycie informacji, a nie skrocenie. %>
+              <span class="nazwa-dostawy" title="<%= nazwaDostawy(z) %>"><%= nazwaDostawy(z) %></span>
+            <% } %>
+            <%# Odznaki liczy domena (sprawyZamowienia), nie widok. Bez nich paczka nadana %>
+            <%# z nieudanym syncem do sklepu, bez etykiety albo z martwym odpytywaniem DPD %>
+            <%# nie miala na liscie zadnego sladu. %>
+            <% z.sprawyPrzesylki.forEach(function (s) { %><br><span class="uwaga"><%= s %></span><% }); %>
+          </td>
+          <%# Kwota, ktorej OCZEKUJEMY OD KLIENTA (policzona w trasie, patrz komentarz tam). %>
+          <%# Gdy rozni sie od kwoty w sklepie — bo dopisalismy pozycje albo poprawilismy %>
+          <%# istniejaca — mowimy o tym WPROST, zeby nikt nie szukal roznicy miedzy tym %>
+          <%# ekranem a zamowieniem w wp-adminie. %>
+          <td class="komorka-kwota">
+            <%= z.kwotaOczekiwanaZl ?? z.kwota_brutto %> zł
+            <% if (z.kwotaOczekiwanaZl && z.kwotaOczekiwanaZl !== z.kwota_brutto) { %>
+              <div class="wiersz-szczegoly">w sklepie: <%= z.kwota_brutto %> zł</div>
+            <% } %>
+            <%# Kupon sklepu POD kwota (kampania WRZESIEN30): kupon to fakt pieniezny, %>
+            <%# wiec mieszka w tej kolumnie — nie przy numerze, ktora to kolumne znacznik %>
+            <%# EKSPRES juz raz rozpychal (przewodnik 4.61). Ta sama polka drobnym drukiem, %>
+            <%# co „w sklepie:" wyzej, wiec szerokosci kolumny nie zmienia. %>
+            <% if (z.kupony.length) { %>
+              <div class="wiersz-szczegoly wiersz-kupon"><% z.kupony.forEach(function (k, i) { %><%= i ? ' ' : '' %>🎟 <%= k.kod %> -<%= k.rabat %> zł<% }); %></div>
+            <% } %>
+          </td>
+          <td class="komorka-ikony">
+            <%- ikonaHtml(z.ikonaPlatnosci, 'platnosc') %>
+            <%- ikonaHtml(z.ikonaPrzesylki, 'przesylka') %>
+            <%- ikonaHtml(z.ikonaChceFaktury, 'fakturaChciana') %>
+            <%- ikonaHtml(z.ikonaFaktury, 'fakturaWystawiona') %>
+          </td>
+        </tr>
+      <% }); %>
+      <%# Pusta lista nie ma prawa wygladac jak zepsuty ekran — bez tego wiersza tabela %>
+      <%# konczy sie samym naglowkiem i nie wiadomo, czy nic nie ma, czy cos nie doszlo. %>
+      <% if (!zamowienia.length) { %>
+        <tr><td class="pusto" colspan="7">
+          <% if (szukaj) { %>Brak zamówień pasujących do wyszukiwania.
+          <% } else if (chipy.length) { %>Żadne zamówienie nie mieści się w ustawionych filtrach.
+          <% } else { %>Nie ma tu nic do zrobienia.<% } %>
+        </td></tr>
+      <% } %>
+      </tbody>
+    </table>
+    </div>
+    <%# Strony listy (PRZ-051) — zwykle odnosniki z zachowaniem zakladki, filtrow i frazy %>
+    <%# (adresy sklada trasa). Brak, gdy wszystko miesci sie na jednej stronie. %>
+    <% if (stronicowanie) { %>
+      <p class="wynik-szukania stronicowanie">
+        <% if (stronicowanie.poprzednia) { %><a href="<%= stronicowanie.poprzednia %>" rel="prev">← Poprzednia</a> · <% } %>
+        Strona <%= stronicowanie.strona %> z <%= stronicowanie.stron %> (<%= lacznie %> zamówień)
+        <% if (stronicowanie.nastepna) { %> · <a href="<%= stronicowanie.nastepna %>" rel="next">Następna →</a><% } %>
+      </p>
+    <% } %>
+    </form>
+  </div>
+  <script type="module" src="/public/pozycja-listy.js" data-klucz-listy="<%= kluczListy %>"></script>

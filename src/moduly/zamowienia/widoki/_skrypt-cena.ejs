@@ -1,0 +1,54 @@
+<%# ⚠️ PIERWSZY I JEDYNY JavaScript w panelu (spec Etap 3, punkt 5). Panel jest celowo bez %>
+<%# ani linii skryptu — stan chodzi przez adres strony — a to jedyny uzgodniony wyjatek: %>
+<%# WYLACZNIE przeliczenie pary netto/brutto, nic wiecej. %>
+<%# Wolno na to pozwolic: pole cena_brutto jest WARTOSCIA ZRODLOWA (domain/pozycje-reczne.js: %>
+<%# parsujNowaPozycje) — serwer przelicza brutto z netto WYLACZNIE gdy pole brutto przyjdzie %>
+<%# puste, a wartosc juz w nim wpisana (takze przez TEN skrypt) przyjmuje bez ponownego %>
+<%# przeliczenia. Przy wylaczonym albo zepsutym skrypcie formularz dziala dalej poprawnie — %>
+<%# operator wpisuje brutto recznie, jak dotad. %>
+<%# Warunek na oba pola (`if (!netto || !brutto) return`) chroni tez formularz zbiorczej %>
+<%# edycji pozycji: ma pole cena_brutto, ale nie ma cena_netto, wiec skrypt go pomija. %>
+<%# ⚠️ Selektor konczy sie na `$=`, a nie porownuje nazwy WPROST, bo te same dwa pola %>
+<%# nazywaja sie w dwoch miejscach inaczej: na karcie `cena_netto`/`cena_brutto`, a na %>
+<%# ekranie zakladania `poz_cena_netto`/`poz_cena_brutto` (prefiks odroznia rownolegle %>
+<%# tablice pieciu wierszy od pojedynczego formularza „Dodaj pozycje"). Dopasowanie wprost %>
+<%# po nazwie po cichu wylaczalo przeliczanie na CALYM ekranie zakladania — bez bledu %>
+<%# w konsoli, bez zadnego objawu poza tym, ze pole brutto po prostu nie chce sie wypelnic. %>
+<%# ⚠️ Stawka VAT NIE jest tu wpisana na sztywno — jedynym jej zrodlem jest STAWKA_VAT %>
+<%# (domain/vat.js), a do przegladarki dojezdza przez atrybut `data-vat` formularza %>
+<%# (przekazany z trasy, patrz routes/zamowienia.js: renderujKarte). Druga, wpisana %>
+<%# wprost w skrypcie kopia stawki rozjechalaby sie cicho z faktura przy pierwszej zmianie — %>
+<%# przegladarka policzylaby brutto po starej stawce, a serwer przyjalby je bez zastrzezen. %>
+<%# %>
+<%# WSPOLNY dla dwoch miejsc, ktore roznia sie ZASIEGIEM pary pol: na karcie formularz %>
+<%# „Dodaj pozycje” ma JEDNA pare netto/brutto na caly formularz, a przy zakladaniu nowego %>
+<%# zamowienia jest PIEC par, kazda we wlasnym <tr>, wewnatrz JEDNEGO formularza. Dlatego %>
+<%# parowanie idzie PER POLE cena_netto, w NAJBLIZSZYM wspolnym zasiegu — najpierw wiersz %>
+<%# tabeli, a gdy pola nie siedza w wierszu (formularz „Dodaj pozycje” na karcie), caly %>
+<%# formularz. Szukanie pary po calym <form> (jak przy jednej parze) polaczyloby na tym %>
+<%# ekranie netto z pierwszego wiersza z brutto z pierwszego wiersza i zignorowalo reszte. %>
+<script>
+  (function () {
+    var zaokr = function (x) { return (Math.round(x) / 100).toFixed(2); };
+    document.querySelectorAll('input[name$="cena_netto"]').forEach(function (netto) {
+      var zasieg = netto.closest('tr') || netto.closest('form');
+      var brutto = zasieg ? zasieg.querySelector('input[name$="cena_brutto"]') : null;
+      if (!netto || !brutto) return;
+      var formularz = netto.closest('form');
+      // Brak albo zepsuty atrybut wylacza WYLACZNIE przeliczanie w TYM formularzu — reszta
+      // panelu dziala dalej, operator wpisuje brutto recznie (ta sama zasada, co przy
+      // brakujacych polach wyzej).
+      var procent = formularz ? Number(formularz.dataset.vat) : NaN;
+      if (!isFinite(procent) || procent <= 0) return;
+      var VAT = 1 + procent / 100;
+      netto.addEventListener('input', function () {
+        var n = Number(netto.value.replace(',', '.'));
+        brutto.value = isFinite(n) && netto.value.trim() ? zaokr(Math.round(n * 100) * VAT) : '';
+      });
+      brutto.addEventListener('input', function () {
+        var b = Number(brutto.value.replace(',', '.'));
+        netto.value = isFinite(b) && brutto.value.trim() ? zaokr(Math.round(b * 100) / VAT) : '';
+      });
+    });
+  }());
+</script>

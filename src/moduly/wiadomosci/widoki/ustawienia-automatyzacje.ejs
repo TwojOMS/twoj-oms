@@ -1,0 +1,31 @@
+<h1>Wiadomości i automatyzacje</h1>
+
+<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
+<% if (blad) { %><div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong> <%= blad %></p></div><% } %>
+
+<div class="ust-sekcja">
+  <h2>Autoresponder Allegro</h2>
+  <p>
+    Formułka wychodzi tylko na wiadomości, które przyszły w podanych godzinach,
+    raz na wątek i nigdy na dyskusje ani reklamacje.
+  </p>
+  <form method="post" action="/ustawienia/formulka">
+    <p><label><input type="checkbox" name="wlaczona" <%= formulka.wlaczona ? 'checked' : '' %>> <strong>Włączony</strong> — panel sam odpisuje kupującym</label></p>
+    <p><label>Treść formułki<br><textarea name="tresc" rows="5" maxlength="2000" style="width:100%"><%= formulka.tresc %></textarea></label></p>
+    <p>Najwyżej 2000 znaków — tyle przyjmuje Allegro.</p>
+    <p>
+      <label>Od godziny <input type="number" name="od" min="0" max="23" value="<%= formulka.odGodziny %>"></label>
+      <label>do godziny <input type="number" name="do" min="0" max="23" value="<%= formulka.doGodziny %>"></label>
+    </p>
+    <p>Okno może przechodzić przez północ — „18 do 8” znaczy „po godzinach”.</p>
+    <fieldset>
+      <legend>Dni</legend>
+      <% [['1', 'Pn'], ['2', 'Wt'], ['3', 'Śr'], ['4', 'Cz'], ['5', 'Pt'], ['6', 'Sb'], ['0', 'Nd']].forEach(([nr, etykieta]) => { %>
+        <label><input type="checkbox" name="dni" value="<%= nr %>" <%= formulka.dni.includes(Number(nr)) ? 'checked' : '' %>> <%= etykieta %></label>
+      <% }) %>
+    </fieldset>
+    <p><label>Karencja (minuty) <input type="number" name="karencja" min="0" value="<%= formulka.karencjaMin %>"></label></p>
+    <p>Ile czekać, zanim panel odezwie się sam. Gdy w tym czasie odpiszecie — milczy.</p>
+    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zapisz</button></div>
+  </form>
+</div>

@@ -1,0 +1,154 @@
+<%# GENERATOR SKU — PODGLAD PRZED NADANIEM I WYNIK PO NIM.
+
+    PO CO TEN EKRAN. Nic jeszcze nie jest zapisane i to jest caly jego sens: jedno klikniecie
+    nadaje numery setkom wzorow, a numer nadany tutaj pojedzie w Zadaniu 15 do produkcyjnych
+    sklepow i stanie sie TOZSAMOSCIA produktu. Zestaw nizej liczy TA SAMA funkcja
+    (domain/sku-generator.js: proponujSku), ktora policzy go trasa zapisujaca — i policzy go
+    PONOWNIE, ze stanu biezacego bazy, a nie przepisze stad ukrytym polem.
+
+    ⚠️ WIDOK NICZEGO NIE LICZY I NICZEGO NIE ROZSTRZYGA. Numery, uwagi przy wierszach i liczby
+    przychodza POLICZONE z web/routes/magazyn.js i domain/sku-generator.js — ta sama zasada,
+    co w magazyn-hurt.ejs, magazyn-lista.ejs i faktury.ejs.
+
+    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w layout-oms.ejs. Paleta ma
+    wariant jasny i ciemny, wiec wartosc wpisana tutaj zadzialalaby w jasnym i po cichu
+    zniknela w ciemnym (nikt nie oglada obu naraz). %>
+<%
+  // Liczebnik po polsku ma TRZY formy: „1 numer", „3 numery", „5 numerów" — wariant
+  // dwuformowy pisalby „3 numerów". ⚠️ 12, 13, 14 IDA DO FORMY MNOGIEJ mimo koncowek 2/3/4
+  // (ten sam wzorzec, co w magazyn-hurt.ejs).
+  const ileNumerow = (n) => {
+    const d = Math.abs(n) % 10;
+    const s = Math.abs(n) % 100;
+    if (n === 1) return `${n} numer`;
+    return `${n} ${d >= 2 && d <= 4 && (s < 12 || s > 14) ? 'numery' : 'numerów'}`;
+  };
+%>
+
+<p class="wroc"><a href="<%= adresPowrotu %>">← Wróć do magazynu</a></p>
+
+<div class="glowa-ekranu">
+  <h1>Nadanie SKU</h1>
+  <span class="krok"><%= wynik ? 'wynik zapisu' : 'podgląd — nic jeszcze nie nadano' %></span>
+</div>
+
+<section class="panel<%= wynik ? '' : ' panel--edycja' %>" id="sku-propozycje">
+  <div class="panel-glowa">
+    <h2><%= wynik ? 'Nadane numery' : 'Propozycje numerów' %></h2>
+    <span class="dopisek">
+      <%# ⚠️ LICZBA MA WLASNY ZNACZNIK, bo to ona jest tresc tego ekranu — i to po niej
+          poznaje sie, ze podglad obiecal to samo, co zapis wykonal. %>
+      <strong class="sku-ile"><%= ile %></strong>
+      <%= wynik ? 'nadanych numerów' : 'numerów do nadania' %>
+    </span>
+  </div>
+  <div class="panel-cialo">
+    <% if (blad) { %>
+      <%# ⚠️ ODMOWA JEST CALOSCIOWA i mowi, CZEGO nie zapisano. %>
+      <p class="pasek-blokada"><%= blad %></p>
+    <% } %>
+
+    <% if (wzorzec) { %>
+      <p class="dopisek">Wzorzec: <code class="sku-numer"><%= wzorzec %></code></p>
+    <% } %>
+
+    <% if (juzMaja) { %>
+      <%# ⚠️ WZOR, KTORY SKU JUZ MA, NIE DOSTAJE NOWEGO — nigdy. Numer raz nadany jest
+          tozsamoscia produktu w sklepie, a ciche przenumerowanie jest najgorsza rzecza,
+          jaka ten ekran moze zrobic. Liczba stoi tu jawnie, zeby „zaznaczyłem 300, dostałem
+          250" nie wygladalo na zgubione wiersze. Numer JUZ NADANY zmienia sie wylacznie
+          na karcie jednego wzoru, gdzie widac, co sie podmienia. %>
+      <p class="pasek-uwaga">
+        <b><%= juzMaja %></b> z zaznaczonych wzorów ma już numer — tych nie ruszam.
+        Generator nigdy nie przenumerowuje: numer, który raz pojechał do sklepu, jest
+        tożsamością produktu. Chcesz go zmienić — zrób to na karcie wzoru, pojedynczo.
+      </p>
+    <% } %>
+
+    <% if (ileKolizji) { %>
+      <p class="pasek-blokada">
+        <b><%= ileKolizji %></b> z proponowanych numerów jest już zajętych — patrz kolumna
+        „Uwaga”. Numer, który żyje w sklepie albo przy innym wzorze, jest cudzą tożsamością,
+        więc nie nadam ŻADNEGO z tego zestawu, dopóki kolizje nie znikną. Popraw wzorzec
+        (najprościej: dopisz albo zmień człon stały) i pokaż podgląd jeszcze raz.
+      </p>
+    <% } %>
+
+    <% if (!blad && !wynik && pozycje.length) { %>
+      <p class="pasek-uwaga">
+        Nic jeszcze nie jest nadane. Nadasz <b><%= ileNumerow(ile) %></b> — przejrzyj listę
+        i dopiero wtedy zatwierdź. Numery pojadą do sklepów dopiero osobnym krokiem;
+        tutaj powstają wyłącznie w naszym rejestrze.
+      </p>
+    <% } %>
+
+    <% if (wynik) { %>
+      <p class="<%= ile ? 'pasek-uwaga' : 'pusto' %>">
+        <% if (ile) { %>
+          Nadano <b><%= ileNumerow(ile) %></b>. Wszystkie w jednym zapisie i z jednym
+          znacznikiem czasu — po nim da się je później odnaleźć razem.
+        <% } else { %>
+          <%# ⚠️ ZERO TO ODPOWIEDZ, A NIE AWARIA — i to jest jedyny slad po tym, ze zestaw
+              policzono PONOWNIE. %>
+          Żaden wzór nie dostał numeru — wszystkie miały go już wcześniej. Nic nie zapisałem.
+        <% } %>
+      </p>
+      <% if (wynik.nieaktualne) { %>
+        <p class="pasek-blokada">
+          <b><%= wynik.nieaktualne %></b> wzorów numeru nie dostało, bo zdobyły go
+          w międzyczasie — z karty albo z drugiej zakładki. Nie podmieniam numeru,
+          który już istnieje.
+        </p>
+      <% } %>
+    <% } %>
+
+    <% if (pozycje.length) { %>
+      <table class="tab-pozycje">
+        <thead><tr><th>Wzór</th><th>Proponowany numer</th><th>Uwaga</th></tr></thead>
+        <tbody>
+          <% pozycje.forEach(function (p) { %>
+            <tr>
+              <td><div class="nazwa-wzoru"><%= p.nazwa %></div></td>
+              <td><code class="sku-numer"><%= p.sku %></code></td>
+              <td>
+                <% if (p.uwaga) { %>
+                  <%# Kolor sam nie niesie znaczenia: obok znacznika zawsze stoi zdanie. %>
+                  <% if (p.zla) { %><span class="znacznik znacznik--blad">kolizja</span> <% } %>
+                  <%= p.uwaga %>
+                <% } else { %>
+                  <span class="magazyn-brak">—</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } else if (!blad) { %>
+      <p class="pusto">
+        Żaden z zaznaczonych wzorów nie potrzebuje numeru — wszystkie już go mają.
+        Nie ma czego zatwierdzać.
+      </p>
+    <% } %>
+
+    <div class="stopka-edycji">
+      <%# ⚠️⚠️ FORMULARZ NIESIE NUMERY WZOROW I WZORZEC, NIGDY GOTOWYCH NUMEROW SKU. Zbior
+          zostaje ZAMROZONY tym, co czlowiek wlasnie zobaczyl (stad jawne numery wzorow, takze
+          przy zakresie „wszystkie pasujace"), a numery licza sie od nowa ze stanu bazy —
+          miedzy podgladem a klknieciem mogl wejsc odczyt katalogow albo drugi operator.
+
+          ⚠️ PRZYCISK ISTNIEJE WYLACZNIE, GDY JEST CO NADAC I NIC NIE KOLIDUJE (`mozna`
+          liczy trasa) — ale to jest UPRZEJMOSC, nie zabezpieczenie: trasa zapisujaca liczy
+          zestaw PONOWNIE i sama odmawia calosci przy kolizji. %>
+      <% if (mozna) { %>
+        <form method="post" action="/magazyn/sku-zapisz">
+          <% pozycje.forEach(function (p) { %>
+            <input type="hidden" name="zaznaczone" value="<%= p.id %>">
+          <% }); %>
+          <input type="hidden" name="wzorzec" value="<%= wzorzec %>">
+          <button class="btn btn--glowny" type="submit">Nadaj <%= ileNumerow(ile) %></button>
+        </form>
+      <% } %>
+      <a class="btn" href="<%= adresPowrotu %>"><%= wynik ? 'Wróć do magazynu' : 'Anuluj' %></a>
+    </div>
+  </div>
+</section>

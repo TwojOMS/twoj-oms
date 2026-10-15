@@ -1,0 +1,3 @@
+* text=auto eol=lf
+*.png binary
+src/public/przewoznicy/** -text -diff

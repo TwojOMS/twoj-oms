@@ -1,0 +1,71 @@
+<h1>Zamówienia i wysyłka</h1>
+
+<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
+
+<div class="ust-sekcja">
+  <h2>Szablony paczek</h2>
+  <p>
+    Jeden szablon jest domyślny przy nadaniu pojedynczym i masowym. Przy pojedynczym nadaniu możesz wybrać inny albo poprawić wymiary.
+    <strong>Nie dotyczą paczkomatu</strong>, dla którego InPost przyjmuje literę skrytki.
+  </p>
+  <% if (bledyPaczki.length) { %>
+    <div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong></p><ul><% bledyPaczki.forEach(function (blad) { %><li><%= blad %></li><% }); %></ul></div>
+  <% } %>
+  <% szablonyPaczek.szablony.forEach(function (s) { const pola = wpisanySzablon?.id === s.id ? wpisanySzablon : (s.id === szablonyPaczek.domyslnyId ? { ...s, ...paczka } : s); %>
+    <div class="ust-szablon">
+      <form <% if (s.id === szablonyPaczek.domyslnyId) { %>id="ust-paczka"<% } %> method="post" action="/ustawienia/paczka/szablon">
+        <input type="hidden" name="id" value="<%= s.id %>">
+        <div class="ust-pola">
+          <label>Nazwa <input name="nazwa" value="<%= pola.nazwa %>" maxlength="60" required></label>
+          <label>Waga (kg) <input name="waga" value="<%= pola.waga %>" inputmode="decimal"></label>
+          <label>Długość (cm) <input name="dlugosc" value="<%= pola.dlugosc %>" inputmode="decimal"></label>
+          <label>Szerokość (cm) <input name="szerokosc" value="<%= pola.szerokosc %>" inputmode="decimal"></label>
+          <label>Wysokość (cm) <input name="wysokosc" value="<%= pola.wysokosc %>" inputmode="decimal"></label>
+        </div>
+        <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zapisz szablon</button>
+          <% if (s.id === szablonyPaczek.domyslnyId) { %><strong>Domyślny</strong><% } %>
+        </div>
+      </form>
+      <% if (s.id !== szablonyPaczek.domyslnyId) { %>
+        <div class="ust-szablon-dodatkowe">
+          <form method="post" action="/ustawienia/paczka/szablon/<%= encodeURIComponent(s.id) %>/domyslny"><button class="ust-przycisk" type="submit">Ustaw jako domyślny</button></form>
+          <form method="post" action="/ustawienia/paczka/szablon/<%= encodeURIComponent(s.id) %>/usun"><button class="ust-przycisk grozny" type="submit">Usuń szablon</button></form>
+        </div>
+      <% } %>
+    </div>
+  <% }); %>
+  <h3>Dodaj szablon</h3>
+  <% const nowy = wpisanySzablon && !wpisanySzablon.id ? wpisanySzablon : {}; %>
+  <form id="ust-szablon-nowy" method="post" action="/ustawienia/paczka/szablon">
+    <div class="ust-pola">
+      <label>Nazwa <input name="nazwa" value="<%= nowy.nazwa ?? '' %>" maxlength="60" required></label>
+      <label>Waga (kg) <input name="waga" value="<%= nowy.waga ?? '' %>" inputmode="decimal"></label>
+      <label>Długość (cm) <input name="dlugosc" value="<%= nowy.dlugosc ?? '' %>" inputmode="decimal"></label>
+      <label>Szerokość (cm) <input name="szerokosc" value="<%= nowy.szerokosc ?? '' %>" inputmode="decimal"></label>
+      <label>Wysokość (cm) <input name="wysokosc" value="<%= nowy.wysokosc ?? '' %>" inputmode="decimal"></label>
+    </div>
+    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Dodaj szablon</button></div>
+  </form>
+</div>
+
+<div class="ust-sekcja">
+  <h2>Koszty dostawy</h2>
+  <p>Kwota startowa na ekranie zakładania zamówienia, osobna dla każdej metody.</p>
+  <% if (bledyKosztow.length) { %>
+    <div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong></p><ul><% bledyKosztow.forEach(function (blad) { %><li><%= blad %></li><% }); %></ul></div>
+  <% } %>
+  <form id="ust-dostawa" method="post" action="/ustawienia/dostawa">
+    <div class="ust-pola">
+      <% Object.keys(dostawy).forEach(function (metoda) { %>
+        <label><%= dostawy[metoda] %> (zł)
+          <input name="<%= metoda %>" value="<%= kwoty[metoda] %>" inputmode="decimal" placeholder="0,00">
+        </label>
+      <% }); %>
+    </div>
+    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zapisz koszty</button></div>
+  </form>
+  <p style="margin:.8rem 0 0;font-size:.82rem;color:var(--tekst-przygaszony)">
+    Zmiana dotyczy zamówień zakładanych od teraz. Nie rusza zapisanych kwot, nadanych paczek ani faktur.
+    <% if (ustawieniaZmienione) { %> Ostatnia zmiana: <strong><%= fmtDataCzas(ustawieniaZmienione) %></strong>.<% } %>
+  </p>
+</div>

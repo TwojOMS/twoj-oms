@@ -1,0 +1,30 @@
+<%# TABELKA OSTRZEZEN NA STRONIE GLOWNEJ (spec 2026-08-29). Kazdy wiersz: tresc + przejscie
+    do wlasciwej zakladki + odrzucenie. Widok NICZEGO nie liczy — wiersze przychodza gotowe
+    z domain/ostrzezenia.js (typy, klucze, kolejnosc, filtr odrzuconych), a odrzucenie to
+    zwykly formularz POST bez JavaScriptu (CSRF przez Origin, jak wszedzie).
+
+    ⚠️ Sekcja NIE renderuje sie przy pustej liscie — ostrzezenie widziane codziennie
+    przestaje byc ostrzezeniem (ta sama zasada, co przy pasku spraw karty).
+
+    ⚠️ Pas kanalow Allegro (pas-awaria wyzej w lista.ejs) ZOSTAJE OSOBNO i typ `integracja`
+    go nie powiela — tamten pas niesie wyjscie (wiazanie), ktorego ta tabelka nie ma. %>
+<% if (typeof ostrzezenia !== 'undefined' && ostrzezenia && ostrzezenia.length) { %>
+<section class="ostrzezenia" aria-label="Ostrzeżenia">
+  <table>
+    <tbody>
+      <% ostrzezenia.forEach((o) => { %>
+        <tr class="ostrzezenie ostrzezenie--<%= o.typ %>">
+          <td class="ostrzezenie-tresc"<% if (o.title) { %> title="<%= o.title %>"<% } %>><%= o.tekst %></td>
+          <td class="ostrzezenie-akcje">
+            <a class="btn" href="<%= o.przycisk.href %>"><%= o.przycisk.etykieta %></a>
+            <form method="post" action="/ostrzezenia/odrzuc">
+              <input type="hidden" name="klucz" value="<%= o.klucz %>">
+              <button type="submit" class="btn btn--cichy"><%= o.etykietaOdrzucenia %></button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</section>
+<% } %>

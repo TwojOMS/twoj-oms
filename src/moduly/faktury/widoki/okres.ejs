@@ -1,0 +1,376 @@
+<%# Karta MIESIECZNEGO OKRESU ROZLICZENIOWEGO klienta zbiorczego (spec 2026-08-01).
+    Kolejnosc sekcji jest kalka karty zamowienia i nie zmienia sie: belka faktow →
+    Zamówienia → Faktura → Wpłaty → Stan okresu.
+
+    ⚠️ Widok NIE LICZY NICZEGO SAM (przewodnik OMS, sekcja 3): kwota faktury, saldo, stan
+    faktury i kwota kazdego zamowienia sa policzone w trasie (web/routes/okresy.js). %>
+<p class="wroc"><a href="/okresy">← Wróć do okresów rozliczeniowych</a></p>
+
+<%
+  // ⚠️ `MIESIACE` PRZYCHODZI Z TRASY, a pochodzi z domain/okres-rozliczeniowy.js — z tej
+  // samej tablicy, z ktorej `opisOdmowy` sklada komunikat „Okres lipiec 2026 jest już
+  // rozliczony". Wlasna kopia w szablonie znaczylaby, ze odmowa i ekran moga kiedys nazwac
+  // ten sam miesiac inaczej, a operator porownuje wlasnie te dwa napisy.
+  const miesiac = MIESIACE[okres.miesiac - 1] ?? `miesiąc ${okres.miesiac}`;
+  const wart = (v) => (v === null || v === undefined || v === '' ? '—' : v);
+  // Faktura wymaga reki czlowieka — te dwa stany maja WLASNE wyjscie („odblokuj").
+  const uwagaFaktury = stanFaktury === 'do_wyjasnienia' || stanFaktury === 'zawieszona';
+  // ⚠️ KOLOR I ETYKIETA IDA Z `stan`, NIGDY ZE ZNAKU SALDA. `saldoGr` dodatnie znaczy dwie
+  // zupelnie rozne rzeczy: przed faktura to ZALICZKA (pieniadze klienta, ktore czekaja na
+  // rozliczenie), po fakturze — NADPLATA (pieniadze do zwrotu). Panel jest jedynym miejscem,
+  // w ktorym ktokolwiek te pieniadze widzi, wiec pomylenie ich byloby bledem o pieniadze,
+  // a nie o wyglad.
+  const saldoOk = rozliczenie.stan === 'pokryte';
+  const saldoZle = rozliczenie.stan === 'niedoplata' || rozliczenie.stan === 'blad';
+
+  // ⚠️ DOMKNIECIE 1 (recenzja Zadania 9, runda 2). `rozliczenie.kwotaFakturyZl` idzie
+  // z AKTYWNYCH zamowien okresu LICZONYCH DZIS (sumaOczekiwanaOkresuGrosze) — a nie
+  // z migawki tego, co NAPRAWDE poszlo do inFaktu (tej migawki panel jeszcze nie ma;
+  // to osobna zmiana schematu). Dopoki faktury NIE MA, to jest jedyna prawda, jaka
+  // istnieje. Ale gdy faktura JUZ ISTNIEJE (stanFaktury !== 'brak') i klient dropshippingowy
+  // anulowal PO wystawieniu choc jedno zamowienie tego miesiaca — „dzis" nie jest juz
+  // rowne temu, co widzial inFakt przy wystawianiu, a `rozliczenie.stan` klamie w OBIE
+  // STRONY: albo udaje „faktury jeszcze nie ma" (suma spadla do zera — zmierzone: faktura
+  // FV/7/2026 wyzej na tym samym ekranie, a blok salda pisal „zaliczka 100.00 zł — faktury
+  // za ten miesiąc jeszcze nie ma"), albo udaje nadplatę do zwrotu (suma spadla, wplata
+  // zostala ta sama). W obu przypadkach prawdziwa odpowiedz brzmi „do wyjaśnienia,
+  // prawdopodobnie korekta w inFakcie" — NIE „nie ma faktury" i NIE „oddaj pieniądze”.
+  //
+  // ⚠️ WARUNEK `anulowane.length > 0` ZAWEZA TE LATE I TRZEBA WIEDZIEC, DO CZEGO.
+  //
+  // Do 2026-08-03 stalo tu zdanie „bez zadnego anulowanego zamowienia »dzis« == »przy
+  // wystawieniu«" — I TO BYLO NIEPRAWDA, w dwie strony:
+  //   • W GORE: zamowienie zapisane przez drugiego operatora w oknie `await` wewnatrz
+  //     wystawiania faktury wpadalo do miesiaca JUZ zafakturowanego (zmierzone: faktura na
+  //     100,00 zl, ekran potem „Razem 140.00 zł" i „NIEDOPŁATA: brakuje 140.00 zł"). Ta dziura
+  //     zostala zamknieta u zrodla — `wystaw` w services/faktura-okresu.js czyta zbior
+  //     zamowien PONOWNIE po zamknieciu okresu i odmawia, gdy sie zmienil (recenzja koncowa
+  //     galezi, W2) — wiec ten mechanizm juz nie istnieje.
+  //   • W GORE, DALEJ OTWARTE: suma liczy sie z POZYCJI zamowien, a pozycje wolno poprawiac
+  //     i dopisywac takze po wystawieniu faktury. Podniesiona kwota zamowienia z zafakturowanego
+  //     miesiaca da tu „NIEDOPŁATA", ktora jest prawdziwa co do pieniedzy (klient tyle nie
+  //     zaplacil), ale NIE co do dokumentu (faktura opiewa na stara kwote — do korekty).
+  //     Rozroznienia tych dwoch przypadkow nie da sie zrobic bez MIGAWKI kwoty, ktora
+  //     naprawde poszla do inFaktu, a tej panel nie ma (osobna zmiana schematu).
+  //
+  // Anulowanie zostaje wiec jedynym mechanizmem, przez ktory suma liczona dzis moze byc
+  // NIZSZA niz przy wystawieniu — i tylko ten kierunek ta lata lapie. Warunek NIE JEST
+  // szerszy celowo: `stanFaktury !== 'brak' && stan === 'nadplata'` bez niego zamalowaloby
+  // „do wyjaśnienia" KAZDA prawdziwa nadplate klienta, czyli schowaloby pieniadze do zwrotu
+  // — a to jest dokladnie ten rodzaj bledu, przed ktorym cala ta sekcja ma bronic.
+  const saldoWbrewFakturze = stanFaktury !== 'brak' && anulowane.length > 0
+    && (rozliczenie.stan === 'niezafakturowany' || rozliczenie.stan === 'nadplata');
+%>
+
+<div class="belka">
+  <span class="belka-numer"><%= miesiac %> <%= okres.rok %></span>
+  <div class="belka-pole">
+    <span class="belka-etykieta">Klient</span>
+    <span class="belka-wartosc"><%= klient ? klient.nazwa : okres.klient_klucz %></span>
+  </div>
+  <div class="belka-pole">
+    <span class="belka-etykieta">Stan okresu</span>
+    <span class="belka-wartosc"><%= okres.stan %><% if (okres.zamkniety_at) { %>
+      <span class="wyjasnienie">(zamknięty <%= fmtDataCzasKrotko(okres.zamkniety_at) %>)</span>
+    <% } %></span>
+  </div>
+  <div class="belka-pole">
+    <span class="belka-etykieta">Kwota okresu</span>
+    <span class="belka-wartosc"><%= wart(rozliczenie.kwotaFakturyZl) %> zł</span>
+  </div>
+  <span class="belka-rozdziel"></span>
+</div>
+
+<%# Klucz klienta bez wpisu w konfiguracji to nie jest drobiazg: bez NIP-u panel nie ma jak
+    wskazac nabywcy faktury, wiec „Wystaw fakturę" i tak sie odbije. Lepiej powiedziec to
+    tutaj, niz po kliknieciu. %>
+<% if (!klient) { %>
+  <p class="pasek-blokada">
+    Okres należy do klienta „<%= okres.klient_klucz %>”, którego NIE MA w konfiguracji
+    (OMS_KLIENCI_ZBIORCZY). Faktury za ten miesiąc panel nie wystawi — bez wpisu nie zna NIP-u nabywcy.
+  </p>
+<% } %>
+
+<%# ——— 1. ZAMOWIENIA ————————————————————————————————————————————————————————————— %>
+<section class="panel" id="zamowienia">
+  <div class="panel-glowa"><h2>Zamówienia okresu — <%= wierszeZamowien.length %><% if (anulowane.length) { %>, w tym <%= anulowane.length %> anulowanych<% } %></h2></div>
+  <div class="panel-cialo">
+    <table class="tab-pozycje">
+      <thead><tr>
+        <th>Numer</th><th>Złożone</th><th>Klient</th><th class="liczba">Kwota</th>
+        <%# Kolumna akcji znika W CALOSCI przy zafakturowanym okresie — ta sama zasada, co
+            przy „Otwórz okres ponownie" nizej: przycisku, ktory i tak dostanie odmowe,
+            nie pokazujemy, zeby nie kusil. Bariera i tak stoi w trasie. %>
+        <% if (wolnoOdpinac) { %><th class="kol-akcje"></th><% } %>
+      </tr></thead>
+      <tbody>
+        <%# ⚠️ Tabela pokazuje WSZYSTKIE zamowienia miesiaca, takze ANULOWANE — te ostatnie
+            oznaczone i POZA suma. Ukrycie ich byloby gorsze niz pokazanie: operator szuka
+            w panelu zamowienia po numerze ze sklepu i musi je znalezc; potrzebuje tylko
+            wiedziec, czemu nie ma go w „Razem". %>
+        <% wierszeZamowien.forEach(function (w) { %>
+          <tr>
+            <td>
+              <a class="numer-zamowienia" href="/zamowienia/<%= w.z.id %>"><%= w.z.numer %></a>
+              <% if (w.anulowane) { %>
+                <span class="znacznik znacznik--anulowane">anulowane</span>
+              <% } %>
+            </td>
+            <td><%= wart(fmtDataCzasKrotko(w.z.utworzone_at)) %></td>
+            <td><%= wart(w.klientZamowienia) %></td>
+            <%# Kwota OCZEKIWANA od klienta (ze sklepu + pozycje dopisane recznie) — ta sama
+                liczba, ktora sklada sie na kwote faktury okresu i ktora sprawdza bariera.
+                Przy zamowieniu anulowanym mowimy WPROST, ze do sumy nie wchodzi — sama
+                kwota bez tego dopisku kazalaby operatorowi szukac bledu w „Razem". %>
+            <td class="liczba">
+              <%= wart(w.kwotaZl) %> zł
+              <% if (w.anulowane) { %>
+                <div class="wiersz-szczegoly">poza fakturą</div>
+              <% } %>
+            </td>
+            <%# WYJSCIE Z POMYLKI: zamowienie trafia do miesiaca po NIP-ie przy zakladaniu,
+                wiec literowka wrzuca tu cudze zamowienie — a do 17.08.2026 jedynym ratunkiem
+                byla reczna operacja na bazie produkcyjnej. Ten sam idiom, co „Usuń" przy
+                wplacie: wiersz + wlasny formularz + maly przycisk. %>
+            <% if (wolnoOdpinac) { %>
+              <td class="kol-akcje">
+                <form method="post" action="/okresy/<%= okres.id %>/zamowienia/<%= w.z.id %>/odepnij">
+                  <button class="btn btn--maly">Odepnij</button>
+                </form>
+              </td>
+            <% } %>
+          </tr>
+        <% }); %>
+        <% if (!wierszeZamowien.length) { %>
+          <tr><td colspan="<%= wolnoOdpinac ? 5 : 4 %>" class="pusto-sekcja">Ten okres nie ma jeszcze żadnego zamówienia.</td></tr>
+        <% } %>
+        <% if (wierszeZamowien.length) { %>
+          <%# ⚠️ TA LICZBA MUSI BYC TA SAMA, KTORA POJDZIE NA FAKTURE. Idzie
+              z `rozliczenie.kwotaFakturyZl`, liczonego na zbiorze po `podzialZamowienOkresu`
+              — czyli tym samym, ktory `wystaw` wypycha do inFaktu. %>
+          <tr class="wiersz-razem">
+            <td colspan="3">
+              Razem do zafakturowania
+              <% if (anulowane.length) { %>
+                <div class="wiersz-szczegoly">
+                  bez <%= anulowane.length %> anulowanych — te nie są sprzedażą i na fakturze ich nie będzie
+                </div>
+              <% } %>
+            </td>
+            <td class="liczba"><%= wart(rozliczenie.kwotaFakturyZl) %> zł</td>
+            <% if (wolnoOdpinac) { %><td class="kol-akcje"></td><% } %>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+    <% if (wolnoOdpinac) { %>
+      <p class="wyjasnienie">
+        Odpięcie wyjmuje zamówienie z tego miesiąca: zniknie z faktury zbiorczej i wróci
+        do rozliczania pojedynczo — fakturę wystawisz mu wtedy z jego karty. Nic nie kasuje
+        i da się cofnąć przyciskiem „Przypisz do okresu” na karcie zamówienia.
+      </p>
+    <% } %>
+  </div>
+</section>
+
+<%# ——— 2. FAKTURA ZBIORCZA ———————————————————————————————————————————————————————— %>
+<%# ⚠️ Stan faktury pochodzi ze `stanFakturyOkresu` (trasa), a NIE z salda: przed
+    wystawieniem suma oczekiwana jest juz dodatnia, wiec saldo mowi „niedopłata" takze
+    wtedy, gdy zadnej faktury jeszcze nie ma. %>
+<section class="panel" id="faktura">
+  <div class="panel-glowa"><h2>Faktura za okres</h2></div>
+  <div class="panel-cialo">
+    <% if (stanFaktury === 'do_wyjasnienia') { %>
+      <p class="pasek-blokada">
+        FAKTURA DO WYJAŚNIENIA: <%= wart(okres.blad_opis) %>.
+        Sprawdź RĘCZNIE w inFakcie, czy dokument za ten miesiąc powstał — drugie kliknięcie to drugi dokument.
+        Jeśli tam jest i nie poszedł jeszcze wieczorem do KSeF, skasuj go w inFakcie; jeśli poszedł, zostaje KOREKTA.
+      </p>
+    <% } else if (stanFaktury === 'zawieszona') { %>
+      <p class="pasek-blokada">
+        FAKTURA ZAWIESZONA: rezerwacja wisi od <%= fmtDataCzas(okres.utworzona_at) %> i żadne wystawianie już nie trwa
+        (najpewniej panel został zrestartowany w trakcie wywołania inFaktu). Panel sam faktury nie ponowi.
+      </p>
+    <% } else if (stanFaktury === 'w_toku') { %>
+      <p class="pasek-uwaga">Wystawianie faktury za ten okres trwa — odśwież stronę za chwilę.</p>
+    <% } else if (stanFaktury !== 'brak') { %>
+      <p>
+        <strong><%= okres.numer || 'faktura wystawiona (bez numeru w odpowiedzi)' %></strong> —
+        jedna faktura za cały miesiąc, wystawiona w inFakcie z panelu, BEZ wysyłki do KSeF
+        (tym zajmuje się właściciel ręcznie, wieczorem).
+        KSeF: <%= okres.ksef_status || 'jeszcze nie wysłana' %>
+      </p>
+    <% } else if (mozliwaFaktura && zamowienia.length > 0) { %>
+      <%# Bariera arytmetyczna (services/faktura-okresu.js) sprawdza zamowienie po zamowieniu
+          i odmawia CALEJ faktury przy pierwszym rozjezdzie — to jest ostatnia rzecz przed
+          dokumentem, ktory po wieczornej wysylce poprawia sie juz tylko korekta. %>
+      <form method="post" action="/okresy/<%= okres.id %>/wystaw-fakture">
+        <button class="btn btn--glowny">Wystaw fakturę za <%= miesiac %> <%= okres.rok %></button>
+      </form>
+      <p class="wyjasnienie">
+        <%# Liczba zamowien liczona z `zamowienia` (bez anulowanych), a nie z wierszy tabeli —
+            zdanie ma opisywac DOKUMENT, ktory powstanie, a nie ekran. %>
+        Jedna faktura na <%= zamowienia.length %> zamówień, na kwotę <%= wart(rozliczenie.kwotaFakturyZl) %> zł.
+        Wystawienie ZAMYKA okres — od tej chwili zamówienie z datą złożenia z tego miesiąca
+        nie dopisze się do niego samo. Panel nie wysyła dokumentu do KSeF.
+      </p>
+    <% } else if (mozliwaFaktura) { %>
+      <%# ⚠️ DOMKNIECIE 3 (recenzja Zadania 9, runda 2). Przycisk „Wystaw fakturę" na
+          okresie bez ANI JEDNEGO zamowienia do zafakturowania kusil do klikniecia, ktore
+          z gory nie ma jak sie udac — bariera arytmetyczna w services/faktura-okresu.js
+          i tak odmowi (zmierzone: `infakt.wystaw` nie jest wolany), ale operator dostawal
+          zaproszenie do akcji, ktora jest z gory bezcelowa. Bariery NIE ruszamy — to ostatnia
+          linia obrony przed drugim dokumentem za ten sam miesiac. Tu tylko nie zapraszamy
+          do kliknieca i mowimy, dlaczego przycisku nie ma. %>
+      <p class="pasek-uwaga">
+        Nie ma czego zafakturować —
+        <% if (anulowane.length) { %>
+          wszystkie <%= anulowane.length %> zamówień tego okresu są anulowane.
+        <% } else { %>
+          ten okres nie ma jeszcze żadnego zamówienia.
+        <% } %>
+      </p>
+    <% } else { %>
+      <p class="pasek-uwaga">inFakt nie jest skonfigurowany — faktury z panelu nie wystawisz.</p>
+    <% } %>
+
+    <%# JEDYNE wyjscie ze stanow, z ktorych panel sam nie wyjdzie. Kolejnosc zdania jest
+        istotna: NAJPIERW inFakt, DOPIERO POTEM przycisk (tak samo, jak na karcie zamowienia). %>
+    <% if (uwagaFaktury) { %>
+      <p class="wyjasnienie">
+        NAJPIERW otwórz inFakt i sprawdź, czy faktura za ten miesiąc tam jest. Jeśli JEST — nic tu nie klikaj:
+        odblokowanie przy istniejącym dokumencie skończy się DRUGĄ fakturą za ten sam miesiąc. Dopiero gdy jej tam nie ma:
+      </p>
+      <form method="post" action="/okresy/<%= okres.id %>/faktura/odblokuj">
+        <button class="btn">Sprawdziłem w inFakcie — faktury nie ma, odblokuj</button>
+      </form>
+    <% } %>
+  </div>
+</section>
+
+<%# ——— 3. WPLATY ————————————————————————————————————————————————————————————————— %>
+<%# Klient zbiorczy placi RAZ, za caly miesiac — wplata nalezy do OKRESU, nie do zadnego
+    pojedynczego zamowienia (osobna tabela `platnosci_okresu`). %>
+<section class="panel" id="wplaty">
+  <div class="panel-glowa"><h2>Wpłaty za okres</h2></div>
+  <div class="panel-cialo">
+    <table class="tab-pozycje">
+      <thead><tr><th>Data</th><th class="liczba">Kwota</th><th>Metoda</th><th>Uwaga</th><th class="kol-akcje"></th></tr></thead>
+      <tbody>
+        <% wplaty.forEach(function (w) { %>
+          <tr>
+            <td><%= wart(fmtDataCzas(w.data)) %></td>
+            <td class="liczba"><%= w.kwota %> zł</td>
+            <td><%= wart(w.metoda) %></td>
+            <td><%= wart(w.uwaga) %></td>
+            <td class="kol-akcje">
+              <%# WYJSCIE dla wplaty wpisanej pomylkowo — bez niego jedynym ratunkiem byłby
+                  SQL na produkcji. Trasa sprawdza PARE (okres, wpłata). %>
+              <form method="post" action="/okresy/<%= okres.id %>/wplata/<%= w.id %>/usun">
+                <button class="btn btn--maly">Usuń</button>
+              </form>
+            </td>
+          </tr>
+        <% }); %>
+        <% if (!wplaty.length) { %>
+          <tr><td colspan="5" class="pusto-sekcja">Brak wpłat za ten okres.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+
+    <div class="saldo <%= saldoOk ? 'saldo--ok' : (saldoZle ? 'saldo--zle' : '') %>">
+      <span>Wpłacono <%= wart(rozliczenie.wplaconoZl) %> zł z <%= wart(rozliczenie.kwotaFakturyZl) %> zł</span>
+      <strong>
+        <% if (rozliczenie.stan === 'blad') { %>nie da się policzyć: <%= rozliczenie.blad %>
+        <% } else if (saldoWbrewFakturze) { %>
+          <%# ⚠️ Ta galaz idzie PRZED „niezafakturowany" i „nadplata" — patrz komentarz przy
+              `saldoWbrewFakturze` wyzej. Karta NIE MA PRAWA zaprzeczac sekcji „Faktura za
+              okres" wyzej na tym samym ekranie. %>
+          do wyjaśnienia — dokument już istnieje
+        <% } else if (rozliczenie.stan === 'niezafakturowany') { %>
+          <%# ⚠️ TO NIE JEST NADPLATA, choc saldo jest dodatnie: faktury za ten miesiac jeszcze
+              nie ma, wiec pieniadze sa ZALICZKA i nie ma z czym ich porownac. %>
+          <% if (rozliczenie.saldoZl === '0.00') { %>brak faktury — nie ma czego rozliczać
+          <% } else { %>zaliczka <%= rozliczenie.saldoZl %> zł — faktury za ten miesiąc jeszcze nie ma<% } %>
+        <% } else if (rozliczenie.stan === 'pokryte') { %>rozliczone co do grosza
+        <% } else if (rozliczenie.stan === 'niedoplata') { %>NIEDOPŁATA: brakuje <%= rozliczenie.saldoZl %> zł
+        <% } else if (rozliczenie.stan === 'nadplata') { %>NADPŁATA <%= rozliczenie.saldoZl %> zł
+        <%# ⚠️ NADPLATA MA WLASNA, JAWNA GALAZ. Wczesniej byla galezia DOMYSLNA, wiec kazdy
+            stan, ktorego widok nie zna, malowal sie jako pieniadze do zwrotu — piaty stan
+            dodany kiedys w domenie zaczalby po cichu obiecywac klientowi zwrot kwoty, ktora
+            z nadplata nie ma nic wspolnego. Nieznany stan ma sie przyznac do niewiedzy. %>
+        <% } else { %>stan rozliczenia nierozpoznany (<%= rozliczenie.stan %>) — saldo <%= rozliczenie.saldoZl %> zł<% } %>
+      </strong>
+    </div>
+    <%# Konsekwencja salda powiedziana WPROST — sam kolor paska jej nie niesie. %>
+    <% if (saldoWbrewFakturze) { %>
+      <p class="wyjasnienie">
+        Faktura <%= okres.numer || 'za ten okres' %> już istnieje, ale <%= anulowane.length %>
+        <%= anulowane.length === 1 ? 'zamówienie tego miesiąca jest dziś anulowane' : 'zamówień tego miesiąca jest dziś anulowanych' %>,
+        więc suma liczona na bieżąco (<%= rozliczenie.kwotaFakturyZl %> zł) jest niższa niż w chwili wystawienia — wpłacono
+        <%= rozliczenie.wplaconoZl %> zł. To sytuacja do wyjaśnienia, najpewniej wymagająca korekty w inFakcie —
+        sprawdź ręcznie w inFakcie, a NIE zwracaj pieniędzy klientowi na podstawie samej tej karty.
+      </p>
+    <% } else if (rozliczenie.stan === 'nadplata') { %>
+      <p class="wyjasnienie">Wpłacono o <%= rozliczenie.saldoZl %> zł więcej, niż wynosi faktura — sprawdź, czy nadwyżki nie trzeba zwrócić klientowi.</p>
+    <% } else if (rozliczenie.stan === 'niezafakturowany' && rozliczenie.saldoZl !== '0.00') { %>
+      <p class="wyjasnienie">Pieniądze już są, faktury jeszcze nie ma — rozliczą się dopiero po jej wystawieniu. To NIE jest nadwyżka do zwrotu.</p>
+    <% } %>
+
+    <form method="post" action="/okresy/<%= okres.id %>/wplata" class="pola-w-rzedzie">
+      <%# ⚠️ Zwykle pole tekstowe, a NIE `type="number"`, i to jest swiadome: przy `number`
+          przegladarka oddaje PUSTA wartosc dla kwoty wpisanej z przecinkiem („500,00"),
+          czyli dokladnie dla tego, co czlowiek w Polsce naprawde wpisuje — operator
+          zobaczylby „podaj kwotę" po tym, jak ja podal. Przecinek normalizuje `parsujWplate`. %>
+      <input name="kwota" inputmode="decimal" required placeholder="kwota (zł), np. 5000,00">
+      <input name="data" placeholder="data wpłaty (puste = dziś)">
+      <%# ⚠️ Metoda WYMAGANA (audyt 22.08) — te same opcje, co formularz wplaty na karcie
+          (METODY_WPLATY_RECZNEJ z domeny), zeby wyciag bankowy uzgadnial sie po jednym
+          slowniku takze przy rozliczeniach zbiorczych. %>
+      <select name="metoda" required>
+        <option value="" disabled selected>— metoda —</option>
+        <% metodyWplaty.forEach(function (m) { %>
+          <option value="<%= m %>"><%= m %></option>
+        <% }); %>
+      </select>
+      <input name="uwaga" placeholder="uwaga (np. zaliczka za sierpień)">
+      <button class="btn btn--glowny">Dodaj wpłatę</button>
+    </form>
+  </div>
+</section>
+
+<%# ——— 4. STAN OKRESU —————————————————————————————————————————————————————————————— %>
+<section class="panel" id="stan-okresu">
+  <div class="panel-glowa"><h2>Stan okresu</h2></div>
+  <div class="panel-cialo">
+    <% if (otwarty) { %>
+      <p class="wyjasnienie">
+        Okres jest OTWARTY: zamówienie z datą złożenia z tego miesiąca dopisze się do niego samo.
+        Zamknięcie odcina go od nowych zamówień jeszcze przed wystawieniem faktury (samo wystawienie zamyka go i tak).
+      </p>
+      <form method="post" action="/okresy/<%= okres.id %>/zamknij">
+        <button class="btn">Zamknij okres</button>
+      </form>
+    <% } else { %>
+      <p class="wyjasnienie">
+        Okres jest <%= okres.stan %>: zamówienie z datą złożenia z tego miesiąca dostanie ODMOWĘ
+        („korekta faktury albo zmiana daty”) i nie zapisze się w panelu.
+      </p>
+      <%# DROGA POWROTNA. Przy WYSTAWIONEJ fakturze trasa odmowi — otwarcie takiego miesiaca
+          wpusciloby zamowienia poza dokument, ktory klient juz dostal — wiec przycisku tam
+          nie pokazujemy w ogole, zeby nie kusil. %>
+      <% if (stanFaktury === 'brak') { %>
+        <details class="drobne">
+          <summary>Trzeba dopisać zamówienie do tego miesiąca?</summary>
+          <p class="wyjasnienie">
+            Otwarcie cofa zamknięcie — okres znów przyjmie zamówienia z datą złożenia z tego miesiąca.
+            Rób to świadomie: to decyzja o tym, na której fakturze te zamówienia się znajdą.
+          </p>
+          <form method="post" action="/okresy/<%= okres.id %>/otworz">
+            <button class="btn">Otwórz okres ponownie</button>
+          </form>
+        </details>
+      <% } %>
+    <% } %>
+  </div>
+</section>

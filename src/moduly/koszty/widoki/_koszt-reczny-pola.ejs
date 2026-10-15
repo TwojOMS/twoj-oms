@@ -1,0 +1,45 @@
+<%# Pola formularza kosztu SPOZA KSeF — jedna kopia dla dwóch ekranów: dopisywania (panel na
+    /koszty) i poprawki (/koszty/reczne/:klucz). Druga kopia tych pól rozjechałaby się przy
+    pierwszej zmianie, a nazwy pól są tu KONTRAKTEM z `naWierszReczny`
+    (domain/koszt-reczny.js): trasa podaje mu `req.body` wprost, bez przepisywania.
+
+    Parametry: `w` (wartości do wstawienia — puste przy dopisywaniu), `firmy` (słownik firm
+    spoza KSeF).
+
+    ⚠️⚠️ TRZY POLA I ANI JEDNEGO WIĘCEJ (13.08.2026, prośba właściciela). Poprzednia wersja
+    miała osiem: datę, nazwę sprzedawcy, NIP, numer dokumentu, netto, VAT, brutto, walutę
+    i kategorię. Nazwa sprzedawcy, kategoria i typ stoją teraz za pozycją listy „Firma",
+    numer dokumentu składa się z firmy i daty, a jedna kwota w złotówkach wchodzi jako netto
+    i brutto naraz (uzasadnienie — odwrotne obciążenie — w domain/koszt-reczny.js). %>
+<div class="pola-w-rzedzie">
+  <label class="pole-filtra">
+    <%# ⚠️ POLE WYBORU, NIE WPISYWANIE. Te koszty wracają co miesiąc od tych samych kilku
+        dostawców — nazwa przepisywana z pamięci rozjeżdża się po kwartale na trzy warianty
+        zapisu, a kategoria wybierana od nowa na „Reklamę" i „Marketing". %>
+    <span>Firma</span>
+    <select name="firma" required>
+      <%# Pusta pozycja MUSI tu być i musi być pierwsza: bez niej przeglądarka podstawia
+          pierwszą firmę z listy, a operator, który zapomniał wybrać, zapisuje koszt Facebooka
+          jako koszt Anthropica — bez jednego kliknięcia i bez śladu. %>
+      <option value="">— wybierz —</option>
+      <% firmy.forEach(function (f) { %>
+        <option value="<%= f.nazwa %>" <%= w.firma === f.nazwa ? 'selected' : '' %>>
+          <%= f.nazwa %> · <%= f.kategoria %>
+        </option>
+      <% }); %>
+    </select>
+  </label>
+  <label class="pole-filtra">
+    <%# ⚠️ Po tej dacie liczy się MIESIĄC kosztów (db/koszty.js), nie po dacie wpisania. %>
+    <span>Data</span>
+    <input type="date" name="dataWystawienia" value="<%= w.dataWystawienia || '' %>" required>
+  </label>
+  <label class="pole-filtra">
+    <%# ⚠️ POLE TEKSTOWE, nie `type="number"`. Powód jest jeden i praktyczny: kwota wpisana
+        z polskiej klawiatury bywa „123,45", a `type="number"` w przeglądarce z kropką
+        dziesiętną potrafi ODDAĆ TAKIE POLE JAKO PUSTE — czyli zamienić literówkę w cichy
+        brak kwoty. Przecinek zamienia na kropkę `naWierszReczny`, w jednym miejscu. %>
+    <span>Kwota (zł)</span>
+    <input type="text" name="kwota" value="<%= w.kwota || '' %>" inputmode="decimal" size="12" required>
+  </label>
+</div>

@@ -1,0 +1,41 @@
+name: Błąd
+description: Coś działa inaczej, niż powinno.
+labels: [błąd]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Nie wklejaj kluczy integracji, haseł ani danych prawdziwych klientów (imion, adresów, NIP-ów).
+        Luka bezpieczeństwa? Nie zgłaszaj jej tutaj — zobacz [SECURITY.md](https://github.com/TwojOMS/twoj-oms/blob/main/SECURITY.md).
+  - type: textarea
+    id: co
+    attributes:
+      label: Co się stało
+      description: Co zrobiłeś, co zobaczyłeś, czego się spodziewałeś.
+    validations:
+      required: true
+  - type: textarea
+    id: kroki
+    attributes:
+      label: Jak to powtórzyć
+      placeholder: |
+        1. Wejdź w …
+        2. Kliknij …
+  - type: input
+    id: wersja
+    attributes:
+      label: Wersja
+      description: Wynik `git log --oneline -1` albo numer wydania.
+  - type: dropdown
+    id: tryb
+    attributes:
+      label: Tryb pracy
+      options:
+        - próba (OMS_TRYB=proba)
+        - praca z prawdziwymi integracjami
+  - type: textarea
+    id: log
+    attributes:
+      label: Fragment logu
+      description: Bez kluczy i danych klientów.
+      render: text

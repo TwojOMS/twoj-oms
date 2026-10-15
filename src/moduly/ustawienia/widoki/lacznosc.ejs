@@ -1,0 +1,136 @@
+<%#
+  Ekran „Łączność" (17.08.2026) — czy panel dosięga usług, z których żyje.
+
+  ⚠️ POWSTAŁ PO AWARII. Po restarcie NAS-a panel pisał „Sklep nieosiągalny: fetch failed"
+  przy sklepach, Allegro i inFakcie NARAZ — a wszystkie trzy działały; padł DNS na NAS-ie.
+  Ten ekran ma odpowiadać na jedno pytanie: czy to nasza sieć, czy tamta usługa.
+
+  ⚠️ WIDOK NICZEGO NIE SPRAWDZA. Wyniki przychodzą policzone z services/lacznosc.js,
+  podsumowanie z domain/lacznosc.js. Tutaj zostaje kolor i układ.
+
+  ⚠️ ANI JEDNEGO KOLORU WPROST — wszystko z palety w layout-oms.ejs (jasny i ciemny motyw).
+%>
+<h1>Diagnostyka</h1>
+
+<div class="ust-sekcja">
+  <p>
+    Sprawdzenie osiągalności usług, z których panel korzysta — <strong>osobno nazwa (DNS)
+    i osobno połączenie</strong>. To rozróżnienie jest tu najważniejsze: gdy pada DNS,
+    wszystko wygląda na awarię sklepu, choć sklep ma się dobrze.
+  </p>
+  <p style="font-size:.85rem;color:var(--tekst-przygaszony)">
+    Panel pyta <strong>bez żadnych kluczy i tokenów</strong> — sprawdza tylko, czy da się
+    dojść pod adres. Dlatego odpowiedź „403" przy inFakcie jest wynikiem <strong>dobrym</strong>:
+    usługa odpowiada, tyle że nie rozmawia z nieznajomym.
+  </p>
+
+  <% if (blad) { %>
+    <div class="pas-uprzedzenie">
+      <p><strong>Nie udało się wykonać sprawdzenia.</strong> <%= blad %></p>
+    </div>
+  <% } else if (!wyniki.length) { %>
+    <p class="pusto-sekcja">
+      Ten panel nie ma skonfigurowanej żadnej usługi zewnętrznej — nie ma czego sprawdzać.
+    </p>
+  <% } else { %>
+    <%# Podsumowanie jednym zdaniem: przy awarii czyta się je pierwsze i często jedyne. %>
+    <p class="<%= podsumowanie.wszystkoOk ? 'lacznosc-ok' : 'lacznosc-zle' %>" style="font-weight:600">
+      Działa <%= podsumowanie.dziala %> z <%= podsumowanie.ile %>
+      <% if (!podsumowanie.wszystkoOk) { %>— sprawdź wiersze na czerwono<% } %>
+    </p>
+
+    <div class="przewijak-tabeli">
+      <table>
+        <thead>
+          <tr>
+            <th>Usługa</th><th>Nazwa (DNS)</th><th>Połączenie</th><th>Co to znaczy</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% wyniki.forEach(function (w) { %>
+            <tr>
+              <td>
+                <strong><%= w.nazwa %></strong>
+                <div class="kanal-drobne"><%= w.host || w.url %></div>
+              </td>
+              <td>
+                <%# Nazwa: adres IP dowodzi, ze DNS odpowiedzial. Brak = to wlasnie tutaj peklo. %>
+                <% if (w.adresIp) { %>
+                  <span class="lacznosc-ok">✓ <%= w.adresIp %></span>
+                  <% if (w.msDns != null) { %><div class="kanal-drobne"><%= w.msDns %> ms</div><% } %>
+                <% } else if (w.warstwa === 'konfiguracja') { %>
+                  <span class="kanal-drobne">—</span>
+                <% } else { %>
+                  <span class="lacznosc-zle">✗ brak</span>
+                <% } %>
+              </td>
+              <td>
+                <% if (w.status != null) { %>
+                  <span class="<%= w.ok ? 'lacznosc-ok' : 'lacznosc-zle' %>">
+                    <%= w.ok ? '✓' : '✗' %> HTTP <%= w.status %>
+                  </span>
+                  <% if (w.msHttp != null) { %><div class="kanal-drobne"><%= w.msHttp %> ms</div><% } %>
+                <% } else { %>
+                  <span class="<%= w.warstwa === 'dns' ? 'kanal-drobne' : 'lacznosc-zle' %>">
+                    <%= w.warstwa === 'dns' ? 'nie próbowano' : '✗ brak' %>
+                  </span>
+                <% } %>
+              </td>
+              <td><%= w.komunikat %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="margin:.8rem 0 0;font-size:.82rem;color:var(--tekst-przygaszony)">
+      Sprawdzone: <strong><%= fmtDataCzas(sprawdzoneAt) %></strong>.
+      Wynik jest z tej chwili — odśwież stronę, żeby sprawdzić ponownie.
+    </p>
+  <% } %>
+
+  <div class="ust-akcje" style="margin-top:1rem">
+    <a class="btn" href="/ustawienia/lacznosc">Sprawdź ponownie</a>
+  </div>
+</div>
+
+<%# ⚠️ NIC PO CICHU. Bezpiecznik, ktory w milczeniu przestaje pytac, jest gorszy niz blad —
+    dlatego jego stan ma byc widoczny tam, gdzie i tak sie zaglada przy podejrzeniu awarii.
+    Sekcja pojawia sie WYLACZNIE, gdy cos jest otwarte: pusty naglowek na kazdym wejsciu
+    uczylby go pomijac wzrokiem. %>
+<% if ((typeof bezpieczniki !== 'undefined') && bezpieczniki.length) { %>
+<div class="ust-sekcja">
+  <h2>Wstrzymane odpytywanie</h2>
+  <p style="font-size:.88rem">
+    Zasób faktur Allegro (<code>GET /order/checkout-forms/{id}/invoices</code>) nie odpowiada,
+    więc panel <strong>pyta o niego raz na dobę</strong> zamiast co godzinę. To celowe: bez tego
+    szło ponad sześć tysięcy nieudanych wywołań, które Allegro pokazuje w raporcie „Błędy
+    techniczne". <strong>Nic nie jest stracone</strong> — pierwsza poprawna odpowiedź wznowi
+    pełne sprawdzanie sama, bez żadnej zmiany w panelu.
+  </p>
+  <ul style="font-size:.88rem">
+    <% bezpieczniki.forEach((b) => { %>
+      <li>
+        <strong><%= b.kanal %></strong> — niedostępny od <%= (b.bezpiecznik_od || '').slice(0, 10) %><%
+        %><% if (b.ostatnia_proba_at) { %>, ostatnie pytanie <%= b.ostatnia_proba_at.slice(0, 16).replace('T', ' ') %><% } %>
+      </li>
+    <% }) %>
+  </ul>
+</div>
+<% } %>
+
+<div class="ust-sekcja">
+  <h2>Jak to czytać</h2>
+  <p style="font-size:.88rem">
+    <strong>Nazwa ✗, połączenie „nie próbowano"</strong> — panel nie rozpoznaje nazwy
+    skonfigurowanego sklepu. Sprawdź serwer DNS w swojej sieci.
+  </p>
+  <p style="font-size:.88rem">
+    <strong>Nazwa ✓, połączenie ✗</strong> — nazwa się rozwiązuje, ale nic nie odpowiada:
+    usługa leży, blokuje nas firewall albo padło łącze.
+  </p>
+  <p style="font-size:.88rem">
+    <strong>Obie ✓, ale HTTP 5xx</strong> — to awaria <strong>po tamtej stronie</strong>.
+    Nie ma czego naprawiać u nas; zostaje czekać i sprawdzić ponownie.
+  </p>
+</div>

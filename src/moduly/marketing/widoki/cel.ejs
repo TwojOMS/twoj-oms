@@ -1,0 +1,127 @@
+<%# Karta celu (spec 2026-09-13): postep biezacego okresu + PELNA historia zdarzen.
+    Historia jest jedynym powodem, dla ktorego cel trzyma zdarzenia, a nie kolumne z liczba —
+    bez tego ekranu wybor „tabela zdarzen zamiast licznika" nie dawalby niczego. %>
+<div class="glowa-ekranu">
+  <h1><%= pozycja.cel.nazwa %></h1>
+  <span class="krok"><%= pozycja.nazwa %> · <%= pozycja.cel.rytm %></span>
+</div>
+
+<%# ⚠️ UKLAD SEKCJI — niezmiennik 4.88b: `section.panel` ma `padding: 0`, margines daje
+    `div.panel-cialo`. Bez tej warstwy kafel, tabela i pola dotykaja ramki panelu. %>
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Postęp</h2>
+    <span class="dopisek"><%= pozycja.nazwa %></span>
+  </div>
+  <div class="panel-cialo">
+  <div class="kafelki">
+    <article class="kafel stan-<%= pozycja.postep.stan %>">
+      <div class="kafel-etykieta">Postęp</div>
+      <div class="kafel-wartosc">
+        <%= pozycja.postep.ile === null ? '—' : pozycja.postep.ile %><%
+        %><%= pozycja.postep.celIle === null ? '' : ' / ' + pozycja.postep.celIle %>
+      </div>
+      <% if (pozycja.postep.procent !== null) { %>
+        <div class="cele-pasek"><span style="width: <%= pozycja.postep.procent %>%"></span></div>
+      <% } %>
+      <%# Te same trzy stany, co na kaflu listy — i z tego samego powodu. %>
+      <% if (pozycja.postep.stan === 'nieznany') { %>
+        <div class="kafel-uwaga kafel-uwaga--blad">nie wiem — miernik nie odpowiada</div>
+      <% } else if (pozycja.postep.stan === 'nieswiezy') { %>
+        <div class="kafel-uwaga">dane z <%= pozycja.postep.zrodloAt %></div>
+      <% } %>
+    </article>
+  </div>
+
+  <p>
+    <form method="post" action="/cele/<%= pozycja.cel.id %>/zdarzenie" class="w-linii">
+      <input type="number" name="ile" value="1" min="1" step="1" style="width: 4.5rem">
+      <input type="text" name="notatka" placeholder="notatka (opcjonalnie)" maxlength="200">
+      <button class="btn btn--glowny" type="submit">Dopisz</button>
+    </form>
+    <form method="post" action="/cele/<%= pozycja.cel.id %>/cofnij" class="w-linii">
+      <button class="btn" type="submit" title="Cofnij ostatni wpis w tym okresie">↩ Cofnij</button>
+    </form>
+  </p>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Historia</h2>
+    <span class="dopisek">każdy wpis z datą i osobą</span>
+  </div>
+  <div class="panel-cialo">
+  <table class="tabela">
+    <thead><tr><th>Dzień</th><th>Ile</th><th>Kto</th><th>Notatka</th></tr></thead>
+    <tbody>
+      <% if (zdarzenia.length === 0) { %>
+        <%# ⚠️ colspan = 4, tyle ile <th> wyzej. %>
+        <tr><td colspan="4" class="pusto">Jeszcze ani jednego wpisu.</td></tr>
+      <% } %>
+      <% zdarzenia.forEach(function (z) { %>
+        <tr>
+          <td><%= z.dzien %></td>
+          <td class="liczba"><%= z.ile %></td>
+          <%# „—" znaczy „nie czlowiek": konto serwisowe z `.env` albo czuwacz. NIE znaczy
+              „nie wiemy kto" — tego stanu w tej kolumnie po prostu nie ma. %>
+          <td><%= z.imie_konta === null ? '—' : z.imie_konta %></td>
+          <td><%= z.notatka === null ? '' : z.notatka %></td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Edycja</h2>
+  </div>
+  <div class="panel-cialo">
+  <form method="post" action="/cele/<%= pozycja.cel.id %>">
+    <label>Nazwa <input name="nazwa" value="<%= pozycja.cel.nazwa %>" required maxlength="120"></label>
+
+    <label>Właściciel
+      <select name="konto_id">
+        <option value="" <%= pozycja.cel.konto_id === null ? 'selected' : '' %>>Wspólny</option>
+        <% osoby.forEach(function (o) { %>
+          <option value="<%= o.id %>" <%= pozycja.cel.konto_id === o.id ? 'selected' : '' %>><%= o.imie %></option>
+        <% }); %>
+      </select>
+    </label>
+
+    <label>Rytm
+      <select name="rytm">
+        <% rytmy.forEach(function (r) { %>
+          <option value="<%= r %>" <%= pozycja.cel.rytm === r ? 'selected' : '' %>><%= r %></option>
+        <% }); %>
+      </select>
+    </label>
+
+    <label>Liczba docelowa
+      <input name="cel_ile" type="number" min="1" step="1"
+             value="<%= pozycja.cel.cel_ile === null ? '' : pozycja.cel.cel_ile %>"
+             placeholder="puste = zadanie tak/nie">
+    </label>
+
+    <label>Miernik
+      <select name="miernik">
+        <% mierniki.forEach(function (m) { %>
+          <option value="<%= m.klucz %>" <%= pozycja.cel.miernik === m.klucz ? 'selected' : '' %>><%= m.etykieta %></option>
+        <% }); %>
+      </select>
+    </label>
+
+    <label>Obowiązuje od
+      <input name="od_dnia" type="date" value="<%= pozycja.cel.od_dnia === null ? '' : pozycja.cel.od_dnia %>">
+    </label>
+    <label>Termin
+      <input name="do_dnia" type="date" value="<%= pozycja.cel.do_dnia === null ? '' : pozycja.cel.do_dnia %>">
+    </label>
+
+    <p><button class="btn btn--glowny" type="submit">Zapisz</button>
+       <a class="btn" href="/cele">Wróć do celów</a></p>
+  </form>
+  </div>
+</section>

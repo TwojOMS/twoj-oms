@@ -1,0 +1,28 @@
+<%# ——— KOMENTARZ WEWNĘTRZNY — NAD POZYCJAMI, OBOK UWAG KLIENTA (PRZ-074, 14.10.2026) ——————— %>
+<%# Prośba właściciela: notatka ma stać tam, gdzie uwagi klienta, i mieć własny kolor. Do 14.10 stała %>
+<%# na dole karty, przy wiadomościach (decyzja 22.08: „nie wysyłać FV" obok wysyłki) — tam %>
+<%# nikt jej nie widział przy pakowaniu. %>
+<%# %>
+<%# ⚠️ DALEJ JEDNO POLE piszące do `komentarz_wewnetrzny` (tests/moduly/wiadomosci/ %>
+<%# web-wiadomosci.test.js „dokładnie jedno pole"). Pole jest na karcie ZAWSZE — także bez %>
+<%# komentarza (wtedy zwinięte pod „+ Dodaj komentarz wewnętrzny"), bo karta bez pola nie %>
+<%# pozwala założyć pierwszej notatki. `<details>` to czysty HTML, bez skryptu. %>
+<% const trescKomentarza = (z.komentarz_wewnetrzny || '').trim(); %>
+<div class="komentarz-wewnetrzny<%= trescKomentarza ? '' : ' komentarz-wewnetrzny--pusty' %>" id="komentarz">
+  <% if (trescKomentarza) { %>
+    <b>Komentarz wewnętrzny</b>
+    <div class="komentarz-wewnetrzny-tresc"><%= trescKomentarza %></div>
+  <% } %>
+  <details>
+    <summary><%= trescKomentarza ? 'Edytuj' : '+ Dodaj komentarz wewnętrzny' %></summary>
+    <form method="post" action="/zamowienia/<%= z.id %>/komentarz">
+      <input type="hidden" name="powrot" value="<%= powrot %>">
+      <textarea class="notatka-pole" name="komentarz" rows="4" maxlength="4000"
+                placeholder="Widzi to tylko obsługa panelu — klient nie."><%= z.komentarz_wewnetrzny || '' %></textarea>
+      <div class="notatka-stopka">
+        <button class="btn btn--glowny" type="submit">Zapisz komentarz</button>
+        <span class="notatka-uwaga">Nie jedzie na fakturę, na specyfikację do paczki ani do sklepu.</span>
+      </div>
+    </form>
+  </details>
+</div>

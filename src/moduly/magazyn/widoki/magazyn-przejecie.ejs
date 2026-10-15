@@ -1,0 +1,164 @@
+<%# PRZEJECIE NUMERU ZE SKLEPU — PODGLAD PRZED ZAPISEM I WYNIK PO NIM.
+
+    PO CO TEN EKRAN. 278 wzorow nie ma NASZEGO numeru, choc ich produkt ma wlasny numer
+    w sklepie („PRO-NIEUPOWAZN-168", „PD10"). Generator SKU ich nie przejmuje — wydaje numery
+    NOWE — wiec bez tego ekranu rejestr mowilby jedno, a sklep drugie, i pierwszy zapis do
+    sklepu NADPISALBY numer bedacy tozsamoscia produktu.
+
+    ⚠️ TU NIE POWSTAJE ANI JEDEN NOWY NUMER. Kazdy numer nizej ZYJE JUZ w sklepie; panel go
+    wylacznie przepisuje do naszego rejestru. Od numerow nowych jest „Nadanie SKU".
+
+    ⚠️ WIDOK NICZEGO NIE LICZY I NICZEGO NIE ROZSTRZYGA. Numery, uwagi, znaczniki i liczby
+    przychodza POLICZONE z web/routes/magazyn.js i domain/przejecie-sku.js — ta sama zasada,
+    co w magazyn-sku.ejs, magazyn-hurt.ejs i faktury.ejs.
+
+    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w layout-oms.ejs. %>
+<%
+  // Liczebnik po polsku ma TRZY formy: „1 numer", „3 numery", „5 numerów".
+  // ⚠️ 12, 13, 14 IDA DO FORMY MNOGIEJ mimo koncowek 2/3/4 (jak w magazyn-sku.ejs).
+  const ileNumerow = (n) => {
+    const d = Math.abs(n) % 10;
+    const s = Math.abs(n) % 100;
+    if (n === 1) return `${n} numer`;
+    return `${n} ${d >= 2 && d <= 4 && (s < 12 || s > 14) ? 'numery' : 'numerów'}`;
+  };
+%>
+
+<p class="wroc"><a href="<%= adresPowrotu %>">← Wróć do magazynu</a></p>
+
+<div class="glowa-ekranu">
+  <h1>Przejęcie numerów ze sklepu</h1>
+  <span class="krok"><%= wynik ? 'wynik zapisu' : 'podgląd — nic jeszcze nie przejęto' %></span>
+</div>
+
+<section class="panel<%= wynik ? '' : ' panel--edycja' %>" id="przejecie-pozycje">
+  <div class="panel-glowa">
+    <h2><%= wynik ? 'Przejęte numery' : 'Numery do przejęcia' %></h2>
+    <span class="dopisek">
+      <%# ⚠️ LICZBA MA WLASNY ZNACZNIK — po niej poznaje sie, ze podglad obiecal to samo,
+          co zapis wykonal. %>
+      <strong class="przejecie-ile"><%= ile %></strong>
+      <%= wynik ? 'przejętych numerów' : 'numerów do przejęcia' %>
+    </span>
+  </div>
+  <div class="panel-cialo">
+    <% if (blad) { %>
+      <%# ⚠️ ODMOWA JEST CALOSCIOWA i mowi, CZEGO nie zapisano. %>
+      <p class="pasek-blokada"><%= blad %></p>
+    <% } %>
+
+    <% if (juzMaja) { %>
+      <p class="pasek-uwaga">
+        <b><%= juzMaja %></b> z zaznaczonych wzorów ma już numer — tych nie ruszam.
+        Numer, który raz pojechał do sklepu, jest tożsamością produktu; zmienia się go
+        wyłącznie na karcie jednego wzoru, gdzie widać, co się podmienia.
+      </p>
+    <% } %>
+
+    <% if (ileRozbieznosci) { %>
+      <%# ⚠️⚠️ WZOR POWIAZANY Z PRODUKTAMI O ROZNYCH NUMERACH NIE MA JEDNEJ POPRAWNEJ
+          ODPOWIEDZI. Panel go POKAZUJE i nie wybiera za czlowieka — ale te pozycje nie
+          wstrzymuja reszty zestawu, bo dotycza wylacznie samych siebie. %>
+      <p class="pasek-uwaga">
+        <b><%= ileRozbieznosci %></b> wzorów ma w sklepach po kilka RÓŻNYCH numerów —
+        patrz kolumna „Uwaga”. Nie wybieram za Ciebie, który z nich jest numerem wzoru:
+        wpisz go na karcie wzoru albo popraw numer w sklepie. Reszty zestawu to nie blokuje.
+      </p>
+    <% } %>
+
+    <% if (ileKolizji) { %>
+      <p class="pasek-blokada">
+        <b><%= ileKolizji %></b> numerów jest już zajętych — przez inny wzór albo przez drugi
+        wzór z tego samego zestawu. Numer w sklepie jest tożsamością JEDNEGO produktu,
+        więc nie przejmę ŻADNEGO z tego zestawu, dopóki kolizje nie znikną.
+      </p>
+    <% } %>
+
+    <% if (!blad && !wynik && ile) { %>
+      <p class="pasek-uwaga">
+        Nic jeszcze nie jest zapisane. Przejmiesz <b><%= ileNumerow(ile) %></b> — przejrzyj
+        listę i dopiero wtedy zatwierdź. Numery trafią WYŁĄCZNIE do naszego rejestru;
+        w sklepach nic się nie zmieni.
+      </p>
+    <% } %>
+
+    <% if (wynik) { %>
+      <p class="<%= ile ? 'pasek-uwaga' : 'pusto' %>">
+        <% if (ile) { %>
+          Przejęto <b><%= ileNumerow(ile) %></b>. Wszystkie w jednym zapisie i z jednym
+          znacznikiem czasu — po nim da się je później odnaleźć razem. W sklepach nic
+          się nie zmieniło.
+        <% } else { %>
+          <%# ⚠️ ZERO TO ODPOWIEDZ, A NIE AWARIA — i jedyny slad po tym, ze zestaw policzono
+              PONOWNIE, ze stanu biezacego. %>
+          Żaden wzór nie przejął numeru. Nic nie zapisałem.
+        <% } %>
+      </p>
+      <% if (wynik.nieaktualne) { %>
+        <p class="pasek-blokada">
+          <b><%= wynik.nieaktualne %></b> wzorów numeru nie przejęło, bo zdobyły go
+          w międzyczasie — z karty albo z drugiej zakładki. Nie podmieniam numeru,
+          który już istnieje.
+        </p>
+      <% } %>
+    <% } %>
+
+    <% if (pozycje.length) { %>
+      <table class="tab-pozycje">
+        <thead><tr><th>Wzór</th><th>Numer ze sklepu</th><th>Skąd</th><th>Uwaga</th></tr></thead>
+        <tbody>
+          <% pozycje.forEach(function (p) { %>
+            <tr>
+              <td><div class="nazwa-wzoru"><%= p.nazwa %></div></td>
+              <td>
+                <% if (p.sku) { %>
+                  <code class="sku-numer"><%= p.sku %></code>
+                <% } else { %>
+                  <span class="magazyn-brak">—</span>
+                <% } %>
+              </td>
+              <td>
+                <% if (p.zrodlo) { %>
+                  <%= p.zrodlo %>
+                <% } else { %>
+                  <span class="magazyn-brak">—</span>
+                <% } %>
+              </td>
+              <td>
+                <% if (p.uwaga) { %>
+                  <%# Kolor sam nie niesie znaczenia: obok znacznika zawsze stoi zdanie. %>
+                  <% if (p.znacznik) { %>
+                    <span class="znacznik znacznik--blad"><%= p.znacznik %></span>
+                  <% } %>
+                  <%= p.uwaga %>
+                <% } else { %>
+                  <span class="magazyn-brak">—</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } else if (!blad) { %>
+      <p class="pusto">
+        Żaden z zaznaczonych wzorów nie ma czego przejąć — albo ma już nasz numer, albo jego
+        produkty nie mają numeru w sklepie. Numery NOWE nadaje „Nadanie SKU”.
+      </p>
+    <% } %>
+
+    <div class="stopka-edycji">
+      <%# ⚠️⚠️ FORMULARZ NIESIE WYLACZNIE NUMERY WZOROW, NIGDY GOTOWYCH NUMEROW SKU. Zbior
+          zostaje ZAMROZONY tym, co czlowiek wlasnie zobaczyl, a numery czyta sie od nowa
+          z lustra — miedzy podgladem a klknieciem mogl wejsc odczyt katalogow. %>
+      <% if (mozna) { %>
+        <form method="post" action="/magazyn/przejmij-zapisz">
+          <% doZatwierdzenia.forEach(function (id) { %>
+            <input type="hidden" name="zaznaczone" value="<%= id %>">
+          <% }); %>
+          <button class="btn btn--glowny" type="submit">Przejmij <%= ileNumerow(ile) %></button>
+        </form>
+      <% } %>
+      <a class="btn" href="<%= adresPowrotu %>"><%= wynik ? 'Wróć do magazynu' : 'Anuluj' %></a>
+    </div>
+  </div>
+</section>

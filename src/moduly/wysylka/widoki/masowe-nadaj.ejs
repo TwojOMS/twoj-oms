@@ -1,0 +1,165 @@
+<%# Ekran podgladu przed nadaniem zbiorczym. NIC tu jeszcze nie poszlo do kuriera i to jest %>
+<%# caly sens tego ekranu: nadanie jest nieodwracalne (kurier odmawia powtorzenia referencji), %>
+<%# a hurtem jest nieodwracalne razy N. %>
+<%# Odwrot z ekranu podgladu prowadzi na TEN SAM zawezony widok, z ktorego przyszlo %>
+<%# zaznaczenie — rezygnacja z nadania nie ma prawa kosztowac odtwarzania filtrow. %>
+<%
+  // Liczebnik po polsku ma TRZY formy: „1 paczkę", „3 paczki", „5 paczek" (12–14 → mnoga).
+  const ilePaczek = (n) => {
+    const d = Math.abs(n) % 10;
+    const s = Math.abs(n) % 100;
+    if (n === 1) return '1 paczkę';
+    return `${n} ${d >= 2 && d <= 4 && (s < 12 || s > 14) ? 'paczki' : 'paczek'}`;
+  };
+%>
+<p class="wroc"><a href="<%= powrot %>">← Wróć do listy zamówień</a></p>
+
+<div class="panel panel--groza">
+  <div class="panel-glowa panel-glowa--groza"><h2>Nadanie zbiorcze — operacja nieodwracalna</h2></div>
+  <div class="panel-cialo">
+    <% if (paczka) { %>
+      <%# Domyslne wymiary sa TA SAMA wartoscia, co na ekranie pojedynczego nadania — %>
+      <%# od 17.08.2026 z USTAWIEN panelu (domain/ustawienia-panelu.js: domyslnaPaczka), %>
+      <%# nie ze stalej w kodzie. Od PRZ-070 to wybor WSTEPNY wierszy DPD — kazdy wiersz %>
+      <%# ma wlasna liste szablonow, wiec ten akapit mowi, od czego startuje tabela nizej. %>
+      <p class="domyslne">
+        <span>Szablon domyślny: <b><%= nazwaSzablonu %></b></span>
+        <span>Waga: <b><%= paczka.waga %> kg</b></span>
+        <span>Wymiary: <b><%= paczka.dlugosc %> × <%= paczka.szerokosc %> × <%= paczka.wysokosc %> cm</b></span>
+        <span class="wyjasnienie">— wartości domyślne panelu, te same co przy nadaniu pojedynczym</span>
+      </p>
+    <% } %>
+
+    <% if (wiersze.length) { %>
+      <h3 class="wynik-naglowek">Pójdzie do kuriera — <%= wiersze.length %></h3>
+      <%# ⚠️ FORMULARZ OBEJMUJE TABELE: od PRZ-070 rozmiar paczki wybiera czlowiek W WIERSZU, %>
+      <%# wiec pola wierszy sa czescia zatwierdzenia. Nazwy pol niosa identyfikator zamowienia %>
+      <%# (`szablon_<id>`) — trasa czyta kazdy wiersz po jego id, nigdy po kolejnosci. %>
+      <form method="post" action="/zamowienia/masowe/nadaj">
+        <%# Na telefonie tabela (ok. 700 px) przewija sie SAMA — panel ma `overflow: hidden` %>
+        <%# i bez tego ucinalby kolumny Rozmiar i Pobranie, czyli to, co tu najwazniejsze. %>
+        <div class="przewijak-tabeli">
+        <table class="nadanie-hurtem">
+          <thead>
+            <tr><th>Zamówienie</th><th>Produkty</th><th>Przewoźnik</th><th>Rozmiar</th><th>Pobranie</th></tr>
+          </thead>
+          <tbody>
+            <% wiersze.forEach(function (w) { %>
+              <tr>
+                <td><b><%= w.numer %></b><input type="hidden" name="id" value="<%= w.id %>"></td>
+                <td>
+                  <%# Zawartosc paczki — rozmiar wybiera sie pod nia (decyzja właściciela 14.10). %>
+                  <% if (w.produkty.length) { %>
+                    <ul class="produkty-hurtem">
+                      <% w.produkty.forEach(function (p) { %>
+                        <li><%= p.ilosc %> × <%= p.nazwa %><% if (p.sku) { %> <span class="drobne"><%= p.sku %></span><% } %></li>
+                      <% }); %>
+                    </ul>
+                  <% } else { %>—<% } %>
+                </td>
+                <td>
+                  <%= w.droga %>
+                  <%# Usluga z ZYWEGO odczytu Allegro — trasa zatwierdzenia porownuje ja z ta, %>
+                  <%# ktora Allegro poda wtedy; inna znaczy inny przewoz niz ten na ekranie. %>
+                  <% if (w.deliveryMethodId) { %><input type="hidden" name="usluga_<%= w.id %>" value="<%= w.deliveryMethodId %>"><% } %>
+                </td>
+                <td>
+                  <% if (w.rozmiar.pole === 'szablon') { %>
+                    <select name="szablon_<%= w.id %>" aria-label="Szablon paczki zamówienia <%= w.numer %>">
+                      <% szablony.szablony.forEach(function (s) { %>
+                        <option value="<%= s.id %>"<%= s.id === w.rozmiar.szablon ? ' selected' : '' %>><%= s.nazwa %> (<%= s.dlugosc %> × <%= s.szerokosc %> × <%= s.wysokosc %> cm, <%= s.waga %> kg)</option>
+                      <% }); %>
+                    </select>
+                  <% } else if (w.rozmiar.pole === 'gabaryt') { %>
+                    <%# Paczkomat nie zna wymiarow, tylko litere skrytki (domain/paczka.js). %>
+                    <select name="gabaryt_<%= w.id %>" aria-label="Gabaryt paczkomatu zamówienia <%= w.numer %>">
+                      <% ['A', 'B', 'C'].forEach(function (g) { %>
+                        <option value="<%= g %>"<%= g === w.rozmiar.gabaryt ? ' selected' : '' %>><%= g %></option>
+                      <% }); %>
+                    </select>
+                    <span class="wyjasnienie">waga <%= w.rozmiar.waga %> kg</span>
+                  <% } else { %>
+                    <%# Automat Allegro: gabaryt S/M/L i waga do 20 kg — parser karty (gabaryty-allegro.js). %>
+                    <select name="gabaryt_<%= w.id %>" aria-label="Gabaryt automatu zamówienia <%= w.numer %>">
+                      <% w.rozmiar.gabaryty.forEach(function (g) { %>
+                        <option value="<%= g %>"<%= g === w.rozmiar.gabaryt ? ' selected' : '' %>><%= g %></option>
+                      <% }); %>
+                    </select>
+                    <input name="waga_<%= w.id %>" value="<%= w.rozmiar.waga %>" inputmode="decimal" size="4" aria-label="Waga (kg) zamówienia <%= w.numer %>"> kg
+                  <% } %>
+                </td>
+                <td>
+                  <% if (w.pobranie) { %>
+                    <b><%= w.pobranie %> zł</b>
+                    <% if (w.pobranieAllegro) { %><span class="wyjasnienie">Allegro potwierdzi kwotę przy zakupie</span><% } %>
+                  <% } else { %>—<% } %>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+        </div>
+        <% if (sumaPobran) { %>
+          <%# Hurtem nikt nie zaglada w kwoty po kolei — suma jest jedna liczba do sprawdzenia %>
+          <%# przed kliknieciem, i to ta, ktora kurier ma oddac. %>
+          <p class="pasek-uwaga">Suma pobrań w partii: <b><%= sumaPobran %> zł</b></p>
+        <% } %>
+        <%# Adres powrotu jedzie dalej razem z identyfikatorami — ekran wyniku po nadaniu %>
+        <%# odsyla tym samym odnosnikiem, a nie na gola liste. %>
+        <input type="hidden" name="powrot" value="<%= powrot %>">
+        <div class="stopka-edycji">
+          <% if (nadawanieDziala) { %>
+            <%# Dwa przyciski, kazdy z WLASNA wartoscia `zatwierdzenie` — jak na karcie %>
+            <%# (nadaj.ejs): trasa rozpoznaje „drukuj" po wartosci, nie po obecnosci pola. %>
+            <button class="btn btn--groza" type="submit" name="zatwierdzenie" value="nadaj">
+              Nadaj <%= ilePaczek(wiersze.length) %>
+            </button>
+            <button class="btn btn--groza" type="submit" name="zatwierdzenie" value="nadaj_i_drukuj">
+              Nadaj i drukuj etykiety
+            </button>
+          <% } else { %>
+            <p class="pasek-blokada">Nadawanie nie jest skonfigurowane (brak danych kuriera).</p>
+          <% } %>
+          <%# ⚠️ DRUGIE WYJSCIE z tego ekranu, obok odnosnika na gorze — i osobno gubilo %>
+          <%# zawezenie. Rezygnacja z nadania ma kosztowac klikniecie, nie odtwarzanie filtrow. %>
+          <a class="btn" href="<%= powrot %>">Anuluj</a>
+          <span class="wyjasnienie">
+            „Nadaj i drukuj” wstawia etykiety ZPL do kolejki wydruku. Status zamówień <b>nie zmieni się</b>
+            na „Wysłane” — to zapisuje człowiek, gdy paczka faktycznie pojedzie.
+          </span>
+        </div>
+      </form>
+    <% } %>
+
+    <% if (uwagi.length) { %>
+      <%# Uwagi NIE blokuja nadania (wysylka na fakture z terminem platnosci jest w B2B %>
+      <%# normalna), ale hurtem nikt nie zaglada w kwoty — wiec maja byc widoczne TUTAJ. %>
+      <h3 class="wynik-naglowek">Warte oka</h3>
+      <ul class="lista-wyniku">
+        <% uwagi.forEach(function (u) { %>
+          <li><span class="waga waga--uwaga">uwaga</span> <span><b><%= u.numer %></b> <%= u.tresc %></span></li>
+        <% }); %>
+      </ul>
+    <% } %>
+
+    <% if (pominiete.length) { %>
+      <h3 class="wynik-naglowek">Pominięte — <%= pominiete.length %></h3>
+      <ul class="lista-wyniku">
+        <% pominiete.forEach(function (p) { %>
+          <li><span class="waga waga--blokada">pominięte</span> <span><b><%= p.numer %></b> — <%= p.powod %></span></li>
+        <% }); %>
+      </ul>
+    <% } %>
+
+    <% if (!wiersze.length) { %>
+      <div class="stopka-edycji">
+        <% if (!nadawanieDziala) { %>
+          <p class="pasek-blokada">Nadawanie nie jest skonfigurowane (brak danych kuriera).</p>
+        <% } else { %>
+          <p class="pusto-sekcja">Z zaznaczonych zamówień żadnego nie da się nadać hurtem.</p>
+        <% } %>
+        <a class="btn" href="<%= powrot %>">Anuluj</a>
+      </div>
+    <% } %>
+  </div>
+</div>

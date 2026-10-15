@@ -1,0 +1,37 @@
+<link rel="stylesheet" href="/public/messages-prz065.css">
+<section id="oms-messages">
+  <header class="m-head"><h1>Wiadomości</h1><p>Rozmowy z kupującymi · Allegro</p></header>
+  <% if (sprawy.length) { %>
+    <section class="m-issues" aria-label="Otwarte dyskusje i reklamacje">
+      <strong>Dyskusje i reklamacje: <%= sprawy.length %> — odpowiadaj w Allegro</strong>
+      <p>Mają własne terminy. Panel nie obsługuje odpowiedzi na te sprawy.</p>
+      <% sprawy.forEach(s => { %><div class="m-issue"><strong><%= s.typ === 'CLAIM' ? 'Reklamacja' : 'Dyskusja' %> · <%= s.buyer_login || 'Nieznany kupujący' %></strong><span><%= s.status %> · <%= s.kanal %> · otwarta <%= (s.opened_date || '').slice(0,10) %></span></div><% }) %>
+    </section>
+  <% } %>
+  <div class="m-surface">
+    <div class="m-filters" aria-label="Widok wiadomości" hidden>
+      <% [['all','Wszystkie'],['czeka','Czeka na ciebie'],['formulka','Po formułce'],['zalatwione','Załatwione'],['issue','Problemy z zakupem']].forEach(([key,label])=>{ %>
+        <button type="button" class="m-filter" data-message-filter="<%= key %>" aria-pressed="<%= key==='all' %>"><%= label %> <span><%= watki.filter(t=>key==='all'||(key==='issue'?t.typ==='POST_PURCHASE_ISSUE':t.typ!=='POST_PURCHASE_ISSUE'&&t.stan===key)).length %></span></button>
+      <% }) %>
+    </div>
+    <div class="m-layout <%= czytanie ? 'm-reading' : '' %>">
+      <aside class="m-index" aria-label="Rozmowy">
+        <label class="m-search" hidden><span>Szukaj rozmowy</span><input type="search" id="m-search" placeholder="Klient, konto lub treść"></label>
+        <div class="m-thread-list">
+        <% watki.forEach(t=>{ const active=w&&t.kanal===w.kanal&&t.thread_id===w.thread_id; %>
+          <a class="m-thread" data-message-thread="<%= t.thread_id %>" data-message-state="<%= t.typ==='POST_PURCHASE_ISSUE'?'issue':t.stan %>" data-message-search="<%= [t.interlocutor_login,t.kanal,t.ostatnia_tresc].join(' ').toLocaleLowerCase('pl') %>" href="/wiadomosci/<%= encodeURIComponent(t.kanal) %>/<%= encodeURIComponent(t.thread_id) %>" <%- active?'aria-current="true"':'' %>>
+            <span class="m-row"><strong><%= t.interlocutor_login || '(nieznany)' %></strong><time><%= fmtDataCzasKrotko(t.last_message_date_time) %></time></span>
+            <span class="m-snippet"><%= t.ostatnia_tresc || 'Treść jeszcze niepobrana' %></span>
+            <span class="m-account"><%= t.kanal %></span>
+            <span class="m-state <%= t.typ==='POST_PURCHASE_ISSUE'?'m-danger':t.stan==='czeka'?'m-wait':'' %>"><%= t.typ==='POST_PURCHASE_ISSUE'?'problem z zakupem · odpowiedz w Allegro':t.stan==='czeka'?'czeka na ciebie':t.stan==='formulka'?'poszła formułka':'załatwione' %></span>
+          </a>
+        <% }) %>
+        <% if(!watki.length){ %><p class="m-empty">Nie ma tu żadnej wiadomości. Wątki pojawią się po pobraniu wiadomości z Allegro.</p><% } %>
+        </div>
+        <p class="m-empty" id="m-no-results" role="status" hidden>Brak rozmów dla tych filtrów.</p>
+      </aside>
+      <section class="m-detail" aria-label="Wybrana rozmowa"><%- include('wiadomosc-watek.ejs') %></section>
+    </div>
+  </div>
+</section>
+<script src="/public/messages-prz065.js" defer></script>

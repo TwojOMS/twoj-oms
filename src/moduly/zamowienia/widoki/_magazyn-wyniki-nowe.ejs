@@ -1,0 +1,69 @@
+<%#
+  WYNIKI SZUKANIA W MAGAZYNIE — ekran ZAKŁADANIA zamówienia (21.08.2026, żywe szukanie).
+
+  ⚠️⚠️ TEN SAM PLIK RENDERUJE DWIE RZECZY: całą stronę (przez `include` w nowe-zamowienie.ejs)
+  ORAZ fragment odświeżany w trakcie pisania (trasa /zamowienia/nowe/magazyn/wyniki, htmx).
+  To jest cały powód, dla którego blok tu wyjechał. Dwie kopie rozjechałyby się przy pierwszej
+  zmianie — a wtedy lista „na żywo" pokazywałaby inne ceny niż ta sama strona po odświeżeniu,
+  i nikt by nie wiedział, która kłamie.
+
+  ⚠️ WYNIKI ODDZIELNIE OD PASKA SZUKANIA. Pasek (pole + cennik + „Szukaj") ZOSTAJE na stronie
+  i nie jest podmieniany: gdyby wjeżdżał razem z wynikami, każde naciśnięcie klawisza
+  przerysowywałoby pole, w którym właśnie piszesz — czyli kursor skakałby na koniec, a polska
+  litera wpisywana martwym klawiszem gubiłaby się co drugi raz.
+
+  Osobny plik dla karty zamówienia (`_magazyn-wyniki-karta.ejs`) NIE jest duplikatem: tam
+  „Dodaj" jest własnym formularzem POST, a tutaj przyciskiem wielkiego formularza ekranu
+  (`formaction`). To dwie różne drogi pieniędzy i sklejenie ich warunkiem schowałoby tę
+  różnicę w miejscu, w którym najmniej wolno się pomylić.
+%>
+<% if (magazyn.wyniki !== null) { %>
+  <% if (magazyn.wyniki.length === 0) { %>
+    <p class="wyjasnienie">Nic nie pasuje do „<%= magazyn.fraza %>” w cenniku <%= magazyn.nazwy[magazyn.cennik] %>.
+      Sprawdź drugi cennik albo wpisz pozycję ręcznie w tabeli powyżej.</p>
+  <% } else { %>
+    <table class="tab-magazyn">
+      <tbody>
+        <% magazyn.wyniki.forEach(function (p, nr) { %>
+          <tr>
+            <td>
+              <%= p.nazwa %>
+              <%# Rozmiar POKAZUJE SIE tylko wtedy, gdy nazwa go nie niesie — patrz %>
+              <%# rozmiarDoPokazania w domain/magazyn-do-zamowienia.js. %>
+              <% if (p.rozmiar) { %><span class="magazyn-rozmiar"><%= p.rozmiar %></span><% } %>
+              <% if (p.sku_sklepu) { %><div class="sku"><%= p.sku_sklepu %></div><% } %>
+            </td>
+            <td class="liczba"><%= p.cena_gr ? (p.cena_gr / 100).toFixed(2) + ' zł' : '—' %></td>
+            <td class="kol-akcje">
+              <% if (p.cena_gr) { %>
+                <%# ⚠️ TOZSAMOSC KAZDEGO WYNIKU JEDZIE Z FORMULARZEM, a przycisk mowi %>
+                <%# tylko KTORY wiersz wybrano (`wybrany`). Przegladarka odsyla %>
+                <%# wszystkie pola o tej samej nazwie jako ROWNOLEGLE TABLICE, wiec %>
+                <%# trasa siega po indeksie — zamiast powtarzac szukanie i ufac, %>
+                <%# ze katalog nie zmienil sie miedzy klikiem a zapisem. To sa %>
+                <%# pieniadze: pomylka o jeden wiersz to inna cena i inny produkt. %>
+                <%# %>
+                <%# ⚠️ „DODAJ" ZOSTAJE ZWYKLYM PRZYCISKIEM FORMULARZA, mimo ze wyniki %>
+                <%# przychodza teraz przez htmx. Szukanie jest ODCZYTEM, a dodanie %>
+                <%# pozycji ZMIENIA stan formularza — przeslanie calosci gwarantuje, ze %>
+                <%# tabela pozycji i ukryte pola tozsamosci wracaja spojne. Podmiana %>
+                <%# dwoch miejsc naraz (tabeli i wynikow) po cichu gubilaby pozycje przy %>
+                <%# pierwszej nieudanej podmianie — a to sa pieniadze. %>
+                <span class="formularz-w-linii">
+                  <input type="hidden" name="mag_kanal" value="<%= p.kanal %>">
+                  <input type="hidden" name="mag_produkt_id" value="<%= p.produkt_id %>">
+                  <input type="hidden" name="mag_wariant_id" value="<%= p.wariant_id %>">
+                  <input class="pole-ilosc" name="mag_ilosc" value="1" aria-label="ilość">
+                  <button class="btn btn--maly" formaction="/zamowienia/nowe/magazyn/dodaj#magazyn"
+                          name="wybrany" value="<%= nr %>">Dodaj</button>
+                </span>
+              <% } else { %>
+                <span class="wyjasnienie">bez ceny w tym cenniku</span>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  <% } %>
+<% } %>

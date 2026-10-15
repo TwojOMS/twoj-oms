@@ -1,0 +1,85 @@
+<%#
+  PRZ-068: Role i uprawnienia. Wiersze = ekrany (kolejność EKRANY), kolumny = role — odwrotny układ
+  (17 ekranów w kolumnach) nie mieści się na ekranie. Kolumna Administratora jest zawsze pełna
+  i zablokowana; jej ptaszki nie są wysyłane (disabled), a trasa i tak pomija rolę zablokowaną.
+  Jeden formularz zapisuje całą tabelę w jednej transakcji. Wszystkie wartości wyłącznie przez znacznik escapujący.
+%>
+<h1>Role i uprawnienia</h1>
+
+<% if (zapisano) { %>
+  <div class="pas-potwierdzenie"><p><%= zapisano %></p></div>
+<% } %>
+
+<% if (blad) { %>
+  <div class="pas-uprzedzenie"><p><strong>Nie udało się zapisać.</strong> <%= blad %></p></div>
+<% } %>
+
+<div class="ust-sekcja">
+  <h2>Uprawnienia ról</h2>
+  <p>
+    Konta w rolach:
+    <% role.forEach(function (r, i) { %><%= i ? ' · ' : '' %><%= r.nazwa %>: <span data-liczba-kont="<%= r.klucz %>"><%= r.liczbaKont %></span><% }); %>
+  </p>
+  <p class="wyjasnienie">Zmiana ptaszków roli od razu zmienia dostęp wszystkich kont w tej roli.</p>
+  <form method="post" action="/ustawienia/role">
+    <input type="hidden" name="odcisk" value="<%= odcisk %>">
+    <% role.forEach(function (r) { if (!r.zablokowana) { %><input type="hidden" name="rola" value="<%= r.klucz %>"><% } }); %>
+    <div class="przewijak-tabeli" tabindex="0" role="region" aria-label="Uprawnienia ról">
+    <table class="tab-pozycje">
+      <thead>
+        <tr>
+          <th>Ekran</th>
+          <% role.forEach(function (r) { %>
+            <th><%= r.nazwa %><% if (r.zablokowana) { %><br><small>zawsze pełny dostęp</small><% } %></th>
+          <% }); %>
+        </tr>
+      </thead>
+      <tbody>
+        <% wiersze.forEach(function (w) { %>
+          <tr>
+            <td><%= w.etykieta %></td>
+            <% role.forEach(function (r) { %>
+              <td><input type="checkbox" name="uprawnienie" value="<%= r.klucz %>:<%= w.klucz %>" <%= r.ekrany.has(w.klucz) ? 'checked' : '' %><%= r.zablokowana ? ' disabled' : '' %> aria-label="<%= r.nazwa %>: <%= w.etykieta %>"></td>
+            <% }); %>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    </div>
+    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zapisz uprawnienia</button></div>
+  </form>
+</div>
+
+<div class="ust-sekcja">
+  <h2>Dodaj rolę</h2>
+  <form method="post" action="/ustawienia/role/nowa">
+    <div class="ust-pola">
+      <label>Nazwa <input name="nazwa" required maxlength="40" value="<%= pola.nazwa ?? '' %>"></label>
+      <label>Skopiuj ptaszki z
+        <select name="kopiujZ">
+          <option value="">— bez ptaszków —</option>
+          <% role.forEach(function (r) { %><option value="<%= r.klucz %>" <%= r.klucz === pola.kopiujZ ? 'selected' : '' %>><%= r.nazwa %></option><% }); %>
+        </select>
+      </label>
+    </div>
+    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Dodaj rolę</button></div>
+  </form>
+</div>
+
+<% role.forEach(function (r) { if (r.zablokowana) return; %>
+  <div class="ust-sekcja" id="rola-<%= r.klucz %>">
+    <h2><%= r.nazwa %> <span style="font-weight:normal;color:var(--tekst-przygaszony)">(kont: <%= r.liczbaKont %>)</span></h2>
+    <form method="post" action="/ustawienia/role/<%= r.klucz %>/nazwa">
+      <div class="ust-pola">
+        <label>Nowa nazwa <input name="nazwa" required maxlength="40" value="<%= r.nazwa %>"></label>
+      </div>
+      <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zmień nazwę</button></div>
+    </form>
+    <form method="post" action="/ustawienia/role/<%= r.klucz %>/usun">
+      <div class="ust-akcje">
+        <button class="ust-przycisk grozny" type="submit"<%= r.liczbaKont > 0 ? ' disabled' : '' %>>Usuń rolę</button>
+        <% if (r.liczbaKont > 0) { %><span class="wyjasnienie">Rolę z kontami (także wyłączonymi) można usunąć dopiero po przypisaniu im innej roli.</span><% } %>
+      </div>
+    </form>
+  </div>
+<% }); %>

@@ -1,0 +1,90 @@
+<p class="wroc"><a href="/przesylki?pokaz=utworzone">← Wróć do przesyłek</a></p>
+<div class="panel">
+  <div class="panel-glowa"><h2>Podjazdy Allegro</h2></div>
+  <div class="panel-cialo">
+    <% if (blad) { %><p class="stan-zle"><%= blad %></p><% } %>
+    <% if (faza === 'wybor') { %>
+      <p>Sprawdź adres odbioru i wybierz dzień. Dostępne godziny poda Allegro osobno dla każdej usługi.</p>
+      <form method="post" action="/przesylki/podjazdy/podglad">
+        <% paczki.forEach(function(p) { %>
+          <input type="hidden" name="ids" value="<%= p.id %>">
+          <p><%= p.numer_zamowienia %> · <%= p.numer_listu %> · <%= p.sklep %></p>
+        <% }); %>
+        <label>Data gotowości <input type="date" name="data" value="<%= data %>" required></label>
+        <div class="filtry-rzad">
+          <label>Nazwa <input name="name" value="<%= adres.name %>" required></label>
+          <label>Ulica i numer <input name="street" value="<%= adres.street %>" required></label>
+          <label>Kod pocztowy <input name="postalCode" value="<%= adres.postalCode %>" required></label>
+          <label>Miasto <input name="city" value="<%= adres.city %>" required></label>
+          <label>Kraj <input name="countryCode" value="<%= adres.countryCode %>" required></label>
+          <label>E-mail <input type="email" name="email" value="<%= adres.email %>" required></label>
+          <label>Telefon <input type="tel" name="phone" value="<%= adres.phone %>" required></label>
+        </div>
+        <button class="btn btn--glowny" type="submit">Pokaż dostępne terminy</button>
+      </form>
+    <% } %>
+    <% if (faza === 'podglad') { %>
+      <p>Adres: <%= adres.name %>, <%= adres.street %>, <%= adres.postalCode %> <%= adres.city %>. Kontakt: <%= adres.phone %>, <%= adres.email %>.</p>
+      <p>Podgląd ważny do <%= fmtDataCzasKrotko(wygasaAt) %>. Każdą grupę zatwierdzasz osobno.</p>
+      <% if (typeof wygasl !== 'undefined' && wygasl) { %><p class="stan-zle">Podgląd wygasł. Wybierz paczki ponownie, aby pobrać aktualne terminy.</p><% } %>
+      <% grupy.forEach(function(g) { %>
+        <section class="panel">
+          <div class="panel-glowa"><h3><%= g.etykieta %> · konto <%= g.kanal %> · liczba paczek: <%= g.przesylki.length %></h3></div>
+          <div class="panel-cialo">
+            <p><%= g.przesylki.map(p => p.numerListu).join(', ') %></p>
+            <% if (g.wynik) { %>
+              <p>Podjazd: <%= g.wynik.stan %> · <a href="/przesylki/podjazdy/<%= g.wynik.id %>">sprawdź zlecenie</a></p>
+            <% } else if (!g.terminy.length) { %>
+              <p>Brak wspólnego terminu na wybrany dzień. Zmień datę albo podziel grupę.</p>
+              <% if (g.diagnoza) { var d = g.diagnoza; %>
+                <p><% if (d.przyczyna === 'rozdzielone') { %>To starszy podgląd. Wybierz paczki ponownie i pobierz aktualne terminy wspólnego podjazdu.<%
+                  } else if (d.przyczyna === 'niezgodny-adres') { %>Adres lub kontakt w propozycjach Allegro różni się od wskazanego miejsca odbioru.<%
+                  } else if (d.przyczyna === 'niezgodny-zestaw') { %>Odpowiedź Allegro nie potwierdza dokładnego zestawu paczek — zawiera pominięcie, powtórzenie lub dodatkową przesyłkę.<%
+                  } else if (d.przyczyna === 'paczka-bez-terminu') { %>Allegro nie podało terminu dla części paczek — są oznaczone niżej.<%
+                  } else if (d.przyczyna === 'rozne-okna') { %>Każda paczka ma terminy, ale żaden nie powtarza się identycznie we wszystkich.<%
+                  } else { %>Allegro nie zwróciło żadnych propozycji odbioru na ten dzień.<% } %></p>
+                <ul>
+                  <% d.paczki.forEach(function(p) { %>
+                      <li><strong><%= p.numerListu %></strong> · <%= p.grupaAllegro ? 'element odpowiedzi Allegro ' + p.grupaAllegro : 'brak w odpowiedzi Allegro' %>: <%= p.terminy.length ? p.terminy.map(function(t) { return t.date + ' ' + t.minTime + '–' + t.maxTime; }).join(', ') : 'brak terminu' %></li>
+                  <% }); %>
+                </ul>
+              <% } %>
+            <% } else if (typeof wygasl !== 'undefined' && wygasl) { %>
+              <p>Termin podglądu wygasł — pobierz aktualne terminy przed zleceniem.</p>
+            <% } else if (!g.moznaZlecac) { %>
+              <% if (g.kurierOdbierajacy) { %>
+                <p>Przesyłki odbierze <strong><%= g.kurierOdbierajacy %></strong>. Zlecanie podjazdów z OMS jest jeszcze wyłączone.</p>
+              <% } else { %>
+                <p>OMS jeszcze nie zamawia podjazdu dla tej usługi — zamów go w Allegro, w „Wysyłam z Allegro”.</p>
+              <% } %>
+            <% } else { %>
+              <p>Przesyłki odbierze: <strong><%= g.kurierOdbierajacy %></strong>.</p>
+              <form method="post" action="/przesylki/podjazdy/zlec">
+                <input type="hidden" name="podgladId" value="<%= id %>">
+                <input type="hidden" name="grupaId" value="<%= g.id %>">
+                <label>Termin oferowany przez Allegro
+                  <select name="termin">
+                    <% g.terminy.forEach(function(t) { %>
+                      <option value="<%= JSON.stringify(t) %>"><%= t.date %>, <%= t.minTime %>–<%= t.maxTime %></option>
+                    <% }); %>
+                  </select>
+                </label>
+                <button class="btn btn--glowny" type="submit">Zamów podjazd · paczki: <%= g.przesylki.length %></button>
+              </form>
+            <% } %>
+          </div>
+        </section>
+      <% }); %>
+    <% } %>
+    <% if (faza === 'wynik') { %>
+      <p>Stan zlecenia: <%= wynik.stan %></p>
+      <p>Komenda Allegro: <%= wynik.command_id %></p>
+      <% if (wynik.pickup_id) { %><p>ID podjazdu: <%= wynik.pickup_id %></p><% } %>
+      <% if (wynik.carrier_pickup_id) { %><p>ID u przewoźnika: <%= wynik.carrier_pickup_id %></p><% } %>
+      <% if (wynik.pickup_carrier) { %><p>Przewoźnik odbierający: <%= wynik.pickup_carrier %></p><% } %>
+      <% if (wynik.blad_opis) { %><p class="stan-zle"><%= wynik.blad_opis %></p><% } %>
+      <p>Potwierdzenie podjazdu nie jest jeszcze potwierdzeniem odebrania paczki. Odbiór pokaże śledzenie po skanie przewoźnika.</p>
+      <p><a class="btn btn--cichy" href="/przesylki/podjazdy/<%= wynik.id %>">Sprawdź ponownie</a></p>
+    <% } %>
+  </div>
+</div>

@@ -1,0 +1,195 @@
+<%# Zakladka RAPORTY — dane reczne miesiaca: ZUS, PIT-5, VAT-7 (Zadanie 13).
+
+    Panel liczy sprzedaz sam (sprzedaz-okresu.js) i koszty sam (lustro KSeF, db/koszty.js).
+    Skladek ZUS, zaplaconej zaliczki PIT-5 i zaplaconego VAT-7 nie odda zadne API — inFakt
+    trzyma je poza planem taryfowym — wiec to jedyne trzy liczby, ktore wlasciciel wpisuje
+    recznie, raz na miesiac. Zapis, odczyt i migracja startowa siedza w db/dane-miesieczne.js
+    (Zadanie 12); rachunek zarzadczy, ktory te dane skonsumuje, powstaje w Zadaniach 14–16.
+
+    ⚠️ WIDOK NICZEGO NIE LICZY. Rozjazd skladnikow i przelewu przychodzi POLICZONY z trasy
+    (rozjazdZus w db/dane-miesieczne.js) — tutaj zostaje wylacznie ZAPIS liczby po polsku,
+    tak jak w raporty.ejs i koszty.ejs. Druga kopia arytmetyki rozjechalaby sie z pierwsza
+    przy pierwszej zmianie, a chodzi o pieniadze.
+
+    ⚠️ POLA IDA DO `.pola`/`.pola--siatka`, NIGDY DO `.rzad` — tamta klasa nie styluje listy
+    rozwijanej w ogole i zweza pola do 6 rem (patrz uzasadnienie w raporty.ejs).
+
+    ⚠️ ODNOSNIKI IDA NA `--link`, NIGDY `--marka` — w jasnym motywie kontrast `--marka` na tle
+    wynosi 2,07 (zmierzone), czyli napis jest praktycznie niewidoczny; `--link` daje 7,00
+    (patrz layout-oms.ejs).
+
+    ⚠️⚠️ KWOT ZUS NIGDY NIE ZGADUJEMY — ani ze sredniej, ani z poprzedniego miesiaca. Brak
+    wiersza ma dac PUSTA SEKCJE I OSTRZEZENIE w rachunku zarzadczym, nigdy ciche zero: zero
+    jest zdaniem o faktach i nikt go juz nie zakwestionuje, podstawiona kwota wyglada
+    dokladnie tak samo wiarygodnie jak prawdziwa. %>
+
+<%
+  // '1234.50' → '1 234,50'. To NIE JEST arytmetyka, tylko polski zapis liczby — ta sama
+  // funkcja, co w raporty.ejs i koszty.ejs: nic sie tu nie dodaje, nie dzieli i nie zaokragla.
+  const kwota = (napis) => {
+    const s = String(napis ?? '').trim();
+    if (!s) return '';
+    const minus = s.startsWith('-');
+    const [calosc, ulamek = ''] = s.replace('-', '').split('.');
+    const grosze = ulamek.length >= 2 ? ulamek : ulamek.padEnd(2, '0');
+    return `${minus ? '-' : ''}${calosc.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')},${grosze}`;
+  };
+  // ⚠️ GROSZE NA ZLOTOWKI PRZELICZA `zl` Z DOMENY (domain/kwoty.js), podane przez trase —
+  // widok NIE DZIELI pieniedzy przez sto u siebie.
+  const zlote = (gr) => kwota(zl(gr ?? 0));
+  // Wartosc kolumny do pola formularza — pusta, gdy miesiac jeszcze nie ma wiersza ALBO
+  // dane pole nikt jeszcze nie wypelnil. Kwota idzie DOSLOWNIE w postaci z bazy ('246.00'),
+  // nie po polsku: to jest pole do POPRAWIENIA, a nie liczba do przeczytania (ta sama zasada,
+  // co przy kwocie w koszt-reczny.ejs).
+  const w = (kolumna) => dane?.[kolumna] ?? '';
+
+  // Skroty miesiecy na pasku. To NAPIS DLA CZLOWIEKA, nie klucz — klucz ('RRRR-MM')
+  // przychodzi z trasy i tylko on jedzie do adresow.
+  const SKROTY_MIESIECY = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze',
+    'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
+  const OPIS_STANU = {
+    ok: 'dane wpisane',
+    brak: 'brak danych — rachunek zarządczy nie policzy „zostaje”',
+    przyszly: 'miesiąc jeszcze nie minął',
+  };
+%>
+
+<div class="glowa-ekranu">
+  <h1>Dane miesiąca</h1>
+  <span class="krok">
+    ZUS, PIT-5, VAT-7 — wpisywane ręcznie · <strong><%= miesiac %></strong>
+    <%# Strzalki przechodza przez granice roku — miesiace liczy trasa, widok ich nie skleja. %>
+    · <a href="/finanse/dane/<%= poprzedniMiesiac %>">← <%= poprzedniMiesiac %></a>
+    · <a href="/finanse/dane/<%= nastepnyMiesiac %>"><%= nastepnyMiesiac %> →</a>
+    · <a href="/finanse?od=<%= miesiac %>-01">rachunek</a>
+  </span>
+</div>
+
+<%# ——— PASEK MIESIECY ROKU ————————————————————————————————————————————————————
+    ⚠️⚠️ PO CO TO JEST: brak wpisu za JEDEN miesiac wylacza „zostaje" w CALYM rachunku
+    zarzadczym (patrz `daneOkresu().brakujace`), a do 17.08.2026 nie bylo jak zobaczyc,
+    ktorego miesiaca brakuje — trzeba bylo wchodzic w kazdy po kolei. Teraz zaleglosci widac
+    jednym rzutem oka, a jedno klikniecie prowadzi wprost do miesiaca.
+
+    ⚠️ TRZY STANY, NIE DWA. Miesiac z PRZYSZLOSCI nie jest zalegly — skladki za wrzesien nie
+    da sie wpisac w sierpniu, wiec ostrzegawcza barwa przy nim uczylaby operatora ignorowac
+    ostrzezenia. Przyszly miesiac jest wygaszony i NIE JEST odnosnikiem.
+
+    Zwykly HTML, bez ani jednej linii skryptu — kazdy chip to adres do zapisania w zakladkach. %>
+<section class="panel bez-druku panel--zakres">
+  <div class="zakres-rzad">
+    <div class="miesiace-rok">
+      <span class="miesiace-rok-etykieta"><%= rok %></span>
+      <% miesiaceRoku.forEach(function (m, i) { %>
+        <% if (m.stan === 'przyszly') { %>
+          <span class="miesiac-chip miesiac-chip--przyszly"
+                title="<%= OPIS_STANU[m.stan] %>"><%= SKROTY_MIESIECY[i] %></span>
+        <% } else { %>
+          <a class="miesiac-chip miesiac-chip--<%= m.stan %><%= m.aktywny ? ' miesiac-chip--aktywny' : '' %>"
+             href="/finanse/dane/<%= m.klucz %>"
+             title="<%= m.klucz %> — <%= OPIS_STANU[m.stan] %>"><%= SKROTY_MIESIECY[i] %><%= m.stan === 'ok' ? ' ✓' : ' —' %></a>
+        <% } %>
+      <% }); %>
+    </div>
+    <%# Zwykly formularz GET, bez ani jednej linii skryptu (jak wybor miesiaca na /koszty).
+        Przegladarka umie z niego zlozyc wylacznie zapytanie (`?miesiac=...`) — trasa
+        (routes/finanse.js) przeklada je na prawdziwy adres `/finanse/dane/<miesiac>`. %>
+    <form method="get" action="/finanse/dane" class="zakres-formularz">
+      <label class="zakres-data">
+        <span>Inny miesiąc</span>
+        <input type="month" name="miesiac" value="<%= miesiac %>" required>
+      </label>
+      <button class="btn btn--glowny" type="submit">Pokaż</button>
+    </form>
+  </div>
+  <p class="wyjasnienie">
+    ✓ — dane wpisane · — — brak wpisu, rachunek zarządczy nie policzy wtedy „zostaje" ·
+    miesiące przyszłe są wygaszone.
+    <%# ⚠️ Ta podpowiedz jest sednem calego ekranu: pomylka „miesiac = data przelewu"
+        przesuwa ZUS o jeden okres w calym rachunku zarzadczym. %>
+    Miesiąc to <strong>okres, którego składka dotyczy</strong> — nie data przelewu.
+  </p>
+</section>
+
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Składki i zaliczki</h2>
+    <span class="dopisek">wpisane ręcznie, bo żadne API ich nie oddaje</span>
+  </div>
+  <div class="panel-cialo">
+    <form method="post" action="/finanse/dane">
+      <input type="hidden" name="miesiac" value="<%= miesiac %>">
+      <div class="pola pola--siatka">
+        <label>
+          <span>ZUS społeczne</span>
+          <input type="text" name="zusSpoleczne" value="<%= w('zus_spoleczne') %>" inputmode="decimal">
+        </label>
+        <label>
+          <span>ZUS zdrowotna</span>
+          <input type="text" name="zusZdrowotna" value="<%= w('zus_zdrowotna') %>" inputmode="decimal">
+        </label>
+        <label>
+          <span>Fundusz Pracy</span>
+          <input type="text" name="zusFunduszPracy" value="<%= w('zus_fundusz_pracy') %>" inputmode="decimal">
+        </label>
+        <label>
+          <span>Przelew razem (ZUS)</span>
+          <input type="text" name="zusRazem" value="<%= w('zus_razem') %>" inputmode="decimal">
+          <span class="wyjasnienie">to, co faktycznie odjechało z konta</span>
+        </label>
+        <label>
+          <span>PIT-5 zapłacony</span>
+          <input type="text" name="pit5" value="<%= w('pit5_zaplacony') %>" inputmode="decimal">
+        </label>
+        <label>
+          <span>VAT-7 zapłacony</span>
+          <input type="text" name="vat7" value="<%= w('vat7_zaplacony') %>" inputmode="decimal">
+        </label>
+      </div>
+
+      <%# ——— PASEK ROZJAZDU ————————————————————————————————————————————————————
+          ⚠️ TYLKO GDY JEST KOMPLET SKLADNIKOW I ROZJAZD NIE JEST ZEREM — pasek przy
+          zgodnej sumie nie mowilby nic nowego i przestalby sie rzucac w oczy tam, gdzie
+          naprawde trzeba na niego spojrzec (ta sama zasada, co przy pasie ostrzezen
+          w raporty.ejs). ROZJAZD NIE JEST WYGLADZANY: styczen 2026 skladniki daja 1874,53,
+          przelew 2088,92 — roznica 214,39 zl jest do dzis niewyjasniona i ekran ma ja
+          pokazac, nie ukryc. %>
+      <% if (rozjazd !== null && rozjazd !== 0) { %>
+        <div class="pasek-uwaga">
+          Składniki dają <%= zlote(skladnikiGrosze) %> zł, przelew <%= zlote(razemGrosze) %> zł
+          — różnica <%= zlote(Math.abs(rozjazd)) %> zł. Nie jest wygładzana.
+        </div>
+      <% } %>
+
+      <%# ——— OPCJONALNE, KONTROLNE ————————————————————————————————————————————
+          `<details>` zamiast osobnej sekcji: to sa pola KONTROLNE (do porownania z KPiR
+          u ksiegowej), a nie codzienny wpis — wiekszosc miesiecy nikt ich nie dotyka.
+          Czysty HTML, zero skryptu — ta sama sztuczka, co przy „wiecej" na karcie zamowienia. %>
+      <details>
+        <summary>opcjonalne, kontrolne</summary>
+        <div class="pola pola--siatka">
+          <label>
+            <span>Przychód z KPiR</span>
+            <input type="text" name="kpirPrzychod" value="<%= w('kpir_przychod') %>" inputmode="decimal">
+          </label>
+          <label>
+            <span>Koszty z KPiR</span>
+            <input type="text" name="kpirKoszty" value="<%= w('kpir_koszty') %>" inputmode="decimal">
+          </label>
+          <label>
+            <span>Zwroty (brutto)</span>
+            <input type="text" name="zwroty" value="<%= w('zwroty_brutto') %>" inputmode="decimal">
+          </label>
+          <label class="pole-szerokie">
+            <span>Uwagi</span>
+            <textarea name="uwagi"><%= w('uwagi') %></textarea>
+          </label>
+        </div>
+      </details>
+
+      <div class="pola-w-rzedzie">
+        <button class="btn btn--glowny" type="submit">Zapisz</button>
+      </div>
+    </form>
+  </div>
+</section>

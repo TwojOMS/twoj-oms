@@ -1,0 +1,126 @@
+<%# Ekran podgladu przed wysylka do KSeF. NIC tu jeszcze nie poszlo do inFaktu i to jest
+    caly sens tego ekranu — dokladnie ta sama rola, co masowe-nadaj.ejs przed nadaniem
+    zbiorczym, tylko stawka wyzsza: paczke da sie odwolac telefonem do kuriera, dokumentu
+    w KSeF nie da sie skasowac w ogole.
+
+    ⚠️ WIDOK NICZEGO NIE ROZSTRZYGA. O tym, co wolno wyslac, mowi domain/wysylka-ksef.js
+    (`coWolnoWyslac`), wolane przez usluge PRZY TYM EKRANIE i PONOWNIE przy zatwierdzeniu.
+    Tu sklejamy wylacznie napisy.
+
+    ⚠️ ZADNEJ KOPII ARYTMETYKI: kwoty przychodza z uslugi juz w zlotowkach (`kwotaZl`,
+    services/faktury-widok.js) — inFakt oddaje je W GROSZACH i drugie przeliczenie tutaj
+    rozjechaloby sie z pierwszym przy pierwszej zmianie. %>
+
+<%
+  // Nabywca: inFakt trzyma nazwe firmy w `client_company_name`, a przy osobie prywatnej
+  // wypelnia imie i nazwisko (ta sama zasada, co w faktury.ejs).
+  const nabywca = (d) => (d && (d.client_company_name
+    || [d.client_first_name, d.client_last_name].filter(Boolean).join(' '))) || '';
+  // Dokument po uuid — regula (`coWolnoWyslac`) oddaje wylacznie `{ uuid, numer }`, bo jest
+  // regula, a nie zrodlem danych. Nabywca i kwota pochodza z TEGO SAMEGO pobrania, na
+  // ktorym zapadla decyzja (patrz `przelicz` w services/wysylka-ksef.js).
+  const poUuid = new Map((Array.isArray(dokumenty) ? dokumenty : []).filter(Boolean).map((d) => [d.uuid, d]));
+  // „1 fakturę", „3 faktury", „5 faktur" — polski liczebnik ma TRZY formy, nie dwie.
+  // ⚠️ 12, 13, 14 IDA DO OSTATNIEJ FORMY mimo koncowek 2/3/4 („12 faktur", nie „12 faktury").
+  const faktur = (n) => {
+    const d = n % 10;
+    const s = n % 100;
+    if (n === 1) return '1 fakturę';
+    return `${n} ${d >= 2 && d <= 4 && (s < 12 || s > 14) ? 'faktury' : 'faktur'}`;
+  };
+%>
+
+<p class="wroc"><a href="<%= adresPowrotu %>">← Wróć do listy faktur</a></p>
+
+<div class="panel panel--groza">
+  <div class="panel-glowa panel-glowa--groza"><h2>Wysyłka do KSeF — operacja nieodwracalna</h2></div>
+  <div class="panel-cialo">
+    <%# ⚠️ NIEODWRACALNOSC MA BYC NAPISANA, a nie domyslna — i ma stac NAD lista, zanim
+        operator dojedzie wzrokiem do przycisku. %>
+    <p class="pasek-blokada">
+      <b>Tej operacji nie da się cofnąć — dokumentu w KSeF nie kasuje się, tylko koryguje.</b>
+      Dopóki faktura nie poszła, literówkę da się naprawić w inFakcie. Potem zostaje
+      wyłącznie korekta, widoczna u organu.
+    </p>
+
+    <% if (doWyslania.length) { %>
+      <h3 class="wynik-naglowek">Poleci do KSeF — <%= doWyslania.length %></h3>
+      <div class="przewijak-tabeli">
+        <table>
+          <thead>
+            <tr><th>Numer dokumentu</th><th>Nabywca</th><th>Wystawiona</th><th class="liczba">Brutto</th></tr>
+          </thead>
+          <tbody>
+            <% doWyslania.forEach(function (w) { %>
+              <% const d = poUuid.get(w.uuid); %>
+              <tr>
+                <td><strong><%= w.numer %></strong></td>
+                <td><%= nabywca(d) %></td>
+                <td><%= (d && d.invoice_date) || '' %></td>
+                <%# Pusta komorka, gdy kwoty nie ma — „0.00 zl" byloby ZDANIEM o pieniadzach,
+                    a prawda brzmi „nie wiadomo" (ta sama zasada, co przy sumie naleznosci).
+
+                    ⚠️⚠️ PYTAMY O ZRODLO (`gross_price` z inFaktu), A NIE O WYNIK PRZELICZENIA.
+                    Warunek na `d.kwotaZl` NIE DZIALAL: `zl(0)` daje NAPIS „0.00", ktory jest
+                    PRAWDZIWY (truthy), wiec dokument BEZ kwoty drukowal tu „0.00 zl" — czyli
+                    dokladnie to zdanie o pieniadzach, ktorego ten komentarz zabrania, i to na
+                    ekranie stojacym przed operacja nieodwracalna (recenzja calosci, M3).
+                    `!= null` (a nie `!==`) lapie zarazem `null` i brak pola. %>
+                <td class="liczba"><% if (d && d.gross_price != null) { %><%= d.kwotaZl %> zł<% } %></td>
+              </tr>
+            <% }); %>
+            <%# ⚠️ ZADNEGO WIERSZA „Razem" Z KWOTA. Kwoty przychodza jako gotowe napisy
+                w zlotowkach — zsumowanie ich TUTAJ byloby druga arytmetyka pieniedzy w panelu
+                (a widok w tym module niczego nie liczy). Liczba dokumentow stoi w naglowku
+                sekcji i na przycisku, i to jest to, co przed wysylka trzeba sprawdzic. %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+
+    <% if (pominiete.length) { %>
+      <%# ⚠️ POMINIETE NIE MOGA ZNIKNAC PO CICHU — to jest cala roznica miedzy „panel wysłał
+          mniej, niż prosiłem" a „panel wysłał mniej i powiedział dlaczego". Operator, ktory
+          przeczyta „wysłano", a dokumentu nikt nie wyslal, dowie sie o tym dopiero od
+          ksiegowej (przewodnik 4.13a). %>
+      <h3 class="wynik-naglowek">Pominięte — <%= pominiete.length %></h3>
+      <ul class="lista-wyniku">
+        <% pominiete.forEach(function (p) { %>
+          <li><span class="waga waga--blokada">pominięte</span> <span><b><%= p.numer %></b> — <%= p.powod %></span></li>
+        <% }); %>
+      </ul>
+    <% } %>
+
+    <% if (!doWyslania.length && !pominiete.length) { %>
+      <p class="pusto-sekcja">Nie zaznaczono ani jednej faktury — panel nie ma czego wysłać.</p>
+    <% } %>
+
+    <div class="stopka-edycji">
+      <% if (doWyslania.length) { %>
+        <%# ⚠️ PRZYCISK ZATWIERDZAJACY ISTNIEJE WYLACZNIE WTEDY, GDY JEST CO WYSLAC. Przy
+            pustym zbiorze kusilby operacja, ktora i tak nic by nie zrobila — a napis
+            „wysłano" bez wysylki jest gorszy niz odmowa. %>
+        <form method="post" action="/faktury/ksef/wyslij">
+          <% doWyslania.forEach(function (w) { %>
+            <input type="hidden" name="uuid" value="<%= w.uuid %>">
+          <% }); %>
+          <%# ⚠️ MIESIAC I POLE JADA DALEJ. Zatwierdzenie liczy zbior JESZCZE RAZ, z listy
+              pobranej na nowo — bez tych dwoch pol nie ma jak odtworzyc, na ktora liste
+              operator patrzyl, gdy zaznaczal. %>
+          <input type="hidden" name="miesiac" value="<%= miesiac %>">
+          <input type="hidden" name="pole" value="<%= pole %>">
+          <button class="btn btn--groza" type="submit" name="potwierdzam" value="wyslij">
+            Wyślij <%= faktur(doWyslania.length) %> do KSeF
+          </button>
+        </form>
+      <% } else if (pominiete.length) { %>
+        <p class="pusto-sekcja">Z zaznaczonych dokumentów żadnego nie da się wysłać — nic nie poleci.</p>
+      <% } %>
+      <a class="btn" href="<%= adresPowrotu %>">Anuluj</a>
+      <span class="wyjasnienie">
+        Panel wysyła dokumenty do inFaktu, a inFakt do KSeF. Numer KSeF <b>nie pojawia się
+        od razu</b> — pokaże się na liście, gdy organ potwierdzi przyjęcie.
+      </span>
+    </div>
+  </div>
+</div>

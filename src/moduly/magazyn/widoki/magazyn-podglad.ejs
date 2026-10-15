@@ -1,0 +1,156 @@
+<%# ZAPIS DO SKLEPOW — PODGLAD PRZED WYSLANIEM I WYNIK PO NIM.
+
+    ⚠️⚠️ TO JEDYNY EKRAN W PANELU, ZA KTORYM STOI ZAPIS DO SKLEPU, KTORY SPRZEDAJE — i jedyny,
+    ktorego skutku NIE DA SIE COFNAC KLIKNIECIEM. „Cofnij" znaczyloby drugi zapis do sklepu,
+    a panel nie trzyma tego, co bylo. Dlatego kazda pozycja pokazuje STARE → NOWE, a nie samą
+    liczbe pozycji, i dlatego przy kazdej stoi SCIEZKA, pod ktora pojdzie zapis: to po niej
+    widac roznice miedzy rodzicem a wariantem.
+
+    ⚠️ PANEL WYSYLA WYLACZNIE SKU I WYMIARY. Nigdy ceny, nazwy, kategorii, zdjec, opisu ani
+    stanu magazynowego — te zostaja pod kontrola sklepu. Do Allegro panel nie pisze nic.
+
+    ⚠️ WIDOK NICZEGO NIE LICZY. Sciezki, opisy „stare → nowe", powody wstrzymania i liczby
+    przychodza policzone z web/routes/magazyn.js i domain/zapis-do-sklepu.js.
+
+    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w layout-oms.ejs. %>
+<%
+  // Liczebnik po polsku ma TRZY formy (ten sam wzorzec, co w magazyn-sku.ejs).
+  const ilePozycji = (n) => {
+    const d = Math.abs(n) % 10;
+    const s = Math.abs(n) % 100;
+    if (n === 1) return `${n} pozycję`;
+    return `${n} ${d >= 2 && d <= 4 && (s < 12 || s > 14) ? 'pozycje' : 'pozycji'}`;
+  };
+%>
+
+<p class="wroc"><a href="<%= adresPowrotu %>">← Wróć do magazynu</a></p>
+
+<div class="glowa-ekranu">
+  <h1>Zapis do sklepów</h1>
+  <span class="krok"><%= wynik ? 'wynik wysyłki' : 'podgląd — nic jeszcze nie poszło do sklepu' %></span>
+</div>
+
+<section class="panel<%= wynik ? '' : ' panel--edycja' %>" id="zapis-zmiany">
+  <div class="panel-glowa">
+    <h2><%= wynik ? 'Co poszło do sklepów' : 'Co pojedzie do sklepów' %></h2>
+    <span class="dopisek">
+      <strong class="zapis-ile"><%= ile %></strong>
+      <%= wynik ? 'pozycji w wysyłce' : 'pozycji do wysłania' %>
+    </span>
+  </div>
+  <div class="panel-cialo">
+    <% if (blad) { %>
+      <p class="pasek-blokada"><%= blad %></p>
+    <% } %>
+
+    <% if (!blad && !wynik && ile) { %>
+      <p class="pasek-uwaga">
+        Nic jeszcze nie poszło. Wyślesz <b><%= ilePozycji(ile) %></b> do sklepów —
+        <b>tego nie da się cofnąć z panelu</b>. Przejrzyj kolumnę „Co się zmieni” i dopiero
+        wtedy zatwierdź. Panel wysyła wyłącznie SKU i wymiary; ceny, nazwy, kategorie
+        i zdjęcia zostają takie, jakie są w sklepie.
+      </p>
+    <% } %>
+
+    <% if (wynik) { %>
+      <p class="<%= wynik.poszlo ? 'pasek-uwaga' : 'pusto' %>">
+        Poszło: <b><%= wynik.poszlo %></b>, nie poszło: <b><%= wynik.nieposzlo %></b>.
+        Ta lista jest jedynym świadectwem operacji, której nie da się cofnąć — nie zamykaj
+        jej, dopóki nie sprawdzisz pozycji z błędem.
+      </p>
+    <% } %>
+
+    <% if (zmiany.length) { %>
+      <table class="tab-pozycje">
+        <thead>
+          <tr>
+            <th>Wzór</th><th>Sklep</th><th>Produkt</th><th>Ścieżka zapisu</th>
+            <th>Co się zmieni</th><% if (wynik) { %><th>Wynik</th><% } %>
+          </tr>
+        </thead>
+        <tbody>
+          <% zmiany.forEach(function (z) { %>
+            <tr>
+              <td><div class="nazwa-wzoru"><%= z.nazwaWzoru %></div></td>
+              <td><%= z.etykietaKanalu %></td>
+              <td><%= z.nazwa %></td>
+              <%# ⚠️ SCIEZKA WPROST: `products/944/variations/1091` to wariant, `products/944`
+                  to rodzic. Zapis SKU na rodzica produktu wariantowego jest w WooCommerce
+                  legalny i CICHY — numer nie pojawilby sie tam, gdzie go szukamy. %>
+              <td><code class="sku-numer"><%= z.sciezka %></code></td>
+              <td><%= z.opis %></td>
+              <% if (wynik) { %>
+                <td>
+                  <% if (z.ok) { %>
+                    <span class="znacznik">poszło</span>
+                  <% } else { %>
+                    <span class="znacznik znacznik--blad">nie poszło</span>
+                    <%= z.blad %>
+                  <% } %>
+                </td>
+              <% } %>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } else if (!blad) { %>
+      <p class="pusto">
+        Nie ma czego wysyłać: zaznaczone wzory mają w sklepach dokładnie to, co w rejestrze,
+        albo nie mają ani numeru, ani wymiarów.
+      </p>
+    <% } %>
+
+    <div class="stopka-edycji">
+      <%# ⚠️⚠️ FORMULARZ NIESIE NUMERY WZOROW, NIGDY GOTOWEGO ZESTAWU ZMIAN. Zestaw liczy sie
+          PONOWNIE przy zatwierdzeniu, ze stanu biezacego i z jednostka odczytana ze sklepu —
+          miedzy podgladem a klknieciem mogl wejsc odczyt katalogow albo drugi operator. %>
+      <% if (mozna) { %>
+        <form method="post" action="/magazyn/zapisz-do-sklepow">
+          <% doZatwierdzenia.forEach(function (id) { %>
+            <input type="hidden" name="zaznaczone" value="<%= id %>">
+          <% }); %>
+          <button class="btn btn--glowny" type="submit">Wyślij do sklepów</button>
+        </form>
+      <% } %>
+      <a class="btn" href="<%= adresPowrotu %>"><%= wynik ? 'Wróć do magazynu' : 'Anuluj' %></a>
+    </div>
+  </div>
+</section>
+
+<%# ——— CZEGO PANEL NIE WYSLE I DLACZEGO ——————————————————————————————————————
+    ⚠️ POZYCJA POMINIETA WRACA Z POWODEM (niezmiennik 4.13a). Cicho pominiety produkt wyglada
+    na ekranie DOKLADNIE tak samo, jak produkt, w ktorym nie ma nic do zmiany — a tutaj
+    roznica miedzy jednym a drugim to numer bedacy cudza tozsamoscia. %>
+<section class="panel" id="zapis-wstrzymane">
+  <div class="panel-glowa">
+    <h2>Wstrzymane</h2>
+    <span class="dopisek">
+      <strong class="zapis-wstrzymane-ile"><%= ileWstrzymanych %></strong> pozycji
+    </span>
+  </div>
+  <div class="panel-cialo">
+    <% if (wstrzymane.length) { %>
+      <table class="tab-pozycje">
+        <thead>
+          <tr><th>Wzór</th><th>Sklep</th><th>Produkt</th><th>Ścieżka</th><th>Dlaczego</th></tr>
+        </thead>
+        <tbody>
+          <% wstrzymane.forEach(function (z) { %>
+            <tr>
+              <td><div class="nazwa-wzoru"><%= z.nazwaWzoru %></div></td>
+              <td><%= z.etykietaKanalu %></td>
+              <td><%= z.nazwa %></td>
+              <td><code class="sku-numer"><%= z.sciezka %></code></td>
+              <td>
+                <span class="znacznik znacznik--blad">wstrzymane</span>
+                <%= z.powod %>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } else { %>
+      <p class="pusto">Nic nie jest wstrzymane.</p>
+    <% } %>
+  </div>
+</section>

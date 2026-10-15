@@ -1,0 +1,629 @@
+<%# ——— ZAKLADKA KAMPANIA (WRZESIEN30, 2026-08-25) ————————————————————————————————————
+    Etap 0: wszystko z wlasnej bazy (zamowienia.kupony_json). Ekran NICZEGO nie liczy —
+    kafle, dni i tabele przychodza z domain/kampania.js; status maluje klasaStatusu,
+    czyli ta sama funkcja, co lista i karta. Sekcje GA4/Meta doida jako osobne etapy
+    (osobne czuwacze do wlasnych tabel), wiec ten ekran nie zna zadnego zewnetrznego API.
+
+    Ciemna szata pozostaje ograniczona do `.strona-kampania`, a wspólna rama, nawigacja
+    i menu konta pochodzą z layout-oms.ejs. %>
+<%- include('_kampania-glowa.ejs') %>
+
+<% if (!kampania) { %>
+  <section class="panel">
+    <div class="panel-glowa"><h2>Kampania</h2></div>
+    <div class="panel-cialo">
+      <% if (szukanyKod) { %>
+        <p class="pasek-uwaga">Nie ma kampanii o kodzie „<%= szukanyKod %>".</p>
+      <% } else { %>
+        <p>Nie ma zdefiniowanej żadnej kampanii. Kampania to wiersz w tabeli <code>kampanie</code> — kod, okno dat i sklep; ekran policzy resztę z zamówień.</p>
+      <% } %>
+      <% if (kampanie.length) { %>
+        <p>Dostępne kampanie:
+          <% kampanie.forEach(function (k, i) { %><%= i ? ' · ' : '' %><a href="/kampania?kampania=<%= encodeURIComponent(k.kod) %>"><%= k.kod %></a><% }); %>
+        </p>
+      <% } %>
+    </div>
+  </section>
+<% } else { %>
+
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Kampania <span class="kampania-kod"><%= kampania.kod %></span></h2>
+    <% if (kampania.nazwa) { %><span class="dopisek"><%= kampania.nazwa %></span><% } %>
+  </div>
+  <div class="panel-cialo">
+    <%# Przelacznik kampanii — WYLACZNIE gdy jest miedzy czym wybierac. %>
+    <% if (kampanie.length > 1) { %>
+      <p class="kampania-wybor">
+        <% kampanie.forEach(function (k, i) { %><%= i ? ' · ' : '' %><% if (k.id === kampania.id) { %><strong><%= k.kod %></strong><% } else { %><a href="/kampania?kampania=<%= encodeURIComponent(k.kod) %>"><%= k.kod %></a><% } %><% }); %>
+      </p>
+    <% } %>
+
+    <p class="kampania-okno">
+      Okno: <strong><%= kampania.od_dnia %> – <%= kampania.do_dnia %></strong>
+      (sklep: <%= kampania.sklep ? adresKanalu(kampania.sklep) : 'wszystkie kanały Woo' %>)
+      <% if (stan.faza === 'trwa' && stan.dzienKampanii) { %>
+        · trwa — <strong>dzień <%= stan.dzienKampanii %> z <%= stan.dniOkna %></strong>
+        <%# Pierscien postepu: bez JS stoi od razu na wartosci docelowej (inline style),
+            skrypt ozywienia tylko odtwarza dojscie do niej. Obwod = 2*PI*8 = 50.27. %>
+        <% const pierscienCel = (50.27 * (1 - stan.dzienKampanii / stan.dniOkna)).toFixed(2); %>
+        <span class="pierscien-dnia" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22"><circle class="tor" cx="11" cy="11" r="8" fill="none" stroke-width="3"></circle><circle class="postep" cx="11" cy="11" r="8" stroke-width="3" transform="rotate(-90 11 11)" stroke-dasharray="50.27" style="stroke-dashoffset: <%= pierscienCel %>" data-cel="<%= pierscienCel %>" data-obwod="50.27"></circle></svg></span>
+      <% } else if (stan.faza === 'przed') { %>
+        · jeszcze nie wystartowała
+      <% } else if (stan.faza === 'po') { %>
+        · zakończona
+      <% } %>
+    </p>
+
+    <% if (stan.bladOkna) { %><p class="pasek-uwaga"><%= stan.bladOkna %></p><% } %>
+
+    <%# Alerty kontrolne (2026-08-27): warunki policzone w domenie (alertyKampanii) z tego,
+        co ekran i tak ma. Kazdy jest ostrozny — falszywy alarm uczy ignorowania paska. %>
+    <% (alerty ?? []).forEach(function (a) { %>
+      <p class="pasek-uwaga"><%= a %></p>
+    <% }); %>
+
+    <%# „Odśwież teraz" — zegar chodzi co godzinę, a człowiek stoi przy ekranie właśnie %>
+    <%# wtedy, gdy coś zmienił (włączył kampanię w Business Suite, poprawił klucz). %>
+    <% if (mozliweOdswiezenie) { %>
+      <form method="post" action="/kampania/odswiez" class="kampania-odswiez">
+        <input type="hidden" name="kampania" value="<%= kampania.kod %>">
+        <button class="btn" type="submit">Odśwież dane z Meta i GA4</button>
+      </form>
+    <% } %>
+
+    <div class="kafelki kafelki--cztery">
+      <div class="kafel">
+        <div class="kafel-etykieta">Użycia kodu</div>
+        <div class="kafel-wartosc"><%= stan.uzycia %></div>
+        <div class="kafel-dopisek"><%
+          %><% if (kampania.cel_uzyc) { %>cel: <%= kampania.cel_uzyc %><% } %><%
+          %><% if (stan.anulowanych) { %><%= kampania.cel_uzyc ? ' · ' : '' %>+ <%= stan.anulowanych %> anulowanych<% } %><%
+        %></div>
+      </div>
+      <div class="kafel">
+        <div class="kafel-etykieta">Przychód z kodem</div>
+        <div class="kafel-wartosc"><%= stan.przychodZl %> zł</div>
+        <%# Rozbicie WYLACZNIE, gdy jest co rozbijac — „opłacone 0.00" przy zerze uzyc %>
+        <%# wyglada jak awaria ksiegowania, a nie brak danych. %>
+        <% if (stan.uzycia > 0 && stan.doZaplatyZl !== '0.00') { %>
+          <div class="kafel-dopisek">opłacone <%= stan.oplaconeZl %> zł · do zapłaty <%= stan.doZaplatyZl %> zł</div>
+        <% } %>
+      </div>
+      <div class="kafel">
+        <div class="kafel-etykieta">Udzielone rabaty</div>
+        <div class="kafel-wartosc"><%= stan.rabatyZl %> zł</div>
+      </div>
+      <div class="kafel">
+        <div class="kafel-etykieta">Średnie zamówienie</div>
+        <div class="kafel-wartosc"><%= stan.sredniaZl ? `${stan.sredniaZl} zł` : '—' %></div>
+      </div>
+    </div>
+
+    <%# Uzycia kodu poza zasiegiem (inny sklep, data poza oknem) — kafle ich nie licza, %>
+    <%# ale przemilczane wygladalyby jak blad panelu, gdy sklep pokaze inna liczbe uzyc. %>
+    <% if (stan.pozaZasiegiem) { %>
+      <p class="pasek-uwaga">Poza zasięgiem kampanii: <%= stan.pozaZasiegiem %> — kod użyty w innym sklepie albo poza oknem dat. Nie liczą się do kafli.</p>
+    <% } %>
+  </div>
+</section>
+
+<%# ——— PIENIADZE DZIEN PO DNIU (2026-08-27) ———————————————————————————————————————————
+    Slupki lustrzane wokol osi zera: przychod kampanijny W GORE (kod + utm-bez-kodu,
+    kawalki ROZLACZNE, wiec suma slupka = unia obu licznikow), wydatek W DOL. Jedna skala
+    px/zl po obu stronach — te same zlotowki, wiec „gora przerasta dol" znaczy doslownie
+    „kampania sie spina". Zero JavaScriptu: wysokosci liczy widok, pelne liczby dnia
+    niesie `title` — ten sam idiom, co wykres uzyc nizej. %>
+<%
+  const pKwoty = stan.dni.some((d) => Number(d.kodKwotaZl) > 0 || Number(d.reklamyKwotaZl ?? 0) > 0);
+  const pWydatki = stan.dni.some((d) => Number(d.wydatekZl) > 0);
+%>
+<% if (stan.dni.length && (pKwoty || pWydatki)) { %>
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Pieniądze dzień po dniu</h2>
+    <span class="dopisek">przychód nad osią, wydatek pod nią — jedna skala złotówek</span>
+  </div>
+  <div class="panel-cialo">
+    <%
+      const pGora = stan.dni.map((d) => Number(d.kodKwotaZl) + Number(d.reklamyKwotaZl ?? 0));
+      const pDol = stan.dni.map((d) => Number(d.wydatekZl));
+      const pMaxGora = Math.max(1, ...pGora);
+      const pMaxDol = Math.max(1, ...pDol);
+      // Wspolna skala: gorny tor dostaje najwyzej 220 px, dolny 100 px — wygrywa ciasniejsze
+      // ograniczenie, zeby ZADEN slupek nie wyszedl poza tor, a zlotowka byla ta sama gora i dol.
+      const pSkala = Math.min(220 / pMaxGora, 100 / pMaxDol);
+      const pPx = (n) => Math.round(n * pSkala * 10) / 10;
+      // ETAPY KAMPANII (2026-08-28, prosba właściciela — jak na makiecie): prowadnice ida
+      // z `fale` (kampanie.fale_json, przez domene), a dni PRZED pierwszym etapem dostaja
+      // strefe „przed reklamami" (na wrzesien30: kod dzialal z banera, zanim ruszyla Meta).
+      // Bez skonfigurowanych etapow wykres wraca do wyliczanej prowadnicy „start reklam"
+      // z pierwszego dnia z wydatkiem — przyszla kampania dziala bez zadnej konfiguracji.
+      const etapWDniu = new Map((fale ?? []).map((f) => [f.od, f.napis]));
+      const pierwszyEtap = (fale ?? []).length ? fale[0].od : null;
+      const pStart = pierwszyEtap ? -1 : stan.dni.findIndex((d) => Number(d.wydatekZl) > 0);
+      let przedNapisDany = false;
+      let pEtykGora = false;
+      let pEtykDol = false;
+      const pSumaKod = pGora.reduce((s, n, i) => s + Number(stan.dni[i].kodKwotaZl), 0);
+      const pSumaUtm = stan.dni.reduce((s, d) => s + Number(d.reklamyKwotaZl ?? 0), 0);
+      const pSumaWyd = pDol.reduce((s, n) => s + n, 0);
+      const pOpis = (d) => `${d.dzien}: ${d.kodKwotaZl} zł z kodem · ${d.reklamyKwotaZl ?? '0.00'} zł z reklam bez kodu · ${d.wydatekZl} zł wydatku`;
+    %>
+    <div class="pieniadze-legenda">
+      <span class="l-kod"><i></i>Przychód — z kodem</span>
+      <span class="l-utm"><i></i>Przychód — z reklam, bez kodu</span>
+      <span class="l-wyd"><i></i>Wydatek na reklamę</span>
+      <% if (pSumaWyd > 0) { %>
+        <span class="pieniadze-zwrot">zwrot dotąd: <b><%= ((pSumaKod + pSumaUtm) / pSumaWyd).toFixed(1) %>×</b> · (kod ∪ utm) ÷ wydatek</span>
+      <% } %>
+    </div>
+    <div class="pieniadze">
+      <div class="pieniadze-tor" style="height: <%= Math.max(48, Math.ceil(pMaxGora * pSkala) + 6) %>px">
+        <% stan.dni.forEach(function (d, i) { %>
+          <%
+            const kodZl = Number(d.kodKwotaZl);
+            const utmZl = Number(d.reklamyKwotaZl ?? 0);
+            const suma = kodZl + utmZl;
+          %>
+          <%
+            const etapNapis = etapWDniu.get(d.dzien) ?? (i === pStart ? 'start reklam' : null);
+            const przedEtapem = pierwszyEtap && d.dzien < pierwszyEtap;
+          %>
+          <div class="p-dzien<%= d.dzis ? ' p-dzien--dzis' : '' %><%= etapNapis ? ' p-dzien--start' : '' %><%= przedEtapem ? ' p-dzien--przed' : '' %>" title="<%= pOpis(d) %>">
+            <% if (etapNapis) { %><span class="p-start-napis"><%= etapNapis %></span><% } %>
+            <% if (przedEtapem && !przedNapisDany) { przedNapisDany = true; %><span class="p-przed-napis">przed reklamami</span><% } %>
+            <% if (suma > 0 && suma === pMaxGora && !pEtykGora) { pEtykGora = true; %>
+              <span class="p-kwota"><%= suma.toFixed(2) %></span>
+            <% } %>
+            <% if (utmZl > 0) { %><div class="p-slupek p-slupek--utm" style="height: <%= pPx(utmZl) %>px"></div><% } %>
+            <% if (kodZl > 0) { %><div class="p-slupek p-slupek--kod<%= utmZl > 0 ? '' : ' p-slupek--szczyt' %>" style="height: <%= pPx(kodZl) %>px"></div><% } %>
+          </div>
+        <% }); %>
+      </div>
+      <div class="pieniadze-os"></div>
+      <div class="pieniadze-tor pieniadze-tor--dol" style="height: <%= Math.max(30, Math.ceil(pMaxDol * pSkala) + 6) %>px">
+        <% stan.dni.forEach(function (d) { %>
+          <% const wydZl = Number(d.wydatekZl); %>
+          <div class="p-dzien" title="<%= pOpis(d) %>">
+            <% if (wydZl > 0) { %><div class="p-slupek p-slupek--wydatek" style="height: <%= pPx(wydZl) %>px"></div><% } %>
+            <% if (wydZl > 0 && wydZl === pMaxDol && !pEtykDol) { pEtykDol = true; %>
+              <span class="p-kwota"><%= wydZl.toFixed(2) %></span>
+            <% } %>
+          </div>
+        <% }); %>
+      </div>
+      <div class="pieniadze-dni">
+        <% stan.dni.forEach(function (d) { %>
+          <span class="<%= d.dzis ? 'dzis' : '' %>"><%= Number(d.dzien.slice(8, 10)) %></span>
+        <% }); %>
+      </div>
+    </div>
+    <p class="zrodlo-uwaga">Kawałki górnego słupka są rozłączne — zamówienie z reklamy z wpisanym kodem liczy się w niebieskim, raz; suma słupka to unia obu liczników. Pod osią ta sama skala złotówek, więc wysokości wolno porównywać wprost.</p>
+  </div>
+</section>
+<% } %>
+
+<%# ——— REKLAMA (Etap 1) I RUCH (Etap 2) ——————————————————————————————————————————————
+    ⚠️ TRZY ROZNE STANY, KTORE W TABELI WYGLADAJA IDENTYCZNIE (brak wierszy):
+    nieskonfigurowane / awaria pobierania / jeszcze nie pobrano. Ekran mowi KTORY. %>
+<div class="dwie-szpalty">
+<%
+  // Wspolny naglowek stanu zrodla — jedno miejsce, bo obie sekcje maja te sama gramatyke:
+  // najpierw powod milczenia, potem liczby.
+  const swiezosc = (z) => (z.ostatniSukcesAt ? `dane z ${fmtDataCzasKrotko(z.ostatniSukcesAt)}` : '');
+%>
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Reklama (Meta)</h2>
+    <span class="dopisek"><%= zrodlaWlaczone.meta ? swiezosc(stan.meta) : 'niepodłączona' %></span>
+  </div>
+  <div class="panel-cialo">
+    <% if (!zrodlaWlaczone.meta) { %>
+      <p class="pusto">Panel nie ma dostępu do Meta — brak <code>META_TOKEN</code> i <code>META_KONTA</code> w konfiguracji.</p>
+    <% } else { %>
+      <%# ⚠️ BLAD NAD LICZBAMI, NIE ZAMIAST NICH: ostatnie udane pobranie dalej jest %>
+      <%# prawda o tym, co bylo — ma byc widoczne razem z ostrzezeniem, ze sie starzeje. %>
+      <% if (stan.meta.blad) { %>
+        <p class="pasek-uwaga">Ostatnie pobranie z Meta się nie udało: <%= stan.meta.blad %><%
+          %><%= stan.meta.ostatniSukcesAt ? ` Liczby poniżej pochodzą z ${fmtDataCzasKrotko(stan.meta.ostatniSukcesAt)}.` : '' %></p>
+      <% } %>
+      <% if (!stan.meta.saDane) { %>
+        <p class="pusto">Brak danych o wydatkach w oknie kampanii — albo reklama jeszcze nie ruszyła, albo czuwacz nie zdążył zapytać.</p>
+      <% } else { %>
+        <div class="kafelki kafelki--cztery">
+          <div class="kafel">
+            <div class="kafel-etykieta">Wydano na reklamę</div>
+            <div class="kafel-wartosc"><%= stan.meta.wydatekZl %> zł</div>
+            <%# Prognoza z pelnych dni — dzisiejszy wydatek jest z natury niepelny, wiec %>
+            <%# tempo licza wylacznie dni zamkniete (domain/kampania.js). %>
+            <div class="kafel-dopisek"><%= stan.meta.wyswietlenia.toLocaleString('pl-PL') %> wyświetleń<% if (stan.meta.prognozaZl) { %> · przy tym tempie do końca ~<%= stan.meta.prognozaZl %> zł<% } %></div>
+          </div>
+          <div class="kafel">
+            <div class="kafel-etykieta">Koszt użycia kodu</div>
+            <div class="kafel-wartosc"><%= stan.meta.kosztUzyciaZl ? `${stan.meta.kosztUzyciaZl} zł` : '—' %></div>
+            <div class="kafel-dopisek"><%= stan.meta.kosztUzyciaZl ? 'wydatek ÷ użycia' : 'brak użyć — nie ma czego dzielić' %></div>
+          </div>
+          <div class="kafel">
+            <div class="kafel-etykieta">Koszt kliknięcia</div>
+            <div class="kafel-wartosc"><%= stan.meta.cpcZl ? `${stan.meta.cpcZl} zł` : '—' %></div>
+            <%# Punkt odniesienia z kampanii ruchowej VII–VIII.2026 — bez niego liczba nic %>
+            <%# nie znaczy: „0,40 zł" to drogo czy tanio, wiadomo tylko wobec czegos. %>
+            <div class="kafel-dopisek">dotąd 0,125 zł · <%= stan.meta.klikniecia.toLocaleString('pl-PL') %> kliknięć</div>
+          </div>
+          <div class="kafel">
+            <div class="kafel-etykieta">Zwrot z reklamy</div>
+            <div class="kafel-wartosc"><%= stan.meta.roas ? `${stan.meta.roas}×` : '—' %></div>
+            <div class="kafel-dopisek">przychód z kodem ÷ wydatek</div>
+          </div>
+        </div>
+        <p class="zrodlo-uwaga">
+          <%# ⚠️ ZASIEG BEZ SUMY — patrz domain/kampania.js. Podajemy najlepszy dzien, bo %>
+          <%# tylko on jest prawdziwa liczba osob; suma liczylaby dwa razy kazdego, kto %>
+          <%# widzial reklame dwa dni z rzedu. %>
+          Największy dzienny zasięg: <%= stan.meta.zasiegNajlepszyDzien.toLocaleString('pl-PL') %> osób
+          (zasięgu nie sumujemy — ta sama osoba widziana dwa dni to jedna osoba).
+          <% if (!kampania.meta_kampanie) { %>
+            Liczby obejmują <strong>cały wydatek</strong> podpiętych kont reklamowych w oknie kampanii.
+          <% } %>
+        </p>
+      <% } %>
+    <% } %>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Ruch w sklepie (GA4)</h2>
+    <span class="dopisek"><%= zrodlaWlaczone.ga4 ? swiezosc(stan.ga4) : 'niepodłączony' %></span>
+  </div>
+  <div class="panel-cialo">
+    <% if (!zrodlaWlaczone.ga4) { %>
+      <p class="pusto">Panel nie ma dostępu do GA4 — brak <code>GA4_KLUCZ</code> w konfiguracji.</p>
+    <% } else if (!kampania.ga4_wlasciwosc) { %>
+      <p class="pusto">Ta kampania nie ma wskazanej właściwości GA4 (kolumna <code>ga4_wlasciwosc</code>), więc panel o ruch nie pyta.</p>
+    <% } else { %>
+      <% if (stan.ga4.blad) { %>
+        <p class="pasek-uwaga">Ostatnie pobranie z GA4 się nie udało: <%= stan.ga4.blad %><%
+          %><%= stan.ga4.ostatniSukcesAt ? ` Liczby poniżej pochodzą z ${fmtDataCzasKrotko(stan.ga4.ostatniSukcesAt)}.` : '' %></p>
+      <% } %>
+      <% if (!stan.ga4.saDane) { %>
+        <p class="pusto">Brak danych o ruchu w oknie kampanii — czuwacz jeszcze nie zdążył zapytać.</p>
+      <% } else { %>
+        <div class="kafelki kafelki--cztery">
+          <div class="kafel">
+            <div class="kafel-etykieta">Sesje w sklepie</div>
+            <div class="kafel-wartosc"><%= stan.ga4.sesje.toLocaleString('pl-PL') %></div>
+            <div class="kafel-dopisek">wszystkie źródła, okno kampanii</div>
+          </div>
+          <div class="kafel">
+            <div class="kafel-etykieta">Sesje z Mety</div>
+            <div class="kafel-wartosc"><%= stan.ga4.sesjeMeta.toLocaleString('pl-PL') %></div>
+            <div class="kafel-dopisek">Facebook i Instagram łącznie</div>
+          </div>
+          <div class="kafel">
+            <div class="kafel-etykieta">Odsłony warunków</div>
+            <div class="kafel-wartosc"><%= stan.ga4.odslonyPromo.toLocaleString('pl-PL') %></div>
+            <div class="kafel-dopisek"><%= kampania.ga4_sciezka %></div>
+          </div>
+          <div class="kafel">
+            <div class="kafel-etykieta">Sesji na użycie kodu</div>
+            <div class="kafel-wartosc"><%= stan.ga4.sesjiNaUzycie ?? '—' %></div>
+            <div class="kafel-dopisek">poglądowo</div>
+          </div>
+        </div>
+        <%# ⚠️⚠️ ZMIERZONY ROZJAZD DZIESIECIOKROTNY (20.08.2026): 306 klikniec w Mecie %>
+        <%# wobec 29 sesji Paid Social w GA4 tego samego okna. Zestawienie tych liczb obok %>
+        <%# siebie jako „ile osob weszlo" jest bledem — i dlatego ekran mowi to wprost. %>
+        <p class="zrodlo-uwaga">
+          Kliknięć z Mety i sesji w GA4 <strong>nie porównujemy wprost</strong> — sesja powstaje dopiero
+          po zgodzie na ciasteczka, a przeglądarka w aplikacji Facebooka gubi część trafień.
+          Każde źródło czytamy osobno, jako trend.
+          <%# Pokrycie NAZYWA skale tego rozjazdu jedna liczba — to nie porownanie wynikow, %>
+          <%# tylko miara szczelnosci pomiaru: nagly spadek = zepsute tagowanie, nie gorsza kampania. %>
+          <% if (stan.ga4.pokryciePct !== null) { %>
+            Skala rozjazdu w tym oknie: GA4 widzi ~<strong><%= stan.ga4.pokryciePct %>%</strong> kliknięć
+            linkowych z Mety.
+          <% } %>
+        </p>
+      <% } %>
+    <% } %>
+  </div>
+</section>
+</div>
+
+<% if (stan.dni.length) { %>
+<%# ——— LEJEK REKLAMY: OD WYSWIETLENIA DO ZAMOWIENIA (v2.1, 2026-08-28) ———————————————
+    Zgloszenie właściciela: dwa wykresy pokazywaly wydatek i mylily sie ze soba. Podzial rol:
+    „Pieniadze dzien po dniu" wyzej = WYNIK (zlotowki), ten = MASZYNA (lejek reklamy).
+    Trzy tory na wspolnej osi dni, kazdy z WLASNA skala — porownuje sie KSZTALT (czy
+    klikniecia ida za wyswietleniami, a zamowienia za kliknieciami), nie wysokosci miedzy
+    torami. Tor zamowien liczy UNIE (kod + utm-bez-kodu) w kolorach serii z wykresu
+    pieniedzy — jeden jezyk kolorow na calej stronie. %>
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Od wyświetlenia do zamówienia</h2>
+    <span class="dopisek">lejek reklamy dzień po dniu · trzy osobne skale · ramka = dziś</span>
+  </div>
+  <div class="panel-cialo">
+    <%
+      // Etykiety dni w poniedzialki i na koncach — ta sama gramatyka, co dotad.
+      // Kazdy tor ma WLASNA skale od swojego maksimum (minimum 1 — pusty poczatek
+      // kampanii nie ma prawa dzielic przez zero); wysokosci miedzy torami sie NIE
+      // porownuje i mowi o tym podpis pod wykresem.
+      const dzienTygodnia = (dzien) => ['nd', 'pn', 'wt', 'śr', 'cz', 'pt', 'sb'][new Date(`${dzien}T00:00:00Z`).getUTCDay()];
+      const odmiana = (n, jeden, dwa, piec) => (n === 1 ? jeden : (n >= 2 && n <= 4 ? dwa : piec));
+      const zamDnia = (d) => d.uzycia + (d.zReklamBezKodu ?? 0);
+      const majWys = Math.max(1, ...stan.dni.map((d) => d.wyswietlenia));
+      const majKlik = Math.max(1, ...stan.dni.map((d) => d.kliknieciaLinku ?? 0));
+      const majZam = Math.max(1, ...stan.dni.map(zamDnia));
+      const saWys = stan.dni.some((d) => d.wyswietlenia > 0);
+      const saKlik = stan.dni.some((d) => (d.kliknieciaLinku ?? 0) > 0);
+      const pr = (n, maj) => ((n / maj) * 100).toFixed(1);
+      // Opis dnia: pelny lejek jednego dnia w jednym zdaniu (niesie go dymek/title).
+      const opisDnia = (d) => {
+        const zam = zamDnia(d);
+        const czesci = [
+          `${d.dzien} (${dzienTygodnia(d.dzien)})`,
+          `${zam} ${odmiana(zam, 'zamówienie kampanijne', 'zamówienia kampanijne', 'zamówień kampanijnych')}`,
+        ];
+        if ((d.zReklamBezKodu ?? 0) > 0) czesci.push(`w tym ${d.zReklamBezKodu} z reklam bez kodu`);
+        if (d.wyswietlenia > 0) czesci.push(`${d.wyswietlenia} ${odmiana(d.wyswietlenia, 'wyświetlenie', 'wyświetlenia', 'wyświetleń')}`);
+        if ((d.kliknieciaLinku ?? 0) > 0) czesci.push(`${d.kliknieciaLinku} ${odmiana(d.kliknieciaLinku, 'kliknięcie w link', 'kliknięcia w link', 'kliknięć w link')}`);
+        return czesci.join(' · ');
+      };
+      let etWys = false;
+    %>
+    <div class="wykres-dni wykres-dni--lejek">
+      <% stan.dni.forEach(function (d, i) { %>
+        <%
+          let etykieta = '';
+          if (dzienTygodnia(d.dzien) === 'pn' || i === 0 || i === stan.dni.length - 1) {
+            etykieta = String(Number(d.dzien.slice(8, 10)));
+          }
+          const zam = zamDnia(d);
+        %>
+        <div class="dzien<%= d.dzis ? ' dzien--dzis' : '' %>" title="<%= opisDnia(d) %>">
+          <%# Tory Mety pokazuja sie WYLACZNIE przy danych — pusty pasek pod kazdym dniem
+              przy niepodlaczonej Mecie bylby ozdoba udajaca dane. Tor zamowien jest zawsze:
+              to nasze wlasne liczby. %>
+          <% if (saWys) { %>
+            <div class="dzien-tor dzien-tor--wyswietlenia">
+              <% if (d.wyswietlenia > 0) { %>
+                <% if (d.wyswietlenia === majWys && !etWys) { etWys = true; %>
+                  <span class="dzien-kwota"><%= d.wyswietlenia.toLocaleString('pl-PL') %></span>
+                <% } %>
+                <div class="dzien-slupek dzien-slupek--wyswietlenia" style="height: <%= pr(d.wyswietlenia, majWys) %>%"></div>
+              <% } %>
+            </div>
+          <% } %>
+          <% if (saKlik) { %>
+            <div class="dzien-tor dzien-tor--klik">
+              <% if ((d.kliknieciaLinku ?? 0) > 0) { %>
+                <div class="dzien-slupek dzien-slupek--klik" style="height: <%= pr(d.kliknieciaLinku, majKlik) %>%"></div>
+              <% } %>
+            </div>
+          <% } %>
+          <div class="dzien-tor dzien-tor--zamowienia">
+            <% if (zam > 0) { %>
+              <div class="slupek-zam" style="height: <%= pr(zam, majZam) %>%">
+                <% if ((d.zReklamBezKodu ?? 0) > 0) { %><div class="dzien-slupek dzien-slupek--utm" style="flex: <%= d.zReklamBezKodu %> 0 0"></div><% } %>
+                <% if (d.uzycia > 0) { %><div class="dzien-slupek dzien-slupek--kod" style="flex: <%= d.uzycia %> 0 0"></div><% } %>
+              </div>
+            <% } %>
+          </div>
+          <span class="dzien-etykieta"><%= etykieta %></span>
+        </div>
+      <% }); %>
+    </div>
+    <div class="lejek-opis">
+      <% if (saWys) { %><span class="lp lp--wyswietlenia"><i></i>Wyświetlenia</span><% } %>
+      <% if (saKlik) { %><span class="lp lp--klik"><i></i>Kliknięcia w link</span><% } %>
+      <span class="lp lp--kod"><i></i>Zamówienia z kodem</span>
+      <span class="lp lp--utm"><i></i>Zamówienia z reklam bez kodu</span>
+    </div>
+    <p class="zrodlo-uwaga">Każdy tor ma własną skalę — czyta się kształt (czy kliknięcia idą za wyświetleniami, a zamówienia za kliknięciami), nie wysokości między torami. Pieniądze mają osobny wykres wyżej: tu jest maszyna, tam wynik.</p>
+  </div>
+</section>
+<% } %>
+
+<div class="dwie-szpalty">
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Zamówienia z kodem</h2>
+    <span class="dopisek"><%= stan.wiersze.length %> w zasięgu kampanii</span>
+  </div>
+  <div class="panel-cialo">
+    <% if (!stan.wiersze.length) { %>
+      <p class="pusto"><%
+        %><% if (stan.faza === 'przed') { %>Kampania jeszcze nie wystartowała — kod zacznie działać <%= kampania.od_dnia %>.<%
+        %><% } else { %>Jeszcze nikt nie użył kodu <%= kampania.kod %>.<% } %>
+      </p>
+    <% } else { %>
+      <table class="tab-kampania">
+        <thead>
+          <tr><th>Zamówienie</th><th>Skąd przyszło</th><th>Status</th><th class="liczba">Rabat</th><th class="liczba">Kwota</th></tr>
+        </thead>
+        <tbody>
+          <% stan.wiersze.forEach(function (w) { %>
+            <tr>
+              <td>
+                <a class="numer-zamowienia" href="/zamowienia/<%= w.id %>"><%= w.numer %></a>
+                <div class="wiersz-szczegoly"><%= fmtDataCzasKrotko(w.utworzone_at) %></div>
+              </td>
+              <%# Kanal sprzedazy zszedl do drugiej linii: przy kampanii zawezonej do JEDNEGO %>
+              <%# sklepu ta kolumna powtarzala te sama wartosc w kazdym wierszu, a pytanie %>
+              <%# „skad przyszlo" nie mialo gdzie stanac. %>
+              <td>
+                <%= w.zrodlo.etykieta %>
+                <div class="wiersz-szczegoly"><%= adresKanalu(w.sklep) %></div>
+              </td>
+              <td><span class="<%= klasaStatusu(w.status) %>"><%= etykiety[w.status] ?? w.status %></span></td>
+              <td class="liczba">-<%= w.rabatZl %> zł</td>
+              <td class="liczba">
+                <%= w.kwotaZl %> zł
+                <% if (!w.oplacone && w.status !== 'anulowane') { %><div class="wiersz-szczegoly">do zapłaty</div><% } %>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+</section>
+
+<%# ——— ZAMOWIENIA Z REKLAM (utm) — drugi licznik kampanii (2026-08-27) ———————————————
+    Kod mierzy CALA promocje (rozdaje go tez baner na stronie, wiec trafia i do ruchu
+    z Google), znacznik utm mierzy WYLACZNIE klikniecia w reklame. Czesc zamowien ma oba
+    znaczniki naraz — tych liczb sie NIE sumuje i NIE porownuje. Sekcja stoi OBOK tabeli
+    kodu w jednej siatce (uklad 27.08): dwa liczniki jednej kampanii czyta sie razem. %>
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Zamówienia z reklam</h2>
+    <span class="dopisek">po znaczniku utm w linku reklamy</span>
+  </div>
+  <div class="panel-cialo">
+    <% if (!stan.reklamy.liczba && !stan.reklamy.wiersze.length) { %>
+      <p class="pusto">Żadne zamówienie nie przyszło jeszcze z kliknięcia w reklamę.
+        Liczy się tu każde zamówienie z <code>utm_campaign=<%= kampania.kod %></code> w atrybucji —
+        także bez kodu rabatowego.</p>
+    <% } else { %>
+      <div class="kafelki kafelki--cztery">
+        <div class="kafel">
+          <div class="kafel-etykieta">Zamówienia z reklam</div>
+          <div class="kafel-wartosc"><%= stan.reklamy.liczba %></div>
+          <div class="kafel-dopisek">z kodem <%= stan.reklamy.zKodem %> · bez kodu <%= stan.reklamy.bezKodu %><% if (stan.reklamy.anulowanych) { %> · + <%= stan.reklamy.anulowanych %> anulowanych<% } %></div>
+        </div>
+        <div class="kafel">
+          <div class="kafel-etykieta">Przychód z reklam</div>
+          <div class="kafel-wartosc"><%= stan.reklamy.kwotaZl %> zł</div>
+          <% if (stan.reklamy.bezKodu > 0) { %>
+            <div class="kafel-dopisek">w tym bez kodu <%= stan.reklamy.bezKoduKwotaZl %> zł</div>
+          <% } %>
+        </div>
+        <div class="kafel">
+          <div class="kafel-etykieta">Koszt zamówienia z reklam</div>
+          <div class="kafel-wartosc"><%= stan.reklamy.kosztZamowieniaZl ? `${stan.reklamy.kosztZamowieniaZl} zł` : '—' %></div>
+          <div class="kafel-dopisek"><%= stan.reklamy.kosztZamowieniaZl ? 'wydatek ÷ zamówienia z utm' : 'brak wydatku albo zamówień' %></div>
+        </div>
+        <div class="kafel">
+          <div class="kafel-etykieta">Zwrot z reklam (utm)</div>
+          <div class="kafel-wartosc"><%= stan.reklamy.zwrot ? `${stan.reklamy.zwrot}×` : '—' %></div>
+          <div class="kafel-dopisek">przychód z utm ÷ wydatek</div>
+        </div>
+      </div>
+      <% if (stan.reklamy.wiersze.length) { %>
+        <table class="tab-kampania">
+          <thead>
+            <tr><th>Zamówienie</th><th>Skąd przyszło</th><th>Status</th><th class="liczba">Kwota</th></tr>
+          </thead>
+          <tbody>
+            <% stan.reklamy.wiersze.forEach(function (w) { %>
+              <tr>
+                <td>
+                  <a class="numer-zamowienia" href="/zamowienia/<%= w.id %>"><%= w.numer %></a>
+                  <div class="wiersz-szczegoly"><%= fmtDataCzasKrotko(w.utworzone_at) %></div>
+                </td>
+                <td>
+                  <%= w.zrodlo.etykieta %>
+                  <% if (w.zrodlo.szczegol) { %><div class="wiersz-szczegoly"><%= w.zrodlo.szczegol %></div><% } %>
+                </td>
+                <td><span class="<%= klasaStatusu(w.status) %>"><%= etykiety[w.status] ?? w.status %></span></td>
+                <td class="liczba">
+                  <%= w.kwotaZl %> zł
+                  <% if (!w.oplacone && w.status !== 'anulowane') { %><div class="wiersz-szczegoly">do zapłaty</div><% } %>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      <% } %>
+      <% if (stan.reklamy.pozaZasiegiem) { %>
+        <p class="pasek-uwaga">Poza zasięgiem kampanii: <%= stan.reklamy.pozaZasiegiem %> — znacznik tej kampanii przy zamówieniu z innego sklepu albo spoza okna dat.</p>
+      <% } %>
+    <% } %>
+    <p class="zrodlo-uwaga">
+      <strong>Dwa liczniki, dwie różne rzeczy.</strong> Kod mierzy całą promocję — rozdaje go też
+      baner na stronie, więc trafia i do ruchu z Google. Znacznik utm mierzy wyłącznie kliknięcia
+      w reklamę. Tych liczb się nie sumuje: zamówienie z reklamy z wpisanym kodem stoi w obu.
+    </p>
+  </div>
+</section>
+</div>
+
+<% } %>
+
+<%# ——— SKAD PRZYSZLY ZAMOWIENIA Z KODEM (Etap 3) ——————————————————————————————————
+    Jedyne miejsce, ktore laczy pieniadze z marketingiem po stronie NASZYCH danych:
+    sklep zapisuje zrodlo przy kazdym zamowieniu, wiec ta tabela nie zalezy ani od Mety,
+    ani od GA4, ani od cudzych API. %>
+<% if (kampania && stan.zrodla.length) { %>
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Skąd przyszły zamówienia z kodem</h2>
+    <span class="dopisek">zapisane przez sklep przy zamówieniu</span>
+  </div>
+  <div class="panel-cialo">
+    <table class="tab-kampania">
+      <thead>
+        <tr><th>Źródło</th><th class="liczba">Zamówień</th><th class="liczba">Rabaty</th><th class="liczba">Przychód</th></tr>
+      </thead>
+      <tbody>
+        <% stan.zrodla.forEach(function (z) { %>
+          <tr>
+            <td><%= z.etykieta %></td>
+            <td class="liczba"><%= z.uzycia %></td>
+            <td class="liczba">-<%= z.rabatZl %> zł</td>
+            <td class="liczba"><%= z.kwotaZl %> zł</td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    <%# ⚠️⚠️ ZDANIE, KTORE RATUJE INTERPRETACJE CALEJ TABELI. Bez znacznikow UTM w linkach
+        ruch z Instagrama i Facebooka wpada do „Bezpośrednich" — bo przegladarki w tych
+        aplikacjach gubia odsylacz. Operator, ktory tego nie wie, czyta te tabele jako
+        „kampania nic nie przyniosla". Sprawdzone na produkcji 25.08: ani jedno zamowienie
+        w historii sklepu nie niosło `utm_campaign`. %>
+    <% if (stan.zrodla.some((z) => z.klucz.startsWith('typein') || z.klucz === 'brak')) { %>
+      <p class="zrodlo-uwaga">
+        <strong>„Bezpośrednie" nie znaczy „z nikąd".</strong> Przeglądarki w Instagramie i Facebooku
+        gubią odsyłacz, więc ruch z aplikacji wygląda tu jak wejście bez źródła. Żeby rozdzielić
+        te dwie rzeczy, linki w bio i na naklejkach muszą nieść znacznik
+        <code>?utm_source=instagram&amp;utm_campaign=<%= kampania.kod %></code> — wtedy zamówienia
+        z kampanii pojawią się w tej tabeli pod własną nazwą.
+      </p>
+    <% } %>
+  </div>
+</section>
+<% } %>
+
+<%# ——— WSZYSTKIE KUPONY W HISTORII — takze poza kampania (free50 na PRO itd.) —————— %>
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Wszystkie kupony</h2>
+    <span class="dopisek">cała historia bazy, wszystkie kanały Woo</span>
+  </div>
+  <div class="panel-cialo">
+    <% if (!agregat.length) { %>
+      <p class="pusto">W bazie nie ma jeszcze żadnego zamówienia z kuponem.</p>
+    <% } else { %>
+      <table class="tab-kampania">
+        <thead>
+          <tr><th>Kod</th><th class="liczba">Użycia</th><th class="liczba">Rabaty</th><th class="liczba">Obrót</th><th>Ostatnio</th></tr>
+        </thead>
+        <tbody>
+          <% agregat.forEach(function (k) { %>
+            <tr>
+              <td><span class="znacznik znacznik--kupon">🎟 <%= k.kod %></span></td>
+              <td class="liczba"><%= k.uzycia %><% if (k.anulowane) { %> <span class="wiersz-szczegoly-inline">(+<%= k.anulowane %> anul.)</span><% } %></td>
+              <td class="liczba">-<%= k.rabatyZl %> zł</td>
+              <td class="liczba"><%= k.obrotZl %> zł</td>
+              <td><%= k.ostatnio ?? '—' %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+</section>
+<%- include('_kampania-stopka.ejs') %>

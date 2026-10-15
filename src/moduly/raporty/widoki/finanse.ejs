@@ -1,0 +1,865 @@
+<%# Zakladka FINANSE — RACHUNEK ZARZADCZY. Odpowiada na JEDNO pytanie: „ile z tego zostaje",
+    a nie „ile sprzedalismy". Przebudowana 17.08.2026 wg zatwierdzonej makiety
+    (docs/superpowers/specs/2026-08-17-oms-finanse-przebudowa-makieta.html): zakres
+    (kompaktowy) · zdanie stale · bariery · KPI z delta · KASKADA · kategorie jako slupki ·
+    wskazniki · podatek z prognoza progu · Panel a KPiR + VAT · miesiac po miesiacu.
+
+    ⚠️⚠️ TO NIE JEST WYNIK KSIEGOWY i pierwszy pas ekranu mowi to WPROST — ZAWSZE, nie
+    warunkowo. Pelna ksiegowosc prowadzi biuro rachunkowe i jego liczby sa wiazace. Pomiar
+    na I polroczu 2026: sprzedaz liczona po dacie ZAMOWIENIA jest wyzsza od przychodu w KPiR
+    (ksiegowanego po dacie WYSTAWIENIA faktury) o ok. 2,5% po odjeciu zwrotow i duplikatow.
+
+    ⚠️ WIDOK NICZEGO NIE LICZY. Wynik, „zostaje", delty, pokrycie kosztow, rozbicie na
+    kategorie, prog rentownosci, podatek narastajaco, prognoza progu i rachunek miesiac po
+    miesiacu przychodza policzone z domeny (domain/rachunek-zarzadczy.js, domain/podatek-skala.js)
+    — na groszach, calkowitych. Tutaj zostaje ZAPIS liczby po polsku i GEOMETRIA RYSUNKU
+    (szerokosc i przesuniecie slupka). Druga kopia arytmetyki rozjechalaby sie z pierwsza przy
+    pierwszej zmianie, a chodzi o pieniadze (ta sama zasada, co w raporty.ejs i koszty.ejs).
+
+    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w layout-oms.ejs (paleta ma
+    wariant jasny i ciemny, wiec wartosc wpisana tutaj zadzialalaby w jasnym i po cichu
+    zniknela w ciemnym). Klasy sa te same, co na zakladkach RAPORTY, KOSZTY i FAKTURY.
+
+    ⚠️ ODNOSNIKI IDA NA `--link`, NIGDY `--marka` — w jasnym motywie kontrast `--marka` na tle
+    wynosi 2,07 (zmierzone), czyli napis jest praktycznie niewidoczny; `--link` daje 7,00. %>
+
+<%
+  // '1234.50' → '1 234,50'. To NIE JEST arytmetyka, tylko polski zapis liczby (ta sama
+  // funkcja, co w raporty.ejs, koszty.ejs i faktury.ejs): nic sie tu nie dodaje, nie dzieli
+  // i nie zaokragla.
+  const kwota = (napis) => {
+    const s = String(napis ?? '').trim();
+    if (!s) return '';
+    const minus = s.startsWith('-');
+    const [calosc, ulamek = ''] = s.replace('-', '').split('.');
+    const grosze = ulamek.length >= 2 ? ulamek : ulamek.padEnd(2, '0');
+    return `${minus ? '−' : ''}${calosc.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')},${grosze}`;
+  };
+  // ⚠️ GROSZE NA ZLOTOWKI PRZELICZA `zl` Z DOMENY (domain/kwoty.js), podane przez trase —
+  // widok NIE DZIELI pieniedzy przez sto u siebie. Tutaj zostaje sam zapis po polsku.
+  const zlote = (gr) => kwota(zl(gr ?? 0));
+  // Liczebnik po polsku ma TRZY formy, nie dwie (ta sama funkcja, co w koszty.ejs).
+  const ile = (n, jeden, kilka, wiele) => {
+    const d = Math.abs(n) % 10;
+    const s = Math.abs(n) % 100;
+    if (n === 1) return `${n} ${jeden}`;
+    return `${n} ${d >= 2 && d <= 4 && (s < 12 || s > 14) ? kilka : wiele}`;
+  };
+  // ⚠️ MINUS TYPOGRAFICZNY (U+2212), ten sam co w `kwota` wyzej — dywiz z `toFixed` („-10.1")
+  // jest o polowe krotszy i przy kwocie obok wyglada jak dwa rozne znaki.
+  const procent = (n) => Number(n).toFixed(1).replace('.', ',').replace('-', '−');
+  // ⚠️⚠️ SZEROKOSC SLUPKA MA KROPKE, NIE POLSKI PRZECINEK. `width: 100,0%` jest deklaracja
+  // NIEPOPRAWNA — przegladarka wyrzuca ja w calosci i slupek po prostu ZNIKA, mimo ze liczba
+  // obok niego jest poprawna. Zdarzylo sie naprawde, 13.08, na ekranie sprzedazy. Przecinek
+  // zostaje WYLACZNIE przy liczbach czytanych przez czlowieka (`procent` wyzej).
+  const szerokoscCss = (n) => Number(n).toFixed(1);
+
+  // ⚠️⚠️ DELTA `null` TO MYSLNIK, NIE „0%" (ta sama funkcja i ta sama zasada, co w raporty.ejs).
+  // Zero znaczy „bez zmian" i jest zdaniem o faktach; przy okresie porownawczym sprzed podlogi
+  // 2026-01 zadnego faktu nie ma, a zdanie zmyslone wyglada tak samo wiarygodnie jak prawdziwe.
+  const delta = (n) => {
+    if (n === null || n === undefined) {
+      return '<span class="kafel-delta">— brak porównania</span>';
+    }
+    const strzalka = n > 0 ? '↑' : (n < 0 ? '↓' : '=');
+    const klasa = n > 0 ? ' kafel-delta--wzrost' : (n < 0 ? ' kafel-delta--spadek' : '');
+    const dopisek = nazwaWczesniej ? ` <em>vs ${nazwaWczesniej}</em>` : '';
+    return `<span class="kafel-delta${klasa}">${strzalka} ${procent(Math.abs(n))}%${dopisek}</span>`;
+  };
+
+  // ⚠️ PRZYIMEK JEST CZESCIA WPISU, a nie doklejany osobno: przed „wrześniu" po polsku stoi
+  // „we", nie „w". Sklejane w szablonie dawalo „w wrześniu".
+  const W_MIESIACU = ['w styczniu', 'w lutym', 'w marcu', 'w kwietniu', 'w maju', 'w czerwcu',
+    'w lipcu', 'w sierpniu', 'we wrześniu', 'w październiku', 'w listopadzie', 'w grudniu'];
+
+  // ⚠️ BRAK DANYCH RECZNYCH TO NIE JEST ZERO. Miesiac bez wiersza ZUS-u pokazywalby
+  // „− 0,00 zł", czyli zdanie „skladki nie bylo" — a to jest falsz, ktorego nikt nie ma jak
+  // zakwestionowac.
+  const brakDanych = rachunek.brakujaceDane.length > 0;
+  const brakujace = rachunek.brakujaceDane.join(', ');
+
+  // ——— GEOMETRIA KASKADY ————————————————————————————————————————————————————————
+  // To NIE JEST arytmetyka o pieniadzach, tylko GEOMETRIA RYSUNKU (ta sama granica, co przy
+  // sezonowosci w raporty.ejs): wszystkie kwoty przychodza policzone z domeny, a tutaj
+  // zamieniaja sie na procent toru. Skala jest JEDNA dla calej kaskady: 100% = przychod.
+  //
+  // ⚠️⚠️ POZIOMY SA PRZYCIETE DO ZERA. Miesiac na minusie ma wynik ujemny, a ujemnej
+  // szerokosci nie ma — jakikolwiek narysowany blok klamalby, ze cos zostalo. Zamiast tego
+  // ekran mowi wprost, ze miesiac jest na minusie (pas nizej).
+  const skala = Math.max(1, rachunek.przychodNettoGrosze);
+  const naSkali = (gr) => Math.min(100, Math.max(0, (gr / skala) * 100));
+  const poWyniku = naSkali(rachunek.wynikGrosze);
+  const poZus = naSkali(rachunek.wynikGrosze - rachunek.zusGrosze);
+  const poPit = naSkali(rachunek.wynikGrosze - rachunek.zusGrosze - rachunek.pit5Grosze);
+  const naMinusie = rachunek.przychodNettoGrosze > 0 && rachunek.wynikGrosze < 0;
+%>
+
+<div class="glowa-ekranu">
+  <h1>Finanse</h1>
+  <span class="krok">
+    <%# Zakres wpisany recznie NIE MA nazwy kalendarzowej i `nazwaOkresu` oddaje wtedy same
+        daty — wypisanie ich drugi raz obok wygladaloby jak dwa rozne okresy. %>
+    ile z tego zostaje · <strong><%= nazwa %></strong><%
+      if (nazwa !== `${zakres.od} – ${zakres.do}`) { %> · <%= zakres.od %> – <%= zakres.do %><% } %>
+    · <a href="/raporty">sprzedaż</a>
+    · <a href="/finanse/dane/<%= zakres.od.slice(0, 7) %>">dane miesiąca</a>
+  </span>
+</div>
+
+<%# ——— WYBOR ZAKRESU ————————————————————————————————————————————————————————
+    Zwykly formularz GET i piec odnosnikow, bez ani jednej linii skryptu. Skroty sa
+    ODNOSNIKAMI, a nie przyciskami formularza: kazdy z nich jest adresem, ktory da sie
+    zapisac w zakladkach.
+
+    Kompaktowo (17.08.2026, jak na Raportach): skroty i pola dat w JEDNYM wierszu, cala
+    metodologia zostala, ale w <details> — na FHD stary panel zjadal jedna trzecia ekranu,
+    zanim pokazala sie pierwsza liczba. %>
+<section class="panel bez-druku panel--zakres">
+  <div class="zakres-rzad">
+    <div class="pola-w-rzedzie">
+      <% skroty.forEach(function (s) { %>
+        <%# Etykiety przychodza Z DOMENY (trasa pyta o nie `zakresSkrotu`), a nie z drugiej
+            listy napisow w tym pliku — dzieki temu porownanie ponizej nie ma jak sie
+            rozjechac. Zakres wpisany recznie nie ma etykiety i nie zaznacza zadnego
+            przycisku, i tak ma byc.
+
+            ⚠️⚠️ OKRES PRZYSZLY JEST NAPISEM, NIE ODNOSNIKIEM — dokladnie ta sama regula
+            i ta sama barwa, co przy miesiacu przyszlym w pasku na /finanse/dane. Q4
+            ogladany w sierpniu nie ma ani jednej sprzedazy, ani jednego kosztu i ani
+            jednego wpisu ZUS-u, wiec klikalny przycisk prowadzilby wylacznie w pas
+            „nie wpisano danych za…". %>
+        <% if (s.przyszly) { %>
+          <span class="btn btn--maly btn--przyszly"
+                title="<%= s.etykieta %> jeszcze się nie zaczął"><%= s.etykieta %></span>
+        <% } else { %>
+          <a class="btn btn--maly<%= zakres.etykieta === s.etykieta ? ' btn--glowny' : '' %>"
+             href="/finanse?skrot=<%= s.klucz %>"><%= s.etykieta %></a>
+        <% } %>
+      <% }); %>
+    </div>
+    <%# ⚠️ POLA STOJA W `.zakres-data`, NIGDY W `.rzad` ani `.pola` — `.rzad` nie styluje listy
+        rozwijanej w ogole i zweza pola do 6 rem (uzasadnienie w raporty.ejs), a `.pola` to
+        `flex-direction: column`, wiec rozciagalo pasek zakresu na trzy wiersze i zjadalo
+        gore ekranu — dokladnie to, co ta przebudowa mialo naprawic. `.zakres-data` niesie
+        box-sizing: border-box, bez ktorego pole daty wystaje poza komorke o wysciolke. %>
+    <div class="zakres-formularze">
+      <%# ⚠️ OSOBNY FORMULARZ, nie jedno pole doklejone do zakresu dat — formularzy nie da sie
+          zagniezdzac, a pola `od`/`do` sa `required`: wpiete razem blokowalyby wyslanie
+          samego miesiaca. Trasa (routes/finanse.js) przeklada `?miesiac=RRRR-MM` na prawdziwy
+          zakres `od`/`do` przekierowaniem. %>
+      <form method="get" action="/finanse" class="zakres-formularz">
+        <label class="zakres-data"><span>Miesiąc</span>
+          <input type="month" name="miesiac" value="<%= miesiacWyboru %>" required></label>
+        <button class="btn" type="submit">Pokaż</button>
+      </form>
+      <form method="get" action="/finanse" class="zakres-formularz">
+        <label class="zakres-data"><span>Od dnia</span>
+          <input type="date" name="od" value="<%= zakres.od %>" required></label>
+        <label class="zakres-data"><span>Do dnia</span>
+          <input type="date" name="do" value="<%= zakres.do %>" required></label>
+        <button class="btn btn--glowny" type="submit">Pokaż</button>
+        <%# Wydruk robi przegladarka — panel nie rysuje wlasnego PDF-u i nie udaje, ze umie
+            wiecej, niz umie. `@media print` (layout-oms.ejs) chowa pasek nawigacji i ten
+            formularz, bo na kartce sa to kolorowe prostokaty, ktorych nie da sie kliknac. %>
+        <button class="btn" type="button" onclick="window.print()">Drukuj</button>
+      </form>
+    </div>
+  </div>
+  <details class="metodologia">
+    <summary>Jak liczony jest rachunek i dlaczego otwiera się na miesiącu poprzednim</summary>
+    <p class="wyjasnienie">
+      Rachunek zaczyna się od <strong><%= podloga %></strong>: kosztów sprzed KSeF panel nie
+      zna, więc wcześniejszy wynik byłby zyskiem zawyżonym o niewidoczne wydatki. Miesiąc
+      trwający pokaże pełną sprzedaż przy niepełnych kosztach — dlatego ekran otwiera się na
+      miesiącu poprzednim, a skróty obejmują zawsze <strong>pełne miesiące</strong>.
+    </p>
+    <p class="wyjasnienie">
+      <strong>Porównanie</strong> przy kaflach to poprzedni taki sam okres kalendarzowy
+      (miesiąc z miesiącem, kwartał z kwartałem). Okres sprzed <%= podloga %> nie istnieje —
+      wtedy zamiast liczby stoi „brak porównania". Porównania rok do roku pojawią się
+      w styczniu 2027: wcześniej po drugiej stronie nie ma żadnych kosztów.
+    </p>
+    <p class="wyjasnienie">
+      <strong>Przychód</strong> to sprzedaż z panelu i historii Apilo po dniu złożenia
+      zamówienia, pomniejszona o zwroty z rejestru — w miesiącu, w którym zwrot nastąpił.
+      <strong>Koszty</strong> to faktury z KSeF i koszty dopisane ręcznie, po dacie
+      wystawienia. <strong>ZUS, PIT-5 i VAT-7</strong> wpisuje się ręcznie: żadne API ich nie
+      oddaje.
+    </p>
+  </details>
+</section>
+
+<%# ——— ZDANIE STALE ——————————————————————————————————————————————————————————
+    ⚠️⚠️ STOI ZAWSZE, BEZ ANI JEDNEGO WARUNKU. To jest jedyny pas na tym ekranie, ktory nie
+    zalezy od danych — bo pomylka „to sa liczby ksiegowe" nie zalezy od danych. Zwarty
+    (jedna linijka), zeby nie odpychal liczb w dol, ale NIE zwijany: schowany pod <details>
+    przestalby dzialac na czlowieka, ktory go nie rozwinie. %>
+<p class="pasek-uwaga pasek-uwaga--zwarty">
+  <strong>To nie jest wynik księgowy.</strong> Wiążące są liczby Twojego biura rachunkowego;
+  panel liczy sprzedaż po <strong>dniu złożenia zamówienia</strong>, a KPiR po dacie
+  wystawienia faktury — zmierzona różnica to ok. 2,5%.
+</p>
+
+<%# ——— BARIERA 1: BRAK DANYCH RECZNYCH ————————————————————————————————————————
+    ⚠️⚠️ ZUS, PIT-5 i VAT-7 nie przychodza z zadnego API i panel ich NIE ZGADUJE — ani ze
+    sredniej, ani z poprzedniego miesiaca. Bez nich „zostaje" NIE DA SIE policzyc: kwota
+    pomniejszona o nieznany ZUS wyglada dokladnie tak samo wiarygodnie jak prawdziwa. %>
+<% if (rachunek.brakujaceDane.length) { %>
+  <p class="pasek-blokada">
+    <strong>Nie wpisano danych za: <%= brakujace %>.</strong>
+    Bez nich nie da się policzyć „zostaje" — przychód, koszty i wynik są policzone normalnie.
+    <a href="/finanse/dane/<%= rachunek.brakujaceDane[0] %>">Wpisz dane za
+      <%= rachunek.brakujaceDane[0] %></a>.
+  </p>
+<% } %>
+
+<%# ——— BARIERA 2: ZAKRES URWANY W POLOWIE MIESIACA ————————————————————————————
+    ⚠️⚠️ Sprzedaz liczy sie CO DO DNIA, ale koszty (po dacie wystawienia faktury), ZUS,
+    PIT-5 i VAT-7 sa MIESIECZNE i innych nie ma. Rachunek za 5–20 czerwca odjalby wiec od
+    szesnastu dni sprzedazy koszty CALEGO czerwca: wynik wyszedlby gleboko ujemny i wygladal
+    jak zapasc, a nie jak zle zadane pytanie. %>
+<% if (!rachunek.pelneMiesiace) { %>
+  <p class="pasek-blokada">
+    <strong>Ten zakres nie pokrywa się z pełnymi miesiącami.</strong>
+    Sprzedaż policzyła się co do dnia, ale koszty, ZUS i PIT-5 są miesięczne i innych nie ma
+    — więc od części sprzedaży odejmują się <strong>koszty całych miesięcy</strong>. Wynik
+    i „zostaje" nie mówią wtedy prawdy o tym wycinku. Do decyzji bierz pełne miesiące.
+  </p>
+<% } %>
+
+<%# ——— KPI ——————————————————————————————————————————————————————————————————
+    Cztery liczby, po ktore czlowiek tu przychodzi — na gorze, a nie w polowie tabeli.
+    Kazda z delta wzgledem okresu poprzedniego (`null` = „brak porownania"). %>
+<div class="kafelki kafelki--cztery">
+  <div class="kafel">
+    <div class="kafel-etykieta">Przychód netto</div>
+    <div class="kafel-wartosc"><%= zlote(rachunek.przychodNettoGrosze) %> zł</div>
+    <div class="kafel-dopisek">
+      <% if (rachunek.zwrotyNettoGrosze) { %>
+        po odjęciu zwrotów <%= zlote(rachunek.zwrotyNettoGrosze) %> zł
+      <% } else { %>
+        sprzedaż po dniu złożenia zamówienia
+      <% } %>
+    </div>
+    <div class="kafel-delty"><%- delta(delty.przychod) %></div>
+  </div>
+  <div class="kafel">
+    <div class="kafel-etykieta">Wynik</div>
+    <div class="kafel-wartosc"><%= zlote(rachunek.wynikGrosze) %> zł</div>
+    <div class="kafel-dopisek">
+      marża <%= procent(rachunek.marza) %>% — przed ZUS-em i podatkiem
+    </div>
+    <div class="kafel-delty"><%- delta(delty.wynik) %></div>
+  </div>
+  <div class="kafel">
+    <div class="kafel-etykieta">ZOSTAJE</div>
+    <%# ⚠️ MYSLNIK, NIE ZERO — patrz bariera 1 wyzej. %>
+    <div class="kafel-wartosc">
+      <% if (rachunek.zostajeGrosze === null) { %>
+        — nie da się policzyć
+      <% } else { %>
+        <%= zlote(rachunek.zostajeGrosze) %> zł
+      <% } %>
+    </div>
+    <div class="kafel-dopisek">
+      <% if (rachunek.zostajeGrosze === null) { %>
+        brakuje danych za <%= brakujace %>; zera nie wstawiamy
+      <% } else { %>
+        po ZUS-ie i zapłaconej zaliczce PIT
+      <% } %>
+    </div>
+    <div class="kafel-delty"><%- delta(delty.zostaje) %></div>
+  </div>
+  <div class="kafel">
+    <div class="kafel-etykieta">Podatek narastająco</div>
+    <div class="kafel-wartosc"><%= zlote(rachunek.podatek.podatekGrosze) %> zł</div>
+    <div class="kafel-dopisek">
+      <span class="znacznik znacznik--uwaga">SZACUNEK</span>
+      podstawa <%= zlote(rachunek.podatek.podstawaGrosze) %> zł
+    </div>
+    <div class="kafel-delty">
+      <span class="kafel-delta">
+        <% if (rachunek.podatek.wDrugimProgu) { %>
+          próg 32% przekroczony
+        <% } else { %>
+          do progu 32%: <%= zlote(rachunek.podatek.doProguGrosze) %> zł
+        <% } %>
+      </span>
+    </div>
+  </div>
+</div>
+
+<%# ——— KASKADA: OD PRZYCHODU DO „ZOSTAJE" ————————————————————————————————————
+    Wybrany wariant makiety: poziomy, KWOTY PO LEWEJ stronie paskow (oko idzie nazwa →
+    kwota → dlugosc paska, bez przeskoku na drugi koniec ekranu). Wszystkie tory stoja na
+    JEDNEJ skali: caly tor = przychod, wiec od razu widac, ile zjadaja koszty, a ile ZUS
+    i podatek.
+
+    ⚠️ Pomniejszenia rysuja sie jako segment ZDJETY z prawej strony — od poziomu przed
+    odjeciem do poziomu po nim. Dzieki temu suma odcinkow nigdy nie przekracza toru,
+    takze przy zaokragleniach. %>
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Od przychodu do „zostaje"</h2>
+    <span class="dopisek">kwoty netto · wspólna skala — cały tor to przychód</span>
+  </div>
+  <div class="panel-cialo">
+    <div class="kaskada kaskada--kwoty-lewo">
+      <div class="kaskada-wiersz">
+        <span class="kaskada-nazwa"><strong>Przychód netto</strong></span>
+        <span class="liczba"><%= zlote(rachunek.przychodNettoGrosze) %> zł</span>
+        <div class="kaskada-tor" aria-hidden="true">
+          <% if (rachunek.przychodNettoGrosze > 0) { %>
+            <div class="kaskada-czesc" style="left: 0; width: 100.0%"></div>
+          <% } %>
+        </div>
+      </div>
+      <div class="kaskada-wiersz">
+        <span class="kaskada-nazwa">− koszty netto</span>
+        <span class="liczba">− <%= zlote(rachunek.kosztyNettoGrosze) %> zł</span>
+        <div class="kaskada-tor" aria-hidden="true">
+          <% if (rachunek.kosztyNettoGrosze > 0) { %>
+            <div class="kaskada-czesc kaskada-czesc--minus"
+                 style="left: <%= szerokoscCss(poWyniku) %>%; width: <%= szerokoscCss(100 - poWyniku) %>%"></div>
+          <% } %>
+        </div>
+      </div>
+      <div class="kaskada-wiersz kaskada-wiersz--razem">
+        <span class="kaskada-nazwa"><strong>WYNIK</strong>
+          <span class="kanal-drobne">marża <%= procent(rachunek.marza) %>%</span></span>
+        <span class="liczba"><strong><%= zlote(rachunek.wynikGrosze) %> zł</strong></span>
+        <div class="kaskada-tor" aria-hidden="true">
+          <% if (rachunek.wynikGrosze > 0) { %>
+            <div class="kaskada-czesc" style="left: 0; width: <%= szerokoscCss(poWyniku) %>%"></div>
+          <% } %>
+        </div>
+      </div>
+      <div class="kaskada-wiersz">
+        <span class="kaskada-nazwa">− ZUS (przelew razem)</span>
+        <span class="liczba">
+          <% if (brakDanych && !rachunek.zusGrosze) { %>
+            — nie wpisano
+          <% } else { %>
+            − <%= zlote(rachunek.zusGrosze) %> zł
+          <% } %>
+        </span>
+        <div class="kaskada-tor" aria-hidden="true">
+          <% if (rachunek.zusGrosze > 0 && poZus < poWyniku) { %>
+            <div class="kaskada-czesc kaskada-czesc--minus"
+                 style="left: <%= szerokoscCss(poZus) %>%; width: <%= szerokoscCss(poWyniku - poZus) %>%"></div>
+          <% } %>
+        </div>
+      </div>
+      <div class="kaskada-wiersz">
+        <span class="kaskada-nazwa">− PIT-5 zapłacony</span>
+        <span class="liczba">
+          <% if (brakDanych && !rachunek.pit5Grosze) { %>
+            — nie wpisano
+          <% } else { %>
+            − <%= zlote(rachunek.pit5Grosze) %> zł
+          <% } %>
+        </span>
+        <div class="kaskada-tor" aria-hidden="true">
+          <% if (rachunek.pit5Grosze > 0 && poPit < poZus) { %>
+            <div class="kaskada-czesc kaskada-czesc--minus"
+                 style="left: <%= szerokoscCss(poPit) %>%; width: <%= szerokoscCss(poZus - poPit) %>%"></div>
+          <% } %>
+        </div>
+      </div>
+      <div class="kaskada-wiersz kaskada-wiersz--razem">
+        <span class="kaskada-nazwa"><strong>ZOSTAJE</strong></span>
+        <span class="liczba">
+          <% if (rachunek.zostajeGrosze === null) { %>
+            <strong>— nie da się policzyć</strong>
+          <% } else { %>
+            <strong><%= zlote(rachunek.zostajeGrosze) %> zł</strong>
+          <% } %>
+        </span>
+        <div class="kaskada-tor" aria-hidden="true">
+          <% if (rachunek.zostajeGrosze !== null && rachunek.zostajeGrosze > 0) { %>
+            <div class="kaskada-czesc kaskada-czesc--zostaje"
+                 style="left: 0; width: <%= szerokoscCss(poPit) %>%"></div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <%# ⚠️ MIESIAC NA MINUSIE MA TO POWIEDZIEC. Bez tego zdania kaskada bez blokow wyglada
+        jak ekran, ktory sie nie wczytal. %>
+    <% if (naMinusie) { %>
+      <p class="pasek-info">
+        Koszty przewyższyły przychód — <strong>ten okres jest na minusie</strong>, więc pod
+        wynikiem nie ma czego rysować. Kwota obok jest ujemna.
+      </p>
+    <% } %>
+  </div>
+</section>
+
+<%# ——— KATEGORIE ——————————————————————————————————————————————————————————————
+    ⚠️⚠️ RYSUJA SIE WYLACZNIE PRZY `kosztyZnane` (pokrycie ≥ 95% kwoty z KPiR). Rozbicie
+    policzone z jednej trzeciej wydatkow dalby prog rentownosci, w ktory dalo by sie
+    uwierzyc — i bylby zmysleniem. To naprawilo cichy blad w repo `raporty`: Q2 i polrocze
+    rysowaly rozbicie z samego czerwca, opisujac je jako rozbicie CALEGO okresu.
+
+    Kolumna TYPU (staly/zmienny) zniknela z listy 17.08.2026 na zyczenie wlasciciela —
+    ⚠️ ale PODZIAL zostaje w domenie i z niego dalej licza sie prog rentownosci i marza po
+    kosztach zmiennych (kafle nizej). Usuniecie go z `wskazniki-zarzadcze.js` wygasiloby oba. %>
+<% if (rachunek.kosztyZnane) { %>
+  <%
+    // ⚠️ GEOMETRIA RYSUNKU, nie arytmetyka o pieniadzach: najszerszy slupek zajmuje caly tor,
+    // reszta proporcjonalnie. Kwoty obok przychodza policzone z domeny i nie powstaja z tej
+    // liczby. `Math.max(1, …)` chroni przed dzieleniem przez zero.
+    const najwyzszaKategoria = Math.max(1, ...rachunek.kategorie.map((k) => k.nettoGrosze));
+    const razemKategorie = rachunek.kategorie.reduce((s, k) => s + k.nettoGrosze, 0);
+  %>
+  <section class="panel">
+    <div class="panel-glowa">
+      <h2>Na co poszły pieniądze</h2>
+      <span class="dopisek">
+        netto · słupek względem największej kategorii<% if (rachunek.pokrycieKosztow !== null) { %>
+          · koszty z panelu pokrywają <%= procent(rachunek.pokrycieKosztow) %>% kwoty z KPiR<% } %>
+      </span>
+    </div>
+    <div class="panel-cialo">
+      <div class="kanaly-lista">
+        <div class="kanal-naglowek kategoria-wiersz" aria-hidden="true">
+          <span></span><span></span>
+          <span class="liczba">netto</span><span class="liczba">udział</span>
+          <span class="liczba">dok.</span>
+        </div>
+        <% rachunek.kategorie.forEach(function (k) { %>
+          <div class="kanal-wiersz kategoria-wiersz">
+            <span class="kanal-nazwa" title="<%= k.kategoria %>"><%= k.kategoria %></span>
+            <div class="slupek-tor" aria-hidden="true">
+              <%# ⚠️ Wypelnienie rysuje sie TYLKO przy kwocie niezerowej: 2 px slupka przy
+                  zerze bylyby zdaniem zmyslonym. %>
+              <% if (k.nettoGrosze > 0) { %>
+                <div class="slupek-wypelnienie"
+                     style="width: <%= szerokoscCss((k.nettoGrosze / najwyzszaKategoria) * 100) %>%"></div>
+              <% } %>
+            </div>
+            <span class="liczba"><%= zlote(k.nettoGrosze) %> zł</span>
+            <span class="liczba kanal-drobne">
+              <%= procent(razemKategorie ? (k.nettoGrosze / razemKategorie) * 100 : 0) %>%
+            </span>
+            <span class="liczba kanal-drobne"><%= k.dokumentow %></span>
+          </div>
+        <% }); %>
+        <% if (!rachunek.kategorie.length) { %>
+          <p class="pusto-sekcja">W tym okresie nie ma ani jednej faktury kosztowej.</p>
+        <% } %>
+      </div>
+      <details class="metodologia">
+        <summary>„Nieprzypisane", podział na koszty stałe i zmienne, próg 95%</summary>
+        <p class="wyjasnienie">
+          „Nieprzypisane" to dokumenty, których <strong>NIP nie ma jeszcze kategorii</strong> —
+          przypisz ją na zakładce <a href="/koszty">Koszty</a>, a obejmie wszystkie faktury tego
+          sprzedawcy, także starsze. Podział na koszty <strong>zmienne i stałe</strong> nadal
+          działa w tle: z niego liczą się próg rentowności i marża po kosztach zmiennych niżej
+          — z listy zniknęła tylko kolumna. Przy pokryciu KPiR poniżej 95% rozbicie i wskaźniki
+          znikają, bo podział policzony z części wydatków byłby zmyślony.
+        </p>
+      </details>
+    </div>
+  </section>
+
+  <%# ——— WSKAZNIKI ——————————————————————————————————————————————————————————
+      Cztery liczby, ktore oglada sie co miesiac. Gasna RAZEM z kategoriami — policzone
+      z niepelnych kosztow sa dokladnie tym zmysleniem, przed ktorym broni prog 95%. %>
+  <div class="kafelki kafelki--cztery">
+    <div class="kafel">
+      <div class="kafel-etykieta">Próg rentowności</div>
+      <div class="kafel-wartosc">
+        <% if (rachunek.wskazniki.progRentownosciGrosze === null) { %>
+          — nie ma progu
+        <% } else { %>
+          <%= zlote(rachunek.wskazniki.progRentownosciGrosze) %> zł
+        <% } %>
+      </div>
+      <div class="kafel-dopisek">
+        <% if (rachunek.wskazniki.progRentownosciGrosze === null) { %>
+          <%# ⚠️ Marza po zmiennych ≤ 0 znaczy, ze kazda sprzedaz DOKLADA do interesu —
+              progu wtedy nie ma, a wyliczony bylby liczba ujemna wygladajaca jak swietny
+              wynik. %>
+          każda sprzedaż dokłada do interesu
+        <% } else { %>
+          tyle trzeba sprzedać, żeby pokryć koszty stałe
+          (<%= zlote(rachunek.wskazniki.kosztyStaleGrosze) %> zł)
+        <% } %>
+      </div>
+    </div>
+    <div class="kafel">
+      <div class="kafel-etykieta">Marża po kosztach zmiennych</div>
+      <div class="kafel-wartosc">
+        <% if (rachunek.wskazniki.marzaPoZmiennych === null) { %>
+          —
+        <% } else { %>
+          <%= procent(rachunek.wskazniki.marzaPoZmiennych) %>%
+        <% } %>
+      </div>
+      <div class="kafel-dopisek">
+        koszty zmienne <%= zlote(rachunek.wskazniki.kosztyZmienneGrosze) %> zł
+      </div>
+    </div>
+    <div class="kafel">
+      <div class="kafel-etykieta">Koszt obsługi zamówienia</div>
+      <div class="kafel-wartosc">
+        <% if (rachunek.wskazniki.kosztObslugiGrosze === null) { %>
+          —
+        <% } else { %>
+          <%= zlote(rachunek.wskazniki.kosztObslugiGrosze) %> zł
+        <% } %>
+      </div>
+      <div class="kafel-dopisek">prowizje, kurierzy i opakowania na jedno zamówienie</div>
+    </div>
+    <div class="kafel">
+      <div class="kafel-etykieta">Prowizja Allegro ÷ sprzedaż Allegro</div>
+      <div class="kafel-wartosc">
+        <% if (rachunek.udzialProwizjiAllegro === null) { %>
+          —
+        <% } else { %>
+          <%= procent(rachunek.udzialProwizjiAllegro) %>%
+        <% } %>
+      </div>
+      <div class="kafel-dopisek">
+        <% if (rachunek.prowizjaAllegro === null) { %>
+          <%# ⚠️ Prowizje rozstrzyga OKRES Z NUMERU dokumentu, wiec dla kwartalu trzeba by ja
+              skladac miesiac po miesiacu — zsumowana „jakos" dalaby wskaznik nie do
+              zakwestionowania i nieprawdziwy. %>
+          liczy się tylko dla pełnego miesiąca kalendarzowego
+        <% } else { %>
+          <%= zlote(rachunek.prowizjaAllegro.nettoGrosze) %> zł
+          z <%= ile(rachunek.prowizjaAllegro.dokumentow, 'dokumentu', 'dokumentów', 'dokumentów') %>
+          przy sprzedaży <%= zlote(rachunek.sprzedazAllegroGrosze) %> zł ·
+          <strong>faktura dotyczy miesiąca poprzedniego</strong>, więc liczy się po okresie
+          z numeru dokumentu
+        <% } %>
+      </div>
+    </div>
+  </div>
+<% } else { %>
+  <%# ⚠️⚠️ ZDANIE, NIE PUSTA SEKCJA. Zniknieta bez slowa sekcja wyglada jak ekran, ktory sie
+      nie wczytal — a operator ma wiedziec, ze rozbicia NIE MA CELOWO i co zrobic, zeby bylo. %>
+  <p class="pasek-blokada">
+    <%# ⚠️ Zdanie stoi w JEDNEJ linii celowo: rozbite na dwie ma w srodku znak nowej linii
+        i test pilnujacy jego brzmienia przestaje je znajdowac. %>
+    <strong>Koszty z panelu pokrywają <%= procent(rachunek.pokrycieKosztow) %>% kwoty z KPiR</strong>
+    — poniżej 95% nie rysujemy rozbicia ani wskaźników, bo podział policzony
+    z części wydatków byłby zmyślony. Suma kosztów i wynik wyżej są policzone z tego, co panel
+    ma; brakujące faktury dopisz na zakładce <a href="/koszty">Koszty</a> (te spoza KSeF —
+    Google, Meta, Anthropic, paragony — wpisuje się tam ręcznie).
+  </p>
+<% } %>
+
+<%# ——— PODATEK ————————————————————————————————————————————————————————————————
+    ⚠️⚠️ WSZYSTKO TUTAJ TO SZACUNEK: skala 12/32%, narastajaco od stycznia, bez ulg, bez
+    wspolnego rozliczenia i bez strat z lat ubieglych. Skladki zdrowotnej na skali sie NIE
+    ODLICZA — dopisanie jej do podstawy bylo najczestszym bledem w recznych wyliczeniach. %>
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Podatek dochodowy — SZACUNEK</h2>
+    <span class="dopisek">skala 12/32%, narastająco od stycznia <%= zakres.do.slice(0, 4) %></span>
+  </div>
+  <div class="panel-cialo">
+    <%
+      // GEOMETRIA: ile procent progu zajmuje dzisiejsza podstawa, a ile dolozy prognoza.
+      // ⚠️ Obie liczby przychodza z domeny (podatek-skala.js) — tutaj zamieniaja sie na
+      // szerokosc paska i nic wiecej. Suma nie przekracza 100%, wiec odcinek prognozy nigdy
+      // nie wychodzi poza tor.
+      const doProgu = rachunek.podatek.podstawaGrosze / (rachunek.podatek.podstawaGrosze
+        + rachunek.podatek.doProguGrosze || 1) * 100;
+      const dzis = Math.min(100, Math.max(0, doProgu));
+      const odcinekPrognozy = prognoza && prognoza.przekroczy ? 100 - dzis : 0;
+    %>
+    <div class="postep">
+      <div class="postep-tor" aria-hidden="true">
+        <div class="postep-wypelnienie" style="width: <%= szerokoscCss(dzis) %>%"></div>
+        <% if (odcinekPrognozy > 0) { %>
+          <%# Kreskowany, jasniejszy odcinek — ma wygladac na mniej pewny niz droga
+              faktycznie przejechana. %>
+          <div class="postep-prognoza"
+               style="left: <%= szerokoscCss(dzis) %>%; width: <%= szerokoscCss(odcinekPrognozy) %>%"></div>
+        <% } %>
+      </div>
+      <div class="postep-podpis">
+        <span>podstawa narastająco <strong><%= zlote(rachunek.podatek.podstawaGrosze) %> zł</strong></span>
+        <span>
+          <% if (rachunek.podatek.wDrugimProgu) { %>
+            <strong>próg przekroczony</strong> — nadwyżka liczy się po 32%
+          <% } else { %>
+            do progu 32% brakuje <strong><%= zlote(rachunek.podatek.doProguGrosze) %> zł</strong>
+          <% } %>
+        </span>
+        <span>próg 120 000,00 zł</span>
+      </div>
+    </div>
+
+    <%# ——— PROGNOZA ————————————————————————————————————————————————————————————
+        ⚠️⚠️ TEMPO LINIOWE, NIE SEZONOWOSC — i ekran ma to pisac wprost. Sezonowego rozkladu
+        DOCHODU panel nie zna: sprzedaz siega 2025, ale koszty zaczynaja sie od podlogi KSeF
+        (2026-01), wiec za 2025 nie ma z czego policzyc dochodu miesiac po miesiacu.
+        ⚠️ „Nie przekroczysz" to ZDANIE O FAKTACH i ma paść — milczenie czyta sie jak brak
+        prognozy w ogole i nikt nie wie, czy panel liczyl, czy nie. %>
+    <% if (prognoza && prognoza.przekroczy) { %>
+      <p class="pasek-info">
+        <strong>Prognoza przy dzisiejszym tempie</strong>
+        (podstawa ÷ <%= ile(prognoza.miesiecy, 'pełny miesiąc', 'pełne miesiące', 'pełnych miesięcy') %> × 12):
+        próg 32% przekroczysz <strong><%= W_MIESIACU[prognoza.miesiacPrzekroczenia - 1] %></strong>,
+        a podstawa na koniec roku wyniesie ok.
+        <strong><%= zlote(prognoza.podstawaRokuGrosze) %> zł</strong>. Nadwyżka ponad próg
+        (ok. <%= zlote(prognoza.nadwyzkaGrosze) %> zł) opodatkuje się po 32% zamiast 12%, czyli
+        ok. <strong><%= zlote(prognoza.dodatkowyPodatekGrosze) %> zł</strong> podatku więcej,
+        niż przy pierwszej stawce.
+      </p>
+    <% } else if (prognoza) { %>
+      <p class="pasek-info">
+        <strong>Prognoza przy dzisiejszym tempie:</strong> progu 32% w tym roku
+        <strong>nie przekroczysz</strong> — podstawa na koniec roku wyniesie ok.
+        <%= zlote(prognoza.podstawaRokuGrosze) %> zł.
+      </p>
+    <% } %>
+
+    <p class="wyjasnienie">
+      To jest <strong>SZACUNEK</strong>: bez ulg, bez wspólnego rozliczenia i bez strat z lat
+      ubiegłych. Składki zdrowotnej na skali <strong>się nie odlicza</strong> — dopisanie jej
+      do podstawy było najczęstszym błędem w ręcznych wyliczeniach.
+      <% if (prognoza) { %>
+        Prognoza to <strong>tempo liniowe</strong>, nie sezonowość: sezonowego rozkładu dochodu
+        panel nie zna, bo koszty zaczynają się od <%= podloga %>.
+      <% } %>
+      Wiążące są liczby Twojego biura rachunkowego.
+    </p>
+  </div>
+</section>
+
+<%# ——— PANEL A KPiR + VAT ————————————————————————————————————————————————————
+    ⚠️ `.dwie-kolumny` ma `align-items: start` — bez tego nizsza karta rozciaga sie do
+    wysokosci wyzszej i wyglada na pusta w polowie. %>
+<div class="dwie-kolumny">
+  <%# ⚠️⚠️ DWIE LICZBY OBOK SIEBIE, NIGDY ZSUMOWANE. To sa DWA UJECIA TEGO SAMEGO okresu:
+      sprzedaz po dniu zamowienia i przychod ksiegowany po dacie faktury. Dodane do siebie
+      daja kwote, ktora nie istnieje — i wygladalaby jak bardzo dobry miesiac.
+      Karta rysuje sie WYLACZNIE, gdy operator wpisal kwote kontrolna z KPiR (pole jest
+      nieobowiazkowe); bez niej ekran o rozjezdzie MILCZY, zamiast zgadywac. %>
+  <% if (rachunek.roznicaPrzychodu) { %>
+    <%
+      // Geometria: obie kwoty na wspolnej skali — dluzsza z nich zajmuje caly tor.
+      const skalaKpir = Math.max(1, rachunek.przychodNettoGrosze, rachunek.roznicaPrzychodu.kpirGrosze);
+    %>
+    <section class="panel">
+      <div class="panel-glowa">
+        <h2>Panel a KPiR</h2>
+        <span class="dopisek">dwa ujęcia tego samego okresu — nigdy suma</span>
+      </div>
+      <div class="panel-cialo">
+        <div class="kaskada">
+          <div class="kaskada-wiersz">
+            <span class="kaskada-nazwa">Przychód wg panelu</span>
+            <div class="kaskada-tor" aria-hidden="true">
+              <% if (rachunek.przychodNettoGrosze > 0) { %>
+                <div class="kaskada-czesc"
+                     style="left: 0; width: <%= szerokoscCss((rachunek.przychodNettoGrosze / skalaKpir) * 100) %>%"></div>
+              <% } %>
+            </div>
+            <span class="liczba"><%= zlote(rachunek.przychodNettoGrosze) %> zł</span>
+          </div>
+          <div class="kaskada-wiersz">
+            <span class="kaskada-nazwa">Przychód wg KPiR</span>
+            <div class="kaskada-tor" aria-hidden="true">
+              <% if (rachunek.roznicaPrzychodu.kpirGrosze > 0) { %>
+                <div class="kaskada-czesc kaskada-czesc--minus"
+                     style="left: 0; width: <%= szerokoscCss((rachunek.roznicaPrzychodu.kpirGrosze / skalaKpir) * 100) %>%"></div>
+              <% } %>
+            </div>
+            <span class="liczba"><%= zlote(rachunek.roznicaPrzychodu.kpirGrosze) %> zł</span>
+          </div>
+        </div>
+
+        <%# ⚠️ OSTRZEZENIE DOPIERO POWYZEJ 5%. Rozjazd rzedu 2,5% jest ZMIERZONY i normalny
+            (przelom miesiaca: zamowienie z 30.06 z faktura z 1.07), wiec pas wyjacy przy nim
+            przestalby cokolwiek znaczyc — i przykrylby ten prawdziwy. %>
+        <% if (Math.abs(rachunek.roznicaPrzychodu.procent) > 5) { %>
+          <p class="pasek-uwaga">
+            <strong>Rozjazd większy niż 5%:</strong>
+            <%= zlote(rachunek.roznicaPrzychodu.roznicaGrosze) %> zł
+            (<%= procent(rachunek.roznicaPrzychodu.procent) %>%). Normalna różnica to około
+            2,5% (przełom miesiąca: zamówienie z 30. z fakturą z 1.). Tyle znaczy zwykle coś
+            innego — zwroty, duplikat zamówienia, sprzedaż bez faktury albo faktura bez
+            zamówienia w panelu. Zanim uwierzysz w wynik, sprawdź to z księgowością.
+          </p>
+        <% } else { %>
+          <p class="pasek-info">
+            Różnica <strong><%= zlote(rachunek.roznicaPrzychodu.roznicaGrosze) %> zł
+            (<%= procent(rachunek.roznicaPrzychodu.procent) %>%)</strong> — w normie; pas
+            ostrzegawczy stanie dopiero powyżej 5%.
+          </p>
+        <% } %>
+
+        <%# ⚠️⚠️ TO NIE SA TE SAME „ZWROTY". `zwrotyGrosze` to reczne pole kontrolne z KPiR
+            (dane_miesieczne.zwroty_brutto) i rachunek go NIE UZYWA. Prawdziwe zwroty towaru
+            (`zwrotyNettoGrosze`, tabela `zwroty`) sa juz odjete od przychodu wyzej — w miesiacu,
+            w ktorym faktycznie nastapily. Dwie niezalezne liczby pod jedna nazwa myla, wiec
+            karta mowi to wprost. %>
+        <div class="fakty">
+          <div>
+            <span class="k">Zwroty wg KPiR (brutto, ręcznie)</span>
+            <span class="w">
+              <% if (brakDanych && !rachunek.zwrotyGrosze) { %>
+                — nie wpisano
+              <% } else { %>
+                <%= zlote(rachunek.zwrotyGrosze) %> zł
+              <% } %>
+            </span>
+          </div>
+          <div>
+            <span class="k">Zwroty odjęte przez panel (netto)</span>
+            <span class="w"><%= zlote(rachunek.zwrotyNettoGrosze) %> zł</span>
+          </div>
+        </div>
+        <details class="metodologia">
+          <summary>Dlaczego to są dwie różne liczby zwrotów</summary>
+          <p class="wyjasnienie">
+            Te dwie liczby przychodu <strong>nigdy się nie sumują</strong>: opisują ten sam
+            okres z dwóch stron. Panel liczy po dniu złożenia zamówienia, KPiR po dacie
+            wystawienia faktury. Kwota zwrotów z KPiR to <strong>kontrolny wpis ręczny</strong>
+            (zakładka <a href="/finanse/dane/<%= zakres.od.slice(0, 7) %>">Dane miesiąca</a>) —
+            rachunek jej <strong>nie używa</strong>. Zwroty z rejestru panelu są już odjęte od
+            przychodu, w miesiącu, w którym faktycznie nastąpiły.
+          </p>
+        </details>
+      </div>
+    </section>
+  <% } %>
+
+  <%# ⚠️⚠️ VAT STOI POZA RACHUNKIEM I TO JEST CALA TRESC TEJ KARTY. To pieniadz przechodni:
+      inkasujemy go od klienta i oddajemy urzedowi, wiec ani nie jest przychodem, ani kosztem.
+      Wciagniety do rachunku obnizalby „zostaje" o kwote, ktora nigdy nasza nie byla — a to
+      jest klasyczny blad przy liczeniu wyniku „na piechote". %>
+  <section class="panel">
+    <div class="panel-glowa">
+      <h2>VAT-7 — poza rachunkiem</h2>
+      <span class="dopisek">pieniądz przechodni, nie zysk</span>
+    </div>
+    <div class="panel-cialo">
+      <div class="fakty">
+        <div>
+          <span class="k">Zapłacony VAT-7</span>
+          <%# Ta sama zasada, co przy ZUS-ie: bez wpisanych danych „0,00 zł" znaczyloby
+              „VAT-u nie bylo", a nie „nie wiemy". %>
+          <span class="w">
+            <% if (brakDanych && !rachunek.vatGrosze) { %>
+              — nie wpisano
+            <% } else { %>
+              <%= zlote(rachunek.vatGrosze) %> zł
+            <% } %>
+          </span>
+        </div>
+      </div>
+      <p class="wyjasnienie">
+        VAT to <strong>pieniądz przechodni, nie zysk</strong> — inkasujemy go od klienta
+        i oddajemy urzędowi. Dlatego nie ma go ani w przychodzie, ani w kosztach, ani
+        w „zostaje". Z konta jednak wychodzi i tę kwotę trzeba mieć.
+      </p>
+    </div>
+  </section>
+</div>
+
+<%# ——— MIESIAC PO MIESIACU ————————————————————————————————————————————————————
+    ⚠️ OD DWOCH MIESIECY WZWYZ (domena oddaje wtedy `miesiacami`) — przy jednym nie ma czego
+    porownywac. Suma kwartalu mowi „ile", ale nie „kiedy": w Q1 2026 sam marzec dal wiecej
+    niz styczen i luty razem. %>
+<% if (rachunek.miesiacami) { %>
+  <%
+    // ⚠️ GEOMETRIA RYSUNKU, nie arytmetyka o pieniadzach (jak wyzej): najwyzszy slupek
+    // zajmuje caly tor, reszta proporcjonalnie — cala seria stoi na JEDNEJ skali. Wynik
+    // rysuje sie JAKO BLOK WEWNATRZ slupka przychodu, wiec od razu widac, jaka czescia
+    // przychodu byl. Miesiac na minusie nie ma bloku w ogole — ujemnej szerokosci nie ma,
+    // a jakakolwiek narysowana klamalaby, ze cos zostalo.
+    const najwyzszy = Math.max(1, ...rachunek.miesiacami.map((m) => m.przychodNettoGrosze));
+  %>
+  <section class="panel">
+    <div class="panel-glowa">
+      <h2>Miesiąc po miesiącu</h2>
+      <span class="dopisek">przychód netto na wspólnej skali, wynik jako blok w środku</span>
+    </div>
+    <div class="panel-cialo">
+      <div class="slupki">
+        <% rachunek.miesiacami.forEach(function (m) { %>
+          <div class="slupek">
+            <span class="slupek-nazwa"><%= m.miesiac %></span>
+            <div class="slupek-tor">
+              <% if (m.przychodNettoGrosze > 0) { %>
+                <div class="slupek-wypelnienie"
+                     style="width: <%= szerokoscCss((m.przychodNettoGrosze / najwyzszy) * 100) %>%">
+                  <% if (m.wynikGrosze > 0) { %>
+                    <div class="slupek-wynik"
+                         style="width: <%= szerokoscCss((m.wynikGrosze / m.przychodNettoGrosze) * 100) %>%"></div>
+                  <% } %>
+                </div>
+              <% } %>
+            </div>
+            <span class="slupek-kwota">
+              <%= zlote(m.przychodNettoGrosze) %> zł
+              <span class="slupek-drobne">· wynik <%= zlote(m.wynikGrosze) %> zł<%
+                if (m.zostajeGrosze !== null) { %> · zostaje <%= zlote(m.zostajeGrosze) %> zł<% } %></span>
+            </span>
+          </div>
+        <% }); %>
+      </div>
+
+      <details class="metodologia">
+        <summary>Pełna tabela: przychód · koszty · wynik · marża · ZUS · PIT-5 · zostaje</summary>
+        <div class="przewijak-tabeli">
+          <table>
+            <thead>
+              <tr>
+                <th>Miesiąc</th><th class="liczba">Przychód netto</th>
+                <th class="liczba">Koszty netto</th><th class="liczba">Wynik</th>
+                <th class="liczba">Marża</th><th class="liczba">ZUS</th>
+                <th class="liczba">PIT-5</th><th class="liczba">Zostaje</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% rachunek.miesiacami.forEach(function (m) { %>
+                <tr>
+                  <td><%= m.miesiac %></td>
+                  <td class="liczba"><%= zlote(m.przychodNettoGrosze) %></td>
+                  <td class="liczba"><%= zlote(m.kosztyNettoGrosze) %></td>
+                  <td class="liczba"><%= zlote(m.wynikGrosze) %></td>
+                  <td class="liczba"><%= procent(m.marza) %>%</td>
+                  <td class="liczba"><%= zlote(m.zusGrosze) %></td>
+                  <td class="liczba"><%= zlote(m.pit5Grosze) %></td>
+                  <%# ⚠️ MYSLNIK, NIE ZERO. Miesiac bez wpisanych danych recznych nie ma
+                      „zostaje" i ma to POWIEDZIEC — zero jest zdaniem o faktach. %>
+                  <td class="liczba">
+                    <% if (m.zostajeGrosze === null) { %>—<% } else { %><%= zlote(m.zostajeGrosze) %><% } %>
+                  </td>
+                </tr>
+              <% }); %>
+              <%# ⚠️ WIERSZ „Razem" BIERZE LICZBY OKRESU Z DOMENY, a nie sumuje kolumn w widoku:
+                  to ta sama suma, ktora stoi w kaskadzie wyzej, wiec nie ma jak sie z nia
+                  rozjechac. „Zostaje" zostaje myslnikiem, gdy brakuje choc jednego miesiaca. %>
+              <tr class="wiersz-razem">
+                <td><strong>Razem</strong></td>
+                <td class="liczba"><%= zlote(rachunek.przychodNettoGrosze) %></td>
+                <td class="liczba"><%= zlote(rachunek.kosztyNettoGrosze) %></td>
+                <td class="liczba"><%= zlote(rachunek.wynikGrosze) %></td>
+                <td class="liczba"><%= procent(rachunek.marza) %>%</td>
+                <td class="liczba"><%= zlote(rachunek.zusGrosze) %></td>
+                <td class="liczba"><%= zlote(rachunek.pit5Grosze) %></td>
+                <td class="liczba">
+                  <% if (rachunek.zostajeGrosze === null) { %>—<% } else { %><%= zlote(rachunek.zostajeGrosze) %><% } %>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+      <p class="wyjasnienie">
+        Cały słupek to <strong>przychód netto</strong> (wspólna skala), jaśniejszy blok
+        w środku to <strong>wynik po kosztach</strong>. Miesiąc na minusie nie ma bloku —
+        kwota obok jest wtedy ujemna.
+      </p>
+    </div>
+  </section>
+<% } %>

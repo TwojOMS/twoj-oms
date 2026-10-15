@@ -1,0 +1,37 @@
+<% if (brak) { %>
+  <div class="m-empty"><h2>Nie ma takiego wątku</h2><p>Ten wątek nie istnieje w lustrze panelu.</p><a href="/wiadomosci">Wróć do wiadomości</a></div>
+<% } else if (!w) { %>
+  <div class="m-empty"><h2>Wybierz rozmowę</h2><p>Tu zobaczysz wiadomości i przygotujesz odpowiedź.</p></div>
+<% } else { const adres='/wiadomosci/'+encodeURIComponent(w.kanal)+'/'+encodeURIComponent(w.thread_id); %>
+  <a class="m-back" href="/wiadomosci">← Lista rozmów</a>
+  <header class="m-detail-head"><h2>Wątek z <%= w.interlocutor_login || '(nieznany)' %></h2><p>Konto <strong><%= w.kanal %></strong> · ostatnia wiadomość <%= fmtDataCzasKrotko(w.last_message_date_time) %></p></header>
+  <% if(blad){ %><p class="m-error" role="alert"><strong><%= String(blad).startsWith('Brak potwierdzenia wysłania.')?'Wynik wysyłki nieznany:':'Nie wysłano:' %></strong> <%= blad %></p><% } %>
+  <div class="m-history">
+    <% if(!korespondencja.length){ %><p class="m-empty">Treści tego wątku jeszcze nie pobrano. Pojawi się po najbliższym pobraniu wiadomości z Allegro.</p><% } %>
+    <% korespondencja.forEach(m=>{ %>
+      <article class="m-message <%= m.od_kupujacego?'m-incoming':'m-outgoing' %>" aria-label="<%= m.od_kupujacego?'Wiadomość odebrana':'Wiadomość wysłana' %>"><header><strong><%= m.od_kupujacego?(w.interlocutor_login || 'kupujący'):'My' %></strong><time><%= fmtDataCzasKrotko(m.utworzona_at) %></time></header><p><%= m.tresc %></p></article>
+    <% }) %>
+    <% if(lista.length){ %>
+      <details class="m-proofs" <%- lista.some(d=>!d.wyslany_at)?'open':'' %>><summary>Wysłane z panelu — historia prób (<%= lista.length %>)</summary>
+      <% lista.forEach(d=>{ %><article class="m-message m-outgoing <%= d.wyslany_at?'':'m-failed' %>"><header><strong><%= d.rodzaj==='formulka'?'Formułka':'Odpowiedź' %></strong><time><%= fmtDataCzasKrotko(d.wyslany_at || d.zapisany_at) %></time></header><% if(!d.wyslany_at){ %><strong class="m-failure"><%= String(d.blad||'').startsWith('Brak potwierdzenia wysłania.')?'BRAK POTWIERDZENIA':'NIEWYSŁANA' %><%= d.blad?' — '+d.blad:'' %></strong><% } %><p><%= d.tresc %></p><% if(d.zalaczniki&&d.zalaczniki.length){ %><ul class="m-attachments" aria-label="Załączniki tej próby"><% d.zalaczniki.forEach(a=>{ %><li><span class="m-file-name"><%= a.nazwa %></span><span class="m-file-size"><%= new Intl.NumberFormat('pl-PL',{maximumFractionDigits:1}).format(a.rozmiar/1024) %> KB · <%= d.wyslany_at?'Wysłany':a.stan==='wgrany'?(String(d.blad||'').startsWith('Brak potwierdzenia wysłania.')?'Wgrany do Allegro, wynik wysyłki wiadomości nieznany':'Wgrany do Allegro, wiadomość niewysłana'):a.stan==='blad'?'Błąd uploadu':a.stan==='zadeklarowany'?'Zadeklarowany, brak potwierdzenia uploadu':'Upload nie rozpoczął się' %></span></li><% }) %></ul><% } %></article><% }) %>
+      </details>
+    <% } %>
+  </div>
+  <% if(w.typ==='POST_PURCHASE_ISSUE'){ %>
+    <div class="m-external"><strong>To problem z zakupem — odpowiedz w Allegro.</strong><p>Dyskusje i reklamacje mają własne terminy. Panel takich wątków nie obsługuje.</p></div>
+  <% } else { %>
+    <form class="m-compose" method="post" enctype="multipart/form-data" action="<%= adres %>/odpowiedz" data-message-compose data-own-sent="<%= typeof potwierdzonyDowod!=='undefined'?potwierdzonyDowod:'' %>" data-own-text="<%= typeof potwierdzonyDowod!=='undefined'?(lista.find(d=>d.wyslany_at&&String(d.id)===potwierdzonyDowod)?.tresc||''):'' %>" data-draft-key="<%= JSON.stringify([typeof konto!=='undefined'&&konto?String(konto.id):'legacy',w.kanal,w.thread_id]) %>" data-sent-revision="<%= lista.filter(d=>d.wyslany_at).map(d=>d.id).join(',') %>" data-send-error="<%= !!blad %>">
+      <label for="m-reply">Odpowiedź · <%= w.interlocutor_login || 'kupujący' %></label>
+      <textarea id="m-reply" name="tresc" maxlength="<%= maks %>" rows="4" placeholder="Napisz odpowiedź…" required><%= szkic || '' %></textarea>
+      <div class="m-attach-tools"><label for="m-files">Dodaj załącznik</label><input id="m-files" type="file" name="zalaczniki" multiple accept=".pdf,.png,.gif,.bmp,.tif,.tiff,.jpg,.jpeg" aria-describedby="m-file-limits"><button type="button" data-message-attach hidden>Dodaj załącznik</button></div>
+      <ul class="m-attachments" id="m-attachments" aria-label="Wybrane załączniki"></ul>
+      <p class="m-help" id="m-file-limits">PDF, PNG, GIF, BMP, TIFF, JPEG · do 5 MiB na plik. Limit OMS: 5 plików, 20 MiB łącznie. Po opuszczeniu strony wybierz pliki ponownie.</p>
+      <div class="m-compose-tools" hidden><button type="button" data-message-preview>Podgląd odpowiedzi</button><button type="button" data-message-save>Zapisz szkic</button><span id="m-count"></span></div>
+      <p class="m-help" role="status" id="m-draft-status">Najwyżej <%= maks %> znaków. Tekst odpowiedzi jest wymagany.</p>
+      <label class="m-confirm"><input type="checkbox" name="potwierdzam" value="tak" required> <span>Wyślij to do kupującego. Tego nie da się cofnąć.</span></label>
+      <button type="submit" class="m-send">Wyślij</button>
+    </form>
+    <dialog class="m-preview-dialog" aria-labelledby="m-preview-title"><h2 id="m-preview-title">Podgląd odpowiedzi</h2><p class="m-preview-text"></p><ul class="m-attachments m-preview-files" aria-label="Załączniki w odpowiedzi"></ul><p class="m-help">To podgląd. Wiadomość nie została wysłana.</p><button type="button" data-message-close>Zamknij podgląd</button></dialog>
+    <% if(stan==='czeka'){ %><form class="m-complete" method="post" action="<%= adres %>/zalatwione"><span>Nie wymaga odpowiedzi?</span><button type="submit">Załatwione</button><p>Nie wysyła wiadomości do klienta. Wątek wróci do obsługi, gdy klient napisze ponownie.</p></form><% } %>
+  <% } %>
+<% } %>

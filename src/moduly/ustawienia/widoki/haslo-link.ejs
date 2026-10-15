@@ -1,0 +1,30 @@
+<%#
+  PRZ-069: ustawienie hasła z jednorazowego linku — strona otwarta, bez paska i menu panelu.
+  Zły link w każdej postaci: jeden komunikat i nic więcej (bez formularza, bez imienia konta).
+%>
+<div class="logowanie">
+  <div class="logowanie-karta">
+    <div class="logowanie-marka">
+      <strong>OMS</strong>
+      <span>Panel zamówień</span>
+    </div>
+    <h1>Ustaw hasło</h1>
+    <% if (niewazny) { %>
+      <div class="pas-uprzedzenie"><p><%= blad %></p></div>
+    <% } else { %>
+      <p><%= cel === 'zaproszenie' ? 'Witaj' : 'Dzień dobry' %>, <%= imie %>! Ustaw hasło do panelu — co najmniej 12 znaków.</p>
+      <% if (blad) { %><p class="logowanie-blad" role="alert"><%= blad %></p><% } %>
+      <form method="post" action="<%= akcja %>">
+        <label class="logowanie-pole">
+          <span>Nowe hasło</span>
+          <input type="password" name="nowe" autocomplete="new-password" minlength="12" required autofocus>
+        </label>
+        <label class="logowanie-pole">
+          <span>Nowe hasło jeszcze raz</span>
+          <input type="password" name="nowe2" autocomplete="new-password" minlength="12" required>
+        </label>
+        <button class="logowanie-wyslij" type="submit">Ustaw hasło</button>
+      </form>
+    <% } %>
+  </div>
+</div>

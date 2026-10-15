@@ -1,0 +1,209 @@
+{
+  "checkoutForms": [
+    {
+      "id": "6a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+      "messageToSeller": null,
+      "buyer": {
+        "id": "4f6a1b2c",
+        "email": "112233abcd@allegromail.pl",
+        "login": "kupujacy_test",
+        "firstName": "Jan",
+        "lastName": "Kowalski",
+        "companyName": null,
+        "guest": false,
+        "personalIdentity": null,
+        "phoneNumber": "+48111222333",
+        "preferences": { "language": "pl-PL" },
+        "address": {
+          "street": "Testowa 1",
+          "city": "Pęki",
+          "postCode": "00-650",
+          "countryCode": "PL"
+        }
+      },
+      "payment": {
+        "id": "aa11bb22-cc33-4d44-8e55-ff6677889900",
+        "type": "ONLINE",
+        "provider": "AF",
+        "finishedAt": "2026-08-03T09:14:02.511Z",
+        "paidAmount": { "amount": "129.00", "currency": "PLN" },
+        "reconciliation": { "amount": "129.00", "currency": "PLN" },
+        "features": []
+      },
+      "status": "READY_FOR_PROCESSING",
+      "fulfillment": {
+        "status": "SENT",
+        "shipmentSummary": { "lineItemsSent": "ALL" },
+        "provider": null
+      },
+      "delivery": {
+        "address": {
+          "street": "Testowa 1",
+          "city": "Pęki",
+          "zipCode": "00-650",
+          "countryCode": "PL",
+          "firstName": "Jan",
+          "lastName": "Kowalski",
+          "companyName": null,
+          "phoneNumber": "+48111222333"
+        },
+        "method": {
+          "id": "03f26351-f683-4db2-8895-f2c599280e3c",
+          "name": "Allegro Kurier DPD (AD)"
+        },
+        "pickupPoint": null,
+        "cost": { "amount": "0.00", "currency": "PLN" },
+        "smart": true,
+        "time": { "from": "2026-08-04T06:00:00Z", "to": "2026-08-05T20:00:00Z" },
+        "calculatedNumberOfPackages": 1,
+        "cancellation": null
+      },
+      "invoice": {
+        "required": true,
+        "address": {
+          "street": "Firmowa 7",
+          "city": "Bielsko-Biała",
+          "zipCode": "43-300",
+          "countryCode": "PL",
+          "company": {
+            "name": "Testowa sp. z o.o.",
+            "ids": [{ "type": "VAT", "value": "5471234567" }],
+            "vatPayerStatus": "VAT_PAYER",
+            "taxId": "5471234567"
+          },
+          "naturalPerson": null
+        },
+        "dueDate": "2026-08-17",
+        "features": []
+      },
+      "lineItems": [
+        {
+          "id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+          "offer": {
+            "id": "14887766554",
+            "name": "Szablon malarski wielorazowy A4 — gwiazdy",
+            "external": null,
+            "productSet": null,
+            "hsNumber": null
+          },
+          "quantity": 2,
+          "originalPrice": { "amount": "64.50", "currency": "PLN" },
+          "price": { "amount": "64.50", "currency": "PLN" },
+          "reconciliation": { "value": { "amount": "129.00", "currency": "PLN" }, "type": "BUY", "quantity": 2 },
+          "selectedAdditionalServices": [],
+          "boughtAt": "2026-08-03T09:13:41.325Z",
+          "tax": { "rate": "23.00", "subject": "GOODS", "exemption": null }
+        }
+      ],
+      "surcharges": [],
+      "discounts": [],
+      "note": null,
+      "marketplace": { "id": "allegro-pl" },
+      "summary": { "totalToPay": { "amount": "129.00", "currency": "PLN" } },
+      "updatedAt": "2026-08-04T07:17:35.018Z",
+      "revision": "b0f1d2c3"
+    },
+    {
+      "id": "7b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e",
+      "messageToSeller": "Proszę o wysyłkę do paczkomatu.",
+      "buyer": {
+        "id": "5a7b2c3d",
+        "email": "445566efgh@allegromail.pl",
+        "login": "kupujaca_test",
+        "firstName": "Anna",
+        "lastName": "Nowak",
+        "companyName": null,
+        "guest": false,
+        "personalIdentity": null,
+        "phoneNumber": "+48444555666",
+        "preferences": { "language": "pl-PL" },
+        "address": {
+          "street": "Krótka 12/3",
+          "city": "Kraków",
+          "postCode": "30-001",
+          "countryCode": "PL"
+        }
+      },
+      "payment": {
+        "id": "bb22cc33-dd44-4e55-8f66-001122334455",
+        "type": "CASH_ON_DELIVERY",
+        "provider": null,
+        "finishedAt": null,
+        "paidAmount": { "amount": "0.00", "currency": "PLN" },
+        "reconciliation": { "amount": "48.90", "currency": "PLN" },
+        "features": []
+      },
+      "status": "READY_FOR_PROCESSING",
+      "fulfillment": {
+        "status": "PROCESSING",
+        "shipmentSummary": { "lineItemsSent": "NONE" },
+        "provider": null
+      },
+      "delivery": {
+        "address": {
+          "street": "Krótka 12/3",
+          "city": "Kraków",
+          "zipCode": "30-001",
+          "countryCode": "PL",
+          "firstName": "Anna",
+          "lastName": "Nowak",
+          "companyName": null,
+          "phoneNumber": "+48444555666"
+        },
+        "method": {
+          "id": "2488f7b7-5d1c-4d65-b85c-4cbcf253fd93",
+          "name": "Allegro Paczkomaty InPost"
+        },
+        "pickupPoint": {
+          "id": "ZBR05M",
+          "name": "ZBR05M",
+          "description": "Paczkomat przy sklepie",
+          "address": {
+            "street": "Rynek 1",
+            "city": "Zabrze",
+            "zipCode": "41-800",
+            "countryCode": "PL"
+          }
+        },
+        "cost": { "amount": "12.90", "currency": "PLN" },
+        "smart": false,
+        "time": null,
+        "calculatedNumberOfPackages": 1,
+        "cancellation": null
+      },
+      "invoice": {
+        "required": false,
+        "address": null,
+        "dueDate": null,
+        "features": []
+      },
+      "lineItems": [
+        {
+          "id": "2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e",
+          "offer": {
+            "id": "14887766999",
+            "name": "Szablon malarski wielorazowy A3 — liście",
+            "external": null,
+            "productSet": null,
+            "hsNumber": null
+          },
+          "quantity": 1,
+          "originalPrice": { "amount": "36.00", "currency": "PLN" },
+          "price": { "amount": "36.00", "currency": "PLN" },
+          "reconciliation": { "value": { "amount": "36.00", "currency": "PLN" }, "type": "BUY", "quantity": 1 },
+          "selectedAdditionalServices": [],
+          "boughtAt": "2026-08-04T05:02:10.001Z",
+          "tax": { "rate": "23.00", "subject": "GOODS", "exemption": null }
+        }
+      ],
+      "surcharges": [],
+      "discounts": [],
+      "note": null,
+      "marketplace": { "id": "allegro-pl" },
+      "summary": { "totalToPay": { "amount": "48.90", "currency": "PLN" } },
+      "updatedAt": "2026-08-04T05:02:11.442Z",
+      "revision": "c1e2f3a4"
+    }
+  ],
+  "totalCount": 775
+}

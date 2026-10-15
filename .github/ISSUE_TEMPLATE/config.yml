@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Luka bezpieczeństwa
+    url: https://github.com/TwojOMS/twoj-oms/security/advisories/new
+    about: Zgłoś prywatnie, nie w publicznym zgłoszeniu.
+  - name: Wdrożenie lub automatyzacja dla firmy
+    url: https://twojoms.pl
+    about: Formularz kontaktowy na stronie projektu.

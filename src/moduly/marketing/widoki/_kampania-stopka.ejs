@@ -1,0 +1,151 @@
+<div id="kampania-dymek" role="tooltip"></div>
+  <%# ——— OZYWIENIE STRONY (2026-08-28) — jedyny dopuszczony skrypt w OMS-ie ——————————
+      Progresywne wzbogacenie: wszystko ponizej dotyczy WYLACZNIE prezentacji (wejscia
+      sekcji, rosnace slupki, nabijajace sie liczby, dymki, podswietlanie serii).
+      Zadnych zapytan, zadnych zapisow, zadnej logiki liczb — liczby przychodza z serwera
+      i skrypt ich NIE przelicza, tylko odtwarza dojscie do wartosci, ktora juz stoi
+      w HTML-u. Bez JS strona wyglada i dziala jak wyrenderowana. %>
+  <script id="kampania-ozywienie">
+    (function () {
+      'use strict';
+      var wolneRuchy = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (wolneRuchy) return; // strona zostaje w wersji bez ruchu — kompletnej z serwera
+
+      var korzenKampanii = document.querySelector('.strona-kampania');
+      korzenKampanii.classList.add('ozywiona');
+
+      // ——— wejscia sekcji ———
+      var sekcje = Array.prototype.slice.call(document.querySelectorAll('.panel'));
+      sekcje.forEach(function (s, i) {
+        s.classList.add('sekcja-ruch');
+        s.style.transitionDelay = Math.min(i * 60, 240) + 'ms';
+      });
+      var obserwator = new IntersectionObserver(function (wpisy) {
+        wpisy.forEach(function (w) {
+          if (!w.isIntersecting) return;
+          w.target.classList.add('na-scenie');
+          obserwator.unobserve(w.target);
+        });
+      }, { rootMargin: '0px 0px -8% 0px' });
+      sekcje.forEach(function (s) { obserwator.observe(s); });
+
+      // ——— rosnace slupki (transform-origin od osi; opoznienia kaskadowe inline,
+      //     bo klasy slupkow sa przypiete testami i nie wolno ich dotykac) ———
+      var wykresy = document.querySelectorAll('.pieniadze, .wykres-dni');
+      wykresy.forEach(function (wyk) {
+        var slupki = wyk.querySelectorAll('.p-slupek, .dzien-slupek');
+        slupki.forEach(function (s, i) {
+          var wDol = s.classList.contains('p-slupek--wydatek');
+          s.style.transformOrigin = wDol ? 'top' : 'bottom';
+          s.style.transitionDelay = Math.min(i * 28, 500) + 'ms';
+        });
+        var start = new IntersectionObserver(function (wpisy) {
+          wpisy.forEach(function (w) {
+            if (!w.isIntersecting) return;
+            w.target.classList.add('rosnie');
+            start.unobserve(w.target);
+          });
+        }, { rootMargin: '0px 0px -10% 0px' });
+        start.observe(wyk);
+      });
+
+      // ——— SIATKA BEZPIECZENSTWA RUCHU ————————————————————————————————————————
+      // IntersectionObserver bywa zawodny (dziwne osadzenia, stare przegladarki) —
+      // a wzbogacenie NIE MA PRAWA zostawic strony gorszej niz bez JS: po 2,5 s
+      // wszystko, co jeszcze nie weszlo, wchodzi bezwarunkowo. Idempotentne.
+      setTimeout(function () {
+        sekcje.forEach(function (s) { s.classList.add('na-scenie'); });
+        wykresy.forEach(function (w) { w.classList.add('rosnie'); });
+      }, 2500);
+
+      // ——— nabijajace sie liczby (kafle + zwrot) ———
+      // Odtwarzamy dojscie do wartosci z HTML-a: parsujemy poczatek tekstu jako liczbe,
+      // reszte (np. „ zł", „×") zostawiamy w spokoju. Zadna wartosc nie jest liczona.
+      function nabijaj(el) {
+        var tekst = el.textContent;
+        var m = tekst.match(/^(-?[\d\s]+(?:[.,]\d+)?)/);
+        if (!m) return;
+        var surowe = m[1];
+        var reszta = tekst.slice(surowe.length);
+        var cel = parseFloat(surowe.replace(/\s/g, '').replace(',', '.'));
+        if (!isFinite(cel)) return;
+        var miejsca = (surowe.split(/[.,]/)[1] || '').length;
+        var przecinek = surowe.indexOf(',') >= 0;
+        var start = null;
+        var czas = 850;
+        function krok(t) {
+          if (start === null) start = t;
+          var u = Math.min(1, (t - start) / czas);
+          var e = 1 - Math.pow(1 - u, 3);
+          var w = (cel * e).toFixed(miejsca);
+          if (przecinek) w = w.replace('.', ',');
+          el.textContent = w + reszta;
+          if (u < 1) requestAnimationFrame(krok);
+          else el.textContent = tekst; // co do znaku to, co przyslal serwer
+        }
+        requestAnimationFrame(krok);
+      }
+      document.querySelectorAll('.kafel-wartosc, .pieniadze-zwrot b').forEach(nabijaj);
+
+      // ——— pierscien dnia kampanii (cofamy na pelny obwod i animujemy do celu) ———
+      var pierscien = document.querySelector('.pierscien-dnia .postep');
+      if (pierscien) {
+        var docelowy = pierscien.getAttribute('data-cel');
+        pierscien.style.strokeDashoffset = pierscien.getAttribute('data-obwod');
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () { pierscien.style.strokeDashoffset = docelowy; });
+        });
+      }
+
+      // ——— dymki zamiast title na wykresach ———
+      var dymek = document.getElementById('kampania-dymek');
+      function pokaz(el, x, y) {
+        var tresc = el.getAttribute('data-dymek');
+        if (!tresc) return;
+        var czesci = tresc.split(': ');
+        dymek.innerHTML = '';
+        var tytul = document.createElement('div');
+        tytul.className = 'd-tytul';
+        tytul.textContent = czesci[0];
+        dymek.appendChild(tytul);
+        var lin = document.createElement('div');
+        lin.textContent = czesci.slice(1).join(': ');
+        dymek.appendChild(lin);
+        dymek.style.display = 'block';
+        var szer = dymek.offsetWidth;
+        var lewo = Math.max(8, Math.min(x + 14, window.innerWidth - szer - 8));
+        dymek.style.left = lewo + 'px';
+        dymek.style.top = Math.max(8, y - dymek.offsetHeight - 12) + 'px';
+      }
+      document.querySelectorAll('.p-dzien[title], .dzien[title]').forEach(function (el) {
+        el.setAttribute('data-dymek', el.getAttribute('title'));
+        el.removeAttribute('title'); // natywny dymek nie ma sie dublowac z naszym
+      });
+      document.addEventListener('mousemove', function (e) {
+        var cel = e.target.closest ? e.target.closest('[data-dymek]') : null;
+        if (cel) pokaz(cel, e.clientX, e.clientY);
+        else dymek.style.display = 'none';
+      });
+      document.addEventListener('focusin', function (e) {
+        var cel = e.target.closest ? e.target.closest('[data-dymek]') : null;
+        if (!cel) { dymek.style.display = 'none'; return; }
+        var r = cel.getBoundingClientRect();
+        pokaz(cel, r.left + r.width / 2, r.top);
+      });
+
+      // ——— podswietlanie serii z legendy ———
+      var mapaSerii = { 'l-kod': 'kod', 'l-utm': 'utm', 'l-wyd': 'wyd' };
+      Object.keys(mapaSerii).forEach(function (klasa) {
+        document.querySelectorAll('.pieniadze-legenda .' + klasa).forEach(function (el) {
+          el.addEventListener('mouseenter', function () { korzenKampanii.setAttribute('data-seria', mapaSerii[klasa]); });
+          el.addEventListener('mouseleave', function () { korzenKampanii.removeAttribute('data-seria'); });
+        });
+      });
+
+      // ——— spinner na „Odswiez" ———
+      document.querySelectorAll('form.kampania-odswiez').forEach(function (f) {
+        f.addEventListener('submit', function () { f.classList.add('czeka'); });
+      });
+    })();
+  </script>
+</div>

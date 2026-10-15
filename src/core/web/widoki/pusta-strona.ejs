@@ -1,0 +1,10 @@
+<%# Ekran, ktorego jeszcze nie ma. Widok WSPOLNY dla „Raporty" i „Ustawienia" — obie strony
+    roznia sie wylacznie dwoma zdaniami, wiec dwa osobne pliki rozjechalyby sie przy
+    pierwszej zmianie wygladu, a nikt by tego nie zauwazyl (nikt tu nie zaglada). %>
+<p class="wroc"><a href="/">← Wróć do listy</a></p>
+<div class="pusta-strona">
+  <h2><%= naglowek %></h2>
+  <%# Strona MUSI powiedziec, ze jest pusta CELOWO. Sam pusty ekran wyglada jak taki,
+      ktory sie nie wczytal — a wtedy pierwsza reakcja to odswiezanie i szukanie awarii. %>
+  <p><%= opis %></p>
+</div>

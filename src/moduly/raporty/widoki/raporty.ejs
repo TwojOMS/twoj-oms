@@ -1,0 +1,549 @@
+<%# Zakladka RAPORTY — sprzedaz w dowolnym zakresie dat. Przebudowana 17.08.2026 wg
+    zatwierdzonej makiety (docs/superpowers/specs/2026-08-17-oms-raporty-przebudowa-makieta.html):
+    pasy w kolejnosci: zakres (kompaktowy) · ostrzezenia (zwiniete) · KPI z deltami m/m i r/r ·
+    przebieg dzien po dniu / tydzien po tygodniu · kanaly ze zmiana · produkty + koncentracja
+    obok faktura/paragon i klientow · sezonowosc. Rachunek zarzadczy i dane miesiaca mieszkaja
+    od tego dnia na wlasnej zakladce /finanse.
+
+    ⚠️ WIDOK NICZEGO NIE LICZY. KPI, udzialy, zmiany procentowe, przebieg, ranking i podzialy
+    przychodza policzone z domeny (domain/agregacja-sprzedazy.js, domain/okresy-raportu.js)
+    — na groszach, calkowitych. Tutaj zostaje ZAPIS liczby po polsku i szerokosc/wysokosc
+    slupka, czyli geometria rysunku. Druga kopia arytmetyki rozjechalaby sie z pierwsza przy
+    pierwszej zmianie, a chodzi o pieniadze (ta sama zasada, co w koszty.ejs).
+
+    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w layout-oms.ejs (paleta ma
+    wariant jasny i ciemny, wiec wartosc wpisana tutaj zadzialalaby w jasnym i po cichu
+    zniknela w ciemnym). Klasy sa te same, co na zakladkach KOSZTY i FAKTURY, zeby panel
+    nie wygladal jak trzy aplikacje. %>
+
+<%
+  // '1234.50' → '1 234,50'. To NIE JEST arytmetyka, tylko polski zapis liczby (ta sama
+  // funkcja, co w koszty.ejs i faktury.ejs): nic sie tu nie dodaje, nie dzieli i nie
+  // zaokragla.
+  const kwota = (napis) => {
+    const s = String(napis ?? '').trim();
+    if (!s) return '';
+    const minus = s.startsWith('-');
+    const [calosc, ulamek = ''] = s.replace('-', '').split('.');
+    const grosze = ulamek.length >= 2 ? ulamek : ulamek.padEnd(2, '0');
+    return `${minus ? '-' : ''}${calosc.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')},${grosze}`;
+  };
+  // ⚠️ GROSZE NA ZLOTOWKI PRZELICZA `zl` Z DOMENY (domain/kwoty.js), podane przez trase —
+  // widok NIE DZIELI pieniedzy przez sto u siebie. Tutaj zostaje sam zapis po polsku.
+  const zlote = (gr) => kwota(zl(gr ?? 0));
+  // Liczebnik po polsku ma TRZY formy, nie dwie (ta sama funkcja, co w koszty.ejs).
+  const ile = (n, jeden, kilka, wiele) => {
+    const d = Math.abs(n) % 10;
+    const s = Math.abs(n) % 100;
+    if (n === 1) return `${n} ${jeden}`;
+    return `${n} ${d >= 2 && d <= 4 && (s < 12 || s > 14) ? kilka : wiele}`;
+  };
+  const procent = (n) => Number(n).toFixed(1).replace('.', ',');
+  // ⚠️⚠️ SZEROKOSC I WYSOKOSC SLUPKA MAJA KROPKE, NIE POLSKI PRZECINEK. `width: 100,0%`
+  // jest deklaracja NIEPOPRAWNA — przegladarka wyrzuca ja w calosci i slupek po prostu
+  // ZNIKA, mimo ze liczba obok niego jest poprawna. Przecinek zostaje wylacznie przy
+  // liczbach czytanych przez czlowieka (`procent` wyzej).
+  const szerokoscCss = (n) => Number(n).toFixed(1);
+
+  // ⚠️⚠️ DELTA `null` TO MYSLNIK, NIE „0%". Zero znaczy „bez zmian" i jest zdaniem
+  // o faktach; przy pustym okresie poprzednim zadnego faktu nie ma, a zdanie zmyslone
+  // wyglada dokladnie tak samo wiarygodnie jak prawdziwe (domain/agregacja-sprzedazy.js
+  // oddaje wtedy `null` wlasnie po to, zeby dalo sie to rozroznic).
+  // `podpis` mowi, Z CZYM sie porownujemy („vs 2026-06") — przy braku podstawy go nie ma,
+  // bo nie ma porownania, ktore mialby podpisywac. `dodatkowaKlasa` odroznia delte r/r.
+  const delta = (n, podpis = null, dodatkowaKlasa = '') => {
+    if (n === null || n === undefined) {
+      return `<span class="kafel-delta${dodatkowaKlasa}">— brak porównania</span>`;
+    }
+    const strzalka = n > 0 ? '↑' : (n < 0 ? '↓' : '=');
+    const klasa = n > 0 ? ' kafel-delta--wzrost' : (n < 0 ? ' kafel-delta--spadek' : '');
+    const dopisek = podpis ? ` <em>vs ${podpis}</em>` : '';
+    return `<span class="kafel-delta${klasa}${dodatkowaKlasa}">${strzalka} ${procent(Math.abs(n))}%${dopisek}</span>`;
+  };
+
+  // ⚠️ NAZWY KANALOW STOJA PRZY WIDOKU, A NIE W DOMENIE — domena mowi identyfikatorami
+  // (domain/kanaly-raportowe.js) i tak ma zostac: te same identyfikatory jada do rachunku
+  // na /finanse i do ostrzezen, a napis na ekranie jest wylacznie dla czlowieka.
+  // ⚠️ KANAL SPOZA MAPY POKAZUJE SIE JAKO IDENTYFIKATOR, a nie znika i nie wpada do worka
+  // „pozostale": cicha pustka w kanale wyglada dokladnie jak slaby miesiac.
+  const NAZWY_KANALOW = nazwyKanalow;
+  const nazwaKanalu = (k) => NAZWY_KANALOW[k] ?? k;
+
+  // Zapis daty dla czlowieka w podpisach wykresu. To FORMATOWANIE kalendarza, nie
+  // arytmetyka o pieniadzach; dzien tygodnia liczy sie z ISO-daty w UTC (dzien z domeny
+  // jest juz dniem warszawskim, wiec polnoc UTC tej daty to ten sam dzien tygodnia).
+  const MIESIACE_DOPELNIACZ = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca',
+    'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
+  const DNI_TYGODNIA = ['pn', 'wt', 'śr', 'cz', 'pt', 'so', 'nd'];
+  const dataSlownie = (d) => `${Number(d.slice(8, 10))} ${MIESIACE_DOPELNIACZ[Number(d.slice(5, 7)) - 1]}`;
+  const dzienTygodnia = (d) => DNI_TYGODNIA[(new Date(`${d}T00:00:00.000Z`).getUTCDay() + 6) % 7];
+  const dataKrotko = (d) => `${d.slice(8, 10)}.${d.slice(5, 7)}`;
+%>
+
+<div class="glowa-ekranu">
+  <h1>Raporty</h1>
+  <%# Rachunek zarzadczy i dane miesiaca maja od 17.08.2026 wlasna pozycje menu „Finanse"
+      — odnosniki z tego naglowka zniknely razem z przenosinami. %>
+  <span class="krok">
+    sprzedaż w okresie <strong><%= nazwa %></strong> · <%= zakres.od %> – <%= zakres.do %>
+  </span>
+</div>
+
+<%# ——— WYBOR ZAKRESU ————————————————————————————————————————————————————————
+    Zwykly formularz GET i siedem odnosnikow, bez ani jednej linii skryptu. Skroty sa
+    ODNOSNIKAMI, a nie przyciskami formularza: kazdy z nich jest adresem, ktory da sie
+    zapisac w zakladkach i wysklejac na czacie.
+
+    Kompaktowo (17.08.2026): skroty i pola dat w JEDNYM wierszu — na FHD stary panel
+    z osobnym formularzem i akapitem metodologii zajmowal jedna trzecia ekranu, zanim
+    pokazala sie pierwsza liczba. Metodologia zostala W CALOSCI, ale w <details>. %>
+<section class="panel bez-druku panel--zakres">
+  <div class="zakres-rzad">
+    <div class="pola-w-rzedzie">
+      <% skroty.forEach(function (s) { %>
+        <%# ⚠️ Etykiety przychodza Z DOMENY (trasa pyta o nie `zakresSkrotu`), a nie z listy
+            napisow w tym pliku — dzieki temu porownanie ponizej nie ma jak sie rozjechac. %>
+        <a class="btn btn--maly<%= zakres.etykieta === s.etykieta ? ' btn--glowny' : '' %>"
+           href="/raporty?skrot=<%= s.klucz %>"><%= s.etykieta %></a>
+      <% }); %>
+    </div>
+    <form method="get" action="/raporty" class="zakres-formularz">
+      <%# ⚠️ Pola dat stoja w `.zakres-data` — regula w layoucie niesie box-sizing:
+          border-box, bez ktorego pole daty (domyslnie content-box) wystaje poza komorke
+          o wysciolke (ta sama pulapka, ktora zlapala kiedys `.pola`). %>
+      <label class="zakres-data"><span>Od dnia</span>
+        <input type="date" name="od" value="<%= zakres.od %>" required></label>
+      <label class="zakres-data"><span>Do dnia</span>
+        <input type="date" name="do" value="<%= zakres.do %>" required></label>
+      <button class="btn btn--glowny" type="submit">Pokaż</button>
+      <%# Wydruk robi przegladarka — panel nie rysuje wlasnego PDF-u. %>
+      <button class="btn" type="button" onclick="window.print()">Drukuj</button>
+      <%# ⚠️ ODNOSNIK NIESIE ZAKRES Z EKRANU, a nie parametry surowe z adresu: skrot
+          („ten kwartal") jest juz tutaj rozwiniety w daty, wiec plik obejmuje DOKLADNIE ten
+          okres, ktory czlowiek ma przed oczami. Bez tego eksport po kliknieciu w skrot
+          oddawalby biezacy miesiac — cicho, bo plik i tak by sie pobral.
+          Adresy klientow domyslnie NIE wychodza; kto ich potrzebuje, dopisuje `&klient=1`. %>
+      <a class="btn" href="/raporty/eksport.csv?od=<%= zakres.od %>&do=<%= zakres.do %>"
+         download>Pobierz CSV</a>
+    </form>
+  </div>
+  <details class="metodologia">
+    <summary>Jak liczone są te liczby</summary>
+    <p class="wyjasnienie">
+      <strong>Okres</strong> liczy się po <strong>dniu złożenia zamówienia</strong> (czas
+      warszawski), obie daty włącznie. Skróty „Ten miesiąc / kwartał / rok" kończą się
+      <strong>dzisiaj</strong> — dni, których jeszcze nie było, zaniżałyby każde porównanie.
+      Porównanie „poprzedni okres" dla pełnego miesiąca, kwartału, półrocza i roku to poprzedni
+      <strong>taki sam okres kalendarzowy</strong>; dla zakresu od pierwszego dnia
+      <strong>do dziś</strong> — <strong>ten sam wycinek</strong> poprzedniego okresu
+      (1–17 sierpnia porównuje się z 1–17 lipca); dla zakresu wpisanego ręcznie od innego
+      dnia — okno tej samej długości tuż przed nim.
+    </p>
+    <p class="wyjasnienie">
+      <strong>Kanały:</strong> do dnia granicy historii liczby danego kanału pochodzą z Apilo,
+      po niej — z panelu. Granica jest osobna dla każdego kanału, bo każdy przeszedł do panelu
+      w innym dniu.
+    </p>
+    <p class="wyjasnienie">
+      <strong>Produkty i sztuki:</strong> wysyłka, dostawa i „realizacja priorytetowa"
+      przychodzą ze sklepu jako pozycje produktowe i są z rankingu oraz z licznika sztuk
+      wycięte — inaczej każda paczka liczyłaby się jako sprzedana sztuka.
+    </p>
+    <p class="wyjasnienie">
+      <strong>„Faktura"</strong> znaczy zamówienie, przy którym klient jej zażądał — nie
+      dokument już wystawiony (te pokazuje zakładka Faktury). <strong>Klienci:</strong>
+      drugie zamówienie tej samej osoby w okresie nie robi z niej dwóch klientów;
+      „powracający" to adres znany z zamówień sprzed tego okresu.
+    </p>
+  </details>
+</section>
+
+<%# ——— CZEGO ARCHIWUM NIE WIE O TEJ EPOCE — NIEZWIJANE ——————————————————————
+    ⚠️ NIE ZWIJAC W <details> jak pas nizej. Tamten mowi o DANYCH OKRESU, ten o tym, czego
+    archiwum nie wie o calej epoce sprzed pazdziernika 2024: liczby sa wtedy wylacznie ze
+    sklepu A, bez Allegro, hurtu i telefonu. Schowane za klikniecie przestaje
+    chronic przed jedynym bledem, ktory tu grozi — przeczytaniem ich jako calej sprzedazy. %>
+<% if (zastrzezeniaHistorii.length) { %>
+  <div class="pasek-uwaga pasek-uwaga--epoka">
+    <% zastrzezeniaHistorii.forEach(function (z) { %>
+      <p><%= z %></p>
+    <% }); %>
+  </div>
+<% } %>
+
+<%# ——— PAS OSTRZEZEN — ZWINIETY ————————————————————————————————————————————
+    ⚠️ TYLKO GDY LISTA JEST NIEPUSTA. Pas wyjacy przy dobrych danych przestaje cokolwiek
+    znaczyc. Lista jest zamknieta (domain/ostrzezenia-raportu.js) i widok jej nie rozszerza.
+    Od 17.08.2026 tresc jest zwinieta w <details> — naglowek mowi, ILE zastrzezen czeka,
+    a cztery dlugie punkty nie stoja przed liczbami, po ktore operator przyszedl. %>
+<% if (ostrzezenia.length) { %>
+  <details class="ostrzezenia-zwijane">
+    <summary><strong>Zanim uwierzysz w te liczby</strong> —
+      <%= ile(ostrzezenia.length, 'zastrzeżenie', 'zastrzeżenia', 'zastrzeżeń') %> do tego okresu</summary>
+    <div class="pasek-uwaga">
+      <ul>
+        <% ostrzezenia.forEach(function (o) { %>
+          <li><%= o.tresc %></li>
+        <% }); %>
+      </ul>
+    </div>
+  </details>
+<% } %>
+
+<%# ——— KPI ——————————————————————————————————————————————————————————————————
+    Cztery liczby, o ktore wlasciciel pyta rano — kazda z DWIEMA deltami (17.08.2026):
+    wzgledem okresu poprzedniego i wzgledem tego samego okresu rok wczesniej. Osobna
+    tabela „Rok do roku" zniknela — powtarzala te same cztery liczby ponizej kafli.
+    ⚠️ Delta r/r renderuje sie WYLACZNIE, gdy historia siega tamtego okresu (trasa oddaje
+    wtedy `deltyRok`) — zero z okresu, ktorego w bazie nie ma, wygladaloby jak zapasc
+    sprzedazy o 100%. %>
+<div class="kafelki kafelki--cztery">
+  <div class="kafel">
+    <div class="kafel-etykieta">Sprzedaż brutto</div>
+    <div class="kafel-wartosc"><%= zlote(kpi.bruttoGrosze) %> zł</div>
+    <%# Netto stoi POD brutto: to ta sama sprzedaz w innym ujeciu, nie osobna wielkosc. %>
+    <div class="kafel-dopisek"><%= zlote(kpi.nettoGrosze) %> zł netto</div>
+    <div class="kafel-delty">
+      <%- delta(delty.brutto, nazwaWczesniej) %>
+      <% if (deltyRok) { %><%- delta(deltyRok.brutto, nazwaPrzedRokiem, ' kafel-delta--rok') %><% } %>
+    </div>
+  </div>
+  <div class="kafel">
+    <div class="kafel-etykieta">Zamówienia</div>
+    <div class="kafel-wartosc"><%= kpi.zamowien %></div>
+    <div class="kafel-dopisek">bez anulowanych i testowych</div>
+    <div class="kafel-delty">
+      <%- delta(delty.zamowien, nazwaWczesniej) %>
+      <% if (deltyRok) { %><%- delta(deltyRok.zamowien, nazwaPrzedRokiem, ' kafel-delta--rok') %><% } %>
+    </div>
+  </div>
+  <div class="kafel">
+    <div class="kafel-etykieta">Średnie zamówienie</div>
+    <div class="kafel-wartosc"><%= zlote(kpi.aovGrosze) %> zł</div>
+    <div class="kafel-dopisek">brutto na zamówienie</div>
+    <div class="kafel-delty">
+      <%- delta(delty.aov, nazwaWczesniej) %>
+      <% if (deltyRok) { %><%- delta(deltyRok.aov, nazwaPrzedRokiem, ' kafel-delta--rok') %><% } %>
+    </div>
+  </div>
+  <div class="kafel">
+    <div class="kafel-etykieta">Sztuk</div>
+    <div class="kafel-wartosc"><%= kpi.sztuk %></div>
+    <div class="kafel-dopisek">bez wysyłki i usług</div>
+    <div class="kafel-delty">
+      <%- delta(delty.sztuk, nazwaWczesniej) %>
+      <% if (deltyRok) { %><%- delta(deltyRok.sztuk, nazwaPrzedRokiem, ' kafel-delta--rok') %><% } %>
+    </div>
+  </div>
+  <%# ⚠️ ZWROTY OBCIAZAJA MIESIAC ZWROTU, nie miesiac sprzedazy — dlatego te dwa kafle NIE
+      maja delty. ⚠️ PODLOGA ZWROTOW: dla zakresu konczacego sie przed dniem wdrozenia
+      rejestru panel nie ma ZADNEGO zrodla zwrotow — kafle wtedy NIE ISTNIEJA, a pod KPI
+      stoi jedna linijka (pasek-info nizej). Dwa kafle „brak danych" zajmowaly czwarta
+      czesc rzedu, nie mowiac niczego, czego nie powie jedno zdanie. %>
+  <% if (zwrotyPoznane) { %>
+    <div class="kafel">
+      <div class="kafel-etykieta">Zwroty</div>
+      <div class="kafel-wartosc">−<%= zlote(kpi.zwrotyGrosze) %> zł</div>
+      <div class="kafel-dopisek">brutto, w miesiącu zwrotu</div>
+    </div>
+    <div class="kafel">
+      <div class="kafel-etykieta">Sprzedaż po zwrotach</div>
+      <div class="kafel-wartosc"><%= zlote(kpi.bruttoPoZwrotachGrosze) %> zł</div>
+      <div class="kafel-dopisek">brutto minus zwroty tego okresu</div>
+    </div>
+  <% } %>
+</div>
+<% if (!zwrotyPoznane) { %>
+  <p class="pasek-info">
+    <% if (podlogaZwrotow) { %>
+    Zwroty: <strong>brak danych</strong> w tym okresie — rejestr zwrotów działa
+    od <%= podlogaZwrotow %>; wcześniejszych zwrotów panel nie widział, więc nie
+    zmyśla zera.
+    <% } else { %>
+    Zwroty: <strong>brak danych</strong> o początku rejestru zwrotów. Nie wiadomo,
+    czy wybrany okres jest objęty rejestrem.
+    <% } %>
+  </p>
+<% } %>
+
+<%# ——— PRZEBIEG: SPRZEDAZ DZIEN PO DNIU / TYDZIEN PO TYGODNIU (17.08.2026) ——————————
+    Najwazniejszy dodatek przebudowy: rytm okresu widac od razu, skoki (duze zamowienie
+    B2B) przestaja byc niespodzianka w sumie. Do 62 dni slupki dzienne, powyzej tygodniowe
+    (prog w trasie). ⚠️ Dzien/tydzien BEZ SPRZEDAZY ma slupek z zerem — pusty tor, zadnego
+    wypelnienia; luka w przebiegu wygladalaby jak przerwa w danych. %>
+<%# ⚠️ JEDEN SLUPEK TO NIE WYKRES (31.08.2026, razem ze skrotem „Dzisiaj"). Slupek liczy sie
+    WZGLEDEM NAJWYZSZEGO, wiec przy zakresie jednodniowym ma zawsze 100% wysokosci i cala
+    szerokosc karty: czarny prostokat, ktory nie mowi nic ponad kafel KPI stojacy nad nim,
+    a wyglada na usterke rysowania. Sekcja wtedy nie powstaje — kafle i kanaly zostaja. %>
+<% if (przebieg.slupki.length > 1) { %>
+<%
+  const najwyzszySlupek = Math.max(1, ...przebieg.slupki.map((s) => s.bruttoGrosze));
+  const wysokosc = (gr) => ((gr / najwyzszySlupek) * 100).toFixed(1);
+  // Kwote wprost dostaje WYLACZNIE najwyzszy slupek (i tylko przy niezerowej sprzedazy) —
+  // podpis na kazdym z 31 slupkow zamienilby wykres w tabele pionowych napisow.
+  const iNajwyzszego = przebieg.slupki.findIndex((s) => s.bruttoGrosze === najwyzszySlupek);
+%>
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Sprzedaż <%= przebieg.typ === 'dzienny' ? 'dzień po dniu' : 'tydzień po tygodniu' %></h2>
+    <span class="dopisek">brutto, wspólna skala</span>
+  </div>
+  <div class="panel-cialo">
+    <div class="wykres-dni">
+      <% przebieg.slupki.forEach(function (s, i) { %>
+        <%
+          // Podpis pod slupkiem: dzienny — numer dnia w poniedzialki oraz na koncach;
+          // tygodniowy — data poczatku co czwarty tydzien i na koncach. Podpis pod kazdym
+          // slupkiem zlewa sie w szum dokladnie tak samo, jak kwota nad kazdym.
+          let etykieta = '';
+          let podpis = '';
+          if (przebieg.typ === 'dzienny') {
+            podpis = `${dataSlownie(s.dzien)} (${dzienTygodnia(s.dzien)}) · ${zlote(s.bruttoGrosze)} zł · ${ile(s.zamowien, 'zamówienie', 'zamówienia', 'zamówień')}`;
+            if (dzienTygodnia(s.dzien) === 'pn' || i === 0 || i === przebieg.slupki.length - 1) {
+              etykieta = String(Number(s.dzien.slice(8, 10)));
+            }
+          } else {
+            podpis = `${dataKrotko(s.od)} – ${dataKrotko(s.do)} · ${zlote(s.bruttoGrosze)} zł · ${ile(s.zamowien, 'zamówienie', 'zamówienia', 'zamówień')}`;
+            if (i % 4 === 0 || i === przebieg.slupki.length - 1) etykieta = dataKrotko(s.od);
+          }
+        %>
+        <%# aria-label zamiast title (2026-08-28): podpis w calosci dla czytnika ekranu,
+            a wizualnie niesie go OKIENKO ponizej — natywny dymek dublowalby je z opoznieniem.
+            ⚠️ Klasa kolumny MUSI zostac golym `class="dzien"` — testy licza slupki splitem
+            po tym dokladnym znaczniku; krawedzie okienka zalatwia nth-child w arkuszu. %>
+        <div class="dzien" aria-label="<%= podpis %>">
+          <div class="dzien-okienko" aria-hidden="true">
+            <div class="okienko-data"><%= przebieg.typ === 'dzienny' ? `${dataSlownie(s.dzien)} · ${dzienTygodnia(s.dzien)}` : `${dataKrotko(s.od)} – ${dataKrotko(s.do)}` %></div>
+            <div class="okienko-kwota"><%= zlote(s.bruttoGrosze) %> zł</div>
+            <div class="okienko-zam"><%= ile(s.zamowien, 'zamówienie', 'zamówienia', 'zamówień') %></div>
+          </div>
+          <% if (s.bruttoGrosze > 0 && i === iNajwyzszego) { %>
+            <span class="dzien-kwota"><%= zlote(s.bruttoGrosze) %> zł</span>
+          <% } %>
+          <div class="dzien-tor">
+            <% if (s.bruttoGrosze > 0) { %>
+              <div class="dzien-slupek" style="height: <%= wysokosc(s.bruttoGrosze) %>%"></div>
+            <% } %>
+          </div>
+          <span class="dzien-etykieta"><%= etykieta %></span>
+        </div>
+      <% }); %>
+    </div>
+  </div>
+</section>
+<% } %>
+
+<%# ——— KANALY ———————————————————————————————————————————————————————————————
+    Od 17.08.2026 lista slupkow zamiast tabeli: slupek liczy sie WZGLEDEM NAJWIEKSZEGO
+    kanalu (jedna skala, jak w sezonowosci), a kazdy wiersz niesie zmiane wzgledem okresu
+    poprzedniego — „co uroslo, co spadlo" bylo dotad nie do zobaczenia bez kartki.
+    Srednie zamowienie kanalu przejelo 31.08.2026 okienko :hover (klasa `panel--dymki`
+    zdejmuje z tej karty `overflow: hidden`, inaczej okienko OSTATNIEGO wiersza zostaloby
+    sciete dolna krawedzia panelu — pod nim nie ma juz zadnego wiersza, ktory by je pomiescil). %>
+<section class="panel panel--dymki">
+  <div class="panel-glowa">
+    <h2>Skąd przyszła sprzedaż</h2>
+    <span class="dopisek">brutto; słupek względem największego kanału</span>
+  </div>
+  <div class="panel-cialo">
+    <% if (!kanaly.length) { %>
+      <%# Pusta sekcja ma POWIEDZIEC, ze jest pusta — inaczej wyglada jak ekran,
+          ktory sie nie wczytal (ta sama zasada, co przy liscie zamowien). %>
+      <p class="pusto-sekcja">W tym okresie nie ma ani jednego zamówienia.</p>
+    <% } else { %>
+      <% const najwiekszyKanal = Math.max(1, ...kanaly.map((k) => k.bruttoGrosze)); %>
+      <div class="kanaly-lista">
+        <div class="kanal-naglowek" aria-hidden="true">
+          <span></span><span></span>
+          <span class="liczba">brutto</span><span class="liczba">udział</span>
+          <span class="liczba">zam.</span><span class="liczba">vs <%= nazwaWczesniej %></span>
+        </div>
+        <% kanaly.forEach(function (k) { %>
+          <%# ⚠️ aria-label ZAMIAST title (31.08.2026, prosba właściciela) — ta sama decyzja, co
+              przy wykresie dnia 28.08.2026: wizualnie podpis niesie OKIENKO na :hover,
+              a natywny dymek dublowalby je z opoznieniem i w innym miejscu ekranu.
+              Czytnik ekranu dostaje w aria-label caly wiersz, ze srednim zamowieniem. %>
+          <div class="kanal-wiersz"
+               aria-label="<%= nazwaKanalu(k.kanal) %> · <%= zlote(k.bruttoGrosze) %> zł · <%= ile(k.zamowien, 'zamówienie', 'zamówienia', 'zamówień') %> · udział <%= procent(k.udzial) %>% · średnie zamówienie <%= zlote(k.aovGrosze) %> zł">
+            <%# ⚠️ OKIENKO STOI PRZED NAZWA, ale KOLUMNY SIATKI NIE ZAJMUJE — jest
+                pozycjonowane absolutnie, wiec wypada z ukladu wiersza (szesc kolumn
+                zostaje szescioma). Kolejnosc jest za to caloscia testu, ktory sprawdza
+                jego tresc: „od okienka do nazwy kanalu" to dokladnie ta karta. %>
+            <div class="kanal-okienko" aria-hidden="true">
+              <div class="okienko-data"><%= nazwaKanalu(k.kanal) %></div>
+              <div class="okienko-kwota"><%= zlote(k.bruttoGrosze) %> zł</div>
+              <div class="okienko-zam">
+                <%= ile(k.zamowien, 'zamówienie', 'zamówienia', 'zamówień') %>
+                · udział <%= procent(k.udzial) %>%
+              </div>
+              <%# Srednie zamowienie kanalu mieszkalo dotad w `title` wiersza i bylo jedyna
+                  liczba, ktorej ekran nie pokazywal wprost — okienko ja PRZEJMUJE. %>
+              <div class="okienko-zam">średnie zamówienie <%= zlote(k.aovGrosze) %> zł</div>
+            </div>
+            <span class="kanal-nazwa"><%= nazwaKanalu(k.kanal) %></span>
+            <div class="slupek-tor" aria-hidden="true">
+              <%# ⚠️ Wypelnienie TYLKO przy sprzedazy niezerowej — 2 px slupka przy zerze
+                  bylyby zdaniem zmyslonym (`min-width` pilnuje odwrotnej strony: 0,03%
+                  udzialu ma byc widoczne, a nie znikac). %>
+              <% if (k.bruttoGrosze > 0) { %>
+                <div class="slupek-wypelnienie"
+                     style="width: <%= szerokoscCss((k.bruttoGrosze / najwiekszyKanal) * 100) %>%"></div>
+              <% } %>
+            </div>
+            <span class="liczba"><%= zlote(k.bruttoGrosze) %> zł</span>
+            <span class="liczba kanal-drobne"><%= procent(k.udzial) %>%</span>
+            <span class="liczba kanal-drobne"><%= k.zamowien %></span>
+            <%# ⚠️ MYSLNIK, NIE ZERO, przy kanale bez podstawy porownania — sam znak,
+                bez zdania „brak porownania" (osiem wierszy z pelnym zdaniem to sciana
+                tekstu; w kaflach KPI zdanie zostalo, bo tam jest jedno). %>
+            <% if (k.zmiana === null) { %>
+              <span class="kafel-delta kanal-delta">—</span>
+            <% } else { %>
+              <%- delta(k.zmiana, null, ' kanal-delta') %>
+            <% } %>
+          </div>
+        <% }); %>
+      </div>
+    <% } %>
+  </div>
+</section>
+
+<%# ——— PRODUKTY OBOK FAKTURA/PARAGON I KLIENTOW ————————————————————————————— %>
+<div class="dwie-kolumny">
+  <section class="panel">
+    <div class="panel-glowa">
+      <h2>Najczęściej kupowane</h2>
+      <span class="dopisek">dziesięć pozycji o największej wartości</span>
+    </div>
+    <div class="panel-cialo">
+      <% if (!produkty.length) { %>
+        <p class="pusto-sekcja">Brak pozycji produktowych w tym okresie.</p>
+      <% } else { %>
+        <% const najwiekszyProdukt = Math.max(1, ...produkty.map((p) => p.bruttoGrosze)); %>
+        <div class="produkty-lista">
+          <% produkty.forEach(function (p) { %>
+            <div class="produkt-wiersz">
+              <span class="produkt-nazwa" title="<%= p.nazwa %>"><%= p.nazwa %></span>
+              <span class="liczba kanal-drobne"><%= p.sztuk %> szt.</span>
+              <span class="liczba"><%= zlote(p.bruttoGrosze) %> zł</span>
+              <div class="produkt-pasek">
+                <div class="slupek-tor" aria-hidden="true">
+                  <% if (p.bruttoGrosze > 0) { %>
+                    <div class="slupek-wypelnienie"
+                         style="width: <%= szerokoscCss((p.bruttoGrosze / najwiekszyProdukt) * 100) %>%"></div>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+        <%# ⚠️ Koncentracja liczy sie w domenie (`udzialTop`), null przy pustym okresie —
+            „top 10 = 0%" wygladaloby na zmierzony fakt. %>
+        <% if (udzialTop !== null) { %>
+          <p class="wyjasnienie">
+            Powyższa lista odpowiada za <strong><%= procent(udzialTop) %>%</strong>
+            sprzedaży okresu.
+          </p>
+        <% } %>
+      <% } %>
+    </div>
+  </section>
+
+  <div class="kolumna-kart">
+    <section class="panel">
+      <div class="panel-glowa">
+        <h2>Faktura czy paragon</h2>
+        <span class="dopisek">po liczbie zamówień i po wartości</span>
+      </div>
+      <div class="panel-cialo">
+        <%# ⚠️ PROPORCJA, NIE DWIE LICZBY OBOK SIEBIE (prosba właściciela 17.08.2026). Dwa paski, %>
+        <%# bo wartosc i liczba zamowien rozjezdzaja sie z natury: jedna faktura na 5000 zl %>
+        <%# obok dziesieciu paragonow po 50 zl to 9% zamowien i 91% wartosci. %>
+        <%# ⚠️ PROCENT I SZEROKOSC IDA Z TEJ SAMEJ LICZBY (`udzialyDokumentow` w domenie). %>
+        <% const paski = [
+             { tytul: 'wg liczby zamówień', dane: udzialyDokumentow.zamowien, opis: (n) => ile(n, 'zam.', 'zam.', 'zam.') },
+             { tytul: 'wg wartości', dane: udzialyDokumentow.wartosc, opis: (n) => `${zlote(n)} zł` },
+           ]; %>
+        <% paski.forEach(function (pasek) { %>
+          <div class="udzial">
+            <div class="udzial-tytul"><%= pasek.tytul %></div>
+            <% if (pasek.dane.razem === 0) { %>
+              <%# ⚠️ Pusty pasek z „0%" wygladalby na zmierzony fakt („nikt nie chcial
+                  faktury"), a znaczy „nie bylo ani jednego zamowienia". %>
+              <p class="wyjasnienie udzial-pusto">W tym okresie nie ma jeszcze żadnego zamówienia.</p>
+            <% } else { %>
+              <div class="udzial-pasek">
+                <% [
+                     { klasa: 'faktura', nazwa: 'Faktura VAT', cz: pasek.dane.faktura },
+                     { klasa: 'paragon', nazwa: 'Paragon', cz: pasek.dane.paragon },
+                   ].forEach(function (czesc) { %>
+                  <% if (czesc.cz.procent > 0) { %>
+                    <%# `title` niesie pelny opis takze wtedy, gdy czesc jest za waska na napis. %>
+                    <div class="udzial-czesc udzial-czesc--<%= czesc.klasa %>"
+                         style="width: <%= szerokoscCss(czesc.cz.procent) %>%"
+                         title="<%= czesc.nazwa %> · <%= pasek.opis(czesc.cz.ile) %> · <%= czesc.cz.procent %>%">
+                      <span class="udzial-napis"><%= czesc.nazwa %> · <%= pasek.opis(czesc.cz.ile) %> · <%= czesc.cz.procent %>%</span>
+                    </div>
+                  <% } %>
+                <% }); %>
+              </div>
+            <% } %>
+          </div>
+        <% }); %>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-glowa">
+        <h2>Nowi i powracający</h2>
+        <span class="dopisek">liczymy klientów, nie zamówienia</span>
+      </div>
+      <div class="panel-cialo">
+        <div class="fakty">
+          <div><span class="k">Nowi</span><span class="w"><%= klienci.nowych %></span></div>
+          <div><span class="k">Powracający</span><span class="w"><%= klienci.powracajacych %></span></div>
+          <%# ⚠️ ZAMOWIENIA BEZ ADRESU MAJA WLASNY LICZNIK. Wrzucone do „nowych" zawyzalyby
+              pozyskanie przy kazdym zamowieniu telefonicznym bez maila. %>
+          <div><span class="k">Bez adresu e-mail</span><span class="w"><%= klienci.bezMaila %></span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<%# ——— SEZONOWOSC ———————————————————————————————————————————————————————————
+    ⚠️ OD DWOCH MIESIECY WZWYZ (trasa oddaje wtedy `miesiacami`) — przy jednym nie ma czego
+    porownywac. ⚠️ Miesiac BEZ SPRZEDAZY ma tu swoj wiersz z zerem (lista miesiecy
+    przychodzi z zakresu, a nie z danych) i PUSTY TOR bez wypelnienia. %>
+<% if (miesiacami) { %>
+  <%
+    // GEOMETRIA rysunku: najwyzszy slupek zajmuje caly tor, reszta proporcjonalnie —
+    // cala seria stoi na JEDNEJ skali. `Math.max(1, …)` chroni przed dzieleniem przez zero.
+    const najwyzszy = Math.max(1, ...miesiacami.map((m) => m.bruttoGrosze));
+    const szerokosc = (gr) => ((gr / najwyzszy) * 100).toFixed(1);
+  %>
+  <section class="panel">
+    <div class="panel-glowa">
+      <h2>Sezonowość</h2>
+      <span class="dopisek">brutto miesiąc po miesiącu, wspólna skala</span>
+    </div>
+    <div class="panel-cialo">
+      <div class="slupki">
+        <% miesiacami.forEach(function (m) { %>
+          <div class="slupek">
+            <span class="slupek-nazwa"><%= m.miesiac %></span>
+            <div class="slupek-tor">
+              <% if (m.bruttoGrosze > 0) { %>
+                <div class="slupek-wypelnienie" style="width: <%= szerokosc(m.bruttoGrosze) %>%"></div>
+              <% } %>
+            </div>
+            <span class="slupek-kwota">
+              <%= zlote(m.bruttoGrosze) %> zł
+              <span class="slupek-drobne">· <%= ile(m.zamowien, 'zamówienie', 'zamówienia', 'zamówień') %></span>
+            </span>
+          </div>
+        <% }); %>
+      </div>
+    </div>
+  </section>
+<% } %>

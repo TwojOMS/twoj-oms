@@ -1,0 +1,473 @@
+<%# Zakladka KOSZTY — faktury, na ktorych to MY jestesmy nabywca, czytane z lustra KSeF
+    w bazie panelu (db/koszty.js). Pasy w kolejnosci: wybor miesiaca · stan pobierania ·
+    nieprzypisane · dokumenty · rozbicie na kategorie · obca waluta · suma + kwarantanna.
+
+    ⚠️ WIDOK NICZEGO NIE LICZY. Sumy, udzialy, pas nieprzypisanych i lista obcych walut
+    przychodza policzone (domain/lista-kosztow.js) — na groszach, calkowitych. Tutaj zostaje
+    wylacznie ZAPIS liczby po polsku (`kwota` nizej): to samo rozdzielenie, co w faktury.ejs
+    i magazyn-lista.ejs. Druga kopia arytmetyki rozjechalaby sie z pierwsza przy pierwszej
+    zmianie, a chodzi o pieniadze.
+
+    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w layout-oms.ejs (paleta ma
+    wariant jasny i ciemny, wiec wartosc wpisana tutaj zadzialalaby w jasnym i po cichu
+    zniknela w ciemnym). Klasy sa te same, co na zakladce FAKTURY, zeby obie nie wygladaly
+    jak z dwoch aplikacji. %>
+
+<%
+  // '1234.50' → '1 234,50'. To NIE JEST arytmetyka, tylko polski zapis liczby: nic sie tu
+  // nie dodaje, nie dzieli i nie zaokragla. Ulamek krotszy niz dwa znaki dopelnia sie zerami
+  // (kwoty z KSeF maja zawsze dwa — patrz `kwota` w domain/koszt-metadane.js), dluzszy
+  // zostaje, jaki jest: zaokraglenie w widoku bylo by juz liczeniem.
+  const kwota = (napis) => {
+    const s = String(napis ?? '').trim();
+    if (!s) return '';
+    const minus = s.startsWith('-');
+    const [calosc, ulamek = ''] = s.replace('-', '').split('.');
+    const grosze = ulamek.length >= 2 ? ulamek : ulamek.padEnd(2, '0');
+    return `${minus ? '-' : ''}${calosc.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')},${grosze}`;
+  };
+  // Liczebnik po polsku ma TRZY formy, nie dwie (ta sama funkcja, co w faktury.ejs).
+  // 12, 13, 14 ida do formy mnogiej mimo koncowek 2/3/4 — stad wyjatek na reszcie z 100.
+  const ile = (n, jeden, kilka, wiele) => {
+    const d = Math.abs(n) % 10;
+    const s = Math.abs(n) % 100;
+    if (n === 1) return `${n} ${jeden}`;
+    return `${n} ${d >= 2 && d <= 4 && (s < 12 || s > 14) ? kilka : wiele}`;
+  };
+  const OPIS_TYPU = { zmienny: 'zmienny', staly: 'stały', drobne: 'drobne' };
+%>
+
+<div class="glowa-ekranu">
+  <h1>Koszty</h1>
+  <span class="krok">faktury zakupowe z KSeF — lustro w bazie panelu</span>
+</div>
+
+<%# ——— WYBOR MIESIACA ————————————————————————————————————————————————————————
+    Zwykly formularz GET, bez ani jednej linii skryptu (jak filtry nad lista zamowien).
+    `type="month"` daje kalendarz przegladarki i wartosc dokladnie w formacie RRRR-MM,
+    ktorego wymaga `kosztyMiesiaca` — bez wlasnej listy trzynastu miesiecy do utrzymania. %>
+<form class="filtry" method="get" action="/koszty">
+  <div class="filtry-rzad">
+    <label class="pole-filtra">
+      <span>Miesiąc</span>
+      <input type="month" name="miesiac" value="<%= miesiac %>">
+    </label>
+    <button class="btn btn--glowny" type="submit">Pokaż</button>
+    <%# Zestawienie kosztow miesiaca (PRZ-086) — ODNOSNIK, nie drugi przycisk formularza: niesie
+        wlasny adres z miesiacem, NA KTORY OPERATOR PATRZY (wartosc pola `Miesiac` przed
+        klikniem „Pokaz" jest jeszcze nieprzeslana). Stoi ZAWSZE, bez warunku na KSeF/inFakt:
+        PDF powstaje z samej bazy, wiec panel bez sekcji KSEF_* tez go ma.
+        Dwie czesci: faktury z KSeF i faktury dopisane recznie. Same listy, bez dolaczonych
+        dokumentow (jak zestawienie przychodow na FAKTURACH). %>
+    <a class="btn btn--drugi" href="/koszty/zestawienie?miesiac=<%= miesiac %>" title="PDF z zestawieniem kosztów miesiąca wg daty otrzymania, w dwóch osobnych częściach: faktury kosztowe z KSeF i faktury dopisane ręcznie. Same listy, bez dołączonych dokumentów.">Pobierz zestawienie (PDF)</a>
+  </div>
+</form>
+
+<%# ——— PAS 1: stan pobierania ————————————————————————————————————————————————
+    ⚠️ „Kiedy ostatnio sie udalo" jest wazniejsze niz „czy byl blad": doba bez kosztow
+    wyglada dokladnie tak samo, jak doba bez zakupow. Bez tej daty nie da sie ich odroznic. %>
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Pobieranie z KSeF</h2>
+    <span class="dopisek">
+      Ostatnie pobranie:
+      <% if (stan && stan.ostatnie_udane_at) { %><%= fmtDataCzas(stan.ostatnie_udane_at) %><% } else { %>nigdy<% } %>
+    </span>
+  </div>
+  <div class="panel-cialo">
+    <% if (komunikat && komunikat.zle) { %>
+      <p class="pasek-blokada">Pobranie się nie udało: <%= komunikat.tresc %></p>
+    <% } else if (komunikat) { %>
+      <p class="wyjasnienie"><span class="znacznik znacznik--ok">gotowe</span> <%= komunikat.tresc %></p>
+    <% } %>
+
+    <%# ⚠️ SLAD PO OSTATNIEJ AWARII ZE ZNACZNIKIEM CZASU. Sama tresc nie mowi, czy awaria
+        jest sprzed godziny, czy sprzed trzech tygodni — a to jest cala roznica miedzy „KSeF
+        mial czkawke" a „panel nie pobiera kosztow od miesiaca i nikt tego nie zauwazyl".
+        Ten sam wpis niesie tez uwagi o kwarantannie (services/czuwacz-kosztow.js). %>
+    <% if (stan && stan.ostatni_blad) { %>
+      <p class="pasek-blokada">
+        Ostatni przebieg zostawił ślad<% if (stan.ostatni_blad_at) { %> (<%= fmtDataCzas(stan.ostatni_blad_at) %>)<% } %>:
+        <%= stan.ostatni_blad %>
+      </p>
+    <% } %>
+
+    <div class="fakty">
+      <div>
+        <span class="k">Przeczytane do</span>
+        <%# Kursor to obietnica „wszystko do tej daty juz przeczytalismy" — liczona po dacie
+            TRWALEGO ZAPISU w KSeF, a nie po dacie wystawienia dokumentu. %>
+        <span class="w"><% if (stan && stan.kursor) { %><%= fmtDataCzas(stan.kursor) %><% } else { %>jeszcze nic<% } %></span>
+      </div>
+    </div>
+
+    <div class="pola-w-rzedzie">
+      <%# Formularz bez ukrytego pola z tokenem: ochrona CSRF (src/security/csrf.js) stoi
+          na naglowkach Origin/Referer i jest hakiem globalnym. %>
+      <% if (mozliwyOdswiez) { %>
+        <form method="post" action="/koszty/odswiez">
+          <%# Miesiac jedzie z formularzem, zeby po pobraniu wrocic na TEN ekran, a nie
+              na miesiac biezacy. %>
+          <input type="hidden" name="miesiac" value="<%= miesiac %>">
+          <button class="btn btn--glowny" type="submit">Odśwież teraz</button>
+        </form>
+        <span class="wyjasnienie">
+          Zwykłe pobranie chodzi raz na dobę, w nocy. Ten przycisk wymusza je od razu —
+          potrafi potrwać kilka minut, nie zamykaj wtedy panelu.
+        </span>
+      <% } else { %>
+        <span class="wyjasnienie">
+          Ten panel nie ma podpiętego KSeF, więc nie ma skąd pobierać kosztów — widać tu
+          wyłącznie to, co już leży w bazie.
+        </span>
+      <% } %>
+    </div>
+  </div>
+</section>
+
+<%# ——— PAS 2: bez kategorii ——————————————————————————————————————————————————
+    ⚠️ Z LICZBA I KWOTA, nie sama etykieta: „są nieprzypisane" nie mowi, czy chodzi o jeden
+    dokument na 40 zl, czy o polowe miesiaca. Kategorii NIE ZGADUJEMY — zgadnieta wchodzi
+    do sumy okresu i nikt jej juz nie odrozni od przypisanej swiadomie. %>
+<% if (nieprzypisane.ile > 0) { %>
+  <p class="pasek-uwaga">
+    <strong>Bez kategorii:</strong>
+    <%= ile(nieprzypisane.ile, 'dokument', 'dokumenty', 'dokumentów') %>
+    na <%= kwota(nieprzypisane.netto) %> zł netto. Te kwoty są w sumie miesiąca, ale nie ma
+    ich w rozbiciu na kategorie — przypisz kategorię po NIP-ie w tabeli poniżej,
+    a obejmie wszystkie faktury tego sprzedawcy, także starsze.
+  </p>
+<% } %>
+
+<%# ——— PAS 3: dokumenty miesiaca ——————————————————————————————————————————— %>
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Faktury kosztowe</h2>
+    <span class="dopisek"><%= miesiac %> · <%= ile(pozycje.length, 'dokument', 'dokumenty', 'dokumentów') %> w PLN</span>
+  </div>
+  <div class="panel-cialo">
+    <%# Jedna lista podpowiedzi dla wszystkich wierszy — kategorie JUZ UZYWANE, zeby nie
+        powstala trzecia odmiana tej samej nazwy. Pole zostaje tekstowe (a nie `select`),
+        bo nowa kategoria musi dac sie zalozyc bez wchodzenia do bazy. %>
+    <datalist id="lista-kategorii">
+      <% dostepneKategorie.forEach(function (k) { %>
+        <option value="<%= k.kategoria %>"></option>
+      <% }); %>
+    </datalist>
+
+    <div class="przewijak-tabeli">
+      <table>
+        <thead>
+          <tr>
+            <th>Wystawiona</th><th>Sprzedawca</th><th>Numer dokumentu</th>
+            <th class="liczba">Netto</th><th class="liczba">VAT</th><th class="liczba">Brutto</th>
+            <th>Kategoria</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% pozycje.forEach(function (w) { %>
+            <tr>
+              <td><%= w.data_wystawienia %></td>
+              <td>
+                <%= w.sprzedawca_nazwa %>
+                <div class="wiersz-szczegoly">NIP <%= w.sprzedawca_nip ?? 'brak' %></div>
+              </td>
+              <td>
+                <strong><%= w.numer_dokumentu %></strong>
+                <%# ⚠️⚠️ SKĄD JEST TEN WIERSZ — jedyna różnica, której NIE WIDAĆ po treści
+                    dokumentu, a widzieć ją trzeba: tylko koszt wpisany ręcznie wolno poprawić
+                    i tylko za jego kwotę odpowiada człowiek przy panelu (dokument z KSeF jest
+                    lustrem i panel go nie tyka). Stąd znacznik i odnośnik do poprawki. %>
+                <% if (w.zrodlo === 'reczne') { %>
+                  <div class="wiersz-szczegoly">
+                    <span class="znacznik">wpisana ręcznie</span>
+                    <a href="/koszty/reczne/<%= encodeURIComponent(w.ksef_number) %>?miesiac=<%= miesiac %>">popraw</a>
+                  </div>
+                <% } else if (w.rodzaj && w.rodzaj !== 'Vat') { %>
+                  <%# Rodzaj pokazujemy DOSLOWNIE tak, jak podal go KSeF (bez wlasnego slownika):
+                      dla faktury VAT nie mowi nic nowego, a przy korekcie jest cala tresc. %>
+                  <div class="wiersz-szczegoly"><span class="znacznik znacznik--uwaga"><%= w.rodzaj %></span></div>
+                <% } %>
+                <%# ⚠️ WIZUALIZACJA, NIE ORYGINAL. KSeF oddaje wylacznie XML, wiec ten PDF
+                    rysuje panel — i dokladnie tak jest podpisany na kazdej stronie dokumentu.
+                    Link pokazuje sie tylko przy podpietym KSeF: XML pobiera sie na zadanie,
+                    wiec bez niego nie ma z czego rysowac (archiwum na NAS-ie jest dodatkiem
+                    i dzis na produkcji nie dziala). %>
+                <%# ⚠️ Przy wierszu wpisanym RĘCZNIE przycisku nie ma i mieć nie może: takiego
+                    dokumentu w KSeF NIE MA, więc nie ma z czego narysować wizualizacji
+                    (usługa odmawia tego wprost — services/wizualizacja-kosztu.js). %>
+                <% if (mozliwyPdf && w.zrodlo !== 'reczne') { %>
+                  <div class="wiersz-szczegoly">
+                    <a href="/koszty/<%= encodeURIComponent(w.ksef_number) %>/pdf"
+                       title="Wizualizacja dokumentu z KSeF — oryginałem jest plik XML">PDF</a>
+                  </div>
+                <% } %>
+              </td>
+              <td class="liczba"><%= kwota(w.netto) %></td>
+              <td class="liczba"><%= kwota(w.vat) %></td>
+              <td class="liczba"><%= kwota(w.brutto) %></td>
+              <td>
+                <%# ⚠️ FORMULARZ NA WIERSZ, ale przypiecie idzie PO NIP-IE — obejmuje wszystkie
+                    faktury tego sprzedawcy, takze te sprzed miesiecy. Dlatego stoi tu nazwa
+                    kategorii, a nie „kategoria tej faktury". %>
+                <form method="post" action="/koszty/kategoria" class="pola-w-rzedzie pola-w-rzedzie--wiersz">
+                  <input type="hidden" name="nip" value="<%= w.sprzedawca_nip ?? '' %>">
+                  <%# ⚠️ DOKUMENT OBOK NIP-U, a nie zamiast niego. Sprzedawca BEZ polskiego
+                      NIP-u (Google, Meta, Anthropic — czyli ci, których faktur nie ma w KSeF)
+                      nie ma jak trafić do mapy kategorii, bo jej kluczem głównym jest NIP.
+                      Trasa wybiera drogę: jest NIP — przypina po NIP-ie (wszystkie faktury
+                      tego sprzedawcy), nie ma — przypina do TEGO dokumentu. %>
+                  <input type="hidden" name="ksefNumber" value="<%= w.ksef_number %>">
+                  <input type="hidden" name="miesiac" value="<%= miesiac %>">
+                  <input type="text" name="kategoria" list="lista-kategorii" value="<%= w.kategoria ?? '' %>"
+                    placeholder="Bez kategorii" size="16"
+                    aria-label="Kategoria kosztu dla sprzedawcy <%= w.sprzedawca_nazwa %>">
+                  <select name="typ" aria-label="Typ kosztu dla sprzedawcy <%= w.sprzedawca_nazwa %>">
+                    <% typy.forEach(function (t) { %>
+                      <option value="<%= t %>" <%= (w.typ ?? 'zmienny') === t ? 'selected' : '' %>><%= OPIS_TYPU[t] ?? t %></option>
+                    <% }); %>
+                  </select>
+                  <button class="btn btn--maly" type="submit">Przypisz</button>
+                </form>
+              </td>
+            </tr>
+          <% }); %>
+          <% if (!pozycje.length) { %>
+            <%# Pusta tabela ma POWIEDZIEC, ze jest pusta — inaczej wyglada jak ekran, ktory
+                sie nie wczytal (ta sama zasada, co przy liscie zamowien). %>
+            <tr><td colspan="7" class="pusto-sekcja">
+              Brak faktur kosztowych w tym miesiącu.
+            </td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+    <p class="wyjasnienie">
+      Miesiąc liczy się po <strong>dacie wystawienia</strong>, a nie po dacie trwałego zapisu
+      w KSeF ani po dacie pobrania: dokument wystawiony 30.06 potrafi trafić do KSeF w lipcu,
+      a do kosztów czerwca należy czerwiec. Kategoria przypina się po NIP-ie sprzedawcy,
+      nie po nazwie — KSeF zapisuje nazwy w różnych wariantach, NIP jest jeden.
+    </p>
+  </div>
+</section>
+
+<%# ——— PAS 3b: koszt SPOZA KSeF ————————————————————————————————————————————
+    ⚠️⚠️ Facebooka, Google, Anthropic, zakupów zagranicznych i paragonów NIE MA I NIE BĘDZIE
+    w KSeF. Wpisane tutaj leżą w TEJ SAMEJ tabeli, co dokumenty z KSeF, i wchodzą do sumy
+    miesiąca oraz do rozbicia na kategorie na równi z nimi — bo raport zarządczy ma mieć
+    JEDNĄ prawdę o kosztach, a nie sumę z panelu plus arkusz obok. Rozpoznać je można po
+    znaczniku „wpisana ręcznie" w tabeli wyżej i tylko one dają się poprawić i usunąć. %>
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Dopisz koszt spoza KSeF</h2>
+    <span class="dopisek">Facebook, Google, Anthropic, zakupy zagraniczne, paragony</span>
+  </div>
+  <div class="panel-cialo">
+    <form method="post" action="/koszty/reczne">
+      <input type="hidden" name="miesiac" value="<%= miesiac %>">
+      <%- include('_koszt-reczny-pola.ejs', { w: {}, firmy }) %>
+      <div class="pola-w-rzedzie">
+        <button class="btn btn--glowny" type="submit">Dopisz koszt</button>
+      </div>
+    </form>
+    <p class="wyjasnienie">
+      Kwota jest <strong>jedna i w złotówkach</strong> — ta z rozliczenia karty albo z wyciągu.
+      To są zakupy zagraniczne rozliczane jako <strong>import usług</strong>: VAT idzie
+      odwrotnym obciążeniem, więc sprzedawca go nie nalicza, a do kosztu wchodzi kwota netto.
+      Panel zapisuje ją jako netto i brutto, z zerowym VAT-em. Nazwa sprzedawcy i kategoria
+      stoją za wybraną firmą — przypinają się <strong>do samego dokumentu</strong>, bo mapa
+      kategorii jest kluczowana NIP-em, a Google czy Meta polskiego NIP-u nie mają.
+    </p>
+
+    <%# ——— dopisanie firmy do listy ————————————————————————————————————————
+        ⚠️ DWA POLA: nazwa i kategoria. Typ kosztu dobiera się z kategorii — ona już go zna
+        (db/kategorie-kosztow.js), a trzecie pole pozwoliłoby tej samej kategorii mieć tutaj
+        inny typ niż w rozbiciu miesiąca, czyli rozjazd progu rentowności wpisywany ręcznie. %>
+    <details>
+      <summary>Nie ma tej firmy na liście?</summary>
+      <form method="post" action="/koszty/firmy">
+        <input type="hidden" name="miesiac" value="<%= miesiac %>">
+        <div class="pola-w-rzedzie">
+          <label class="pole-filtra">
+            <span>Nazwa firmy</span>
+            <input type="text" name="nazwa" size="24" placeholder="np. OpenAI" required>
+          </label>
+          <label class="pole-filtra">
+            <span>Kategoria</span>
+            <%# Pole WYBORU, choć kategoria przy fakturach z KSeF wpisuje się tekstem: tam nowa
+                nazwa musi dać się założyć w locie, tutaj kategoria ma NIEŚĆ TYP — a typ zna
+                wyłącznie kategoria już istniejąca. Nowa zakłada się w tabeli wyżej. %>
+            <select name="kategoria" required>
+              <option value="">— wybierz —</option>
+              <% dostepneKategorie.forEach(function (k) { %>
+                <option value="<%= k.kategoria %>"><%= k.kategoria %> · <%= OPIS_TYPU[k.typ] ?? k.typ %></option>
+              <% }); %>
+            </select>
+          </label>
+          <button class="btn" type="submit">Dopisz firmę</button>
+        </div>
+      </form>
+      <p class="wyjasnienie">
+        Firma dopisana tutaj zostaje na liście na stałe — te koszty wracają co miesiąc od tych
+        samych dostawców, więc nazwę i kategorię wybiera się <strong>raz</strong>.
+      </p>
+    </details>
+  </div>
+</section>
+
+<%# ——— PAS 4: rozbicie na kategorie ————————————————————————————————————————— %>
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Na co poszły pieniądze</h2>
+    <span class="dopisek">netto, udział liczony w obrębie tego, co ma kategorię</span>
+  </div>
+  <div class="panel-cialo">
+    <div class="przewijak-tabeli">
+      <table>
+        <thead>
+          <tr><th>Kategoria</th><th>Typ</th><th class="liczba">Netto</th><th class="liczba">Udział</th></tr>
+        </thead>
+        <tbody>
+          <% kategorie.forEach(function (k) { %>
+            <tr>
+              <td><%= k.kategoria %></td>
+              <td><span class="znacznik"><%= OPIS_TYPU[k.typ] ?? k.typ %></span></td>
+              <td class="liczba"><%= kwota(k.netto) %></td>
+              <td class="liczba"><%= k.udzial %>%</td>
+            </tr>
+          <% }); %>
+          <% if (!kategorie.length) { %>
+            <tr><td colspan="4" class="pusto-sekcja">
+              Żaden dokument tego miesiąca nie ma jeszcze kategorii.
+            </td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+    <%# ⚠️ MIANOWNIK TO SUMA SKATEGORYZOWANA, nie suma miesiaca (domain/lista-kosztow.js) —
+        i ekran ma o tym POWIEDZIEC, bo inaczej kolumna „Udział" nie zgadza sie z suma nizej. %>
+    <p class="wyjasnienie">
+      Udział liczy się względem kosztów, <strong>które mają kategorię</strong> — dokumenty
+      z pasa „Bez kategorii" nie wchodzą do tego mianownika, więc kolumna zawsze sumuje się
+      do 100%, a nie do „ile się uzbierało".
+    </p>
+  </div>
+</section>
+
+<%# ——— PAS 5: obca waluta ————————————————————————————————————————————————————
+    ⚠️ NIE PRZELICZAMY. Kurs zalezy od daty i tabeli NBP, a zmyslony kurs w sumie kosztow
+    to blad podany z pelnym przekonaniem. Dokumenty stoja obok sumy PLN, z adnotacja. %>
+<% if (obcaWaluta.length) { %>
+  <section class="panel">
+    <div class="panel-glowa">
+      <h2>Poza sumą — obca waluta</h2>
+      <span class="dopisek"><%= ile(obcaWaluta.length, 'dokument', 'dokumenty', 'dokumentów') %></span>
+    </div>
+    <div class="panel-cialo">
+      <div class="przewijak-tabeli">
+        <table>
+          <thead><tr><th>Numer dokumentu</th><th>Waluta</th><th class="liczba">Netto</th></tr></thead>
+          <tbody>
+            <% obcaWaluta.forEach(function (d) { %>
+              <tr>
+                <td>
+                  <strong><%= d.numerDokumentu %></strong>
+                  <%# ⚠️ Koszt wpisany ręcznie jest od 13.08.2026 ZAWSZE w PLN (formularz nie ma
+                      już pola waluty — kwota jest jedna i w złotówkach), więc tutaj trafić nie
+                      powinien. Odnośnik zostaje dla wierszy wpisanych PRZED tym uproszczeniem:
+                      bez niego wiersz w USD byłby z panelu nie do ruszenia, a to jedyne
+                      miejsce, w którym w ogóle widać go na ekranie. %>
+                  <% if (d.zrodlo === 'reczne') { %>
+                    <div class="wiersz-szczegoly">
+                      <span class="znacznik">wpisana ręcznie</span>
+                      <a href="/koszty/reczne/<%= encodeURIComponent(d.klucz) %>?miesiac=<%= miesiac %>">popraw</a>
+                    </div>
+                  <% } %>
+                </td>
+                <td><span class="znacznik"><%= d.waluta %></span></td>
+                <td class="liczba"><%= kwota(d.netto) %></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+      <p class="wyjasnienie">
+        Panel nie przelicza tych kwot na złotówki i nie dolicza ich do sumy miesiąca —
+        kurs zależy od daty i tabeli, a zmyślony kurs byłby błędem podanym z pełnym
+        przekonaniem. Przelicza je księgowość.
+      </p>
+    </div>
+  </section>
+<% } %>
+
+<%# ——— PAS 6: suma miesiaca + KWARANTANNA ——————————————————————————————————
+    ⚠️⚠️ KWARANTANNA STOI PRZY SUMIE I NIGDZIE INDZIEJ. Dokument, ktorego panel nie umial
+    zapisac (np. KSeF nie podal kwoty), lezy w `koszty_odrzucone` i NIE WCHODZI do tej sumy
+    — bo jego kwoty nie znamy i nie zmyslimy jej. Liczba, ktorej nikt nie kwestionuje, jest
+    gorsza niz widoczna dziura: bez tego pasa zestawienie z KSeF bylo by WIEKSZE niz suma
+    w panelu i nie byloby jak zgadnac dlaczego. %>
+<section class="panel<%= kwarantanna.ile ? ' panel--groza' : '' %>">
+  <div class="panel-glowa<%= kwarantanna.ile ? ' panel-glowa--groza' : '' %>">
+    <h2>Suma miesiąca</h2>
+    <span class="dopisek">tylko dokumenty w PLN</span>
+  </div>
+  <div class="panel-cialo">
+    <div class="przewijak-tabeli">
+      <table>
+        <thead><tr><th>Miesiąc</th><th class="liczba">Netto</th><th class="liczba">VAT</th><th class="liczba">Brutto</th></tr></thead>
+        <tbody>
+          <tr class="wiersz-razem">
+            <td><%= miesiac %></td>
+            <td class="liczba"><%= kwota(suma.netto) %> zł</td>
+            <td class="liczba"><%= kwota(suma.vat) %> zł</td>
+            <td class="liczba"><%= kwota(suma.brutto) %> zł</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <% if (kwarantanna.ile) { %>
+      <%# Liczebnik odmienia CZASOWNIK, a dalsze zdania sa juz bezosobowe — inaczej „1 dokument
+          … nie zna ICH kwot" brzmi jak usterka szablonu i podwaza cala reszte pasa. %>
+      <p class="pasek-blokada">
+        <strong><%= ile(kwarantanna.ile, 'dokument nie wchodzi', 'dokumenty nie wchodzą', 'dokumentów nie wchodzi') %>
+        do sumy miesiąca — czeka w kwarantannie.</strong>
+        Kwot z tej listy panel nie zna i nie zmyśli ich, więc zestawienie z KSeF będzie
+        o tyle większe niż suma powyżej. Po numerze KSeF z tabeli poniżej znajdziesz dokument
+        u organu; po poprawnym pobraniu wychodzi on z kwarantanny sam.
+      </p>
+      <div class="przewijak-tabeli">
+        <table>
+          <thead>
+            <tr>
+              <th>Numer KSeF</th><th>Numer dokumentu</th><th>Trwały zapis</th>
+              <th>Dlaczego nie wszedł</th><th>Odrzucony</th><th>Ostatnio widziany</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% kwarantanna.dokumenty.forEach(function (d) { %>
+              <tr>
+                <td><strong><%= d.ksef_number %></strong></td>
+                <td><%= d.numer_dokumentu ?? '—' %></td>
+                <%# Ta sama data, co w kolumnach obok — surowe ISO z KSeF („2026-06-07T10:00:00Z")
+                    czyta sie inaczej niz reszta ekranu i wyglada jak surowy zrzut z bazy. %>
+                <td><%= fmtDataCzasKrotko(d.data_trwalego_zapisu) || '—' %></td>
+                <%# ⚠️ CALY POWOD, NIE SKROT. Ten napis jest pisany dla czlowieka i mowi,
+                    czego w dokumencie brakuje — skrocony do „błąd" zostawia tyle samo
+                    wiedzy, co brak komunikatu. %>
+                <td><%= d.powod %></td>
+                <td><%= fmtDataCzasKrotko(d.odrzucony_at) %></td>
+                <td><%= fmtDataCzasKrotko(d.ostatnia_proba_at) %></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+      <p class="wyjasnienie">
+        Kwarantanna <strong>nie dzieli się na miesiące</strong> — dokument bez kwoty często
+        nie ma też czytelnej daty wystawienia, więc lista jest jedna dla całego panelu
+        i widać ją przy każdym miesiącu.
+      </p>
+    <% } %>
+  </div>
+</section>

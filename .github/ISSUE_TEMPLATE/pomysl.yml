@@ -1,0 +1,21 @@
+name: Pomysł
+description: Nowa funkcja, integracja albo zmiana działania.
+labels: [pomysł]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Jaki problem rozwiązuje
+      description: Opisz sytuację z codziennej pracy, a nie gotowe rozwiązanie.
+    validations:
+      required: true
+  - type: textarea
+    id: propozycja
+    attributes:
+      label: Propozycja
+  - type: checkboxes
+    id: pomoc
+    attributes:
+      label: Udział
+      options:
+        - label: Mogę przygotować Pull Request

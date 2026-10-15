@@ -1,0 +1,69 @@
+<%# Odmowa dostepu do ekranu — DOKUMENT SAMODZIELNY (K1, recenzja 2026-09-12).
+    Furtka `wlasnyUklad` (ta sama, co /kampania — patrz layout-oms.ejs:5): straznik (K1
+    w straznik.js, `odmow`) wola ten widok z haka `onRequest`, ZANIM hak `preHandler`
+    w web/server.js zdazy policzyc `motyw`/`menu`/`sciezkaPowrotu` dla layout-oms.ejs.
+    Render przez layout wybuchal wiec na golej, niezdefiniowanej zmiennej `motyw` uzytej
+    w linii 9 layout-oms.ejs, a do przegladarki wyciekala bezwzgledna sciezka na dysku
+    razem ze zrodlem szablonu.
+
+    ⚠️ TEN KOMENTARZ CELOWO NIE WYPISUJE ZNACZNIKOW SZABLONU WPROST — taki fragment
+    wewnatrz tego komentarza potrafi pomylic parser EJS, co samo w sobie jest dowodem NA
+    cala usterke K1.
+
+    Bez menu i paska ikon CELOWO, nie tylko dla prostoty: czlowiek bez uprawnienia do
+    ekranu nie ma po co widziec odnosnikow, ktorych i tak nie otworzy — ominiecie layoutu
+    nie kosztuje wiec niczego, co ten czlowiek powinien zobaczyc.
+
+    ⚠️ TRESC NIE MOZE ZDRADZAC, CZEGO DOTYCZYLA ODMOWA poza tym, co czlowiek i tak wie
+    (adres, na ktory wszedl) — zero sciezek na dysku, zero nazw plikow, zero zrodla
+    szablonu. Trasa dostaje tu `title` i `motyw`.
+
+    ⚠️⚠️ N3 (druga fala 2026-09-12): POPRZEDNIA WERSJA TEGO KOMENTARZA TWIERDZILA, ZE
+    UHONOROWANIE MOTYWU „WYMAGALOBY TEGO SAMEGO HAKA, KTOREGO BRAK TU NAPRAWIAMY" — TO BYLO
+    NIEPRAWDZIWE. `motywZNaglowka(req.headers.cookie)` (src/oms/domain/motyw.js) jest czysta
+    funkcja naglowka `Cookie`, a `odmow(req, reply)` w straznik.js ma `req` w rece przez caly
+    czas — hak `preHandler` nie jest do niczego z tego potrzebny. Ominiecie layoutu dotyczy
+    WYLACZNIE menu/paska ikon (patrz akapit wyzej), nie motywu: stad `motyw` jest teraz
+    liczony w `odmow()` i przekazywany tutaj wprost, bez layoutu i bez tego haka. %>
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %></title>
+  <%
+    // DWIE PALETY (N3, druga fala 2026-09-12), wartosci przepisane WPROST z korzenia
+    // `:root`/`html[data-motyw="ciemny"]` w layout-oms.ejs, zeby ekran odmowy nie wymyslal
+    // trzeciej wersji tych samych barw — operator ma przejsc z panelu na ten ekran bez
+    // wrazenia, ze trafil na inna strone.
+    const ciemny = motyw === 'ciemny';
+  %>
+  <style>
+    /* Motyw ODCZYTANY z ciasteczka przez `motywZNaglowka` w `odmow()` (straznik.js) —
+       zero dodatkowego haka, patrz komentarz na gorze pliku. */
+    :root { color-scheme: <%= ciemny ? 'dark' : 'light' %>; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: <%= ciemny ? '#191c1f' : '#f7f3ec' %>; color: <%= ciemny ? '#e7e2d9' : '#2e2a26' %>;
+    }
+    .pusto {
+      max-width: 28rem; margin: 0 1.25rem; padding: 1.9rem 2.1rem; text-align: center;
+      background: <%= ciemny ? '#23272b' : '#fff' %>; border: 1px solid <%= ciemny ? '#383e44' : '#e5ded2' %>; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 24px rgba(0, 0, 0, .06);
+    }
+    .pusto h1 { margin: 0 0 .6rem; font-size: 1.25rem; color: <%= ciemny ? '#8fb6d0' : '#3e5566' %>; }
+    .pusto p { margin: .5rem 0; line-height: 1.5; }
+    .pusto a { color: <%= ciemny ? '#8fb6d0' : '#3e5566' %>; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="pusto">
+    <h1>Brak dostępu</h1>
+    <p>To konto nie ma uprawnienia do tego ekranu. Jeśli potrzebujesz do niego wejść,
+       poproś administratora o zaznaczenie go w <strong>Ustawieniach → Konta</strong>.</p>
+    <p><a href="/">Wróć do zamówień</a></p>
+  </div>
+</body>
+</html>

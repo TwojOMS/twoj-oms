@@ -1,0 +1,18 @@
+<% if (menuKonta) { %>
+<details class="menu-uzytkownika" data-menu="uzytkownik">
+  <summary data-menu-trigger="uzytkownik" aria-label="Konto: <%= menuKonta.imie %>"><span class="oms-avatar" aria-hidden="true"><%= menuKonta.imie.split(/\s+/).filter(Boolean).slice(0,2).map(s=>s[0]).join('').toLocaleUpperCase('pl') %></span><span class="menu-uzytkownika-nazwa"><%= menuKonta.imie %></span></summary>
+  <div class="menu-uzytkownika-panel" data-menu-panel="uzytkownik">
+    <p class="menu-uzytkownika-imie"><%= menuKonta.imie %></p>
+    <p class="menu-uzytkownika-rola"><%= menuKonta.opisRoli %></p>
+    <%_ if (menuKonta.mojeKontoHref) { -%>
+    <a href="<%= menuKonta.mojeKontoHref %>">Moje konto</a>
+    <%_ } -%>
+    <% if (menuKonta.pokazAdministracje) { %>
+      <a href="/ustawienia/konta">Użytkownicy i uprawnienia</a>
+    <% } %>
+    <form method="post" action="<%= menuKonta.wylogujAction %>">
+      <button type="submit">Wyloguj</button>
+    </form>
+  </div>
+</details>
+<% } %>

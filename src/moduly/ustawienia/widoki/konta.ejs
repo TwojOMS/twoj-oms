@@ -1,0 +1,213 @@
+<%#
+  Konta i uprawnienia — Zadanie 6 (spec 2026-09-12). Do tego dnia konto dalo sie zalozyc
+  WYLACZNIE zapytaniem SQL; ten ekran jest pierwszym kontaktem wlasciciela (takze kogos, kto
+  kupil ten kod) z zakladaniem kont — patrz test „konto serwisowe na pustej tabeli" w
+  tests/oms/web-konta.test.js.
+
+  ⚠️ UKLAD WSPOLNY Z podstronami Ustawień (`ust-sekcja`/`ust-pola`/`ust-akcje`/`ust-przycisk`) —
+  ta sama paleta, jasna i ciemna, zero nowych kolorow wpisanych z palca.
+
+  ⚠️ FORMULARZE NIE NIOSA TOKENU CSRF. Ochrona jest oparta na naglowku Origin
+  (src/security/csrf.js), nie na tokenie w formularzu — jeden mechanizm dla WSZYSTKICH tras,
+  takze tych dopisanych pozniej, wiec ten ekran nie doklada niczego wlasnego.
+
+  ⚠️ FORMULARZ „NOWE KONTO" NIE MA PTASZKOW EKRANOW: `POST /ustawienia/konta/nowe`
+  (routes/konta.js) czyta wylacznie `login`/`imie`/`email`/`rola`/`sposob` (PRZ-069: bez hasla) — uprawnienia zaklada preset
+  roli (`ekranyRoli`). Ptaszek tutaj, ktorego trasa i tak by zignorowala, wygladalby jak
+  dzialajace pole i nie byłby — uprawnienia poprawia sie PO zalozeniu, w sekcji konta ponizej.
+%>
+<h1>Użytkownicy i uprawnienia</h1>
+
+<% if (zapisano) { %>
+  <div class="pas-potwierdzenie"><p><%= zapisano %></p></div>
+<% } %>
+
+<% if (blad) { %>
+  <div class="pas-uprzedzenie"><p><strong>Nie udało się zapisać.</strong> <%= blad %></p></div>
+<% } %>
+
+<div class="ust-sekcja">
+  <h2>Wylogowanie wszystkich sesji</h2>
+  <p>
+    Ta operacja wyloguje <strong>wszystkie osoby na wszystkich urządzeniach</strong>, także Ciebie.
+    Każdy będzie musiał zalogować się ponownie.
+    <% if (sekretZmieniony) { %> Ostatnia globalna rotacja: <strong><%= fmtDataCzas(sekretZmieniony) %></strong>.<% } %>
+  </p>
+  <form method="post" action="/ustawienia/konta/wyloguj-wszystkie"
+    onsubmit="return confirm('Wylogować wszystkie osoby na wszystkich urządzeniach?')">
+    <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Wyloguj wszystkie osoby</button></div>
+  </form>
+</div>
+
+<div class="ust-sekcja">
+  <h2>Konta w panelu <span style="font-weight:normal;color:var(--tekst-przygaszony)">(<%= konta.length %>)</span></h2>
+  <% if (!konta.length) { %>
+    <p>Baza jest pusta — załóż pierwsze konto poniżej. Warto zacząć od roli Administrator,
+      żeby od razu przejąć panel z konta serwisowego z <code>.env</code>.</p>
+  <% } else { %>
+    <div class="przewijak-tabeli" tabindex="0" role="region" aria-label="Lista kont">
+    <table class="tab-pozycje">
+      <thead>
+        <tr><th>Imię</th><th>Login</th><th>Rola</th><th>Czynne</th><th>Ostatnie logowanie</th></tr>
+      </thead>
+      <tbody>
+        <% konta.forEach(function (k) { %>
+          <tr>
+            <td><a href="#konto-<%= k.id %>"><%= k.imie %></a><% if (k.id === wlasneId) { %> <span class="wyjasnienie">(Ty)</span><% } %></td>
+            <td><%= k.login %></td>
+            <td><%= k.opisRoli %></td>
+            <td><%= k.czynne ? 'Tak' : 'Nie' %></td>
+            <td><%= k.ostatnie_logowanie ? fmtDataCzas(k.ostatnie_logowanie) : '—' %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    </div>
+  <% } %>
+</div>
+
+<div class="ust-sekcja">
+  <h2>Nowe konto</h2>
+  <form method="post" action="/ustawienia/konta/nowe">
+    <div class="ust-pola">
+      <label>Imię <input name="imie" required placeholder="np. Anna" value="<%= noweKonto.imie %>"></label>
+      <label>Login <input name="login" required placeholder="np. anna" value="<%= noweKonto.login %>"></label>
+      <label>E-mail <input type="email" name="email" placeholder="np. anna@firma.pl" value="<%= noweKonto.email %>"></label>
+      <label>Rola
+        <select name="rola" required>
+          <% if (noweKonto.rola && !role.some(function (r) { return r.klucz === noweKonto.rola; })) { %>
+            <option value="<%= noweKonto.rola %>" selected disabled>Nieznana rola: <%= noweKonto.rola %></option>
+          <% } %>
+          <% role.forEach(function (r) { %><option value="<%= r.klucz %>" <%= r.klucz === noweKonto.rola ? 'selected' : '' %>><%= r.etykieta %></option><% }); %>
+        </select>
+      </label>
+    </div>
+    <%# PRZ-069: konto powstaje BEZ hasła — pracownik ustawia je sam z jednorazowego linku (48 h). %>
+    <div class="ust-pola" style="flex-direction:column;align-items:flex-start">
+      <label class="pole-przelacznik"><input type="radio" name="sposob" value="pokaz" checked> Pokaż link do skopiowania</label>
+      <label class="pole-przelacznik"><input type="radio" name="sposob" value="mail"> Wyślij zaproszenie mailem (wymaga e-maila, OMS_ADRES_PANELU i SMTP)</label>
+    </div>
+    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Dodaj użytkownika</button></div>
+  </form>
+</div>
+
+<%# ——— PER KONTO: uprawnienia, haslo, przelacznik czynne ——————————————————————————————— %>
+<% konta.forEach(function (k) { %>
+  <%
+    // Dwa NIEZALEZNE powody, dla ktorych ten formularz ma zablokowana mozliwosc odebrania
+    // admina/wylaczenia — patrz komentarze przy bezpiecznikach w routes/konta.js:
+    //   1) TO KONTO, na ktorym akurat jestesmy zalogowani (nie zamykaj sie sam),
+    //   2) TO JEDYNY czynny administrator w calym panelu (brama degradacji zamknelaby sie
+    //      na zawias — hasło z .env znowu stalby sie pelnym adminem).
+    const toJa = k.id === wlasneId;
+    const zablokowany = toJa || k.ostatniAdmin;
+  %>
+  <div class="ust-sekcja" id="konto-<%= k.id %>">
+    <h2><%= k.imie %> <span style="font-weight:normal;color:var(--tekst-przygaszony)">(<%= k.login %>)</span><% if (toJa) { %> <span class="wyjasnienie">— to Ty</span><% } %></h2>
+    <p>
+      Rola: <strong><%= k.opisRoli %></strong> ·
+      <%= k.czynne ? 'czynne' : 'wyłączone' %>
+      <% if (k.zaproszone) { %> · <strong>zaproszone</strong> (hasło jeszcze nieustawione)<% } %>
+      <% if (k.ostatnie_logowanie) { %> · ostatnie udane logowanie: <%= fmtDataCzas(k.ostatnie_logowanie) %><% } %>
+    </p>
+    <% if (zablokowany) { %>
+      <p class="wyjasnienie">
+        <% if (toJa) { %>Nie możesz odebrać uprawnień administratora ani wyłączyć własnego konta z tego ekranu.<% } %>
+        <% if (k.ostatniAdmin && !toJa) { %>To jedyny czynny administrator panelu — nie można mu odebrać uprawnień administratora ani go wyłączyć, dopóki nie ma innego czynnego admina.<% } %>
+      </p>
+    <% } %>
+
+    <%# PRZ-068: dostęp konta wynika z ROLI (ptaszki ról: Ustawienia → Role i uprawnienia). %>
+    <form method="post" action="/ustawienia/konta/<%= k.id %>/rola">
+      <div class="ust-pola">
+        <label>Rola
+          <select name="rola" required>
+            <% if (!role.some(function (r) { return r.klucz === k.rola; })) { %>
+              <option value="<%= k.rola %>" selected disabled>Nieznana rola: <%= k.rola %></option>
+            <% } %>
+            <% role.forEach(function (r) { %><option value="<%= r.klucz %>" <%= r.klucz === k.rola ? 'selected' : '' %>><%= r.etykieta %></option><% }); %>
+          </select>
+        </label>
+      </div>
+      <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zmień rolę</button></div>
+    </form>
+
+    <%# PRZ-068 (plan O4): formularz ptaszków per konto wraca WYŁĄCZNIE w odpowiedzi 400 starej trasy %>
+    <%# /uprawnienia — żeby odmowa pokazała, co operator wybrał. Zapis i tak idzie przez rolę osobistą. %>
+    <% if (k.edycja) { %>
+    <form method="post" action="/ustawienia/konta/<%= k.id %>/uprawnienia">
+      <div class="ust-pola" style="flex-direction:column;align-items:flex-start">
+        <% EKRANY.forEach(function (e) { %>
+          <label class="pole-przelacznik">
+            <input type="checkbox" name="ekran" value="<%= e.klucz %>" <%= k.ekrany.has(e.klucz) ? 'checked' : '' %>>
+            <%= e.etykieta %>
+          </label>
+        <% }); %>
+        <%# ⚠️ `api` NIE JEST W `EKRANY` — to klucz oddzielny, integracja z panelem :3000 %>
+        <%# („Dodaj do OMS"), patrz ekranDlaAdresu w domain/ekrany.js i filtr w routes/konta.js. %>
+        <label class="pole-przelacznik">
+          <input type="checkbox" name="ekran" value="api" <%= k.ekrany.has('api') ? 'checked' : '' %>>
+          Integracja z panelem zamówień indywidualnych (API)
+        </label>
+      </div>
+      <label class="pole-przelacznik">
+        <% if (zablokowany) { %>
+          <%# ⚠️ CELOWO BEZ `disabled`: pole WYLACZONE nie wysylaloby WCALE wartosci `admin`, %>
+          <%# co serwer odczytalby jako proba zdjecia admina — dokladnie to, co blokujemy. %>
+          <%# Ukryte pole gwarantuje `admin=1` niezaleznie od tego, co operator kliknie tutaj. %>
+          <input type="checkbox" checked onclick="return false" aria-disabled="true">
+          <input type="hidden" name="admin" value="1">
+        <% } else { %>
+          <input type="checkbox" name="admin" value="1" <%= k.admin ? 'checked' : '' %>>
+        <% } %>
+        Administrator — pełny dostęp, zakłada i zmienia konta
+      </label>
+      <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zapisz uprawnienia</button></div>
+    </form>
+    <% } %>
+
+    <%# PRZ-069 (plan O7): admin nie wpisuje cudzego hasła — wysyła link do jego ustawienia ze strony konta. %>
+    <p><a href="/ustawienia/konta/<%= k.id %>">Szczegóły i link do hasła</a></p>
+
+    <% if (!zablokowany) { %>
+      <form method="post" action="/ustawienia/konta/<%= k.id %>/czynne">
+        <input type="hidden" name="czynne" value="<%= k.czynne ? '0' : '1' %>">
+        <div class="ust-akcje">
+          <button class="ust-przycisk<%= k.czynne ? ' grozny' : '' %>" type="submit">
+            <%= k.czynne ? 'Wyłącz konto' : 'Włącz konto' %>
+          </button>
+        </div>
+      </form>
+    <% } %>
+  </div>
+<% }); %>
+
+<%# ——— DZIENNIK LOGOWAN — NA TYM SAMYM EKRANIE (nie osobno): administrator, ktory podejrzewa %>
+<%# wlamanie, ma zobaczyc naraz, kto ma dostep (tabela wyzej) i kto probowal go zdobyc. %>
+<div class="ust-sekcja">
+  <h2>Ostatnie logowania</h2>
+  <% if (!logowania.length) { %>
+    <p>Jeszcze nikt się nie logował.</p>
+  <% } else { %>
+    <div class="przewijak-tabeli" tabindex="0" role="region" aria-label="Historia logowań">
+    <table class="tab-pozycje">
+      <%# D2: kolumna IP — ostatnieLogowania() (db/konta.js) juz ja pobiera, tylko widok jej %>
+      <%# nie pokazywal. Przy „podejrzewam wlamanie" to najwazniejsza kolumna na ekranie. %>
+      <thead><tr><th>Kiedy</th><th>Login</th><th>IP</th><th>Wynik</th><th>Usługa</th></tr></thead>
+      <tbody>
+        <% logowania.forEach(function (l) { %>
+          <tr>
+            <td><%= fmtDataCzas(l.at) %></td>
+            <td><%= l.login %></td>
+            <td><%= l.ip ?? '—' %></td>
+            <%# D1: `l.opisWyniku` (routes/konta.js) — tekst dla czlowieka, z ogonkami; %>
+            <%# surowy identyfikator `l.wynik` zostaje wylacznie w bazie i w kodzie. %>
+            <td><%= l.opisWyniku %></td>
+            <td><%= l.usluga %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    </div>
+  <% } %>
+</div>

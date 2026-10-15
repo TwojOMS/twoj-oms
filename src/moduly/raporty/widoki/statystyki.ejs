@@ -1,0 +1,199 @@
+<%# Zakladka STATYSTYKI — wysylka i platnosci (13.09.2026).
+    Spec: docs/superpowers/specs/2026-09-13-oms-statystyki-design.md
+    Pasy w kolejnosci: zakres · zastrzezenie · KPI · wysylka · terminowosc · platnosci.
+    ⚠️ ZERO KWOT. Pieniadze mieszkaja w RAPORTACH i FINANSACH (decyzja właściciela). %>
+<%
+  // ⚠️ PROCENT PO POLSKU, Z PRZECINKIEM — i „—" DLA `null`. `null` znaczy „nie ma z czego
+  // policzyc"; „0,0%" czytaloby sie jako „nic nie wyszlo w terminie", czyli jako ZLY WYNIK
+  // zamiast braku danych.
+  const proc = (n) => (n === null || n === undefined ? '—' : `${n.toFixed(1).replace('.', ',')}%`);
+%>
+<div class="glowa-ekranu">
+  <h1>Statystyki</h1>
+  <% if (zakres) { %>
+    <span class="krok">
+      wysyłka i płatności w okresie <strong><%= nazwa %></strong>
+      · <%= zakres.od %> – <%= zakres.do %>
+    </span>
+  <% } %>
+</div>
+
+<section class="panel bez-druku panel--zakres">
+  <div class="zakres-rzad">
+    <div class="pola-w-rzedzie">
+      <% skroty.forEach(function (s) { %>
+        <%# ⚠️ Etykiety przychodza Z DOMENY, nie z listy w tym pliku. %>
+        <a class="btn btn--maly<%= zakres && zakres.etykieta === s.etykieta ? ' btn--glowny' : '' %>"
+           href="/statystyki?skrot=<%= s.klucz %>"><%= s.etykieta %></a>
+      <% }); %>
+    </div>
+    <form method="get" action="/statystyki" class="zakres-formularz">
+      <label class="zakres-data"><span>Od dnia</span>
+        <input type="date" name="od" value="<%= zakres ? zakres.od : '' %>" required></label>
+      <label class="zakres-data"><span>Do dnia</span>
+        <input type="date" name="do" value="<%= zakres ? zakres.do : '' %>" required></label>
+      <button class="btn btn--glowny" type="submit">Pokaż</button>
+    </form>
+  </div>
+</section>
+
+<% if (blad) { %>
+  <div class="pasek-uwaga"><%= blad %></div>
+<% } else { %>
+
+  <% if (przedOmsem) { %>
+    <div class="pasek-uwaga pasek-uwaga--epoka">
+      <% if (pierwszyDzien) { %>
+      Statystyki wysyłki i płatności obejmują zamówienia <strong>od <%= Number(pierwszyDzien.slice(8, 10)) %>.<%= pierwszyDzien.slice(5, 7) %>.<%= pierwszyDzien.slice(0, 4) %></strong> —
+      wcześniejsza historia sklepu i Apilo nie niesie ani przewoźnika, ani metody płatności,
+      ani daty wysłania. Wybrany zakres zaczyna się przed tą datą, więc liczby dotyczą
+      wyłącznie jego części od <%= pierwszyDzien %>.
+      <% } else { %>
+      Nie ustalono początku danych o wysyłce i płatnościach. Statystyki obejmują
+      zapisane zamówienia, ale pokrycie wybranego okresu pozostaje nieznane.
+      <% } %>
+    </div>
+  <% } %>
+
+  <div class="kafelki kafelki--cztery">
+    <div class="kafel">
+      <div class="kafel-etykieta">Zamówień</div>
+      <div class="kafel-wartosc"><%= uslugi.suma %></div>
+      <div class="kafel-dopisek">bez anulowanych i testowych</div>
+    </div>
+    <div class="kafel">
+      <div class="kafel-etykieta">Wysłanych</div>
+      <div class="kafel-wartosc"><%= termin.mianownik %></div>
+      <div class="kafel-dopisek">z policzalnym czasem realizacji</div>
+    </div>
+    <div class="kafel">
+      <div class="kafel-etykieta">W terminie</div>
+      <div class="kafel-wartosc"><%= proc(termin.procentWTerminie) %></div>
+      <div class="kafel-dopisek"><%= termin.wTerminie %> z <%= termin.mianownik %></div>
+    </div>
+    <div class="kafel">
+      <div class="kafel-etykieta">Tego samego dnia</div>
+      <div class="kafel-wartosc"><%= proc(termin.procentTegoSamegoDnia) %></div>
+      <div class="kafel-dopisek"><%= termin.tegoSamegoDnia %> z <%= termin.mianownik %></div>
+    </div>
+  </div>
+
+  <%# ⚠️⚠️ UKŁAD SEKCJI JEST KONWENCJĄ DOMU: `section.panel` owija `div.panel-glowa` (tytuł
+      w kapitalikach + dopisek) i `div.panel-cialo` (treść, `padding: .9rem`). Pierwsza
+      wersja tego ekranu wstawiała `h2` i tabelę WPROST w `section.panel` — a ta klasa ma
+      w layoucie `padding: 0`, więc nagłówki i wiersze dotykały ramki panelu (zgłoszone
+      przez właściciela 13.09.2026: „w polach nie ma marginesów"), a `h2` dostawał typografię
+      obcą resztzie panelu. Wzorzec: `raporty.ejs`, `koszty.ejs`, `faktury.ejs`. %>
+  <section class="panel">
+    <div class="panel-glowa">
+      <h2>Rozkład przewoźników</h2>
+      <span class="dopisek">usługa wybrana przez klienta, per zamówienie</span>
+    </div>
+    <div class="panel-cialo">
+    <p class="wyjasnienie">
+      Usługa, którą wybrał klient — ta sama nazwa, co w kolumnie „Dostawa" na liście
+      zamówień. Liczone <strong>per zamówienie</strong>, nie per paczka. Pobranie nie
+      rozdziela usługi na dwa wiersze — ani flagą, ani dopiskiem „pobranie", który Allegro
+      wkłada w samą nazwę usługi.
+    </p>
+    <table class="tab-pozycje">
+      <thead><tr><th>Usługa</th><th class="liczba">Zamówień</th><th class="liczba">Udział</th></tr></thead>
+      <tbody>
+        <% if (!uslugi.pozycje.length) { %>
+          <%# ⚠️ colspan = 3, tyle ile kolumn w <thead> wyżej. %>
+          <tr><td colspan="3" class="pusto">W tym zakresie nie ma zamówień.</td></tr>
+        <% } %>
+        <% uslugi.pozycje.forEach(function (p) { %>
+          <tr><td><%= p.etykieta %></td><td class="liczba"><%= p.ile %></td>
+              <td class="liczba"><%= proc(p.udzial) %></td></tr>
+        <% }); %>
+      </tbody>
+      <%# ⚠️⚠️ STOPKA NIE PISZE „100,0%", TYLKO „—". Udziały w kolumnie są zaokrąglone
+          do jednego miejsca po przecinku NIEZALEŻNIE od siebie, więc ich suma bywa 99,9%
+          albo 100,1% (zmierzone: trzy usługi po jednym zamówieniu dają 33,3% + 33,3% +
+          33,3% = 99,9%) — a wiersz sumy, który zaprzecza kolumnie nad sobą, jest gorszy
+          niż wiersz sumy bez procentu w ogóle. Liczba zamówień w stopce ZOSTAJE: ona
+          nie kłamie, sumuje się sama z siebie. %>
+      <% if (uslugi.pozycje.length) { %>
+        <tfoot><tr><th>Razem</th><th class="liczba"><%= uslugi.suma %></th><th class="liczba">—</th></tr></tfoot>
+      <% } %>
+    </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-glowa">
+      <h2>Terminowość wysyłki</h2>
+      <span class="dopisek">ta sama formuła, co zegar na liście zamówień</span>
+    </div>
+    <div class="panel-cialo">
+    <p class="wyjasnienie">
+      Termin liczy się <strong>tą samą formułą, co zegar na liście zamówień</strong>:
+      Allegro opłacone przed 12:00 w dzień roboczy — tego samego dnia; Allegro po 12:00,
+      sklepowe, B2B i pobrania — 1 dzień roboczy; 🔥 ekspres — 2; indywidualne — 7.
+      Przedpłata liczy od wpłaty, pobranie i B2B od złożenia. Weekend nie liczy się
+      do terminu.
+    </p>
+    <table class="tab-pozycje">
+      <thead><tr><th>Czas realizacji</th><th class="liczba">Zamówień</th><th class="liczba">Udział</th></tr></thead>
+      <tbody>
+        <% if (!termin.mianownik) { %>
+          <tr><td colspan="3" class="pusto">W tym zakresie nie ma zamówień
+              z policzalnym czasem realizacji.</td></tr>
+        <% } else { %>
+          <% termin.rozklad.forEach(function (p) { %>
+            <tr><td><%= p.etykieta %></td><td class="liczba"><%= p.ile %></td>
+                <td class="liczba"><%= proc(p.udzial) %></td></tr>
+          <% }); %>
+        <% } %>
+      </tbody>
+    </table>
+    <%# ⚠️⚠️ WYŁĄCZENIA STOJĄ NA EKRANIE. Procent bez widocznego mianownika jest
+        nieweryfikowalny, a każde z tych trzech ma na produkcji niezerową liczbę. %>
+    <p class="wyjasnienie">
+      Poza procentami: <strong><%= termin.wylaczenia.niewyslane %></strong> jeszcze
+      niewysłanych, <strong><%= termin.wylaczenia.przedWplata %></strong> wysłanych przed
+      wpłatą (czas realizacji byłby ujemny),
+      <strong><%= termin.wylaczenia.bezStartu %></strong> bez daty startu zegara.
+      Anulowane nie wchodzą na ten ekran w ogóle.
+    </p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-glowa">
+      <h2>Metody płatności</h2>
+      <span class="dopisek">procenty bez kanału Allegro — patrz uwaga pod tabelą</span>
+    </div>
+    <div class="panel-cialo">
+    <table class="tab-pozycje">
+      <thead><tr><th>Metoda</th><th class="liczba">Zamówień</th><th class="liczba">Udział</th></tr></thead>
+      <tbody>
+        <% if (!platnosci.pozycje.length) { %>
+          <tr><td colspan="3" class="pusto">W tym zakresie nie ma zamówień z metodą
+              płatności podaną przez klienta.</td></tr>
+        <% } %>
+        <% platnosci.pozycje.forEach(function (p) { %>
+          <tr><td><%= p.etykieta %></td><td class="liczba"><%= p.ile %></td>
+              <td class="liczba"><%= proc(p.udzial) %></td></tr>
+        <% }); %>
+      </tbody>
+      <%# ⚠️⚠️ STOPKA NIE PISZE „100,0%", TYLKO „—" — z tego samego powodu, co przy
+          rozkładzie przewoźników wyżej: udziały zaokrąglone niezależnie nie muszą sumować
+          się do równych 100,0%, a wiersz sumy zaprzeczający kolumnie nad sobą jest gorszy
+          niż wiersz sumy bez procentu. Liczba zamówień (mianownik, bez Allegro) ZOSTAJE. %>
+      <% if (platnosci.pozycje.length) { %>
+        <tfoot><tr><th>Razem</th><th class="liczba"><%= platnosci.mianownik %></th><th class="liczba">—</th></tr></tfoot>
+      <% } %>
+    </table>
+    <p class="wyjasnienie">
+      <strong>Allegro nie mówi, czym kupujący zapłacił</strong> — kanał oddaje wyłącznie
+      „płatność online" albo „za pobraniem", bez BLIK-a, karty i przelewu. Dlatego
+      <strong><%= platnosci.allegroBezInformacji %></strong> zamówień tego kanału stoi poza
+      tym rozkładem, a procenty liczą się z <%= platnosci.mianownik %> zamówień, które metodę
+      podają. Zamówienia ręczne zostają w rozkładzie: metodę wpisał operator, ale pieniądze
+      naprawdę przyszły tą drogą.
+    </p>
+    </div>
+  </section>
+<% } %>

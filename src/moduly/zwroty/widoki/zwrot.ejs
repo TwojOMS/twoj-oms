@@ -1,0 +1,294 @@
+<%# Ekran zwrotu — WLASNA STRONA, nie sekcja na karcie (Zadanie 4). Zwroty sa rzadkie (kilka %>
+<%# razy w roku), a wlasciciel postawil warunek: karta zamowienia nie ma urosnac ani o piksel %>
+<%# przy 99% zamowien, ktore zwrotu nie maja. Wzorem ekranu nadania paczki (nadaj.ejs) — %>
+<%# wlasny naglowek `.glowa-ekranu`, bez wlasnej reguly CSS w arkuszu (patrz komentarz przy %>
+<%# rejestracji tras w server.js). %>
+
+<div class="glowa-ekranu">
+  <h1>Zwrot — zamówienie <%= z.numer %></h1>
+</div>
+
+<%# Blad reguly z domain/zwrot.js (parsujZwrot) — odmowa PRZED jakimkolwiek zapisem. %>
+<%# Uzywamy `.pasek-blokada` (istniejaca klasa bledu/blokady z layout-oms.ejs), NIE %>
+<%# `pasek pasek--blad` z brifu — ta druga klasa nie istnieje w arkuszu tego panelu. %>
+<% if (blad) { %><p class="pasek-blokada"><%= blad %></p><% } %>
+
+<%# ⚠️⚠️ KROK 1 Z DWOCH (przebudowa 2026-08-15, prosba wlasciciela: „Teraz nie widać kwot %>
+<%# jakie mam wpisać — powinno być gdzieś podsumowanie zamówienia przed zwrotem. Kwota %>
+<%# zwrotu (pozycje) — czy to liczy się samo?"). %>
+<%# %>
+<%# Do tego dnia operator przepisywal z palca kwote przy KAZDEJ pozycji ORAZ kwote laczna, %>
+<%# a ekran nie pokazywal mu ani ceny z zamowienia, ani wartosci zamowienia. Teraz: liczby %>
+<%# stoja nad tabela, pola sa JUZ WYPELNIONE tym, co panel wie, a sume liczy SERWER na %>
+<%# kroku 2 (POST /zwrot/podglad). %>
+<%# %>
+<%# ⚠️ ZERO JAVASCRIPTU — i to jest POWOD, dla ktorego ekran ma dwa kroki, a nie ozdoba. %>
+<%# ⚠️ ANI JEDNEJ nowej reguly CSS: `.kafelki`/`.kafel` sa z ekranu raportow, reszta z karty. %>
+<% if (formularz && mozeAdres(`/zamowienia/${z.id}/zwrot/podglad`)) { %>
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Nowy zwrot</h2>
+  </div>
+  <div class="panel-cialo">
+    <%# PODSUMOWANIE ZAMOWIENIA — cztery liczby, ktorych operator do tego dnia na tym ekranie %>
+    <%# nie widzial wcale. Kafelki `.kafelki`/`.kafel` istnieja w arkuszu (ekran raportow) %>
+    <%# i sa gotowa siatka na rzad liczb — nowego kontenera nie zakladamy. %>
+    <%# %>
+    <%# ⚠️ „Wartość zamówienia" to KWOTA OCZEKIWANA (domain/suma-pozycji.js), TA SAMA, ktorej %>
+    <%# pilnuje bariera kwoty przy zapisie — nie kolumna sklepu `kwota_brutto`. Liczby liczy %>
+    <%# domena (domain/zwrot-formularz.js), widok ich nie sumuje. %>
+    <div class="kafelki">
+      <div class="kafel">
+        <div class="kafel-etykieta">Wartość zamówienia</div>
+        <div class="kafel-wartosc"><%= formularz.podsumowanie.zamowienieZl %> zł</div>
+      </div>
+      <div class="kafel">
+        <div class="kafel-etykieta">W tym dostawa</div>
+        <div class="kafel-wartosc"><%= formularz.podsumowanie.dostawaZl %> zł</div>
+      </div>
+      <div class="kafel">
+        <div class="kafel-etykieta">Już zwrócono</div>
+        <div class="kafel-wartosc"><%= formularz.podsumowanie.zwroconoZl %> zł</div>
+      </div>
+      <div class="kafel">
+        <div class="kafel-etykieta">Zostało do zwrotu</div>
+        <div class="kafel-wartosc"><%= formularz.podsumowanie.zostaloZl %> zł</div>
+      </div>
+    </div>
+
+    <%# JEDEN formularz: pozycje, dostawa, data i powod ida razem, bo krok 2 czyta je jako %>
+    <%# jedno cialo (przygotujKrok2 + parsujZwrot). %>
+    <form method="post" action="/zamowienia/<%= z.id %>/zwrot/podglad">
+      <input type="hidden" name="powrot" value="<%= powrot %>">
+      <%# `.tab-pozycje tab-stala` — DOKLADNIE ta sama para klas, co tabela pozycji na %>
+      <%# karcie (zamowienie.ejs): `tab-stala` daje staly uklad kolumn wg <colgroup>, %>
+      <%# a `tab-pozycje` styluje inputy w komorkach. %>
+      <table class="tab-pozycje tab-stala">
+        <colgroup><col style="width:40%"><col style="width:15%"><col style="width:12%"><col style="width:15%"><col style="width:18%"></colgroup>
+        <thead>
+          <tr>
+            <th>Pozycja</th>
+            <th class="liczba">Cena jedn.</th>
+            <th class="liczba">Kupiono</th>
+            <th>Wraca (szt.)</th>
+            <th>Kwota zwrotu</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% formularz.pozycje.forEach(function (p) { %>
+            <tr>
+              <td>
+                <%= p.nazwa %>
+                <input type="hidden" name="klucz" value="<%= p.klucz %>">
+                <input type="hidden" name="nazwa" value="<%= p.nazwa %>">
+              </td>
+              <%# Cena jednostkowa jest tu WYLACZNIE informacja — przy rabacie na linie %>
+              <%# cena razy sztuki NIE ROWNA SIE kwocie zwrotu i o kwocie decyduje %>
+              <%# `brutto_linii` (patrz kwotaZaSztukiGrosze w domain/zwrot-formularz.js). %>
+              <td class="liczba"><% if (p.cenaJednZl) { %><%= p.cenaJednZl %> zł<% } else { %>—<% } %></td>
+              <td class="liczba"><%= p.kupiono %></td>
+              <%# ⚠️ `max` to TYLE, ILE JESZCZE MOZE WROCIC (kupiono minus sztuki zwrocone %>
+              <%# wczesniej), a nie tyle, ile kupiono. Pozycja zwrocona juz w calosci ma %>
+              <%# `max="0"` i nie da sie jej podniesc. Prawdziwa bariera stoi i tak %>
+              <%# w `parsujZwrot` — przegladarke da sie obejsc. %>
+              <td><input type="number" name="ilosc" min="0" max="<%= p.doZwrotu %>" step="1" value="<%= p.ilosc %>"></td>
+              <%# ⚠️⚠️ KWOTA PODAZA ZA ILOSCIA — i tym polem ukrytym to dziala (naprawa wady %>
+              <%# krytycznej, recenzja 2026-08-15). Panel niesie na krok 2 kwote, KTORA SAM %>
+              <%# ZAPROPONOWAL: kwota przyslana rowna propozycji znaczy „operator jej nie %>
+              <%# tknal", wiec krok 2 przelicza ja dla wpisanej liczby sztuk. Bez tego pola %>
+              <%# operator zmienial „Wraca (szt.)" z 3 na 1, kwoty nie ruszal i zapisywal sie %>
+              <%# zwrot 100,00 zl za 1 z 3 sztuk — a przy rabacie 33,33 zl nie da sie policzyc %>
+              <%# w glowie, wiec nie bylo jak zauwazyc pomylki. %>
+              <%# ⚠️ Kwota ZOSTAJE EDYTOWALNA: zmieniona wygrywa, a krok 2 pokazuje obie liczby. %>
+              <td>
+                <input type="text" name="pozycja_kwota" inputmode="decimal" value="<%= p.kwotaZl %>">
+                <input type="hidden" name="pozycja_kwota_propozycja" value="<%= p.propozycjaZl %>">
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+
+      <%# DOSTAWA — checkbox rozstrzyga, czy koszt dostawy wraca; pole obok mowi ILE. %>
+      <%# Zaznaczony domyslnie, bo zwrot calosci zwykle obejmuje dostawe. ⚠️ Gdy dostawe %>
+      <%# oddano juz we WCZESNIEJSZYM zwrocie, checkbox jest odznaczony i pole puste — %>
+      <%# bariera sumy odbilaby to i tak, ale ekran nie ma proponowac czegos, co sie nie uda. %>
+      <%# `.etykieta-bloku` (istniejaca klasa) oddziela tabele od reszty formularza kreska %>
+      <%# i naglowkiem — bez niej checkbox przykleja sie do dolnej krawedzi tabeli. %>
+      <div class="etykieta-bloku">Dostawa i szczegóły zwrotu</div>
+      <div class="pola">
+        <label class="pole-przelacznik">
+          <input type="checkbox" name="zwroc_dostawe" value="1"<% if (formularz.dostawa.zaznaczona) { %> checked<% } %>>
+          Zwróć koszt dostawy (z zamówienia)
+        </label>
+      </div>
+      <div class="pola pola--siatka">
+        <label>Kwota zwrotu dostawy<input type="text" name="kwota_dostawy" inputmode="decimal" value="<%= formularz.dostawa.kwotaZl %>"></label>
+        <label>Data zwrotu<input type="date" name="data" value="<%= formularz.data %>" max="<%= dzis %>"></label>
+        <label>Powód<input type="text" name="powod" value="<%= formularz.powod %>"></label>
+      </div>
+      <%# ⚠️⚠️ TRZY STANY DOSTAWY, NIE DWA (drobiazg M1, recenzja kontrolna 2026-08-15): nic nie %>
+      <%# wrocilo (cisza), wrocila CZESC (pole dostaje RESZTE, a zdanie mowi, skad sie wziela), %>
+      <%# wrocila CALOSC (drugi raz nie wraca). Do tego dnia ekran sklejal dwa ostatnie i pisal %>
+      <%# „drugi raz nie wraca" TAKZE przy zwrocie czesciowym — czyli mowil nieprawde, bo %>
+      <%# bariera przy zapisie liczy RESZTE i te brakujace 10,00 zl z 19,00 zl przepuszcza. %>
+      <%# Zdanie liczy DOMENA (formularz.dostawa.uwaga), widok je tylko wypisuje. %>
+      <% if (formularz.dostawa.uwaga) { %>
+        <p class="wyjasnienie"><%= formularz.dostawa.uwaga %></p>
+      <% } %>
+      <%# ⚠️⚠️ EKRAN NIE MA MILCZEC O TYM, ZE WLASNA PODPOWIEDZIA WEJDZIE NA WLASNA BARIERE %>
+      <%# (wada wazna, recenzja 2026-08-15). Zamowienie, w ktorym pozycje i dostawa daja wiecej %>
+      <%# niz jego kwota, istnieje — i do tego dnia operator dowiadywal sie o tym dopiero %>
+      <%# odmowa po kliknieciu, za liczby, ktorych sam nie wpisal. Zdanie liczy DOMENA %>
+      <%# (formularz.ostrzezenieSumy), widok je tylko wypisuje. `.pasek-uwaga` (nie %>
+      <%# `.pasek-blokada`) — to ostrzezenie, a nie odmowa: formularz zostaje uzywalny. %>
+      <% if (formularz.ostrzezenieSumy) { %>
+        <p class="pasek-uwaga"><%= formularz.ostrzezenieSumy %></p>
+      <% } %>
+      <p class="wyjasnienie">
+        Kwoty są podpowiedziane z zamówienia i przeliczają się same, gdy zmienisz liczbę sztuk —
+        popraw je, jeśli do kupującego wyszło co innego. Sumę policzy panel na następnym ekranie.
+      </p>
+
+      <div class="stopka-akcji">
+        <button type="submit" class="btn btn--glowny">Dalej — sprawdź sumę</button>
+        <span class="rozpychacz"></span>
+        <a class="btn btn--cichy" href="<%= adresKarty %>">Wróć do zamówienia</a>
+      </div>
+    </form>
+  </div>
+</section>
+<% } %>
+
+<%# Zarejestrowane zwroty i ich ROZLICZENIE. Sekcja renderuje sie WYLACZNIE, gdy jest co %>
+<%# pokazac — pusty naglowek „Zwroty" przy pierwszym wejsciu na ekran nie niesie zadnej %>
+<%# informacji, a ten panel ma byc krotki. %>
+<% if (z.zwroty.length) { %>
+<section class="panel">
+  <div class="panel-glowa">
+    <h2>Zarejestrowane zwroty</h2>
+  </div>
+  <div class="panel-cialo">
+    <% z.zwroty.forEach(function (w) { %>
+      <div class="rzad">
+        <span>
+          <%= w.data %> — <%= w.kwota %> zł<% if (w.kwota_dostawy) { %> + dostawa <%= w.kwota_dostawy %> zł<% } %>
+          <% if (w.powod) { %><small>(<%= w.powod %>)</small><% } %>
+        </span>
+        <span>
+          <% if (w.pieniadze_oddane_at) { %>
+            <%# Odznaka bez modyfikatora — dokladnie ta sama, co „potwierdzone recznie" przy %>
+            <%# statusie platnosci na karcie (zamowienie.ejs). `.pastylka` z brifu nie %>
+            <%# istnieje w arkuszu tego panelu. %>
+            <span class="znacznik">Pieniądze oddane</span>
+          <% } else if (mozeAdres(`/zamowienia/${z.id}/zwroty/${w.id}/pieniadze`)) { %>
+            <form method="post" class="w-linii" action="/zamowienia/<%= z.id %>/zwroty/<%= w.id %>/pieniadze">
+              <input type="hidden" name="powrot" value="<%= powrot %>">
+              <button type="submit" class="btn btn--maly">Pieniądze oddane</button>
+            </form>
+          <% } %>
+          <%# ⚠️ Przycisk „Wystaw korektę" prowadzi do trasy z Zadania 8, ktora jeszcze nie %>
+          <%# istnieje — dopoki `korektaDostepna` (trasa: Boolean(korekta)) jest falszywe, %>
+          <%# ten ekran ma go NIE RYSOWAC, zeby nie zostawiac na karcie przycisku oddajacego 404. %>
+          <%# %>
+          <%# ⚠️⚠️ DROBIAZG 1 (recenzja 2026-08-15): PRZYCISK, KTORY TRASA ZAWSZE ODDA NA 400, %>
+          <%# TEZ SIE NIE RYSUJE. Gdy inny zwrot tej faktury ma juz korekte (numer albo samo %>
+          <%# zlecenie), `powodOdmowyKorektyDlaFaktury` (domain/zwrot.js, przez trase jako %>
+          <%# `korektaBlokada`) odmawia KAZDEJ probie — panel pokazuje to samo zdanie zamiast %>
+          <%# obiecywac dzialanie, ktore nie moze sie udac. Droga zalecana w tej sytuacji %>
+          <%# („Korektę wystawiłem ręcznie") rysuje sie NIEZALEZNIE, nizej. %>
+          <% if (korektaDostepna && z.faktura && !w.korekta_numer && !w.korekta_zlecona_at
+            && mozeAdres(`/zamowienia/${z.id}/zwroty/${w.id}/korekta`)) { %>
+            <% if (korektaBlokada[w.id]) { %>
+              <span class="pasek-blokada"><%= korektaBlokada[w.id] %></span>
+            <% } else { %>
+              <form method="post" class="w-linii" action="/zamowienia/<%= z.id %>/zwroty/<%= w.id %>/korekta">
+                <input type="hidden" name="powrot" value="<%= powrot %>">
+                <button type="submit" class="btn btn--maly">Wystaw korektę</button>
+              </form>
+            <% } %>
+          <% } else if (w.korekta_numer) { %>
+            <span class="znacznik">Korekta <%= w.korekta_numer %></span>
+          <% } else if (w.korekta_zlecona_at && przepadle[w.id]) { %>
+            <%# Zlecenie, ktore PRZEPADLO (Zadanie 9, domain/zwrot.js: korektaPrzepadla) — %>
+            <%# `201` z inFaktu nie dowodzi, ze tresc byla poprawna (pomiar 2026-08-14), wiec %>
+            <%# brak numeru po progu jest jedynym sygnalem odrzucenia. WYRAZNY blad do %>
+            <%# wyjasnienia, nie spokojny znacznik — dlatego `.pasek-blokada` (ta sama klasa, %>
+            <%# co `blad` u gory i `korekta_blad` nizej), NIE `.znacznik`. %>
+            <%# %>
+            <%# ⚠️⚠️ WARUNEK (recenzja kontrolna 2026-08-15): DWA ROZNE STANY, DWA ROZNE ZDANIA. %>
+            <%# `niePytano[w.id]` (domain/zwrot.js: korektaNieSprawdzona, przez trase) mowi, czy %>
+            <%# `doczytaj` w ogole ZAPYTAL inFakt o TEN zwrot, czy sito „wiecej niz jedna otwarta %>
+            <%# sprawa korekty" (services/korekta.js) zatrzymalo go PRZED zapytaniem. Do tego dnia %>
+            <%# ekran pisal „inFakt nie wystawił dokumentu" NIEZALEZNIE od tego, ktory to byl stan — %>
+            <%# czyli orzekal o dokumencie, ktorego swiadomie nie sprawdzil. Widok TYLKO CZYTA %>
+            <%# `niePytano` — regule liczy domena. %>
+            <% if (niePytano[w.id]) { %>
+              <span class="pasek-blokada">
+                Korekta zlecona <%= w.korekta_zlecona_at %>. Panel NIE SPRAWDZIŁ w inFakcie, czy
+                dokument powstał — to zamówienie ma więcej niż jeden zwrot z otwartą sprawą korekty,
+                a panel nie umie rozstrzygnąć, do którego zwrotu należy znaleziony dokument.
+                Sprawdź sam w inFakcie, który zwrot ma korektę, zanim zdecydujesz, co dalej.
+              </span>
+            <% } else { %>
+              <span class="pasek-blokada">
+                Korekta zlecona <%= w.korekta_zlecona_at %>, ale inFakt nie wystawił dokumentu —
+                zlecenie zostało odrzucone. Sprawdź w inFakcie i zgłoś to, zanim zlecisz drugie.
+              </span>
+            <% } %>
+            <%# ⚠️⚠️ WYJSCIE ZE STANU BEZ WYJSCIA (C2, 2026-08-15). Do tego dnia komunikat wyzej %>
+            <%# byl calym koncem drogi: przycisku „Wystaw korektę" juz nie bylo, kasowania zwrotu %>
+            <%# odmawiala regula, a zwrot zostawal nierozliczony NA ZAWSZE. Przycisk rysuje sie %>
+            <%# WYLACZNIE w tej galezi — przy rezerwacji SWIEZEJ zwolnienie jej daloby DRUGA %>
+            <%# korekte do tej samej faktury. Wzorem „Sprawdziłem w inFakcie — faktury nie ma, %>
+            <%# odblokuj" na karcie zamowienia. %>
+            <% if (mozeAdres(`/zamowienia/${z.id}/zwroty/${w.id}/korekta/odblokuj`)) { %>
+              <form method="post" class="w-linii" action="/zamowienia/<%= z.id %>/zwroty/<%= w.id %>/korekta/odblokuj">
+                <input type="hidden" name="powrot" value="<%= powrot %>">
+                <button type="submit" class="btn btn--maly">Sprawdziłem w inFakcie — korekty nie ma, odblokuj</button>
+              </form>
+            <% } %>
+          <% } else if (w.korekta_zlecona_at) { %>
+            <span class="znacznik">Korekta zlecona — numer pojawi się po przetworzeniu</span>
+          <% } %>
+          <%# DRUGIE wyjscie: korekta wystawiona RECZNIE w inFakcie. Rysuje sie przy zwrocie do %>
+          <%# zafakturowanego zamowienia, ktory numeru jeszcze nie ma — bo przy DRUGIEJ korekcie %>
+          <%# do tej samej faktury jest to droga ZALECANA: panel odmawia jej swiadomie %>
+          <%# (services/korekta.js: nie umie odtworzyc stanu „przed"). Bez tego pola taki zwrot %>
+          <%# nie rozliczylby sie nigdy. %>
+          <%# %>
+          <%# ⚠️⚠️ ALE NIE PRZY REZERWACJI W TOKU (K2, recenzja kontrolna 2026-08-15). Do tego dnia %>
+          <%# pole rysowalo sie TAKZE w galezi „Korekta zlecona — numer pojawi się po %>
+          <%# przetworzeniu": gdy zlecenie panelu jeszcze sie przetwarza, a czlowiek w miedzyczasie %>
+          <%# wystawi korekte recznie, powstaja DWA dokumenty do jednej faktury — `doczytaj` juz %>
+          <%# tego nie zauwazy, `odblokuj` odmowi, a zwrot zamelduje sie jako rozliczony. %>
+          <%# Przycisk odblokowania panel chowa przed progiem z tego samego powodu; to jest ta %>
+          <%# sama decyzja o tej samej wadze. Prog liczy DOMENA (`przepadle`, korektaPrzepadla), %>
+          <%# a trasa odmawia niezaleznie od widoku (parsujNumerKorekty) — bo druga otwarta karta %>
+          <%# omija widok w calosci. %>
+          <% if (z.faktura && !w.korekta_numer && (!w.korekta_zlecona_at || przepadle[w.id])
+            && mozeAdres(`/zamowienia/${z.id}/zwroty/${w.id}/korekta/reczna`)) { %>
+            <form method="post" class="w-linii" action="/zamowienia/<%= z.id %>/zwroty/<%= w.id %>/korekta/reczna">
+              <input type="hidden" name="powrot" value="<%= powrot %>">
+              <label>Numer korekty z inFaktu<input type="text" name="numer" value=""></label>
+              <button type="submit" class="btn btn--maly btn--cichy">Korektę wystawiłem ręcznie</button>
+            </form>
+          <% } %>
+          <% if (w.korekta_blad) { %><span class="pasek-blokada"><%= w.korekta_blad %></span><% } %>
+          <%# Kasowanie tylko dopoki zwrot jest swiezy — regule pilnuje trasa %>
+          <%# (powodOdmowyUsunieciaZwrotu), tu tylko chowamy przycisk, ktory i tak dostalby odmowe. %>
+          <%# `korekta_numer` osobno od `korekta_zlecona_at`: numer wpisany recznie istnieje BEZ %>
+          <%# rezerwacji, a skasowanie takiego zwrotu zostawialoby korekte bez podstawy. %>
+          <% if (!w.pieniadze_oddane_at && !w.korekta_zlecona_at && !w.korekta_numer
+            && mozeAdres(`/zamowienia/${z.id}/zwroty/${w.id}/usun`)) { %>
+            <form method="post" class="w-linii" action="/zamowienia/<%= z.id %>/zwroty/<%= w.id %>/usun">
+              <input type="hidden" name="powrot" value="<%= powrot %>">
+              <button type="submit" class="btn btn--maly">Usuń zwrot</button>
+            </form>
+          <% } %>
+        </span>
+      </div>
+    <% }); %>
+  </div>
+</section>
+<% } %>

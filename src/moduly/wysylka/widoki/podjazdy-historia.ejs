@@ -1,0 +1,36 @@
+<%# PRZ-067: ten sam układ co Przesyłki (tabele-prz065.css) — nagłówek, powierzchnia, przewijak. %>
+<link rel="stylesheet" href="/public/tabele-prz065.css">
+<section class="prz065-tabele">
+  <p class="wroc"><a href="/przesylki?pokaz=utworzone">← Wróć do przesyłek</a></p>
+
+  <header class="prz065-naglowek">
+    <div>
+      <h1>Historia podjazdów Allegro</h1>
+      <p>Zlecone odbiory kurierskie</p>
+    </div>
+  </header>
+
+  <div class="panel prz065-powierzchnia">
+    <div class="panel-cialo">
+      <% if (!wiersze.length) { %>
+        <p>Nie ma jeszcze zleconych podjazdów.</p>
+      <% } else { %>
+        <div class="przewijak-tabeli prz065-przewijak"><table class="tab-pozycje prz065-tabela">
+          <thead><tr><th>Utworzono</th><th>Konto i usługa</th><th>Paczki</th><th>Termin</th><th>Stan</th><th>Identyfikatory</th></tr></thead>
+          <tbody>
+            <% wiersze.forEach(function(p) { const termin = JSON.parse(p.termin_json); %>
+              <tr>
+                <td><%= fmtDataCzasKrotko(p.utworzony_at) %></td>
+                <td><%= p.kanal %><br><%= p.nazwa_uslugi || p.przewoznik %></td>
+                <td><%= p.numery_listow || '—' %></td>
+                <td><%= termin.date %>, <%= termin.minTime %>–<%= termin.maxTime %></td>
+                <td><%= p.stan %></td>
+                <td><a href="/przesylki/podjazdy/<%= p.id %>"><%= p.command_id %></a><% if (p.pickup_id) { %><br><%= p.pickup_id %><% } %><% if (p.carrier_pickup_id) { %><br><%= p.carrier_pickup_id %><% } %></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table></div>
+      <% } %>
+    </div>
+  </div>
+</section>

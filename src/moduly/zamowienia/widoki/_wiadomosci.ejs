@@ -1,0 +1,142 @@
+<%#
+  SEKCJA „WIADOMOŚCI" NA DOLE KARTY (22.08.2026, makieta zatwierdzona:
+  docs/superpowers/specs/2026-08-22-oms-maile-do-klienta-makieta.html).
+
+  TRZY STANY jednej sekcji, przełączane ADRESEM (`?wiadomosc=`):
+    spoczynek → przycisk „Wyślij nową wiadomość" + lista wysłanych
+    wybór     → cztery tematy ze stanem; zablokowany jest WYGASZONY, nie schowany
+    podgląd   → adres, temat, załącznik i mail w ramce; wysyła dopiero przycisk pod spodem
+
+  ⚠️ ZERO JAVASCRIPTU. Wybór tematu to zwykły ODNOŚNIK (GET), więc niczego nie wysyła —
+  wysyła wyłącznie formularz POST z ekranu podglądu. Kotwica #wiadomosci ustawia ekran
+  przy sekcji po przeładowaniu (ten sam wzorzec, co `formaction` z kotwicą na ekranie
+  zakładania zamówienia).
+
+  ⚠️⚠️ `w` BYWA `null` I TO NIE JEST BŁĄD: panel bez skonfigurowanej poczty nie pokazuje
+  sekcji wiadomości w ogóle. KOMENTARZ WEWNĘTRZNY na dole tego pliku renderuje się WTEDY
+  TAK SAMO — notatka operatora nie ma nic wspólnego z pocztą, a pole, którego nie ma,
+  to notatka, której nie da się założyć (pilnują tego tests/oms/web-komentarz.test.js
+  i „bez usługi wiadomości…" w tests/oms/web-wiadomosci.test.js).
+%>
+<div class="<%= w ? 'dwie-kolumny' : '' %>">
+  <% if (w) { %>
+  <section class="panel" id="wiadomosci">
+    <div class="panel-glowa">
+      <%# ⚠️ „Wybierz temat" WIELKĄ LITERĄ celowo: `.panel-glowa h2` i tak drukuje nagłówek %>
+      <%# wersalikami, więc dla oka to bez różnicy, a w HTML-u jest to napis, po którym %>
+      <%# poznaje się ekran wyboru (asercja w tests/oms/web-wiadomosci.test.js — obie strony: %>
+      <%# że na ekranie wyboru JEST i że w spoczynku GO NIE MA). %>
+      <h2>Wiadomości<% if (w.stan === 'wybor') { %> — Wybierz temat<% } %><% if (w.stan === 'podglad' && w.wybrany) { %> — <%= nazwyTematow[w.wybrany] %><% } %></h2>
+      <%# ⚠️ WARUNEK NA `w.podglad`, NIE NA `w.stan === 'podglad'` (recenzja 22.08.2026). Stan %>
+      <%# „podglad" bierze sie z SAMEGO adresu (`?wiadomosc=cokolwiek`) i obejmuje TAKZE odmowe %>
+      <%# — np. `?wiadomosc=faktura` bez wystawionej faktury. Po staremu operator czytal wtedy %>
+      <%# „to zobaczy klient" nad czerwonym „Najpierw wystaw fakture", czyli nad tekstem, %>
+      <%# ktorego klient nigdy nie zobaczy, bo mail sie nie wyslal. `w.podglad` jest prawdziwe %>
+      <%# WYLACZNIE, gdy jest co pokazac naprawde. %>
+      <span class="dopisek"><%= w.podglad ? 'to zobaczy klient' : `adresat: ${w.adresat || 'brak adresu'}` %></span>
+    </div>
+    <div class="panel-cialo">
+
+      <% if (w.stan === 'spoczynek') { %>
+        <a class="btn btn--glowny" href="<%= adresWiadomosci('nowa') %>">Wyślij nową wiadomość</a>
+        <% if (w.lista.length) { %>
+          <p class="etykieta-bloku">Wysłane</p>
+          <table class="tab-pozycje tab-stala">
+            <% w.lista.forEach(function (p) { %>
+              <%# ⚠️ `fmtDataCzasKrotko`, NIGDY `.slice(0,16).replace('T',' ')`. Znacznik jest %>
+              <%# zapisany w UTC, a kontener chodzi z TZ=UTC — obcięcie napisu pokazałoby %>
+              <%# operatorowi godzinę o dwie wcześniejszą niż reszta dat na tej samej karcie. %>
+              <%# Funkcja jest w `defaultContext` (web/server.js), więc jest tu bez importu. %>
+              <tr>
+                <td><%= fmtDataCzasKrotko(p.wyslana_at) %></td>
+                <td><%= nazwyTematow[p.temat_id] || p.temat_id %></td>
+                <td><%= p.adresat %></td>
+              </tr>
+            <% }); %>
+          </table>
+        <% } else { %>
+          <p class="wyjasnienie">Do tego zamówienia nie poszła jeszcze żadna wiadomość.</p>
+        <% } %>
+
+      <% } else if (w.stan === 'wybor') { %>
+        <% w.tematy.forEach(function (t) { %>
+          <% if (t.zgoda.wolno) { %>
+            <a class="temat" href="<%= adresWiadomosci(t.id) %>">
+              <span class="temat-nazwa"><%= t.nazwa %></span>
+              <span class="temat-stan"><%= t.stan %></span>
+            </a>
+          <% } else { %>
+            <%# ⚠️ WYGASZONY Z POWODEM, nie schowany (niezmiennik 4.9): operator ma wiedzieć, %>
+            <%# czego brakuje i gdzie to naprawić. Nie jest odnośnikiem — klikanie w coś, %>
+            <%# co odmówi, jest gorsze niż brak przycisku. %>
+            <span class="temat temat--wygaszony">
+              <span class="temat-nazwa"><%= t.nazwa %></span>
+              <span class="temat-stan"><%= t.stan %></span>
+            </span>
+          <% } %>
+        <% }); %>
+        <div class="stopka-edycji">
+          <a class="btn" href="<%= adresKarty() %>">Anuluj</a>
+          <span class="wyjasnienie">Wybór tematu jeszcze niczego nie wysyła — najpierw zobaczysz podgląd.</span>
+        </div>
+
+      <%# ⚠️ WARUNEK NA `w.podglad`, NIE `else` PO `w.blad` (odstępstwo od briefu, świadome): %>
+      <%# stan „podgląd" bierze się z SAMEGO adresu, więc `?wiadomosc=cokolwiek` bez podglądu %>
+      <%# i bez błędu (np. karta renderowana po POST-cie z takim ogonem w adresie) wchodziłaby %>
+      <%# wprost w `w.podglad.do` i wywracała CAŁĄ kartę na 500. Tu brak podglądu jest %>
+      <%# powodem, a nie awarią. %>
+      <% } else if (w.podglad) { %>
+        <dl class="dane">
+          <dt>Do</dt><dd><%= w.podglad.do %></dd>
+          <dt>Temat</dt><dd><%= w.podglad.temat %></dd>
+          <% if (w.podglad.zalacznik) { %>
+            <dt>Załącznik</dt><dd><span class="zalacznik">📎 <%= w.podglad.zalacznik %></span></dd>
+          <% } %>
+        </dl>
+
+        <%# ⚠️ RAMKA, A NIE WKLEJENIE HTML-U W STRONĘ — mail jest KOMPLETNYM dokumentem %>
+        <%# z własnym tłem i stylami inline; wpuszczony wprost w kartę pokazałby coś, %>
+        <%# czego klient nigdy nie zobaczy. `sandbox` bez wartości wyłącza w ramce wszystko. %>
+        <iframe class="podglad-maila-html" title="Podgląd wiadomości" sandbox srcdoc="<%= w.podglad.html %>"></iframe>
+
+        <details class="drobne">
+          <summary>Pokaż wersję tekstową (dla klientów pocztowych bez HTML-a)</summary>
+          <pre class="podglad-maila"><%= w.podglad.tekst %></pre>
+        </details>
+
+        <%# ⚠️⚠️ WARTOŚĆ POLICZONA W TRASIE, NIGDY LICZONA TUTAJ (poprawka 22.08.2026, %>
+        <%# sprzątanie po recenzji całości gałęzi). Do tej pory stało tu WŁASNE %>
+        <%# `(w.lista||[]).filter(…).pop()` — druga, inna reguła na to samo pytanie: „ostatni %>
+        <%# pasujący element listy" zamiast „największe id". Zgadzały się WYŁĄCZNIE dlatego, %>
+        <%# że lista jest posortowana rosnąco; sortowanie „najnowsze u góry" (naturalne przy %>
+        <%# dłuższej historii) przestawiłoby po cichu i to ostrzeżenie, i etykietę przycisku %>
+        <%# na NAJSTARSZY wpis — bez błędu i bez czerwieni w suicie. A jest to jedyny hamulec %>
+        <%# przed wysłaniem klientowi drugiego maila, którego nie da się cofnąć. %>
+        <%# Regułę trzyma teraz `ostatnieWgTematow` (oms/domain/wiadomosci.js). %>
+        <% if (w.ostatnia) { %>
+          <p class="pasek-uwagi-klienta"><b>Uwaga</b>Ta wiadomość poszła już
+            <%= fmtDataCzasKrotko(w.ostatnia.wyslana_at) %>. Wysłanie ponownie znaczy
+            drugiego maila u klienta — zrób to tylko, jeśli o to prosił.</p>
+        <% } %>
+
+        <form method="post" action="/zamowienia/<%= z.id %>/wiadomosc/<%= w.wybrany %>" class="stopka-edycji">
+          <input type="hidden" name="powrot" value="<%= powrot %>">
+          <button class="btn btn--glowny">Wyślij<%= w.ostatnia ? ' ponownie' : '' %></button>
+          <a class="btn" href="<%= adresWiadomosci('nowa') %>">Wróć do wyboru tematu</a>
+          <span class="wyjasnienie">Mail idzie od razu i nie da się go cofnąć.</span>
+        </form>
+
+      <% } else { %>
+        <p class="pasek-blokada"><%= w.blad || 'Nie ma czego pokazać — wybierz temat jeszcze raz.' %></p>
+        <p class="wyjasnienie">Popraw to na karcie i wróć tutaj.</p>
+        <div class="stopka-edycji">
+          <a class="btn" href="<%= adresWiadomosci('nowa') %>">Wróć do wyboru tematu</a>
+        </div>
+      <% } %>
+    </div>
+  </section>
+  <% } %>
+
+  <%# Komentarz wewnętrzny stał tu od 22.08 do 14.10.2026. Od PRZ-074 (prośba właściciela) stoi nad
+      Pozycjami, obok uwag klienta — partial `_komentarz-wewnetrzny.ejs`. Pole jest dalej JEDNO. %>
+</div>

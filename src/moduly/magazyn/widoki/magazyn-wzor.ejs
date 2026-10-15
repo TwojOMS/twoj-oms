@@ -1,0 +1,277 @@
+<%# KARTA WZORU — stanowisko pracy przy JEDNYM wzorze.
+
+    PO CO TA KARTA. Lista magazynu odpowiada na pytanie „co mamy i czego brakuje"; karta
+    odpowiada na „co to konkretnie jest": dane wzoru, komplet produktow i ofert, ktore go
+    sprzedaja (z cenami, odnosnikami i zdjeciami z KAZDEGO kanalu osobno) oraz dopisanie
+    oferty Allegro, ktorej dopasowanie nie zlapalo.
+
+    ⚠️⚠️ KARTA JEST DOMYSLNIE DO ODCZYTU (wymaganie wlasciciela). Formularz otwiera dopiero
+    „Edytuj" — parametr `?edytuj=dane`, BEZ JavaScriptu, dokladnie tak jak trzy panele karty
+    zamowienia (`zamowienie.ejs`). Panel w trybie edycji dostaje `panel--edycja`, bo inaczej
+    latwo nie zauwazyc, ze zmiany czekaja niezapisane.
+
+    ⚠️⚠️ WIDOK NICZEGO NIE LICZY I NICZEGO NIE ROZSTRZYGA. Wymiary w centymetrach, procenty
+    podpowiedzi, adresy miniatur, etykiety kanalow i to, ktory produkt wolno odpiac —
+    wszystko przychodzi POLICZONE z `web/routes/magazyn.js` (ta sama zasada, co
+    w magazyn-lista.ejs, magazyn-powiazania.ejs i faktury.ejs).
+
+    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w layout-oms.ejs. Paleta ma
+    wariant jasny i ciemny, wiec wartosc wpisana tutaj zadzialalaby w jasnym i po cichu
+    zniknela w ciemnym (nikt nie oglada obu naraz).
+
+    ⚠️⚠️ TA KARTA NIE ZAPISUJE NICZEGO DO SKLEPU ANI NA ALLEGRO. Zapis SKU i wymiarow do
+    WooCommerce to Zadanie 15 i ma wlasny, obowiazkowy podglad. %>
+
+<%# Adres powrotu (Zadanie 6) — `wroc` zwalidowany w trasie (`bezpiecznyWroc`), albo goly
+    „/magazyn", gdy go nie bylo albo nie przeszedl bariery adresu. Widok niczego tu nie
+    rozstrzyga — dostaje juz gotowy `adresPowrotu`. %>
+<p class="wroc"><a href="<%= adresPowrotu %>">← Wróć do magazynu</a></p>
+
+<div class="glowa-ekranu">
+  <h1><%= wzor.nazwa %></h1>
+  <span class="krok"><%= wzor.sku ? wzor.sku : 'bez SKU' %></span>
+</div>
+
+<%# ——— DANE WZORU ————————————————————————————————————————————————————————————————— %>
+<section class="panel<%= edytujDane ? ' panel--edycja' : '' %>" id="dane-wzoru">
+  <div class="panel-glowa">
+    <h2>Dane wzoru</h2>
+    <%# Odnosnik niesie PELNY komplet stanu ekranu (fraza i filtr konta) — zbudowany od zera
+        jako „?edytuj=dane" kasowalby zawezenie, po ktorym ktos wlasnie szukal oferty. %>
+    <% if (!edytujDane) { %><a class="link-edytuj" href="<%= adresEdycji %>">Edytuj</a><% } %>
+  </div>
+  <div class="panel-cialo">
+    <% if (blad) { %>
+      <%# ⚠️ ODMOWA STOI NAD FORMULARZEM I MOWI, CZEGO NIE ZAPISANO. Zapis jest CALOSCIOWY:
+          jedno pole, ktorego panel nie rozumie, wstrzymuje wszystkie. %>
+      <p class="pasek-uwaga"><%= blad %></p>
+    <% } %>
+    <% if (edytujDane) { %>
+      <form method="post" action="<%= adresKarty %>" class="pola pola--siatka">
+        <label>Nazwa<input name="nazwa" value="<%= wartosci.nazwa %>"></label>
+        <label>SKU<input name="sku" value="<%= wartosci.sku %>"></label>
+        <%# ⚠️ POLA SA W CENTYMETRACH, BAZA TRZYMA MILIMETRY. Czlowiek mysli o szablonie
+            w centymetrach; przeliczenie stoi na granicy zapisu (domain/rozmiar.js).
+            Puste pole KASUJE wymiar, napis niezrozumialy ODMAWIA — nigdy zgadywanie. %>
+        <label>Szerokość (cm)<input name="szerokosc_cm" value="<%= wartosci.szerokosc_cm %>"
+          inputmode="decimal" placeholder="np. 70"></label>
+        <label>Wysokość (cm)<input name="wysokosc_cm" value="<%= wartosci.wysokosc_cm %>"
+          inputmode="decimal" placeholder="np. 100"></label>
+        <%# Pozycje z kategorii POWIAZANYCH produktow (plus ta juz ustawiona) — nie z palca:
+            filtr kategorii dopasowuje CALA nazwe, a nazw jest kilkaset i nikt ich nie pamieta. %>
+        <label>Kategoria główna
+          <select name="kategoria_glowna">
+            <option value="">— niewybrana —</option>
+            <% kategorie.forEach(function (k) { %>
+              <option value="<%= k %>"<%- wartosci.kategoria_glowna === k ? ' selected' : '' %>><%= k %></option>
+            <% }); %>
+          </select>
+        </label>
+        <%# ⚠️ TRZY STANY, NIE DWA, i pole jest WYLACZNIE RECZNE (decyzja wlasciciela):
+            zadnego wyliczania z wymiarow. „Nieoznaczone" to robota do wykonania,
+            „nie" to decyzja czlowieka. %>
+        <label>Paczkomat
+          <select name="paczkomat">
+            <option value=""<%- wartosci.paczkomat === '' ? ' selected' : '' %>>— nieoznaczone —</option>
+            <option value="tak"<%- wartosci.paczkomat === 'tak' ? ' selected' : '' %>>tak</option>
+            <option value="nie"<%- wartosci.paczkomat === 'nie' ? ' selected' : '' %>>nie</option>
+          </select>
+        </label>
+        <label class="pole-szerokie">Opis
+          <textarea name="opis" rows="4"><%= wartosci.opis %></textarea>
+        </label>
+        <div class="stopka-edycji">
+          <button class="btn btn--glowny" type="submit">Zapisz</button>
+          <a class="btn" href="<%= adresKarty %>">Anuluj</a>
+        </div>
+      </form>
+    <% } else { %>
+      <dl class="dane">
+        <dt>SKU</dt>
+        <dd><% if (wzor.sku) { %><%= wzor.sku %><% } else { %><span class="magazyn-brak">bez SKU</span><% } %></dd>
+        <dt>Wymiary</dt>
+        <dd><% if (wzor.wymiary) { %><%= wzor.wymiary %><% } else { %><span class="magazyn-brak">bez wymiarów</span><% } %></dd>
+        <dt>Kategoria główna</dt>
+        <dd><% if (wzor.kategoria) { %><%= wzor.kategoria %><% } else { %><span class="magazyn-brak">niewybrana</span><% } %></dd>
+        <dt>Paczkomat</dt>
+        <dd>
+          <% if (wzor.paczkomat === 'tak') { %><span class="znacznik znacznik--ok">tak</span>
+          <% } else if (wzor.paczkomat === 'nie') { %><span class="znacznik znacznik--cichy">nie</span>
+          <% } else { %><span class="magazyn-brak">nieoznaczone</span><% } %>
+        </dd>
+        <dt>Opis</dt>
+        <dd><% if (wzor.opis) { %><%= wzor.opis %><% } else { %><span class="magazyn-brak">bez opisu</span><% } %></dd>
+      </dl>
+    <% } %>
+  </div>
+</section>
+
+<%# ——— PRODUKTY I OFERTY TEGO WZORU ————————————————————————————————————————————————
+    ⚠️ ODNOSNIKI NA ZEWNATRZ ZYJA TUTAJ, na karcie — kazdy produkt prowadzi DO SIEBIE:
+    do strony w sklepie albo do oferty na Allegro, w nowej karcie, przez `rel="noopener"`.
+    Obok komplet kategorii, zeby wybor kategorii glownej wyzej byl swiadomy.
+
+    ⚠️ GALERIA OSOBNO PER PRODUKT, a nie jednym workiem: ten sam wzor bywa sfotografowany
+    inaczej na sklepie B, inaczej na sklepie A i inaczej na Allegro, a przy pobieraniu zdjec
+    do folderu wzoru (Etap 2) trzeba wiedziec, skad ktore pochodzi. %>
+<section class="panel" id="produkty-wzoru">
+  <div class="panel-glowa">
+    <h2>Produkty i oferty — <%= produkty.length %> poz.</h2>
+    <span class="dopisek">to one niosą ceny, zdjęcia i kategorie tego wzoru</span>
+  </div>
+  <div class="panel-cialo">
+    <% if (!produkty.length) { %>
+      <p class="pusto">
+        Ten wzór nie ma jeszcze ani jednego przypiętego produktu — nie ma więc skąd wziąć
+        ceny, zdjęć ani kategorii. Ofertę Allegro dopiszesz niżej.
+      </p>
+    <% } else { %>
+      <table class="tab-pozycje">
+        <thead><tr><th>Produkt</th><th>Cena</th><th>Zdjęcia</th><th></th></tr></thead>
+        <tbody>
+          <% produkty.forEach(function (p) { %>
+            <tr>
+              <td>
+                <div class="nazwa-produktu"><%= p.nazwa %></div>
+                <div class="sku">
+                  <%= p.etykietaKanalu %><% if (p.sku_sklepu) { %> · <%= p.sku_sklepu %><% } %><% if (p.adres) { %>
+                    · <a href="<%= p.adres %>" rel="noopener noreferrer" target="_blank">otwórz w sklepie</a>
+                  <% } %>
+                </div>
+                <% if (p.zniknal) { %>
+                  <%# Produkt wycofany ZOSTAJE na karcie i mowi o tym: ukryty wygladalby jak
+                      powiazanie, ktore samo zniknelo. %>
+                  <div class="magazyn-brak">wycofany ze sprzedaży — powiązanie zostaje</div>
+                <% } %>
+                <% if (p.kategorie.length) { %>
+                  <div class="sku"><%= p.kategorie.join(' · ') %></div>
+                <% } %>
+              </td>
+              <td><% if (p.cena === null) { %><span class="magazyn-brak">bez ceny</span><% } else { %><%= p.cena %><% } %></td>
+              <td>
+                <% if (!p.zdjecia.length) { %>
+                  <span class="magazyn-brak">—</span>
+                <% } else { %>
+                  <% p.zdjecia.forEach(function (z) { %>
+                    <%# Miniatura na ekran, ORYGINAL pod odnosnikiem — galeria potrafi miec
+                        kilkanascie zdjec z trzech kanalow naraz. %>
+                    <a href="<%= z.oryginal %>" rel="noopener noreferrer" target="_blank"><img
+                      class="mini" src="<%= z.miniatura %>" alt="" width="38" height="38" loading="lazy"></a>
+                  <% }); %>
+                <% } %>
+              </td>
+              <td>
+                <% if (p.odpinalny) { %>
+                  <%# ⚠️ WLASNY „adresOdepnij", NIE doklejone „/odepnij" za adresem karty —
+                      adres karty moze niesc „?wroc=…", a doklejenie sciezki PO nim wsadzaloby
+                      ja w srodek wartosci parametru zamiast za nim (Zadanie 6). %>
+                  <form class="w-linii" method="post" action="<%= adresOdepnij %>">
+                    <input type="hidden" name="produktSklepowyId" value="<%= p.id %>">
+                    <button class="btn" type="submit">Odepnij</button>
+                  </form>
+                <% } else { %>
+                  <%# ⚠️ PRZYCISKU TU NIE MA W OGOLE, a nie „jest i odmawia": produkt ze sklepu
+                      ZBUDOWAL ten wzor, a odpiecie zostawiloby wzor sierote — bez ceny,
+                      bez zdjecia, bez kategorii i bez sladu, co go osierocilo. %>
+                  <span class="magazyn-brak">produkt ze sklepu zbudował ten wzór — nie odpina się</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+</section>
+
+<%# ——— DOPISANIE OFERTY ALLEGRO ————————————————————————————————————————————————————
+    ⚠️⚠️ WYSZUKIWARKA, NIE SAMA LISTA PODPOWIEDZI. Pomiar obalil zalozenie planu: tytuly
+    na Allegro sa SPRZEDAZOWE, nie katalogowe („Zakaz palenia papierosów - DUŻY szablon
+    malarski do znakowania" wobec sklepowego „Zakaz palenia – 64cm"), wiec podpowiedz trafia
+    w mniejszosc przypadkow. Bez pola szukania 447 powiazan to 447 przewinien pelnej listy.
+
+    ⚠️ PODPOWIEDZ NICZEGO NIE WIAZE — wiaze klikniecie „Przypnij". Ocena obok jest
+    PODPOWIEDZIA, nie decyzja, i liczy ja ta sama funkcja, co na ekranie powiazan. %>
+<section class="panel" id="dopisz-oferte">
+  <div class="panel-glowa">
+    <h2>Dopisz ofertę Allegro</h2>
+    <span class="dopisek">produkty ze sklepu wiąże „Utwórz wzory z niepowiązanych", nie karta</span>
+  </div>
+  <div class="panel-cialo">
+    <form class="szukajka" method="get" action="<%= adresKarty %>" role="search">
+      <% ukryteWSzukajce.forEach(function (p) { %>
+        <input type="hidden" name="<%= p.name %>" value="<%= p.value %>">
+      <% }); %>
+      <label class="szukajka-pole">
+        <span class="szukajka-etykieta">Szukaj oferty</span>
+        <input type="search" name="fraza" value="<%= filtry.fraza ? filtry.fraza : '' %>"
+          autocomplete="off" placeholder="fragment nazwy oferty">
+      </label>
+      <label class="pole-filtra">
+        <span>Konto Allegro</span>
+        <select name="kanal">
+          <option value="">Oba konta</option>
+          <% kanalyDoFiltra.forEach(function (k) { %>
+            <option value="<%= k.klucz %>"<%- filtry.kanal === k.klucz ? ' selected' : '' %>><%= k.etykieta %></option>
+          <% }); %>
+        </select>
+      </label>
+      <button type="submit">Szukaj</button>
+      <% if (szukamy) { %><a class="szukajka-wyczysc" href="<%= adresKarty %>">Wyczyść</a><% } %>
+    </form>
+
+    <p class="wyjasnienie">
+      <% if (szukamy) { %>
+        Wyniki szukania — <%= kandydaci.length %> poz. Szukanie zastępuje podpowiedzi,
+        żeby lista mówiła wyłącznie o tym, o co zapytano.
+      <% } else { %>
+        <strong>Podpowiedzi</strong> — oferty o nazwie najbliższej temu wzorowi. Ocena jest
+        podpowiedzią, nie decyzją: tytuły na Allegro są sprzedażowe, więc trafna oferta bywa
+        nisko oceniona. Nie ma jej tutaj? Znajdź ją polem wyżej.
+      <% } %>
+    </p>
+
+    <% if (!kandydaci.length) { %>
+      <p class="pusto">
+        <% if (szukamy) { %>
+          Żadna niepowiązana oferta nie pasuje do tego zawężenia.
+        <% } else { %>
+          Żadna niepowiązana oferta Allegro nie ma z nazwą tego wzoru wspólnego słowa —
+          poszukaj jej polem wyżej.
+        <% } %>
+      </p>
+    <% } else { %>
+      <table class="tab-pozycje">
+        <tbody>
+          <% kandydaci.forEach(function (k) { %>
+            <tr>
+              <td>
+                <div class="nazwa-kandydata"><%= k.nazwa %></div>
+                <div class="sku">
+                  <%= k.etykietaKanalu %><% if (k.adres) { %>
+                    · <a href="<%= k.adres %>" rel="noopener noreferrer" target="_blank">oferta</a>
+                  <% } %>
+                </div>
+              </td>
+              <td>
+                <% if (k.procent) { %>
+                  <span class="kandydat-ocena"><%= k.procent %></span>
+                  <%# Wspolne slowa sa jedynym uzasadnieniem oceny, jakie czlowiek dostaje —
+                      bez nich procent jest liczba bez pokrycia. %>
+                  <span class="kandydat-slowa"><%= k.slowa %></span>
+                <% } %>
+              </td>
+              <td>
+                <%# ⚠️ `adresPowiaz` — ta sama pulapka sklejania, co przy „Odepnij" wyzej. %>
+                <form class="w-linii" method="post" action="<%= adresPowiaz %>">
+                  <input type="hidden" name="produktSklepowyId" value="<%= k.id %>">
+                  <button class="btn" type="submit">Przypnij</button>
+                </form>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+</section>

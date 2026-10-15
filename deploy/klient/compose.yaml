@@ -1,0 +1,116 @@
+# OMS u klienta — Linux + Docker (PRZ-058). Instrukcja: docs/instalacja-docker.md.
+# Polecenia uruchamiaj z TEGO katalogu (deploy/klient), przez sudo:
+#   sudo docker compose build                      # obraz z paczki, etykieta revision z pliku .env obok
+#   sudo docker compose run --rm instalacja        # jednorazowo: próba/demo bez kluczy integracji
+#   sudo docker compose up -d                      # panel + kopia; wstają same po restarcie maszyny
+# Katalogi na hoście (właściciel UID 10001, tryb 0700) — układ zgodny z planem aktualizatora:
+#   /opt/oms/config   konfiguracja i poświadczenia (oms.env, dane administratora próby)
+#   /opt/oms/data     baza oms.sqlite, proformy/, etykiety/
+#   /opt/oms/backups  kopie bazy (oms-RRRR-MM-DD.sqlite), co 7 dni archiwum etykiet i proform, kopie operacji aktualizatora
+#   /opt/oms/releases rozpakowane paczki wydań (kod tylko do odczytu, ten plik jest w jednej z nich)
+#   /opt/oms/kopia-zewnetrzna  katalog z punktem montowania nośnika nosnik/ (PRZ-059; ustawienie w config/kopia.env)
+# Aktualizacja do nowego wydania: sudo sh /opt/oms/aktualizuj.sh (docs/aktualizacja-klienta-v0.md).
+name: oms
+
+x-obraz: &obraz
+  image: oms:${OMS_REVISION:-lokalny}
+  pull_policy: never
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  oms:
+    <<: *obraz
+    build:
+      context: ../..
+      dockerfile: deploy/klient/Dockerfile
+      args:
+        APP_REVISION: ${OMS_REVISION:-nieznana}
+    container_name: oms
+    restart: unless-stopped
+    # required: false — inaczej KAŻDE polecenie compose (także build przed instalacją) pada, dopóki pliku nie ma.
+    # Bez pliku OMS nie wstanie (brak danych sprzedawcy), a diagnostyka to zgłosi.
+    env_file:
+      - path: /opt/oms/config/oms.env
+        required: false
+      - path: /opt/oms/config/kopia.env
+        required: false
+    # Ścieżki danych i port wewnątrz kontenera są stałe: baza nie może trafić poza wolumen,
+    # nawet gdy ktoś wpisze w oms.env inną ścieżkę (wtedy zniknęłaby przy odtworzeniu kontenera).
+    environment:
+      OMS_PORT: "3001"
+      OMS_DB_PATH: /opt/oms/data/oms.sqlite
+      OMS_PROFORMY_KATALOG: /opt/oms/data/proformy
+      OMS_ETYKIETY_KATALOG: /opt/oms/data/etykiety
+      OMS_ETYKIETY_DIR: /opt/oms/data/etykiety
+      # PRZ-059: /health alarmuje, gdy najnowsza kopia ma 48 h albo nośnika kopii zewnętrznej nie ma.
+      OMS_KOPIE_KATALOG: /opt/oms/backups
+    # Port w sieci lokalnej; zmiana: OMS_PORT_LAN w pliku .env obok. NIE przekierowuj go na routerze
+    # do internetu — panel nie ma tu HTTPS.
+    ports:
+      # Tylko IPv4: bez adresu Docker publikuje też [::], a globalny IPv6 (SLAAC) bez zapory na routerze
+      # wystawiłby panel do internetu bez żadnego przekierowania portu.
+      - "0.0.0.0:${OMS_PORT_LAN:-3001}:3001"
+    volumes:
+      - /opt/oms/data:/opt/oms/data
+      # Tylko do odczytu: OMS sprawdza wiek kopii, nie pisze ich.
+      - /opt/oms/backups:/opt/oms/backups:ro
+      - type: bind
+        source: /opt/oms/kopia-zewnetrzna
+        target: /opt/oms/kopia-zewnetrzna
+        read_only: true
+        # rslave + nośnik montowany w PODKATALOGU nosnik/: podłączenie i odłączenie pendrive'a widać w kontenerze
+        # bez restartu. Montowanie wprost na /opt/oms/kopia-zewnetrzna nie propaguje się (próba na VM 10.10).
+        bind: { propagation: rslave, create_host_path: true }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.status===200?0:1),()=>process.exit(1))"]
+      interval: 60s
+      timeout: 10s
+      start_period: 120s
+      # Pierwsza kontrola po 5 s, nie po 60 s: aktualizator i compose czekają na „healthy”.
+      start_interval: 5s
+      retries: 3
+
+  kopia:
+    <<: *obraz
+    container_name: oms-kopia
+    restart: unless-stopped
+    # Czeka na zdrowy OMS: przed instalacją nie może założyć pustej bazy w /opt/oms/data.
+    depends_on:
+      oms:
+        condition: service_healthy
+    # PRZ-059 (deploy/klient/kopia.mjs): co godzinę sprawdza, czy potrzebna jest kopia — dzienna baza
+    # (VACUUM INTO, integrity_check; po 03:00 UTC albo po 26 h, więc także serwer wyłączany na noc),
+    # 14 ostatnich; co 7 dni archiwum etykiet i proform, 2 ostatnie; kopia na nośnik zewnętrzny,
+    # gdy config/kopia.env ustawia OMS_KOPIA_ZEWNETRZNA. Ręcznie: sudo sh /opt/oms/aktualizuj.sh compose exec -T kopia node deploy/klient/kopia.mjs teraz
+    command: ["node", "deploy/klient/kopia.mjs", "petla"]
+    env_file:
+      - path: /opt/oms/config/kopia.env
+        required: false
+    environment:
+      OMS_DB_PATH: /opt/oms/data/oms.sqlite
+      OMS_ETYKIETY_KATALOG: /opt/oms/data/etykiety
+      OMS_PROFORMY_KATALOG: /opt/oms/data/proformy
+      OMS_KOPIE_KATALOG: /opt/oms/backups
+    network_mode: none
+    volumes:
+      - /opt/oms/data:/opt/oms/data
+      - /opt/oms/backups:/opt/oms/backups
+      - type: bind
+        source: /opt/oms/kopia-zewnetrzna
+        target: /opt/oms/kopia-zewnetrzna
+        bind: { propagation: rslave, create_host_path: true }
+
+  instalacja:
+    <<: *obraz
+    profiles: [instalacja]
+    restart: "no"
+    # Próba + demo bez sieci: żadna integracja nie ma jak się połączyć.
+    network_mode: none
+    command: ["node", "scripts/instalacja-kontener.mjs"]
+    volumes:
+      - /opt/oms/data:/opt/oms/data
+      - /opt/oms/config:/opt/oms/config

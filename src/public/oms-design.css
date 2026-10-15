@@ -1,0 +1,86 @@
+/* PRZ-065: wspólna rama zaakceptowanej makiety. Palety w layout-oms.ejs. */
+body{font-family:'Segoe UI',Arial,sans-serif;font-variant-numeric:tabular-nums}
+.oms-shell,.oms-shell *{box-sizing:border-box}
+.oms-shell{display:grid;grid-template-columns:13.5rem minmax(0,1fr);min-height:100vh;background:var(--tlo)}
+.oms-sidebar{display:flex;flex-direction:column;gap:22px;padding:24px 12px 16px;background:var(--oms-bok);border-right:1px solid var(--ramka);position:sticky;top:0;height:100vh;overflow:auto}
+.oms-brand,.oms-brand:visited{display:flex;align-items:center;gap:9px;padding:0 8px;font-size:18px;font-weight:650;letter-spacing:-.6px;white-space:nowrap;color:var(--tekst);text-decoration:none}
+.oms-monogram{display:grid;place-items:center;background:var(--marka);color:var(--na-marce);width:27px;height:29px;border-radius:5px;font-size:15px;font-weight:600;flex-shrink:0}
+.oms-menu-desktop{display:flex;flex:1}
+.oms-menu{display:flex;flex-direction:column;gap:22px;width:100%;font-size:1rem}
+.oms-menu h2{font-size:0.83rem;font-weight:600;letter-spacing:1.3px;text-transform:uppercase;color:var(--tekst-przygaszony);margin:0 10px 8px}
+.oms-menu ul{display:flex;flex-direction:column;gap:4px;list-style:none;padding:0;margin:0}
+.oms-menu a,.oms-menu a:visited{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:6px;color:var(--tekst-przygaszony);text-decoration:none;font-weight:500;line-height:1.45}
+.oms-menu a[aria-current="page"],.oms-menu a[aria-current="page"]:visited{background:var(--oms-aktywne-tlo);color:var(--link);font-weight:600}
+.oms-menu a:hover{background:var(--powierzchnia-2);color:var(--tekst)}
+.oms-menu a svg{width:17px;height:17px;flex-shrink:0}
+.oms-menu-mobile{display:none}
+.oms-main{min-width:0}
+.oms-topbar{height:62px;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:0 25px;background:var(--powierzchnia);border-bottom:1px solid var(--ramka)}
+.oms-breadcrumb{display:flex;align-items:center;gap:10px;font-size:1rem;color:var(--tekst-przygaszony);min-width:0}
+.oms-breadcrumb strong{font-weight:500;color:var(--tekst);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.oms-top-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.oms-theme-form{margin:0}
+.oms-theme-button{display:grid;place-items:center;width:32px;height:32px;padding:6px;border:1px solid var(--ramka);border-radius:6px;background:var(--powierzchnia);color:var(--tekst);cursor:pointer}
+.oms-theme-button svg{width:17px;height:17px}
+.oms-theme-button:hover{background:var(--powierzchnia-2)}
+.oms-topbar .menu-uzytkownika{font-size:1rem;margin:0}
+.oms-topbar .menu-uzytkownika summary{color:var(--tekst);border:0;border-radius:5px;background:var(--powierzchnia);padding:8px}
+.oms-topbar .menu-uzytkownika summary:hover,.oms-topbar .menu-uzytkownika[open] summary{background:var(--powierzchnia-2);color:var(--tekst)}
+.oms-topbar .menu-uzytkownika-panel{z-index:30;top:calc(100% + 7px);color:var(--tekst);background:var(--powierzchnia);border:1px solid var(--ramka);box-shadow:0 6px 18px var(--oms-cien);border-radius:6px}
+.oms-main > .kolumna-glowna{padding:26px 25px 24px;min-width:0;width:100%}
+.oms-main > .kolumna-glowna>h1{font-size:28px;font-weight:600;letter-spacing:-.8px;line-height:1.2;margin:0 0 22px}
+.oms-order-statuses{display:flex;gap:12px;align-items:center;margin-bottom:18px;border-bottom:1px solid var(--ramka);padding-bottom:12px;font-size:1rem;flex-wrap:wrap}
+.oms-order-statuses ul{display:flex;gap:4px;flex-wrap:wrap;margin:0;padding:0;list-style:none}
+.oms-order-statuses li a{display:flex;align-items:center;gap:7px;padding:7px 9px;color:var(--tekst-przygaszony);text-decoration:none;border-radius:5px}
+.oms-order-statuses a[aria-current="page"]{background:var(--oms-aktywne-tlo);color:var(--link);font-weight:600}
+.oms-order-statuses .licznik{font-size:0.92rem}
+.oms-order-statuses .oms-new-order{margin-left:auto;white-space:nowrap;font-weight:600}
+.oms-shell :focus-visible{outline:2px solid var(--link);outline-offset:3px}
+@media(min-width:1600px){.oms-main > .kolumna-glowna{padding-right:32px}}
+@media(max-width:900px){.oms-shell{grid-template-columns:12rem minmax(0,1fr)}.oms-sidebar{padding-inline:8px}.oms-brand{font-size:16px;gap:7px}.oms-main > .kolumna-glowna{padding:22px 16px}.oms-topbar{padding-inline:16px}}
+@media(max-width:650px){
+  .oms-shell{display:block}.oms-sidebar{position:static;height:auto;overflow:visible;padding:14px;gap:12px;border-right:0;border-bottom:1px solid var(--ramka)}
+  .oms-brand{font-size:19px;padding:0}.oms-menu-desktop{display:none}.oms-menu-mobile{display:block;font-size:1.08rem}
+  .oms-menu-mobile>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;border:1px solid var(--ramka);border-radius:5px;padding:9px 12px;cursor:pointer;background:var(--powierzchnia);min-height:40px}
+  .oms-menu-mobile>summary::-webkit-details-marker{display:none}.oms-menu-mobile[open]>summary{margin-bottom:16px}
+  .oms-menu-mobile .oms-menu{gap:18px}.oms-menu-mobile .oms-menu ul{display:grid;grid-template-columns:1fr 1fr;gap:4px}.oms-menu-mobile .oms-menu a{min-height:42px}
+  .oms-topbar{min-height:50px;height:auto;padding:8px 14px}.oms-breadcrumb{font-size:0.92rem}.oms-breadcrumb>span:first-child,.oms-breadcrumb>span:nth-child(2){display:none}
+  .oms-main > .kolumna-glowna{padding:20px 12px}.oms-main > .kolumna-glowna>h1{font-size:26px}.oms-topbar .menu-uzytkownika-panel{max-width:calc(100vw - 24px)}
+}
+@media(pointer:coarse){.oms-menu a,.oms-theme-button,.oms-topbar summary{min-height:44px}.oms-theme-button{min-width:44px}}
+
+.oms-brand .pas-logo{width:24px;height:24px;object-fit:contain;flex-shrink:0}
+
+.oms-avatar{display:grid;place-items:center;flex-shrink:0;width:29px;height:29px;border-radius:50%;background:var(--powierzchnia-2);border:1px solid var(--ramka);font-size:0.92rem;font-weight:600}
+/* PRZ-067: ustawienia (zębatka), motyw i konto wracają do prawego górnego rogu.
+   Okienko konta otwiera się w dół i trzyma się PRAWEJ krawędzi paska (right:0 z bazy). */
+a.oms-theme-button,a.oms-theme-button:visited{text-decoration:none}
+.oms-settings-button[aria-current="page"]{background:var(--oms-aktywne-tlo);color:var(--link)}
+.oms-topbar .menu-uzytkownika summary{display:flex;align-items:center;gap:8px;padding:4px 8px 4px 4px;white-space:nowrap}
+.oms-topbar .menu-uzytkownika summary::after{content:"";width:6px;height:6px;margin:0 2px 3px 0;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:rotate(45deg);flex-shrink:0}
+.menu-uzytkownika-nazwa{min-width:0;max-width:14rem;overflow:hidden;text-overflow:ellipsis;font-weight:600;font-size:.95rem}
+.oms-topbar .menu-uzytkownika-panel{min-width:13rem;padding:12px}
+.oms-topbar .menu-uzytkownika-panel a{overflow-wrap:anywhere}
+@media(max-width:650px){.menu-uzytkownika-nazwa{max-width:5.5rem}.oms-top-actions{gap:6px}.oms-topbar .menu-uzytkownika-panel{right:0}}
+
+/* PRZ-066: statusy zamówień w bocznym menu, pod „Zamówienia” (jak przed PRZ-065). */
+.oms-menu .oms-statusy{display:flex;flex-direction:column;gap:1px;margin:4px 0 6px 10px;padding-left:4px;border-left:1px solid var(--ramka)}
+.oms-menu .oms-statusy a,.oms-menu .oms-statusy a:visited{justify-content:space-between;gap:6px;padding:5px 8px;font-size:.92rem}
+.oms-menu .oms-statusy a>span:first-child{display:flex;align-items:center;gap:6px;min-width:0;white-space:nowrap}
+.oms-menu .oms-statusy .kropka{flex-shrink:0}
+.oms-menu .oms-statusy .licznik{min-width:1.5rem;padding:0 .4rem;border-radius:.75rem;background:var(--powierzchnia-2);color:var(--tekst);font-size:.8rem;text-align:center;font-variant-numeric:tabular-nums}
+/* PRZ-083 (właściciel 15.10): „+ Nowe zamówienie” wyróżnione tłem jak przycisk główny (.btn--glowny), nie zwykły odnośnik. */
+.oms-menu .oms-statusy .oms-nowe-zamowienie a,.oms-menu .oms-statusy .oms-nowe-zamowienie a:visited{justify-content:center;margin-top:8px;padding:7px 10px;border-radius:6px;background:var(--marka);color:var(--na-marce);font-weight:600;white-space:nowrap;text-decoration:none}
+.oms-menu .oms-statusy .oms-nowe-zamowienie a:hover{background:var(--marka-ciemniej);color:var(--na-marce)}
+
+.oms-settings-navigation{margin-bottom:22px;border-bottom:1px solid var(--ramka)}
+.oms-settings-navigation .kolumna-boczna{display:block;position:static;width:auto;min-width:0;padding:0;border:0;background:transparent}
+.oms-settings-navigation .panel-statusow{padding:0;margin:0;background:transparent;border:0;border-radius:0}
+.oms-settings-navigation ul{display:flex;flex-wrap:wrap;gap:4px;list-style:none;padding:0;margin:0}
+.oms-settings-navigation li{margin:0}.oms-settings-navigation .panel-statusow a{padding:9px 10px;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;font-size:1rem;color:var(--tekst-przygaszony)}
+.oms-settings-navigation .panel-statusow .aktywna a{background:transparent;border-bottom-color:var(--marka);color:var(--tekst);font-weight:600}
+.oms-settings-navigation .nawigacja-kontekstowa--mobile{display:none}
+@media(max-width:650px){.oms-settings-navigation .kolumna-boczna{display:none}.oms-settings-navigation .nawigacja-kontekstowa--mobile{display:block;margin:0}.oms-settings-navigation ul{display:grid;grid-template-columns:1fr 1fr}.oms-settings-navigation .panel-statusow a{font-size:1rem;min-height:44px}}
+@media print{.oms-sidebar,.oms-topbar,.oms-order-statuses,.oms-settings-navigation{display:none!important}.oms-shell{display:block}.oms-main > .kolumna-glowna{padding:0}}
+
+.oms-shell > .tresc{padding:0;min-width:0}

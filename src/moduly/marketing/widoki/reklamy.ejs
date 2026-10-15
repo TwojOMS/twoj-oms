@@ -1,0 +1,139 @@
+<%- include('_reklamy-style.ejs') %>
+<% const pokaz = (v) => v == null ? '—' : String(v); %>
+<% const kwota = (v, waluta) => v == null ? '—' : `${v} ${waluta || 'waluta nieustalona'}`; %>
+<% const procent = (v) => v == null ? '—' : `${(v * 100).toFixed(1)}%`; %>
+<% const etykieta = (stan) => stan === 'niepodłączone' ? 'Niepodłączone' : stan === 'działa' ? 'Działa' : stan === 'brak uprawnień' ? 'Brak uprawnień' : stan === 'weryfikacja' ? 'Weryfikacja' : 'Błąd'; %>
+<% const budzet = (b, waluta) => { if (!waluta || !/^[A-Z]{3}$/.test(waluta)) return null; const cyfry = new Intl.NumberFormat('pl-PL', { style: 'currency', currency: waluta }).resolvedOptions().maximumFractionDigits; const kwota = Number(b.kwotaMinor) / (10 ** cyfry); return Number.isFinite(kwota) ? new Intl.NumberFormat('pl-PL', { style: 'currency', currency: waluta }).format(kwota) : null; }; %>
+<div class="reklamy">
+  <header>
+    <h1>Reklamy</h1>
+    <p class="opis">Wyniki z własnych połączeń reklamowych i akcje promocyjne. Odczyt danych nie zmienia kampanii ani budżetów.</p>
+    <% if (mozliweOdswiezenieReklam) { %><form method="post" action="/kampania/odswiez-reklamy"><button type="submit">Odśwież wyniki</button></form><% } %>
+  </header>
+
+  <nav class="reklamy-karty" aria-label="Widoki reklam">
+    <% [['podsumowanie', 'Podsumowanie'], ['google', 'Google'], ['meta', 'Meta'], ['kampanie', 'Kampanie']].forEach(([klucz, nazwa]) => { %>
+      <a href="/kampania?widok=<%= klucz %>&okres=<%= liczbaDni %>" <% if (widok === klucz) { %>aria-current="page"<% } %>><%= nazwa %></a>
+    <% }); %>
+  </nav>
+
+  <% if (widok !== 'kampanie') { %>
+    <div class="reklamy-filtr">Okres:
+      <% [7, 30].forEach((dni) => { %><a href="/kampania?widok=<%= widok %>&okres=<%= dni %>" aria-current="<%= liczbaDni === dni %>"><%= dni %> dni</a><% }); %>
+      <span class="reklamy-zrodlo"><%= raport.okres.od %> – <%= raport.okres.do %></span>
+    </div>
+  <% } %>
+
+  <% if (widok === 'podsumowanie') { %>
+    <section class="reklamy-panel">
+      <h2>Podsumowanie okresu</h2>
+      <div class="reklamy-siatka">
+        <div class="reklamy-metryka"><small>Łączny koszt · Google GA4 + Meta</small><strong><%= kwota(raport.lacznie.koszt, raport.lacznie.waluta) %></strong><span class="powod"><%= raport.lacznie.powod === 'ROZNE_WALUTY' ? 'Różne waluty — bez sumy' : raport.lacznie.powod ? 'Brak danych do sumy' : 'Źródła bez podwójnego liczenia' %></span></div>
+        <div class="reklamy-metryka"><small>Google · koszt z GA4</small><strong><%= kwota(raport.google.koszt, raport.google.waluta) %></strong><span class="powod">Własna właściwość GA4</span></div>
+        <div class="reklamy-metryka"><small>Meta · koszt z insights</small><strong><%= kwota(raport.meta.koszt, raport.meta.waluta) %></strong><span class="powod">Własne konto reklamowe</span></div>
+        <div class="reklamy-metryka"><small>Google · CTR</small><strong><%= procent(raport.google.ctr) %></strong><span class="powod">Kliknięcia / wyświetlenia</span></div>
+        <div class="reklamy-metryka"><small>Google · konwersje GA4 / OMS</small><strong><%= pokaz(raport.google.konwersjeGa4) %> / <%= pokaz(raport.google.konwersjeOms) %></strong><span class="powod">Dwa niezależne sposoby liczenia</span></div>
+        <div class="reklamy-metryka"><small>Google · ROAS GA4 / OMS netto produktów</small><strong><%= raport.google.roasGa4 == null ? '—' : `${raport.google.roasGa4}×` %> / <%= raport.google.roasOms == null ? '—' : `${raport.google.roasOms}×` %></strong><span class="powod">Przychodów nie sumujemy</span></div>
+        <div class="reklamy-metryka"><small>Meta · CTR</small><strong><%= procent(raport.meta.ctr) %></strong><span class="powod">Zakupy Meta: brak pomiaru</span></div>
+        <div class="reklamy-metryka"><small>Co trwa</small><strong><%= raport.meta.emitujace %> Meta · <%= promocyjne.trwajace.length %> akcji</strong><span class="powod">Emisja Meta z dziś lub wczoraj; stan Google wymaga Ads API</span></div>
+      </div>
+      <p class="reklamy-zrodlo">Budżety Google wymagają Google Ads API. Budżety Meta są przy kampaniach na karcie Meta, jeśli konto je udostępnia.</p>
+      <p class="reklamy-zrodlo">Ostatni udany pobór GA4: <%= polaczenia.ga4[0]?.ostatniSukcesAt || 'jeszcze nie było' %> · Ostatni udany pobór Meta: <%= polaczenia.meta[0]?.ostatniSukcesAt || 'jeszcze nie było' %>. Każda kwota ma własne źródło i okres wskazany powyżej.</p>
+    </section>
+    <% if (!polaczenia.ga4.length || !polaczenia.meta.length) { %>
+      <section class="reklamy-panel reklamy-brak"><h2>Podłącz wybrane źródła</h2>
+        <p>GA4: <strong><%= polaczenia.ga4.length ? etykieta(polaczenia.ga4[0].stan) : 'Niepodłączone' %></strong> · Google Ads API: <strong><%= polaczenia.google_ads.length ? etykieta(polaczenia.google_ads[0].stan) : 'Niepodłączone' %></strong> · Meta: <strong><%= polaczenia.meta.length ? etykieta(polaczenia.meta[0].stan) : 'Niepodłączone' %></strong></p>
+        <p>Każde połączenie działa osobno. Brak konta reklamowego nie zatrzymuje OMS ani zakładki Kampanie.</p>
+        <a href="/ustawienia/integracje/reklamy">Otwórz Integracje → Reklamy</a>
+      </section>
+    <% } %>
+    <section class="reklamy-panel"><h2>Dzień po dniu</h2>
+      <% if (!raport.dni.length) { %><p>Brak danych w wybranym okresie. To nie oznacza zerowego wydatku.</p><% } else { %>
+        <% if (raport.lacznie.powod !== 'ROZNE_WALUTY') { %>
+        <% const wykresDni = [...new Set(raport.dni.map((d) => d.dzien))].sort();
+           const maksimum = Math.max(1, ...raport.dni.map((d) => Number(d.koszt) || 0)); %>
+        <div class="reklamy-wykres" role="img" aria-label="Dzienny koszt reklam Google i Meta w wybranym okresie">
+          <% wykresDni.forEach((dzien) => { const googleDnia = raport.dni.filter((d) => d.dzien === dzien && d.zrodlo === 'google').reduce((s, d) => s + Number(d.koszt), 0);
+            const metaDnia = raport.dni.filter((d) => d.dzien === dzien && d.zrodlo === 'meta').reduce((s, d) => s + Number(d.koszt), 0); %>
+            <div class="reklamy-slupki" title="<%= dzien %>: Google <%= googleDnia.toFixed(2) %>, Meta <%= metaDnia.toFixed(2) %>">
+              <div class="reklamy-slupki-os"><span class="reklamy-slupek google" style="height:<%= Math.max(googleDnia > 0 ? 3 : 0, Math.min(100, googleDnia / maksimum * 100)) %>%"></span><span class="reklamy-slupek meta" style="height:<%= Math.max(metaDnia > 0 ? 3 : 0, Math.min(100, metaDnia / maksimum * 100)) %>%"></span></div>
+              <small><%= dzien.slice(5) %></small>
+            </div>
+          <% }); %>
+        </div>
+        <p class="reklamy-zrodlo">■ Google (GA4) &nbsp; <span class="reklamy-legenda-meta">■</span> Meta · <%= raport.lacznie.waluta %>. Najnowsze dwa dni mogą się jeszcze zmienić.</p>
+        <% } else { %><p>Wykres łączny jest niedostępny, ponieważ źródła raportują różne waluty.</p><% } %>
+        <div class="reklamy-przewijanie"><table class="reklamy-tabela"><thead><tr><th>Dzień</th><th>Źródło</th><th class="liczba">Koszt</th><th class="liczba">Kliknięcia</th><th class="liczba">Wyświetlenia</th></tr></thead><tbody>
+          <% raport.dni.forEach((d) => { %><tr><td><%= d.dzien %><%= d.wstepny ? ' · dane wstępne' : '' %></td><td><%= d.zrodlo === 'google' ? 'Google · GA4' : 'Meta · insights' %></td><td class="liczba"><%= kwota(d.koszt, d.waluta) %></td><td class="liczba"><%= pokaz(d.klikniecia) %></td><td class="liczba"><%= pokaz(d.wyswietlenia) %></td></tr><% }); %>
+        </tbody></table></div>
+      <% } %>
+    </section>
+  <% } %>
+
+  <% if (widok === 'google' || widok === 'meta') { %>
+    <% const google = widok === 'google'; const dane = google ? raport.google : raport.meta; const konta = google ? polaczenia.ga4 : polaczenia.meta; %>
+    <section class="reklamy-panel">
+      <h2><%= google ? 'Google · dane z GA4' : 'Meta · dane z insights' %></h2>
+      <% if (!konta.length) { %>
+        <div class="reklamy-brak"><span class="reklamy-stan">Niepodłączone</span>
+          <p><%= google ? 'Podłącz własną właściwość GA4 powiązaną z kontem Google Ads, aby odczytać kampanie i koszt.' : 'Podłącz własne konto Meta, aby odczytać emisję i koszt kampanii.' %></p>
+          <a href="/ustawienia/integracje/reklamy">Instrukcja podłączenia w Integracjach</a>
+        </div>
+      <% } else { %>
+        <% konta.forEach((konto) => { %><p><span class="reklamy-stan"><%= etykieta(konto.stan) %></span> Konto: <%= konto.kontoId %> · kanał: <%= konto.kanal || 'bez przypisania' %> · waluta: <%= konto.waluta || 'nieustalona' %> · strefa: <%= konto.strefa || 'nieustalona' %><br><span class="reklamy-zrodlo">Ostatni udany pobór: <%= konto.ostatniSukcesAt || 'jeszcze nie było' %><%= konto.kodBledu ? ` · kod błędu: ${konto.kodBledu}` : '' %></span></p><% }); %>
+        <% if (dane.koszt === null) { %><p>Brak danych w wybranym okresie. Sprawdź stan połączenia i ostatni pobór; nie pokazujemy zera zamiast braku odczytu.</p><% } else { %>
+          <div class="reklamy-siatka">
+            <div class="reklamy-metryka"><small>Koszt · <%= google ? 'GA4' : 'Meta' %></small><strong><%= kwota(dane.koszt, dane.waluta) %></strong></div>
+            <div class="reklamy-metryka"><small>Wyświetlenia</small><strong><%= pokaz(dane.wyswietlenia) %></strong></div>
+            <div class="reklamy-metryka"><small>Kliknięcia</small><strong><%= pokaz(dane.klikniecia) %></strong></div>
+            <div class="reklamy-metryka"><small>CTR</small><strong><%= procent(dane.ctr) %></strong></div>
+            <div class="reklamy-metryka"><small>CPC</small><strong><%= kwota(dane.cpc, dane.waluta) %></strong></div>
+          </div>
+        <% } %>
+        <% if (google) { %>
+          <div class="reklamy-siatka" style="margin-top:.8rem">
+            <div class="reklamy-metryka"><small>Przypisane w GA4 · przychód</small><strong><%= kwota(dane.przychodGa4, dane.waluta) %></strong><span class="powod">ROAS: <%= dane.roasGa4 == null ? '—' : `${dane.roasGa4}×` %></span></div>
+            <div class="reklamy-metryka"><small>Potwierdzone w OMS · produkty netto bez dostawy</small><strong><%= kwota(dane.przychodOms, dane.waluta) %></strong><span class="powod">ROAS: <%= dane.roasOms == null ? '—' : `${dane.roasOms}×` %><%= dane.powody.przychodOms === 'BRAK_MAPOWANIA' ? ' · brak mapowania kanału' : dane.powody.przychodOms === 'BRAK_KWOTY_NETTO' ? ' · brakuje netto pozycji' : '' %></span></div>
+          </div>
+          <p class="reklamy-zrodlo">Całe zamówienia brutto z dostawą: <%= kwota(dane.przychodBruttoOms, dane.waluta) %>. Wartość GA4 zależy od konfiguracji zdarzenia purchase; porównaj jej podstawę z netto produktów w swoim sklepie. Atrybucja GA4 i potwierdzenie w OMS mogą się różnić. Tych przychodów i ROAS nie sumujemy. Budżet i stan włączenia kampanii: niedostępne bez Google Ads API.</p>
+          <% if (!polaczenia.google_ads.length) { %><p class="reklamy-zrodlo">Google Ads API jest opcjonalne. <a href="/ustawienia/integracje/reklamy">Sprawdź wymagania połączenia</a>.</p><% } %>
+        <% } else { %>
+          <p class="reklamy-zrodlo">Emituje oznacza wydatek lub wyświetlenia dziś albo wczoraj. Sam status ACTIVE nie dowodzi emisji. Zakupy i ROAS pojawią się dopiero po potwierdzeniu dostępu do zdarzeń zakupu; brak pomiaru nie oznacza zera.</p>
+        <% } %>
+        <% const kampanieZEmisja = dane.kampanie.filter((k) => google || Number(k.koszt) > 0 || k.klikniecia > 0 || k.wyswietlenia > 0); %>
+        <% const kampanieBezEmisji = google ? [] : dane.kampanie.filter((k) => !kampanieZEmisja.includes(k)); %>
+        <h3>Kampanie <%= google ? 'Google' : 'Meta' %></h3>
+        <% if (!kampanieZEmisja.length) { %><p>Brak kampanii z emisją w wybranym okresie.</p><% } else { %>
+          <% const maksimumKampanii = Math.max(1, ...kampanieZEmisja.map((k) => Number(k.koszt) || 0)); %>
+          <div class="reklamy-ranking" aria-label="Koszt według kampanii">
+            <% kampanieZEmisja.forEach((k) => { %><div class="reklamy-ranking-wiersz"><span><%= k.nazwa %></span><div class="reklamy-ranking-tor"><span style="width:<%= Math.max(Number(k.koszt) > 0 ? 2 : 0, Math.min(100, (Number(k.koszt) || 0) / maksimumKampanii * 100)) %>%"></span></div><strong><%= kwota(k.koszt, k.waluta) %></strong></div><% }); %>
+          </div>
+          <div class="reklamy-przewijanie"><table class="reklamy-tabela"><thead><tr><th>Kampania</th><th>Stan emisji</th><th class="liczba">Koszt</th><th class="liczba">Kliknięcia</th><th class="liczba">Wyświetlenia</th></tr></thead><tbody>
+            <% kampanieZEmisja.forEach((k) => { %><tr><td><%= k.nazwa %><% if (!google && k.szczegoly?.budzety?.length) { %><small class="reklamy-zrodlo"><% k.szczegoly.budzety.forEach((b) => { %><br>Budżet <%= b.typ === 'dzienny' ? 'dzienny' : 'całkowity' %> (<%= b.poziom %>): <%= budzet(b, k.waluta) || 'waluta nieustalona' %><%= b.okresOd ? ` · ${b.okresOd} – ${b.okresDo}` : '' %><% }); %></small><% } %></td><td><%= google ? 'Ostatnia obserwowana emisja' : k.emituje ? 'Emituje' : k.koszt === null ? 'Brak potwierdzonej emisji w ostatnich 7 dniach' : 'Brak emisji dziś/wczoraj' %></td><td class="liczba"><%= kwota(k.koszt, k.waluta) %></td><td class="liczba"><%= pokaz(k.klikniecia) %></td><td class="liczba"><%= pokaz(k.wyswietlenia) %></td></tr><% }); %>
+          </tbody></table></div>
+        <% } %>
+        <% if (kampanieBezEmisji.length) { %>
+          <details><summary>Kampanie bez emisji w wybranym okresie (<%= kampanieBezEmisji.length %>)</summary>
+            <div class="reklamy-przewijanie"><table class="reklamy-tabela"><thead><tr><th>Kampania</th><th>Stan emisji</th><th>Budżet z Meta</th></tr></thead><tbody>
+              <% kampanieBezEmisji.forEach((k) => { %><tr><td><%= k.nazwa %></td><td>Brak potwierdzonej emisji w wybranym okresie</td><td><% if (k.szczegoly?.budzety?.length) { k.szczegoly.budzety.forEach((b) => { %>Budżet <%= b.typ === 'dzienny' ? 'dzienny' : 'całkowity' %> (<%= b.poziom %>): <%= budzet(b, k.waluta) || 'waluta nieustalona' %><%= b.okresOd ? ` · ${b.okresOd} – ${b.okresDo}` : '' %><br><% }); } else { %>—<% } %></td></tr><% }); %>
+            </tbody></table></div>
+          </details>
+        <% } %>
+      <% } %>
+    </section>
+  <% } %>
+
+  <% if (widok === 'kampanie') { %>
+    <section class="reklamy-panel"><h2>Trwające akcje promocyjne</h2>
+      <% if (!promocyjne.trwajace.length) { %><p>Brak trwających akcji promocyjnych.</p><% } else { %>
+        <% promocyjne.trwajace.forEach((k) => { %><p><a href="/kampania?kampania=<%= encodeURIComponent(k.kod) %>"><%= k.nazwa || k.kod %></a> · <%= k.od_dnia %> – <%= k.do_dnia %></p><% }); %>
+      <% } %>
+      <% if (promocyjne.nadchodzace.length) { %><h3>Nadchodzące</h3><% promocyjne.nadchodzace.forEach((k) => { %><p><a href="/kampania?kampania=<%= encodeURIComponent(k.kod) %>"><%= k.nazwa || k.kod %></a> · start <%= k.od_dnia %></p><% }); %><% } %>
+    </section>
+    <section class="reklamy-panel"><h2>Archiwum</h2>
+      <% if (!promocyjne.archiwum.length) { %><p>Brak zakończonych akcji promocyjnych.</p><% } else { %>
+        <% promocyjne.archiwum.forEach((k) => { %><p><a href="/kampania?kampania=<%= encodeURIComponent(k.kod) %>"><%= k.nazwa || k.kod %></a> · <%= k.od_dnia %> – <%= k.do_dnia %></p><% }); %>
+      <% } %>
+    </section>
+  <% } %>
+</div>

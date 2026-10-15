@@ -1,0 +1,79 @@
+#oms-messages {--m-green:#3e5566;--m-incoming:#f0f2f3;--m-outgoing:#1d3e4e;--m-danger:#ae4037;color:var(--tekst);font-size:13px;line-height:1.45;min-width:0}
+[data-motyw="ciemny"] #oms-messages {--m-green:#8fb6d0;--m-incoming:#252d30;--m-outgoing:#294b5c;--m-danger:#f5a399}
+#oms-messages *{box-sizing:border-box}
+#oms-messages [hidden]{display:none!important}
+#oms-messages .m-head {margin-bottom:22px}
+#oms-messages h1 {font-size:28px;line-height:1.2;letter-spacing:-.6px;margin:0;font-weight:600;text-transform:none}
+#oms-messages .m-head p {margin:5px 0 0;font-size:12px;color:var(--tekst-przygaszony)}
+#oms-messages .m-surface {border:1px solid var(--ramka);border-radius:3px;overflow:hidden;background:var(--powierzchnia)}
+#oms-messages .m-filters {display:flex;flex-wrap:wrap;gap:0 20px;padding:0 16px;border-bottom:1px solid var(--ramka)}
+#oms-messages button {font:inherit;cursor:pointer}
+#oms-messages .m-filter {padding:13px 0 11px;border:0;border-bottom:2px solid transparent;border-radius:0;background:none;color:var(--tekst-przygaszony);font-size:12px}
+#oms-messages .m-filter[aria-pressed="true"] {color:var(--m-green);border-bottom-color:var(--m-green);font-weight:600}
+#oms-messages .m-filter span {font-size:11px;margin-left:5px}
+#oms-messages .m-layout {display:grid;grid-template-columns:minmax(230px,35%) minmax(0,1fr);min-height:620px}
+#oms-messages .m-index {min-width:0;border-right:1px solid var(--ramka);background:var(--tlo)}
+#oms-messages .m-search {display:block;padding:15px 13px;border-bottom:1px solid var(--ramka)}
+#oms-messages .m-search span {display:block;font-size:11px;color:var(--tekst-przygaszony);margin-bottom:6px}
+#oms-messages .m-search input {width:100%;min-width:0;background:var(--powierzchnia);color:var(--tekst);border:1px solid var(--ramka);border-radius:3px;padding:7px 9px;font:inherit}
+#oms-messages .m-thread {display:block;padding:15px 14px;border-bottom:1px solid var(--ramka);color:var(--tekst);text-decoration:none;min-width:0}
+#oms-messages .m-thread:hover,#oms-messages .m-thread[aria-current] {background:var(--powierzchnia)}
+#oms-messages .m-thread[aria-current] {box-shadow:inset 3px 0 0 var(--m-green)}
+#oms-messages .m-row {display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap;font-size:12px}
+#oms-messages .m-row strong {overflow-wrap:anywhere;font-weight:600}
+#oms-messages time {font-size:11px;color:var(--tekst-przygaszony);font-variant-numeric:tabular-nums}
+#oms-messages .m-snippet {display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;margin-top:7px;font-size:12px}
+#oms-messages .m-account {display:block;margin-top:5px;color:var(--tekst-przygaszony);font-size:11px;overflow-wrap:anywhere}
+#oms-messages .m-state {display:block;margin-top:9px;font-size:11px;color:var(--tekst-przygaszony)}
+#oms-messages .m-wait {font-weight:600;color:var(--tekst)}
+#oms-messages .m-danger,#oms-messages .m-failure {color:var(--m-danger)}
+#oms-messages .m-detail {display:flex;flex-direction:column;min-width:0;align-self:start}
+#oms-messages .m-filtered-out {visibility:hidden}
+#oms-messages .m-detail-head {padding:20px 21px 16px;border-bottom:1px solid var(--ramka)}
+#oms-messages h2 {font-size:18px;line-height:1.35;font-weight:600;letter-spacing:-.3px;text-transform:none;margin:0;overflow-wrap:anywhere}
+#oms-messages .m-detail-head p {font-size:11px;color:var(--tekst-przygaszony);margin:7px 0 0;overflow-wrap:anywhere}
+#oms-messages .m-history {padding:20px 21px;flex:1;min-width:0}
+#oms-messages .m-message {width:fit-content;max-width:90%;margin:0 auto 16px 0;padding:13px 15px;border:1px solid var(--ramka);border-radius:3px 7px 7px 7px;background:var(--m-incoming);color:var(--tekst);min-width:0}
+#oms-messages .m-outgoing {margin-left:auto;margin-right:0;border-color:transparent;border-radius:7px 3px 7px 7px;background:var(--m-outgoing);color:#f5f8fa}
+#oms-messages .m-outgoing time {color:#c9d7df}
+#oms-messages .m-message header {display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:6px 9px;font-size:11px;overflow-wrap:anywhere}
+#oms-messages .m-message p {margin:8px 0 0;font-size:13px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+#oms-messages .m-failed {background:var(--powierzchnia);color:var(--tekst);border-color:var(--m-danger)}
+#oms-messages .m-failed time {color:var(--tekst-przygaszony)}
+#oms-messages .m-failure {display:block;font-size:11px;margin-top:8px;overflow-wrap:anywhere}
+#oms-messages .m-proofs {border-top:1px solid var(--ramka);padding-top:12px}
+#oms-messages .m-proofs summary {font-size:11px;color:var(--tekst-przygaszony);cursor:pointer;margin-bottom:14px}
+#oms-messages .m-compose {padding:16px 21px 18px;border-top:1px solid var(--ramka);background:var(--tlo);margin:0}
+#oms-messages .m-compose>label {font-size:12px;font-weight:600}
+#oms-messages textarea {display:block;width:100%;max-width:100%;min-width:0;resize:vertical;min-height:100px;margin-top:9px;padding:11px 12px;background:var(--powierzchnia);border:1px solid var(--ramka);border-radius:3px;color:var(--tekst);font-family:inherit;font-size:12px;line-height:1.6}
+#oms-messages .m-compose-tools {display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:11px}
+#oms-messages .m-compose-tools button,#oms-messages .m-send,#oms-messages .m-complete button,#oms-messages .m-preview-dialog button {padding:7px 10px;border:1px solid var(--ramka);background:var(--powierzchnia);color:var(--tekst);border-radius:3px;font-size:12px}
+#oms-messages .m-compose-tools button:disabled {opacity:.5;cursor:default}
+#oms-messages .m-compose-tools span {font-size:11px;color:var(--tekst-przygaszony);margin-left:auto}
+#oms-messages .m-help {font-size:11px;color:var(--tekst-przygaszony);line-height:1.6;margin:10px 0}
+#oms-messages .m-confirm {display:flex;gap:8px;align-items:flex-start;font-size:11px!important;font-weight:400!important;margin:13px 0}
+#oms-messages .m-confirm input {width:auto;flex-shrink:0;margin-top:3px}
+#oms-messages .m-send {background:#3e5566;color:#fff;border-color:#3e5566}
+#oms-messages .m-complete {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:9px;padding:13px 21px;border-top:1px solid var(--ramka);margin:0;font-size:11px}
+#oms-messages .m-complete p {width:100%;margin:0;color:var(--tekst-przygaszony);font-size:11px}
+#oms-messages .m-back {display:none}
+#oms-messages .m-empty {padding:30px 20px;margin:0;color:var(--tekst-przygaszony);font-size:12px;line-height:1.7}
+#oms-messages .m-external,#oms-messages .m-error {padding:16px 21px;border-top:1px solid var(--ramka);color:var(--m-danger);font-size:12px;overflow-wrap:anywhere}
+#oms-messages .m-issues {padding:0 0 16px;margin-bottom:19px;border-bottom:1px solid var(--ramka);font-size:12px}
+#oms-messages .m-issues>strong {color:var(--m-danger)}
+#oms-messages .m-issue {display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;padding:9px 0;border-top:1px solid var(--ramka);font-size:11px;overflow-wrap:anywhere}
+#oms-messages .m-preview-dialog {width:min(480px,calc(100% - 24px));background:var(--powierzchnia);color:var(--tekst);border:1px solid var(--ramka);border-radius:3px;padding:22px}
+#oms-messages .m-preview-text {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65}
+#oms-messages .m-preview-dialog::backdrop {background:#0006}
+@media(max-width:650px){#oms-messages .m-layout{display:block;min-height:0}#oms-messages .m-index{border-right:0}#oms-messages .m-detail{display:none}#oms-messages .m-reading .m-index{display:none}#oms-messages .m-reading .m-detail{display:flex}#oms-messages .m-back{display:block;padding:13px 14px;color:var(--m-green);border-bottom:1px solid var(--ramka)}#oms-messages .m-detail-head,#oms-messages .m-compose,#oms-messages .m-complete,#oms-messages .m-external{padding:15px 14px}#oms-messages .m-history{padding:18px 14px}#oms-messages .m-message{max-width:93%;padding:12px}#oms-messages .m-filters{gap:0 16px;padding:0 12px}#oms-messages .m-filter{font-size:11px}#oms-messages textarea,#oms-messages .m-search input{font-size:16px}}
+
+#oms-messages .m-attach-tools {margin-top:10px;font-size:12px}
+#oms-messages .m-attach-tools input {max-width:100%;font-size:12px}
+#oms-messages .m-attach-tools button {background:none;border:0;padding:5px 0;color:var(--m-green);font-size:12px}
+#oms-messages .m-attachments {list-style:none;padding:0;margin:10px 0;min-width:0}
+#oms-messages .m-attachments li {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;padding:9px 0;border-top:1px solid var(--ramka);font-size:12px}
+#oms-messages .m-file-name {grid-column:1;overflow-wrap:anywhere;min-width:0}
+#oms-messages .m-file-size {grid-column:1;font-size:11px;opacity:.8}
+#oms-messages .m-attachments button {grid-column:2;grid-row:1 / 3;align-self:center;background:none;border:0;font-size:11px;color:var(--m-green);padding:7px 3px}
+#oms-messages .m-preview-dialog .m-attachments {max-height:250px;overflow-y:auto}
+#oms-messages .m-send:disabled {opacity:.6;cursor:wait}

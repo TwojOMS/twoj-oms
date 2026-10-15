@@ -1,0 +1,58 @@
+<%#
+  WYNIKI SZUKANIA W MAGAZYNIE — KARTA zamówienia (21.08.2026, żywe szukanie).
+
+  ⚠️⚠️ TEN SAM PLIK RENDERUJE całą kartę (przez `include` w zamowienie.ejs) ORAZ fragment
+  odświeżany w trakcie pisania (trasa /zamowienia/:id/magazyn/wyniki, htmx). Dwie kopie
+  rozjechałyby się przy pierwszej zmianie, a wtedy lista „na żywo" pokazywałaby inne ceny niż
+  ta sama karta po odświeżeniu.
+
+  ⚠️ TO NIE JEST DUPLIKAT `_magazyn-wyniki-nowe.ejs`. Tam „Dodaj" jest przyciskiem wielkiego
+  formularza ekranu zakładania (`formaction`, pozycja ląduje w POLACH), tutaj — własnym
+  formularzem POST, bo zamówienie JUŻ ISTNIEJE i pozycja idzie WPROST DO BAZY. To dwie różne
+  drogi pieniędzy; sklejenie ich jednym warunkiem schowałoby tę różnicę dokładnie tam, gdzie
+  najmniej wolno się pomylić.
+%>
+<% if (magazyn.wyniki !== null) { %>
+  <% if (magazyn.wyniki.length === 0) { %>
+    <p class="wyjasnienie">Nic nie pasuje do „<%= magazyn.fraza %>” w cenniku <%= magazyn.nazwy[magazyn.cennik] %>.
+      Sprawdź drugi cennik albo dopisz pozycję ręcznie powyżej.</p>
+  <% } else { %>
+    <table class="tab-magazyn">
+      <tbody>
+        <% magazyn.wyniki.forEach(function (p) { %>
+          <tr>
+            <td>
+              <%= p.nazwa %>
+              <%# Rozmiar POKAZUJE SIE tylko wtedy, gdy nazwa go nie niesie — patrz %>
+              <%# rozmiarDoPokazania w domain/magazyn-do-zamowienia.js. %>
+              <% if (p.rozmiar) { %><span class="magazyn-rozmiar"><%= p.rozmiar %></span><% } %>
+              <% if (p.sku_sklepu) { %><div class="sku"><%= p.sku_sklepu %></div><% } %>
+            </td>
+            <td class="liczba"><%= p.cena_gr ? (p.cena_gr / 100).toFixed(2) + ' zł' : '—' %></td>
+            <td class="kol-akcje">
+              <% if (p.cena_gr) { %>
+                <%# ⚠️ „DODAJ" ZOSTAJE ZWYKLYM FORMULARZEM POST, mimo ze wyniki przychodza %>
+                <%# teraz przez htmx. Szukanie jest ODCZYTEM, a dodanie pozycji ZAPISEM do %>
+                <%# bazy — pelne przeladowanie karty jest tu jedyna droga, po ktorej tabela %>
+                <%# pozycji, suma i pasek spraw na pewno pokazuja ten sam stan. %>
+                <form method="post" action="/zamowienia/<%= z.id %>/pozycje/z-magazynu" class="formularz-w-linii">
+                  <input type="hidden" name="powrot" value="<%= powrot %>">
+                  <input type="hidden" name="kanal" value="<%= p.kanal %>">
+                  <input type="hidden" name="produkt_id" value="<%= p.produkt_id %>">
+                  <input type="hidden" name="wariant_id" value="<%= p.wariant_id %>">
+                  <input type="hidden" name="fraza" value="<%= magazyn.fraza %>">
+                  <%# ⚠️ CENY TU NIE MA I BYC NIE MOZE — trasa czyta ja z lustra %>
+                  <%# po (kanal, produkt, wariant). Pole w HTML-u da sie podmienic. %>
+                  <input class="pole-ilosc" name="ilosc" value="1" aria-label="ilość">
+                  <button class="btn btn--maly">Dodaj</button>
+                </form>
+              <% } else { %>
+                <span class="wyjasnienie">bez ceny w tym cenniku</span>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  <% } %>
+<% } %>

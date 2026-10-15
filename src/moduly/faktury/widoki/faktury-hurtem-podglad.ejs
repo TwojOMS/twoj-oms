@@ -1,0 +1,91 @@
+<%# Ekran podgladu przed wystawieniem faktur hurtem. NIC tu jeszcze nie poszlo do inFaktu %>
+<%# i to jest caly sens tego ekranu: faktury nie da sie cofnac, mozna ja tylko skorygowac %>
+<%# drugim dokumentem. Podzial pokazany nizej liczy TA SAMA funkcja, ktora policzy go %>
+<%# trasa zatwierdzajaca (domain/masowe.js: podzielDoFaktury). %>
+<%# Widok NICZEGO NIE LICZY — liczby i podzial (doWystawienia/pominiete/zaDuzo) przychodza %>
+<%# gotowe z trasy. Jedyne warunki tutaj to widocznosc sekcji, nigdy regula ksiegowa. %>
+<%
+  // Liczebnik po polsku ma TRZY formy: „1 fakturę", „3 faktury", „5 faktur" — wariant
+  // dwuformowy pisalby „3 fakturę/faktur", a to jest ekran o dokumentach ksiegowych.
+  // ⚠️ 12, 13, 14 IDA DO FORMY MNOGIEJ mimo koncowek 2/3/4 — ten sam wzorzec, co w
+  // views/faktury.ejs.
+  const ile = (n, jeden, kilka, wiele) => {
+    const d = Math.abs(n) % 10;
+    const s = Math.abs(n) % 100;
+    if (n === 1) return `${n} ${jeden}`;
+    return `${n} ${d >= 2 && d <= 4 && (s < 12 || s > 14) ? kilka : wiele}`;
+  };
+%>
+<%# Powrot na TEN widok, z ktorego przyszlo zaznaczenie (4.13d) — zakladka, fraza i filtry. %>
+<%# `powrot` przechodzi przez bariere w trasie (bezpiecznyPowrotNaListe). %>
+<p class="wroc"><a href="<%= powrot %>">← Wróć do listy zamówień</a></p>
+
+<div class="panel panel--groza">
+  <div class="panel-glowa panel-glowa--groza"><h2>Faktury hurtem — operacja nieodwracalna</h2></div>
+  <div class="panel-cialo">
+    <p class="pasek-blokada">
+      Faktury nie da się cofnąć — można ją tylko skorygować drugim dokumentem. Przejrzyj
+      listę, zanim zatwierdzisz. Opłacone idą jako <b>zapłacone</b>,
+      za pobraniem — z terminem <b>przy odbiorze</b> i sposobem zapłaty „za pobraniem”.
+    </p>
+
+    <% if (zaDuzo) { %>
+      <p class="pasek-blokada"><%= zaDuzo %></p>
+    <% } %>
+
+    <% if (doWystawienia.length && !zaDuzo) { %>
+      <%# Naglowek z liczba — jedyne miejsce na ekranie, ktore mowi wprost, ile dokumentow %>
+      <%# ksiegowych powstanie po kliknieciu. Zdanie o kolejnosci obok, bo numeracja faktur %>
+      <%# jest kolejna i operator ma wiedziec, ze idzie od najstarszego zamowienia. %>
+      <p class="pasek-uwaga">
+        Wystawisz <%= ile(doWystawienia.length, 'fakturę', 'faktury', 'faktur') %>. Faktury
+        powstaną od najstarszego zamówienia — numery pójdą zgodnie z chronologią.
+      </p>
+    <% } %>
+
+    <% if (doWystawienia.length) { %>
+      <h3 class="wynik-naglowek">Pójdzie do inFaktu — <%= doWystawienia.length %></h3>
+      <ul class="lista-wyniku">
+        <% doWystawienia.forEach(function (z) { %>
+          <li><span class="waga waga--ok">wystawi się</span> <span><b><%= z.numer %></b> · <%= z.klient %> · <%= z.kwota %> zł<% if (z.wariant) { %> · <%= z.wariant %><% } %></span></li>
+        <% }); %>
+      </ul>
+    <% } %>
+
+    <% if (pominiete.length) { %>
+      <%# Pominiete wracaja Z POWODEM i musza byc widoczne — ciche wyrzucenie ich z listy %>
+      <%# byloby gorsze niz odmowa calosci (domain/masowe.js). %>
+      <h3 class="wynik-naglowek">Pominięte — <%= pominiete.length %></h3>
+      <ul class="lista-wyniku">
+        <% pominiete.forEach(function (p) { %>
+          <li><span class="waga waga--blokada">pominięte</span> <span><b><%= p.numer %></b> — <%= p.powod %></span></li>
+        <% }); %>
+      </ul>
+    <% } %>
+
+    <div class="stopka-edycji">
+      <% if (doWystawienia.length && !zaDuzo && wystawianieDziala) { %>
+        <%# Przycisk zatwierdzajacy ISTNIEJE WYLACZNIE wtedy, gdy jest co wystawic — ale %>
+        <%# to jest UPRZEJMOSC, nie zabezpieczenie: odmowa ponad sufit jest twarda takze %>
+        <%# na trasie wykonania (operator mogl otworzyc druga zakladke). %>
+        <form method="post" action="/zamowienia/faktury-hurtem">
+          <% doWystawienia.forEach(function (z) { %>
+            <input type="hidden" name="id" value="<%= z.id %>">
+          <% }); %>
+          <%# Adres powrotu jedzie dalej razem z identyfikatorami — ekran wyniku odsyla tym %>
+          <%# samym odnosnikiem, a nie na gola liste. %>
+          <input type="hidden" name="powrot" value="<%= powrot %>">
+          <button class="btn btn--groza" type="submit" name="zatwierdzenie" value="wystaw">
+            Wystaw <%= ile(doWystawienia.length, 'fakturę', 'faktury', 'faktur') %> w inFakcie
+          </button>
+        </form>
+      <% } else if (!wystawianieDziala) { %>
+        <p class="pasek-blokada">Wystawianie faktur nie jest skonfigurowane (brak danych inFaktu).</p>
+      <% } else if (!zaDuzo) { %>
+        <p class="pusto-sekcja">Z zaznaczonych zamówień żadnemu nie da się wystawić faktury hurtem.</p>
+      <% } %>
+      <%# ⚠️ DRUGIE WYJSCIE z ekranu, obok odnosnika na gorze — gubilo zawezenie osobno. %>
+      <a class="btn" href="<%= powrot %>">Anuluj</a>
+    </div>
+  </div>
+</div>
