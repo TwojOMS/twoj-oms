@@ -14,6 +14,7 @@ import { utworzBazeDemo, ENV_DEMO } from '../../scripts/demo-dane.mjs';
 import { uruchomPiaskownice, modulyPiaskownicy } from '../../deploy/proba/atrapy/index.mjs';
 import { createAtrapaInfaktu, createAtrapaVies } from '../../deploy/proba/atrapy/infakt.mjs';
 import { createAtrapaWoo, createAtrapaAllegro, zbudujAtrapyKanalow } from '../../deploy/proba/atrapy/kanaly.mjs';
+import { createAtrapaPoczty, createModulWiadomosciAtrapy } from '../../deploy/proba/atrapy/poczta.mjs';
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
 
 const DZIS = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' });
@@ -148,6 +149,30 @@ describe('piaskownica z atrapami — Faktury i Magazyn na danych demo', () => {
     } finally { db.close(); }
   });
 
+  it('PRZ-087: karta zamówienia ma sekcję Wiadomości, „Wyślij” przechodzi przez atrapę poczty i trafia do historii', async () => {
+    const db = baza();
+    let zam;
+    try {
+      zam = db.prepare(`SELECT id FROM zamowienia WHERE anulowane = 0 AND sklep = 'polcien'
+        AND EXISTS (SELECT 1 FROM pozycje p WHERE p.zamowienie_id = zamowienia.id) ORDER BY id DESC LIMIT 1`).get();
+    } finally { db.close(); }
+    expect(zam).toBeTruthy();
+    // Generator demo zapisuje część potwierdzeń w historii — liczymy przyrost, nie stan.
+    const ileWiadomosci = () => { const d = baza(); try {
+      return d.prepare("SELECT COUNT(*) n FROM wiadomosci WHERE zamowienie_id = ? AND temat_id = 'potwierdzenie'").get(zam.id).n;
+    } finally { d.close(); } };
+    const przed = ileWiadomosci();
+    const karta = await strona(`/zamowienia/${zam.id}`);
+    expect(karta.html).toContain('id="wiadomosci"');
+    expect(karta.html).toContain('Wyślij nową wiadomość');
+    const podglad = await strona(`/zamowienia/${zam.id}?wiadomosc=potwierdzenie`);
+    expect(podglad.html).toContain('to zobaczy klient');
+    const r = await formularz(`/zamowienia/${zam.id}/wiadomosc/potwierdzenie`, {});
+    expect([302, 303], await r.clone().text()).toContain(r.status);
+    expect(ileWiadomosci()).toBe(przed + 1);
+    expect(logi.some((l) => l.includes('atrapa poczty') && l.includes('nic nie poszło'))).toBe(true);
+  });
+
   it('przez cały plik aplikacja ani razu nie wyszła do sieci', () => {
     expect(siec.mock.calls.map((c) => String(c[0]))).toEqual([]);
   });
@@ -163,6 +188,8 @@ describe('⛔ atrapy poza trybem próby', () => {
       expect(() => createAtrapaWoo({ db, kanal: 'polcien', env })).toThrow('OMS_TRYB=proba');
       expect(() => createAtrapaAllegro({ db, kanal: 'allegro', env })).toThrow('OMS_TRYB=proba');
       expect(() => zbudujAtrapyKanalow({ db, config: {}, env })).toThrow('OMS_TRYB=proba');
+      expect(() => createAtrapaPoczty({ env })).toThrow('OMS_TRYB=proba');
+      expect(() => createModulWiadomosciAtrapy(env)).toThrow('OMS_TRYB=proba');
       expect(() => modulyPiaskownicy(env)).toThrow('OMS_TRYB=proba');
       await expect(uruchomPiaskownice(env)).rejects.toThrow('OMS_TRYB=proba');
     });

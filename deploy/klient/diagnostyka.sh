@@ -9,6 +9,7 @@
 set -u
 OMS=${OMS_KATALOG:-/opt/oms}
 DOCKER=${OMS_DOCKER_BIN:-docker}
+MOUNTPOINT=${OMS_MOUNTPOINT_BIN:-mountpoint}
 LINIE=${OMS_DIAG_LINIE:-200}
 WYJSCIE=${OMS_DIAG_WYJSCIE:-$PWD/oms-diagnostyka-$(date -u +%Y%m%d-%H%M%S).txt}
 
@@ -153,7 +154,7 @@ maskuj_wzorce() {
     echo "kopia poza dyskiem: $zewn (na hoście $nosnik)"
     df -hP "$nosnik" 2>&1 | tail -n 1
     # Znacznik w katalogu, na którym nic nie zamontowano = kopia na dysku serwera (montowanie się nie udało).
-    if command -v mountpoint >/dev/null 2>&1 && [ -d "$nosnik" ] && ! mountpoint -q "$nosnik"; then
+    if command -v "$MOUNTPOINT" >/dev/null 2>&1 && [ -d "$nosnik" ] && ! "$MOUNTPOINT" -q "$nosnik"; then
       echo "ALARM: kopia poza dyskiem — $nosnik nie jest punktem montowania (nośnik niezamontowany)"
     elif [ -f "$nosnik/.oms-cel-kopii" ]; then ocen_kopie "$nosnik" "kopia poza dyskiem"
     else echo "ALARM: kopia poza dyskiem — brak nośnika w $nosnik (brak pliku .oms-cel-kopii)"; fi

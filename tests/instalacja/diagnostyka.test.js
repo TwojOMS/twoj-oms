@@ -99,10 +99,20 @@ case "$1" in
 esac
 `;
 
+// Atrapa `mountpoint -q KATALOG`: punkt montowania to wiersz w $TEST_BAZA/zamontowane. Bez niej wynik
+// zależał od hosta — Git Bash nie ma `mountpoint` (gałąź montowania nigdy nie szła), a na Linuksie
+// prawdziwy `mountpoint` odpowiadał za katalog testu (CI ubuntu, 16.10.2026).
+const ATRAPA_MOUNTPOINT = `#!/bin/sh
+[ "$1" = -q ] && shift
+grep -qxF "$1" "$TEST_BAZA/zamontowane" 2>/dev/null
+`;
+
 function uruchom(k, extra = {}) {
+  const mountpoint = path.join(k.baza, 'mountpoint-atrapa');
+  if (!fs.existsSync(mountpoint)) fs.writeFileSync(mountpoint, ATRAPA_MOUNTPOINT, { mode: 0o755 });
   return spawnSync(SH, [ukosniki(SKRYPT)], {
     encoding: 'utf8', timeout: 60_000,
-    env: { ...process.env, OMS_KATALOG: ukosniki(k.oms), OMS_DOCKER_BIN: ukosniki(k.docker), OMS_DIAG_WYJSCIE: ukosniki(k.wynik), TEST_BAZA: ukosniki(k.baza), ...extra },
+    env: { ...process.env, OMS_KATALOG: ukosniki(k.oms), OMS_DOCKER_BIN: ukosniki(k.docker), OMS_MOUNTPOINT_BIN: ukosniki(mountpoint), OMS_DIAG_WYJSCIE: ukosniki(k.wynik), TEST_BAZA: ukosniki(k.baza), ...extra },
   });
 }
 
@@ -158,10 +168,23 @@ describe('diagnostyka klienta PRZ-058', () => {
     // Cel ustawiony, nośnik niepodłączony (pusty katalog montowania).
     fs.writeFileSync(path.join(k.oms, 'config/kopia.env'), 'OMS_KOPIA_ZEWNETRZNA=/opt/oms/kopia-zewnetrzna/nosnik\r\n');
     const nosnik = path.join(k.oms, 'kopia-zewnetrzna/nosnik'); fs.mkdirSync(nosnik, { recursive: true });
-    fs.rmSync(k.wynik);
-    const brak = fs.readFileSync((uruchom(k), k.wynik), 'utf8');
+    const odNowa = (extra) => { fs.rmSync(k.wynik, { force: true }); return fs.readFileSync((uruchom(k, extra), k.wynik), 'utf8'); };
+    const niezamontowany = `ALARM: kopia poza dyskiem — ${ukosniki(nosnik)} nie jest punktem montowania (nośnik niezamontowany)`;
+    const brak = odNowa();
     expect(brak).toContain('kopia poza dyskiem: /opt/oms/kopia-zewnetrzna/nosnik');
-    expect(brak).toContain('ALARM: kopia poza dyskiem — brak nośnika');
+    expect(brak).toContain(niezamontowany);
+    // Znacznik na dysku serwera (montowanie się nie udało, kopia poszła do pustego katalogu) — nadal alarm
+    // montowania, nie ocena wieku kopii, która leży na tym samym dysku co baza.
+    fs.writeFileSync(path.join(nosnik, '.oms-cel-kopii'), '');
+    expect(odNowa()).toContain(niezamontowany);
+    // Host bez `mountpoint`: zostaje sam znacznik.
+    fs.rmSync(path.join(nosnik, '.oms-cel-kopii'));
+    expect(odNowa({ OMS_MOUNTPOINT_BIN: ukosniki(path.join(k.baza, 'nie-ma-takiego')) })).toContain('ALARM: kopia poza dyskiem — brak nośnika');
+    // Zamontowany, ale bez znacznika (podłączono inny dysk).
+    fs.writeFileSync(path.join(k.baza, 'zamontowane'), `${ukosniki(nosnik)}\n`);
+    const obcy = odNowa();
+    expect(obcy).toContain('ALARM: kopia poza dyskiem — brak nośnika');
+    expect(obcy).not.toContain('nie jest punktem montowania');
     // Nośnik z kopią sprzed 50 h; świeża kopia lokalna.
     fs.writeFileSync(path.join(nosnik, '.oms-cel-kopii'), '');
     const naNosniku = path.join(nosnik, 'oms-2026-10-08.sqlite'); fs.writeFileSync(naNosniku, Buffer.alloc(2048, 1));

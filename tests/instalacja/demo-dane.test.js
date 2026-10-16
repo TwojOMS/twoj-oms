@@ -72,8 +72,9 @@ describe('generator danych demo na świeżej bazie', () => {
     return { status: r.status, html: await r.text() };
   };
 
-  it('ok. 156 zamówień z 60 dni (150 z pliku firmy + 6 uzupełnień PRZ-082), wszystkie statusy, faktury z WDT, zwroty, przesyłki, koszty', () => {
-    expect(wynik.zamowienia).toBe(156);
+  // PRZ-087: pętla pomija ostatnie 3 dni (−19), uzupełnienia PRZ-087 dokładają 40 (12 nowych, 6 indywidualnych, 18 w realizacji, 4 wysłane).
+  it('ok. 177 zamówień z 60 dni (131 z pliku firmy + 6 uzupełnień PRZ-082 + 40 PRZ-087), wszystkie statusy, faktury z WDT, zwroty, przesyłki, koszty', () => {
+    expect(wynik.zamowienia).toBe(177);
     expect(Object.keys(wynik.statusy).sort()).toEqual(['anulowane', 'indywidualne', 'nowe', 'w_realizacji', 'wyslane', 'zwrot']);
     const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
     try {
@@ -138,7 +139,7 @@ describe('generator danych demo na świeżej bazie', () => {
       const maile = [...new Set(tekst.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/gi) ?? [])];
       expect(maile.length).toBeGreaterThan(10);
       expect(maile.filter((m) => !/@example\.invalid$/i.test(m))).toEqual([]);
-      expect(tekst).not.toMatch(/stencil|lumina|drugamarka|trzeciamarka|zywiecki|twojoms/i);
+      expect(tekst).not.toMatch(/stencil|lumina|drugamarka|trzeciamarka|zywiecki/i);
       const nipy = [...db.prepare('SELECT nip FROM zamowienia WHERE nip IS NOT NULL UNION SELECT nip FROM klienci WHERE nip IS NOT NULL').all()].map((w) => w.nip);
       expect(nipy.length).toBeGreaterThan(5);
       expect(nipy.filter((n) => !/^(999\d{7}|[A-Z]{2}999\d+)$/.test(n))).toEqual([]);

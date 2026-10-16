@@ -34,11 +34,20 @@ function probe(mode: 'worker' | 'baza' | 'cleanup-error', check: (data: any, wor
   const repoBefore = existsSync(repoBase) ? new Set(readdirSync(repoBase)) : new Set<string>();
   const childEnv: NodeJS.ProcessEnv = { ...process.env, TMPDIR: base, TEMP: base, TMP: base, OMS_TEMP_WORKER_REPORT: workerReport, OMS_TEMP_PROBE_MODE: mode };
   if (mode === 'baza') {
+    // Wabik: druga zmienna wskazuje inny katalog. os.tmpdir() bez TMPDIR czyta na Windows TEMP przed TMP,
+    // a na Linuksie TMP przed TEMP (dokumentacja Node) — wabik idzie zawsze do tej, która przegrywa.
+    // Na sztywno TMP=wabik dawało na CI ubuntu katalog przebiegu pod wabikiem (16.10.2026).
+    const [wygrywa, przegrywa] = process.platform === 'win32' ? ['TEMP', 'TMP'] : ['TMP', 'TEMP'];
     delete childEnv.TMPDIR;
-    childEnv.TMP = join(control, 'previous-tmp');
-    mkdirSync(childEnv.TMP);
+    childEnv[wygrywa] = base;
+    childEnv[przegrywa] = join(control, 'previous-tmp');
+    mkdirSync(childEnv[przegrywa]!);
   }
   try {
+    if (mode === 'baza') {
+      const wybrany = spawnSync(process.execPath, ['-e', 'process.stdout.write(require("node:os").tmpdir())'], { encoding: 'utf8', env: childEnv });
+      expect(wybrany.stdout, 'założenie sondy: os.tmpdir() procesu potomnego to katalog systemowy, nie wabik').toBe(base);
+    }
     const before = ownRuns(base).length;
     const child = spawnSync(process.execPath, [runner, root, base, report, mode], {
       cwd: root, encoding: 'utf8', timeout: 60_000,

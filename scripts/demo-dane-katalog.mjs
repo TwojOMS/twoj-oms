@@ -18,9 +18,6 @@ const WARIANTY = [
   { nazwa: 'Żarówka LED E27', atrybut: 'Rodzaj', opcje: { 'LMP-AKC-001': 'filament 2700 K', 'LMP-AKC-002': 'globe dymna 2200 K' } },
 ];
 
-const KOLORY = { 'Lampy stołowe': '#B7791F', 'Lampy wiszące': '#2F6F5E', 'Lampy podłogowe': '#6B4F3A', Kinkiety: '#5A5F8C',
-  'Lampki nocne': '#8C5A7A', 'Abażury i klosze': '#7A8C5A', Akcesoria: '#5F6B73' };
-
 const kategorie = [...new Set(PRODUKTY.map((p) => p.kategoria))].map((nazwa, i) => ({ id: 31 + i, name: nazwa, slug: slug(nazwa) }));
 const kategoria = (nazwa) => kategorie.find((k) => k.name === nazwa);
 
@@ -30,15 +27,29 @@ function slug(tekst) {
 }
 const cena = (gr) => (gr / 100).toFixed(2);
 
-/** Zaślepka zdjęcia: SVG w data: (bez sieci, bez pliku) — kolor kategorii i inicjał nazwy. */
-export function zaslepkaZdjecia(nazwa, nazwaKategorii) {
-  const kolor = KOLORY[nazwaKategorii] ?? '#5F6B73';
-  const litera = nazwa.trim().split(/\s+/).at(-1)?.[0]?.toUpperCase() ?? '?';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="76" height="76" viewBox="0 0 76 76">`
-    + `<rect width="76" height="76" rx="10" fill="${kolor}"/>`
-    + `<path d="M26 22h24l6 18H20z" fill="#fff" fill-opacity=".85"/><rect x="36" y="40" width="4" height="16" fill="#fff" fill-opacity=".85"/>`
-    + `<text x="38" y="70" font-family="sans-serif" font-size="9" fill="#fff" text-anchor="middle">${litera}</text></svg>`;
-  return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+// PRZ-087 — zdjęcia produktów: pliki w src/public/demo-produkty (CC0, źródła w ZRODLA.md), serwowane przez sam panel
+// pod /public/ (bez logowania). ⚠️ Adres BEZWZGLĘDNY, i to w domenie demo publicznego: ekrany przepuszczają tylko http(s)
+// (domena/miniatura-pozycji.js) — `data:` i ścieżka względna dają pustą miniaturę. Piaskownica i laptop pobierają je
+// więc z demo.twojoms.pl; gdy demo leży, miniatury w piaskownicy znikają, a reszta działa.
+export const ADRES_ZDJEC_DEMO = 'https://demo.twojoms.pl/public/demo-produkty';
+// Kilka zdjęć na kategorię, przydzielanych po kolei produktom kategorii — powtarzają się, ale sąsiedzi się różnią.
+const ZDJECIA = {
+  'Lampy stołowe': ['stolowa-grzyb', 'stolowa-abazur'],
+  'Lampy wiszące': ['wiszaca-emalia', 'wiszaca-kule'],
+  'Lampy podłogowe': ['podlogowa-czasza'],
+  Kinkiety: ['kinkiet-ramie'],
+  'Lampki nocne': ['nocna-kula', 'nocna-sypialnia'],
+  'Abażury i klosze': ['abazur-emalia'],
+  Akcesoria: ['zarowka-filament'],
+};
+
+/** Adres zdjęcia produktu o danym SKU (deterministyczny) albo null dla SKU spoza katalogu. */
+export function zdjecieProduktu(sku) {
+  const p = PRODUKTY.find((x) => x.sku === sku);
+  const pula = p && ZDJECIA[p.kategoria];
+  if (!pula) return null;
+  const nr = PRODUKTY.filter((x) => x.kategoria === p.kategoria).indexOf(p);
+  return `${ADRES_ZDJEC_DEMO}/${pula[nr % pula.length]}.jpg`;
 }
 
 function kanalyTypu(typ) { return KANALY.filter((k) => k.typ === typ).map((k) => k.klucz); }
@@ -49,10 +60,10 @@ export function katalogWoo(kanal = kanalyTypu('woo')[0]) {
   const produkty = [];
   const warianty = new Map();
   let id = 1100;
-  const wspolne = (nazwa, nazwaKategorii) => {
+  const wspolne = (nazwa, nazwaKategorii, sku) => {
     const k = kategoria(nazwaKategorii);
     return { name: nazwa, status: 'publish', permalink: `${ADRES_SKLEPU}/produkt/${slug(nazwa)}/`,
-      categories: [{ id: k.id, name: k.name, slug: k.slug }], images: [],
+      categories: [{ id: k.id, name: k.name, slug: k.slug }], images: [{ id: 0, src: zdjecieProduktu(sku) }],
       short_description: `<p>${nazwa}. Wykonanie ręczne w pracowni (demo).</p>`,
       meta_data: [{ id: 1, key: YOAST_KATEGORIA, value: String(k.id) }] };
   };
@@ -61,7 +72,7 @@ export function katalogWoo(kanal = kanalyTypu('woo')[0]) {
     if (zgrupowane.has(p.sku)) continue;
     id += 1;
     produkty.push({ id, type: 'simple', sku: p.sku, price: cena(p.cena_gr), regular_price: cena(p.cena_gr),
-      stock_status: 'instock', stock_quantity: 4 + (id % 9), attributes: [], ...wspolne(p.nazwa, p.kategoria) });
+      stock_status: 'instock', stock_quantity: 4 + (id % 9), attributes: [], ...wspolne(p.nazwa, p.kategoria, p.sku) });
   }
   for (const w of WARIANTY) {
     const skusy = Object.keys(w.opcje).filter((sku) => wSklepie.some((p) => p.sku === sku));
@@ -71,7 +82,7 @@ export function katalogWoo(kanal = kanalyTypu('woo')[0]) {
     const rodzicId = id;
     produkty.push({ id: rodzicId, type: 'variable', sku: '', price: cena(Math.min(...skusy.map((s) => PRODUKTY.find((p) => p.sku === s).cena_gr))),
       regular_price: '', stock_status: 'instock', stock_quantity: null,
-      attributes: [{ id: 0, name: w.atrybut, variation: true, options: skusy.map((s) => w.opcje[s]) }], ...wspolne(w.nazwa, pierwszy.kategoria) });
+      attributes: [{ id: 0, name: w.atrybut, variation: true, options: skusy.map((s) => w.opcje[s]) }], ...wspolne(w.nazwa, pierwszy.kategoria, pierwszy.sku) });
     warianty.set(String(rodzicId), skusy.map((sku, i) => {
       const p = PRODUKTY.find((x) => x.sku === sku);
       return { id: rodzicId * 10 + i + 1, sku, price: cena(p.cena_gr), regular_price: cena(p.cena_gr), status: 'publish',
@@ -79,11 +90,11 @@ export function katalogWoo(kanal = kanalyTypu('woo')[0]) {
         image: null, attributes: [{ id: 0, name: w.atrybut, option: w.opcje[sku] }] };
     }));
   }
-  const miniatury = new Map(produkty.map((p) => [String(p.id), zaslepkaZdjecia(p.name, p.categories[0].name)]));
+  const miniatury = new Map(produkty.map((p) => [String(p.id), p.images[0].src]));
   return { produkty, warianty, miniatury, kategorie };
 }
 
-/** Surowe oferty Allegro (`/sale/offers`) konta `kanal`. Bez primaryImage: miniatura Allegro musi być adresem http. */
+/** Surowe oferty Allegro (`/sale/offers`) konta `kanal`; primaryImage to zdjęcie demo (adres http, PRZ-087). */
 export function ofertyAllegro(kanal) {
   const nr = KANALY.findIndex((k) => k.klucz === kanal);
   return PRODUKTY.filter((p) => p.kanaly.includes(kanal)).map((p, i) => ({
@@ -94,7 +105,7 @@ export function ofertyAllegro(kanal) {
     stock: { available: 2 + (i % 5), sold: i % 7 },
     publication: { status: 'ACTIVE' },
     category: { id: '257' },
-    primaryImage: null,
+    primaryImage: { url: zdjecieProduktu(p.sku) },
   }));
 }
 

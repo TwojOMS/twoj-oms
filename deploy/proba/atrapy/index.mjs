@@ -2,6 +2,7 @@
 // tests/instalacja/atrapy-piaskownicy.test.js — jedna droga, więc test sprawdza dokładnie to, co wstaje w kontenerze.
 //
 // Wpięcie:
+//   • poczta — moduł wiadomości z atrapą mailera (poczta.mjs, PRZ-087);
 //   • inFakt i VIES — fabryki modułu faktur (createModulFaktury({ fabryki })), jedyny punkt w kodzie produkcji;
 //   • Woo i Allegro — `nadpisania` usług kanaly.klienciSklepow / klienciKanalow / config (globalnie: decyzja właściciela
 //     14.10 — widzą je wszystkie moduły). Pollery zamówień moduł kanałów buduje u siebie z pustej konfiguracji,
@@ -16,6 +17,7 @@ import { definicjeKanalow, konfiguracjaKanalow } from '../../../src/moduly/kanal
 import { createModulZamowienia } from '../../../src/moduly/zamowienia/modul.ts';
 import { createAtrapaInfaktu, createAtrapaVies } from './infakt.mjs';
 import { createAtrapaGus } from './gus.mjs';
+import { createModulWiadomosciAtrapy } from './poczta.mjs';
 import { createAtrapaLacznosci } from './lacznosc.mjs';
 import { zbudujAtrapyKanalow, stanyKanalowAtrapy } from './kanaly.mjs';
 import { wymagajTrybuProby } from './tryb.mjs';
@@ -32,6 +34,8 @@ export function modulyPiaskownicy(env) {
   const gus = { createGusClient: () => createAtrapaGus({ env }) };
   return modulyDla(env).map((m) => {
     if (m.nazwa === 'faktury') return createModulFaktury({ fabryki });
+    // PRZ-087: poczta — atrapa bez wysyłki, żeby karta zamówienia miała sekcję wiadomości (poczta.mjs).
+    if (m.nazwa === 'wiadomosci') return createModulWiadomosciAtrapy(env);
     if (m.nazwa === 'zamowienia') return createModulZamowienia({ zWiadomosciami: m.wymaga.includes('wiadomosci'), fabryki: gus });
     return m;
   });

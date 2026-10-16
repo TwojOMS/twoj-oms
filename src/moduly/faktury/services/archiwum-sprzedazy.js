@@ -17,8 +17,10 @@ import { bladOperatora } from '../../../domena/bledy.js';
 
 const PREFIKS_SKASOWANEJ = 'SKASOWANA_';
 
+// Tylko zwykly plik: katalog o tej nazwie ma rozmiar > 0 (ext4 4096 B, btrfs NAS-a niepusty > 0)
+// i bez isFile() zostalby „adoptowany” — wiersz wskazywalby katalog, a PDF nie powstalby nigdy.
 const maTresc = (pelna) => {
-  try { return statSync(pelna).size > 0; } catch { return false; }
+  try { const s = statSync(pelna); return s.isFile() && s.size > 0; } catch { return false; }
 };
 
 // Zapis atomowy: caly plik do `.tmp`, potem rename — na SMB polowiczny plik po zerwaniu

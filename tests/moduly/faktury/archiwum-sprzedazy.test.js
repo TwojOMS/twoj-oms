@@ -1,4 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// Rozmiar katalogu z `stat` jak na ext4 (4096 B; btrfs niepusty też > 0, Windows podaje 0). Bez tego test
+// „katalog na miejscu pliku” przechodził na Windows, a na CI ubuntu katalog był adoptowany jak PDF.
+vi.mock('node:fs', async (oryginal) => {
+  const fs = await oryginal();
+  const statSync = (...a) => {
+    const s = fs.statSync(...a);
+    if (s?.isDirectory() && s.size === 0) s.size = 4096;
+    return s;
+  };
+  return { ...fs, statSync, default: { ...fs.default, statSync } };
+});
 import {
   mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync,
 } from 'node:fs';

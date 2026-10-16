@@ -39,6 +39,7 @@ import { numerRecznego } from '../src/domena/koszt-reczny.js';
 import { inicjalizujGraniceBezHistorii } from '../src/domena/sprzedaz-okresu.js';
 import { wczytajRaporty } from '../src/moduly/raporty/konfiguracja.ts';
 import { KANALY, PRODUKTY, KLIENCI, FIRMY_B2B, FIRMY_UE, ZAMOWIENIA, KAMPANIA, KOSZTY, WATKI_ALLEGRO } from './demo-dane-firma.mjs';
+import { zdjecieProduktu } from './demo-dane-katalog.mjs';
 
 /** Kanały demo (sklep Woo, Allegro, Allegro Outlet) — etykiety widzi gość demo. */
 export const KANALY_DEMO = Object.freeze(KANALY.map((k) => Object.freeze({ ...k })));
@@ -119,12 +120,12 @@ const PLATNOSC = { cod: 'pobranie', bacs: 'przelew' };
 
 /** Linie koszyka z katalogu; rabat kontraktowy B2B w %, WDT = cena bez polskiego VAT-u. */
 function pozycje(koszyk, { rabat = 0, wdt = false } = {}) {
-  return koszyk.map(([sku, ilosc]) => {
+  return koszyk.map(([sku, ilosc, nazwaWlasna]) => {
     const p = PRODUKT.get(sku);
     if (!p) throw new Error(`DEMO_SKU: ${sku}`);
     let cena = Math.round(p.cena_gr * (100 - rabat) / 100);
     if (wdt) cena = nettoGr(cena);
-    return { nazwa: p.nazwa, sku, ilosc, cena_brutto: zl(cena), cena_netto: zl(wdt ? cena : nettoGr(cena)),
+    return { nazwa: nazwaWlasna ?? p.nazwa, sku, ilosc, zdjecie_url: zdjecieProduktu(sku), cena_brutto: zl(cena), cena_netto: zl(wdt ? cena : nettoGr(cena)),
       brutto_linii: zl(cena * ilosc), netto_linii: zl((wdt ? cena : nettoGr(cena)) * ilosc), vat: wdt ? 0 : 23 };
   });
 }
@@ -228,7 +229,12 @@ export function wygenerujDaneDemo(db, { ziarno = 72, dzis, env = ENV_DEMO }) {
   const zamowieniaSklepu = [], loginy = Object.fromEntries(KANALY.map((k) => [k.klucz, []]));
   for (const [i, { z, ms: utworzoneMs }] of zamowienia.entries()) {
     const wiekDni = Math.floor((koniecDnia - utworzoneMs) / DOBA);
-    const status = losujStatus(los, wiekDni);
+    // PRZ-087 (właściciel 16.10): ostatnie dni i wszystko „w toku” (nowe, indywidualne, w realizacji) składają uzupełnienia
+    // z policzonymi liczbami — losowanie dawało przypadkową liczbę nowych i kilka zamówień po terminie. Pętla idzie
+    // po czasie, więc pominięte są wyłącznie ostatnie wiersze: sekwencja `los` dla starszych się nie zmienia.
+    if (wiekDni <= DNI_UZUPELNIEN_PRZ087) continue;
+    const wylosowany = losujStatus(los, wiekDni);
+    const status = ['nowe', 'indywidualne', 'w_realizacji'].includes(wylosowany) ? 'wyslane' : wylosowany;
     const kanal = z.kanal;
     const osobaZ = z.klient.osoba != null ? KLIENCI[z.klient.osoba] : null;
     const ue = z.klient.ue != null;
@@ -352,7 +358,9 @@ export function wygenerujDaneDemo(db, { ziarno = 72, dzis, env = ENV_DEMO }) {
     liczniki.statusy[status] = (liczniki.statusy[status] ?? 0) + 1;
   }
 
-  uzupelnieniaPrz082(db, { dzis, env, koniecDnia, numery, kolejnyList: () => ++nrListu, liczniki });
+  const pomocnicy = pomocnicyUzupelnien(db, { dzis, koniecDnia, numery, kolejnyList: () => ++nrListu, liczniki });
+  uzupelnieniaPrz082(db, { env, koniecDnia, pomocnicy });
+  uzupelnieniaPrz087(db, { pomocnicy });
 
   // Koszty (ręczne, bez KSeF) i dane miesięczne — trzy miesiące wstecz od `dzis`.
   const miesiace = [];
@@ -488,18 +496,15 @@ export function wygenerujDaneDemo(db, { ziarno = 72, dzis, env = ENV_DEMO }) {
 }
 
 /**
- * PRZ-082 — uzupełnienia demo z listy właściciela (14.10). Osobne zamówienia zamiast przestawiania pętli w
- * wygenerujDaneDemo: każde nowe wywołanie `los` zmieniłoby całe demo. Każda pozycja ma test w
- * tests/instalacja/demo-dane-prz082.test.js.
- *  • faktura przelewem z terminem za kilka dni (B2B, 14 dni), • najnowsza faktura niewysłana do KSeF (wystawiona
- *    dziś — alarm „nie została wysłana” dotyczy dokumentów sprzed dzisiejszego dnia), • utworzone etykiety DHL,
- *    ORLEN Paczka i Allegro One, • jedna paczka bez ruchu, • historia podjazdów, • dwie proformy na każdy miesiąc.
+ * Wspólne klocki uzupełnień (PRZ-082, PRZ-087): zamówienie z koszyka katalogu, wysyłka z paczką, licznik statusów.
+ * `koszyk` = [[sku, ilość, nazwa?]] — trzeci element zastępuje nazwę z katalogu (personalizacja, PRZ-087).
  */
-function uzupelnieniaPrz082(db, { dzis, env, koniecDnia, numery, kolejnyList, liczniki }) {
+function pomocnicyUzupelnien(db, { dzis, koniecDnia, numery, kolejnyList, liczniki }) {
   const chwila = (dniWstecz, h, m) => chwilaWarszawy(poczatekDnia(dzis) - dniWstecz * DOBA, h, m);
   const sklepWoo = KANALY.find((k) => k.typ === 'woo').klucz;
   let nrMaila = 0;
-  const dodaj = ({ kanal, osoba, b2b, koszyk, wysylka, nazwaWysylki = NAZWY_WYSYLKI[wysylka], platnosc, nip = null, utworzoneMs, oplaconeMs = null }) => {
+  const dodaj = ({ kanal, osoba, b2b, koszyk, wysylka, nazwaWysylki = NAZWY_WYSYLKI[wysylka], platnosc, nip = null, utworzoneMs, oplaconeMs = null,
+    indywidualne = false, uwagi = null }) => {
     const osobaZ = osoba != null ? KLIENCI[osoba] : null;
     const firma = b2b != null ? FIRMY_B2B[b2b] : null;
     const klient = osobaZ ? { first_name: osobaZ.imie, last_name: osobaZ.nazwisko, email: osobaZ.email, phone: '' }
@@ -509,6 +514,7 @@ function uzupelnieniaPrz082(db, { dzis, env, koniecDnia, numery, kolejnyList, li
     const poz = pozycje(koszyk, { rabat: firma?.rabat_procent ?? 0 });
     const kosztGr = KOSZT_WYSYLKI_GR[wysylka];
     const sumaGr = poz.reduce((s, x) => s + Math.round(Number(x.brutto_linii) * 100), 0) + kosztGr;
+    const pobranie = ['cod', 'allegro_pobranie'].includes(platnosc);
     const nipZamowienia = firma ? firma.nip : nip;
     const metodaPlatnosci = PLATNOSC[platnosc] ?? platnosc;
     let id;
@@ -516,7 +522,7 @@ function uzupelnieniaPrz082(db, { dzis, env, koniecDnia, numery, kolejnyList, li
       const okres = przypiszDoOkresu({ db, nip: nipZamowienia, dataZlozenia: iso(utworzoneMs), hurt: false });
       id = utworzZamowienieReczne(db, { utworzone_at: iso(utworzoneMs), rok: new Date(utworzoneMs).getUTCFullYear(), klient, dostawa,
         metoda_wysylki: wysylka, koszt_dostawy_brutto: zl(kosztGr), chce_fakture: true, nip: nipZamowienia,
-        metoda_platnosci: metodaPlatnosci, b2b: true, termin_platnosci: '14', rabat_procent: firma.rabat_procent, uwagi: null }, okres);
+        metoda_platnosci: metodaPlatnosci, b2b: true, termin_platnosci: '14', rabat_procent: firma.rabat_procent, uwagi, indywidualne }, okres);
       for (const x of poz) dodajPozycjeReczna(db, id, { nazwa: x.nazwa, sku: x.sku, ilosc: x.ilosc, cena_brutto: x.cena_brutto, brutto_linii: x.brutto_linii });
       db.prepare('UPDATE zamowienia SET kwota_brutto = ? WHERE id = ?').run(zl(sumaGr), id);
       if (oplaconeMs) dodajWplateReczna(db, id, { kwota: zl(sumaGr), data: iso(oplaconeMs).slice(0, 10), metoda: metodaPlatnosci });
@@ -526,13 +532,13 @@ function uzupelnieniaPrz082(db, { dzis, env, koniecDnia, numery, kolejnyList, li
       const punkt = /paczkomat|punkt/.test(wysylka);
       id = zapiszZamowienie(db, kanal, {
         zrodlo_id: zrodloId, numer: woo ? String(zrodloId) : `${String(zrodloId).padStart(7, '0')}-${kanal}`, klient, dostawa,
-        metoda_wysylki: wysylka, metoda_wysylki_nazwa: nazwaWysylki, pobranie: false, kwota_pobrania: null,
+        metoda_wysylki: wysylka, metoda_wysylki_nazwa: nazwaWysylki, pobranie, kwota_pobrania: pobranie ? zl(sumaGr) : null,
         punkt_odbioru: punkt ? `GLI9${String(zrodloId % 100).padStart(2, '0')}M` : null,
         punkt_odbioru_opis: punkt ? 'Punkt odbioru (demo), Ulica Przykładowa 5' : null,
         chce_fakture: nipZamowienia ? 1 : 0, nip: nipZamowienia, kwota_brutto: zl(sumaGr),
         koszt_dostawy_brutto: zl(kosztGr), koszt_dostawy_netto: zl(nettoGr(kosztGr)), status_woo: 'processing',
-        metoda_platnosci: metodaPlatnosci, indywidualne: false, oplacone_at: oplaconeMs ? iso(oplaconeMs) : null, anulowane: 0,
-        utworzone_at: iso(utworzoneMs), uwagi: null, kupony: [],
+        metoda_platnosci: metodaPlatnosci, indywidualne, oplacone_at: oplaconeMs ? iso(oplaconeMs) : null, anulowane: 0,
+        utworzone_at: iso(utworzoneMs), uwagi, kupony: [],
         atrybucja: woo ? { typ: 'utm', zrodlo: 'google', medium: 'organic', kampania: null } : null, pozycje: poz,
       }, { demo: true });
     }
@@ -547,6 +553,19 @@ function uzupelnieniaPrz082(db, { dzis, env, koniecDnia, numery, kolejnyList, li
     wiadomosc(db, z.id, 'faktura', z.klient.email, 'Zamówienie wysłane', wyslaneMs + 600000);
     liczniki.przesylki += 1; liczniki.wiadomosci += 1; status('wyslane');
   };
+  return { chwila, sklepWoo, dodaj, status, wyslij, kolejnyList, liczniki };
+}
+
+/**
+ * PRZ-082 — uzupełnienia demo z listy właściciela (14.10). Osobne zamówienia zamiast przestawiania pętli w
+ * wygenerujDaneDemo: każde nowe wywołanie `los` zmieniłoby całe demo. Każda pozycja ma test w
+ * tests/instalacja/demo-dane-prz082.test.js.
+ *  • faktura przelewem z terminem za kilka dni (B2B, 14 dni), • najnowsza faktura niewysłana do KSeF (wystawiona
+ *    dziś — alarm „nie została wysłana” dotyczy dokumentów sprzed dzisiejszego dnia), • utworzone etykiety DHL,
+ *    ORLEN Paczka i Allegro One, • jedna paczka bez ruchu, • historia podjazdów, • dwie proformy na każdy miesiąc.
+ */
+function uzupelnieniaPrz082(db, { env, koniecDnia, pomocnicy }) {
+  const { chwila, sklepWoo, dodaj, status, wyslij, kolejnyList, liczniki } = pomocnicy;
 
   // Faktura z terminem za kilka dni: B2B przelewem, termin 14 dni, faktura sprzed 8 dni → termin za ~6 dni, bez wpłaty.
   const hotel = dodaj({ kanal: 'reczne', b2b: 1, koszyk: [['LMP-WIS-001', 4], ['LMP-ABA-001', 4]], wysylka: 'dpd', platnosc: 'bacs', utworzoneMs: chwila(9, 10, 15) });
@@ -628,6 +647,111 @@ function uzupelnieniaPrz082(db, { dzis, env, koniecDnia, numery, kolejnyList, li
       zapiszProforme(db, z.id, { kwotaBrutto: z.kwota_brutto, rok: Number(m.slice(0, 4)), miesiac: Number(m.slice(5, 7)), utworzonaAt: iso(ms) });
     }
     wystawione.set(m, (wystawione.get(m) ?? 0) + 1);
+  }
+}
+
+// PRZ-087: ile ostatnich dni pętla losowa zostawia uzupełnieniom (0 = dziś).
+const DNI_UZUPELNIEN_PRZ087 = 3;
+
+/**
+ * PRZ-087 — zamówienia „w toku” z listy właściciela (16.10). Test: tests/instalacja/demo-dane-prz087.test.js.
+ *  • NOWE: 12, wszystkie z dziś (przed „teraz” demo 06:30), dostawa DPD, Paczkomat, Allegro One, DHL, odbiór osobisty;
+ *  • INDYWIDUALNE: personalizacja w nazwie pozycji (GRAWER, kolor RAL, nadruk) — to, co pracownia robi na zamówienie;
+ *  • W REALIZACJI: razem z PRZ-082 co najmniej 20, głównie z wczoraj, dokładnie dwa po terminie wysyłki,
+ *    różne dostawy i płatności (z pobraniem i B2B, gdzie zegar liczy się od złożenia);
+ *  • WYSŁANE z dni 2–3 — pętla losowa ich już nie daje, a wykres sprzedaży nie może mieć dziury.
+ * ⚠️ Termin liczy się z prawdziwego zegara gościa (domena/termin-wysylki.js): wczorajsze Allegro opłacone PRZED 12:00
+ * w dzień roboczy ma limit 0 dni i byłoby po terminie — dlatego wczorajsze zamówienia stoją po południu.
+ */
+function uzupelnieniaPrz087(db, { pomocnicy }) {
+  const { chwila, sklepWoo, dodaj, status, wyslij } = pomocnicy;
+  const W = sklepWoo;
+  // B2B tylko firmy BEZ rozliczenia zbiorczego (FIRMY_B2B[0] ma okres miesięczny — pojedynczej faktury się mu nie wystawia).
+  const ONE = 'Allegro One Punkt', ONE_KURIER = 'Allegro One Kurier', DHL = 'Allegro Kurier DHL';
+  const oplacone = (ms, platnosc) => (['cod', 'allegro_pobranie', 'bacs', 'przelew'].includes(platnosc) ? null : ms + 4 * 60000);
+
+  // NOWE — 12 z dziś, część jeszcze nieopłacona (przelew, pobranie).
+  const NOWE = [
+    [W, 14, [['LMP-STO-006', 1]], 'dpd', null, 'przelewy24', 0, 12],
+    ['allegro', 55, [['LMP-NOC-001', 1]], 'allegro_punkt', ONE, 'allegro', 0, 41],
+    [W, 15, [['LMP-WIS-001', 1], ['LMP-AKC-001', 1]], 'inpost_paczkomat', null, 'blik', 1, 5],
+    ['allegro', 56, [['LMP-KIN-003', 1]], 'allegro_kurier', DHL, 'allegro', 1, 37],
+    [W, 16, [['LMP-POD-001', 1]], 'odbior_osobisty', null, 'bacs', 2, 18],
+    [W, 17, [['LMP-ABA-001', 2]], 'dpd', null, 'cod', 2, 49],
+    ['allegro', 57, [['LMP-STO-001', 1]], 'allegro_kurier', ONE_KURIER, 'allegro', 3, 26],
+    ['allegro', 58, [['LMP-AKC-002', 3]], 'allegro_paczkomat', null, 'allegro_pobranie', 3, 58],
+    ['allegro', 59, [['LMP-WIS-002', 1]], 'allegro_kurier', DHL, 'allegro', 4, 33],
+    ['reczne', null, [['LMP-KIN-001', 4], ['LMP-AKC-001', 4]], 'dpd', null, 'bacs', 5, 2, 2],
+    [W, 18, [['LMP-NOC-002', 1]], 'inpost_paczkomat', null, 'karta', 5, 40],
+    [W, 19, [['LMP-STO-004', 1]], 'odbior_osobisty', null, 'blik', 6, 14],
+  ];
+  for (const [kanal, osoba, koszyk, wysylka, nazwaWysylki, platnosc, h, m, b2b] of NOWE) {
+    const ms = chwila(0, h, m);
+    dodaj({ kanal, osoba: osoba ?? undefined, b2b, koszyk, wysylka, ...(nazwaWysylki ? { nazwaWysylki } : {}), platnosc,
+      utworzoneMs: ms, oplaconeMs: oplacone(ms, platnosc) });
+    status('nowe');
+  }
+
+  // INDYWIDUALNE — personalizacja w nazwie pozycji; limit 7 dni roboczych, więc żadne nie jest po terminie.
+  const INDYWIDUALNE = [
+    [W, 20, [['LMP-STO-005', 1, 'Lampa stołowa Dąbek, dąb olejowany — GRAWER na podstawie: „Dla Zosi na 18. urodziny”']], 'dpd', 'przelewy24', 1, 9, 30],
+    [W, 21, [['LMP-NOC-003', 1, 'Lampka nocna — GRAWER imienia „Antoś” i daty urodzenia 03.09.2026']], 'inpost_paczkomat', 'blik', 1, 20, 5],
+    ['reczne', null, [['LMP-ABA-002', 12, 'Abażur lniany — NADRUK logo hotelu (projekt klienta)']], 'dpd', 'bacs', 2, 11, 40, 1],
+    [W, 22, [['LMP-WIS-002', 1, 'Lampa wisząca Kopuła 60 cm — KOLOR NA ZAMÓWIENIE RAL 6021, przewód 3 m']], 'dpd', 'karta', 2, 15, 15],
+    ['allegro', 60, [['LMP-KIN-002', 2, 'Kinkiet — GRAWER numeru mieszkania „14A” na tarczy']], 'allegro_kurier', 'allegro', 3, 13, 50, null, DHL],
+    [W, 23, [['LMP-POD-002', 1, 'Lampa podłogowa — GRAWER dedykacji na stopie „Mamie i Tacie, 40 lat razem”']], 'odbior_osobisty', 'przelewy24', 4, 10, 25],
+  ];
+  for (const [kanal, osoba, koszyk, wysylka, platnosc, dni, h, m, b2b, nazwaWysylki] of INDYWIDUALNE) {
+    const ms = chwila(dni, h, m);
+    dodaj({ kanal, osoba: osoba ?? undefined, b2b: b2b ?? undefined, koszyk, wysylka, ...(nazwaWysylki ? { nazwaWysylki } : {}), platnosc,
+      utworzoneMs: ms, oplaconeMs: kanal === 'reczne' ? null : ms + 6 * 60000, indywidualne: true,
+      uwagi: 'Personalizacja — proszę o podgląd projektu przed wykonaniem.' });
+    status('indywidualne');
+  }
+
+  // W REALIZACJI — 18 tutaj (+4 z PRZ-082 = 22): 14 z wczoraj po 12:00, 2 z dziś rano, 2 sprzed 5 dni (po terminie).
+  const W_REALIZACJI = [
+    [W, 24, [['LMP-STO-002', 1]], 'dpd', null, 'przelewy24', 1, 12, 20],
+    ['allegro', 61, [['LMP-NOC-001', 2]], 'allegro_paczkomat', null, 'allegro', 1, 12, 48],
+    [W, 25, [['LMP-WIS-003', 1]], 'dpd', null, 'cod', 1, 13, 10],
+    ['allegro', 62, [['LMP-STO-003', 1]], 'allegro_kurier', DHL, 'allegro', 1, 13, 35],
+    [W, 26, [['LMP-AKC-003', 2], ['LMP-AKC-001', 2]], 'inpost_paczkomat', null, 'blik', 1, 14, 2],
+    ['reczne', null, [['LMP-STO-006', 6], ['LMP-AKC-001', 6]], 'dpd', null, 'bacs', 1, 14, 30, 3],
+    ['allegro', 63, [['LMP-KIN-004', 1]], 'allegro_punkt', ONE, 'allegro', 1, 15, 5],
+    [W, 27, [['LMP-POD-003', 1]], 'odbior_osobisty', null, 'karta', 1, 15, 44],
+    ['allegro', 64, [['LMP-ABA-003', 1]], 'allegro_dpd', null, 'allegro_pobranie', 1, 16, 20],
+    [W, 28, [['LMP-NOC-002', 1], ['LMP-AKC-002', 1]], 'inpost_paczkomat', null, 'przelewy24', 1, 17, 3],
+    ['allegro', 65, [['LMP-WIS-005', 1]], 'allegro_kurier', ONE_KURIER, 'allegro', 1, 18, 26],
+    [W, 29, [['LMP-STO-001', 1]], 'dpd', null, 'bacs', 1, 19, 11],
+    ['allegro', 66, [['LMP-AKC-001', 4]], 'allegro_paczkomat', null, 'allegro', 1, 20, 47],
+    [W, 30, [['LMP-KIN-001', 2]], 'inpost_paczkomat', null, 'cod', 1, 22, 15],
+    [W, 31, [['LMP-ABA-004', 1]], 'dpd', null, 'blik', 0, 0, 35],
+    ['allegro', 67, [['LMP-STO-004', 1]], 'allegro_kurier', DHL, 'allegro', 0, 2, 50],
+    // Po terminie: opłacone 5 dni temu (co najmniej 3 dni robocze przy limicie 1).
+    [W, 32, [['LMP-WIS-004', 1]], 'dpd', null, 'przelewy24', 5, 10, 5],
+    ['allegro', 68, [['LMP-POD-004', 1]], 'allegro_kurier', ONE_KURIER, 'allegro', 5, 14, 40],
+  ];
+  for (const [kanal, osoba, koszyk, wysylka, nazwaWysylki, platnosc, dni, h, m, b2b] of W_REALIZACJI) {
+    const ms = chwila(dni, h, m);
+    // `bacs` (przelew) przy w realizacji jest już zapłacony — pracownia nie rusza przedpłaty bez wpłaty.
+    const wplata = ['cod', 'allegro_pobranie'].includes(platnosc) || kanal === 'reczne' ? null : ms + 7 * 60000;
+    const z = dodaj({ kanal, osoba: osoba ?? undefined, b2b, koszyk, wysylka, ...(nazwaWysylki ? { nazwaWysylki } : {}), platnosc,
+      utworzoneMs: ms, oplaconeMs: wplata });
+    zapiszFaktyStatusu(db, z.id, { w_realizacji_at: iso(dni === 0 ? ms + 30 * 60000 : ms + 2 * 3600000), wyslane_at: null });
+    status('w_realizacji');
+  }
+
+  // WYSŁANE z dni 2–3 — doręczone albo w drodze.
+  const WYSLANE = [
+    [W, 33, [['LMP-STO-005', 1]], 'dpd', 'przelewy24', 3, 9, 15, 'dpd'],
+    ['allegro', 69, [['LMP-NOC-001', 1]], 'allegro_paczkomat', 'allegro', 3, 16, 40, 'inpost'],
+    [W, 34, [['LMP-ABA-001', 1]], 'inpost_paczkomat', 'blik', 2, 10, 30, 'inpost'],
+    ['allegro', 70, [['LMP-KIN-003', 1]], 'allegro_dpd', 'allegro', 2, 13, 5, 'dpd'],
+  ];
+  for (const [kanal, osoba, koszyk, wysylka, platnosc, dni, h, m, kurier] of WYSLANE) {
+    const ms = chwila(dni, h, m);
+    const z = dodaj({ kanal, osoba, koszyk, wysylka, platnosc, utworzoneMs: ms, oplaconeMs: ms + 5 * 60000 });
+    wyslij(z, { kurier, wRealizacjiMs: ms + 2 * 3600000, wyslaneMs: ms + 20 * 3600000, doreczonaMs: ms + 44 * 3600000 });
   }
 }
 

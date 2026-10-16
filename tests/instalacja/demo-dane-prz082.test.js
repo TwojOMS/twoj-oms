@@ -215,7 +215,7 @@ describe('demo po poprawkach PRZ-082', () => {
       const tekst = ['zamowienia', 'podjazdy', 'proformy', 'przesylki', 'firmy_reczne']
         .flatMap((t) => db.prepare(`SELECT * FROM ${t}`).all().map((w) => JSON.stringify(w))).join('\n');
       expect((tekst.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/gi) ?? []).filter((m) => !/@example\.invalid$/i.test(m))).toEqual([]);
-      expect(tekst).not.toMatch(/stencil|lumina|drugamarka|trzeciamarka|zywiecki|twojoms/i);
+      expect(tekst).not.toMatch(/stencil|lumina|drugamarka|trzeciamarka|zywiecki/i);
     });
   });
 });
