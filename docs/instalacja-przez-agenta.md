@@ -21,11 +21,13 @@ Wymaga Node.js 24+ na tym komputerze.
 ```bash
 node --version                      # musi być v24 lub nowszy; jeśli nie, zainstaluj Node 24 LTS i powiedz człowiekowi
 npm ci
-node scripts/instalacja-demo.mjs --katalog ./oms-demo --port 39151
-node scripts/instalacja-otworz.mjs --katalog ./oms-demo --port 39151
+node scripts/instalacja-demo.mjs --katalog "$PWD/oms-demo" --port 39151
+node scripts/instalacja-otworz.mjs --katalog "$PWD/oms-demo" --port 39151
 ```
 
-- Drugie polecenie uruchamia panel na `127.0.0.1:39151` i działa, dopóki go nie przerwiesz (Ctrl+C) —
+- `--katalog` musi być ścieżką bezwzględną — przy względnej skrypt kończy się samym `INSTALACJA_DEMO_ODMOWA`.
+  Pakiet `nodejs` z Debiana 13 i Ubuntu 24.04 to wersja 20 — Node 24 bierz z nodejs.org.
+- Ostatnie polecenie uruchamia panel na `127.0.0.1:39151` i działa, dopóki go nie przerwiesz (Ctrl+C) —
   uruchom je w tle albo w osobnym terminalu.
 - Login i hasło administratora są w `./oms-demo/administrator-proby.env`. **Nie wypisuj hasła w odpowiedzi
   na czacie**; powiedz człowiekowi, w którym pliku jest, i że ma zapisać je w menedżerze haseł.
@@ -56,7 +58,7 @@ Zanim to zrobisz, wyjaśnij w jednym zdaniu, co się stanie, i poczekaj na wyra�
 
 - przejście z próby na **pracę** (sekcja 8 w `instalacja-docker.md`) — od tej chwili system zakłada prawdziwe dane firmy;
 - wpisanie **prawdziwych danych firmy** (NIP, numer rachunku, BDO) i **kluczy integracji** — klucze podaje człowiek,
-  zapisujesz je wyłącznie w pliku konfiguracji na serwerze (`/opt/oms/config/oms.env`, tryb 0700), nigdy w repo;
+  zapisujesz je wyłącznie w pliku konfiguracji na serwerze (`/opt/oms/config/oms.env`, katalog 0700, plik 0600), nigdy w repo;
 - jakiekolwiek wystawienie faktury, nadanie paczki, wysyłka do KSeF, wiadomość do klienta;
 - udostępnienie panelu poza siecią lokalną (router, VPN, HTTPS);
 - usunięcie czegokolwiek z `/opt/oms/data`, `/opt/oms/backups`.
@@ -65,9 +67,10 @@ Zanim to zrobisz, wyjaśnij w jednym zdaniu, co się stanie, i poczekaj na wyra�
 
 1. Podsumuj człowiekowi: adres panelu, gdzie leży hasło, czym zrobić kopię (`docs/instalacja-docker.md`, „Codzienna obsługa”),
    jak zatrzymać i uruchomić panel, co jeszcze nie jest podłączone.
-2. Zaproponuj **następny jeden krok**: pierwsza integracja (sekcja 9 w `instalacja-docker.md`), w kolejności:
-   jeden kanał sprzedaży → kurier → inFakt. Po każdej integracji test z prawdziwym, ale niskoryzykownym zamówieniem.
-3. Zapisz człowiekowi (w jego notatkach, nie w repo) wersję wydania (`git rev-parse --short HEAD`) i datę instalacji.
+2. Zaproponuj **następny jeden krok**: pierwsza integracja w kolejności z sekcji 9 `instalacja-docker.md`
+   (inFakt → sklep WooCommerce → Allegro → kurierzy). Po każdej integracji test z prawdziwym, ale niskoryzykownym zamówieniem.
+3. Zapisz człowiekowi (w jego notatkach, nie w repo) wersję wydania i datę instalacji: na serwerze z Dockerem to wiersz
+   `biezace:` z `sudo sh /opt/oms/aktualizuj.sh status`, w próbie lokalnej `git rev-parse --short HEAD`.
 
 ## Gdy coś nie działa
 

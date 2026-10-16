@@ -4,18 +4,22 @@ Od czystego Debiana do zalogowania w panelu z innego komputera. Każde polecenie
 serwera (bash), po kolei. Pierwsze uruchomienie to próba z trzema wymyślonymi zamówieniami —
 **bez żadnych kluczy Allegro, sklepu, kurierów ani inFaktu**. Integracje dodaje się później.
 
-Sprawdzone na Debianie 13 (amd64), 2 rdzenie, 4 GB RAM, dysk 16 GB. Wymagany internet na czas
+Sprawdzone na Debianie 13 (amd64), 2 rdzenie, 4 GB RAM, dysk 16 GB; przejście sekcji 1–7 od czystego
+systemu zajęło ok. 2 minut samych poleceń (pomiar 16.10.2026). Wymagany internet na czas
 instalacji (repozytorium Dockera, obraz Node, paczki npm) i konto z `sudo`.
 
 Potrzebujesz dwóch plików: `oms-XXXXXXXXXXXX.tar.gz` i `oms-XXXXXXXXXXXX.tar.gz.sha256`. Powstają z
-klona repozytorium, na dowolnym komputerze z Git i Node 24 (katalog wyjściowy musi być nowy, ścieżka bezwzględna):
+klona repozytorium, na dowolnym komputerze z Git i Node 24 (katalog wyjściowy musi być nowy, ścieżka bezwzględna).
+Polecenia działają w bashu i w PowerShellu na Windowsie:
 
 ```bash
-git clone https://github.com/TwojOMS/twoj-oms.git twoj-oms && cd twoj-oms
+git clone https://github.com/TwojOMS/twoj-oms.git twoj-oms
+cd twoj-oms
 node scripts/paczka-klienta.mjs --commit "$(git rev-parse HEAD)" --wyjscie /tmp/oms-paczka
 ```
 
-Paczka zawiera kod dokładnie z tego commita (bez niezatwierdzonych zmian), więc własne zmiany najpierw
+Ostatnie polecenie wypisuje pełną ścieżkę archiwum (na Windowsie `/tmp/oms-paczka` to `C:\tmp\oms-paczka`).
+Node nie jest potrzebny na serwerze — tylko na komputerze, na którym budujesz paczkę. Paczka zawiera kod dokładnie z tego commita (bez niezatwierdzonych zmian), więc własne zmiany najpierw
 zatwierdź w Git. Skopiuj oba pliki z katalogu wyjściowego do katalogu domowego na serwerze, np. z innego komputera (pełne nazwy plików —
 PowerShell nie rozwija `*`): `scp oms-XXXXXXXXXXXX.tar.gz oms-XXXXXXXXXXXX.tar.gz.sha256 uzytkownik@adres-serwera:`
 (na serwerze musi działać SSH — pakiet `openssh-server`; można też przenieść pliki pendrive'em).
@@ -83,7 +87,7 @@ Kolejne polecenia wykonujesz w tym katalogu (`deploy/klient` rozpakowanej paczki
 sudo docker compose build
 ```
 
-Trwa kilka minut: pobiera obraz Node 24 i zależności npm. Obraz powstaje lokalnie, z tej paczki,
+Trwa od minuty do kilku minut, zależnie od łącza: pobiera obraz Node 24 i zależności npm. Obraz powstaje lokalnie, z tej paczki,
 i ma wpisaną wersję (`org.opencontainers.image.revision`).
 
 ## 5. Pierwsze uruchomienie: próba i demo
@@ -159,7 +163,8 @@ Odmawia, dopóki brakuje pól (`PRODUKCJA_NIEWYPELNIONE_POLA:` z ich nazwami) al
 z próby (`PRODUKCJA_WARTOSC_Z_PROBY:`). Gdy wszystko jest, zatrzymuje próbę (panel stoi kilkanaście
 sekund), robi jej kopię ze sprawdzeniem spójności, przenosi dane próby do
 `/opt/oms/proba-archiwum/OPERACJA/`, uruchamia OMS na pustej bazie, zakłada konto `administrator`
-i robi pierwszą kopię. Kończy wierszem `NEEDS_ACCEPT operacja=…` — zapisz numer operacji.
+i robi pierwszą kopię. Kończy wierszem `NEEDS_ACCEPT operacja=…` — zapisz numer operacji
+(np. `20261016-201242-81ed`); niżej wpisujesz go zamiast słowa `OPERACJA`.
 Jeśli OMS nie przyjmie konfiguracji (np. błędny NIP), przejście samo wraca do próby
 (`WYCOFANE …`) i pokazuje ostatnie linie dziennika z nazwą zmiennej — popraw `produkcja.env`
 i powtórz polecenie.
@@ -403,7 +408,7 @@ na takim serwerze kopię poza dyskiem robi się inaczej (np. pobieranie kopii pr
 
 ```bash
 cd ~
-sudo sh /opt/oms/releases/NAZWA-WYDANIA/deploy/klient/diagnostyka.sh
+sudo sh -c 'sh "/opt/oms/releases/$(cat /opt/oms/update-state/biezace)/deploy/klient/diagnostyka.sh"'
 ```
 
 Skrypt zapisuje w katalogu domowym plik `oms-diagnostyka-….txt`: wersję, stan kontenerów,

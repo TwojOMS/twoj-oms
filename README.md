@@ -44,17 +44,22 @@ próby** (`OMS_TRYB=proba`), który odmawia startu, gdy wykryje jakikolwiek kluc
 
 ## Szybki start (próba bez kluczy)
 
-Wymagany jest Node.js 24 lub nowszy.
+Wymagane są Git i Node.js 24 lub nowszy (`node --version`). Node 24 LTS pobierzesz z
+[nodejs.org](https://nodejs.org/) — pakiet `nodejs` z Debiana 13 i Ubuntu 24.04 jest za stary (20.x).
+Polecenia działają tak samo w bashu i w PowerShellu:
 
 ```bash
+git clone https://github.com/TwojOMS/twoj-oms.git twoj-oms
+cd twoj-oms
 npm ci
-node scripts/instalacja-demo.mjs --katalog ./oms-demo --port 39151
-node scripts/instalacja-otworz.mjs --katalog ./oms-demo --port 39151
+node scripts/instalacja-demo.mjs --katalog "$PWD/oms-demo" --port 39151
+node scripts/instalacja-otworz.mjs --katalog "$PWD/oms-demo" --port 39151
 ```
 
-Druga komenda otwiera panel pod `http://127.0.0.1:39151/login`; login i hasło administratora leżą
-w `oms-demo/administrator-proby.env`. Zobaczysz trzy zmyślone zamówienia. Szczegóły i ograniczenia:
-[docs/instalacja-klienta.md](docs/instalacja-klienta.md).
+Katalog musi być podany ścieżką bezwzględną (stąd `$PWD`). Ostatnia komenda uruchamia panel pod
+`http://127.0.0.1:39151/login` i działa, dopóki jej nie przerwiesz (Ctrl+C); login i hasło administratora
+leżą w `oms-demo/administrator-proby.env`. Zobaczysz trzy zmyślone zamówienia. Szczegóły
+i ograniczenia: [docs/instalacja-klienta.md](docs/instalacja-klienta.md).
 
 ## Instalacja na serwerze
 
