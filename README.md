@@ -13,7 +13,7 @@ reset co godzinę) · **[Instalacja](docs/instalacja-docker.md)** · **[Dla agen
 Panel do obsługi zamówień dla małej sprzedaży internetowej w Polsce: zamówienia z Allegro i WooCommerce
 w jednym miejscu, faktury, wysyłka, zwroty, koszty i raporty. Działa na jednym małym serwerze
 (Node.js + SQLite), bez abonamentu i bez zewnętrznej bazy danych. Kod jest otwarty — możesz go
-uruchomić, zmienić pod swoją firmę i rozwijać dalej, najlepiej razem z agentem AI.
+uruchomić, zmienić pod swoją firmę i rozwijać dalej samodzielnie lub z agentem AI.
 
 > **English in short.** Twój OMS is a self-hosted order management panel for small Polish online
 > sellers (Allegro, WooCommerce, inFakt/KSeF invoicing, DPD/InPost shipping). Node.js 24, SQLite,
