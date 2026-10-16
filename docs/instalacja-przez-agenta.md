@@ -14,6 +14,10 @@ Najpierw przeczytaj [AGENTS.md](../AGENTS.md), zwłaszcza sekcję „Granice”.
 3. **Co chcesz podłączyć** (Allegro, WooCommerce, inFakt, DPD, InPost…)? To tylko do zapamiętania;
    integracje dodajesz dopiero po ścieżce A i B, pojedynczo.
 
+Wybór ścieżki: panel ma działać na serwerze z Linuksem, do którego masz SSH (albo człowiek wkleja polecenia) →
+od razu **ścieżka B**; jej sekcja 5 sama zakłada próbę z danymi DEMO, więc ścieżki A wtedy nie robisz.
+Ścieżka A jest dla próby na komputerze, przy którym człowiek siedzi.
+
 ## Ścieżka A — próba lokalna (bez Dockera, bez kluczy)
 
 Wymaga Node.js 24+ na tym komputerze.
@@ -32,7 +36,8 @@ node scripts/instalacja-otworz.mjs --katalog "$PWD/oms-demo" --port 39151
 - Login i hasło administratora są w `./oms-demo/administrator-proby.env`. **Nie wypisuj hasła w odpowiedzi
   na czacie**; powiedz człowiekowi, w którym pliku jest, i że ma zapisać je w menedżerze haseł.
 - Zweryfikuj: `GET http://127.0.0.1:39151/health` odpowiada, `/login` się ładuje, po zalogowaniu widać zamówienia
-  DEMO-001…003. Alarmy kanałów w `/health` bez kluczy integracji są w tej próbie normalne.
+  DEMO-001…003. Logując się curlem, dodaj nagłówek `-H "Origin: http://ADRES:PORT"` (ten sam adres co w URL) —
+  bez `Origin`/`Referer` ochrona CSRF odpowiada 403 i wygląda to jak awaria. Alarmy kanałów w `/health` bez kluczy integracji są w tej próbie normalne.
 - Katalog i port muszą być puste/wolne. Przy odmowie (`INSTALACJA_ODMOWA_NADPISANIA`) wybierz nowy katalog —
   nie kasuj cudzego.
 
@@ -57,6 +62,8 @@ po kolei i poproś o wynik każdego bloku.
 Zanim to zrobisz, wyjaśnij w jednym zdaniu, co się stanie, i poczekaj na wyraźne „tak”:
 
 - przejście z próby na **pracę** (sekcja 8 w `instalacja-docker.md`) — od tej chwili system zakłada prawdziwe dane firmy;
+- `aktualizuj.sh accept` (nieodwracalny — człowiek sam loguje się nowym kontem i potwierdza dane firmy)
+  oraz `recover … --porzuc-prace`;
 - wpisanie **prawdziwych danych firmy** (NIP, numer rachunku, BDO) i **kluczy integracji** — klucze podaje człowiek,
   zapisujesz je wyłącznie w pliku konfiguracji na serwerze (`/opt/oms/config/oms.env`, katalog 0700, plik 0600), nigdy w repo;
 - jakiekolwiek wystawienie faktury, nadanie paczki, wysyłka do KSeF, wiadomość do klienta;

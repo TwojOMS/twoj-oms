@@ -80,6 +80,8 @@ cd "/opt/oms/releases/$WYDANIE/deploy/klient"
 
 `sha256sum` musi wypisać `OK`. Jeśli wypisze `FAILED`, plik jest uszkodzony — pobierz go ponownie.
 Kolejne polecenia wykonujesz w tym katalogu (`deploy/klient` rozpakowanej paczki).
+Po instalacji pliki paczki z katalogu domowego można usunąć (`rm ~/oms-*.tar.gz ~/oms-*.tar.gz.sha256`) —
+wydanie leży już w `/opt/oms/releases`, a aktualizacja używa nowej paczki pod pełną nazwą.
 
 ## 4. Obraz
 
@@ -164,7 +166,9 @@ z próby (`PRODUKCJA_WARTOSC_Z_PROBY:`). Gdy wszystko jest, zatrzymuje próbę (
 sekund), robi jej kopię ze sprawdzeniem spójności, przenosi dane próby do
 `/opt/oms/proba-archiwum/OPERACJA/`, uruchamia OMS na pustej bazie, zakłada konto `administrator`
 i robi pierwszą kopię. Kończy wierszem `NEEDS_ACCEPT operacja=…` — zapisz numer operacji
-(np. `20261016-201242-81ed`); niżej wpisujesz go zamiast słowa `OPERACJA`.
+(np. `20261016-201242-81ed`); niżej wpisujesz go zamiast słowa `OPERACJA`. Do odbioru `status` pokazuje
+`blokada: TAK`, `etap=czeka_na_akceptacje` i zdanie „proces aktualizatora nie działa…” — to stan oczekiwany,
+nie awaria: przejście skończyło pracę i czeka na Twoją decyzję.
 Jeśli OMS nie przyjmie konfiguracji (np. błędny NIP), przejście samo wraca do próby
 (`WYCOFANE …`) i pokazuje ostatnie linie dziennika z nazwą zmiennej — popraw `produkcja.env`
 i powtórz polecenie.
