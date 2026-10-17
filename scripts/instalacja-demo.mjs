@@ -31,7 +31,10 @@ function etap(name, katalog, port) {
   });
   if (result.status !== 0) throw Error('INSTALACJA_DEMO_' + name.toUpperCase() + '_ODMOWA');
 }
-async function wygeneruj(db) {
+// Daty względem chwili instalacji (PRZ-089): ze sztywnym 2026-01-01…03 pierwszy ekran nowicjusza po pół roku
+// pokazywał „po terminie o 204 dni rob.”. Zamówienie N złożone N godzin temu, wpłata 10 min później.
+const godzinTemu = (teraz, h, min = 0) => new Date(teraz - h * 3600_000 + min * 60_000).toISOString();
+async function wygeneruj(db, teraz = Date.now()) {
   const { zapiszZamowienie, zapiszFaktyStatusu } = await import('../src/oms/db/zamowienia.js');
   for (let number = 1; number <= 3; number++) {
     const code = String(number).padStart(3, '0');
@@ -42,11 +45,11 @@ async function wygeneruj(db) {
       metoda_wysylki: 'odbior_osobisty', metoda_wysylki_nazwa: 'Odbiór osobisty — demo',
       kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '24.60',
       koszt_dostawy_brutto: '0.00', koszt_dostawy_netto: '0.00', status_woo: 'processing',
-      oplacone_at: number === 1 ? null : `2026-01-0${number}T12:00:00`, anulowane: 0,
-      utworzone_at: `2026-01-0${number}T10:00:00`, uwagi: 'DEMO — wszystkie dane wygenerowane syntetycznie; bez integracji.',
+      oplacone_at: number === 1 ? null : godzinTemu(teraz, number, 10), anulowane: 0,
+      utworzone_at: godzinTemu(teraz, number), uwagi: 'DEMO — wszystkie dane wygenerowane syntetycznie; bez integracji.',
       pozycje: [{ nazwa: `Produkt demonstracyjny ${number}`, sku: `DEMO-SKU-${code}`, ilosc: 1, cena_brutto: '24.60', cena_netto: '20.00', brutto_linii: '24.60', netto_linii: '20.00', vat: 23 }],
     }, { demo: true });
-    if (number === 2) zapiszFaktyStatusu(db, id, { w_realizacji_at: '2026-01-02T12:00:00' });
+    if (number === 2) zapiszFaktyStatusu(db, id, { w_realizacji_at: godzinTemu(teraz, number, 20) });
   }
 }
 async function main() {

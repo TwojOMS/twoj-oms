@@ -34,7 +34,7 @@ try {
     include: ['tests/pomoc/temp-worker.fixture.ts'],
     ...(mode === 'baza' ? { testNamePattern: 'strażnik migracji addytywnych|sonda katalogu workera' } : {}),
     // Bez override pool: sonda używa tej samej domyślnej puli co bramka repo.
-    maxWorkers: 1, minWorkers: 1, fileParallelism: false,
+    maxWorkers: 1, fileParallelism: false,
   });
 } finally {
   fs.mkdtempSync = original;

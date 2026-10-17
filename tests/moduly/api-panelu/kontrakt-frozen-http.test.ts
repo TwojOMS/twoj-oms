@@ -48,6 +48,8 @@ const envBazowe = (katalog: string): Record<string, string> => ({
   DPD_NADAWCA_NAZWA: 'Sprzedawca Testowy', DPD_NADAWCA_ULICA: 'ul. Przykładowa 1',
   DPD_NADAWCA_KOD: '00-001', DPD_NADAWCA_MIASTO: 'Miasto Testowe', DPD_NADAWCA_KRAJ: 'PL',
   OMS_DB_PATH: join(katalog, 'oms.sqlite'),
+  // PRZ-089: kontrakt z panelem zamówień indywidualnych — trasa z karty działa tylko z włączonym kanałem.
+  OMS_KANAL_INDYWIDUALNY: '1',
 });
 
 type Srodowisko = Awaited<ReturnType<typeof uruchom>>;

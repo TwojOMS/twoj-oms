@@ -15,9 +15,26 @@ function listaId(x: unknown, nazwa: string): number[] {
   if (new Set(lista).size !== lista.length) throw new Error(`${nazwa}: powtórzony identyfikator`);
   return lista;
 }
+/**
+ * Czy instalacja przyjmuje zamówienia z panelu zamówień indywidualnych (API `/api/zamowienia-z-karty`,
+ * kanał raportu INDYWIDUALNE, pozycja „Indywidualne” w filtrze listy). PRZ-089: u obcego człowieka tego
+ * panelu nie ma. Bez wpisu decyduje historia — prefiksy indywidualne w OMS_HISTORIA_KLASYFIKACJA znaczą, że
+ * kanał był w użyciu (istniejące wdrożenie z historią działa bez nowej zmiennej). Błędny JSON zgłasza wczytajKlasyfikacje.
+ */
+export function kanalIndywidualnyWlaczony(env: Srodowisko): boolean {
+  const w = env.OMS_KANAL_INDYWIDUALNY?.trim();
+  if (w === '1') return true;
+  if (w === '0') return false;
+  if (w !== undefined && w !== '') throw new Error('OMS_KANAL_INDYWIDUALNY: dozwolone 1 albo 0');
+  try {
+    const h: unknown = JSON.parse(env.OMS_HISTORIA_KLASYFIKACJA ?? '{}');
+    return obiekt(h) && Array.isArray(h.prefiksyIndywidualne) && h.prefiksyIndywidualne.length > 0;
+  } catch { return false; }
+}
 export function wczytajKlasyfikacje(env: Srodowisko, definicje: readonly DefinicjaKanalu[]) {
   const sklepy = new Map<string,string>();
-  const raporty = new Set<string>(KANALY_ALGORYTMICZNE);
+  // PRZ-089: kanały 'GDD' i 'INDYWIDUALNE' tylko z konfiguracji (niżej) — czysta instalacja zakładała ich granice.
+  const raporty = new Set<string>(['DROPSHIPPING', 'B2B', 'RECZNE']);
   const aktywne = new Set<string>();
   for (const d of definicje) {
     if (d.raport === undefined) continue;
@@ -45,6 +62,10 @@ export function wczytajKlasyfikacje(env: Srodowisko, definicje: readonly Definic
   const prefiksy=h.prefiksyIndywidualne ?? [];
   if (!Array.isArray(prefiksy) || prefiksy.some(p=>typeof p!=='string' || !p.trim() || p.trim()!==p || !p.endsWith('|') || p.length<2)
     || new Set(prefiksy).size!==prefiksy.length) throw new Error('OMS_HISTORIA_KLASYFIKACJA: wymagane niepuste unikalne prefiksy zakończone |');
+  const indywidualne = kanalIndywidualnyWlaczony(env);
+  if (prefiksy.length && !indywidualne) throw new Error('OMS_KANAL_INDYWIDUALNY=0 sprzeczne z OMS_HISTORIA_KLASYFIKACJA.prefiksyIndywidualne');
+  if (indywidualne) raporty.add('INDYWIDUALNE');
+  if (tagGdd !== null) raporty.add('GDD');
   for(const d of definicje) {
     const raw=env[`${d.prefiks}_HISTORIA_KONTO_APILO`]?.trim();
     if(raw === undefined || raw === '') continue;

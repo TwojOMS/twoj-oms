@@ -104,6 +104,8 @@
   <%# Znacznik pollera to NASZ czas (teraz(), UTC) — fmtDataCzas przeliczy go na Warszawe. %>
   <% if (stanPollera && stanPollera.ostatni_przebieg_at) { %>
     Ostatnia synchronizacja: <%= fmtDataCzas(stanPollera.ostatni_przebieg_at) %>
+  <% } else if (typeof bezKanalow !== 'undefined' && bezKanalow) { %>
+    Żaden kanał sprzedaży nie jest podłączony — zamówienia dodajesz ręcznie, a synchronizacja ruszy po podłączeniu sklepu albo Allegro.
   <% } else { %>
     <span class="uwaga">Brak synchronizacji — poller nie wykonał jeszcze przebiegu.</span>
   <% } %>

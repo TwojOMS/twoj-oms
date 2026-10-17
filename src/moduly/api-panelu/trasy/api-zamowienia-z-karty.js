@@ -21,7 +21,7 @@ const POWOD_POWTORKI = 'Zamówienie z tej karty już istnieje.';
 // panel wystawia proforme klientowi i sam ja mailuje. `null` (panel bez sekcji
 // OMS_PROFORMY_*) to tryb POPRAWNY — trasa odmawia wtedy czytelnie 503, zamiast udawac,
 // ze dokument powstal.
-export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syncSklep = null }) {
+export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syncSklep = null, kanalIndywidualny = true }) {
   // `utworzone_at` wjezdza tu WYLACZNIE po to, zeby galaz `catch` mogla rozstrzygnac, KTO
   // zalozyl znaleziony wiersz (patrz komentarz nizej). Do odpowiedzi 409 nie idzie — jej
   // ksztalt to `{ id, numer, powod }` i tyle wie o niej panel.
@@ -38,6 +38,9 @@ export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syn
   }
 
   app.post('/api/zamowienia-z-karty', async (req, reply) => {
+    // PRZ-089: zamówienie z karty liczy się w raporcie jako INDYWIDUALNE — bez tego kanału raport odmówiłby
+    // („brak granicy”), więc odmowa stoi tu, przy wejściu, a nie po zapisie.
+    if (!kanalIndywidualny) return reply.code(503).send({ powod: 'Kanał zamówień indywidualnych jest wyłączony (OMS_KANAL_INDYWIDUALNY).' });
     let dane;
     // ⚠️ ZEGAR ODCZYTANY RAZ, NA CALA TRASE — ta sama zasada, co w trasie formularza
     // (D4): `utworzone_at` i rok serii numeracji maja pochodzic z JEDNEJ wartosci.

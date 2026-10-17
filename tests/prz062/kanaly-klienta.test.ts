@@ -234,7 +234,8 @@ describe('PRZ-062 instalacja bez kanałów: pusto jawnie, nie po firmie autora',
       const lista = await s.get('/');
       expect(lista.status).toBe(200); expect(firmaW(lista.body)).toEqual([]);
       const opcje = [...lista.body.matchAll(/<option value="([^"]*)"[^>]*>[^<]*<\/option>/g)].map(m => m[1]);
-      expect(opcje).toContain('reczne'); expect(opcje).toContain('indywidualne');
+      // PRZ-089: „Indywidualne” (panel zamówień indywidualnych autora) tylko z OMS_KANAL_INDYWIDUALNY.
+      expect(opcje).toContain('reczne'); expect(opcje).not.toContain('indywidualne');
       expect(opcje.filter(o => definicjeKanalowHistoryczne.some(k => k.klucz === o))).toEqual([]);
       const nowe = await s.get('/zamowienia/nowe');
       expect(nowe.status).toBe(200); expect(firmaW(nowe.body)).toEqual([]);

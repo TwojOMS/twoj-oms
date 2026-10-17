@@ -9,6 +9,7 @@ import { uruchomOms } from '../../src/main.ts';
 import { odczytajEnv } from '../../scripts/instalacja-wspolne.mjs';
 import { listaZamowien } from '../../src/oms/db/zamowienia.js';
 import { wyliczStatus } from '../../src/domena/status.js';
+import { wiekZamowienia } from '../../src/domena/wiek-zamowienia.js';
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const script = path.join(ROOT, 'scripts/instalacja-demo.mjs');
@@ -56,7 +57,21 @@ describe('samodzielne syntetyczne demo instalacji', () => {
     expect(result.status).toBe(1); expect(result.stderr).toContain('INSTALACJA_DEMO_SCIEZKA_ODMOWA');
     expect(fs.readdirSync(target)).toEqual([]);
   });
+  // PRZ-089: próbna instalacja 16.10 — przy względnym --katalog człowiek widział samo INSTALACJA_DEMO_ODMOWA,
+  // a powód z opcje() („Katalog musi być ścieżką bezwzględną”) ginął w catch.
+  it.each([
+    [['--katalog', 'dane-demo', '--port', '39384'], /ścieżką bezwzględną/],
+    [['--katalog', '__ABS__', '--port', '80'], /Port musi być liczbą 1024–65535/],
+    [['--katalog'], /Użycie: --katalog/],
+  ])('mówi człowiekowi, dlaczego odmawia (%j)', (argumenty, powod) => {
+    const p = root();
+    const result = spawnSync(process.execPath, [script, ...argumenty.map(a => a === '__ABS__' ? path.join(p, 'demo') : a)], { cwd: p, encoding: 'utf8', timeout: 45000 });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(powod);
+    expect(fs.readdirSync(p)).toEqual([]);
+  });
   it('tworzy widoczne zamówienia, odrębną kopię demo i zachowuje je po restore z prawdziwym logowaniem', async () => {
+    const start = Date.now();
     const p = path.join(root(), 'demo ze spacją'); const result = cli(p, 39383);
     expect(result.status, result.stderr).toBe(0); expect(result.stdout).toContain('demo-zakonczone');
     expect(result.stdout + result.stderr).not.toContain('foreign-demo-secret');
@@ -74,6 +89,14 @@ describe('samodzielne syntetyczne demo instalacji', () => {
       expect(snapshot.flatMap(r => r.pozycje).every(r => r.sku.startsWith('DEMO-SKU-'))).toBe(true);
     }
     expect(snapshots[1]).toEqual(snapshots[0]); expect(snapshots[2]).toEqual(snapshots[0]);
+    // PRZ-089: daty względem dnia instalacji — ze sztywnym 2026-01-01…03 pierwszy ekran nowicjusza w październiku
+    // pokazywał „286 dni · po terminie o 204 dni rob.” na czerwono.
+    for (const r of snapshots[0]) {
+      const utworzone = Date.parse(r.utworzone_at);
+      expect.soft(utworzone, `${r.numer} utworzone_at=${r.utworzone_at}`).toBeGreaterThan(start - 24 * 3600_000);
+      expect.soft(utworzone, `${r.numer} utworzone_at=${r.utworzone_at}`).toBeLessThanOrEqual(Date.now());
+      expect.soft(wiekZamowienia(r)?.poTerminie ?? false, `${r.numer} po terminie zaraz po instalacji`).toBe(false);
+    }
     expect(rows(path.join(p, 'backup-proba.sqlite'))).toHaveLength(0);
     await visible(env, admin);
     await visible({ ...env, OMS_DB_PATH: path.join(p, 'odtworzenie-demo/oms.sqlite') }, admin);

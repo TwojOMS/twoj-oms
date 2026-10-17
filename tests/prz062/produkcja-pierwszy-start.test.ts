@@ -89,7 +89,8 @@ describe('produkcja-pierwszy-start.mjs', () => {
       const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
       try {
         const g = db.prepare('SELECT kanal, zrodlo FROM granice_historii ORDER BY kanal').all().map((w: any) => `${w.kanal}:${w.zrodlo}`);
-        expect(g).toEqual(['B2B', 'DROPSHIPPING', 'GDD', 'INDYWIDUALNE', 'RECZNE', 'SKLEP_ZETAKLIENT'].map(k => `${k}:oms-bez-historii`));
+        // PRZ-089: GDD i INDYWIDUALNE (kanały Szkicownia) tylko z konfiguracji — czysta instalacja ich nie zakłada.
+        expect(g).toEqual(['B2B', 'DROPSHIPPING', 'RECZNE', 'SKLEP_ZETAKLIENT'].map(k => `${k}:oms-bez-historii`));
       } finally { db.close(); }
       // Drugi raz: konto już jest — odmowa, bez nowego hasła na stdout.
       const drugi = await uruchomSkrypt(env);
@@ -132,7 +133,8 @@ describe('produkcja-pierwszy-start.mjs', () => {
     expect(JSON.parse(r.stdout)).toEqual({ status: 'granice', zalozone: ['SKLEP_ZETAKLIENT=2026-09-30'], pominiete: [] });
     const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
     try {
-      expect(db.prepare('SELECT COUNT(*) AS n FROM granice_historii').get().n).toBe(6);
+      // PRZ-089: wbudowane bez GDD/INDYWIDUALNE (3) + kanał klienta = 4.
+      expect(db.prepare('SELECT COUNT(*) AS n FROM granice_historii').get().n).toBe(4);
       expect(db.prepare('SELECT COUNT(*) AS n FROM konta').get().n).toBe(0);
     } finally { db.close(); }
     const znowu = await uruchomSkrypt({ ...poPrzejsciu, OMS_PORT: '1' }, ['--granice']);

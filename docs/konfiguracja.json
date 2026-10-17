@@ -978,7 +978,7 @@
         {
           "id": "AST-PRZ053-002",
           "path": "src/moduly/kanaly/klasyfikacja.ts",
-          "line": 49,
+          "line": 70,
           "expression": "env[`${d.prefiks}_HISTORIA_KONTO_APILO`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -989,7 +989,7 @@
         "src/moduly/kanaly/historia.ts:17",
         "src/moduly/kanaly/historia.ts:18",
         "src/moduly/kanaly/konfiguracja.ts:90",
-        "src/moduly/kanaly/klasyfikacja.ts:49"
+        "src/moduly/kanaly/klasyfikacja.ts:70"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -1911,7 +1911,7 @@
         {
           "id": "AST-037",
           "path": "src/moduly/zamowienia/konfiguracja.ts",
-          "line": 13,
+          "line": 14,
           "expression": "env.GUS_KLUCZ",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1919,7 +1919,7 @@
         {
           "id": "AST-038",
           "path": "src/moduly/zamowienia/konfiguracja.ts",
-          "line": 13,
+          "line": 14,
           "expression": "env.GUS_KLUCZ",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1928,7 +1928,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/core/tryb.ts:17",
-        "src/moduly/zamowienia/konfiguracja.ts:13"
+        "src/moduly/zamowienia/konfiguracja.ts:14"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2229,7 +2229,7 @@
         {
           "id": "AST-040",
           "path": "src/moduly/zamowienia/konfiguracja.ts",
-          "line": 14,
+          "line": 15,
           "expression": "env.DPD_NADAWCA_NAZWA",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2261,7 +2261,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zamowienia/konfiguracja.ts:14",
+        "src/moduly/zamowienia/konfiguracja.ts:15",
         "src/moduly/wysylka/kurierzy.ts:8",
         "src/moduly/faktury/modul.ts:43",
         "scripts/oms-import-istniejacy-podjazd-dpd.mjs:19"
@@ -2303,7 +2303,7 @@
         {
           "id": "AST-041",
           "path": "src/moduly/zamowienia/konfiguracja.ts",
-          "line": 14,
+          "line": 15,
           "expression": "env.DPD_NADAWCA_ULICA",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2335,7 +2335,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zamowienia/konfiguracja.ts:14",
+        "src/moduly/zamowienia/konfiguracja.ts:15",
         "src/moduly/wysylka/kurierzy.ts:8",
         "src/moduly/faktury/modul.ts:43",
         "scripts/oms-import-istniejacy-podjazd-dpd.mjs:20"
@@ -2377,7 +2377,7 @@
         {
           "id": "AST-042",
           "path": "src/moduly/zamowienia/konfiguracja.ts",
-          "line": 14,
+          "line": 15,
           "expression": "env.DPD_NADAWCA_KOD",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2409,7 +2409,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zamowienia/konfiguracja.ts:14",
+        "src/moduly/zamowienia/konfiguracja.ts:15",
         "src/moduly/wysylka/kurierzy.ts:8",
         "src/moduly/faktury/modul.ts:44",
         "scripts/oms-import-istniejacy-podjazd-dpd.mjs:21"
@@ -2451,7 +2451,7 @@
         {
           "id": "AST-043",
           "path": "src/moduly/zamowienia/konfiguracja.ts",
-          "line": 14,
+          "line": 15,
           "expression": "env.DPD_NADAWCA_MIASTO",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2483,7 +2483,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zamowienia/konfiguracja.ts:14",
+        "src/moduly/zamowienia/konfiguracja.ts:15",
         "src/moduly/wysylka/kurierzy.ts:8",
         "src/moduly/faktury/modul.ts:44",
         "scripts/oms-import-istniejacy-podjazd-dpd.mjs:22"
@@ -2516,7 +2516,7 @@
         {
           "id": "AST-044",
           "path": "src/moduly/zamowienia/konfiguracja.ts",
-          "line": 14,
+          "line": 15,
           "expression": "env.DPD_NADAWCA_KRAJ",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2540,7 +2540,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zamowienia/konfiguracja.ts:14",
+        "src/moduly/zamowienia/konfiguracja.ts:15",
         "src/moduly/wysylka/kurierzy.ts:20",
         "src/moduly/faktury/modul.ts:45"
       ],
@@ -4085,7 +4085,7 @@
         {
           "id": "AST-130",
           "path": "src/moduly/zamowienia/konfiguracja.ts",
-          "line": 11,
+          "line": 12,
           "expression": "env.OMS_CENNIKI",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4093,7 +4093,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zamowienia/konfiguracja.ts:11"
+        "src/moduly/zamowienia/konfiguracja.ts:12"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -4384,6 +4384,34 @@
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
       "sourceReviewCommit": "PRZ-083 (pasek z licznikiem i nakładka restartu, decyzja właściciela 15.10)"
+    },
+    {
+      "nazwa": "OMS_KANAL_INDYWIDUALNY",
+      "wlasciciel": "kanaly / klasyfikacja raportowa; konsumenci raporty, zamowienia (filtr listy), api-panelu",
+      "sekcja": "Historia i WDT",
+      "zakres": "produkt",
+      "wymagalnosc": "opcjonalna",
+      "domyslna": "pusta = jak historia: włączony, gdy OMS_HISTORIA_KLASYFIKACJA ma niepuste prefiksyIndywidualne",
+      "skutekBraku": "Czysta instalacja bez kanału INDYWIDUALNE: brak granicy raportu, brak „Indywidualne” w filtrze listy, POST /api/zamowienia-z-karty → 503. Produkcja z prefiksami indywidualnymi działa jak przed PRZ-089.",
+      "walidacja": "1 albo 0 (po trim); inna wartość odmawia startu. 0 przy niepustych prefiksyIndywidualne odmawia startu (sprzeczność).",
+      "decyzja": "PRZ-089 — decyzja właściciela 16.10.2026: GDD i INDYWIDUALNE warunkowo",
+      "odczyty": [
+        {
+          "id": "AST-PRZ089-1",
+          "path": "src/moduly/kanaly/klasyfikacja.ts",
+          "line": 25,
+          "expression": "env.OMS_KANAL_INDYWIDUALNY",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
+        }
+      ],
+      "wywolaniaPosrednie": [],
+      "sciezkaOdczytu": [
+        "src/moduly/kanaly/klasyfikacja.ts:25"
+      ],
+      "aktywacja": "włączenie właściciela w kompozycji",
+      "wlaczoneWMainNaPinie": true,
+      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
     }
   ],
   "mapowaniaDynamiczne": [
@@ -4701,7 +4729,7 @@
     },
     {
       "path": "src/moduly/kanaly/klasyfikacja.ts",
-      "line": 49,
+      "line": 70,
       "expression": "env[`${d.prefiks}_HISTORIA_KONTO_APILO`]",
       "names": [
         "<P>_HISTORIA_KONTO_APILO"
@@ -6839,14 +6867,14 @@
     },
     {
       "path": "src/moduly/zamowienia/konfiguracja.ts",
-      "line": 8,
+      "line": 9,
       "expression": "env",
       "callee": "wczytajKlientowWdt",
       "call": "wczytajKlientowWdt(env)"
     },
     {
       "path": "src/moduly/zamowienia/konfiguracja.ts",
-      "line": 9,
+      "line": 10,
       "expression": "env",
       "callee": "wczytajSprzedawce",
       "call": "wczytajSprzedawce(env)"
@@ -6976,6 +7004,27 @@
       "expression": "env",
       "callee": "konfiguracjaZamowien",
       "call": "konfiguracjaZamowien(env)"
+    },
+    {
+      "path": "src/moduly/kanaly/klasyfikacja.ts",
+      "line": 65,
+      "expression": "env",
+      "callee": "kanalIndywidualnyWlaczony",
+      "call": "kanalIndywidualnyWlaczony(env)"
+    },
+    {
+      "path": "src/moduly/zamowienia/konfiguracja.ts",
+      "line": 13,
+      "expression": "env",
+      "callee": "kanalIndywidualnyWlaczony",
+      "call": "kanalIndywidualnyWlaczony(env)"
+    },
+    {
+      "path": "src/moduly/api-panelu/modul.ts",
+      "line": 11,
+      "expression": "env",
+      "callee": "kanalIndywidualnyWlaczony",
+      "call": "kanalIndywidualnyWlaczony(env)"
     }
   ],
   "prefiksy": {
@@ -7304,7 +7353,7 @@
     },
     {
       "path": "src/moduly/zamowienia/konfiguracja.ts",
-      "sha256": "a5a47e7c914ef013267a85e5e944e27204db2036e383cd41ff06e6b077e5dcea",
+      "sha256": "c62b5f17c0a9d55c9f19db0cfb2685e84417e5fd07a802bda1dead1444f2297a",
       "normalizacja": "LF"
     },
     {
@@ -7364,7 +7413,7 @@
     },
     {
       "path": "src/moduly/kanaly/klasyfikacja.ts",
-      "sha256": "f3f9359de1f6406a684e6c3fdc917aaca455b950688d3763d8df39ff0fea1e58",
+      "sha256": "9bf89d8b2f79bc158a4123557b63aa82c5d0dc002ed83d1c6a7ff6a3dc685a00",
       "normalizacja": "LF"
     },
     {
@@ -7456,7 +7505,7 @@
     },
     {
       "path": "src/moduly/kanaly/klasyfikacja.ts",
-      "sha256": "f3f9359de1f6406a684e6c3fdc917aaca455b950688d3763d8df39ff0fea1e58",
+      "sha256": "9bf89d8b2f79bc158a4123557b63aa82c5d0dc002ed83d1c6a7ff6a3dc685a00",
       "normalizacja": "LF"
     }
   ],
@@ -7776,7 +7825,7 @@
       },
       {
         "path": "src/moduly/kanaly/klasyfikacja.ts",
-        "sha256": "f3f9359de1f6406a684e6c3fdc917aaca455b950688d3763d8df39ff0fea1e58",
+        "sha256": "9bf89d8b2f79bc158a4123557b63aa82c5d0dc002ed83d1c6a7ff6a3dc685a00",
         "odczyty": [
           {
             "expression": "env[`${d.prefiks}_HISTORIA_KONTO_APILO`]",

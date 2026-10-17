@@ -34,6 +34,8 @@ export function buildOmsServer(o: Record<string, any>) {
   const env={OMS_SPRZEDAWCA_NIP:'1234563218',OMS_RACHUNEK:'34109010140000000000000000',
     OMS_USER:config.auth?.user??'operator',OMS_PASS:config.auth?.pass??'atrapa',
     OMS_ETYKIETY_KATALOG:tmpdir(),OMS_PROFORMY_KATALOG:tmpdir(),
+    // PRZ-089: fixture historyczna ma panel zamówień indywidualnych (trasy /api/zamowienia-z-karty).
+    OMS_KANAL_INDYWIDUALNY:'1',
     DPD_NADAWCA_NAZWA:config.nadawca?.nazwa,DPD_NADAWCA_ULICA:config.nadawca?.ulica,
     DPD_NADAWCA_KOD:config.nadawca?.kod,DPD_NADAWCA_MIASTO:config.nadawca?.miasto,DPD_NADAWCA_KRAJ:config.nadawca?.kraj,
     ...o.env};

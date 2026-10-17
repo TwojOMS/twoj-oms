@@ -53,6 +53,8 @@ export const ENV_DEMO = Object.freeze({
   OMS_KANALY: JSON.stringify(KANALY_DEMO),
   OMS_RAPORTY_NAZWY_KANALOW: '{}',
   OMS_RAPORTY_PODLOGA_KOSZTOW: '2026-01',
+  // PRZ-089: demo pokazuje zamówienia indywidualne (grawer) — kanał raportu i filtr listy tylko z tą zmienną.
+  OMS_KANAL_INDYWIDUALNY: '1',
   // PRZ-082: adres wystawcy proformy (domena/adres-sprzedawcy.js) — bez niego „Wystaw proformę” w demo odmawiało.
   // Sam adres nie włącza kuriera: wysyłka wymaga DPD_URL albo INPOST_TOKEN (moduly/wysylka/kurierzy.ts).
   DPD_NADAWCA_NAZWA: 'Pracownia Półcień (demo)',

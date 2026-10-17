@@ -18,4 +18,4 @@ jobs:
       # Testy PDF czytają tekst wygenerowanych dokumentów programem pdftotext.
       - run: sudo apt-get update && sudo apt-get install -y poppler-utils
       - run: npm ci
-      - run: npm run sprawdz -- -- --maxWorkers=2 --minWorkers=1
+      - run: npm run sprawdz -- -- --maxWorkers=2

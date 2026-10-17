@@ -267,7 +267,8 @@ app.get('/', async (req, reply) => {
       adresBezFiltrow: adresZFiltrami({}, kontekst),
       metodyDoFiltra: METODY_DO_FILTRA.map((k) => ({ klucz: k, etykieta: ETYKIETY_WYSYLKI[k] ?? k })),
       // Katalog i etykiety pochodzą z jawnej konfiguracji także przed pierwszym zamówieniem.
-      kanalyDoFiltra: kanalyDoFiltra(config.definicje),
+      // PRZ-089: „Indywidualne” tylko tam, gdzie panel zamówień indywidualnych istnieje (OMS_KANAL_INDYWIDUALNY).
+      kanalyDoFiltra: kanalyDoFiltra(config.definicje).filter(k => k.klucz !== 'indywidualne' || config.kanalIndywidualny !== false),
       // Lista metod platnosci Z BAZY, nie ze stalej: sklep dokłada bramki bez pytania nas
       // o zdanie, a wpisana na sztywno lista po cichu przestalaby byc kompletem.
       metodyPlatnosci: opcjeMetodPlatnosci(metodyPlatnosciWBazie(db)),
@@ -294,8 +295,11 @@ app.get('/', async (req, reply) => {
       // czkniec, TA SAMA regula, co w tabelce ostrzezen nad paskiem (domain/zdrowie.js,
       // bladPolleraNaEkran). Dwie rozne odpowiedzi o tym samym pollerze na jednym ekranie
       // — tabelka milczy, pasek krzyczy „Błąd" po angielsku — ucza ignorowania obu.
+      // PRZ-089: instalacja bez kanałów (OMS_KANALY=[]) nie ma pollera wcale — „Brak synchronizacji” stałby
+      // tam bez końca jak awaria, choć /health mówi `zdrowy: true, zrodla: []`.
+      bezKanalow: !stanPollera && !config.definicje?.length,
       stanPollera: stanPollera
-        ? { ...stanPollera, kanal: adresKanalu(stanPollera.sklep, config.definicje), ostatni_blad: bladPolleraNaEkran(stanPollera) }
+        ?{ ...stanPollera, kanal: adresKanalu(stanPollera.sklep, config.definicje), ostatni_blad: bladPolleraNaEkran(stanPollera) }
         : null,
       // „Zaznacz wszystkie" BEZ JAVASCRIPTU — zwykly adres, tak jak filtry i wyszukiwanie
       // (przewodnik OMS: stan chodzi przez adres strony). Odhaczenie pojedynczych wierszy

@@ -76,7 +76,7 @@ budowania), `konfiguracja(env)` (rzuca błąd przy złej wartości — **nie pod
 ```bash
 npm run typy                               # tsc, ma dać 0 błędów
 npx vitest run tests/moduly/<moduł>        # w trakcie pracy: tylko dotknięty moduł
-npm run sprawdz -- -- --maxWorkers=2 --minWorkers=1   # pełna: typy, strażniki, wszystkie testy (kilkadziesiąt minut)
+npm run sprawdz -- -- --maxWorkers=2   # pełna: typy, strażniki, wszystkie testy (kilkadziesiąt minut)
 ```
 
 - Na Windowsie testy PDF szukają `pdftotext` (Poppler) w `PATH`; bez niego pada uruchomienie programu, nie walidacja.
