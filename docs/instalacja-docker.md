@@ -279,8 +279,40 @@ Sprawdzenie: po 2–3 minutach w `zdrowie`, w sekcji `poller` → `zrodla`, kana
 `ostatniPrzebiegAt` i `"blad": null` (zły adres albo klucze: `"blad": "Sklep nieosiągalny…"`);
 zamówienia od daty `OD` są na liście, filtr kanału pokazuje etykietę.
 
-**Allegro** — aplikacja w Allegro Developer (client ID i secret) i data początkowa. Drugi kanał
-dopisujesz do tej samej listy `OMS_KANALY`:
+**Allegro** — najpierw własna aplikacja w Allegro Developer (daje client ID i secret), potem
+wpisy w konfiguracji i połączenie konta.
+
+*Aplikacja w Allegro.* Zaloguj się na konto sprzedawcy i wejdź na `https://apps.developer.allegro.pl`
+(konto musi mieć włączone logowanie dwustopniowe). Zarejestruj nową aplikację:
+
+- nazwa — dowolna; Allegro pokaże ją przy wyrażaniu zgody (np. „OMS mojej firmy”);
+- typ: **„Aplikacja będzie działać w środowisku bez dostępu do przeglądarki albo klawiatury”** —
+  OMS łączy konto przez device flow (kod do przepisania). Adresu przekierowania nie podajesz.
+  **Typu nie da się zmienić później** — przy złym wyborze rejestrujesz aplikację od nowa;
+- zaakceptuj regulamin REST API.
+
+Po zapisaniu otwórz aplikację na liście i **zaznacz uprawnienia (scope)**, których OMS potrzebuje:
+`allegro:api:orders:read`, `allegro:api:orders:write`, `allegro:api:sale:offers:read`,
+`allegro:api:shipments:read`, `allegro:api:shipments:write`, `allegro:api:messaging`,
+`allegro:api:disputes`. Zakresy trafiają do połączenia w chwili wiązania konta — dopisane później
+nie zadziałają, dopóki nie połączysz kanału ponownie (OMS pokazuje wtedy przy kanale, których brakuje).
+Client ID i Client Secret skopiuj ze strony aplikacji do konfiguracji niżej.
+
+Regulamin REST API (wersja od 1.09.2026) — trzy rzeczy, które dotyczą każdej instalacji:
+
+- **jeden klucz na konto** (poradnik Allegro pisze jeszcze o pięciu — rozstrzyga regulamin). Jeśli
+  masz już zarejestrowaną inną aplikację, sprawdź listę przed dodaniem nowej. Integratorów
+  autoryzowanych przez OAuth (BaseLinker, Apilo itp.) to nie dotyczy — działają na własnych kluczach;
+- klucz trzeba **użyć w ciągu 30 dni** od rejestracji, a OMS ma odpytywać Allegro co najmniej raz
+  na 90 dni — inaczej Allegro może klucz usunąć. Rejestruj aplikację wtedy, gdy podłączasz kanał;
+- **klucza nie przekazuj nikomu** (także wykonawcy, który stawia Ci OMS) — za udostępnienie
+  regulamin przewiduje karę umowną. Wykonawca może wpisać go na Twoim serwerze, ale aplikacja
+  ma być zarejestrowana na Twoim koncie.
+
+Jedna aplikacja wystarcza do kilku kont Allegro: każdy kanał ma te same `CLIENT_ID`/`CLIENT_SECRET`,
+a konto wybiera się przy połączeniu (niżej).
+
+*Konfiguracja.* Drugi kanał dopisujesz do tej samej listy `OMS_KANALY`:
 
 ```
 OMS_KANALY=[{"klucz":"woo_pilot",…},{"klucz":"allegro_pilot","typ":"allegro","prefiks":"ALLEGRO_PILOT","etykieta":"Allegro Pilot","raport":"ALLEGRO_PILOT"}]
