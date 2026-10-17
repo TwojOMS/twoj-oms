@@ -15,9 +15,9 @@ const naglowek = { authorization: `Basic ${Buffer.from('adam:x').toString('base6
 const poller = { stan: () => ({ ostatni_przebieg_at: '2026-08-21T09:00:00', ostatni_blad: null }) };
 
 const produkt = (nad = {}) => ({
-  kanal: 'szkicownia', produkt_id: '28040', wariant_id: '', nazwa: 'Szablon malarski Pieszy',
-  sku_sklepu: 'SZ-PIE-70', cena_gr: 7490, rozmiar_tekst: '70x100', kategorie: [], zdjecia: [],
-  adres: 'https://szkicownia.pl/produkt/pieszy', odczytane_at: '2026-08-21T08:00:00', ...nad,
+  kanal: 'szkicownia', produkt_id: '28040', wariant_id: '', nazwa: 'Lampa wisząca Szpulka',
+  sku_sklepu: 'LP-SZP-70', cena_gr: 7490, rozmiar_tekst: '70x100', kategorie: [], zdjecia: [],
+  adres: 'https://sklep-polcien.example.invalid/produkt/szpulka', odczytane_at: '2026-08-21T08:00:00', ...nad,
 });
 
 const zmapowane = (nad = {}) => ({
@@ -39,13 +39,13 @@ beforeEach(async () => {
 const get = (url) => app.inject({ method: 'GET', url, headers: naglowek });
 
 describe('fragment z wynikami — ekran zakładania', () => {
-  const adres = '/zamowienia/nowe/magazyn/wyniki?magazyn=pieszy&cennik=szkicownia';
+  const adres = '/zamowienia/nowe/magazyn/wyniki?magazyn=szpulka&cennik=szkicownia';
 
   it('oddaje SAM kawałek, bez koperty strony', async () => {
     const odp = await get(adres);
     expect(odp.statusCode).toBe(200);
     expect(odp.headers['content-type']).toMatch(/text\/html/);
-    expect(odp.body).toContain('Szablon malarski Pieszy');
+    expect(odp.body).toContain('Lampa wisząca Szpulka');
     // ⚠️ Fragment oprawiony layoutem wjechałby do środka strony jako druga, zagnieżdżona
     // strona — z drugim <html>, drugim menu i drugim paskiem tytułu.
     expect(odp.body).not.toContain('<!doctype html>');
@@ -63,7 +63,7 @@ describe('fragment z wynikami — ekran zakładania', () => {
       method: 'POST',
       url: '/zamowienia/nowe/magazyn',
       headers: naglowek,
-      payload: { magazyn: 'pieszy', cennik: 'szkicownia' },
+      payload: { magazyn: 'szpulka', cennik: 'szkicownia' },
     })).body;
     expect(kawalek.length).toBeGreaterThan(50);
     expect(pelna).toContain(kawalek);
@@ -91,7 +91,7 @@ describe('fragment z wynikami — ekran zakładania', () => {
   // Fragment nie może być tylną furtką do cen z prowizją.
   it('kanał spoza cenników wraca jako cennik detaliczny', async () => {
     zapiszProduktSklepowy(db, produkt({ kanal: 'allegro_szkicownia', produkt_id: '999', cena_gr: 9900 }));
-    const odp = await get('/zamowienia/nowe/magazyn/wyniki?magazyn=pieszy&cennik=allegro_szkicownia');
+    const odp = await get('/zamowienia/nowe/magazyn/wyniki?magazyn=szpulka&cennik=allegro_szkicownia');
     expect(odp.body).toContain('74.90 zł');
     expect(odp.body).not.toContain('99.00 zł');
   });
@@ -100,8 +100,8 @@ describe('fragment z wynikami — ekran zakładania', () => {
 describe('fragment z wynikami — karta zamówienia', () => {
   it('mówi DOKŁADNIE to samo, co pełna karta', async () => {
     const id = zapiszZamowienie(db, 'reczne', zmapowane(), {});
-    const kawalek = (await get(`/zamowienia/${id}/magazyn/wyniki?magazyn=pieszy&cennik=szkicownia`)).body.trim();
-    const pelna = (await get(`/zamowienia/${id}?edytuj=pozycje&magazyn=pieszy&cennik=szkicownia`)).body;
+    const kawalek = (await get(`/zamowienia/${id}/magazyn/wyniki?magazyn=szpulka&cennik=szkicownia`)).body.trim();
+    const pelna = (await get(`/zamowienia/${id}?edytuj=pozycje&magazyn=szpulka&cennik=szkicownia`)).body;
     expect(kawalek.length).toBeGreaterThan(50);
     expect(pelna).toContain(kawalek);
   });
@@ -111,13 +111,13 @@ describe('fragment z wynikami — karta zamówienia', () => {
   // To dwie różne drogi pieniędzy i dlatego są dwa szablony, a nie jeden z warunkiem.
   it('niesie formularz POST, a nie formaction ekranu zakładania', async () => {
     const id = zapiszZamowienie(db, 'reczne', zmapowane(), {});
-    const body = (await get(`/zamowienia/${id}/magazyn/wyniki?magazyn=pieszy`)).body;
+    const body = (await get(`/zamowienia/${id}/magazyn/wyniki?magazyn=szpulka`)).body;
     expect(body).toContain(`action="/zamowienia/${id}/pozycje/z-magazynu"`);
     expect(body).not.toContain('formaction=');
   });
 
   it('nieznane zamówienie → 404, a nie pusty kawałek', async () => {
-    expect((await get('/zamowienia/9999/magazyn/wyniki?magazyn=pieszy')).statusCode).toBe(404);
+    expect((await get('/zamowienia/9999/magazyn/wyniki?magazyn=szpulka')).statusCode).toBe(404);
   });
 });
 
@@ -144,7 +144,7 @@ describe('wpięcie htmx', () => {
   // dwukrokowość bierze się stąd, że nic nie liczy się na żywo (tests/oms/web-zwroty.test.js).
   // Globalne wpięcie złamało tamten strażnik przy pierwszym uruchomieniu suity.
   // ⚠️⚠️ SELEKTOR `hx-include`, KTORY NIC NIE WSKAZUJE, JEST CICHY. htmx wysle wtedy zapytanie
-  // BEZ cennika, serwer podstawi domyslny detal i operator dostanie ceny ze szkicownia.pl,
+  // BEZ cennika, serwer podstawi domyslny detal i operator dostanie ceny ze sklepu A,
   // choc na ekranie ma wybrane PRO. Zaden blad tego nie zglosi — ani w przegladarce, ani na
   // serwerze. To jedyne miejsce w tej funkcji, ktorego test serwerowy normalnie NIE widzi,
   // wiec sprawdzamy je wprost: czy to, co selektor wskazuje, w ogole na stronie istnieje.
@@ -202,7 +202,7 @@ describe('wpięcie htmx', () => {
   // Pasek szukania NIE jest podmieniany — gdyby wjeżdżał razem z wynikami, każde naciśnięcie
   // klawisza przerysowywałoby pole, w którym operator właśnie pisze.
   it('podmieniany kawałek nie zawiera pola szukania', async () => {
-    const body = (await get('/zamowienia/nowe/magazyn/wyniki?magazyn=pieszy&cennik=szkicownia')).body;
+    const body = (await get('/zamowienia/nowe/magazyn/wyniki?magazyn=szpulka&cennik=szkicownia')).body;
     expect(body).not.toContain('name="magazyn"');
     expect(body).not.toContain('name="cennik"');
   });

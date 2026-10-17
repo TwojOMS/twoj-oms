@@ -4,8 +4,8 @@ import {
 } from '../pomoc/cenniki-historyczne-fixture.js';
 
 const produkt = (nad = {}) => ({
-  kanal: 'szkicownia', produkt_id: '28040', wariant_id: '', nazwa: 'Szablon malarski Pieszy',
-  sku_sklepu: 'SZ-PIE-70', cena_gr: 7490, rozmiar_tekst: '70x100', ...nad,
+  kanal: 'szkicownia', produkt_id: '28040', wariant_id: '', nazwa: 'Lampa stołowa Grzybek',
+  sku_sklepu: 'LS-GRZ-70', cena_gr: 7490, rozmiar_tekst: '70x100', ...nad,
 });
 
 describe('cennik — Allegro nigdy nie jest źródłem ceny', () => {
@@ -43,28 +43,28 @@ describe('cennik — Allegro nigdy nie jest źródłem ceny', () => {
 
 describe('nazwa pozycji — rozmiar w nazwie, ale tylko raz', () => {
   it('dokłada rozmiar z wariantu', () => {
-    expect(nazwaPozycji(produkt())).toBe('Szablon malarski Pieszy 70x100');
+    expect(nazwaPozycji(produkt())).toBe('Lampa stołowa Grzybek 70x100');
   });
 
   it('nie dokłada rozmiaru, który już jest w nazwie', () => {
-    expect(nazwaPozycji({ nazwa: 'szablon malarski wielorazowy logo 50cm', rozmiar_tekst: '50cm' }))
-      .toBe('szablon malarski wielorazowy logo 50cm');
+    expect(nazwaPozycji({ nazwa: 'lampa wisząca kopuła mosiężna 50cm', rozmiar_tekst: '50cm' }))
+      .toBe('lampa wisząca kopuła mosiężna 50cm');
   });
 
   it('porównuje bez wielkości liter', () => {
-    expect(nazwaPozycji({ nazwa: 'Szablon Pieszy 70X100', rozmiar_tekst: '70x100' })).toBe('Szablon Pieszy 70X100');
+    expect(nazwaPozycji({ nazwa: 'Lampa Grzybek 70X100', rozmiar_tekst: '70x100' })).toBe('Lampa Grzybek 70X100');
   });
 
   it('produkt bez wariantu zostaje ze swoją nazwą', () => {
-    expect(nazwaPozycji({ nazwa: 'Pędzel gąbkowy', rozmiar_tekst: null })).toBe('Pędzel gąbkowy');
+    expect(nazwaPozycji({ nazwa: 'Żarówka ciepła', rozmiar_tekst: null })).toBe('Żarówka ciepła');
   });
 });
 
 describe('pozycjaZProduktu', () => {
   it('składa pozycję z ceną z lustra i sumą linii', () => {
     expect(pozycjaZProduktu(produkt(), '3')).toEqual({
-      nazwa: 'Szablon malarski Pieszy 70x100',
-      sku: 'SZ-PIE-70',
+      nazwa: 'Lampa stołowa Grzybek 70x100',
+      sku: 'LS-GRZ-70',
       // ⚠️ CENA KATALOGOWA JEDZIE ZAWSZE, takze przy rabacie zerowym (21.08.2026) — pozycja
       // bez niej jest niewidzialna dla przeliczenia rabatem, wiec rabat wpisany na karcie
       // PO dodaniu towaru nie mialby czego dotknac.
@@ -118,31 +118,31 @@ describe('pozycjaZProduktu', () => {
   it('nieliczbowy identyfikator produktu idzie jako brak, pozycja i tak powstaje', () => {
     const p = pozycjaZProduktu(produkt({ produkt_id: 'abc' }), '1');
     expect(p.produkt_id).toBeNull();
-    expect(p.nazwa).toBe('Szablon malarski Pieszy 70x100');
+    expect(p.nazwa).toBe('Lampa stołowa Grzybek 70x100');
   });
 });
 
 describe('rozmiarDoPokazania', () => {
   // ⚠️ Lustro wpisuje w `rozmiar_tekst` CALA NAZWE, gdy produkt nie ma atrybutu rozmiaru
   // (`rozmiarZAtrybutow(...) ?? nazwa` w services/magazyn-sync.js). Zmierzone na produkcji:
-  // „Dwa kotki - aplikacja 30x48cm" wychodzilo na liscie dwa razy pod rzad.
+  // „Klosz opalowy - plafon 30x48cm" wychodzilo na liscie dwa razy pod rzad.
   it('nie pokazuje rozmiaru, który jest całą nazwą', () => {
-    expect(rozmiarDoPokazania({ nazwa: 'Dwa kotki - aplikacja 30x48cm', rozmiar_tekst: 'Dwa kotki - aplikacja 30x48cm' }))
+    expect(rozmiarDoPokazania({ nazwa: 'Klosz opalowy - plafon 30x48cm', rozmiar_tekst: 'Klosz opalowy - plafon 30x48cm' }))
       .toBeNull();
   });
 
   it('pokazuje prawdziwy rozmiar wariantu', () => {
-    expect(rozmiarDoPokazania({ nazwa: 'Szablon malarski Pieszy', rozmiar_tekst: '70x100' })).toBe('70x100');
+    expect(rozmiarDoPokazania({ nazwa: 'Lampa stołowa Grzybek', rozmiar_tekst: '70x100' })).toBe('70x100');
   });
 
   it('milczy, gdy rozmiaru nie ma', () => {
-    expect(rozmiarDoPokazania({ nazwa: 'Pędzel', rozmiar_tekst: null })).toBeNull();
+    expect(rozmiarDoPokazania({ nazwa: 'Żarówka', rozmiar_tekst: null })).toBeNull();
   });
 
   // Ta sama regula, co przy nazwie pozycji — ekran i faktura maja mowic o tym samym.
   it('gaśnie dokładnie wtedy, gdy nazwa pozycji też nie dostaje rozmiaru', () => {
-    const p = { nazwa: 'szablon logo 50cm', rozmiar_tekst: '50cm' };
+    const p = { nazwa: 'lampa kopuła 50cm', rozmiar_tekst: '50cm' };
     expect(rozmiarDoPokazania(p)).toBeNull();
-    expect(nazwaPozycji(p)).toBe('szablon logo 50cm');
+    expect(nazwaPozycji(p)).toBe('lampa kopuła 50cm');
   });
 });

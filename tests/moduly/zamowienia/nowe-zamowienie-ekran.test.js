@@ -46,7 +46,7 @@ describe('paczkomat na ekranie zakładania', () => {
     const r = await wyslij('/zamowienia/nowe', {
       w_nazwa: 'Jan Kowalski', dostawa: 'inpost_paczkomat', platnosc: 'przelew',
       punkt_odbioru: ' kty01m ', koszt_dostawy_brutto: '12,90',
-      poz_nazwa: 'Szablon', poz_ilosc: '1', poz_cena_brutto: '61.50', poz_sku: '', poz_cena_netto: '',
+      poz_nazwa: 'Lampa', poz_ilosc: '1', poz_cena_brutto: '61.50', poz_sku: '', poz_cena_netto: '',
     });
     expect(r.statusCode).toBeLessThan(400);
     const z = pobierzZamowienie(db, 1);
@@ -277,19 +277,19 @@ describe('ekran zakładania nie skacze do góry', () => {
   // klika się pięć razy pod rząd, więc jego kotwica boli najbardziej.
   it('„Dodaj" z magazynu wraca do wyszukiwarki i potwierdza, co dodał', async () => {
     zapiszProduktSklepowy(db, {
-      kanal: 'szkicownia', produkt_id: '28040', wariant_id: '', nazwa: 'Szablon malarski Pieszy',
-      sku_sklepu: 'SZ-PIE-70', cena_gr: 7490, rozmiar_tekst: '70x100', kategorie: [], zdjecia: [],
-      adres: 'https://szkicownia.pl/produkt/pieszy', odczytane_at: '2026-08-21T08:00:00',
+      kanal: 'szkicownia', produkt_id: '28040', wariant_id: '', nazwa: 'Lampa stołowa Grzybek',
+      sku_sklepu: 'LMP-GRZ-30', cena_gr: 7490, rozmiar_tekst: '30x45', kategorie: [], zdjecia: [],
+      adres: 'https://szkicownia.pl/produkt/grzybek', odczytane_at: '2026-08-21T08:00:00',
     });
-    const zWynikami = await wyslij('/zamowienia/nowe/magazyn', { magazyn: 'pieszy', cennik: 'szkicownia' });
+    const zWynikami = await wyslij('/zamowienia/nowe/magazyn', { magazyn: 'grzybek', cennik: 'szkicownia' });
     expect(zWynikami.body).toContain('formaction="/zamowienia/nowe/magazyn/dodaj#magazyn"');
 
     const poDodaniu = await wyslij('/zamowienia/nowe/magazyn/dodaj', {
-      magazyn: 'pieszy', cennik: 'szkicownia', wybrany: '0',
+      magazyn: 'grzybek', cennik: 'szkicownia', wybrany: '0',
       mag_kanal: 'szkicownia', mag_produkt_id: '28040', mag_wariant_id: '', mag_ilosc: '3',
     });
     // Potwierdzenie stoi przy wyszukiwarce, bo tam wraca ekran — dopisana pozycja jest wyżej,
     // często poza widokiem.
-    expect(poDodaniu.body).toMatch(/Dodano do zamówienia:[\s\S]{0,120}Szablon malarski Pieszy/);
+    expect(poDodaniu.body).toMatch(/Dodano do zamówienia:[\s\S]{0,120}Lampa stołowa Grzybek/);
   });
 });

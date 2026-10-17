@@ -212,6 +212,12 @@ export function mapujZamowienie(surowe, mapowanie) {
       produkt_id: Number.isInteger(Number(p.product_id)) && Number(p.product_id) > 0
         ? Number(p.product_id)
         : null,
+      // PRZ-091: identyfikator WARIANTU — wylacznie do powiazania pozycji z karta produktu przy stanach
+      // magazynowych (karta jest per wariant). Odnosnik dalej idzie po `produkt_id` rodzica (wyzej).
+      // Produkt prosty ma `variation_id = 0` — to nie wariant, wiec `null`.
+      wariant_id: Number.isInteger(Number(p.variation_id)) && Number(p.variation_id) > 0
+        ? String(Number(p.variation_id))
+        : null,
     })),
   };
 }

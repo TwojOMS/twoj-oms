@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import { zbudujOms } from '../../src/oms/bootstrap.ts';
 import { zalozKonto } from '../../src/core/bezpieczenstwo/konta.js';
 import { zapiszZamowienie } from '../../src/oms/db/zamowienia.js';
-import { zapiszProduktSklepowy, utworzWzoryZNiepowiazanych } from '../../src/oms/db/magazyn.js';
+import { zapiszProduktSklepowy, utworzKartyZNiepowiazanych } from '../../src/oms/db/magazyn.js';
 import { mapujZamowienieAllegro } from '../../src/domena/allegro-mapowanie.js';
 import { metodaZId } from '../../src/domena/allegro-dostawa.js';
 import { mapujZamowienie } from '../../src/domena/mapowanie.js';
@@ -112,7 +112,7 @@ describe('PRZ-062 panel na kanałach pod nazwami klienta', () => {
       const at = '2026-10-05T10:00:00Z';
       zapiszProduktSklepowy(db, { kanal: 'woo_zetaklient', produkt_id: 55, nazwa: 'Klocek sklepowy', sku_sklepu: 'KL-1', cena_gr: 12300, adres: 'https://sklep.zetaklient.example/klocek', odczytane_at: at });
       zapiszProduktSklepowy(db, { kanal: 'allegro_zetaklient', produkt_id: 'of-1', nazwa: 'Klocek syntetyczny', cena_gr: 5000, odczytane_at: at });
-      utworzWzoryZNiepowiazanych(db, { kanalySklepow: ['woo_zetaklient'] } as any);
+      utworzKartyZNiepowiazanych(db, { kanalySklepow: ['woo_zetaklient'] } as any);
     });
   }, 120_000);
   afterAll(async () => {
@@ -195,7 +195,7 @@ describe('PRZ-062 panel na kanałach pod nazwami klienta', () => {
     expect(st.body).toMatch(/<strong>1<\/strong> zamówień tego kanału stoi poza/);
   });
 
-  it('magazyn: lista, karta wzoru i powiązania pokazują kanały klienta pod etykietami', async () => {
+  it('magazyn: lista, karta produktu i powiązania pokazują kanały klienta pod etykietami', async () => {
     for (const url of ['/magazyn', '/magazyn/1', '/magazyn/powiazania', '/magazyn/pominiete']) {
       const r = await s.get(url);
       expect(r.status).toBe(200); czysty(url, r);
@@ -204,8 +204,8 @@ describe('PRZ-062 panel na kanałach pod nazwami klienta', () => {
     expect(lista.body).toContain('<option value="woo_zetaklient">sklep.zetaklient.example</option>');
     expect(lista.body).toContain('<option value="allegro_zetaklient">Allegro Zetaklient</option>');
     expect(lista.body).toContain('Klocek sklepowy');
-    const wzor = await s.get('/magazyn/1');
-    expect(wzor.body).toMatch(/sklep\.zetaklient\.example · KL-1/);
+    const karta = await s.get('/magazyn/1');
+    expect(karta.body).toMatch(/sklep\.zetaklient\.example · KL-1/);
     const pow = await s.get('/magazyn/powiazania');
     expect(pow.body).toContain('Klocek syntetyczny'); expect(pow.body).toContain('Allegro Zetaklient');
   });

@@ -1,14 +1,14 @@
-// Produkty, z ktorych wzor NIE powstal, ulozone tak, zeby dalo sie na nie patrzec.
+// Produkty, z ktorych karta NIE powstala, ulozone tak, zeby dalo sie na nie patrzec.
 //
 // ⚠️⚠️ CALY POWOD ISTNIENIA TEGO PLIKU (mina zmierzona przy Zadaniu 8): pominietych jest
-// okolo 473, z czego **447 to oferty Allegro**, ktore wzorow nie zakladaja CELOWO (wzor
+// okolo 473, z czego **447 to oferty Allegro**, ktore kart nie zakladaja CELOWO (karta
 // powstaje z katalogu sklepu, a oferte wiaze sie z nim recznie — patrz `powodPominiecia`
-// w domain/wzor-z-produktu.js). Realnej roboty jest okolo 26. Plaska lista 473 wierszy
+// w domain/karta-z-produktu.js). Realnej roboty jest okolo 26. Plaska lista 473 wierszy
 // utopilaby te 26 w tamtych 447, a pierwsza reakcja czlowieka na ekran pelen „pominietych"
 // brzmi „to blad, napraw" — i tak zniknelaby jedyna informacja, po ktora sie tu przychodzi.
 //
 // Stad trzy rzeczy naraz: GRUPY po powodzie, LICZBA przy grupie i ROBOTA NA GORZE.
-import { czyPominietyCelowo } from './wzor-z-produktu.js';
+import { czyPominietyCelowo } from './karta-z-produktu.js';
 import { wymagajListyKanalow } from './lista-kanalow.js';
 
 /**
@@ -16,11 +16,11 @@ import { wymagajListyKanalow } from './lista-kanalow.js';
  *
  * `celowo` znaczy „tak ma byc, nie ma tu nic do zrobienia". Rozstrzyga SAMA POZYCJA, a nie
  * tresc powodu: grupa jest celowa dokladnie wtedy, gdy ANI JEDNA jej pozycja nie jest robota.
- * Pyta o to `czyPominietyCelowo` z `domain/wzor-z-produktu.js` — ta sama warstwa, ktora
- * rozstrzyga o zakladaniu wzoru, nie druga jej kopia.
+ * Pyta o to `czyPominietyCelowo` z `domain/karta-z-produktu.js` — ta sama warstwa, ktora
+ * rozstrzyga o zakladaniu karty, nie druga jej kopia.
  *
  * ⚠️ DO 2026-08-11 STALA TU BIALA LISTA KANALOW („celowe = nie ze sklepu"), i to bylo za waskie.
- * Pomiar na produkcyjnej bazie pokazal 13 pozycji ZE SKLEPU, ktore wzorami nie beda nigdy
+ * Pomiar na produkcyjnej bazie pokazal 13 pozycji ZE SKLEPU, ktore kartami nie beda nigdy
  * (`Projekt indywidualny` — 12 wariantow rozniacych sie sama cena — i zaslepka panelu ofert).
  * Lezaly na gorze ekranu jako robota i udawaly usterke, ktorej naprawic sie nie da.
  *

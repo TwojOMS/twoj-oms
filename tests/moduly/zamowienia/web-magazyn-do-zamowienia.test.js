@@ -17,9 +17,9 @@ const zmapowane = (nad = {}) => ({
 });
 
 const produkt = (nad = {}) => ({
-  kanal: 'szkicownia', produkt_id: '28040', wariant_id: '', nazwa: 'Szablon malarski Pieszy',
-  sku_sklepu: 'SZ-PIE-70', cena_gr: 7490, rozmiar_tekst: '70x100', kategorie: [], zdjecia: [],
-  adres: 'https://szkicownia.pl/produkt/pieszy', odczytane_at: '2026-08-21T08:00:00', ...nad,
+  kanal: 'szkicownia', produkt_id: '28040', wariant_id: '', nazwa: 'Lampa stołowa Grzybek',
+  sku_sklepu: 'LMP-GRZ-30', cena_gr: 7490, rozmiar_tekst: '30x45', kategorie: [], zdjecia: [],
+  adres: 'https://szkicownia.pl/produkt/grzybek', odczytane_at: '2026-08-21T08:00:00', ...nad,
 });
 
 let db, app;
@@ -42,7 +42,7 @@ describe('karta — dodaj z magazynu', () => {
     const powrot = '/?status=nowe&kanal=pro';
     const body = (await karta(
       id,
-      `?edytuj=pozycje&magazyn=pieszy&powrot=${encodeURIComponent(powrot)}`,
+      `?edytuj=pozycje&magazyn=grzybek&powrot=${encodeURIComponent(powrot)}`,
     )).body;
     const formularz = body.match(/<form[^>]*id="magazyn-pasek"[^>]*>[\s\S]*?<\/form>/)?.[0];
     expect(formularz).toBeTruthy();
@@ -81,36 +81,36 @@ describe('karta — dodaj z magazynu', () => {
   it('szuka po fragmencie nazwy i pokazuje cenę z cennika', async () => {
     zapiszProduktSklepowy(db, produkt());
     const id = zapiszZamowienie(db, 'reczne', zmapowane(), {});
-    const body = (await karta(id, '?edytuj=pozycje&magazyn=pieszy')).body;
-    expect(body).toContain('Szablon malarski Pieszy');
+    const body = (await karta(id, '?edytuj=pozycje&magazyn=grzybek')).body;
+    expect(body).toContain('Lampa stołowa Grzybek');
     expect(body).toContain('74.90 zł');
   });
 
   // ⚠️ Przy telefonie operator wpisuje dwa slowa z pamieci, a nie poczatek nazwy.
   it('szuka po WSZYSTKICH słowach naraz, w dowolnej kolejności', async () => {
-    zapiszProduktSklepowy(db, produkt({ nazwa: 'szablon malarski wielorazowy logo 50cm', rozmiar_tekst: null }));
+    zapiszProduktSklepowy(db, produkt({ nazwa: 'Lampa wisząca Szpulka 50cm', rozmiar_tekst: null }));
     const id = zapiszZamowienie(db, 'reczne', zmapowane(), {});
-    expect((await karta(id, '?edytuj=pozycje&magazyn=logo+50')).body).toContain('logo 50cm');
-    expect((await karta(id, '?edytuj=pozycje&magazyn=50+logo')).body).toContain('logo 50cm');
-    expect((await karta(id, '?edytuj=pozycje&magazyn=logo+kot')).body).toContain('Nic nie pasuje');
+    expect((await karta(id, '?edytuj=pozycje&magazyn=szpulka+50')).body).toContain('Szpulka 50cm');
+    expect((await karta(id, '?edytuj=pozycje&magazyn=50+szpulka')).body).toContain('Szpulka 50cm');
+    expect((await karta(id, '?edytuj=pozycje&magazyn=szpulka+kot')).body).toContain('Nic nie pasuje');
   });
 
   it('szuka też po SKU', async () => {
     zapiszProduktSklepowy(db, produkt());
     const id = zapiszZamowienie(db, 'reczne', zmapowane(), {});
-    expect((await karta(id, '?edytuj=pozycje&magazyn=SZ-PIE')).body).toContain('Szablon malarski Pieszy');
+    expect((await karta(id, '?edytuj=pozycje&magazyn=LMP-GRZ')).body).toContain('Lampa stołowa Grzybek');
   });
 
   it('dopisuje pozycję z ceną i wariantem z lustra', async () => {
     zapiszProduktSklepowy(db, produkt({ wariant_id: '28041' }));
     const id = zapiszZamowienie(db, 'reczne', zmapowane(), {});
     const odp = await dodaj(id, {
-      kanal: 'szkicownia', produkt_id: '28040', wariant_id: '28041', ilosc: '3', fraza: 'pieszy',
+      kanal: 'szkicownia', produkt_id: '28040', wariant_id: '28041', ilosc: '3', fraza: 'grzybek',
     });
     expect(odp.statusCode).toBe(302);
     const [p] = pozycje(id);
     expect(p).toMatchObject({
-      nazwa: 'Szablon malarski Pieszy 70x100', sku: 'SZ-PIE-70', ilosc: 3,
+      nazwa: 'Lampa stołowa Grzybek 30x45', sku: 'LMP-GRZ-30', ilosc: 3,
       cena_brutto: '74.90', brutto_linii: '224.70', zrodlo: 'reczna', produkt_id: 28040, wariant_id: '28041',
     });
   });
@@ -152,7 +152,7 @@ describe('karta — dodaj z magazynu', () => {
     zapiszProduktSklepowy(db, produkt());
     db.prepare("UPDATE produkty_sklepowe SET zniknal_at = '2026-08-20T10:00:00'").run();
     const id = zapiszZamowienie(db, 'reczne', zmapowane(), {});
-    expect((await karta(id, '?edytuj=pozycje&magazyn=pieszy')).body).toContain('Nic nie pasuje');
+    expect((await karta(id, '?edytuj=pozycje&magazyn=grzybek')).body).toContain('Nic nie pasuje');
     expect((await dodaj(id, { kanal: 'szkicownia', produkt_id: '28040', wariant_id: '', ilosc: '1' })).statusCode).toBe(400);
   });
 
@@ -176,8 +176,8 @@ describe('karta — dodaj z magazynu', () => {
   it('po dodaniu wraca na kartę z tą samą frazą i cennikiem', async () => {
     zapiszProduktSklepowy(db, produkt());
     const id = zapiszZamowienie(db, 'reczne', zmapowane(), {});
-    const odp = await dodaj(id, { kanal: 'szkicownia', produkt_id: '28040', wariant_id: '', ilosc: '1', fraza: 'pieszy' });
-    expect(odp.headers.location).toContain('magazyn=pieszy');
+    const odp = await dodaj(id, { kanal: 'szkicownia', produkt_id: '28040', wariant_id: '', ilosc: '1', fraza: 'grzybek' });
+    expect(odp.headers.location).toContain('magazyn=grzybek');
     expect(odp.headers.location).toContain('cennik=szkicownia');
     expect(odp.headers.location).toContain('edytuj=pozycje');
   });
@@ -186,7 +186,7 @@ describe('karta — dodaj z magazynu', () => {
     zapiszProduktSklepowy(db, produkt({ kanal: 'pro', cena_gr: 6100 }));
     zapiszProduktSklepowy(db, produkt({ cena_gr: 7490 }));
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    const body = (await karta(id, '?edytuj=pozycje&magazyn=pieszy')).body;
+    const body = (await karta(id, '?edytuj=pozycje&magazyn=grzybek')).body;
     expect(body).toContain('61.00 zł');
     expect(body).not.toContain('74.90 zł');
   });
@@ -202,16 +202,16 @@ const ileZamowien = () => db.prepare('SELECT COUNT(*) AS ile FROM zamowienia').g
 describe('ekran zakładania — dodaj z magazynu', () => {
   it('szukanie oddaje wyniki i NIE zakłada zamówienia', async () => {
     zapiszProduktSklepowy(db, produkt());
-    const odp = await nowe('/zamowienia/nowe/magazyn', { magazyn: 'pieszy', cennik: 'szkicownia', w_firma: 'Jan' });
+    const odp = await nowe('/zamowienia/nowe/magazyn', { magazyn: 'grzybek', cennik: 'szkicownia', w_firma: 'Jan' });
     expect(odp.statusCode).toBe(200);
-    expect(odp.body).toContain('Szablon malarski Pieszy');
+    expect(odp.body).toContain('Lampa stołowa Grzybek');
     expect(ileZamowien()).toBe(0);
   });
 
   // ⚠️ Operator trzyma sluchawke — szukanie nie ma prawa skasowac tego, co juz wpisal.
   it('szukanie nie gubi wpisanych danych klienta', async () => {
     zapiszProduktSklepowy(db, produkt());
-    const odp = await nowe('/zamowienia/nowe/magazyn', { magazyn: 'pieszy', w_firma: 'Grażyna Nowak', w_miasto: 'Pęki' });
+    const odp = await nowe('/zamowienia/nowe/magazyn', { magazyn: 'grzybek', w_firma: 'Grażyna Nowak', w_miasto: 'Pęki' });
     expect(odp.body).toContain('Grażyna Nowak');
     expect(odp.body).toContain('Pęki');
   });
@@ -219,11 +219,11 @@ describe('ekran zakładania — dodaj z magazynu', () => {
   it('dodanie wstawia produkt do pierwszego wolnego wiersza tabeli pozycji', async () => {
     zapiszProduktSklepowy(db, produkt({ wariant_id: '28041' }));
     const odp = await nowe('/zamowienia/nowe/magazyn/dodaj', {
-      magazyn: 'pieszy', cennik: 'szkicownia', wybrany: '0',
+      magazyn: 'grzybek', cennik: 'szkicownia', wybrany: '0',
       mag_kanal: 'szkicownia', mag_produkt_id: '28040', mag_wariant_id: '28041', mag_ilosc: '2',
     });
     expect(odp.statusCode).toBe(200);
-    expect(odp.body).toContain('value="Szablon malarski Pieszy 70x100"');
+    expect(odp.body).toContain('value="Lampa stołowa Grzybek 30x45"');
     expect(odp.body).toContain('value="74.90"');
     expect(odp.body).toContain('value="28041"');
     expect(ileZamowien()).toBe(0);
@@ -233,15 +233,15 @@ describe('ekran zakładania — dodaj z magazynu', () => {
   // produkt i inna cena.
   it('bierze ten wiersz wyników, który wskazał przycisk', async () => {
     zapiszProduktSklepowy(db, produkt());
-    zapiszProduktSklepowy(db, produkt({ produkt_id: '28050', nazwa: 'Szablon malarski Rower', cena_gr: 5490, sku_sklepu: 'SZ-ROW' }));
+    zapiszProduktSklepowy(db, produkt({ produkt_id: '28050', nazwa: 'Lampa stołowa Dąbek', cena_gr: 5490, sku_sklepu: 'LMP-DAB' }));
     const odp = await nowe('/zamowienia/nowe/magazyn/dodaj', {
-      magazyn: 'szablon', wybrany: '1',
+      magazyn: 'lampa', wybrany: '1',
       mag_kanal: ['szkicownia', 'szkicownia'],
       mag_produkt_id: ['28040', '28050'],
       mag_wariant_id: ['', ''],
       mag_ilosc: ['1', '4'],
     });
-    expect(odp.body).toContain('value="Szablon malarski Rower 70x100"');
+    expect(odp.body).toContain('value="Lampa stołowa Dąbek 30x45"');
     expect(odp.body).toContain('value="54.90"');
     expect(odp.body).toContain('value="4"');
   });
@@ -254,7 +254,7 @@ describe('ekran zakładania — dodaj z magazynu', () => {
       poz_cena_netto: '', poz_produkt_id: '', poz_wariant_id: '',
     });
     expect(pierwsze.body).toContain('value="Wpisane ręcznie"');
-    expect(pierwsze.body).toContain('value="Szablon malarski Pieszy 70x100"');
+    expect(pierwsze.body).toContain('value="Lampa stołowa Grzybek 30x45"');
   });
 
   it('produkt bez ceny → 400, formularz wraca z komunikatem i bez pozycji', async () => {

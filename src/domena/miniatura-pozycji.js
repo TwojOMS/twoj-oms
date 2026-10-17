@@ -8,7 +8,7 @@
 //   sklep A — 684 zdjęcia,  76 miniatur,  608 błędów 404 (89%)
 //
 // Powód: sklep A skaluje miniatury do `247x296`, a nie do WordPressowego `150x150`.
-// Na PRO zgadywanie trafiało PRZYPADKIEM. Prawdziwy adres leży od tej samej daty w kolumnie
+// W sklepie B zgadywanie trafiało PRZYPADKIEM. Prawdziwy adres leży od tej samej daty w kolumnie
 // `produkty_sklepowe.miniatura` — bierze się wprost ze Store API sklepu (magazyn-sync.js),
 // więc panel nie musi o niego pytać sklepu ANI RAZU: pozycja zna kanał (`zamowienia.sklep`)
 // i numer produktu (`pozycje.produkt_id`), a lustro zna parę `(kanal, produkt_id) → miniatura`.
@@ -20,10 +20,10 @@
 //
 // ⚠️⚠️ POPRAWA JEST ŚCIŚLE JEDNOSTRONNA I TO JEST WARUNEK, NIE OSTROŻNOŚĆ. Przy naprawie
 // magazynu (dzień wcześniej) ekran przestawiono na czytanie WYŁĄCZNIE nowej kolumny; kolumna
-// startowała pusta, więc zgasły także miniatury PRO, które wcześniej działały — usterka
+// startowała pusta, więc zgasły także miniatury sklepu B, które wcześniej działały — usterka
 // częściowa zamieniła się w całkowitą aż do ręcznego odczytu katalogów. Tutaj gałąź zapasowa
 // ZOSTAJE: czego lustro nie zna, to renderuje się dokładnie tak jak dziś. Nigdzie nie może
-// być gorzej niż przed tą zmianą — ani na PRO, ani na Allegro (które Store API nie ma
+// być gorzej niż przed tą zmianą — ani w sklepie B, ani na Allegro (które Store API nie ma
 // w ogóle), ani w archiwum sprzed pierwszego odczytu katalogu.
 import { adresMiniatury } from './miniatury.js';
 
@@ -57,10 +57,10 @@ const ADRES_HTTP = /^https?:\/\//i;
 
 /**
  * REGUŁA — JEDNA, DLA CZTERECH EKRANÓW: lista zamówień, karta zamówienia, ekran nadania
- * i galeria na karcie wzoru.
+ * i galeria na karcie produktu.
  *
  * ⚠️ ROZGAŁĘZIANIE PO EKRANIE BYŁOBY TĄ SAMĄ CHOROBĄ, KTÓRĄ LECZYMY. Zgadywany rozmiar żył
- * w czterech szablonach naraz i dlatego jedna zmierzona nieprawda musiała być poprawiana
+ * w czterech widokach naraz i dlatego jedna zmierzona nieprawda musiała być poprawiana
  * w czterech miejscach. Ta funkcja jest jedna właśnie po to, żeby następna poprawka reguły
  * była zmianą w JEDNYM pliku.
  *
@@ -75,7 +75,7 @@ export function miniaturaZLustra(zLustra, oryginal) {
     const s = zLustra.trim();
     if (s && ADRES_HTTP.test(s)) return s;
   }
-  // ⚠️ TU KOŃCZY SIĘ JEDNOSTRONNOŚĆ I TEJ LINII NIE WOLNO USUNĄĆ. Bez niej PRO, Allegro
+  // ⚠️ TU KOŃCZY SIĘ JEDNOSTRONNOŚĆ I TEJ LINII NIE WOLNO USUNĄĆ. Bez niej sklep B, Allegro
   // i całe archiwum sprzed pierwszego odczytu katalogu straciłyby miniatury, które DZIŚ
   // działają — czyli powtórzyłby się błąd z naprawy magazynu.
   return adresMiniatury(oryginal);
@@ -83,7 +83,7 @@ export function miniaturaZLustra(zLustra, oryginal) {
 
 /**
  * Ta sama reguła, ale z wyszukaniem w mapie lustra — postać, której używają ekrany zamówień
- * (galeria wzoru ma wiersz lustra pod ręką i woła `miniaturaZLustra` wprost).
+ * (galeria karty ma wiersz lustra pod ręką i woła `miniaturaZLustra` wprost).
  *
  * ⚠️ BRAK MAPY NIE RZUCA: ekran, który jej (jeszcze) nie zbudował, ma pokazać to, co dziś,
  * a nie 500 zamiast listy zamówień.

@@ -355,7 +355,7 @@ export function mapujZamowienieAllegro(surowe, { metodaZId }) {
  * db/db.js importuje `bruttoLinii` i `cenaJednostkowaNetto` z domain/mapowanie.js, zamiast
  * liczyc je u siebie.
  *
- * ⚠️ ZAWSZE NAPIS. Allegro przysyla `offer.id` jako napis dziesieciocyfrowy („9000000001")
+ * ⚠️ ZAWSZE NAPIS. Allegro przysyla `offer.id` jako napis dziesieciocyfrowy („1234567890")
  * i taki ma dojechac do bazy — kolumna jest TEXT wlasnie po to, zeby po drodze nie zamienil
  * sie w liczbe (uzasadnienie w calosci przy tej kolumnie w db/schema.sql). `String()` stoi
  * tu, a nie przy zapisie, bo to mapowanie odpowiada za ksztalt modelu panelu.

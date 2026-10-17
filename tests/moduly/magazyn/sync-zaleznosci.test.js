@@ -13,11 +13,11 @@ const produkt = (id, name = 'Produkt testowy') => ({ id, name, type: 'simple', p
 const oferta = (id) => ({ id, name: 'Oferta testowa', sellingMode: { price: { amount: '25.00', currency: 'PLN' } } });
 const dane = (db) => db.prepare('SELECT * FROM produkty_sklepowe ORDER BY id').all().map(p => ({ ...p }));
 function zasiej(db, kanal, produkt_id) {
-  db.exec("INSERT OR IGNORE INTO wzory(id,nazwa,sku,utworzony_at,zmieniony_at) VALUES(7,'Wzór ręczny','RECZNE-7','x','x')");
+  db.exec("INSERT OR IGNORE INTO karty_produktow(id,nazwa,sku,utworzony_at,zmieniony_at) VALUES(7,'Karta ręczny','RECZNE-7','x','x')");
   const id = zapiszProduktSklepowy(db, { kanal, produkt_id, wariant_id: '', nazwa: 'Zachowaj', odczytane_at: stare,
     sku_sklepu: 'SKU-TEST', miniatura: 'https://przyklad.invalid/mini.jpg', cena_gr: 999,
     zdjecia_json: '["https://przyklad.invalid/original.jpg"]', kategorie_json: '["Testowa"]' });
-  db.prepare('UPDATE produkty_sklepowe SET wzor_id=7 WHERE id=?').run(id);
+  db.prepare('UPDATE produkty_sklepowe SET karta_id=7 WHERE id=?').run(id);
   return id;
 }
 const odczyt = (db, sklepy, dodatkowe = {}) => odswiezMagazyn({ db, sklepy, allegro: {}, teraz,
@@ -65,8 +65,8 @@ describe('PRZ-026 — ochrona lustra i neutralne kanały', () => {
       zasiej(db, 'polnoc', '1'); zasiej(db, 'polnoc', '2');
       const r = await odczyt(db, { polnoc: sklep([produkt(1, 'Odświeżony')]), poludnie: sklep([]) });
       expect(r.kanaly).toEqual([{ kanal: 'polnoc', zapisane: 1, znikniete: 1, blad: null }, { kanal: 'poludnie', zapisane: 0, znikniete: 0, blad: null }]);
-      expect(dane(db)[0]).toMatchObject({ nazwa: 'Odświeżony', wzor_id: 7, zniknal_at: null, odczytane_at: teraz() });
-      expect(dane(db)[1]).toMatchObject({ wzor_id: 7, zniknal_at: teraz() });
+      expect(dane(db)[0]).toMatchObject({ nazwa: 'Odświeżony', karta_id: 7, zniknal_at: null, odczytane_at: teraz() });
+      expect(dane(db)[1]).toMatchObject({ karta_id: 7, zniknal_at: teraz() });
     } finally { db.close(); }
   });
   it('dwa neutralne konta Allegro zapisują własne kanały, a nieznany kanał jest odrzucony przed odczytem', async () => {

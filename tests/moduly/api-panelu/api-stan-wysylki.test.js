@@ -21,7 +21,7 @@ const cialo = {
   dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Długa 45', postcode: '30-001', city: 'Kraków' },
   nip: null, chceFakture: false,
   kosztDostawyBrutto: '19.00',
-  pozycje: [{ nazwa: 'Szablon malarski — logo 70x100cm', ilosc: 1, cena_brutto: '250.00' }],
+  pozycje: [{ nazwa: 'Lampa wisząca — Kopuła 40x60cm', ilosc: 1, cena_brutto: '250.00' }],
   uwagi: 'Zamówienie indywidualne — karta karta-abc',
 };
 

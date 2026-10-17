@@ -57,7 +57,7 @@ const model = (nad = {}) => modelOswiadczenia({
   },
   faktura: { numer: 'WDT/1/08/2026' },
   pozycje: [
-    { nazwa: 'Szablon malarski STOP 70x100cm', ilosc: 2 },
+    { nazwa: 'Lampa stołowa Kałamarz 30x45cm', ilosc: 2 },
     { nazwa: 'Kurier DPD', ilosc: 1 },
   ],
   ...nad,
@@ -79,7 +79,7 @@ describe('zbudujOswiadczenieWywozuPdf', () => {
     expect(tekst).toContain('WDT/1/08/2026');
     expect(tekst).toContain('R/2026/031');
     expect(tekst).toContain('Słowacji');
-    expect(tekst).toContain('Szablon malarski STOP 70x100cm');
+    expect(tekst).toContain('Lampa stołowa Kałamarz 30x45cm');
     expect(tekst).toContain('Nr rejestracyjny');
     expect(tekst).toContain('podpis nabywcy');
     // Polskie znaki — jedyny test, ktory lapie zgubiony font.
@@ -88,7 +88,7 @@ describe('zbudujOswiadczenieWywozuPdf', () => {
   });
 
   it.skipIf(!PDFTOTEXT)('długa tabela łamie się na strony, a każda strona ma stopkę z numerem zamówienia', () => {
-    const duzo = Array.from({ length: 45 }, (_, i) => ({ nazwa: `Szablon malarski wzór ${i + 1} — 70x100cm`, ilosc: i + 1 }));
+    const duzo = Array.from({ length: 45 }, (_, i) => ({ nazwa: `Lampa stołowa model ${i + 1} — 30x45cm`, ilosc: i + 1 }));
     const tekst = tekstZPdf(zbudujOswiadczenieWywozuPdf(model({ pozycje: duzo })));
     const strony = tekst.split('\f').filter((s) => s.trim() !== '');
     expect(strony.length).toBeGreaterThan(1);

@@ -9,8 +9,8 @@ describe('czyPozycjaWysylki', () => {
     }
   });
 
-  it('szablon NIE jest transportem', () => {
-    expect(czyPozycjaWysylki('szablon malarski jednorazowy - samoprzylepny RUM and towel')).toBe(false);
+  it('lampa NIE jest transportem', () => {
+    expect(czyPozycjaWysylki('lampa wisząca na zamówienie - klosz mleczny, mosiądz')).toBe(false);
   });
 
   // ⚠️ TA GRANICA JEST CAŁYM POWODEM, dla którego istnieją dwie funkcje, a nie jedna lista.

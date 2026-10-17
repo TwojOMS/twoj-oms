@@ -69,9 +69,9 @@ function liczbaStron(buf) {
 // ─────────────────────────────────────────────────────────────────────────────
 const POZYCJE_WZORU = [
   { name: 'Realizacja priorytetowa', quantity: 1, gross_price: 5000, tax_symbol: '23' },
-  { name: 'szablon malarski wielorazowy logo 1,2,3', quantity: 3, gross_price: 19500, tax_symbol: '23' },
-  { name: 'szablon malarski wielorazowy logo mniejsze 4,5,6', quantity: 3, gross_price: 16500, tax_symbol: '23' },
-  { name: 'szablon malarski wielorazowy logo większe 1,2,3', quantity: 3, gross_price: 22500, tax_symbol: '23' },
+  { name: 'lampa wisząca Kopuła stal 1,2,3', quantity: 3, gross_price: 19500, tax_symbol: '23' },
+  { name: 'lampa wisząca Kopuła mniejsza 4,5,6', quantity: 3, gross_price: 16500, tax_symbol: '23' },
+  { name: 'lampa wisząca Kopuła większa 1,2,3', quantity: 3, gross_price: 22500, tax_symbol: '23' },
   { name: 'wysyłka kurierem DPD', quantity: 1, gross_price: 1900, tax_symbol: '23' },
 ];
 
@@ -109,7 +109,7 @@ function daneWzoru(nadpisania = {}) {
 }
 
 const duzoPozycji = (ile) => Array.from({ length: ile }, (_, i) => ({
-  name: `Pozycja numer ${i + 1} — szablon malarski wielorazowy`,
+  name: `Pozycja numer ${i + 1} — lampa wisząca, stal malowana`,
   quantity: 1,
   gross_price: 1000 + i,
   tax_symbol: '23',
@@ -203,7 +203,7 @@ describe.skipIf(!PDFTOTEXT)('zbudujProformePdf — treść odczytana z gotowego 
   // rabacie ta zaokrąglona cena NIE PRZEMNOŻY SIĘ z powrotem do wartości linii:
   // 3 szt. za 100,00 zł → 33,33 × 3 = 99,99. Wartość linii MUSI iść z `gross_price` WPROST.
   it('wartość linii z rabatem bierze gross_price wprost, nie cenę × ilość', () => {
-    const pozycje = [{ name: 'Szablon z rabatem', quantity: 3, gross_price: 10000, tax_symbol: '23' }];
+    const pozycje = [{ name: 'Lampa z rabatem', quantity: 3, gross_price: 10000, tax_symbol: '23' }];
     const tekst = tekstZPdf(zbudujProformePdf(daneWzoru({ pozycje })));
     expect(tekst).toContain('100.00');   // wartość linii — prawda dokumentu
     expect(tekst).toContain('33.33');    // cena jednostkowa — tylko wyświetlana

@@ -275,7 +275,7 @@ describe('miniaturyLustra — mapa (kanal, produkt) → adres miniatury', () => 
 
   it('kanal spoza lustra oddaje pusta mape, a nie blad', () => {
     const db = openOmsDb(':memory:');
-    expect(miniaturyLustra(db, [{ kanal: 'allegro_amarka', produktId: '9000000001' }]).size).toBe(0);
+    expect(miniaturyLustra(db, [{ kanal: 'allegro_amarka', produktId: '1234567890' }]).size).toBe(0);
   });
 });
 

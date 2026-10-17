@@ -7,7 +7,7 @@ import { grupujPominiete } from '../../../src/domena/magazyn-pominiete.js';
 // EKRAN „POMINIĘTE".
 //
 // ⚠️⚠️ POWOD GRUPOWANIA (mina z Zadania 8): pominietych jest ~473, z czego 447 to OFERTY
-// ALLEGRO, ktore wzorow nie zakladaja CELOWO — a realnej roboty jest ~26. Lista plaska
+// ALLEGRO, ktore kart nie zakladaja CELOWO — a realnej roboty jest ~26. Lista plaska
 // utopilaby te 26 w tamtych 447 i pierwszym odruchem czlowieka byloby „to blad, napraw".
 // Dlatego: grupy, liczby przy grupach, robota NA GORZE, a rzeczy celowe na dole i z wprost
 // napisanym „tak ma byc".
@@ -28,23 +28,23 @@ beforeEach(() => { db = openOmsDb(':memory:'); });
 const zapisz = (p) => zapiszProduktSklepowy(db, {
   wariant_id: '', odczytane_at: '2026-08-11T06:00:00.000Z', ...p,
 });
-const ileWzorow = () => db.prepare('SELECT COUNT(*) AS ile FROM wzory').get().ile;
+const ileKart = () => db.prepare('SELECT COUNT(*) AS ile FROM karty_produktow').get().ile;
 
-// Trzy oferty Allegro (celowo bez wzoru), jeden zepsuty wariant (realna robota),
-// jeden zdrowy produkt sklepowy (wzor powstanie).
+// Trzy oferty Allegro (celowo bez karty), jeden zepsuty wariant (realna robota),
+// jeden zdrowy produkt sklepowy (karta powstanie).
 function lustro() {
-  zapisz({ kanal: 'allegro_szkicownia', produkt_id: 'a1', nazwa: 'Zakaz palenia DUZY szablon' });
-  zapisz({ kanal: 'allegro_szkicownia', produkt_id: 'a2', nazwa: 'Kotwica szablon malarski' });
-  zapisz({ kanal: 'allegro_amarka', produkt_id: 'b1', nazwa: 'Latarnia szablon' });
+  zapisz({ kanal: 'allegro_szkicownia', produkt_id: 'a1', nazwa: 'Trójnóg podłogowy DUZY' });
+  zapisz({ kanal: 'allegro_szkicownia', produkt_id: 'a2', nazwa: 'Kandelabr ozdobny wysoki' });
+  zapisz({ kanal: 'allegro_amarka', produkt_id: 'b1', nazwa: 'Lampion ozdobny' });
   zapisz({ kanal: 'szkicownia', produkt_id: '77', wariant_id: '78', nazwa: 'Motyw bez rozmiaru' });
-  zapisz({ kanal: 'pro', produkt_id: '944', nazwa: 'Kotwica 70x100 cm' });
+  zapisz({ kanal: 'pro', produkt_id: '944', nazwa: 'Kandelabr 70x100 cm' });
 }
 
 describe('grupujPominiete', () => {
   it('grupuje po POWODZIE i liczy pozycje w grupie', () => {
     const grupy = grupujPominiete([
-      { id: 1, kanal: 'allegro_szkicownia', nazwa: 'A', powod: 'kanał „allegro_szkicownia" nie zakłada wzorów' },
-      { id: 2, kanal: 'allegro_szkicownia', nazwa: 'B', powod: 'kanał „allegro_szkicownia" nie zakłada wzorów' },
+      { id: 1, kanal: 'allegro_szkicownia', nazwa: 'A', powod: 'kanał „allegro_szkicownia" nie zakłada kart' },
+      { id: 2, kanal: 'allegro_szkicownia', nazwa: 'B', powod: 'kanał „allegro_szkicownia" nie zakłada kart' },
       { id: 3, kanal: 'szkicownia', nazwa: 'C', powod: 'wariant bez rozmiaru' },
     ], ['pro', 'szkicownia']);
 
@@ -55,7 +55,7 @@ describe('grupujPominiete', () => {
 
   it('ROBOTA idzie na gore, rzeczy celowe na dol — nawet gdy celowych jest wielokrotnie wiecej', () => {
     const oferty = Array.from({ length: 447 }, (_, i) => ({
-      id: i, kanal: 'allegro_szkicownia', nazwa: `oferta ${i}`, powod: 'kanał „allegro_szkicownia" nie zakłada wzorów',
+      id: i, kanal: 'allegro_szkicownia', nazwa: `oferta ${i}`, powod: 'kanał „allegro_szkicownia" nie zakłada kart',
     }));
     const robota = [{ id: 900, kanal: 'szkicownia', nazwa: 'X', powod: 'wariant bez rozmiaru' }];
 
@@ -98,14 +98,14 @@ describe('grupujPominiete', () => {
   });
 });
 
-describe('POST /magazyn/utworz-wzory', () => {
-  it('tworzy wzory i pokazuje, CZEGO nie tknal, pogrupowane po powodzie', async () => {
+describe('POST /magazyn/utworz-karty', () => {
+  it('tworzy karty i pokazuje, CZEGO nie tknal, pogrupowane po powodzie', async () => {
     lustro();
     const app = buildOmsServer({ db, config, magazyn: magazyn() });
-    const r = await app.inject({ method: 'POST', url: '/magazyn/utworz-wzory', headers: auth, payload: {} });
+    const r = await app.inject({ method: 'POST', url: '/magazyn/utworz-karty', headers: auth, payload: {} });
 
     expect(r.statusCode).toBe(200);
-    expect(ileWzorow()).toBe(1);
+    expect(ileKart()).toBe(1);
     expect(r.body).toContain('Motyw bez rozmiaru');
     // ⚠️ LICZBA RAZEM Z NAGLOWKIEM SWOJEJ GRUPY. Wczesniej stalo tu `toContain('3')` —
     // cyfra 3 wystepuje w ukladzie strony 143 razy, wiec ta asercja nie mowila nic.
@@ -118,20 +118,20 @@ describe('POST /magazyn/utworz-wzory', () => {
     lustro();
     const app = buildOmsServer({ db, config, magazyn: magazyn() });
     const r = await app.inject({
-      method: 'POST', url: '/magazyn/utworz-wzory',
+      method: 'POST', url: '/magazyn/utworz-karty',
       headers: { authorization: auth.authorization }, payload: {},
     });
 
     expect(r.statusCode).toBeGreaterThanOrEqual(400);
-    expect(ileWzorow()).toBe(0);
+    expect(ileKart()).toBe(0);
   });
 
   it('grupa ofert Allegro stoi PO grupie z robota', async () => {
     lustro();
     const app = buildOmsServer({ db, config, magazyn: magazyn() });
-    const r = await app.inject({ method: 'POST', url: '/magazyn/utworz-wzory', headers: auth, payload: {} });
+    const r = await app.inject({ method: 'POST', url: '/magazyn/utworz-karty', headers: auth, payload: {} });
 
-    expect(r.body.indexOf('Motyw bez rozmiaru')).toBeLessThan(r.body.indexOf('Zakaz palenia'));
+    expect(r.body.indexOf('Motyw bez rozmiaru')).toBeLessThan(r.body.indexOf('Trójnóg podłogowy'));
   });
 });
 
@@ -142,11 +142,11 @@ describe('GET /magazyn/pominiete', () => {
     const r = await app.inject({ method: 'GET', url: '/magazyn/pominiete', headers: auth });
 
     expect(r.statusCode).toBe(200);
-    // ⚠️ Zwykle wejscie na ekran NIE MA prawa zalozyc ~980 wzorow — a to jest ta sama
+    // ⚠️ Zwykle wejscie na ekran NIE MA prawa zalozyc ~980 kart — a to jest ta sama
     // funkcja co pod przyciskiem.
-    expect(ileWzorow()).toBe(0);
+    expect(ileKart()).toBe(0);
     expect(r.body).toContain('Motyw bez rozmiaru');
-    expect(r.body).toContain('Zakaz palenia');
+    expect(r.body).toContain('Trójnóg podłogowy');
     // ⚠️ TEN SAM KANAL MA SIE NAZYWAC TAK SAMO, CO NA LISCIE. Ekran pokazywal surowy klucz
     // z lustra, a lista obok — etykiete z `domain/kanaly.js`; czlowiek porownujacy oba
     // ekrany musial sam zgadnac, czy patrzy na to samo konto.
@@ -171,10 +171,10 @@ describe('GET /magazyn/pominiete', () => {
 //
 // Ten ekran otwiera sie odnosnikiem Z LISTY MAGAZYNU, na ktorej stoi komplet filtrow,
 // sortowanie i tryb kolumn — a wracal na goly `/magazyn`. Sasiednie ekrany tej zakladki
-// (karta wzoru, hurt, SKU, przejecie) adres powrotu maja od Zadania 6.
+// (karta produktu, hurt, SKU, przejecie) adres powrotu maja od Zadania 6.
 // ---------------------------------------------------------------------------------
 describe('powrót na zawężony magazyn z ekranu „pominięte"', () => {
-  const ZAWEZENIE = '/magazyn?fraza=kotwica&brak=sku';
+  const ZAWEZENIE = '/magazyn?fraza=kandelabr&brak=sku';
     // Adres, ktory lista SKLADA jako swoj wlasny (adresPowrotuListy) — z kolejnoscia,
     // bo powrot ma odtworzyc ekran, a nie samo zawezenie.
     const ZAWEZENIE_Z_LISTY = ZAWEZENIE + '&sort=nazwa&kier=asc';
@@ -202,10 +202,10 @@ describe('powrót na zawężony magazyn z ekranu „pominięte"', () => {
     expect(odnosnikPowrotu(r.body)).toContain(`href="${ESC}"`);
   });
 
-  // ⚠️ DRUGI RENDER TEGO SAMEGO WIDOKU: „Utwórz wzory z niepowiązanych" zakłada ~980 wzorów
+  // ⚠️ DRUGI RENDER TEGO SAMEGO WIDOKU: „Utwórz karty z niepowiązanych" zakłada ~980 kart
   // i pokazuje wynik na tym ekranie. Formularz stoi na zawężonej liście obok odnośnika,
   // więc gubienie adresu tutaj bolałoby dokładnie po najdłuższej operacji tej zakładki.
-  it('ekran wyniku po utworzeniu wzorów też odsyła na zawężony magazyn', async () => {
+  it('ekran wyniku po utworzeniu kart też odsyła na zawężony magazyn', async () => {
     lustro();
     const app = buildOmsServer({ db, config, magazyn: magazyn() });
     const lista = await app.inject({ method: 'GET', url: ZAWEZENIE, headers: auth });
@@ -213,7 +213,7 @@ describe('powrót na zawężony magazyn z ekranu „pominięte"', () => {
       `<input type="hidden" name="wroc" value="${ZAWEZENIE_Z_LISTY.replace(/&/g, '&amp;')}">`,
     );
     const r = await app.inject({
-      method: 'POST', url: '/magazyn/utworz-wzory', headers: auth, payload: { wroc: ZAWEZENIE },
+      method: 'POST', url: '/magazyn/utworz-karty', headers: auth, payload: { wroc: ZAWEZENIE },
     });
     expect(r.statusCode).toBe(200);
     expect(odnosnikPowrotu(r.body)).toContain(`href="${ESC}"`);

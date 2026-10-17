@@ -1,0 +1,47 @@
+<h1>Magazyn</h1>
+
+<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
+
+<section class="ust-sekcja" id="ust-stany">
+  <h2>Stany magazynowe</h2>
+  <% if (przelacznik.wlaczone) { %>
+    <p><strong>Włączone</strong> od: <strong><%= fmtDataCzas(przelacznik.granica) %></strong>.</p>
+  <% } else { %>
+    <p><strong>Wyłączone.</strong> OMS nie liczy stanów — zakładka Magazyn i karty zamówień wyglądają tak jak dotąd.</p>
+  <% } %>
+  <p>Po włączeniu OMS liczy stan każdej karty produktu: stan otwarcia i przyjęcia minus sztuki z zamówień złożonych od chwili włączenia. Anulowane zamówienia się nie liczą.</p>
+  <ul>
+    <li>Brak na stanie nie blokuje zamówienia — zamówienie wchodzi normalnie, a na jego karcie pojawia się ostrzeżenie.</li>
+    <li>Stany nie są wysyłane do sklepów ani na Allegro. Liczy je tylko OMS.</li>
+    <li>Zamówienia złożone przed włączeniem nie zdejmują towaru.</li>
+  </ul>
+  <form id="ust-stany-przelacz" method="post" action="/ustawienia/magazyn/stany">
+    <% if (przelacznik.wlaczone) { %>
+      <input type="hidden" name="wlacz" value="0">
+      <p class="pas-uprzedzenie">Wyłączenie niczego nie kasuje. Ale ponowne włączenie zacznie liczyć od nowa — od chwili ponownego włączenia, a stan otwarcia kart trzeba będzie wpisać jeszcze raz.</p>
+      <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Wyłącz stany magazynowe</button></div>
+    <% } else { %>
+      <input type="hidden" name="wlacz" value="1">
+      <% if (bylWlaczony) { %>
+        <p class="pas-uprzedzenie">Stany były już włączone. Ponowne włączenie liczy od nowa: od teraz, a stan otwarcia kart trzeba wpisać jeszcze raz. Wcześniejsze wpisy zostają w bazie, ale nie wchodzą do stanu.</p>
+      <% } %>
+      <div class="ust-akcje"><button class="ust-przycisk" type="submit">Włącz stany magazynowe</button></div>
+    <% } %>
+  </form>
+
+  <% if (przelacznik.historia.length) { %>
+    <h3>Historia przełączania</h3>
+    <table class="tab-pozycje" id="ust-stany-historia">
+      <thead><tr><th>Kiedy</th><th>Kto</th><th>Zmiana</th></tr></thead>
+      <tbody>
+        <% przelacznik.historia.forEach(function (w) { %>
+          <tr>
+            <td><%= fmtDataCzas(w.utworzono_at) %></td>
+            <td><%= w.konto_login ?? '—' %></td>
+            <td><%= w.wlaczone ? 'włączenie' : 'wyłączenie' %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  <% } %>
+</section>

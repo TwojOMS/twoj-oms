@@ -1,15 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
-import { utworzWzor, zapiszProduktSklepowy, powiazProdukt } from '../../../src/oms/db/magazyn.js';
+import { utworzKarte, zapiszProduktSklepowy, powiazProdukt } from '../../../src/oms/db/magazyn.js';
 
-// „ZAZNACZ WSZYSTKIE" NA LISCIE WZOROW — druga tura tego samego zgloszenia wlasciciela:
+// „ZAZNACZ WSZYSTKIE" NA LISCIE KART — druga tura tego samego zgloszenia wlasciciela:
 // „ale dalej nie da sie zaznaczyc wszystkich pozycji. Tak jak zaznacza sie zamowienia na
 // stronie glownej".
 //
 // ⚠️⚠️ POPRZEDNIA POPRAWKA ODPOWIEDZIALA NA INNE PYTANIE. Dolozyla przy kazdej akcji
 // przycisk „dla wszystkich pasujacych", czyli zakres CALY-ALBO-NIC liczony z zawezenia.
-// To NIE JEST zaznaczenie: nie da sie odhaczyc trzech wzorow i wykonac akcji na reszcie,
+// To NIE JEST zaznaczenie: nie da sie odhaczyc trzech kart i wykonac akcji na reszcie,
 // a przy przejeciu numerow — nieodwracalnym — wlasnie o to chodzi. Oba mechanizmy zostaja,
 // bo odpowiadaja na dwie rozne potrzeby.
 //
@@ -24,7 +24,7 @@ import { utworzWzor, zapiszProduktSklepowy, powiazProdukt } from '../../../src/o
 //   (2) przy `zaznacz=1` KAZDY wiersz jest `checked`, bez niego ANI JEDEN — para, nie polowa;
 //   (3) zaznaczenie NIE JEST filtrem: ten sam zbior wierszy przed i po;
 //   (4) odnosnik NIESIE zawezenie i kolejnosc — inaczej „zaznacz" kasowaloby filtr i
-//       czlowiek zaznaczylby wzory, ktorych nie widzial (ten sam blad, co na liscie zamowien);
+//       czlowiek zaznaczylby karty, ktorych nie widzial (ten sam blad, co na liscie zamowien);
 //   (5) zaznaczenie przezywa SORTOWANIE (ta sama lista, inna kolejnosc), ale NIE przezywa
 //       zmiany filtru (inny zbior — zaznaczenie ma sie liczyc od nowa);
 //   (6) DROGA DO KONCA: to, co ekran oznaczyl jako `checked`, po wyslaniu formularza
@@ -50,19 +50,19 @@ beforeEach(() => {
   magazyn = atrapaMagazynu();
 });
 
-const wzorO = (nazwa, reszta = {}) => utworzWzor(db, { nazwa, ...reszta });
+const kartaO = (nazwa, reszta = {}) => utworzKarte(db, { nazwa, ...reszta });
 
 /** Produkt w lustrze z numerem sklepu — zeby przejecie numeru mialo co przejmowac. */
-function produktO(wzorId, sku) {
+function produktO(kartaId, sku) {
   const id = zapiszProduktSklepowy(db, {
     kanal: 'pro',
-    produkt_id: `p${wzorId}`,
+    produkt_id: `p${kartaId}`,
     wariant_id: '',
     nazwa: 'Produkt',
     sku_sklepu: sku,
     odczytane_at: '2026-08-12T10:00:00.000Z',
   });
-  powiazProdukt(db, id, wzorId);
+  powiazProdukt(db, id, kartaId);
   return id;
 }
 
@@ -104,7 +104,7 @@ const zaznaczoneIdy = (body) => polaWierszy(body).filter((p) => p.zaznaczone).ma
  */
 function odnosnikNaglowka(body) {
   const komorka = /<th class="kol-zaznacz"[^>]*>([\s\S]*?)<\/th>/.exec(body);
-  if (!komorka) throw new Error('Tabela wzorów nie ma nagłówka kolumny zaznaczeń');
+  if (!komorka) throw new Error('Tabela kart nie ma nagłówka kolumny zaznaczeń');
   const a = /<a\b[^>]*\bhref="([^"]*)"[^>]*>([\s\S]*?)<\/a>/.exec(komorka[1]);
   if (!a) throw new Error(`W nagłówku kolumny zaznaczeń nie ma odnośnika: ${komorka[1].trim()}`);
   return { adres: a[1].replace(/&amp;/g, '&'), napis: a[2].replace(/<[^>]*>/g, '').trim() };
@@ -119,28 +119,28 @@ function zawezenieFormularza(body) {
 }
 
 /**
- * Nazwy wzorow w tabeli LISTY — w KOLEJNOSCI renderu.
+ * Nazwy kart w tabeli LISTY — w KOLEJNOSCI renderu.
  *
  * ⚠️ RZUCA na komorce bez nazwy, zamiast oddac pusty napis. Pierwsza wersja tej funkcji
- * szukala `div.nazwa-wzoru` (klasa z ekranow PODGLADU, nie listy) i oddawala `['','']` —
+ * szukala `div.nazwa-karty` (klasa z ekranow PODGLADU, nie listy) i oddawala `['','']` —
  * czyli asercja „ta sama lista przed i po" bylaby spelniona przez dwie puste dziury.
  */
 // ⚠️ WYJATEK OD „bez modyfikacji" (Zadanie 6, powrot z karty z zachowaniem filtrow):
-// odnosnik nazwy wzoru od tego zadania niesie DALEJ adres listy jako „?wroc=…", wiec
+// odnosnik nazwy karty od tego zadania niesie DALEJ adres listy jako „?wroc=…", wiec
 // `href="/magazyn/{id}">` bez ogonka juz nie wystapi. `(?:\?[^"]*)?` tylko TOLERUJE ten
 // dopisek — nie zmienia, CO ten test sprawdza (ten sam zbior wierszy przed i po zaznaczeniu).
-const nazwyListy = (body) => [...body.matchAll(/<td class="komorka-wzor">([\s\S]*?)<\/td>/g)]
+const nazwyListy = (body) => [...body.matchAll(/<td class="komorka-karta">([\s\S]*?)<\/td>/g)]
   .map((m) => {
     const nazwa = /<a href="\/magazyn\/\d+(?:\?[^"]*)?">([^<]*)<\/a>/.exec(m[1]);
-    if (!nazwa) throw new Error(`Wiersz listy bez nazwy wzoru: ${m[1].trim()}`);
+    if (!nazwa) throw new Error(`Wiersz listy bez nazwy karty: ${m[1].trim()}`);
     return nazwa[1];
   });
 
-/** Nazwy wzorow z tabeli podgladu przejecia. */
+/** Nazwy kart z tabeli podgladu przejecia. */
 function nazwyWPodgladzie(body, idSekcji) {
   const s = new RegExp(`<section[^>]*id="${idSekcji}"[\\s\\S]*?</section>`).exec(body);
   if (!s) throw new Error(`W podglądzie nie ma sekcji „${idSekcji}"`);
-  return [...s[0].matchAll(/<div class="nazwa-wzoru">([^<]*)<\/div>/g)].map((m) => m[1]);
+  return [...s[0].matchAll(/<div class="nazwa-karty">([^<]*)<\/div>/g)].map((m) => m[1]);
 }
 
 // ================================================================================
@@ -149,7 +149,7 @@ function nazwyWPodgladzie(body, idSekcji) {
 
 describe('nagłówek kolumny zaznaczeń prowadzi na „zaznacz wszystkie"', () => {
   it('jest odnośnikiem pod adres z zaznacz=1', async () => {
-    wzorO('Kotwica');
+    kartaO('Kandelabr');
 
     const r = await get(serwer(), '/magazyn');
 
@@ -160,7 +160,7 @@ describe('nagłówek kolumny zaznaczeń prowadzi na „zaznacz wszystkie"', () =
   // niczego, a wygladaloby, jakby zaznaczylo — to jest dokladnie ta pulapka, ktora kazala mi
   // wczesniej uznac, ze „sie nie da". Nagłówek ma nie miec pola wyboru NIGDY.
   it('nagłówek nie ma pola wyboru — bo bez skryptu ono by kłamało', async () => {
-    wzorO('Kotwica');
+    kartaO('Kandelabr');
 
     const r = await get(serwer(), '/magazyn');
     const komorka = /<th class="kol-zaznacz"[^>]*>([\s\S]*?)<\/th>/.exec(r.body)[1];
@@ -169,7 +169,7 @@ describe('nagłówek kolumny zaznaczeń prowadzi na „zaznacz wszystkie"', () =
   });
 
   it('po zaznaczeniu wszystkich odnośnik zdejmuje zaznaczenie', async () => {
-    wzorO('Kotwica');
+    kartaO('Kandelabr');
 
     const r = await get(serwer(), '/magazyn?zaznacz=1');
     const odnosnik = odnosnikNaglowka(r.body);
@@ -184,7 +184,7 @@ describe('nagłówek kolumny zaznaczeń prowadzi na „zaznacz wszystkie"', () =
 // ================================================================================
 
 describe('adres rozstrzyga stan początkowy pól wyboru', () => {
-  const trzy = () => ['Kotwica', 'Chmurka', 'Sowa'].map((n) => String(wzorO(n)));
+  const trzy = () => ['Kandelabr', 'Chmurka', 'Sowa'].map((n) => String(kartaO(n)));
 
   it('zaznacz=1 zaznacza KAŻDY wiersz listy', async () => {
     const idy = trzy();
@@ -197,7 +197,7 @@ describe('adres rozstrzyga stan początkowy pól wyboru', () => {
 
   // ⚠️⚠️ DRUGA POLOWA PARY — BEZ NIEJ TEST WYZEJ NIE CHRONI NICZEGO. Mutacja wpisujaca
   // `checked` na sztywno w szablonie przechodzi „zaznacza kazdy wiersz" i psuje CALY ekran:
-  // kazde wejscie na /magazyn zaznaczaloby 964 wzory, a czlowiek klikalby akcje w
+  // kazde wejscie na /magazyn zaznaczaloby 964 karty, a czlowiek klikalby akcje w
   // przekonaniu, ze nie zaznaczyl nic.
   it('bez zaznacz=1 NIE jest zaznaczony ani jeden wiersz', async () => {
     trzy();
@@ -227,14 +227,14 @@ describe('zaznaczenie nie zawęża i nie rozszerza listy', () => {
   // ⚠️ `zaznacz` jedzie tym samym adresem, co filtry, wiec musi byc JAWNIE odrozniony od
   // filtru — inaczej lista po zaznaczeniu pokazywalaby inny zbior niz przed nim.
   it('ten sam zbiór wierszy przed i po zaznaczeniu', async () => {
-    wzorO('Kotwica');
-    wzorO('Chmurka');
-    wzorO('Zmierzona', { szerokosc_mm: 300, wysokosc_mm: 400 });
+    kartaO('Kandelabr');
+    kartaO('Chmurka');
+    kartaO('Zmierzona', { szerokosc_mm: 300, wysokosc_mm: 400 });
 
     const przed = await get(serwer(), '/magazyn?brak=wymiary');
     const po = await get(serwer(), '/magazyn?brak=wymiary&zaznacz=1');
 
-    expect(nazwyListy(przed.body)).toEqual(['Chmurka', 'Kotwica']);
+    expect(nazwyListy(przed.body)).toEqual(['Chmurka', 'Kandelabr']);
     expect(nazwyListy(po.body)).toEqual(nazwyListy(przed.body));
   });
 
@@ -242,7 +242,7 @@ describe('zaznaczenie nie zawęża i nie rozszerza listy', () => {
   // `zawezenie`, przycisk „dla wszystkich pasujacych" niosłby ze soba stan pol wyboru —
   // dwie rozne rzeczy w jednym parametrze.
   it('zaznaczenie nie wchodzi do zawężenia przenoszonego do akcji', async () => {
-    wzorO('Kotwica');
+    kartaO('Kandelabr');
 
     const bez = await get(serwer(), '/magazyn?brak=sku');
     const z = await get(serwer(), '/magazyn?brak=sku&zaznacz=1');
@@ -261,8 +261,8 @@ describe('„zaznacz wszystkie" nie kasuje tego, co zawęziło listę', () => {
   // sklejony na piechote jako `/magazyn?zaznacz=1` gubi filtr, a czlowiek zaznacza WSZYSTKO
   // z katalogu w przekonaniu, ze zaznaczyl 277 pozycji, ktore widzial.
   it('odnośnik zachowuje filtr', async () => {
-    wzorO('Kotwica');
-    wzorO('Zmierzona', { szerokosc_mm: 300, wysokosc_mm: 400 });
+    kartaO('Kandelabr');
+    kartaO('Zmierzona', { szerokosc_mm: 300, wysokosc_mm: 400 });
 
     const r = await get(serwer(), '/magazyn?brak=wymiary');
 
@@ -270,7 +270,7 @@ describe('„zaznacz wszystkie" nie kasuje tego, co zawęziło listę', () => {
   });
 
   it('odnośnik zachowuje kolejność', async () => {
-    wzorO('Kotwica');
+    kartaO('Kandelabr');
 
     const r = await get(serwer(), '/magazyn?sort=wysokosc&kier=desc');
     const { adres } = odnosnikNaglowka(r.body);
@@ -283,7 +283,7 @@ describe('„zaznacz wszystkie" nie kasuje tego, co zawęziło listę', () => {
   // Bez tego klikniecie w naglowek „Wymiary" po zaznaczeniu wszystkiego odznaczaloby
   // cala liste po cichu.
   it('nagłówki sortowania niosą zaznaczenie dalej', async () => {
-    wzorO('Kotwica');
+    kartaO('Kandelabr');
 
     const r = await get(serwer(), '/magazyn?zaznacz=1');
     const doSortowania = /<a class="zaznacz-wszystkie" href="([^"]*)"[^>]*>Wymiary/.exec(r.body);
@@ -295,7 +295,7 @@ describe('„zaznacz wszystkie" nie kasuje tego, co zawęziło listę', () => {
   // ⚠️ FILTR ZMIENIA ZBIOR, wiec zaznaczenie ma sie liczyc OD NOWA. Przeniesienie go przez
   // „Filtruj" znaczyloby „zaznaczone jest to, czego jeszcze nie widziales".
   it('formularz filtrów NIE przenosi zaznaczenia', async () => {
-    wzorO('Kotwica');
+    kartaO('Kandelabr');
 
     const r = await get(serwer(), '/magazyn?zaznacz=1');
 
@@ -310,9 +310,9 @@ describe('„zaznacz wszystkie" nie kasuje tego, co zawęziło listę', () => {
 describe('zaznaczone wiersze naprawdę trafiają w akcję', () => {
   function trzyDoPrzejecia() {
     const idy = [];
-    for (const nazwa of ['Ewakuacja', 'Kotwica', 'Sowa']) {
-      const id = wzorO(nazwa);
-      produktO(id, `PRO-${nazwa.toUpperCase()}-1`);
+    for (const nazwa of ['Bursztyn', 'Kandelabr', 'Sowa']) {
+      const id = kartaO(nazwa);
+      produktO(id, `SKU-${nazwa.toUpperCase()}-1`);
       idy.push(id);
     }
     return idy;
@@ -334,13 +334,13 @@ describe('zaznaczone wiersze naprawdę trafiają w akcję', () => {
 
     expect(r.statusCode).toBe(200);
     expect(nazwyWPodgladzie(r.body, 'przejecie-pozycje').sort())
-      .toEqual(['Ewakuacja', 'Kotwica', 'Sowa']);
+      .toEqual(['Bursztyn', 'Kandelabr', 'Sowa']);
   });
 
   // ⚠️ DRUGA POLOWA: bez zaznaczenia ta sama droga ma nie przekazac NICZEGO. Gdyby ten test
   // przechodzil razem z poprzednim przy `checked` wpisanym na sztywno, poprzedni nie
   // dowodzilby niczego.
-  it('bez kliknięcia w nagłówek ta sama droga nie niesie ani jednego wzoru', async () => {
+  it('bez kliknięcia w nagłówek ta sama droga nie niesie ani jednej karty', async () => {
     trzyDoPrzejecia();
     const app = serwer();
 

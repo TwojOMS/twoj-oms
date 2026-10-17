@@ -45,9 +45,9 @@ describe('listaProduktowZbiorcza', () => {
     const l = listaProduktowZbiorcza([zam('A1', [
       p('Kurier DPD (darmowa wysyłka)', null, 1, '0.00'),
       p('Wysyłka kurierem DPD', 'psm-zam-placeholder', 1, '19.00'),
-      p('Szablon Żółw', 'psm-zam-placeholder', 1),
+      p('Lampka nocna Żyrafa', 'psm-zam-placeholder', 1),
     ])]);
-    expect(l.wiersze.map((w) => w.nazwa)).toEqual(['Szablon Żółw']);
+    expect(l.wiersze.map((w) => w.nazwa)).toEqual(['Lampka nocna Żyrafa']);
     expect(l.wiersze[0].sku).toBeNull();
   });
 

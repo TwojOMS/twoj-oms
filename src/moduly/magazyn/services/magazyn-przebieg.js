@@ -47,7 +47,7 @@ export function createMagazynPrzebieg({ db, sklepy = {}, allegro = {}, odswiez =
     // a lista i tak mowi „trwa — nie zamykaj panelu" na podstawie `stan()`. Napis budowany
     // i wyrzucany jest gorszy niz jego brak — nastepna osoba zalozy, ze gdzies sie wyswietla,
     // i oprze na nim komunikat, ktorego uzytkownik nigdy nie zobaczy. Jedyne wejscie w ta
-    // galaz to klikniecie ze STAREJ karty (przycisk jest `disabled`, gdy przebieg trwa),
+    // galaz to klikniecie ze STAREJ karty przegladarki (przycisk jest `disabled`, gdy przebieg trwa),
     // a po przekierowaniu czlowiek dostaje swiezy ekran z prawda o stanie.
     if (stan.trwa) return { wystartowal: false };
 

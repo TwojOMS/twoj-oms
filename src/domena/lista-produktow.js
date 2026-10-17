@@ -26,17 +26,17 @@ export function listaProduktow(z) {
       ilosc: Number(p?.ilosc ?? 0),
       nazwa: String(p?.nazwa ?? ''),
       // SKU zaslepki wtyczki to identyfikator ukrytego produktu technicznego, nie symbol
-      // wzoru — ta sama zasada, co na karcie i na specyfikacji.
+      // karty — ta sama zasada, co na karcie i na specyfikacji.
       sku: czyPozycjaPlaceholdera(p?.sku) ? null : (p?.sku || null),
     }));
   return { numer: String(z?.numer ?? ''), pozycje };
 }
 
 // Klucz scalania wierszy listy zbiorczej: SKU, gdy jest; inaczej DOKLADNA nazwa (po trim).
-// ⚠️ Przedrostki `s:`/`n:` rozdzielaja przestrzenie — nazwa „ZOLW-70" bez SKU nie ma prawa
-// wpasc do wiersza produktu z SKU „ZOLW-70". Nazwy nie normalizujemy dalej (wielkosc liter,
-// rozmiar w nazwie): „Łuki 80cm" i „Łuki 80 cm" moga byc dwoma roznymi wzorami, a scalenie
-// dwoch roznych wzorow konczy sie paczka bez jednego z nich. Dwa wiersze zamiast jednego
+// ⚠️ Przedrostki `s:`/`n:` rozdzielaja przestrzenie — nazwa „KLOSZ-70" bez SKU nie ma prawa
+// wpasc do wiersza produktu z SKU „KLOSZ-70". Nazwy nie normalizujemy dalej (wielkosc liter,
+// rozmiar w nazwie): „Abażur 80cm" i „Abażur 80 cm" moga byc dwoma roznymi kartami, a scalenie
+// dwoch roznych kart konczy sie paczka bez jednego z nich. Dwa wiersze zamiast jednego
 // kosztuja operatora tylko spojrzenie.
 const kluczScalania = (p) => (p.sku ? `s:${p.sku.trim()}` : `n:${p.nazwa.trim()}`);
 

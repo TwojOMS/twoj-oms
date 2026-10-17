@@ -1,23 +1,23 @@
-<%# MAGAZYN — katalog wzorow z cenami czterech kanalow.
+<%# MAGAZYN — katalog kart produktow z cenami czterech kanalow.
 
     ⚠️ WIDOK NICZEGO NIE LICZY I NICZEGO NIE ROZSTRZYGA. Wymiary w centymetrach, adres
     miniatury, trzy stany paczkomatu, ceny w zlotowkach i nazwy kanalow przychodza POLICZONE
     (domain/rozmiar.js, domain/miniatury.js, domain/paczkomat.js, domain/kanaly.js,
     web/routes/magazyn.js) — ta sama zasada, co przy faktury.ejs i liscie zamowien. Druga
     kopia reguly tutaj rozjechalaby sie z pierwsza przy pierwszej zmianie, a te wymiary
-    decyduja w Etapie 2 o tym, ktory plik jedzie na ploter.
+    decyduja o paczce, gabarycie i wymiarze w sklepie.
 
     ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w layout-oms.ejs. Paleta ma
     wariant jasny i ciemny, wiec wartosc wpisana tutaj zadzialalaby w jasnym i po cichu
     zniknela w ciemnym (nikt nie oglada obu naraz).
 
     ⚠️ SKU NIE MA WLASNEJ KOLUMNY — stoi POD nazwa, mniejszym drukiem (prosba wlasciciela).
-    Wzor bez SKU pokazuje w tym miejscu przygaszone „bez SKU", a nie pustke: brak numeru
-    jest informacja, nie brakiem danych. Sortowanie po SKU zyje w naglowku „Wzór". %>
+    Karta bez SKU pokazuje w tym miejscu przygaszone „bez SKU", a nie pustke: brak numeru
+    jest informacja, nie brakiem danych. Sortowanie po SKU zyje w naglowku „Karta". %>
 
 <div class="glowa-ekranu">
   <h1>Magazyn</h1>
-  <span class="krok">wzory i ich obecność w kanałach sprzedaży</span>
+  <span class="krok">karty produktów i ich obecność w kanałach sprzedaży</span>
 </div>
 
 <%# ——— KAFLE BRAKOW: postep porzadkow i nawigacja naraz —————————————————————————
@@ -44,7 +44,7 @@
     to regula z `opisPrzebiegu` (routes/magazyn.js, sekcja 9 przewodnika): trwanie i KAZDY
     blad (przebiegu jako calosci albo pojedynczego kanalu) renderuja `<details>` OTWARTY,
     bo cichy zly odczyt ma wygladac identycznie jak spokoj WYLACZNIE, gdy naprawde nic sie
-    nie stalo. Decyzja stoi w trasie (`przebieg.otworz`) — szablon tylko ja wypisuje. %>
+    nie stalo. Decyzja stoi w trasie (`przebieg.otworz`) — widok tylko ja wypisuje. %>
 <details class="odczyt-szczegoly"<%- przebieg.otworz ? ' open' : '' %>>
   <summary>
     <b>Odczyt katalogów:</b> <%= przebieg.streszczenie %>
@@ -108,18 +108,18 @@
           Odczytaj katalogi ze sklepów
         </button>
       </form>
-      <form method="post" action="/magazyn/utworz-wzory">
+      <form method="post" action="/magazyn/utworz-karty">
         <%# Adres TEJ listy jedzie razem z akcja — jej wynik pokazuje sie na ekranie %>
         <%# „pominiete", z ktorego operator wraca odnosnikiem (4.13d). %>
         <input type="hidden" name="wroc" value="<%= adresPowrotuListy %>">
-        <button class="btn" type="submit">Utwórz wzory z niepowiązanych</button>
+        <button class="btn" type="submit">Utwórz karty z niepowiązanych</button>
       </form>
       <a class="link-edytuj" href="<%= adresPominietych %>">Co panel pomija i dlaczego →</a>
       <%# ⚠️ JEDYNE WEJSCIE na ekran powiazan — bez tego odnosnika trasa istnieje wylacznie
           dla kogos, kto zna adres. Stoi WLASNIE TU, obok „pominietych": to tam widac 447
           ofert Allegro odrzuconych z zalozenia, i to jest jedyne miejsce w panelu, w ktorym
           czlowiek dowiaduje sie, ze te oferty w ogole czekaja na reczna robote. %>
-      <a class="link-edytuj" href="<%= adresEkranuPowiazan %>">Powiąż oferty Allegro z wzorami →</a>
+      <a class="link-edytuj" href="<%= adresEkranuPowiazan %>">Powiąż oferty Allegro z kartami →</a>
     </div>
   </div>
 </details>
@@ -163,10 +163,10 @@
       <span>Kategoria</span>
       <%# ⚠️ POLE WYBORU, NIE POLE TEKSTOWE, i lista idzie Z BAZY (db/magazyn.js). Filtr
           dopasowuje CALA nazwe, a nazw sa setki — wpisana z pamieci literowka oddaje pusty
-          ekran, czyli obraz nieodrozialny od „nie ma takich wzorow".
+          ekran, czyli obraz nieodrozialny od „nie ma takich kart".
 
-          ⚠️ Szuka we WSZYSTKICH kategoriach produktu ORAZ w kategorii glownej wzoru
-          (nadzbior — patrz warunkiWzorow). Kolumna pokazuje glowna, bo w kolumnie miesci
+          ⚠️ Szuka we WSZYSTKICH kategoriach produktu ORAZ w kategorii glownej karty
+          (nadzbior — patrz warunkiKart). Kolumna pokazuje glowna, bo w kolumnie miesci
           sie jedna; filtrowanie wylacznie po niej gubiloby produkt, ktory jest
           w „Aplikacjach" jako czwartej z siedmiu. %>
       <select name="kategoria">
@@ -189,10 +189,10 @@
     </label>
     <label class="pole-filtra">
       <span>Cena w kanale</span>
-      <%# ⚠️ ZAKRES OPISUJE JEDEN PRODUKT razem z kanalem (jeden EXISTS w zapytaniu): „PRO od
-          100 zl" nie ma pokazywac wzoru, ktory na PRO kosztuje 20 zl, a setke przekracza
+      <%# ⚠️ ZAKRES OPISUJE JEDEN PRODUKT razem z kanalem (jeden EXISTS w zapytaniu): „sklep B od
+          100 zl" nie ma pokazywac karty, ktora w sklepie B kosztuje 20 zl, a setke przekracza
           dopiero na Allegro. Wartosci wracaja tu ZLOTOWKAMI (filtr zyje w groszach) —
-          przelicza je domena, nie ten szablon. %>
+          przelicza je domena, nie ten widok. %>
       <span class="zakres">
         <input type="text" name="cenaOd" value="<%= wartosci.cenaOd %>" inputmode="decimal" size="6" aria-label="Cena od">
         <span class="myslnik">–</span>
@@ -219,9 +219,9 @@
     <input type="hidden" name="<%= p.name %>" value="<%= p.value %>">
   <% }); %>
   <label class="szukajka-pole">
-    <span class="szukajka-etykieta">Szukaj wzoru</span>
+    <span class="szukajka-etykieta">Szukaj karty</span>
     <input type="search" name="fraza" value="<%= wartosci.fraza %>" autocomplete="off"
-      placeholder="nazwa wzoru albo SKU">
+      placeholder="nazwa karty albo SKU">
   </label>
   <button type="submit">Szukaj</button>
   <% if (filtry.fraza) { %><a class="szukajka-wyczysc" href="<%= adresBezFiltrow %>">Wyczyść</a><% } %>
@@ -256,13 +256,13 @@
     Przyciski stoja WYLACZNIE w ciele akcji, nigdy w jej naglowku.
 
     ⚠️⚠️ FORMULARZ PROWADZI NA PODGLAD (`/magazyn/hurt`), NIGDY WPROST NA ZAPIS. Podglad jest
-    obowiazkowy i jest OSOBNA trasa: jedno klikniecie dotyka setek wzorow, a wymiar, ktory
-    tak powstanie, rozstrzyga w Etapie 2, ktory plik .mol jedzie na ploter.
+    obowiazkowy i jest OSOBNA trasa: jedno klikniecie dotyka setek kart, a z wymiaru, ktory
+    tak powstanie, liczy sie paczka, gabaryt i wymiar w sklepie.
 
-    ⚠️⚠️ PUSTE POLE ZNACZY „NIE RUSZAJ", ODWROTNIE NIZ NA KARCIE WZORU. Tam puste pole KASUJE
-    wartosc i jest to bezpieczne, bo czlowiek patrzy na jeden wzor. Tutaj pol jest kilka
+    ⚠️⚠️ PUSTE POLE ZNACZY „NIE RUSZAJ", ODWROTNIE NIZ NA KARCIE PRODUKTU. Tam puste pole KASUJE
+    wartosc i jest to bezpieczne, bo czlowiek patrzy na jedna karte. Tutaj pol jest kilka
     naraz: gdyby puste kasowalo, ustawienie samego paczkomatu wyczyscilo by wymiary
-    i kategorie sześciuset wzorom jednym kliknieciem. Regula stoi w domain/magazyn-hurt.js.
+    i kategorie sześciuset kartom jednym kliknieciem. Regula stoi w domain/magazyn-hurt.js.
 
     ⚠️⚠️ ZAKRES JEDZIE Z KLIKNIETYM PRZYCISKIEM, A NIE Z POLA STOJACEGO WYZEJ — i to jest
     poprawka wady zgloszonej przez wlasciciela wprost („nie ma opcji zaznaczania wszystkich
@@ -291,7 +291,7 @@
     Wypisana tam liczba bylaby zgadywaniem. %>
 <form method="post" action="/magazyn/hurt">
   <div class="belka-akcji">
-    <span class="belka-akcji-etykieta">Zaznaczone wzory:</span>
+    <span class="belka-akcji-etykieta">Zaznaczone karty:</span>
 
 <%# ——— USTAW POLA (edycja hurtem) —————————————————————————————————————————————— %>
     <details class="akcja" name="akcja" id="hurt-pasek">
@@ -309,7 +309,7 @@
         <input type="hidden" name="zawezenie" value="<%= zawezenieHurtu %>">
 
         <%# ⚠️ POLA SA W CENTYMETRACH, BAZA TRZYMA MILIMETRY — przelicza domain/rozmiar.js,
-            TA SAMA funkcja, ktorej uzywa karta wzoru. Napis niezrozumialy ODMAWIA CALEGO
+            TA SAMA funkcja, ktorej uzywa ekran karty. Napis niezrozumialy ODMAWIA CALEGO
             zapisu, nigdy nie jest zgadywany ani cicho pomijany. %>
         <label class="pole-filtra">
           <span>Szerokość (cm)</span>
@@ -322,7 +322,7 @@
         <label class="pole-filtra">
           <span>Kategoria główna</span>
           <%# POLE WYBORU, NIE TEKSTOWE, i lista idzie Z BAZY — literowka wpisana z pamieci
-              ustawilaby kategorie, ktorej nie ma w zadnym sklepie, i to od razu setkom wzorow. %>
+              ustawilaby kategorie, ktorej nie ma w zadnym sklepie, i to od razu setkom kart. %>
           <select name="kategoria_glowna">
             <option value="">— nie ruszaj —</option>
             <% kategorieDoFiltra.forEach(function (k) { %>
@@ -334,7 +334,7 @@
           <span>Paczkomat</span>
           <%# ⚠️ TRZY STANY i WYLACZNIE RECZNIE (decyzja wlasciciela): zero wyliczania
               z wymiarow. „Nieoznaczone" jest tu OSOBNYM, JAWNYM wyborem kasujacym decyzje —
-              i jest to jedyna droga powrotu po hurtowej pomylce na setkach wzorow. Pusta
+              i jest to jedyna droga powrotu po hurtowej pomylce na setkach kart. Pusta
               pozycja („nie ruszaj") znaczy CO INNEGO i musi byc od niej odrozialna. %>
           <select name="paczkomat">
             <option value="">— nie ruszaj —</option>
@@ -345,9 +345,9 @@
         </label>
         <label class="pole-filtra">
           <span>Nazwa</span>
-          <%# „Teren monitorowany – 60x62cm" → „Teren monitorowany". ⚠️ WYLACZNIE W REJESTRZE
+          <%# „Lampa wisząca Kopuła – 30x45cm" → „Lampa wisząca Kopuła". ⚠️ WYLACZNIE W REJESTRZE
               MAGAZYNU — nazwa NIE JEDZIE do sklepu (decyzja wlasciciela): jest zaindeksowanym
-              tytulem strony, a katalog techniczny wlasnie przeniesiono na PRO z 301. %>
+              tytulem strony, a zmiana tytulu bez przekierowania gubi pozycje w wyszukiwarce. %>
           <span class="w-linii">
             <input type="checkbox" name="nazwa_bez_rozmiaru" value="tak" id="hurt-nazwa">
             <label for="hurt-nazwa">skróć o rozmiar</label>
@@ -372,7 +372,7 @@
     </details>
 
 <%# ——— NADAJ SKU ————————————————————————————————————————————————————————————————
-    ⚠️⚠️ TEN SAM FORMULARZ, CO AKCJA HURTU, I MUSI TAK BYC: pola wyboru wzorow stoja
+    ⚠️⚠️ TEN SAM FORMULARZ, CO AKCJA HURTU, I MUSI TAK BYC: pola wyboru kart stoja
     w WIERSZACH tabeli nizej, a formularzy nie wolno zagniezdzac. Osobny przycisk prowadzi
     gdzie indziej przez `formaction` — bez jednej linijki JavaScriptu, tak jak reszta panelu.
     Skutek uboczny jest nazwany i pilnowany testem: zadanie generatora niesie pola hurtu
@@ -391,10 +391,10 @@
           <%# ⚠️ POLE TEKSTOWE, BO WZORZEC JEST DECYZJA, a nie wyborem z listy — ale kazdy
               napis, ktorego generator nie rozumie, ODMAWIA calosci (domain/sku-generator.js).
               Nierozpoznane pole w klamrach nie ma prawa wyladowac w numerze doslownie. %>
-          <input type="text" name="wzorzec" size="26" placeholder="np. STE-{kategoria}-{nnn}">
+          <input type="text" name="wzorzec" size="26" placeholder="np. LMP-{kategoria}-{nnn}">
         </label>
         <span class="wynik-filtra">
-          {kategoria} = kategoria główna wzoru, {nnn} = kolejny numer w tej kategorii.
+          {kategoria} = kategoria główna karty, {nnn} = kolejny numer w tej kategorii.
         </span>
 
         <div class="akcja-przyciski">
@@ -408,23 +408,23 @@
             (<strong class="sku-pasujace"><%= ilePasujacych %></strong>)
           </button>
         </div>
-        <p class="akcja-zasada">Wzór, który ma już numer, nigdy nie dostaje nowego.</p>
+        <p class="akcja-zasada">Karta, która ma już numer, nigdy nie dostaje nowego.</p>
       </div>
     </details>
 
 <%# ——— PRZEJMIJ NUMERY ZE SKLEPU ————————————————————————————————————————————————
     ⚠️⚠️ OSOBNA AKCJA, NIE DRUGI TRYB GENERATORA. Generator WYDAJE numery nowe; ta akcja
     NICZEGO NIE WYMYSLA — przepisuje do rejestru numer, ktory JUZ ZYJE w sklepie. Dotyczy
-    277 wzorow (czwarta czesc katalogu, zmierzone 2026-08-12), ktore naszego numeru nie
+    277 kart (czwarta czesc katalogu, zmierzone 2026-08-12), ktore naszego numeru nie
     maja, choc ich produkt ma wlasny.
 
     ⚠️⚠️ WLASNA AKCJA, A NIE DOPISEK POD GENERATOREM — i to nie jest kosmetyka. Dopoki
     mieszkala w panelu „Nadanie SKU", jej zakres pochodzil z pola stojacego DWA panele
     wyzej, a przy przycisku nie stalo o tym ani slowo. Wlasnie na niej wada sie objawila:
-    wlasciciel z 277 wzorami do przejecia napisal „musze kliknac ponad 100 razy". Wlasny
+    wlasciciel z 277 kartami do przejecia napisal „musze kliknac ponad 100 razy". Wlasny
     chip z wlasna para przyciskow jest odpowiedzia na to zgloszenie i ma nia zostac.
 
-    ⚠️⚠️ TO JEST BARIERA PRZED PIERWSZYM ZAPISEM DO SKLEPU: bez przejecia wzor dostalby
+    ⚠️⚠️ TO JEST BARIERA PRZED PIERWSZYM ZAPISEM DO SKLEPU: bez przejecia karta dostalaby
     numer NOWY, a zapis nadpisalby nim tozsamosc produktu — cicho.
 
     ⚠️ PROWADZI NA PODGLAD, NIGDY WPROST NA ZAPIS. %>
@@ -484,7 +484,7 @@
 
 <%# ——— PASEK NAD TABELA: CO ZAWEZA / PRZELACZNIK TRYBU KOLUMN ————————————————————
     ⚠️⚠️ DWA TRYBY JEDNEJ TABELI (przebudowa 2026-08-25). Domyslny to PORZADKI: cztery
-    kolumny cen ustepuja jednej kolumnie „Stan", ktora mowi, ILE brakuje przy wzorze — i
+    kolumny cen ustepuja jednej kolumnie „Stan", ktora mowi, ILE brakuje przy karcie — i
     dzieki temu tabela miesci sie bez przewijania w bok. Ceny wracaja o jedno klikniecie
     (`?widok=katalog`).
 
@@ -499,7 +499,7 @@
   <span class="przelacznik"><a href="<%= adresPrzelacznika %>"><%= etykietaPrzelacznika %></a></span>
 </div>
 
-<%# ——— TABELA WZOROW —————————————————————————————————————————————————————————
+<%# ——— TABELA KART —————————————————————————————————————————————————————————
     Tabela przewija sie SAMA, zamiast rozpychac strone: dziewiec kolumn i miniatury zjechaly
     juz raz w bok razem z akcjami, czyli z rzeczami, ktore maja stac w miejscu.
 
@@ -508,6 +508,15 @@
     `overflow-x: auto` — wciagniecie belki do srodka (albo owiniecie jej nowym przewijakiem)
     odklei ja po cichu: znacznik i klasy wygladaja wtedy poprawnie, a belka zjezdza z ekranu
     przy pierwszym przewinieciu. %>
+<% if (stany) { %>
+  <%# PRZ-091 — pasek stanow magazynowych; bez wlaczonych stanow (Ustawienia → Magazyn) go nie ma. %>
+  <p class="magazyn-stany">
+    <b>Stany magazynowe</b> liczone od <%= stany.od %>:
+    <% if (stany.naMinusie) { %><span class="stan-minus"><%= stany.naMinusie %> na minusie</span><% } else { %>nic na minusie<% } %>
+    · <a href="<%= stany.adresBezKarty %>">pozycje zamówień bez karty: <%= stany.bezKarty %></a>
+    · <a href="<%= stany.adresImportu %>">Import stanu otwarcia</a>
+  </p>
+<% } %>
 <div class="przewijak-tabeli">
   <table class="tresc-lista magazyn-tabela">
     <thead>
@@ -529,16 +538,16 @@
             bo odpowiadaja na dwie rozne potrzeby. %>
         <th class="kol-zaznacz">
           <% if (zaznaczWszystkie) { %>
-            <a class="zaznacz-wszystkie" href="<%= adresOdznaczWszystkie %>" aria-label="Odznacz wszystkie wzory na liście">odznacz</a>
+            <a class="zaznacz-wszystkie" href="<%= adresOdznaczWszystkie %>" aria-label="Odznacz wszystkie karty na liście">odznacz</a>
           <% } else { %>
             <%# Napis krotki („zaznacz", nie „zaznacz wszystkie"), bo to on wyznacza szerokosc
                 calej kolumny — a ta ma byc waska. Pelne zdanie zostaje w `aria-label`. %>
-            <a class="zaznacz-wszystkie" href="<%= adresZaznaczWszystkie %>" aria-label="Zaznacz wszystkie wzory na liście">zaznacz</a>
+            <a class="zaznacz-wszystkie" href="<%= adresZaznaczWszystkie %>" aria-label="Zaznacz wszystkie karty na liście">zaznacz</a>
           <% } %>
         </th>
         <th class="kol-mini"></th>
-        <th class="komorka-wzor" <% if (sortowanie.nazwa.aria) { %>aria-sort="<%= sortowanie.nazwa.aria %>"<% } %>>
-          <a class="zaznacz-wszystkie" href="<%= sortowanie.nazwa.adres %>">Wzór <%= sortowanie.nazwa.strzalka %></a>
+        <th class="komorka-karta" <% if (sortowanie.nazwa.aria) { %>aria-sort="<%= sortowanie.nazwa.aria %>"<% } %>>
+          <a class="zaznacz-wszystkie" href="<%= sortowanie.nazwa.adres %>">Karta <%= sortowanie.nazwa.strzalka %></a>
           <%# Sortowanie po SKU nie ma wlasnej kolumny (SKU stoi pod nazwa), wiec ma wlasny
               odnosnik TUTAJ — drugi wariant kolejnosci tej samej kolumny. %>
           <span class="magazyn-brak">/</span>
@@ -566,6 +575,7 @@
             kolumnie nieaktywnej i ta jednolitosc ma zostac; kolejke roboty („najwiecej
             brakow na wierzch") daje klikniecie DRUGIE, czyli kolejnosc malejaca.
             Odnosnik sklada `linkiSortowania` z tego samego klucza, ktory zna warstwa zapytan. %>
+        <% if (stany) { %><th class="liczba">Na stanie</th><% } %>
         <% if (widok === 'porzadki') { %>
           <th <% if (sortowanie.braki.aria) { %>aria-sort="<%= sortowanie.braki.aria %>"<% } %>>
             <a class="zaznacz-wszystkie" href="<%= sortowanie.braki.adres %>">Stan <%= sortowanie.braki.strzalka %></a>
@@ -576,9 +586,9 @@
     <tbody>
       <% wiersze.forEach(function (w) { %>
         <tr>
-          <%# ⚠️ ZAZNACZENIE JEST JAWNE i niesie NUMER WZORU, nie numer wiersza: kolejnosc
-              listy zmienia sie z kazdym sortowaniem, a zapis ma trafic w ten wzor, ktory
-              czlowiek klikal. Nieobecne pole = wzor niezaznaczony, i to jedyna droga:
+          <%# ⚠️ ZAZNACZENIE JEST JAWNE i niesie NUMER KARTY, nie numer wiersza: kolejnosc
+              listy zmienia sie z kazdym sortowaniem, a zapis ma trafic w te karte, ktora
+              czlowiek klikal. Nieobecne pole = karta niezaznaczona, i to jedyna droga:
               puste zaznaczenie nie ma prawa znaczyc „wszystkie". %>
           <%# `checked` odzwierciedla WYLACZNIE adres w chwili renderu (`zaznaczWszystkie`);
               po zaladowaniu strony to przegladarka, nie adres, pamieta co jest odhaczone. %>
@@ -592,13 +602,13 @@
               <img class="mini" src="<%= w.miniatura %>" alt="" width="38" height="38" loading="lazy">
             <% } %>
           </td>
-          <td class="komorka-wzor">
-            <%# Nazwa prowadzi na KARTE wzoru — jedyne miejsce, w ktorym da sie ten wzor
-                poprawic, zobaczyc jego zdjecia i dopisac mu oferte. Bez tego odnosnika
+          <td class="komorka-karta">
+            <%# Nazwa prowadzi na ekran KARTY — jedyne miejsce, w ktorym da sie te karte
+                poprawic, zobaczyc jej zdjecia i dopisac jej oferte. Bez tego odnosnika
                 karta istnieje wylacznie dla kogos, kto zna adres.
                 ⚠️ `w.adresKarty` niesie DALEJ adres tej listy jako „?wroc=…" (Zadanie 6),
                 zeby „Wróć do magazynu" na karcie trafil TU, a nie na goly „/magazyn" —
-                juz gotowy i zakodowany z trasy (`wierszWzoru`), widok niczego tu nie liczy. %>
+                juz gotowy i zakodowany z trasy (`wierszKarty`), widok niczego tu nie liczy. %>
             <div><a href="<%= w.adresKarty %>"><%= w.nazwa %></a></div>
             <%# Brak numeru katalogowego jest INFORMACJA (jest ich na starcie okolo tysiaca),
                 a nie brakiem danych — pusta linijka wygladalaby jak coś, co sie nie doczytalo. %>
@@ -631,7 +641,10 @@
             <% } else if (w.paczkomat === 'nie') { %><span class="znacznik znacznik--cichy">nie</span>
             <% } else { %><span class="magazyn-brak">nieoznaczone</span><% } %>
           </td>
-          <%# KOLUMNA „STAN" — ile brakuje przy tym wzorze. Liczba i jej odmiana przychodza
+          <% if (stany) { %>
+            <td class="liczba kol-na-stanie<%= w.naStanie < 0 ? ' stan-minus' : '' %>"><%= w.naStanie %></td>
+          <% } %>
+          <%# KOLUMNA „STAN" — ile brakuje przy tym karcie. Liczba i jej odmiana przychodza
               POLICZONE z trasy (`w.stan`), bo widok w tym module niczego nie liczy. Komplet
               dostaje ten sam znacznik, co „paczkomat: tak" — to jest ta sama wiadomosc
               („nic tu do zrobienia"), wiec nie ma prawa wygladac inaczej. %>
@@ -648,20 +661,20 @@
             nie wczytal, a wtedy pierwszym odruchem jest szukanie awarii.
 
             ⚠️⚠️ PUSTY WYNIK ZAWEZENIA TO INNY KOMUNIKAT NIZ PUSTY MAGAZYN. „Nie ma tu jeszcze
-            ani jednego wzoru" przy aktywnym filtrze jest po prostu NIEPRAWDA: katalog ma
+            ani jednej karty produktu" przy aktywnym filtrze jest po prostu NIEPRAWDA: katalog ma
             ~1000 pozycji. Czlowiek czyta to jako utrate danych i idzie szukac awarii odczytu
             — zamiast poszerzyc zawezenie, ktore sam przed chwila ustawil. Rozstrzygniecie
-            (`filtrowane`) przychodzi z trasy; szablon niczego tu nie liczy. %>
+            (`filtrowane`) przychodzi z trasy; widok niczego tu nie liczy. %>
         <%# ⚠️ SZEROKOSC LICZY TRASA (`kolumnPustej`), bo zalezy od TRYBU kolumn: siedem
-            w porzadkach, dziesiec w katalogu. Wyrazenie w szablonie rozjechaloby sie po cichu
+            w porzadkach, dziesiec w katalogu. Wyrazenie w widoku rozjechaloby sie po cichu
             przy pierwszej zmianie zestawu kolumn i komunikat przestalby siegac konca tabeli. %>
         <tr><td colspan="<%= kolumnPustej %>" class="pusto">
           <% if (filtrowane) { %>
-            Żaden wzór nie pasuje do tego zawężenia — katalog nie jest pusty, tylko zapytanie nic nie trafiło.
+            Żadna karta nie pasuje do tego zawężenia — katalog nie jest pusty, tylko zapytanie nic nie trafiło.
             <a href="<%= adresBezFiltrow %>">Wyczyść zawężenie</a>.
           <% } else { %>
-            Nie ma tu jeszcze ani jednego wzoru. Zacznij od „Odczytaj katalogi ze sklepów",
-            a potem od „Utwórz wzory z niepowiązanych".
+            Nie ma tu jeszcze ani jednej karty produktu. Zacznij od „Odczytaj katalogi ze sklepów",
+            a potem od „Utwórz karty z niepowiązanych".
           <% } %>
         </td></tr>
       <% } %>
@@ -671,6 +684,6 @@
 </form>
 
 <p class="wyjasnienie">
-  Ceny są tym, co stoi <strong>dziś w kanale</strong> — wzór wycofany ze sprzedaży zostaje
-  na liście, ale jego cena znika z kolumny. Magazyn nie prowadzi stanów magazynowych.
+  Ceny są tym, co stoi <strong>dziś w kanale</strong> — karta wycofana ze sprzedaży zostaje
+  na liście, ale jej cena znika z kolumny. Magazyn nie prowadzi stanów magazynowych.
 </p>

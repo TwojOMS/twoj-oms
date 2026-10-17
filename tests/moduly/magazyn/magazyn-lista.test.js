@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 import {
-  zapiszProduktSklepowy, utworzWzor, powiazProdukt, SORTOWANIE_WZOROW,
+  zapiszProduktSklepowy, utworzKarte, powiazProdukt, SORTOWANIE_KART,
 } from '../../../src/oms/db/magazyn.js';
 
 
@@ -40,12 +40,12 @@ beforeEach(() => {
   db = openOmsDb(':memory:');
 });
 
-// Wzor z produktem w kanale. Oddaje id wzoru.
-function wzorZProduktem(wzor, produkty = []) {
-  const id = utworzWzor(db, wzor);
+// Karta z produktem w kanale. Oddaje id karty.
+function kartaZProduktem(karta, produkty = []) {
+  const id = utworzKarte(db, karta);
   for (const p of produkty) {
     const produktId = zapiszProduktSklepowy(db, {
-      wariant_id: '', odczytane_at: '2026-08-11T06:00:00.000Z', nazwa: wzor.nazwa, ...p,
+      wariant_id: '', odczytane_at: '2026-08-11T06:00:00.000Z', nazwa: karta.nazwa, ...p,
     });
     powiazProdukt(db, produktId, id);
   }
@@ -55,7 +55,7 @@ function wzorZProduktem(wzor, produkty = []) {
 const get = (app, url) => app.inject({ method: 'GET', url, headers: auth });
 
 /**
- * WIERSZ TABELY WZOROW o tej nazwie — sam wiersz, bez reszty strony.
+ * WIERSZ TABELY KART o tej nazwie — sam wiersz, bez reszty strony.
  *
  * ⚠️⚠️ TO NIE JEST WYGODA, TYLKO WARUNEK NOSNOSCI ASERCJI. Nad tabela stoi pasek filtrow
  * (Zadanie 10) z listami wyboru kanalu i paczkomatu, ktore renderuja DOKLADNIE te same
@@ -66,14 +66,14 @@ const get = (app, url) => app.inject({ method: 'GET', url, headers: auth });
  *
  * Wszystko, co dotyczy zawartosci wiersza, ma przechodzic przez te funkcje.
  */
-function wierszWzoru(body, nazwa) {
-  // ⚠️ NAZWA JEST ODNOSNIKIEM NA KARTE WZORU (Zadanie 11) — samo `<div>nazwa</div>` juz
+function wierszKarty(body, nazwa) {
+  // ⚠️ NAZWA JEST ODNOSNIKIEM NA KARTE PRODUKTU (Zadanie 11) — samo `<div>nazwa</div>` juz
   // w tej kolumnie nie stoi, wiec wzorzec, ktory tego nie widzi, nie znajdzie ANI JEDNEGO
   // wiersza i cala suita padnie na „nie ma wiersza" zamiast na tresci asercji.
   const wiersz = body.split('<tr>').find((w) => w.includes(`>${nazwa}</a></div>`));
   // Brak wiersza to blad testu, a nie „pusty wiersz" — inaczej kazda asercja `not.toMatch`
   // przeszlaby na pustym napisie i znowu mielibysmy falszywa zielen.
-  if (!wiersz) throw new Error(`W tabeli nie ma wiersza wzoru „${nazwa}"`);
+  if (!wiersz) throw new Error(`W tabeli nie ma wiersza karty „${nazwa}"`);
   return wiersz;
 }
 
@@ -87,8 +87,8 @@ function wierszWzoru(body, nazwa) {
  * wiersza nie ma w ogole. Brak komorki jest tu bledem TESTU i ma RZUCAC.
  */
 function komorkaMiniatury(body, nazwa) {
-  const komorka = /<td class="kol-mini">([\s\S]*?)<\/td>/.exec(wierszWzoru(body, nazwa));
-  if (!komorka) throw new Error(`Wiersz wzoru „${nazwa}" nie ma komórki miniatury`);
+  const komorka = /<td class="kol-mini">([\s\S]*?)<\/td>/.exec(wierszKarty(body, nazwa));
+  if (!komorka) throw new Error(`Wiersz karty „${nazwa}" nie ma komórki miniatury`);
   return komorka[1];
 }
 
@@ -97,10 +97,10 @@ function komorkaMiniatury(body, nazwa) {
 const komorkiKanalow = (wiersz) => [...wiersz.matchAll(/<td class="magazyn-kanal">([\s\S]*?)<\/td>/g)]
   .map((m) => m[1].replace(/<[^>]*>/g, '').trim());
 
-describe('GET /magazyn — tabela wzorow', () => {
-  it('pokazuje wzor z cena w kolumnie wlasciwego kanalu, a kanal bez produktu kreska', async () => {
-    wzorZProduktem(
-      { nazwa: 'Kotwica', sku: 'PRO-KOT-1', szerokosc_mm: 700, wysokosc_mm: 1000 },
+describe('GET /magazyn — tabela kart', () => {
+  it('pokazuje karta z cena w kolumnie wlasciwego kanalu, a kanal bez produktu kreska', async () => {
+    kartaZProduktem(
+      { nazwa: 'Kandelabr', sku: 'LMP-KAN-1', szerokosc_mm: 700, wysokosc_mm: 1000 },
       [{ kanal: 'pro', produkt_id: '944', cena_gr: 7490 }],
     );
     const app = serwer();
@@ -110,11 +110,11 @@ describe('GET /magazyn — tabela wzorow', () => {
     const r = await get(app, '/magazyn?widok=katalog');
 
     expect(r.statusCode).toBe(200);
-    expect(r.body).toContain('Kotwica');
+    expect(r.body).toContain('Kandelabr');
     // ⚠️ CENA PRZYPIETA DO SWOJEJ KOLUMNY, nie do strony. Samo `toContain('74.90')` nie
     // mowilo NIC o tym, w ktorym z czterech kanalow ta cena stoi — a tytul tego testu
     // obiecuje wlasnie kolumne. Wzorzec bierze PIERWSZA komorke kanalu (PRO) razem
-    // z nastepna (szkicownia.pl), ktora ma byc pusta.
+    // z nastepna (sklep A), ktora ma byc pusta.
     expect(r.body).toMatch(
       /<td class="magazyn-kanal">\s*74\.90\s*<\/td>\s*<td class="magazyn-kanal">\s*<span class="magazyn-brak">—<\/span>/,
     );
@@ -125,13 +125,13 @@ describe('GET /magazyn — tabela wzorow', () => {
     // Najpierw stalo tu gole `toContain('—')`: myslnik wystepuje w ukladzie strony 223 razy,
     // wiec asercja byla spelniona zawsze. Po zawezeniu do `<span class="magazyn-brak">—</span>`
     // mutacja kasujaca kreske z kolumny kanalu DALEJ PRZECHODZILA — bo ten sam znacznik
-    // rysuje komorka KATEGORII, ktorej ten wzor tez nie ma. Nienosna asercje potrafi
+    // rysuje komorka KATEGORII, ktorej ta karta tez nie ma. Nienosna asercje potrafi
     // podeprzec nie tylko arkusz ukladu, ale i sasiednia kolumna tej samej strony.
     expect(r.body).toMatch(/<td class="magazyn-kanal">\s*<span class="magazyn-brak">—<\/span>/);
   });
 
   it('cztery osobne kolumny kanalow, Allegro rozbite na dwa konta', async () => {
-    wzorZProduktem({ nazwa: 'Kotwica' }, []);
+    kartaZProduktem({ nazwa: 'Kandelabr' }, []);
     // ⚠️ TRYB KATALOGOWY — kolumny kanalow zeszly z ekranu domyslnego (Zadanie 5).
     const r = await get(serwer(), '/magazyn?widok=katalog');
     // ⚠️ ETYKIETY W NAGLOWKACH TABELI, nie „gdziekolwiek na stronie". Pasek filtrow
@@ -148,10 +148,10 @@ describe('GET /magazyn — tabela wzorow', () => {
 
   // ⚠️⚠️ TEN TEST WIAZE ODCZYT Z KOLUMNA i jest jedynym miejscem, ktore to robi. Kanal
   // czytany do lustra, ale bez kolumny na ekranie, jest gorszy niz kanal nieczytany:
-  // magazyn twierdzi wtedy, ze wzoru nigdzie tam nie ma, a on tam jest i ma cene.
+  // magazyn twierdzi wtedy, ze karty nigdzie tam nie ma, a on tam jest i ma cene.
   // Cena rozna dla kazdego kanalu, zeby pomylka w mapowaniu nie mogla sie schowac.
   it('cena KAZDEGO czytanego kanalu stoi w SWOJEJ kolumnie', async () => {
-    wzorZProduktem({ nazwa: 'Kotwica' }, [
+    kartaZProduktem({ nazwa: 'Kandelabr' }, [
       { kanal: 'pro', produkt_id: 'p1', cena_gr: 7490 },
       { kanal: 'szkicownia', produkt_id: 's1', cena_gr: 9900 },
       { kanal: 'allegro_szkicownia', produkt_id: 'a1', cena_gr: 11100 },
@@ -160,29 +160,29 @@ describe('GET /magazyn — tabela wzorow', () => {
     // ⚠️ TRYB KATALOGOWY — to on niesie ceny kanalow po przebudowie (Zadanie 5).
     const r = await get(serwer(), '/magazyn?widok=katalog');
 
-    expect(komorkiKanalow(wierszWzoru(r.body, 'Kotwica')))
+    expect(komorkiKanalow(wierszKarty(r.body, 'Kandelabr')))
       .toEqual(['74.90', '99.00', '111.00', '222.00']);
     // Liczba kolumn cen ma sie zgadzac z liczba kanalow, ktore panel w ogole czyta.
-    expect(komorkiKanalow(wierszWzoru(r.body, 'Kotwica'))).toHaveLength(4);
+    expect(komorkiKanalow(wierszKarty(r.body, 'Kandelabr'))).toHaveLength(4);
   });
 
-  it('SKU stoi POD nazwa, a wzor bez SKU mowi „bez SKU" zamiast pustki', async () => {
-    wzorZProduktem({ nazwa: 'Kotwica', sku: 'PRO-KOT-1' }, []);
-    wzorZProduktem({ nazwa: 'Latarnia' }, []);
+  it('SKU stoi POD nazwa, a karta bez SKU mowi „bez SKU" zamiast pustki', async () => {
+    kartaZProduktem({ nazwa: 'Kandelabr', sku: 'LMP-KAN-1' }, []);
+    kartaZProduktem({ nazwa: 'Lampion' }, []);
     const r = await get(serwer(), '/magazyn');
 
     // Znacznik `.sku` to jest wlasnie „mniejszym drukiem, pod nazwa" — asercja na golym
     // napisie przeszlaby takze wtedy, gdyby SKU wrocilo do wlasnej kolumny.
-    expect(r.body).toContain('<div class="sku">PRO-KOT-1</div>');
+    expect(r.body).toContain('<div class="sku">LMP-KAN-1</div>');
     expect(r.body).toContain('<div class="sku">bez SKU</div>');
     // SKU nie ma wlasnej kolumny (prosba wlasciciela) — naglowek tabeli o nim milczy.
     expect(r.body).not.toMatch(/<th[^>]*>\s*SKU\s*<\/th>/);
   });
 
   it('wymiary z milimetrow na centymetry, brak jako kreska', async () => {
-    wzorZProduktem({ nazwa: 'Kotwica', szerokosc_mm: 700, wysokosc_mm: 1000 }, []);
+    kartaZProduktem({ nazwa: 'Kandelabr', szerokosc_mm: 700, wysokosc_mm: 1000 }, []);
     // Polowiczny wymiar to nadal BRAK wymiarow — ta sama regula, co w filtrze braków.
-    wzorZProduktem({ nazwa: 'Latarnia', szerokosc_mm: 700 }, []);
+    kartaZProduktem({ nazwa: 'Lampion', szerokosc_mm: 700 }, []);
     const r = await get(serwer(), '/magazyn');
 
     expect(r.body).toContain('70 × 100 cm');
@@ -192,44 +192,44 @@ describe('GET /magazyn — tabela wzorow', () => {
   });
 
   it('paczkomat ma TRZY odrozialne stany, a nieoznaczony to nie to samo co „nie"', async () => {
-    wzorZProduktem({ nazwa: 'Awzor', paczkomat: 'tak' }, []);
-    wzorZProduktem({ nazwa: 'Bwzor', paczkomat: 'nie' }, []);
-    wzorZProduktem({ nazwa: 'Cwzor' }, []);
+    kartaZProduktem({ nazwa: 'Akarta', paczkomat: 'tak' }, []);
+    kartaZProduktem({ nazwa: 'Bkarta', paczkomat: 'nie' }, []);
+    kartaZProduktem({ nazwa: 'Ckarta' }, []);
     const r = await get(serwer(), '/magazyn');
 
-    // ⚠️⚠️ ASERCJE NA WIERSZU SWOJEGO WZORU, nie na stronie. Poprzednia wersja pilnowala
+    // ⚠️⚠️ ASERCJE NA WIERSZU SWOJEJ KARTY, nie na stronie. Poprzednia wersja pilnowala
     // napisow `>tak<`, `>nie<`, `nieoznaczone` i ich KOLEJNOSCI przez `indexOf` — a pasek
     // filtrow z Zadania 10 renderuje te trzy napisy w dokladnie tej samej kolejnosci jako
     // pozycje listy wyboru. Zmierzone: skasowanie CALEJ tresci komorki paczkomatu oraz
     // zamiana galezi 'tak' ↔ 'nie' przechodzily obie, 4413/4413 na zielono.
     //
     // Stawka: pole jest WYLACZNIE RECZNE (regula progu 640 mm wypadla decyzja wlasciciela),
-    // wiec nie ma drugiego zrodla prawdy — a w Etapie 2 to ono rozstrzyga o pakowaniu.
-    expect(wierszWzoru(r.body, 'Awzor')).toMatch(/<td[^>]*>\s*<span class="znacznik znacznik--ok">tak<\/span>\s*<\/td>/);
-    expect(wierszWzoru(r.body, 'Bwzor')).toMatch(/<td[^>]*>\s*<span class="znacznik znacznik--cichy">nie<\/span>\s*<\/td>/);
+    // wiec nie ma drugiego zrodla prawdy — a to ono rozstrzyga o sposobie wysylki.
+    expect(wierszKarty(r.body, 'Akarta')).toMatch(/<td[^>]*>\s*<span class="znacznik znacznik--ok">tak<\/span>\s*<\/td>/);
+    expect(wierszKarty(r.body, 'Bkarta')).toMatch(/<td[^>]*>\s*<span class="znacznik znacznik--cichy">nie<\/span>\s*<\/td>/);
     // Trzeci stan MA sie roznic od „nie": pierwszy to robota do wykonania, drugi decyzja.
-    expect(wierszWzoru(r.body, 'Cwzor')).toMatch(/<td[^>]*>\s*<span class="magazyn-brak">nieoznaczone<\/span>\s*<\/td>/);
+    expect(wierszKarty(r.body, 'Ckarta')).toMatch(/<td[^>]*>\s*<span class="magazyn-brak">nieoznaczone<\/span>\s*<\/td>/);
     // ...i zaden wiersz nie niesie CUDZEGO stanu (mutacja zamieniajaca galezie).
-    expect(wierszWzoru(r.body, 'Awzor')).not.toContain('>nie<');
-    expect(wierszWzoru(r.body, 'Bwzor')).not.toContain('>tak<');
+    expect(wierszKarty(r.body, 'Akarta')).not.toContain('>nie<');
+    expect(wierszKarty(r.body, 'Bkarta')).not.toContain('>tak<');
   });
 
   // ⚠️⚠️ SEDNO POPRAWKI Z 2026-08-12, PRZYPIETE WPROST: adres miniatury na liscie POCHODZI
   // Z LUSTRA (kolumna `miniatura`, wypelniona ze Store API sklepu), a NIE z reguly opartej
   // na nazwie pliku oryginalu. Adresy dobrane tak, zeby oba zrodla dawaly ROZNY wynik:
-  // szkicownia.pl skaluje miniatury do 247x296, wiec zgadywanie skleiloby `-150x150`, ktorego
+  // Sklep A skaluje miniatury do 247x296, wiec zgadywanie skleiloby `-150x150`, ktorego
   // pod zadnym zdjeciem tego sklepu NIE MA (zmierzone: 608 z 684 adresow = 404).
   it('miniatura idzie z lustra, a nie z reguly po nazwie pliku, i wczytuje sie leniwie', async () => {
-    wzorZProduktem({ nazwa: 'Kotwica' }, [{
+    kartaZProduktem({ nazwa: 'Kandelabr' }, [{
       kanal: 'szkicownia',
       produkt_id: '7179',
-      zdjecia_json: JSON.stringify(['https://szkicownia.pl/wp-content/uploads/2024/03/kotwica.jpg']),
-      miniatura: 'https://szkicownia.pl/wp-content/uploads/2024/03/kotwica-247x296.jpg',
+      zdjecia_json: JSON.stringify(['https://sklep-polcien.example.invalid/wp-content/uploads/2024/03/kandelabr.jpg']),
+      miniatura: 'https://sklep-polcien.example.invalid/wp-content/uploads/2024/03/kandelabr-247x296.jpg',
     }]);
     const r = await get(serwer(), '/magazyn');
-    const komorka = komorkaMiniatury(r.body, 'Kotwica');
+    const komorka = komorkaMiniatury(r.body, 'Kandelabr');
 
-    expect(komorka).toContain('src="https://szkicownia.pl/wp-content/uploads/2024/03/kotwica-247x296.jpg"');
+    expect(komorka).toContain('src="https://sklep-polcien.example.invalid/wp-content/uploads/2024/03/kandelabr-247x296.jpg"');
     expect(komorka).not.toContain('-150x150');
     // ~1010 wierszy razy jedno zdjecie — bez `lazy` przegladarka rusza po komplet naraz.
     expect(komorka).toContain('loading="lazy"');
@@ -241,29 +241,29 @@ describe('GET /magazyn — tabela wzorow', () => {
   // lekarstwo gorsze od choroby. Pusta komorka jest dzis i tak stanem widocznym; wypelni sie
   // sama po najblizszym odczycie katalogow.
   it('wiersz bez zapisanej miniatury nie pokazuje ani zgadnietego adresu, ani oryginalu', async () => {
-    wzorZProduktem({ nazwa: 'Kenitra' }, [{
+    kartaZProduktem({ nazwa: 'Plecionka' }, [{
       kanal: 'szkicownia',
       produkt_id: '7180',
-      zdjecia_json: JSON.stringify(['https://szkicownia.pl/wp-content/uploads/2024/03/kenitra.jpg']),
+      zdjecia_json: JSON.stringify(['https://sklep-polcien.example.invalid/wp-content/uploads/2024/03/plecionka.jpg']),
       miniatura: null,
     }]);
     const r = await get(serwer(), '/magazyn');
-    const komorka = komorkaMiniatury(r.body, 'Kenitra');
+    const komorka = komorkaMiniatury(r.body, 'Plecionka');
 
     expect(komorka).not.toContain('<img');
     expect(komorka).not.toContain('kenitra');
   });
 
   it('adres produktu spoza http(s) NIE trafia do odnosnika', async () => {
-    wzorZProduktem({ nazwa: 'Kotwica' }, [
-      { kanal: 'pro', produkt_id: '944', cena_gr: 7490, adres: 'https://pro.szkicownia.pl/produkt/kotwica' },
+    kartaZProduktem({ nazwa: 'Kandelabr' }, [
+      { kanal: 'pro', produkt_id: '944', cena_gr: 7490, adres: 'https://pro.sklep-polcien.example.invalid/produkt/kandelabr' },
       { kanal: 'szkicownia', produkt_id: '55', cena_gr: 9900, adres: 'javascript:alert(1)' },
     ]);
     // ⚠️ Odnosniki do sklepow siedza w komorkach kanalow, czyli w TRYBIE KATALOGOWYM
     // (Zadanie 5) — bariera adresu jest ta sama, zmienil sie wylacznie ekran, na ktorym stoi.
     const r = await get(serwer(), '/magazyn?widok=katalog');
 
-    expect(r.body).toContain('https://pro.szkicownia.pl/produkt/kotwica');
+    expect(r.body).toContain('https://pro.sklep-polcien.example.invalid/produkt/kandelabr');
     expect(r.body).not.toContain('javascript:');
     // Cena zostaje na ekranie takze wtedy, gdy adres odpadl — odmowa dotyczy odnosnika,
     // nie wiersza.
@@ -283,11 +283,11 @@ describe('GET /magazyn — tabela wzorow', () => {
     expect(r.statusCode).toBe(200);
     // ⚠️ CALE ZDANIE, nie „pusto": nazwa klasy `.pusto` stoi w arkuszu ukladu, ktory jedzie
     // w kazdej stronie panelu — alternatywa `|pusto` przepuszczala ten test zawsze.
-    expect(r.body).toContain('Nie ma tu jeszcze ani jednego wzoru.');
+    expect(r.body).toContain('Nie ma tu jeszcze ani jednej karty produktu.');
     // ⚠️ `colspan` liczy sie z liczby kolumn kanalow (`6 + naglowkiKanalow.length`), wiec
     // rozjezdza sie CICHO przy kazdej zmianie zestawu kolumn — komunikat pustej listy
     // przestaje wtedy siegac konca tabeli i wyglada jak polamany render. Cztery kanaly
-    // plus zaznaczenie, miniatura, wzor, wymiary, kategoria i paczkomat = dziesiec.
+    // plus zaznaczenie, miniatura, karta, wymiary, kategoria i paczkomat = dziesiec.
     // (Bylo dziewiec do 2026-08-12; kolumne zaznaczenia dolozyla edycja hurtem.)
     expect(r.body).toContain('colspan="10"');
   });
@@ -295,8 +295,8 @@ describe('GET /magazyn — tabela wzorow', () => {
 
 describe('GET /magazyn — sortowanie z adresu', () => {
   beforeEach(() => {
-    wzorZProduktem({ nazwa: 'Wzor-A', wysokosc_mm: 100 }, []);
-    wzorZProduktem({ nazwa: 'Wzor-B', wysokosc_mm: 900 }, []);
+    kartaZProduktem({ nazwa: 'Karta-A', wysokosc_mm: 100 }, []);
+    kartaZProduktem({ nazwa: 'Karta-B', wysokosc_mm: 900 }, []);
   });
 
   it('sortowanie po wymiarze przestawia kolejnosc wierszy', async () => {
@@ -304,20 +304,20 @@ describe('GET /magazyn — sortowanie z adresu', () => {
     const a = await get(app, '/magazyn?sort=wysokosc&kier=asc');
     const b = await get(app, '/magazyn?sort=wysokosc&kier=desc');
 
-    expect(a.body.indexOf('Wzor-A')).toBeLessThan(a.body.indexOf('Wzor-B'));
-    expect(b.body.indexOf('Wzor-A')).toBeGreaterThan(b.body.indexOf('Wzor-B'));
+    expect(a.body.indexOf('Karta-A')).toBeLessThan(a.body.indexOf('Karta-B'));
+    expect(b.body.indexOf('Karta-A')).toBeGreaterThan(b.body.indexOf('Karta-B'));
   });
 
   it('nazwa sortowania z lancucha prototypow NIE wywala listy i wraca do domyslnej', async () => {
     const app = serwer();
     // ⚠️ `SORTOWANIE[x] ?? domyslne` oddaje TU funkcje z Object.prototype — realna
     // pieciusetka zlapana na glownym ekranie przy Zadaniu 4.
-    for (const zly of ['constructor', 'toString', 'hasOwnProperty', 'nazwa; DROP TABLE wzory']) {
+    for (const zly of ['constructor', 'toString', 'hasOwnProperty', 'nazwa; DROP TABLE karty_produktow']) {
       const r = await get(app, `/magazyn?sort=${encodeURIComponent(zly)}`);
       expect(r.statusCode).toBe(200);
-      expect(r.body.indexOf('Wzor-A')).toBeLessThan(r.body.indexOf('Wzor-B'));
+      expect(r.body.indexOf('Karta-A')).toBeLessThan(r.body.indexOf('Karta-B'));
       const tresc = r.body.slice(r.body.indexOf('<main class="kolumna-glowna">'), r.body.indexOf('</main>'));
-      expect(tresc).not.toContain(zly === 'nazwa; DROP TABLE wzory' ? 'DROP TABLE' : `sort=${zly}`);
+      expect(tresc).not.toContain(zly === 'nazwa; DROP TABLE karty_produktow' ? 'DROP TABLE' : `sort=${zly}`);
     }
   });
 
@@ -331,7 +331,7 @@ describe('GET /magazyn — sortowanie z adresu', () => {
     // czyli lista JEST ulozona po nazwie — i ekran ma to powiedziec. Bez tego pokazywalby
     // jedna kolejnosc, a adres twierdzil drugie, i nikt by tych dwoch rzeczy nie zestawil.
     const zly = await get(app, '/magazyn?sort=constructor&kier=desc');
-    expect(zly.body).toMatch(/aria-sort="descending"[^>]*>\s*<a[^>]*>Wzór/);
+    expect(zly.body).toMatch(/aria-sort="descending"[^>]*>\s*<a[^>]*>Karta/);
     const tresc = zly.body.slice(zly.body.indexOf('<main class="kolumna-glowna">'), zly.body.indexOf('</main>'));
     expect(tresc).not.toContain('sort=constructor');
   });
@@ -339,7 +339,7 @@ describe('GET /magazyn — sortowanie z adresu', () => {
   it('kierunek spoza „asc/desc" wraca do rosnacego, a nie do SQL-a', async () => {
     const r = await get(serwer(), '/magazyn?sort=wysokosc&kier=desc%3B+DROP');
     expect(r.statusCode).toBe(200);
-    expect(r.body.indexOf('Wzor-A')).toBeLessThan(r.body.indexOf('Wzor-B'));
+    expect(r.body.indexOf('Karta-A')).toBeLessThan(r.body.indexOf('Karta-B'));
   });
 
   it('KAZDY odnosnik sortowania w naglowku tabeli jest znany warstwie zapytan', async () => {
@@ -350,7 +350,7 @@ describe('GET /magazyn — sortowanie z adresu', () => {
     const klucze = [...r.body.matchAll(/href="\/magazyn\?sort=([^&"]+)/g)].map((m) => decodeURIComponent(m[1]));
 
     expect(klucze.length).toBeGreaterThan(0);
-    for (const k of klucze) expect(SORTOWANIE_WZOROW).toContain(k);
+    for (const k of klucze) expect(SORTOWANIE_KART).toContain(k);
   });
 });
 
@@ -370,7 +370,7 @@ describe('GET /magazyn — stan ostatniego odczytu', () => {
     // ⚠️ CALY komunikat, nie „błąd odczytu". Ten napis mowi, co zrobic — skrocony
     // zostawia czlowieka z ta sama niewiedza, co brak komunikatu.
     //
-    // ⚠️ I STOI W TYM SAMYM WIERSZU, CO NAZWA KANALU. Osobna asercja na „pro.szkicownia.pl"
+    // ⚠️ I STOI W TYM SAMYM WIERSZU, CO NAZWA KANALU. Osobna asercja na nazwe kanalu PRO
     // byla nienosna: ta nazwa stoi TAKZE w naglowku kolumny cen, wiec „blad przy kanale"
     // przechodzilby nawet wtedy, gdyby komunikat wyladowal na dole strony bez zadnego
     // zwiazku z kanalem, ktorego dotyczy.
@@ -532,51 +532,51 @@ describe('/magazyn bez skonfigurowanych sklepow', () => {
 //       ZUPELNIE INNA lista";
 //   (3) pusty wynik zawezenia MOWI CO INNEGO niz pusty magazyn.
 describe('GET /magazyn — wyszukiwarka i filtry', () => {
-  // Katalog, w ktorym zadne pojedyncze kryterium nie wystarcza: fraza „pieszy" trafia w dwa
-  // wzory, kanal „pro" w dwa inne, a oba naraz — w jeden. Bez tego „zawezone oboma" nie
+  // Katalog, w ktorym zadne pojedyncze kryterium nie wystarcza: fraza „szpulka" trafia w dwie
+  // karty, kanal „pro" w dwie inne, a oba naraz — w jedna. Bez tego „zawezone oboma" nie
   // roznilo by sie od „zawezone jednym".
   function katalog() {
-    wzorZProduktem({ nazwa: 'Pieszy na PRO' }, [{ kanal: 'pro', produkt_id: '1', cena_gr: 7490 }]);
-    wzorZProduktem({ nazwa: 'Pieszy na szkicownia' }, [{ kanal: 'szkicownia', produkt_id: '2', cena_gr: 3000 }]);
-    wzorZProduktem({ nazwa: 'Kotwica na PRO' }, [{ kanal: 'pro', produkt_id: '3', cena_gr: 9900 }]);
+    kartaZProduktem({ nazwa: 'Szpulka na PRO' }, [{ kanal: 'pro', produkt_id: '1', cena_gr: 7490 }]);
+    kartaZProduktem({ nazwa: 'Szpulka na szkicownia' }, [{ kanal: 'szkicownia', produkt_id: '2', cena_gr: 3000 }]);
+    kartaZProduktem({ nazwa: 'Kandelabr na PRO' }, [{ kanal: 'pro', produkt_id: '3', cena_gr: 9900 }]);
   }
-  // ⚠️ NAZWA JEST ODNOSNIKIEM NA KARTE WZORU (Zadanie 11) — i wzorzec ma tego pilnowac,
+  // ⚠️ NAZWA JEST ODNOSNIKIEM NA KARTE PRODUKTU (Zadanie 11) — i wzorzec ma tego pilnowac,
   // a nie omijac: bez `<a>` w srodku ta funkcja oddaje pusta liste, czyli KAZDE porownanie
-  // „lista zawiera dokladnie te wzory" przechodziloby na dwoch pustych tablicach.
+  // „lista zawiera dokladnie te karty" przechodziloby na dwoch pustych tablicach.
   //
   // ⚠️ `(?:\?[^"]*)?` — od Zadania 6 odnosnik niesie DALEJ adres powrotu jako „?wroc=…"
-  // (dokladna wartosc ma wlasny test w magazyn-wzor.test.js); wzorzec ma tolerowac ten
-  // dopisek, a nie przestac widziec wiersza — to, co ten test sprawdza (KTORE wzory i w
+  // (dokladna wartosc ma wlasny test w magazyn-karta.test.js); wzorzec ma tolerowac ten
+  // dopisek, a nie przestac widziec wiersza — to, co ten test sprawdza (KTORE karty i w
   // JAKIEJ kolejnosci), z zawartoscia query string nie ma nic wspolnego.
   const nazwyWTabeli = (body) => [
-    ...body.matchAll(/<td class="komorka-wzor">\s*<div><a href="\/magazyn\/\d+(?:\?[^"]*)?">([^<]+)<\/a><\/div>/g),
+    ...body.matchAll(/<td class="komorka-karta">\s*<div><a href="\/magazyn\/\d+(?:\?[^"]*)?">([^<]+)<\/a><\/div>/g),
   ].map((m) => m[1]);
 
   it('fraza i filtr kanalu zawezaja OBA NARAZ, a nie kazdy osobno', async () => {
     katalog();
     const app = serwer();
 
-    // Kazde kryterium z osobna zostawia dwa wzory — dopiero razem jeden. Gdyby trasa gubila
+    // Kazde kryterium z osobna zostawia dwa karty — dopiero razem jeden. Gdyby trasa gubila
     // ktorekolwiek, ta asercja pokazalaby dwa wiersze zamiast jednego.
-    expect(nazwyWTabeli((await get(app, '/magazyn?fraza=Pieszy')).body))
-      .toEqual(['Pieszy na PRO', 'Pieszy na szkicownia']);
+    expect(nazwyWTabeli((await get(app, '/magazyn?fraza=Szpulka')).body))
+      .toEqual(['Szpulka na PRO', 'Szpulka na szkicownia']);
     expect(nazwyWTabeli((await get(app, '/magazyn?kanal=pro')).body))
-      .toEqual(['Kotwica na PRO', 'Pieszy na PRO']);
-    expect(nazwyWTabeli((await get(app, '/magazyn?fraza=Pieszy&kanal=pro')).body))
-      .toEqual(['Pieszy na PRO']);
+      .toEqual(['Kandelabr na PRO', 'Szpulka na PRO']);
+    expect(nazwyWTabeli((await get(app, '/magazyn?fraza=Szpulka&kanal=pro')).body))
+      .toEqual(['Szpulka na PRO']);
   });
 
   it('formularz filtrow niesie fraze UKRYTYM POLEM, a wyszukiwarka niesie filtry', async () => {
     katalog();
-    const r = await get(serwer(), '/magazyn?fraza=Pieszy&kanal=pro&brak=sku');
+    const r = await get(serwer(), '/magazyn?fraza=Szpulka&kanal=pro&brak=sku');
 
     // Bez tych pol klikniecie „Filtruj" skladaloby adres BEZ frazy, a „Szukaj" — bez filtrow.
-    expect(r.body).toContain('<input type="hidden" name="fraza" value="Pieszy">');
+    expect(r.body).toContain('<input type="hidden" name="fraza" value="Szpulka">');
     expect(r.body).toContain('<input type="hidden" name="kanal" value="pro">');
     expect(r.body).toContain('<input type="hidden" name="brak" value="sku">');
     // I jedno, i drugie ma stac WEWNATRZ wlasciwego formularza, a nie gdziekolwiek na stronie.
     expect(r.body).toMatch(
-      /<form class="filtry"[\s\S]{0,400}<input type="hidden" name="fraza" value="Pieszy">[\s\S]*?<\/form>/,
+      /<form class="filtry"[\s\S]{0,400}<input type="hidden" name="fraza" value="Szpulka">[\s\S]*?<\/form>/,
     );
     expect(r.body).toMatch(
       /<form class="szukajka"[\s\S]{0,400}<input type="hidden" name="kanal" value="pro">[\s\S]*?<\/form>/,
@@ -600,7 +600,7 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
     // (`/magazyn?sort=…&kier=…`) kasowalby zawezenie, po ktorym wlasciciel wlasnie chcial
     // zaznaczyc wszystko i ustawic pole hurtem.
     katalog();
-    const r = await get(serwer(), '/magazyn?fraza=Pieszy&kanal=pro&brak=sku&cenaOd=10');
+    const r = await get(serwer(), '/magazyn?fraza=Szpulka&kanal=pro&brak=sku&cenaOd=10');
     // Wylacznie odnosniki NAGLOWKA (te maja klase `zaznacz-wszystkie`) — „Wyczyść zawężenie"
     // tez niesie `sort`, ale CELOWO bez filtrow, wiec wpadlby tu jako falszywa czerwien.
     const adresy = [...r.body.matchAll(/<a class="zaznacz-wszystkie" href="(\/magazyn\?[^"]+)"/g)]
@@ -611,7 +611,7 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
     expect(adresy.length).toBeGreaterThanOrEqual(5);
     for (const adres of adresy) {
       const q = new URLSearchParams(adres.replace(/&amp;/g, '&').slice(adres.indexOf('?') + 1));
-      expect(q.get('fraza'), adres).toBe('Pieszy');
+      expect(q.get('fraza'), adres).toBe('Szpulka');
       expect(q.get('kanal'), adres).toBe('pro');
       expect(q.get('brak'), adres).toBe('sku');
       expect(q.get('cenaOd'), adres).toBe('10.00');
@@ -623,12 +623,12 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
     // pod ten adres i porownuje zawartosc tabeli.
     katalog();
     const app = serwer();
-    const przed = await get(app, '/magazyn?fraza=Pieszy&kanal=pro');
+    const przed = await get(app, '/magazyn?fraza=Szpulka&kanal=pro');
     const adres = /href="(\/magazyn\?[^"]*sort=wysokosc[^"]*)"/.exec(przed.body)[1].replace(/&amp;/g, '&');
     const po = await get(app, adres);
 
-    expect(nazwyWTabeli(przed.body)).toEqual(['Pieszy na PRO']);
-    expect(nazwyWTabeli(po.body)).toEqual(['Pieszy na PRO']);
+    expect(nazwyWTabeli(przed.body)).toEqual(['Szpulka na PRO']);
+    expect(nazwyWTabeli(po.body)).toEqual(['Szpulka na PRO']);
   });
 
   it('formularze niosa dalej SORTOWANIE — „Filtruj" nie wraca do kolejnosci domyslnej', async () => {
@@ -649,7 +649,7 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
   it('nierozpoznana wartosc filtru NIE zaweza listy do pustej', async () => {
     // Straznik alarmuje (nizej: `kanal=pro` zaweza) i straznik MILCZY (tutaj: literowka
     // w adresie ma pokazac liste). Przepuszczona dalej oddalaby pusty ekran bez slowa
-    // wyjasnienia — a pusty ekran wyglada jak „nie ma takich wzorow".
+    // wyjasnienia — a pusty ekran wyglada jak „nie ma takich kart".
     katalog();
     const app = serwer();
     for (const zly of ['kanal=sklepu-nie-ma', 'brak=allegro', 'paczkomat=brak', 'cenaOd=dużo', 'kanal=constructor']) {
@@ -669,20 +669,20 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
 
     expect(r.body).toContain('name="cenaOd" value="74.90"');
     expect(r.body).not.toContain('value="7490"');
-    // I filtr faktycznie zadzialal na groszach: 74,90 zl odcina wzor za 30 zl.
-    expect(nazwyWTabeli(r.body)).toEqual(['Kotwica na PRO', 'Pieszy na PRO']);
+    // I filtr faktycznie zadzialal na groszach: 74,90 zl odcina karta za 30 zl.
+    expect(nazwyWTabeli(r.body)).toEqual(['Kandelabr na PRO', 'Szpulka na PRO']);
   });
 
-  it('filtr kategorii jest NADZBIOREM: kategoria glowna wzoru ALBO kategorie z lustra', async () => {
-    // ⚠️ Rozstrzygniecie z Zadania 4. Wzor z RECZNIE ustawiona kategoria glowna, a bez
+  it('filtr kategorii jest NADZBIOREM: kategoria glowna karty ALBO kategorie z lustra', async () => {
+    // ⚠️ Rozstrzygniecie z Zadania 4. Karta z RECZNIE ustawiona kategoria glowna, a bez
     // produktu w lustrze, musi sie znalezc — inaczej nie da sie go nawet oznaczyc hurtem
     // przez ten sam filtr, ktorym sie go szuka.
-    wzorZProduktem({ nazwa: 'Recznie oznaczony', kategoria_glowna: 'Aplikacje' }, []);
-    wzorZProduktem({ nazwa: 'Z lustra' }, [{
+    kartaZProduktem({ nazwa: 'Recznie oznaczony', kategoria_glowna: 'Aplikacje' }, []);
+    kartaZProduktem({ nazwa: 'Z lustra' }, [{
       kanal: 'pro', produkt_id: '7', cena_gr: 1000,
-      kategorie_json: JSON.stringify(['Szablony', 'Boho', 'Na ściany', 'Aplikacje']),
+      kategorie_json: JSON.stringify(['Lampy wiszące', 'Boho', 'Na ściany', 'Aplikacje']),
     }]);
-    wzorZProduktem({ nazwa: 'Obcy', kategoria_glowna: 'Boho' }, []);
+    kartaZProduktem({ nazwa: 'Obcy', kategoria_glowna: 'Boho' }, []);
     const r = await get(serwer(), '/magazyn?kategoria=Aplikacje');
 
     expect(nazwyWTabeli(r.body)).toEqual(['Recznie oznaczony', 'Z lustra']);
@@ -690,19 +690,19 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
 
   it('pole wyboru kategorii zna nazwy z OBU zrodel, wiec kazda pozycja cos znajduje', async () => {
     // Pozycja pola wyboru, ktorej filtr nie umie trafic, oddaje pusty ekran — czyli obraz
-    // nieodrozialny od „nie ma takich wzorow", i to jest dokladnie ta awaria, dla ktorej
+    // nieodrozialny od „nie ma takich kart", i to jest dokladnie ta awaria, dla ktorej
     // to pole w ogole powstalo. Tyle ze tedy wraca drzwiami, w ktorych literowki popelnic
     // sie nie da.
-    wzorZProduktem({ nazwa: 'Recznie oznaczony', kategoria_glowna: 'Aplikacje' }, []);
-    wzorZProduktem({ nazwa: 'Z lustra' }, [{
+    kartaZProduktem({ nazwa: 'Recznie oznaczony', kategoria_glowna: 'Aplikacje' }, []);
+    kartaZProduktem({ nazwa: 'Z lustra' }, [{
       kanal: 'pro', produkt_id: '7', cena_gr: 1000, kategorie_json: JSON.stringify(['Boho']),
     }]);
-    // ⚠️⚠️ PRODUKT BEZ WZORU — i to jest CALY ten test. `wzorZProduktem` wiaze KAZDY produkt
-    // z wzorem, wiec sama ta atrapa GWARANTOWALA badana wlasciwosc, zamiast ja sprawdzac:
+    // ⚠️⚠️ PRODUKT BEZ KARTY — i to jest CALY ten test. `kartaZProduktem` wiaze KAZDY produkt
+    // z kartą, wiec sama ta atrapa GWARANTOWALA badana wlasciwosc, zamiast ja sprawdzac:
     // petla nizej nie miala jak trafic na pozycje, ktorej filtr nie umie znalezc.
     //
     // Taki produkt jest stanem ZWYCZAJNYM, nie krancowym: po „Odczytaj katalogi" lustro ma
-    // wszystko, co przyslal sklep, a wzory powstaja dopiero z osobnego klikniecia. Czesc
+    // wszystko, co przyslal sklep, a karty powstaja dopiero z osobnego klikniecia. Czesc
     // z nich nie powstanie NIGDY — ~26 wariantow bez rozmiaru i zaslepki, ktorych
     // `powodPominiecia` nie powiaze (Zadanie 8). Kategoria wystepujaca tylko u nich bylaby
     // martwa pozycja bez konca.
@@ -718,7 +718,7 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
       .matchAll(/<option value="([^"]+)"/g)].map((m) => m[1]);
 
     // Lista pozycji ma byc DOKLADNIE zbiorem osiagalnym przez filtr — ani mniej, ani wiecej.
-    // „Farmhouse" jest w lustrze, ale filtr chodzi po produktach POWIAZANYCH z wzorem, wiec
+    // „Farmhouse" jest w lustrze, ale filtr chodzi po produktach POWIAZANYCH z kartą, wiec
     // pozycja bylaby nietrafialna.
     expect(pozycje).toEqual(['Aplikacje', 'Boho']);
     for (const k of pozycje) {
@@ -732,8 +732,8 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
 
   it('popsuty JSON kategorii w lustrze nie kladzie ani listy, ani pola wyboru', async () => {
     // Lustro bierze sie z cudzego API — `json_each` na popsutym napisie RZUCA.
-    wzorZProduktem({ nazwa: 'Zdrowy', kategoria_glowna: 'Boho' }, []);
-    wzorZProduktem({ nazwa: 'Popsuty' }, [{
+    kartaZProduktem({ nazwa: 'Zdrowy', kategoria_glowna: 'Boho' }, []);
+    kartaZProduktem({ nazwa: 'Popsuty' }, [{
       kanal: 'pro', produkt_id: '9', cena_gr: 1000, kategorie_json: '{to nie jest JSON',
     }]);
     const r = await get(serwer(), '/magazyn?kategoria=Boho');
@@ -747,9 +747,9 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
     const app = serwer();
     const zFiltrem = await get(app, '/magazyn?fraza=czego-tu-nie-ma');
 
-    // „Nie ma tu jeszcze ani jednego wzoru" przy aktywnym filtrze jest NIEPRAWDA — katalog
-    // ma trzy wzory. Czlowiek czyta to jako utrate danych i idzie szukac awarii odczytu.
-    expect(zFiltrem.body).not.toContain('Nie ma tu jeszcze ani jednego wzoru');
+    // „Nie ma tu jeszcze ani jednej karty produktu" przy aktywnym filtrze jest NIEPRAWDA — katalog
+    // ma trzy karty. Czlowiek czyta to jako utrate danych i idzie szukac awarii odczytu.
+    expect(zFiltrem.body).not.toContain('Nie ma tu jeszcze ani jednej karty produktu');
     expect(zFiltrem.body).toContain('katalog nie jest pusty, tylko zapytanie nic nie trafiło');
     // Wyjscie z pustego wyniku jest NA EKRANIE, a nie w pamieci o tym, co sie wpisalo.
     expect(zFiltrem.body).toMatch(/class="pusto">[\s\S]*?href="[^"]*"[^>]*>Wyczyść zawężenie/);
@@ -760,7 +760,7 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
     // o zawezeniu wyswietlalby sie na swiezym panelu, w ktorym nikt niczego nie zawezal.
     const r = await get(serwer(), '/magazyn');
 
-    expect(r.body).toContain('Nie ma tu jeszcze ani jednego wzoru.');
+    expect(r.body).toContain('Nie ma tu jeszcze ani jednej karty produktu.');
     expect(r.body).not.toContain('katalog nie jest pusty');
     // Pasek zawezenia (liczba wynikow, „Wyczyść") tez ma sie NIE pokazywac.
     expect(r.body).not.toContain('Wyczyść zawężenie');
@@ -769,14 +769,14 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
   it('liczba wynikow stoi przy zawezeniu, zeby pusty ekran dalo sie odroznic od awarii', async () => {
     katalog();
     const app = serwer();
-    // ⚠️ ODMIANA TROJFORMOWA, jak `ileWzorow` w trasie (widok niczego nie liczy): „2 wzory",
-    // nie dwuformowe „2 wzorów" — ten sam wzorzec, co w `opisZawezenia` kawałek niżej na tej
+    // ⚠️ ODMIANA TROJFORMOWA, jak `ileKart` w trasie (widok niczego nie liczy): „2 karty",
+    // nie dwuformowe „2 kart" — ten sam wzorzec, co w `opisZawezenia` kawałek niżej na tej
     // samej stronie.
     const dwa = await get(app, '/magazyn?kanal=pro');
-    expect(dwa.body).toMatch(/<span class="wynik-filtra">2 wzory<\/span>/);
+    expect(dwa.body).toMatch(/<span class="wynik-filtra">2 karty<\/span>/);
 
-    const jeden = await get(app, '/magazyn?fraza=Pieszy&kanal=pro');
-    expect(jeden.body).toMatch(/<span class="wynik-filtra">1 wzór<\/span>/);
+    const jeden = await get(app, '/magazyn?fraza=Szpulka&kanal=pro');
+    expect(jeden.body).toMatch(/<span class="wynik-filtra">1 karta<\/span>/);
   });
 });
 
@@ -797,8 +797,8 @@ describe('kafle braków', () => {
   it('pięć kafli z liczbami z całego katalogu, niezależnymi od zawężenia', async () => {
     const db = openOmsDb(':memory:');
     // fikstura ze strażnikiem: jeden komplet, jeden bez wszystkiego
-    utworzWzor(db, { nazwa: 'Kompletny', sku: 'S1', szerokosc_mm: 1, wysokosc_mm: 1, kategoria_glowna: 'K', paczkomat: 'tak' });
-    utworzWzor(db, { nazwa: 'Dziurawy' });
+    utworzKarte(db, { nazwa: 'Kompletny', sku: 'S1', szerokosc_mm: 1, wysokosc_mm: 1, kategoria_glowna: 'K', paczkomat: 'tak' });
+    utworzKarte(db, { nazwa: 'Dziurawy' });
     const app = buildOmsServer({ db, config, magazyn: atrapaMagazynu() });
     const res = await app.inject({ method: 'GET', url: '/magazyn?brak=wymiary', headers: auth });
     const html = res.body;
@@ -824,7 +824,7 @@ describe('kafle braków', () => {
 
 // ⚠️⚠️ DWA TRYBY TABELI (przebudowa 2026-08-25, Zadanie 5). Ekran DOMYSLNY to TRYB
 // PORZADKOW: cztery kolumny cen ustepuja jednej kolumnie „Stan", ktora mowi, ILE brakuje
-// przy wzorze (kolejka roboty). Ceny wracaja o jedno klikniecie — `?widok=katalog`.
+// przy karcie (kolejka roboty). Ceny wracaja o jedno klikniecie — `?widok=katalog`.
 //
 // CO JEST TU PRZYPIETE:
 //   (1) domyslny ekran ma „Stan" i ZERO kolumn kanalow, a katalogowy odwrotnie — para,
@@ -835,14 +835,14 @@ describe('kafle braków', () => {
 //   (4) przelacznik jest JEDYNYM odnosnikiem, ktory tryb zmienia, i robi to ZACHOWUJAC
 //       zawezenie oraz kolejnosc.
 describe('dwa tryby tabeli — porządki i katalog', () => {
-  // Fikstura ze straznikiem: jeden wzor kompletny i jeden bez wszystkiego, zeby OBIE
+  // Fikstura ze straznikiem: jedna karta kompletna i jedna bez wszystkiego, zeby OBIE
   // postacie kolumny „Stan" (komplet / N brakow) mialy na czym wystapic.
-  function dwaWzory() {
-    utworzWzor(db, {
+  function dwaKarty() {
+    utworzKarte(db, {
       nazwa: 'Kompletny', sku: 'S1', szerokosc_mm: 1, wysokosc_mm: 1,
       kategoria_glowna: 'K', paczkomat: 'tak',
     });
-    utworzWzor(db, { nazwa: 'Dziurawy' });
+    utworzKarte(db, { nazwa: 'Dziurawy' });
   }
 
   // ⚠️ Naglowek „Stan" PRZYPIETY DO SWOJEGO ODNOSNIKA SORTUJACEGO, a nie do golego slowa:
@@ -878,9 +878,9 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
   /** Liczba naglowkow PIERWSZEGO wiersza `<thead>` — czyli tylu kolumn ma tabela. */
   function ileKolumn(body) {
     const thead = /<thead>([\s\S]*?)<\/thead>/.exec(body);
-    if (!thead) throw new Error('Tabela wzorów nie ma nagłówka');
+    if (!thead) throw new Error('Tabela kart nie ma nagłówka');
     const wiersz = /<tr>([\s\S]*?)<\/tr>/.exec(thead[1]);
-    if (!wiersz) throw new Error('Nagłówek tabeli wzorów nie ma ani jednego wiersza');
+    if (!wiersz) throw new Error('Nagłówek tabeli kart nie ma ani jednego wiersza');
     return (wiersz[1].match(/<th\b/g) ?? []).length;
   }
 
@@ -902,7 +902,7 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
   ].filter((m) => /\bchecked\b/.test(m[1])).map((m) => /\bvalue="([^"]*)"/.exec(m[1])[1]);
 
   it('domyślnie porządki: kolumna Stan, ZERO kolumn kanałów', async () => {
-    dwaWzory();
+    dwaKarty();
     const r = await get(serwer(), '/magazyn');
 
     expect(r.body).toMatch(NAGLOWEK_STANU);
@@ -911,15 +911,15 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
     // bylo by czerwone zawsze i o niczym by nie mowilo.
     expect(r.body).not.toContain('class="magazyn-kanal"');
     // Stan liczy TRASA (odmiana razem z liczba) — widok niczego nie liczy.
-    expect(wierszWzoru(r.body, 'Kompletny')).toContain('<span class="znacznik znacznik--ok">komplet</span>');
-    expect(wierszWzoru(r.body, 'Dziurawy')).toContain('<span class="stan-braki">4 braki</span>');
+    expect(wierszKarty(r.body, 'Kompletny')).toContain('<span class="znacznik znacznik--ok">komplet</span>');
+    expect(wierszKarty(r.body, 'Dziurawy')).toContain('<span class="stan-braki">4 braki</span>');
     // ...i zaden wiersz nie niesie CUDZEGO stanu (mutacja zamieniajaca galezie).
-    expect(wierszWzoru(r.body, 'Kompletny')).not.toContain('class="stan-braki"');
-    expect(wierszWzoru(r.body, 'Dziurawy')).not.toContain('>komplet<');
+    expect(wierszKarty(r.body, 'Kompletny')).not.toContain('class="stan-braki"');
+    expect(wierszKarty(r.body, 'Dziurawy')).not.toContain('>komplet<');
   });
 
   it('widok=katalog: kolumny kanałów wracają, kolumna Stan znika', async () => {
-    dwaWzory();
+    dwaKarty();
     const r = await get(serwer(), '/magazyn?widok=katalog');
 
     expect(r.body).toContain('class="magazyn-kanal"');
@@ -937,12 +937,12 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
   });
 
   it('tryb spoza pary WRACA DO DOMYSLNEGO i nie zawęża listy', async () => {
-    dwaWzory();
+    dwaKarty();
     const app = serwer();
 
     // ⚠️ Ta sama pulapka, co przy sortowaniu: `MAPA[x] ?? domyslne` oddaje przy
     // `?widok=constructor` funkcje z `Object.prototype`, a nie `undefined`.
-    for (const zly of ['constructor', 'toString', 'katalogi', 'porzadki; DROP TABLE wzory']) {
+    for (const zly of ['constructor', 'toString', 'katalogi', 'porzadki; DROP TABLE karty_produktow']) {
       const r = await get(app, `/magazyn?widok=${encodeURIComponent(zly)}`);
       expect(r.statusCode, zly).toBe(200);
       expect(r.body, zly).toMatch(NAGLOWEK_STANU);
@@ -954,7 +954,7 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
   });
 
   it('przełącznik prowadzi w DRUGI tryb, zachowując zawężenie i kolejność', async () => {
-    dwaWzory();
+    dwaKarty();
     const app = serwer();
 
     const wKatalogu = await get(app, '/magazyn?brak=sku&widok=katalog');
@@ -975,10 +975,10 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
 
   // ⚠️⚠️ ZAZNACZENIE PRZEZYWA PRZELACZENIE KOLUMN — mocniej niz przy sortowaniu, bo
   // przelacznik nie zmienia nawet KOLEJNOSCI, wylacznie zestaw kolumn. Droga typowa:
-  // zawez do wzorow do przejecia numerow, zaznacz wszystkie, zajrzyj w ceny kanalow „na
+  // zawez do kart do przejecia numerow, zaznacz wszystkie, zajrzyj w ceny kanalow „na
   // kontrole" — zgubiony `zaznacz` odhaczylby tu cala liste w polowie roboty, po cichu.
   it('przełącznik niesie zaznaczenie — i NIE dorabia go, gdy go nie było', async () => {
-    dwaWzory();
+    dwaKarty();
     const app = serwer();
 
     const zZaznaczeniem = przelacznik((await get(app, '/magazyn?zaznacz=1&widok=katalog')).body);
@@ -995,7 +995,7 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
   });
 
   it('OBA formularze GET niosą tryb ukrytym polem — „Filtruj" nie wraca do porządków', async () => {
-    dwaWzory();
+    dwaKarty();
     const r = await get(serwer(), '/magazyn?widok=katalog');
 
     // ⚠️ OSOBNO W KAZDYM Z DWOCH FORMULARZY. Asercja na calej stronie jest NIENOSNA: oba
@@ -1010,7 +1010,7 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
   });
 
   it('⚠️ KAŻDY odnośnik ekranu niesie tryb dalej — poza samym przełącznikiem', async () => {
-    dwaWzory();
+    dwaKarty();
     const r = await get(serwer(), '/magazyn?widok=katalog&brak=sku');
 
     // Przelacznik jest JEDYNYM odnosnikiem, ktory tryb ZMIENIA — wycinamy go, zeby nie
@@ -1031,7 +1031,7 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
   it('pusta tabela sięga końca w OBU trybach', async () => {
     // ⚠️ `colspan` liczy sie z zestawu kolumn, wiec rozjezdza sie CICHO przy zmianie trybu:
     // komunikat pustej listy przestaje wtedy siegac konca tabeli i wyglada jak polamany
-    // render. Siedem kolumn porzadkow (zaznaczenie, miniatura, wzor, wymiary, kategoria,
+    // render. Siedem kolumn porzadkow (zaznaczenie, miniatura, karta, wymiary, kategoria,
     // paczkomat, stan) i dziesiec katalogu (te same bez stanu, plus cztery kanaly).
     const app = serwer();
     expect((await get(app, '/magazyn')).body).toContain('colspan="7"');
@@ -1056,7 +1056,7 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
   // naglowkow. Rozjazd thead/tbody (kolumna dolozona z jednej strony) przesuwa CALA
   // zawartosc o jedno pole w prawo — cena pod paczkomatem, wymiar pod kategoria.
   it('⚠️ każdy wiersz ma tyle komórek, ile tabela ma nagłówków — w obu trybach', async () => {
-    dwaWzory();
+    dwaKarty();
     const app = serwer();
     for (const [url, tryb] of [['/magazyn', 'porzadki'], ['/magazyn?widok=katalog', 'katalog']]) {
       const { body } = await get(app, url);
@@ -1069,33 +1069,33 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
 
   it('odmiana liczby braków: 1 brak / 2 braki', async () => {
     // Odmiane liczy TRASA, nie widok — a „brakow" (12–14) jest przy 1–4 nieosiagalne.
-    utworzWzor(db, {
+    utworzKarte(db, {
       nazwa: 'JedenBrak', sku: 'S1', szerokosc_mm: 1, wysokosc_mm: 1, kategoria_glowna: 'K',
     });
-    utworzWzor(db, { nazwa: 'DwaBraki', szerokosc_mm: 1, wysokosc_mm: 1, kategoria_glowna: 'K' });
+    utworzKarte(db, { nazwa: 'DwaBraki', szerokosc_mm: 1, wysokosc_mm: 1, kategoria_glowna: 'K' });
     const r = await get(serwer(), '/magazyn');
 
-    expect(wierszWzoru(r.body, 'JedenBrak')).toContain('<span class="stan-braki">1 brak</span>');
-    expect(wierszWzoru(r.body, 'DwaBraki')).toContain('<span class="stan-braki">2 braki</span>');
+    expect(wierszKarty(r.body, 'JedenBrak')).toContain('<span class="stan-braki">1 brak</span>');
+    expect(wierszKarty(r.body, 'DwaBraki')).toContain('<span class="stan-braki">2 braki</span>');
   });
 
   it('pasek nad tabelą mówi, co zawęża listę — i nie powtarza liczby z paska filtrów', async () => {
-    dwaWzory();
+    dwaKarty();
     const app = serwer();
 
     // Bez zawezenia pasek mowi LICZBA (nie ma czego nazwac), bo chipy filtrow sa wtedy ukryte.
-    // ⚠️ ODMIANA TROJFORMOWA, jak `ileWzorow` w magazyn-hurt.ejs: „2 wzory", nie „2 wzorów"
+    // ⚠️ ODMIANA TROJFORMOWA, jak `ileKart` w magazyn-hurt.ejs: „2 karty", nie „2 kart"
     // — kolumna trafila do trasy wlasnie po to, zeby liczyc poprawnie.
-    expect(glowaTabeli((await get(app, '/magazyn')).body)).toContain('bez zawężenia · 2 wzory');
-    // Piata pozycja wraca do formy mnogiej („5 wzorów") — bez tego przypadku dwuformowy
-    // wariant („N wzory") przechodzilby na dwojce i nikt by tego nie zestawil.
-    for (const n of [3, 4, 5]) utworzWzor(db, { nazwa: `Wzor-${n}` });
-    expect(glowaTabeli((await get(app, '/magazyn')).body)).toContain('bez zawężenia · 5 wzorów');
+    expect(glowaTabeli((await get(app, '/magazyn')).body)).toContain('bez zawężenia · 2 karty');
+    // Piata pozycja wraca do formy mnogiej („5 kart") — bez tego przypadku dwuformowy
+    // wariant („N karty") przechodzilby na dwojce i nikt by tego nie zestawil.
+    for (const n of [3, 4, 5]) utworzKarte(db, { nazwa: `Karta-${n}` });
+    expect(glowaTabeli((await get(app, '/magazyn')).body)).toContain('bez zawężenia · 5 kart');
     // Przy zawezeniu NAZYWA je, a liczby NIE powtarza — ta sama liczba w dwoch miejscach
     // zaczyna zyc wlasnym zyciem przy pierwszej zmianie jednego z nich.
     const zKaflem = glowaTabeli((await get(app, '/magazyn?brak=sku')).body);
     expect(zKaflem).toContain('zawężenie: bez SKU');
-    expect(zKaflem).not.toMatch(/\d+ wzor/);
+    expect(zKaflem).not.toMatch(/\d+ karta/);
   });
 });
 

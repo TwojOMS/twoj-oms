@@ -1,0 +1,52 @@
+<%# PRZ-091 — import stanu otwarcia: tekst „SKU;ilość” → podgląd → zapis. Widok niczego nie liczy:
+    plan (co wejdzie, co odrzucone i dlaczego) i wynik przychodzą z trasy. %>
+<p class="wroc"><a href="/magazyn">← Wróć do magazynu</a></p>
+
+<div class="glowa-ekranu">
+  <h1>Import stanu otwarcia</h1>
+  <span class="krok">stany liczone od <%= od %></span>
+</div>
+
+<% if (wynik) { %>
+  <section class="panel" id="wynik-importu">
+    <h2>Zapisano stan otwarcia dla <%= wynik.zapisane %> kart</h2>
+    <% if (wynik.odrzucone.length) { %>
+      <p>Odrzucone wiersze (nic z nich nie weszło):</p>
+      <ul><% wynik.odrzucone.forEach(function (o) { %><li>wiersz <%= o.wiersz %> „<%= o.tekst %>” — <%= o.powod %></li><% }); %></ul>
+    <% } %>
+  </section>
+<% } %>
+
+<% if (plan) { %>
+  <section class="panel" id="podglad-importu">
+    <h2>Podgląd: wejdzie <%= plan.doZapisu.length %>, odrzucone <%= plan.odrzucone.length %></h2>
+    <% if (plan.doZapisu.length) { %>
+      <table class="tresc-lista">
+        <thead><tr><th>SKU</th><th>Karta</th><th class="liczba">Ilość</th></tr></thead>
+        <tbody><% plan.doZapisu.forEach(function (w) { %>
+          <tr><td><%= w.sku %></td><td><a href="/magazyn/<%= w.karta_id %>"><%= w.nazwa %></a></td><td class="liczba"><%= w.ilosc %></td></tr>
+        <% }); %></tbody>
+      </table>
+    <% } %>
+    <% if (plan.odrzucone.length) { %>
+      <ul><% plan.odrzucone.forEach(function (o) { %><li>wiersz <%= o.wiersz %> „<%= o.tekst %>” — <%= o.powod %></li><% }); %></ul>
+    <% } %>
+    <% if (plan.doZapisu.length) { %>
+      <form method="post" action="/magazyn/stany/import/zapisz">
+        <textarea name="tekst" hidden><%= tekst %></textarea>
+        <button type="submit">Zapisz stan otwarcia (<%= plan.doZapisu.length %>)</button>
+      </form>
+    <% } %>
+  </section>
+<% } %>
+
+<section class="panel" id="formularz-importu">
+  <h2>Wklej stan otwarcia</h2>
+  <p class="podpowiedz">Jeden wiersz na kartę: <code>SKU;ilość</code> (średnik, przecinek albo tabulator — prosto z arkusza).
+    Karta musi mieć SKU w Magazynie. Karta, która ma już stan otwarcia, zostanie odrzucona — zmień ją korektą na karcie.
+    Najpierw zobaczysz podgląd; nic nie zapisze się bez drugiego kliknięcia.</p>
+  <form method="post" action="/magazyn/stany/import">
+    <textarea name="tekst" rows="12" cols="60" placeholder="LMP-STO-001;12&#10;LMP-WIS-002;3"><%= tekst %></textarea>
+    <p><button type="submit">Pokaż podgląd</button></p>
+  </form>
+</section>

@@ -1,8 +1,8 @@
 import { nazwaBezRozmiaru, wymiaryZTekstu } from './rozmiar.js';
 
-// DOPASOWANIE OFERTY ALLEGRO DO WZORU — czysta miara podobienstwa nazw.
+// DOPASOWANIE OFERTY ALLEGRO DO KARTY — czysta miara podobienstwa nazw.
 //
-// PO CO TO JEST. Lustro trzyma 447 ofert Allegro i wszystkie maja `wzor_id IS NULL`. Wzor
+// PO CO TO JEST. Lustro trzyma 447 ofert Allegro i wszystkie maja `karta_id IS NULL`. Karta
 // powstaje z katalogu SKLEPU, a oferte wiaze sie z nim RECZNIE: pole `external` jest na
 // Allegro puste we wszystkich ofertach, wiec jedynym mostem miedzy tymi dwoma swiatami jest
 // NAZWA. Ten modul nie wiaze niczego — oddaje wylacznie ranking kandydatow dla czlowieka,
@@ -11,8 +11,8 @@ import { nazwaBezRozmiaru, wymiaryZTekstu } from './rozmiar.js';
 // ⚠️⚠️ TU NIE MA PROGU I NIE WOLNO GO TU DOPISAC. Zmierzone na prawdziwych danych
 // (428 roznych nazw ofert wobec 767 produktow sklepowych, 2026-08-11): przy najlepszej
 // mierze tylko okolo 10% ofert osiaga ocene, ktora dalaby sie nazwac „pewna", a w kubelku
-// 0,50–0,67 siedza trafienia POPRAWNE — `Zakaz palenia papierosów…` → `Zakaz palenia - 64cm`,
-// `STOP…` → `STOP - szablon ostrzegawczy`, `NIE PARKOWAĆ` → `Nie parkować`. Prog wyciety
+// 0,50–0,67 siedza trafienia POPRAWNE — `Lampa stołowa nocna…` → `Lampa stołowa
+// - 64cm`, `KOPUŁA…` → `Kopuła - lampa wisząca`, `KINKIET RAMIĘ` → `Kinkiet Ramię`. Prog wyciety
 // gdziekolwiek nad zerem chowa wiec przed czlowiekiem prace, ktora trzeba wykonac, i robi
 // to CICHO: oferta bez propozycji wyglada tak samo, jak oferta, dla ktorej nic nie ma.
 // RANKING JEST DOBRY, PROGI KLAMIA.
@@ -24,7 +24,7 @@ import { nazwaBezRozmiaru, wymiaryZTekstu } from './rozmiar.js';
 // ——— SLOWA ———————————————————————————————————————————————————————————————————
 //
 // ⚠️ SKLADANIE ZNAKOW ZDEJMUJEMY, ALE „ł" NIE MA POSTACI ROZLOZONEJ — NFD go nie rusza,
-// wiec para `STRZAŁKA` / `strzalka` rozjechalaby sie mimo normalizacji. Allegro i sklep
+// wiec para `PODŁOGOWA` / `podlogowa` rozjechalaby sie mimo normalizacji. Allegro i sklep
 // pisza te same slowa raz z ogonkami, raz bez (tytul oferty bywa przepisywany recznie),
 // wiec fold diakrytykow jest tu warunkiem trafiania, a nie ozdoba.
 function bezOgonkow(tekst) {
@@ -36,13 +36,13 @@ function bezOgonkow(tekst) {
 }
 
 // ⚠️⚠️ TOKEN JEDNOZNAKOWY ZOSTAJE, GDY NIESIE CYFRE — I TO JEST POMIAR, NIE PRZECZUCIE.
-// Przy filtrze „slowa dluzsze niz jeden znak" cala rodzina `KWIATY 2/3/4/5` zlewala sie
-// w `Kwiaty 1`: po wyrzuceniu cyfry wszystkie cztery nazwy byly IDENTYCZNE, wiec o tym,
-// ktory wzor dostanie propozycje, decydowala kolejnosc wierszy w bazie. Cztery rozne wzory
+// Przy filtrze „slowa dluzsze niz jeden znak" cala rodzina `ABAŻURY 2/3/4/5` zlewala sie
+// w `Abażury 1`: po wyrzuceniu cyfry wszystkie cztery nazwy byly IDENTYCZNE, wiec o tym,
+// ktora karta dostanie propozycje, decydowala kolejnosc wierszy w bazie. Cztery rozne karty
 // pod jednym kandydatem to nie jest slabe dopasowanie — to jest dopasowanie MYLACE.
 //
 // Samotna litera (spojnik „i", „w", „z", „o") wypada dalej: dwie nazwy zlaczone tym samym
-// spojnikiem dostawalyby za to punkt, a spojnik nie mowi o wzorze nic.
+// spojnikiem dostawalyby za to punkt, a spojnik nie mowi o karcie nic.
 const czySlowo = (t) => t.length > 1 || /\d/u.test(t);
 
 /**
@@ -50,13 +50,13 @@ const czySlowo = (t) => t.length > 1 || /\d/u.test(t);
  *
  * `klucz` sluzy porownaniu (male litery, bez ogonkow), `tekst` — pokazaniu czlowiekowi.
  * Dwie postacie tego samego slowa, bo lista „wspolnych slow" na ekranie ma byc czytelna:
- * „skrętu", a nie „skretu".
+ * „podłogowa", a nie „podlogowa".
  *
- * ⚠️ ROZMIAR ZDEJMUJE `nazwaBezRozmiaru` — TA SAMA funkcja, ktora buduje nazwy wzorow
- * z produktow sklepowych. Sklep trzyma rozmiar w nazwie („Obiekt monitorowany - 60x62cm"),
+ * ⚠️ ROZMIAR ZDEJMUJE `nazwaBezRozmiaru` — TA SAMA funkcja, ktora buduje nazwy kart
+ * z produktow sklepowych. Sklep trzyma rozmiar w nazwie („Plafon okrągły - 60x62cm"),
  * Allegro nie; policzony jako slowo obnizalby pokrycie kazdej nazwy sklepowej wzgledem
  * kazdej ofertowej. Druga kopia tej reguly tutaj rozjechalaby sie z tamta przy pierwszej
- * poprawce, a wtedy wzor nazywalby sie inaczej, niz szuka go ten modul.
+ * poprawce, a wtedy karta nazywalaby sie inaczej, niz szuka jej ten modul.
  */
 function slowa(nazwa) {
   if (typeof nazwa !== 'string') return [];
@@ -77,8 +77,8 @@ function slowa(nazwa) {
 
 // ——— WYMIARY ——————————————————————————————————————————————————————————————————
 
-// Wymiary z KOLUMN (`wzory.szerokosc_mm`/`wysokosc_mm`). Polowiczne to nadal brak — ta sama
-// regula, co w filtrze braków w db/magazyn.js: do ciecia potrzebne sa oba.
+// Wymiary z KOLUMN (`karty.szerokosc_mm`/`wysokosc_mm`). Polowiczne to nadal brak — ta sama
+// regula, co w filtrze braków w db/magazyn.js: do paczki i do sklepu potrzebne sa oba.
 function wymiaryZKolumn(pozycja) {
   const szerokosc_mm = Number(pozycja?.szerokosc_mm);
   const wysokosc_mm = Number(pozycja?.wysokosc_mm);
@@ -87,13 +87,13 @@ function wymiaryZKolumn(pozycja) {
 }
 
 /**
- * Wymiary JEDNEJ POZYCJI — obojetne, czy jest nia wzor, czy oferta.
+ * Wymiary JEDNEJ POZYCJI — obojetne, czy jest nia karta, czy oferta.
  *
  * ⚠️⚠️ SZUKAMY PO TYM, GDZIE WYMIAR JEST, A NIE PO TYM, KTORA STRONA PARY TO JEST. Wcze-
- * sniej stały tu dwie funkcje — jedna czytala kolumny (bo tak ma wzor), druga nazwe (bo tak
+ * sniej stały tu dwie funkcje — jedna czytala kolumny (bo tak ma karta), druga nazwe (bo tak
  * ma oferta) — i przypisane byly na sztywno do STRON porownania. Dopoki pytal wylacznie
- * ekran powiazan („dla tej oferty — ktore wzory?"), dzialalo. Karta wzoru pyta o to samo
- * z drugiej strony („dla tego wzoru — ktore oferty?") i przy zamianie stron rozmiar znikal
+ * ekran powiazan („dla tej oferty — ktore karty?"), dzialalo. Ekran karty pyta o to samo
+ * z drugiej strony („dla tej karty — ktore oferty?") i przy zamianie stron rozmiar znikal
  * z rachunku po CICHU: ta sama para dostawala 63% na jednym ekranie i 50% na drugim.
  *
  * Kolumny maja pierwszenstwo przed nazwa, bo sa wpisane RECZNIE i rozstrzygaja; nazwa jest
@@ -106,9 +106,9 @@ function wymiaryPozycji(pozycja) {
     ?? wymiaryZTekstu(pozycja?.rozmiar_tekst);
 }
 
-// ⚠️⚠️ ROZMIAR JEST ROZSTRZYGACZEM, NIE WARUNKIEM. `ANNE 15cm/20cm`, `23cm/28cm`
-// i `28cm/35cm` to trzy ROZNE wzory tego samego motywu — samo slowo „ANNE" nie rozstrzyga
-// niczego. Ale wymiar bywa niewpisany (wiekszosc wzorow startuje bez niego), wpisany
+// ⚠️⚠️ ROZMIAR JEST ROZSTRZYGACZEM, NIE WARUNKIEM. `KLOSZ 15cm/20cm`, `23cm/28cm`
+// i `28cm/35cm` to trzy ROZNE karty tego samego modelu — samo slowo „KLOSZ" nie rozstrzyga
+// niczego. Ale wymiar bywa niewpisany (wiekszosc kart startuje bez niego), wpisany
 // z pomylka albo opisuje inny wariant tej samej nazwy, wiec sprzeczny SCINA ocene, a nie
 // wyrzuca kandydata: kandydat schowany to kandydat, ktorego czlowiek nie ma jak poprawic.
 //
@@ -121,7 +121,7 @@ function zRozmiarem(ocena, zapytanie, kandydat) {
   const a = wymiaryPozycji(zapytanie);
   const b = wymiaryPozycji(kandydat);
   // ⚠️ BRAK WYMIARU PO KTOREJKOLWIEK STRONIE ZOSTAWIA OCENE NIETKNIETA. Kara za brak
-  // spychalaby na dol wszystko, czego jeszcze nie uzupelniono — czyli dokladnie te wzory,
+  // spychalaby na dol wszystko, czego jeszcze nie uzupelniono — czyli dokladnie te karty,
   // ktore powiazania potrzebuja najbardziej.
   if (!a || !b) return ocena;
   const zgodny = a.szerokosc_mm === b.szerokosc_mm && a.wysokosc_mm === b.wysokosc_mm;
@@ -136,45 +136,45 @@ function zRozmiarem(ocena, zapytanie, kandydat) {
  * Podobienstwo dwoch zbiorow slow — F1 z OBU pokryc.
  *
  * ⚠️⚠️ SYMETRIA JEST TU RZECZA NOSNA, A NIE ELEGANCJA. Obie strony maja doklejone smieci,
- * ale INNEGO rodzaju: Allegro dokleja dopisek sprzedazowy („- DUŻY szablon malarski do
- * znakowania"), sklep — rozmiar i doprecyzowanie techniczne („STOP - szablon ostrzegawczy,
- * przemysłowy"). Pokrycie liczone w JEDNA strone karze wiec systematycznie jedna z nich:
+ * ale INNEGO rodzaju: Allegro dokleja dopisek sprzedazowy („- DUŻY abażur lniany
+ * do sypialni"), sklep — rozmiar i doprecyzowanie techniczne („Kopuła - lampa wisząca,
+ * mosiężna"). Pokrycie liczone w JEDNA strone karze wiec systematycznie jedna z nich:
  *
- *   - pokrycie nazwy WZORU (|wspolne| / |slowa wzoru|) daje 1,00 kazdemu wzorowi krotkiemu
- *     („Zakaz", „STOP"), wiec poprawne trafienie w nazwe techniczna ladowalo pod nim
+ *   - pokrycie nazwy KARTY (|wspolne| / |slowa karty|) daje 1,00 kazdej karcie krotkiej
+ *     („Lampa", „Kopuła"), wiec poprawne trafienie w nazwe techniczna ladowalo pod nim
  *     — a przy jakimkolwiek progu wypadalo z ekranu jako „bez propozycji";
  *   - pokrycie nazwy OFERTY (|wspolne| / |slowa oferty|) nie odroznia kandydata trafnego
  *     od dowolnie dlugiego kandydata obcego o tej samej liczbie wspolnych slow.
  *
  * F1 wymaga OBU naraz i to jest cala jego robota.
  */
-function f1(wspolne, ileOferty, ileWzoru) {
+function f1(wspolne, ileOferty, ileKarty) {
   if (!wspolne) return 0;
   const pokrycieOferty = wspolne / ileOferty;
-  const pokrycieWzoru = wspolne / ileWzoru;
-  return (2 * pokrycieOferty * pokrycieWzoru) / (pokrycieOferty + pokrycieWzoru);
+  const pokrycieKarty = wspolne / ileKarty;
+  return (2 * pokrycieOferty * pokrycieKarty) / (pokrycieOferty + pokrycieKarty);
 }
 
-// ⚠️ SLOWA WZORU LICZONE RAZ NA WZOR, A NIE RAZ NA PARE. Ekran powiazan porownuje 447 ofert
-// z ~965 wzorami, czyli okolo 430 tysiecy par na JEDNO wejscie na strone; tokenizacja nazwy
-// wzoru przy kazdej parze byloby 430 tysiecy przebiegow regexpa zamiast 965. Klucz jest
+// ⚠️ SLOWA KARTY LICZONE RAZ NA KARTE, A NIE RAZ NA PARE. Ekran powiazan porownuje 447 ofert
+// z ~965 kartami, czyli okolo 430 tysiecy par na JEDNO wejscie na strone; tokenizacja nazwy
+// karty przy kazdej parze byloby 430 tysiecy przebiegow regexpa zamiast 965. Klucz jest
 // SLABY (WeakMap): wiersze przychodza swiezo z bazy przy kazdym zadaniu i maja z niej
 // wypasc razem z odpowiedzia, a nie zostac w pamieci kontenera do restartu.
-const slowaWzoru = new WeakMap();
+const slowaKarty = new WeakMap();
 
-function slowaKandydata(wzor) {
-  if (typeof wzor !== 'object' || wzor === null) return [];
-  const gotowe = slowaWzoru.get(wzor);
+function slowaKandydata(karta) {
+  if (typeof karta !== 'object' || karta === null) return [];
+  const gotowe = slowaKarty.get(karta);
   if (gotowe) return gotowe;
-  const policzone = slowa(wzor.nazwa);
-  slowaWzoru.set(wzor, policzone);
+  const policzone = slowa(karta.nazwa);
+  slowaKarty.set(karta, policzone);
   return policzone;
 }
 
 /**
  * ⚠️ REMIS ROZSTRZYGA BOGACTWO WSPOLNYCH SLOW, a nie kolejnosc wierszy w bazie.
- * Zmierzone: „STRZAŁKA nakaz skrętu w lewo" trafiala w sama „Strzałkę" zamiast w „Nakaz
- * skrętu w lewo - strzałka", bo obaj kandydaci mieli te sama ocene. Cztery wspolne slowa
+ * Zmierzone: „ŁUK lampa podłogowa z marmurem" trafiala w sam „Łuk" zamiast
+ * w „Lampa podłogowa z marmurem - łuk", bo obaj kandydaci mieli te sama ocene. Cztery wspolne slowa
  * znacza wiecej niz dwa, nawet przy tym samym pokryciu.
  *
  * Na samym koncu nazwa i identyfikator — nie dlatego, ze cokolwiek znacza, tylko po to,
@@ -183,10 +183,10 @@ function slowaKandydata(wzor) {
 function lepszy(a, b) {
   if (a.ocena !== b.ocena) return a.ocena > b.ocena;
   if (a.wspolne !== b.wspolne) return a.wspolne > b.wspolne;
-  const nazwaA = String(a.wzor?.nazwa ?? '');
-  const nazwaB = String(b.wzor?.nazwa ?? '');
+  const nazwaA = String(a.karta?.nazwa ?? '');
+  const nazwaB = String(b.karta?.nazwa ?? '');
   if (nazwaA !== nazwaB) return nazwaA.localeCompare(nazwaB, 'pl') < 0;
-  return Number(a.wzor?.id) < Number(b.wzor?.id);
+  return Number(a.karta?.id) < Number(b.karta?.id);
 }
 
 // Wstawienie do listy najlepszych `ile` sztuk. Petla po ~965 kandydatach z sortowaniem
@@ -201,12 +201,12 @@ function wstaw(najlepsi, kandydat, ile) {
 }
 
 /**
- * Kandydaci na wzor dla jednej oferty Allegro — POSORTOWANI, najlepszy pierwszy.
+ * Kandydaci na karte dla jednej oferty Allegro — POSORTOWANI, najlepszy pierwszy.
  *
  * @param {{nazwa: string, rozmiar_tekst?: string|null}} oferta wiersz lustra
- * @param {Array<{id: number, nazwa: string, szerokosc_mm?: number|null, wysokosc_mm?: number|null}>} wzory
+ * @param {Array<{id: number, nazwa: string, szerokosc_mm?: number|null, wysokosc_mm?: number|null}>} karty
  * @param {{ile?: number}} opcje ilu kandydatow oddac (domyslnie trzech — tylu miesci wiersz)
- * @returns {Array<{wzor: object, ocena: number, wspolneSlowa: string[]}>}
+ * @returns {Array<{karta: object, ocena: number, wspolneSlowa: string[]}>}
  *
  * ⚠️ NICZEGO TU NIE WIAZEMY I NICZEGO NIE ZAPISUJEMY. Funkcja jest czysta, a wybor nalezy
  * do czlowieka: ocena jest PODPOWIEDZIA, nie decyzja (rozstrzygniecie wlasciciela — nic
@@ -215,11 +215,11 @@ function wstaw(najlepsi, kandydat, ile) {
  * ⚠️⚠️ ZERO WSPOLNYCH SLOW ODPADA — I TO JEST JEDYNE ODRZUCENIE W TYM PLIKU. To nie jest
  * prog jakosci (progow tu nie ma, patrz naglowek modulu), tylko granica miedzy „slabo
  * pasuje" a „nie ma zadnego zwiazku": przy zerowym pokryciu wszyscy kandydaci maja ocene 0,
- * wiec kolejnosc bralaby sie z bazy, a pod oferta staly by trzy przypadkowe wzory. Czlowiek
+ * wiec kolejnosc bralaby sie z bazy, a pod oferta staly by trzy przypadkowe karty. Czlowiek
  * przegladajacy 447 wierszy klika w to, co panel podsunal — a podsuniete losowo trafienie
  * jest gorsze niz puste miejsce i pole wyszukiwania obok.
  */
-export function propozycje(oferta, wzory, { ile = 3 } = {}) {
+export function propozycje(oferta, karty, { ile = 3 } = {}) {
   const slowaOferty = slowa(oferta?.nazwa);
   // ⚠️ TO JEST SKROT, A NIE STRAZNIK — i tak ma byc nazwane, zeby nikt go pozniej nie
   // „wzmocnil". Oferta bez slow ma pusty zbior kluczy, wiec `wspolne` bylby zerem przy
@@ -232,48 +232,48 @@ export function propozycje(oferta, wzory, { ile = 3 } = {}) {
   const kluczeOferty = new Set(slowaOferty.map((s) => s.klucz));
   const najlepsi = [];
 
-  for (const wzor of wzory ?? []) {
-    const kandydat = slowaKandydata(wzor);
+  for (const karta of karty ?? []) {
+    const kandydat = slowaKandydata(karta);
     if (!kandydat.length) continue;
 
     let wspolne = 0;
     for (const s of kandydat) if (kluczeOferty.has(s.klucz)) wspolne += 1;
     if (!wspolne) continue;
 
-    const ocena = zRozmiarem(f1(wspolne, kluczeOferty.size, kandydat.length), oferta, wzor);
-    wstaw(najlepsi, { wzor, ocena, wspolne }, ile);
+    const ocena = zRozmiarem(f1(wspolne, kluczeOferty.size, kandydat.length), oferta, karta);
+    wstaw(najlepsi, { karta, ocena, wspolne }, ile);
   }
 
   // Wspolne slowa W POSTACI CZYTELNEJ skladamy dopiero dla zwyciezcow: dla przegranych
   // byloby to kilkaset tysiecy tablic na jedno wejscie na strone, wyrzucanych bez uzycia.
-  return najlepsi.map(({ wzor, ocena }) => {
-    const kluczeWzoru = new Set(slowaKandydata(wzor).map((s) => s.klucz));
+  return najlepsi.map(({ karta, ocena }) => {
+    const kluczeKarty = new Set(slowaKandydata(karta).map((s) => s.klucz));
     return {
-      wzor,
+      karta,
       ocena,
       // Kolejnosc z NAZWY OFERTY — czlowiek czyta ja obok tej nazwy i porownuje wzrokiem.
-      wspolneSlowa: slowaOferty.filter((s) => kluczeWzoru.has(s.klucz)).map((s) => s.tekst),
+      wspolneSlowa: slowaOferty.filter((s) => kluczeKarty.has(s.klucz)).map((s) => s.tekst),
     };
   });
 }
 
 /**
- * TA SAMA regula, zadana z DRUGIEJ STRONY: dla jednego wzoru — ktore oferty pasuja.
+ * TA SAMA regula, zadana z DRUGIEJ STRONY: dla jednej karty — ktore oferty pasuja.
  *
- * @param {{nazwa: string, szerokosc_mm?: number|null, wysokosc_mm?: number|null}} wzor
+ * @param {{nazwa: string, szerokosc_mm?: number|null, wysokosc_mm?: number|null}} karta
  * @param {Array<{id: number, nazwa: string, rozmiar_tekst?: string|null}>} oferty
  * @returns {Array<{oferta: object, ocena: number, wspolneSlowa: string[]}>}
  *
  * ⚠️⚠️ TO JEST TRZYLINIJKOWA PRZEKLADKA NAD `propozycje`, A NIE DRUGA IMPLEMENTACJA — i tak
- * ma zostac. Ekran powiazan pyta „dla tej oferty — ktore wzory?", karta wzoru „dla tego
- * wzoru — ktore oferty?"; to jest jedno pytanie o podobienstwo dwoch nazw. Wlasna kopia
+ * ma zostac. Ekran powiazan pyta „dla tej oferty — ktore karty?", ekran karty „dla tej
+ * karty — ktore oferty?"; to jest jedno pytanie o podobienstwo dwoch nazw. Wlasna kopia
  * miary w karcie rozjechalaby sie z ekranem obok przy PIERWSZEJ poprawce, a rozjazd znaczy
  * tu, ze dwa ekrany podsuwaja czlowiekowi rozne odpowiedzi na to samo pytanie.
  *
  * Istnieje wylacznie po to, zeby wynik NAZYWAL SIE tym, czym jest po tej stronie (`oferta`,
- * a nie `wzor`) — wolajacy nie ma czytac pola `wzor` i wiedziec, ze siedzi w nim oferta.
+ * a nie `karta`) — wolajacy nie ma czytac pola `karta` i wiedziec, ze siedzi w nim oferta.
  */
-export function propozycjeOfert(wzor, oferty, opcje) {
-  return propozycje(wzor, oferty, opcje)
-    .map(({ wzor: oferta, ocena, wspolneSlowa }) => ({ oferta, ocena, wspolneSlowa }));
+export function propozycjeOfert(karta, oferty, opcje) {
+  return propozycje(karta, oferty, opcje)
+    .map(({ karta: oferta, ocena, wspolneSlowa }) => ({ oferta, ocena, wspolneSlowa }));
 }

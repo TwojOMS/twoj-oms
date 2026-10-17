@@ -1,14 +1,17 @@
 // Port frozen 5b9cd765: 890–1074.
+import { stanyKart } from '../../oms/db/stany-magazynowe.js';
+import { fmtDataCzas } from '../../domena/format-daty.js';
+
 export function registerListaMagazynu(app, { db, magazyn, sklepy, pomoc, karta }) {
-  const { wzoryZKanalami, kategorieDoFiltra, SORTOWANIE_WZOROW, zliczeniaBrakow, zliczeniaNiepowiazanych, filtryZZapytania, saJakiesFiltry, parametryUkryte, wartosciPol, adresMagazynu, PACZKOMAT_DO_FILTRA, PACZKOMAT_ETYKIETY, POLA_FORMULARZA_FILTROW, NAGLOWKI_KANALOW, BEZ_SKLEPOW, opisPrzebiegu, linkiSortowania, kafleBrakow, wierszWzoru, ileWzorow, opisZawezenia, zWroc } = pomoc;
+  const { kartyZKanalami, kategorieDoFiltra, SORTOWANIE_KART, zliczeniaBrakow, zliczeniaNiepowiazanych, filtryZZapytania, saJakiesFiltry, parametryUkryte, wartosciPol, adresMagazynu, PACZKOMAT_DO_FILTRA, PACZKOMAT_ETYKIETY, POLA_FORMULARZA_FILTROW, NAGLOWKI_KANALOW, BEZ_SKLEPOW, opisPrzebiegu, linkiSortowania, kafleBrakow, wierszKarty, ileKart, opisZawezenia, zWroc } = pomoc;
   app.get('/magazyn', async (req, reply) => {
     if (!magazyn) return reply.view('pusta-strona.ejs', BEZ_SKLEPOW);
 
     // ⚠️ BIALA LISTA, nie `SORTOWANIE[x] ?? domyslne`. Ta druga postac oddaje funkcje
     // z `Object.prototype` przy `?sort=constructor` i konczy sie pieciusetka na glownym
     // ekranie — zlapane przy Zadaniu 4. Lista jest TA SAMA, ktorej uzywa zapytanie
-    // (`SORTOWANIE_WZOROW` z db/magazyn.js), a `Set.has` nie zaglada do prototypu.
-    const dozwolone = new Set(SORTOWANIE_WZOROW);
+    // (`SORTOWANIE_KART` z db/magazyn.js), a `Set.has` nie zaglada do prototypu.
+    const dozwolone = new Set(SORTOWANIE_KART);
     const sort = dozwolone.has(req.query.sort) ? req.query.sort : 'nazwa';
     // Nierozpoznany kierunek WRACA DO ROSNACEGO, a nie odmawia: kolejnosc nie zawęża
     // zbioru, wiec literowka w adresie ma pokazac liste, a nie pusty ekran.
@@ -53,7 +56,7 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
     // ⚠️ JEDEN ODCZYT NA CALY EKRAN. Liczba „pasujacych do zawezenia" w pasku hurtu MUSI byc
     // liczona TYM SAMYM zapytaniem, co lista — druga droga do tej liczby rozjechalaby sie
     // z pierwsza po cichu i czlowiek klikalby „ustaw 645", dotykajac innego zbioru.
-    const znalezione = wzoryZKanalami(db, { fraza: filtry.fraza, filtry, sort, kier });
+    const znalezione = kartyZKanalami(db, { fraza: filtry.fraza, filtry, sort, kier });
 
     // ⚠️ LICZONE PO CALYM KATALOGU, NIE PO `znalezione` — kafel odpowiada na pytanie „ile
     // roboty zostalo" i sam jest odnosnikiem, ktory to zawezenie ustawia (patrz zliczeniaBrakow).
@@ -65,10 +68,16 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
     // stanem PRZEGLADARKI po zaladowaniu strony, nie czyms, co adres ma odtwarzac).
     const adresPowrotuListy = adresMagazynu(filtry, { sort, kier, widok });
 
+    // PRZ-091: stany magazynowe — wylacznie przy wlaczonym przelaczniku (Ustawienia → Magazyn). Wylaczone:
+    // `stany.wlaczone === false`, kolumny i paska nie ma, ekran jak przed PRZ-091.
+    const stany = stanyKart(db);
+    const naStanie = (id) => (stany.wlaczone ? (stany.stany.get(Number(id))?.stan ?? 0) : null);
+    const naMinusie = stany.wlaczone ? [...stany.stany.values()].filter((s) => s.stan < 0).length : 0;
+
     return reply.view('magazyn-lista.ejs', {
       title: 'Magazyn',
       // Dwa ekrany obok („pominiete" i powiazania) dostaja adres TEJ listy tak samo, jak
-      // dostaje go kazda karta wzoru (4.13d) — gotowy z trasy, bo w tym module odnosniki
+      // dostaje go kazdy ekran karty (4.13d) — gotowy z trasy, bo w tym module odnosniki
       // sklada trasa, a nie widok.
       //
       // ⚠️ ZAWSZE, takze przy liscie bez filtrow: `adresPowrotuListy` niesie rowniez
@@ -78,14 +87,18 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
       adresPominietych: zWroc('/magazyn/pominiete', adresPowrotuListy),
       adresEkranuPowiazan: zWroc('/magazyn/powiazania', adresPowrotuListy),
       adresPowrotuListy,
-      wiersze: znalezione.map((w) => wierszWzoru(w, adresPowrotuListy)),
+      wiersze: znalezione.map((w) => ({ ...wierszKarty(w, adresPowrotuListy), naStanie: naStanie(w.id) })),
+      stany: stany.wlaczone ? {
+        od: fmtDataCzas(stany.granica), naMinusie, bezKarty: stany.bezKarty,
+        adresImportu: '/magazyn/stany/import', adresBezKarty: '/magazyn/stany/bez-karty',
+      } : null,
       naglowkiKanalow: NAGLOWKI_KANALOW,
       // Adres, stan aktywnosci i strzalka KAZDEGO naglowka sortujacego — policzone tutaj,
       // bo widok w tym module niczego nie rozstrzyga.
       sortowanie: linkiSortowania(sort, kier, filtry, zaznaczWszystkie, widok),
       przebieg: opisPrzebiegu(magazyn.stan()),
       // ⚠️ Dwie liczby do linii odczytu (`zliczeniaNiepowiazanych` z Zadania 1): ile
-      // produktow lustra czeka jeszcze na wzor, i osobno, ile z nich to oferty Allegro
+      // produktow lustra czeka jeszcze na karte, i osobno, ile z nich to oferty Allegro
       // czekajace na reczne powiazanie (`/magazyn/powiazania`) — widok niczego nie liczy.
       niepowiazane: zliczeniaNiepowiazanych(db),
 
@@ -97,7 +110,7 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
 
       // ——— TRYB KOLUMN TABELI ———
       // ⚠️ DWA UKLADY JEDNEJ TABELI, nie dwie tabele: `porzadki` (domyslny) zamienia cztery
-      // kolumny cen na jedna kolumne „Stan" (ile brakuje przy wzorze), `katalog` przywraca
+      // kolumny cen na jedna kolumne „Stan" (ile brakuje przy karcie), `katalog` przywraca
       // dzisiejszy zestaw z cenami. Rozstrzyga TRASA — widok tylko wypisuje.
       widok,
       // Przelacznik jest JEDYNYM odnosnikiem ekranu, ktory tryb ZMIENIA — i robi to
@@ -115,19 +128,19 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
       // ⚠️ SZEROKOSC KOMUNIKATU PUSTEJ TABELI liczy sie z ZESTAWU KOLUMN, wiec zalezy od
       // trybu — policzona w widoku rozjechalaby sie po cichu przy pierwszej zmianie kolumn,
       // a komunikat przestalby siegac konca tabeli i wygladalby jak polamany render.
-      kolumnPustej: widok === 'katalog' ? 6 + NAGLOWKI_KANALOW.length : 7,
+      kolumnPustej: (widok === 'katalog' ? 6 + NAGLOWKI_KANALOW.length : 7) + (stany.wlaczone ? 1 : 0),
       // Co dzis zawęża liste — zdanie nad tabela, POLICZONE (widok niczego nie liczy).
       opisZawezenia: opisZawezenia(filtry, znalezione.length),
       // Liczba wynikow PRZY zawezeniu (pasek chipow) — TA SAMA odmiana trojformowa co
-      // `ileWzorow` uzywa dwie linijki wyzej w `opisZawezenia`. Druga kopia w widoku
-      // (dwuformowe „wzór"/„wzorów") mowilaby przy dwoch wynikach „2 wzorów" zamiast
-      // „2 wzory" — widok niczego nie liczy, wiec liczebnik stoi tutaj.
-      napisWynikuFiltra: ileWzorow(znalezione.length),
+      // `ileKart` uzywa dwie linijki wyzej w `opisZawezenia`. Druga kopia w widoku
+      // (dwuformowe „karta"/„kart") mowilaby przy dwoch wynikach „2 kart" zamiast
+      // „2 karty" — widok niczego nie liczy, wiec liczebnik stoi tutaj.
+      napisWynikuFiltra: ileKart(znalezione.length),
 
       // ——— ZAZNACZENIE ———
       zaznaczWszystkie,
       // Oba adresy skladane TU, z zachowaniem zawezenia I kolejnosci — inaczej „zaznacz
-      // wszystkie" zdejmowaloby filtr i czlowiek zaznaczylby wzory, ktorych nie widzial.
+      // wszystkie" zdejmowaloby filtr i czlowiek zaznaczylby karty, ktorych nie widzial.
       // ⚠️ To NIE JEST teoretyczne: przy przejeciu numerow zaznaczenie prowadzi do zapisu
       // nieodwracalnego z panelu, a katalog ma ~1000 pozycji przy 277 do przejecia.
       // ⚠️ TRYB KOLUMN JEDZIE Z NIMI. Stan pol wyboru pamieta przegladarka, ale sam odnosnik
@@ -139,10 +152,10 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
       // ——— WYSZUKIWARKA I FILTRY ———
       filtry,
       // Wartosci POL formularza (ceny z powrotem w zlotowkach, brak jako pusty napis) —
-      // liczy je domena, zeby szablon nie musial wiedziec, ze filtry zyja w groszach.
+      // liczy je domena, zeby widok nie musial wiedziec, ze filtry zyja w groszach.
       wartosci: wartosciPol(filtry),
       // ⚠️ CZY COKOLWIEK ZAWEZA LISTE. Od tego zalezy, CO MOWI PUSTA TABELA: „nie ma tu
-      // jeszcze ani jednego wzoru" przy aktywnym filtrze jest NIEPRAWDA i wyglada jak utrata
+      // jeszcze ani jednej karty produktu" przy aktywnym filtrze jest NIEPRAWDA i wyglada jak utrata
       // danych — katalog ma ~1000 pozycji, a ekran twierdzi, ze jest pusty.
       filtrowane: saJakiesFiltry(filtry),
       // Oba formularze GET niosa nawzajem swoje wartosci ukrytymi polami — inaczej klikniecie
@@ -164,7 +177,7 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
 
       // ——— PASEK EDYCJI HURTEM ———
       // ⚠️ LICZBA PASUJACYCH JEST TU CALA UCZCIWOSCIA OPCJI „wszystkie pasujace". Czlowiek
-      // ma wiedziec, ze dotyka 645 wzorow, a nie 20, ktore widzi na ekranie — i musi to
+      // ma wiedziec, ze dotyka 645 kart, a nie 20, ktore widzi na ekranie — i musi to
       // byc TA SAMA liczba, co dlugosc listy nizej, bo obie biora sie z jednego odczytu.
       ilePasujacych: znalezione.length,
       // ⚠️ ZAWEZENIE JEDNYM POLEM, nie siedmioma osobnymi: formularz hurtowy ma WLASNE pole
@@ -173,14 +186,14 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
       // z `adresMagazynu`, czyli z TEGO SAMEGO miejsca, co kazdy odnosnik ekranu.
       // ⚠️⚠️ JEDYNE MIEJSCE EKRANU BEZ TRYBU KOLUMN — i to nie jest przeoczenie. To pole
       // opisuje ZBIOR, ktorego dotknie akcja hurtowa, a tryb kolumn jest UKLADEM EKRANU:
-      // wpuszczony tutaj jechalby razem z zawezeniem w zadanie zapisujace setki wzorow
+      // wpuszczony tutaj jechalby razem z zawezeniem w zadanie zapisujace setki kart
       // i udawal kryterium wyboru. Dokladnie z tego samego powodu nie ma tu `zaznacz`
       // (patrz `adresMagazynu` w domenie) — a `sort`/`kier` nie ma, bo kolejnosc nie
       // zmienia zbioru.
       zawezenieHurtu: adresMagazynu(filtry).split('?')[1] ?? '',
       // Pozycje pola wyboru kategorii w pasku hurtu — ta sama lista, co w filtrze.
       // ⚠️ POLE WYBORU, NIE TEKSTOWE: wpisana z pamieci literowka ustawilaby hurtem
-      // kategorie, ktorej nie ma w zadnym sklepie, i to od razu sześciuset wzorom.
+      // kategorie, ktorej nie ma w zadnym sklepie, i to od razu sześciuset kartom.
       paczkomatDoHurtu: PACZKOMAT_DO_FILTRA.map(
         (klucz) => ({ klucz, etykieta: PACZKOMAT_ETYKIETY[klucz] }),
       ),

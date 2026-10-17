@@ -15,13 +15,13 @@ async function sklad(nadpisania = {}) {
     'kanaly.klienciSklepow': { polnoc: { pobierzWszystkieProdukty: async () => [] } },
     'kanaly.klienciKanalow': {}, ...nadpisania } });
 }
-function wzor(db) {
-  db.exec("INSERT INTO wzory(id,nazwa,sku,utworzony_at,zmieniony_at) VALUES(7,'Kotwica testowa','TEST-7','x','x')");
+function karta(db) {
+  db.exec("INSERT INTO karty_produktow(id,nazwa,sku,utworzony_at,zmieniony_at) VALUES(7,'Kandelabr testowy','TEST-7','x','x')");
   const id = zapiszProduktSklepowy(db, { kanal: 'polnoc', produkt_id: '1', wariant_id: '', nazwa: 'Zdjęcia sklepu',
     miniatura: 'https://przyklad.invalid/prawdziwa-mini.jpg', zdjecia_json: '["https://przyklad.invalid/obraz.jpg"]', odczytane_at: 'x' });
-  db.prepare('UPDATE produkty_sklepowe SET wzor_id=7 WHERE id=?').run(id);
+  db.prepare('UPDATE produkty_sklepowe SET karta_id=7 WHERE id=?').run(id);
   for (const kanal of ['wschod', 'zachod', 'obcy', 'polnoc']) zapiszProduktSklepowy(db, { kanal, produkt_id: '9',
-    wariant_id: '', nazwa: `Kotwica oferta ${kanal}`, odczytane_at: 'x' });
+    wariant_id: '', nazwa: `Kandelabr oferta ${kanal}`, odczytane_at: 'x' });
 }
 afterEach(() => vi.unstubAllGlobals());
 describe('PRZ-026 — rzeczywisty skład i chroniona karta', () => {
@@ -39,11 +39,11 @@ describe('PRZ-026 — rzeczywisty skład i chroniona karta', () => {
     const fetch = vi.fn(async () => { throw Error('Test nie zezwala na sieć'); }); vi.stubGlobal('fetch', fetch);
     const a = await sklad();
     try {
-      wzor(a.db); const przed = a.db.prepare('SELECT * FROM produkty_sklepowe ORDER BY id').all();
-      const r = await a.app.inject({ url: '/magazyn/7?fraza=kotwica&edytuj=dane&wroc=%2Fmagazyn%3Ffraza%3Dx', headers: auth });
+      karta(a.db); const przed = a.db.prepare('SELECT * FROM produkty_sklepowe ORDER BY id').all();
+      const r = await a.app.inject({ url: '/magazyn/7?fraza=kandelabr&edytuj=dane&wroc=%2Fmagazyn%3Ffraza%3Dx', headers: auth });
       expect(r.statusCode).toBe(200);
-      for (const tekst of ['Kotwica testowa', 'prawdziwa-mini.jpg', 'obraz.jpg', 'Kotwica oferta wschod', 'Kotwica oferta zachod']) expect(r.body).toContain(tekst);
-      expect(r.body).not.toContain('Kotwica oferta obcy'); expect(r.body).not.toContain('Kotwica oferta polnoc');
+      for (const tekst of ['Kandelabr testowy', 'prawdziwa-mini.jpg', 'obraz.jpg', 'Kandelabr oferta wschod', 'Kandelabr oferta zachod']) expect(r.body).toContain(tekst);
+      expect(r.body).not.toContain('Kandelabr oferta obcy'); expect(r.body).not.toContain('Kandelabr oferta polnoc');
       expect(r.body).toContain('name="wroc" value="/magazyn?fraza=x"');
       expect(a.db.prepare('SELECT * FROM produkty_sklepowe ORDER BY id').all()).toEqual(przed);
       expect(fetch).not.toHaveBeenCalled();
@@ -54,7 +54,7 @@ describe('PRZ-026 — rzeczywisty skład i chroniona karta', () => {
   it('sesja bez ptaszka oraz konto serwisowe po pierwszym adminie nie mogą czytać karty', async () => {
     const a = await sklad();
     try {
-      wzor(a.db);
+      karta(a.db);
       expect((await a.app.inject({ url: '/magazyn/7' })).statusCode).toBe(401);
       zalozKonto(a.db, { login: 'admin', imie: 'Admin', haslo: 'test', rola: 'admin', admin: true });
       const id = zalozKonto(a.db, { login: 'czytelnik', imie: 'Czytelnik', haslo: 'test', rola: 'operator' });

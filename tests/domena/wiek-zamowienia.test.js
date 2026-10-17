@@ -6,14 +6,14 @@ import { wiekZamowienia, czyEkspres } from '../../src/domena/wiek-zamowienia.js'
 const zam = (nad = {}) => ({
   sklep: 'szkicownia', utworzone_at: '2026-08-18T10:00:00', oplacone_at: '2026-08-18T10:00:00',
   pobranie: 0, b2b: 0, indywidualne: 0, anulowane: 0, anulowane_recznie: null,
-  wyslane_at: null, pozycje: [{ nazwa: 'Szablon malarski' }], ...nad,
+  wyslane_at: null, pozycje: [{ nazwa: 'Lampa wisząca' }], ...nad,
 });
 
 describe('czyEkspres', () => {
   it('łapie fragmenty „ekspres” i „priorytetowa” bez względu na wielkość liter', () => {
     expect(czyEkspres([{ nazwa: 'Realizacja ekspresowa' }])).toBe(true);
     expect(czyEkspres([{ nazwa: 'Wysyłka PRIORYTETOWA' }])).toBe(true);
-    expect(czyEkspres([{ nazwa: 'Szablon malarski' }])).toBe(false);
+    expect(czyEkspres([{ nazwa: 'Lampa wisząca' }])).toBe(false);
     expect(czyEkspres([])).toBe(false);
     expect(czyEkspres(undefined)).toBe(false);
   });

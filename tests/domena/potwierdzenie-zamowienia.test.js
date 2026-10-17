@@ -17,7 +17,7 @@ const zam = (nad = {}) => ({
   klient: { email: 'klient@firma.pl', phone: '600100200' },
   dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: 'BETAMET sp. z o.o.', address_1: 'Fabryczna 4', postcode: '00-650', city: 'Pęki' },
   pozycje: [
-    { nazwa: 'Szablon malarski Pieszy 70x100', sku: 'SZ-PIE-70', ilosc: 3, cena_brutto: '74.90', brutto_linii: '224.70' },
+    { nazwa: 'Lampa stołowa Grzybek 30x45', sku: 'LMP-GRZ-30', ilosc: 3, cena_brutto: '74.90', brutto_linii: '224.70' },
   ],
   ...nad,
 });
@@ -69,7 +69,7 @@ describe('treść potwierdzenia', () => {
   // (`wierszePozycji`), wiec kwoty musza sie zgadzac co do grosza — razem z wysylka.
   it('wymienia pozycje, wysyłkę i sumę dokładnie tak, jak karta', () => {
     const t = trescPotwierdzenia(zam()).tekst;
-    expect(t).toContain('3 × Szablon malarski Pieszy 70x100 — 74,90 zł/szt = 224,70 zł');
+    expect(t).toContain('3 × Lampa stołowa Grzybek 30x45 — 74,90 zł/szt = 224,70 zł');
     expect(t).toContain('1 × Wysyłka — 19,00 zł/szt = 19,00 zł');
     expect(t).toContain('RAZEM: 243,70 zł brutto');
   });

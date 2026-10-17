@@ -1,16 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import {
-  zapiszProduktSklepowy, oznaczZnikniete, liczZyweProdukty, utworzWzor, zapiszWzor,
-  powiazProdukt, wzoryZKanalami, niepowiazaneProdukty,
-  zliczeniaBrakow, zliczeniaNiepowiazanych, SORTOWANIE_WZOROW,
+  zapiszProduktSklepowy, oznaczZnikniete, liczZyweProdukty, utworzKarte, zapiszKarte,
+  powiazProdukt, kartyZKanalami, niepowiazaneProdukty,
+  zliczeniaBrakow, zliczeniaNiepowiazanych, SORTOWANIE_KART,
 } from '../../../src/oms/db/magazyn.js';
 
 const P = (nad = {}) => ({
-  kanal: 'pro', produkt_id: '944', wariant_id: '1091', nazwa: 'EV 70x100',
-  sku_sklepu: 'PRO-EV-118', cena_gr: 7490, kategorie_json: '["Bezpieczeństwo"]',
-  zdjecia_json: '["https://pro.szkicownia.pl/x.png","https://pro.szkicownia.pl/x-2.png"]',
-  adres: 'https://pro.szkicownia.pl/p/ev',
+  kanal: 'pro', produkt_id: '944', wariant_id: '1091', nazwa: 'Plafon 70x100',
+  sku_sklepu: 'LMP-PLA-118', cena_gr: 7490, kategorie_json: '["Oświetlenie"]',
+  zdjecia_json: '["https://pro.sklep-polcien.example.invalid/x.png","https://pro.sklep-polcien.example.invalid/x-2.png"]',
+  adres: 'https://pro.sklep-polcien.example.invalid/p/plafon',
   rozmiar_tekst: '70 x 100 cm', odczytane_at: '2026-08-06T10:00:00Z', ...nad,
 });
 
@@ -24,15 +24,15 @@ describe('zapiszProduktSklepowy — upsert, nie insert', () => {
     expect(db.prepare('SELECT cena_gr FROM produkty_sklepowe').get().cena_gr).toBe(8900);
   });
 
-  // ⚠️ Upsert NIE MA PRAWA ruszyć wzor_id — inaczej każdy odczyt sklepu kasowałby
+  // ⚠️ Upsert NIE MA PRAWA ruszyć karta_id — inaczej każdy odczyt sklepu kasowałby
   // wszystkie powiązania, czyli całą ręczną pracę właściciela.
-  it('upsert nie rusza powiązania z wzorem', () => {
+  it('upsert nie rusza powiązania z kartą', () => {
     const db = openOmsDb(':memory:');
     const id = zapiszProduktSklepowy(db, P());
-    const w = utworzWzor(db, { nazwa: 'EV 70x100' });
+    const w = utworzKarte(db, { nazwa: 'Plafon 70x100' });
     powiazProdukt(db, id, w);
     zapiszProduktSklepowy(db, P({ cena_gr: 9900 }));
-    expect(db.prepare('SELECT wzor_id FROM produkty_sklepowe WHERE id=?').get(id).wzor_id).toBe(w);
+    expect(db.prepare('SELECT karta_id FROM produkty_sklepowe WHERE id=?').get(id).karta_id).toBe(w);
   });
 
   it('produkt prosty (bez wariantu) zapisuje się z wariant_id pustym napisem', () => {
@@ -65,14 +65,14 @@ describe('zapiszProduktSklepowy — upsert, nie insert', () => {
     const db = openOmsDb(':memory:');
     zapiszProduktSklepowy(db, P({
       kategoria_glowna_zrodla: 'Modern Organic',
-      opis_zrodlowy: '<p>Szablon malarski</p>',
+      opis_zrodlowy: '<p>Lampa z lnianym abażurem</p>',
       status_publikacji: 'ACTIVE',
     }));
     const w = db.prepare('SELECT kategoria_glowna_zrodla, opis_zrodlowy, status_publikacji'
       + ' FROM produkty_sklepowe').get();
     expect(w).toEqual({
       kategoria_glowna_zrodla: 'Modern Organic',
-      opis_zrodlowy: '<p>Szablon malarski</p>',
+      opis_zrodlowy: '<p>Lampa z lnianym abażurem</p>',
       status_publikacji: 'ACTIVE',
     });
   });
@@ -111,15 +111,15 @@ describe('oznaczZnikniete', () => {
     expect(oznaczZnikniete(db, 'pro', '2026-08-07T10:00:00Z')).toBe(0);
   });
 
-  // ⚠️ Wzór i powiązanie mają PRZEŻYĆ wycofanie produktu ze sprzedaży — kasowanie wiersza
-  // zerwałoby ręczną pracę właściciela dokładnie tak samo, jak wzor_id w DO UPDATE SET.
-  it('zniknięcie zostawia powiązanie z wzorem nietknięte', () => {
+  // ⚠️ Karta i powiązanie mają PRZEŻYĆ wycofanie produktu ze sprzedaży — kasowanie wiersza
+  // zerwałoby ręczną pracę właściciela dokładnie tak samo, jak karta_id w DO UPDATE SET.
+  it('zniknięcie zostawia powiązanie z kartą nietknięte', () => {
     const db = openOmsDb(':memory:');
     const id = zapiszProduktSklepowy(db, P({ produkt_id: '1', wariant_id: '' }));
-    const w = utworzWzor(db, { nazwa: 'W' });
+    const w = utworzKarte(db, { nazwa: 'W' });
     powiazProdukt(db, id, w);
     oznaczZnikniete(db, 'pro', '2026-08-07T10:00:00Z');
-    expect(db.prepare('SELECT wzor_id FROM produkty_sklepowe WHERE id=?').get(id).wzor_id).toBe(w);
+    expect(db.prepare('SELECT karta_id FROM produkty_sklepowe WHERE id=?').get(id).karta_id).toBe(w);
   });
 
   it('drugi przebieg nie przestempluje daty zniknięcia', () => {
@@ -159,34 +159,34 @@ describe('liczZyweProdukty', () => {
   });
 });
 
-describe('utworzWzor / zapiszWzor', () => {
-  it('zakłada wzór i oddaje jego id', () => {
+describe('utworzKarte / zapiszKarte', () => {
+  it('zakłada karta i oddaje jego id', () => {
     const db = openOmsDb(':memory:');
-    const id = utworzWzor(db, {
-      nazwa: 'Pieszy', sku: 'STE-BHP-001', szerokosc_mm: 700, wysokosc_mm: 1000,
-      kategoria_glowna: 'Bezpieczeństwo', paczkomat: 'nie', opis: 'Szablon',
+    const id = utworzKarte(db, {
+      nazwa: 'Szpulka', sku: 'PLC-LAMPY-001', szerokosc_mm: 700, wysokosc_mm: 1000,
+      kategoria_glowna: 'Oświetlenie', paczkomat: 'nie', opis: 'Lampa',
     });
-    const w = db.prepare('SELECT * FROM wzory WHERE id=?').get(id);
-    expect(w.nazwa).toBe('Pieszy');
+    const w = db.prepare('SELECT * FROM karty_produktow WHERE id=?').get(id);
+    expect(w.nazwa).toBe('Szpulka');
     expect(w.szerokosc_mm).toBe(700);
     expect(w.paczkomat).toBe('nie');
     expect(w.utworzony_at).toBeTruthy();
     expect(w.zmieniony_at).toBe(w.utworzony_at);
   });
 
-  it('wzór bez nazwy nie powstaje', () => {
+  it('karta bez nazwy nie powstaje', () => {
     const db = openOmsDb(':memory:');
-    expect(() => utworzWzor(db, { sku: 'X-1' })).toThrow();
+    expect(() => utworzKarte(db, { sku: 'X-1' })).toThrow();
   });
 
-  it('zapiszWzor zmienia wskazane pola i stempluje datę zmiany', () => {
+  it('zapiszKarte zmienia wskazane pola i stempluje datę zmiany', () => {
     const db = openOmsDb(':memory:');
-    const id = utworzWzor(db, { nazwa: 'Pieszy' }, { at: '2026-08-06T10:00:00Z' });
-    zapiszWzor(db, id, { sku: 'STE-BHP-001', szerokosc_mm: 700 }, { at: '2026-08-07T11:00:00Z' });
-    const w = db.prepare('SELECT * FROM wzory WHERE id=?').get(id);
-    expect(w.sku).toBe('STE-BHP-001');
+    const id = utworzKarte(db, { nazwa: 'Szpulka' }, { at: '2026-08-06T10:00:00Z' });
+    zapiszKarte(db, id, { sku: 'PLC-LAMPY-001', szerokosc_mm: 700 }, { at: '2026-08-07T11:00:00Z' });
+    const w = db.prepare('SELECT * FROM karty_produktow WHERE id=?').get(id);
+    expect(w.sku).toBe('PLC-LAMPY-001');
     expect(w.szerokosc_mm).toBe(700);
-    expect(w.nazwa).toBe('Pieszy');
+    expect(w.nazwa).toBe('Szpulka');
     expect(w.utworzony_at).toBe('2026-08-06T10:00:00Z');
     expect(w.zmieniony_at).toBe('2026-08-07T11:00:00Z');
   });
@@ -196,125 +196,125 @@ describe('utworzWzor / zapiszWzor', () => {
   // edycja hurtem „ustawiłaby" coś, czego nikt nigdy nie zapisał.
   it('odmawia zapisu pola spoza białej listy', () => {
     const db = openOmsDb(':memory:');
-    const id = utworzWzor(db, { nazwa: 'Pieszy' });
-    expect(() => zapiszWzor(db, id, { 'nazwa = nazwa, sku': 'x' })).toThrow();
-    expect(() => zapiszWzor(db, id, { utworzony_at: '2000-01-01' })).toThrow();
-    expect(() => zapiszWzor(db, id, { id: 999 })).toThrow();
+    const id = utworzKarte(db, { nazwa: 'Szpulka' });
+    expect(() => zapiszKarte(db, id, { 'nazwa = nazwa, sku': 'x' })).toThrow();
+    expect(() => zapiszKarte(db, id, { utworzony_at: '2000-01-01' })).toThrow();
+    expect(() => zapiszKarte(db, id, { id: 999 })).toThrow();
   });
 
   // Trzy stany paczkomatu pilnuje domain/paczkomat.js — baza nie ma prawa przyjąć
   // czwartego, bo filtr „bez oznaczenia paczkomatu" liczy właśnie nieoznaczone.
   it('nieznana wartość paczkomatu ląduje jako nieoznaczone', () => {
     const db = openOmsDb(':memory:');
-    const id = utworzWzor(db, { nazwa: 'Pieszy', paczkomat: 'moze' });
-    expect(db.prepare('SELECT paczkomat FROM wzory WHERE id=?').get(id).paczkomat).toBe(null);
-    zapiszWzor(db, id, { paczkomat: 'tak' });
-    expect(db.prepare('SELECT paczkomat FROM wzory WHERE id=?').get(id).paczkomat).toBe('tak');
-    zapiszWzor(db, id, { paczkomat: 'byle co' });
-    expect(db.prepare('SELECT paczkomat FROM wzory WHERE id=?').get(id).paczkomat).toBe(null);
+    const id = utworzKarte(db, { nazwa: 'Szpulka', paczkomat: 'moze' });
+    expect(db.prepare('SELECT paczkomat FROM karty_produktow WHERE id=?').get(id).paczkomat).toBe(null);
+    zapiszKarte(db, id, { paczkomat: 'tak' });
+    expect(db.prepare('SELECT paczkomat FROM karty_produktow WHERE id=?').get(id).paczkomat).toBe('tak');
+    zapiszKarte(db, id, { paczkomat: 'byle co' });
+    expect(db.prepare('SELECT paczkomat FROM karty_produktow WHERE id=?').get(id).paczkomat).toBe(null);
   });
 
   it('pusty zestaw zmian nie rusza wiersza', () => {
     const db = openOmsDb(':memory:');
-    const id = utworzWzor(db, { nazwa: 'Pieszy' }, { at: '2026-08-06T10:00:00Z' });
-    zapiszWzor(db, id, {}, { at: '2026-08-09T10:00:00Z' });
-    expect(db.prepare('SELECT zmieniony_at FROM wzory WHERE id=?').get(id).zmieniony_at)
+    const id = utworzKarte(db, { nazwa: 'Szpulka' }, { at: '2026-08-06T10:00:00Z' });
+    zapiszKarte(db, id, {}, { at: '2026-08-09T10:00:00Z' });
+    expect(db.prepare('SELECT zmieniony_at FROM karty_produktow WHERE id=?').get(id).zmieniony_at)
       .toBe('2026-08-06T10:00:00Z');
   });
 });
 
 describe('powiazProdukt', () => {
-  it('przepina produkt na inny wzór i umie go rozłączyć', () => {
+  it('przepina produkt na inną kartę i umie go rozłączyć', () => {
     const db = openOmsDb(':memory:');
     const p = zapiszProduktSklepowy(db, P());
-    const a = utworzWzor(db, { nazwa: 'A' });
-    const b = utworzWzor(db, { nazwa: 'B' });
+    const a = utworzKarte(db, { nazwa: 'A' });
+    const b = utworzKarte(db, { nazwa: 'B' });
     powiazProdukt(db, p, a);
     powiazProdukt(db, p, b);
-    expect(db.prepare('SELECT wzor_id FROM produkty_sklepowe WHERE id=?').get(p).wzor_id).toBe(b);
+    expect(db.prepare('SELECT karta_id FROM produkty_sklepowe WHERE id=?').get(p).karta_id).toBe(b);
     powiazProdukt(db, p, null);
-    expect(db.prepare('SELECT wzor_id FROM produkty_sklepowe WHERE id=?').get(p).wzor_id).toBe(null);
+    expect(db.prepare('SELECT karta_id FROM produkty_sklepowe WHERE id=?').get(p).karta_id).toBe(null);
   });
 
-  it('nie da się powiązać z wzorem, którego nie ma', () => {
+  it('nie da się powiązać z kartą, którego nie ma', () => {
     const db = openOmsDb(':memory:');
     const p = zapiszProduktSklepowy(db, P());
     expect(() => powiazProdukt(db, p, 424242)).toThrow();
   });
 });
 
-describe('wzoryZKanalami — jeden wiersz, ceny z kanałów', () => {
+describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
   it('składa ceny kanałów w jeden wiersz', () => {
     const db = openOmsDb(':memory:');
-    const w = utworzWzor(db, { nazwa: 'Pieszy 70x100', szerokosc_mm: 700, wysokosc_mm: 1000 });
+    const w = utworzKarte(db, { nazwa: 'Szpulka 70x100', szerokosc_mm: 700, wysokosc_mm: 1000 });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ kanal: 'pro', cena_gr: 7490 })), w);
     powiazProdukt(db, zapiszProduktSklepowy(db,
       P({ kanal: 'allegro_szkicownia', produkt_id: '76251', wariant_id: '', cena_gr: 8900 })), w);
-    const [wiersz] = wzoryZKanalami(db, {});
+    const [wiersz] = kartyZKanalami(db, {});
     expect(wiersz.kanaly.pro.cena_gr).toBe(7490);
     expect(wiersz.kanaly.allegro_szkicownia.cena_gr).toBe(8900);
     expect(wiersz.kanaly.szkicownia).toBeUndefined();
   });
 
-  it('wzór bez produktów ma pusty zestaw kanałów, a nie brak pola', () => {
+  it('karta bez produktów ma pusty zestaw kanałów, a nie brak pola', () => {
     const db = openOmsDb(':memory:');
-    utworzWzor(db, { nazwa: 'Sam' });
-    const [wiersz] = wzoryZKanalami(db);
+    utworzKarte(db, { nazwa: 'Sam' });
+    const [wiersz] = kartyZKanalami(db);
     expect(wiersz.kanaly).toEqual({});
     expect(wiersz.nazwa).toBe('Sam');
   });
 
-  // ⚠️ `SELECT w.*, p.*` w jednym złączeniu podmieniłby nazwę WZORU nazwą PRODUKTU —
+  // ⚠️ `SELECT w.*, p.*` w jednym złączeniu podmieniłby nazwę KARTY nazwą PRODUKTU —
   // obie kolumny nazywają się `nazwa`, a późniejsza wygrywa po cichu.
-  it('nazwa wzoru nie zostaje podmieniona nazwą produktu sklepowego', () => {
+  it('nazwa karty nie zostaje podmieniona nazwą produktu sklepowego', () => {
     const db = openOmsDb(':memory:');
-    const w = utworzWzor(db, { nazwa: 'Pieszy', sku: 'STE-1' });
-    powiazProdukt(db, zapiszProduktSklepowy(db, P({ nazwa: 'EV 70x100', sku_sklepu: 'PRO-9' })), w);
-    const [wiersz] = wzoryZKanalami(db);
-    expect(wiersz.nazwa).toBe('Pieszy');
-    expect(wiersz.sku).toBe('STE-1');
-    expect(wiersz.kanaly.pro.nazwa).toBe('EV 70x100');
-    expect(wiersz.kanaly.pro.sku_sklepu).toBe('PRO-9');
+    const w = utworzKarte(db, { nazwa: 'Szpulka', sku: 'PLC-1' });
+    powiazProdukt(db, zapiszProduktSklepowy(db, P({ nazwa: 'Plafon 70x100', sku_sklepu: 'SKU-9' })), w);
+    const [wiersz] = kartyZKanalami(db);
+    expect(wiersz.nazwa).toBe('Szpulka');
+    expect(wiersz.sku).toBe('PLC-1');
+    expect(wiersz.kanaly.pro.nazwa).toBe('Plafon 70x100');
+    expect(wiersz.kanaly.pro.sku_sklepu).toBe('SKU-9');
   });
 
   // ⚠️ To jest test na milimetry jako liczbę. Przy napisie „80x150cm" sortowanie
   // ustawiłoby go PRZED „80x100cm".
   it('sortowanie po wymiarze jest liczbowe', () => {
     const db = openOmsDb(':memory:');
-    utworzWzor(db, { nazwa: 'A', szerokosc_mm: 800, wysokosc_mm: 1500 });
-    utworzWzor(db, { nazwa: 'B', szerokosc_mm: 800, wysokosc_mm: 1000 });
-    const n = wzoryZKanalami(db, { sort: 'wysokosc', kier: 'asc' }).map((x) => x.nazwa);
+    utworzKarte(db, { nazwa: 'A', szerokosc_mm: 800, wysokosc_mm: 1500 });
+    utworzKarte(db, { nazwa: 'B', szerokosc_mm: 800, wysokosc_mm: 1000 });
+    const n = kartyZKanalami(db, { sort: 'wysokosc', kier: 'asc' }).map((x) => x.nazwa);
     expect(n).toEqual(['B', 'A']);
   });
 
   it('kierunek malejący odwraca kolejność', () => {
     const db = openOmsDb(':memory:');
-    utworzWzor(db, { nazwa: 'A', wysokosc_mm: 1500 });
-    utworzWzor(db, { nazwa: 'B', wysokosc_mm: 1000 });
-    expect(wzoryZKanalami(db, { sort: 'wysokosc', kier: 'desc' }).map((x) => x.nazwa))
+    utworzKarte(db, { nazwa: 'A', wysokosc_mm: 1500 });
+    utworzKarte(db, { nazwa: 'B', wysokosc_mm: 1000 });
+    expect(kartyZKanalami(db, { sort: 'wysokosc', kier: 'desc' }).map((x) => x.nazwa))
       .toEqual(['A', 'B']);
   });
 
   it('domyślnie sortuje po nazwie, bez względu na kolejność zakładania', () => {
     const db = openOmsDb(':memory:');
-    utworzWzor(db, { nazwa: 'Zebra' });
-    utworzWzor(db, { nazwa: 'Antylopa' });
-    expect(wzoryZKanalami(db).map((x) => x.nazwa)).toEqual(['Antylopa', 'Zebra']);
+    utworzKarte(db, { nazwa: 'Wiklina' });
+    utworzKarte(db, { nazwa: 'Bambus' });
+    expect(kartyZKanalami(db).map((x) => x.nazwa)).toEqual(['Bambus', 'Wiklina']);
   });
 
   // ⚠️ Nazwa kolumny sortowania NIE MOŻE trafić do SQL-a z zapytania HTTP. Biała lista
   // jest tu jedyną ochroną — parametru w `ORDER BY` związać się nie da.
   it('sortowanie spoza białej listy nie trafia do SQL-a i nie wywala listy', () => {
     const db = openOmsDb(':memory:');
-    utworzWzor(db, { nazwa: 'A' });
-    utworzWzor(db, { nazwa: 'B' });
-    const n = wzoryZKanalami(db, { sort: 'nazwa; DROP TABLE wzory', kier: 'asc' }).map((x) => x.nazwa);
+    utworzKarte(db, { nazwa: 'A' });
+    utworzKarte(db, { nazwa: 'B' });
+    const n = kartyZKanalami(db, { sort: 'nazwa; DROP TABLE karty_produktow', kier: 'asc' }).map((x) => x.nazwa);
     expect(n).toEqual(['A', 'B']);
-    expect(db.prepare('SELECT COUNT(*) c FROM wzory').get().c).toBe(2);
+    expect(db.prepare('SELECT COUNT(*) c FROM karty_produktow').get().c).toBe(2);
     // ...i to samo dla kierunku, który też jest tekstem z adresu.
-    expect(wzoryZKanalami(db, { sort: 'nazwa', kier: 'asc; DROP TABLE wzory' }).map((x) => x.nazwa))
+    expect(kartyZKanalami(db, { sort: 'nazwa', kier: 'asc; DROP TABLE karty_produktow' }).map((x) => x.nazwa))
       .toEqual(['A', 'B']);
-    expect(db.prepare('SELECT COUNT(*) c FROM wzory').get().c).toBe(2);
+    expect(db.prepare('SELECT COUNT(*) c FROM karty_produktow').get().c).toBe(2);
   });
 
   // ⚠️ `SORTOWANIE[sort] ?? domyślne` NIE JEST białą listą: `SORTOWANIE` to literał obiektu,
@@ -325,75 +325,75 @@ describe('wzoryZKanalami — jeden wiersz, ceny z kanałów', () => {
   // do domyślnego" opisana wyżej.
   it('sortowanie nazwą odziedziczoną z Object.prototype nie wywala listy, tylko sortuje domyślnie', () => {
     const db = openOmsDb(':memory:');
-    utworzWzor(db, { nazwa: 'B' });
-    utworzWzor(db, { nazwa: 'A' });
+    utworzKarte(db, { nazwa: 'B' });
+    utworzKarte(db, { nazwa: 'A' });
     for (const zla of ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf']) {
-      expect(wzoryZKanalami(db, { sort: zla, kier: 'asc' }).map((x) => x.nazwa))
+      expect(kartyZKanalami(db, { sort: zla, kier: 'asc' }).map((x) => x.nazwa))
         .toEqual(['A', 'B']);
     }
   });
 
-  // Brak wartości nie jest ani najmniejszy, ani największy — to brak. Tysiąc wzorów bez SKU
+  // Brak wartości nie jest ani najmniejszy, ani największy — to brak. Tysiąc kart bez SKU
   // na czele listy sortowanej po SKU nie odpowiada na żadne pytanie.
   it('puste wartości siedzą na końcu w obu kierunkach', () => {
     const db = openOmsDb(':memory:');
-    utworzWzor(db, { nazwa: 'ZeSku', sku: 'STE-1' });
-    utworzWzor(db, { nazwa: 'BezSku' });
-    expect(wzoryZKanalami(db, { sort: 'sku', kier: 'asc' }).map((x) => x.nazwa))
+    utworzKarte(db, { nazwa: 'ZeSku', sku: 'PLC-1' });
+    utworzKarte(db, { nazwa: 'BezSku' });
+    expect(kartyZKanalami(db, { sort: 'sku', kier: 'asc' }).map((x) => x.nazwa))
       .toEqual(['ZeSku', 'BezSku']);
-    expect(wzoryZKanalami(db, { sort: 'sku', kier: 'desc' }).map((x) => x.nazwa))
+    expect(kartyZKanalami(db, { sort: 'sku', kier: 'desc' }).map((x) => x.nazwa))
       .toEqual(['ZeSku', 'BezSku']);
   });
 
   it('fraza szuka po nazwie i po SKU', () => {
     const db = openOmsDb(':memory:');
-    utworzWzor(db, { nazwa: 'Pieszy', sku: 'PRO-PIESZY-001' });
-    utworzWzor(db, { nazwa: 'Kenitra', sku: 'STE-GEO-014' });
-    expect(wzoryZKanalami(db, { fraza: 'piesz' }).map((x) => x.nazwa)).toEqual(['Pieszy']);
-    expect(wzoryZKanalami(db, { fraza: 'STE-GEO' }).map((x) => x.nazwa)).toEqual(['Kenitra']);
+    utworzKarte(db, { nazwa: 'Szpulka', sku: 'LMP-SZP-001' });
+    utworzKarte(db, { nazwa: 'Plecionka', sku: 'PLC-GEO-014' });
+    expect(kartyZKanalami(db, { fraza: 'szpul' }).map((x) => x.nazwa)).toEqual(['Szpulka']);
+    expect(kartyZKanalami(db, { fraza: 'PLC-GEO' }).map((x) => x.nazwa)).toEqual(['Plecionka']);
   });
 
   // ⚠️ `%` i `_` to znaki wieloznaczne LIKE. Bez ucieczki fraza „%" pokazywałaby CAŁY
   // katalog, a właściciel myślałby, że to wynik wyszukiwania.
   it('znaki wieloznaczne we frazie są zwykłymi znakami', () => {
     const db = openOmsDb(':memory:');
-    utworzWzor(db, { nazwa: 'Pieszy' });
-    utworzWzor(db, { nazwa: 'Kenitra' });
-    utworzWzor(db, { nazwa: 'Rabat 50% off' });
-    expect(wzoryZKanalami(db, { fraza: '%' }).map((x) => x.nazwa)).toEqual(['Rabat 50% off']);
-    expect(wzoryZKanalami(db, { fraza: '_' })).toEqual([]);
+    utworzKarte(db, { nazwa: 'Szpulka' });
+    utworzKarte(db, { nazwa: 'Plecionka' });
+    utworzKarte(db, { nazwa: 'Rabat 50% off' });
+    expect(kartyZKanalami(db, { fraza: '%' }).map((x) => x.nazwa)).toEqual(['Rabat 50% off']);
+    expect(kartyZKanalami(db, { fraza: '_' })).toEqual([]);
   });
 
   it('pusta fraza nie zawęża listy', () => {
     const db = openOmsDb(':memory:');
-    utworzWzor(db, { nazwa: 'A' });
-    expect(wzoryZKanalami(db, { fraza: '   ' }).map((x) => x.nazwa)).toEqual(['A']);
+    utworzKarte(db, { nazwa: 'A' });
+    expect(kartyZKanalami(db, { fraza: '   ' }).map((x) => x.nazwa)).toEqual(['A']);
   });
 
-  it('filtr braków znajduje wzory bez SKU i bez wymiarów', () => {
+  it('filtr braków znajduje karty bez SKU i bez wymiarów', () => {
     const db = openOmsDb(':memory:');
-    utworzWzor(db, { nazwa: 'Z', sku: 'X-1', szerokosc_mm: 700, wysokosc_mm: 1000 });
-    utworzWzor(db, { nazwa: 'BezSku', szerokosc_mm: 700, wysokosc_mm: 1000 });
-    utworzWzor(db, { nazwa: 'BezWymiaru', sku: 'X-2' });
-    expect(wzoryZKanalami(db, { filtry: { brak: 'sku' } }).map((x) => x.nazwa)).toEqual(['BezSku']);
-    expect(wzoryZKanalami(db, { filtry: { brak: 'wymiary' } }).map((x) => x.nazwa)).toEqual(['BezWymiaru']);
+    utworzKarte(db, { nazwa: 'Z', sku: 'X-1', szerokosc_mm: 700, wysokosc_mm: 1000 });
+    utworzKarte(db, { nazwa: 'BezSku', szerokosc_mm: 700, wysokosc_mm: 1000 });
+    utworzKarte(db, { nazwa: 'BezWymiaru', sku: 'X-2' });
+    expect(kartyZKanalami(db, { filtry: { brak: 'sku' } }).map((x) => x.nazwa)).toEqual(['BezSku']);
+    expect(kartyZKanalami(db, { filtry: { brak: 'wymiary' } }).map((x) => x.nazwa)).toEqual(['BezWymiaru']);
   });
 
   it('filtr braków zna też brak kategorii głównej i brak oznaczenia paczkomatu', () => {
     const db = openOmsDb(':memory:');
-    utworzWzor(db, { nazwa: 'Komplet', kategoria_glowna: 'Bezpieczeństwo', paczkomat: 'nie' });
-    utworzWzor(db, { nazwa: 'BezKategorii', paczkomat: 'tak' });
-    utworzWzor(db, { nazwa: 'BezPaczkomatu', kategoria_glowna: 'Boho' });
-    expect(wzoryZKanalami(db, { filtry: { brak: 'kategoria' } }).map((x) => x.nazwa))
+    utworzKarte(db, { nazwa: 'Komplet', kategoria_glowna: 'Oświetlenie', paczkomat: 'nie' });
+    utworzKarte(db, { nazwa: 'BezKategorii', paczkomat: 'tak' });
+    utworzKarte(db, { nazwa: 'BezPaczkomatu', kategoria_glowna: 'Boho' });
+    expect(kartyZKanalami(db, { filtry: { brak: 'kategoria' } }).map((x) => x.nazwa))
       .toEqual(['BezKategorii']);
-    expect(wzoryZKanalami(db, { filtry: { brak: 'paczkomat' } }).map((x) => x.nazwa))
+    expect(kartyZKanalami(db, { filtry: { brak: 'paczkomat' } }).map((x) => x.nazwa))
       .toEqual(['BezPaczkomatu']);
   });
 
   it('połowiczne wymiary to nadal brak wymiarów', () => {
     const db = openOmsDb(':memory:');
-    utworzWzor(db, { nazwa: 'Polowa', szerokosc_mm: 700 });
-    expect(wzoryZKanalami(db, { filtry: { brak: 'wymiary' } }).map((x) => x.nazwa)).toEqual(['Polowa']);
+    utworzKarte(db, { nazwa: 'Polowa', szerokosc_mm: 700 });
+    expect(kartyZKanalami(db, { filtry: { brak: 'wymiary' } }).map((x) => x.nazwa)).toEqual(['Polowa']);
   });
 
   // ⚠️ Filtr, którego nie rozumiemy, NIE MOŻE poszerzać zbioru. Po filtrze braków idzie
@@ -401,35 +401,35 @@ describe('wzoryZKanalami — jeden wiersz, ceny z kanałów', () => {
   // hurtową zmianę na całym katalogu.
   it('nieznana wartość braku nie oddaje całej listy', () => {
     const db = openOmsDb(':memory:');
-    utworzWzor(db, { nazwa: 'A', sku: 'X-1', szerokosc_mm: 700, wysokosc_mm: 1000 });
-    expect(wzoryZKanalami(db, { filtry: { brak: 'cokolwiek' } })).toEqual([]);
+    utworzKarte(db, { nazwa: 'A', sku: 'X-1', szerokosc_mm: 700, wysokosc_mm: 1000 });
+    expect(kartyZKanalami(db, { filtry: { brak: 'cokolwiek' } })).toEqual([]);
   });
 
-  it('filtr kanału zostawia wzory obecne w tym kanale', () => {
+  it('filtr kanału zostawia karty obecne w tym kanale', () => {
     const db = openOmsDb(':memory:');
-    const a = utworzWzor(db, { nazwa: 'TylkoPro' });
-    const b = utworzWzor(db, { nazwa: 'TylkoSzkicownia' });
+    const a = utworzKarte(db, { nazwa: 'TylkoPro' });
+    const b = utworzKarte(db, { nazwa: 'TylkoSzkicownia' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ kanal: 'pro' })), a);
     powiazProdukt(db, zapiszProduktSklepowy(db,
       P({ kanal: 'szkicownia', produkt_id: '5', wariant_id: '' })), b);
-    expect(wzoryZKanalami(db, { filtry: { kanal: 'pro' } }).map((x) => x.nazwa)).toEqual(['TylkoPro']);
+    expect(kartyZKanalami(db, { filtry: { kanal: 'pro' } }).map((x) => x.nazwa)).toEqual(['TylkoPro']);
   });
 
   // ⚠️ Alias `p` w drugim zapytaniu (`SELECT p.* FROM produkty_sklepowe p ...`) i alias
-  // wewnątrz `EXISTS` budowanego przez `warunkiWzorow` żyją w zagnieżdżonych zakresach —
+  // wewnątrz `EXISTS` budowanego przez `warunkiKart` żyją w zagnieżdżonych zakresach —
   // dziś to nie jest wstrzyknięcie, ale mina: gdyby ktoś kiedyś przesłonił jeden drugim,
   // filtr kanału zacząłby po cichu ograniczać KTÓRE PRODUKTY wchodzą do `kanaly`, zamiast
-  // tylko decydować, KTÓRE WZORY trafiają na listę. Wzór ma dwa różne produkty w dwóch
+  // tylko decydować, KTÓRE KARTY trafiają na listę. Karta ma dwa różne produkty w dwóch
   // różnych kanałach właśnie po to, żeby przesłonięcie miało szansę się objawić: przy
-  // filtrze `kanal: 'pro'` wzór ma wejść na listę (bo ma produkt w PRO), a jego `kanaly`
+  // filtrze `kanal: 'pro'` karta ma wejść na listę (bo ma produkt w PRO), a jego `kanaly`
   // mają pokazać OBA kanały — nie tylko ten, po którym filtrujemy.
-  it('filtr kanału na wzorze z dwoma produktami w dwóch kanałach nie ucina drugiego kanału z kanaly', () => {
+  it('filtr kanału na karcie z dwoma produktami w dwóch kanałach nie ucina drugiego kanału z kanaly', () => {
     const db = openOmsDb(':memory:');
-    const w = utworzWzor(db, { nazwa: 'Dwukanalowy' });
+    const w = utworzKarte(db, { nazwa: 'Dwukanalowy' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ kanal: 'pro', cena_gr: 7490 })), w);
     powiazProdukt(db, zapiszProduktSklepowy(db,
       P({ kanal: 'szkicownia', produkt_id: '2', wariant_id: '', cena_gr: 5000 })), w);
-    const wiersze = wzoryZKanalami(db, { filtry: { kanal: 'pro' } });
+    const wiersze = kartyZKanalami(db, { filtry: { kanal: 'pro' } });
     expect(wiersze.map((x) => x.nazwa)).toEqual(['Dwukanalowy']);
     expect(wiersze[0].kanaly.pro.cena_gr).toBe(7490);
     expect(wiersze[0].kanaly.szkicownia.cena_gr).toBe(5000);
@@ -440,92 +440,92 @@ describe('wzoryZKanalami — jeden wiersz, ceny z kanałów', () => {
   // i filtrowanie po głównej po prostu by go zgubiło.
   it('filtr kategorii łapie kategorię czwartą z siedmiu, nie tylko główną', () => {
     const db = openOmsDb(':memory:');
-    const w = utworzWzor(db, { nazwa: 'Hop', kategoria_glowna: 'Modern Organic' });
+    const w = utworzKarte(db, { nazwa: 'Hop', kategoria_glowna: 'Modern Organic' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({
       kategorie_json: '["Boho","Farmhouse","Minimalistyczne","Aplikacje","Na ściany","Modern Organic","Rośliny"]',
     })), w);
-    const inny = utworzWzor(db, { nazwa: 'Inny' });
+    const inny = utworzKarte(db, { nazwa: 'Inny' });
     powiazProdukt(db, zapiszProduktSklepowy(db,
       P({ produkt_id: '2', wariant_id: '', kategorie_json: '["Boho"]' })), inny);
-    expect(wzoryZKanalami(db, { filtry: { kategoria: 'Aplikacje' } }).map((x) => x.nazwa))
+    expect(kartyZKanalami(db, { filtry: { kategoria: 'Aplikacje' } }).map((x) => x.nazwa))
       .toEqual(['Hop']);
   });
 
   it('kategoria dopasowuje się w całości, a nie kawałkiem nazwy', () => {
     const db = openOmsDb(':memory:');
-    const w = utworzWzor(db, { nazwa: 'Hop' });
+    const w = utworzKarte(db, { nazwa: 'Hop' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ kategorie_json: '["Na ściany"]' })), w);
-    expect(wzoryZKanalami(db, { filtry: { kategoria: 'ścian' } })).toEqual([]);
-    expect(wzoryZKanalami(db, { filtry: { kategoria: 'Na ściany' } }).map((x) => x.nazwa)).toEqual(['Hop']);
+    expect(kartyZKanalami(db, { filtry: { kategoria: 'ścian' } })).toEqual([]);
+    expect(kartyZKanalami(db, { filtry: { kategoria: 'Na ściany' } }).map((x) => x.nazwa)).toEqual(['Hop']);
   });
 
   // Lustro bierze się z cudzego API — jedna popsuta wartość nie ma prawa położyć CAŁEJ listy.
   it('pusty albo niepoprawny JSON kategorii nie wywala zapytania', () => {
     const db = openOmsDb(':memory:');
-    const w = utworzWzor(db, { nazwa: 'Hop' });
+    const w = utworzKarte(db, { nazwa: 'Hop' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ kategorie_json: null })), w);
     powiazProdukt(db, zapiszProduktSklepowy(db,
       P({ produkt_id: '2', wariant_id: '', kategorie_json: 'to nie jest JSON' })), w);
-    const dobry = utworzWzor(db, { nazwa: 'Dobry' });
+    const dobry = utworzKarte(db, { nazwa: 'Dobry' });
     powiazProdukt(db, zapiszProduktSklepowy(db,
       P({ produkt_id: '3', wariant_id: '', kategorie_json: '["Boho"]' })), dobry);
-    expect(wzoryZKanalami(db, { filtry: { kategoria: 'Boho' } }).map((x) => x.nazwa)).toEqual(['Dobry']);
+    expect(kartyZKanalami(db, { filtry: { kategoria: 'Boho' } }).map((x) => x.nazwa)).toEqual(['Dobry']);
   });
 
   // ⚠️ ROZSTRZYGNIĘCIE (Zadanie 4, wątpliwość 1): filtr kategorii ma być NADZBIOREM —
-  // dopasowanie po kategoriach produktów w lustrze ALBO po `wzory.kategoria_glowna`.
-  // Wzór, któremu właściciel ręcznie ustawił kategorię główną hurtem, ale który (jeszcze)
+  // dopasowanie po kategoriach produktów w lustrze ALBO po `karty.kategoria_glowna`.
+  // Karta, któremu właściciel ręcznie ustawił kategorię główną hurtem, ale który (jeszcze)
   // nie ma powiązanego produktu w lustrze — albo którego jedyny produkt zniknął ze sklepu,
   // albo który istnieje tylko na Allegro poza lustrem — ma się nadal znaleźć. Fałszywie
   // pominięty wiersz jest tu gorszy niż wiersz nadmiarowy: to właśnie ten filtr jest drogą,
-  // którą ustawia się kategorię główną hurtem, a wzoru niewidocznego w filtrze nią nie
+  // którą ustawia się kategorię główną hurtem, a karty niewidocznego w filtrze nią nie
   // oznaczysz.
-  it('wzór z ustawioną kategorią główną, ale bez powiązanego produktu, znajduje się przy filtrze po tej kategorii', () => {
+  it('karta z ustawioną kategorią główną, ale bez powiązanego produktu, znajduje się przy filtrze po tej kategorii', () => {
     const db = openOmsDb(':memory:');
-    utworzWzor(db, { nazwa: 'BezProduktu', kategoria_glowna: 'Aplikacje' });
-    expect(wzoryZKanalami(db, { filtry: { kategoria: 'Aplikacje' } }).map((x) => x.nazwa))
+    utworzKarte(db, { nazwa: 'BezProduktu', kategoria_glowna: 'Aplikacje' });
+    expect(kartyZKanalami(db, { filtry: { kategoria: 'Aplikacje' } }).map((x) => x.nazwa))
       .toEqual(['BezProduktu']);
   });
 
-  it('wzór, którego ani kategoria główna, ani kategorie produktu nie zawierają frazy, nie wchodzi do wyniku', () => {
+  it('karta, której ani kategoria główna, ani kategorie produktu nie zawierają frazy, nie wchodzi do wyniku', () => {
     const db = openOmsDb(':memory:');
-    const w = utworzWzor(db, { nazwa: 'Boho', kategoria_glowna: 'Boho' });
+    const w = utworzKarte(db, { nazwa: 'Boho', kategoria_glowna: 'Boho' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ kategorie_json: '["Farmhouse"]' })), w);
-    expect(wzoryZKanalami(db, { filtry: { kategoria: 'Aplikacje' } })).toEqual([]);
+    expect(kartyZKanalami(db, { filtry: { kategoria: 'Aplikacje' } })).toEqual([]);
   });
 
   // ⚠️ Nadzbiór (kategoria_glowna OR kategorie produktów) nie ma prawa dublować wiersza:
-  // wzór powiązany z dwoma produktami, z których OBA mają tę kategorię, ma wyjść RAZ.
-  it('wzór z kilkoma produktami mającymi tę samą kategorię wychodzi raz, nie dwa razy', () => {
+  // karta powiązany z dwoma produktami, z których OBA mają tę kategorię, ma wyjść RAZ.
+  it('karta z kilkoma produktami mającymi tę samą kategorię wychodzi raz, nie dwa razy', () => {
     const db = openOmsDb(':memory:');
-    const w = utworzWzor(db, { nazwa: 'Podwojny' });
+    const w = utworzKarte(db, { nazwa: 'Podwojny' });
     powiazProdukt(db, zapiszProduktSklepowy(db,
       P({ kanal: 'pro', kategorie_json: '["Aplikacje"]' })), w);
     powiazProdukt(db, zapiszProduktSklepowy(db,
       P({ kanal: 'szkicownia', produkt_id: '2', wariant_id: '', kategorie_json: '["Aplikacje"]' })), w);
-    expect(wzoryZKanalami(db, { filtry: { kategoria: 'Aplikacje' } }).map((x) => x.nazwa))
+    expect(kartyZKanalami(db, { filtry: { kategoria: 'Aplikacje' } }).map((x) => x.nazwa))
       .toEqual(['Podwojny']);
   });
 
   it('filtr paczkomatu ma trzy stany, a nieoznaczone to nie to samo co „nie"', () => {
     const db = openOmsDb(':memory:');
-    utworzWzor(db, { nazwa: 'Tak', paczkomat: 'tak' });
-    utworzWzor(db, { nazwa: 'Nie', paczkomat: 'nie' });
-    utworzWzor(db, { nazwa: 'Nieoznaczony' });
-    expect(wzoryZKanalami(db, { filtry: { paczkomat: 'tak' } }).map((x) => x.nazwa)).toEqual(['Tak']);
-    expect(wzoryZKanalami(db, { filtry: { paczkomat: 'nie' } }).map((x) => x.nazwa)).toEqual(['Nie']);
-    expect(wzoryZKanalami(db, { filtry: { paczkomat: 'nieoznaczone' } }).map((x) => x.nazwa))
+    utworzKarte(db, { nazwa: 'Tak', paczkomat: 'tak' });
+    utworzKarte(db, { nazwa: 'Nie', paczkomat: 'nie' });
+    utworzKarte(db, { nazwa: 'Nieoznaczony' });
+    expect(kartyZKanalami(db, { filtry: { paczkomat: 'tak' } }).map((x) => x.nazwa)).toEqual(['Tak']);
+    expect(kartyZKanalami(db, { filtry: { paczkomat: 'nie' } }).map((x) => x.nazwa)).toEqual(['Nie']);
+    expect(kartyZKanalami(db, { filtry: { paczkomat: 'nieoznaczone' } }).map((x) => x.nazwa))
       .toEqual(['Nieoznaczony']);
   });
 
   it('filtr ceny bierze zakres w groszach', () => {
     const db = openOmsDb(':memory:');
-    const a = utworzWzor(db, { nazwa: 'Tania' });
-    const b = utworzWzor(db, { nazwa: 'Droga' });
+    const a = utworzKarte(db, { nazwa: 'Tania' });
+    const b = utworzKarte(db, { nazwa: 'Droga' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ cena_gr: 2000 })), a);
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ produkt_id: '2', wariant_id: '', cena_gr: 20000 })), b);
-    expect(wzoryZKanalami(db, { filtry: { cenaOd: 10000 } }).map((x) => x.nazwa)).toEqual(['Droga']);
-    expect(wzoryZKanalami(db, { filtry: { cenaDo: 10000 } }).map((x) => x.nazwa)).toEqual(['Tania']);
+    expect(kartyZKanalami(db, { filtry: { cenaOd: 10000 } }).map((x) => x.nazwa)).toEqual(['Droga']);
+    expect(kartyZKanalami(db, { filtry: { cenaDo: 10000 } }).map((x) => x.nazwa)).toEqual(['Tania']);
   });
 
   // ⚠️ PRODUKT BEZ CENY (`cena_gr IS NULL`) WYPADA Z KAŻDEGO ZAKRESU — także z samego
@@ -538,73 +538,73 @@ describe('wzoryZKanalami — jeden wiersz, ceny z kanałów', () => {
   // a `0` znaczyłoby „za darmo" i wpadało w każdy zakres od zera w górę.
   it('produkt bez ceny nie wpada do żadnego zakresu — ani od, ani do', () => {
     const db = openOmsDb(':memory:');
-    const zCena = utworzWzor(db, { nazwa: 'Z ceną' });
-    const bezCeny = utworzWzor(db, { nazwa: 'Bez ceny' });
+    const zCena = utworzKarte(db, { nazwa: 'Z ceną' });
+    const bezCeny = utworzKarte(db, { nazwa: 'Bez ceny' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ cena_gr: 5000 })), zCena);
     powiazProdukt(db, zapiszProduktSklepowy(db,
       P({ produkt_id: '2', wariant_id: '', cena_gr: null })), bezCeny);
 
-    expect(wzoryZKanalami(db, { filtry: { cenaDo: 20000 } }).map((x) => x.nazwa)).toEqual(['Z ceną']);
-    expect(wzoryZKanalami(db, { filtry: { cenaOd: 1 } }).map((x) => x.nazwa)).toEqual(['Z ceną']);
-    // ...ale bez filtru ceny wzór jest widoczny normalnie: brak ceny nie wyklucza go
+    expect(kartyZKanalami(db, { filtry: { cenaDo: 20000 } }).map((x) => x.nazwa)).toEqual(['Z ceną']);
+    expect(kartyZKanalami(db, { filtry: { cenaOd: 1 } }).map((x) => x.nazwa)).toEqual(['Z ceną']);
+    // ...ale bez filtru ceny karta jest widoczny normalnie: brak ceny nie wyklucza go
     // z magazynu, tylko z ZAWĘŻENIA po cenie.
-    expect(wzoryZKanalami(db, {}).map((x) => x.nazwa).sort()).toEqual(['Bez ceny', 'Z ceną']);
+    expect(kartyZKanalami(db, {}).map((x) => x.nazwa).sort()).toEqual(['Bez ceny', 'Z ceną']);
   });
 
-  // Zakres ceny i kanał opisują TEN SAM produkt — inaczej „PRO od 100 zł" pokazywałoby wzór,
+  // Zakres ceny i kanał opisują TEN SAM produkt — inaczej „PRO od 100 zł" pokazywałoby karta,
   // który na PRO kosztuje 20 zł, a setkę przekracza dopiero na Allegro.
   it('zakres ceny liczy się w wybranym kanale, nie w dowolnym', () => {
     const db = openOmsDb(':memory:');
-    const w = utworzWzor(db, { nazwa: 'Mieszana' });
+    const w = utworzKarte(db, { nazwa: 'Mieszana' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ kanal: 'pro', cena_gr: 2000 })), w);
     powiazProdukt(db, zapiszProduktSklepowy(db,
       P({ kanal: 'allegro_szkicownia', produkt_id: '2', wariant_id: '', cena_gr: 20000 })), w);
-    expect(wzoryZKanalami(db, { filtry: { kanal: 'pro', cenaOd: 10000 } })).toEqual([]);
-    expect(wzoryZKanalami(db, { filtry: { kanal: 'allegro_szkicownia', cenaOd: 10000 } })
+    expect(kartyZKanalami(db, { filtry: { kanal: 'pro', cenaOd: 10000 } })).toEqual([]);
+    expect(kartyZKanalami(db, { filtry: { kanal: 'allegro_szkicownia', cenaOd: 10000 } })
       .map((x) => x.nazwa)).toEqual(['Mieszana']);
   });
 
   it('filtry łączą się z frazą, a nie kasują jej', () => {
     const db = openOmsDb(':memory:');
-    const a = utworzWzor(db, { nazwa: 'Pieszy' });
-    const b = utworzWzor(db, { nazwa: 'Pieszy inny' });
-    utworzWzor(db, { nazwa: 'Kenitra' });
+    const a = utworzKarte(db, { nazwa: 'Szpulka' });
+    const b = utworzKarte(db, { nazwa: 'Szpulka inny' });
+    utworzKarte(db, { nazwa: 'Plecionka' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ kanal: 'pro' })), a);
     powiazProdukt(db, zapiszProduktSklepowy(db,
       P({ kanal: 'szkicownia', produkt_id: '2', wariant_id: '' })), b);
-    expect(wzoryZKanalami(db, { fraza: 'pieszy', filtry: { kanal: 'pro' } }).map((x) => x.nazwa))
-      .toEqual(['Pieszy']);
+    expect(kartyZKanalami(db, { fraza: 'szpulka', filtry: { kanal: 'pro' } }).map((x) => x.nazwa))
+      .toEqual(['Szpulka']);
   });
 
-  // ⚠️ Cena zniknietego produktu twierdziłaby, że wzór jest w tym kanale do kupienia.
+  // ⚠️ Cena zniknietego produktu twierdziłaby, że karta jest w tym kanale do kupienia.
   // Wiersz zostaje w bazie (powiązanie ma przeżyć), ale z listy dostępności wypada.
   it('produkt zniknięty ze sklepu nie udaje ceny w kanale', () => {
     const db = openOmsDb(':memory:');
-    const w = utworzWzor(db, { nazwa: 'Wycofany' });
+    const w = utworzKarte(db, { nazwa: 'Wycofany' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ kanal: 'pro' })), w);
     oznaczZnikniete(db, 'pro', '2026-08-07T10:00:00Z');
-    const [wiersz] = wzoryZKanalami(db);
+    const [wiersz] = kartyZKanalami(db);
     expect(wiersz.kanaly.pro).toBeUndefined();
-    expect(wzoryZKanalami(db, { filtry: { kanal: 'pro' } })).toEqual([]);
+    expect(kartyZKanalami(db, { filtry: { kanal: 'pro' } })).toEqual([]);
   });
 
   it('dwa warianty tego samego kanału dają zawsze ten sam, deterministyczny wybór', () => {
     const db = openOmsDb(':memory:');
-    const w = utworzWzor(db, { nazwa: 'Dwa warianty' });
+    const w = utworzKarte(db, { nazwa: 'Dwa warianty' });
     const pierwszy = zapiszProduktSklepowy(db, P({ wariant_id: '1', cena_gr: 1000 }));
     const drugi = zapiszProduktSklepowy(db, P({ wariant_id: '2', cena_gr: 2000 }));
     powiazProdukt(db, drugi, w);
     powiazProdukt(db, pierwszy, w);
-    expect(wzoryZKanalami(db)[0].kanaly.pro.id).toBe(pierwszy);
+    expect(kartyZKanalami(db)[0].kanaly.pro.id).toBe(pierwszy);
   });
 });
 
 describe('niepowiazaneProdukty', () => {
-  it('oddaje wyłącznie produkty bez wzoru i bez zniknal_at', () => {
+  it('oddaje wyłącznie produkty bez karty i bez zniknal_at', () => {
     const db = openOmsDb(':memory:');
     const wolny = zapiszProduktSklepowy(db, P({ produkt_id: '1', wariant_id: '' }));
     const zajety = zapiszProduktSklepowy(db, P({ produkt_id: '2', wariant_id: '' }));
-    powiazProdukt(db, zajety, utworzWzor(db, { nazwa: 'W' }));
+    powiazProdukt(db, zajety, utworzKarte(db, { nazwa: 'W' }));
     zapiszProduktSklepowy(db, P({ produkt_id: '3', wariant_id: '' }));
     oznaczZnikniete(db, 'pro', '2026-08-09T10:00:00Z');
     zapiszProduktSklepowy(db, P({ produkt_id: '1', wariant_id: '', odczytane_at: '2026-08-09T10:00:00Z' }));
@@ -616,20 +616,20 @@ describe('niepowiazaneProdukty', () => {
     zapiszProduktSklepowy(db, P());
     const [p] = niepowiazaneProdukty(db);
     expect(p.kanal).toBe('pro');
-    expect(p.nazwa).toBe('EV 70x100');
-    expect(p.kategorie_json).toBe('["Bezpieczeństwo"]');
+    expect(p.nazwa).toBe('Plafon 70x100');
+    expect(p.kategorie_json).toBe('["Oświetlenie"]');
     expect(p.rozmiar_tekst).toBe('70 x 100 cm');
   });
 });
 
-// ⚠️ TO NIE JEST TEST OZDOBNY. Zapytanie „per wzór" przy tysiącu wzorów znaczy tysiąc
+// ⚠️ TO NIE JEST TEST OZDOBNY. Zapytanie „per karta" przy tysiącu kart znaczy tysiąc
 // zapytań na KAŻDE otwarcie listy — usterka, która na pustej bazie testowej jest
 // niewidoczna, a na produkcyjnej kładzie ekran.
 //
 // ⚠️⚠️ SAM BUDŻET CZASU TEGO NIE ŁAPIE i to jest zmierzone, nie przypuszczane: wersja
-// „per wzór" schodzi na bazie w pamięci w ~55 ms, czyli mieści się w progu 200 ms
+// „per karta" schodzi na bazie w pamięci w ~55 ms, czyli mieści się w progu 200 ms
 // z zapasem. Dlatego niezmiennik jest sprawdzany WPROST — liczbą zapytań, która ma NIE
-// ROSNĄĆ z liczbą wzorów. Czas zostaje jako druga siatka, na wypadek zapytania, które
+// ROSNĄĆ z liczbą kart. Czas zostaje jako druga siatka, na wypadek zapytania, które
 // jest jedno, ale kosztuje tyle co tysiąc.
 function bazaZLicznikiem(db) {
   const licznik = { zapytania: 0 };
@@ -641,12 +641,12 @@ function bazaZLicznikiem(db) {
   return [{ prepare: (sql) => opakuj(db.prepare(sql)) }, licznik];
 }
 
-describe('wzoryZKanalami — koszt renderu listy', () => {
-  it('liczba zapytań nie rośnie z liczbą wzorów', () => {
+describe('kartyZKanalami — koszt renderu listy', () => {
+  it('liczba zapytań nie rośnie z liczbą kart', () => {
     const db = openOmsDb(':memory:');
     const zbuduj = (ile) => {
       for (let i = 0; i < ile; i += 1) {
-        const w = utworzWzor(db, { nazwa: `Wzor ${i}` });
+        const w = utworzKarte(db, { nazwa: `Karta ${i}` });
         powiazProdukt(db, zapiszProduktSklepowy(db, P({
           produkt_id: `${db.prepare('SELECT COUNT(*) c FROM produkty_sklepowe').get().c}`,
           wariant_id: '',
@@ -656,26 +656,26 @@ describe('wzoryZKanalami — koszt renderu listy', () => {
 
     zbuduj(3);
     const [maly, licznikMaly] = bazaZLicznikiem(db);
-    expect(wzoryZKanalami(maly)).toHaveLength(3);
+    expect(kartyZKanalami(maly)).toHaveLength(3);
 
     zbuduj(200);
     const [duzy, licznikDuzy] = bazaZLicznikiem(db);
-    expect(wzoryZKanalami(duzy)).toHaveLength(203);
+    expect(kartyZKanalami(duzy)).toHaveLength(203);
 
     expect(licznikDuzy.zapytania).toBe(licznikMaly.zapytania);
     expect(licznikDuzy.zapytania).toBeLessThanOrEqual(2);
   });
 
-  it('tysiąc wzorów z produktem schodzi poniżej 200 ms', () => {
+  it('tysiąc kart z produktem schodzi poniżej 200 ms', () => {
     const db = openOmsDb(':memory:');
     db.exec('BEGIN');
     for (let i = 0; i < 1000; i += 1) {
-      const w = utworzWzor(db, {
-        nazwa: `Wzor ${String(i).padStart(4, '0')}`,
-        sku: `STE-${i}`,
+      const w = utworzKarte(db, {
+        nazwa: `Karta ${String(i).padStart(4, '0')}`,
+        sku: `PLC-${i}`,
         szerokosc_mm: 700,
         wysokosc_mm: 1000 + i,
-        kategoria_glowna: 'Bezpieczeństwo',
+        kategoria_glowna: 'Oświetlenie',
       });
       powiazProdukt(db, zapiszProduktSklepowy(db, P({
         produkt_id: String(i), wariant_id: '', cena_gr: 1000 + i,
@@ -684,7 +684,7 @@ describe('wzoryZKanalami — koszt renderu listy', () => {
     db.exec('COMMIT');
 
     const start = performance.now();
-    const wiersze = wzoryZKanalami(db, { sort: 'wysokosc', kier: 'desc' });
+    const wiersze = kartyZKanalami(db, { sort: 'wysokosc', kier: 'desc' });
     const czas = performance.now() - start;
 
     expect(wiersze).toHaveLength(1000);
@@ -693,30 +693,30 @@ describe('wzoryZKanalami — koszt renderu listy', () => {
   });
 });
 
-// ⚠️⚠️ BRAKI WZORU MAJĄ JEDNĄ DEFINICJĘ, A UŻYĆ ICH TRZEBA W CZTERECH MIEJSCACH NARAZ:
+// ⚠️⚠️ BRAKI KARTY MAJĄ JEDNĄ DEFINICJĘ, A UŻYĆ ICH TRZEBA W CZTERECH MIEJSCACH NARAZ:
 // filtr `brak=…`, kolumna `liczba_brakow` w wierszu listy, sortowanie „najwięcej braków na
 // czele" i zliczenia kafli nad tabelą. Kafel PROWADZI do listy, więc druga kopia
 // któregokolwiek wyrażenia znaczyłaby „kafel mówi 217, lista pokazuje 214" — i nie byłoby
 // jak zgadnąć, która liczba kłamie. Dlatego wszystkie cztery zastosowania są tu pytane
 // o TĘ SAMĄ fiksturę, a nie każde o swoją.
-describe('braki wzoru — jedna definicja dla filtra, listy i zliczeń', () => {
-  // ⚠️ FIKSTURA Z WŁASNYM STRAŻNIKIEM. „Kompletny ma 0 braków" jest zdaniem o wzorze, który
-  // NAPRAWDĘ ma komplet — a `utworzWzor` przepuszcza `paczkomat` przez `czyPaczkomat`, więc
+describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
+  // ⚠️ FIKSTURA Z WŁASNYM STRAŻNIKIEM. „Kompletny ma 0 braków" jest zdaniem o karcie, który
+  // NAPRAWDĘ ma komplet — a `utworzKarte` przepuszcza `paczkomat` przez `czyPaczkomat`, więc
   // literówka w wartości zostawiłaby po cichu NULL i test mierzyłby co innego, niż mówi jego
   // nazwa. Odczyt wiersza po utworzeniu zamyka tę drogę z obu stron: kompletny ma wszystkie
   // pięć kolumn wypełnionych, dziurawy ani jednej.
-  function paraWzorow(db) {
-    const kompletny = utworzWzor(db, {
-      nazwa: 'Kompletny', sku: 'STE-X-001', szerokosc_mm: 700, wysokosc_mm: 1000,
+  function paraKart(db) {
+    const kompletny = utworzKarte(db, {
+      nazwa: 'Kompletny', sku: 'PLC-X-001', szerokosc_mm: 700, wysokosc_mm: 1000,
       kategoria_glowna: 'Na ściany', paczkomat: 'nie',
     });
-    const dziurawy = utworzWzor(db, { nazwa: 'Dziurawy' });
+    const dziurawy = utworzKarte(db, { nazwa: 'Dziurawy' });
 
     const stan = (id) => db.prepare(
-      'SELECT sku, szerokosc_mm, wysokosc_mm, kategoria_glowna, paczkomat FROM wzory WHERE id = ?',
+      'SELECT sku, szerokosc_mm, wysokosc_mm, kategoria_glowna, paczkomat FROM karty_produktow WHERE id = ?',
     ).get(id);
     expect(stan(kompletny), 'kompletny ma NAPRAWDĘ komplet pól').toEqual({
-      sku: 'STE-X-001',
+      sku: 'PLC-X-001',
       szerokosc_mm: 700,
       wysokosc_mm: 1000,
       kategoria_glowna: 'Na ściany',
@@ -730,62 +730,62 @@ describe('braki wzoru — jedna definicja dla filtra, listy i zliczeń', () => {
 
   it('liczba_brakow: 0 dla kompletnego, 4 dla pustego', () => {
     const db = openOmsDb(':memory:');
-    paraWzorow(db);
-    const wiersze = wzoryZKanalami(db, {});
+    paraKart(db);
+    const wiersze = kartyZKanalami(db, {});
     const poNazwie = Object.fromEntries(wiersze.map((w) => [w.nazwa, w.liczba_brakow]));
     expect(poNazwie.Kompletny).toBe(0);
     expect(poNazwie.Dziurawy).toBe(4);
   });
 
-  // Ta sama reguła co w filtrze „bez wymiarów" (4.23): do cięcia potrzebne są OBA wymiary,
+  // Ta sama reguła co w filtrze „bez wymiarów" (4.23): do wysyłki i gabarytu potrzebne są OBA wymiary,
   // więc sama szerokość nie jest połową braku, tylko brakiem.
   it('połowiczny wymiar to nadal brak wymiaru', () => {
     const db = openOmsDb(':memory:');
-    utworzWzor(db, {
+    utworzKarte(db, {
       nazwa: 'Połowa', sku: 'S', szerokosc_mm: 700, kategoria_glowna: 'X', paczkomat: 'tak',
     });
-    expect(wzoryZKanalami(db, {})[0].liczba_brakow).toBe(1);
+    expect(kartyZKanalami(db, {})[0].liczba_brakow).toBe(1);
   });
 
   // ⚠️ SKU Z SAMYCH SPACJI TO NADAL BRAK, NIE NUMER — ten sam warunek, co w `nadajSku`
-  // i w `bezSku` (`domain/przejecie-sku.js`). Bez TRIM ten wzór liczyłby się tutaj jako
+  // i w `bezSku` (`domain/przejecie-sku.js`). Bez TRIM ta karta liczyłaby się tutaj jako
   // komplet, a `nadajSku` i tak przydzieliłby mu numer — dwie sprzeczne odpowiedzi na to
-  // samo pytanie o tym samym wzorze.
+  // samo pytanie o tej samej karcie.
   it('SKU z samych spacji to nadal brak, nie komplet', () => {
     const db = openOmsDb(':memory:');
-    utworzWzor(db, {
+    utworzKarte(db, {
       nazwa: 'SamaSpacja', sku: '   ', szerokosc_mm: 700, wysokosc_mm: 1000,
       kategoria_glowna: 'X', paczkomat: 'tak',
     });
 
-    expect(wzoryZKanalami(db, {})[0].liczba_brakow).toBe(1);
-    expect(wzoryZKanalami(db, { filtry: { brak: 'sku' } }).map((w) => w.nazwa))
+    expect(kartyZKanalami(db, {})[0].liczba_brakow).toBe(1);
+    expect(kartyZKanalami(db, { filtry: { brak: 'sku' } }).map((w) => w.nazwa))
       .toEqual(['SamaSpacja']);
-    expect(wzoryZKanalami(db, { filtry: { brak: 'komplet' } })).toEqual([]);
+    expect(kartyZKanalami(db, { filtry: { brak: 'komplet' } })).toEqual([]);
     expect(zliczeniaBrakow(db)).toMatchObject({ bezSku: 1, komplet: 0 });
   });
 
   it('filtr brak=komplet oddaje wyłącznie kompletne', () => {
     const db = openOmsDb(':memory:');
-    paraWzorow(db);
-    const wiersze = wzoryZKanalami(db, { filtry: { brak: 'komplet' } });
+    paraKart(db);
+    const wiersze = kartyZKanalami(db, { filtry: { brak: 'komplet' } });
     expect(wiersze.map((w) => w.nazwa)).toEqual(['Kompletny']);
   });
 
   it('sort=braki desc ustawia największe braki na czele (kolejka roboty)', () => {
     const db = openOmsDb(':memory:');
-    paraWzorow(db);
-    expect(wzoryZKanalami(db, { sort: 'braki', kier: 'desc' }).map((w) => w.nazwa))
+    paraKart(db);
+    expect(kartyZKanalami(db, { sort: 'braki', kier: 'desc' }).map((w) => w.nazwa))
       .toEqual(['Dziurawy', 'Kompletny']);
-    expect(wzoryZKanalami(db, { sort: 'braki', kier: 'asc' }).map((w) => w.nazwa))
+    expect(kartyZKanalami(db, { sort: 'braki', kier: 'asc' }).map((w) => w.nazwa))
       .toEqual(['Kompletny', 'Dziurawy']);
     // ⚠️ Nagłówek tabeli buduje odnośniki sortujące z TEJ listy. Klucz nieznany zapytaniu
     // wracałby po cichu do sortowania domyślnego, a kolumna dalej świeciłaby jako aktywna.
-    expect(SORTOWANIE_WZOROW).toContain('braki');
+    expect(SORTOWANIE_KART).toContain('braki');
   });
 
   // ⚠️⚠️ KAŻDY LICZNIK MA W TEJ FIKSTURZE INNĄ WARTOŚĆ — i to nie jest ozdoba, tylko
-  // naprawa fałszywej zieleni ZŁAPANEJ MUTACJĄ. Wcześniej stały tu dwa wzory i wszystkie
+  // naprawa fałszywej zieleni ZŁAPANEJ MUTACJĄ. Wcześniej stały tu dwa karty i wszystkie
   // liczniki wychodziły po jednym; przestawienie aliasów `bezSku` ↔ `bezWymiarow`
   // w zapytaniu PRZESZŁO NA ZIELONO, czyli kafle mogłyby pokazywać swoje liczby nawzajem,
   // a każdy prowadzić do cudzej listy. Przy różnych wartościach każda taka zamiana pada.
@@ -793,9 +793,9 @@ describe('braki wzoru — jedna definicja dla filtra, listy i zliczeń', () => {
   const DO_PRZEJECIA = 2;
 
   function katalogZliczen(db) {
-    // `wzory.sku` ma UNIQUE, więc każdy pełny wzór dostaje własny numer.
+    // `karty.sku` ma UNIQUE, więc każdy pełny karta dostaje własny numer.
     const pelny = (nazwa) => ({
-      nazwa, sku: `STE-${nazwa}`, szerokosc_mm: 700, wysokosc_mm: 1000,
+      nazwa, sku: `PLC-${nazwa}`, szerokosc_mm: 700, wysokosc_mm: 1000,
       kategoria_glowna: 'Boho', paczkomat: 'nie',
     });
     const dziura = {
@@ -805,28 +805,28 @@ describe('braki wzoru — jedna definicja dla filtra, listy i zliczeń', () => {
       paczkomat: { paczkomat: null },
     };
 
-    utworzWzor(db, pelny('Komplet'));
+    utworzKarte(db, pelny('Komplet'));
     const bezSku = [];
     for (const [czego, ile] of Object.entries(ILE)) {
       for (let i = 0; i < ile; i += 1) {
-        const id = utworzWzor(db, { ...pelny(`${czego}-${i}`), ...dziura[czego] });
+        const id = utworzKarte(db, { ...pelny(`${czego}-${i}`), ...dziura[czego] });
         if (czego === 'sku') bezSku.push(id);
       }
     }
 
     // Numeru nie wymyślamy — bierzemy go ze sklepu (domain/przejecie-sku.js). Dostają go
-    // DWA z czterech wzorów bez SKU, żeby „do przejęcia" nie mogło być kopią „bez SKU".
-    bezSku.slice(0, DO_PRZEJECIA).forEach((wzorId, i) => {
+    // DWA z czterech kart bez SKU, żeby „do przejęcia" nie mogło być kopią „bez SKU".
+    bezSku.slice(0, DO_PRZEJECIA).forEach((kartaId, i) => {
       powiazProdukt(db, zapiszProduktSklepowy(db, {
         kanal: 'szkicownia', produkt_id: `90${i}`, nazwa: `Zrodlo ${i}`, sku_sklepu: `PD1${i}`,
         cena_gr: 2900, odczytane_at: '2026-08-20T10:00:00Z',
-      }), wzorId);
+      }), kartaId);
     });
 
     // ⚠️ STRAŻNIK FIKSTURY, liczony WŁASNYM SQL-em — nie tym, o który pyta test. Gdyby
     // katalog nie zawierał tego, co test o nim mówi, wszystkie liczby niżej opisywałyby
     // co innego, niż głoszą ich nazwy.
-    const licz = (warunek) => db.prepare(`SELECT COUNT(*) AS c FROM wzory WHERE ${warunek}`).get().c;
+    const licz = (warunek) => db.prepare(`SELECT COUNT(*) AS c FROM karty_produktow WHERE ${warunek}`).get().c;
     expect({
       razem: licz('1 = 1'),
       bezSku: licz("sku IS NULL OR sku = ''"),
@@ -834,7 +834,7 @@ describe('braki wzoru — jedna definicja dla filtra, listy i zliczeń', () => {
       bezKategorii: licz("kategoria_glowna IS NULL OR kategoria_glowna = ''"),
       bezPaczkomatu: licz('paczkomat IS NULL'),
       zZrodlemNumeru: db.prepare(
-        "SELECT COUNT(*) AS c FROM produkty_sklepowe WHERE sku_sklepu != '' AND wzor_id IS NOT NULL",
+        "SELECT COUNT(*) AS c FROM produkty_sklepowe WHERE sku_sklepu != '' AND karta_id IS NOT NULL",
       ).get().c,
     }, 'katalog NAPRAWDĘ zawiera to, co test o nim mówi').toEqual({
       razem: 19, bezSku: 4, bezWymiarow: 3, bezKategorii: 5, bezPaczkomatu: 6, zZrodlemNumeru: 2,
@@ -866,10 +866,10 @@ describe('braki wzoru — jedna definicja dla filtra, listy i zliczeń', () => {
     });
   });
 
-  // ⚠️ Wzór bez SKU, któremu sklep nie ma czego oddać, do PRZEJĘCIA się nie nadaje. Trzy
+  // ⚠️ Karta bez SKU, któremu sklep nie ma czego oddać, do PRZEJĘCIA się nie nadaje. Trzy
   // powody z osobna, bo każdy jest osobnym członem warunku: produkt bez numeru w sklepie,
   // produkt WYCOFANY ze sklepu (numer wycofanego produktu nie jest już źródłem) i produkt
-  // niepowiązany z żadnym wzorem. Bez nich kafel „do przejęcia" byłby kopią „bez SKU".
+  // niepowiązany z żadnym kartą. Bez nich kafel „do przejęcia" byłby kopią „bez SKU".
   it('do przejęcia liczy wyłącznie te, którym ŻYWY produkt ma co oddać', () => {
     const db = openOmsDb(':memory:');
     const produkt = (nad) => zapiszProduktSklepowy(db, {
@@ -878,14 +878,14 @@ describe('braki wzoru — jedna definicja dla filtra, listy i zliczeń', () => {
 
     // (1) produkt żywy i powiązany, ale sklep numeru nie ma — nie ma czego przejąć.
     powiazProdukt(db, produkt({ produkt_id: '1', nazwa: 'Bez numeru', sku_sklepu: '' }),
-      utworzWzor(db, { nazwa: 'BezZrodla' }));
-    // (2) numer jest i wisi na właściwym wzorze, ale produkt WYPADŁ ze sklepu.
+      utworzKarte(db, { nazwa: 'BezZrodla' }));
+    // (2) numer jest i wisi na właściwym karcie, ale produkt WYPADŁ ze sklepu.
     powiazProdukt(db, produkt({
       produkt_id: '2', nazwa: 'Wycofany', sku_sklepu: 'PD20', odczytane_at: '2026-08-20T10:00:00Z',
-    }), utworzWzor(db, { nazwa: 'ZeZrodlemWycofanym' }));
-    // (3) numer jest i produkt żyje, ale nikt go z tym wzorem nie powiązał.
+    }), utworzKarte(db, { nazwa: 'ZeZrodlemWycofanym' }));
+    // (3) numer jest i produkt żyje, ale nikt go z tą kartą nie powiązał.
     produkt({ produkt_id: '3', nazwa: 'Niczyj', sku_sklepu: 'PD30' });
-    utworzWzor(db, { nazwa: 'BezProduktu' });
+    utworzKarte(db, { nazwa: 'BezProduktu' });
 
     expect(oznaczZnikniete(db, 'szkicownia', '2026-08-21T10:00:00Z'), 'DOKŁADNIE jeden wypadł ze sklepu')
       .toBe(1);
@@ -893,7 +893,7 @@ describe('braki wzoru — jedna definicja dla filtra, listy i zliczeń', () => {
     expect(zliczeniaBrakow(db)).toMatchObject({ razem: 3, bezSku: 3, doPrzejecia: 0 });
   });
 
-  it('zliczeniaNiepowiazanych: żywe bez wzoru, w tym oferty Allegro', () => {
+  it('zliczeniaNiepowiazanych: żywe bez karty, w tym oferty Allegro', () => {
     const db = openOmsDb(':memory:');
     const przy = (nad) => ({ cena_gr: 100, odczytane_at: '2026-08-20T10:00:00Z', ...nad });
     zapiszProduktSklepowy(db, przy({ kanal: 'szkicownia', produkt_id: '1', nazwa: 'A' }));
@@ -903,14 +903,14 @@ describe('braki wzoru — jedna definicja dla filtra, listy i zliczeń', () => {
   });
 
   // ⚠️ Produkt POWIĄZANY nie jest pominięty, a produkt ZNIKNIĘTY ze sklepu nie jest robotą
-  // do wykonania — kafel prowadzący do ekranu tworzenia wzorów nie ma prawa obiecywać pracy
+  // do wykonania — kafel prowadzący do ekranu tworzenia kart nie ma prawa obiecywać pracy
   // przy wierszach, których ten ekran w ogóle nie pokaże (`niepowiazaneProdukty`).
   it('zliczeniaNiepowiazanych pomija powiązane i zniknięte', () => {
     const db = openOmsDb(':memory:');
     const powiazany = zapiszProduktSklepowy(db, {
       kanal: 'szkicownia', produkt_id: '1', nazwa: 'A', cena_gr: 100, odczytane_at: '2026-08-20T10:00:00Z',
     });
-    powiazProdukt(db, powiazany, utworzWzor(db, { nazwa: 'W' }));
+    powiazProdukt(db, powiazany, utworzKarte(db, { nazwa: 'W' }));
     zapiszProduktSklepowy(db, {
       kanal: 'allegro_szkicownia', produkt_id: '2', nazwa: 'B', cena_gr: 100, odczytane_at: '2026-08-20T10:00:00Z',
     });

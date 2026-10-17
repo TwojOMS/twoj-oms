@@ -1,11 +1,11 @@
-// Rozmiar wzoru jest w obu sklepach TEKSTEM — pole `dimensions` WooCommerce jest puste
-// w 769 produktach na 769 (zmierzone 2026-08-06). Jedyne zrodla to atrybut „Rozmiar"
-// i nazwa produktu.
+// Rozmiar karty bywa w sklepie wylacznie TEKSTEM — w katalogu zmierzonym 2026-08-06 pole
+// `dimensions` WooCommerce bylo puste w 769 produktach na 769, wiec zrodlem byl atrybut
+// „Rozmiar" i nazwa produktu. Wymiary podane przez sklep wprost czyta sekcja na dole pliku.
 //
-// ⚠️ TA FUNKCJA NIGDY NIE ZGADUJE. Napis niejednoznaczny oddaje null, a wzor powstaje
-// bez wymiarow i wpada na liste „bez wymiarow", gdzie czlowiek go uzupelni. Wymiar
-// ZGADNIETY jest gorszy niz brak wymiaru: w Etapie 2 to on decyduje, ktory plik .mol
-// jedzie na ploter, a bledny wyjdzie dopiero na wycietym szablonie.
+// ⚠️ TA FUNKCJA NIGDY NIE ZGADUJE. Napis niejednoznaczny oddaje null, a karta powstaje
+// bez wymiarow i wpada na liste „bez wymiarow", gdzie czlowiek ja uzupelni. Wymiar
+// ZGADNIETY jest gorszy niz brak wymiaru: to on decyduje o gabarycie paczki i o wymiarze
+// pokazanym w sklepie, a bledny wyjdzie dopiero u kuriera albo u klienta.
 
 // Dwie liczby rozdzielone x/× i jednostka BEZPOSREDNIO po nich. Jednostka jest
 // obowiazkowa: „70x100" bez niej moze byc i centymetrami, i milimetrami.
@@ -62,29 +62,31 @@ export function wymiaryZTekstu(tekst) {
 export function centymetryZMilimetrow(mm) {
   const n = Number(mm);
   if (!Number.isFinite(n) || !(n > 0)) return null;
-  // Bez zaokraglenia do pelnych centymetrow: 305 mm to 30,5 cm, a nie 30 ani 31 — od tej
-  // liczby zalezy w Etapie 2, ktory plik jedzie na ploter. `Number(...)` zdejmuje zera
+  // Bez zaokraglenia do pelnych centymetrow: 305 mm to 30,5 cm, a nie 30 ani 31 — ta
+  // liczba jedzie do sklepu i do gabarytu paczki. `Number(...)` zdejmuje zera
   // koncowe, wiec 700 mm to „70", a nie „70.0".
   return String(Number((n / 10).toFixed(1)));
 }
 
 /**
- * Wymiary wzoru na napis dla czlowieka („70 × 100 cm") albo `null`, gdy wymiarow nie ma.
+ * Wymiary karty na napis dla czlowieka („70 × 100 cm") albo `null`, gdy wymiarow nie ma.
  *
  * Liczy TRASA, nie widok (przewodnik: widok magazynu niczego nie liczy) — a regula stoi
  * tutaj, przy pozostalych regulach rozmiaru, zeby lista i przyszly ekran edycji nie mialy
  * jak nazwac tego samego wymiaru inaczej.
  *
  * ⚠️ POLOWICZNY WYMIAR TO NADAL BRAK WYMIAROW — dokladnie ta sama regula, co w filtrze
- * braków (`db/magazyn.js`: „do ciecia potrzebne sa oba"). Gdyby ta funkcja pokazywala
+ * braków (`db/magazyn.js`: potrzebne sa oba). Gdyby ta funkcja pokazywala
  * „70 × — cm", wiersz twierdzilby, ze wymiar zna, i JEDNOCZESNIE wpadal do filtru
  * „bez wymiarów" — na ekranie, ktorego cala robota polega na uzupelnianiu tych brakow.
  */
-export function opisWymiarow(wzor) {
-  const szerokosc = centymetryZMilimetrow(wzor?.szerokosc_mm);
-  const wysokosc = centymetryZMilimetrow(wzor?.wysokosc_mm);
+export function opisWymiarow(karta) {
+  const szerokosc = centymetryZMilimetrow(karta?.szerokosc_mm);
+  const wysokosc = centymetryZMilimetrow(karta?.wysokosc_mm);
   if (szerokosc === null || wysokosc === null) return null;
-  return `${szerokosc} × ${wysokosc} cm`;
+  // PRZ-090: glebokosc jest opcjonalna — produkt plaski ma dwa wymiary, pudelko trzy.
+  const glebokosc = centymetryZMilimetrow(karta?.glebokosc_mm);
+  return glebokosc === null ? `${szerokosc} × ${wysokosc} cm` : `${szerokosc} × ${wysokosc} × ${glebokosc} cm`;
 }
 
 // Jedna liczba i NIC WIECEJ. Zadnej jednostki, zadnego drugiego wymiaru, zadnego wykladnika:
@@ -103,13 +105,13 @@ const SAMA_LICZBA = /^\d+(?:[.,]\d+)?$/u;
  *
  * ⚠️⚠️ KSZTALT ZWROTU JEST TU CALA OSTROZNOSCIA. „Nie rozumiem" i „skasuj" musza byc
  * rozroznialne, bo to sa dwie przeciwne decyzje o tej samej kolumnie — a kolumna opisuje
- * wymiar, po ktorym w Etapie 2 tnie ploter. Gdyby obie wracaly jako `null`, literowka
+ * wymiar, ktory jedzie do sklepu i decyduje o paczce. Gdyby obie wracaly jako `null`, literowka
  * w formularzu kasowalaby wymiar po cichu. Sam `null` w miejscu obiektu wywraca sie na
  * pierwszym `.mm` (glosno), a nie zamienia w `null` przy `??` (cicho).
  *
  * ⚠️ CENTYMETRY WCHODZA, MILIMETRY WYCHODZA — przeliczenie stoi TUTAJ, w jednym miejscu,
  * razem z reszta regul rozmiaru. Formularz mowi w centymetrach, bo tak czlowiek mysli
- * o szablonie; baza trzyma milimetry, bo tak sie je tnie i sortuje.
+ * o produkcie; baza trzyma milimetry, bo tak sie je porownuje i sortuje.
  */
 export function milimetryZCentymetrow(tekst) {
   // Pole nieprzyslane albo przyslane dwa razy (Fastify oddaje wtedy TABLICE) to nie jest
@@ -134,8 +136,8 @@ export function milimetryZCentymetrow(tekst) {
 //
 // ⚠️ NAWIASOW W TEJ KLASIE NIE MA — I NIE MOGA TU WROCIC. Poprzednia wersja je tu
 // trzymala i obcinala bezwarunkowo, przez co zzerala nawias, ktory rozmiaru wcale nie
-// opakowywal: „Teren monitorowany (zolty) – 60x62cm" dawalo „Teren monitorowany (zolty",
-// a „CYFRY 70x100cm (Arial)" dawalo „CYFRY Arial)". Nawias nie jest separatorem —
+// opakowywal: „Lampa wisząca Kopuła (żółta) – 60x62cm" dawalo „Lampa wisząca Kopuła (żółta",
+// a „KLOSZ 70x100cm (opal)" dawalo „KLOSZ opal)". Nawias nie jest separatorem —
 // jest POLOWA PARY i rozstrzyga sie go nizej, patrzac na obie strony rozmiaru naraz.
 const SPOIWO_OD_KONCA = /[\s\-–—,;]+$/u;
 const SPOIWO_OD_POCZATKU = /^[\s\-–—,;]+/u;
@@ -149,8 +151,8 @@ const DOMKNIECIE = new Map([['(', ')'], ['[', ']'], ['{', '}']]);
 // po ktorejkolwiek stronie rozmiaru, to on wraca jako spoiwo.
 const MOCNY_ZNAK = /[-–—,;]/u;
 
-// Nazwa produktu w obu sklepach czesto NIESIE rozmiar w sobie („Teren monitorowany –
-// 60x62cm") — do listy magazynu i do generatora SKU potrzebna jest sama nazwa wzoru,
+// Nazwa produktu w obu sklepach czesto NIESIE rozmiar w sobie („Lampa wisząca Kopuła –
+// 60x62cm") — do listy magazynu i do generatora SKU potrzebna jest sama nazwa karty,
 // bez tego dopisku. Ta funkcja usuwa WYLACZNIE to, co `trafienieRozmiaru` rozpoznaje
 // jednoznacznie jako rozmiar — te same przypadki, ktore wymiaryZTekstu oddaje jako null,
 // tutaj zostawiaja nazwe nietknieta z tego samego powodu: nie ma pewnosci, co wyciac.
@@ -158,7 +160,7 @@ const MOCNY_ZNAK = /[-–—,;]/u;
 // KONTRAKT: string → string. Wejscie INNEGO typu wraca IDENTYCZNE (ta sama wartosc, ta
 // sama referencja) — funkcja nigdy nie konwertuje go na tekst. To nie jest niedbalstwo,
 // tylko ta sama zasada, co „nigdy nie zgaduj": String(60) dalby '60', czyli wiarygodnie
-// wygladajaca nazwe wzoru, i zamaskowal blad wyzej (numer wpuszczony tam, gdzie mial isc
+// wygladajaca nazwe karty, i zamaskowal blad wyzej (numer wpuszczony tam, gdzie mial isc
 // tytul produktu). Oddany bez zmiany numer zostaje numerem i potyka sie o niego pierwszy
 // zapis do magazynu. `null`/`undefined` juz tak dzialaly — reszta typow zachowuje sie
 // tak samo, zeby kontrakt mial jedna regule zamiast dwoch.
@@ -175,24 +177,24 @@ export function nazwaBezRozmiaru(nazwa) {
   // przesuwalo usterke gdzie indziej), tylko obcinamy spoiwo z WEWNETRZNYCH krawedzi —
   // z konca `przed` i z poczatku `po`, kazda strona osobno. Krawedzie ZEWNETRZNE
   // (poczatek `przed`, koniec `po`) nalezaly do nazwy, nie do rozmiaru, i zostaja
-  // nietkniete: „- Kotwica 70x100cm" ma dac „- Kotwica", tak samo jak „- Kotwica"
-  // bez rozmiaru daje „- Kotwica".
+  // nietkniete: „- Kopuła 70x100cm" ma dac „- Kopuła", tak samo jak „- Kopuła"
+  // bez rozmiaru daje „- Kopuła".
   let lewy = przed.replace(SPOIWO_OD_KONCA, '');
   let prawy = po.replace(SPOIWO_OD_POCZATKU, '');
 
   // Nawias rozstrzygamy PARAMI, a nie jak zwykle spoiwo. Znak otwierajacy na wewnetrznej
   // krawedzi lewej strony nalezy do rozmiaru tylko wtedy, gdy po drugiej stronie stoi
   // JEGO domkniecie — wtedy para opakowywala rozmiar i ginie razem z nim. W kazdym innym
-  // ukladzie nawias opisuje CZLON NAZWY („(zolty)", „[PROMOCJA]", „(Arial)") i zostaje;
+  // ukladzie nawias opisuje CZLON NAZWY („(zolta)", „[PROMOCJA]", „(opal)") i zostaje;
   // znak bez pary tez zostaje, bo wyciecie polowki pary tworzy nazwe, ktorej w sklepie
   // nigdy nie bylo. Sprawdzamy krawedzie juz oczyszczone ze zwyklego spoiwa, wiec
-  // „Kotwica - (70x100cm) Premium" liczy sie tak samo jak „Kotwica (70x100cm) Premium".
+  // „Kopuła - (70x100cm) Premium" liczy sie tak samo jak „Kopuła (70x100cm) Premium".
   const otwierajacy = lewy.slice(-1);
   const domkniecie = DOMKNIECIE.get(otwierajacy);
   const opakowanie = domkniecie !== undefined && prawy.startsWith(domkniecie);
   if (opakowanie) {
     // Po zdjeciu pary trzeba jeszcze raz obciac zwykle spoiwo: nawias mogl byc oddzielony
-    // od nazwy spacja („Kotwica ( 70x100cm ) Premium").
+    // od nazwy spacja („Kopuła ( 70x100cm ) Premium").
     lewy = lewy.slice(0, -1).replace(SPOIWO_OD_KONCA, '');
     prawy = prawy.slice(1).replace(SPOIWO_OD_POCZATKU, '');
   }
@@ -204,7 +206,7 @@ export function nazwaBezRozmiaru(nazwa) {
   if (lewy && prawy) {
     // Kandydaci: to, co realnie stalo przy rozmiarze z lewej i z prawej. Nawias, ktory
     // opakowywal rozmiar, wypada z kandydatow — jako spoiwo dalby niesparowany znak
-    // („Kotwica(Premium"). Usuwamy DOKLADNIE ten jeden znak (replace z tekstem, nie
+    // („Kopuła(Premium"). Usuwamy DOKLADNIE ten jeden znak (replace z tekstem, nie
     // z regexpem `g`: nie ma tu wspoldzielonego `lastIndex`, ktory moglby przeciec
     // miedzy wywolaniami), a nie wszystkie nawiasy — pozostale naleza do nazwy.
     let zLewej = przed.slice(lewy.length);
@@ -216,26 +218,26 @@ export function nazwaBezRozmiaru(nazwa) {
 
     // Wraca DOKLADNIE JEDEN separator i to ten, ktory faktycznie wystapil w oryginale —
     // obojetne, po ktorej stronie rozmiaru stal. Myslnik/przecinek bije spacje, bo nosi
-    // podzial, ktorego autor nazwy chcial („Kotwica - 70x100cm Premium" to nadal
-    // „Kotwica - Premium"). Przy remisie wygrywa lewa strona — czytamy nazwe od lewej.
+    // podzial, ktorego autor nazwy chcial („Kopuła - 70x100cm Premium" to nadal
+    // „Kopuła - Premium"). Przy remisie wygrywa lewa strona — czytamy nazwe od lewej.
     if (MOCNY_ZNAK.test(zLewej)) spoiwo = zLewej;
     else if (MOCNY_ZNAK.test(zPrawej)) spoiwo = zPrawej;
     // Ostatnia deska: para nawiasow byla JEDYNYM podzialem miedzy czlonami
-    // („Kotwica(70x100cm)Premium"). Sam nawias wrocic nie moze, ale podzial musi —
-    // bez niego dwa czlony zlepiaja sie w „KotwicaPremium", czyli w nazwe, ktorej nikt
-    // nie wpisal. Ten sam uklad na myslniku daje „Kotwica-Premium", wiec wersja
+    // („Kopuła(70x100cm)Premium"). Sam nawias wrocic nie moze, ale podzial musi —
+    // bez niego dwa czlony zlepiaja sie w „KopułaPremium", czyli w nazwe, ktorej nikt
+    // nie wpisal. Ten sam uklad na myslniku daje „Kopuła-Premium", wiec wersja
     // nawiasowa nie ma prawa jako jedyna gubic granice miedzy czlonami.
     else spoiwo = zLewej || zPrawej || (opakowanie ? ' ' : '');
 
     // Zwijamy WYLACZNIE tu, w skladanym spoiwie — nigdy w `lewy`/`prawy`. `zLewej`/
     // `zPrawej` to resztki po zdjeciu samego znaku nawiasu (albo pary myslnik+spacja),
     // a taki znak potrafi stac MIEDZY dwoma bialymi znakami, ktore osobno przetrwaly
-    // obcinanie brzegow: „Kotwica ( 70x100cm ) Premium" zostawia po kazdej stronie
+    // obcinanie brzegow: „Kopuła ( 70x100cm ) Premium" zostawia po kazdej stronie
     // nawiasu jedna spacje, a po jego wycieciu te dwie spacje sasiaduja i sklejaja sie
     // w jeden napis dwuznakowy. To lamie kontrakt „dokladnie jeden separator" ponizej —
     // wiec normalizujemy tu, punktowo, zanim spoiwo trafi do `wynik`. Nie robimy tego
     // wyzej, na `lewy`/`prawy`: wielokrotna spacja bedaca CZESCIA nazwy POZA spoiwem
-    // („Kotwica  duza 70x100cm") nie ma z separatorem rozmiaru nic wspolnego i ma
+    // („Kopuła  duza 70x100cm") nie ma z separatorem rozmiaru nic wspolnego i ma
     // przezyc nietknieta — normalizacja spoiwa jej nie widzi, bo nigdy do niego nie trafia.
     spoiwo = spoiwo.replace(/\s+/gu, ' ');
   }
@@ -243,7 +245,79 @@ export function nazwaBezRozmiaru(nazwa) {
   const wynik = `${lewy}${spoiwo}${prawy}`;
 
   // Nazwa zlozona z samego rozmiaru („60x62cm") nie moze zniknac w pusty string —
-  // wzor bez nazwy jest gorszy niz wzor, ktorego nazwa TO rozmiar, wiec oddajemy
+  // karta bez nazwy jest gorsza niz karta, ktorej nazwa TO rozmiar, wiec oddajemy
   // oryginal bez zadnej modyfikacji (rowniez bez przycietego bialego znaku).
   return wynik || nazwa;
+}
+
+// ——— WYMIARY I WAGA PODANE PRZEZ SKLEP (PRZ-090) ————————————————————————————————
+//
+// Sklep WooCommerce trzyma wymiary w `dimensions` (length/width/height) i wage w `weight`, kazde w jednostce
+// ze swoich ustawien. Lustro zapisuje je razem z jednostka (services/magazyn-sync.js): `wymiary_json`
+// = `{ length, width, height, unit }`, `waga_tekst` = „1.25 kg”. Bez jednostki nic stad nie wychodzi —
+// ta sama zasada, co przy rozmiarze z nazwy: liczba bez jednostki moze byc i centymetrami, i milimetrami.
+//
+// ⚠️ OSIE TAK SAMO JAK PRZY ZAPISIE (domena/zapis-do-sklepu.js): `length` = wysokosc, `width` = szerokosc,
+// `height` = glebokosc. Odwrotne przypisanie tutaj obracaloby karte przy kazdym obiegu sklep → karta → sklep.
+//
+// `Map`, nie literal obiektu: jednostka przychodzi z cudzego API.
+const MM_W_JEDNOSTCE = new Map([['mm', 1], ['cm', 10], ['m', 1000], ['in', 25.4], ['yd', 914.4]]);
+const G_W_JEDNOSTCE = new Map([['g', 1], ['kg', 1000], ['lbs', 453.59237], ['oz', 28.349523125]]);
+
+const dodatnia = (x) => {
+  const s = typeof x === 'string' ? x.trim().replace(',', '.') : (typeof x === 'number' ? String(x) : '');
+  if (!SAMA_LICZBA.test(s)) return null;
+  const n = Number(s);
+  return n > 0 ? n : null;
+};
+
+/**
+ * `wymiary_json` z lustra → `{ wysokosc_mm, szerokosc_mm, glebokosc_mm }` albo `null`.
+ *
+ * Para wysokosc + szerokosc jest obowiazkowa (polowiczny wymiar to brak — jak w calym module), glebokosc
+ * opcjonalna. Zaokraglenie do pelnego milimetra.
+ */
+export function wymiaryZeSklepu(wymiaryJson) {
+  let w;
+  try { w = typeof wymiaryJson === 'string' ? JSON.parse(wymiaryJson) : null; } catch { return null; }
+  if (!w || typeof w !== 'object') return null;
+  const mnoznik = typeof w.unit === 'string' ? MM_W_JEDNOSTCE.get(w.unit) : undefined;
+  if (!mnoznik) return null;
+  const mm = (x) => { const n = dodatnia(x); const wynik = n === null ? null : Math.round(n * mnoznik); return wynik > 0 ? wynik : null; };
+  const wysokosc = mm(w.length);
+  const szerokosc = mm(w.width);
+  if (wysokosc === null || szerokosc === null) return null;
+  return { wysokosc_mm: wysokosc, szerokosc_mm: szerokosc, glebokosc_mm: mm(w.height) };
+}
+
+/** `waga_tekst` z lustra („1.25 kg”) → gramy (liczba calkowita) albo `null`. */
+export function wagaZeSklepu(tekst) {
+  if (typeof tekst !== 'string') return null;
+  const m = /^\s*(\S+)\s+(\S+)\s*$/u.exec(tekst);
+  if (!m) return null;
+  const mnoznik = G_W_JEDNOSTCE.get(m[2]);
+  const n = dodatnia(m[1]);
+  if (!mnoznik || n === null) return null;
+  const g = Math.round(n * mnoznik);
+  return g > 0 ? g : null;
+}
+
+/**
+ * Waga wpisana na karcie w KILOGRAMACH → gramy do kolumny. Ten sam ksztalt, co `milimetryZCentymetrow`:
+ * `{ g }` gdy rozumiemy (puste = `{ g: null }`, swiadome skasowanie), `null` gdy napisu nie rozumiemy.
+ */
+export function gramyZKilogramow(tekst) {
+  if (typeof tekst !== 'string') return null;
+  const s = tekst.trim();
+  if (!s) return { g: null };
+  if (!SAMA_LICZBA.test(s)) return null;
+  const g = Math.round(Number(s.replace(',', '.')) * 1000);
+  return g > 0 ? { g } : null;
+}
+
+/** Gramy z kolumny → napis w kilogramach do pola karty („1.25”) albo `null`. */
+export function kilogramyZGramow(g) {
+  const n = Number(g);
+  if (!Number.isFinite(n) || !(n > 0)) return null;
+  return String(Number((n / 1000).toFixed(3)));
 }

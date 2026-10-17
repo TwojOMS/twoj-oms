@@ -24,7 +24,7 @@ const zmapowane = (id, nad = {}) => ({
   dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null,
   chce_fakture: 1, nip: 'SK1000000001', kwota_brutto: '96.48',
   status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-08-26T10:00:00',
-  pozycje: [{ nazwa: 'Szablon malarski STOP 70x100cm', sku: null, ilosc: 2, cena_brutto: '40.24', vat: null }],
+  pozycje: [{ nazwa: 'Lampa stołowa Kałamarz 30x45cm', sku: null, ilosc: 2, cena_brutto: '40.24', vat: null }],
   ...nad,
 });
 

@@ -11,7 +11,7 @@
 // (poller pyta o tresc tylko przy zmianie daty watku, wiec stare wiadomosci nie wrocilyby same).
 //
 // ⚠️ ROZROZNIAMY WIELKOSC LITER w nazwie encji: `&Oacute;` to „Ó", `&oacute;` to „ó".
-// Rozwijacz z domena/wzor-z-produktu.js robi `toLowerCase()` — tu zamienilby „Ó" w „ó".
+// Rozwijacz z domena/karta-z-produktu.js robi `toLowerCase()` — tu zamienilby „Ó" w „ó".
 //
 // ⚠️ JEDEN PRZEBIEG, nie petla: „&amp;lt;" ma zostac tekstem „&lt;", nie znacznikiem.
 

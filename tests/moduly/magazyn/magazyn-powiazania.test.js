@@ -2,20 +2,20 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 import {
-  zapiszProduktSklepowy, utworzWzor, powiazProdukt, niepowiazaneOfertyAllegro,
+  zapiszProduktSklepowy, utworzKarte, powiazProdukt, niepowiazaneOfertyAllegro,
 } from '../../../src/oms/db/magazyn.js';
 
-// EKRAN POWIAZAN OFERT ALLEGRO Z WZORAMI.
+// EKRAN POWIAZAN OFERT ALLEGRO Z KARTAMI PRODUKTOW.
 //
-// PO CO ISTNIEJE: lustro trzyma 447 ofert Allegro i wszystkie maja `wzor_id IS NULL`.
+// PO CO ISTNIEJE: lustro trzyma 447 ofert Allegro i wszystkie maja `karta_id IS NULL`.
 // Pole `external` jest na Allegro puste we wszystkich ofertach, a nazwy sa sprzedazowe —
 // wiec jedyna droga jest RECZNA, a jedyna pomoca ranking po nazwie.
 //
 // ⚠️⚠️ CZTERY RZECZY, KTORE TEN OPIS PILNUJE, BO ROZSTRZYGNAL JE WLASCICIEL:
 //   (1) NIC nie wiaze sie bez klikniecia — wejscie na strone jest CZYTANIEM;
-//   (2) wzorow moze byc ZERO (tak jest dzis na produkcji) i ekran ma wtedy powiedziec,
+//   (2) kart moze byc ZERO (tak jest dzis na produkcji) i ekran ma wtedy powiedziec,
 //       od czego zaczac, a nie pokazac pusta tabele;
-//   (3) lista wszystkich wzorow stoi na stronie RAZ, a nie w kazdym z 447 wierszy;
+//   (3) lista wszystkich kart stoi na stronie RAZ, a nie w kazdym z 447 wierszy;
 //   (4) wiazanie jest ODWRACALNE.
 
 const config = { auth: { user: 'adam', pass: 'x' } };
@@ -48,7 +48,7 @@ function oferta(nazwa, nadpisania = {}) {
     nazwa, odczytane_at: '2026-08-11T06:00:00.000Z', ...nadpisania,
   });
 }
-const wzorO = (nazwa, reszta = {}) => utworzWzor(db, { nazwa, ...reszta });
+const kartaO = (nazwa, reszta = {}) => utworzKarte(db, { nazwa, ...reszta });
 
 const get = (app, url) => app.inject({ method: 'GET', url, headers: auth });
 const post = (app, url, payload, naglowki = auth) => app.inject({
@@ -59,8 +59,8 @@ const post = (app, url, payload, naglowki = auth) => app.inject({
  * WIERSZ TEJ OFERTY — sam wiersz, bez reszty strony.
  *
  * ⚠️⚠️ TO NIE JEST WYGODA, TYLKO WARUNEK NOSNOSCI KAZDEJ ASERCJI NA TYM EKRANIE. Strona
- * niesie JEDNA WSPOLNA liste podpowiedzi (`<datalist>`) ze WSZYSTKIMI nazwami wzorow —
- * taki jest wymog rozmiaru strony. Kazda asercja „nazwa wzoru jest na stronie" jest wiec
+ * niesie JEDNA WSPOLNA liste podpowiedzi (`<datalist>`) ze WSZYSTKIMI nazwami kart —
+ * taki jest wymog rozmiaru strony. Kazda asercja „nazwa karty jest na stronie" jest wiec
  * spelniona przez SAMA TE LISTE, nawet gdyby tabela nie renderowala ani jednego kandydata.
  * Zmierzone: po skasowaniu CALEJ petli kandydatow z szablonu asercje na golych nazwach
  * dalej swiecily na zielono.
@@ -80,14 +80,14 @@ const kandydaci = (wiersz) => [...wiersz.matchAll(/<span class="kandydat-nazwa">
   .map((m) => m[1]);
 
 // Wartosci przyciskow wyboru TEGO wiersza (puste = „nie wiążę").
-const wybory = (wiersz) => [...wiersz.matchAll(/<input type="radio" name="wzor_\d+" value="([^"]*)"/g)]
+const wybory = (wiersz) => [...wiersz.matchAll(/<input type="radio" name="karta_\d+" value="([^"]*)"/g)]
   .map((m) => m[1]);
 
 const nazwyOfert = (body) => [...body.matchAll(/<div class="nazwa-oferty">([^<]*)<\/div>/g)]
   .map((m) => m[1]);
 
-const wzorOferty = (id) => db.prepare('SELECT wzor_id FROM produkty_sklepowe WHERE id = ?')
-  .get(id).wzor_id;
+const kartaOferty = (id) => db.prepare('SELECT karta_id FROM produkty_sklepowe WHERE id = ?')
+  .get(id).karta_id;
 
 /**
  * PANEL WYNIKU zatwierdzenia — sam panel, bez reszty strony.
@@ -105,25 +105,25 @@ function panelWyniku(body) {
 
 describe('GET /magazyn/powiazania — lista ofert i kandydaci', () => {
   it('pokazuje TRZECH najlepszych kandydatow przy ofercie, najlepszego pierwszego', async () => {
-    wzorO('Zakaz palenia - 64cm');
-    wzorO('Zakaz palenia w hali produkcyjnej magazynu wysokiego składowania');
-    wzorO('Zakaz');
-    wzorO('Kotwica morska');
-    oferta('Zakaz palenia papierosów - DUŻY szablon malarski do znakowania');
+    kartaO('Trójnóg podłogowy - 64cm');
+    kartaO('Trójnóg podłogowy do salonu z wysokim sufitem i szerokim oknem');
+    kartaO('Trójnóg');
+    kartaO('Kandelabr srebrny');
+    oferta('Trójnóg podłogowy - DUŻA lampa, dąb olejowany i lniany abażur');
 
     const r = await get(serwer(), '/magazyn/powiazania');
     expect(r.statusCode).toBe(200);
 
-    const wiersz = wierszOferty(r.body, 'Zakaz palenia papierosów - DUŻY szablon malarski do znakowania');
+    const wiersz = wierszOferty(r.body, 'Trójnóg podłogowy - DUŻA lampa, dąb olejowany i lniany abażur');
     expect(kandydaci(wiersz)).toEqual([
-      'Zakaz palenia - 64cm',
-      'Zakaz palenia w hali produkcyjnej magazynu wysokiego składowania',
-      'Zakaz',
+      'Trójnóg podłogowy - 64cm',
+      'Trójnóg podłogowy do salonu z wysokim sufitem i szerokim oknem',
+      'Trójnóg',
     ]);
-    // „Kotwica morska" nie ma z ta oferta ani jednego wspolnego slowa — i dlatego nie stoi
+    // „Kandelabr srebrny" nie ma z ta oferta ani jednego wspolnego slowa — i dlatego nie stoi
     // przy niej jako kandydat. Na stronie JEST (wspolna lista podpowiedzi), w wierszu NIE MA.
-    expect(wiersz).not.toContain('Kotwica morska');
-    expect(r.body).toContain('Kotwica morska');
+    expect(wiersz).not.toContain('Kandelabr srebrny');
+    expect(r.body).toContain('Kandelabr srebrny');
     // ⚠️ PIERWSZY WYBOR JEST PUSTY („nie wiążę") i musi byc: panel nie ma JavaScriptu, wiec
     // bez tej pozycji raz kliknietego przycisku nie da sie odznaczyc inaczej niz
     // przeladowaniem strony — a wtedy ginie praca z pozostalych wierszy tego samego hurtu.
@@ -133,116 +133,116 @@ describe('GET /magazyn/powiazania — lista ofert i kandydaci', () => {
     // wrocic: „rozmyslilem sie" wymagaloby przeladowania strony, a to kasuje wybory
     // z pozostalych 446 wierszy tego samego hurtu. (Zmierzone mutacja: samo zdjecie
     // `checked` przechodzilo przez cala suite na zielono.)
-    expect(wiersz).toMatch(/<input type="radio" name="wzor_\d+" value="" checked>/);
+    expect(wiersz).toMatch(/<input type="radio" name="karta_\d+" value="" checked>/);
   });
 
   it('ocena i wspolne slowa stoja PRZY kandydacie, policzone poza widokiem', async () => {
-    wzorO('Nie parkować');
-    oferta('NIE PARKOWAĆ');
+    kartaO('Klosz mleczny');
+    oferta('KLOSZ MLECZNY');
 
-    const wiersz = wierszOferty((await get(serwer(), '/magazyn/powiazania')).body, 'NIE PARKOWAĆ');
+    const wiersz = wierszOferty((await get(serwer(), '/magazyn/powiazania')).body, 'KLOSZ MLECZNY');
     // Para z pomiaru: nazwy roznia sie WYLACZNIE wielkoscia liter, wiec ocena jest pelna.
     expect(wiersz).toMatch(/<span class="kandydat-ocena">100%<\/span>/);
     // Wspolne slowa sa jedynym uzasadnieniem oceny, jakie czlowiek dostaje — bez nich
     // procent jest liczba bez pokrycia.
-    expect(wiersz).toMatch(/<span class="kandydat-slowa">[^<]*NIE[^<]*PARKOWAĆ[^<]*<\/span>/);
+    expect(wiersz).toMatch(/<span class="kandydat-slowa">[^<]*KLOSZ[^<]*MLECZNY[^<]*<\/span>/);
   });
 
   // ⚠️⚠️ ZERO WSPOLNYCH SLOW TO NIE JEST POWOD, ZEBY UKRYC OFERTE. Wiersz ma stac na liscie
   // razem z reszta, bo to jest robota do wykonania — tyle ze recznie. Ukryty znaczylby
   // „nie ma nic do zrobienia", a to nieprawda.
   it('oferta bez ani jednego kandydata ZOSTAJE na liscie, z sama droga reczna', async () => {
-    wzorO('Kotwica morska');
-    oferta('Zakaz palenia');
+    kartaO('Kandelabr srebrny');
+    oferta('Trójnóg podłogowy');
 
-    const wiersz = wierszOferty((await get(serwer(), '/magazyn/powiazania')).body, 'Zakaz palenia');
+    const wiersz = wierszOferty((await get(serwer(), '/magazyn/powiazania')).body, 'Trójnóg podłogowy');
     expect(kandydaci(wiersz)).toEqual([]);
-    // Zostaje SAMO „nie wiążę" — zaden wzor nie zostal podsuniety na chybil trafil.
+    // Zostaje SAMO „nie wiążę" — zadna karta nie zostala podsunieta na chybil trafil.
     expect(wybory(wiersz)).toEqual(['']);
     // Pole reczne jest w KAZDYM wierszu, takze w tym — inaczej ta oferta bylaby nie do
     // powiazania z panelu w ogole.
     expect(wiersz).toMatch(/<input class="reczny" type="text" name="reczny_\d+"/);
     // I wiersz MOWI, ze pusto jest celowo, a nie ze cos sie nie doliczylo.
-    expect(wiersz).toContain('Żaden wzór nie ma z tą nazwą wspólnego słowa');
+    expect(wiersz).toContain('Żadna karta nie ma z tą nazwą wspólnego słowa');
   });
 
   it('oferta JUZ powiazana znika z listy roboty', async () => {
-    const kotwica = wzorO('Kotwica morska');
-    const zwiazana = oferta('KOTWICA szablon');
-    oferta('LATARNIA szablon');
-    powiazProdukt(db, zwiazana, kotwica);
+    const kandelabr = kartaO('Kandelabr srebrny');
+    const zwiazana = oferta('KANDELABR ozdobny');
+    oferta('LAMPION ozdobny');
+    powiazProdukt(db, zwiazana, kandelabr);
 
-    expect(nazwyOfert((await get(serwer(), '/magazyn/powiazania')).body)).toEqual(['LATARNIA szablon']);
+    expect(nazwyOfert((await get(serwer(), '/magazyn/powiazania')).body)).toEqual(['LAMPION ozdobny']);
   });
 
   // ⚠️⚠️ ROZSTRZYGNIECIE WLASCICIELA: NIC NIE WIAZE SIE BEZ KLIKNIECIA. Zadnego automatu,
   // zadnego „powiąż wszystkie pewne" wykonywanego przy wejsciu na strone.
   it('wejscie na strone niczego NIE wiaze', async () => {
-    wzorO('Nie parkować');
-    const id = oferta('NIE PARKOWAĆ');
+    kartaO('Klosz mleczny');
+    const id = oferta('KLOSZ MLECZNY');
     const app = serwer();
 
     // Ocena 100% — gdyby gdziekolwiek stal automat, ta oferta bylaby pierwsza, ktora zlapie.
     await get(app, '/magazyn/powiazania');
     await get(app, '/magazyn/powiazania');
 
-    expect(wzorOferty(id)).toBe(null);
+    expect(kartaOferty(id)).toBe(null);
     expect(niepowiazaneOfertyAllegro(db, ['allegro_szkicownia', 'allegro_amarka'])).toHaveLength(1);
   });
 
-  // ⚠️⚠️ ROZSTRZYGNIECIE 3: 447 wierszy razy ~965 wzorow to megabajty. Lista podpowiedzi
+  // ⚠️⚠️ ROZSTRZYGNIECIE 3: 447 wierszy razy ~965 kart to megabajty. Lista podpowiedzi
   // stoi na stronie RAZ i wszystkie wiersze pokazuja na nia atrybutem `list`.
-  it('lista wszystkich wzorow stoi na stronie RAZ, a nie w kazdym wierszu', async () => {
-    for (let i = 0; i < 12; i += 1) wzorO(`Wzor numer ${i}`);
+  it('lista wszystkich kart stoi na stronie RAZ, a nie w kazdym wierszu', async () => {
+    for (let i = 0; i < 12; i += 1) kartaO(`Karta numer ${i}`);
     for (let i = 0; i < 5; i += 1) oferta(`Oferta numer ${i}`);
 
     const r = await get(serwer(), '/magazyn/powiazania');
     expect(r.body.match(/<datalist/g)).toHaveLength(1);
     // ...a kazdy wiersz z niej korzysta — inaczej „jedna lista" znaczyloby „lista, ktorej
     // nikt nie uzywa", a droga reczna nie istnialaby.
-    expect(r.body.match(/list="wzory-do-wyboru"/g)).toHaveLength(5);
+    expect(r.body.match(/list="karty-do-wyboru"/g)).toHaveLength(5);
     // Ani jednego pola wyboru z pelnym katalogiem w srodku.
-    expect(r.body).not.toContain('<select name="wzor_');
+    expect(r.body).not.toContain('<select name="karta_');
   });
 
   it('cala robota jedzie JEDNYM formularzem — zatwierdzenie jest HURTOWE', async () => {
-    wzorO('Kotwica morska');
-    oferta('KOTWICA szablon');
-    oferta('KOTWICA duża');
+    kartaO('Kandelabr srebrny');
+    oferta('KANDELABR ozdobny');
+    oferta('KANDELABR duży');
 
     const r = await get(serwer(), '/magazyn/powiazania');
     const formularz = /<form class="powiazania"[\s\S]*?<\/form>/.exec(r.body)[0];
     // Oba wiersze w JEDNYM formularzu: przycisk zatwierdza wszystkie naraz.
-    expect(formularz).toContain('<div class="nazwa-oferty">KOTWICA szablon</div>');
-    expect(formularz).toContain('<div class="nazwa-oferty">KOTWICA duża</div>');
+    expect(formularz).toContain('<div class="nazwa-oferty">KANDELABR ozdobny</div>');
+    expect(formularz).toContain('<div class="nazwa-oferty">KANDELABR duży</div>');
     expect(formularz).toMatch(/action="\/magazyn\/powiazania"/);
   });
 });
 
 describe('GET /magazyn/powiazania — gdy nie ma z czym wiazac', () => {
   // ⚠️⚠️ TO JEST STAN DZISIEJSZY PRODUKCJI, a nie przypadek krancowy: 447 ofert i ZERO
-  // wzorow, bo zakladanie wzorow to osobny przycisk. Pusta tabela z 447 wierszami bez ani
+  // kart, bo zakladanie kart to osobny przycisk. Pusta tabela z 447 wierszami bez ani
   // jednego kandydata wygladalaby jak zepsute dopasowanie.
-  it('ZERO wzorow: ekran mowi, od czego zaczac, zamiast pokazac pusta tabele', async () => {
-    oferta('KOTWICA szablon');
+  it('ZERO kart: ekran mowi, od czego zaczac, zamiast pokazac pusta tabele', async () => {
+    oferta('KANDELABR ozdobny');
     const r = await get(serwer(), '/magazyn/powiazania');
 
     expect(r.statusCode).toBe(200);
-    expect(r.body).toContain('Rejestr wzorów jest pusty');
+    expect(r.body).toContain('Rejestr kart jest pusty');
     // ⚠️ ASERCJA NA DRODZE WYJSCIA, nie na samym slowie „pusty": bez wskazania przycisku
     // komunikat zostawia czlowieka z ta sama niewiedza, co pusta tabela.
-    expect(r.body).toContain('Utwórz wzory z niepowiązanych');
+    expect(r.body).toContain('Utwórz karty z niepowiązanych');
     // I ANI JEDNEGO wiersza oferty — bo nie ma czego przy nim postawic.
     expect(nazwyOfert(r.body)).toEqual([]);
   });
 
-  it('wzory sa, ofert nie ma: ekran mowi, ze robota skonczona', async () => {
-    wzorO('Kotwica morska');
+  it('karty sa, ofert nie ma: ekran mowi, ze robota skonczona', async () => {
+    kartaO('Kandelabr srebrny');
     const r = await get(serwer(), '/magazyn/powiazania');
 
     expect(r.body).toContain('Żadna oferta Allegro nie czeka na powiązanie');
-    // Druga polowa pary: komunikat „rejestr pusty" ma tu MILCZEC — wzor przeciez jest.
-    expect(r.body).not.toContain('Rejestr wzorów jest pusty');
+    // Druga polowa pary: komunikat „rejestr pusty" ma tu MILCZEC — karta przeciez jest.
+    expect(r.body).not.toContain('Rejestr kart jest pusty');
   });
 
   it('panel bez sklepow oddaje strone „pusta celowo", a nie 404', async () => {
@@ -256,201 +256,201 @@ describe('GET /magazyn/powiazania — gdy nie ma z czym wiazac', () => {
 
 describe('POST /magazyn/powiazania — zatwierdzenie hurtem', () => {
   it('wiaze wiele par jednym kliknieciem', async () => {
-    const kotwica = wzorO('Kotwica morska');
-    const latarnia = wzorO('Latarnia morska');
-    const a = oferta('KOTWICA szablon');
-    const b = oferta('LATARNIA szablon');
+    const kandelabr = kartaO('Kandelabr srebrny');
+    const lampion = kartaO('Lampion srebrny');
+    const a = oferta('KANDELABR ozdobny');
+    const b = oferta('LAMPION ozdobny');
 
     const r = await post(serwer(), '/magazyn/powiazania', {
-      [`wzor_${a}`]: String(kotwica), [`wzor_${b}`]: String(latarnia),
+      [`karta_${a}`]: String(kandelabr), [`karta_${b}`]: String(lampion),
     });
 
     expect(r.statusCode).toBe(200);
-    expect(wzorOferty(a)).toBe(kotwica);
-    expect(wzorOferty(b)).toBe(latarnia);
+    expect(kartaOferty(a)).toBe(kandelabr);
+    expect(kartaOferty(b)).toBe(lampion);
     // Ekran wyniku MOWI, ile powiazano — bez tego operacja hurtowa jest niema.
     expect(panelWyniku(r.body)).toContain('Powiązane oferty: <strong>2</strong>');
   });
 
   it('wiersz zostawiony na „nie wiążę" NIE zostaje powiazany', async () => {
-    const kotwica = wzorO('Kotwica morska');
-    const a = oferta('KOTWICA szablon');
-    const b = oferta('LATARNIA szablon');
+    const kandelabr = kartaO('Kandelabr srebrny');
+    const a = oferta('KANDELABR ozdobny');
+    const b = oferta('LAMPION ozdobny');
 
     const r = await post(serwer(), '/magazyn/powiazania', {
-      [`wzor_${a}`]: String(kotwica), [`wzor_${b}`]: '', [`reczny_${b}`]: '',
+      [`karta_${a}`]: String(kandelabr), [`karta_${b}`]: '', [`reczny_${b}`]: '',
     });
 
     // Druga polowa pary: straznik ma MILCZEC przy pustym wyborze, a nie wiazac „czegokolwiek".
-    expect(wzorOferty(a)).toBe(kotwica);
-    expect(wzorOferty(b)).toBe(null);
+    expect(kartaOferty(a)).toBe(kandelabr);
+    expect(kartaOferty(b)).toBe(null);
     // ⚠️ I NIE MELDUJE GO JAKO POMINIETEGO. Brak decyzji nie jest pominieciem: przy 447
     // wierszach kazde zatwierdzenie zostawia setki pustych, a lista „pominietych" z setkami
     // pozycji przestaje byc czytana — czyli chowa te kilka, ktore naprawde cos znacza.
-    expect(panelWyniku(r.body)).not.toContain('LATARNIA szablon');
-    expect(panelWyniku(r.body)).not.toContain('nie rozpoznałem wzoru');
+    expect(panelWyniku(r.body)).not.toContain('LAMPION ozdobny');
+    expect(panelWyniku(r.body)).not.toContain('nie rozpoznałem karty');
   });
 
   it('wpis reczny BIJE zaznaczonego kandydata', async () => {
-    const kotwica = wzorO('Kotwica morska');
-    const latarnia = wzorO('Latarnia morska');
-    const a = oferta('KOTWICA szablon');
+    const kandelabr = kartaO('Kandelabr srebrny');
+    const lampion = kartaO('Lampion srebrny');
+    const a = oferta('KANDELABR ozdobny');
 
     // Czlowiek zaznaczyl podpowiedz, a potem wpisal wlasny wybor — wygrywa to, co wpisal.
     const r = await post(serwer(), '/magazyn/powiazania', {
-      [`wzor_${a}`]: String(kotwica), [`reczny_${a}`]: `Latarnia morska [#${latarnia}]`,
+      [`karta_${a}`]: String(kandelabr), [`reczny_${a}`]: `Lampion srebrny [#${lampion}]`,
     });
 
     expect(r.statusCode).toBe(200);
-    expect(wzorOferty(a)).toBe(latarnia);
+    expect(kartaOferty(a)).toBe(lampion);
   });
 
-  it('wpis reczny przyjmuje sam numer wzoru, a nie tylko pozycje z listy', async () => {
-    const kotwica = wzorO('Kotwica morska');
-    const a = oferta('KOTWICA szablon');
+  it('wpis reczny przyjmuje sam numer karty, a nie tylko pozycje z listy', async () => {
+    const kandelabr = kartaO('Kandelabr srebrny');
+    const a = oferta('KANDELABR ozdobny');
 
-    await post(serwer(), '/magazyn/powiazania', { [`reczny_${a}`]: ` ${kotwica} ` });
-    expect(wzorOferty(a)).toBe(kotwica);
+    await post(serwer(), '/magazyn/powiazania', { [`reczny_${a}`]: ` ${kandelabr} ` });
+    expect(kartaOferty(a)).toBe(kandelabr);
   });
 
   // ⚠️ NIEZMIENNIK 4.13a: pominiete wracaja Z POWODEM i musza byc widoczne. Ciche
   // wyrzucenie wiersza z hurtu znaczyloby „zatwierdzilem czterdziesci, weszlo trzydziesci
   // dziewiec" — bez slowa o tym, ktore i dlaczego.
   it('wpis reczny, ktorego nie da sie rozpoznac, POMIJA wiersz i mowi o tym', async () => {
-    const kotwica = wzorO('Kotwica morska');
-    const a = oferta('KOTWICA szablon');
-    const b = oferta('LATARNIA szablon');
+    const kandelabr = kartaO('Kandelabr srebrny');
+    const a = oferta('KANDELABR ozdobny');
+    const b = oferta('LAMPION ozdobny');
 
     const r = await post(serwer(), '/magazyn/powiazania', {
-      [`wzor_${a}`]: String(kotwica), [`reczny_${b}`]: 'Wzoru o takiej nazwie nie ma',
+      [`karta_${a}`]: String(kandelabr), [`reczny_${b}`]: 'Karty o takiej nazwie nie ma',
     });
 
     // Reszta hurtu przechodzi — jeden zly wiersz nie blokuje trzydziestu dziewieciu dobrych.
-    expect(wzorOferty(a)).toBe(kotwica);
-    expect(wzorOferty(b)).toBe(null);
+    expect(kartaOferty(a)).toBe(kandelabr);
+    expect(kartaOferty(b)).toBe(null);
     // ⚠️ W PANELU WYNIKU, a nie „gdziekolwiek na stronie": oferta pominieta NIE zostala
     // powiazana, wiec dalej stoi w tabeli roboczej kilka wierszy nizej — asercja na golej
     // nazwie byla spelniona przez sama te tabele, takze po skasowaniu calego panelu wyniku.
-    expect(panelWyniku(r.body)).toContain('LATARNIA szablon');
-    expect(panelWyniku(r.body)).toContain('nie rozpoznałem wzoru');
+    expect(panelWyniku(r.body)).toContain('LAMPION ozdobny');
+    expect(panelWyniku(r.body)).toContain('nie rozpoznałem karty');
   });
 
-  it('numer wzoru, ktorego w rejestrze nie ma, tez POMIJA wiersz zamiast wywalac zapis', async () => {
-    const kotwica = wzorO('Kotwica morska');
-    const a = oferta('KOTWICA szablon');
-    const b = oferta('LATARNIA szablon');
+  it('numer karty spoza rejestru tez POMIJA wiersz zamiast wywalac zapis', async () => {
+    const kandelabr = kartaO('Kandelabr srebrny');
+    const a = oferta('KANDELABR ozdobny');
+    const b = oferta('LAMPION ozdobny');
 
     const r = await post(serwer(), '/magazyn/powiazania', {
-      [`wzor_${a}`]: String(kotwica), [`wzor_${b}`]: '999999',
+      [`karta_${a}`]: String(kandelabr), [`karta_${b}`]: '999999',
     });
 
     expect(r.statusCode).toBe(200);
-    expect(wzorOferty(a)).toBe(kotwica);
-    expect(wzorOferty(b)).toBe(null);
-    expect(panelWyniku(r.body)).toContain('nie rozpoznałem wzoru');
+    expect(kartaOferty(a)).toBe(kandelabr);
+    expect(kartaOferty(b)).toBe(null);
+    expect(panelWyniku(r.body)).toContain('nie rozpoznałem karty');
   });
 
   // ⚠️⚠️ FORMULARZ Z 447 WIERSZAMI ZYJE W KARCIE DLUGO. Druga karta, przycisk Wstecz albo
   // powtorzone wyslanie przynosza pare, ktora ktos juz rozstrzygnal INACZEJ.
   it('oferta powiazana w miedzyczasie NIE daje sie nadpisac i wraca jako nieaktualna', async () => {
-    const kotwica = wzorO('Kotwica morska');
-    const latarnia = wzorO('Latarnia morska');
-    const a = oferta('KOTWICA szablon');
-    powiazProdukt(db, a, kotwica);
+    const kandelabr = kartaO('Kandelabr srebrny');
+    const lampion = kartaO('Lampion srebrny');
+    const a = oferta('KANDELABR ozdobny');
+    powiazProdukt(db, a, kandelabr);
 
-    const r = await post(serwer(), '/magazyn/powiazania', { [`wzor_${a}`]: String(latarnia) });
+    const r = await post(serwer(), '/magazyn/powiazania', { [`karta_${a}`]: String(lampion) });
 
-    expect(wzorOferty(a)).toBe(kotwica);
+    expect(kartaOferty(a)).toBe(kandelabr);
     expect(panelWyniku(r.body)).toContain('ktoś ją powiązał w międzyczasie');
     // ...i mowi to NAZWA, a nie numerem wiersza — inaczej komunikat jest nie do uzycia.
-    expect(panelWyniku(r.body)).toContain('KOTWICA szablon');
+    expect(panelWyniku(r.body)).toContain('KANDELABR ozdobny');
   });
 
   it('bez naglowka Origin ochrona CSRF odmawia i NIC sie nie wiaze', async () => {
-    const kotwica = wzorO('Kotwica morska');
-    const a = oferta('KOTWICA szablon');
+    const kandelabr = kartaO('Kandelabr srebrny');
+    const a = oferta('KANDELABR ozdobny');
 
-    const r = await post(serwer(), '/magazyn/powiazania', { [`wzor_${a}`]: String(kotwica) },
+    const r = await post(serwer(), '/magazyn/powiazania', { [`karta_${a}`]: String(kandelabr) },
       { authorization: auth.authorization });
 
     expect(r.statusCode).toBeGreaterThanOrEqual(400);
-    expect(wzorOferty(a)).toBe(null);
+    expect(kartaOferty(a)).toBe(null);
   });
 
   it('panel bez sklepow odmawia CZYTELNIE zamiast udawac, ze powiazal', async () => {
-    const kotwica = wzorO('Kotwica morska');
-    const a = oferta('KOTWICA szablon');
+    const kandelabr = kartaO('Kandelabr srebrny');
+    const a = oferta('KANDELABR ozdobny');
     const app = buildOmsServer({ db, config });
 
-    const r = await post(app, '/magazyn/powiazania', { [`wzor_${a}`]: String(kotwica) });
+    const r = await post(app, '/magazyn/powiazania', { [`karta_${a}`]: String(kandelabr) });
 
     expect(r.statusCode).toBe(503);
     expect(r.body).toContain('nie ma skąd czytać katalogu');
     // ⚠️ ODMOWA MA POPRZEDZAC ZAPIS, a nie po nim nastapic. Straznik postawiony ZA operacja
     // oddaje ten sam kod bledu i ten sam komunikat, a powiazanie i tak siedzi juz w bazie —
     // czyli 503 klamie. Bez tej asercji przesuniecie strazniks jest niewidoczne.
-    expect(wzorOferty(a)).toBe(null);
+    expect(kartaOferty(a)).toBe(null);
   });
 });
 
 describe('POST /magazyn/powiazania/odepnij — wiazanie jest ODWRACALNE', () => {
   it('odpina oferte i wraca ona na liste do powiazania', async () => {
-    const kotwica = wzorO('Kotwica morska');
-    const a = oferta('KOTWICA szablon');
-    powiazProdukt(db, a, kotwica);
+    const kandelabr = kartaO('Kandelabr srebrny');
+    const a = oferta('KANDELABR ozdobny');
+    powiazProdukt(db, a, kandelabr);
     const app = serwer();
 
     const r = await post(app, '/magazyn/powiazania/odepnij', { id: String(a) });
 
     expect(r.statusCode).toBe(200);
-    expect(wzorOferty(a)).toBe(null);
-    expect(nazwyOfert(r.body)).toContain('KOTWICA szablon');
+    expect(kartaOferty(a)).toBe(null);
+    expect(nazwyOfert(r.body)).toContain('KANDELABR ozdobny');
   });
 
   it('ekran POKAZUJE, co jest juz powiazane — inaczej nie ma czego odpiac', async () => {
-    const kotwica = wzorO('Kotwica morska');
-    const a = oferta('KOTWICA szablon');
-    powiazProdukt(db, a, kotwica);
+    const kandelabr = kartaO('Kandelabr srebrny');
+    const a = oferta('KANDELABR ozdobny');
+    powiazProdukt(db, a, kandelabr);
 
     const r = await get(serwer(), '/magazyn/powiazania');
     const juz = /<section class="panel juz-powiazane"[\s\S]*?<\/section>/.exec(r.body)[0];
-    // Nazwa oferty I nazwa wzoru w JEDNYM wierszu — bez pary czlowiek nie wie, co odpina.
-    expect(juz).toMatch(/KOTWICA szablon[\s\S]{0,400}Kotwica morska/);
+    // Nazwa oferty I nazwa karty w JEDNYM wierszu — bez pary czlowiek nie wie, co odpina.
+    expect(juz).toMatch(/KANDELABR ozdobny[\s\S]{0,400}Kandelabr srebrny/);
     expect(juz).toMatch(new RegExp(`<input type="hidden" name="id" value="${a}">`));
   });
 
   it('bez naglowka Origin ochrona CSRF odmawia i powiazanie zostaje', async () => {
-    const kotwica = wzorO('Kotwica morska');
-    const a = oferta('KOTWICA szablon');
-    powiazProdukt(db, a, kotwica);
+    const kandelabr = kartaO('Kandelabr srebrny');
+    const a = oferta('KANDELABR ozdobny');
+    powiazProdukt(db, a, kandelabr);
 
     const r = await post(serwer(), '/magazyn/powiazania/odepnij', { id: String(a) },
       { authorization: auth.authorization });
 
     expect(r.statusCode).toBeGreaterThanOrEqual(400);
-    expect(wzorOferty(a)).toBe(kotwica);
+    expect(kartaOferty(a)).toBe(kandelabr);
   });
 });
 
 describe('GET /magazyn/powiazania — szukanie i kolejnosc z adresu', () => {
   function katalog() {
-    wzorO('Kotwica morska');
-    wzorO('Latarnia morska');
-    oferta('KOTWICA szablon', { kanal: 'allegro_szkicownia' });
-    oferta('LATARNIA szablon', { kanal: 'allegro_amarka' });
-    oferta('MANDALA szablon', { kanal: 'allegro_szkicownia' });
+    kartaO('Kandelabr srebrny');
+    kartaO('Lampion srebrny');
+    oferta('KANDELABR ozdobny', { kanal: 'allegro_szkicownia' });
+    oferta('LAMPION ozdobny', { kanal: 'allegro_amarka' });
+    oferta('ABAŻUR ozdobny', { kanal: 'allegro_szkicownia' });
   }
 
   it('fraza zaweza liste ofert', async () => {
     katalog();
-    expect(nazwyOfert((await get(serwer(), '/magazyn/powiazania?fraza=latarnia')).body))
-      .toEqual(['LATARNIA szablon']);
+    expect(nazwyOfert((await get(serwer(), '/magazyn/powiazania?fraza=lampion')).body))
+      .toEqual(['LAMPION ozdobny']);
   });
 
   it('filtr konta Allegro zaweza liste ofert', async () => {
     katalog();
     expect(nazwyOfert((await get(serwer(), '/magazyn/powiazania?kanal=allegro_amarka')).body))
-      .toEqual(['LATARNIA szablon']);
+      .toEqual(['LAMPION ozdobny']);
   });
 
   it('nierozpoznana wartosc filtru NIE zaweza listy do pustej', async () => {
@@ -466,13 +466,13 @@ describe('GET /magazyn/powiazania — szukanie i kolejnosc z adresu', () => {
   });
 
   it('kolejnosc po ocenie stawia najpewniejsze na gorze, a nazwa sortowania z prototypu NIE wywala ekranu', async () => {
-    wzorO('Kotwica morska');
-    oferta('Kotwica morska');
-    oferta('KOTWICA duża ozdobna na ścianę salonu w domu jednorodzinnym');
+    kartaO('Kandelabr srebrny');
+    oferta('Kandelabr srebrny');
+    oferta('KANDELABR duży dekoracyjny do salonu w domu jednorodzinnym');
     const app = serwer();
 
     expect(nazwyOfert((await get(app, '/magazyn/powiazania?sort=ocena&kier=desc')).body))
-      .toEqual(['Kotwica morska', 'KOTWICA duża ozdobna na ścianę salonu w domu jednorodzinnym']);
+      .toEqual(['Kandelabr srebrny', 'KANDELABR duży dekoracyjny do salonu w domu jednorodzinnym']);
 
     // ⚠️ `SORTOWANIE[x] ?? domyslne` oddaje TU funkcje z Object.prototype — realna
     // pieciusetka zlapana przy Zadaniu 4 na ekranie magazynu. Nierozpoznana nazwa WRACA
@@ -484,7 +484,7 @@ describe('GET /magazyn/powiazania — szukanie i kolejnosc z adresu', () => {
       // asercji test przechodzilby takze wtedy, gdyby nierozpoznana nazwa zostawiala
       // kolejnosc losowa albo ostatnia uzyta.
       expect(nazwyOfert(r.body), zly).toEqual([
-        'KOTWICA duża ozdobna na ścianę salonu w domu jednorodzinnym', 'Kotwica morska',
+        'KANDELABR duży dekoracyjny do salonu w domu jednorodzinnym', 'Kandelabr srebrny',
       ]);
     }
   });
@@ -493,11 +493,11 @@ describe('GET /magazyn/powiazania — szukanie i kolejnosc z adresu', () => {
     // Niezmiennik 4.13b: filtry LACZA SIE z fraza, a nie kasuja jej. Formularz GET wysyla
     // wylacznie WLASNE pola, wiec kazdy z nich musi niesc wartosci drugiego ukrytym polem.
     katalog();
-    const r = await get(serwer(), '/magazyn/powiazania?fraza=szablon&kanal=allegro_szkicownia');
+    const r = await get(serwer(), '/magazyn/powiazania?fraza=ozdobny&kanal=allegro_szkicownia');
     const szukajka = /<form class="szukajka"[\s\S]*?<\/form>/.exec(r.body)[0];
 
     expect(szukajka).toContain('<input type="hidden" name="kanal" value="allegro_szkicownia">');
-    expect(szukajka).toContain('value="szablon"');
+    expect(szukajka).toContain('value="ozdobny"');
   });
 });
 
@@ -520,7 +520,7 @@ describe('wejscie na ekran powiazan', () => {
   // wchodzi, zeby przejsc kilkanascie wierszy zawezeniem.
   // ---------------------------------------------------------------------------------
   describe('powrót na zawężony magazyn', () => {
-    const ZAWEZENIE = '/magazyn?fraza=kotwica&brak=sku';
+    const ZAWEZENIE = '/magazyn?fraza=kandelabr&brak=sku';
     // Adres, ktory lista SKLADA jako swoj wlasny (adresPowrotuListy) — z kolejnoscia,
     // bo powrot ma odtworzyc ekran, a nie samo zawezenie.
     const ZAWEZENIE_Z_LISTY = ZAWEZENIE + '&sort=nazwa&kier=asc';
@@ -532,15 +532,15 @@ describe('wejscie na ekran powiazan', () => {
     };
 
     it('odnośnik z listy magazynu niesie zawężenie, na którym stoi operator', async () => {
-      wzorO('Kotwica 70x100');
+      kartaO('Kandelabr 70x100');
       const app = serwer();
       const r = await get(app, ZAWEZENIE);
       expect(r.body).toContain(`href="/magazyn/powiazania?wroc=${encodeURIComponent(ZAWEZENIE_Z_LISTY)}"`);
     });
 
     it('ekran powiązań odsyła tam, skąd kliknięto', async () => {
-      wzorO('Kotwica 70x100');
-      oferta('Kotwica szablon');
+      kartaO('Kandelabr 70x100');
+      oferta('Kandelabr ozdobny');
       const app = serwer();
       const r = await get(app, `/magazyn/powiazania?wroc=${encodeURIComponent(ZAWEZENIE)}`);
       expect(odnosnikPowrotu(r.body)).toContain(`href="${ESC}"`);
@@ -549,8 +549,8 @@ describe('wejscie na ekran powiazan', () => {
     // ⚠️ Adres jedzie KAZDA droga tego ekranu — tak samo, jak tryb kolumn na liscie magazynu
     // (4.66). Naglowek sortujacy skladany od zera zgubilby go po pierwszym klknieciu.
     it('przeżywa własną nawigację ekranu: sortowanie, filtry i szukajkę', async () => {
-      wzorO('Kotwica 70x100');
-      oferta('Kotwica szablon');
+      kartaO('Kandelabr 70x100');
+      oferta('Kandelabr ozdobny');
       const app = serwer();
       const r = await get(app, `/magazyn/powiazania?wroc=${encodeURIComponent(ZAWEZENIE)}`);
       // Nagłówki sortujące.
@@ -577,10 +577,10 @@ describe('wejscie na ekran powiazan', () => {
     // Obie trasy POST renderują TEN SAM ekran (`ekranPowiazan`), więc adres ma przeżyć
     // także wiązanie hurtem i odpięcie — inaczej ginie po pierwszej wykonanej robocie.
     it('przeżywa powiązanie hurtem i odpięcie', async () => {
-      const w = wzorO('Kotwica 70x100');
-      const o = oferta('Kotwica szablon');
+      const w = kartaO('Kandelabr 70x100');
+      const o = oferta('Kandelabr ozdobny');
       const app = serwer();
-      const powiazane = await post(app, '/magazyn/powiazania', { [`wzor_${o}`]: String(w), wroc: ZAWEZENIE });
+      const powiazane = await post(app, '/magazyn/powiazania', { [`karta_${o}`]: String(w), wroc: ZAWEZENIE });
       expect(odnosnikPowrotu(powiazane.body)).toContain(`href="${ESC}"`);
       // ⚠️ Formularz „Odepnij" stoi w sekcji „już powiązane", czyli powstaje DOPIERO po
       // powiązaniu — i on też musi oddać adres, inaczej odpięcie odsyła na goły magazyn.
@@ -593,8 +593,8 @@ describe('wejscie na ekran powiazan', () => {
     });
 
     it('adres spoza magazynu jest odrzucany — zostaje goły magazyn', async () => {
-      wzorO('Kotwica 70x100');
-      oferta('Kotwica szablon');
+      kartaO('Kandelabr 70x100');
+      oferta('Kandelabr ozdobny');
       const app = serwer();
       for (const zly of ['//obcy.example.com/', '/?status=nowe', '/magazyn//obcy']) {
         const r = await get(app, `/magazyn/powiazania?wroc=${encodeURIComponent(zly)}`);

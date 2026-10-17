@@ -774,50 +774,68 @@ function opcjeCli(argv) {
 }
 
 /** Tworzy NOWY plik bazy z demo. Istniejący plik (albo jego -wal/-shm) = odmowa, bajty nietknięte. */
-// Typowy rozmiar opakowania wzoru (szerokość × wysokość w mm) i czy mieści się w paczkomacie.
-const WYMIARY_KATEGORII = { 'Lampy stołowe': [300, 450, 'tak'], 'Lampy wiszące': [450, 400, 'nie'], 'Lampy podłogowe': [500, 1600, 'nie'],
-  Kinkiety: [250, 300, 'tak'], 'Lampki nocne': [180, 250, 'tak'], 'Abażury i klosze': [320, 280, 'tak'], Akcesoria: [120, 160, 'tak'] };
+// Czy produkt kategorii mieści się w paczkomacie (wymiary i wagę karty biorą ze sklepu — scripts/demo-dane-katalog.mjs).
+const PACZKOMAT_KATEGORII = { 'Lampy stołowe': 'tak', 'Lampy wiszące': 'nie', 'Lampy podłogowe': 'nie',
+  Kinkiety: 'tak', 'Lampki nocne': 'tak', 'Abażury i klosze': 'tak', Akcesoria: 'tak' };
 
-// Oferty outletu bez wzoru — żeby ekran „Do powiązania” w Magazynie też miał treść.
+// Oferty outletu bez karty — żeby ekran „Do powiązania” w Magazynie też miał treść.
 const OUTLET_NIEPOWIAZANY = new Set(['LMP-NOC-002-OUT', 'LMP-ABA-004-OUT']);
 
 /**
  * PRZ-076: lustro magazynu z katalogu demo (scripts/demo-dane-katalog.mjs). Idzie PRAWDZIWYM odswiezMagazyn —
- * tą samą drogą co „Synchronizuj” — potem wzory z produktów sklepu i oferty Allegro przypięte po SKU (-OUT → bazowe).
+ * tą samą drogą co „Synchronizuj” — potem karty z produktów sklepu i oferty Allegro przypięte po SKU (-OUT → bazowe).
  */
 async function wypelnijMagazyn(db, { dzis }) {
   const { odswiezMagazyn } = await import('../src/moduly/magazyn/services/magazyn-sync.js');
-  const { utworzWzoryZNiepowiazanych, niepowiazaneOfertyAllegro, powiazOfertyHurtem, zapiszWzor } = await import('../src/oms/db/magazyn.js');
+  const { utworzKartyZNiepowiazanych, niepowiazaneOfertyAllegro, powiazOfertyHurtem, zapiszKarte } = await import('../src/oms/db/magazyn.js');
   const { klienciKataloguDemo } = await import('./demo-dane-katalog.mjs');
   const { sklepy, allegro, kanalySklepow, kanalyAllegro } = klienciKataloguDemo();
   const teraz = () => `${dzis}T04:00:00.000Z`;
   const przebieg = await odswiezMagazyn({ db, sklepy, allegro, teraz, kanalySklepow, kanalyAllegro, log: () => {} });
   const bledy = przebieg.kanaly.filter((k) => k.blad);
   if (bledy.length) throw new Error(`DEMO_MAGAZYN: ${bledy.map((k) => `${k.kanal}: ${k.blad}`).join('; ')}`);
-  const wzory = utworzWzoryZNiepowiazanych(db, { teraz, kanalySklepow });
-  // Wzór powstaje bez SKU (nadanie SKU to w Magazynie osobny krok) — demo dostaje SKU katalogu, jak firma po nadaniu.
-  const poSku = new Map(db.prepare(`SELECT wzor_id, sku_sklepu FROM produkty_sklepowe
-    WHERE kanal IN (${kanalySklepow.map(() => '?').join(',')}) AND wzor_id IS NOT NULL AND sku_sklepu IS NOT NULL`)
-    .all(...kanalySklepow).map((p) => [p.sku_sklepu, p.wzor_id]));
-  for (const [sku, wzorId] of poSku) zapiszWzor(db, wzorId, { sku }, { at: teraz() });
-  // Firma po porządkach: wymiary i paczkomat uzupełnione, poza kilkoma wzorami — ekran braków ma co pokazać
-  // (0/30 kompletnych wyglądałoby na magazyn, którym nikt się nie zajmuje).
-  const wzoryDemo = db.prepare('SELECT id, kategoria_glowna FROM wzory ORDER BY id').all();
-  for (const [i, w] of wzoryDemo.entries()) {
-    const [szer, wys, paczkomat] = WYMIARY_KATEGORII[w.kategoria_glowna] ?? [300, 300, 'tak'];
-    const bezWymiarow = i >= wzoryDemo.length - 3;
-    const bezPaczkomatu = i < 2;
-    zapiszWzor(db, w.id, {
-      ...(bezWymiarow ? {} : { szerokosc_mm: szer + (i % 4) * 20, wysokosc_mm: wys + (i % 3) * 30 }),
-      ...(bezPaczkomatu ? {} : { paczkomat }),
-    }, { at: teraz() });
+  const karty = utworzKartyZNiepowiazanych(db, { teraz, kanalySklepow });
+  // Karta powstaje bez SKU (nadanie SKU to w Magazynie osobny krok) — demo dostaje SKU katalogu, jak firma po nadaniu.
+  const poSku = new Map(db.prepare(`SELECT karta_id, sku_sklepu FROM produkty_sklepowe
+    WHERE kanal IN (${kanalySklepow.map(() => '?').join(',')}) AND karta_id IS NOT NULL AND sku_sklepu IS NOT NULL`)
+    .all(...kanalySklepow).map((p) => [p.sku_sklepu, p.karta_id]));
+  for (const [sku, kartaId] of poSku) zapiszKarte(db, kartaId, { sku }, { at: teraz() });
+  // Firma po porządkach: paczkomat oznaczony poza dwiema kartami, wymiary ze sklepu poza trzema produktami —
+  // ekran braków ma co pokazać (0/30 kompletnych wyglądałoby na magazyn, którym nikt się nie zajmuje).
+  const kartyDemo = db.prepare('SELECT id, kategoria_glowna FROM karty_produktow ORDER BY id').all();
+  for (const [i, w] of kartyDemo.entries()) {
+    if (i < 2) continue;
+    zapiszKarte(db, w.id, { paczkomat: PACZKOMAT_KATEGORII[w.kategoria_glowna] ?? 'tak' }, { at: teraz() });
   }
   const pary = niepowiazaneOfertyAllegro(db, kanalyAllegro)
     .filter((o) => !OUTLET_NIEPOWIAZANY.has(o.sku_sklepu))
-    .map((o) => ({ produktId: o.id, wzorId: poSku.get(String(o.sku_sklepu).replace(/-OUT$/, '')) }))
-    .filter((p) => p.wzorId);
+    .map((o) => ({ produktId: o.id, kartaId: poSku.get(String(o.sku_sklepu).replace(/-OUT$/, '')) }))
+    .filter((p) => p.kartaId);
   const oferty = powiazOfertyHurtem(db, pary, kanalyAllegro);
-  return { produkty: przebieg.kanaly.reduce((s, k) => s + k.zapisane, 0), wzory: wzory.utworzone, powiazaneOferty: oferty.powiazane.length };
+  // PRZ-091: pozycje zamówień demo powstały przed lustrem i niosą samo SKU — prawdziwe zamówienia z Woo mają
+  // produkt_id/variation_id, z Allegro oferta_id. Uzupełniamy je z lustra po SKU w kanale zamówienia (tylko demo).
+  const naLustro = db.prepare("SELECT produkt_id, wariant_id FROM produkty_sklepowe WHERE kanal = ? AND sku_sklepu = ? LIMIT 1");
+  const doUzupelnienia = db.prepare("SELECT p.id, p.sku, z.sklep FROM pozycje p JOIN zamowienia z ON z.id = p.zamowienie_id WHERE p.sku IS NOT NULL AND p.produkt_id IS NULL AND p.oferta_id IS NULL").all();
+  const ustawOferte = db.prepare('UPDATE pozycje SET oferta_id = ? WHERE id = ?');
+  const ustawProdukt = db.prepare('UPDATE pozycje SET produkt_id = ?, wariant_id = ? WHERE id = ?');
+  for (const p of doUzupelnienia) {
+    const l = naLustro.get(p.sklep, p.sku);
+    if (!l) continue;
+    if (kanalyAllegro.includes(p.sklep)) ustawOferte.run(l.produkt_id, p.id);
+    else ustawProdukt.run(Number(l.produkt_id), l.wariant_id || null, p.id);
+  }
+  // PRZ-091: stany magazynowe WŁĄCZONE w demo (u klienta domyślnie wyłączone) — 30 dni temu, ze stanem otwarcia
+  // dla kart z SKU; zamówienia demo z ostatnich 30 dni zdejmują towar, kilka kart schodzi na minus.
+  const { przelaczStany, dodajRuch } = await import('../src/oms/db/stany-magazynowe.js');
+  const granica = new Date(Date.parse(`${dzis}T04:00:00.000Z`) - 30 * 86400000).toISOString();
+  przelaczStany(db, { wlacz: true, konto: { id: null, login: 'demo' }, at: granica });
+  const zSku = db.prepare("SELECT id FROM karty_produktow WHERE TRIM(COALESCE(sku, '')) <> '' ORDER BY id").all();
+  for (const [i, k] of zSku.entries()) {
+    if (i % 9 === 4) continue; // kilka kart bez stanu otwarcia — zejdą na minus po pierwszym zamówieniu
+    dodajRuch(db, { kartaId: k.id, rodzaj: 'otwarcie', ilosc: 9 + (i * 5) % 17, powod: 'stan otwarcia (demo)',
+      klucz: `otwarcie:${k.id}:${granica}`, konto: { id: null, login: 'demo' }, at: granica });
+  }
+  return { produkty: przebieg.kanaly.reduce((s, k) => s + k.zapisane, 0), karty: karty.utworzone, powiazaneOferty: oferty.powiazane.length };
 }
 
 export async function utworzBazeDemo({ baza, ziarno = 72, dzis, env = ENV_DEMO }) {

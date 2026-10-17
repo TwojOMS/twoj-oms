@@ -27,11 +27,11 @@ const oferta = (id, nazwa = `Oferta ${id}`) => ({
 });
 
 const prosty = (nadpisz = {}) => ({
-  id: 900, type: 'simple', name: 'Stop 70x100 cm', sku: 'PRO-STOP-1', price: '74.90',
-  permalink: 'https://pro.szkicownia.pl/produkt/stop/',
-  short_description: '<p>Szablon</p>',
-  categories: [{ id: 12, name: 'Bezpieczeństwo' }],
-  images: [{ src: 'https://pro.szkicownia.pl/a.jpg' }, { src: 'https://pro.szkicownia.pl/b.jpg' }],
+  id: 900, type: 'simple', name: 'Kropla 70x100 cm', sku: 'LMP-KRO-1', price: '74.90',
+  permalink: 'https://pro.sklep-polcien.example.invalid/produkt/kropla/',
+  short_description: '<p>Lampa</p>',
+  categories: [{ id: 12, name: 'Oświetlenie' }],
+  images: [{ src: 'https://pro.sklep-polcien.example.invalid/a.jpg' }, { src: 'https://pro.sklep-polcien.example.invalid/b.jpg' }],
   ...nadpisz,
 });
 
@@ -49,10 +49,10 @@ describe('odswiezMagazyn — kształt lustra', () => {
     const sklepy = {
       pro: sklepAtrapa(
         [
-          { id: 944, type: 'variable', name: 'EV', price: '49' },
-          { id: 900, type: 'simple', name: 'Stop 70x100 cm', sku: 'PRO-STOP-1', price: '74.90' },
+          { id: 944, type: 'variable', name: 'Plafon', price: '49' },
+          { id: 900, type: 'simple', name: 'Kropla 70x100 cm', sku: 'LMP-KRO-1', price: '74.90' },
         ],
-        { 944: [{ id: 1090, sku: 'PRO-EV-117', price: '49', attributes: [{ name: 'Rozmiar', option: '45 x 65 cm' }] }] },
+        { 944: [{ id: 1090, sku: 'LMP-PLA-117', price: '49', attributes: [{ name: 'Rozmiar', option: '45 x 65 cm' }] }] },
       ),
     };
     const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'szkicownia'], kanalyAllegro: ['allegro_szkicownia', 'allegro_amarka'],  db, sklepy, allegro: null, teraz: teraz() });
@@ -66,7 +66,7 @@ describe('odswiezMagazyn — kształt lustra', () => {
   it('rodzic produktu wariantowego nie wchodzi do lustra', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
-      pro: sklepAtrapa([{ id: 944, type: 'variable', name: 'EV' }],
+      pro: sklepAtrapa([{ id: 944, type: 'variable', name: 'Plafon' }],
         { 944: [{ id: 1090, sku: 'A', price: '49' }, { id: 1091, sku: 'B', price: '74.90' }] }),
     };
     await odswiezMagazyn({ kanalySklepow: ['pro', 'szkicownia'], kanalyAllegro: ['allegro_szkicownia', 'allegro_amarka'],  db, sklepy, allegro: null, teraz: teraz() });
@@ -83,7 +83,7 @@ describe('odswiezMagazyn — kształt lustra', () => {
     const sklep = sklepAtrapa(
       [
         { id: 900, type: 'simple', name: 'A', price: '10' },
-        { id: 944, type: 'variable', name: 'EV' },
+        { id: 944, type: 'variable', name: 'Plafon' },
         { id: 7, type: 'grouped', name: 'G', price: '20' },
       ],
       { 944: [{ id: 1090, sku: 'A', price: '49' }] },
@@ -94,7 +94,7 @@ describe('odswiezMagazyn — kształt lustra', () => {
 
   it('produkt wariantowy bez ani jednego wariantu nie zostawia po sobie wiersza', async () => {
     const db = openOmsDb(':memory:');
-    const sklepy = { pro: sklepAtrapa([{ id: 944, type: 'variable', name: 'EV' }], { 944: [] }) };
+    const sklepy = { pro: sklepAtrapa([{ id: 944, type: 'variable', name: 'Plafon' }], { 944: [] }) };
     const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'szkicownia'], kanalyAllegro: ['allegro_szkicownia', 'allegro_amarka'],  db, sklepy, allegro: null, teraz: teraz() });
     expect(wiersze(db)).toEqual([]);
     expect(kanal(w, 'pro').zapisane).toBe(0);
@@ -107,7 +107,7 @@ describe('odswiezMagazyn — kształt lustra', () => {
   it('identyfikatory z Woo lądują w bazie jako TEKST, nie liczba', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
-      pro: sklepAtrapa([{ id: 944, type: 'variable', name: 'EV' }],
+      pro: sklepAtrapa([{ id: 944, type: 'variable', name: 'Plafon' }],
         { 944: [{ id: 1090, sku: 'A', price: '49' }] }),
     };
     await odswiezMagazyn({ kanalySklepow: ['pro', 'szkicownia'], kanalyAllegro: ['allegro_szkicownia', 'allegro_amarka'],  db, sklepy, allegro: null, teraz: teraz() });
@@ -124,13 +124,13 @@ describe('odswiezMagazyn — kształt lustra', () => {
       kanal: 'pro',
       produkt_id: '900',
       wariant_id: '',
-      nazwa: 'Stop 70x100 cm',
-      sku_sklepu: 'PRO-STOP-1',
+      nazwa: 'Kropla 70x100 cm',
+      sku_sklepu: 'LMP-KRO-1',
       cena_gr: 7490,
-      kategorie_json: '["Bezpieczeństwo"]',
-      zdjecia_json: '["https://pro.szkicownia.pl/a.jpg","https://pro.szkicownia.pl/b.jpg"]',
-      adres: 'https://pro.szkicownia.pl/produkt/stop/',
-      opis_zrodlowy: '<p>Szablon</p>',
+      kategorie_json: '["Oświetlenie"]',
+      zdjecia_json: '["https://pro.sklep-polcien.example.invalid/a.jpg","https://pro.sklep-polcien.example.invalid/b.jpg"]',
+      adres: 'https://pro.sklep-polcien.example.invalid/produkt/kropla/',
+      opis_zrodlowy: '<p>Lampa</p>',
       // Sklepy pobieramy WYLACZNIE ze `status=publish`, wiec stanu publikacji nie ma
       // czym wypelnic — kolumna nalezy do Allegro (ACTIVE/ENDED).
       status_publikacji: null,
@@ -139,31 +139,31 @@ describe('odswiezMagazyn — kształt lustra', () => {
   });
 
   // ⚠️ SKU I CENA ZYJA NA WARIANCIE, a nazwa i kategorie tylko na rodzicu (zmierzone:
-  // rodzic `EV` ma SKU puste i cene jako zakres 49–74,90). Wziecie ceny z rodzica
+  // rodzic `Plafon` ma SKU puste i cene jako zakres 49–74,90). Wziecie ceny z rodzica
   // wpisaloby wszystkim wariantom te sama, nieprawdziwa kwote.
   it('wariant bierze SKU, cenę i adres z SIEBIE, a nazwę i kategorie z rodzica', async () => {
     const db = openOmsDb(':memory:');
     const rodzic = prosty({
-      id: 944, type: 'variable', name: 'EV', sku: '', price: '49',
-      categories: [{ id: 12, name: 'Bezpieczeństwo' }, { id: 13, name: 'Na ściany' }],
+      id: 944, type: 'variable', name: 'Plafon', sku: '', price: '49',
+      categories: [{ id: 12, name: 'Oświetlenie' }, { id: 13, name: 'Na ściany' }],
     });
     const sklepy = {
       pro: sklepAtrapa([rodzic], {
         944: [{
-          id: 1090, sku: 'PRO-EV-117', price: '49.00',
-          permalink: 'https://pro.szkicownia.pl/produkt/ev/?attribute_rozmiar=45',
+          id: 1090, sku: 'LMP-PLA-117', price: '49.00',
+          permalink: 'https://pro.sklep-polcien.example.invalid/produkt/plafon/?attribute_rozmiar=45',
           attributes: [{ name: 'Rozmiar', option: '45 x 65 cm' }],
         }],
       }),
     };
     await odswiezMagazyn({ kanalySklepow: ['pro', 'szkicownia'], kanalyAllegro: ['allegro_szkicownia', 'allegro_amarka'],  db, sklepy, allegro: null, teraz: teraz() });
     expect(jeden(db)).toMatchObject({
-      nazwa: 'EV',
-      sku_sklepu: 'PRO-EV-117',
+      nazwa: 'Plafon',
+      sku_sklepu: 'LMP-PLA-117',
       cena_gr: 4900,
-      adres: 'https://pro.szkicownia.pl/produkt/ev/?attribute_rozmiar=45',
-      kategorie_json: '["Bezpieczeństwo","Na ściany"]',
-      opis_zrodlowy: '<p>Szablon</p>',
+      adres: 'https://pro.sklep-polcien.example.invalid/produkt/plafon/?attribute_rozmiar=45',
+      kategorie_json: '["Oświetlenie","Na ściany"]',
+      opis_zrodlowy: '<p>Lampa</p>',
     });
   });
 
@@ -173,22 +173,22 @@ describe('odswiezMagazyn — kształt lustra', () => {
       pro: sklepAtrapa([prosty({ id: 944, type: 'variable' })], { 944: [{ id: 1090, sku: 'A', price: '1' }] }),
     };
     await odswiezMagazyn({ kanalySklepow: ['pro', 'szkicownia'], kanalyAllegro: ['allegro_szkicownia', 'allegro_amarka'],  db, sklepy, allegro: null, teraz: teraz() });
-    expect(jeden(db).adres).toBe('https://pro.szkicownia.pl/produkt/stop/');
+    expect(jeden(db).adres).toBe('https://pro.sklep-polcien.example.invalid/produkt/kropla/');
   });
 
-  // Zdjecia sa jedna z czterech rzeczy, ktore w Etapie 2 trafiaja do folderu wzoru —
+  // Zdjecia ida na karte produktu i na ekrany zamowien —
   // wlasne zdjecie wariantu jest najbardziej szczegolowe, wiec idzie PIERWSZE, ale
   // galeria rodzica nie ma prawa przez to zginac.
   it('wariant stawia własne zdjęcie przed galerią rodzica, bez powtórzeń', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
       pro: sklepAtrapa([prosty({ id: 944, type: 'variable' })], {
-        944: [{ id: 1090, sku: 'A', price: '1', image: { src: 'https://pro.szkicownia.pl/b.jpg' } }],
+        944: [{ id: 1090, sku: 'A', price: '1', image: { src: 'https://pro.sklep-polcien.example.invalid/b.jpg' } }],
       }),
     };
     await odswiezMagazyn({ kanalySklepow: ['pro', 'szkicownia'], kanalyAllegro: ['allegro_szkicownia', 'allegro_amarka'],  db, sklepy, allegro: null, teraz: teraz() });
     expect(JSON.parse(jeden(db).zdjecia_json))
-      .toEqual(['https://pro.szkicownia.pl/b.jpg', 'https://pro.szkicownia.pl/a.jpg']);
+      .toEqual(['https://pro.sklep-polcien.example.invalid/b.jpg', 'https://pro.sklep-polcien.example.invalid/a.jpg']);
   });
 
   it('produkt bez zdjęć daje null, a nie pustą tablicę', async () => {
@@ -232,15 +232,15 @@ describe('odswiezMagazyn — kształt lustra', () => {
 describe('odswiezMagazyn — rozmiar', () => {
   it('rozmiar produktu prostego bierze się z nazwy', async () => {
     const db = openOmsDb(':memory:');
-    const sklepy = { pro: sklepAtrapa([{ id: 900, type: 'simple', name: 'Stop – 60x62cm', price: '10' }]) };
+    const sklepy = { pro: sklepAtrapa([{ id: 900, type: 'simple', name: 'Kropla – 60x62cm', price: '10' }]) };
     await odswiezMagazyn({ kanalySklepow: ['pro', 'szkicownia'], kanalyAllegro: ['allegro_szkicownia', 'allegro_amarka'],  db, sklepy, allegro: null, teraz: teraz() });
-    expect(jeden(db).rozmiar_tekst).toBe('Stop – 60x62cm');
+    expect(jeden(db).rozmiar_tekst).toBe('Kropla – 60x62cm');
   });
 
   it('rozmiar wariantu bierze się z atrybutu „Rozmiar"', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
-      pro: sklepAtrapa([{ id: 944, type: 'variable', name: 'EV' }], {
+      pro: sklepAtrapa([{ id: 944, type: 'variable', name: 'Plafon' }], {
         944: [{ id: 1090, sku: 'A', price: '1', attributes: [{ name: 'Rozmiar', option: '45 x 65 cm' }] }],
       }),
     };
@@ -249,13 +249,13 @@ describe('odswiezMagazyn — rozmiar', () => {
   });
 
   // ⚠️ ATRYBUT WYGRYWA NAD NAZWA I TO JEST REGULA NOSNA, NIE PORZADKOWA. Na PRO oba niosa
-  // ROZNE, PRAWDZIWE liczby: „Teren monitorowany – 60x62cm" ma atrybut „70 x 100 cm", bo
-  // 60×62 to WZOR, a 70×100 to ARKUSZ, z ktorego sie go wycina. Magazyn trzyma wymiar
-  // ARKUSZA — to on decyduje o pakowaniu, paczkomacie i cenie.
-  it('atrybut wygrywa nad nazwą, bo nazwa niesie wzór, a atrybut arkusz', async () => {
+  // ROZNE, PRAWDZIWE liczby: „Klosz dymny – 60x62cm" ma atrybut „70 x 100 cm", bo
+  // 60×62 to wymiar z tytulu sprzedazowego, a 70×100 to wymiar produktu, ktory sklep wysyla.
+  // Magazyn trzyma wymiar PRODUKTU — to on decyduje o pakowaniu, paczkomacie i cenie.
+  it('atrybut wygrywa nad nazwą, bo nazwa niesie tytuł sprzedażowy, a atrybut wymiar produktu', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
-      pro: sklepAtrapa([{ id: 944, type: 'variable', name: 'Teren monitorowany – 60x62cm' }], {
+      pro: sklepAtrapa([{ id: 944, type: 'variable', name: 'Klosz dymny – 60x62cm' }], {
         944: [{ id: 1090, sku: 'A', price: '1', attributes: [{ name: 'Rozmiar', option: '70 x 100 cm' }] }],
       }),
     };
@@ -263,15 +263,15 @@ describe('odswiezMagazyn — rozmiar', () => {
     expect(jeden(db).rozmiar_tekst).toBe('70 x 100 cm');
   });
 
-  // ⚠️⚠️ SZESC PRODUKTOW WARIANTOWYCH NA szkicownia.pl JEST ZEPSUTYCH W SKLEPIE: warianty
+  // ⚠️⚠️ SZESC PRODUKTOW WARIANTOWYCH W SKLEPIE A JEST ZEPSUTYCH: warianty
   // roznia sie WYLACZNIE cena (79/99/119 zl) i nie niosa ZADNEGO atrybutu rozmiaru.
   // Podstawienie tam nazwy rodzica daloby TRZEM roznym rozmiarom ten sam wymiar — a to
-  // ten wymiar decyduje w Etapie 2, ktory plik .mol jedzie na ploter. Brak jest tu
+  // ten wymiar idzie do sklepu, na etykiete i do wyliczenia gabarytu. Brak jest tu
   // JEDYNA uczciwa odpowiedzia (Zadanie 8 pomija takie warianty po `rozmiar_tekst`).
   it('wariant BEZ atrybutu rozmiaru nie pożycza nazwy rodzica — zostaje pusty', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
-      pro: sklepAtrapa([{ id: 944, type: 'variable', name: 'Woodland 70x100 cm' }], {
+      pro: sklepAtrapa([{ id: 944, type: 'variable', name: 'Kolekcja Las 70x100 cm' }], {
         944: [
           { id: 1, sku: 'A', price: '79' },
           { id: 2, sku: 'B', price: '99', attributes: [{ name: 'Motyw', option: 'Sowa' }] },
@@ -285,7 +285,7 @@ describe('odswiezMagazyn — rozmiar', () => {
   it('produkt prosty z atrybutem „Rozmiar" bierze atrybut, nie nazwę', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
-      pro: sklepAtrapa([prosty({ name: 'Stop – 60x62cm', attributes: [{ name: 'Rozmiar', options: ['70 x 100 cm'] }] })]),
+      pro: sklepAtrapa([prosty({ name: 'Kropla – 60x62cm', attributes: [{ name: 'Rozmiar', options: ['70 x 100 cm'] }] })]),
     };
     await odswiezMagazyn({ kanalySklepow: ['pro', 'szkicownia'], kanalyAllegro: ['allegro_szkicownia', 'allegro_amarka'],  db, sklepy, allegro: null, teraz: teraz() });
     expect(jeden(db).rozmiar_tekst).toBe('70 x 100 cm');
@@ -295,10 +295,10 @@ describe('odswiezMagazyn — rozmiar', () => {
   it('atrybut, który nie jest rozmiarem, nie przesłania nazwy', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
-      pro: sklepAtrapa([prosty({ name: 'Stop – 60x62cm', attributes: [{ name: 'Kolor', options: ['czarny'] }] })]),
+      pro: sklepAtrapa([prosty({ name: 'Kropla – 60x62cm', attributes: [{ name: 'Kolor', options: ['czarny'] }] })]),
     };
     await odswiezMagazyn({ kanalySklepow: ['pro', 'szkicownia'], kanalyAllegro: ['allegro_szkicownia', 'allegro_amarka'],  db, sklepy, allegro: null, teraz: teraz() });
-    expect(jeden(db).rozmiar_tekst).toBe('Stop – 60x62cm');
+    expect(jeden(db).rozmiar_tekst).toBe('Kropla – 60x62cm');
   });
 });
 
@@ -320,7 +320,7 @@ describe('odswiezMagazyn — kategoria główna ze sklepu', () => {
   });
 
   // ⚠️ SUROWY IDENTYFIKATOR W KOLUMNIE NAZWY jest gorszy niz brak: Zadanie 8 przepisuje
-  // te wartosc do `wzory.kategoria_glowna`, a z niej korzysta generator SKU.
+  // te wartosc do `karty.kategoria_glowna`, a z niej korzysta generator SKU.
   it('identyfikator spoza kategorii produktu daje brak, a nie surowy numer', async () => {
     const db = openOmsDb(':memory:');
     const p = prosty({
@@ -413,7 +413,7 @@ describe('odswiezMagazyn — kanały Allegro', () => {
   // `klienciKanalow`); kanal dokleja WOLAJACY, z klucza mapy.
   it('woła pobierzOferty BEZ argumentu i dokleja kanał z klucza mapy', async () => {
     const db = openOmsDb(':memory:');
-    const klient = allegroAtrapa([oferta('9000000001', 'Zakaz palenia')]);
+    const klient = allegroAtrapa([oferta('1234567890', 'Trójnóg podłogowy')]);
     const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'szkicownia'], kanalyAllegro: ['allegro_szkicownia', 'allegro_amarka'],  db, sklepy: null, allegro: { allegro_amarka: klient }, teraz: teraz() });
     expect(klient.pobierzOferty.mock.calls.length).toBe(1);
     // Asercja po WSZYSTKICH wywolaniach, nie po [0].
@@ -421,12 +421,12 @@ describe('odswiezMagazyn — kanały Allegro', () => {
     expect(kanal(w, 'allegro_amarka').zapisane).toBe(1);
     expect(jeden(db)).toMatchObject({
       kanal: 'allegro_amarka',
-      produkt_id: '9000000001',
+      produkt_id: '1234567890',
       wariant_id: '',
-      nazwa: 'Zakaz palenia',
+      nazwa: 'Trójnóg podłogowy',
       cena_gr: 8900,
       status_publikacji: 'ACTIVE',
-      adres: 'https://allegro.pl/oferta/9000000001',
+      adres: 'https://allegro.pl/oferta/1234567890',
     });
   });
 
@@ -552,7 +552,7 @@ describe('odswiezMagazyn — awaria kanału', () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
       pro: { pobierzWszystkieProdukty: async () => { throw new Error('sklep leży'); } },
-      szkicownia: sklepAtrapa([{ id: 5, type: 'simple', name: 'Kenitra', price: '99' }]),
+      szkicownia: sklepAtrapa([{ id: 5, type: 'simple', name: 'Plecionka', price: '99' }]),
     };
     const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'szkicownia'], kanalyAllegro: ['allegro_szkicownia', 'allegro_amarka'], 
       db, sklepy, allegro: { allegro_szkicownia: allegroAtrapa([oferta('7')]) }, teraz: teraz(),
@@ -747,19 +747,19 @@ describe('odswiezMagazyn — zniknięcia', () => {
     expect(db.prepare('SELECT zniknal_at FROM produkty_sklepowe WHERE produkt_id = 1').get().zniknal_at).toBe(null);
   });
 
-  // ⚠️ POWIAZANIE Z WZOREM JEST RECZNA PRACA WLASCICIELA i ma przezyc kazdy odczyt —
+  // ⚠️ POWIAZANIE Z KARTĄ JEST RECZNA PRACA WLASCICIELA i ma przezyc kazdy odczyt —
   // takze ten, w ktorym produkt zniknal ze sklepu.
-  it('odczyt nie zrywa powiązania wzoru z produktem', async () => {
+  it('odczyt nie zrywa powiązania karty z produktem', async () => {
     const db = openOmsDb(':memory:');
     await odswiezMagazyn({ kanalySklepow: ['pro', 'szkicownia'], kanalyAllegro: ['allegro_szkicownia', 'allegro_amarka'], 
       db, sklepy: { pro: sklepAtrapa([prosty({ id: 1 })]) }, allegro: null, teraz: teraz('2026-08-06T10:00:00Z'),
     });
-    db.prepare("INSERT INTO wzory (nazwa, utworzony_at, zmieniony_at) VALUES ('W', 'x', 'x')").run();
-    db.prepare('UPDATE produkty_sklepowe SET wzor_id = 1').run();
+    db.prepare("INSERT INTO karty_produktow (nazwa, utworzony_at, zmieniony_at) VALUES ('W', 'x', 'x')").run();
+    db.prepare('UPDATE produkty_sklepowe SET karta_id = 1').run();
     await odswiezMagazyn({ kanalySklepow: ['pro', 'szkicownia'], kanalyAllegro: ['allegro_szkicownia', 'allegro_amarka'], 
       db, sklepy: { pro: sklepAtrapa([prosty({ id: 1, name: 'Nowa nazwa' })]) }, allegro: null, teraz: teraz('2026-08-07T10:00:00Z'),
     });
-    expect(jeden(db)).toMatchObject({ wzor_id: 1, nazwa: 'Nowa nazwa' });
+    expect(jeden(db)).toMatchObject({ karta_id: 1, nazwa: 'Nowa nazwa' });
   });
 });
 
@@ -945,7 +945,7 @@ describe('odswiezMagazyn — pusty odczyt przy żywym lustrze', () => {
   });
 
   // ⚠️ Hamulec liczy WYLACZNIE swoj kanal. Bez warunku `kanal = ?` pusty odczyt na PRO byłby
-  // blokowany przez 668 zywych wierszy szkicownia.pl — czyli kanal, ktory naprawde nic nie ma,
+  // blokowany przez 668 zywych wierszy sklepu A — czyli kanal, ktory naprawde nic nie ma,
   // nie dalby sie odczytac NIGDY.
   it('hamulec patrzy tylko na własny kanał', async () => {
     const db = openOmsDb(':memory:');
@@ -1096,21 +1096,21 @@ describe('odswiezMagazyn — ślad w logu', () => {
 // osie podzialu takze w adresie (`?attribute_uklad=RÓWNOLEGLE`), ale permalink jest OZDOBA:
 // sklep moze go przebudowac, przepisac na identyfikatory albo wylaczyc ladne adresy. Panel,
 // ktory czytalby atrybuty stamtad, dowiedzialby sie o zmianie dopiero po zalozeniu setek
-// wzorow o zlych nazwach — i to nieodwracalnie ponumerowanych.
+// kart o zlych nazwach — i to nieodwracalnie ponumerowanych.
 describe('odswiezMagazyn — atrybuty wariantu', () => {
   it('zapisuje osie podzialu wariantu z odpowiedzi sklepu', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
       szkicownia: sklepAtrapa(
-        [{ id: 7179, type: 'variable', name: 'Woodland' }],
+        [{ id: 7179, type: 'variable', name: 'Kolekcja Las' }],
         {
           7179: [{
             id: 7180,
             price: '79',
             // Adres NIESIE te sama informacje — i celowo mowi co innego niz atrybut.
-            // Gdyby wygral permalink, w kolumnie stanelaby „Zając".
-            permalink: 'https://szkicownia.pl/produkt/woodland/?attribute_wzor=Zaj%C4%85c',
-            attributes: [{ id: 5, name: 'wzor', option: 'Wiewiórka' }],
+            // Gdyby wygral permalink, w kolumnie stanelaby „Żołądź".
+            permalink: 'https://sklep-polcien.example.invalid/produkt/kolekcja-las/?attribute_motyw=%C5%BBo%C5%82%C4%85d%C5%BA',
+            attributes: [{ id: 5, name: 'motyw', option: 'Szyszka' }],
           }],
         },
       ),
@@ -1118,7 +1118,7 @@ describe('odswiezMagazyn — atrybuty wariantu', () => {
 
     await odswiezMagazyn({ kanalySklepow: ['pro', 'szkicownia'], kanalyAllegro: ['allegro_szkicownia', 'allegro_amarka'],  db, sklepy, allegro: null, teraz: teraz() });
 
-    expect(JSON.parse(jeden(db).atrybuty_json)).toEqual([{ nazwa: 'wzor', wartosc: 'Wiewiórka' }]);
+    expect(JSON.parse(jeden(db).atrybuty_json)).toEqual([{ nazwa: 'motyw', wartosc: 'Szyszka' }]);
   });
 
   // ⚠️ PARA: wariant, ktoremu sklep nie dal ZADNEGO atrybutu, ma dostac PUSTA TABLICE, a nie
@@ -1140,8 +1140,8 @@ describe('odswiezMagazyn — atrybuty wariantu', () => {
   });
 
   // ⚠️ PARA MILCZENIA: produkt PROSTY ma w Woo wlasne `attributes`, ale to nie sa osie podzialu
-  // — nie ma czego dzielic. Zapisanie ich tutaj kazaloby `wzorZProduktu` dopisac wartosc
-  // atrybutu do nazwy kazdego z ~588 prostych produktow szkicownia.pl.
+  // — nie ma czego dzielic. Zapisanie ich tutaj kazaloby `kartaZProduktu` dopisac wartosc
+  // atrybutu do nazwy kazdego z ~588 prostych produktow sklepu A.
   it('produkt prosty NIE dostaje atrybutow wariantu', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = {

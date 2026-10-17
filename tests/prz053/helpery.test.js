@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { tmpdir } from 'node:os';
 import { ofertaNaProdukt } from '../../src/domena/allegro-oferta.js';
-import { powodPominiecia, czyPominietyCelowo } from '../../src/domena/wzor-z-produktu.js';
+import { powodPominiecia, czyPominietyCelowo } from '../../src/domena/karta-z-produktu.js';
 import { ocenZapis, zmianyDoWyslania } from '../../src/domena/zapis-do-sklepu.js';
 import { filtryZZapytania } from '../../src/domena/magazyn-filtry.js';
 import { grupujPominiete } from '../../src/domena/magazyn-pominiete.js';
@@ -20,7 +20,7 @@ const publiczne = [
   ['filtryZZapytania', lista => filtryZZapytania({}, lista)],
   ['grupujPominiete', lista => grupujPominiete([], lista)],
   ['zliczeniaNiepowiazanych', lista => magazyn.zliczeniaNiepowiazanych(null, lista)],
-  ['utworzWzoryZNiepowiazanych', lista => magazyn.utworzWzoryZNiepowiazanych(null, { kanalySklepow: lista })],
+  ['utworzKartyZNiepowiazanych', lista => magazyn.utworzKartyZNiepowiazanych(null, { kanalySklepow: lista })],
   ['niepowiazaneOfertyAllegro', lista => magazyn.niepowiazaneOfertyAllegro(null, lista)],
   ['powiazaneOfertyAllegro', lista => magazyn.powiazaneOfertyAllegro(null, lista)],
   ['powiazOfertyHurtem', lista => magazyn.powiazOfertyHurtem(null, [], lista)],
@@ -49,7 +49,7 @@ describe('PRZ-053 — jawne listy helperów', () => {
       expect(magazyn.powiazaneOfertyAllegro(db, [])).toEqual([]);
       expect(magazyn.powiazOfertyHurtem(db, [], [])).toEqual({ powiazane: [], nieaktualne: [] });
       expect(magazyn.odepnijOferte(db, 1, [])).toBe(false);
-      expect(magazyn.utworzWzoryZNiepowiazanych(db, { kanalySklepow: [] })).toEqual({ utworzone: 0, pominiete: [] });
+      expect(magazyn.utworzKartyZNiepowiazanych(db, { kanalySklepow: [] })).toEqual({ utworzone: 0, pominiete: [] });
       expect(magazyn.produktyPominiete(db, [])).toEqual([]);
       expect(grupujPominiete([], [])).toEqual([]);
       expect(filtryZZapytania({ kanal: 'pro' }, []).kanal).toBeNull();
@@ -60,10 +60,10 @@ describe('PRZ-053 — jawne listy helperów', () => {
     } finally { db.close(); }
   });
   it('zmianyDoWyslania propaguje listę klienta i zachowuje własność SKU oraz jednostki', () => {
-    const wzor = { id: 1, sku: 'NOWY-1', szerokosc_mm: 100, wysokosc_mm: 200 };
+    const karta = { id: 1, sku: 'NOWY-1', szerokosc_mm: 100, wysokosc_mm: 200 };
     const p = kanal => ({ kanal, produkt_id: '42', wariant_id: '', sku_sklepu: '' });
     for (const kanal of ['polnoc', 'poludnie']) {
-      const zmiany = zmianyDoWyslania(wzor, [p(kanal), p('pro')], { [kanal]: 'cm' }, [kanal]);
+      const zmiany = zmianyDoWyslania(karta, [p(kanal), p('pro')], { [kanal]: 'cm' }, [kanal]);
       expect(zmiany).toHaveLength(1);
       expect(zmiany[0]).toMatchObject({ kanal, sciezka: 'products/42', pola: { sku: 'NOWY-1', dimensions: { length: '20', width: '10' } } });
     }
@@ -71,12 +71,12 @@ describe('PRZ-053 — jawne listy helperów', () => {
   it('jawna lista ofert nie zgaduje typu z prefiksu i chroni wiązanie oraz odpinanie', () => {
     const db = openOmsDb();
     try {
-      const w = magazyn.utworzWzor(db, { nazwa: 'Wzór testowy' });
+      const w = magazyn.utworzKarte(db, { nazwa: 'Karta testowa' });
       const ids = Object.fromEntries(['wschod', 'zachod', 'allegro_obce', 'pro'].map(kanal => [kanal,
         magazyn.zapiszProduktSklepowy(db, { kanal, produkt_id: '9', nazwa: kanal, odczytane_at: 'x' })]));
       for (const kanal of ['wschod', 'zachod']) {
         expect(magazyn.niepowiazaneOfertyAllegro(db, [kanal]).map(p => p.kanal)).toEqual([kanal]);
-        expect(magazyn.powiazOfertyHurtem(db, [{ produktId: ids[kanal], wzorId: w }, { produktId: ids.allegro_obce, wzorId: w }], [kanal]))
+        expect(magazyn.powiazOfertyHurtem(db, [{ produktId: ids[kanal], kartaId: w }, { produktId: ids.allegro_obce, kartaId: w }], [kanal]))
           .toEqual({ powiazane: [ids[kanal]], nieaktualne: [ids.allegro_obce] });
         expect(magazyn.powiazaneOfertyAllegro(db, [kanal]).map(p => p.kanal)).toEqual([kanal]);
         expect(magazyn.odepnijOferte(db, ids[kanal], [])).toBe(false);

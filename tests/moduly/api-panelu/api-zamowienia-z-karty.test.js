@@ -35,7 +35,7 @@ const cialo = {
   dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Długa 45', postcode: '30-001', city: 'Kraków' },
   nip: null, chceFakture: false,
   kosztDostawyBrutto: '19.00',
-  pozycje: [{ nazwa: 'Szablon malarski wielorazowy — logo 70x100cm', ilosc: 1, cena_brutto: '250.00' }],
+  pozycje: [{ nazwa: 'Lampa wisząca — Kopuła 40x60cm', ilosc: 1, cena_brutto: '250.00' }],
   uwagi: 'Zamówienie indywidualne — karta karta-abc',
 };
 
@@ -119,7 +119,7 @@ describe('POST /api/zamowienia-z-karty', () => {
     });
     expect(db.prepare('SELECT COUNT(*) c FROM zamowienia').get().c).toBe(1);
 
-    const zle = { ...cialo, pozycje: [{ nazwa: 'Szablon', ilosc: 1 }] };
+    const zle = { ...cialo, pozycje: [{ nazwa: 'Lampa', ilosc: 1 }] };
     const res = await app.inject({ method: 'POST', url: '/api/zamowienia-z-karty', headers: naglowki, payload: zle });
     expect(res.statusCode).toBe(400);
     expect(res.json().powod).toMatch(/cen/i);

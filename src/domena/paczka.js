@@ -55,7 +55,7 @@ export function parsujPaczke(dane) {
 //
 // ⚠️ Domyslne wymiary panelu (110×75×1 cm, PACZKA_DOMYSLNA w domain/ustawienia-panelu.js —
 // od 17.08.2026 sa FALLBACKIEM ustawienia operatora, a nie jedyna wartoscia) sa dla
-// PLASKICH arkuszy szablonow malarskich i NIE MIESZCZA SIE w zadnej skrytce automatu —
+// PLASKIEJ paczki wielkoformatowej i NIE MIESZCZA SIE w zadnej skrytce automatu —
 // dlatego gabaryt jest WYBOREM ze skonczonego zbioru, nigdy polem tekstowym z domyslna
 // wartoscia.
 // ---------------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 // TRZY STANY POSTEPU — i to jest CALY mechanizm przeciw falszywej zieleni na tym ekranie.
 //
-// ⚠️⚠️ ZERO I „NIE WIEM" NIE MOGA WYGLADAC TAK SAMO. „0 / 5 wzorow" znaczyloby naraz
-// „grafik nic nie dodal" i „zrodlo stoi od szesciu dni". Na tej podstawie zapada rozmowa
+// ⚠️⚠️ ZERO I „NIE WIEM" NIE MOGA WYGLADAC TAK SAMO. „0 / 5 produktow" znaczyloby naraz
+// „nikt nic nie dodal" i „zrodlo stoi od szesciu dni". Na tej podstawie zapada rozmowa
 // z czlowiekiem, wiec pomylka nie konczy sie na brzydkim kaflu.
 //
 // ⚠️ ETAP 1 NIE MA ZADNEGO AUTOMATU, wiec na produkcji widac WYLACZNIE stan `znany`.

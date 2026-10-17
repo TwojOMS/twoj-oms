@@ -111,7 +111,7 @@ const ORYGINAL_ALLEGRO = /^(https?:\/\/(?:[a-z0-9-]+\.)*allegroimg\.com\/)origin
  * ⚠️ JEDNA FUNKCJA NA OBA KANAŁY, i to jest decyzja. Widoki (lista, karta, ekran nadania)
  * NIE WIEDZĄ, z którego kanału jest wiersz — i wiedzieć nie mają. Rozstrzyga sam adres:
  * host `allegroimg.com` idzie regułą segmentu ścieżki, wszystko inne regułą WordPressa.
- * Osobna funkcja dla Allegro znaczyłaby `if` po kanale w trzech szablonach naraz, a to
+ * Osobna funkcja dla Allegro znaczyłaby `if` po kanale w trzech widokach naraz, a to
  * dokładnie ta kopia reguły, której zakazuje niezmiennik 4.13c.
  *
  * ⚠️ NIGDY NIE RZUCA. Adres o nieoczekiwanym kształcie (bez `/original/`, bez rozszerzenia,
@@ -139,7 +139,7 @@ export function adresMiniatury(src) {
 //   sklep A — 684 zdjęcia,  76 miniatur,  608 błędów 404 (89%)
 //
 // Powód: sklep A ma WŁASNY rozmiar miniatury `247x296`, a nie WordPressowy `150x150`.
-// Na PRO zgadywanie trafiało przypadkiem — tamten sklep akurat używa 150×150. Oryginały są
+// W sklepie B zgadywanie trafiało przypadkiem — tamten sklep akurat używa 150×150. Oryginały są
 // zdrowe (wszystkie 684 odpowiadają 200), więc jedyną przyczyną pustych ramek na liście
 // magazynu było doklejanie rozmiaru do nazwy pliku.
 //
@@ -150,7 +150,7 @@ export function adresMiniatury(src) {
 //
 // ⚠️ `adresMiniatury` ZOSTAJE i nie wolno jej usunąć: żyje z niej lista zamówień, ekran
 // nadania i karta zamówienia (`web/routes/zamowienia.js`, `views/lista.ejs`, `views/nadaj.ejs`,
-// `views/zamowienie.ejs`) oraz galeria na karcie wzoru. Ta zmiana zdejmuje zgadywanie
+// `views/zamowienie.ejs`) oraz galeria na karcie produktu. Ta zmiana zdejmuje zgadywanie
 // WYŁĄCZNIE z listy magazynu, bo tylko tam mamy dokąd zapisać wartość prawdziwą.
 //
 // ⚠️⚠️ DOPISANE 2026-08-12 (zgłoszenie „zdjęcia produktów nie ładują się na ekranach
@@ -163,7 +163,7 @@ export function adresMiniatury(src) {
 // ZOSTAĆ. To ona obsługuje wszystko, czego lustro nie zna: Allegro (nie ma Store API,
 // więc wariant `s150` wyprowadzamy ze ścieżki i to jest droga POPRAWNA), zamówienia
 // archiwalne sprzed pierwszego odczytu katalogu, pozycje dopisane ręcznie z własnym
-// adresem zdjęcia oraz drugie i dalsze zdjęcia w galerii wzoru. Usunięcie jej albo
+// adresem zdjęcia oraz drugie i dalsze zdjęcia w galerii karty. Usunięcie jej albo
 // przecięcie tej gałęzi ZGASIŁOBY zdjęcia, które dziś działają — dokładnie tak, jak
 // stało się dzień wcześniej w magazynie, gdzie ekran przestawiono na czytanie wyłącznie
 // nowej (pustej wtedy) kolumny.

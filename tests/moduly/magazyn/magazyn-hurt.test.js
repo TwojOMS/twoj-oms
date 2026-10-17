@@ -2,17 +2,17 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { readFileSync } from './pliki-historyczne.js';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
-import { utworzWzor, zastosujHurtem, wzoryPoIdach } from '../../../src/oms/db/magazyn.js';
+import { utworzKarte, zastosujHurtem, kartyPoIdach } from '../../../src/oms/db/magazyn.js';
 import { polecenieZFormularza, zmianyHurtem } from '../../../src/domena/magazyn-hurt.js';
 
-// EDYCJA HURTEM W MAGAZYNIE — ekran, ktory istnieje dla 645 wzorow bez wymiaru, 965 bez
+// EDYCJA HURTEM W MAGAZYNIE — ekran, ktory istnieje dla 645 kart bez wymiaru, 965 bez
 // oznaczenia paczkomatu i 152 bez kategorii glownej (zmierzone na produkcji 2026-08-12).
 // Bez niego trzeba by otworzyc 645 kart po kolei.
 //
 // ⚠️⚠️ SIEDEM RZECZY, KTORYCH TA SUITA PILNUJE:
-//   (1) PUSTE POLE ZNACZY „NIE RUSZAJ" — i to jest ODWROTNIE niz na karcie wzoru, gdzie
+//   (1) PUSTE POLE ZNACZY „NIE RUSZAJ" — i to jest ODWROTNIE niz na karcie produktu, gdzie
 //       puste pole KASUJE wartosc. Gdyby hurtem puste kasowalo, ustawienie samego
-//       paczkomatu wyczysciloby wymiary i kategorie 600 wzorom jednym kliknieciem;
+//       paczkomatu wyczysciloby wymiary i kategorie 600 kartom jednym kliknieciem;
 //   (2) PODGLAD JEST OBOWIAZKOWY — trasa podgladu nie zapisuje ANI JEDNEGO wiersza;
 //   (3) zestaw zmian liczony PONOWNIE przy zatwierdzeniu, nie przepisany z ukrytego pola;
 //   (4) puste zaznaczenie nie robi NICZEGO — „dotyczy wszystkiego" byloby najkrotsza droga
@@ -44,8 +44,8 @@ beforeEach(() => {
   magazyn = atrapaMagazynu();
 });
 
-const wzorO = (nazwa, reszta = {}) => utworzWzor(db, { nazwa, ...reszta });
-const wiersz = (id) => db.prepare('SELECT * FROM wzory WHERE id = ?').get(id);
+const kartaO = (nazwa, reszta = {}) => utworzKarte(db, { nazwa, ...reszta });
+const wiersz = (id) => db.prepare('SELECT * FROM karty_produktow WHERE id = ?').get(id);
 
 const get = (app, url) => app.inject({ method: 'GET', url, headers: auth });
 const post = (app, url, payload, naglowki = auth) => app.inject({
@@ -60,7 +60,7 @@ const zatwierdz = (app, payload, naglowki) => post(app, '/magazyn/hurt/zatwierdz
  *
  * ⚠️⚠️ TO NIE JEST WYGODA, TYLKO WARUNEK NOSNOSCI KAZDEJ ASERCJI TUTAJ. Wspolny uklad
  * (`layout-oms.ejs`) jedzie w KAZDEJ stronie i niesie wlasne pola formularzy (przelacznik
- * motywu, szukajka paska), a ekran hurtu pokazuje TE SAMA nazwe wzoru w kilku miejscach.
+ * motywu, szukajka paska), a ekran hurtu pokazuje TE SAMA nazwe karty w kilku miejscach.
  * Asercja „na stronie jest X" bywa wiec spelniona przez cokolwiek innego niz to, o czym
  * mowi. RZUCA, gdy sekcji nie ma — inaczej kazde `not.toContain` przechodziloby na pustym
  * napisie, czyli zielono i bez zadnej ochrony.
@@ -77,54 +77,54 @@ function sekcja(body, id) {
   return trafienie[0];
 }
 
-/** Wiersz JEDNEGO wzoru z tabeli podgladu — sam wiersz, bez reszty sekcji. */
+/** Wiersz JEDNEJ karty z tabeli podgladu — sam wiersz, bez reszty sekcji. */
 function wierszZmiany(body, nazwa) {
-  const znacznik = `<div class="nazwa-wzoru">${nazwa}</div>`;
+  const znacznik = `<div class="nazwa-karty">${nazwa}</div>`;
   const w = sekcja(body, 'zmiany-hurtem').split('<tr').find((t) => t.includes(znacznik));
-  if (!w) throw new Error(`W podgladzie nie ma wzoru „${nazwa}"`);
+  if (!w) throw new Error(`W podgladzie nie ma karty „${nazwa}"`);
   return w;
 }
 
 const nazwyWPodgladzie = (body) => [...sekcja(body, 'zmiany-hurtem')
-  .matchAll(/<div class="nazwa-wzoru">([^<]*)<\/div>/g)].map((m) => m[1]);
+  .matchAll(/<div class="nazwa-karty">([^<]*)<\/div>/g)].map((m) => m[1]);
 
 /**
- * LICZBA, ktora ekran podaje jako „tylu wzorow to dotyczy".
+ * LICZBA, ktora ekran podaje jako „tylu kart to dotyczy".
  *
  * ⚠️ WLASNY ZNACZNIK, a nie `toContain('645')` na calej stronie. Cyfry sa na tym ekranie
- * wszedzie — w numerach wzorow, w ukrytych polach zaznaczenia, w wymiarach — wiec asercja
+ * wszedzie — w numerach kart, w ukrytych polach zaznaczenia, w wymiarach — wiec asercja
  * na goly napis przechodzilaby takze wtedy, gdyby ekran zadnej liczby nie podawal. RZUCA,
  * gdy znacznika nie ma.
  */
 function ileNaEkranie(body) {
   const m = /<strong class="hurt-ile">([^<]*)<\/strong>/.exec(body);
-  if (!m) throw new Error('Ekran hurtu nie podaje liczby wzorow (brak znacznika hurt-ile)');
+  if (!m) throw new Error('Ekran hurtu nie podaje liczby kart (brak znacznika hurt-ile)');
   return m[1];
 }
 
-/** Liczba wzorow pasujacych do zawezenia, podana w pasku akcji nad tabela. */
+/** Liczba kart pasujacych do zawezenia, podana w pasku akcji nad tabela. */
 function ilePasujacych(body) {
   const m = /<strong class="hurt-pasujace">([^<]*)<\/strong>/.exec(sekcja(body, 'hurt-pasek'));
-  if (!m) throw new Error('Pasek hurtu nie podaje liczby pasujacych wzorow');
+  if (!m) throw new Error('Pasek hurtu nie podaje liczby pasujacych kart');
   return m[1];
 }
 
-/** Wiersz JEDNEGO wzoru z tabeli listy magazynu — sam wiersz, bez reszty strony. */
+/** Wiersz JEDNEJ karty z tabeli listy magazynu — sam wiersz, bez reszty strony. */
 function wierszListy(body, nazwa) {
   const znacznik = `>${nazwa}</a>`;
-  const w = body.split('<tr').find((t) => t.includes(znacznik) && t.includes('komorka-wzor'));
-  if (!w) throw new Error(`Na liscie magazynu nie ma wzoru „${nazwa}"`);
+  const w = body.split('<tr').find((t) => t.includes(znacznik) && t.includes('komorka-karta'));
+  if (!w) throw new Error(`Na liscie magazynu nie ma karty „${nazwa}"`);
   return w;
 }
 
 // ————————————————————————————————————————————————————————————————————————————————
 // ⚠️⚠️ ROZSTRZYGNIECIE NAJWAZNIEJSZE. Na KARCIE puste pole kasuje wartosc — czlowiek patrzy
-// na jeden wzor i widzi, co robi. HURTEM puste pole ZNACZY „NIE RUSZAJ", bo formularz ma
+// na jedna karte i widzi, co robi. HURTEM puste pole ZNACZY „NIE RUSZAJ", bo formularz ma
 // kilka pol naraz: gdyby puste kasowalo, ustawienie samego paczkomatu wyczyscilo by wymiary
-// i kategorie 600 wzorom jednym kliknieciem, bez sladu i bez mozliwosci cofniecia.
+// i kategorie 600 kartom jednym kliknieciem, bez sladu i bez mozliwosci cofniecia.
 describe('puste pole ZNACZY „nie ruszaj" — para: wypelnione zmienia, puste zostawia', () => {
   it('pole WYPELNIONE zmienia wartosc', async () => {
-    const id = wzorO('Kotwica', { szerokosc_mm: 300, wysokosc_mm: 400 });
+    const id = kartaO('Kandelabr', { szerokosc_mm: 300, wysokosc_mm: 400 });
 
     await zatwierdz(serwer(), {
       zaznaczone: String(id), szerokosc_cm: '70', wysokosc_cm: '100',
@@ -134,10 +134,10 @@ describe('puste pole ZNACZY „nie ruszaj" — para: wypelnione zmienia, puste z
     expect(wiersz(id).wysokosc_mm).toBe(1000);
   });
 
-  // ⚠️ SPRAWDZONE NA WZORZE, KTORY TE WARTOSCI MA. Wzor z pustymi kolumnami przeszedlby
+  // ⚠️ SPRAWDZONE NA KARCIE, KTORA TE WARTOSCI MA. Karta z pustymi kolumnami przeszlaby
   // ten test takze wtedy, gdyby puste pole KASOWALO — bo kasowanie pustego nie widac.
   it('pole PUSTE zostawia STARA wartosc nietknieta', async () => {
-    const id = wzorO('Kotwica', {
+    const id = kartaO('Kandelabr', {
       szerokosc_mm: 300, wysokosc_mm: 400, kategoria_glowna: 'Aplikacje', paczkomat: 'tak',
     });
 
@@ -149,14 +149,14 @@ describe('puste pole ZNACZY „nie ruszaj" — para: wypelnione zmienia, puste z
 
     const w = wiersz(id);
     expect(w.paczkomat).toBe('nie');
-    // To sa trzy wartosci, ktore jedno klikniecie skasowaloby 600 wzorom.
+    // To sa trzy wartosci, ktore jedno klikniecie skasowaloby 600 kartom.
     expect(w.szerokosc_mm).toBe(300);
     expect(w.wysokosc_mm).toBe(400);
     expect(w.kategoria_glowna).toBe('Aplikacje');
   });
 
   it('pole NIEPRZYSLANE zostawia stara wartosc — brak pola to nie pole puste', async () => {
-    const id = wzorO('Kotwica', { szerokosc_mm: 300, wysokosc_mm: 400, kategoria_glowna: 'Aplikacje' });
+    const id = kartaO('Kandelabr', { szerokosc_mm: 300, wysokosc_mm: 400, kategoria_glowna: 'Aplikacje' });
 
     await zatwierdz(serwer(), { zaznaczone: String(id), paczkomat: 'nie' });
 
@@ -166,18 +166,18 @@ describe('puste pole ZNACZY „nie ruszaj" — para: wypelnione zmienia, puste z
   });
 
   it('kategorie ustawia sie hurtem, a wymiary zostaja', async () => {
-    const id = wzorO('Kotwica', { szerokosc_mm: 300, wysokosc_mm: 400 });
+    const id = kartaO('Kandelabr', { szerokosc_mm: 300, wysokosc_mm: 400 });
 
-    await zatwierdz(serwer(), { zaznaczone: String(id), kategoria_glowna: 'Szablony' });
+    await zatwierdz(serwer(), { zaznaczone: String(id), kategoria_glowna: 'Lampy wiszące' });
 
-    expect(wiersz(id).kategoria_glowna).toBe('Szablony');
+    expect(wiersz(id).kategoria_glowna).toBe('Lampy wiszące');
     expect(wiersz(id).szerokosc_mm).toBe(300);
   });
 
   // Puste pole nie ma prawa kasowac takze WTEDY, gdy sasiednie pole tej samej pary jest
   // wypelnione: „ustaw sama szerokosc" to zdanie o szerokosci, nie o wysokosci.
   it('sama szerokosc nie kasuje wysokosci', async () => {
-    const id = wzorO('Kotwica', { szerokosc_mm: 300, wysokosc_mm: 400 });
+    const id = kartaO('Kandelabr', { szerokosc_mm: 300, wysokosc_mm: 400 });
 
     await zatwierdz(serwer(), { zaznaczone: String(id), szerokosc_cm: '70', wysokosc_cm: '' });
 
@@ -189,7 +189,7 @@ describe('puste pole ZNACZY „nie ruszaj" — para: wypelnione zmienia, puste z
 // ————————————————————————————————————————————————————————————————————————————————
 describe('podglad jest OBOWIAZKOWY — para: podglad milczy w bazie, zatwierdzenie zapisuje', () => {
   it('podglad NIE ZAPISUJE ani jednego wiersza', async () => {
-    const id = wzorO('Kotwica', { szerokosc_mm: 300, wysokosc_mm: 400 });
+    const id = kartaO('Kandelabr', { szerokosc_mm: 300, wysokosc_mm: 400 });
     const przed = wiersz(id);
 
     const r = await podglad(serwer(), {
@@ -204,42 +204,42 @@ describe('podglad jest OBOWIAZKOWY — para: podglad milczy w bazie, zatwierdzen
   });
 
   it('zatwierdzenie zapisuje — ten sam formularz, druga trasa', async () => {
-    const id = wzorO('Kotwica', { szerokosc_mm: 300, wysokosc_mm: 400 });
+    const id = kartaO('Kandelabr', { szerokosc_mm: 300, wysokosc_mm: 400 });
 
     await zatwierdz(serwer(), { zaznaczone: String(id), szerokosc_cm: '70', wysokosc_cm: '100' });
 
     expect(wiersz(id).szerokosc_mm).toBe(700);
   });
 
-  it('podglad mowi ILE wzorow zmieni i Z CZEGO NA CO', async () => {
-    const a = wzorO('Kotwica', { szerokosc_mm: 300, wysokosc_mm: 400 });
-    const b = wzorO('Chmurka');
+  it('podglad mowi ILE kart zmieni i Z CZEGO NA CO', async () => {
+    const a = kartaO('Kandelabr', { szerokosc_mm: 300, wysokosc_mm: 400 });
+    const b = kartaO('Chmurka');
 
     const r = await podglad(serwer(), {
       zaznaczone: [String(a), String(b)], szerokosc_cm: '70', wysokosc_cm: '100',
     });
 
-    // Liczba stoi na ekranie — czlowiek ma wiedziec, ilu wzorow dotyka.
+    // Liczba stoi na ekranie — czlowiek ma wiedziec, ilu kart dotyka.
     expect(ileNaEkranie(r.body)).toBe('2');
     // „Z czego na co", a nie sama nowa wartosc: bez starej nie widac, co sie traci.
-    const wKotwicy = wierszZmiany(r.body, 'Kotwica');
-    expect(wKotwicy).toContain('30 cm');
-    expect(wKotwicy).toContain('70 cm');
-    // Wzor bez wymiaru pokazuje BRAK jako brak, a nie jako pusta komorke.
+    const wKandelabrze = wierszZmiany(r.body, 'Kandelabr');
+    expect(wKandelabrze).toContain('30 cm');
+    expect(wKandelabrze).toContain('70 cm');
+    // Karta bez wymiaru pokazuje BRAK jako brak, a nie jako pusta komorke.
     expect(wierszZmiany(r.body, 'Chmurka')).toContain('70 cm');
   });
 
   it('podglad ma przycisk zatwierdzenia prowadzacy na trase zapisu', async () => {
-    const id = wzorO('Kotwica');
+    const id = kartaO('Kandelabr');
     const r = await podglad(serwer(), { zaznaczone: String(id), paczkomat: 'nie' });
     expect(r.body).toContain('action="/magazyn/hurt/zatwierdz"');
   });
 
-  // ⚠️ WZOR, KTORY JUZ MA TE WARTOSC, NIE JEST ZMIANA. Podglad obiecujacy „zmienie 645"
+  // ⚠️ KARTA, KTORA JUZ MA TE WARTOSC, NIE JEST ZMIANA. Podglad obiecujacy „zmienie 645"
   // i zmieniajacy 200 klamie o wlasnym skutku.
-  it('wzor, ktory juz ma te wartosc, nie wchodzi do podgladu ani do liczby', async () => {
-    const stary = wzorO('Kotwica', { szerokosc_mm: 700, wysokosc_mm: 1000 });
-    const nowy = wzorO('Chmurka');
+  it('karta, ktora juz ma te wartosc, nie wchodzi do podgladu ani do liczby', async () => {
+    const stary = kartaO('Kandelabr', { szerokosc_mm: 700, wysokosc_mm: 1000 });
+    const nowy = kartaO('Chmurka');
 
     const r = await podglad(serwer(), {
       zaznaczone: [String(stary), String(nowy)], szerokosc_cm: '70', wysokosc_cm: '100',
@@ -248,8 +248,8 @@ describe('podglad jest OBOWIAZKOWY — para: podglad milczy w bazie, zatwierdzen
     expect(nazwyWPodgladzie(r.body)).toEqual(['Chmurka']);
   });
 
-  it('wzor bez zmiany nie dostaje nowej daty zmiany', async () => {
-    const id = wzorO('Kotwica', { szerokosc_mm: 700, wysokosc_mm: 1000 });
+  it('karta bez zmiany nie dostaje nowej daty zmiany', async () => {
+    const id = kartaO('Kandelabr', { szerokosc_mm: 700, wysokosc_mm: 1000 });
     const przed = wiersz(id).zmieniony_at;
 
     await zatwierdz(serwer(), { zaznaczone: String(id), szerokosc_cm: '70', wysokosc_cm: '100' });
@@ -263,12 +263,12 @@ describe('podglad jest OBOWIAZKOWY — para: podglad milczy w bazie, zatwierdzen
 // podgladem a klknieciem zmienilby zbior po cichu. Formularz przynosi IDENTYFIKATORY
 // i WARTOSCI (decyzja czlowieka), nigdy gotowego „z czego na co".
 describe('zestaw zmian liczony PONOWNIE przy zatwierdzeniu', () => {
-  it('wzor zmieniony miedzy podgladem a zatwierdzeniem liczy sie ze stanu BIEZACEGO', async () => {
-    const id = wzorO('Kotwica', { szerokosc_mm: 300, wysokosc_mm: 400 });
+  it('karta zmieniony miedzy podgladem a zatwierdzeniem liczy sie ze stanu BIEZACEGO', async () => {
+    const id = kartaO('Kandelabr', { szerokosc_mm: 300, wysokosc_mm: 400 });
 
     await podglad(serwer(), { zaznaczone: String(id), szerokosc_cm: '70', wysokosc_cm: '100' });
     // Ktos w drugiej karcie ustawil dokladnie to, co mial ustawic hurt.
-    db.prepare('UPDATE wzory SET szerokosc_mm = 700, wysokosc_mm = 1000 WHERE id = ?').run(id);
+    db.prepare('UPDATE karty_produktow SET szerokosc_mm = 700, wysokosc_mm = 1000 WHERE id = ?').run(id);
     const przed = wiersz(id).zmieniony_at;
 
     const r = await zatwierdz(serwer(), {
@@ -280,12 +280,12 @@ describe('zestaw zmian liczony PONOWNIE przy zatwierdzeniu', () => {
     expect(wiersz(id).zmieniony_at).toBe(przed);
   });
 
-  it('wzor skasowany miedzy podgladem a zatwierdzeniem po prostu wypada', async () => {
-    const a = wzorO('Kotwica');
-    const b = wzorO('Chmurka');
+  it('karta skasowany miedzy podgladem a zatwierdzeniem po prostu wypada', async () => {
+    const a = kartaO('Kandelabr');
+    const b = kartaO('Chmurka');
 
     await podglad(serwer(), { zaznaczone: [String(a), String(b)], paczkomat: 'nie' });
-    db.prepare('DELETE FROM wzory WHERE id = ?').run(b);
+    db.prepare('DELETE FROM karty_produktow WHERE id = ?').run(b);
 
     const r = await zatwierdz(serwer(), { zaznaczone: [String(a), String(b)], paczkomat: 'nie' });
 
@@ -296,7 +296,7 @@ describe('zestaw zmian liczony PONOWNIE przy zatwierdzeniu', () => {
   // ⚠️ Gdyby trasa zatwierdzajaca ufala ukrytemu polu z gotowym zestawem, ten test bylby
   // jedynym miejscem, w ktorym by to widac.
   it('trasa zatwierdzajaca nie przyjmuje gotowego zestawu z ukrytego pola', async () => {
-    const id = wzorO('Kotwica', { szerokosc_mm: 300, wysokosc_mm: 400 });
+    const id = kartaO('Kandelabr', { szerokosc_mm: 300, wysokosc_mm: 400 });
 
     // Podrzucamy „gotowy zestaw" obok prawdziwych pol. Ma zostac zignorowany.
     await zatwierdz(serwer(), {
@@ -318,26 +318,26 @@ describe('zaznaczenie musi byc JAWNE — para: puste odmawia, niepuste dziala', 
   // ⚠️ Puste zaznaczenie, ktore „dotyczy wszystkiego", to najkrotsza droga do nadpisania
   // calego rejestru jednym kliknieciem.
   it('puste zaznaczenie nie robi NICZEGO i mowi o tym', async () => {
-    wzorO('Kotwica');
-    wzorO('Chmurka');
+    kartaO('Kandelabr');
+    kartaO('Chmurka');
 
     const r = await zatwierdz(serwer(), { zaznaczone: [], paczkomat: 'nie' });
 
-    expect(db.prepare('SELECT COUNT(*) c FROM wzory WHERE paczkomat IS NOT NULL').get().c).toBe(0);
+    expect(db.prepare('SELECT COUNT(*) c FROM karty_produktow WHERE paczkomat IS NOT NULL').get().c).toBe(0);
     expect(r.body).toMatch(/nie zaznaczono/i);
   });
 
   it('brak pola `zaznaczone` w ogole nie robi NICZEGO', async () => {
-    wzorO('Kotwica');
+    kartaO('Kandelabr');
 
     const r = await zatwierdz(serwer(), { paczkomat: 'nie' });
 
-    expect(db.prepare('SELECT COUNT(*) c FROM wzory WHERE paczkomat IS NOT NULL').get().c).toBe(0);
+    expect(db.prepare('SELECT COUNT(*) c FROM karty_produktow WHERE paczkomat IS NOT NULL').get().c).toBe(0);
     expect(r.body).toMatch(/nie zaznaczono/i);
   });
 
   it('niepuste zaznaczenie dziala — straznik MILCZY', async () => {
-    const id = wzorO('Kotwica');
+    const id = kartaO('Kandelabr');
 
     const r = await zatwierdz(serwer(), { zaznaczone: String(id), paczkomat: 'nie' });
 
@@ -345,9 +345,9 @@ describe('zaznaczenie musi byc JAWNE — para: puste odmawia, niepuste dziala', 
     expect(r.body).not.toMatch(/nie zaznaczono/i);
   });
 
-  it('nie dotyka wzorow NIEZAZNACZONYCH', async () => {
-    const a = wzorO('Kotwica');
-    const b = wzorO('Chmurka');
+  it('nie dotyka kart NIEZAZNACZONYCH', async () => {
+    const a = kartaO('Kandelabr');
+    const b = kartaO('Chmurka');
 
     await zatwierdz(serwer(), { zaznaczone: String(a), szerokosc_cm: '70', wysokosc_cm: '100' });
 
@@ -357,12 +357,12 @@ describe('zaznaczenie musi byc JAWNE — para: puste odmawia, niepuste dziala', 
 
   // Numer, ktorego nie da sie odczytac, nie ma prawa zamienic sie w „wszystkie".
   it('smiec w miejscu numeru nie poszerza zbioru', async () => {
-    const id = wzorO('Kotwica');
+    const id = kartaO('Kandelabr');
 
     await zatwierdz(serwer(), { zaznaczone: ['abc', '__proto__', String(id)], paczkomat: 'nie' });
 
     expect(wiersz(id).paczkomat).toBe('nie');
-    expect(db.prepare('SELECT COUNT(*) c FROM wzory WHERE paczkomat IS NOT NULL').get().c).toBe(1);
+    expect(db.prepare('SELECT COUNT(*) c FROM karty_produktow WHERE paczkomat IS NOT NULL').get().c).toBe(1);
   });
 });
 
@@ -370,8 +370,8 @@ describe('zaznaczenie musi byc JAWNE — para: puste odmawia, niepuste dziala', 
 describe('„zaznacz wszystkie pasujace do zawezenia" — liczba z TEGO SAMEGO zapytania, co lista', () => {
   it('obejmuje wszystkie pasujace do filtru, nie tylko widoczne', async () => {
     const bez = [];
-    for (let i = 0; i < 5; i += 1) bez.push(wzorO(`Bez wymiaru ${i}`));
-    wzorO('Z wymiarem', { szerokosc_mm: 300, wysokosc_mm: 400 });
+    for (let i = 0; i < 5; i += 1) bez.push(kartaO(`Bez wymiaru ${i}`));
+    kartaO('Z wymiarem', { szerokosc_mm: 300, wysokosc_mm: 400 });
 
     const r = await zatwierdz(serwer(), {
       zakres: 'pasujace', zawezenie: 'brak=wymiary', szerokosc_cm: '70', wysokosc_cm: '100',
@@ -383,9 +383,9 @@ describe('„zaznacz wszystkie pasujace do zawezenia" — liczba z TEGO SAMEGO z
 
   // ⚠️ Filtr, ktorego zapytanie nie zna, oddaje PUSTO (`1 = 0`) — i tak ma zostac takze tutaj.
   // Cicho zignorowany filtr znaczylby hurtowa zmiane na CALYM katalogu zamiast na brakach.
-  it('zawezenie NIE poszerza sie o wzory, ktore do niego nie pasuja', async () => {
-    const zWymiarem = wzorO('Z wymiarem', { szerokosc_mm: 300, wysokosc_mm: 400 });
-    wzorO('Bez wymiaru');
+  it('zawezenie NIE poszerza sie o karty, ktore do niego nie pasuja', async () => {
+    const zWymiarem = kartaO('Z wymiarem', { szerokosc_mm: 300, wysokosc_mm: 400 });
+    kartaO('Bez wymiaru');
 
     await zatwierdz(serwer(), {
       zakres: 'pasujace', zawezenie: 'brak=wymiary', szerokosc_cm: '70', wysokosc_cm: '100',
@@ -394,8 +394,8 @@ describe('„zaznacz wszystkie pasujace do zawezenia" — liczba z TEGO SAMEGO z
     expect(wiersz(zWymiarem).szerokosc_mm).toBe(300);
   });
 
-  it('podglad zakresu „pasujace" pokazuje LICZBE wzorow, ktorych dotyka', async () => {
-    for (let i = 0; i < 7; i += 1) wzorO(`Bez wymiaru ${i}`);
+  it('podglad zakresu „pasujace" pokazuje LICZBE kart, ktorych dotyka', async () => {
+    for (let i = 0; i < 7; i += 1) kartaO(`Bez wymiaru ${i}`);
 
     const r = await podglad(serwer(), {
       zakres: 'pasujace', zawezenie: 'brak=wymiary', szerokosc_cm: '70', wysokosc_cm: '100',
@@ -405,7 +405,7 @@ describe('„zaznacz wszystkie pasujace do zawezenia" — liczba z TEGO SAMEGO z
   });
 
   it('zakres „pasujace" bez ani jednego trafienia nie zapisuje niczego', async () => {
-    const id = wzorO('Z wymiarem', { szerokosc_mm: 300, wysokosc_mm: 400 });
+    const id = kartaO('Z wymiarem', { szerokosc_mm: 300, wysokosc_mm: 400 });
 
     const r = await zatwierdz(serwer(), {
       zakres: 'pasujace', zawezenie: 'brak=wymiary', szerokosc_cm: '70', wysokosc_cm: '100',
@@ -418,11 +418,11 @@ describe('„zaznacz wszystkie pasujace do zawezenia" — liczba z TEGO SAMEGO z
 
 // ————————————————————————————————————————————————————————————————————————————————
 // ⚠️ Napis niezrozumialy → ODMOWA CALEGO ZAPISU. Nigdy ciche pominiecie i nigdy zgadywanie:
-// wymiar zgadniety jest gorszy niz brak wymiaru, bo w Etapie 2 to on decyduje, ktory plik
-// .mol jedzie na ploter.
+// wymiar zgadniety jest gorszy niz brak wymiaru, bo to on trafia do sklepu, na etykiete
+// i do wyliczenia gabarytu paczki.
 describe('napis niezrozumialy ODMAWIA — para: odmawia i nie zapisuje / liczba przechodzi', () => {
   it('literowka w wymiarze odmawia i NIE ZAPISUJE ANI JEDNEGO POLA', async () => {
-    const id = wzorO('Kotwica', { szerokosc_mm: 300, wysokosc_mm: 400 });
+    const id = kartaO('Kandelabr', { szerokosc_mm: 300, wysokosc_mm: 400 });
 
     const r = await zatwierdz(serwer(), {
       zaznaczone: String(id), szerokosc_cm: '70 cm', wysokosc_cm: '100', paczkomat: 'nie',
@@ -437,13 +437,13 @@ describe('napis niezrozumialy ODMAWIA — para: odmawia i nie zapisuje / liczba 
   });
 
   it('odmowa mowi, CZEGO nie zrozumiala', async () => {
-    const id = wzorO('Kotwica');
+    const id = kartaO('Kandelabr');
     const r = await zatwierdz(serwer(), { zaznaczone: String(id), szerokosc_cm: '70 cm' });
     expect(r.body).toContain('70 cm');
   });
 
   it('sama liczba przechodzi — straznik MILCZY', async () => {
-    const id = wzorO('Kotwica');
+    const id = kartaO('Kandelabr');
 
     const r = await zatwierdz(serwer(), {
       zaznaczone: String(id), szerokosc_cm: '10,5', wysokosc_cm: '100',
@@ -454,13 +454,13 @@ describe('napis niezrozumialy ODMAWIA — para: odmawia i nie zapisuje / liczba 
   });
 
   it('podglad tez odmawia, zamiast pokazywac zgadniety zestaw', async () => {
-    const id = wzorO('Kotwica');
+    const id = kartaO('Kandelabr');
     const r = await podglad(serwer(), { zaznaczone: String(id), szerokosc_cm: 'siedemdziesiat' });
     expect(r.statusCode).toBe(400);
   });
 
   it('zadna zmiana w formularzu odmawia — puste wszystko nie jest operacja', async () => {
-    const id = wzorO('Kotwica', { szerokosc_mm: 300 });
+    const id = kartaO('Kandelabr', { szerokosc_mm: 300 });
 
     const r = await zatwierdz(serwer(), {
       zaznaczone: String(id), szerokosc_cm: '', wysokosc_cm: '', kategoria_glowna: '', paczkomat: '',
@@ -474,27 +474,27 @@ describe('napis niezrozumialy ODMAWIA — para: odmawia i nie zapisuje / liczba 
 // ————————————————————————————————————————————————————————————————————————————————
 describe('paczkomat hurtem — trzy stany, wylacznie recznie', () => {
   it('zapisuje decyzje czlowieka', async () => {
-    const id = wzorO('Kotwica');
+    const id = kartaO('Kandelabr');
     await zatwierdz(serwer(), { zaznaczone: String(id), paczkomat: 'tak' });
     expect(wiersz(id).paczkomat).toBe('tak');
   });
 
   // ⚠️ „nieoznaczone" to OSOBNY, JAWNY wybor kasujacy decyzje — nie skutek pustego pola.
-  // To jedyna droga powrotu po hurtowej pomylce na 600 wzorach.
+  // To jedyna droga powrotu po hurtowej pomylce na 600 kartach.
   it('wartosc „nieoznaczone" CZYSCI decyzje jawnym wyborem', async () => {
-    const id = wzorO('Kotwica', { paczkomat: 'tak' });
+    const id = kartaO('Kandelabr', { paczkomat: 'tak' });
     await zatwierdz(serwer(), { zaznaczone: String(id), paczkomat: 'nieoznaczone' });
     expect(wiersz(id).paczkomat).toBe(null);
   });
 
   it('puste pole paczkomatu NIE czysci decyzji', async () => {
-    const id = wzorO('Kotwica', { paczkomat: 'tak' });
+    const id = kartaO('Kandelabr', { paczkomat: 'tak' });
     await zatwierdz(serwer(), { zaznaczone: String(id), paczkomat: '', kategoria_glowna: 'X' });
     expect(wiersz(id).paczkomat).toBe('tak');
   });
 
   it('wartosc spoza trzech stanow odmawia, zamiast wpisac czwarty stan', async () => {
-    const id = wzorO('Kotwica', { paczkomat: 'tak' });
+    const id = kartaO('Kandelabr', { paczkomat: 'tak' });
     const r = await zatwierdz(serwer(), { zaznaczone: String(id), paczkomat: 'moze' });
     expect(r.statusCode).toBe(400);
     expect(wiersz(id).paczkomat).toBe('tak');
@@ -503,7 +503,7 @@ describe('paczkomat hurtem — trzy stany, wylacznie recznie', () => {
   // ⚠️ ZERO WYLICZANIA Z WYMIAROW (decyzja wlasciciela). Ustawienie wymiarow hurtem nie ma
   // prawa dotknac kolumny paczkomatu ani razu.
   it('ustawienie wymiarow nie dotyka paczkomatu', async () => {
-    const id = wzorO('Kotwica', { paczkomat: 'tak' });
+    const id = kartaO('Kandelabr', { paczkomat: 'tak' });
     await zatwierdz(serwer(), { zaznaczone: String(id), szerokosc_cm: '70', wysokosc_cm: '100' });
     expect(wiersz(id).paczkomat).toBe('tak');
   });
@@ -512,68 +512,68 @@ describe('paczkomat hurtem — trzy stany, wylacznie recznie', () => {
 // ————————————————————————————————————————————————————————————————————————————————
 describe('skracanie nazwy o rozmiar — hurtem, wylacznie w rejestrze', () => {
   it('skraca nazwe, gdy poproszono', async () => {
-    const id = wzorO('Teren monitorowany – 60x62cm');
+    const id = kartaO('Klosz dymny – 60x62cm');
     await zatwierdz(serwer(), { zaznaczone: String(id), nazwa_bez_rozmiaru: 'tak' });
-    expect(wiersz(id).nazwa).toBe('Teren monitorowany');
+    expect(wiersz(id).nazwa).toBe('Klosz dymny');
   });
 
   it('bez zaznaczenia tego pola nazwy NIE rusza', async () => {
-    const id = wzorO('Teren monitorowany – 60x62cm');
+    const id = kartaO('Klosz dymny – 60x62cm');
     await zatwierdz(serwer(), { zaznaczone: String(id), paczkomat: 'nie' });
-    expect(wiersz(id).nazwa).toBe('Teren monitorowany – 60x62cm');
+    expect(wiersz(id).nazwa).toBe('Klosz dymny – 60x62cm');
   });
 
   // ⚠️ Nazwa zlozona z samego rozmiaru nie moze zniknac — regula stoi w domain/rozmiar.js
   // i hurt nie ma prawa jej obchodzic.
   it('nazwy zlozonej z samego rozmiaru nie kasuje', async () => {
-    const id = wzorO('70x100cm');
+    const id = kartaO('70x100cm');
     await zatwierdz(serwer(), { zaznaczone: String(id), nazwa_bez_rozmiaru: 'tak' });
     expect(wiersz(id).nazwa).toBe('70x100cm');
   });
 
   it('nazwa bez rozmiaru nie wchodzi do podgladu jako zmiana', async () => {
-    const bezRozmiaru = wzorO('Hop (Chmiel)');
-    wzorO('Teren monitorowany – 60x62cm');
+    const bezRozmiaru = kartaO('Szpulka (Buk)');
+    kartaO('Klosz dymny – 60x62cm');
 
     const r = await podglad(serwer(), {
       zakres: 'pasujace', nazwa_bez_rozmiaru: 'tak',
     });
 
-    expect(nazwyWPodgladzie(r.body)).toEqual(['Teren monitorowany – 60x62cm']);
-    expect(wiersz(bezRozmiaru).nazwa).toBe('Hop (Chmiel)');
+    expect(nazwyWPodgladzie(r.body)).toEqual(['Klosz dymny – 60x62cm']);
+    expect(wiersz(bezRozmiaru).nazwa).toBe('Szpulka (Buk)');
   });
 });
 
 // ————————————————————————————————————————————————————————————————————————————————
 // ⚠️ Biala lista pol, ODPORNA na `Object.prototype`. Pole dopisane recznie do zadania HTTP
-// nie ma prawa siegnac dalej, niz ekran pozwala — `folder_nas` ustawia Etap 2, `sku`
-// generator SKU, a `opis` karta wzoru.
+// nie ma prawa siegnac dalej, niz ekran pozwala — `sku` ustawia
+// generator SKU, a `opis` formularz karty.
 describe('biala lista pol — para: pole z listy wchodzi, pole spoza NIE', () => {
   it('pole Z listy wchodzi', async () => {
-    const id = wzorO('Kotwica');
-    await zatwierdz(serwer(), { zaznaczone: String(id), kategoria_glowna: 'Szablony' });
-    expect(wiersz(id).kategoria_glowna).toBe('Szablony');
+    const id = kartaO('Kandelabr');
+    await zatwierdz(serwer(), { zaznaczone: String(id), kategoria_glowna: 'Lampy wiszące' });
+    expect(wiersz(id).kategoria_glowna).toBe('Lampy wiszące');
   });
 
   it('kolumna SPOZA listy zostaje nietknieta, mimo ze baza ja zna', async () => {
-    const id = wzorO('Kotwica', { sku: 'PRO-1', opis: 'stary opis', folder_nas: '/stary' });
+    const id = kartaO('Kandelabr', { sku: 'SKU-1', opis: 'stary opis', waga_g: 1200 });
 
     await zatwierdz(serwer(), {
       zaznaczone: String(id),
-      kategoria_glowna: 'Szablony',
-      sku: 'PODRZUCONE', opis: 'podrzucony', folder_nas: '/podrzucony', nazwa: 'Podrzucona',
+      kategoria_glowna: 'Lampy wiszące',
+      sku: 'PODRZUCONE', opis: 'podrzucony', waga_g: '5', nazwa: 'Podrzucona',
     });
 
     const w = wiersz(id);
-    expect(w.kategoria_glowna).toBe('Szablony');
-    expect(w.sku).toBe('PRO-1');
+    expect(w.kategoria_glowna).toBe('Lampy wiszące');
+    expect(w.sku).toBe('SKU-1');
     expect(w.opis).toBe('stary opis');
-    expect(w.folder_nas).toBe('/stary');
-    expect(w.nazwa).toBe('Kotwica');
+    expect(w.waga_g).toBe(1200);
+    expect(w.nazwa).toBe('Kandelabr');
   });
 
   it('klucz z prototypu nie przechodzi przez biala liste', async () => {
-    const id = wzorO('Kotwica');
+    const id = kartaO('Kandelabr');
 
     const r = await zatwierdz(serwer(), {
       zaznaczone: String(id), constructor: 'x', hasOwnProperty: 'y', toString: 'z',
@@ -581,11 +581,11 @@ describe('biala lista pol — para: pole z listy wchodzi, pole spoza NIE', () =>
 
     // Nic do zmiany — a nie pieciusetka i nie zapis czegokolwiek.
     expect(r.statusCode).toBe(400);
-    expect(wiersz(id).nazwa).toBe('Kotwica');
+    expect(wiersz(id).nazwa).toBe('Kandelabr');
   });
 
   it('pole przyslane DWA RAZY (tablica) odmawia, zamiast trafic do SQL-a', async () => {
-    const id = wzorO('Kotwica', { szerokosc_mm: 300 });
+    const id = kartaO('Kandelabr', { szerokosc_mm: 300 });
 
     const r = await zatwierdz(serwer(), {
       zaznaczone: String(id), szerokosc_cm: ['70', '100'], wysokosc_cm: '100',
@@ -599,7 +599,7 @@ describe('biala lista pol — para: pole z listy wchodzi, pole spoza NIE', () =>
 // ————————————————————————————————————————————————————————————————————————————————
 describe('CSRF i straznik sesji — para: bez zrodla odmawia, ze zrodlem przechodzi', () => {
   it('zadanie bez naglowka zrodla odmawia i nie zapisuje', async () => {
-    const id = wzorO('Kotwica');
+    const id = kartaO('Kandelabr');
 
     const r = await zatwierdz(serwer(), { zaznaczone: String(id), paczkomat: 'nie' }, {
       ...authBezZrodla, origin: 'http://obcy.example',
@@ -610,14 +610,14 @@ describe('CSRF i straznik sesji — para: bez zrodla odmawia, ze zrodlem przecho
   });
 
   it('zadanie z wlasnego zrodla przechodzi — straznik MILCZY', async () => {
-    const id = wzorO('Kotwica');
+    const id = kartaO('Kandelabr');
     const r = await zatwierdz(serwer(), { zaznaczone: String(id), paczkomat: 'nie' });
     expect(r.statusCode).toBe(200);
     expect(wiersz(id).paczkomat).toBe('nie');
   });
 
   it('bez uwierzytelnienia odmawia i nie zapisuje', async () => {
-    const id = wzorO('Kotwica');
+    const id = kartaO('Kandelabr');
 
     const r = await post(serwer(), '/magazyn/hurt/zatwierdz', {
       zaznaczone: String(id), paczkomat: 'nie',
@@ -628,7 +628,7 @@ describe('CSRF i straznik sesji — para: bez zrodla odmawia, ze zrodlem przecho
   });
 
   it('panel bez sklepow odmawia hurtu zamiast zapisywac', async () => {
-    const id = wzorO('Kotwica');
+    const id = kartaO('Kandelabr');
     const r = await zatwierdz(serwer(null), { zaznaczone: String(id), paczkomat: 'nie' });
     expect(r.statusCode).toBe(503);
     expect(wiersz(id).paczkomat).toBe(null);
@@ -638,8 +638,8 @@ describe('CSRF i straznik sesji — para: bez zrodla odmawia, ze zrodlem przecho
 // ————————————————————————————————————————————————————————————————————————————————
 describe('zastosujHurtem — JEDNA transakcja', () => {
   it('zapisuje komplet i oddaje liczbe zmienionych', () => {
-    const a = wzorO('Kotwica');
-    const b = wzorO('Chmurka');
+    const a = kartaO('Kandelabr');
+    const b = kartaO('Chmurka');
 
     const ile = zastosujHurtem(db, [
       { id: a, zmiany: { paczkomat: 'nie' } },
@@ -651,14 +651,14 @@ describe('zastosujHurtem — JEDNA transakcja', () => {
     expect(wiersz(b).zmieniony_at).toBe('2026-08-12T10:00:00.000Z');
   });
 
-  // ⚠️⚠️ CZESCIOWO ZAPISANY ZESTAW JEST GORSZY NIZ ODMOWA. Bez transakcji pierwszy wzor
-  // zostalby zmieniony, drugi nie, a ekran nie mialby jak o tym powiedziec.
-  it('blad na drugim wzorze COFA takze pierwszy', () => {
-    const a = wzorO('Kotwica');
-    const b = wzorO('Chmurka');
+  // ⚠️⚠️ CZESCIOWO ZAPISANY ZESTAW JEST GORSZY NIZ ODMOWA. Bez transakcji pierwsza karta
+  // zostalaby zmieniona, druga nie, a ekran nie mialby jak o tym powiedziec.
+  it('blad na drugiej karcie COFA takze pierwsza', () => {
+    const a = kartaO('Kandelabr');
+    const b = kartaO('Chmurka');
 
     expect(() => zastosujHurtem(db, [
-      { id: a, zmiany: { kategoria_glowna: 'Szablony' } },
+      { id: a, zmiany: { kategoria_glowna: 'Lampy wiszące' } },
       // Wartosci, ktorej node:sqlite nie zwiaze — awaria w POLOWIE przebiegu.
       { id: b, zmiany: { kategoria_glowna: { obiekt: true } } },
     ])).toThrow();
@@ -672,9 +672,9 @@ describe('zastosujHurtem — JEDNA transakcja', () => {
   // FALSZYWA ZIELENIA: po usunieciu bialej listy SQLite sam rzuca „no such column: cena",
   // co ta sama asercja spelnia — czyli test przechodzil TAKZE bez straznika. `utworzony_at`
   // istnieje naprawde, wiec bez bialej listy zapis po prostu BY SIE UDAL i po cichu
-  // przepisal date zalozenia setkom wzorow.
+  // przepisal date zalozenia setkom kart.
   it('kolumna spoza bialej listy odmawia, choc baza ja zna', () => {
-    const a = wzorO('Kotwica');
+    const a = kartaO('Kandelabr');
     const przed = wiersz(a).utworzony_at;
 
     expect(() => zastosujHurtem(db, [{ id: a, zmiany: { utworzony_at: '2000-01-01T00:00:00.000Z' } }]))
@@ -684,7 +684,7 @@ describe('zastosujHurtem — JEDNA transakcja', () => {
   });
 
   it('pole, ktorego baza w ogole nie ma, odmawia NASZYM zdaniem, a nie bledem SQLite', () => {
-    const a = wzorO('Kotwica');
+    const a = kartaO('Kandelabr');
     expect(() => zastosujHurtem(db, [{ id: a, zmiany: { cena: 10 } }]))
       .toThrow(/zastosujHurtem: nieznane pole/);
   });
@@ -692,11 +692,11 @@ describe('zastosujHurtem — JEDNA transakcja', () => {
   // ⚠️ Straznik stoi PRZED `BEGIN`: jeden zly krok wstrzymuje CALY plan, takze te kroki,
   // ktore same w sobie byly poprawne.
   it('jeden zly krok wstrzymuje caly plan — poprawne kroki tez nie wchodza', () => {
-    const a = wzorO('Kotwica');
-    const b = wzorO('Chmurka');
+    const a = kartaO('Kandelabr');
+    const b = kartaO('Chmurka');
 
     expect(() => zastosujHurtem(db, [
-      { id: a, zmiany: { kategoria_glowna: 'Szablony' } },
+      { id: a, zmiany: { kategoria_glowna: 'Lampy wiszące' } },
       { id: b, zmiany: { utworzony_at: '2000-01-01T00:00:00.000Z' } },
     ])).toThrow(/nieznane pole/);
 
@@ -704,20 +704,20 @@ describe('zastosujHurtem — JEDNA transakcja', () => {
   });
 
   it('pusty plan nie rusza niczego i oddaje zero', () => {
-    const a = wzorO('Kotwica');
+    const a = kartaO('Kandelabr');
     const przed = wiersz(a).zmieniony_at;
     expect(zastosujHurtem(db, [])).toBe(0);
     expect(wiersz(a).zmieniony_at).toBe(przed);
   });
 
-  it('wzoryPoIdach oddaje wylacznie istniejace wzory', () => {
-    const a = wzorO('Kotwica');
-    expect(wzoryPoIdach(db, [a, a + 999]).map((w) => w.id)).toEqual([a]);
+  it('kartyPoIdach oddaje wylacznie istniejace karty', () => {
+    const a = kartaO('Kandelabr');
+    expect(kartyPoIdach(db, [a, a + 999]).map((w) => w.id)).toEqual([a]);
   });
 
-  it('wzoryPoIdach na pustej liscie nie pyta bazy o wszystko', () => {
-    wzorO('Kotwica');
-    expect(wzoryPoIdach(db, [])).toEqual([]);
+  it('kartyPoIdach na pustej liscie nie pyta bazy o wszystko', () => {
+    kartaO('Kandelabr');
+    expect(kartyPoIdach(db, [])).toEqual([]);
   });
 });
 
@@ -742,7 +742,7 @@ describe('reguly czyste — domain/magazyn-hurt.js', () => {
     expect(blad).toMatch(/70x100/);
   });
 
-  it('zmianyHurtem pomija wzory, ktore juz maja te wartosc', () => {
+  it('zmianyHurtem pomija karty, ktore juz maja te wartosc', () => {
     const plan = zmianyHurtem(
       [{ id: 1, nazwa: 'A', szerokosc_mm: 700 }, { id: 2, nazwa: 'B', szerokosc_mm: 300 }],
       { szerokosc_mm: 700 },
@@ -771,25 +771,25 @@ describe('reguly czyste — domain/magazyn-hurt.js', () => {
 
 // ————————————————————————————————————————————————————————————————————————————————
 describe('lista magazynu — zaznaczanie i pasek akcji', () => {
-  it('kazdy wiersz ma pole wyboru z numerem wzoru', async () => {
-    const id = wzorO('Kotwica');
+  it('kazdy wiersz ma pole wyboru z numerem karty', async () => {
+    const id = kartaO('Kandelabr');
     const r = await get(serwer(), '/magazyn');
-    expect(wierszListy(r.body, 'Kotwica'))
+    expect(wierszListy(r.body, 'Kandelabr'))
       .toContain(`<input type="checkbox" name="zaznaczone" value="${id}">`);
   });
 
   it('pasek akcji prowadzi na PODGLAD, nie na zapis', async () => {
-    wzorO('Kotwica');
+    kartaO('Kandelabr');
     const r = await get(serwer(), '/magazyn');
     expect(r.body).toContain('action="/magazyn/hurt"');
     expect(r.body).not.toContain('action="/magazyn/hurt/zatwierdz"');
   });
 
-  // ⚠️ Czlowiek ma wiedziec, ze dotyka 645 wzorow, a nie 20 widocznych — liczba liczona
+  // ⚠️ Czlowiek ma wiedziec, ze dotyka 645 kart, a nie 20 widocznych — liczba liczona
   // TYM SAMYM zapytaniem, co lista.
   it('opcja „wszystkie pasujace" pokazuje LICZBE pasujacych', async () => {
-    for (let i = 0; i < 3; i += 1) wzorO(`Bez wymiaru ${i}`);
-    wzorO('Z wymiarem', { szerokosc_mm: 300, wysokosc_mm: 400 });
+    for (let i = 0; i < 3; i += 1) kartaO(`Bez wymiaru ${i}`);
+    kartaO('Z wymiarem', { szerokosc_mm: 300, wysokosc_mm: 400 });
 
     const r = await get(serwer(), '/magazyn?brak=wymiary');
 
@@ -802,13 +802,13 @@ describe('lista magazynu — zaznaczanie i pasek akcji', () => {
   // zawezenie i ustawiana wartosc kasowalyby sie nawzajem. Jedno pole zbiorcze usuwa
   // zderzenie tych dwoch slownikow RAZ NA ZAWSZE, a nie do nastepnego dopisanego filtru.
   it('pasek akcji niesie zawezenie JEDNYM polem, nie osobnymi', async () => {
-    wzorO('Kotwica');
-    const r = await get(serwer(), '/magazyn?brak=wymiary&fraza=Kot');
+    kartaO('Kandelabr');
+    const r = await get(serwer(), '/magazyn?brak=wymiary&fraza=Kan');
     const pasek = sekcja(r.body, 'hurt-pasek');
     const m = /name="zawezenie" value="([^"]*)"/.exec(pasek);
     if (!m) throw new Error('Pasek hurtu nie niesie zawezenia');
     expect(m[1]).toContain('brak=wymiary');
-    expect(m[1]).toContain('fraza=Kot');
+    expect(m[1]).toContain('fraza=Kan');
     // Ani jednego pola o nazwie filtru — to one zderzalyby sie z polami ustawiajacymi.
     expect(pasek).not.toContain('name="brak"');
     expect(pasek).not.toContain('name="fraza"');
@@ -818,8 +818,8 @@ describe('lista magazynu — zaznaczanie i pasek akcji', () => {
   // zadaniu musza sie NIE ZDERZAC. Bez tego „zawez do nieoznaczonych i ustaw «nie»"
   // — czyli droga typowa wlasciciela — nie dzialaloby wcale.
   it('zawezenie po paczkomacie nie zderza sie z ustawiana wartoscia paczkomatu', async () => {
-    const nieoznaczony = wzorO('Kotwica');
-    const oznaczony = wzorO('Chmurka', { paczkomat: 'tak' });
+    const nieoznaczony = kartaO('Kandelabr');
+    const oznaczony = kartaO('Chmurka', { paczkomat: 'tak' });
 
     const r = await zatwierdz(serwer(), {
       zakres: 'pasujace', zawezenie: 'paczkomat=nieoznaczone', paczkomat: 'nie',
@@ -827,7 +827,7 @@ describe('lista magazynu — zaznaczanie i pasek akcji', () => {
 
     expect(r.statusCode).toBe(200);
     expect(wiersz(nieoznaczony).paczkomat).toBe('nie');
-    // Wzor spoza zawezenia zostaje ze swoim oznaczeniem.
+    // Karta spoza zawezenia zostaje ze swoim oznaczeniem.
     expect(wiersz(oznaczony).paczkomat).toBe('tak');
   });
 
@@ -850,20 +850,20 @@ describe('lista magazynu — zaznaczanie i pasek akcji', () => {
 });
 
 // ————————————————————————————————————————————————————————————————————————————————
-// ⚠️⚠️ SKALA PRODUKCYJNA. To jest przypadek, DLA KTOREGO ten ekran powstal: 645 wzorow bez
-// wymiaru, jedno klikniecie, 70×100 cm. Na dwoch wzorach kazda z tych regul wyglada
+// ⚠️⚠️ SKALA PRODUKCYJNA. To jest przypadek, DLA KTOREGO ten ekran powstal: 645 kart bez
+// wymiaru, jedno klikniecie, 70×100 cm. Na dwoch kartach kazda z tych regul wyglada
 // tak samo — dopiero tutaj widac, ze zapis idzie jednym przebiegiem i niczego po drodze
 // nie gubi ani nie kasuje.
-describe('skala produkcyjna — 645 wzorow bez wymiaru', () => {
-  it('ustawia 70×100 cm 645 wzorom, nie ruszajac ani jednego innego pola', async () => {
+describe('skala produkcyjna — 645 kart bez wymiaru', () => {
+  it('ustawia 70×100 cm 645 kartom, nie ruszajac ani jednego innego pola', async () => {
     const bezWymiaru = [];
     for (let i = 0; i < 645; i += 1) {
-      bezWymiaru.push(wzorO(`Szablon ${i}`, {
-        kategoria_glowna: 'Aplikacje', paczkomat: 'tak', sku: `PRO-${i}`, opis: `opis ${i}`,
+      bezWymiaru.push(kartaO(`Lampa ${i}`, {
+        kategoria_glowna: 'Aplikacje', paczkomat: 'tak', sku: `SKU-${i}`, opis: `opis ${i}`,
       }));
     }
-    // Kontrola: wzor, ktory wymiar JUZ MA i ktorego zawezenie nie obejmuje.
-    const zWymiarem = wzorO('Ma wymiar', { szerokosc_mm: 450, wysokosc_mm: 650 });
+    // Kontrola: karta, ktora wymiar JUZ MA i ktorej zawezenie nie obejmuje.
+    const zWymiarem = kartaO('Ma wymiar', { szerokosc_mm: 450, wysokosc_mm: 650 });
 
     const r = await zatwierdz(serwer(), {
       zakres: 'pasujace', zawezenie: 'brak=wymiary', szerokosc_cm: '70', wysokosc_cm: '100',
@@ -873,35 +873,35 @@ describe('skala produkcyjna — 645 wzorow bez wymiaru', () => {
     expect(ileNaEkranie(r.body)).toBe('645');
 
     const zmienione = db.prepare(
-      'SELECT COUNT(*) c FROM wzory WHERE szerokosc_mm = 700 AND wysokosc_mm = 1000',
+      'SELECT COUNT(*) c FROM karty_produktow WHERE szerokosc_mm = 700 AND wysokosc_mm = 1000',
     ).get().c;
     expect(zmienione).toBe(645);
 
-    // ⚠️ POZOSTALE POLA NIETKNIETE — to jest ta polowa rozstrzygniecia, ktora na jednym
-    // wzorze widac slabo, a ktora hurtem kosztuje caly katalog.
+    // ⚠️ POZOSTALE POLA NIETKNIETE — to jest ta polowa rozstrzygniecia, ktora na jednej
+    // karcie widac slabo, a ktora hurtem kosztuje caly katalog.
     const potluczone = db.prepare(
-      "SELECT COUNT(*) c FROM wzory WHERE kategoria_glowna IS NOT 'Aplikacje'"
-      + " AND nazwa LIKE 'Szablon %'",
+      "SELECT COUNT(*) c FROM karty_produktow WHERE kategoria_glowna IS NOT 'Aplikacje'"
+      + " AND nazwa LIKE 'Lampa %'",
     ).get().c;
     expect(potluczone).toBe(0);
-    expect(db.prepare("SELECT COUNT(*) c FROM wzory WHERE paczkomat = 'tak'").get().c).toBe(645);
-    expect(db.prepare('SELECT COUNT(*) c FROM wzory WHERE sku IS NULL').get().c).toBe(1);
-    expect(db.prepare('SELECT COUNT(*) c FROM wzory WHERE opis IS NULL').get().c).toBe(1);
+    expect(db.prepare("SELECT COUNT(*) c FROM karty_produktow WHERE paczkomat = 'tak'").get().c).toBe(645);
+    expect(db.prepare('SELECT COUNT(*) c FROM karty_produktow WHERE sku IS NULL').get().c).toBe(1);
+    expect(db.prepare('SELECT COUNT(*) c FROM karty_produktow WHERE opis IS NULL').get().c).toBe(1);
 
-    // Wzor spoza zawezenia zachowuje SWOJ wymiar.
+    // Karta spoza zawezenia zachowuje SWOJ wymiar.
     expect(wiersz(zWymiarem).szerokosc_mm).toBe(450);
     expect(wiersz(zWymiarem).wysokosc_mm).toBe(650);
   });
 
-  it('645 wzorow dostaje JEDEN wspolny znacznik czasu — po nim da sie cofnac pomylke masowa', async () => {
-    for (let i = 0; i < 645; i += 1) wzorO(`Szablon ${i}`);
+  it('645 kart dostaje JEDEN wspolny znacznik czasu — po nim da sie cofnac pomylke masowa', async () => {
+    for (let i = 0; i < 645; i += 1) kartaO(`Lampa ${i}`);
 
     await zatwierdz(serwer(), {
       zakres: 'pasujace', zawezenie: 'brak=wymiary', szerokosc_cm: '70', wysokosc_cm: '100',
     });
 
     const znaczniki = db.prepare(
-      'SELECT COUNT(DISTINCT zmieniony_at) c FROM wzory WHERE szerokosc_mm = 700',
+      'SELECT COUNT(DISTINCT zmieniony_at) c FROM karty_produktow WHERE szerokosc_mm = 700',
     ).get().c;
     expect(znaczniki).toBe(1);
   });

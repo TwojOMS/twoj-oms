@@ -4259,7 +4259,7 @@
         {
           "id": "AST-133",
           "path": "src/moduly/ustawienia/modul.ts",
-          "line": 25,
+          "line": 26,
           "expression": "env.OMS_ADRES_PANELU",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4267,7 +4267,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/ustawienia/modul.ts:25"
+        "src/moduly/ustawienia/modul.ts:26"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -6678,7 +6678,7 @@
     },
     {
       "path": "src/moduly/rdzen/modul.ts",
-      "line": 9,
+      "line": 11,
       "expression": "env",
       "callee": "wczytajSprzedawce",
       "call": "wczytajSprzedawce(env)"
@@ -7423,7 +7423,7 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "b195b23d561c99b7d15549f7b346819f026baad8a7320b52bab6cc2820b5d295",
+      "sha256": "abccca112e5299d7a6deae87cd4525e3daa745c64fc84c76e60278ae08803184",
       "normalizacja": "LF"
     },
     {
@@ -7495,7 +7495,7 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "b195b23d561c99b7d15549f7b346819f026baad8a7320b52bab6cc2820b5d295",
+      "sha256": "abccca112e5299d7a6deae87cd4525e3daa745c64fc84c76e60278ae08803184",
       "normalizacja": "LF"
     },
     {
@@ -7890,7 +7890,7 @@
       },
       {
         "path": "src/moduly/rdzen/modul.ts",
-        "sha256": "abd131090064e759f4f77b28560215e79eea699e0e1c5d3dfb568f5aeb4871bd",
+        "sha256": "bbf97549e0e9ddee1db124ae36f57857755523513a217e7c1287cc27c1094c40",
         "expression": "wczytajSprzedawce(env)"
       },
       {
@@ -9507,7 +9507,7 @@
     },
     {
       "path": "src/moduly/rdzen/modul.ts",
-      "sha256": "abd131090064e759f4f77b28560215e79eea699e0e1c5d3dfb568f5aeb4871bd",
+      "sha256": "bbf97549e0e9ddee1db124ae36f57857755523513a217e7c1287cc27c1094c40",
       "normalizacja": "LF"
     },
     {

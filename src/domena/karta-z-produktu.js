@@ -1,17 +1,17 @@
-// Produkt z lustra sklepu → WZOR w naszym rejestrze. Dwie funkcje czyste i jedna decyzja:
-// co staje sie wzorem (`powodPominiecia`) i co ten wzor niesie (`wzorZProduktu`).
+// Produkt z lustra sklepu → KARTA w naszym rejestrze. Dwie funkcje czyste i jedna decyzja:
+// co staje sie kartą (`powodPominiecia`) i co ta karta niesie (`kartaZProduktu`).
 //
-// ⚠️ TO JEST OPERACJA MASOWA. Jedno klikniecie zaklada ~980 wzorow i nikt ich potem nie
+// ⚠️ TO JEST OPERACJA MASOWA. Jedno klikniecie zaklada ~980 kart i nikt ich potem nie
 // przeglada po jednym — pomylka w regule rozchodzi sie po calym rejestrze i wychodzi dopiero
-// w Etapie 2, na wycietym szablonie. Stad trzy zasady, ktore trzymaja ten plik:
+// przy pakowaniu paczki albo w sklepie, ze zlym wymiarem. Stad trzy zasady, ktore trzymaja ten plik:
 //   (1) NIGDY NIE ZGADUJEMY. Wymiar, ktorego nie da sie odczytac jednoznacznie, jest `null`
-//       i wzor trafia na liste „bez wymiarow"; kategoria, ktorej nie potwierdza sam produkt,
-//       jest `null` i wzor trafia na liste „bez kategorii". Oba braki uzupelnia sie hurtem.
-//   (2) CZEGO NIE UMIEMY ZROBIC, TO MOWIMY WPROST. Produkt bez wzoru ma POWOD wypisany
+//       i karta trafia na liste „bez wymiarow"; kategoria, ktorej nie potwierdza sam produkt,
+//       jest `null` i karta trafia na liste „bez kategorii". Oba braki uzupelnia sie hurtem.
+//   (2) CZEGO NIE UMIEMY ZROBIC, TO MOWIMY WPROST. Produkt bez karty ma POWOD wypisany
 //       na ekranie „pominiete", a nie cicha nieobecnosc w rejestrze.
 //   (3) POJEDYNCZY POPSUTY WIERSZ NIE MA PRAWA WYWALIC PRZEBIEGU. Cale tworzenie idzie
 //       w jednej transakcji, wiec wyjatek na 500. produkcie cofa takze 499 poprzednich.
-import { wymiaryZTekstu, nazwaBezRozmiaru } from './rozmiar.js';
+import { wymiaryZTekstu, nazwaBezRozmiaru, wymiaryZeSklepu, wagaZeSklepu } from './rozmiar.js';
 import { atrybutyWariantu, osiePodzialu, nazwaZOsiami } from './atrybuty-wariantu.js';
 import { wymagajListyKanalow } from './lista-kanalow.js';
 import { czyPozycjaPlaceholdera } from './indywidualne.js';
@@ -24,7 +24,7 @@ const napis = (x) => (typeof x === 'string' ? x.trim() : '');
  * ⚠️ POPSUTY JSON ODDAJE PUSTA LISTE, A NIE WYJATEK. Kolumna jest zwyklym TEXT-em, a lustro
  * bierze sie z cudzego API — ta sama ostroznosc, ktora w `db/magazyn.js` filtruje kategorie
  * przez `json_valid`, i z tego samego powodu: jedna popsuta wartosc nie ma prawa polozyc
- * ani listy, ani przebiegu zakladajacego ~980 wzorow.
+ * ani listy, ani przebiegu zakladajacego ~980 kart.
  */
 function kategorieProduktu(produkt) {
   try {
@@ -36,7 +36,7 @@ function kategorieProduktu(produkt) {
 }
 
 /**
- * Kategoria glowna wzoru. Kolejnosc zrodel: (1) Yoast, (2) jedyna kategoria produktu, (3) null.
+ * Kategoria glowna karty. Kolejnosc zrodel: (1) Yoast, (2) jedyna kategoria produktu, (3) null.
  *
  * ⚠️ KROK (3) NIE MOZE BRZMIEC „WEZ PIERWSZA Z BRZEGU". Przy wielu kategoriach nie da sie
  * wiedziec, czy „Boho" bije „Farmhouse", a tej wartosci uzywa generator SKU — przypadkowy wybor
@@ -87,9 +87,9 @@ function rozwinEncje(tekst) {
 }
 
 /**
- * `short_description` ze sklepu → czysty tekst opisu wzoru.
+ * `short_description` ze sklepu → czysty tekst opisu karty.
  *
- * W Etapie 2 ta wartosc staje sie trescia pliku z opisem w folderze wzoru na NAS-ie, wiec
+ * Ta wartosc trafia na ekran karty i do dokumentow magazynu, wiec
  * czyta ja czlowiek, a nie przegladarka — HTML jest tu smieciem, nie formatowaniem.
  *
  * ⚠️ ZNACZNIK ZAMIENIAMY NA SPACJE, NIE NA PUSTKE: „<p>a</p><p>b</p>" bez tego daje „ab",
@@ -107,47 +107,57 @@ function opisZeSklepu(surowy) {
 }
 
 /**
- * Wymiary wzoru w milimetrach.
+ * Wymiary karty w milimetrach.
  *
- * ⚠️ ATRYBUT BIJE NAZWE I JEGO ODMOWA TEZ BIJE NAZWE. Na PRO oba niosa ROZNE, PRAWDZIWE liczby:
- * „Teren monitorowany – 60x62cm" ma atrybut „70 x 100 cm", bo 60×62 to WZOR, a 70×100 to ARKUSZ,
- * z ktorego sie go wycina. Magazyn trzyma wymiar ARKUSZA — to on decyduje o pakowaniu,
+ * ⚠️ ATRYBUT BIJE NAZWE I JEGO ODMOWA TEZ BIJE NAZWE. W sklepie B oba niosa ROZNE, PRAWDZIWE liczby:
+ * „Lampa wisząca Kopuła – 60x62cm" ma atrybut „70 x 100 cm", bo 60×62 to sam klosz, a 70×100
+ * to produkt gotowy do wysylki. Magazyn trzyma wymiar z ATRYBUTU — to on decyduje o pakowaniu,
  * paczkomacie i cenie. Skoro wiec sklep WSKAZAL zrodlo rozmiaru, to nawet gdy tego wskazania
  * nie da sie odczytac („Zestaw 70x100 cm i 45x65 cm"), zejscie na nazwe podstawiloby wymiar
  * z INNEGO zrodla niz to, ktore sklep wskazal — i nikt by tego nie zauwazyl.
  *
  * Na nazwe schodzimy WYLACZNIE wtedy, gdy `rozmiar_tekst` jest pusty — czyli gdy sklep nie
- * wskazal niczego (produkty proste ze sklepu A: „Chmurka i Ksiezyc – aplikacja 30x48cm").
+ * wskazal niczego (produkty proste ze sklepu A: „Kinkiet Ramię – 30x48cm").
  */
 function wymiary(produkt, nazwaZrodlowa) {
   const zAtrybutu = napis(produkt?.rozmiar_tekst);
-  return wymiaryZTekstu(zAtrybutu || nazwaZrodlowa) ?? null;
+  const zTekstu = wymiaryZTekstu(zAtrybutu || nazwaZrodlowa) ?? null;
+  // PRZ-090: wymiary, ktore sklep podaje sam (`dimensions` z jednostka), NIE bija rozmiaru z atrybutu ani z nazwy.
+  // Pole `dimensions` kopiuje sie razem z duplikowanym produktem i nikt go nie poprawia, gdy zmienia sie atrybut
+  // rozmiaru — wtedy dwa zrodla mowia co innego, a zgadywanie, ktore ma racje, daje zly gabaryt i zla paczke.
+  // Stad: sam tekst → tekst; same wymiary sklepu → sklep; oba zgodne (szerokosc i wysokosc) → sklep, bo niesie
+  // tez glebokosc; oba RÓZNE → brak wymiarow (karta trafia na liste „bez wymiarów”).
+  const zeSklepu = wymiaryZeSklepu(produkt?.wymiary_json);
+  if (!zeSklepu) return zTekstu;
+  if (!zTekstu) return zeSklepu;
+  const zgodne = zTekstu.szerokosc_mm === zeSklepu.szerokosc_mm && zTekstu.wysokosc_mm === zeSklepu.wysokosc_mm;
+  return zgodne ? zeSklepu : null;
 }
 
 /**
- * Produkt sklepowy → pola nowego wzoru, albo `null`, gdy wzoru zrobic sie nie da.
+ * Produkt sklepowy → pola nowej karty, albo `null`, gdy karty zrobic sie nie da.
  *
  * `null` oddajemy DOKLADNIE W TYCH przypadkach, na ktore `powodPominiecia` ma powod — te dwie
  * funkcje sa jedna decyzja rozpisana na dwa pytania i nie wolno im sie rozjechac (patrz test
- * „to, czego wzorZProduktu nie umie zrobic, ma powod pominiecia").
+ * „to, czego kartaZProduktu nie umie zrobic, ma powod pominiecia").
  *
- * Ksztalt wyniku jest STALY — piec kluczy zawsze, brak jako `null`. `utworzWzor` pomija pola
+ * Ksztalt wyniku jest STALY — piec kluczy zawsze, brak jako `null`. `utworzKarte` pomija pola
  * `undefined`, wiec ksztalt zmienny znaczylby, ze raz zapisujemy kolumne, a raz nie, i to
  * zaleznie od danych sklepu.
  */
-export function wzorZProduktu(produkt) {
+export function kartaZProduktu(produkt) {
   const zrodlowa = napis(produkt?.nazwa);
   if (!zrodlowa) return null;
 
-  // Nazwa gubi dopisek z rozmiarem („Teren monitorowany – 60x62cm" → „Teren monitorowany”):
+  // Nazwa gubi dopisek z rozmiarem („Lampa wisząca Kopuła – 60x62cm" → „Lampa wisząca Kopuła”):
   // rozmiar jest osobna kolumna, a z nazwy korzysta lista i generator SKU. `nazwaBezRozmiaru`
   // nie tnie tego, czego nie rozpoznaje jednoznacznie — ta sama zasada, co przy wymiarach.
   const nazwa = napis(nazwaBezRozmiaru(zrodlowa)) || zrodlowa;
   const wymiar = wymiary(produkt, zrodlowa);
 
   return {
-    // ⚠️ NAZWA NIESIE WARTOSC OSI PODZIALU — inaczej z `Woodland` powstaja trzy wzory
-    // „Woodland", nierozroznialne na liscie i w generatorze SKU. Uzasadnienie w calosci
+    // ⚠️ NAZWA NIESIE WARTOSC OSI PODZIALU — inaczej z `Kinkiet Ramię` powstaja trzy karty
+    // „Kinkiet Ramię", nierozroznialne na liscie i w generatorze SKU. Uzasadnienie w calosci
     // przy `nazwaZOsiami` w domain/atrybuty-wariantu.js.
     //
     // ⚠️ Wiersz, ktorego atrybutow lustro nie zna (`null`), dostaje nazwe DOKLADNIE taka jak
@@ -157,6 +167,8 @@ export function wzorZProduktu(produkt) {
     opis: opisZeSklepu(produkt?.opis_zrodlowy),
     szerokosc_mm: wymiar?.szerokosc_mm ?? null,
     wysokosc_mm: wymiar?.wysokosc_mm ?? null,
+    glebokosc_mm: wymiar?.glebokosc_mm ?? null,
+    waga_g: wagaZeSklepu(produkt?.waga_tekst),
   };
 }
 
@@ -166,7 +178,7 @@ export function wzorZProduktu(produkt) {
  * ⚠️⚠️ ROZSTRZYGA POZYCJA, NIE SAM KANAL, i to jest zmiana wobec stanu sprzed 2026-08-11.
  * Wczesniej „celowe" znaczylo dokladnie tyle, co „nie pochodzi z kanalu sklepowego" — czyli
  * w praktyce „to oferta Allegro". Pomiar na produkcyjnej bazie pokazal 13 pozycji ZE SKLEPU,
- * ktore wzorami nie beda NIGDY: `Projekt indywidualny` (12 wariantow rozniacych sie sama cena)
+ * ktore kartami nie beda NIGDY: `Projekt indywidualny` (12 wariantow rozniacych sie sama cena)
  * i zaslepke `psm-zam-placeholder`. Siedzialy na gorze ekranu jako robota i udawaly usterke,
  * ktorej naprawic sie nie da, bo nic tam nie jest zepsute.
  *
@@ -180,14 +192,14 @@ export function wzorZProduktu(produkt) {
  */
 export function czyPominietyCelowo(produkt, kanalySklepow) {
   wymagajListyKanalow(kanalySklepow);
-  // Oferta Allegro (i kazdy kanal spoza bialej listy): wzor powstaje z katalogu sklepu,
+  // Oferta Allegro (i kazdy kanal spoza bialej listy): karta powstaje z katalogu sklepu,
   // a oferte wiaze sie z nim recznie. Nie ma tu czego naprawiac.
   if (!kanalySklepow.includes(napis(produkt?.kanal))) return true;
 
-  // Zaslepka wtyczki panelu ofert — pozycja techniczna, nie wzor.
+  // Zaslepka wtyczki panelu ofert — pozycja techniczna, nie karta.
   if (czyPozycjaPlaceholdera(produkt?.sku_sklepu)) return true;
 
-  // Wariant, ktorego JEDYNA osia podzialu jest cena: pozycja cennikowa, nie wzor.
+  // Wariant, ktorego JEDYNA osia podzialu jest cena: pozycja cennikowa, nie karta.
   // ⚠️ `atrybuty === null` (lustro nie wie) NIE wpada tutaj — nieznane nie jest „tak ma byc".
   if (napis(produkt?.wariant_id) && !napis(produkt?.rozmiar_tekst)) {
     const atrybuty = atrybutyWariantu(produkt);
@@ -198,11 +210,11 @@ export function czyPominietyCelowo(produkt, kanalySklepow) {
 }
 
 /**
- * Dlaczego z tego produktu NIE robimy wzoru — napis dla czlowieka albo `null`, gdy robimy.
+ * Dlaczego z tego produktu NIE robimy karty — napis dla czlowieka albo `null`, gdy robimy.
  *
  * ⚠️ KOLEJNOSC STRAZNIKOW JEST TRESCIA, NIE PORZADKIEM. Ten napis czyta wlasciciel na ekranie
  * „pominiete" i po nim decyduje, co zrobic; przy kilku powodach naraz ma paść ten NAJGLEBSZY.
- * Idziemy od „to nigdy nie bylo wzorem" do „to jest wzor, ale dane sa popsute". Oferta Allegro,
+ * Idziemy od „to nigdy nie bylo kartą" do „to jest karta, ale dane sa popsute". Oferta Allegro,
  * ktora zniknela, ma mowic o kanale — odsylanie wlasciciela do naprawy atrybutu w sklepie,
  * w ktorym tego produktu nigdy nie bylo, kosztowaloby go realne minuty razy kilkaset wierszy.
  */
@@ -210,47 +222,47 @@ export function powodPominiecia(produkt, kanalySklepow) {
   wymagajListyKanalow(kanalySklepow);
   const kanal = napis(produkt?.kanal);
 
-  // ⚠️⚠️ OFERTA ALLEGRO NIE ZAKLADA WZORU — i to jest decyzja z rozpoznania, nie ostroznosc.
-  // Spec §3: „z 1010 pozycji SKLEPOWYCH powstaje okolo 980 wzorow", a recznie zostaje
-  // „podpiecie ofert Allegro", czyli zwiazanie oferty z wzorem, ktory powstal ze SKLEPU.
-  // Gdyby oferta zakladala wlasny wzor, rejestr urosłby o ~447 duplikatow o nazwach
-  // SPRZEDAZOWYCH („Zakaz palenia papierosow - DUZY szablon malarski do znakowania" obok
-  // sklepowego „Zakaz palenia – 64cm") i nie byloby juz czego z czym wiazac. Automatu do
+  // ⚠️⚠️ OFERTA ALLEGRO NIE ZAKLADA KARTY — i to jest decyzja z rozpoznania, nie ostroznosc.
+  // Spec §3: „z 1010 pozycji SKLEPOWYCH powstaje okolo 980 kart", a recznie zostaje
+  // „podpiecie ofert Allegro", czyli zwiazanie oferty z kartą, ktora powstala ze SKLEPU.
+  // Gdyby oferta zakladala wlasna karte, rejestr urosłby o ~447 duplikatow o nazwach
+  // SPRZEDAZOWYCH („Lampa stolowa nocna - DUZY abazur lniany do sypialni"
+  // obok sklepowego „Lampa stołowa – 64cm") i nie byloby juz czego z czym wiazac. Automatu do
   // dopasowania nie ma i miec nie moze: `external` jest `null` na WSZYSTKICH ofertach obu kont.
   //
-  // BIALA LISTA, nie „byle nie Allegro": kanal, ktorego nie znamy, tez nie zaklada wzorow.
+  // BIALA LISTA, nie „byle nie Allegro": kanal, ktorego nie znamy, tez nie zaklada kart.
   // Nierozpoznany kanal ma sie POKAZAC na liscie pominietych, a nie po cichu dosypac rejestrowi
   // kilkuset wierszy — ta sama zasada, co „filtr, ktorego nie rozumiemy, NIE POSZERZA zbioru".
   if (!kanalySklepow.includes(kanal)) {
-    return `kanał „${kanal || '(brak)'}" nie zakłada wzorów — wzór powstaje z katalogu sklepu`
+    return `kanał „${kanal || '(brak)'}" nie zakłada kart — karta powstaje z katalogu sklepu`
       + ` (${kanalySklepow.join(', ')}), a ofertę wiąże się z nim ręcznie`;
   }
 
   // Ukryty produkt, ktorym wtyczka panelu ofert wstawia pozycje indywidualna, wysylke
-  // i realizacje priorytetowa. Wzorem nie jest i nigdy nie bedzie.
+  // i realizacje priorytetowa. Karta nie jest i nigdy nie bedzie.
   if (czyPozycjaPlaceholdera(produkt?.sku_sklepu)) {
-    return 'zaślepka panelu ofert indywidualnych — to nie jest wzór, tylko pozycja techniczna';
+    return 'zaślepka panelu ofert indywidualnych — to nie jest karta, tylko pozycja techniczna';
   }
 
-  // Produkt wycofany ze sprzedazy. Wiersz zostaje w lustrze (powiazanie z wzorem ma przezyc
-  // wycofanie), ale zakladanie NOWEGO wzoru dla czegos, czego w sklepie juz nie ma, doklada
+  // Produkt wycofany ze sprzedazy. Wiersz zostaje w lustrze (powiazanie z kartą ma przezyc
+  // wycofanie), ale zakladanie NOWEJ karty dla czegos, czego w sklepie juz nie ma, doklada
   // rejestrowi wiersz bez zadnego zastosowania.
   //
   // ⚠️ W OBECNYM POTOKU TEN STRAZNIK JEST NIEOSIAGALNY i to jest zamierzone: obaj konsumenci
-  // (`utworzWzoryZNiepowiazanych`, `produktyPominiete`) chodza po `niepowiazaneProdukty`,
+  // (`utworzKartyZNiepowiazanych`, `produktyPominiete`) chodza po `niepowiazaneProdukty`,
   // ktore filtruje `zniknal_at IS NULL` juz w SQL-u. Ekran „pominiete" pokaze wiec CZTERY
   // powody, nie piec — kto szuka piatego, znalazl wlasnie ten. Straznik zostaje dla wolajacych
   // spoza tej petli i jest obrona w glab, nie martwym kodem: po zdjeciu filtru z SQL-a testy
   // Zadania 8 zostaja zielone (lapie go ta galaz), a czerwieni sie osobny test w magazyn-db.
   // Obie warstwy sa przypiete wlasnym testem — nie usuwac zadnej „bo druga wystarczy".
   if (napis(produkt?.zniknal_at)) {
-    return `zniknął ze sklepu (${napis(produkt.zniknal_at)}) — wzoru dla wycofanego produktu nie zakładamy`;
+    return `zniknął ze sklepu (${napis(produkt.zniknal_at)}) — karty dla wycofanego produktu nie zakładamy`;
   }
 
   // ⚠️ WARIANT BEZ ROZMIARU TO NIE JEST JEDNA SPRAWA, TYLKO CZTERY (zmierzone na produkcyjnej
   // bazie 2026-08-11, po pierwszym prawdziwym odczycie 1459 pozycji: 47 takich wierszy).
   // Do tego dnia wszystkie cztery wpadaly do jednego worka „wariant bez rozmiaru", wiec
-  // 28 wzorow, ktore powstac MOGLY, nie powstawalo — a 13 pozycji, ktore wzorami nie beda
+  // 28 kart, ktore powstac MOGLY, nie powstawalo — a 13 pozycji, ktore kartami nie beda
   // nigdy, siedzialo w „robocie" i udawalo usterke do naprawienia.
   //
   // ⚠️ Warunek dotyczy WYLACZNIE wariantow. Produkt PROSTY bez rozmiaru jest normalny — takich
@@ -260,27 +272,27 @@ export function powodPominiecia(produkt, kanalySklepow) {
 
     // ⚠️⚠️ „NIE WIEMY" NIE JEST „NIE MA". Kolumna `atrybuty_json` powstala 2026-08-11, a 1459
     // wierszy zapisanych wczesniej ma w niej NULL az do najblizszego odczytu katalogow.
-    // Zalozenie wzorow z takich danych daloby 20 wzorow o nazwie „CYFRY wys. 90cm (Arial)",
+    // Zalozenie kart z takich danych daloby 20 kart o nazwie „Klosz szklany do lamp wiszących",
     // nierozroznialnych i nieodwracalnie ponumerowanych; odeslanie wlasciciela do sklepu
     // kazaloby mu poprawiac katalog, ktory jest w porzadku. Panel mowi wiec, co ma zrobic SAM.
     if (atrybuty === null) {
       return 'lustro nie zna jeszcze atrybutów tego wariantu — kliknij „Odczytaj katalogi",'
-        + ' żeby panel mógł rozstrzygnąć, czy to osobny wzór';
+        + ' żeby panel mógł rozstrzygnąć, czy to osobna karta';
     }
 
     // ROZSTRZYGNIECIE WLASCICIELA: os podzialu INNA NIZ rozmiar i cena znaczy, ze sklep sam
-    // wskazal, czym te warianty sie roznia — a skoro nie rozmiarem, to sa to ROZNE WZORY.
-    // `Woodland` (wzor=Wiewiorka/Zajac/Los), `Sleepy Cat` i `Mickey` (uklad=...), oba `CYFRY`
-    // (czcionka + cyfra). Nazwe rozroznia `wzorZProduktu` — patrz `nazwaZOsiami`.
+    // wskazal, czym te warianty sie roznia — a skoro nie rozmiarem, to sa to ROZNE KARTY.
+    // `Kinkiet Ramię` (kolor=Mosiadz/Czern/Biel), `Lampa wisząca Kopuła` i `Plafon Dysk`
+    // (uklad=...), oba `Klosz szklany` (kolor + gwint). Nazwe rozroznia `kartaZProduktu` — patrz `nazwaZOsiami`.
     if (!osiePodzialu(atrybuty).length) {
       // Sama cena jako os podzialu: `Projekt indywidualny` (12 wariantow, 69–129 zl).
-      // To nie jest wzor i nie bedzie — powod ma to mowic wprost, zeby ekran „pominiete"
+      // To nie jest karta i nie bedzie — powod ma to mowic wprost, zeby ekran „pominiete"
       // odlozyl te pozycje do „tak ma byc", a nie trzymal jako robote do konca swiata.
       if (atrybuty.length) {
-        return 'warianty różnią się wyłącznie ceną — to nie jest wzór w różnych rozmiarach,'
-          + ' tylko pozycja cennikowa; wzoru z niej nie zakładamy';
+        return 'warianty różnią się wyłącznie ceną — to nie jest karta w różnych rozmiarach,'
+          + ' tylko pozycja cennikowa; karty z niej nie zakładamy';
       }
-      // ZERO atrybutow: `Koła duże` i `X` (6 wariantow, ceny 79/99/119). Ceny SA tam
+      // ZERO atrybutow: `Abażur lniany` i `X` (6 wariantow, ceny 79/99/119). Ceny SA tam
       // rozmiarami, ale panel nie ma czego przeczytac — a drabinka cenowa to dokladnie to
       // zgadywanie, ktorego zabrania zasada (1) tego pliku. Powod nazywa CZYNNOSC.
       return 'wariant bez atrybutu wariacyjnego — panel nie ma czego przeczytać; nazwij'
@@ -288,9 +300,25 @@ export function powodPominiecia(produkt, kanalySklepow) {
     }
   }
 
-  // `wzory.nazwa` jest NOT NULL, a `produkty_sklepowe.nazwa` przepuszcza pusty napis — bez tego
-  // strażnika `utworzWzor` rzuca w polowie przebiegu i cofa cala transakcje.
-  if (!napis(produkt?.nazwa)) return 'produkt bez nazwy — wzór nie ma po czym się nazywać';
+  // `karty.nazwa` jest NOT NULL, a `produkty_sklepowe.nazwa` przepuszcza pusty napis — bez tego
+  // strażnika `utworzKarte` rzuca w polowie przebiegu i cofa cala transakcje.
+  if (!napis(produkt?.nazwa)) return 'produkt bez nazwy — karta nie ma po czym się nazywać';
 
   return null;
+}
+
+/**
+ * Z których kanałów powstają karty produktów (PRZ-090, decyzja właściciela 17.10).
+ *
+ * Ze sklepem WooCommerce źródłem jest SKLEP — on niesie cennik, kategorie i opisy, a ofertę Allegro wiąże się
+ * z kartą ręcznie (nazwy ofert są sprzedażowe, `external` bywa puste). Firma, która sprzedaje WYŁĄCZNIE na Allegro,
+ * nie ma innego źródła — bez tej reguły jej katalog byłby pusty na zawsze.
+ *
+ * @param {string[]} kanalySklepow klucze sklepów z konfiguracji
+ * @param {string[]} kanalyAllegro klucze kont Allegro z konfiguracji
+ */
+export function kanalyZrodloweKart(kanalySklepow, kanalyAllegro) {
+  wymagajListyKanalow(kanalySklepow);
+  wymagajListyKanalow(kanalyAllegro);
+  return kanalySklepow.length ? [...kanalySklepow] : [...kanalyAllegro];
 }

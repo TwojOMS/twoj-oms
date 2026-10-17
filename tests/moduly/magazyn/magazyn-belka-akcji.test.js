@@ -38,7 +38,7 @@ describe('belka akcji magazynu', () => {
 
   it('belka i checkbox "zaznaczone" siedza w TYM SAMYM formularzu na /magazyn/hurt', () => {
     const indeksBelki = widok.indexOf('class="belka-akcji"');
-    // ⚠️ Widok ma pieć formularzy (odswiez, utworz-wzory, filtry, szukajka, hurt) — kotwiczyc
+    // ⚠️ Widok ma pieć formularzy (odswiez, utworz-karty, filtry, szukajka, hurt) — kotwiczyc
     // WYLACZNIE po literalnym action tego jednego, inaczej mozna zlapac cudzy </form>.
     const indeksFormularza = widok.indexOf('action="/magazyn/hurt"');
     expect(indeksFormularza).toBeGreaterThan(-1);

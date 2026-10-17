@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 import { createWooClient } from '../../../src/oms/woo/client.js';
-import { utworzWzor, zapiszProduktSklepowy, powiazProdukt } from '../../../src/oms/db/magazyn.js';
+import { utworzKarte, zapiszProduktSklepowy, powiazProdukt } from '../../../src/oms/db/magazyn.js';
 import { wyslijDoSklepow } from '../../../src/moduly/magazyn/services/magazyn-zapis.js';
 
 // ZAPIS SKU I WYMIAROW DO SKLEPOW — jedyne miejsce w panelu, ktore PISZE do sklepu,
@@ -20,7 +20,7 @@ import { wyslijDoSklepow } from '../../../src/moduly/magazyn/services/magazyn-za
 
 const Z = (nad = {}) => ({
   kanal: 'pro', sciezka: 'products/900', pola: { sku: 'A-1' }, opis: '…',
-  produkt_id: '900', wariant_id: '', nazwa: 'Tabliczka', wzor_id: 1, ...nad,
+  produkt_id: '900', wariant_id: '', nazwa: 'Lampka', karta_id: 1, ...nad,
 });
 
 /** Klient sklepu: produkt bez numeru, zapis sie udaje. */
@@ -184,9 +184,9 @@ describe('rodzic vs wariant — atrapa zachowująca się jak WooCommerce', () =>
     const pro = atrapaSklepuWoo();
     await wyslijDoSklepow({
       sklepy: { pro },
-      zmiany: [Z({ sciezka: 'products/944/variations/1091', pola: { sku: 'PRO-EV-118' } })],
+      zmiany: [Z({ sciezka: 'products/944/variations/1091', pola: { sku: 'LMP-PLA-118' } })],
     });
-    expect(pro.stan['products/944/variations/1091'].sku).toBe('PRO-EV-118');
+    expect(pro.stan['products/944/variations/1091'].sku).toBe('LMP-PLA-118');
     expect(pro.stan['products/944'].sku).toBe('');
   });
 });
@@ -215,12 +215,12 @@ describe('bariera na stanie żywym wobec odpowiedzi, której nie rozumiemy', () 
   const ZMIANA = {
     kanal: 'pro',
     sciezka: 'products/900',
-    pola: { sku: 'STE-ZAKAZY-001', dimensions: { length: '70', width: '100' } },
+    pola: { sku: 'PLC-PODLOG-001', dimensions: { length: '70', width: '100' } },
     opis: '…',
     produkt_id: '900',
     wariant_id: '',
-    nazwa: 'Zakazy',
-    wzor_id: 1,
+    nazwa: 'Lampy podłogowe',
+    karta_id: 1,
   };
 
   /** Sklep, ktory na ODCZYT oddaje `jakJson`, a kazde inne zadanie przyjmuje. */
@@ -249,9 +249,9 @@ describe('bariera na stanie żywym wobec odpowiedzi, której nie rozumiemy', () 
     ['ciało nie-JSON', async () => { throw new SyntaxError('Unexpected token < in JSON'); }],
     ['JSON bez klucza sku', async () => ({ id: 900 })],
     ['JSON = null', async () => null],
-    ['JSON = tablica', async () => [{ id: 900, sku: 'PRO-NIEUPOWAZN-168' }]],
+    ['JSON = tablica', async () => [{ id: 900, sku: 'LMP-NIEUPOWAZN-168' }]],
     // Zmiana ksztaltu API albo wtyczka opakowujaca odpowiedz.
-    ['sku zagnieżdżone', async () => ({ product: { id: 900, sku: 'PRO-NIEUPOWAZN-168' } })],
+    ['sku zagnieżdżone', async () => ({ product: { id: 900, sku: 'LMP-NIEUPOWAZN-168' } })],
     // `null` w polu numeru: dla `String(null ?? '')` to pustka, czyli „produkt bez numeru".
     ['sku = null', async () => ({ id: 900, sku: null })],
     // Odpowiedz o INNYM produkcie (przekierowanie, cache, pomylka wtyczki) — sprawdzalibysmy
@@ -277,7 +277,7 @@ describe('bariera na stanie żywym wobec odpowiedzi, której nie rozumiemy', () 
   });
 
   it('produkt rozpoznany, z CUDZYM numerem, nie dostaje PUT-a', async () => {
-    const { klient, puty } = sklepZOdczytem(async () => ({ id: 900, sku: 'PRO-NIEUPOWAZN-168' }));
+    const { klient, puty } = sklepZOdczytem(async () => ({ id: 900, sku: 'LMP-NIEUPOWAZN-168' }));
     const [w] = await wyslijDoSklepow({ sklepy: { pro: klient }, zmiany: [ZMIANA] });
     expect(puty()).toEqual([]);
     expect(w.ok).toBe(false);
@@ -425,16 +425,16 @@ beforeEach(() => {
   sklepy = { pro: klientO(), szkicownia: klientO() };
 });
 
-const wzorO = (nazwa, reszta = {}) => utworzWzor(db, { nazwa, ...reszta });
+const kartaO = (nazwa, reszta = {}) => utworzKarte(db, { nazwa, ...reszta });
 
-function produktO(wzorId, {
-  kanal = 'pro', produkt_id = '900', wariant_id = '', sku = null, nazwa = 'Tabliczka',
+function produktO(kartaId, {
+  kanal = 'pro', produkt_id = '900', wariant_id = '', sku = null, nazwa = 'Lampka',
 } = {}) {
   const id = zapiszProduktSklepowy(db, {
     kanal, produkt_id, wariant_id, nazwa, sku_sklepu: sku,
     odczytane_at: '2026-08-12T10:00:00.000Z',
   });
-  if (wzorId) powiazProdukt(db, id, wzorId);
+  if (kartaId) powiazProdukt(db, id, kartaId);
   return id;
 }
 
@@ -455,19 +455,19 @@ describe('POST /magazyn/zapisz-do-sklepow', () => {
   // jak nadanie zbiorcze, gdzie podzial jest przeliczany przy zatwierdzeniu, a nie
   // przepisany z ekranu podgladu.
   it('zapis liczy zmiany PONOWNIE, nie bierze ich z formularza', async () => {
-    const id = wzorO('Ewakuacja', { sku: 'STARE-Z-EKRANU' });
+    const id = kartaO('Bursztyn', { sku: 'STARE-Z-EKRANU' });
     produktO(id);
     const app = serwer();
     await app.inject({
       method: 'POST', url: '/magazyn/podglad-zapisu', headers: auth, payload: { zaznaczone: String(id) },
     });
-    db.prepare('UPDATE wzory SET sku = ? WHERE id = ?').run('NOWE-PO-ZMIANIE', id);
+    db.prepare('UPDATE karty_produktow SET sku = ? WHERE id = ?').run('NOWE-PO-ZMIANIE', id);
     await wyslij(app, { zaznaczone: String(id) });
     expect(sklepy.pro.zapiszProdukt.mock.calls[0][1].sku).toBe('NOWE-PO-ZMIANIE');
   });
 
   it('bez tokenu CSRF odmawia i nie woła sklepu', async () => {
-    const id = wzorO('Ewakuacja', { sku: 'A-1' });
+    const id = kartaO('Bursztyn', { sku: 'A-1' });
     produktO(id);
     const r = await wyslij(serwer(), { zaznaczone: String(id) }, { authorization: auth.authorization });
     expect(r.statusCode).toBeGreaterThanOrEqual(400);
@@ -488,7 +488,7 @@ describe('POST /magazyn/zapisz-do-sklepow', () => {
   // ⚠️ Po zapisie NIGDY nie przekierowujemy — lista „poszło / nie poszło" jest jedynym
   // swiadectwem operacji, ktorej nie da sie cofnac klknieciem.
   it('po zapisie zostaje lista wyników, bez przekierowania', async () => {
-    const id = wzorO('Ewakuacja', { sku: 'A-1' });
+    const id = kartaO('Bursztyn', { sku: 'A-1' });
     produktO(id);
     const r = await wyslij(serwer(), { zaznaczone: String(id) });
     expect(r.statusCode).toBe(200);
@@ -501,7 +501,7 @@ describe('POST /magazyn/zapisz-do-sklepow', () => {
         .mockRejectedValueOnce(new Error('duplikat SKU'))
         .mockResolvedValueOnce({}),
     });
-    const id = wzorO('Ewakuacja', { sku: 'A-1' });
+    const id = kartaO('Bursztyn', { sku: 'A-1' });
     produktO(id, { produkt_id: '900' });
     produktO(id, { produkt_id: '901' });
     const r = await wyslij(serwer(), { zaznaczone: String(id) });
@@ -513,7 +513,7 @@ describe('POST /magazyn/zapisz-do-sklepow', () => {
   // ⚠️ LUSTRO DOGANIA SKLEP TYLKO DLA TEGO, CO NAPRAWDE POSZLO. Bez tego kolejny podglad
   // pokazywalby te sama zmiane jeszcze raz i zapraszal do drugiego zapisu.
   it('po udanym zapisie numer stoi też w lustrze', async () => {
-    const id = wzorO('Ewakuacja', { sku: 'A-1' });
+    const id = kartaO('Bursztyn', { sku: 'A-1' });
     const produkt = produktO(id);
     await wyslij(serwer(), { zaznaczone: String(id) });
     expect(lustro(produkt).sku_sklepu).toBe('A-1');
@@ -521,33 +521,33 @@ describe('POST /magazyn/zapisz-do-sklepow', () => {
 
   it('po NIEUDANYM zapisie lustro zostaje nietknięte', async () => {
     sklepy.pro = klientO({ zapiszProdukt: vi.fn().mockRejectedValue(new Error('duplikat SKU')) });
-    const id = wzorO('Ewakuacja', { sku: 'A-1' });
+    const id = kartaO('Bursztyn', { sku: 'A-1' });
     const produkt = produktO(id);
     await wyslij(serwer(), { zaznaczone: String(id) });
     expect(lustro(produkt).sku_sklepu).toBeNull();
   });
 
   // ⚠️ ODSWIEZENIE LUSTRA DOTYKA WYLACZNIE KOLUMNY NUMERU. Gdyby szlo przez upsert lustra,
-  // skasowaloby powiazanie wzoru (`wzor_id`) — cala reczna prace wlasciciela.
-  it('odświeżenie lustra nie zrywa powiązania z wzorem', async () => {
-    const id = wzorO('Ewakuacja', { sku: 'A-1' });
-    const produkt = produktO(id, { nazwa: 'Tabliczka ewakuacyjna' });
+  // skasowaloby powiazanie karty (`karta_id`) — cala reczna prace wlasciciela.
+  it('odświeżenie lustra nie zrywa powiązania z kartą', async () => {
+    const id = kartaO('Bursztyn', { sku: 'A-1' });
+    const produkt = produktO(id, { nazwa: 'Lampka Kałamarz' });
     await wyslij(serwer(), { zaznaczone: String(id) });
-    expect(lustro(produkt).wzor_id).toBe(id);
-    expect(lustro(produkt).nazwa).toBe('Tabliczka ewakuacyjna');
+    expect(lustro(produkt).karta_id).toBe(id);
+    expect(lustro(produkt).nazwa).toBe('Lampka Kałamarz');
   });
 
   // ⚠️ ZMIANA BEZ NUMERU (same wymiary) nie ma czym przestawic lustra — i nie ma prawa
   // wpisac tam pustki.
   it('zapis samych wymiarów nie rusza numeru w lustrze', async () => {
-    const id = wzorO('Ewakuacja', { szerokosc_mm: 700, wysokosc_mm: 1000 });
+    const id = kartaO('Bursztyn', { szerokosc_mm: 700, wysokosc_mm: 1000 });
     const produkt = produktO(id, { sku: 'PD10' });
     await wyslij(serwer(), { zaznaczone: String(id) });
     expect(lustro(produkt).sku_sklepu).toBe('PD10');
   });
 
   it('produkt wstrzymany przez cudzy numer nie jest w ogóle wysyłany', async () => {
-    const id = wzorO('Ewakuacja', { sku: 'A-1' });
+    const id = kartaO('Bursztyn', { sku: 'A-1' });
     produktO(id, { sku: 'PD10' });
     const r = await wyslij(serwer(), { zaznaczone: String(id) });
     expect(sklepy.pro.zapiszProdukt).not.toHaveBeenCalled();
@@ -555,8 +555,8 @@ describe('POST /magazyn/zapisz-do-sklepow', () => {
   });
 
   it('do Allegro nie idzie ani jedno żądanie', async () => {
-    const id = wzorO('Ewakuacja', { sku: 'A-1' });
-    produktO(id, { kanal: 'allegro_szkicownia', produkt_id: '9000000001' });
+    const id = kartaO('Bursztyn', { sku: 'A-1' });
+    produktO(id, { kanal: 'allegro_szkicownia', produkt_id: '1234567890' });
     await wyslij(serwer(), { zaznaczone: String(id) });
     expect(sklepy.pro.zapiszProdukt).not.toHaveBeenCalled();
     expect(sklepy.szkicownia.zapiszProdukt).not.toHaveBeenCalled();

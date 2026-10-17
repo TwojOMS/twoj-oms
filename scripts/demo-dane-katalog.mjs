@@ -52,6 +52,22 @@ export function zdjecieProduktu(sku) {
   return `${ADRES_ZDJEC_DEMO}/${pula[nr % pula.length]}.jpg`;
 }
 
+// PRZ-090 — wymiary opakowania (szerokość × wysokość × głębokość w mm) i waga w gramach według kategorii, tak jak
+// sklep podaje je w `dimensions`/`weight` (cm i kg). Kilka produktów celowo bez wymiarów — ekran braków w Magazynie
+// ma co pokazać. Woo: length = wysokość, width = szerokość, height = głębokość (domena/rozmiar.js).
+const WYMIARY_KATEGORII = { 'Lampy stołowe': [300, 450, 300, 1800], 'Lampy wiszące': [450, 400, 450, 2400],
+  'Lampy podłogowe': [500, 1600, 500, 6500], Kinkiety: [250, 300, 180, 900], 'Lampki nocne': [180, 250, 180, 700],
+  'Abażury i klosze': [320, 280, 320, 600], Akcesoria: [120, 160, 80, 150] };
+const BEZ_WYMIAROW = new Set(['LMP-POD-003', 'LMP-KIN-004', 'LMP-AKC-003']);
+const cm = (mm) => String(mm / 10);
+function wymiaryWoo(sku, nazwaKategorii, przesuniecie) {
+  const w = WYMIARY_KATEGORII[nazwaKategorii];
+  if (!w || BEZ_WYMIAROW.has(sku)) return { dimensions: { length: '', width: '', height: '' }, weight: '' };
+  const [szer, wys, gl, waga] = w;
+  return { dimensions: { length: cm(wys + (przesuniecie % 3) * 30), width: cm(szer + (przesuniecie % 4) * 20), height: cm(gl) },
+    weight: String((waga + (przesuniecie % 5) * 100) / 1000) };
+}
+
 function kanalyTypu(typ) { return KANALY.filter((k) => k.typ === typ).map((k) => k.klucz); }
 
 /** Surowe produkty Woo (`/wc/v3/products`) dla sklepu `kanal` i ich warianty (`/products/{id}/variations`). */
@@ -72,7 +88,8 @@ export function katalogWoo(kanal = kanalyTypu('woo')[0]) {
     if (zgrupowane.has(p.sku)) continue;
     id += 1;
     produkty.push({ id, type: 'simple', sku: p.sku, price: cena(p.cena_gr), regular_price: cena(p.cena_gr),
-      stock_status: 'instock', stock_quantity: 4 + (id % 9), attributes: [], ...wspolne(p.nazwa, p.kategoria, p.sku) });
+      stock_status: 'instock', stock_quantity: 4 + (id % 9), attributes: [], ...wspolne(p.nazwa, p.kategoria, p.sku),
+      ...wymiaryWoo(p.sku, p.kategoria, id) });
   }
   for (const w of WARIANTY) {
     const skusy = Object.keys(w.opcje).filter((sku) => wSklepie.some((p) => p.sku === sku));
@@ -87,7 +104,7 @@ export function katalogWoo(kanal = kanalyTypu('woo')[0]) {
       const p = PRODUKTY.find((x) => x.sku === sku);
       return { id: rodzicId * 10 + i + 1, sku, price: cena(p.cena_gr), regular_price: cena(p.cena_gr), status: 'publish',
         stock_status: 'instock', stock_quantity: 3 + i, permalink: `${ADRES_SKLEPU}/produkt/${slug(w.nazwa)}/?wariant=${i + 1}`,
-        image: null, attributes: [{ id: 0, name: w.atrybut, option: w.opcje[sku] }] };
+        image: null, attributes: [{ id: 0, name: w.atrybut, option: w.opcje[sku] }], ...wymiaryWoo(sku, p.kategoria, i) };
     }));
   }
   const miniatury = new Map(produkty.map((p) => [String(p.id), p.images[0].src]));
@@ -120,6 +137,7 @@ export function klienciKataloguDemo() {
       pobierzWszystkieProdukty: async () => structuredClone(k.produkty),
       pobierzWarianty: async (id) => structuredClone(k.warianty.get(String(id)) ?? []),
       pobierzMiniatury: async () => new Map(k.miniatury),
+      ustawienieSklepu: async (id) => ({ woocommerce_dimension_unit: 'cm', woocommerce_weight_unit: 'kg' })[id] ?? '',
     }];
   }));
   const allegro = Object.fromEntries(kanalyTypu('allegro').map((kanal) => [kanal, {

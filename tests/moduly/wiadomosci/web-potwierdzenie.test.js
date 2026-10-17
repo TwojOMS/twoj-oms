@@ -37,7 +37,7 @@ const zmapowane = (nad = {}) => ({
   kwota_brutto: '243.70', koszt_dostawy_brutto: '19.00', koszt_dostawy_netto: '15.45',
   status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-08-21T09:15:00',
   pozycje: [{
-    zrodlo_id: 7001, nazwa: 'Szablon malarski Pieszy 70x100', sku: 'SZ-PIE-70', ilosc: 3,
+    zrodlo_id: 7001, nazwa: 'Lampa stołowa Grzybek 30x45', sku: 'LMP-GRZ-30', ilosc: 3,
     cena_brutto: '74.90', cena_netto: '60.89', brutto_linii: '224.70', netto_linii: '182.68', vat: null,
   }],
   ...nad,
@@ -124,7 +124,7 @@ describe('wysyłka potwierdzenia', () => {
     const m = poczta.wyslane[0];
     expect(m.to).toBe('klient@firma.pl');
     expect(m.subject).toContain('202600014');
-    expect(m.text).toContain('3 × Szablon malarski Pieszy 70x100');
+    expect(m.text).toContain('3 × Lampa stołowa Grzybek 30x45');
     // ⚠️ HTML MA NIESC TABELE, a nie „jakikolwiek znacznik". Poprzednia wersja tego testu
     // sprawdzala `toContain('<')` — i przechodzila takze wtedy, gdy mail wychodzil jako ciag
     // akapitow bez ani jednej komorki. Dokladnie tak bylo przez pol dnia.
@@ -204,7 +204,7 @@ describe('wysyłka potwierdzenia', () => {
     expect(wpis.akcja).toBe('potwierdzenie.wyslane');
     expect(wpis.wynik).toContain('klient@firma.pl');
     expect(wpis.wynik).toContain('DECYZJA CZŁOWIEKA');
-    expect(wpis.wynik).not.toContain('Szablon malarski');
+    expect(wpis.wynik).not.toContain('Lampa stołowa');
   });
 
   // ⚠️⚠️ JEDYNY HAMULEC przed wysłaniem klientowi DRUGIEGO potwierdzenia — a maila nie da się

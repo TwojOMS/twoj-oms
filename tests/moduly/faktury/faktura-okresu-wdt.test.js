@@ -18,7 +18,7 @@ function bazaZOkresem() {
   const zamId = db.prepare('SELECT id FROM zamowienia WHERE numer = ?').get('R/2026/001').id;
   db.prepare(
     'INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)'
-    + " VALUES (?, 'Szablon malarski STOP 70x100cm', 2, '40.24', '80.48', 'reczna'),"
+    + " VALUES (?, 'Lampa stołowa Kałamarz 30x45cm', 2, '40.24', '80.48', 'reczna'),"
     + " (?, 'Kurier DPD', 1, '16.00', '16.00', 'reczna')",
   ).run(zamId, zamId);
   return { db, okres, zamId };

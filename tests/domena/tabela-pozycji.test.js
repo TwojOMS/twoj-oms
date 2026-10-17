@@ -270,7 +270,7 @@ const zOferty = (nad = {}) => zamowienie({
   koszt_dostawy_brutto: '0.00',
   koszt_dostawy_netto: '0.00',
   pozycje: [
-    { nazwa: 'szablon malarski jednorazowy - samoprzylepny RUM and towel', sku: 'psm-zam-placeholder', ilosc: 2, cena_brutto: '48.00', cena_netto: '48.00', brutto_linii: '96.00', netto_linii: '96.00' },
+    { nazwa: 'lampa wisząca na zamówienie - klosz mleczny, mosiądz', sku: 'psm-zam-placeholder', ilosc: 2, cena_brutto: '48.00', cena_netto: '48.00', brutto_linii: '96.00', netto_linii: '96.00' },
     { nazwa: 'wysyłka kurierem DPD', sku: 'psm-zam-placeholder', ilosc: 1, cena_brutto: '19.00', cena_netto: '19.00', brutto_linii: '19.00', netto_linii: '19.00' },
   ],
   ...nad,

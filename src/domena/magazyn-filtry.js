@@ -6,10 +6,10 @@ import { zl } from './kwoty.js';
 // WYSZUKIWARKA I FILTRY MAGAZYNU — warstwa czysta miedzy adresem HTTP a `db/magazyn.js`.
 //
 // ⚠️ TEN MODUL JEST SLOWNIKIEM I MUSI SIE ZGADZAC Z WARSTWA ZAPYTAN CO DO JEDNEJ WARTOSCI.
-// `warunkiWzorow` w db/magazyn.js traktuje nieznana wartosc filtru jako `1 = 0`, czyli oddaje
+// `warunkiKart` w db/magazyn.js traktuje nieznana wartosc filtru jako `1 = 0`, czyli oddaje
 // PUSTO — swiadomie, bo filtr, ktorego nie rozumiemy, nie ma prawa poszerzac zbioru tuz przed
 // edycja hurtem. Skutek uboczny: pozycja wystawiona w interfejsie, a nieznana bazie, daje
-// PUSTY EKRAN zamiast wyniku i wyglada jak „nie ma takich wzorow", a nie jak funkcja, ktorej
+// PUSTY EKRAN zamiast wyniku i wyglada jak „nie ma takich kart", a nie jak funkcja, ktorej
 // nikt nie napisal. Dlatego kazda lista nizej jest przypieta testem do zachowania zapytania,
 // a nie tylko do samej siebie (tests/oms/magazyn-filtry.test.js).
 //
@@ -24,14 +24,14 @@ import { zl } from './kwoty.js';
 // wartosci filtru kanalu — trzecia kopia rozjechalaby sie po cichu: filtr oferowalby kanal,
 // ktorego nie ma w kolumnach, albo kolumna stalaby bez mozliwosci zawezenia do niej.
 
-// ⚠️⚠️ PIEC POZYCJI, DOKLADNIE TE, KTORE ZNA `warunkiWzorow`. Plan Zadania 10 proponowal
+// ⚠️⚠️ PIEC POZYCJI, DOKLADNIE TE, KTORE ZNA `warunkiKart`. Plan Zadania 10 proponowal
 // `brak ∈ sku|wymiary|allegro` — wartosci `allegro` w db/magazyn.js NIE MA, a nieznana
 // wartosc leci tam w `1 = 0`. Pozycja „bez oferty na Allegro" wystawiona w interfejsie
 // oddawalaby PUSTA LISTE przy kazdym klknieciu. Braku po stronie Allegro nie ma tu wcale:
 // zeby go policzyc, trzeba pytac o NIEOBECNOSC w kanale (`NOT EXISTS`), a takiego warunku
 // warstwa zapytan nie zna. Dopisanie go jest zmiana w db/, nie w tym slowniku.
 //
-// ⚠️ CZTERY PIERWSZE TO BRAKI, PIATA JEST KAFLEM POSTEPU: `komplet` oddaje wzory, ktorym
+// ⚠️ CZTERY PIERWSZE TO BRAKI, PIATA JEST KAFLEM POSTEPU: `komplet` oddaje karty, ktorym
 // NICZEGO nie brakuje — druga strona tej samej monety, liczona tym samym wyrazeniem
 // (`LICZBA_BRAKOW_SQL` w db/magazyn.js). Stoi w tej samej liscie, bo jedzie tym samym polem
 // adresu (`?brak=…`) i tym samym polem wyboru.
@@ -41,14 +41,14 @@ export const BRAKI_MAGAZYNU = Object.freeze(['sku', 'wymiary', 'kategoria', 'pac
 // ⚠️ Plan proponowal `tak|nie|brak`; baza zna `nieoznaczone`, a `brak` leci u niej w `1 = 0`.
 export const PACZKOMAT_DO_FILTRA = Object.freeze([...PACZKOMAT_WARTOSCI, 'nieoznaczone']);
 
-// Etykiety pol wyboru. Stoja TUTAJ, a nie w szablonie, z tego samego powodu, co nazwy kanalow
+// Etykiety pol wyboru. Stoja TUTAJ, a nie w widoku, z tego samego powodu, co nazwy kanalow
 // w domain/kanaly.js: druga mapa rozjechalaby sie z pierwsza przy pierwszej zmianie.
 export const BRAKI_ETYKIETY = Object.freeze({
   sku: 'bez SKU',
   wymiary: 'bez wymiarów',
   kategoria: 'bez kategorii głównej',
   paczkomat: 'bez oznaczenia paczkomatu',
-  // Nie „kompletne" — pole wyboru czyta sie jako „pokaz wzory: …", a ta pozycja jako jedyna
+  // Nie „kompletne" — pole wyboru czyta sie jako „pokaz karty: …", a ta pozycja jako jedyna
   // nie opisuje braku. Dopowiedzenie odroznia ja od czterech powyzej jednym spojrzeniem.
   komplet: 'komplet — nic nie brakuje',
 });
@@ -124,7 +124,7 @@ export function filtryZZapytania(query = {}, kanaly) {
     // ⚠️ KATEGORIA NIE MA ZAMKNIETEJ LISTY i miec jej nie moze — nazwy kategorii doklada
     // SKLEP, bez pytania nas o zdanie (ta sama asymetria, co przy metodach platnosci na
     // liscie zamowien: kanaly dokladamy MY, bramki platnosci sklep). Nazwa nietrafiona po
-    // prostu nie trafi w zaden wzor, i to jest co innego niz wartosc spoza slownika.
+    // prostu nie trafi w zadna karte, i to jest co innego niz wartosc spoza slownika.
     kategoria: napis(query?.kategoria),
     brak: zeSlownika(query?.brak, BRAKI_MAGAZYNU),
     paczkomat: zeSlownika(query?.paczkomat, PACZKOMAT_DO_FILTRA),
@@ -136,8 +136,8 @@ export function filtryZZapytania(query = {}, kanaly) {
 /**
  * Czy cokolwiek zawęża liste — fraza wliczona.
  *
- * ⚠️ TO JEST PYTANIE, OD KTOREGO ZALEZY, CO MOWI PUSTA TABELA. „Nie ma tu jeszcze ani jednego
- * wzoru" przy aktywnym filtrze jest NIEPRAWDA i wyglada jak utrata danych: katalog ma ~1000
+ * ⚠️ TO JEST PYTANIE, OD KTOREGO ZALEZY, CO MOWI PUSTA TABELA. „Nie ma tu jeszcze ani jednej
+ * karty" przy aktywnym filtrze jest NIEPRAWDA i wyglada jak utrata danych: katalog ma ~1000
  * pozycji, a ekran twierdzi, ze jest pusty. Pusty wynik filtrowania to inny komunikat.
  *
  * `!= null` zamiast prawdziwosci: `cenaOd === 0` JEST filtrem („od 0 zl" ma sens i zawęża do
@@ -183,7 +183,7 @@ export function parametryUkryte(filtry, { pomin = [] } = {}) {
 /**
  * Wartosci POL formularza — w postaci, ktora ma stanac w `value`.
  *
- * ⚠️ Liczy je domena, a nie szablon: pole ceny mowi zlotowkami, a filtr zyje w groszach, wiec
+ * ⚠️ Liczy je domena, a nie widok: pole ceny mowi zlotowkami, a filtr zyje w groszach, wiec
  * `value="<%= filtry.cenaOd %>"` pokazywaloby „1000" tam, gdzie czlowiek wpisal „10" — i przy
  * pierwszym „Filtruj" ta setka utrwalilaby sie jako nowa wartosc filtru.
  *

@@ -32,7 +32,7 @@ const BEZ_KLIENTA = (kanal) => `Kanał „${kanal}" nie ma w panelu skonfigurowa
  *
  * ⚠️⚠️ PYTAMY SKLEP, ZAMIAST ZAKLADAC. `woocommerce_dimension_unit` jest ustawieniem sklepu
  * i wlasciciel moze je zmienic bez naszego udzialu; zalozenie „to na pewno centymetry" daje
- * szablon 70 MILIMETROW zamiast 70 cm — cicho i za pieniadze.
+ * produkt 70 MILIMETROW zamiast 70 cm — cicho i za pieniadze.
  *
  * ⚠️ KANAL BEZ KLIENTA WRACA JAKO BLAD, a nie znika po cichu: cicho pominiety kanal wyglada
  * na ekranie DOKLADNIE tak samo jak kanal, w ktorym nie ma nic do zmiany.

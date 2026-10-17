@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
-import { zapiszProduktSklepowy, utworzWzor, powiazProdukt } from '../../../src/oms/db/magazyn.js';
+import { zapiszProduktSklepowy, utworzKarte, powiazProdukt } from '../../../src/oms/db/magazyn.js';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -13,12 +13,12 @@ import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 //
 // Zgloszenie wlasciciela: „zdjecia produktow nie laduja sie na ekranach zamowien". Reguly
 // zgadywania (`-150x150` doklejane do nazwy pliku) uzywaly CZTERY miejsca naraz: lista
-// zamowien, karta zamowienia, ekran nadania i galeria na karcie wzoru. Zmierzone na
-// produkcji: szkicownia.pl 608 brakow na 684 adresy (89%), bo TEN sklep skaluje miniatury
-// do `247x296`; pro.szkicownia.pl 0% brakow, bo tam zgadywanie trafialo przypadkiem.
+// zamowien, karta zamowienia, ekran nadania i galeria na karcie produktu. Zmierzone na
+// produkcji: sklep A 608 brakow na 684 adresy (89%), bo TEN sklep skaluje miniatury
+// do `247x296`; sklep PRO 0% brakow, bo tam zgadywanie trafialo przypadkiem.
 //
 // ⚠️⚠️ KAZDY EKRAN MA TU PARE TESTOW, i to jest cala tresc tego pliku:
-//   * PRODUKT ZNANY LUSTRU bierze adres ZE SKLEPU (naprawa dla szkicownia.pl);
+//   * PRODUKT ZNANY LUSTRU bierze adres ZE SKLEPU (naprawa dla sklepu A);
 //   * PRODUKT NIEZNANY LUSTRU bierze adres DOTYCHCZASOWY (PRO, Allegro i archiwum dzialaja
 //     jak dotad).
 // Dzien wczesniej ta sama poprawka w magazynie zostala zrobiona BEZ drugiej polowy pary —
@@ -33,10 +33,10 @@ const naglowek = {
 };
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
 
-// Zdjecie produktu ze szkicownia.pl — sklepu, ktory JEST usterka ze zgloszenia.
-const ORYGINAL = 'https://szkicownia.pl/wp-content/uploads/2026/07/kot.jpg';
-const ZGADNIETY = 'kot-150x150.jpg';
-const PRAWDZIWY = 'https://szkicownia.pl/wp-content/uploads/2026/07/kot-247x296.jpg';
+// Zdjecie produktu ze sklepu A — sklepu, ktory JEST usterka ze zgloszenia.
+const ORYGINAL = 'https://sklep-polcien.example.invalid/wp-content/uploads/2026/07/kopula.jpg';
+const ZGADNIETY = 'kopula-150x150.jpg';
+const PRAWDZIWY = 'https://sklep-polcien.example.invalid/wp-content/uploads/2026/07/kopula-247x296.jpg';
 
 const zmapowane = (nad = {}) => ({
   zrodlo_id: 5501, numer: '5501',
@@ -49,7 +49,7 @@ const zmapowane = (nad = {}) => ({
   kwota_brutto: '212.90', koszt_dostawy_brutto: '0.00', status_woo: 'processing',
   oplacone_at: '2026-07-29T13:00:00', anulowane: 0, utworzone_at: '2026-07-29T13:19:52',
   pozycje: [{
-    nazwa: 'Szablon KOT', sku: 'STE-KOT-1', ilosc: 1, cena_brutto: '212.90',
+    nazwa: 'Ozdobny KAN', sku: 'PLC-KAN-1', ilosc: 1, cena_brutto: '212.90',
     brutto_linii: '212.90', vat: 23, zdjecie_url: ORYGINAL, produkt_id: 944,
   }],
   ...nad,
@@ -57,7 +57,7 @@ const zmapowane = (nad = {}) => ({
 
 // Wiersz LUSTRA dla tego samego produktu, z adresem, ktory sklep NAPRAWDE wygenerowal.
 const wLustrze = (db, nad = {}) => zapiszProduktSklepowy(db, {
-  kanal: 'szkicownia', produkt_id: '944', wariant_id: '', nazwa: 'Szablon KOT',
+  kanal: 'szkicownia', produkt_id: '944', wariant_id: '', nazwa: 'Ozdobny KAN',
   zdjecia_json: JSON.stringify([ORYGINAL]), miniatura: PRAWDZIWY,
   odczytane_at: '2026-08-12T06:00:00.000Z', ...nad,
 });
@@ -156,14 +156,14 @@ describe('ekran nadania — zawartość paczki', () => {
   });
 });
 
-describe('karta wzoru — galeria produktu', () => {
-  const kartaWzoru = async (nadpisania) => {
+describe('karta produktu — galeria produktu', () => {
+  const kartaProduktu = async (nadpisania) => {
     const magazyn = { start: vi.fn(), stan: () => ({ trwa: false, kanaly: [], blad: null }) };
     const serwer = buildOmsServer({ db, config, poller, magazyn });
     await serwer.ready();
-    const wzor = utworzWzor(db, { nazwa: 'Kot' });
-    powiazProdukt(db, wLustrze(db, nadpisania), wzor);
-    const r = await serwer.inject({ method: 'GET', url: `/magazyn/${wzor}`, headers: naglowek });
+    const karta = utworzKarte(db, { nazwa: 'Kopuła' });
+    powiazProdukt(db, wLustrze(db, nadpisania), karta);
+    const r = await serwer.inject({ method: 'GET', url: `/magazyn/${karta}`, headers: naglowek });
     expect(r.statusCode).toBe(200);
     return r.body;
   };
@@ -174,7 +174,7 @@ describe('karta wzoru — galeria produktu', () => {
   const kafelek = (html, oryginal) => fragment(html, `<a href="${oryginal}"`, '</a>', `kafelek ${oryginal}`);
 
   it('produkt z zapisaną miniaturą pokazuje adres ze sklepu', async () => {
-    const k = kafelek(await kartaWzoru({}), ORYGINAL);
+    const k = kafelek(await kartaProduktu({}), ORYGINAL);
     expect(k).toContain(`src="${PRAWDZIWY}"`);
     expect(k).not.toContain(ZGADNIETY);
   });
@@ -182,7 +182,7 @@ describe('karta wzoru — galeria produktu', () => {
   // ⚠️ TA POLOWA PARY JEST CALYM SENSEM POPRAWKI. Produkt sprzed odczytu katalogu ma
   // `miniatura` puste — i wtedy galeria ma pokazac to, co dzis, a nie pusta ramke.
   it('produkt bez zapisanej miniatury pokazuje dotychczasowy adres zgadywany', async () => {
-    const k = kafelek(await kartaWzoru({ miniatura: null }), ORYGINAL);
+    const k = kafelek(await kartaProduktu({ miniatura: null }), ORYGINAL);
     expect(k).toContain(ZGADNIETY);
   });
 
@@ -192,10 +192,10 @@ describe('karta wzoru — galeria produktu', () => {
   // adresu zdjecia GLOWNEGO pokazywaloby kilkanascie razy ten sam obrazek i klamalo o tym,
   // co w tym sklepie naprawde lezy.
   it('drugie zdjęcie galerii zostaje przy dotychczasowym adresie, bo lustro go nie zna', async () => {
-    const drugie = 'https://szkicownia.pl/wp-content/uploads/2026/07/kot-2.jpg';
-    const html = await kartaWzoru({ zdjecia_json: JSON.stringify([ORYGINAL, drugie]) });
+    const drugie = 'https://sklep-polcien.example.invalid/wp-content/uploads/2026/07/kopula-2.jpg';
+    const html = await kartaProduktu({ zdjecia_json: JSON.stringify([ORYGINAL, drugie]) });
     expect(kafelek(html, ORYGINAL)).toContain(`src="${PRAWDZIWY}"`);
-    expect(kafelek(html, drugie)).toContain('kot-2-150x150.jpg');
+    expect(kafelek(html, drugie)).toContain('kopula-2-150x150.jpg');
   });
 });
 
@@ -242,7 +242,7 @@ describe('lista zamówień — koszt odczytu miniatur', () => {
           zrodlo_id: numer,
           numer: String(numer),
           pozycje: [1, 2, 3].map((n) => ({
-            nazwa: `Szablon ${n}`, sku: `STE-${n}`, ilosc: 1, cena_brutto: '10.00',
+            nazwa: `Lampa ${n}`, sku: `PLC-${n}`, ilosc: 1, cena_brutto: '10.00',
             brutto_linii: '10.00', vat: 23, zdjecie_url: ORYGINAL, produkt_id: 900 + n,
           })),
         }), {});
@@ -282,7 +282,7 @@ describe('lista zamówień — koszt odczytu miniatur', () => {
 //
 // ⚠️ Cala wartosc tej poprawki pochodzi z BAZY. Rozwiazanie, ktore odpytuje sklep na kazda
 // pozycje, byloby zle nawet gdyby pokazywalo wlasciwe zdjecia: strona glowna z 40 zamowieniami
-// robilaby setke zadan HTTP do szkicownia.pl przy kazdym odswiezeniu.
+// robilaby setke zadan HTTP do sklepu przy kazdym odswiezeniu.
 
 describe('ekrany zamówień nie odpytują sklepu', () => {
   it('render listy, karty i ekranu nadania nie wykonuje ani jednego żądania HTTP', async () => {

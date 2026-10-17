@@ -13,7 +13,7 @@ const zamowienieWdt = (nad = {}) => ({
   },
   faktura: { numer: 'WDT/1/08/2026' },
   pozycje: [
-    { nazwa: 'Szablon malarski STOP 70x100cm', ilosc: 2, cena_brutto: '40.24' },
+    { nazwa: 'Lampa stołowa Kałamarz 30x45cm', ilosc: 2, cena_brutto: '40.24' },
     { nazwa: 'Kurier DPD', ilosc: 1, cena_brutto: '16.00' },
   ],
   ...nad,
@@ -29,7 +29,7 @@ describe('modelOswiadczenia', () => {
     expect(m.kodPanstwa).toBe('SK');
     expect(m.fakturaNumer).toBe('WDT/1/08/2026');
     expect(m.pozycje).toEqual([
-      { lp: 1, nazwa: 'Szablon malarski STOP 70x100cm', ilosc: 2 },
+      { lp: 1, nazwa: 'Lampa stołowa Kałamarz 30x45cm', ilosc: 2 },
       { lp: 2, nazwa: 'Kurier DPD', ilosc: 1 },
     ]);
     // Dokument ilościowy: żadna kwota nie ma prawa przeciec do modelu.

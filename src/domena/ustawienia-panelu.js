@@ -18,7 +18,7 @@ export { PACZKA_DOMYSLNA } from './szablony-paczek.js';
 /**
  * Waga i wymiary, którymi startuje formularz nadania.
  *
- * ⚠️ TO NIE SĄ WYMIARY KARTONU. Sklep właściciela wysyła PŁASKIE arkusze szablonów malarskich,
+ * ⚠️ TO NIE SĄ WYMIARY KARTONU. Gabaryt startowy jest dla PŁASKIEJ paczki wielkoformatowej,
  * więc 110 × 75 × 1 cm jest poprawnym gabarytem, mimo że wygląda nietypowo. Stała mieszkała
  * do 2026-08-17 w services/nadanie.js i jest stamtąd re-eksportowana — kilkanaście miejsc
  * (w tym testy) czyta ją tamtą drogą.

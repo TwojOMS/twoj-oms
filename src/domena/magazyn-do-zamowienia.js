@@ -5,7 +5,7 @@ import { cenaWdtGrosze } from './wdt.js';
 
 // PRODUKT Z MAGAZYNU → POZYCJA ZAMÓWIENIA (21.08.2026, prośba właściciela).
 //
-// „Dzwoni klient, chce zamówić 3 szablony z naszej oferty. Klikam dodaj zamówienie i muszę
+// „Dzwoni klient, chce zamówić 3 lampy z naszej oferty. Klikam dodaj zamówienie i muszę
 // ręcznie wpisywać nazwy i ceny." Do dziś zamówienie telefoniczne było JEDYNYM miejscem
 // w panelu, gdzie cena wchodzi do zamówienia bez żadnego źródła — stąd i literówka w nazwie
 // na fakturze, i cena sprzed podwyżki.
@@ -97,9 +97,9 @@ export function cennikDlaZamowienia({ sklepZamowienia = null, wybrany = null } =
  * Nazwa pozycji: nazwa produktu plus rozmiar wariantu — ale TYLKO gdy nazwa go jeszcze
  * nie niesie.
  *
- * ⚠️ Przy szablonach to rozmiar jest tym, co się myli przy telefonie, więc musi być w nazwie
+ * ⚠️ Przy produktach w kilku rozmiarach to rozmiar jest tym, co się myli przy telefonie, więc musi być w nazwie
  * pozycji (klient dostanie ją na fakturze). Część produktów ma go już w nazwie („…logo 50cm"),
- * część trzyma go w wariancie — doklejenie na ślepo dawałoby „Pieszy 70x100 70x100".
+ * część trzyma go w wariancie — doklejenie na ślepo dawałoby „Klosz 30x45 30x45".
  * Porównanie po ASCII i bez wielkości liter, tak samo jak szukanie w lustrze.
  */
 export function nazwaPozycji({ nazwa, rozmiar_tekst: rozmiar } = {}) {
@@ -200,8 +200,8 @@ export function pozycjaZProduktu(produkt, iloscSurowa, { rabatProcent = 0, wdt =
     // Cena z cennika, PRZED rabatem — patrz komentarz przy sygnaturze.
     cena_katalogowa: zl(cenaGr),
     produkt_id: Number.isFinite(produktId) ? produktId : null,
-    // ⚠️ WARIANT JEST TU CAŁYM SENSEM KOLUMNY `pozycje.wariant_id`. Wybierając „Pieszy
-    // 70×100" operator wybiera WARIANT, a `produkt_id` trzyma RODZICA — bez tego z pozycji
+    // ⚠️ WARIANT JEST TU CAŁYM SENSEM KOLUMNY `pozycje.wariant_id`. Wybierając „Klosz
+    // 30×45" operator wybiera WARIANT, a `produkt_id` trzyma RODZICA — bez tego z pozycji
     // nie dałoby się odczytać, jaki rozmiar poszedł, i zamówienie telefoniczne byłoby
     // od pierwszego dnia uboższe niż sklepowe.
     wariant_id: wariant === '' ? null : wariant,

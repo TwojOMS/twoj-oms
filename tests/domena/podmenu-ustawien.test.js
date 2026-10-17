@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { podmenuUstawien } from '../../src/domena/podmenu-ustawien.js';
 
 describe('podmenu Ustawień', () => {
-  it('administrator dostaje dokładnie pięć istniejących kategorii', () => {
+  // PRZ-091: szósta kategoria „Magazyn” (przełącznik stanów magazynowych) — zaraz za „Zamówienia i wysyłka”.
+  it('administrator dostaje dokładnie sześć istniejących kategorii', () => {
     const menu = podmenuUstawien('/ustawienia/integracje', { admin: true });
 
     expect(menu.map(({ klucz, etykieta, href }) => ({ klucz, etykieta, href }))).toEqual([
       { klucz: 'konta', etykieta: 'Użytkownicy i uprawnienia', href: '/ustawienia/konta' },
       { klucz: 'zamowienia-i-wysylka', etykieta: 'Zamówienia i wysyłka', href: '/ustawienia/zamowienia-i-wysylka' },
+      { klucz: 'magazyn', etykieta: 'Magazyn', href: '/ustawienia/magazyn' },
       { klucz: 'integracje', etykieta: 'Integracje', href: '/ustawienia/integracje' },
       { klucz: 'wiadomosci-i-automatyzacje', etykieta: 'Wiadomości i automatyzacje', href: '/ustawienia/wiadomosci-i-automatyzacje' },
       { klucz: 'diagnostyka', etykieta: 'Diagnostyka', href: '/ustawienia/lacznosc' },
@@ -15,12 +17,12 @@ describe('podmenu Ustawień', () => {
     expect(menu.filter((pozycja) => pozycja.aktywna).map((pozycja) => pozycja.klucz)).toEqual(['integracje']);
   });
 
-  it('konto bez admina nie dostaje zarządzania użytkownikami, ale ma cztery pozostałe sekcje', () => {
+  it('konto bez admina nie dostaje zarządzania użytkownikami, ale ma pięć pozostałych sekcji', () => {
     const menu = podmenuUstawien('/ustawienia/zamowienia-i-wysylka?zapisano=paczka', { admin: false });
 
-    expect(menu).toHaveLength(4);
+    expect(menu).toHaveLength(5);
     expect(menu.map((pozycja) => pozycja.klucz)).toEqual([
-      'zamowienia-i-wysylka', 'integracje', 'wiadomosci-i-automatyzacje', 'diagnostyka',
+      'zamowienia-i-wysylka', 'magazyn', 'integracje', 'wiadomosci-i-automatyzacje', 'diagnostyka',
     ]);
     expect(menu.filter((pozycja) => pozycja.aktywna)).toEqual([
       expect.objectContaining({ klucz: 'zamowienia-i-wysylka' }),
@@ -41,6 +43,7 @@ describe('podmenu Ustawień', () => {
     ['/ustawienia/formulka', 'wiadomosci-i-automatyzacje'],
     ['/ustawienia/kanaly/allegro_szkicownia/wiazanie', 'integracje'],
     ['/ustawienia/konta/3/uprawnienia', 'konta'],
+    ['/ustawienia/magazyn', 'magazyn'],
   ])('formularz %s zachowuje aktywną sekcję na odpowiedzi 400', (sciezka, aktywnyKlucz) => {
     const aktywne = podmenuUstawien(sciezka, { admin: true }).filter((pozycja) => pozycja.aktywna);
 

@@ -40,7 +40,7 @@ import { groszeZKwoty } from '../../../domena/kwota.js';
 // oznaczylby cala te wtrete jako znikniete.
 //
 // Obie listy przekazuje moduł z konfiguracji instancji. Te same klucze sklepów
-// otrzymuje domena wzorów; domena nie importuje przebiegu odczytu.
+// otrzymuje domena kart; domena nie importuje przebiegu odczytu.
 
 // Metadana Yoasta z kategoria glowna. Nazwa jest „chroniona" (podkreslnik), ale WooCommerce
 // REST v3 i tak ja oddaje — ta sama wlasciwosc, na ktorej stoi rozpoznanie zamowien
@@ -48,8 +48,8 @@ import { groszeZKwoty } from '../../../domena/kwota.js';
 const YOAST_KATEGORIA = '_yoast_wpseo_primary_product_cat';
 
 // Atrybut niosacy rozmiar. Porownanie DOKLADNE (po znormalizowaniu wielkosci liter), a nie
-// „zawiera": atrybut „Rozmiar wzoru" i „Rozmiar" moglyby znaczyc co innego, a magazyn trzyma
-// wymiar ARKUSZA.
+// „zawiera": atrybut „Rozmiar klosza" i „Rozmiar" moglyby znaczyc co innego, a magazyn trzyma
+// wymiar CALEGO produktu (ten, z ktorego powstaje paczka).
 const ATRYBUT_ROZMIARU = 'rozmiar';
 
 // Ten sam warunek, co w domain/miniatury.js i domain/allegro-oferta.js, i z tego samego
@@ -81,7 +81,7 @@ function znacznik(teraz) {
 }
 
 // Kolumna `nazwa` jest NOT NULL, a nazwa to JEDYNA rzecz, po ktorej czlowiek wiaze wiersz
-// z wzorem. Bez tego straznika brak nazwy wychodzi dopiero na bazie, w polowie 668 produktow,
+// z kartą. Bez tego straznika brak nazwy wychodzi dopiero na bazie, w polowie 668 produktow,
 // i mowi „NOT NULL constraint failed" zamiast wskazac produkt.
 function nazwaProduktu(kanal, produkt) {
   const nazwa = produkt?.name;
@@ -110,7 +110,7 @@ function cenaGr(surowa, opis) {
 const kategorieProduktu = (p) => (Array.isArray(p?.categories) ? p.categories : []);
 
 // Kategorie jako tablica NAZW — z niej korzysta filtr kategorii listy (json_each po tej
-// kolumnie) i tworzenie wzorow (Zadanie 8).
+// kolumnie) i tworzenie kart (Zadanie 8).
 const kategorieJson = (p) => JSON.stringify(
   kategorieProduktu(p).map((k) => k?.name).filter((n) => typeof n === 'string' && n.trim()),
 );
@@ -123,8 +123,8 @@ const kategorieJson = (p) => JSON.stringify(
  * odpowiedzi, wiec dodatkowy odczyt bylby dwoma zadaniami HTTP i druga lista do rozjechania.
  *
  * ⚠️ SUROWY IDENTYFIKATOR W KOLUMNIE NAZWY JEST GORSZY NIZ BRAK: Zadanie 8 przepisuje te
- * wartosc do `wzory.kategoria_glowna`, a z niej korzysta generator SKU — „64" zamiast
- * „Modern Organic" produkowaloby numery katalogowe z niczego. Identyfikator, ktorego nie ma
+ * wartosc do `karty.kategoria_glowna`, a z niej korzysta generator SKU — „64" zamiast
+ * „Lampy stołowe" produkowaloby numery katalogowe z niczego. Identyfikator, ktorego nie ma
  * wsrod kategorii produktu, daje wiec `null`, a nie siebie samego.
  */
 function kategoriaGlownaZrodla(produkt) {
@@ -156,10 +156,10 @@ const zdjeciaProduktu = (p) => (Array.isArray(p?.images) ? p.images : []).map((z
 /**
  * Rozmiar z atrybutow. Wariant niesie `option` (jedna wartosc), produkt prosty `options` (lista).
  *
- * ⚠️ ATRYBUT WYGRYWA NAD NAZWA I TO JEST REGULA NOSNA, NIE PORZADKOWA. Na PRO oba niosa ROZNE,
- * PRAWDZIWE liczby: „Teren monitorowany – 60x62cm" ma atrybut „70 x 100 cm", bo 60×62 to WZOR,
- * a 70×100 to ARKUSZ, z ktorego sie go wycina. Magazyn trzyma wymiar ARKUSZA — to on decyduje
- * o pakowaniu, paczkomacie i cenie. Odwrocenie kolejnosci zepsuloby kolumne paczkomatu na calym PRO.
+ * ⚠️ ATRYBUT WYGRYWA NAD NAZWA I TO JEST REGULA NOSNA, NIE PORZADKOWA. Na sklepie B oba niosa ROZNE,
+ * PRAWDZIWE liczby: „Lampa wisząca Kopuła – 30x45cm" ma atrybut „40 x 60 cm", bo 30×45 to sam KLOSZ,
+ * a 40×60 to caly produkt z oprawa. Magazyn trzyma wymiar z ATRYBUTU — to on decyduje
+ * o pakowaniu, paczkomacie i cenie. Odwrocenie kolejnosci zepsuloby kolumne paczkomatu na calym sklepie B.
  *
  * Kilka wartosci w `options` sklejamy przecinkiem zamiast wybierac jedna: `wymiaryZTekstu` odda
  * wtedy `null` (dwa trafienia = niejednoznacznosc), czyli brak — a nie zgadniety rozmiar.
@@ -189,7 +189,43 @@ function rozmiarZAtrybutow(atrybuty) {
  */
 const miniaturaZMapy = (miniatury, produktId) => miniatury.get(String(produktId ?? '')) ?? null;
 
-function wierszProduktu(kanal, p, odczytaneAt, miniatury) {
+/**
+ * PRZ-090 — wymiary i waga, ktore sklep podaje sam, z JEDNOSTKA sklepu (bez niej liczba nic nie znaczy).
+ * `wymiary_json` = `{ length, width, height, unit }` albo `null`, gdy sklep nie podal ani jednej liczby
+ * albo jednostki nie znamy; `waga_tekst` = „1.25 kg” albo `null`. Odczyt robi domena/rozmiar.js.
+ * ⚠️ WARIANT NIE DZIEDZICZY WYMIAROW ANI WAGI PO RODZICU (poprawka po recenzji PRZ-090). Warianty jednego produktu
+ * roznia sie zwykle wlasnie rozmiarem — wymiar rodzica podstawiony kazdemu z nich dalby kilku kartom ten sam wymiar.
+ * Ta sama zasada, co przy rozmiarze wariantu z atrybutu (`wierszWariantu`): brak jest uczciwsza odpowiedzia.
+ */
+function wymiaryLustra(zrodlo, jednostki) {
+  const d = zrodlo?.dimensions ?? {};
+  const wartosc = (k) => pusteNaNull(d?.[k]);
+  const w = { length: wartosc('length'), width: wartosc('width'), height: wartosc('height') };
+  const wymiary = jednostki?.wymiary && (w.length || w.width || w.height)
+    ? JSON.stringify({ ...w, unit: jednostki.wymiary }) : null;
+  const waga = pusteNaNull(zrodlo?.weight);
+  return { wymiary_json: wymiary, waga_tekst: waga && jednostki?.waga ? `${waga} ${jednostki.waga}` : null };
+}
+
+/**
+ * Jednostki wymiarow i wagi sklepu. ⚠️ Awaria (albo klient bez `ustawienieSklepu`) NIE wywraca odczytu —
+ * wymiary i waga sa dodatkiem do lustra, a bez jednostki po prostu ich nie zapisujemy.
+ */
+async function jednostkiKanalu({ kanal, klient, zapisz }) {
+  if (typeof klient?.ustawienieSklepu !== 'function') return { wymiary: null, waga: null };
+  const odczytaj = async (id) => {
+    try {
+      const j = await klient.ustawienieSklepu(id);
+      return typeof j === 'string' && j.trim() ? j.trim() : null;
+    } catch (e) {
+      zapisz(`magazyn: kanał ${kanal} — nie udało się odczytać ustawienia ${id} (wymiary i waga bez niego):`, opisBledu(e));
+      return null;
+    }
+  };
+  return { wymiary: await odczytaj('woocommerce_dimension_unit'), waga: await odczytaj('woocommerce_weight_unit') };
+}
+
+function wierszProduktu(kanal, p, odczytaneAt, miniatury, jednostki) {
   const nazwa = nazwaProduktu(kanal, p);
   return {
     kanal,
@@ -209,6 +245,7 @@ function wierszProduktu(kanal, p, odczytaneAt, miniatury) {
     rozmiar_tekst: rozmiarZAtrybutow(p?.attributes) ?? nazwa,
     kategoria_glowna_zrodla: kategoriaGlownaZrodla(p),
     opis_zrodlowy: pusteNaNull(p?.short_description),
+    ...wymiaryLustra(p, jednostki),
     // Sklepy pobieramy WYLACZNIE ze `status=publish`, wiec stanu publikacji nie ma czym
     // wypelnic — ta kolumna nalezy do Allegro (ACTIVE/ENDED).
     status_publikacji: null,
@@ -218,17 +255,17 @@ function wierszProduktu(kanal, p, odczytaneAt, miniatury) {
 
 /**
  * Wiersz z WARIANTU. SKU i cena zyja na wariancie, nazwa i kategorie na rodzicu — zmierzone:
- * rodzic `EV` ma SKU puste i cene jako zakres 49–74,90, a warianty `PRO-EV-117` / `PRO-EV-118`
+ * rodzic „Lampa wisząca Kopuła" ma SKU puste i cene jako zakres 49–74,90, a warianty `B-KOP-117` / `B-KOP-118`
  * i ceny 49 / 74,90. Dlatego jeden wiersz magazynu = jeden wariant, nie jeden produkt.
  *
  * ⚠️⚠️ ROZMIAR WARIANTU BIERZE SIE WYLACZNIE Z JEGO ATRYBUTU I NIGDY Z NAZWY RODZICA.
  * Szesc produktow wariantowych na sklepie A jest zepsutych w sklepie: warianty roznia sie
  * WYLACZNIE cena (79/99/119 zl) i nie niosa zadnego atrybutu rozmiaru. Podstawienie tam nazwy
- * rodzica daloby TRZEM roznym rozmiarom ten sam wymiar — a to on decyduje w Etapie 2, ktory
- * plik .mol jedzie na ploter. Brak jest tu jedyna uczciwa odpowiedzia; Zadanie 8 rozpoznaje
- * takie warianty wlasnie po pustym `rozmiar_tekst` i nie tworzy z nich wzorow.
+ * rodzica daloby TRZEM roznym rozmiarom ten sam wymiar — a z niego powstaje paczka, gabaryt
+ * i wymiar w sklepie. Brak jest tu jedyna uczciwa odpowiedzia; Zadanie 8 rozpoznaje
+ * takie warianty wlasnie po pustym `rozmiar_tekst` i nie tworzy z nich kart.
  */
-function wierszWariantu(kanal, rodzic, wariant, odczytaneAt, miniatury) {
+function wierszWariantu(kanal, rodzic, wariant, odczytaneAt, miniatury, jednostki) {
   const nazwa = nazwaProduktu(kanal, rodzic);
   // Wariant bez identyfikatora zapisalby sie z `wariant_id = ''`, czyli PODSZYLBY SIE pod
   // wiersz produktu prostego o tym samym `produkt_id` — a dwa takie warianty nadpisywalyby
@@ -251,18 +288,19 @@ function wierszWariantu(kanal, rodzic, wariant, odczytaneAt, miniatury) {
     cena_gr: cenaGr(wariant?.price, `kanał ${kanal}, produkt ${rodzic?.id}, wariant ${wariant.id}`),
     kategorie_json: kategorieJson(rodzic),
     // Wlasne zdjecie wariantu jest najbardziej szczegolowe, wiec idzie pierwsze — ale galeria
-    // rodzica nie ma prawa przez to zginac: to z niej Etap 2 buduje folder wzoru.
+    // rodzica nie ma prawa przez to zginac: to z niej powstaje galeria karty.
     zdjecia_json: zdjeciaJson([wariant?.image?.src, ...zdjeciaProduktu(rodzic)]),
     adres: pusteNaNull(wariant?.permalink) ?? pusteNaNull(rodzic?.permalink),
     rozmiar_tekst: rozmiarZAtrybutow(wariant?.attributes),
-    // ⚠️ OSIE PODZIALU WARIANTU — to po nich `domain/wzor-z-produktu.js` rozstrzyga, czy
-    // wariant bez rozmiaru jest OSOBNYM WZOREM („Woodland — Wiewiórka"), czy usterka sklepu.
+    // ⚠️ OSIE PODZIALU WARIANTU — to po nich `domain/karta-z-produktu.js` rozstrzyga, czy
+    // wariant bez rozmiaru jest OSOBNĄ KARTĄ („Kinkiet Ramię — Mosiądz"), czy usterka sklepu.
     // Zapisujemy je TUTAJ, przy wariancie, i nigdzie indziej: `wierszProduktu` (produkt prosty)
     // zostawia te kolumne pusta, bo produkt bez wariantow nie ma czego dzielic, a dopisanie
     // mu atrybutow kazaloby dokleic ich wartosci do nazw ~588 prostych produktow sklepu A.
     atrybuty_json: JSON.stringify(atrybutyZWariantu(wariant)),
     kategoria_glowna_zrodla: kategoriaGlownaZrodla(rodzic),
     opis_zrodlowy: pusteNaNull(rodzic?.short_description),
+    ...wymiaryLustra(wariant, jednostki),
     status_publikacji: null,
     odczytane_at: odczytaneAt,
   };
@@ -301,6 +339,7 @@ async function wierszeSklepu({ kanal, klient, odczytaneAt, zglos, zapisz }) {
   // ⚠️ PO katalogu, a nie przed nim: sklep, ktory odmowil katalogu, nie ma po co byc pytany
   // o ozdobe — a przebieg i tak konczy sie wtedy bledem kanalu.
   const miniatury = await miniaturyKanalu({ kanal, klient, zapisz });
+  const jednostki = await jednostkiKanalu({ kanal, klient, zapisz });
   const wiersze = [];
   let zrobione = 0;
   for (const p of produkty) {
@@ -310,10 +349,10 @@ async function wierszeSklepu({ kanal, klient, odczytaneAt, zglos, zapisz }) {
     // 668 zadan HTTP po nic.
     if (p?.type === 'variable') {
       for (const w of await klient.pobierzWarianty(p?.id)) {
-        wiersze.push(wierszWariantu(kanal, p, w, odczytaneAt, miniatury));
+        wiersze.push(wierszWariantu(kanal, p, w, odczytaneAt, miniatury, jednostki));
       }
     } else {
-      wiersze.push(wierszProduktu(kanal, p, odczytaneAt, miniatury));
+      wiersze.push(wierszProduktu(kanal, p, odczytaneAt, miniatury, jednostki));
     }
     zrobione += 1;
     zglos({ kanal, zrobione, zTego: produkty.length });

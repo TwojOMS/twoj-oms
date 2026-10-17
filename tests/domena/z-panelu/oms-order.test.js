@@ -9,7 +9,7 @@ const karta = {
   klientNazwa: 'Jan Kowalski',
   klientEmail: 'jan@example.com',
   quote: {
-    items: [{ rodzaj: 'szablon malarski wielorazowy', nazwa: 'logo firmy', rozmiar: '70x100cm', qty: 2, price: '250.00' }],
+    items: [{ rodzaj: 'lampa wisząca', nazwa: 'Kopuła na zamówienie', rozmiar: '40x60cm', qty: 2, price: '250.00' }],
     shipping: '19',
   },
   orderData: {
@@ -35,7 +35,7 @@ describe('buildOmsOrderInput', () => {
       chceFakture: true,
       kosztDostawyBrutto: '19',
       pozycje: [{
-        nazwa: 'szablon malarski wielorazowy logo firmy 70x100cm',
+        nazwa: 'lampa wisząca Kopuła na zamówienie 40x60cm',
         ilosc: 2, cena_brutto: '250.00',
       }],
       uwagi: 'Zamówienie indywidualne — karta karta-abc\nhttp://192.168.0.10:3000/cards/karta-abc',

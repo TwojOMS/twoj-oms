@@ -183,7 +183,7 @@ describe('nadanie', () => {
   });
 
   // Wymiary domyslne wygladaja nietypowo (110x75x1 cm), ale sa poprawne: firma wysyla
-  // PLASKIE arkusze szablonow malarskich, nie kartony. Ta stala jest jedynym zrodlem
+  // PLASKIE paczki wielkoformatowe, nie kartony. Ta stala jest jedynym zrodlem
   // prawdy — ekran nadania (GET /zamowienia/:id/nadaj) ma nia wypelniac formularz.
   it('PACZKA_DOMYSLNA ma wartości podane przez właściciela: 1 kg / 110×75×1 cm', () => {
     expect(PACZKA_DOMYSLNA).toEqual({ waga: 1, dlugosc: 110, szerokosc: 75, wysokosc: 1 });

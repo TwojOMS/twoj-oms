@@ -6,6 +6,7 @@ import { registerListaMagazynu } from './lista.js';
 import { registerAkcjeMagazynu } from './akcje.js';
 import { registerSynchronizacjaMagazynu } from './synchronizacja.js';
 import { registerZapisMagazynu } from './zapis.js';
+import { registerStanyMagazynu } from './stany.js';
 import * as zapytania from '../../oms/db/magazyn.js';
 
 type ConfigKanalow = { definicje: readonly {klucz:string;etykieta?:string}[]; sklepy: Record<string, unknown>; kanaly: Record<string, unknown> };
@@ -40,6 +41,7 @@ export const modulMagazyn: ModulOms<null> = {
         registerSynchronizacjaMagazynu(app, opcje);
         registerAkcjeMagazynu(app, opcje);
         registerZapisMagazynu(app, opcje);
+        registerStanyMagazynu(app, opcje);
         registerKartaMagazynu(app, { db: ctx.db, magazyn: opcje.magazyn, kanalyAllegro, definicje: config.definicje });
       },
     };

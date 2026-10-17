@@ -116,8 +116,17 @@ describe('mapujZamowienie', () => {
         // Fikstura nie niesie `product_id`, wiec identyfikator produktu ma byc NULL-em,
         // a nie zerem — patrz osobny test nizej.
         produkt_id: null,
+        // PRZ-091: bez `variation_id` — produkt prosty, wariantu nie ma.
+        wariant_id: null,
       },
     ]);
+  });
+
+  it('PRZ-091: pozycja wariantu niesie variation_id jako wariant_id (tekst), produkt prosty (0) — null', () => {
+    const zWariantem = { ...surowe, line_items: [{ ...surowe.line_items[0], product_id: 944, variation_id: 1091 }, { ...surowe.line_items[0], id: 4322, product_id: 945, variation_id: 0 }] };
+    const [wariant, prosty] = mapujZamowienie(zWariantem, mapa).pozycje;
+    expect(wariant).toMatchObject({ produkt_id: 944, wariant_id: '1091' });
+    expect(prosty).toMatchObject({ produkt_id: 945, wariant_id: null });
   });
 
   // I2. To jest ta sama pozycja, ktora rozbijala fakture: 100,00 zl brutto na 3 sztuki.

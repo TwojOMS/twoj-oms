@@ -1,6 +1,7 @@
 const POZYCJE = [
   { klucz: 'konta', etykieta: 'Użytkownicy i uprawnienia', href: '/ustawienia/konta', tylkoAdmin: true },
   { klucz: 'zamowienia-i-wysylka', etykieta: 'Zamówienia i wysyłka', href: '/ustawienia/zamowienia-i-wysylka' },
+  { klucz: 'magazyn', etykieta: 'Magazyn', href: '/ustawienia/magazyn' },
   { klucz: 'integracje', etykieta: 'Integracje', href: '/ustawienia/integracje' },
   { klucz: 'wiadomosci-i-automatyzacje', etykieta: 'Wiadomości i automatyzacje', href: '/ustawienia/wiadomosci-i-automatyzacje' },
   { klucz: 'diagnostyka', etykieta: 'Diagnostyka', href: '/ustawienia/lacznosc' },

@@ -217,11 +217,11 @@ function zapiszPozycje(db, zamowienieId, pozycje) {
     .run(zamowienieId);
   // ⚠️ `zrodlo` jest wpisane W ZAPYTANIU ('sklep'), a nie podane argumentem — przy dokladaniu
   // kolumny latwo policzyc znaki zapytania „po kolumnach" i przesunac WSZYSTKIE wartosci
-  // o jedna. Dzis: 14 kolumn = 13 znakow zapytania + 1 wpisana na sztywno ('sklep'),
-  // i dokladnie 13 argumentow `.run()`.
+  // o jedna. Dzis: 15 kolumn = 14 znakow zapytania + 1 wpisana na sztywno ('sklep'),
+  // i dokladnie 14 argumentow `.run()` (PRZ-091 doklada `wariant_id` na koncu).
   const ins = db.prepare(
     'INSERT INTO pozycje (zamowienie_id, nazwa, sku, ilosc, cena_brutto, cena_netto, brutto_linii, netto_linii, vat,'
-    + " zrodlo, zrodlo_id, zdjecie_url, produkt_id, oferta_id) VALUES (?,?,?,?,?,?,?,?,?,'sklep',?,?,?,?)",
+    + " zrodlo, zrodlo_id, zdjecie_url, produkt_id, oferta_id, wariant_id) VALUES (?,?,?,?,?,?,?,?,?,'sklep',?,?,?,?,?)",
   );
   for (const p of pozycje ?? []) {
     ins.run(
@@ -233,6 +233,7 @@ function zapiszPozycje(db, zamowienieId, pozycje) {
       // cokolwiek dopisane obok mapowania znika przy najblizszym przebiegu — dopisek
       // wygladalby na dzialajacy dokladnie do pierwszej synchronizacji po wdrozeniu.
       p.oferta_id ?? null,
+      p.wariant_id ?? null,
     );
   }
 }

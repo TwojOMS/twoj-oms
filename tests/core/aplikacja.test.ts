@@ -97,7 +97,7 @@ describe('zbudujAplikacje', () => {
       'cele', 'faktury', 'faktury-zamowienia', 'finanse', 'kampania', 'klienci', 'koszty', 'magazyn', 'okresy',
       'pozostale-dokumenty-zamowienia', 'przesylki', 'raporty', 'statystyki', 'ustawienia', 'wiadomosci', 'zamowienia', 'zwroty-zamowienia',
     ]);
-    expect(db.prepare("SELECT numer FROM migracje WHERE modul = 'rdzen' ORDER BY numer").all()).toEqual([{ numer: 1 }, { numer: 2 }, { numer: 3 }]);
+    expect(db.prepare("SELECT numer FROM migracje WHERE modul = 'rdzen' ORDER BY numer").all()).toEqual([{ numer: 1 }, { numer: 2 }, { numer: 3 }, { numer: 4 }, { numer: 5 }]);
     db.exec("DELETE FROM uprawnienia WHERE ekran = 'zamowienia'");
     await buduj({ moduly: [rdzen, ekran], env, db, teraz });
     expect(db.prepare('SELECT konto_id, ekran FROM uprawnienia').all()).toEqual([{ konto_id: 2, ekran: 'magazyn' }]);

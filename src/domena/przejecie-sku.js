@@ -1,9 +1,9 @@
 // PRZEJECIE NUMERU ZE SKLEPU — regula czysta. Zadnej bazy, zadnego HTTP: tutaj rozstrzyga sie
-// WYLACZNIE, ktory wzor moze PRZEJAC numer, ktory jego produkt ma juz w sklepie, a ktory
+// WYLACZNIE, ktora karta moze PRZEJAC numer, ktory jej produkt ma juz w sklepie, a ktora
 // takiej odpowiedzi nie ma i musi trafic do czlowieka.
 //
-// PO CO TO ISTNIEJE (zmierzone na produkcji 2026-08-12): 278 wzorow — czwarta czesc katalogu —
-// nie ma NASZEGO numeru, a ich produkt ma WLASNY numer w sklepie („PRO-NIEUPOWAZN-168",
+// PO CO TO ISTNIEJE (zmierzone na produkcji 2026-08-12): 278 kart — czwarta czesc katalogu —
+// nie ma NASZEGO numeru, a ich produkt ma WLASNY numer w sklepie („PC-KLOSZ-168",
 // „PD10"). Generator SKU (`domain/sku-generator.js`) ich nie przejmuje i nie ma jak: on WYDAJE
 // numery nowe i poprawnie omija zajete. Zostaje wiec ROZBIEZNOSC — rejestr milczy, sklep ma
 // numer. To nie jest kosmetyka:
@@ -21,7 +21,7 @@
 /**
  * Klucz porownania numerow.
  *
- * ⚠️ WIELKIE LITERY, choc `UNIQUE` na `wzory.sku` jest w SQLite czuly (BINARY). I to jest cala
+ * ⚠️ WIELKIE LITERY, choc `UNIQUE` na `karty.sku` jest w SQLite czuly (BINARY). I to jest cala
  * roznica: „PD10" przejete z jednego sklepu i „pd10" z drugiego przejda przez nasza kolumne
  * jako DWA rozne numery, a w sklepie beda JEDNYM — czyli zapis odbilby sie o duplikat
  * dopiero na produkcji. Ta sama regula stoi w `sku-generator.js` i `db/magazyn.js`.
@@ -31,7 +31,7 @@ const kluczNumeru = (sku) => String(sku ?? '').trim().toUpperCase();
 /** Numer ze sklepu bez otoczki. Sam napis z odstepow to BRAK numeru, a nie numer. */
 const numerSklepu = (sku) => String(sku ?? '').trim();
 
-/** Wzor, ktory NASZEGO numeru jeszcze nie ma. Napis z samych spacji to brak numeru. */
+/** Karta, ktora NASZEGO numeru jeszcze nie ma. Napis z samych spacji to brak numeru. */
 const bezSku = (w) => !String(w?.sku ?? '').trim();
 
 /** Zrodlo numeru tak, jak zobaczy je czlowiek: kanal i nazwa produktu w tym kanale. */
@@ -55,54 +55,54 @@ function indeksZajetych(zajete) {
   return indeks;
 }
 
-const OPIS_ROZBIEZNOSCI = (zrodla) => 'Produkty tego wzoru mają w sklepach różne numery: '
+const OPIS_ROZBIEZNOSCI = (zrodla) => 'Produkty tej karty mają w sklepach różne numery: '
   + `${zrodla.map((z) => `„${z.sku}" (${z.opis})`).join(', ')}. `
-  + 'Nie wybieram za Ciebie — który z nich jest numerem tego wzoru, wie wyłącznie człowiek. '
-  + 'Wpisz go na karcie wzoru albo popraw numer w sklepie.';
+  + 'Nie wybieram za Ciebie — który z nich jest numerem tej karty, wie wyłącznie człowiek. '
+  + 'Wpisz go na karcie produktu albo popraw numer w sklepie.';
 
 const OPIS_KOLIZJI = (sku, skad) => `Numer „${sku}" jest już zajęty${skad ? ` — ${skad}` : ''}. `
   + 'Nie przejmę go: w rejestrze powstałby drugi wiersz z tym samym numerem, a w sklepie '
   + 'jest to tożsamość jednego produktu.';
 
-const OPIS_SPORU = (sku, nazwa) => `Numer „${sku}" chce przejąć także wzór „${nazwa}". `
-  + 'Dwa wzory z jednym numerem sklep odrzuci jako duplikat — rozstrzygnij, który go ma.';
+const OPIS_SPORU = (sku, nazwa) => `Numer „${sku}" chce przejąć także karta „${nazwa}". `
+  + 'Dwie karty z jednym numerem sklep odrzuci jako duplikat — rozstrzygnij, która go ma.';
 
 /**
  * Propozycje PRZEJECIA numerow ze sklepu.
  *
- * @param {Array} wzory wiersze tabeli `wzory` (potrzebne: `id`, `nazwa`, `sku`)
- * @param {Array} produkty wiersze lustra `produkty_sklepowe` z `wzor_id`, `kanal`, `nazwa`,
- *   `sku_sklepu` — WSZYSTKIE produkty tych wzorow, takze te bez numeru
- * @param {Map|Set|Array} zajete numery zajete GDZIE INDZIEJ — nasze (`wzory.sku`) i te ze
- *   sklepow, ale BEZ produktow tych wzorow (patrz `zajeteSku(db, { pomijajProduktyWzorow })`)
+ * @param {Array} karty wiersze tabeli `karty` (potrzebne: `id`, `nazwa`, `sku`)
+ * @param {Array} produkty wiersze lustra `produkty_sklepowe` z `karta_id`, `kanal`, `nazwa`,
+ *   `sku_sklepu` — WSZYSTKIE produkty tych kart, takze te bez numeru
+ * @param {Map|Set|Array} zajete numery zajete GDZIE INDZIEJ — nasze (`karty.sku`) i te ze
+ *   sklepow, ale BEZ produktow tych kart (patrz `zajeteSku(db, { pomijajProduktyKart })`)
  * @returns {Array<{id, nazwa, sku: string|null, zrodlo: string|null, uwaga: string|null, zla: boolean}>}
  *
- * ⚠️⚠️ WZOR, KTORY NUMER JUZ MA, NIE DOSTAJE NOWEGO — nigdy. Ta sama regula, co w generatorze:
+ * ⚠️⚠️ KARTA, KTORA NUMER JUZ MA, NIE DOSTAJE NOWEGO — nigdy. Ta sama regula, co w generatorze:
  * numer raz nadany jest tozsamoscia produktu, a ciche przenumerowanie jest najgorsza rzecza,
- * jaka ten ekran moze zrobic. Zmiana numeru JUZ NADANEGO zostaje na karcie jednego wzoru.
+ * jaka ten ekran moze zrobic. Zmiana numeru JUZ NADANEGO zostaje na karcie jednego produktu.
  *
- * ⚠️⚠️ WZOR POWIAZANY Z PRODUKTAMI O ROZNYCH NUMERACH NIE MA JEDNEJ POPRAWNEJ ODPOWIEDZI.
- * Wraca OZNACZONY, z wszystkimi numerami w uwadze — nigdy z numerem wybranym za czlowieka
- * i nigdy po cichu pominiety.
+ * ⚠️⚠️ KARTA POWIAZANA Z PRODUKTAMI O ROZNYCH NUMERACH NIE MA JEDNEJ POPRAWNEJ ODPOWIEDZI.
+ * Wraca OZNACZONA, z wszystkimi numerami w uwadze — nigdy z numerem wybranym za czlowieka
+ * i nigdy po cichu pominieta.
  *
- * ⚠️ WZOR, KTOREGO PRODUKTY NUMERU NIE MAJA, W OGOLE TU NIE WRACA. Nie ma czego przejmowac,
+ * ⚠️ KARTA, KTOREJ PRODUKTY NUMERU NIE MAJA, W OGOLE TU NIE WRACA. Nie ma czego przejmowac,
  * a pozycja „—" na liscie 278 wierszy byla by szumem; od nadawania numerow NOWYCH jest
  * generator SKU.
  */
-export function przejeciaZeSklepu(wzory, produkty, zajete) {
-  // ⚠️ ODRESZTOWANIE PO `id` PRZED CZYMKOLWIEK INNYM: formularz potrafi przyniesc ten sam wzor
+export function przejeciaZeSklepu(karty, produkty, zajete) {
+  // ⚠️ ODRESZTOWANIE PO `id` PRZED CZYMKOLWIEK INNYM: formularz potrafi przyniesc te sama karte
   // dwa razy (dwa pola wyboru o tej samej wartosci), a wtedy jeden wiersz dostalby DWIE pozycje
   // i sam ze soba wszedl w spor o numer.
   const poId = new Map();
-  for (const w of wzory ?? []) if (w && !poId.has(w.id)) poId.set(w.id, w);
+  for (const w of karty ?? []) if (w && !poId.has(w.id)) poId.set(w.id, w);
 
-  // Numery ze sklepu per wzor. `Map` po kluczu wzoru, bo `wzor_id` bierze sie z lustra.
+  // Numery ze sklepu per karta. `Map` po kluczu karty, bo `karta_id` bierze sie z lustra.
   const zrodla = new Map();
   for (const p of produkty ?? []) {
     const sku = numerSklepu(p?.sku_sklepu);
-    if (!sku || !poId.has(p?.wzor_id)) continue;
-    if (!zrodla.has(p.wzor_id)) zrodla.set(p.wzor_id, []);
-    zrodla.get(p.wzor_id).push({ sku, opis: opisZrodla(p) });
+    if (!sku || !poId.has(p?.karta_id)) continue;
+    if (!zrodla.has(p.karta_id)) zrodla.set(p.karta_id, []);
+    zrodla.get(p.karta_id).push({ sku, opis: opisZrodla(p) });
   }
 
   // ⚠️ SORTOWANIE JAWNE — po nazwie, tak jak na liscie, generatorze i ekranie powiazan;
@@ -116,16 +116,16 @@ export function przejeciaZeSklepu(wzory, produkty, zajete) {
 
   const indeks = indeksZajetych(zajete);
 
-  // KROK 1: co kazdy wzor mialby przejac. Spor miedzy wzorami rozstrzyga sie dopiero potem,
+  // KROK 1: co kazda karta mialaby przejac. Spor miedzy kartami rozstrzyga sie dopiero potem,
   // bo do jego opisania trzeba znac OBIE strony.
-  const wstepne = doPrzejecia.map((wzor) => {
-    const moje = zrodla.get(wzor.id);
+  const wstepne = doPrzejecia.map((karta) => {
+    const moje = zrodla.get(karta.id);
     // ⚠️ ROZNE POSTACIE TEGO SAMEGO NUMERU TEZ SA ROZBIEZNOSCIA („PD10" vs „pd10"): dla sklepu
     // to jeden numer, dla naszej kolumny dwa, a ktory jest prawda — wie wylacznie czlowiek.
     const rozne = [...new Set(moje.map((z) => z.sku))];
     if (rozne.length > 1) {
       return {
-        wzor, sku: null, zrodlo: null, uwaga: OPIS_ROZBIEZNOSCI(moje),
+        karta, sku: null, zrodlo: null, uwaga: OPIS_ROZBIEZNOSCI(moje),
         zla: true, rodzaj: 'rozbieznosc',
       };
     }
@@ -133,14 +133,14 @@ export function przejeciaZeSklepu(wzory, produkty, zajete) {
     const skad = indeks.get(kluczNumeru(sku));
     if (skad !== undefined) {
       return {
-        wzor, sku: null, zrodlo: opis, uwaga: OPIS_KOLIZJI(sku, skad),
+        karta, sku: null, zrodlo: opis, uwaga: OPIS_KOLIZJI(sku, skad),
         zla: true, rodzaj: 'kolizja',
       };
     }
-    return { wzor, sku, zrodlo: opis, uwaga: null, zla: false, rodzaj: 'gotowe' };
+    return { karta, sku, zrodlo: opis, uwaga: null, zla: false, rodzaj: 'gotowe' };
   });
 
-  // KROK 2: dwa wzory po TEN SAM numer. ⚠️ OBIE pozycje wracaja oznaczone, a nie jedna „wolna"
+  // KROK 2: dwie karty po TEN SAM numer. ⚠️ OBIE pozycje wracaja oznaczone, a nie jedna „wolna"
   // i jedna kolizyjna: przy dwoch kandydatach nie ma powodu, dla ktorego akurat pierwszy
   // alfabetycznie mialby byc tym wlasciwym.
   const poKluczu = new Map();
@@ -154,14 +154,14 @@ export function przejeciaZeSklepu(wzory, produkty, zajete) {
     if (grupa.length < 2) continue;
     for (const p of grupa) {
       const inny = grupa.find((x) => x !== p);
-      p.uwaga = OPIS_SPORU(p.sku, inny.wzor.nazwa);
+      p.uwaga = OPIS_SPORU(p.sku, inny.karta.nazwa);
       p.sku = null;
       p.zla = true;
       p.rodzaj = 'kolizja';
     }
   }
 
-  return wstepne.map(({ wzor, sku, zrodlo, uwaga, zla, rodzaj }) => ({
-    id: wzor.id, nazwa: wzor.nazwa, sku, zrodlo, uwaga, zla, rodzaj,
+  return wstepne.map(({ karta, sku, zrodlo, uwaga, zla, rodzaj }) => ({
+    id: karta.id, nazwa: karta.nazwa, sku, zrodlo, uwaga, zla, rodzaj,
   }));
 }

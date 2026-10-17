@@ -13,14 +13,14 @@
 // `products/{produkt_id}/variations/{wariant_id}`, prosty: `products/{produkt_id}`. Zapis SKU
 // NA RODZICA produktu wariantowego jest w WooCommerce LEGALNY I CICHY — nie da bledu, odpowie
 // 200, a numer nie pojawi sie na wariancie, czyli tam, gdzie go szukamy i gdzie zyje cena
-// (zmierzone: rodzic „EV" ma SKU puste, warianty `PRO-EV-117` / `PRO-EV-118`).
+// (zmierzone: rodzic „Grzybek" ma SKU puste, warianty `PC-GRZ-117` / `PC-GRZ-118`).
 //
 // ⚠️⚠️ (2) PANEL WYSYLA WYLACZNIE `sku` I `dimensions`. Nigdy ceny, nazwy, kategorii, zdjec,
 // opisu ani stanu magazynowego — to niezmiennik CALEGO modulu, nie ostroznosc tego pliku.
 // Magazyn nie prowadzi stanow magazynowych i nie czyta `stock_quantity`.
 //
 // ⚠️⚠️ (3) JEDNOSTKA PRZELICZANA NA GRANICY. Kolumny sa w MILIMETRACH, sklep ma wlasna
-// (`woocommerce_dimension_unit`). Zalozenie „to na pewno centymetry" daje szablon 70 MILIMETROW
+// (`woocommerce_dimension_unit`). Zalozenie „to na pewno centymetry" daje produkt 70 MILIMETROW
 // zamiast 70 cm — cicho i za pieniadze. Jednostki, ktorej nie znamy, NIE ZGADUJEMY.
 //
 // ⚠️⚠️ (4) NIEPUSTE SKU W SKLEPIE JEST TOZSAMOSCIA PRODUKTU i nie ma prawa zostac nadpisane.
@@ -38,8 +38,8 @@ import { wymagajListyKanalow } from './lista-kanalow.js';
 // „constructor" na literale oddalaby FUNKCJE zamiast `undefined`, a `??` by jej nie zlapal.
 //
 // ⚠️ WYLACZNIE METRYCZNE. `in` i `yd` WooCommerce zna, ale 70 cm to 27,5590551181… cala —
-// do sklepu pojechalaby liczba zaokraglona, czyli INNY arkusz niz ten, po ktorym w Etapie 2
-// tnie ploter. Odmowa jest tu tansza niz cicha zaokraglona prawda.
+// do sklepu pojechalaby liczba zaokraglona, czyli INNY wymiar niz ten, ktory trzyma
+// karta. Odmowa jest tu tansza niz cicha zaokraglona prawda.
 const PRZELICZNIKI = new Map([['mm', 1], ['cm', 10], ['m', 1000]]);
 
 const JEDNOSTKI_ZNANE = [...PRZELICZNIKI.keys()].join(', ');
@@ -49,7 +49,7 @@ const JEDNOSTKI_ZNANE = [...PRZELICZNIKI.keys()].join(', ');
  *
  * ⚠️ LICZYMY NA CALKOWITYCH, a nie przez dzielenie zmiennoprzecinkowe: `705 / 10` daje
  * w JS `70.5`, ale `1004 / 10` juz `100.39999999999999`, a taka liczba pojechalaby do sklepu
- * jako wymiar arkusza. Reszta doklejana tekstem nie ma jak sie rozjechac.
+ * jako wymiar produktu. Reszta doklejana tekstem nie ma jak sie rozjechac.
  */
 function wJednostce(mm, dzielnik) {
   const calosc = Math.trunc(mm / dzielnik);
@@ -74,7 +74,7 @@ function jednostkaKanalu(jednostki, kanal) {
   if (!dzielnik) {
     throw new Error(`Nie znam jednostki wymiarów sklepu „${kanal}" (przyszło: `
       + `${JSON.stringify(j ?? null)}). Znam wyłącznie ${JEDNOSTKI_ZNANE} — nie zgaduję, `
-      + 'bo pomyłka daje szablon 70 milimetrów zamiast 70 centymetrów.');
+      + 'bo pomyłka daje produkt 70 milimetrów zamiast 70 centymetrów.');
   }
   return { jednostka: j, dzielnik };
 }
@@ -87,7 +87,7 @@ const napis = (x) => String(x ?? '').trim();
  * ⚠️ POROWNANIE NUMEROW NIECZULE NA WIELKOSC LITER. Po stronie WooCommerce „PD10" i „pd10"
  * to jeden numer (porownanie w bazie sklepu nie jest czule), wiec wstrzymanie zapisu na samej
  * roznicy wielkosci liter zablokowaloby wymiary bez zadnego powodu. W druga strone: nasza
- * kolumna `wzory.sku` ma `UNIQUE` typu BINARY i o tej roznicy nie wie — dlatego rozstrzyga
+ * kolumna `karty.sku` ma `UNIQUE` typu BINARY i o tej roznicy nie wie — dlatego rozstrzyga
  * TO porownanie, a nie baza.
  */
 const tenSamNumer = (a, b) => napis(a).toUpperCase() === napis(b).toUpperCase();
@@ -108,6 +108,8 @@ function wymiaryTeSame(wSklepie, nasze) {
   const dl = liczbaWymiaru(wSklepie?.length);
   const sz = liczbaWymiaru(wSklepie?.width);
   if (dl === null || sz === null) return false;
+  // PRZ-090: glebokosc porownujemy tylko wtedy, gdy ja wysylamy — karta bez glebokosci nie dotyka `height`.
+  if (Object.hasOwn(nasze, 'height') && liczbaWymiaru(wSklepie?.height) !== Number(nasze.height)) return false;
   return dl === Number(nasze.length) && sz === Number(nasze.width);
 }
 
@@ -122,7 +124,7 @@ function wymiaryTeSame(wSklepie, nasze) {
 export function czyWolnoNadpisac(naszSku, wSklepie) {
   const nasz = napis(naszSku);
   const ich = napis(wSklepie);
-  // Bez naszego numeru nie ma czym nadpisac — to droga typowa dla wzorow przed przejeciem
+  // Bez naszego numeru nie ma czym nadpisac — to droga typowa dla kart przed przejeciem
   // numeru ze sklepu (`domain/przejecie-sku.js`).
   if (!nasz || !ich || tenSamNumer(nasz, ich)) return { wolno: true, powod: null };
   return {
@@ -144,7 +146,8 @@ const SAME_CYFRY = /^\d+$/u;
 
 // ——— OPIS DLA CZLOWIEKA ——————————————————————————————————————————————————————
 
-const opisWymiaru = (w, jednostka) => (w ? `${w.length} × ${w.width} ${jednostka}` : 'nieznane');
+const opisWymiaru = (w, jednostka) => (w
+  ? `${w.length} × ${w.width}${napis(w.height) ? ` × ${w.height}` : ''} ${jednostka}` : 'nieznane');
 
 /**
  * Zdanie „co sie zmieni z czego na co" — jedyna rzecz, po ktorej czlowiek pozna, ze klika
@@ -159,7 +162,7 @@ function opisZmiany({ pola, skuWSklepie, naszSku, wymiaryWSklepie, jednostka }) 
   }
   if (Object.hasOwn(pola, 'dimensions')) {
     czesci.push(`wymiary: ${opisWymiaru(wymiaryWSklepie, jednostka)}`
-      + ` → ${pola.dimensions.length} × ${pola.dimensions.width} ${jednostka}`);
+      + ` → ${opisWymiaru(pola.dimensions, jednostka)}`);
   }
   return czesci.join('; ');
 }
@@ -167,35 +170,37 @@ function opisZmiany({ pola, skuWSklepie, naszSku, wymiaryWSklepie, jednostka }) 
 // ——— REGULA GLOWNA ——————————————————————————————————————————————————————————
 
 /**
- * Co panel wysle do sklepow dla JEDNEGO wzoru — i czego nie wysle, oraz dlaczego.
+ * Co panel wysle do sklepow dla JEDNEJ karty — i czego nie wysle, oraz dlaczego.
  *
- * @param {object} wzor wiersz `wzory` (potrzebne: `id`, `nazwa`, `sku`, `szerokosc_mm`,
+ * @param {object} karta wiersz `karty` (potrzebne: `id`, `nazwa`, `sku`, `szerokosc_mm`,
  *   `wysokosc_mm`)
- * @param {Array} produkty wiersze lustra `produkty_sklepowe` tego wzoru. Kazdy MOZE niesc
- *   `wymiary: { length, width }` — stan ZYWY, odczytany tuz przed zapisem. Lustro wymiarow
- *   NIE TRZYMA (`produkty_sklepowe` nie ma kolumn wymiarowych), wiec przy podgladzie tego
- *   pola po prostu nie ma i wymiary licza sie jako zmiana.
+ * @param {Array} produkty wiersze lustra `produkty_sklepowe` tej karty. Kazdy MOZE niesc
+ *   `wymiary: { length, width, height }` — stan ZYWY, odczytany tuz przed zapisem. Kolumna lustra
+ *   `wymiary_json` (PRZ-090) sluzy zakladaniu kart i NIE jest tu czytana: przy podgladzie tego pola
+ *   po prostu nie ma i wymiary licza sie jako zmiana.
  * @param {Record<string, string>} jednostki kanal → jednostka wymiarow sklepu
- * @returns {{ zmiany: Array, wstrzymane: Array<{wzor_id, kanal, produkt_id, wariant_id, nazwa, powod}> }}
+ * @returns {{ zmiany: Array, wstrzymane: Array<{karta_id, kanal, produkt_id, wariant_id, nazwa, powod}> }}
  *
  * ⚠️ JEDNA FUNKCJA LICZY OBA ZBIORY. Osobna funkcja „co wstrzymane" musialaby powtorzyc caly
  * ten przebieg i rozjechalaby sie z nim przy pierwszej zmianie reguly — a wtedy ekran
  * pokazywalby jedno, a zapis robil drugie.
  */
-export function ocenZapis(wzor, produkty, jednostki, kanalySklepow) {
+export function ocenZapis(karta, produkty, jednostki, kanalySklepow) {
   wymagajListyKanalow(kanalySklepow);
   const zmiany = [];
   const wstrzymane = [];
-  const naszSku = napis(wzor?.sku);
+  const naszSku = napis(karta?.sku);
   // ⚠️ POLOWA WYMIARU TO NIE WYMIAR: wyslanie samej szerokosci zostawiloby w sklepie wysokosc
-  // z poprzedniej wartosci, czyli arkusz, ktorego nigdzie nie ma. Zero jest brakiem, nie
-  // wymiarem — kolumna jest w milimetrach i arkusz o boku 0 nie istnieje.
-  const szer = Number(wzor?.szerokosc_mm) > 0 ? Number(wzor.szerokosc_mm) : null;
-  const wys = Number(wzor?.wysokosc_mm) > 0 ? Number(wzor.wysokosc_mm) : null;
+  // z poprzedniej wartosci, czyli produkt, ktorego nigdzie nie ma. Zero jest brakiem, nie
+  // wymiarem — kolumna jest w milimetrach i produkt o boku 0 nie istnieje.
+  const szer = Number(karta?.szerokosc_mm) > 0 ? Number(karta.szerokosc_mm) : null;
+  const wys = Number(karta?.wysokosc_mm) > 0 ? Number(karta.wysokosc_mm) : null;
+  // PRZ-090: glebokosc (Woo `height`) jest opcjonalna i jedzie tylko razem z para wyzej.
+  const gl = Number(karta?.glebokosc_mm) > 0 ? Number(karta.glebokosc_mm) : null;
 
   for (const p of produkty ?? []) {
     const wspolne = {
-      wzor_id: wzor?.id ?? null,
+      karta_id: karta?.id ?? null,
       kanal: p?.kanal,
       produkt_id: napis(p?.produkt_id),
       wariant_id: napis(p?.wariant_id),
@@ -204,7 +209,7 @@ export function ocenZapis(wzor, produkty, jednostki, kanalySklepow) {
     const wstrzymaj = (powod) => wstrzymane.push({ ...wspolne, powod });
 
     // ⚠️ DO ALLEGRO NIE PISZEMY NIC — i to nie jest pozycja „wstrzymana". Oferta Allegro nie
-    // jest produktem WooCommerce; jej obecnosc przy wzorze jest normalna i nie ma o czym
+    // jest produktem WooCommerce; jej obecnosc przy karcie jest normalna i nie ma o czym
     // meldowac. Zbior „wstrzymane" jest lista PROBLEMOW i ma zostac krotka.
     if (!kanalySklepow.includes(p?.kanal)) continue;
 
@@ -244,9 +249,10 @@ export function ocenZapis(wzor, produkty, jednostki, kanalySklepow) {
 
     let wymiaryNasze = null;
     if (szer && wys) {
-      // ⚠️ `length` to WYSOKOSC arkusza, `width` to SZEROKOSC — kolejnosc jak w sklepie,
-      // nie jak w nazwie kolumny. Zamiana miejscami obraca arkusz o 90° i psuje pakowanie.
+      // ⚠️ `length` to WYSOKOSC produktu, `width` to SZEROKOSC — kolejnosc jak w sklepie,
+      // nie jak w nazwie kolumny. Zamiana miejscami obraca produkt o 90° i psuje pakowanie.
       wymiaryNasze = { length: wJednostce(wys, dzielnik), width: wJednostce(szer, dzielnik) };
+      if (gl) wymiaryNasze.height = wJednostce(gl, dzielnik);
       // ⚠️ WYMIARY NIEZNANE (lustro ich nie trzyma) NIE SA „takie same". Podglad ma pokazac
       // je jako jadace — inaczej obiecywalby, ze nic sie nie zmieni, a zapis i tak by je wyslal.
       if (!wymiaryTeSame(p?.wymiary, wymiaryNasze)) pola.dimensions = wymiaryNasze;
@@ -275,6 +281,6 @@ export function ocenZapis(wzor, produkty, jednostki, kanalySklepow) {
  * Sama lista zmian do wyslania — ta sama regula, co `ocenZapis`, bez powodow wstrzymania.
  * Interfejs z planu (Zadanie 14); wolaja go testy i te miejsca, ktorych powody nie obchodza.
  */
-export function zmianyDoWyslania(wzor, produkty, jednostki, kanalySklepow) {
-  return ocenZapis(wzor, produkty, jednostki, kanalySklepow).zmiany;
+export function zmianyDoWyslania(karta, produkty, jednostki, kanalySklepow) {
+  return ocenZapis(karta, produkty, jednostki, kanalySklepow).zmiany;
 }

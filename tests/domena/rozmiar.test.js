@@ -3,13 +3,13 @@ import { wymiaryZTekstu, nazwaBezRozmiaru, opisWymiarow } from '../../src/domena
 
 // Milimetry z bazy → napis dla czlowieka. Kolumna „Wymiary" w magazynie.
 describe('opisWymiarow — milimetry z bazy na centymetry na ekranie', () => {
-  it('typowy arkusz', () => {
+  it('typowy wymiar', () => {
     expect(opisWymiarow({ szerokosc_mm: 700, wysokosc_mm: 1000 })).toBe('70 × 100 cm');
     expect(opisWymiarow({ szerokosc_mm: 450, wysokosc_mm: 650 })).toBe('45 × 65 cm');
   });
 
-  // Zaokraglenie do pelnych centymetrow zamienialoby 30,5 cm na 30 albo 31 — a od tej
-  // liczby zalezy w Etapie 2, ktory plik jedzie na ploter.
+  // Zaokraglenie do pelnych centymetrow zamienialoby 30,5 cm na 30 albo 31 — a ta
+  // liczba jedzie do sklepu i do gabarytu paczki.
   it('polowka centymetra zostaje polowka, a nie zaokragla sie po cichu', () => {
     expect(opisWymiarow({ szerokosc_mm: 305, wysokosc_mm: 480 })).toBe('30.5 × 48 cm');
   });
@@ -34,17 +34,17 @@ describe('opisWymiarow — milimetry z bazy na centymetry na ekranie', () => {
 });
 
 describe('wymiaryZTekstu — kształty zmierzone na prawdziwych sklepach', () => {
-  it('atrybut Rozmiar z PRO: spacje wokół x, jednostka na końcu', () => {
+  it('atrybut Rozmiar ze sklepu B: spacje wokół x, jednostka na końcu', () => {
     expect(wymiaryZTekstu('70 x 100 cm')).toEqual({ szerokosc_mm: 700, wysokosc_mm: 1000 });
     expect(wymiaryZTekstu('45 x 65 cm')).toEqual({ szerokosc_mm: 450, wysokosc_mm: 650 });
   });
 
-  it('atrybut Rozmiar z szkicownia.pl: bez spacji', () => {
+  it('atrybut Rozmiar ze sklepu A: bez spacji', () => {
     expect(wymiaryZTekstu('80x150cm')).toEqual({ szerokosc_mm: 800, wysokosc_mm: 1500 });
   });
 
   it('rozmiar w nazwie produktu, po myślniku', () => {
-    expect(wymiaryZTekstu('Teren monitorowany – 60x62cm'))
+    expect(wymiaryZTekstu('Lampa wisząca Kopuła – 60x62cm'))
       .toEqual({ szerokosc_mm: 600, wysokosc_mm: 620 });
   });
 
@@ -67,10 +67,10 @@ describe('wymiaryZTekstu — kształty zmierzone na prawdziwych sklepach', () =>
     expect(wymiaryZTekstu('12,25 x 20 cm')).toEqual({ szerokosc_mm: 123, wysokosc_mm: 200 });
   });
 
-  // ⚠️ SEDNO TEJ FUNKCJI. Wymiar zgadnięty jest GORSZY niż brak wymiaru, bo w Etapie 2
-  // decyduje o tym, który plik .mol jedzie na ploter.
+  // ⚠️ SEDNO TEJ FUNKCJI. Wymiar zgadnięty jest GORSZY niż brak wymiaru, bo decyduje
+  // o gabarycie paczki i o wymiarze pokazanym w sklepie.
   it('nigdy nie zgaduje: brak rozmiaru daje null', () => {
-    expect(wymiaryZTekstu('Koła duże')).toBe(null);
+    expect(wymiaryZTekstu('Abażur lniany')).toBe(null);
     expect(wymiaryZTekstu('Geometryczne')).toBe(null);
     expect(wymiaryZTekstu('')).toBe(null);
     expect(wymiaryZTekstu(null)).toBe(null);
@@ -82,8 +82,8 @@ describe('wymiaryZTekstu — kształty zmierzone na prawdziwych sklepach', () =>
   });
 
   it('nigdy nie zgaduje: liczba bez drugiej liczby to nie rozmiar', () => {
-    expect(wymiaryZTekstu('CYFRY wys. 50cm (Arial)')).toBe(null);
-    expect(wymiaryZTekstu('Łuki 80cm')).toBe(null);
+    expect(wymiaryZTekstu('KLOSZ wys. 50cm (opal)')).toBe(null);
+    expect(wymiaryZTekstu('Abażur 80cm')).toBe(null);
   });
 
   it('nigdy nie zgaduje: bez jednostki nie wiadomo, czy to cm czy mm', () => {
@@ -104,20 +104,20 @@ describe('wymiaryZTekstu — kształty zmierzone na prawdziwych sklepach', () =>
 
 describe('nazwaBezRozmiaru — usuwa rozmiar z nazwy produktu, nigdy nie zgaduje', () => {
   it('usuwa rozmiar razem z osieroconym myślnikiem', () => {
-    expect(nazwaBezRozmiaru('Teren monitorowany – 60x62cm')).toBe('Teren monitorowany');
-    expect(nazwaBezRozmiaru('Kotwica - 70 x 100 cm')).toBe('Kotwica');
+    expect(nazwaBezRozmiaru('Lampa wisząca Kopuła – 60x62cm')).toBe('Lampa wisząca Kopuła');
+    expect(nazwaBezRozmiaru('Kopuła - 70 x 100 cm')).toBe('Kopuła');
   });
 
   // Gdy rozmiar jest PIERWSZYM segmentem, myślnik po nim (dywiz albo pauza) nie ma
   // z lewej strony niczego do rozdzielania — jest tak samo osierocony jak myślnik
   // PRZED rozmiarem w odwrotnym układzie, więc też musi zniknąć.
   it('rozmiar jako pierwszy segment: osierocony myślnik po nim znika razem z rozmiarem', () => {
-    expect(nazwaBezRozmiaru('70x100cm - Kotwica')).toBe('Kotwica');
-    expect(nazwaBezRozmiaru('60x62cm – Kotwica')).toBe('Kotwica');
+    expect(nazwaBezRozmiaru('70x100cm - Kopuła')).toBe('Kopuła');
+    expect(nazwaBezRozmiaru('60x62cm – Kopuła')).toBe('Kopuła');
   });
 
   it('nazwa bez rozmiaru wraca bez zmian', () => {
-    expect(nazwaBezRozmiaru('Koła duże')).toBe('Koła duże');
+    expect(nazwaBezRozmiaru('Abażur lniany')).toBe('Abażur lniany');
     expect(nazwaBezRozmiaru('Geometryczne')).toBe('Geometryczne');
   });
 
@@ -127,8 +127,8 @@ describe('nazwaBezRozmiaru — usuwa rozmiar z nazwy produktu, nigdy nie zgaduje
   });
 
   it('pojedynczej liczby nie rusza', () => {
-    expect(nazwaBezRozmiaru('Łuki 80cm')).toBe('Łuki 80cm');
-    expect(nazwaBezRozmiaru('CYFRY wys. 50cm (Arial)')).toBe('CYFRY wys. 50cm (Arial)');
+    expect(nazwaBezRozmiaru('Abażur 80cm')).toBe('Abażur 80cm');
+    expect(nazwaBezRozmiaru('KLOSZ wys. 50cm (opal)')).toBe('KLOSZ wys. 50cm (opal)');
   });
 
   it('nigdy nie zgaduje: dwa różne rozmiary w jednym napisie zostają nietknięte', () => {
@@ -141,11 +141,11 @@ describe('nazwaBezRozmiaru — usuwa rozmiar z nazwy produktu, nigdy nie zgaduje
 
   // Poprzednia poprawka czyściła prawą stronę TYLKO gdy lewa wyszła pusta — więc
   // myślnik osierocony na PRAWYM końcu (gdy lewy segment i tak istnieje) zostawał
-  // wiszący: 'Kotwica - 70x100cm -' dawało 'Kotwica -' zamiast 'Kotwica'. Sprawdzamy
+  // wiszący: 'Kopuła - 70x100cm -' dawało 'Kopuła -' zamiast 'Kopuła'. Sprawdzamy
   // oba znaki myślnika, żeby nie odtworzyć tej samej asymetrii pod inną postacią.
   it('myślnik osierocony na PRAWYM końcu znika, nawet gdy lewy segment istnieje', () => {
-    expect(nazwaBezRozmiaru('Kotwica - 70x100cm -')).toBe('Kotwica');
-    expect(nazwaBezRozmiaru('Kotwica – 70x100cm –')).toBe('Kotwica');
+    expect(nazwaBezRozmiaru('Kopuła - 70x100cm -')).toBe('Kopuła');
+    expect(nazwaBezRozmiaru('Kopuła – 70x100cm –')).toBe('Kopuła');
   });
 
   it('wejście inne niż string wraca bez zmian', () => {
@@ -155,7 +155,7 @@ describe('nazwaBezRozmiaru — usuwa rozmiar z nazwy produktu, nigdy nie zgaduje
 
   // Kontrakt brzmi „string → string", ale dla wejscia nie-string funkcja oddaje TO SAMO
   // wejscie, a nie jego tekstowa postac — i to jest zamierzone. String(60) dalby '60',
-  // czyli wiarygodnie wygladajaca nazwe wzoru, ktora zamaskowalaby blad wyzej (numer SKU
+  // czyli wiarygodnie wygladajaca nazwe karty, ktora zamaskowalaby blad wyzej (numer SKU
   // wpuszczony tam, gdzie mial isc tytul produktu). Oddany bez zmiany numer zostaje
   // numerem i pierwszy zapis do magazynu sie o niego potknie. `null`/`undefined` juz tak
   // dzialaly — reszta typow nie moze zachowywac sie inaczej niz one.
@@ -163,10 +163,10 @@ describe('nazwaBezRozmiaru — usuwa rozmiar z nazwy produktu, nigdy nie zgaduje
     expect(nazwaBezRozmiaru(60)).toBe(60);
     expect(nazwaBezRozmiaru(0)).toBe(0);
 
-    const obiekt = { nazwa: 'Kotwica 70x100cm' };
+    const obiekt = { nazwa: 'Kopuła 70x100cm' };
     expect(nazwaBezRozmiaru(obiekt)).toBe(obiekt);
 
-    const tablica = ['Kotwica 70x100cm'];
+    const tablica = ['Kopuła 70x100cm'];
     expect(nazwaBezRozmiaru(tablica)).toBe(tablica);
 
     // Ta sama decyzja po obu stronach modulu: skoro nazwa nie-string nie jest tekstem,
@@ -185,21 +185,21 @@ describe('nazwaBezRozmiaru — spoiwo miedzy segmentami i brzegi nazwy', () => {
   // stronach cos zostalo, wraca dokladnie jeden separator — ten, ktory naprawde byl
   // w oryginale, niezaleznie od tego, po ktorej stronie rozmiaru stal.
   it('separator miedzy segmentami przezywa, gdy stal tylko po LEWEJ stronie rozmiaru', () => {
-    expect(nazwaBezRozmiaru('Kotwica - 70x100cm Premium')).toBe('Kotwica - Premium');
-    expect(nazwaBezRozmiaru('Kotwica – 70x100cm Premium')).toBe('Kotwica – Premium');
+    expect(nazwaBezRozmiaru('Kopuła - 70x100cm Premium')).toBe('Kopuła - Premium');
+    expect(nazwaBezRozmiaru('Kopuła – 70x100cm Premium')).toBe('Kopuła – Premium');
   });
 
   it('separator miedzy segmentami przezywa, gdy stal tylko po PRAWEJ stronie rozmiaru', () => {
-    expect(nazwaBezRozmiaru('Kotwica 70x100cm - Premium')).toBe('Kotwica - Premium');
+    expect(nazwaBezRozmiaru('Kopuła 70x100cm - Premium')).toBe('Kopuła - Premium');
   });
 
   it('gdy separator byl po obu stronach, zostaje dokladnie jeden', () => {
     expect(nazwaBezRozmiaru('Rozmiar – 60x62cm – wersja premium')).toBe('Rozmiar – wersja premium');
-    expect(nazwaBezRozmiaru('Kotwica - 70x100cm - Premium')).toBe('Kotwica - Premium');
+    expect(nazwaBezRozmiaru('Kopuła - 70x100cm - Premium')).toBe('Kopuła - Premium');
   });
 
   it('gdy separatorem byla sama spacja, zostaje spacja — nie znika i nie awansuje na myslnik', () => {
-    expect(nazwaBezRozmiaru('Kotwica 70x100cm Premium')).toBe('Kotwica Premium');
+    expect(nazwaBezRozmiaru('Kopuła 70x100cm Premium')).toBe('Kopuła Premium');
   });
 
   // Regula „przy remisie wygrywa lewa strona" byla dotad wylacznie deklaracja w komentarzu:
@@ -207,50 +207,50 @@ describe('nazwaBezRozmiaru — spoiwo miedzy segmentami i brzegi nazwy', () => {
   // kolejnosci warunku przechodzila cala suite. Tutaj lewa niesie przecinek, prawa myslnik —
   // wynik rozstrzyga, ktora strona wygrywa, i nie da sie go dostac z odwrotna kolejnoscia.
   it('gdy KAZDA strona niesie INNY mocny znak, wygrywa lewa — czytamy nazwe od lewej', () => {
-    expect(nazwaBezRozmiaru('Kotwica, 70x100cm - Premium')).toBe('Kotwica, Premium');
-    expect(nazwaBezRozmiaru('Kotwica - 70x100cm, Premium')).toBe('Kotwica - Premium');
+    expect(nazwaBezRozmiaru('Kopuła, 70x100cm - Premium')).toBe('Kopuła, Premium');
+    expect(nazwaBezRozmiaru('Kopuła - 70x100cm, Premium')).toBe('Kopuła - Premium');
   });
 
   // ZEWNETRZNE krawedzie nazwy nie sa nasza sprawa. Ta sama nazwa nie moze tracic
   // wiodacego znaku tylko dlatego, ze niesie rozmiar.
   it('wiodacy myslnik nalezacy do nazwy zostaje, tak samo z rozmiarem jak i bez', () => {
-    expect(nazwaBezRozmiaru('- Kotwica')).toBe('- Kotwica');
-    expect(nazwaBezRozmiaru('- Kotwica 70x100cm')).toBe('- Kotwica');
+    expect(nazwaBezRozmiaru('- Kopuła')).toBe('- Kopuła');
+    expect(nazwaBezRozmiaru('- Kopuła 70x100cm')).toBe('- Kopuła');
   });
 
   it('koncowy myslnik nalezacy do nazwy zostaje, tak samo z rozmiarem jak i bez', () => {
-    expect(nazwaBezRozmiaru('Kotwica -')).toBe('Kotwica -');
-    expect(nazwaBezRozmiaru('70x100cm Kotwica -')).toBe('Kotwica -');
+    expect(nazwaBezRozmiaru('Kopuła -')).toBe('Kopuła -');
+    expect(nazwaBezRozmiaru('70x100cm Kopuła -')).toBe('Kopuła -');
   });
 
   // Nawias i przecinek to takie samo spoiwo jak myslnik — po wycieciu rozmiaru nie moga
   // zostac osierocone. Nawias, ktory OPAKOWYWAL rozmiar, znika razem z nim.
   it('nawias opakowujacy rozmiar znika razem z rozmiarem', () => {
-    expect(nazwaBezRozmiaru('Teren monitorowany (60x62cm)')).toBe('Teren monitorowany');
-    expect(nazwaBezRozmiaru('Teren monitorowany (60x62cm) premium')).toBe('Teren monitorowany premium');
+    expect(nazwaBezRozmiaru('Lampa wisząca Kopuła (60x62cm)')).toBe('Lampa wisząca Kopuła');
+    expect(nazwaBezRozmiaru('Lampa wisząca Kopuła (60x62cm) premium')).toBe('Lampa wisząca Kopuła premium');
   });
 
   it('przecinek przed rozmiarem nie zostaje osierocony na koncu nazwy', () => {
-    expect(nazwaBezRozmiaru('Kotwica, 70x100cm')).toBe('Kotwica');
-    expect(nazwaBezRozmiaru('Kotwica, 70x100cm, premium')).toBe('Kotwica, premium');
+    expect(nazwaBezRozmiaru('Kopuła, 70x100cm')).toBe('Kopuła');
+    expect(nazwaBezRozmiaru('Kopuła, 70x100cm, premium')).toBe('Kopuła, premium');
   });
 
   // Obie funkcje musza dzielic JEDNA decyzje o tym, co jest rozmiarem. Napis, ktoremu
-  // wymiaryZTekstu odmawia wymiarow, nie moze stracic ani znaku w nazwie — inaczej wzor
+  // wymiaryZTekstu odmawia wymiarow, nie moze stracic ani znaku w nazwie — inaczej karta
   // trafia na liste „bez wymiarow" z nazwa okrojona o cos, czego nikt nie rozpoznal.
   it('to, czego wymiaryZTekstu nie uznaje za rozmiar, zostaje w nazwie (rozmiar zerowy)', () => {
-    expect(wymiaryZTekstu('Kotwica - 0 x 100 cm')).toBe(null);
-    expect(nazwaBezRozmiaru('Kotwica - 0 x 100 cm')).toBe('Kotwica - 0 x 100 cm');
+    expect(wymiaryZTekstu('Kopuła - 0 x 100 cm')).toBe(null);
+    expect(nazwaBezRozmiaru('Kopuła - 0 x 100 cm')).toBe('Kopuła - 0 x 100 cm');
   });
 
   it('to, czego wymiaryZTekstu nie uznaje za rozmiar, zostaje w nazwie (zaokraglenie do zera)', () => {
-    expect(wymiaryZTekstu('Kotwica - 0,04 x 100 mm')).toBe(null);
-    expect(nazwaBezRozmiaru('Kotwica - 0,04 x 100 mm')).toBe('Kotwica - 0,04 x 100 mm');
+    expect(wymiaryZTekstu('Kopuła - 0,04 x 100 mm')).toBe(null);
+    expect(nazwaBezRozmiaru('Kopuła - 0,04 x 100 mm')).toBe('Kopuła - 0,04 x 100 mm');
   });
 
   it('to, czego wymiaryZTekstu nie uznaje za rozmiar, zostaje w nazwie (jednostka w dluzszym slowie)', () => {
-    expect(wymiaryZTekstu('Kotwica - 70x100cm2')).toBe(null);
-    expect(nazwaBezRozmiaru('Kotwica - 70x100cm2')).toBe('Kotwica - 70x100cm2');
+    expect(wymiaryZTekstu('Kopuła - 70x100cm2')).toBe(null);
+    expect(nazwaBezRozmiaru('Kopuła - 70x100cm2')).toBe('Kopuła - 70x100cm2');
   });
 
   // ⚠️ TO JEST STRAZNIK REGRESJI, NIE ZABOJCA MUTACJI — i tak ma zostac odczytany.
@@ -264,36 +264,36 @@ describe('nazwaBezRozmiaru — spoiwo miedzy segmentami i brzegi nazwy', () => {
   it('powtorzone wywolania na tym samym napisie daja ten sam wynik', () => {
     for (let i = 0; i < 3; i += 1) {
       expect(wymiaryZTekstu('70 x 100 cm')).toEqual({ szerokosc_mm: 700, wysokosc_mm: 1000 });
-      expect(nazwaBezRozmiaru('Kotwica - 70 x 100 cm')).toBe('Kotwica');
+      expect(nazwaBezRozmiaru('Kopuła - 70 x 100 cm')).toBe('Kopuła');
     }
   });
 });
 
 // Poprzednia runda dolozyla nawiasy do klasy spoiwa i obcinala je BEZWARUNKOWO — a nawias
 // nie jest separatorem, tylko polowa pary. Skutkiem byly nazwy z niesparowanym znakiem
-// („Teren monitorowany (zolty"), bo kod zjadal nawias, ktory nie mial z rozmiarem nic
-// wspolnego. Ksztalt „nazwa (font/kolor) + rozmiar" JEST w prawdziwych danych — wlasny
-// test suity uzywa 'CYFRY wys. 50cm (Arial)' przepisanego ze sklepu. Ponizsze przypadki
+// („Lampa wisząca Kopuła (zolta"), bo kod zjadal nawias, ktory nie mial z rozmiarem nic
+// wspolnego. Ksztalt „nazwa (kolor/material) + rozmiar" JEST w prawdziwych danych — wlasny
+// test suity uzywa 'KLOSZ wys. 50cm (opal)', ksztaltu przepisanego ze sklepu. Ponizsze przypadki
 // opisuja obie strony osobno i obie role nawiasu: opakowanie rozmiaru i czesc nazwy.
 describe('nazwaBezRozmiaru — nawias jest PARA, nie separatorem', () => {
   it('nawias wokol czegos INNEGO niz rozmiar zostaje nietkniety (nawias po lewej od rozmiaru)', () => {
-    expect(nazwaBezRozmiaru('Teren monitorowany (żółty) – 60x62cm')).toBe('Teren monitorowany (żółty)');
-    expect(nazwaBezRozmiaru('Kotwica [PROMOCJA] 70x100cm')).toBe('Kotwica [PROMOCJA]');
-    expect(nazwaBezRozmiaru('Kotwica (duża) 70x100cm Premium')).toBe('Kotwica (duża) Premium');
+    expect(nazwaBezRozmiaru('Lampa wisząca Kopuła (żółta) – 60x62cm')).toBe('Lampa wisząca Kopuła (żółta)');
+    expect(nazwaBezRozmiaru('Kopuła [PROMOCJA] 70x100cm')).toBe('Kopuła [PROMOCJA]');
+    expect(nazwaBezRozmiaru('Kopuła (duża) 70x100cm Premium')).toBe('Kopuła (duża) Premium');
   });
 
   it('nawias wokol czegos INNEGO niz rozmiar zostaje nietkniety (nawias po prawej od rozmiaru)', () => {
-    expect(nazwaBezRozmiaru('CYFRY 70x100cm (Arial)')).toBe('CYFRY (Arial)');
-    expect(nazwaBezRozmiaru('70x100cm (Arial) Kotwica')).toBe('(Arial) Kotwica');
-    expect(nazwaBezRozmiaru('Kotwica 70x100cm (Arial) Premium')).toBe('Kotwica (Arial) Premium');
+    expect(nazwaBezRozmiaru('KLOSZ 70x100cm (opal)')).toBe('KLOSZ (opal)');
+    expect(nazwaBezRozmiaru('70x100cm (opal) Kopuła')).toBe('(opal) Kopuła');
+    expect(nazwaBezRozmiaru('Kopuła 70x100cm (opal) Premium')).toBe('Kopuła (opal) Premium');
   });
 
   // Druga rola nawiasu — ta, dla ktorej w ogole trafil do kodu. Znika CALA para, bo
   // opakowywala wylacznie rozmiar i bez niego nie ma czego opakowywac.
   it('nawias opakowujacy rozmiar znika w calosci — kazdy rodzaj nawiasu', () => {
-    expect(nazwaBezRozmiaru('Kotwica [70x100cm] Premium')).toBe('Kotwica Premium');
-    expect(nazwaBezRozmiaru('Kotwica {70x100cm}')).toBe('Kotwica');
-    expect(nazwaBezRozmiaru('Kotwica (70 x 100 cm) Premium')).toBe('Kotwica Premium');
+    expect(nazwaBezRozmiaru('Kopuła [70x100cm] Premium')).toBe('Kopuła Premium');
+    expect(nazwaBezRozmiaru('Kopuła {70x100cm}')).toBe('Kopuła');
+    expect(nazwaBezRozmiaru('Kopuła (70 x 100 cm) Premium')).toBe('Kopuła Premium');
   });
 
   // Nawias bez pary nalezy do nazwy — kod nie ma prawa „poprawiac" zapisu sklepikarza,
@@ -301,29 +301,29 @@ describe('nazwaBezRozmiaru — nawias jest PARA, nie separatorem', () => {
   // rozmiaru z napisu.
   it('niesparowany nawias otwierajacy nalezy do nazwy i zostaje', () => {
     expect(nazwaBezRozmiaru('Zestaw (70x100cm')).toBe('Zestaw (');
-    expect(nazwaBezRozmiaru('Kotwica (70x100cm bez domkniecia')).toBe('Kotwica ( bez domkniecia');
+    expect(nazwaBezRozmiaru('Kopuła (70x100cm bez domkniecia')).toBe('Kopuła ( bez domkniecia');
   });
 
   it('nawiasy NIEPASUJACE do siebie to nie para — obie polowki zostaja', () => {
-    expect(nazwaBezRozmiaru('Kotwica [70x100cm) Premium')).toBe('Kotwica [) Premium');
+    expect(nazwaBezRozmiaru('Kopuła [70x100cm) Premium')).toBe('Kopuła [) Premium');
   });
 
   // Sub-przypadek: para nawiasow byla JEDYNYM podzialem miedzy czlonami. Nawias nie moze
-  // wrocic jako spoiwo (dalby 'Kotwica(Premium' — znowu niesparowany znak), ale PODZIAL,
+  // wrocic jako spoiwo (dalby 'Kopuła(Premium' — znowu niesparowany znak), ale PODZIAL,
   // ktory niosl, musi przezyc — inaczej dwa czlony zlepiaja sie w jedno slowo i powstaje
-  // nazwa, ktorej w sklepie nigdy nie bylo. Ten sam uklad na myslniku daje 'Kotwica-Premium',
+  // nazwa, ktorej w sklepie nigdy nie bylo. Ten sam uklad na myslniku daje 'Kopuła-Premium',
   // wiec wersja nawiasowa nie moze byc jedynym miejscem, gdzie podzial ginie.
   it('para nawiasow bedaca jedynym podzialem zostawia po sobie spacje, nie zlepia czlonow', () => {
-    expect(nazwaBezRozmiaru('Kotwica(70x100cm)Premium')).toBe('Kotwica Premium');
-    expect(nazwaBezRozmiaru('Kotwica-70x100cm-Premium')).toBe('Kotwica-Premium');
-    expect(nazwaBezRozmiaru('Kotwica (70x100cm)Premium')).toBe('Kotwica Premium');
+    expect(nazwaBezRozmiaru('Kopuła(70x100cm)Premium')).toBe('Kopuła Premium');
+    expect(nazwaBezRozmiaru('Kopuła-70x100cm-Premium')).toBe('Kopuła-Premium');
+    expect(nazwaBezRozmiaru('Kopuła (70x100cm)Premium')).toBe('Kopuła Premium');
   });
 
   // Mocny znak stojacy PRZED nawiasem opakowujacym nadal jest spoiwem — usuwamy nawias,
   // nie caly kontekst.
   it('mocny znak przed nawiasem opakowujacym przezywa jego usuniecie', () => {
-    expect(nazwaBezRozmiaru('Kotwica - (70x100cm) Premium')).toBe('Kotwica - Premium');
-    expect(nazwaBezRozmiaru('Kotwica (70x100cm) - Premium')).toBe('Kotwica - Premium');
+    expect(nazwaBezRozmiaru('Kopuła - (70x100cm) Premium')).toBe('Kopuła - Premium');
+    expect(nazwaBezRozmiaru('Kopuła (70x100cm) - Premium')).toBe('Kopuła - Premium');
   });
 });
 
@@ -334,20 +334,20 @@ describe('nazwaBezRozmiaru — nawias jest PARA, nie separatorem', () => {
 // przy samej wielokrotnej spacji dookola rozmiaru.
 describe('nazwaBezRozmiaru — spoiwo zwija wielokrotne biale znaki do jednego', () => {
   it('nawias ze spacjami po OBU stronach nie zostawia podwojnej spacji w spoiwie', () => {
-    expect(nazwaBezRozmiaru('Kotwica ( 70x100cm ) Premium')).toBe('Kotwica Premium');
-    expect(nazwaBezRozmiaru('Kotwica - ( 70x100cm ) Premium')).toBe('Kotwica - Premium');
-    expect(nazwaBezRozmiaru('Kotwica(70x100cm ) B')).toBe('Kotwica B');
+    expect(nazwaBezRozmiaru('Kopuła ( 70x100cm ) Premium')).toBe('Kopuła Premium');
+    expect(nazwaBezRozmiaru('Kopuła - ( 70x100cm ) Premium')).toBe('Kopuła - Premium');
+    expect(nazwaBezRozmiaru('Kopuła(70x100cm ) B')).toBe('Kopuła B');
   });
 
   it('sama wielokrotna spacja dookola rozmiaru (bez nawiasu) tez zwija sie do jednego spoiwa', () => {
-    expect(nazwaBezRozmiaru('Kotwica  70x100cm  Premium')).toBe('Kotwica Premium');
+    expect(nazwaBezRozmiaru('Kopuła  70x100cm  Premium')).toBe('Kopuła Premium');
   });
 
   // Zwijamy WYLACZNIE spoiwo, ktore funkcja sama sklada miedzy przetrwalymi segmentami
   // (`lewy`/`prawy` zostaja nietkniete). Wielokrotna spacja, ktora byla CZESCIA nazwy
   // POZA spoiwem, nie ma z separatorem rozmiaru nic wspolnego — nie wolno jej zwijac.
   it('wielokrotna spacja bedaca CZESCIA nazwy (poza spoiwem) zostaje nietknieta', () => {
-    expect(nazwaBezRozmiaru('Kotwica  duża 70x100cm')).toBe('Kotwica  duża');
-    expect(nazwaBezRozmiaru('Kotwica  duża')).toBe('Kotwica  duża');
+    expect(nazwaBezRozmiaru('Kopuła  duża 70x100cm')).toBe('Kopuła  duża');
+    expect(nazwaBezRozmiaru('Kopuła  duża')).toBe('Kopuła  duża');
   });
 });

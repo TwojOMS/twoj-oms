@@ -1,13 +1,13 @@
 // GENERATOR SKU — regula czysta. Zadnej bazy, zadnego HTTP: tutaj rozstrzyga sie WYLACZNIE,
-// jaki numer PROPONUJEMY dla ktorego wzoru i ktora propozycja jest kolizja.
+// jaki numer PROPONUJEMY dla ktorej karty i ktora propozycja jest kolizja.
 //
-// PO CO TO ISTNIEJE (zmierzone na produkcji 2026-08-12): 965 wzorow bez SKU. Numer nadany
+// PO CO TO ISTNIEJE (zmierzone na produkcji 2026-08-12): 965 kart bez SKU. Numer nadany
 // tutaj pojedzie w Zadaniu 15 do produkcyjnych sklepow i stanie sie TOZSAMOSCIA produktu —
 // zly albo zdublowany numer to nie literowka na ekranie, tylko numer wpisany do cudzego
 // produktu.
 //
 // ⚠️⚠️ KOLIZJA MA BYC WIDOCZNA, ZANIM COKOLWIEK SIE ZAPISZE, i to wobec OBU zbiorow naraz:
-// naszych numerow (`wzory.sku`) ORAZ numerow, ktore ZYJA JUZ w sklepach
+// naszych numerow (`karty.sku`) ORAZ numerow, ktore ZYJA JUZ w sklepach
 // (`produkty_sklepowe.sku_sklepu` — 218 sztuk, 184 na sklepie B i 115 na sklepie A). Ograniczenie
 // `UNIQUE` na kolumnie jest OSTATNIA linia obrony, nie pierwsza: wywalony zapis z bazy to
 // komunikat, ktorego czlowiek nie zrozumie, a przy 965 wierszach nie dowie sie nawet, ktory
@@ -26,7 +26,7 @@
 // ⚠️ WIELKIE LITERY ASCII, CYFRY I MYSLNIK — I NIC WIECEJ. To nie jest ostroznosc na wyrost:
 // numer jedzie do WooCommerce i na Allegro jako `sku`, laduje w adresach, w eksportach CSV
 // i w feedzie do Google. Numery, ktore juz tam zyja, mieszcza sie w tym samym alfabecie
-// (`PRO-NIEUPOWAZN-168`, `PD10`), wiec nasze nowe beda z nimi jednorodne.
+// (`PC-KLOSZ-168`, `PD10`), wiec nasze nowe beda z nimi jednorodne.
 //
 // ⚠️ SKLADANIE ZNAKOW ZDEJMUJEMY, ALE „ł" NIE MA POSTACI ROZLOZONEJ — NFD go nie rusza, wiec
 // „Ściany żółte łąki" bez osobnej reguly dalaby „SCIANY-ZOTE-AKI". Klasa `\p{M}` zamiast
@@ -39,10 +39,10 @@ function bezOgonkow(tekst) {
 
 /**
  * Napis → czlon numeru: wielkie litery ASCII, cyfry, myslnik. Reszta znika, a ciagi
- * niedozwolonych znakow zwijaja sie do JEDNEGO myslnika („Litery i cyfry" → „LITERY-I-CYFRY").
+ * niedozwolonych znakow zwijaja sie do JEDNEGO myslnika („Klosze i abażury" → „KLOSZE-I-ABAZURY").
  *
  * ⚠️ `toUpperCase`, a nie `toLocaleUpperCase`: ta druga jest zalezna od ustawien systemu
- * (tureckie „i" → „İ"), czyli ten sam wzor dostawalby inny numer na innym serwerze.
+ * (tureckie „i" → „İ"), czyli ta sama karta dostawalaby inny numer na innym serwerze.
  */
 function czlonNumeru(tekst) {
   return bezOgonkow(String(tekst ?? ''))
@@ -51,9 +51,9 @@ function czlonNumeru(tekst) {
     .replace(/^-+|-+$/gu, '');
 }
 
-// Czlon dla wzoru, ktory kategorii glownej nie ma. ⚠️ MUSI BYC NAZWANY, a nie pusty: numer
+// Czlon dla karty, ktora kategorii glownej nie ma. ⚠️ MUSI BYC NAZWANY, a nie pusty: numer
 // „--001" wyglada jak usterka, a `-001` gubi informacje, ze kategorii po prostu nie wybrano.
-// 152 wzory nie mialy kategorii glownej w dniu pomiaru, wiec to jest droga typowa.
+// 152 karty nie mialy kategorii glownej w dniu pomiaru, wiec to jest droga typowa.
 const BEZ_KATEGORII = 'BEZ-KATEGORII';
 
 // ——— WZORZEC ————————————————————————————————————————————————————————————————
@@ -73,13 +73,13 @@ const numerPorzadkowy = (n) => String(n).padStart(3, '0');
  * pokazuje ten komunikat wprost, wiec nie ma drugiej kopii tej reguly w warstwie HTTP.
  *
  * @param {string} wzorzec surowa tresc pola formularza
- * @param {boolean} wieleWzorow czy numerujemy wiecej niz jeden wzor
+ * @param {boolean} wieleKart czy numerujemy wiecej niz jedna karte
  */
-function zbudujSkladacz(wzorzec, wieleWzorow) {
+function zbudujSkladacz(wzorzec, wieleKart) {
   const surowy = String(wzorzec ?? '').trim();
   if (!surowy) {
-    throw new Error('Nie podałeś wzorca numeru. Wpisz np. „STE-{kategoria}-{nnn}" — '
-      + '{kategoria} podstawi kategorię główną wzoru, a {nnn} kolejny numer.');
+    throw new Error('Nie podałeś wzorca numeru. Wpisz np. „LMP-{kategoria}-{nnn}" — '
+      + '{kategoria} podstawi kategorię główną karty, a {nnn} kolejny numer.');
   }
 
   for (const [, pole] of surowy.matchAll(POLE_W_KLAMRACH)) {
@@ -89,12 +89,12 @@ function zbudujSkladacz(wzorzec, wieleWzorow) {
     }
   }
 
-  // ⚠️⚠️ WZORZEC BEZ {nnn} NIE MA JAK ODROZNIC DWOCH WZOROW — a numer musi byc jeden na wzor.
+  // ⚠️⚠️ WZORZEC BEZ {nnn} NIE MA JAK ODROZNIC DWOCH KART — a numer musi byc jeden na karte.
   // Odmawiamy PRZED policzeniem czegokolwiek: podglad pokazujacy tysiac razy ten sam numer
   // byłby zaproszeniem do kliknięcia „zapisz".
-  if (wieleWzorow && !surowy.includes('{nnn}')) {
-    throw new Error('Wzorzec bez {nnn} dałby wszystkim zaznaczonym wzorom TEN SAM numer. '
-      + 'Dopisz {nnn} — to on rozróżnia kolejne wzory.');
+  if (wieleKart && !surowy.includes('{nnn}')) {
+    throw new Error('Wzorzec bez {nnn} dałby wszystkim zaznaczonym kartom TEN SAM numer. '
+      + 'Dopisz {nnn} — to on rozróżnia kolejne karty.');
   }
 
   // Sprawdzamy na PUSTEJ kategorii i pierwszym numerze, czy z wzorca w ogole cokolwiek
@@ -140,42 +140,42 @@ function indeksZajetych(zajete) {
 }
 
 const OPIS_KOLIZJI = (sku, skad) => `Numer „${sku}" jest już zajęty${skad ? ` — ${skad}` : ''}. `
-  + 'Zmień wzorzec albo popraw ten numer ręcznie na karcie wzoru.';
+  + 'Zmień wzorzec albo popraw ten numer ręcznie na karcie produktu.';
 
 // ——— PROPOZYCJE —————————————————————————————————————————————————————————————
 
-/** Wzor, ktory numeru jeszcze NIE MA. Napis z samych spacji to brak numeru, a nie numer. */
+/** Karta, ktora numeru jeszcze NIE MA. Napis z samych spacji to brak numeru, a nie numer. */
 const bezSku = (w) => !String(w?.sku ?? '').trim();
 
 /**
- * Propozycje numerow dla podanych wzorow.
+ * Propozycje numerow dla podanych kart.
  *
- * @param {Array} wzory wiersze tabeli `wzory` (pole kategorii: `kategoria_glowna`)
- * @param {string} wzorzec np. `STE-{kategoria}-{nnn}`
+ * @param {Array} karty wiersze tabeli `karty` (pole kategorii: `kategoria_glowna`)
+ * @param {string} wzorzec np. `LMP-{kategoria}-{nnn}`
  * @param {Map|Set|Array} zajete numery juz zyjace — NASZE i te ze sklepow
  * @returns {Array<{id, nazwa, sku, kolizja: string|null}>}
  *
- * ⚠️⚠️ WZOR, KTORY SKU JUZ MA, NIE DOSTAJE NOWEGO — nigdy, i to jest cala tresc tej reguly.
+ * ⚠️⚠️ KARTA, KTORA SKU JUZ MA, NIE DOSTAJE NOWEGO — nigdy, i to jest cala tresc tej reguly.
  * Numer raz nadany jedzie do sklepu i staje sie tozsamoscia produktu; ciche przenumerowanie
  * jest najgorsza rzecza, jaka ten ekran moze zrobic. Zmiana numeru JUZ NADANEGO zostaje na
- * karcie jednego wzoru, gdzie czlowiek widzi dokladnie, co podmienia (`wzorZeSku` sprawdza
+ * karcie jednego produktu, gdzie czlowiek widzi dokladnie, co podmienia (`kartaZeSku` sprawdza
  * tam zajetosc przed zapisem).
  *
  * ⚠️ NUMER ZAJETY JEST PRZESKAKIWANY, nie proponowany drugi raz — i to wlasnie dzieki temu
  * DRUGI przebieg generatora doklada numery zamiast zaczynac od jedynki i odbijac sie o bazę.
  * Kolizje wraca tylko wtedy, gdy przeskoczyc NIE MA JAK (wzorzec bez `{nnn}`).
  */
-export function proponujSku(wzory, wzorzec, zajete) {
-  // ⚠️ ODRESZTOWANIE PO `id` PRZED CZYMKOLWIEK INNYM: formularz potrafi przyniesc ten sam
-  // wzor dwa razy (dwa pola wyboru o tej samej wartosci), a wtedy jeden wiersz dostalby DWA
+export function proponujSku(karty, wzorzec, zajete) {
+  // ⚠️ ODRESZTOWANIE PO `id` PRZED CZYMKOLWIEK INNYM: formularz potrafi przyniesc te sama
+  // karte dwa razy (dwa pola wyboru o tej samej wartosci), a wtedy jeden wiersz dostalby DWA
   // numery — drugi zapis odbilby sie o barierę „ma juz SKU" i wrocil jako nieaktualny,
   // czyli ekran meldowalby problem, ktorego zrodlem bylby sam formularz.
   const poId = new Map();
-  for (const w of wzory ?? []) if (w && !poId.has(w.id)) poId.set(w.id, w);
+  for (const w of karty ?? []) if (w && !poId.has(w.id)) poId.set(w.id, w);
 
   // ⚠️ SORTOWANIE JAWNE — po nazwie, tak jak na liscie i na ekranie powiazan, a `id` domyka
   // remis. To ono daje POWTARZALNOSC: kolejnosc wierszy z bazy zalezy od planu zapytania,
-  // a od kolejnosci zalezy, ktory wzor dostanie numer 001.
+  // a od kolejnosci zalezy, ktora karta dostanie numer 001.
   const doNumeru = [...poId.values()].filter(bezSku).sort(
     (a, b) => String(a.nazwa ?? '').localeCompare(String(b.nazwa ?? ''), 'pl') || (a.id - b.id),
   );
@@ -191,15 +191,15 @@ export function proponujSku(wzory, wzorzec, zajete) {
   const wydane = new Set();
   const zajety = (sku) => indeks.has(kluczNumeru(sku)) || wydane.has(kluczNumeru(sku));
 
-  // Licznik JEDEN NA CZLON KATEGORII (a nie jeden na caly przebieg): „Parking" i „Zakazy"
+  // Licznik JEDEN NA CZLON KATEGORII (a nie jeden na caly przebieg): „Lampy stołowe" i „Kinkiety"
   // maja swoje wlasne ciagi, tak jak numeruje sie katalog papierowy. Klucz liczony PO
-  // odsianiu znakow, wiec „Litery i cyfry" i „litery-i-cyfry" to jeden ciag, a nie dwa
+  // odsianiu znakow, wiec „Klosze i abażury" i „klosze-i-abazury" to jeden ciag, a nie dwa
   // rownolegle, ktore zaraz zaczna sie zderzac.
   const liczniki = new Map();
   const propozycje = [];
 
-  for (const wzor of doNumeru) {
-    const kategoria = czlonNumeru(wzor.kategoria_glowna) || BEZ_KATEGORII;
+  for (const karta of doNumeru) {
+    const kategoria = czlonNumeru(karta.kategoria_glowna) || BEZ_KATEGORII;
 
     let sku = null;
     let kolizja = null;
@@ -224,7 +224,7 @@ export function proponujSku(wzory, wzorzec, zajete) {
     // ⚠️ NUMER KOLIZYJNY TEZ TRAFIA DO WYDANYCH: dwie pozycje z tym samym numerem musza byc
     // dwiema kolizjami, a nie jedna kolizja i jednym „wolnym" numerem.
     wydane.add(kluczNumeru(sku));
-    propozycje.push({ id: wzor.id, nazwa: wzor.nazwa, sku, kolizja });
+    propozycje.push({ id: karta.id, nazwa: karta.nazwa, sku, kolizja });
   }
 
   return propozycje;

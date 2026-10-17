@@ -64,14 +64,14 @@
       <table class="tab-pozycje">
         <thead>
           <tr>
-            <th>Wzór</th><th>Sklep</th><th>Produkt</th><th>Ścieżka zapisu</th>
+            <th>Karta</th><th>Sklep</th><th>Produkt</th><th>Ścieżka zapisu</th>
             <th>Co się zmieni</th><% if (wynik) { %><th>Wynik</th><% } %>
           </tr>
         </thead>
         <tbody>
           <% zmiany.forEach(function (z) { %>
             <tr>
-              <td><div class="nazwa-wzoru"><%= z.nazwaWzoru %></div></td>
+              <td><div class="nazwa-karty"><%= z.nazwaKarty %></div></td>
               <td><%= z.etykietaKanalu %></td>
               <td><%= z.nazwa %></td>
               <%# ⚠️ SCIEZKA WPROST: `products/944/variations/1091` to wariant, `products/944`
@@ -95,13 +95,13 @@
       </table>
     <% } else if (!blad) { %>
       <p class="pusto">
-        Nie ma czego wysyłać: zaznaczone wzory mają w sklepach dokładnie to, co w rejestrze,
+        Nie ma czego wysyłać: zaznaczone karty mają w sklepach dokładnie to, co w rejestrze,
         albo nie mają ani numeru, ani wymiarów.
       </p>
     <% } %>
 
     <div class="stopka-edycji">
-      <%# ⚠️⚠️ FORMULARZ NIESIE NUMERY WZOROW, NIGDY GOTOWEGO ZESTAWU ZMIAN. Zestaw liczy sie
+      <%# ⚠️⚠️ FORMULARZ NIESIE NUMERY KART, NIGDY GOTOWEGO ZESTAWU ZMIAN. Zestaw liczy sie
           PONOWNIE przy zatwierdzeniu, ze stanu biezacego i z jednostka odczytana ze sklepu —
           miedzy podgladem a klknieciem mogl wejsc odczyt katalogow albo drugi operator. %>
       <% if (mozna) { %>
@@ -132,12 +132,12 @@
     <% if (wstrzymane.length) { %>
       <table class="tab-pozycje">
         <thead>
-          <tr><th>Wzór</th><th>Sklep</th><th>Produkt</th><th>Ścieżka</th><th>Dlaczego</th></tr>
+          <tr><th>Karta</th><th>Sklep</th><th>Produkt</th><th>Ścieżka</th><th>Dlaczego</th></tr>
         </thead>
         <tbody>
           <% wstrzymane.forEach(function (z) { %>
             <tr>
-              <td><div class="nazwa-wzoru"><%= z.nazwaWzoru %></div></td>
+              <td><div class="nazwa-karty"><%= z.nazwaKarty %></div></td>
               <td><%= z.etykietaKanalu %></td>
               <td><%= z.nazwa %></td>
               <td><code class="sku-numer"><%= z.sciezka %></code></td>

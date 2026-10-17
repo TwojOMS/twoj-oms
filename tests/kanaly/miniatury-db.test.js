@@ -15,8 +15,8 @@ const surowe = (nad = {}) => ({
   date_created: '2026-07-31T20:58:39', payment_method_title: 'Przelew tradycyjny',
   shipping_lines: [{ instance_id: 1, method_id: 'flat_rate' }],
   line_items: [{
-    id: 25, name: 'Szablon STOP', sku: 'PRO-STOP', quantity: 1, total: '258.54', total_tax: '59.46',
-    image: { id: 1092, src: 'https://pro.szkicownia.pl/wp-content/uploads/2026/07/stop.jpg' },
+    id: 25, name: 'Lampa Kałamarz', sku: 'PRO-KAL', quantity: 1, total: '258.54', total_tax: '59.46',
+    image: { id: 1092, src: 'https://pro.szkicownia.pl/wp-content/uploads/2026/07/kalamarz.jpg' },
   }],
   ...nad,
 });
@@ -35,7 +35,7 @@ describe('adres zdjęcia z pozycji', () => {
   it('zapisuje się razem z zamówieniem i wraca na listę', () => {
     zapiszZamowienie(db, 'pro', mapujZamowienie(surowe(), mapa), surowe());
     const [z] = listaZamowien(db);
-    expect(z.pozycje[0].zdjecie_url).toBe('https://pro.szkicownia.pl/wp-content/uploads/2026/07/stop.jpg');
+    expect(z.pozycje[0].zdjecie_url).toBe('https://pro.szkicownia.pl/wp-content/uploads/2026/07/kalamarz.jpg');
   });
 
   it('pozycja bez zdjęcia dostaje NULL, a nie pusty napis', () => {
@@ -61,7 +61,7 @@ describe('adres zdjęcia z pozycji', () => {
     // Przeliczenia wykonują się przy otwarciu bazy — dokładnie jak przy starcie panelu.
     const druga = openOmsDb(plik);
     expect(listaZamowien(druga)[0].pozycje[0].zdjecie_url)
-      .toBe('https://pro.szkicownia.pl/wp-content/uploads/2026/07/stop.jpg');
+      .toBe('https://pro.szkicownia.pl/wp-content/uploads/2026/07/kalamarz.jpg');
     druga.close();
   });
 
@@ -71,7 +71,7 @@ describe('adres zdjęcia z pozycji', () => {
     const id = zapiszZamowienie(pierwsza, 'pro', mapujZamowienie(surowe(), mapa), surowe());
     pierwsza.prepare(
       "INSERT INTO pozycje (zamowienie_id, nazwa, sku, ilosc, cena_brutto, zrodlo) VALUES (?,?,?,?,?,'reczna')",
-    ).run(id, 'Dopłata za cięcie', null, 1, '90.00');
+    ).run(id, 'Dopłata za montaż', null, 1, '90.00');
     pierwsza.prepare('UPDATE pozycje SET zdjecie_url = NULL WHERE zamowienie_id = ?').run(id);
     pierwsza.close();
 
@@ -79,7 +79,7 @@ describe('adres zdjęcia z pozycji', () => {
     const pozycje = listaZamowien(druga)[0].pozycje;
     const reczna = pozycje.find((p) => p.zrodlo === 'reczna');
     expect(reczna.zdjecie_url).toBe(null);
-    expect(pozycje.find((p) => p.zrodlo === 'sklep').zdjecie_url).toContain('stop.jpg');
+    expect(pozycje.find((p) => p.zrodlo === 'sklep').zdjecie_url).toContain('kalamarz.jpg');
     druga.close();
   });
 });

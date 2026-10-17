@@ -38,6 +38,7 @@ import { roznice } from '../../domena/dane-reczne.js';
 import { wczytajUstawienia } from '../../oms/db/ustawienia.js';
 import { kwotyDostawy } from '../../domena/ustawienia-panelu.js';
 import { wierszePozycji, podsumowaniePozycji } from '../../domena/tabela-pozycji.js';
+import { brakiNaStanieZamowienia } from '../../oms/db/stany-zamowienia.js';
 import { odnosnikPozycji } from '../../domena/link-pozycji.js';
 import { sprawyKarty } from '../../domena/sprawy-karty.js';
 import { wolnoWyslacDoAllegro } from '../../domena/allegro-faktura.js';
@@ -406,6 +407,9 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
   // nie jest w ogole skonfigurowany — klikniecie konczylo sie 503 bez wyjasnienia.
   return reply.view('zamowienie.ejs', {
     title: `Zamówienie ${z.numer}`,
+    // PRZ-091: karty produktów na minusie, które zdejmuje to zamówienie. Stany wyłączone / zamówienie anulowane = [].
+    // Liczone TU, a nie w trasie GET, żeby każda odsłona karty (także po odmowie formularza) mówiła to samo.
+    brakiNaStanie: brakiNaStanieZamowienia(db, z.id),
     powrot: powrotKarty(req),
     adresPowrotu: adresPowrotuDoWiersza(powrotKarty(req), z.id, config.definicje),
     adresKarty: (stan = null, kotwica = null) => {

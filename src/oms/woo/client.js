@@ -139,7 +139,7 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
   }
 
   // status=publish JAWNIE: REST v3 domyslnie oddaje `any`, a sklep A ma setki szkicow
-  // (produkty techniczne przeniesione na PRO). Bez tego magazyn zalozylby wzory-duchy.
+  // (produkty techniczne przeniesione do sklepu B). Bez tego magazyn zalozylby karty-duchy.
   // orderby=id&order=asc: stabilna kolejnosc miedzy stronami, inaczej zmiana w sklepie
   // w trakcie odczytu przesuwa okno i wiersz wpada dwa razy albo znika.
   const pobierzWszystkieProdukty = () =>
@@ -225,7 +225,7 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
   // wywołujący potrzebuje jednostki, nie opisu pola z panelu.
   async function ustawienieSklepu(id, grupa = 'products') {
     const { dane } = await strzal(`/settings/${grupa}/${id}`);
-    // Ciche `undefined` zamiast jednostki wymiaru konczy sie szablonem 70 mm zamiast
+    // Ciche `undefined` zamiast jednostki wymiaru konczy sie produktem 70 mm zamiast
     // 70 cm wyslanym do sklepu — cicho i za pieniadze. Pusty napis jest poprawna
     // wartoscia (np. separator tysiecy), brak napisu nie jest.
     if (typeof dane?.value !== 'string') {

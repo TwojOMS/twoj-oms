@@ -11,14 +11,14 @@ const SZKICOWNIA = MAPOWANIE_SKLEPOW.szkicownia;
 const zLinia = (instanceId, methodId, tytul) => ({
   id: 1, number: '28079', total: '212.90', status: 'processing',
   shipping_lines: [{ instance_id: instanceId, method_id: methodId, method_title: tytul }],
-  line_items: [{ name: 'szablon malarski', sku: 'x', quantity: 1, total: '212.90' }],
+  line_items: [{ name: 'lampa wisząca', sku: 'x', quantity: 1, total: '212.90' }],
 });
 
 const zOferty = () => ({
   id: 2, number: '28163', total: '386.00', status: 'processing',
   shipping_lines: [],
   line_items: [
-    { name: 'szablon malarski wielorazowy Puławy Legia 70x100cm', sku: 'sz-1', quantity: 2, total: '300.00' },
+    { name: 'Lampa wisząca Kopuła 40 cm, stal malowana', sku: 'sz-1', quantity: 2, total: '300.00' },
     { name: 'wysyłka kurierem DPD', sku: 'psm-zam-placeholder', quantity: 1, total: '0.00' },
   ],
 });
@@ -66,7 +66,7 @@ describe('metodaZPozycji — warstwa zapasowa, gdy sklep nie zapisał metody', (
   });
 
   it('zamówienie bez takiej pozycji zostaje nierozpoznane', () => {
-    const bez = { line_items: [{ name: 'szablon', sku: 'sz-9' }] };
+    const bez = { line_items: [{ name: 'lampa', sku: 'sz-9' }] };
     expect(metodaZPozycji(bez, SZKICOWNIA.poPozycji)).toBeNull();
   });
 
@@ -107,7 +107,7 @@ describe('metodaWysylkiZamowienia — jedno wejście dla panelu', () => {
   // „nieznana" jest PELNOPRAWNYM wynikiem: karta pokazuje „nadaj w Apilo", nadanie odmawia,
   // a operator moze ustawic metode recznie.
   it('zamówienie bez żadnego śladu wysyłki wychodzi jako „nieznana"', () => {
-    expect(metodaWysylkiZamowienia({ line_items: [{ name: 'szablon', sku: 'sz-1' }] }, SZKICOWNIA))
+    expect(metodaWysylkiZamowienia({ line_items: [{ name: 'lampa', sku: 'sz-1' }] }, SZKICOWNIA))
       .toEqual({ metoda: 'nieznana', pobranie: false });
   });
 
@@ -176,18 +176,18 @@ const zOfertyPro = (pozycje) => ({
 describe('PRO — zamówienie z oferty (wtyczka od 19.08.2026)', () => {
   it('bez linii wysyłki schodzi do reguły po pozycji i daje DPD', () => {
     const z = zOfertyPro([
-      { name: 'szablon malarski wielorazowy logo 50cm', sku: 'psm-zam-placeholder', quantity: 1, total: '12.00' },
+      { name: 'Lampa wisząca Szpulka 50cm', sku: 'psm-zam-placeholder', quantity: 1, total: '12.00' },
       { name: 'wysyłka kurierem DPD', sku: 'psm-zam-placeholder', quantity: 1, total: '2.00' },
     ]);
     expect(metodaWysylkiZamowienia(z, PRO)).toEqual({ metoda: 'dpd', pobranie: false });
   });
 
-  // ⚠️ Oferta BEZ osobnej pozycji transportowej (nr 1297 — projekt plus szablon, nic więcej)
+  // ⚠️ Oferta BEZ osobnej pozycji transportowej (nr 1297 — projekt plus lampa, nic więcej)
   // też jedzie kurierem. Reguła dopasowuje po SKU zaślepki, nie po nazwie linii transportowej —
   // dokładnie tak samo, jak od początku działa na szkicownia.pl.
   it('oferta bez pozycji transportowej też daje DPD, nie „nieznaną"', () => {
     const z = zOfertyPro([
-      { name: 'szablon malarski wielorazowy koło 35cm', sku: 'psm-zam-placeholder', quantity: 1, total: '8.90' },
+      { name: 'Klosz szklany do lamp wiszących 35cm', sku: 'psm-zam-placeholder', quantity: 1, total: '8.90' },
       { name: 'przygotowanie projektu', sku: 'psm-zam-placeholder', quantity: 1, total: '1.23' },
     ]);
     expect(metodaWysylkiZamowienia(z, PRO)).toEqual({ metoda: 'dpd', pobranie: false });
@@ -199,13 +199,13 @@ describe('PRO — zamówienie z oferty (wtyczka od 19.08.2026)', () => {
     const z = {
       id: 4, number: '1300', total: '99.00', status: 'processing',
       shipping_lines: [{ instance_id: 2, method_id: 'flat_rate', method_title: 'Kurier DPD (pobranie)' }],
-      line_items: [{ name: 'szablon', sku: 'PRO-1', quantity: 1, total: '80.00' }],
+      line_items: [{ name: 'lampa', sku: 'PRO-1', quantity: 1, total: '80.00' }],
     };
     expect(metodaWysylkiZamowienia(z, PRO)).toEqual({ metoda: 'dpd', pobranie: true });
   });
 
   it('zamówienie z PRO bez śladu wysyłki i bez zaślepki dalej jest „nieznane"', () => {
-    expect(metodaWysylkiZamowienia({ line_items: [{ name: 'szablon', sku: 'PRO-1' }] }, PRO))
+    expect(metodaWysylkiZamowienia({ line_items: [{ name: 'lampa', sku: 'PRO-1' }] }, PRO))
       .toEqual({ metoda: 'nieznana', pobranie: false });
   });
 });

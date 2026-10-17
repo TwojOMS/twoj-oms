@@ -113,11 +113,11 @@ describe('dopisywanie pozycji', () => {
 
   it('dopisana pozycja pojawia się w tabeli, oznaczona jako ręczna, i wchodzi do sumy', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
-    const r = await wyslij(`/zamowienia/${id}/pozycje`, { nazwa: 'Dodatkowy szablon', ilosc: '1', cena_brutto: '80,00' });
+    const r = await wyslij(`/zamowienia/${id}/pozycje`, { nazwa: 'Dodatkowy klosz', ilosc: '1', cena_brutto: '80,00' });
     expect(r.statusCode).toBe(302);
 
     const karta1 = await karta(id);
-    expect(karta1.body).toContain('Dodatkowy szablon');
+    expect(karta1.body).toContain('Dodatkowy klosz');
     expect(karta1.body).toContain('dopisana ręcznie');
     // Suma: 123,00 + 80,00 + 89,90 = 292,90 — i tyle samo wynosi kwota oczekiwana,
     // więc ostrzeżenia o rozjeździe NIE MA.
@@ -127,11 +127,11 @@ describe('dopisywanie pozycji', () => {
 
   it('dopisanie pozycji trafia do logu jako decyzja człowieka, z kwotą', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
-    await wyslij(`/zamowienia/${id}/pozycje`, { nazwa: 'Dodatkowy szablon', ilosc: '2', cena_brutto: '40.00' });
+    await wyslij(`/zamowienia/${id}/pozycje`, { nazwa: 'Dodatkowy klosz', ilosc: '2', cena_brutto: '40.00' });
     const wpis = log(id).at(-1);
     expect(wpis.akcja).toBe('pozycja.dodana');
     expect(wpis.wynik).toMatch(/DECYZJA CZŁOWIEKA \(adam\)/);
-    expect(wpis.wynik).toContain('Dodatkowy szablon');
+    expect(wpis.wynik).toContain('Dodatkowy klosz');
     expect(wpis.wynik).toContain('80.00');
   });
 
@@ -524,7 +524,7 @@ describe('odnośnik do produktu na karcie', () => {
     koszt_dostawy_netto: '0.00',
     pozycje: [
       {
-        zrodlo_id: 9001, nazwa: 'szablon malarski jednorazowy - samoprzylepny RUM and towel',
+        zrodlo_id: 9001, nazwa: 'lampa wisząca na zamówienie - klosz mleczny, mosiądz',
         sku: 'psm-zam-placeholder', ilosc: 2, cena_brutto: '48.00', cena_netto: '48.00',
         brutto_linii: '96.00', netto_linii: '96.00', vat: null, produkt_id: 28040,
       },
@@ -556,7 +556,7 @@ describe('odnośnik do produktu na karcie', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane({
       zrodlo_id: 7777,
       pozycje: [{
-        zrodlo_id: 9003, nazwa: 'STOP 70x100', sku: 'PRO-STOP-001', ilosc: 1, cena_brutto: '123.00',
+        zrodlo_id: 9003, nazwa: 'Kałamarz 30x45', sku: 'PRO-KAL-001', ilosc: 1, cena_brutto: '123.00',
         cena_netto: '100.00', brutto_linii: '123.00', netto_linii: '100.00', vat: null, produkt_id: 5150,
       }],
     }), {});

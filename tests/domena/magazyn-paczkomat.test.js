@@ -28,7 +28,7 @@ describe('czyPaczkomat — pole ustawiane recznie', () => {
 
   // ⚠️ ROZMIAR NIE MA NA TO WPLYWU — to jest cala tresc decyzji z 2026-08-06.
   // Mutacja przywracajaca wyliczanie z wymiarow ma czerwienic.
-  it('rozmiar wzoru NIE wplywa na odpowiedz', () => {
+  it('rozmiar karty NIE wplywa na odpowiedz', () => {
     expect(czyPaczkomat({ paczkomat: null, szerokosc_mm: 300, wysokosc_mm: 400 })).toBe(null);
     expect(czyPaczkomat({ paczkomat: 'tak', szerokosc_mm: 7000, wysokosc_mm: 9000 })).toBe('tak');
     expect(czyPaczkomat({ paczkomat: 'nie', szerokosc_mm: 10, wysokosc_mm: 10 })).toBe('nie');

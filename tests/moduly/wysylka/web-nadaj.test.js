@@ -178,15 +178,15 @@ describe('GET /zamowienia/:id/nadaj — ekran nadania', () => {
     const { serwer, id } = zServerem({
       nad: {
         pozycje: [{
-          klucz: 'k1', nazwa: 'Szablon malarski Liście monstery', sku: 'SZM-MON-6090',
+          klucz: 'k1', nazwa: 'Lampa wisząca Plecionka, rattan', sku: 'LMP-WIS-004',
           ilosc: 2, cena_brutto: '110.00', cena_netto: '89.43', vat: 23,
         }],
       },
     });
     await serwer.ready();
     const r = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}/nadaj`, headers: naglowek });
-    expect(r.body).toContain('Szablon malarski Liście monstery');
-    expect(r.body).toContain('SZM-MON-6090');
+    expect(r.body).toContain('Lampa wisząca Plecionka, rattan');
+    expect(r.body).toContain('LMP-WIS-004');
     // Tylko do odczytu: żadnego formularza edycji ani przycisku usuwania pozycji.
     expect(r.body).not.toContain('Usuń');
     expect(r.body).not.toContain('/pozycje/zapisz');
@@ -317,7 +317,7 @@ describe('GET /zamowienia/:id/nadaj — ekran nadania', () => {
 // nie ma na czym powiesić linku (Allegro nie oddaje zdjęcia pozycji).
 describe('GET /zamowienia/:id/nadaj — pozycja prowadzi do swojego źródła', () => {
   const configZeSklepem = { auth: { user: 'adam', pass: 'x' }, sklepy: { pro: { baseUrl: 'https://pro.szkicownia.pl' } } };
-  const ZDJECIE = 'https://pro.szkicownia.pl/wp-content/uploads/2026/07/szablon.jpg';
+  const ZDJECIE = 'https://pro.szkicownia.pl/wp-content/uploads/2026/07/lampa.jpg';
 
   // Własny wariant `zServerem` — inny sklep (kanał!) i konfiguracja z `baseUrl`. Reszta
   // pliku celowo pracuje na config bez sklepów, żeby nie zależała od adresu, którego
@@ -343,7 +343,7 @@ describe('GET /zamowienia/:id/nadaj — pozycja prowadzi do swojego źródła', 
     const html = await ekran({
       nad: {
         pozycje: [{
-          nazwa: 'Szablon STOP', sku: 'PRO-1', ilosc: 1, cena_brutto: '100.00',
+          nazwa: 'Lampa Kałamarz', sku: 'PRO-1', ilosc: 1, cena_brutto: '100.00',
           brutto_linii: '100.00', vat: 23, zdjecie_url: ZDJECIE, produkt_id: 28040,
         }],
       },
@@ -363,13 +363,13 @@ describe('GET /zamowienia/:id/nadaj — pozycja prowadzi do swojego źródła', 
       nad: {
         metoda_wysylki: 'allegro_dpd',
         pozycje: [{
-          nazwa: 'Lampa stołowa Mosiądz 30 cm', sku: null, ilosc: 1,
+          nazwa: 'Lampa stołowa Mosiądz 30x35cm', sku: null, ilosc: 1,
           cena_brutto: '100.00', brutto_linii: '100.00', vat: 23,
-          zdjecie_url: null, produkt_id: null, oferta_id: '9000000001',
+          zdjecie_url: null, produkt_id: null, oferta_id: '1234567890',
         }],
       },
     });
-    expect(html).toContain('href="https://allegro.pl/oferta/9000000001"');
+    expect(html).toContain('href="https://allegro.pl/oferta/1234567890"');
     expect(html).toContain('title="Otwórz ofertę na Allegro"');
     expect(html).toContain('rel="noopener noreferrer"');
     // Kanał Allegro nie ma `baseUrl` — adres sklepowy nie ma prawa się tu pojawić.
@@ -401,12 +401,12 @@ describe('GET /zamowienia/:id/nadaj — pozycja prowadzi do swojego źródła', 
     const html = await ekran({
       nad: {
         pozycje: [{
-          nazwa: 'Szablon STOP', sku: 'PRO-1', ilosc: 1, cena_brutto: '100.00',
+          nazwa: 'Lampa Kałamarz', sku: 'PRO-1', ilosc: 1, cena_brutto: '100.00',
           brutto_linii: '100.00', vat: 23, zdjecie_url: ZDJECIE, produkt_id: 28040,
         }],
       },
     });
-    expect(html).not.toMatch(/<a[^>]*>Szablon STOP<\/a>/);
+    expect(html).not.toMatch(/<a[^>]*>Lampa Kałamarz<\/a>/);
   });
 });
 

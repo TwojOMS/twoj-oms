@@ -1,0 +1,25 @@
+<%# PRZ-091 — pozycje zamówień (od włączenia stanów), których panel nie umie przypiąć do karty produktu po
+    identyfikatorze. Nie zdejmują towaru. Naprawa: powiąż ofertę albo produkt z kartą w Magazynie. %>
+<p class="wroc"><a href="/magazyn">← Wróć do magazynu</a></p>
+
+<div class="glowa-ekranu">
+  <h1>Pozycje zamówień bez karty produktu</h1>
+  <span class="krok">od <%= od %></span>
+</div>
+
+<% if (!pozycje.length) { %>
+  <div class="pusta-strona">
+    <h2>Każda pozycja trafia w kartę</h2>
+    <p>Wszystkie pozycje zamówień od włączenia stanów są powiązane z kartami produktów.</p>
+  </div>
+<% } else { %>
+  <p class="podpowiedz">Te pozycje nie zdejmują towaru ze stanu. Powiąż ofertę Allegro z kartą
+    (<a href="/magazyn/powiazania">Powiąż oferty Allegro z kartami</a>) albo produkt ze sklepu — wtedy stan przeliczy się sam.</p>
+  <table class="tresc-lista" id="pozycje-bez-karty">
+    <thead><tr><th>Zamówienie</th><th>Kanał</th><th>Pozycja</th><th class="liczba">Ilość</th><th>Dlaczego</th></tr></thead>
+    <tbody><% pozycje.forEach(function (p) { %>
+      <tr><td><a href="<%= p.adres %>"><%= p.numer %></a></td><td><%= p.sklep %></td><td><%= p.nazwa %></td>
+        <td class="liczba"><%= p.ilosc %></td><td><%= p.powod %></td></tr>
+    <% }); %></tbody>
+  </table>
+<% } %>

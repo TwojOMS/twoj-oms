@@ -46,6 +46,8 @@ it('rzeczywisty magazyn loguje awarię miniatur dwoma argumentami i zachowuje ka
     const klient=a.usluga<any>('kanaly','klienciSklepow').sklep;
     vi.spyOn(klient,'pobierzWszystkieProdukty').mockResolvedValue([{id:123,name:'Produkt fixture',type:'simple',sku:'SKU',stock_quantity:3,price:'12',status:'publish'}]);
     vi.spyOn(klient,'pobierzMiniatury').mockRejectedValue(Error('awaria miniatur fixture'));
+    // PRZ-090: jednostki wymiarów i wagi czyta ten sam odczyt — test izoluje awarię miniatur, więc jednostki odpowiadają.
+    vi.spyOn(klient,'ustawienieSklepu').mockImplementation(async(id:unknown)=>id==='woocommerce_weight_unit'?'kg':'cm');
     const przebieg=a.usluga<any>('magazyn','magazyn');
     expect(przebieg.start()).toEqual({wystartowal:true});
     await vi.waitFor(()=>expect(przebieg.stan().trwa).toBe(false));

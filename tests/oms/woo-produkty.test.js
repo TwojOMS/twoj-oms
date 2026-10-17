@@ -47,12 +47,12 @@ describe('pobierzWszystkieProdukty', () => {
     expect(strony).toEqual(['1', '2', '3']);
   });
 
-  // ⚠️ Bez status=publish REST v3 oddaje `any`. Zmierzone 2026-08-06: szkicownia.pl ma 890
+  // ⚠️ Bez status=publish REST v3 oddaje `any`. Zmierzone 2026-08-06: sklep A ma 890
   // produktow, z czego 222 to SZKICE — w duzej czesci produkty techniczne przeniesione na PRO
-  // i zostawione na B2C jako nieopublikowane. Magazyn zalozylby ~222 wzory-duchy.
+  // i zostawione na B2C jako nieopublikowane. Magazyn zalozylby ~222 karty-duchy.
   // KAZDE zadanie, nie tylko pierwsze. Klient filtrujacy tylko strone 1 sciagnalby
   // szkice na stronach 2-7 i zameldowal sukces — nikt by tego nie zauwazyl az do
-  // generatora SKU. 7 stron to zmierzony rozmiar szkicownia.pl.
+  // generatora SKU. 7 stron to zmierzony rozmiar sklepu A.
   it('każda strona — nie tylko pierwsza — pyta wyłącznie o produkty opublikowane', async () => {
     const fetchImpl = sklepNaStron(7);
     await klient(fetchImpl).pobierzWszystkieProdukty();
@@ -78,12 +78,12 @@ describe('pobierzWszystkieProdukty', () => {
   });
 
   // Kategoria glowna (_yoast_wpseo_primary_product_cat) i short_description sa zrodlem
-  // opisu wzoru — mapowanie, ktore odsiewa pola produktu, uciela by je po cichu.
+  // opisu karty — mapowanie, ktore odsiewa pola produktu, uciela by je po cichu.
   it('oddaje produkt w całości, z meta_data i short_description', async () => {
     const produkt = {
       id: 944,
-      name: 'Szablon EV',
-      sku: 'PRO-EV-118',
+      name: 'Lampa Plafon',
+      sku: 'LMP-PLA-118',
       short_description: '<p>Opis skrócony</p>',
       type: 'variable',
       meta_data: [{ id: 7, key: '_yoast_wpseo_primary_product_cat', value: '31' }],
@@ -106,7 +106,7 @@ describe('pobierzWszystkieProdukty', () => {
     expect(err.message).toContain('9999');
   });
 
-  // Granica ma chronic przed absurdem, a nie ucinac prawdziwy sklep: 7 stron szkicownia.pl
+  // Granica ma chronic przed absurdem, a nie ucinac prawdziwy sklep: 7 stron sklepu A
   // ma przejsc w calosci.
   it('sklep o rozsądnej liczbie stron przechodzi w całości', async () => {
     const fetchImpl = vi.fn().mockImplementation((url) =>
@@ -131,11 +131,11 @@ describe('pobierzWszystkieProdukty', () => {
 describe('pobierzWarianty', () => {
   it('pyta o warianty konkretnego produktu', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
-      odp([{ id: 1091, sku: 'PRO-EV-118' }], { 'x-wp-totalpages': '1' }),
+      odp([{ id: 1091, sku: 'LMP-PLA-118' }], { 'x-wp-totalpages': '1' }),
     );
     const w = await klient(fetchImpl).pobierzWarianty('944');
     expect(fetchImpl.mock.calls[0][0]).toContain('/products/944/variations');
-    expect(w[0].sku).toBe('PRO-EV-118');
+    expect(w[0].sku).toBe('LMP-PLA-118');
   });
 
   it('chodzi po stronach wariantów tak samo jak po produktach', async () => {
@@ -216,7 +216,7 @@ describe('kontrola kompletności odczytu (X-WP-Total)', () => {
   // Bez niego straznik przeniesiony do wnetrza petli (a nie usuniety!) przechodzil cala suite
   // na zielono, a na prawdziwym sklepie wywalal sie po stronie 1 — bo wtedy zebrane 100 zawsze
   // jest mniejsze od zapowiedzianych 668. Magazyn nie wczytalby ANI JEDNEGO produktu.
-  // 6 x 100 + 68 = 668 to zmierzony rozmiar szkicownia.pl (7 stron).
+  // 6 x 100 + 68 = 668 to zmierzony rozmiar sklepu A (7 stron).
   it('siedem stron zapowiedzianych jako 668 pozycji przechodzi w całości', async () => {
     const naStronie = (nr) => (nr === 7 ? 68 : 100);
     const fetchImpl = sklepNaStron(
@@ -259,7 +259,7 @@ describe('ustawienieSklepu', () => {
     expect(fetchImpl.mock.calls[0][0]).toContain('/settings/products/woocommerce_dimension_unit');
   });
 
-  // ⚠️ Ciche `undefined` zamiast jednostki konczy sie szablonem 70 mm zamiast 70 cm
+  // ⚠️ Ciche `undefined` zamiast jednostki konczy sie produktem 70 mm zamiast 70 cm
   // wyslanym do sklepu — cicho i za pieniadze. Ten sam plik dwadziescia linii wyzej
   // mowi: lepiej glosno wywalic przebieg, niz cicho udawac.
   it('200 bez pola value → błąd, nie ciche undefined', async () => {

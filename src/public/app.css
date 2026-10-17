@@ -240,7 +240,7 @@ td.pusto { color: var(--muted); text-align: center; padding: 1.5rem; }
 .grafik-box > p:first-child { margin-top: 0; }
 .grafik-verdict textarea { width: 100%; box-sizing: border-box; }
 /* Odpowiedź grafika przy KAŻDYM werdykcie, nie tylko przy odmowie — często stoi w niej
-   warunek techniczny wyceny („da się, ale mostki co 4 cm"). */
+   warunek techniczny wyceny („da się, ale klosz tylko w kolorze białym"). */
 .grafik-komentarz { margin: .4rem 0 0; font-size: .9em; }
 .grafik-komentarz em { color: var(--tekst); }
 .grafik-powod { color: var(--muted); }
@@ -360,7 +360,7 @@ ul.log { font-size: .9em; color: var(--muted); }
 .etap-head::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--akcent); flex: none; }
 /* Kolumna akcji szersza niz korespondencja: mieszcza sie w niej formularz wyceny
    (8 kontrolek w wierszu) i lista rodzajow bez scinania do nierozroznialnego prefiksu.
-   Przy 1fr 1fr select miał 83px, a obie opcje zaczynaja sie od "szablon malarski". */
+   Przy 1fr 1fr select miał 83px, a obie opcje zaczynaja sie od "lampa wisząca". */
 .etap-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 1rem; padding: .75rem; align-items: start; }
 .etap-maile details.msg { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: .4em .6em; margin: .4em 0; }
 .etap-maile details.msg > summary { cursor: pointer; color: var(--muted); }
@@ -424,7 +424,7 @@ details.etap[open] > summary.etap-head::after { transform: rotate(90deg); }
   display: grid;
   /* OSIEM kolumn linii glownej: nr, ilosc, "x", rodzaj, nazwa, rozmiar, cena, usun.
      select dostaje wiecej niz nazwa: rodzaje roznia sie dopiero od 17. znaku
-     ("szablon malarski wielo|jedno-razowy"), wiec zbyt waski select pokazuje
+     ("lampa wisząca ze stali|szkła"), wiec zbyt waski select pokazuje
      obu opcjom identyczny prefiks. Nazwa wlasna jest krotka i moze byc wezsza. */
   grid-template-columns: auto 3.5em auto minmax(6em, 1.7fr) minmax(4em, 1fr) 6em auto auto;
   gap: .55em .4em;

@@ -1,7 +1,7 @@
 <%# GENERATOR SKU — PODGLAD PRZED NADANIEM I WYNIK PO NIM.
 
     PO CO TEN EKRAN. Nic jeszcze nie jest zapisane i to jest caly jego sens: jedno klikniecie
-    nadaje numery setkom wzorow, a numer nadany tutaj pojedzie w Zadaniu 15 do produkcyjnych
+    nadaje numery setkom kart, a numer nadany tutaj pojedzie w Zadaniu 15 do produkcyjnych
     sklepow i stanie sie TOZSAMOSCIA produktu. Zestaw nizej liczy TA SAMA funkcja
     (domain/sku-generator.js: proponujSku), ktora policzy go trasa zapisujaca — i policzy go
     PONOWNIE, ze stanu biezacego bazy, a nie przepisze stad ukrytym polem.
@@ -53,22 +53,22 @@
     <% } %>
 
     <% if (juzMaja) { %>
-      <%# ⚠️ WZOR, KTORY SKU JUZ MA, NIE DOSTAJE NOWEGO — nigdy. Numer raz nadany jest
+      <%# ⚠️ KARTA, KTORA SKU JUZ MA, NIE DOSTAJE NOWEGO — nigdy. Numer raz nadany jest
           tozsamoscia produktu w sklepie, a ciche przenumerowanie jest najgorsza rzecza,
           jaka ten ekran moze zrobic. Liczba stoi tu jawnie, zeby „zaznaczyłem 300, dostałem
           250" nie wygladalo na zgubione wiersze. Numer JUZ NADANY zmienia sie wylacznie
-          na karcie jednego wzoru, gdzie widac, co sie podmienia. %>
+          na karcie produktu, pojedynczo, gdzie widac, co sie podmienia. %>
       <p class="pasek-uwaga">
-        <b><%= juzMaja %></b> z zaznaczonych wzorów ma już numer — tych nie ruszam.
+        <b><%= juzMaja %></b> z zaznaczonych kart ma już numer — tych nie ruszam.
         Generator nigdy nie przenumerowuje: numer, który raz pojechał do sklepu, jest
-        tożsamością produktu. Chcesz go zmienić — zrób to na karcie wzoru, pojedynczo.
+        tożsamością produktu. Chcesz go zmienić — zrób to na karcie produktu, pojedynczo.
       </p>
     <% } %>
 
     <% if (ileKolizji) { %>
       <p class="pasek-blokada">
         <b><%= ileKolizji %></b> z proponowanych numerów jest już zajętych — patrz kolumna
-        „Uwaga”. Numer, który żyje w sklepie albo przy innym wzorze, jest cudzą tożsamością,
+        „Uwaga”. Numer, który żyje w sklepie albo przy innym karcie, jest cudzą tożsamością,
         więc nie nadam ŻADNEGO z tego zestawu, dopóki kolizje nie znikną. Popraw wzorzec
         (najprościej: dopisz albo zmień człon stały) i pokaż podgląd jeszcze raz.
       </p>
@@ -90,12 +90,12 @@
         <% } else { %>
           <%# ⚠️ ZERO TO ODPOWIEDZ, A NIE AWARIA — i to jest jedyny slad po tym, ze zestaw
               policzono PONOWNIE. %>
-          Żaden wzór nie dostał numeru — wszystkie miały go już wcześniej. Nic nie zapisałem.
+          Żadna karta nie dostała numeru — wszystkie miały go już wcześniej. Nic nie zapisałem.
         <% } %>
       </p>
       <% if (wynik.nieaktualne) { %>
         <p class="pasek-blokada">
-          <b><%= wynik.nieaktualne %></b> wzorów numeru nie dostało, bo zdobyły go
+          <b><%= wynik.nieaktualne %></b> kart numeru nie dostało, bo zdobyły go
           w międzyczasie — z karty albo z drugiej zakładki. Nie podmieniam numeru,
           który już istnieje.
         </p>
@@ -104,11 +104,11 @@
 
     <% if (pozycje.length) { %>
       <table class="tab-pozycje">
-        <thead><tr><th>Wzór</th><th>Proponowany numer</th><th>Uwaga</th></tr></thead>
+        <thead><tr><th>Karta</th><th>Proponowany numer</th><th>Uwaga</th></tr></thead>
         <tbody>
           <% pozycje.forEach(function (p) { %>
             <tr>
-              <td><div class="nazwa-wzoru"><%= p.nazwa %></div></td>
+              <td><div class="nazwa-karty"><%= p.nazwa %></div></td>
               <td><code class="sku-numer"><%= p.sku %></code></td>
               <td>
                 <% if (p.uwaga) { %>
@@ -125,14 +125,14 @@
       </table>
     <% } else if (!blad) { %>
       <p class="pusto">
-        Żaden z zaznaczonych wzorów nie potrzebuje numeru — wszystkie już go mają.
+        Żadna z zaznaczonych kart nie potrzebuje numeru — wszystkie już go mają.
         Nie ma czego zatwierdzać.
       </p>
     <% } %>
 
     <div class="stopka-edycji">
-      <%# ⚠️⚠️ FORMULARZ NIESIE NUMERY WZOROW I WZORZEC, NIGDY GOTOWYCH NUMEROW SKU. Zbior
-          zostaje ZAMROZONY tym, co czlowiek wlasnie zobaczyl (stad jawne numery wzorow, takze
+      <%# ⚠️⚠️ FORMULARZ NIESIE NUMERY KART I WZORZEC, NIGDY GOTOWYCH NUMEROW SKU. Zbior
+          zostaje ZAMROZONY tym, co czlowiek wlasnie zobaczyl (stad jawne numery kart, takze
           przy zakresie „wszystkie pasujace"), a numery licza sie od nowa ze stanu bazy —
           miedzy podgladem a klknieciem mogl wejsc odczyt katalogow albo drugi operator.
 

@@ -4,12 +4,12 @@
 // produkcji 2026-08-12 na WSZYSTKICH adresach obu sklepów):
 //
 //   sklep            | zdjęć | miniatura istnieje | 404
-//   pro.szkicownia.pl  |   103 |                103 |   0 (0%)
-//   szkicownia.pl      |   684 |                 76 | 608 (89%)
+//   sklep PRO        |   103 |                103 |   0 (0%)
+//   sklep A          |   684 |                 76 | 608 (89%)
 //
 // Panel miniatury NIE ZAPISYWAŁ — ZGADYWAŁ ją, doklejając `-150x150` do nazwy pliku
 // oryginału (`domain/miniatury.js`, `adresMiniatury`). Na PRO zgadywanie trafiało, bo PRO
-// akurat ma rozmiar 150×150; szkicownia.pl ma WŁASNY rozmiar miniatury `247x296`, więc
+// akurat ma rozmiar 150×150; sklep A ma WŁASNY rozmiar miniatury `247x296`, więc
 // dziewięć na dziesięć wierszy magazynu pokazywało pustą ramkę. Oryginały są zdrowe —
 // wszystkie 684 odpowiadają 200, czyli zgadywanie było jedyną przyczyną.
 //
@@ -29,11 +29,11 @@ import { miniaturyZeStoreApi } from '../../../src/domena/miniatury.js';
 import { createWooClient } from '../../../src/oms/woo/client.js';
 import { odswiezMagazyn } from '../../../src/moduly/magazyn/services/magazyn-sync.js';
 
-// Prawdziwe adresy ze szkicownia.pl — ten sklep skaluje miniatury do 247×296, a nie 150×150.
-const ORYGINAL = 'https://szkicownia.pl/wp-content/uploads/2024/03/kotwica.jpg';
-const MINIATURA = 'https://szkicownia.pl/wp-content/uploads/2024/03/kotwica-247x296.jpg';
+// Adresy w kształcie tych ze sklepu A — ten sklep skaluje miniatury do 247×296, a nie 150×150.
+const ORYGINAL = 'https://sklep-polcien.example.invalid/wp-content/uploads/2024/03/kandelabr.jpg';
+const MINIATURA = 'https://sklep-polcien.example.invalid/wp-content/uploads/2024/03/kandelabr-247x296.jpg';
 // Adres, który wyprodukowałoby ZGADYWANIE po nazwie pliku — i którego w sklepie NIE MA.
-const ZGADNIETY = 'https://szkicownia.pl/wp-content/uploads/2024/03/kotwica-150x150.jpg';
+const ZGADNIETY = 'https://sklep-polcien.example.invalid/wp-content/uploads/2024/03/kandelabr-150x150.jpg';
 
 // ============================================================================
 // DOMENA: odpowiedź Store API → mapa `id produktu` → adres miniatury
@@ -167,14 +167,14 @@ const wiersze = (db) => db.prepare(
 describe('odswiezMagazyn — miniatura zapisana, nie zgadnięta', () => {
   // ⚠️⚠️ TO JEST SEDNO CAŁEJ POPRAWKI, przypięte wprost: adres miniatury w lustrze pochodzi
   // ZE SKLEPU (Store API), a NIE z reguły opartej na nazwie pliku. Adresy dobrane tak, żeby
-  // te dwa źródła dawały RÓŻNE wyniki — zgadywanie skleiłoby `-150x150`, którego na
-  // szkicownia.pl nie ma pod żadnym zdjęciem (608 z 684 adresów = 404).
+  // te dwa źródła dawały RÓŻNE wyniki — zgadywanie skleiłoby `-150x150`, którego w
+  // sklepie A nie ma pod żadnym zdjęciem (608 z 684 adresów = 404).
   it('miniatura pochodzi ze Store API, a nie z reguły po nazwie pliku', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
       szkicownia: sklepAtrapa({
         produkty: [{
-          id: 7179, type: 'simple', name: 'Kotwica', price: '99',
+          id: 7179, type: 'simple', name: 'Kandelabr', price: '99',
           images: [{ src: ORYGINAL }],
         }],
         miniatury: new Map([['7179', MINIATURA]]),
@@ -193,7 +193,7 @@ describe('odswiezMagazyn — miniatura zapisana, nie zgadnięta', () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
       szkicownia: sklepAtrapa({
-        produkty: [{ id: 7179, type: 'variable', name: 'Woodland' }],
+        produkty: [{ id: 7179, type: 'variable', name: 'Kolekcja Las' }],
         warianty: { 7179: [{ id: 7180, sku: 'W-1', price: '99' }] },
         miniatury: new Map([['7179', MINIATURA]]),
       }),
@@ -211,7 +211,7 @@ describe('odswiezMagazyn — miniatura zapisana, nie zgadnięta', () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
       szkicownia: sklepAtrapa({
-        produkty: [{ id: 7179, type: 'simple', name: 'Kotwica', price: '99', images: [{ src: ORYGINAL }] }],
+        produkty: [{ id: 7179, type: 'simple', name: 'Kandelabr', price: '99', images: [{ src: ORYGINAL }] }],
         miniatury: new Map(),
       }),
     };
@@ -233,7 +233,7 @@ describe('odswiezMagazyn — miniatura zapisana, nie zgadnięta', () => {
     const sklepy = {
       szkicownia: {
         pobierzWszystkieProdukty: vi.fn(async () => [
-          { id: 7179, type: 'simple', name: 'Kotwica', price: '99', images: [{ src: ORYGINAL }] },
+          { id: 7179, type: 'simple', name: 'Kandelabr', price: '99', images: [{ src: ORYGINAL }] },
         ]),
         pobierzWarianty: vi.fn(async () => []),
         pobierzMiniatury: vi.fn(async () => { throw new Error('Sklep odpowiedział 503'); }),
@@ -256,7 +256,7 @@ describe('odswiezMagazyn — miniatura zapisana, nie zgadnięta', () => {
     const log = vi.fn();
     const sklepy = {
       szkicownia: sklepAtrapa({
-        produkty: [{ id: 7179, type: 'simple', name: 'Kotwica', price: '99' }],
+        produkty: [{ id: 7179, type: 'simple', name: 'Kandelabr', price: '99' }],
         miniatury: new Map([['7179', MINIATURA]]),
       }),
     };
@@ -277,7 +277,7 @@ describe('odswiezMagazyn — miniatura zapisana, nie zgadnięta', () => {
     const allegro = {
       allegro_szkicownia: {
         pobierzOferty: vi.fn(async () => [{
-          id: '17281234', name: 'Szablon kotwica',
+          id: '17281234', name: 'Ozdobny kandelabr',
           sellingMode: { price: { amount: '89.00', currency: 'PLN' } },
           publication: { status: 'ACTIVE' },
           primaryImage: { url: 'https://9.allegroimg.com/original/03e7d6/772bd11044a79ce6967b62cfa489' },
@@ -297,7 +297,7 @@ describe('odswiezMagazyn — miniatura zapisana, nie zgadnięta', () => {
     const allegro = {
       allegro_szkicownia: {
         pobierzOferty: vi.fn(async () => [{
-          id: '17281234', name: 'Szablon kotwica',
+          id: '17281234', name: 'Ozdobny kandelabr',
           sellingMode: { price: { amount: '89.00', currency: 'PLN' } },
         }]),
       },
@@ -310,12 +310,12 @@ describe('odswiezMagazyn — miniatura zapisana, nie zgadnięta', () => {
   // ma zobaczyć NOWĄ miniaturę po odczycie, a nie starą do końca świata.
   it('kolejny odczyt odświeża miniaturę', async () => {
     const db = openOmsDb(':memory:');
-    const inna = 'https://szkicownia.pl/wp-content/uploads/2026/08/nowa-247x296.jpg';
+    const inna = 'https://sklep-polcien.example.invalid/wp-content/uploads/2026/08/nowa-247x296.jpg';
     const przebieg = (mapa) => odswiezMagazyn({ kanalySklepow: ['pro', 'szkicownia'], kanalyAllegro: ['allegro_szkicownia', 'allegro_amarka'], 
       db,
       sklepy: {
         szkicownia: sklepAtrapa({
-          produkty: [{ id: 7179, type: 'simple', name: 'Kotwica', price: '99' }],
+          produkty: [{ id: 7179, type: 'simple', name: 'Kandelabr', price: '99' }],
           miniatury: mapa,
         }),
       },
@@ -342,39 +342,39 @@ describe('lustro trzyma adres miniatury we WŁASNEJ kolumnie', () => {
       const pierwsza = openOmsDb(plik);
       let id;
       try {
-        pierwsza.prepare("INSERT INTO wzory(id,nazwa,sku,utworzony_at,zmieniony_at) VALUES(7,'Kotwica','TEST-7','x','x')").run();
+        pierwsza.prepare("INSERT INTO karty_produktow(id,nazwa,sku,utworzony_at,zmieniony_at) VALUES(7,'Kandelabr','TEST-7','x','x')").run();
         id = zapiszProduktSklepowy(pierwsza, { kanal: 'kanal-testowy', produkt_id: '7179', wariant_id: '',
-          nazwa: 'Kotwica produktu', sku_sklepu: 'SKU-TEST', cena_gr: 9900,
+          nazwa: 'Kandelabr produktu', sku_sklepu: 'SKU-TEST', cena_gr: 9900,
           miniatura: MINIATURA, zdjecia_json: JSON.stringify([ORYGINAL]), odczytane_at: TERAZ });
-        pierwsza.prepare('UPDATE produkty_sklepowe SET wzor_id=7 WHERE id=?').run(id);
+        pierwsza.prepare('UPDATE produkty_sklepowe SET karta_id=7 WHERE id=?').run(id);
       } finally { pierwsza.close(); }
       const druga = openOmsDb(plik);
       try {
         const kolumny = druga.prepare('PRAGMA table_info(produkty_sklepowe)').all().map((k) => k.name);
         expect(kolumny).toContain('miniatura');
-        expect(druga.prepare('SELECT kanal,produkt_id,wariant_id,nazwa,sku_sklepu,cena_gr,miniatura,zdjecia_json,wzor_id FROM produkty_sklepowe WHERE id=?').get(id))
-          .toEqual({ kanal: 'kanal-testowy', produkt_id: '7179', wariant_id: '', nazwa: 'Kotwica produktu',
-            sku_sklepu: 'SKU-TEST', cena_gr: 9900, miniatura: MINIATURA, zdjecia_json: JSON.stringify([ORYGINAL]), wzor_id: 7 });
-        expect(druga.prepare('SELECT nazwa,sku FROM wzory WHERE id=7').get()).toEqual({ nazwa: 'Kotwica', sku: 'TEST-7' });
+        expect(druga.prepare('SELECT kanal,produkt_id,wariant_id,nazwa,sku_sklepu,cena_gr,miniatura,zdjecia_json,karta_id FROM produkty_sklepowe WHERE id=?').get(id))
+          .toEqual({ kanal: 'kanal-testowy', produkt_id: '7179', wariant_id: '', nazwa: 'Kandelabr produktu',
+            sku_sklepu: 'SKU-TEST', cena_gr: 9900, miniatura: MINIATURA, zdjecia_json: JSON.stringify([ORYGINAL]), karta_id: 7 });
+        expect(druga.prepare('SELECT nazwa,sku FROM karty_produktow WHERE id=7').get()).toEqual({ nazwa: 'Kandelabr', sku: 'TEST-7' });
       } finally { druga.close(); }
     } finally { rmSync(katalog, { recursive: true, force: true }); }
   });
 
-  // ⚠️ PARA: kolumna lustra przepisuje się przy każdym odczycie, ale POWIĄZANIE Z WZOREM ma
-  // przeżyć. Gdyby `miniatura` ruszyła przy okazji `wzor_id`, każde odświeżenie katalogu
+  // ⚠️ PARA: kolumna lustra przepisuje się przy każdym odczycie, ale POWIĄZANIE Z KARTĄ ma
+  // przeżyć. Gdyby `miniatura` ruszyła przy okazji `karta_id`, każde odświeżenie katalogu
   // zrywałoby ręczną pracę właściciela — po cichu i bez jednego błędu.
-  it('zapis miniatury nie zrywa powiązania z wzorem', () => {
+  it('zapis miniatury nie zrywa powiązania z kartą', () => {
     const db = openOmsDb(':memory:');
-    db.prepare("INSERT INTO wzory (id, nazwa, utworzony_at, zmieniony_at) VALUES (7,'Kotwica','x','x')").run();
+    db.prepare("INSERT INTO karty_produktow (id, nazwa, utworzony_at, zmieniony_at) VALUES (7,'Kandelabr','x','x')").run();
     const wiersz = {
-      kanal: 'szkicownia', produkt_id: '7179', wariant_id: '', nazwa: 'Kotwica',
+      kanal: 'szkicownia', produkt_id: '7179', wariant_id: '', nazwa: 'Kandelabr',
       odczytane_at: TERAZ, miniatura: MINIATURA,
     };
     const id = zapiszProduktSklepowy(db, wiersz);
-    db.prepare('UPDATE produkty_sklepowe SET wzor_id = 7 WHERE id = ?').run(id);
+    db.prepare('UPDATE produkty_sklepowe SET karta_id = 7 WHERE id = ?').run(id);
 
     zapiszProduktSklepowy(db, { ...wiersz, miniatura: null });
-    const po = db.prepare('SELECT wzor_id, miniatura FROM produkty_sklepowe WHERE id = ?').get(id);
-    expect(po).toEqual({ wzor_id: 7, miniatura: null });
+    const po = db.prepare('SELECT karta_id, miniatura FROM produkty_sklepowe WHERE id = ?').get(id);
+    expect(po).toEqual({ karta_id: 7, miniatura: null });
   });
 });

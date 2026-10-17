@@ -1,27 +1,27 @@
 <%# EDYCJA HURTEM — PODGLAD PRZED ZAPISEM I WYNIK PO NIM.
 
     PO CO TEN EKRAN. Nic jeszcze nie jest zapisane i to jest caly jego sens: jedno klikniecie
-    dotyka setek wzorow, a wymiar, ktory tu powstanie, rozstrzyga w Etapie 2, ktory plik .mol
-    jedzie na ploter. Zestaw pokazany nizej liczy TA SAMA funkcja (domain/magazyn-hurt.js:
+    dotyka setek kart, a z wymiaru, ktory tu powstanie, liczy sie paczka, gabaryt i wymiar
+    w sklepie. Zestaw pokazany nizej liczy TA SAMA funkcja (domain/magazyn-hurt.js:
     zmianyHurtem), ktora policzy go trasa zatwierdzajaca — i policzy go PONOWNIE, ze stanu
     biezacego, a nie przepisze stad ukrytym polem.
 
-    ⚠️ WIDOK NICZEGO NIE LICZY I NICZEGO NIE ROZSTRZYGA. Liczba wzorow, opisy „z czego na co"
+    ⚠️ WIDOK NICZEGO NIE LICZY I NICZEGO NIE ROZSTRZYGA. Liczba kart, opisy „z czego na co"
     i etykiety kolumn przychodza POLICZONE z web/routes/magazyn.js i domain/magazyn-hurt.js —
-    ta sama zasada, co w magazyn-lista.ejs, magazyn-wzor.ejs i faktury.ejs.
+    ta sama zasada, co w magazyn-lista.ejs, magazyn-karta.ejs i faktury.ejs.
 
     ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w layout-oms.ejs. Paleta ma
     wariant jasny i ciemny, wiec wartosc wpisana tutaj zadzialalaby w jasnym i po cichu
     zniknela w ciemnym (nikt nie oglada obu naraz). %>
 <%
-  // Liczebnik po polsku ma TRZY formy: „1 wzór", „3 wzory", „5 wzorów" — wariant dwuformowy
-  // pisalby „3 wzorów". ⚠️ 12, 13, 14 IDA DO FORMY MNOGIEJ mimo koncowek 2/3/4 (ten sam
+  // Liczebnik po polsku ma TRZY formy: „1 karta", „3 karty", „5 kart" — wariant dwuformowy
+  // pisalby „3 kart". ⚠️ 12, 13, 14 IDA DO FORMY MNOGIEJ mimo koncowek 2/3/4 (ten sam
   // wzorzec, co w faktury-hurtem-podglad.ejs).
-  const ileWzorow = (n) => {
+  const ileKart = (n) => {
     const d = Math.abs(n) % 10;
     const s = Math.abs(n) % 100;
-    if (n === 1) return `${n} wzór`;
-    return `${n} ${d >= 2 && d <= 4 && (s < 12 || s > 14) ? 'wzory' : 'wzorów'}`;
+    if (n === 1) return `${n} karta`;
+    return `${n} ${d >= 2 && d <= 4 && (s < 12 || s > 14) ? 'karty' : 'kart'}`;
   };
 %>
 
@@ -39,20 +39,20 @@
       <%# ⚠️ LICZBA MA WLASNY ZNACZNIK, bo to ona jest tresc tego ekranu — i to po niej
           poznaje sie, ze podglad obiecal to samo, co zapis wykonal. %>
       <strong class="hurt-ile"><%= ile %></strong>
-      <%= wynik ? 'zmienionych wzorów' : 'wzorów do zmiany' %>
+      <%= wynik ? 'zmienionych kart' : 'kart do zmiany' %>
     </span>
   </div>
   <div class="panel-cialo">
     <% if (blad) { %>
       <%# ⚠️ ODMOWA JEST CALOSCIOWA i mowi, CZEGO nie zapisano. Jedno pole, ktorego panel nie
-          rozumie, wstrzymuje wszystkie — przy setkach wzorow nikt by nie odtworzyl, ktora
+          rozumie, wstrzymuje wszystkie — przy setkach kart nikt by nie odtworzyl, ktora
           polowa weszla. %>
       <p class="pasek-blokada"><%= blad %></p>
     <% } %>
 
     <% if (!blad && !wynik) { %>
       <p class="pasek-uwaga">
-        Nic jeszcze nie jest zapisane. Zmienisz <b><%= ileWzorow(ile) %></b> — przejrzyj listę
+        Nic jeszcze nie jest zapisane. Zmienisz <b><%= ileKart(ile) %></b> — przejrzyj listę
         i dopiero wtedy zatwierdź. Puste pola formularza zostały pominięte: hurtem puste pole
         znaczy „nie ruszaj tej kolumny”, a nie „skasuj ją”.
       </p>
@@ -61,28 +61,28 @@
     <% if (wynik) { %>
       <p class="<%= ile ? 'pasek-uwaga' : 'pusto' %>">
         <% if (ile) { %>
-          Zmieniono <b><%= ileWzorow(ile) %></b>. Wszystkie w jednym zapisie i z jednym
+          Zmieniono <b><%= ileKart(ile) %></b>. Wszystkie w jednym zapisie i z jednym
           znacznikiem czasu — po nim da się je później odnaleźć razem.
         <% } else { %>
           <%# ⚠️ ZERO TO ODPOWIEDZ, A NIE AWARIA — i to jest jedyny slad po tym, ze zestaw
               policzono PONOWNIE. Miedzy podgladem a klknieciem ktos mogl ustawic dokladnie
               to samo z drugiej karty, a wtedy nie ma juz czego zmieniac. %>
-          Żaden wzór nie wymagał zmiany — wszystkie miały już te wartości. Nic nie zapisałem.
+          Żadna karta nie wymagała zmiany — wszystkie miały już te wartości. Nic nie zapisałem.
         <% } %>
       </p>
     <% } %>
 
     <% if (plan.length) { %>
       <table class="tab-pozycje">
-        <thead><tr><th>Wzór</th><th>Pole</th><th>Z</th><th>Na</th></tr></thead>
+        <thead><tr><th>Karta</th><th>Pole</th><th>Z</th><th>Na</th></tr></thead>
         <tbody>
           <% plan.forEach(function (z) { %>
             <% z.opisy.forEach(function (o, i) { %>
               <tr>
-                <%# Nazwa wzoru stoi WYLACZNIE w pierwszym wierszu jego zmian — wzor
-                    zmieniajacy trzy pola jest nadal JEDNYM wzorem, a powtorzona nazwa
+                <%# Nazwa karty stoi WYLACZNIE w pierwszym wierszu jej zmian — karta
+                    zmieniajaca trzy pola jest nadal JEDNA karta, a powtorzona nazwa
                     czytalaby sie jak trzy. %>
-                <td><% if (i === 0) { %><div class="nazwa-wzoru"><%= z.nazwa %></div><% } %></td>
+                <td><% if (i === 0) { %><div class="nazwa-karty"><%= z.nazwa %></div><% } %></td>
                 <td><%= o.pole %></td>
                 <%# ⚠️ BRAK POKAZANY JAKO BRAK, a nie jako pusta komorka: pusta wyglada jak
                     komorka, ktorej cos nie doliczylo — a tu chodzi o roznice miedzy „nie ma
@@ -96,7 +96,7 @@
       </table>
     <% } else if (!blad && !wynik) { %>
       <p class="pusto">
-        Żaden z zaznaczonych wzorów nie zmieni się od tych wartości — wszystkie mają je już
+        Żadna z zaznaczonych kart nie zmieni się od tych wartości — wszystkie mają je już
         ustawione. Nie ma czego zatwierdzać.
       </p>
     <% } %>
@@ -117,7 +117,7 @@
           <% polaDoPrzeniesienia.forEach(function (p) { %>
             <input type="hidden" name="<%= p.name %>" value="<%= p.value %>">
           <% }); %>
-          <button class="btn btn--glowny" type="submit">Zapisz w <%= ileWzorow(ile) %></button>
+          <button class="btn btn--glowny" type="submit">Zapisz w <%= ileKart(ile) %></button>
         </form>
       <% } %>
       <a class="btn" href="<%= adresPowrotu %>"><%= wynik ? 'Wróć do magazynu' : 'Anuluj' %></a>

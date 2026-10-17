@@ -23,7 +23,7 @@ const zPaczkomatem = (nad = {}) => ({
     { key: '_parcel_machine_id', value: 'WRO10B' },
     { key: '_parcel_machine_desc', value: 'Przy Centrum Handlowyn Borek' },
   ],
-  line_items: [{ id: 51, name: 'szablon malarski', sku: 'sz-1', quantity: 1, total: '212.90' }],
+  line_items: [{ id: 51, name: 'lampa wisząca', sku: 'sz-1', quantity: 1, total: '212.90' }],
   ...nad,
 });
 

@@ -66,9 +66,9 @@ function adresProduktu({ produktId = null, sku = null, reczna = false } = {}, ba
 // ---------------------------------------------------------------------------------
 // ALLEGRO.
 //
-// ⚠️ ADRES ZWERYFIKOWANY W PRAWDZIWEJ PRZEGLADARCE na identyfikatorze `9000000001` z zywego
-// zamowienia: `https://allegro.pl/oferta/9000000001` otwiera dokladnie te oferte („Lampa
-// stołowa Mosiądz 30 cm"). Sprawdzian MUSIAL isc przez przegladarke — WAF
+// ⚠️ ADRES ZWERYFIKOWANY W PRAWDZIWEJ PRZEGLADARCE na identyfikatorze z zywego
+// zamowienia: `https://allegro.pl/oferta/{id}` otwiera dokladnie te oferte („Lampa
+// stolowa Mosiadz 30x35cm"). Sprawdzian MUSIAL isc przez przegladarke — WAF
 // Allegro oddaje 403 na zadania spoza niej, wiec kod odpowiedzi z `fetch`a nie dowodzi
 // NICZEGO. To ta sama pulapka, ktora przy DPD dala „dzialajacy" link bez numeru na stronie
 // (patrz komentarz otwierajacy domain/tracking.js).
@@ -76,7 +76,7 @@ function adresProduktu({ produktId = null, sku = null, reczna = false } = {}, ba
 // ⚠️ ZERO WYSYLKI DO ALLEGRO. To jest `href` w HTML-u, a nie wywolanie API — identyfikator
 // lezy juz w bazie, przepisany z formularza zakupowego (`lineItems[].offer.id`).
 //
-// ⚠️ WYLACZNIE CYFRY. Identyfikator przychodzi od Allegro jako NAPIS („9000000001") i taki
+// ⚠️ WYLACZNIE CYFRY. Identyfikator przychodzi od Allegro jako NAPIS („1234567890") i taki
 // tez lezy w bazie — kolumna jest TEXT wlasnie po to, zeby nikt go po drodze nie przerobil
 // na liczbe (uzasadnienie przy `pozycje.oferta_id` w schema.sql). Warunek na same cyfry robi
 // tu dwie rzeczy naraz: odsiewa wiersze bez oferty (wysylka, „Razem", doplata Allegro,

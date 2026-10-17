@@ -128,6 +128,17 @@
       „Szczegolow zamowienia", gdzie od poczatku byla. %>
 </div>
 
+<%# ——— BRAK NA STANIE (PRZ-091) ———————————————————————————————————————————————————— %>
+<%# WYLACZNIE gdy stany magazynowe sa wlaczone i to zamowienie zdejmuje karte na minusie. %>
+<%# Brak nie blokuje zamowienia (decyzja właściciela 17.10) — pasek tylko mowi, czego nie ma. %>
+<% if (brakiNaStanie.length) { %>
+  <div class="pasek-uwaga" id="brak-na-stanie">
+    <strong>Brak na stanie:</strong>
+    <% brakiNaStanie.forEach(function (b, i) { %><%= i ? ', ' : ' ' %><a href="/magazyn/<%= b.karta_id %>"><%= b.nazwa %></a> (stan <%= String(b.stan).replace('-', '−') %>)<% }); %>.
+    Zamówienie jest przyjęte — uzupełnij towar albo popraw stan na karcie produktu.
+  </div>
+<% } %>
+
 <%# ——— 2. PASEK SPRAW ————————————————————————————————————————————————————————————— %>
 <%# WYLACZNIE gdy cos wisi. Pusty pasek „Do zalatwienia — 0" bylby dokladnie tym szumem, %>
 <%# ktorego cala przebudowa ma sie pozbyc. %>

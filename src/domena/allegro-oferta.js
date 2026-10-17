@@ -37,7 +37,7 @@ const ADRES_HTTP = /^https?:\/\//i;
 // ⚠️⚠️ NIE ODRZUCAMY EUR DLATEGO, ZE JEST ZLE, TYLKO DLATEGO, ZE KOLUMNA NIE NIESIE WALUTY —
 // zapis byłby wtedy KLAMSTWEM. Zmierzone przy recenzji: oferta z `currency: 'EUR'` i kwotą
 // „89.00" wpadała do lustra jako 8900 groszy, czyli wyglądała na ~4× tańszą od tego samego
-// wzoru w sklepie, i to CICHO. Konto Allegro B sprzedaje na pięć rynków (`allegro-cz`, `-sk`,
+// produktu w sklepie, i to CICHO. Konto Allegro B sprzedaje na pięć rynków (`allegro-cz`, `-sk`,
 // `-hu`), więc to nie jest przypadek teoretyczny — dziś `sellingMode.price` oddaje cenę rynku
 // bazowego, ale wystarczy jedna zmiana po stronie Allegro.
 //
@@ -96,7 +96,7 @@ function zdjeciaJson(oferta) {
   if (!adres) return null;
   // ⚠️ JEDEN ELEMENT I TO WYSTARCZA. Lista ofert niesie wylacznie `primaryImage`; pelna
   // galeria kosztowalaby 447 osobnych wywolan `/sale/product-offers/{id}`, a zdjecia do
-  // folderu wzoru (Etap 2) i tak bierzemy ze SKLEPU, gdzie Woo oddaje komplet za darmo.
+  // karty produktu i tak bierzemy ze SKLEPU, gdzie Woo oddaje komplet za darmo.
   // Tablica, a nie goly adres — kolumna jest wspolna z produktami sklepowymi.
   return JSON.stringify([adres]);
 }
@@ -126,7 +126,7 @@ export function ofertaNaProdukt(oferta, kanal, dozwoloneKanaly) {
     );
   }
 
-  // Nazwa oferty jest JEDYNA rzecza, po ktorej czlowiek wiaze oferte z wzorem — SKU nie ma,
+  // Nazwa oferty jest JEDYNA rzecza, po ktorej czlowiek wiaze oferte z produktem — SKU nie ma,
   // bo `external` jest puste na wszystkich ofertach. Kolumna jest przy tym NOT NULL, wiec
   // bez tego straznika brak nazwy wychodzilby dopiero na bazie, w polowie 447 ofert.
   const nazwa = oferta?.name;
@@ -142,7 +142,7 @@ export function ofertaNaProdukt(oferta, kanal, dozwoloneKanaly) {
     wariant_id: '',
     nazwa,
     // ⚠️ Zmierzone: `external` jest `null` na WSZYSTKICH ofertach obu kont (0/40). Powiazanie
-    // wzoru z oferta jest przez to reczne — ale odczyt ma to przezyc, a nie sie wywrocic.
+    // produktu z oferta jest przez to reczne — ale odczyt ma to przezyc, a nie sie wywrocic.
     sku_sklepu: oferta?.external?.id ?? null,
     cena_gr: groszeZCeny(oferta?.sellingMode?.price, produktId),
     zdjecia_json: zdjeciaJson(oferta),

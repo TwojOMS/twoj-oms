@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
-import { utworzWzor, zapiszProduktSklepowy, powiazProdukt } from '../../../src/oms/db/magazyn.js';
+import { utworzKarte, zapiszProduktSklepowy, powiazProdukt } from '../../../src/oms/db/magazyn.js';
 
 // ZAKRES PRZY AKCJI — wada uzytecznosci zgloszona przez wlasciciela wprost:
 // „nie ma opcji zaznaczania wszystkich produktow. Musze kliknac ponad 100 razy zeby
@@ -48,23 +48,23 @@ beforeEach(() => {
   magazyn = atrapaMagazynu();
 });
 
-const wzorO = (nazwa, reszta = {}) => utworzWzor(db, { nazwa, ...reszta });
+const kartaO = (nazwa, reszta = {}) => utworzKarte(db, { nazwa, ...reszta });
 
-/** Produkt w lustrze, powiazany z wzorem — zeby przejecie numeru mialo co przejmowac. */
-function produktO(wzorId, { kanal = 'pro', sku = null } = {}) {
+/** Produkt w lustrze, powiazany z kartą — zeby przejecie numeru mialo co przejmowac. */
+function produktO(kartaId, { kanal = 'pro', sku = null } = {}) {
   const id = zapiszProduktSklepowy(db, {
     kanal,
-    produkt_id: `p${wzorId}-${kanal}`,
+    produkt_id: `p${kartaId}-${kanal}`,
     wariant_id: '',
     nazwa: 'Produkt',
     sku_sklepu: sku,
     odczytane_at: '2026-08-12T10:00:00.000Z',
   });
-  powiazProdukt(db, id, wzorId);
+  powiazProdukt(db, id, kartaId);
   return id;
 }
 
-const wiersz = (id) => db.prepare('SELECT * FROM wzory WHERE id = ?').get(id);
+const wiersz = (id) => db.prepare('SELECT * FROM karty_produktow WHERE id = ?').get(id);
 
 const get = (app, url) => app.inject({ method: 'GET', url, headers: auth });
 const post = (app, url, payload) => app.inject({
@@ -166,15 +166,15 @@ async function klikniecie(app, adresListy, idPanelu, wartoscZakresu, dodatkowe =
   });
 }
 
-/** Nazwy wzorow z tabeli podgladu (hurt, przejecie, SKU maja ten sam ksztalt wiersza). */
+/** Nazwy kart z tabeli podgladu (hurt, przejecie, SKU maja ten sam ksztalt wiersza). */
 function nazwyWPodgladzie(body, idSekcji) {
   const s = new RegExp(`<section[^>]*id="${idSekcji}"[\\s\\S]*?</section>`).exec(body);
   if (!s) throw new Error(`W podgladzie nie ma sekcji „${idSekcji}"`);
-  return [...s[0].matchAll(/<div class="nazwa-wzoru">([^<]*)<\/div>/g)].map((m) => m[1]);
+  return [...s[0].matchAll(/<div class="nazwa-karty">([^<]*)<\/div>/g)].map((m) => m[1]);
 }
 
-/** Ile wierszy ma TABELA WZOROW — liczone z jej wlasnej kolumny, nie z jakiejkolwiek cyfry. */
-const ileWierszyTabeli = (body) => (body.match(/<td class="komorka-wzor">/g) ?? []).length;
+/** Ile wierszy ma TABELA KART — liczone z jej wlasnej kolumny, nie z jakiejkolwiek cyfry. */
+const ileWierszyTabeli = (body) => (body.match(/<td class="komorka-karta">/g) ?? []).length;
 
 // Cztery akcje ekranu. Kazda ma WLASNY nosnik (`id`) i WLASNA pare przyciskow.
 const AKCJE = [
@@ -190,7 +190,7 @@ const AKCJE = [
 
 describe('każda akcja niesie swój zakres w przyciskach, a nie w polu trzy sekcje wyżej', () => {
   it.each(AKCJE)('panel $panel ma DOKŁADNIE dwa przyciski zakresu', async ({ panel: id }) => {
-    wzorO('Kotwica');
+    kartaO('Kandelabr');
     const r = await get(serwer(), '/magazyn');
 
     const przyciski = przyciskiZakresu(panel(r.body, id));
@@ -201,7 +201,7 @@ describe('każda akcja niesie swój zakres w przyciskach, a nie w polu trzy sekc
   // ⚠️ NAPIS MA MOWIC, CO SIE STANIE I NA CZYM. Sam „dla zaznaczonych" na przycisku bez
   // nazwy akcji jest przy czterech podobnych parach nie do odroznienia od sasiada.
   it.each(AKCJE)('oba przyciski panelu $panel nazywają akcję i swój zakres', async ({ panel: id, slowo }) => {
-    wzorO('Kotwica');
+    kartaO('Kandelabr');
     const r = await get(serwer(), '/magazyn');
     const przyciski = przyciskiZakresu(panel(r.body, id));
 
@@ -215,7 +215,7 @@ describe('każda akcja niesie swój zakres w przyciskach, a nie w polu trzy sekc
   // ⚠️⚠️ TRASA BEZ PRZYCISKU JEST KODEM MARTWYM, a suita swieci wtedy na zielono. Kazda
   // z czterech par ma prowadzic na WLASNY PODGLAD — i nigdy wprost na zapis.
   it.each(AKCJE)('oba przyciski panelu $panel prowadzą na $cel', async ({ panel: id, cel }) => {
-    wzorO('Kotwica');
+    kartaO('Kandelabr');
     const r = await get(serwer(), '/magazyn');
     const { action } = formularzAkcji(r.body);
     const przyciski = przyciskiZakresu(panel(r.body, id));
@@ -234,11 +234,11 @@ describe('każda akcja niesie swój zakres w przyciskach, a nie w polu trzy sekc
 // ================================================================================
 
 describe('liczba stoi PRZY przycisku i jest tą samą, co długość tabeli', () => {
-  // ⚠️ Czlowiek ma wiedziec, ze dotyka 277 wzorow, a nie dwudziestu, ktore widzi — i musi to
+  // ⚠️ Czlowiek ma wiedziec, ze dotyka 277 kart, a nie dwudziestu, ktore widzi — i musi to
   // byc TA SAMA liczba, co dlugosc listy nizej, bo obie biora sie z JEDNEGO odczytu.
   it.each(AKCJE)('przycisk „wszystkich pasujących" w panelu $panel podaje liczbę', async ({ panel: id }) => {
-    for (let i = 0; i < 3; i += 1) wzorO(`Bez numeru ${i}`);
-    wzorO('Z numerem', { sku: 'STE-001' });
+    for (let i = 0; i < 3; i += 1) kartaO(`Bez numeru ${i}`);
+    kartaO('Z numerem', { sku: 'PLC-001' });
 
     const r = await get(serwer(), '/magazyn?brak=sku');
 
@@ -247,8 +247,8 @@ describe('liczba stoi PRZY przycisku i jest tą samą, co długość tabeli', ()
   });
 
   it.each(AKCJE)('liczba w panelu $panel idzie za zawężeniem, a nie za całym katalogiem', async ({ panel: id }) => {
-    for (let i = 0; i < 5; i += 1) wzorO(`Bez numeru ${i}`);
-    wzorO('Z numerem', { sku: 'STE-001' });
+    for (let i = 0; i < 5; i += 1) kartaO(`Bez numeru ${i}`);
+    kartaO('Z numerem', { sku: 'PLC-001' });
 
     const bezFiltru = await get(serwer(), '/magazyn');
     const zFiltrem = await get(serwer(), '/magazyn?brak=sku');
@@ -269,7 +269,7 @@ describe('parametr zakresu nie ma jak przyjść dwa razy', () => {
   // dawalyby DOKLADNIE to. Dlatego pola nie ma: zostaly wylacznie przyciski, a formularz
   // wysyla TYLKO ten klikniety.
   it('na ekranie nie ma ANI JEDNEGO pola o nazwie zakres — są wyłącznie przyciski', async () => {
-    wzorO('Kotwica');
+    kartaO('Kandelabr');
     const r = await get(serwer(), '/magazyn');
 
     expect(r.body).not.toMatch(/<select[^>]*name="zakres"/);
@@ -286,8 +286,8 @@ describe('parametr zakresu nie ma jak przyjść dwa razy', () => {
   // JAWNE: tablica spada do `null`, a `null` do zakresu WEZSZEGO. Nierozpoznany zakres nigdy
   // nie ma prawa rozszerzyc zbioru — bo szerszy zbior to caly katalog.
   it('zakres przysłany dwa razy spada do węższego zbioru, nigdy do „wszystkich"', async () => {
-    const a = wzorO('Kotwica');
-    const b = wzorO('Chmurka');
+    const a = kartaO('Kandelabr');
+    const b = kartaO('Chmurka');
 
     const r = await postSurowy(
       serwer(),
@@ -308,37 +308,37 @@ describe('parametr zakresu nie ma jak przyjść dwa razy', () => {
 
 describe('edycja hurtem: kliknięty przycisk rozstrzyga zbiór', () => {
   const trzyBezWymiaru = () => ({
-    kotwica: wzorO('Kotwica'),
-    chmurka: wzorO('Chmurka'),
-    sowa: wzorO('Sowa'),
+    kandelabr: kartaO('Kandelabr'),
+    chmurka: kartaO('Chmurka'),
+    sowa: kartaO('Sowa'),
   });
 
   it('„dla zaznaczonych" bierze WYŁĄCZNIE zaznaczone', async () => {
-    const { kotwica } = trzyBezWymiaru();
+    const { kandelabr } = trzyBezWymiaru();
 
     const r = await klikniecie(serwer(), '/magazyn?brak=wymiary', 'hurt-pasek', 'zaznaczone', {
-      zaznaczone: String(kotwica), szerokosc_cm: '70', wysokosc_cm: '100',
+      zaznaczone: String(kandelabr), szerokosc_cm: '70', wysokosc_cm: '100',
     });
 
     expect(r.statusCode).toBe(200);
-    expect(nazwyWPodgladzie(r.body, 'zmiany-hurtem')).toEqual(['Kotwica']);
+    expect(nazwyWPodgladzie(r.body, 'zmiany-hurtem')).toEqual(['Kandelabr']);
   });
 
-  it('„dla wszystkich pasujących" bierze CAŁE zawężenie, także wzory nigdy nieklikane', async () => {
-    const { kotwica } = trzyBezWymiaru();
+  it('„dla wszystkich pasujących" bierze CAŁE zawężenie, także karty nigdy nieklikane', async () => {
+    const { kandelabr } = trzyBezWymiaru();
 
     const r = await klikniecie(serwer(), '/magazyn?brak=wymiary', 'hurt-pasek', 'pasujace', {
-      zaznaczone: String(kotwica), szerokosc_cm: '70', wysokosc_cm: '100',
+      zaznaczone: String(kandelabr), szerokosc_cm: '70', wysokosc_cm: '100',
     });
 
     expect(r.statusCode).toBe(200);
-    expect(nazwyWPodgladzie(r.body, 'zmiany-hurtem').sort()).toEqual(['Chmurka', 'Kotwica', 'Sowa']);
+    expect(nazwyWPodgladzie(r.body, 'zmiany-hurtem').sort()).toEqual(['Chmurka', 'Kandelabr', 'Sowa']);
   });
 
   // ⚠️ ZAWEZENIE MA BYC ZAWEZENIEM: „wszystkie pasujace" to nie „wszystko".
   it('„dla wszystkich pasujących" nie wychodzi poza zawężenie', async () => {
     trzyBezWymiaru();
-    wzorO('Zmierzona', { szerokosc_mm: 300, wysokosc_mm: 400 });
+    kartaO('Zmierzona', { szerokosc_mm: 300, wysokosc_mm: 400 });
 
     const r = await klikniecie(serwer(), '/magazyn?brak=wymiary', 'hurt-pasek', 'pasujace', {
       szerokosc_cm: '70', wysokosc_cm: '100',
@@ -349,13 +349,13 @@ describe('edycja hurtem: kliknięty przycisk rozstrzyga zbiór', () => {
 });
 
 describe('przejęcie numerów: kliknięty przycisk rozstrzyga zbiór', () => {
-  // 277 wzorow czekajacych na przejecie numeru to DOKLADNIE ta sytuacja, ktora wlasciciel
+  // 277 kart czekajacych na przejecie numeru to DOKLADNIE ta sytuacja, ktora wlasciciel
   // zglosil: „musze kliknac ponad 100 razy".
   function trzyDoPrzejecia() {
     const idy = {};
-    for (const [klucz, nazwa] of [['a', 'Ewakuacja'], ['b', 'Kotwica'], ['c', 'Sowa']]) {
-      idy[klucz] = wzorO(nazwa);
-      produktO(idy[klucz], { sku: `PRO-${nazwa.toUpperCase()}-1` });
+    for (const [klucz, nazwa] of [['a', 'Bursztyn'], ['b', 'Kandelabr'], ['c', 'Sowa']]) {
+      idy[klucz] = kartaO(nazwa);
+      produktO(idy[klucz], { sku: `SKU-${nazwa.toUpperCase()}-1` });
     }
     return idy;
   }
@@ -368,7 +368,7 @@ describe('przejęcie numerów: kliknięty przycisk rozstrzyga zbiór', () => {
     });
 
     expect(r.statusCode).toBe(200);
-    expect(nazwyWPodgladzie(r.body, 'przejecie-pozycje')).toEqual(['Ewakuacja']);
+    expect(nazwyWPodgladzie(r.body, 'przejecie-pozycje')).toEqual(['Bursztyn']);
   });
 
   // ⚠️⚠️ TO JEST ZGLOSZENIE WLASCICIELA, PRZELOZONE NA TEST: jedno klikniecie ma objac cale
@@ -380,7 +380,7 @@ describe('przejęcie numerów: kliknięty przycisk rozstrzyga zbiór', () => {
 
     expect(r.statusCode).toBe(200);
     expect(nazwyWPodgladzie(r.body, 'przejecie-pozycje').sort())
-      .toEqual(['Ewakuacja', 'Kotwica', 'Sowa']);
+      .toEqual(['Bursztyn', 'Kandelabr', 'Sowa']);
   });
 
   // ⚠️⚠️ PODGLAD JEST OBOWIAZKOWY I ZOSTAJE OBOWIAZKOWY. Zmieniamy sposob wyboru zakresu,

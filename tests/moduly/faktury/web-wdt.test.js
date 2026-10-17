@@ -26,7 +26,7 @@ const zmapowane = (id, nad = {}) => ({
   dostawa: { city: 'Lipnica Wielka' }, metoda_wysylki: 'dpd', kwota_pobrania: null,
   chce_fakture: 1, nip: 'SK1000000001', kwota_brutto: '96.48',
   status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-08-26T10:00:00',
-  pozycje: [{ nazwa: 'Szablon malarski STOP 70x100cm', sku: null, ilosc: 2, cena_brutto: '40.24', vat: null }],
+  pozycje: [{ nazwa: 'Lampa stołowa Kałamarz 30x45cm', sku: null, ilosc: 2, cena_brutto: '40.24', vat: null }],
   ...nad,
 });
 
@@ -92,12 +92,12 @@ describe('GET /zamowienia/:id/potwierdzenie-wywozu.pdf', () => {
 
 // CENY Z MAGAZYNU DLA KLIENTA WDT (zgłoszenie właściciela 26.08 wieczór): wstawka ma od
 // razu robić rabat → ÷1,23, a nie zostawiać operatorowi dzielenia 19 pozycji z ręki.
-// STOP 70x100: cennik 108,90 → rabat 50% → 54,45 → ÷1,23 → 44,27 (wektor z faktury Apilo).
+// Kałamarz 30x45: cennik 108,90 → rabat 50% → 54,45 → ÷1,23 → 44,27 (wektor z faktury Apilo).
 describe('ceny z magazynu przy WDT', () => {
   const produkt = (nad = {}) => ({
-    kanal: 'pro', produkt_id: '28040', wariant_id: '', nazwa: 'Szablon malarski STOP',
-    sku_sklepu: 'PRO-STOP-001', cena_gr: 10890, rozmiar_tekst: '70x100cm', kategorie: [], zdjecia: [],
-    adres: 'https://pro.szkicownia.pl/produkt/stop', odczytane_at: '2026-08-26T08:00:00', ...nad,
+    kanal: 'pro', produkt_id: '28040', wariant_id: '', nazwa: 'Lampa stołowa Kałamarz',
+    sku_sklepu: 'PRO-KAL-001', cena_gr: 10890, rozmiar_tekst: '30x45cm', kategorie: [], zdjecia: [],
+    adres: 'https://pro.szkicownia.pl/produkt/kalamarz', odczytane_at: '2026-08-26T08:00:00', ...nad,
   });
 
   it('karta zamówienia WDT: pozycja z magazynu wchodzi po rabacie i ÷1,23', async () => {

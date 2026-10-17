@@ -8,8 +8,8 @@
 // nie zapomnienie. Powod stoi w specyfikacji: lustro sklepu (`produkty_sklepowe`) NIE WIE,
 // kiedy produkt sie pojawil, bo `odczytane_at` jest nadpisywane przy kazdym odswiezeniu
 // (`zapiszProduktSklepowy` robi ON CONFLICT DO UPDATE po wszystkich kolumnach lustra).
-// Pytanie „ile nowych wzorow w tym tygodniu" nie ma dzis w bazie odpowiedzi ani na przod,
-// ani wstecz — automat wzorow wymaga najpierw nowej kolumny w lustrze. To Etap 2.
+// Pytanie „ile nowych produktow w tym tygodniu" nie ma dzis w bazie odpowiedzi ani na przod,
+// ani wstecz — automat produktow wymaga najpierw nowej kolumny w lustrze. To Etap 2.
 //
 // ⚠️ DOLOZENIE AUTOMATU to JEDNA pozycja w tej mapie. Bez migracji, bez zmian w widoku
 // i bez dotykania `postepCelu` — o ile `policz` dotrzyma kontraktu ponizej.

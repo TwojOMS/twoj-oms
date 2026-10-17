@@ -394,7 +394,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
    * jednej oferty ida przez `/sale/product-offers/{id}` w `pobierzOferte` wyzej.
    *
    * ⚠️ NIE DOCIAGAMY GALERII. Lista niesie wylacznie `primaryImage` i to wystarcza:
-   * pelna galeria kosztowalaby 447 osobnych wywolan, a zdjecia do folderu wzoru (Etap 2)
+   * pelna galeria kosztowalaby 447 osobnych wywolan, a zdjecia do karty produktu
    * bierzemy ze sklepu, gdzie Woo oddaje komplet w tym samym zapytaniu.
    *
    * ⚠️ ZADNYCH FILTROW W ZAPYTANIU. Zmierzone 2026-08-04: literowka w nazwie parametru

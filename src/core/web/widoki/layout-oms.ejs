@@ -491,7 +491,7 @@
       padding: .7rem .75rem .35rem; color: var(--tekst-przygaszony); font-size: .72rem;
       font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
     }
-    /* Ekran nadania (nadaj.ejs) — wzor wlasciciela z Apilo: waga i trzy wymiary w */
+    /* Ekran nadania (nadaj.ejs) — karta wlasciciela z Apilo: waga i trzy wymiary w */
     /* jednym rzedzie, nie jeden pod drugim. Zwykly flex, bez frameworka. */
     .rzad { display: flex; flex-wrap: wrap; gap: 1rem; margin: .5rem 0; }
     .rzad label { display: flex; flex-direction: column; gap: .25rem; }
@@ -729,7 +729,7 @@
     /* `height` obrazka — dzieki temu wiersz ma swoja wysokosc, zanim zdjecie sie wczyta, */
     /* i tabela nie skacze przy przewijaniu. */
     /* Kolumna „Produkty" potrzebuje szerokosci: przy miniaturze zabierajacej 38 px nazwa */
-    /* szablonu lamala sie na cztery linie i wiersz rosl do stu pikselow. Tabela ma teraz */
+    /* produktu lamala sie na cztery linie i wiersz rosl do stu pikselow. Tabela ma teraz */
     /* wlasny przewijak, wiec minimalna szerokosc niczego nie rozpycha. */
     .komorka-produkty { min-width: 17rem; }
     .pozycja { display: flex; gap: .5rem; align-items: center; }
@@ -811,7 +811,7 @@
     .lista-wyniku .waga { min-width: 5.6rem; text-align: center; }
     .lista-wyniku .link-numer { color: var(--link); }
     .lista-wyniku form { margin-left: auto; }
-    /* PRZ-070: lista szablonów niesie pełny opis („Arkusz 70×100 (110 × 75 × 1 cm, 1 kg)"), */
+    /* PRZ-070: lista szablonów paczek niesie pełny opis („Karton 70×100 (110 × 75 × 1 cm, 1 kg)"), */
     /* który bez sufitu rozpychał tabelę i chował kolumnę Pobranie za przewijaniem.        */
     .nadanie-hurtem select { max-width: 13rem; }
     .produkty-hurtem { list-style: none; margin: 0; padding: 0; font-size: .85rem; line-height: 1.35; }
@@ -892,7 +892,7 @@
        nie da sie ich rozjechac, nie zmieniajac wygladu calego panelu.
        `auto-fit` + `minmax` zamiast sztywnej liczby kolumn: w polowie szerokosci ekranu
        (sekcja stoi pod ukladem pol na pol) pola same schodza do dwoch albo jednej kolumny. */
-    /* Pole wielowierszowe (opis wzoru na karcie magazynu) dziedziczy TE SAME wartosci, co
+    /* Pole wielowierszowe (opis karty na karcie magazynu) dziedziczy TE SAME wartosci, co
        `input` i `select` wyzej — osobna regula, a nie dopisany selektor, zeby nie ruszac
        reguly, ktora opisuje wszystkie pozostale pola panelu. `resize: vertical`, bo poziomo
        rozciagniete pole wychodzi poza siatke i rozpycha caly panel. */
@@ -900,8 +900,8 @@
     .pola--siatka { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: .55rem .8rem; }
     .pola--siatka label { min-width: 0; }
     .pola--siatka input, .pola--siatka select { width: 100%; }
-    /* Pole na CALA szerokosc siatki — opis wzoru scisniety do jednej kolumny z dwunastu
-       znakow nie daje sie przeczytac, a to z niego powstaje plik opisu w folderze wzoru. */
+    /* Pole na CALA szerokosc siatki — opis karty scisniety do jednej kolumny z dwunastu
+       znakow nie daje sie przeczytac, a to on trafia potem do opisu produktu. */
     .pola--siatka .pole-szerokie { grid-column: 1 / -1; }
     /* Podpowiedz POD polem, nie w etykiecie: wpleciona w etykiete rozpychala ja na dwa
        wiersze i sasiednie pola przestawaly stac w jednej linii. */
@@ -1030,7 +1030,7 @@
     .tab-magazyn { width: 100%; border-collapse: collapse; margin-top: .6rem; font-size: .92rem; }
     .tab-magazyn td { padding: .35rem .4rem; border-top: 1px solid var(--ramka); vertical-align: middle; }
     .tab-magazyn tr:first-child td { border-top: 0; }
-    /* Rozmiar wariantu obok nazwy: przy szablonach to WLASNIE on myli sie przy telefonie,
+    /* Rozmiar wariantu obok nazwy: przy produktach w kilku rozmiarach to WLASNIE on myli sie przy telefonie,
        wiec ma byc widoczny osobno, a nie zlany z nazwa. */
     .magazyn-rozmiar { margin-left: .4rem; padding: .05rem .35rem; border-radius: .25rem; background: var(--marka-jasna); color: var(--marka-ramka); font-size: .78rem; }
     .formularz-w-linii { display: flex; gap: .4rem; align-items: center; justify-content: flex-end; }
@@ -1419,9 +1419,9 @@
     .kol-wymiary { white-space: nowrap; }
     .magazyn-kanal a { color: var(--link); }
     /* Kolumna nazwy niesie DWIE rzeczy jedna pod druga (nazwa + SKU mniejszym drukiem),   */
-    /* wiec potrzebuje szerokosci — inaczej nazwa szablonu lamie sie na cztery linie       */
+    /* wiec potrzebuje szerokosci — inaczej nazwa produktu lamie sie na cztery linie       */
     /* i wiersz rosnie. Tabela ma wlasny przewijak, wiec to niczego nie rozpycha.          */
-    .komorka-wzor { min-width: 18rem; }
+    .komorka-karta { min-width: 18rem; }
     .magazyn-tabela th a { color: var(--link); }
     /* Pasek nad tabela (przebudowa 2026-08-25, Zadanie 5): co zawęża liste z lewej,          */
     /* przelacznik trybu kolumn z prawej. Stoi NAD `.przewijak-tabeli`, wiec nie jedzie       */
@@ -1438,9 +1438,12 @@
     .tabela-glowa .przelacznik a { text-decoration: none; }
     .tabela-glowa .przelacznik a:hover { text-decoration: underline; text-decoration-color: currentColor; }
     /* Kolumna „Stan" trybu porzadkow. Liczba brakow ma byc czytelna, ale CISZEJ niz tresc    */
-    /* wiersza: to miara roboty do zrobienia, a nie dana wzoru — komplet mowi znacznikiem,    */
+    /* wiersza: to miara roboty do zrobienia, a nie dana karty — komplet mowi znacznikiem,    */
     /* tak samo jak „paczkomat: tak". Bez lamania na dwie linie przy ~1000 wierszach.         */
     .stan-braki { font-size: .8rem; color: var(--tekst-przygaszony); white-space: nowrap; }
+    /* PRZ-091 — stany magazynowe: liczba na minusie i pasek nad tabelą Magazynu. */
+    .stan-minus { color: var(--blad-tekst); font-weight: 600; }
+    .magazyn-stany { margin: .5rem 0; padding: .4rem .7rem; border: 1px solid var(--blad-ramka); border-radius: 6px; background: var(--blad-tlo-jasne); }
     /* Kafle brakow (przebudowa 2026-08-25, spec w docs/superpowers/specs).                */
     /* ⚠️ `.kafel` PONIZEJ CELOWO SCOPOWANY PRZEZ `.kafle` (naglowek nawigacji): gola klasa */
     /* `.kafel` jest juz ZAJETA przez kafle KPI raportow/finansow/klienta/zwrotu (patrz     */
@@ -1529,7 +1532,7 @@
     .akcja-zasada { flex-basis: 100%; margin: 0; font-size: .8rem; color: var(--tekst-przygaszony); }
 
     /* ================================================================================= */
-    /* POWIAZANIA OFERT ALLEGRO Z WZORAMI (magazyn-powiazania.ejs).                       */
+    /* POWIAZANIA OFERT ALLEGRO Z KARTAMI (magazyn-powiazania.ejs).                      */
     /* ⚠️ ANI JEDNEGO NOWEGO KOLORU — te same zmienne, co wyzej, zdefiniowane w OBU       */
     /* paletach. I ANI JEDNEJ ETYKIETY Z WIDOKU W KOMENTARZACH: arkusz jedzie w KAZDEJ    */
     /* stronie panelu, wiec slowo stad da sie znalezc w HTML-u dowolnego ekranu.          */
@@ -1898,7 +1901,7 @@
   <%# ⚠️ htmx — JEDYNA biblioteka po stronie przegladarki w tym panelu i jest tu po JEDNA
       rzecz: zywe szukanie w magazynie (21.08.2026). Nie pisze sie w niej JavaScriptu —
       atrybuty `hx-*` mowia, co pobrac i ktory kawalek strony podmienic, a serwer dalej
-      renderuje HTML z tych samych szablonow EJS. Regula „widok nic nie liczy" zostaje
+      renderuje HTML z tych samych widokow EJS. Regula „widok nic nie liczy" zostaje
       nietknieta: przegladarka nie dostaje ani jednej liczby do policzenia.
 
       ⚠️⚠️ WYLACZNIE NA ZADANIE WIDOKU (`htmx: true` z trasy), nigdy globalnie. Ekran zwrotu

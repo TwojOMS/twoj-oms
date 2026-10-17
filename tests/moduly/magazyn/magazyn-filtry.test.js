@@ -6,7 +6,7 @@ import {
 // Jawne wejście historycznych testów; pętle sprawdzają filtr i zachowanie bazy.
 const KANALY_MAGAZYNU = ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka'];
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { utworzWzor, zapiszProduktSklepowy, powiazProdukt, wzoryZKanalami } from '../../../src/oms/db/magazyn.js';
+import { utworzKarte, zapiszProduktSklepowy, powiazProdukt, kartyZKanalami } from '../../../src/oms/db/magazyn.js';
 
 // FILTRY MAGAZYNU — warstwa czysta miedzy adresem HTTP a zapytaniem.
 //
@@ -14,14 +14,14 @@ import { utworzWzor, zapiszProduktSklepowy, powiazProdukt, wzoryZKanalami } from
 // wartosci. Warstwa zapytan traktuje NIEZNANA wartosc filtru jako `1 = 0`, czyli oddaje
 // PUSTO — swiadomie, bo filtr, ktorego nie rozumiemy, nie ma prawa poszerzac zbioru przed
 // edycja hurtem. Skutek uboczny jest taki, ze pozycja wystawiona w interfejsie, a nieznana
-// bazie, daje PUSTY EKRAN zamiast wyniku — i wyglada jak „nie ma takich wzorow", a nie jak
+// bazie, daje PUSTY EKRAN zamiast wyniku — i wyglada jak „nie ma takich kart", a nie jak
 // brakujaca funkcja. Dlatego kazda z trzech list nizej jest przypieta do zachowania bazy,
 // a nie tylko do samej siebie.
 
 describe('filtryZZapytania — czytanie adresu', () => {
   it('czyta wszystkie filtry naraz', () => {
     expect(filtryZZapytania({
-      fraza: 'pieszy',
+      fraza: 'szpulka',
       kanal: 'pro',
       kategoria: 'Aplikacje',
       brak: 'sku',
@@ -29,7 +29,7 @@ describe('filtryZZapytania — czytanie adresu', () => {
       cenaOd: '10',
       cenaDo: '99',
     }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka'])).toEqual({
-      fraza: 'pieszy',
+      fraza: 'szpulka',
       kanal: 'pro',
       kategoria: 'Aplikacje',
       brak: 'sku',
@@ -91,14 +91,14 @@ describe('filtryZZapytania — czytanie adresu', () => {
   });
 
   it('fraza jest przycinana, a sama biel to brak frazy', () => {
-    expect(filtryZZapytania({ fraza: '  pieszy  ' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).fraza).toBe('pieszy');
+    expect(filtryZZapytania({ fraza: '  szpulka  ' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).fraza).toBe('szpulka');
     expect(filtryZZapytania({ fraza: '   ' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).fraza).toBe(null);
   });
 
   it('kategoria NIE ma zamknietej listy — nazwy przychodza ze sklepow', () => {
     // Odwrotnie niz kanaly: kategorie doklada SKLEP, bez pytania nas o zdanie (ta sama
     // asymetria, co przy metodach platnosci na liscie zamowien). Nazwa nietrafiona po prostu
-    // nie trafi w zaden wzor — i to jest inna sytuacja niz „wartosc spoza slownika".
+    // nie trafi w zaden karta — i to jest inna sytuacja niz „wartosc spoza slownika".
     expect(filtryZZapytania({ kategoria: 'Kategoria, ktorej jeszcze nie ma' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).kategoria)
       .toBe('Kategoria, ktorej jeszcze nie ma');
     expect(filtryZZapytania({ kategoria: '  Boho  ' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).kategoria).toBe('Boho');
@@ -110,23 +110,23 @@ describe('filtryZZapytania — czytanie adresu', () => {
 // kategoria, paczkomat. Plan Zadania 10 proponowal `brak ∈ sku|wymiary|allegro` — wartosci
 // `allegro` w `db/magazyn.js` NIE MA i nieznana wartosc leci tam w `1 = 0`. Pozycja
 // „bez oferty na Allegro" wystawiona w interfejsie oddawalaby wiec PUSTA LISTE przy kazdym
-// klknieciu, co wyglada jak „nie ma takich wzorow", a nie jak funkcja, ktorej nie napisano.
+// klknieciu, co wyglada jak „nie ma takich kart", a nie jak funkcja, ktorej nie napisano.
 describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
   let db;
   beforeEach(() => { db = openOmsDb(':memory:'); });
 
-  // ⚠️ KAZDEMU WZOROWI BRAKUJE DOKLADNIE JEDNEJ RZECZY, i kazdemu innej.
+  // ⚠️ KAZDEJ KARCIE BRAKUJE DOKLADNIE JEDNEJ RZECZY, i kazdej innej.
   //
-  // Wczesniej stal tu jeden wzor „Niepelny" bez NICZEGO — a wtedy wszystkie cztery pozycje
+  // Wczesniej stala tu jedna karta „Niepelna" bez NICZEGO — a wtedy wszystkie cztery pozycje
   // `brak` oddawaly ten sam wiersz i test nie odrozial ich od siebie: podmiana galezi
   // `brak === 'sku'` na warunek o wymiarach przechodzila na zielono. Wlasciwosc byla
   // GWARANTOWANA USTAWIENIEM ATRAPY, a nie sprawdzana — ta sama rodzina, co produkt
-  // zawsze powiazany z wzorem.
+  // zawsze powiazany z kartą.
   //
   // ⚠️ PIATA POZYCJA (`komplet`) NIE JEST BRAKIEM, tylko druga strona tej samej monety:
-  // wzory, ktorym NICZEGO nie brakuje. W tym katalogu jest to dokladnie jeden wiersz, wiec
+  // karty, ktorym NICZEGO nie brakuje. W tym katalogu jest to dokladnie jeden wiersz, wiec
   // rozjechanie sie jej z warstwa zapytan pada tak samo jak przy czterech pozostalych.
-  const WZOR_POZYCJI = Object.freeze({
+  const KARTA_POZYCJI = Object.freeze({
     sku: 'BezSku',
     wymiary: 'BezWymiarow',
     kategoria: 'BezKategorii',
@@ -135,58 +135,58 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
   });
 
   function katalog() {
-    // `wzory.sku` ma UNIQUE, wiec kazdy wzor dostaje wlasny numer — inaczej atrapa wysypuje
+    // `karty.sku` ma UNIQUE, wiec kazda karta dostaje wlasny numer — inaczej atrapa wysypuje
     // sie na wiezie, zamiast opisac katalog.
     const pelny = (nazwa) => ({
-      nazwa, sku: `PRO-${nazwa}`, szerokosc_mm: 700, wysokosc_mm: 1000,
+      nazwa, sku: `SKU-${nazwa}`, szerokosc_mm: 700, wysokosc_mm: 1000,
       kategoria_glowna: 'Boho', paczkomat: 'tak',
     });
     const bez = {
       sku: { sku: null },
-      // Polowiczny wymiar to nadal brak wymiarow — do ciecia potrzebne sa oba.
+      // Polowiczny wymiar to nadal brak wymiarow — do wysylki i gabarytu potrzebne sa oba.
       wymiary: { wysokosc_mm: null },
       kategoria: { kategoria_glowna: null },
       paczkomat: { paczkomat: null },
     };
-    // ⚠️ `komplet` z WZOR_POZYCJI wlasnym wzorem nie jest — to TEN wzor, ktory ma komplet.
-    const komplet = utworzWzor(db, pelny(WZOR_POZYCJI.komplet));
+    // ⚠️ `komplet` z KARTA_POZYCJI wlasna karta nie jest — to TA karta, ktora ma komplet.
+    const komplet = utworzKarte(db, pelny(KARTA_POZYCJI.komplet));
     for (const [brak, dziura] of Object.entries(bez)) {
-      utworzWzor(db, { ...pelny(WZOR_POZYCJI[brak]), ...dziura });
+      utworzKarte(db, { ...pelny(KARTA_POZYCJI[brak]), ...dziura });
     }
     // Dwa produkty w lustrze, w roznych kanalach — zeby „filtr zawezil" znaczylo cos wiecej
     // niz „filtr czegos nie wywalil".
-    for (const [wzorId, kanal, produktId] of [[komplet, 'pro', '1']]) {
+    for (const [kartaId, kanal, produktId] of [[komplet, 'pro', '1']]) {
       const p = zapiszProduktSklepowy(db, {
         kanal, produkt_id: produktId, wariant_id: '', cena_gr: 5000, nazwa: `Produkt ${produktId}`,
         odczytane_at: '2026-08-11T06:00:00.000Z',
       });
-      powiazProdukt(db, p, wzorId);
+      powiazProdukt(db, p, kartaId);
     }
   }
 
-  it('KAZDA pozycja z BRAKI_MAGAZYNU zaweza do SWOJEGO wzoru, a nie do „byle niepelnego"', () => {
+  it('KAZDA pozycja z BRAKI_MAGAZYNU zaweza do SWOJEJ karty, a nie do „byle niepelnej"', () => {
     katalog();
-    expect(wzoryZKanalami(db, {})).toHaveLength(5);
+    expect(kartyZKanalami(db, {})).toHaveLength(5);
 
     for (const brak of BRAKI_MAGAZYNU) {
-      const wynik = wzoryZKanalami(db, { filtry: { brak } });
-      // Pozycja nieznana bazie oddalaby ZERO na kazdym katalogu. A ze kazdemu wzorowi
+      const wynik = kartyZKanalami(db, { filtry: { brak } });
+      // Pozycja nieznana bazie oddalaby ZERO na kazdym katalogu. A ze kazdej karcie
       // brakuje CZEGOS INNEGO, przestawienie dwoch galezi miedzy soba tez tu pada.
-      expect(wynik.map((w) => w.nazwa), `brak=${brak}`).toEqual([WZOR_POZYCJI[brak]]);
+      expect(wynik.map((w) => w.nazwa), `brak=${brak}`).toEqual([KARTA_POZYCJI[brak]]);
     }
   });
 
   // ⚠️ PIATA POZYCJA JEST KAFLEM POSTEPU, a kafel PROWADZI do listy. Gdyby `komplet` zostalo
   // dopisane do slownika, a warstwa zapytan go nie znala, kafel „gotowe: 214" prowadzilby
-  // do PUSTEJ tabeli — czyli do obrazu „nie ma takich wzorow" przy 214 wzorach, ktore sa.
+  // do PUSTEJ tabeli — czyli do obrazu „nie ma takich kart" przy 214 kartach, ktore sa.
   it('komplet jest pozycja slownika, ma etykiete i baza go rozumie', () => {
     katalog();
     expect(BRAKI_MAGAZYNU).toContain('komplet');
     expect(BRAKI_ETYKIETY.komplet).toBe('komplet — nic nie brakuje');
     expect(filtryZZapytania({ brak: 'komplet' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).brak).toBe('komplet');
-    // Cztery niepelne wzory z `katalog()` maja tu NIE BYC — inaczej „komplet" znaczyloby
+    // Cztery niepelne karty z `katalog()` maja tu NIE BYC — inaczej „komplet" znaczyloby
     // „cokolwiek", a hurt puszczony po tym zawezeniu ruszylby caly katalog.
-    expect(wzoryZKanalami(db, { filtry: { brak: 'komplet' } }).map((w) => w.nazwa))
+    expect(kartyZKanalami(db, { filtry: { brak: 'komplet' } }).map((w) => w.nazwa))
       .toEqual(['Komplet']);
   });
 
@@ -205,46 +205,46 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
     // Straznik milczy (wyzej) i straznik alarmuje (tutaj). `allegro` z planu Zadania 10 jest
     // wlasnie taka wartoscia — dlatego nie ma go w BRAKI_MAGAZYNU.
     expect(BRAKI_MAGAZYNU).not.toContain('allegro');
-    expect(wzoryZKanalami(db, { filtry: { brak: 'allegro' } })).toEqual([]);
+    expect(kartyZKanalami(db, { filtry: { brak: 'allegro' } })).toEqual([]);
     expect(filtryZZapytania({ brak: 'allegro' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).brak).toBe(null);
   });
 
-  it('KAZDY kanal ze slownika zaweza do SWOJEGO wzoru, a nie do „byle majacego produkt"', () => {
-    // ⚠️ Wczesniej stal tu JEDEN wzor obecny we WSZYSTKICH czterech kanalach i drugi bez
+  it('KAZDY kanal ze slownika zaweza do SWOJEJ karty, a nie do „byle majacej produkt"', () => {
+    // ⚠️ Wczesniej stala tu JEDNA karta obecna we WSZYSTKICH czterech kanalach i druga bez
     // produktu — a wtedy filtr, ktory w ogole nie patrzy na wartosc `kanal`, oddawal ten sam
     // wynik i test swiecil na zielono. Wlasciwosc byla gwarantowana atrapa. Teraz kazdy
-    // kanal ma WLASNY wzor, wiec pominiecie wartosci kanalu oddaje cztery wiersze zamiast
+    // kanal ma WLASNA karte, wiec pominiecie wartosci kanalu oddaje cztery wiersze zamiast
     // jednego.
     KANALY_MAGAZYNU.forEach((kanal, i) => {
-      const wzorId = utworzWzor(db, { nazwa: `Tylko ${kanal}` });
+      const kartaId = utworzKarte(db, { nazwa: `Tylko ${kanal}` });
       const p = zapiszProduktSklepowy(db, {
         kanal, produkt_id: String(100 + i), wariant_id: '', cena_gr: 1000, nazwa: `Tylko ${kanal}`,
         odczytane_at: '2026-08-11T06:00:00.000Z',
       });
-      powiazProdukt(db, p, wzorId);
+      powiazProdukt(db, p, kartaId);
     });
-    utworzWzor(db, { nazwa: 'Nigdzie' });
+    utworzKarte(db, { nazwa: 'Nigdzie' });
 
     for (const kanal of KANALY_MAGAZYNU) {
-      expect(wzoryZKanalami(db, { filtry: { kanal } }).map((w) => w.nazwa), kanal)
+      expect(kartyZKanalami(db, { filtry: { kanal } }).map((w) => w.nazwa), kanal)
         .toEqual([`Tylko ${kanal}`]);
     }
   });
 
-  it('KAZDY stan paczkomatu ze slownika zawęża liste do swojego wzoru', () => {
-    utworzWzor(db, { nazwa: 'Atak', paczkomat: 'tak' });
-    utworzWzor(db, { nazwa: 'Bnie', paczkomat: 'nie' });
-    utworzWzor(db, { nazwa: 'Cbrak' });
+  it('KAZDY stan paczkomatu ze slownika zawęża liste do swojej karty', () => {
+    utworzKarte(db, { nazwa: 'Atak', paczkomat: 'tak' });
+    utworzKarte(db, { nazwa: 'Bnie', paczkomat: 'nie' });
+    utworzKarte(db, { nazwa: 'Cbrak' });
 
     const oczekiwane = { tak: ['Atak'], nie: ['Bnie'], nieoznaczone: ['Cbrak'] };
     for (const stan of PACZKOMAT_DO_FILTRA) {
-      expect(wzoryZKanalami(db, { filtry: { paczkomat: stan } }).map((w) => w.nazwa), stan)
+      expect(kartyZKanalami(db, { filtry: { paczkomat: stan } }).map((w) => w.nazwa), stan)
         .toEqual(oczekiwane[stan]);
     }
     // ⚠️ Plan Zadania 10 proponowal `paczkomat ∈ tak|nie|brak`. Baza zna `nieoznaczone`,
     // a `brak` leci u niej w `1 = 0` — pusty ekran zamiast trzeciego stanu.
     expect(PACZKOMAT_DO_FILTRA).not.toContain('brak');
-    expect(wzoryZKanalami(db, { filtry: { paczkomat: 'brak' } })).toEqual([]);
+    expect(kartyZKanalami(db, { filtry: { paczkomat: 'brak' } })).toEqual([]);
   });
 
   it('wartosc przepuszczona przez parser jest wartoscia, ktora baza rozumie', () => {
@@ -272,7 +272,7 @@ describe('saJakiesFiltry', () => {
     // Po jednym na pole: pominiete pole w sumie logicznej znaczy „ekran twierdzi, ze nic
     // nie zawezil", czyli pusty wynik filtrowania opisuje sie jako pusty magazyn.
     for (const q of [
-      { fraza: 'pieszy' }, { kanal: 'pro' }, { kategoria: 'Boho' }, { brak: 'sku' },
+      { fraza: 'szpulka' }, { kanal: 'pro' }, { kategoria: 'Boho' }, { brak: 'sku' },
       { paczkomat: 'tak' }, { cenaOd: '10' }, { cenaDo: '10' },
     ]) {
       expect(saJakiesFiltry(filtryZZapytania(q, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka'])), JSON.stringify(q)).toBe(true);
@@ -290,8 +290,8 @@ describe('parametryUkryte — formularze niosa nawzajem swoje wartosci', () => {
   // musza sie LACZYC. Formularz GET wysyla TYLKO wlasne pola, wiec kazdy z dwoch
   // formularzy musi niesc wartosci drugiego ukrytymi polami.
   it('formularz filtrow niesie dalej fraze', () => {
-    expect(parametryUkryte({ fraza: 'pieszy', kanal: 'pro' }))
-      .toContainEqual({ name: 'fraza', value: 'pieszy' });
+    expect(parametryUkryte({ fraza: 'szpulka', kanal: 'pro' }))
+      .toContainEqual({ name: 'fraza', value: 'szpulka' });
   });
 
   it('formularz wyszukiwarki niesie dalej filtry', () => {
@@ -316,7 +316,7 @@ describe('parametryUkryte — formularze niosa nawzajem swoje wartosci', () => {
 
   it('obrot przez ukryte pole nie rusza zadnej wartosci (dwa razy tam i z powrotem)', () => {
     const pierwsze = filtryZZapytania({
-      fraza: 'pieszy', kanal: 'pro', kategoria: 'Boho', brak: 'sku',
+      fraza: 'szpulka', kanal: 'pro', kategoria: 'Boho', brak: 'sku',
       paczkomat: 'nieoznaczone', cenaOd: '10', cenaDo: '74,90',
     }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']);
     const jakZapytanie = (pary) => Object.fromEntries(pary.map((p) => [p.name, p.value]));
@@ -332,10 +332,10 @@ describe('parametryUkryte — formularze niosa nawzajem swoje wartosci', () => {
     // znaczyloby, ze formularz filtrow wysyla `kanal` ukrytym polem I polem wyboru naraz.
     // Fastify oddaje wtedy TABLICE, parser slusznie odrzuca ja do `null` i filtr znika
     // dokladnie w tym formularzu, ktory sluzy do jego ustawiania.
-    const filtry = filtryZZapytania({ fraza: 'pieszy', kanal: 'pro', cenaOd: '10' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']);
+    const filtry = filtryZZapytania({ fraza: 'szpulka', kanal: 'pro', cenaOd: '10' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']);
     const u = parametryUkryte(filtry, { pomin: ['kanal', 'kategoria', 'brak', 'paczkomat', 'cenaOd', 'cenaDo'] });
 
-    expect(u).toEqual([{ name: 'fraza', value: 'pieszy' }]);
+    expect(u).toEqual([{ name: 'fraza', value: 'szpulka' }]);
     expect(parametryUkryte(filtry, { pomin: ['fraza'] }).map((p) => p.name)).not.toContain('fraza');
   });
 });
@@ -358,10 +358,10 @@ describe('wartosciPol — to, co stoi w polach formularza', () => {
 
   it('przepisuje pozostale pola bez zmiany', () => {
     const w = wartosciPol(filtryZZapytania({
-      fraza: 'pieszy', kanal: 'pro', kategoria: 'Boho', brak: 'sku', paczkomat: 'nieoznaczone',
+      fraza: 'szpulka', kanal: 'pro', kategoria: 'Boho', brak: 'sku', paczkomat: 'nieoznaczone',
     }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']));
     expect(w).toMatchObject({
-      fraza: 'pieszy', kanal: 'pro', kategoria: 'Boho', brak: 'sku', paczkomat: 'nieoznaczone',
+      fraza: 'szpulka', kanal: 'pro', kategoria: 'Boho', brak: 'sku', paczkomat: 'nieoznaczone',
     });
   });
 });
@@ -369,7 +369,7 @@ describe('wartosciPol — to, co stoi w polach formularza', () => {
 describe('adresMagazynu — filtry przezywaja klikniecie w naglowek sortujacy', () => {
   it('zachowuje fraze i KAZDY filtr przy zmianie sortowania', () => {
     const filtry = filtryZZapytania({
-      fraza: 'pieszy', kanal: 'pro', kategoria: 'Boho', brak: 'sku',
+      fraza: 'szpulka', kanal: 'pro', kategoria: 'Boho', brak: 'sku',
       paczkomat: 'nieoznaczone', cenaOd: '10', cenaDo: '99',
     }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']);
     const adres = adresMagazynu(filtry, { sort: 'sku', kier: 'desc' });
@@ -377,7 +377,7 @@ describe('adresMagazynu — filtry przezywaja klikniecie w naglowek sortujacy', 
     expect(adres.startsWith('/magazyn?')).toBe(true);
     const q = new URLSearchParams(adres.slice(adres.indexOf('?') + 1));
     expect(Object.fromEntries(q)).toEqual({
-      fraza: 'pieszy',
+      fraza: 'szpulka',
       kanal: 'pro',
       kategoria: 'Boho',
       brak: 'sku',
@@ -431,12 +431,12 @@ describe('adresMagazynu — filtry przezywaja klikniecie w naglowek sortujacy', 
   });
 
   it('tryb doklada sie do PELNEGO kompletu, a nie zastepuje go', () => {
-    const filtry = filtryZZapytania({ fraza: 'pieszy', kanal: 'pro', brak: 'sku' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']);
+    const filtry = filtryZZapytania({ fraza: 'szpulka', kanal: 'pro', brak: 'sku' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']);
     const adres = adresMagazynu(filtry, { sort: 'braki', kier: 'desc', widok: 'katalog' });
     const q = new URLSearchParams(adres.slice(adres.indexOf('?') + 1));
 
     expect(Object.fromEntries(q)).toEqual({
-      fraza: 'pieszy', kanal: 'pro', brak: 'sku', sort: 'braki', kier: 'desc', widok: 'katalog',
+      fraza: 'szpulka', kanal: 'pro', brak: 'sku', sort: 'braki', kier: 'desc', widok: 'katalog',
     });
   });
 });

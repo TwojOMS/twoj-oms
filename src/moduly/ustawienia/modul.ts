@@ -3,6 +3,7 @@ import { registerLogowanieRoutes } from './trasy/logowanie.js';
 import { nazwaCiasteczkaOms } from '../../core/bezpieczenstwo/sesja.js';
 import { registerKontaRoutes } from './trasy/konta.js';
 import { registerUstawieniaWysylkiRoutes } from './trasy/wysylka.js';
+import { registerUstawieniaMagazynuRoutes } from './trasy/magazyn.js';
 import {registerUstawieniaRoutes} from '../marketing/trasy/integracje.js';
 import { createWidokIntegracji } from './integracje.js';
 import { registerUstawieniaFormulkiRoutes } from '../wiadomosci/trasy/ustawienia.js';
@@ -49,6 +50,7 @@ export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
       loginDemo:ctx.usluga<{demo?:{login:string}|null}>('web','config')?.demo?.login??null,nazwaCiasteczka});
     registerHasloLinkRoutes(app,{db:ctx.db,teraz:ctx.teraz});
     registerUstawieniaWysylkiRoutes(app,{db:ctx.db});
+    registerUstawieniaMagazynuRoutes(app,{db:ctx.db});
     registerUstawieniaFormulkiRoutes(app,{db:ctx.db});
     registerDiagnostykaRoutes(app,{db:ctx.db,config:ctx.usluga('kanaly','config'),lacznosc:ctx.usluga('ustawienia','lacznosc')});
     registerPanelRoutes(app);

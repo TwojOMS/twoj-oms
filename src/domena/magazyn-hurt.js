@@ -2,28 +2,28 @@ import { milimetryZCentymetrow, centymetryZMilimetrow, nazwaBezRozmiaru } from '
 import { PACZKOMAT_WARTOSCI } from './paczkomat.js';
 
 // EDYCJA HURTEM W MAGAZYNIE — reguly czyste. Zadnej bazy, zadnego HTTP: tutaj rozstrzyga
-// sie WYLACZNIE, co formularz znaczy i ktore wzory ta tresc faktycznie zmieni.
+// sie WYLACZNIE, co formularz znaczy i ktore karty ta tresc faktycznie zmieni.
 //
-// PO CO TEN EKRAN ISTNIEJE (zmierzone na produkcji 2026-08-12): 645 wzorow bez wymiaru,
+// PO CO TEN EKRAN ISTNIEJE (zmierzone na produkcji 2026-08-12): 645 kart bez wymiaru,
 // 965 bez oznaczenia paczkomatu, 152 bez kategorii glownej. Bez niego trzeba by otworzyc
 // 645 kart po kolei.
 //
-// ⚠️⚠️ PUSTE POLE ZNACZY „NIE RUSZAJ" — I JEST TO ODWROTNIE NIZ NA KARCIE WZORU. Tam puste
-// pole KASUJE wartosc i jest to bezpieczne, bo czlowiek patrzy na jeden wzor i widzi, co robi.
+// ⚠️⚠️ PUSTE POLE ZNACZY „NIE RUSZAJ" — I JEST TO ODWROTNIE NIZ NA KARCIE PRODUKTU. Tam puste
+// pole KASUJE wartosc i jest to bezpieczne, bo czlowiek patrzy na jedna karte i widzi, co robi.
 // Tutaj formularz ma kilka pol naraz: gdyby puste kasowalo, ustawienie samego paczkomatu
-// WYCZYSCILOBY WYMIARY I KATEGORIE 600 WZOROM jednym kliknieciem, bez sladu i bez mozliwosci
+// WYCZYSCILOBY WYMIARY I KATEGORIE 600 KARTOM jednym kliknieciem, bez sladu i bez mozliwosci
 // cofniecia. To jest warunek bezpieczenstwa, a nie preferencja.
 //
 // ⚠️ KASOWANIE HURTEM MUSI BYC OSOBNYM, JAWNYM WYBOREM — nigdy skutkiem pustego pola.
 // Jedyne takie miejsce nizej to paczkomat 'nieoznaczone': to on jest droga powrotu po
-// hurtowej pomylce na sześciuset wzorach, wiec musi istniec i musi byc nazwany.
+// hurtowej pomylce na sześciuset kartach, wiec musi istniec i musi byc nazwany.
 
 /**
  * Pola, ktore FORMULARZ HURTOWY wysyla — i JEDYNE, ktorych ten ekran dotyka.
  *
- * ⚠️ WEZSZE NIZ `POLA_WZORU` w db/magazyn.js I TAK MA BYC. `sku` jest UNIQUE (hurtem dalo by
- * sie ustawic jedno SKU sześciuset wzorom, czyli odbic sie o baze przy drugim), `opis` jest
- * tekstem pisanym per wzor, a `folder_nas` ustawia Etap 2. Zadne z nich nie ma sensu jako
+ * ⚠️ WEZSZE NIZ `POLA_KARTY` w db/magazyn.js I TAK MA BYC. `sku` jest UNIQUE (hurtem dalo by
+ * sie ustawic jedno SKU sześciuset kartom, czyli odbic sie o baze przy drugim), a `opis` jest
+ * tekstem pisanym per karta. Zadne z nich nie ma sensu jako
  * ta sama wartosc dla calej zaznaczonej grupy.
  *
  * ⚠️ CZYTAMY WYLACZNIE PO TEJ LISCIE, a nie po kluczach ciala zadania — inaczej pole dopisane
@@ -66,14 +66,14 @@ const NIE_ROZUMIEM_WYMIARU = (surowe) => `„${surowe}" to nie jest wymiar w cen
  *
  * ⚠️⚠️ ODMOWA JEST CALOSCIOWA. Jedno pole, ktorego nie rozumiemy, wstrzymuje CALY zapis —
  * a nie „to, co dalo sie odczytac". Polowiczny zapis hurtem zostawialby w bazie stan,
- * o ktorym ekran mowi „nie zapisalem", i przy sześciuset wzorach nikt by juz nie odtworzyl,
+ * o ktorym ekran mowi „nie zapisalem", i przy sześciuset kartach nikt by juz nie odtworzyl,
  * ktora polowa weszla.
  */
 export function polecenieZFormularza(body) {
   const polecenie = {};
 
   // ⚠️ CENTYMETRY WCHODZA, MILIMETRY LADUJA W BAZIE — przelicza `domain/rozmiar.js`, TA SAMA
-  // funkcja, ktorej uzywa karta wzoru. Druga kopia arytmetyki znaczylaby, ze „10,5 cm"
+  // funkcja, ktorej uzywa karta produktu. Druga kopia arytmetyki znaczylaby, ze „10,5 cm"
   // wpisane hurtem to co innego niz „10,5 cm" wpisane na karcie.
   for (const [pole, kolumna] of [['szerokosc_cm', 'szerokosc_mm'], ['wysokosc_cm', 'wysokosc_mm']]) {
     const surowe = poleHurtu(body, pole);
@@ -99,7 +99,7 @@ export function polecenieZFormularza(body) {
   // ⚠️ PACZKOMAT WYLACZNIE RECZNIE, TRZY STANY, ZERO WYLICZANIA Z WYMIAROW (decyzja
   // wlasciciela). Droga typowa to zaznaczyc duza grupe i ustawic „nie", a wyjatki poprawic
   // pojedynczo. Czwarta wartosc w kolumnie zepsulaby filtr „bez oznaczenia paczkomatu" —
-  // wzor z napisem „moze" nie bylby ani oznaczony, ani nieoznaczony.
+  // karta z napisem „moze" nie bylaby ani oznaczona, ani nieoznaczona.
   const paczkomat = poleHurtu(body, 'paczkomat');
   if (paczkomat !== BRAK_POLA) {
     if (typeof paczkomat !== 'string') {
@@ -118,8 +118,8 @@ export function polecenieZFormularza(body) {
   }
 
   // Skrocenie nazwy o rozmiar. ⚠️ WYLACZNIE W REJESTRZE MAGAZYNU — nazwa NIE JEDZIE do
-  // sklepu (decyzja wlasciciela): jest zaindeksowanym tytulem strony, a katalog techniczny
-  // wlasnie przeniesiono na PRO z przekierowaniami 301.
+  // sklepu (decyzja wlasciciela): jest zaindeksowanym tytulem strony, a czesc katalogu
+  // wlasnie przeniesiono do drugiego sklepu z przekierowaniami 301.
   const skroc = poleHurtu(body, 'nazwa_bez_rozmiaru');
   if (skroc !== BRAK_POLA && typeof skroc === 'string' && skroc.trim()) {
     polecenie.nazwaBezRozmiaru = true;
@@ -155,7 +155,7 @@ export function polaDoPrzeniesienia(body) {
 const KOLUMNY = Object.freeze(['nazwa', 'szerokosc_mm', 'wysokosc_mm', 'kategoria_glowna', 'paczkomat']);
 
 // Etykieta i postac czytelna KAZDEJ kolumny — liczone TUTAJ, bo widok w tym module niczego
-// nie liczy (ta sama zasada, co w magazyn-lista.ejs i magazyn-wzor.ejs).
+// nie liczy (ta sama zasada, co w magazyn-lista.ejs i magazyn-karta.ejs).
 const wCentymetrach = (mm) => {
   const cm = centymetryZMilimetrow(mm);
   return cm === null ? null : `${cm} cm`;
@@ -171,45 +171,45 @@ const OPIS_KOLUMNY = Object.freeze({
 });
 
 /**
- * Wartosc docelowa JEDNEJ kolumny dla JEDNEGO wzoru — albo `BRAK_POLA`, gdy polecenie
+ * Wartosc docelowa JEDNEJ kolumny dla JEDNEJ karty — albo `BRAK_POLA`, gdy polecenie
  * tej kolumny w ogole nie dotyczy.
  *
- * `nazwa` jest jedyna kolumna liczona Z WZORU, a nie ze stalej: skrocenie o rozmiar daje
- * kazdemu wzorowi INNA nowa nazwe (i wielu z nich — te sama, co dotad).
+ * `nazwa` jest jedyna kolumna liczona Z KARTY, a nie ze stalej: skrocenie o rozmiar daje
+ * kazdej karcie INNA nowa nazwe (i wielu z nich — te sama, co dotad).
  */
-function wartoscDocelowa(wzor, polecenie, kolumna) {
+function wartoscDocelowa(karta, polecenie, kolumna) {
   if (kolumna === 'nazwa') {
-    return polecenie.nazwaBezRozmiaru ? nazwaBezRozmiaru(wzor.nazwa) : BRAK_POLA;
+    return polecenie.nazwaBezRozmiaru ? nazwaBezRozmiaru(karta.nazwa) : BRAK_POLA;
   }
   return Object.hasOwn(polecenie, kolumna) ? polecenie[kolumna] : BRAK_POLA;
 }
 
 /**
- * Zestaw zmian: ktore z podanych wzorow polecenie FAKTYCZNIE zmieni, w czym i z czego na co.
+ * Zestaw zmian: ktore z podanych kart polecenie FAKTYCZNIE zmieni, w czym i z czego na co.
  *
  * @returns {Array<{id: number, nazwa: string, zmiany: object, opisy: Array}>}
  *
- * ⚠️⚠️ WZOR, KTORY JUZ MA TE WARTOSC, NIE WCHODZI. Podglad obiecujacy „zmienię 645"
+ * ⚠️⚠️ KARTA, KTORA JUZ MA TE WARTOSC, NIE WCHODZI. Podglad obiecujacy „zmienię 645"
  * i zmieniajacy 200 klamie o wlasnym skutku — a ten ekran istnieje wylacznie po to, zeby
  * czlowiek zobaczyl skutek PRZED kliknieciem. Skutek uboczny i pozadany: powtorne wyslanie
- * tego samego formularza nie przestawia juz `zmieniony_at` sześciuset wzorom.
+ * tego samego formularza nie przestawia juz `zmieniony_at` sześciuset kartom.
  *
  * ⚠️ TA SAMA FUNKCJA LICZY PODGLAD I ZATWIERDZENIE. Gdyby zatwierdzenie liczylo po swojemu
  * albo przepisywalo gotowy zestaw z ukrytego pola, odczyt katalogow miedzy jednym a drugim
  * zmienilby zbior po cichu — to jest ta sama zasada, ktora obowiazuje zapis do sklepow.
  */
-export function zmianyHurtem(wzory, polecenie) {
+export function zmianyHurtem(karty, polecenie) {
   const plan = [];
-  for (const wzor of wzory ?? []) {
+  for (const karta of karty ?? []) {
     const zmiany = {};
     const opisy = [];
 
     for (const kolumna of KOLUMNY) {
-      const docelowa = wartoscDocelowa(wzor, polecenie ?? {}, kolumna);
+      const docelowa = wartoscDocelowa(karta, polecenie ?? {}, kolumna);
       if (docelowa === BRAK_POLA) continue;
       // `?? null` po obu stronach: kolumna nullowalna oddaje `null`, a `undefined` (kolumna
       // nieodczytana z bazy) nie ma prawa udawac zmiany.
-      const biezaca = wzor[kolumna] ?? null;
+      const biezaca = karta[kolumna] ?? null;
       const nowa = docelowa ?? null;
       if (biezaca === nowa) continue;
 
@@ -218,7 +218,7 @@ export function zmianyHurtem(wzory, polecenie) {
       opisy.push({ pole: etykieta, z: czytelnie(biezaca), na: czytelnie(nowa) });
     }
 
-    if (opisy.length) plan.push({ id: wzor.id, nazwa: wzor.nazwa, zmiany, opisy });
+    if (opisy.length) plan.push({ id: karta.id, nazwa: karta.nazwa, zmiany, opisy });
   }
   return plan;
 }

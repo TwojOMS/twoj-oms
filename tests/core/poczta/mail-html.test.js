@@ -39,7 +39,7 @@ describe('renderMailHtml — tabela wyceny', () => {
   const quoteText = [
     'Dzień dobry,',
     'Wycena:',
-    '2x szablon malarski wielorazowy logo 60x40 - 240zł brutto/szt',
+    '2x lampa wisząca Kopuła 60x40 - 240zł brutto/szt',
     'wysyłka kurierem DPD 25zł brutto',
     'przygotowanie projektu w cenie',
     'Razem: 505zł (410,57zł netto)',
@@ -50,7 +50,7 @@ describe('renderMailHtml — tabela wyceny', () => {
   it('kanoniczne linie wyceny stają się wierszami tabeli', () => {
     const html = renderMailHtml({ text: quoteText });
     expect(html).toContain('<table');
-    expect(html).toContain('szablon malarski wielorazowy logo 60x40');
+    expect(html).toContain('lampa wisząca Kopuła 60x40');
     expect(html).toContain('240zł');
     expect(html).toContain('wysyłka kurierem DPD');
   });
@@ -65,7 +65,7 @@ describe('renderMailHtml — tabela wyceny', () => {
   it('linie tabelaryczne NIE dublują się jako akapity', () => {
     const html = renderMailHtml({ text: quoteText });
     // pozycja występuje raz (w tabeli), a surowa linia plain-textu nie ląduje w akapicie
-    expect(html.split('szablon malarski wielorazowy logo 60x40').length - 1).toBe(1);
+    expect(html.split('lampa wisząca Kopuła 60x40').length - 1).toBe(1);
     expect(html).not.toContain('- 240zł brutto/szt');
   });
 
@@ -77,7 +77,7 @@ describe('renderMailHtml — tabela wyceny', () => {
   });
 
   it('wysyłka gratis też trafia do tabeli', () => {
-    const t = ['Wycena:', '1x szablon - 100zł brutto/szt', 'wysyłka gratis', 'Razem: 100zł (81,30zł netto)'].join('\n');
+    const t = ['Wycena:', '1x lampa - 100zł brutto/szt', 'wysyłka gratis', 'Razem: 100zł (81,30zł netto)'].join('\n');
     const html = renderMailHtml({ text: t });
     expect(html).toContain('wysyłka gratis');
     const poTabeli = html.indexOf('wysyłka gratis');
@@ -117,7 +117,7 @@ describe('dodatki bez kwoty — „w cenie" i „gratis" po prawej, jak kwota', 
 
   it('bez kwot: obie pozycje są wierszami tabeli z wartością po prawej', () => {
     const t = [
-      'Wycena:', '1x szablon - 100zł brutto/szt',
+      'Wycena:', '1x lampa - 100zł brutto/szt',
       'przygotowanie projektu - w cenie', 'wysyłka kurierem DPD - gratis',
       'Razem: 100zł (81,30zł netto)',
     ].join('\n');
@@ -128,7 +128,7 @@ describe('dodatki bez kwoty — „w cenie" i „gratis" po prawej, jak kwota', 
 
   it('z kwotami: ten sam kształt wiersza — różni się tylko prawa kolumna', () => {
     const t = [
-      'Wycena:', '1x szablon - 100zł brutto/szt',
+      'Wycena:', '1x lampa - 100zł brutto/szt',
       'przygotowanie projektu - 80zł brutto', 'wysyłka kurierem DPD - 25zł brutto',
       'Razem: 205zł (166,67zł netto)',
     ].join('\n');
@@ -140,7 +140,7 @@ describe('dodatki bez kwoty — „w cenie" i „gratis" po prawej, jak kwota', 
   // Sedno usterki: żaden wiersz wyceny nie ma prawa rozciągać się na obie kolumny.
   it('żaden wiersz tabeli nie rozciąga się na obie kolumny', () => {
     const t = [
-      'Wycena:', '1x szablon - 100zł brutto/szt',
+      'Wycena:', '1x lampa - 100zł brutto/szt',
       'przygotowanie projektu - w cenie', 'wysyłka kurierem DPD - gratis',
       'Razem: 100zł (81,30zł netto)',
     ].join('\n');
@@ -156,7 +156,7 @@ describe('dodatki bez kwoty — „w cenie" i „gratis" po prawej, jak kwota', 
 
   it('„Wycena:" i „Czas realizacji:" są nagłówkami sekcji, nie akapitami', () => {
     const t = [
-      'Wycena:', '1x szablon - 100zł brutto/szt', 'Razem: 100zł (81,30zł netto)',
+      'Wycena:', '1x lampa - 100zł brutto/szt', 'Razem: 100zł (81,30zł netto)',
       '', 'Czas realizacji:', 'Standardowy 3-7 dni - 0zł',
     ].join('\n');
     const naglowki = naglowkiZ(renderMailHtml({ text: t }));
