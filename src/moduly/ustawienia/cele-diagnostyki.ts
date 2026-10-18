@@ -15,11 +15,13 @@ export function celeDiagnostyki(usluga: <T>(modul: string, nazwa: string) => T) 
   const koszty = opcjonalna('koszty');
   const wysylka = opcjonalna('wysylka');
   const zamowienia = opcjonalna('zamowienia');
+  const dokumenty = faktury ? usluga<() => any>('faktury', 'celeLacznosci')() : {};
+  const kurierzy = wysylka ? usluga<() => any>('wysylka', 'celeLacznosci')() : {};
   return celeLacznosci({ ...kanaly,
-    infakt: faktury?.infakt ? { baseUrl: faktury.infakt.baseUrl } : null,
+    infakt: dokumenty.infakt,
     ksef: koszty?.ksef ? { api: koszty.ksef.baseUrl ?? BAZA_DOMYSLNA } : null,
-    dpd: wysylka?.dpd ? { url: wysylka.dpd.url } : null,
-    inpost: wysylka?.inpost ? { url: wysylka.inpost.url } : null,
+    dpd: kurierzy.dpd,
+    inpost: kurierzy.inpost,
     gus: zamowienia?.gus ? { url: zamowienia.gus.url } : null,
   } as any);
 }

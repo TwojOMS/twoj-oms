@@ -1,5 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { createMailer } from '../../core/poczta/smtp.js';
+import { wczytajKonfiguracjeIntegracji } from '../../oms/db/konfiguracja-integracji.js';
+import { pocztaZUstawien } from './poczta-ustawien.ts';
 import { createPotwierdzenie } from './services/potwierdzenie.js';
 import { createWiadomosci } from './services/wiadomosci.js';
 import { createPollerWiadomosci } from './services/poller-wiadomosci.js';
@@ -28,7 +30,16 @@ export function utworzUslugiWiadomosci({ db, config, klienciKanalow, fabryki = {
   const czuwaczFormulki = (fabryki.createCzuwaczFormulki ?? createCzuwaczFormulki)({
     db, klienci: klienciKanalow, brakiKanalu: braki, teraz,
   });
-  const mailer = config.poczta ? (fabryki.createMailer ?? createMailer)(config.poczta) : null;
+  // PRZ-094.04: poczta z pliku (SMTP_*) albo — gdy pliku nie ma — z Ustawień (wiersz „poczta”, pocztaZUstawien czyta
+  // zapis przy każdej wysyłce). Plik wygrywa w całości: z SMTP_* pośrednik ustawień w ogóle nie powstaje. Piaskownica
+  // podaje `poczta` atrapy (deploy/proba/atrapy/poczta.mjs), więc i tu wszystko idzie przez atrapę.
+  const fabrykaMailera: Fabryka = fabryki.createMailer ?? createMailer;
+  const pocztaUstawien = config.poczta ? null : pocztaZUstawien({
+    wczytaj: () => wczytajKonfiguracjeIntegracji(db, 'poczta'), fabryka: fabrykaMailera });
+  // Wiadomości do klientów (potwierdzenie, karta zamówienia) składamy przy starcie — tylko gdy poczta już jest.
+  const mailer = config.poczta ? fabrykaMailera(config.poczta) : pocztaUstawien?.gotowy() ? pocztaUstawien : null;
+  const pocztaWychodzaca = { zEnv: Boolean(config.poczta) && !config.atrapaPoczty, atrapa: Boolean(config.atrapaPoczty),
+    wiadomosciKlientow: Boolean(mailer), ustawien: pocztaUstawien };
   const czasMaila = () => teraz().toISOString();
   const potwierdzenie = mailer ? (fabryki.createPotwierdzenie ?? createPotwierdzenie)({
     db, mailer, sprzedawca: config.sprzedawca ?? {}, oprawaPoczty: config.oprawaPoczty, teraz: czasMaila,
@@ -36,7 +47,7 @@ export function utworzUslugiWiadomosci({ db, config, klienciKanalow, fabryki = {
   const wiadomosci = mailer ? (fabryki.createWiadomosci ?? createWiadomosci)({
     db, mailer, potwierdzenie, proforma, infakt, config, teraz: czasMaila,
   }) : null;
-  return { config, klienciWiadomosci: klienciKanalow, mailer, potwierdzenie, wiadomosci,
+  return { config, klienciWiadomosci: klienciKanalow, mailer, pocztaWychodzaca, potwierdzenie, wiadomosci,
     pollerWiadomosci, czuwaczFormulki, odswiezanieSpraw };
 }
 

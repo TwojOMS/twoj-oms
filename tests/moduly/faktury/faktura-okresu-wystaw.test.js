@@ -22,7 +22,7 @@ function dodajZamowienie(db, okresId, { numer, kwota, pozycje, anulowane = 0, ut
 
 function bazaZOkresem() {
   const db = openOmsDb();
-  const okres = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+  const okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
   db.prepare(
     'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id, utworzone_at)'
     + " VALUES ('reczne', 202600001, 'R/2026/001', '104.00', ?, '2026-07-10T10:00:00.000Z')",
@@ -53,7 +53,7 @@ describe('createFakturaOkresu', () => {
   it('wystawia fakture i oznacza okres jako zafakturowany', async () => {
     const { db, okres } = bazaZOkresem();
     const infakt = infaktUdany();
-    const wynik = await createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1000001017' });
+    const wynik = await createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' });
     expect(wynik.stan).toBe(STAN.ZAFAKTUROWANY);
     expect(wynik.numer).toBe('FV/1/2026');
     expect(infakt.wystaw).toHaveBeenCalledTimes(1);
@@ -68,7 +68,7 @@ describe('createFakturaOkresu', () => {
     const { db, okres } = bazaZOkresem();
     const infakt = infaktUdany();
     infakt.wystaw = vi.fn().mockResolvedValue({ uuid: 'u-9', numer: 'FV/9/2026', ksefStatus: 'sent' });
-    const wynik = await createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1000001017' });
+    const wynik = await createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' });
     expect(wynik.numer).toBe('FV/9/2026');
     expect(wynik.infakt_uuid).toBe('u-9');
     expect(wynik.ksef_status).toBe('sent');
@@ -78,8 +78,8 @@ describe('createFakturaOkresu', () => {
     const { db, okres } = bazaZOkresem();
     const infakt = infaktUdany();
     const usluga = createFakturaOkresu({ db, infakt });
-    await usluga.wystaw(okres.id, { nip: '1000001017' });
-    await expect(usluga.wystaw(okres.id, { nip: '1000001017' })).rejects.toThrow(/wystawiona|stanie/i);
+    await usluga.wystaw(okres.id, { nip: '1234500011' });
+    await expect(usluga.wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow(/wystawiona|stanie/i);
     expect(infakt.wystaw).toHaveBeenCalledTimes(1);
   });
 
@@ -87,7 +87,7 @@ describe('createFakturaOkresu', () => {
     const { db, okres } = bazaZOkresem();
     const infakt = infaktUdany();
     infakt.wystaw = vi.fn().mockRejectedValue(Object.assign(new Error('400'), { status: 400 }));
-    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1000001017' })).rejects.toThrow();
+    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow();
     expect(pobierzOkres(db, okres.id).stan).toBe(STAN.OTWARTY);
   });
 
@@ -98,7 +98,7 @@ describe('createFakturaOkresu', () => {
     const { db, okres } = bazaZOkresem();
     const infakt = infaktUdany();
     infakt.wystaw = vi.fn().mockRejectedValue(Object.assign(new Error('400'), { status: 400 }));
-    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1000001017' })).rejects.toThrow();
+    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow();
     const po = pobierzOkres(db, okres.id);
     expect(po.ksef_status).toBeNull();
     expect(po.utworzona_at).toBeNull();
@@ -111,9 +111,9 @@ describe('createFakturaOkresu', () => {
     const wystawUdany = infakt.wystaw;
     infakt.wystaw = vi.fn().mockRejectedValue(Object.assign(new Error('400'), { status: 400 }));
     const usluga = createFakturaOkresu({ db, infakt });
-    await expect(usluga.wystaw(okres.id, { nip: '1000001017' })).rejects.toThrow();
+    await expect(usluga.wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow();
     infakt.wystaw = wystawUdany;
-    const wynik = await usluga.wystaw(okres.id, { nip: '1000001017' });
+    const wynik = await usluga.wystaw(okres.id, { nip: '1234500011' });
     expect(wynik.stan).toBe(STAN.ZAFAKTUROWANY);
   });
 
@@ -121,7 +121,7 @@ describe('createFakturaOkresu', () => {
     const { db, okres } = bazaZOkresem();
     const infakt = infaktUdany();
     infakt.wystaw = vi.fn().mockRejectedValue(Object.assign(new Error('socket hang up'), { status: 500 }));
-    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1000001017' })).rejects.toThrow();
+    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow();
     expect(pobierzOkres(db, okres.id).ksef_status).toBe('do_wyjasnienia');
   });
 
@@ -131,7 +131,7 @@ describe('createFakturaOkresu', () => {
     const { db, okres } = bazaZOkresem();
     const infakt = infaktUdany();
     infakt.wystaw = vi.fn().mockRejectedValue(new Error('inFakt nieosiągalny: fetch failed'));
-    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1000001017' })).rejects.toThrow();
+    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow();
     const po = pobierzOkres(db, okres.id);
     expect(po.ksef_status).toBe('do_wyjasnienia');
     expect(po.blad_opis).toMatch(/nieosiągalny/);
@@ -145,9 +145,9 @@ describe('createFakturaOkresu', () => {
     const infakt = infaktUdany();
     infakt.wystaw = vi.fn().mockRejectedValue(Object.assign(new Error('bum'), { status: 500 }));
     const usluga = createFakturaOkresu({ db, infakt });
-    await expect(usluga.wystaw(okres.id, { nip: '1000001017' })).rejects.toThrow();
+    await expect(usluga.wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow();
     infakt.wystaw = vi.fn();
-    await expect(usluga.wystaw(okres.id, { nip: '1000001017' })).rejects.toThrow(/inFakcie|wyjaśnienia/i);
+    await expect(usluga.wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow(/inFakcie|wyjaśnienia/i);
     expect(infakt.wystaw).not.toHaveBeenCalled();
   });
 
@@ -161,7 +161,7 @@ describe('createFakturaOkresu', () => {
     const infakt = infaktUdany();
     infakt.wystaw = vi.fn().mockResolvedValue({ uuid: null, numer: null, ksefStatus: null });
     const usluga = createFakturaOkresu({ db, infakt });
-    await expect(usluga.wystaw(okres.id, { nip: '1000001017' })).rejects.toThrow(/bez numeru/i);
+    await expect(usluga.wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow(/bez numeru/i);
     const po = pobierzOkres(db, okres.id);
     expect(po.ksef_status).toBe('do_wyjasnienia');
     expect(po.stan).not.toBe(STAN.ZAFAKTUROWANY);
@@ -172,8 +172,8 @@ describe('createFakturaOkresu', () => {
     const infakt = infaktUdany();
     infakt.wystaw = vi.fn().mockResolvedValue({ uuid: null, numer: null, ksefStatus: null });
     const usluga = createFakturaOkresu({ db, infakt });
-    await expect(usluga.wystaw(okres.id, { nip: '1000001017' })).rejects.toThrow();
-    await expect(usluga.wystaw(okres.id, { nip: '1000001017' })).rejects.toThrow(/inFakcie|wyjaśnienia/i);
+    await expect(usluga.wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow();
+    await expect(usluga.wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow(/inFakcie|wyjaśnienia/i);
     expect(infakt.wystaw).toHaveBeenCalledTimes(1);
   });
 
@@ -184,8 +184,8 @@ describe('createFakturaOkresu', () => {
     const infakt = infaktUdany();
     infakt.wystaw = vi.fn().mockResolvedValue(null);
     const usluga = createFakturaOkresu({ db, infakt });
-    await expect(usluga.wystaw(okres.id, { nip: '1000001017' })).rejects.toThrow();
-    await expect(usluga.wystaw(okres.id, { nip: '1000001017' })).rejects.toThrow();
+    await expect(usluga.wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow();
+    await expect(usluga.wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow();
     expect(infakt.wystaw).toHaveBeenCalledTimes(1);
   });
 
@@ -196,8 +196,8 @@ describe('createFakturaOkresu', () => {
     const infakt = infaktUdany();
     infakt.wystaw = vi.fn().mockRejectedValue(Object.assign(new Error('bum'), { status: 500 }));
     const usluga = createFakturaOkresu({ db, infakt });
-    await expect(usluga.wystaw(okres.id, { nip: '1000001017' })).rejects.toThrow();
-    await expect(usluga.wystaw(okres.id, { nip: '1000001017' })).rejects.toThrow(/nie ponowi|nie wyjdzie/i);
+    await expect(usluga.wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow();
+    await expect(usluga.wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow(/nie ponowi|nie wyjdzie/i);
   });
 
   // ⚠️ WYSCIG, NIE „DWUKLIK". Straz uslugi czyta stan, potem czeka na `znajdzKlientaPoNip` —
@@ -210,8 +210,8 @@ describe('createFakturaOkresu', () => {
     const brama = new Promise((res) => { otworzBrame = res; });
     infakt.znajdzKlientaPoNip = vi.fn(async () => { await brama; return 77; });
     const usluga = createFakturaOkresu({ db, infakt });
-    const pierwsze = usluga.wystaw(okres.id, { nip: '1000001017' });
-    const drugie = usluga.wystaw(okres.id, { nip: '1000001017' });
+    const pierwsze = usluga.wystaw(okres.id, { nip: '1234500011' });
+    const drugie = usluga.wystaw(okres.id, { nip: '1234500011' });
     otworzBrame();
     const wyniki = await Promise.allSettled([pierwsze, drugie]);
     expect(wyniki.filter((w) => w.status === 'fulfilled')).toHaveLength(1);
@@ -223,7 +223,7 @@ describe('createFakturaOkresu', () => {
   it('nie ma takiego okresu — odmowa', async () => {
     const { db } = bazaZOkresem();
     const infakt = infaktUdany();
-    await expect(createFakturaOkresu({ db, infakt }).wystaw(9999, { nip: '1000001017' })).rejects.toThrow(/okresu/i);
+    await expect(createFakturaOkresu({ db, infakt }).wystaw(9999, { nip: '1234500011' })).rejects.toThrow(/okresu/i);
     expect(infakt.wystaw).not.toHaveBeenCalled();
   });
 });
@@ -239,12 +239,12 @@ describe('createFakturaOkresu — bariera arytmetyczna', () => {
   // prawa zostawic po sobie ani jednego, ani drugiego.
   it('rozjazd sumy nie zostawia ani rezerwacji, ani zamknietego okresu', async () => {
     const db = openOmsDb();
-    const okres = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+    const okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     dodajZamowienie(db, okres.id, {
       numer: 'R/2026/001', kwota: '104.00', pozycje: [{ nazwa: 'STOP', ilosc: 1, brutto: '90.00' }],
     });
     const infakt = infaktUdany();
-    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1000001017' }))
+    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' }))
       .rejects.toThrow(/R\/2026\/001/);
     const po = pobierzOkres(db, okres.id);
     expect(po.stan).toBe(STAN.OTWARTY);
@@ -257,7 +257,7 @@ describe('createFakturaOkresu — bariera arytmetyczna', () => {
   // wlasciwosci nie zgubil, przenoszac bariere w inne miejsce.
   it('dwa rozjazdy znoszace sie nawzajem dalej sa odmowa', async () => {
     const db = openOmsDb();
-    const okres = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+    const okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     dodajZamowienie(db, okres.id, {
       numer: 'R/2026/001', kwota: '100.00', pozycje: [{ nazwa: 'A', ilosc: 1, brutto: '110.00' }],
     });
@@ -265,16 +265,16 @@ describe('createFakturaOkresu — bariera arytmetyczna', () => {
       numer: 'R/2026/002', kwota: '100.00', pozycje: [{ nazwa: 'B', ilosc: 1, brutto: '90.00' }],
     });
     const infakt = infaktUdany();
-    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1000001017' }))
+    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' }))
       .rejects.toThrow(/nie zgadza/);
     expect(infakt.wystaw).not.toHaveBeenCalled();
   });
 
   it('okres bez zamowien nie idzie do inFaktu', async () => {
     const db = openOmsDb();
-    const okres = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+    const okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     const infakt = infaktUdany();
-    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1000001017' }))
+    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' }))
       .rejects.toThrow(/pozycji/);
     expect(pobierzOkres(db, okres.id).stan).toBe(STAN.OTWARTY);
     expect(infakt.wystaw).not.toHaveBeenCalled();
@@ -292,8 +292,8 @@ describe('createFakturaOkresu — nabywca', () => {
       zalozKlienta: vi.fn(),
       wystaw: vi.fn(),
     };
-    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1000001017' }))
-      .rejects.toThrow(/1000001017/);
+    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' }))
+      .rejects.toThrow(/1234500011/);
     const po = pobierzOkres(db, okres.id);
     expect(po.stan).toBe(STAN.OTWARTY);
     expect(po.ksef_status).toBeNull();
@@ -310,7 +310,7 @@ describe('createFakturaOkresu — nabywca', () => {
       zalozKlienta: vi.fn(),
       wystaw: vi.fn(),
     };
-    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1000001017' })).rejects.toThrow();
+    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow();
     const po = pobierzOkres(db, okres.id);
     expect(po.stan).toBe(STAN.OTWARTY);
     expect(po.ksef_status).toBeNull();
@@ -329,7 +329,7 @@ describe('createFakturaOkresu — daty i termin platnosci', () => {
   it('bez podanego terminu payload nie niesie zadnej daty', async () => {
     const { db, okres } = bazaZOkresem();
     const infakt = infaktUdany();
-    await createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1000001017' });
+    await createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' });
     const payload = infakt.wystaw.mock.calls[0][0];
     expect(payload).not.toHaveProperty('invoice_date');
     expect(payload).not.toHaveProperty('payment_date');
@@ -339,7 +339,7 @@ describe('createFakturaOkresu — daty i termin platnosci', () => {
     const { db, okres } = bazaZOkresem();
     const infakt = infaktUdany();
     await createFakturaOkresu({ db, infakt })
-      .wystaw(okres.id, { nip: '1000001017' }, { dataWystawienia: '2026-07-31', termin: 14 });
+      .wystaw(okres.id, { nip: '1234500011' }, { dataWystawienia: '2026-07-31', termin: 14 });
     expect(infakt.wystaw.mock.calls[0][0]).toMatchObject({
       invoice_date: '2026-07-31', payment_date: '2026-08-14',
     });
@@ -351,7 +351,7 @@ describe('createFakturaOkresu — daty i termin platnosci', () => {
     const { db, okres } = bazaZOkresem();
     const infakt = infaktUdany();
     await expect(createFakturaOkresu({ db, infakt })
-      .wystaw(okres.id, { nip: '1000001017' }, { termin: 'kiedyś' })).rejects.toThrow(/termin/i);
+      .wystaw(okres.id, { nip: '1234500011' }, { termin: 'kiedyś' })).rejects.toThrow(/termin/i);
     const po = pobierzOkres(db, okres.id);
     expect(po.stan).toBe(STAN.OTWARTY);
     expect(po.ksef_status).toBeNull();
@@ -367,7 +367,7 @@ describe('createFakturaOkresu — zamowienia anulowane', () => {
   });
 
   function okresZAnulowanym(db, { anulowaneRecznie = false } = {}) {
-    const okres = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+    const okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     dodajZamowienie(db, okres.id, {
       numer: 'R/2026/001', kwota: '100.00', pozycje: [{ nazwa: 'ZYWE', ilosc: 1, brutto: '100.00' }],
     });
@@ -388,7 +388,7 @@ describe('createFakturaOkresu — zamowienia anulowane', () => {
     const db = openOmsDb();
     const { okres } = okresZAnulowanym(db);
     const infakt = infaktUdany();
-    await createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1000001017' });
+    await createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' });
     const payload = infakt.wystaw.mock.calls[0][0];
     expect(payload.services.map((s) => s.name)).toEqual(['ZYWE']);
     expect(payload.services.reduce((a, s) => a + s.gross_price, 0)).toBe(10000);
@@ -402,7 +402,7 @@ describe('createFakturaOkresu — zamowienia anulowane', () => {
     const db = openOmsDb();
     const { okres } = okresZAnulowanym(db, { anulowaneRecznie: true });
     const infakt = infaktUdany();
-    await createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1000001017' });
+    await createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' });
     expect(infakt.wystaw.mock.calls[0][0].services.map((s) => s.name)).toEqual(['ZYWE']);
   });
 
@@ -410,7 +410,7 @@ describe('createFakturaOkresu — zamowienia anulowane', () => {
   // kwotach nie ma prawa zablokowac faktury za caly miesiac.
   it('rozjazd w anulowanym zamowieniu nie blokuje faktury okresu', async () => {
     const db = openOmsDb();
-    const okres = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+    const okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     dodajZamowienie(db, okres.id, {
       numer: 'R/2026/001', kwota: '100.00', pozycje: [{ nazwa: 'ZYWE', ilosc: 1, brutto: '100.00' }],
     });
@@ -420,7 +420,7 @@ describe('createFakturaOkresu — zamowienia anulowane', () => {
       utworzone: '2026-07-11T10:00:00.000Z',
     });
     const infakt = infaktUdany();
-    const wynik = await createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1000001017' });
+    const wynik = await createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' });
     expect(wynik.stan).toBe(STAN.ZAFAKTUROWANY);
   });
 
@@ -429,7 +429,7 @@ describe('createFakturaOkresu — zamowienia anulowane', () => {
   it('pominiecie zostaje odnotowane w logu anulowanego zamowienia', async () => {
     const db = openOmsDb();
     const { okres, anulowanyId } = okresZAnulowanym(db);
-    await createFakturaOkresu({ db, infakt: infaktUdany() }).wystaw(okres.id, { nip: '1000001017' });
+    await createFakturaOkresu({ db, infakt: infaktUdany() }).wystaw(okres.id, { nip: '1234500011' });
     const wpisy = db.prepare('SELECT akcja, wynik FROM log WHERE zamowienie_id = ?').all(anulowanyId);
     expect(wpisy.some((w) => /anulowane/i.test(String(w.wynik)))).toBe(true);
   });
@@ -440,7 +440,7 @@ describe('createFakturaOkresu — zamowienia anulowane', () => {
   it('zafakturowane zamowienie dostaje w logu numer faktury', async () => {
     const db = openOmsDb();
     const { okres } = okresZAnulowanym(db);
-    await createFakturaOkresu({ db, infakt: infaktUdany() }).wystaw(okres.id, { nip: '1000001017' });
+    await createFakturaOkresu({ db, infakt: infaktUdany() }).wystaw(okres.id, { nip: '1234500011' });
     const zywyId = db.prepare('SELECT id FROM zamowienia WHERE numer = ?').get('R/2026/001').id;
     const wpisy = db.prepare('SELECT akcja, wynik FROM log WHERE zamowienie_id = ?').all(zywyId);
     expect(wpisy.some((w) => w.akcja === 'faktura-okresu' && w.wynik === 'FV/1/2026')).toBe(true);
@@ -448,13 +448,13 @@ describe('createFakturaOkresu — zamowienia anulowane', () => {
 
   it('okres z samymi anulowanymi zamowieniami nie idzie do inFaktu', async () => {
     const db = openOmsDb();
-    const okres = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+    const okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     dodajZamowienie(db, okres.id, {
       numer: 'R/2026/001', kwota: '100.00', anulowane: 1,
       pozycje: [{ nazwa: 'ANULOWANE', ilosc: 1, brutto: '100.00' }],
     });
     const infakt = infaktUdany();
-    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1000001017' }))
+    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' }))
       .rejects.toThrow(/pozycji/);
     expect(pobierzOkres(db, okres.id).stan).toBe(STAN.OTWARTY);
     expect(infakt.wystaw).not.toHaveBeenCalled();

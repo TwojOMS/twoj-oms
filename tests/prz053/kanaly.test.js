@@ -5,7 +5,7 @@ import {kanalOms,kanalHistoryczny} from '../../src/domena/kanaly-raportowe.js';
 import {definicjeKanalow,konfiguracjaKanalow} from '../../src/moduly/kanaly/konfiguracja.ts';
 import {wczytajRaporty} from '../../src/moduly/raporty/konfiguracja.ts';
 
-const a=[{klucz:'allegro_zetaklient',typ:'allegro',prefiks:'K',etykieta:'Zetaklient <demo>',raport:'SKLEP_A'}, {klucz:'pusty',typ:'woo',prefiks:'P',etykieta:'Pusty sklep',raport:'SKLEP_P'}];
+const a=[{klucz:'allegro_przykladowa',typ:'allegro',prefiks:'K',etykieta:'Pracownia Przykładowa <demo>',raport:'SKLEP_A'}, {klucz:'pusty',typ:'woo',prefiks:'P',etykieta:'Pusty sklep',raport:'SKLEP_P'}];
 const b=[{klucz:'market_inny',typ:'allegro',prefiks:'M',etykieta:'Inny market',raport:'SKLEP_B'}];
 const env=(d,h={konta:[]})=>({OMS_KANALY:JSON.stringify(d),OMS_HISTORIA_KLASYFIKACJA:JSON.stringify(h)});
 describe('PRZ053 jawne kanały',()=>{
@@ -17,13 +17,13 @@ describe('PRZ053 jawne kanały',()=>{
   expect(adresKanalu(d[0].klucz,d)).toBe(d[0].etykieta);
  });
  it('pokazuje kanał bez zamówień i izoluje A/B/A',()=>{
-  expect(kanalyDoFiltra(a).map(x=>x.klucz)).toEqual(['allegro_zetaklient','pusty','reczne','indywidualne']);
+  expect(kanalyDoFiltra(a).map(x=>x.klucz)).toEqual(['allegro_przykladowa','pusty','reczne','indywidualne']);
   expect(kanalyDoFiltra(b).map(x=>x.klucz)).toEqual(['market_inny','reczne','indywidualne']);
-  expect(kanalyDoFiltra(a)[0].etykieta).toBe('Zetaklient <demo>');
+  expect(kanalyDoFiltra(a)[0].etykieta).toBe('Pracownia Przykładowa <demo>');
   expect(JSON.stringify(kanalyDoFiltra([]))).not.toMatch(/szkicownia|amarka/i);
  });
  it('zachowuje bezpieczny powrót i odrzuca obcy kanał',()=>{
-  expect(bezpiecznyPowrotNaListe('/?wszystkie=1&kanal=allegro_zetaklient',a)).toBe('/?wszystkie=1&kanal=allegro_zetaklient');
+  expect(bezpiecznyPowrotNaListe('/?wszystkie=1&kanal=allegro_przykladowa',a)).toBe('/?wszystkie=1&kanal=allegro_przykladowa');
   expect(bezpiecznyPowrotNaListe('//example.invalid/?kanal=pusty',a)).toBe('/');
   expect(bezpiecznyPowrotNaListe('/?kanal=pusty&kanal=pusty',a)).toBe('/');
   expect(parsujFiltry({kanal:'allegro_szkicownia'},a).kanal).toBeNull();

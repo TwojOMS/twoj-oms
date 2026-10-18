@@ -5,4 +5,9 @@ node_modules/
 *.sqlite-wal
 *.sqlite-shm
 /dane-lokalne/
+# PRZ-094.21: konfiguracja agenta druku (zawiera hasło) i jego dzienniki
+/deploy/drukarka/config.json
+/deploy/drukarka/config-faktury.json
+/deploy/drukarka/*.log
+/deploy/drukarka/*.log.1
 !.env.example

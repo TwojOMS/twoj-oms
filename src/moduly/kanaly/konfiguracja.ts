@@ -1,3 +1,4 @@
+import { bladKonfiguracji } from '../../core/blad-konfiguracji.ts';
 import type { Srodowisko } from '../../core/kontrakty.ts';
 import { METODY_WYSYLKI } from '../../domena/wysylka.js';
 import { konfiguracjaHistorii } from './historia.ts';
@@ -6,36 +7,36 @@ import { interwal, skonfigurowanyUrl } from '../../core/konfiguracja-wartosci.ts
 export type DefinicjaKanalu = { klucz: string; typ: 'woo' | 'allegro'; prefiks: string; etykieta?: string; raport?: string };
 function parsujJson(tekst: string, nazwa: string): any {
   try { return JSON.parse(tekst); }
-  catch { throw new Error(`${nazwa}: niepoprawny JSON`); }
+  catch { throw bladKonfiguracji(`${nazwa}: niepoprawny JSON`); }
 }
 function obiekt(wartosc: unknown): wartosc is Record<string, any> {
   return wartosc !== null && typeof wartosc === 'object' && !Array.isArray(wartosc);
 }
 function mapowanieSklepu(tekst: string, nazwa: string) {
   const mapowanie = parsujJson(tekst, nazwa);
-  if (!obiekt(mapowanie) || !mapowanie.instancje || !Array.isArray(mapowanie.poPozycji)) throw new Error(`${nazwa}: oczekiwano instancje i poPozycji`);
+  if (!obiekt(mapowanie) || !mapowanie.instancje || !Array.isArray(mapowanie.poPozycji)) throw bladKonfiguracji(`${nazwa}: oczekiwano instancje i poPozycji`);
   for (const m of [...Object.values(mapowanie.instancje), ...mapowanie.poPozycji] as { metoda?: string }[]) {
-    if (!obiekt(m) || !m.metoda || !METODY_WYSYLKI.includes(m.metoda) || m.metoda.startsWith('allegro_')) throw new Error(`${nazwa}: niedozwolona metoda sklepu`);
+    if (!obiekt(m) || !m.metoda || !METODY_WYSYLKI.includes(m.metoda) || m.metoda.startsWith('allegro_')) throw bladKonfiguracji(`${nazwa}: niedozwolona metoda sklepu`);
   }
   return mapowanie;
 }
 const WZOR_USER_AGENT_ALLEGRO = /^[^\s/()]+\/[0-9][^\s/()]*\s\(\+https?:\/\/[^\s()]+\)$/;
 function parsujUserAgentAllegro(env: Srodowisko, nazwa: string) {
   const wartosc = String(env[nazwa] ?? '').trim();
-  if (!WZOR_USER_AGENT_ALLEGRO.test(wartosc)) throw new Error(`${nazwa}: niepoprawny nagłówek User-Agent Allegro`);
+  if (!WZOR_USER_AGENT_ALLEGRO.test(wartosc)) throw bladKonfiguracji(`${nazwa}: niepoprawny nagłówek User-Agent Allegro`);
   return wartosc;
 }
 function parsujDateOd(env: Srodowisko, nazwa: string, wymagana = false) {
   const surowe = (env[nazwa] ?? '').trim();
   if (!surowe) {
-    if (wymagana) throw new Error(`${nazwa}: wymagana data RRRR-MM-DD dla kanału Allegro`);
+    if (wymagana) throw bladKonfiguracji(`${nazwa}: wymagana data RRRR-MM-DD dla kanału Allegro`);
     return null;
   }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(surowe)) throw new Error(`${nazwa}: data musi mieć postać RRRR-MM-DD`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(surowe)) throw bladKonfiguracji(`${nazwa}: data musi mieć postać RRRR-MM-DD`);
   const [rok, miesiac, dzien] = surowe.split('-').map(Number);
   const data = new Date(Date.UTC(rok, miesiac - 1, dzien));
   if (data.getUTCFullYear() !== rok || data.getUTCMonth() !== miesiac - 1 || data.getUTCDate() !== dzien)
-    throw new Error(`${nazwa}: nieistniejąca data`);
+    throw bladKonfiguracji(`${nazwa}: nieistniejąca data`);
   return `${surowe}T00:00:00`;
 }
 // Treści błędów OMS_KANALY mówią, którą pozycję listy (od 1) i które pole poprawić, ale nie przepisują wartości
@@ -56,7 +57,7 @@ function odczytajListeKanalow(tekst: string): unknown {
       : znak !== undefined ? `błąd w znaku nr ${Number(znak) + 1}`
       : !tekst.trimStart().startsWith('[') ? 'lista musi zaczynać się od znaku [ (bez cudzysłowów wokół całej wartości)'
       : 'błąd składni';
-    throw new Error(`OMS_KANALY: niepoprawny JSON (${gdzie}). Oczekiwano listy kanałów, np. ${PRZYKLAD_KANALOW}; cudzysłowy w środku muszą być proste ("), a po ostatnim polu nie stawia się przecinka. Opis: ${OPIS_KANALOW}.`);
+    throw bladKonfiguracji(`OMS_KANALY: niepoprawny JSON (${gdzie}). Oczekiwano listy kanałów, np. ${PRZYKLAD_KANALOW}; cudzysłowy w środku muszą być proste ("), a po ostatnim polu nie stawia się przecinka. Opis: ${OPIS_KANALOW}.`);
   }
 }
 /** Pierwsza wada pozycji listy `OMS_KANALY` jako zdanie z numerem pozycji (od 1) albo `null`, gdy pozycja jest dobra. */
@@ -84,13 +85,13 @@ function wadaDefinicji(k: unknown, numer: number, nazwy: Map<string, number>, pr
 }
 export function definicjeKanalow(env: Srodowisko): DefinicjaKanalu[] {
   const d = odczytajListeKanalow(env.OMS_KANALY ?? '[]') as DefinicjaKanalu[];
-  if (!Array.isArray(d)) throw new Error(`OMS_KANALY: oczekiwano listy kanałów w nawiasach [ ], np. ${PRZYKLAD_KANALOW}. Opis: ${OPIS_KANALOW}.`);
+  if (!Array.isArray(d)) throw bladKonfiguracji(`OMS_KANALY: oczekiwano listy kanałów w nawiasach [ ], np. ${PRZYKLAD_KANALOW}. Opis: ${OPIS_KANALOW}.`);
   const raporty = new Map<string, number>();
   const nazwy = new Map<string, number>();
   const prefiksy = new Map<string, number>();
   d.forEach((k, i) => {
     const wada = wadaDefinicji(k, i + 1, nazwy, prefiksy, raporty);
-    if (wada) throw new Error(wada);
+    if (wada) throw bladKonfiguracji(wada);
     if (k.raport) raporty.set(k.raport, i + 1);
     nazwy.set(k.klucz, i + 1);
     prefiksy.set(k.prefiks, i + 1);
@@ -100,7 +101,7 @@ export function definicjeKanalow(env: Srodowisko): DefinicjaKanalu[] {
 export function konfiguracjaKanalow(definicje: readonly DefinicjaKanalu[], env: Srodowisko, niekompletneJakoAlarm = false) {
   const sklepy: Record<string, any> = {}; const kanaly: Record<string, any> = {};
   const braki = Object.fromEntries(definicje.map(d => [d.klucz, brakujaceKluczeKanalu(d, env)]));
-  const wymagane = (n: string, obowiazkowe = true) => { if (obowiazkowe && !env[n]) throw new Error(`Brak wymaganej zmiennej: ${n}`); return env[n] ?? ''; };
+  const wymagane = (n: string, obowiazkowe = true) => { if (obowiazkowe && !env[n]) throw bladKonfiguracji(`Brak wymaganej zmiennej: ${n}`); return env[n] ?? ''; };
   for (const { klucz, typ, prefiks: p } of definicje) {
     // Niepusta obecna wartość podlega D07 także bez aktywnego klienta.
     // W pełnej kompozycji puste wymagane URL to brak raportowany przez D01.

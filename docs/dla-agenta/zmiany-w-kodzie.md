@@ -44,6 +44,9 @@ sprawdź, czy test nie asertuje starego napisu (`rg -n "stary napis" tests`) i z
 2. Dostęp do klienta przez fabrykę (`src/integracje/fabryki.ts`), żeby testy i demo mogły podstawić atrapę
    (`deploy/proba/atrapy/`). Testy **nigdy** nie łączą się z prawdziwą siecią.
 3. Wpisz nowe zmienne do `docs/konfiguracja.json` i uruchom strażnik konfiguracji.
+4. Jeśli użytkownik ma wpisywać dane w panelu, nie tylko w pliku: wzorem jest ekran DPD (`rg -l "ustawienia-dpd" src`).
+   Dane idą do tabeli `konfiguracja_integracji` (ustawienia jawne osobno od sekretów), plik konfiguracji wygrywa
+   z ekranem (zapis przy zmiennych z pliku = 409), a hasło nie wraca na ekran i nie trafia do dziennika.
 
 ## Nowy moduł
 

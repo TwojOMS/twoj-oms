@@ -20,7 +20,7 @@ const katalogi: string[] = [];
 afterEach(() => { for (const k of katalogi.splice(0)) fs.rmSync(k, { recursive: true, force: true }); });
 
 const wolnyPort = () => new Promise<number>((ok) => { const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const p = (s.address() as net.AddressInfo).port; s.close(() => ok(p)); }); });
-const KANALY = [{ klucz: 'woo_zetaklient', typ: 'woo', prefiks: 'WOO_ZETAKLIENT', etykieta: 'sklep.zetaklient.example', raport: 'SKLEP_ZETAKLIENT' }];
+const KANALY = [{ klucz: 'woo_przykladowa', typ: 'woo', prefiks: 'WOO_PRZYKLADOWA', etykieta: 'sklep.przykladowa.example', raport: 'SKLEP_PRZYKLADOWA' }];
 
 const SH = process.platform === 'win32' ? 'C:/Program Files/Git/bin/bash.exe' : '/bin/sh';
 const u = (p: string) => p.replaceAll('\\', '/');
@@ -43,7 +43,7 @@ function konfiguracjaZSzablonu(k: string): Record<string, string> {
     if (m) env[m[1]] = m[2];
   }
   return { ...env, OMS_SPRZEDAWCA_NIP: '1111111111', OMS_RACHUNEK: '50109010140000000000000003',
-    DPD_NADAWCA_NAZWA: 'Zetaklient sp. z o.o.', DPD_NADAWCA_ULICA: 'Klockowa 1', DPD_NADAWCA_KOD: '00-950', DPD_NADAWCA_MIASTO: 'Warszawa' };
+    DPD_NADAWCA_NAZWA: 'Pracownia Przykładowa sp. z o.o.', DPD_NADAWCA_ULICA: 'Klockowa 1', DPD_NADAWCA_KOD: '00-950', DPD_NADAWCA_MIASTO: 'Warszawa' };
 }
 
 async function srodowisko(extra: Record<string, string> = {}) {
@@ -90,7 +90,7 @@ describe('produkcja-pierwszy-start.mjs', () => {
       try {
         const g = db.prepare('SELECT kanal, zrodlo FROM granice_historii ORDER BY kanal').all().map((w: any) => `${w.kanal}:${w.zrodlo}`);
         // PRZ-089: GDD i INDYWIDUALNE (kanały Szkicownia) tylko z konfiguracji — czysta instalacja ich nie zakłada.
-        expect(g).toEqual(['B2B', 'DROPSHIPPING', 'RECZNE', 'SKLEP_ZETAKLIENT'].map(k => `${k}:oms-bez-historii`));
+        expect(g).toEqual(['B2B', 'DROPSHIPPING', 'RECZNE', 'SKLEP_PRZYKLADOWA'].map(k => `${k}:oms-bez-historii`));
       } finally { db.close(); }
       // Drugi raz: konto już jest — odmowa, bez nowego hasła na stdout.
       const drugi = await uruchomSkrypt(env);
@@ -103,7 +103,7 @@ describe('produkcja-pierwszy-start.mjs', () => {
     const oms = await uruchomOms(env, '127.0.0.1');
     await oms.zamknij();
     const db = new DatabaseSync(env.OMS_DB_PATH);
-    db.prepare("INSERT INTO zamowienia (sklep, zrodlo_id, numer, utworzone_at, kwota_brutto, metoda_wysylki) VALUES ('woo_zetaklient','1','X-1','2026-10-01T10:00:00','1.00','dpd')").run();
+    db.prepare("INSERT INTO zamowienia (sklep, zrodlo_id, numer, utworzone_at, kwota_brutto, metoda_wysylki) VALUES ('woo_przykladowa','1','X-1','2026-10-01T10:00:00','1.00','dpd')").run();
     db.close();
     const r = await uruchomSkrypt(env);
     expect(r.kod).toBe(1); expect(r.stdout).toBe(''); expect(r.stderr).toContain('PRODUKCJA_BAZA_NIE_JEST_NOWA');
@@ -113,10 +113,10 @@ describe('produkcja-pierwszy-start.mjs', () => {
 
   it('dzień granicy: wczoraj, a dla kanału pobierającego od wcześniejszej daty — dzień przed <P>_OD', () => {
     const teraz = new Date('2026-10-15T09:00:00Z');
-    const plan = (od?: string) => planGranic({ OMS_KANALY: JSON.stringify(KANALY), ...(od ? { WOO_ZETAKLIENT_OD: od } : {}) }, teraz).plan;
-    expect(plan().find(p => p.kanal === 'SKLEP_ZETAKLIENT')!.doDnia).toBe('2026-10-14');
-    expect(plan('2026-10-01').find(p => p.kanal === 'SKLEP_ZETAKLIENT')!.doDnia).toBe('2026-09-30');
-    expect(plan('2026-10-20').find(p => p.kanal === 'SKLEP_ZETAKLIENT')!.doDnia).toBe('2026-10-14');
+    const plan = (od?: string) => planGranic({ OMS_KANALY: JSON.stringify(KANALY), ...(od ? { WOO_PRZYKLADOWA_OD: od } : {}) }, teraz).plan;
+    expect(plan().find(p => p.kanal === 'SKLEP_PRZYKLADOWA')!.doDnia).toBe('2026-10-14');
+    expect(plan('2026-10-01').find(p => p.kanal === 'SKLEP_PRZYKLADOWA')!.doDnia).toBe('2026-09-30');
+    expect(plan('2026-10-20').find(p => p.kanal === 'SKLEP_PRZYKLADOWA')!.doDnia).toBe('2026-10-14');
     expect(plan('2026-10-01').find(p => p.kanal === 'RECZNE')!.doDnia).toBe('2026-10-14');
   });
 
@@ -127,10 +127,10 @@ describe('produkcja-pierwszy-start.mjs', () => {
     await oms.zamknij();
     const pierwszy = await uruchomSkrypt({ ...env, OMS_PORT: '1' });
     expect(pierwszy.kod).toBe(1); // bez działającego OMS konto się nie założy — ale granice wbudowane już są
-    const poPrzejsciu = { ...env, OMS_KANALY: JSON.stringify(KANALY), WOO_ZETAKLIENT_OD: '2026-10-01' };
+    const poPrzejsciu = { ...env, OMS_KANALY: JSON.stringify(KANALY), WOO_PRZYKLADOWA_OD: '2026-10-01' };
     const r = await uruchomSkrypt({ ...poPrzejsciu, OMS_PORT: '1' }, ['--granice']);
     expect(r.kod, r.stderr).toBe(0);
-    expect(JSON.parse(r.stdout)).toEqual({ status: 'granice', zalozone: ['SKLEP_ZETAKLIENT=2026-09-30'], pominiete: [] });
+    expect(JSON.parse(r.stdout)).toEqual({ status: 'granice', zalozone: ['SKLEP_PRZYKLADOWA=2026-09-30'], pominiete: [] });
     const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
     try {
       // PRZ-089: wbudowane bez GDD/INDYWIDUALNE (3) + kanał klienta = 4.
@@ -145,12 +145,12 @@ describe('produkcja-pierwszy-start.mjs', () => {
     const { env } = await srodowisko();
     const oms = await uruchomOms(env, '127.0.0.1');
     await oms.zamknij();
-    const e = { ...env, WOO_ZETAKLIENT_OD: '2026-10-20' };
+    const e = { ...env, WOO_PRZYKLADOWA_OD: '2026-10-20' };
     for (const dzien of ['2026-10-20', '2026-11-01'])
-      expect(() => wykonajGranice([env.OMS_DB_PATH, 'SKLEP_ZETAKLIENT', dzien], e)).toThrow(/WOO_ZETAKLIENT_OD \(2026-10-20\)/);
-    wykonajGranice([env.OMS_DB_PATH, 'SKLEP_ZETAKLIENT', '2026-10-19'], e);
+      expect(() => wykonajGranice([env.OMS_DB_PATH, 'SKLEP_PRZYKLADOWA', dzien], e)).toThrow(/WOO_PRZYKLADOWA_OD \(2026-10-20\)/);
+    wykonajGranice([env.OMS_DB_PATH, 'SKLEP_PRZYKLADOWA', '2026-10-19'], e);
     const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
-    try { expect(db.prepare("SELECT do_dnia FROM granice_historii WHERE kanal = 'SKLEP_ZETAKLIENT'").all()).toEqual([{ do_dnia: '2026-10-19' }]); }
+    try { expect(db.prepare("SELECT do_dnia FROM granice_historii WHERE kanal = 'SKLEP_PRZYKLADOWA'").all()).toEqual([{ do_dnia: '2026-10-19' }]); }
     finally { db.close(); }
   }, 60_000);
 });

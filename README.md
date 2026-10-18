@@ -65,7 +65,9 @@ i ograniczenia: [docs/instalacja-klienta.md](docs/instalacja-klienta.md).
 
 Linux + Docker, od czystego Debiana do panelu dostępnego w sieci lokalnej:
 [docs/instalacja-docker.md](docs/instalacja-docker.md). Konfiguracja (wszystkie zmienne środowiska):
-[docs/konfiguracja.md](docs/konfiguracja.md).
+[docs/konfiguracja.md](docs/konfiguracja.md). Kurierów i pocztę można wpisać w panelu (Ustawienia →
+Integracje), bez edycji pliku — krok po kroku: [DPD](docs/kurier-dpd.md), [InPost](docs/kurier-inpost.md),
+[poczta wychodząca](docs/poczta-smtp.md).
 
 **Jeśli instaluje agent AI:** [docs/instalacja-przez-agenta.md](docs/instalacja-przez-agenta.md) —
 scenariusz krok po kroku z miejscami, w których agent musi się zatrzymać i zapytać człowieka.

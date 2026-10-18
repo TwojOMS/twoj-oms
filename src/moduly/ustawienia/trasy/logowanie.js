@@ -1,7 +1,7 @@
 import {
   podpisz, ciasteczkoSesji, ciasteczkoWyczyszczenia, nazwaCiasteczkaOms,
 } from '../../../core/bezpieczenstwo/sesja.js';
-import { utworzHamulec, LIMIT_PROB } from '../../../core/bezpieczenstwo/hamulec.js';
+import { hamulecLogowaniaDla } from '../../../core/bezpieczenstwo/hamulec.js';
 import {
   czyTrasaOtwarta, rowneStaloCzasowo, polaczenieBezpieczne,
 } from '../../../core/bezpieczenstwo/logowanie-wspolne.js';
@@ -17,7 +17,7 @@ import { zahaszuj, zgodneHaslo } from '../../../domena/hasla.js';
 
 export function registerLogowanieRoutes(app, { db, config }) {
   const nazwaCiasteczka = nazwaCiasteczkaOms(config.proba); // PRZ-080
-  const hamulec = utworzHamulec();
+  const hamulec = hamulecLogowaniaDla(db);
   // ⚠️⚠️ W2 (recenzja 2026-09-12): ZAPIS-ATRAPA, POLICZONY RAZ przy rejestracji tras, nie
   // przy kazdym zadaniu — patrz uzycie nizej. Zmierzone PRZED ta poprawka na prawdziwym
   // serwerze (mediana z czterech prob): konto istniejace i czynne ze zlym haslem — 47,6 ms;
@@ -37,12 +37,11 @@ export function registerLogowanieRoutes(app, { db, config }) {
     komunikat: req.query?.haslo === 'ustawione' ? 'Hasło ustawione — zaloguj się nowym hasłem.' : null,
   }));
 
-  app.post('/login', async (req, reply) => {
+  async function loguj(req, reply) {
     const powrot = bezpiecznyPowrot(req.body?.powrot);
-    const klucz = req.ip;
+    const login = String(req.body?.uzytkownik ?? '');
 
-    const stan = hamulec.sprawdz(klucz);
-    if (!stan.wolno) {
+    const odmowLimit = (stan, zapisz = true) => {
       // ⚠️ W3 (recenzja 2026-09-12): ten wpis BRAKOWAL. Osiem zlych prob pod rzad dawalo
       // PIEC wpisow w dzienniku — ta galaz wracala PRZED `dopiszLogowanie` nizej, wiec
       // wypadaly z logu dokladnie najglosniejsze proby, czyli te, o ktore dziennik pyta
@@ -53,19 +52,21 @@ export function registerLogowanieRoutes(app, { db, config }) {
       // nie tylko na pierwsze — hamulec sam NIE PISZE, wiec nic go nie spowalnialo, i 60 s
       // kary zamienialo sie w 60 s pisania bez ograniczenia. `zapiszBlokadeRaz` pilnuje, zeby
       // jedna kara dala co najwyzej jeden taki wiersz (patrz hamulec.js).
-      if (hamulec.zapiszBlokadeRaz(klucz)) {
+      if (zapisz && hamulec.zapiszBlokadeRaz(req.ip, login)) {
         dopiszLogowanie(db, {
           login: String(req.body?.uzytkownik ?? ''), usluga: 'oms', ip: req.ip, wynik: 'zablokowane',
         });
       }
-      return reply.status(429).view('login.ejs', {
+      return reply.status(429).header('Retry-After', Math.ceil(stan.zostaloMs / 1000)).view('login.ejs', {
         title: 'Logowanie',
         bezPaska: true,
         powrot,
         blad: 'zablokowane',
         zostaloS: Math.ceil(stan.zostaloMs / 1000),
       });
-    }
+    };
+    const stan = hamulec.sprawdzPrzedProba(req, login);
+    if (!stan.wolno) return odmowLimit(stan);
 
     // Najpierw konto z tabeli, potem — i tylko jesli tam go nie ma — haslo z `.env`.
     const zTabeli = kontoPoLoginie(db, req.body?.uzytkownik ?? '');
@@ -122,7 +123,7 @@ export function registerLogowanieRoutes(app, { db, config }) {
       : wpuszczonySerwisowo;
 
     if (!wpuszczony) {
-      const proby = hamulec.odnotujBlad(klucz);
+      const limit = hamulec.odnotujBlad(req.ip, login);
       dopiszLogowanie(db, {
         login: String(req.body?.uzytkownik ?? ''), usluga: 'oms', ip: req.ip,
         // ⚠️ Dziennik ODROZNIA „zle haslo" od „konto wylaczone", a ekran logowania NIE.
@@ -149,19 +150,27 @@ export function registerLogowanieRoutes(app, { db, config }) {
       // ⚠️ Proba, ktora WLASNIE zapalila kare, oddaje 429, a nie 401 — mimo ze byla takze
       // nieudanym logowaniem. Inaczej ekran mowilby „za duzo prob", a status odpowiedzi
       // „zle haslo": kto czyta log, zobaczylby co innego niz operator na ekranie.
-      const zablokowane = proby >= LIMIT_PROB;
-      return reply.status(zablokowane ? 429 : 401).view('login.ejs', {
+      if (!limit.wolno) {
+        // Opóźnienie tylko błędnej odpowiedzi: poprawne hasło omija szeroki limit.
+        // Logujemy przed czekaniem, żeby wygaśnięcie 2 s kary nie zgubiło wpisu.
+        if (hamulec.zapiszBlokadeRaz(req.ip, login)) dopiszLogowanie(db, {
+          login, usluga: 'oms', ip: req.ip, wynik: 'zablokowane',
+        });
+        await hamulec.opoznij(req.ip, login, Date.now(), hamulec.wiarygodnyAdres(req));
+        return odmowLimit(limit, false);
+      }
+      return reply.status(401).view('login.ejs', {
         title: 'Logowanie',
         bezPaska: true,
         powrot,
         // ⚠️ Komunikat NIE MOWI, ktore pole bylo zle. „Zly login" i „zle haslo" to dwa
         // rozne komunikaty, z ktorych zgadujacy odczytuje, ze nazwa konta jest trafiona.
-        blad: zablokowane ? 'zablokowane' : 'zle-dane',
-        zostaloS: zablokowane ? Math.ceil(hamulec.sprawdz(klucz).zostaloMs / 1000) : 0,
+        blad: 'zle-dane',
+        zostaloS: 0,
       });
     }
 
-    hamulec.wyczysc(klucz);
+    hamulec.wyczysc(req.ip, login);
     dopiszLogowanie(db, {
       login: String(req.body?.uzytkownik ?? ''), usluga: 'oms', ip: req.ip,
       wynik: zTabeli ? 'udane' : 'serwisowe',
@@ -177,6 +186,15 @@ export function registerLogowanieRoutes(app, { db, config }) {
         { bezpieczne: polaczenieBezpieczne(req) },
       ))
       .redirect(powrot);
+  }
+
+  app.post('/login', async (req, reply) => {
+    const zwolnij = await hamulec.zajmij(req, String(req.body?.uzytkownik ?? ''));
+    if (!zwolnij) return reply.status(429).header('Retry-After', 2).view('login.ejs', {
+      title: 'Logowanie', bezPaska: true, powrot: bezpiecznyPowrot(req.body?.powrot), blad: 'zablokowane', zostaloS: 2,
+    });
+    try { return await loguj(req, reply); }
+    finally { zwolnij(); }
   });
 
   // ⚠️ POST, nie GET — z tego samego powodu, co przelacznik motywu. Wylogowanie GET-em

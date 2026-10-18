@@ -36,6 +36,9 @@ zgłasza zmienne czytane w kodzie, których tam brakuje.
 - Klienci HTTP: `src/oms/<integracja>/` (`allegro`, `woo`, `infakt`, `ksef`, `kurierzy`, `gus`, `meta`, `ga4`, `apilo`).
 - Rejestr integracji i nazw kluczy: `src/integracje/klucze.js`; fabryki klientów (miejsce na atrapy): `src/integracje/fabryki.ts`.
 - Atrapy używane w próbie i demo: `deploy/proba/atrapy/`.
+- Integracje wpisywane w panelu (Ustawienia → Integracje: DPD, InPost, inFakt, poczta, adres firmy):
+  `rg -n "konfiguracja_integracji|wczytajKonfiguracjeIntegracji" src` — zapis w bazie i trasy ekranów (`ustawienia-*.js`
+  w `trasy/` modułu); reguła „plik konfiguracji wygrywa” jest przy budowie klienta (zwykle `modul.ts`, dla poczty `uslugi.ts` modułu).
 
 ## Od kodu do testu
 

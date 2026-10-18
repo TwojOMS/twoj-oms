@@ -41,7 +41,7 @@ describe('przypiszDoOkresu', () => {
   it('drop klienta zbiorczego dostaje okres z daty zlozenia', () => {
     const db = bazaZKlientem();
     const id = przypiszDoOkresu({
-      db, nip: '1000001017', dataZlozenia: '2026-07-31T20:00:00.000Z', hurt: false,
+      db, nip: '1234500011', dataZlozenia: '2026-07-31T20:00:00.000Z', hurt: false,
     });
     const o = pobierzOkres(db, id);
     expect(o.rok).toBe(2026);
@@ -51,7 +51,7 @@ describe('przypiszDoOkresu', () => {
   it('HURT nie trafia do okresu wcale', () => {
     const db = bazaZKlientem();
     expect(przypiszDoOkresu({
-      db, nip: '1000001017', dataZlozenia: '2026-07-15T10:00:00.000Z', hurt: true,
+      db, nip: '1234500011', dataZlozenia: '2026-07-15T10:00:00.000Z', hurt: true,
     })).toBeNull();
   });
 
@@ -64,10 +64,10 @@ describe('przypiszDoOkresu', () => {
 
   it('zamkniety okres ODMAWIA, zamiast cicho przeniesc na kolejny miesiac', () => {
     const db = bazaZKlientem();
-    const o = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+    const o = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     zamknijOkres(db, o.id);
     expect(() => przypiszDoOkresu({
-      db, nip: '1000001017', dataZlozenia: '2026-07-20T10:00:00.000Z', hurt: false,
+      db, nip: '1234500011', dataZlozenia: '2026-07-20T10:00:00.000Z', hurt: false,
     })).toThrow(/lipiec 2026/i);
   });
 
@@ -76,11 +76,11 @@ describe('przypiszDoOkresu', () => {
   // (przypisanie po dacie „teraz") powstalby lewy okres kolejnego miesiaca.
   it('odmowa nie zaklada zadnego innego okresu', () => {
     const db = bazaZKlientem();
-    const o = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+    const o = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     zamknijOkres(db, o.id);
     try {
       przypiszDoOkresu({
-        db, nip: '1000001017', dataZlozenia: '2026-07-20T10:00:00.000Z', hurt: false,
+        db, nip: '1234500011', dataZlozenia: '2026-07-20T10:00:00.000Z', hurt: false,
       });
     } catch { /* odmowa sprawdzona wyzej */ }
     expect(db.prepare('SELECT COUNT(*) AS ile FROM okresy_rozliczeniowe').get().ile).toBe(1);
@@ -91,10 +91,10 @@ describe('przypiszDoOkresu', () => {
   // fakture w KSeF, ktora nie zgadza sie z baza, i korekte jako jedyne wyjscie.
   it('okres zafakturowany tez ODMAWIA', () => {
     const db = bazaZKlientem();
-    const o = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+    const o = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     db.prepare('UPDATE okresy_rozliczeniowe SET stan = ? WHERE id = ?').run(STAN.ZAFAKTUROWANY, o.id);
     expect(() => przypiszDoOkresu({
-      db, nip: '1000001017', dataZlozenia: '2026-07-20T10:00:00.000Z', hurt: false,
+      db, nip: '1234500011', dataZlozenia: '2026-07-20T10:00:00.000Z', hurt: false,
     })).toThrow(/lipiec 2026/i);
   });
 
@@ -103,10 +103,10 @@ describe('przypiszDoOkresu', () => {
   it('drugie zamowienie tego miesiaca trafia do TEGO SAMEGO okresu', () => {
     const db = bazaZKlientem();
     const a = przypiszDoOkresu({
-      db, nip: '1000001017', dataZlozenia: '2026-07-02T08:00:00.000Z', hurt: false,
+      db, nip: '1234500011', dataZlozenia: '2026-07-02T08:00:00.000Z', hurt: false,
     });
     const b = przypiszDoOkresu({
-      db, nip: '100-000-10-17', dataZlozenia: '2026-07-29T08:00:00.000Z', hurt: false,
+      db, nip: '123-450-00-11', dataZlozenia: '2026-07-29T08:00:00.000Z', hurt: false,
     });
     expect(b).toBe(a);
     expect(db.prepare('SELECT COUNT(*) AS ile FROM okresy_rozliczeniowe').get().ile).toBe(1);
@@ -118,7 +118,7 @@ describe('przypiszDoOkresu', () => {
   it('brak daty zlozenia RZUCA, zamiast wziac dzisiejsza', () => {
     const db = bazaZKlientem();
     expect(() => przypiszDoOkresu({
-      db, nip: '1000001017', dataZlozenia: undefined, hurt: false,
+      db, nip: '1234500011', dataZlozenia: undefined, hurt: false,
     })).toThrow(/data złożenia/i);
     expect(db.prepare('SELECT COUNT(*) AS ile FROM okresy_rozliczeniowe').get().ile).toBe(0);
   });
@@ -127,7 +127,7 @@ describe('przypiszDoOkresu', () => {
   // jak do 24.08.2026 poprawnym trybem byl brak sekcji `OMS_KLIENCI_ZBIORCZY`.
   it('baza bez klientow zbiorczych nie wywala trasy', () => {
     expect(przypiszDoOkresu({
-      db: openOmsDb(), nip: '1000001017', dataZlozenia: '2026-07-15T10:00:00.000Z', hurt: false,
+      db: openOmsDb(), nip: '1234500011', dataZlozenia: '2026-07-15T10:00:00.000Z', hurt: false,
     })).toBeNull();
   });
 
@@ -142,7 +142,7 @@ describe('przypiszDoOkresu', () => {
       oplata_kurierska_gr: null,
     });
     expect(przypiszDoOkresu({
-      db, nip: '1000001017', dataZlozenia: '2026-07-15T10:00:00.000Z', hurt: false,
+      db, nip: '1234500011', dataZlozenia: '2026-07-15T10:00:00.000Z', hurt: false,
     })).toBeNull();
   });
 });
@@ -150,8 +150,8 @@ describe('przypiszDoOkresu', () => {
 describe('utworzZamowienieReczne zapisuje okres', () => {
   it('zapisuje przekazany identyfikator okresu', () => {
     const db = bazaZKlientem();
-    const okres = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
-    const id = utworzZamowienieReczne(db, { nip: '1000001017' }, okres.id);
+    const okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
+    const id = utworzZamowienieReczne(db, { nip: '1234500011' }, okres.id);
     expect(pobierzZamowienie(db, id).okres_rozliczeniowy_id).toBe(okres.id);
     expect(zamowieniaOkresu(db, okres.id)).toEqual([id]);
   });
@@ -212,17 +212,17 @@ describe('trasa zakładania przypisuje okres', () => {
   });
 
   it('drop klienta zbiorczego dostaje okres biezacego miesiaca', async () => {
-    const { db, z } = await zaloz({ f_nip: '1000001017', ...towar('100,00') });
+    const { db, z } = await zaloz({ f_nip: '1234500011', ...towar('100,00') });
     expect(z.okres_rozliczeniowy_id).not.toBe(null);
     const { rok, miesiac } = terazWarszawa();
     const o = pobierzOkres(db, z.okres_rozliczeniowy_id);
-    expect(o.klient_klucz).toBe('zetaklient');
+    expect(o.klient_klucz).toBe('przykladowa');
     expect(o.rok).toBe(rok);
     expect(o.miesiac).toBe(miesiac);
   });
 
   it('HURT tego samego klienta NIE dostaje okresu', async () => {
-    const { db, z } = await zaloz({ f_nip: '1000001017', hurt: 'on', ...towar('100,00') });
+    const { db, z } = await zaloz({ f_nip: '1234500011', hurt: 'on', ...towar('100,00') });
     expect(z.okres_rozliczeniowy_id).toBe(null);
     expect(db.prepare('SELECT COUNT(*) AS ile FROM okresy_rozliczeniowe').get().ile).toBe(0);
   });
@@ -232,12 +232,12 @@ describe('trasa zakładania przypisuje okres', () => {
   // przy tym samym NIP-ie. Dopiero ta kolumna mowi, ze fakture wystawiamy OD RAZU,
   // z terminem platnosci (spec §3) — bez niej panel nie ma o tym skad wiedziec.
   it('HURT zostawia slad w kolumnie do_siedziby_klienta', async () => {
-    const { z } = await zaloz({ f_nip: '1000001017', hurt: 'on', ...towar('100,00') });
+    const { z } = await zaloz({ f_nip: '1234500011', hurt: 'on', ...towar('100,00') });
     expect(z.do_siedziby_klienta).toBe(1);
   });
 
   it('zwykly drop ma do_siedziby_klienta wyzerowane', async () => {
-    const { z } = await zaloz({ f_nip: '1000001017', ...towar('100,00') });
+    const { z } = await zaloz({ f_nip: '1234500011', ...towar('100,00') });
     expect(z.do_siedziby_klienta).toBe(0);
   });
 
@@ -251,11 +251,11 @@ describe('trasa zakładania przypisuje okres', () => {
   // numerem, bez okresu i bez faktury — czyli po cichu wypadloby z rozliczenia.
   it('zamkniety okres odmawia zapisu i NIE zaklada zamowienia', async () => {
     const { db, app } = await serwer();
-    const o = zapewnijOkres(db, { klientKlucz: 'zetaklient', ...terazWarszawa() });
+    const o = zapewnijOkres(db, { klientKlucz: 'przykladowa', ...terazWarszawa() });
     zamknijOkres(db, o.id);
     const r = await app.inject({
       method: 'POST', url: '/zamowienia/nowe', headers: naglowek,
-      payload: { f_nip: '1000001017', ...towar('100,00') },
+      payload: { f_nip: '1234500011', ...towar('100,00') },
     });
     expect(r.statusCode).toBe(400);
     expect(r.body).toContain('rozliczony');
@@ -265,7 +265,7 @@ describe('trasa zakładania przypisuje okres', () => {
   // Opłata (Zadanie 4B) i okres sa niezalezne — ale obie musza zadzialac na tym samym
   // zamowieniu, a nie jedna zamiast drugiej.
   it('drop dostaje i okres, i opłatę', async () => {
-    const { z } = await zaloz({ f_nip: '1000001017', ...towar('100,00') });
+    const { z } = await zaloz({ f_nip: '1234500011', ...towar('100,00') });
     expect(z.okres_rozliczeniowy_id).not.toBe(null);
     expect(z.pozycje.map((p) => p.nazwa)).toContain('Usługa kurierska');
   });

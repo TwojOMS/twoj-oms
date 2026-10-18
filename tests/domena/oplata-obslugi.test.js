@@ -4,7 +4,7 @@ import {
 } from '../../src/domena/oplata-obslugi.js';
 
 const KLIENT = {
-  klucz: 'zetaklient', rabatProcent: 30, progDarmowejDostawyGr: 50000,
+  klucz: 'przykladowa', rabatProcent: 30, progDarmowejDostawyGr: 50000,
   oplataObslugiGr: 400, oplataKurierskaGr: 1900,
 };
 

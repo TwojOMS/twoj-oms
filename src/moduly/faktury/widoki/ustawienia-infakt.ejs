@@ -26,14 +26,21 @@
     <h2>Odłączony</h2>
     <p class="pas-uprzedzenie">Klucz usunięty — OMS nie wyśle już nic do inFaktu. Przyciski faktur zostają na ekranach do ponownego uruchomienia OMS-u i do tego czasu odmawiają z komunikatem „inFakt nie jest skonfigurowany”.</p>
   <% } else if (stan) { %>
-    <h2>Podłączony</h2>
+    <h2>Stan połączenia</h2>
+    <p class="ust-stan ust-stan-ok"><strong>Podłączony</strong></p>
     <p>Klucz API zapisał <%= stan.kontoLogin ?? '—' %>, <%= fmtDataCzas(stan.zmienionoAt) %>.</p>
     <% if (wymagaRestartu) { %><p class="pas-uprzedzenie">Zakładka Faktury, wystawianie faktur i wysyłka do KSeF włączą się po ponownym uruchomieniu OMS-u (to pierwsze podłączenie inFaktu w tym panelu). „Sprawdź połączenie” działa już teraz, a późniejsza zmiana klucza — od razu.</p><% } %>
   <% } else { %>
-    <h2>Niepodłączony</h2>
-    <p>Potrzebujesz konta w inFakcie z dostępem do API: klucz API znajdziesz w inFakcie w Ustawienia → API. Samo podłączenie w OMS-ie nie zakłada konta w inFakcie i niczego nie wystawia.</p>
+    <h2>Stan połączenia</h2>
+    <p class="ust-stan"><strong>Niepodłączony</strong></p>
   <% } %>
 </section>
+<% if (!odlaczonyDoRestartu && !stan) { %>
+<aside class="ust-instrukcja" id="infakt-instrukcja">
+  <h3>Skąd wziąć dane dostępu</h3>
+  <p>Potrzebujesz konta w inFakcie z dostępem do API: klucz API znajdziesz w inFakcie w Ustawienia → API. Samo podłączenie w OMS-ie nie zakłada konta w inFakcie i niczego nie wystawia.</p>
+</aside>
+<% } %>
 
 <section class="ust-sekcja">
   <h2>Połączenie</h2>

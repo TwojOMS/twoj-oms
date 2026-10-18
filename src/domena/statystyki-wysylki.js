@@ -2,8 +2,9 @@
 // Ten moduł nie dotyka bazy i nie zna zegara.
 import { uslugaDostawy } from './wysylka.js';
 import {
-  terminZamowienia, dniRoboczeDoWysylki, poTerminie, tegoSamegoDnia,
+  terminZamowienia, dniRoboczeDoWysylki,
 } from './termin-wysylki.js';
+import { dzienWarszawa } from './format-daty.js';
 
 /** Udział w procentach z jednym miejscem po przecinku. Mianownik 0 → `null`, nie `0`. */
 export const udzialProcent = (ile, zCzego) => (zCzego
@@ -32,18 +33,28 @@ export const udzialProcent = (ile, zCzego) => (zCzego
  * da się zestawić z RAPORTAMI ani z licznikiem na liście.
  */
 export function rozkladUslug(zamowienia) {
-  const suma = zamowienia.length;
+  const a = agregatorUslug();
+  for (const z of zamowienia) a.dodaj(z);
+  return a.wynik();
+}
+
+export function agregatorUslug() {
+  let suma = 0;
   const kubelki = new Map();
-  for (const z of zamowienia) {
+  const dodaj = (z) => {
+    suma += 1;
     const etykieta = uslugaDostawy(z);
     kubelki.set(etykieta, (kubelki.get(etykieta) ?? 0) + 1);
-  }
-  const pozycje = [...kubelki.entries()]
-    .map(([etykieta, ile]) => ({ etykieta, ile, udzial: udzialProcent(ile, suma) }))
-    // Drugie kryterium jest obowiązkowe: bez niego kolejność dwóch usług o tej samej
-    // liczbie skacze między odświeżeniami i ekran wygląda, jakby dane się zmieniały.
-    .sort((a, b) => (b.ile - a.ile) || a.etykieta.localeCompare(b.etykieta, 'pl'));
-  return { pozycje, suma };
+  };
+  const wynik = () => {
+    const pozycje = [...kubelki.entries()]
+      .map(([etykieta, ile]) => ({ etykieta, ile, udzial: udzialProcent(ile, suma) }))
+      // Drugie kryterium jest obowiązkowe: bez niego kolejność dwóch usług o tej samej
+      // liczbie skacze między odświeżeniami i ekran wygląda, jakby dane się zmieniały.
+      .sort((a, b) => (b.ile - a.ile) || a.etykieta.localeCompare(b.etykieta, 'pl'));
+    return { pozycje, suma };
+  };
+  return { dodaj, wynik };
 }
 
 // Kolejność jest treścią: rozkład czyta się od najlepszego wyniku do najgorszego, a pozycje
@@ -74,30 +85,37 @@ const kubelekCzasu = (dniRobocze, tenSamDzien) => {
  * przypięty testem. Każde zamówienie wpada dokładnie w jedno miejsce.
  */
 export function terminowosc(zamowienia) {
+  const a = agregatorTerminowosci();
+  for (const z of zamowienia) a.dodaj(z);
+  return a.wynik();
+}
+
+export function agregatorTerminowosci() {
   const wylaczenia = { niewyslane: 0, przedWplata: 0, bezStartu: 0 };
   const liczniki = new Map(KUBELKI_CZASU.map((k) => [k, 0]));
   let mianownik = 0;
   let wTerminie = 0;
   let tegoDnia = 0;
 
-  for (const z of zamowienia) {
-    if (!z.wyslane_at) { wylaczenia.niewyslane += 1; continue; }
+  const dodaj = (z) => {
+    if (!z.wyslane_at) { wylaczenia.niewyslane += 1; return; }
     // ⚠️ KOLEJNOŚĆ TYCH DWÓCH WARUNKÓW JEST TREŚCIĄ. Brak startu (nieopłacona przedpłata)
     // sprawdzamy PRZED wysłaniem przed wpłatą — inaczej zamówienie bez `oplacone_at`
     // wpadłoby do „wysłane przed wpłatą", czyli do kubełka opisującego CO INNEGO.
-    if (!terminZamowienia(z)) { wylaczenia.bezStartu += 1; continue; }
-    const dni = dniRoboczeDoWysylki(z);
-    if (dni === null) { wylaczenia.przedWplata += 1; continue; }
+    const termin = terminZamowienia(z);
+    if (!termin) { wylaczenia.bezStartu += 1; return; }
+    const dni = dniRoboczeDoWysylki(z, termin);
+    if (dni === null) { wylaczenia.przedWplata += 1; return; }
 
     mianownik += 1;
-    if (poTerminie(z) === false) wTerminie += 1;
-    const tenSam = tegoSamegoDnia(z);
+    if (dni <= termin.limit) wTerminie += 1;
+    const tenSam = termin.dzienStartu === dzienWarszawa(z.wyslane_at);
     if (tenSam) tegoDnia += 1;
     const kubelek = kubelekCzasu(dni, tenSam);
     liczniki.set(kubelek, liczniki.get(kubelek) + 1);
-  }
+  };
 
-  return {
+  const wynik = () => ({
     mianownik,
     wTerminie,
     tegoSamegoDnia: tegoDnia,
@@ -109,5 +127,6 @@ export function terminowosc(zamowienia) {
       udzial: udzialProcent(liczniki.get(etykieta), mianownik),
     })),
     wylaczenia,
-  };
+  });
+  return { dodaj, wynik };
 }

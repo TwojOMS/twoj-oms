@@ -69,7 +69,7 @@ describe('GET /faktury', () => {
   it('pokazuje dni do terminu w pasie nieopłaconych', async () => {
     const app = serwer({ nieoplacone: [{
       uuid: 'u9', number: '19/12/2025', payment_date: '2025-12-24', pozostaloZl: '1378.50',
-      client_company_name: 'PHU Ewa Zieliński', stanTerminu: 'po_terminie',
+      client_company_name: 'Pracownia Przykładowa sp. z o.o.', stanTerminu: 'po_terminie',
       opisTerminu: 'po terminie o 225 dni', zamowienie: null, stanKsef: 'jest',
     }] });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
@@ -200,12 +200,12 @@ describe('GET /faktury', () => {
     const app = serwer({ dokumenty: [{
       uuid: 'uo', number: '5/08/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null,
       kwotaZl: '100.00', pozostaloZl: '0.00', zamowienie: null,
-      okres: { id: 12, klient: 'zetaklient', rok: 2026, miesiac: 7 },
+      okres: { id: 12, klient: 'przykladowa', rok: 2026, miesiac: 7 },
       stanTerminu: 'brak', opisTerminu: 'bez terminu',
     }] });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
     expect(r.body).toContain('/okresy/12');
-    expect(r.body).toContain('zetaklient');
+    expect(r.body).toContain('przykladowa');
   });
 
   // ⚠️ Recenzja II Zadania 7 (Finding 1): odkąd `dokumenty` i `nieoplacone` maja WLASNE
@@ -302,7 +302,7 @@ describe('GET /faktury', () => {
         dokumenty: async () => { throw new Error('inFakt nieosiągalny: fetch failed'); },
         nieoplacone: async () => [{
           uuid: 'u9', number: '19/12/2025', payment_date: '2025-12-24', pozostaloZl: '1378.50',
-          client_company_name: 'PHU Ewa Zieliński', stanTerminu: 'po_terminie',
+          client_company_name: 'Pracownia Przykładowa sp. z o.o.', stanTerminu: 'po_terminie',
           opisTerminu: 'po terminie o 225 dni', zamowienie: null, stanKsef: 'jest',
         }],
         proformy: () => [{

@@ -102,6 +102,7 @@ Kończy się wierszem z `"status":"instalacja-zakonczona"`. Polecenie, bez dost�
 uruchamia OMS na pustej bazie, zakłada konto administratora, sprawdza restart, kopię i jej
 odtworzenie oraz dodaje trzy zmyślone zamówienia DEMO-001…003. Konfigurację zapisuje
 w `/opt/oms/config/oms.env`, dane konta w `/opt/oms/config/administrator-proby.env`.
+Opis zmiennych, ich wymagalności i odpowiedników w panelu znajdziesz w [tabeli zmiennych](zmienne.md) (`docs/zmienne.md`).
 Drugi raz odmówi (`INSTALACJA_ODMOWA_NADPISANIA`) — nie nadpisuje istniejących danych.
 
 Jeśli polecenie skończy się innym błędem `INSTALACJA_…`, zapisz go, wyczyść oba katalogi
@@ -139,6 +140,8 @@ internetu.** Dostęp spoza biura (VPN, HTTPS) to osobny krok.
 Próba z demo zostaje w archiwum, praca startuje na **pustej bazie z nowym kontem administratora**.
 Z próby nie przechodzi nic: zamówienia DEMO, konto próby i jej kopie nie mieszają się z prawdziwymi
 danymi. Przygotuj dane firmy: NIP, numer rachunku (26 cyfr), BDO (jeśli firma ma), nazwę i adres firmy.
+Adres firmy (`DPD_NADAWCA_…`) możesz zostawić pusty i wpisać po przejściu w panelu: Ustawienia → Firma
+(bez niego OMS nie wystawi proformy ani specyfikacji). Wpisany w pliku ma pierwszeństwo przed panelem.
 
 ```bash
 sudo sh /opt/oms/aktualizuj.sh produkcja
@@ -168,7 +171,8 @@ sekund), robi jej kopię ze sprawdzeniem spójności, przenosi dane próby do
 i robi pierwszą kopię. Kończy wierszem `NEEDS_ACCEPT operacja=…` — zapisz numer operacji
 (np. `20261016-201242-81ed`); niżej wpisujesz go zamiast słowa `OPERACJA`. Do odbioru `status` pokazuje
 `blokada: TAK`, `etap=czeka_na_akceptacje` i zdanie „proces aktualizatora nie działa…” — to stan oczekiwany,
-nie awaria: przejście skończyło pracę i czeka na Twoją decyzję.
+nie awaria: przejście skończyło pracę i czeka na Twoją decyzję. Zgubiony numer operacji odczytasz
+tym samym poleceniem `sudo sh /opt/oms/aktualizuj.sh status`: w sekcji blokady stoi wiersz `operacja=…`.
 Jeśli OMS nie przyjmie konfiguracji (np. błędny NIP), przejście samo wraca do próby
 (`WYCOFANE …`) i pokazuje ostatnie linie dziennika z nazwą zmiennej — popraw `produkcja.env`
 i powtórz polecenie.
@@ -208,7 +212,8 @@ bazy pracy odłożone przez `recover` (`produkcja-odlozona-*`).
 
 Kolejność: **inFakt → sklep WooCommerce → Allegro → kurierzy (DPD, InPost)**. Jedna naraz —
 gdy coś nie działa, wiadomo co. Każda wygląda tak samo: dopisujesz linie do konfiguracji,
-uruchamiasz OMS od nowa i sprawdzasz.
+uruchamiasz OMS od nowa i sprawdzasz. Poczta, inFakt, DPD i InPost mają też ekrany w Ustawieniach →
+Integracje (poniżej przy każdej jest o tym akapit); plik konfiguracji zawsze wygrywa z ekranem.
 
 ```bash
 sudo nano /opt/oms/config/oms.env
@@ -236,6 +241,12 @@ INFAKT_API_KEY=klucz-z-inFaktu
 Sprawdzenie: w `zdrowie` sekcja `czuwaczOstrzezen` ma `"wlaczony": true`, zakładka FAKTURY pokazuje
 faktury z konta. Zły klucz albo brak łączności z inFaktem: FAKTURY ładują się ok. 10 s i pokazują błąd
 sieci (zmierzone na próbie bez dostępu do API).
+
+**inFakt — też z ekranu:** Ustawienia → Integracje → Faktury → inFakt (klucz API, „Sprawdź połączenie”).
+Pierwsze podłączenie z ekranu włącza zakładkę FAKTURY po ponownym uruchomieniu OMS-u
+(`sudo sh /opt/oms/aktualizuj.sh compose restart oms` — klucz leży w bazie, więc sam restart wystarcza);
+późniejsza zmiana klucza działa od razu. Wtedy linii `INFAKT_API_KEY` nie wpisuj — gdy jest w pliku, wygrywa
+nad ekranem. Adres API (`INFAKT_API_URL`) i archiwum sprzedaży (`INFAKT_ARCHIWUM`) ustawia się tylko w pliku.
 
 **Sklep WooCommerce** — klucze REST ze sklepu (WooCommerce → Ustawienia → Zaawansowane → REST API,
 uprawnienia „odczyt/zapis”):
@@ -332,7 +343,20 @@ w konfiguracji. Do połączenia `zdrowie` pokazuje alarm „Kanał allegro_pilot
 z Allegro…” — to oczekiwane; po połączeniu znika. Granica raportu tym samym poleceniem co przy
 sklepie (`produkcja-pierwszy-start.mjs --granice`), zaraz po `compose up -d`.
 
-**Kurierzy.** Adres nadawcy (`DPD_NADAWCA_…`) jest już wpisany; dopisz telefon i e-mail (InPost
+**Kurier DPD — najprościej z ekranu:** Ustawienia → Integracje → Kurierzy → DPD Polska (login, numer
+klienta i hasło od DPD, typ etykiety, przycisk „Sprawdź połączenie”). Krok po kroku, ze szkicem maila
+do DPD: `docs/kurier-dpd.md`. Wtedy linii `DPD_URL`…`DPD_INFO_CHANNEL` niżej nie wpisuj — gdy są w pliku,
+wygrywają nad ekranem.
+
+**Kurier InPost — też z ekranu:** Ustawienia → Integracje → Kurierzy → InPost (paczkomaty) (token API
+ShipX, numer organizacji, opcjonalny paczkomat nadawczy, „Sprawdź połączenie”). Krok po kroku:
+`docs/kurier-inpost.md`. Wtedy linii `INPOST_…` niżej nie wpisuj — gdy są w pliku, wygrywają nad ekranem.
+
+**Wydruk etykiet na drukarce w biurze** (Zebra i inne drukarki etykiet) robi mały program na komputerze
+z Windowsem przy drukarce — instrukcja: `deploy/drukarka/README.md`.
+
+**Kurierzy w pliku.** Kurier ustawiony w pliku wymaga adresu nadawcy też w pliku: `DPD_NADAWCA_…`
+(jeśli zostawiłeś go pustego przy przejściu na pracę, uzupełnij go teraz). Dopisz telefon i e-mail (InPost
 bez nich nie nada):
 
 ```
@@ -352,7 +376,11 @@ Adresy i dane DPD pochodzą z umowy (dostęp do API DPD Polska), token i numer o
 z panelu ShipX (API). Każdy kurier osobno, ze sprawdzeniem `zdrowie` po każdym. **Pierwsze
 nadanie to prawdziwa paczka i prawdziwy koszt** — zrób je świadomie, na jednym zamówieniu.
 
-KSeF i wysyłka maili (SMTP) są poza tą instrukcją.
+**Poczta wychodząca (SMTP)** — zaproszenia do kont, linki do hasła, wiadomości do klientów z karty
+zamówienia — ustawia się w Ustawienia → Integracje → Poczta albo w pliku (`SMTP_…`, `MAIL_FROM`); krok po
+kroku, z wiadomością próbną: `docs/poczta-smtp.md`. Plik wygrywa z ekranem.
+
+KSeF jest poza tą instrukcją.
 
 ## Codzienna obsługa
 

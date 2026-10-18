@@ -35,6 +35,26 @@ export const ROZMIAR_STRONY = 100;
 // jako tablica, zaden — wcale. Nigdy `undefined` do `wczytajListe`, bo to znaczy „wszystkie".
 const zaznaczone = (surowe) => [].concat(surowe ?? []);
 
+// PRZ-094.22 (właściciel 18.10.2026: „czasami trzeba czekać dość długo”). Masowa zmiana statusu odsyłała status do
+// sklepu/Allegro zamówienie PO zamówieniu — zmierzone na demo z atrapą opóźnioną o 2 s: 50 zamówień = 151 s, z czego
+// baza 0,5 s. Różne zamówienia nie zależą od siebie (każde ma własny cel w kanale), więc idą równolegle; kolejność
+// W OBRĘBIE zamówienia (odczyt Allegro → zapis) zostaje w `odeslijStatus`. Limit mały, żeby nie zalać API sklepu.
+export const ROWNOLEGLE_ODESLANIA = 4;
+
+// Wynik w kolejności wejścia, nie zakończenia — ekran wyniku wypisuje nieudane w kolejności listy.
+async function wykonajZLimitem(elementy, limit, fn) {
+  const wyniki = new Array(elementy.length);
+  let nastepny = 0;
+  const robotnik = async () => {
+    while (nastepny < elementy.length) {
+      const i = nastepny++;
+      wyniki[i] = await fn(elementy[i]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, elementy.length) }, robotnik));
+  return wyniki;
+}
+
 export function registerListaRoutes(app, kontekst) {
 const {db,config,poller,nadanie,faktura,proforma,kurierzy,gus,syncSklep,wiadomosci,przesylkiAllegro,stanyKanalow,zdrowie,fakturaAllegro,fakturaHurtem,doczytanieKsef,powrotKarty,adresPowrotuNaKarte,wczytajListe,statusyDlaKarty,OKNO_OSTRZEZEN_PRZESYLEK_DNI,zbierzOstrzezenia,wyborWiadomosci,daneWiadomosci,renderujKarte,renderujNowe,magazynEkranu,niesiePolaFormularza,opisZmian,kopiujDaneFakturyDoWysylki,pozycjaZadania,zWynikami,magazynDlaKarty}=kontekst;
 app.post('/ostrzezenia/odrzuc', async (req, reply) => {
@@ -335,6 +355,7 @@ app.post('/zamowienia/masowe/status', async (req, reply) => {
     // 20/20, na ekranie ANI SLOWA. Operator widzial „udalo sie", a kupujacy dalej widzieli
     // stary status. Niezmiennik 4.13a: pominiete wracaja Z POWODEM i musza byc widoczne.
     const niedoslane = [];
+    const doOdeslania = [];
     for (const z of doZmiany) {
       try {
         zapiszFaktyStatusu(db, z.id, faktyDlaStatusu(z, docelowy, { powod: null }));
@@ -353,12 +374,17 @@ app.post('/zamowienia/masowe/status', async (req, reply) => {
         wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): zmiana masowa na „${ETYKIETY[docelowy]}" `
           + `(${doZmiany.length} zamówień) — status po zmianie: ${ETYKIETY[osiagniety]}.`,
       });
-      // `odeslijStatus` NIGDY nie rzuca — powod nieudanej wysylki wraca w `{ blad }`
-      // i az do tej poprawki byl tu wyrzucany do kosza.
-      if (syncSklep) {
-        const { blad } = await syncSklep.odeslijStatus(z.id);
+      doOdeslania.push(z);
+    }
+    // `odeslijStatus` NIGDY nie rzuca — powod nieudanej wysylki wraca w `{ blad }`
+    // i az do tej poprawki byl tu wyrzucany do kosza. Zapisy w bazie wyzej poszly juz wszystkie
+    // (synchronicznie), wiec status w panelu nie czeka na sklep zadnego zamowienia.
+    if (syncSklep) {
+      const odeslane = await wykonajZLimitem(doOdeslania, ROWNOLEGLE_ODESLANIA, (z) => syncSklep.odeslijStatus(z.id));
+      doOdeslania.forEach((z, i) => {
+        const blad = odeslane[i]?.blad;
         if (blad) niedoslane.push({ id: z.id, numer: z.numer, powod: poPolsku(blad) });
-      }
+      });
     }
 
     // ⚠️ Gdy WSZYSTKO przeszlo, wracamy na liste zwyklym przekierowaniem — bo zmiana statusu

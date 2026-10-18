@@ -22,6 +22,13 @@
     /* ================================================================================= */
     :root {
       color-scheme: light;
+      /* PRZ-094.17: kolory marek przewoźników i kanałów (plakietki listy zamówień). Celowo te same w obu
+         motywach — to kolory cudzych marek, nie panelu; ciemny motyw ich nie nadpisuje, plakietka ma tam ramkę.
+         Pary tło/tekst mają kontrast ≥4,5:1 (DHL: ciemniejsza czerwień zamiast #D40511, Allegro: ciemny tekst). */
+      --marka-inpost-tlo: #FFCB04; --marka-inpost-tekst: #424143;
+      --marka-dpd-tlo: #DC0032; --marka-dhl-tlo: #FFCC00; --marka-dhl-tekst: #B3010F;
+      --marka-orlen-tlo: #DB3830; --marka-packeta-tlo: #BA1B02; --marka-allegro-one-tlo: #006D57;
+      --marka-allegro-tlo: #FF5A00; --marka-allegro-tekst: #1D1D1B; --marka-woo-tlo: #873EFF; --marka-bialy: #FFFFFF;
       --tlo: #f5f6f7;
       --tekst: #202830;
       --powierzchnia: #fff;
@@ -947,6 +954,28 @@
        proform i faktur, ktore maja INNE kolumny. */
     .tab-stala { table-layout: fixed; }
     .tab-stala td { overflow-wrap: anywhere; }
+    /* HISTORIA ZMIAN na dole karty (PRZ-094.18): zapis techniczny, wiec drobny druk i czcionka
+       o stalej szerokosci tam, gdzie jest kod. Stały plan kolumn jak w tabeli pozycji — dluga
+       odpowiedz API nie rozpycha ekranu; pelna tresc otwiera <details>. */
+    .hist-tab { table-layout: fixed; }
+    .hist-tab col.hist-kol-czas { width: 9.5rem; }
+    .hist-tab col.hist-kol-kto { width: 6.5rem; }
+    .hist-tab col.hist-kol-akcja { width: 12rem; }
+    .hist-tab td { font-size: .8rem; vertical-align: top; overflow-wrap: anywhere; }
+    .hist-tab .hist-czas { white-space: nowrap; color: var(--tekst-przygaszony); font-variant-numeric: tabular-nums; }
+    .hist-tab .hist-kto { color: var(--tekst-przygaszony); }
+    .hist-tab .hist-akcja { font-family: ui-monospace, Consolas, monospace; font-size: .76rem; }
+    .hist-tab .hist-brak { color: var(--tekst-przygaszony); }
+    .hist-tab details > summary { cursor: pointer; list-style: none; }
+    .hist-tab details > summary::-webkit-details-marker { display: none; }
+    .hist-tab .hist-skrot { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hist-tab .hist-zwin { display: none; color: var(--tekst-przygaszony); font-size: .72rem; }
+    .hist-tab details[open] .hist-skrot { display: none; }
+    .hist-tab details[open] .hist-zwin { display: inline; }
+    .hist-tab .hist-pelny { margin-top: .3rem; white-space: pre-wrap; font-family: ui-monospace, Consolas, monospace; font-size: .74rem; line-height: 1.45; }
+    .hist-strony { display: flex; justify-content: space-between; align-items: center; margin-top: .7rem; font-size: .85rem; }
+    .hist-strony a { color: var(--link); }
+    .hist-numer { color: var(--tekst-przygaszony); font-size: .78rem; }
     /* Netto zeszlo z wlasnej kolumny pod cene brutto (przebudowa karty 2026-08-07): szesc
        kolumn nie miescilo sie czytelnie, a netto jest liczba pomocnicza — na fakture i tak
        idzie brutto. */
@@ -1159,6 +1188,21 @@
     .komorka-zamowienie .wiersz-data { white-space: nowrap; }
     .wiersz-stan { margin-top: .4rem; display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
     .komorka-klient { min-width: 8rem; }
+    /* KOLUMNA „KLIENT” (PRZ-094.19): imie i nazwisko (1rem, jak dotad) → firma (.9rem, ta sama miara co nazwa
+       metody w „Dostawie”) → login Allegro (.85rem, przygaszony: najmniejszy drobny druk panelu, `.drobne`).
+       ⚠️ PRZYCIECIE `line-clamp`, NIE `nowrap` + `ellipsis`: `nowrap` ustawialby twarda podloge szerokosci
+       kolumny rowna najdluzszej nazwie (ta sama pulapka co przy dacie i kanale w „Zamowieniu”), a clamp
+       lamie tekst jak zwykle. `overflow-wrap: anywhere` — login albo nazwa bez spacji tez sie lamie, zamiast
+       rozpychac tabele. Pelny napis zawsze w `title`; przyciecie jest wylacznie wizualne. */
+    .klient-nazwa, .klient-firma, .klient-login {
+      display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+      -webkit-line-clamp: 2; line-clamp: 2;
+    }
+    .klient-firma { margin-top: .1rem; font-size: .9rem; }
+    .klient-login {
+      margin-top: .15rem; font-size: .85rem; color: var(--tekst-przygaszony);
+      -webkit-line-clamp: 1; line-clamp: 1;
+    }
     .komorka-kwota { white-space: nowrap; }
     /* Pusta lista ma powiedziec, ze jest pusta — inaczej wyglada jak ekran, ktory sie nie wczytal. */
     .pusto { color: var(--tekst-przygaszony); font-style: italic; padding: 1.25rem .85rem; }
@@ -1281,9 +1325,42 @@
        ~14,5rem zmieściłoby i je, ale kosztem „Produktów" — do decyzji, gdyby zaczęło
        przeszkadzać. */
     .komorka-dostawa { min-width: 11rem; max-width: 12rem; }
+    /* PRZ-094.17 (prosba właściciela): nazwa metody o stopien mniejsza niz tekst komorki (1rem → .9rem —
+       najczestszy rozmiar „tekstu pomocniczego” w tym pliku; panel nie ma na to tokenu). Dopisek
+       „(pobranie)” jest czescia nazwy, wiec ma ten sam rozmiar, a .9rem jest NIE MNIEJSZE niz drobny
+       druk panelu (`.drobne` .85rem, `.wiersz-szczegoly` .8rem). */
     .nazwa-dostawy {
       display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3;
-      -webkit-box-orient: vertical; overflow: hidden;
+      -webkit-box-orient: vertical; overflow: hidden; font-size: .9rem;
+    }
+    /* PLAKIETKI MAREK (PRZ-094.17) — przewoznik w kolumnie „Dostawa” i rodzaj kanalu (Allegro /
+       WooCommerce) przy nazwie sklepu. JEDEN styl: kolor tla i tekstu idzie przez dwie zmienne,
+       a kazda marka ustawia tylko je. Kolory MAREK sa stale w obu motywach (marka nie zmienia
+       barw po ciemnym motywie), dlatego NIE sa tokenami palety panelu; w ciemnym motywie plakietke
+       odcina od tla cienka ramka z tokena `--ramka-pola`, zeby zolty InPost nie „swiecil”.
+       Kontrast tekstu na tle (WCAG, liczony skryptem, prog 4,5): InPost 6,67 · DPD 5,14 · DHL 4,74 ·
+       ORLEN Paczka 4,55 · Packeta 6,47 · Allegro One 6,32 · Allegro (kanal) 5,40 · WooCommerce 5,04.
+       Zrodla kolorow i odstepstwo DHL (ciemniejsza czerwien tekstu): opis w commicie PRZ-094.17. */
+    .plakietka {
+      display: block; width: fit-content; max-width: 100%; box-sizing: border-box;
+      padding: .08rem .45rem; border: 1px solid transparent; border-radius: .35rem;
+      font-weight: 600; line-height: 1.35;
+      background: var(--plakietka-tlo, transparent); color: var(--plakietka-tekst, inherit);
+    }
+    html[data-motyw="ciemny"] .plakietka { border-color: var(--ramka-pola); }
+    .plakietka--inpost { --plakietka-tlo: var(--marka-inpost-tlo); --plakietka-tekst: var(--marka-inpost-tekst); }
+    .plakietka--dpd { --plakietka-tlo: var(--marka-dpd-tlo); --plakietka-tekst: var(--marka-bialy); }
+    .plakietka--dhl { --plakietka-tlo: var(--marka-dhl-tlo); --plakietka-tekst: var(--marka-dhl-tekst); }
+    .plakietka--orlen { --plakietka-tlo: var(--marka-orlen-tlo); --plakietka-tekst: var(--marka-bialy); }
+    .plakietka--packeta { --plakietka-tlo: var(--marka-packeta-tlo); --plakietka-tekst: var(--marka-bialy); }
+    .plakietka--allegro-one { --plakietka-tlo: var(--marka-allegro-one-tlo); --plakietka-tekst: var(--marka-bialy); }
+    .plakietka--allegro { --plakietka-tlo: var(--marka-allegro-tlo); --plakietka-tekst: var(--marka-allegro-tekst); }
+    .plakietka--woo { --plakietka-tlo: var(--marka-woo-tlo); --plakietka-tekst: var(--marka-bialy); }
+    /* Wariant kanalu: kwadrat o wysokosci linii tekstu z jedna litera; pelna nazwa w title/aria-label. */
+    .plakietka--kanal {
+      display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+      width: 1.15rem; height: 1.15rem; padding: 0; margin: -.15rem .35rem -.15rem 0; vertical-align: middle;
+      border-radius: .3rem; font-size: .75rem; font-weight: 700; line-height: 1;
     }
     .komorka-ikony { white-space: nowrap; }
     .ikona {
@@ -1602,6 +1679,28 @@
     .ust-kanal:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
     .ust-sekcja h2 { margin: 0 0 .3rem; font-size: 1rem; color: var(--tekst); }
     .ust-sekcja p { margin: 0 0 .8rem; font-size: .88rem; color: var(--tekst-przygaszony); }
+    /* Stan integracji (PRZ-094.11): krotka plakietka „Podlaczony" / „Niepodlaczony". Instrukcja */
+    /* uzyskania dostepu to OSOBNY blok `.ust-instrukcja` pod kaflem stanu — status i poradnik */
+    /* nie stoja juz w jednym akapicie. */
+    .ust-sekcja .ust-stan { margin: 0 0 .3rem; }
+    .ust-stan strong { display: inline-block; padding: .12rem .65rem; border-radius: .8rem; font-size: .85rem; font-weight: 600;
+      background: var(--powierzchnia-2); color: var(--tekst-przygaszony); border: 1px solid var(--ramka); }
+    .ust-stan.ust-stan-ok strong { background: var(--ok-tlo); color: var(--ok-tekst); border-color: transparent; }
+    /* PRZ-094.12: ekran reklam ma wiecej stanow niz „podlaczony / nie": „Blad" (test odczytu */
+    /* zwrocil kod bledu) i „Weryfikacja" (polaczenie zapisane, jeszcze bez udanego odczytu). */
+    .ust-stan.ust-stan-blad strong { background: var(--blad-tlo); color: var(--blad-tekst); border-color: transparent; }
+    .ust-stan.ust-stan-weryfikacja strong { background: var(--uwaga-tlo); color: var(--uwaga-tekst); border-color: transparent; }
+    /* Blok informacyjny, nie ostrzezenie: paleta „komentarza wewnetrznego" (spokojny blekit, jasny */
+    /* i ciemny motyw), ksztalt jak `.pas-uprzedzenie` — lewy pasek. Szerokosc jak kafle `.ust-sekcja`. */
+    .ust-instrukcja { box-sizing: border-box; max-width: 42rem; margin: 0 0 .9rem; padding: .7rem 1.1rem .1rem;
+      background: var(--komentarz-tlo); border: 1px solid var(--komentarz-ramka); border-left: .25rem solid var(--komentarz-kreska); border-radius: .35rem; }
+    .ust-instrukcja h3 { margin: 0 0 .3rem; font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--komentarz-tekst); }
+    .ust-instrukcja p { margin: 0 0 .7rem; font-size: .88rem; color: var(--tekst); }
+    .ust-instrukcja .ust-akcje { margin: 0 0 .7rem; }
+    /* Pole tekstowe (prompt dla agenta, poswiadczenie): paleta jak pola `.ust-formularz`. */
+    .ust-prompt, .ust-formularz textarea { box-sizing: border-box; width: 100%; padding: .4rem .55rem; font: inherit; font-size: .88rem;
+      color: var(--tekst); background: var(--tlo); border: 1px solid var(--ramka-pola); border-radius: 4px; resize: vertical; }
+    .ust-prompt { margin: 0 0 .6rem; }
     .ust-akcje { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
     /* ⚠️ `text-decoration: none` DLA WARIANTU <a> („Sprawdź łączność"): ta klasa siedzi
        i na <button>, i na odnosniku, a odnosnik w ksztalcie przycisku byl podkreslony

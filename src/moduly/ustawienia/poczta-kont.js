@@ -5,11 +5,31 @@ import { renderMailHtml } from '../../core/poczta/mail-html.js';
 export const TEMATY = { zaproszenie: 'Zaproszenie do panelu', reset: 'Ustawienie nowego hasła' };
 const BRAK_USLUGI = '„wiadomosci.mailer" nie istnieje';
 
-/** Usługa `wiadomosci.mailer` albo null; łapie wyłącznie brak usługi (moduł wiadomości niezbudowany). */
-export function mailerOpcjonalny(usluga) {
+const BRAK_POCZTY = '„wiadomosci.pocztaWychodzaca" nie istnieje';
+
+/** Stan poczty wychodzącej z modułu wiadomości (PRZ-094.04) albo null — bez modułu albo w starym składzie usług. */
+export function pocztaOpcjonalna(usluga) {
   return () => {
-    try { return usluga('wiadomosci', 'mailer') ?? null; }
+    try { return usluga('wiadomosci', 'pocztaWychodzaca') ?? null; }
+    catch (e) { if (e instanceof Error && e.message.includes(BRAK_POCZTY)) return null; throw e; }
+  };
+}
+
+/**
+ * Mailer do maili systemowych albo null. Najpierw `wiadomosci.mailer` (plik .env, atrapa piaskownicy albo poczta
+ * z Ustawień zapisana przed startem); bez niego — poczta z Ustawień zapisana już po starcie (PRZ-094.04: zaproszenie
+ * i reset hasła działają od razu, bez restartu). Mailer z Ustawień bez kompletnego zapisu (odłączony) = null.
+ * Łapie wyłącznie brak usługi (moduł wiadomości niezbudowany).
+ */
+export function mailerOpcjonalny(usluga) {
+  const poczta = pocztaOpcjonalna(usluga);
+  return () => {
+    let mailer;
+    try { mailer = usluga('wiadomosci', 'mailer') ?? null; }
     catch (e) { if (e instanceof Error && e.message.includes(BRAK_USLUGI)) return null; throw e; }
+    const kandydat = mailer ?? poczta()?.ustawien ?? null;
+    if (kandydat && typeof kandydat.gotowy === 'function' && !kandydat.gotowy()) return null;
+    return kandydat;
   };
 }
 

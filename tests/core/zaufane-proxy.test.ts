@@ -40,7 +40,7 @@ describe('OMS_TRUST_PROXY', () => {
 
     const basicZle: number[] = [];
     for (let i = 0; i < 6; i++) basicZle.push((await a.app.inject({ method: 'GET', url: '/ustawienia/konta', ...przezProxy('198.51.100.10'), headers: { ...przezProxy('198.51.100.10').headers, ...basic('zle') } })).statusCode);
-    expect(basicZle).toEqual([401, 401, 401, 401, 401, 429]);
+    expect(basicZle).toEqual([401, 401, 401, 401, 429, 429]);
     expect((await a.app.inject({ method: 'GET', url: '/ustawienia/konta', ...przezProxy('198.51.100.11'), headers: { ...przezProxy('198.51.100.11').headers, ...basic('poprawne') } })).statusCode).toBe(200);
 
     const formularzZle: number[] = [];
@@ -51,13 +51,13 @@ describe('OMS_TRUST_PROXY', () => {
 
   it('bez zaufanej listy nie pozwala obejść hamulców zmianą X-Forwarded-For', async () => {
     const a = await zbuduj();
-    for (let i = 0; i < 5; i++) expect((await a.app.inject({ method: 'GET', url: '/ustawienia/konta', ...przezProxy(`198.51.100.${i}`), headers: { ...przezProxy(`198.51.100.${i}`).headers, ...basic('zle') } })).statusCode).toBe(401);
+    for (let i = 0; i < 4; i++) expect((await a.app.inject({ method: 'GET', url: '/ustawienia/konta', ...przezProxy(`198.51.100.${i}`), headers: { ...przezProxy(`198.51.100.${i}`).headers, ...basic('zle') } })).statusCode).toBe(401);
     expect((await a.app.inject({ method: 'GET', url: '/ustawienia/konta', ...przezProxy('198.51.100.99'), headers: { ...przezProxy('198.51.100.99').headers, ...basic('zle') } })).statusCode).toBe(429);
   });
 
   it('nie ufa nagłówkowi od niezaufanego nadawcy mimo skonfigurowanej listy', async () => {
     const a = await zbuduj({ OMS_TRUST_PROXY: '127.0.0.1' });
-    for (let i = 0; i < 5; i++) expect((await a.app.inject({ method: 'GET', url: '/ustawienia/konta', ...odNadawcy('192.0.2.1', `198.51.100.${i}`), headers: { ...odNadawcy('192.0.2.1', `198.51.100.${i}`).headers, ...basic('zle') } })).statusCode).toBe(401);
+    for (let i = 0; i < 4; i++) expect((await a.app.inject({ method: 'GET', url: '/ustawienia/konta', ...odNadawcy('192.0.2.1', `198.51.100.${i}`), headers: { ...odNadawcy('192.0.2.1', `198.51.100.${i}`).headers, ...basic('zle') } })).statusCode).toBe(401);
     expect((await a.app.inject({ method: 'GET', url: '/ustawienia/konta', ...odNadawcy('192.0.2.1', '198.51.100.99'), headers: { ...odNadawcy('192.0.2.1', '198.51.100.99').headers, ...basic('zle') } })).statusCode).toBe(429);
 
     for (let i = 0; i < 4; i++) expect((await a.app.inject({ method: 'POST', url: '/login', ...odNadawcy('192.0.2.2', `203.0.113.${i}`), headers: { ...odNadawcy('192.0.2.2', `203.0.113.${i}`).headers, origin: 'http://localhost' }, payload: { uzytkownik: 'operator', haslo: 'zle' } })).statusCode).toBe(401);

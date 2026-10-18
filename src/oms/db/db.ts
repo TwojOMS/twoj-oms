@@ -60,8 +60,8 @@ export function dosypPtaszekCeli(db: Parameters<typeof oznaczKluczeZamrozenia>[0
 
 /** Fabryka produkcyjna; schemat pochodzi z migracji modułów, bez firmowych seedów. */
 export function openOmsDb(path = ':memory:', {
-  moduly = [modulRdzen as unknown as ModulOms], teraz = () => new Date(),
-}: { moduly?: readonly ModulOms[]; teraz?: () => Date } = {}) {
+  moduly = [modulRdzen as unknown as ModulOms], teraz = () => new Date(), log,
+}: { moduly?: readonly ModulOms[]; teraz?: () => Date; log?: (linia: string) => void } = {}) {
   const db = otworzBaze(path);
   try {
     wykonajMigracje(db, moduly, teraz);
@@ -73,7 +73,7 @@ export function openOmsDb(path = ':memory:', {
     if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='stan_importu'").get()) {
       db.prepare('INSERT OR IGNORE INTO stan_importu (id) VALUES (1)').run();
       uzupelnijZdjeciaPozycji(db);
-      uzupelnijDaneZamowien(db);
+      uzupelnijDaneZamowien(db, { teraz, log });
     }
     return db;
   }

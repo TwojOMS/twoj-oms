@@ -1,4 +1,4 @@
-import { sprzedazWOkresie, zwrotyWOkresie } from './sprzedaz-okresu.js';
+import { sprzedazWOkresie, sprzedazWOkresieAsync, zwrotyWOkresie } from './sprzedaz-okresu.js';
 import { miesiaceOkresu, nazwaOkresu } from './okresy-raportu.js';
 import { podatekNarastajaco } from './podatek-skala.js';
 import { wskazniki, prowizjaAllegroZaMiesiac } from './wskazniki-zarzadcze.js';
@@ -87,7 +87,7 @@ const koniecMiesiaca = (miesiac) => new Date(
   Date.UTC(Number(miesiac.slice(0, 4)), Number(miesiac.slice(5, 7)), 0),
 ).toISOString().slice(0, 10);
 
-function rachunekMiesiaca(db, miesiac, regulySprzedazy) {
+function rachunekMiesiaca(db, miesiac, regulySprzedazy, sprzedaz) {
   const od = `${miesiac}-01`;
   const doDnia = koniecMiesiaca(miesiac);
   // ⚠️ ZWROT OBCIAZA MIESIAC ZWROTU — TA SAMA regula i TA SAMA funkcja `zwrotyWOkresie`, co
@@ -98,7 +98,7 @@ function rachunekMiesiaca(db, miesiac, regulySprzedazy) {
   // grosza. Netto liczy `zwrotyWOkresie` sama (nettoZ) — DRUGI RAZ tej arytmetyki tu nie ma,
   // inaczej zwrot zdejmowalby inna kwote netto, niz dodala sprzedaz.
   const zwrotyNetto = sumaNetto(zwrotyWOkresie(db, { od, do: doDnia }, regulySprzedazy));
-  const przychod = sumaNetto(sprzedazWOkresie(db, { od, do: doDnia }, regulySprzedazy)) - zwrotyNetto;
+  const przychod = sumaNetto(sprzedaz.filter(w => w.dzien >= od && w.dzien <= doDnia)) - zwrotyNetto;
   const koszty = kosztyOkresu(db, [miesiac]).nettoGrosze;
   const { miesiace: [dane] = [] } = daneOkresu(db, [miesiac]);
   const zus = gr(dane?.zus_razem);
@@ -116,7 +116,23 @@ function rachunekMiesiaca(db, miesiac, regulySprzedazy) {
   };
 }
 
-export function rachunekOkresu(db, { od, do: doDnia }, { regulySprzedazy = {}, podlogaKosztow = null } = {}) {
+export function rachunekOkresu(db, zakres, opcje = {}) {
+  const kroki = liczRachunek(db, zakres, opcje);
+  let krok = kroki.next();
+  while (!krok.done) krok = kroki.next(sprzedazWOkresie(db, krok.value, opcje.regulySprzedazy));
+  return krok.value;
+}
+
+export async function rachunekOkresuAsync(db, zakres, opcje = {}) {
+  const kroki = liczRachunek(db, zakres, opcje);
+  let krok = kroki.next();
+  while (!krok.done) krok = kroki.next(await sprzedazWOkresieAsync(db, krok.value, opcje.regulySprzedazy));
+  return krok.value;
+}
+
+// Jeden odczyt sprzedaży dla całego rachunku. Poller może pracować między porcjami,
+// ale okres, rok i miesiące muszą korzystać z tych samych zebranych wierszy.
+function* liczRachunek(db, { od, do: doDnia }, { regulySprzedazy = {}, podlogaKosztow = null } = {}) {
   if (!podlogaKosztow) { const e = new Error(BRAK_PODLOGI_KOSZTOW); e.dlaOperatora = true; throw e; }
   if (od.slice(0, 7) < podlogaKosztow) {
     const e = new Error(
@@ -128,6 +144,14 @@ export function rachunekOkresu(db, { od, do: doDnia }, { regulySprzedazy = {}, p
   }
 
   const miesiace = miesiaceOkresu({ od, do: doDnia });
+  const rok = doDnia.slice(0, 4);
+  const poczatekRoku = `${rok}-01-01`;
+  // Rozbicie od zawsze pokazuje pełne miesiące także przy niepełnym zakresie.
+  // Jeden odczyt obejmuje sumę okien okresu, roku i widocznych miesięcy,
+  // inaczej zmieniłby liczby np. dla 1.01–10.03 (marzec byłby obcięty do 10.03).
+  const poczatekOdczytu = miesiace.length >= 2 ? `${miesiace[0]}-01` : od;
+  const koniecOdczytu = miesiace.length >= 2 ? koniecMiesiaca(miesiace.at(-1)) : doDnia;
+  const sprzedaz = yield { od: poczatekOdczytu < poczatekRoku ? poczatekOdczytu : poczatekRoku, do: koniecOdczytu };
   // ⚠️⚠️ PROWIZJA ALLEGRO WYLACZNIE DLA PELNEGO MIESIACA KALENDARZOWEGO, a nie dla „zakresu,
   // ktory miesci sie w jednym miesiacu" (2026-08-14). Zakres 5–20 czerwca ma jeden miesiac na
   // liscie, wiec warunek `miesiace.length === 1` wpuszczal do rachunku prowizje za CALY
@@ -147,7 +171,7 @@ export function rachunekOkresu(db, { od, do: doDnia }, { regulySprzedazy = {}, p
   // wynik wyszedlby glęboko ujemny i wygladalby jak zapasc, a nie jak zle zadane pytanie.
   // To ta sama rodzina bledu, co przy prowizji wyzej, tylko o wieksza kwote.
   const pelneMiesiace = od.endsWith('-01') && doDnia === koniecMiesiaca(miesiace.at(-1));
-  const wiersze = sprzedazWOkresie(db, { od, do: doDnia }, regulySprzedazy);
+  const wiersze = sprzedaz.filter(w => w.dzien >= od && w.dzien <= doDnia);
   // ⚠️ ZWROT OBCIAZA MIESIAC, W KTORYM NASTAPIL — nie miesiac sprzedazy. Podstawa: art. 14
   // ust. 1m ustawy o PIT (korekta przychodu w okresie wystawienia korekty) i art. 29a ust. 13
   // ustawy o VAT. Wariant „cofnij zwrot do miesiaca sprzedazy" dawalby rachunek zmieniajacy
@@ -184,7 +208,6 @@ export function rachunekOkresu(db, { od, do: doDnia }, { regulySprzedazy = {}, p
   } : null;
 
   // Podatek NARASTAJACO od stycznia roku, w ktorym konczy sie okres.
-  const rok = doDnia.slice(0, 4);
   const odStycznia = miesiaceOkresu({ od: `${rok}-01-01`, do: doDnia });
   const daneRoku = daneOkresu(db, odStycznia);
   // ⚠️⚠️ PODSTAWA PODATKU MA ODJETE ZWROTY, TA SAMA REGULA CO WYZEJ — inaczej PIT liczylby sie
@@ -193,7 +216,7 @@ export function rachunekOkresu(db, { od, do: doDnia }, { regulySprzedazy = {}, p
   // wystawiony w dowolnym miesiacu OD STYCZNIA DO KONCA raportowanego okresu pomniejsza dochod
   // narastajaco od chwili, w ktorej faktycznie nastapil — zgodnie z art. 14 ust. 1m PIT.
   const zwrotyRokuNettoGrosze = sumaNetto(zwrotyWOkresie(db, { od: `${rok}-01-01`, do: doDnia }, regulySprzedazy));
-  const dochodRoku = sumaNetto(sprzedazWOkresie(db, { od: `${rok}-01-01`, do: doDnia }, regulySprzedazy))
+  const dochodRoku = sumaNetto(sprzedaz.filter(w => w.dzien >= poczatekRoku && w.dzien <= doDnia))
     - zwrotyRokuNettoGrosze - kosztyOkresu(db, odStycznia).nettoGrosze;
   const podatek = podatekNarastajaco({
     dochodGrosze: dochodRoku,
@@ -205,6 +228,10 @@ export function rachunekOkresu(db, { od, do: doDnia }, { regulySprzedazy = {}, p
     .filter((w) => w.kanal.startsWith('ALLEGRO_'))
     .reduce((s, w) => s + w.nettoGrosze, 0);
 
+  const miesiacami = [];
+  if (miesiace.length >= 2) {
+    for (const m of miesiace) miesiacami.push(rachunekMiesiaca(db, m, regulySprzedazy, sprzedaz));
+  }
   return {
     od,
     do: doDnia,
@@ -244,7 +271,7 @@ export function rachunekOkresu(db, { od, do: doDnia }, { regulySprzedazy = {}, p
     podatek,
     // Sekcja „miesiac po miesiacu" od DWOCH miesiecy wzwyz: suma kwartalu mowi „ile",
     // ale nie „kiedy". W Q1 2026 sam marzec dal wiecej niz styczen i luty razem.
-    miesiacami: miesiace.length >= 2 ? miesiace.map((m) => rachunekMiesiaca(db, m, regulySprzedazy)) : null,
+    miesiacami: miesiace.length >= 2 ? miesiacami : null,
     // ⚠️ WSKAZNIKI WYLACZNIE PRZY `kosztyZnane` — policzone z niepelnych kosztow sa dokladnie
     // tym zmysleniem, przed ktorym broni prog 95%: prog rentownosci z jednej trzeciej wydatkow
     // wychodzi niski i wiarygodny naraz.

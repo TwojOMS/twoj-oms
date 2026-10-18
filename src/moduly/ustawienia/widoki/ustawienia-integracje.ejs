@@ -1,51 +1,84 @@
 <h1><%= tylkoReklamy ? 'Integracje reklam' : 'Integracje' %></h1>
+<% if (tylkoReklamy) { %><p><a href="/ustawienia/integracje">← Integracje</a></p><% } %>
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
+<% if (testOdczytu) { %><div class="<%= testOdczytu.ok ? 'pas-potwierdzenie' : 'pas-uprzedzenie' %>" id="reklamy-test"><p><%= testOdczytu.tekst %></p></div><% } %>
 <% if (blad) { %><div class="pas-uprzedzenie"><p><strong>Nie udało się rozpocząć wiązania.</strong> <%= blad %></p></div><% } %>
 
 <% if (tylkoReklamy) { %>
-<div class="ust-sekcja">
-  <p><a href="/ustawienia/integracje">← Wszystkie integracje</a></p>
-  <p>Każde źródło działa niezależnie. Brak połączenia nie zatrzymuje zamówień ani wysyłki.</p>
-  <% zrodlaReklam.forEach((zrodlo) => { %>
-    <section class="ust-kanal">
-      <h2><%= zrodlo.etykieta %></h2>
-      <% if (!zrodlo.stan.length) { %>
-        <p><strong>Niepodłączone</strong></p>
-        <p><%= zrodlo.typ === 'google_ads' ? 'Opcjonalny odczyt statusów i budżetów wymaga dostępu do Google Ads API.' : 'Podłącz własne konto, aby zobaczyć jego dzienne statystyki reklam.' %></p>
-        <p>Potrzebne: konto źródła, kanał OMS i poświadczenie tylko do odczytu zapisane w sekretach serwera.</p>
-        <textarea id="prompt-<%= zrodlo.typ %>" readonly rows="7" style="width:100%"><%= zrodlo.prompt %></textarea>
-        <button class="ust-przycisk" type="button" onclick="this.previousElementSibling.select(); document.execCommand('copy')">Skopiuj prompt dla agenta</button>
-      <% } else { %>
-        <% zrodlo.stan.forEach((polaczenie) => { %>
-          <p><strong><%= polaczenie.stan?.kodBledu ? 'Błąd' : polaczenie.stan?.ostatniSukcesAt ? 'Działa' : 'Weryfikacja' %></strong> — konto <%= polaczenie.kontoId %>, kanał <%= polaczenie.kanal ?? 'nieprzypisany' %></p>
-          <% if (polaczenie.stan?.ostatniSukcesAt) { %><p>Ostatni udany odczyt: <%= polaczenie.stan.ostatniSukcesAt %></p><% } %>
-          <% if (polaczenie.stan?.kodBledu) { %><p>Kod błędu: <%= polaczenie.stan.kodBledu %></p><% } %>
-          <% if (mozeKonfigurowacReklamy) { %>
-            <form method="post" action="/ustawienia/integracje/reklamy/test">
-              <input type="hidden" name="polaczenieId" value="<%= polaczenie.id %>">
-              <button class="ust-przycisk" type="submit">Test odczytu</button>
-            </form>
-          <% } %>
-        <% }); %>
-      <% } %>
-    </section>
-  <% }); %>
-  <% if (mozeKonfigurowacReklamy && formularzSekretu) { %>
-    <h2>Dodaj połączenie</h2>
-    <form method="post" action="/ustawienia/integracje/reklamy/zapisz">
-      <label>Źródło <select name="typ"><option value="ga4">Google przez GA4</option><option value="meta">Meta</option></select></label>
-      <label>ID konta lub właściwości <input name="kontoId" required></label>
-      <label>Kanał OMS <input name="kanal" required></label>
-      <label>Poświadczenie <textarea name="tresc" required></textarea></label>
-      <button class="ust-przycisk" type="submit">Zapisz połączenie</button>
-    </form>
-  <% } else if (mozeKonfigurowacReklamy) { %>
-    <p>Poświadczenie zapisz bezpośrednio w sekretach serwera. Formularz jest dostępny tylko przez zaufane HTTPS z podłączonym magazynem sekretów.</p>
+<p>Każde źródło działa niezależnie. Brak połączenia nie zatrzymuje zamówień ani wysyłki.</p>
+<% zrodlaReklam.forEach((zrodlo) => { %>
+<section class="ust-sekcja" id="reklamy-<%= zrodlo.typ %>">
+  <h2><%= zrodlo.etykieta %></h2>
+  <% if (!zrodlo.stan.length) { %>
+    <p class="ust-stan"><strong>Niepodłączone</strong></p>
+    <p><%= zrodlo.typ === 'google_ads' ? 'Opcjonalny odczyt statusów i budżetów wymaga dostępu do Google Ads API.' : 'Podłącz własne konto, aby zobaczyć jego dzienne statystyki reklam.' %></p>
+  <% } else { %>
+    <% zrodlo.stan.forEach((polaczenie) => { %>
+      <% const wynik = polaczenie.stan?.kodBledu ? 'Błąd' : polaczenie.stan?.ostatniSukcesAt ? 'Działa' : 'Weryfikacja'; %>
+      <div class="ust-kanal">
+        <p class="ust-stan <%= wynik === 'Działa' ? 'ust-stan-ok' : wynik === 'Błąd' ? 'ust-stan-blad' : 'ust-stan-weryfikacja' %>"><strong><%= wynik %></strong></p>
+        <p>Konto <%= polaczenie.kontoId %>, kanał <%= polaczenie.kanal ?? 'nieprzypisany' %>.</p>
+        <% if (polaczenie.stan?.ostatniSukcesAt) { %><p>Ostatni udany odczyt: <%= fmtDataCzas(polaczenie.stan.ostatniSukcesAt) %></p><% } %>
+        <% if (polaczenie.stan?.kodBledu) { %><p>Kod błędu: <%= polaczenie.stan.kodBledu %></p><% } %>
+        <% if (mozeKonfigurowacReklamy) { %>
+          <form method="post" action="/ustawienia/integracje/reklamy/test">
+            <input type="hidden" name="polaczenieId" value="<%= polaczenie.id %>">
+            <div class="ust-akcje"><button class="ust-przycisk" type="submit">Test odczytu</button></div>
+          </form>
+        <% } %>
+      </div>
+    <% }); %>
   <% } %>
-</div>
+</section>
+<% if (!zrodlo.stan.length) { %>
+<aside class="ust-instrukcja" id="reklamy-<%= zrodlo.typ %>-instrukcja">
+  <h3>Co jest potrzebne i jak to podłączyć</h3>
+  <p>Potrzebne: konto źródła, kanał OMS i poświadczenie tylko do odczytu zapisane w sekretach serwera.</p>
+  <textarea id="prompt-<%= zrodlo.typ %>" class="ust-prompt" readonly rows="7"><%= zrodlo.prompt %></textarea>
+  <div class="ust-akcje">
+    <button class="ust-przycisk" type="button" onclick="this.parentElement.previousElementSibling.select(); document.execCommand('copy')">Skopiuj prompt dla agenta</button>
+  </div>
+</aside>
+<% } %>
+<% }); %>
+<% if (mozeKonfigurowacReklamy && formularzSekretu) { %>
+<section class="ust-sekcja" id="reklamy-dodaj">
+  <h2>Dodaj połączenie</h2>
+  <form id="reklamy-formularz" class="ust-formularz" method="post" action="/ustawienia/integracje/reklamy/zapisz">
+    <label for="reklamy-typ">Źródło <span class="ust-wymagane">*</span></label>
+    <div><select id="reklamy-typ" name="typ" required><option value="ga4">Google przez GA4</option><option value="meta">Meta</option></select>
+      <p class="ust-pomoc">Każde źródło podłączasz osobno.</p></div>
+
+    <label for="reklamy-konto">ID konta lub właściwości <span class="ust-wymagane">*</span></label>
+    <div><input id="reklamy-konto" name="kontoId" autocomplete="off" required>
+      <p class="ust-pomoc">Identyfikator właściwości GA4 albo konta reklamowego Meta.</p></div>
+
+    <label for="reklamy-kanal">Kanał OMS <span class="ust-wymagane">*</span></label>
+    <div><input id="reklamy-kanal" name="kanal" autocomplete="off" required>
+      <p class="ust-pomoc">Kanał, do którego przypisane są statystyki tego konta.</p></div>
+
+    <label for="reklamy-tresc">Poświadczenie <span class="ust-wymagane">*</span></label>
+    <div><textarea id="reklamy-tresc" name="tresc" rows="5" autocomplete="off" required></textarea>
+      <p class="ust-pomoc">Klucz lub token tylko do odczytu. Trafia do magazynu sekretów serwera, nie do bazy zamówień, i nie jest później pokazywany.</p></div>
+
+    <p class="ust-pelna ust-pomoc">Pola oznaczone <span class="ust-wymagane">*</span> są wymagane.</p>
+    <div class="ust-pelna ust-akcje">
+      <button class="btn btn--glowny" type="submit">Zapisz połączenie</button>
+    </div>
+  </form>
+</section>
+<% } else if (mozeKonfigurowacReklamy) { %>
+<section class="ust-sekcja" id="reklamy-dodaj">
+  <h2>Dodaj połączenie</h2>
+  <p>Poświadczenie zapisz bezpośrednio w sekretach serwera. Formularz jest dostępny tylko przez zaufane HTTPS z podłączonym magazynem sekretów.</p>
+</section>
+<% } %>
 <% } else { %>
-<p><a href="/ustawienia/integracje/reklamy">Reklamy: Google przez GA4, Google Ads API i Meta</a></p>
+<div class="ust-sekcja">
+  <h2>Poczta</h2>
+  <p><a href="/ustawienia/integracje/poczta">Poczta wychodząca (SMTP)</a> — serwer, login i hasło skrzynki, adres panelu do linków w mailach, wiadomość próbna.</p>
+</div>
 <div class="ust-sekcja">
   <h2>Faktury</h2>
   <p><a href="/ustawienia/integracje/infakt">inFakt</a> — klucz API do wystawiania faktur sprzedaży, sprawdzenie połączenia.</p>
@@ -54,6 +87,10 @@
   <h2>Kurierzy</h2>
   <p><a href="/ustawienia/integracje/dpd">DPD Polska</a> — login, numer klienta i hasło od DPD, typ etykiety, sprawdzenie połączenia.</p>
   <p><a href="/ustawienia/integracje/inpost">InPost (paczkomaty)</a> — token API ShipX i numer organizacji, paczkomat nadawczy, sprawdzenie połączenia.</p>
+</div>
+<div class="ust-sekcja">
+  <h2>Reklamy</h2>
+  <p><a href="/ustawienia/integracje/reklamy">Google przez GA4, Google Ads API i Meta</a> — dostęp tylko do odczytu, dzienne statystyki kampanii, test odczytu połączenia.</p>
 </div>
 <div class="ust-sekcja">
   <h2>Kanały Allegro</h2>

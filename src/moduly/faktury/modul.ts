@@ -34,6 +34,7 @@ import { wczytajKonfiguracjeIntegracji } from '../../oms/db/konfiguracja-integra
 import { infaktZUstawien, odmowaInfaktuWProbie, odmowaViesWProbie } from './infakt-ustawien.ts';
 import { registerUstawieniaInfaktuRoutes } from './trasy/ustawienia-infakt.js';
 import { bladOperatora } from '../../domena/bledy.js';
+import { opcjeKlientaInfakt } from '../../domena/konfiguracja-infakt.js';
 
 export const ODSTEP_FAKTUR_MS = 3600000;
 
@@ -92,6 +93,12 @@ return {
     const wczytajInfakt = () => wczytajKonfiguracjeIntegracji(db, 'infakt');
     const infaktUstawien = k.infakt ? null : infaktZUstawien({ wczytaj: wczytajInfakt,
       fabryka: k.proba ? odmowaInfaktuWProbie : createInfaktClient });
+    // Wybór źródła jak dla klienta; na zewnątrz modułu wychodzi wyłącznie adres, nigdy klucz API.
+    const celeLacznosci = () => {
+      const zapis = infaktUstawien ? wczytajInfakt() : null;
+      return { infakt: infaktUstawien ? (zapis ? { baseUrl: opcjeKlientaInfakt(zapis).baseUrl } : null)
+        : k.infakt ? { baseUrl: k.infakt.baseUrl } : null };
+    };
     const zUstawienPrzyStarcie = Boolean(!fabryki.createInfaktClient && infaktUstawien && wczytajInfakt());
     const infakt = fabryki.createInfaktClient ? fabryki.createInfaktClient({ db, teraz })
       : k.infakt ? createInfaktClient({ ...k.infakt, fetchImpl: undefined })
@@ -128,7 +135,7 @@ return {
     const zegary: Zegar[] = [];
     if (czuwaczKsef) zegary.push(zegarKsef({ czuwacz: czuwaczKsef, puls, odstepMs: k.odstepMs, log: ctx.log }));
     if (czuwaczArchiwumSprzedazy) zegary.push(zegarArchiwumSprzedazy({ czuwacz: czuwaczArchiwumSprzedazy, odstepMs: k.odstepMs, log: ctx.log }));
-    return { uslugi: { config, infakt, puls, vies, faktura, fakturaHurtem, proforma, fakturyWidok, wysylkaKsef,
+    return { uslugi: { config, infakt, puls, vies, faktura, fakturaHurtem, proforma, fakturyWidok, wysylkaKsef, celeLacznosci,
       fakturaAllegro, poNumerzeKsef, doczytanieKsef, czuwaczKsef, czuwaczArchiwumSprzedazy, paczkaDlaBiura, konfiguracjaInfaktu,
       okres: (o: any) => przypiszDoOkresu({ ...o, db }), zapytania: fakturyDb(db), proformy: proformyDb(db), kolejkaDruku: kolejkaDruku(db) },
       trasy: (app) => {

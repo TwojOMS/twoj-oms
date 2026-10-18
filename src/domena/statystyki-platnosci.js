@@ -28,20 +28,31 @@ import { udzialProcent } from './statystyki-wysylki.js';
  * a nie tylko mianownik. Ekran mówi o tym w bloku metodologii.
  */
 export function rozkladMetod(zamowienia) {
+  const a = agregatorMetod();
+  for (const z of zamowienia) a.dodaj(z);
+  return a.wynik();
+}
+
+export function agregatorMetod() {
   const kubelki = new Map();
   let mianownik = 0;
   let allegroBezInformacji = 0;
+  let wszystkie = 0;
 
-  for (const z of zamowienia) {
-    if (czyKanalAllegro(z)) { allegroBezInformacji += 1; continue; }
+  const dodaj = (z) => {
+    wszystkie += 1;
+    if (czyKanalAllegro(z)) { allegroBezInformacji += 1; return; }
     mianownik += 1;
     const { etykieta } = normalizujMetode(z.metoda_platnosci);
     kubelki.set(etykieta, (kubelki.get(etykieta) ?? 0) + 1);
-  }
+  };
 
-  const pozycje = [...kubelki.entries()]
-    .map(([etykieta, ile]) => ({ etykieta, ile, udzial: udzialProcent(ile, mianownik) }))
-    .sort((a, b) => (b.ile - a.ile) || a.etykieta.localeCompare(b.etykieta, 'pl'));
+  const wynik = () => {
+    const pozycje = [...kubelki.entries()]
+      .map(([etykieta, ile]) => ({ etykieta, ile, udzial: udzialProcent(ile, mianownik) }))
+      .sort((a, b) => (b.ile - a.ile) || a.etykieta.localeCompare(b.etykieta, 'pl'));
 
-  return { pozycje, mianownik, allegroBezInformacji, wszystkie: zamowienia.length };
+    return { pozycje, mianownik, allegroBezInformacji, wszystkie };
+  };
+  return { dodaj, wynik };
 }

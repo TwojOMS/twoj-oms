@@ -50,7 +50,7 @@ beforeEach(() => {
 
 describe('GET /api/sprzedaz', () => {
   it('zamowienie w okresie to DROPSHIPPING, poza okresem to B2B', async () => {
-    const o = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+    const o = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     dodaj({ numer: 'R/2026/001', kwota: '104.00', utworzone: '2026-07-10T10:00:00.000Z', okresId: o.id });
     dodaj({ numer: 'R/2026/002', kwota: '900.00', utworzone: '2026-07-11T10:00:00.000Z' });
 
@@ -267,7 +267,7 @@ describe('GET /api/sprzedaz', () => {
     it('zamowienie sklepowe PRZYPISANE do okresu tez jest SKLEP, nie DROPSHIPPING', async () => {
       // Źródło rozstrzyga PRZED okresem: gdyby ktoś kiedyś doczepił zamówienie sklepowe do
       // okresu rozliczeniowego, nie ma ono prawa wejść do raportu jako dropshipping.
-      const o = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+      const o = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
       dodaj({ numer: 'W/1', utworzone: '2026-07-10T10:00:00', sklep: 'szkicownia', okresId: o.id });
 
       const odp = await serwer().inject({
@@ -398,7 +398,7 @@ describe('GET /api/sprzedaz', () => {
     it('reczne dalej rozdziela sie na DROPSHIPPING i B2B mimo nowej reguly', async () => {
       // Nowy warunek stoi PRZED regula sklepowa, wiec musi byc widac, ze nie zjadl
       // podzialu recznych: cztery kanaly obok siebie w jednym oknie.
-      const o = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 8 });
+      const o = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 8 });
       dodaj({ numer: 'R/2026/001', utworzone: '2026-08-10T10:00:00.000Z', okresId: o.id });
       dodaj({ numer: 'R/2026/002', utworzone: '2026-08-11T10:00:00.000Z' });
       dodaj({ numer: 'W/1', utworzone: '2026-08-12T10:00:00', sklep: 'szkicownia' });
@@ -415,7 +415,7 @@ describe('GET /api/sprzedaz', () => {
     });
 
     it('podzial recznych na DROPSHIPPING i B2B zostaje bez zmian', async () => {
-      const o = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+      const o = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-10T10:00:00.000Z', okresId: o.id });
       dodaj({ numer: 'R/2026/002', utworzone: '2026-07-11T10:00:00.000Z' });
 

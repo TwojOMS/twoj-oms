@@ -1,0 +1,8 @@
+{
+  "_opis": "Skopiuj jako config.json i uzupelnij. config.json zawiera haslo - nie wysylaj go nikomu i nie wrzucaj do repozytorium.",
+  "url": "http://192.168.1.20:3001",
+  "user": "LOGIN-Z-PLIKU-OMS-ENV",
+  "pass": "HASLO-Z-PLIKU-OMS-ENV",
+  "drukarka": "Zebra ZD421",
+  "odstepSekund": 5
+}

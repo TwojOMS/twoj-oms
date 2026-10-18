@@ -1,17 +1,23 @@
 import { isIP } from 'node:net';
+import { BladKonfiguracji } from './blad-konfiguracji.ts';
 import type { Srodowisko } from './kontrakty.ts';
 
 /** Zwraca wyłącznie konkretną, jawną listę proxy akceptowaną przez Fastify. */
 export function zaufaneProxy(env: Srodowisko): false | string[] {
   const wartosc = env.OMS_TRUST_PROXY;
   if (wartosc === undefined || wartosc === '') return false;
-  if (wartosc !== wartosc.trim()) throw new Error('Niepoprawna konfiguracja OMS_TRUST_PROXY');
+  if (wartosc !== wartosc.trim()) throw bladProxy();
 
   const proxy = wartosc.split(',');
   if (!proxy.length || proxy.some((adres) => !poprawnyAdresLubCidr(adres)) || obejmujeWszystkieAdresy(proxy)) {
-    throw new Error('Niepoprawna konfiguracja OMS_TRUST_PROXY');
+    throw bladProxy();
   }
   return proxy;
+}
+
+function bladProxy() {
+  return new BladKonfiguracji('OMS_TRUST_PROXY', 'Niepoprawna konfiguracja OMS_TRUST_PROXY',
+    'na listę zaufanych adresów IP lub CIDR oddzielonych przecinkami, bez spacji, albo usuń zmienną przy dostępie bez proxy.');
 }
 
 function obejmujeWszystkieAdresy(proxy: readonly string[]): boolean {

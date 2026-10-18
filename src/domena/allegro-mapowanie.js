@@ -199,6 +199,11 @@ function klientAllegro(surowe) {
     // Mail kupujacego jest zawsze niepusty (60/60) i jest to adres posrednika
     // („…@allegromail.pl"), a nie prywatny mail klienta.
     email: tekstAlboNull(buyer?.email),
+    // Login kupującego na Allegro (PRZ-094.19) — lista zamówień pokazuje go pod imieniem i nazwiskiem.
+    // Dodatkowy klucz bloku, nie osobna kolumna: czyta go wyłącznie lista, a poller i tak przepisuje blok
+    // przy każdej synchronizacji. ⚠️ Dotyczy zamówień zapisanych OD tej zmiany — starsze go nie mają.
+    // Blok z loginem powstaje tylko wtedy, gdy jest adres (`return null` wyżej): sam login nie zastąpi adresu.
+    login: tekstAlboNull(buyer?.login),
     // ⚠️ TELEFON DO PACZKI JEST W BLOKU DOSTAWY, A CZYTANY JEST STAD — i dlatego sklejamy go
     // WLASNIE TUTAJ, a nie w adres-odbiorcy.js.
     //

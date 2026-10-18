@@ -1,4 +1,4 @@
-import { listaZamowien, zamowieniaPoId, numeryZamowien, pobierzZamowienie, dopiszLog, zapiszNadpisaniaWysylki } from '../../oms/db/zamowienia.js';
+import { listaZamowien, zamowieniaPoId, numeryZamowien, pobierzZamowienie, dopiszLog, zapiszNadpisaniaWysylki, historiaLogu } from '../../oms/db/zamowienia.js';
 import { indeksListy } from '../../oms/db/indeks-listy.js';
 import { proformyZamowienia } from '../faktury/db/proformy.js';
 import { aktualnaProforma, czyWolnoWystawic, rozjazdKwotyProformy } from '../../domena/proforma-stan.js';
@@ -21,7 +21,9 @@ import { powiazaniaDosylki } from '../../domena/dosylka.js';
 import { ostrzezeniaFaktur, ostrzezeniaPrzesylek, ostrzezeniaWiadomosci, ostrzezeniaIntegracji, ostrzezeniaTerminow, ostrzezeniaZwrotow, ostrzezeniaPobran, zlozOstrzezenia } from '../../domena/ostrzezenia.js';
 import { odrzucenia, lukiKsef, poTerminie, zwrotyBezKorekty, pobraniaBezGotowki } from '../../oms/db/ostrzezenia.js';
 import { listaWatkow } from '../../oms/db/allegro-watki.js';
-import { adresKanalu } from '../../domena/kanaly.js';
+import { adresKanalu, rodzajKanalu } from '../../domena/kanaly.js';
+import { przewoznikWiersza } from '../../domena/przewoznik-przesylki.js';
+import { klientListy } from '../../domena/klient-listy.js';
 import { ikonaPlatnosci, ikonaPrzesylki, ikonaChceFaktury, ikonaFaktury, odznakaSyncStatusu } from '../../domena/lista-ikony.js';
 import { wiekZamowienia, czyEkspres } from '../../domena/wiek-zamowienia.js';
 import { kuponyZWiersza } from '../../domena/kupony.js';
@@ -130,6 +132,15 @@ const wczytajListe = (ids, { teraz = new Date(), bezSurowych = false, pomijajUsz
       // Kanal sprzedazy do wyswietlenia — z kolumny `sklep`, NIGDY zaszyty na sztywno
       // w widoku (brief zadania „strona glowna": kolejne kanaly dojda).
       kanalSprzedazy: adresKanalu(z.sklep, config.definicje),
+      // Rodzaj kanału (Allegro / WooCommerce) do plakietki w kolorze marki — z `typ` definicji, NIE z nazwy
+      // sklepu (PRZ-094.17). `null` = kanał bez marki (ręczne, indywidualne), wtedy bez plakietki.
+      rodzajKanalu: rodzajKanalu(z.sklep, config.definicje),
+      // Kolumna „Klient” (PRZ-094.19): osoba, firma i — tylko w Allegro — login kupującego. Z bloku `klient`
+      // wiersza, bez `surowe_json` (domena/klient-listy.js). Rodzaj liczony drugi raz, bo obiekt wyżej jeszcze nie istnieje.
+      klientListy: klientListy(z.klient, rodzajKanalu(z.sklep, config.definicje)),
+      // Przewoźnik z TEJ SAMEJ funkcji, co logo i filtr w zakładce Przesyłki (domena/przewoznik-przesylki.js),
+      // liczony po nazwie i metodzie dostawy WIERSZA — tej samej, którą kolumna „Dostawa” wypisuje obok.
+      przewoznikListy: przewoznikWiersza(null, z),
       // Etykieta odznaki „Indywidualne" w wierszu. Sklada ja TA SAMA funkcja, co nazwe
       // pozycji w polu wyboru filtra i w panelu bocznym — widok nie wpisuje jej u siebie.
       etykietaIndywidualnego: adresKanalu('indywidualne', config.definicje),
@@ -374,6 +385,16 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
   const edytujSzczegoly = edytujParam === 'szczegoly';
   const edytujWplata = edytujParam === 'wplata';
 
+  // HISTORIA ZMIAN (PRZ-094.18) — sekcja na samym dole karty, DOMYSLNIE ZWINIETA.
+  // ⚠️⚠️ ZWINIETA = ZERO ZAPYTAN DO `log`. Tabela nie ma indeksu po `zamowienie_id`, wiec
+  // nawet samo policzenie wpisow to pelny skan przy kazdym otwarciu karty. Odczyt idzie
+  // WYLACZNIE za `?historia=N` (N = numer strony, od 1); wszystko inne — brak parametru,
+  // `abc`, `0`, `-1`, ulamek, szesc cyfr w gore, powtorzony klucz (tablica) — zostawia
+  // sekcje zwinieta. Ta sama zasada „jedna wartosc tekstowa albo nic" co przy `?edytuj=`.
+  const stronaHistorii = typeof req.query?.historia === 'string' && /^[1-9]\d{0,5}$/u.test(req.query.historia)
+    ? Number(req.query.historia) : null;
+  const historia = stronaHistorii ? { strona: stronaHistorii, ...historiaLogu(db, z.id, { strona: stronaHistorii }) } : null;
+
   // Zadanie 7 (proforma): widok NIE liczy niczego sam — ta sama zasada, co przy kazdej
   // innej decyzji domenowej na tej karcie. Lista jest HISTORIA (najstarsze pierwsze,
   // db/proformy.js), a „ktora jest aktualna" i „czy w ogole wolno wystawic kolejna"
@@ -426,6 +447,18 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
       const pytanie = `?${parametry.toString()}#wiadomosci`;
       return powrot === '/' ? pytanie : `/zamowienia/${encodeURIComponent(String(z.id))}${pytanie}`;
     },
+    // Historia zmian: `strona` = numer strony do pokazania, `null` = „Zwin" (karta bez ?historia).
+    // Kotwica #historia trzyma ekran przy sekcji po przeladowaniu. Powrot na liste zostaje w
+    // kazdym odnosniku, tak jak przy wiadomosciach.
+    adresHistorii: (strona) => {
+      const parametry = new URLSearchParams();
+      const powrot = powrotKarty(req);
+      if (powrot !== '/') parametry.set('powrot', powrot);
+      if (strona) parametry.set('historia', String(strona));
+      const pytanie = parametry.size ? `?${parametry.toString()}` : '';
+      return strona && powrot === '/' ? `${pytanie}#historia` : `/zamowienia/${encodeURIComponent(String(z.id))}${pytanie}#historia`;
+    },
+    historia,
     adresPodwidoku: (sciezka) => {
       const powrot = powrotKarty(req);
       const pytanie = powrot === '/' ? '' : `?${new URLSearchParams({ powrot }).toString()}`;

@@ -1,4 +1,4 @@
-import { sprzedazWOkresie, zwrotyWOkresie } from '../../../domena/sprzedaz-okresu.js';
+import { sprzedazWOkresieAsync, zwrotyWOkresie } from '../../../domena/sprzedaz-okresu.js';
 import {
   agreguj, delty, wgMiesiecy, wgDni, wgTygodni, deltyKanalow, dokumenty,
   udzialyDokumentow, klienci,
@@ -45,7 +45,7 @@ export function zarejestrujTrasyRaportow(app, { db, config }) {
     const { zakres, blad } = zakresZZapytania(req.query, dzisiaj());
     if (blad) return reply.code(400).send(blad);
     try {
-      const wiersze = sprzedazWOkresie(db, zakres, config.regulySprzedazy);
+      const wiersze = await sprzedazWOkresieAsync(db, zakres, config.regulySprzedazy);
       const csv = csvSprzedazy(wiersze, { zKlientem: req.query.klient === '1' });
       return reply
         .header('content-type', 'text/csv; charset=utf-8')
@@ -70,15 +70,15 @@ export function zarejestrujTrasyRaportow(app, { db, config }) {
       // przy drugim przeliczeniu tej samej daty.
       const zakresWczesniej = poprzedniOkres(zakres);
       const zakresPrzedRokiem = rokWczesniej(zakres);
-      const wiersze = sprzedazWOkresie(db, zakres, config.regulySprzedazy);
+      const wiersze = await sprzedazWOkresieAsync(db, zakres, config.regulySprzedazy);
       const zwroty = zwrotyWOkresie(db, zakres, config.regulySprzedazy);
       const teraz = agreguj(wiersze, zwroty);
       const wczesniej = agreguj(
-        sprzedazWOkresie(db, zakresWczesniej, config.regulySprzedazy),
+        await sprzedazWOkresieAsync(db, zakresWczesniej, config.regulySprzedazy),
         zwrotyWOkresie(db, zakresWczesniej, config.regulySprzedazy),
       );
       const przedRokiem = agreguj(
-        sprzedazWOkresie(db, zakresPrzedRokiem, config.regulySprzedazy),
+        await sprzedazWOkresieAsync(db, zakresPrzedRokiem, config.regulySprzedazy),
         zwrotyWOkresie(db, zakresPrzedRokiem, config.regulySprzedazy),
       );
       // ⚠️ PODLOGA ZWROTOW: dla zakresu konczacego sie PRZED dniem wdrozenia panel nie ma

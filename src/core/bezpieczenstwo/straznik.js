@@ -32,7 +32,8 @@ import {
   ekranDlaAdresu, czyTrasaMaszynowa, maDostepDoEkranu, EKRANY,
 } from '../../domena/ekrany.js';
 import { motywZNaglowka } from '../../domena/motyw.js';
-import { utworzHamulec } from './hamulec.js';
+import { hamulecLogowaniaDla } from './hamulec.js';
+import { dopiszLogowanie } from './konta.js';
 import { sciezkaWidoku } from '../web/widoki.js';
 
 const METODY_NAWIGACJI = ['GET', 'HEAD'];
@@ -51,8 +52,7 @@ const METODY_NAWIGACJI = ['GET', 'HEAD'];
  *   cos konfiguruje — usuniete z kontraktu, zamiast zostawic martwy parametr.
  */
 export function zbudujStraznika({ basicAuth, db, nazwaCiasteczka, konta = null }) {
-  const hamulec = utworzHamulec();
-  const kolejkiBasicAuth = new Map();
+  const hamulec = hamulecLogowaniaDla(db);
   return async function straznik(req, reply) {
     if (czyTrasaOtwarta(req.url)) return;
 
@@ -89,18 +89,27 @@ export function zbudujStraznika({ basicAuth, db, nazwaCiasteczka, konta = null }
     // dolozyc do niego warunek wyzej — a odmowe zostawiamy jego wlasnej obsludze, bo to
     // ona dokleja naglowek `WWW-Authenticate` i wlasciwy kod 401.
     // Pipeline HTTP uruchamia wiele haków zanim callback Basic Auth odnotuje błąd.
-    // Kolejka obejmuje sprawdzenie, walidację i zapis wyniku dla jednego IP; inne IP
-    // mają własny ogon. Obietnice ogona wyłącznie się rozwiązują, także po odmowie.
-    const poprzednia = kolejkiBasicAuth.get(req.ip);
-    let zwolnij;
-    const obecna = new Promise((resolve) => { zwolnij = resolve; });
-    kolejkiBasicAuth.set(req.ip, obecna);
-    await poprzednia;
+    // Wspólna z formularzem kolejka obejmuje walidację, zapis wyniku i karę.
+    const naglowek = String(req.headers.authorization ?? '');
+    const zakodowane = /^Basic\s+(\S+)\s*$/i.exec(naglowek)?.[1];
+    const dane = zakodowane ? Buffer.from(zakodowane, 'base64').toString('utf8') : '';
+    const dwukropek = dane.indexOf(':');
+    const login = dwukropek >= 0 ? dane.slice(0, dwukropek) : '';
+    const zwolnij = await hamulec.zajmij(req, login);
+    if (!zwolnij) return reply.code(429).header('Retry-After', 2).send('Za dużo prób logowania, spróbuj ponownie później');
     try {
-      const limit = hamulec.sprawdz(req.ip);
+      const zapiszBlokade = () => {
+        // Panel bez tabeli kont nie ma dziennika OMS.
+        if (konta && hamulec.zapiszBlokadeRaz(req.ip, login)) dopiszLogowanie(db, {
+          login, usluga: 'oms', ip: req.ip, wynik: 'zablokowane',
+        });
+      };
+      const odmowLimit = (limit) => reply.code(429).header('Retry-After', Math.ceil(limit.zostaloMs / 1000))
+        .send('Za dużo prób logowania, spróbuj ponownie później');
+      const limit = hamulec.sprawdzPrzedProba(req, login);
       if (!limit.wolno) {
-        return reply.code(429).header('Retry-After', Math.ceil(limit.zostaloMs / 1000))
-          .send('Za dużo prób logowania, spróbuj ponownie później');
+        zapiszBlokade();
+        return odmowLimit(limit);
       }
       try {
         await new Promise((resolve, reject) => {
@@ -108,13 +117,19 @@ export function zbudujStraznika({ basicAuth, db, nazwaCiasteczka, konta = null }
         });
       } catch (err) {
         // Nie liczymy braku danych logowania; autoryzacja ekranów jest poza tym catch.
-        if (maNaglowek) hamulec.odnotujBlad(req.ip);
+        if (maNaglowek) {
+          const poBledzie = hamulec.odnotujBlad(req.ip, login);
+          if (!poBledzie.wolno) {
+            zapiszBlokade();
+            await hamulec.opoznij(req.ip, login, Date.now(), hamulec.wiarygodnyAdres(req));
+            return odmowLimit(poBledzie);
+          }
+        }
         throw err;
       }
-      hamulec.wyczysc(req.ip);
+      hamulec.wyczysc(req.ip, login);
     } finally {
       zwolnij();
-      if (kolejkiBasicAuth.get(req.ip) === obecna) kolejkiBasicAuth.delete(req.ip);
     }
 
     if (!konta) return;

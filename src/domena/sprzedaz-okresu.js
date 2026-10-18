@@ -5,6 +5,8 @@ import { dzienWarszawa } from './format-daty.js';
 import { grosze } from './kwoty.js';
 import { kwotaOczekiwanaGrosze } from './suma-pozycji.js';
 import { nalozNadpisaniaPozycji } from './pozycje-reczne.js';
+import { porcjeZamowienWOkresie } from '../oms/db/okno-zamowien.js';
+import { setImmediate } from 'node:timers/promises';
 
 // JEDYNE miejsce, w ktorym powstaje „sprzedaz w okresie". Ekran sprzedazy, rachunek zarzadczy
 // i porownanie rok do roku wolaja TE JEDNA funkcje — druga sciezka liczaca to samo rozjechalaby
@@ -36,19 +38,37 @@ function granicaDla(mapa, kanal) {
 }
 
 export function sprzedazWOkresie(db, { od, do: doDnia }, reguly = {}) {
+  return [...wierszeSprzedazy(db, { od, do: doDnia }, reguly)].filter(w => w !== null).sort(poDniu);
+}
+
+// Ten sam generator i porządek wyniku. Trasy oddają sterowanie co 500 wierszy,
+// także gdy zamówienia są wykluczone — /health nie czeka na całą historię.
+export async function sprzedazWOkresieAsync(db, zakres, reguly = {}) {
+  const wynik = [];
+  for (const w of wierszeSprzedazy(db, zakres, reguly)) {
+    if (w) wynik.push(w);
+    else await setImmediate();
+  }
+  return wynik.sort(poDniu);
+}
+
+const poDniu = (a, b) => (a.dzien === b.dzien ? 0 : (a.dzien < b.dzien ? -1 : 1));
+
+function* wierszeSprzedazy(db, { od, do: doDnia }, reguly) {
   wymagajKlasyfikacji(reguly.klasyfikacja);
   const mapa = granice(db);
   sprawdzGraniceBezHistorii(db, reguly.klasyfikacja);
-  const wynik = [];
+  let przeczytane = 0;
 
   for (const w of historiaWOknie(db, od, doDnia)) {
+    if (++przeczytane % 500 === 0) yield null;
     if (STATUSY_ODRZUCONE.has(w.status)) continue;
     if (czyTestowe(w.klient_email, w.klient_nazwa, reguly)) continue;
     const kanal = kanalHistoryczny(w, reguly.klasyfikacja);
     // Historia liczy sie DO granicy wlacznie.
     if (w.dzien > granicaDla(mapa, kanal)) continue;
     const bruttoGrosze = grosze(w.brutto, `historia ${w.apilo_id}`);
-    wynik.push({
+    yield {
       zrodlo: 'historia', id: w.apilo_id, numer: w.numer ?? w.apilo_id, dzien: w.dzien, kanal, bruttoGrosze,
       // ⚠️ `zrodlo` wyzej mowi „ktora EPOKA" (historia kontra OMS), a `zrodloDanych` — „ktory
       // SYSTEM ZRODLOWY" ('apilo' albo 'woo:<sklep>'). To dwie rozne rzeczy i musza byc dwoma
@@ -62,20 +82,18 @@ export function sprzedazWOkresie(db, { od, do: doDnia }, reguly = {}) {
         nazwa: p.nazwa, ilosc: p.ilosc, typ: p.typ,
         bruttoGrosze: grosze(p.brutto_linii, `pozycja ${w.apilo_id}`),
       })),
-    });
+    };
   }
 
-  // ⚠️ Okno liczymy w JS-ie po `dzienWarszawa`, NIE w SQL-u: kolumna `utworzone_at` niesie dwa
-  // formaty naraz (reczne — UTC z „Z"; sklepowe — czas Warszawy bez strefy) i zadne porownanie
-  // napisow nie jest poprawne dla obu. Ta sama funkcja liczy dzien drukowany w tabeli.
+  // Okno SQL ma zapas na strefy. Dokładną granicę wciąż liczy dzienWarszawa,
+  // bo daty sklepowe bez strefy i znaczniki UTC mają różne znaczenie.
   // ⚠️⚠️ KAZDA KOLUMNA, KTOREJ POTRZEBUJE `kanalOms`, MUSI BYC NA TEJ LISCIE — a lista jest
   // wypisana z reki. Kolumna dolozona do tabeli i do reguly kanalu, ale POMINIETA tutaj,
   // przychodzi jako `undefined` i regula cicho wpada do galezi zapasowej: zamowienie
   // oznaczone jako B2B liczyloby sie jako RECZNE, bez ani jednego bledu, wygladajac na
   // „raport nie widzi nowych zamowien". Test tej reguly idzie wiec przez `sprzedazWOkresie`,
   // a nie przez samo `kanalOms` (21.08.2026).
-  const zOms = db.prepare(
-    'SELECT ' + KOLUMNY_KLASYFIKACJI.join(', ') + ', id, numer, kwota_brutto, utworzone_at,'
+  const kolumny = KOLUMNY_KLASYFIKACJI.join(', ') + ', id, numer, kwota_brutto, utworzone_at,'
     + ' anulowane, anulowane_recznie, chce_fakture, chce_fakture_reczne, klient_json,'
     + ' klient_reczny_json, oplacone_at, oplacone_recznie,'
     // ⚠️ KOLUMNA LICZY PIENIĄDZE, nie zdobi zapytania: poprawka ceny pozycji ze sklepu nie
@@ -84,50 +102,50 @@ export function sprzedazWOkresie(db, { od, do: doDnia }, reguly = {}) {
     // ⚠️ WYSYŁKA MA W `kwotaOczekiwanaGrosze` WŁASNY CZŁON RÓŻNICOWY — bez ceny sklepowej
     // z tej kolumny „dwie paczki zamiast jednej" liczyłoby się jako 0 × 2 i dopłata za
     // wysyłkę wypadałaby z raportu.
-    + ' koszt_dostawy_brutto, pozycje_reczne_json FROM zamowienia',
-  ).all();
+    + ' koszt_dostawy_brutto, pozycje_reczne_json';
 
-  for (const w of zOms) {
-    if (anulowaneEfektywnie(w)) continue;
-    const dzien = dzienWarszawa(w.utworzone_at);
-    if (!dzien || dzien < od || dzien > doDnia) continue;
-    const kanal = kanalOms(w, reguly.klasyfikacja);
-    // OMS liczy sie DOPIERO PO granicy.
-    if (dzien <= granicaDla(mapa, kanal)) continue;
-    const klient = { ...bezpiecznyJson(w.klient_json), ...bezpiecznyJson(w.klient_reczny_json) };
-    // ⚠️ KOMPLET WOO `billing`, NIE `imie/nazwisko/firma` — tak wyglada klient_json trzema
-    // niezaleznymi drogami: sklep (domain/mapowanie.js: `klient: surowe.billing`), Allegro
-    // (domain/allegro-mapowanie.js: adresPanelu mapuje imie/nazwisko/firma NA first_name/
-    // last_name/company PRZY ZAPISIE) i reczne zamowienie (domain/nowe-zamowienie.js:
-    // rozbijNazwe + company). Klucze imie/nazwisko/firma nie istnieja w tym obiekcie NIGDY —
-    // regula nazwowa czytajaca je bylaby martwa na kazdym kanale OMS-u (recenzja Zadania 4).
-    if (czyTestowe(klient.email, `${klient.first_name ?? ''} ${klient.last_name ?? ''} ${klient.company ?? ''}`, reguly)) continue;
-    // ⚠️⚠️ TA SAMA MIARA, CO NA FAKTURZE — i to jest cała treść tej linii (23.08.2026).
-    // Do tego dnia stało tu `grosze(w.kwota_brutto)`, czyli kwota ZE SKLEPU. Ta kolumna
-    // z założenia NIE ROŚNIE od naszych dopisków (`kwotaZamowieniaGrosze` i komentarz przy
-    // niej: podniesiona pociągnęłaby za sobą wpłatę sklepową i niedopłata zniknęłaby
-    // z ekranu), więc pozycja dopisana ręcznie podnosiła fakturę, a raport zostawiała
-    // w miejscu. Zmierzone na produkcji: zamówienie 28171 miało na fakturze 654,00 zł,
-    // a w raporcie 429,00 zł — cała różnica to jedna pozycja dopisana ręcznie.
-    //
-    // ⚠️ SKALA JEST DZIŚ JEDNOSTKOWA, MECHANIZM NIE: na 23.08.2026 poprawka rusza DOKŁADNIE
-    // JEDNO zamówienie (+225,00 zł). Dwa pozostałe rozjazdy „nagłówek < suma pozycji"
-    // znalezione w bazie to zamówienia WŁASNE, które i tak nie
-    // wchodzą do raportu (`czyTestowe`). Ale dokładka wraca przy każdej następnej dopłacie
-    // do zamówienia sklepowego, więc liczy się reguła, nie dzisiejsze 225 zł.
-    const pozycje = nalozNadpisaniaPozycji(pozycjeSurowe(db, w.id), w.pozycje_reczne_json);
-    const bruttoGrosze = kwotaOczekiwanaGrosze({ ...w, pozycje });
-    wynik.push({
-      zrodlo: 'oms', id: w.id, numer: w.numer, dzien, kanal, bruttoGrosze,
-      nettoGrosze: nettoZamowieniaGrosze(bruttoGrosze, klient.email, reguly.klienciWdt),
-      faktura: Boolean(w.chce_fakture_reczne ?? w.chce_fakture),
-      oplacone: Boolean(w.oplacone_at || w.oplacone_recznie),
-      email: klient.email ?? null, tagi: [],
-      pozycje: doRankingu(pozycje, w.id),
-    });
+  for (const porcja of porcjeZamowienWOkresie(db, kolumny, od, doDnia)) {
+    for (const w of porcja) {
+      if (anulowaneEfektywnie(w)) continue;
+      const dzien = dzienWarszawa(w.utworzone_at);
+      if (!dzien || dzien < od || dzien > doDnia) continue;
+      const kanal = kanalOms(w, reguly.klasyfikacja);
+      // OMS liczy sie DOPIERO PO granicy.
+      if (dzien <= granicaDla(mapa, kanal)) continue;
+      const klient = { ...bezpiecznyJson(w.klient_json), ...bezpiecznyJson(w.klient_reczny_json) };
+      // ⚠️ KOMPLET WOO `billing`, NIE `imie/nazwisko/firma` — tak wyglada klient_json trzema
+      // niezaleznymi drogami: sklep (domain/mapowanie.js: `klient: surowe.billing`), Allegro
+      // (domain/allegro-mapowanie.js: adresPanelu mapuje imie/nazwisko/firma NA first_name/
+      // last_name/company PRZY ZAPISIE) i reczne zamowienie (domain/nowe-zamowienie.js:
+      // rozbijNazwe + company). Klucze imie/nazwisko/firma nie istnieja w tym obiekcie NIGDY —
+      // regula nazwowa czytajaca je bylaby martwa na kazdym kanale OMS-u (recenzja Zadania 4).
+      if (czyTestowe(klient.email, `${klient.first_name ?? ''} ${klient.last_name ?? ''} ${klient.company ?? ''}`, reguly)) continue;
+      // ⚠️⚠️ TA SAMA MIARA, CO NA FAKTURZE — i to jest cała treść tej linii (23.08.2026).
+      // Do tego dnia stało tu `grosze(w.kwota_brutto)`, czyli kwota ZE SKLEPU. Ta kolumna
+      // z założenia NIE ROŚNIE od naszych dopisków (`kwotaZamowieniaGrosze` i komentarz przy
+      // niej: podniesiona pociągnęłaby za sobą wpłatę sklepową i niedopłata zniknęłaby
+      // z ekranu), więc pozycja dopisana ręcznie podnosiła fakturę, a raport zostawiała
+      // w miejscu. Zmierzone na produkcji: zamówienie 28171 miało na fakturze 654,00 zł,
+      // a w raporcie 429,00 zł — cała różnica to jedna pozycja dopisana ręcznie.
+      //
+      // ⚠️ SKALA JEST DZIŚ JEDNOSTKOWA, MECHANIZM NIE: na 23.08.2026 poprawka rusza DOKŁADNIE
+      // JEDNO zamówienie (+225,00 zł). Dwa pozostałe rozjazdy „nagłówek < suma pozycji"
+      // znalezione w bazie to zamówienia WŁASNE, które i tak nie
+      // wchodzą do raportu (`czyTestowe`). Ale dokładka wraca przy każdej następnej dopłacie
+      // do zamówienia sklepowego, więc liczy się reguła, nie dzisiejsze 225 zł.
+      const pozycje = nalozNadpisaniaPozycji(pozycjeSurowe(db, w.id), w.pozycje_reczne_json);
+      const bruttoGrosze = kwotaOczekiwanaGrosze({ ...w, pozycje });
+      yield {
+        zrodlo: 'oms', id: w.id, numer: w.numer, dzien, kanal, bruttoGrosze,
+        nettoGrosze: nettoZamowieniaGrosze(bruttoGrosze, klient.email, reguly.klienciWdt),
+        faktura: Boolean(w.chce_fakture_reczne ?? w.chce_fakture),
+        oplacone: Boolean(w.oplacone_at || w.oplacone_recznie),
+        email: klient.email ?? null, tagi: [],
+        pozycje: doRankingu(pozycje, w.id),
+      };
+    }
+    yield null;
   }
-
-  return wynik.sort((a, b) => (a.dzien === b.dzien ? 0 : (a.dzien < b.dzien ? -1 : 1)));
 }
 
 function bezpiecznyJson(s) {

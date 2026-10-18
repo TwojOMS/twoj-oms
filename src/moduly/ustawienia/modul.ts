@@ -17,8 +17,11 @@ import { synchronizujRole, opisSynchronizacjiRol } from './role.js';
 import { registerRoleRoutes } from './trasy/role.js';
 import { zarejestrujMenuKontaRol } from './menu-konta-rol.js';
 import { registerMojeKontoRoutes } from './trasy/moje-konto.js';
-import { mailerOpcjonalny } from './poczta-kont.js';
+import { mailerOpcjonalny, pocztaOpcjonalna } from './poczta-kont.js';
 import { registerHasloLinkRoutes } from './trasy/haslo-link.js';
+import { registerUstawieniaPocztyRoutes } from './trasy/poczta.js';
+import { adresPaneluZZapisu } from './adres-panelu.ts';
+import { wczytajKonfiguracjeIntegracji } from '../../oms/db/konfiguracja-integracji.js';
 
 /** Zachowane ustawienia, konta, logowanie i wspólna rama panelu. */
 export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
@@ -40,10 +43,15 @@ export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
     }) };
     // PRZ-080: piaskownica i produkcja na jednym gospodarzu — nazwa ciasteczka z trybu modułu web.
     const nazwaCiasteczka = nazwaCiasteczkaOms(ctx.usluga<{proba?:boolean}>('web','config')?.proba);
+    // PRZ-094.04: adres panelu do linków w mailach — OMS_ADRES_PANELU wygrywa; bez niego zapis z Ustawień → Integracje →
+    // Poczta wychodząca, czytany przy każdym mailu (zmiana bez restartu).
+    const adresPanelu = () => ctx.konfiguracja.adresPanelu ?? adresPaneluZZapisu(wczytajKonfiguracjeIntegracji(ctx.db, 'adres_panelu'));
+    const mailer = mailerOpcjonalny(ctx.usluga);
     return {uslugi:{widokIntegracji,lacznosc},trasy:app=>{
     zarejestrujMenuKontaRol(app,{db:ctx.db});
     registerLogowanieRoutes(app,{db:ctx.db,config:ctx.usluga('web','config')});
-    registerKontaRoutes(app,{db:ctx.db,teraz:ctx.teraz,adresPanelu:ctx.konfiguracja.adresPanelu,mailer:mailerOpcjonalny(ctx.usluga),
+    registerUstawieniaPocztyRoutes(app,{db:ctx.db,adresPaneluZEnv:ctx.konfiguracja.adresPanelu,poczta:pocztaOpcjonalna(ctx.usluga),mailer,log:ctx.log});
+    registerKontaRoutes(app,{db:ctx.db,teraz:ctx.teraz,adresPanelu,mailer,
       loginSerwisowy:ctx.usluga<{auth?:{user?:string}}>('web','config')?.auth?.user??null,nazwaCiasteczka});
     registerRoleRoutes(app,{db:ctx.db,teraz:ctx.teraz});
     registerMojeKontoRoutes(app,{db:ctx.db,teraz:ctx.teraz,

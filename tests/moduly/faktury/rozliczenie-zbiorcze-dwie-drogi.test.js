@@ -27,7 +27,7 @@ const naglowek = {
 
 // ⚠️ Od 24.08.2026 klient zbiorczy jest WIERSZEM TABELY `klienci`, nie wpisem w konfiguracji.
 const KLIENT = {
-  klucz: 'zetaklient', nazwa: 'Zetaklient sp. z o.o.', nip: '1000001017',
+  klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa sp. z o.o.', nip: '1234500011',
   rabat_procent: 10, prog_darmowej_dostawy_gr: 30000,
   oplata_obslugi_gr: 400, oplata_kurierska_gr: 1900,
 };
@@ -70,7 +70,7 @@ function dodajZamowienie({ numer, kwota = '100.00', okresId = okres.id, anulowan
 beforeEach(() => {
   db = openOmsDb();
   dopiszKlientaZbiorczego(db, KLIENT);
-  okres = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+  okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
   infakt = infaktUdany();
 });
 

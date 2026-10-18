@@ -6,6 +6,7 @@ import { wykonajMigracje } from './baza.ts';
 import { rozdajNoweUprawnienia } from './uprawnienia.ts';
 import { sprawdzTrybProby } from './tryb.ts';
 import { zaufaneProxy } from './zaufane-proxy.ts';
+import { BladKonfiguracji, bladWalidatora } from './blad-konfiguracji.ts';
 
 export type Aplikacja = {
   app: FastifyInstance;
@@ -21,12 +22,26 @@ function przygotujModuly(moduly: readonly ModulOms[], env: Srodowisko) {
   const kolejnosc = kolejnoscBudowy(moduly);
   sprawdzTrybProby(env, [...new Set(kolejnosc.flatMap((m) => m.kluczeIntegracji ?? []))]);
   const bledy: string[] = [];
+  let pierwszyBlad: BladKonfiguracji | undefined;
+  let nieoczekiwany = false;
+  let przyczyna: unknown;
   const konfiguracje = new Map<string, unknown>();
   for (const m of kolejnosc) {
     try { konfiguracje.set(m.nazwa, m.konfiguracja(env)); }
-    catch (e) { bledy.push(`[${m.nazwa}] ${e instanceof Error ? e.message : String(e)}`); }
+    catch (e) {
+      const blad = bladWalidatora(e);
+      if (!blad) { nieoczekiwany = true; przyczyna ??= e; }
+      else pierwszyBlad ??= blad;
+      bledy.push(`[${m.nazwa}] ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
-  if (bledy.length) throw new Error(`OMS nie wystartuje — konfiguracja:\n${bledy.join('\n')}`);
+  if (nieoczekiwany) throw new Error(`OMS nie wystartuje — konfiguracja:\n${bledy.join('\n')}`, { cause: przyczyna });
+  if (pierwszyBlad) {
+    const blad = new BladKonfiguracji(pierwszyBlad.zmienna,
+      `OMS nie wystartuje — konfiguracja:\n${bledy.join('\n')}`, pierwszyBlad.wskazowka);
+    blad.opisStartu = pierwszyBlad.opisStartu;
+    throw blad;
+  }
   return { kolejnosc, konfiguracje, trustProxy };
 }
 
@@ -66,6 +81,13 @@ export async function zbudujAplikacje(o: {
   }
 
   const app = Fastify({ logger: false, requestTimeout: 0, trustProxy });
+  app.addHook('onRequest', async (req) => {
+    if (!trustProxy && !ostrzezonoOProxy
+      && (req.headers['x-forwarded-for'] !== undefined || req.headers['cf-connecting-ip'] !== undefined)) {
+      ostrzezonoOProxy = true;
+      log('Ostrzeżenie: brak OMS_TRUST_PROXY przy nagłówkach proxy; ustaw w OMS_TRUST_PROXY wyłącznie adresy IP lub CIDR zaufanego tunelu/proxy.');
+    }
+  });
   // Ten sam zebrany manifest zasila HTTP i publiczne Aplikacja.menu.
   const menu = kolejnosc.flatMap((m) => m.menu).toSorted((a, b) => a.kolejnosc - b.kolejnosc);
   app.decorate('menuOms', menu);
@@ -87,3 +109,5 @@ export async function zbudujAplikacje(o: {
     },
   };
 }
+
+let ostrzezonoOProxy = false;

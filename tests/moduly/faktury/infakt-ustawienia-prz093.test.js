@@ -17,6 +17,7 @@ import { modulMagazyn } from '../../../src/moduly/magazyn/modul.ts';
 import { modulUstawienia } from '../../../src/moduly/ustawienia/modul.ts';
 import { modulMarketing } from '../../../src/moduly/marketing/modul.ts';
 import { modulZdrowie } from '../../../src/moduly/zdrowie/modul.ts';
+import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 
 const ADRES = '/ustawienia/integracje/infakt';
 const KLUCZ = 'zmyslony0klucz0ekranu0infakt0prz093000c3';
@@ -58,6 +59,44 @@ function panel({ env = {}, zapisPrzedStartem = null } = {}) {
 const formularz = (html) => /<form id="infakt-formularz"[\s\S]*?<\/form>/u.exec(html)?.[0] ?? '';
 
 describe('PRZ-093.10 Ustawienia → inFakt', () => {
+  for (const zrodlo of ['plik', 'ustawienia']) {
+    for (const status of [422, 500]) {
+      it(`PRZ-094.03: klucz z ${zrodlo}, odmowa ${status} — baza i karta zamówienia bez sekretu`, async () => {
+        const klucz = 'fikcyjny/klucz+infakt=09403';
+        const kodowany = encodeURIComponent(klucz);
+        const p = panel(zrodlo === 'plik' ? { env: { INFAKT_API_KEY: klucz } } : { zapisPrzedStartem: klucz });
+        try {
+          const id = zapiszZamowienie(p.db, 'demo', {
+            zrodlo_id: 'maskowanie-09403', numer: 'DEMO-09403',
+            klient: { first_name: 'Adam', last_name: 'Przykładowy' }, dostawa: {},
+            metoda_wysylki: 'demo', kwota_pobrania: null,
+            status_woo: 'processing', oplacone_at: null,
+            chce_fakture: 1, nip: null, kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00',
+            anulowane: 0, utworzone_at: '2026-10-18T08:00:00',
+            pozycje: [{ nazwa: 'Lampa demo', sku: 'DEMO', ilosc: 1, cena_brutto: '123.00', vat: null }],
+          }, {});
+          siec.mockImplementation(async (url) => String(url).includes('/clients.json')
+            ? new Response(JSON.stringify({ id: 7 }), { status: 201 })
+            : new Response(JSON.stringify({ error: `invalid api key ${klucz}; ${kodowany}` }), { status }));
+          const e = await p.podglad.faktura.wystaw(id).catch((blad) => blad);
+          expect(e.status).toBe(status);
+          expect(kluczZadania(0) === klucz).toBe(true);
+          const logi = JSON.stringify(p.db.prepare('SELECT * FROM log WHERE zamowienie_id = ?').all(id));
+          const faktury = JSON.stringify(p.db.prepare('SELECT * FROM faktury WHERE zamowienie_id = ?').all(id));
+          const karta = await get(p.app, `/zamowienia/${id}`, p.ewa);
+          expect(karta.statusCode).toBe(200);
+          expect(logi).toContain('[klucz API]');
+          if (status === 500) expect(faktury).toContain('[klucz API]');
+          // Jednoznaczna odmowa 422 zwalnia rezerwację; tylko 500 zostawia stan na karcie.
+          if (status === 500) expect(karta.body).toContain('[klucz API]');
+          for (const tekst of [e.message, e.stack, logi, faktury, karta.body]) {
+            expect(tekst.includes(klucz), 'jawny klucz w bazie/karcie/błędzie').toBe(false);
+            expect(tekst.includes(kodowany), 'kodowany klucz w bazie/karcie/błędzie').toBe(false);
+          }
+        } finally { await p.app.close(); }
+      });
+    }
+  }
   it('pusty ekran: pole klucza (hasło), adres API tylko do odczytu, „Niepodłączony”; Integracje mają wejście', async () => {
     const { app, admin, podglad } = panel();
     const r = await get(app, ADRES, admin);

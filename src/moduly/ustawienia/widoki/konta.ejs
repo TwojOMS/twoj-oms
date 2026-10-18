@@ -85,7 +85,7 @@
     <%# PRZ-069: konto powstaje BEZ hasła — pracownik ustawia je sam z jednorazowego linku (48 h). %>
     <div class="ust-pola" style="flex-direction:column;align-items:flex-start">
       <label class="pole-przelacznik"><input type="radio" name="sposob" value="pokaz" checked> Pokaż link do skopiowania</label>
-      <label class="pole-przelacznik"><input type="radio" name="sposob" value="mail"> Wyślij zaproszenie mailem (wymaga e-maila, OMS_ADRES_PANELU i SMTP)</label>
+      <label class="pole-przelacznik"><input type="radio" name="sposob" value="mail"> Wyślij zaproszenie mailem (wymaga e-maila i ustawionej poczty — <a href="/ustawienia/integracje/poczta">Ustawienia → Integracje → Poczta wychodząca</a>; bez wpisanego tam adresu panelu link prowadzi pod adres, z którego teraz korzystasz)</label>
     </div>
     <div class="ust-akcje"><button class="ust-przycisk" type="submit">Dodaj użytkownika</button></div>
   </form>

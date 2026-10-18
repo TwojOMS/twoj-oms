@@ -1,0 +1,26 @@
+// Odpowiedniki pól formularzy, nie wszystkie ustawienia danej integracji.
+// Źródła: domena/konfiguracja-{dpd,inpost,infakt}.js, core/adres-firmy.ts,
+// moduly/ustawienia/trasy/poczta.js i moduly/wiadomosci/konfiguracja.ts (pod src/).
+export const ZMIENNE_PANEL = Object.freeze({
+  INFAKT_API_KEY: 'Integracje → inFakt',
+  DPD_LOGIN: 'Integracje → Kurierzy → DPD',
+  DPD_PASSWORD: 'Integracje → Kurierzy → DPD',
+  DPD_FID: 'Integracje → Kurierzy → DPD',
+  DPD_INFO_CHANNEL: 'Integracje → Kurierzy → DPD',
+  INPOST_TOKEN: 'Integracje → Kurierzy → InPost',
+  INPOST_ORGANIZACJA: 'Integracje → Kurierzy → InPost',
+  INPOST_PACZKOMAT_NADAWCZY: 'Integracje → Kurierzy → InPost',
+  DPD_NADAWCA_NAZWA: 'Firma',
+  DPD_NADAWCA_ULICA: 'Firma',
+  DPD_NADAWCA_KOD: 'Firma',
+  DPD_NADAWCA_MIASTO: 'Firma',
+  DPD_NADAWCA_KRAJ: 'Firma',
+  DPD_NADAWCA_TELEFON: 'Firma',
+  DPD_NADAWCA_EMAIL: 'Firma',
+  SMTP_HOST: 'Integracje → Poczta wychodząca',
+  SMTP_PORT: 'Integracje → Poczta wychodząca',
+  SMTP_USER: 'Integracje → Poczta wychodząca',
+  SMTP_PASS: 'Integracje → Poczta wychodząca',
+  MAIL_FROM: 'Integracje → Poczta wychodząca',
+  OMS_ADRES_PANELU: 'Integracje → Poczta wychodząca → Adres panelu',
+});

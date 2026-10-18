@@ -44,13 +44,24 @@ const FORMATER_WARSZAWA = new Intl.DateTimeFormat('en-CA', {
   hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, hourCycle: 'h23',
 });
 
+const PAMIEC_WARSZAWA = new Map();
+const LIMIT_PAMIECI_WARSZAWA = 4096;
+
 function skladoweWarszawa(d) {
+  const znacznik = d.getTime();
+  const zapisane = PAMIEC_WARSZAWA.get(znacznik);
+  if (zapisane) return zapisane;
   const czesci = FORMATER_WARSZAWA.formatToParts(d);
   const g = (t) => czesci.find((x) => x.type === t)?.value;
-  return {
+  const wynik = {
     rok: g('year'), miesiac: g('month'), dzien: g('day'),
     godzina: g('hour'), minuta: g('minute'), sekunda: g('second'),
   };
+  if (PAMIEC_WARSZAWA.size >= LIMIT_PAMIECI_WARSZAWA) {
+    PAMIEC_WARSZAWA.delete(PAMIEC_WARSZAWA.keys().next().value);
+  }
+  PAMIEC_WARSZAWA.set(znacznik, wynik);
+  return wynik;
 }
 
 function skladoweLokalne(s) {

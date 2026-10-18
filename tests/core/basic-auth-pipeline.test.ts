@@ -48,7 +48,7 @@ afterEach(async () => { await app?.close(); db?.close(); });
 
 // Jedno write TCP niesie cały rzeczywisty pipeline HTTP/1.1. Ostatnie żądanie
 // zamyka połączenie; parser odpowiedzi sprawdza status każdej odpowiedzi.
-function pipeline(hasla: string[], localAddress = '127.0.0.1'): Promise<number[]> {
+function pipeline(hasla: string[], localAddress = '127.0.0.1', login = 'syntetyczny', proxyBezKonfiguracji = false): Promise<number[]> {
   return new Promise((resolve, reject) => {
     let dane = '';
     const socket = connect({ host: '127.0.0.1', port, localAddress });
@@ -57,33 +57,42 @@ function pipeline(hasla: string[], localAddress = '127.0.0.1'): Promise<number[]
     socket.on('data', (chunk) => { dane += chunk.toString(); });
     socket.on('end', () => resolve([...dane.matchAll(/HTTP\/1\.1 (\d+)/g)].map((m) => Number(m[1]))));
     socket.on('connect', () => socket.write(hasla.map((haslo, i) => {
-      const auth = Buffer.from(`syntetyczny:${haslo}`).toString('base64');
-      return `GET /api/proba HTTP/1.1\r\nHost: localhost\r\nAuthorization: Basic ${auth}\r\nConnection: ${i === hasla.length - 1 ? 'close' : 'keep-alive'}\r\n\r\n`;
+      const auth = Buffer.from(`${login}:${haslo}`).toString('base64');
+      return `GET /api/proba HTTP/1.1\r\nHost: localhost\r\n${proxyBezKonfiguracji ? 'X-Forwarded-For: 198.51.100.1\r\n' : ''}Authorization: Basic ${auth}\r\nConnection: ${i === hasla.length - 1 ? 'close' : 'keep-alive'}\r\n\r\n`;
     }).join('')));
   });
 }
 
 describe('Basic Auth — równoległy pipeline HTTP', () => {
-  it('20 złych żądań jednym zapisem daje tylko 5 walidacji, 5×401 i 15×429', async () => {
-    expect(await pipeline(Array(20).fill('zle'))).toEqual([...Array(5).fill(401), ...Array(15).fill(429)]);
+  it('za tunelem bez konfiguracji inny login nie czeka w kolejce pary napastnika', async () => {
+    const [zle, dobre] = await Promise.all([
+      pipeline(Array(4).fill('zle'), '127.0.0.1', 'obcy', true),
+      pipeline(Array(3).fill('poprawne'), '127.0.0.1', 'syntetyczny', true),
+    ]);
+    expect(zle).toEqual(Array(4).fill(401));
+    expect(dobre).toEqual(Array(3).fill(200));
+    expect(najwiecejAktywnych).toBe(2);
+  });
+  it('20 złych żądań jednym zapisem daje tylko 5 walidacji, 4×401 i 16×429', async () => {
+    expect(await pipeline(Array(20).fill('zle'))).toEqual([...Array(4).fill(401), ...Array(16).fill(429)]);
     expect(walidacje).toBe(5);
     expect(najwiecejAktywnych).toBe(1);
   });
   it('po 5 złych żądaniach poprawne szóste w tym samym pipeline dostaje 429', async () => {
-    expect(await pipeline([...Array(5).fill('zle'), 'poprawne'])).toEqual([401, 401, 401, 401, 401, 429]);
+    expect(await pipeline([...Array(5).fill('zle'), 'poprawne'])).toEqual([401, 401, 401, 401, 429, 429]);
     expect(walidacje).toBe(5);
   });
   it('20 poprawnych równoległych żądań nie uruchamia kary ani licznika błędów', async () => {
     expect(await pipeline(Array(20).fill('poprawne'))).toEqual(Array(20).fill(200));
     expect(walidacje).toBe(20);
-    expect(await pipeline([...Array(5).fill('zle'), 'poprawne'])).toEqual([401, 401, 401, 401, 401, 429]);
+    expect(await pipeline([...Array(5).fill('zle'), 'poprawne'])).toEqual([401, 401, 401, 401, 429, 429]);
   }, 20_000);
   it('drugie IP waliduje niezależnie w trakcie pierwszego pipeline i zachowuje dostęp', async () => {
     const [zle, dobre] = await Promise.all([
       pipeline(Array(20).fill('zle'), '127.0.0.1'),
       pipeline(Array(3).fill('poprawne'), '127.0.0.2'),
     ]);
-    expect(zle).toEqual([...Array(5).fill(401), ...Array(15).fill(429)]);
+    expect(zle).toEqual([...Array(4).fill(401), ...Array(16).fill(429)]);
     expect(dobre).toEqual([200, 200, 200]);
     expect(walidacje).toBe(8);
     expect(najwiecejAktywnych).toBe(2);

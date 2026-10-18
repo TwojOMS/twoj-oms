@@ -53,10 +53,10 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-describe('Basic Auth — hamulec po IP', () => {
-  it('szósta błędna próba dostaje 429, również poprawne hasło podczas kary; inne IP działa', async () => {
-    for (let i = 0; i < 5; i++) {
-      const r = await app.inject({ url: '/api/proba', remoteAddress: '127.0.0.2', headers: { authorization: basic(`bledny-${i}`, 'zle') } });
+describe('Basic Auth — hamulec pary IP i login', () => {
+  it('piąta błędna próba dostaje 429, również poprawne hasło podczas kary; inne IP działa', async () => {
+    for (let i = 0; i < 4; i++) {
+      const r = await app.inject({ url: '/api/proba', remoteAddress: '127.0.0.2', headers: { authorization: basic('serwis', 'zle') } });
       expect(r.statusCode).toBe(401);
       expect(r.headers['www-authenticate']).toContain('Basic');
     }
@@ -77,7 +77,8 @@ describe('Basic Auth — hamulec po IP', () => {
     for (let i = 0; i < 4; i++) expect((await proba('zle')).statusCode).toBe(401);
     for (let i = 0; i < 6; i++) expect((await proba('haslo-serwis', '/zamowienia')).statusCode).toBe(403);
     expect((await proba('haslo-serwis', '/kolejka-druku/proba')).body).toBe('chronione');
-    for (let i = 0; i < 5; i++) expect((await proba('zle')).statusCode).toBe(401);
+    for (let i = 0; i < 4; i++) expect((await proba('zle')).statusCode).toBe(401);
+    expect((await proba('zle')).statusCode).toBe(429);
     expect((await proba('haslo-serwis')).statusCode).toBe(429);
   });
 

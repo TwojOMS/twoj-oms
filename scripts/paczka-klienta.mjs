@@ -13,16 +13,20 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DOKLADNE = new Set([
+  'docs/zmienne.md',
   'package.json', 'package-lock.json',
   'scripts/instalacja-wspolne.mjs', 'scripts/instalacja-przygotuj.mjs', 'scripts/instalacja-proba.mjs',
   'scripts/instalacja-demo.mjs', 'scripts/instalacja-otworz.mjs', 'scripts/instalacja-kontener.mjs',
-  'scripts/backup-db.mjs', 'scripts/backup-rotation.mjs',
+  'scripts/backup-db.mjs', 'scripts/paczka-klienta.mjs', 'scripts/backup-rotation.mjs',
   'scripts/produkcja-pierwszy-start.mjs', 'scripts/inicjalizuj-granice-bez-historii.mjs',
   'docs/instalacja-klienta.md', 'docs/instalacja-docker.md', 'docs/aktualizacje-klienta.md', 'docs/aktualizacja-klienta-v0.md',
 ]);
-const PREFIKSY = ['src/', 'deploy/klient/'];
+// PRZ-094.21: deploy/drukarka/ — agent druku etykiet i faktur (instrukcja w README.md obok skryptów).
+const PREFIKSY = ['src/', 'deploy/klient/', 'deploy/drukarka/'];
 // Dokumenty kurierów (docs/kurier-dpd.md, docs/kurier-inpost.md…): instrukcja instalacji odsyła do nich z ekranu Integracji.
-const WZORCE = [/^docs\/kurier-[a-z0-9-]+\.md$/];
+const WZORCE = [/^docs\/kurier-[a-z0-9-]+\.md$/,
+  // PRZ-094.04: instrukcja poczty wychodzącej (Ustawienia → Integracje → Poczta wychodząca).
+  /^docs\/poczta-smtp\.md$/];
 
 /** Lista plików paczki z listy plików commita: dokładne nazwy, wzorce dokumentów kurierów + całe src/ i deploy/klient/. */
 export function plikiPaczki(plikiCommita) {

@@ -34,14 +34,17 @@ describe('PRZ-069 zaproszenia i reset hasła', () => {
     expect(login.statusCode).toBe(401);
   });
 
-  it('mail wymaga OMS_ADRES_PANELU — bez niego odmowa przed założeniem konta, mailer niewołany', async () => {
+  // PRZ-094.10 (decyzja właściciela 18.10): bez OMS_ADRES_PANELU i zapisu mail nie jest już blokowany — link prowadzi pod
+  // adres, z którego korzysta admin. Odmowa zostaje tylko przy adresie żądania, który nie przechodzi walidacji
+  // (adres-panelu-domyslny-prz094-10.test.js, „(e)”).
+  it('mail bez OMS_ADRES_PANELU i zapisu: link pod adresem żądania admina, komunikat mówi, dokąd prowadzi', async () => {
     const mailer = atrapa();
     const { db, app, admin } = panel({ mailer });
     const r = await post(app, '/ustawienia/konta/nowe', admin, { ...NOWA, sposob: 'mail' });
-    expect(r.statusCode).toBe(400);
-    expect(r.body).toContain('OMS_ADRES_PANELU');
-    expect(kontoPoLoginie(db, 'nowa')).toBeNull();
-    expect(mailer.sendMail).not.toHaveBeenCalled();
+    expect(r.statusCode, r.body).toBe(302);
+    const id = kontoPoLoginie(db, 'nowa').id;
+    expect(r.headers.location).toBe(`/ustawienia/konta/${id}?zapisano=wyslano-domyslny`);
+    expect(mailer.sendMail.mock.calls[0][0].text).toMatch(/http:\/\/localhost\/haslo\/[A-Za-z0-9_-]{43}/);
   });
 
   it('mail: adres z OMS_ADRES_PANELU, nigdy z nagłówka Host; treść, temat, ważność', async () => {

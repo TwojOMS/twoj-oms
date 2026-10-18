@@ -4,7 +4,7 @@ import {zbudujOms} from '../../src/oms/bootstrap.ts';
 import {zalozKonto} from '../../src/core/bezpieczenstwo/konta.js';
 
 it('PRZ053: logowanie, rzeczywista lista i powroty dwóch izolowanych konfiguracji',async()=>{
- for(const key of ['allegro_zetaklient','rynek_drugi']){
+ for(const key of ['allegro_przykladowa','rynek_drugi']){
   const defs=[{klucz:key,typ:'allegro',prefiks:'K',etykieta:'Kanał <syntetyczny>',raport:'MARKET'}, {klucz:'pusty',typ:'woo',prefiks:'P',etykieta:'Bez zamówień',raport:'PUSTY'}];
   const a=await zbudujOms({env:{OMS_SPRZEDAWCA_NIP:'1234563218',OMS_RACHUNEK:'34109010140000000000000000',OMS_USER:'bootstrap',OMS_PASS:'syntetyczne',OMS_PROFORMY_KATALOG:tmpdir(),OMS_ETYKIETY_KATALOG:tmpdir(),OMS_KANALY:JSON.stringify(defs)}});
   try{

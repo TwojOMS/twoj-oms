@@ -70,8 +70,8 @@ describe('baza stałych klientów', () => {
   });
 
   it('klucz wyprowadza się z nazwy, gdy pole zostanie puste', async () => {
-    await dopisz({ klucz: '', nazwa: 'Zetaklient Drogowe', nip: '' });
-    expect(wszyscyKlienci(db)[0].klucz).toBe('zetaklient-drogowe');
+    await dopisz({ klucz: '', nazwa: 'Pracownia Przykładowa', nip: '' });
+    expect(wszyscyKlienci(db)[0].klucz).toBe('pracownia-przykladowa');
   });
 
   // ⚠️ DWA WPISY NA JEDEN NIP to nie „duplikat do posprzatania", tylko dwa komplety danych

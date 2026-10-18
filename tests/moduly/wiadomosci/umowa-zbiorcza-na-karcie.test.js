@@ -15,8 +15,8 @@ import { dopiszKlientaZbiorczego } from '../faktury/_klient-zbiorczy-pomocniki.j
 // Do tej daty klucz, nazwa, NIP, rabat, prog i dwie oplaty stały w JEDNYM ciagu
 // `OMS_KLIENCI_ZBIORCZY`, a cztery z tych siedmiu pol RÓWNOLEGLE w tabeli `klienci`.
 
-const NIP = '1000001017';
-const WPIS_ENV = { OMS_KLIENCI_ZBIORCZY: `zetaklient:PHU Ewa Zieliński:${NIP}:40:500:4:19` };
+const NIP = '1234500011';
+const WPIS_ENV = { OMS_KLIENCI_ZBIORCZY: `przykladowa:Pracownia Przykładowa sp. z o.o.:${NIP}:40:500:4:19` };
 
 const naglowek = {
   authorization: `Basic ${Buffer.from('adam:x').toString('base64')}`,
@@ -26,7 +26,7 @@ const config = { auth: { user: 'adam', pass: 'x' } };
 
 /** Klient stały BEZ umowy zbiorczej — dokładnie taki, jaki leżał w bazie przed migracją. */
 const dopiszZwyklego = (db, nadpisania = {}) => dopiszKlienta(db, {
-  klucz: 'zetaklient', nazwa: 'Zetaklient Drogowe', nip: NIP, b2b: 1, rabat_procent: 40,
+  klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa', nip: NIP, b2b: 1, rabat_procent: 40,
   chce_fakture: 1, metoda_wysylki: 'dpd', aktywny: 1, koszt_dostawy_brutto: '0.00',
   platnosc: 'przelew', termin_platnosci: null, komentarz: null, ...nadpisania,
 });
@@ -53,7 +53,7 @@ describe('migracja warunków umowy z OMS_KLIENCI_ZBIORCZY', () => {
   it('dopasowuje po cyfrach NIP-u, nie po napisie', () => {
     dopiszZwyklego(db);
     wgrajUmowyZbiorczeZKonfiguracji(db, {
-      OMS_KLIENCI_ZBIORCZY: 'zetaklient:PHU Ewa Zieliński:100-000-10-17:40:500:4:19',
+      OMS_KLIENCI_ZBIORCZY: 'przykladowa:Pracownia Przykładowa sp. z o.o.:123-450-00-11:40:500:4:19',
     });
     expect(klientPoNip(db, NIP).rozliczenie_zbiorcze).toBe(1);
   });
@@ -79,7 +79,7 @@ describe('migracja warunków umowy z OMS_KLIENCI_ZBIORCZY', () => {
     const wynik = wgrajUmowyZbiorczeZKonfiguracji(db, WPIS_ENV, (t) => log.push(t));
 
     expect(wynik.wgranych).toBe(0);
-    expect(wynik.bezKlienta).toEqual([`zetaklient (NIP ${NIP})`]);
+    expect(wynik.bezKlienta).toEqual([`przykladowa (NIP ${NIP})`]);
     expect(db.prepare('SELECT COUNT(*) AS ile FROM klienci').get().ile).toBe(0);
     expect(log.join(' ')).toMatch(/OMS_KLIENCI_ZBIORCZY/);
   });
@@ -117,16 +117,16 @@ describe('migracja warunków umowy z OMS_KLIENCI_ZBIORCZY', () => {
   it('karty już ustawionej nie rusza nawet przy nieodhaczonej migracji', () => {
     dopiszKlientaZbiorczego(db, { oplata_kurierska_gr: 2500 });
     const wynik = wgrajUmowyZbiorczeZKonfiguracji(db, {
-      OMS_KLIENCI_ZBIORCZY: `zetaklient:PHU:${NIP}:40:500:4:19,obcy:Obcy:5252248481:0:0:0:0`,
+      OMS_KLIENCI_ZBIORCZY: `przykladowa:PHU:${NIP}:40:500:4:19,obcy:Obcy:5252248481:0:0:0:0`,
     });
-    expect(wynik.nietkniete).toEqual(['zetaklient']);
+    expect(wynik.nietkniete).toEqual(['przykladowa']);
     expect(klientPoNip(db, NIP).oplata_kurierska_gr).toBe(2500);
   });
 });
 
 describe('formularz karty klienta — warunki umowy', () => {
   const pola = {
-    nazwa: 'Zetaklient Drogowe', nip: NIP, metoda_wysylki: 'dpd', platnosc: 'przelew',
+    nazwa: 'Pracownia Przykładowa', nip: NIP, metoda_wysylki: 'dpd', platnosc: 'przelew',
   };
 
   it('przełącznik z kompletem kwot zapisuje je w groszach', () => {
@@ -253,7 +253,7 @@ describe('ekrany karty klienta', () => {
       url: '/klienci',
       headers: naglowek,
       payload: {
-        nazwa: 'Zetaklient Drogowe',
+        nazwa: 'Pracownia Przykładowa',
         nip: NIP,
         metoda_wysylki: 'dpd',
         platnosc: 'przelew',
@@ -275,7 +275,7 @@ describe('ekrany karty klienta', () => {
       url: '/klienci',
       headers: naglowek,
       payload: {
-        nazwa: 'Zetaklient Drogowe',
+        nazwa: 'Pracownia Przykładowa',
         nip: NIP,
         metoda_wysylki: 'dpd',
         platnosc: 'przelew',

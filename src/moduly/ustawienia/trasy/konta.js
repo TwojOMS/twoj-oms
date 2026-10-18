@@ -22,6 +22,7 @@ import { zalozKontoZaproszone, zalozKontoZHaslem, ustawEmail, sprawdzEmail, emai
 import { trescMaila } from '../poczta-kont.js';
 import { modelKonta, MAKS_IMIENIA } from './moje-konto.js';
 import { POLITYKA_REFERERA_LINKU } from './haslo-link.js';
+import { adresLinkow } from '../adres-panelu.ts';
 import { malymi } from '../role.js';
 import { kontoWPodgladzieDemo, logowaniaDemo } from '../../../core/bezpieczenstwo/podglad-demo.js';
 
@@ -151,9 +152,11 @@ function opisWynikuLogowania(wynik) {
 
 /**
  * @param {any} app
- * @param {{ db: any, teraz?: () => Date, adresPanelu?: string | null, mailer?: () => any, loginSerwisowy?: string | null, nazwaCiasteczka?: string }} opcje
+ * @param {{ db: any, teraz?: () => Date, adresPanelu?: string | null | (() => string | null), mailer?: () => any, loginSerwisowy?: string | null, nazwaCiasteczka?: string }} opcje
  */
-export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPanelu = null, mailer = () => null, loginSerwisowy = null, nazwaCiasteczka = NAZWA_CIASTECZKA_OMS }) {
+export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPanelu: adresPaneluOpcja = null, mailer = () => null, loginSerwisowy = null, nazwaCiasteczka = NAZWA_CIASTECZKA_OMS }) {
+  // PRZ-094.04: adres panelu czytany przy każdym żądaniu (OMS_ADRES_PANELU albo zapis z Ustawień → Poczta wychodząca).
+  const adresTeraz = typeof adresPaneluOpcja === 'function' ? adresPaneluOpcja : () => adresPaneluOpcja;
   // PRZ-069: strona z jednorazowym linkiem nie trafia do pamięci przeglądarki; Referer bez ścieżki (spec §4.4).
   // Polityka `strict-origin`, nie `no-referrer` — inaczej każdy formularz tej strony dostaje 403 (recenzja D8 r1, P1-1).
   const pokazLinkuNaglowki = (reply) => reply.header('Cache-Control', 'no-store').header('Referrer-Policy', POLITYKA_REFERERA_LINKU);
@@ -162,10 +165,18 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
   const loginZarezerwowany = (login) => Boolean(loginSerwisowy) && malymi(login) === malymi(loginSerwisowy);
   const KOMUNIKAT_LOGIN_SERWISOWY = (login) => `Login „${login}” jest zarezerwowany dla konta serwisowego z .env — wybierz inny.`;
   const komunikatLoginZajety = (login) => `Login „${login}” jest już zajęty przez inne konto — wybierz inny.`;
-  // Mail: wyłącznie OMS_ADRES_PANELU. „Pokaż link”: bez zmiennej adres, pod którym admin właśnie patrzy (widzi go tylko on).
-  const adresLinku = (req, token, sposob) => (sposob === 'mail'
-    ? `${adresPanelu}/haslo/${token}`
-    : `${adresPanelu ?? `${req.protocol}://${req.host}`}/haslo/${token}`);
+  // PRZ-094.10: mail i „Pokaż link” — ta sama zasada (adres-panelu.ts, adresLinkow): plik → zapis → adres, z którego
+  // admin właśnie korzysta. Adres z żądania jest tu dopuszczalny, bo każda trasa tego pliku, która wydaje link, stoi
+  // za `tylkoAdmin` (test: adres-panelu-domyslny-prz094-10.test.js, „(f)”).
+  const adresLinkowDla = (req) => adresLinkow(adresTeraz(), req);
+  const komunikatZapisu = (req) => {
+    if (req.query?.zapisano !== 'wyslano-domyslny') return KOMUNIKATY_ZAPISU[req.query?.zapisano] ?? null;
+    const adres = adresLinkowDla(req);
+    return adres?.domyslny
+      ? `Wysłano. Link w mailu prowadzi do ${adres.adres} (adres, z którego teraz korzystasz). `
+        + 'Jeśli pracownik otworzy go spoza tej sieci, wpisz adres w Ustawienia → Integracje → Poczta wychodząca.'
+      : KOMUNIKATY_ZAPISU.wyslano;
+  };
 
   function stronaKonta(req, reply, id, extra = {}) {
     return reply.view('konto.ejs', {
@@ -176,15 +187,20 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
         : modelKonta(db, id),
       role: listaRol(db).map((r) => ({ klucz: r.klucz, etykieta: r.nazwa })),
       rolaKlucz: db.prepare('SELECT rola FROM konta WHERE id = ?').get(id)?.rola ?? null,
-      link: null, adresZPrzegladarki: false, zapisano: KOMUNIKATY_ZAPISU[req.query?.zapisano] ?? null, blad: null,
+      link: null, adresZPrzegladarki: false, zapisano: komunikatZapisu(req), blad: null,
       nawigacja: nawigacjaUstawien(req, reply), ...extra,
     });
   }
 
-  /** Powód odmowy wysyłki mailem — sprawdzany PRZED zapisem czegokolwiek (także przed założeniem konta). */
-  function bladWysylki(sposob, email) {
+  /** Powód odmowy wydania linku — sprawdzany PRZED zapisem czegokolwiek (także przed założeniem konta). */
+  function bladWysylki(req, sposob, email) {
+    if (!adresLinkowDla(req)) {
+      // Bez adresu w pliku i w zapisie, a adres żądania nie przeszedł walidacji (np. dziwny nagłówek z proxy).
+      return sposob === 'mail'
+        ? 'Wysyłka mailem wymaga adresu panelu (OMS_ADRES_PANELU albo Ustawienia → Integracje → Poczta wychodząca) — użyj „Pokaż link”.'
+        : 'Nie da się ustalić adresu panelu z adresu w przeglądarce — wpisz go w Ustawienia → Integracje → Poczta wychodząca.';
+    }
     if (sposob !== 'mail') return null;
-    if (!adresPanelu) return 'Wysyłka mailem wymaga OMS_ADRES_PANELU — użyj „Pokaż link”.';
     if (!mailer()) return 'Wysyłka mailem jest niedostępna (brak SMTP) — użyj „Pokaż link”.';
     if (!email) return 'Konto nie ma adresu e-mail — dopisz go albo użyj „Pokaż link”.';
     return null;
@@ -193,13 +209,16 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
   async function wyslijAlboPokaz(req, reply, { id, cel, sposob }) {
     const konto = modelKonta(db, id);
     const utworzylKontoId = req.konto?.id ?? null;
+    const adres = adresLinkowDla(req);
+    if (!adres) return stronaKonta(req, reply.code(400), id, { blad: bladWysylki(req, sposob, konto.email) });
+    const adresLinku = (token) => `${adres.adres}/haslo/${token}`;
     if (sposob === 'mail') {
       // Recenzja D8 r1, P3-2: poprzedni link przestaje działać DOPIERO po udanej wysyłce. Przy błędzie SMTP
       // nowy link jest wycofany, a poprzedni (np. z „Pokaż link”, już przekazany pracownikowi) działa dalej.
       // W oknie wysyłki konto ma dwa aktywne linki — użycie jednego unieważnia drugi (uzyjLinku).
       const { token, id: linkId } = wydajLink(db, { kontoId: id, cel, utworzylKontoId, teraz, zastapPoprzednie: false });
       try {
-        await mailer().sendMail({ to: konto.email, ...trescMaila({ cel, imie: konto.imie, link: adresLinku(req, token, sposob) }) });
+        await mailer().sendMail({ to: konto.email, ...trescMaila({ cel, imie: konto.imie, link: adresLinku(token) }) });
       } catch {
         wycofajLink(db, linkId, teraz);
         return stronaKonta(req, reply.code(502), id, {
@@ -207,13 +226,14 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
         });
       }
       zastapPoprzednieLinki(db, { kontoId: id, nowyLinkId: linkId, teraz });
-      return reply.redirect(`/ustawienia/konta/${id}?zapisano=wyslano`);
+      // PRZ-094.10: przy adresie domyślnym komunikat mówi, dokąd prowadzi link (komunikatZapisu).
+      return reply.redirect(`/ustawienia/konta/${id}?zapisano=${adres.domyslny ? 'wyslano-domyslny' : 'wyslano'}`);
     }
     const { token } = wydajLink(db, { kontoId: id, cel, utworzylKontoId, teraz });
     return stronaKonta(req, pokazLinkuNaglowki(reply), id, {
-      link: adresLinku(req, token, sposob),
-      // Recenzja końcowa, P3-4: bez OMS_ADRES_PANELU adres linku pochodzi z przeglądarki admina — ekran ma to powiedzieć.
-      adresZPrzegladarki: !adresPanelu,
+      link: adresLinku(token),
+      // Recenzja końcowa, P3-4: bez adresu w pliku i w zapisie link prowadzi pod adres z przeglądarki admina — ekran ma to powiedzieć.
+      adresZPrzegladarki: adres.domyslny,
     });
   }
 
@@ -233,7 +253,7 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
     if (email) {
       try { sprawdzEmail(db, null, email); } catch (e) { if (e instanceof BladKonta) return odmow(e.message); throw e; }
     }
-    const blad = bladWysylki(sposob, email || null);
+    const blad = bladWysylki(req, sposob, email || null);
     if (blad) return odmow(blad);
     let id;
     try {
@@ -491,7 +511,7 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
     if (!cel.czynne) return stronaKonta(req, reply.code(400), cel.id, { blad: 'Konto jest wyłączone — włącz je, zanim wyślesz link.' });
     const sposob = String(req.body?.sposob ?? '');
     if (!SPOSOBY_LINKU.includes(sposob)) return stronaKonta(req, reply.code(400), cel.id, { blad: 'Wybierz: mail albo link do skopiowania.' });
-    const blad = bladWysylki(sposob, emailKonta(db, cel.id));
+    const blad = bladWysylki(req, sposob, emailKonta(db, cel.id));
     if (blad) return stronaKonta(req, reply.code(400), cel.id, { blad });
     return wyslijAlboPokaz(req, reply, { id: cel.id, cel: cel.zaproszone ? 'zaproszenie' : 'reset', sposob });
   });

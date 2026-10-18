@@ -77,6 +77,54 @@ function powod(dane, status) {
 }
 
 export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetchImpl, limitCzasuMs: LIMIT_ZADANIA_MS }), baseUrl = 'https://api.infakt.pl/api' }) {
+  // Ta sama funkcja dla testu połączenia i wszystkich pozostałych metod. Krótki/pusty
+  // klucz nie może zamazać zwykłych słów; URL może nieść klucz w postaci kodowanej.
+  const bezKlucza = (tekst) => {
+    let wynik = String(tekst);
+    const klucz = String(apiKey ?? '');
+    if (klucz.length >= 8) {
+      for (const forma of new Set([klucz, encodeURIComponent(klucz)])) {
+        wynik = wynik.split(forma).join('[klucz API]');
+      }
+    }
+    return wynik;
+  };
+
+  // Kopia zachowuje rodzaj błędu, status i znacznik operatora, ale nie zostawia
+  // surowego stack/cause/body. Limit ucina cały ogon, nie oddaje oryginalnego cause.
+  function bezpiecznyBlad(blad, glebokosc = 0, odwiedzone = new WeakMap()) {
+    if (typeof blad === 'string') return bezKlucza(blad);
+    if (!blad || typeof blad !== 'object') return blad;
+    if (odwiedzone.has(blad)) return odwiedzone.get(blad);
+    if (glebokosc >= 8) return '[pominięto dalsze szczegóły błędu]';
+    // DOMException ma name/message/code na prototypie, a ich gettery wymagają
+    // wewnętrznego stanu. Sam prototyp daje martwą kopię. Takie błędy spłaszczamy
+    // do Error i odczytujemy odziedziczone metadane z działającego oryginału.
+    const wymagaZwyklegoBledu = blad instanceof DOMException
+      || (!Object.hasOwn(blad, 'message') && typeof blad.message === 'string');
+    const kopia = wymagaZwyklegoBledu ? new Error(bezKlucza(blad.message))
+      : Array.isArray(blad) ? [] : Object.create(Object.getPrototypeOf(blad));
+    odwiedzone.set(blad, kopia);
+    const nazwy = Reflect.ownKeys(blad);
+    if (wymagaZwyklegoBledu) {
+      for (const nazwa of ['name', 'code', 'stack']) {
+        if (nazwa in blad && !nazwy.includes(nazwa)) nazwy.push(nazwa);
+      }
+    }
+    for (const nazwa of nazwy) {
+      const opis = Object.getOwnPropertyDescriptor(blad, nazwa);
+      // Node 24 udostępnia stack przez getter. Odczytujemy go przed kopiowaniem,
+      // żeby zachować stos, ale nie getter zamykający w sobie oryginalną treść.
+      let wartosc;
+      try { wartosc = blad[nazwa]; }
+      catch { wartosc = '[pominięto nieczytelne szczegóły błędu]'; }
+      Object.defineProperty(kopia, nazwa, {
+        enumerable: opis?.enumerable ?? false, configurable: opis?.configurable ?? true, writable: true,
+        value: bezpiecznyBlad(wartosc, glebokosc + 1, odwiedzone),
+      });
+    }
+    return kopia;
+  }
   // Komunikaty NIE zawieraja klucza API — trafiaja do bazy i do logu.
   //
   // Kazdy blad stad jest OTAGOWANY jako przeznaczony dla operatora (bladOperatora): tresc
@@ -573,16 +621,15 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
    * ⚠️ Klucz API zastępowany w komunikacie: ten trafia na ekran, a inFakt mógłby odbić klucz w treści błędu.
    */
   async function sprawdzPolaczenie() {
-    const bezKlucza = (tekst) => (apiKey ? String(tekst).split(String(apiKey)).join('[klucz API]') : String(tekst));
     let dane;
     try {
       dane = await zapytaj(adres('invoices', {}, 0), { method: 'GET' }, 'sprawdzenie połączenia');
     } catch (e) {
       if (e?.status === 401 || e?.status === 403) {
         throw bladOperatora(`inFakt nie przyjął klucza API (HTTP ${e.status}) — sprawdź, czy klucz jest skopiowany w całości `
-          + `i aktywny w inFakcie (Ustawienia → API). Odpowiedź inFaktu: ${bezKlucza(e.message)}`, { status: e.status });
+          + `i aktywny w inFakcie (Ustawienia → API). Odpowiedź inFaktu: ${e.message}`, { status: e.status });
       }
-      throw bladOperatora(bezKlucza(e?.message ?? 'inFakt nieosiągalny'), e?.status ? { status: e.status } : {});
+      throw bladOperatora(e?.message ?? 'inFakt nieosiągalny', e?.status ? { status: e.status } : {});
     }
     const ile = Number(dane?.metainfo?.total_count);
     if (!Number.isFinite(ile) || ile < 0) {
@@ -591,11 +638,16 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
     return { ok: true };
   }
 
-  return {
+  // Jedno wyjście: każda metoda dodana do obiektu automatycznie dostaje maskowanie,
+  // także dla PDF (osobny transport) i błędów serializacji przed żądaniem HTTP.
+  return Object.fromEntries(Object.entries({
     znajdzKlientaPoNip, zalozKlienta, wystaw, oznaczZaplacona, pobierzPdf, pobierzFakture,
     listaFaktur, listaKorekt, listaNieoplaconych, pobierzPdfKorekty, wyslijDokumentDoKsef,
     wystawKorekte, iluMaNumer, sprawdzPolaczenie,
-  };
+  }).map(([nazwa, metoda]) => [nazwa, async (...args) => {
+    try { return await metoda(...args); }
+    catch (e) { throw bezpiecznyBlad(e); }
+  }]));
 }
 
 /** Nazwy metod klienta — pośrednik „inFakt z Ustawień” (moduly/faktury/infakt-ustawien.ts) wystawia te same. */

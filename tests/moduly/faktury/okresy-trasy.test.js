@@ -14,7 +14,7 @@ const naglowek = {
 };
 
 const KLIENT = {
-  klucz: 'zetaklient', nazwa: 'Zetaklient sp. z o.o.', nip: '1000001017',
+  klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa sp. z o.o.', nip: '1234500011',
   rabat_procent: 10, prog_darmowej_dostawy_gr: 30000,
   oplata_obslugi_gr: 400, oplata_kurierska_gr: 1900,
 };
@@ -81,7 +81,7 @@ beforeEach(async () => {
   // ⚠️ NABYWCA FAKTURY ZBIORCZEJ IDZIE OD 24.08.2026 Z KARTY KLIENTA (`klientOkresu`),
   // a nie z konfiguracji — bez tego wiersza karta okresu nie zna ani nazwy, ani NIP-u.
   dopiszKlientaZbiorczego(db, KLIENT);
-  okres = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+  okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
   infakt = infaktUdany();
   app = buildOmsServer({ db, config, infakt });
   await app.ready();
@@ -95,7 +95,7 @@ describe('GET /okresy (lista okresów)', () => {
     const odp = await get('/okresy');
     expect(odp.statusCode).toBe(200);
     expect(odp.body).toMatch(/2026/);
-    expect(odp.body).toContain('Zetaklient sp. z o.o.');
+    expect(odp.body).toContain('Pracownia Przykładowa sp. z o.o.');
     expect(odp.body).toContain(`/okresy/${okres.id}`);
   });
 
@@ -305,7 +305,7 @@ describe('GET /okresy/:id — zamówienie ANULOWANE poza sumą, ale widoczne', (
   // Sytuacja BEZ zadnego anulowanego zamowienia w okresie: „dzis" == „przy wystawieniu",
   // wiec nadplata JEST prawdziwa i karta ma prawo kazac ja sprawdzic do zwrotu.
   it('faktura BEZ żadnego anulowanego zamówienia + nadpłata → prawdziwa „NADPŁATA ... zwrócić"', async () => {
-    const inny = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 8 });
+    const inny = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 8 });
     db.prepare(
       'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id, anulowane, utworzone_at)'
       + " VALUES ('reczne', 501, 'R/2026/501', '100.00', ?, 0, '2026-08-10T10:00:00.000Z')",
@@ -575,7 +575,7 @@ describe('POST /okresy/:id/wplata/:platnoscId/usun', () => {
   // ⚠️ Para (okres, wplata) to ZAKRES WLASNOSCI: wplata z adresu URL nie moze skasowac
   // wplaty nalezacej do innego okresu.
   it('wpłata z INNEGO okresu → 400, cudzy wiersz zostaje', async () => {
-    const inny = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 6 });
+    const inny = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 6 });
     dodajWplateOkresu(db, inny.id, { kwota: '500.00', data: '2026-07-01' });
     const cudza = wplatyOkresu(db, inny.id)[0];
 

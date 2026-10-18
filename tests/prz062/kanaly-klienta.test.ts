@@ -1,4 +1,4 @@
-// PRZ-062: cały panel na kanałach pod nazwami klienta (allegro_zetaklient, woo_zetaklient) — tak, jak klient je
+// PRZ-062: cały panel na kanałach pod nazwami klienta (allegro_przykladowa, woo_przykladowa) — tak, jak klient je
 // skonfiguruje według docs/instalacja-docker.md, sekcja „Przejście na pracę”: definicje w OMS_KANALY
 // z etykietą i identyfikatorem raportu, fałszywe klucze (bez sieci), granice raportu założone skryptem
 // inicjalizuj-granice-bez-historii.mjs, nazwy raportowe w OMS_RAPORTY_NAZWY_KANALOW.
@@ -20,21 +20,21 @@ import { wykonaj as zalozGranice } from '../../scripts/inicjalizuj-granice-bez-h
 import { definicjeKanalowHistoryczne } from '../pomoc/kanaly-historyczne-fixture.js';
 
 export const KANALY_KLIENTA = [
-  { klucz: 'allegro_zetaklient', typ: 'allegro', prefiks: 'ALLEGRO_ZETAKLIENT', etykieta: 'Allegro Zetaklient', raport: 'ALLEGRO_ZETAKLIENT' },
-  { klucz: 'woo_zetaklient', typ: 'woo', prefiks: 'WOO_ZETAKLIENT', etykieta: 'sklep.zetaklient.example', raport: 'SKLEP_ZETAKLIENT' },
+  { klucz: 'allegro_przykladowa', typ: 'allegro', prefiks: 'ALLEGRO_PRZYKLADOWA', etykieta: 'Allegro Pracownia Przykładowa', raport: 'ALLEGRO_PRZYKLADOWA' },
+  { klucz: 'woo_przykladowa', typ: 'woo', prefiks: 'WOO_PRZYKLADOWA', etykieta: 'sklep.przykladowa.example', raport: 'SKLEP_PRZYKLADOWA' },
 ];
 // Fałszywe klucze: każda integracja „włączona”, żadna nie ma jak się połączyć (fetch odrzuca).
 const KLUCZE = {
-  ALLEGRO_ZETAKLIENT_CLIENT_ID: 'falszywy-id', ALLEGRO_ZETAKLIENT_CLIENT_SECRET: 'falszywy-sekret',
-  ALLEGRO_ZETAKLIENT_USER_AGENT: 'ZetaklientOMS/1.0 (+https://zetaklient.example)', ALLEGRO_ZETAKLIENT_OD: '2026-10-01',
-  WOO_ZETAKLIENT_URL: 'https://sklep.zetaklient.example', WOO_ZETAKLIENT_CK: 'ck_falszywy', WOO_ZETAKLIENT_CS: 'cs_falszywy',
-  WOO_ZETAKLIENT_MAPOWANIE: JSON.stringify({ instancje: { 1: { metoda: 'dpd' } }, poPozycji: [] }),
-  DPD_URL: 'https://dpd.zetaklient.example', DPD_LOGIN: 'falszywy', DPD_PASSWORD: 'falszywe', DPD_FID: '1',
-  DPD_INFO_URL: 'https://dpdinfo.zetaklient.example', DPD_INFO_CHANNEL: 'falszywy',
-  DPD_NADAWCA_NAZWA: 'Zetaklient sp. z o.o.', DPD_NADAWCA_ULICA: 'Klockowa 1', DPD_NADAWCA_KOD: '00-950', DPD_NADAWCA_MIASTO: 'Warszawa',
+  ALLEGRO_PRZYKLADOWA_CLIENT_ID: 'falszywy-id', ALLEGRO_PRZYKLADOWA_CLIENT_SECRET: 'falszywy-sekret',
+  ALLEGRO_PRZYKLADOWA_USER_AGENT: 'PrzykladowaOMS/1.0 (+https://przykladowa.example)', ALLEGRO_PRZYKLADOWA_OD: '2026-10-01',
+  WOO_PRZYKLADOWA_URL: 'https://sklep.przykladowa.example', WOO_PRZYKLADOWA_CK: 'ck_falszywy', WOO_PRZYKLADOWA_CS: 'cs_falszywy',
+  WOO_PRZYKLADOWA_MAPOWANIE: JSON.stringify({ instancje: { 1: { metoda: 'dpd' } }, poPozycji: [] }),
+  DPD_URL: 'https://dpd.przykladowa.example', DPD_LOGIN: 'falszywy', DPD_PASSWORD: 'falszywe', DPD_FID: '1',
+  DPD_INFO_URL: 'https://dpdinfo.przykladowa.example', DPD_INFO_CHANNEL: 'falszywy',
+  DPD_NADAWCA_NAZWA: 'Pracownia Przykładowa sp. z o.o.', DPD_NADAWCA_ULICA: 'Klockowa 1', DPD_NADAWCA_KOD: '00-950', DPD_NADAWCA_MIASTO: 'Warszawa',
   INFAKT_API_KEY: 'falszywy-infakt',
 };
-const NAZWY_RAPORTU = { ALLEGRO_ZETAKLIENT: 'Allegro Zetaklient', SKLEP_ZETAKLIENT: 'sklep.zetaklient.example' };
+const NAZWY_RAPORTU = { ALLEGRO_PRZYKLADOWA: 'Allegro Pracownia Przykładowa', SKLEP_PRZYKLADOWA: 'sklep.przykladowa.example' };
 
 // Nazwy firmy autora (te same wzorce co strażnik paczki PRZ-060) i jej historyczne kanały z fixture testów.
 const SLOWA_FIRMY = [/szkicownia/i, /lumina/i, /drugamarka/i, /trzeciamarka/i, /amarka/i, /zywiecki/i, /fundacja przyk/i, /\bGDD\b/];
@@ -106,13 +106,13 @@ describe('PRZ-062 panel na kanałach pod nazwami klienta', () => {
       OMS_KANALY: JSON.stringify(KANALY_KLIENTA), OMS_RAPORTY_NAZWY_KANALOW: JSON.stringify(NAZWY_RAPORTU), ...KLUCZE };
     s = await zalogowany(env, (db) => {
       // Krok instrukcji: granica raportu każdego kanału przed pierwszą sprzedażą (świeża baza bez historii).
-      for (const r of ['ALLEGRO_ZETAKLIENT', 'SKLEP_ZETAKLIENT', 'RECZNE']) zalozGranice([env.OMS_DB_PATH, r, '2026-09-30'], env);
-      idA = zapiszZamowienie(db, 'allegro_zetaklient', mapujZamowienieAllegro(surowyAllegro, { metodaZId }), surowyAllegro);
-      idW = zapiszZamowienie(db, 'woo_zetaklient', mapujZamowienie(surowyWoo, { instancje: { 1: { metoda: 'dpd' } }, poPozycji: [] }), surowyWoo);
+      for (const r of ['ALLEGRO_PRZYKLADOWA', 'SKLEP_PRZYKLADOWA', 'RECZNE']) zalozGranice([env.OMS_DB_PATH, r, '2026-09-30'], env);
+      idA = zapiszZamowienie(db, 'allegro_przykladowa', mapujZamowienieAllegro(surowyAllegro, { metodaZId }), surowyAllegro);
+      idW = zapiszZamowienie(db, 'woo_przykladowa', mapujZamowienie(surowyWoo, { instancje: { 1: { metoda: 'dpd' } }, poPozycji: [] }), surowyWoo);
       const at = '2026-10-05T10:00:00Z';
-      zapiszProduktSklepowy(db, { kanal: 'woo_zetaklient', produkt_id: 55, nazwa: 'Klocek sklepowy', sku_sklepu: 'KL-1', cena_gr: 12300, adres: 'https://sklep.zetaklient.example/klocek', odczytane_at: at });
-      zapiszProduktSklepowy(db, { kanal: 'allegro_zetaklient', produkt_id: 'of-1', nazwa: 'Klocek syntetyczny', cena_gr: 5000, odczytane_at: at });
-      utworzKartyZNiepowiazanych(db, { kanalySklepow: ['woo_zetaklient'] } as any);
+      zapiszProduktSklepowy(db, { kanal: 'woo_przykladowa', produkt_id: 55, nazwa: 'Klocek sklepowy', sku_sklepu: 'KL-1', cena_gr: 12300, adres: 'https://sklep.przykladowa.example/klocek', odczytane_at: at });
+      zapiszProduktSklepowy(db, { kanal: 'allegro_przykladowa', produkt_id: 'of-1', nazwa: 'Klocek syntetyczny', cena_gr: 5000, odczytane_at: at });
+      utworzKartyZNiepowiazanych(db, { kanalySklepow: ['woo_przykladowa'] } as any);
     });
   }, 120_000);
   afterAll(async () => {
@@ -125,10 +125,10 @@ describe('PRZ-062 panel na kanałach pod nazwami klienta', () => {
   it('lista i menu filtra: oba kanały pod etykietami klienta, filtr zawęża do właściwego kanału', async () => {
     const lista = await s.get('/?wszystkie=1');
     expect(lista.status).toBe(200); czysty('/', lista);
-    expect(lista.body).toContain('<option value="allegro_zetaklient">Allegro Zetaklient</option>');
-    expect(lista.body).toContain('<option value="woo_zetaklient">sklep.zetaklient.example</option>');
+    expect(lista.body).toContain('<option value="allegro_przykladowa">Allegro Pracownia Przykładowa</option>');
+    expect(lista.body).toContain('<option value="woo_przykladowa">sklep.przykladowa.example</option>');
     for (const numer of ['ab-062', 'W-701']) expect(lista.body).toContain(numer);
-    for (const [kanal, jest, nieMa] of [['allegro_zetaklient', 'ab-062', 'W-701'], ['woo_zetaklient', 'W-701', 'ab-062']]) {
+    for (const [kanal, jest, nieMa] of [['allegro_przykladowa', 'ab-062', 'W-701'], ['woo_przykladowa', 'W-701', 'ab-062']]) {
       const r = await s.get(`/?wszystkie=1&kanal=${kanal}`);
       expect(r.status).toBe(200); czysty(kanal, r);
       expect(r.body).toContain(`<option value="${kanal}" selected`);
@@ -137,7 +137,7 @@ describe('PRZ-062 panel na kanałach pod nazwami klienta', () => {
   });
 
   it('karta zamówienia każdego kanału: 200, kanał klienta, bez firmy autora', async () => {
-    for (const [id, kanal, numer] of [[idA, 'allegro_zetaklient', 'ab-062'], [idW, 'woo_zetaklient', 'W-701']] as const) {
+    for (const [id, kanal, numer] of [[idA, 'allegro_przykladowa', 'ab-062'], [idW, 'woo_przykladowa', 'W-701']] as const) {
       const r = await s.get(`/zamowienia/${id}`);
       expect(r.status).toBe(200); czysty(`karta ${kanal}`, r);
       expect(r.body).toContain(numer); expect(r.body).toContain(kanal);
@@ -152,7 +152,7 @@ describe('PRZ-062 panel na kanałach pod nazwami klienta', () => {
     expect(pdf.surowe.subarray(0, 4).toString()).toBe('%PDF');
     const nadaj = await s.get(`/zamowienia/${idW}/nadaj`);
     expect(nadaj.status).toBe(200); czysty('nadaj woo', nadaj);
-    expect(nadaj.body).toContain('https://sklep.zetaklient.example/?post_type=product&amp;p=55');
+    expect(nadaj.body).toContain('https://sklep.przykladowa.example/?post_type=product&amp;p=55');
   });
 
   // Treść PDF jest skompresowana: bez pdftotext ta część jest JAWNIE pominięta (recenzja D8 r1), nie zielona.
@@ -161,14 +161,14 @@ describe('PRZ-062 panel na kanałach pod nazwami klienta', () => {
     const plik = join(dir, 'proforma.pdf'); writeFileSync(plik, pdf.surowe);
     const tekst = execFileSync(pdftotext()!, ['-layout', '-enc', 'UTF-8', plik, '-'], { encoding: 'utf8' });
     expect(firmaW(tekst)).toEqual([]);
-    for (const f of ['Zetaklient sp. z o.o.', 'Klockowa 1', 'NIP: 1234563218', 'Klocek sklepowy']) expect(tekst).toContain(f);
+    for (const f of ['Pracownia Przykładowa sp. z o.o.', 'Klockowa 1', 'NIP: 1234563218', 'Klocek sklepowy']) expect(tekst).toContain(f);
   });
 
   it('cennik „Dodaj z magazynu”: sklep klienta jako cennik, ceny z jego katalogu (Allegro nigdy cennikiem)', async () => {
     const nowe = await s.get('/zamowienia/nowe');
     expect(nowe.status).toBe(200); czysty('nowe', nowe);
-    expect(nowe.body).toContain('<option value="woo_zetaklient" selected>sklep.zetaklient.example</option>');
-    expect(nowe.body).not.toContain('<option value="allegro_zetaklient"');
+    expect(nowe.body).toContain('<option value="woo_przykladowa" selected>sklep.przykladowa.example</option>');
+    expect(nowe.body).not.toContain('<option value="allegro_przykladowa"');
     const wyniki = await s.get('/zamowienia/nowe/magazyn/wyniki?magazyn=Klocek');
     expect(wyniki.status).toBe(200); czysty('wyniki nowe', wyniki);
     expect(wyniki.body).toContain('Klocek sklepowy'); expect(wyniki.body).toContain("123.00 zł");
@@ -180,18 +180,18 @@ describe('PRZ-062 panel na kanałach pod nazwami klienta', () => {
   it('raport sprzedaży, eksport CSV i statystyki liczą oba kanały pod nazwami klienta', async () => {
     const r = await s.get('/raporty?od=2026-10-01&do=2026-10-31');
     expect(r.status, r.body.slice(0, 300)).toBe(200); czysty('raporty', r);
-    expect(r.body).toContain('<span class="kanal-nazwa">Allegro Zetaklient</span>');
-    expect(r.body).toContain('<span class="kanal-nazwa">sklep.zetaklient.example</span>');
+    expect(r.body).toContain('<span class="kanal-nazwa">Allegro Pracownia Przykładowa</span>');
+    expect(r.body).toContain('<span class="kanal-nazwa">sklep.przykladowa.example</span>');
     const csv = await s.get('/raporty/eksport.csv?od=2026-10-01&do=2026-10-31');
     expect(csv.status).toBe(200); czysty('csv', csv);
     const wiersze = csv.body.replace(/^﻿/, '').trim().split(/\r?\n/);
     expect(wiersze.slice(1).sort()).toEqual([
-      '2026-10-05;ALLEGRO_ZETAKLIENT;ab-062;OMS;50,00;40,65;nie;tak',
-      '2026-10-05;SKLEP_ZETAKLIENT;W-701;OMS;123,00;100,00;nie;tak',
+      '2026-10-05;ALLEGRO_PRZYKLADOWA;ab-062;OMS;50,00;40,65;nie;tak',
+      '2026-10-05;SKLEP_PRZYKLADOWA;W-701;OMS;123,00;100,00;nie;tak',
     ]);
     const st = await s.get('/statystyki?od=2026-10-01&do=2026-10-31');
     expect(st.status).toBe(200); czysty('statystyki', st);
-    // Zamówienie z allegro_zetaklient rozpoznane jako Allegro (rozkład płatności je pomija).
+    // Zamówienie z allegro_przykladowa rozpoznane jako Allegro (rozkład płatności je pomija).
     expect(st.body).toMatch(/<strong>1<\/strong> zamówień tego kanału stoi poza/);
   });
 
@@ -201,13 +201,13 @@ describe('PRZ-062 panel na kanałach pod nazwami klienta', () => {
       expect(r.status).toBe(200); czysty(url, r);
     }
     const lista = await s.get('/magazyn');
-    expect(lista.body).toContain('<option value="woo_zetaklient">sklep.zetaklient.example</option>');
-    expect(lista.body).toContain('<option value="allegro_zetaklient">Allegro Zetaklient</option>');
+    expect(lista.body).toContain('<option value="woo_przykladowa">sklep.przykladowa.example</option>');
+    expect(lista.body).toContain('<option value="allegro_przykladowa">Allegro Pracownia Przykładowa</option>');
     expect(lista.body).toContain('Klocek sklepowy');
     const karta = await s.get('/magazyn/1');
-    expect(karta.body).toMatch(/sklep\.zetaklient\.example · KL-1/);
+    expect(karta.body).toMatch(/sklep\.przykladowa\.example · KL-1/);
     const pow = await s.get('/magazyn/powiazania');
-    expect(pow.body).toContain('Klocek syntetyczny'); expect(pow.body).toContain('Allegro Zetaklient');
+    expect(pow.body).toContain('Klocek syntetyczny'); expect(pow.body).toContain('Allegro Pracownia Przykładowa');
   });
 
   it('przesyłki, faktury, integracje i /health: kanały klienta, alarmy łączności bez 500', async () => {
@@ -215,7 +215,7 @@ describe('PRZ-062 panel na kanałach pod nazwami klienta', () => {
       const r = await s.get(url);
       expect(r.status, url).toBe(200); czysty(url, r);
     }
-    expect((await s.get('/ustawienia/integracje')).body).toContain('/ustawienia/kanaly/allegro_zetaklient/wiazanie');
+    expect((await s.get('/ustawienia/integracje')).body).toContain('/ustawienia/kanaly/allegro_przykladowa/wiazanie');
     const h = await s.get('/health');
     expect(h.status).toBe(200); czysty('health', h);
     const j = JSON.parse(h.body);

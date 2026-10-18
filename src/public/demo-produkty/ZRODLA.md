@@ -1,6 +1,6 @@
 # Zdjęcia produktów demo (PRZ-087)
 
-Miniatury dla zmyślonego katalogu „Pracownia Półcień” (`scripts/demo-dane-katalog.mjs`). Wszystkie
+Miniatury dla zmyślonego katalogu „Pracownia Półcień”. Wszystkie
 z Wikimedia Commons, licencja CC0 albo domena publiczna — bez obowiązku podpisu; autorów zostawiamy dla porządku.
 Przycięte do kwadratu 240×240 (ffmpeg, `scale=…:force_original_aspect_ratio=increase,crop=240:240`).
 

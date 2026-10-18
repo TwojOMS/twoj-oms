@@ -8,7 +8,7 @@ import { zl, grosze } from '../../../domena/kwoty.js';
 import {
   zapiszDaneMiesiaca, daneMiesiaca, rozjazdZus, miesiaceZDanymi,
 } from '../../../oms/db/dane-miesieczne.js';
-import { rachunekOkresu as rachunek } from '../../../domena/rachunek-zarzadczy.js';
+import { rachunekOkresuAsync as rachunek } from '../../../domena/rachunek-zarzadczy.js';
 import { prognozaProgu } from '../../../domena/podatek-skala.js';
 
 // Zakladka FINANSE — rachunek zarzadczy („ile z tego zostaje") i dane reczne miesiaca
@@ -142,7 +142,7 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
     }
 
     try {
-      const rachunek = rachunekOkresu(db, zakres);
+      const rachunek = await rachunekOkresu(db, zakres);
 
       // ——— DELTY WZGLEDEM OKRESU POPRZEDNIEGO ————————————————————————————————————
       // ⚠️⚠️ PODLOGA `2026-01` OBOWIAZUJE TAKZE OKRES PORONAWCZY, i dlatego sprawdzamy ja
@@ -151,7 +151,7 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
       // tak samo wiarygodnie jak policzona naprawde.
       const zakresWczesniej = poprzedniOkres(zakres);
       const wczesniej = zakresWczesniej.od.slice(0, 7) >= PODLOGA
-        ? rachunekOkresu(db, zakresWczesniej)
+        ? await rachunekOkresu(db, zakresWczesniej)
         : null;
       // ⚠️ BRAK PODSTAWY DAJE `null`, NIE ZERO — ta sama regula, co w `delty`
       // (domain/agregacja-sprzedazy.js). „Zostaje" bywa `null` po obu stronach i wtedy

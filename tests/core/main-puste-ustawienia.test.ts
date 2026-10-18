@@ -2,6 +2,7 @@ import {afterEach,describe,expect,it,vi} from 'vitest';
 import * as baza from '../../src/oms/db/db.ts';
 import * as uruchomienie from '../../src/core/uruchomienie.ts';
 import {main,uruchomOms} from '../../src/main.ts';
+import * as katalogBazy from '../../src/core/katalog-bazy.ts';
 
 const env={OMS_TRYB:'produkcja',OMS_USER:'operator',OMS_PASS:'fixture',
   OMS_SPRZEDAWCA_NIP:'1234563218',OMS_RACHUNEK:'34109010140000000000000000',
@@ -9,6 +10,7 @@ const env={OMS_TRYB:'produkcja',OMS_USER:'operator',OMS_PASS:'fixture',
 afterEach(()=>vi.restoreAllMocks());
 
 function granice(){
+  vi.spyOn(katalogBazy,'sprawdzKatalogBazy').mockImplementation(()=>{});
   // Nie otwieramy domyślnej bazy ani portu; sprawdzamy argumenty przekazane
   // przez rzeczywisty entrypoint po rzeczywistej walidacji konfiguracji.
   const db=vi.spyOn(baza,'openOmsDb').mockReturnValue({} as ReturnType<typeof baza.openOmsDb>);

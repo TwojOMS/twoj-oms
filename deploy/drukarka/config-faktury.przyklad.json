@@ -1,0 +1,24 @@
+{
+  "_opis": "Konfiguracja czuwacza FAKTUR (czuwacz-faktur.ps1). Skopiuj jako config-faktury.json i uzupelnij login oraz haslo.",
+
+  "url": "http://192.168.1.20:3001",
+  "user": "LOGIN-Z-PLIKU-OMS-ENV",
+  "pass": "HASLO-Z-PLIKU-OMS-ENV",
+
+  "_drukarka": "Nazwa DOKLADNIE taka, jak w Windows (Get-Printer).",
+  "drukarka": "Biuro HP LaserJet",
+
+  "_pdfProgram": "Windows NIE MA wbudowanego pewnego sposobu na druk PDF-u z linii polecen - stad zewnetrzny czytnik. Acrobat: /t <plik> <drukarka> (drukuje i zamyka sie sam).",
+  "pdfProgram": "C:\\Program Files\\Adobe\\Acrobat DC\\Acrobat\\Acrobat.exe",
+  "pdfArgumenty": ["/t", "{plik}", "{drukarka}"],
+
+  "_alternatywa": "SumatraPDF (lzejsza, gdy Acrobat zostawia okno): pdfProgram = C:\\Program Files\\SumatraPDF\\SumatraPDF.exe, pdfArgumenty = [\"-print-to\", \"{drukarka}\", \"-silent\", \"-exit-when-done\", \"{plik}\"]",
+
+  "_limitSekund": "Po tylu sekundach czytnik jest ubijany - bez tego zawieszone okno dialogowe zatrzymaloby czuwacza na zawsze.",
+  "limitSekund": 120,
+
+  "_stanowisko": "Nazwa TEGO komputera. Czuwacza WOLNO uruchomic na kilku komputerach naraz - panel przydziela zadanie temu, ktory pierwszy o nie poprosi, a pozostale go nie zobacza. Puste = nazwa komputera z Windows, i tak jest najbezpieczniej.",
+  "stanowisko": "",
+
+  "odstepSekund": 10
+}

@@ -22,15 +22,21 @@
 </section>
 <% } else { %>
 <section class="ust-sekcja" id="inpost-stan">
+  <h2>Stan połączenia</h2>
   <% if (stan) { %>
-    <h2>Podłączony</h2>
+    <p class="ust-stan ust-stan-ok"><strong>Podłączony</strong></p>
     <p>„<%= stan.ustawienia.nazwa %>” — zapisał <%= stan.kontoLogin ?? '—' %>, <%= fmtDataCzas(stan.zmienionoAt) %>.</p>
     <% if (wymagaRestartu) { %><p class="pas-uprzedzenie">Nadawanie paczek włączy się po ponownym uruchomieniu OMS-u (to pierwszy kurier w tym panelu). Kolejne zmiany na tym ekranie działają od razu.</p><% } %>
   <% } else { %>
-    <h2>Niepodłączony</h2>
-    <p>Potrzebujesz konta InPost z dostępem do API ShipX: tokenu API i numeru organizacji. Samo podłączenie w OMS-ie nie zakłada konta w InPoście.</p>
+    <p class="ust-stan"><strong>Niepodłączony</strong></p>
   <% } %>
 </section>
+<% if (!stan) { %>
+<aside class="ust-instrukcja" id="inpost-instrukcja">
+  <h3>Skąd wziąć dane dostępu</h3>
+  <p>Potrzebujesz konta InPost z dostępem do API ShipX: tokenu API i numeru organizacji. Samo podłączenie w OMS-ie nie zakłada konta w InPoście.</p>
+</aside>
+<% } %>
 
 <section class="ust-sekcja">
   <h2>Dane kuriera</h2>
@@ -59,7 +65,7 @@
 
     <label for="inpost-paczkomat">Paczkomat nadawczy</label>
     <div><input id="inpost-paczkomat" name="paczkomatNadawczy" value="<%= pola.paczkomatNadawczy %>" maxlength="20" autocomplete="off">
-      <p class="ust-pomoc">Opcjonalny kod paczkomatu, w którym zostawiasz paczki (np. ABC01M). Puste pole — OMS nie podaje go InPostowi.</p></div>
+      <p class="ust-pomoc">Opcjonalny kod paczkomatu albo PaczkoPunktu, w którym zostawiasz paczki (np. ABC01M albo POP-WAW206). Puste pole — OMS nie podaje go InPostowi.</p></div>
 
     <label>Adres API</label>
     <div><div class="ust-wartosc"><code><%= adresApi %></code></div>

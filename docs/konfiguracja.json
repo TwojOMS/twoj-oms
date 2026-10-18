@@ -104,6 +104,7 @@
       "nazwa": "OMS_DB_PATH",
       "wlasciciel": "rdzen / uruchomienie",
       "sekcja": "Rdzeń i uruchomienie",
+      "opis": "Gdzie na serwerze leży plik bazy danych ze wszystkimi zamówieniami i ustawieniami OMS.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna w main i CLI sklepu; wymagana w CLI podjazdu",
       "domyslna": [
@@ -120,13 +121,16 @@
           "wartosc": null
         }
       ],
+      "wymagalnoscPoLudzku": "opcjonalna; w instalacji Docker ustawia ją plik compose i nie zmienisz jej w oms.env",
+      "domyslnaPoLudzku": "w instalacji Docker plik bazy leży w katalogu danych /opt/oms/data (ustawia go plik compose)",
       "skutekBraku": "main i CLI sklepu otwierają domyślny plik; zbudujOms tworzy bazę w pamięci; CLI podjazdu odmawia wykonania.",
-      "walidacja": "Ścieżka przekazana do SQLite; brak walidatora katalogu. W produkcyjnym main brak lub pusty tekst wybiera /data-oms/oms.sqlite zgodnie z frozen fallback ||. Pozostałe czytniki zachowują własne reguły: bootstrap i CLI importu sklepu używają ??, więc pusty tekst nie jest tam brakiem.",
+      "skutekBrakuPoLudzku": "Panel używa domyślnego pliku bazy w katalogu /data-oms. Skrypt jednorazowego importu podjazdów DPD bez tej zmiennej odmawia pracy.",
+      "walidacja": "Ścieżka przekazana do SQLite; PRZ-094.07: przed otwarciem SQLite main sprawdza istnienie katalogu rodzica oraz prawa zapisu; odmowa wskazuje OMS_DB_PATH, wolumin /data-oms w Dockerze i docs/konfiguracja.md. W produkcyjnym main brak lub pusty tekst wybiera /data-oms/oms.sqlite zgodnie z frozen fallback ||. Pozostałe czytniki zachowują własne reguły: bootstrap i CLI importu sklepu używają ??, więc pusty tekst nie jest tam brakiem.",
       "odczyty": [
         {
           "id": "AST-106",
           "path": "src/main.ts",
-          "line": 11,
+          "line": 13,
           "expression": "env.OMS_DB_PATH",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -166,7 +170,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/main.ts:11",
+        "src/main.ts:13",
         "src/moduly/kanaly/scripts/import-sklep.mjs:61",
         "src/oms/bootstrap.ts:13",
         "scripts/oms-import-istniejacy-podjazd-dpd.mjs:14",
@@ -180,6 +184,7 @@
       "nazwa": "OMS_PORT",
       "wlasciciel": "rdzen / uruchomienie",
       "sekcja": "Rdzeń i uruchomienie",
+      "opis": "Port, na którym panel OMS czeka na połączenia z przeglądarki (domyślnie 3001).",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": 3001,
@@ -189,7 +194,7 @@
         {
           "id": "AST-107",
           "path": "src/main.ts",
-          "line": 12,
+          "line": 16,
           "expression": "env.OMS_PORT",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -197,7 +202,7 @@
         {
           "id": "AST-108",
           "path": "src/main.ts",
-          "line": 17,
+          "line": 22,
           "expression": "process.env.OMS_PORT",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -205,8 +210,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/main.ts:12",
-        "src/main.ts:17"
+        "src/main.ts:16",
+        "src/main.ts:22"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -216,17 +221,19 @@
       "nazwa": "OMS_TRYB",
       "wlasciciel": "rdzen / main / zdrowie",
       "sekcja": "Rdzeń i uruchomienie",
+      "opis": "Tryb pracy: „produkcja” (domyślny, prawdziwe integracje) albo „proba” (piaskownica, w której klucze integracji muszą być puste).",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "produkcja",
       "skutekBraku": "Efektywny tryb produkcja; przed PRZ-042 instalacja musi jawnie ustawić OMS_TRYB=produkcja.",
+      "skutekBrakuPoLudzku": "Panel startuje w trybie produkcja. „proba” ustawiasz tylko dla piaskownicy lub demo.",
       "walidacja": "Tylko produkcja/proba; brak i pusty tekst dają produkcja, inne wartości odmawiają. Proba sprawdza wszystkie zadeklarowane poświadczenia (także odłożone), SMTP oraz dynamiczne klucze modułów przed DB; whitespace poświadczenia jest ustawioną wartością. D02 zatwierdzone 02.10.2026.",
       "decyzja": "D02",
       "odczyty": [
         {
           "id": "AST-001",
           "path": "src/core/tryb.ts",
-          "line": 5,
+          "line": 6,
           "expression": "env.OMS_TRYB",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -242,7 +249,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/tryb.ts:5",
+        "src/core/tryb.ts:6",
         "src/moduly/zdrowie/modul.ts:14"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
@@ -253,16 +260,18 @@
       "nazwa": "OMS_TRUST_PROXY",
       "wlasciciel": "rdzen / HTTP",
       "sekcja": "Rdzeń i uruchomienie",
+      "opis": "Adresy serwera pośredniczącego (np. tunelu Cloudflare), któremu panel ufa przy ustalaniu adresu gościa — ważne dla blokady prób logowania.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": false,
-      "skutekBraku": "Fastify nie ufa X-Forwarded-For; hamulce logowania używają adresu bezpośredniego nadawcy.",
+      "skutekBraku": "Fastify nie ufa X-Forwarded-For; hamulce używają adresu bezpośredniego nadawcy. Przy X-Forwarded-For lub CF-Connecting-IP proces ostrzega raz o brakującym OMS_TRUST_PROXY, bez wartości nagłówków. Ustaw wyłącznie adresy IP/CIDR zaufanego tunelu lub proxy. Logowanie: para IP–login 5 błędów/60 s, adres 40 błędów w oknie 15 minut od pierwszego błędu i 15 minut kary, konto 30 błędów/2 s; liczniki wygasają po 15 minutach bezczynności, każdy ma najwyżej 10 000 kluczy. Przy ustawionym trustProxy lub braku nagłówków proxy limit adresu odrzuca przed walidacją także poprawne hasło. Miękki adres wyłącznie awaryjnie przy nagłówkach proxy bez OMS_TRUST_PROXY: ochrona przed zgadywaniem po wielu loginach jest osłabiona. Miękki limit konta/adresu opóźnia odmowę o pełne 2 s pod wspólną blokadą kolejki formularza i Basic Auth; poprawne hasło go omija. Najwyżej 20 oczekujących na klucz, 10 000 kluczy kolejek; nadmiar 429 bez walidacji. Udane logowanie czyści wyłącznie parę.",
+      "skutekBrakuPoLudzku": "Panel uznaje za adres gościa adres bezpośredniego nadawcy. Za tunelem lub proxy to jeden wspólny adres, więc blokada prób logowania liczy wszystkich razem, a ochrona przed zgadywaniem haseł jest słabsza (przy nagłówkach proxy log raz to zgłasza). Wpisuj wyłącznie adresy IP lub zakresy CIDR zaufanego pośrednika.",
       "walidacja": "Brak albo pusty tekst daje false. Niepusta wartość jest listą dokładnych natywnych adresów IPv4 lub IPv6 albo CIDR oddzielonych przecinkami. Whitespace, pusty element, true, *, IPv4-mapped IPv6, niepoprawny adres, CIDR /0 oraz lista CIDR pokrywająca całą rodzinę IPv4 lub IPv6 odmawiają startu przed migracjami bez wypisania wartości; dla adresu mapped administrator podaje zwykły IPv4. Fastify interpretuje zaufany X-Forwarded-Proto dla req.protocol; reguły CSRF pozostają bez zmian.",
       "odczyty": [
         {
           "id": "AST-127",
           "path": "src/core/zaufane-proxy.ts",
-          "line": 6,
+          "line": 7,
           "expression": "env.OMS_TRUST_PROXY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -270,7 +279,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/zaufane-proxy.ts:6"
+        "src/core/zaufane-proxy.ts:7"
       ],
       "aktywacja": "sprawdzKonfiguracjeModulow i zbudujAplikacje przed migracjami",
       "wlaczoneWMainNaPinie": true,
@@ -281,9 +290,11 @@
       "nazwa": "OMS_SPRZEDAWCA_NIP",
       "wlasciciel": "rdzen; konsumenci zamowienia/faktury/koszty",
       "sekcja": "Rdzeń i uruchomienie",
+      "opis": "NIP Twojej firmy (10 cyfr, z poprawną cyfrą kontrolną) — trafia na proformy i dokumenty oraz jest domyślnym NIP-em dla KSeF.",
       "zakres": "produkt",
       "wymagalnosc": "wymagana przy konfiguracji rdzenia",
       "domyslna": "brak wartości domyślnej",
+      "wymagalnoscPoLudzku": "wymagana — bez niej panel się nie uruchomi",
       "skutekBraku": "Odmowa konfiguracji i startu aplikacji.",
       "walidacja": "Normalizacja PL/spacji/myślników; 10 cyfr i suma kontrolna.",
       "odczyty": [
@@ -319,9 +330,11 @@
       "nazwa": "OMS_RACHUNEK",
       "wlasciciel": "rdzen; konsumenci faktury/wysylka",
       "sekcja": "Rdzeń i uruchomienie",
+      "opis": "Numer rachunku bankowego firmy (26 cyfr, format NRB) — drukowany na proformach i używany przy przesyłkach za pobraniem.",
       "zakres": "produkt",
       "wymagalnosc": "wymagana przy konfiguracji rdzenia",
       "domyslna": "brak wartości domyślnej",
+      "wymagalnoscPoLudzku": "wymagana — bez niej panel się nie uruchomi",
       "skutekBraku": "Odmowa konfiguracji i startu; rachunek z rdzenia trafia też do pobrania WzA.",
       "walidacja": "Normalizacja jak NIP; NRB 26 cyfr i modulo 97. Surowy odczyt kurierów jest później nadpisany zwalidowanym rachunkiem rdzenia.",
       "odczyty": [
@@ -366,6 +379,7 @@
       "nazwa": "OMS_SPRZEDAWCA_BDO",
       "wlasciciel": "rdzen",
       "sekcja": "Rdzeń i uruchomienie",
+      "opis": "Numer rejestrowy BDO firmy (9 cyfr) drukowany na dokumentach; zostaw pusty, jeśli firma go nie ma.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
@@ -404,6 +418,7 @@
       "nazwa": "OMS_BANK",
       "wlasciciel": "rdzen",
       "sekcja": "Rdzeń i uruchomienie",
+      "opis": "Nazwa Twojego banku, pokazywana w danych dokumentów obok numeru rachunku.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
@@ -442,10 +457,13 @@
       "nazwa": "OMS_USER",
       "wlasciciel": "web / ustawienia",
       "sekcja": "Rdzeń i uruchomienie",
+      "opis": "Login wspólnego konta do panelu, którym wchodzisz, zanim założysz konta imienne dla pracowników.",
       "zakres": "produkt",
       "wymagalnosc": "wymagana, gdy włączony modulWeb",
       "domyslna": "brak wartości domyślnej",
+      "wymagalnoscPoLudzku": "wymagana — bez niej panel się nie uruchomi",
       "skutekBraku": "Odmowa startu wspólnego HTTP; potrzebna także po założeniu kont imiennych.",
+      "skutekBrakuPoLudzku": "Bez niego panel w ogóle nie wystartuje. Jest potrzebny także po założeniu kont imiennych.",
       "walidacja": "Kontrola truthiness; białe znaki przechodzą. Konto z env podlega degradacji po utworzeniu czynnego admina.",
       "odczyty": [
         {
@@ -478,10 +496,13 @@
       "nazwa": "OMS_PASS",
       "wlasciciel": "web / ustawienia",
       "sekcja": "Rdzeń i uruchomienie",
+      "opis": "Hasło wspólnego konta do panelu (sekret — wpisz je do pliku konfiguracji, nie do czatu).",
       "zakres": "produkt",
       "wymagalnosc": "wymagana, gdy włączony modulWeb",
       "domyslna": "brak wartości domyślnej",
+      "wymagalnoscPoLudzku": "wymagana — bez niej panel się nie uruchomi",
       "skutekBraku": "Odmowa startu wspólnego HTTP.",
+      "skutekBrakuPoLudzku": "Bez niego panel w ogóle nie wystartuje.",
       "walidacja": "Kontrola truthiness; białe znaki przechodzą. Wartość nigdy nie należy do manifestu.",
       "sekret": true,
       "odczyty": [
@@ -515,17 +536,20 @@
       "nazwa": "OMS_KANALY",
       "wlasciciel": "kanaly",
       "sekcja": "Kanały",
+      "opis": "Lista Twoich kanałów sprzedaży (sklepy WooCommerce i konta Allegro) w formacie JSON — każdy z kluczem, typem i prefiksem zmiennych.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna przy starcie; pełna definicja wymagana do aktywacji klienta",
       "domyslna": "[]",
+      "wymagalnoscPoLudzku": "opcjonalna; bez wpisanych kanałów OMS niczego nie pobiera",
       "skutekBraku": "Pusta lista definicji i brak pollera. W produkcji /health jest czerwony, jeżeli w DB są zamówienia nieobsługiwanego kanału z ostatnich 30 dni; proba pomija ten alarm. Kod wskazuje nazwę kanału i OMS_KANALY bez wartości. Pusty tekst nie uruchamia wartości domyślnej: JSON.parse('') odmawia startu jako niepoprawny JSON. PRZ-053: lista i powroty korzystają z jawnych definicji, kanał bez zamówień pozostaje widoczny. Bez definicji brak nazw i kanałów firmy.",
+      "skutekBrakuPoLudzku": "Bez niej OMS nie ma kanałów i niczego nie pobiera. Pusta wartość to błąd — wpisz [] albo listę. Gdy w bazie są zamówienia kanału spoza listy z ostatnich 30 dni, /health świeci na czerwono.",
       "walidacja": "JSON tablica obiektów; klucz/prefiks/typ wymagają string, bez konwersji tablic do tekstu; typ woo/allegro; klucz /^[a-z][a-z0-9_-]*$/; prefiks /^[A-Z][A-Z0-9_]*$/; klucze i prefiksy unikalne. Błąd podaje nazwę zmiennej, numer znaku (zły JSON) albo numer pozycji listy od 1 i pole do poprawy; wartości z wejścia nie przepisuje. Polityka D09 zatwierdzona przez właściciela 02.10.2026; niezależne PRZYJĘTE pozostaje osobną bramką. PRZ-053: klucze reczne/indywidualne/__proto__/constructor/prototype zastrzeżone; opcjonalna etykieta musi być niepustym string. Opcjonalny raport /^[A-Z][A-Z0-9_]*$/ ma być unikalny i spoza wbudowanych RECZNE/B2B/DROPSHIPPING/GDD/INDYWIDUALNE oraz kategorii endpointu SKLEP/SKLEP_INDYWIDUALNE/ALLEGRO.",
       "decyzja": "D01, D09",
       "odczyty": [
         {
           "id": "AST-022",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 86,
+          "line": 87,
           "expression": "env.OMS_KANALY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -533,7 +557,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/kanaly/konfiguracja.ts:86"
+        "src/moduly/kanaly/konfiguracja.ts:87"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -543,17 +567,19 @@
       "nazwa": "OMS_POLLER_MS",
       "wlasciciel": "kanaly",
       "sekcja": "Kanały",
+      "opis": "Co ile milisekund OMS pyta sklepy i Allegro o nowe zamówienia (domyślnie 120000, najmniej 30000).",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": 120000,
       "skutekBraku": "Poller zamówień ma odstęp 120000 ms, jeśli istnieje choć jeden aktywny klient.",
+      "skutekBrakuPoLudzku": "OMS pobiera nowe zamówienia co 2 minuty, jeśli jest choć jeden aktywny kanał.",
       "walidacja": "Całkowity safeInteger od 30000 do 2147483647 ms włącznie; brak zachowuje dotychczasowy default. D07 zatwierdzone 02.10.2026. W2: surowy tekst musi być równy trim; otaczające białe znaki odmawiają. Reprezentacje Number, np. 6e4 i 0xea60, pozostają poprawne przy spełnieniu safeInteger/granic.",
       "decyzja": "D07",
       "odczyty": [
         {
           "id": "AST-035",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 136,
+          "line": 137,
           "expression": "env.OMS_POLLER_MS",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -561,7 +587,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/kanaly/konfiguracja.ts:136"
+        "src/moduly/kanaly/konfiguracja.ts:137"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -571,10 +597,13 @@
       "nazwa": "<P>_CK",
       "wlasciciel": "kanaly",
       "sekcja": "Dynamiczne prefiksy kanałów",
+      "opis": "Klucz użytkownika (Consumer Key) API WooCommerce w sklepie tego kanału; razem z sekretem CS pozwala pobierać zamówienia.",
       "zakres": "produkt",
       "wymagalnosc": "wymagana po podaniu CK lub CS; także CLI sklepu",
       "domyslna": "brak wartości domyślnej",
+      "wymagalnoscPoLudzku": "wymagana, jeśli kanał ma pobierać zamówienia ze sklepu; podaj CK i CS razem albo żadnej z nich",
       "skutekBraku": "Bez CK i CS kanał Woo jest pomijany; przy samym CS brak CK odmawia konfiguracji; CLI odmawia. Pełna kompozycja pomija niekompletny klient; /health alarmuje o jego kanale, jeżeli istnieją zamówienia z ostatnich 30 dni. Ścisły konfigurator/CLI nadal odmawia częściowej konfiguracji.",
+      "skutekBrakuPoLudzku": "Bez CK i CS kanał sklepu jest pomijany. Gdy kanał ma niepełne dane, /health alarmuje, jeśli miał zamówienia z ostatnich 30 dni; narzędzie importu sklepu w takim razie odmawia pracy.",
       "walidacja": "Start: truthiness; CLI wymaga trim; w proba każda niepusta surowa wartość (także whitespace) blokuje start.",
       "dynamiczna": true,
       "typyKanalow": [
@@ -586,7 +615,7 @@
         {
           "id": "AST-002",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -594,7 +623,7 @@
         {
           "id": "AST-003",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -610,7 +639,7 @@
         {
           "id": "AST-023",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 103,
+          "line": 104,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -618,7 +647,7 @@
         {
           "id": "AST-024",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 103,
+          "line": 104,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -626,7 +655,7 @@
         {
           "id": "AST-028",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 125,
+          "line": 126,
           "expression": "env[`${p}_CK`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -650,10 +679,10 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/tryb.ts:17",
+        "src/core/tryb.ts:18",
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:103",
-        "src/moduly/kanaly/konfiguracja.ts:125",
+        "src/moduly/kanaly/konfiguracja.ts:104",
+        "src/moduly/kanaly/konfiguracja.ts:126",
         "src/moduly/kanaly/scripts/import-sklep.mjs:55"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
@@ -664,10 +693,13 @@
       "nazwa": "<P>_CS",
       "wlasciciel": "kanaly",
       "sekcja": "Dynamiczne prefiksy kanałów",
+      "opis": "Sekret użytkownika (Consumer Secret) API WooCommerce w sklepie tego kanału — wpisz do pliku konfiguracji, nie do czatu.",
       "zakres": "produkt",
       "wymagalnosc": "wymagana po podaniu CK lub CS; także CLI sklepu",
       "domyslna": "brak wartości domyślnej",
+      "wymagalnoscPoLudzku": "wymagana, jeśli kanał ma pobierać zamówienia ze sklepu; podaj CK i CS razem albo żadnej z nich",
       "skutekBraku": "Bez CK i CS kanał Woo jest pomijany; przy samym CK brak CS odmawia konfiguracji; CLI odmawia. Pełna kompozycja pomija niekompletny klient; /health alarmuje o jego kanale, jeżeli istnieją zamówienia z ostatnich 30 dni. Ścisły konfigurator/CLI nadal odmawia częściowej konfiguracji.",
+      "skutekBrakuPoLudzku": "Bez CK i CS kanał sklepu jest pomijany. Gdy kanał ma niepełne dane, /health alarmuje, jeśli miał zamówienia z ostatnich 30 dni; narzędzie importu sklepu w takim razie odmawia pracy.",
       "walidacja": "Start: truthiness; CLI wymaga trim; w proba każda niepusta surowa wartość (także whitespace) blokuje start.",
       "dynamiczna": true,
       "typyKanalow": [
@@ -679,7 +711,7 @@
         {
           "id": "AST-002",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -687,7 +719,7 @@
         {
           "id": "AST-003",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -703,7 +735,7 @@
         {
           "id": "AST-023",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 103,
+          "line": 104,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -711,7 +743,7 @@
         {
           "id": "AST-024",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 103,
+          "line": 104,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -719,7 +751,7 @@
         {
           "id": "AST-029",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 125,
+          "line": 126,
           "expression": "env[`${p}_CS`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -743,10 +775,10 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/tryb.ts:17",
+        "src/core/tryb.ts:18",
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:103",
-        "src/moduly/kanaly/konfiguracja.ts:125",
+        "src/moduly/kanaly/konfiguracja.ts:104",
+        "src/moduly/kanaly/konfiguracja.ts:126",
         "src/moduly/kanaly/scripts/import-sklep.mjs:55"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
@@ -757,10 +789,13 @@
       "nazwa": "<P>_URL",
       "wlasciciel": "kanaly",
       "sekcja": "Dynamiczne prefiksy kanałów",
+      "opis": "Adres sklepu WooCommerce tego kanału (https://…), z którego OMS pobiera zamówienia.",
       "zakres": "produkt",
       "wymagalnosc": "wymagana dla aktywnego Woo i CLI sklepu",
       "domyslna": "brak wartości domyślnej",
+      "wymagalnoscPoLudzku": "wymagana, jeśli kanał ma pobierać zamówienia ze sklepu WooCommerce",
       "skutekBraku": "D01 pełnej kompozycji wymaga URL/CK/CS/MAPOWANIE; brak pozostawia panel i daje alarm /health dla kanału z zamówieniami z ostatnich 30 dni. Aktywny Woo i CLI sklepu odmawiają bez URL.",
+      "skutekBrakuPoLudzku": "Bez adresu kanał sklepu jest pomijany, a /health alarmuje, jeśli miał zamówienia z ostatnich 30 dni. Narzędzie importu sklepu odmawia pracy.",
       "walidacja": "Dosłownie pusty tekst oznacza brak ustawienia i zachowuje historyczny default albo wyłączenie. Niepusty URL musi być absolutnym HTTP(S) z hostem i bez otaczających białych znaków; błąd zawiera tylko nazwę. Pełna kompozycja Woo traktuje undefined/'' jako brak wymaganej konfiguracji kanału (D01). W trybie ścisłym sam helper URL zwraca undefined dla undefined/''; bez CK i CS kanał jest pomijany, a po ustawieniu choć jednego z nich budowa klienta wymaga URL. CLI importu wymaga URL zawsze.",
       "dynamiczna": true,
       "typyKanalow": [
@@ -779,7 +814,7 @@
         {
           "id": "AST-023",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 103,
+          "line": 104,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -787,7 +822,7 @@
         {
           "id": "AST-024",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 103,
+          "line": 104,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -795,7 +830,7 @@
         {
           "id": "AST-025",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 108,
+          "line": 109,
           "expression": "env[`${p}_URL`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -820,8 +855,8 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:103",
-        "src/moduly/kanaly/konfiguracja.ts:108",
+        "src/moduly/kanaly/konfiguracja.ts:104",
+        "src/moduly/kanaly/konfiguracja.ts:109",
         "src/moduly/kanaly/scripts/import-sklep.mjs:55"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
@@ -832,10 +867,12 @@
       "nazwa": "<P>_MAPOWANIE",
       "wlasciciel": "kanaly",
       "sekcja": "Dynamiczne prefiksy kanałów",
+      "opis": "Tabela w formacie JSON, która przypisuje metody dostawy ze sklepu WooCommerce do metod wysyłki w OMS.",
       "zakres": "produkt",
       "wymagalnosc": "wymagana dla aktywnego Woo",
       "domyslna": "brak wartości domyślnej",
       "skutekBraku": "Odmowa konfiguracji aktywnego Woo; CLI historii tego klucza nie czyta. Pełna kompozycja pomija niekompletny klient; /health alarmuje o jego kanale, jeżeli istnieją zamówienia z ostatnich 30 dni. Ścisły konfigurator/CLI nadal odmawia częściowej konfiguracji.",
+      "skutekBrakuPoLudzku": "Bez mapowania kanał sklepu jest pomijany, a /health alarmuje, jeśli miał zamówienia z ostatnich 30 dni. Importer historii tej zmiennej nie czyta.",
       "walidacja": "JSON z instancje i tablicą poPozycji; wszystkie metoda muszą być dozwolone i nie zaczynać się od allegro_. D01 pełnego produktu: obecne niepuste mapowanie jest parsowane i walidowane przed pominięciem klienta przy innych brakach; uszkodzony JSON daje nazwany błąd bez wejścia. Brak/pusty/whitespace jest brakiem; poprawny partial nie blokuje panelu. Pusta tablica instancje nadal poprawna. Ścisły konfigurator bez CK/CS zachowuje pominięcie.",
       "dynamiczna": true,
       "typyKanalow": [
@@ -854,7 +891,7 @@
         {
           "id": "AST-023",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 103,
+          "line": 104,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -862,7 +899,7 @@
         {
           "id": "AST-024",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 103,
+          "line": 104,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -871,7 +908,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:103"
+        "src/moduly/kanaly/konfiguracja.ts:104"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -881,10 +918,13 @@
       "nazwa": "<P>_OD",
       "wlasciciel": "kanaly",
       "sekcja": "Dynamiczne prefiksy kanałów",
+      "opis": "Data RRRR-MM-DD, od której OMS pobiera zamówienia z kanału; dla Allegro obowiązkowa, dla WooCommerce opcjonalna.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna dla Woo; wymagana dla aktywnego Allegro",
       "domyslna": "Woo: null; Allegro: brak wartości domyślnej",
+      "domyslnaPoLudzku": "WooCommerce: bez daty (pobierane są wszystkie zamówienia); Allegro: brak — datę trzeba podać",
       "skutekBraku": "Woo zachowuje null i nie przekazuje modified_after. Aktywne Allegro bez OD odmawia konfiguracji; pełna kompozycja zgłasza jego brak przez /health zgodnie z D01.",
+      "skutekBrakuPoLudzku": "WooCommerce: bez daty pobierane są zamówienia bez ograniczenia od daty. Allegro: bez daty kanał nie działa, a /health zgłasza brak.",
       "walidacja": "trim; wyłącznie istniejący kalendarzowy RRRR-MM-DD jest normalizowany do RRRR-MM-DDT00:00:00. Woo ma opcjonalne OD (brak lub pusty tekst daje null); Allegro wymaga OD.",
       "dynamiczna": true,
       "typyKanalow": [
@@ -904,7 +944,7 @@
         {
           "id": "AST-122",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 29,
+          "line": 25,
           "expression": "env[nazwa]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -912,7 +952,7 @@
         {
           "id": "AST-123",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 116,
+          "line": 117,
           "expression": "env[`${p}_OD`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -920,7 +960,7 @@
         {
           "id": "AST-124",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 116,
+          "line": 117,
           "expression": "env[`${p}_OD`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -929,8 +969,8 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:29",
-        "src/moduly/kanaly/konfiguracja.ts:116"
+        "src/moduly/kanaly/konfiguracja.ts:25",
+        "src/moduly/kanaly/konfiguracja.ts:117"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -940,10 +980,13 @@
       "nazwa": "<P>_HISTORIA_KONTO_APILO",
       "wlasciciel": "kanaly",
       "sekcja": "Dynamiczne prefiksy kanałów",
+      "opis": "Numer konta Apilo, z którego pochodzi zaimportowana historia zamówień tego sklepu — to znacznik danych, nie hasło.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna przy starcie; wymagana dla CLI/importu historii",
       "domyslna": null,
+      "wymagalnoscPoLudzku": "opcjonalna; potrzebna tylko do jednorazowego importu historii zamówień sklepu",
       "skutekBraku": "Bez wartości nie powstaje usługa historii sklepu; samodzielny import odmawia. To identyfikator danych historycznych, nie poświadczenie Apilo.",
+      "skutekBrakuPoLudzku": "Bez niej nie powstaje usługa historii sklepu, a samodzielny import historii odmawia pracy. To numer z dawnych danych, nie poświadczenie Apilo.",
       "walidacja": "Samodzielne wywołanie konfiguracjaHistorii, także przez CLI importu, odmawia bez wartości lub przy pustym tekście. Pełna kompozycja Woo przy undefined/'' nie wywołuje helpera i ustawia historia:null. Niepusty tekst jest Number() i musi dać safe integer >=0. Same białe znaki są prawdziwe i Number(' ') daje 0. PRZ-053: dla klasyfikacji raportowej konto ma wskazywać OMS_HISTORIA_KLASYFIKACJA.konta z raportem zgodnym z OMS_KANALY[*].raport; samo konto nie odtwarza mapy historycznej.",
       "dynamiczna": true,
       "typyKanalow": [
@@ -970,7 +1013,7 @@
         {
           "id": "AST-030",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 128,
+          "line": 129,
           "expression": "env[`${p}_HISTORIA_KONTO_APILO`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -988,7 +1031,7 @@
       "sciezkaOdczytu": [
         "src/moduly/kanaly/historia.ts:17",
         "src/moduly/kanaly/historia.ts:18",
-        "src/moduly/kanaly/konfiguracja.ts:128",
+        "src/moduly/kanaly/konfiguracja.ts:129",
         "src/moduly/kanaly/klasyfikacja.ts:70"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
@@ -999,10 +1042,12 @@
       "nazwa": "<P>_CLIENT_ID",
       "wlasciciel": "kanaly",
       "sekcja": "Dynamiczne prefiksy kanałów",
+      "opis": "Identyfikator aplikacji Allegro (Client ID) tego kanału; razem z Client Secret pozwala OMS łączyć się z kontem Allegro.",
       "zakres": "produkt",
       "wymagalnosc": "wymagana po podaniu CLIENT_ID lub CLIENT_SECRET",
       "domyslna": "brak wartości domyślnej",
       "skutekBraku": "Bez obu poświadczeń kanał Allegro jest pomijany; pojedyncze poświadczenie powoduje odmowę konfiguracji. Pełna kompozycja pomija niekompletny klient; /health alarmuje o jego kanale, jeżeli istnieją zamówienia z ostatnich 30 dni. Ścisły konfigurator/CLI nadal odmawia częściowej konfiguracji.",
+      "skutekBrakuPoLudzku": "Bez ID i sekretu kanał Allegro jest pomijany. Gdy dane są niepełne, /health alarmuje, jeśli kanał miał zamówienia z ostatnich 30 dni.",
       "walidacja": "truthiness; w proba każda niepusta surowa wartość (także whitespace) blokuje start.",
       "dynamiczna": true,
       "typyKanalow": [
@@ -1014,7 +1059,7 @@
         {
           "id": "AST-002",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1022,7 +1067,7 @@
         {
           "id": "AST-003",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1038,7 +1083,7 @@
         {
           "id": "AST-023",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 103,
+          "line": 104,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1046,7 +1091,7 @@
         {
           "id": "AST-024",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 103,
+          "line": 104,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1054,7 +1099,7 @@
         {
           "id": "AST-031",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 130,
+          "line": 131,
           "expression": "env[`${p}_CLIENT_ID`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1062,10 +1107,10 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/tryb.ts:17",
+        "src/core/tryb.ts:18",
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:103",
-        "src/moduly/kanaly/konfiguracja.ts:130"
+        "src/moduly/kanaly/konfiguracja.ts:104",
+        "src/moduly/kanaly/konfiguracja.ts:131"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -1075,10 +1120,12 @@
       "nazwa": "<P>_CLIENT_SECRET",
       "wlasciciel": "kanaly",
       "sekcja": "Dynamiczne prefiksy kanałów",
+      "opis": "Sekret aplikacji Allegro (Client Secret) tego kanału — wpisz do pliku konfiguracji, nie do czatu.",
       "zakres": "produkt",
       "wymagalnosc": "wymagana po podaniu CLIENT_ID lub CLIENT_SECRET",
       "domyslna": "brak wartości domyślnej",
       "skutekBraku": "Bez obu poświadczeń kanał Allegro jest pomijany; pojedyncze poświadczenie powoduje odmowę konfiguracji. Pełna kompozycja pomija niekompletny klient; /health alarmuje o jego kanale, jeżeli istnieją zamówienia z ostatnich 30 dni. Ścisły konfigurator/CLI nadal odmawia częściowej konfiguracji.",
+      "skutekBrakuPoLudzku": "Bez ID i sekretu kanał Allegro jest pomijany. Gdy dane są niepełne, /health alarmuje, jeśli kanał miał zamówienia z ostatnich 30 dni.",
       "walidacja": "truthiness; w proba każda niepusta surowa wartość (także whitespace) blokuje start.",
       "dynamiczna": true,
       "typyKanalow": [
@@ -1090,7 +1137,7 @@
         {
           "id": "AST-002",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1098,7 +1145,7 @@
         {
           "id": "AST-003",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1114,7 +1161,7 @@
         {
           "id": "AST-023",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 103,
+          "line": 104,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1122,7 +1169,7 @@
         {
           "id": "AST-024",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 103,
+          "line": 104,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1130,7 +1177,7 @@
         {
           "id": "AST-032",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 130,
+          "line": 131,
           "expression": "env[`${p}_CLIENT_SECRET`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1138,10 +1185,10 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/tryb.ts:17",
+        "src/core/tryb.ts:18",
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:103",
-        "src/moduly/kanaly/konfiguracja.ts:130"
+        "src/moduly/kanaly/konfiguracja.ts:104",
+        "src/moduly/kanaly/konfiguracja.ts:131"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -1151,6 +1198,7 @@
       "nazwa": "<P>_API",
       "wlasciciel": "kanaly",
       "sekcja": "Dynamiczne prefiksy kanałów",
+      "opis": "Adres API Allegro; zmieniasz go tylko do testów, np. na piaskownicy Allegro (domyślnie adres produkcyjny).",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "https://api.allegro.pl",
@@ -1165,7 +1213,7 @@
         {
           "id": "AST-026",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 111,
+          "line": 112,
           "expression": "env[`${p}_API`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1173,7 +1221,7 @@
         {
           "id": "AST-033",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 132,
+          "line": 133,
           "expression": "env[`${p}_API`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1181,8 +1229,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/kanaly/konfiguracja.ts:111",
-        "src/moduly/kanaly/konfiguracja.ts:132"
+        "src/moduly/kanaly/konfiguracja.ts:112",
+        "src/moduly/kanaly/konfiguracja.ts:133"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -1192,6 +1240,7 @@
       "nazwa": "<P>_AUTH",
       "wlasciciel": "kanaly",
       "sekcja": "Dynamiczne prefiksy kanałów",
+      "opis": "Adres logowania OAuth Allegro; zmieniasz go tylko razem z adresem API do testów (domyślnie adres produkcyjny).",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "https://allegro.pl/auth/oauth",
@@ -1206,7 +1255,7 @@
         {
           "id": "AST-027",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 112,
+          "line": 113,
           "expression": "env[`${p}_AUTH`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1214,7 +1263,7 @@
         {
           "id": "AST-034",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 132,
+          "line": 133,
           "expression": "env[`${p}_AUTH`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1222,8 +1271,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/kanaly/konfiguracja.ts:112",
-        "src/moduly/kanaly/konfiguracja.ts:132"
+        "src/moduly/kanaly/konfiguracja.ts:113",
+        "src/moduly/kanaly/konfiguracja.ts:133"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -1233,10 +1282,12 @@
       "nazwa": "<P>_USER_AGENT",
       "wlasciciel": "kanaly",
       "sekcja": "Dynamiczne prefiksy kanałów",
+      "opis": "Nazwa, którą OMS przedstawia się Allegro, w formacie nazwa/wersja (+https://adres), np. MojOMS/1.0 (+https://example.pl).",
       "zakres": "produkt",
       "wymagalnosc": "wymagana dla aktywnego Allegro",
       "domyslna": "brak wartości domyślnej",
       "skutekBraku": "Aktywne Allegro bez UA odmawia konfiguracji; pełna kompozycja zgłasza brak przez /health zgodnie z D01. Obecny błędny UA jest nazwanym błędem przed tym alarmem.",
+      "skutekBrakuPoLudzku": "Bez poprawnego nagłówka kanał Allegro nie startuje, a /health zgłasza brak. Zły format zatrzymuje start z czytelnym komunikatem.",
       "walidacja": "trim; wymagany Allegro User-Agent pasuje do zamrożonego wzoru nazwa/wersja (+https://host); odmowa zawiera tylko nazwę, bez wartości.",
       "dynamiczna": true,
       "typyKanalow": [
@@ -1255,7 +1306,7 @@
         {
           "id": "AST-121",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 24,
+          "line": 25,
           "expression": "env[nazwa]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1263,7 +1314,7 @@
         {
           "id": "AST-125",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 117,
+          "line": 118,
           "expression": "env[`${p}_USER_AGENT`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1271,7 +1322,7 @@
         {
           "id": "AST-126",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 117,
+          "line": 118,
           "expression": "env[`${p}_USER_AGENT`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1280,8 +1331,8 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:24",
-        "src/moduly/kanaly/konfiguracja.ts:117"
+        "src/moduly/kanaly/konfiguracja.ts:25",
+        "src/moduly/kanaly/konfiguracja.ts:118"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -1291,9 +1342,11 @@
       "nazwa": "OMS_KLIENCI_WDT",
       "wlasciciel": "rdzen / lista WDT; konsumenci zamowienia, kanaly i raporty",
       "sekcja": "Historia i WDT",
+      "opis": "Lista e-maili klientów z UE (dostawa wewnątrzwspólnotowa, WDT), po przecinku; ich zamówienia są rozliczane netto.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "alias OMS_HISTORIA_MAILE_WDT albo pusty Set",
+      "domyslnaPoLudzku": "wartość z OMS_HISTORIA_MAILE_WDT albo pusta lista",
       "skutekBraku": "Bez obu list żaden e-mail nie jest rozpoznany jako WDT; zmienia klasyfikację netto specyfikacji i blokadę zapisu importu historii.",
       "walidacja": "CSV; trim, lowercase, Set. Obie zdefiniowane listy muszą być równoważne; pusta kanoniczna lista jest nadal obecna.",
       "decyzja": "D03",
@@ -1337,9 +1390,12 @@
       "nazwa": "OMS_HISTORIA_KLASYFIKACJA",
       "wlasciciel": "kanaly / klasyfikacja raportowa; konsument raporty",
       "sekcja": "Historia i WDT",
+      "opis": "Tabela w formacie JSON, która przypisuje konta i tagi ze starego systemu (Apilo) do kanałów raportów; tylko przy imporcie historii.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna przy starcie; jawna pełna mapa wymagana dla raportowania istniejącej historii Apilo",
       "domyslna": "{\"konta\":[]}",
+      "wymagalnoscPoLudzku": "opcjonalna; potrzebna tylko, jeśli przenosisz do OMS historię zamówień z Apilo",
+      "domyslnaPoLudzku": "pusta tabela (brak kont z Apilo)",
       "skutekBraku": "Brak historycznych kont, tagów i prefiksów indywidualnych. Raportowanie nieznanego konta odmawia; nie odtwarza firmowej mapy ani nie używa żywego API jako historii. Pusty tekst odmawia jako niepoprawny JSON.",
       "walidacja": "JSON obiekt z listą konta. Każde konto: bezpieczny całkowity identyfikator >=0, unikalny i raport /^[A-Z][A-Z0-9_]*$/. tagDrop/tagGdd/tagB2b opcjonalne całkowite >=0, różne. kontaB2b: unikalne identyfikatory wskazujące mapowanie B2B. prefiksyIndywidualne: unikalne, bez otaczających spacji, co najmniej dwa znaki i koniec |. Aktywne <P>_HISTORIA_KONTO_APILO musi być cyframi i wskazywać ten sam raport co definicja OMS_KANALY. Nieznane pola obiektu obecny parser ignoruje.",
       "decyzja": "PRZ-053 — propozycja do osobnej decyzji, bez rozszerzania D01–D09",
@@ -1365,9 +1421,12 @@
       "nazwa": "OMS_HISTORIA_MAILE_WDT",
       "wlasciciel": "rdzen / zgodność listy WDT",
       "sekcja": "Historia i WDT",
+      "opis": "Starsza nazwa listy OMS_KLIENCI_WDT — wystarczy ustawić jedną z nich (albo dwie identyczne).",
       "zakres": "produkt",
       "wymagalnosc": "alias opcjonalny",
       "domyslna": "kanoniczna OMS_KLIENCI_WDT albo pusty Set",
+      "wymagalnoscPoLudzku": "opcjonalna (starsza nazwa listy OMS_KLIENCI_WDT)",
+      "domyslnaPoLudzku": "wartość z OMS_KLIENCI_WDT albo pusta lista",
       "skutekBraku": "Brak bez szkody, jeżeli jest kanoniczna lista; bez obu efekt jak brak OMS_KLIENCI_WDT.",
       "walidacja": "Ten sam parser i kontrola konfliktu; nie ma cichego pierwszeństwa w przypadku nierównych list.",
       "aliasDla": "OMS_KLIENCI_WDT",
@@ -1403,6 +1462,7 @@
       "nazwa": "OMS_HISTORIA_MAILE_TESTOWE",
       "wlasciciel": "kanaly / reguły historii; konsument raporty",
       "sekcja": "Historia i WDT",
+      "opis": "Dokładne adresy e-mail testowych klientów, po przecinku; ich zamówienia pomijają raporty i import historii.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": [],
@@ -1431,6 +1491,7 @@
       "nazwa": "OMS_HISTORIA_DOMENY_TESTOWE",
       "wlasciciel": "kanaly / reguły historii; konsument raporty",
       "sekcja": "Historia i WDT",
+      "opis": "Domeny testowych adresów e-mail (bez @), po przecinku; zamówienia z tych domen pomijają raporty i import historii.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": [],
@@ -1459,6 +1520,7 @@
       "nazwa": "OMS_HISTORIA_PREFIKSY_TESTOWE",
       "wlasciciel": "kanaly / reguły historii; konsument raporty",
       "sekcja": "Historia i WDT",
+      "opis": "Początki testowych adresów e-mail, po przecinku; zamówienia z takich adresów pomijają raporty i import historii.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": [],
@@ -1487,6 +1549,7 @@
       "nazwa": "OMS_HISTORIA_NAZWY_TESTOWE",
       "wlasciciel": "kanaly / reguły historii; konsument raporty",
       "sekcja": "Historia i WDT",
+      "opis": "Fragmenty nazw testowych klientów, po przecinku; zamówienia z taką nazwą pomijają raporty i import historii.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": [],
@@ -1515,10 +1578,13 @@
       "nazwa": "OMS_KLIENCI_ZBIORCZY",
       "wlasciciel": "domena / zgodność; oms/db/klienci",
       "sekcja": "Historia i WDT",
+      "opis": "Dawna lista klientów rozliczanych zbiorczo (jedna faktura na miesiąc); czytana tylko jednorazowo przy przenoszeniu do bazy klientów.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna; tylko jawne wywołanie historycznej migracji",
       "domyslna": [],
+      "wymagalnoscPoLudzku": "opcjonalna; czytana tylko jednorazowo przy przenoszeniu starych danych",
       "skutekBraku": "Brak wpisów do przeniesienia; migracja nie stawia znacznika i nie zmienia warunków klientów. Domyślna kompozycja nie wywołuje tej funkcji.",
+      "skutekBrakuPoLudzku": "Bez niej nic się nie zmienia: warunki takich klientów trzyma baza, a zmienna służyła tylko do jednorazowego przeniesienia starych wpisów.",
       "walidacja": "CSV wpisów z7 polami oddzielonymi dwukropkiem; parser nazw/NIP/liczb. Błędy wskazują numer wpisu bez danych klientów. Polityka D06 zatwierdzona przez właściciela 02.10.2026; niezależne PRZYJĘTE pozostaje osobną bramką.",
       "aktywacja": "legacy_helper",
       "decyzja": "D06",
@@ -1543,16 +1609,19 @@
       "nazwa": "OMS_PROFORMY_KATALOG",
       "wlasciciel": "faktury",
       "sekcja": "Faktury i koszty",
+      "opis": "Katalog na serwerze, do którego OMS zapisuje pliki PDF wystawionych proform.",
       "zakres": "produkt",
       "wymagalnosc": "wymagana, gdy włączony moduł faktury, także bez inFaktu",
       "domyslna": "brak wartości domyślnej",
+      "wymagalnoscPoLudzku": "wymagana — w instalacji Docker ustawia ją plik compose",
       "skutekBraku": "Odmowa konfiguracji faktur, także w proba.",
+      "skutekBrakuPoLudzku": "Bez niej moduł faktur nie wystartuje — katalog na proformy jest wymagany.",
       "walidacja": "trim; wymaga niepustej ścieżki; nie sprawdza uprawnień/katalogu podczas konfiguracji.",
       "odczyty": [
         {
           "id": "AST-060",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 43,
+          "line": 44,
           "expression": "env.OMS_PROFORMY_KATALOG",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1560,7 +1629,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:43"
+        "src/moduly/faktury/modul.ts:44"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1581,17 +1650,20 @@
       "nazwa": "INFAKT_API_KEY",
       "wlasciciel": "faktury; konsumenci koszty/wysylka/wiadomosci/zdrowie",
       "sekcja": "Faktury i koszty",
+      "opis": "Klucz API konta inFakt — pozwala OMS wystawiać faktury, sprawdzać numery VAT UE (VIES) i obsługiwać KSeF sprzedaży.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna; bramka włączenia inFaktu",
       "domyslna": null,
+      "wymagalnoscPoLudzku": "opcjonalna; wpisanie klucza włącza integrację z inFakt",
       "skutekBraku": "Nie powstają klient inFaktu, wystawianie faktur, VIES, usługi KSeF sprzedaży i paczka biura; proformy nadal dostępne. Zdrowie dodaje uwagę, nie gwarantuje alarmu. PRZ-093.10: odpowiednik w panelu — Ustawienia → Integracje → inFakt (/ustawienia/integracje/infakt; wiersz „infakt” w konfiguracja_integracji, klucz jako sekret; adres API zawsze produkcyjny). Gdy INFAKT_API_KEY stoi w pliku, cała konfiguracja inFaktu idzie z pliku, a ekran jest tylko do odczytu (zapis = 409). Pierwsze podłączenie z ekranu włącza faktury po restarcie, zmiana klucza działa od razu.",
+      "skutekBrakuPoLudzku": "Bez klucza nie działają faktury z inFakt, VIES, KSeF sprzedaży ani paczka dla biura; proformy nadal tak. Klucz można wpisać też w panelu, ale klucz z pliku wygrywa i blokuje ekran.",
       "walidacja": "truthiness bez trim do uruchomienia; próba odrzuca każdą surową wartość różną od pustej, także whitespace.",
       "sekret": true,
       "odczyty": [
         {
           "id": "AST-002",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1599,7 +1671,7 @@
         {
           "id": "AST-003",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1607,7 +1679,7 @@
         {
           "id": "AST-068",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 57,
+          "line": 58,
           "expression": "env.INFAKT_API_KEY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1615,7 +1687,7 @@
         {
           "id": "AST-069",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 57,
+          "line": 58,
           "expression": "env.INFAKT_API_KEY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1623,8 +1695,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/tryb.ts:17",
-        "src/moduly/faktury/modul.ts:57"
+        "src/core/tryb.ts:18",
+        "src/moduly/faktury/modul.ts:58"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1634,16 +1706,18 @@
       "nazwa": "INFAKT_API_URL",
       "wlasciciel": "faktury / klient inFaktu",
       "sekcja": "Faktury i koszty",
+      "opis": "Adres API inFakt; zmieniasz go tylko do testów — domyślnie produkcyjny.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "https://api.infakt.pl/api",
       "skutekBraku": "Klient używa domyślnego API produkcyjnego. PRZ-093.10: tylko w pliku i tylko razem z INFAKT_API_KEY — klucz wpisany w Ustawienia → Integracje → inFakt idzie zawsze pod produkcyjny adres inFaktu (ekran nie przyjmuje adresu).",
+      "skutekBrakuPoLudzku": "Bez niej OMS łączy się z produkcyjnym API inFakt. Adres z pliku działa tylko razem z kluczem z pliku; klucz wpisany w panelu zawsze idzie pod adres produkcyjny.",
       "walidacja": "Dosłownie pusty tekst oznacza brak ustawienia i zachowuje historyczny default albo wyłączenie. Niepusty URL musi być absolutnym HTTP(S) z hostem i bez otaczających białych znaków; błąd zawiera tylko nazwę.",
       "odczyty": [
         {
           "id": "AST-059",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 41,
+          "line": 42,
           "expression": "env.INFAKT_API_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1651,7 +1725,7 @@
         {
           "id": "AST-070",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 57,
+          "line": 58,
           "expression": "env.INFAKT_API_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1659,8 +1733,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:41",
-        "src/moduly/faktury/modul.ts:57"
+        "src/moduly/faktury/modul.ts:42",
+        "src/moduly/faktury/modul.ts:58"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1670,16 +1744,18 @@
       "nazwa": "INFAKT_ARCHIWUM",
       "wlasciciel": "faktury; współwłaściciel koszty",
       "sekcja": "Faktury i koszty",
+      "opis": "Katalog na serwerze, do którego OMS co noc zapisuje pliki PDF faktur sprzedaży z inFakt (archiwum dla biura).",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
       "skutekBraku": "Nie powstaje czuwacz archiwum sprzedaży; paczka biura nie ma tego lokalnego katalogu i korzysta z pozostałych źródeł usługi. PRZ-093.10: tylko w pliku (katalog na serwerze, nie pole ekranu); działa też z kluczem wpisanym w Ustawienia → Integracje → inFakt.",
+      "skutekBrakuPoLudzku": "Bez niej OMS nie robi nocnego archiwum faktur sprzedaży, a paczka dla biura korzysta z pozostałych źródeł. Ustawiasz ją tylko w pliku; działa też z kluczem inFakt wpisanym w panelu.",
       "walidacja": "trim; pusty tekst daje null; odczyt zarówno w fakturach, jak kosztach.",
       "odczyty": [
         {
           "id": "AST-071",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 53,
+          "line": 54,
           "expression": "env.INFAKT_ARCHIWUM",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1695,7 +1771,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:53",
+        "src/moduly/faktury/modul.ts:54",
         "src/moduly/koszty/modul.ts:26"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
@@ -1706,9 +1782,11 @@
       "nazwa": "KSEF_TOKEN",
       "wlasciciel": "koszty",
       "sekcja": "Faktury i koszty",
+      "opis": "Token do Krajowego Systemu e-Faktur (KSeF) — pozwala OMS pobierać faktury kosztowe; sekret.",
       "zakres": "produkt",
       "wymagalnosc": "wymagana po rozpoczęciu niepustej sekcji KSeF",
       "domyslna": null,
+      "wymagalnoscPoLudzku": "opcjonalna; wymagana, jeśli wpisujesz którekolwiek ustawienie KSeF",
       "skutekBraku": "Bez całej sekcji klient KSeF/koszty jest wyłączony. Niepuste KSEF_NIP/API/ARCHIWUM bez tokenu odmawia konfiguracji.",
       "walidacja": "trim; proba odrzuca niepusty token.",
       "sekret": true,
@@ -1716,7 +1794,7 @@
         {
           "id": "AST-002",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1724,7 +1802,7 @@
         {
           "id": "AST-003",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1748,7 +1826,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/tryb.ts:17",
+        "src/core/tryb.ts:18",
         "src/moduly/koszty/modul.ts:21",
         "src/moduly/koszty/modul.ts:22"
       ],
@@ -1760,9 +1838,11 @@
       "nazwa": "KSEF_NIP",
       "wlasciciel": "koszty",
       "sekcja": "Faktury i koszty",
+      "opis": "NIP, dla którego OMS odpytuje KSeF; domyślnie NIP firmy z OMS_SPRZEDAWCA_NIP.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "zwalidowany OMS_SPRZEDAWCA_NIP",
+      "domyslnaPoLudzku": "NIP firmy z OMS_SPRZEDAWCA_NIP",
       "skutekBraku": "Z tokenem KSeF używany jest NIP sprzedawcy z rdzenia. Sam niepusty KSEF_NIP bez tokenu odmawia konfiguracji.",
       "walidacja": "Jeżeli podany i token aktywny: po normalizacji musi być równy NIP sprzedawcy.",
       "odczyty": [
@@ -1804,6 +1884,7 @@
       "nazwa": "KSEF_API",
       "wlasciciel": "koszty / klient KSeF",
       "sekcja": "Faktury i koszty",
+      "opis": "Adres API KSeF; domyślnie produkcyjny, zmieniasz go tylko do testów na środowisku Ministerstwa Finansów.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "https://api.ksef.mf.gov.pl/v2",
@@ -1849,6 +1930,7 @@
       "nazwa": "KSEF_ARCHIWUM",
       "wlasciciel": "koszty",
       "sekcja": "Faktury i koszty",
+      "opis": "Katalog na serwerze, do którego OMS zapisuje pobrane z KSeF faktury kosztowe (archiwum dla biura).",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
@@ -1885,6 +1967,7 @@
       "nazwa": "GUS_KLUCZ",
       "wlasciciel": "zamowienia",
       "sekcja": "GUS",
+      "opis": "Klucz do bazy REGON (GUS) — po NIP-ie OMS uzupełnia dane firmy kontrahenta; sekret.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
@@ -1895,7 +1978,7 @@
         {
           "id": "AST-002",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1903,7 +1986,7 @@
         {
           "id": "AST-003",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1927,7 +2010,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/tryb.ts:17",
+        "src/core/tryb.ts:18",
         "src/moduly/zamowienia/konfiguracja.ts:15"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
@@ -1938,6 +2021,7 @@
       "nazwa": "GUS_URL",
       "wlasciciel": "zamowienia / klient GUS",
       "sekcja": "GUS",
+      "opis": "Adres usługi REGON (GUS); domyślnie produkcyjny, zmieniasz go tylko do testów.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "https://wyszukiwarkaregon.stat.gov.pl/wsBIR/UslugaBIRzewnPubl.svc",
@@ -1974,9 +2058,11 @@
       "nazwa": "DPD_URL",
       "wlasciciel": "wysylka",
       "sekcja": "Wysyłka",
+      "opis": "Adres usługi DPD, przez którą OMS nadaje paczki; bez niego DPD jest wyłączone.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna; bramka włączenia DPD",
       "domyslna": null,
+      "wymagalnoscPoLudzku": "opcjonalna; wpisanie adresu włącza DPD",
       "skutekBraku": "DPD wyłączone, nawet jeżeli podano login/hasło; nie ma kontroli niekompletnej sekcji bez DPD_URL.",
       "walidacja": "Dosłownie pusty tekst oznacza brak ustawienia i zachowuje historyczny default albo wyłączenie. Niepusty URL musi być absolutnym HTTP(S) z hostem i bez otaczających białych znaków; błąd zawiera tylko nazwę.",
       "odczyty": [
@@ -2028,17 +2114,19 @@
       "nazwa": "DPD_LOGIN",
       "wlasciciel": "wysylka / DPD",
       "sekcja": "Wysyłka",
+      "opis": "Login do usługi DPD (konto kurierskie) — potrzebny do nadawania paczek.",
       "zakres": "produkt",
       "wymagalnosc": "wymagana, gdy DPD_URL jest niepuste",
       "domyslna": "brak wartości domyślnej",
       "skutekBraku": "Aktywne DPD bez login DPD odmawia konfiguracji. Bez DPD_URL klucz nie włącza klienta.",
+      "skutekBrakuPoLudzku": "Gdy DPD jest włączone (ustawiony DPD_URL), brak loginu zatrzymuje start. Bez DPD_URL ta zmienna niczego nie włącza.",
       "walidacja": "trim; brak dodatkowej walidacji formatu.",
       "sekret": true,
       "odczyty": [
         {
           "id": "AST-002",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -2046,7 +2134,7 @@
         {
           "id": "AST-003",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -2062,7 +2150,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/tryb.ts:17",
+        "src/core/tryb.ts:18",
         "src/moduly/wysylka/kurierzy.ts:13"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
@@ -2073,17 +2161,19 @@
       "nazwa": "DPD_PASSWORD",
       "wlasciciel": "wysylka / DPD",
       "sekcja": "Wysyłka",
+      "opis": "Hasło do usługi DPD; wpisz je do pliku konfiguracji, nie do czatu.",
       "zakres": "produkt",
       "wymagalnosc": "wymagana, gdy DPD_URL jest niepuste",
       "domyslna": "brak wartości domyślnej",
       "skutekBraku": "Aktywne DPD bez hasło DPD odmawia konfiguracji. Bez DPD_URL klucz nie włącza klienta.",
+      "skutekBrakuPoLudzku": "Gdy DPD jest włączone (ustawiony DPD_URL), brak hasła zatrzymuje start. Bez DPD_URL ta zmienna niczego nie włącza.",
       "walidacja": "trim; brak dodatkowej walidacji formatu.",
       "sekret": true,
       "odczyty": [
         {
           "id": "AST-002",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -2091,7 +2181,7 @@
         {
           "id": "AST-003",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -2107,7 +2197,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/tryb.ts:17",
+        "src/core/tryb.ts:18",
         "src/moduly/wysylka/kurierzy.ts:13"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
@@ -2118,10 +2208,12 @@
       "nazwa": "DPD_FID",
       "wlasciciel": "wysylka / DPD",
       "sekcja": "Wysyłka",
+      "opis": "Numer płatnika (FID) z umowy z DPD, pod którym rozliczane są paczki.",
       "zakres": "produkt",
       "wymagalnosc": "wymagana, gdy DPD_URL jest niepuste",
       "domyslna": "brak wartości domyślnej",
       "skutekBraku": "Aktywne DPD bez identyfikator płatnika odmawia konfiguracji. Bez DPD_URL klucz nie włącza klienta.",
+      "skutekBrakuPoLudzku": "Gdy DPD jest włączone (ustawiony DPD_URL), brak numeru płatnika zatrzymuje start. Bez DPD_URL ta zmienna niczego nie włącza.",
       "walidacja": "trim; brak dodatkowej walidacji formatu.",
       "sekret": false,
       "odczyty": [
@@ -2146,10 +2238,12 @@
       "nazwa": "DPD_INFO_URL",
       "wlasciciel": "wysylka / DPD",
       "sekcja": "Wysyłka",
+      "opis": "Adres usługi DPD ze statusami paczek (śledzenie przesyłek).",
       "zakres": "produkt",
       "wymagalnosc": "wymagana, gdy DPD_URL jest niepuste",
       "domyslna": "brak wartości domyślnej",
       "skutekBraku": "Aktywne DPD bez adres API śledzenia odmawia konfiguracji. Bez DPD_URL klucz nie włącza klienta.",
+      "skutekBrakuPoLudzku": "Gdy DPD jest włączone (ustawiony DPD_URL), brak tego adresu zatrzymuje start. Bez DPD_URL ta zmienna niczego nie włącza.",
       "walidacja": "Pusty tekst jest brakiem ustawienia. Gdy DPD_URL włącza DPD, brak DPD_INFO_URL powoduje odmowę konfiguracji; niepusty URL musi być absolutnym HTTP(S), z hostem i bez otaczających białych znaków. Błąd podaje wyłącznie nazwę.",
       "sekret": false,
       "odczyty": [
@@ -2183,10 +2277,12 @@
       "nazwa": "DPD_INFO_CHANNEL",
       "wlasciciel": "wysylka / DPD",
       "sekcja": "Wysyłka",
+      "opis": "Dane dostępowe (kanał) do usługi DPD ze statusami paczek; traktuj jak sekret.",
       "zakres": "produkt",
       "wymagalnosc": "wymagana, gdy DPD_URL jest niepuste",
       "domyslna": "brak wartości domyślnej",
       "skutekBraku": "Aktywne DPD bez kanał śledzenia odmawia konfiguracji. Bez DPD_URL klucz nie włącza klienta.",
+      "skutekBrakuPoLudzku": "Gdy DPD jest włączone (ustawiony DPD_URL), brak tych danych zatrzymuje start. Bez DPD_URL ta zmienna niczego nie włącza.",
       "walidacja": "trim; brak dodatkowej walidacji formatu.",
       "sekret": false,
       "odczyty": [
@@ -2211,6 +2307,7 @@
       "nazwa": "DPD_NADAWCA_NAZWA",
       "wlasciciel": "wysylka; konsumenci faktury i CLI podjazdu; zamowienia / specyfikacja",
       "sekcja": "Wysyłka",
+      "opis": "Nazwa Twojej firmy jako nadawcy: na paczkach, proformach i dokumentach wywozu (to adres firmy, nie tylko DPD).",
       "zakres": "produkt",
       "wymagalnosc": "wymagana dla DPD lub InPost; także CLI podjazdu; także przy żądaniu wystawienia proformy oraz specyfikacji i potwierdzenia wywozu",
       "domyslna": [
@@ -2223,7 +2320,10 @@
           "wartosc": ""
         }
       ],
+      "wymagalnoscPoLudzku": "wymagana, jeśli używasz DPD lub InPost albo wystawiasz proformy i dokumenty wywozu",
+      "domyslnaPoLudzku": "brak — wpisz w pliku albo w panelu (Ustawienia → Firma); bez kuriera pole na dokumentach zostaje puste",
       "skutekBraku": "Aktywny kurier bez nazwy odmawia konfiguracji; bez kurierów faktury otrzymują puste pole. CLI podjazdu odmawia bez wartości. Wystawienie proformy odmawia przez adresSprzedawcy, nawet przy wyłączonych kurierach. Specyfikacja czyta ten sam adres; nazwa i ulica są wymagane dopiero przy generacji, kod i miasto nie powodują nowej odmowy startu bez kuriera. Właściciel wymaganego pobrania WzA pochodzi tylko ze zwalidowanego nadawcy czynnego DPD/InPost. Sama nazwa z env bez obu kurierów nie otwiera tej reguły. Obecne metody WzA z WALLET_TRANSFER nie wymagają właściciela ani naszego IBAN. PRZ-093.08: to adres FIRMY (sprzedawca na proformie, specyfikacji i potwierdzeniu wywozu, nadawca paczek), nie tylko DPD. Bez tej rodziny w pliku adres wpisuje się w panelu (Ustawienia → Firma, wiersz „firma” w konfiguracja_integracji); gdy choć jedno z pól NAZWA/ULICA/KOD/MIASTO stoi w pliku, plik wygrywa w całości, a ekran jest tylko do odczytu. Jedno miejsce odczytu: src/core/adres-firmy.ts. Kurier z pliku (DPD_URL, INPOST_TOKEN) nadal wymaga adresu w pliku przy starcie.",
+      "skutekBrakuPoLudzku": "Włączony kurier (DPD lub InPost) bez nazwy nie wystartuje, a proforma nie zostanie wystawiona. Adres firmy możesz wpisać w panelu (Ustawienia → Firma), chyba że stoi w pliku — wtedy plik wygrywa.",
       "walidacja": "trim w konfiguratorach; CLI kontroluje truthiness; są to dane adresu wysyłkowego, nie alias OMS_SPRZEDAWCA_*. Specyfikacja używa tych samych danych z trim; nie czyta drugiej rodziny adresu OMS. D05 odstępuje od warunku DPD_URL dla dokumentów; nie rozszerza pobrania WzA o fallback samej nazwy.",
       "odczyty": [
         {
@@ -2276,6 +2376,7 @@
       "nazwa": "DPD_NADAWCA_ULICA",
       "wlasciciel": "wysylka; konsumenci faktury i CLI podjazdu; zamowienia / specyfikacja",
       "sekcja": "Wysyłka",
+      "opis": "Ulica i numer Twojej firmy jako nadawcy: na paczkach, proformach i dokumentach wywozu (to adres firmy, nie tylko DPD).",
       "zakres": "produkt",
       "wymagalnosc": "wymagana dla DPD lub InPost; także CLI podjazdu; także przy żądaniu wystawienia proformy oraz specyfikacji i potwierdzenia wywozu",
       "domyslna": [
@@ -2288,7 +2389,10 @@
           "wartosc": ""
         }
       ],
+      "wymagalnoscPoLudzku": "wymagana, jeśli używasz DPD lub InPost albo wystawiasz proformy i dokumenty wywozu",
+      "domyslnaPoLudzku": "brak — wpisz w pliku albo w panelu (Ustawienia → Firma); bez kuriera pole na dokumentach zostaje puste",
       "skutekBraku": "Aktywny kurier bez ulicy odmawia konfiguracji; bez kurierów faktury otrzymują puste pole. CLI podjazdu odmawia bez wartości. Wystawienie proformy odmawia przez adresSprzedawcy, nawet przy wyłączonych kurierach. Specyfikacja czyta ten sam adres; nazwa i ulica są wymagane dopiero przy generacji, kod i miasto nie powodują nowej odmowy startu bez kuriera. PRZ-093.08: to adres FIRMY (sprzedawca na proformie, specyfikacji i potwierdzeniu wywozu, nadawca paczek), nie tylko DPD. Bez tej rodziny w pliku adres wpisuje się w panelu (Ustawienia → Firma, wiersz „firma” w konfiguracja_integracji); gdy choć jedno z pól NAZWA/ULICA/KOD/MIASTO stoi w pliku, plik wygrywa w całości, a ekran jest tylko do odczytu. Jedno miejsce odczytu: src/core/adres-firmy.ts. Kurier z pliku (DPD_URL, INPOST_TOKEN) nadal wymaga adresu w pliku przy starcie.",
+      "skutekBrakuPoLudzku": "Włączony kurier (DPD lub InPost) bez ulicy nie wystartuje, a proforma nie zostanie wystawiona. Adres firmy możesz wpisać w panelu (Ustawienia → Firma), chyba że stoi w pliku — wtedy plik wygrywa.",
       "walidacja": "trim w konfiguratorach; CLI kontroluje truthiness; są to dane adresu wysyłkowego, nie alias OMS_SPRZEDAWCA_*. Specyfikacja używa tych samych danych z trim; nie czyta drugiej rodziny adresu OMS.",
       "odczyty": [
         {
@@ -2341,6 +2445,7 @@
       "nazwa": "DPD_NADAWCA_KOD",
       "wlasciciel": "wysylka; konsumenci faktury i CLI podjazdu; zamowienia / specyfikacja",
       "sekcja": "Wysyłka",
+      "opis": "Kod pocztowy Twojej firmy jako nadawcy paczek i dokumentów (to adres firmy, nie tylko DPD).",
       "zakres": "produkt",
       "wymagalnosc": "wymagana dla DPD lub InPost; także CLI podjazdu",
       "domyslna": [
@@ -2353,7 +2458,10 @@
           "wartosc": ""
         }
       ],
+      "wymagalnoscPoLudzku": "wymagana, jeśli używasz DPD lub InPost",
+      "domyslnaPoLudzku": "brak — wpisz w pliku albo w panelu (Ustawienia → Firma); bez kuriera pole na dokumentach zostaje puste",
       "skutekBraku": "Aktywny kurier bez kodu pocztowego odmawia konfiguracji; bez kurierów faktury otrzymują puste pole. CLI podjazdu odmawia bez wartości. Specyfikacja czyta ten sam adres; nazwa i ulica są wymagane dopiero przy generacji, kod i miasto nie powodują nowej odmowy startu bez kuriera. PRZ-093.08: to adres FIRMY (sprzedawca na proformie, specyfikacji i potwierdzeniu wywozu, nadawca paczek), nie tylko DPD. Bez tej rodziny w pliku adres wpisuje się w panelu (Ustawienia → Firma, wiersz „firma” w konfiguracja_integracji); gdy choć jedno z pól NAZWA/ULICA/KOD/MIASTO stoi w pliku, plik wygrywa w całości, a ekran jest tylko do odczytu. Jedno miejsce odczytu: src/core/adres-firmy.ts. Kurier z pliku (DPD_URL, INPOST_TOKEN) nadal wymaga adresu w pliku przy starcie.",
+      "skutekBrakuPoLudzku": "Włączony kurier (DPD lub InPost) bez kodu pocztowego nie wystartuje; bez kurierów dokumenty mają to pole puste. Adres firmy możesz wpisać w panelu (Ustawienia → Firma), chyba że stoi w pliku.",
       "walidacja": "trim w konfiguratorach; CLI kontroluje truthiness; są to dane adresu wysyłkowego, nie alias OMS_SPRZEDAWCA_*. Specyfikacja używa tych samych danych z trim; nie czyta drugiej rodziny adresu OMS.",
       "odczyty": [
         {
@@ -2406,6 +2514,7 @@
       "nazwa": "DPD_NADAWCA_MIASTO",
       "wlasciciel": "wysylka; konsumenci faktury i CLI podjazdu; zamowienia / specyfikacja",
       "sekcja": "Wysyłka",
+      "opis": "Miasto Twojej firmy jako nadawcy paczek i dokumentów (to adres firmy, nie tylko DPD).",
       "zakres": "produkt",
       "wymagalnosc": "wymagana dla DPD lub InPost; także CLI podjazdu",
       "domyslna": [
@@ -2418,7 +2527,10 @@
           "wartosc": ""
         }
       ],
+      "wymagalnoscPoLudzku": "wymagana, jeśli używasz DPD lub InPost",
+      "domyslnaPoLudzku": "brak — wpisz w pliku albo w panelu (Ustawienia → Firma); bez kuriera pole na dokumentach zostaje puste",
       "skutekBraku": "Aktywny kurier bez miasta odmawia konfiguracji; bez kurierów faktury otrzymują puste pole. CLI podjazdu odmawia bez wartości. Specyfikacja czyta ten sam adres; nazwa i ulica są wymagane dopiero przy generacji, kod i miasto nie powodują nowej odmowy startu bez kuriera. PRZ-093.08: to adres FIRMY (sprzedawca na proformie, specyfikacji i potwierdzeniu wywozu, nadawca paczek), nie tylko DPD. Bez tej rodziny w pliku adres wpisuje się w panelu (Ustawienia → Firma, wiersz „firma” w konfiguracja_integracji); gdy choć jedno z pól NAZWA/ULICA/KOD/MIASTO stoi w pliku, plik wygrywa w całości, a ekran jest tylko do odczytu. Jedno miejsce odczytu: src/core/adres-firmy.ts. Kurier z pliku (DPD_URL, INPOST_TOKEN) nadal wymaga adresu w pliku przy starcie.",
+      "skutekBrakuPoLudzku": "Włączony kurier (DPD lub InPost) bez miasta nie wystartuje; bez kurierów dokumenty mają to pole puste. Adres firmy możesz wpisać w panelu (Ustawienia → Firma), chyba że stoi w pliku.",
       "walidacja": "trim w konfiguratorach; CLI kontroluje truthiness; są to dane adresu wysyłkowego, nie alias OMS_SPRZEDAWCA_*. Specyfikacja używa tych samych danych z trim; nie czyta drugiej rodziny adresu OMS.",
       "odczyty": [
         {
@@ -2471,10 +2583,12 @@
       "nazwa": "DPD_NADAWCA_KRAJ",
       "wlasciciel": "wysylka; konsument faktury; zamowienia / specyfikacja",
       "sekcja": "Wysyłka",
+      "opis": "Kod kraju nadawcy paczek i dokumentów, np. PL; domyślnie PL.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "PL",
       "skutekBraku": "Dane nadawcy faktur i kurierów otrzymują PL; CLI podjazdu wpisuje PL na stałe i nie odczytuje tego klucza. Specyfikacja również otrzymuje PL. PRZ-093.08: to adres FIRMY (sprzedawca na proformie, specyfikacji i potwierdzeniu wywozu, nadawca paczek), nie tylko DPD. Bez tej rodziny w pliku adres wpisuje się w panelu (Ustawienia → Firma, wiersz „firma” w konfiguracja_integracji); gdy choć jedno z pól NAZWA/ULICA/KOD/MIASTO stoi w pliku, plik wygrywa w całości, a ekran jest tylko do odczytu. Jedno miejsce odczytu: src/core/adres-firmy.ts. Kurier z pliku (DPD_URL, INPOST_TOKEN) nadal wymaga adresu w pliku przy starcie.",
+      "skutekBrakuPoLudzku": "Bez niej kraj nadawcy to Polska (PL).",
       "walidacja": "trim; pusty tekst daje PL.",
       "odczyty": [
         {
@@ -2518,10 +2632,13 @@
       "nazwa": "DPD_NADAWCA_TELEFON",
       "wlasciciel": "wysylka; konsumenci faktury i CLI podjazdu",
       "sekcja": "Wysyłka",
+      "opis": "Telefon Twojej firmy jako nadawcy paczek; InPost wymaga go przy nadaniu, DPD nie.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna przy starcie; wymagana dla nadania InPost i CLI podjazdu",
       "domyslna": "",
+      "wymagalnoscPoLudzku": "opcjonalna; wymagana, jeśli nadajesz paczki przez InPost",
       "skutekBraku": "Start DPD nie jest blokowany; InPost odmawia nadania bez telefonu; CLI podjazdu odmawia bez tego pola. PRZ-093.08: to adres FIRMY (sprzedawca na proformie, specyfikacji i potwierdzeniu wywozu, nadawca paczek), nie tylko DPD. Bez tej rodziny w pliku adres wpisuje się w panelu (Ustawienia → Firma, wiersz „firma” w konfiguracja_integracji); gdy choć jedno z pól NAZWA/ULICA/KOD/MIASTO stoi w pliku, plik wygrywa w całości, a ekran jest tylko do odczytu. Jedno miejsce odczytu: src/core/adres-firmy.ts. Kurier z pliku (DPD_URL, INPOST_TOKEN) nadal wymaga adresu w pliku przy starcie.",
+      "skutekBrakuPoLudzku": "DPD działa bez telefonu, ale InPost odmówi nadania paczki. Skrypt jednorazowego importu podjazdów DPD też wymaga tej zmiennej.",
       "walidacja": "trim; walidacja kontaktu InPost dopiero przed nadaniem.",
       "odczyty": [
         {
@@ -2563,10 +2680,13 @@
       "nazwa": "DPD_NADAWCA_EMAIL",
       "wlasciciel": "wysylka; konsumenci faktury i CLI podjazdu",
       "sekcja": "Wysyłka",
+      "opis": "E-mail Twojej firmy jako nadawcy paczek; InPost wymaga go przy nadaniu, DPD nie.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna przy starcie; wymagana dla nadania InPost i CLI podjazdu",
       "domyslna": "",
+      "wymagalnoscPoLudzku": "opcjonalna; wymagana, jeśli nadajesz paczki przez InPost",
       "skutekBraku": "Start DPD nie jest blokowany; InPost odmawia nadania bez e-maila; CLI podjazdu odmawia bez tego pola. PRZ-093.08: to adres FIRMY (sprzedawca na proformie, specyfikacji i potwierdzeniu wywozu, nadawca paczek), nie tylko DPD. Bez tej rodziny w pliku adres wpisuje się w panelu (Ustawienia → Firma, wiersz „firma” w konfiguracja_integracji); gdy choć jedno z pól NAZWA/ULICA/KOD/MIASTO stoi w pliku, plik wygrywa w całości, a ekran jest tylko do odczytu. Jedno miejsce odczytu: src/core/adres-firmy.ts. Kurier z pliku (DPD_URL, INPOST_TOKEN) nadal wymaga adresu w pliku przy starcie.",
+      "skutekBrakuPoLudzku": "DPD działa bez e-maila, ale InPost odmówi nadania paczki. Skrypt jednorazowego importu podjazdów DPD też wymaga tej zmiennej.",
       "walidacja": "trim; walidacja kontaktu InPost dopiero przed nadaniem.",
       "odczyty": [
         {
@@ -2608,17 +2728,20 @@
       "nazwa": "INPOST_TOKEN",
       "wlasciciel": "wysylka",
       "sekcja": "Wysyłka",
+      "opis": "Token API InPost — pozwala OMS nadawać przesyłki InPost; sekret.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna; bramka włączenia InPost",
       "domyslna": null,
+      "wymagalnoscPoLudzku": "opcjonalna; wpisanie tokenu włącza InPost",
       "skutekBraku": "InPost wyłączony; podane pozostałe klucze nie włączają klienta. PRZ-093.09: odpowiednik w panelu — Ustawienia → Integracje → Kurier InPost (/ustawienia/integracje/inpost; wiersz „inpost” w konfiguracja_integracji: token jako sekret, numer organizacji, paczkomat nadawczy; adres API zawsze produkcyjny, nadawca = adres firmy). Gdy INPOST_TOKEN stoi w pliku, cała konfiguracja InPost idzie z pliku, a ekran jest tylko do odczytu (zapis = 409). Instrukcja: docs/kurier-inpost.md.",
+      "skutekBrakuPoLudzku": "Bez tokenu InPost jest wyłączony, a pozostałe zmienne InPost niczego nie włączają. Token można wpisać też w panelu (Ustawienia → Integracje → Kurier InPost), ale token z pliku wygrywa i blokuje ekran.",
       "walidacja": "trim; po włączeniu wymaga organizacji oraz czterech pól adresu; proba odrzuca niepusty token.",
       "sekret": true,
       "odczyty": [
         {
           "id": "AST-002",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -2626,7 +2749,7 @@
         {
           "id": "AST-003",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -2658,7 +2781,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/tryb.ts:17",
+        "src/core/tryb.ts:18",
         "src/moduly/wysylka/kurierzy.ts:13",
         "src/moduly/wysylka/kurierzy.ts:22",
         "src/moduly/wysylka/kurierzy.ts:34"
@@ -2671,10 +2794,12 @@
       "nazwa": "INPOST_ORGANIZACJA",
       "wlasciciel": "wysylka / InPost",
       "sekcja": "Wysyłka",
+      "opis": "Numer Twojej organizacji w InPost, na którą OMS nadaje paczki.",
       "zakres": "produkt",
       "wymagalnosc": "wymagana przy niepustym INPOST_TOKEN",
       "domyslna": "brak wartości domyślnej",
       "skutekBraku": "Aktywne InPost odmawia konfiguracji. PRZ-093.09: odpowiednik w panelu — Ustawienia → Integracje → Kurier InPost (/ustawienia/integracje/inpost; wiersz „inpost” w konfiguracja_integracji: token jako sekret, numer organizacji, paczkomat nadawczy; adres API zawsze produkcyjny, nadawca = adres firmy). Gdy INPOST_TOKEN stoi w pliku, cała konfiguracja InPost idzie z pliku, a ekran jest tylko do odczytu (zapis = 409). Instrukcja: docs/kurier-inpost.md.",
+      "skutekBrakuPoLudzku": "Przy włączonym InPost brak numeru organizacji zatrzymuje start. Numer można wpisać też w panelu (Ustawienia → Integracje → Kurier InPost), o ile token nie stoi w pliku.",
       "walidacja": "Number, dodatni safeInteger.",
       "odczyty": [
         {
@@ -2698,10 +2823,12 @@
       "nazwa": "INPOST_URL",
       "wlasciciel": "wysylka / InPost",
       "sekcja": "Wysyłka",
+      "opis": "Adres API InPost; domyślnie produkcyjny, zmieniasz go tylko do testów.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "https://api-shipx-pl.easypack24.net/v1",
       "skutekBraku": "Aktywny klient używa domyślnego API produkcyjnego. PRZ-093.09: odpowiednik w panelu — Ustawienia → Integracje → Kurier InPost (/ustawienia/integracje/inpost; wiersz „inpost” w konfiguracja_integracji: token jako sekret, numer organizacji, paczkomat nadawczy; adres API zawsze produkcyjny, nadawca = adres firmy). Gdy INPOST_TOKEN stoi w pliku, cała konfiguracja InPost idzie z pliku, a ekran jest tylko do odczytu (zapis = 409). Instrukcja: docs/kurier-inpost.md.",
+      "skutekBrakuPoLudzku": "Bez niej OMS łączy się z produkcyjnym API InPost. Z ekranu w panelu zawsze używany jest adres produkcyjny.",
       "walidacja": "Dosłownie pusty tekst oznacza brak ustawienia i zachowuje historyczny default albo wyłączenie. Niepusty URL musi być absolutnym HTTP(S) z hostem i bez otaczających białych znaków; błąd zawiera tylko nazwę.",
       "odczyty": [
         {
@@ -2734,10 +2861,12 @@
       "nazwa": "INPOST_PACZKOMAT_NADAWCZY",
       "wlasciciel": "wysylka / InPost",
       "sekcja": "Wysyłka",
+      "opis": "Kod paczkomatu, z którego zwykle nadajesz paczki; OMS dopisuje go do nadania jako punkt nadawczy.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
       "skutekBraku": "W nadaniu nie jest dodany custom_attributes.dropoff_point; klient nie wyznacza domyślnego punktu nadawczego. PRZ-093.09: odpowiednik w panelu — Ustawienia → Integracje → Kurier InPost (/ustawienia/integracje/inpost; wiersz „inpost” w konfiguracja_integracji: token jako sekret, numer organizacji, paczkomat nadawczy; adres API zawsze produkcyjny, nadawca = adres firmy). Gdy INPOST_TOKEN stoi w pliku, cała konfiguracja InPost idzie z pliku, a ekran jest tylko do odczytu (zapis = 409). Instrukcja: docs/kurier-inpost.md.",
+      "skutekBrakuPoLudzku": "Bez niej OMS nie podaje InPostowi domyślnego paczkomatu nadawczego.",
       "walidacja": "trim i uppercase; pusty tekst daje null.",
       "odczyty": [
         {
@@ -2761,17 +2890,20 @@
       "nazwa": "OMS_ETYKIETY_DIR",
       "wlasciciel": "wysylka",
       "sekcja": "Wysyłka",
+      "opis": "Katalog na serwerze z etykietami przesyłkowymi — starsza nazwa, ma pierwszeństwo przed OMS_ETYKIETY_KATALOG.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna; starsza nazwa z pierwszeństwem",
       "domyslna": "OMS_ETYKIETY_KATALOG albo /var/lib/panel/etykiety",
+      "domyslnaPoLudzku": "wartość z OMS_ETYKIETY_KATALOG; w instalacji Docker ustawia ją plik compose",
       "skutekBraku": "Używany jest drugi klucz albo domyślny katalog historyczny.",
+      "skutekBrakuPoLudzku": "OMS bierze katalog z OMS_ETYKIETY_KATALOG, a gdy i tej brak — z /var/lib/panel/etykiety.",
       "walidacja": "trim; obie niepuste wartości nie są porównywane na konflikt.",
       "decyzja": "D04",
       "odczyty": [
         {
           "id": "AST-073",
           "path": "src/moduly/wysylka/modul.ts",
-          "line": 62,
+          "line": 64,
           "expression": "env.OMS_ETYKIETY_DIR",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2779,7 +2911,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/modul.ts:62"
+        "src/moduly/wysylka/modul.ts:64"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2789,17 +2921,20 @@
       "nazwa": "OMS_ETYKIETY_KATALOG",
       "wlasciciel": "wysylka",
       "sekcja": "Wysyłka",
+      "opis": "Katalog na serwerze z etykietami przesyłkowymi (domyślnie /var/lib/panel/etykiety).",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "/var/lib/panel/etykiety, jeżeli brak obu nazw",
+      "domyslnaPoLudzku": "w instalacji Docker katalog etykiet leży w /opt/oms/data (ustawia go plik compose)",
       "skutekBraku": "Domyślny katalog etykiet; zapis/odczyt może zawieść, jeżeli wolumen nie istnieje lub brak uprawnień.",
+      "skutekBrakuPoLudzku": "OMS używa katalogu /var/lib/panel/etykiety; zapis i odczyt etykiet zawiedzie, jeśli ten dysk nie istnieje lub brak do niego uprawnień.",
       "walidacja": "trim; ignorowany, jeśli niepusty OMS_ETYKIETY_DIR.",
       "decyzja": "D04",
       "odczyty": [
         {
           "id": "AST-074",
           "path": "src/moduly/wysylka/modul.ts",
-          "line": 62,
+          "line": 64,
           "expression": "env.OMS_ETYKIETY_KATALOG",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2807,7 +2942,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/modul.ts:62"
+        "src/moduly/wysylka/modul.ts:64"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2818,17 +2953,19 @@
       "nazwa": "OMS_PRZESYLKI_ODSTEP_MS",
       "wlasciciel": "wysylka",
       "sekcja": "Wysyłka",
+      "opis": "Co ile milisekund OMS odświeża statusy nadanych paczek u kuriera (domyślnie co godzinę, najmniej 60000).",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": 3600000,
       "skutekBraku": "Zegar przesyłek tyka co godzinę, jeśli istnieje co najmniej jeden kurier.",
+      "skutekBrakuPoLudzku": "OMS sprawdza statusy paczek co godzinę, jeśli jest skonfigurowany choć jeden kurier.",
       "walidacja": "Całkowity safeInteger od 60000 do 2147483647 ms włącznie; brak zachowuje dotychczasowy default. D07 zatwierdzone 02.10.2026. W2: surowy tekst musi być równy trim; otaczające białe znaki odmawiają. Reprezentacje Number, np. 6e4 i 0xea60, pozostają poprawne przy spełnieniu safeInteger/granic.",
       "decyzja": "D07",
       "odczyty": [
         {
           "id": "AST-072",
           "path": "src/moduly/wysylka/modul.ts",
-          "line": 52,
+          "line": 54,
           "expression": "env[klucz]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -2836,7 +2973,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/modul.ts:52"
+        "src/moduly/wysylka/modul.ts:54"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2846,17 +2983,19 @@
       "nazwa": "OMS_PODJAZDY_ODSTEP_MS",
       "wlasciciel": "wysylka",
       "sekcja": "Wysyłka",
+      "opis": "Co ile milisekund OMS sprawdza zamówione podjazdy kuriera po paczki z Allegro (domyślnie co 10 minut, najmniej 60000).",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": 600000,
       "skutekBraku": "Zegar podjazdów tyka co 10 minut, gdy istnieje usługa podjazdów oparta na kanałach Allegro.",
+      "skutekBrakuPoLudzku": "OMS sprawdza podjazdy co 10 minut, jeśli są kanały Allegro, przez które można je zamawiać.",
       "walidacja": "Całkowity safeInteger od 60000 do 2147483647 ms włącznie; brak zachowuje dotychczasowy default. D07 zatwierdzone 02.10.2026. W2: surowy tekst musi być równy trim; otaczające białe znaki odmawiają. Reprezentacje Number, np. 6e4 i 0xea60, pozostają poprawne przy spełnieniu safeInteger/granic.",
       "decyzja": "D07",
       "odczyty": [
         {
           "id": "AST-072",
           "path": "src/moduly/wysylka/modul.ts",
-          "line": 52,
+          "line": 54,
           "expression": "env[klucz]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -2864,7 +3003,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/modul.ts:52"
+        "src/moduly/wysylka/modul.ts:54"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2874,10 +3013,12 @@
       "nazwa": "OMS_RAPORTY_KONTO_HISTORII",
       "wlasciciel": "raporty",
       "sekcja": "Raporty",
+      "opis": "Numer konta Apilo z historią zamówień — po nim raporty ustalają, dokąd sięga zaimportowana historia.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
       "skutekBraku": "Nie jest wyliczany sufit historii Apilo dla konta; raport otrzymuje zastrzeżenie kontoNieustawione. Nie odcina ani nie importuje danych.",
+      "skutekBrakuPoLudzku": "Bez niej raporty nie wiedzą, dokąd sięga historia z Apilo, i dodają o tym zastrzeżenie. Nie usuwa to ani nie importuje żadnych danych.",
       "walidacja": "Tekst cyfr, Number safeInteger >=0. To osobny identyfikator od <P>_HISTORIA_KONTO_APILO.",
       "decyzja": "D08",
       "odczyty": [
@@ -2902,9 +3043,11 @@
       "nazwa": "OMS_RAPORTY_NAZWY_KANALOW",
       "wlasciciel": "raporty",
       "sekcja": "Raporty",
+      "opis": "Własne, czytelne nazwy kanałów w raportach (JSON: nazwa kanału raportowego → etykieta).",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "{}",
+      "domyslnaPoLudzku": "pusta lista (brak własnych nazw)",
       "skutekBraku": "Brak własnych etykiet kanałów, widok korzysta z kluczy/pozostałej logiki etykiet. Nie tworzy kanałów. Pusty tekst OMS_RAPORTY_NAZWY_KANALOW= powoduje błąd JSON, zamiast użycia {}.",
       "walidacja": "JSON: nie-null obiekt, nie tablica; wszystkie etykiety muszą być niepustymi napisami. Niepoprawny JSON zwraca wyłącznie OMS_RAPORTY_NAZWY_KANALOW: niepoprawny JSON, bez wejścia ani cause.",
       "odczyty": [
@@ -2929,6 +3072,7 @@
       "nazwa": "OMS_RAPORTY_SKLEP_HISTORII",
       "wlasciciel": "raporty",
       "sekcja": "Raporty",
+      "opis": "Nazwa sklepu pokazywana w zastrzeżeniach raportów o zaimportowanej historii zamówień.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
@@ -2956,10 +3100,12 @@
       "nazwa": "OMS_RAPORTY_PODLOGA_ZWROTOW",
       "wlasciciel": "raporty",
       "sekcja": "Raporty",
+      "opis": "Data RRRR-MM-DD, od której dane o zwrotach są kompletne; raporty kończące się wcześniej nie uwzględniają zwrotów.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
       "skutekBraku": "Zwroty nie są uznane za poznane dla zakresu raportu, ponieważ zwrotyPoznane wymaga tej daty.",
+      "skutekBrakuPoLudzku": "Bez niej raporty uznają zwroty za nieznane w każdym zakresie dat.",
       "walidacja": "trim; ścisłe RRRR-MM-DD i poprawna data kalendarzowa przez kluczOkresu.",
       "decyzja": "D08",
       "odczyty": [
@@ -2984,10 +3130,12 @@
       "nazwa": "OMS_STATYSTYKI_PIERWSZY_DZIEN",
       "wlasciciel": "raporty",
       "sekcja": "Raporty",
+      "opis": "Dzień RRRR-MM-DD, od którego OMS ma kompletne dane do statystyk; wcześniejsze zakresy dostają pasek z zastrzeżeniem.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
       "skutekBraku": "Początkiem danych statystyk jest dzień (Warszawa) pierwszego zamówienia w tabeli zamowienia (PRZ-093.07); pasek zastrzeżenia dostają tylko zakresy zaczynające się wcześniej. Pusta baza: pasek z nazwą zmiennej i formatem. Zmienna nie wpływa na liczby, tylko na pasek.",
+      "skutekBrakuPoLudzku": "Za początek danych OMS uznaje dzień pierwszego zamówienia w bazie. Zmienna nie zmienia liczb, tylko pasek ostrzeżenia nad statystykami starszych okresów.",
       "walidacja": "trim; ścisłe RRRR-MM-DD i poprawna data kalendarzowa przez kluczOkresu.",
       "decyzja": "D08",
       "odczyty": [
@@ -3012,6 +3160,7 @@
       "nazwa": "OMS_RAPORTY_DATA_IMPORTU_HISTORII",
       "wlasciciel": "raporty",
       "sekcja": "Raporty",
+      "opis": "Data RRRR-MM-DD importu historii zamówień, pokazywana w zastrzeżeniach raportów obejmujących starsze dane.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
@@ -3040,10 +3189,13 @@
       "nazwa": "SMTP_HOST",
       "wlasciciel": "wiadomosci / SMTP",
       "sekcja": "Poczta",
+      "opis": "Adres serwera poczty wychodzącej (SMTP), przez który OMS wysyła maile do klientów i zaproszenia dla pracowników.",
       "zakres": "produkt",
       "wymagalnosc": "wymagana, jeżeli którakolwiek z pięciu zmiennych sekcji SMTP jest zdefiniowana",
       "domyslna": null,
-      "skutekBraku": "Bez całej sekcji poczta wyłączona; po rozpoczęciu sekcji brak adresu serwera odmawia konfiguracji. Klienci i pollery wiadomości Allegro pozostają niezależne od SMTP.",
+      "wymagalnoscPoLudzku": "wymagana, jeśli wpisujesz którekolwiek ustawienie poczty SMTP",
+      "skutekBraku": "Bez całej sekcji poczta wyłączona; po rozpoczęciu sekcji brak adresu serwera odmawia konfiguracji. Klienci i pollery wiadomości Allegro pozostają niezależne od SMTP. PRZ-094.04: odpowiednik w panelu — Ustawienia → Integracje → Poczta wychodząca (/ustawienia/integracje/poczta; wiersz „poczta” w konfiguracja_integracji: serwer, port, login, nadawca jawnie, hasło jako sekret). Gdy sekcja SMTP_* stoi w pliku, cała poczta idzie z pliku, a ekran tylko o tym informuje (zapis = 409). Poczta z ekranu działa od następnego maila bez restartu; tylko wiadomości do klientów z karty zamówienia przy pierwszym ustawieniu włączają się po restarcie.",
+      "skutekBrakuPoLudzku": "Bez całej sekcji SMTP poczta jest wyłączona (wiadomości z Allegro działają osobno). Przy zaczętej sekcji brak serwera zatrzymuje start. Sekcja SMTP z pliku wygrywa i blokuje ekran w panelu (Ustawienia → Integracje → Poczta wychodząca).",
       "walidacja": "Do wymagalności trim; SMTP_HOST przekazywany po trim, user i pass przekazywane surowe.",
       "sekret": false,
       "odczyty": [
@@ -3086,17 +3238,20 @@
       "nazwa": "SMTP_USER",
       "wlasciciel": "wiadomosci / SMTP",
       "sekcja": "Poczta",
+      "opis": "Login do konta pocztowego, z którego OMS wysyła maile (zwykle pełny adres e-mail).",
       "zakres": "produkt",
       "wymagalnosc": "wymagana, jeżeli którakolwiek z pięciu zmiennych sekcji SMTP jest zdefiniowana",
       "domyslna": null,
-      "skutekBraku": "Bez całej sekcji poczta wyłączona; po rozpoczęciu sekcji brak loginu odmawia konfiguracji. Klienci i pollery wiadomości Allegro pozostają niezależne od SMTP.",
+      "wymagalnoscPoLudzku": "wymagana, jeśli wpisujesz którekolwiek ustawienie poczty SMTP",
+      "skutekBraku": "Bez całej sekcji poczta wyłączona; po rozpoczęciu sekcji brak loginu odmawia konfiguracji. Klienci i pollery wiadomości Allegro pozostają niezależne od SMTP. PRZ-094.04: odpowiednik w panelu — Ustawienia → Integracje → Poczta wychodząca (/ustawienia/integracje/poczta; wiersz „poczta” w konfiguracja_integracji: serwer, port, login, nadawca jawnie, hasło jako sekret). Gdy sekcja SMTP_* stoi w pliku, cała poczta idzie z pliku, a ekran tylko o tym informuje (zapis = 409). Poczta z ekranu działa od następnego maila bez restartu; tylko wiadomości do klientów z karty zamówienia przy pierwszym ustawieniu włączają się po restarcie.",
+      "skutekBrakuPoLudzku": "Bez całej sekcji SMTP poczta jest wyłączona. Przy zaczętej sekcji brak loginu zatrzymuje start. Sekcja SMTP z pliku wygrywa i blokuje ekran w panelu (Ustawienia → Integracje → Poczta wychodząca).",
       "walidacja": "Do wymagalności trim; SMTP_HOST przekazywany po trim, user i pass przekazywane surowe.",
       "sekret": true,
       "odczyty": [
         {
           "id": "AST-002",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -3104,7 +3259,7 @@
         {
           "id": "AST-003",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -3144,7 +3299,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/tryb.ts:17",
+        "src/core/tryb.ts:18",
         "src/moduly/wiadomosci/konfiguracja.ts:19",
         "src/moduly/wiadomosci/konfiguracja.ts:20",
         "src/moduly/wiadomosci/konfiguracja.ts:26",
@@ -3158,17 +3313,20 @@
       "nazwa": "SMTP_PASS",
       "wlasciciel": "wiadomosci / SMTP",
       "sekcja": "Poczta",
+      "opis": "Hasło do konta pocztowego, z którego OMS wysyła maile (sekret — nie do czatu).",
       "zakres": "produkt",
       "wymagalnosc": "wymagana, jeżeli którakolwiek z pięciu zmiennych sekcji SMTP jest zdefiniowana",
       "domyslna": null,
-      "skutekBraku": "Bez całej sekcji poczta wyłączona; po rozpoczęciu sekcji brak hasła odmawia konfiguracji. Klienci i pollery wiadomości Allegro pozostają niezależne od SMTP.",
+      "wymagalnoscPoLudzku": "wymagana, jeśli wpisujesz którekolwiek ustawienie poczty SMTP",
+      "skutekBraku": "Bez całej sekcji poczta wyłączona; po rozpoczęciu sekcji brak hasła odmawia konfiguracji. Klienci i pollery wiadomości Allegro pozostają niezależne od SMTP. PRZ-094.04: odpowiednik w panelu — Ustawienia → Integracje → Poczta wychodząca (/ustawienia/integracje/poczta; wiersz „poczta” w konfiguracja_integracji: serwer, port, login, nadawca jawnie, hasło jako sekret). Gdy sekcja SMTP_* stoi w pliku, cała poczta idzie z pliku, a ekran tylko o tym informuje (zapis = 409). Poczta z ekranu działa od następnego maila bez restartu; tylko wiadomości do klientów z karty zamówienia przy pierwszym ustawieniu włączają się po restarcie.",
+      "skutekBrakuPoLudzku": "Bez całej sekcji SMTP poczta jest wyłączona. Przy zaczętej sekcji brak hasła zatrzymuje start. Sekcja SMTP z pliku wygrywa i blokuje ekran w panelu (Ustawienia → Integracje → Poczta wychodząca).",
       "walidacja": "Do wymagalności trim; SMTP_HOST przekazywany po trim, user i pass przekazywane surowe.",
       "sekret": true,
       "odczyty": [
         {
           "id": "AST-002",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -3176,7 +3334,7 @@
         {
           "id": "AST-003",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -3208,7 +3366,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/tryb.ts:17",
+        "src/core/tryb.ts:18",
         "src/moduly/wiadomosci/konfiguracja.ts:19",
         "src/moduly/wiadomosci/konfiguracja.ts:20",
         "src/moduly/wiadomosci/konfiguracja.ts:34"
@@ -3221,10 +3379,12 @@
       "nazwa": "SMTP_PORT",
       "wlasciciel": "wiadomosci / SMTP",
       "sekcja": "Poczta",
+      "opis": "Port serwera poczty wychodzącej; domyślnie 465 (połączenie szyfrowane od razu).",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": 465,
-      "skutekBraku": "Po włączeniu SMTP używany port 465 i secure=true; samo zdefiniowanie SMTP_PORT (także pustego) rozpoczyna sekcję.",
+      "skutekBraku": "Po włączeniu SMTP używany port 465 i secure=true; samo zdefiniowanie SMTP_PORT (także pustego) rozpoczyna sekcję. PRZ-094.04: odpowiednik w panelu — Ustawienia → Integracje → Poczta wychodząca (/ustawienia/integracje/poczta; wiersz „poczta” w konfiguracja_integracji: serwer, port, login, nadawca jawnie, hasło jako sekret). Gdy sekcja SMTP_* stoi w pliku, cała poczta idzie z pliku, a ekran tylko o tym informuje (zapis = 409). Poczta z ekranu działa od następnego maila bez restartu; tylko wiadomości do klientów z karty zamówienia przy pierwszym ustawieniu włączają się po restarcie.",
+      "skutekBrakuPoLudzku": "OMS używa portu 465 z szyfrowaniem. Samo wpisanie tej zmiennej (nawet pustej) rozpoczyna sekcję SMTP, więc wymaga też hosta, loginu i hasła. Ekran w panelu pozostaje zablokowany, dopóki sekcja stoi w pliku.",
       "walidacja": "Integer 1..65535; pusty tekst daje 0 i błąd; secure zależy wyłącznie od port===465.",
       "odczyty": [
         {
@@ -3265,10 +3425,13 @@
       "nazwa": "MAIL_FROM",
       "wlasciciel": "wiadomosci / SMTP",
       "sekcja": "Poczta",
+      "opis": "Adres, z którego OMS wysyła maile; domyślnie login SMTP.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "SMTP_USER po trim",
-      "skutekBraku": "Po włączeniu SMTP nadawcą jest login, który musi być poprawnym adresem e-mail. Sam MAIL_FROM rozpoczyna sekcję.",
+      "domyslnaPoLudzku": "login SMTP (SMTP_USER)",
+      "skutekBraku": "Po włączeniu SMTP nadawcą jest login, który musi być poprawnym adresem e-mail. Sam MAIL_FROM rozpoczyna sekcję. PRZ-094.04: odpowiednik w panelu — Ustawienia → Integracje → Poczta wychodząca (/ustawienia/integracje/poczta; wiersz „poczta” w konfiguracja_integracji: serwer, port, login, nadawca jawnie, hasło jako sekret). Gdy sekcja SMTP_* stoi w pliku, cała poczta idzie z pliku, a ekran tylko o tym informuje (zapis = 409). Poczta z ekranu działa od następnego maila bez restartu; tylko wiadomości do klientów z karty zamówienia przy pierwszym ustawieniu włączają się po restarcie.",
+      "skutekBrakuPoLudzku": "Nadawcą maili jest login SMTP, który musi być poprawnym adresem e-mail. Samo wpisanie tej zmiennej rozpoczyna sekcję SMTP. Ekran w panelu pozostaje zablokowany, dopóki sekcja stoi w pliku.",
       "walidacja": "trim; adres e-mail albo Nazwa <adres>; pusty MAIL_FROM jest błędem, nie fallbackiem.",
       "odczyty": [
         {
@@ -3309,6 +3472,7 @@
       "nazwa": "OMS_MAIL_MARKA",
       "wlasciciel": "wiadomosci / oprawa",
       "sekcja": "Poczta",
+      "opis": "Nazwa marki, którą OMS podpisuje maile do klientów i umieszcza w ich nagłówku; domyślnie podpis „Obsługa sklepu”.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "podpis Obsługa sklepu; nagłówek pusty",
@@ -3354,6 +3518,7 @@
       "nazwa": "OMS_MAIL_STOPKA",
       "wlasciciel": "wiadomosci / oprawa",
       "sekcja": "Poczta",
+      "opis": "Stopka dopisywana pod każdym mailem do klienta, np. dane firmy; domyślnie brak.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "",
@@ -3390,17 +3555,20 @@
       "nazwa": "ALLEGRO_CLIENT_ID",
       "wlasciciel": "faktury/wysylka; metadane allegro",
       "sekcja": "Deklaracje i zgodność",
+      "opis": "Dawna, globalna deklaracja klucza Allegro — sama niczego nie włącza; w trybie „proba” musi być pusta.",
       "zakres": "guard_only",
       "wymagalnosc": "deklaracja; nie jest niezależną konfiguracją klienta",
       "domyslna": "brak wartości domyślnej",
+      "wymagalnoscPoLudzku": "nie ustawiaj — dawna nazwa, niczego nie włącza",
       "skutekBraku": "Nie tworzy klienta na podstawie samej globalnej deklaracji. Każda niepusta surowa wartość w proba (także whitespace) blokuje start niezależnie od aktywnego modułu; dynamiczne kanały mają własne prefiksy.",
+      "skutekBrakuPoLudzku": "Niczego nie włącza — kanały Allegro konfigurujesz przez OMS_KANALY. W trybie „proba” niepusta wartość blokuje start, żeby piaskownica nie dotknęła prawdziwego konta.",
       "walidacja": "Nie traktować deklaracji jak połączenia. ALLEGRO/WOO mogą też wystąpić jako konkretna instancja <P> dla P=ALLEGRO/WOO.",
       "sekret": true,
       "odczyty": [
         {
           "id": "AST-002",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -3408,7 +3576,7 @@
         {
           "id": "AST-003",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -3416,7 +3584,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/tryb.ts:17"
+        "src/core/tryb.ts:18"
       ],
       "deklaracja": {
         "path": "src/integracje/klucze.js",
@@ -3430,17 +3598,20 @@
       "nazwa": "ALLEGRO_CLIENT_SECRET",
       "wlasciciel": "faktury/wysylka; metadane allegro",
       "sekcja": "Deklaracje i zgodność",
+      "opis": "Dawna, globalna deklaracja sekretu Allegro — sama niczego nie włącza; w trybie „proba” musi być pusta.",
       "zakres": "guard_only",
       "wymagalnosc": "deklaracja; nie jest niezależną konfiguracją klienta",
       "domyslna": "brak wartości domyślnej",
+      "wymagalnoscPoLudzku": "nie ustawiaj — dawna nazwa, niczego nie włącza",
       "skutekBraku": "Nie tworzy klienta na podstawie samej globalnej deklaracji. Każda niepusta surowa wartość w proba (także whitespace) blokuje start niezależnie od aktywnego modułu; dynamiczne kanały mają własne prefiksy.",
+      "skutekBrakuPoLudzku": "Niczego nie włącza — kanały Allegro konfigurujesz przez OMS_KANALY. W trybie „proba” niepusta wartość blokuje start, żeby piaskownica nie dotknęła prawdziwego konta.",
       "walidacja": "Nie traktować deklaracji jak połączenia. ALLEGRO/WOO mogą też wystąpić jako konkretna instancja <P> dla P=ALLEGRO/WOO.",
       "sekret": true,
       "odczyty": [
         {
           "id": "AST-002",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -3448,7 +3619,7 @@
         {
           "id": "AST-003",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -3456,7 +3627,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/tryb.ts:17"
+        "src/core/tryb.ts:18"
       ],
       "deklaracja": {
         "path": "src/integracje/klucze.js",
@@ -3470,17 +3641,20 @@
       "nazwa": "WOO_CK",
       "wlasciciel": "integracje.woo; deklaracja",
       "sekcja": "Deklaracje i zgodność",
+      "opis": "Dawna, globalna deklaracja klucza WooCommerce — sama niczego nie włącza; w trybie „proba” musi być pusta.",
       "zakres": "guard_only",
       "wymagalnosc": "deklaracja; nie jest niezależną konfiguracją klienta",
       "domyslna": "brak wartości domyślnej",
+      "wymagalnoscPoLudzku": "nie ustawiaj — dawna nazwa, niczego nie włącza",
       "skutekBraku": "Nie tworzy klienta na podstawie samej globalnej deklaracji. Każda niepusta surowa wartość w proba (także whitespace) blokuje start niezależnie od aktywnego modułu; dynamiczne kanały mają własne prefiksy.",
+      "skutekBrakuPoLudzku": "Niczego nie włącza — sklepy konfigurujesz przez OMS_KANALY. W trybie „proba” niepusta wartość blokuje start, żeby piaskownica nie dotknęła prawdziwego sklepu.",
       "walidacja": "Nie traktować deklaracji jak połączenia. ALLEGRO/WOO mogą też wystąpić jako konkretna instancja <P> dla P=ALLEGRO/WOO.",
       "sekret": true,
       "odczyty": [
         {
           "id": "AST-002",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -3488,7 +3662,7 @@
         {
           "id": "AST-003",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -3496,7 +3670,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/tryb.ts:17"
+        "src/core/tryb.ts:18"
       ],
       "deklaracja": {
         "path": "src/integracje/klucze.js",
@@ -3510,17 +3684,20 @@
       "nazwa": "WOO_CS",
       "wlasciciel": "integracje.woo; deklaracja",
       "sekcja": "Deklaracje i zgodność",
+      "opis": "Dawna, globalna deklaracja sekretu WooCommerce — sama niczego nie włącza; w trybie „proba” musi być pusta.",
       "zakres": "guard_only",
       "wymagalnosc": "deklaracja; nie jest niezależną konfiguracją klienta",
       "domyslna": "brak wartości domyślnej",
+      "wymagalnoscPoLudzku": "nie ustawiaj — dawna nazwa, niczego nie włącza",
       "skutekBraku": "Nie tworzy klienta na podstawie samej globalnej deklaracji. Każda niepusta surowa wartość w proba (także whitespace) blokuje start niezależnie od aktywnego modułu; dynamiczne kanały mają własne prefiksy.",
+      "skutekBrakuPoLudzku": "Niczego nie włącza — sklepy konfigurujesz przez OMS_KANALY. W trybie „proba” niepusta wartość blokuje start, żeby piaskownica nie dotknęła prawdziwego sklepu.",
       "walidacja": "Nie traktować deklaracji jak połączenia. ALLEGRO/WOO mogą też wystąpić jako konkretna instancja <P> dla P=ALLEGRO/WOO.",
       "sekret": true,
       "odczyty": [
         {
           "id": "AST-002",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -3528,7 +3705,7 @@
         {
           "id": "AST-003",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -3536,7 +3713,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/tryb.ts:17"
+        "src/core/tryb.ts:18"
       ],
       "deklaracja": {
         "path": "src/integracje/klucze.js",
@@ -3550,17 +3727,20 @@
       "nazwa": "APILO_CREDENTIALS_PATH",
       "wlasciciel": "integracje.apilo; deklaracja",
       "sekcja": "Deklaracje i zgodność",
+      "opis": "Dawna deklaracja ścieżki do pliku z dostępem do Apilo — OMS jej nie używa do łączenia; w trybie „proba” musi być pusta.",
       "zakres": "guard_only",
       "wymagalnosc": "deklaracja; nie jest niezależną konfiguracją klienta",
       "domyslna": "brak wartości domyślnej",
+      "wymagalnoscPoLudzku": "nie ustawiaj — dawna nazwa, niczego nie włącza",
       "skutekBraku": "Nie tworzy klienta na podstawie samej globalnej deklaracji. Każda niepusta surowa wartość w proba (także whitespace) blokuje start niezależnie od aktywnego modułu; dynamiczne kanały mają własne prefiksy.",
+      "skutekBrakuPoLudzku": "Niczego nie włącza. W trybie „proba” niepusta wartość blokuje start, żeby piaskownica nie dotknęła prawdziwego konta Apilo.",
       "walidacja": "Nie traktować deklaracji jak połączenia. ALLEGRO/WOO mogą też wystąpić jako konkretna instancja <P> dla P=ALLEGRO/WOO.",
       "sekret": false,
       "odczyty": [
         {
           "id": "AST-002",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -3568,7 +3748,7 @@
         {
           "id": "AST-003",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -3576,7 +3756,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/tryb.ts:17"
+        "src/core/tryb.ts:18"
       ],
       "deklaracja": {
         "path": "src/integracje/klucze.js",
@@ -3590,17 +3770,19 @@
       "nazwa": "META_TOKEN",
       "wlasciciel": "marketing",
       "sekcja": "Deklaracje i zgodność",
+      "opis": "Token dostępu do Meta (Facebook/Instagram), z którego OMS czyta statystyki reklam — plikowe połączenie; sekret.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna integracja odczytu",
       "domyslna": "brak wartości domyślnej",
       "skutekBraku": "Brak historycznego klienta Meta; nowe połączenia pozostają dostępne z lokalnymi referencjami.",
+      "skutekBrakuPoLudzku": "Bez niego nie ma starszego połączenia z Meta z pliku. Nowe połączenia dodasz w panelu (Ustawienia → Integracje → Reklamy).",
       "walidacja": "Nie traktować deklaracji jak połączenia. ALLEGRO/WOO mogą też wystąpić jako konkretna instancja <P> dla P=ALLEGRO/WOO.",
       "sekret": true,
       "odczyty": [
         {
           "id": "AST-002",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -3608,7 +3790,7 @@
         {
           "id": "AST-003",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -3637,7 +3819,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/tryb.ts:17"
+        "src/core/tryb.ts:18"
       ],
       "deklaracja": {
         "path": "src/integracje/klucze.js",
@@ -3652,17 +3834,19 @@
       "nazwa": "GA4_KLUCZ",
       "wlasciciel": "marketing",
       "sekcja": "Deklaracje i zgodność",
+      "opis": "Ścieżka do pliku z kluczem konta usługowego Google, którym OMS czyta statystyki Google Analytics 4.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna integracja odczytu",
       "domyslna": "brak wartości domyślnej",
       "skutekBraku": "Brak historycznego klienta GA4; nowe połączenia pozostają dostępne z lokalnymi referencjami.",
+      "skutekBrakuPoLudzku": "Bez niej nie ma starszego połączenia z GA4 z pliku. Nowe połączenia dodasz w panelu (Ustawienia → Integracje → Reklamy).",
       "walidacja": "Nie traktować deklaracji jak połączenia. ALLEGRO/WOO mogą też wystąpić jako konkretna instancja <P> dla P=ALLEGRO/WOO.",
       "sekret": true,
       "odczyty": [
         {
           "id": "AST-002",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -3670,7 +3854,7 @@
         {
           "id": "AST-003",
           "path": "src/core/tryb.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -3692,7 +3876,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/tryb.ts:17"
+        "src/core/tryb.ts:18"
       ],
       "deklaracja": {
         "path": "src/integracje/klucze.js",
@@ -3707,10 +3891,13 @@
       "nazwa": "OMS_AUTH_USER",
       "wlasciciel": "testy / zgodność historyczna",
       "sekcja": "Środowisko narzędzi i testów",
+      "opis": "Dawna nazwa OMS_USER, rozumiana tylko przez testy automatyczne; w prawdziwej instalacji nic nie znaczy.",
       "zakres": "tooling",
       "wymagalnosc": "opcjonalna wyłącznie w adapterach testowych",
       "domyslna": "OMS_USER, jeśli obecne",
+      "wymagalnoscPoLudzku": "nie dotyczy instalacji — używają jej tylko testy automatyczne",
       "skutekBraku": "Alias tłumaczony wyłącznie przez pomocniki parytetu; modulWeb go nie czyta.",
+      "skutekBrakuPoLudzku": "Panel jej nie czyta — to alias używany wyłącznie w testach automatycznych.",
       "walidacja": "Brak produkcyjnego aliasu.",
       "sekret": false,
       "odczyty": [],
@@ -3727,10 +3914,13 @@
       "nazwa": "OMS_AUTH_PASS",
       "wlasciciel": "testy / zgodność historyczna",
       "sekcja": "Środowisko narzędzi i testów",
+      "opis": "Dawna nazwa OMS_PASS, rozumiana tylko przez testy automatyczne; w prawdziwej instalacji nic nie znaczy.",
       "zakres": "tooling",
       "wymagalnosc": "opcjonalna wyłącznie w adapterach testowych",
       "domyslna": "OMS_PASS, jeśli obecne",
+      "wymagalnoscPoLudzku": "nie dotyczy instalacji — używają jej tylko testy automatyczne",
       "skutekBraku": "Alias tłumaczony wyłącznie przez pomocniki parytetu; modulWeb go nie czyta.",
+      "skutekBrakuPoLudzku": "Panel jej nie czyta — to alias używany wyłącznie w testach automatycznych.",
       "walidacja": "Brak produkcyjnego aliasu.",
       "sekret": true,
       "odczyty": [],
@@ -3747,10 +3937,13 @@
       "nazwa": "ALLEGRO_USER_AGENT",
       "wlasciciel": "testy / zgodność historyczna",
       "sekcja": "Środowisko narzędzi i testów",
+      "opis": "Dawna nazwa nagłówka identyfikującego OMS w Allegro; używana tylko w testach — w instalacji ustaw <P>_USER_AGENT.",
       "zakres": "tooling",
       "wymagalnosc": "opcjonalna wyłącznie w adapterach testowych",
       "domyslna": "brak wartości domyślnej",
+      "wymagalnoscPoLudzku": "nie dotyczy instalacji — używają jej tylko testy automatyczne",
       "skutekBraku": "Wyłącznie pomocnik historycznego bootstrapu używa jako fallback dla <P>_USER_AGENT.",
+      "skutekBrakuPoLudzku": "Panel jej nie czyta — testy używają jej jako zapasu dla <P>_USER_AGENT.",
       "walidacja": "Brak produkcyjnego aliasu.",
       "sekret": false,
       "odczyty": [],
@@ -3766,9 +3959,11 @@
       "nazwa": "TZ",
       "wlasciciel": "narzędzia / testy / kontener",
       "sekcja": "Środowisko narzędzi i testów",
+      "opis": "Systemowa strefa czasowa procesu; daty zamówień OMS liczy w strefie Europe/Warsaw niezależnie od niej (w Dockerze UTC).",
       "zakres": "system",
       "wymagalnosc": "opcjonalna",
       "domyslna": "UTC w Dockerfile; poza kontenerem zależy od środowiska",
+      "domyslnaPoLudzku": "w Dockerze UTC",
       "skutekBraku": "Systemowa strefa dat Node; okna pobrania domeny mają jawne Europe/Warsaw. Testy tymczasowo zmieniają TZ.",
       "walidacja": "Poza konfiguracją produktu; nie dodawać do walidacji obowiązkowych kluczy instalacji.",
       "odczyty": [],
@@ -3785,10 +3980,13 @@
       "nazwa": "PATH",
       "wlasciciel": "narzędzia / testy",
       "sekcja": "Środowisko narzędzi i testów",
+      "opis": "Zmienna systemu (lista katalogów z programami); testy automatyczne używają jej do uruchamiania narzędzi — nie jest ustawieniem OMS.",
       "zakres": "tooling",
       "wymagalnosc": "opcjonalna",
       "domyslna": "dziedziczona ze środowiska procesu",
+      "domyslnaPoLudzku": "taka jak w systemie",
       "skutekBraku": "Używana przy budowaniu procesu testowego CLI i wyszukiwaniu narzędzi.",
+      "skutekBrakuPoLudzku": "To zmienna systemu, nie ustawienie OMS; korzystają z niej testy automatyczne przy uruchamianiu narzędzi.",
       "walidacja": "Poza konfiguracją produktu; nie dodawać do walidacji obowiązkowych kluczy instalacji.",
       "odczyty": [],
       "wywolaniaPosrednie": [],
@@ -3803,10 +4001,13 @@
       "nazwa": "SystemRoot",
       "wlasciciel": "narzędzia / testy",
       "sekcja": "Środowisko narzędzi i testów",
+      "opis": "Zmienna systemu Windows przekazywana testom automatycznym; na Linuksie i w Dockerze nie ma znaczenia.",
       "zakres": "tooling",
       "wymagalnosc": "opcjonalna",
       "domyslna": "dziedziczona na Windows",
+      "domyslnaPoLudzku": "taka jak w systemie Windows",
       "skutekBraku": "Przekazywana do procesu testowego CLI; brak może uniemożliwić uruchomienie subprocessów na Windows.",
+      "skutekBrakuPoLudzku": "To zmienna Windows; bez niej testy automatyczne mogą nie uruchomić procesów pomocniczych na Windows.",
       "walidacja": "Poza konfiguracją produktu; nie dodawać do walidacji obowiązkowych kluczy instalacji.",
       "odczyty": [],
       "wywolaniaPosrednie": [],
@@ -3821,9 +4022,11 @@
       "nazwa": "LOCALAPPDATA",
       "wlasciciel": "narzędzia / testy",
       "sekcja": "Środowisko narzędzi i testów",
+      "opis": "Katalog danych użytkownika Windows; testy PDF szukają w nim lokalnej kopii narzędzia Poppler do odczytu PDF-ów.",
       "zakres": "tooling",
       "wymagalnosc": "opcjonalna",
       "domyslna": "pusty tekst dla konstruowanej ścieżki",
+      "domyslnaPoLudzku": "brak",
       "skutekBraku": "Testy PDF próbują najpierw PATH, potem lokalny Poppler; bez obu część kontroli tekstu PDF zostaje pominięta.",
       "walidacja": "Poza konfiguracją produktu; nie dodawać do walidacji obowiązkowych kluczy instalacji.",
       "odczyty": [],
@@ -3853,10 +4056,13 @@
       "nazwa": "TMPDIR",
       "wlasciciel": "narzędzia / testy",
       "sekcja": "Środowisko narzędzi i testów",
+      "opis": "Katalog tymczasowy systemu; testy automatyczne przełączają go na własny katalog przebiegu — nie jest ustawieniem OMS.",
       "zakres": "tooling",
       "wymagalnosc": "opcjonalna",
       "domyslna": "os.tmpdir(), następnie własny katalog przebiegu",
+      "domyslnaPoLudzku": "katalog tymczasowy systemu",
       "skutekBraku": "Odczyt i nadpisanie tylko w harnessie testowym; przy braku wraca do wyboru katalogu przez Node/OS.",
+      "skutekBrakuPoLudzku": "To zmienna systemu; zmienia ją tylko środowisko testów, a panel jej nie ustawia.",
       "walidacja": "Poza konfiguracją produktu; nie dodawać do walidacji obowiązkowych kluczy instalacji.",
       "odczyty": [],
       "wywolaniaPosrednie": [],
@@ -3875,10 +4081,13 @@
       "nazwa": "TEMP",
       "wlasciciel": "narzędzia / testy",
       "sekcja": "Środowisko narzędzi i testów",
+      "opis": "Katalog tymczasowy systemu Windows; testy automatyczne przełączają go na własny katalog przebiegu — nie jest ustawieniem OMS.",
       "zakres": "tooling",
       "wymagalnosc": "opcjonalna",
       "domyslna": "os.tmpdir(), następnie własny katalog przebiegu",
+      "domyslnaPoLudzku": "katalog tymczasowy systemu",
       "skutekBraku": "Odczyt i nadpisanie tylko w harnessie testowym; przy braku wraca do wyboru katalogu przez Node/OS.",
+      "skutekBrakuPoLudzku": "To zmienna systemu; zmienia ją tylko środowisko testów, a panel jej nie ustawia.",
       "walidacja": "Poza konfiguracją produktu; nie dodawać do walidacji obowiązkowych kluczy instalacji.",
       "odczyty": [],
       "wywolaniaPosrednie": [],
@@ -3897,10 +4106,13 @@
       "nazwa": "TMP",
       "wlasciciel": "narzędzia / testy",
       "sekcja": "Środowisko narzędzi i testów",
+      "opis": "Katalog tymczasowy systemu Windows (druga nazwa); testy automatyczne przełączają go na własny — nie jest ustawieniem OMS.",
       "zakres": "tooling",
       "wymagalnosc": "opcjonalna",
       "domyslna": "os.tmpdir(), następnie własny katalog przebiegu",
+      "domyslnaPoLudzku": "katalog tymczasowy systemu",
       "skutekBraku": "Odczyt i nadpisanie tylko w harnessie testowym; przy braku wraca do wyboru katalogu przez Node/OS.",
+      "skutekBrakuPoLudzku": "To zmienna systemu; zmienia ją tylko środowisko testów, a panel jej nie ustawia.",
       "walidacja": "Poza konfiguracją produktu; nie dodawać do walidacji obowiązkowych kluczy instalacji.",
       "odczyty": [],
       "wywolaniaPosrednie": [],
@@ -3920,10 +4132,13 @@
       "nazwa": "OMS_TEMP_PROBE_MODE",
       "wlasciciel": "narzędzia / testy",
       "sekcja": "Środowisko narzędzi i testów",
+      "opis": "Przełącznik używany wyłącznie w testach izolacji katalogu tymczasowego; w instalacji nic nie znaczy.",
       "zakres": "tooling",
       "wymagalnosc": "opcjonalna",
       "domyslna": "zwykła sonda",
+      "domyslnaPoLudzku": "nie dotyczy instalacji (tylko testy)",
       "skutekBraku": "Bez wartości baza nie jest importowana do fixture pomiaru TEMP.",
+      "skutekBrakuPoLudzku": "Dotyczy tylko testów: bez wartości test pomiaru katalogu tymczasowego nie ładuje bazy.",
       "walidacja": "Poza konfiguracją produktu; nie dodawać do walidacji obowiązkowych kluczy instalacji.",
       "odczyty": [],
       "wywolaniaPosrednie": [],
@@ -3938,10 +4153,13 @@
       "nazwa": "OMS_TEMP_WORKER_REPORT",
       "wlasciciel": "narzędzia / testy",
       "sekcja": "Środowisko narzędzi i testów",
+      "opis": "Ścieżka pliku raportu testu izolacji katalogu tymczasowego; używana wyłącznie w testach.",
       "zakres": "tooling",
       "wymagalnosc": "wymagana tylko w danej sondzie",
       "domyslna": "brak wartości domyślnej",
+      "wymagalnoscPoLudzku": "nie dotyczy instalacji — używają jej tylko testy automatyczne",
       "skutekBraku": "Bez ścieżki writeFileSync w fixture TEMP odmawia zapisu raportu.",
+      "skutekBrakuPoLudzku": "Dotyczy tylko testów: bez niej test nie zapisze swojego raportu i odmówi pracy.",
       "walidacja": "Poza konfiguracją produktu; nie dodawać do walidacji obowiązkowych kluczy instalacji.",
       "odczyty": [],
       "wywolaniaPosrednie": [],
@@ -3956,10 +4174,13 @@
       "nazwa": "OMS_TEST_API_SPY",
       "wlasciciel": "narzędzia / testy",
       "sekcja": "Środowisko narzędzi i testów",
+      "opis": "Ścieżka pliku z licznikiem zapytań do zewnętrznych usług, używana wyłącznie w testach narzędzi wiersza poleceń.",
       "zakres": "tooling",
       "wymagalnosc": "wymagana tylko w danej sondzie",
       "domyslna": "brak wartości domyślnej",
+      "wymagalnoscPoLudzku": "nie dotyczy instalacji — używają jej tylko testy automatyczne",
       "skutekBraku": "Bez ścieżki spy procesu CLI odmawia zapisu licznika podczas exit.",
+      "skutekBrakuPoLudzku": "Dotyczy tylko testów: bez niej testowany proces nie zapisze licznika zapytań.",
       "walidacja": "Poza konfiguracją produktu; nie dodawać do walidacji obowiązkowych kluczy instalacji.",
       "odczyty": [],
       "wywolaniaPosrednie": [],
@@ -3974,10 +4195,12 @@
       "nazwa": "OMS_KOPIE_KATALOG",
       "wlasciciel": "zdrowie",
       "sekcja": "Instalacja klienta (Docker)",
+      "opis": "Katalog z kopiami bazy, który OMS nadzoruje; gdy najnowsza kopia ma 48 godzin lub więcej, /health zgłasza alarm.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "brak (nadzór kopii wyłączony)",
-      "skutekBraku": "Brak nadzoru kopii w /health — tak działa produkcja właściciela (kopie pilnuje monitoring). Compose klienta ustawia /opt/oms/backups.",
+      "skutekBraku": "Brak nadzoru kopii w /health. Compose klienta ustawia /opt/oms/backups.",
+      "skutekBrakuPoLudzku": "Bez niej OMS nie sprawdza w /health, czy kopie bazy powstają. Instalacja Docker ustawia tu /opt/oms/backups.",
       "walidacja": "trim; niepusty włącza nadzór: alarm, gdy najnowsza oms-RRRR-MM-DD.sqlite ma ≥ 48 h, brak kopii albo katalog niedostępny.",
       "decyzja": "PRZ-059",
       "odczyty": [
@@ -4002,10 +4225,12 @@
       "nazwa": "OMS_KOPIA_ZEWNETRZNA",
       "wlasciciel": "zdrowie",
       "sekcja": "Instalacja klienta (Docker)",
+      "opis": "Katalog nośnika poza dyskiem serwera (np. pendrive), na który trafiają kopie bazy; OMS sprawdza, czy nośnik jest podłączony.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "brak (uwaga w /health, gdy nadzór włączony)",
       "skutekBraku": "Uwaga „kopia poza dyskiem: nieustawiona” (tylko przy włączonym OMS_KOPIE_KATALOG). Ten sam plik kopia.env czyta kontener oms-kopia.",
+      "skutekBrakuPoLudzku": "W /health pojawia się uwaga „kopia poza dyskiem: nieustawiona” (tylko przy włączonym OMS_KOPIE_KATALOG) — awaria dysku zabierze bazę razem z kopiami.",
       "walidacja": "trim; ścieżka katalogu nośnika w kontenerze; bez pliku .oms-cel-kopii alarm „brak nośnika”, kopia ≥ 48 h albo brak kopii — alarm.",
       "decyzja": "PRZ-059",
       "odczyty": [
@@ -4030,10 +4255,12 @@
       "nazwa": "OMS_CENNIKI",
       "wlasciciel": "zamowienia",
       "sekcja": "Zamówienia",
+      "opis": "Lista cenników dla „Dodaj z magazynu” w formacie JSON ({kanal, nazwa}); domyślnie cennikami są sklepy WooCommerce z OMS_KANALY.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "brak (cennikami są sklepy WooCommerce z OMS_KANALY, w ich kolejności, pod etykietą; pierwszy = domyślny)",
       "skutekBraku": "„Dodaj z magazynu” liczy ceny ze sklepów Woo z OMS_KANALY; bez sklepów Woo nie ma cennika i dopisanie z magazynu odmawia z komunikatem. Allegro nigdy nie jest cennikiem.",
+      "skutekBrakuPoLudzku": "„Dodaj z magazynu” liczy ceny ze sklepów WooCommerce z OMS_KANALY. Bez takich sklepów nie ma cennika i dopisanie z magazynu odmawia z komunikatem.",
       "walidacja": "JSON niepusta lista {\"kanal\":\"klucz\",\"nazwa\":\"tekst\"}; kanal /^[a-z][a-z0-9_-]*$/ bez powtórzeń, nazwa niepusta (trim); kanał zdefiniowany w OMS_KANALY jako Allegro odmawia startu tras zamówień. Pierwszy wpis = cennik domyślny.",
       "decyzja": "PRZ-060",
       "odczyty": [
@@ -4058,9 +4285,11 @@
       "nazwa": "OMS_LOGO_PLIK",
       "wlasciciel": "web",
       "sekcja": "Wygląd panelu",
+      "opis": "Ścieżka do pliku PNG z logo firmy, pokazywanego w belce panelu; domyślnie neutralny znak z paczki.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "brak (neutralny znak z paczki, src/public/favicon-192.png)",
+      "domyslnaPoLudzku": "brak (neutralny znak OMS z paczki)",
       "skutekBraku": "Belka panelu pokazuje neutralny znak z paczki.",
       "walidacja": "trim; niepusta ścieżka do pliku PNG czytanego raz przy starcie i podawanego pod /public/favicon-192.png; brak pliku albo nie-PNG odmawia startu.",
       "decyzja": "PRZ-060",
@@ -4086,6 +4315,7 @@
       "nazwa": "OMS_LOGO_ALT",
       "wlasciciel": "web",
       "sekcja": "Wygląd panelu",
+      "opis": "Opis logo dla czytników ekranu; pusty oznacza, że logo to ozdoba, bo obok stoi napis.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "pusty tekst (znak jako ozdoba)",
@@ -4114,10 +4344,12 @@
       "nazwa": "OMS_RAPORTY_PODLOGA_KOSZTOW",
       "wlasciciel": "raporty",
       "sekcja": "Finanse",
+      "opis": "Miesiąc RRRR-MM, od którego OMS zna koszty firmy; rachunek zarządczy w zakładce FINANSE liczy się tylko od niego.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
       "skutekBraku": "Preflight przechodzi; GET /finanse odmawia rachunku z powodu nieustawionej podłogi kosztów. Dane miesięczne działają. Przed wydaniem ustawić początek znanej historii kosztów instalacji.",
+      "skutekBrakuPoLudzku": "Bez niej zakładka FINANSE odmawia pokazania rachunku, bo nie wie, od kiedy znane są koszty; dane miesięczne działają. Ustaw początek znanej historii kosztów.",
       "walidacja": "trim; ścisły miesiąc RRRR-MM, 01–12.",
       "decyzja": "PRZ-027F — decyzja Tomka07.10",
       "odczyty": [
@@ -4140,10 +4372,12 @@
       "nazwa": "META_KONTA",
       "wlasciciel": "marketing",
       "sekcja": "Marketing",
+      "opis": "Identyfikatory kont reklamowych Meta w formacie act_<numer>, po przecinku; wymagane razem z META_TOKEN.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "brak wartości domyślnej",
       "skutekBraku": "Lista act_<id>, wymagana z META_TOKEN; zachować na produkcji",
+      "skutekBrakuPoLudzku": "Bez niej plikowe połączenie z Meta nie powstaje, a podanie samego META_TOKEN bez listy kont zatrzymuje start.",
       "walidacja": "Lista act_<id>, wymagana z META_TOKEN; zachować na produkcji",
       "sekret": false,
       "odczyty": [
@@ -4179,10 +4413,14 @@
       "nazwa": "OMS_REKLAMY_SEKRETY_DIR",
       "wlasciciel": "marketing",
       "sekcja": "Marketing",
+      "opis": "Katalog na serwerze, w którym OMS trzyma klucze i tokeny reklam wpisane w panelu — poza bazą zamówień.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "/data-oms/reklamy-sekrety",
+      "wymagalnoscPoLudzku": "opcjonalna; w instalacji Docker ustawia ją plik compose i nie zmienisz jej w oms.env",
+      "domyslnaPoLudzku": "w instalacji Docker katalog leży w katalogu danych: /opt/oms/data/reklamy-sekrety (ustawia go plik compose)",
       "skutekBraku": "Katalog lokalnego magazynu sekretów reklam",
+      "skutekBrakuPoLudzku": "Poza Dockerem OMS używa katalogu /data-oms/reklamy-sekrety. W instalacji Docker katalog jest zawsze w /opt/oms/data/reklamy-sekrety, więc klucze reklam przetrwają aktualizację.",
       "walidacja": "Katalog lokalnego magazynu sekretów reklam",
       "sekret": false,
       "odczyty": [
@@ -4204,17 +4442,20 @@
       "nazwa": "OMS_ADRES_PANELU",
       "wlasciciel": "ustawienia",
       "sekcja": "Konta i dostęp",
+      "opis": "Publiczny adres panelu (http lub https, host i port, bez ścieżki), który trafia w linki zaproszeń i resetów hasła w mailach.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
-      "domyslna": "brak (linki do hasła tylko przez „Pokaż link” z adresu, pod którym administrator ogląda panel)",
-      "skutekBraku": "Zaproszenia i resety hasła nie są wysyłane mailem; „Pokaż link” działa. Adres w mailu nigdy nie pochodzi z nagłówka Host ani X-Forwarded-*.",
+      "domyslna": "brak — linki prowadzą pod adres, z którego administrator korzysta przy wysyłce (PRZ-094.10)",
+      "domyslnaPoLudzku": "brak — linki prowadzą pod adres, z którego administrator korzysta przy wysyłce",
+      "skutekBraku": "PRZ-094.10: bez zmiennej i bez zapisu z ekranu linki w zaproszeniach i resetach hasła (mail i „Pokaż link”) prowadzą pod adres, z którego administrator właśnie korzysta (protokół i host żądania, za zaufanym proxy z X-Forwarded-*), po tej samej walidacji co zmienna — adres, który jej nie przechodzi, = wysyłka mailem odmawia. Adres z żądania jest używany wyłącznie w trasach zalogowanego administratora (/ustawienia/konta/…); po wysyłce z adresem domyślnym ekran mówi, dokąd prowadzi link. Zmienna jest potrzebna, gdy pracownicy czytają pocztę poza siecią, z której admin otwiera panel. PRZ-094.04: odpowiednik w panelu — Ustawienia → Integracje → Poczta wychodząca → Adres panelu w mailach (wiersz „adres_panelu” w konfiguracja_integracji; ta sama walidacja co zmienna: http/https, host i port, bez ścieżki, zapytania i loginu). Gdy OMS_ADRES_PANELU stoi w pliku, wygrywa, a ekran tylko go pokazuje (zapis = 409). Zmiana z ekranu działa od następnego maila, bez restartu.",
+      "skutekBrakuPoLudzku": "Linki w zaproszeniach i resetach hasła prowadzą pod adres, z którego administrator je wysyła. Ustaw zmienną, gdy pracownicy czytają pocztę poza Twoją siecią. Adres można wpisać też w panelu, ale ten z pliku wygrywa.",
       "walidacja": "Dosłownie pusty tekst oznacza brak ustawienia. Niepusty URL musi być absolutnym HTTP(S) z hostem, bez otaczających białych znaków, bez ścieżki poza /, zapytania, fragmentu i danych logowania; błąd zawiera tylko nazwę.",
       "decyzja": "PRZ-069",
       "odczyty": [
         {
           "id": "AST-133",
           "path": "src/moduly/ustawienia/modul.ts",
-          "line": 26,
+          "line": 29,
           "expression": "env.OMS_ADRES_PANELU",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4222,7 +4463,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/ustawienia/modul.ts:26"
+        "src/moduly/ustawienia/modul.ts:29"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -4232,6 +4473,7 @@
       "nazwa": "OMS_DEMO_LOGIN",
       "wlasciciel": "rdzen / web / ustawienia",
       "sekcja": "Rdzeń i uruchomienie",
+      "opis": "Login publicznego konta gościa w demo; wolno go ustawić tylko w trybie „proba” — na produkcji blokuje start.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "",
@@ -4260,6 +4502,7 @@
       "nazwa": "OMS_DEMO_HASLO",
       "wlasciciel": "rdzen / web / ustawienia",
       "sekcja": "Rdzeń i uruchomienie",
+      "opis": "Hasło konta gościa w demo; jest jawne na ekranie logowania, więc tylko do demo, nigdy do prawdziwej firmy.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "",
@@ -4288,10 +4531,12 @@
       "nazwa": "DEMO_RESET_CO_MIN",
       "wlasciciel": "rdzen / demo publiczne",
       "sekcja": "Rdzeń i uruchomienie",
+      "opis": "Tylko demo publiczne: co ile minut dane wracają do stanu początkowego (od 10 do 1440, liczba dzieląca dobę).",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "60",
       "skutekBraku": "Reset demo co 60 minut (MINUTY_RESETU_DOMYSLNIE w src/core/demo.ts), ekran logowania mówi „co godzinę”.",
+      "skutekBrakuPoLudzku": "Demo resetuje się co 60 minut, a ekran logowania mówi „co godzinę”.",
       "walidacja": "Liczba minut od 10 do 1440, dzieląca dobę (sprawdzMinutyResetu) — inaczej odmowa startu demo. Czyta ją harmonogram resetu (deploy/demo/start.mjs) i napis na ekranie logowania (kontoDemo) — jedno źródło.",
       "decyzja": "PRZ-079 (reset co godzinę), PRZ-082 (napis z tej samej liczby)",
       "odczyty": [
@@ -4316,6 +4561,7 @@
       "nazwa": "DEMO_RESET_PLANOWY",
       "wlasciciel": "rdzen / demo publiczne",
       "sekcja": "Rdzeń i uruchomienie",
+      "opis": "Tylko demo publiczne: termin najbliższego resetu (czas UTC); ustawia go mechanizm demo, nie wpisujesz go ręcznie.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "",
@@ -4344,10 +4590,13 @@
       "nazwa": "OMS_KANAL_INDYWIDUALNY",
       "wlasciciel": "kanaly / klasyfikacja raportowa; konsumenci raporty, zamowienia (filtr listy), api-panelu",
       "sekcja": "Historia i WDT",
+      "opis": "1 albo 0: czy OMS przyjmuje zamówienia indywidualne z zewnętrznego panelu i pokazuje kanał „Indywidualne”.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "pusta = jak historia: włączony, gdy OMS_HISTORIA_KLASYFIKACJA ma niepuste prefiksyIndywidualne",
+      "domyslnaPoLudzku": "na czystej instalacji wyłączony; włączony tylko wtedy, gdy historia z Apilo zawiera zamówienia indywidualne",
       "skutekBraku": "Czysta instalacja bez kanału INDYWIDUALNE: brak granicy raportu, brak „Indywidualne” w filtrze listy, POST /api/zamowienia-z-karty → 503. Produkcja z prefiksami indywidualnymi działa jak przed PRZ-089.",
+      "skutekBrakuPoLudzku": "Na czystej instalacji kanał „Indywidualne” jest wyłączony: nie ma go w filtrze listy i w raportach, a zewnętrzny panel zamówień dostaje odmowę. Instalacja z prefiksami indywidualnymi w historii działa jak dotąd.",
       "walidacja": "1 albo 0 (po trim); inna wartość odmawia startu. 0 przy niepustych prefiksyIndywidualne odmawia startu (sprzeczność).",
       "decyzja": "PRZ-089 — decyzja właściciela 16.10.2026: GDD i INDYWIDUALNE warunkowo",
       "odczyty": [
@@ -4372,7 +4621,7 @@
   "mapowaniaDynamiczne": [
     {
       "path": "src/core/tryb.ts",
-      "line": 17,
+      "line": 18,
       "expression": "env[k]",
       "names": [
         "ALLEGRO_CLIENT_ID",
@@ -4399,7 +4648,7 @@
     },
     {
       "path": "src/core/tryb.ts",
-      "line": 17,
+      "line": 18,
       "expression": "env[k]",
       "names": [
         "ALLEGRO_CLIENT_ID",
@@ -4472,7 +4721,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 24,
+      "line": 25,
       "expression": "env[nazwa]",
       "names": [
         "<P>_USER_AGENT"
@@ -4481,7 +4730,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 29,
+      "line": 30,
       "expression": "env[nazwa]",
       "names": [
         "<P>_OD"
@@ -4490,7 +4739,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 103,
+      "line": 104,
       "expression": "env[n]",
       "names": [
         "<P>_MAPOWANIE",
@@ -4504,7 +4753,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 103,
+      "line": 104,
       "expression": "env[n]",
       "names": [
         "<P>_MAPOWANIE",
@@ -4518,7 +4767,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 108,
+      "line": 109,
       "expression": "env[`${p}_URL`]",
       "names": [
         "<P>_URL"
@@ -4527,7 +4776,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 111,
+      "line": 112,
       "expression": "env[`${p}_API`]",
       "names": [
         "<P>_API"
@@ -4536,7 +4785,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 112,
+      "line": 113,
       "expression": "env[`${p}_AUTH`]",
       "names": [
         "<P>_AUTH"
@@ -4545,16 +4794,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 116,
-      "expression": "env[`${p}_OD`]",
-      "names": [
-        "<P>_OD"
-      ],
-      "reason": "Zamknięta mapa dynamicznego czytnika, przypięta pełnym SHA LF pliku."
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 116,
+      "line": 117,
       "expression": "env[`${p}_OD`]",
       "names": [
         "<P>_OD"
@@ -4564,6 +4804,15 @@
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
       "line": 117,
+      "expression": "env[`${p}_OD`]",
+      "names": [
+        "<P>_OD"
+      ],
+      "reason": "Zamknięta mapa dynamicznego czytnika, przypięta pełnym SHA LF pliku."
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 118,
       "expression": "env[`${p}_USER_AGENT`]",
       "names": [
         "<P>_USER_AGENT"
@@ -4572,7 +4821,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 117,
+      "line": 118,
       "expression": "env[`${p}_USER_AGENT`]",
       "names": [
         "<P>_USER_AGENT"
@@ -4581,7 +4830,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 125,
+      "line": 126,
       "expression": "env[`${p}_CK`]",
       "names": [
         "<P>_CK"
@@ -4590,7 +4839,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 125,
+      "line": 126,
       "expression": "env[`${p}_CS`]",
       "names": [
         "<P>_CS"
@@ -4599,7 +4848,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 128,
+      "line": 129,
       "expression": "env[`${p}_HISTORIA_KONTO_APILO`]",
       "names": [
         "<P>_HISTORIA_KONTO_APILO"
@@ -4608,7 +4857,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 130,
+      "line": 131,
       "expression": "env[`${p}_CLIENT_ID`]",
       "names": [
         "<P>_CLIENT_ID"
@@ -4617,7 +4866,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 130,
+      "line": 131,
       "expression": "env[`${p}_CLIENT_SECRET`]",
       "names": [
         "<P>_CLIENT_SECRET"
@@ -4626,7 +4875,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 132,
+      "line": 133,
       "expression": "env[`${p}_API`]",
       "names": [
         "<P>_API"
@@ -4635,7 +4884,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 132,
+      "line": 133,
       "expression": "env[`${p}_AUTH`]",
       "names": [
         "<P>_AUTH"
@@ -4674,7 +4923,7 @@
     },
     {
       "path": "src/moduly/wysylka/modul.ts",
-      "line": 52,
+      "line": 54,
       "expression": "env[klucz]",
       "names": [
         "OMS_PRZESYLKI_ODSTEP_MS",
@@ -6527,48 +6776,6 @@
   ],
   "przekazaniaEnv": [
     {
-      "path": "src/core/tryb.ts",
-      "line": 12,
-      "expression": "env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(env)"
-    },
-    {
-      "path": "src/core/aplikacja.ts",
-      "line": 19,
-      "expression": "env",
-      "callee": "zaufaneProxy",
-      "call": "zaufaneProxy(env)"
-    },
-    {
-      "path": "src/core/aplikacja.ts",
-      "line": 22,
-      "expression": "env",
-      "callee": "sprawdzTrybProby",
-      "call": "sprawdzTrybProby(env, [...new Set(kolejnosc.flatMap((m) => m.kluczeIntegracji ?? []))])"
-    },
-    {
-      "path": "src/core/aplikacja.ts",
-      "line": 26,
-      "expression": "env",
-      "callee": "m.konfiguracja",
-      "call": "m.konfiguracja(env)"
-    },
-    {
-      "path": "src/core/aplikacja.ts",
-      "line": 35,
-      "expression": "env",
-      "callee": "przygotujModuly",
-      "call": "przygotujModuly(moduly, env)"
-    },
-    {
-      "path": "src/core/aplikacja.ts",
-      "line": 48,
-      "expression": "o.env",
-      "callee": "przygotujModuly",
-      "call": "przygotujModuly(o.moduly, o.env)"
-    },
-    {
       "path": "src/moduly/kanaly/historia.ts",
       "line": 10,
       "expression": "env",
@@ -6602,27 +6809,6 @@
       "expression": "env",
       "callee": "wczytajSprzedawce",
       "call": "wczytajSprzedawce(env)"
-    },
-    {
-      "path": "src/main.ts",
-      "line": 9,
-      "expression": "env",
-      "callee": "modulyDla",
-      "call": "modulyDla(env)"
-    },
-    {
-      "path": "src/main.ts",
-      "line": 10,
-      "expression": "env",
-      "callee": "sprawdzKonfiguracjeModulow",
-      "call": "sprawdzKonfiguracjeModulow(moduly, env)"
-    },
-    {
-      "path": "src/main.ts",
-      "line": 27,
-      "expression": "process.env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(process.env)"
     },
     {
       "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
@@ -6821,55 +7007,6 @@
       "call": "konfiguracjaZamowien(env)"
     },
     {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 102,
-      "expression": "env",
-      "callee": "brakujaceKluczeKanalu",
-      "call": "brakujaceKluczeKanalu(d, env)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 116,
-      "expression": "env",
-      "callee": "parsujDateOd",
-      "call": "parsujDateOd(env, `${p}_OD`)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 118,
-      "expression": "env",
-      "callee": "parsujUserAgentAllegro",
-      "call": "parsujUserAgentAllegro(env, `${p}_USER_AGENT`)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 128,
-      "expression": "env",
-      "callee": "parsujDateOd",
-      "call": "parsujDateOd(env, `${p}_OD`)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 128,
-      "expression": "env",
-      "callee": "konfiguracjaHistorii",
-      "call": "konfiguracjaHistorii(env, klucz, p)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 133,
-      "expression": "env",
-      "callee": "parsujUserAgentAllegro",
-      "call": "parsujUserAgentAllegro(env, `${p}_USER_AGENT`)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 133,
-      "expression": "env",
-      "callee": "parsujDateOd",
-      "call": "parsujDateOd(env, `${p}_OD`, true)"
-    },
-    {
       "path": "src/moduly/wysylka/kurierzy.ts",
       "line": 23,
       "expression": "env",
@@ -6962,52 +7099,164 @@
     },
     {
       "path": "src/moduly/wysylka/modul.ts",
-      "line": 63,
+      "line": 65,
       "expression": "env",
       "callee": "wczytajKurierow",
       "call": "wczytajKurierow(env)"
     },
     {
       "path": "src/moduly/wysylka/modul.ts",
-      "line": 68,
+      "line": 70,
       "expression": "env",
       "callee": "efektywnyTryb",
       "call": "efektywnyTryb(env)"
     },
     {
       "path": "src/moduly/wysylka/modul.ts",
-      "line": 69,
+      "line": 71,
       "expression": "env",
       "callee": "odstep",
       "call": "odstep(env, 'OMS_PRZESYLKI_ODSTEP_MS', 3600000)"
     },
     {
       "path": "src/moduly/wysylka/modul.ts",
-      "line": 70,
+      "line": 72,
       "expression": "env",
       "callee": "odstep",
       "call": "odstep(env, 'OMS_PODJAZDY_ODSTEP_MS', 600000)"
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "line": 42,
+      "line": 43,
       "expression": "env",
       "callee": "wczytajSprzedawce",
       "call": "wczytajSprzedawce(env)"
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "line": 51,
+      "line": 52,
       "expression": "env",
       "callee": "adresFirmyZEnv",
       "call": "adresFirmyZEnv(env)"
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "line": 59,
+      "line": 60,
       "expression": "env",
       "callee": "efektywnyTryb",
       "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/core/tryb.ts",
+      "line": 13,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/core/aplikacja.ts",
+      "line": 20,
+      "expression": "env",
+      "callee": "zaufaneProxy",
+      "call": "zaufaneProxy(env)"
+    },
+    {
+      "path": "src/core/aplikacja.ts",
+      "line": 23,
+      "expression": "env",
+      "callee": "sprawdzTrybProby",
+      "call": "sprawdzTrybProby(env, [...new Set(kolejnosc.flatMap((m) => m.kluczeIntegracji ?? []))])"
+    },
+    {
+      "path": "src/core/aplikacja.ts",
+      "line": 30,
+      "expression": "env",
+      "callee": "m.konfiguracja",
+      "call": "m.konfiguracja(env)"
+    },
+    {
+      "path": "src/core/aplikacja.ts",
+      "line": 50,
+      "expression": "env",
+      "callee": "przygotujModuly",
+      "call": "przygotujModuly(moduly, env)"
+    },
+    {
+      "path": "src/core/aplikacja.ts",
+      "line": 63,
+      "expression": "o.env",
+      "callee": "przygotujModuly",
+      "call": "przygotujModuly(o.moduly, o.env)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 103,
+      "expression": "env",
+      "callee": "brakujaceKluczeKanalu",
+      "call": "brakujaceKluczeKanalu(d, env)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 117,
+      "expression": "env",
+      "callee": "parsujDateOd",
+      "call": "parsujDateOd(env, `${p}_OD`)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 119,
+      "expression": "env",
+      "callee": "parsujUserAgentAllegro",
+      "call": "parsujUserAgentAllegro(env, `${p}_USER_AGENT`)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 129,
+      "expression": "env",
+      "callee": "parsujDateOd",
+      "call": "parsujDateOd(env, `${p}_OD`)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 129,
+      "expression": "env",
+      "callee": "konfiguracjaHistorii",
+      "call": "konfiguracjaHistorii(env, klucz, p)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 134,
+      "expression": "env",
+      "callee": "parsujUserAgentAllegro",
+      "call": "parsujUserAgentAllegro(env, `${p}_USER_AGENT`)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 134,
+      "expression": "env",
+      "callee": "parsujDateOd",
+      "call": "parsujDateOd(env, `${p}_OD`, true)"
+    },
+    {
+      "path": "src/main.ts",
+      "line": 11,
+      "expression": "env",
+      "callee": "modulyDla",
+      "call": "modulyDla(env)"
+    },
+    {
+      "path": "src/main.ts",
+      "line": 12,
+      "expression": "env",
+      "callee": "sprawdzKonfiguracjeModulow",
+      "call": "sprawdzKonfiguracjeModulow(moduly, env)"
+    },
+    {
+      "path": "src/main.ts",
+      "line": 32,
+      "expression": "process.env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(process.env)"
     }
   ],
   "prefiksy": {
@@ -7291,12 +7540,12 @@
   "odciskiPlikowOdczytow": [
     {
       "path": "src/core/tryb.ts",
-      "sha256": "25d36d3751fb8d10ba2be9ae695dfffc80eed8886cf9cc070af70e44d81b57dc",
+      "sha256": "38f537767c396d405e507796fd4431cdf4d368d36a306a521696975e7ba88a5f",
       "normalizacja": "LF"
     },
     {
       "path": "src/core/zaufane-proxy.ts",
-      "sha256": "9f067f0851166d2c86d94dfbd8fd48110c620936cd8b8e1963c485406787d567",
+      "sha256": "9266ec03e262ef35dd0ca1d86c20eff9bfb11ff265cfeda4c7c4f402e757e231",
       "normalizacja": "LF"
     },
     {
@@ -7331,7 +7580,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "sha256": "ff5552eeafb1a1e7b990de136ae1416e0be49c1d17e8c1571494a9c67d53bff2",
+      "sha256": "06908252db26f1367f3a4d4289bef3ffe73f3f6f8e03dc1d6af4ef689cc63e07",
       "normalizacja": "LF"
     },
     {
@@ -7346,12 +7595,12 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "fa00441015dd00ed4c3493e9a6768218e691323be3382a46560670985a9bfa12",
+      "sha256": "98859adae6cc2b4baa02c7c5dece8070af33980de3a0f05d090ecf07029c8a61",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/wysylka/modul.ts",
-      "sha256": "0a176a79440a41895b5cb69b418334ca2729b03df450350854c232a0bb8f3c47",
+      "sha256": "023146a4cda7805fb24a81709d6a308ea4864b289593df9f49f4c890ff979397",
       "normalizacja": "LF"
     },
     {
@@ -7376,7 +7625,7 @@
     },
     {
       "path": "src/main.ts",
-      "sha256": "bdf19687238c611dc1999088c45c8a816a48311d378d7cc8eba41356227bca4e",
+      "sha256": "7858266d78f990278ba12bd8e75d672036dfbced106faed4cf9cb577894bbabc",
       "normalizacja": "LF"
     },
     {
@@ -7406,7 +7655,7 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "abccca112e5299d7a6deae87cd4525e3daa745c64fc84c76e60278ae08803184",
+      "sha256": "b9f5992a198d79fe3d0442431137624d46185b403f9345a6ddf9d1e1b2840eeb",
       "normalizacja": "LF"
     },
     {
@@ -7423,12 +7672,12 @@
   "dodatkoweDowody": [
     {
       "path": "src/core/aplikacja.ts",
-      "sha256": "fe91f6dbfc930b2001020a707b63f6e071f77449bbbded11f3efacd149086d1c",
+      "sha256": "2d2b3f15fb9afe236e89776060e24f024340b284b249cae1ee702d461b236c3b",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "sha256": "ff5552eeafb1a1e7b990de136ae1416e0be49c1d17e8c1571494a9c67d53bff2",
+      "sha256": "06908252db26f1367f3a4d4289bef3ffe73f3f6f8e03dc1d6af4ef689cc63e07",
       "normalizacja": "LF"
     },
     {
@@ -7438,7 +7687,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "fa00441015dd00ed4c3493e9a6768218e691323be3382a46560670985a9bfa12",
+      "sha256": "98859adae6cc2b4baa02c7c5dece8070af33980de3a0f05d090ecf07029c8a61",
       "normalizacja": "LF"
     },
     {
@@ -7463,7 +7712,7 @@
     },
     {
       "path": "src/main.ts",
-      "sha256": "bdf19687238c611dc1999088c45c8a816a48311d378d7cc8eba41356227bca4e",
+      "sha256": "7858266d78f990278ba12bd8e75d672036dfbced106faed4cf9cb577894bbabc",
       "normalizacja": "LF"
     },
     {
@@ -7478,12 +7727,12 @@
     },
     {
       "path": "src/moduly/ustawienia/cele-diagnostyki.ts",
-      "sha256": "e605c223ae427828b2919f70511948a194a75169f4e043ad2225edbec0f24d71",
+      "sha256": "3898d892d1b9fe3ab9c0e09186f8d81029facee3f9b70447f90761ab7ad22952",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "abccca112e5299d7a6deae87cd4525e3daa745c64fc84c76e60278ae08803184",
+      "sha256": "b9f5992a198d79fe3d0442431137624d46185b403f9345a6ddf9d1e1b2840eeb",
       "normalizacja": "LF"
     },
     {
@@ -7523,7 +7772,7 @@
     "plikiDynamiczne": [
       {
         "path": "src/core/tryb.ts",
-        "sha256": "25d36d3751fb8d10ba2be9ae695dfffc80eed8886cf9cc070af70e44d81b57dc",
+        "sha256": "38f537767c396d405e507796fd4431cdf4d368d36a306a521696975e7ba88a5f",
         "odczyty": [
           {
             "expression": "env[k]",
@@ -7580,7 +7829,7 @@
       },
       {
         "path": "src/moduly/kanaly/konfiguracja.ts",
-        "sha256": "ff5552eeafb1a1e7b990de136ae1416e0be49c1d17e8c1571494a9c67d53bff2",
+        "sha256": "06908252db26f1367f3a4d4289bef3ffe73f3f6f8e03dc1d6af4ef689cc63e07",
         "odczyty": [
           {
             "expression": "env[nazwa]",
@@ -7759,7 +8008,7 @@
       },
       {
         "path": "src/moduly/wysylka/modul.ts",
-        "sha256": "0a176a79440a41895b5cb69b418334ca2729b03df450350854c232a0bb8f3c47",
+        "sha256": "023146a4cda7805fb24a81709d6a308ea4864b289593df9f49f4c890ff979397",
         "odczyty": [
           {
             "expression": "env[klucz]",
@@ -7828,17 +8077,17 @@
     "przekazania": [
       {
         "path": "src/core/aplikacja.ts",
-        "sha256": "fe91f6dbfc930b2001020a707b63f6e071f77449bbbded11f3efacd149086d1c",
+        "sha256": "2d2b3f15fb9afe236e89776060e24f024340b284b249cae1ee702d461b236c3b",
         "expression": "sprawdzTrybProby(env, [...new Set(kolejnosc.flatMap((m) => m.kluczeIntegracji ?? []))])"
       },
       {
         "path": "src/core/aplikacja.ts",
-        "sha256": "fe91f6dbfc930b2001020a707b63f6e071f77449bbbded11f3efacd149086d1c",
+        "sha256": "2d2b3f15fb9afe236e89776060e24f024340b284b249cae1ee702d461b236c3b",
         "expression": "m.konfiguracja(env)"
       },
       {
         "path": "src/moduly/faktury/modul.ts",
-        "sha256": "b38eb3171b9f50be99c7739819df8e3293272aefcd26237f64c1095c2a5e2b2a",
+        "sha256": "98859adae6cc2b4baa02c7c5dece8070af33980de3a0f05d090ecf07029c8a61",
         "expression": "wczytajSprzedawce(env)"
       },
       {
@@ -7848,7 +8097,7 @@
       },
       {
         "path": "src/moduly/kanaly/konfiguracja.ts",
-        "sha256": "dbcc8ea19c54950ad78d902d5c6fe671cbcff32edb2f6f1f0271f48c31a86586",
+        "sha256": "06908252db26f1367f3a4d4289bef3ffe73f3f6f8e03dc1d6af4ef689cc63e07",
         "expression": "konfiguracjaHistorii(env, klucz, p)"
       },
       {
@@ -7883,7 +8132,7 @@
       },
       {
         "path": "src/moduly/wysylka/modul.ts",
-        "sha256": "c18cff6edfb219ace8fb41218b06cef6044a8c7711f5123e940061e5e2669432",
+        "sha256": "023146a4cda7805fb24a81709d6a308ea4864b289593df9f49f4c890ff979397",
         "expression": "wczytajKurierow(env)"
       },
       {
@@ -8075,7 +8324,7 @@
     },
     {
       "path": "src/core/aplikacja.ts",
-      "sha256": "fe91f6dbfc930b2001020a707b63f6e071f77449bbbded11f3efacd149086d1c",
+      "sha256": "abd5223c2395e275bd2d9d7aec9b2cf3519ae5a0f7706b9d611f69925f22696f",
       "normalizacja": "LF"
     },
     {

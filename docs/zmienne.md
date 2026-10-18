@@ -1,0 +1,205 @@
+# Zmienne konfiguracji OMS
+
+W instalacji Docker konfiguracja leży w pliku `/opt/oms/config/oms.env` (zobacz [instalację](instalacja-docker.md)).
+Część ustawień wprowadzisz w panelu: Ustawienia → Firma oraz Ustawienia → Integracje (inFakt, DPD, InPost, poczta i adres panelu).
+**Plik wygrywa** — ustawiona w nim sekcja integracji lub adres firmy blokuje zapis tej części w panelu.
+Szczegóły walidacji i aktywacji znajdziesz w [manifeście konfiguracji w repozytorium](https://github.com/TwojOMS/twoj-oms/blob/main/docs/konfiguracja.md).
+
+Tabela jest generowana z manifestu JSON; nie edytuj jej ręcznie.
+„brak” oznacza brak wartości domyślnej (null); pusty tekst jest pokazany osobno.
+Nazwy z `<P>` to rodziny zmiennych: prefiks pochodzi z definicji kanału w OMS_KANALY.
+Sekcja środowiska narzędzi i testów nie jest listą wymaganych ustawień instalacji.
+
+## Rdzeń i uruchomienie
+
+| Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
+|---|---|---|---|---|---|
+| <code>DEMO_RESET_CO_MIN</code> | opcjonalna | 60 | Tylko demo publiczne: co ile minut dane wracają do stanu początkowego (od 10 do 1440, liczba dzieląca dobę). | Demo resetuje się co 60 minut, a ekran logowania mówi „co godzinę”. | Nie |
+| <code>DEMO_RESET_PLANOWY</code> | opcjonalna | pusty tekst | Tylko demo publiczne: termin najbliższego resetu (czas UTC); ustawia go mechanizm demo, nie wpisujesz go ręcznie. | Pasek demo bez licznika („dane wracają do stanu początkowego co godzinę”), bez nakładki restartu. Poza demo publicznym zmienna nie ma znaczenia. | Nie |
+| <code>OMS_BANK</code> | opcjonalna | brak | Nazwa Twojego banku, pokazywana w danych dokumentów obok numeru rachunku. | Brak nazwy banku w danych dokumentów. | Nie |
+| <code>OMS_DB_PATH</code> | opcjonalna; w instalacji Docker ustawia ją plik compose i nie zmienisz jej w oms.env | w instalacji Docker plik bazy leży w katalogu danych /opt/oms/data (ustawia go plik compose) | Gdzie na serwerze leży plik bazy danych ze wszystkimi zamówieniami i ustawieniami OMS. | Panel używa domyślnego pliku bazy w katalogu /data-oms. Skrypt jednorazowego importu podjazdów DPD bez tej zmiennej odmawia pracy. | Nie |
+| <code>OMS_DEMO_HASLO</code> | opcjonalna | sekret — nie wklejaj do czatu ani do repo | Hasło konta gościa w demo; jest jawne na ekranie logowania, więc tylko do demo, nigdy do prawdziwej firmy. | Jak OMS_DEMO_LOGIN — oba albo żadna. | Nie |
+| <code>OMS_DEMO_LOGIN</code> | opcjonalna | pusty tekst | Login publicznego konta gościa w demo; wolno go ustawić tylko w trybie „proba” — na produkcji blokuje start. | Brak konta gościa demo: ekran logowania bez podpowiedzi, /konto bez blokady. | Nie |
+| <code>OMS_PASS</code> | wymagana — bez niej panel się nie uruchomi | sekret — nie wklejaj do czatu ani do repo | Hasło wspólnego konta do panelu (sekret — wpisz je do pliku konfiguracji, nie do czatu). | Bez niego panel w ogóle nie wystartuje. | Nie |
+| <code>OMS_PORT</code> | opcjonalna | 3001 | Port, na którym panel OMS czeka na połączenia z przeglądarki (domyślnie 3001). | HTTP nasłuchuje na porcie 3001. | Nie |
+| <code>OMS_RACHUNEK</code> | wymagana — bez niej panel się nie uruchomi | brak wartości domyślnej | Numer rachunku bankowego firmy (26 cyfr, format NRB) — drukowany na proformach i używany przy przesyłkach za pobraniem. | Odmowa konfiguracji i startu; rachunek z rdzenia trafia też do pobrania WzA. | Nie |
+| <code>OMS_SPRZEDAWCA_BDO</code> | opcjonalna | brak | Numer rejestrowy BDO firmy (9 cyfr) drukowany na dokumentach; zostaw pusty, jeśli firma go nie ma. | Brak BDO w danych dokumentów. | Nie |
+| <code>OMS_SPRZEDAWCA_NIP</code> | wymagana — bez niej panel się nie uruchomi | brak wartości domyślnej | NIP Twojej firmy (10 cyfr, z poprawną cyfrą kontrolną) — trafia na proformy i dokumenty oraz jest domyślnym NIP-em dla KSeF. | Odmowa konfiguracji i startu aplikacji. | Nie |
+| <code>OMS_TRUST_PROXY</code> | opcjonalna | false | Adresy serwera pośredniczącego (np. tunelu Cloudflare), któremu panel ufa przy ustalaniu adresu gościa — ważne dla blokady prób logowania. | Panel uznaje za adres gościa adres bezpośredniego nadawcy. Za tunelem lub proxy to jeden wspólny adres, więc blokada prób logowania liczy wszystkich razem, a ochrona przed zgadywaniem haseł jest słabsza (przy nagłówkach proxy log raz to zgłasza). Wpisuj wyłącznie adresy IP lub zakresy CIDR zaufanego pośrednika. | Nie |
+| <code>OMS_TRYB</code> | opcjonalna | produkcja | Tryb pracy: „produkcja” (domyślny, prawdziwe integracje) albo „proba” (piaskownica, w której klucze integracji muszą być puste). | Panel startuje w trybie produkcja. „proba” ustawiasz tylko dla piaskownicy lub demo. | Nie |
+| <code>OMS_USER</code> | wymagana — bez niej panel się nie uruchomi | brak wartości domyślnej | Login wspólnego konta do panelu, którym wchodzisz, zanim założysz konta imienne dla pracowników. | Bez niego panel w ogóle nie wystartuje. Jest potrzebny także po założeniu kont imiennych. | Nie |
+
+## Kanały
+
+| Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
+|---|---|---|---|---|---|
+| <code>OMS_KANALY</code> | opcjonalna; bez wpisanych kanałów OMS niczego nie pobiera | [] | Lista Twoich kanałów sprzedaży (sklepy WooCommerce i konta Allegro) w formacie JSON — każdy z kluczem, typem i prefiksem zmiennych. | Bez niej OMS nie ma kanałów i niczego nie pobiera. Pusta wartość to błąd — wpisz [] albo listę. Gdy w bazie są zamówienia kanału spoza listy z ostatnich 30 dni, /health świeci na czerwono. | Nie |
+| <code>OMS_POLLER_MS</code> | opcjonalna | 120000 | Co ile milisekund OMS pyta sklepy i Allegro o nowe zamówienia (domyślnie 120000, najmniej 30000). | OMS pobiera nowe zamówienia co 2 minuty, jeśli jest choć jeden aktywny kanał. | Nie |
+
+## Dynamiczne prefiksy kanałów
+
+| Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
+|---|---|---|---|---|---|
+| <code>&lt;P&gt;_API</code> | opcjonalna | https://api.allegro.pl | Adres API Allegro; zmieniasz go tylko do testów, np. na piaskownicy Allegro (domyślnie adres produkcyjny). | Klient kanału używa domyślnego adresu produkcyjnego. | Nie |
+| <code>&lt;P&gt;_AUTH</code> | opcjonalna | https://allegro.pl/auth/oauth | Adres logowania OAuth Allegro; zmieniasz go tylko razem z adresem API do testów (domyślnie adres produkcyjny). | OAuth używa domyślnego adresu produkcyjnego. | Nie |
+| <code>&lt;P&gt;_CK</code> | wymagana, jeśli kanał ma pobierać zamówienia ze sklepu; podaj CK i CS razem albo żadnej z nich | sekret — nie wklejaj do czatu ani do repo | Klucz użytkownika (Consumer Key) API WooCommerce w sklepie tego kanału; razem z sekretem CS pozwala pobierać zamówienia. | Bez CK i CS kanał sklepu jest pomijany. Gdy kanał ma niepełne dane, /health alarmuje, jeśli miał zamówienia z ostatnich 30 dni; narzędzie importu sklepu w takim razie odmawia pracy. | Nie |
+| <code>&lt;P&gt;_CLIENT_ID</code> | wymagana po podaniu CLIENT_ID lub CLIENT_SECRET | sekret — nie wklejaj do czatu ani do repo | Identyfikator aplikacji Allegro (Client ID) tego kanału; razem z Client Secret pozwala OMS łączyć się z kontem Allegro. | Bez ID i sekretu kanał Allegro jest pomijany. Gdy dane są niepełne, /health alarmuje, jeśli kanał miał zamówienia z ostatnich 30 dni. | Nie |
+| <code>&lt;P&gt;_CLIENT_SECRET</code> | wymagana po podaniu CLIENT_ID lub CLIENT_SECRET | sekret — nie wklejaj do czatu ani do repo | Sekret aplikacji Allegro (Client Secret) tego kanału — wpisz do pliku konfiguracji, nie do czatu. | Bez ID i sekretu kanał Allegro jest pomijany. Gdy dane są niepełne, /health alarmuje, jeśli kanał miał zamówienia z ostatnich 30 dni. | Nie |
+| <code>&lt;P&gt;_CS</code> | wymagana, jeśli kanał ma pobierać zamówienia ze sklepu; podaj CK i CS razem albo żadnej z nich | sekret — nie wklejaj do czatu ani do repo | Sekret użytkownika (Consumer Secret) API WooCommerce w sklepie tego kanału — wpisz do pliku konfiguracji, nie do czatu. | Bez CK i CS kanał sklepu jest pomijany. Gdy kanał ma niepełne dane, /health alarmuje, jeśli miał zamówienia z ostatnich 30 dni; narzędzie importu sklepu w takim razie odmawia pracy. | Nie |
+| <code>&lt;P&gt;_HISTORIA_KONTO_APILO</code> | opcjonalna; potrzebna tylko do jednorazowego importu historii zamówień sklepu | brak | Numer konta Apilo, z którego pochodzi zaimportowana historia zamówień tego sklepu — to znacznik danych, nie hasło. | Bez niej nie powstaje usługa historii sklepu, a samodzielny import historii odmawia pracy. To numer z dawnych danych, nie poświadczenie Apilo. | Nie |
+| <code>&lt;P&gt;_MAPOWANIE</code> | wymagana dla aktywnego Woo | brak wartości domyślnej | Tabela w formacie JSON, która przypisuje metody dostawy ze sklepu WooCommerce do metod wysyłki w OMS. | Bez mapowania kanał sklepu jest pomijany, a /health alarmuje, jeśli miał zamówienia z ostatnich 30 dni. Importer historii tej zmiennej nie czyta. | Nie |
+| <code>&lt;P&gt;_OD</code> | opcjonalna dla Woo; wymagana dla aktywnego Allegro | WooCommerce: bez daty (pobierane są wszystkie zamówienia); Allegro: brak — datę trzeba podać | Data RRRR-MM-DD, od której OMS pobiera zamówienia z kanału; dla Allegro obowiązkowa, dla WooCommerce opcjonalna. | WooCommerce: bez daty pobierane są zamówienia bez ograniczenia od daty. Allegro: bez daty kanał nie działa, a /health zgłasza brak. | Nie |
+| <code>&lt;P&gt;_URL</code> | wymagana, jeśli kanał ma pobierać zamówienia ze sklepu WooCommerce | brak wartości domyślnej | Adres sklepu WooCommerce tego kanału (https://…), z którego OMS pobiera zamówienia. | Bez adresu kanał sklepu jest pomijany, a /health alarmuje, jeśli miał zamówienia z ostatnich 30 dni. Narzędzie importu sklepu odmawia pracy. | Nie |
+| <code>&lt;P&gt;_USER_AGENT</code> | wymagana dla aktywnego Allegro | brak wartości domyślnej | Nazwa, którą OMS przedstawia się Allegro, w formacie nazwa/wersja (+https://adres), np. MojOMS/1.0 (+https://example.pl). | Bez poprawnego nagłówka kanał Allegro nie startuje, a /health zgłasza brak. Zły format zatrzymuje start z czytelnym komunikatem. | Nie |
+
+## Historia i WDT
+
+| Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
+|---|---|---|---|---|---|
+| <code>OMS_HISTORIA_DOMENY_TESTOWE</code> | opcjonalna | [] | Domeny testowych adresów e-mail (bez @), po przecinku; zamówienia z tych domen pomijają raporty i import historii. | Nie odfiltruje e-maili kończących się na @domena. Filtry obowiązują dla historii i mieszanych raportów; brak jest cichy. | Nie |
+| <code>OMS_HISTORIA_KLASYFIKACJA</code> | opcjonalna; potrzebna tylko, jeśli przenosisz do OMS historię zamówień z Apilo | pusta tabela (brak kont z Apilo) | Tabela w formacie JSON, która przypisuje konta i tagi ze starego systemu (Apilo) do kanałów raportów; tylko przy imporcie historii. | Brak historycznych kont, tagów i prefiksów indywidualnych. Raportowanie nieznanego konta odmawia; nie odtwarza firmowej mapy ani nie używa żywego API jako historii. Pusty tekst odmawia jako niepoprawny JSON. | Nie |
+| <code>OMS_HISTORIA_MAILE_TESTOWE</code> | opcjonalna | [] | Dokładne adresy e-mail testowych klientów, po przecinku; ich zamówienia pomijają raporty i import historii. | Nie odfiltruje dokładnie wskazanych e-maili. Filtry obowiązują dla historii i mieszanych raportów; brak jest cichy. | Nie |
+| <code>OMS_HISTORIA_MAILE_WDT</code> | opcjonalna (starsza nazwa listy OMS_KLIENCI_WDT) | wartość z OMS_KLIENCI_WDT albo pusta lista | Starsza nazwa listy OMS_KLIENCI_WDT — wystarczy ustawić jedną z nich (albo dwie identyczne). | Brak bez szkody, jeżeli jest kanoniczna lista; bez obu efekt jak brak OMS_KLIENCI_WDT. | Nie |
+| <code>OMS_HISTORIA_NAZWY_TESTOWE</code> | opcjonalna | [] | Fragmenty nazw testowych klientów, po przecinku; zamówienia z taką nazwą pomijają raporty i import historii. | Nie odfiltruje nazw zawierających wskazany tekst. Filtry obowiązują dla historii i mieszanych raportów; brak jest cichy. | Nie |
+| <code>OMS_HISTORIA_PREFIKSY_TESTOWE</code> | opcjonalna | [] | Początki testowych adresów e-mail, po przecinku; zamówienia z takich adresów pomijają raporty i import historii. | Nie odfiltruje e-maili zaczynających się od prefiksu. Filtry obowiązują dla historii i mieszanych raportów; brak jest cichy. | Nie |
+| <code>OMS_KANAL_INDYWIDUALNY</code> | opcjonalna | na czystej instalacji wyłączony; włączony tylko wtedy, gdy historia z Apilo zawiera zamówienia indywidualne | 1 albo 0: czy OMS przyjmuje zamówienia indywidualne z zewnętrznego panelu i pokazuje kanał „Indywidualne”. | Na czystej instalacji kanał „Indywidualne” jest wyłączony: nie ma go w filtrze listy i w raportach, a zewnętrzny panel zamówień dostaje odmowę. Instalacja z prefiksami indywidualnymi w historii działa jak dotąd. | Nie |
+| <code>OMS_KLIENCI_WDT</code> | opcjonalna | wartość z OMS_HISTORIA_MAILE_WDT albo pusta lista | Lista e-maili klientów z UE (dostawa wewnątrzwspólnotowa, WDT), po przecinku; ich zamówienia są rozliczane netto. | Bez obu list żaden e-mail nie jest rozpoznany jako WDT; zmienia klasyfikację netto specyfikacji i blokadę zapisu importu historii. | Nie |
+| <code>OMS_KLIENCI_ZBIORCZY</code> | opcjonalna; czytana tylko jednorazowo przy przenoszeniu starych danych | [] | Dawna lista klientów rozliczanych zbiorczo (jedna faktura na miesiąc); czytana tylko jednorazowo przy przenoszeniu do bazy klientów. | Bez niej nic się nie zmienia: warunki takich klientów trzyma baza, a zmienna służyła tylko do jednorazowego przeniesienia starych wpisów. | Nie |
+
+## Faktury i koszty
+
+| Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
+|---|---|---|---|---|---|
+| <code>INFAKT_API_KEY</code> | opcjonalna; wpisanie klucza włącza integrację z inFakt | sekret — nie wklejaj do czatu ani do repo | Klucz API konta inFakt — pozwala OMS wystawiać faktury, sprawdzać numery VAT UE (VIES) i obsługiwać KSeF sprzedaży. | Bez klucza nie działają faktury z inFakt, VIES, KSeF sprzedaży ani paczka dla biura; proformy nadal tak. Klucz można wpisać też w panelu, ale klucz z pliku wygrywa i blokuje ekran. | Tak — Ustawienia → Integracje → inFakt |
+| <code>INFAKT_API_URL</code> | opcjonalna | https://api.infakt.pl/api | Adres API inFakt; zmieniasz go tylko do testów — domyślnie produkcyjny. | Bez niej OMS łączy się z produkcyjnym API inFakt. Adres z pliku działa tylko razem z kluczem z pliku; klucz wpisany w panelu zawsze idzie pod adres produkcyjny. | Nie |
+| <code>INFAKT_ARCHIWUM</code> | opcjonalna | brak | Katalog na serwerze, do którego OMS co noc zapisuje pliki PDF faktur sprzedaży z inFakt (archiwum dla biura). | Bez niej OMS nie robi nocnego archiwum faktur sprzedaży, a paczka dla biura korzysta z pozostałych źródeł. Ustawiasz ją tylko w pliku; działa też z kluczem inFakt wpisanym w panelu. | Nie |
+| <code>KSEF_API</code> | opcjonalna | https://api.ksef.mf.gov.pl/v2 | Adres API KSeF; domyślnie produkcyjny, zmieniasz go tylko do testów na środowisku Ministerstwa Finansów. | Z tokenem KSeF klient używa produkcyjnego endpointu. Niepusty adres bez tokenu odmawia konfiguracji. | Nie |
+| <code>KSEF_ARCHIWUM</code> | opcjonalna | brak | Katalog na serwerze, do którego OMS zapisuje pobrane z KSeF faktury kosztowe (archiwum dla biura). | Czuwacz może działać bez lokalnego katalogu archiwum; brak zapisów archiwum do tego katalogu. Niepusty katalog bez tokenu odmawia konfiguracji. | Nie |
+| <code>KSEF_NIP</code> | opcjonalna | NIP firmy z OMS_SPRZEDAWCA_NIP | NIP, dla którego OMS odpytuje KSeF; domyślnie NIP firmy z OMS_SPRZEDAWCA_NIP. | Z tokenem KSeF używany jest NIP sprzedawcy z rdzenia. Sam niepusty KSEF_NIP bez tokenu odmawia konfiguracji. | Nie |
+| <code>KSEF_TOKEN</code> | opcjonalna; wymagana, jeśli wpisujesz którekolwiek ustawienie KSeF | sekret — nie wklejaj do czatu ani do repo | Token do Krajowego Systemu e-Faktur (KSeF) — pozwala OMS pobierać faktury kosztowe; sekret. | Bez całej sekcji klient KSeF/koszty jest wyłączony. Niepuste KSEF_NIP/API/ARCHIWUM bez tokenu odmawia konfiguracji. | Nie |
+| <code>OMS_PROFORMY_KATALOG</code> | wymagana — w instalacji Docker ustawia ją plik compose | brak wartości domyślnej | Katalog na serwerze, do którego OMS zapisuje pliki PDF wystawionych proform. | Bez niej moduł faktur nie wystartuje — katalog na proformy jest wymagany. | Nie |
+
+## GUS
+
+| Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
+|---|---|---|---|---|---|
+| <code>GUS_KLUCZ</code> | opcjonalna | sekret — nie wklejaj do czatu ani do repo | Klucz do bazy REGON (GUS) — po NIP-ie OMS uzupełnia dane firmy kontrahenta; sekret. | Klient GUS nie jest budowany; brak uzupełniania danych kontrahenta z GUS. | Nie |
+| <code>GUS_URL</code> | opcjonalna | https://wyszukiwarkaregon.stat.gov.pl/wsBIR/UslugaBIRzewnPubl.svc | Adres usługi REGON (GUS); domyślnie produkcyjny, zmieniasz go tylko do testów. | Przy kluczu GUS używany jest domyślny produkcyjny adres SOAP. | Nie |
+
+## Wysyłka
+
+| Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
+|---|---|---|---|---|---|
+| <code>DPD_FID</code> | wymagana, gdy DPD_URL jest niepuste | brak wartości domyślnej | Numer płatnika (FID) z umowy z DPD, pod którym rozliczane są paczki. | Gdy DPD jest włączone (ustawiony DPD_URL), brak numeru płatnika zatrzymuje start. Bez DPD_URL ta zmienna niczego nie włącza. | Tak — Ustawienia → Integracje → Kurierzy → DPD |
+| <code>DPD_INFO_CHANNEL</code> | wymagana, gdy DPD_URL jest niepuste | sekret — nie wklejaj do czatu ani do repo | Dane dostępowe (kanał) do usługi DPD ze statusami paczek; traktuj jak sekret. | Gdy DPD jest włączone (ustawiony DPD_URL), brak tych danych zatrzymuje start. Bez DPD_URL ta zmienna niczego nie włącza. | Tak — Ustawienia → Integracje → Kurierzy → DPD |
+| <code>DPD_INFO_URL</code> | wymagana, gdy DPD_URL jest niepuste | brak wartości domyślnej | Adres usługi DPD ze statusami paczek (śledzenie przesyłek). | Gdy DPD jest włączone (ustawiony DPD_URL), brak tego adresu zatrzymuje start. Bez DPD_URL ta zmienna niczego nie włącza. | Nie |
+| <code>DPD_LOGIN</code> | wymagana, gdy DPD_URL jest niepuste | sekret — nie wklejaj do czatu ani do repo | Login do usługi DPD (konto kurierskie) — potrzebny do nadawania paczek. | Gdy DPD jest włączone (ustawiony DPD_URL), brak loginu zatrzymuje start. Bez DPD_URL ta zmienna niczego nie włącza. | Tak — Ustawienia → Integracje → Kurierzy → DPD |
+| <code>DPD_NADAWCA_EMAIL</code> | opcjonalna; wymagana, jeśli nadajesz paczki przez InPost | pusty tekst | E-mail Twojej firmy jako nadawcy paczek; InPost wymaga go przy nadaniu, DPD nie. | DPD działa bez e-maila, ale InPost odmówi nadania paczki. Skrypt jednorazowego importu podjazdów DPD też wymaga tej zmiennej. | Tak — Ustawienia → Firma |
+| <code>DPD_NADAWCA_KOD</code> | wymagana, jeśli używasz DPD lub InPost | brak — wpisz w pliku albo w panelu (Ustawienia → Firma); bez kuriera pole na dokumentach zostaje puste | Kod pocztowy Twojej firmy jako nadawcy paczek i dokumentów (to adres firmy, nie tylko DPD). | Włączony kurier (DPD lub InPost) bez kodu pocztowego nie wystartuje; bez kurierów dokumenty mają to pole puste. Adres firmy możesz wpisać w panelu (Ustawienia → Firma), chyba że stoi w pliku. | Tak — Ustawienia → Firma |
+| <code>DPD_NADAWCA_KRAJ</code> | opcjonalna | PL | Kod kraju nadawcy paczek i dokumentów, np. PL; domyślnie PL. | Bez niej kraj nadawcy to Polska (PL). | Tak — Ustawienia → Firma |
+| <code>DPD_NADAWCA_MIASTO</code> | wymagana, jeśli używasz DPD lub InPost | brak — wpisz w pliku albo w panelu (Ustawienia → Firma); bez kuriera pole na dokumentach zostaje puste | Miasto Twojej firmy jako nadawcy paczek i dokumentów (to adres firmy, nie tylko DPD). | Włączony kurier (DPD lub InPost) bez miasta nie wystartuje; bez kurierów dokumenty mają to pole puste. Adres firmy możesz wpisać w panelu (Ustawienia → Firma), chyba że stoi w pliku. | Tak — Ustawienia → Firma |
+| <code>DPD_NADAWCA_NAZWA</code> | wymagana, jeśli używasz DPD lub InPost albo wystawiasz proformy i dokumenty wywozu | brak — wpisz w pliku albo w panelu (Ustawienia → Firma); bez kuriera pole na dokumentach zostaje puste | Nazwa Twojej firmy jako nadawcy: na paczkach, proformach i dokumentach wywozu (to adres firmy, nie tylko DPD). | Włączony kurier (DPD lub InPost) bez nazwy nie wystartuje, a proforma nie zostanie wystawiona. Adres firmy możesz wpisać w panelu (Ustawienia → Firma), chyba że stoi w pliku — wtedy plik wygrywa. | Tak — Ustawienia → Firma |
+| <code>DPD_NADAWCA_TELEFON</code> | opcjonalna; wymagana, jeśli nadajesz paczki przez InPost | pusty tekst | Telefon Twojej firmy jako nadawcy paczek; InPost wymaga go przy nadaniu, DPD nie. | DPD działa bez telefonu, ale InPost odmówi nadania paczki. Skrypt jednorazowego importu podjazdów DPD też wymaga tej zmiennej. | Tak — Ustawienia → Firma |
+| <code>DPD_NADAWCA_ULICA</code> | wymagana, jeśli używasz DPD lub InPost albo wystawiasz proformy i dokumenty wywozu | brak — wpisz w pliku albo w panelu (Ustawienia → Firma); bez kuriera pole na dokumentach zostaje puste | Ulica i numer Twojej firmy jako nadawcy: na paczkach, proformach i dokumentach wywozu (to adres firmy, nie tylko DPD). | Włączony kurier (DPD lub InPost) bez ulicy nie wystartuje, a proforma nie zostanie wystawiona. Adres firmy możesz wpisać w panelu (Ustawienia → Firma), chyba że stoi w pliku — wtedy plik wygrywa. | Tak — Ustawienia → Firma |
+| <code>DPD_PASSWORD</code> | wymagana, gdy DPD_URL jest niepuste | sekret — nie wklejaj do czatu ani do repo | Hasło do usługi DPD; wpisz je do pliku konfiguracji, nie do czatu. | Gdy DPD jest włączone (ustawiony DPD_URL), brak hasła zatrzymuje start. Bez DPD_URL ta zmienna niczego nie włącza. | Tak — Ustawienia → Integracje → Kurierzy → DPD |
+| <code>DPD_URL</code> | opcjonalna; wpisanie adresu włącza DPD | brak | Adres usługi DPD, przez którą OMS nadaje paczki; bez niego DPD jest wyłączone. | DPD wyłączone, nawet jeżeli podano login/hasło; nie ma kontroli niekompletnej sekcji bez DPD_URL. | Nie |
+| <code>INPOST_ORGANIZACJA</code> | wymagana przy niepustym INPOST_TOKEN | brak wartości domyślnej | Numer Twojej organizacji w InPost, na którą OMS nadaje paczki. | Przy włączonym InPost brak numeru organizacji zatrzymuje start. Numer można wpisać też w panelu (Ustawienia → Integracje → Kurier InPost), o ile token nie stoi w pliku. | Tak — Ustawienia → Integracje → Kurierzy → InPost |
+| <code>INPOST_PACZKOMAT_NADAWCZY</code> | opcjonalna | brak | Kod paczkomatu, z którego zwykle nadajesz paczki; OMS dopisuje go do nadania jako punkt nadawczy. | Bez niej OMS nie podaje InPostowi domyślnego paczkomatu nadawczego. | Tak — Ustawienia → Integracje → Kurierzy → InPost |
+| <code>INPOST_TOKEN</code> | opcjonalna; wpisanie tokenu włącza InPost | sekret — nie wklejaj do czatu ani do repo | Token API InPost — pozwala OMS nadawać przesyłki InPost; sekret. | Bez tokenu InPost jest wyłączony, a pozostałe zmienne InPost niczego nie włączają. Token można wpisać też w panelu (Ustawienia → Integracje → Kurier InPost), ale token z pliku wygrywa i blokuje ekran. | Tak — Ustawienia → Integracje → Kurierzy → InPost |
+| <code>INPOST_URL</code> | opcjonalna | https://api-shipx-pl.easypack24.net/v1 | Adres API InPost; domyślnie produkcyjny, zmieniasz go tylko do testów. | Bez niej OMS łączy się z produkcyjnym API InPost. Z ekranu w panelu zawsze używany jest adres produkcyjny. | Nie |
+| <code>OMS_ETYKIETY_DIR</code> | opcjonalna; starsza nazwa z pierwszeństwem | wartość z OMS_ETYKIETY_KATALOG; w instalacji Docker ustawia ją plik compose | Katalog na serwerze z etykietami przesyłkowymi — starsza nazwa, ma pierwszeństwo przed OMS_ETYKIETY_KATALOG. | OMS bierze katalog z OMS_ETYKIETY_KATALOG, a gdy i tej brak — z /var/lib/panel/etykiety. | Nie |
+| <code>OMS_ETYKIETY_KATALOG</code> | opcjonalna | w instalacji Docker katalog etykiet leży w /opt/oms/data (ustawia go plik compose) | Katalog na serwerze z etykietami przesyłkowymi (domyślnie /var/lib/panel/etykiety). | OMS używa katalogu /var/lib/panel/etykiety; zapis i odczyt etykiet zawiedzie, jeśli ten dysk nie istnieje lub brak do niego uprawnień. | Nie |
+| <code>OMS_PODJAZDY_ODSTEP_MS</code> | opcjonalna | 600000 | Co ile milisekund OMS sprawdza zamówione podjazdy kuriera po paczki z Allegro (domyślnie co 10 minut, najmniej 60000). | OMS sprawdza podjazdy co 10 minut, jeśli są kanały Allegro, przez które można je zamawiać. | Nie |
+| <code>OMS_PRZESYLKI_ODSTEP_MS</code> | opcjonalna | 3600000 | Co ile milisekund OMS odświeża statusy nadanych paczek u kuriera (domyślnie co godzinę, najmniej 60000). | OMS sprawdza statusy paczek co godzinę, jeśli jest skonfigurowany choć jeden kurier. | Nie |
+
+## Raporty
+
+| Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
+|---|---|---|---|---|---|
+| <code>OMS_RAPORTY_DATA_IMPORTU_HISTORII</code> | opcjonalna | brak | Data RRRR-MM-DD importu historii zamówień, pokazywana w zastrzeżeniach raportów obejmujących starsze dane. | Brak daty w zastrzeżeniach historycznego importu. | Nie |
+| <code>OMS_RAPORTY_KONTO_HISTORII</code> | opcjonalna | brak | Numer konta Apilo z historią zamówień — po nim raporty ustalają, dokąd sięga zaimportowana historia. | Bez niej raporty nie wiedzą, dokąd sięga historia z Apilo, i dodają o tym zastrzeżenie. Nie usuwa to ani nie importuje żadnych danych. | Nie |
+| <code>OMS_RAPORTY_NAZWY_KANALOW</code> | opcjonalna | pusta lista (brak własnych nazw) | Własne, czytelne nazwy kanałów w raportach (JSON: nazwa kanału raportowego → etykieta). | Brak własnych etykiet kanałów, widok korzysta z kluczy/pozostałej logiki etykiet. Nie tworzy kanałów. Pusty tekst OMS_RAPORTY_NAZWY_KANALOW= powoduje błąd JSON, zamiast użycia {}. | Nie |
+| <code>OMS_RAPORTY_PODLOGA_ZWROTOW</code> | opcjonalna | brak | Data RRRR-MM-DD, od której dane o zwrotach są kompletne; raporty kończące się wcześniej nie uwzględniają zwrotów. | Bez niej raporty uznają zwroty za nieznane w każdym zakresie dat. | Nie |
+| <code>OMS_RAPORTY_SKLEP_HISTORII</code> | opcjonalna | brak | Nazwa sklepu pokazywana w zastrzeżeniach raportów o zaimportowanej historii zamówień. | Zastrzeżenia historii nie mają własnej nazwy sklepu. Nie steruje filtrowaniem zamówień. | Nie |
+| <code>OMS_STATYSTYKI_PIERWSZY_DZIEN</code> | opcjonalna | brak | Dzień RRRR-MM-DD, od którego OMS ma kompletne dane do statystyk; wcześniejsze zakresy dostają pasek z zastrzeżeniem. | Za początek danych OMS uznaje dzień pierwszego zamówienia w bazie. Zmienna nie zmienia liczb, tylko pasek ostrzeżenia nad statystykami starszych okresów. | Nie |
+
+## Poczta
+
+| Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
+|---|---|---|---|---|---|
+| <code>MAIL_FROM</code> | opcjonalna | login SMTP (SMTP_USER) | Adres, z którego OMS wysyła maile; domyślnie login SMTP. | Nadawcą maili jest login SMTP, który musi być poprawnym adresem e-mail. Samo wpisanie tej zmiennej rozpoczyna sekcję SMTP. Ekran w panelu pozostaje zablokowany, dopóki sekcja stoi w pliku. | Tak — Ustawienia → Integracje → Poczta wychodząca |
+| <code>OMS_MAIL_MARKA</code> | opcjonalna | podpis Obsługa sklepu; nagłówek pusty | Nazwa marki, którą OMS podpisuje maile do klientów i umieszcza w ich nagłówku; domyślnie podpis „Obsługa sklepu”. | Neutralny podpis oraz brak nagłówka marki; nie włącza SMTP. | Nie |
+| <code>OMS_MAIL_STOPKA</code> | opcjonalna | pusty tekst | Stopka dopisywana pod każdym mailem do klienta, np. dane firmy; domyślnie brak. | Brak dodatkowej stopki; nie włącza SMTP. | Nie |
+| <code>SMTP_HOST</code> | wymagana, jeśli wpisujesz którekolwiek ustawienie poczty SMTP | brak | Adres serwera poczty wychodzącej (SMTP), przez który OMS wysyła maile do klientów i zaproszenia dla pracowników. | Bez całej sekcji SMTP poczta jest wyłączona (wiadomości z Allegro działają osobno). Przy zaczętej sekcji brak serwera zatrzymuje start. Sekcja SMTP z pliku wygrywa i blokuje ekran w panelu (Ustawienia → Integracje → Poczta wychodząca). | Tak — Ustawienia → Integracje → Poczta wychodząca |
+| <code>SMTP_PASS</code> | wymagana, jeśli wpisujesz którekolwiek ustawienie poczty SMTP | sekret — nie wklejaj do czatu ani do repo | Hasło do konta pocztowego, z którego OMS wysyła maile (sekret — nie do czatu). | Bez całej sekcji SMTP poczta jest wyłączona. Przy zaczętej sekcji brak hasła zatrzymuje start. Sekcja SMTP z pliku wygrywa i blokuje ekran w panelu (Ustawienia → Integracje → Poczta wychodząca). | Tak — Ustawienia → Integracje → Poczta wychodząca |
+| <code>SMTP_PORT</code> | opcjonalna | 465 | Port serwera poczty wychodzącej; domyślnie 465 (połączenie szyfrowane od razu). | OMS używa portu 465 z szyfrowaniem. Samo wpisanie tej zmiennej (nawet pustej) rozpoczyna sekcję SMTP, więc wymaga też hosta, loginu i hasła. Ekran w panelu pozostaje zablokowany, dopóki sekcja stoi w pliku. | Tak — Ustawienia → Integracje → Poczta wychodząca |
+| <code>SMTP_USER</code> | wymagana, jeśli wpisujesz którekolwiek ustawienie poczty SMTP | sekret — nie wklejaj do czatu ani do repo | Login do konta pocztowego, z którego OMS wysyła maile (zwykle pełny adres e-mail). | Bez całej sekcji SMTP poczta jest wyłączona. Przy zaczętej sekcji brak loginu zatrzymuje start. Sekcja SMTP z pliku wygrywa i blokuje ekran w panelu (Ustawienia → Integracje → Poczta wychodząca). | Tak — Ustawienia → Integracje → Poczta wychodząca |
+
+## Deklaracje i zgodność
+
+| Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
+|---|---|---|---|---|---|
+| <code>ALLEGRO_CLIENT_ID</code> | nie ustawiaj — dawna nazwa, niczego nie włącza | sekret — nie wklejaj do czatu ani do repo | Dawna, globalna deklaracja klucza Allegro — sama niczego nie włącza; w trybie „proba” musi być pusta. | Niczego nie włącza — kanały Allegro konfigurujesz przez OMS_KANALY. W trybie „proba” niepusta wartość blokuje start, żeby piaskownica nie dotknęła prawdziwego konta. | Nie |
+| <code>ALLEGRO_CLIENT_SECRET</code> | nie ustawiaj — dawna nazwa, niczego nie włącza | sekret — nie wklejaj do czatu ani do repo | Dawna, globalna deklaracja sekretu Allegro — sama niczego nie włącza; w trybie „proba” musi być pusta. | Niczego nie włącza — kanały Allegro konfigurujesz przez OMS_KANALY. W trybie „proba” niepusta wartość blokuje start, żeby piaskownica nie dotknęła prawdziwego konta. | Nie |
+| <code>APILO_CREDENTIALS_PATH</code> | nie ustawiaj — dawna nazwa, niczego nie włącza | brak wartości domyślnej | Dawna deklaracja ścieżki do pliku z dostępem do Apilo — OMS jej nie używa do łączenia; w trybie „proba” musi być pusta. | Niczego nie włącza. W trybie „proba” niepusta wartość blokuje start, żeby piaskownica nie dotknęła prawdziwego konta Apilo. | Nie |
+| <code>GA4_KLUCZ</code> | opcjonalna integracja odczytu | sekret — nie wklejaj do czatu ani do repo | Ścieżka do pliku z kluczem konta usługowego Google, którym OMS czyta statystyki Google Analytics 4. | Bez niej nie ma starszego połączenia z GA4 z pliku. Nowe połączenia dodasz w panelu (Ustawienia → Integracje → Reklamy). | Nie |
+| <code>META_TOKEN</code> | opcjonalna integracja odczytu | sekret — nie wklejaj do czatu ani do repo | Token dostępu do Meta (Facebook/Instagram), z którego OMS czyta statystyki reklam — plikowe połączenie; sekret. | Bez niego nie ma starszego połączenia z Meta z pliku. Nowe połączenia dodasz w panelu (Ustawienia → Integracje → Reklamy). | Nie |
+| <code>WOO_CK</code> | nie ustawiaj — dawna nazwa, niczego nie włącza | sekret — nie wklejaj do czatu ani do repo | Dawna, globalna deklaracja klucza WooCommerce — sama niczego nie włącza; w trybie „proba” musi być pusta. | Niczego nie włącza — sklepy konfigurujesz przez OMS_KANALY. W trybie „proba” niepusta wartość blokuje start, żeby piaskownica nie dotknęła prawdziwego sklepu. | Nie |
+| <code>WOO_CS</code> | nie ustawiaj — dawna nazwa, niczego nie włącza | sekret — nie wklejaj do czatu ani do repo | Dawna, globalna deklaracja sekretu WooCommerce — sama niczego nie włącza; w trybie „proba” musi być pusta. | Niczego nie włącza — sklepy konfigurujesz przez OMS_KANALY. W trybie „proba” niepusta wartość blokuje start, żeby piaskownica nie dotknęła prawdziwego sklepu. | Nie |
+
+## Środowisko narzędzi i testów
+
+| Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
+|---|---|---|---|---|---|
+| <code>ALLEGRO_USER_AGENT</code> | nie dotyczy instalacji — używają jej tylko testy automatyczne | brak wartości domyślnej | Dawna nazwa nagłówka identyfikującego OMS w Allegro; używana tylko w testach — w instalacji ustaw &lt;P&gt;_USER_AGENT. | Panel jej nie czyta — testy używają jej jako zapasu dla &lt;P&gt;_USER_AGENT. | Nie |
+| <code>LOCALAPPDATA</code> | opcjonalna | brak | Katalog danych użytkownika Windows; testy PDF szukają w nim lokalnej kopii narzędzia Poppler do odczytu PDF-ów. | Testy PDF próbują najpierw PATH, potem lokalny Poppler; bez obu część kontroli tekstu PDF zostaje pominięta. | Nie |
+| <code>OMS_AUTH_PASS</code> | nie dotyczy instalacji — używają jej tylko testy automatyczne | sekret — nie wklejaj do czatu ani do repo | Dawna nazwa OMS_PASS, rozumiana tylko przez testy automatyczne; w prawdziwej instalacji nic nie znaczy. | Panel jej nie czyta — to alias używany wyłącznie w testach automatycznych. | Nie |
+| <code>OMS_AUTH_USER</code> | nie dotyczy instalacji — używają jej tylko testy automatyczne | OMS_USER, jeśli obecne | Dawna nazwa OMS_USER, rozumiana tylko przez testy automatyczne; w prawdziwej instalacji nic nie znaczy. | Panel jej nie czyta — to alias używany wyłącznie w testach automatycznych. | Nie |
+| <code>OMS_TEMP_PROBE_MODE</code> | opcjonalna | nie dotyczy instalacji (tylko testy) | Przełącznik używany wyłącznie w testach izolacji katalogu tymczasowego; w instalacji nic nie znaczy. | Dotyczy tylko testów: bez wartości test pomiaru katalogu tymczasowego nie ładuje bazy. | Nie |
+| <code>OMS_TEMP_WORKER_REPORT</code> | nie dotyczy instalacji — używają jej tylko testy automatyczne | brak wartości domyślnej | Ścieżka pliku raportu testu izolacji katalogu tymczasowego; używana wyłącznie w testach. | Dotyczy tylko testów: bez niej test nie zapisze swojego raportu i odmówi pracy. | Nie |
+| <code>OMS_TEST_API_SPY</code> | nie dotyczy instalacji — używają jej tylko testy automatyczne | brak wartości domyślnej | Ścieżka pliku z licznikiem zapytań do zewnętrznych usług, używana wyłącznie w testach narzędzi wiersza poleceń. | Dotyczy tylko testów: bez niej testowany proces nie zapisze licznika zapytań. | Nie |
+| <code>PATH</code> | opcjonalna | taka jak w systemie | Zmienna systemu (lista katalogów z programami); testy automatyczne używają jej do uruchamiania narzędzi — nie jest ustawieniem OMS. | To zmienna systemu, nie ustawienie OMS; korzystają z niej testy automatyczne przy uruchamianiu narzędzi. | Nie |
+| <code>SystemRoot</code> | opcjonalna | taka jak w systemie Windows | Zmienna systemu Windows przekazywana testom automatycznym; na Linuksie i w Dockerze nie ma znaczenia. | To zmienna Windows; bez niej testy automatyczne mogą nie uruchomić procesów pomocniczych na Windows. | Nie |
+| <code>TEMP</code> | opcjonalna | katalog tymczasowy systemu | Katalog tymczasowy systemu Windows; testy automatyczne przełączają go na własny katalog przebiegu — nie jest ustawieniem OMS. | To zmienna systemu; zmienia ją tylko środowisko testów, a panel jej nie ustawia. | Nie |
+| <code>TMP</code> | opcjonalna | katalog tymczasowy systemu | Katalog tymczasowy systemu Windows (druga nazwa); testy automatyczne przełączają go na własny — nie jest ustawieniem OMS. | To zmienna systemu; zmienia ją tylko środowisko testów, a panel jej nie ustawia. | Nie |
+| <code>TMPDIR</code> | opcjonalna | katalog tymczasowy systemu | Katalog tymczasowy systemu; testy automatyczne przełączają go na własny katalog przebiegu — nie jest ustawieniem OMS. | To zmienna systemu; zmienia ją tylko środowisko testów, a panel jej nie ustawia. | Nie |
+| <code>TZ</code> | opcjonalna | w Dockerze UTC | Systemowa strefa czasowa procesu; daty zamówień OMS liczy w strefie Europe/Warsaw niezależnie od niej (w Dockerze UTC). | Systemowa strefa dat Node; okna pobrania domeny mają jawne Europe/Warsaw. Testy tymczasowo zmieniają TZ. | Nie |
+
+## Instalacja klienta (Docker)
+
+| Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
+|---|---|---|---|---|---|
+| <code>OMS_KOPIA_ZEWNETRZNA</code> | opcjonalna | brak (uwaga w /health, gdy nadzór włączony) | Katalog nośnika poza dyskiem serwera (np. pendrive), na który trafiają kopie bazy; OMS sprawdza, czy nośnik jest podłączony. | W /health pojawia się uwaga „kopia poza dyskiem: nieustawiona” (tylko przy włączonym OMS_KOPIE_KATALOG) — awaria dysku zabierze bazę razem z kopiami. | Nie |
+| <code>OMS_KOPIE_KATALOG</code> | opcjonalna | brak (nadzór kopii wyłączony) | Katalog z kopiami bazy, który OMS nadzoruje; gdy najnowsza kopia ma 48 godzin lub więcej, /health zgłasza alarm. | Bez niej OMS nie sprawdza w /health, czy kopie bazy powstają. Instalacja Docker ustawia tu /opt/oms/backups. | Nie |
+
+## Zamówienia
+
+| Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
+|---|---|---|---|---|---|
+| <code>OMS_CENNIKI</code> | opcjonalna | brak (cennikami są sklepy WooCommerce z OMS_KANALY, w ich kolejności, pod etykietą; pierwszy = domyślny) | Lista cenników dla „Dodaj z magazynu” w formacie JSON ({kanal, nazwa}); domyślnie cennikami są sklepy WooCommerce z OMS_KANALY. | „Dodaj z magazynu” liczy ceny ze sklepów WooCommerce z OMS_KANALY. Bez takich sklepów nie ma cennika i dopisanie z magazynu odmawia z komunikatem. | Nie |
+
+## Wygląd panelu
+
+| Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
+|---|---|---|---|---|---|
+| <code>OMS_LOGO_ALT</code> | opcjonalna | pusty tekst (znak jako ozdoba) | Opis logo dla czytników ekranu; pusty oznacza, że logo to ozdoba, bo obok stoi napis. | Znak w belce ma alt="" — obok stoi tekst „OMS — Panel zamówień”. | Nie |
+| <code>OMS_LOGO_PLIK</code> | opcjonalna | brak (neutralny znak OMS z paczki) | Ścieżka do pliku PNG z logo firmy, pokazywanego w belce panelu; domyślnie neutralny znak z paczki. | Belka panelu pokazuje neutralny znak z paczki. | Nie |
+
+## Finanse
+
+| Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
+|---|---|---|---|---|---|
+| <code>OMS_RAPORTY_PODLOGA_KOSZTOW</code> | opcjonalna | brak | Miesiąc RRRR-MM, od którego OMS zna koszty firmy; rachunek zarządczy w zakładce FINANSE liczy się tylko od niego. | Bez niej zakładka FINANSE odmawia pokazania rachunku, bo nie wie, od kiedy znane są koszty; dane miesięczne działają. Ustaw początek znanej historii kosztów. | Nie |
+
+## Marketing
+
+| Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
+|---|---|---|---|---|---|
+| <code>META_KONTA</code> | opcjonalna | brak wartości domyślnej | Identyfikatory kont reklamowych Meta w formacie act_&lt;numer&gt;, po przecinku; wymagane razem z META_TOKEN. | Bez niej plikowe połączenie z Meta nie powstaje, a podanie samego META_TOKEN bez listy kont zatrzymuje start. | Nie |
+| <code>OMS_REKLAMY_SEKRETY_DIR</code> | opcjonalna; w instalacji Docker ustawia ją plik compose i nie zmienisz jej w oms.env | w instalacji Docker katalog leży w katalogu danych: /opt/oms/data/reklamy-sekrety (ustawia go plik compose) | Katalog na serwerze, w którym OMS trzyma klucze i tokeny reklam wpisane w panelu — poza bazą zamówień. | Poza Dockerem OMS używa katalogu /data-oms/reklamy-sekrety. W instalacji Docker katalog jest zawsze w /opt/oms/data/reklamy-sekrety, więc klucze reklam przetrwają aktualizację. | Nie |
+
+## Konta i dostęp
+
+| Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
+|---|---|---|---|---|---|
+| <code>OMS_ADRES_PANELU</code> | opcjonalna | brak — linki prowadzą pod adres, z którego administrator korzysta przy wysyłce | Publiczny adres panelu (http lub https, host i port, bez ścieżki), który trafia w linki zaproszeń i resetów hasła w mailach. | Linki w zaproszeniach i resetach hasła prowadzą pod adres, z którego administrator je wysyła. Ustaw zmienną, gdy pracownicy czytają pocztę poza Twoją siecią. Adres można wpisać też w panelu, ale ten z pliku wygrywa. | Tak — Ustawienia → Integracje → Poczta wychodząca → Adres panelu |

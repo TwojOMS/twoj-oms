@@ -46,6 +46,9 @@ services:
       OMS_PROFORMY_KATALOG: /opt/oms/data/proformy
       OMS_ETYKIETY_KATALOG: /opt/oms/data/etykiety
       OMS_ETYKIETY_DIR: /opt/oms/data/etykiety
+      # PRZ-094.29: klucze reklam z ekranu Ustawienia → Integracje → Reklamy. Domyślny /data-oms/… nie jest tu
+      # zamontowany (zapis padał na mkdir u UID 10001), więc katalog leży w wolumenie danych (i w jego kopii).
+      OMS_REKLAMY_SEKRETY_DIR: /opt/oms/data/reklamy-sekrety
       # PRZ-059: /health alarmuje, gdy najnowsza kopia ma 48 h albo nośnika kopii zewnętrznej nie ma.
       OMS_KOPIE_KATALOG: /opt/oms/backups
     # Port w sieci lokalnej; zmiana: OMS_PORT_LAN w pliku .env obok. NIE przekierowuj go na routerze

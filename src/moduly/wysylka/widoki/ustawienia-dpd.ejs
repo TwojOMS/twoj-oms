@@ -22,15 +22,21 @@
 </section>
 <% } else { %>
 <section class="ust-sekcja" id="dpd-stan">
+  <h2>Stan połączenia</h2>
   <% if (stan) { %>
-    <h2>Podłączony</h2>
+    <p class="ust-stan ust-stan-ok"><strong>Podłączony</strong></p>
     <p>„<%= stan.ustawienia.nazwa %>” — zapisał <%= stan.kontoLogin ?? '—' %>, <%= fmtDataCzas(stan.zmienionoAt) %>.</p>
     <% if (wymagaRestartu) { %><p class="pas-uprzedzenie">Nadawanie paczek włączy się po ponownym uruchomieniu OMS-u (to pierwszy kurier w tym panelu). Kolejne zmiany na tym ekranie działają od razu.</p><% } %>
   <% } else { %>
-    <h2>Niepodłączony</h2>
-    <p>Potrzebujesz umowy z DPD Polska i danych dostępu do API DPD: loginu, głównego numeru klienta (Master FID) i hasła. Prosisz o nie DPD — Biuro Obsługi Klienta albo swojego opiekuna handlowego. Samo podłączenie w OMS-ie nie zakłada konta w DPD.</p>
+    <p class="ust-stan"><strong>Niepodłączony</strong></p>
   <% } %>
 </section>
+<% if (!stan) { %>
+<aside class="ust-instrukcja" id="dpd-instrukcja">
+  <h3>Skąd wziąć dane dostępu</h3>
+  <p>Potrzebujesz umowy z DPD Polska i danych dostępu do API DPD: loginu, głównego numeru klienta (Master FID) i hasła. Prosisz o nie DPD — Biuro Obsługi Klienta albo swojego opiekuna handlowego. Samo podłączenie w OMS-ie nie zakłada konta w DPD.</p>
+</aside>
+<% } %>
 
 <section class="ust-sekcja">
   <h2>Dane kuriera</h2>

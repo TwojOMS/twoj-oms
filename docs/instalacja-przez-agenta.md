@@ -65,7 +65,10 @@ Zanim to zrobisz, wyjaśnij w jednym zdaniu, co się stanie, i poczekaj na wyra�
 - `aktualizuj.sh accept` (nieodwracalny — człowiek sam loguje się nowym kontem i potwierdza dane firmy)
   oraz `recover … --porzuc-prace`;
 - wpisanie **prawdziwych danych firmy** (NIP, numer rachunku, BDO) i **kluczy integracji** — klucze podaje człowiek,
-  zapisujesz je wyłącznie w pliku konfiguracji na serwerze (`/opt/oms/config/oms.env`, katalog 0700, plik 0600), nigdy w repo;
+  zapisujesz je wyłącznie w pliku konfiguracji na serwerze (`/opt/oms/config/oms.env`, katalog 0700, plik 0600), nigdy w repo.
+  Dla DPD, InPost, inFakta i poczty jest druga droga: człowiek sam wpisuje dane w panelu (Ustawienia → Integracje; instrukcje
+  `docs/kurier-dpd.md`, `docs/kurier-inpost.md`, `docs/poczta-smtp.md`) — wtedy ty prowadzisz go po ekranie, ale nie widzisz
+  ani nie przepisujesz haseł i tokenów;
 - jakiekolwiek wystawienie faktury, nadanie paczki, wysyłka do KSeF, wiadomość do klienta;
 - udostępnienie panelu poza siecią lokalną (router, VPN, HTTPS);
 - usunięcie czegokolwiek z `/opt/oms/data`, `/opt/oms/backups`.
@@ -76,6 +79,7 @@ Zanim to zrobisz, wyjaśnij w jednym zdaniu, co się stanie, i poczekaj na wyra�
    jak zatrzymać i uruchomić panel, co jeszcze nie jest podłączone.
 2. Zaproponuj **następny jeden krok**: pierwsza integracja w kolejności z sekcji 9 `instalacja-docker.md`
    (inFakt → sklep WooCommerce → Allegro → kurierzy). Po każdej integracji test z prawdziwym, ale niskoryzykownym zamówieniem.
+   Poczta wychodząca (zaproszenia do kont, linki do hasła) jest osobnym, niezależnym krokiem: `docs/poczta-smtp.md`.
 3. Zapisz człowiekowi (w jego notatkach, nie w repo) wersję wydania i datę instalacji: na serwerze z Dockerem to wiersz
    `biezace:` z `sudo sh /opt/oms/aktualizuj.sh status`, w próbie lokalnej `git rev-parse --short HEAD`.
 

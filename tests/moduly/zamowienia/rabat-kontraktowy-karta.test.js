@@ -11,7 +11,7 @@ import { zalozZamowienieReczne } from '../../../src/moduly/zamowienia/services/z
 import { NAZWA_CIASTECZKA_OMS, podpisz } from '../../../src/core/bezpieczenstwo/sesja.js';
 import { wczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
 
-const NIP = '1000001017';
+const NIP = '1234500011';
 const znacznik = '2026-08-24T09:00:00.000Z';
 const naglowek = {
   authorization: `Basic ${Buffer.from('adam:x').toString('base64')}`,
@@ -25,7 +25,7 @@ let db;
 beforeEach(() => {
   db = openOmsDb(':memory:');
   dopiszKlienta(db, {
-    klucz: 'zetaklient', nazwa: 'Zetaklient Drogowe', nip: NIP, b2b: 1, rabat_procent: 40,
+    klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa', nip: NIP, b2b: 1, rabat_procent: 40,
     chce_fakture: 1, metoda_wysylki: 'dpd', aktywny: 1,
     koszt_dostawy_brutto: '0.00', platnosc: 'Przelew', termin_platnosci: null, komentarz: null,
     // ⚠️ WARUNKI UMOWY MIESZKAJA OD 24.08.2026 NA KARCIE KLIENTA — do tego dnia szly
@@ -40,8 +40,8 @@ const zamowienieBezNipu = () => zalozZamowienieReczne({
   db,
   znacznik,
   dane: {
-    klient: { first_name: 'Ewa', last_name: 'Zieliński', email: 'biuro@zetaklientdrogowe.pl' },
-    dostawa: { first_name: 'Ewa', last_name: 'Zieliński', address_1: 'Długa 1' },
+    klient: { first_name: 'Anna', last_name: 'Przykładowa', email: 'biuro@przykladowa.example' },
+    dostawa: { first_name: 'Anna', last_name: 'Przykładowa', address_1: 'Długa 1' },
     nip: null,
     chce_fakture: 1,
     metoda_wysylki: 'dpd',
@@ -64,7 +64,7 @@ const zapiszFakture = async (id, pola, headers = naglowek) => {
     method: 'POST',
     url: `/zamowienia/${id}/dane/faktura`,
     headers,
-    payload: { firma: 'PHU Ewa Zieliński', ulica: 'Długa 1', kod: '43-300', miasto: 'Pęki', ...pola },
+    payload: { firma: 'Pracownia Przykładowa sp. z o.o.', ulica: 'Długa 1', kod: '43-300', miasto: 'Pęki', ...pola },
   });
   await app.close();
   return odp;

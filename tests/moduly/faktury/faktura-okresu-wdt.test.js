@@ -76,7 +76,7 @@ describe('faktura okresu WDT', () => {
     const { db, okres } = bazaZOkresem();
     const infakt = infaktUdany();
     const vies = { sprawdz: vi.fn() };
-    await usluga(db, infakt, vies).wystaw(okres.id, { nip: '1000001017' });
+    await usluga(db, infakt, vies).wystaw(okres.id, { nip: '1234500011' });
     const p = infakt.wystaw.mock.calls[0][0];
     for (const pole of ['number', 'sale_type', 'sales_kind', 'notes']) {
       expect(Object.hasOwn(p, pole)).toBe(false);

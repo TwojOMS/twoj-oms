@@ -903,6 +903,36 @@ export function ostatniWpisLogu(db, zamowienieId, akcja) {
     .get(zamowienieId, akcja) ?? null;
 }
 
+/** Wpisow historii na jednej stronie karty zamowienia. */
+export const WPISOW_HISTORII_NA_STRONE = 50;
+
+/**
+ * HISTORIA ZMIAN zamowienia — wpisy `log`, NAJNOWSZE PIERWSZE, jedna strona (PRZ-094.18).
+ *
+ * ⚠️⚠️ TABELA `log` NIE MA INDEKSU PO `zamowienie_id` (migracja 0001), wiec KAZDE wywolanie to
+ * pelny skan. Dlatego wola to WYLACZNIE karta rozwinieta swiadomie (`?historia=N`); zwinieta
+ * karta — otwierana kilkadziesiat razy dziennie — nie ma prawa tu zajrzec, takze po to, zeby
+ * policzyc wpisy. Test pilnuje tego licznikiem zapytan (karta-historia-zmian-prz094-18).
+ *
+ * ⚠️ NIE MA `COUNT(*)`: pobieramy `naStrone + 1` wierszy, a nadmiarowy sluzy tylko za dowod,
+ * ze istnieja starsze strony (i nie jest zwracany). Drugi skan tabeli na kazde otwarcie
+ * kosztowalby tyle samo, co pierwszy.
+ *
+ * Sortowanie po `id`, nie po `at` — powod jak przy `ostatniWpisLogu` (milisekunda moze byc wspolna).
+ * `kto`: login konta, 'automat' (czuwacze, zegary) albo `null` (wpisy sprzed kont) — zwracane
+ * dokladnie tak, jak lezy w bazie; nazwanie ich jest sprawa widoku.
+ *
+ * @param {import('node:sqlite').DatabaseSync} db
+ * @param {number} zamowienieId
+ * @param {{strona?: number, naStrone?: number}} [opcje] strona liczona od 1
+ * @returns {{wpisy: Array<{id: number, at: string, akcja: string, wynik: string | null, kto: string | null}>, maStarsze: boolean}}
+ */
+export function historiaLogu(db, zamowienieId, { strona = 1, naStrone = WPISOW_HISTORII_NA_STRONE } = {}) {
+  const wiersze = db.prepare('SELECT id, at, akcja, wynik, kto FROM log WHERE zamowienie_id = ? ORDER BY id DESC LIMIT ? OFFSET ?')
+    .all(zamowienieId, naStrone + 1, (strona - 1) * naStrone);
+  return { wpisy: wiersze.slice(0, naStrone), maStarsze: wiersze.length > naStrone };
+}
+
 /**
  * ZAMOWIENIA TEGO PODMIOTU — historia stalego klienta (21.08.2026).
  *

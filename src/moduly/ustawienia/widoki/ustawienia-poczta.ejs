@@ -1,0 +1,110 @@
+<h1>Poczta wychodząca</h1>
+<p><a href="/ustawienia/integracje">← Integracje</a></p>
+
+<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
+<% if (proba) { %>
+  <div class="<%= proba.ok ? 'pas-potwierdzenie' : 'pas-uprzedzenie' %>" id="poczta-wynik-proby"><p><strong><%= proba.ok ? 'Wysłano.' : 'Nie wysłano.' %></strong> <%= proba.tekst %></p></div>
+<% } %>
+<% if (bledy.length || bledyAdresu.length) { %>
+  <div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong></p><ul><% bledy.concat(bledyAdresu).forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
+<% } %>
+
+<p>Z tej skrzynki OMS wysyła zaproszenia do kont, linki do ustawienia nowego hasła i wiadomości do klientów z karty zamówienia. Dane serwera znajdziesz u dostawcy poczty, zwykle w pomocy pod hasłem „SMTP” albo „program pocztowy”.</p>
+<% if (atrapa) { %>
+  <p class="pas-uprzedzenie">Piaskownica: każdy mail, także próbny, przejmuje atrapa poczty — nic nie wychodzi z serwera, nawet gdy zapiszesz tu prawdziwą skrzynkę.</p>
+<% } %>
+
+<% if (zEnv) { %>
+<section class="ust-sekcja" id="poczta-stan">
+  <h2>Ustawiona w pliku konfiguracji</h2>
+  <p>Serwer poczty jest ustawiony w pliku konfiguracji serwera (<code>oms.env</code>, zmienne <code>SMTP_…</code> i <code>MAIL_FROM</code>). Ten ekran go nie zmienia — serwer, login i hasło poprawisz w tym pliku.</p>
+  <% if (stan) { %>
+    <form method="post" action="/ustawienia/integracje/poczta/odlacz">
+      <p>W OMS-ie zostały też ustawienia poczty zapisane wcześniej na tym ekranie. Plik konfiguracji ma pierwszeństwo, więc nie są używane.</p>
+      <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń zapisane ustawienia poczty</button></div>
+    </form>
+  <% } %>
+</section>
+<% } else { %>
+<section class="ust-sekcja" id="poczta-stan">
+  <% if (stan) { %>
+    <h2>Ustawiona</h2>
+    <p>Serwer <%= stan.ustawienia.host %>, login <%= stan.ustawienia.user %> — zapisał <%= stan.kontoLogin ?? '—' %>, <%= fmtDataCzas(stan.zmienionoAt) %>.</p>
+    <% if (wymagaRestartu) { %><p class="pas-uprzedzenie">Zaproszenia, linki do hasła i wiadomość próbna działają już teraz. Wiadomości do klientów z karty zamówienia włączą się po ponownym uruchomieniu OMS-u (to pierwsze ustawienie poczty w tym panelu); późniejsze zmiany na tym ekranie działają od razu.</p><% } %>
+  <% } else { %>
+    <h2>Nieustawiona</h2>
+    <p>Bez poczty OMS nie wyśle zaproszenia ani linku do hasła — zostaje „Pokaż link” do przekazania ręcznie.</p>
+  <% } %>
+</section>
+
+<section class="ust-sekcja">
+  <h2>Serwer poczty</h2>
+  <form id="poczta-formularz" class="ust-formularz" method="post" action="/ustawienia/integracje/poczta">
+    <label for="poczta-host">Serwer SMTP <span class="ust-wymagane">*</span></label>
+    <div><input id="poczta-host" name="host" value="<%= pola.host %>" maxlength="253" autocomplete="off" spellcheck="false" placeholder="smtp.twoja-firma.pl" required>
+      <p class="ust-pomoc">Sama nazwa serwera poczty wychodzącej, bez „smtp://”.</p></div>
+
+    <label for="poczta-port">Port <span class="ust-wymagane">*</span></label>
+    <div><input id="poczta-port" name="port" value="<%= pola.port %>" inputmode="numeric" maxlength="5" autocomplete="off" required>
+      <p class="ust-pomoc">465 — połączenie szyfrowane od początku (SSL). 587 — szyfrowanie po połączeniu (STARTTLS). Sprawdź u dostawcy poczty.</p></div>
+
+    <label for="poczta-user">Login <span class="ust-wymagane">*</span></label>
+    <div><input id="poczta-user" name="user" value="<%= pola.user %>" maxlength="254" autocomplete="off" spellcheck="false" required>
+      <p class="ust-pomoc">Zwykle pełny adres skrzynki, np. sklep@twoja-firma.pl.</p></div>
+
+    <label for="poczta-haslo">Hasło <span class="ust-wymagane">*</span></label>
+    <div><input id="poczta-haslo" type="password" name="haslo" value="" maxlength="200" autocomplete="new-password"<% if (stan?.zapisaneSekrety?.haslo) { %> placeholder="zapisane — zostaw puste, żeby nie zmieniać"<% } else { %> required<% } %>>
+      <p class="ust-pomoc">Hasło do skrzynki albo hasło aplikacji, jeśli dostawca poczty go wymaga.</p></div>
+
+    <label for="poczta-nadawca">Nadawca</label>
+    <div><input id="poczta-nadawca" name="nadawca" value="<%= pola.nadawca %>" maxlength="200" autocomplete="off" spellcheck="false">
+      <p class="ust-pomoc">Opcjonalnie, np. „Twoja Firma &lt;sklep@twoja-firma.pl&gt;”. Puste — maile idą z adresu z loginu.</p></div>
+
+    <p class="ust-pelna ust-pomoc">Pola oznaczone <span class="ust-wymagane">*</span> są wymagane.</p>
+    <div class="ust-pelna ust-akcje">
+      <button class="btn btn--glowny" type="submit">Zapisz</button>
+      <a class="ust-przycisk" href="/ustawienia/integracje">Anuluj</a>
+    </div>
+  </form>
+</section>
+<% } %>
+
+<section class="ust-sekcja" id="adres-panelu-stan">
+  <h2>Adres panelu w mailach</h2>
+  <% if (adresZEnv) { %>
+    <p>Linki w zaproszeniach i mailach z hasłem prowadzą pod <code><%= adresZEnv %></code> — adres z pliku konfiguracji (<code>OMS_ADRES_PANELU</code>). Ten ekran go nie zmienia.</p>
+  <% } else { %>
+    <p>Pod tym adresem pracownik otworzy link z zaproszenia albo z maila o nowym haśle. Wpisz go, gdy zespół otwiera panel pod innym adresem niż Ty teraz — tym, który ludzie mają w zakładkach. Adres musi działać tam, gdzie pracownik czyta pocztę, np. w domu, jeśli ktoś zagląda do niej poza biurem.</p>
+    <form id="adres-panelu-formularz" class="ust-formularz" method="post" action="/ustawienia/integracje/poczta/adres">
+      <label for="adres-panelu">Adres panelu</label>
+      <div><input id="adres-panelu" name="adres" value="<%= wpisanyAdres %>" maxlength="200" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://panel.twoja-firma.pl">
+        <p class="ust-pomoc"><% if (adresDomyslny) { %>Puste — linki prowadzą pod adres, z którego korzystasz: <code><%= adresDomyslny %></code>.<% } else { %>Puste — OMS nie rozpoznał adresu, z którego korzystasz, więc wysyłka mailem nie zadziała, dopóki go tu nie wpiszesz.<% } %><% if (zapisAdresu) { %> Wyczyść pole i zapisz, żeby do tego wrócić.<% } %></p>
+        <p class="ust-pomoc">http:// albo https://, nazwa hosta i ewentualnie port, np. http://192.168.1.20:3001. Bez ścieżki i bez „?”.<% if (zapisAdresu) { %> Zapisał <%= zapisAdresu.kontoLogin ?? '—' %>, <%= fmtDataCzas(zapisAdresu.zmienionoAt) %>.<% } %></p></div>
+      <div class="ust-pelna ust-akcje">
+        <button class="btn btn--glowny" type="submit">Zapisz adres</button>
+      </div>
+    </form>
+  <% } %>
+</section>
+
+<% if (moznaProbowac) { %>
+<section class="ust-sekcja">
+  <h2>Wiadomość próbna</h2>
+  <form id="poczta-proba" class="ust-formularz" method="post" action="/ustawienia/integracje/poczta/proba">
+    <label for="poczta-proba-adres">Wyślij na adres</label>
+    <div><input id="poczta-proba-adres" type="email" name="adres" value="<%= adresProby %>" maxlength="254" autocomplete="email" required>
+      <p class="ust-pomoc">OMS wyśle krótką wiadomość zapisanymi ustawieniami poczty. Nie dotyczy żadnego klienta ani zamówienia.</p></div>
+    <div class="ust-pelna ust-akcje"><button class="ust-przycisk" type="submit">Wyślij wiadomość próbną</button></div>
+  </form>
+</section>
+<% } %>
+
+<% if (stan && !zEnv) { %>
+<section class="ust-sekcja">
+  <h2>Usunięcie</h2>
+  <form method="post" action="/ustawienia/integracje/poczta/odlacz" onsubmit="return confirm('Usunąć ustawienia poczty? OMS przestanie wysyłać maile, dopóki nie wpiszesz ich ponownie.')">
+    <p>Usuwa serwer, login i hasło z OMS-u. Wysłane maile i historia wiadomości zostają.</p>
+    <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń ustawienia poczty</button></div>
+  </form>
+</section>
+<% } %>

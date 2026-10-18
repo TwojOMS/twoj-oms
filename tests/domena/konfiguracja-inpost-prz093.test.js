@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { sprawdzFormularzInpost, opcjeKlientaInpost, ADRES_INPOST } from '../../src/domena/konfiguracja-inpost.js';
 
 const TOKEN = 'eyJ0eXAi.ZMYSLONY.token';
+const BLAD_KODU = 'Kod punktu nadawczego to litery i cyfry, z myślnikami między członami, np. ABC01M albo POP-WAW206.';
 const OK = { nazwa: 'InPost', organizacja: '4242', token: TOKEN, paczkomatNadawczy: '' };
 
 describe('sprawdzFormularzInpost', () => {
@@ -22,8 +23,28 @@ describe('sprawdzFormularzInpost', () => {
     expect(sprawdzFormularzInpost({ ...OK, organizacja: '12-34' }).bledy).toEqual(['Numer organizacji to same cyfry, większy od zera.']);
     expect(sprawdzFormularzInpost({ ...OK, organizacja: '0' }).bledy).toEqual(['Numer organizacji to same cyfry, większy od zera.']);
     expect(sprawdzFormularzInpost({ ...OK, token: 'ab cd' }).bledy).toEqual(['Token nie może zawierać spacji — skopiuj go w całości, bez dopisków.']);
-    expect(sprawdzFormularzInpost({ ...OK, paczkomatNadawczy: 'KTY 01M' }).bledy).toEqual(['Kod paczkomatu nadawczego to litery i cyfry, np. ABC01M.']);
+    expect(sprawdzFormularzInpost({ ...OK, paczkomatNadawczy: 'KTY 01M' }).bledy).toEqual([BLAD_KODU]);
     expect(sprawdzFormularzInpost({ ...OK, nazwa: 'x'.repeat(61) }).bledy).toEqual(['Nazwa może mieć najwyżej 60 znaków.']);
+  });
+
+  // PRZ-094.15 — PaczkoPunkty (partner_id 33) mają w API Points `name` z myślnikiem, np. POP-WAW206 (dokumentacja
+  // InPost, „Display of collection points”); dropoff_point to „dropoff point name” (ShipX, „Shipment”). Plik
+  // (INPOST_PACZKOMAT_NADAWCZY) przyjmuje takie kody, więc ekran też musi.
+  it('kod punktu z myślnikiem (PaczkoPunkt POP-…) przechodzi, zwykły paczkomat nadal też', () => {
+    for (const kod of ['POP-WAW206', 'pop-waw206', ' POP-KRA356 ', 'KRA02APP', 'ABC01M']) {
+      const w = sprawdzFormularzInpost({ ...OK, paczkomatNadawczy: kod });
+      expect(w.bledy, kod).toEqual([]);
+      expect(w.ustawienia.paczkomatNadawczy, kod).toBe(kod.trim().toUpperCase());
+    }
+  });
+
+  it('kod punktu: śmieci dalej odrzucone (spacje, znaki spoza A-Z0-9-, myślnik na brzegu lub podwójny, długość)', () => {
+    for (const kod of ['POP WAW206', 'POP_WAW206', 'POP-', '-WAW206', 'POP--WAW206', '-', 'A', 'A'.repeat(21),
+      'POP-WAW206!', 'ŁÓD01M', 'POP–WAW206' /* półpauza */]) {
+      expect(sprawdzFormularzInpost({ ...OK, paczkomatNadawczy: kod }).bledy, kod).toEqual([BLAD_KODU]);
+    }
+    expect(sprawdzFormularzInpost({ ...OK, paczkomatNadawczy: 'A'.repeat(20) }).bledy).toEqual([]);
+    expect(sprawdzFormularzInpost({ ...OK, paczkomatNadawczy: '   ' }).bledy).toEqual([]); // puste = „nie podawaj”
   });
 
   it('pusty token przy istniejącym zapisie = zostaw zapisany; nowy zastępuje', () => {

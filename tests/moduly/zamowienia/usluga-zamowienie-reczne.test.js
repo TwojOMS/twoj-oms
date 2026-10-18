@@ -58,7 +58,7 @@ describe('zalozZamowienieReczne', () => {
   it('kwota zamowienia obejmuje DOKLEJONA oplate, nie tylko pozycje operatora', () => {
     const zbiorczy = {
       ...dane,
-      nip: '1000001017',
+      nip: '1234500011',
       etykietaKlienta: true,
       koszt_dostawy_brutto: '0.00',
       pozycje: [{
@@ -80,7 +80,7 @@ describe('zalozZamowienieReczne', () => {
   it('towar powyzej progu nie dostaje oplaty, a kwota zostaje sama pozycjami', () => {
     const zbiorczy = {
       ...dane,
-      nip: '1000001017',
+      nip: '1234500011',
       koszt_dostawy_brutto: '0.00',
       pozycje: [{
         nazwa: 'Szablon', sku: null, ilosc: 1, cena_brutto: '600.00', brutto_linii: '600.00',

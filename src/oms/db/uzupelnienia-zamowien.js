@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   kosztDostawyBrutto, bruttoLinii, kosztDostawyNetto, nettoLinii, cenaJednostkowaNetto,
   punktOdbioruZeSurowych,
@@ -6,163 +7,199 @@ import { ofertaLinii } from '../../domena/allegro-mapowanie.js';
 import { czyIndywidualneZeSurowych } from '../../domena/indywidualne.js';
 import { kuponyZeSurowych } from '../../domena/kupony.js';
 import { atrybucjaZeSurowych } from '../../domena/atrybucja.js';
+
+// ---------------------------------------------------------------------------------
+// PRZ-094.25 — PRZEJSCIE PO ZAMOWIENIU RAZ, NIE PRZY KAZDYM STARCIE.
+//
+// Uzupelnienia dopisuja do kolumn to, co da sie wyczytac z `surowe_json` (uwagi, paczkomat,
+// koszt dostawy, kwoty i identyfikatory pozycji...). Kazde z nich wybiera wiersze z kolumna
+// NULL — a NULL zostaje na zawsze, gdy zrodlo tej informacji nie ma (zamowienie bez uwag klienta,
+// bez paczkomatu, Woo bez oferty Allegro, Allegro bez `line_items`...). Wiec te wiersze byly
+// czytane i parsowane przy KAZDYM starcie procesu, przed `app.listen`. Pomiar PRZ-094.08:
+// 100 tys. zamowien = 5,7 s / ~210 MB (surowe_json 13 B) albo 30 s / ~1,2 GB (4 KB), przy
+// limicie kontenera 512 MB.
+//
+// Zamiast znacznika w kazdym zamowieniu (kolumna = migracja bazy, a pusty napis zamiast NULL
+// zmieniylby wszystkich czytelnikow tych kolumn) zapamietujemy GRANICE: najwyzsze `zamowienia.id`,
+// ktore przeszlo wszystkie uzupelnienia. `id` to AUTOINCREMENT, wiec zamowienie dopisane pozniej
+// zawsze ma wyzsze id i trafia w nastepny przebieg. Granica mieszka w `migracje_jednorazowe`
+// (nazwa = `uzupelnienia-zamowien:<wersja>:do-id:<N>`, jeden wiersz).
+//
+// ⚠️ Co to zalozenie wymaga: zamowienie o id <= granicy ma juz wszystko, co z jego `surowe_json`
+// da sie uzyskac, a pozniejsze zmiany tych kolumn przychodza z pollera (`zapiszZamowienie`
+// zapisuje je z tych samych funkcji mapujacych przy kazdej synchronizacji), nie z uzupelnien.
+// Reczne wyzerowanie kolumny w bazie NIE jest juz odtwarzane przy starcie — zeby przeliczyc
+// wszystko od nowa: `DELETE FROM migracje_jednorazowe WHERE nazwa LIKE 'uzupelnienia-zamowien:%'`.
+//
+// ⚠️ DOLOZENIE KROKU: wersja granicy zawiera skrot z nazw krokow ponizej, wiec nowy krok
+// (albo zmiana nazwy) sam uniewaznia granice i jeden raz przechodzi cala baze. Zmiana SAMEJ
+// logiki istniejacego kroku tego nie robi — wtedy podbij WERSJA_LOGIKI.
+// ---------------------------------------------------------------------------------
+export const WERSJA_LOGIKI = 1;
+const PREFIKS_ZNACZNIKA = 'uzupelnienia-zamowien:';
+const PORCJA = 500;
+const NAJWYZSZE_ID = Number.MAX_SAFE_INTEGER;
+
+/** Zakres calej tabeli — domyslny dla wywolan pojedynczych krokow (testy, skrypty). */
+export const BEZ_GRANIC = Object.freeze({ od: 0, do: NAJWYZSZE_ID });
+
+function wTransakcji(db, praca) {
+  if (db.isTransaction) { praca(); return; }
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    praca();
+    db.exec('COMMIT');
+  } catch (e) {
+    // Przerwana porcja zostawia swoje wiersze z NULL-em, czyli „jeszcze nie policzone"; granica
+    // nie jest przesuwana, wiec nastepny start sprobuje ponownie.
+    db.exec('ROLLBACK');
+    throw e;
+  }
+}
+
+/**
+ * Czyta `surowe_json` PORCJAMI po `id` (500 wierszy), wiec pamiec nie zalezy od liczby zamowien.
+ * `sql` to SELECT z WHERE (bez ORDER/LIMIT); dokladamy zakres id, porzadek i limit. Kazda porcja
+ * zapisuje sie w jednej transakcji — jeden fsync na porcje zamiast na kazdy `run()` (zmierzone przy
+ * recenzji: 6 000 zamowien w autocommicie 140 s, w jednej transakcji 6,2 s).
+ */
+function wPorcjach(db, { sql, id = 'id' }, zakres, naPorcji) {
+  const zapytanie = db.prepare(`${sql} AND ${id} > ? AND ${id} <= ? ORDER BY ${id} LIMIT ${PORCJA}`);
+  const gora = zakres?.do ?? NAJWYZSZE_ID;
+  let kursor = zakres?.od ?? 0;
+  for (;;) {
+    const wiersze = zapytanie.all(kursor, gora);
+    if (wiersze.length === 0) return;
+    if (zakres?.licznik) zakres.licznik.wiersze += wiersze.length;
+    wTransakcji(db, () => naPorcji(wiersze));
+    kursor = wiersze[wiersze.length - 1].id;
+    if (wiersze.length < PORCJA) return;
+  }
+}
+
+// Uszkodzony JSON pojedynczego zamowienia nie ma prawa zablokowac startu panelu.
+function surowe(w) {
+  try {
+    const o = JSON.parse(w.surowe_json);
+    return o && typeof o === 'object' ? o : null;
+  } catch { return null; }
+}
+
 export function uzupelnijZrodloNumeru(db) {
   db.prepare(
     "UPDATE przesylki SET zrodlo_numeru = 'allegro'"
     + " WHERE zrodlo_numeru IS NULL AND kurier = 'allegro' AND nadana_recznie = 1",
   ).run();
 }
-export function uzupelnijIndywidualne(db) {
-  const braki = db.prepare(
-    'SELECT id, surowe_json FROM zamowienia WHERE indywidualne IS NULL AND surowe_json IS NOT NULL',
-  ).all();
+export function uzupelnijIndywidualne(db, zakres = BEZ_GRANIC) {
   const zapisz = db.prepare('UPDATE zamowienia SET indywidualne = ? WHERE id = ?');
-  // ⚠️ CALA PETLA W JEDNEJ TRANSAKCJI — i to NIE jest mikrooptymalizacja.
-  //
-  // To przeliczenie rozni sie od trzech starszych obok (paczkomaty, metoda platnosci,
-  // zdjecia) jedna rzecza: tamte pisza RZADKO (`if (kod) zapisz.run(...)`), a to pisze
-  // do KAZDEGO zamowienia — bo zero jest tu wynikiem tak samo dobrym jak jedynka.
-  // W autocommicie kazdy `run()` to osobna transakcja WAL z wlasnym fsync, wiec koszt
-  // rosnie kwadratowo. Zmierzone przy recenzji tej galezi, na ksztalcie produkcyjnym:
-  //   1 000 zamowien — 4,6 s | 3 000 — 31,7 s | 6 000 — 140 s
-  // a ta sama petla w jednej transakcji: 6 000 zamowien w 6,2 s (13x szybciej).
-  //
-  // To jest czas STARTU: `zbudujOms()` chodzi PRZED `app.listen`, wiec przez caly ten
-  // czas panel jest nieosiagalny. Dzis w bazie jest 35 zamowien (0,2 s), ale sklep ma
-  // ich blisko 9 000 i poller potrafi masowo dotknac archiwum — wiec „dzis szybko"
-  // nie jest zadna gwarancja na pierwszy start po takim przebiegu.
-  db.exec('BEGIN IMMEDIATE');
-  try {
-    for (const w of braki) {
-      let surowe = null;
-      // Uszkodzony JSON pojedynczego zamowienia nie ma prawa zablokowac startu panelu.
-      try { surowe = JSON.parse(w.surowe_json); } catch { continue; }
-      if (!surowe || typeof surowe !== 'object') continue;
-      zapisz.run(czyIndywidualneZeSurowych(surowe) ? 1 : 0, w.id);
+  // ⚠️ ZAPISY W TRANSAKCJI (porcja = jedna), i to nie jest mikrooptymalizacja. To przeliczenie
+  // pisze do KAZDEGO zamowienia (zero jest wynikiem tak samo dobrym jak jedynka), a w autocommicie
+  // kazdy `run()` to osobna transakcja WAL z wlasnym fsync. Zmierzone przy recenzji na ksztalcie
+  // produkcyjnym: 1 000 zamowien — 4,6 s | 3 000 — 31,7 s | 6 000 — 140 s, a ta sama petla
+  // w jednej transakcji: 6 000 w 6,2 s. To czas STARTU: panel jest wtedy nieosiagalny.
+  wPorcjach(db, {
+    sql: 'SELECT id, surowe_json FROM zamowienia WHERE indywidualne IS NULL AND surowe_json IS NOT NULL',
+  }, zakres, (wiersze) => {
+    for (const w of wiersze) {
+      const s = surowe(w);
+      if (!s) continue;
+      zapisz.run(czyIndywidualneZeSurowych(s) ? 1 : 0, w.id);
     }
-    db.exec('UPDATE zamowienia SET indywidualne = 0 WHERE indywidualne IS NULL AND surowe_json IS NULL');
-    db.exec('COMMIT');
-  } catch (e) {
-    // Przerwane przeliczenie ma zostawic baze w stanie SPRZED niego, a nie w polowie:
-    // wiersze bez wartosci zostaja z NULL-em, czyli „jeszcze nie policzone", i nastepny
-    // start sprobuje ponownie. Polowicznie zapisany stan wygladalby jak policzony.
-    db.exec('ROLLBACK');
-    throw e;
-  }
+  });
+  db.prepare(
+    'UPDATE zamowienia SET indywidualne = 0 WHERE indywidualne IS NULL AND surowe_json IS NULL AND id > ? AND id <= ?',
+  ).run(zakres?.od ?? 0, zakres?.do ?? NAJWYZSZE_ID);
 }
-export function uzupelnijPunktOdbioru(db) {
-  const braki = db.prepare(
-    'SELECT id, surowe_json FROM zamowienia WHERE punkt_odbioru IS NULL AND surowe_json IS NOT NULL',
-  ).all();
+export function uzupelnijPunktOdbioru(db, zakres = BEZ_GRANIC) {
   const zapisz = db.prepare('UPDATE zamowienia SET punkt_odbioru = ?, punkt_odbioru_opis = ? WHERE id = ?');
-  for (const w of braki) {
-    let surowe = null;
-    // Uszkodzony JSON pojedynczego zamowienia nie ma prawa zablokowac startu panelu.
-    try { surowe = JSON.parse(w.surowe_json); } catch { continue; }
-    if (!surowe || typeof surowe !== 'object') continue;
-    const { kod, opis } = punktOdbioruZeSurowych(surowe);
-    if (kod) zapisz.run(kod, opis, w.id);
-  }
+  wPorcjach(db, {
+    sql: 'SELECT id, surowe_json FROM zamowienia WHERE punkt_odbioru IS NULL AND surowe_json IS NOT NULL',
+  }, zakres, (wiersze) => {
+    for (const w of wiersze) {
+      const s = surowe(w);
+      if (!s) continue;
+      const { kod, opis } = punktOdbioruZeSurowych(s);
+      if (kod) zapisz.run(kod, opis, w.id);
+    }
+  });
 }
-export function uzupelnijAtrybucje(db) {
-  const braki = db.prepare(
-    `SELECT id, surowe_json FROM zamowienia
-     WHERE atrybucja_json IS NULL AND surowe_json LIKE '%_wc_order_attribution_%'`,
-  ).all();
+export function uzupelnijAtrybucje(db, zakres = BEZ_GRANIC) {
   const zapisz = db.prepare('UPDATE zamowienia SET atrybucja_json = ? WHERE id = ?');
-  for (const w of braki) {
-    let surowe = null;
-    // Uszkodzony JSON pojedynczego zamowienia nie ma prawa zablokowac startu panelu.
-    try { surowe = JSON.parse(w.surowe_json); } catch { continue; }
-    if (!surowe || typeof surowe !== 'object') continue;
-    const a = atrybucjaZeSurowych(surowe);
-    if (a) zapisz.run(JSON.stringify(a), w.id);
-  }
+  wPorcjach(db, {
+    sql: `SELECT id, surowe_json FROM zamowienia
+     WHERE atrybucja_json IS NULL AND surowe_json LIKE '%_wc_order_attribution_%'`,
+  }, zakres, (wiersze) => {
+    for (const w of wiersze) {
+      const s = surowe(w);
+      if (!s) continue;
+      const a = atrybucjaZeSurowych(s);
+      if (a) zapisz.run(JSON.stringify(a), w.id);
+    }
+  });
 }
-export function uzupelnijKupony(db) {
-  const braki = db.prepare(
-    `SELECT id, surowe_json FROM zamowienia
-     WHERE kupony_json IS NULL AND surowe_json LIKE '%"coupon_lines":[{%'`,
-  ).all();
+export function uzupelnijKupony(db, zakres = BEZ_GRANIC) {
   const zapisz = db.prepare('UPDATE zamowienia SET kupony_json = ? WHERE id = ?');
-  for (const w of braki) {
-    let surowe = null;
-    // Uszkodzony JSON pojedynczego zamowienia nie ma prawa zablokowac startu panelu.
-    try { surowe = JSON.parse(w.surowe_json); } catch { continue; }
-    if (!surowe || typeof surowe !== 'object') continue;
-    const kupony = kuponyZeSurowych(surowe);
-    if (kupony.length) zapisz.run(JSON.stringify(kupony), w.id);
-  }
+  wPorcjach(db, {
+    sql: `SELECT id, surowe_json FROM zamowienia
+     WHERE kupony_json IS NULL AND surowe_json LIKE '%"coupon_lines":[{%'`,
+  }, zakres, (wiersze) => {
+    for (const w of wiersze) {
+      const s = surowe(w);
+      if (!s) continue;
+      const kupony = kuponyZeSurowych(s);
+      if (kupony.length) zapisz.run(JSON.stringify(kupony), w.id);
+    }
+  });
 }
-export function uzupelnijProduktIdPozycji(db) {
-  const braki = db.prepare(
-    'SELECT DISTINCT z.id, z.surowe_json FROM zamowienia z JOIN pozycje p ON p.zamowienie_id = z.id'
-    + " WHERE p.produkt_id IS NULL AND p.zrodlo = 'sklep' AND z.surowe_json IS NOT NULL",
-  ).all();
+
+/**
+ * Wspolny szkielet krokow „pozycje zamowienia": zamowienia z pozycja sklepowa bez wartosci w kolumnie
+ * `kolumna`, linie z `surowe_json` (pole `pole`) przypisane do wierszy `pozycje` po kolejnosci.
+ */
+function uzupelnijPozycje(db, zakres, { kolumna, pole = 'line_items', zapisz }) {
   const wiersze = db.prepare("SELECT id FROM pozycje WHERE zamowienie_id = ? AND zrodlo = 'sklep' ORDER BY id");
+  wPorcjach(db, {
+    // EXISTS zamiast DISTINCT + JOIN: ten sam zbior zamowien, ale bez deduplikowania calego surowe_json.
+    sql: 'SELECT z.id, z.surowe_json FROM zamowienia z WHERE z.surowe_json IS NOT NULL AND EXISTS ('
+      + `SELECT 1 FROM pozycje p WHERE p.zamowienie_id = z.id AND p.${kolumna} IS NULL AND p.zrodlo = 'sklep')`,
+    id: 'z.id',
+  }, zakres, (porcja) => {
+    for (const w of porcja) {
+      let s = null;
+      try { s = JSON.parse(w.surowe_json); } catch { continue; }
+      const linie = s?.[pole];
+      if (!Array.isArray(linie)) continue;
+      const nasze = wiersze.all(w.id);
+      if (nasze.length !== linie.length) continue;
+      nasze.forEach((p, i) => zapisz(linie[i], p.id));
+    }
+  });
+}
+export function uzupelnijProduktIdPozycji(db, zakres = BEZ_GRANIC) {
   const zapisz = db.prepare('UPDATE pozycje SET produkt_id = ? WHERE id = ?');
-  // ⚠️ JEDNA TRANSAKCJA na cala petle — uzasadnienie przy `uzupelnijIndywidualne` wyzej.
-  // Tutaj jest go nawet WIECEJ: piszemy nie raz na zamowienie, tylko raz na POZYCJE,
-  // czyli okolo trzy razy wiecej zapisow przy tej samej liczbie zamowien.
-  db.exec('BEGIN IMMEDIATE');
-  try {
-    for (const w of braki) {
-      let surowe = null;
-      // Uszkodzony JSON pojedynczego zamowienia nie ma prawa zablokowac startu panelu.
-      try { surowe = JSON.parse(w.surowe_json); } catch { continue; }
-      const linie = surowe?.line_items;
-      if (!Array.isArray(linie)) continue;
-      const nasze = wiersze.all(w.id);
-      if (nasze.length !== linie.length) continue;
-      nasze.forEach((p, i) => zapisz.run(produktLinii(linie[i]), p.id));
-    }
-    db.exec('COMMIT');
-  } catch (e) {
-    // Jak wyzej: przerwane przeliczenie ma zostawic NULL-e, czyli „jeszcze nie policzone".
-    db.exec('ROLLBACK');
-    throw e;
-  }
+  uzupelnijPozycje(db, zakres, { kolumna: 'produkt_id', zapisz: (linia, id) => zapisz.run(produktLinii(linia), id) });
 }
-export function uzupelnijOfertaIdPozycji(db) {
-  const braki = db.prepare(
-    'SELECT DISTINCT z.id, z.surowe_json FROM zamowienia z JOIN pozycje p ON p.zamowienie_id = z.id'
-    + " WHERE p.oferta_id IS NULL AND p.zrodlo = 'sklep' AND z.surowe_json IS NOT NULL",
-  ).all();
-  const wiersze = db.prepare("SELECT id FROM pozycje WHERE zamowienie_id = ? AND zrodlo = 'sklep' ORDER BY id");
+export function uzupelnijOfertaIdPozycji(db, zakres = BEZ_GRANIC) {
   const zapisz = db.prepare('UPDATE pozycje SET oferta_id = ? WHERE id = ?');
-  // ⚠️ JEDNA TRANSAKCJA na cala petle — uzasadnienie przy `uzupelnijIndywidualne` wyzej.
-  db.exec('BEGIN IMMEDIATE');
-  try {
-    for (const w of braki) {
-      let surowe = null;
-      // Uszkodzony JSON pojedynczego zamowienia nie ma prawa zablokowac startu panelu.
-      try { surowe = JSON.parse(w.surowe_json); } catch { continue; }
-      const linie = surowe?.lineItems;
-      if (!Array.isArray(linie)) continue;
-      const nasze = wiersze.all(w.id);
-      if (nasze.length !== linie.length) continue;
-      nasze.forEach((p, i) => zapisz.run(ofertaLinii(linie[i]), p.id));
-    }
-    db.exec('COMMIT');
-  } catch (e) {
-    // Jak wyzej: przerwane przeliczenie ma zostawic NULL-e, czyli „jeszcze nie policzone".
-    db.exec('ROLLBACK');
-    throw e;
-  }
+  uzupelnijPozycje(db, zakres, {
+    kolumna: 'oferta_id', pole: 'lineItems', zapisz: (linia, id) => zapisz.run(ofertaLinii(linia), id),
+  });
 }
 export function produktLinii(linia) {
   const id = Number(linia?.product_id);
   return Number.isInteger(id) && id > 0 ? id : null;
 }
-export function uzupelnijMetodePlatnosci(db) {
-  const braki = db.prepare(
-    'SELECT id, surowe_json FROM zamowienia WHERE metoda_platnosci IS NULL AND surowe_json IS NOT NULL',
-  ).all();
+export function uzupelnijMetodePlatnosci(db, zakres = BEZ_GRANIC) {
   const zapisz = db.prepare('UPDATE zamowienia SET metoda_platnosci = ? WHERE id = ?');
-  for (const w of braki) {
-    const metoda = metodaPlatnosciZeSurowych(w.surowe_json);
-    if (metoda) zapisz.run(metoda, w.id);
-  }
+  wPorcjach(db, {
+    sql: 'SELECT id, surowe_json FROM zamowienia WHERE metoda_platnosci IS NULL AND surowe_json IS NOT NULL',
+  }, zakres, (wiersze) => {
+    for (const w of wiersze) {
+      const metoda = metodaPlatnosciZeSurowych(w.surowe_json);
+      if (metoda) zapisz.run(metoda, w.id);
+    }
+  });
 }
 export const PROG_BACKFILLU_WYSLANE = '2026-07-31';
 export function uzupelnijWyslaneAt(db) {
@@ -213,8 +250,8 @@ export function przeniesWplatyDoListy(db) {
 export function metodaPlatnosciZeSurowych(surowyJson) {
   if (!surowyJson) return null;
   try {
-    const surowe = JSON.parse(surowyJson);
-    return surowe?.payment_method_title || null;
+    const s = JSON.parse(surowyJson);
+    return s?.payment_method_title || null;
   } catch {
     return null;
   }
@@ -225,103 +262,64 @@ export function uzupelnijChecFaktury(db) {
     + " WHERE chce_fakture = 0 AND nip IS NOT NULL AND TRIM(nip) <> ''",
   );
 }
-export function uzupelnijKosztDostawy(db) {
-  const braki = db.prepare(
-    'SELECT id, surowe_json FROM zamowienia WHERE koszt_dostawy_brutto IS NULL AND surowe_json IS NOT NULL',
-  ).all();
+export function uzupelnijKosztDostawy(db, zakres = BEZ_GRANIC) {
   const zapisz = db.prepare('UPDATE zamowienia SET koszt_dostawy_brutto = ? WHERE id = ?');
-  for (const w of braki) {
-    let surowe = null;
-    // Uszkodzony JSON pojedynczego zamowienia nie ma prawa zablokowac startu panelu.
-    try { surowe = JSON.parse(w.surowe_json); } catch { continue; }
-    if (!surowe || typeof surowe !== 'object') continue;
-    zapisz.run(kosztDostawyBrutto(surowe), w.id);
-  }
+  wPorcjach(db, {
+    sql: 'SELECT id, surowe_json FROM zamowienia WHERE koszt_dostawy_brutto IS NULL AND surowe_json IS NOT NULL',
+  }, zakres, (wiersze) => {
+    for (const w of wiersze) {
+      const s = surowe(w);
+      if (!s) continue;
+      zapisz.run(kosztDostawyBrutto(s), w.id);
+    }
+  });
 }
-export function uzupelnijUwagi(db) {
-  const braki = db.prepare(
-    'SELECT id, surowe_json FROM zamowienia WHERE uwagi IS NULL AND surowe_json IS NOT NULL',
-  ).all();
+export function uzupelnijUwagi(db, zakres = BEZ_GRANIC) {
   const zapisz = db.prepare('UPDATE zamowienia SET uwagi = ? WHERE id = ?');
-  for (const w of braki) {
-    let surowe = null;
-    // Uszkodzony JSON pojedynczego zamowienia nie ma prawa zablokowac startu panelu.
-    try { surowe = JSON.parse(w.surowe_json); } catch { continue; }
-    if (!surowe || typeof surowe !== 'object') continue;
-    if (surowe.customer_note) zapisz.run(surowe.customer_note, w.id);
-  }
+  wPorcjach(db, {
+    sql: 'SELECT id, surowe_json FROM zamowienia WHERE uwagi IS NULL AND surowe_json IS NOT NULL',
+  }, zakres, (wiersze) => {
+    for (const w of wiersze) {
+      const s = surowe(w);
+      if (!s) continue;
+      if (s.customer_note) zapisz.run(s.customer_note, w.id);
+    }
+  });
 }
-export function uzupelnijKosztDostawyNetto(db) {
-  const braki = db.prepare(
-    'SELECT id, surowe_json FROM zamowienia WHERE koszt_dostawy_netto IS NULL AND surowe_json IS NOT NULL',
-  ).all();
+export function uzupelnijKosztDostawyNetto(db, zakres = BEZ_GRANIC) {
   const zapisz = db.prepare('UPDATE zamowienia SET koszt_dostawy_netto = ? WHERE id = ?');
-  for (const w of braki) {
-    let surowe = null;
-    // Uszkodzony JSON pojedynczego zamowienia nie ma prawa zablokowac startu panelu.
-    try { surowe = JSON.parse(w.surowe_json); } catch { continue; }
-    if (!surowe || typeof surowe !== 'object') continue;
-    zapisz.run(kosztDostawyNetto(surowe), w.id);
-  }
+  wPorcjach(db, {
+    sql: 'SELECT id, surowe_json FROM zamowienia WHERE koszt_dostawy_netto IS NULL AND surowe_json IS NOT NULL',
+  }, zakres, (wiersze) => {
+    for (const w of wiersze) {
+      const s = surowe(w);
+      if (!s) continue;
+      zapisz.run(kosztDostawyNetto(s), w.id);
+    }
+  });
 }
-export function uzupelnijBruttoLinii(db) {
-  const braki = db.prepare(
-    'SELECT DISTINCT z.id, z.surowe_json FROM zamowienia z JOIN pozycje p ON p.zamowienie_id = z.id'
-    + " WHERE p.brutto_linii IS NULL AND p.zrodlo = 'sklep' AND z.surowe_json IS NOT NULL",
-  ).all();
-  const wiersze = db.prepare("SELECT id FROM pozycje WHERE zamowienie_id = ? AND zrodlo = 'sklep' ORDER BY id");
+export function uzupelnijBruttoLinii(db, zakres = BEZ_GRANIC) {
   const zapisz = db.prepare('UPDATE pozycje SET brutto_linii = ? WHERE id = ?');
-  for (const w of braki) {
-    let surowe = null;
-    // Uszkodzony JSON pojedynczego zamowienia nie ma prawa zablokowac startu panelu.
-    try { surowe = JSON.parse(w.surowe_json); } catch { continue; }
-    const linie = surowe?.line_items;
-    if (!Array.isArray(linie)) continue;
-    const nasze = wiersze.all(w.id);
-    if (nasze.length !== linie.length) continue;
-    nasze.forEach((p, i) => zapisz.run(bruttoLinii(linie[i]), p.id));
-  }
+  uzupelnijPozycje(db, zakres, { kolumna: 'brutto_linii', zapisz: (linia, id) => zapisz.run(bruttoLinii(linia), id) });
 }
-export function uzupelnijNettoLinii(db) {
-  const braki = db.prepare(
-    'SELECT DISTINCT z.id, z.surowe_json FROM zamowienia z JOIN pozycje p ON p.zamowienie_id = z.id'
-    + " WHERE p.netto_linii IS NULL AND p.zrodlo = 'sklep' AND z.surowe_json IS NOT NULL",
-  ).all();
-  const wiersze = db.prepare("SELECT id FROM pozycje WHERE zamowienie_id = ? AND zrodlo = 'sklep' ORDER BY id");
+export function uzupelnijNettoLinii(db, zakres = BEZ_GRANIC) {
   const zapisz = db.prepare('UPDATE pozycje SET netto_linii = ?, cena_netto = ? WHERE id = ?');
-  for (const w of braki) {
-    let surowe = null;
-    // Uszkodzony JSON pojedynczego zamowienia nie ma prawa zablokowac startu panelu.
-    try { surowe = JSON.parse(w.surowe_json); } catch { continue; }
-    const linie = surowe?.line_items;
-    if (!Array.isArray(linie)) continue;
-    const nasze = wiersze.all(w.id);
-    if (nasze.length !== linie.length) continue;
-    nasze.forEach((p, i) => zapisz.run(nettoLinii(linie[i]), cenaJednostkowaNetto(linie[i]), p.id));
-  }
+  uzupelnijPozycje(db, zakres, {
+    kolumna: 'netto_linii',
+    zapisz: (linia, id) => zapisz.run(nettoLinii(linia), cenaJednostkowaNetto(linia), id),
+  });
 }
-export function uzupelnijZrodloPozycji(db) {
-  const braki = db.prepare(
-    'SELECT DISTINCT z.id, z.surowe_json FROM zamowienia z JOIN pozycje p ON p.zamowienie_id = z.id'
-    + " WHERE p.zrodlo_id IS NULL AND p.zrodlo = 'sklep' AND z.surowe_json IS NOT NULL",
-  ).all();
-  const wiersze = db.prepare("SELECT id FROM pozycje WHERE zamowienie_id = ? AND zrodlo = 'sklep' ORDER BY id");
+export function uzupelnijZrodloPozycji(db, zakres = BEZ_GRANIC) {
   const zapisz = db.prepare('UPDATE pozycje SET zrodlo_id = ? WHERE id = ?');
-  for (const w of braki) {
-    let surowe = null;
-    // Uszkodzony JSON pojedynczego zamowienia nie ma prawa zablokowac startu panelu.
-    try { surowe = JSON.parse(w.surowe_json); } catch { continue; }
-    const linie = surowe?.line_items;
-    if (!Array.isArray(linie)) continue;
-    const nasze = wiersze.all(w.id);
-    if (nasze.length !== linie.length) continue;
-    // Linia bez `id` (nietypowa odpowiedz sklepu) zostaje z NULL-em, zamiast dostac zgadniety
-    // klucz: zapas z numeru porzadkowego jest wtedy uczciwszy niz falszywy identyfikator.
-    nasze.forEach((p, i) => {
-      const zrodloId = Number(linie[i]?.id);
-      if (Number.isInteger(zrodloId) && zrodloId > 0) zapisz.run(zrodloId, p.id);
-    });
-  }
+  // Linia bez `id` (nietypowa odpowiedz sklepu) zostaje z NULL-em, zamiast dostac zgadniety
+  // klucz: zapas z numeru porzadkowego jest wtedy uczciwszy niz falszywy identyfikator.
+  uzupelnijPozycje(db, zakres, {
+    kolumna: 'zrodlo_id',
+    zapisz: (linia, id) => {
+      const zrodloId = Number(linia?.id);
+      if (Number.isInteger(zrodloId) && zrodloId > 0) zapisz.run(zrodloId, id);
+    },
+  });
 }
 /** Frozen neutralna naprawa pieniędzy: stara metoda nie może zgubić pobrania COD. */
 export function rozdzielPobranie(db) {
@@ -340,23 +338,88 @@ export function rozdzielPobranie(db) {
     zapisz.run(JSON.stringify({ ...o, metoda: 'dpd', pobranie: 1 }), w.id);
   }
 }
-export function uzupelnijDaneZamowien(db){
-  rozdzielPobranie(db);
-  uzupelnijKosztDostawy(db);
-  uzupelnijKosztDostawyNetto(db);
-  uzupelnijBruttoLinii(db);
-  uzupelnijNettoLinii(db);
-  uzupelnijZrodloPozycji(db);
-  uzupelnijChecFaktury(db);
-  uzupelnijUwagi(db);
-  uzupelnijWyslaneAt(db);
-  uzupelnijMetodePlatnosci(db);
-  uzupelnijProduktIdPozycji(db);
-  uzupelnijOfertaIdPozycji(db);
-  uzupelnijPunktOdbioru(db);
-  uzupelnijIndywidualne(db);
-  uzupelnijZrodloNumeru(db);
-  uzupelnijKupony(db);
-  uzupelnijAtrybucje(db);
-  przeniesWplatyDoListy(db);
+
+// Kolejnosc jak dotad. `zakres: true` = krok czyta `surowe_json` i podlega granicy „sprawdzone raz";
+// pozostale (czysty SQL na stanie, ktory zmienia sie takze recznie: paczki, wplaty, NIP) chodza
+// jak dotad za kazdym razem.
+const KROKI = [
+  { nazwa: 'rozdzielPobranie', fn: rozdzielPobranie },
+  { nazwa: 'uzupelnijKosztDostawy', fn: uzupelnijKosztDostawy, zakres: true },
+  { nazwa: 'uzupelnijKosztDostawyNetto', fn: uzupelnijKosztDostawyNetto, zakres: true },
+  { nazwa: 'uzupelnijBruttoLinii', fn: uzupelnijBruttoLinii, zakres: true },
+  { nazwa: 'uzupelnijNettoLinii', fn: uzupelnijNettoLinii, zakres: true },
+  { nazwa: 'uzupelnijZrodloPozycji', fn: uzupelnijZrodloPozycji, zakres: true },
+  { nazwa: 'uzupelnijChecFaktury', fn: uzupelnijChecFaktury },
+  { nazwa: 'uzupelnijUwagi', fn: uzupelnijUwagi, zakres: true },
+  { nazwa: 'uzupelnijWyslaneAt', fn: uzupelnijWyslaneAt },
+  { nazwa: 'uzupelnijMetodePlatnosci', fn: uzupelnijMetodePlatnosci, zakres: true },
+  { nazwa: 'uzupelnijProduktIdPozycji', fn: uzupelnijProduktIdPozycji, zakres: true },
+  { nazwa: 'uzupelnijOfertaIdPozycji', fn: uzupelnijOfertaIdPozycji, zakres: true },
+  { nazwa: 'uzupelnijPunktOdbioru', fn: uzupelnijPunktOdbioru, zakres: true },
+  { nazwa: 'uzupelnijIndywidualne', fn: uzupelnijIndywidualne, zakres: true },
+  { nazwa: 'uzupelnijZrodloNumeru', fn: uzupelnijZrodloNumeru },
+  { nazwa: 'uzupelnijKupony', fn: uzupelnijKupony, zakres: true },
+  { nazwa: 'uzupelnijAtrybucje', fn: uzupelnijAtrybucje, zakres: true },
+  { nazwa: 'przeniesWplatyDoListy', fn: przeniesWplatyDoListy },
+];
+
+/** Wersja granicy: numer logiki + skrot z nazw krokow podlegajacych granicy. */
+export function wersjaUzupelnien() {
+  const skrot = createHash('sha1')
+    .update(KROKI.filter((k) => k.zakres).map((k) => k.nazwa).join(','))
+    .digest('hex').slice(0, 8);
+  return `v${WERSJA_LOGIKI}-${skrot}`;
+}
+
+function odczytajGranice(db, wersja) {
+  const prefiks = `${PREFIKS_ZNACZNIKA}${wersja}:do-id:`;
+  const w = db.prepare('SELECT nazwa FROM migracje_jednorazowe WHERE substr(nazwa, 1, ?) = ?')
+    .get(prefiks.length, prefiks);
+  if (!w) return null;
+  const n = Number(w.nazwa.slice(prefiks.length));
+  return Number.isSafeInteger(n) && n >= 0 ? n : null;
+}
+
+function zapiszGranice(db, wersja, doId, teraz) {
+  wTransakcji(db, () => {
+    db.prepare('DELETE FROM migracje_jednorazowe WHERE substr(nazwa, 1, ?) = ?')
+      .run(PREFIKS_ZNACZNIKA.length, PREFIKS_ZNACZNIKA);
+    db.prepare('INSERT INTO migracje_jednorazowe (nazwa, wykonana_at) VALUES (?, ?)')
+      .run(`${PREFIKS_ZNACZNIKA}${wersja}:do-id:${doId}`, teraz.toISOString());
+  });
+}
+
+/**
+ * Uzupelnia dane zamowien. Zamowienia o id nizszym lub rownym zapisanej granicy pomija (sprawdzone
+ * przy poprzednim starcie); po udanym przebiegu przesuwa granice na najwyzsze id. Zwraca statystyki
+ * przebiegu; `log(linia)` dostaje jedna linie z liczba zamowien do sprawdzenia i czasem.
+ * @param {*} db
+ * @param {{ teraz?: () => Date, log?: ((linia: string) => void) | null }} [opcje]
+ */
+export function uzupelnijDaneZamowien(db, { teraz = () => new Date(), log = null } = {}) {
+  const start = performance.now();
+  const wersja = wersjaUzupelnien();
+  const koniec = Number(db.prepare('SELECT MAX(id) AS m FROM zamowienia').get()?.m ?? 0);
+  const seq = Number(db.prepare("SELECT seq FROM sqlite_sequence WHERE name = 'zamowienia'").get()?.seq ?? 0);
+  const zapisana = odczytajGranice(db, wersja);
+  // Granica wyzsza niz kiedykolwiek nadane id = znacznik z innej bazy (podmieniona kopia): nie ufamy.
+  const wazna = zapisana !== null && zapisana <= seq;
+  const od = wazna ? zapisana : 0;
+  const licznik = { wiersze: 0 };
+  const zakres = { od, do: koniec, licznik };
+  const doSprawdzenia = koniec > od
+    ? Number(db.prepare('SELECT COUNT(*) AS c FROM zamowienia WHERE id > ? AND id <= ?').get(od, koniec).c)
+    : 0;
+  for (const krok of KROKI) {
+    if (krok.zakres) krok.fn(db, zakres);
+    else krok.fn(db);
+  }
+  const nowaGranica = wazna ? Math.max(od, koniec) : koniec;
+  if (!wazna || nowaGranica !== zapisana) zapiszGranice(db, wersja, nowaGranica, teraz());
+  const ms = Math.round(performance.now() - start);
+  if (log) {
+    log(`uzupełnienia danych zamówień: ${doSprawdzenia} do sprawdzenia, ${ms} ms`
+      + (licznik.wiersze ? ` (odczytano surowe_json: ${licznik.wiersze} wierszy)` : ''));
+  }
+  return { doSprawdzenia, odczytane: licznik.wiersze, od, do: koniec, ms };
 }

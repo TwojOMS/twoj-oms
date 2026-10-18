@@ -26,6 +26,8 @@ import { ocenZdrowie } from '../../domena/zdrowie.js';
 import type { DaneSprzedawcy } from '../../core/sprzedawca.ts';
 import type { MapaKurierow } from './kurierzy.ts';
 import { interwal } from '../../core/konfiguracja-wartosci.ts';
+import { opcjeKlientaDpd } from '../../domena/konfiguracja-dpd.js';
+import { opcjeKlientaInpost } from '../../domena/konfiguracja-inpost.js';
 
 type MapaKlientow = Record<string, any>;
 type KonfiguracjaWysylki = {
@@ -101,6 +103,17 @@ return {
     const inpostUstawien = k.kurierzy.inpost ? null : kurierInpostZUstawien({ wczytaj: wczytajInpost, nadawca: adresFirmy.adres,
       fabryka: fabryki.createInpost ?? (k.proba ? odmowaInpostWProbie : createInpostClient) });
     if (inpostUstawien && wczytajInpost()) kurierzy.inpost = inpostUstawien;
+    // Ten sam wybór źródła co nadanie; zapis i opcje klienta czytane przy każdym otwarciu Łączności.
+    const celeLacznosci = () => {
+      const dpd = dpdUstawien ? wczytajDpd() : null;
+      const inpost = inpostUstawien ? wczytajInpost() : null;
+      return {
+        dpd: dpdUstawien ? (dpd ? { url: opcjeKlientaDpd(dpd, null).url } : null)
+          : k.kurierzy.dpd ? { url: k.kurierzy.dpd.url } : null,
+        inpost: inpostUstawien ? (inpost ? { url: opcjeKlientaInpost(inpost, null).url } : null)
+          : k.kurierzy.inpost ? { url: k.kurierzy.inpost.url } : null,
+      };
+    };
     const bezKurierowPrzyStarcie = !Object.keys(kurierzy).length;
     const kurierDpd = {
       zEnv: Boolean(k.kurierzy.dpd), adresFirmy: adresFirmy.biezacy,
@@ -133,7 +146,7 @@ return {
     if (czuwaczPodjazdow) zegary.push(zegarPodjazdow({ czuwacz: czuwaczPodjazdow,
       odstepMs: k.odstepPodjazdowMs, log: ctx.log }));
     return {
-      uslugi: { nadanie, podjazdy, przesylkiAllegro, kurierzy, kurierDpd, kurierInpost, czuwaczPrzesylek, czuwaczPodjazdow,
+      uslugi: { nadanie, podjazdy, przesylkiAllegro, kurierzy, kurierDpd, kurierInpost, czuwaczPrzesylek, czuwaczPodjazdow, celeLacznosci,
         config: { ...config, ...k.kurierzy, nadawca: k.kurierzy.dpd?.nadawca ?? null, katalogEtykiet: k.katalogEtykiet },
         przesylki: przesylki(db), zapytaniaPodjazdow: podjazdyDb(db), kolejkaDruku: kolejkaDruku(db) },
       trasy: (app) => {

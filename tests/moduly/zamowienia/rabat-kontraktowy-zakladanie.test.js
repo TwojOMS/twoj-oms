@@ -6,7 +6,7 @@ import { dopiszKlienta } from '../../../src/oms/db/klienci.js';
 import { zalozZamowienieReczne } from '../../../src/moduly/zamowienia/services/zamowienie-reczne.js';
 import { NAZWA_KURIERA } from '../../../src/domena/oplata-obslugi.js';
 
-const NIP = '1000001017';
+const NIP = '1234500011';
 const znacznik = '2026-08-24T09:00:00.000Z';
 
 const config = {};
@@ -16,7 +16,7 @@ let db;
 beforeEach(() => {
   db = openOmsDb(':memory:');
   dopiszKlienta(db, {
-    klucz: 'zetaklient', nazwa: 'Zetaklient Drogowe', nip: NIP, b2b: 1, rabat_procent: 40,
+    klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa', nip: NIP, b2b: 1, rabat_procent: 40,
     chce_fakture: 1, metoda_wysylki: 'dpd', aktywny: 1,
     koszt_dostawy_brutto: '0.00', platnosc: 'Przelew', termin_platnosci: null, komentarz: null,
     // ⚠️ WARUNKI UMOWY MIESZKAJA OD 24.08.2026 NA KARCIE KLIENTA — do tego dnia szly
@@ -28,8 +28,8 @@ beforeEach(() => {
 
 /** Zamówienie ręczne dla klienta z NIP-em, z jedną pozycją po cenie katalogowej. */
 const daneZ = ({ nip = NIP, rabat = 0, cena = '100.00', ilosc = 1 } = {}) => ({
-  klient: { first_name: 'Ewa', last_name: 'Zieliński', email: 'biuro@zetaklientdrogowe.pl' },
-  dostawa: { first_name: 'Ewa', last_name: 'Zieliński', address_1: 'Długa 1' },
+  klient: { first_name: 'Anna', last_name: 'Przykładowa', email: 'biuro@przykladowa.example' },
+  dostawa: { first_name: 'Anna', last_name: 'Przykładowa', address_1: 'Długa 1' },
   nip,
   chce_fakture: 1,
   metoda_wysylki: 'dpd',

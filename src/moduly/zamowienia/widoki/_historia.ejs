@@ -1,0 +1,81 @@
+<%#
+  HISTORIA ZMIAN — sekcja NA SAMYM DOLE karty (PRZ-094.18; decyzja właściciela: „funkcja raczej bardzo rzadko
+  uzywana, dane moga byc techniczne”). To zrzut tabeli `log` TAK, JAK LEZY W BAZIE: kod akcji i `wynik`
+  bez tlumaczenia, najnowsze wpisy na gorze, po 50 na strone.
+
+  ⚠️⚠️ DOMYSLNIE ZWINIETA I TO JEST WYMAGANIE, A NIE UKLAD: `historia` jest `null` bez `?historia=N`,
+  a wtedy trasa nie zadala NIC od tabeli `log` (brak indeksu po `zamowienie_id` = pelny skan przy
+  kazdym otwarciu karty). Nie wolno tu dopisac liczby wpisow ani „ostatniej zmiany” w naglowku —
+  kazda taka liczba to zapytanie przy kazdej odslonie. Pilnuje tego licznik zapytan w
+  tests/moduly/zamowienia/karta-historia-zmian-prz094-18.test.js.
+
+  ⚠️ `wynik` BYWA ODPOWIEDZIA API (cudza tresc) — wszystko idzie przez znacznik z ucieczka HTML, takze
+  atrybut `title`. Zadnego znacznika bez ucieczki na danych z bazy w tym pliku.
+
+  Zero JavaScriptu: stronicowanie i rozwiniecie to odnosniki (jak `?edytuj=` i `?wiadomosc=`), a dluga
+  tresc otwiera natywne <details>.
+%>
+<%
+  const hist = (typeof historia !== 'undefined') ? historia : null;
+  const DLUGOSC_SKROTU = 110;
+  // Jedna linia: biale znaki zwijamy, a skrot tniemy po znakach (nie po jednostkach UTF-16),
+  // zeby nie rozciac polskiej litery ani emoji w polowie.
+  const wJednejLinii = (t) => String(t ?? '').replace(/\s+/gu, ' ').trim();
+  const skrot = (t) => {
+    const znaki = Array.from(wJednejLinii(t));
+    return znaki.length > DLUGOSC_SKROTU ? `${znaki.slice(0, DLUGOSC_SKROTU).join('').trimEnd()}…` : znaki.join('');
+  };
+  const dlugi = (t) => String(t ?? '').includes('\n') || Array.from(wJednejLinii(t)).length > DLUGOSC_SKROTU;
+  // `null` = wpis sprzed wdrozenia kont, 'automat' = czuwacze i zegary, reszta to login.
+  const kto = (k) => (k === null || k === undefined ? '—' : k);
+%>
+<section class="panel" id="historia">
+  <div class="panel-glowa">
+    <h2>Historia zmian</h2>
+    <% if (!hist) { %>
+      <a class="link-edytuj" href="<%= adresHistorii(1) %>">Pokaż historię zmian</a>
+    <% } else { %>
+      <a class="link-edytuj" href="<%= adresHistorii(null) %>">Zwiń</a>
+    <% } %>
+  </div>
+  <% if (hist) { %>
+  <div class="panel-cialo">
+    <% if (!hist.wpisy.length) { %>
+      <p class="pusto-sekcja"><%= hist.strona > 1 ? 'Brak wpisów na tej stronie.' : 'Brak wpisów w historii tego zamówienia.' %></p>
+    <% } else { %>
+      <table class="tab-pozycje hist-tab">
+        <colgroup><col class="hist-kol-czas"><col class="hist-kol-kto"><col class="hist-kol-akcja"><col></colgroup>
+        <thead><tr><th>Czas</th><th>Kto</th><th>Akcja</th><th>Szczegóły</th></tr></thead>
+        <tbody>
+          <% hist.wpisy.forEach(function (w) { %>
+            <tr class="hist-wpis">
+              <td class="hist-czas"><%= fmtDataCzas(w.at) %></td>
+              <td class="hist-kto"><%= kto(w.kto) %></td>
+              <td class="hist-akcja"><%= w.akcja %></td>
+              <td class="hist-wynik">
+                <% if (w.wynik === null || w.wynik === undefined || w.wynik === '') { %>
+                  <span class="hist-brak">—</span>
+                <% } else if (dlugi(w.wynik)) { %>
+                  <details>
+                    <summary title="<%= skrot(w.wynik) %>"><span class="hist-skrot"><%= skrot(w.wynik) %></span><span class="hist-zwin">zwiń</span></summary>
+                    <div class="hist-pelny"><%= w.wynik %></div>
+                  </details>
+                <% } else { %>
+                  <%= w.wynik %>
+                <% } %>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+    <% if (hist.strona > 1 || hist.maStarsze) { %>
+      <nav class="hist-strony" aria-label="Strony historii zmian">
+        <% if (hist.strona > 1) { %><a href="<%= adresHistorii(hist.wpisy.length ? hist.strona - 1 : 1) %>">← Nowsze</a><% } else { %><span></span><% } %>
+        <span class="hist-numer">Strona <%= hist.strona %></span>
+        <% if (hist.maStarsze) { %><a href="<%= adresHistorii(hist.strona + 1) %>">Starsze →</a><% } else { %><span></span><% } %>
+      </nav>
+    <% } %>
+  </div>
+  <% } %>
+</section>

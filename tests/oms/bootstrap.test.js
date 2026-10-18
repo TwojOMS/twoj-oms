@@ -86,10 +86,10 @@ describe('zbudujOms — okablowanie usługi', () => {
   // z karty okresu, a klikajacy dostawalby 503 bez wyjasnienia.
   it('podpięty inFakt dociera do tras OKRESÓW (trasa nie oddaje 503)', async () => {
     const { app, db } = zbudujOms({
-      env: env({ OMS_KLIENCI_ZBIORCZY: 'zetaklient:Zetaklient sp. z o.o.:1000001017:10:300:4:19' }),
+      env: env({ OMS_KLIENCI_ZBIORCZY: 'przykladowa:Pracownia Przykładowa sp. z o.o.:1234500011:10:300:4:19' }),
       createDpd: atrapaDpd(),
     });
-    const okres = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+    const okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     await app.ready();
     const naglowek = {
       authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'),

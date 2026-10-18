@@ -37,8 +37,13 @@ describe('wtórne metadane manifestu', () => {
 
   it('odrzuca zamianę nazw UA i OD między liniami dwóch helperów', () => {
     const changed = kanaloweHelperyBezNadmiaru();
-    const ua = changed.mapowaniaDynamiczne.find(read => read.path === 'src/moduly/kanaly/konfiguracja.ts' && read.line === 24);
-    const od = changed.mapowaniaDynamiczne.find(read => read.path === 'src/moduly/kanaly/konfiguracja.ts' && read.line === 29);
+    // PRZ-094.07: odczyty po wyrażeniu i nazwie, nie po numerze linii — każda zmiana nad helperami przesuwała linie
+    // i test sam stawał się czerwony (24/29 → 25/30), choć strażnik działał.
+    const helper = (nazwa) => changed.mapowaniaDynamiczne.find(read => read.path === 'src/moduly/kanaly/konfiguracja.ts'
+      && read.expression === 'env[nazwa]' && read.names.length === 1 && read.names[0] === nazwa);
+    const ua = helper('<P>_USER_AGENT');
+    const od = helper('<P>_OD');
+    expect(ua && od && ua.line !== od.line, 'oba helpery (UA, OD) muszą być w manifeście w różnych liniach').toBe(true);
     [ua.names, od.names] = [od.names, ua.names];
     expect(scan(changed)).toContain('META_DYNAMIC_POWIAZANIE_HELPERA_NIEZGODNE');
   });
@@ -47,7 +52,10 @@ describe('wtórne metadane manifestu', () => {
     const changed = kanaloweHelperyBezNadmiaru();
     const primary = changed.straznik.plikiDynamiczne.find(file => file.path === 'src/moduly/kanaly/konfiguracja.ts');
     for (const read of primary.odczyty.filter(read => read.expression === 'env[n]')) read.names.push('<P>_OD');
-    for (const read of changed.mapowaniaDynamiczne.filter(read => read.path === primary.path && read.line === 58)) read.names.push('<P>_OD');
+    // Po wyrażeniu, nie po linii (była 58, po PRZ-094.07 jest 104) — inaczej pętla po cichu nic nie zmienia.
+    const helperyN = changed.mapowaniaDynamiczne.filter(read => read.path === primary.path && read.expression === 'env[n]');
+    expect(helperyN.length).toBeGreaterThan(0);
+    for (const read of helperyN) read.names.push('<P>_OD');
     expect(scan(changed)).toContain('META_DYNAMIC_POWIAZANIE_HELPERA_NIEZGODNE');
   });
 

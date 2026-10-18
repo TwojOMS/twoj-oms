@@ -18,6 +18,9 @@ import { createAtrapaDpd, ODMOWY_DPD } from '../../deploy/proba/atrapy/dpd.mjs';
 import { createInpostClient } from '../../src/oms/kurierzy/inpost.js';
 import { createAtrapaInpost, ODMOWY_INPOST } from '../../deploy/proba/atrapy/inpost.mjs';
 import { createAtrapaWoo, createAtrapaAllegro, ODMOWY_WOO, ODMOWY_ALLEGRO } from '../../deploy/proba/atrapy/kanaly.mjs';
+import { createMailer } from '../../src/core/poczta/smtp.js';
+import { pocztaZUstawien } from '../../src/moduly/wiadomosci/poczta-ustawien.ts';
+import { createAtrapaPoczty, createModulWiadomosciAtrapy } from '../../deploy/proba/atrapy/poczta.mjs';
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
 
 const DZIS = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' });
@@ -95,6 +98,22 @@ describe('komplet metod', () => {
     await expect(atrapa.sprawdzPolaczenie()).resolves.toEqual({ ok: true });
     await expect(createAtrapaInpost({ env: ENV_DEMO })({ ...opcje, token: 'zle' }).sprawdzPolaczenie()).rejects.toThrow('odrzucił');
     expect(() => createAtrapaInpost({ env: {} })).toThrow('OMS_TRYB=proba');
+  });
+
+  // PRZ-094.04: poczta z Ustawień w piaskownicy — atrapa poczty zastępuje i mailer z pliku, i pośrednika z ekranu.
+  it('atrapa poczty ma każdą metodę createMailer i pośrednika poczty z Ustawień; wysyłka nie wychodzi do sieci', async () => {
+    const poczta = { smtp: { host: 'smtp.example.invalid', port: 465, user: 'u@example.invalid', pass: 'p' }, mailFrom: 'u@example.invalid' };
+    const prawdziwy = metody(createMailer({ ...poczta, transportFactory: () => ({ sendMail: async () => { throw new Error('sieć'); } }) }));
+    const zUstawien = metody(pocztaZUstawien({ wczytaj: () => null, fabryka: () => { throw new Error('sieć'); } }))
+      .filter((m) => m !== 'gotowy'); // `gotowy` mówi tylko, czy zapis z ekranu jest kompletny — atrapa jest zawsze gotowa
+    const logi = [];
+    const atrapa = createAtrapaPoczty({ env: ENV_DEMO, log: (t) => logi.push(t) });
+    expect(prawdziwy).toContain('sendMail');
+    expect([...prawdziwy, ...zUstawien].filter((m) => !metody(atrapa).includes(m))).toEqual([]);
+    await expect(atrapa.sendMail({ to: 'a@example.invalid', subject: 'Wiadomość próbna z panelu' })).resolves.toHaveProperty('messageId');
+    expect(logi.join('\n')).toContain('nic nie poszło');
+    expect(createModulWiadomosciAtrapy(ENV_DEMO).konfiguracja({}).atrapaPoczty).toBe(true);
+    expect(() => createAtrapaPoczty({ env: {} })).toThrow('OMS_TRYB=proba');
   });
 
   it('metoda z listy odmów odmawia czytelnie, kodem 4xx (usługi zwalniają wtedy rezerwację)', async () => {

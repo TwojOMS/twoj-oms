@@ -7,11 +7,11 @@ import { dopiszKlienta } from '../../../src/oms/db/klienci.js';
 // klienta, więc test, który chce mieć klienta zbiorczego, musi go do bazy WSTAWIĆ —
 // dokładnie tak, jak robi to operator na ekranie.
 
-/** Warunki Zetaklientów: rabat 30%, próg 500 zł, obsługa 4 zł, kurier 19 zł. */
-export const ZETAKLIENT = {
-  klucz: 'zetaklient',
-  nazwa: 'PHU Ewa Zieliński',
-  nip: '1000001017',
+/** Warunki Pracowni Przykładowej: rabat 30%, próg 500 zł, obsługa 4 zł, kurier 19 zł. */
+export const PRZYKLADOWA = {
+  klucz: 'przykladowa',
+  nazwa: 'Pracownia Przykładowa sp. z o.o.',
+  nip: '1234500011',
   rabat_procent: 30,
   prog_darmowej_dostawy_gr: 50000,
   oplata_obslugi_gr: 400,
@@ -26,7 +26,7 @@ export const ZETAKLIENT = {
  */
 export function dopiszKlientaZbiorczego(db, nadpisania = {}) {
   return dopiszKlienta(db, {
-    ...ZETAKLIENT,
+    ...PRZYKLADOWA,
     rozliczenie_zbiorcze: 1,
     b2b: 0,
     chce_fakture: 0,

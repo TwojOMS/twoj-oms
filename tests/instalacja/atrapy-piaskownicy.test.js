@@ -173,6 +173,22 @@ describe('piaskownica z atrapami — Faktury i Magazyn na danych demo', () => {
     expect(logi.some((l) => l.includes('atrapa poczty') && l.includes('nic nie poszło'))).toBe(true);
   });
 
+  it('PRZ-094.04: Ustawienia → Poczta wychodząca — zapis prawdziwego SMTP i wiadomość próbna idą przez atrapę poczty', async () => {
+    const ekran = await strona('/ustawienia/integracje/poczta');
+    expect(ekran.status).toBe(200);
+    expect(ekran.html).toContain('atrapa poczty');
+    const zapis = await formularz('/ustawienia/integracje/poczta', { host: 'smtp.pracownia.example.invalid', port: '465',
+      user: 'sklep@pracownia.example.invalid', haslo: 'Zmyslone-Haslo-Piaskownicy-094', nadawca: '' });
+    expect(zapis.status).toBe(303);
+    const przed = logi.length;
+    const r = await formularz('/ustawienia/integracje/poczta/proba', { adres: 'wlasciciel@pracownia.example.invalid' });
+    const html = await r.text();
+    expect(r.status).toBe(200);
+    expect(html).toContain('przejęła ją atrapa poczty');
+    expect(html.includes('Zmyslone-Haslo-Piaskownicy-094')).toBe(false);
+    expect(logi.slice(przed).some((l) => l.includes('atrapa poczty') && l.includes('Wiadomość próbna z panelu'))).toBe(true);
+  });
+
   it('przez cały plik aplikacja ani razu nie wyszła do sieci', () => {
     expect(siec.mock.calls.map((c) => String(c[0]))).toEqual([]);
   });

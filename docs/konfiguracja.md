@@ -3,13 +3,58 @@
 Opis wszystkich zmiennych czytanych przez OMS, pogrupowany tematycznie. Maszynowy rejestr tych samych zmiennych to `docs/konfiguracja.json`; `scripts/straznik-konfiguracji.mjs` pilnuje, żeby kod i rejestr się nie rozjeżdżały. Brak zmiennej oznacza `undefined`; pusty tekst, białe znaki, `??` i `||` zależą od konkretnej zmiennej — szczegóły przy każdej grupie.
 
 
+## Ustawienia z panelu zamiast pliku
+
+Część integracji wpisuje się w panelu (Ustawienia), nie w pliku konfiguracji. Zapis z ekranu trafia do
+bazy (tabela `konfiguracja_integracji`, hasła i klucze jako zwykły tekst — kopie bazy chroń więc tak samo jak plik
+konfiguracji); hasła i klucze zapisane z ekranu nie wracają na ekran ani do dziennika. Zasada jest jedna: **plik konfiguracji wygrywa**. Gdy zmienne danej integracji stoją w pliku, ekran
+mówi tylko, że jest ona „ustawiona w pliku konfiguracji”; zapis z formularza kończy się odpowiedzią 409 i
+niczego nie zmienia. Dane zapisane wcześniej z ekranu można wtedy tylko usunąć (nie są używane).
+
+| Ekran (Ustawienia →) | Wyłącza go plik, gdy stoi w nim | Tylko w pliku | Instrukcja |
+|---|---|---|---|
+| Firma (adres firmy: sprzedawca na proformie, specyfikacji i potwierdzeniu wywozu; nadawca paczek) | którekolwiek z `DPD_NADAWCA_NAZWA`, `_ULICA`, `_KOD`, `_MIASTO` — wtedy plik wygrywa w całości, także niepełny | — | `docs/instalacja-docker.md`, sekcja 8 |
+| Integracje → Faktury → inFakt | `INFAKT_API_KEY` | `INFAKT_API_URL` (razem z kluczem w pliku), `INFAKT_ARCHIWUM` | `docs/instalacja-docker.md`, sekcja 9 |
+| Integracje → Kurierzy → DPD Polska | `DPD_URL` (z `DPD_LOGIN`, `DPD_PASSWORD`, `DPD_FID`, `DPD_INFO_URL`, `DPD_INFO_CHANNEL`) | — | `docs/kurier-dpd.md` |
+| Integracje → Kurierzy → InPost (paczkomaty) | `INPOST_TOKEN` (z `INPOST_ORGANIZACJA`) | `INPOST_URL` (adres API) | `docs/kurier-inpost.md` |
+| Integracje → Poczta → Poczta wychodząca (SMTP) | sekcja `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | — | `docs/poczta-smtp.md` |
+| Integracje → Poczta → Adres panelu w mailach | `OMS_ADRES_PANELU` | — | `docs/poczta-smtp.md` |
+
+Kiedy zmiana zaczyna działać: kolejne zmiany z ekranu — od razu (poczta: od następnego maila). Pierwsze
+podłączenie wymaga jednorazowo `sudo sh /opt/oms/aktualizuj.sh compose restart oms`, jeśli przy starcie
+nie było jeszcze żadnego kuriera (DPD, InPost), inFaktu albo poczty — dopiero wtedy powstają nadawanie
+paczek, zakładka FAKTURY i wiadomości do klientów na karcie zamówienia. Ekran sam pisze, kiedy restart jest
+potrzebny. W trybie próby (`OMS_TRYB=proba`) ekrany DPD, InPost i inFakt nie łączą się z prawdziwymi usługami
+(komunikat „Piaskownica: … wyłączony”).
+
 ## Uruchomienie i zakres
 
+Poza Dockerem ustaw `OMS_DB_PATH` na plik w istniejącym, zapisywalnym katalogu (domyślne `/data-oms` jest woluminem Dockera); błędy konfiguracji przy starcie podają zmienną i wskazówkę bez stosu wywołań, a nieoczekiwane awarie zachowują pełny stos.
+
 `src/oms.js -> src/main.ts` uruchamia pełne 14 modułów przez wspólne `modulyDla`: rdzen, web, kanaly, faktury, wiadomosci, zamowienia, wysylka, magazyn, zwroty, ustawienia, koszty, raporty, api-panelu, zdrowie. `zbudujOms` używa tej samej listy domyślnej; sam buduje definicje zegarów. Główny punkt wejścia sprawdza tryb i klucze przed DB, startuje zegary oraz wypisuje jedną linię `OMS tryb: produkcja/proba`. `api-panelu` nie dodaje własnych readerów env ani zegarów; `zdrowie` czyta OMS_TRYB dla D01.
+
+Przy otwieraniu bazy start wypisuje też linię `uzupełnienia danych zamówień: N do sprawdzenia, M ms`. Uzupełnienie danych zamówień przechodzi po każdym zamówieniu raz: pierwszy start na dużej bazie sprawdza wszystkie (N jest wtedy duże, a start dłuższy), kolejne tylko zamówienia dodane od poprzedniego startu. Pełny przegląd wraca po aktualizacji, która zmienia logikę uzupełnień, i po podmianie bazy na inną kopię; to nie jest błąd.
 
 Skan aktualnego produktu/CLI: 405 plików, 126 czytników, w tym 32 dynamiczne. Każdy czytnik ma mapę w JSON; 0 nieprzypisanych. Nazwy narzędzi/systemu są oddzielne i nie są obowiązkową konfiguracją instalacji. Brak oznacza undefined; pusty tekst, whitespace, ?? i || zależą od konkretnego konfiguratora.
 
 ## Rdzeń i uruchomienie
+
+Hamulce formularza i Basic Auth dzielą liczniki: para IP–login ma 5 błędów i 60 s kary,
+adres 40 błędów w oknie 15 minut od pierwszego błędu i 15 minut kary, konto 30 błędów
+z wielu adresów i 2 s kary. Login do
+liczników jest przycinany i zamieniany na małe litery. Liczniki wygasają po 15 minutach
+bezczynności; każdy mieści najwyżej 10 000 kluczy. Adres jest blokowany przed walidacją
+hasła (także poprawnego), jeżeli `OMS_TRUST_PROXY` jest ustawione albo żądanie nie ma
+nagłówków proxy. Gdy nagłówki proxy są, a `OMS_TRUST_PROXY` puste, limit adresu jest
+awaryjnie miękki, podobnie jak limit konta: poprawne hasło je omija, a błędne dostaje
+429 i pełne 2 s opóźnienia. Bez `OMS_TRUST_PROXY` za tunelem ochrona przed zgadywaniem
+po wielu loginach jest osłabiona. Formularz i Basic Auth mają wspólne kolejki: jedna
+walidacja naraz dla wiarygodnego adresu, pary oraz aktywnego miękkiego konta/adresu,
+do 20 oczekujących na klucz i najwyżej 10 000 kluczy kolejek; nadmiar dostaje od razu
+429 bez walidacji. Kolejka trzyma klucz także podczas 2 s kary. Udane logowanie czyści
+wyłącznie parę, a wpis „zablokowane” powstaje raz na karę. Gdy przychodzą `X-Forwarded-For` lub
+`CF-Connecting-IP` bez `OMS_TRUST_PROXY`, proces ostrzega raz, bez wartości nagłówków;
+ustaw wyłącznie adresy IP/CIDR zaufanego tunelu lub proxy.
 
 | Zmienna | Właściciel | Bieżący czytnik/helper | Wymagalność | Domyślna | Skutek braku | Walidacja / uwaga |
 |---|---|---|---|---|---|---|
@@ -28,7 +73,7 @@ Skan aktualnego produktu/CLI: 405 plików, 126 czytników, w tym 32 dynamiczne. 
 
 | Zmienna | Właściciel | Bieżący czytnik/helper | Wymagalność | Domyślna | Skutek braku | Walidacja / uwaga |
 |---|---|---|---|---|---|---|
-| `OMS_KANALY` | kanaly | src/moduly/kanaly/konfiguracja.ts:42 | opcjonalna przy starcie; pełna definicja wymagana do aktywacji klienta | [] | Pusta lista definicji i brak pollera. W produkcji /health jest czerwony, jeżeli w DB są zamówienia nieobsługiwanego kanału z ostatnich 30 dni; proba pomija ten alarm. Kod wskazuje nazwę kanału i OMS_KANALY bez wartości. Pusty tekst nie uruchamia wartości domyślnej: JSON.parse('') odmawia startu jako niepoprawny JSON. | JSON tablica obiektów; klucz/prefiks/typ wymagają string, bez konwersji tablic do tekstu; typ woo/allegro; klucz /^[a-z][a-z0-9_-]*$/; prefiks /^[A-Z][A-Z0-9_]*$/; klucze i prefiksy unikalne. Błędny JSON podaje wyłącznie nazwę i ogólny powód. Polityka D09 zatwierdzona przez właściciela 02.10.2026; niezależne PRZYJĘTE pozostaje osobną bramką. |
+| `OMS_KANALY` | kanaly | src/moduly/kanaly/konfiguracja.ts:42 | opcjonalna przy starcie; pełna definicja wymagana do aktywacji klienta | [] | Pusta lista definicji i brak pollera. W produkcji /health jest czerwony, jeżeli w DB są zamówienia nieobsługiwanego kanału z ostatnich 30 dni; proba pomija ten alarm. Kod wskazuje nazwę kanału i OMS_KANALY bez wartości. Pusty tekst nie uruchamia wartości domyślnej: JSON.parse('') odmawia startu jako niepoprawny JSON. | JSON tablica obiektów; klucz/prefiks/typ wymagają string, bez konwersji tablic do tekstu; typ woo/allegro; klucz /^[a-z][a-z0-9_-]*$/; prefiks /^[A-Z][A-Z0-9_]*$/; klucze i prefiksy unikalne. Błąd podaje nazwę zmiennej, numer znaku (zły JSON) albo numer pozycji listy od 1 i pole do poprawy; wartości z wejścia nie przepisuje. Polityka D09 zatwierdzona przez właściciela 02.10.2026; niezależne PRZYJĘTE pozostaje osobną bramką. |
 | `OMS_POLLER_MS` | kanaly | src/moduly/kanaly/konfiguracja.ts:91 | opcjonalna | 120000 | Poller zamówień ma odstęp 120000 ms, jeśli istnieje choć jeden aktywny klient. | Całkowity safeInteger od 30000 do 2147483647 ms włącznie; brak zachowuje dotychczasowy default. D07 zatwierdzone 02.10.2026. W2: surowy tekst musi być równy trim; otaczające białe znaki odmawiają. Reprezentacje Number, np. 6e4 i 0xea60, pozostają poprawne przy spełnieniu safeInteger/granic. |
 
 ## Dynamiczne prefiksy kanałów
@@ -61,6 +106,8 @@ Skan aktualnego produktu/CLI: 405 plików, 126 czytników, w tym 32 dynamiczne. 
 
 ## Faktury i koszty
 
+Odpowiednik `INFAKT_API_KEY` w panelu: Ustawienia → Integracje → Faktury → inFakt (sekcja „Ustawienia z panelu zamiast pliku” wyżej).
+
 | Zmienna | Właściciel | Bieżący czytnik/helper | Wymagalność | Domyślna | Skutek braku | Walidacja / uwaga |
 |---|---|---|---|---|---|---|
 | `OMS_PROFORMY_KATALOG` | faktury | src/moduly/faktury/modul.ts:35 | wymagana, gdy włączony moduł faktury, także bez inFaktu | brak wartości domyślnej | Odmowa konfiguracji faktur, także w proba. | trim; wymaga niepustej ścieżki; nie sprawdza uprawnień/katalogu podczas konfiguracji. |
@@ -80,6 +127,8 @@ Skan aktualnego produktu/CLI: 405 plików, 126 czytników, w tym 32 dynamiczne. 
 | `GUS_URL` | zamowienia / klient GUS | src/moduly/zamowienia/konfiguracja.ts:6; src/moduly/zamowienia/konfiguracja.ts:10 | opcjonalna | https://wyszukiwarkaregon.stat.gov.pl/wsBIR/UslugaBIRzewnPubl.svc | Przy kluczu GUS używany jest domyślny produkcyjny adres SOAP. | Dosłownie pusty tekst oznacza brak ustawienia i zachowuje historyczny default albo wyłączenie. Niepusty URL musi być absolutnym HTTP(S) z hostem i bez otaczających białych znaków; błąd zawiera tylko nazwę. |
 
 ## Wysyłka
+
+Odpowiedniki w panelu: DPD (`DPD_…`) i InPost (`INPOST_…`) w Ustawienia → Integracje → Kurierzy, adres nadawcy (`DPD_NADAWCA_…`) w Ustawienia → Firma — sekcja „Ustawienia z panelu zamiast pliku” wyżej; instrukcje `docs/kurier-dpd.md` i `docs/kurier-inpost.md`.
 
 | Zmienna | Właściciel | Bieżący czytnik/helper | Wymagalność | Domyślna | Skutek braku | Walidacja / uwaga |
 |---|---|---|---|---|---|---|
@@ -113,16 +162,18 @@ Skan aktualnego produktu/CLI: 405 plików, 126 czytników, w tym 32 dynamiczne. 
 | `OMS_RAPORTY_NAZWY_KANALOW` | raporty | src/moduly/raporty/konfiguracja.ts:23 | opcjonalna | {} | Brak własnych etykiet kanałów, widok korzysta z kluczy/pozostałej logiki etykiet. Nie tworzy kanałów. Pusty tekst OMS_RAPORTY_NAZWY_KANALOW= powoduje błąd JSON, zamiast użycia {}. | JSON: nie-null obiekt, nie tablica; wszystkie etykiety muszą być niepustymi napisami. Niepoprawny JSON zwraca wyłącznie OMS_RAPORTY_NAZWY_KANALOW: niepoprawny JSON, bez wejścia ani cause. |
 | `OMS_RAPORTY_SKLEP_HISTORII` | raporty | src/moduly/raporty/konfiguracja.ts:37 | opcjonalna | null | Zastrzeżenia historii nie mają własnej nazwy sklepu. Nie steruje filtrowaniem zamówień. | trim; pusty tekst daje null. |
 | `OMS_RAPORTY_PODLOGA_ZWROTOW` | raporty | src/moduly/raporty/konfiguracja.ts:7 | opcjonalna | null | Zwroty nie są uznane za poznane dla zakresu raportu, ponieważ zwrotyPoznane wymaga tej daty. | trim; ścisłe RRRR-MM-DD i poprawna data kalendarzowa przez kluczOkresu. |
-| `OMS_STATYSTYKI_PIERWSZY_DZIEN` | raporty | src/moduly/raporty/konfiguracja.ts:7 | opcjonalna | null | Każdy zakres statystyk jest oznaczony jako przedOmsem; nie ma granicy pokrycia danych. | trim; ścisłe RRRR-MM-DD i poprawna data kalendarzowa przez kluczOkresu. |
+| `OMS_STATYSTYKI_PIERWSZY_DZIEN` | raporty | src/moduly/raporty/konfiguracja.ts:7 | opcjonalna | null | Początkiem danych statystyk jest dzień (Warszawa) pierwszego zamówienia w tabeli zamowienia (PRZ-093.07); pasek zastrzeżenia dostają tylko zakresy zaczynające się wcześniej. Pusta baza: pasek z nazwą zmiennej i formatem. Zmienna nie wpływa na liczby, tylko na pasek. | trim; ścisłe RRRR-MM-DD i poprawna data kalendarzowa przez kluczOkresu. |
 | `OMS_RAPORTY_DATA_IMPORTU_HISTORII` | raporty | src/moduly/raporty/konfiguracja.ts:7 | opcjonalna | null | Brak daty w zastrzeżeniach historycznego importu. | trim; ścisłe RRRR-MM-DD i poprawna data kalendarzowa przez kluczOkresu. |
 
 ## Konta i dostęp
 
 | Zmienna | Właściciel | Bieżący czytnik/helper | Wymagalność | Domyślna | Skutek braku | Walidacja / uwaga |
 |---|---|---|---|---|---|---|
-| `OMS_ADRES_PANELU` | ustawienia | src/moduly/ustawienia/modul.ts:23 | opcjonalna | brak (linki do hasła tylko przez „Pokaż link” z adresu, pod którym administrator ogląda panel) | Zaproszenia i resety hasła nie są wysyłane mailem; „Pokaż link” działa. Adres w mailu nigdy nie pochodzi z nagłówka Host ani X-Forwarded-*. | Dosłownie pusty tekst oznacza brak ustawienia. Niepusty URL musi być absolutnym HTTP(S) z hostem, bez otaczających białych znaków, bez ścieżki poza /, zapytania, fragmentu i danych logowania; błąd zawiera tylko nazwę. Za odwrotnym proxy ustaw też `OMS_TRUST_PROXY` (adres proxy), inaczej hamulce `/login` i `/haslo/` liczą próby po IP proxy, wspólnym dla wszystkich użytkowników. |
+| `OMS_ADRES_PANELU` | ustawienia | src/moduly/ustawienia/modul.ts:23 | opcjonalna | brak — linki prowadzą pod adres, z którego administrator korzysta przy wysyłce | Bez zmiennej i bez zapisu w Ustawienia → Integracje → Poczta wychodząca link w zaproszeniu i resecie hasła (mail i „Pokaż link”) prowadzi pod adres żądania administratora, po tej samej walidacji; adres z żądania jest używany tylko w trasach zalogowanego administratora. Ustaw, gdy pracownicy czytają pocztę poza siecią, z której admin otwiera panel. | Dosłownie pusty tekst oznacza brak ustawienia. Niepusty URL musi być absolutnym HTTP(S) z hostem, bez otaczających białych znaków, bez ścieżki poza /, zapytania, fragmentu i danych logowania; błąd zawiera tylko nazwę. Za odwrotnym proxy ustaw też `OMS_TRUST_PROXY` (adres proxy), inaczej hamulce `/login` i `/haslo/` liczą próby po IP proxy, wspólnym dla wszystkich użytkowników. |
 
 ## Poczta
+
+Odpowiednik w panelu: Ustawienia → Integracje → Poczta wychodząca (sekcja „Ustawienia z panelu zamiast pliku” wyżej; instrukcja `docs/poczta-smtp.md`). Którakolwiek zmienna `SMTP_…`/`MAIL_FROM` w pliku wyłącza ekran.
 
 | Zmienna | Właściciel | Bieżący czytnik/helper | Wymagalność | Domyślna | Skutek braku | Walidacja / uwaga |
 |---|---|---|---|---|---|---|

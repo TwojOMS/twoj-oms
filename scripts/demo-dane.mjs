@@ -120,6 +120,11 @@ const KOSZT_WYSYLKI_GR = { dpd: 1900, inpost_paczkomat: 1500, odbior_osobisty: 0
 // Kody Woo `cod`/`bacs` → kanoniczne klucze domena/metody-platnosci.js (filtr listy pokaże polską etykietę).
 const PLATNOSC = { cod: 'pobranie', bacs: 'przelew' };
 
+/** Zmyślony login kupującego z Allegro (PRZ-094.19): imię_trzy-litery-nazwiska + numer; bez polskich znaków. */
+function loginKupujacego(osoba, n) {
+  return `${osoba.imie.toLowerCase().replace(/[^a-z]/g, '')}_${osoba.nazwisko.slice(0, 3).toLowerCase().replace(/[^a-z]/g, '')}${n}`;
+}
+
 /** Linie koszyka z katalogu; rabat kontraktowy B2B w %, WDT = cena bez polskiego VAT-u. */
 function pozycje(koszyk, { rabat = 0, wdt = false } = {}) {
   return koszyk.map(([sku, ilosc, nazwaWlasna]) => {
@@ -281,7 +286,10 @@ export function wygenerujDaneDemo(db, { ziarno = 72, dzis, env = ENV_DEMO }) {
       const zrodloId = ++numery[kanal];
       const numer = woo ? String(zrodloId) : `${String(zrodloId).padStart(7, '0')}-${kanal}`;
       if (woo && status !== 'anulowane') zamowieniaSklepu.push({ zrodloId, dzien: iso(utworzoneMs).slice(0, 10), kwota: zl(sumaGr) });
-      if (!woo) loginy[kanal].push(`${osobaZ.imie.toLowerCase().replace(/[^a-z]/g, '')}_${osobaZ.nazwisko.slice(0, 3).toLowerCase().replace(/[^a-z]/g, '')}${i}`);
+      // PRZ-094.19: ten sam zmyślony login idzie i do wątku wiadomości (niżej), i do bloku klienta zamówienia —
+      // lista zamówień pokazuje go pod imieniem i nazwiskiem tak, jak pokaże prawdziwy `buyer.login`.
+      const loginAllegro = woo ? null : loginKupujacego(osobaZ, i);
+      if (loginAllegro) { loginy[kanal].push(loginAllegro); klient.login = loginAllegro; }
       id = zapiszZamowienie(db, kanal, {
         zrodlo_id: zrodloId, numer, klient, dostawa,
         metoda_wysylki: metoda, metoda_wysylki_nazwa: nazwaMetody, pobranie, kwota_pobrania: pobranie ? zl(sumaGr) : null,
@@ -532,6 +540,8 @@ function pomocnicyUzupelnien(db, { dzis, koniecDnia, numery, kolejnyList, liczni
       const woo = kanal === sklepWoo;
       const zrodloId = ++numery[kanal];
       const punkt = /paczkomat|punkt/.test(wysylka);
+      // PRZ-094.19: kanał Allegro (nie sklep Woo) niesie login kupującego; numery 900+ nie nachodzą na pętlę główną.
+      if (!woo && osobaZ) klient.login = loginKupujacego(osobaZ, 900 + zrodloId % 100);
       id = zapiszZamowienie(db, kanal, {
         zrodlo_id: zrodloId, numer: woo ? String(zrodloId) : `${String(zrodloId).padStart(7, '0')}-${kanal}`, klient, dostawa,
         metoda_wysylki: wysylka, metoda_wysylki_nazwa: nazwaWysylki, pobranie, kwota_pobrania: pobranie ? zl(sumaGr) : null,

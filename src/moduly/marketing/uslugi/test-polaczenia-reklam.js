@@ -1,6 +1,6 @@
 // Wynik trafia do panelu i stanu połączenia. Nigdy nie przenosimy do niego
 // wyjątku klienta API: odpowiedź zewnętrzna może powtórzyć token lub klucz.
-const KROKI = Object.freeze({
+export const KROKI = Object.freeze({
   BRAK_KONFIGURACJI: 'Zapisz poświadczenie źródła w sekretach instancji i ponów test.',
   BRAK_ADAPTERA: 'Skonfiguruj adapter odczytu tego źródła i ponów test.',
   BRAK_UPRAWNIEN: 'Sprawdź uprawnienia tylko do odczytu dla wybranego konta i ponów test.',

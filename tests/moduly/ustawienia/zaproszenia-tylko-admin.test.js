@@ -23,7 +23,7 @@ function panel() {
 const liczbaLinkow = (db) => db.prepare('SELECT count(*) AS n FROM linki_hasla').get().n;
 
 describe('PRZ-069 (P3-4) — uwaga o źródle adresu pod linkiem „Pokaż link”', () => {
-  const UWAGA = 'Adres wzięty z Twojej przeglądarki. Jeśli pracownik otwiera panel pod innym adresem, ustaw OMS_ADRES_PANELU.';
+  const UWAGA = 'Adres wzięty z Twojej przeglądarki. Jeśli pracownik otwiera panel pod innym adresem, wpisz go w Ustawienia → Integracje → Poczta wychodząca.'; // PRZ-094.10: adres wpisuje się też na ekranie
   const zaloz = (env) => {
     const p = nowyPanel({ env });
     zalozKonto(p.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });

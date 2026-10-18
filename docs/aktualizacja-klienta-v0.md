@@ -1,11 +1,10 @@
 # Aktualizacja OMS u klienta — V0 (operator)
 
-Dla osoby, która aktualizuje instalację klienta z `docs/instalacja-docker.md`: nas (SSH przez
-Tailscale) albo agenta klienta. Jedno polecenie na serwerze robi całą zmianę i zatrzymuje się
+Dla osoby, która aktualizuje instalację z `docs/instalacja-docker.md`: operatora serwera (SSH)
+albo agenta AI. Jedno polecenie na serwerze robi całą zmianę i zatrzymuje się
 przed decyzją; decyzję (`accept` albo `recover`) podejmuje człowiek po odbiorze.
 
 Narzędzie: `deploy/klient/aktualizuj.sh` (w każdej paczce), na serwerze jako `/opt/oms/aktualizuj.sh`.
-Wzorzec: runner produkcji `deploy/nas/oms-release-remote.sh` i runbook `docs/prz042-runbook-przelaczenia.md`.
 
 ## Co robi `deploy` — i kiedy panel stoi
 
@@ -24,13 +23,14 @@ Błąd przed zatrzymaniem: blokada zdjęta, nic się nie zmieniło. Błąd w kop
 samo, blokada zdjęta, baza nietknięta. Błąd od startu nowego wydania: blokada zostaje — `recover`.
 
 ⚠️ **Ograniczenie V0:** nowe wydanie startuje z działającymi integracjami (pollery Allegro/sklepów,
-czuwacze), tak jak runner produkcji. Podczas odbioru może pobrać zamówienia i zapisać je w bazie.
+czuwacze). Podczas odbioru może pobrać zamówienia i zapisać je w bazie.
 Każdy taki zapis zostaje po `recover` bez przywracania bazy, a znika przy `--przywroc-baze`.
 Odbiór robić wyłącznie odczytem: **bez nadań, faktur, maili i zmian w sklepach** aż do `accept`.
 
 ## 1. Paczka (laptop, PowerShell)
 
-Commit musi być odebrany (bramka repo zielona). W katalogu repo:
+Paczka powstaje z zatwierdzonego commita (własne zmiany najpierw zatwierdź w Git, a bramkę
+`npm run sprawdz` miej zieloną). W katalogu sklonowanego repo:
 
 ```powershell
 node scripts/paczka-klienta.mjs --commit <pełny SHA> --wyjscie C:/OMS-paczki/paczka-<SHA>
@@ -88,7 +88,7 @@ Zapisz `operacja` — `accept` i `recover` przyjmują wyłącznie ją.
    karta jednego zamówienia; podgląd istniejącej proformy i etykiety; Ustawienia → Konta.
 4. `sudo sh /opt/oms/aktualizuj.sh compose logs --since 15m oms` — brak nowych błędów.
 5. Gdy coś budzi wątpliwość: `cd ~ && sudo sh /opt/oms/releases/oms-<12>/deploy/klient/diagnostyka.sh`
-   i plik do nas.
+   i zachowaj plik (hasła i klucze są w nim zamaskowane).
 
 ## 5. Decyzja
 
@@ -98,10 +98,9 @@ Zapisz `operacja` — `accept` i `recover` przyjmują wyłącznie ją.
 | powrót | `sudo sh /opt/oms/aktualizuj.sh recover <operacja>` | poprzednie wydanie na swoim obrazie, ta sama baza; jeśli nowe wydanie wykonało migracje, aktualizator to wypisuje (`MIGRACJE kandydat zmienił listę migracji`) |
 | powrót z bazą sprzed aktualizacji | `sudo sh /opt/oms/aktualizuj.sh recover <operacja> --przywroc-baze` | jak wyżej + baza z kopii operacji (konfiguracja zostaje — aktualizacja jej nie zmienia); **gubi wszystko zapisane po zatrzymaniu** (zamówienia pobrane w czasie odbioru, nadania, faktury). Obecna baza zostaje w `…/operacje/<operacja>/po-kandydacie-<czas>/`; powtórzony `--przywroc-baze` jej nie rusza |
 
-Dlaczego domyślnie bez przywracania bazy: migracje od 0002 są wyłącznie addytywne (strażnik
-`scripts/straznik-migracji.mjs` w repo i kontrola w `wykonajMigracje` przy starcie), a stary kod
-pomija migracje, których nie zna — stare wydanie pracuje na bazie po migracjach (tak samo wraca
-runner produkcji, sprawdzone w PRZ-042). Rozpoznanie: lista `migracje` w bazie porównana z
+Dlaczego domyślnie bez przywracania bazy: migracje od 0002 są wyłącznie addytywne (kontrola
+przy starcie), a stary kod pomija migracje, których nie zna — stare wydanie pracuje na bazie
+po migracjach. Rozpoznanie: lista `migracje` w bazie porównana z
 `migracje.json` kopii operacji. `--przywroc-baze` dopiero, gdy stare wydanie na tej bazie nie wstaje.
 
 Po `accept` powrotu tą drogą nie ma — następne wydanie albo osobna procedura.
@@ -124,16 +123,16 @@ zatrzymany przez aktualizację OMS stoi, dopóki operator nie zdecyduje.
 | `etap=uruchomione` | nowe wydanie nie wstało (`KANDYDAT_W_PETLI_RESTARTOW` — pada przy starcie, koniec czekania po 3. restarcie; `OMS_NIE_WSTAL` — brak odpowiedzi w 180 s) albo kontrola wersji nie przeszła (`WERSJA_…`) | `recover <op>`; jeśli stare nie wstaje na bazie po migracjach — `recover <op> --przywroc-baze` |
 | `etap=czeka_na_akceptacje` | `NEEDS_ACCEPT` | odbiór, `accept <op>` albo `recover <op>` |
 | `etap=akceptowanie`, `biezace` = nowe | `accept` przerwany po przesunięciu wskaźnika | `accept <op>` jeszcze raz (recover odmówi: `AKCEPTACJA_JUZ_ZAPISANA`) |
-| `etap=przywracanie` | `recover` przerwany albo stare wydanie nie wstało (`POWROT_NIEUDANY`) | `recover <op>` jeszcze raz; dalej `--przywroc-baze`; dalej diagnostyka do nas |
+| `etap=przywracanie` | `recover` przerwany albo stare wydanie nie wstało (`POWROT_NIEUDANY`) | `recover <op>` jeszcze raz; dalej `--przywroc-baze`; dalej diagnostyka (`diagnostyka.sh`) |
 | `typ=produkcja` w stanie blokady | przejście z próby na pracę (`aktualizuj.sh produkcja`, docs/instalacja-docker.md, sekcja 8) | `czeka_na_akceptacje`: odbiór, `accept <op>` albo `recover <op>` (powrót do próby); każdy inny etap: `recover <op>` — próba wraca z archiwum `/opt/oms/proba-archiwum/<op>/` |
 | `blokada: BEZ STANU` | przerwanie w chwili zakładania blokady | `recover nieznana` |
 | `proces … aktualizatora DZIAŁA` | deploy jeszcze pracuje (np. build) | czekać; `recover` w tym czasie odmawia |
 | `UWAGA: działa inny obraz niż bieżące wydanie` | ktoś uruchomił `docker compose` w katalogu starego wydania | `sudo sh /opt/oms/aktualizuj.sh compose up -d` |
 
 ⛔ Nie usuwać ręcznie `/opt/oms/update-state/blokada`, nie zmieniać `biezace`, nie wybierać obrazu po
-nazwie. Ręczna zmiana stanu = pytanie do nas, nie decyzja na miejscu.
+nazwie. Ręczna zmiana stanu to ostateczność po `status` i `diagnostyka.sh`, nie decyzja na ślepo.
 
-## Czego V0 nie ma (V1, przed sprzedażą)
+## Czego V0 nie ma
 
 - podpisu wydawcy (dziś: suma SHA-256 podana przez operatora — wykrywa uszkodzenie, nie autora);
 - wykrywania przeróbek klienta w katalogu wydania i obrazie (dziś: odciski plików wydania sprawdzane

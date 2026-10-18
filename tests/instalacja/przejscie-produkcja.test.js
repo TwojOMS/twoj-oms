@@ -88,7 +88,7 @@ const konta = (k, p = 'data/oms.sqlite') => zapytaj(k, p, 'SELECT login FROM kon
 
 /** Pierwsze wywołanie zakłada szablon; uzupełnienie jak operator (nano). */
 function uzupelnij(k, zmiany = {}) {
-  const pola = { OMS_SPRZEDAWCA_NIP: '1111111111', OMS_RACHUNEK: '50109010140000000000000003', DPD_NADAWCA_NAZWA: 'Zetaklient sp. z o.o.',
+  const pola = { OMS_SPRZEDAWCA_NIP: '1111111111', OMS_RACHUNEK: '50109010140000000000000003', DPD_NADAWCA_NAZWA: 'Pracownia Przykładowa sp. z o.o.',
     DPD_NADAWCA_ULICA: 'Klockowa 1', DPD_NADAWCA_KOD: '00-950', DPD_NADAWCA_MIASTO: 'Warszawa', ...zmiany };
   let t = czytaj(k, 'config/produkcja.env');
   for (const [n, w] of Object.entries(pola)) t = t.match(new RegExp(`^${n}=`, 'm')) ? t.replace(new RegExp(`^${n}=.*$`, 'm'), `${n}=${w}`) : `${t}${n}=${w}\n`;

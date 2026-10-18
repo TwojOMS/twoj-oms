@@ -1,7 +1,5 @@
 import { zakresZZapytania, nazwaOkresu, nazwaSkrotu } from '../../../domena/okresy-raportu.js';
-import { zamowieniaOkresu, pierwszyDzienZamowien } from '../../../domena/statystyki-okresu.js';
-import { rozkladUslug, terminowosc } from '../../../domena/statystyki-wysylki.js';
-import { rozkladMetod } from '../../../domena/statystyki-platnosci.js';
+import { statystykiWOkresie, pierwszyDzienZamowien } from '../../../domena/statystyki-okresu.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 
 // Zakladka STATYSTYKI — wysylka i platnosci. Trasa jest CIENKA: parsuje zakres, wola domene,
@@ -38,7 +36,7 @@ export function zarejestrujTrasyStatystyk(app, { db, config }) {
         uslugi: null, termin: null, platnosci: null, przedOmsem: false,
       });
     }
-    const zamowienia = zamowieniaOkresu(db, zakres, config.regulySprzedazy);
+    const statystyki = await statystykiWOkresie(db, zakres, config.regulySprzedazy);
     // PRZ-093.07: bez OMS_STATYSTYKI_PIERWSZY_DZIEN początkiem danych jest dzień pierwszego
     // zamówienia w bazie (env wygrywa). Liczony przy każdym wejściu — zamówienia przybywają.
     const pierwszyZBazy = config.pierwszyDzienOms ? null : pierwszyDzienZamowien(db);
@@ -48,9 +46,7 @@ export function zarejestrujTrasyStatystyk(app, { db, config }) {
       zakres,
       nazwa: nazwaOkresu(zakres),
       skroty,
-      uslugi: rozkladUslug(zamowienia),
-      termin: terminowosc(zamowienia),
-      platnosci: rozkladMetod(zamowienia),
+      ...statystyki,
       // Pasek zastrzezenia zalezy WYLACZNIE od zakresu, nie od tego, czy cos znaleziono:
       // pusty styczen ma ten sam powod pustki, co styczen z jednym zamowieniem.
       przedOmsem: !pierwszyDzien || zakres.od < pierwszyDzien,

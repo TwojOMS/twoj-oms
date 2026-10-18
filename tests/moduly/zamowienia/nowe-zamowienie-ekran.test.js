@@ -69,15 +69,15 @@ describe('paczkomat na ekranie zakładania', () => {
 
 describe('„Skopiuj dane do wysyłki" przy zakładaniu', () => {
   const faktura = {
-    f_firma: 'Zetaklient Drogowe sp. z o.o.', f_ulica: 'Przemysłowa 4', f_kod: '00-650',
-    f_miasto: 'Pęki', f_email: 'faktury@zetaklient.pl',
+    f_firma: 'Pracownia Przykładowa sp. z o.o.', f_ulica: 'Przemysłowa 4', f_kod: '00-650',
+    f_miasto: 'Pęki', f_email: 'faktury@przykladowa.example',
   };
 
   it('przepisuje firmę, adres i e-mail', () => {
     const wynik = skopiujFaktureDoWysylki({ ...faktura, w_nazwa: 'Jan Kowalski', w_telefon: '600100200' });
     expect(wynik).toMatchObject({
-      w_firma: 'Zetaklient Drogowe sp. z o.o.', w_ulica: 'Przemysłowa 4',
-      w_kod: '00-650', w_miasto: 'Pęki', w_email: 'faktury@zetaklient.pl',
+      w_firma: 'Pracownia Przykładowa sp. z o.o.', w_ulica: 'Przemysłowa 4',
+      w_kod: '00-650', w_miasto: 'Pęki', w_email: 'faktury@przykladowa.example',
     });
   });
 
@@ -104,7 +104,7 @@ describe('„Skopiuj dane do wysyłki" przy zakładaniu', () => {
   it('trasa oddaje formularz z wypełnionymi polami i NICZEGO nie zapisuje', async () => {
     const r = await wyslij('/zamowienia/nowe/kopiuj-do-wysylki', { ...faktura, w_nazwa: 'Jan Kowalski' });
     expect(r.statusCode).toBe(200);
-    expect(r.body).toContain('name="w_firma" value="Zetaklient Drogowe sp. z o.o."');
+    expect(r.body).toContain('name="w_firma" value="Pracownia Przykładowa sp. z o.o."');
     expect(r.body).toContain('name="w_miasto" value="Pęki"');
     // Ani jednego zamówienia w bazie — przycisk tylko przestawia pola.
     expect(db.prepare('SELECT COUNT(*) AS ile FROM zamowienia').get().ile).toBe(0);

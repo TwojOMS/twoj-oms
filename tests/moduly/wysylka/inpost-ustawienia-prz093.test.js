@@ -97,6 +97,15 @@ describe('PRZ-093.09 Ustawienia → Kurier InPost', () => {
         kraj: 'PL', phone: '000000000', email: 'nadawca@example.invalid' } });
   });
 
+  it('PRZ-094.15: PaczkoPunkt z myślnikiem (POP-WAW206) zapisuje się z ekranu i jedzie do klienta jako paczkomat nadawczy', async () => {
+    const { app, admin, db, podglad, utworzone } = panel();
+    const r = await post(app, ADRES, admin, { ...FORMULARZ, paczkomatNadawczy: 'pop-waw206' });
+    expect(r.statusCode, r.body).toBe(303);
+    expect(wczytajKonfiguracjeIntegracji(db, 'inpost').ustawienia.paczkomatNadawczy).toBe('POP-WAW206');
+    await podglad.kurierzy.inpost.sprawdzPolaczenie();
+    expect(utworzone.at(-1)).toMatchObject({ paczkomatNadawczy: 'POP-WAW206' });
+  });
+
   it('ponowny zapis z pustym tokenem zostawia zapisany; nowa organizacja trafia do następnego klienta bez restartu', async () => {
     const { app, admin, db, podglad, utworzone } = panel();
     await post(app, ADRES, admin, FORMULARZ);

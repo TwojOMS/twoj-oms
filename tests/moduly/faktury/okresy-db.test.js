@@ -18,7 +18,7 @@ function dodajZamowienie(db, { numer, utworzone, okresId }) {
 describe('okresy rozliczeniowe w bazie', () => {
   it('zaklada okres i oddaje go z powrotem', () => {
     const db = openOmsDb();
-    const o = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+    const o = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     expect(o.stan).toBe(STAN.OTWARTY);
     expect(o.rok).toBe(2026);
     expect(pobierzOkres(db, o.id).id).toBe(o.id);
@@ -26,22 +26,22 @@ describe('okresy rozliczeniowe w bazie', () => {
 
   it('jest idempotentny — drugie wywolanie oddaje TEN SAM wiersz', () => {
     const db = openOmsDb();
-    const a = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
-    const b = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+    const a = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
+    const b = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     expect(b.id).toBe(a.id);
   });
 
   it('rozni klienci i rozne miesiace to rozne okresy', () => {
     const db = openOmsDb();
-    const a = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
-    const b = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 8 });
+    const a = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
+    const b = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 8 });
     const c = zapewnijOkres(db, { klientKlucz: 'inny', rok: 2026, miesiac: 7 });
     expect(new Set([a.id, b.id, c.id]).size).toBe(3);
   });
 
   it('zamkniecie zmienia stan i stempluje czas', () => {
     const db = openOmsDb();
-    const o = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+    const o = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     const z = zamknijOkres(db, o.id);
     expect(z.stan).toBe(STAN.ZAMKNIETY);
     expect(z.zamkniety_at).toBeTruthy();
@@ -58,7 +58,7 @@ describe('okresy rozliczeniowe w bazie', () => {
   // okresu wygladaloby na wczesniejsze niz jest naprawde.
   it('ponowne otwarcie cofa stan i czysci stempel czasu', () => {
     const db = openOmsDb();
-    const o = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+    const o = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     zamknijOkres(db, o.id);
     const wrocony = otworzOkresPonownie(db, o.id);
     expect(wrocony.stan).toBe(STAN.OTWARTY);
@@ -67,8 +67,8 @@ describe('okresy rozliczeniowe w bazie', () => {
 
   it('zamowienia okresu ida w kolejnosci zlozenia i tylko z tego okresu', () => {
     const db = openOmsDb();
-    const lipiec = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
-    const sierpien = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 8 });
+    const lipiec = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
+    const sierpien = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 8 });
     const pozniejsze = dodajZamowienie(db, { numer: '1002', utworzone: '2026-07-20T10:00:00Z', okresId: lipiec.id });
     const wczesniejsze = dodajZamowienie(db, { numer: '1001', utworzone: '2026-07-02T10:00:00Z', okresId: lipiec.id });
     dodajZamowienie(db, { numer: '1003', utworzone: '2026-08-01T10:00:00Z', okresId: sierpien.id });
@@ -83,8 +83,8 @@ describe('okresy rozliczeniowe w bazie', () => {
   // wypadloby z rozliczenia zbiorczego bez ani jednego bledu.
   it.each([
     ['bez klucza klienta', { klientKlucz: null, rok: 2026, miesiac: 7 }],
-    ['bez roku', { klientKlucz: 'zetaklient', rok: null, miesiac: 7 }],
-    ['bez miesiaca', { klientKlucz: 'zetaklient', rok: 2026, miesiac: null }],
+    ['bez roku', { klientKlucz: 'przykladowa', rok: null, miesiac: 7 }],
+    ['bez miesiaca', { klientKlucz: 'przykladowa', rok: 2026, miesiac: null }],
     // Pusty i bialoznakowy klucz przechodza NOT NULL bez problemu (to nie NULL), wiec
     // `INSERT OR IGNORE` nie mialby czego polykac — bez jawnej strazy powstalby okres
     // bezimiennego klienta, ktorego zaden klucz z konfiguracji nigdy nie odnajdzie.
@@ -98,7 +98,7 @@ describe('okresy rozliczeniowe w bazie', () => {
 
   it('okres bez zamowien oddaje pusta tablice', () => {
     const db = openOmsDb();
-    const o = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+    const o = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     expect(zamowieniaOkresu(db, o.id)).toEqual([]);
   });
 });
@@ -109,7 +109,7 @@ describe('okresy rozliczeniowe w bazie', () => {
 describe('rezerwacja faktury okresu', () => {
   const nowy = () => {
     const db = openOmsDb();
-    return { db, okres: zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 }) };
+    return { db, okres: zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 }) };
   };
 
   it('pierwsza rezerwacja przechodzi i stempluje czas', () => {
@@ -141,7 +141,7 @@ describe('rezerwacja faktury okresu', () => {
 describe('odblokujFaktureOkresu', () => {
   const nowy = () => {
     const db = openOmsDb();
-    return { db, okres: zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 }) };
+    return { db, okres: zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 }) };
   };
 
   it('okres do wyjasnienia wraca do stanu sprzed proby i wolno go ponowic', () => {

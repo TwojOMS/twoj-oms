@@ -111,9 +111,9 @@ export function terminZamowienia(z) {
  * jest normalną zerodniową wysyłką i MA zostać w mianowniku (typowe dla pobrania nadanego
  * w chwili złożenia). Stąd `<`, nie `<=`.
  */
-export function dniRoboczeDoWysylki(z) {
+export function dniRoboczeDoWysylki(z, termin = undefined) {
   if (!z?.wyslane_at) return null;
-  const t = terminZamowienia(z);
+  const t = termin === undefined ? terminZamowienia(z) : termin;
   if (!t) return null;
   const chwilaWyslania = fmtDataCzas(z.wyslane_at);
   if (!chwilaWyslania || chwilaWyslania < fmtDataCzas(t.start)) return null;

@@ -22,8 +22,9 @@ człowiek nie powiedział wprost, że chodzi o to konkretne działanie:
 
 - nadanie paczki u kuriera, zakup etykiety, wystawienie faktury, wysyłka do KSeF, zapis w inFakcie;
 - mail lub wiadomość do klienta sklepu, zapis w sklepie WooCommerce lub na koncie Allegro;
-- wpisywanie kluczy integracji do plików konfiguracyjnych — klucze podaje człowiek, ty ich nie
-  zgadujesz, nie generujesz i **nie wypisujesz na ekran ani do logów**;
+- wpisywanie kluczy integracji do plików konfiguracyjnych albo do formularzy w Ustawienia → Integracje
+  (DPD, InPost, inFakt, poczta) — klucze podaje człowiek, ty ich nie zgadujesz, nie generujesz
+  i **nie wypisujesz na ekran ani do logów**;
 - otwieranie panelu na świat (przekierowanie portu, publiczny adres) bez HTTPS i bez zaufanych proxy;
 - usuwanie bazy (`oms.sqlite`), kopii i plików w `data/`, `backups/`.
 
@@ -93,7 +94,12 @@ Przed aktualizacją zrób kopię bazy (`scripts/backup-db.mjs` albo procedura z 
 ## 7. Częste pułapki
 
 - `OMS_TRYB` bez wartości oznacza **produkcję**. Pierwsze uruchomienie ustaw jawnie na `proba`.
-- Bez `OMS_TRUST_PROXY` panel nie ufa nagłówkom pośrednika; wpisuj tylko konkretne adresy proxy.
+- Bez `OMS_TRUST_PROXY` panel nie ufa nagłówkom pośrednika; wpisuj tylko konkretne adresy proxy. Za pośrednikiem
+  bez tej zmiennej ochrona logowania przed zgadywaniem haseł liczy próby po adresie pośrednika, wspólnym dla wszystkich
+  (opis: `docs/konfiguracja.md`).
+- Integracje z Ustawienia → Integracje (DPD, InPost, inFakt, poczta, adres firmy) zapisują się w bazie, ale
+  **plik konfiguracji z tą samą integracją wygrywa**: ekran jest wtedy tylko do odczytu. Zanim szukasz błędu na
+  ekranie, sprawdź, czy tej integracji nie ma w `oms.env`.
 - Panel po zwykłym HTTP nie nadaje się do internetu; HTTPS i kontrola dostępu to osobny krok.
 - Baza, kopie i konfiguracja żyją **poza** katalogiem programu — nie umieszczaj ich w repo.
 - Komentarze odwołujące się do `PRZ-nnn` to ślady zadań z historii projektu; opisują powód zmiany,

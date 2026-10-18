@@ -14,7 +14,7 @@ const naglowek = {
 
 // ⚠️ Od 24.08.2026 klient zbiorczy jest WIERSZEM TABELY `klienci`, nie wpisem w konfiguracji.
 const KLIENT = {
-  klucz: 'zetaklient', nazwa: 'Zetaklient sp. z o.o.', nip: '1000001017',
+  klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa sp. z o.o.', nip: '1234500011',
   rabat_procent: 10, prog_darmowej_dostawy_gr: 30000,
   oplata_obslugi_gr: 400, oplata_kurierska_gr: 1900,
 };
@@ -51,7 +51,7 @@ function dodajZamowienie({ numer, kwota = '100.00', okresId = null, nip = KLIENT
     + " VALUES ('reczne', ?, ?, ?, ?, ?, 1, ?, ?, '2026-07-10T10:00:00.000Z')",
   ).run(
     Number(String(numer).replace(/\D/g, '')), numer, kwota, okresId, hurt, nip,
-    JSON.stringify({ first_name: 'Jan', last_name: 'Kowalski', company: 'Zetaklient sp. z o.o.' }),
+    JSON.stringify({ first_name: 'Jan', last_name: 'Kowalski', company: 'Pracownia Przykładowa sp. z o.o.' }),
   );
   const id = db.prepare('SELECT id FROM zamowienia WHERE numer = ?').get(numer).id;
   db.prepare(
@@ -70,7 +70,7 @@ const zafakturuj = (okresId) => db.prepare(
 beforeEach(async () => {
   db = openOmsDb();
   dopiszKlientaZbiorczego(db, KLIENT);
-  okres = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 7 });
+  okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
   app = buildOmsServer({ db, config, infakt: { znajdzKlientaPoNip: vi.fn(), wystaw: vi.fn() } });
   await app.ready();
 });
@@ -102,7 +102,7 @@ describe('POST /okresy/:id/zamowienia/:zamId/odepnij', () => {
   // ⚠️ Ukryty przycisk NIE JEST bariera — zadanie ze starej, otwartej karty omija widok
   // w calosci. Ten test pilnuje, ze odmowa siedzi w trasie, nie w szablonie.
   it('odmawia zamowieniu z INNEGO okresu, choc oba naleza do tego samego klienta', async () => {
-    const sierpien = zapewnijOkres(db, { klientKlucz: 'zetaklient', rok: 2026, miesiac: 8 });
+    const sierpien = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 8 });
     const id = dodajZamowienie({ numer: 'R/2026/003', okresId: sierpien.id });
 
     const odp = await post(`/okresy/${okres.id}/zamowienia/${id}/odepnij`);

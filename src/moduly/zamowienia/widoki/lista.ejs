@@ -402,7 +402,11 @@
               <%# ⚠️ ZNACZNIK EKSPRESU STAL TU DO 25.08.2026 i rozpychal kolumne — ta linia ma
                   `white-space: nowrap`, wiec wszystko, co na niej stoi, jest twarda podloga
                   szerokosci. Przeniesiony do linii NUMERU (patrz uzasadnienie z pomiarami tam). %>
-              <%= z.kanalSprzedazy %><% if (z.indywidualne) { %> <span class="znacznik"><%= z.etykietaIndywidualnego %></span><% } %>
+              <%# PRZ-094.17: plakietka rodzaju kanalu (Allegro „a”, WooCommerce „W”) w kolorze marki. %>
+              <%# Rodzaj z `typ` definicji kanalu (domena/kanaly.js: rodzajKanalu), NIE z nazwy %>
+              <%# sklepu — nazwe wpisuje firma. Kanaly bez marki (reczne, indywidualne): bez %>
+              <%# plakietki. Ta sama klasa `.plakietka` co plakietki przewoznikow w kolumnie „Dostawa”. %>
+              <% if (z.rodzajKanalu) { %><span class="plakietka plakietka--kanal plakietka--<%= z.rodzajKanalu.klucz %>" role="img" aria-label="<%= z.rodzajKanalu.nazwa %>" title="<%= z.rodzajKanalu.nazwa %>"><%= z.rodzajKanalu.znak %></span><% } %><%= z.kanalSprzedazy %><% if (z.indywidualne) { %> <span class="znacznik"><%= z.etykietaIndywidualnego %></span><% } %>
             </div>
             <%# ⚠️ DATA W OSOBNEJ LINII — prosba wlasciciela 21.08.2026 („mozna w pierwszej
                 kolumnie date przeniesc pod kanal sprzedazy"), ktora przy okazji NAPRAWIA
@@ -452,8 +456,16 @@
             </div>
           </td>
           <td class="komorka-klient">
-            <%= z.klient && z.klient.company ? z.klient.company
-              : (z.klient ? ((z.klient.first_name || '') + ' ' + (z.klient.last_name || '')).trim() : '') %>
+            <%# PRZ-094.19 (prosba właściciela): imie i nazwisko, pod nim nazwa firmy (zamowienie firmowe) i login %>
+            <%# kupujacego z Allegro. Co i w jakiej kolejnosci — domena/klient-listy.js; widok tylko rysuje. %>
+            <%# Do 18.10.2026 komorka pokazywala firme ZAMIAST osoby. Pelne napisy w `title`, bo dluga nazwa %>
+            <%# firmy jest przycinana do dwoch linii (CSS), a login do jednej. Login to drobny, przygaszony %>
+            <%# tekst BEZ plakietki: plakietka „a” w jednej linii z tekstem zawijala login pod siebie, a clamp zostawial %>
+            <%# sam „…” (zmierzone). Czyj to login, mowi `title`, ukryty tekst dla czytnika ekranu i plakietka kanalu w „Zamowieniu”. %>
+            <% var kl = z.klientListy; %>
+            <% if (kl.nazwa) { %><div class="klient-nazwa" title="<%= kl.nazwa %>"><%= kl.nazwa %></div><% } %>
+            <% if (kl.firma) { %><div class="klient-firma" title="<%= kl.firma %>"><%= kl.firma %></div><% } %>
+            <% if (kl.login) { %><div class="klient-login" title="Login Allegro: <%= kl.login %>"><span class="poza-okiem">Login Allegro: </span><%= kl.login %></div><% } %>
           </td>
           <td class="komorka-produkty">
             <%# Ilosc PRZED nazwa (Zadanie „strona glowna", punkt B): „1× Szablon...". %>
@@ -501,7 +513,16 @@
               <%# ⚠️ PELNA NAZWA ZOSTAJE W `title` — przyciecie jest WYLACZNIE wizualne
                   i dotyka jednej realnej nazwy na kilkadziesiat. Bez `title` byloby to
                   ukrycie informacji, a nie skrocenie. %>
-              <span class="nazwa-dostawy" title="<%= nazwaDostawy(z) %>"><%= nazwaDostawy(z) %></span>
+              <%# PRZ-094.17: TLO W KOLORZE PRZEWOZNIKA stoi na OBWOLUCIE, a nie na `.nazwa-dostawy` — %>
+              <%# tamten element przycina tekst (`line-clamp` + `overflow: hidden`), a z paddingiem %>
+              <%# kolejna linia wystawalaby w jego dolnym marginesie. Przewoznika rozpoznaje ta sama %>
+              <%# funkcja, co logo w zakladce Przesylki (domena/przewoznik-przesylki.js); nieznany %>
+              <%# przewoznik, odbior osobisty i „allegro_punkt” — bez plakietki, jak dotad. Pelna nazwa %>
+              <%# z dopiskiem „(pobranie)” zostaje w tekscie plakietki, nic nie jest skracane ponad dotychczasowe. %>
+              <% var nazwaDost = nazwaDostawy(z); %>
+              <% if (z.przewoznikListy) { %><span class="plakietka plakietka--<%= z.przewoznikListy.klucz %>"><% } %>
+              <span class="nazwa-dostawy" title="<%= nazwaDost %>"><%= nazwaDost %></span>
+              <% if (z.przewoznikListy) { %></span><% } %>
             <% } %>
             <%# Odznaki liczy domena (sprawyZamowienia), nie widok. Bez nich paczka nadana %>
             <%# z nieudanym syncem do sklepu, bez etykiety albo z martwym odpytywaniem DPD %>

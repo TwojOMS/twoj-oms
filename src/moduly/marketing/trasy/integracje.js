@@ -1,8 +1,33 @@
 import {randomUUID} from 'node:crypto';
 import {polaczenia,stanPolaczenia,zapiszPolaczenie,zapiszStan} from '../../../oms/db/reklamy.js';
 import {promptReklam} from '../../../domena/prompt-reklam.js';
-import {testPolaczenie} from '../uslugi/test-polaczenia-reklam.js';
+import {testPolaczenie,KROKI} from '../uslugi/test-polaczenia-reklam.js';
 import {nawigacjaUstawien} from '../../ustawienia/nawigacja.js';
+const ZRODLA = Object.freeze({ ga4: 'Google przez GA4', google_ads: 'Google Ads API', meta: 'Meta' });
+const KROK_NIESKONFIGUROWANY = 'TEST_NIESKONFIGUROWANY';
+const KOMUNIKAT_NIESKONFIGUROWANY = 'Test połączeń reklam nie jest skonfigurowany na tym serwerze.';
+
+// PRZ-094.14: wynik „Test odczytu” wraca na ekran reklam przez przekierowanie (PRG). Adres niesie tylko
+// identyfikator połączenia i krótki kod z whitelisty — treść komunikatu składamy po stronie serwera
+// ze znanych tekstów, więc nic z adresu nie trafia na ekran, a surowa odpowiedź API nie wychodzi nigdy.
+function adresWynikuTestu(polaczenieId, wynik) {
+  const q = new URLSearchParams({ test: wynik.stan === 'dziala' ? 'dziala' : 'blad' });
+  if (wynik.stan !== 'dziala') q.set('kod', wynik.kodBledu);
+  q.set('polaczenie', String(polaczenieId));
+  return `/ustawienia/integracje/reklamy?${q}`;
+}
+
+function komunikatTestu(query, polaczenia) {
+  const polaczenie = polaczenia.find((p) => String(p.id) === String(query?.polaczenie ?? ''));
+  if (!polaczenie || !['dziala', 'blad'].includes(query?.test)) return null;
+  const gdzie = `${ZRODLA[polaczenie.typ] ?? polaczenie.typ}, konto ${polaczenie.kontoId}`;
+  if (query.test === 'dziala') return { ok: true, tekst: `Odczyt działa — ${gdzie}.` };
+  const krok = query.kod === KROK_NIESKONFIGUROWANY ? KOMUNIKAT_NIESKONFIGUROWANY
+    : Object.hasOwn(KROKI, query.kod) ? KROKI[query.kod] : null;
+  if (!krok) return null;
+  return { ok: false, tekst: `Test odczytu nie powiódł się — ${gdzie}. ${krok}` };
+}
+
 export function createWidokReklam({db,stanyKanalow=null,wiazanieKanalow=null,reklamy=null}) {
  const wspolnyKontekst=(req,reply)=>({nawigacja:nawigacjaUstawien(req,reply),zapisano:req.query?.zapisano==='reklamy'?'Zapisano połączenie reklam.':req.query?.zapisano==='kanal'?'Rozpoczęto wiązanie kanału Allegro.':null});
   function widokIntegracji(req, reply, { blad = null, tylkoReklamy = false } = {}) {
@@ -18,6 +43,7 @@ export function createWidokReklam({db,stanyKanalow=null,wiazanieKanalow=null,rek
     const bezpieczneHttps = req.raw.socket.encrypted === true || reklamy?.zaufaneHttps?.(req) === true;
     return reply.view('ustawienia-integracje.ejs', {
       ...wspolnyKontekst(req, reply), title: tylkoReklamy ? 'Integracje reklam' : 'Integracje', blad,
+      testOdczytu: tylkoReklamy ? komunikatTestu(req.query, wszystkie) : null,
       tylkoReklamy, zrodlaReklam, mozeKonfigurowacReklamy: req.konto?.admin === true,
       formularzSekretu: bezpieczneHttps && !!reklamy?.magazyn,
       kanaly: (stanyKanalow?.() ?? []).map((stan) => ({ stan, wiazanie: wiazanieKanalow?.stan?.(stan.kanal) ?? null })),
@@ -59,7 +85,9 @@ export function registerUstawieniaRoutes(app,{db,reklamy=null}) {
     const id = Number(req.body?.polaczenieId);
     const polaczenie = polaczenia(db).find((p) => p.id === id);
     if (!polaczenie) return reply.code(404).send('Nie znaleziono połączenia reklam.');
-    if (!reklamy?.magazyn || !reklamy?.klienci) return reply.code(503).send('Test połączenia reklam nie jest skonfigurowany.');
+    if (!reklamy?.magazyn || !reklamy?.klienci) {
+      return reply.code(303).redirect(adresWynikuTestu(id, { stan: 'blad', kodBledu: KROK_NIESKONFIGUROWANY }));
+    }
     const wynik = await testPolaczenie({ ...polaczenie, magazyn: reklamy.magazyn, klienci: reklamy.klienci });
     if (wynik.stan === 'dziala') {
       db.prepare('UPDATE reklamy_polaczenia SET waluta = ?, strefa = COALESCE(?, strefa) WHERE id = ?')
@@ -68,6 +96,6 @@ export function registerUstawieniaRoutes(app,{db,reklamy=null}) {
     zapiszStan(db, { polaczenieId: id, ostatniaProbaAt: new Date().toISOString(),
       ostatniSukcesAt: wynik.stan === 'dziala' ? wynik.pobranoAt : null,
       kodBledu: wynik.kodBledu });
-    return reply.send(wynik);
+    return reply.code(303).redirect(adresWynikuTestu(id, wynik));
   });
 }

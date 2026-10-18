@@ -16,7 +16,7 @@ const config = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] };
 // nalezala — dokladnie ten uklad, w ktorym zamowienie z karty dostawalo doklejone 19 zl.
 // ⚠️ Od 24.08.2026 warunki umowy stoja na KARCIE KLIENTA, wiec test wstawia go do bazy.
 const KLIENT_ZBIORCZY = {
-  klucz: 'zetaklient', nazwa: 'PHU Ewa Zieliński', nip: '1000001017',
+  klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa sp. z o.o.', nip: '1234500011',
   rabat_procent: 0, prog_darmowej_dostawy_gr: 50000,
   oplata_obslugi_gr: 400, oplata_kurierska_gr: 1900,
 };
