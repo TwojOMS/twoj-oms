@@ -108,8 +108,12 @@ describe('przejście próba → praca: przygotowanie i odmowy', () => {
     const r = akt(k, ['produkcja']);
     expect(r.status, r.wyjscie).toBe(0);
     expect(r.stdout).toContain('UTWORZONO');
-    for (const n of ['OMS_SPRZEDAWCA_NIP', 'OMS_RACHUNEK', 'DPD_NADAWCA_NAZWA', 'DPD_NADAWCA_ULICA', 'DPD_NADAWCA_KOD', 'DPD_NADAWCA_MIASTO']) expect(r.stdout).toContain(n);
+    for (const n of ['OMS_SPRZEDAWCA_NIP', 'OMS_RACHUNEK']) expect(r.stdout).toContain(n);
+    // PRZ-093.08: adres firmy już nie jest polem do uzupełnienia (można go wpisać w panelu) — jest w szablonie, pusty.
+    expect(r.stdout).not.toContain('DPD_NADAWCA_');
     const t = czytaj(k, 'config/produkcja.env');
+    for (const n of ['DPD_NADAWCA_NAZWA', 'DPD_NADAWCA_ULICA', 'DPD_NADAWCA_KOD', 'DPD_NADAWCA_MIASTO']) expect(t).toMatch(new RegExp(`^${n}=$`, 'm'));
+    expect(t).toContain('Ustawienia → Firma');
     expect(t).toMatch(/^OMS_TRYB=produkcja$/m);
     expect(t).toMatch(/^OMS_PASS=[0-9a-f]{48}$/m);
     expect(t).toMatch(/^OMS_KANALY=\[\]$/m);
@@ -121,7 +125,7 @@ describe('przejście próba → praca: przygotowanie i odmowy', () => {
     // Drugie hasło nie powstaje: plik już jest, a puste pola są odmową z nazwami.
     const r2 = akt(k, ['produkcja']);
     expect(r2.status).toBe(1);
-    expect(r2.stderr).toContain('PRODUKCJA_NIEWYPELNIONE_POLA: OMS_SPRZEDAWCA_NIP OMS_RACHUNEK DPD_NADAWCA_NAZWA DPD_NADAWCA_ULICA DPD_NADAWCA_KOD DPD_NADAWCA_MIASTO');
+    expect(r2.stderr).toContain('PRODUKCJA_NIEWYPELNIONE_POLA: OMS_SPRZEDAWCA_NIP OMS_RACHUNEK — ');
     expect(czytaj(k, 'config/produkcja.env')).toBe(t);
   });
 
@@ -143,12 +147,24 @@ describe('przejście próba → praca: przygotowanie i odmowy', () => {
   it('pole w cudzysłowie albo z CRLF liczy się jak w compose; OMS_TRYB inny niż produkcja to brak', () => {
     const k = instalacja();
     akt(k, ['produkcja']);
-    uzupelnij(k, { DPD_NADAWCA_NAZWA: '""', OMS_TRYB: 'proba' });
+    // PRZ-093.08: puste-w-cudzysłowie sprawdzane na NIP-ie (adres firmy przestał być wymagany).
+    uzupelnij(k, { OMS_SPRZEDAWCA_NIP: '""', OMS_TRYB: 'proba' });
     // Druga, pusta linia OMS_RACHUNEK na końcu: compose bierze OSTATNIĄ — więc to brak (recenzja D8 r1).
     fs.writeFileSync(plik(k, 'config/produkcja.env'), (czytaj(k, 'config/produkcja.env') + 'OMS_RACHUNEK=\n').replaceAll('\n', '\r\n'));
     const r = akt(k, ['produkcja']);
     expect(r.status).toBe(1);
-    expect(r.stderr).toContain('PRODUKCJA_NIEWYPELNIONE_POLA: OMS_TRYB(=produkcja) OMS_RACHUNEK DPD_NADAWCA_NAZWA');
+    expect(r.stderr).toContain('PRODUKCJA_NIEWYPELNIONE_POLA: OMS_TRYB(=produkcja) OMS_SPRZEDAWCA_NIP OMS_RACHUNEK — ');
+  });
+
+  // PRZ-093.08: firma bez adresu w pliku przechodzi na pracę — adres wpisze w panelu (Ustawienia → Firma).
+  it('bez adresu firmy w pliku przejście na pracę rusza (adres nie jest wymagany do startu)', () => {
+    const k = instalacja();
+    akt(k, ['produkcja']);
+    uzupelnij(k, { DPD_NADAWCA_NAZWA: '', DPD_NADAWCA_ULICA: '', DPD_NADAWCA_KOD: '', DPD_NADAWCA_MIASTO: '' });
+    const r = akt(k, ['produkcja']);
+    expect(r.status, r.wyjscie).toBe(0);
+    expect(r.stderr).not.toContain('PRODUKCJA_NIEWYPELNIONE_POLA');
+    expect(r.stdout).toContain('NEEDS_ACCEPT operacja=');
   });
 });
 

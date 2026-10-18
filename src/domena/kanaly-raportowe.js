@@ -38,15 +38,15 @@ function tagi(w) {
  *  3. INDYWIDUALNE przed sklepem — zamowienia z panelu ofert wpadaja do tego samego
  *     WooCommerce co detal i bez reguly liczylyby sie jako sprzedaz sklepowa.
  *
- * ⚠️⚠️ KONTO 21 TO `RECZNE`, A NIE `INDYWIDUALNE` — i to jest poprawka po pomiarze
- * z 13.08.2026, nie szczegol nazewniczy. Pierwotna mapa mowila „INDYWIDUALNE = konto 21 LUB
- * pozycja 28040", a to sa DWIE ROZLACZNE POPULACJE o dwoch roznych granicach:
- *   • zamowienia z panelu ofert: konto 9 + pozycja `28040|` → w OMS-ie `indywidualne = 1`,
- *     granica 2026-07-02;
- *   • zamowienia reczne: konto 21 (602 zam., 196 654 zl) → w OMS-ie `sklep = 'reczne'`,
- *     granica 2026-07-30.
+ * ⚠️⚠️ KONTO RECZNE TO `RECZNE`, A NIE `INDYWIDUALNE` — i to jest poprawka po pomiarze
+ * na danych produkcyjnych, nie szczegol nazewniczy. Pierwotna mapa mowila „INDYWIDUALNE =
+ * konto reczne LUB pozycja zaslepki", a to sa DWIE ROZLACZNE POPULACJE o dwoch roznych granicach:
+ *   • zamowienia z panelu ofert: konto sklepu + pozycja zaslepki → w OMS-ie `indywidualne = 1`,
+ *     z wlasna granica historii;
+ *   • zamowienia reczne: osobne konto → w OMS-ie `sklep = 'reczne'`, z inna granica historii
+ *     (kilkaset zamowien, rzad setek tysiecy zl).
  * Sklejone w jeden kanal daly „ten sam pieniadz po dwoch stronach granicy w dwoch roznych
- * kanalach": przy granicy 07-02 znikalo 10 440,14 zl, przy 08-05 dublowalo sie 3 175,80 zl.
+ * kanalach": zaleznie od przyjetej granicy znikaly albo dublowaly sie kwoty rzedu tysiecy zl.
  * ZADNA data nie byla poprawna — dlatego kanaly sa dwa.
  */
 export function kanalHistoryczny(w, klasyfikacja) {
@@ -90,7 +90,7 @@ export function kanalOms(w, klasyfikacja) {
   //
   // ⚠️ WYLACZNIE dla `sklep = 'reczne'`. Sprzedaz przez sklep B ma wlasny kanal
   // SKLEP_B i to on mowi, SKAD przyszly pieniadze; `B2B` w tym slowniku znaczy „sprzedaz
-  // hurtowa poza sklepem" (w epoce Apilo: konto 12 / tag b2b). Sklejenie ich dawaloby dwa
+  // hurtowa poza sklepem" (w historii importu: konto hurtowe / tag b2b). Sklejenie ich dawaloby dwa
   // kanaly opisujace ten sam pieniadz — patrz naglowek tego pliku.
   if (w.sklep === 'reczne') {
     if (w.okres_rozliczeniowy_id) return 'DROPSHIPPING';

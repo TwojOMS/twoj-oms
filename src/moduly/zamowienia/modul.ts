@@ -11,6 +11,7 @@ import { createGusClient } from '../../oms/gus/client.js';
 import { integracje } from '../../integracje/klucze.js';
 import { migracjaIndeksuListy } from './migracje/0001-indeks-listy.ts';
 import { efektywnyTryb } from '../../core/tryb.ts';
+import { zrodloAdresuFirmy } from '../../oms/db/adres-firmy.js';
 // PRZ-083: `fabryki.createGusClient` — atrapa GUS piaskownicy i demo (deploy/proba/atrapy/gus.mjs), jak fabryki inFaktu
 // i VIES w module faktur. Poza OMS_TRYB=proba odmowa już przy konfiguracji.
 export function createModulZamowienia({ zWiadomosciami = false, fabryki = {} as { createGusClient?: () => any } } = {}): ModulOms<ReturnType<typeof konfiguracjaZamowien>> { return {
@@ -28,7 +29,9 @@ export function createModulZamowienia({ zWiadomosciami = false, fabryki = {} as 
     const klienciKanalow=ctx.usluga<Record<string,any>>('kanaly','klienciKanalow');
     const syncSklep=Object.keys(klienci).length||Object.keys(klienciKanalow).length?createSyncSklep({db:ctx.db,klienci,klienciKanalow}):null;
     const gus=fabryki.createGusClient?fabryki.createGusClient():ctx.konfiguracja.gus?createGusClient(ctx.konfiguracja.gus):null;
-    const opcje = {db:ctx.db,config:{...ctx.usluga<object>('kanaly','config'),...ctx.konfiguracja},
+    // PRZ-093.08: sprzedawca specyfikacji — plik albo Ustawienia → Firma (czytane przy każdym dokumencie).
+    const adresFirmy=zrodloAdresuFirmy({db:ctx.db,zPliku:ctx.konfiguracja.nadawca});
+    const opcje = {db:ctx.db,config:{...ctx.usluga<object>('kanaly','config'),...ctx.konfiguracja,adresFirmy:adresFirmy.adres},
       poller:ctx.usluga('kanaly','poller'),stanyKanalow:ctx.usluga('kanaly','stanyKanalow'),
       // Pełny skład pobiera pocztę z jedynego modułu wiadomości podczas rejestracji tras.
       wiadomosci:null,gus,syncSklep,zdrowie:null,

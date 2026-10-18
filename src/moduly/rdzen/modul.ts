@@ -5,6 +5,7 @@ import { oznaczKluczeZamrozenia } from '../../core/uprawnienia.ts';
 import { migracjaWersjaHasla } from './migracje/0003-wersja-hasla.ts';
 import { migracjaKartProduktow } from './migracje/0004-karty-produktow.ts';
 import { migracjaStanowMagazynowych } from './migracje/0005-stany-magazynowe.ts';
+import { migracjaKonfiguracjiIntegracji } from './migracje/0006-konfiguracja-integracji.ts';
 
 export const modulRdzen: ModulOms<{ sprzedawca: DaneSprzedawcy }> = {
   nazwa: 'rdzen', wersja: '1.0.0', wymaga: [],
@@ -15,6 +16,7 @@ export const modulRdzen: ModulOms<{ sprzedawca: DaneSprzedawcy }> = {
     migracjaWersjaHasla,
     migracjaKartProduktow,
     migracjaStanowMagazynowych,
+    migracjaKonfiguracjiIntegracji,
   ],
   uprawnienia: [], menu: [],
   zbuduj: (ctx) => ({ uslugi: { sprzedawca: ctx.konfiguracja.sprzedawca } }),

@@ -43,14 +43,22 @@
 
   <% if (przedOmsem) { %>
     <div class="pasek-uwaga pasek-uwaga--epoka">
-      <% if (pierwszyDzien) { %>
+      <% if (pierwszyDzien && pierwszyDzienZBazy) { %>
       Statystyki wysyłki i płatności obejmują zamówienia <strong>od <%= Number(pierwszyDzien.slice(8, 10)) %>.<%= pierwszyDzien.slice(5, 7) %>.<%= pierwszyDzien.slice(0, 4) %></strong> —
-      wcześniejsza historia sklepu i Apilo nie niesie ani przewoźnika, ani metody płatności,
+      dnia pierwszego zamówienia zapisanego w OMS-ie. Wybrany zakres zaczyna się wcześniej,
+      więc liczby dotyczą wyłącznie jego części od <%= pierwszyDzien %>.
+      <% } else if (pierwszyDzien) { %>
+      Statystyki wysyłki i płatności obejmują zamówienia <strong>od <%= Number(pierwszyDzien.slice(8, 10)) %>.<%= pierwszyDzien.slice(5, 7) %>.<%= pierwszyDzien.slice(0, 4) %></strong> —
+      wcześniejsza zaimportowana historia nie niesie ani przewoźnika, ani metody płatności,
       ani daty wysłania. Wybrany zakres zaczyna się przed tą datą, więc liczby dotyczą
       wyłącznie jego części od <%= pierwszyDzien %>.
       <% } else { %>
-      Nie ustalono początku danych o wysyłce i płatnościach. Statystyki obejmują
-      zapisane zamówienia, ale pokrycie wybranego okresu pozostaje nieznane.
+      Nie ustalono początku danych o wysyłce i płatnościach: w OMS-ie nie ma jeszcze żadnego
+      zamówienia. Po pierwszym zamówieniu panel przyjmie za początek dzień tego zamówienia.
+      Jeśli dane o przewoźniku i płatności zaczynają się innego dnia, wpisz go w pliku
+      konfiguracji OMS (<code>oms.env</code>): <code>OMS_STATYSTYKI_PIERWSZY_DZIEN=RRRR-MM-DD</code>,
+      np. <code>2026-07-01</code>, i uruchom OMS ponownie — zastrzeżenie dostaną wtedy tylko
+      zakresy zaczynające się przed tym dniem.
       <% } %>
     </div>
   <% } %>
@@ -130,7 +138,7 @@
     <p class="wyjasnienie">
       Termin liczy się <strong>tą samą formułą, co zegar na liście zamówień</strong>:
       Allegro opłacone przed 12:00 w dzień roboczy — tego samego dnia; Allegro po 12:00,
-      sklepowe, B2B i pobrania — 1 dzień roboczy; 🔥 ekspres — 2; indywidualne — 7.
+      sklepowe, B2B i pobrania — 1 dzień roboczy; 🔥 ekspres — 2; zamówienia indywidualne (jeśli je rozróżniasz) — 7.
       Przedpłata liczy od wpłaty, pobranie i B2B od złożenia. Weekend nie liczy się
       do terminu.
     </p>

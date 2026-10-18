@@ -13,6 +13,7 @@ import {
 } from '../../../domena/masowe.js';
 
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
+import { GDZIE_KLUCZ_INFAKTU } from '../../../domena/konfiguracja-infakt.js';
 
 import { bezpiecznaNazwa } from '../../../domena/pliki.js';
 
@@ -85,7 +86,7 @@ app.post('/zamowienia/faktury-hurtem', async (req, reply) => {
     // Podajemy LICZBE milisekund — `null` albo napis daja tam cicha awarie (patrz docblock
     // `wystawWiele`).
     const start = Date.now();
-    if (!fakturaHurtem) return reply.code(503).send('Wystawianie faktur nie jest skonfigurowane (brak danych inFaktu).');
+    if (!fakturaHurtem) return reply.code(503).send(`Wystawianie faktur nie jest skonfigurowane (brak danych inFaktu). ${GDZIE_KLUCZ_INFAKTU}`);
     const wybrane = wybraneZListy(wczytajListe([].concat(req.body?.id ?? [])), req.body?.id);
     // Podzial liczony PONOWNIE, a nie przepisany z ekranu podgladu: miedzy podgladem
     // a zatwierdzeniem klient mogl anulowac zamowienie, a operator z drugiej zakladki
@@ -224,7 +225,7 @@ app.get('/proformy/:id/pdf', async (req, reply) => {
 app.post('/zamowienia/:id/faktura', async (req, reply) => {
     const id = Number(req.params.id);
     if (!pobierzZamowienie(db, id)) return reply.code(404).send('Nie ma takiego zamówienia');
-    if (!faktura) return reply.code(503).send('inFakt nie jest skonfigurowany.');
+    if (!faktura) return reply.code(503).send(`inFakt nie jest skonfigurowany. ${GDZIE_KLUCZ_INFAKTU}`);
     try {
       // Termin i data wystawienia Z FORMULARZA (domain/termin-platnosci.js). Nierozpoznana
       // wartosc dostaje odmowe TAM, w domenie — tutaj przekazujemy surowo, zeby nie istnialy

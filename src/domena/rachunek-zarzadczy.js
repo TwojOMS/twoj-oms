@@ -117,7 +117,7 @@ function rachunekMiesiaca(db, miesiac, regulySprzedazy) {
 }
 
 export function rachunekOkresu(db, { od, do: doDnia }, { regulySprzedazy = {}, podlogaKosztow = null } = {}) {
-  if (!podlogaKosztow) { const e = new Error('Nie ustawiono podłogi danych kosztów rachunku zarządczego.'); e.dlaOperatora = true; throw e; }
+  if (!podlogaKosztow) { const e = new Error(BRAK_PODLOGI_KOSZTOW); e.dlaOperatora = true; throw e; }
   if (od.slice(0, 7) < podlogaKosztow) {
     const e = new Error(
       `Rachunek zarządczy zaczyna się od ${podlogaKosztow}: kosztów sprzed KSeF panel nie zna,`
@@ -271,3 +271,12 @@ export function rachunekOkresu(db, { od, do: doDnia }, { regulySprzedazy = {}, p
       : null,
   };
 }
+
+// PRZ-093.07: nowa instalacja widzi to zdanie na FINANSACH, zanim ktokolwiek ustawi podłogę —
+// więc mówi, którą zmienną wpisać, w jakim formacie i gdzie. Treść w stałej, żeby linia odczytu
+// w `rachunekOkresu` nie przesuwała się przy każdej zmianie słów.
+const BRAK_PODLOGI_KOSZTOW = 'Nie ustawiono podłogi danych kosztów rachunku zarządczego.'
+  + ' Wpisz w pliku konfiguracji OMS (oms.env) linię OMS_RAPORTY_PODLOGA_KOSZTOW=RRRR-MM, np. 2026-05:'
+  + ' pierwszy miesiąc, od którego koszty firmy w OMS-ie (faktury kosztowe z KSeF i koszty dopisane ręcznie)'
+  + ' są kompletne — i uruchom OMS ponownie. Rachunek pokaże wynik od tego miesiąca; wcześniejszych nie policzy,'
+  + ' bo bez części kosztów zysk wyszedłby zawyżony.';

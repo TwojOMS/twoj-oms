@@ -55,7 +55,9 @@ maskuj_wartosci() {
         if (v == "proba" || v == "produkcja" || v == "true" || v == "false") continue
         # Ścieżki instalacji (np. OMS_KOPIA_ZEWNETRZNA=/opt/oms/kopia-zewnetrzna) nie są tajne, a bez nich raport jest nieczytelny.
         if (v ~ /^\/opt\/oms\/[A-Za-z0-9._\/-]*$/) continue
-        if (v == "administrator-proby" || v == "serwis-proby" || v ~ /^[0-9]?[0-9]?[0-9]?[0-9]?[0-9]$/) continue
+        # "administrator" to login pierwszego konta produkcji (plik administrator.env, scripts/produkcja-pierwszy-start.mjs) — publiczna
+        # stała kodu, a zamaskowana zamieniałaby nazwę tego pliku w ***.env; sekretem jest tam tylko hasło.
+        if (v == "administrator" || v == "administrator-proby" || v == "serwis-proby" || v ~ /^[0-9]?[0-9]?[0-9]?[0-9]?[0-9]$/) continue
         n++; w[n] = v
       }
       for (i = 2; i <= n; i++) {

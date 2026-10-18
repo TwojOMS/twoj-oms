@@ -105,7 +105,7 @@
   <% if (stanPollera && stanPollera.ostatni_przebieg_at) { %>
     Ostatnia synchronizacja: <%= fmtDataCzas(stanPollera.ostatni_przebieg_at) %>
   <% } else if (typeof bezKanalow !== 'undefined' && bezKanalow) { %>
-    Żaden kanał sprzedaży nie jest podłączony — zamówienia dodajesz ręcznie, a synchronizacja ruszy po podłączeniu sklepu albo Allegro.
+    Żaden kanał sprzedaży nie jest podłączony — zamówienia dodajesz ręcznie, a synchronizacja ruszy po podłączeniu sklepu albo Allegro. Kanały dopisuje się w zmiennej <code>OMS_KANALY</code> w pliku konfiguracji OMS (instrukcja: <code>docs/instalacja-docker.md</code>, sekcja 9).
   <% } else { %>
     <span class="uwaga">Brak synchronizacji — poller nie wykonał jeszcze przebiegu.</span>
   <% } %>
@@ -491,7 +491,7 @@
               Wysokosc wierszy sie NIE ZMIENIA (158 px), bo nazwe przycina `.nazwa-dostawy`. %>
           <td class="komorka-dostawa">
             <% if (z.metoda_wysylki === 'nieznana') { %>
-              <span class="uwaga">nieznana metoda — nadaj w Apilo</span>
+              <span class="uwaga">nieznana metoda — nadaj ręcznie u przewoźnika</span>
             <% } else { %>
               <%# Nazwa metody z JEDNEGO zrodla (domain/wysylka.js: etykietaWysylki) — tego %>
               <%# samego, ktore opisuje pozycje w polu wyboru filtra i metryczke na karcie. %>

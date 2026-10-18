@@ -16,6 +16,7 @@ import { parsujWplate, sumaWplatGrosze } from '../../../domena/platnosci.js';
 import { podsumowaniePozycji } from '../../../domena/tabela-pozycji.js';
 import { adresOdbiorcy } from '../../../domena/adres-odbiorcy.js';
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
+import { GDZIE_KLUCZ_INFAKTU } from '../../../domena/konfiguracja-infakt.js';
 import { wolnoOdpiac } from '../../../domena/zmiana-okresu.js';
 import { zl } from '../../../domena/suma-pozycji.js';
 import { umowaZbiorcza } from '../../../domena/klient-zbiorczy.js';
@@ -219,7 +220,7 @@ export function registerOkresyRoutes(app, { db, config = {}, infakt = null, vies
   app.post('/okresy/:id/wystaw-fakture', async (req, reply) => {
     const okres = okresZadania(req, reply);
     if (!okres) return reply;
-    if (!infakt) return reply.code(503).send('inFakt nie jest skonfigurowany — faktury z panelu nie wystawisz.');
+    if (!infakt) return reply.code(503).send(`inFakt nie jest skonfigurowany — faktury z panelu nie wystawisz. ${GDZIE_KLUCZ_INFAKTU}`);
     // Nabywca bierze sie z konfiguracji po kluczu okresu — okres wie, czyj jest. Panel NIE
     // zaklada tu klienta sam (uzasadnienie w services/faktura-okresu.js).
     const klient = klientOkresu(db, okres);

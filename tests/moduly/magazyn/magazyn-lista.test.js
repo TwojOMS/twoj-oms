@@ -506,7 +506,7 @@ describe('/magazyn bez skonfigurowanych sklepow', () => {
     // komentarzu arkusza — wiec tamta para przechodzila TAKZE wtedy, gdyby trasa przestala
     // renderowac `pusta-strona.ejs` i oddala cokolwiek innego z kodem 200. Nazwy zmiennych
     // srodowiskowych w arkuszu nie wystepuja i wystapic nie moga.
-    expect(r.body).toContain('SKLEP_*/ALLEGRO_*');
+    expect(r.body).toContain('OMS_KANALY');
     // Ikona w pasku prowadzaca w 404 wyglada jak usterka panelu, a nie jak funkcja,
     // ktorej jeszcze nie ma (ta sama decyzja, co przy /faktury i /raporty).
     expect(r.body).toContain('<h2>Magazyn</h2>');

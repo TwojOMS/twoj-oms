@@ -93,7 +93,7 @@ export function zamowieniaZKuponami(db) {
 // z reklam"). LIKE filtruje tu wylacznie OBECNOSC niepustej kampanii — `atrybucja_json`
 // to nasza wlasna serializacja (JSON.stringify w db/zamowienia.js), wiec klucz ma zawsze
 // postac `"kampania":"..."` bez spacji; dokladne dopasowanie KODU robi domena na
-// sparsowanym JSON (prefiksy wrzesien30/wrzesien305 — ta sama zasada, co przy kuponach).
+// sparsowanym JSON (prefiksy kod30/kod305 — ta sama zasada, co przy kuponach).
 // N+1 swiadome, jak wyzej: zbior to zamowienia z kampania w utm (dzis: zero).
 export function zamowieniaZAtrybucjaKampanii(db) {
   const idy = db.prepare(

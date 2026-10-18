@@ -40,8 +40,8 @@ export function modelOswiadczenia(z, { sprzedawca, dzis = null } = {}) {
   }
   if (!sprzedawca?.nazwa || !sprzedawca?.ulica) {
     throw bladOperatora(
-      'Panel nie zna adresu sprzedawcy (konfiguracja DPD_NADAWCA_*) — bez niego dokument '
-      + 'wywozu nie ma strony dostawcy.',
+      'Panel nie zna adresu sprzedawcy — bez niego dokument wywozu nie ma strony dostawcy. '
+      + 'Wpisz adres firmy w Ustawienia → Firma (/ustawienia/firma) albo w pliku konfiguracji (DPD_NADAWCA_*).',
     );
   }
 

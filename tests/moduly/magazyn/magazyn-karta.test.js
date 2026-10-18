@@ -215,7 +215,7 @@ describe('GET /magazyn/:id — karty moze nie byc', () => {
     const app = buildOmsServer({ db, config });
     const r = await get(app, '/magazyn/1');
     expect(r.statusCode).toBe(200);
-    expect(r.body).toContain('SKLEP_*/ALLEGRO_*');
+    expect(r.body).toContain('OMS_KANALY');
   });
 });
 

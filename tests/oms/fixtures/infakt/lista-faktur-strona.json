@@ -1,0 +1,20 @@
+{
+  "metainfo": {
+    "count": 1,
+    "total_count": 1,
+    "next": null,
+    "previous": null
+  },
+  "entities": [
+    {
+      "uuid": "00000000-0000-4000-8000-000000000001",
+      "number": "1/10/2026",
+      "invoice_date": "2026-10-01",
+      "gross_price": 12300,
+      "left_to_pay": 0,
+      "status": "paid",
+      "client_company_name": "Kontrahent Zmyślony (fikcja)",
+      "client_tax_code": null
+    }
+  ]
+}

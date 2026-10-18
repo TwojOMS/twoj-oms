@@ -1,0 +1,84 @@
+<h1>Adres firmy</h1>
+
+<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
+<% if (bledy.length) { %>
+  <div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong></p><ul><% bledy.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
+<% } %>
+
+<% if (wPliku) { %>
+<section class="ust-sekcja" id="firma-stan">
+  <h2>Ustawiony w pliku konfiguracji</h2>
+  <p>Adres firmy jest ustawiony w pliku konfiguracji serwera (<code>oms.env</code>, zmienne <code>DPD_NADAWCA_…</code>). Ten ekran go nie zmienia — adres poprawisz w tym pliku.</p>
+  <div class="ust-formularz">
+    <label>Nazwa</label><div class="ust-wartosc"><%= zPliku.nazwa || '—' %></div>
+    <label>Ulica</label><div class="ust-wartosc"><%= zPliku.ulica || '—' %></div>
+    <label>Kod pocztowy</label><div class="ust-wartosc"><%= zPliku.kod || '—' %></div>
+    <label>Miasto</label><div class="ust-wartosc"><%= zPliku.miasto || '—' %></div>
+    <label>Kraj</label><div class="ust-wartosc"><%= zPliku.kraj || '—' %></div>
+    <label>Telefon</label><div class="ust-wartosc"><%= zPliku.phone || '—' %></div>
+    <label>E-mail</label><div class="ust-wartosc"><%= zPliku.email || '—' %></div>
+  </div>
+  <% if (zapis) { %>
+    <form method="post" action="/ustawienia/firma/usun">
+      <p>W OMS-ie został też adres zapisany wcześniej na tym ekranie. Plik konfiguracji ma pierwszeństwo, więc nie jest używany.</p>
+      <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń adres zapisany na ekranie</button></div>
+    </form>
+  <% } %>
+</section>
+<% } else { %>
+<section class="ust-sekcja" id="firma-stan">
+  <% if (zapis) { %>
+    <h2>Ustawiony</h2>
+    <p>Zapisał <%= zapis.kontoLogin ?? '—' %>, <%= fmtDataCzas(zapis.zmienionoAt) %>.</p>
+  <% } else { %>
+    <h2>Brak adresu</h2>
+    <p class="pas-uprzedzenie">Bez adresu firmy OMS nie wystawi proformy ani specyfikacji i nie nada paczki DPD.</p>
+  <% } %>
+  <p>Ten adres stoi na proformach, specyfikacjach do paczek i potwierdzeniach wywozu jako sprzedawca, a na etykietach DPD jako nadawca. Zmiana działa od następnego dokumentu i następnej paczki.</p>
+</section>
+
+<section class="ust-sekcja">
+  <h2>Dane firmy</h2>
+  <form id="firma-formularz" class="ust-formularz" method="post" action="/ustawienia/firma">
+    <label for="firma-nazwa">Nazwa <span class="ust-wymagane">*</span></label>
+    <div><input id="firma-nazwa" name="nazwa" value="<%= pola.nazwa %>" maxlength="100" required>
+      <p class="ust-pomoc">Pełna nazwa firmy, tak jak ma stać na dokumentach.</p></div>
+
+    <label for="firma-ulica">Ulica i numer <span class="ust-wymagane">*</span></label>
+    <div><input id="firma-ulica" name="ulica" value="<%= pola.ulica %>" maxlength="100" required></div>
+
+    <label for="firma-kod">Kod pocztowy <span class="ust-wymagane">*</span></label>
+    <div><input id="firma-kod" name="kod" value="<%= pola.kod %>" maxlength="12" required>
+      <p class="ust-pomoc">W Polsce w postaci NN-NNN, np. 00-950.</p></div>
+
+    <label for="firma-miasto">Miasto <span class="ust-wymagane">*</span></label>
+    <div><input id="firma-miasto" name="miasto" value="<%= pola.miasto %>" maxlength="60" required></div>
+
+    <label for="firma-kraj">Kraj <span class="ust-wymagane">*</span></label>
+    <div><input id="firma-kraj" name="kraj" value="<%= pola.kraj %>" maxlength="2" required>
+      <p class="ust-pomoc">Dwuliterowy kod kraju, np. PL.</p></div>
+
+    <label for="firma-telefon">Telefon</label>
+    <div><input id="firma-telefon" name="telefon" value="<%= pola.telefon %>" maxlength="20" inputmode="tel">
+      <p class="ust-pomoc">Telefon nadawcy na etykiecie.</p></div>
+
+    <label for="firma-email">E-mail</label>
+    <div><input id="firma-email" type="email" name="email" value="<%= pola.email %>" maxlength="120">
+      <p class="ust-pomoc">E-mail nadawcy na etykiecie.</p></div>
+
+    <p class="ust-pelna ust-pomoc">Pola oznaczone <span class="ust-wymagane">*</span> są wymagane.</p>
+    <div class="ust-pelna ust-akcje">
+      <button class="btn btn--glowny" type="submit">Zapisz</button>
+    </div>
+  </form>
+</section>
+<% if (zapis) { %>
+<section class="ust-sekcja">
+  <h2>Usunięcie</h2>
+  <form method="post" action="/ustawienia/firma/usun" onsubmit="return confirm('Usunąć adres firmy? Bez niego OMS nie wystawi proformy ani specyfikacji.')">
+    <p>Bez adresu firmy OMS nie wystawi proformy ani specyfikacji i nie nada paczki DPD. Wystawione dokumenty zostają.</p>
+    <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń adres firmy</button></div>
+  </form>
+</section>
+<% } %>
+<% } %>

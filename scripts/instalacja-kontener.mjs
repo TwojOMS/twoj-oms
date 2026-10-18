@@ -8,7 +8,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { PLIKI_INSTALACJI } from './instalacja-wspolne.mjs';
+import { PLIKI_INSTALACJI, powodPotomka, sekretyKatalogu, oczyscPowod, coDalejKontener } from './instalacja-wspolne.mjs';
+
+const LIMIT_DEMO_MS = 600_000;
 
 export const PLIKI_KONFIGURACJI = Object.freeze({
   env: 'oms.env',
@@ -52,16 +54,23 @@ function main() {
 
   const demo = fileURLToPath(new URL('./instalacja-demo.mjs', import.meta.url));
   const wynik = spawnSync(process.execPath, [demo, '--katalog', dane, '--port', String(p)], {
-    cwd: fileURLToPath(new URL('..', import.meta.url)), env: {}, encoding: 'utf8', timeout: 600_000,
+    cwd: fileURLToPath(new URL('..', import.meta.url)), env: {}, encoding: 'utf8', timeout: LIMIT_DEMO_MS,
   });
   if (wynik.status !== 0) {
-    const kody = String(wynik.stderr ?? '').split(/\r?\n/).filter(linia => /^INSTALACJA_[A-Z0-9_]+$/.test(linia));
-    for (const kod of kody) console.error(kod);
-    throw Error('INSTALACJA_KONTENER_DEMO_ODMOWA');
+    // PRZ-093.03: z demo przechodzą linie „KOD” i „KOD: powód” (dawniej tylko goły kod — powód ginął).
+    // Hasła z katalogu danych odfiltrowane: linia z sekretem nie przechodzi wcale.
+    const sekrety = sekretyKatalogu(dane);
+    const kody = String(wynik.stderr ?? '').split(/\r?\n/)
+      .filter(linia => /^INSTALACJA_[A-Z0-9_]+(: .*)?$/.test(linia) && !sekrety.some(sekret => linia.includes(sekret)));
+    for (const kod of kody) console.error(oczyscPowod(kod, sekrety));
+    // Bez linii od demo (limit czasu, awaria procesu) powód dopisuje sam kontener.
+    throw Error(kody.length && !wynik.error ? 'INSTALACJA_KONTENER_DEMO_ODMOWA'
+      : `INSTALACJA_KONTENER_DEMO_ODMOWA: ${powodPotomka(wynik, { limitMs: LIMIT_DEMO_MS, sekrety })}`);
   }
   przenies(path.join(dane, PLIKI_INSTALACJI.proba), path.join(konfiguracja, PLIKI_KONFIGURACJI.env));
   przenies(path.join(dane, PLIKI_INSTALACJI.daneAdmina), path.join(konfiguracja, PLIKI_KONFIGURACJI.daneAdmina));
   przenies(path.join(dane, PLIKI_INSTALACJI.produkcja), path.join(konfiguracja, PLIKI_KONFIGURACJI.produkcja));
+  for (const linia of coDalejKontener({ konfiguracja, port: p })) console.log(linia);
   console.log(JSON.stringify({
     status: 'instalacja-zakonczona',
     konfiguracja: path.join(konfiguracja, PLIKI_KONFIGURACJI.env),
@@ -73,6 +82,8 @@ function main() {
 }
 
 try { main(); } catch (e) {
-  console.error(e instanceof Error && /^INSTALACJA_/.test(e.message) ? e.message : 'INSTALACJA_KONTENER_ODMOWA');
+  // Kontener nie trzyma haseł w pamięci (przenosi pliki, błąd fs podaje tylko ścieżkę).
+  console.error(e instanceof Error && /^INSTALACJA_/.test(e.message) ? e.message
+    : `INSTALACJA_KONTENER_ODMOWA: ${oczyscPowod(e instanceof Error ? e.message : e)}`);
   process.exitCode = 1;
 }

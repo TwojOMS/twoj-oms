@@ -34,6 +34,9 @@ describe('instalacja próby PRZ-050', () => {
     expect(fs.readFileSync(path.join(czysty, 'produkcja.env.example'), 'utf8')).toContain('OMS_SPRZEDAWCA_NIP=\n');
     const produkcja = fs.readFileSync(path.join(czysty, 'produkcja.env.example'), 'utf8');
     for (const klucz of ['OMS_DB_PATH', 'OMS_PROFORMY_KATALOG', 'OMS_ETYKIETY_KATALOG']) expect(produkcja).toContain(klucz + '=\n');
+    // PRZ-093.08: pola adresu firmy jak w szablonie Dockera (deploy/klient/aktualizuj.sh) — puste, opcjonalne.
+    for (const klucz of ['DPD_NADAWCA_NAZWA', 'DPD_NADAWCA_ULICA', 'DPD_NADAWCA_KOD', 'DPD_NADAWCA_MIASTO']) expect(produkcja).toContain(klucz + '=\n');
+    expect(produkcja).toContain('Ustawienia → Firma');
   });
 
   it('odmawia zmienionego trybu, kanałów i katalogu bazy przed bootstrapem', () => {
@@ -76,6 +79,9 @@ describe('instalacja próby PRZ-050', () => {
     const wynik = uruchom(proba, ['--katalog', p, '--port', '39151'], { OMS_PASS: 'cudzy-sekret', ALLEGRO_CLIENT_SECRET: 'cudzy-sekret' });
     expect(wynik.status, wynik.stderr).toBe(0);
     expect(wynik.stdout).toContain('proba-zakonczona');
+    expect(JSON.parse(wynik.stdout.trim().split(/\r?\n/).at(-1)).status).toBe('proba-zakonczona');
+    expect(wynik.stdout).toContain('http://127.0.0.1:39151/login');
+    expect(wynik.stdout).toContain(path.join(p, 'administrator-proby.env'));
     expect(`${wynik.stdout}${wynik.stderr}`).not.toContain('cudzy-sekret');
     expect(fs.existsSync(path.join(p, 'oms.sqlite'))).toBe(true);
     expect(fs.existsSync(path.join(p, 'backup-proba.sqlite'))).toBe(true);

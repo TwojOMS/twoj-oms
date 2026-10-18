@@ -2,7 +2,7 @@ import { zapiszZamowienie } from '../../../oms/db/zamowienia.js';
 
 // `od` — data, od ktorej panel w ogole zaglada do sklepu przy PIERWSZYM przebiegu.
 // Bez niej sklep bez zapisanego kursora oznacza „przeczytaj cala historie": sklep A
-// ma 8866 zamowien od 2020 roku, wiec pierwszy przebieg to 178 stron REST-a, ktore nie
+// ma kilka tysiecy zamowien z wielu lat, wiec pierwszy przebieg to setki stron REST-a, ktore nie
 // zdazyly sie skonczyc miedzy dwoma tykniernami zegara — i kazde kolejne tykniecie
 // startowalo NASTEPNY przebieg od strony pierwszej. Panel jest lista roboca, a nie
 // archiwum: zamowienia sprzed lat maja inna konfiguracje wysylki (instance_id „kurier"
@@ -21,7 +21,7 @@ import { zapiszZamowienie } from '../../../oms/db/zamowienia.js';
 // modyfikacji, ktore data zlozenia i jak zamienic je na wiersz. Reguly ponizej (podloga,
 // jeden przebieg naraz, kursor za najpozniejsza PRZETWORZONA modyfikacja) zostaja przez to
 // JEDNE dla wszystkich kanalow. Druga ich kopia rozjechalaby sie po cichu, a pierwsza
-// wersja tych regul kosztowala 8866 wciagnietych zamowien (01.08.2026).
+// wersja tych regul wciagnela kilka tysiecy zamowien naraz.
 export function createPoller({ db, kanal, sklep, od = null }) {
   // Zamowienie starsze niz `od` pomijamy przy ZAPISIE, ale kursor i tak przesuwamy —
   // inaczej przy kazdym przebiegu czytalibysmy je od nowa w kolko.

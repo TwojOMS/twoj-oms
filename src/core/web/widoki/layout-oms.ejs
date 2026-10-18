@@ -1622,6 +1622,21 @@
     .ust-pola label { display: flex; flex-direction: column; gap: .25rem; font-size: .85rem; color: var(--tekst-przygaszony); }
     .ust-pola input { box-sizing: border-box; width: 9rem; padding: .35rem .5rem; font: inherit; font-size: .95rem;
       color: var(--tekst); background: var(--tlo); border: 1px solid var(--ramka-pola); border-radius: 4px; }
+    /* PRZ-092: formularz integracji (kurier DPD) w układzie Apilo — etykieta po lewej, pole z podpowiedzią */
+    /* po prawej; poniżej 40rem jedna kolumna. Paleta pól jak `.ust-pola` (pole wewnątrz kafla). */
+    .ust-formularz { display: grid; grid-template-columns: minmax(9rem, 14rem) minmax(0, 1fr); gap: .8rem 1.1rem; align-items: start; }
+    .ust-formularz > label { padding-top: .4rem; text-align: right; font-size: .88rem; color: var(--tekst); }
+    .ust-formularz > h3 { grid-column: 1 / -1; margin: .6rem 0 0; padding-bottom: .35rem; font-size: .95rem; border-bottom: 1px solid var(--ramka); }
+    .ust-formularz > .ust-pelna { grid-column: 1 / -1; }
+    .ust-formularz input, .ust-formularz select { box-sizing: border-box; width: 100%; padding: .4rem .55rem; font: inherit; font-size: .92rem;
+      color: var(--tekst); background: var(--tlo); border: 1px solid var(--ramka-pola); border-radius: 4px; }
+    .ust-formularz .ust-pomoc { margin: .25rem 0 0; font-size: .78rem; color: var(--tekst-przygaszony); }
+    .ust-formularz .ust-wartosc { padding-top: .4rem; font-size: .9rem; color: var(--tekst); }
+    .ust-wymagane { color: var(--blad-tekst-mocny); }
+    @media (max-width: 40rem) {
+      .ust-formularz { grid-template-columns: minmax(0, 1fr); gap: .3rem; }
+      .ust-formularz > label { text-align: left; padding-top: .5rem; }
+    }
 
     /* ================================================================================= */
     /* EKRAN RAPORTOW (raporty.ejs) — sprzedaz w dowolnym zakresie dat.                   */

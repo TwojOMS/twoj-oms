@@ -220,7 +220,7 @@
   </div>
   <div class="panel-cialo">
     <% if (!zrodlaWlaczone.meta) { %>
-      <p class="pusto">Panel nie ma dostępu do Meta — brak <code>META_TOKEN</code> i <code>META_KONTA</code> w konfiguracji.</p>
+      <p class="pusto">Panel nie ma dostępu do Meta — ta karta czyta dane tylko ze zmiennych <code>META_TOKEN</code> i <code>META_KONTA</code> (konta w postaci <code>act_</code> i numer, kilka po przecinku) w pliku konfiguracji OMS; po ich wpisaniu uruchom OMS od nowa. Połączenia dodane w Ustawienia → Integracje → Reklamy zasilają ekran Reklamy, nie tę kartę.</p>
     <% } else { %>
       <%# ⚠️ BLAD NAD LICZBAMI, NIE ZAMIAST NICH: ostatnie udane pobranie dalej jest %>
       <%# prawda o tym, co bylo — ma byc widoczne razem z ostrzezeniem, ze sie starzeje. %>
@@ -279,7 +279,7 @@
   </div>
   <div class="panel-cialo">
     <% if (!zrodlaWlaczone.ga4) { %>
-      <p class="pusto">Panel nie ma dostępu do GA4 — brak <code>GA4_KLUCZ</code> w konfiguracji.</p>
+      <p class="pusto">Panel nie ma dostępu do GA4 — ta karta czyta dane tylko ze zmiennej <code>GA4_KLUCZ</code> (ścieżka do pliku z kluczem konta usługowego Google) w pliku konfiguracji OMS; po jej wpisaniu uruchom OMS od nowa. Połączenia dodane w Ustawienia → Integracje → Reklamy zasilają ekran Reklamy, nie tę kartę.</p>
     <% } else if (!kampania.ga4_wlasciwosc) { %>
       <p class="pusto">Ta kampania nie ma wskazanej właściwości GA4 (kolumna <code>ga4_wlasciwosc</code>), więc panel o ruch nie pyta.</p>
     <% } else { %>

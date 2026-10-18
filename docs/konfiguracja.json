@@ -45,7 +45,7 @@
   "statystyki": {
     "plikiKodowe": 428,
     "bledyParsera": 0,
-    "odczytyProduktu": 135,
+    "odczytyProduktu": 130,
     "dynamiczneOdczytyProduktu": 33,
     "zmienneProduktu": 71,
     "rodzinyDynamiczne": 11,
@@ -336,7 +336,7 @@
         {
           "id": "AST-058",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 37,
+          "line": 44,
           "expression": "env.OMS_RACHUNEK",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -345,7 +345,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/core/sprzedawca.ts:12",
-        "src/moduly/wysylka/kurierzy.ts:37"
+        "src/moduly/wysylka/kurierzy.ts:44"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -519,13 +519,13 @@
       "wymagalnosc": "opcjonalna przy starcie; pełna definicja wymagana do aktywacji klienta",
       "domyslna": "[]",
       "skutekBraku": "Pusta lista definicji i brak pollera. W produkcji /health jest czerwony, jeżeli w DB są zamówienia nieobsługiwanego kanału z ostatnich 30 dni; proba pomija ten alarm. Kod wskazuje nazwę kanału i OMS_KANALY bez wartości. Pusty tekst nie uruchamia wartości domyślnej: JSON.parse('') odmawia startu jako niepoprawny JSON. PRZ-053: lista i powroty korzystają z jawnych definicji, kanał bez zamówień pozostaje widoczny. Bez definicji brak nazw i kanałów firmy.",
-      "walidacja": "JSON tablica obiektów; klucz/prefiks/typ wymagają string, bez konwersji tablic do tekstu; typ woo/allegro; klucz /^[a-z][a-z0-9_-]*$/; prefiks /^[A-Z][A-Z0-9_]*$/; klucze i prefiksy unikalne. Błędny JSON podaje wyłącznie nazwę i ogólny powód. Polityka D09 zatwierdzona przez właściciela 02.10.2026; niezależne PRZYJĘTE pozostaje osobną bramką. PRZ-053: klucze reczne/indywidualne/__proto__/constructor/prototype zastrzeżone; opcjonalna etykieta musi być niepustym string. Opcjonalny raport /^[A-Z][A-Z0-9_]*$/ ma być unikalny i spoza wbudowanych RECZNE/B2B/DROPSHIPPING/GDD/INDYWIDUALNE oraz kategorii endpointu SKLEP/SKLEP_INDYWIDUALNE/ALLEGRO.",
+      "walidacja": "JSON tablica obiektów; klucz/prefiks/typ wymagają string, bez konwersji tablic do tekstu; typ woo/allegro; klucz /^[a-z][a-z0-9_-]*$/; prefiks /^[A-Z][A-Z0-9_]*$/; klucze i prefiksy unikalne. Błąd podaje nazwę zmiennej, numer znaku (zły JSON) albo numer pozycji listy od 1 i pole do poprawy; wartości z wejścia nie przepisuje. Polityka D09 zatwierdzona przez właściciela 02.10.2026; niezależne PRZYJĘTE pozostaje osobną bramką. PRZ-053: klucze reczne/indywidualne/__proto__/constructor/prototype zastrzeżone; opcjonalna etykieta musi być niepustym string. Opcjonalny raport /^[A-Z][A-Z0-9_]*$/ ma być unikalny i spoza wbudowanych RECZNE/B2B/DROPSHIPPING/GDD/INDYWIDUALNE oraz kategorii endpointu SKLEP/SKLEP_INDYWIDUALNE/ALLEGRO.",
       "decyzja": "D01, D09",
       "odczyty": [
         {
           "id": "AST-022",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 42,
+          "line": 86,
           "expression": "env.OMS_KANALY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -533,7 +533,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/kanaly/konfiguracja.ts:42"
+        "src/moduly/kanaly/konfiguracja.ts:86"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -553,7 +553,7 @@
         {
           "id": "AST-035",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 98,
+          "line": 136,
           "expression": "env.OMS_POLLER_MS",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -561,7 +561,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/kanaly/konfiguracja.ts:98"
+        "src/moduly/kanaly/konfiguracja.ts:136"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -610,7 +610,7 @@
         {
           "id": "AST-023",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 65,
+          "line": 103,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -618,7 +618,7 @@
         {
           "id": "AST-024",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 65,
+          "line": 103,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -626,7 +626,7 @@
         {
           "id": "AST-028",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 87,
+          "line": 125,
           "expression": "env[`${p}_CK`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -652,8 +652,8 @@
       "sciezkaOdczytu": [
         "src/core/tryb.ts:17",
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:65",
-        "src/moduly/kanaly/konfiguracja.ts:87",
+        "src/moduly/kanaly/konfiguracja.ts:103",
+        "src/moduly/kanaly/konfiguracja.ts:125",
         "src/moduly/kanaly/scripts/import-sklep.mjs:55"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
@@ -703,7 +703,7 @@
         {
           "id": "AST-023",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 65,
+          "line": 103,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -711,7 +711,7 @@
         {
           "id": "AST-024",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 65,
+          "line": 103,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -719,7 +719,7 @@
         {
           "id": "AST-029",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 87,
+          "line": 125,
           "expression": "env[`${p}_CS`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -745,8 +745,8 @@
       "sciezkaOdczytu": [
         "src/core/tryb.ts:17",
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:65",
-        "src/moduly/kanaly/konfiguracja.ts:87",
+        "src/moduly/kanaly/konfiguracja.ts:103",
+        "src/moduly/kanaly/konfiguracja.ts:125",
         "src/moduly/kanaly/scripts/import-sklep.mjs:55"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
@@ -779,7 +779,7 @@
         {
           "id": "AST-023",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 65,
+          "line": 103,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -787,7 +787,7 @@
         {
           "id": "AST-024",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 65,
+          "line": 103,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -795,7 +795,7 @@
         {
           "id": "AST-025",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 70,
+          "line": 108,
           "expression": "env[`${p}_URL`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -820,8 +820,8 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:65",
-        "src/moduly/kanaly/konfiguracja.ts:70",
+        "src/moduly/kanaly/konfiguracja.ts:103",
+        "src/moduly/kanaly/konfiguracja.ts:108",
         "src/moduly/kanaly/scripts/import-sklep.mjs:55"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
@@ -854,7 +854,7 @@
         {
           "id": "AST-023",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 65,
+          "line": 103,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -862,7 +862,7 @@
         {
           "id": "AST-024",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 65,
+          "line": 103,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -871,7 +871,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:65"
+        "src/moduly/kanaly/konfiguracja.ts:103"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -912,7 +912,7 @@
         {
           "id": "AST-123",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 78,
+          "line": 116,
           "expression": "env[`${p}_OD`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -920,7 +920,7 @@
         {
           "id": "AST-124",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 78,
+          "line": 116,
           "expression": "env[`${p}_OD`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -930,7 +930,7 @@
       "sciezkaOdczytu": [
         "src/moduly/kanaly/kompletnosc.ts:7",
         "src/moduly/kanaly/konfiguracja.ts:29",
-        "src/moduly/kanaly/konfiguracja.ts:78"
+        "src/moduly/kanaly/konfiguracja.ts:116"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -970,7 +970,7 @@
         {
           "id": "AST-030",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 90,
+          "line": 128,
           "expression": "env[`${p}_HISTORIA_KONTO_APILO`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -988,7 +988,7 @@
       "sciezkaOdczytu": [
         "src/moduly/kanaly/historia.ts:17",
         "src/moduly/kanaly/historia.ts:18",
-        "src/moduly/kanaly/konfiguracja.ts:90",
+        "src/moduly/kanaly/konfiguracja.ts:128",
         "src/moduly/kanaly/klasyfikacja.ts:70"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
@@ -1038,7 +1038,7 @@
         {
           "id": "AST-023",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 65,
+          "line": 103,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1046,7 +1046,7 @@
         {
           "id": "AST-024",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 65,
+          "line": 103,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1054,7 +1054,7 @@
         {
           "id": "AST-031",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 92,
+          "line": 130,
           "expression": "env[`${p}_CLIENT_ID`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1064,8 +1064,8 @@
       "sciezkaOdczytu": [
         "src/core/tryb.ts:17",
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:65",
-        "src/moduly/kanaly/konfiguracja.ts:92"
+        "src/moduly/kanaly/konfiguracja.ts:103",
+        "src/moduly/kanaly/konfiguracja.ts:130"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -1114,7 +1114,7 @@
         {
           "id": "AST-023",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 65,
+          "line": 103,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1122,7 +1122,7 @@
         {
           "id": "AST-024",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 65,
+          "line": 103,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1130,7 +1130,7 @@
         {
           "id": "AST-032",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 92,
+          "line": 130,
           "expression": "env[`${p}_CLIENT_SECRET`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1140,8 +1140,8 @@
       "sciezkaOdczytu": [
         "src/core/tryb.ts:17",
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:65",
-        "src/moduly/kanaly/konfiguracja.ts:92"
+        "src/moduly/kanaly/konfiguracja.ts:103",
+        "src/moduly/kanaly/konfiguracja.ts:130"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -1165,7 +1165,7 @@
         {
           "id": "AST-026",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 73,
+          "line": 111,
           "expression": "env[`${p}_API`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1173,7 +1173,7 @@
         {
           "id": "AST-033",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 94,
+          "line": 132,
           "expression": "env[`${p}_API`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1181,8 +1181,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/kanaly/konfiguracja.ts:73",
-        "src/moduly/kanaly/konfiguracja.ts:94"
+        "src/moduly/kanaly/konfiguracja.ts:111",
+        "src/moduly/kanaly/konfiguracja.ts:132"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -1206,7 +1206,7 @@
         {
           "id": "AST-027",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 74,
+          "line": 112,
           "expression": "env[`${p}_AUTH`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1214,7 +1214,7 @@
         {
           "id": "AST-034",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 94,
+          "line": 132,
           "expression": "env[`${p}_AUTH`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1222,8 +1222,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/kanaly/konfiguracja.ts:74",
-        "src/moduly/kanaly/konfiguracja.ts:94"
+        "src/moduly/kanaly/konfiguracja.ts:112",
+        "src/moduly/kanaly/konfiguracja.ts:132"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -1263,7 +1263,7 @@
         {
           "id": "AST-125",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 79,
+          "line": 117,
           "expression": "env[`${p}_USER_AGENT`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1271,7 +1271,7 @@
         {
           "id": "AST-126",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 79,
+          "line": 117,
           "expression": "env[`${p}_USER_AGENT`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1281,7 +1281,7 @@
       "sciezkaOdczytu": [
         "src/moduly/kanaly/kompletnosc.ts:7",
         "src/moduly/kanaly/konfiguracja.ts:24",
-        "src/moduly/kanaly/konfiguracja.ts:79"
+        "src/moduly/kanaly/konfiguracja.ts:117"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -1552,7 +1552,7 @@
         {
           "id": "AST-060",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 36,
+          "line": 43,
           "expression": "env.OMS_PROFORMY_KATALOG",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1560,7 +1560,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:36"
+        "src/moduly/faktury/modul.ts:43"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1584,7 +1584,7 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna; bramka włączenia inFaktu",
       "domyslna": null,
-      "skutekBraku": "Nie powstają klient inFaktu, wystawianie faktur, VIES, usługi KSeF sprzedaży i paczka biura; proformy nadal dostępne. Zdrowie dodaje uwagę, nie gwarantuje alarmu.",
+      "skutekBraku": "Nie powstają klient inFaktu, wystawianie faktur, VIES, usługi KSeF sprzedaży i paczka biura; proformy nadal dostępne. Zdrowie dodaje uwagę, nie gwarantuje alarmu. PRZ-093.10: odpowiednik w panelu — Ustawienia → Integracje → inFakt (/ustawienia/integracje/infakt; wiersz „infakt” w konfiguracja_integracji, klucz jako sekret; adres API zawsze produkcyjny). Gdy INFAKT_API_KEY stoi w pliku, cała konfiguracja inFaktu idzie z pliku, a ekran jest tylko do odczytu (zapis = 409). Pierwsze podłączenie z ekranu włącza faktury po restarcie, zmiana klucza działa od razu.",
       "walidacja": "truthiness bez trim do uruchomienia; próba odrzuca każdą surową wartość różną od pustej, także whitespace.",
       "sekret": true,
       "odczyty": [
@@ -1607,7 +1607,7 @@
         {
           "id": "AST-068",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 48,
+          "line": 57,
           "expression": "env.INFAKT_API_KEY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1615,7 +1615,7 @@
         {
           "id": "AST-069",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 48,
+          "line": 57,
           "expression": "env.INFAKT_API_KEY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1624,7 +1624,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/core/tryb.ts:17",
-        "src/moduly/faktury/modul.ts:48"
+        "src/moduly/faktury/modul.ts:57"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1637,13 +1637,13 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "https://api.infakt.pl/api",
-      "skutekBraku": "Klient używa domyślnego API produkcyjnego.",
+      "skutekBraku": "Klient używa domyślnego API produkcyjnego. PRZ-093.10: tylko w pliku i tylko razem z INFAKT_API_KEY — klucz wpisany w Ustawienia → Integracje → inFakt idzie zawsze pod produkcyjny adres inFaktu (ekran nie przyjmuje adresu).",
       "walidacja": "Dosłownie pusty tekst oznacza brak ustawienia i zachowuje historyczny default albo wyłączenie. Niepusty URL musi być absolutnym HTTP(S) z hostem i bez otaczających białych znaków; błąd zawiera tylko nazwę.",
       "odczyty": [
         {
           "id": "AST-059",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 34,
+          "line": 41,
           "expression": "env.INFAKT_API_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1651,7 +1651,7 @@
         {
           "id": "AST-070",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 48,
+          "line": 57,
           "expression": "env.INFAKT_API_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1659,8 +1659,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:34",
-        "src/moduly/faktury/modul.ts:48"
+        "src/moduly/faktury/modul.ts:41",
+        "src/moduly/faktury/modul.ts:57"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1673,13 +1673,13 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
-      "skutekBraku": "Nie powstaje czuwacz archiwum sprzedaży; paczka biura nie ma tego lokalnego katalogu i korzysta z pozostałych źródeł usługi.",
+      "skutekBraku": "Nie powstaje czuwacz archiwum sprzedaży; paczka biura nie ma tego lokalnego katalogu i korzysta z pozostałych źródeł usługi. PRZ-093.10: tylko w pliku (katalog na serwerze, nie pole ekranu); działa też z kluczem wpisanym w Ustawienia → Integracje → inFakt.",
       "walidacja": "trim; pusty tekst daje null; odczyt zarówno w fakturach, jak kosztach.",
       "odczyty": [
         {
           "id": "AST-071",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 49,
+          "line": 53,
           "expression": "env.INFAKT_ARCHIWUM",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1695,7 +1695,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:49",
+        "src/moduly/faktury/modul.ts:53",
         "src/moduly/koszty/modul.ts:26"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
@@ -1911,7 +1911,7 @@
         {
           "id": "AST-037",
           "path": "src/moduly/zamowienia/konfiguracja.ts",
-          "line": 14,
+          "line": 15,
           "expression": "env.GUS_KLUCZ",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1919,7 +1919,7 @@
         {
           "id": "AST-038",
           "path": "src/moduly/zamowienia/konfiguracja.ts",
-          "line": 14,
+          "line": 15,
           "expression": "env.GUS_KLUCZ",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1928,7 +1928,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/core/tryb.ts:17",
-        "src/moduly/zamowienia/konfiguracja.ts:14"
+        "src/moduly/zamowienia/konfiguracja.ts:15"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1947,7 +1947,7 @@
         {
           "id": "AST-036",
           "path": "src/moduly/zamowienia/konfiguracja.ts",
-          "line": 7,
+          "line": 9,
           "expression": "env.GUS_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1955,7 +1955,7 @@
         {
           "id": "AST-039",
           "path": "src/moduly/zamowienia/konfiguracja.ts",
-          "line": 13,
+          "line": 15,
           "expression": "env.GUS_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1963,8 +1963,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zamowienia/konfiguracja.ts:7",
-        "src/moduly/zamowienia/konfiguracja.ts:13"
+        "src/moduly/zamowienia/konfiguracja.ts:9",
+        "src/moduly/zamowienia/konfiguracja.ts:15"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1983,7 +1983,7 @@
         {
           "id": "AST-045",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 8,
+          "line": 13,
           "expression": "env[klucz]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1991,7 +1991,7 @@
         {
           "id": "AST-046",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 14,
+          "line": 19,
           "expression": "env.DPD_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1999,7 +1999,7 @@
         {
           "id": "AST-049",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 17,
+          "line": 22,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -2007,7 +2007,7 @@
         {
           "id": "AST-053",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 23,
+          "line": 28,
           "expression": "env.DPD_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2015,10 +2015,10 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/kurierzy.ts:8",
-        "src/moduly/wysylka/kurierzy.ts:14",
-        "src/moduly/wysylka/kurierzy.ts:17",
-        "src/moduly/wysylka/kurierzy.ts:23"
+        "src/moduly/wysylka/kurierzy.ts:13",
+        "src/moduly/wysylka/kurierzy.ts:19",
+        "src/moduly/wysylka/kurierzy.ts:22",
+        "src/moduly/wysylka/kurierzy.ts:28"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2054,7 +2054,7 @@
         {
           "id": "AST-045",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 8,
+          "line": 13,
           "expression": "env[klucz]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -2063,7 +2063,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/core/tryb.ts:17",
-        "src/moduly/wysylka/kurierzy.ts:8"
+        "src/moduly/wysylka/kurierzy.ts:13"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2099,7 +2099,7 @@
         {
           "id": "AST-045",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 8,
+          "line": 13,
           "expression": "env[klucz]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -2108,7 +2108,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/core/tryb.ts:17",
-        "src/moduly/wysylka/kurierzy.ts:8"
+        "src/moduly/wysylka/kurierzy.ts:13"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2128,7 +2128,7 @@
         {
           "id": "AST-045",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 8,
+          "line": 13,
           "expression": "env[klucz]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -2136,7 +2136,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/kurierzy.ts:8"
+        "src/moduly/wysylka/kurierzy.ts:13"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2156,7 +2156,7 @@
         {
           "id": "AST-045",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 8,
+          "line": 13,
           "expression": "env[klucz]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -2164,7 +2164,7 @@
         {
           "id": "AST-047",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 15,
+          "line": 20,
           "expression": "env.DPD_INFO_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2172,8 +2172,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/kurierzy.ts:8",
-        "src/moduly/wysylka/kurierzy.ts:15"
+        "src/moduly/wysylka/kurierzy.ts:13",
+        "src/moduly/wysylka/kurierzy.ts:20"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2193,7 +2193,7 @@
         {
           "id": "AST-045",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 8,
+          "line": 13,
           "expression": "env[klucz]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -2201,7 +2201,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/kurierzy.ts:8"
+        "src/moduly/wysylka/kurierzy.ts:13"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2223,32 +2223,16 @@
           "wartosc": ""
         }
       ],
-      "skutekBraku": "Aktywny kurier bez nazwy odmawia konfiguracji; bez kurierów faktury otrzymują puste pole. CLI podjazdu odmawia bez wartości. Wystawienie proformy odmawia przez adresSprzedawcy, nawet przy wyłączonych kurierach. Specyfikacja czyta ten sam adres; nazwa i ulica są wymagane dopiero przy generacji, kod i miasto nie powodują nowej odmowy startu bez kuriera. Właściciel wymaganego pobrania WzA pochodzi tylko ze zwalidowanego nadawcy czynnego DPD/InPost. Sama nazwa z env bez obu kurierów nie otwiera tej reguły. Obecne metody WzA z WALLET_TRANSFER nie wymagają właściciela ani naszego IBAN.",
+      "skutekBraku": "Aktywny kurier bez nazwy odmawia konfiguracji; bez kurierów faktury otrzymują puste pole. CLI podjazdu odmawia bez wartości. Wystawienie proformy odmawia przez adresSprzedawcy, nawet przy wyłączonych kurierach. Specyfikacja czyta ten sam adres; nazwa i ulica są wymagane dopiero przy generacji, kod i miasto nie powodują nowej odmowy startu bez kuriera. Właściciel wymaganego pobrania WzA pochodzi tylko ze zwalidowanego nadawcy czynnego DPD/InPost. Sama nazwa z env bez obu kurierów nie otwiera tej reguły. Obecne metody WzA z WALLET_TRANSFER nie wymagają właściciela ani naszego IBAN. PRZ-093.08: to adres FIRMY (sprzedawca na proformie, specyfikacji i potwierdzeniu wywozu, nadawca paczek), nie tylko DPD. Bez tej rodziny w pliku adres wpisuje się w panelu (Ustawienia → Firma, wiersz „firma” w konfiguracja_integracji); gdy choć jedno z pól NAZWA/ULICA/KOD/MIASTO stoi w pliku, plik wygrywa w całości, a ekran jest tylko do odczytu. Jedno miejsce odczytu: src/core/adres-firmy.ts. Kurier z pliku (DPD_URL, INPOST_TOKEN) nadal wymaga adresu w pliku przy starcie.",
       "walidacja": "trim w konfiguratorach; CLI kontroluje truthiness; są to dane adresu wysyłkowego, nie alias OMS_SPRZEDAWCA_*. Specyfikacja używa tych samych danych z trim; nie czyta drugiej rodziny adresu OMS. D05 odstępuje od warunku DPD_URL dla dokumentów; nie rozszerza pobrania WzA o fallback samej nazwy.",
       "odczyty": [
         {
-          "id": "AST-040",
-          "path": "src/moduly/zamowienia/konfiguracja.ts",
-          "line": 15,
-          "expression": "env.DPD_NADAWCA_NAZWA",
-          "kind": "statyczny",
-          "via": "bezpośrednio"
-        },
-        {
           "id": "AST-045",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 8,
+          "line": 13,
           "expression": "env[klucz]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
-        },
-        {
-          "id": "AST-061",
-          "path": "src/moduly/faktury/modul.ts",
-          "line": 43,
-          "expression": "env.DPD_NADAWCA_NAZWA",
-          "kind": "statyczny",
-          "via": "bezpośrednio"
         },
         {
           "id": "AST-114",
@@ -2257,14 +2241,21 @@
           "expression": "process.env.DPD_NADAWCA_NAZWA",
           "kind": "statyczny",
           "via": "bezpośrednio"
+        },
+        {
+          "id": "AST-142",
+          "path": "src/core/adres-firmy.ts",
+          "line": 16,
+          "expression": "env.DPD_NADAWCA_NAZWA",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
         }
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zamowienia/konfiguracja.ts:15",
-        "src/moduly/wysylka/kurierzy.ts:8",
-        "src/moduly/faktury/modul.ts:43",
-        "scripts/oms-import-istniejacy-podjazd-dpd.mjs:19"
+        "src/moduly/wysylka/kurierzy.ts:13",
+        "scripts/oms-import-istniejacy-podjazd-dpd.mjs:19",
+        "src/core/adres-firmy.ts:16"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2297,32 +2288,16 @@
           "wartosc": ""
         }
       ],
-      "skutekBraku": "Aktywny kurier bez ulicy odmawia konfiguracji; bez kurierów faktury otrzymują puste pole. CLI podjazdu odmawia bez wartości. Wystawienie proformy odmawia przez adresSprzedawcy, nawet przy wyłączonych kurierach. Specyfikacja czyta ten sam adres; nazwa i ulica są wymagane dopiero przy generacji, kod i miasto nie powodują nowej odmowy startu bez kuriera.",
+      "skutekBraku": "Aktywny kurier bez ulicy odmawia konfiguracji; bez kurierów faktury otrzymują puste pole. CLI podjazdu odmawia bez wartości. Wystawienie proformy odmawia przez adresSprzedawcy, nawet przy wyłączonych kurierach. Specyfikacja czyta ten sam adres; nazwa i ulica są wymagane dopiero przy generacji, kod i miasto nie powodują nowej odmowy startu bez kuriera. PRZ-093.08: to adres FIRMY (sprzedawca na proformie, specyfikacji i potwierdzeniu wywozu, nadawca paczek), nie tylko DPD. Bez tej rodziny w pliku adres wpisuje się w panelu (Ustawienia → Firma, wiersz „firma” w konfiguracja_integracji); gdy choć jedno z pól NAZWA/ULICA/KOD/MIASTO stoi w pliku, plik wygrywa w całości, a ekran jest tylko do odczytu. Jedno miejsce odczytu: src/core/adres-firmy.ts. Kurier z pliku (DPD_URL, INPOST_TOKEN) nadal wymaga adresu w pliku przy starcie.",
       "walidacja": "trim w konfiguratorach; CLI kontroluje truthiness; są to dane adresu wysyłkowego, nie alias OMS_SPRZEDAWCA_*. Specyfikacja używa tych samych danych z trim; nie czyta drugiej rodziny adresu OMS.",
       "odczyty": [
         {
-          "id": "AST-041",
-          "path": "src/moduly/zamowienia/konfiguracja.ts",
-          "line": 15,
-          "expression": "env.DPD_NADAWCA_ULICA",
-          "kind": "statyczny",
-          "via": "bezpośrednio"
-        },
-        {
           "id": "AST-045",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 8,
+          "line": 13,
           "expression": "env[klucz]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
-        },
-        {
-          "id": "AST-062",
-          "path": "src/moduly/faktury/modul.ts",
-          "line": 43,
-          "expression": "env.DPD_NADAWCA_ULICA",
-          "kind": "statyczny",
-          "via": "bezpośrednio"
         },
         {
           "id": "AST-115",
@@ -2331,14 +2306,21 @@
           "expression": "process.env.DPD_NADAWCA_ULICA",
           "kind": "statyczny",
           "via": "bezpośrednio"
+        },
+        {
+          "id": "AST-143",
+          "path": "src/core/adres-firmy.ts",
+          "line": 16,
+          "expression": "env.DPD_NADAWCA_ULICA",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
         }
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zamowienia/konfiguracja.ts:15",
-        "src/moduly/wysylka/kurierzy.ts:8",
-        "src/moduly/faktury/modul.ts:43",
-        "scripts/oms-import-istniejacy-podjazd-dpd.mjs:20"
+        "src/moduly/wysylka/kurierzy.ts:13",
+        "scripts/oms-import-istniejacy-podjazd-dpd.mjs:20",
+        "src/core/adres-firmy.ts:16"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2371,32 +2353,16 @@
           "wartosc": ""
         }
       ],
-      "skutekBraku": "Aktywny kurier bez kodu pocztowego odmawia konfiguracji; bez kurierów faktury otrzymują puste pole. CLI podjazdu odmawia bez wartości. Specyfikacja czyta ten sam adres; nazwa i ulica są wymagane dopiero przy generacji, kod i miasto nie powodują nowej odmowy startu bez kuriera.",
+      "skutekBraku": "Aktywny kurier bez kodu pocztowego odmawia konfiguracji; bez kurierów faktury otrzymują puste pole. CLI podjazdu odmawia bez wartości. Specyfikacja czyta ten sam adres; nazwa i ulica są wymagane dopiero przy generacji, kod i miasto nie powodują nowej odmowy startu bez kuriera. PRZ-093.08: to adres FIRMY (sprzedawca na proformie, specyfikacji i potwierdzeniu wywozu, nadawca paczek), nie tylko DPD. Bez tej rodziny w pliku adres wpisuje się w panelu (Ustawienia → Firma, wiersz „firma” w konfiguracja_integracji); gdy choć jedno z pól NAZWA/ULICA/KOD/MIASTO stoi w pliku, plik wygrywa w całości, a ekran jest tylko do odczytu. Jedno miejsce odczytu: src/core/adres-firmy.ts. Kurier z pliku (DPD_URL, INPOST_TOKEN) nadal wymaga adresu w pliku przy starcie.",
       "walidacja": "trim w konfiguratorach; CLI kontroluje truthiness; są to dane adresu wysyłkowego, nie alias OMS_SPRZEDAWCA_*. Specyfikacja używa tych samych danych z trim; nie czyta drugiej rodziny adresu OMS.",
       "odczyty": [
         {
-          "id": "AST-042",
-          "path": "src/moduly/zamowienia/konfiguracja.ts",
-          "line": 15,
-          "expression": "env.DPD_NADAWCA_KOD",
-          "kind": "statyczny",
-          "via": "bezpośrednio"
-        },
-        {
           "id": "AST-045",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 8,
+          "line": 13,
           "expression": "env[klucz]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
-        },
-        {
-          "id": "AST-063",
-          "path": "src/moduly/faktury/modul.ts",
-          "line": 44,
-          "expression": "env.DPD_NADAWCA_KOD",
-          "kind": "statyczny",
-          "via": "bezpośrednio"
         },
         {
           "id": "AST-116",
@@ -2405,14 +2371,21 @@
           "expression": "process.env.DPD_NADAWCA_KOD",
           "kind": "statyczny",
           "via": "bezpośrednio"
+        },
+        {
+          "id": "AST-144",
+          "path": "src/core/adres-firmy.ts",
+          "line": 17,
+          "expression": "env.DPD_NADAWCA_KOD",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
         }
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zamowienia/konfiguracja.ts:15",
-        "src/moduly/wysylka/kurierzy.ts:8",
-        "src/moduly/faktury/modul.ts:44",
-        "scripts/oms-import-istniejacy-podjazd-dpd.mjs:21"
+        "src/moduly/wysylka/kurierzy.ts:13",
+        "scripts/oms-import-istniejacy-podjazd-dpd.mjs:21",
+        "src/core/adres-firmy.ts:17"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2445,32 +2418,16 @@
           "wartosc": ""
         }
       ],
-      "skutekBraku": "Aktywny kurier bez miasta odmawia konfiguracji; bez kurierów faktury otrzymują puste pole. CLI podjazdu odmawia bez wartości. Specyfikacja czyta ten sam adres; nazwa i ulica są wymagane dopiero przy generacji, kod i miasto nie powodują nowej odmowy startu bez kuriera.",
+      "skutekBraku": "Aktywny kurier bez miasta odmawia konfiguracji; bez kurierów faktury otrzymują puste pole. CLI podjazdu odmawia bez wartości. Specyfikacja czyta ten sam adres; nazwa i ulica są wymagane dopiero przy generacji, kod i miasto nie powodują nowej odmowy startu bez kuriera. PRZ-093.08: to adres FIRMY (sprzedawca na proformie, specyfikacji i potwierdzeniu wywozu, nadawca paczek), nie tylko DPD. Bez tej rodziny w pliku adres wpisuje się w panelu (Ustawienia → Firma, wiersz „firma” w konfiguracja_integracji); gdy choć jedno z pól NAZWA/ULICA/KOD/MIASTO stoi w pliku, plik wygrywa w całości, a ekran jest tylko do odczytu. Jedno miejsce odczytu: src/core/adres-firmy.ts. Kurier z pliku (DPD_URL, INPOST_TOKEN) nadal wymaga adresu w pliku przy starcie.",
       "walidacja": "trim w konfiguratorach; CLI kontroluje truthiness; są to dane adresu wysyłkowego, nie alias OMS_SPRZEDAWCA_*. Specyfikacja używa tych samych danych z trim; nie czyta drugiej rodziny adresu OMS.",
       "odczyty": [
         {
-          "id": "AST-043",
-          "path": "src/moduly/zamowienia/konfiguracja.ts",
-          "line": 15,
-          "expression": "env.DPD_NADAWCA_MIASTO",
-          "kind": "statyczny",
-          "via": "bezpośrednio"
-        },
-        {
           "id": "AST-045",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 8,
+          "line": 13,
           "expression": "env[klucz]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
-        },
-        {
-          "id": "AST-064",
-          "path": "src/moduly/faktury/modul.ts",
-          "line": 44,
-          "expression": "env.DPD_NADAWCA_MIASTO",
-          "kind": "statyczny",
-          "via": "bezpośrednio"
         },
         {
           "id": "AST-117",
@@ -2479,14 +2436,21 @@
           "expression": "process.env.DPD_NADAWCA_MIASTO",
           "kind": "statyczny",
           "via": "bezpośrednio"
+        },
+        {
+          "id": "AST-145",
+          "path": "src/core/adres-firmy.ts",
+          "line": 17,
+          "expression": "env.DPD_NADAWCA_MIASTO",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
         }
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zamowienia/konfiguracja.ts:15",
-        "src/moduly/wysylka/kurierzy.ts:8",
-        "src/moduly/faktury/modul.ts:44",
-        "scripts/oms-import-istniejacy-podjazd-dpd.mjs:22"
+        "src/moduly/wysylka/kurierzy.ts:13",
+        "scripts/oms-import-istniejacy-podjazd-dpd.mjs:22",
+        "src/core/adres-firmy.ts:17"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2510,29 +2474,21 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "PL",
-      "skutekBraku": "Dane nadawcy faktur i kurierów otrzymują PL; CLI podjazdu wpisuje PL na stałe i nie odczytuje tego klucza. Specyfikacja również otrzymuje PL.",
+      "skutekBraku": "Dane nadawcy faktur i kurierów otrzymują PL; CLI podjazdu wpisuje PL na stałe i nie odczytuje tego klucza. Specyfikacja również otrzymuje PL. PRZ-093.08: to adres FIRMY (sprzedawca na proformie, specyfikacji i potwierdzeniu wywozu, nadawca paczek), nie tylko DPD. Bez tej rodziny w pliku adres wpisuje się w panelu (Ustawienia → Firma, wiersz „firma” w konfiguracja_integracji); gdy choć jedno z pól NAZWA/ULICA/KOD/MIASTO stoi w pliku, plik wygrywa w całości, a ekran jest tylko do odczytu. Jedno miejsce odczytu: src/core/adres-firmy.ts. Kurier z pliku (DPD_URL, INPOST_TOKEN) nadal wymaga adresu w pliku przy starcie.",
       "walidacja": "trim; pusty tekst daje PL.",
       "odczyty": [
         {
-          "id": "AST-044",
-          "path": "src/moduly/zamowienia/konfiguracja.ts",
-          "line": 15,
-          "expression": "env.DPD_NADAWCA_KRAJ",
-          "kind": "statyczny",
-          "via": "bezpośrednio"
-        },
-        {
           "id": "AST-050",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 20,
+          "line": 25,
           "expression": "env.DPD_NADAWCA_KRAJ",
           "kind": "statyczny",
           "via": "bezpośrednio"
         },
         {
-          "id": "AST-065",
-          "path": "src/moduly/faktury/modul.ts",
-          "line": 45,
+          "id": "AST-146",
+          "path": "src/core/adres-firmy.ts",
+          "line": 18,
           "expression": "env.DPD_NADAWCA_KRAJ",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2540,9 +2496,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zamowienia/konfiguracja.ts:15",
-        "src/moduly/wysylka/kurierzy.ts:20",
-        "src/moduly/faktury/modul.ts:45"
+        "src/moduly/wysylka/kurierzy.ts:25",
+        "src/core/adres-firmy.ts:18"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2566,21 +2521,13 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna przy starcie; wymagana dla nadania InPost i CLI podjazdu",
       "domyslna": "",
-      "skutekBraku": "Start DPD nie jest blokowany; InPost odmawia nadania bez telefonu; CLI podjazdu odmawia bez tego pola.",
+      "skutekBraku": "Start DPD nie jest blokowany; InPost odmawia nadania bez telefonu; CLI podjazdu odmawia bez tego pola. PRZ-093.08: to adres FIRMY (sprzedawca na proformie, specyfikacji i potwierdzeniu wywozu, nadawca paczek), nie tylko DPD. Bez tej rodziny w pliku adres wpisuje się w panelu (Ustawienia → Firma, wiersz „firma” w konfiguracja_integracji); gdy choć jedno z pól NAZWA/ULICA/KOD/MIASTO stoi w pliku, plik wygrywa w całości, a ekran jest tylko do odczytu. Jedno miejsce odczytu: src/core/adres-firmy.ts. Kurier z pliku (DPD_URL, INPOST_TOKEN) nadal wymaga adresu w pliku przy starcie.",
       "walidacja": "trim; walidacja kontaktu InPost dopiero przed nadaniem.",
       "odczyty": [
         {
           "id": "AST-051",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 21,
-          "expression": "env.DPD_NADAWCA_TELEFON",
-          "kind": "statyczny",
-          "via": "bezpośrednio"
-        },
-        {
-          "id": "AST-066",
-          "path": "src/moduly/faktury/modul.ts",
-          "line": 45,
+          "line": 26,
           "expression": "env.DPD_NADAWCA_TELEFON",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2592,13 +2539,21 @@
           "expression": "process.env.DPD_NADAWCA_TELEFON",
           "kind": "statyczny",
           "via": "bezpośrednio"
+        },
+        {
+          "id": "AST-147",
+          "path": "src/core/adres-firmy.ts",
+          "line": 18,
+          "expression": "env.DPD_NADAWCA_TELEFON",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
         }
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/kurierzy.ts:21",
-        "src/moduly/faktury/modul.ts:45",
-        "scripts/oms-import-istniejacy-podjazd-dpd.mjs:24"
+        "src/moduly/wysylka/kurierzy.ts:26",
+        "scripts/oms-import-istniejacy-podjazd-dpd.mjs:24",
+        "src/core/adres-firmy.ts:18"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2611,21 +2566,13 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna przy starcie; wymagana dla nadania InPost i CLI podjazdu",
       "domyslna": "",
-      "skutekBraku": "Start DPD nie jest blokowany; InPost odmawia nadania bez e-maila; CLI podjazdu odmawia bez tego pola.",
+      "skutekBraku": "Start DPD nie jest blokowany; InPost odmawia nadania bez e-maila; CLI podjazdu odmawia bez tego pola. PRZ-093.08: to adres FIRMY (sprzedawca na proformie, specyfikacji i potwierdzeniu wywozu, nadawca paczek), nie tylko DPD. Bez tej rodziny w pliku adres wpisuje się w panelu (Ustawienia → Firma, wiersz „firma” w konfiguracja_integracji); gdy choć jedno z pól NAZWA/ULICA/KOD/MIASTO stoi w pliku, plik wygrywa w całości, a ekran jest tylko do odczytu. Jedno miejsce odczytu: src/core/adres-firmy.ts. Kurier z pliku (DPD_URL, INPOST_TOKEN) nadal wymaga adresu w pliku przy starcie.",
       "walidacja": "trim; walidacja kontaktu InPost dopiero przed nadaniem.",
       "odczyty": [
         {
           "id": "AST-052",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 21,
-          "expression": "env.DPD_NADAWCA_EMAIL",
-          "kind": "statyczny",
-          "via": "bezpośrednio"
-        },
-        {
-          "id": "AST-067",
-          "path": "src/moduly/faktury/modul.ts",
-          "line": 46,
+          "line": 26,
           "expression": "env.DPD_NADAWCA_EMAIL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2637,13 +2584,21 @@
           "expression": "process.env.DPD_NADAWCA_EMAIL",
           "kind": "statyczny",
           "via": "bezpośrednio"
+        },
+        {
+          "id": "AST-148",
+          "path": "src/core/adres-firmy.ts",
+          "line": 19,
+          "expression": "env.DPD_NADAWCA_EMAIL",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
         }
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/kurierzy.ts:21",
-        "src/moduly/faktury/modul.ts:46",
-        "scripts/oms-import-istniejacy-podjazd-dpd.mjs:25"
+        "src/moduly/wysylka/kurierzy.ts:26",
+        "scripts/oms-import-istniejacy-podjazd-dpd.mjs:25",
+        "src/core/adres-firmy.ts:19"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2656,7 +2611,7 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna; bramka włączenia InPost",
       "domyslna": null,
-      "skutekBraku": "InPost wyłączony; podane pozostałe klucze nie włączają klienta.",
+      "skutekBraku": "InPost wyłączony; podane pozostałe klucze nie włączają klienta. PRZ-093.09: odpowiednik w panelu — Ustawienia → Integracje → Kurier InPost (/ustawienia/integracje/inpost; wiersz „inpost” w konfiguracja_integracji: token jako sekret, numer organizacji, paczkomat nadawczy; adres API zawsze produkcyjny, nadawca = adres firmy). Gdy INPOST_TOKEN stoi w pliku, cała konfiguracja InPost idzie z pliku, a ekran jest tylko do odczytu (zapis = 409). Instrukcja: docs/kurier-inpost.md.",
       "walidacja": "trim; po włączeniu wymaga organizacji oraz czterech pól adresu; proba odrzuca niepusty token.",
       "sekret": true,
       "odczyty": [
@@ -2679,7 +2634,7 @@
         {
           "id": "AST-045",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 8,
+          "line": 13,
           "expression": "env[klucz]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -2687,7 +2642,7 @@
         {
           "id": "AST-049",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 17,
+          "line": 22,
           "expression": "env[k]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -2695,7 +2650,7 @@
         {
           "id": "AST-054",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 29,
+          "line": 34,
           "expression": "env.INPOST_TOKEN",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2704,9 +2659,9 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/core/tryb.ts:17",
-        "src/moduly/wysylka/kurierzy.ts:8",
-        "src/moduly/wysylka/kurierzy.ts:17",
-        "src/moduly/wysylka/kurierzy.ts:29"
+        "src/moduly/wysylka/kurierzy.ts:13",
+        "src/moduly/wysylka/kurierzy.ts:22",
+        "src/moduly/wysylka/kurierzy.ts:34"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2719,13 +2674,13 @@
       "zakres": "produkt",
       "wymagalnosc": "wymagana przy niepustym INPOST_TOKEN",
       "domyslna": "brak wartości domyślnej",
-      "skutekBraku": "Aktywne InPost odmawia konfiguracji.",
+      "skutekBraku": "Aktywne InPost odmawia konfiguracji. PRZ-093.09: odpowiednik w panelu — Ustawienia → Integracje → Kurier InPost (/ustawienia/integracje/inpost; wiersz „inpost” w konfiguracja_integracji: token jako sekret, numer organizacji, paczkomat nadawczy; adres API zawsze produkcyjny, nadawca = adres firmy). Gdy INPOST_TOKEN stoi w pliku, cała konfiguracja InPost idzie z pliku, a ekran jest tylko do odczytu (zapis = 409). Instrukcja: docs/kurier-inpost.md.",
       "walidacja": "Number, dodatni safeInteger.",
       "odczyty": [
         {
           "id": "AST-045",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 8,
+          "line": 13,
           "expression": "env[klucz]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -2733,7 +2688,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/kurierzy.ts:8"
+        "src/moduly/wysylka/kurierzy.ts:13"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2746,13 +2701,13 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "https://api-shipx-pl.easypack24.net/v1",
-      "skutekBraku": "Aktywny klient używa domyślnego API produkcyjnego.",
+      "skutekBraku": "Aktywny klient używa domyślnego API produkcyjnego. PRZ-093.09: odpowiednik w panelu — Ustawienia → Integracje → Kurier InPost (/ustawienia/integracje/inpost; wiersz „inpost” w konfiguracja_integracji: token jako sekret, numer organizacji, paczkomat nadawczy; adres API zawsze produkcyjny, nadawca = adres firmy). Gdy INPOST_TOKEN stoi w pliku, cała konfiguracja InPost idzie z pliku, a ekran jest tylko do odczytu (zapis = 409). Instrukcja: docs/kurier-inpost.md.",
       "walidacja": "Dosłownie pusty tekst oznacza brak ustawienia i zachowuje historyczny default albo wyłączenie. Niepusty URL musi być absolutnym HTTP(S) z hostem i bez otaczających białych znaków; błąd zawiera tylko nazwę.",
       "odczyty": [
         {
           "id": "AST-048",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 16,
+          "line": 21,
           "expression": "env.INPOST_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2760,7 +2715,7 @@
         {
           "id": "AST-055",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 32,
+          "line": 37,
           "expression": "env.INPOST_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2768,8 +2723,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/kurierzy.ts:16",
-        "src/moduly/wysylka/kurierzy.ts:32"
+        "src/moduly/wysylka/kurierzy.ts:21",
+        "src/moduly/wysylka/kurierzy.ts:37"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2782,13 +2737,13 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
-      "skutekBraku": "W nadaniu nie jest dodany custom_attributes.dropoff_point; klient nie wyznacza domyślnego punktu nadawczego.",
+      "skutekBraku": "W nadaniu nie jest dodany custom_attributes.dropoff_point; klient nie wyznacza domyślnego punktu nadawczego. PRZ-093.09: odpowiednik w panelu — Ustawienia → Integracje → Kurier InPost (/ustawienia/integracje/inpost; wiersz „inpost” w konfiguracja_integracji: token jako sekret, numer organizacji, paczkomat nadawczy; adres API zawsze produkcyjny, nadawca = adres firmy). Gdy INPOST_TOKEN stoi w pliku, cała konfiguracja InPost idzie z pliku, a ekran jest tylko do odczytu (zapis = 409). Instrukcja: docs/kurier-inpost.md.",
       "walidacja": "trim i uppercase; pusty tekst daje null.",
       "odczyty": [
         {
           "id": "AST-056",
           "path": "src/moduly/wysylka/kurierzy.ts",
-          "line": 34,
+          "line": 39,
           "expression": "env.INPOST_PACZKOMAT_NADAWCZY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2796,7 +2751,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/kurierzy.ts:34"
+        "src/moduly/wysylka/kurierzy.ts:39"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2816,7 +2771,7 @@
         {
           "id": "AST-073",
           "path": "src/moduly/wysylka/modul.ts",
-          "line": 43,
+          "line": 62,
           "expression": "env.OMS_ETYKIETY_DIR",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2824,7 +2779,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/modul.ts:43"
+        "src/moduly/wysylka/modul.ts:62"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2844,7 +2799,7 @@
         {
           "id": "AST-074",
           "path": "src/moduly/wysylka/modul.ts",
-          "line": 43,
+          "line": 62,
           "expression": "env.OMS_ETYKIETY_KATALOG",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2852,7 +2807,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/modul.ts:43"
+        "src/moduly/wysylka/modul.ts:62"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2873,7 +2828,7 @@
         {
           "id": "AST-072",
           "path": "src/moduly/wysylka/modul.ts",
-          "line": 33,
+          "line": 52,
           "expression": "env[klucz]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -2881,7 +2836,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/modul.ts:33"
+        "src/moduly/wysylka/modul.ts:52"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2901,7 +2856,7 @@
         {
           "id": "AST-072",
           "path": "src/moduly/wysylka/modul.ts",
-          "line": 33,
+          "line": 52,
           "expression": "env[klucz]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -2909,7 +2864,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/modul.ts:33"
+        "src/moduly/wysylka/modul.ts:52"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -3032,7 +2987,7 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
-      "skutekBraku": "Każdy zakres statystyk jest oznaczony jako przedOmsem; nie ma granicy pokrycia danych.",
+      "skutekBraku": "Początkiem danych statystyk jest dzień (Warszawa) pierwszego zamówienia w tabeli zamowienia (PRZ-093.07); pasek zastrzeżenia dostają tylko zakresy zaczynające się wcześniej. Pusta baza: pasek z nazwą zmiennej i formatem. Zmienna nie wpływa na liczby, tylko na pasek.",
       "walidacja": "trim; ścisłe RRRR-MM-DD i poprawna data kalendarzowa przez kluczOkresu.",
       "decyzja": "D08",
       "odczyty": [
@@ -4085,7 +4040,7 @@
         {
           "id": "AST-130",
           "path": "src/moduly/zamowienia/konfiguracja.ts",
-          "line": 12,
+          "line": 13,
           "expression": "env.OMS_CENNIKI",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4093,7 +4048,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zamowienia/konfiguracja.ts:12"
+        "src/moduly/zamowienia/konfiguracja.ts:13"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -4535,7 +4490,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 65,
+      "line": 103,
       "expression": "env[n]",
       "names": [
         "<P>_MAPOWANIE",
@@ -4549,7 +4504,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 65,
+      "line": 103,
       "expression": "env[n]",
       "names": [
         "<P>_MAPOWANIE",
@@ -4563,7 +4518,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 70,
+      "line": 108,
       "expression": "env[`${p}_URL`]",
       "names": [
         "<P>_URL"
@@ -4572,7 +4527,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 73,
+      "line": 111,
       "expression": "env[`${p}_API`]",
       "names": [
         "<P>_API"
@@ -4581,7 +4536,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 74,
+      "line": 112,
       "expression": "env[`${p}_AUTH`]",
       "names": [
         "<P>_AUTH"
@@ -4590,7 +4545,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 78,
+      "line": 116,
       "expression": "env[`${p}_OD`]",
       "names": [
         "<P>_OD"
@@ -4599,7 +4554,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 78,
+      "line": 116,
       "expression": "env[`${p}_OD`]",
       "names": [
         "<P>_OD"
@@ -4608,7 +4563,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 79,
+      "line": 117,
       "expression": "env[`${p}_USER_AGENT`]",
       "names": [
         "<P>_USER_AGENT"
@@ -4617,7 +4572,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 79,
+      "line": 117,
       "expression": "env[`${p}_USER_AGENT`]",
       "names": [
         "<P>_USER_AGENT"
@@ -4626,7 +4581,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 87,
+      "line": 125,
       "expression": "env[`${p}_CK`]",
       "names": [
         "<P>_CK"
@@ -4635,7 +4590,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 87,
+      "line": 125,
       "expression": "env[`${p}_CS`]",
       "names": [
         "<P>_CS"
@@ -4644,7 +4599,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 90,
+      "line": 128,
       "expression": "env[`${p}_HISTORIA_KONTO_APILO`]",
       "names": [
         "<P>_HISTORIA_KONTO_APILO"
@@ -4653,7 +4608,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 92,
+      "line": 130,
       "expression": "env[`${p}_CLIENT_ID`]",
       "names": [
         "<P>_CLIENT_ID"
@@ -4662,7 +4617,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 92,
+      "line": 130,
       "expression": "env[`${p}_CLIENT_SECRET`]",
       "names": [
         "<P>_CLIENT_SECRET"
@@ -4671,7 +4626,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 94,
+      "line": 132,
       "expression": "env[`${p}_API`]",
       "names": [
         "<P>_API"
@@ -4680,7 +4635,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 94,
+      "line": 132,
       "expression": "env[`${p}_AUTH`]",
       "names": [
         "<P>_AUTH"
@@ -4689,7 +4644,7 @@
     },
     {
       "path": "src/moduly/wysylka/kurierzy.ts",
-      "line": 8,
+      "line": 13,
       "expression": "env[klucz]",
       "names": [
         "DPD_NADAWCA_NAZWA",
@@ -4709,7 +4664,7 @@
     },
     {
       "path": "src/moduly/wysylka/kurierzy.ts",
-      "line": 17,
+      "line": 22,
       "expression": "env[k]",
       "names": [
         "DPD_URL",
@@ -4719,7 +4674,7 @@
     },
     {
       "path": "src/moduly/wysylka/modul.ts",
-      "line": 33,
+      "line": 52,
       "expression": "env[klucz]",
       "names": [
         "OMS_PRZESYLKI_ODSTEP_MS",
@@ -6628,62 +6583,6 @@
       "call": "regulyHistorii(env)"
     },
     {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 64,
-      "expression": "env",
-      "callee": "brakujaceKluczeKanalu",
-      "call": "brakujaceKluczeKanalu(d, env)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 78,
-      "expression": "env",
-      "callee": "parsujDateOd",
-      "call": "parsujDateOd(env, `${p}_OD`)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 80,
-      "expression": "env",
-      "callee": "parsujUserAgentAllegro",
-      "call": "parsujUserAgentAllegro(env, `${p}_USER_AGENT`)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 90,
-      "expression": "env",
-      "callee": "parsujDateOd",
-      "call": "parsujDateOd(env, `${p}_OD`)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 90,
-      "expression": "env",
-      "callee": "konfiguracjaHistorii",
-      "call": "konfiguracjaHistorii(env, klucz, p)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 95,
-      "expression": "env",
-      "callee": "parsujUserAgentAllegro",
-      "call": "parsujUserAgentAllegro(env, `${p}_USER_AGENT`)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 95,
-      "expression": "env",
-      "callee": "parsujDateOd",
-      "call": "parsujDateOd(env, `${p}_OD`, true)"
-    },
-    {
-      "path": "src/moduly/rdzen/modul.ts",
-      "line": 11,
-      "expression": "env",
-      "callee": "wczytajSprzedawce",
-      "call": "wczytajSprzedawce(env)"
-    },
-    {
       "path": "src/moduly/kanaly/modul.ts",
       "line": 22,
       "expression": "env",
@@ -6691,116 +6590,11 @@
       "call": "konfiguracjaKanalow(definicje, env, niekompletneJakoAlarm)"
     },
     {
-      "path": "src/moduly/wysylka/kurierzy.ts",
-      "line": 18,
-      "expression": "env",
-      "callee": "wymagane",
-      "call": "wymagane(env, 'DPD_NADAWCA_NAZWA')"
-    },
-    {
-      "path": "src/moduly/wysylka/kurierzy.ts",
-      "line": 18,
-      "expression": "env",
-      "callee": "wymagane",
-      "call": "wymagane(env, 'DPD_NADAWCA_ULICA')"
-    },
-    {
-      "path": "src/moduly/wysylka/kurierzy.ts",
-      "line": 19,
-      "expression": "env",
-      "callee": "wymagane",
-      "call": "wymagane(env, 'DPD_NADAWCA_KOD')"
-    },
-    {
-      "path": "src/moduly/wysylka/kurierzy.ts",
-      "line": 19,
-      "expression": "env",
-      "callee": "wymagane",
-      "call": "wymagane(env, 'DPD_NADAWCA_MIASTO')"
-    },
-    {
-      "path": "src/moduly/wysylka/kurierzy.ts",
-      "line": 24,
-      "expression": "env",
-      "callee": "wymagane",
-      "call": "wymagane(env, 'DPD_URL')"
-    },
-    {
-      "path": "src/moduly/wysylka/kurierzy.ts",
-      "line": 24,
-      "expression": "env",
-      "callee": "wymagane",
-      "call": "wymagane(env, 'DPD_LOGIN')"
-    },
-    {
-      "path": "src/moduly/wysylka/kurierzy.ts",
-      "line": 24,
-      "expression": "env",
-      "callee": "wymagane",
-      "call": "wymagane(env, 'DPD_PASSWORD')"
-    },
-    {
-      "path": "src/moduly/wysylka/kurierzy.ts",
-      "line": 25,
-      "expression": "env",
-      "callee": "wymagane",
-      "call": "wymagane(env, 'DPD_FID')"
-    },
-    {
-      "path": "src/moduly/wysylka/kurierzy.ts",
-      "line": 25,
-      "expression": "env",
-      "callee": "wymagane",
-      "call": "wymagane(env, 'DPD_INFO_URL')"
-    },
-    {
-      "path": "src/moduly/wysylka/kurierzy.ts",
-      "line": 25,
-      "expression": "env",
-      "callee": "wymagane",
-      "call": "wymagane(env, 'DPD_INFO_CHANNEL')"
-    },
-    {
-      "path": "src/moduly/wysylka/kurierzy.ts",
-      "line": 30,
-      "expression": "env",
-      "callee": "wymagane",
-      "call": "wymagane(env, 'INPOST_ORGANIZACJA')"
-    },
-    {
-      "path": "src/moduly/wysylka/kurierzy.ts",
-      "line": 33,
-      "expression": "env",
-      "callee": "wymagane",
-      "call": "wymagane(env, 'INPOST_TOKEN')"
-    },
-    {
       "path": "src/oms/db/klienci.js",
       "line": 159,
       "expression": "env",
       "callee": "parsujKlientowZbiorczych",
       "call": "parsujKlientowZbiorczych(env)"
-    },
-    {
-      "path": "src/moduly/wysylka/modul.ts",
-      "line": 44,
-      "expression": "env",
-      "callee": "wczytajKurierow",
-      "call": "wczytajKurierow(env)"
-    },
-    {
-      "path": "src/moduly/wysylka/modul.ts",
-      "line": 49,
-      "expression": "env",
-      "callee": "odstep",
-      "call": "odstep(env, 'OMS_PRZESYLKI_ODSTEP_MS', 3600000)"
-    },
-    {
-      "path": "src/moduly/wysylka/modul.ts",
-      "line": 50,
-      "expression": "env",
-      "callee": "odstep",
-      "call": "odstep(env, 'OMS_PODJAZDY_ODSTEP_MS', 600000)"
     },
     {
       "path": "src/moduly/koszty/modul.ts",
@@ -6866,20 +6660,6 @@
       "call": "sprawdzKonfiguracjeModulow(moduly,o.env)"
     },
     {
-      "path": "src/moduly/zamowienia/konfiguracja.ts",
-      "line": 9,
-      "expression": "env",
-      "callee": "wczytajKlientowWdt",
-      "call": "wczytajKlientowWdt(env)"
-    },
-    {
-      "path": "src/moduly/zamowienia/konfiguracja.ts",
-      "line": 10,
-      "expression": "env",
-      "callee": "wczytajSprzedawce",
-      "call": "wczytajSprzedawce(env)"
-    },
-    {
       "path": "src/moduly/raporty/konfiguracja.ts",
       "line": 18,
       "expression": "env",
@@ -6943,20 +6723,6 @@
       "call": "definicjeKanalow(env)"
     },
     {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 35,
-      "expression": "env",
-      "callee": "wczytajSprzedawce",
-      "call": "wczytajSprzedawce(env)"
-    },
-    {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 49,
-      "expression": "env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(env)"
-    },
-    {
       "path": "src/core/demo.ts",
       "line": 46,
       "expression": "env",
@@ -6992,29 +6758,8 @@
       "call": "kontoDemo(env)"
     },
     {
-      "path": "src/moduly/zamowienia/modul.ts",
-      "line": 21,
-      "expression": "env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(env)"
-    },
-    {
-      "path": "src/moduly/zamowienia/modul.ts",
-      "line": 22,
-      "expression": "env",
-      "callee": "konfiguracjaZamowien",
-      "call": "konfiguracjaZamowien(env)"
-    },
-    {
       "path": "src/moduly/kanaly/klasyfikacja.ts",
       "line": 65,
-      "expression": "env",
-      "callee": "kanalIndywidualnyWlaczony",
-      "call": "kanalIndywidualnyWlaczony(env)"
-    },
-    {
-      "path": "src/moduly/zamowienia/konfiguracja.ts",
-      "line": 13,
       "expression": "env",
       "callee": "kanalIndywidualnyWlaczony",
       "call": "kanalIndywidualnyWlaczony(env)"
@@ -7025,6 +6770,244 @@
       "expression": "env",
       "callee": "kanalIndywidualnyWlaczony",
       "call": "kanalIndywidualnyWlaczony(env)"
+    },
+    {
+      "path": "src/moduly/rdzen/modul.ts",
+      "line": 12,
+      "expression": "env",
+      "callee": "wczytajSprzedawce",
+      "call": "wczytajSprzedawce(env)"
+    },
+    {
+      "path": "src/moduly/zamowienia/konfiguracja.ts",
+      "line": 10,
+      "expression": "env",
+      "callee": "wczytajKlientowWdt",
+      "call": "wczytajKlientowWdt(env)"
+    },
+    {
+      "path": "src/moduly/zamowienia/konfiguracja.ts",
+      "line": 11,
+      "expression": "env",
+      "callee": "wczytajSprzedawce",
+      "call": "wczytajSprzedawce(env)"
+    },
+    {
+      "path": "src/moduly/zamowienia/konfiguracja.ts",
+      "line": 14,
+      "expression": "env",
+      "callee": "kanalIndywidualnyWlaczony",
+      "call": "kanalIndywidualnyWlaczony(env)"
+    },
+    {
+      "path": "src/moduly/zamowienia/konfiguracja.ts",
+      "line": 17,
+      "expression": "env",
+      "callee": "adresFirmyZEnv",
+      "call": "adresFirmyZEnv(env)"
+    },
+    {
+      "path": "src/moduly/zamowienia/modul.ts",
+      "line": 22,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/zamowienia/modul.ts",
+      "line": 23,
+      "expression": "env",
+      "callee": "konfiguracjaZamowien",
+      "call": "konfiguracjaZamowien(env)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 102,
+      "expression": "env",
+      "callee": "brakujaceKluczeKanalu",
+      "call": "brakujaceKluczeKanalu(d, env)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 116,
+      "expression": "env",
+      "callee": "parsujDateOd",
+      "call": "parsujDateOd(env, `${p}_OD`)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 118,
+      "expression": "env",
+      "callee": "parsujUserAgentAllegro",
+      "call": "parsujUserAgentAllegro(env, `${p}_USER_AGENT`)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 128,
+      "expression": "env",
+      "callee": "parsujDateOd",
+      "call": "parsujDateOd(env, `${p}_OD`)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 128,
+      "expression": "env",
+      "callee": "konfiguracjaHistorii",
+      "call": "konfiguracjaHistorii(env, klucz, p)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 133,
+      "expression": "env",
+      "callee": "parsujUserAgentAllegro",
+      "call": "parsujUserAgentAllegro(env, `${p}_USER_AGENT`)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 133,
+      "expression": "env",
+      "callee": "parsujDateOd",
+      "call": "parsujDateOd(env, `${p}_OD`, true)"
+    },
+    {
+      "path": "src/moduly/wysylka/kurierzy.ts",
+      "line": 23,
+      "expression": "env",
+      "callee": "wymagane",
+      "call": "wymagane(env, 'DPD_NADAWCA_NAZWA')"
+    },
+    {
+      "path": "src/moduly/wysylka/kurierzy.ts",
+      "line": 23,
+      "expression": "env",
+      "callee": "wymagane",
+      "call": "wymagane(env, 'DPD_NADAWCA_ULICA')"
+    },
+    {
+      "path": "src/moduly/wysylka/kurierzy.ts",
+      "line": 24,
+      "expression": "env",
+      "callee": "wymagane",
+      "call": "wymagane(env, 'DPD_NADAWCA_KOD')"
+    },
+    {
+      "path": "src/moduly/wysylka/kurierzy.ts",
+      "line": 24,
+      "expression": "env",
+      "callee": "wymagane",
+      "call": "wymagane(env, 'DPD_NADAWCA_MIASTO')"
+    },
+    {
+      "path": "src/moduly/wysylka/kurierzy.ts",
+      "line": 29,
+      "expression": "env",
+      "callee": "wymagane",
+      "call": "wymagane(env, 'DPD_URL')"
+    },
+    {
+      "path": "src/moduly/wysylka/kurierzy.ts",
+      "line": 29,
+      "expression": "env",
+      "callee": "wymagane",
+      "call": "wymagane(env, 'DPD_LOGIN')"
+    },
+    {
+      "path": "src/moduly/wysylka/kurierzy.ts",
+      "line": 29,
+      "expression": "env",
+      "callee": "wymagane",
+      "call": "wymagane(env, 'DPD_PASSWORD')"
+    },
+    {
+      "path": "src/moduly/wysylka/kurierzy.ts",
+      "line": 30,
+      "expression": "env",
+      "callee": "wymagane",
+      "call": "wymagane(env, 'DPD_FID')"
+    },
+    {
+      "path": "src/moduly/wysylka/kurierzy.ts",
+      "line": 30,
+      "expression": "env",
+      "callee": "wymagane",
+      "call": "wymagane(env, 'DPD_INFO_URL')"
+    },
+    {
+      "path": "src/moduly/wysylka/kurierzy.ts",
+      "line": 30,
+      "expression": "env",
+      "callee": "wymagane",
+      "call": "wymagane(env, 'DPD_INFO_CHANNEL')"
+    },
+    {
+      "path": "src/moduly/wysylka/kurierzy.ts",
+      "line": 35,
+      "expression": "env",
+      "callee": "wymagane",
+      "call": "wymagane(env, 'INPOST_ORGANIZACJA')"
+    },
+    {
+      "path": "src/moduly/wysylka/kurierzy.ts",
+      "line": 38,
+      "expression": "env",
+      "callee": "wymagane",
+      "call": "wymagane(env, 'INPOST_TOKEN')"
+    },
+    {
+      "path": "src/moduly/wysylka/kurierzy.ts",
+      "line": 43,
+      "expression": "env",
+      "callee": "adresFirmyZEnv",
+      "call": "adresFirmyZEnv(env)"
+    },
+    {
+      "path": "src/moduly/wysylka/modul.ts",
+      "line": 63,
+      "expression": "env",
+      "callee": "wczytajKurierow",
+      "call": "wczytajKurierow(env)"
+    },
+    {
+      "path": "src/moduly/wysylka/modul.ts",
+      "line": 68,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/wysylka/modul.ts",
+      "line": 69,
+      "expression": "env",
+      "callee": "odstep",
+      "call": "odstep(env, 'OMS_PRZESYLKI_ODSTEP_MS', 3600000)"
+    },
+    {
+      "path": "src/moduly/wysylka/modul.ts",
+      "line": 70,
+      "expression": "env",
+      "callee": "odstep",
+      "call": "odstep(env, 'OMS_PODJAZDY_ODSTEP_MS', 600000)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 42,
+      "expression": "env",
+      "callee": "wczytajSprzedawce",
+      "call": "wczytajSprzedawce(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 51,
+      "expression": "env",
+      "callee": "adresFirmyZEnv",
+      "call": "adresFirmyZEnv(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 59,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
     }
   ],
   "prefiksy": {
@@ -7323,7 +7306,7 @@
     },
     {
       "path": "src/core/sprzedawca.ts",
-      "sha256": "ae5063b48656f485f521856e20c9b1c2233471994d80e82cb325878d76b7414f",
+      "sha256": "04fa866116c961ea4eb4b6050aa6dcaca0e1b9fd5444951bd046062f2ee6f9ef",
       "normalizacja": "LF"
     },
     {
@@ -7348,27 +7331,27 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "sha256": "dbcc8ea19c54950ad78d902d5c6fe671cbcff32edb2f6f1f0271f48c31a86586",
+      "sha256": "ff5552eeafb1a1e7b990de136ae1416e0be49c1d17e8c1571494a9c67d53bff2",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/zamowienia/konfiguracja.ts",
-      "sha256": "c62b5f17c0a9d55c9f19db0cfb2685e84417e5fd07a802bda1dead1444f2297a",
+      "sha256": "494effbe80403d3dddbc004410d82450bdb1250a7c94ec0890760b4a245eee05",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/wysylka/kurierzy.ts",
-      "sha256": "d408bc828e85f4c79f2abfe92dce933066ca2ff8877dfc43479a0101faa11c01",
+      "sha256": "ba8b755c1dd3d9db55d301f7ba506dd5ae8d0568ef4138032e843abb9306693a",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "226c78a461977cb116ce40a32727719b3a5189f80578beaa736f09b094ae1cb1",
+      "sha256": "fa00441015dd00ed4c3493e9a6768218e691323be3382a46560670985a9bfa12",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/wysylka/modul.ts",
-      "sha256": "c18cff6edfb219ace8fb41218b06cef6044a8c7711f5123e940061e5e2669432",
+      "sha256": "0a176a79440a41895b5cb69b418334ca2729b03df450350854c232a0bb8f3c47",
       "normalizacja": "LF"
     },
     {
@@ -7430,6 +7413,11 @@
       "path": "src/core/demo.ts",
       "sha256": "d58634768905bc8537b8f30073ea5c50dc9a38f84a530b9f7ba026bd15cec551",
       "normalizacja": "LF"
+    },
+    {
+      "path": "src/core/adres-firmy.ts",
+      "sha256": "f22ea12f9c2201ceecf0803bb5081157554eea9532285419db976a144c09b307",
+      "normalizacja": "LF"
     }
   ],
   "dodatkoweDowody": [
@@ -7440,7 +7428,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "sha256": "dbcc8ea19c54950ad78d902d5c6fe671cbcff32edb2f6f1f0271f48c31a86586",
+      "sha256": "ff5552eeafb1a1e7b990de136ae1416e0be49c1d17e8c1571494a9c67d53bff2",
       "normalizacja": "LF"
     },
     {
@@ -7450,7 +7438,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "226c78a461977cb116ce40a32727719b3a5189f80578beaa736f09b094ae1cb1",
+      "sha256": "fa00441015dd00ed4c3493e9a6768218e691323be3382a46560670985a9bfa12",
       "normalizacja": "LF"
     },
     {
@@ -7592,7 +7580,7 @@
       },
       {
         "path": "src/moduly/kanaly/konfiguracja.ts",
-        "sha256": "dbcc8ea19c54950ad78d902d5c6fe671cbcff32edb2f6f1f0271f48c31a86586",
+        "sha256": "ff5552eeafb1a1e7b990de136ae1416e0be49c1d17e8c1571494a9c67d53bff2",
         "odczyty": [
           {
             "expression": "env[nazwa]",
@@ -7741,7 +7729,7 @@
       },
       {
         "path": "src/moduly/wysylka/kurierzy.ts",
-        "sha256": "d408bc828e85f4c79f2abfe92dce933066ca2ff8877dfc43479a0101faa11c01",
+        "sha256": "ba8b755c1dd3d9db55d301f7ba506dd5ae8d0568ef4138032e843abb9306693a",
         "odczyty": [
           {
             "expression": "env[klucz]",
@@ -7771,7 +7759,7 @@
       },
       {
         "path": "src/moduly/wysylka/modul.ts",
-        "sha256": "c18cff6edfb219ace8fb41218b06cef6044a8c7711f5123e940061e5e2669432",
+        "sha256": "0a176a79440a41895b5cb69b418334ca2729b03df450350854c232a0bb8f3c47",
         "odczyty": [
           {
             "expression": "env[klucz]",

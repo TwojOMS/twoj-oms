@@ -1,0 +1,14 @@
+{
+  "href": "https://shipx.test/v1/organizations/4242",
+  "id": 4242,
+  "name": "Pracownia Testowa (zmyślona)",
+  "status": "confirmed",
+  "services": [
+    "inpost_locker_standard",
+    "inpost_locker_standard_smart",
+    "inpost_locker_pass_thru",
+    "inpost_locker_allegro",
+    "inpost_locker_allegro_smart",
+    "inpost_letter_allegro"
+  ]
+}

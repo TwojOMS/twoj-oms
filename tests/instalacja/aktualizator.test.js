@@ -178,6 +178,16 @@ describe('aktualizator V0: deploy → accept', () => {
 });
 
 describe('aktualizator V0: recover', () => {
+  it('PRZ-093: komunikat użycia recover podaje obie opcje (oba miejsca: brak operacji i nieznana opcja)', () => {
+    const k = instalacja();
+    const bezOperacji = akt(k, ['recover']);
+    expect(bezOperacji.status).not.toBe(0);
+    expect(bezOperacji.stderr).toContain('recover <operacja> [--przywroc-baze | --porzuc-prace]');
+    const zlaOpcja = akt(k, ['recover', '20990101-000000-ffff', '--zla-opcja']);
+    expect(zlaOpcja.status).not.toBe(0);
+    expect(zlaOpcja.stderr).toContain('[--przywroc-baze | --porzuc-prace]');
+  });
+
   function poAkceptacjiB() {
     const k = instalacja();
     const b = paczka(k, 'B');

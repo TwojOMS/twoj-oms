@@ -1,0 +1,75 @@
+<h1>inFakt</h1>
+<p><a href="/ustawienia/integracje">← Integracje</a></p>
+
+<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
+<% if (test) { %>
+  <div class="<%= test.ok ? 'pas-potwierdzenie' : 'pas-uprzedzenie' %>" id="infakt-test"><p><strong><%= test.ok ? 'Działa.' : 'Nie działa.' %></strong> <%= test.tekst %></p></div>
+<% } %>
+<% if (bledy.length) { %>
+  <div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong></p><ul><% bledy.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
+<% } %>
+
+<% if (zEnv) { %>
+<section class="ust-sekcja" id="infakt-stan">
+  <h2>Podłączony w pliku konfiguracji</h2>
+  <p>inFakt jest ustawiony w pliku konfiguracji serwera (<code>oms.env</code>, zmienne <code>INFAKT_…</code>). Ten ekran go nie zmienia — klucz API, adres i archiwum sprzedaży poprawisz w tym pliku.</p>
+  <% if (stan) { %>
+    <form method="post" action="/ustawienia/integracje/infakt/odlacz">
+      <p>W OMS-ie został też klucz zapisany wcześniej na tym ekranie. Plik konfiguracji ma pierwszeństwo, więc nie jest używany.</p>
+      <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń zapisany klucz</button></div>
+    </form>
+  <% } %>
+</section>
+<% } else { %>
+<section class="ust-sekcja" id="infakt-stan">
+  <% if (odlaczonyDoRestartu) { %>
+    <h2>Odłączony</h2>
+    <p class="pas-uprzedzenie">Klucz usunięty — OMS nie wyśle już nic do inFaktu. Przyciski faktur zostają na ekranach do ponownego uruchomienia OMS-u i do tego czasu odmawiają z komunikatem „inFakt nie jest skonfigurowany”.</p>
+  <% } else if (stan) { %>
+    <h2>Podłączony</h2>
+    <p>Klucz API zapisał <%= stan.kontoLogin ?? '—' %>, <%= fmtDataCzas(stan.zmienionoAt) %>.</p>
+    <% if (wymagaRestartu) { %><p class="pas-uprzedzenie">Zakładka Faktury, wystawianie faktur i wysyłka do KSeF włączą się po ponownym uruchomieniu OMS-u (to pierwsze podłączenie inFaktu w tym panelu). „Sprawdź połączenie” działa już teraz, a późniejsza zmiana klucza — od razu.</p><% } %>
+  <% } else { %>
+    <h2>Niepodłączony</h2>
+    <p>Potrzebujesz konta w inFakcie z dostępem do API: klucz API znajdziesz w inFakcie w Ustawienia → API. Samo podłączenie w OMS-ie nie zakłada konta w inFakcie i niczego nie wystawia.</p>
+  <% } %>
+</section>
+
+<section class="ust-sekcja">
+  <h2>Połączenie</h2>
+  <form id="infakt-formularz" class="ust-formularz" method="post" action="/ustawienia/integracje/infakt">
+    <label for="infakt-klucz">Klucz API <span class="ust-wymagane">*</span></label>
+    <div><input id="infakt-klucz" type="password" name="apiKey" value="" maxlength="200" autocomplete="new-password"<% if (stan?.zapisaneSekrety?.apiKey) { %> placeholder="zapisany — wpisz nowy, żeby zmienić"<% } else { %> required<% } %>>
+      <p class="ust-pomoc">Klucz API z inFaktu (Ustawienia → API). OMS wystawia nim faktury sprzedaży, czyta ich listę i PDF-y, a na Twoje polecenie wysyła je do KSeF.</p></div>
+
+    <label>Adres API</label>
+    <div><div class="ust-wartosc"><code><%= adresApi %></code></div>
+      <p class="ust-pomoc">Produkcyjne API inFaktu. Inny adres da się ustawić tylko w pliku konfiguracji (<code>INFAKT_API_URL</code> razem z <code>INFAKT_API_KEY</code>).</p>
+      <% if (adresWPliku) { %><p class="ust-pomoc uwaga">W pliku konfiguracji jest <code>INFAKT_API_URL</code> bez <code>INFAKT_API_KEY</code> — ten adres nie dotyczy klucza z tego ekranu.</p><% } %></div>
+
+    <label>Archiwum sprzedaży</label>
+    <div><div class="ust-wartosc"><%= archiwumWPliku ? 'Włączone — katalog z pliku konfiguracji.' : 'Wyłączone.' %></div>
+      <p class="ust-pomoc">Nocne kopie PDF faktur w katalogu na serwerze. Katalog ustawia się tylko w pliku konfiguracji (<code>INFAKT_ARCHIWUM</code>) — to ścieżka na dysku serwera, nie dane konta inFakt.</p></div>
+
+    <p class="ust-pelna ust-pomoc">Pola oznaczone <span class="ust-wymagane">*</span> są wymagane.</p>
+    <div class="ust-pelna ust-akcje">
+      <button class="btn btn--glowny" type="submit">Zapisz</button>
+      <a class="ust-przycisk" href="/ustawienia/integracje">Anuluj</a>
+    </div>
+  </form>
+</section>
+
+<% if (stan) { %>
+<section class="ust-sekcja">
+  <h2>Sprawdzenie i odłączenie</h2>
+  <form method="post" action="/ustawienia/integracje/infakt/sprawdz">
+    <p>Sprawdzenie prosi inFakt o pierwszą stronę listy faktur, posługując się zapisanym kluczem. Niczego nie wystawia ani nie wysyła do KSeF.</p>
+    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Sprawdź połączenie</button></div>
+  </form>
+  <form method="post" action="/ustawienia/integracje/infakt/odlacz" onsubmit="return confirm('Odłączyć inFakt? OMS usunie zapisany klucz API.')" style="margin-top:1rem">
+    <p>Odłączenie usuwa klucz z OMS-u. Faktury w inFakcie i ich numery zapisane w zamówieniach zostają.</p>
+    <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Odłącz inFakt</button></div>
+  </form>
+</section>
+<% } %>
+<% } %>

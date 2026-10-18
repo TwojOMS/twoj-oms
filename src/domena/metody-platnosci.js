@@ -28,8 +28,8 @@ const KANONICZNE = [
   { klucz: 'gotowka', etykieta: 'Gotówka', wzorce: ['gotowka', 'gotówka'] },
 ];
 
-// Pusta metoda NIE znika — dostaje jawny kubelek. Na produkcji to 11 wplat na 3194,56 zl
-// (drugie miejsce po sumie): niewidoczne w filtrze wygladaloby jak „mniej pieniedzy",
+// Pusta metoda NIE znika — dostaje jawny kubelek. Na danych produkcyjnych to garstka wplat
+// o zauwazalnej sumie (jedna z wiekszych pozycji): niewidoczne w filtrze wygladaloby jak „mniej pieniedzy",
 // a nie jak „brak etykiety".
 const NIEOKRESLONA = { klucz: 'nieokreslona', etykieta: 'Nieokreślona' };
 

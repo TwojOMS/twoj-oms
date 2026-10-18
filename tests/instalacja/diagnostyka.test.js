@@ -147,6 +147,20 @@ describe('diagnostyka klienta PRZ-058', () => {
     expect(r.stdout).toContain(k.wynik.replaceAll('\\', '/'));
   });
 
+  it('PRZ-093: login administrator (produkcyjny plik administrator.env) nie zamienia nazwy pliku w ***, a jego hasło nadal jest maskowane', () => {
+    const k = przygotuj();
+    const haslo = `Prod-${k.znacznik}-haslo`;
+    fs.writeFileSync(path.join(k.oms, 'config/administrator.env'), `login=administrator\nhaslo=${haslo}\n`);
+    fs.appendFileSync(path.join(k.baza, 'wartosci.txt'), `administrator\n${haslo}\n`); // atrapa wypisze je w środowisku i w dzienniku
+    const r = uruchom(k);
+    expect(r.status, r.stderr).toBe(0);
+    const tekst = fs.readFileSync(k.wynik, 'utf8');
+    expect(tekst).toMatch(/^administrator\.env \(\d+ uid=\d+\): login haslo $/m);
+    expect(tekst).not.toContain('***.env');
+    expect(tekst).not.toContain(haslo);
+    expect(tekst).not.toContain(k.znacznik);
+  });
+
   it('zgłasza brak kopii i brak pliku konfiguracji zamiast milczeć', () => {
     const k = przygotuj({ bezKopii: true });
     fs.rmSync(path.join(k.oms, 'config/oms.env'));

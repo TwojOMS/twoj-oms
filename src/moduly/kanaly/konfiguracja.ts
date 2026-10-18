@@ -38,25 +38,63 @@ function parsujDateOd(env: Srodowisko, nazwa: string, wymagana = false) {
     throw new Error(`${nazwa}: nieistniejąca data`);
   return `${surowe}T00:00:00`;
 }
-export function definicjeKanalow(env: Srodowisko): DefinicjaKanalu[] {
-  const d = parsujJson(env.OMS_KANALY ?? '[]', 'OMS_KANALY') as DefinicjaKanalu[];
-  if (!Array.isArray(d)) throw new Error('OMS_KANALY: oczekiwano listy');
-  const raporty = new Set<string>();
-  const zastrzezoneRaporty = new Set(['RECZNE','B2B','DROPSHIPPING','GDD','INDYWIDUALNE','SKLEP','SKLEP_INDYWIDUALNE','ALLEGRO']);
-  const nazwy = new Set<string>();
-  const prefiksy = new Set<string>();
-  for (const k of d) {
-    if (!obiekt(k) || typeof k.klucz !== 'string' || typeof k.prefiks !== 'string' || typeof k.typ !== 'string'
-      || !/^[a-z][a-z0-9_-]*$/.test(k.klucz) || !/^[A-Z][A-Z0-9_]*$/.test(k.prefiks)
-      || !['woo','allegro'].includes(k.typ) || nazwy.has(k.klucz) || prefiksy.has(k.prefiks)) throw new Error('OMS_KANALY: błędna albo powtórzona definicja');
-    if (['reczne','indywidualne','__proto__','constructor','prototype'].includes(k.klucz)
-      || (k.etykieta !== undefined && (typeof k.etykieta !== 'string' || !k.etykieta.trim()))
-      || (k.raport !== undefined && (typeof k.raport !== 'string' || !/^[A-Z][A-Z0-9_]*$/.test(k.raport)
-        || zastrzezoneRaporty.has(k.raport) || raporty.has(k.raport)))) throw new Error('OMS_KANALY: błędna etykieta lub zastrzeżony/powtórzony kanał');
-    if(k.raport) raporty.add(k.raport);
-    nazwy.add(k.klucz);
-    prefiksy.add(k.prefiks);
+// Treści błędów OMS_KANALY mówią, którą pozycję listy (od 1) i które pole poprawić, ale nie przepisują wartości
+// z wejścia — poza kluczem kanału, i to dopiero po sprawdzeniu, że ma dozwoloną postać (nazwa, nie sekret).
+const PRZYKLAD_KANALOW = '[{"klucz":"woo_sklep","typ":"woo","prefiks":"WOO_SKLEP"}]';
+const OPIS_KANALOW = 'docs/instalacja-docker.md, sekcja 9';
+const WZOR_KLUCZA = /^[a-z][a-z0-9_-]*$/;
+const WZOR_PREFIKSU = /^[A-Z][A-Z0-9_]*$/;
+const KLUCZE_ZASTRZEZONE = ['reczne', 'indywidualne', '__proto__', 'constructor', 'prototype'];
+const RAPORTY_ZASTRZEZONE = ['RECZNE', 'B2B', 'DROPSHIPPING', 'GDD', 'INDYWIDUALNE', 'SKLEP', 'SKLEP_INDYWIDUALNE', 'ALLEGRO'];
+function odczytajListeKanalow(tekst: string): unknown {
+  try { return JSON.parse(tekst); }
+  catch (e) {
+    const komunikat = e instanceof Error ? e.message : '';
+    const znak = /position (\d+)/.exec(komunikat)?.[1];
+    const gdzie = !tekst.trim() ? 'wartość jest pusta — wpisz [] (brak kanałów) albo listę kanałów'
+      : /end of JSON/.test(komunikat) || (znak !== undefined && Number(znak) >= tekst.trimEnd().length) ? 'wartość kończy się za wcześnie — brakuje zamknięcia ] albo }'
+      : znak !== undefined ? `błąd w znaku nr ${Number(znak) + 1}`
+      : !tekst.trimStart().startsWith('[') ? 'lista musi zaczynać się od znaku [ (bez cudzysłowów wokół całej wartości)'
+      : 'błąd składni';
+    throw new Error(`OMS_KANALY: niepoprawny JSON (${gdzie}). Oczekiwano listy kanałów, np. ${PRZYKLAD_KANALOW}; cudzysłowy w środku muszą być proste ("), a po ostatnim polu nie stawia się przecinka. Opis: ${OPIS_KANALOW}.`);
   }
+}
+/** Pierwsza wada pozycji listy `OMS_KANALY` jako zdanie z numerem pozycji (od 1) albo `null`, gdy pozycja jest dobra. */
+function wadaDefinicji(k: unknown, numer: number, nazwy: Map<string, number>, prefiksy: Map<string, number>, raporty: Map<string, number>): string | null {
+  const gdzie = `OMS_KANALY: pozycja ${numer}`;
+  if (!obiekt(k)) return `${gdzie} nie jest obiektem — oczekiwano {"klucz":…,"typ":…,"prefiks":…}`;
+  const nazwa = typeof k.klucz === 'string' && WZOR_KLUCZA.test(k.klucz) && k.klucz.length <= 64 ? ` (klucz „${k.klucz}”)` : '';
+  const pozycja = `${gdzie}${nazwa}`;
+  if (typeof k.klucz !== 'string' || !WZOR_KLUCZA.test(k.klucz)) return `${pozycja}: pole „klucz” ma być tekstem z małych liter, cyfr, _ i -, zaczynającym się od litery (np. woo_sklep)`;
+  if (typeof k.typ !== 'string' || !['woo', 'allegro'].includes(k.typ)) return `${pozycja}: pole „typ” ma być „woo” albo „allegro”`;
+  if (typeof k.prefiks !== 'string' || !WZOR_PREFIKSU.test(k.prefiks)) return `${pozycja}: pole „prefiks” ma być tekstem z wielkich liter, cyfr i _, zaczynającym się od litery (np. WOO_SKLEP)`;
+  const kluczPowtorzony = nazwy.get(k.klucz);
+  if (kluczPowtorzony !== undefined) return `${pozycja}: pole „klucz” powtarza pozycję ${kluczPowtorzony} — każdy kanał ma mieć inny klucz`;
+  const prefiksPowtorzony = prefiksy.get(k.prefiks);
+  if (prefiksPowtorzony !== undefined) return `${pozycja}: pole „prefiks” (${k.prefiks}) powtarza pozycję ${prefiksPowtorzony} — każdy kanał ma mieć własny prefiks`;
+  if (KLUCZE_ZASTRZEZONE.includes(k.klucz)) return `${pozycja}: pole „klucz” ma nazwę zastrzeżoną przez OMS — wybierz inną`;
+  if (k.etykieta !== undefined && (typeof k.etykieta !== 'string' || !k.etykieta.trim())) return `${pozycja}: pole „etykieta” ma być niepustym tekstem (albo pomiń to pole)`;
+  if (k.raport !== undefined) {
+    if (typeof k.raport !== 'string' || !WZOR_PREFIKSU.test(k.raport)) return `${pozycja}: pole „raport” ma być tekstem z wielkich liter, cyfr i _, zaczynającym się od litery (albo pomiń to pole)`;
+    if (RAPORTY_ZASTRZEZONE.includes(k.raport)) return `${pozycja}: pole „raport” (${k.raport}) to nazwa zastrzeżona — wybierz inną`;
+    const raportPowtorzony = raporty.get(k.raport);
+    if (raportPowtorzony !== undefined) return `${pozycja}: pole „raport” (${k.raport}) powtarza pozycję ${raportPowtorzony} — każdy kanał ma mieć inną nazwę w raporcie`;
+  }
+  return null;
+}
+export function definicjeKanalow(env: Srodowisko): DefinicjaKanalu[] {
+  const d = odczytajListeKanalow(env.OMS_KANALY ?? '[]') as DefinicjaKanalu[];
+  if (!Array.isArray(d)) throw new Error(`OMS_KANALY: oczekiwano listy kanałów w nawiasach [ ], np. ${PRZYKLAD_KANALOW}. Opis: ${OPIS_KANALOW}.`);
+  const raporty = new Map<string, number>();
+  const nazwy = new Map<string, number>();
+  const prefiksy = new Map<string, number>();
+  d.forEach((k, i) => {
+    const wada = wadaDefinicji(k, i + 1, nazwy, prefiksy, raporty);
+    if (wada) throw new Error(wada);
+    if (k.raport) raporty.set(k.raport, i + 1);
+    nazwy.set(k.klucz, i + 1);
+    prefiksy.set(k.prefiks, i + 1);
+  });
   return d;
 }
 export function konfiguracjaKanalow(definicje: readonly DefinicjaKanalu[], env: Srodowisko, niekompletneJakoAlarm = false) {

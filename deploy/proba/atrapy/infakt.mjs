@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
 import { bladOperatora } from '../../../src/domena/bledy.js';
 import { daneFaktury } from '../../../src/domena/dane-faktury.js';
+import { wczytajKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-integracji.js';
 import { wymagajTrybuProby } from './tryb.mjs';
 
 const FONTY = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../src/moduly/faktury/pdf/fonty');
@@ -286,13 +287,28 @@ export function createAtrapaInfaktu({ db, teraz = () => new Date(), log = (...t)
     return { odpowiedzInfaktu: { atrapa: true, uuid: dok.uuid, request_created_at: teraz().toISOString() } };
   }
 
+  /**
+   * PRZ-093.10 — „Sprawdź połączenie” z Ustawienia → Integracje → inFakt. Atrapa nie zna klucza z wywołania
+   * (fabryka modułu daje jej tylko bazę), więc czyta zapis ekranu z tej samej bazy: klucz zawierający „zle” udaje
+   * odrzucony klucz — żeby w piaskownicy i na demo dało się obejrzeć komunikat błędu. Klucza w komunikacie nie ma.
+   */
+  async function sprawdzPolaczenie() {
+    ślad('sprawdzenie połączenia');
+    const zapis = wczytajKonfiguracjeIntegracji(db, 'infakt');
+    if (String(zapis?.sekrety?.apiKey ?? '').includes('zle')) {
+      throw bladOperatora('inFakt nie przyjął klucza API (HTTP 401) — sprawdź, czy klucz jest skopiowany w całości i aktywny '
+        + 'w inFakcie (Ustawienia → API). Odpowiedź inFaktu: atrapa piaskownicy udaje odrzucony klucz.', { status: 401 });
+    }
+    return { ok: true };
+  }
+
   /** Surowa encja (jak w odpowiedzi API) — dla testu kontraktu, który karmi nią prawdziwego klienta. */
   function surowaEncja(uuid) { zasiej(); const d = jeden(uuid); return d ? surowy(d) : null; }
 
   return {
     znajdzKlientaPoNip, zalozKlienta, wystaw, oznaczZaplacona, pobierzPdf, pobierzFakture,
     listaFaktur, listaKorekt, listaNieoplaconych, pobierzPdfKorekty, wyslijDokumentDoKsef,
-    wystawKorekte, iluMaNumer, surowaEncja, atrapa: true,
+    wystawKorekte, iluMaNumer, sprawdzPolaczenie, surowaEncja, atrapa: true,
   };
 }
 

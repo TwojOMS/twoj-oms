@@ -7,4 +7,6 @@
   <%# Strona MUSI powiedziec, ze jest pusta CELOWO. Sam pusty ekran wyglada jak taki,
       ktory sie nie wczytal — a wtedy pierwsza reakcja to odswiezanie i szukanie awarii. %>
   <p><%= opis %></p>
+  <%# PRZ-093.10: opcjonalne odeslanie tam, gdzie brak da sie uzupelnic (np. Faktury → ekran inFaktu). %>
+  <% if (typeof odnosnik !== 'undefined' && odnosnik) { %><p><a href="<%= odnosnik.href %>"><%= odnosnik.etykieta %></a></p><% } %>
 </div>

@@ -6,7 +6,7 @@ import { listaRol, zapiszMacierz, dodajRole, zmienNazweRoli, usunRole, BladRoli,
 const KOMUNIKATY = { macierz: 'Zapisano uprawnienia ról.', nowa: 'Dodano rolę.', nazwa: 'Zmieniono nazwę roli.', usunieto: 'Usunięto rolę.' };
 const lista = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
 const WIERSZE = [...EKRANY.map((e) => ({ klucz: e.klucz, etykieta: e.etykieta })),
-  ...KLUCZE_DODATKOWE.map((k) => ({ klucz: k, etykieta: 'API panelu (Dodaj do OMS)' }))];
+  ...KLUCZE_DODATKOWE.map((k) => ({ klucz: k, etykieta: 'Dostęp przez API (zewnętrzna aplikacja)' }))];
 
 export function registerRoleRoutes(app, { db, teraz }) {
   // `wlasnyUklad: true` — brak-dostepu.ejs to samodzielny dokument (patrz tylkoAdmin w trasy/konta.js).

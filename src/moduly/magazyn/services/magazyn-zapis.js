@@ -20,8 +20,8 @@ const USTAWIENIE_JEDNOSTKI = 'woocommerce_dimension_unit';
 const opisBledu = (e) => (typeof e?.message === 'string' && e.message ? e.message : String(e));
 
 const BEZ_KLIENTA = (kanal) => `Kanał „${kanal}" nie ma w panelu skonfigurowanego sklepu, `
-  + 'więc nie mam dokąd pisać ani skąd wziąć jednostki wymiarów. Sprawdź zmienne SHOP_* '
-  + 'w konfiguracji panelu.';
+  + 'więc nie mam dokąd pisać ani skąd wziąć jednostki wymiarów. Sprawdź w pliku konfiguracji OMS definicję kanału w OMS_KANALY '
+  + 'i zmienne z jego prefiksem (dla sklepu WooCommerce: PREFIKS_URL, PREFIKS_CK, PREFIKS_CS; docs/instalacja-docker.md, sekcja 9).';
 
 /**
  * Jednostka wymiarow KAZDEGO z podanych kanalow, czytana ZE SKLEPU.

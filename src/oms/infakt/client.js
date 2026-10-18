@@ -564,9 +564,43 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
     return { odpowiedzInfaktu: odpowiedz ?? null };
   }
 
+  /**
+   * PRZ-093.10 — „Sprawdź połączenie” na ekranie Ustawienia → Integracje → inFakt.
+   * Jedno `GET /v3/invoices.json?offset=0` — to samo żądanie, którym zaczyna się każda lista faktur
+   * (`wszystkieStrony`, zmierzone 06.08.2026). Tylko odczyt: niczego nie wystawia ani nie wysyła do KSeF,
+   * wynik nie niesie danych faktur.
+   * Sukces wymaga liczbowego `metainfo.total_count` — strona pośrednika z HTTP 200 to nie „połączenie działa”.
+   * ⚠️ Klucz API zastępowany w komunikacie: ten trafia na ekran, a inFakt mógłby odbić klucz w treści błędu.
+   */
+  async function sprawdzPolaczenie() {
+    const bezKlucza = (tekst) => (apiKey ? String(tekst).split(String(apiKey)).join('[klucz API]') : String(tekst));
+    let dane;
+    try {
+      dane = await zapytaj(adres('invoices', {}, 0), { method: 'GET' }, 'sprawdzenie połączenia');
+    } catch (e) {
+      if (e?.status === 401 || e?.status === 403) {
+        throw bladOperatora(`inFakt nie przyjął klucza API (HTTP ${e.status}) — sprawdź, czy klucz jest skopiowany w całości `
+          + `i aktywny w inFakcie (Ustawienia → API). Odpowiedź inFaktu: ${bezKlucza(e.message)}`, { status: e.status });
+      }
+      throw bladOperatora(bezKlucza(e?.message ?? 'inFakt nieosiągalny'), e?.status ? { status: e.status } : {});
+    }
+    const ile = Number(dane?.metainfo?.total_count);
+    if (!Number.isFinite(ile) || ile < 0) {
+      throw bladOperatora('inFakt odpowiedział, ale nie rozpoznaję odpowiedzi — to nie wygląda na API inFaktu.');
+    }
+    return { ok: true };
+  }
+
   return {
     znajdzKlientaPoNip, zalozKlienta, wystaw, oznaczZaplacona, pobierzPdf, pobierzFakture,
     listaFaktur, listaKorekt, listaNieoplaconych, pobierzPdfKorekty, wyslijDokumentDoKsef,
-    wystawKorekte, iluMaNumer,
+    wystawKorekte, iluMaNumer, sprawdzPolaczenie,
   };
 }
+
+/** Nazwy metod klienta — pośrednik „inFakt z Ustawień” (moduly/faktury/infakt-ustawien.ts) wystawia te same. */
+export const METODY_INFAKTU = Object.freeze([
+  'znajdzKlientaPoNip', 'zalozKlienta', 'wystaw', 'oznaczZaplacona', 'pobierzPdf', 'pobierzFakture',
+  'listaFaktur', 'listaKorekt', 'listaNieoplaconych', 'pobierzPdfKorekty', 'wyslijDokumentDoKsef',
+  'wystawKorekte', 'iluMaNumer', 'sprawdzPolaczenie',
+]);

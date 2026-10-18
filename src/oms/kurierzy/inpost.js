@@ -702,5 +702,27 @@ export function createInpostClient({
     }
   }
 
-  return { nadaj, sprawdzPrzesylke, pobierzEtykiete, statusPrzesylki };
+  /**
+   * PRZ-093.09 — „Sprawdź połączenie” na ekranie Ustawienia → Integracje → Kurier InPost.
+   * Jedno `GET /organizations/{id}`: odczyt organizacji, NICZEGO nie nadaje i nie tworzy. To samo żądanie
+   * zmierzono na żywym koncie przy rozpoznaniu taryf (domena/usluga-inpost.js) — odpowiedź niesie pole `services`.
+   * Sukces wymaga tego pola i (gdy jest) zgodnego `id`: strona pośrednika z HTTP 200 ani cudza organizacja nie są
+   * „połączenie działa”. Błędy idą przez opisBledu/oczysc — token nie trafia do komunikatu.
+   */
+  async function sprawdzPolaczenie() {
+    const g = await wywolaj(sciezka('organizations', organizacja));
+    if (g.status === 403 || g.status === 404) {
+      throw bladOperatora(`InPost nie udostępnia organizacji ${organizacja} temu tokenowi (HTTP ${g.status}) — sprawdź numer organizacji i token: ${opisBledu(g)}`);
+    }
+    if (!g.res.ok) throw bladOperatora(`InPost odrzucił żądanie (HTTP ${g.status}): ${opisBledu(g)}`);
+    if (!Array.isArray(g.dane?.services)) {
+      throw bladOperatora('InPost odpowiedział, ale nie rozpoznaję odpowiedzi — sprawdź adres API.');
+    }
+    if (g.dane.id != null && String(g.dane.id) !== String(organizacja)) {
+      throw bladOperatora(`InPost oddał organizację ${oczysc(g.dane.id)}, a wpisana jest ${organizacja} — sprawdź numer organizacji.`);
+    }
+    return { ok: true };
+  }
+
+  return { nadaj, sprawdzPrzesylke, pobierzEtykiete, statusPrzesylki, sprawdzPolaczenie };
 }

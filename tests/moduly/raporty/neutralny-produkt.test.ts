@@ -109,7 +109,9 @@ describe('PRZ-027 neutralny start produktu', () => {
       await zAplikacja(env, db, async (z) => {
         const odp = await z.app.inject({ method: 'GET', url: '/statystyki?od=2031-01-01&do=2031-01-31', headers });
         expect(odp.statusCode).toBe(200);
-        expect(odp.body).toContain('pokrycie wybranego okresu pozostaje nieznane');
+        // PRZ-093.07: pusta baza bez env — pasek mówi, co wpisać (stary tekst nie dawał wskazówki).
+        expect(odp.body).toContain('Nie ustalono początku danych o wysyłce i płatnościach');
+        expect(odp.body).toContain('OMS_STATYSTYKI_PIERWSZY_DZIEN=RRRR-MM-DD');
         expect(odp.body).not.toMatch(/obejmują zamówienia <strong>od/);
       });
     } finally { db.close(); }

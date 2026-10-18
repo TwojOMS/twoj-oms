@@ -143,11 +143,11 @@
             <%= e.etykieta %>
           </label>
         <% }); %>
-        <%# ⚠️ `api` NIE JEST W `EKRANY` — to klucz oddzielny, integracja z panelem :3000 %>
-        <%# („Dodaj do OMS"), patrz ekranDlaAdresu w domain/ekrany.js i filtr w routes/konta.js. %>
+        <%# ⚠️ `api` NIE JEST W `EKRANY` — to klucz oddzielny: dostęp maszynowy do adresów /api/* %>
+        <%# dla zewnętrznej aplikacji, patrz ekranDlaAdresu w domena/ekrany.js i filtr w trasy/konta.js. %>
         <label class="pole-przelacznik">
           <input type="checkbox" name="ekran" value="api" <%= k.ekrany.has('api') ? 'checked' : '' %>>
-          Integracja z panelem zamówień indywidualnych (API)
+          Dostęp przez API (zewnętrzna aplikacja)
         </label>
       </div>
       <label class="pole-przelacznik">

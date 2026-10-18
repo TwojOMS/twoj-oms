@@ -37,6 +37,51 @@ describe('wczytajSprzedawce', () => {
     expect(() => wczytajSprzedawce({ ...OK, OMS_SPRZEDAWCA_BDO: '12345' })).toThrow('OMS_SPRZEDAWCA_BDO');
     expect(wczytajSprzedawce({ ...OK, OMS_SPRZEDAWCA_BDO: ' ', OMS_BANK: ' ' }).bank).toBeNull();
   });
+  describe('komunikat mówi, którą zmienną poprawić, w jakim formacie i w którym pliku (PRZ-093.04)', () => {
+    const blad = (env: Record<string, string>) => {
+      try { wczytajSprzedawce(env); } catch (e) { return (e as Error).message; }
+      throw new Error('Oczekiwano odmowy startu');
+    };
+    it('brak NIP-u i rachunku: nazwa zmiennej, format i plik konfiguracji', () => {
+      const m = blad({});
+      expect(m).toContain('Brak wymaganej zmiennej: OMS_SPRZEDAWCA_NIP');
+      expect(m).toContain('10 cyfr');
+      expect(m).toContain('Brak wymaganej zmiennej: OMS_RACHUNEK');
+      expect(m).toContain('26 cyfr');
+      expect(m).toContain('produkcja.env');
+      expect(m).toContain('docs/instalacja-docker.md');
+    });
+    it('NIP z literą albo złą liczbą cyfr: opisuje, co kod akceptuje (PL, spacje, myślniki)', () => {
+      for (const nip of ['12345632x8', '123456321', '12345632180']) {
+        const m = blad({ ...OK, OMS_SPRZEDAWCA_NIP: nip });
+        expect(m).toContain('OMS_SPRZEDAWCA_NIP: niepoprawny NIP');
+        expect(m).toContain('dokładnie 10 cyfr');
+        expect(m).toMatch(/PL.*spacje.*myślniki/);
+        expect(m).not.toContain(nip);
+      }
+    });
+    it('NIP z dobrą długością, lecz złą cyfrą kontrolną: mówi o literówce, nie o długości', () => {
+      const m = blad({ ...OK, OMS_SPRZEDAWCA_NIP: '1234563219' });
+      expect(m).toContain('cyfra kontrolna');
+      expect(m).not.toContain('dokładnie 10 cyfr');
+    });
+    it('rachunek: 26 cyfr, PL/spacje/myślniki dozwolone; osobno zła długość i zła suma', () => {
+      const dlugosc = blad({ ...OK, OMS_RACHUNEK: '3410901014' });
+      expect(dlugosc).toContain('OMS_RACHUNEK: niepoprawny numer rachunku');
+      expect(dlugosc).toContain('dokładnie 26 cyfr');
+      expect(dlugosc).toMatch(/PL.*spacje.*myślniki/);
+      const suma = blad({ ...OK, OMS_RACHUNEK: '34109010140000000000000001' });
+      expect(suma).toContain('cyfry kontrolne');
+      expect(suma).not.toContain('dokładnie 26 cyfr');
+    });
+    it('BDO: 9 cyfr bez spacji, albo zostaw puste', () => {
+      const m = blad({ ...OK, OMS_SPRZEDAWCA_BDO: '000 123 456' });
+      expect(m).toContain('OMS_SPRZEDAWCA_BDO: oczekiwano 9 cyfr');
+      expect(m).toMatch(/bez spacji/);
+      expect(m).toMatch(/puste|usuń/);
+      expect(m).not.toContain('000 123 456');
+    });
+  });
   it('błąd wymienia nazwy zmiennych, lecz nie wartości wejściowych', () => {
     const odczyt = () => wczytajSprzedawce({ OMS_SPRZEDAWCA_NIP: '1234563219', OMS_RACHUNEK: 'rachunek-sekret', OMS_SPRZEDAWCA_BDO: 'bdo-sekret' });
     expect(odczyt).toThrow(/OMS_SPRZEDAWCA_NIP[\s\S]*OMS_RACHUNEK[\s\S]*OMS_SPRZEDAWCA_BDO/);

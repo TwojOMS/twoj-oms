@@ -1,0 +1,89 @@
+<h1>Kurier InPost</h1>
+<p><a href="/ustawienia/integracje">← Integracje</a></p>
+
+<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
+<% if (test) { %>
+  <div class="<%= test.ok ? 'pas-potwierdzenie' : 'pas-uprzedzenie' %>" id="inpost-test"><p><strong><%= test.ok ? 'Działa.' : 'Nie działa.' %></strong> <%= test.tekst %></p></div>
+<% } %>
+<% if (bledy.length) { %>
+  <div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong></p><ul><% bledy.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
+<% } %>
+
+<% if (zEnv) { %>
+<section class="ust-sekcja" id="inpost-stan">
+  <h2>Podłączony w pliku konfiguracji</h2>
+  <p>Kurier InPost jest ustawiony w pliku konfiguracji serwera (<code>oms.env</code>, zmienne <code>INPOST_…</code>). Ten ekran go nie zmienia — dane InPost poprawisz w tym pliku.</p>
+  <% if (stan) { %>
+    <form method="post" action="/ustawienia/integracje/inpost/odlacz">
+      <p>W OMS-ie zostały też dane InPost zapisane wcześniej na tym ekranie. Plik konfiguracji ma pierwszeństwo, więc nie są używane.</p>
+      <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń zapisane dane InPost</button></div>
+    </form>
+  <% } %>
+</section>
+<% } else { %>
+<section class="ust-sekcja" id="inpost-stan">
+  <% if (stan) { %>
+    <h2>Podłączony</h2>
+    <p>„<%= stan.ustawienia.nazwa %>” — zapisał <%= stan.kontoLogin ?? '—' %>, <%= fmtDataCzas(stan.zmienionoAt) %>.</p>
+    <% if (wymagaRestartu) { %><p class="pas-uprzedzenie">Nadawanie paczek włączy się po ponownym uruchomieniu OMS-u (to pierwszy kurier w tym panelu). Kolejne zmiany na tym ekranie działają od razu.</p><% } %>
+  <% } else { %>
+    <h2>Niepodłączony</h2>
+    <p>Potrzebujesz konta InPost z dostępem do API ShipX: tokenu API i numeru organizacji. Samo podłączenie w OMS-ie nie zakłada konta w InPoście.</p>
+  <% } %>
+</section>
+
+<section class="ust-sekcja">
+  <h2>Dane kuriera</h2>
+  <form id="inpost-formularz" class="ust-formularz" method="post" action="/ustawienia/integracje/inpost">
+    <label for="inpost-nazwa">Nazwa <span class="ust-wymagane">*</span></label>
+    <div><input id="inpost-nazwa" name="nazwa" value="<%= pola.nazwa %>" maxlength="60" required>
+      <p class="ust-pomoc">Dowolna nazwa, po której rozpoznasz ten rodzaj wysyłki.</p></div>
+
+    <label>Adres nadawcy</label>
+    <div>
+      <% const n = adresFirmy.adres; if (n && n.nazwa && n.ulica && n.kod && n.miasto) { %><div class="ust-wartosc"><%= n.nazwa %>, <%= n.ulica %>, <%= n.kod %> <%= n.miasto %></div>
+        <% if (!n.phone || !n.email) { const brak = [!n.phone && (adresFirmy.zrodlo === 'plik' ? 'DPD_NADAWCA_TELEFON' : 'telefon'), !n.email && (adresFirmy.zrodlo === 'plik' ? 'DPD_NADAWCA_EMAIL' : 'e-mail')].filter(Boolean).join(' i '); %>
+          <div class="ust-wartosc uwaga">InPost wymaga telefonu i e-maila nadawcy — <% if (adresFirmy.zrodlo === 'plik') { %>adres firmy stoi w pliku konfiguracji, dopisz tam <%= brak %>.<% } else { %>dopisz <%= brak %> w <a href="<%= ekranAdresu %>">Ustawienia → Firma</a>.<% } %> Bez nich InPost nie nada paczki.</div><% } %>
+      <% } else { %><div class="ust-wartosc uwaga">Brak — wpisz adres firmy w <a href="<%= ekranAdresu %>">Ustawienia → Firma</a>. Bez adresu InPost nie nada paczki.</div><% } %>
+      <p class="ust-pomoc">Widoczny na etykiecie. To adres firmy — ten sam trafia na proformy i specyfikacje, dlatego ustawia się go w jednym miejscu: <a href="<%= ekranAdresu %>">Ustawienia → Firma</a><%= adresFirmy.zrodlo === 'plik' ? ' (tutaj: z pliku konfiguracji, DPD_NADAWCA_…)' : '' %>.</p>
+    </div>
+
+    <h3>Ustawienia</h3>
+    <label for="inpost-organizacja">Numer organizacji <span class="ust-wymagane">*</span></label>
+    <div><input id="inpost-organizacja" name="organizacja" value="<%= pola.organizacja %>" inputmode="numeric" maxlength="12" autocomplete="off" required>
+      <p class="ust-pomoc">ID organizacji w ShipX — z panelu ShipX (API), razem z tokenem.</p></div>
+
+    <label for="inpost-token">Token API <span class="ust-wymagane">*</span></label>
+    <div><input id="inpost-token" type="password" name="token" value="" maxlength="4000" autocomplete="new-password"<% if (stan?.zapisaneSekrety?.token) { %> placeholder="zapisany — zostaw puste, żeby nie zmieniać"<% } else { %> required<% } %>>
+      <p class="ust-pomoc">Token API ShipX z panelu ShipX (API).</p></div>
+
+    <label for="inpost-paczkomat">Paczkomat nadawczy</label>
+    <div><input id="inpost-paczkomat" name="paczkomatNadawczy" value="<%= pola.paczkomatNadawczy %>" maxlength="20" autocomplete="off">
+      <p class="ust-pomoc">Opcjonalny kod paczkomatu, w którym zostawiasz paczki (np. ABC01M). Puste pole — OMS nie podaje go InPostowi.</p></div>
+
+    <label>Adres API</label>
+    <div><div class="ust-wartosc"><code><%= adresApi %></code></div>
+      <p class="ust-pomoc">Produkcyjne API ShipX. Inny adres da się ustawić tylko w pliku konfiguracji (<code>INPOST_URL</code>).</p></div>
+
+    <p class="ust-pelna ust-pomoc">Wagę i gabaryt skrytki (A, B, C) wybierasz przy nadaniu paczki. Pola oznaczone <span class="ust-wymagane">*</span> są wymagane.</p>
+    <div class="ust-pelna ust-akcje">
+      <button class="btn btn--glowny" type="submit">Zapisz</button>
+      <a class="ust-przycisk" href="/ustawienia/integracje">Anuluj</a>
+    </div>
+  </form>
+</section>
+
+<% if (stan) { %>
+<section class="ust-sekcja">
+  <h2>Sprawdzenie i odłączenie</h2>
+  <form method="post" action="/ustawienia/integracje/inpost/sprawdz">
+    <p>Sprawdzenie pyta InPost o Twoją organizację, posługując się zapisanym tokenem. Niczego nie nadaje i nic nie kosztuje.</p>
+    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Sprawdź połączenie</button></div>
+  </form>
+  <form method="post" action="/ustawienia/integracje/inpost/odlacz" onsubmit="return confirm('Odłączyć kuriera InPost? OMS usunie zapisany token.')" style="margin-top:1rem">
+    <p>Odłączenie usuwa token z OMS-u. Paczki już nadane i ich etykiety zostają.</p>
+    <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Odłącz InPost</button></div>
+  </form>
+</section>
+<% } %>
+<% } %>

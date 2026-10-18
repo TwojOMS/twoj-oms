@@ -1,5 +1,5 @@
 import { zakresZZapytania, nazwaOkresu, nazwaSkrotu } from '../../../domena/okresy-raportu.js';
-import { zamowieniaOkresu } from '../../../domena/statystyki-okresu.js';
+import { zamowieniaOkresu, pierwszyDzienZamowien } from '../../../domena/statystyki-okresu.js';
 import { rozkladUslug, terminowosc } from '../../../domena/statystyki-wysylki.js';
 import { rozkladMetod } from '../../../domena/statystyki-platnosci.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
@@ -16,7 +16,7 @@ import { dzienWarszawa } from '../../../domena/format-daty.js';
 // zaczynaja sie 3.07.2026; historia (10 878 wierszy w `sprzedaz_historyczna`) niesie
 // wylacznie dzien, kwote, status i flage faktury. Zakres wychodzacy przed te date dostaje
 // pasek zastrzezenia — inaczej „Ten rok" pokazywalby 226 zamowien i wygladalo to jak awaria.
-// Początek pokrycia danych otrzymujemy z konfiguracji.
+// Początek pokrycia danych otrzymujemy z konfiguracji, a bez niej — z pierwszego zamówienia w bazie.
 
 const SKROTY = [
   'dzisiaj', 'ten-miesiac', 'poprzedni-miesiac', 'ten-kwartal', 'poprzedni-kwartal',
@@ -39,6 +39,10 @@ export function zarejestrujTrasyStatystyk(app, { db, config }) {
       });
     }
     const zamowienia = zamowieniaOkresu(db, zakres, config.regulySprzedazy);
+    // PRZ-093.07: bez OMS_STATYSTYKI_PIERWSZY_DZIEN początkiem danych jest dzień pierwszego
+    // zamówienia w bazie (env wygrywa). Liczony przy każdym wejściu — zamówienia przybywają.
+    const pierwszyZBazy = config.pierwszyDzienOms ? null : pierwszyDzienZamowien(db);
+    const pierwszyDzien = config.pierwszyDzienOms ?? pierwszyZBazy;
     return reply.view('statystyki.ejs', {
       blad: null,
       zakres,
@@ -49,8 +53,9 @@ export function zarejestrujTrasyStatystyk(app, { db, config }) {
       platnosci: rozkladMetod(zamowienia),
       // Pasek zastrzezenia zalezy WYLACZNIE od zakresu, nie od tego, czy cos znaleziono:
       // pusty styczen ma ten sam powod pustki, co styczen z jednym zamowieniem.
-      przedOmsem: !config.pierwszyDzienOms || zakres.od < config.pierwszyDzienOms,
-      pierwszyDzien: config.pierwszyDzienOms,
+      przedOmsem: !pierwszyDzien || zakres.od < pierwszyDzien,
+      pierwszyDzien,
+      pierwszyDzienZBazy: pierwszyZBazy !== null,
     });
   });
 }

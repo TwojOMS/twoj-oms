@@ -49,7 +49,8 @@ export function sledzeniePrzesylki(p, kurierzy = {}) {
     const para = paraPrzewoznika(surowa);
     const kluczPodwykonawcy = para ? PODWYKONAWCY_WZA[para.carrierId] : null;
     const podwykonawca = kluczPodwykonawcy ? kurierzy?.[kluczPodwykonawcy] ?? null : null;
-    if (podwykonawca && para?.carrierWaybill) {
+    // PRZ-092: DPD z Ustawień bez kanału DPD Info deklaruje `bezSledzenia` — wtedy paczkę śledzi Allegro (niżej).
+    if (podwykonawca && !podwykonawca.bezSledzenia && para?.carrierWaybill) {
       return { klient: podwykonawca, numer: para.carrierWaybill, podwykonawca: para.carrierId };
     }
 

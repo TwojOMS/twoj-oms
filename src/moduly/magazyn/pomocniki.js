@@ -89,8 +89,8 @@ const BEZ_SKLEPOW = {
   title: 'Magazyn',
   naglowek: 'Magazyn',
   opis: 'Ten panel nie ma podpiętego żadnego sklepu ani konta Allegro, więc nie ma skąd wziąć '
-    + 'katalogu — zakładka jest pusta celowo. Magazyn buduje się z odczytu sklepów; bez sekcji '
-    + 'SKLEP_*/ALLEGRO_* w konfiguracji kontenera nie ma o co pytać.',
+    + 'katalogu — zakładka jest pusta celowo. Magazyn buduje się z odczytu sklepów; kanały '
+    + 'dopisuje się w zmiennej OMS_KANALY w pliku konfiguracji OMS (instrukcja: docs/instalacja-docker.md, sekcja 9), a bez nich nie ma o co pytać.',
 };
 
 const BEZ_SKLEPOW_ODMOWA = 'Panel nie ma podpiętego żadnego sklepu ani konta Allegro — '

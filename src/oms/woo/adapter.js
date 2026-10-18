@@ -3,8 +3,8 @@ import { mapujZamowienie } from '../../domena/mapowanie.js';
 // Adapter kanalu dla WooCommerce. Powstal, gdy do panelu doszlo Allegro (Etap 4): reguly
 // pollera — podloga po dacie zlozenia, jeden przebieg naraz, kursor za najpozniejsza
 // PRZETWORZONA modyfikacja — musialy zostac JEDNE. Druga kopia tych regul rozjechalaby sie
-// po cichu, a ich pierwsza wersja kosztowala 8866 wciagnietych zamowien i przebieg
-// zwielokrotniajacy sam siebie (01.08.2026).
+// po cichu, a ich pierwsza wersja wciagnela kilka tysiecy zamowien i przebieg
+// zwielokrotniajacy sam siebie.
 //
 // ⚠️ `date_modified_gmt`, NIE `date_modified`. Czas lokalny sklepu cofa sie o godzine przy
 // przejsciu na czas zimowy, wiec kursor zapisany z wartosci lokalnej zostalby godzine

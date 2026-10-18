@@ -15,8 +15,8 @@ export function mailerOpcjonalny(usluga) {
 
 export function trescMaila({ cel, imie, link }) {
   const wstep = cel === 'zaproszenie'
-    ? 'Administrator zaprosił Cię do pracy w panelu zamówień.'
-    : 'Administrator przygotował link do ustawienia nowego hasła w panelu zamówień.';
+    ? 'Administrator zaprosił Cię do pracy w systemie obsługi zamówień.'
+    : 'Administrator przygotował link do ustawienia nowego hasła w systemie obsługi zamówień.';
   const text = [`Dzień dobry, ${imie}!`, '', wstep, 'Ustaw hasło pod adresem:', link, '',
     'Link działa 48 h i tylko raz. Jeśli to nie Ty — zignoruj tę wiadomość.'].join('\n');
   return { subject: TEMATY[cel], text, html: renderMailHtml({ text }) };

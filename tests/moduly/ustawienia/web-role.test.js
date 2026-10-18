@@ -21,7 +21,8 @@ describe('PRZ-068 ekran Role i uprawnienia', () => {
     expect(r.body).toMatch(/value="administrator:zamowienia" checked disabled/);
     expect(r.body).toMatch(/value="sprzedaz:magazyn" checked/);
     expect(r.body).not.toMatch(/value="produkcja:magazyn" checked/);
-    expect(r.body).toContain('API panelu');
+    // PRZ-093.05: etykieta kolumny API opisuje funkcję (dostęp dla zewnętrznej aplikacji), nie aplikację właściciela.
+    expect(r.body).toContain('Dostęp przez API (zewnętrzna aplikacja)');
     expect(r.body).toMatch(/<li class="aktywna">\s*<a href="\/ustawienia\/role">/);
     expect(r.body).not.toContain('wyloguj-wszystkie');
   });

@@ -1,5 +1,6 @@
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
+import { EKRAN_INFAKTU, GDZIE_KLUCZ_INFAKTU } from '../../../domena/konfiguracja-infakt.js';
 import { zl } from '../../../domena/suma-pozycji.js';
 import { MIESIACE } from '../../../domena/okres-rozliczeniowy.js';
 import { bezpiecznaNazwa } from '../../../domena/pliki.js';
@@ -33,8 +34,11 @@ const BEZ_INFAKTU = {
   title: 'Faktury',
   naglowek: 'Faktury',
   opis: 'Ten panel nie ma podpiętego inFaktu, więc nie ma skąd wziąć faktur — zakładka jest '
-    + 'pusta celowo. Dokumenty czyta się na żywo z inFaktu; bez sekcji INFAKT_* w konfiguracji '
-    + 'kontenera nie ma o co pytać.',
+    + 'pusta celowo. Dokumenty czyta się na żywo z inFaktu; bez klucza API inFaktu nie ma o co pytać. '
+    + 'Klucz wpiszesz w Ustawienia → Integracje → inFakt (albo INFAKT_API_KEY w pliku konfiguracji); '
+    + 'klucz zapisany na ekranie po raz pierwszy włącza tę zakładkę po ponownym uruchomieniu OMS-u.',
+  // PRZ-093.10: odesłanie do ekranu konfiguracji (pusta-strona.ejs pokazuje je pod opisem).
+  odnosnik: { href: EKRAN_INFAKTU, etykieta: 'Ustawienia → Integracje → inFakt' },
 };
 
 // ⚠️ BIALA LISTA RODZAJOW DOKUMENTU DO POBRANIA PDF-U. Wczesniej trasa nizej brala „wszystko,
@@ -236,7 +240,7 @@ export function registerFakturyRoutes(app, {
   // od paczki NIE dokleja dokumentów PDF, więc usługa nie wykonuje ich pobrań z inFaktu.
   app.get('/faktury/zestawienie-przychodow', async (req, reply) => {
     if (!paczkaDlaBiura?.zbudujZestawieniePrzychodow) {
-      return reply.code(503).send('Panel nie ma podpiętego inFaktu — nie ma z czego zbudować zestawienia przychodów.');
+      return reply.code(503).send(`Panel nie ma podpiętego inFaktu — nie ma z czego zbudować zestawienia przychodów. ${GDZIE_KLUCZ_INFAKTU}`);
     }
     const miesiac = String(req.query.miesiac ?? '');
     if (!/^\d{4}-\d{2}$/.test(miesiac)) return reply.code(400).send(`„${miesiac}" to nie jest miesiąc w formacie RRRR-MM.`);
@@ -284,7 +288,7 @@ export function registerFakturyRoutes(app, {
   // dostac zdanie, ktore mowi, ze paczka juz powstaje i nie trzeba klikac trzeci raz.
   let paczkaTrwa = false;
   app.get('/faktury/paczka', async (req, reply) => {
-    if (!paczkaDlaBiura) return reply.code(503).send('Panel nie ma podpiętego inFaktu — nie ma z czego złożyć paczki.');
+    if (!paczkaDlaBiura) return reply.code(503).send(`Panel nie ma podpiętego inFaktu — nie ma z czego złożyć paczki. ${GDZIE_KLUCZ_INFAKTU}`);
     if (paczkaTrwa) {
       return reply.code(409).send(
         'Paczka dla biura jest właśnie składana — poczekaj na pobranie pliku i spróbuj ponownie.',
@@ -331,7 +335,7 @@ export function registerFakturyRoutes(app, {
   app.get('/faktury/:uuid/pdf', async (req, reply) => {
     const { uuid } = req.params;
     const rodzaj = req.query.rodzaj;
-    if (!infakt) return reply.code(503).send('Panel nie ma podpiętego inFaktu.');
+    if (!infakt) return reply.code(503).send(`Panel nie ma podpiętego inFaktu. ${GDZIE_KLUCZ_INFAKTU}`);
     // Odmowa CZYTELNA, a nie 404 z inFaktu: rodzaj rozstrzyga, ktory zasob API odpytac,
     // wiec nieznana nazwa znaczy „panel nie wie, po co siegnac", a nie „faktura VAT".
     if (!RODZAJE_PDF.has(rodzaj)) {
@@ -362,7 +366,7 @@ export function registerFakturyRoutes(app, {
     // Brak sekcji INFAKT_* to tryb POPRAWNY, ale nie da sie wtedy pokazac podgladu czegos,
     // czego nie ma skad wziac — odmowa ma to POWIEDZIEC (jak przy pobieraniu PDF-u wyzej).
     if (!wysylkaKsef) {
-      return reply.code(503).send('Panel nie ma podpiętego inFaktu — nie ma czego wysłać do KSeF.');
+      return reply.code(503).send(`Panel nie ma podpiętego inFaktu — nie ma czego wysłać do KSeF. ${GDZIE_KLUCZ_INFAKTU}`);
     }
     // Jeden zaznaczony checkbox przychodzi z Fastify jako NAPIS, kilka — jako tablica.
     // `[].concat` normalizuje oba przypadki; ta sama normalizacja stoi jeszcze raz
@@ -410,7 +414,7 @@ export function registerFakturyRoutes(app, {
     // Brak sekcji INFAKT_* to tryb POPRAWNY — ale wtedy nie ma dokad wyslac, i odmowa ma
     // to POWIEDZIEC (jak przy podgladzie wyzej).
     if (!wysylkaKsef) {
-      return reply.code(503).send('Panel nie ma podpiętego inFaktu — nie ma czego wysłać do KSeF.');
+      return reply.code(503).send(`Panel nie ma podpiętego inFaktu — nie ma czego wysłać do KSeF. ${GDZIE_KLUCZ_INFAKTU}`);
     }
     // Jeden zaznaczony checkbox przychodzi z Fastify jako NAPIS, kilka — jako tablica.
     const uuids = [].concat(req.body?.uuid ?? []);

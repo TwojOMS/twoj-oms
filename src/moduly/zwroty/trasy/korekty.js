@@ -10,6 +10,7 @@ import {
 import { formularzZwrotu, przygotujKrok2, razemZwrotuZl } from '../../../domena/zwrot-formularz.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
+import { GDZIE_KLUCZ_INFAKTU } from '../../../domena/konfiguracja-infakt.js';
 import { adresKartyZamowienia } from '../../../domena/adres-karty-zamowienia.js';
 import { bezpiecznyPowrotNaListe } from '../../../domena/filtry-listy.js';
 import { ktoKlikal } from '../../zamowienia/wspolne.js';
@@ -22,7 +23,7 @@ export function registerKorektyRoutes(app, { db, korekta = null, definicje }) {
     if (!z) return reply;
     // `null` (panel bez inFaktu) to tryb POPRAWNY — odmawiamy czytelnie, jak nadanie
     // bez skonfigurowanego kuriera.
-    if (!korekta) return reply.code(503).send('Wystawianie korekt nie jest skonfigurowane (brak inFaktu).');
+    if (!korekta) return reply.code(503).send(`Wystawianie korekt nie jest skonfigurowane (brak inFaktu). ${GDZIE_KLUCZ_INFAKTU}`);
     const zwrotId = Number(req.params.zwrotId);
     try {
       await korekta.wystaw(z.id, zwrotId);

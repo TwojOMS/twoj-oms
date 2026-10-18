@@ -10,6 +10,7 @@ export type NadawcaKuriera = {
 export type OpcjeDpd = OpcjeTransportu & {
   url: string; login: string; haslo: string; fid: string;
   infoUrl: string; channel: string; nadawca: NadawcaKuriera;
+  formatEtykiety?: 'LBL_PRINTER' | 'A4';
 };
 export type OpcjeInpost = OpcjeTransportu & {
   url: string; token: string; organizacja: string | number; nadawca: NadawcaKuriera;

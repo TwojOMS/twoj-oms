@@ -13,6 +13,10 @@ import { createWooClient } from '../../src/oms/woo/client.js';
 import { createAllegroClient } from '../../src/oms/allegro/client.js';
 import { utworzBazeDemo, ENV_DEMO } from '../../scripts/demo-dane.mjs';
 import { createAtrapaInfaktu } from '../../deploy/proba/atrapy/infakt.mjs';
+import { createDpdClient } from '../../src/oms/kurierzy/dpd.js';
+import { createAtrapaDpd, ODMOWY_DPD } from '../../deploy/proba/atrapy/dpd.mjs';
+import { createInpostClient } from '../../src/oms/kurierzy/inpost.js';
+import { createAtrapaInpost, ODMOWY_INPOST } from '../../deploy/proba/atrapy/inpost.mjs';
 import { createAtrapaWoo, createAtrapaAllegro, ODMOWY_WOO, ODMOWY_ALLEGRO } from '../../deploy/proba/atrapy/kanaly.mjs';
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
 
@@ -52,6 +56,45 @@ describe('komplet metod', () => {
     expect(prawdziwy.length).toBeGreaterThanOrEqual(26);
     expect(prawdziwy.filter((m) => !atrapa.includes(m))).toEqual([]);
     expect(ODMOWY_ALLEGRO.filter((m) => !prawdziwy.includes(m))).toEqual([]);
+  });
+
+  // PRZ-092: kurier DPD z Ustawień w piaskownicy.
+  it('atrapa DPD ma każdą metodę createDpdClient; nadanie odmawia 400, sprawdzenie nie wychodzi do sieci', async () => {
+    const opcje = { url: 'https://x.invalid', login: 'l', haslo: 'h', fid: '1', infoUrl: '', channel: '',
+      nadawca: { nazwa: 'N', ulica: 'U 1', kod: '00-001', miasto: 'M' }, fetchImpl: async () => { throw new Error('sieć'); } };
+    const prawdziwy = metody(createDpdClient(opcje));
+    const atrapa = createAtrapaDpd({ env: ENV_DEMO })(opcje);
+    expect(prawdziwy).toEqual(expect.arrayContaining(['nadaj', 'statusPrzesylki', 'sprawdzPolaczenie']));
+    expect(prawdziwy.filter((m) => !metody(atrapa).includes(m))).toEqual([]);
+    expect(ODMOWY_DPD.filter((m) => !prawdziwy.includes(m))).toEqual([]);
+    for (const m of ODMOWY_DPD) {
+      const e = await atrapa[m]().catch((x) => x);
+      expect(e?.status, m).toBe(400);
+      expect(e?.message, m).toContain('Piaskownica');
+    }
+    await expect(atrapa.sprawdzPolaczenie()).resolves.toEqual({ ok: true });
+    await expect(createAtrapaDpd({ env: ENV_DEMO })({ ...opcje, haslo: 'zle' }).sprawdzPolaczenie()).rejects.toThrow('odrzuciło');
+    expect(() => createAtrapaDpd({ env: {} })).toThrow('OMS_TRYB=proba');
+  });
+
+  // PRZ-093.09: kurier InPost z Ustawień w piaskownicy.
+  it('atrapa InPost ma każdą metodę createInpostClient; nadanie odmawia 400, sprawdzenie nie wychodzi do sieci', async () => {
+    const opcje = { url: 'https://x.invalid', token: 't', organizacja: 1,
+      nadawca: { nazwa: 'N', ulica: 'U 1', kod: '00-001', miasto: 'M' }, fetchImpl: async () => { throw new Error('sieć'); } };
+    const prawdziwy = metody(createInpostClient(opcje));
+    const atrapa = createAtrapaInpost({ env: ENV_DEMO })(opcje);
+    expect(prawdziwy).toEqual(expect.arrayContaining(['nadaj', 'sprawdzPrzesylke', 'pobierzEtykiete', 'statusPrzesylki', 'sprawdzPolaczenie']));
+    expect(prawdziwy.filter((m) => !metody(atrapa).includes(m))).toEqual([]);
+    expect(ODMOWY_INPOST.filter((m) => !prawdziwy.includes(m))).toEqual([]);
+    expect(ODMOWY_INPOST).toContain('nadaj');
+    for (const m of ODMOWY_INPOST) {
+      const e = await atrapa[m]().catch((x) => x);
+      expect(e?.status, m).toBe(400);
+      expect(e?.message, m).toContain('Piaskownica');
+    }
+    await expect(atrapa.sprawdzPolaczenie()).resolves.toEqual({ ok: true });
+    await expect(createAtrapaInpost({ env: ENV_DEMO })({ ...opcje, token: 'zle' }).sprawdzPolaczenie()).rejects.toThrow('odrzucił');
+    expect(() => createAtrapaInpost({ env: {} })).toThrow('OMS_TRYB=proba');
   });
 
   it('metoda z listy odmów odmawia czytelnie, kodem 4xx (usługi zwalniają wtedy rezerwację)', async () => {

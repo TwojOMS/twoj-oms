@@ -17,6 +17,9 @@ import { definicjeKanalow, konfiguracjaKanalow } from '../../../src/moduly/kanal
 import { createModulZamowienia } from '../../../src/moduly/zamowienia/modul.ts';
 import { createAtrapaInfaktu, createAtrapaVies } from './infakt.mjs';
 import { createAtrapaGus } from './gus.mjs';
+import { createAtrapaDpd } from './dpd.mjs';
+import { createAtrapaInpost } from './inpost.mjs';
+import { createModulWysylka } from '../../../src/moduly/wysylka/modul.ts';
 import { createModulWiadomosciAtrapy } from './poczta.mjs';
 import { createAtrapaLacznosci } from './lacznosc.mjs';
 import { zbudujAtrapyKanalow, stanyKanalowAtrapy } from './kanaly.mjs';
@@ -37,6 +40,8 @@ export function modulyPiaskownicy(env) {
     // PRZ-087: poczta — atrapa bez wysyłki, żeby karta zamówienia miała sekcję wiadomości (poczta.mjs).
     if (m.nazwa === 'wiadomosci') return createModulWiadomosciAtrapy(env);
     if (m.nazwa === 'zamowienia') return createModulZamowienia({ zWiadomosciami: m.wymaga.includes('wiadomosci'), fabryki: gus });
+    // PRZ-092: kurier DPD z Ustawień — atrapa zamiast prawdziwego klienta (dpd.mjs); PRZ-093.09: to samo dla InPostu.
+    if (m.nazwa === 'wysylka') return createModulWysylka({ fabryki: { createDpd: createAtrapaDpd({ env }), createInpost: createAtrapaInpost({ env }) } });
     return m;
   });
 }

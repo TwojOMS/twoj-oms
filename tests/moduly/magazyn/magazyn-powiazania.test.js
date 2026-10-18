@@ -250,7 +250,7 @@ describe('GET /magazyn/powiazania — gdy nie ma z czym wiazac', () => {
     const r = await get(app, '/magazyn/powiazania');
 
     expect(r.statusCode).toBe(200);
-    expect(r.body).toContain('SKLEP_*/ALLEGRO_*');
+    expect(r.body).toContain('OMS_KANALY');
   });
 });
 

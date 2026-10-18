@@ -79,3 +79,23 @@ export function zamowieniaOkresu(db, { od, do: doDnia }, reguly = {}) {
   }
   return wybrane;
 }
+
+/**
+ * Dzień (Warszawa) najstarszego zamówienia w tabeli `zamowienia` albo `null` przy pustej bazie.
+ *
+ * PRZ-093.07: domyślny początek danych zakładki, gdy instalacja nie ustawiła
+ * `OMS_STATYSTYKI_PIERWSZY_DZIEN` (env wygrywa — trasa pyta tę funkcję tylko bez niego).
+ * To prawdziwa odpowiedź na pytanie paska, bo `zamowieniaOkresu` czyta WYŁĄCZNIE wiersze
+ * `zamowienia` (przez `listaZamowien`): przed pierwszym z nich statystyki nie mają czego liczyć.
+ * Ta sama kotwica co w `zamowieniaOkresu` — `dzienWarszawa(utworzone_at)`, nie `MIN()` w SQL na
+ * tekście, bo znaczniki czasu z różnych kanałów różnią się strefą.
+ * Na liczby nie wpływa: decyduje tylko o pasku zastrzeżenia.
+ */
+export function pierwszyDzienZamowien(db) {
+  let pierwszy = null;
+  for (const { utworzone_at: utworzone } of db.prepare('SELECT utworzone_at FROM zamowienia').all()) {
+    const dzien = dzienWarszawa(utworzone);
+    if (dzien && (pierwszy === null || dzien < pierwszy)) pierwszy = dzien;
+  }
+  return pierwszy;
+}

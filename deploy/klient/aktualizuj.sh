@@ -3,7 +3,7 @@
 #   sudo sh /opt/oms/aktualizuj.sh status
 #   sudo sh /opt/oms/aktualizuj.sh deploy <oms-XXXXXXXXXXXX.tar.gz> <sha256 paczki>
 #   sudo sh /opt/oms/aktualizuj.sh accept <operacja>
-#   sudo sh /opt/oms/aktualizuj.sh recover <operacja> [--przywroc-baze]
+#   sudo sh /opt/oms/aktualizuj.sh recover <operacja> [--przywroc-baze | --porzuc-prace]   (porzuc-prace: tylko po przejściu na pracę)
 #   sudo sh /opt/oms/aktualizuj.sh compose <polecenie docker compose…>   (w bieżącym wydaniu)
 #   sudo sh /opt/oms/aktualizuj.sh produkcja      przejście z próby na pracę (PRZ-062): pierwszy raz zakłada
 #                                                  config/produkcja.env do uzupełnienia, drugi raz przełącza
@@ -393,7 +393,7 @@ retencja() {
 recover() {
   OP=$1; PRZYWROC=${2:-}
   wymagaj_roota
-  [ -z "$PRZYWROC" ] || [ "$PRZYWROC" = --przywroc-baze ] || [ "$PRZYWROC" = --porzuc-prace ] || fail 'Uzycie: recover <operacja> [--przywroc-baze | --porzuc-prace]'
+  [ -z "$PRZYWROC" ] || [ "$PRZYWROC" = --przywroc-baze ] || [ "$PRZYWROC" = --porzuc-prace ] || fail 'Uzycie: recover <operacja> [--przywroc-baze | --porzuc-prace] (porzuc-prace: tylko po przejsciu na prace, odklada baze pracy)'
   if [ -d "$BLOKADA" ] && [ ! -s "$STAN" ]; then
     # Przerwanie w chwili zakładania blokady: nic jeszcze nie zmieniono.
     [ "$OP" = nieznana ] || fail 'BLOKADA_BEZ_STANU — użyj: recover nieznana'
@@ -478,7 +478,10 @@ recover() {
 # usuwanie zamówień DEMO z żywej bazy zostawiłoby konto próby, jej kopie i numery w tej samej bazie.
 # Etapy: zablokowane → zatrzymane → kopia → przelaczanie → uruchomione → konto → czeka_na_akceptacje.
 # accept <op> kończy przejście; recover <op> (z każdego etapu, także po kill -9 i restarcie) wraca do próby.
-WYMAGANE_PRODUKCJI='OMS_SPRZEDAWCA_NIP OMS_RACHUNEK OMS_USER OMS_PASS DPD_NADAWCA_NAZWA DPD_NADAWCA_ULICA DPD_NADAWCA_KOD DPD_NADAWCA_MIASTO'
+# PRZ-093.08: adres firmy (DPD_NADAWCA_*) nie jest wymagany do startu — można go wpisać w panelu
+# (Ustawienia → Firma). Wpis w pliku wygrywa nad panelem. Kurier z pliku (DPD_URL, INPOST_TOKEN) nadal
+# wymaga adresu w pliku — tego pilnuje sam OMS przy starcie.
+WYMAGANE_PRODUKCJI='OMS_SPRZEDAWCA_NIP OMS_RACHUNEK OMS_USER OMS_PASS'
 
 # Wartość tak, jak przeczyta ją compose z env_file: OSTATNIA linia NAZWA= (compose bierze ostatnią),
 # bez CR i otaczających '…' / "…".
@@ -511,7 +514,8 @@ OMS_PASS=$haslo
 OMS_SPRZEDAWCA_NIP=
 OMS_RACHUNEK=
 OMS_SPRZEDAWCA_BDO=
-# Adres firmy: sprzedawca na proformie i nadawca paczek (kod pocztowy w postaci 00-000).
+# Adres firmy: sprzedawca na proformie i nadawca paczek (kod pocztowy w postaci 00-000). Opcjonalnie:
+# zostaw puste i wpisz adres w panelu (Ustawienia → Firma). Wpisany tutaj wygrywa nad panelem.
 DPD_NADAWCA_NAZWA=
 DPD_NADAWCA_ULICA=
 DPD_NADAWCA_KOD=
@@ -815,7 +819,7 @@ case "${1:-}" in
   status) [ "$#" -eq 1 ] || fail 'Uzycie: aktualizuj.sh status'; status ;;
   deploy) [ "$#" -eq 3 ] || fail 'Uzycie: aktualizuj.sh deploy <paczka.tar.gz> <sha256>'; deploy "$2" "$3" ;;
   accept) [ "$#" -eq 2 ] || fail 'Uzycie: aktualizuj.sh accept <operacja>'; accept "$2" ;;
-  recover) [ "$#" -ge 2 ] && [ "$#" -le 3 ] || fail 'Uzycie: aktualizuj.sh recover <operacja> [--przywroc-baze]'; recover "$2" "${3:-}" ;;
+  recover) [ "$#" -ge 2 ] && [ "$#" -le 3 ] || fail 'Uzycie: aktualizuj.sh recover <operacja> [--przywroc-baze | --porzuc-prace] (porzuc-prace: tylko po przejsciu na prace, odklada baze pracy)'; recover "$2" "${3:-}" ;;
   compose) shift; compose_biezace "$@" ;;
   produkcja) [ "$#" -eq 1 ] || fail 'Uzycie: aktualizuj.sh produkcja'; produkcja ;;
   zdrowie) [ "$#" -eq 1 ] || fail 'Uzycie: aktualizuj.sh zdrowie'; zdrowie_pelne ;;

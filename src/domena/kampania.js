@@ -3,7 +3,7 @@
 // (anulowane juz efektywne, oplacone_at juz z listy wplat) — zadna regula statusu ani
 // platnosci nie ma tu drugiej kopii: status daje wyliczStatus, kwote zamowienia
 // podsumowaniePozycji (ta sama miara, co lista i bariera faktury — lekcja z audytu:
-// raport liczacy inna miara niz faktura rozjechal sie o 225 zl).
+// raport liczacy inna miara niz faktura rozjechal sie o kilkaset zl).
 //
 // ⚠️ Dzien zamowienia to dzienWarszawa(utworzone_at) — ta sama funkcja, co filtr listy.
 // Porownania okna ida po napisach RRRR-MM-DD (kolejnosc leksykalna = kalendarzowa).
@@ -69,7 +69,7 @@ export function stanKampanii({ kampania, zamowienia, dzis }) {
   const kodMalymi = kampania.kod.toLowerCase();
 
   // Zamowienia z kodem TEJ kampanii — filtr po sparsowanej liscie, nie po LIKE w SQL:
-  // kod bedacy przedrostkiem innego (wrzesien30 / wrzesien305) nie ma prawa sie skleic.
+  // kod bedacy przedrostkiem innego (kod30 / kod305) nie ma prawa sie skleic.
   const zKodem = [];
   for (const z of zamowienia) {
     const kupony = kuponyZWiersza(z.kupony_json);
@@ -278,7 +278,7 @@ export function dolaczZrodla(stan, { meta = [], ga4 = [], stany = {} }) {
       // jedyna wartosc zasiegu, ktora jest prawdziwa bez zastrzezen.
       zasiegNajlepszyDzien: meta.length ? Math.max(...meta.map((w) => Number(w.zasieg) || 0)) : 0,
       // CPC liczone z WSZYSTKICH klikniec (nie samych linkowych) — dokladnie ta sama miara,
-      // co punkt odniesienia 0,125 zl z kampanii ruchowej VII–VIII.2026. Inna miara
+      // co punkt odniesienia (CPC z poprzedniej kampanii ruchowej). Inna miara
       // zamienilaby porownanie w mylace zestawienie dwoch roznych rzeczy.
       cpcZl: ilorazKwoty(wydatekGr, klikniecia),
       kosztUzyciaZl: wydatekGr > 0 ? ilorazKwoty(wydatekGr, stan.uzycia) : null,
@@ -330,7 +330,7 @@ export function dolaczZamowieniaZReklam(stan, { kampania, zamowieniaUtm = [] }) 
   const kodMalymi = kampania.kod.toLowerCase();
 
   // Dokladne dopasowanie kampanii na SPARSOWANEJ atrybucji — SQL (LIKE) zawezil zbior
-  // tylko do „jakakolwiek kampania", a prefiksy (wrzesien30/wrzesien305) rozstrzyga sie
+  // tylko do „jakakolwiek kampania", a prefiksy (kod30/kod305) rozstrzyga sie
   // tu, ta sama zasada co przy kuponach.
   const trafione = [];
   for (const z of zamowieniaUtm) {
@@ -466,7 +466,7 @@ export function alertyKampanii({ stan, meta = [], dzis }) {
   // co kafel i punkt odniesienia; mala probka nie bije (szum, nie trend). Bramka rozbiegu
   // ta sama, co przy cichym stopie: pierwszy dzien z wydatkiem bywa dniem CZESCIOWYM
   // (start wieczorem), a CPC z trzech godzin rozbiegu to nie tempo — zmierzone na
-  // produkcji 27.08: 8,68 zl / 33 klikniecia = 0,26 zl i falszywy alarm pierwszego ranka.
+  // danych produkcyjnych: kilka zl na kilkadziesiat klikniec dalo falszywy alarm pierwszego ranka.
   const klikWczoraj = Number(wierszWczoraj?.klikniecia) || 0;
   if (klikWczoraj >= MIN_KLIKNIEC_DLA_ALERTU && wydawalaWczesniej
     && wydatekWczorajGr / klikWczoraj > 2 * ODNIESIENIE_CPC_GR) {

@@ -80,8 +80,14 @@ if (ZADANIA_NADANIA * LIMIT_NADANIA_MS >= PROG_ZAWIESZONEGO_NADANIA_MS) {
   );
 }
 
+// PRZ-092: format strony etykiety PDF z formularza DPD w Ustawieniach. ZPL zawsze LBL_PRINTER (Zebra).
+export const FORMATY_ETYKIETY_DPD = Object.freeze(['LBL_PRINTER', 'A4']);
+
 /** @param {import('../../integracje/opcje.ts').OpcjeDpd} opcje */
-export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, channel, fetchImpl, http = transport({ fetchImpl, limitCzasuMs: LIMIT_NADANIA_MS }) }) {
+export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, channel, formatEtykiety = 'LBL_PRINTER', fetchImpl, http = transport({ fetchImpl, limitCzasuMs: LIMIT_NADANIA_MS }) }) {
+  if (!FORMATY_ETYKIETY_DPD.includes(formatEtykiety)) {
+    throw new Error(`createDpdClient: formatEtykiety musi być jednym z: ${FORMATY_ETYKIETY_DPD.join(', ')}.`);
+  }
   // Bez walidacji tu brak np. `nadawcy` wywala się dopiero przy pierwszym nadaniu
   // niezrozumiałym `TypeError: Cannot read properties of undefined` — zbyt późno
   // i zbyt niejasno na coś, co jest błędem konfiguracji, nie danych zamówienia.
@@ -404,7 +410,8 @@ export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, chan
     // To jest ten sam format strony, o który prosimy przy ZPL-u niżej — różni się wyłącznie
     // typem dokumentu. Etykiety pobrane WCZEŚNIEJ zostają na dysku takie, jakie były (A4):
     // panel niczego nie przegenerowuje, bo DPD odmawia powtórnego nadania tej samej paczki.
-    const odpEtykieta = await soap(cialoEtykietyV4(sessionId, 'PDF', 'LBL_PRINTER'));
+    // PRZ-092: instalacja bez drukarki etykiet wybiera w Ustawieniach „A4” — tylko ten PDF, ZPL niżej bez zmian.
+    const odpEtykieta = await soap(cialoEtykietyV4(sessionId, 'PDF', formatEtykiety));
 
     // V4 odpowiada camelCase'em i tez potrafi oddac 200 z bledem.
     const zle = pola(odpEtykieta, 'status').filter((s) => s !== 'OK');
@@ -447,5 +454,19 @@ export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, chan
     };
   }
 
-  return { nadaj, statusPrzesylki };
+  // PRZ-092 — „Sprawdź połączenie” z formularza DPD. findPostalCodeV1 niczego nie zakłada po stronie DPD
+  // (bez numeru listu, etykiety, protokołu), a wymaga tego samego authDataV1 co nadanie — więc odrzucone
+  // logowanie wychodzi tu, a nie przy pierwszej płatnej paczce. Sukces = brak faultu i <return> w odpowiedzi;
+  // status kodu pocztowego nadawcy nie rozstrzyga o logowaniu, więc go nie oceniamy.
+  // ⚠️ Kształt odpowiedzi sukcesu wzięty z dpdservices.xsd, nie z przechwycenia żywego serwera.
+  async function sprawdzPolaczenie() {
+    const odp = await soap(`<dpd:findPostalCodeV1>
+      <postalCodeV1><countryCode>${esc(nadawca.kraj ?? 'PL')}</countryCode><zipCode>${kodPocztowy(nadawca.kod)}</zipCode></postalCodeV1>
+      <authDataV1><login>${esc(login)}</login><masterFid>${esc(fid)}</masterFid><password>${esc(haslo)}</password></authDataV1>
+    </dpd:findPostalCodeV1>`);
+    if (pole(odp, 'return') === null) throw bladOperatora('DPD odpowiedziało, ale nie rozpoznaję odpowiedzi — sprawdź adres usługi.');
+    return { ok: true };
+  }
+
+  return { nadaj, statusPrzesylki, sprawdzPolaczenie };
 }

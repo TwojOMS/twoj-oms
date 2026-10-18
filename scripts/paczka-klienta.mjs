@@ -21,11 +21,13 @@ const DOKLADNE = new Set([
   'docs/instalacja-klienta.md', 'docs/instalacja-docker.md', 'docs/aktualizacje-klienta.md', 'docs/aktualizacja-klienta-v0.md',
 ]);
 const PREFIKSY = ['src/', 'deploy/klient/'];
+// Dokumenty kurierów (docs/kurier-dpd.md, docs/kurier-inpost.md…): instrukcja instalacji odsyła do nich z ekranu Integracji.
+const WZORCE = [/^docs\/kurier-[a-z0-9-]+\.md$/];
 
-/** Lista plików paczki z listy plików commita: dokładne nazwy + całe src/ i deploy/klient/. */
+/** Lista plików paczki z listy plików commita: dokładne nazwy, wzorce dokumentów kurierów + całe src/ i deploy/klient/. */
 export function plikiPaczki(plikiCommita) {
   return plikiCommita
-    .filter(p => DOKLADNE.has(p) || PREFIKSY.some(prefiks => p.startsWith(prefiks)))
+    .filter(p => DOKLADNE.has(p) || PREFIKSY.some(prefiks => p.startsWith(prefiks)) || WZORCE.some(w => w.test(p)))
     .filter(p => !/(^|\/)\.env$/.test(p))
     .sort();
 }

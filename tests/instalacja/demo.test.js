@@ -75,6 +75,14 @@ describe('samodzielne syntetyczne demo instalacji', () => {
     const p = path.join(root(), 'demo ze spacją'); const result = cli(p, 39383);
     expect(result.status, result.stderr).toBe(0); expect(result.stdout).toContain('demo-zakonczone');
     expect(result.stdout + result.stderr).not.toContain('foreign-demo-secret');
+    // PRZ-093.03: po sukcesie człowiek dostaje „co dalej” (adres, plik z hasłem, otwarcie, zatrzymanie);
+    // ostatnia linia zostaje JSON-em dla maszyn.
+    const liniaJson = result.stdout.trim().split(/\r?\n/).at(-1);
+    expect(JSON.parse(liniaJson).status).toBe('demo-zakonczone');
+    expect(result.stdout).toContain('http://127.0.0.1:39383/login');
+    expect(result.stdout).toContain(path.join(p, 'administrator-proby.env'));
+    expect(result.stdout).toContain(`instalacja-otworz.mjs --katalog "${p}" --port 39383`);
+    expect(result.stdout).toContain('Ctrl+C');
     const env = odczytajEnv(path.join(p, 'proba.env'));
     expect(env.OMS_KANALY).toBe('[]'); expect(JSON.stringify(env)).not.toContain('foreign-demo-secret');
     const adminFile = fs.readFileSync(path.join(p, 'administrator-proby.env'), 'utf8');

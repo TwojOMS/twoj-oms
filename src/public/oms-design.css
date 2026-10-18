@@ -79,6 +79,9 @@ a.oms-theme-button,a.oms-theme-button:visited{text-decoration:none}
 .oms-settings-navigation ul{display:flex;flex-wrap:wrap;gap:4px;list-style:none;padding:0;margin:0}
 .oms-settings-navigation li{margin:0}.oms-settings-navigation .panel-statusow a{padding:9px 10px;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;font-size:1rem;color:var(--tekst-przygaszony)}
 .oms-settings-navigation .panel-statusow .aktywna a{background:transparent;border-bottom-color:var(--marka);color:var(--tekst);font-weight:600}
+/* layout-oms.ejs maluje aktywną pozycję paneli bocznych na biało (:visited/:hover → --na-marce) — tu tło jest przezroczyste, więc biel znika w jasnym motywie */
+.oms-settings-navigation .panel-statusow li.aktywna a:not(.btn):visited,.oms-settings-navigation .panel-statusow li.aktywna a:not(.btn):hover{color:var(--tekst)}
+.oms-settings-navigation .panel-statusow li.aktywna a:hover{background:transparent}
 .oms-settings-navigation .nawigacja-kontekstowa--mobile{display:none}
 @media(max-width:650px){.oms-settings-navigation .kolumna-boczna{display:none}.oms-settings-navigation .nawigacja-kontekstowa--mobile{display:block;margin:0}.oms-settings-navigation ul{display:grid;grid-template-columns:1fr 1fr}.oms-settings-navigation .panel-statusow a{font-size:1rem;min-height:44px}}
 @media print{.oms-sidebar,.oms-topbar,.oms-order-statuses,.oms-settings-navigation{display:none!important}.oms-shell{display:block}.oms-main > .kolumna-glowna{padding:0}}

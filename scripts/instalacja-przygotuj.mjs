@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PLIKI_INSTALACJI, hasloLosowe, opcje } from './instalacja-wspolne.mjs';
 
-const SZABLON_PRODUKCJI = `# Szablon przyszłego wdrożenia; paczka próbna nie uruchamia produkcji.\n# Wpisz ścieżki bezwzględne do osobnego, pustego katalogu danych produkcyjnych.\n# Nie używaj katalogu programu ani bazy/plików próby.\nOMS_TRYB=produkcja\nOMS_DB_PATH=\nOMS_PORT=3001\nOMS_SPRZEDAWCA_NIP=\nOMS_RACHUNEK=\nOMS_PROFORMY_KATALOG=\nOMS_ETYKIETY_KATALOG=\nOMS_USER=\nOMS_PASS=\nOMS_KANALY=[]\nOMS_RAPORTY_NAZWY_KANALOW={}\n# Integracje dopisuj pojedynczo po odbiorze; nie kopiuj wartości z próby.\n`;
+const SZABLON_PRODUKCJI = `# Szablon przyszłego wdrożenia; paczka próbna nie uruchamia produkcji.\n# Wpisz ścieżki bezwzględne do osobnego, pustego katalogu danych produkcyjnych.\n# Nie używaj katalogu programu ani bazy/plików próby.\nOMS_TRYB=produkcja\nOMS_DB_PATH=\nOMS_PORT=3001\nOMS_SPRZEDAWCA_NIP=\nOMS_RACHUNEK=\n# Adres firmy (sprzedawca na proformie, nadawca paczek; kod w postaci 00-000). Opcjonalnie: zostaw puste\n# i wpisz adres w panelu (Ustawienia → Firma). Wpisany tutaj wygrywa nad panelem.\nDPD_NADAWCA_NAZWA=\nDPD_NADAWCA_ULICA=\nDPD_NADAWCA_KOD=\nDPD_NADAWCA_MIASTO=\nOMS_PROFORMY_KATALOG=\nOMS_ETYKIETY_KATALOG=\nOMS_USER=\nOMS_PASS=\nOMS_KANALY=[]\nOMS_RAPORTY_NAZWY_KANALOW={}\n# Integracje dopisuj pojedynczo po odbiorze; nie kopiuj wartości z próby.\n`;
 
 function envProby(katalog, port, haslo) {
   return [

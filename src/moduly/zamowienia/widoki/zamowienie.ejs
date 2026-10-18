@@ -931,7 +931,7 @@
   <div class="panel-glowa"><h2>Przesyłka</h2></div>
   <div class="panel-cialo">
     <% if (z.metoda_wysylki === 'nieznana') { %>
-      <p class="pasek-uwaga">Nieznana metoda wysyłki — tego zamówienia nie nadasz z panelu. Nadaj w Apilo albo zarejestruj paczkę niżej.</p>
+      <p class="pasek-uwaga">Nieznana metoda wysyłki — tego zamówienia nie nadasz z panelu. Nadaj ręcznie u przewoźnika albo zarejestruj paczkę niżej.</p>
     <% } %>
 
     <%# Anulowanie PO nadaniu. Sam status „Anulowane" wyglada jak sprawa zamknieta, a paczka %>
@@ -1599,7 +1599,7 @@
         </p>
       <% } %>
       <% if (!mozliwaFaktura && !z.faktura && !wOkresie) { %>
-        <p class="pasek-uwaga">inFakt nie jest skonfigurowany — faktury z panelu nie wystawisz.</p>
+        <p class="pasek-uwaga">inFakt nie jest skonfigurowany — faktury z panelu nie wystawisz. Klucz API wpiszesz w <a href="/ustawienia/integracje/infakt">Ustawienia → Integracje → inFakt</a>.</p>
       <% } %>
     <% } %>
 
@@ -1724,7 +1724,7 @@
           jest błędna, potrzebna jest KOREKTA.
         </p>
       <% } else if (!mozliwaFakturaAllegro) { %>
-        <p class="pasek-uwaga">Kanał Allegro albo inFakt nie jest skonfigurowany — faktury stąd nie wyślesz.</p>
+        <p class="pasek-uwaga">Kanał Allegro albo inFakt nie jest skonfigurowany — faktury stąd nie wyślesz. Klucz API inFaktu wpiszesz w <a href="/ustawienia/integracje/infakt">Ustawienia → Integracje → inFakt</a>.</p>
       <% } else if (zgodaFakturaAllegro.wolno) { %>
         <% if (odrzuconyPrzezAllegro) { %>
           <%# ⚠️ PONOWIENIE PO ODRZUCENIU JEST BEZPIECZNE I DARMOWE, i karta ma to powiedziec %>

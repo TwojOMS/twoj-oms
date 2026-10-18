@@ -165,6 +165,11 @@ export async function oznaczDoreczonePobrania({ db, infakt, limit = LIMIT_PRZEBI
         dok = await infakt.pobierzFakture(w.infakt_uuid);
       } catch (e) {
         bledy += 1;
+        // ⚠️ PRZ-093.10 (P2 z recenzji): odmowa POŚREDNIKA „inFakt z Ustawień” (klucz odłączony do restartu,
+        // piaskownica bez atrapy) niesie 4xx, ale to nie jest odpowiedź inFaktu o tym dokumencie — do inFaktu nic
+        // nie poszło. Bez rezerwacji i bez wpisu w logu zamówienia; przerywamy przebieg, bo każdy następny dokument
+        // dostałby tę samą odmowę. Po ponownym podłączeniu następny przebieg oznaczy pobrania jak zwykle.
+        if (e?.bezInfaktu) break;
         // ⚠️⚠️ ODMOWA JEDNOZNACZNA (4xx) NIE MA PRAWA WRACAĆ CO GODZINĘ (recenzja poprawkowa
         // 28.08.2026, W5). Faktura SKASOWANA w inFakcie — przepływ wprost wspierany — oddaje
         // 404 NA ZAWSZE: bez rezerwacji byłby jeden `GET` na godzinę, jedna linia w logu

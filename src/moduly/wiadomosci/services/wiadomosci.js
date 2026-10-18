@@ -43,7 +43,11 @@ export function createWiadomosci({
   // config.sprzedawca to tożsamość prawna rdzenia; podpis i oprawa poczty są osobną marką.
   const oprawa = oprawaMaila(config.oprawaPoczty);
   const rachunek = config.proforma?.rachunek ?? null;
-  const odbiorcaPrzelewu = config.nadawca?.nazwa ?? '';
+  // PRZ-093.08: nazwa odbiorcy z TEGO SAMEGO źródła adresu firmy co proforma (plik DPD_NADAWCA_* wygrywa, potem
+  // Ustawienia → Firma), czytana przy każdym mailu — liczona raz przy starcie i tylko z pliku dawała pusty
+  // „Odbiorca: ” firmie z adresem wpisanym w panelu. Skład bez `config.adresFirmy` czyta config.nadawca jak dotąd.
+  const odbiorcaPrzelewu = () => (typeof config.adresFirmy === 'function'
+    ? config.adresFirmy()?.nazwa : config.nadawca?.nazwa) ?? '';
 
   /**
    * Fakty, od których zależą blokady i stany tematów.
@@ -163,7 +167,7 @@ export function createWiadomosci({
       // wtedy, gdy ten dokument naprawdę jedzie. Ta sama zasada, co przy `zalacznikProformy`
       // linijkę wyżej, i ten sam powód: przypomnienie bez proformy nie ma żadnego załącznika.
       zalaczonyDokument: zalaczniki.length > 0,
-      rachunek, odbiorca: odbiorcaPrzelewu, dzis: k.dzis, podpis: oprawa.podpis,
+      rachunek, odbiorca: odbiorcaPrzelewu(), dzis: k.dzis, podpis: oprawa.podpis,
     });
 
     return {

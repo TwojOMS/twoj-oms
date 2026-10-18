@@ -12,12 +12,19 @@ import { bladOperatora } from './bledy.js';
 // (nazwa i ulica sa wymagane, inaczej dokument nie ma kogo wskazac jako wystawce) w trasie
 // specyfikacji rozjechalaby sie z proforma przy pierwszej zmianie — jedna odmawialaby,
 // druga nie, mimo identycznej przyczyny.
+//
+// PRZ-093.08: adres firmy może stać w pliku (DPD_NADAWCA_*) albo być wpisany w Ustawieniach → Firma.
+// Moduły podają wtedy `config.adresFirmy()` — funkcję, a nie gotowy obiekt, bo konfiguracje są kopiowane
+// (`{ ...config }`) przy składaniu modułów, a adres z ekranu ma działać od następnego dokumentu, bez restartu.
+// Kolejność źródeł rozstrzyga src/oms/db/adres-firmy.js (plik → baza → brak); tu tylko odmowa przy braku.
+// `config.nadawca` zostaje dla wołających bez tej funkcji (testy, stare składy).
 export function adresSprzedawcy(config) {
-  const n = config?.nadawca;
+  const n = typeof config?.adresFirmy === 'function' ? config.adresFirmy() : config?.nadawca;
   if (!n?.nazwa || !n?.ulica) {
     throw bladOperatora(
-      'Panel nie zna adresu sprzedawcy (DPD_NADAWCA_*), więc dokument wyszedłby bez nazwy '
-      + 'i adresu wystawcy — takiego dokumentu nie da się wysłać klientowi.',
+      'Panel nie zna adresu sprzedawcy, więc dokument wyszedłby bez nazwy i adresu wystawcy — '
+      + 'takiego dokumentu nie da się wysłać klientowi. Wpisz adres firmy w Ustawienia → Firma '
+      + '(/ustawienia/firma) albo w pliku konfiguracji (DPD_NADAWCA_*).',
     );
   }
   return {

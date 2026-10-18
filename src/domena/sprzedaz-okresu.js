@@ -27,7 +27,7 @@ function granicaDla(mapa, kanal) {
   if (!g) {
     const e = new Error(
       `Raport nie wie, gdzie przebiega granica historii dla kanału ${kanal}.`
-      + ' Uzupełnij jawną granicę historii; sprawdź też, czy po zmianie raportu nie pozostała osierocona granica starego identyfikatora.',
+      + JAK_ZALOZYC_GRANICE,
     );
     e.dlaOperatora = true;
     throw e;
@@ -235,3 +235,12 @@ function sprawdzGraniceBezHistorii(db, klasyfikacja) {
     }
   }
 }
+
+// PRZ-093.07: ciąg dalszy odmowy z `granicaDla` — nowa instalacja dostaje polecenie, które
+// zakłada granicę (docs/instalacja-docker.md, sekcja 9), a nie samo „uzupełnij”. Składnia
+// polecenia jest dosłownie z instrukcji; skrypt pomija kanały z zaimportowaną historią.
+const JAK_ZALOZYC_GRANICE = ' Granicę kanału bez zaimportowanej historii zakłada polecenie na serwerze OMS:'
+  + ' sudo sh /opt/oms/aktualizuj.sh compose exec -T oms node scripts/produkcja-pierwszy-start.mjs --granice'
+  + ' (instrukcja instalacji, sekcja 9 „Integracje po kolei”; dzień granicy liczy samo: dzień przed datą z linii PREFIKS_OD kanału albo wczoraj).'
+  + ' Kanał z zaimportowaną historią (OMS_HISTORIA_KLASYFIKACJA) to polecenie pomija — jego granicę trzeba ustalić pomiarem.'
+  + ' Sprawdź też, czy po zmianie raportu nie pozostała osierocona granica starego identyfikatora.';

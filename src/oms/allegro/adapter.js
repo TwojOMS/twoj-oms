@@ -4,8 +4,8 @@ import { metodaZId } from '../../domena/allegro-dostawa.js';
 // Adapter kanalu Allegro — TEN SAM kontrakt, co woo/adapter.js, wiec poller nie wie, z kim
 // rozmawia (Zadanie 1). Reguly przebiegu (podloga po dacie zlozenia, jeden przebieg naraz,
 // kursor za najpozniejsza PRZETWORZONA modyfikacja) zostaja przez to JEDNE dla wszystkich
-// kanalow; ich druga kopia rozjechalaby sie po cichu, a pierwsza wersja kosztowala 8866
-// wciagnietych zamowien (01.08.2026).
+// kanalow; ich druga kopia rozjechalaby sie po cichu, a pierwsza wersja wciagnela
+// kilka tysiecy zamowien naraz.
 /** @param {import('../../integracje/opcje.ts').OpcjeAdapteraAllegro} opcje */
 export function createAllegroAdapter({ klient }) {
   return {

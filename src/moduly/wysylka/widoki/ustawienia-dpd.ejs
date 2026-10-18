@@ -1,0 +1,93 @@
+<h1>Kurier DPD Polska</h1>
+<p><a href="/ustawienia/integracje">← Integracje</a></p>
+
+<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
+<% if (test) { %>
+  <div class="<%= test.ok ? 'pas-potwierdzenie' : 'pas-uprzedzenie' %>" id="dpd-test"><p><strong><%= test.ok ? 'Działa.' : 'Nie działa.' %></strong> <%= test.tekst %></p></div>
+<% } %>
+<% if (bledy.length) { %>
+  <div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong></p><ul><% bledy.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
+<% } %>
+
+<% if (zEnv) { %>
+<section class="ust-sekcja" id="dpd-stan">
+  <h2>Podłączony w pliku konfiguracji</h2>
+  <p>Kurier DPD jest ustawiony w pliku konfiguracji serwera (<code>oms.env</code>, zmienne <code>DPD_…</code>). Ten ekran go nie zmienia — dane DPD poprawisz w tym pliku.</p>
+  <% if (stan) { %>
+    <form method="post" action="/ustawienia/integracje/dpd/odlacz">
+      <p>W OMS-ie zostały też dane DPD zapisane wcześniej na tym ekranie. Plik konfiguracji ma pierwszeństwo, więc nie są używane.</p>
+      <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń zapisane dane DPD</button></div>
+    </form>
+  <% } %>
+</section>
+<% } else { %>
+<section class="ust-sekcja" id="dpd-stan">
+  <% if (stan) { %>
+    <h2>Podłączony</h2>
+    <p>„<%= stan.ustawienia.nazwa %>” — zapisał <%= stan.kontoLogin ?? '—' %>, <%= fmtDataCzas(stan.zmienionoAt) %>.</p>
+    <% if (wymagaRestartu) { %><p class="pas-uprzedzenie">Nadawanie paczek włączy się po ponownym uruchomieniu OMS-u (to pierwszy kurier w tym panelu). Kolejne zmiany na tym ekranie działają od razu.</p><% } %>
+  <% } else { %>
+    <h2>Niepodłączony</h2>
+    <p>Potrzebujesz umowy z DPD Polska i danych dostępu do API DPD: loginu, głównego numeru klienta (Master FID) i hasła. Prosisz o nie DPD — Biuro Obsługi Klienta albo swojego opiekuna handlowego. Samo podłączenie w OMS-ie nie zakłada konta w DPD.</p>
+  <% } %>
+</section>
+
+<section class="ust-sekcja">
+  <h2>Dane kuriera</h2>
+  <form id="dpd-formularz" class="ust-formularz" method="post" action="/ustawienia/integracje/dpd">
+    <label for="dpd-nazwa">Nazwa <span class="ust-wymagane">*</span></label>
+    <div><input id="dpd-nazwa" name="nazwa" value="<%= pola.nazwa %>" maxlength="60" required>
+      <p class="ust-pomoc">Dowolna nazwa, po której rozpoznasz ten rodzaj wysyłki.</p></div>
+
+    <label>Adres nadawcy</label>
+    <div>
+      <% const n = adresFirmy.adres; if (n && n.nazwa && n.ulica && n.kod && n.miasto) { %><div class="ust-wartosc"><%= n.nazwa %>, <%= n.ulica %>, <%= n.kod %> <%= n.miasto %></div>
+      <% } else { %><div class="ust-wartosc uwaga">Brak — wpisz adres firmy w <a href="<%= ekranAdresu %>">Ustawienia → Firma</a>. Bez adresu DPD nie nada paczki.</div><% } %>
+      <p class="ust-pomoc">Widoczny na etykiecie. To adres firmy — ten sam trafia na proformy i specyfikacje, dlatego ustawia się go w jednym miejscu: <a href="<%= ekranAdresu %>">Ustawienia → Firma</a><%= adresFirmy.zrodlo === 'plik' ? ' (tutaj: z pliku konfiguracji, DPD_NADAWCA_…)' : '' %>.</p>
+    </div>
+
+    <h3>Ustawienia</h3>
+    <label for="dpd-login">Login <span class="ust-wymagane">*</span></label>
+    <div><input id="dpd-login" name="login" value="<%= pola.login %>" maxlength="64" autocomplete="off" required>
+      <p class="ust-pomoc">Login podany przez DPD.</p></div>
+
+    <label for="dpd-fid">Główny numer klienta DPD <span class="ust-wymagane">*</span></label>
+    <div><input id="dpd-fid" name="fid" value="<%= pola.fid %>" inputmode="numeric" maxlength="12" autocomplete="off" required>
+      <p class="ust-pomoc">Master FID dla Web Services, podany przez DPD.</p></div>
+
+    <label for="dpd-haslo">Hasło <span class="ust-wymagane">*</span></label>
+    <div><input id="dpd-haslo" type="password" name="haslo" value="" maxlength="200" autocomplete="new-password"<% if (stan?.zapisaneSekrety?.haslo) { %> placeholder="zapisane — zostaw puste, żeby nie zmieniać"<% } else { %> required<% } %>>
+      <p class="ust-pomoc">Hasło podane przez DPD.</p></div>
+
+    <label for="dpd-etykieta">Typ etykiety <span class="ust-wymagane">*</span></label>
+    <div><select id="dpd-etykieta" name="typEtykiety" required>
+        <% typy.forEach(function (t) { %><option value="<%= t.klucz %>"<%= pola.typEtykiety === t.klucz ? ' selected' : '' %>><%= t.etykieta %></option><% }); %>
+      </select>
+      <p class="ust-pomoc">W jakim formacie DPD odda etykietę do wydruku na paczce.</p></div>
+
+    <label for="dpd-kanal">Kanał śledzenia DPD Info</label>
+    <div><input id="dpd-kanal" name="kanal" value="" maxlength="64" autocomplete="off"<% if (stan?.zapisaneSekrety?.kanal) { %> placeholder="zapisany — zostaw puste, żeby nie zmieniać"<% } %>>
+      <p class="ust-pomoc">Opcjonalny, osobny dostęp od DPD do statusów paczek. Bez niego OMS nadaje paczki, ale nie pokazuje ich statusów z DPD.</p></div>
+
+    <p class="ust-pelna ust-pomoc">Wagi i wymiary paczek ustawiasz raz dla wszystkich kurierów: <a href="/ustawienia/zamowienia-i-wysylka">Zamówienia i wysyłka → szablony paczek</a>. Pola oznaczone <span class="ust-wymagane">*</span> są wymagane.</p>
+    <div class="ust-pelna ust-akcje">
+      <button class="btn btn--glowny" type="submit">Zapisz</button>
+      <a class="ust-przycisk" href="/ustawienia/integracje">Anuluj</a>
+    </div>
+  </form>
+</section>
+
+<% if (stan) { %>
+<section class="ust-sekcja">
+  <h2>Sprawdzenie i odłączenie</h2>
+  <form method="post" action="/ustawienia/integracje/dpd/sprawdz">
+    <p>Sprawdzenie pyta DPD o kod pocztowy nadawcy Twoimi danymi logowania. Niczego nie nadaje i nic nie kosztuje.</p>
+    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Sprawdź połączenie</button></div>
+  </form>
+  <form method="post" action="/ustawienia/integracje/dpd/odlacz" onsubmit="return confirm('Odłączyć kuriera DPD? OMS usunie zapisane dane logowania.')" style="margin-top:1rem">
+    <p>Odłączenie usuwa dane logowania z OMS-u. Paczki już nadane i ich etykiety zostają.</p>
+    <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Odłącz DPD</button></div>
+  </form>
+</section>
+<% } %>
+<% } %>

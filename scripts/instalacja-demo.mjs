@@ -3,7 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { opcje, PLIKI_INSTALACJI } from './instalacja-wspolne.mjs';
+import { opcje, PLIKI_INSTALACJI, powodPotomka, sekretyKatalogu, oczyscPowod, coDalejLokalnie } from './instalacja-wspolne.mjs';
+
+const LIMIT_ETAPU_MS = 60_000;
 
 function bezDowiazan(katalog) {
   const root = path.parse(katalog).root;
@@ -27,9 +29,14 @@ function etap(name, katalog, port) {
   bezDowiazan(katalog);
   const script = fileURLToPath(new URL(`./instalacja-${name}.mjs`, import.meta.url));
   const result = spawnSync(process.execPath, [script, '--katalog', katalog, '--port', String(port)], {
-    cwd: fileURLToPath(new URL('..', import.meta.url)), env: {}, encoding: 'utf8', timeout: 60000,
+    cwd: fileURLToPath(new URL('..', import.meta.url)), env: {}, encoding: 'utf8', timeout: LIMIT_ETAPU_MS,
   });
-  if (result.status !== 0) throw Error('INSTALACJA_DEMO_' + name.toUpperCase() + '_ODMOWA');
+  // PRZ-093.03: kod etapu zostaje (parsują go testy i kontener), ale z powodem — wcześniej przyczyna
+  // (zajęty port, stary Node, limit 60 s) ginęła i człowiek widział samo INSTALACJA_DEMO_PROBA_ODMOWA.
+  if (result.status !== 0) {
+    const powod = powodPotomka(result, { limitMs: LIMIT_ETAPU_MS, sekrety: sekretyKatalogu(katalog) });
+    throw Error(`INSTALACJA_DEMO_${name.toUpperCase()}_ODMOWA: ${powod}`);
+  }
 }
 // Daty względem chwili instalacji (PRZ-089): ze sztywnym 2026-01-01…03 pierwszy ekran nowicjusza po pół roku
 // pokazywał „po terminie o 204 dni rob.”. Zamówienie N złożone N godzin temu, wpłata 10 min później.
@@ -83,9 +90,12 @@ async function main() {
     try { if (copy.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw Error('INSTALACJA_DEMO_INTEGRITY_ODMOWA'); }
     finally { copy.close(); }
   }
+  for (const linia of coDalejLokalnie({ katalog, port })) console.log(linia);
   console.log(JSON.stringify({ status: 'demo-zakonczone', katalog, port, kopiaDemo: backup, odtworzenieDemo: restore, dane: '3 zamówienia syntetyczne; integracje niepodłączone' }));
 }
 main().catch(error => {
-  console.error(error instanceof Error && /^INSTALACJA_/.test(error.message) ? error.message : 'INSTALACJA_DEMO_ODMOWA');
+  // Demo nie trzyma haseł w pamięci; powód to komunikat błędu (np. ścieżka, SQLite) w jednej linii.
+  console.error(error instanceof Error && /^INSTALACJA_/.test(error.message) ? error.message
+    : `INSTALACJA_DEMO_ODMOWA: ${oczyscPowod(error instanceof Error ? error.message : error)}`);
   process.exitCode = 1;
 });

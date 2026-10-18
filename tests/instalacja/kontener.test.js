@@ -119,6 +119,11 @@ describe('pierwszy start w kontenerze (instalacja-kontener.mjs)', () => {
     const wynik = uruchom(dane, konfiguracja, 39160, { OMS_PASS: 'cudzy-sekret', ALLEGRO_CLIENT_SECRET: 'cudzy-sekret' });
     expect(wynik.status, wynik.stderr).toBe(0);
     expect(wynik.stdout).toContain('instalacja-zakonczona');
+    // PRZ-093.03: „co dalej” dla człowieka, JSON nadal ostatnią linią (instrukcja Dockera: „Kończy się wierszem…”).
+    expect(JSON.parse(wynik.stdout.trim().split(/\r?\n/).at(-1)).status).toBe('instalacja-zakonczona');
+    expect(wynik.stdout).toContain('sudo docker compose up -d');
+    expect(wynik.stdout).toContain(':39160/login');
+    expect(wynik.stdout).toContain(path.join(konfiguracja, 'administrator-proby.env'));
     // Sekret żyje w jednym miejscu: katalog danych (kopie zapasowe) nie ma pliku env ani hasła admina.
     for (const plik of ['proba.env', 'administrator-proby.env', 'produkcja.env.example']) expect(fs.existsSync(path.join(dane, plik))).toBe(false);
     const env = fs.readFileSync(path.join(konfiguracja, 'oms.env'), 'utf8');
