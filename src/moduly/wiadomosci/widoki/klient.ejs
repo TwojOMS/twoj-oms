@@ -192,7 +192,7 @@
               <td><%= z.sklep %></td>
               <%# Barwa i etykieta statusu z TYCH SAMYCH funkcji, co na liscie zamowien —
                   ten sam status nie ma prawa wygladac tu inaczej niz po kliknieciu. %>
-              <td><span class="<%= klasaStatusu(st) %>"><%= ETYKIETY[st] ?? st %></span></td>
+              <td><span class="<%= klasaStatusu(st) %> znacznik-statusu"><%= ETYKIETY[st] ?? st %></span></td>
               <td class="liczba"><%= kwota(z.kwota_brutto) %> zł</td>
             </tr>
           <% }); %>

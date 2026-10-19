@@ -67,6 +67,28 @@ function tabelaPozycji(m) {
 const akapit = (tekst, extra = '') => `<p style="margin:0 0 14px;font-family:${FONT};font-size:15px;`
   + `line-height:1.6;color:${KOLOR.tekst};${extra}">${esc(tekst)}</p>`;
 
+/**
+ * Sekcje potwierdzenia jako BLOKI szablonu (PRZ-101.03) — te same kawałki HTML, które składa
+ * `renderPotwierdzenieHtml` niżej. Funkcja niżej zostaje nietknięta (mail bez zapisanego szablonu = dzisiejszy
+ * co do znaku); zgodność obu pilnuje tests/moduly/wiadomosci/szablony-rownosc.test.js.
+ */
+export function blokiHtmlPotwierdzenia(m) {
+  return {
+    pozycje: naglowek('Zamówienie') + tabelaPozycji(m),
+    sposob_platnosci: naglowek('Płatność') + linie([m.platnosc]),
+    wysylka: naglowek('Wysyłka') + linie([m.wysylka.metoda]) + (m.wysylka.adres
+      ? `<p style="margin:0 0 4px;font-family:${FONT};font-size:14px;line-height:1.6;color:${KOLOR.muted};">`
+        + `${m.wysylka.adres.map((l) => esc(l)).join('<br>')}</p>`
+      : `<p style="margin:0 0 4px;font-family:${FONT};font-size:14px;color:${KOLOR.muted};">`
+        + 'adres do uzgodnienia</p>'),
+    dane_do_faktury: naglowek('Faktura') + (m.faktura.chce
+      ? linie(['Tak — wystawimy na:'])
+        + `<p style="margin:0 0 4px;font-family:${FONT};font-size:14px;line-height:1.6;color:${KOLOR.muted};">`
+        + `${(m.faktura.linie.length ? m.faktura.linie : ['dane do uzgodnienia']).map((l) => esc(l)).join('<br>')}</p>`
+      : linie(['Nie'])),
+  };
+}
+
 export function renderPotwierdzenieHtml(m, { footer = '', naglowek: naglowekMarki = '' } = {}) {
   const body = [
     akapit('Dzień dobry,'),

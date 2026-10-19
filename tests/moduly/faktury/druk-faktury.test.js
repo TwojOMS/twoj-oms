@@ -79,7 +79,7 @@ describe('przycisk „Drukuj" przy fakturze', () => {
     expect(r.statusCode).toBeLessThan(400);
     expect(ostatniaPozycjaDlaFaktury(db, f.id)).toMatchObject({ status: 'oczekuje', proby: 0 });
     const log = db.prepare('SELECT * FROM log WHERE zamowienie_id = ? ORDER BY id').all(id).at(-1);
-    expect(log.wynik).toMatch(/DECYZJA CZŁOWIEKA \(adam\)/);
+    expect(log.wynik).toMatch(/Ręcznie \(adam\)/);
   });
 
   // Powtórny wydruk JEST dozwolony — papier się zaciął, wydruk wyszedł blady.
@@ -267,7 +267,7 @@ describe('stan wydruku na karcie i wyjście z zapętlenia', () => {
     expect(ostatniaPozycjaDlaFaktury(db, f.id).status).toBe('porzucone');
     expect(fakturyDoWziecia(db)).toEqual([]);
     const log = db.prepare('SELECT * FROM log WHERE zamowienie_id = ? ORDER BY id').all(id).at(-1);
-    expect(log.wynik).toMatch(/DECYZJA CZŁOWIEKA \(adam\)/);
+    expect(log.wynik).toMatch(/Ręcznie \(adam\)/);
   });
 
   it('po wydrukowaniu karta mówi kiedy — żeby nikt nie drukował drugi raz', async () => {

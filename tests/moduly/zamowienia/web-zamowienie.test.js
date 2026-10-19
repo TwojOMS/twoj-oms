@@ -731,7 +731,7 @@ describe('odblokowanie faktury po sprawdzeniu w inFakcie', () => {
     expect(wiersz(id)).toBeUndefined();
 
     const wpis = db.prepare("SELECT * FROM log WHERE zamowienie_id = ? AND akcja = 'faktura.odblokowanie'").get(id);
-    expect(wpis.wynik).toMatch(/DECYZJA CZŁOWIEKA/);
+    expect(wpis.wynik).toMatch(/Ręcznie( \(|:)/);
     // Kto i kiedy — bez tego log nie odpowiada na jedyne pytanie, ktore ktos kiedys zada.
     expect(wpis.wynik).toContain('adam');
     expect(wpis.wynik).toContain(DAWNO);
@@ -867,7 +867,7 @@ describe('faktura skasowana w inFakcie — wyjście dla operatora', () => {
     expect(wiersz(id)).toBeUndefined();
 
     const wpis = db.prepare("SELECT * FROM log WHERE zamowienie_id = ? AND akcja = 'faktura.skasowana'").get(id);
-    expect(wpis.wynik).toMatch(/DECYZJA CZŁOWIEKA/);
+    expect(wpis.wynik).toMatch(/Ręcznie( \(|:)/);
     expect(wpis.wynik).toContain('adam');
     // Bez numeru i UUID skasowanego dokumentu log nie odpowie po miesiacu na pytanie,
     // co sie z ta faktura stalo.
@@ -1077,7 +1077,7 @@ describe('zawieszone nadanie — wyjście dla operatora', () => {
     expect(przesylka(id).status).toBe('blad');
 
     const wpis = db.prepare("SELECT * FROM log WHERE zamowienie_id = ? AND akcja = 'przesylka.odblokowanie'").get(id);
-    expect(wpis.wynik).toMatch(/DECYZJA CZŁOWIEKA/);
+    expect(wpis.wynik).toMatch(/Ręcznie( \(|:)/);
     expect(wpis.wynik).toContain('adam');
     expect(wpis.wynik).toMatch(/paczki NIE MA/);
     // Hasla z naglowka Basic w logu byc NIE MOZE.
@@ -1187,7 +1187,7 @@ describe('domknięcie przesyłki „do wyjaśnienia”', () => {
     expect(przesylka(id).numer_listu).toBe('1000000000001U');
 
     const wpis = db.prepare("SELECT * FROM log WHERE zamowienie_id = ? AND akcja = 'przesylka.domkniecie'").get(id);
-    expect(wpis.wynik).toMatch(/DECYZJA CZŁOWIEKA/);
+    expect(wpis.wynik).toMatch(/Ręcznie( \(|:)/);
     expect(wpis.wynik).toContain('adam');
     expect(wpis.wynik).toContain('1000000000001U');
 
@@ -1242,7 +1242,7 @@ describe('sprawa przesyłki załatwiona ręcznie', () => {
     expect(przesylka(id).sync_woo_blad).toBeNull();
 
     const wpis = db.prepare("SELECT * FROM log WHERE zamowienie_id = ? AND akcja = 'przesylka.sprawa-zalatwiona'").get(id);
-    expect(wpis.wynik).toMatch(/DECYZJA CZŁOWIEKA/);
+    expect(wpis.wynik).toMatch(/Ręcznie( \(|:)/);
     expect(wpis.wynik).toContain('adam');
     expect(wpis.wynik).not.toContain('x:');
 

@@ -3,7 +3,7 @@
     zamowienia. Widok NIE LICZY NICZEGO SAM: etap, dni i „bez ruchu" przychodza z trasy
     (web/routes/przesylki.js), ktora pyta te same reguly, co pastylka na karcie i czuwacz
     (domain/etap-przesylki.js). %>
-<link rel="stylesheet" href="/public/tabele-prz065.css">
+<link rel="stylesheet" href="<%= zasob('tabele-prz065.css') %>">
 <section class="prz065-tabele prz065-przesylki">
   <p class="wroc"><a href="/">← Wróć do listy zamówień</a></p>
 
@@ -187,4 +187,4 @@
   </div>
 </div>
 </section>
-<% if (pokaz === 'utworzone') { %><script src="/public/podjazdy-wybor.js" defer></script><% } %>
+<%# PRZ-100: usunięty skrypt podjazdy-wybor.js — pliku nie było w repo (404); wybór przesyłek działa formularzem bez skryptu. %>

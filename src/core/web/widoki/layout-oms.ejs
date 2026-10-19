@@ -79,6 +79,24 @@
       --st-indyw-kropka: #3d8b7f;
       --st-anulowane-tlo: #e8e2d6;
       --st-anulowane-kropka: #a49a88;
+      --st-szary-tlo: #e8e2d6;
+      --st-szary-tekst: #605a50;
+      --st-szary-kropka: #a49a88;
+      --st-granatowy-tlo: #e0e5f4;
+      --st-granatowy-tekst: #2c396b;
+      --st-granatowy-kropka: #4e60a0;
+      --st-oliwkowy-tlo: #e7ebd4;
+      --st-oliwkowy-tekst: #4c5723;
+      --st-oliwkowy-kropka: #6c7d34;
+      --st-pomaranczowy-tlo: #f9e4d0;
+      --st-pomaranczowy-tekst: #86410c;
+      --st-pomaranczowy-kropka: #be681f;
+      --st-czerwony-tlo: #f7dede;
+      --st-czerwony-tekst: #8c2929;
+      --st-czerwony-kropka: #bd4545;
+      --st-rozowy-tlo: #f4dfeb;
+      --st-rozowy-tekst: #81305b;
+      --st-rozowy-kropka: #ac5285;
       /* Kupon rabatowy (kampania, 2026-08-25). MALINA jest tu jedyna wolna rodzina: kazda
          inna nalezy juz do STATUSU i staneloby to obok siebie na jednej karcie — niebieski
          „nowe", bursztyn „w realizacji", zielony „wyslane", morski „indywidualne", fiolet
@@ -157,6 +175,24 @@
       --st-indyw-kropka: #4fb3a2;
       --st-anulowane-tlo: #33312c;
       --st-anulowane-kropka: #8a8478;
+      --st-szary-tlo: #33312c;
+      --st-szary-tekst: #c8c2b6;
+      --st-szary-kropka: #8a8478;
+      --st-granatowy-tlo: #28304c;
+      --st-granatowy-tekst: #b9c6f2;
+      --st-granatowy-kropka: #879bd8;
+      --st-oliwkowy-tlo: #333b20;
+      --st-oliwkowy-tekst: #c5d592;
+      --st-oliwkowy-kropka: #9eae68;
+      --st-pomaranczowy-tlo: #49301e;
+      --st-pomaranczowy-tekst: #f4bf91;
+      --st-pomaranczowy-kropka: #dc975e;
+      --st-czerwony-tlo: #482829;
+      --st-czerwony-tekst: #f5acad;
+      --st-czerwony-kropka: #d87779;
+      --st-rozowy-tlo: #452a3c;
+      --st-rozowy-tekst: #f0b1d4;
+      --st-rozowy-kropka: #d17fae;
       /* Ta sama rodzina w ciemnym motywie — wpisana TUTAJ, w drugiej palecie (patrz
          ostrzezenie na gorze pliku): wartosc podana tylko wyzej dzialalaby w jasnym
          i znikala w ciemnym, po cichu. Kontrast zmierzony w przegladarce, nie oszacowany:
@@ -307,17 +343,26 @@
       /* niczego im nie zmienia. */
       color: var(--tekst);
     }
+    /* Pełna nazwa statusu może mieć 40 znaków — zawija się także w historii klienta. */
+    .znacznik-statusu { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+    .komorka-zamowienie .znacznik-statusu { max-width: 11rem; }
     /* KOLORY STATUSOW (lista i karta). Kazdy status ma wlasna barwe, bo na liscie trzeba go */
     /* rozpoznac katem oka, bez czytania — i to jest caly powod. Paleta jest ta sama, co przy */
     /* ikonach nizej: przygaszone tlo + ciemny tekst, zeby kontrast byl czytelny, a wiersz nie */
     /* zaczal krzyczec. Kolor sam NIE NIESIE znaczenia — obok zawsze stoi nazwa statusu, wiec */
     /* daltonista i czytnik ekranu traca tylko skrot, nie tresc (ta sama zasada, co przy ikonach). */
-    .znacznik--nowe { background: var(--st-nowe-tlo); color: var(--st-nowe-tekst); }
-    .znacznik--w-realizacji { background: var(--uwaga-tlo); color: var(--uwaga-tekst); }
-    .znacznik--wyslane { background: var(--ok-tlo); color: var(--ok-tekst); }
-    .znacznik--indywidualne { background: var(--st-indyw-tlo); color: var(--st-indyw-tekst); }
-    .znacznik--zwrot { background: var(--st-zwrot-tlo); color: var(--st-zwrot-tekst); }
+    .znacznik--nowe, select.ust-kolor:has(option[value="niebieski"]:checked) { background: var(--st-nowe-tlo); color: var(--st-nowe-tekst); }
+    .znacznik--w-realizacji, select.ust-kolor:has(option[value="zolty"]:checked) { background: var(--uwaga-tlo); color: var(--uwaga-tekst); }
+    .znacznik--wyslane, select.ust-kolor:has(option[value="zielony"]:checked) { background: var(--ok-tlo); color: var(--ok-tekst); }
+    .znacznik--indywidualne, select.ust-kolor:has(option[value="morski"]:checked) { background: var(--st-indyw-tlo); color: var(--st-indyw-tekst); }
+    .znacznik--zwrot, select.ust-kolor:has(option[value="fioletowy"]:checked) { background: var(--st-zwrot-tlo); color: var(--st-zwrot-tekst); }
     .znacznik--anulowane { background: var(--st-anulowane-tlo); color: var(--tekst-przygaszony); }
+    .znacznik--szary, select.ust-kolor:has(option[value="szary"]:checked) { background: var(--st-szary-tlo); color: var(--st-szary-tekst); }
+    .znacznik--granatowy, select.ust-kolor:has(option[value="granatowy"]:checked) { background: var(--st-granatowy-tlo); color: var(--st-granatowy-tekst); }
+    .znacznik--oliwkowy, select.ust-kolor:has(option[value="oliwkowy"]:checked) { background: var(--st-oliwkowy-tlo); color: var(--st-oliwkowy-tekst); }
+    .znacznik--pomaranczowy, select.ust-kolor:has(option[value="pomaranczowy"]:checked) { background: var(--st-pomaranczowy-tlo); color: var(--st-pomaranczowy-tekst); }
+    .znacznik--czerwony, select.ust-kolor:has(option[value="czerwony"]:checked) { background: var(--st-czerwony-tlo); color: var(--st-czerwony-tekst); }
+    .znacznik--rozowy, select.ust-kolor:has(option[value="rozowy"]:checked) { background: var(--st-rozowy-tlo); color: var(--st-rozowy-tekst); }
     /* Zegar wieku (spec 2026-08-23): kolor WYŁĄCZNIE po przekroczeniu terminu — wiersz
        dostaje mleczne tło i lewą krawędź, tę samą gramatykę co pas awarii kanału. Krawędź
        na PIERWSZEJ komórce (zaznaczenie), bo inset na <tr> nie działa w każdym silniku. */
@@ -394,6 +439,12 @@
     .kropka.znacznik--indywidualne { background: var(--st-indyw-kropka); }
     .kropka.znacznik--zwrot { background: var(--st-zwrot-kropka); }
     .kropka.znacznik--anulowane { background: var(--st-anulowane-kropka); }
+    .kropka.znacznik--szary { background: var(--st-szary-kropka); }
+    .kropka.znacznik--granatowy { background: var(--st-granatowy-kropka); }
+    .kropka.znacznik--oliwkowy { background: var(--st-oliwkowy-kropka); }
+    .kropka.znacznik--pomaranczowy { background: var(--st-pomaranczowy-kropka); }
+    .kropka.znacznik--czerwony { background: var(--st-czerwony-kropka); }
+    .kropka.znacznik--rozowy { background: var(--st-rozowy-kropka); }
     /* Pozycja dopisana albo poprawiona RECZNIE — liczba, ktorej sklep nie zna, a od ktorej */
     /* zalezy, ile panel uwaza, ze klient jest nam winien. Ma sie roznic od zwyklego */
     /* znacznika, ale nie krzyczec jak `.uwaga` (to nie jest blad, tylko decyzja czlowieka). */
@@ -715,6 +766,7 @@
       font: inherit; font-size: .85rem; padding: .28rem .4rem;
       border: 1px solid var(--marka-ramka); border-radius: .3rem; background: var(--powierzchnia); color: var(--tekst);
     }
+    #masowy-status { max-width: 10rem; }
     /* ⚠️ Kolor tekstu JAWNIE, mimo ze `.btn` ma juz `color: inherit`. Wlasnie przez to */
     /* dziedziczenie przycisk w ciemnym pasku dostawal kremowy tekst (var(--tlo)) na bialym */
     /* tle wlasnego `.btn` — czyli byl NIEWIDOCZNY. Zlapane dopiero na zrzucie ekranu, bo */
@@ -1702,6 +1754,15 @@
       color: var(--tekst); background: var(--tlo); border: 1px solid var(--ramka-pola); border-radius: 4px; resize: vertical; }
     .ust-prompt { margin: 0 0 .6rem; }
     .ust-akcje { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+    /* Statusy: jednakowe pola i widoczna barwa wyboru bez skryptu zmieniającego formularz. */
+    .ust-statusy-edycja { display: grid; grid-template-columns: minmax(8rem, 1fr) 8rem auto; gap: .5rem; align-items: end; }
+    .ust-statusy-edycja label { display: flex; flex-direction: column; gap: .25rem; font-size: .78rem; }
+    .ust-statusy-edycja input, .ust-statusy-edycja select { box-sizing: border-box; width: 100%; padding: .4rem .55rem; font: inherit; font-size: .88rem; border: 1px solid var(--ramka-pola); border-radius: 4px; background: var(--tlo); color: var(--tekst); }
+    #statusy-zamowien { margin-bottom: .9rem; }
+    #statusy-zamowien td:nth-child(3) .ust-akcje { flex-direction: column; align-items: stretch; }
+    #statusy-zamowien .ust-przycisk { white-space: nowrap; }
+    #statusy-zamowien .ust-przycisk:disabled { opacity: .45; cursor: default; background: var(--powierzchnia-2); color: var(--tekst-przygaszony); }
+    #statusy-zamowien td:last-child > form { margin-top: .4rem; }
     /* ⚠️ `text-decoration: none` DLA WARIANTU <a> („Sprawdź łączność"): ta klasa siedzi
        i na <button>, i na odnosniku, a odnosnik w ksztalcie przycisku byl podkreslony
        od zawsze — arkusz przegladarki podkresla kazde <a>, a ta regula ustawiala tylko
@@ -1712,6 +1773,77 @@
     .ust-szablon { border-top: 1px solid var(--ramka); padding: .8rem 0; }
     .ust-szablon-dodatkowe { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .4rem; }
     .ust-szablon-dodatkowe form { margin: 0; }
+    /* PRZ-101.03: Ustawienia → Szablony wiadomości. Kafel szerszy niż reszta ustawień — tabela tematów */
+    /* i pole treści listu w 42rem łamałyby każdy temat na dwie linie. */
+    .szw-sekcja { max-width: 60rem; }
+    .szw-tabela td.szw-temat { color: var(--tekst-przygaszony); }
+    .szw-tabela td.szw-akcja { text-align: right; white-space: nowrap; }
+    .szw-tabela + .ust-akcje, .szw-sekcja .przewijak-tabeli + .ust-akcje { margin-top: .8rem; }
+    .szw-licznik { margin-left: .4rem; font-size: .85rem; font-weight: 400; color: var(--tekst-przygaszony); }
+    .szw-powrot { margin: 0 0 .3rem; font-size: .88rem; }
+    .szw-formularz { display: grid; grid-template-columns: minmax(5rem, 7rem) minmax(0, 1fr); gap: .7rem 1rem; align-items: start; margin: .4rem 0 1rem; }
+    .szw-formularz > label { padding-top: .45rem; font-size: .88rem; color: var(--tekst); }
+    .szw-formularz input, .szw-formularz textarea { box-sizing: border-box; width: 100%; padding: .4rem .55rem; font: inherit; font-size: .92rem;
+      line-height: 1.5; color: var(--tekst); background: var(--tlo); border: 1px solid var(--ramka-pola); border-radius: 4px; }
+    .szw-formularz textarea { resize: vertical; min-height: 16rem; }
+    .szw-formularz .ust-pomoc { margin: .25rem 0 0; font-size: .78rem; color: var(--tekst-przygaszony); }
+    .szw-akcje { grid-column: 2; }
+    .szw-glowny { color: var(--na-marce); background: var(--marka); border-color: var(--marka); }
+    .szw-glowny:hover { background: var(--marka-ciemniej); }
+    .szw-naglowek { margin: 1.1rem 0 .3rem; padding-top: .9rem; font-size: .95rem; border-top: 1px solid var(--ramka); }
+    .szw-pola { display: grid; grid-template-columns: minmax(11rem, max-content) minmax(0, 1fr); gap: .4rem 1rem; margin: .5rem 0 1rem; font-size: .86rem; }
+    .szw-pola dt, .szw-pola dd { margin: 0; }
+    .szw-pola dd { color: var(--tekst-przygaszony); }
+    .szw-znacznik { display: inline-block; padding: 0 .35rem; font-size: .66rem; text-transform: uppercase; letter-spacing: .04em;
+      color: var(--tekst-przygaszony); border: 1px solid var(--ramka); border-radius: .6rem; }
+    .szw-znacznik--wymagane { color: var(--blad-tekst-mocny); border-color: var(--blad-ramka); }
+    .szw-usun { padding-top: .8rem; border-top: 1px solid var(--ramka); }
+    @media (max-width: 40rem) {
+      .szw-formularz { grid-template-columns: minmax(0, 1fr); gap: .3rem; }
+      .szw-akcje { grid-column: 1; }
+      .szw-pola { grid-template-columns: minmax(0, 1fr); gap: .1rem; }
+      .szw-pola dd { margin-bottom: .45rem; }
+    }
+    /* PRZ-101.10: telefon (390 px) — ekrany nocy 18/19.10 zmierzone w headless Edge. */
+    @media (max-width: 40rem) {
+      /* Karta: stale kolumny tabeli pozycji (3.2 + 3.6 + 8.5 + 7.5 rem) zjadaly 364 px z 364 —
+         nazwa produktu dostawala zero i lamala sie po jednej literze w wierszu. */
+      .tab-stala col.kol-mini { width: 3rem; }
+      .tab-stala col.kol-ilosc { width: 2.6rem; }
+      .tab-stala col.kol-cena { width: 5.6rem; }
+      .tab-stala col.kol-suma { width: 5.2rem; }
+      .tab-pozycje.tab-stala th, .tab-pozycje.tab-stala td { padding-left: .3rem; padding-right: .3rem; }
+      /* Scalanie: siedem rownych kolumn lamalo numer „2473” na „24/73” i ucinalo kwote.
+         Tu kolumny licza sie od tresci, bez lamania — tabela jedzie w bok we wlasnym
+         `.przewijak-tabeli`, strona nie. */
+      .scal-czlonkowie { table-layout: auto; width: 100%; white-space: nowrap; }
+      /* Statusy: wiersz jako karta — w tabeli kolor i „W gore / W dol” lezaly poza ekranem. */
+      #statusy-zamowien, #statusy-zamowien tbody, #statusy-zamowien tr, #statusy-zamowien td { display: block; }
+      #statusy-zamowien thead { display: none; }
+      #statusy-zamowien tr { padding: .7rem 0; border-bottom: 1px solid var(--ramka); }
+      #statusy-zamowien td { padding: .25rem 0; border: 0; }
+      #statusy-zamowien td:nth-child(3) .ust-akcje { flex-direction: row; }
+      .ust-statusy-edycja { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+      .ust-statusy-edycja button { grid-column: 1 / -1; justify-self: start; }
+      /* Szablony: w tabeli „Edytuj” — jedyna akcja wiersza — lezal poza ekranem. Wiersz jako
+         karta: nazwa, temat, treść jedna pod druga, „Edytuj” z prawej. Naglowek znika, wiec
+         jego slowo wraca przed wartoscia trzeciej kolumny. */
+      .szw-tabela, .szw-tabela tbody { display: block; }
+      .szw-tabela thead { display: none; }
+      .szw-tabela tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: .75rem; padding: .6rem 0; border-bottom: 1px solid var(--ramka); }
+      .szw-tabela td { display: block; padding: 0; border: 0; }
+      .szw-tabela td:not(.szw-akcja) { grid-column: 1; }
+      .szw-tabela td:first-child { font-weight: 600; }
+      .szw-tabela td:nth-child(3) { font-size: .82rem; color: var(--tekst-przygaszony); }
+      #szablony-wbudowane .szw-tabela td:nth-child(3)::before, #szablony-zespol .szw-tabela td:nth-child(3)::before { content: "Treść: "; }
+      #szablony-wlasne .szw-tabela td:nth-child(3)::before { content: "Zmieniony: "; }
+      .szw-tabela td.szw-akcja { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
+    }
+    /* Palec na telefonie: cel dotyku co najmniej 44 px (ten sam prog, co belka w oms-design.css). */
+    @media (pointer: coarse) and (max-width: 40rem) {
+      .btn, .ust-przycisk { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; }
+      select, .ust-statusy-edycja input, .ust-formularz input, .szw-formularz input { min-height: 44px; }
+    }
     /* Pola ustawien — ten sam raster, co „pola" na karcie zamowienia: waskie kolumny, */
     /* ktore na telefonie schodza pod siebie same, bez osobnej reguly w @media. */
     /* ⚠️ PALETA POZYCZONA Z `.ust-przycisk` (--tlo na tle --powierzchnia sekcji), a nie */
@@ -2027,8 +2159,8 @@
       ⚠️ Z WLASNEGO HOSTA (`/public/htmx.min.js`), nigdy z CDN-u. Panel chodzi w LAN-ie bez
       wyjscia na swiat, a plik jest ten sam, ktorego uzywa panel indywidualny — jedna kopia
       w repo, nie dwie do rozjechania. %>
-  <% if (htmx) { %><script src="/public/htmx.min.js"></script><% } %>
-  <link rel="stylesheet" href="/public/oms-design.css">
+  <% if (htmx) { %><script src="<%= zasob('htmx.min.js') %>"></script><% } %>
+  <link rel="stylesheet" href="<%= zasob('oms-design.css') %>">
 </head>
 <body>
   <%# PRZ-085: ekran bez własnego `panelStatusow` bierze liczby z pipeline'u (`licznikiStatusow`); `locals.`, bo
@@ -2075,11 +2207,19 @@
         </div>
       </header>
       <main class="kolumna-glowna">
-        <% if (nawigacja?.kontekst?.dzial === 'ustawienia') { %>
+        <%# PRZ-101.01: menu Ustawień to kolumna z lewej strony treści; na telefonie zwinięte w jeden wiersz z nazwą ekranu. %>
+        <% const menuUstawien = nawigacja?.kontekst?.dzial === 'ustawienia';
+          const ekranUstawien = menuUstawien ? (nawigacja.kontekst.grupy ?? []).flatMap(g => g.pozycje).find(p => p.aktywna) : null; %>
+        <% if (menuUstawien) { %>
+        <div class="oms-settings-layout">
           <div class="oms-settings-navigation">
             <%- include('_nawigacja-kontekstowa.ejs', {nawigacja,statusyMenu:[],mobilna:false}) %>
-            <%- include('_nawigacja-kontekstowa.ejs', {nawigacja,statusyMenu:[],mobilna:true}) %>
+            <details class="oms-settings-mobile">
+              <summary><span>Ustawienia<% if (ekranUstawien) { %>: <strong><%= ekranUstawien.etykieta %></strong><% } %></span></summary>
+              <%- include('_nawigacja-kontekstowa.ejs', {nawigacja,statusyMenu:[],mobilna:true}) %>
+            </details>
           </div>
+          <div class="oms-settings-content">
         <% } %>
         <%# PRZ-083: gosc demo publicznego OGLADA Ustawienia — tresc martwa (inert), nad nia jedno zdanie. Zapis i tak %>
         <%# zatrzymuje hak podglad-demo.js (403); `inert` oszczedza gosciowi klikania w cos, co nie zadziala. %>
@@ -2089,12 +2229,16 @@
         <% } else { %>
         <%- body %>
         <% } %>
+        <% if (menuUstawien) { %>
+          </div>
+        </div>
+        <% } %>
       </main>
     </div>
     </div>
   </div>
-  <script type="module" src="/public/oms-nawigacja.js"></script>
-  <% if (locals.demo?.resetPlanowy) { %><script type="module" src="/public/oms-demo.js"></script><% } %>
+  <script type="module" src="<%= zasob('oms-nawigacja.js') %>"></script>
+  <% if (locals.demo?.resetPlanowy) { %><script type="module" src="<%= zasob('oms-demo.js') %>"></script><% } %>
   <% } else { %><div class="tresc"><%- body %></div><% } %>
 </body>
 </html>

@@ -206,7 +206,7 @@ export function createKorekta({ db, infakt }) {
         // WYLACZNIE przy FAKCIE (tak samo jak w services/ksef-doczytanie.js): inaczej historia
         // zamowienia roslaby proporcjonalnie do liczby odslon ekranu.
         //
-        // ⚠️ To NIE JEST „DECYZJA CZŁOWIEKA" — nikt tego nie klikal. Panel przeczytal fakt
+        // ⚠️ To NIE JEST „Ręcznie (kto): …" — nikt tego nie klikal. Panel przeczytal fakt
         // u inFaktu i tak ma to zapamietac; ksztalt wzorowany na wpisie „dokument jest w KSeF".
         dopiszLog(db, zamowienieId, {
           akcja: 'zwrot.korekta.odczyt',

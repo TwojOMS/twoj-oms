@@ -19,6 +19,14 @@ import { kwotaOczekiwanaGrosze, zl } from './suma-pozycji.js';
 export function powodOdmowyFaktury(z) {
   if (!z) return 'Nie ma takiego zamówienia.';
 
+  // PRZ-101.04: JEDNA FAKTURA NA ZAMÓWIENIE SCALONE (decyzja właściciela 18.10). Dołączone jest częścią
+  // głównego — jego pozycje fakturuje faktura głównego (oms/db/scalenia.js). Własna faktura
+  // dołączonego = te same pozycje na dwóch dokumentach. Tej samej funkcji pyta wystawianie hurtem.
+  if (z.scalone_do) {
+    return `Zamówienie ${z.numer} jest scalone z zamówieniem ${z.scalone_do_numer ?? `#${z.scalone_do}`} — `
+      + 'faktura w zamówieniu głównym.';
+  }
+
   // ⚠️ ZAMOWIENIE ROZLICZANE ZBIORCZO NIE MA WLASNEJ FAKTURY — I TO JEST BLOKADA
   // O PIENIADZE, a nie o porzadek. Bez niej to samo zamowienie jedzie na dokument DWIEMA
   // drogami: pojedynczo z wlasnej karty, a potem drugi raz, zbiorczo, z ekranu okresu

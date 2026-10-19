@@ -20,6 +20,19 @@
   <% if(w.typ==='POST_PURCHASE_ISSUE'){ %>
     <div class="m-external"><strong>To problem z zakupem — odpowiedz w Allegro.</strong><p>Dyskusje i reklamacje mają własne terminy. Panel takich wątków nie obsługuje.</p></div>
   <% } else { %>
+    <%# PRZ-101.03: „Wstaw szablon" — szablony własne z Ustawień. Bez JS to GET z ?szablon= (pole przychodzi wypełnione); %>
+    <%# z JS (szablony-wiadomosci.js) treść wchodzi w miejsce kursora bez przeładowania, więc wybrane załączniki zostają. %>
+    <% if (typeof szablony !== 'undefined' && szablony.length) { %>
+      <form class="m-template" method="get" action="<%= adres %>" data-wstaw-szablon>
+        <label for="m-template">Wstaw szablon</label>
+        <select id="m-template" name="szablon">
+          <% szablony.forEach(s => { %><option value="<%= s.id %>"><%= s.nazwa %></option><% }) %>
+        </select>
+        <button type="submit">Wstaw</button>
+        <span class="m-help"><%= zamowienieSzablonow ? 'Pola z zamówienia nr ' + zamowienieSzablonow.numer + ' tego kupującego.' : 'Nie znaleziono zamówienia tego kupującego — pola z zamówienia zostaną puste.' %></span>
+        <% szablony.forEach(s => { %><template data-szablon="<%= s.id %>"><%= s.tekst %></template><% }) %>
+      </form>
+    <% } %>
     <form class="m-compose" method="post" enctype="multipart/form-data" action="<%= adres %>/odpowiedz" data-message-compose data-own-sent="<%= typeof potwierdzonyDowod!=='undefined'?potwierdzonyDowod:'' %>" data-own-text="<%= typeof potwierdzonyDowod!=='undefined'?(lista.find(d=>d.wyslany_at&&String(d.id)===potwierdzonyDowod)?.tresc||''):'' %>" data-draft-key="<%= JSON.stringify([typeof konto!=='undefined'&&konto?String(konto.id):'legacy',w.kanal,w.thread_id]) %>" data-sent-revision="<%= lista.filter(d=>d.wyslany_at).map(d=>d.id).join(',') %>" data-send-error="<%= !!blad %>">
       <label for="m-reply">Odpowiedź · <%= w.interlocutor_login || 'kupujący' %></label>
       <textarea id="m-reply" name="tresc" maxlength="<%= maks %>" rows="4" placeholder="Napisz odpowiedź…" required><%= szkic || '' %></textarea>

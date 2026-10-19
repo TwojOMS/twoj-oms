@@ -4,8 +4,11 @@ import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
 import {nawigacjaDla} from '../../src/domena/menu-stron.js';
 import {menuKontaDla} from '../../src/domena/menu-konta.js';
+import {adresZasobu} from '../../src/core/web/wersja-zasobow.js';
 const ejs=createRequire(import.meta.url)('ejs');
 const file=fileURLToPath(new URL('../../src/core/web/widoki/layout-oms.ejs',import.meta.url));
+// PRZ-100: serwer daje `zasob` każdemu widokowi (defaultContext) — render układu wprost dostaje to samo.
+const zasob=adresZasobu(fileURLToPath(new URL('../../src/public',import.meta.url)));
 const menu=[
   {uprawnienie:'zamowienia',etykieta:'Zamówienia',adres:'/',dzial:'sprzedaz',grupa:'obsluga',kolejnosc:10},
   {uprawnienie:'przesylki',etykieta:'Przesyłki',adres:'/przesylki',dzial:'sprzedaz',grupa:'obsluga',kolejnosc:20},
@@ -18,7 +21,7 @@ const menu=[
 ];
 const konto=(p:string[],admin=false)=>({imie:'Operator <test>',admin,uprawnienia:new Set(p)});
 const model=(sciezka='/',k:any=null,m=menu)=>nawigacjaDla({sciezka,konto:k,menu:m,odlozoneEkrany:['finanse']});
-async function render(n:any,k:any=null,extra:any={}){return ejs.renderFile(file,{title:'Przesyłki',motyw:'jasny',htmx:false,bezPaska:false,body:'<h1>Przesyłki</h1>',nawigacja:n,menuKonta:menuKontaDla(k,{powrot:'/przesylki?etap=utworzone'}),marka:{logoAlt:'Firma testowa'},modyfikatorStatusu:()=>null,...extra});}
+async function render(n:any,k:any=null,extra:any={}){return ejs.renderFile(file,{title:'Przesyłki',motyw:'jasny',htmx:false,bezPaska:false,body:'<h1>Przesyłki</h1>',nawigacja:n,menuKonta:menuKontaDla(k,{powrot:'/przesylki?etap=utworzone'}),marka:{logoAlt:'Firma testowa'},modyfikatorStatusu:()=>null,zasob,...extra});}
 describe('PRZ065 menu zaakceptowanej makiety',()=>{
   it('na każdej zakładce pokazuje wszystkie dozwolone ekrany z manifestów',()=>{
     const n=model('/przesylki') as any;

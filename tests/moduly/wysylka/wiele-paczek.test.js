@@ -794,7 +794,7 @@ describe('karta zamówienia — ukrywanie paczki zastąpionej przez kolejną', (
     expect(przesylki(id)[0].ukryta_at).toBeTruthy();
     const log = db.prepare("SELECT * FROM log WHERE akcja = 'przesylka.ukryj'").all();
     expect(log).toHaveLength(1);
-    expect(log[0].wynik).toMatch(/DECYZJA CZŁOWIEKA/);
+    expect(log[0].wynik).toMatch(/Ręcznie( \(|:)/);
   });
 
   // ⚠️ WIDOK NIE JEST BARIERA. Zadanie ze starej karty (albo zlozone z reki) na paczke,

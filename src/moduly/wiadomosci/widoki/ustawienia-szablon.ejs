@@ -1,0 +1,75 @@
+<%# PRZ-101.03: edycja jednego szablonu wiadomości. Zwykły textarea, lista pól pod spodem, podgląd GET-em. %>
+<p class="szw-powrot"><a href="/ustawienia/szablony-wiadomosci">← Szablony wiadomości</a></p>
+<h1><%= s.nowy ? 'Nowy szablon' : s.nazwa %></h1>
+
+<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
+<% if (blad) { %><div class="pas-uprzedzenie" role="alert"><p><strong>Nie zapisano.</strong> <%= blad %></p></div><% } %>
+
+<section class="ust-sekcja szw-sekcja">
+  <% if (s.wbudowany) { %>
+    <p><%= s.zmieniony ? 'Treść zmieniona ' + fmtDataCzasKrotko(s.zmieniono_at) + '.' : 'Treść domyślna, dostarczona z panelem.' %>
+      <% if (s.rodzaj !== 'potwierdzenie' && s.rodzaj !== 'konto') { %>Załącznik PDF dokłada panel, jak dotąd.<% } %></p>
+  <% } %>
+  <form method="post" action="/ustawienia/szablony-wiadomosci/<%= s.id %>" id="szw-formularz" class="szw-formularz">
+    <% if (!s.wbudowany) { %>
+      <label for="szw-nazwa">Nazwa</label>
+      <div>
+        <input id="szw-nazwa" name="nazwa" value="<%= f.nazwa %>" maxlength="<%= maks.nazwa %>" required>
+        <p class="ust-pomoc">Po niej wybierasz szablon na karcie zamówienia. Klient jej nie widzi.</p>
+      </div>
+    <% } %>
+    <label for="szw-temat">Temat</label>
+    <div><input id="szw-temat" name="temat" value="<%= f.temat %>" maxlength="<%= maks.temat %>" required></div>
+    <label for="szw-tresc">Treść</label>
+    <div>
+      <textarea id="szw-tresc" name="tresc" rows="18" maxlength="<%= maks.tresc %>" required spellcheck="true"><%= f.tresc %></textarea>
+      <p class="ust-pomoc">Akapity rozdziela pusta linia. Najwyżej <%= maks.tresc %> znaków.</p>
+    </div>
+    <div class="ust-akcje szw-akcje">
+      <button class="ust-przycisk szw-glowny" type="submit">Zapisz</button>
+      <button class="ust-przycisk" type="submit" formmethod="get" formaction="/ustawienia/szablony-wiadomosci/<%= s.id %>#szw-podglad" formnovalidate name="podglad" value="1">Podgląd</button>
+      <span class="wyjasnienie"><%= s.rodzaj === 'konto' ? 'Podgląd pokazuje mail ze zmyślonym linkiem i niczego nie zapisuje.' : 'Podgląd pokazuje mail na przykładowym zamówieniu i niczego nie zapisuje.' %></span>
+    </div>
+  </form>
+
+  <h3 class="szw-naglowek">Pola do wstawienia</h3>
+  <p>Wpisz nazwę pola w klamrach, np. <code>{imie}</code>.<% if (s.rodzaj === 'konto') { %> Link i jego ważność wstawia panel przy wysyłce z Ustawień → Użytkownicy.<% } else { %> Pole bez wartości w danym zamówieniu zostaje puste. Blok stoi sam w osobnej linii i wstawia całą sekcję — w mailu jako tabelę.<% } %></p>
+  <dl class="szw-pola">
+    <% pola.forEach(function (p) { %>
+      <dt><code>{<%= p.nazwa %>}</code><% if (p.blok) { %> <span class="szw-znacznik">blok</span><% } %><% if (p.wymagane) { %> <span class="szw-znacznik szw-znacznik--wymagane">obowiązkowe</span><% } %></dt>
+      <dd><%= p.opis %></dd>
+    <% }); %>
+  </dl>
+
+  <% if (s.wbudowany && s.zmieniony) { %>
+    <form method="post" action="/ustawienia/szablony-wiadomosci/<%= s.id %>/usun" class="ust-akcje szw-usun">
+      <button class="ust-przycisk" type="submit">Przywróć domyślny</button>
+      <span class="wyjasnienie">Wraca treść dostarczona z panelem; Twoja zmiana zniknie.</span>
+    </form>
+  <% } else if (!s.wbudowany && !s.nowy) { %>
+    <form method="post" action="/ustawienia/szablony-wiadomosci/<%= s.id %>/usun" class="ust-akcje szw-usun">
+      <button class="ust-przycisk grozny" type="submit">Usuń szablon</button>
+      <span class="wyjasnienie">Wysłane nim wiadomości zostają w historii zamówień.</span>
+    </form>
+  <% } %>
+</section>
+
+<% if (podglad) { %>
+  <section class="ust-sekcja szw-sekcja" id="szw-podglad">
+    <h2><%= s.rodzaj === 'konto' ? 'Podgląd na przykładowym koncie' : 'Podgląd na przykładowym zamówieniu' %></h2>
+    <% if (s.rodzaj === 'konto') { %>
+      <p>Pracownica Anna, link zmyślony — prawdziwy, jednorazowy link panel wstawia dopiero przy wysyłce z Ustawień → Użytkownicy. Nic nie zostało zapisane.</p>
+    <% } else { %>
+      <p>Zamówienie nr 1024 od Anny Nowak — dane zmyślone, także rachunek w danych do przelewu. W prawdziwym mailu panel wstawia dane zamówienia i rachunek z ustawień firmy. Nic nie zostało zapisane.</p>
+    <% } %>
+    <dl class="dane">
+      <dt>Do</dt><dd><%= podglad.do %></dd>
+      <dt>Temat</dt><dd><%= podglad.temat %></dd>
+    </dl>
+    <iframe class="podglad-maila-html" title="Podgląd wiadomości" sandbox srcdoc="<%= podglad.html %>"></iframe>
+    <details class="drobne">
+      <summary>Pokaż wersję tekstową (dla programów pocztowych bez HTML-a)</summary>
+      <pre class="podglad-maila"><%= podglad.tekst %></pre>
+    </details>
+  </section>
+<% } %>

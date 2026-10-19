@@ -118,6 +118,10 @@ export function czyWolnoWystawic(zamowienie) {
   if (!zamowienie) {
     return { wolno: false, powod: 'Nie ma takiego zamówienia — nie ma do czego wystawić proformy.' };
   }
+  // PRZ-101.04: dołączone nie ma własnych dokumentów — proforma tylko z zamówienia głównego.
+  if (zamowienie.scalone_do) {
+    return { wolno: false, powod: `Zamówienie jest scalone z zamówieniem ${zamowienie.scalone_do_numer ?? `#${zamowienie.scalone_do}`} — proforma w zamówieniu głównym.` };
+  }
   if (anulowaneEfektywnie(zamowienie)) {
     return {
       wolno: false,

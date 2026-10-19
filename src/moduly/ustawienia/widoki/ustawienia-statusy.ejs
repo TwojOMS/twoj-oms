@@ -1,0 +1,44 @@
+<h1>Statusy zamówień</h1>
+<p>Zmień nazwy, kolory i kolejność statusów. Statusy systemowe zachowują swoje działanie.</p>
+<% if (komunikat) { %><div class="<%= blad ? 'pas-uprzedzenie' : 'pas-potwierdzenie' %>" role="<%= blad ? 'alert' : 'status' %>"><p><%= komunikat %></p></div><% } %>
+<div class="przewijak-tabeli">
+<table class="tab-pozycje" id="statusy-zamowien">
+  <thead><tr><th>Status</th><th>Nazwa i kolor</th><th>Kolejność</th><th>Rodzaj</th></tr></thead>
+  <tbody>
+  <% statusy.forEach(function(s, i) { %>
+    <tr>
+      <td><span class="<%= klasaStatusu(s.klucz) %>"><%= s.etykieta %></span></td>
+      <td><form class="ust-statusy-edycja" method="post" action="/ustawienia/statusy">
+        <input type="hidden" name="akcja" value="edytuj"><input type="hidden" name="klucz" value="<%= s.klucz %>">
+        <label>Nazwa <input name="etykieta" value="<%= s.etykieta %>" required maxlength="40" aria-label="Nazwa statusu <%= s.etykieta %>"></label>
+        <label>Kolor <select class="ust-kolor" name="kolor" aria-label="Kolor statusu <%= s.etykieta %>">
+          <% Object.entries(paleta).forEach(function([k, p]) { %><option class="znacznik--<%= p.klasa %>" value="<%= k %>" <%= s.kolor === k ? 'selected' : '' %>><%= p.etykieta %></option><% }); %>
+        </select></label>
+        <button class="ust-przycisk" type="submit">Zapisz</button>
+      </form></td>
+      <td><form class="ust-akcje" method="post" action="/ustawienia/statusy">
+        <input type="hidden" name="klucz" value="<%= s.klucz %>">
+        <button class="ust-przycisk" name="akcja" value="gora" <%= i === 0 ? 'disabled' : '' %> aria-label="<%= s.etykieta %> — w górę">↑ W górę</button>
+        <button class="ust-przycisk" name="akcja" value="dol" <%= i === statusy.length - 1 ? 'disabled' : '' %> aria-label="<%= s.etykieta %> — w dół">↓ W dół</button>
+      </form></td>
+      <td><% if (s.jak) { %>Jak: <%= s.jak === 'nowe' ? 'Nowe' : 'W realizacji' %>
+        <form method="post" action="/ustawienia/statusy"><input type="hidden" name="klucz" value="<%= s.klucz %>"><button class="ust-przycisk grozny" name="akcja" value="usun">Usuń</button></form>
+      <% } else { %>Systemowy<% } %></td>
+    </tr>
+  <% }); %>
+  </tbody>
+</table>
+</div>
+<section class="ust-sekcja">
+  <h2>Dodaj status</h2>
+  <form class="ust-formularz" method="post" action="/ustawienia/statusy">
+    <input type="hidden" name="akcja" value="dodaj">
+    <label for="status-nazwa">Nazwa</label><input id="status-nazwa" name="etykieta" required maxlength="40">
+    <label for="status-kolor">Kolor</label><select class="ust-kolor" id="status-kolor" name="kolor"><% Object.entries(paleta).forEach(function([k,p]) { %><option class="znacznik--<%= p.klasa %>" value="<%= k %>"><%= p.etykieta %></option><% }); %></select>
+    <label for="status-jak">Zachowuje się jak</label><select id="status-jak" name="jak"><option value="nowe">Nowe</option><option value="w_realizacji">W realizacji</option></select>
+    <div class="ust-pelna"><p class="ust-pomoc">Wybrane zachowanie określa fakty zamówienia i status odsyłany do kanału sprzedaży. Własny etap ustawiasz ręcznie na karcie lub na liście zamówień.</p>
+    <button class="ust-przycisk" type="submit">Dodaj status</button></div>
+  </form>
+</section>
+<section class="ust-sekcja"><h2>Kolory</h2><p>Podgląd palety w bieżącym motywie:</p><div class="ust-akcje"><% Object.entries(paleta).forEach(function([k,p]) { %><span class="znacznik znacznik--<%= p.klasa %>"><%= p.etykieta %></span><% }); %></div></section>
+<form method="post" action="/ustawienia/statusy"><input type="hidden" name="akcja" value="domyslne"><p>Przywraca nazwy, kolory i wzajemną kolejność statusów systemowych. Własne statusy pozostają na swoich miejscach.</p><button class="ust-przycisk" type="submit">Przywróć domyślne</button></form>

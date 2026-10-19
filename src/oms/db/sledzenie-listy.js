@@ -13,7 +13,7 @@
 //
 // ⚠️ Nowa tabela czytana przez odczyt listy MUSI trafić do TABELE_DZIECI — inaczej jej zmiana
 // nie przeliczy zakładek do najbliższego sprawdzenia po starcie (test „każdy zapis…").
-export const TABELE_DZIECI = ['pozycje', 'platnosci', 'przesylki', 'faktury', 'zwroty'];
+export const TABELE_DZIECI = ['pozycje', 'platnosci', 'przesylki', 'faktury', 'zwroty', 'zamowienia_status_wlasny'];
 
 const OPERACJE = ['INSERT', 'UPDATE', 'DELETE'];
 
@@ -26,7 +26,7 @@ function wyzwalacz(nazwa, op, tabela, stary, nowy) {
 
 const WYZWALACZE = [
   ...OPERACJE.map((op) => wyzwalacz('lista_zamowienia', op, 'zamowienia', 'VALUES (OLD.id)', 'VALUES (NEW.id)')),
-  ...TABELE_DZIECI.flatMap((t) => OPERACJE.map((op) => wyzwalacz(`lista_${t}`, op, t,
+  ...TABELE_DZIECI.filter(t => t !== 'zamowienia_status_wlasny').flatMap((t) => OPERACJE.map((op) => wyzwalacz(`lista_${t}`, op, t,
     'VALUES (OLD.zamowienie_id)', 'VALUES (NEW.zamowienie_id)'))),
   // ⚠️ `wysylki_ksef` CELOWO BEZ WYZWALACZA (recenzja PRZ-051): odczyt faktury dokleja z niej
   // `ksef_zlecona_at`, ale nie czyta tego żadna reguła indeksu (status, lista robocza, termin,
@@ -39,5 +39,10 @@ const WYZWALACZE = [
 export function sledzZmianyListy(db) {
   if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'lista_brudne'").get()) return false;
   for (const sql of WYZWALACZE) db.exec(sql);
+  // Wąski skład modułów może mieć indeks z PRZ-051, ale nie nowszą migrację etapów.
+  if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='zamowienia_status_wlasny'").get()) {
+    for (const op of OPERACJE) db.exec(wyzwalacz('lista_zamowienia_status_wlasny', op, 'zamowienia_status_wlasny',
+      'VALUES (OLD.zamowienie_id)', 'VALUES (NEW.zamowienie_id)'));
+  }
   return true;
 }

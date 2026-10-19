@@ -123,7 +123,7 @@ app.post('/zamowienia/faktury-hurtem', async (req, reply) => {
     for (const w of wynik.wystawione) {
       zapiszLubOdpusc(() => dopiszLog(db, w.id, {
         akcja: 'faktura.masowa',
-        wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): wystawiono hurtem ${w.numerFaktury ?? ''}`.trim(),
+        wynik: `Ręcznie (${ktoKlikal(req)}): wystawiono hurtem ${w.numerFaktury ?? ''}`.trim(),
       }));
     }
     for (const b of wynik.bledy) {
@@ -264,7 +264,7 @@ app.post('/zamowienia/:id/faktura/odblokuj', async (req, reply) => {
     }
     dopiszLog(db, id, {
       akcja: 'faktura.odblokowanie',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): sprawdzone w inFakcie, dokumentu nie ma — `
+      wynik: `Ręcznie (${ktoKlikal(req)}): sprawdzone w inFakcie, dokumentu nie ma — `
         + `rezerwacja z ${f.utworzona_at} (${f.ksef_status}${f.blad_opis ? `: ${f.blad_opis}` : ''}) skasowana.`,
     });
     return reply.redirect(adresPowrotuNaKarte(req, id));
@@ -282,7 +282,7 @@ app.post('/zamowienia/:id/faktura/skasowana', async (req, reply) => {
     }
     dopiszLog(db, id, {
       akcja: 'faktura.skasowana',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): faktura ${f.numer ?? '(bez numeru)'} `
+      wynik: `Ręcznie (${ktoKlikal(req)}): faktura ${f.numer ?? '(bez numeru)'} `
         + `(UUID ${f.infakt_uuid ?? 'brak'}) skasowana ręcznie w inFakcie — panel niczego tam nie kasował, `
         + 'tylko odnotował fakt i zwolnił zamówienie do ponownego wystawienia.',
     });

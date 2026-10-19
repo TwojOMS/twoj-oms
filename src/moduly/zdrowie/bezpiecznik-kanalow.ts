@@ -1,15 +1,14 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { czyKanalAllegro } from '../../domena/wysylka.js';
 
 const PRZED_PIERWSZYM = 'zmień klucz w OMS_KANALY przed pierwszym zamówieniem';
 /**
- * PRZ-062: panel rozpoznaje Allegro po przedrostku klucza (`czyKanalAllegro`, ta sama reguła — bez kopii).
- * Definicja typu allegro bez niego albo sklep z nim przechodzą walidację OMS_KANALY i po cichu zmieniają
- * wysyłkę, faktury, terminy i statystyki. Klucz po pierwszym zamówieniu zmienić trudno (kolumna `sklep`).
+ * PRZ-062: sklep z kluczem zaczynającym się od „allegro” przechodzi walidację OMS_KANALY i po cichu zmienia
+ * terminy (a z „allegro_” — wysyłkę, faktury i statystyki, bo prefiks w `czyKanalAllegro` wygrywa z typem).
+ * Klucz po pierwszym zamówieniu zmienić trudno (kolumna `sklep`).
+ * PRZ-101.08: alarm „Allegro bez allegro_” zniknął — kanał `typ: 'allegro'` panel rozpoznaje po konfiguracji.
  */
 export function alarmyNazwKanalow(definicje: readonly { klucz: string; typ: string }[]): string[] {
   return definicje.flatMap(({ klucz, typ }) => {
-    if (typ === 'allegro' && !czyKanalAllegro({ sklep: klucz })) return [`kanał ${klucz} (typ allegro): klucz kanału Allegro musi zaczynać się od „allegro_” — bez tego panel nie rozpozna jego zamówień jako Allegro (wysyłka, faktury, terminy, statystyki); ${PRZED_PIERWSZYM}`];
     if (typ !== 'allegro' && klucz.toLowerCase().startsWith('allegro')) return [`kanał ${klucz} (typ ${typ}): klucz sklepu nie może zaczynać się od „allegro” — terminy wysyłki liczyłyby się jak dla Allegro (a z „allegro_” cały panel wziąłby zamówienia za Allegro); ${PRZED_PIERWSZYM}`];
     return [];
   });

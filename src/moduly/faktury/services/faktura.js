@@ -1,4 +1,5 @@
 import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
+import { zamowienieDoDokumentu } from '../../../oms/db/scalenia.js';
 import { rozpocznijFakture, zakonczFakture, zwolnijFakture, oznaczFaktureDoWyjasnienia } from '../db/faktury.js';
 import { bladOperatora } from '../../../domena/bledy.js';
 import { daneFaktury } from '../../../domena/dane-faktury.js';
@@ -113,7 +114,9 @@ export function createFaktura({
    *   wywolania) ma dzialac dokladnie tak jak dotad, bez cichego dokladania dat do dokumentu.
    */
   async function wystaw(zamowienieId, termin = null) {
-    const z = pobierzZamowienie(db, zamowienieId);
+    // PRZ-101.04: zamówienie GŁÓWNE grupy scalonej przychodzi z pozycjami całej grupy i wysyłką
+    // wg decyzji (jedna faktura na scalone zamówienie) — reszta tej funkcji liczy bez zmian.
+    const z = zamowienieDoDokumentu(db, zamowienieId);
 
     // Odmowy LOKALNE stoja PRZED rezerwacja i przed czymkolwiek w sieci — komplet razem
     // z „nie ma takiego zamowienia", bo `powodOdmowyFaktury` odpowiada tez na brak wiersza.

@@ -20,6 +20,7 @@ import { listaRol, rolaPoKluczu, przypiszRole, ustawPtaszkiPrzezRole, opisRoliKo
 import { wydajLink, uniewaznijLinkiKonta, zastapPoprzednieLinki, wycofajLink } from '../linki-hasla.js';
 import { zalozKontoZaproszone, zalozKontoZHaslem, ustawEmail, sprawdzEmail, emailKonta, BladKonta } from '../konta-dostep.js';
 import { trescMaila } from '../poczta-kont.js';
+import { wczytajSzablonyWiadomosci } from '../../../oms/db/szablony-wiadomosci.js';
 import { modelKonta, MAKS_IMIENIA } from './moje-konto.js';
 import { POLITYKA_REFERERA_LINKU } from './haslo-link.js';
 import { adresLinkow } from '../adres-panelu.ts';
@@ -218,7 +219,9 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
       // W oknie wysyłki konto ma dwa aktywne linki — użycie jednego unieważnia drugi (uzyjLinku).
       const { token, id: linkId } = wydajLink(db, { kontoId: id, cel, utworzylKontoId, teraz, zastapPoprzednie: false });
       try {
-        await mailer().sendMail({ to: konto.email, ...trescMaila({ cel, imie: konto.imie, link: adresLinku(token) }) });
+        // PRZ-101.06: szablon z Ustawień → Szablony wiadomości → Maile do zespołu, czytany przy każdej wysyłce.
+        const szablon = wczytajSzablonyWiadomosci(db).wbudowane[cel] ?? null;
+        await mailer().sendMail({ to: konto.email, ...trescMaila({ cel, imie: konto.imie, link: adresLinku(token), szablon }) });
       } catch {
         wycofajLink(db, linkId, teraz);
         return stronaKonta(req, reply.code(502), id, {

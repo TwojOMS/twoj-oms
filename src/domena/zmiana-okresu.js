@@ -10,6 +10,7 @@
 // przy zakladaniu zamowienia — literowka w NIP-ie znaczyla, ze zamowienie po cichu wypada
 // i z faktury miesiecznej, i z raportu, a jedynym ratunkiem byl SQL na produkcji.
 import { stanFakturyOkresu } from './okres-rozliczeniowy.js';
+import { idsDolaczonych } from './scalanie.js';
 
 /**
  * Czy wolno odpiac zamowienie od okresu. Rozstrzyga WYLACZNIE stan faktury okresu.
@@ -59,6 +60,25 @@ export function wolnoPrzypisac({ zamowienie, faktura, klient } = {}) {
       wolno: false,
       powod: `To zamówienie ma już fakturę ${faktura.numer ?? ''}`.trim()
         + '. Dopisanie go do miesiąca oznaczałoby drugi dokument za tę samą sprzedaż.',
+    };
+  }
+  // ⚠️ PRZ-101.04: ZAMÓWIENIE SCALONE NIE WCHODZI DO OKRESU (recenzja, W1). Faktura okresu czyta
+  // `pobierzZamowienie` — same pozycje głównego; faktura grupy odmawia, bo główne „należy do okresu”,
+  // a dołączone własnej mieć nie może: pozycje dołączonego nie trafiłyby na ŻADEN dokument. Dołączone
+  // dopisane wprost — jego pozycje na fakturze okresu i drugi raz na fakturze grupy. Odwrotna
+  // bariera (zamówienia z okresu nie scalamy) stoi w `powodyOdmowyScalenia`.
+  if (zamowienie.scalone_do) {
+    return {
+      wolno: false,
+      powod: `To zamówienie jest scalone z zamówieniem ${zamowienie.scalone_do_numer ?? `#${zamowienie.scalone_do}`} — `
+        + 'okres rozliczeniowy nie obejmie go osobno. Najpierw rozdziel zamówienia (karta głównego → „Rozdziel”).',
+    };
+  }
+  if (idsDolaczonych(zamowienie).length) {
+    return {
+      wolno: false,
+      powod: 'To zamówienie ma dołączone zamówienia — faktura okresu objęłaby tylko jego własne pozycje. '
+        + 'Jeśli ma wejść do okresu, najpierw je rozdziel (karta → „Rozdziel”).',
     };
   }
   if (zamowienie.okres_rozliczeniowy_id) {

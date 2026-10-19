@@ -1,0 +1,83 @@
+<%# Ekran scalania zamówień (PRZ-101.04). NIC tu jeszcze nie jest zapisane — zapis robi dopiero %>
+<%# „Scal” (POST /zamowienia/scal), który liczy odmowy od nowa. „Przelicz” wraca na ten ekran %>
+<%# z innym głównym albo inną wysyłką, bo kwoty i część odmów zależą od wyboru głównego. %>
+<p class="wroc"><a href="<%= powrot %>">← Wróć do listy zamówień</a></p>
+
+<div class="panel">
+  <div class="panel-glowa"><h2>Scalanie zamówień</h2></div>
+  <div class="panel-cialo">
+    <% if (blad) { %><p class="blad" role="alert"><%= blad %></p><% } %>
+    <p>Scalone zamówienie to <b>jedno zamówienie</b>: dołączone znikają z listy, a pozycje, adres dostawy, paczka
+      i <b>jedna faktura</b> idą z zamówienia głównego.</p>
+
+    <form method="post" action="/zamowienia/scal">
+      <input type="hidden" name="powrot" value="<%= powrot %>">
+      <h3 class="wynik-naglowek">Zamówienie główne</h3>
+      <div class="przewijak-tabeli">
+      <table class="tab-stala scal-czlonkowie">
+        <thead><tr><th>Główne</th><th>Zamówienie</th><th>Kanał</th><th>Data</th><th class="liczba">Pozycji</th><th class="liczba">Wysyłka</th><th class="liczba">Kwota</th></tr></thead>
+        <tbody>
+          <% wiersze.forEach(function (w) { %>
+            <tr>
+              <td><input type="radio" name="glowne" value="<%= w.id %>" id="glowne-<%= w.id %>" <%= w.id === glowneId ? 'checked' : '' %>>
+                <input type="hidden" name="id" value="<%= w.id %>"></td>
+              <td><label for="glowne-<%= w.id %>"><b><%= w.numer %></b></label></td>
+              <td><%= w.kanal %></td>
+              <td><%= w.data %></td>
+              <td class="liczba"><%= w.pozycji %></td>
+              <td class="liczba"><%= w.wysylka ?? '?' %> zł</td>
+              <td class="liczba"><%= w.kwota ?? '?' %> zł</td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+      </div>
+
+      <h3 class="wynik-naglowek">Koszt wysyłki w scalonym zamówieniu</h3>
+      <p><label><input type="radio" name="wysylka" value="glowne" <%= wysylka !== 'suma' ? 'checked' : '' %>>
+        z zamówienia głównego — <b><%= wysylkaGlowne ?? '?' %> zł</b> (razem do faktury <%= razemGlowne ?? '?' %> zł)</label>
+        <%# PRZ-101.11: wysyłka OPŁACONEGO dołączonego wchodzi także tutaj — kupujący za nią zapłacił. %>
+        <% if (opisGlowne) { %><br><span class="wyjasnienie" id="opis-wysylki-glowne"><%= opisGlowne %></span><% } %></p>
+      <p><label><input type="radio" name="wysylka" value="suma" <%= wysylka === 'suma' ? 'checked' : '' %>>
+        suma wysyłek — <b><%= wysylkaSuma ?? '?' %> zł</b> (razem do faktury <%= razemSuma ?? '?' %> zł)</label>
+        <% if (opisSuma) { %><br><span class="wyjasnienie" id="opis-wysylki-suma"><%= opisSuma %></span><% } %></p>
+
+      <% if (roznice.length) { %>
+        <h3 class="wynik-naglowek">Różne dane kupującego — informacja</h3>
+        <p class="wyjasnienie">Adres dostawy i dane do paczki zawsze z zamówienia głównego.</p>
+        <div class="przewijak-tabeli">
+        <table class="tab-stala">
+          <thead><tr><th>Pole</th><% wiersze.forEach(function (w) { %><th><%= w.numer %></th><% }); %></tr></thead>
+          <tbody>
+            <% roznice.forEach(function (r) { %>
+              <tr><td><%= r.etykieta %></td><% r.wartosci.forEach(function (v) { %><td><%= v.wartosc || '—' %></td><% }); %></tr>
+            <% }); %>
+          </tbody>
+        </table>
+        </div>
+      <% } %>
+
+      <% if (powody.length) { %>
+        <h3 class="wynik-naglowek">Nie da się scalić</h3>
+        <ul class="lista-wyniku">
+          <% powody.forEach(function (p) { %><li><span class="waga waga--blokada">odmowa</span> <span><%= p %></span></li><% }); %>
+        </ul>
+      <% } %>
+
+      <% if (ostrzezenia.length) { %>
+        <h3 class="wynik-naglowek">Ostrzeżenia</h3>
+        <ul class="lista-wyniku">
+          <% ostrzezenia.forEach(function (o) { %><li><span class="waga waga--uwaga">uwaga</span> <span><%= o %></span></li><% }); %>
+        </ul>
+        <p><label><input type="checkbox" name="rozumiem" value="1"> Rozumiem</label></p>
+      <% } %>
+
+      <p>
+        <button class="btn btn--maly" type="submit" formaction="/zamowienia/masowe/scal-podglad">Przelicz</button>
+        <% if (!powody.length) { %>
+          <button class="btn btn--glowny" type="submit">Scal zamówienia</button>
+        <% } %>
+      </p>
+    </form>
+  </div>
+</div>

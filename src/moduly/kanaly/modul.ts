@@ -11,6 +11,7 @@ import { createImportSklepu } from './services/import-sklep.js';
 import { createZdjeciaAllegro, zPobieraniemZdjec } from './services/zdjecia-allegro.js';
 import { stanyKanalowZKolizjami } from '../../domena/kanal-stan.js';
 import { bladPolleraNaEkran } from '../../domena/zdrowie.js';
+import { ustawKanalyAllegro } from '../../domena/wysylka.js';
 import * as zapytania from '../../oms/db/zamowienia.js';
 import { registerWiazanieRoute } from './trasy.ts';
 
@@ -22,6 +23,8 @@ export function createModulKanaly(definicje: readonly DefinicjaKanalu[], niekomp
     konfiguracja: env => konfiguracjaKanalow(definicje, env, niekompletneJakoAlarm),
     zbuduj: ctx => {
       const { db, konfiguracja: config } = ctx;
+      // PRZ-101.08: jedyne ustawienie rejestru kluczy Allegro (czyKanalAllegro, domena/wysylka.js).
+      ustawKanalyAllegro(definicje.filter(d => d.typ === 'allegro').map(d => d.klucz));
       // Frozen startup: naprawiamy wyłącznie skonfigurowane Woo i wyłącznie ze źródłowego GMT.
       const daty = zapytania.znormalizujDatyWoo(db, Object.keys(config.sklepy));
       if (daty.naprawione || daty.pominiete) ctx.log(`daty zamowien: znormalizowano ${daty.naprawione} wierszy do UTC-Z`

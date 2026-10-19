@@ -1,3 +1,4 @@
+import { tytulEkranuDlaAdresu } from '../../../domena/ekrany.js';
 // PRZ-093.08: Ustawienia → Firma. Sprzedawca na proformie, specyfikacji i potwierdzeniu wywozu oraz nadawca
 // paczek DPD z Ustawień. Dla instalacji bez DPD_NADAWCA_* w pliku konfiguracji (Twój OMS u obcej firmy).
 //
@@ -20,7 +21,7 @@ export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy }) {
   function widok(req, reply, { wpisane = null, bledy = [] } = {}) {
     const zapis = wczytajZapisAdresuFirmy(db);
     return reply.view('ustawienia-firma.ejs', {
-      nawigacja: nawigacjaUstawien(req, reply), title: 'Adres firmy',
+      nawigacja: nawigacjaUstawien(req, reply), title: tytulEkranuDlaAdresu(req.url),
       wPliku: adresFirmy.wPliku, zPliku: adresFirmy.zPliku, zapis,
       pola: { ...PUSTY, ...(zapis?.ustawienia ?? {}), ...(wpisane ?? {}) },
       bledy, zapisano: KOMUNIKATY[req.query?.zapisano] ?? null,

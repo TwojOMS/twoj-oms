@@ -1,10 +1,12 @@
+import { czyKanalAllegro } from './wysylka.js';
+
 // Podjazd dotyczy zasobu WzA, nie samego zamówienia Allegro ani numeru listu.
 // Klucz grupy rozdziela konto i dokładną metodę dostawy. Nie zgadujemy fizycznego
 // kuriera z `carrier: ALLEGRO` ani z pierwszego wpisu transportingInfo.
 export function ocenKandydata({ przesylka: p, metaWza, aktywneZlecenie = null }) {
   const odmowa = (powod) => ({ wolno: false, powod, grupa: null });
   if (p?.kurier !== 'allegro_wza' || p?.status !== 'nadana') return odmowa('To nie jest gotowa przesyłka WzA.');
-  if (!p?.sklep?.startsWith('allegro_')) return odmowa('Nieznane konto Allegro.');
+  if (!czyKanalAllegro(p)) return odmowa('Nieznane konto Allegro.');
   if (!p?.etykieta_sciezka && !p?.etykieta_zpl_sciezka) return odmowa('Brak zapisanej etykiety.');
   if (p?.przejeta_at) return odmowa('Przesyłka została już przejęta.');
   if (aktywneZlecenie) return odmowa('Dla przesyłki trwa już zlecenie podjazdu.');

@@ -1,3 +1,4 @@
+import { etykietyStatusow } from '../../../oms/db/statusy.js';
 import {
   listaKampanii, zamowieniaZKuponami, zamowieniaZAtrybucjaKampanii, metaDni, ga4Dni, stanyZrodel,
 } from '../../../oms/db/kampanie.js';
@@ -7,7 +8,6 @@ import {
 } from '../../../domena/kampania.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { kluczOkresu } from '../../../domena/okres-rozliczeniowy.js';
-import { ETYKIETY } from '../../../domena/status.js';
 import { adresKanalu } from '../../../domena/kanaly.js';
 import {
   polaczenia as polaczeniaReklam, dni as dniReklam, transakcje as transakcjeReklam,
@@ -179,7 +179,7 @@ export function zarejestrujTrasyKampanii(app, { db, config = {}, definicje, czuw
       // Etapy kampanii (prowadnice wykresu pieniedzy) — z wiersza kampanii, przez domene.
       fale: kampania ? faleKampanii(kampania) : [],
       agregat: agregatKuponow(zamowienia),
-      etykiety: ETYKIETY,
+      etykiety: etykietyStatusow(db),
       // PRZ-063: etykiety kanałów z definicji instalacji (PRZ-053: bez globalnej mapy firmy).
       adresKanalu: (sklep) => adresKanalu(sklep, definicje),
       // ⚠️ „NIESKONFIGUROWANE" TO CO INNEGO NIZ „ZERO" I NIZ „AWARIA" — a w tabeli wszystkie

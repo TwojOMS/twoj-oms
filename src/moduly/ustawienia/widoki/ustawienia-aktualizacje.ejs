@@ -1,0 +1,45 @@
+<h1>Aktualizacje</h1>
+
+<section class="ust-sekcja" id="akt-instalacja">
+  <h2>Ta instalacja</h2>
+  <% if (wydanie && wydanie.wersja) { %>
+    <p><strong>Wersja: <%= wydanie.wersja %></strong></p>
+    <p><small>commit <%= wydanie.krotki %><% if (wydanie.paczka) { %> · paczka z <%= wydanie.paczka %><% } %></small></p>
+  <% } else if (wydanie) { %>
+    <p><strong>Wersja: bez numeru (commit <%= wydanie.krotki %>)</strong></p>
+  <% } else { %>
+    <p>Wersja: nieznana. Ten OMS nie został zainstalowany z paczki wydania, więc panel nie zna jego numeru.</p>
+  <% } %>
+</section>
+
+<section class="ust-sekcja" id="akt-najnowsze">
+  <h2>Najnowsze wydanie</h2>
+  <% if (wynik && wynik.stan === 'nowsza') { %>
+    <div class="pas-potwierdzenie"><p>Dostępna jest nowsza wersja: <%= wynik.wersja %> z <%= wynik.dzien %>.</p></div>
+  <% } else if (wynik && wynik.stan === 'aktualna') { %>
+    <div class="pas-potwierdzenie"><p>Masz najnowszą wersję (<%= wynik.wersja %>).</p></div>
+  <% } else if (wynik && wynik.stan === 'bez-porownania') { %>
+    <p>Najnowsze wydanie: <%= wynik.wersja %> z <%= wynik.dzien %>. Nie da się porównać z tą instalacją, bo nie ma ona numeru wersji.</p>
+  <% } else if (wynik && wynik.stan === 'brak-wydan') { %>
+    <p>W repozytorium nie ma jeszcze opublikowanych wydań.</p>
+  <% } else if (wynik && wynik.stan === 'limit') { %>
+    <p class="pas-uprzedzenie">GitHub chwilowo ogranicza liczbę zapytań. Spróbuj ponownie za godzinę.</p>
+  <% } else if (wynik && wynik.stan === 'blad') { %>
+    <p class="pas-uprzedzenie">Nie udało się połączyć z GitHubem. Sprawdź połączenie serwera z internetem i spróbuj później.</p>
+  <% } %>
+  <% if (wynik && ['nowsza', 'aktualna', 'bez-porownania'].includes(wynik.stan)) { %>
+    <% if (wynik.stan !== 'aktualna' && wynik.opis) { %><pre class="opis-wydania"><%= wynik.opis %></pre><% } %>
+    <p><a href="<%= wynik.adres %>" target="_blank" rel="noopener">Opis na GitHubie</a></p>
+  <% } %>
+  <form id="akt-sprawdz" method="post" action="/ustawienia/aktualizacje/sprawdz">
+    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Sprawdź teraz</button></div>
+  </form>
+  <p><small>Panel łączy się z GitHubem tylko po kliknięciu.</small></p>
+</section>
+
+<section class="ust-sekcja" id="akt-jak">
+  <h2>Instalacja aktualizacji</h2>
+  <p class="pas-uprzedzenie">Instalacja jednym przyciskiem — funkcja wkrótce dostępna.</p>
+  <p>Na razie aktualizację instaluje administrator serwera albo agent AI według instrukcji:
+    <a href="<%= instrukcja %>" target="_blank" rel="noopener">Jak zaktualizować OMS</a>.</p>
+</section>

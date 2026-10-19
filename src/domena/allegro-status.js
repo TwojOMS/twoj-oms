@@ -1,4 +1,4 @@
-import { wyliczStatus } from './status.js';
+import { statusBazowy } from './status.js';
 import { czyKanalAllegro } from './wysylka.js';
 
 // Odesłanie statusu realizacji do Allegro. Osobna mapa i osobna decyzja niż `sync-sklep.js`,
@@ -42,7 +42,7 @@ export function statusDlaAllegro(z, stanWAllegro) {
   // tego, czy paczka jedzie.
   if (z.anulowane) return null;
 
-  const docelowy = STATUS_ALLEGRO_DLA[wyliczStatus(z)];
+  const docelowy = STATUS_ALLEGRO_DLA[statusBazowy(z)];
   // Brak wpisu = status, którego świadomie nie odsyłamy (anulowane, zwrot).
   if (!docelowy) return null;
 
@@ -82,7 +82,7 @@ export function stanAllegroPotwierdzaZgodnosc(z, stanWAllegro) {
   // „Nie pytaliśmy" (`undefined`) nie jest dowodem na nic — patrz komentarz wyżej.
   if (stanWAllegro === undefined) return false;
   if (z.anulowane) return false;
-  const docelowy = STATUS_ALLEGRO_DLA[wyliczStatus(z)];
+  const docelowy = STATUS_ALLEGRO_DLA[statusBazowy(z)];
   if (!docelowy) return false;
   return stanWAllegro === docelowy;
 }

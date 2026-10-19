@@ -2,12 +2,11 @@ import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
 import { proformyZamowienia } from '../../faktury/db/proformy.js';
 import { zapiszWiadomosc } from '../../../oms/db/wiadomosci.js';
 import { aktualnaProforma } from '../../../domena/proforma-stan.js';
-import { czyWolnoWyslac, NAZWA_TEMATU } from '../../../domena/wiadomosci.js';
-import { modelWiadomosci, jakoTekstWiadomosci, TEMAT_MAILA } from '../../../domena/wiadomosc-platnicza.js';
-import { trescPotwierdzenia } from '../../../domena/potwierdzenie-zamowienia.js';
-import { renderWiadomoscHtml } from '../../../core/poczta/wiadomosc-html.js';
-import { renderPotwierdzenieHtml } from '../../../core/poczta/potwierdzenie-html.js';
+import { czyWolnoWyslac, czyWolnoWyslacWlasny, NAZWA_TEMATU } from '../../../domena/wiadomosci.js';
+import { modelWiadomosci } from '../../../domena/wiadomosc-platnicza.js';
 import { adresatKlienta } from '../../../domena/adresat-klienta.js';
+import { wczytajSzablonyWiadomosci } from '../../../oms/db/szablony-wiadomosci.js';
+import { mailPotwierdzenia, mailPlatniczy, mailWlasny } from '../szablony.js';
 import { bezpiecznaNazwa } from '../../../domena/pliki.js';
 import { bladOperatora } from '../../../domena/bledy.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
@@ -42,6 +41,9 @@ export function createWiadomosci({
   // Rachunek i odbiorca przelewu pochodzą z jawnej konfiguracji faktur/nadawcy.
   // config.sprzedawca to tożsamość prawna rdzenia; podpis i oprawa poczty są osobną marką.
   const oprawa = oprawaMaila(config.oprawaPoczty);
+  // Nazwa do logu karty: temat wbudowany ze słownika domeny, szablon własny (PRZ-101.03) — jego nazwa z Ustawień.
+  const nazwaTematu = (temat_id) => NAZWA_TEMATU[temat_id]
+    ?? wczytajSzablonyWiadomosci(db).wlasne.find((s) => s.id === temat_id)?.nazwa ?? temat_id;
   const rachunek = config.proforma?.rachunek ?? null;
   // PRZ-093.08: nazwa odbiorcy z TEGO SAMEGO źródła adresu firmy co proforma (plik DPD_NADAWCA_* wygrywa, potem
   // Ustawienia → Firma), czytana przy każdym mailu — liczona raz przy starcie i tylko z pliku dawała pusty
@@ -78,13 +80,25 @@ export function createWiadomosci({
    */
   async function zloz(id, temat_id) {
     const k = kontekst(id);
+    // PRZ-101.03: szablony z Ustawień czytane przy KAŻDYM złożeniu — zmiana działa od następnego maila,
+    // podgląd i wysyłka widzą ten sam zapis (oba wołają tę funkcję).
+    const szablony = wczytajSzablonyWiadomosci(db);
+
+    const wlasny = szablony.wlasne.find((s) => s.id === temat_id);
+    if (wlasny) {
+      const zgW = czyWolnoWyslacWlasny(k.z);
+      if (!zgW.wolno) throw bladOperatora(zgW.powod);
+      const mail = mailWlasny(k.z, wlasny, { oprawa });
+      return { do: mail.do, temat: mail.temat, tekst: tekstZeStopka(mail.tekst, oprawa.footer), html: mail.html, zalaczniki: [] };
+    }
+
     const zg = czyWolnoWyslac(k.z, temat_id, k);
     if (!zg.wolno) throw bladOperatora(zg.powod);
 
     if (temat_id === 'potwierdzenie') {
-      const mail = trescPotwierdzenia(k.z, { podpis: oprawa.podpis });
+      const mail = mailPotwierdzenia(k.z, { oprawa, szablon: szablony.wbudowane.potwierdzenie ?? null });
       return { do: mail.do, temat: mail.temat, tekst: tekstZeStopka(mail.tekst, oprawa.footer),
-        html: renderPotwierdzenieHtml(mail.model, oprawa), zalaczniki: [] };
+        html: mail.html, zalaczniki: [] };
     }
 
     // Dokument, którego numer trafia w TYTUŁ PRZELEWU. Reguła (zatwierdzona makieta i oba
@@ -170,13 +184,14 @@ export function createWiadomosci({
       rachunek, odbiorca: odbiorcaPrzelewu(), dzis: k.dzis, podpis: oprawa.podpis,
     });
 
+    const mail = mailPlatniczy(k.z, model, { temat_id, dokument, oprawa, szablon: szablony.wbudowane[temat_id] ?? null });
     return {
       // ⚠️ ADRES Z JEDNEJ REGUŁY DOMENY (`adresatKlienta`), nigdy z pola czytanego tutaj —
       // inaczej potwierdzenie poszłoby do zamawiającego, a faktura do księgowości.
       do: adresatKlienta(k.z),
-      temat: (TEMAT_MAILA[temat_id])(k.z, dokument),
-      tekst: tekstZeStopka(jakoTekstWiadomosci(model), oprawa.footer),
-      html: renderWiadomoscHtml(model, oprawa),
+      temat: mail.temat,
+      tekst: tekstZeStopka(mail.tekst, oprawa.footer),
+      html: mail.html,
       zalaczniki,
       model,
       z: k.z,
@@ -203,7 +218,7 @@ export function createWiadomosci({
     // nawet adresata (`w.do` jeszcze nie istnieje) — i log nie ma prawa twierdzić inaczej.
     const odnotujNieudaneZlozenie = (blad) => dopiszLog(db, id, {
       akcja: 'wiadomosc.nieudane-zlozenie',
-      wynik: `NIE UDAŁO SIĘ PRZYGOTOWAĆ wiadomości „${NAZWA_TEMATU[temat_id] ?? temat_id}" `
+      wynik: `NIE UDAŁO SIĘ PRZYGOTOWAĆ wiadomości „${nazwaTematu(temat_id)}" `
         + `(${ktoKlikal}): ${blad.message} — nic nie poszło do klienta.`,
     });
 
@@ -258,7 +273,7 @@ export function createWiadomosci({
       // nigdy nie było.
       dopiszLog(db, id, {
         akcja: 'wiadomosc.blad',
-        wynik: `BŁĄD wysyłki „${NAZWA_TEMATU[temat_id]}" do ${w.do} (${ktoKlikal}): ${e.message}`,
+        wynik: `BŁĄD wysyłki „${nazwaTematu(temat_id)}" do ${w.do} (${ktoKlikal}): ${e.message}`,
       });
       throw e;
     }
@@ -271,7 +286,7 @@ export function createWiadomosci({
     dopiszLog(db, id, {
       akcja: 'wiadomosc.wyslana',
       // Adresat, temat i załącznik TAK, treść NIE — log karty czyta się na głos przy reklamacji.
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal}): „${NAZWA_TEMATU[temat_id]}" wysłane na ${w.do}`
+      wynik: `Ręcznie (${ktoKlikal}): „${nazwaTematu(temat_id)}" wysłane na ${w.do}`
         + (w.zalaczniki[0] ? ` z załącznikiem ${w.zalaczniki[0].filename}` : ' bez załącznika') + '.',
     });
     return { do: w.do, temat: w.temat, kiedy };
@@ -281,5 +296,8 @@ export function createWiadomosci({
   // Jedyny czytelnik — sekcja „Wiadomości" na karcie — pytał o to CZTERY RAZY na render
   // (raz na temat), a odpowiedź stoi w liście wysłanych, którą trasa i tak pobiera. Liczy ją
   // teraz `ostatnieWgTematow` (domain/wiadomosci.js), jednym przebiegiem i jedną regułą.
-  return { kontekst, podglad, wyslij };
+  /** Szablony własne do menu na karcie — czytane przy każdym renderze (zmiana bez restartu). */
+  const tematyWlasne = () => wczytajSzablonyWiadomosci(db).wlasne.map(({ id, nazwa }) => ({ id, nazwa }));
+
+  return { kontekst, podglad, wyslij, tematyWlasne };
 }

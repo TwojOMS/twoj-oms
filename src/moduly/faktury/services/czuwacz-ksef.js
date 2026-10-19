@@ -7,7 +7,7 @@ import { dopiszLog, ostatniWpisLogu, pobierzZamowienie } from '../../../oms/db/z
 import { wolnoWyslacDoAllegro } from '../../../domena/allegro-faktura.js';
 import { createPoNumerzeKsef } from './po-numerze-ksef.js';
 import {
-  WARUNEK_CZEKA_NA_KSEF_SQL, KOLUMNA_ZLECONA_Z_PANELU_SQL, czyWierszWZakresieKsef,
+  warunekCzekaNaKsefSql, KOLUMNA_ZLECONA_Z_PANELU_SQL, czyWierszWZakresieKsef,
 } from '../../../domena/ksef-oczekiwanie.js';
 import {
   statusWeryfikacji, WARUNEK_WERYFIKACJA_NIEROZSTRZYGNIETA_SQL,
@@ -92,7 +92,7 @@ export const PODLOGA_DNI = 30;
 export const LIMIT_PRZEBIEGU = 50;
 
 // ⚠️⚠️ PODLOGA JEST TU, A NIE WE WSPOLNYM WARUNKU — i to jest decyzja, nie przeoczenie.
-// `WARUNEK_CZEKA_NA_KSEF_SQL` ma odpowiadac IDENTYCZNIE jak predykat `czekaNaKsef`
+// `warunekCzekaNaKsefSql()` ma odpowiadac IDENTYCZNIE jak predykat `czekaNaKsef`
 // (domain/ksef-oczekiwanie.js; pilnuje tego tests/oms/ksef-oczekiwanie.test.js), a pasek spraw
 // na karcie podlogi MIEC NIE MOZE: sprawa ma swiecic takze wtedy, gdy czuwacz przestal pytac —
 // to jest jedyne wyjscie z tego stanu (niezmiennik 4.9). Podloga jest wiec DLAWIENIEM ODCZYTU
@@ -117,11 +117,12 @@ export const LIMIT_PRZEBIEGU = 50;
 // znaczy „jeszcze nie pytalismy = na poczatek". Data wystawienia zostaje kryterium POMOCNICZYM
 // i rozstrzyga remisy, wiec na pierwszym przebiegu kolejnosc jest dokladnie ta, co dawniej:
 // od najstarszej, czyli od tej, o ktora upomina sie pasek spraw. Kolejka jest CYKLICZNA.
-const DO_SPRAWDZENIA = `
+// PRZ-101.08: funkcja, bo warunek zna klucze Allegro z konfiguracji dopiero po budowie aplikacji.
+const doSprawdzeniaSql = () => `
   SELECT f.id, f.infakt_uuid, f.zamowienie_id, z.sklep, ${KOLUMNA_ZLECONA_Z_PANELU_SQL}
   FROM faktury f
   JOIN zamowienia z ON z.id = f.zamowienie_id
-  WHERE ${WARUNEK_CZEKA_NA_KSEF_SQL}
+  WHERE ${warunekCzekaNaKsefSql()}
     AND (
       f.utworzona_at >= ?
       OR EXISTS (SELECT 1 FROM wysylki_ksef w WHERE w.uuid = f.infakt_uuid AND w.zlecona_at >= ?)
@@ -277,9 +278,9 @@ export function createCzuwaczKsef({
     // Bezwarunkowy `.filter(czyKanalAllegro)` stal tu do 06.08.2026 i po poszerzeniu zakresu
     // wycinalby dokladnie te wiersze, ktore druga galaz doklada: kazda fakture sklepowa.
     // ⚠️ TA SAMA PODLOGA WCHODZI DWA RAZY — raz na stempel wystawienia, raz na stempel zlecenia
-    // wysylki (patrz komentarz przy `DO_SPRAWDZENIA`). Ma to byc DOKLADNIE ta sama wartosc:
+    // wysylki (patrz komentarz przy `doSprawdzeniaSql`). Ma to byc DOKLADNIE ta sama wartosc:
     // dwie liczone osobno rozjechalyby sie o czas wykonania zapytania.
-    const doSprawdzenia = db.prepare(DO_SPRAWDZENIA)
+    const doSprawdzenia = db.prepare(doSprawdzeniaSql())
       .all(podloga, podloga, limit)
       .filter(czyWierszWZakresieKsef);
     let znalezione = 0;

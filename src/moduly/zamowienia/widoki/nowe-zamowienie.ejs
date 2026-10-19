@@ -396,5 +396,5 @@
     w widok dalby sie sprawdzic tylko kopia, czyli pilnowalby sam siebie.
     `type="module"` z tego samego powodu (plik ma `export`) i przy okazji odracza wykonanie
     do konca parsowania strony — nasluchy sa wiec podpiete, gdy tabela juz istnieje. %>
-<script type="module" src="/public/suma-podglad.js"></script>
+<script type="module" src="<%= zasob('suma-podglad.js') %>"></script>
 <%- include('_skrypt-koszt-dostawy.ejs', { kwotyDostawy }) %>

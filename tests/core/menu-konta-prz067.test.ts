@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { MODULY } from '../../src/moduly/lista.ts';
 import { nawigacjaDla } from '../../src/domena/menu-stron.js';
 import { menuKontaDla } from '../../src/domena/menu-konta.js';
+import { adresZasobu } from '../../src/core/web/wersja-zasobow.js';
 
 const ejs = createRequire(import.meta.url)('ejs') as { renderFile:(path:string,data:Record<string,unknown>)=>Promise<string> };
 const szablon = fileURLToPath(new URL('../../src/core/web/widoki/layout-oms.ejs', import.meta.url));
@@ -15,7 +16,9 @@ const konto = (o:Record<string,unknown>) => ({imie:'Jan Kowalski',login:'jan',ro
 async function render(k:Record<string,unknown>) {
   const html = await ejs.renderFile(szablon,{title:'Test',motyw:'jasny',htmx:false,bezPaska:false,body:'<p>x</p>',marka:{logoAlt:'F'},
     nawigacja:nawigacjaDla({sciezka:'/przesylki',konto:k,menu,odlozoneEkrany:['kampania','cele','finanse']}),
-    menuKonta:menuKontaDla(k,{powrot:'/przesylki'}),modyfikatorStatusu:()=>null});
+    menuKonta:menuKontaDla(k,{powrot:'/przesylki'}),modyfikatorStatusu:()=>null,
+    // PRZ-100: serwer daje `zasob` każdemu widokowi (defaultContext) — render układu wprost dostaje to samo.
+    zasob:adresZasobu(fileURLToPath(new URL('../../src/public', import.meta.url)))});
   return {
     header: html.match(/<header class="oms-topbar">[\s\S]*?<\/header>/)?.[0] ?? '',
     aside: html.match(/<aside class="oms-sidebar">[\s\S]*?<\/aside>/)?.[0] ?? '',

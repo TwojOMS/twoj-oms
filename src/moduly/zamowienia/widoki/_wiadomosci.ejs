@@ -49,7 +49,7 @@
               <%# Funkcja jest w `defaultContext` (web/server.js), więc jest tu bez importu. %>
               <tr>
                 <td><%= fmtDataCzasKrotko(p.wyslana_at) %></td>
-                <td><%= nazwyTematow[p.temat_id] || p.temat_id %></td>
+                <td><%= nazwyTematow[p.temat_id] || (String(p.temat_id).startsWith('wlasny-') ? 'Szablon usunięty: ' + p.temat : p.temat_id) %></td>
                 <td><%= p.adresat %></td>
               </tr>
             <% }); %>
@@ -59,7 +59,11 @@
         <% } %>
 
       <% } else if (w.stan === 'wybor') { %>
-        <% w.tematy.forEach(function (t) { %>
+        <% w.tematy.forEach(function (t, i) { %>
+          <%# PRZ-101.03: szablony własne z Ustawień → Szablony wiadomości, pod czterema wbudowanymi. %>
+          <% if (t.wlasny && !(w.tematy[i - 1] || {}).wlasny) { %>
+            <p class="etykieta-bloku">Szablony własne</p>
+          <% } %>
           <% if (t.zgoda.wolno) { %>
             <a class="temat" href="<%= adresWiadomosci(t.id) %>">
               <span class="temat-nazwa"><%= t.nazwa %></span>

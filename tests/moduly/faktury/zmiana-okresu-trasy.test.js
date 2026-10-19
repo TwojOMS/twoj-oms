@@ -6,6 +6,7 @@ import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 import { zapewnijOkres, zamknijOkres } from '../../../src/oms/db/okresy.js';
 import { pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { dopiszKlientaZbiorczego } from './_klient-zbiorczy-pomocniki.js';
+import { scalZamowienia } from '../../../src/oms/db/scalenia.js';
 
 const naglowek = {
   authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'),
@@ -245,5 +246,39 @@ describe('karta zamowienia — przycisk „Przypisz do okresu”', () => {
     const body = (await get(`/zamowienia/${id}`)).body;
 
     expect(sekcjaFaktury(body)).not.toMatch(/Przypisz do okresu/);
+  });
+});
+
+// PRZ-101.04 (recenzja, W1): zamówienie SCALONE nie wchodzi do okresu rozliczeniowego. Faktura
+// okresu bierze `pobierzZamowienie` (same pozycje głównego), faktura grupy jest wtedy odrzucona
+// (główne „należy do okresu”), dołączone własnej mieć nie może — pozycje dołączonego nie trafiłyby
+// na żaden dokument. Dopisanie dołączonego dałoby jego pozycje na DWÓCH dokumentach.
+describe('POST /zamowienia/:id/okres — zamówienie scalone (PRZ-101.04)', () => {
+  const scalone = () => {
+    const a = dodajZamowienie({ numer: 'R/2026/031', okresId: null });
+    const b = dodajZamowienie({ numer: 'R/2026/032', okresId: null });
+    scalZamowienia(db, { glowneId: a, dolaczoneIds: [b], wysylka: 'glowne', kto: 'test' });
+    return { a, b };
+  };
+
+  it('ODMAWIA głównemu grupy („najpierw rozdziel”) i nie rusza przynależności', async () => {
+    const { a } = scalone();
+    const odp = await post(`/zamowienia/${a}/okres`);
+    expect(odp.statusCode).toBe(400);
+    expect(odp.body).toMatch(/najpierw je rozdziel/);
+    expect(pobierzZamowienie(db, a).okres_rozliczeniowy_id).toBeNull();
+  });
+
+  it('ODMAWIA dołączonemu (POST z jego id) i nie rusza przynależności', async () => {
+    const { b } = scalone();
+    const odp = await post(`/zamowienia/${b}/okres`);
+    expect(odp.statusCode).toBe(400);
+    expect(odp.body).toMatch(/scalone z zamówieniem R\/2026\/031/);
+    expect(pobierzZamowienie(db, b).okres_rozliczeniowy_id).toBeNull();
+  });
+
+  it('karta głównego nie pokazuje przycisku „Przypisz do okresu”', async () => {
+    const { a } = scalone();
+    expect(sekcjaFaktury((await get(`/zamowienia/${a}`)).body)).not.toMatch(/Przypisz do okresu/);
   });
 });

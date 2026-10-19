@@ -51,8 +51,8 @@ describe('pięć sekcji Ustawień', () => {
     const tresc = fragmentGlownejKolumny(r.body);
 
     expect(r.statusCode).toBe(200);
-    expect(r.body).toContain('<title>Zamówienia i wysyłka</title>');
-    expect(tresc).toContain('<h1>Zamówienia i wysyłka</h1>');
+    expect(r.body).toContain('<title>Paczki i koszty dostawy</title>');
+    expect(tresc).toContain('<h1>Paczki i koszty dostawy</h1>');
     for (const pole of ['waga', 'dlugosc', 'szerokosc', 'wysokosc', 'dpd', 'inpost_paczkomat', 'odbior_osobisty']) {
       expect(tresc).toContain(`name="${pole}"`);
     }
@@ -66,7 +66,7 @@ describe('pięć sekcji Ustawień', () => {
     const tresc = fragmentGlownejKolumny(r.body);
 
     expect(r.statusCode).toBe(200);
-    expect(tresc).toContain('<h1>Integracje</h1>');
+    expect(tresc).toContain('<h1>Sklepy i usługi</h1>');
     expect(tresc).toContain('Konto Allegro: <strong>szkicownia-pl</strong>');
     expect(tresc).toContain('ważne jeszcze 21 dni');
     expect(tresc).not.toContain('name="waga"');
@@ -77,7 +77,7 @@ describe('pięć sekcji Ustawień', () => {
     const tresc = fragmentGlownejKolumny(r.body);
 
     expect(r.statusCode).toBe(200);
-    expect(tresc).toContain('<h1>Wiadomości i automatyzacje</h1>');
+    expect(tresc).toContain('<h1>Autoodpowiedź Allegro</h1>');
     for (const pole of ['wlaczona', 'tresc', 'od', 'do', 'dni', 'karencja']) {
       expect(tresc).toContain(`name="${pole}"`);
     }
@@ -106,7 +106,7 @@ describe('pięć sekcji Ustawień', () => {
     const tresc = fragmentGlownejKolumny(r.body);
 
     expect(r.statusCode).toBe(400);
-    expect(tresc).toContain('<h1>Wiadomości i automatyzacje</h1>');
+    expect(tresc).toContain('<h1>Autoodpowiedź Allegro</h1>');
     expect(tresc).toMatch(/name="wlaczona"[^>]*checked/);
     expect(tresc).toContain(`>${'x'.repeat(2001)}</textarea>`);
     expect(tresc).toContain('name="od" min="0" max="23" value="19"');

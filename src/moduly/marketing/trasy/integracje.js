@@ -1,3 +1,4 @@
+import { tytulEkranuDlaAdresu } from '../../../domena/ekrany.js';
 import {randomUUID} from 'node:crypto';
 import {polaczenia,stanPolaczenia,zapiszPolaczenie,zapiszStan} from '../../../oms/db/reklamy.js';
 import {promptReklam} from '../../../domena/prompt-reklam.js';
@@ -42,7 +43,7 @@ export function createWidokReklam({db,stanyKanalow=null,wiazanieKanalow=null,rek
     // Nie ufamy X-Forwarded-Proto bez jawnej funkcji z zaufanego reverse proxy.
     const bezpieczneHttps = req.raw.socket.encrypted === true || reklamy?.zaufaneHttps?.(req) === true;
     return reply.view('ustawienia-integracje.ejs', {
-      ...wspolnyKontekst(req, reply), title: tylkoReklamy ? 'Integracje reklam' : 'Integracje', blad,
+      ...wspolnyKontekst(req, reply), title: tytulEkranuDlaAdresu(req.url), blad,
       testOdczytu: tylkoReklamy ? komunikatTestu(req.query, wszystkie) : null,
       tylkoReklamy, zrodlaReklam, mozeKonfigurowacReklamy: req.konto?.admin === true,
       formularzSekretu: bezpieczneHttps && !!reklamy?.magazyn,

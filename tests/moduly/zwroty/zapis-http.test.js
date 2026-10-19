@@ -56,7 +56,7 @@ describe('PRZ-024 — rzeczywisty zapis zwrotu przez chronione HTTP', () => {
       expect(s.zwroty).toHaveLength(1); expect(s.pozycje).toHaveLength(1);
       expect(s.zwroty[0]).toMatchObject({ zamowienie_id: id, data: '2026-08-02', kwota: '50.00', kwota_dostawy: '10.00', powod: 'Uszkodzenie' });
       expect(s.pozycje[0]).toMatchObject({ zwrot_id: s.zwroty[0].id, nazwa: 'Produkt testowy', ilosc: 1, kwota: '50.00' });
-      expect(s.log).toEqual([{ akcja: 'zwrot.rejestracja', wynik: 'DECYZJA CZŁOWIEKA (operator): zarejestrowany zwrot z 2026-08-02 na 50.00 zł + dostawa 10.00 zł, pozycji: 1; powód: Uszkodzenie.', kto: 'automat' }]);
+      expect(s.log).toEqual([{ akcja: 'zwrot.rejestracja', wynik: 'Ręcznie (operator): zarejestrowany zwrot z 2026-08-02 na 50.00 zł + dostawa 10.00 zł, pozycji: 1; powód: Uszkodzenie.', kto: 'automat' }]);
     });
   });
   it('odmowa niespójnej kwoty pozostawia wyłącznie trwały log błędu', async () => {

@@ -1,6 +1,8 @@
+import { koloryStatusow, etykietyStatusow, wPamieciStatusowZadania } from '../../oms/db/statusy.js';
 import { katalogiWidokow, sciezkaWidoku } from './widoki.js';
 import fastifyView from '@fastify/view';
 import fastifyStatic from '@fastify/static';
+import { adresZasobu } from './wersja-zasobow.js';
 import fastifyFormbody from '@fastify/formbody';
 import fastifyBasicAuth from '@fastify/basic-auth';
 import ejs from 'ejs';
@@ -105,6 +107,7 @@ export function registerWeb(app, {db, config}) {
 const menu = app.menuOms;
 if (!Array.isArray(menu)) throw new Error('Brak menuOms z manifestów Aplikacja.menu');
 const trasyOms = [];
+app.addHook('onRequest', (_req, _reply, done) => { wPamieciStatusowZadania(done); });
 app.addHook('onRoute', (opcje) => {
     const metody = Array.isArray(opcje.method) ? opcje.method : [opcje.method];
     for (const metoda of metody) trasyOms.push({ metoda, url: opcje.url });
@@ -141,6 +144,7 @@ options: { views: katalogiWidokow() },
     // jest informacja o pieniadzach, ktore kurier ma zainkasowac.
     defaultContext: {
       title: 'Zamówienia', fmtDataCzas, fmtDataCzasKrotko, klasaStatusu, modyfikatorStatusu,
+      etykietaStatusu: klucz => klucz,
       etapPrzesylki, etykietaEtapu, dniKalendarzowe,
       etykietaWysylki,
       // Pelna nazwa uslugi (Allegro) z odwrotem na etykiete kubelka — patrz domain/wysylka.js.
@@ -158,6 +162,8 @@ options: { views: katalogiWidokow() },
       proba: false,
       demo: null,
       podgladDemo: false,
+      // PRZ-100: adresy /public/*.css|js z wersją (`?v=`) — po wydaniu przeglądarka za pośrednikiem nie trzyma starego pliku.
+      zasob: adresZasobu(__publicDir),
     },
   });
 app.register(fastifyStatic, { root: __publicDir, prefix: '/public/' });
@@ -190,10 +196,15 @@ app.addHook('onRequest', zbudujStraznika({
 if (config.demo) app.addHook('onRequest', podgladUstawienDemo({ loginGoscia: config.demo.login }));
 zarejestrujOchroneCsrf(app);
 app.addHook('preHandler', async (req, reply) => {
+      const kolory = koloryStatusow(db);
+      const etykiety = etykietyStatusow(db);
       const sciezkaPowrotu = sciezkaPowrotuDlaMenu(app, req, config.definicje);
-      const nawigacja = nawigacjaDla({ sciezka: req.url, konto: req.konto ?? null, menu, odlozoneEkrany: config.odlozoneEkrany });
+      const nawigacja = nawigacjaDla({ sciezka: req.url, konto: req.konto ?? null, menu, odlozoneEkrany: config.odlozoneEkrany, etykietyStatusow: etykiety });
       reply.locals = {
         ...(reply.locals ?? {}),
+        klasaStatusu: s => klasaStatusu(s, kolory),
+        modyfikatorStatusu: s => modyfikatorStatusu(s, kolory),
+        etykietaStatusu: klucz => etykiety[klucz] ?? klucz,
         title: tytulEkranuDlaAdresu(req.url),
         motyw: motywZNaglowka(req.headers.cookie),
         // Adres, na ktory ma wrocic przelacznik motywu. `req.url` niesie sciezke razem

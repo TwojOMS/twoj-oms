@@ -11,7 +11,7 @@
             <% if (p.klucz === 'zamowienia' && (statusyMenu ?? []).length) { %>
               <ul class="oms-statusy" aria-label="Statusy zamówień">
                 <% statusyMenu.forEach(function(s) { %>
-                  <li><a href="<%= s.href %>"<%- s.aktywna ? ' aria-current="page"' : '' %>><span><% if (modyfikatorStatusu(s.klucz)) { %><span class="kropka <%= modyfikatorStatusu(s.klucz) %>"></span><% } %><%= s.etykieta %></span><% if (typeof s.liczba !== 'undefined') { %><span class="licznik"<% if (!mobilna) { %> data-status="<%= s.klucz %>"<% } %>><%= s.liczba %></span><% } %></a></li>
+                  <li><a href="<%= s.href %>"<%- s.aktywna ? ' aria-current="page"' : '' %>><span><% if (modyfikatorStatusu(s.klucz)) { %><span class="kropka <%= modyfikatorStatusu(s.klucz) %>"></span><% } %><span class="oms-status-etykieta"><%= s.etykieta %></span></span><% if (typeof s.liczba !== 'undefined') { %><span class="licznik"<% if (!mobilna) { %> data-status="<%= s.klucz %>"<% } %>><%= s.liczba %></span><% } %></a></li>
                 <% }); %>
                 <li class="oms-nowe-zamowienie"><a href="/zamowienia/nowe">+ Nowe zamówienie</a></li>
               </ul>

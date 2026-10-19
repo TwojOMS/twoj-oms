@@ -194,7 +194,7 @@ describe('przełącznik motywu w panelu', () => {
     ['/raporty', 'Raporty'],
     ['/statystyki', 'Statystyki'],
     ['/cele', 'Cele'],
-    ['/ustawienia/zamowienia-i-wysylka', 'Zamówienia i wysyłka'],
+    ['/ustawienia/zamowienia-i-wysylka', 'Paczki i koszty dostawy'],
   ])('%s otwiera się i ma swój tytuł', async (url, tytul) => {
     const r = await app.inject({ method: 'GET', url, headers: naglowek });
     expect(r.statusCode).toBe(200);

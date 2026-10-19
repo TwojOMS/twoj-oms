@@ -1,3 +1,4 @@
+import { tytulEkranuDlaAdresu } from '../../../domena/ekrany.js';
 // PRZ-092: Ustawienia → Integracje → Kurier DPD (wzór: „Nowy kurier — DPD Polska” w Apilo).
 //
 // Dostęp: strażnik po prefiksie `/ustawienia` wpuszcza tylko konto z uprawnieniem „ustawienia”, a gościa demo
@@ -18,7 +19,7 @@ export function registerUstawieniaDpdRoutes(app, { db, kurierDpd }) {
   function widok(req, reply, { wpisane = null, bledy = [], test = null } = {}) {
     const stan = stanDlaEkranu(wczytajKonfiguracjeIntegracji(db, 'dpd'));
     return reply.view('ustawienia-dpd.ejs', {
-      nawigacja: nawigacjaUstawien(req, reply), title: 'Kurier DPD',
+      nawigacja: nawigacjaUstawien(req, reply), title: tytulEkranuDlaAdresu(req.url),
       // PRZ-093.08: adres nadawcy = adres firmy (plik albo Ustawienia → Firma), czytany przy każdym widoku.
       zEnv: kurierDpd.zEnv, adresFirmy: kurierDpd.adresFirmy(), ekranAdresu: EKRAN_ADRESU_FIRMY, stan,
       pola: { ...PUSTY, ...(stan?.ustawienia ?? {}), ...(wpisane ?? {}) },

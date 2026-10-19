@@ -53,8 +53,22 @@ export const METODY_WYSYLKI = [
  * Sprawdzamy PREFIKS, a nie liste: dolozenie trzeciego konta Allegro to jeden wpis tam
  * i nic tutaj. Podkreslnik w prefiksie jest istotny — sklep o kluczu „allegrowy" nie jest
  * kanalem Allegro (ta sama pulapka, co przy metodach w masowe.js).
+ *
+ * PRZ-101.08: klucz kanalu jest dowolny (`OMS_KANALY`), a demo ma `allegro` i `allegro-outlet`.
+ * Dlatego DRUGA galaz: klucz kanalu o `typ: 'allegro'` z konfiguracji. Zbior ustawia modul kanalow
+ * raz przy budowie aplikacji (`ustawKanalyAllegro`); bez niego (testy domeny, skrypty) zostaje sam
+ * prefiks — zachowanie sprzed zmiany. Prefiks WYGRYWA: sklep `allegro_x` z `typ: 'woo'` dalej jest
+ * brany za Allegro (strażnik PRZ-062 alarmuje o takim kluczu w instalacji klienta).
  */
-export const czyKanalAllegro = (z) => String(z?.sklep ?? '').startsWith('allegro_');
+let kanalyAllegroZKonfiguracji = new Set();
+/** Klucze kanalow `typ: 'allegro'` z konfiguracji uruchomienia — woła wyłącznie moduł kanałów przy budowie. */
+export function ustawKanalyAllegro(klucze) { kanalyAllegroZKonfiguracji = new Set(klucze ?? []); }
+/** Ustawiony zbior (kopia) — dla zapytan SQL, ktore musza dzielic po kanale tak samo jak predykat. */
+export const kanalyAllegro = () => [...kanalyAllegroZKonfiguracji];
+export const czyKanalAllegro = (z, klucze = kanalyAllegroZKonfiguracji) => {
+  const sklep = String(z?.sklep ?? '');
+  return sklep.startsWith('allegro_') || klucze.has(sklep);
+};
 
 // Nazwy metod DLA CZLOWIEKA — jedno zrodlo dla kolumny „Dostawa" w tabeli, pola wyboru
 // w filtrach i chipa aktywnego filtra. Wpisane osobno w kazdym z tych miejsc rozjechalyby

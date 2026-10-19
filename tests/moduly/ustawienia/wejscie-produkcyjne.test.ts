@@ -4,7 +4,7 @@ import { wykonajWejscie, wykonajZegary, wykonajJednaFabrykeTokenow, OCZEKIWANE_Z
 describe('rzeczywisty src/oms.js → main.ts → MODULY', () => {
   it('uruchamia HTTP całego zachowanego produktu przy zablokowanej sieci wychodzącej', async () => {
     expect(await wykonajWejscie()).toEqual([
-      ['/ustawienia/zamowienia-i-wysylka', 200, 'Zamówienia i wysyłka'],
+      ['/ustawienia/zamowienia-i-wysylka', 200, 'Paczki i koszty dostawy'],
       ['/faktury', 200, 'Faktury'], ['/magazyn', 200, 'Magazyn'], ['/raporty', 200, 'Raporty'], ['/wiadomosci', 200, 'Wiadomości'],
     ]);
   }, 30000);

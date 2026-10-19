@@ -21,9 +21,9 @@ export function registerZwrotyRoutes(app, { db, definicje }) {
   };
 
   // Skrot na dwie formy tego samego wpisu. Slad zapisujemy ZAWSZE tym samym ksztaltem, co
-  // reszta panelu: udana akcja to „DECYZJA CZŁOWIEKA (kto): …", nieudana to „BŁĄD: …".
+  // reszta panelu: udana akcja to „Ręcznie (kto): …", nieudana to „BŁĄD: …".
   const slad = (id, akcja, wynik) => dopiszLog(db, id, { akcja, wynik });
-  const decyzja = (req, tresc) => `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): ${tresc}`;
+  const decyzja = (req, tresc) => `Ręcznie (${ktoKlikal(req)}): ${tresc}`;
 
   app.post('/zamowienia/:id/zwrot', async (req, reply) => {
     const z = zamowienieAlbo404(req, reply);

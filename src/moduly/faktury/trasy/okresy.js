@@ -269,7 +269,7 @@ export function registerOkresyRoutes(app, { db, config = {}, infakt = null, vies
     for (const id of zamowieniaOkresu(db, okres.id)) {
       dopiszLog(db, id, {
         akcja: 'faktura-okresu.odblokowanie',
-        wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): sprawdzone w inFakcie, faktury za okres `
+        wynik: `Ręcznie (${ktoKlikal(req)}): sprawdzone w inFakcie, faktury za okres `
           + `${okres.rok}-${String(okres.miesiac).padStart(2, '0')} nie ma — rezerwacja `
           + `(${okres.ksef_status}${okres.blad_opis ? `: ${okres.blad_opis}` : ''}) skasowana.`,
       });

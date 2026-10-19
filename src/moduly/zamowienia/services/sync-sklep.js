@@ -2,6 +2,7 @@ import { pobierzZamowienie, dopiszLog, zapiszBladSyncSklepu, zapiszStanRealizacj
 import { statusDlaSklepu } from '../../../domena/sync-sklep.js';
 import { statusDlaAllegro, stanAllegroPotwierdzaZgodnosc } from '../../../domena/allegro-status.js';
 import { czyKanalAllegro } from '../../../domena/wysylka.js';
+import { idsDolaczonych, PREFIKS_BLEDU_DOLACZONYCH as PREFIKS_DOLACZONYCH } from '../../../domena/scalanie.js';
 
 /**
  * Odesłanie statusu zamówienia tam, skąd przyszło: do sklepu (WooCommerce) albo do kanału
@@ -101,7 +102,33 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {} }) {
     return status ? { status, klient: klienci[z.sklep], gdzie: SKLEP, akcja: 'sync-woo.status' } : null;
   }
 
+  // PRZ-101.04: odesłanie statusu GŁÓWNEGO obejmuje jego dołączone — każde do swojego sklepu
+  // (dołączone ma już przeniesione `wyslane_at`, oms/db/zamowienia.js). Wszystkie trasy wołają
+  // właśnie to (karta, zmiana masowa, przesyłka ręczna, „Wyślij ponownie”), więc żadna nie musi
+  // wiedzieć o grupie. Dołączone jest ukryte z listy, więc jego nieudane odesłanie ląduje także
+  // na GŁÓWNYM (`sync_woo_blad` + log) — „Wyślij ponownie” na głównym ponawia całą grupę.
   async function odeslijStatus(id) {
+    const wynik = await odeslijJedno(id);
+    const z = pobierzZamowienie(db, id);
+    const dolaczone = idsDolaczonych(z);
+    if (!dolaczone.length) return wynik;
+    const bledy = [];
+    for (const d of dolaczone) {
+      const r = await odeslijJedno(d);
+      if (r.blad) bledy.push(`${pobierzZamowienie(db, d)?.numer ?? d}: ${r.blad}`);
+    }
+    if (bledy.length) {
+      const opis = `${PREFIKS_DOLACZONYCH}${bledy.join('; ')}`;
+      if (!wynik.blad) zapiszBladSyncSklepu(db, id, opis);
+      dopiszLog(db, id, { akcja: 'sync-sklep.scalone', wynik: `BŁĄD: ${opis}` });
+      return { ...wynik, blad: wynik.blad ?? opis };
+    }
+    // Ślad po dołączonych zdejmujemy tylko wtedy, gdy to on wisiał na głównym.
+    if (!wynik.blad && String(z.sync_woo_blad ?? '').startsWith(PREFIKS_DOLACZONYCH)) zapiszBladSyncSklepu(db, id, null);
+    return wynik;
+  }
+
+  async function odeslijJedno(id) {
     const z = pobierzZamowienie(db, id);
     if (!z) return { wyslany: null, powod: 'brak zamówienia' };
 

@@ -52,7 +52,7 @@
   <%# patrz POST /zamowienia/:id/status i domain/status-reczny.js. %>
   <form class="zmiana-statusu" method="post" action="/zamowienia/<%= z.id %>/status">
     <input type="hidden" name="powrot" value="<%= powrot %>">
-    <span class="<%= klasaStatusu(status) %>"><%= etykiety[status] %></span>
+    <span class="<%= klasaStatusu(status) %> znacznik-statusu"><%= etykiety[status] %></span>
     <%# ⚠️ ZNACZNIK ZWROTU — JEDEN Z TRZECH ELEMENTOW ZWROTU NA KARCIE (Zadanie 5). `dane.zwroty` %>
     <%# jest `null`, gdy zwrotow nie ma, i WTEDY TEN WARUNEK NIE RYSUJE NICZEGO — wymog %>
     <%# wlasciciela: karta ma nie urosnac ani o piksel przy 99% zamowien bez zwrotu. Kolor %>
@@ -388,7 +388,13 @@
           <%# musi brzmiec identycznie na liscie, na karcie i na ekranie nadania. %>
           <span>
             <% if (z.metoda_wysylki === 'nieznana') { %><span class="stan-zle"><%= etykietaWysylki('nieznana', z.pobranie) %></span>
-            <% } else { %><span title="<%= nazwaDostawy(z) %>"><%= nazwaDostawy(z) %></span><% } %>
+            <% } else { %>
+              <%# PRZ-101.05: plakietka w kolorze przewoźnika jak w kolumnie „Dostawa” listy; klucz liczy kontekst %>
+              <%# tą samą funkcją (przewoznikWiersza). Nieznany przewoźnik i odbiór osobisty — bez plakietki. %>
+              <% if (przewoznikKarty) { %><span class="plakietka plakietka--<%= przewoznikKarty.klucz %>"><% } %>
+              <span title="<%= nazwaDostawy(z) %>"><%= nazwaDostawy(z) %></span>
+              <% if (przewoznikKarty) { %></span><% } %>
+            <% } %>
             <% if (dane.metodaZmienionaRecznie) { %> <span class="znacznik znacznik-reczny">zmienione ręcznie</span><% } %>
           </span>
         </div>
@@ -637,6 +643,48 @@
 <%# więc zbierają się w jednej sekcji na dole (`_wiadomosci.ejs`) — razem z komentarzem, %>
 <%# bo to przy wysyłce najbardziej potrzeba notatki „nie wysyłać FV, klient chce zbiorczą". %>
 
+<%# ——— 4a. ZAMÓWIENIE SCALONE (PRZ-101.04) ———————————————————————————————————————— %>
+<%# Tylko na karcie GŁÓWNEGO, krótko: numery dołączonych, decyzja wysyłki, „Rozdziel”. %>
+<%# Pozycje całej grupy stoją w panelu „Pozycje” niżej (zamowienieGrupy — to samo, co faktura). %>
+<% if (scalenie) { %>
+<section class="panel" id="scalenie">
+  <div class="panel-glowa">
+    <h2>Zamówienie scalone</h2>
+    <% if (scalenie.mozeRozdzielic) { %>
+      <form method="post" action="/zamowienia/<%= z.id %>/rozdziel" class="link-edytuj">
+        <button class="btn btn--maly btn--drugi" type="submit">Rozdziel</button>
+      </form>
+    <% } %>
+  </div>
+  <div class="panel-cialo">
+    <p>Dołączone: <% scalenie.dolaczone.forEach(function (d, i) { %><%= i ? ', ' : '' %><strong><%= d.numer %></strong> (<%= d.sklep %><%= d.anulowane ? ' — anulowane w sklepie' : '' %>)<% }); %>.
+      Adres, paczka i faktura — z tego zamówienia. Koszt wysyłki: <strong><%= scalenie.wysylka === 'suma' ? 'suma wysyłek' : 'z zamówienia głównego' %></strong>.</p>
+    <%# N1: „wstrzymane” jest prawdą tylko bez faktury i paczki (wtedy działa też „Rozdziel”). Gdy grupa %>
+    <%# ma już fakturę albo paczkę, jedynym wyjściem jest „Odłącz anulowane” — i to mówimy wprost. %>
+    <% if (scalenie.uwagaDolaczonych) { %>
+      <% if (scalenie.mozeRozdzielic) { %>
+        <p class="blad">Uwaga: <%= scalenie.uwagaDolaczonych %>. Faktura grupy i nadanie paczki są wstrzymane — rozdziel zamówienia albo odłącz anulowane.</p>
+      <% } else { %>
+        <p class="blad">Uwaga: <%= scalenie.uwagaDolaczonych %>. Grupa ma już <%= scalenie.maFakture ? 'fakturę' : 'paczkę' %>, więc „Rozdziel” nie zadziała — użyj „Odłącz anulowane”: anulowane wróci na listę jako osobne zamówienie, reszta grupy zostanie<%= scalenie.maFakture ? ', a fakturę grupy trzeba będzie skorygować' : '' %>.</p>
+      <% } %>
+      <form method="post" action="/zamowienia/<%= z.id %>/odlacz-anulowane">
+        <button class="btn btn--maly btn--drugi" type="submit">Odłącz anulowane</button>
+      </form>
+    <% } %>
+    <% if (scalenie.razem === null) { %>
+      <p class="blad">Sumy grupy nie da się policzyć — któreś z zamówień ma uszkodzoną kwotę. Faktura grupy zostanie odrzucona do wyjaśnienia.</p>
+    <% } %>
+  </div>
+</section>
+<% } %>
+<%# N1: wynik „Odłącz anulowane” przy wystawionej fakturze grupy — poza sekcją, bo po odłączeniu ostatniego %>
+<%# dołączonego grupy (i sekcji) już nie ma. Ten sam napis trafia do logu zamówienia. %>
+<% if (komunikatScalenia) { %>
+<section class="panel" id="scalenie-komunikat">
+  <div class="panel-cialo"><p class="blad"><%= komunikatScalenia %></p></div>
+</section>
+<% } %>
+
 <%# ——— 5. POZYCJE ————————————————————————————————————————————————————————————————— %>
 <%# JEDNO „Edytuj" przelacza CALY panel (?edytuj=pozycje): kazda nazwa, ilosc i cena staje %>
 <%# sie polem. Wysylka zostaje wierszem tylko do odczytu — jej kosztu nikt nie prosil %>
@@ -879,6 +927,8 @@
                 <% } %>
                 <%# `skuDoPokazania`, nie `sku` — patrz komentarz wyzej. %>
                 <% if (w.skuDoPokazania) { %><div class="sku"><%= w.skuDoPokazania %></div><% } %>
+                <%# PRZ-101.04: przy zamówieniu scalonym — z którego zamówienia pozycja przyszła. %>
+                <% if (w.zZamowienia) { %><div class="sku z-zamowienia">z zamówienia <%= w.zZamowienia %></div><% } %>
                 <%# Jak w trybie edycji wyzej: `oznaczReczna` gasnie przy zamowieniu recznym. %>
                 <% if (w.oznaczReczna) { %><span class="znacznik znacznik-reczny">dopisana ręcznie</span><% } %>
                 <% if (!w.podsumowanie && !w.reczna && w.polaZmienione.length) { %>
@@ -1231,6 +1281,10 @@
         <% } else { %>nie da się policzyć: <%= saldoWplat.blad %><% } %>
       </strong>
     </div>
+    <%# PRZ-101.11: przy scaleniu saldo i lista to CAŁA grupa (wpłaty w bazie zostają przy swoich zamówieniach). %>
+    <% if (scalenie) { %>
+      <p class="wyjasnienie" id="wplaty-grupy">Wpłaty całego scalonego zamówienia, razem z <%= scalenie.dolaczone.map(function (d) { return d.numer; }).join(', ') %>.</p>
+    <% } %>
     <%# Konsekwencja salda powiedziana WPROST. Sam kolor paska jej nie niesie, a to jest %>
     <%# zdanie, ktore rozstrzyga, czy paczka ma dzis wyjechac. %>
     <% if (brakNormalny) { %>
@@ -1260,19 +1314,21 @@
     <table class="tab-pozycje">
       <thead><tr><th>Data</th><th class="liczba">Kwota</th><th>Metoda</th><th class="kol-akcje"></th></tr></thead>
       <tbody>
-        <% z.platnosci.forEach(function (w) { %>
+        <% wplatyKarty.forEach(function (w) { %>
           <tr>
             <td><%= wart(fmtDataCzas(w.data)) %></td>
             <td class="liczba"><%= w.kwota %> zł</td>
             <td>
               <%= wart(w.metoda) %> · <%= w.zrodlo === 'sklep' ? 'sklep' : 'ręczna' %>
+              <% if (w.zZamowienia) { %> · zam. <%= w.zZamowienia %><% } %>
               <% if (w.uwaga) { %><span class="netto-cicho"><%= w.uwaga %></span><% } %>
             </td>
             <td class="kol-akcje">
               <%# Usunac da sie WYLACZNIE wplate reczna — sklepowa nalezy do sklepu i poller %>
               <%# dopisalby ja z powrotem. Prawdziwa odmowa siedzi w usunWplateReczna. %>
+              <%# PRZ-101.11: wpłata dołączonego usuwa się z JEGO zamówienia (tam leży w bazie). %>
               <% if (w.zrodlo === 'reczna') { %>
-                <form method="post" action="/zamowienia/<%= z.id %>/platnosci/<%= w.id %>/usun">
+                <form method="post" action="/zamowienia/<%= w.zamowienie_id ?? z.id %>/platnosci/<%= w.id %>/usun">
                   <input type="hidden" name="powrot" value="<%= powrot %>">
                   <button class="btn btn--maly">Usuń</button>
                 </form>
@@ -1280,7 +1336,7 @@
             </td>
           </tr>
         <% }); %>
-        <% if (!z.platnosci.length) { %>
+        <% if (!wplatyKarty.length) { %>
           <tr><td colspan="4" class="pusto-sekcja">Brak wpłat.</td></tr>
         <% } %>
       </tbody>

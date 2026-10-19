@@ -62,6 +62,28 @@ export function pozycjeDokumentu(z) {
   // `gross_price` to SUMA LINII (patrz naglowek), wiec ilosc idzie obok niej, a nie zamiast:
   // dokladnie tak samo jak przy pozycjach wyzej.
   const dostawa = wysylkaBruttoGrosze(z);
+  // PRZ-101.11: zamówienie GRUPY scalonej (domena/scalanie.js, `zamowienieGrupy`) niesie wysyłki
+  // członków osobno — każda idzie osobną pozycją (główne „Dostawa”, dołączone „Dostawa — zamówienie
+  // N”). Główne zostaje pod NAZWA_DOSTAWY, bo po niej korekta poznaje dostawę. Linie MUSZĄ dać
+  // kwotę wysyłki, którą liczy bariera niżej — bariera nie sumuje `services`, więc rozjazd
+  // przeszedłby po cichu; stąd odmowa tutaj.
+  const wysylkiGrupy = z.grupa?.wysylki;
+  if (Array.isArray(wysylkiGrupy)) {
+    const suma = wysylkiGrupy.reduce((s, w) => s + w.grosze, 0);
+    if (suma !== dostawa) {
+      throw bladOperatora(`Suma wysyłek grupy (${zl(suma)} zł) nie zgadza się z wysyłką zamówienia scalonego (${zl(dostawa)} zł). `
+        + 'Faktura NIE została wystawiona.');
+    }
+    for (const w of wysylkiGrupy) {
+      services.push({
+        name: w.glowne ? NAZWA_DOSTAWY : `${NAZWA_DOSTAWY} — zamówienie ${w.numer}`,
+        quantity: w.ilosc ?? 1,
+        gross_price: w.grosze,
+        tax_symbol: stawka,
+      });
+    }
+    return services;
+  }
   if (dostawa > 0) {
     const ilosc = wysylkaEfektywna(z).ilosc;
     services.push({ name: NAZWA_DOSTAWY, quantity: ilosc, gross_price: dostawa, tax_symbol: stawka });

@@ -12,7 +12,7 @@ describe('PRZ-065 — zwarte tabele Przesyłek i Faktur', () => {
     const css = odczytaj('src/public/tabele-prz065.css');
 
     for (const widok of [przesylki, faktury]) {
-      expect(widok).toContain('href="/public/tabele-prz065.css"');
+      expect(widok).toContain(`href="<%= zasob('tabele-prz065.css') %>"`); // PRZ-100: adres z wersją
       expect(widok).toContain('prz065-tabele');
       expect(widok).toContain('prz065-naglowek');
     }

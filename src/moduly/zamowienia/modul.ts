@@ -3,19 +3,21 @@ import { konfiguracjaZamowien } from './konfiguracja.ts';
 import { createKontekstZamowien } from './kontekst.js';
 import { registerListaRoutes } from './lista.js';
 import { registerKartaRoutes } from './karta.js';
-import { registerReczneRoutes } from './reczne.js';
+import { registerReczneRoutes } from './reczne.js'; import { registerScalanieRoutes } from './scalanie.js';
 import { miniaturyEkranu } from './wspolne.js';
 import * as zapytania from '../../oms/db/zamowienia.js';
 import { createSyncSklep } from './services/sync-sklep.js';
 import { createGusClient } from '../../oms/gus/client.js';
 import { integracje } from '../../integracje/klucze.js';
+import { migracjaStatusowWlasnych } from './migracje/0002-statusy-wlasne.ts';
 import { migracjaIndeksuListy } from './migracje/0001-indeks-listy.ts';
+import { migracjaScalen } from './migracje/0003-scalenia.ts';
 import { efektywnyTryb } from '../../core/tryb.ts';
 import { zrodloAdresuFirmy } from '../../oms/db/adres-firmy.js';
 // PRZ-083: `fabryki.createGusClient` — atrapa GUS piaskownicy i demo (deploy/proba/atrapy/gus.mjs), jak fabryki inFaktu
 // i VIES w module faktur. Poza OMS_TRYB=proba odmowa już przy konfiguracji.
 export function createModulZamowienia({ zWiadomosciami = false, fabryki = {} as { createGusClient?: () => any } } = {}): ModulOms<ReturnType<typeof konfiguracjaZamowien>> { return {
-  nazwa:'zamowienia',wersja:'1.0.0',wymaga:['rdzen','web','kanaly','faktury',...(zWiadomosciami?['wiadomosci']:[])],migracje:[migracjaIndeksuListy],
+  nazwa:'zamowienia',wersja:'1.0.0',wymaga:['rdzen','web','kanaly','faktury',...(zWiadomosciami?['wiadomosci']:[])],migracje:[migracjaIndeksuListy,migracjaStatusowWlasnych,migracjaScalen],
   uprawnienia:[{klucz:'zamowienia',etykieta:'Zamówienia',role:['admin','operator']}],
   menu:[{dzial:'sprzedaz',grupa:'obsluga',etykieta:'Zamówienia',adres:'/',uprawnienie:'zamowienia',kolejnosc:10}],
   konfiguracja:env=>{
@@ -54,7 +56,7 @@ export function createModulZamowienia({ zWiadomosciami = false, fabryki = {} as 
           faktura:ctx.usluga('faktury','faktura'),proforma:ctx.usluga('faktury','proforma'),
           fakturaAllegro:ctx.usluga('faktury','fakturaAllegro'),fakturaHurtem:ctx.usluga('faktury','fakturaHurtem'),doczytanieKsef:ctx.usluga('faktury','doczytanieKsef'),
         });
-        registerListaRoutes(app,kontekst);registerKartaRoutes(app,kontekst);registerReczneRoutes(app,kontekst);
+        registerListaRoutes(app,kontekst);registerKartaRoutes(app,kontekst);registerReczneRoutes(app,kontekst);registerScalanieRoutes(app,kontekst);
       },
     };
   },

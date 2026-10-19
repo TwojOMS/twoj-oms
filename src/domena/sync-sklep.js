@@ -1,4 +1,4 @@
-import { wyliczStatus } from './status.js';
+import { statusBazowy } from './status.js';
 import { czyKanalAllegro } from './wysylka.js';
 
 // Odesłanie statusu do sklepu. Panel jest miejscem, w którym człowiek stwierdza, co się
@@ -59,7 +59,7 @@ export function statusDlaSklepu(z) {
   // wysyla do Allegro niczego (tylko GET), wiec zdjecie warunku bez tamtej mapy oznacza
   // wyslanie do Allegro statusu, ktorego Allegro nie rozumie.
   if (czyKanalAllegro(z)) return null;
-  const docelowy = STATUS_SKLEPU_DLA[wyliczStatus(z)];
+  const docelowy = STATUS_SKLEPU_DLA[statusBazowy(z)];
   if (!docelowy) return null;
   if (z.status_woo === docelowy) return null;
   if (NIETYKALNE.includes(z.status_woo)) return null;

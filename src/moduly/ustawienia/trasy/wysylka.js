@@ -1,3 +1,4 @@
+import { tytulEkranuDlaAdresu } from '../../../domena/ekrany.js';
 import { randomUUID } from 'node:crypto';
 import { wczytajUstawienia, zapiszUstawienia, ustawieniaZmienioneAt } from '../../../oms/db/ustawienia.js';
 import { domyslnaPaczka, kwotyDostawy, sprawdzPaczke, sprawdzKoszty } from '../../../domena/ustawienia-panelu.js';
@@ -15,7 +16,7 @@ export function registerUstawieniaWysylkiRoutes(app,{db}) {
   } = {}) {
     const zapis = wczytajUstawienia(db);
     return reply.view('ustawienia-zamowienia.ejs', {
-      ...wspolnyKontekst(req, reply), title: 'Zamówienia i wysyłka',
+      ...wspolnyKontekst(req, reply), title: tytulEkranuDlaAdresu(req.url),
       paczka: wpisanaPaczka ?? domyslnaPaczka(zapis),
       szablonyPaczek: odczytajSzablony(zapis), wpisanySzablon,
       kwoty: wpisaneKoszty ?? kwotyDostawy(zapis), dostawy: DOSTAWY,

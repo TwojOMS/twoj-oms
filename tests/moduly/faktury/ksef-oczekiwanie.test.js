@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import {
-  czekaNaKsef, WARUNEK_CZEKA_NA_KSEF_SQL, KOLUMNA_ZLECONA_Z_PANELU_SQL, czyWierszWZakresieKsef,
+  czekaNaKsef, warunekCzekaNaKsefSql, KOLUMNA_ZLECONA_Z_PANELU_SQL, czyWierszWZakresieKsef,
 } from '../../../src/domena/ksef-oczekiwanie.js';
 import { zajmijWysylkeKsef } from '../../../src/moduly/faktury/db/wysylki-ksef.js';
 
@@ -224,7 +224,7 @@ describe('warunek SQL i predykat domeny odpowiadają IDENTYCZNIE', () => {
       SELECT f.zamowienie_id, z.sklep, ${KOLUMNA_ZLECONA_Z_PANELU_SQL}
       FROM faktury f
       JOIN zamowienia z ON z.id = f.zamowienie_id
-      WHERE ${WARUNEK_CZEKA_NA_KSEF_SQL}
+      WHERE ${warunekCzekaNaKsefSql()}
     `).all().filter(czyWierszWZakresieKsef).map((w) => w.zamowienie_id));
 
     const zPredykatu = new Set(idy.filter((id) => czekaNaKsef(pobierzZamowienie(db, id))));

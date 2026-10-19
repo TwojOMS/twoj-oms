@@ -1,4 +1,5 @@
 import { pobierzZamowienie, dopiszLog, oznaczWyslane, znajdzZamowieniaPoNumerze, ustawZamowienieZrodlowe } from '../../../oms/db/zamowienia.js';
+import { zamowienieZGrupa } from '../../../oms/db/scalenia.js'; // PRZ-101.04: paczka głównego = pozycje całej grupy
 
 import { nastepnaKolejnosc, zarejestrujPrzesylkeReczna } from '../db/przesylki.js';
 
@@ -119,7 +120,7 @@ app.post('/zamowienia/masowe/nadaj-podglad', async (req, reply) => {
         // Decyzja właściciela 14.10 (po obejrzeniu ekranu): zamiast odbiorcy — CO jedzie w paczce,
         // bo rozmiar wybiera się pod zawartość. TE SAME wiersze, co na karcie i ekranie nadania
         // (wierszePozycji), bez wysyłki i sumy; SKU zaślepki oferty wygaszone jak tam.
-        produkty: wierszePozycji(z).filter((w) => !w.wysylka && !w.podsumowanie)
+        produkty: wierszePozycji(zamowienieZGrupa(db, z)).filter((w) => !w.wysylka && !w.podsumowanie)
           .map((w) => ({ ilosc: w.ilosc, nazwa: w.nazwa, sku: w.skuDoPokazania })),
         droga,
         deliveryMethodId,
@@ -271,7 +272,7 @@ app.post('/zamowienia/:id/dosylka', async (req, reply) => {
 
     dopiszLog(db, id, {
       akcja: 'dosylka',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): ${numer
+      wynik: `Ręcznie (${ktoKlikal(req)}): ${numer
         ? `zamówienie oznaczone jako dosyłka do „${numer}"`
         : 'powiązanie z zamówieniem pierwotnym skasowane'}.`,
     });
@@ -285,6 +286,8 @@ app.post('/zamowienia/:id/przesylki/reczna', async (req, reply) => {
     // Ta trasa nie przechodzi przez wybierzKuriera (nie potrzebuje SKONFIGUROWANEGO klienta —
     // niczego nie nadaje), wiec odmowa dla odbioru osobistego musi stac WPROST — inaczej
     // sprzedaz na miejscu dorobilaby sobie przesylke, ktorej nikt nie nadal.
+    // PRZ-101.04: dołączone nie ma własnej paczki — ta sama odmowa, co przy nadaniu.
+    if (zam.scalone_do) return reply.code(400).send(powodBrakuGotowosciNadania(zam));
     const metoda = metodaWysylki(zam);
     if (metoda === 'odbior_osobisty') {
       return reply.code(400).send('To zamówienie ma odbiór osobisty — nie ma do niego przesyłki.');
@@ -310,7 +313,7 @@ app.post('/zamowienia/:id/przesylki/reczna', async (req, reply) => {
     oznaczWyslane(db, id);
     dopiszLog(db, id, {
       akcja: 'przesylka.reczna',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): paczka nr ${p.kolejnosc} nadana POZA panelem, `
+      wynik: `Ręcznie (${ktoKlikal(req)}): paczka nr ${p.kolejnosc} nadana POZA panelem, `
         + `list ${p.numer_listu} — panel niczego nie nadał, tylko odnotował fakt`
         + `${komentarz ? `; ${komentarz}` : ''}.`,
     });
@@ -325,6 +328,8 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
     if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+    // PRZ-101.04: dołączone nie ma ekranu nadania — paczka jedzie z głównego.
+    if (z.scalone_do) return reply.redirect(`/zamowienia/${z.scalone_do}/nadaj`);
     if (!nadanie) return reply.code(503).send('Nadawanie nie jest skonfigurowane (brak danych DPD).');
     const powrot = powrotKarty(req);
     const wspolnyPowrot = {
@@ -464,7 +469,7 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
       // `odnosnikPozycji(z, w, …)` (dolozenie Allegro), a git scalil to BEZ KONFLIKTU —
       // zostal import z link-pozycji.js i wywolanie skasowanej funkcji tutaj. Jesli kiedys
       // trzeba bedzie to zmienic po raz drugi, zmienia sie OBA miejsca naraz.
-      pozycjeKarty: wierszePozycji(z).map((w) => {
+      pozycjeKarty: wierszePozycji(zamowienieZGrupa(db, z)).map((w) => {
         const odnosnik = odnosnikPozycji(z, w, { baseUrl: config.sklepy?.[z.sklep]?.baseUrl ?? null });
         return { ...w, linkProduktu: odnosnik?.adres ?? null, linkProduktuTytul: odnosnik?.tytul ?? null };
       }),
@@ -492,6 +497,8 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
     if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+    // PRZ-101.04: dołączone — odmowa PRZED formularzem paczki (inaczej odbijałoby się od adresu albo wymiarów).
+    if (z.scalone_do) return reply.code(400).send(powodBrakuGotowosciNadania(z));
     if (!nadanie) return reply.code(503).send('Nadawanie nie jest skonfigurowane (brak danych DPD).');
     // Walidacja PRZED dotknieciem kuriera, w tym samym duchu co walidacja kraju/kwoty
     // pobrania w dpd.js: wartosc nieliczbowa albo ujemna dostaje czytelna odmowe, NIGDY

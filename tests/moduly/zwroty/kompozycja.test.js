@@ -46,7 +46,7 @@ describe('PRZ-024 — zwroty w produkcyjnej kompozycji', () => {
       expect(ponownie.prepare('SELECT klucz_pozycji,nazwa,ilosc,kwota FROM zwroty_pozycje WHERE zwrot_id=?').all(zwroty[0].id))
         .toEqual([{ klucz_pozycji: klucz, nazwa: 'Produkt testowy', ilosc: 1, kwota: '50.00' }]);
       expect(ponownie.prepare("SELECT wynik FROM log WHERE zamowienie_id=? AND akcja='zwrot.rejestracja'").all(id))
-        .toEqual([{ wynik: 'DECYZJA CZŁOWIEKA (operator): zarejestrowany zwrot z 2026-08-02 na 50.00 zł + dostawa 10.00 zł, pozycji: 1; powód: Uszkodzenie.' }]);
+        .toEqual([{ wynik: 'Ręcznie (operator): zarejestrowany zwrot z 2026-08-02 na 50.00 zł + dostawa 10.00 zł, pozycji: 1; powód: Uszkodzenie.' }]);
       expect(fetch).not.toHaveBeenCalled();
     } finally {
       if (aplikacja) { await aplikacja.app.close(); aplikacja.db.close(); }

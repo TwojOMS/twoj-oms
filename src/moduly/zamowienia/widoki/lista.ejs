@@ -295,6 +295,12 @@
             Przygotuj przesyłki…
           </button>
         </span>
+        <%# PRZ-101.04: „…” jak wyżej — najpierw ekran scalania (wybór głównego, wysyłki), potem zapis. %>
+        <span class="grupa">
+          <button class="btn btn--maly" type="submit" formaction="/zamowienia/masowe/scal-podglad">
+            Scal zaznaczone…
+          </button>
+        </span>
         <% if (mozeAdres('/zamowienia/faktury-hurtem/podglad')) { %>
         <span class="grupa">
           <%# „…" jak wyzej: to NIE jest jeszcze wystawienie, tylko ekran podgladu. Faktury %>
@@ -427,10 +433,14 @@
               <div class="wiersz-szczegoly zegar<%- z.zegar.poTerminie ? ' zegar--po-terminie' : '' %>"><%= z.zegar.opis %></div>
             <% } %>
             <div class="wiersz-stan">
-              <span class="<%= klasaStatusu(z.status) %>"><%= etykiety[z.status] %></span>
+              <span class="<%= klasaStatusu(z.status) %> znacznik-statusu"><%= etykiety[z.status] %></span>
               <%# Anulowanie PO nadaniu albo po wystawieniu faktury: samo „Anulowane" w statusie %>
               <%# wyglada jak sprawa zamknieta, a paczka moze byc w drodze, a faktura czekac %>
               <%# w inFakcie na wieczorna wysylke do KSeF (albo juz wymagac korekty). %>
+              <%# PRZ-101.04 (recenzja, W3): dołączone anulowane w sklepie — powód z domeny (uwagaDolaczonychAnulowanych). %>
+              <% if (z.uwagaDolaczonych) { %>
+                <span class="uwaga"><%= z.uwagaDolaczonych %></span>
+              <% } %>
               <% if (z.anulowaneZUwaga) { %>
                 <span class="uwaga">anulowane po <%= z.przesylki.length ? 'nadaniu' : 'wystawieniu faktury' %></span>
               <% } %>
@@ -577,4 +587,4 @@
     <% } %>
     </form>
   </div>
-  <script type="module" src="/public/pozycja-listy.js" data-klucz-listy="<%= kluczListy %>"></script>
+  <script type="module" src="<%= zasob('pozycja-listy.js') %>" data-klucz-listy="<%= kluczListy %>"></script>

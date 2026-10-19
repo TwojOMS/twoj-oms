@@ -124,7 +124,7 @@
       "wymagalnoscPoLudzku": "opcjonalna; w instalacji Docker ustawia ją plik compose i nie zmienisz jej w oms.env",
       "domyslnaPoLudzku": "w instalacji Docker plik bazy leży w katalogu danych /opt/oms/data (ustawia go plik compose)",
       "skutekBraku": "main i CLI sklepu otwierają domyślny plik; zbudujOms tworzy bazę w pamięci; CLI podjazdu odmawia wykonania.",
-      "skutekBrakuPoLudzku": "Panel używa domyślnego pliku bazy w katalogu /data-oms. Skrypt jednorazowego importu podjazdów DPD bez tej zmiennej odmawia pracy.",
+      "skutekBrakuPoLudzku": "Poza Dockerem panel używa domyślnego pliku bazy w katalogu /data-oms. W instalacji Docker baza jest zawsze w katalogu danych /opt/oms/data (ustawia ją plik compose), więc przetrwa aktualizację. Skrypt jednorazowego importu podjazdów DPD bez tej zmiennej odmawia pracy.",
       "walidacja": "Ścieżka przekazana do SQLite; PRZ-094.07: przed otwarciem SQLite main sprawdza istnienie katalogu rodzica oraz prawa zapisu; odmowa wskazuje OMS_DB_PATH, wolumin /data-oms w Dockerze i docs/konfiguracja.md. W produkcyjnym main brak lub pusty tekst wybiera /data-oms/oms.sqlite zgodnie z frozen fallback ||. Pozostałe czytniki zachowują własne reguły: bootstrap i CLI importu sklepu używają ??, więc pusty tekst nie jest tam brakiem.",
       "odczyty": [
         {
@@ -4455,7 +4455,7 @@
         {
           "id": "AST-133",
           "path": "src/moduly/ustawienia/modul.ts",
-          "line": 29,
+          "line": 33,
           "expression": "env.OMS_ADRES_PANELU",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4463,7 +4463,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/ustawienia/modul.ts:29"
+        "src/moduly/ustawienia/modul.ts:33"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -6791,7 +6791,7 @@
     },
     {
       "path": "src/moduly/kanaly/modul.ts",
-      "line": 22,
+      "line": 23,
       "expression": "env",
       "callee": "konfiguracjaKanalow",
       "call": "konfiguracjaKanalow(definicje, env, niekompletneJakoAlarm)"
@@ -6994,14 +6994,14 @@
     },
     {
       "path": "src/moduly/zamowienia/modul.ts",
-      "line": 22,
+      "line": 24,
       "expression": "env",
       "callee": "efektywnyTryb",
       "call": "efektywnyTryb(env)"
     },
     {
       "path": "src/moduly/zamowienia/modul.ts",
-      "line": 23,
+      "line": 25,
       "expression": "env",
       "callee": "konfiguracjaZamowien",
       "call": "konfiguracjaZamowien(env)"
@@ -7317,7 +7317,7 @@
       "warunek": "Co najmniej jeden aktywny klient kanału",
       "source": {
         "path": "src/moduly/kanaly/modul.ts",
-        "line": 47
+        "line": 50
       },
       "wlaczoneWMainNaPinie": true
     },
@@ -7655,7 +7655,7 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "b9f5992a198d79fe3d0442431137624d46185b403f9345a6ddf9d1e1b2840eeb",
+      "sha256": "65cf1549d6fa62969538bbae0bd25182882e522df713e153b5e4c144fe76b055",
       "normalizacja": "LF"
     },
     {
@@ -7682,7 +7682,7 @@
     },
     {
       "path": "src/moduly/kanaly/modul.ts",
-      "sha256": "82ddc0191d43988ef3691f520648b5dae6b77ebfae7d588d36a84d498c6f79af",
+      "sha256": "fd941266d77711f0481be3a9f807fec9c2f0bfb47363a9841bdb0054192f9964",
       "normalizacja": "LF"
     },
     {
@@ -7732,7 +7732,7 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "b9f5992a198d79fe3d0442431137624d46185b403f9345a6ddf9d1e1b2840eeb",
+      "sha256": "65cf1549d6fa62969538bbae0bd25182882e522df713e153b5e4c144fe76b055",
       "normalizacja": "LF"
     },
     {
@@ -9984,7 +9984,7 @@
     },
     {
       "path": "src/moduly/zamowienia/modul.ts",
-      "sha256": "523e828c1b1bd77514a5f5f3ec428733915e34f7834a834af053f86378066880",
+      "sha256": "b3cd66e0271aa990aae05cce7175fea0aa60a9dedb89972b2522d5ec0b45aa49",
       "normalizacja": "LF"
     },
     {

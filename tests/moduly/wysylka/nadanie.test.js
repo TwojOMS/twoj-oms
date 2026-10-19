@@ -77,7 +77,7 @@ describe('nadanie', () => {
     dpd.nadaj.mockResolvedValue({ numerListu: NUMER_LISTU_2, etykietaPdf: Buffer.from('%PDF-x'), surowa: '<xml/>' });
     await nadanie.nadaj(id, PACZKA_DOMYSLNA, { kolejnosc: 2, pobranieNaTejPaczce: true, kwotaPobrania: '123.00' });
     const wpisy = logi(db, 'nadanie.pobranie').map((l) => l.wynik).join(' | ');
-    expect(wpisy).toMatch(/DECYZJA CZŁOWIEKA/);
+    expect(wpisy).toMatch(/Ręcznie( \(|:)/);
     expect(wpisy).toMatch(/paczce nr 2/);
     expect(wpisy).toMatch(/123\.00/);
   });
@@ -90,7 +90,7 @@ describe('nadanie', () => {
     await nadanie.nadaj(id);
     dpd.nadaj.mockResolvedValue({ numerListu: NUMER_LISTU_2, etykietaPdf: Buffer.from('%PDF-x'), surowa: '<xml/>' });
     await nadanie.nadaj(id, PACZKA_DOMYSLNA, { kolejnosc: 2 });
-    expect(logi(db, 'nadanie.pobranie').map((l) => l.wynik).join(' | ')).not.toMatch(/DECYZJA CZŁOWIEKA/);
+    expect(logi(db, 'nadanie.pobranie').map((l) => l.wynik).join(' | ')).not.toMatch(/Ręcznie( \(|:)/);
   });
 
   // Ustalenie z recenzji: usuniecie WSZYSTKICH wywolan dopiszLog zostawialo suite zielona.

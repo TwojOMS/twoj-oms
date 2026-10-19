@@ -102,7 +102,7 @@ app.post('/zamowienia/nowe', async (req, reply) => {
 
     dopiszLog(db, id, {
       akcja: 'zamowienie.reczne',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): zamówienie założone ręcznie — `
+      wynik: `Ręcznie (${ktoKlikal(req)}): zamówienie założone ręcznie — `
         + `${DOSTAWY[req.body?.dostawa] ?? dane.metoda_wysylki}, ${dane.metoda_platnosci}, `
         + `${dane.pozycje.length} poz., koszt dostawy ${dane.koszt_dostawy_brutto} zł.`
         // Oplata doklejona przez PANEL, nie przez czlowieka — dziennik musi umiec
@@ -129,7 +129,7 @@ app.post('/zamowienia/nowe/klient', async (req, reply) => {
     // a slad ma zostac — to on tlumaczy pozniej, skad na fakturze wzial sie ten adres.
     dopiszLog(db, null, {
       akcja: 'klient.wstaw',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): wstawiono dane stałego klienta `
+      wynik: `Ręcznie (${ktoKlikal(req)}): wstawiono dane stałego klienta `
         + `„${klient.nazwa}" (${klient.klucz}) do formularza nowego zamówienia — nic jeszcze nie zapisano.`,
     });
     return renderujNowe(reply, {
@@ -266,7 +266,7 @@ zapisDanych('wysylka', (id, z, req) => {
     zapiszNadpisaniaWysylki(db, id, nadpisania);
     dopiszLog(db, id, {
       akcja: 'dane.wysylka',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): dane do wysyłki poprawione ręcznie — ${opisZmian(nadpisania)}.`,
+      wynik: `Ręcznie (${ktoKlikal(req)}): dane do wysyłki poprawione ręcznie — ${opisZmian(nadpisania)}.`,
     });
   });
 zapisDanych('faktura', (id, z, req) => {
@@ -309,7 +309,7 @@ zapisDanych('faktura', (id, z, req) => {
     }
     dopiszLog(db, id, {
       akcja: 'dane.faktura',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): dane do faktury poprawione ręcznie — ${opisZmian(nadpisania)}`
+      wynik: `Ręcznie (${ktoKlikal(req)}): dane do faktury poprawione ręcznie — ${opisZmian(nadpisania)}`
         + `${przelacznik === null ? '' : `; „klient chce fakturę" ustawione ręcznie na ${przelacznik ? 'TAK' : 'NIE'}`}.`,
     });
 
@@ -336,7 +336,7 @@ zapisDanych('przywroc', (id, z, req) => {
     przywrocDaneZeSklepu(db, id);
     dopiszLog(db, id, {
       akcja: 'dane.przywroc',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): ręczne poprawki danych klienta skasowane — rządzi sklep.`,
+      wynik: `Ręcznie (${ktoKlikal(req)}): ręczne poprawki danych klienta skasowane — rządzi sklep.`,
     });
   });
 function zapisPozycji(sciezka, obsluga) {
@@ -413,7 +413,7 @@ app.post('/zamowienia/:id/pozycje/zapisz', async (req, reply) => {
     przeliczKwoteRecznego(db, id);
     dopiszLog(db, id, {
       akcja: 'pozycje.zapisz',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): zapisane pozycje — `
+      wynik: `Ręcznie (${ktoKlikal(req)}): zapisane pozycje — `
         + `${zmienione.length ? `zmienione: ${zmienione.join(', ')}` : 'bez zmian wobec sklepu'}. `
         + 'Kwota zamówienia w sklepie NIE ZMIENIA SIĘ.',
     });
@@ -460,7 +460,7 @@ app.post('/zamowienia/:id/pozycje/z-magazynu', async (req, reply) => {
     przeliczKwoteRecznego(db, id);
     dopiszLog(db, id, {
       akcja: 'pozycja.z-magazynu',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): dopisana z magazynu pozycja „${pozycja.nazwa}", `
+      wynik: `Ręcznie (${ktoKlikal(req)}): dopisana z magazynu pozycja „${pozycja.nazwa}", `
         + `${pozycja.ilosc} szt. po ${pozycja.cena_brutto} zł brutto = ${pozycja.brutto_linii} zł `
         + `(cennik ${cennikiInstalacji.nazwy[cennik]}`
         // Rabat trafia do dziennika WYLACZNIE wtedy, gdy jakis byl — inaczej „rabat 0%"
@@ -494,7 +494,7 @@ app.post('/zamowienia/:id/pozycje', async (req, reply) => {
     przeliczKwoteRecznego(db, id);
     dopiszLog(db, id, {
       akcja: 'pozycja.dodana',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): dopisana pozycja „${pozycja.nazwa}", `
+      wynik: `Ręcznie (${ktoKlikal(req)}): dopisana pozycja „${pozycja.nazwa}", `
         + `${pozycja.ilosc} szt. po ${pozycja.cena_brutto} zł brutto = ${pozycja.brutto_linii} zł. `
         + 'Kwota zamówienia w sklepie NIE ZMIENIA SIĘ — rośnie kwota oczekiwana od klienta.',
     });
@@ -507,7 +507,7 @@ zapisPozycji('przywroc', ({ id, z, p }, req) => {
     zapiszNadpisaniaPozycji(db, id, ustawNadpisaniePozycji(z.pozycje_reczne_json, p.klucz, {}));
     dopiszLog(db, id, {
       akcja: 'pozycja.przywroc',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): ręczne poprawki pozycji „${p.sklep.nazwa}" skasowane — rządzi sklep.`,
+      wynik: `Ręcznie (${ktoKlikal(req)}): ręczne poprawki pozycji „${p.sklep.nazwa}" skasowane — rządzi sklep.`,
     });
   });
 app.post('/zamowienia/:id/wysylka/kwota/przywroc', async (req, reply) => {
@@ -520,7 +520,7 @@ app.post('/zamowienia/:id/wysylka/kwota/przywroc', async (req, reply) => {
     przeliczKwoteRecznego(db, id);
     dopiszLog(db, id, {
       akcja: 'wysylka.kwota.przywroc',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): ręczna poprawka kwoty wysyłki skasowana — rządzi sklep.`,
+      wynik: `Ręcznie (${ktoKlikal(req)}): ręczna poprawka kwoty wysyłki skasowana — rządzi sklep.`,
     });
     return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'pozycje' }));
   });
@@ -531,7 +531,7 @@ zapisPozycji('usun', ({ id, p }, req) => {
     przeliczKwoteRecznego(db, id);
     dopiszLog(db, id, {
       akcja: 'pozycja.usunieta',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): usunięta pozycja dopisana ręcznie „${usunieta.nazwa}", `
+      wynik: `Ręcznie (${ktoKlikal(req)}): usunięta pozycja dopisana ręcznie „${usunieta.nazwa}", `
         + `${usunieta.ilosc} szt. po ${usunieta.cena_brutto} zł = ${usunieta.brutto_linii} zł.`,
     });
   });

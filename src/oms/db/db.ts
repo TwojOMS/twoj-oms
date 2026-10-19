@@ -7,6 +7,7 @@ import { uzupelnijZdjeciaPozycji } from './uzupelnienia-kanalow.js';
 import { uzupelnijDaneZamowien } from './uzupelnienia-zamowien.js';
 import { przygotujKoszty } from './przygotowanie-kosztow.js';
 import { sledzZmianyListy } from './sledzenie-listy.js';
+import { maTabeleStatusow } from './statusy.js';
 
 export const MIGRACJA_PTASZEK_STATYSTYKI = 'ptaszek-statystyki-2026-09-13';
 
@@ -65,6 +66,7 @@ export function openOmsDb(path = ':memory:', {
   const db = otworzBaze(path);
   try {
     wykonajMigracje(db, moduly, teraz);
+    maTabeleStatusow(db); // przygotowanie zapytania schematu, współdzielone przez odczyty listy
     // PRZ-051: przed uzupełnieniami niżej — one też zmieniają zamówienia.
     sledzZmianyListy(db);
     if (moduly.some(modul => modul.nazwa === 'rdzen')) { dosypPtaszekStatystyk(db, teraz); dosypPtaszekCeli(db, teraz); }

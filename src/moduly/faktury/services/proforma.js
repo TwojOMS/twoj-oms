@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
+import { dopiszLog } from '../../../oms/db/zamowienia.js';
+import { zamowienieDoDokumentu } from '../../../oms/db/scalenia.js';
 import {
   zapiszProforme, pobierzProforme, uniewaznijPoprzednie, zapiszSciezkePliku, usunProforme,
 } from '../db/proformy.js';
@@ -116,7 +117,8 @@ export function createProforma({
    * Zwraca ZAPISANY wiersz proformy (z numerem, id i sciezka pliku).
    */
   function wystaw(zamowienieId) {
-    const z = pobierzZamowienie(db, zamowienieId);
+    // PRZ-101.04: główne grupy scalonej — pozycje całej grupy (jak faktura, oms/db/scalenia.js).
+    const z = zamowienieDoDokumentu(db, zamowienieId);
 
     // ── FAZA 1: odmowy lokalne ────────────────────────────────────────────────
     // Nic z tego nie dotyka bazy, wiec odmowa nie zostawia po sobie ani wiersza,

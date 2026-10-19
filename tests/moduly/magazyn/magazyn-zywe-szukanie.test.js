@@ -125,7 +125,7 @@ describe('wpięcie htmx', () => {
   // ⚠️ Z WŁASNEGO HOSTA, nigdy z CDN-u: panel chodzi w LAN-ie bez wyjścia na świat.
   it('biblioteka ładuje się z panelu, nie z sieci', async () => {
     const body = (await get('/zamowienia/nowe')).body;
-    expect(body).toContain('src="/public/htmx.min.js"');
+    expect(body).toMatch(/src="\/public\/htmx\.min\.js\?v=[0-9a-f]{10}"/); // PRZ-100: adres z wersją
     expect(body).not.toMatch(/src="https?:\/\//);
   });
 

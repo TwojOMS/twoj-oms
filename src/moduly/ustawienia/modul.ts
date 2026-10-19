@@ -4,6 +4,7 @@ import { nazwaCiasteczkaOms } from '../../core/bezpieczenstwo/sesja.js';
 import { registerKontaRoutes } from './trasy/konta.js';
 import { registerUstawieniaWysylkiRoutes } from './trasy/wysylka.js';
 import { registerUstawieniaMagazynuRoutes } from './trasy/magazyn.js';
+import { registerUstawieniaStatusowRoutes } from './trasy/statusy.js';
 import {registerUstawieniaRoutes} from '../marketing/trasy/integracje.js';
 import { createWidokIntegracji } from './integracje.js';
 import { registerUstawieniaFormulkiRoutes } from '../wiadomosci/trasy/ustawienia.js';
@@ -22,6 +23,10 @@ import { registerHasloLinkRoutes } from './trasy/haslo-link.js';
 import { registerUstawieniaPocztyRoutes } from './trasy/poczta.js';
 import { adresPaneluZZapisu } from './adres-panelu.ts';
 import { wczytajKonfiguracjeIntegracji } from '../../oms/db/konfiguracja-integracji.js';
+import { registerUstawieniaAktualizacjiRoutes } from './trasy/aktualizacje.js';
+import { registerUstawieniaWkrotceRoutes } from './trasy/wkrotce.js';
+import { odczytajWydanie, sprawdzNajnowsze } from './aktualizacje.ts';
+import { transport } from '../../integracje/transport.js';
 
 /** Zachowane ustawienia, konta, logowanie i wspólna rama panelu. */
 export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
@@ -47,7 +52,12 @@ export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
     // Poczta wychodząca, czytany przy każdym mailu (zmiana bez restartu).
     const adresPanelu = () => ctx.konfiguracja.adresPanelu ?? adresPaneluZZapisu(wczytajKonfiguracjeIntegracji(ctx.db, 'adres_panelu'));
     const mailer = mailerOpcjonalny(ctx.usluga);
-    return {uslugi:{widokIntegracji,lacznosc},trasy:app=>{
+    // PRZ-099: /app/wydanie.json (tylko obraz z paczki klienta) + GitHub Releases na kliknięcie; limit 10 s, bez ponowień.
+    const aktualizacje = {
+      wydanie: () => odczytajWydanie(new URL('../../../wydanie.json', import.meta.url)),
+      sprawdz: () => sprawdzNajnowsze({ http: transport({ limitCzasuMs: 10_000 }) }),
+    };
+    return {uslugi:{widokIntegracji,lacznosc,aktualizacje},trasy:app=>{
     zarejestrujMenuKontaRol(app,{db:ctx.db});
     registerLogowanieRoutes(app,{db:ctx.db,config:ctx.usluga('web','config')});
     registerUstawieniaPocztyRoutes(app,{db:ctx.db,adresPaneluZEnv:ctx.konfiguracja.adresPanelu,poczta:pocztaOpcjonalna(ctx.usluga),mailer,log:ctx.log});
@@ -59,9 +69,12 @@ export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
     registerHasloLinkRoutes(app,{db:ctx.db,teraz:ctx.teraz});
     registerUstawieniaWysylkiRoutes(app,{db:ctx.db});
     registerUstawieniaMagazynuRoutes(app,{db:ctx.db});
+    registerUstawieniaStatusowRoutes(app,{db:ctx.db});
     registerUstawieniaFormulkiRoutes(app,{db:ctx.db});
     registerDiagnostykaRoutes(app,{db:ctx.db,config:ctx.usluga('kanaly','config'),lacznosc:ctx.usluga('ustawienia','lacznosc')});
     registerPanelRoutes(app);
+    registerUstawieniaAktualizacjiRoutes(app,{aktualizacje:ctx.usluga('ustawienia','aktualizacje')});
+    registerUstawieniaWkrotceRoutes(app);
     app.get('/ustawienia/integracje',(req,reply)=>widokIntegracji(req,reply));
     app.get('/ustawienia/integracje/reklamy',(req,reply)=>widokIntegracji(req,reply,{tylkoReklamy:true}));
     registerUstawieniaRoutes(app,{db:ctx.db,reklamy:ctx.usluga('marketing','reklamy')});

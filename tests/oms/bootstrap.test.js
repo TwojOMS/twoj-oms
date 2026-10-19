@@ -1187,7 +1187,7 @@ describe('src/oms.js pozostaje cienkim punktem wejścia', () => {
     const sciezka = fileURLToPath(new URL('../../src/oms.js', import.meta.url));
     const zrodlo = readFileSync(sciezka, 'utf8');
     expect(await wykonajWejscie()).toEqual([
-      ['/ustawienia/zamowienia-i-wysylka', 200, 'Zamówienia i wysyłka'],
+      ['/ustawienia/zamowienia-i-wysylka', 200, 'Paczki i koszty dostawy'],
       ['/faktury', 200, 'Faktury'], ['/magazyn', 200, 'Magazyn'], ['/raporty', 200, 'Raporty'], ['/wiadomosci', 200, 'Wiadomości'],
     ]);
     for (const zakazane of ['createDpdClient', 'createInfaktClient', 'createNadanie', 'createFaktura', 'buildOmsServer']) {

@@ -41,6 +41,8 @@ export function wyliczStatus(z) {
   // (jest na liscie w domain/status-reczny.js). Panel nie zgaduje momentu wyjazdu paczki,
   // bo go nie zna — zna tylko moment wydruku etykiety, a to nie to samo.
   if (z.wyslane_at) return 'wyslane';
+  const wlasny = (z.statusy_wlasne ?? []).find(s => s.klucz === z.status_wlasny && ['nowe', 'w_realizacji'].includes(s.jak));
+  if (wlasny) return wlasny.klucz;
   if (z.w_realizacji_at) return 'w_realizacji';
   // ⚠️ „INDYWIDUALNE" STOI NA SAMYM DOLE DRABINKI, TUZ NAD „NOWE" — i to jest cala regula
   // (prosba wlasciciela 2026-08-07): „zamowienie trafia tam na czas jego przetwarzania,
@@ -90,6 +92,22 @@ export function anulowaneWymagaUwagi(z) {
   return Boolean(z.anulowane && (zywe.length > 0 || z.faktura));
 }
 
+/**
+ * PRZ-101.04 (recenzja, W3): DOŁĄCZONE ANULOWANE W SKLEPIE PO SCALENIU. Dołączone nie ma wiersza
+ * na liście, a jego paczka i faktura są na głównym — więc `anulowaneWymagaUwagi` dołączonego nie
+ * widzi nikt. Sprawę niesie GŁÓWNE: ten napis trzyma je na „Do zrobienia”, stoi przy wierszu i na
+ * karcie, a gotowość nadania odmawia nim nadania paczki grupy.
+ *
+ * `z.dolaczone_anulowane` — numery dołączonych anulowanych (efektywnie: sklep albo ręcznie, ten sam
+ * warunek, co `d.anulowane` w `sprawdzCzlonkowGrupy`); dokłada go odczyt (oms/db/zamowienia.js).
+ */
+export function uwagaDolaczonychAnulowanych(z) {
+  const numery = z?.dolaczone_anulowane ?? [];
+  if (!numery.length) return null;
+  return `${numery.length > 1 ? 'dołączone zamówienia' : 'dołączone zamówienie'} ${numery.join(', ')} `
+    + 'anulowane w sklepie — rozdziel albo skoryguj';
+}
+
 // Lista robocza = to, co zostalo do zrobienia. "Oplacone" celowo nie ma tu wplywu:
 // oplacenie jest faktem obok statusu, nie etapem procesu.
 //
@@ -128,6 +146,7 @@ export function doZrobienia(z, teraz = Date.now()) {
   // i ma wlasna regule w `sprawyPrzesylki` — patrz komentarz w db/db.js przy migracji.
   if (z.sync_woo_blad) return true;
   if (anulowaneWymagaUwagi(z)) return true;
+  if (uwagaDolaczonychAnulowanych(z)) return true;
   // ZWROT NIEROZLICZONY TRZYMA ZAMOWIENIE NA LISCIE — mimo ze jego status jest KONCOWY.
   // Ta sama zasada, co przy fakturze wymagajacej czlowieka wyzej: status mowi „co to jest",
   // lista robocza — „czy jest tu jeszcze robota". Bez tej linii zwrot z nieoddanymi
@@ -141,5 +160,11 @@ export function doZrobienia(z, teraz = Date.now()) {
   // z „Do zrobienia" nie dlatego, ze cos sie z nimi stalo, tylko dlatego, ze zmienila sie
   // nazwa ich stanu. To jest praca do wykonania (projekt czeka na akceptacje), a nie stan
   // koncowy.
-  return ['nowe', 'indywidualne', 'w_realizacji'].includes(wyliczStatus(z));
+  return ['nowe', 'indywidualne', 'w_realizacji'].includes(statusBazowy(z));
+}
+
+// Klucz własny nigdy nie wychodzi do integracji; fakty końcowe mają ten sam priorytet.
+export function statusBazowy(z) {
+  const status = wyliczStatus(z);
+  return (z.statusy_wlasne ?? []).find(s => s.klucz === status)?.jak ?? status;
 }

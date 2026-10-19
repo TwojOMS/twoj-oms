@@ -1,7 +1,7 @@
 import { pobierzZamowienie, oznaczPotwierdzenieWyslane, dopiszLog } from '../../../oms/db/zamowienia.js';
-import { trescPotwierdzenia } from '../../../domena/potwierdzenie-zamowienia.js';
-import { renderPotwierdzenieHtml } from '../../../core/poczta/potwierdzenie-html.js';
 import { zapiszWiadomosc } from '../../../oms/db/wiadomosci.js';
+import { wczytajSzablonyWiadomosci } from '../../../oms/db/szablony-wiadomosci.js';
+import { mailPotwierdzenia } from '../szablony.js';
 import { oprawaMaila, tekstZeStopka } from '../oprawa.js';
 
 // WYSYLKA POTWIERDZENIA PRZYJECIA ZAMOWIENIA (21.08.2026).
@@ -23,7 +23,9 @@ export function createPotwierdzenie({ db, mailer, sprzedawca = {}, oprawaPoczty 
 
     // RZUCA przy odmowie domeny — trasa zamienia to na komunikat po polsku, tak samo jak
     // przy fakturze i proformie.
-    const mail = trescPotwierdzenia(z, { podpis: oprawa.podpis });
+    // PRZ-101.03: szablon z Ustawień → Szablony wiadomości, czytany przy każdej wysyłce (zmiana bez restartu).
+    // Bez zapisu — dzisiejsza treść co do znaku (szablony.js: droga `szablon: null`).
+    const mail = mailPotwierdzenia(z, { oprawa, szablon: wczytajSzablonyWiadomosci(db).wbudowane.potwierdzenie ?? null });
 
     try {
       await mailer.sendMail({
@@ -38,7 +40,7 @@ export function createPotwierdzenie({ db, mailer, sprzedawca = {}, oprawaPoczty 
         // potwierdzenie ich nie spelnia, wiec wychodzilo z niego jako ciag akapitow — bez
         // tabeli, ktora mialo miec. Wspolna zostaje KOPERTA (wordmark, karta, stopka), czyli
         // to, co naprawde ma wygladac tak samo w calej korespondencji.
-        html: renderPotwierdzenieHtml(mail.model, oprawa),
+        html: mail.html,
       });
     } catch (e) {
       // ⚠️ NIEUDANA WYSYLKA NIE MA PRAWA ZOSTAWIC SLADU „wyslano". Odwrotna kolejnosc
@@ -66,7 +68,7 @@ export function createPotwierdzenie({ db, mailer, sprzedawca = {}, oprawaPoczty 
       akcja: 'potwierdzenie.wyslane',
       // Adresat i temat TAK, tresc NIE — ta sama zasada, co przy komentarzu wewnetrznym:
       // log karty czyta sie na glos przy reklamacji.
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal}): potwierdzenie przyjęcia zamówienia wysłane na ${mail.do}.`,
+      wynik: `Ręcznie (${ktoKlikal}): potwierdzenie przyjęcia zamówienia wysłane na ${mail.do}.`,
     });
     return { do: mail.do, temat: mail.temat, kiedy };
   }

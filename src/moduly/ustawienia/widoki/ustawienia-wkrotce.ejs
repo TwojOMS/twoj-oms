@@ -1,0 +1,14 @@
+<%# PRZ-101.01: strona „wkrótce” — co tu będzie i co da się zrobić dziś. Treść: domena/ustawienia-wkrotce.js. %>
+<h1><%= strona.tytul %></h1>
+
+<section class="ust-sekcja ust-wkrotce">
+  <p class="ust-wkrotce-stan">Ten ekran jeszcze nie działa.</p>
+  <p class="ust-wkrotce-opis"><%= strona.opis %></p>
+  <ul>
+    <% strona.punkty.forEach(function (punkt) { %><li><%= punkt %></li>
+    <% }); %>
+  </ul>
+  <% if (strona.dzis) { %>
+    <p class="ust-wkrotce-dzis"><strong>Dziś:</strong> <%= strona.dzis %><% if (strona.odnosnik) { %> Otwórz: <a href="<%= strona.odnosnik.href %>"><%= strona.odnosnik.etykieta %></a><% } %></p>
+  <% } %>
+</section>

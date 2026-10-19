@@ -248,7 +248,7 @@ describe('POST /nadaj — bariera przeżywa żądanie z ręki', () => {
     await post(serwer, `/zamowienia/${id}/nadaj`, { ...PACZKA, kurier: 'dpd' });
     const wpis = db.prepare("SELECT * FROM log WHERE zamowienie_id = ? AND akcja = 'nadanie.kurier'").get(id);
     expect(wpis).toBeTruthy();
-    expect(wpis.wynik).toMatch(/DECYZJA CZŁOWIEKA/);
+    expect(wpis.wynik).toMatch(/Ręcznie( \(|:)/);
     expect(wpis.wynik).toContain('allegro_dpd');
   });
 

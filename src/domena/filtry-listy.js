@@ -202,7 +202,7 @@ export function adresZFiltrami(filtry, { szukaj = null, status = null, wszystkie
  * operator ma wrócić na listę, tylko bez zawężenia. Ta sama zasada, co przy `wroc` na
  * karcie wzoru (przewodnik OMS, 4.67).
  */
-export function bezpiecznyPowrotNaListe(surowy, definicje) {
+export function bezpiecznyPowrotNaListe(surowy, definicje, etykiety = ETYKIETY) {
   kanalyWidoku(definicje);
   if (typeof surowy !== 'string' || !/^\/(\?|$)/.test(surowy) || surowy.includes('#')) return '/';
   if (surowy === '/') return '/';
@@ -220,8 +220,12 @@ export function bezpiecznyPowrotNaListe(surowy, definicje) {
     [...parametry.entries()].filter(([klucz]) => dozwolone.has(klucz)),
   ), definicje);
   const status = parametry.get('status');
+  // Czyste generatory odnośników nie mają bazy. Zachowują tylko bezpieczny format klucza
+  // własnego; trasa listy sprawdza jego istnienie w aktualnej konfiguracji. Gdy caller
+  // poda konfigurację, również tutaj wymagamy istniejącego klucza.
+  const wlasny = etykiety === ETYKIETY && /^w_[a-z0-9_]+$/.test(status ?? '');
   return adresZFiltrami(filtry, {
-    status: status && Object.hasOwn(ETYKIETY, status) ? status : null,
+    status: status && (Object.hasOwn(etykiety, status) || wlasny) ? status : null,
     wszystkie: parametry.get('wszystkie') === '1',
     poTerminie: parametry.get('po_terminie') === '1',
     szukaj: napis(parametry.get('szukaj')),

@@ -12,6 +12,7 @@
 // tak samo, jak straznik wola ja na prawdziwym adresie (`/zamowienia/12/faktura`).
 
 import { czyTrasaOtwarta } from '../core/bezpieczenstwo/logowanie-wspolne.js';
+import { POZYCJE_USTAWIEN, podmenuUstawien } from './podmenu-ustawien.js';
 
 // ⚠️⚠️ DLACZEGO `/zamowienia` ROZPADA SIE NA CZTERY ZAKRESY.
 // Jeden stary klucz `dokumenty-zamowienia` obejmowal razem faktury, zwroty, proformy i
@@ -228,6 +229,21 @@ export function maDostepDoAdresu(konto, url) {
 
 /** Domyślny tytuł strony z tej samej prezentacyjnej mapy, która nazywa nawigację. */
 export function tytulEkranuDlaAdresu(url) {
+  const sciezka = String(url ?? '').split('?')[0];
+  const integracje = {
+    '/ustawienia/integracje/dpd': 'Kurier DPD Polska',
+    '/ustawienia/integracje/inpost': 'Kurier InPost',
+    '/ustawienia/integracje/infakt': 'inFakt',
+    '/ustawienia/integracje/poczta': 'Poczta wychodząca',
+    '/ustawienia/integracje/reklamy': 'Integracje reklam',
+  };
+  if (integracje[sciezka]) return integracje[sciezka];
+  const pozycja = POZYCJE_USTAWIEN.find((p) => p.href === sciezka);
+  if (pozycja) return pozycja.etykieta;
+  // Odpowiedź 400 formularza korzysta z nazwy ekranu, do którego należy w menu.
+  if (['/ustawienia/paczka', '/ustawienia/dostawa', '/ustawienia/formulka', '/ustawienia/kanaly'].some((p) => wSekcji(sciezka, p))) {
+    return podmenuUstawien(sciezka).find((p) => p.aktywna)?.etykieta ?? 'Ustawienia';
+  }
   const klucz = ekranDlaAdresu(url);
   return EKRANY.find((ekran) => ekran.klucz === klucz)?.etykieta ?? 'Zamówienia';
 }

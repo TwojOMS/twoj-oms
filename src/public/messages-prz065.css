@@ -77,3 +77,11 @@
 #oms-messages .m-attachments button {grid-column:2;grid-row:1 / 3;align-self:center;background:none;border:0;font-size:11px;color:var(--m-green);padding:7px 3px}
 #oms-messages .m-preview-dialog .m-attachments {max-height:250px;overflow-y:auto}
 #oms-messages .m-send:disabled {opacity:.6;cursor:wait}
+/* PRZ-101.03: „Wstaw szablon” nad polem odpowiedzi — jedna linia: etykieta, lista, przycisk; podpowiedź pod spodem. */
+#oms-messages .m-template {display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:12px 21px 0;border-top:1px solid var(--ramka);background:var(--tlo);margin:0}
+#oms-messages .m-template label {font-size:12px;font-weight:600}
+#oms-messages .m-template select {max-width:100%;padding:6px 8px;border:1px solid var(--ramka);background:var(--powierzchnia);color:var(--tekst);border-radius:3px;font-size:12px}
+#oms-messages .m-template button {padding:6px 10px;border:1px solid var(--ramka);background:var(--powierzchnia);color:var(--tekst);border-radius:3px;font-size:12px}
+#oms-messages .m-template .m-help {width:100%;margin:2px 0 0}
+#oms-messages .m-template + .m-compose {border-top:0}
+@media(max-width:650px){#oms-messages .m-template{padding:12px 14px 0}#oms-messages .m-template select{font-size:16px}}

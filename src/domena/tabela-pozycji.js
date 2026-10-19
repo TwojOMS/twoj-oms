@@ -249,6 +249,9 @@ export function wierszePozycji(zamowienie) {
       ? p.cena_katalogowa
       : null,
     suma: sumaLiniiBrutto(p),
+    // PRZ-101.04: numer zamówienia, z którego pozycja przyszła — tylko w wierszach grupy scalonej
+    // (`zamowienieGrupy`); przy zwykłym zamówieniu `null`, więc widok nic nie dopisuje.
+    zZamowienia: p.z_zamowienia ?? null,
     wysylka: false,
     // Oznaczenia dla karty: „dopisane recznie" (caly wiersz) i „zmienione recznie" (pola).
     // Widok ich nie liczy sam — to decyzja domenowa, tak samo jak przy danych klienta.

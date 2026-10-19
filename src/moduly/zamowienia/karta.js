@@ -1,9 +1,11 @@
+import { etykietyStatusow } from '../../oms/db/statusy.js';
 import { pobierzZamowienie, potwierdzWplate, dopiszLog, zapiszFaktyStatusu, zapiszNadpisanieWysylki, przywrocMetodeWysylkiZeSklepu, zapiszKomentarzWewnetrzny, ostatniWpisLogu } from '../../oms/db/zamowienia.js';
 import { AKCJA_LOGU as AKCJA_ALLEGRO_PRZESYLKA } from '../wysylka/services/przesylki-allegro.js';
 import { odswiezStatusKuriera, zapiszLubOdpusc } from '../wysylka/services/status-kuriera.js';
-import { wyliczStatus, ETYKIETY } from '../../domena/status.js';
+import { wyliczStatus } from '../../domena/status.js';
 import { faktyDlaStatusu, powodOdmowyStatusu } from '../../domena/status-reczny.js';
-import { sprawdzZmianeMetody, metodaZeSklepu, czyKanalAllegro } from '../../domena/wysylka.js';
+import { sprawdzZmianeMetody, metodaZeSklepu, czyKanalAllegro, pobranieZeSklepu } from '../../domena/wysylka.js';
+import { powodOdmowyPobraniaGrupy } from '../../domena/scalanie.js';
 import { wartoPytacAllegroONumery } from '../../domena/allegro-numery.js';
 import { join } from 'node:path';
 import { komunikatDlaOperatora } from '../../domena/bledy.js';
@@ -24,6 +26,8 @@ const {db,config,poller,nadanie,faktura,proforma,kurierzy,gus,syncSklep,wiadomos
 app.get('/zamowienia/:id', async (req, reply) => {
     let z = pobierzZamowienie(db, Number(req.params.id));
     if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+    // PRZ-101.04: dołączone nie ma własnej karty — jest częścią głównego (pozycje pokazuje karta głównego).
+    if (z.scalone_do) return reply.redirect(`/zamowienia/${z.scalone_do}`);
 
     // ⚠️ NUMER KSeF DOCIAGA KARTA, TAK SAMO JAK NUMERY LISTOW Z ALLEGRO NIZEJ — i z tego
     // samego powodu: koszt ograniczony UWAGA CZLOWIEKA, zero ruchu w tle.
@@ -255,7 +259,7 @@ app.post('/zamowienia/:id/status', async (req, reply) => {
     if (odmowa) return reply.code(400).send(odmowa);
 
     try {
-      zapiszFaktyStatusu(db, id, faktyDlaStatusu(z, docelowy, { powod: req.body?.powod ?? null }));
+      zapiszFaktyStatusu(db, id, { ...faktyDlaStatusu(z, docelowy, { powod: req.body?.powod ?? null }), kto: req.konto?.login ?? ktoKlikal(req) });
     } catch (e) {
       dopiszLog(db, id, { akcja: 'status.reczny', wynik: `BŁĄD: ${e.message}` });
       return reply.code(400).send(`Nie udało się zmienić statusu: ${komunikatDlaOperatora(e)}`);
@@ -267,8 +271,8 @@ app.post('/zamowienia/:id/status', async (req, reply) => {
     const osiagniety = wyliczStatus(pobierzZamowienie(db, id));
     dopiszLog(db, id, {
       akcja: 'status.reczny',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): wybrano „${ETYKIETY[docelowy]}" — zapisane fakty; `
-        + `status po zmianie: ${ETYKIETY[osiagniety]}`
+      wynik: `Ręcznie (${ktoKlikal(req)}): wybrano „${etykietyStatusow(db)[docelowy]}" — zapisane fakty; `
+        + `status po zmianie: ${etykietyStatusow(db)[osiagniety]}`
         + `${docelowy === 'zwrot' && req.body?.powod ? `; powód zwrotu: ${String(req.body.powod).trim()}` : ''}.`,
     });
     if (syncSklep) await syncSklep.odeslijStatus(id);
@@ -330,7 +334,7 @@ app.post('/zamowienia/:id/ustalenia', async (req, reply) => {
     const zlotowki = (gr) => (gr / 100).toFixed(2);
     dopiszLog(db, id, {
       akcja: 'ustalenia',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): kanał ${req.body?.b2b !== undefined ? 'B2B' : 'ręczne'}, `
+      wynik: `Ręcznie (${ktoKlikal(req)}): kanał ${req.body?.b2b !== undefined ? 'B2B' : 'ręczne'}, `
         + `termin ${ETYKIETY_TERMINU[String(req.body?.termin_platnosci ?? '').trim()] ?? 'nieuzgodniony'}, `
         + `rabat ${wynik.rabat}%.`
         // ⚠️ DZIENNIK MUSI POWIEDZIEC, CO SIE STALO Z PIENIEDZMI. Sam „rabat 30%" nie tlumaczy,
@@ -388,7 +392,7 @@ app.post('/zamowienia/:id/klient/zapamietaj', async (req, reply) => {
 
     dopiszLog(db, id, {
       akcja: 'klient.zapamietaj',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): ${istniejacy ? 'uaktualniono' : 'dopisano'} `
+      wynik: `Ręcznie (${ktoKlikal(req)}): ${istniejacy ? 'uaktualniono' : 'dopisano'} `
         + `stałego klienta „${dane.nazwa}" (${dane.klucz}${dane.nip ? `, NIP ${dane.nip}` : ', bez NIP-u'}) `
         + 'z danych tego zamówienia.',
     });
@@ -425,6 +429,9 @@ app.post('/zamowienia/:id/wysylka/metoda', async (req, reply) => {
     );
     // Bledny formularz, a nie awaria — wiec bez wpisu w logu, tak samo jak przy parsujPaczke.
     if (blad) return reply.code(400).send(blad);
+    // PRZ-101.04 (recenzja, W2): pobranie na zamówieniu scalonym — odmowa (domena/scalanie.js).
+    const pobranieGrupy = nadpisanie.pobranie ? powodOdmowyPobraniaGrupy(zam) : null;
+    if (pobranieGrupy) return reply.code(400).send(pobranieGrupy);
 
     try {
       zapiszNadpisanieWysylki(db, id, nadpisanie);
@@ -436,7 +443,7 @@ app.post('/zamowienia/:id/wysylka/metoda', async (req, reply) => {
       akcja: 'wysylka.metoda',
       // Log nazywa OBIE decyzje — dostawe i pobranie — bo od 2026-08-01 sama nazwa metody
       // nie mowi juz nic o tym, czy kurier ma cos zainkasowac.
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): metoda wysyłki ustawiona ręcznie na ${nadpisanie.metoda}`
+      wynik: `Ręcznie (${ktoKlikal(req)}): metoda wysyłki ustawiona ręcznie na ${nadpisanie.metoda}`
         + `${nadpisanie.pobranie ? ` za pobraniem, kwota pobrania ${nadpisanie.kwota_pobrania} zł` : ' (bez pobrania)'}.`,
     });
     return reply.redirect(adresPowrotuNaKarte(req, id));
@@ -445,6 +452,10 @@ app.post('/zamowienia/:id/wysylka/przywroc', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
     if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+    // PRZ-101.04 (recenzja, W2): powrót do sklepu, który ma pobranie, to włączenie pobrania tylnymi
+    // drzwiami — ta sama odmowa, co przy zmianie metody.
+    const pobranieGrupy = pobranieZeSklepu(z) ? powodOdmowyPobraniaGrupy(z) : null;
+    if (pobranieGrupy) return reply.code(400).send(pobranieGrupy);
     try {
       przywrocMetodeWysylkiZeSklepu(db, id);
     } catch (e) {
@@ -453,7 +464,7 @@ app.post('/zamowienia/:id/wysylka/przywroc', async (req, reply) => {
     }
     dopiszLog(db, id, {
       akcja: 'wysylka.przywroc',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): ręczna metoda wysyłki skasowana — rządzi sklep `
+      wynik: `Ręcznie (${ktoKlikal(req)}): ręczna metoda wysyłki skasowana — rządzi sklep `
         + `(${metodaZeSklepu(z)}).`,
     });
     return reply.redirect(adresPowrotuNaKarte(req, id));
@@ -469,7 +480,7 @@ app.post('/zamowienia/:id/wplata', async (req, reply) => {
     }
     dopiszLog(db, id, {
       akcja: 'wplata.reczna',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): zaksięgowana wpłata ${wplata.kwota} zł z ${wplata.data}`,
+      wynik: `Ręcznie (${ktoKlikal(req)}): zaksięgowana wpłata ${wplata.kwota} zł z ${wplata.data}`,
     });
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });
@@ -485,7 +496,7 @@ app.post('/zamowienia/:id/platnosci', async (req, reply) => {
     dodajWplateReczna(db, id, wplata);
     dopiszLog(db, id, {
       akcja: 'platnosc.dodana',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): dopisana wpłata ${wplata.kwota} zł z ${wplata.data}`
+      wynik: `Ręcznie (${ktoKlikal(req)}): dopisana wpłata ${wplata.kwota} zł z ${wplata.data}`
         + `${wplata.metoda ? `, metoda: ${wplata.metoda}` : ''}${wplata.uwaga ? `, uwaga: ${wplata.uwaga}` : ''}`,
     });
     return reply.redirect(adresPowrotuNaKarte(req, id));
@@ -502,7 +513,7 @@ app.post('/zamowienia/:id/platnosci/:platnoscId/usun', async (req, reply) => {
     }
     dopiszLog(db, id, {
       akcja: 'platnosc.usunieta',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): usunięta wpłata ręczna ${usunieta.kwota} zł`
+      wynik: `Ręcznie (${ktoKlikal(req)}): usunięta wpłata ręczna ${usunieta.kwota} zł`
         + ` z ${usunieta.data ?? '(bez daty)'}`,
     });
     return reply.redirect(adresPowrotuNaKarte(req, id));

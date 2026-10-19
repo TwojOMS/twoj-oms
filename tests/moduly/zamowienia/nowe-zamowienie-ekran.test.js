@@ -166,7 +166,7 @@ describe('podgląd kwoty jest podpięty do strony', () => {
     expect(body).toContain('data-razem');
     // ⚠️ Z PLIKU, nie ze skryptu w stronie — inaczej test w suma-podglad.test.js pilnowałby
     // kopii reguły zamiast kodu, który naprawdę wykonuje przeglądarka.
-    expect(body).toContain('<script type="module" src="/public/suma-podglad.js"></script>');
+    expect(body).toMatch(/<script type="module" src="\/public\/suma-podglad\.js\?v=[0-9a-f]{10}"><\/script>/); // PRZ-100
   });
 
   it('plik podglądu jest naprawdę serwowany', async () => {

@@ -6,6 +6,11 @@ import {
 } from '../../../src/oms/db/zwroty.js';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 import { createKorekta } from '../../../src/moduly/zwroty/services/korekta.js';
+import { fileURLToPath } from 'node:url';
+import { wersjaZasobow } from '../../../src/core/web/wersja-zasobow.js';
+
+// PRZ-100: jedyny dopuszczony skrypt ekranu zwrotu — adres z wersją bieżących plików publicznych.
+const SKRYPT_NAWIGACJI = `<script type="module" src="/public/oms-nawigacja.js?v=${wersjaZasobow(fileURLToPath(new URL('../../../src/public', import.meta.url)))}"></script>`;
 
 // Ksztalt wziety z tests/oms/api-sprzedaz.test.js — `buildOmsServer` NIE jest asynchroniczne,
 // a config ma `auth: { user, pass }` (nie `authUser`/`authPass`).
@@ -224,7 +229,7 @@ describe('ekran zwrotu — KROK 1: podsumowanie zamowienia i wypelnione kwoty', 
   it('ekran zwrotu ma tylko wspólny skrypt nawigacji, bez logiki przeliczania', async () => {
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}/zwrot`, headers: AUTH });
     expect(r.body.match(/<script\b[^>]*>[\s\S]*?<\/script>/gi) ?? []).toEqual([
-      '<script type="module" src="/public/oms-nawigacja.js"></script>',
+      SKRYPT_NAWIGACJI,
     ]);
   });
 });
@@ -637,7 +642,7 @@ describe('ekran zwrotu — kwota PODAZA ZA ILOSCIA (pozycja z RABATEM)', () => {
     });
     expect(r.statusCode).toBe(200);
     expect(r.body.match(/<script\b[^>]*>[\s\S]*?<\/script>/gi) ?? []).toEqual([
-      '<script type="module" src="/public/oms-nawigacja.js"></script>',
+      SKRYPT_NAWIGACJI,
     ]);
   });
 });
@@ -1224,14 +1229,14 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/korekta/odblokuj', () => {
     expect(po.korekta_referencja).toBeNull();
   });
 
-  it('zostawia w logu DECYZJE CZLOWIEKA z tym, co skasowal', async () => {
+  it('zostawia w logu wpis „Ręcznie (kto)” z tym, co skasowal', async () => {
     const w = przepadla();
     await app.inject({
       method: 'POST', url: `/zamowienia/${id}/zwroty/${w.id}/korekta/odblokuj`, headers: AUTH,
     });
     const wpis = log(id).at(-1);
     expect(wpis.akcja).toBe('zwrot.korekta.odblokowanie');
-    expect(wpis.wynik).toMatch(/DECYZJA CZŁOWIEKA \(adam\)/);
+    expect(wpis.wynik).toMatch(/Ręcznie \(adam\)/);
     expect(wpis.wynik).toContain('REF-1');
   });
 
@@ -1275,7 +1280,7 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/korekta/reczna', () => {
     expect(zwrotyZamowienia(db, id).find((x) => x.id === w.id).korekta_numer).toBe('2/KOR/09/2026');
     const wpis = log(id).at(-1);
     expect(wpis.akcja).toBe('zwrot.korekta.reczna');
-    expect(wpis.wynik).toMatch(/DECYZJA CZŁOWIEKA \(adam\)/);
+    expect(wpis.wynik).toMatch(/Ręcznie \(adam\)/);
     expect(wpis.wynik).toContain('2/KOR/09/2026');
   });
 
@@ -1343,10 +1348,10 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/korekta/reczna', () => {
 // ⚠️⚠️ I5 (recenzja 2026-08-15): ZADNA AKCJA ZWROTU NIE ZOSTAWIALA SLADU W LOGU ZAMOWIENIA.
 // Rejestracja zwrotu przykleja zamowieniu status koncowy i ZDEJMUJE KWOTE Z PRZYCHODU,
 // skasowanie usuwa go bez sladu, a zlecenie korekty ma skutki podatkowe. Kazda inna akcja tej
-// wagi w panelu pisze slad („DECYZJA CZŁOWIEKA"), a przy fakturze wprost: nieudana proba
+// wagi w panelu pisze slad („Ręcznie (kto): …"), a przy fakturze wprost: nieudana proba
 // MUSI zostawic slad.
 describe('slad w logu zamowienia — kazda akcja zwrotu', () => {
-  it('rejestracja zwrotu pisze DECYZJE CZLOWIEKA z data, kwota i liczba pozycji', async () => {
+  it('rejestracja zwrotu pisze wpis „Ręcznie (kto)” z data, kwota i liczba pozycji', async () => {
     await app.inject({
       method: 'POST', url: `/zamowienia/${id}/zwrot`, headers: AUTH,
       payload: new URLSearchParams([
@@ -1356,7 +1361,7 @@ describe('slad w logu zamowienia — kazda akcja zwrotu', () => {
     });
     const wpis = log(id).at(-1);
     expect(wpis.akcja).toBe('zwrot.rejestracja');
-    expect(wpis.wynik).toMatch(/DECYZJA CZŁOWIEKA \(adam\)/);
+    expect(wpis.wynik).toMatch(/Ręcznie \(adam\)/);
     expect(wpis.wynik).toContain('99.00');
     expect(wpis.wynik).toContain('2026-08-14');
   });
@@ -1379,7 +1384,7 @@ describe('slad w logu zamowienia — kazda akcja zwrotu', () => {
     await app.inject({ method: 'POST', url: `/zamowienia/${id}/zwroty/${w.id}/pieniadze`, headers: AUTH });
     const wpis = log(id).at(-1);
     expect(wpis.akcja).toBe('zwrot.pieniadze');
-    expect(wpis.wynik).toMatch(/DECYZJA CZŁOWIEKA \(adam\)/);
+    expect(wpis.wynik).toMatch(/Ręcznie \(adam\)/);
   });
 
   // ⚠️ SKASOWANY ZWROT ZNIKA Z BAZY BEZ RESZTY — log jest wtedy JEDYNYM miejscem, z ktorego
@@ -1389,7 +1394,7 @@ describe('slad w logu zamowienia — kazda akcja zwrotu', () => {
     await app.inject({ method: 'POST', url: `/zamowienia/${id}/zwroty/${w.id}/usun`, headers: AUTH });
     const wpis = log(id).at(-1);
     expect(wpis.akcja).toBe('zwrot.usuniecie');
-    expect(wpis.wynik).toMatch(/DECYZJA CZŁOWIEKA \(adam\)/);
+    expect(wpis.wynik).toMatch(/Ręcznie \(adam\)/);
     expect(wpis.wynik).toContain('99.00');
   });
 
@@ -1425,7 +1430,7 @@ describe('slad w logu zamowienia — kazda akcja zwrotu', () => {
     expect(r.statusCode).toBe(302);
     const wpis = log(id).at(-1);
     expect(wpis.akcja).toBe('zwrot.korekta');
-    expect(wpis.wynik).toMatch(/DECYZJA CZŁOWIEKA \(adam\)/);
+    expect(wpis.wynik).toMatch(/Ręcznie \(adam\)/);
   });
 
   it('NIEUDANE zlecenie korekty zostawia slad z bledem', async () => {

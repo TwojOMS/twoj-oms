@@ -65,6 +65,32 @@ function tabelaPrzelewu(p) {
     + '</table>';
 }
 
+/**
+ * Blok `{dane_platnosci}` szablonu (PRZ-101.03) — te same kawałki HTML, które `renderWiadomoscHtml` niżej stawia
+ * między zdaniem wiodącym a zamknięciem. Funkcja niżej zostaje nietknięta; zgodność pilnuje
+ * tests/moduly/wiadomosci/szablony-rownosc.test.js.
+ */
+export function blokiHtmlWiadomosci(m) {
+  return {
+    dane_platnosci: [
+      ...(m.platnosc ? [
+        naglowekSekcji('Do zapłaty'),
+        kwota(m.platnosc.doZaplaty),
+        naglowekSekcji('Przelew'),
+        tabelaPrzelewu(m.platnosc),
+      ] : []),
+      ...(m.zdanieDokumentu ? [
+        `<p style="margin:14px 0 4px;font-family:${FONT};font-size:14px;line-height:1.6;`
+          + `color:${KOLOR.tekst};">${esc(m.zdanieDokumentu)}</p>`,
+      ] : []),
+      ...(m.zdanieWywozu ? [
+        `<p style="margin:14px 0 4px;font-family:${FONT};font-size:14px;line-height:1.6;`
+          + `color:${KOLOR.tekst};">${esc(m.zdanieWywozu)}</p>`,
+      ] : []),
+    ].join(''),
+  };
+}
+
 export function renderWiadomoscHtml(m, { footer = '', naglowek: naglowekMarki = '' } = {}) {
   const body = [
     akapit('Dzień dobry,'),

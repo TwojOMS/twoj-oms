@@ -57,6 +57,26 @@ export function watek(db, kanal, threadId) {
 }
 
 /**
+ * Zamówienie, którego dotyczy wątek — PRZ-101.03 („Wstaw szablon" podstawia jego pola) — albo `null`.
+ *
+ * Wątek Allegro nie niesie numeru zamówienia, więc dopasowanie jest po kupującym: NAJNOWSZE zamówienie z tego
+ * samego konta (`sklep` = kanał) i z tym samym loginem. Login stoi w `klient_json.login` od PRZ-094.19; starsze
+ * zamówienia mają go tylko w surowej odpowiedzi Allegro (`buyer.login`). `json_valid` przed `json_extract`, bo
+ * jeden uszkodzony wiersz wywróciłby całe zapytanie. Kupujący z kilkoma zamówieniami dostaje pola najnowszego —
+ * operator widzi numer nad listą szablonów.
+ */
+export function zamowienieWatku(db, kanal, login) {
+  if (!kanal || !login) return null;
+  const wiersz = db.prepare(`SELECT id FROM zamowienia WHERE sklep = ?
+      AND (CASE WHEN json_valid(klient_json) THEN json_extract(klient_json, '$.login') END) = ?
+      ORDER BY utworzone_at DESC, id DESC LIMIT 1`).get(kanal, login)
+    ?? db.prepare(`SELECT id FROM zamowienia WHERE sklep = ?
+      AND (CASE WHEN json_valid(surowe_json) THEN json_extract(surowe_json, '$.buyer.login') END) = ?
+      ORDER BY utworzone_at DESC, id DESC LIMIT 1`).get(kanal, login);
+  return wiersz?.id ?? null;
+}
+
+/**
  * Reczne „Zalatwione" przy watku.
  *
  * ⚠️ ZAPISUJEMY DATE OSTATNIEJ WIADOMOSCI, nie sam znacznik. Dzieki temu nowa wiadomosc

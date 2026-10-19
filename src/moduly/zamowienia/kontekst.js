@@ -1,3 +1,4 @@
+import { etykietyStatusow } from '../../oms/db/statusy.js';
 import { listaZamowien, zamowieniaPoId, numeryZamowien, pobierzZamowienie, dopiszLog, zapiszNadpisaniaWysylki, historiaLogu } from '../../oms/db/zamowienia.js';
 import { indeksListy } from '../../oms/db/indeks-listy.js';
 import { proformyZamowienia } from '../faktury/db/proformy.js';
@@ -9,7 +10,7 @@ import { ostatniaPozycjaDlaPrzesylki } from '../wysylka/db/kolejka-druku.js';
 import { ostatniaPozycjaDlaFaktury } from '../faktury/db/kolejka-druku-faktur.js';
 import { stanFaktury } from '../../domena/faktura-stan.js';
 import { stanPrzesylki, sprawyZamowienia, sprawyDoZalatwieniaRecznie, mozliwaKolejnaPaczka, numerWpisanyZReki, mozliweUkrycie, przesylkaUkryta } from '../../domena/przesylka-stan.js';
-import { wyliczStatus, doZrobienia, anulowaneWymagaUwagi, ETYKIETY } from '../../domena/status.js';
+import { wyliczStatus, doZrobienia, anulowaneWymagaUwagi, uwagaDolaczonychAnulowanych } from '../../domena/status.js';
 import { podsumowanieZwrotow } from '../../domena/zwrot-widok.js';
 import { powodBrakuGotowosciNadania } from '../../domena/gotowosc-nadania.js';
 import { etykietaWysylki, czyKanalAllegro } from '../../domena/wysylka.js';
@@ -29,7 +30,8 @@ import { wiekZamowienia, czyEkspres } from '../../domena/wiek-zamowienia.js';
 import { kuponyZWiersza } from '../../domena/kupony.js';
 import ejs from 'ejs';
 import { join } from 'node:path';
-import { TEMATY, NAZWA_TEMATU, czyWolnoWyslac, stanTematu, ostatnieWgTematow } from '../../domena/wiadomosci.js';
+import { TEMATY, NAZWA_TEMATU, czyWolnoWyslac, czyWolnoWyslacWlasny, stanTematu, ostatnieWgTematow } from '../../domena/wiadomosci.js';
+import { fmtDataCzasKrotko } from '../../domena/format-daty.js';
 import { wiadomosciZamowienia } from '../../oms/db/wiadomosci.js';
 import { adresatKlienta } from '../../domena/adresat-klienta.js';
 import { cennikDlaZamowienia, rozmiarDoPokazania, cenniki as zbudujCenniki } from '../../domena/magazyn-do-zamowienia.js';
@@ -59,6 +61,8 @@ import { wolnoPrzypisac } from '../../domena/zmiana-okresu.js';
 import { umowaZbiorcza } from '../../domena/klient-zbiorczy.js';
 import { pobierzOkres } from '../../oms/db/okresy.js';
 import { MIESIACE } from '../../domena/okres-rozliczeniowy.js';
+import { decyzjaScalenia, zamowienieGrupy } from '../../domena/scalanie.js';
+import { dolaczoneZamowienia, zamowienieZGrupa } from '../../oms/db/scalenia.js';
 import {teraz,AKCJA_ALLEGRO_PROBA,allegroWymagaOdpytania,miniaturyEkranu,ktoKlikal,sprzedawcaSpecyfikacji,daneKarty,KATALOG_WIDOKOW,fragment} from './wspolne.js';
 export function createKontekstZamowien(opcje) {
 const {
@@ -93,7 +97,7 @@ const {
   fakturaHurtem = null,
   doczytanieKsef = null,
 }=opcje;
-const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, config.definicje);
+const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, config.definicje, etykietyStatusow(db));
 // Cenniki „Dodaj z magazynu" (PRZ-060): `OMS_CENNIKI` albo sklepy Woo z definicji kanałów.
 // Składane RAZ, przy budowie tras — zła lista odmawia startu, a nie pierwszego telefonu.
 const cennikiInstalacji = zbudujCenniki({ lista: config.cenniki ?? null, definicje: config.definicje ?? [] });
@@ -129,6 +133,8 @@ const wczytajListe = (ids, { teraz = new Date(), bezSurowych = false, pomijajUsz
       // dokladnie tak samo jak sprawa pierwszej (patrz sprawyZamowienia).
       sprawyPrzesylki: sprawyZamowienia(z.przesylki, teraz.getTime()),
       anulowaneZUwaga: anulowaneWymagaUwagi(z),
+      // PRZ-101.04 (recenzja, W3): powód, dla którego główne grupy wraca na „Do zrobienia”.
+      uwagaDolaczonych: uwagaDolaczonychAnulowanych(z),
       // Kanal sprzedazy do wyswietlenia — z kolumny `sklep`, NIGDY zaszyty na sztywno
       // w widoku (brief zadania „strona glowna": kolejne kanaly dojda).
       kanalSprzedazy: adresKanalu(z.sklep, config.definicje),
@@ -209,9 +215,9 @@ const statusyDlaKarty = async (z, req = null) => {
     return [
       { klucz: 'do_zrobienia', etykieta: 'Do zrobienia', liczba: l?.do_zrobienia, href: '/', aktywna: false },
       { klucz: 'wszystkie', etykieta: 'Wszystkie', liczba: l?.wszystkie, href: '/?wszystkie=1', aktywna: false },
-      ...Object.keys(ETYKIETY).map((klucz) => ({
+      ...Object.keys(etykietyStatusow(db)).map((klucz) => ({
         klucz,
-        etykieta: ETYKIETY[klucz],
+        etykieta: etykietyStatusow(db)[klucz],
         liczba: l?.statusy[klucz],
         href: `/?status=${klucz}`,
         aktywna: klucz === status,
@@ -257,8 +263,13 @@ function wyborWiadomosci(req) {
       // ⚠️ `wybrany` to WYLACZNIE prawdziwy temat. Adres z nieznana wartoscia zostaje w stanie
       // „podglad" i dostaje POWOD z uslugi („Nie ma takiego tematu wiadomosci."), ale nie
       // udaje wybranego tematu — inaczej formularz wysylki celowalby w nieistniejaca trase.
-      wybrany: TEMATY.includes(wybor) ? wybor : null,
+      // PRZ-101.03: albo istniejący szablon własny (`wlasny-N`) — usunięty w międzyczasie już nim nie jest.
+      wybrany: TEMATY.includes(wybor) || tematyWlasne().some((t) => t.id === wybor) ? wybor : null,
     };
+  }
+// Szablony własne z Ustawień → Szablony wiadomości (PRZ-101.03); panel bez poczty albo stara usługa = brak.
+function tematyWlasne() {
+    return wiadomosci?.tematyWlasne?.() ?? [];
   }
 function daneWiadomosci(req, z, dodatki = {}) {
     if (!wiadomosci) return { wiadomosciSekcja: null };
@@ -310,6 +321,14 @@ function daneWiadomosci(req, z, dodatki = {}) {
       zgoda: czyWolnoWyslac(k.z, temat_id, k),
       stan: stanTematu(k.z, temat_id, { ...k, ostatnia: ostatnie.get(temat_id) ?? null }),
     }));
+    // PRZ-101.03: szablony własne — ta sama lista, ten sam podgląd, ta sama wysyłka i to samo ostrzeżenie
+    // „Ta wiadomość poszła już…" (rejestr `wiadomosci` z temat_id = `wlasny-N`).
+    for (const { id, nazwa } of tematyWlasne()) {
+      const zgoda = czyWolnoWyslacWlasny(k.z);
+      const ostatnia = ostatnie.get(id);
+      tematy.push({ id, nazwa, wlasny: true, zgoda, stan: !zgoda.wolno ? zgoda.powod
+        : ostatnia ? `wysłane ${fmtDataCzasKrotko(ostatnia.wyslana_at)} — pójdzie ponownie` : 'szablon własny' });
+    }
 
     return {
       wiadomosciSekcja: {
@@ -330,6 +349,51 @@ function daneWiadomosci(req, z, dodatki = {}) {
       },
     };
   }
+// PRZ-101.04: sekcja „Zamówienie scalone” na karcie GŁÓWNEGO — pozycje całej grupy w jednej
+// tabeli, wysyłka wg decyzji i suma grupy. Liczy TA SAMA funkcja, co faktura (`zamowienieGrupy`),
+// więc karta pokazuje dokładnie to, co pojedzie na dokument. Uszkodzona kwota członka nie ma
+// prawa wywrócić karty — sekcja mówi wtedy wprost, że sumy nie da się policzyć.
+function scalenieKarty(z) {
+  const decyzja = decyzjaScalenia(z);
+  if (!decyzja) return null;
+  const dolaczone = dolaczoneZamowienia(db, z);
+  let grupa = null;
+  try { grupa = zamowienieGrupy(z, dolaczone); } catch { grupa = null; }
+  // Wpłaty grupy i saldo grupy liczy `platnosciKarty` niżej (PRZ-101.11) — sekcja „Płatności”.
+  return {
+    wysylka: decyzja.wysylka,
+    dolaczone: dolaczone.map((d) => ({
+      id: d.id, numer: d.numer, sklep: adresKanalu(d.sklep, config.definicje ?? []), anulowane: Boolean(d.anulowane),
+    })),
+    // Recenzja, W3: dołączone anulowane w sklepie — ta sama reguła, co lista robocza i nadanie.
+    uwagaDolaczonych: uwagaDolaczonychAnulowanych(z),
+    razem: grupa?.kwota_brutto ?? null,
+    // Ta sama reguła, co odmowa w `rozdzielZamowienia` — przycisk tylko tam, gdzie zadziała.
+    mozeRozdzielic: !z.faktura && !z.wyslane_at && !(z.przesylki ?? []).length,
+    maFakture: Boolean(z.faktura),
+  };
+}
+
+// Pozycje karty głównego: zamówienie grupy (`zamowienieZGrupa`). Uszkodzona kwota członka nie ma
+// prawa wywrócić karty — wtedy panel „Pozycje” pokazuje samo główne, a sekcja scalenia mówi o błędzie.
+function zKartyZGrupa(z) {
+  try { return zamowienieZGrupa(db, z); } catch { return z; }
+}
+
+// PRZ-101.11 (właściciel 19.10: „jeżeli oba zamówienia były opłacone, to obie wpłaty powinny pojawić się
+// na liście wpłat”): sekcja „Płatności” głównego pokazuje wpłaty CAŁEJ grupy, a saldo liczy z kwoty
+// grupy (ta sama `zamowienieGrupy`, co faktura). Wpłaty zostają w bazie przy SWOICH zamówieniach —
+// `zZamowienia` to numer dołączonego (dopisek „zam. N”), `null` przy wpłacie głównego.
+function platnosciKarty(z) {
+  const g = zKartyZGrupa(z);
+  if (!g?.grupa) return { doSalda: z, wplaty: z.platnosci.map((w) => ({ ...w, zZamowienia: null })) };
+  const numery = new Map(g.grupa.czlonkowie.map((c) => [c.id, c.numer]));
+  const wplaty = [...g.platnosci]
+    .sort((a, b) => String(a.data ?? '').localeCompare(String(b.data ?? '')))
+    .map((w) => ({ ...w, zZamowienia: w.zamowienie_id === z.id ? null : (numery.get(w.zamowienie_id) ?? null) }));
+  return { doSalda: g, wplaty };
+}
+
 async function renderujKarte(req, reply, z, dodatki = {}) {
   // Liczniki kolumny bocznej czekaja na indeks listy (PRZ-051) — stad funkcja asynchroniczna;
   // wszyscy wolajacy i tak oddaja jej wynik z trasy asynchronicznej.
@@ -418,6 +482,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
   //   4. NOWE (21.08.2026): uzgodnienie zapisane PRZY ZAMOWIENIU zastepuje zapasowe „14 dni"
   //      — i wylacznie je. Regula siedzi w domenie (`terminFaktury`), bo o kolejnosci tych
   //      czterech przypadkow nie ma prawa rozstrzygac ani widok, ani trasa.
+  const platnosci = platnosciKarty(z);
   const domyslnyTermin = terminFaktury({
     zaplacone: propozycjaSprzedazy.podstawa === 'zaplata',
     pobranie: platnoscPrzyOdbiorze(z),
@@ -428,9 +493,15 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
   // nie jest w ogole skonfigurowany — klikniecie konczylo sie 503 bez wyjasnienia.
   return reply.view('zamowienie.ejs', {
     title: `Zamówienie ${z.numer}`,
+    // PRZ-101.05: plakietka przewoźnika przy metodzie wysyłki — to samo rozpoznanie co `przewoznikListy` na liście
+    // (domena/przewoznik-przesylki.js, po nazwie i metodzie dostawy zamówienia); `null` = bez plakietki.
+    przewoznikKarty: przewoznikWiersza(null, z),
     // PRZ-091: karty produktów na minusie, które zdejmuje to zamówienie. Stany wyłączone / zamówienie anulowane = [].
     // Liczone TU, a nie w trasie GET, żeby każda odsłona karty (także po odmowie formularza) mówiła to samo.
     brakiNaStanie: brakiNaStanieZamowienia(db, z.id),
+    scalenie: scalenieKarty(z),
+    // N1: wynik „Odłącz anulowane” przy wystawionej fakturze grupy (trasa scalania renderuje kartę).
+    komunikatScalenia: dodatki.komunikatScalenia ?? null,
     powrot: powrotKarty(req),
     adresPowrotu: adresPowrotuDoWiersza(powrotKarty(req), z.id, config.definicje),
     adresKarty: (stan = null, kotwica = null) => {
@@ -468,7 +539,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // (pierwsza wersja probowala tam siegnac i karta oddawala 500 „db is not defined").
     // Liczy sie tylko NAJNOWSZY wiersz kolejki — starsze sa historia po powtorkach.
     drukFaktury: z.faktura ? ostatniaPozycjaDlaFaktury(db, z.faktura.id) : null,
-    z, status: wyliczStatus(z), etykiety: ETYKIETY, mozliwaFaktura: Boolean(faktura),
+    z, status: wyliczStatus(z), etykiety: etykietyStatusow(db), mozliwaFaktura: Boolean(faktura),
     // „Dodaj z magazynu" (21.08.2026) — wyszukiwarka lustra katalogow przy dopisywaniu
     // pozycji. `wyniki: null` znaczy „jeszcze nie szukano" i to CO INNEGO niz `[]`
     // („szukano, nie ma") — widok mowi wtedy dwie rozne rzeczy.
@@ -490,7 +561,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // na ekranie wyboru, w liscie wyslanych i w logu karty (services/wiadomosci.js).
     // Idzie do widoku ZAWSZE, takze przy panelu bez poczty — sekcji wtedy nie ma, ale
     // brakujaca zmienna wywalilaby caly szablon, gdyby kiedys wyszla poza to `if`.
-    nazwyTematow: NAZWA_TEMATU,
+    nazwyTematow: { ...NAZWA_TEMATU, ...Object.fromEntries(tematyWlasne().map((t) => [t.id, t.nazwa])) },
     paczki, edytujWysylka, edytujFaktura, edytujPozycje, edytujWszystkiePozycje, edytujSzczegoly, edytujWplata,
     // ⚠️ TYLKO W TRYBIE EDYCJI POZYCJI — wyszukiwarka magazynu jest wylacznie tam, a karta
     // w trybie odczytu otwiera sie kilkadziesiat razy dziennie i nie ma powodu wozic z nia
@@ -571,20 +642,25 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // prowadzi do produktu w sklepie, czy do oferty na Allegro — razem z podpisem
     // odnosnika. Dolozenie tu `if`-a po kanale odtworzyloby rozjazd, ktoremu tamten modul
     // ma zapobiec (uzasadnienie wyboru w calosci w jego naglowku).
-    pozycjeKarty: wierszePozycji(z).map((w) => {
+    // PRZ-101.04: główne grupy scalonej pokazuje pozycje CAŁEJ grupy (ta sama funkcja, co faktura
+    // i wydruki), z numerem zamówienia przy każdej. Tryb „Edytuj” całego panelu edytuje wyłącznie
+    // pozycje głównego — formularz zapisuje je do jego wiersza, więc dostaje tylko je.
+    pozycjeKarty: wierszePozycji(edytujWszystkiePozycje ? z : zKartyZGrupa(z)).map((w) => {
       const odnosnik = odnosnikPozycji(z, w, { baseUrl: config.sklepy?.[z.sklep]?.baseUrl ?? null });
       return { ...w, linkProduktu: odnosnik?.adres ?? null, linkProduktuTytul: odnosnik?.tytul ?? null };
     }),
-    podsumowaniePozycji: podsumowaniePozycji(z),
+    podsumowaniePozycji: podsumowaniePozycji(edytujWszystkiePozycje ? z : zKartyZGrupa(z)),
     // Sekcja „Platnosci": suma wplat wobec kwoty zamowienia. Widok NIE liczy tego sam —
     // ta sama zasada, co przy podsumowaniu pozycji wyzej. Porownanie idzie na liczbach
     // calkowitych w groszach, TA SAMA funkcja co bariera arytmetyczna faktury.
-    saldoWplat: saldoWplat(z),
+    // PRZ-101.11: przy zamówieniu scalonym — saldo grupy i wpłaty wszystkich jej zamówień.
+    saldoWplat: saldoWplat(platnosci.doSalda),
+    wplatyKarty: platnosci.wplaty,
     // ⚠️ WARTOSCI DOMYSLNE FORMULARZA WPLATY liczy DOMENA, nie widok — kwota to BRAKUJACA
     // reszta (ta sama funkcja, ktora drukuje pasek salda), a „dzis" to dzien WARSZAWSKI.
     // Kontener chodzi z TZ=UTC, wiec gole `new Date()` miedzy polnoca a druga w nocy
     // podstawialoby DZIEN POPRZEDNI — czyli wplate wsteczna przy kazdym nocnym ksiegowaniu.
-    domyslnaKwotaWplaty: domyslnaKwotaWplaty(z),
+    domyslnaKwotaWplaty: domyslnaKwotaWplaty(platnosci.doSalda),
     // Opcje wymaganego pola „Metoda" na formularzu wplaty — z domeny, zeby widok nie
     // wpisywal drugi raz listy, ktorej pilnuje test slownika (metody-platnosci.test.js).
     metodyWplaty: METODY_WPLATY_RECZNEJ,
@@ -786,7 +862,7 @@ function kopiujDaneFakturyDoWysylki(id, z, req) {
     zapiszNadpisaniaWysylki(db, id, nadpisania);
     dopiszLog(db, id, {
       akcja: 'dane.kopiuj',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): dane z faktury skopiowane do wysyłki — `
+      wynik: `Ręcznie (${ktoKlikal(req)}): dane z faktury skopiowane do wysyłki — `
         + `${Object.keys(nadpisania).length ? Object.keys(nadpisania).join(', ') : 'brak zmian (adresy już były takie same)'}.`,
     });
   }

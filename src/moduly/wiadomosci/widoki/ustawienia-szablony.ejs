@@ -1,0 +1,77 @@
+<%# PRZ-101.03: Ustawienia → Szablony wiadomości — lista. Edycja pod /ustawienia/szablony-wiadomosci/:id. %>
+<h1>Szablony wiadomości</h1>
+
+<% if (komunikat) { %><div class="pas-potwierdzenie"><p><%= komunikat %></p></div><% } %>
+
+<section class="ust-sekcja szw-sekcja" id="szablony-wbudowane">
+  <h2>Maile z karty zamówienia</h2>
+  <p>Te cztery maile wysyłasz z karty zamówienia, sekcja Wiadomości. Zmiana działa od następnego maila. Kwoty, dane do przelewu i załączniki PDF liczy panel — w treści wstawiasz je polami.</p>
+  <%# Przewijak: na telefonie tabela jedzie w bok u siebie, zamiast rozpychać stronę (PRZ-101.10). %>
+  <div class="przewijak-tabeli">
+  <table class="tab-pozycje szw-tabela">
+    <thead><tr><th>Mail</th><th>Temat</th><th>Treść</th><th></th></tr></thead>
+    <tbody>
+      <% wbudowane.forEach(function (s) { %>
+        <tr>
+          <td><%= s.nazwa %></td>
+          <td class="szw-temat"><%= s.temat %></td>
+          <td><%= s.zmieniony ? 'zmieniona ' + fmtDataCzasKrotko(s.zmieniono_at) : 'domyślna' %></td>
+          <td class="szw-akcja"><a class="ust-przycisk" href="/ustawienia/szablony-wiadomosci/<%= s.id %>">Edytuj</a></td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="ust-sekcja szw-sekcja" id="szablony-wlasne">
+  <h2>Szablony własne <span class="szw-licznik"><%= wlasne.length %> z <%= maks.wlasnych %></span></h2>
+  <p>Twoje maile na typowe sytuacje, np. opóźnienie wysyłki albo brak towaru. Wybierasz je na karcie zamówienia pod czterema mailami wyżej, a w wiadomościach Allegro — listą „Wstaw szablon” nad polem odpowiedzi.</p>
+  <% if (wlasne.length) { %>
+    <div class="przewijak-tabeli">
+    <table class="tab-pozycje szw-tabela">
+      <thead><tr><th>Nazwa</th><th>Temat</th><th>Zmieniony</th><th></th></tr></thead>
+      <tbody>
+        <% wlasne.forEach(function (s) { %>
+          <tr>
+            <td><%= s.nazwa %></td>
+            <td class="szw-temat"><%= s.temat %></td>
+            <td><%= fmtDataCzasKrotko(s.zmieniono_at) %></td>
+            <td class="szw-akcja"><a class="ust-przycisk" href="/ustawienia/szablony-wiadomosci/<%= s.id %>">Edytuj</a></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    </div>
+  <% } else { %>
+    <p><strong>Nie ma jeszcze żadnego.</strong></p>
+  <% } %>
+  <div class="ust-akcje">
+    <% if (wlasne.length < maks.wlasnych) { %>
+      <a class="ust-przycisk" href="/ustawienia/szablony-wiadomosci/nowy">Dodaj szablon</a>
+    <% } else { %>
+      <span class="wyjasnienie">To już <%= maks.wlasnych %> szablonów — usuń niepotrzebny, żeby dodać następny.</span>
+    <% } %>
+  </div>
+</section>
+
+<%# PRZ-101.06: maile do pracowników — osobno od maili do klientów. %>
+<section class="ust-sekcja szw-sekcja" id="szablony-zespol">
+  <h2>Maile do zespołu</h2>
+  <p>Do pracowników, nie do klientów: zaproszenie do panelu i link do ustawienia nowego hasła (Ustawienia → Użytkownicy). Link wstawia panel — pole <code>{link}</code> musi zostać w treści.</p>
+  <div class="przewijak-tabeli">
+  <table class="tab-pozycje szw-tabela">
+    <thead><tr><th>Mail</th><th>Temat</th><th>Treść</th><th></th></tr></thead>
+    <tbody>
+      <% zespol.forEach(function (s) { %>
+        <tr>
+          <td><%= s.nazwa %></td>
+          <td class="szw-temat"><%= s.temat %></td>
+          <td><%= s.zmieniony ? 'zmieniona ' + fmtDataCzasKrotko(s.zmieniono_at) : 'domyślna' %></td>
+          <td class="szw-akcja"><a class="ust-przycisk" href="/ustawienia/szablony-wiadomosci/<%= s.id %>">Edytuj</a></td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+  </div>
+</section>

@@ -270,7 +270,7 @@ export function registerPrzesylkiRoutes(app, { db }) {
   // stoi na naglowku `Origin`, tak samo jak przy formularzach magazynu i kosztow.
   //
   // ⚠️ WPIS DO LOGU ZAMOWIENIA, a nie tylko kolumna. Ukrycie zdejmuje zamowienie z listy
-  // roboczej, wiec musi zostac slad KTO i KIEDY — ta sama formulka „DECYZJA CZLOWIEKA",
+  // roboczej, wiec musi zostac slad KTO i KIEDY — ta sama formulka „Ręcznie (kto): …",
   // co przy „sprawa zalatwiona recznie".
   const akcja = (nazwa, wykonaj, opis) => app.post(`/przesylki/:id/${nazwa}`, async (req, reply) => {
     const p = pobierzPrzesylke(db, Number(req.params.id));
@@ -281,7 +281,7 @@ export function registerPrzesylkiRoutes(app, { db }) {
     wykonaj(p, kto);
     dopiszLog(db, p.zamowienie_id, {
       akcja: `przesylka.${nazwa}`,
-      wynik: `DECYZJA CZŁOWIEKA (${kto}): paczka nr ${p.kolejnosc} (${p.numer_listu ?? 'bez numeru'}) — ${opis}`,
+      wynik: `Ręcznie (${kto}): paczka nr ${p.kolejnosc} (${p.numer_listu ?? 'bez numeru'}) — ${opis}`,
     });
     // Wracamy na TEN filtr, z ktorego przyszlo klikniecie: po ukryciu z „Bez ruchu" operator
     // ma zobaczyc te sama liste bez tej paczki, a nie zostac przerzucony na widok domyslny.

@@ -92,7 +92,7 @@ describe('PRZ-083: Ustawienia w demo — gość ogląda wszystko', () => {
     expect(wejscie.html).toBe('');
     for (const adres of ['/ustawienia/zamowienia-i-wysylka', '/ustawienia/wiadomosci-i-automatyzacje',
       '/ustawienia/integracje', '/ustawienia/integracje/reklamy', '/ustawienia/konta', `/ustawienia/konta/${idAdmina}`,
-      '/ustawienia/role', '/ustawienia/lacznosc']) {
+      '/ustawienia/role', '/ustawienia/lacznosc', '/ustawienia/aktualizacje']) {
       const { status, html } = await get(adres);
       expect(status, adres).toBe(200);
       expect(html, adres).toContain(PODGLAD);
@@ -112,7 +112,7 @@ describe('PRZ-083: Ustawienia w demo — gość ogląda wszystko', () => {
     db.close();
     for (const [adres, pola] of [['/ustawienia/konta/wyloguj-wszystkie', {}], ['/ustawienia/konta/nowe', { login: 'wlamywacz', imie: 'X', rola: 'administrator', sposob: 'link' }],
       ['/ustawienia/role/nowa', { nazwa: 'Rola gościa' }], ['/ustawienia/formulka', { tresc: 'x' }], ['/ustawienia/dostawa', {}],
-      ['/ustawienia/paczka', {}], ['/ustawienia/integracje/reklamy/zapisz', {}]]) {
+      ['/ustawienia/paczka', {}], ['/ustawienia/integracje/reklamy/zapisz', {}], ['/ustawienia/aktualizacje/sprawdz', {}]]) {
       const r = await post(adres, pola);
       expect(r.status, adres).toBe(403);
       expect(r.html, adres).toContain('można tylko obejrzeć');

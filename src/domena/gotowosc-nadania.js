@@ -1,4 +1,6 @@
-import { metodaWysylki, punktOdbioru } from './wysylka.js';
+import { metodaWysylki, punktOdbioru, czyPobranie } from './wysylka.js';
+import { powodOdmowyPobraniaGrupy } from './scalanie.js';
+import { uwagaDolaczonychAnulowanych } from './status.js';
 
 /**
  * Czego zamowieniu BRAKUJE, zeby dalo sie je w ogole nadac.
@@ -27,6 +29,22 @@ import { metodaWysylki, punktOdbioru } from './wysylka.js';
 // wiec zadanie „uzupelnij kod paczkomatu" byloby robota, ktorej moze wcale nie byc. Odmowe
 // za brak wskazania niesie `metodaNadania`, wolane w services/nadanie.js PRZED kurierem.
 export function powodBrakuGotowosciNadania(z, metoda = metodaWysylki(z)) {
+  // PRZ-101.04: dołączone jedzie w paczce głównego (adres i paczka zawsze z głównego). Ta funkcja
+  // stoi przed nadaniem z karty, z ekranu nadania, hurtem i w samej usłudze (services/nadanie.js).
+  if (z?.scalone_do) {
+    return `Zamówienie jest scalone z zamówieniem ${z.scalone_do_numer ?? `#${z.scalone_do}`} — paczkę nadajesz z zamówienia głównego.`;
+  }
+  // PRZ-101.04 (recenzja, W3c): paczka grupy wiozłaby pozycje anulowanego dołączonego — ten sam
+  // warunek, co odmowa faktury grupy (`sprawdzCzlonkowGrupy`).
+  const anulowaneDolaczone = uwagaDolaczonychAnulowanych(z);
+  if (anulowaneDolaczone) return `Nie nadasz paczki: ${anulowaneDolaczone}.`;
+  // PRZ-101.04 (recenzja, W2): OBRONA W GŁĘBI. Pobrania na zamówieniu scalonym nie da się ustawić
+  // (karta, „Przywróć metodę”), ale stan sprzed poprawki albo ręczna zmiana bazy dałyby paczkę za
+  // pobraniem na kwotę jednego zamówienia, choć jedzie w niej cała grupa.
+  if (czyPobranie(z)) {
+    const pobranieGrupy = powodOdmowyPobraniaGrupy(z);
+    if (pobranieGrupy) return pobranieGrupy;
+  }
   // Kod paczkomatu jest ADRESEM przesylki, nie jej ozdoba: bez niego InPost nie ma dokad
   // jej nadac. Klient ShipX odmowilby i tak (kurierzy/inpost.js), ale dopiero PO zajeciu
   // miejsca w indeksie i po zapakowaniu paczki.

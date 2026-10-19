@@ -1,3 +1,4 @@
+import { tytulEkranuDlaAdresu } from '../../../domena/ekrany.js';
 // Fragment frozen ustawienia.js — właściciel wiadomości, rejestracja w module ustawień.
 import { wczytajUstawienia, zapiszUstawienia } from '../../../oms/db/ustawienia.js';
 import { ustawieniaFormulki, sprawdzFormularz } from '../../../domena/ustawienia-formulki.js';
@@ -20,7 +21,7 @@ export function registerUstawieniaFormulkiRoutes(app, { db }) {
     return reply.view('ustawienia-automatyzacje.ejs', {
       nawigacja: nawigacjaUstawien(req, reply),
       zapisano: req.query?.zapisano === 'formulka' ? 'Zapisano ustawienia autorespondera.' : null,
-      title: 'Wiadomości i automatyzacje',
+      title: tytulEkranuDlaAdresu(req.url),
       formulka: formulka ?? ustawieniaFormulki(wczytajUstawienia(db)), blad,
     });
   }

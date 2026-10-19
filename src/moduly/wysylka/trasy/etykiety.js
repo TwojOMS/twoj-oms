@@ -87,9 +87,9 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/odblokuj', async (req, reply) =
     const numerListu = String(req.body?.numer_listu ?? '').trim();
     const kto = ktoKlikal(req);
     const opis = numerListu
-      ? `DECYZJA CZŁOWIEKA (${kto}): nadanie paczki nr ${p.kolejnosc} zawisło, w panelu DPD paczka MA numer listu ${numerListu} — `
+      ? `Ręcznie (${kto}): nadanie paczki nr ${p.kolejnosc} zawisło, w panelu DPD paczka MA numer listu ${numerListu} — `
         + 'ponowienie z panelu jest zablokowane, dokończ sprawę u kuriera.'
-      : `DECYZJA CZŁOWIEKA (${kto}): nadanie paczki nr ${p.kolejnosc} zawisło, w panelu DPD paczki NIE MA — zwolnione pod ponowienie.`;
+      : `Ręcznie (${kto}): nadanie paczki nr ${p.kolejnosc} zawisło, w panelu DPD paczki NIE MA — zwolnione pod ponowienie.`;
     try {
       odblokujPrzesylke(db, p.id, { numerListu, opis });
     } catch (e) {
@@ -113,7 +113,7 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/domknij', async (req, reply) =>
     }
     dopiszLog(db, id, {
       akcja: 'przesylka.domkniecie',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): sprawdzone w panelu DPD, paczka nr ${p.kolejnosc} (list ${p.numer_listu}) jest nadana`
+      wynik: `Ręcznie (${ktoKlikal(req)}): sprawdzone w panelu DPD, paczka nr ${p.kolejnosc} (list ${p.numer_listu}) jest nadana`
         + `${p.blad_opis ? ` — powód wyjaśnienia: ${p.blad_opis}` : ''}.`,
     });
     return reply.redirect(adresPowrotuNaKarte(req, id));
@@ -134,7 +134,7 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/sprawa-zalatwiona', async (req,
     const zdjete = wynik.sprawy.map((s) => OPISY_SPRAW[s]).join(' i ');
     dopiszLog(db, id, {
       akcja: 'przesylka.sprawa-zalatwiona',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): paczka nr ${p.kolejnosc} — ${zdjete} załatwione poza panelem — `
+      wynik: `Ręcznie (${ktoKlikal(req)}): paczka nr ${p.kolejnosc} — ${zdjete} załatwione poza panelem — `
         + 'zdjęte z listy roboczej.',
     });
     return reply.redirect(adresPowrotuNaKarte(req, id));
@@ -155,7 +155,7 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/ukryj', async (req, reply) => {
     ukryjPrzesylke(db, p.id, ktoKlikal(req));
     dopiszLog(db, id, {
       akcja: 'przesylka.ukryj',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): paczka nr ${p.kolejnosc} (${p.numer_listu ?? 'bez numeru'}) `
+      wynik: `Ręcznie (${ktoKlikal(req)}): paczka nr ${p.kolejnosc} (${p.numer_listu ?? 'bez numeru'}) `
         + 'ukryta z listy przesyłek — zastąpiła ją kolejna paczka tego zamówienia.',
     });
     return reply.redirect(adresPowrotuNaKarte(req, id));
@@ -168,7 +168,7 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/przywroc', async (req, reply) =
     przywrocPrzesylke(db, p.id);
     dopiszLog(db, id, {
       akcja: 'przesylka.przywroc',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): paczka nr ${p.kolejnosc} (${p.numer_listu ?? 'bez numeru'}) `
+      wynik: `Ręcznie (${ktoKlikal(req)}): paczka nr ${p.kolejnosc} (${p.numer_listu ?? 'bez numeru'}) `
         + 'przywrócona na listę przesyłek.',
     });
     return reply.redirect(adresPowrotuNaKarte(req, id));
@@ -190,7 +190,7 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/skasuj-reczna', async (req, rep
     // za blednie wpisany.
     dopiszLog(db, id, {
       akcja: 'przesylka.skasowanie-reczna',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): przesyłka nr ${skasowana.kolejnosc} zarejestrowana ręcznie `
+      wynik: `Ręcznie (${ktoKlikal(req)}): przesyłka nr ${skasowana.kolejnosc} zarejestrowana ręcznie `
         + `(list ${skasowana.numer_listu}) skasowana z panelu — panel niczego nie odwoływał u kuriera, `
         + 'paczka, jeśli fizycznie istnieje, nadal jedzie. Miejsce zwolnione pod ponowną rejestrację.',
     });
@@ -227,7 +227,7 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/drukuj/:kolejkaId/porzuc', asyn
     }
     dopiszLog(db, id, {
       akcja: 'kolejka-druku.porzucenie',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): pozycja ${kolejkaId} w kolejce druku porzucona.`,
+      wynik: `Ręcznie (${ktoKlikal(req)}): pozycja ${kolejkaId} w kolejce druku porzucona.`,
     });
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });

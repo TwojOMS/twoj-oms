@@ -1,3 +1,4 @@
+import { etykietyStatusow } from '../../../oms/db/statusy.js';
 import { znormalizujKlienta, opisKlienta } from '../../../domena/klient-staly.js';
 import { RABAT_MAX } from '../../../domena/rabat.js';
 // ⚠️ TA SAMA funkcja kopiująca, której używa ekran zakładania zamówienia — nie druga kopia
@@ -11,7 +12,7 @@ import {
 } from '../../../oms/db/klienci.js';
 import { dopiszLog, zamowieniaPoNip } from '../../../oms/db/zamowienia.js';
 import { podsumowanieHistorii } from '../../../domena/historia-klienta.js';
-import { wyliczStatus, ETYKIETY } from '../../../domena/status.js';
+import { wyliczStatus } from '../../../domena/status.js';
 import { zl } from '../../../domena/kwoty.js';
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 
@@ -97,7 +98,7 @@ export function registerKlienciRoutes(app, { db, gus = null }) {
       // zamówienia. Druga reguła w szablonie oznaczałaby, że to samo zamówienie ma tu
       // inny status niż po kliknięciu w jego numer.
       wyliczStatus,
-      ETYKIETY,
+      ETYKIETY: etykietyStatusow(db),
       // Grosze na złotówki zamienia domena (domain/kwoty.js), nie dzielenie w szablonie.
       zl,
     });
@@ -221,7 +222,7 @@ export function registerKlienciRoutes(app, { db, gus = null }) {
     // następnym telefonie, więc ma zostawiać ślad, kto go zmienił.
     dopiszLog(db, null, {
       akcja: 'klient.zapis',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): ${edytowany ? 'poprawiono' : 'dopisano'} `
+      wynik: `Ręcznie (${ktoKlikal(req)}): ${edytowany ? 'poprawiono' : 'dopisano'} `
         + `stałego klienta „${dane.nazwa}" (${dane.klucz}) — ${opisKlienta(dane)}.`,
     });
     // ⚠️ POPRAWKA WRACA NA KARTĘ TEGO KLIENTA, dopisanie — na listę. Człowiek wchodzi

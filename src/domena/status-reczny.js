@@ -1,4 +1,5 @@
 import { ETYKIETY } from './status.js';
+import { idsDolaczonych } from './scalanie.js';
 
 // ⚠️ SEDNO: status w tym panelu NIE JEST KOLUMNA DO PRZESTAWIANIA — wynika z faktow
 // (patrz wyliczStatus w domain/status.js). „Ustaw status X" znaczy wiec: ZAPISZ TAKI
@@ -63,7 +64,15 @@ export function powodOdmowyStatusu(z, docelowy) {
   // wiec zatwierdzenie bez wybrania czegokolwiek jest normalna pomylka — a „Nieznany
   // status: „"" nie mowiloby czlowiekowi absolutnie nic.
   if (!docelowy) return 'Nie wybrano statusu — panel niczego nie zmienił.';
-  if (!STATUSY_RECZNE.includes(docelowy)) return `Nieznany status: „${docelowy}".`;
+  if (!STATUSY_RECZNE.includes(docelowy) && !(z?.statusy_wlasne ?? []).some(s => s.klucz === docelowy)) return `Nieznany status: „${docelowy}".`;
+  // PRZ-101.04: dołączone jest częścią głównego — jego „Wysłane” przenosi zapis głównego
+  // (oms/db/zamowienia.js). Anulowanie głównego zostawiłoby dołączone ukryte i bez właściciela.
+  if (z?.scalone_do) {
+    return `Zamówienie jest scalone z zamówieniem ${z.scalone_do_numer ?? `#${z.scalone_do}`} — status zmieniasz w zamówieniu głównym.`;
+  }
+  if (docelowy === 'anulowane' && idsDolaczonych(z).length) {
+    return 'To zamówienie ma dołączone zamówienia — najpierw je rozdziel (karta → „Rozdziel”), potem anuluj.';
+  }
   // Anulowanie DZIALA TYLKO W JEDNA STRONE. Odanulowanie zamowienia, ktore klient anulowal
   // w sklepie, otworzyloby droge do nadania mu paczki i do wystawienia faktury — a karta
   // mowi dzis wprost „najpierw wycofaj anulowanie w sklepie" i to zdanie ma zostac prawdziwe.
@@ -76,7 +85,7 @@ export function powodOdmowyStatusu(z, docelowy) {
   // pierwszym odswiezeniu, a `faktyDlaStatusu` skasowalby przy okazji `zwrot_at`.
   // Akcja, ktora udaje skutek, jest gorsza niz jej brak. Wyjsciem jest skasowanie zwrotu.
   if (z?.ma_zwrot) {
-    return 'To zamówienie ma zarejestrowany zwrot — status „Zwrot" wynika z tego faktu '
+    return `To zamówienie ma zarejestrowany zwrot — status „${z?.etykiety_statusow?.zwrot ?? ETYKIETY.zwrot}" wynika z tego faktu `
       + 'i nie da się go przestawić. Jeśli zwrot wpisano omyłkowo, skasuj go na ekranie zwrotu.';
   }
   return null;
@@ -92,6 +101,10 @@ export function powodOdmowyStatusu(z, docelowy) {
  * a awans nie zmysla przeszlosci.
  */
 export function faktyDlaStatusu(z, docelowy, { powod = null, teraz = new Date().toISOString() } = {}) {
+  const wlasny = (z?.statusy_wlasne ?? []).find(s => s.klucz === docelowy);
+  if (wlasny && ['nowe', 'w_realizacji'].includes(wlasny.jak)) {
+    return { ...faktyDlaStatusu(z, wlasny.jak, { powod, teraz }), status_wlasny: docelowy };
+  }
   if (!STATUSY_RECZNE.includes(docelowy)) throw new Error(`Nieznany status: ${docelowy}`);
   switch (docelowy) {
     // „Nowe" to WYCZYSZCZENIE recznych faktow, nie osobny znacznik — nie ma czego ustawiac,

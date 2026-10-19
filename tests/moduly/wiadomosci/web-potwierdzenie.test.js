@@ -203,7 +203,7 @@ describe('wysyłka potwierdzenia', () => {
     const wpis = log(id).at(-1);
     expect(wpis.akcja).toBe('potwierdzenie.wyslane');
     expect(wpis.wynik).toContain('klient@firma.pl');
-    expect(wpis.wynik).toContain('DECYZJA CZŁOWIEKA');
+    expect(wpis.wynik).toContain('Ręcznie (');
     expect(wpis.wynik).not.toContain('Lampa stołowa');
   });
 

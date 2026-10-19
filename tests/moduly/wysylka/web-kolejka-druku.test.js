@@ -264,7 +264,7 @@ describe('POST /zamowienia/:id/przesylki/:przesylkaId/drukuj/:kolejkaId/porzuc',
     expect(r.statusCode).toBe(302);
     expect(db.prepare('SELECT status FROM kolejka_druku WHERE id = ?').get(w.id).status).toBe('porzucone');
     const wpis = db.prepare("SELECT * FROM log WHERE zamowienie_id = ? AND akcja = 'kolejka-druku.porzucenie'").get(zamowienieId);
-    expect(wpis.wynik).toMatch(/DECYZJA CZŁOWIEKA/);
+    expect(wpis.wynik).toMatch(/Ręcznie( \(|:)/);
     expect(wpis.wynik).toContain('adam');
   });
 

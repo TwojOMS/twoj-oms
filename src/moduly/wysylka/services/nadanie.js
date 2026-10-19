@@ -249,7 +249,7 @@ export function createNadanie({ db, kurierzy, klienci = {}, katalogEtykiet, pacz
     if (wskazanyRecznie) {
       dopiszLog(db, zamowienieId, {
         akcja: 'nadanie.kurier',
-        wynik: `DECYZJA CZŁOWIEKA: zamówienie z Allegro (${z.metoda_wysylki}) nadane NASZĄ umową — ${metodaUzyta}.`,
+        wynik: `Ręcznie: zamówienie z Allegro (${z.metoda_wysylki}) nadane NASZĄ umową — ${metodaUzyta}.`,
       });
     }
 
@@ -306,7 +306,7 @@ export function createNadanie({ db, kurierzy, klienci = {}, katalogEtykiet, pacz
     if (pobranieNaTejPaczce && kolejnosc > 1) {
       dopiszLog(db, zamowienieId, {
         akcja: 'nadanie.pobranie',
-        wynik: `DECYZJA CZŁOWIEKA: pobranie jedzie na paczce nr ${kolejnosc}, a nie na pierwszej `
+        wynik: `Ręcznie: pobranie jedzie na paczce nr ${kolejnosc}, a nie na pierwszej `
           + '(paczka nr 1 jest zamiennikiem wyrzuconej etykiety, nie dosyłką obok niej). '
           + `Kurier zainkasuje ${kwotaPobrania ?? z.kwota_pobrania} zł.`,
       });

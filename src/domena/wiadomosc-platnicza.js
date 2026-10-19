@@ -143,6 +143,29 @@ function sekcja(naglowek, linie) {
 }
 
 /**
+ * Blok `{dane_platnosci}` szablonu (PRZ-101.03): DO ZAPŁATY, PRZELEW i zdania o załącznikach — dokładnie te linie,
+ * które `jakoTekstWiadomosci` stawia między zdaniem wiodącym a zamknięciem, bez pustej linii na początku.
+ * Pusty, gdy nie ma ani przelewu, ani załącznika (np. faktura opłacona bez PDF-u) — wtedy blok znika z maila.
+ *
+ * ⚠️ `jakoTekstWiadomosci` zostaje nietknięte (mail bez zapisanego szablonu = dzisiejszy co do znaku);
+ * zgodność obu pilnuje tests/moduly/wiadomosci/szablony-rownosc.test.js.
+ */
+export function blokiTekstuWiadomosci(m) {
+  const linie = [
+    ...sekcja('DO ZAPŁATY', [m.platnosc && `${m.platnosc.doZaplaty} brutto`]),
+    ...sekcja('PRZELEW', m.platnosc ? [
+      `Odbiorca: ${m.platnosc.odbiorca}`,
+      `Rachunek: ${m.platnosc.rachunek}`,
+      `Tytuł przelewu: ${m.platnosc.tytul}`,
+      m.platnosc.termin && `Termin: ${m.platnosc.termin}`,
+    ] : []),
+    ...(m.zdanieDokumentu ? ['', m.zdanieDokumentu] : []),
+    ...(m.zdanieWywozu ? ['', m.zdanieWywozu] : []),
+  ];
+  return { dane_platnosci: linie.slice(1) };
+}
+
+/**
  * Zapasowa postać tekstowa — TE SAME dane, ten sam podział na sekcje.
  *
  * ⚠️ ŻADNEGO UKŁADU TRZYMANEGO SPACJAMI: kolumny wyrównywane spacjami rozjeżdżają się

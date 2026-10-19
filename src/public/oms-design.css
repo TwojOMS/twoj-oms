@@ -65,25 +65,56 @@ a.oms-theme-button,a.oms-theme-button:visited{text-decoration:none}
 
 /* PRZ-066: statusy zamówień w bocznym menu, pod „Zamówienia” (jak przed PRZ-065). */
 .oms-menu .oms-statusy{display:flex;flex-direction:column;gap:1px;margin:4px 0 6px 10px;padding-left:4px;border-left:1px solid var(--ramka)}
-.oms-menu .oms-statusy a,.oms-menu .oms-statusy a:visited{justify-content:space-between;gap:6px;padding:5px 8px;font-size:.92rem}
-.oms-menu .oms-statusy a>span:first-child{display:flex;align-items:center;gap:6px;min-width:0;white-space:nowrap}
-.oms-menu .oms-statusy .kropka{flex-shrink:0}
-.oms-menu .oms-statusy .licznik{min-width:1.5rem;padding:0 .4rem;border-radius:.75rem;background:var(--powierzchnia-2);color:var(--tekst);font-size:.8rem;text-align:center;font-variant-numeric:tabular-nums}
+.oms-menu .oms-statusy a,.oms-menu .oms-statusy a:visited{justify-content:space-between;align-items:flex-start;gap:6px;padding:5px 8px;font-size:.92rem}
+.oms-menu .oms-statusy a>span:first-child{display:flex;align-items:flex-start;gap:6px;min-width:0}
+.oms-menu .oms-statusy .oms-status-etykieta{min-width:0;white-space:normal;overflow-wrap:anywhere}
+.oms-menu .oms-statusy .kropka{flex-shrink:0;margin-right:0;margin-top:calc((1.45em - .5rem)/2)}
+.oms-menu .oms-statusy .licznik{flex-shrink:0;min-width:1.5rem;padding:0 .4rem;border-radius:.75rem;background:var(--powierzchnia-2);color:var(--tekst);font-size:.8rem;line-height:calc(1.45 * .92rem);text-align:center;font-variant-numeric:tabular-nums}
 /* PRZ-083 (właściciel 15.10): „+ Nowe zamówienie” wyróżnione tłem jak przycisk główny (.btn--glowny), nie zwykły odnośnik. */
 .oms-menu .oms-statusy .oms-nowe-zamowienie a,.oms-menu .oms-statusy .oms-nowe-zamowienie a:visited{justify-content:center;margin-top:8px;padding:7px 10px;border-radius:6px;background:var(--marka);color:var(--na-marce);font-weight:600;white-space:nowrap;text-decoration:none}
 .oms-menu .oms-statusy .oms-nowe-zamowienie a:hover{background:var(--marka-ciemniej);color:var(--na-marce)}
 
-.oms-settings-navigation{margin-bottom:22px;border-bottom:1px solid var(--ramka)}
+/* PRZ-101.01: menu Ustawień — kolumna z lewej strony treści, w grupach (zastępuje poziomy pasek, który przy 1280 px
+   łamał się na dwa wiersze). Wygląd pozycji jak w głównym menu: to samo tło aktywnej, te same nagłówki grup. */
+.oms-settings-layout{display:grid;grid-template-columns:13rem minmax(0,1fr);gap:28px;align-items:start}
+.oms-settings-content{min-width:0}
+.oms-settings-content>h1{font-size:28px;font-weight:600;letter-spacing:-.8px;line-height:1.2;margin:0 0 22px}
+.oms-settings-navigation{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto;padding-right:14px;border-right:1px solid var(--ramka)}
 .oms-settings-navigation .kolumna-boczna{display:block;position:static;width:auto;min-width:0;padding:0;border:0;background:transparent}
-.oms-settings-navigation .panel-statusow{padding:0;margin:0;background:transparent;border:0;border-radius:0}
-.oms-settings-navigation ul{display:flex;flex-wrap:wrap;gap:4px;list-style:none;padding:0;margin:0}
-.oms-settings-navigation li{margin:0}.oms-settings-navigation .panel-statusow a{padding:9px 10px;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;font-size:1rem;color:var(--tekst-przygaszony)}
-.oms-settings-navigation .panel-statusow .aktywna a{background:transparent;border-bottom-color:var(--marka);color:var(--tekst);font-weight:600}
-/* layout-oms.ejs maluje aktywną pozycję paneli bocznych na biało (:visited/:hover → --na-marce) — tu tło jest przezroczyste, więc biel znika w jasnym motywie */
-.oms-settings-navigation .panel-statusow li.aktywna a:not(.btn):visited,.oms-settings-navigation .panel-statusow li.aktywna a:not(.btn):hover{color:var(--tekst)}
-.oms-settings-navigation .panel-statusow li.aktywna a:hover{background:transparent}
-.oms-settings-navigation .nawigacja-kontekstowa--mobile{display:none}
-@media(max-width:650px){.oms-settings-navigation .kolumna-boczna{display:none}.oms-settings-navigation .nawigacja-kontekstowa--mobile{display:block;margin:0}.oms-settings-navigation ul{display:grid;grid-template-columns:1fr 1fr}.oms-settings-navigation .panel-statusow a{font-size:1rem;min-height:44px}}
-@media print{.oms-sidebar,.oms-topbar,.oms-order-statuses,.oms-settings-navigation{display:none!important}.oms-shell{display:block}.oms-main > .kolumna-glowna{padding:0}}
+.oms-settings-navigation .panel-statusow{padding:0;margin:0;background:transparent;border:0;border-radius:0;overflow:visible}
+.oms-settings-navigation ul{display:flex;flex-direction:column;gap:2px;list-style:none;padding:0;margin:0}
+.oms-settings-navigation li{margin:0}
+.oms-settings-navigation .panel-statusow li+li{border-top:0}
+.oms-settings-navigation .menu-kontekstowe-naglowek{margin-top:18px;padding:0 10px 6px;font-size:.78rem;font-weight:600;letter-spacing:1.1px;color:var(--tekst-przygaszony)}
+.oms-settings-navigation .menu-kontekstowe-naglowek:first-child{margin-top:0}
+.oms-settings-navigation .panel-statusow a,.oms-settings-navigation .panel-statusow a:not(.btn):visited{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;border-radius:6px;background:transparent;font-size:.95rem;line-height:1.35;color:var(--tekst)}
+.oms-settings-navigation .panel-statusow a:not(.btn):hover{background:var(--powierzchnia-2);color:var(--tekst)}
+/* layout-oms.ejs maluje aktywną pozycję paneli bocznych tłem marki i bielą (:visited/:hover → --na-marce) — tu jak w głównym menu */
+.oms-settings-navigation .panel-statusow li.aktywna a,.oms-settings-navigation .panel-statusow li.aktywna a:not(.btn):visited,.oms-settings-navigation .panel-statusow li.aktywna a:not(.btn):hover{background:var(--oms-aktywne-tlo);color:var(--link);font-weight:600}
+.oms-settings-navigation .panel-statusow li.wkrotce:not(.aktywna) a,.oms-settings-navigation .panel-statusow li.wkrotce:not(.aktywna) a:not(.btn):visited{color:var(--tekst-przygaszony)}
+.menu-ustawien-wkrotce{flex-shrink:0;padding:0 5px;border:1px solid var(--ramka);border-radius:4px;font-size:.72rem;font-weight:500;line-height:1.5;color:var(--tekst-przygaszony)}
+.oms-settings-mobile{display:none}
+/* Strona „wkrótce”: opis i punkty tym samym krojem co tekst sekcji, ale w kolorze treści; stan i „Dziś” przygaszone. */
+.ust-wkrotce ul{margin:0 0 .8rem;padding-left:1.2rem}.ust-wkrotce li{margin:.25rem 0;font-size:.88rem;color:var(--tekst)}
+.ust-wkrotce p.ust-wkrotce-opis{margin-bottom:.5rem;color:var(--tekst)}
+.ust-wkrotce p.ust-wkrotce-stan{margin-bottom:.6rem;font-weight:600}
+.ust-wkrotce p.ust-wkrotce-dzis{margin-bottom:0}
+/* Telefon i tablet: jeden wiersz „Ustawienia: <ekran>” nad treścią, rozwijany do listy z nagłówkami grup.
+   Próg 900 px, nie 650: na tablecie 768 px obok menu głównego zostawało treści ~325 px (zmierzone
+   19.10.2026) — tabela szablonów rozpychała stronę do 854 px, a menu łamało „Kopie zapasowe” na dwie linie. */
+@media(max-width:900px){
+  .oms-settings-layout{display:block}
+  .oms-settings-navigation{position:static;max-height:none;overflow:visible;padding:0;border:0;margin-bottom:18px}
+  .oms-settings-navigation .kolumna-boczna{display:none}
+  .oms-settings-mobile{display:block}
+  .oms-settings-mobile>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:9px 12px;border:1px solid var(--ramka);border-radius:5px;background:var(--powierzchnia);cursor:pointer}
+  .oms-settings-mobile>summary::-webkit-details-marker{display:none}
+  .oms-settings-mobile>summary::after{content:"";width:6px;height:6px;margin:0 2px 3px 0;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:rotate(45deg);flex-shrink:0}
+  .oms-settings-mobile[open]>summary{margin-bottom:10px}
+  .oms-settings-mobile .nawigacja-kontekstowa--mobile{display:block;margin:0}
+  .oms-settings-navigation .panel-statusow a{min-height:44px;font-size:1rem}
+  .oms-settings-content>h1{font-size:26px}
+}
+@media print{.oms-sidebar,.oms-topbar,.oms-order-statuses,.oms-settings-navigation{display:none!important}.oms-shell,.oms-settings-layout{display:block}.oms-main > .kolumna-glowna{padding:0}}
 
 .oms-shell > .tresc{padding:0;min-width:0}

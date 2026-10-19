@@ -125,7 +125,15 @@ function liniaFaktury(z) {
 export function modelPotwierdzenia(z, { podpis = PODPIS } = {}) {
   const zgoda = czyWolnoWyslacPotwierdzenie(z);
   if (!zgoda.wolno) throw bladOperatora(zgoda.powod);
+  return modelZamowienia(z, { podpis });
+}
 
+/**
+ * Ten sam model BEZ bramki zgody — dla szablonów własnych (PRZ-101.03), które bloki `{pozycje}`, `{wysylka}`,
+ * `{dane_do_faktury}` składają z tych samych wartości co potwierdzenie, ale nie są potwierdzeniem
+ * (np. „Opóźnienie wysyłki" może pójść do zamówienia, którego pozycje operator jeszcze uzupełnia).
+ */
+export function modelZamowienia(z, { podpis = PODPIS } = {}) {
   const wiersze = wierszePozycji(z);
   const razem = wiersze.find((w) => w.podsumowanie);
 
@@ -191,6 +199,29 @@ export function trescPotwierdzenia(z, { podpis = PODPIS } = {}) {
 function sekcja(naglowek, linie) {
   const tresc = linie.filter((l) => l !== null && l !== undefined && l !== '');
   return tresc.length ? ['', naglowek, ...tresc.map((l) => `  ${l}`)] : [];
+}
+
+/**
+ * Sekcje potwierdzenia jako BLOKI szablonu (PRZ-101.03): te same linie, które składa `jakoTekst` niżej,
+ * bez pustej linii na początku (odstępy między blokami stawia szablon).
+ *
+ * ⚠️ `jakoTekst` ZOSTAJE NIETKNIĘTE i dalej składa mail, gdy szablonu nikt nie zmienił — to jest gwarancja
+ * „bez zapisu = dzisiejszy mail co do znaku". Te same linie stoją więc w dwóch miejscach; rozjazd łapie
+ * tests/moduly/wiadomosci/szablony-rownosc.test.js (domyślny szablon kontra `jakoTekst` na kilku zamówieniach).
+ */
+export function blokiTekstuPotwierdzenia(m) {
+  const blok = (naglowek, linie) => sekcja(naglowek, linie).slice(1);
+  return {
+    pozycje: blok('ZAMÓWIENIE', [
+      ...m.pozycje.map((p) => `${p.ilosc} × ${p.nazwa} — ${p.cena}/szt = ${p.suma}`),
+      `RAZEM: ${m.razem} brutto`,
+    ]),
+    sposob_platnosci: blok('PŁATNOŚĆ', [m.platnosc]),
+    wysylka: blok('WYSYŁKA', [m.wysylka.metoda, ...(m.wysylka.adres ?? [ADRES_DO_UZGODNIENIA])]),
+    dane_do_faktury: blok('FAKTURA', m.faktura.chce
+      ? ['Tak — wystawimy na:', ...(m.faktura.linie.length ? m.faktura.linie : ['dane do uzgodnienia'])]
+      : ['Nie']),
+  };
 }
 
 /**

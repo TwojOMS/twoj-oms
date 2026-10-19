@@ -54,7 +54,7 @@ app.post('/zamowienia/:id/faktura/drukuj', async (req, reply) => {
     dodajFaktureDoKolejki(db, z.faktura.id);
     dopiszLog(db, id, {
       akcja: 'faktura.druk',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): faktura ${z.faktura.numer ?? ''} dodana do kolejki druku.`,
+      wynik: `Ręcznie (${ktoKlikal(req)}): faktura ${z.faktura.numer ?? ''} dodana do kolejki druku.`,
     });
     return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }));
   });
@@ -68,7 +68,7 @@ app.post('/zamowienia/:id/faktura/druk-porzuc', async (req, reply) => {
     porzucFakture(db, poz.id);
     dopiszLog(db, id, {
       akcja: 'faktura.druk',
-      wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): porzucony wydruk faktury (${poz.ostatni_blad ?? 'bez podanego błędu'}).`,
+      wynik: `Ręcznie (${ktoKlikal(req)}): porzucony wydruk faktury (${poz.ostatni_blad ?? 'bez podanego błędu'}).`,
     });
     return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }));
   });

@@ -1,6 +1,5 @@
 import { ostatniWpisLogu } from '../../oms/db/zamowienia.js';
 import { probaStarszaNizGodzina } from '../wysylka/services/status-kuriera.js';
-import { ETYKIETY } from '../../domena/status.js';
 import { podsumowanieZwrotow } from '../../domena/zwrot-widok.js';
 import { OPCJE_STATUSU, anulowaneWSklepie } from '../../domena/status-reczny.js';
 import { metodaZmienionaRecznie, saNadpisanieWysylki, metodaZeSklepu, METODY_WYSYLKI } from '../../domena/wysylka.js';
@@ -95,7 +94,7 @@ export function daneKarty(z) {
     jestNadanaPaczka: (z.przesylki ?? []).some((p) => p.status === 'nadana'),
     // Lista wyboru statusu. Widok jej NIE sklada sam — inaczej „Wyslane" wrociloby do
     // rozwijanego pola przy pierwszej zmianie ETYKIETY, mimo ze trasa i tak by je odrzucila.
-    opcjeStatusu: OPCJE_STATUSU,
+    opcjeStatusu: z.opcje_statusow ?? OPCJE_STATUSU,
     // Skad pochodzi anulowanie. Karta mowi „najpierw wycofaj anulowanie w sklepie"
     // WYLACZNIE wtedy, gdy to prawda — przy anulowaniu recznym wyjscie jest w panelu
     // i tamto zdanie wysylaloby operatora w miejsce, w ktorym nic nie znajdzie.

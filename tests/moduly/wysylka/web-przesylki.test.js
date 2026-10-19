@@ -204,7 +204,7 @@ describe('ukrywanie paczek z zakladki', () => {
 
     const log = db.prepare("SELECT * FROM log WHERE akcja = 'przesylka.ukryj'").all();
     expect(log).toHaveLength(1);
-    expect(log[0].wynik).toContain('DECYZJA CZŁOWIEKA (adam)');
+    expect(log[0].wynik).toContain('Ręcznie (adam)');
     expect(log[0].wynik).toContain('BEZRUCHU1');
   });
 

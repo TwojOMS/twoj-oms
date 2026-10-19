@@ -155,7 +155,7 @@ describe('POST /zamowienia/:id/platnosci', () => {
     expect(wplaty[0]).toMatchObject({
       zrodlo: 'reczna', kwota: '50.00', data: '2026-08-01T00:00:00', metoda: 'BLIK', uwaga: 'dopłata',
     });
-    expect(log(id).at(-1).wynik).toMatch(/DECYZJA CZŁOWIEKA \(adam\).*50\.00/);
+    expect(log(id).at(-1).wynik).toMatch(/Ręcznie \(adam\).*50\.00/);
   });
 
   it('dwie wpłaty na jedno zamówienie — sedno całego zadania', async () => {
@@ -204,7 +204,7 @@ describe('POST /zamowienia/:id/platnosci/:platnoscId/usun', () => {
 
     const wpis = log(id).at(-1);
     expect(wpis.akcja).toBe('platnosc.usunieta');
-    expect(wpis.wynik).toMatch(/DECYZJA CZŁOWIEKA \(adam\)/);
+    expect(wpis.wynik).toMatch(/Ręcznie \(adam\)/);
     expect(wpis.wynik).toMatch(/50\.00/);
   });
 

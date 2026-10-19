@@ -1,6 +1,11 @@
 // PRZ-069: maile systemowe do pracownika (nie do klienta firmy). Mailer opcjonalny — bez modułu
 // wiadomości albo bez SMTP wysyłki nie ma, „Pokaż link” działa zawsze. Nadawca: MAIL_FROM (createMailer).
 import { renderMailHtml } from '../../core/poczta/mail-html.js';
+import { zlozTresc, zlozTemat } from '../../domena/szablony-wiadomosci.js';
+import { WAZNOSC_LINKU_MS } from './linki-hasla.js';
+
+// {waznosc} w szablonie — z tej samej stałej, która naprawdę unieważnia link (48 h → „48 h").
+const WAZNOSC_SLOWNIE = `${WAZNOSC_LINKU_MS / 3_600_000} h`;
 
 export const TEMATY = { zaproszenie: 'Zaproszenie do panelu', reset: 'Ustawienie nowego hasła' };
 const BRAK_USLUGI = '„wiadomosci.mailer" nie istnieje';
@@ -33,7 +38,17 @@ export function mailerOpcjonalny(usluga) {
   };
 }
 
-export function trescMaila({ cel, imie, link }) {
+/**
+ * Treść maila do pracownika. `szablon` (PRZ-101.06) = zapis z Ustawień → Szablony wiadomości → Maile do zespołu;
+ * `null` = dzisiejsza treść niżej, co do znaku (test równości: tests/moduly/ustawienia/szablony-konta.test.js).
+ * ⚠️ Link trafia WYŁĄCZNIE do maila — ta funkcja niczego nie loguje, a podgląd w Ustawieniach podaje link zmyślony.
+ */
+export function trescMaila({ cel, imie, link, szablon = null }) {
+  if (szablon) {
+    const pola = { imie: String(imie ?? ''), link: String(link ?? ''), waznosc: WAZNOSC_SLOWNIE };
+    const text = zlozTresc(szablon.tresc, { pola }).tekst;
+    return { subject: zlozTemat(szablon.temat, pola), text, html: renderMailHtml({ text }) };
+  }
   const wstep = cel === 'zaproszenie'
     ? 'Administrator zaprosił Cię do pracy w systemie obsługi zamówień.'
     : 'Administrator przygotował link do ustawienia nowego hasła w systemie obsługi zamówień.';

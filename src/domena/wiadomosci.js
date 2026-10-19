@@ -118,6 +118,21 @@ export function czyWolnoWyslac(z, temat_id, kontekst = {}) {
 }
 
 /**
+ * Czy wolno wysłać SZABLON WŁASNY (PRZ-101.03) — jedyny warunek: jest adres e-mail.
+ *
+ * ⚠️ ANULOWANE NIE BLOKUJE, i to świadomie: szablon własny pisze operator i bywa nim właśnie „Anulowanie
+ * zamówienia" albo „Brak towaru". Zakaz z `czyWolnoWyslac` chroni cztery maile, których treść twierdzi coś
+ * o zamówieniu (przyjęte, do zapłaty) — szablon własny twierdzi to, co napisał człowiek, a podgląd przed wysyłką
+ * zostaje.
+ */
+export function czyWolnoWyslacWlasny(z) {
+  if (!adresatKlienta(z)) {
+    return odmowa('To zamówienie nie ma adresu e-mail. Dopisz go w danych do wysyłki albo w danych do faktury.');
+  }
+  return zgoda;
+}
+
+/**
  * Najnowsza wiadomość KAŻDEGO tematu — policzona RAZ, z jednej listy (mapa `temat_id` → wiersz).
  *
  * ⚠️⚠️ ROZSTRZYGA NAJWIĘKSZE `id`, A NIE KOLEJNOŚĆ W LIŚCIE (sprzątanie po recenzji całości

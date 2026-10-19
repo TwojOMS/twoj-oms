@@ -56,7 +56,8 @@ export function odtworzPozycje({ storage, klucz, hash, znajdzCel, przewin }) {
 }
 
 export async function uruchomPozycjeListy({ okno = window, dokument = document } = {}) {
-  const znacznik = dokument.querySelector('script[data-klucz-listy][src="/public/pozycja-listy.js"]');
+  // PRZ-100: adres ma wersję (`?v=…`), więc dopasowanie po początku, nie po całości.
+  const znacznik = dokument.querySelector('script[data-klucz-listy][src^="/public/pozycja-listy.js"]');
   const klucz = bezpiecznyKlucz(znacznik?.dataset?.kluczListy);
   if (!klucz) return;
 

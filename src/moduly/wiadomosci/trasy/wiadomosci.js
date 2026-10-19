@@ -13,6 +13,11 @@ import {
 import { czyjRuch } from '../../../domena/czyj-ruch-watku.js';
 import { sprawyOtwarte } from '../services/dyskusje.js';
 import { MAKS_ZNAKOW_WIADOMOSCI } from '../../../domena/ustawienia-formulki.js';
+import { wczytajSzablonyWiadomosci } from '../../../oms/db/szablony-wiadomosci.js';
+import { zamowienieWatku } from '../../../oms/db/allegro-watki.js';
+import { pobierzZamowienie } from '../../../oms/db/zamowienia.js';
+import { tekstDoWatku } from '../szablony.js';
+import { PODPIS } from '../../../domena/potwierdzenie-zamowienia.js';
 
 export function registerWiadomosciRoutes(app, options) {
   app.register(async scoped => {
@@ -20,7 +25,23 @@ export function registerWiadomosciRoutes(app, options) {
     registerRoutes(scoped,options);
   });
 }
-function registerRoutes(app, { db, klienci = {} }) {
+function registerRoutes(app, { db, klienci = {}, podpis = PODPIS }) {
+  /**
+   * PRZ-101.03: „Wstaw szablon" — szablony własne z podstawionymi polami TEGO wątku. Zamówienie wątku = najnowsze
+   * zamówienie z tego konta Allegro z tym samym loginem kupującego; bez niego pola z zamówienia są puste
+   * (nigdy dosłowne `{…}`), a bloki zamówienia znikają. Liczone z lustra i bazy — bez zapytań do Allegro.
+   */
+  function szablonyWatku(w) {
+    if (!w || w.typ === 'POST_PURCHASE_ISSUE') return { szablony: [], zamowienieSzablonow: null };
+    const wlasne = wczytajSzablonyWiadomosci(db).wlasne;
+    if (!wlasne.length) return { szablony: [], zamowienieSzablonow: null };
+    const idZ = zamowienieWatku(db, w.kanal, w.interlocutor_login);
+    const z = idZ ? pobierzZamowienie(db, idZ) : null;
+    return {
+      szablony: wlasne.map((s) => ({ id: s.id, nazwa: s.nazwa, tekst: tekstDoWatku(z, s, { podpis }) })),
+      zamowienieSzablonow: z ? { id: z.id, numer: z.numer } : null,
+    };
+  }
   // UI context reads only the existing SQLite mirror. No external request on GET.
   function kontekst(wybrany = undefined, czytanie = false, blad = null, szkic = '') {
     const watki = listaWatkow(db).map((w) => ({
@@ -33,12 +54,17 @@ function registerRoutes(app, { db, klienci = {} }) {
       korespondencja: w ? wiadomosciWatku(db, w.kanal, w.thread_id) : [],
       stan: w ? czyjRuch(w, lista) : null,
       maks: MAKS_ZNAKOW_WIADOMOSCI, blad, szkic, czytanie, brak: czytanie && !w,
+      ...szablonyWatku(w),
     };
   }
   app.get('/wiadomosci', async (req, reply) => reply.view('wiadomosci.ejs', kontekst()));
   app.get('/wiadomosci/:kanal/:threadId', async (req, reply) => {
     const w = watek(db, req.params.kanal, req.params.threadId);
-    return reply.code(w ? 200 : 404).view('wiadomosci.ejs', {...kontekst(w || null, true),potwierdzonyDowod:String(req.query?.wyslano??'')} );
+    const ctx = kontekst(w || null, true);
+    // PRZ-101.03: bez JavaScriptu „Wstaw" to GET z `?szablon=` — pole odpowiedzi przychodzi wypełnione.
+    const wstawiony = ctx.szablony.find((s) => s.id === String(req.query?.szablon ?? ''));
+    if (wstawiony) ctx.szkic = wstawiony.tekst;
+    return reply.code(w ? 200 : 404).view('wiadomosci.ejs', {...ctx,potwierdzonyDowod:String(req.query?.wyslano??'')} );
   });
 
   app.post('/wiadomosci/:kanal/:threadId/odpowiedz', async (req, reply) => {

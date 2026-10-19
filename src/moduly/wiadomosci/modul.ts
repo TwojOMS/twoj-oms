@@ -6,6 +6,8 @@ import { utworzUslugiWiadomosci, type FabrykiWiadomosci, type UslugiWiadomosci }
 import { zegarPolleraWiadomosci, zegarCzuwaczaFormulki } from './zegary.ts';
 import { registerKlienciRoutes } from './trasy/klienci.js';
 import { registerWiadomosciRoutes } from './trasy/wiadomosci.js';
+import { registerSzablonyWiadomosciRoutes } from './trasy/szablony.js';
+import { oprawaMaila } from './oprawa.js';
 
 export { utworzUslugiWiadomosci } from './uslugi.ts';
 
@@ -42,7 +44,11 @@ export function createModulWiadomosci({ fabryki = {}, uslugi }: {
       if (u.czuwaczFormulki) zegary.push(zegarCzuwaczaFormulki({ czuwaczFormulki: u.czuwaczFormulki, log }));
       return { uslugi: u, zegary, trasy: app => {
         const klienci = ctx.usluga<Record<string, any>>('wiadomosci', 'klienciWiadomosci');
-        registerWiadomosciRoutes(app, { db: ctx.db, klienci });
+        // PRZ-101.03: szablony wiadomości — ekran w Ustawieniach i „Wstaw szablon" w wątku Allegro. Działają także
+        // bez skonfigurowanej poczty (szablon da się przygotować przed podłączeniem SMTP).
+        const oprawa = oprawaMaila(ctx.konfiguracja.oprawaPoczty);
+        registerWiadomosciRoutes(app, { db: ctx.db, klienci, podpis: oprawa.podpis });
+        registerSzablonyWiadomosciRoutes(app, { db: ctx.db, oprawa, teraz: ctx.teraz });
         const gus = Object.hasOwn(u, 'gus') ? u.gus : ctx.usluga('zamowienia', 'gus');
         registerKlienciRoutes(app, { db: ctx.db, gus: gus as any });
       } };

@@ -130,7 +130,7 @@ describe('dopisywanie pozycji', () => {
     await wyslij(`/zamowienia/${id}/pozycje`, { nazwa: 'Dodatkowy klosz', ilosc: '2', cena_brutto: '40.00' });
     const wpis = log(id).at(-1);
     expect(wpis.akcja).toBe('pozycja.dodana');
-    expect(wpis.wynik).toMatch(/DECYZJA CZŁOWIEKA \(adam\)/);
+    expect(wpis.wynik).toMatch(/Ręcznie \(adam\)/);
     expect(wpis.wynik).toContain('Dodatkowy klosz');
     expect(wpis.wynik).toContain('80.00');
   });
@@ -336,7 +336,7 @@ describe('edycja pozycji', () => {
     await wyslij(`/zamowienia/${id}/pozycje/zapisz`, { klucz: 's4321', nazwa: 'STOP', ilosc: '3', cena_brutto: '61.50' });
     const wpis = log(id).at(-1);
     expect(wpis.akcja).toBe('pozycje.zapisz');
-    expect(wpis.wynik).toMatch(/DECYZJA CZŁOWIEKA \(adam\)/);
+    expect(wpis.wynik).toMatch(/Ręcznie \(adam\)/);
     expect(wpis.wynik).toContain('STOP'); // log hurtu wymienia POZYCJE, nie nazwy pol
   });
 
@@ -387,7 +387,7 @@ describe('„Przywróć ze sklepu" przy pozycji', () => {
     await wyslij(`/zamowienia/${id}/pozycje/s4321/przywroc`, {});
     const wpis = log(id).at(-1);
     expect(wpis.akcja).toBe('pozycja.przywroc');
-    expect(wpis.wynik).toMatch(/DECYZJA CZŁOWIEKA \(adam\)/);
+    expect(wpis.wynik).toMatch(/Ręcznie \(adam\)/);
   });
 
   it('przy pozycji ręcznej nie ma czego przywracać → 400 z wyjaśnieniem', async () => {
@@ -427,7 +427,7 @@ describe('usunięcie pozycji ręcznej', () => {
     await wyslij(`/zamowienia/${id}/pozycje/${klucz}/usun`, {});
     const wpis = log(id).at(-1);
     expect(wpis.akcja).toBe('pozycja.usunieta');
-    expect(wpis.wynik).toMatch(/DECYZJA CZŁOWIEKA \(adam\)/);
+    expect(wpis.wynik).toMatch(/Ręcznie \(adam\)/);
     expect(wpis.wynik).toContain('Pomyłka');
     expect(wpis.wynik).toContain('80.00');
   });

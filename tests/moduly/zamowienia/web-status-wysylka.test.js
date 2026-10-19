@@ -124,12 +124,12 @@ describe('POST /zamowienia/:id/status — status zapisuje FAKTY', () => {
 
   // ⚠️ 08.2026: cel „zwrot" zastapiony „wyslane" — status 'zwrot' jest juz odrzucany
   // (patrz test wyzej), wiec nie powstaje z niego zaden wpis logu do sprawdzenia.
-  it('kazda zmiana idzie do logu jako DECYZJA CZLOWIEKA, z nazwa uzytkownika', async () => {
+  it('kazda zmiana idzie do logu jako wpis „Ręcznie (kto)”, z nazwa uzytkownika', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1607), {});
     await wyslij(`/zamowienia/${id}/status`, { status: 'wyslane' });
     const wpis = wpisyLogu(id).find((w) => w.akcja === 'status.reczny');
     expect(wpis).toBeTruthy();
-    expect(wpis.wynik).toContain('DECYZJA CZŁOWIEKA (adam)');
+    expect(wpis.wynik).toContain('Ręcznie (adam)');
     expect(wpis.wynik).toContain('Wysłane');
   });
 
@@ -383,7 +383,7 @@ describe('POST /zamowienia/:id/wysylka/metoda', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1626), {});
     await wyslij(`/zamowienia/${id}/wysylka/metoda`, { metoda: 'dpd', pobranie: '1', kwota_pobrania: '246.00' });
     const wpis = wpisyLogu(id).find((w) => w.akcja === 'wysylka.metoda');
-    expect(wpis.wynik).toContain('DECYZJA CZŁOWIEKA (adam)');
+    expect(wpis.wynik).toContain('Ręcznie (adam)');
     expect(wpis.wynik).toContain('dpd');
     // Log MUSI nazywac pobranie osobno — sama nazwa dostawy nie mowi juz o inkasie nic.
     expect(wpis.wynik).toContain('za pobraniem');
@@ -662,7 +662,7 @@ describe('POST /zamowienia/:id/przesylki/reczna', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1657), {});
     await wyslij(`/zamowienia/${id}/przesylki/reczna`, { numer_listu: '0000999888777A', komentarz: 'nadane w panelu DPD' });
     const wpis = wpisyLogu(id).find((w) => w.akcja === 'przesylka.reczna');
-    expect(wpis.wynik).toContain('DECYZJA CZŁOWIEKA (adam)');
+    expect(wpis.wynik).toContain('Ręcznie (adam)');
     expect(wpis.wynik).toContain('0000999888777A');
     expect(wpis.wynik).toContain('nadane w panelu DPD');
   });
@@ -747,7 +747,7 @@ describe('POST /zamowienia/:id/przesylki/:przesylkaId/skasuj-reczna', () => {
     const p = pobierzZamowienie(db, id).przesylki[0];
     await wyslij(`/zamowienia/${id}/przesylki/${p.id}/skasuj-reczna`, {});
     const wpis = wpisyLogu(id).find((w) => w.akcja === 'przesylka.skasowanie-reczna');
-    expect(wpis.wynik).toContain('DECYZJA CZŁOWIEKA (adam)');
+    expect(wpis.wynik).toContain('Ręcznie (adam)');
     expect(wpis.wynik).toContain('0000999888777A');
   });
 

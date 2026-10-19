@@ -1,3 +1,4 @@
+import { etykietyStatusow } from './statusy.js';
 // Indeks listy zamówień (PRZ-051).
 //
 // ⚠️ PO CO. Do PRZ-051 każde otwarcie listy czytało CAŁĄ tabelę zamówień z dziećmi i liczyło
@@ -24,12 +25,12 @@
 //   3. wszystko inne — zmiana reguł w nowej wersji kodu, zapis gołym połączeniem (ręczny SQL,
 //      skrypt bez `openOmsDb`): po starcie procesu indeks sprawdza CAŁĄ tabelę w tle, małymi
 //      porcjami, a lista pokazuje postęp, zamiast udawać, że liczniki są już sprawdzone.
-import { zamowieniaPoId } from './zamowienia.js';
+import { zamowieniaPoId, numeryZamowien } from './zamowienia.js';
+import { idsDolaczonych } from '../../domena/scalanie.js';
 import { sledzZmianyListy } from './sledzenie-listy.js';
 import { klasyfikacjaListy } from '../../domena/klasyfikacja-listy.js';
 import { pasujaKlucze } from '../../domena/filtry-listy.js';
 import { dopasowanieFrazy, normalizuj } from '../../domena/szukanie.js';
-import { ETYKIETY } from '../../domena/status.js';
 
 // Porcja przeliczenia przed odpowiedzią: tyle zamówień czyta się i klasyfikuje bez oddania
 // pętli zdarzeń. Między porcjami inne żądania dostają swoją kolej.
@@ -103,6 +104,7 @@ function utworz(db) {
     throw new Error('Tabela lista_stan bez kolumny blad — baza z niezatwierdzonej wersji PRZ-051; odtwórz ją z kopii sprzed migracji');
   }
   zarejestrujFunkcje(db);
+  const maScalenia = db.prepare('PRAGMA table_info(zamowienia)').all().some((k) => k.name === 'scalone_do');
   const wstaw = db.prepare(`INSERT OR REPLACE INTO lista_stan (zamowienie_id, utworzone_at, status, robocze_od,
     po_terminie_od, wazne_do, dzien, wysylka, indywidualne, sklep, platnosc, szukaj_tekst, szukaj_cyfry, blad)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
@@ -126,7 +128,14 @@ function utworz(db) {
   // Jedna porcja — w całości synchronicznie: znaczniki zdejmowane PRZED odczytem, więc zapis,
   // który przyjdzie po tej porcji, oznaczy zamówienie od nowa, zamiast przepaść razem
   // z obsłużonym znacznikiem.
-  function klasyfikuj(ids, teraz) {
+  function klasyfikuj(idsWejscie, teraz) {
+    // PRZ-101.04 (recenzja, W3): zmiana DOŁĄCZONEGO (anulowanie w sklepie, przesyłka, faktura) brudzi
+    // tylko jego wiersz — a ten nie ma wiersza w indeksie. Wynik GŁÓWNEGO zależy od dołączonych
+    // (`uwagaDolaczonychAnulowanych`), więc główne liczy się w tej samej porcji, co dołączone.
+    // Baza bez migracji scaleń (testy indeksu na samej migracji 0001) kolumny nie ma — wtedy nie ma też grup.
+    const glowne = maScalenia ? db.prepare(`SELECT DISTINCT scalone_do AS id FROM zamowienia WHERE id IN (${idsWejscie.map(() => '?').join(',')})
+      AND scalone_do IS NOT NULL`).all(...idsWejscie).map((w) => w.id) : [];
+    const ids = [...new Set([...idsWejscie, ...glowne])];
     const znaki = ids.map(() => '?').join(',');
     db.exec('SAVEPOINT lista_porcja');
     try {
@@ -134,8 +143,21 @@ function utworz(db) {
       db.prepare(`DELETE FROM lista_stan WHERE zamowienie_id IN (${znaki})`).run(...ids);
       const zamowienia = zamowieniaPoId(db, ids, { bezSurowych: true, naBlad: (w, e) => wstawUszkodzone(w, e, teraz) });
       for (const z of zamowienia) {
+        // PRZ-101.04: zamówienie DOŁĄCZONE (scalone do głównego) nie ma wiersza w indeksie — znika
+        // z każdej zakładki i każdego licznika (decyzja właściciela 18.10: „jest jedno zamówienie”).
+        // Wiersz skasowany wyżej, więc rozdzielenie (UPDATE → wyzwalacz) przywraca je samo.
+        if (z.scalone_do) continue;
         let k;
         try { k = klasyfikacjaListy(z, teraz - MARGINES_MS); } catch (e) { wstawUszkodzone(z, e, teraz); continue; }
+        // …a jego numer szuka się na GŁÓWNYM: fraza z numerem dołączonego prowadzi do głównego.
+        const dolaczone = idsDolaczonych(z);
+        if (dolaczone.length) {
+          for (const { numer } of numeryZamowien(db, dolaczone)) {
+            k.szukaj.tekst.push(normalizuj(numer ?? ''));
+            const cyfry = String(numer ?? '').replace(/\D+/g, '');
+            if (cyfry) k.szukaj.cyfry.push(cyfry);
+          }
+        }
         wstaw.run(z.id, z.utworzone_at, k.status, k.robocze_od, k.po_terminie_od, k.wazne_do - rozrzut(z.id),
           k.filtr.dzien, k.filtr.wysylka, k.filtr.indywidualne ? 1 : 0, k.filtr.sklep, k.filtr.platnosc,
           k.szukaj.tekst.join(SEP), k.szukaj.cyfry.join(SEP), null);
@@ -233,7 +255,7 @@ function utworz(db) {
     /** Liczniki panelu bocznego w chwili `teraz` — po `odswiez`. */
     liczniki(teraz) {
       // Każda zakładka statusu ma licznik, także pusta — zero to odpowiedź, nie brak danych.
-      const statusy = Object.fromEntries(Object.keys(ETYKIETY).map((k) => [k, 0]));
+      const statusy = Object.fromEntries(Object.keys(etykietyStatusow(db)).map((k) => [k, 0]));
       let wszystkie = 0;
       for (const w of db.prepare('SELECT status, COUNT(*) AS n FROM lista_stan GROUP BY status').all()) {
         statusy[w.status] = w.n; wszystkie += w.n;

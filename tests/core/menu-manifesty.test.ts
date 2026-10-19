@@ -12,6 +12,10 @@ import { MODULY } from '../../src/moduly/lista.ts';
 import { nawigacjaDla } from '../../src/domena/menu-stron.js';
 import { menuKontaDla } from '../../src/domena/menu-konta.js';
 import { zbudujOms } from '../../src/oms/bootstrap.ts';
+import { adresZasobu } from '../../src/core/web/wersja-zasobow.js';
+
+// PRZ-100: serwer daje `zasob` każdemu widokowi (defaultContext) — render układu wprost dostaje to samo.
+const zasob = adresZasobu(fileURLToPath(new URL('../../src/public', import.meta.url)));
 
 const przed = JSON.parse(readFileSync(new URL('../fixtures/menu-prz065.json', import.meta.url), 'utf8'));
 if (przed.cases.length !== 225) throw new Error(`PRZ065: fixture ma ${przed.cases.length} zamiast 225 przypadków`);
@@ -32,7 +36,7 @@ const dane = (przypadek:any) => {
   const konto = przypadek.konto ? {...przypadek.konto,uprawnienia:new Set(przypadek.konto.uprawnienia)} : null;
   return {title:'Fixture menu',motyw:'jasny',htmx:false,bezPaska:przypadek.bezPaska??false,body:'<p>Fixture</p>',panelStatusow:przypadek.panelStatusow,
     marka:{logoAlt:'Firma testowa'},nawigacja:nawigacjaDla({sciezka:przypadek.sciezka,konto,menu,odlozoneEkrany:['kampania','cele','finanse']}),
-    menuKonta:menuKontaDla(konto,{powrot:przypadek.sciezka}),modyfikatorStatusu:()=>null};
+    menuKonta:menuKontaDla(konto,{powrot:przypadek.sciezka}),modyfikatorStatusu:()=>null,zasob};
 };
 const wytnij = (html: string) => ({
   header: html.match(/<header class="oms-topbar">[\s\S]*?<\/header>/)?.[0] ?? '',

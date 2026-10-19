@@ -1,9 +1,10 @@
+import { etykietyStatusow } from '../../../oms/db/statusy.js';
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import { parsujZamowienieZKarty } from '../../../domena/zamowienie-z-karty.js';
 import { zalozZamowienieReczne } from '../../zamowienia/services/zamowienie-reczne.js';
 import { dopiszLog, pobierzZamowienie, znajdzZamowieniaPoNumerze, zapiszFaktyStatusu, ostatniWpisLogu } from '../../../oms/db/zamowienia.js';
 import { faktyDlaStatusu, anulowaneEfektywnie } from '../../../domena/status-reczny.js';
-import { ETYKIETY, wyliczStatus } from '../../../domena/status.js';
+import { wyliczStatus } from '../../../domena/status.js';
 import { adresOdbiorcy } from '../../../domena/adres-odbiorcy.js';
 import { chceFakture, daneFaktury, firmaNabywcy } from '../../../domena/dane-faktury.js';
 import { czyPobranie, nazwaDostawy, metodaWysylki, punktOdbioru, punktOdbioruOpis } from '../../../domena/wysylka.js';
@@ -444,13 +445,14 @@ export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syn
     // Idempotencja: `faktyDlaStatusu` zachowuje istniejace `w_realizacji_at` (`|| teraz`),
     // wiec drugi przebieg pollera niczego nie przestawia. Zapis i tak wykonujemy, bo ten
     // sam UPDATE zeruje ewentualny stary `zwrot_powod` — a dlawimy LOG, nie zapis.
-    zapiszFaktyStatusu(db, id, faktyDlaStatusu(z, 'w_realizacji'));
+    const zachowajEtap = (z.statusy_wlasne ?? []).some(s => s.klucz === z.status_wlasny && s.jak === 'w_realizacji');
+    zapiszFaktyStatusu(db, id, { ...faktyDlaStatusu(z, 'w_realizacji'), zachowaj_status_wlasny: zachowajEtap });
 
     // Log mowi WPROST, ze zrobil to automat — inaczej wpis wygladalby jak decyzja czlowieka,
     // a przy sporze „kto to przestawil" to jedyny slad. Dlawimy powtorki (wzorzec
     // `ostatniWpisLogu`): poller panelu potrafi zapytac ponownie, a log ma rosnac
     // proporcjonalnie do liczby ZDARZEN, nie odpytan.
-    const wpis = `AUTOMAT: klient zaakceptował projekt w panelu indywidualnym — status: ${ETYKIETY.w_realizacji}`;
+    const wpis = `AUTOMAT: klient zaakceptował projekt w panelu indywidualnym — status: ${etykietyStatusow(db).w_realizacji}`;
     if (ostatniWpisLogu(db, id, 'status.automat')?.wynik !== wpis) {
       dopiszLog(db, id, { akcja: 'status.automat', wynik: wpis });
     }

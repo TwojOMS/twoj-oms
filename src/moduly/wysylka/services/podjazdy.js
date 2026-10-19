@@ -193,7 +193,7 @@ export function createPodjazdy({ db, allegroDla, teraz = () => new Date(), uuid 
       const zamowienia = new Set(grupa.przesylki.map((p) => paczka(db, p.przesylkaId)?.zamowienie_id));
       for (const zamowienieId of zamowienia) {
         if (zamowienieId) dopiszLog(db, zamowienieId, { akcja: 'podjazd.zlecenie',
-          wynik: `DECYZJA CZŁOWIEKA (${kto ?? 'operator'}): konto ${grupa.kanal}, usługa ${grupa.metoda}, `
+          wynik: `Ręcznie (${kto ?? 'operator'}): konto ${grupa.kanal}, usługa ${grupa.metoda}, `
             + `${grupa.przesylki.length} paczek, termin ${wybranyTermin.date} ${wybranyTermin.minTime}–${wybranyTermin.maxTime}, `
             + `komenda ${rezerwacja.command_id}` });
       }

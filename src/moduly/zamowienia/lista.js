@@ -1,7 +1,9 @@
+import { etykietyStatusow, opcjeStatusow } from '../../oms/db/statusy.js';
 import { pobierzZamowienie, dopiszLog, zapiszFaktyStatusu } from '../../oms/db/zamowienia.js';
 import { zapiszLubOdpusc } from '../wysylka/services/status-kuriera.js';
-import { wyliczStatus, doZrobienia, ETYKIETY } from '../../domena/status.js';
-import { OPCJE_STATUSU, faktyDlaStatusu } from '../../domena/status-reczny.js';
+import { zamowienieZGrupa } from '../../oms/db/scalenia.js';
+import { wyliczStatus, doZrobienia } from '../../domena/status.js';
+import { faktyDlaStatusu } from '../../domena/status-reczny.js';
 import { ETYKIETY_WYSYLKI } from '../../domena/wysylka.js';
 import { parsujFiltry, numerStrony, adresZFiltrami, bezpiecznyPowrotNaListe, METODY_DO_FILTRA, kanalyDoFiltra } from '../../domena/filtry-listy.js';
 import { adresKartyZamowienia, kluczPozycjiListy } from '../../domena/adres-karty-zamowienia.js';
@@ -60,7 +62,7 @@ const {db,config,poller,nadanie,faktura,proforma,kurierzy,gus,syncSklep,wiadomos
 app.post('/ostrzezenia/odrzuc', async (req, reply) => {
     const klucz = typeof req.body?.klucz === 'string' ? req.body.klucz : null;
     if (!kluczDozwolony(klucz)) return reply.code(400).send('Nieznany klucz ostrzeżenia.');
-    odrzuc(db, klucz, { kto: ktoKlikal(req) });
+    odrzuc(db, klucz, { kto: req.konto?.login ?? ktoKlikal(req) });
     return reply.redirect('/');
   });
 app.get('/', async (req, reply) => {
@@ -85,7 +87,7 @@ app.get('/', async (req, reply) => {
     // stary link po zmianie klucza w ETYKIETY) NIE ma cicho pokazywac calej listy —
     // spada do domyslnego widoku roboczego, bo to jest jedyny bezpieczny domyslny stan
     // tego panelu (patrz komentarz przy doZrobienia w domain/status.js).
-    const filtrStatus = typeof req.query?.status === 'string' && Object.hasOwn(ETYKIETY, req.query.status)
+    const filtrStatus = typeof req.query?.status === 'string' && Object.hasOwn(etykietyStatusow(db), req.query.status)
       ? req.query.status
       : null;
     // `?wszystkie=1` istnieje od pierwszej wersji listy i jest opisany w dokumentacji —
@@ -210,9 +212,9 @@ app.get('/', async (req, reply) => {
           href: adresZFiltrami(filtry, { poTerminie: true }),
           aktywna: aktywny === 'po_terminie', klasa: n > 0 ? 'pozycja-po-terminie' : null };
       })(),
-      ...Object.keys(ETYKIETY).map((klucz) => ({
+      ...Object.keys(etykietyStatusow(db)).map((klucz) => ({
         klucz,
-        etykieta: ETYKIETY[klucz],
+        etykieta: etykietyStatusow(db)[klucz],
         liczba: liczniki.statusy[klucz],
         href: adresZFiltrami(filtry, { status: klucz }),
         aktywna: aktywny === klucz,
@@ -273,7 +275,7 @@ app.get('/', async (req, reply) => {
       kanalyDoUwagi,
       // Tabelka ostrzezen (spec 2026-08-29) — same fakty lokalne, zero sieci w tej trasie.
       ostrzezenia: zbierzOstrzezenia(req),
-      etykiety: ETYKIETY,
+      etykiety: etykietyStatusow(db),
       panelStatusow,
       filtry,
       chipy,
@@ -293,7 +295,7 @@ app.get('/', async (req, reply) => {
       // o zdanie, a wpisana na sztywno lista po cichu przestalaby byc kompletem.
       metodyPlatnosci: opcjeMetodPlatnosci(metodyPlatnosciWBazie(db)),
       // Lista statusow do paska akcji masowych — TA SAMA, co na karcie zamowienia.
-      opcjeStatusu: OPCJE_STATUSU,
+      opcjeStatusu: opcjeStatusow(db),
       // Fraza wraca do pola nad tabela — zeby dalo sie ja poprawic, a nie wpisywac od zera —
       // i do naglowka wynikow. Wraca DOKLADNIE tak, jak czlowiek ja napisal; postac
       // znormalizowana sluzy wylacznie do porownywania i nie ma prawa wrocic na ekran.
@@ -358,7 +360,7 @@ app.post('/zamowienia/masowe/status', async (req, reply) => {
     const doOdeslania = [];
     for (const z of doZmiany) {
       try {
-        zapiszFaktyStatusu(db, z.id, faktyDlaStatusu(z, docelowy, { powod: null }));
+        zapiszFaktyStatusu(db, z.id, { ...faktyDlaStatusu(z, docelowy, { powod: null }), kto: req.konto?.login ?? ktoKlikal(req) });
       } catch (e) {
         // Awaria zapisu JEDNEGO zamowienia nie ma prawa przerwac petli — reszta zaznaczen
         // czeka, a operator ma zobaczyc, ktore konkretnie nie przeszlo.
@@ -371,8 +373,8 @@ app.post('/zamowienia/masowe/status', async (req, reply) => {
       const osiagniety = wyliczStatus(pobierzZamowienie(db, z.id));
       dopiszLog(db, z.id, {
         akcja: 'status.masowy',
-        wynik: `DECYZJA CZŁOWIEKA (${ktoKlikal(req)}): zmiana masowa na „${ETYKIETY[docelowy]}" `
-          + `(${doZmiany.length} zamówień) — status po zmianie: ${ETYKIETY[osiagniety]}.`,
+        wynik: `Ręcznie (${ktoKlikal(req)}): zmiana masowa na „${etykietyStatusow(db)[docelowy]}" `
+          + `(${doZmiany.length} zamówień) — status po zmianie: ${etykietyStatusow(db)[osiagniety]}.`,
       });
       doOdeslania.push(z);
     }
@@ -397,7 +399,7 @@ app.post('/zamowienia/masowe/status', async (req, reply) => {
     // kazdej partii musi odtworzyc swoj widok recznie. Wartosc jest z formularza, wiec
     // przechodzi przez bariere (`bezpiecznyPowrotNaListe`): sciezka spoza listy zamowien
     // daje gola liste, a nie przekierowanie na obcy serwer.
-    const powrot = bezpiecznyPowrotNaListe(req.body?.powrot, config.definicje);
+    const powrot = bezpiecznyPowrotNaListe(req.body?.powrot, config.definicje, etykietyStatusow(db));
     const doPokazania = [...pominiete, ...nieudane];
     if (!doPokazania.length && !niedoslane.length) return reply.redirect(powrot);
     return reply.view('masowe-wynik.ejs', {
@@ -411,7 +413,7 @@ app.post('/zamowienia/masowe/status', async (req, reply) => {
       udane: doZmiany
         .filter((z) => !nieudane.some((n) => n.id === z.id))
         .filter((z) => !niedoslane.some((n) => n.id === z.id))
-        .map((z) => ({ id: z.id, numer: z.numer, opis: ETYKIETY[docelowy] })),
+        .map((z) => ({ id: z.id, numer: z.numer, opis: etykietyStatusow(db)[docelowy] })),
       pominiete: doPokazania,
       niedoslane,
       etykietaUdanych: 'Status zmieniony',
@@ -424,7 +426,8 @@ app.get('/zamowienia/:id/specyfikacja.pdf', async (req, reply) => {
     let bajty;
     try {
       const sprzedawca = sprzedawcaSpecyfikacji(config);
-      bajty = await zbudujSpecyfikacjePdf(daneSpecyfikacji(z, { sprzedawca, klienciWdt: config.klienciWdt }));
+      // PRZ-101.04: główne grupy scalonej drukuje pozycje CAŁEJ grupy (ta sama funkcja, co faktura).
+      bajty = await zbudujSpecyfikacjePdf(daneSpecyfikacji(zamowienieZGrupa(db, z), { sprzedawca, klienciWdt: config.klienciWdt }));
     } catch (e) {
       // ⚠️ `zapiszLubOdpusc`, ta sama zasada, co przy odswiezaniu statusu kuriera wyzej:
       // awaria zapisu logu (dysk pelny, baza tylko do odczytu) nie ma prawa zamienic
@@ -472,7 +475,7 @@ for (const [nazwa, wydruk] of Object.entries(WYDRUKI)) {
     if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
     let bajty;
     try {
-      bajty = await wydruk.zbuduj([z]);
+      bajty = await wydruk.zbuduj([zamowienieZGrupa(db, z)]);
     } catch (e) {
       zapiszLubOdpusc(() => dopiszLog(db, id, { akcja: wydruk.akcja, wynik: `BŁĄD: ${e.message}` }));
       return reply.code(400).send(`Nie udało się przygotować ${wydruk.co}: ${komunikatDlaOperatora(e)}`);
@@ -488,7 +491,7 @@ for (const [nazwa, wydruk] of Object.entries(WYDRUKI)) {
     if (zaDuzo) return reply.code(400).send(zaDuzo);
     let bajty;
     try {
-      bajty = await wydruk.zbuduj(wybrane);
+      bajty = await wydruk.zbuduj(wybrane.map((z) => zamowienieZGrupa(db, z)));
     } catch (e) {
       for (const z of wybrane) {
         zapiszLubOdpusc(() => dopiszLog(db, z.id, { akcja: `${wydruk.akcja}.masowa`, wynik: `BŁĄD: ${e.message}` }));
@@ -519,7 +522,7 @@ app.post('/zamowienia/specyfikacje.pdf', async (req, reply) => {
     let bajty;
     try {
       const sprzedawca = sprzedawcaSpecyfikacji(config);
-      bajty = await zbudujSpecyfikacjeWieluPdf(wybrane.map((z) => daneSpecyfikacji(z, { sprzedawca, klienciWdt: config.klienciWdt })));
+      bajty = await zbudujSpecyfikacjeWieluPdf(wybrane.map((z) => daneSpecyfikacji(zamowienieZGrupa(db, z), { sprzedawca, klienciWdt: config.klienciWdt })));
     } catch (e) {
       // Dokument jest JEDEN dla calego zaznaczenia, wiec awaria jest wspolna — slad idzie
       // do KAZDEGO zaznaczonego zamowienia (ta sama zasada, co przy fakturach hurtem: log ma

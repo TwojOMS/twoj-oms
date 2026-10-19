@@ -1,5 +1,5 @@
 import { stanFaktury } from './faktura-stan.js';
-import { czyKanalAllegro } from './wysylka.js';
+import { czyKanalAllegro, kanalyAllegro } from './wysylka.js';
 import { anulowaneEfektywnie } from './status-reczny.js';
 
 // JEDNA definicja „faktury czekającej na KSeF" — dla czuwacza (services/czuwacz-ksef.js)
@@ -47,7 +47,16 @@ const WSPOLNE_SQL = `
  * niego wzorzec `allegro_%` przestaje być PREFIKSEM, a staje się WZORCEM — i łapie także
  * sklep o kluczu `allegrowy` (zmierzone w node:sqlite 06.08.2026).
  */
-const GALAZ_ALLEGRO_SQL = `z.sklep LIKE 'allegro\\_%' ESCAPE '\\'`;
+const GALAZ_PREFIKSU_ALLEGRO_SQL = `z.sklep LIKE 'allegro\\_%' ESCAPE '\\'`;
+// PRZ-101.08: druga galaz predykatu `czyKanalAllegro` — klucze kanalow `typ: 'allegro'` z konfiguracji.
+// Klucz przeszedl WZOR_KLUCZA (`[a-z0-9_-]`), apostrof podwajamy mimo to. Pusty zbior = SQL sprzed zmiany.
+// `IN` porownuje dokladnie (wielkosc liter), wiec filtr na wyniku zostaje tylko dla `LIKE`. Klucze z prefiksem
+// lapie juz `LIKE`, wiec do `IN` ida tylko pozostale — instalacja z samymi `allegro_*` ma SQL sprzed zmiany.
+const literal = (s) => `'${String(s).replaceAll("'", "''")}'`;
+function galazAllegroSql(klucze) {
+  const bezPrefiksu = klucze.filter((k) => !String(k).startsWith('allegro_'));
+  return bezPrefiksu.length ? `(${GALAZ_PREFIKSU_ALLEGRO_SQL} OR z.sklep IN (${bezPrefiksu.map(literal).join(', ')}))` : GALAZ_PREFIKSU_ALLEGRO_SQL;
+}
 
 /**
  * ⚠️⚠️ GAŁĄŹ 2 (od 06.08.2026): DOKUMENT, KTÓREGO WYSYŁKĘ DO KSeF ZLECIŁ PANEL. Do tego dnia
@@ -81,11 +90,16 @@ const GALAZ_ZLECONA_Z_PANELU_SQL = 'EXISTS (SELECT 1 FROM wysylki_ksef w WHERE w
 
 /**
  * Warunek do klauzuli WHERE — część wspólna ORAZ jedna z dwóch rozłącznych gałęzi.
+ *
+ * ⚠️ FUNKCJA, NIE STAŁA (PRZ-101.08): klucze Allegro z konfiguracji znane są dopiero po budowie
+ * aplikacji, a stała liczyłaby się przy imporcie modułu — z pustym zbiorem.
  */
-export const WARUNEK_CZEKA_NA_KSEF_SQL = `
+export function warunekCzekaNaKsefSql(klucze = kanalyAllegro()) {
+  return `
   ${WSPOLNE_SQL}
-  AND (${GALAZ_ALLEGRO_SQL} OR ${GALAZ_ZLECONA_Z_PANELU_SQL})
+  AND (${galazAllegroSql(klucze)} OR ${GALAZ_ZLECONA_Z_PANELU_SQL})
 `;
+}
 
 /**
  * Kolumna do listy SELECT-a: czy ten wiersz wszedł GAŁĘZIĄ „panel zlecił wysyłkę".

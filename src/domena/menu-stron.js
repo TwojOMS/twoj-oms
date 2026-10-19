@@ -24,11 +24,11 @@ export const DZIALY = [
   { klucz: 'analizy-cele', etykieta: 'Analizy i cele' },
 ];
 
-const STATUSY = [
+const statusyMenu = (etykiety) => [
   { klucz: 'do_zrobienia', etykieta: 'Do zrobienia', href: '/' },
   { klucz: 'wszystkie', etykieta: 'Wszystkie', href: '/?wszystkie=1' },
   { klucz: 'po_terminie', etykieta: 'Po terminie', href: '/?po_terminie=1' },
-  ...Object.entries(ETYKIETY).map(([klucz, etykieta]) => ({
+  ...Object.entries(etykiety).map(([klucz, etykieta]) => ({
     klucz, etykieta, href: `/?status=${klucz}`,
   })),
 ];
@@ -50,9 +50,9 @@ const pozycjeHistoryczne = () => EKRANY
   .sort((a, b) => a.kolejnosc - b.kolejnosc);
 
 /** HTTP przekazuje zebrane Aplikacja.menu; brak argumentu zachowuje historyczne API helpera.
- * @param {{ sciezka?: string, konto?: any, menu?: readonly import('../core/kontrakty.ts').PozycjaMenu[], odlozoneEkrany?: readonly string[] }} [opcje]
+ * @param {{ sciezka?: string, konto?: any, menu?: readonly import('../core/kontrakty.ts').PozycjaMenu[], odlozoneEkrany?: readonly string[], etykietyStatusow?: Record<string,string> }} [opcje]
  */
-export function nawigacjaDla({ sciezka = '/', konto = null, menu, odlozoneEkrany = [] } = {}) {
+export function nawigacjaDla({ sciezka = '/', konto = null, menu, odlozoneEkrany = [], etykietyStatusow = ETYKIETY } = {}) {
   const ekranKlucz = ekranDlaAdresu(sciezka);
   const ekran = EKRANY.find((pozycja) => pozycja.klucz === ekranKlucz) ?? null;
   const kandydaci = menu === undefined ? [
@@ -100,7 +100,7 @@ export function nawigacjaDla({ sciezka = '/', konto = null, menu, odlozoneEkrany
     kontekst: aktywnyDzial ? {
       dzial: aktywnyDzial,
       statusy: aktywnyDzial === 'sprzedaz' && pozycje.some(p => p.klucz === 'zamowienia')
-        ? STATUSY.map((status) => ({ ...status, aktywna: false }))
+        ? statusyMenu(etykietyStatusow).map((status) => ({ ...status, aktywna: false }))
         : [],
       grupy,
     } : null,

@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="/public/messages-prz065.css">
+<link rel="stylesheet" href="<%= zasob('messages-prz065.css') %>">
 <section id="oms-messages">
   <header class="m-head"><h1>Wiadomości</h1><p>Rozmowy z kupującymi · Allegro</p></header>
   <% if (sprawy.length) { %>
@@ -34,4 +34,5 @@
     </div>
   </div>
 </section>
-<script src="/public/messages-prz065.js" defer></script>
+<script src="<%= zasob('messages-prz065.js') %>" defer></script>
+<script src="<%= zasob('szablony-wiadomosci.js') %>" defer></script>
