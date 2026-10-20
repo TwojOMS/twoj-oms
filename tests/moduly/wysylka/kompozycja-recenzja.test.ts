@@ -15,6 +15,9 @@ import type { ModulOms, Srodowisko } from '../../../src/core/kontrakty.ts';
 import { zalozKonto, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { wczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
 import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/sesja.js';
+import { zapiszAdresFirmy } from '../../../src/oms/db/adres-firmy.js';
+import { zapiszKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-integracji.js';
+import { pobranieDoWysylki } from '../../../src/domena/allegro-wysylka.js';
 
 const naglowek = { authorization: `Basic ${Buffer.from('operator:test').toString('base64')}` };
 const dpd = { DPD_URL: 'https://przyklad.invalid/dpd', DPD_INFO_URL: 'https://przyklad.invalid/info',
@@ -46,6 +49,25 @@ async function kompozycja(zWoo: boolean, dodatkowe: Srodowisko = {}, fabryki: Fa
 
 afterEach(() => vi.unstubAllGlobals());
 describe('poprawki recenzji — rzeczywiste manifesty i HTTP', () => {
+  it('WzA czyta właściciela konta z Firmy przy żądaniu, bez kuriera z pliku', async () => {
+    const createAllegroWza = vi.fn((_o: Parameters<NonNullable<FabrykiKurierow['createAllegroWza']>>[0]) => ({ nadaj: async () => ({ numerListu: null }) }));
+    const bezDpd = Object.fromEntries(Object.keys(dpd).map(k => [k, '']));
+    const a = await kompozycja(true, bezDpd, { createAllegroWza });
+    try {
+      zapiszKonfiguracjeIntegracji(a.db, 'dpd', { ustawienia: { nazwa: 'DPD test', login: 'fixture', fid: '1', typEtykiety: 'A4' },
+        sekrety: { haslo: 'fixture', kanal: '' } });
+      a.usluga<any>('wysylka', 'kurierDpd').odswiez();
+      const konto = createAllegroWza.mock.calls[0]![0].pobranieNadawca!;
+      for (const nazwa of ['Pracownia Przykładowa', 'Pracownia Po Zmianie']) {
+        zapiszAdresFirmy(a.db, { nazwa, ulica: 'Testowa 1', kod: '00-001', miasto: 'Testowo', kraj: 'PL', telefon: '', email: '' });
+        expect(konto.nazwa).toBe(nazwa);
+        expect(konto.rachunek).toBe('34109010140000000000000000');
+        expect(pobranieDoWysylki({ pobranieUslugi: true, cashOnDelivery: { amount: '83.99', currency: 'PLN' },
+          limit: '6000', ownerName: konto.nazwa, iban: konto.rachunek, nadpisanieOperatora: null, wymaganeKonto: true })).toEqual({ wolno: true,
+          cashOnDelivery: { amount: '83.99', currency: 'PLN', ownerName: nazwa, iban: 'PL34109010140000000000000000' } });
+      }
+    } finally { await a.app.close(); a.db.close(); }
+  });
   it('rzeczywiste trasy zachowują sesję, uprawnienia, degradację Basic Auth i CSRF kolejki', async () => {
     const fetch = vi.fn(async () => { throw new Error('test nie zezwala na API'); });
     vi.stubGlobal('fetch', fetch);

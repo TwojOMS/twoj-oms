@@ -1,0 +1,80 @@
+<h1>KSeF — faktury kosztowe</h1>
+<p><a href="/ustawienia/integracje">← Integracje</a></p>
+
+<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
+<% if (test) { %>
+  <div class="<%= test.ok ? 'pas-potwierdzenie' : 'pas-uprzedzenie' %>" id="ksef-test"><p><strong><%= test.ok ? 'Działa.' : 'Nie działa.' %></strong> <%= test.tekst %></p></div>
+<% } %>
+<% if (bledy.length) { %>
+  <div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong></p><ul><% bledy.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
+<% } %>
+<% if (modulWylaczony) { %>
+  <div class="pas-uprzedzenie" id="ksef-modul"><p>Moduł Koszty jest wyłączony (<a href="/ustawienia/moduly">Ustawienia → Moduły</a>) — panel nie pobiera faktur kosztowych, nawet z zapisanym tokenem.</p></div>
+<% } %>
+
+<% if (zEnv) { %>
+<section class="ust-sekcja" id="ksef-stan">
+  <h2>Podłączony w pliku konfiguracji</h2>
+  <p>Token KSeF jest ustawiony w pliku konfiguracji serwera (<code>oms.env</code>, zmienna <code>KSEF_TOKEN</code>). Ten ekran go nie zmienia — token poprawisz w tym pliku.</p>
+  <% if (stan) { %>
+    <form method="post" action="/ustawienia/integracje/ksef/odlacz">
+      <p>W OMS-ie został też token zapisany wcześniej na tym ekranie. Plik konfiguracji ma pierwszeństwo, więc nie jest używany.</p>
+      <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń zapisany token</button></div>
+    </form>
+  <% } %>
+</section>
+<% } else { %>
+<section class="ust-sekcja" id="ksef-stan">
+  <h2>Stan połączenia</h2>
+  <% if (stan && !nipNiezgodny) { %>
+    <p class="ust-stan ust-stan-ok"><strong>Podłączony</strong></p>
+    <p>Token zapisał <%= stan.kontoLogin ?? '—' %>, <%= fmtDataCzas(stan.zmienionoAt) %>. Czuwacz kosztów pobiera nim co noc (o 3) faktury, na których firma jest nabywcą; przycisk „Odśwież teraz” na ekranie <a href="/koszty">Koszty</a> pobiera od razu.</p>
+  <% } else if (stan) { %>
+    <p class="ust-stan ust-stan-blad"><strong>Nieużywany</strong></p>
+    <p>NIP zapisany przy tokenie (<%= nipZapisu %>) nie zgadza się już z NIP-em firmy w pliku konfiguracji — panel nie loguje się tym tokenem. Zapisz formularz z pustym polem NIP albo usuń token.</p>
+  <% } else { %>
+    <p class="ust-stan"><strong>Niepodłączony</strong></p>
+    <p>Bez tokenu panel nie pobiera faktur kosztowych z KSeF. Koszty dopisane ręcznie na ekranie Koszty działają bez niego.</p>
+  <% } %>
+</section>
+<% if (!stan) { %>
+<aside class="ust-instrukcja" id="ksef-instrukcja">
+  <h3>Skąd wziąć token</h3>
+  <p>Token generuje się w Krajowym Systemie e-Faktur (aplikacja podatnika KSeF) po zalogowaniu w kontekście firmy.</p>
+</aside>
+<% } %>
+
+<section class="ust-sekcja">
+  <h2>Token</h2>
+  <p id="ksef-uprawnienie"><strong><%= zdanie %></strong></p>
+  <form id="ksef-formularz" class="ust-formularz" method="post" action="/ustawienia/integracje/ksef">
+    <label for="ksef-token">Token KSeF <span class="ust-wymagane">*</span></label>
+    <div><input id="ksef-token" type="password" name="token" value="" maxlength="1000" autocomplete="new-password"<% if (stan?.zapisaneSekrety?.token) { %> placeholder="zapisany — wpisz nowy, żeby zmienić"<% } else { %> required<% } %>>
+      <p class="ust-pomoc">OMS loguje się nim do KSeF tylko po to, żeby czytać faktury zakupowe: nocne pobranie kosztów, PDF kosztu, paczka kosztów dla biura i „Sprawdź połączenie”. Wysyłka faktur sprzedaży idzie przez inFakt i tego tokenu nie używa.</p></div>
+
+    <label for="ksef-nip">NIP firmy</label>
+    <div><input id="ksef-nip" type="text" name="nip" value="<%= nipZapisu %>" maxlength="20" inputmode="numeric" autocomplete="off" placeholder="<%= nipSprzedawcy ?? '' %>">
+      <p class="ust-pomoc">Zostaw puste — OMS użyje NIP-u firmy z konfiguracji. Jeśli wpiszesz, musi być ten sam.</p></div>
+
+    <p class="ust-pelna ust-pomoc">Pola oznaczone <span class="ust-wymagane">*</span> są wymagane.</p>
+    <div class="ust-pelna ust-akcje">
+      <button class="btn btn--glowny" type="submit">Zapisz</button>
+      <a class="ust-przycisk" href="/ustawienia/integracje">Anuluj</a>
+    </div>
+  </form>
+</section>
+
+<% if (stan) { %>
+<section class="ust-sekcja">
+  <h2>Sprawdzenie i usunięcie</h2>
+  <form method="post" action="/ustawienia/integracje/ksef/sprawdz">
+    <p>Sprawdzenie loguje się do KSeF zapisanym tokenem i czyta listę faktur zakupowych z ostatniej doby. Niczego nie wysyła i nie dopisuje do kosztów.</p>
+    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Sprawdź połączenie</button></div>
+  </form>
+  <form method="post" action="/ustawienia/integracje/ksef/odlacz" onsubmit="return confirm('Usunąć token KSeF? Panel przestanie pobierać faktury kosztowe.')" style="margin-top:1rem">
+    <p>Usunięcie kasuje token z OMS-u. Koszty pobrane wcześniej i dopisane ręcznie zostają.</p>
+    <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń token</button></div>
+  </form>
+</section>
+<% } %>
+<% } %>

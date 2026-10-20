@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { zegarKsef, zegarArchiwumSprzedazy } from '../../../src/moduly/faktury/zegary.ts';
+import { zegarKsef, zegarArchiwumSprzedazy, zegarAutomatuKsef } from '../../../src/moduly/faktury/zegary.ts';
 import { POWOD_TRWA } from '../../../src/moduly/faktury/services/czuwacz-archiwum-sprzedazy.js';
 
 describe('zegary faktur — ślad przebiegu', () => {
@@ -22,5 +22,14 @@ describe('zegary faktur — ślad przebiegu', () => {
     await z.przebieg(); expect(log).not.toHaveBeenCalled();
     await z.przebieg(); expect(log).toHaveBeenCalledWith('archiwum sprzedaży: pominięty —', POWOD_TRWA);
     await z.przebieg(); expect(log).toHaveBeenCalledWith('archiwum sprzedaży:', 'dysk');
+  });
+  it('PRZ-102.12: zegar automatu KSeF tyka co minutę, pominięcie milczy, wyjątek zostawia ślad i nie wychodzi', async () => {
+    const log = vi.fn();
+    const przebieg = vi.fn().mockResolvedValueOnce({ pominiety: true, powod: 'nie ta pora' }).mockRejectedValueOnce(new Error('baza'));
+    const z = zegarAutomatuKsef({ automat: { przebieg }, log, odstepMs: 60000 });
+    expect([z.nazwa, z.odstepMs]).toEqual(['automatKsef', 60000]);
+    await z.przebieg(); expect(log).not.toHaveBeenCalled();
+    await expect(z.przebieg()).resolves.toBeUndefined();
+    expect(log).toHaveBeenCalledWith('automat KSeF:', 'baza');
   });
 });

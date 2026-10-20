@@ -1,3 +1,4 @@
+import { gusDostepny } from '../../domena/konfiguracja-gus.js';
 import { etykietyStatusow } from '../../oms/db/statusy.js';
 import { listaZamowien, zamowieniaPoId, numeryZamowien, pobierzZamowienie, dopiszLog, zapiszNadpisaniaWysylki, historiaLogu } from '../../oms/db/zamowienia.js';
 import { indeksListy } from '../../oms/db/indeks-listy.js';
@@ -19,8 +20,13 @@ import { adresKartyZamowienia, adresPowrotuDoWiersza } from '../../domena/adres-
 import { METODY_WPLATY_RECZNEJ } from '../../domena/metody-platnosci.js';
 import { linkDoSledzenia } from '../../domena/tracking.js';
 import { powiazaniaDosylki } from '../../domena/dosylka.js';
-import { ostrzezeniaFaktur, ostrzezeniaPrzesylek, ostrzezeniaWiadomosci, ostrzezeniaIntegracji, ostrzezeniaTerminow, ostrzezeniaZwrotow, ostrzezeniaPobran, zlozOstrzezenia } from '../../domena/ostrzezenia.js';
-import { odrzucenia, lukiKsef, poTerminie, zwrotyBezKorekty, pobraniaBezGotowki } from '../../oms/db/ostrzezenia.js';
+import { wczytajAutomatKsef } from '../faktury/db/ksef-automat.js';
+import { ostrzezeniaAutomatuKsef, ostrzezeniaFaktur, ostrzezeniaPrzesylek, ostrzezeniaWiadomosci, ostrzezeniaIntegracji, ostrzezeniaTerminow, ostrzezeniaZwrotow, ostrzezeniaPobran, zlozOstrzezenia, ostrzezeniaDlaKonta } from '../../domena/ostrzezenia.js';
+import { ukryteTypyKonta } from '../../oms/db/powiadomienia.js';
+import { odrzucenia, lukiKsef, poTerminie, zwrotyBezKorekty, pobraniaBezGotowki, dzienWystawieniaLuki } from '../../oms/db/ostrzezenia.js';
+import { wysylkaKsef as rezerwacjaKsef } from '../faktury/db/wysylki-ksef.js';
+import { wysylkaZKarty, POWOD_KOREKTA } from '../../domena/wysylka-ksef.js';
+import { czyWysylacKonsumenckie } from '../faktury/db/ksef-konsumenckie.js';
 import { listaWatkow } from '../../oms/db/allegro-watki.js';
 import { adresKanalu, rodzajKanalu } from '../../domena/kanaly.js';
 import { przewoznikWiersza } from '../../domena/przewoznik-przesylki.js';
@@ -96,6 +102,9 @@ const {
   // (503), dokladnie jak nadanie bez skonfigurowanego kuriera.
   fakturaHurtem = null,
   doczytanieKsef = null,
+  // PRZ-102.23: przycisk „Wyślij do KSeF” przy fakturze na karcie prowadzi do podglądu tej usługi
+  // (POST /faktury/ksef/podglad). `null` (panel bez inFaktu) = bez przycisku — podgląd i tak odda 503.
+  wysylkaKsef = null,
 }=opcje;
 const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, config.definicje, etykietyStatusow(db));
 // Cenniki „Dodaj z magazynu" (PRZ-060): `OMS_CENNIKI` albo sklepy Woo z definicji kanałów.
@@ -242,13 +251,16 @@ function zbierzOstrzezenia(req) {
       const wiersze = [
         ...ostrzezeniaIntegracji({ zdrowie: zdrowie?.() ?? null }),
         ...ostrzezeniaFaktur({ luki: lukiKsef(db), dzis }),
+        // PRZ-102.12: kłopot ostatniego przebiegu automatu KSeF (błąd, przerwany, „nie wiadomo”, pominięte).
+        ...(() => { const a = wczytajAutomatKsef(db); return ostrzezeniaAutomatuKsef({ wynik: a.wynik, wstrzymane: a.wstrzymane }); })(),
         ...ostrzezeniaTerminow({ poTerminie: poTerminie(db) }),
         ...ostrzezeniaZwrotow({ zwroty: zwrotyBezKorekty(db), dzis }),
         ...ostrzezeniaPobran({ pobrania: pobraniaBezGotowki(db) }),
         ...ostrzezeniaPrzesylek({ przesylki, zamowienia: numery, teraz }),
         ...ostrzezeniaWiadomosci({ watki: listaWatkow(db), teraz }),
       ];
-      return zlozOstrzezenia({ wiersze, odrzucone: odrzucenia(db), teraz });
+      // PRZ-102.04: najpierw prawa konta (wiersz bez prawa do ekranu przycisku = 403 po kliku).
+      return zlozOstrzezenia({ wiersze: ostrzezeniaDlaKonta({ wiersze, konto: req?.konto ?? null }), odrzucone: odrzucenia(db), teraz, ukryteTypy: ukryteTypyKonta(db, req?.konto?.id) });
     } catch (e) {
       req?.log?.error?.(e, 'ostrzeżenia strony głównej nie policzyły się');
       return [];
@@ -629,6 +641,24 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // Widok NIE liczy sam, czy rezerwacja jest osierocona — to decyzja domenowa i ma
     // brzmiec tak samo tutaj, na liscie roboczej i przy kolizji w bazie.
     stanFaktury: stanFaktury(z.faktura),
+    // PRZ-102.23: „Wyślij do KSeF” przy fakturze (`wysylkaZKarty`) na pewnych faktach z bazy: uuid, numer KSeF,
+    // rezerwacja. NIP karty (bieżące dane, edytowalne po wystawieniu) daje tylko dopisek przy przycisku —
+    // o konsumenckiej rozstrzyga podgląd na dokumencie z inFaktu. Miesiąc listy z daty wystawienia,
+    // którą czuwacz przeczytał z inFaktu (lustro luk), a bez niej z chwili wystawienia w panelu (czas Warszawy).
+    // Faktura grupy scalonej ma wiersz tylko przy głównym; faktura okresu nie ma go wcale — przycisku tam nie ma.
+    ksefKarty: (() => {
+      const uuid = z.faktura?.infakt_uuid;
+      if (!wysylkaKsef || !uuid) return null;
+      return wysylkaZKarty({
+        uuid,
+        ksefNumer: z.faktura.ksef_numer,
+        nip: daneFaktury(z).nip,
+        konsumenckie: czyWysylacKonsumenckie(db),
+        zleconaAt: rezerwacjaKsef(db, uuid)?.zlecona_at ?? null,
+        dzienWystawienia: dzienWystawieniaLuki(db, uuid) ?? (z.faktura.utworzona_at ? dzienWarszawa(z.faktura.utworzona_at) : null),
+      });
+    })(),
+    powodKorektyKsef: POWOD_KOREKTA,
     // Zadanie 4: sekcja „Pozycje" — lp/nazwa/SKU/ilosc/netto/brutto/suma, wysylka jako
     // OSTATNI wiersz. Widok NIE liczy niczego sam — ta sama zasada, co przy stanie
     // przesylki wyzej: wiersze i podsumowanie (razem z ostrzezeniem o rozjezdzie z kwota
@@ -670,7 +700,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     pobranie: platnoscPrzyOdbiorze(z),
     // Czy w ogole pokazywac przycisk „Pobierz z GUS". Bez klucza (GUS_KLUCZ) klienta nie
     // ma, wiec przycisk tylko kusilby akcja konczaca sie 503 bez wyjasnienia.
-    mozliwyGus: Boolean(gus),
+    mozliwyGus: gusDostepny(gus), // PRZ-102.11: plik albo Ustawienia, przy kazdym widoku (bez restartu)
     // ⚠️ NIEZAPISANE dane z GUS-u i komunikat o wyniku pobrania. Widok wklada je do pol
     // formularza, ale w bazie ich JESZCZE NIE MA — zapisuje dopiero „Zapisz". Nazwa firmy
     // idzie na fakture, wiec czlowiek musi ja zobaczyc, zanim stanie sie faktem.
@@ -789,7 +819,7 @@ function renderujNowe(
       kwotyDostawy: kwotyDostawy(wczytajUstawienia(db)),
       platnosci: PLATNOSCI,
       stawkaVat: STAWKA_VAT,
-      gusDziala: Boolean(gus),
+      gusDziala: gusDostepny(gus),
       // ⚠️ TYLKO AKTYWNI. Klient wygaszony zostaje w bazie (jego zamowienia sa migawka i maja
       // sie dac wytlumaczyc), ale nie ma prawa kusic na liscie wyboru przy telefonie.
       klienci: wszyscyKlienci(db),

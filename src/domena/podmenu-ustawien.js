@@ -21,9 +21,10 @@ export const POZYCJE_USTAWIEN = [
   { klucz: 'druk', etykieta: 'Druk i etykiety', href: '/ustawienia/druk', grupa: 'sprzedaz', wkrotce: true },
   // Ekran ma jedną sekcję: „Autoresponder Allegro”.
   { klucz: 'wiadomosci-i-automatyzacje', etykieta: 'Autoodpowiedź Allegro', href: '/ustawienia/wiadomosci-i-automatyzacje', grupa: 'komunikacja' },
-  { klucz: 'powiadomienia', etykieta: 'Powiadomienia', href: '/ustawienia/powiadomienia', grupa: 'komunikacja', wkrotce: true },
+  { klucz: 'powiadomienia', etykieta: 'Powiadomienia', href: '/ustawienia/powiadomienia', grupa: 'komunikacja' },
   { klucz: 'integracje', etykieta: 'Sklepy i usługi', href: '/ustawienia/integracje', grupa: 'integracje' },
   { klucz: 'diagnostyka', etykieta: 'Diagnostyka', href: '/ustawienia/lacznosc', grupa: 'system' },
+  { klucz: 'moduly', etykieta: 'Moduły', href: '/ustawienia/moduly', grupa: 'system', tylkoAdmin: true },
   { klucz: 'aktualizacje', etykieta: 'Aktualizacje', href: '/ustawienia/aktualizacje', grupa: 'system', tylkoAdmin: true },
   { klucz: 'kopie', etykieta: 'Kopie zapasowe', href: '/ustawienia/kopie', grupa: 'system', wkrotce: true },
   { klucz: 'import-eksport', etykieta: 'Import i eksport', href: '/ustawienia/import-eksport', grupa: 'system', wkrotce: true },
@@ -38,7 +39,7 @@ const KOLEJNOSC = [
   'statusy', 'zamowienia-i-wysylka', 'magazyn', 'druk',
   'szablony-wiadomosci', 'wiadomosci-i-automatyzacje', 'powiadomienia',
   'integracje',
-  'diagnostyka', 'aktualizacje', 'kopie', 'import-eksport', 'api',
+  'moduly', 'diagnostyka', 'aktualizacje', 'kopie', 'import-eksport', 'api',
 ];
 
 // Formularze, które zapisują pod innym adresem niż ich ekran (odpowiedź 400 renderuje ten ekran).

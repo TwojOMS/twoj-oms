@@ -10,6 +10,7 @@ import { TYPY_KOSZTU } from '../../../domena/typy-kosztow.js';
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { bezpiecznaNazwa } from '../../../domena/pliki.js';
+import { uslugaKsefDostepna } from '../../../domena/konfiguracja-ksef-kosztow.js';
 import { createZestawienieKosztow } from '../services/zestawienie-kosztow.js';
 
 // Zakladka KOSZTY. Trasa jest CIENKA: parsuje zadanie, wola domene, renderuje — dokladnie
@@ -93,11 +94,11 @@ export function zarejestrujTrasyKosztow(app, {
       // Panel bez sekcji KSEF_* to tryb POPRAWNY (jak brak inFaktu przy /faktury): lustro
       // w bazie dalej sie oglada, tylko nie ma czym go odswiezyc — i przycisk ma tego
       // nie obiecywac.
-      mozliwyOdswiez: Boolean(czuwaczKosztow),
+      mozliwyOdswiez: uslugaKsefDostepna(czuwaczKosztow),
       // Przycisk „PDF" ma sie pokazac WYLACZNIE wtedy, gdy jest skad wziac XML — panel bez
       // sekcji KSEF_* dalej oglada lustro w bazie, ale wizualizacji nie ma z czego narysowac
       // (ta sama zasada, co przy `mozliwyOdswiez` wyzej: przycisk nie obiecuje niemozliwego).
-      mozliwyPdf: Boolean(wizualizacjaKosztu),
+      mozliwyPdf: uslugaKsefDostepna(wizualizacjaKosztu),
       // ⚠️ TA WARTOSC JEDZIE Z `ekran`, A NIE Z SAMEGO `GET /koszty` — i to jest cala tresc
       // sprawy. Tym samym szablonem renderuje sie KAZDY ekran po akcji (przypiecie kategorii,
       // odswiezenie, wpis reczny, odmowa), wiec zmienna podana tylko w jednym miejscu
@@ -148,7 +149,8 @@ export function zarejestrujTrasyKosztow(app, {
   // ⚠️ TRASA NICZEGO NIE RYSUJE I NICZEGO NIE LICZY: sklada to `services/wizualizacja-kosztu.js`
   // (pobranie XML-a), `domain/koszt-xml.js` (pozycje) i `pdf/koszt-pdf.js` (rysunek).
   app.get('/koszty/:ksefNumber/pdf', async (req, reply) => {
-    if (!wizualizacjaKosztu) {
+    // PRZ-102.22: usługa z modułu odpowiada przy każdym żądaniu (token z Ustawień, bez restartu).
+    if (!uslugaKsefDostepna(wizualizacjaKosztu)) {
       return reply.code(503).send('Panel nie ma podpiętego KSeF — nie ma skąd pobrać dokumentu.');
     }
     let wynik;
@@ -202,7 +204,7 @@ export function zarejestrujTrasyKosztow(app, {
   // potrafi trwac ~31 minut, a panel celowo stoi na `requestTimeout: 0` (web/server.js).
   app.post('/koszty/odswiez', async (req, reply) => {
     const miesiac = miesiacPowrotu(req.body?.miesiac);
-    if (!czuwaczKosztow) {
+    if (!uslugaKsefDostepna(czuwaczKosztow)) {
       return reply.code(503).send('Panel nie ma podpiętego KSeF — nie ma skąd pobrać kosztów.');
     }
     let komunikat;

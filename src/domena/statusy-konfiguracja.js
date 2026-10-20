@@ -1,5 +1,9 @@
 import { ETYKIETY } from './status.js';
 
+export function statusIndywidualnyAktywny(kanalWlaczony, saZamowienia) {
+  return Boolean(kanalWlaczony || saZamowienia);
+}
+
 // Historyczne rodziny barw. Szary po zapisie dostaje czytelniejszy tekst (WCAG 4,5:1).
 export const PALETA_STATUSOW = {
   niebieski: { etykieta: 'Niebieski', klasa: 'nowe' },

@@ -55,7 +55,9 @@ describe('zbudujAplikacje', () => {
     const zly: ModulOms = { ...echo as ModulOms, nazwa: 'zly', konfiguracja: () => { throw new Error('Brak wymaganej zmiennej: ZLY_KLUCZ'); },
       migracje: [{ numer: 1, nazwa: 'sonda', wykonaj: (d) => d.exec('CREATE TABLE sonda(id INTEGER)') }],
       zbuduj: () => { budow++; return {}; } };
-    await expect(zbudujAplikacje({ moduly: [rdzen, zly], env: {}, db })).rejects.toThrow(/OMS_SPRZEDAWCA_NIP[\s\S]*OMS_RACHUNEK[\s\S]*ZLY_KLUCZ/);
+    // PRZ-102.20: brak OMS_RACHUNEK nie jest już błędem startu (rachunek można wpisać w panelu) — zły rachunek nadal jest.
+    await expect(zbudujAplikacje({ moduly: [rdzen, zly], env: { OMS_RACHUNEK: '34109010140000000000000001' }, db }))
+      .rejects.toThrow(/OMS_SPRZEDAWCA_NIP[\s\S]*OMS_RACHUNEK[\s\S]*ZLY_KLUCZ/);
     expect(budow).toBe(0);
     expect(db.prepare('SELECT * FROM migracje').all()).toEqual([]);
     expect(db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all()).toEqual([{ name: 'migracje' }]);

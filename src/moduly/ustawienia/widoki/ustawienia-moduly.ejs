@@ -1,0 +1,27 @@
+<h1>Moduły</h1>
+<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
+<% if (blad) { %><div class="pas-uprzedzenie" role="alert"><p><%= blad %></p></div><% } %>
+<p>Wyłączony moduł znika z menu, a jego adresy są zablokowane. Dane zostają w bazie. Włączenie przywraca dostęp bez restartu.</p>
+<% for (const m of moduly) { const wlaczony = !wylaczone.includes(m.klucz); %>
+<section class="ust-sekcja">
+  <h2><%= m.nazwa %></h2>
+  <p><%= m.opis %></p>
+  <p><strong><%= wlaczony ? 'Włączony' : 'Wyłączony' %></strong></p>
+  <% if (m.klucz === 'klienci' && zaleznosci.rabaty > 0) { %>
+  <p><%= zaleznosci.rabaty %> stałych klientów z rabatem — rabaty nadal działają, edycja po włączeniu modułu.</p>
+  <% } %>
+  <% if (m.klucz === 'koszty') { %>
+  <% if (zaleznosci.kosztyOstatnie > 0) { %><p><%= zaleznosci.kosztyOstatnie %> kosztów w bazie — zostaną, Finanse dalej je liczą; nowych panel nie pobierze.</p><% } %>
+  <% } else { %>
+  <% if (zaleznosci.zbiorczy > 0) { %><p class="pas-uprzedzenie"><%= zaleznosci.zbiorczy %> stałych klientów z rozliczeniem zbiorczym — wyłączenie zablokowane, potrzebne są karty klientów i Rozliczenia.</p><% } %>
+  <% if (zaleznosci.okresy > 0) { %><p class="pas-uprzedzenie"><%= zaleznosci.okresy %> okresów z zamówieniami bez zakończonej faktury — wyłączenie zablokowane.</p><% } %>
+  <% if (zaleznosci.nierozliczoneOkresy > 0) { %><p class="pas-uprzedzenie"><%= zaleznosci.nierozliczoneOkresy %> okresów z nierozliczonymi wpłatami albo niedopłatą — rozlicz je w Rozliczeniach.</p><% } %>
+  <% if (zaleznosci.bledneKwotyOkresow > 0) { %><p class="pas-uprzedzenie"><%= zaleznosci.bledneKwotyOkresow %> okresów: nie można odczytać kwoty zamówienia lub wpłaty — sprawdź i popraw dane w Rozliczeniach.</p><% } %>
+  <% } %>
+  <form method="post" action="/ustawienia/moduly">
+    <input type="hidden" name="modul" value="<%= m.klucz %>">
+    <input type="hidden" name="wlacz" value="<%= wlaczony ? '0' : '1' %>">
+    <div class="ust-akcje"><button class="ust-przycisk" type="submit"><%= wlaczony ? 'Wyłącz' : 'Włącz' %> <%= m.nazwa %></button></div>
+  </form>
+</section>
+<% } %>

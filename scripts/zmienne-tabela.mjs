@@ -24,7 +24,7 @@ export function generujTabele(manifest) {
   const wiersze = [
     '# Zmienne konfiguracji OMS', '',
     'W instalacji Docker konfiguracja leży w pliku `/opt/oms/config/oms.env` (zobacz [instalację](instalacja-docker.md)).',
-    'Część ustawień wprowadzisz w panelu: Ustawienia → Firma oraz Ustawienia → Integracje (inFakt, DPD, InPost, poczta i adres panelu).',
+    'Część ustawień wprowadzisz w panelu: Ustawienia → Firma oraz Ustawienia → Integracje (inFakt, DPD, InPost, poczta, adres panelu i podpis maili).',
     '**Plik wygrywa** — ustawiona w nim sekcja integracji lub adres firmy blokuje zapis tej części w panelu.',
     'Szczegóły walidacji i aktywacji znajdziesz w [manifeście konfiguracji w repozytorium](https://github.com/TwojOMS/twoj-oms/blob/main/docs/konfiguracja.md).', '',
     'Tabela jest generowana z manifestu JSON; nie edytuj jej ręcznie.',

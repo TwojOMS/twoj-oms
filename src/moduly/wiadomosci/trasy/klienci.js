@@ -7,6 +7,8 @@ import { RABAT_MAX } from '../../../domena/rabat.js';
 import { DOSTAWY, PLATNOSCI, skopiujFaktureDoWysylki } from '../../../domena/nowe-zamowienie.js';
 import { PRZY_ODBIORZE, BEZ_TERMINU, TERMINY_DNI } from '../../../domena/termin-platnosci.js';
 import { nipDoZapytania, komunikatAwariiGus } from '../../../domena/gus.js';
+import { gusDostepny, KOMUNIKAT_BRAK_GUS } from '../../../domena/konfiguracja-gus.js';
+import { wylaczoneModuly } from '../../../oms/db/moduly-opcjonalne.js';
 import {
   wszyscyKlienci, klientPoId, dopiszKlienta, zapiszKlienta,
 } from '../../../oms/db/klienci.js';
@@ -58,7 +60,8 @@ export function registerKlienciRoutes(app, { db, gus = null }) {
       komunikatGus,
       // Bez tej flagi widok kusiłby przyciskiem „Pobierz z GUS" także wtedy, gdy GUS nie jest
       // skonfigurowany — kliknięcie kończyłoby się komunikatem zamiast danymi.
-      gusDziala: Boolean(gus),
+      // PRZ-102.11: liczone przy każdym widoku — klucz zapisany w Ustawieniach pokazuje przycisk bez restartu.
+      gusDziala: gusDostepny(gus),
       dostawy: DOSTAWY,
       platnosci: PLATNOSCI,
       terminy: { przyOdbiorze: PRZY_ODBIORZE, bezTerminu: BEZ_TERMINU, dni: TERMINY_DNI },
@@ -99,6 +102,7 @@ export function registerKlienciRoutes(app, { db, gus = null }) {
       // inny status niż po kliknięciu w jego numer.
       wyliczStatus,
       ETYKIETY: etykietyStatusow(db),
+      dostawy: DOSTAWY,
       // Grosze na złotówki zamienia domena (domain/kwoty.js), nie dzielenie w szablonie.
       zl,
     });
@@ -137,7 +141,7 @@ export function registerKlienciRoutes(app, { db, gus = null }) {
       formularz, edytowany, otwarty: true, komunikatGus: { rodzaj, tekst },
     });
 
-    if (!gus) return odmowa('GUS nie jest skonfigurowany (brak GUS_KLUCZ) — wpisz dane ręcznie.');
+    if (!gusDostepny(gus)) return odmowa(KOMUNIKAT_BRAK_GUS);
 
     let nip;
     try {
@@ -208,6 +212,13 @@ export function registerKlienciRoutes(app, { db, gus = null }) {
       });
     }
 
+    // Nie pozwalamy założyć umowy, której faktury nie miałyby dostępnego ekranu.
+    if (dane.rozliczenie_zbiorcze === 1 && wylaczoneModuly(db).includes('okresy')) {
+      return renderuj(reply.code(409), {
+        formularz: req.body ?? {}, edytowany, otwarty: true,
+        blad: 'Włącz Rozliczenia w Ustawieniach → Moduły przed zapisaniem umowy zbiorczej.',
+      });
+    }
     try {
       if (edytowany) zapiszKlienta(db, edytowany.id, dane);
       else dopiszKlienta(db, dane);

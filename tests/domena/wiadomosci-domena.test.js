@@ -195,9 +195,11 @@ const kontekst = (nad = {}) => ({
 });
 
 describe('tematy wiadomości', () => {
-  it('jest ich cztery, w kolejności pracy', () => {
-    expect(TEMATY).toEqual(['potwierdzenie', 'proforma', 'faktura', 'przypomnienie']);
+  // PRZ-102.21: piąty temat „Zamówienie wysłane" (ręcznie z karty) — zmiana zachowania, było cztery.
+  it('jest ich pięć, w kolejności pracy', () => {
+    expect(TEMATY).toEqual(['potwierdzenie', 'proforma', 'faktura', 'przypomnienie', 'wyslane']);
     expect(NAZWA_TEMATU.przypomnienie).toBe('Przypomnienie o płatności');
+    expect(NAZWA_TEMATU.wyslane).toBe('Zamówienie wysłane');
   });
 
   // ⚠️ ASERCJA NA `powod`, NIE TYLKO NA `wolno` (recenzja 22.08.2026): zamiana odmowy na

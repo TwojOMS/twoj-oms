@@ -5,7 +5,7 @@ import { dzienWarszawa } from './format-daty.js';
 import { grosze } from './kwoty.js';
 import { kwotaOczekiwanaGrosze } from './suma-pozycji.js';
 import { nalozNadpisaniaPozycji } from './pozycje-reczne.js';
-import { porcjeZamowienWOkresie } from '../oms/db/okno-zamowien.js';
+import { porcjeZamowienWOkresie, pierwszeDniSklepow, zamowieniaSklepuDoDnia } from '../oms/db/okno-zamowien.js';
 import { setImmediate } from 'node:timers/promises';
 
 // JEDYNE miejsce, w ktorym powstaje „sprzedaz w okresie". Ekran sprzedazy, rachunek zarzadczy
@@ -58,6 +58,7 @@ function* wierszeSprzedazy(db, { od, do: doDnia }, reguly) {
   wymagajKlasyfikacji(reguly.klasyfikacja);
   const mapa = granice(db);
   sprawdzGraniceBezHistorii(db, reguly.klasyfikacja);
+  sprawdzZamowieniaPrzedGranica(db, reguly.klasyfikacja);
   let przeczytane = 0;
 
   for (const w of historiaWOknie(db, od, doDnia)) {
@@ -254,11 +255,78 @@ function sprawdzGraniceBezHistorii(db, klasyfikacja) {
   }
 }
 
+const KOLUMNY_PIERWSZYCH = KOLUMNY_KLASYFIKACJI.join(', ') + ', utworzone_at, anulowane, anulowane_recznie';
+
+// Kanały, do których mogą trafić zamówienia sklepu: `kanalOms` zależy wyłącznie od kolumn
+// KOLUMNY_KLASYFIKACJI (patrz ⚠️ przy liście kolumn wyżej), więc wystarczy sprawdzić wszystkie ich
+// wartości logiczne. Nieznany sklep nie ma kanału — o jego zamówienia odmawia sam raport okresu.
+function mozliweKanalySklepu(sklep, klasyfikacja) {
+  const wynik = new Set();
+  for (const indywidualne of [0, 1]) for (const b2b of [0, 1]) for (const okres_rozliczeniowy_id of [null, 1]) {
+    try { wynik.add(kanalOms({ sklep, indywidualne, b2b, okres_rozliczeniowy_id }, klasyfikacja)); } catch { /* nieznany sklep */ }
+  }
+  return wynik;
+}
+
+/**
+ * PRZ-102.14: najwcześniejszy dzień (Warszawa) zamówień OMS każdego kanału raportowego spośród
+ * zamówień z dniem ≤ `limit(kanal)` (`null` = kanał pominięty). Dwie fazy: indeks pokrywający daje
+ * per sklep dolną granicę dnia, a dokładnie (dzienWarszawa i kanalOms — ta sama miara, co w raporcie)
+ * liczymy tylko sklepy, które mogą mieć zamówienie do limitu. Zmierzone na 30 000 zamówień przed
+ * późną granicą: 10 ms zamiast 600 ms pętli po wszystkich wierszach.
+ * @param {(kanal: string) => string | null} limit
+ * @returns {Map<string, string>}
+ */
+export function pierwszeDniOms(db, klasyfikacja, limit, { bezAnulowanych = false } = {}) {
+  const wynik = new Map();
+  for (const s of pierwszeDniSklepow(db)) {
+    const najdalej = [...mozliweKanalySklepu(s.sklep, klasyfikacja)].map(limit).filter(Boolean).sort().at(-1);
+    if (!najdalej || (!s.bez_daty && (s.od_dnia === null || s.od_dnia > najdalej))) continue;
+    for (const w of zamowieniaSklepuDoDnia(db, KOLUMNY_PIERWSZYCH, s.sklep, najdalej)) {
+      if (bezAnulowanych && anulowaneEfektywnie(w)) continue;
+      const dzien = dzienWarszawa(w.utworzone_at);
+      if (!dzien) continue;
+      let kanal;
+      try { kanal = kanalOms(w, klasyfikacja); } catch { continue; }
+      const g = limit(kanal);
+      if (!g || dzien > g) continue;
+      const dotad = wynik.get(kanal);
+      if (!dotad || dzien < dotad) wynik.set(kanal, dzien);
+    }
+  }
+  return wynik;
+}
+
+// PRZ-102.14: granica „bez historii” założona przed pierwszym pobraniem zamówień (sklep bez OD
+// pobiera całą historię) wypada PÓŹNIEJ niż jego zamówienia, a pętla OMS wyżej pomija dni
+// ≤ granicy bez słowa — pusty raport wyglądałby jak słaby miesiąc. Odmowa obejmuje każdą drogę
+// zapisu granicy (automat startu, --granice, skrypt ręczny). Anulowanych raport i tak nie liczy.
+function sprawdzZamowieniaPrzedGranica(db, klasyfikacja) {
+  const bezHistorii = new Map(db.prepare("SELECT kanal, do_dnia FROM granice_historii WHERE zrodlo = 'oms-bez-historii'")
+    .all().map(w => [w.kanal, w.do_dnia]));
+  if (!bezHistorii.size) return;
+  const pierwsze = pierwszeDniOms(db, klasyfikacja, kanal => bezHistorii.get(kanal) ?? null, { bezAnulowanych: true });
+  const zle = [...pierwsze].sort(([a], [b]) => (a < b ? -1 : 1));
+  if (!zle.length) return;
+  const e = new Error('Raport odmawia: '
+    + zle.map(([kanal, dzien]) => `zamówienia kanału ${kanal} sprzed granicy ${bezHistorii.get(kanal)} (najwcześniejsze z dnia ${dzien})`).join('; ')
+    + ' — granica założona za wcześnie, przed pierwszym pobraniem zamówień; bez tej odmowy te zamówienia wypadłyby z raportu po cichu.'
+    + ' Popraw granicę: usuń wiersz kanału z tabeli granice_historii i załóż go ponownie poleceniem na serwerze OMS:'
+    + ` ${POLECENIE_GRANIC} (dzień granicy wyliczy się przed najwcześniejszym zamówieniem kanału).`);
+  e.dlaOperatora = true;
+  throw e;
+}
+
+const POLECENIE_GRANIC = 'sudo sh /opt/oms/aktualizuj.sh compose exec -T oms node scripts/produkcja-pierwszy-start.mjs --granice';
+
 // PRZ-093.07: ciąg dalszy odmowy z `granicaDla` — nowa instalacja dostaje polecenie, które
 // zakłada granicę (docs/instalacja-docker.md, sekcja 9), a nie samo „uzupełnij”. Składnia
 // polecenia jest dosłownie z instrukcji; skrypt pomija kanały z zaimportowaną historią.
-const JAK_ZALOZYC_GRANICE = ' Granicę kanału bez zaimportowanej historii zakłada polecenie na serwerze OMS:'
-  + ' sudo sh /opt/oms/aktualizuj.sh compose exec -T oms node scripts/produkcja-pierwszy-start.mjs --granice'
-  + ' (instrukcja instalacji, sekcja 9 „Integracje po kolei”; dzień granicy liczy samo: dzień przed datą z linii PREFIKS_OD kanału albo wczoraj).'
+// PRZ-102.14: start panelu zakłada granicę sam tylko kanałowi z kompletem kluczy i linią OD.
+const JAK_ZALOZYC_GRANICE = ' Kanał z kompletem kluczy i linią PREFIKS_OD dostaje granicę sam przy starcie — wtedy wystarczy restart panelu.'
+  + ' Kanał bez linii PREFIKS_OD albo z niepełną konfiguracją: po pierwszym pobraniu zamówień polecenie na serwerze OMS:'
+  + ` ${POLECENIE_GRANIC}`
+  + ' (instrukcja instalacji, sekcja 9 „Integracje po kolei”; dzień granicy liczy samo: dzień przed datą z linii PREFIKS_OD kanału albo wczoraj,'
+  + ' a gdy kanał ma już zamówienia — dzień przed najwcześniejszym z nich).'
   + ' Kanał z zaimportowaną historią (OMS_HISTORIA_KLASYFIKACJA) to polecenie pomija — jego granicę trzeba ustalić pomiarem.'
   + ' Sprawdź też, czy po zmianie raportu nie pozostała osierocona granica starego identyfikatora.';

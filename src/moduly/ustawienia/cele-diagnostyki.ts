@@ -19,9 +19,12 @@ export function celeDiagnostyki(usluga: <T>(modul: string, nazwa: string) => T) 
   const kurierzy = wysylka ? usluga<() => any>('wysylka', 'celeLacznosci')() : {};
   return celeLacznosci({ ...kanaly,
     infakt: dokumenty.infakt,
-    ksef: koszty?.ksef ? { api: koszty.ksef.baseUrl ?? BAZA_DOMYSLNA } : null,
+    // PRZ-102.22: token KSeF z pliku albo z Ustawień → Integracje → KSeF (pytane przy każdym wejściu); adres tylko z pliku.
+    ksef: koszty && usluga<{ dostepny: () => boolean }>('koszty', 'zrodloKsef').dostepny() ? { api: koszty.adresKsef ?? BAZA_DOMYSLNA } : null,
     dpd: kurierzy.dpd,
     inpost: kurierzy.inpost,
-    gus: zamowienia?.gus ? { url: zamowienia.gus.url } : null,
+    // PRZ-102.13: ta sama reguła co przycisk „Pobierz z GUS” (plik → atrapa → klucz z Ustawień), pytana przy każdym wejściu
+    // na ekran — klucz zapisany w panelu działa bez restartu. Adres: GUS_URL albo domyślny; klucza tu nie ma.
+    gus: zamowienia && usluga<{ dostepny: () => boolean }>('zamowienia', 'gus').dostepny() ? { url: zamowienia.gusAdres } : null,
   } as any);
 }

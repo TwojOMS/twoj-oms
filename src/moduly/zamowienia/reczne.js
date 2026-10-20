@@ -13,6 +13,7 @@ import { parsujNowaPozycje, parsujEdycjePozycji, roznicePozycji, ustawNadpisanie
 import { KLUCZ_WYSYLKI, parsujEdycjeWysylki, rozniceWysylki, wysylkaZeSklepu } from '../../domena/wysylka-kwota.js';
 import { odczytajNadpisania } from '../../domena/dane-reczne.js';
 import { nipDoZapytania, komunikatAwariiGus } from '../../domena/gus.js';
+import { gusDostepny, KOMUNIKAT_BRAK_GUS } from '../../domena/konfiguracja-gus.js';
 import { wstawKlientaDoFormularza } from '../../domena/klient-staly.js';
 import { parsujRabat } from '../../domena/rabat.js';
 import { klientPoKluczu } from '../../oms/db/klienci.js';
@@ -202,7 +203,7 @@ app.post('/zamowienia/nowe/gus', async (req, reply) => {
     const formularz = req.body ?? {};
     const odmowa = (tekst, rodzaj = 'blad') => renderujNowe(reply, { formularz, komunikatGus: { rodzaj, tekst } });
 
-    if (!gus) return odmowa('GUS nie jest skonfigurowany (brak GUS_KLUCZ) — wpisz dane ręcznie.');
+    if (!gusDostepny(gus)) return odmowa(KOMUNIKAT_BRAK_GUS);
 
     let nip;
     try {

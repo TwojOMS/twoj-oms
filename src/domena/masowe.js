@@ -374,11 +374,11 @@ export function wariantFakturyHurtem(z, dzis) {
  * ⚠️ Powody pochodza z TYCH SAMYCH funkcji, ktore rzadza wystawieniem pojedynczym — patrz
  * docblock w domain/faktura-odmowa.js. Ta funkcja nie przepisuje reguly, tylko ja odpytuje.
  */
-export function podzielDoFaktury(zamowienia, teraz = Date.now()) {
+export function podzielDoFaktury(zamowienia, teraz = Date.now(), opcje = {}) {
   const doWystawienia = [];
   const pominiete = [];
   for (const z of zamowienia ?? []) {
-    const powod = powodOdmowyFaktury(z)
+    const powod = powodOdmowyFaktury(z, opcje)
       ?? powodStanuFaktury(z, teraz)
       ?? powodRozjazduDokumentu(z)
       ?? wariantFakturyHurtem(z).powod

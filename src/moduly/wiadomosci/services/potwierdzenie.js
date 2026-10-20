@@ -2,7 +2,9 @@ import { pobierzZamowienie, oznaczPotwierdzenieWyslane, dopiszLog } from '../../
 import { zapiszWiadomosc } from '../../../oms/db/wiadomosci.js';
 import { wczytajSzablonyWiadomosci } from '../../../oms/db/szablony-wiadomosci.js';
 import { mailPotwierdzenia } from '../szablony.js';
-import { oprawaMaila, tekstZeStopka } from '../oprawa.js';
+import { tekstZeStopka } from '../oprawa.js';
+import { oprawaTeraz } from '../podpis-maili.js';
+import { zdaniaPlatnosciTeraz } from '../zdania-platnosci.js';
 
 // WYSYLKA POTWIERDZENIA PRZYJECIA ZAMOWIENIA (21.08.2026).
 //
@@ -15,17 +17,23 @@ import { oprawaMaila, tekstZeStopka } from '../oprawa.js';
 // a slad zostaje w TRZECH miejscach — w logu karty, w rejestrze `wiadomosci` i w kolumnie
 // `potwierdzenie_wyslane_at`, z ktorej ekran mowi „wyslano 21.08 o 12:40" zamiast pozwalac
 // wysylac w kolko bez sladu.
-export function createPotwierdzenie({ db, mailer, sprzedawca = {}, oprawaPoczty = {}, teraz = () => new Date().toISOString() }) {
-  const oprawa = oprawaMaila(oprawaPoczty);
+// PRZ-102.10: `podpisPanelu()` — marka i stopka z Ustawień → Poczta (pola niezablokowane plikiem), czytane przy KAŻDEJ
+// wysyłce. Oprawa liczona raz przy starcie dawała stary podpis aż do restartu panelu.
+export function createPotwierdzenie({ db, mailer, sprzedawca = {}, oprawaPoczty = {}, podpisPanelu = null, teraz = () => new Date().toISOString() }) {
+  const oprawaMailaTeraz = oprawaTeraz(oprawaPoczty, podpisPanelu);
   async function wyslij(id, { ktoKlikal = 'operator' } = {}) {
     const z = pobierzZamowienie(db, id);
     if (!z) throw new Error(`Nie ma zamówienia ${id}`);
+    const oprawa = oprawaMailaTeraz();
 
     // RZUCA przy odmowie domeny — trasa zamienia to na komunikat po polsku, tak samo jak
     // przy fakturze i proformie.
     // PRZ-101.03: szablon z Ustawień → Szablony wiadomości, czytany przy każdej wysyłce (zmiana bez restartu).
     // Bez zapisu — dzisiejsza treść co do znaku (szablony.js: droga `szablon: null`).
-    const mail = mailPotwierdzenia(z, { oprawa, szablon: wczytajSzablonyWiadomosci(db).wbudowane.potwierdzenie ?? null });
+    // PRZ-102.19: etykiety i stałe teksty (nagłówki, kolumny, „Pozdrawiamy,") z tej samej sekcji, czytane przy każdej wysyłce.
+    const mail = mailPotwierdzenia(z, {
+      oprawa, szablon: wczytajSzablonyWiadomosci(db).wbudowane.potwierdzenie ?? null, zdania: zdaniaPlatnosciTeraz(db),
+    });
 
     try {
       await mailer.sendMail({

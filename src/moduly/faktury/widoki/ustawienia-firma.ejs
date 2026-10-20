@@ -82,3 +82,54 @@
 </section>
 <% } %>
 <% } %>
+
+<%# PRZ-102.20: rachunek bankowy firmy — zapisuje tylko administrator; plik (OMS_RACHUNEK / OMS_BANK) wygrywa. %>
+<section class="ust-sekcja" id="rachunek-stan">
+  <h2>Rachunek bankowy</h2>
+  <% if (rachunek.bledy.length) { %>
+    <div class="pas-uprzedzenie"><p><strong>Nie zapisano rachunku.</strong></p><ul><% rachunek.bledy.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
+  <% } %>
+  <p>Ten rachunek stoi w mailach o płatności (dane do przelewu) i na proformach, a przy paczkach Allegro za pobraniem trafia do Allegro jako konto do wypłaty pobrania. Zmiana działa od następnego maila i dokumentu.</p>
+  <% if (rachunek.wPliku) { %>
+    <p><strong>Ustawione w pliku konfiguracji</strong> serwera (<code>oms.env</code>, zmienne <code>OMS_RACHUNEK</code> i <code>OMS_BANK</code>). Ten ekran ich nie zmienia — rachunek poprawisz w tym pliku.</p>
+    <div class="ust-formularz">
+      <label>Numer rachunku</label><div class="ust-wartosc"><%= rachunek.zPliku.rachunek ? rachunek.odczyt(rachunek.zPliku.rachunek) : '—' %> <span class="ust-pomoc">(ustawione w pliku konfiguracji)</span></div>
+      <label>Bank</label><div class="ust-wartosc"><%= rachunek.zPliku.bank || '—' %> <span class="ust-pomoc">(ustawione w pliku konfiguracji)</span></div>
+    </div>
+    <% if (rachunek.zapis && rachunek.mozeZmieniac) { %>
+      <form method="post" action="/ustawienia/firma/rachunek/usun">
+        <p>W OMS-ie został też rachunek zapisany wcześniej na tym ekranie. Plik konfiguracji ma pierwszeństwo, więc nie jest używany.</p>
+        <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń rachunek zapisany na ekranie</button></div>
+      </form>
+    <% } %>
+  <% } else { %>
+    <% if (rachunek.biezacy.rachunek) { %>
+      <p>Ustawiony: <strong><%= rachunek.odczyt(rachunek.biezacy.rachunek) %></strong><% if (rachunek.biezacy.bank) { %>, <%= rachunek.biezacy.bank %><% } %>.
+        <% if (rachunek.zapis) { %>Zapisał <%= rachunek.zapis.kontoLogin ?? '—' %>, <%= fmtDataCzas(rachunek.zapis.zmienionoAt) %>.<% } %></p>
+    <% } else { %>
+      <p class="pas-uprzedzenie"><strong>Brak rachunku.</strong> Bez niego maile o płatności idą bez danych do przelewu, OMS nie wystawi proformy, a paczka Allegro za pobraniem, która wymaga konta, nie zostanie nadana.</p>
+    <% } %>
+    <% if (rachunek.mozeZmieniac) { %>
+      <form id="rachunek-formularz" class="ust-formularz" method="post" action="/ustawienia/firma/rachunek">
+        <label for="rachunek-numer">Numer rachunku <span class="ust-wymagane">*</span></label>
+        <div><input id="rachunek-numer" name="rachunek" value="<%= rachunek.pola.rachunek %>" maxlength="40" inputmode="numeric" autocomplete="off" required>
+          <p class="ust-pomoc">26 cyfr (NRB). Przedrostek PL, spacje i myślniki są dozwolone — OMS sprawdza cyfry kontrolne.</p></div>
+
+        <label for="rachunek-bank">Bank</label>
+        <div><input id="rachunek-bank" name="bank" value="<%= rachunek.pola.bank %>" maxlength="100">
+          <p class="ust-pomoc">Nazwa banku na proformie obok numeru rachunku.</p></div>
+
+        <div class="ust-pelna ust-akcje">
+          <button class="btn btn--glowny" type="submit">Zapisz rachunek</button>
+        </div>
+      </form>
+      <% if (rachunek.zapis) { %>
+        <form method="post" action="/ustawienia/firma/rachunek/usun" onsubmit="return confirm('Usunąć rachunek firmy? Bez niego maile o płatności pójdą bez danych do przelewu, a OMS nie wystawi proformy.')">
+          <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń rachunek firmy</button></div>
+        </form>
+      <% } %>
+    <% } else { %>
+      <p class="ust-pomoc">Rachunek wpisuje i zmienia tylko administrator.</p>
+    <% } %>
+  <% } %>
+</section>

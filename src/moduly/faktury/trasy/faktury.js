@@ -8,7 +8,11 @@ import { bezpiecznaNazwa } from '../../../domena/pliki.js';
 // konsumenckiej obiecywałoby operatorowi wysyłkę, której `coWolnoWyslac` i tak nie
 // przepuści, a licznik na czerwonym przycisku by kłamał. Kopia tej reguły w szablonie
 // rozjechałaby się z domeną przy pierwszej zmianie — a chodzi o operację nieodwracalną.
-import { czyKonsumencka } from '../../../domena/wysylka-ksef.js';
+import { czyKonsumencka, doZaznaczeniaWszystkich, powrotWysylkiKsef } from '../../../domena/wysylka-ksef.js';
+import { czyWysylacKonsumenckie } from '../db/ksef-konsumenckie.js';
+import { KTO_AUTOMAT } from '../../../domena/ksef-automat.js';
+import { wczytajAutomatKsef, zwolnijWstrzymane } from '../db/ksef-automat.js';
+import { zdanieWstrzymanej } from '../../../domena/ostrzezenia.js';
 import { skrocFormePrawna } from '../../../domena/forma-prawna.js';
 // Lista czesci paczki jedzie z uslugi — trasa jej nie powtarza. Druga kopia rozjechalaby sie
 // z usluga przy pierwszej zmianie i albo odmawialaby czesci, ktora panel sklada, albo
@@ -17,6 +21,7 @@ import { CZESCI } from '../czesci-biura.js';
 import { fakturyMozliweDoOdnotowaniaSkasowania } from '../db/faktury.js';
 import { stanArchiwumSprzedazy, licznikiArchiwum } from '../db/archiwum-sprzedazy.js';
 import { ktoKlikal } from '../../zamowienia/lista.js';
+import { wylaczoneModuly } from '../../../oms/db/moduly-opcjonalne.js';
 
 // Zakladka FAKTURY. Trasa jest CIENKA: parsuje zadanie, wola usluge, renderuje.
 // Reguly sa w domain/lista-faktur.js, sklejenie danych w services/faktury-widok.js.
@@ -142,6 +147,9 @@ export function registerFakturyRoutes(app, {
       // z białą listą pól wyjścia, a widok i tak potrzebuje tu wyłącznie odpowiedzi „tak/nie".
       // Jedno źródło reguły (domain/wysylka-ksef.js) obsługuje obie warstwy.
       czyKonsumencka,
+      // PRZ-102.12: pole wyboru / „zaznacz wszystkie” — ta sama reguła, którą automat KSeF wybiera kandydatów.
+      doZaznaczeniaWszystkich: (d) => doZaznaczeniaWszystkich(d, czyWysylacKonsumenckie(db)),
+      konsumenckie: czyWysylacKonsumenckie(db),
       // PRZ-078: forma prawna nabywcy skrócona do wyświetlenia (pełna nazwa w `title`).
       skrocFormePrawna,
       // ⚠️ SUMA LICZY SIE TUTAJ, NIE W WIDOKU — widok w tym module niczego nie liczy
@@ -311,6 +319,13 @@ export function registerFakturyRoutes(app, {
         `„${czesc}" to nie jest część paczki — panel składa dwa pliki: ${CZESCI.join(', ')}.`,
       );
     }
+    // PRZ-102.22: wyłączony moduł Koszty (Ustawienia → Moduły) — część kosztowa odmawia ZANIM cokolwiek sięgnie do KSeF;
+    // część sprzedażowa (inFakt) działa bez zmian.
+    if (czesc === 'koszty' && db && wylaczoneModuly(db).includes('koszty')) {
+      return reply.code(409).type('text/plain; charset=utf-8').send(
+        'Moduł Koszty jest wyłączony — paczka kosztów niedostępna. Włączysz go w Ustawienia → Moduły; paczka sprzedaży działa bez zmian.',
+      );
+    }
     let wynik;
     // ⚠️ ZATRZASK PODNOSI SIE W `finally` — blokada zostawiona po bledzie wyciszylaby przycisk
     // az do restartu panelu, bez ani jednego sladu: operator dostawalby „paczka jest wlasnie
@@ -357,6 +372,30 @@ export function registerFakturyRoutes(app, {
       .send(bajty);
   });
 
+  // PRZ-102.12: wynik ostatniego przebiegu automatu KSeF — ten sam ekran wyniku co po przycisku, bo automat
+  // wysyła tą samą usługą i ma te same trzy kategorie (wysłano / nie wiadomo / pominięte). Tylko odczyt z bazy.
+  app.get('/faktury/ksef/automat', async (req, reply) => {
+    const { wynik, wlaczony, godzina, wstrzymane } = db ? wczytajAutomatKsef(db)
+      : { wynik: null, wlaczony: false, godzina: null, wstrzymane: [] };
+    return reply.view('ksef-wynik.ejs', {
+      title: 'Automat KSeF — wynik', adresPowrotu: '/faktury',
+      wyslane: wynik?.wyslane ?? [], niepewne: wynik?.niepewne ?? [], pominiete: wynik?.pominiete ?? [],
+      przyjete: null, blad: wynik?.blad ?? null,
+      automat: { wynik, wlaczony, godzina, kto: KTO_AUTOMAT, poZasadzie: wynik?.poZasadzie ?? [],
+        wstrzymane: (wstrzymane ?? []).map((w) => ({ ...w, zdanie: zdanieWstrzymanej(w) })) },
+    });
+  });
+
+  // Poprawka po recenzji PRZ-102.12: „Zwolnij” zdejmuje fakturę z listy wstrzymanych — automat spróbuje ją wysłać
+  // przy następnym przebiegu (jutro albo dziś, jeśli dzisiejszego jeszcze nie było). Nic tu nie wysyła. Prawo jak
+  // do ręcznej wysyłki (ekran Faktur), bo skutek jest ten sam: ta faktura może pojechać do KSeF.
+  app.post('/faktury/ksef/automat/zwolnij', async (req, reply) => {
+    const uuid = String(req.body?.uuid ?? '').trim();
+    if (!uuid) return reply.code(400).type('text/plain; charset=utf-8').send('Brak identyfikatora faktury do zwolnienia.');
+    if (db) zwolnijWstrzymane(db, uuid);
+    return reply.code(303).redirect('/faktury/ksef/automat');
+  });
+
   // ⚠️⚠️ TA TRASA NICZEGO NIE WYSYLA. Pokazuje, co POLECIALOBY do KSeF, gdyby operator
   // zatwierdzil — wysyla dopiero POST /faktury/ksef/wyslij. Rozdzielenie na dwa kroki jest
   // cala trescia wymogu: dokumentu w KSeF nie da sie skasowac, zostaje wylacznie korekta,
@@ -377,8 +416,8 @@ export function registerFakturyRoutes(app, {
     // Adres powrotu niesie filtr, na ktory operator patrzyl — „Wróć" ma go oddac tam,
     // skad przyszedl, a nie na domyslny miesiac. Bledne wartosci sa tu nieszkodliwe:
     // GET /faktury ma wlasna bramke i wraca do domyslnych.
-    const adresPowrotu = `/faktury?miesiac=${encodeURIComponent(miesiac ?? '')}`
-      + `&pole=${encodeURIComponent(pole ?? '')}`;
+    // PRZ-102.23: przycisk z karty zamowienia niesie `powrot` — wraca sie na karte (biala lista w domenie).
+    const { adres: adresPowrotu, etykieta: etykietaPowrotu, powrot } = powrotWysylkiKsef(req.body?.powrot, { miesiac, pole });
 
     // ⚠️ PRZY PUSTYM ZAZNACZENIU NIE PYTAMY inFAKTU W OGOLE — nie ma czego liczyc, a ekran
     // i tak konczy sie komunikatem bez przycisku wysylki.
@@ -399,7 +438,7 @@ export function registerFakturyRoutes(app, {
     }
 
     return reply.view('ksef-podglad.ejs', {
-      title: 'Wysyłka do KSeF', miesiac, pole, adresPowrotu, ...wynik,
+      title: 'Wysyłka do KSeF', miesiac, pole, adresPowrotu, etykietaPowrotu, powrot, ...wynik,
     });
   });
 
@@ -420,9 +459,8 @@ export function registerFakturyRoutes(app, {
     const uuids = [].concat(req.body?.uuid ?? []);
     const miesiac = req.body?.miesiac;
     const pole = req.body?.pole;
-    // Powrot ma oddac operatora tam, skad przyszedl — na TEN miesiac i TO pole daty.
-    const adresPowrotu = `/faktury?miesiac=${encodeURIComponent(miesiac ?? '')}`
-      + `&pole=${encodeURIComponent(pole ?? '')}`;
+    // Powrot ma oddac operatora tam, skad przyszedl — na TEN miesiac i TO pole daty albo na karte zamowienia.
+    const { adres: adresPowrotu, etykieta: etykietaPowrotu } = powrotWysylkiKsef(req.body?.powrot, { miesiac, pole });
     // Wartosci domyslne stoja PRZED rozpakowaniem wyniku, zeby brak ktoregokolwiek pola
     // nie wywalil widoku wlasnie na tym ekranie — jedynym sladzie nieodwracalnej operacji.
     const pusty = { wyslane: [], pominiete: [], niepewne: [], przyjete: null, blad: null };
@@ -442,12 +480,12 @@ export function registerFakturyRoutes(app, {
       // „nie wiadomo". Ekran zamiast pieciusetki, bo operator musi wiedziec, ze NIC
       // nie poszlo.
       return reply.view('ksef-wynik.ejs', {
-        title: 'Wysyłka do KSeF', miesiac, pole, adresPowrotu, ...pusty, blad: komunikatDlaOperatora(e),
+        title: 'Wysyłka do KSeF', miesiac, pole, adresPowrotu, etykietaPowrotu, ...pusty, blad: komunikatDlaOperatora(e),
       });
     }
 
     return reply.view('ksef-wynik.ejs', {
-      title: 'Wysyłka do KSeF', miesiac, pole, adresPowrotu, ...pusty, ...wynik,
+      title: 'Wysyłka do KSeF', miesiac, pole, adresPowrotu, etykietaPowrotu, ...pusty, ...wynik,
     });
   });
 }

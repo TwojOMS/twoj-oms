@@ -85,17 +85,23 @@ export function nawigacjaDla({ sciezka = '/', konto = null, menu, odlozoneEkrany
       })),
   })).filter((grupa) => grupa.pozycje.length);
 
+  // PRZ-102.03 (wariant C, właściciel 20.10): przy zamówieniach menu boczne niesie tylko pracę przy zamówieniach
+  // i klientach; analizy (dział `analizy-cele`) idą do górnego paska jako `analizy`. Pozycje filtruje to samo
+  // `pozycje` co wyżej (prawa i `odlozoneEkrany`), więc pusta grupa i pusty przycisk po prostu znikają.
+  const analizy = pozycje.filter(p => p.dzial === 'analizy-cele').map(p => ({ ...p, aktywna: p.klucz === ekranKlucz }));
+
   return {
-    // Jedno menu wszystkich dostępnych ekranów, na każdej zakładce.
-    // Źródłem i filtrem praw pozostają manifesty oraz maPrawoNawigacji powyżej.
+    // Kolejność w grupie: kolejność działów niżej, w dziale — `kolejnosc` z manifestu. Grupę „Klienci” wyznacza
+    // pole `grupa: 'klienci'`; wszystko inne z działów Sprzedaż i Magazyn zostaje przy zamówieniach.
     boczne: [
-      { klucz: 'obsluga', etykieta: 'Obsługa sklepu', dzialy: ['sprzedaz', 'magazyn'] },
-      { klucz: 'rozwoj', etykieta: 'Rozwój i finanse', dzialy: ['analizy-cele'] },
+      { klucz: 'obsluga', etykieta: 'Obsługa zamówień', klienci: false },
+      { klucz: 'klienci', etykieta: 'Klienci', klienci: true },
     ].flatMap(grupa => {
-      const lista = grupa.dzialy.flatMap(dzial => pozycje.filter(p => p.dzial === dzial));
+      const lista = ['sprzedaz', 'magazyn'].flatMap(dzial => pozycje.filter(p => p.dzial === dzial && (p.grupa === 'klienci') === grupa.klienci));
       return lista.length ? [{ klucz: grupa.klucz, etykieta: grupa.etykieta,
         pozycje: lista.map(p => ({ ...p, aktywna: p.klucz === ekranKlucz })) }] : [];
     }),
+    analizy: analizy.length ? { etykieta: 'Analizy i finanse', aktywna: analizy.some(p => p.aktywna), pozycje: analizy } : null,
     dzialy,
     kontekst: aktywnyDzial ? {
       dzial: aktywnyDzial,

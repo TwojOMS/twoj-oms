@@ -6,18 +6,21 @@ import { czyWolnoWyslac, czyWolnoWyslacWlasny, NAZWA_TEMATU } from '../../../dom
 import { modelWiadomosci } from '../../../domena/wiadomosc-platnicza.js';
 import { adresatKlienta } from '../../../domena/adresat-klienta.js';
 import { wczytajSzablonyWiadomosci } from '../../../oms/db/szablony-wiadomosci.js';
-import { mailPotwierdzenia, mailPlatniczy, mailWlasny } from '../szablony.js';
+import { mailPotwierdzenia, mailPlatniczy, mailWlasny, mailWyslane } from '../szablony.js';
+import { DOMYSLNE } from '../../../domena/szablony-wiadomosci.js';
 import { bezpiecznaNazwa } from '../../../domena/pliki.js';
 import { bladOperatora } from '../../../domena/bledy.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
-import { oprawaMaila, tekstZeStopka } from '../oprawa.js';
+import { tekstZeStopka } from '../oprawa.js';
+import { oprawaTeraz } from '../podpis-maili.js';
+import { zdaniaPlatnosciTeraz } from '../zdania-platnosci.js';
 // WDT (spec 2026-08-26): mail „Faktura" dla zamowienia z nabywca unijnym dostaje DRUGI
 // zalacznik — „Potwierdzenie wywozu towarow" (art. 42 ust. 4), skladane na swiezo z tych
 // samych danych, co przycisk na karcie (routes/zamowienia.js). Regula rozpoznania jest
 // TA SAMA, ktora wybiera stawke faktury (domain/wdt.js).
 import { czyNipUe } from '../../../domena/wdt.js';
 import { daneFaktury } from '../../../domena/dane-faktury.js';
-import { adresSprzedawcy } from '../../../domena/adres-sprzedawcy.js';
+import { adresSprzedawcy, odbiorcaPrzelewu } from '../../../domena/adres-sprzedawcy.js';
 import { modelOswiadczenia } from '../../../domena/oswiadczenie-wywozu.js';
 import { zbudujOswiadczenieWywozuPdf } from '../../faktury/pdf/oswiadczenie-wywozu-pdf.js';
 
@@ -35,21 +38,22 @@ import { zbudujOswiadczenieWywozuPdf } from '../../faktury/pdf/oswiadczenie-wywo
 // pułapek do utrzymania.
 
 export function createWiadomosci({
-  db, mailer, potwierdzenie = null, proforma = null, infakt = null, config = {},
+  db, mailer, potwierdzenie = null, proforma = null, infakt = null, config = {}, podpisPanelu = null,
   teraz = () => new Date().toISOString(),
 }) {
   // Rachunek i odbiorca przelewu pochodzą z jawnej konfiguracji faktur/nadawcy.
   // config.sprzedawca to tożsamość prawna rdzenia; podpis i oprawa poczty są osobną marką.
-  const oprawa = oprawaMaila(config.oprawaPoczty);
+  // PRZ-102.10: oprawa liczona przy każdym złożeniu maila (plik + podpis z Ustawień → Poczta), nie raz przy starcie.
+  const oprawaMailaTeraz = oprawaTeraz(config.oprawaPoczty, podpisPanelu);
   // Nazwa do logu karty: temat wbudowany ze słownika domeny, szablon własny (PRZ-101.03) — jego nazwa z Ustawień.
   const nazwaTematu = (temat_id) => NAZWA_TEMATU[temat_id]
     ?? wczytajSzablonyWiadomosci(db).wlasne.find((s) => s.id === temat_id)?.nazwa ?? temat_id;
-  const rachunek = config.proforma?.rachunek ?? null;
+  // PRZ-102.20: rachunek z bieżącej konfiguracji (plik → Ustawienia → Firma → brak), czytany przy KAŻDYM złożeniu maila
+  // — zapis w panelu działa od następnego maila, bez restartu. Skład bez `config.rachunekFirmy` czyta config.proforma.
+  const rachunekTeraz = () => (config.rachunekFirmy ? config.rachunekFirmy().rachunek : config.proforma?.rachunek) ?? null;
   // PRZ-093.08: nazwa odbiorcy z TEGO SAMEGO źródła adresu firmy co proforma (plik DPD_NADAWCA_* wygrywa, potem
   // Ustawienia → Firma), czytana przy każdym mailu — liczona raz przy starcie i tylko z pliku dawała pusty
   // „Odbiorca: ” firmie z adresem wpisanym w panelu. Skład bez `config.adresFirmy` czyta config.nadawca jak dotąd.
-  const odbiorcaPrzelewu = () => (typeof config.adresFirmy === 'function'
-    ? config.adresFirmy()?.nazwa : config.nadawca?.nazwa) ?? '';
 
   /**
    * Fakty, od których zależą blokady i stany tematów.
@@ -83,12 +87,16 @@ export function createWiadomosci({
     // PRZ-101.03: szablony z Ustawień czytane przy KAŻDYM złożeniu — zmiana działa od następnego maila,
     // podgląd i wysyłka widzą ten sam zapis (oba wołają tę funkcję).
     const szablony = wczytajSzablonyWiadomosci(db);
+    const oprawa = oprawaMailaTeraz();
+    // PRZ-102.17/19: zdania o płatności, etykiety i stałe teksty (z „Pozdrawiamy,") z Ustawień → Szablony wiadomości,
+    // czytane przy KAŻDYM złożeniu (podgląd na karcie i wysyłka) — zapis działa od następnego maila, bez restartu.
+    const zdania = zdaniaPlatnosciTeraz(db);
 
-    const wlasny = szablony.wlasne.find((s) => s.id === temat_id);
+    const wlasny =szablony.wlasne.find((s) => s.id === temat_id);
     if (wlasny) {
       const zgW = czyWolnoWyslacWlasny(k.z);
       if (!zgW.wolno) throw bladOperatora(zgW.powod);
-      const mail = mailWlasny(k.z, wlasny, { oprawa });
+      const mail = mailWlasny(k.z, wlasny, { oprawa, zdania });
       return { do: mail.do, temat: mail.temat, tekst: tekstZeStopka(mail.tekst, oprawa.footer), html: mail.html, zalaczniki: [] };
     }
 
@@ -96,9 +104,15 @@ export function createWiadomosci({
     if (!zg.wolno) throw bladOperatora(zg.powod);
 
     if (temat_id === 'potwierdzenie') {
-      const mail = mailPotwierdzenia(k.z, { oprawa, szablon: szablony.wbudowane.potwierdzenie ?? null });
+      const mail = mailPotwierdzenia(k.z, { oprawa, szablon: szablony.wbudowane.potwierdzenie ?? null, zdania });
       return { do: mail.do, temat: mail.temat, tekst: tekstZeStopka(mail.tekst, oprawa.footer),
         html: mail.html, zalaczniki: [] };
+    }
+
+    // PRZ-102.21: bez starej drogi — zapisany szablon albo domyślny. Bez załącznika, bez danych do przelewu.
+    if (temat_id === 'wyslane') {
+      const mail = mailWyslane(k.z, szablony.wbudowane.wyslane ?? DOMYSLNE.wyslane, { oprawa, zdania });
+      return { do: mail.do, temat: mail.temat, tekst: tekstZeStopka(mail.tekst, oprawa.footer), html: mail.html, zalaczniki: [] };
     }
 
     // Dokument, którego numer trafia w TYTUŁ PRZELEWU. Reguła (zatwierdzona makieta i oba
@@ -181,7 +195,9 @@ export function createWiadomosci({
       // wtedy, gdy ten dokument naprawdę jedzie. Ta sama zasada, co przy `zalacznikProformy`
       // linijkę wyżej, i ten sam powód: przypomnienie bez proformy nie ma żadnego załącznika.
       zalaczonyDokument: zalaczniki.length > 0,
-      rachunek, odbiorca: odbiorcaPrzelewu(), dzis: k.dzis, podpis: oprawa.podpis,
+      rachunek: rachunekTeraz(), odbiorca: odbiorcaPrzelewu(config), dzis: k.dzis, podpis: oprawa.podpis,
+      // Zdania, etykiety i stałe teksty z początku `zloz` (PRZ-102.17/19) — czytane przy KAŻDYM złożeniu.
+      zdania,
     });
 
     const mail = mailPlatniczy(k.z, model, { temat_id, dokument, oprawa, szablon: szablony.wbudowane[temat_id] ?? null });

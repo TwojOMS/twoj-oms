@@ -14,7 +14,7 @@ describe('podmenu Ustawień', () => {
       ['Sprzedaż', ['Statusy zamówień', 'Paczki i koszty dostawy', 'Magazyn', 'Druk i etykiety']],
       ['Komunikacja', ['Szablony wiadomości', 'Autoodpowiedź Allegro', 'Powiadomienia']],
       ['Integracje', ['Sklepy i usługi']],
-      ['System', ['Diagnostyka', 'Aktualizacje', 'Kopie zapasowe', 'Import i eksport', 'API i webhooki']],
+      ['System', ['Moduły', 'Diagnostyka', 'Aktualizacje', 'Kopie zapasowe', 'Import i eksport', 'API i webhooki']],
     ]);
   });
 
@@ -25,18 +25,20 @@ describe('podmenu Ustawień', () => {
       statusy: '/ustawienia/statusy', 'zamowienia-i-wysylka': '/ustawienia/zamowienia-i-wysylka', magazyn: '/ustawienia/magazyn', druk: '/ustawienia/druk',
       'szablony-wiadomosci': '/ustawienia/szablony-wiadomosci', 'wiadomosci-i-automatyzacje': '/ustawienia/wiadomosci-i-automatyzacje', powiadomienia: '/ustawienia/powiadomienia',
       integracje: '/ustawienia/integracje',
-      diagnostyka: '/ustawienia/lacznosc', aktualizacje: '/ustawienia/aktualizacje', kopie: '/ustawienia/kopie',
+      moduly: '/ustawienia/moduly', diagnostyka: '/ustawienia/lacznosc', aktualizacje: '/ustawienia/aktualizacje', kopie: '/ustawienia/kopie',
       'import-eksport': '/ustawienia/import-eksport', api: '/ustawienia/api',
     });
   });
 
-  it('„wkrótce” mają dokładnie pięć atrap, reszta to działające ekrany', () => {
+  // PRZ-102.01: Powiadomienia są działającym ustawieniem osobistym, nie atrapą.
+  it('„wkrótce” mają dokładnie cztery atrapy, reszta to działające ekrany', () => {
     const menu = podmenuUstawien('/ustawienia', { admin: true });
-    expect(menu.filter((p) => p.wkrotce).map((p) => p.klucz)).toEqual(['druk', 'powiadomienia', 'kopie', 'import-eksport', 'api']);
+    expect(menu.filter((p) => p.wkrotce).map((p) => p.klucz)).toEqual(['druk', 'kopie', 'import-eksport', 'api']);
+    expect(menu.find((p) => p.klucz === 'powiadomienia').wkrotce).toBe(false);
     expect(menu.find((p) => p.klucz === 'integracje').wkrotce).toBe(false);
   });
 
-  it('konto bez admina nie widzi Użytkowników, Ról ani Aktualizacji — reszta jak u admina', () => {
+  it('konto bez admina nie widzi Użytkowników, Ról, Modułów ani Aktualizacji — reszta jak u admina', () => {
     expect(uklad(grupyUstawien('/ustawienia/zamowienia-i-wysylka?zapisano=paczka', { admin: false }))).toEqual([
       ['Firma', ['Dane firmy']],
       ['Sprzedaż', ['Statusy zamówień', 'Paczki i koszty dostawy', 'Magazyn', 'Druk i etykiety']],
@@ -69,6 +71,7 @@ describe('podmenu Ustawień', () => {
     ['/ustawienia/role', 'role'],
     ['/ustawienia/role/sprzedaz', 'role'],
     ['/ustawienia/magazyn', 'magazyn'],
+    ['/ustawienia/moduly', 'moduly'],
     ['/ustawienia/lacznosc', 'diagnostyka'],
     ['/ustawienia/aktualizacje/sprawdz', 'aktualizacje'],
     ['/ustawienia/kopie', 'kopie'],

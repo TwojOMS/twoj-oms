@@ -1212,8 +1212,10 @@ describe('src/oms.js pozostaje cienkim punktem wejścia', () => {
       ['pollerWiadomosci', 300000], ['czuwaczFormulki', 120000], ['czuwaczPrzesylek', 3600000],
       ['czuwaczPodjazdow', 600000], ['czuwaczKosztow', 3600000], ['czuwaczOstrzezen', 3600000],
       ['czuwaczReklam', 3600000],
+      // PRZ-102.12: automat wysyłki do KSeF (tyka co minutę, sam rozstrzyga porę; domyślnie wyłączony).
+      ['automatKsef', 60000],
     ].sort());
-    expect(wynik.liczba).toBe(10);
+    expect(wynik.liczba).toBe(11);
     expect(zrodlo).not.toMatch(/setInterval/);
   });
 });
@@ -1699,9 +1701,12 @@ describe('zbudujOms — czuwacz kosztów (KSeF)', () => {
     expect(typeof czuwaczKosztow.przebieg).toBe('function');
   });
 
-  // Panel bez KSEF_TOKEN ma wstawać DOKŁADNIE jak dotąd — ani jednego dodatkowego zegara.
-  it('bez KSEF_TOKEN czuwacza kosztów NIE MA', () => {
-    expect(zbudujOms({ env: env(), createDpd: atrapaDpd() }).czuwaczKosztow).toBeNull();
+  // PRZ-102.22: token KSeF można zapisać w Ustawieniach bez restartu, więc czuwacz (i jego zegar) stoi także bez
+  // KSEF_TOKEN — ale bez tokenu w pliku i w panelu jest NIEDOSTĘPNY, a przebieg wraca pominięty, bez KSeF.
+  it('bez KSEF_TOKEN czuwacz kosztów jest niedostępny i niczego nie pobiera', async () => {
+    const { czuwaczKosztow } = zbudujOms({ env: env(), createDpd: atrapaDpd() });
+    expect(czuwaczKosztow.dostepny()).toBe(false);
+    await expect(czuwaczKosztow.przebieg({ wymuszony: true })).resolves.toEqual({ pominiety: true, powod: 'brak tokenu KSeF' });
   });
 
   it('czuwacz kosztów dostaje sesję I klienta KSeF, a nie samą bazę', () => {
@@ -1788,9 +1793,11 @@ describe('zbudujOms — czuwacz kosztów (KSeF)', () => {
     expect(uWizualizacji.sesja).toBe(uCzuwacza.sesja);
   });
 
-  // Panel bez sekcji KSEF_* wstaje dokładnie jak dotąd — przycisku „PDF" wtedy nie ma.
-  it('bez KSEF_TOKEN wizualizacji kosztu NIE MA', () => {
-    expect(zbudujOms({ env: env(), createDpd: atrapaDpd() }).wizualizacjaKosztu).toBeNull();
+  // Panel bez tokenu KSeF (plik ani Ustawienia) nie ma przycisku „PDF" — PRZ-102.22: usługa jest, ale niedostępna.
+  it('bez KSEF_TOKEN wizualizacja kosztu jest niedostępna', async () => {
+    const { wizualizacjaKosztu } = zbudujOms({ env: env(), createDpd: atrapaDpd() });
+    expect(wizualizacjaKosztu.dostepny()).toBe(false);
+    await expect(wizualizacjaKosztu.pdf('K-1')).rejects.toMatchObject({ status: 503 });
   });
 
   // ⚠️⚠️ ARCHIWUM XML MA WOŁAJĄCEGO — I TEN TEST JEST JEDYNYM MIEJSCEM, KTÓRE TEGO PILNUJE.

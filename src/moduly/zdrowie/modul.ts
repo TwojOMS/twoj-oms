@@ -5,6 +5,7 @@ import { createCzuwaczOstrzezen, NAJDLUZSZY_PRZEBIEG_OSTRZEZEN_MS } from './serv
 import { alarmyKonfiguracjiKanalow, alarmyNazwKanalow } from './bezpiecznik-kanalow.ts';
 import { zegarOstrzezen } from './zegary.ts';
 import { stanKopii, wersjaWydania } from './kopie.ts';
+import { UWAGA_BRAK_RACHUNKU } from '../../domena/rachunek-firmy.js';
 
 export const ODSTEP_OSTRZEZEN_MS=3600000;
 export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewnetrzna:string}> = {
@@ -27,10 +28,15 @@ export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewn
         throw e;
       }
     };
+    const rachunekFirmy=opcjonalna<{biezacy:()=>{rachunek:string|null}}>('rdzen','rachunekFirmy');
     const zdrowie=()=>{
       const config=ctx.usluga<any>('kanaly','config');
       const kurierzy=ctx.usluga<Record<string,unknown>>('wysylka','kurierzy');
-      const kosztyWlaczone=opcjonalna<boolean>('koszty','kosztyWlaczone')??false;
+      // PRZ-102.22: koszty mówią to funkcją (token z Ustawień i przełącznik modułu bez restartu); wartość — starsze składy.
+      const wlaczone=opcjonalna<boolean|(()=>boolean)>('koszty','kosztyWlaczone');
+      const kosztyWlaczone=typeof wlaczone==='function'?wlaczone():(wlaczone??false);
+      const kosztyModulWylaczony=opcjonalna<()=>boolean>('koszty','modulWylaczony')?.()??false;
+      const kosztyWlaczoneOd=opcjonalna<()=>string|null>('koszty','wlaczoneOd')?.()??null;
       const stanKosztow=opcjonalna<()=>any>('koszty','stanKosztow');
       const p=puls.stan();
       const teraz=ctx.teraz();
@@ -41,12 +47,15 @@ export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewn
         ksefWlaczony:Boolean(ctx.usluga('faktury','czuwaczKsef')),pulsKsef:p.czuwaczKsef??null,
         przesylkiWlaczone:Object.keys(kurierzy).length>0,pulsPrzesylek:p.czuwaczPrzesylek??null,
         ostrzezeniaWlaczone:Boolean(czuwaczOstrzezen),pulsOstrzezen:p.czuwaczOstrzezen??null,
-        kosztyWlaczone,stanKosztow:stanKosztow?.()??null,
+        kosztyWlaczone,kosztyModulWylaczony,kosztyWlaczoneOd,stanKosztow:stanKosztow?.()??null,
         kanaly:ctx.usluga<()=>any[]>('kanaly','stanyKanalow')() as any,
       });
       const alarmy=alarmyKonfiguracjiKanalow(ctx.db,config,teraz,ctx.konfiguracja.proba);
       // Podmieniamy wartości istniejących pól, zachowując ich kolejność dla monitoring.
       wynik.alarmy.push(...alarmy);
+      // PRZ-102.20: bez rachunku (ani w pliku, ani w panelu) panel działa, ale maile o płatności idą bez danych do
+      // przelewu, a proforma odmawia — uwaga, nie alarm: to brak ustawienia, nie awaria do budzenia czujki.
+      if(rachunekFirmy&&!rachunekFirmy.biezacy().rachunek)wynik.uwagi.push(UWAGA_BRAK_RACHUNKU);
       // PRZ-059: nadzór kopii tylko tam, gdzie compose klienta ustawia OMS_KOPIE_KATALOG.
       if(ctx.konfiguracja.kopieKatalog){
         const kopie=stanKopii({katalog:ctx.konfiguracja.kopieKatalog,zewnetrzna:ctx.konfiguracja.kopiaZewnetrzna,teraz});

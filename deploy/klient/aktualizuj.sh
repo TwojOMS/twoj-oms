@@ -481,7 +481,9 @@ recover() {
 # PRZ-093.08: adres firmy (DPD_NADAWCA_*) nie jest wymagany do startu — można go wpisać w panelu
 # (Ustawienia → Firma). Wpis w pliku wygrywa nad panelem. Kurier z pliku (DPD_URL, INPOST_TOKEN) nadal
 # wymaga adresu w pliku — tego pilnuje sam OMS przy starcie.
-WYMAGANE_PRODUKCJI='OMS_SPRZEDAWCA_NIP OMS_RACHUNEK OMS_USER OMS_PASS'
+# PRZ-102.20: rachunek firmy (OMS_RACHUNEK) też nie jest wymagany — można go wpisać w panelu (Ustawienia → Firma,
+# tylko administrator). Wpisany w pliku wygrywa nad panelem; zły numer w pliku zatrzymuje start OMS-u.
+WYMAGANE_PRODUKCJI='OMS_SPRZEDAWCA_NIP OMS_USER OMS_PASS'
 
 # Wartość tak, jak przeczyta ją compose z env_file: OSTATNIA linia NAZWA= (compose bierze ostatnią),
 # bez CR i otaczających '…' / "…".
@@ -510,10 +512,12 @@ OMS_TRYB=produkcja
 # Konto serwisowe: aktualizator zakłada nim pierwszego administratora; potem przestaje logować.
 OMS_USER=serwis
 OMS_PASS=$haslo
-# Sprzedawca na proformie: NIP (10 cyfr, bez kresek), rachunek (26 cyfr, bez PL i spacji), BDO jeśli firma ma.
+# Sprzedawca na proformie: NIP (10 cyfr, bez kresek), BDO jeśli firma ma.
 OMS_SPRZEDAWCA_NIP=
-OMS_RACHUNEK=
 OMS_SPRZEDAWCA_BDO=
+# Rachunek firmy (26 cyfr, bez PL i spacji): dane do przelewu w mailach i na proformie. Opcjonalnie: zostaw pusty
+# i wpisz rachunek w panelu (Ustawienia → Firma, tylko administrator). Wpisany tutaj wygrywa nad panelem.
+OMS_RACHUNEK=
 # Adres firmy: sprzedawca na proformie i nadawca paczek (kod pocztowy w postaci 00-000). Opcjonalnie:
 # zostaw puste i wpisz adres w panelu (Ustawienia → Firma). Wpisany tutaj wygrywa nad panelem.
 DPD_NADAWCA_NAZWA=
@@ -630,6 +634,8 @@ produkcja() {
   braki=$(braki_produkcji | tr '\n' ' ')
   [ -z "$braki" ] || fail "PRODUKCJA_NIEWYPELNIONE_POLA: ${braki% } — uzupełnij w $PRODUKCJA_ENV"
   for n in OMS_PASS OMS_SPRZEDAWCA_NIP OMS_RACHUNEK; do
+    # PRZ-102.20: puste pole nie jest wartością z próby (pusty rachunek = wpis w panelu; puste NIP/hasło odrzuciły braki wyżej).
+    [ -n "$(env_wartosc "$PRODUKCJA_ENV" "$n")" ] || continue
     [ "$(env_wartosc "$PRODUKCJA_ENV" "$n")" != "$(env_wartosc "$ENV_TERAZ" "$n")" ] || fail "PRODUKCJA_WARTOSC_Z_PROBY: $n — wpisz własną wartość, nie z próby"
   done
   ustal_baze

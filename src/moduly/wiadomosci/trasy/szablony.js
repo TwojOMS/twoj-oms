@@ -11,16 +11,25 @@ import {
 } from '../../../domena/szablony-wiadomosci.js';
 import { wczytajSzablonyWiadomosci, zmienSzablonyWiadomosci } from '../../../oms/db/szablony-wiadomosci.js';
 import { podgladSzablonu } from '../szablony.js';
+import {
+  wczytajZapisaneZdania, zdaniaPlatnosciTeraz, zapiszZdaniaPlatnosci, przywrocZdanie, zdaniaDoEkranu,
+} from '../zdania-platnosci.js';
+import { MAKS_ZDAN } from '../../../domena/zdania-platnosci.js';
 import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';
 
 const ADRES = '/ustawienia/szablony-wiadomosci';
+// PRZ-102.17: sekcja „Zdania o płatności" na liście szablonów. Trasy statyczne — find-my-way stawia je przed `/:id`,
+// a żaden szablon nie ma id „zdania-platnosci" (wbudowane mają stałe nazwy, własne `wlasny-N`).
+const ZDANIA_ADRES = `${ADRES}/zdania-platnosci`;
 
 const KOMUNIKATY = {
   przywrocono: 'Przywrócono treść domyślną.',
   usunieto: 'Szablon usunięty. Wysłane nim wiadomości zostają w historii zamówień.',
+  zdania: 'Zapisano zdania i etykiety. Następny mail pójdzie z tą treścią.',
+  'zdanie-przywrocone': 'Przywrócono zdanie domyślne.',
 };
 
-export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, teraz = () => new Date() }) {
+export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, config = {}, teraz = () => new Date() }) {
   // Podstrony edycji świecą w menu tą samą pozycją, co lista (podmenu zna wyłącznie adres listy).
   const nawigacja = (req, reply) => nawigacjaUstawien({ url: ADRES, konto: req.konto }, reply);
 
@@ -40,7 +49,7 @@ export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, teraz = () =
     });
   }
 
-  app.get(ADRES, async (req, reply) => {
+  function ekranListy(req, reply, { wpisane = null, bledy = {} } = {}) {
     const stan = wczytajSzablonyWiadomosci(db);
     return reply.view('ustawienia-szablony.ejs', {
       nawigacja: nawigacja(req, reply),
@@ -49,8 +58,32 @@ export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, teraz = () =
       // PRZ-101.06: maile do pracowników — osobna sekcja, żeby nikt nie pomylił ich z mailami do klientów.
       zespol: KONTA.map((id) => szablonDoEdycji(stan, id)),
       wlasne: stan.wlasne, maks: MAKS,
-      komunikat: KOMUNIKATY[req.query?.zapisano] ?? null,
+      komunikat: wpisane ? null : (KOMUNIKATY[req.query?.zapisano] ?? null),
+      zdania: zdaniaDoEkranu(wczytajZapisaneZdania(db), { wpisane, bledy }),
+      maksZdan: MAKS_ZDAN,
+      bladZdan: Object.keys(bledy).length ? (bledy._ ?? 'Popraw zaznaczone zdania — nic nie zostało zapisane.') : null,
     });
+  }
+
+  app.get(ADRES, async (req, reply) => ekranListy(req, reply));
+
+  // PRZ-102.17: zapis wszystkich zdań naraz (wszystkie albo żadne). Odmowa → 400 z wpisanymi tekstami i powodem przy
+  // polu. Prawo „ustawienia" sprawdza strażnik po prefiksie `/ustawienia`, CSRF — wspólny hak.
+  app.post(ZDANIA_ADRES, async (req, reply) => {
+    const pola = req.body ?? {};
+    const wynik = zapiszZdaniaPlatnosci(db, pola, teraz().toISOString());
+    if (wynik.kod !== 303) {
+      reply.code(400);
+      return ekranListy(req, reply, { wpisane: pola, bledy: wynik.bledy });
+    }
+    return reply.code(303).redirect(`${ADRES}?zapisano=zdania#zdania-platnosci`);
+  });
+
+  app.post(`${ZDANIA_ADRES}/:klucz/przywroc`, async (req, reply) => {
+    if (!przywrocZdanie(db, String(req.params.klucz), teraz().toISOString())) {
+      return reply.code(404).type('text/plain; charset=utf-8').send('Nie ma takiego zdania.');
+    }
+    return reply.code(303).redirect(`${ADRES}?zapisano=zdanie-przywrocone#zdania-platnosci`);
   });
 
   app.get(`${ADRES}/:id`, async (req, reply) => {
@@ -63,7 +96,9 @@ export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, teraz = () =
     };
     const sprawdzony = sprawdzSzablon(s.rodzaj, formularz);
     if (!sprawdzony.ok) return ekranEdycji(req, reply, s, { formularz, blad: sprawdzony.blad });
-    return ekranEdycji(req, reply, s, { formularz, podglad: podgladSzablonu(s.id, sprawdzony.szablon, { oprawa, teraz: teraz() }) });
+    return ekranEdycji(req, reply, s, { formularz, podglad: podgladSzablonu(s.id, sprawdzony.szablon, {
+      oprawa: typeof oprawa === 'function' ? oprawa() : oprawa, config, teraz: teraz(), zdania: zdaniaPlatnosciTeraz(db),
+    }) });
   });
 
   app.post(`${ADRES}/:id`, async (req, reply) => {

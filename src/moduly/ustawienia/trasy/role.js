@@ -1,5 +1,6 @@
 // PRZ-068: ekran „Role i uprawnienia” — tylko administrator (flaga admin, nie ptaszek Ustawień).
 import { EKRANY } from '../../../domena/ekrany.js';
+import { wylaczoneModuly } from '../../../oms/db/moduly-opcjonalne.js';
 import { nawigacjaUstawien } from '../nawigacja.js';
 import { listaRol, zapiszMacierz, dodajRole, zmienNazweRoli, usunRole, BladRoli, KLUCZE_DODATKOWE, odciskMacierzy } from '../role.js';
 
@@ -14,7 +15,8 @@ export function registerRoleRoutes(app, { db, teraz }) {
   const tylkoAdmin = (req, reply) => (req.konto?.admin || (req.konto?.podgladDemo && req.method === 'GET') ? null
     : reply.code(403).view('brak-dostepu.ejs', { title: 'Brak dostępu', wlasnyUklad: true }));
   const widok = (req, reply, { blad = null, pola = {} } = {}) => reply.view('role.ejs', {
-    title: 'Role i uprawnienia', nawigacja: nawigacjaUstawien(req, reply), role: listaRol(db), wiersze: WIERSZE,
+    title: 'Role i uprawnienia', nawigacja: nawigacjaUstawien(req, reply), role: listaRol(db),
+    wiersze: WIERSZE.map(w => ({ ...w, etykieta: w.etykieta + (wylaczoneModuly(db).includes(w.klucz) ? ' (moduł wyłączony)' : '') })),
     odcisk: odciskMacierzy(db), zapisano: KOMUNIKATY[req.query?.zapisano] ?? null, blad, pola,
   });
   const obsluz = (req, reply, fn, cel) => {

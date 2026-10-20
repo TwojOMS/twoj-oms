@@ -13,17 +13,6 @@ export const STRONY_WKROTCE = Object.freeze([
     odnosnik: { href: '/ustawienia/integracje/dpd', etykieta: 'Kurier DPD' },
   },
   {
-    klucz: 'powiadomienia', href: '/ustawienia/powiadomienia', tytul: 'Powiadomienia',
-    opis: 'E-mail do zespołu, gdy w panelu dzieje się coś, czego nie wolno przegapić.',
-    punkty: [
-      'błąd synchronizacji ze sklepem albo z Allegro',
-      'nowy zwrot do obsłużenia',
-      'zamówienie po terminie wysyłki',
-    ],
-    dzis: 'Diagnostyka pokazuje, czy panel dosięga sklepów i usług, oraz wstrzymane odpytywanie.',
-    odnosnik: { href: '/ustawienia/lacznosc', etykieta: 'Diagnostyka' },
-  },
-  {
     klucz: 'kopie', href: '/ustawienia/kopie', tytul: 'Kopie zapasowe',
     opis: 'Podgląd i obsługa kopii bazy z poziomu panelu.',
     punkty: [

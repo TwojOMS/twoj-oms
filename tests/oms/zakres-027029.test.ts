@@ -70,8 +70,15 @@ describe('PRZ-027/029 zakres — domyślny bootstrap bez odłożonych ekranów',
     }).toEqual({ zegary: ['czuwaczReklam'], menu: ['/kampania'], usluga: 'jest' });
   });
 
-  it('web config domyślnego bootstrapu niesie odlozoneEkrany = []', () => {
-    expect(a!.usluga<any>('web', 'config').odlozoneEkrany).toEqual(ODLOZONE);
+  it('web config domyślnie ma odlozoneEkrany = [], a zapis czyta bez restartu', () => {
+    const config = a!.usluga<any>('web', 'config');
+    expect(config.odlozoneEkrany).toEqual(ODLOZONE);
+    try {
+      a!.db.prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('moduly.wylaczone', ?, '2026-10-20')").run('["klienci"]');
+      expect(config.odlozoneEkrany).toEqual(['klienci']);
+    } finally {
+      a!.db.prepare("DELETE FROM ustawienia WHERE klucz = 'moduly.wylaczone'").run();
+    }
   });
 });
 

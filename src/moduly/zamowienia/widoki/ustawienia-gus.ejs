@@ -1,0 +1,69 @@
+<h1>GUS (dane firm po NIP)</h1>
+<p><a href="/ustawienia/integracje">← Integracje</a></p>
+
+<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
+<% if (test) { %>
+  <div class="<%= test.ok ? 'pas-potwierdzenie' : 'pas-uprzedzenie' %>" id="gus-test"><p><strong><%= test.ok ? 'Działa.' : 'Nie działa.' %></strong> <%= test.tekst %></p></div>
+<% } %>
+<% if (bledy.length) { %>
+  <div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong></p><ul><% bledy.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
+<% } %>
+
+<% if (zEnv) { %>
+<section class="ust-sekcja" id="gus-stan">
+  <h2>Podłączony w pliku konfiguracji</h2>
+  <p>Klucz GUS jest ustawiony w pliku konfiguracji serwera (<code>oms.env</code>, zmienna <code>GUS_KLUCZ</code>). Ten ekran go nie zmienia — klucz poprawisz w tym pliku.</p>
+  <% if (stan) { %>
+    <form method="post" action="/ustawienia/integracje/gus/odlacz">
+      <p>W OMS-ie został też klucz zapisany wcześniej na tym ekranie. Plik konfiguracji ma pierwszeństwo, więc nie jest używany.</p>
+      <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń zapisany klucz</button></div>
+    </form>
+  <% } %>
+</section>
+<% } else { %>
+<section class="ust-sekcja" id="gus-stan">
+  <h2>Stan połączenia</h2>
+  <% if (stan) { %>
+    <p class="ust-stan ust-stan-ok"><strong>Podłączony</strong></p>
+    <p>Klucz zapisał <%= stan.kontoLogin ?? '—' %>, <%= fmtDataCzas(stan.zmienionoAt) %>. Przycisk „Pobierz z GUS” na karcie zamówienia, w nowym zamówieniu i w Stałych klientach wpisuje nazwę i adres firmy z rejestru REGON.</p>
+  <% } else { %>
+    <p class="ust-stan"><strong>Niepodłączony</strong></p>
+    <p>Bez klucza przycisku „Pobierz z GUS” nie ma — dane firmy wpisuje się ręcznie.</p>
+  <% } %>
+</section>
+<% if (!stan) { %>
+<aside class="ust-instrukcja" id="gus-instrukcja">
+  <h3>Skąd wziąć klucz</h3>
+  <p>Klucz użytkownika usługi BIR (wyszukiwarka REGON) wydaje bezpłatnie Główny Urząd Statystyczny — po złożeniu wniosku o dostęp do usługi BIR1.1 dostajesz go mailem.</p>
+</aside>
+<% } %>
+
+<section class="ust-sekcja">
+  <h2>Klucz</h2>
+  <form id="gus-formularz" class="ust-formularz" method="post" action="/ustawienia/integracje/gus">
+    <label for="gus-klucz">Klucz użytkownika BIR <span class="ust-wymagane">*</span></label>
+    <div><input id="gus-klucz" type="password" name="klucz" value="" maxlength="100" autocomplete="new-password"<% if (stan?.zapisaneSekrety?.klucz) { %> placeholder="zapisany — wpisz nowy, żeby zmienić"<% } else { %> required<% } %>>
+      <p class="ust-pomoc">Klucz z maila od GUS. OMS loguje się nim do bazy REGON tylko wtedy, gdy klikniesz „Pobierz z GUS” albo „Sprawdź połączenie”, i pyta wyłącznie o wpisany NIP.</p></div>
+
+    <p class="ust-pelna ust-pomoc">Pola oznaczone <span class="ust-wymagane">*</span> są wymagane.</p>
+    <div class="ust-pelna ust-akcje">
+      <button class="btn btn--glowny" type="submit">Zapisz</button>
+      <a class="ust-przycisk" href="/ustawienia/integracje">Anuluj</a>
+    </div>
+  </form>
+</section>
+
+<% if (stan) { %>
+<section class="ust-sekcja">
+  <h2>Sprawdzenie i usunięcie</h2>
+  <form method="post" action="/ustawienia/integracje/gus/sprawdz">
+    <p>Sprawdzenie loguje się do usługi BIR zapisanym kluczem. Nie pyta o żadną firmę i niczego nie zmienia.</p>
+    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Sprawdź połączenie</button></div>
+  </form>
+  <form method="post" action="/ustawienia/integracje/gus/odlacz" onsubmit="return confirm('Usunąć klucz GUS? Przycisk „Pobierz z GUS” zniknie.')" style="margin-top:1rem">
+    <p>Usunięcie kasuje klucz z OMS-u. Dane firm wpisane wcześniej do zamówień i Stałych klientów zostają.</p>
+    <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń klucz</button></div>
+  </form>
+</section>
+<% } %>
+<% } %>

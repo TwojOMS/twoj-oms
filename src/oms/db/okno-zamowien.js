@@ -15,6 +15,23 @@ function wymuszenieIndeksu(db) {
   return indeksDaty.get(db) ? ' INDEXED BY zamowienia_julianday_utworzenia' : '';
 }
 
+/**
+ * PRZ-102.14: per sklep najwcześniejszy dzień z julianday (dolna granica dnia warszawskiego: data bez
+ * strefy to dzień sklepu, data ze strefą jest w UTC, a Warszawa jest przed UTC) i liczba dat, których
+ * SQLite nie rozumie. Sam indeks pokrywający (julianday, sklep) — bez odczytu wierszy tabeli.
+ * @returns {{ sklep: string, od_dnia: string | null, bez_daty: number }[]}
+ */
+export function pierwszeDniSklepow(db) {
+  return db.prepare('SELECT sklep, date(MIN(julianday(utworzone_at))) AS od_dnia,'
+    + ` SUM(julianday(utworzone_at) IS NULL) AS bez_daty FROM zamowienia${wymuszenieIndeksu(db)} GROUP BY sklep`).all();
+}
+
+/** Zamówienia sklepu z dniem do `doDnia` (z zapasem; o dniu rozstrzyga dzienWarszawa) i z datami bez skali SQLite. */
+export function zamowieniaSklepuDoDnia(db, kolumny, sklep, doDnia) {
+  return db.prepare(`SELECT ${kolumny} FROM zamowienia${wymuszenieIndeksu(db)} WHERE sklep = ?`
+    + " AND (julianday(utworzone_at) < julianday(?, '+1 day') OR julianday(utworzone_at) IS NULL)").all(sklep, doDnia);
+}
+
 /** Porcje id bez pełnej tablicy w pamięci. Kolejność id zachowuje kolejność starego SELECT. */
 export function* idZamowienWOkresie(db, od, doDnia) {
   for (const porcja of porcjeZamowienWOkresie(db, 'id', od, doDnia)) {

@@ -7,6 +7,7 @@ import { daneOkresu } from '../oms/db/dane-miesieczne.js';
 import { kosztyMiesiaca } from '../oms/db/koszty.js';
 import { kategoriaDlaNip } from '../oms/db/kategorie-kosztow.js';
 import { grosze } from './kwoty.js';
+import { czyKanalRaportowyAllegro } from './kanaly-raportowe.js';
 
 // Rachunek zarzadczy: „ile z tego zostaje", a nie „ile sprzedalismy".
 //
@@ -132,7 +133,7 @@ export async function rachunekOkresuAsync(db, zakres, opcje = {}) {
 
 // Jeden odczyt sprzedaży dla całego rachunku. Poller może pracować między porcjami,
 // ale okres, rok i miesiące muszą korzystać z tych samych zebranych wierszy.
-function* liczRachunek(db, { od, do: doDnia }, { regulySprzedazy = {}, podlogaKosztow = null } = {}) {
+function* liczRachunek(db, { od, do: doDnia }, { regulySprzedazy = {}, podlogaKosztow = null, definicje } = {}) {
   if (!podlogaKosztow) { const e = new Error(BRAK_PODLOGI_KOSZTOW); e.dlaOperatora = true; throw e; }
   if (od.slice(0, 7) < podlogaKosztow) {
     const e = new Error(
@@ -225,7 +226,7 @@ function* liczRachunek(db, { od, do: doDnia }, { regulySprzedazy = {}, podlogaKo
 
   const prowizjaAllegro = pelnyMiesiac ? prowizjaAllegroZaMiesiac(db, pelnyMiesiac) : null;
   const sprzedazAllegroGrosze = wiersze
-    .filter((w) => w.kanal.startsWith('ALLEGRO_'))
+    .filter((w) => czyKanalRaportowyAllegro(w.kanal, definicje))
     .reduce((s, w) => s + w.nettoGrosze, 0);
 
   const miesiacami = [];
@@ -300,10 +301,11 @@ function* liczRachunek(db, { od, do: doDnia }, { regulySprzedazy = {}, podlogaKo
 }
 
 // PRZ-093.07: nowa instalacja widzi to zdanie na FINANSACH, zanim ktokolwiek ustawi podłogę —
-// więc mówi, którą zmienną wpisać, w jakim formacie i gdzie. Treść w stałej, żeby linia odczytu
+// więc wskazuje panel oraz alternatywę w pliku. Treść w stałej, żeby linia odczytu
 // w `rachunekOkresu` nie przesuwała się przy każdej zmianie słów.
 const BRAK_PODLOGI_KOSZTOW = 'Nie ustawiono podłogi danych kosztów rachunku zarządczego.'
-  + ' Wpisz w pliku konfiguracji OMS (oms.env) linię OMS_RAPORTY_PODLOGA_KOSZTOW=RRRR-MM, np. 2026-05:'
+  + ' W panelu Finanse → Kompletność danych (/finanse/pokrycie) administrator ustawia miesiąc RRRR-MM, np. 2026-05:'
   + ' pierwszy miesiąc, od którego koszty firmy w OMS-ie (faktury kosztowe z KSeF i koszty dopisane ręcznie)'
-  + ' są kompletne — i uruchom OMS ponownie. Rachunek pokaże wynik od tego miesiąca; wcześniejszych nie policzy,'
-  + ' bo bez części kosztów zysk wyszedłby zawyżony.';
+  + ' są kompletne. Zapis w panelu działa bez restartu. Rachunek pokaże wynik od tego miesiąca; wcześniejszych nie policzy,'
+  + ' bo bez części kosztów zysk wyszedłby zawyżony. Druga droga: wpisz w pliku konfiguracji OMS (oms.env)'
+  + ' OMS_RAPORTY_PODLOGA_KOSZTOW=RRRR-MM i uruchom OMS ponownie. Wartość z pliku wygrywa nad panelem.';

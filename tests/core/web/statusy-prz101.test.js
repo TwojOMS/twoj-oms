@@ -17,10 +17,19 @@ it('render listy odczytuje konfigurację statusów najwyżej raz i kolejne żąd
       utworzone_at: '2026-10-18T12:00:00Z', pozycje: [],
     }, {});
     let odczyty = 0;
-    db.prepare = function(sql) {
-      if (/^SELECT wartosc FROM ustawienia WHERE klucz = \?$/.test(sql)) odczyty++;
-      return przygotuj.call(this, sql);
+    // PRZ-102.02: ta sama tabela zawiera też przełączniki modułów. Mierzymy tylko statusy.
+    const liczOdczytyStatusow = function(sql) {
+      const zapytanie = przygotuj.call(this, sql);
+      if (/^SELECT wartosc FROM ustawienia WHERE klucz = \?$/.test(sql)) {
+        const get = zapytanie.get;
+        zapytanie.get = function(...parametry) {
+          if (parametry[0] === 'statusy.konfiguracja') odczyty++;
+          return get.apply(this, parametry);
+        };
+      }
+      return zapytanie;
     };
+    db.prepare = liczOdczytyStatusow;
     const lista = await get(app, '/', BASIC);
     expect(lista.statusCode).toBe(200);
     expect(lista.body).toContain('LAMPA-25');
@@ -28,10 +37,7 @@ it('render listy odczytuje konfigurację statusów najwyżej raz i kolejne żąd
     db.prepare = przygotuj;
     await post(app, '/ustawienia/statusy', BASIC, { akcja: 'edytuj', klucz: 'nowe', etykieta: 'Oczekujące lampy', kolor: 'czerwony' });
     odczyty = 0;
-    db.prepare = function(sql) {
-      if (/^SELECT wartosc FROM ustawienia WHERE klucz = \?$/.test(sql)) odczyty++;
-      return przygotuj.call(this, sql);
-    };
+    db.prepare = liczOdczytyStatusow;
     const po = await get(app, '/', BASIC);
     expect(po.body).toContain('Oczekujące lampy');
     expect(po.body).toMatch(/znacznik znacznik--czerwony/);

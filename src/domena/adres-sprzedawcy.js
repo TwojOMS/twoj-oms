@@ -1,5 +1,10 @@
 import { bladOperatora } from './bledy.js';
 
+/** Nazwa firmy do przelewu; brak nazwy nie usuwa rachunku ani tytułu z maila. */
+export function odbiorcaPrzelewu(config) {
+  return String((typeof config?.adresFirmy === 'function' ? config.adresFirmy()?.nazwa : config?.nadawca?.nazwa) ?? '').trim();
+}
+
 // Adres sprzedawcy — JEDNO miejsce, z ktorego czytaja WSZYSTKIE dokumenty wystawiane przez
 // panel (dzis: proforma i specyfikacja zamowienia do paczki). Nazwa i ulica ida z
 // `config.nadawca` — TEGO SAMEGO obiektu, ktorym jada tez paczki DPD/InPost (patrz config.js)

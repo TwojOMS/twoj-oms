@@ -10,6 +10,7 @@ import {
 } from '../../../oms/db/dane-miesieczne.js';
 import { rachunekOkresuAsync as rachunek } from '../../../domena/rachunek-zarzadczy.js';
 import { prognozaProgu } from '../../../domena/podatek-skala.js';
+import { wylaczoneModuly } from '../../../oms/db/moduly-opcjonalne.js';
 
 // Zakladka FINANSE — rachunek zarzadczy („ile z tego zostaje") i dane reczne miesiaca
 // (ZUS, PIT-5, VAT-7). Do 17.08.2026 oba ekrany mieszkaly pod /raporty/zarzadczy
@@ -85,13 +86,13 @@ function przesunMiesiac(miesiac, o) {
 }
 
 export function zarejestrujTrasyFinansow(app, { db, config }) {
-  // PRZ-027F: neutralna domena wymaga jawnych danych instalacji zamiast stałych firmy.
-  const PODLOGA = config.podlogaKosztow;
-  const rachunekOkresu = (baza, zakres) => rachunek(baza, zakres, {
-    regulySprzedazy: config.regulySprzedazy, podlogaKosztow: PODLOGA,
-  });
   // ——— RACHUNEK ZARZADCZY: „ile z tego zostaje" ————————————————————————————————————
   app.get('/finanse', async (req, reply) => {
+    // Jedna podłoga dla całego żądania, także dla okresu porównawczego.
+    const PODLOGA = config.podlogaKosztow;
+    const rachunekOkresu = (baza, zakres) => rachunek(baza, zakres, {
+      regulySprzedazy: config.regulySprzedazy, podlogaKosztow: PODLOGA, definicje: config.definicje,
+    });
     const dzien = dzisiaj();
     let zakres;
     // ——— WYBOR MIESIACA ——————————————————————————————————————————————————————————
@@ -214,11 +215,18 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
         // ⚠️ ZAMIANA GROSZY NA ZLOTOWKI IDZIE Z DOMENY (domain/kwoty.js), a nie z wlasnego
         // dzielenia w szablonie — ta sama decyzja, co przy /raporty.
         zl,
+        // PRZ-102.22: wyłączony moduł Koszty (Ustawienia → Moduły) to sam pasek. Arytmetyka bez zmian: koszty już
+        // w bazie to fakty i dalej się liczą; nowych panel nie pobierze, więc rachunek przestaje być kompletny.
+        kosztyWylaczone: wylaczoneModuly(db).includes('koszty'),
       });
     } catch (e) {
       // ⚠️ Podloga historii kosztow (2026-01) i brak granicy kanalu maja dac ZDANIE DLA
       // CZLOWIEKA, nie piecsetke. Blad techniczny leci dalej, do logu.
       if (!e?.dlaOperatora) throw e;
+      // PRZ-102.09: brak podłogi to stan nowej instalacji, nie błąd — ekran z pytaniem zamiast zdania w tekście.
+      if (!PODLOGA) return reply.code(400).view('finanse-brak-pokrycia.ejs', {
+        title: 'Finanse', admin: req.konto?.admin === true, powrot: req.url,
+      });
       return reply.code(400).send(`Nie da się policzyć rachunku: ${komunikatDlaOperatora(e)}`);
     }
   });

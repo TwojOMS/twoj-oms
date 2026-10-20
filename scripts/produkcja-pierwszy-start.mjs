@@ -14,54 +14,11 @@ import { createRequire } from 'node:module';
 import { resolve as sciezkaBezwzgledna } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { efektywnyTryb } from '../src/core/tryb.ts';
-import { wczytajRaporty } from '../src/moduly/raporty/konfiguracja.ts';
-import { definicjeKanalow } from '../src/moduly/kanaly/konfiguracja.ts';
-import { inicjalizujGraniceBezHistorii } from '../src/domena/sprzedaz-okresu.js';
-import { granice } from '../src/oms/db/historia-sprzedazy.js';
+import { zalozGranice } from '../src/moduly/raporty/granice-start.js';
+export { planGranic, zalozGranice } from '../src/moduly/raporty/granice-start.js';
 
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
 export const LOGIN_ADMINA = 'administrator';
-
-const dzien = (d) => d.toISOString().slice(0, 10);
-const dzienPrzed = (rrrrmmdd) => dzien(new Date(Date.parse(`${rrrrmmdd}T00:00:00Z`) - 86_400_000));
-
-/**
- * Dzień granicy dla każdego kanału raportowego: wczoraj, a dla kanału z `<P>_OD` wcześniej, jeśli pobieranie
- * zaczyna się przed dniem przejścia (inaczej zamówienia sprzed granicy wypadłyby z raportu po cichu).
- * Kanały z historią (OMS_HISTORIA_KLASYFIKACJA) wymagają pomiaru — tu pominięte i zgłoszone.
- */
-export function planGranic(env, teraz = new Date()) {
-  const { klasyfikacja } = wczytajRaporty(env).regulySprzedazy;
-  const historyczne = new Set(klasyfikacja.konta.values());
-  const wczoraj = dzienPrzed(dzien(teraz));
-  const od = new Map();
-  for (const d of definicjeKanalow(env)) {
-    const w = String(env[`${d.prefiks}_OD`] ?? '').trim();
-    if (d.raport && /^\d{4}-\d{2}-\d{2}$/.test(w)) od.set(d.raport, dzienPrzed(w));
-  }
-  const plan = [];
-  const pominiete = [];
-  for (const kanal of [...klasyfikacja.raporty].sort()) {
-    if (historyczne.has(kanal)) { pominiete.push(kanal); continue; }
-    const zOd = od.get(kanal);
-    plan.push({ kanal, doDnia: zOd && zOd < wczoraj ? zOd : wczoraj });
-  }
-  return { plan, pominiete, klasyfikacja };
-}
-
-/** Granice na świeżej bazie; istniejące zostają (ponowienie po przerwaniu jest bezpieczne). */
-export function zalozGranice(db, env, teraz = new Date()) {
-  const { plan, pominiete, klasyfikacja } = planGranic(env, teraz);
-  const istniejace = granice(db);
-  const zalozone = [];
-  for (const { kanal, doDnia } of plan) {
-    if (istniejace.has(kanal)) continue;
-    try { inicjalizujGraniceBezHistorii(db, kanal, doDnia, klasyfikacja); }
-    catch (e) { throw new Error(`PRODUKCJA_GRANICA_ODMOWA ${kanal} ${doDnia}: ${e instanceof Error ? e.message : e}`); }
-    zalozone.push(`${kanal}=${doDnia}`);
-  }
-  return { zalozone, pominiete };
-}
 
 function zadanie(url, { method = 'GET', headers = {}, body = null } = {}) {
   return new Promise((resolve, reject) => {

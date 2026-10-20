@@ -56,3 +56,13 @@ export function trescMaila({ cel, imie, link, szablon = null }) {
     'Link działa 48 h i tylko raz. Jeśli to nie Ty — zignoruj tę wiadomość.'].join('\n');
   return { subject: TEMATY[cel], text, html: renderMailHtml({ text }) };
 }
+
+const BRAK_PODPISU = '„wiadomosci.podpisMaili" nie istnieje';
+
+/** Usługa podpisu maili (PRZ-102.10) albo null — bez modułu wiadomości sekcja „Podpis maili” znika z ekranu Poczty. */
+export function podpisOpcjonalny(usluga) {
+  return () => {
+    try { return usluga('wiadomosci', 'podpisMaili') ?? null; }
+    catch (e) { if (e instanceof Error && e.message.includes(BRAK_PODPISU)) return null; throw e; }
+  };
+}

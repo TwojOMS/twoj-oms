@@ -10,11 +10,25 @@
     siedemdziesiat sekund miedzy przyjeciem zlecenia przez inFakt a nadaniem numeru przez
     organ (docblock `wyslijDokumentDoKsef` w infakt/client.js). Numer przyniesie dopiero czuwacz. %>
 
-<p class="wroc"><a href="<%= adresPowrotu %>">← Wróć do listy faktur</a></p>
+<p class="wroc"><a href="<%= adresPowrotu %>">← <%= typeof etykietaPowrotu !== 'undefined' && etykietaPowrotu ? etykietaPowrotu : 'Wróć do listy faktur' %></a></p>
 
+<% const zAutomatu = typeof automat !== 'undefined' && automat; %>
 <div class="panel panel--groza">
-  <div class="panel-glowa panel-glowa--groza"><h2>Wysyłka do KSeF — wynik</h2></div>
+  <div class="panel-glowa panel-glowa--groza"><h2><%= zAutomatu ? 'Automat KSeF — wynik ostatniego przebiegu' : 'Wysyłka do KSeF — wynik' %></h2></div>
   <div class="panel-cialo">
+    <% if (zAutomatu) { %>
+      <%# PRZ-102.12: ten sam ekran po przebiegu automatu (GET /faktury/ksef/automat). Kategorie i zdania te same,
+          bo automat wysyła tą samą usługą; dochodzi tylko nagłówek przebiegu i lista „z zasady nie leci”. %>
+      <% if (automat.wynik) { %>
+        <p id="ksef-automat-przebieg">Przebieg z <b><%= automat.wynik.dzien %></b>, start <%= fmtDataCzas(automat.wynik.startAt) %><% if (automat.wynik.koniecAt) { %>, koniec <%= fmtDataCzas(automat.wynik.koniecAt) %><% } %>. W logu zamówień operator: <b><%= automat.kto %></b>.</p>
+        <% if (automat.wynik.stan === 'przerwany') { %><p class="pasek-blokada"><b>Przebieg przerwany</b> — panel uruchomił się ponownie w trakcie<% if (automat.wynik.wTrakcie && automat.wynik.wTrakcie.numer) { %> wysyłki <b><%= automat.wynik.wTrakcie.numer %></b>. Sprawdź w inFakcie, czy ta faktura ma numer KSeF, zanim wyślesz ją ponownie<% } else { %>. Sprawdź w inFakcie dokumenty z tego dnia<% } %>; automat sam niczego nie ponawia.</p><% } %>
+        <% if (automat.wynik.stan === 'wylaczony') { %><p class="wyjasnienie">Automat wyłączono w trakcie przebiegu — pozostałe dokumenty nie poleciały.</p><% } %>
+        <% if (automat.wynik.stan === 'trwa') { %><p class="wyjasnienie">Przebieg trwa — odśwież za chwilę.</p><% } %>
+      <% } else { %>
+        <p class="pusto-sekcja">Automat jeszcze ani razu nie wysyłał.</p>
+      <% } %>
+      <p class="wyjasnienie">Automat jest <b><%= automat.wlaczony ? `włączony — codziennie o ${automat.godzina}` : 'wyłączony' %></b>. Włącza się go w Ustawienia → Integracje → inFakt.</p>
+    <% } %>
 
     <% if (blad) { %>
       <%# ⚠️⚠️ DWA ROZNE BLEDY, DWA ROZNE ZDANIA — i pomylenie ich jest tu najgrozniejsze,
@@ -27,6 +41,10 @@
           poprosic inFakt o wysylke. %>
       <% if (niepewne.length) { %>
         <p class="pasek-blokada"><b>Panel nie doczekał się odpowiedzi od inFaktu:</b> <%= blad %></p>
+      <% } else if (zAutomatu && wyslane.length) { %>
+        <%# Poprawka po recenzji PRZ-102.12 (WAŻNE 2): automat zatrzymany PO udanych wysyłkach — „Nic nie poszło”
+            byłoby tu fałszem o dokumentach, które już są u organu. Ścieżka ręczna bez zmian. %>
+        <p class="pasek-blokada"><b>Automat zatrzymał się po wysłaniu <%= wyslane.length %> <%= wyslane.length === 1 ? 'dokumentu' : 'dokumentów' %>: <%= wyslane.map(function (w) { return w.numer; }).join(', ') %>.</b> Powód zatrzymania: <%= blad %> Pozostałe dokumenty nie poleciały; automat ich dziś nie ponowi.</p>
       <% } else { %>
         <p class="pasek-blokada"><b>Nic nie poszło do KSeF:</b> <%= blad %></p>
       <% } %>
@@ -91,15 +109,46 @@
       </ul>
     <% } %>
 
+    <% if (zAutomatu && automat.wstrzymane.length) { %>
+      <%# Poprawka po recenzji PRZ-102.12 (WAŻNE 1): faktury odrzucone przez inFakt przy wysyłce z automatu — automat
+          je pomija, dopóki człowiek ich nie wyśle ręcznie albo nie zwolni. „Zwolnij” niczego nie wysyła. %>
+      <h3 class="wynik-naglowek">Wstrzymane — automat ich nie wyśle — <%= automat.wstrzymane.length %></h3>
+      <ul class="lista-wyniku" id="ksef-automat-wstrzymane">
+        <% automat.wstrzymane.forEach(function (w) { %>
+          <li><span class="waga waga--blokada">wstrzymana</span> <span><%= w.zdanie %></span>
+            <form method="post" action="/faktury/ksef/automat/zwolnij" style="display:inline">
+              <input type="hidden" name="uuid" value="<%= w.uuid %>">
+              <button class="btn" type="submit">Zwolnij</button>
+            </form></li>
+        <% }); %>
+      </ul>
+      <p class="wyjasnienie">„Zwolnij” niczego nie wysyła — faktura wraca do automatu i poleci przy najbliższym przebiegu. Faktura wysłana ręcznie (z numerem KSeF) znika z tej listy sama.</p>
+    <% } %>
+
+    <% if (zAutomatu && automat.poZasadzie.length) { %>
+      <h3 class="wynik-naglowek">Bez numeru KSeF, ale z zasady nie lecą — <%= automat.poZasadzie.length %></h3>
+      <ul class="lista-wyniku">
+        <% automat.poZasadzie.forEach(function (p) { %>
+          <li><span class="waga">nie leci</span> <span><b><%= p.numer %></b> — <%= p.powod %></span></li>
+        <% }); %>
+      </ul>
+    <% } %>
+
     <% if (!wyslane.length && !niepewne.length && !pominiete.length && !blad) { %>
-      <p class="pusto-sekcja">Nic nie było zaznaczone — panel niczego nie wysłał.</p>
+      <% if (zAutomatu) { %>
+        <%# Poprawka po drugiej recenzji: przebieg przerwany, trwający albo z dokumentem w locie NIE jest „nic do wysłania” —
+            puste listy znaczą tam „jeszcze nie wiadomo”, a pasek wyżej mówi, co sprawdzić. %>
+        <% if (automat.wynik && automat.wynik.stan !== 'przerwany' && automat.wynik.stan !== 'trwa' && !automat.wynik.wTrakcie) { %><p class="pusto-sekcja">W tym przebiegu automat nie znalazł nic do wysłania.</p><% } %>
+      <% } else { %>
+        <p class="pusto-sekcja">Nic nie było zaznaczone — panel niczego nie wysłał.</p>
+      <% } %>
     <% } %>
 
     <div class="stopka-edycji">
       <%# ⚠️ ZADNEGO PRZYCISKU „WYSLIJ PONOWNIE". Po tym ekranie jedyna droga do kolejnej
           wysylki prowadzi przez liste i podglad — czyli przez zbior policzony OD NOWA,
           z faktur pobranych na swiezo. %>
-      <a class="btn" href="<%= adresPowrotu %>">Wróć do listy faktur</a>
+      <a class="btn" href="<%= adresPowrotu %>"><%= typeof etykietaPowrotu !== 'undefined' && etykietaPowrotu ? etykietaPowrotu : 'Wróć do listy faktur' %></a>
     </div>
   </div>
 </div>

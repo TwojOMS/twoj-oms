@@ -6,6 +6,7 @@
     tlo strony i `color-scheme`, ktore przegladarka czyta z korzenia dokumentu. %>
 <html lang="pl" data-motyw="<%= motyw %>">
 <head>
+  <link rel="icon" type="image/png" href="<%= zasob('favicon-32.png') %>">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= title %></title>
@@ -1759,7 +1760,13 @@
     .ust-statusy-edycja label { display: flex; flex-direction: column; gap: .25rem; font-size: .78rem; }
     .ust-statusy-edycja input, .ust-statusy-edycja select { box-sizing: border-box; width: 100%; padding: .4rem .55rem; font: inherit; font-size: .88rem; border: 1px solid var(--ramka-pola); border-radius: 4px; background: var(--tlo); color: var(--tekst); }
     #statusy-zamowien { margin-bottom: .9rem; }
-    #statusy-zamowien td:nth-child(3) .ust-akcje { flex-direction: column; align-items: stretch; }
+    .ust-status-chwyt { display: flex; align-items: center; gap: .6rem; }
+    .ust-uchwyt { flex: 0 0 44px; min-height: 44px; font: inherit; font-size: 1.2rem; color: var(--tekst-przygaszony); background: var(--tlo); border: 1px solid var(--ramka-pola); border-radius: 6px; cursor: grab; touch-action: none; user-select: none; }
+    .ust-uchwyt:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+    #statusy-zamowien .ust-przeciagany { background: var(--powierzchnia-2); outline: 2px dashed var(--link); outline-offset: -2px; box-shadow: inset 0 4px var(--link); }
+    .ust-przeciagany .ust-uchwyt { cursor: grabbing; }
+    #statusy-zamowien [aria-busy="true"] .ust-uchwyt { cursor: wait; opacity: .6; }
+    #statusy-kolejnosc-komunikat { min-height: 1.5em; }
     #statusy-zamowien .ust-przycisk { white-space: nowrap; }
     #statusy-zamowien .ust-przycisk:disabled { opacity: .45; cursor: default; background: var(--powierzchnia-2); color: var(--tekst-przygaszony); }
     #statusy-zamowien td:last-child > form { margin-top: .4rem; }
@@ -1798,7 +1805,23 @@
       color: var(--tekst-przygaszony); border: 1px solid var(--ramka); border-radius: .6rem; }
     .szw-znacznik--wymagane { color: var(--blad-tekst-mocny); border-color: var(--blad-ramka); }
     .szw-usun { padding-top: .8rem; border-top: 1px solid var(--ramka); }
+    /* PRZ-102.17: sekcja „Zdania o płatności" — jedno zdanie = opis „kiedy pada" nad polem, stan i „Przywróć" pod nim. */
+    .szw-zdania .szw-zdanie { margin: 0 0 1rem; }
+    /* PRZ-102.19: druga część sekcji — „Etykiety i stałe teksty”: krótkie pola, wyraźny podział od zdań. */
+    .szw-czesc { margin: 2rem 0 .2rem; padding-top: 1rem; font-size: 1.05rem; border-top: 2px solid var(--ramka); }
+    .szw-zdanie--krotkie input { max-width: 24rem; }
+    .szw-zdanie > label { display: block; margin: 0 0 .25rem; font-size: .88rem; color: var(--tekst); }
+    .szw-zdanie input, .szw-zdanie textarea { box-sizing: border-box; width: 100%; padding: .4rem .55rem; font: inherit; font-size: .92rem;
+      line-height: 1.5; color: var(--tekst); background: var(--tlo); border: 1px solid var(--ramka-pola); border-radius: 4px; }
+    .szw-zdanie input { max-width: 20rem; }
+    .szw-zdanie textarea { resize: vertical; min-height: 3.6rem; }
+    .szw-zdanie--blad input, .szw-zdanie--blad textarea { border-color: var(--blad-ramka); }
+    .szw-zdanie-stan { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .6rem; margin-top: .3rem; font-size: .78rem; color: var(--tekst-przygaszony); }
+    .szw-zdanie-stan .ust-przycisk { font-size: .78rem; padding: .15rem .55rem; }
+    .szw-zdanie .ust-pomoc { margin: .25rem 0 0; font-size: .78rem; color: var(--tekst-przygaszony); }
+    .szw-zdanie-blad { margin: .25rem 0 0; font-size: .82rem; color: var(--blad-tekst-mocny); }
     @media (max-width: 40rem) {
+      .szw-zdanie input { max-width: none; min-height: 44px; }
       .szw-formularz { grid-template-columns: minmax(0, 1fr); gap: .3rem; }
       .szw-akcje { grid-column: 1; }
       .szw-pola { grid-template-columns: minmax(0, 1fr); gap: .1rem; }
@@ -1822,7 +1845,6 @@
       #statusy-zamowien thead { display: none; }
       #statusy-zamowien tr { padding: .7rem 0; border-bottom: 1px solid var(--ramka); }
       #statusy-zamowien td { padding: .25rem 0; border: 0; }
-      #statusy-zamowien td:nth-child(3) .ust-akcje { flex-direction: row; }
       .ust-statusy-edycja { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
       .ust-statusy-edycja button { grid-column: 1 / -1; justify-self: start; }
       /* Szablony: w tabeli „Edytuj” — jedyna akcja wiersza — lezal poza ekranem. Wiersz jako
@@ -2039,6 +2061,10 @@
     .kanal-nazwa { font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .kanal-wiersz .slupek-tor { height: .9rem; }
     .kanal-wiersz .liczba, .kanal-naglowek .liczba { text-align: right; font-variant-numeric: tabular-nums; font-size: .9rem; }
+    /* PRZ-102.05: podpis „vs 2026-09-01 – 2026-09-20” nie mieści się w kolumnie 6,5 rem, a globalne
+       `.liczba { white-space: nowrap }` wypychało go za prawy brzeg — /raporty przewijało się w bok
+       o 50 px przy oknie 1280 (dokument 1315 px przy 1265 px). Nagłówek zawija się do dwóch linii. */
+    .kanal-naglowek .liczba { white-space: normal; }
     .kanal-drobne { color: var(--tekst-przygaszony); font-size: .82rem; }
     .kanal-delta { justify-self: end; white-space: nowrap; margin-top: 0; }
     /* Karta kanalu na :hover (31.08.2026) — czysty CSS, zero JS (regula panelu stoi;
@@ -2198,6 +2224,11 @@
       <header class="oms-topbar">
         <div class="oms-breadcrumb"><span>Panel</span><span aria-hidden="true">/</span><strong><%= title %></strong></div>
         <div class="oms-top-actions">
+          <%# PRZ-102.03 (wariant C): analizy poza menu bocznym — rozwijana lista na wzór menu konta. Pozycje już %>
+          <%# przefiltrowane prawami i `odlozoneEkrany` (nawigacjaDla); rola bez żadnej analizy przycisku nie dostaje. %>
+          <% if (nawigacja.analizy) { %><details class="oms-menu-analiz" data-menu="analizy"><summary class="oms-menu-analiz-przycisk" data-menu-trigger="analizy"<%- nawigacja.analizy.aktywna ? ' aria-current="true"' : '' %> title="<%= nawigacja.analizy.etykieta %>"><%- include('_ikona-panelu.ejs', {klucz:'raporty'}) %><span><%= nawigacja.analizy.etykieta %></span></summary>
+            <div class="oms-menu-analiz-panel" data-menu-panel="analizy"><ul><% nawigacja.analizy.pozycje.forEach(function(p) { %><li><a href="<%= p.href %>"<%- p.aktywna ? ' aria-current="page"' : '' %>><%- include('_ikona-panelu.ejs', {klucz:p.klucz}) %><span><%= p.etykieta %></span></a></li><% }); %></ul></div>
+          </details><% } %>
           <% if (nawigacja.ustawienia) { %><a class="oms-theme-button oms-settings-button" href="<%= nawigacja.ustawienia.href %>"<%- nawigacja.ustawienia.aktywna ? ' aria-current="page"' : '' %> aria-label="Ustawienia" title="Ustawienia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></a><% } %>
           <form method="post" action="/motyw" class="oms-theme-form">
             <input type="hidden" name="powrot" value="<%= menuKonta?.powrot ?? (typeof sciezkaPowrotu !== 'undefined' ? sciezkaPowrotu : '/') %>">
@@ -2210,6 +2241,11 @@
         <%# PRZ-101.01: menu Ustawień to kolumna z lewej strony treści; na telefonie zwinięte w jeden wiersz z nazwą ekranu. %>
         <% const menuUstawien = nawigacja?.kontekst?.dzial === 'ustawienia';
           const ekranUstawien = menuUstawien ? (nawigacja.kontekst.grupy ?? []).flatMap(g => g.pozycje).find(p => p.aktywna) : null; %>
+        <%# PRZ-102.03: na ekranie analiz rząd zakładek tych samych pozycji co przycisk w pasku — przejście %>
+        <%# Raporty → Statystyki zostaje jednym kliknięciem. %>
+        <% if (nawigacja?.analizy?.aktywna) { %>
+        <nav class="oms-order-statuses oms-zakladki-analiz" aria-label="<%= nawigacja.analizy.etykieta %>"><ul><% nawigacja.analizy.pozycje.forEach(function(p) { %><li><a href="<%= p.href %>"<%- p.aktywna ? ' aria-current="page"' : '' %>><%= p.etykieta %></a></li><% }); %></ul></nav>
+        <% } %>
         <% if (menuUstawien) { %>
         <div class="oms-settings-layout">
           <div class="oms-settings-navigation">

@@ -191,7 +191,7 @@ export function ocenZdrowie({
   ksefWlaczony = false, pulsKsef = null,
   przesylkiWlaczone = false, pulsPrzesylek = null,
   ostrzezeniaWlaczone = false, pulsOstrzezen = null,
-  kosztyWlaczone = false, stanKosztow = null,
+  kosztyWlaczone = false, kosztyModulWylaczony = false, kosztyWlaczoneOd = /** @type {string | null} */ (null), stanKosztow = null,
   kanaly = [],
 }) {
   const alarmy = [];
@@ -300,10 +300,19 @@ export function ocenZdrowie({
   // to z definicji stan biezacy, a nie pamiatka.
   const czuwaczKosztow = {
     wlaczony: Boolean(kosztyWlaczone), zdrowy: true, ostatnieUdaneAt: null, wiekS: null, blad: null, bladAt: null,
+    // PRZ-102.22: dlaczego czuwacz stoi — moduł wyłączony w Ustawienia → Moduły to stan zamierzony, nie awaria
+    // (bez alarmu i bez uwagi, żeby czujka nie budziła co dobę o decyzji właściciela).
+    stan: kosztyModulWylaczony ? 'koszty wyłączone' : kosztyWlaczone ? 'pobiera z KSeF' : 'brak tokenu KSeF',
   };
+  // PRZ-102.22 (recenzja): próg liczy się od PÓŹNIEJSZEJ z dwóch chwil — ostatniego udanego pobrania albo włączenia
+  // pobierania (zapis tokenu w Ustawieniach, włączenie modułu Koszty). Pobranie chodzi raz na dobę o 3:00, więc
+  // pobieranie włączone w dzień nie miało jeszcze szansy — bez tego /health wisiałby na alarmie do nocy. Pole `wiekS`
+  // w odpowiedzi zostaje wiekiem OSTATNIEGO UDANEGO pobrania (czujka i ekran czytają je jak dotąd).
+  const odWlaczeniaS = wiekS(teraz, kosztyWlaczoneOd);
+  const mlodszy = (a, b) => (a == null ? b : b == null ? a : Math.min(a, b));
   if (kosztyWlaczone) {
     if (!stanKosztow) {
-      if (procesWiekS > PROG_KOSZTOW_S) {
+      if (mlodszy(procesWiekS, odWlaczeniaS) > PROG_KOSZTOW_S) {
         czuwaczKosztow.zdrowy = false;
         alarmy.push('czuwacz kosztów: ani jednego przebiegu w bazie, a proces stoi dłużej niż dobę');
       }
@@ -316,7 +325,8 @@ export function ocenZdrowie({
         czuwaczKosztow.zdrowy = false;
         alarmy.push(`czuwacz kosztów: ${czuwaczKosztow.blad}`);
       }
-      if (czuwaczKosztow.wiekS == null || czuwaczKosztow.wiekS > PROG_KOSZTOW_S) {
+      const wiekProgu = mlodszy(czuwaczKosztow.wiekS, odWlaczeniaS);
+      if (wiekProgu == null || wiekProgu > PROG_KOSZTOW_S) {
         czuwaczKosztow.zdrowy = false;
         alarmy.push(`czuwacz kosztów: ostatnie udane pobranie ${czuwaczKosztow.wiekS == null ? 'nieznane' : `${fmtWiek(czuwaczKosztow.wiekS)} temu`} (próg ${fmtWiek(PROG_KOSZTOW_S)})`);
       }

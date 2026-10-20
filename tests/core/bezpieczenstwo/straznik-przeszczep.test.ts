@@ -44,6 +44,15 @@ describe('strażnik po przeszczepie', () => {
     expect(r.statusCode).toBe(401);
     expect(r.body).not.toBe('chronione');
   });
+  it('panel bez kont nadal dopuszcza Basic Auth i nie otwiera sąsiadów ikony', async () => {
+    const headers = { authorization: `Basic ${Buffer.from('test:test').toString('base64')}` };
+    expect((await app.inject({ url: '/zamowienia', headers })).statusCode).toBe(200);
+    for (const url of ['/favicon.ico.bak', '/favicon.icox']) {
+      expect((await app.inject(url)).statusCode).toBe(401);
+    }
+    // Panel bez własnej trasy ikony zwraca 404, jak dla otwartego /health.
+    expect((await app.inject('/favicon.ico')).statusCode).toBe(404);
+  });
   it('ważna sesja dopuszcza żądanie', async () => {
     const r = await app.inject({ method: 'GET', url: '/zamowienia', headers: {
       cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz('test', sekret)}`,

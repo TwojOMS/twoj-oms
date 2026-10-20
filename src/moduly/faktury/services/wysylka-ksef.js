@@ -3,6 +3,7 @@ import { dopiszLog } from '../../../oms/db/zamowienia.js';
 import { zamowieniaOkresu } from '../../../oms/db/okresy.js';
 import { zajmijWysylkeKsef, zwolnijWysylkeKsef } from '../db/wysylki-ksef.js';
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
+import { czyWysylacKonsumenckie } from '../db/ksef-konsumenckie.js';
 
 // Sufit długości serialiazowanej odpowiedzi trzymanej w logu — pilnuje, żeby jeden gruby
 // ładunek (dokumenty okresu wysyłane partią) nie rozdął wpisu na kartach WSZYSTKICH zamówień
@@ -53,7 +54,7 @@ export function createWysylkaKsef({
   // oddać inną listę i operator zatwierdzałby kwoty innego dokumentu, niż widzi.
   async function przelicz({ uuids, miesiac, pole }) {
     const dokumenty = await fakturyWidok.dokumenty({ miesiac, pole });
-    return { ...coWolnoWyslac(uuids, dokumenty), dokumenty };
+    return { ...coWolnoWyslac(uuids, dokumenty, czyWysylacKonsumenckie(db)), dokumenty };
   }
 
   const podglad = (args) => przelicz(args);

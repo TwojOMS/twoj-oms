@@ -1,4 +1,5 @@
 import { KOLOR, FONT, esc, kopertaMaila, naglowekSekcji as naglowek } from './mail-html.js';
+import { tekstyModelu } from '../../domena/zdania-platnosci.js';
 
 // POTWIERDZENIE PRZYJĘCIA ZAMÓWIENIA — postać HTML (21.08.2026, zgłoszenie właściciela:
 // „popraw maila, wygląda słabo: pozycje jako tabela, dodaj nagłówki, FAKTURA: tak + dane").
@@ -31,6 +32,10 @@ const kom = (extra = '') => `padding:8px 4px;border-bottom:1px solid ${KOLOR.lin
 const linie = (lista) => `<p style="margin:0 0 4px;font-family:${FONT};font-size:14px;`
   + `line-height:1.6;color:${KOLOR.tekst};">${lista.map((l) => esc(l)).join('<br>')}</p>`;
 
+/** Te same linie drobniej i wyszarzone — adres pod metodą dostawy, dane nabywcy pod „Tak — wystawimy na:". */
+const linieDrobne = (lista) => `<p style="margin:0 0 4px;font-family:${FONT};font-size:14px;line-height:1.6;color:${KOLOR.muted};">`
+  + `${lista.map((l) => esc(l)).join('<br>')}</p>`;
+
 /**
  * Tabela pozycji.
  *
@@ -41,9 +46,11 @@ const linie = (lista) => `<p style="margin:0 0 4px;font-family:${FONT};font-size
  *
  * ⚠️ Wiersz „Razem" jest częścią TEJ SAMEJ tabeli, a nie osobnym akapitem pod nią: inaczej
  * przy wąskiej szerokości suma odjeżdża od kolumny, w której klient jej szuka.
+ *
+ * PRZ-102.19: nazwy kolumn, „Razem" i dopisek „brutto" z Ustawień → Szablony wiadomości (`t`), escapowane.
  */
-function tabelaPozycji(m) {
-  const naglowki = ['Pozycja', 'Ilość', 'Cena', 'Wartość'];
+function tabelaPozycji(m, t) {
+  const naglowki = [t.kolumna_pozycja, t.kolumna_ilosc, t.kolumna_cena, t.kolumna_wartosc];
   const wiersze = m.pozycje.map((p) => `<tr>`
     + `<td style="${kom()}">${esc(p.nazwa)}</td>`
     + `<td align="right" style="${kom('white-space:nowrap;')}">${esc(p.ilosc)}</td>`
@@ -58,7 +65,7 @@ function tabelaPozycji(m) {
       `font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:${KOLOR.muted};`,
     )}">${esc(n)}</td>`).join('')}</tr>`
     + wiersze
-    + `<tr><td colspan="3" style="${kom(razem)}">Razem brutto</td>`
+    + `<tr><td colspan="3" style="${kom(razem)}">${esc(`${t.etykieta_razem} ${t.dopisek_brutto}`)}</td>`
     + `<td align="right" style="${kom(`${razem}white-space:nowrap;`)}">${esc(m.razem)}</td></tr>`
     + '</table>';
 }
@@ -69,62 +76,43 @@ const akapit = (tekst, extra = '') => `<p style="margin:0 0 14px;font-family:${F
 
 /**
  * Sekcje potwierdzenia jako BLOKI szablonu (PRZ-101.03) — te same kawałki HTML, które składa
- * `renderPotwierdzenieHtml` niżej. Funkcja niżej zostaje nietknięta (mail bez zapisanego szablonu = dzisiejszy
- * co do znaku); zgodność obu pilnuje tests/moduly/wiadomosci/szablony-rownosc.test.js.
+ * `renderPotwierdzenieHtml` niżej (od PRZ-102.19 ta funkcja je stąd bierze, zamiast trzymać drugą kopię).
+ * Zgodność pilnują tests/moduly/wiadomosci/szablony-rownosc.test.js i wzorzec bajt w bajt
+ * (zdania-platnosci-rownosc-prz102-17.test.js).
  */
 export function blokiHtmlPotwierdzenia(m) {
+  const t = tekstyModelu(m);
   return {
-    pozycje: naglowek('Zamówienie') + tabelaPozycji(m),
-    sposob_platnosci: naglowek('Płatność') + linie([m.platnosc]),
-    wysylka: naglowek('Wysyłka') + linie([m.wysylka.metoda]) + (m.wysylka.adres
-      ? `<p style="margin:0 0 4px;font-family:${FONT};font-size:14px;line-height:1.6;color:${KOLOR.muted};">`
-        + `${m.wysylka.adres.map((l) => esc(l)).join('<br>')}</p>`
+    pozycje: naglowek(t.naglowek_zamowienie) + tabelaPozycji(m, t),
+    sposob_platnosci: naglowek(t.naglowek_platnosc) + linie([m.platnosc]),
+    // Adres wychodzi POD metodą i drobniejszym drukiem — to metoda jest odpowiedzią na
+    // pytanie „jak to do mnie dojedzie", a adres jej uzupełnieniem.
+    wysylka: naglowek(t.naglowek_wysylka) + linie([m.wysylka.metoda]) + (m.wysylka.adres
+      ? linieDrobne(m.wysylka.adres)
       : `<p style="margin:0 0 4px;font-family:${FONT};font-size:14px;color:${KOLOR.muted};">`
-        + 'adres do uzgodnienia</p>'),
-    dane_do_faktury: naglowek('Faktura') + (m.faktura.chce
-      ? linie(['Tak — wystawimy na:'])
-        + `<p style="margin:0 0 4px;font-family:${FONT};font-size:14px;line-height:1.6;color:${KOLOR.muted};">`
-        + `${(m.faktura.linie.length ? m.faktura.linie : ['dane do uzgodnienia']).map((l) => esc(l)).join('<br>')}</p>`
-      : linie(['Nie'])),
+        + `${esc(t.adres_do_uzgodnienia)}</p>`),
+    dane_do_faktury: naglowek(t.naglowek_faktura) + (m.faktura.chce
+      ? linie([t.faktura_tak]) + linieDrobne(m.faktura.linie.length ? m.faktura.linie : [t.faktura_bez_danych])
+      : linie([t.faktura_nie])),
   };
 }
 
 export function renderPotwierdzenieHtml(m, { footer = '', naglowek: naglowekMarki = '' } = {}) {
+  const b = blokiHtmlPotwierdzenia(m);
   const body = [
     akapit('Dzień dobry,'),
     akapit(`potwierdzamy przyjęcie zamówienia nr ${m.numer} z dnia ${m.dzien}.`),
-
-    naglowek('Zamówienie'),
-    tabelaPozycji(m),
-
-    naglowek('Płatność'),
-    linie([m.platnosc]),
-
-    naglowek('Wysyłka'),
-    // Adres wychodzi POD metodą i drobniejszym drukiem — to metoda jest odpowiedzią na
-    // pytanie „jak to do mnie dojedzie", a adres jej uzupełnieniem.
-    linie([m.wysylka.metoda]),
-    m.wysylka.adres
-      ? `<p style="margin:0 0 4px;font-family:${FONT};font-size:14px;line-height:1.6;color:${KOLOR.muted};">`
-        + `${m.wysylka.adres.map((l) => esc(l)).join('<br>')}</p>`
-      : `<p style="margin:0 0 4px;font-family:${FONT};font-size:14px;color:${KOLOR.muted};">`
-        + 'adres do uzgodnienia</p>',
-
-    naglowek('Faktura'),
-    ...(m.faktura.chce
-      ? [
-        linie(['Tak — wystawimy na:']),
-        `<p style="margin:0 0 4px;font-family:${FONT};font-size:14px;line-height:1.6;color:${KOLOR.muted};">`
-          + `${(m.faktura.linie.length ? m.faktura.linie : ['dane do uzgodnienia']).map((l) => esc(l)).join('<br>')}</p>`,
-      ]
-      : [linie(['Nie'])]),
-
+    b.pozycje,
+    b.sposob_platnosci,
+    b.wysylka,
+    b.dane_do_faktury,
     `<p style="margin:22px 0 14px;font-family:${FONT};font-size:14px;line-height:1.6;color:${KOLOR.muted};`
       + `border-top:1px solid ${KOLOR.linia};padding-top:14px;">`
       + 'Jeśli coś się nie zgadza, wystarczy odpowiedzieć na tego maila.</p>',
-    akapit('Pozdrawiamy,', 'margin-bottom:2px;'),
+    akapit(tekstyModelu(m).pozdrowienie, 'margin-bottom:2px;'),
     akapit(m.sprzedawca, 'font-weight:bold;'),
   ].join('');
 
   return kopertaMaila({ body, footer, naglowek: naglowekMarki });
 }
+

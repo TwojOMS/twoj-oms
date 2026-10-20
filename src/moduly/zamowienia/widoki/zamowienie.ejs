@@ -101,7 +101,7 @@
     <div class="belka-pole">
       <span class="belka-etykieta">Rozliczenie</span>
       <span class="belka-wartosc">
-        zbiorczo — <a href="/okresy/<%= okresZamowienia.id %>">faktura za <%= nazwaOkresu %></a>
+        zbiorczo — <% if (modulWlaczony('okresy')) { %><a href="/okresy/<%= okresZamowienia.id %>"><% } %>faktura za <%= nazwaOkresu %><% if (modulWlaczony('okresy')) { %></a><% } %>
       </span>
     </div>
   <% } %>
@@ -357,12 +357,12 @@
         <form method="post" action="/zamowienia/<%= z.id %>/klient/zapamietaj" class="stopka-edycji">
           <input type="hidden" name="powrot" value="<%= powrot %>">
           <button class="btn btn--maly"
-            title="<%= klientZBazy ? 'Nadpisze dane teleadresowe zapamiętanego klienta danymi z tego zamówienia. Rabatu, B2B ani terminu nie zmienia.' : 'Zapamięta dane tego klienta, żeby przy następnym zamówieniu wstawić je jednym kliknięciem.' %>">
+            title="<%= klientZBazy ? 'Nadpisze dane teleadresowe zapamiętanego klienta danymi z tego zamówienia; pola puste w zamówieniu zostają takie, jak na karcie klienta, a nazwa klienta z listy się nie zmienia. Ustaleń handlowych (B2B, rabat, termin, umowa zbiorcza, koszt dostawy) nie zmienia.' : 'Zapamięta dane tego klienta, żeby przy następnym zamówieniu wstawić je jednym kliknięciem.' %>">
             <%= klientZBazy ? 'Uaktualnij dane stałego klienta' : 'Zapamiętaj tego klienta' %>
           </button>
           <% if (klientZBazy) { %>
-            <span class="wyjasnienie">w bazie jako <a href="/klienci/<%= klientZBazy.id %>"><%= klientZBazy.nazwa %></a>
-              — ustalenia handlowe (B2B, rabat, termin) zostają takie, jak tam</span>
+            <span class="wyjasnienie">w bazie jako <% if (modulWlaczony('klienci')) { %><a href="/klienci/<%= klientZBazy.id %>"><% } %><%= klientZBazy.nazwa %><% if (modulWlaczony('klienci')) { %></a><% } %>
+              — ustalenia handlowe (B2B, rabat, termin, umowa zbiorcza) zostają takie, jak tam</span>
           <% } %>
         </form>
       <% } %>
@@ -1274,7 +1274,7 @@
       <span>Wpłacono <%= saldoWplat.sumaZl ?? '—' %> zł z <%= saldoWplat.kwotaZl ?? z.kwota_brutto %> zł</span>
       <strong>
         <% if (brakNormalny) { %>za pobraniem — kurier zainkasuje <%= saldoWplat.roznicaZl %> zł
-        <% } else if (brakZbiorczy) { %>rozliczenie zbiorcze — pieniądze idą na <a href="/okresy/<%= okresZamowienia.id %>">okres <%= nazwaOkresu %></a>
+        <% } else if (brakZbiorczy) { %>rozliczenie zbiorcze — pieniądze idą na <% if (modulWlaczony('okresy')) { %><a href="/okresy/<%= okresZamowienia.id %>"><% } %>okres <%= nazwaOkresu %><% if (modulWlaczony('okresy')) { %></a><% } %>
         <% } else if (saldoWplat.stan === 'pokryte') { %>opłacone<% if (z.oplacone_at) { %> <%= fmtDataCzas(z.oplacone_at) %><% } %>
         <% } else if (saldoWplat.stan === 'niedoplata') { %>NIEDOPŁATA: brakuje <%= saldoWplat.roznicaZl %> zł
         <% } else if (saldoWplat.stan === 'nadplata') { %>nadpłata <%= saldoWplat.roznicaZl %> zł
@@ -1291,7 +1291,7 @@
       <p class="wyjasnienie">Zamówienie za pobraniem — pieniądze przychodzą przy doręczeniu, brak wpłaty jest tu normalny.</p>
     <% } else if (brakZbiorczy) { %>
       <p class="wyjasnienie">Klient zbiorczy płaci raz, za cały miesiąc — wpłaty i saldo tego zamówienia rozliczają się na
-        <a href="/okresy/<%= okresZamowienia.id %>">okresie <%= nazwaOkresu %></a>, nie tutaj. Brak wpłaty jest tu normalny.</p>
+        <% if (modulWlaczony('okresy')) { %><a href="/okresy/<%= okresZamowienia.id %>"><% } %>okresie <%= nazwaOkresu %><% if (modulWlaczony('okresy')) { %></a><% } %>, nie tutaj. Brak wpłaty jest tu normalny.</p>
     <% } %>
     <%# ⚠️ AKAPITY O NIEDOPLACIE I NADPLACIE ZDJETE 2026-08-07 („mozesz zmniejszyc ilosc %>
     <%# komunikatow"). Nie zginely: pasek „Do zalatwienia" na gorze karty mowi DOKLADNIE %>
@@ -1517,6 +1517,10 @@
                 <%# JEST w KSeF. %>
                 <% if (z.faktura.ksef_numer) { %>
                   <span class="waga waga--ok">KSeF</span> <%= z.faktura.ksef_numer %>
+                <% } else if (ksefKarty && ksefKarty.stan === 'wyslana_czeka') { %>
+                  <%# PRZ-102.23: rezerwacja `wysylki_ksef` — to samo, co lista Faktur („czeka na numer”); %>
+                  <%# „jeszcze nie wysłana” obok zdania „panel już zlecił” byłoby sprzeczne. %>
+                  <span class="waga">zlecona z panelu — czeka na numer KSeF</span>
                 <% } else if (z.faktura.ksef_status) { %>
                   <%= z.faktura.ksef_status %>
                 <% } else { %>
@@ -1542,6 +1546,17 @@
                       <button class="btn btn--maly">Drukuj</button>
                     </form>
                   <% } %>
+                <% } %>
+                <%# PRZ-102.23: ten sam podgląd co z listy Faktur (dwa kroki, bariera liczona od nowa), %>
+                <%# a „Wróć” po wyniku prowadzi tu. Warunek liczy trasa (`ksefKarty`), prawo — `mozeAdres`. %>
+                <% if (ksefKarty && ksefKarty.wolno && mozeAdres('/faktury/ksef/podglad')) { %>
+                  <form method="post" action="/faktury/ksef/podglad" class="w-linii">
+                    <input type="hidden" name="uuid" value="<%= ksefKarty.uuid %>">
+                    <input type="hidden" name="miesiac" value="<%= ksefKarty.miesiac %>">
+                    <input type="hidden" name="pole" value="<%= ksefKarty.pole %>">
+                    <input type="hidden" name="powrot" value="/zamowienia/<%= z.id %>">
+                    <button class="btn btn--maly">Wyślij do KSeF</button>
+                  </form>
                 <% } %>
               </td>
             </tr>
@@ -1585,12 +1600,18 @@
               <td>Korekta</td>
               <td><%= w.korekta_numer %></td>
               <td><%= w.data %></td>
-              <td></td>
+              <td class="netto-cicho"><%= powodKorektyKsef %></td>
               <td></td>
             </tr>
           <% }); %>
         </tbody>
       </table>
+      <%# Zdanie zamiast przycisku (rezerwacja) albo dopisek przy przycisku (brak NIP-u na karcie — o konsumenckiej %>
+      <%# rozstrzyga podgląd na dokumencie z inFaktu). Oba z domeny (`wysylkaZKarty`). %>
+      <% const zdanieKsef = ksefKarty && (ksefKarty.wolno ? ksefKarty.uwaga : ksefKarty.powod); %>
+      <% if (z.faktura && zdanieKsef && mozeAdres('/faktury/ksef/podglad')) { %>
+        <p class="wyjasnienie" id="ksef-karta"><%= zdanieKsef %></p>
+      <% } %>
     <% } %>
 
     <%# „Specyfikacja do paczki (PDF)" stała tu do 14.10.2026 — od PRZ-074 jest w menu „Wydruki" %>
@@ -1651,7 +1672,12 @@
         <p class="pasek-uwaga">
           Zamówienie rozlicza się ZBIORCZO: klient dostaje jedną fakturę za cały
           <%= nazwaOkresu %>, a nie osobny dokument do tego zamówienia. Pojedynczej faktury
-          panel tu nie wystawi — <a href="/okresy/<%= okresZamowienia.id %>">przejdź do okresu <%= nazwaOkresu %></a>.
+          panel tu nie wystawi — <% if (modulWlaczony('okresy')) { %><a href="/okresy/<%= okresZamowienia.id %>"><% } %>przejdź do okresu <%= nazwaOkresu %><% if (modulWlaczony('okresy')) { %></a><% } else { %> (moduł wyłączony)<% } %>.
+          <%# PRZ-102.23: faktura okresu nie należy do tego zamówienia — do KSeF jedzie z listy Faktur %>
+          <%# (zaznaczenie → podgląd → wysyłka, albo automat), tak jak dziś; karta nie dokłada drugiej drogi. %>
+          <% if (okresZamowienia.infakt_uuid && mozeAdres('/faktury/ksef/podglad')) { %>
+            Faktura okresu jest już w inFakcie — do KSeF wysyłasz ją z zakładki <a href="/faktury">Faktury</a>, nie z karty zamówienia.
+          <% } %>
         </p>
       <% } %>
       <% if (!mozliwaFaktura && !z.faktura && !wOkresie) { %>

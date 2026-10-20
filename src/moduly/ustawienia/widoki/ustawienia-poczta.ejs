@@ -87,6 +87,50 @@
   <% } %>
 </section>
 
+<% if (podpisMaili) { const pm = podpisMaili; const obaZPliku = pm.stan.marka.zPliku && pm.stan.stopka.zPliku; %>
+<section class="ust-sekcja" id="podpis-maili">
+  <h2>Podpis maili</h2>
+  <p>Marka podpisuje maile do klientów („Pozdrawiamy,” i marka) i stoi w ich nagłówku. Stopka to kilka linii pod mailem, np. adres firmy i strona. Zmiana działa od następnego maila.</p>
+  <% if (pm.zapisano) { %><div class="pas-potwierdzenie"><p><%= pm.zapisano %></p></div><% } %>
+  <% if (pm.bledy.length) { %>
+    <div class="pas-uprzedzenie"><p><strong><%= pm.podgladWpisany ? 'Nie pokazano podglądu.' : 'Nie zapisano.' %></strong></p><ul><% pm.bledy.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
+  <% } %>
+  <form id="podpis-maili-formularz" class="ust-formularz" method="post" action="/ustawienia/integracje/poczta/podpis">
+    <label for="podpis-marka">Marka</label>
+    <% if (pm.stan.marka.zPliku) { %>
+      <div><p class="ust-wartosc"><%= pm.stan.marka.wartosc %></p>
+        <p class="ust-pomoc">To pole jest ustawione w pliku konfiguracji (<code>OMS_MAIL_MARKA</code>) — zmienisz je tylko tam.</p></div>
+    <% } else { %>
+      <div><input id="podpis-marka" name="marka" value="<%= pm.pola.marka %>" maxlength="120" autocomplete="off" placeholder="Obsługa sklepu">
+        <p class="ust-pomoc">Jedna linia, do 120 znaków. Puste — maile podpisane „Obsługa sklepu”, bez nazwy w nagłówku.</p></div>
+    <% } %>
+
+    <label for="podpis-stopka">Stopka</label>
+    <% if (pm.stan.stopka.zPliku) { %>
+      <div><p class="ust-wartosc"><% pm.stan.stopka.wartosc.split('\n').forEach(function (l, i) { %><% if (i) { %><br><% } %><%= l %><% }); %></p>
+        <p class="ust-pomoc">To pole jest ustawione w pliku konfiguracji (<code>OMS_MAIL_STOPKA</code>) — zmienisz je tylko tam.</p></div>
+    <% } else { %>
+      <div><textarea id="podpis-stopka" name="stopka" rows="4" maxlength="600" autocomplete="off"><%= pm.pola.stopka %></textarea>
+        <p class="ust-pomoc">Do 8 linii, np. nazwa i adres firmy, telefon, strona. Puste — mail bez stopki.</p></div>
+    <% } %>
+
+    <% if (!obaZPliku) { %>
+    <div class="ust-pelna ust-akcje">
+      <button class="btn btn--glowny" type="submit">Zapisz podpis</button>
+      <button class="ust-przycisk" type="submit" formmethod="get" formaction="/ustawienia/integracje/poczta#podpis-maili" name="podglad" value="1">Podgląd bez zapisu</button>
+    </div>
+    <% } %>
+  </form>
+
+  <h3><%= pm.podgladWpisany && !pm.bledy.length ? 'Podgląd — wpisane, jeszcze niezapisane' : 'Tak wygląda teraz mail do klienta' %></h3>
+  <iframe class="podglad-maila-html" style="height:32rem" title="Podgląd podpisu i stopki maila" sandbox srcdoc="<%= pm.podglad.html %>"></iframe>
+  <details class="drobne">
+    <summary>Pokaż wersję tekstową (dla programów pocztowych bez HTML-a)</summary>
+    <pre class="podglad-maila"><%= pm.podglad.tekst %></pre>
+  </details>
+</section>
+<% } %>
+
 <% if (moznaProbowac) { %>
 <section class="ust-sekcja">
   <h2>Wiadomość próbna</h2>

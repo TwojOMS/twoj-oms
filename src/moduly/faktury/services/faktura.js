@@ -7,6 +7,7 @@ import { daneFaktury } from '../../../domena/dane-faktury.js';
 // regula dla wystawiania z karty i dla wystawiania hurtem. Druga kopia rozjechalaby sie
 // przy pierwszej zmianie i tryb masowy zaczalby przepuszczac to, czego karta odmawia.
 import { powodOdmowyFaktury, powodOdmowyZaplaconej } from '../../../domena/faktura-odmowa.js';
+import { wylaczoneModuly } from '../../../oms/db/moduly-opcjonalne.js';
 // pozycje() i sprawdzSume() wyjete do domain/pozycje-faktury.js (pod nazwami pozycjeDokumentu
 // i sprawdzSumeDokumentu): to CZYSTE funkcje argumentu `z`, ktore musza liczyc DOKLADNIE tak
 // samo dla faktury VAT i dla przyszlej proformy — druga kopia arytmetyki rozjechalaby sie
@@ -122,7 +123,7 @@ export function createFaktura({
     // z „nie ma takiego zamowienia", bo `powodOdmowyFaktury` odpowiada tez na brak wiersza.
     // Sama regula (i cale jej uzasadnienie) siedzi w domain/faktura-odmowa.js: tu zostaje
     // WYLACZNIE moment, w ktorym o nia pytamy.
-    const odmowa = powodOdmowyFaktury(z);
+    const odmowa = powodOdmowyFaktury(z, { okresyWlaczone: !wylaczoneModuly(db).includes('okresy') });
     if (odmowa) throw bladOperatora(odmowa);
 
     // Cala arytmetyka PRZED rezerwacja: to sprawdzenia czysto lokalne, wiec nie ma powodu

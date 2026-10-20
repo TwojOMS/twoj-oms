@@ -28,6 +28,9 @@ import { czyjRuch } from './czyj-ruch-watku.js';
 import { dzienWarszawa, fmtDataCzasKrotko } from './format-daty.js';
 import { fmtWiek } from './zdrowie.js';
 import { zl } from './kwoty.js';
+import { KOLEJNOSC } from './powiadomienia.js';
+import { ekranDlaAdresu, maDostepDoEkranu } from './ekrany.js';
+export { KOLEJNOSC } from './powiadomienia.js';
 
 // Wyciszenie awarii integracji obowiązuje DOBĘ i wraca samo: awaria naprawiona gaśnie
 // z regułą, a trwająca ma się przypomnieć — trwały klucz zamieniłby „wiem, zajmę się"
@@ -37,7 +40,6 @@ export const WYGASANIE_INTEGRACJI_MS = 24 * 60 * 60 * 1000;
 // Awarie infrastruktury pierwsze — od nich zależy prawdziwość reszty tabelki
 // (martwy czuwacz znaczy stęchłe lustra). Potem pieniądze (KSeF, terminy, korekty),
 // na końcu logistyka i korespondencja.
-const KOLEJNOSC = ['integracja', 'faktura-ksef', 'faktura-termin', 'pobranie-korekta', 'zwrot-korekta', 'przesylka', 'wiadomosc-allegro'];
 
 /**
  * Biała lista kluczy dla trasy POST /ostrzezenia/odrzuc — jedyne miejsce znające
@@ -77,6 +79,68 @@ export function ostrzezeniaFaktur({ luki = [], dzis } = {}) {
     } catch { /* uszkodzony wiersz lustra nie ma prawa zabrać tabelki */ }
   }
   return wiersze;
+}
+
+/**
+ * PRZ-102.12: wynik ostatniego przebiegu automatu KSeF (`ksef.automat.wynik`, services/ksef-automat.js).
+ * Wiersz tylko wtedy, gdy człowiek ma coś zrobić: błąd (automat stanął), przebieg przerwany restartem,
+ * dokumenty „nie wiadomo” albo pominięte przy wysyłce. Udany przebieg milczy — szczegóły są pod przyciskiem.
+ * Klucz niesie dzień przebiegu: odrzucony wiersz wraca przy następnym kłopocie, nie przy tym samym.
+ */
+export function ostrzezeniaAutomatuKsef({ wynik = null, wstrzymane = [] } = {}) {
+  return [...wierszWynikuAutomatu(wynik), ...wierszeWstrzymanych(wstrzymane)];
+}
+
+/** Zdanie o fakturze wstrzymanej — jedno dla ostrzeżenia i ekranu wyniku (ksef-wynik.ejs). */
+export function zdanieWstrzymanej(w) {
+  return `Faktura ${w?.numer ?? '(bez numeru)'} wstrzymana — automat jej nie wyśle (inFakt odrzucił ją ${w?.dzien ?? '?'}`
+    + `${w?.powod ? `: ${w.powod}` : ''}). Następny krok: popraw w inFakcie i wyślij ręcznie albo zwolnij.`;
+}
+
+// Poprawka po recenzji PRZ-102.12 (WAŻNE 1): faktura odrzucona przez inFakt przy wysyłce z automatu jest pomijana
+// w kolejnych przebiegach — wiersz trwa, dopóki człowiek jej nie wyśle albo nie zwolni (klucz = uuid).
+function wierszeWstrzymanych(wstrzymane) {
+  const wiersze = [];
+  for (const w of Array.isArray(wstrzymane) ? wstrzymane : []) {
+    try {
+      if (!w?.uuid) continue;
+      wiersze.push({
+        klucz: `faktura-ksef:automat-wstrzymana:${w.uuid}`,
+        typ: 'faktura-ksef',
+        tekst: zdanieWstrzymanej(w),
+        przycisk: { href: '/faktury/ksef/automat', etykieta: 'Wynik automatu' },
+        etykietaOdrzucenia: 'Ignoruj',
+      });
+    } catch { /* jw. */ }
+  }
+  return wiersze;
+}
+
+function wierszWynikuAutomatu(wynik) {
+  try {
+    if (!wynik?.dzien) return [];
+    const niepewne = Array.isArray(wynik.niepewne) ? wynik.niepewne : [];
+    const pominiete = Array.isArray(wynik.pominiete) ? wynik.pominiete : [];
+    const przerwany = wynik.stan === 'przerwany';
+    if (!wynik.blad && !przerwany && !niepewne.length && !pominiete.length) return [];
+    const czesci = [];
+    if (przerwany) {
+      czesci.push(wynik.wTrakcie?.numer
+        ? `przebieg przerwany (panel uruchomił się ponownie) w trakcie wysyłki ${wynik.wTrakcie.numer} — sprawdź w inFakcie, czy ma numer KSeF, zanim wyślesz ją ponownie`
+        : 'przebieg przerwany (panel uruchomił się ponownie w trakcie) — sprawdź w inFakcie, co poszło');
+    }
+    if (wynik.blad) czesci.push(`zatrzymał się: ${wynik.blad}`);
+    if (niepewne.length) czesci.push(`NIE WIADOMO, czy poszły: ${niepewne.map((n) => n?.numer ?? '?').join(', ')} — sprawdź w inFakcie, zanim wyślesz ponownie`);
+    if (pominiete.length) czesci.push(`pominięte: ${pominiete.map((p) => p?.numer ?? '?').join(', ')}`);
+    return [{
+      klucz: `faktura-ksef:automat:${wynik.dzien}`,
+      typ: 'faktura-ksef',
+      tekst: `Automat KSeF (${wynik.dzien}): ${czesci.join('; ')}.`,
+      title: 'Automat sam niczego nie ponawia. Pełny wynik przebiegu: Faktury → wynik automatu KSeF.',
+      przycisk: { href: '/faktury/ksef/automat', etykieta: 'Wynik automatu' },
+      etykietaOdrzucenia: 'Ignoruj',
+    }];
+  } catch { return []; }
 }
 
 /**
@@ -340,13 +404,40 @@ export function ostrzezeniaIntegracji({ zdrowie } = {}) {
 }
 
 /**
+ * PRZ-102.04: wiersz widzi tylko konto, które ma prawo do ekranu za jego przyciskiem.
+ * Zgłoszenie: rola Produkcja dostawała „Nowa wiadomość z Allegro…” z przyciskiem
+ * „Wiadomości”, a klik kończył się 403. Ta sama reguła prawa, co strażnik i menu
+ * (`ekranDlaAdresu` + `maDostepDoEkranu`), więc tabelka nie obiecuje drzwi, których
+ * strażnik nie otworzy.
+ *
+ * - `konto` null/undefined (pierwszy start, zanim powstanie admin) — pełny widok, jak
+ *   `maPrawoNawigacji` w menu-stron.js.
+ * - Wiersz bez przycisku albo z adresem, którego `ekranDlaAdresu` nie zna (null), ZOSTAJE:
+ *   na braku danych nie chowamy — przeoczone ostrzeżenie jest gorsze niż martwy przycisk,
+ *   a nieznany adres wyłapie test kompletności tras, nie ta tabelka.
+ *
+ * Filtruje tylko widok: lustra, odrzucenia, czuwacze i /health zostają bez zmian.
+ */
+export function ostrzezeniaDlaKonta({ wiersze = [], konto = null } = {}) {
+  if (!konto) return wiersze;
+  return wiersze.filter((w) => {
+    const href = w?.przycisk?.href;
+    if (!href) return true;
+    const ekran = ekranDlaAdresu(href);
+    if (ekran === null) return true;
+    return maDostepDoEkranu(konto, ekran);
+  });
+}
+
+/**
  * Filtr odrzuconych + kolejność typów. Odrzucenie trwałych typów chowa wiersz na
  * zawsze (nowe zdarzenie i tak zmienia klucz); wyciszenie `integracja` wygasa po
  * dobie. Nieparsowalna data odrzucenia POKAZUJE wiersz — na braku danych nie chowamy.
  */
-export function zlozOstrzezenia({ wiersze = [], odrzucone = new Map(), teraz = new Date() } = {}) {
+export function zlozOstrzezenia({ wiersze = [], odrzucone = new Map(), teraz = new Date(), ukryteTypy = [] } = {}) {
   const t = teraz instanceof Date ? teraz.getTime() : Number(teraz);
   const widoczne = wiersze.filter((w) => {
+    if (ukryteTypy.includes(w.typ)) return false;
     const odrzuconeAt = odrzucone.get(w.klucz);
     if (!odrzuconeAt) return true;
     if (w.typ !== 'integracja') return false;

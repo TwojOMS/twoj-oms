@@ -1,4 +1,6 @@
 import { KOLOR, FONT, MONO, esc, kopertaMaila, naglowekSekcji } from './mail-html.js';
+import { naglowkiModelu } from '../../domena/wiadomosc-platnicza.js';
+import { tekstyModelu } from '../../domena/zdania-platnosci.js';
 
 // WIADOMOŚCI Z DOKUMENTEM ALBO O PIENIĄDZACH — postać HTML (22.08.2026): proforma, faktura,
 // przypomnienie o płatności.
@@ -27,9 +29,10 @@ const akapit = (tekst, extra = '') => `<p style="margin:0 0 14px;font-family:${F
 
 // Kwota do zapłaty jest NAJWIĘKSZĄ liczbą w tym mailu i to jest cały powód osobnego stylu:
 // klient otwiera taką wiadomość po to, żeby zobaczyć, ile ma przelać.
-const kwota = (tekst) => `<p style="margin:0 0 4px;font-family:${FONT};font-size:22px;font-weight:bold;`
+// PRZ-102.19: dopisek („brutto") z Ustawień → Szablony wiadomości, escapowany jak każda wartość.
+const kwota = (tekst, dopisek) => `<p style="margin:0 0 4px;font-family:${FONT};font-size:22px;font-weight:bold;`
   + `line-height:1.4;color:${KOLOR.tekst};">${esc(tekst)} `
-  + `<span style="font-size:14px;font-weight:normal;color:${KOLOR.muted};">brutto</span></p>`;
+  + `<span style="font-size:14px;font-weight:normal;color:${KOLOR.muted};">${esc(dopisek)}</span></p>`;
 
 const komorkaK = `padding:7px 4px;border-bottom:1px solid ${KOLOR.linia};font-family:${FONT};`
   + `font-size:12px;letter-spacing:.3px;color:${KOLOR.muted};white-space:nowrap;`;
@@ -54,52 +57,32 @@ const wiersz = (klucz, wartosc, extra = '') => `<tr><td style="${komorkaK}">${es
  * ⚠️ TABELA, A NIE AKAPIT: te cztery wartości klient PRZEPISUJE do banku, więc muszą stać
  * w kolumnach i nie mogą się zlewać. Tytuł przelewu wytłuszczony — to jedyne pole, którego
  * pominięcie sprawia, że przelew przychodzi i nikt nie wie, czego dotyczy.
+ *
+ * PRZ-102.19: etykiety wierszy z Ustawień → Szablony wiadomości (`e`, komplet z `tekstyModelu`); wartości
+ * i to, który wiersz pada, zostają w kodzie.
  */
-function tabelaPrzelewu(p) {
+function tabelaPrzelewu(p, e) {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" `
     + `style="border-collapse:collapse;margin:2px 0 4px;">`
-    + wiersz('Odbiorca', p.odbiorca)
-    + wiersz('Rachunek', p.rachunek, MONO)
-    + wiersz('Tytuł przelewu', p.tytul, 'font-weight:bold;')
-    + (p.termin ? wiersz('Termin', p.termin) : '')
+    + (p.odbiorca ? wiersz(e.etykieta_odbiorca, p.odbiorca) : '')
+    + wiersz(e.etykieta_rachunek, p.rachunek, MONO)
+    + wiersz(e.etykieta_tytul, p.tytul, 'font-weight:bold;')
+    + (p.termin ? wiersz(e.etykieta_termin, p.termin) : '')
     + '</table>';
 }
 
 /**
- * Blok `{dane_platnosci}` szablonu (PRZ-101.03) — te same kawałki HTML, które `renderWiadomoscHtml` niżej stawia
- * między zdaniem wiodącym a zamknięciem. Funkcja niżej zostaje nietknięta; zgodność pilnuje
- * tests/moduly/wiadomosci/szablony-rownosc.test.js.
+ * Środek maila między zdaniem wiodącym a zamknięciem — JEDNO miejsce dla bloku `{dane_platnosci}` szablonu
+ * i dla maila bez szablonu (do PRZ-102.19 dwie kopie znak w znak; z etykietami z panelu rozjechałyby się).
  */
-export function blokiHtmlWiadomosci(m) {
-  return {
-    dane_platnosci: [
-      ...(m.platnosc ? [
-        naglowekSekcji('Do zapłaty'),
-        kwota(m.platnosc.doZaplaty),
-        naglowekSekcji('Przelew'),
-        tabelaPrzelewu(m.platnosc),
-      ] : []),
-      ...(m.zdanieDokumentu ? [
-        `<p style="margin:14px 0 4px;font-family:${FONT};font-size:14px;line-height:1.6;`
-          + `color:${KOLOR.tekst};">${esc(m.zdanieDokumentu)}</p>`,
-      ] : []),
-      ...(m.zdanieWywozu ? [
-        `<p style="margin:14px 0 4px;font-family:${FONT};font-size:14px;line-height:1.6;`
-          + `color:${KOLOR.tekst};">${esc(m.zdanieWywozu)}</p>`,
-      ] : []),
-    ].join(''),
-  };
-}
-
-export function renderWiadomoscHtml(m, { footer = '', naglowek: naglowekMarki = '' } = {}) {
-  const body = [
-    akapit('Dzień dobry,'),
-    akapit(m.wiodace),
+function srodekHtml(m) {
+  const e = tekstyModelu(m);
+  return [
     ...(m.platnosc ? [
-      naglowekSekcji('Do zapłaty'),
-      kwota(m.platnosc.doZaplaty),
-      naglowekSekcji('Przelew'),
-      tabelaPrzelewu(m.platnosc),
+      naglowekSekcji(naglowkiModelu(m).doZaplaty),
+      kwota(m.platnosc.doZaplaty, e.dopisek_brutto),
+      naglowekSekcji(naglowkiModelu(m).przelew),
+      tabelaPrzelewu(m.platnosc, e),
     ] : []),
     ...(m.zdanieDokumentu ? [
       `<p style="margin:14px 0 4px;font-family:${FONT};font-size:14px;line-height:1.6;`
@@ -109,11 +92,28 @@ export function renderWiadomoscHtml(m, { footer = '', naglowek: naglowekMarki = 
       `<p style="margin:14px 0 4px;font-family:${FONT};font-size:14px;line-height:1.6;`
         + `color:${KOLOR.tekst};">${esc(m.zdanieWywozu)}</p>`,
     ] : []),
+  ];
+}
+
+/**
+ * Blok `{dane_platnosci}` szablonu (PRZ-101.03) — te same kawałki HTML, które `renderWiadomoscHtml` niżej stawia
+ * między zdaniem wiodącym a zamknięciem; zgodność pilnuje tests/moduly/wiadomosci/szablony-rownosc.test.js.
+ */
+export function blokiHtmlWiadomosci(m) {
+  return { dane_platnosci: srodekHtml(m).join('') };
+}
+
+export function renderWiadomoscHtml(m, { footer = '', naglowek: naglowekMarki = '' } = {}) {
+  const body = [
+    akapit('Dzień dobry,'),
+    akapit(m.wiodace),
+    ...srodekHtml(m),
     `<p style="margin:22px 0 14px;font-family:${FONT};font-size:14px;line-height:1.6;`
       + `color:${KOLOR.muted};border-top:1px solid ${KOLOR.linia};padding-top:14px;">${esc(m.zamkniecie)}</p>`,
-    akapit('Pozdrawiamy,', 'margin-bottom:2px;'),
+    akapit(tekstyModelu(m).pozdrowienie, 'margin-bottom:2px;'),
     akapit(m.sprzedawca, 'font-weight:bold;'),
   ].join('');
 
   return kopertaMaila({ body, footer, naglowek: naglowekMarki });
 }
+

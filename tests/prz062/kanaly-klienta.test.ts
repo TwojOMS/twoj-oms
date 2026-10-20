@@ -10,6 +10,8 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { zbudujOms } from '../../src/oms/bootstrap.ts';
+import { openOmsDb } from '../../src/oms/db/db.ts';
+import { modulyDla } from '../../src/moduly/lista.ts';
 import { zalozKonto } from '../../src/core/bezpieczenstwo/konta.js';
 import { zapiszZamowienie } from '../../src/oms/db/zamowienia.js';
 import { zapiszProduktSklepowy, utworzKartyZNiepowiazanych } from '../../src/oms/db/magazyn.js';
@@ -76,10 +78,11 @@ const surowyWoo = {
 
 type Odp = { status: number; body: string; typ: string; surowe: Buffer };
 async function zalogowany(srodowisko: Record<string, string>, przygotuj: (db: any) => void) {
-  const a = await zbudujOms({ env: srodowisko });
-  const db = a.db as any;
-  zalozKonto(db, { login: 'operator062', imie: 'Operator', haslo: 'syntetyczne-haslo-062', rola: 'admin', admin: true });
+  // PRZ-102.14: fixture granic powstaje przed startem; panel pomija istniejące granice.
+  const db = openOmsDb(srodowisko.OMS_DB_PATH, { moduly: modulyDla(srodowisko) }) as any;
   przygotuj(db);
+  const a = await zbudujOms({ env: srodowisko, db });
+  zalozKonto(db, { login: 'operator062', imie: 'Operator', haslo: 'syntetyczne-haslo-062', rola: 'admin', admin: true });
   const login = await a.app.inject({ method: 'POST', url: '/login', headers: { origin: 'http://localhost', 'content-type': 'application/x-www-form-urlencoded' },
     payload: 'uzytkownik=operator062&haslo=syntetyczne-haslo-062&powrot=%2F' });
   expect(login.statusCode).toBe(302);

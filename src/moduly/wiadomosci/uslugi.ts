@@ -7,6 +7,7 @@ import { createWiadomosci } from './services/wiadomosci.js';
 import { createPollerWiadomosci } from './services/poller-wiadomosci.js';
 import { createCzuwaczFormulki } from './services/czuwacz-formulki.js';
 import { createOdswiezanieSpraw } from './services/dyskusje.js';
+import { podpisZPliku, podpisZPanelu } from './podpis-maili.js';
 
 type Fabryka = (opcje: any) => any;
 export type FabrykiWiadomosci = Partial<Record<
@@ -41,11 +42,14 @@ export function utworzUslugiWiadomosci({ db, config, klienciKanalow, fabryki = {
   const pocztaWychodzaca = { zEnv: Boolean(config.poczta) && !config.atrapaPoczty, atrapa: Boolean(config.atrapaPoczty),
     wiadomosciKlientow: Boolean(mailer), ustawien: pocztaUstawien };
   const czasMaila = () => teraz().toISOString();
+  // PRZ-102.10: marka i stopka z Ustawień → Poczta, czytane przy każdym mailu; pole ustawione w pliku wygrywa.
+  const zPliku = podpisZPliku(config.oprawaPoczty);
+  const podpisPanelu = () => podpisZPanelu(db, zPliku);
   const potwierdzenie = mailer ? (fabryki.createPotwierdzenie ?? createPotwierdzenie)({
-    db, mailer, sprzedawca: config.sprzedawca ?? {}, oprawaPoczty: config.oprawaPoczty, teraz: czasMaila,
+    db, mailer, sprzedawca: config.sprzedawca ?? {}, oprawaPoczty: config.oprawaPoczty, podpisPanelu, teraz: czasMaila,
   }) : null;
   const wiadomosci = mailer ? (fabryki.createWiadomosci ?? createWiadomosci)({
-    db, mailer, potwierdzenie, proforma, infakt, config, teraz: czasMaila,
+    db, mailer, potwierdzenie, proforma, infakt, config, podpisPanelu, teraz: czasMaila,
   }) : null;
   return { config, klienciWiadomosci: klienciKanalow, mailer, pocztaWychodzaca, potwierdzenie, wiadomosci,
     pollerWiadomosci, czuwaczFormulki, odswiezanieSpraw };

@@ -4,6 +4,8 @@ import { nazwaCiasteczkaOms } from '../../core/bezpieczenstwo/sesja.js';
 import { registerKontaRoutes } from './trasy/konta.js';
 import { registerUstawieniaWysylkiRoutes } from './trasy/wysylka.js';
 import { registerUstawieniaMagazynuRoutes } from './trasy/magazyn.js';
+import { registerUstawieniaModulowRoutes } from './trasy/moduly.js';
+import { registerPowiadomieniaRoutes } from './trasy/powiadomienia.js';
 import { registerUstawieniaStatusowRoutes } from './trasy/statusy.js';
 import {registerUstawieniaRoutes} from '../marketing/trasy/integracje.js';
 import { createWidokIntegracji } from './integracje.js';
@@ -18,7 +20,7 @@ import { synchronizujRole, opisSynchronizacjiRol } from './role.js';
 import { registerRoleRoutes } from './trasy/role.js';
 import { zarejestrujMenuKontaRol } from './menu-konta-rol.js';
 import { registerMojeKontoRoutes } from './trasy/moje-konto.js';
-import { mailerOpcjonalny, pocztaOpcjonalna } from './poczta-kont.js';
+import { mailerOpcjonalny, pocztaOpcjonalna, podpisOpcjonalny } from './poczta-kont.js';
 import { registerHasloLinkRoutes } from './trasy/haslo-link.js';
 import { registerUstawieniaPocztyRoutes } from './trasy/poczta.js';
 import { adresPaneluZZapisu } from './adres-panelu.ts';
@@ -60,7 +62,7 @@ export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
     return {uslugi:{widokIntegracji,lacznosc,aktualizacje},trasy:app=>{
     zarejestrujMenuKontaRol(app,{db:ctx.db});
     registerLogowanieRoutes(app,{db:ctx.db,config:ctx.usluga('web','config')});
-    registerUstawieniaPocztyRoutes(app,{db:ctx.db,adresPaneluZEnv:ctx.konfiguracja.adresPanelu,poczta:pocztaOpcjonalna(ctx.usluga),mailer,log:ctx.log});
+    registerUstawieniaPocztyRoutes(app,{db:ctx.db,adresPaneluZEnv:ctx.konfiguracja.adresPanelu,poczta:pocztaOpcjonalna(ctx.usluga),mailer,podpis:podpisOpcjonalny(ctx.usluga),log:ctx.log});
     registerKontaRoutes(app,{db:ctx.db,teraz:ctx.teraz,adresPanelu,mailer,
       loginSerwisowy:ctx.usluga<{auth?:{user?:string}}>('web','config')?.auth?.user??null,nazwaCiasteczka});
     registerRoleRoutes(app,{db:ctx.db,teraz:ctx.teraz});
@@ -69,6 +71,8 @@ export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
     registerHasloLinkRoutes(app,{db:ctx.db,teraz:ctx.teraz});
     registerUstawieniaWysylkiRoutes(app,{db:ctx.db});
     registerUstawieniaMagazynuRoutes(app,{db:ctx.db});
+    registerUstawieniaModulowRoutes(app,{db:ctx.db});
+    registerPowiadomieniaRoutes(app,{db:ctx.db});
     registerUstawieniaStatusowRoutes(app,{db:ctx.db});
     registerUstawieniaFormulkiRoutes(app,{db:ctx.db});
     registerDiagnostykaRoutes(app,{db:ctx.db,config:ctx.usluga('kanaly','config'),lacznosc:ctx.usluga('ustawienia','lacznosc')});

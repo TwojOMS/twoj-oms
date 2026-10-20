@@ -8,8 +8,13 @@
 // nigdy nie jest przepisywany — między jednym a drugim właściciel mógł wysłać dokument
 // ręcznie w inFakcie, a wtedy drugie zgłoszenie byłoby duplikatem u organu.
 
+import { stanKsef } from './lista-faktur.js';
+
 /** Typy dokumentów, które wolno wysłać. Korekty świadomie POZA listą (decyzja z 06.08.2026). */
 const WOLNO_WYSLAC = new Set(['vat']);
+
+/** Zdanie o korekcie — jedno dla podglądu (`coWolnoWyslac`) i wiersza korekty na karcie zamówienia (PRZ-102.23). */
+export const POWOD_KOREKTA = 'Korekty wysyła się w inFakcie — panel ich nie wysyła.';
 
 /**
  * Zdanie o dokumencie, którego wysyłkę panel JUŻ ZLECIŁ — JEDNO, bo pada w DWÓCH miejscach:
@@ -47,6 +52,8 @@ export function powodJuzZlecona(zleconaAt) {
  * dobrowolne". Dokument konsumencki NIE JEST więc usterką ani brakiem danych — to stan
  * normalny, przy którym KSeF jest wyborem właściciela, a panel takiego wyboru nie podejmuje
  * za niego. Decyzja właściciela 28.08.2026: blokada TWARDA, dokładnie jak przy korektach.
+ * Od 20.10.2026 (PRZ-102.26) to ustawienie właściciela: domyślnie nadal blokada, po świadomym
+ * włączeniu wolno wysłać B2C z danymi dokumentu i nabywcy. Pusta odpowiedź API nadal odmawia.
  *
  * ⚠️⚠️ „BRAK NIP-u" ZNACZY PUSTE POLE, A NIE „NIE WYGLĄDA JAK POLSKI NIP". Klient zagraniczny
  * (WDT) ma w `client_tax_code` numer VAT UE z prefiksem literowym — `'SK1098765431'` — i to
@@ -70,6 +77,21 @@ export function czyKonsumencka(dok) {
   return String(dok?.client_tax_code ?? '').trim() === '';
 }
 
+// Brak NIP-u z nazwą lub imieniem/nazwiskiem nabywcy to B2C. Sam brak pól to zdegradowana
+// odpowiedź API, nie zgoda na wysyłkę: wymagamy także numeru i kwoty (zero jest poprawną kwotą).
+// Dotychczasowej ścieżki z NIP-em nie zmieniamy; przełącznik rozszerza wyłącznie B2C.
+function maDaneKonsumenckiej(d) {
+  return Boolean(String(d?.number ?? '').trim())
+    && d?.gross_price != null && String(d.gross_price).trim() !== '' && Number.isFinite(Number(d.gross_price))
+    && ['client_company_name', 'client_first_name', 'client_last_name'].some((p) => String(d?.[p] ?? '').trim());
+}
+
+function powodBlokadyKonsumenckiej(d, konsumenckie) {
+  if (!czyKonsumencka(d)) return null;
+  if (konsumenckie !== true) return POWOD_KONSUMENCKA;
+  return maDaneKonsumenckiej(d) ? null : 'Brak danych faktury lub nabywcy — panel nie wysyła pustej odpowiedzi inFaktu do KSeF.';
+}
+
 /**
  * Zdanie o dokumencie konsumenckim — JEDNO, tak jak `powodJuzZlecona` wyżej, bo pada i tutaj,
  * i (jako podpowiedź znacznika) w web/views/faktury.ejs.
@@ -82,7 +104,77 @@ export const POWOD_KONSUMENCKA = 'Faktura konsumencka — nabywca bez NIP-u. KSe
   + 'takim dokumencie DOBROWOLNY (stanowisko Ministerstwa Finansów), więc panel go nie wysyła. '
   + 'Jeśli ta jedna ma jednak pojechać do KSeF, wyślij ją w inFakcie.';
 
-export function coWolnoWyslac(zaznaczone, dokumenty) {
+/**
+ * PRZ-102.12: czy dokument z listy (`services/faktury-widok.js`) dostaje pole wyboru i jest brany przez
+ * „zaznacz wszystkie” na ekranie Faktur. JEDNA reguła dla dwóch miejsc: widoku `faktury.ejs` i automatu
+ * KSeF (services/ksef-automat.js), który ma wysyłać dokładnie to, co przycisk po „zaznacz wszystkie”.
+ * To nie jest bariera — barierą zostaje `coWolnoWyslac` niżej, liczona od nowa przy każdej wysyłce.
+ */
+export function doZaznaczeniaWszystkich(d, konsumenckie = false) {
+  return d?.stanKsef === 'brak' && d?.rodzaj === 'vat' && !powodBlokadyKonsumenckiej(d, konsumenckie);
+}
+
+/**
+ * PRZ-102.23: przycisk „Wyślij do KSeF” przy fakturze na karcie zamówienia. Karta zna dokument z NASZEJ bazy
+ * (wiersz `faktury`: uuid inFaktu, numer KSeF od czuwacza, rezerwacja `wysylki_ksef`), nie z inFaktu — karta
+ * nie pyta inFaktu przy otwarciu. Przycisk stoi przy fakturze VAT ze `stanKsef === 'brak'` (jak pole wyboru
+ * na liście Faktur).
+ *
+ * ⚠️ „KONSUMENCKA” ROZSTRZYGA DOKUMENT, NIE KARTA (poprawka po recenzji PRZ-102.23). NIP na karcie to BIEŻĄCE
+ * dane zamówienia — edytowalne po wystawieniu, a NIP da się też dopisać w inFakcie; ani `faktury`, ani lustro
+ * `ksef_luki` nie trzymają NIP-u dokumentu. Zdanie „Faktura konsumencka” na karcie mogłoby więc zamknąć drogę
+ * fakturze, którą lista Faktur wysyła. Przy braku NIP-u na karcie przycisk zostaje z dopiskiem
+ * (`UWAGA_BEZ_NIP_NA_KARCIE` przy domyślnej blokadzie), a podgląd rozstrzyga na świeżym dokumencie
+ * i bieżącym ustawieniu B2C (`coWolnoWyslac`).
+ *
+ * ⚠️ TO NIE JEST BARIERA. Przycisk prowadzi do podglądu, który liczy `coWolnoWyslac` od nowa z listy pobranej
+ * z inFaktu (i jeszcze raz przy zatwierdzeniu) — dokument zmieniony w inFakcie odbije się tam z powodem.
+ *
+ * Oddaje `null` (faktura bez dokumentu w inFakcie — karta mówi o tym swoimi paskami), `{ wolno: false, powod }`
+ * albo `{ wolno: true, uuid, miesiac, pole, uwaga? }` — dane formularza podglądu. Każdy wynik niesie też `stan`
+ * (`stanKsef`: 'jest' / 'wyslana_czeka' / 'brak'), żeby kolumna stanu na karcie mówiła to samo, co lista Faktur.
+ * Bez przycisku tylko na pewnych faktach panelu: numer KSeF (bez zdania: stan wiersza mówi „KSeF <numer>”)
+ * i rezerwacja (`powodJuzZlecona`).
+ */
+export function wysylkaZKarty({ uuid, ksefNumer = null, nip = null, zleconaAt = null, dzienWystawienia = null, konsumenckie = false } = {}) {
+  if (!uuid) return null;
+  const stan = stanKsef({ ksef_number: ksefNumer || null }, Boolean(zleconaAt));
+  if (stan === 'jest') return { wolno: false, powod: null, stan };
+  if (stan !== 'brak') return { wolno: false, powod: powodJuzZlecona(zleconaAt), stan };
+  const uwaga = czyKonsumencka({ client_tax_code: nip })
+    ? { uwaga: konsumenckie ? 'Na karcie nie ma NIP-u nabywcy — panel sprawdzi dane dokumentu w inFakcie na ekranie podglądu.' : UWAGA_BEZ_NIP_NA_KARCIE } : {};
+  // Miesiąc listy Faktur, na której ten dokument leży (filtr po dacie wystawienia). Bez daty nie zgadujemy.
+  const miesiac = /^\d{4}-\d{2}-\d{2}/.test(String(dzienWystawienia ?? '')) ? String(dzienWystawienia).slice(0, 7) : null;
+  if (!miesiac) {
+    return { wolno: false, powod: 'Panel nie zna daty wystawienia tej faktury — wyślij ją z zakładki Faktury.', stan };
+  }
+  return { wolno: true, uuid, miesiac, pole: 'invoice_date', stan, ...uwaga };
+}
+
+/** Dopisek przy przycisku, gdy na karcie nie ma NIP-u nabywcy — o konsumenckiej rozstrzyga dokument w inFakcie. */
+export const UWAGA_BEZ_NIP_NA_KARCIE = 'Na karcie nie ma NIP-u nabywcy — panel sprawdzi dokument w inFakcie na ekranie '
+  + 'podglądu; faktury konsumenckiej do KSeF nie wyśle.';
+
+// Jedyny adres powrotu spoza listy Faktur: karta zamówienia (sam numer, bez parametrów). Wszystko inne — w tym
+// `//host`, pełny adres, `..`, tablica z powtórzonego pola — wraca na listę Faktur. Bez otwartego przekierowania.
+const POWROT_NA_KARTE = /^\/zamowienia\/[1-9]\d{0,9}$/;
+
+/**
+ * PRZ-102.23: dokąd prowadzi „Wróć”/„Anuluj” na ekranach podglądu i wyniku wysyłki do KSeF. `powrot` jedzie
+ * dalej w formularzu zatwierdzenia tylko wtedy, gdy przeszedł białą listę (inaczej `null`).
+ */
+export function powrotWysylkiKsef(powrot, { miesiac, pole } = {}) {
+  if (typeof powrot === 'string' && POWROT_NA_KARTE.test(powrot)) {
+    return { adres: `${powrot}#faktura`, etykieta: 'Wróć do zamówienia', powrot };
+  }
+  return {
+    adres: `/faktury?miesiac=${encodeURIComponent(miesiac ?? '')}&pole=${encodeURIComponent(pole ?? '')}`,
+    etykieta: 'Wróć do listy faktur',
+    powrot: null,
+  };
+}
+
+export function coWolnoWyslac(zaznaczone, dokumenty, konsumenckie = false) {
   const doWyslania = [];
   const pominiete = [];
   const widziane = new Set();
@@ -122,7 +214,7 @@ export function coWolnoWyslac(zaznaczone, dokumenty) {
         numer: d.number,
         powod:
           d.rodzaj === 'korekta'
-            ? 'Korekty wysyła się w inFakcie — panel ich nie wysyła.'
+            ? POWOD_KOREKTA
             : 'Nieznany rodzaj dokumentu — panel wysyła wyłącznie faktury VAT.',
       });
       continue;
@@ -135,12 +227,13 @@ export function coWolnoWyslac(zaznaczone, dokumenty) {
     // „jest już w KSeF". Ta sama zasada kolejności, co przy białej liście rodzaju wyżej:
     // wygrywa powód najbardziej TRWAŁY i najbardziej informatywny. „Jest już w KSeF" jest
     // trwały ORAZ niesie numer, po którym człowiek odnajdzie dokument u organu, więc stoi
-    // pierwszy. „Konsumencka" jest trwała — faktura bez NIP-u nie stanie się wysyłalna ani
-    // po dobie, ani po odpowiedzi inFaktu. „Panel już zlecił" jest PRZEJŚCIOWY (sam znika),
+    // pierwszy. Przy wyłączonym B2C „konsumencka" nie znika po dobie ani po odpowiedzi
+    // inFaktu — wymaga zmiany ustawienia właściciela. „Panel już zlecił" jest PRZEJŚCIOWY (sam znika),
     // więc zostaje ostatni: pokazany przy dokumencie konsumenckim kłamałby, że wystarczy
     // poczekać. Uzasadnienie i pomiar — w docblocku `czyKonsumencka` wyżej.
-    if (czyKonsumencka(d)) {
-      pominiete.push({ numer: d.number, powod: POWOD_KONSUMENCKA });
+    const powodKonsumenckiej = powodBlokadyKonsumenckiej(d, konsumenckie);
+    if (powodKonsumenckiej) {
+      pominiete.push({ numer: d.number, powod: powodKonsumenckiej });
       continue;
     }
     // ⚠️⚠️ DOKUMENT, KTÓREGO WYSYŁKĘ PANEL JUŻ ZLECIŁ. Sam `ksef_number` tego NIE ŁAPIE:

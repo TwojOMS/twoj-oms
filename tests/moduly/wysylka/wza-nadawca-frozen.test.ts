@@ -5,8 +5,7 @@ import { tmpdir } from 'node:os';
 import { zbudujOms } from '../../../src/oms/bootstrap.ts';
 import { pobranieDoWysylki } from '../../../src/domena/allegro-wysylka.js';
 
-// Powrót do fallbacku env.DPD_NADAWCA_NAZWA bez czynnego kuriera ma
-// zepsuć odmowę konsumenta konfiguracji, nie tylko odcisk samego źródła.
+// PRZ-102.18: właściciel konta pochodzi z adresu firmy, niezależnie od czynnego kuriera z pliku.
 // Żadna obecna METODY_WZA nie ma wymagaKonta:true. Ten jawny wariant
 // chroni zachowany kontrakt reguły dla usługi wymagającej rachunku;
 // nie udaje dziś osiągalnego zakupu przez adapter WzA.
@@ -27,8 +26,9 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); expect(polaczenia).toEqual([]); });
 
 it.each([
-  { wariant: 'sama nazwa bez kuriera', env: {}, wolno: false },
-  { wariant: 'pełny adres bez kuriera', env: adres, wolno: false },
+  { wariant: 'brak nazwy firmy', env: { DPD_NADAWCA_NAZWA: '' }, wolno: false },
+  { wariant: 'sama nazwa bez kuriera', env: {}, wolno: true },
+  { wariant: 'pełny adres bez kuriera', env: adres, wolno: true },
   { wariant: 'czynny DPD ze zwalidowanym nadawcą', env: {
     ...adres, DPD_URL: 'https://fixture.invalid/dpd', DPD_LOGIN: 'fixture',
     DPD_PASSWORD: 'fixture', DPD_FID: '1', DPD_INFO_URL: 'https://fixture.invalid/info', DPD_INFO_CHANNEL: '1',

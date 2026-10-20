@@ -54,7 +54,7 @@ const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.bo
 
 app.post('/zamowienia/faktury-hurtem/podglad', async (req, reply) => {
     const wybrane = wybraneZListy(wczytajListe([].concat(req.body?.id ?? [])), req.body?.id);
-    const { doWystawienia, pominiete } = podzielDoFaktury(wybrane);
+    const { doWystawienia, pominiete } = podzielDoFaktury(wybrane, Date.now(), { okresyWlaczone: reply.locals.modulWlaczony('okresy') });
     const zaDuzo = powodZaDuzejPartii(doWystawienia.length);
     return reply.view('faktury-hurtem-podglad.ejs', {
       doWystawienia: doWystawienia.map((z) => ({
@@ -91,7 +91,7 @@ app.post('/zamowienia/faktury-hurtem', async (req, reply) => {
     // Podzial liczony PONOWNIE, a nie przepisany z ekranu podgladu: miedzy podgladem
     // a zatwierdzeniem klient mogl anulowac zamowienie, a operator z drugiej zakladki
     // wystawic fakture. Formularz przyniosl identyfikatory, nie decyzje.
-    const { doWystawienia, pominiete } = podzielDoFaktury(wybrane);
+    const { doWystawienia, pominiete } = podzielDoFaktury(wybrane, Date.now(), { okresyWlaczone: reply.locals.modulWlaczony('okresy') });
     const zaDuzo = powodZaDuzejPartii(doWystawienia.length);
     // ⚠️ ODMOWA JEST TWARDA, a nie samym ukryciem przycisku na ekranie podgladu: miedzy
     // podgladem a zatwierdzeniem operator mogl otworzyc druga zakladke.

@@ -118,6 +118,19 @@ export function znormalizujKlienta(body = {}) {
     );
   }
 
+  // ⚠️ PUSTA DOSTAWA TO „NIE USTALONO”, NIE DPD (PRZ-102.24) — i pusty koszt razem z nią.
+  // Koszt z karty klienta trafia do nowych zamówień: cichy „dpd” z 0,00 to darmowa wysyłka,
+  // której nikt nie ustalił.
+  // ⚠️ PUSTE POLE KOSZTU TO TEŻ „NIE USTALONO”, także przy WYBRANEJ dostawie (decyzja
+  // kierownika pętli, PRZ-102.24). Do tej poprawki puste pole znaczyło 0,00, więc poprawka
+  // samego adresu u klienta z pustym kosztem robiła z niego „wysyłka gratis”. Darmowa wysyłka
+  // powstaje tylko z wpisanego wprost „0”; pusty koszt jest bezpieczny, bo „Wstaw dane”
+  // podstawia kwotę domyślną z Ustawień.
+  const metodaWysylki = wybor(body.metoda_wysylki, DOSTAWY, 'sposobu dostawy', '');
+  const kosztDostawy = metodaWysylki && tekst(body.koszt_dostawy_brutto) !== null
+    ? parsujKosztDostawy(body.koszt_dostawy_brutto)
+    : '';
+
   return {
     klucz: kluczZNazwy(body.klucz, nazwa),
     nazwa,
@@ -130,13 +143,68 @@ export function znormalizujKlienta(body = {}) {
     b2b: body.b2b !== undefined && body.b2b !== '' && body.b2b !== '0' ? 1 : 0,
     rabat_procent: parsujRabat(body.rabat_procent),
     chce_fakture: body.chce_fakture !== undefined && body.chce_fakture !== '' && body.chce_fakture !== '0' ? 1 : 0,
-    metoda_wysylki: wybor(body.metoda_wysylki, DOSTAWY, 'sposobu dostawy', 'dpd'),
-    koszt_dostawy_brutto: parsujKosztDostawy(body.koszt_dostawy_brutto),
+    metoda_wysylki: metodaWysylki,
+    koszt_dostawy_brutto: kosztDostawy,
     platnosc: wybor(body.platnosc, PLATNOSCI, 'rodzaju płatności', 'przelew'),
     termin_platnosci: parsujTerminZamowienia(body.termin_platnosci),
     komentarz: tekst(body.komentarz),
     aktywny: body.aktywny === undefined || (body.aktywny !== '' && body.aktywny !== '0') ? 1 : 0,
     ...warunkiUmowyZbiorczej(body),
+  };
+}
+
+// Pola adresu, które przechodzą RAZEM (opis przy `daneNabywcyNaKarcie`).
+const ADRES_FAKTURY = Object.freeze(['ulica', 'kod', 'miasto', 'kraj']);
+const ADRES_WYSYLKI = Object.freeze(['firma', 'ulica', 'kod', 'miasto', 'kraj']);
+const WYZWALA_ADRES = ['ulica', 'kod', 'miasto', 'kraj'];
+
+function scalBlok(stary, nowy, adres) {
+  const wynik = { ...(stary ?? {}) };
+  for (const [pole, wartosc] of Object.entries(nowy ?? {})) {
+    if (!adres.includes(pole) && tekst(wartosc) !== null) wynik[pole] = wartosc;
+  }
+  if (WYZWALA_ADRES.some((pole) => tekst(nowy?.[pole]) !== null)) {
+    for (const pole of adres) {
+      if (Object.hasOwn(nowy ?? {}, pole) || Object.hasOwn(wynik, pole)) wynik[pole] = tekst(nowy?.[pole]);
+    }
+  }
+  return wynik;
+}
+
+/**
+ * „Uaktualnij dane stałego klienta” (karta zamówienia): istniejący wpis z bazy + dane nabywcy
+ * z zamówienia → wiersz do `zapiszKlienta`.
+ *
+ * ⚠️⚠️ Z ZAMÓWIENIA PRZECHODZĄ TYLKO DANE NABYWCY — NIP, blok faktury, blok wysyłki (i nazwa
+ * na pustą kartę). Reszta wiersza to `istniejacy` (PRZ-102.07). `zapiszKlienta` pisze KOMPLET
+ * kolumn, a trasa budowała wiersz przez `znormalizujKlienta` bez pól umowy zbiorczej — więc
+ * klient z umową po jednym kliknięciu miał `rozliczenie_zbiorcze = 0` i kwoty NULL, a jego
+ * zamówienia szły na pojedyncze faktury zamiast do okresu. Kolumny umowy doszły 24.08 i nikt
+ * nie dopisał ich do tej trasy; lista „czego nie ruszać” zawiodłaby tak samo przy następnej
+ * kolumnie. Umowa i jej kwoty, B2B, rabat, termin, płatność, dostawa i jej koszt, „chce
+ * fakturę”, notatka, aktywność i klucz zostają takie, jak w bazie.
+ *
+ * ⚠️⚠️ PUSTE Z ZAMÓWIENIA ZNACZY „NIE PODANO”, NIE „SKASUJ”. Zamówienie telefoniczne bez adresu
+ * na fakturze kasowało adres, który karta klienta już miała. Przechodzą więc tylko wartości
+ * niepuste (null, '' i same spacje zostawiają kartę); świadome czyszczenie pola zostaje
+ * w formularzu Stałych klientów. NAZWA przechodzi tylko na pustą kartę: krótka nazwa nadana
+ * ręcznie („Pracownia Przykładowa”) to nazwa własna z listy, a nie dana z faktury — pełna
+ * firma i tak ląduje w `faktura.firma`.
+ *
+ * ⚠️⚠️ ADRES TO CAŁOŚĆ, NIE ZESTAW PÓL (`ADRES_FAKTURY`, `ADRES_WYSYLKI`). Gdy zamówienie podaje
+ * choć jedno pole adresu (ulica, kod, miasto, kraj), przechodzą WSZYSTKIE, także puste: ulica
+ * i miasto z zamówienia ze starym kodem z karty to adres, którego nikt nie podał. W wysyłce
+ * razem z adresem idzie `firma` — nowy odbiorca nie może dostać na etykiecie starej nazwy
+ * firmy. Sama firma bez adresu adresu NIE wyzwala (zamówienie telefoniczne podaje firmę zawsze).
+ * Gdy zamówienie adresu nie ma wcale, zostaje adres z karty. E-mail i telefon: tylko niepuste.
+ */
+export function daneNabywcyNaKarcie(istniejacy, dane) {
+  return {
+    ...istniejacy,
+    nazwa: tekst(istniejacy.nazwa) ?? dane.nazwa,
+    nip: tekst(dane.nip) ?? istniejacy.nip,
+    faktura: scalBlok(istniejacy.faktura, dane.faktura, ADRES_FAKTURY),
+    wysylka: scalBlok(istniejacy.wysylka, dane.wysylka, ADRES_WYSYLKI),
   };
 }
 
@@ -251,7 +319,10 @@ export function wstawKlientaDoFormularza(formularz = {}, klient) {
     f_chce_fakture: klient.chce_fakture ? 'on' : '',
     b2b: klient.b2b ? 'on' : '',
     dostawa: klient.metoda_wysylki ?? 'dpd',
-    koszt_dostawy_brutto: klient.koszt_dostawy_brutto ?? '',
+    // ⚠️ PUSTY KOSZT = DOSTAWA NIEUSTALONA (klient z zamówienia z nierozpoznaną dostawą,
+    // PRZ-102.24), a nie „gratis”. Puste pole zapisałoby zamówienie z 0,00; `undefined` zostawia
+    // ekranowi kwotę domyślną z Ustawień dla wybranej dostawy.
+    koszt_dostawy_brutto: tekst(klient.koszt_dostawy_brutto) ?? undefined,
     platnosc: klient.platnosc ?? 'przelew',
     termin_platnosci: klient.termin_platnosci ?? '',
     rabat_procent: String(klient.rabat_procent ?? 0),

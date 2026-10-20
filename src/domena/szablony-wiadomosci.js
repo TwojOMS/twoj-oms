@@ -5,6 +5,7 @@ import { dzienWarszawa } from './format-daty.js';
 import { nazwaDostawy } from './wysylka.js';
 import { wierszePozycji } from './tabela-pozycji.js';
 import { zlotowki } from './kwoty.js';
+import { DOMYSLNE_ZDANIA } from './zdania-platnosci.js';
 
 // SZABLONY WIADOMOŚCI DO KUPUJĄCEGO (PRZ-101.03, zlecenie właściciela 18.10.2026: „maile są na stałe,
 // przydałaby się możliwość edycji treści oraz tworzenia nowych szablonów").
@@ -27,8 +28,12 @@ export const KLUCZ_USTAWIEN = 'szablony.wiadomosci';
 
 export const MAKS = Object.freeze({ wlasnych: 30, nazwa: 60, temat: 200, tresc: 4000 });
 
-/** Szablony wbudowane — te same cztery tematy, co na karcie zamówienia. */
-export const WBUDOWANE = Object.freeze(['potwierdzenie', 'proforma', 'faktura', 'przypomnienie']);
+/**
+ * Szablony wbudowane — te same tematy, co na karcie zamówienia.
+ * PRZ-102.21: `wyslane` („Zamówienie wysłane") — wysyłany WYŁĄCZNIE ręcznie z karty; automat przy nadaniu
+ * to osobne zadanie (decyzja właściciela 20.10). Zapis w tym samym kluczu ustawień co reszta — bez migracji.
+ */
+export const WBUDOWANE = Object.freeze(['potwierdzenie', 'proforma', 'faktura', 'przypomnienie', 'wyslane']);
 export const PLATNICZE = Object.freeze(['proforma', 'faktura', 'przypomnienie']);
 
 /**
@@ -43,11 +48,12 @@ export const NAZWA_WBUDOWANEGO = Object.freeze({
   proforma: 'Proforma',
   faktura: 'Faktura',
   przypomnienie: 'Przypomnienie o płatności',
+  wyslane: 'Zamówienie wysłane',
   zaproszenie: 'Zaproszenie pracownika',
   reset: 'Reset hasła pracownika',
 });
 
-const WSZYSTKIE = ['potwierdzenie', 'proforma', 'faktura', 'przypomnienie', 'wlasny'];
+const WSZYSTKIE = ['potwierdzenie', 'proforma', 'faktura', 'przypomnienie', 'wyslane', 'wlasny'];
 
 /**
  * Pola i bloki. `w` = w jakich szablonach działa. Kolejność = kolejność na liście pod edytorem.
@@ -70,16 +76,19 @@ export const POLA = Object.freeze([
   { nazwa: 'do_zaplaty', opis: 'Kwota do zapłaty brutto — po wpłatach częściowych sama reszta, ta sama co w sekcji DO ZAPŁATY. Puste, gdy nie ma czego przelewać (pobranie, opłacone, brak rachunku).', w: PLATNICZE },
   { nazwa: 'metoda_wysylki', opis: 'Sposób dostawy, np. „Kurier DPD".', w: WSZYSTKIE },
   { nazwa: 'numer_przesylki', opis: 'Numer listu przewozowego (kilka paczek — po przecinku; puste przed nadaniem).', w: WSZYSTKIE },
-  { nazwa: 'nazwa_firmy', opis: 'Marka z podpisu maili (OMS_MAIL_MARKA; bez niej „Obsługa sklepu").', w: WSZYSTKIE },
+  { nazwa: 'nazwa_firmy', opis: 'Marka z podpisu maili (Ustawienia → Integracje → Poczta wychodząca → Podpis maili albo OMS_MAIL_MARKA w pliku konfiguracji; bez niej „Obsługa sklepu").', w: WSZYSTKIE },
   { nazwa: 'numer_dokumentu', opis: 'Numer proformy albo faktury, której dotyczy mail.', w: PLATNICZE },
   { nazwa: 'zamkniecie', wymagane: PLATNICZE, powodWymogu: 'przy pobraniu to zdanie mówi, że należność pobierze kurier — bez niego klient może zapłacić dwa razy',
-    opis: 'Zdanie zamykające liczone ze stanu płatności — przy pobraniu mówi, że płaci się kurierowi, przy opłaconym dziękuje. Obowiązkowe w mailach o płatności.', w: PLATNICZE },
+    opis: 'Zdanie zamykające liczone ze stanu płatności — przy pobraniu mówi, że płaci się kurierowi, przy opłaconym dziękuje. Obowiązkowe w mailach o płatności. Treść zdań zmienisz niżej w sekcji Zdania o płatności.', w: PLATNICZE },
   { nazwa: 'pozycje', blok: true, opis: 'Sekcja ZAMÓWIENIE: tabela pozycji z ilością, ceną i sumą brutto.', w: ['potwierdzenie', 'wlasny'] },
   { nazwa: 'sposob_platnosci', blok: true, opis: 'Sekcja PŁATNOŚĆ: metoda płatności i termin (przy pobraniu kwota dla kuriera).', w: ['potwierdzenie'] },
   { nazwa: 'wysylka', blok: true, opis: 'Sekcja WYSYŁKA: sposób dostawy i adres.', w: ['potwierdzenie', 'wlasny'] },
   { nazwa: 'dane_do_faktury', blok: true, opis: 'Sekcja FAKTURA: czy klient chce fakturę i na jakie dane.', w: ['potwierdzenie', 'wlasny'] },
-  { nazwa: 'dane_platnosci', blok: true, wymagane: PLATNICZE, powodWymogu: 'kwota, rachunek, tytuł przelewu', opis: 'Sekcje DO ZAPŁATY i PRZELEW (kwota, odbiorca, rachunek, tytuł, termin) oraz zdania o załącznikach. Obowiązkowe w mailach o płatności.', w: PLATNICZE },
-  { nazwa: 'podpis', blok: true, opis: '„Pozdrawiamy," i marka. Akapit tuż nad nim dostaje w mailu kreskę oddzielającą.', w: WSZYSTKIE },
+  // PRZ-102.21: bez numeru listu mail „zostało wysłane" nie daje klientowi niczego, czym sprawdzi paczkę.
+  { nazwa: 'przesylki', blok: true, wymagane: ['wyslane'], powodWymogu: 'bez numeru listu klient nie sprawdzi, gdzie jest paczka',
+    opis: 'Sekcja PRZESYŁKA: przewoźnik, numer listu i link do śledzenia każdej nadanej paczki (link, gdy panel zna stronę śledzenia przewoźnika), a przy odbiorze w punkcie — punkt. Obowiązkowe w tym mailu.', w: ['wyslane'] },
+  { nazwa: 'dane_platnosci', blok: true, wymagane: PLATNICZE, powodWymogu: 'kwota, rachunek, tytuł przelewu', opis: 'Sekcje DO ZAPŁATY i PRZELEW (kwota, odbiorca, rachunek, tytuł, termin) oraz zdania o załącznikach. Obowiązkowe w mailach o płatności. Treść zdań zmienisz niżej w sekcji Zdania o płatności.', w: PLATNICZE },
+  { nazwa: 'podpis', blok: true, opis: '„Pozdrawiamy," i marka. Akapit tuż nad nim dostaje w mailu kreskę oddzielającą. Słowo „Pozdrawiamy," ustawisz na liście szablonów, w części Etykiety i stałe teksty.', w: WSZYSTKIE },
 ]);
 
 const POLE = new Map(POLA.map((p) => [p.nazwa, p]));
@@ -128,6 +137,15 @@ export const DOMYSLNE = Object.freeze({
       'Dzień dobry,', '',
       'przypominamy o płatności za zamówienie nr {numer_zamowienia} z dnia {data_zamowienia}.', '',
       '{dane_platnosci}', '', '{zamkniecie}', '', '{podpis}',
+    ].join('\n'),
+  }),
+  // PRZ-102.21: nowy mail, bez „dzisiejszej" wersji — ta treść JEST mailem, dopóki operator jej nie zmieni.
+  wyslane: Object.freeze({
+    temat: 'Zamówienie nr {numer_zamowienia} zostało wysłane',
+    tresc: [
+      'Dzień dobry,', '',
+      'Twoje zamówienie nr {numer_zamowienia} zostało wysłane.', '',
+      '{przesylki}', '', '{podpis}',
     ].join('\n'),
   }),
   // PRZ-101.06: zapis dzisiejszych maili do pracownika (moduly/ustawienia/poczta-kont.js: TEMATY, trescMaila).
@@ -237,9 +255,9 @@ export function sprawdzSzablon(rodzaj, { nazwa, temat, tresc } = {}) {
       ? wynik.tresc.split('\n').some((l) => l.trim() === znacznik)
       : wynik.tresc.includes(znacznik);
     if (!obecny) {
-      return { ok: false, blad: rodzaj === 'konto'
-        ? `Treść musi zawierać ${znacznik} — ${pole.powodWymogu}.`
-        : `Ten mail dotyczy pieniędzy — treść musi zawierać ${znacznik} (${pole.powodWymogu}).` };
+      return { ok: false, blad: PLATNICZE.includes(rodzaj)
+        ? `Ten mail dotyczy pieniędzy — treść musi zawierać ${znacznik} (${pole.powodWymogu}).`
+        : `Treść musi zawierać ${znacznik} — ${pole.powodWymogu}.` };
     }
   }
   return { ok: true, szablon: wynik };
@@ -314,8 +332,8 @@ export function polaZamowienia(z, { podpis = '' } = {}) {
   };
 }
 
-/** Linie bloku `{podpis}` — to samo, co dziś kończy każdy mail. */
-export const liniePodpisu = (sprzedawca) => ['Pozdrawiamy,', String(sprzedawca ?? '')];
+/** Linie bloku `{podpis}` — to samo, co dziś kończy każdy mail; `pozdrowienie` z Ustawień (PRZ-102.19), brak = domyślne. */
+export const liniePodpisu = (sprzedawca, pozdrowienie = DOMYSLNE_ZDANIA.pozdrowienie) => [pozdrowienie, String(sprzedawca ?? '')];
 
 // ——— Stan zapisany w `ustawienia` (klucz KLUCZ_USTAWIEN, JSON) ————————————————————————————
 //

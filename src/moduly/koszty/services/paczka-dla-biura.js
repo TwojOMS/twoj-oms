@@ -9,6 +9,7 @@ import { wierszArchiwum } from '../../faktury/db/archiwum-sprzedazy.js';
 import { kosztyOtrzymaneWMiesiacu, odrzuconeWMiesiacu } from '../../../oms/db/koszty.js';
 import { zbudujZestawieniePdf } from '../pdf/zestawienie-dla-biura-pdf.js';
 import { zCzekaniemNa429 } from '../../../oms/ksef/limit.js';
+import { uslugaKsefDostepna } from '../../../domena/konfiguracja-ksef-kosztow.js';
 
 // Paczka dla biura rachunkowego (spec 2026-09-02, Czesc D): scalony PDF miesiaca — zestawienie
 // czesci i jej dokumenty. Ten modul jest wylacznie SPINACZEM: skad wziac bajty, w jakiej
@@ -144,7 +145,7 @@ export function createPaczkaDlaBiura({
       throw bladOperatora(`Nie udało się przygotować paczki: nie da się odczytać pliku dokumentu ${k.numer_dokumentu} z archiwum (${e.message}).`);
     }
     if (z) return z;
-    if (!wizualizacjaKosztu) {
+    if (!uslugaKsefDostepna(wizualizacjaKosztu)) {
       throw bladOperatora(
         `Nie udało się przygotować paczki: dokument ${k.numer_dokumentu} nie jest zarchiwizowany, `
         + 'a panel nie ma podpiętego KSeF, żeby go pobrać.',

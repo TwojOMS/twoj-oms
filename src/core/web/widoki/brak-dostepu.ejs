@@ -28,6 +28,7 @@
 <!doctype html>
 <html lang="pl">
 <head>
+  <link rel="icon" type="image/png" href="<%= zasob('favicon-32.png') %>">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= title %></title>
@@ -60,9 +61,17 @@
 </head>
 <body>
   <div class="pusto">
+    <% if (locals.modulWylaczony) { %>
+    <h1>Moduł wyłączony</h1>
+    <p>Moduł wyłączony — włączysz go w Ustawieniach → Moduły.</p>
+    <% if (admin) { %><p><a href="/ustawienia/moduly">Ustawienia → Moduły</a></p>
+    <% } else { %><p>Poproś administratora o włączenie modułu.</p><% } %>
+    <p>Dane pozostają w bazie. Włączenie modułu przywróci dostęp.</p>
+    <% } else { %>
     <h1>Brak dostępu</h1>
     <p>To konto nie ma uprawnienia do tego ekranu. Jeśli potrzebujesz do niego wejść,
        poproś administratora o zaznaczenie go w <strong>Ustawieniach → Konta</strong>.</p>
+    <% } %>
     <p><a href="/">Wróć do zamówień</a></p>
   </div>
 </body>

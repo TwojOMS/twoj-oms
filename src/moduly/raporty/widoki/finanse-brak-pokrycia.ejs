@@ -1,0 +1,30 @@
+<%# PRZ-102.09: nowa instalacja bez podłogi kosztów — zamiast „wpisz w pliku i uruchom ponownie” pytanie
+    wprost na ekranie (administrator) albo prośba do administratora (reszta). Pozostałe daty: /finanse/pokrycie. %>
+<div class="glowa-ekranu">
+  <h1>Finanse</h1>
+  <span class="krok">ile z tego zostaje · <a href="/raporty">sprzedaż</a></span>
+</div>
+
+<section class="ust-sekcja" id="finanse-podloga">
+  <h2>Od którego miesiąca koszty w OMS-ie są kompletne?</h2>
+  <p><strong>Nie ustawiono podłogi danych kosztów</strong>, więc Finanse nie pokażą jeszcze rachunku.
+    <a href="/finanse/dane">Dane miesiąca</a> (ZUS, PIT-5, VAT-7) można wpisywać już teraz.</p>
+  <p>Rachunek zarządczy liczy zysk z kosztów zapisanych w OMS-ie (faktury kosztowe z KSeF i koszty dopisane ręcznie).
+    Miesiąc, w którym części kosztów brakuje, pokazałby zysk zawyżony — dlatego Finanse liczą dopiero od pierwszego
+    miesiąca z kompletem kosztów, a wcześniejszych nie pokazują.</p>
+  <% if (admin) { %>
+  <form method="post" action="/finanse/pokrycie">
+    <input type="hidden" name="klucz" value="podlogaKosztow">
+    <input type="hidden" name="powrot" value="<%= powrot %>">
+    <label for="podlogaKosztow">Miesiąc</label>
+    <input id="podlogaKosztow" name="wartosc" type="month" placeholder="RRRR-MM" required>
+    <button class="ust-przycisk" type="submit">Zapisz</button>
+  </form>
+  <p>Zapis działa od razu, bez restartu OMS. Druga droga: linia <code>OMS_RAPORTY_PODLOGA_KOSZTOW=RRRR-MM</code>
+    w pliku konfiguracji (<code>oms.env</code>) i restart — wartość z pliku ma pierwszeństwo.</p>
+  <% } else { %>
+  <p class="pas-uprzedzenie">Tę datę ustawia administrator OMS. Poproś administratora o ustawienie kompletności danych
+    w Finanse → Kompletność danych.</p>
+  <% } %>
+  <p><a href="/finanse/pokrycie">Kompletność danych</a> — tu także początek zwrotów i statystyk.</p>
+</section>

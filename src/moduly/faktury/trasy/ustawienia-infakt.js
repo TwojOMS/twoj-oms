@@ -9,23 +9,76 @@ import { sprawdzFormularzInfakt, ADRES_INFAKT, EKRAN_INFAKTU } from '../../../do
 import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji, stanDlaEkranu }
   from '../../../oms/db/konfiguracja-integracji.js';
 import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';
+import {
+  sprawdzFormularzAutomatu, ostatniPrzebiegPoZapisie, najblizszyPrzebieg, chwilaWarszawy,
+} from '../../../domena/ksef-automat.js';
+import { wczytajAutomatKsef, zapiszUstawieniaAutomatu } from '../db/ksef-automat.js';
+import { czyWysylacKonsumenckie, zapiszKonsumenckie } from '../db/ksef-konsumenckie.js';
 
-const KOMUNIKATY = { zapisano: 'Zapisano klucz API inFaktu.', odlaczono: 'inFakt został odłączony. Klucz API usunięty z OMS-u.' };
+const KOMUNIKATY = { zapisano: 'Zapisano klucz API inFaktu.', odlaczono: 'inFakt został odłączony. Klucz API usunięty z OMS-u.',
+  'ksef-automat': 'Zapisano ustawienia automatycznej wysyłki do KSeF.' };
 
-export function registerUstawieniaInfaktuRoutes(app, { db, konfiguracjaInfaktu }) {
+// PRZ-102.12: dlaczego automat KSeF nic nie wyśle — jedno zdanie na ekran albo `null`, gdy działa.
+function powodBezczynnosciAutomatu(k, automatKsef) {
+  if (automatKsef && !k.odlaczonyDoRestartu()) return null;
+  if (k.odlaczonyDoRestartu()) return 'inFakt jest odłączony — automat nic nie wyśle, dopóki go nie podłączysz i nie uruchomisz OMS-u ponownie.';
+  if (k.wymagaRestartu()) return 'inFakt jest już podłączony, ale automat ruszy dopiero po ponownym uruchomieniu OMS-u.';
+  return 'inFakt nie jest podłączony — automat nic nie wyśle, dopóki go nie podłączysz (potem potrzebne ponowne uruchomienie OMS-u).';
+}
+
+export function registerUstawieniaInfaktuRoutes(app, { db, konfiguracjaInfaktu, automatKsef = null, teraz = () => new Date() }) {
   const k = konfiguracjaInfaktu;
-  function widok(req, reply, { bledy = [], test = null } = {}) {
+  function widok(req, reply, { bledy = [], test = null, bledyAutomatu = [], formularzAutomatu = null } = {}) {
     const stan = stanDlaEkranu(wczytajKonfiguracjeIntegracji(db, 'infakt'));
+    const stanAutomatu = wczytajAutomatKsef(db);
     return reply.view('ustawienia-infakt.ejs', {
       nawigacja: nawigacjaUstawien(req, reply), title: 'inFakt',
       zEnv: k.zEnv, adresWPliku: k.adresWPliku, archiwumWPliku: k.archiwumWPliku, stan, adresApi: ADRES_INFAKT,
       bledy, test,
+      konsumenckie: czyWysylacKonsumenckie(db),
       zapisano: KOMUNIKATY[req.query?.zapisano] ?? null,
       wymagaRestartu: k.wymagaRestartu(), odlaczonyDoRestartu: k.odlaczonyDoRestartu(),
+      automat: {
+        ...stanAutomatu,
+        // Po błędzie formularza pola pokazują to, co wpisał człowiek, a nie zapis z bazy.
+        formularz: formularzAutomatu ?? { wlaczony: stanAutomatu.wlaczony, godzina: stanAutomatu.godzina },
+        bledy: bledyAutomatu,
+        najblizszy: najblizszyPrzebieg(stanAutomatu, chwilaWarszawy(teraz())),
+        powodBezczynnosci: powodBezczynnosciAutomatu(k, automatKsef),
+      },
     });
   }
+
+  // PRZ-102.12: automatyczna wysyłka do KSeF — przełącznik i godzina. Prefiks `/ustawienia` = tylko konto
+  // z uprawnieniem „ustawienia” (strażnik), gość demo zatrzymany na POST-cie. Zapis działa też przy inFakcie
+  // z pliku konfiguracji — automat nie zależy od tego, skąd jest klucz.
+  app.post(`${EKRAN_INFAKTU}/ksef-automat`, async (req, reply) => {
+    const formularz = sprawdzFormularzAutomatu(req.body ?? {});
+    if (formularz.bledy.length) {
+      reply.code(400);
+      return widok(req, reply, { bledyAutomatu: formularz.bledy, formularzAutomatu: formularz });
+    }
+    const chwila = teraz();
+    const poprzednio = wczytajAutomatKsef(db);
+    const nowe = { wlaczony: formularz.wlaczony, godzina: formularz.godzina };
+    zapiszUstawieniaAutomatu(db, {
+      ...nowe, login: req.konto?.login ?? null,
+      ostatniPrzebieg: ostatniPrzebiegPoZapisie(poprzednio, nowe, chwilaWarszawy(chwila)),
+    }, chwila.toISOString());
+    return reply.code(303).redirect(`${EKRAN_INFAKTU}?zapisano=ksef-automat#ksef-automat`);
+  });
   const zEnv = (reply) => reply.code(409).type('text/plain; charset=utf-8')
     .send('inFakt jest ustawiony w pliku konfiguracji (oms.env, INFAKT_API_KEY) — tam go zmień. Formularz niczego nie zapisał.');
+
+  // Prefiks /ustawienia: zapis tylko z prawem do Ustawień, również gdy klucz API pochodzi z pliku.
+  app.post(`${EKRAN_INFAKTU}/ksef-konsumenckie`, async (req, reply) => {
+    const wartosci = [].concat(req.body?.wlaczony ?? '0');
+    if (wartosci.some((w) => w !== '0' && w !== '1')) {
+      return reply.code(400).send('Nieprawidłowa wartość przełącznika faktur konsumenckich.');
+    }
+    zapiszKonsumenckie(db, wartosci.includes('1'));
+    return reply.code(303).redirect(`${EKRAN_INFAKTU}#ksef-konsumenckie`);
+  });
 
   app.get(EKRAN_INFAKTU, async (req, reply) => widok(req, reply));
 

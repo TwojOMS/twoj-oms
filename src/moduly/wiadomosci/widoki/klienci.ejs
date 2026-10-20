@@ -219,6 +219,9 @@
             </label>
             <label>Sposób dostawy
               <select name="metoda_wysylki">
+                <%# ⚠️ PUSTA OPCJA JEST ZAPISEM „NIE USTALONO” (PRZ-102.24). Bez niej przegladarka %>
+                <%# wysylala pierwsza opcje (DPD) i poprawka samego adresu ustalala klientowi dostawe. %>
+                <option value=""<%= f.metoda_wysylki ? '' : ' selected' %>>nie ustalono</option>
                 <% Object.keys(dostawy).forEach(function (k) { %>
                   <option value="<%= k %>"<%= f.metoda_wysylki === k ? ' selected' : '' %>><%= dostawy[k] %></option>
                 <% }); %>

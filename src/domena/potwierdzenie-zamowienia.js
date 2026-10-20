@@ -7,6 +7,7 @@ import { ETYKIETY_TERMINU } from './termin-platnosci.js';
 import { wierszePozycji } from './tabela-pozycji.js';
 import { dzienWarszawa } from './format-daty.js';
 import { zlotowki } from './kwoty.js';
+import { zdaniaDoMaila, naglowekTekstu, tekstyModelu } from './zdania-platnosci.js';
 
 // POTWIERDZENIE PRZYJĘCIA ZAMÓWIENIA — treść maila do klienta (21.08.2026, prośba
 // właściciela: „po ręcznym dodaniu zamówienia mogę ręcznie kliknąć przycisk — wyślij
@@ -74,8 +75,9 @@ export function czyWolnoWyslacPotwierdzenie(z) {
  */
 export const PODPIS = 'Obsługa sklepu';
 
-/** Zdanie „(adres do uzgodnienia)" stoi w JEDNYM miejscu — czytają je oba renderery. */
-export const ADRES_DO_UZGODNIENIA = '(adres do uzgodnienia)';
+// PRZ-102.19: „(adres do uzgodnienia)", nagłówki sekcji, „Tak — wystawimy na:", „Nie", „dane do uzgodnienia",
+// „do uzgodnienia" przy braku metody płatności, „RAZEM: … brutto", „/szt" i „Pozdrawiamy," — z Ustawień → Szablony
+// wiadomości (`m.teksty`, domena/zdania-platnosci.js). Bez zapisu brzmienie domyślne, co do znaku dawne literały stąd.
 
 /**
  * Adres dostawy jako LISTA LINII albo `null`, gdy adresu nie ma.
@@ -122,10 +124,10 @@ function liniaFaktury(z) {
  * wartości. Żaden z nich nie liczy ani nie formatuje kwot — inaczej tabela w mailu i tekst
  * zapasowy mogłyby kiedyś pokazać co innego, a klient dostaje OBIE naraz, w jednej wiadomości.
  */
-export function modelPotwierdzenia(z, { podpis = PODPIS } = {}) {
+export function modelPotwierdzenia(z, { podpis = PODPIS, zdania = null } = {}) {
   const zgoda = czyWolnoWyslacPotwierdzenie(z);
   if (!zgoda.wolno) throw bladOperatora(zgoda.powod);
-  return modelZamowienia(z, { podpis });
+  return modelZamowienia(z, { podpis, zdania });
 }
 
 /**
@@ -133,7 +135,10 @@ export function modelPotwierdzenia(z, { podpis = PODPIS } = {}) {
  * `{dane_do_faktury}` składają z tych samych wartości co potwierdzenie, ale nie są potwierdzeniem
  * (np. „Opóźnienie wysyłki" może pójść do zamówienia, którego pozycje operator jeszcze uzupełnia).
  */
-export function modelZamowienia(z, { podpis = PODPIS } = {}) {
+// PRZ-102.19: `zdania` — teksty z Ustawień → Szablony wiadomości (zdaniaPlatnosciTeraz w usłudze, czytane przy każdym
+// mailu). Brak = domyślne. W modelu ląduje komplet (`teksty`), renderery czytają go przez `tekstyModelu`.
+export function modelZamowienia(z, { podpis = PODPIS, zdania = null } = {}) {
+  const t = zdaniaDoMaila(zdania ?? {});
   const wiersze = wierszePozycji(z);
   const razem = wiersze.find((w) => w.podsumowanie);
 
@@ -159,7 +164,7 @@ export function modelZamowienia(z, { podpis = PODPIS } = {}) {
       // ⚠️ PRZY POBRANIU PODAJEMY KWOTĘ DO ZAPŁATY KURIEROWI — to jedyna liczba, którą klient
       // musi mieć przygotowaną, i jedyna, o którą dzwoni, gdy jej nie zna.
       ? `Za pobraniem — kurier pobierze ${zlotowki(z?.kwota_pobrania ?? razem?.suma)}`
-      : [platnosc || 'do uzgodnienia', terminSlowami].filter(Boolean).join(', '),
+      : [platnosc || t.platnosc_do_uzgodnienia, terminSlowami].filter(Boolean).join(', '),
     wysylka: {
       metoda: nazwaDostawy(z),
       adres: liniaAdresu(z),
@@ -175,6 +180,7 @@ export function modelZamowienia(z, { podpis = PODPIS } = {}) {
       linie: Boolean(z?.chce_fakture) ? liniaFaktury(z) : [],
     },
     sprzedawca: String(podpis ?? '').trim() || PODPIS,
+    teksty: t,
   };
 }
 
@@ -185,8 +191,8 @@ export function modelZamowienia(z, { podpis = PODPIS } = {}) {
  * klienta pocztowego bez HTML-a, do podglądu na zegarku i do archiwum. Jest jednak od dziś
  * częścią ALTERNATYWNĄ, a nie jedyną treścią — układ, który klient zobaczy, robi tabela.
  */
-export function trescPotwierdzenia(z, { podpis = PODPIS } = {}) {
-  const model = modelPotwierdzenia(z, { podpis });
+export function trescPotwierdzenia(z, { podpis = PODPIS, zdania = null } = {}) {
+  const model = modelPotwierdzenia(z, { podpis, zdania });
   return {
     do: adresatKlienta(z),
     temat: `Potwierdzenie przyjęcia zamówienia nr ${model.numer}`,
@@ -202,26 +208,33 @@ function sekcja(naglowek, linie) {
 }
 
 /**
+ * Cztery sekcje potwierdzenia w wersji tekstowej, każda z pustą linią na początku. JEDNO miejsce dla bloków
+ * szablonu i dla `jakoTekst` (do PRZ-102.19 dwie kopie znak w znak). Teksty z `tekstyModelu`; nagłówki wielkimi
+ * literami (`naglowekTekstu`), jak w HTML-u, gdzie robi to styl.
+ */
+function sekcjeTekstu(m) {
+  const t = tekstyModelu(m);
+  return {
+    pozycje: sekcja(naglowekTekstu(t.naglowek_zamowienie), [
+      ...m.pozycje.map((p) => `${p.ilosc} × ${p.nazwa} — ${p.cena}/${t.jednostka} = ${p.suma}`),
+      `${naglowekTekstu(t.etykieta_razem)}: ${m.razem} ${t.dopisek_brutto}`,
+    ]),
+    sposob_platnosci: sekcja(naglowekTekstu(t.naglowek_platnosc), [m.platnosc]),
+    wysylka: sekcja(naglowekTekstu(t.naglowek_wysylka), [m.wysylka.metoda, ...(m.wysylka.adres ?? [`(${t.adres_do_uzgodnienia})`])]),
+    dane_do_faktury: sekcja(naglowekTekstu(t.naglowek_faktura), m.faktura.chce
+      ? [t.faktura_tak, ...(m.faktura.linie.length ? m.faktura.linie : [t.faktura_bez_danych])]
+      : [t.faktura_nie]),
+  };
+}
+
+/**
  * Sekcje potwierdzenia jako BLOKI szablonu (PRZ-101.03): te same linie, które składa `jakoTekst` niżej,
- * bez pustej linii na początku (odstępy między blokami stawia szablon).
- *
- * ⚠️ `jakoTekst` ZOSTAJE NIETKNIĘTE i dalej składa mail, gdy szablonu nikt nie zmienił — to jest gwarancja
- * „bez zapisu = dzisiejszy mail co do znaku". Te same linie stoją więc w dwóch miejscach; rozjazd łapie
- * tests/moduly/wiadomosci/szablony-rownosc.test.js (domyślny szablon kontra `jakoTekst` na kilku zamówieniach).
+ * bez pustej linii na początku (odstępy między blokami stawia szablon). Zgodność z mailem bez szablonu pilnuje
+ * tests/moduly/wiadomosci/szablony-rownosc.test.js, a bajt w bajt — zdania-platnosci-rownosc-prz102-17.test.js.
  */
 export function blokiTekstuPotwierdzenia(m) {
-  const blok = (naglowek, linie) => sekcja(naglowek, linie).slice(1);
-  return {
-    pozycje: blok('ZAMÓWIENIE', [
-      ...m.pozycje.map((p) => `${p.ilosc} × ${p.nazwa} — ${p.cena}/szt = ${p.suma}`),
-      `RAZEM: ${m.razem} brutto`,
-    ]),
-    sposob_platnosci: blok('PŁATNOŚĆ', [m.platnosc]),
-    wysylka: blok('WYSYŁKA', [m.wysylka.metoda, ...(m.wysylka.adres ?? [ADRES_DO_UZGODNIENIA])]),
-    dane_do_faktury: blok('FAKTURA', m.faktura.chce
-      ? ['Tak — wystawimy na:', ...(m.faktura.linie.length ? m.faktura.linie : ['dane do uzgodnienia'])]
-      : ['Nie']),
-  };
+  const s = sekcjeTekstu(m);
+  return Object.fromEntries(Object.entries(s).map(([nazwa, linie]) => [nazwa, linie.slice(1)]));
 }
 
 /**
@@ -232,23 +245,20 @@ export function blokiTekstuPotwierdzenia(m) {
  * bywa właśnie taki. Jedna pozycja to jedna linia, kwoty na końcu.
  */
 export function jakoTekst(m) {
+  const s = sekcjeTekstu(m);
   return [
     'Dzień dobry,',
     '',
     `potwierdzamy przyjęcie zamówienia nr ${m.numer} z dnia ${m.dzien}.`,
-    ...sekcja('ZAMÓWIENIE', [
-      ...m.pozycje.map((p) => `${p.ilosc} × ${p.nazwa} — ${p.cena}/szt = ${p.suma}`),
-      `RAZEM: ${m.razem} brutto`,
-    ]),
-    ...sekcja('PŁATNOŚĆ', [m.platnosc]),
-    ...sekcja('WYSYŁKA', [m.wysylka.metoda, ...(m.wysylka.adres ?? [ADRES_DO_UZGODNIENIA])]),
-    ...sekcja('FAKTURA', m.faktura.chce
-      ? ['Tak — wystawimy na:', ...(m.faktura.linie.length ? m.faktura.linie : ['dane do uzgodnienia'])]
-      : ['Nie']),
+    ...s.pozycje,
+    ...s.sposob_platnosci,
+    ...s.wysylka,
+    ...s.dane_do_faktury,
     '',
     'Jeśli coś się nie zgadza, wystarczy odpowiedzieć na tego maila.',
     '',
-    'Pozdrawiamy,',
+    tekstyModelu(m).pozdrowienie,
     m.sprzedawca,
   ].join('\n');
 }
+

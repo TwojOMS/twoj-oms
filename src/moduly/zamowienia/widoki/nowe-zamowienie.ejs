@@ -95,11 +95,11 @@
       <% if (opisWybranego) { %><span class="klient-opis"><%= opisWybranego %></span><% } %>
     </div>
     <p class="wyjasnienie">Wstawienie <b>nadpisze</b> dane klienta i ustalenia poniżej. Pozycji nie dotyka.
-      Klientów dopisujesz na ekranie <a href="/klienci">Stali klienci</a> albo przyciskiem na karcie zamówienia.</p>
+      Klientów dopisujesz na ekranie <% if (modulWlaczony('klienci')) { %><a href="/klienci"><% } %>Stali klienci<% if (modulWlaczony('klienci')) { %></a><% } else { %> (moduł wyłączony)<% } %> albo przyciskiem na karcie zamówienia.</p>
   </section>
 <% } else { %>
   <p class="wyjasnienie">Baza stałych klientów jest pusta — dopiszesz do niej klienta przyciskiem
-    „Zapamiętaj tego klienta" na karcie zamówienia albo na ekranie <a href="/klienci">Stali klienci</a>.</p>
+    „Zapamiętaj tego klienta" na karcie zamówienia albo na ekranie <% if (modulWlaczony('klienci')) { %><a href="/klienci"><% } %>Stali klienci<% if (modulWlaczony('klienci')) { %></a><% } else { %> (moduł wyłączony)<% } %>.</p>
 <% } %>
 
 <div class="metryczka">

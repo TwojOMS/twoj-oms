@@ -19,7 +19,8 @@ describe('PRZ-025/030 — rzeczywiste koszty w HTTP health',()=>{
     const a=await zbudujOms({env:{...env,KSEF_TOKEN:'FIXTURE-NIE-UJAWNIAJ-KSEF',KSEF_API:'https://ksef.invalid'},teraz});
     try{
       expect(a.usluga('koszty','ksefKlient')).toBeTruthy();
-      expect(a.usluga('koszty','kosztyWlaczone')).toBe(true);
+      // PRZ-102.22: funkcja (token z Ustawień i przełącznik modułu bez restartu), nie wartość z chwili startu.
+      expect(a.usluga('koszty','kosztyWlaczone')()).toBe(true);
       // Konstrukcja klienta i zegara nie jest ich uruchomieniem.
       zapiszStan(a.db,aktualny);
       expect(a.usluga('koszty','stanKosztow')().ostatnie_udane_at).toBe(aktualny);
@@ -41,7 +42,7 @@ describe('PRZ-025/030 — rzeczywiste koszty w HTTP health',()=>{
     const a=await zbudujOms({env,teraz});
     try{
       expect(a.usluga('koszty','ksefKlient')).toBeNull();
-      expect(a.usluga('koszty','kosztyWlaczone')).toBe(false);
+      expect(a.usluga('koszty','kosztyWlaczone')()).toBe(false);
       zapiszStan(a.db,przeterminowany);
       const r=await a.app.inject('/health');
       expect(r.statusCode,r.body).toBe(200);

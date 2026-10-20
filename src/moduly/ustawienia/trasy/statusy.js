@@ -16,7 +16,7 @@ export function registerUstawieniaStatusowRoutes(app, { db }) {
 
   // Strażnik /ustawienia, blokada zapisu gościa demo i CSRF są wspólne z resztą ustawień.
   app.post('/ustawienia/statusy', async (req, reply) => {
-    const { akcja, klucz, etykieta, kolor, jak } = req.body ?? {};
+    const { akcja, klucz, etykieta, kolor, jak, kolejnosc } = req.body ?? {};
     let komunikat = 'Zapisano statusy zamówień.';
     let blad = false;
     db.exec('BEGIN IMMEDIATE');
@@ -24,7 +24,14 @@ export function registerUstawieniaStatusowRoutes(app, { db }) {
       const statusy = statusyWKolejnosci(db).map(s => ({ ...s }));
       const indeks = statusy.findIndex(s => s.klucz === klucz);
       const status = statusy[indeks];
-      if (akcja === 'dodaj') {
+      if (akcja === 'kolejnosc') {
+        if (!Array.isArray(kolejnosc) || kolejnosc.length !== statusy.length || new Set(kolejnosc).size !== statusy.length || kolejnosc.some(k => !statusy.some(s => s.klucz === k))) {
+          throw new Error('Prześlij pełną kolejność istniejących statusów bez powtórzeń. Odśwież ekran.');
+        }
+        zapiszStatusy(db, kolejnosc.map(k => statusy.find(s => s.klucz === k)));
+        db.exec('COMMIT');
+        return reply.send({ komunikat: 'Zapisano kolejność' });
+      } else if (akcja === 'dodaj') {
         statusy.push({ klucz: kluczNowegoStatusu(etykieta, statusy), etykieta, kolor, jak });
       } else if (akcja === 'domyslne') {
         // Własne zachowują swoje pozycje; systemowe odzyskują nazwy, kolory i wzajemną kolejność.
@@ -57,6 +64,7 @@ export function registerUstawieniaStatusowRoutes(app, { db }) {
       if (!(e instanceof Error) || e.code) throw e;
       komunikat = e.message;
       blad = true;
+      if (akcja === 'kolejnosc') return reply.code(400).send({ komunikat });
     }
     return reply.code(303).redirect(`/ustawienia/statusy?komunikat=${encodeURIComponent(komunikat)}${blad ? '&blad=1' : ''}`);
   });

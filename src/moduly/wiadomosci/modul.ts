@@ -7,7 +7,7 @@ import { zegarPolleraWiadomosci, zegarCzuwaczaFormulki } from './zegary.ts';
 import { registerKlienciRoutes } from './trasy/klienci.js';
 import { registerWiadomosciRoutes } from './trasy/wiadomosci.js';
 import { registerSzablonyWiadomosciRoutes } from './trasy/szablony.js';
-import { oprawaMaila } from './oprawa.js';
+import { utworzPodpisMaili } from './podpis-maili.js';
 
 export { utworzUslugiWiadomosci } from './uslugi.ts';
 
@@ -22,8 +22,9 @@ export function createModulWiadomosci({ fabryki = {}, uslugi }: {
       { klucz: 'klienci', etykieta: 'Stali klienci', role: ['administrator', 'sprzedaz'] },
     ],
     menu: [
-      { dzial: 'sprzedaz', grupa: 'obsluga', etykieta: 'Wiadomości', adres: '/wiadomosci', uprawnienie: 'wiadomosci', kolejnosc: 60 },
-      { dzial: 'sprzedaz', grupa: 'obsluga', etykieta: 'Stali klienci', adres: '/klienci', uprawnienie: 'klienci', kolejnosc: 50 },
+      // PRZ-102.03: grupa „Klienci” w menu bocznym (zgodnie z EKRANY.nawigacja).
+      { dzial: 'sprzedaz', grupa: 'klienci', etykieta: 'Wiadomości', adres: '/wiadomosci', uprawnienie: 'wiadomosci', kolejnosc: 40 },
+      { dzial: 'sprzedaz', grupa: 'klienci', etykieta: 'Stali klienci', adres: '/klienci', uprawnienie: 'klienci', kolejnosc: 50 },
     ],
     zbuduj: ctx => {
       // Faktury posiadają dane dokumentów; jawny sprzedawca pochodzi z rdzenia.
@@ -42,13 +43,16 @@ export function createModulWiadomosci({ fabryki = {}, uslugi }: {
       const zegary: Zegar[] = [];
       if (u.pollerWiadomosci) zegary.push(zegarPolleraWiadomosci({ pollerWiadomosci: u.pollerWiadomosci, log }));
       if (u.czuwaczFormulki) zegary.push(zegarCzuwaczaFormulki({ czuwaczFormulki: u.czuwaczFormulki, log }));
-      return { uslugi: u, zegary, trasy: app => {
+      // PRZ-102.10: podpis maili (marka, stopka) z Ustawień → Poczta — usługa dla tamtego ekranu i źródło oprawy tras
+      // poniżej, liczonej przy każdym żądaniu (zmiana bez restartu; pole z pliku wygrywa).
+      const podpisMaili = utworzPodpisMaili({ db: ctx.db, oprawaPoczty: ctx.konfiguracja.oprawaPoczty, teraz: ctx.teraz });
+      return { uslugi: { ...u, podpisMaili }, zegary, trasy: app => {
         const klienci = ctx.usluga<Record<string, any>>('wiadomosci', 'klienciWiadomosci');
         // PRZ-101.03: szablony wiadomości — ekran w Ustawieniach i „Wstaw szablon" w wątku Allegro. Działają także
         // bez skonfigurowanej poczty (szablon da się przygotować przed podłączeniem SMTP).
-        const oprawa = oprawaMaila(ctx.konfiguracja.oprawaPoczty);
-        registerWiadomosciRoutes(app, { db: ctx.db, klienci, podpis: oprawa.podpis });
-        registerSzablonyWiadomosciRoutes(app, { db: ctx.db, oprawa, teraz: ctx.teraz });
+        const oprawa = () => podpisMaili.oprawa();
+        registerWiadomosciRoutes(app, { db: ctx.db, klienci, podpis: () => oprawa().podpis });
+        registerSzablonyWiadomosciRoutes(app, { db: ctx.db, oprawa, config: u.config, teraz: ctx.teraz });
         const gus = Object.hasOwn(u, 'gus') ? u.gus : ctx.usluga('zamowienia', 'gus');
         registerKlienciRoutes(app, { db: ctx.db, gus: gus as any });
       } };

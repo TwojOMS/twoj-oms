@@ -4,11 +4,13 @@
       <h2><%= grupa.etykieta %></h2>
       <ul>
         <% grupa.pozycje.forEach(function(p) { %>
-          <li><a href="<%= p.href %>"<%- p.aktywna ? ' aria-current="page"' : '' %>><%- include('_ikona-panelu.ejs', {klucz:p.klucz}) %><span><%= p.etykieta %></span></a>
+          <%# PRZ-102.03: pozycja ze statusami dostaje klasę — na telefonie zajmuje cały wiersz siatki dwóch kolumn. %>
+          <% const zeStatusami = p.klucz === 'zamowienia' && (statusyMenu ?? []).length > 0; %>
+          <li<%- zeStatusami ? ' class="oms-menu-ze-statusami"' : '' %>><a href="<%= p.href %>"<%- p.aktywna ? ' aria-current="page"' : '' %>><%- include('_ikona-panelu.ejs', {klucz:p.klucz}) %><span><%= p.etykieta %></span></a>
             <%# PRZ-066: statusy wracają do bocznego menu, pod „Zamówienia” (prośba właściciela 13.10). %>
             <%# `data-status` tylko w wersji komputerowej — menu telefonowe stoi w tym samym HTML, %>
             <%# a licznik ma mieć w dokumencie jedno źródło (test demo liczy wystąpienia). %>
-            <% if (p.klucz === 'zamowienia' && (statusyMenu ?? []).length) { %>
+            <% if (zeStatusami) { %>
               <ul class="oms-statusy" aria-label="Statusy zamówień">
                 <% statusyMenu.forEach(function(s) { %>
                   <li><a href="<%= s.href %>"<%- s.aktywna ? ' aria-current="page"' : '' %>><span><% if (modyfikatorStatusu(s.klucz)) { %><span class="kropka <%= modyfikatorStatusu(s.klucz) %>"></span><% } %><span class="oms-status-etykieta"><%= s.etykieta %></span></span><% if (typeof s.liczba !== 'undefined') { %><span class="licznik"<% if (!mobilna) { %> data-status="<%= s.klucz %>"<% } %>><%= s.liczba %></span><% } %></a></li>
@@ -21,4 +23,16 @@
       </ul>
     </section>
   <% }); %>
+  <%# PRZ-102.03: na komputerze analizy stoją w górnym pasku (layout-oms.ejs); na telefonie pasek ich nie mieści, %>
+  <%# więc schodzą tutaj jako zwinięta grupa. Bez `data-menu` — inaczej oms-nawigacja.js zamknąłby całe menu. %>
+  <% if (mobilna && nawigacja.analizy) { %>
+    <details class="oms-menu-grupa oms-menu-zwijana"<%- nawigacja.analizy.aktywna ? ' open' : '' %>>
+      <summary><%= nawigacja.analizy.etykieta %></summary>
+      <ul>
+        <% nawigacja.analizy.pozycje.forEach(function(p) { %>
+          <li><a href="<%= p.href %>"<%- p.aktywna ? ' aria-current="page"' : '' %>><%- include('_ikona-panelu.ejs', {klucz:p.klucz}) %><span><%= p.etykieta %></span></a></li>
+        <% }); %>
+      </ul>
+    </details>
+  <% } %>
 </nav>

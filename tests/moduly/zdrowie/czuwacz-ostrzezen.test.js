@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { lukiKsef, poTerminie } from '../../../src/oms/db/ostrzezenia.js';
+import { ostrzezeniaFaktur } from '../../../src/domena/ostrzezenia.js';
 import { zajmijWysylkeKsef } from '../../../src/moduly/faktury/db/wysylki-ksef.js';
 import {
   createCzuwaczOstrzezen, oknoLukKsef, SUFIT_STRON_LUK, NAJDLUZSZY_PRZEBIEG_OSTRZEZEN_MS,
@@ -55,6 +56,21 @@ function zbuduj({
 }
 
 describe('czuwacz ostrzeżeń — lustro luk KSeF', () => {
+  it('PRZ-102.26: luka B2C pojawia się po włączeniu i znika po wyłączeniu bez restartu', async () => {
+    const db = openOmsDb(':memory:');
+    const { czuwacz } = zbuduj({ db, dokumenty: [dok('b2c', { client_tax_code: '', client_first_name: 'Jan', gross_price: 12300 })] });
+    try {
+      await czuwacz.przebieg();
+      expect(lukiKsef(db)).toEqual([]);
+      db.prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('ksef.konsumenckie', '1', '2026-10-20')").run();
+      await czuwacz.przebieg();
+      expect(lukiKsef(db).map((d) => d.uuid)).toEqual(['b2c']);
+      expect(ostrzezeniaFaktur({ luki: lukiKsef(db), dzis: '2026-10-20' })[0].typ).toBe('faktura-ksef');
+      db.prepare("UPDATE ustawienia SET wartosc = '0' WHERE klucz = 'ksef.konsumenckie'").run();
+      await czuwacz.przebieg();
+      expect(lukiKsef(db)).toEqual([]);
+    } finally { db.close(); }
+  });
   it('pisze lustro barierą coWolnoWyslac: bez numeru KSeF i z NIP-em wchodzi, reszta nie', async () => {
     const db = openOmsDb(':memory:');
     zajmijWysylkeKsef(db, 'u-zarezerwowana');

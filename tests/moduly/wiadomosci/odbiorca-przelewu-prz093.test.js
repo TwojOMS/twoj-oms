@@ -11,7 +11,8 @@ import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { createWiadomosci } from '../../../src/moduly/wiadomosci/services/wiadomosci.js';
 import { adresFirmyZEnv } from '../../../src/core/adres-firmy.ts';
 import { zbudujOms } from '../../../src/oms/bootstrap.ts';
-import { zapiszAdresFirmy } from '../../../src/oms/db/adres-firmy.js';
+import { zapiszAdresFirmy, zrodloAdresuFirmy } from '../../../src/oms/db/adres-firmy.js';
+import { podgladSzablonu } from '../../../src/moduly/wiadomosci/szablony.js';
 
 const RACHUNEK = '34109010140000000000000000';
 const zamowienie = () => ({
@@ -55,12 +56,51 @@ describe('PRZ-093.08 odbiorca przelewu w mailu płatniczym', () => {
     expect(odbiorca((await w.podglad(id, 'przypomnienie')).tekst)).toBe('Firma z Pliku');
   });
 
-  it('bez źródła adresu: pusty odbiorca jak dziś; skład bez funkcji (stare testy) czyta config.nadawca', async () => {
+  it('bez źródła adresu pomija odbiorcę; skład bez funkcji czyta config.nadawca', async () => {
     const pusty = usluga({ nadawca: adresFirmyZEnv({}), adresFirmy: () => null });
-    expect(odbiorca((await pusty.w.podglad(pusty.id, 'przypomnienie')).tekst)).toBe('');
+    const p = await pusty.w.podglad(pusty.id, 'przypomnienie');
+    expect(p.tekst).not.toContain('Odbiorca:');
+    expect(p.html).not.toContain('Odbiorca');
+    expect(p.tekst).toContain('Rachunek:');
+    expect(p.tekst).toContain('Tytuł przelewu:');
     const stary = usluga({ nadawca: { nazwa: 'Stary Skład' } });
     expect(odbiorca((await stary.w.podglad(stary.id, 'przypomnienie')).tekst)).toBe('Stary Skład');
   });
+});
+
+it.each([null, ADRES_BAZY])('podgląd szablonu ma tego samego odbiorcę co mail, bez podstawiania marki: %s', async (adres) => {
+  const config = { adresFirmy: () => adres };
+  const { w, id } = usluga(config);
+  const mail = await w.podglad(id, 'przypomnienie');
+  const p = podgladSzablonu('przypomnienie', { temat: 'Przypomnienie', tresc: '{dane_platnosci}\n{podpis}' }, {
+    oprawa: { podpis: 'Marka Lamp' }, config, teraz: new Date('2026-10-02'),
+  });
+  expect(odbiorca(p.tekst)).toBe(odbiorca(mail.tekst));
+  expect(p.html.includes('Odbiorca')).toBe(Boolean(adres));
+  expect(p.html).not.toMatch(/Odbiorca<\/td><td[^>]*>Marka Lamp/);
+});
+
+it.each([null, ADRES_BAZY])('faktura przez atrapę poczty: bez pustego odbiorcy, rachunek i tytuł zostają: %s', async (adres) => {
+  const db = openOmsDb(':memory:');
+  const wyslane = [];
+  try {
+    if (adres) zapiszAdresFirmy(db, { ...adres, telefon: '' });
+    const config = { proforma: { rachunek: RACHUNEK }, adresFirmy: zrodloAdresuFirmy({ db, zPliku: adresFirmyZEnv({}) }).adres };
+    const w = createWiadomosci({ db, config, mailer: { sendMail: async m => { wyslane.push(m); } },
+      infakt: { pobierzPdf: async () => Buffer.from('%PDF-atrapa') }, teraz: () => '2026-10-02T10:00:00.000Z' });
+    const id = zapiszZamowienie(db, 'reczne', zamowienie(), {});
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
+      .run(id, 'fikcyjna-faktura', 'FV/18/2026', '2026-10-01');
+    await w.wyslij(id, 'faktura');
+    expect(wyslane).toHaveLength(1);
+    const m = wyslane[0];
+    expect(odbiorca(m.text)).toBe(adres?.nazwa ?? null);
+    expect(m.html.includes('Odbiorca')).toBe(Boolean(adres));
+    expect(m.text).toContain(`Rachunek: ${RACHUNEK}`);
+    expect(m.text).toContain('Tytuł przelewu: FV/18/2026');
+    expect(m.html).toContain(RACHUNEK);
+    expect(m.html).toContain('FV/18/2026');
+  } finally { db.close(); }
 });
 
 // Prawdziwy skład: funkcja adresu z modułu faktur dociera do usługi wiadomości przez kopiowanie configu.
@@ -86,6 +126,11 @@ describe('PRZ-093.08 odbiorca przelewu przez prawdziwy skład modułów', () => 
         const id = zapiszZamowienie(a.db, 'reczne', zamowienie(), {});
         const p = await a.usluga('wiadomosci', 'wiadomosci').podglad(id, 'przypomnienie');
         expect(odbiorca(p.tekst)).toBe(oczekiwany);
+        const q = new URLSearchParams({ podglad: '1', temat: 'Faktura', tresc: '{dane_platnosci}\n{zamkniecie}\n{podpis}' });
+        const r = await a.app.inject({ url: `/ustawienia/szablony-wiadomosci/faktura?${q}`,
+          headers: { authorization: `Basic ${Buffer.from('operator:fixture').toString('base64')}` } });
+        expect(r.statusCode).toBe(200);
+        expect(r.body).toContain(`Odbiorca: ${oczekiwany}`);
       } finally { await a.app.close(); a.db.close(); }
     });
   }

@@ -63,7 +63,7 @@ describe('PRZ-093.10 produkcja: inFakt z pliku bez zmian', () => {
       expect(wolania).toEqual([{ apiKey: KLUCZ_PLIKU, baseUrl: undefined, archiwum: ARCHIWUM, fetchImpl: undefined }]);
       expect(Object.keys(wolania[0]).sort()).toEqual(['apiKey', 'archiwum', 'baseUrl', 'fetchImpl']);
       expect(z.uslugi.config.infakt).toEqual({ apiKey: KLUCZ_PLIKU, baseUrl: undefined, archiwum: ARCHIWUM });
-      expect(z.zegary.map((x: { nazwa: string }) => x.nazwa)).toEqual(['czuwaczArchiwumSprzedazy']);
+      expect(z.zegary.map((x: { nazwa: string }) => x.nazwa)).toEqual(['czuwaczArchiwumSprzedazy', 'automatKsef']);
 
       const infakt = z.uslugi.infakt;
       await infakt.listaFaktur({ od: '2026-10-01', do: '2026-10-31' });

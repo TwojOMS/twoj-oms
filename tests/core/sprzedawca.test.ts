@@ -24,9 +24,12 @@ describe('wczytajSprzedawce', () => {
     expect(wczytajSprzedawce({ OMS_SPRZEDAWCA_NIP: ' pl 123-456-32-18 ', OMS_RACHUNEK: 'PL34 1090 1014 0000 0000 0000 0000' }))
       .toEqual({ nip: '1234563218', rachunek: '34109010140000000000000000', bdo: null, bank: null });
   });
-  it('brak obu pól daje jeden błąd z obiema nazwami', () => {
-    expect(() => wczytajSprzedawce({})).toThrow(/OMS_SPRZEDAWCA_NIP[\s\S]*OMS_RACHUNEK/);
-    expect(() => wczytajSprzedawce({ OMS_SPRZEDAWCA_NIP: ' ', OMS_RACHUNEK: '\t' })).toThrow(/OMS_SPRZEDAWCA_NIP[\s\S]*OMS_RACHUNEK/);
+  // PRZ-102.20: brak rachunku nie blokuje startu — rachunek można wpisać w panelu (Ustawienia → Firma).
+  it('brak NIP-u blokuje start; brak rachunku nie (rachunek: null)', () => {
+    expect(() => wczytajSprzedawce({})).toThrow('OMS_SPRZEDAWCA_NIP');
+    expect(() => wczytajSprzedawce({})).not.toThrow(/OMS_RACHUNEK/);
+    expect(wczytajSprzedawce({ OMS_SPRZEDAWCA_NIP: '1234563218' }).rachunek).toBeNull();
+    expect(wczytajSprzedawce({ OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '\t' }).rachunek).toBeNull();
   });
   it('literówka rachunku blokuje start', () => {
     expect(() => wczytajSprzedawce({ ...OK, OMS_RACHUNEK: '34109010140000000000000001' })).toThrow('OMS_RACHUNEK: niepoprawny numer rachunku');
@@ -42,12 +45,11 @@ describe('wczytajSprzedawce', () => {
       try { wczytajSprzedawce(env); } catch (e) { return (e as Error).message; }
       throw new Error('Oczekiwano odmowy startu');
     };
-    it('brak NIP-u i rachunku: nazwa zmiennej, format i plik konfiguracji', () => {
+    it('brak NIP-u: nazwa zmiennej, format i plik konfiguracji (brak rachunku nie jest błędem — PRZ-102.20)', () => {
       const m = blad({});
       expect(m).toContain('Brak wymaganej zmiennej: OMS_SPRZEDAWCA_NIP');
       expect(m).toContain('10 cyfr');
-      expect(m).toContain('Brak wymaganej zmiennej: OMS_RACHUNEK');
-      expect(m).toContain('26 cyfr');
+      expect(m).not.toContain('OMS_RACHUNEK');
       expect(m).toContain('produkcja.env');
       expect(m).toContain('docs/instalacja-docker.md');
     });

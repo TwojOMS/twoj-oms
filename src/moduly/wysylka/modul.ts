@@ -24,6 +24,7 @@ import { zegarPrzesylek, zegarPodjazdow } from './zegary.ts';
 import { sprzatnijOsadStatusu } from './sprzatanie.js';
 import { ocenZdrowie } from '../../domena/zdrowie.js';
 import type { DaneSprzedawcy } from '../../core/sprzedawca.ts';
+import { zrodloRachunkuFirmy } from '../../oms/db/rachunek-firmy.js';
 import type { MapaKurierow } from './kurierzy.ts';
 import { interwal } from '../../core/konfiguracja-wartosci.ts';
 import { opcjeKlientaDpd } from '../../domena/konfiguracja-dpd.js';
@@ -85,15 +86,20 @@ return {
     const klienci = ctx.usluga<MapaKlientow>('kanaly', 'klienciSklepow');
     const klienciAllegro = ctx.usluga<MapaKlientow>('kanaly', 'klienciKanalow');
     const config = ctx.usluga<any>('kanaly', 'config');
-    const sprzedawca = ctx.usluga<DaneSprzedawcy>('rdzen', 'sprzedawca');
+    // PRZ-102.20: źródło bez stanu (czyta bazę przy każdym wywołaniu) nad rachunkiem z pliku z rdzenia.
+    const rachunekFirmy = zrodloRachunkuFirmy({ db, zPliku: ctx.usluga<DaneSprzedawcy>('rdzen', 'sprzedawca') });
+    const adresFirmy = zrodloAdresuFirmy({ db, zPliku: k.kurierzy.adresFirmyZPliku });
+    // WzA czyta nazwę przy żądaniu, także bez DPD/ShipX z pliku i po zmianie Firmy w panelu. PRZ-102.20: rachunek też —
+    // z bieżącej konfiguracji (plik → Ustawienia → Firma → brak); bez rachunku domena odmawia pobrania wymagającego konta.
+    const pobranieNadawca = { get nazwa() { return adresFirmy.adres()?.nazwa ?? ''; },
+      get rachunek() { return rachunekFirmy.biezacy().rachunek ?? undefined; } };
     const kurierzy = zbudujKurierow({ ...k.kurierzy,
-      pobranieNadawca: { ...k.kurierzy.pobranieNadawca, rachunek: sprzedawca.rachunek },
+      pobranieNadawca,
     }, klienciAllegro, fabryki);
     // PRZ-092: DPD z Ustawień tylko, gdy .env go nie ustawia (.env wygrywa). Piaskownica bez atrapy nie dostaje
     // prawdziwego klienta DPD: wpisane na :3005 dane nie mogą wyjść do DPD.
     const wczytajDpd = () => wczytajKonfiguracjeIntegracji(db, 'dpd');
     // PRZ-093.08: nadawca DPD z Ustawień = adres firmy (plik → Ustawienia → Firma), czytany przy każdej paczce.
-    const adresFirmy = zrodloAdresuFirmy({ db, zPliku: k.kurierzy.adresFirmyZPliku });
     const dpdUstawien = k.kurierzy.dpd ? null : kurierDpdZUstawien({ wczytaj: wczytajDpd, nadawca: adresFirmy.adres,
       fabryka: fabryki.createDpd ?? (k.proba ? odmowaDpdWProbie : createDpdClient) });
     if (dpdUstawien && wczytajDpd()) kurierzy.dpd = dpdUstawien;
@@ -147,7 +153,7 @@ return {
       odstepMs: k.odstepPodjazdowMs, log: ctx.log }));
     return {
       uslugi: { nadanie, podjazdy, przesylkiAllegro, kurierzy, kurierDpd, kurierInpost, czuwaczPrzesylek, czuwaczPodjazdow, celeLacznosci,
-        config: { ...config, ...k.kurierzy, nadawca: k.kurierzy.dpd?.nadawca ?? null, katalogEtykiet: k.katalogEtykiet },
+        config: { ...config, ...k.kurierzy, pobranieNadawca, nadawca: k.kurierzy.dpd?.nadawca ?? null, katalogEtykiet: k.katalogEtykiet },
         przesylki: przesylki(db), zapytaniaPodjazdow: podjazdyDb(db), kolejkaDruku: kolejkaDruku(db) },
       trasy: (app) => {
         registerPrzesylkiRoutes(app, { db });

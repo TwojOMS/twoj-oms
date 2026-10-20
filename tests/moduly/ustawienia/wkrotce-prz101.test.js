@@ -37,7 +37,8 @@ describe('PRZ-101.01 Ustawienia — strony „wkrótce”', () => {
   });
 
   it('treść jest konkretna: 2–4 punkty, bez dat i obietnic', () => {
-    expect(STRONY_WKROTCE).toHaveLength(5);
+    // PRZ-102.01: Powiadomienia zastąpione działającym formularzem osobistym.
+    expect(STRONY_WKROTCE).toHaveLength(4);
     for (const s of STRONY_WKROTCE) {
       expect(s.punkty.length).toBeGreaterThanOrEqual(2);
       expect(s.punkty.length).toBeLessThanOrEqual(4);

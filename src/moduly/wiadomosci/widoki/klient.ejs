@@ -67,6 +67,10 @@
         <dt>NIP</dt><dd><%= wart(klient.nip) %></dd>
         <dt>Kanał</dt><dd><%= klient.b2b ? 'B2B' : 'zwykły' %></dd>
         <dt>Rabat</dt><dd><%= klient.rabat_procent ? `${klient.rabat_procent}%` : 'brak' %></dd>
+        <%# ⚠️ PUSTA DOSTAWA TO „NIE USTALONO”, nie DPD: tak zapisuje sie klient z zamowienia
+            z dostawa, ktorej panel nie rozpoznal (PRZ-102.24). Pusty koszt to tez nie „gratis”. %>
+        <% const dostawaKlienta = dostawy[klient.metoda_wysylki]; const kosztKlienta = String(klient.koszt_dostawy_brutto ?? '').trim(); %>
+        <dt>Dostawa</dt><dd><% if (dostawaKlienta) { %><%= dostawaKlienta %><%= kosztKlienta === '0.00' ? ' · gratis' : (kosztKlienta ? ` · ${kosztKlienta} zł` : '') %><% } else { %><span class="wyjasnienie">nie ustalono</span><% } %></dd>
         <%# ⚠️ WIERSZ POKAZUJE SIE TYLKO PRZY ROZLICZENIU ZBIORCZYM — u zwyklego klienta
             trzy puste kwoty byłyby pytaniem, na ktore nie ma odpowiedzi. Kwoty wymieniamy
             WPROST, bo od 24.08 to jedyne miejsce, w ktorym w ogole widac warunki umowy

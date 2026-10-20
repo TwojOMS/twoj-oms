@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 // Sesja tokenow KSeF (tabela `tokeny_ksef`, patrz db/schema.sql).
 //
 // ⚠️ TE WIERSZE SA POSWIADCZENIAMI. Nie wypisujemy ich do logu, nie wkladamy do komunikatu
@@ -14,8 +16,23 @@
 // i pada w polowie pobierania — a przebieg czuwacza trwa minuty, nie milisekundy.
 const ZAPAS_MS = 5 * 60 * 1000;
 
-export function createSesjaKsef({ db, klient, teraz = () => new Date() }) {
-  const wczytaj = () => db.prepare('SELECT * FROM tokeny_ksef WHERE id = 1').get() ?? null;
+// PRZ-102.22 (recenzja): `odcisk` — skrót tokenu KSeF (i NIP-u), którym wydano parę. Para o INNYM odcisku albo bez
+// odcisku (z czasu przed tą zmianą) to BRAK PARY: pełne logowanie bieżącym tokenem. Bez tego nowy token z Ustawień
+// przejmował parę starego — np. gdy przebieg na starym tokenie zalogował się już PO zapisie nowego, albo po zdjęciu
+// tokenu z pliku, gdy w bazie leżał zapis z ekranu — i „Sprawdź połączenie” mówiło „działa” dla złego tokenu.
+// Odcisk leży w `ustawienia` (bez migracji). Bez `odcisk` (wołający sprzed tej zmiany) sesja działa jak dotąd.
+export function odciskTokenuKsef({ token, nip }) {
+  return createHash('sha256').update(`${nip ?? ''}|${token}`).digest('hex');
+}
+const KLUCZ_ODCISKU = 'ksef.sesja.odcisk';
+
+/** @param {{ db: any, klient: any, teraz?: () => Date, odcisk?: string }} opcje */
+export function createSesjaKsef({ db, klient, teraz = () => new Date(), odcisk = undefined }) {
+  const odciskPary = () => db.prepare('SELECT wartosc FROM ustawienia WHERE klucz = ?').get(KLUCZ_ODCISKU)?.wartosc ?? null;
+  const wczytaj = () => {
+    const w = db.prepare('SELECT * FROM tokeny_ksef WHERE id = 1').get() ?? null;
+    return w && (odcisk === undefined || odciskPary() === odcisk) ? w : null;
+  };
 
   // ⚠️ OBA TOKENY JEDNYM ZAPISEM (patrz komentarz w schema.sql). Zapis samego access tokena
   // zostawilby refresh token z poprzedniej pary (albo pusty), a redeem dziala tylko raz.
@@ -28,13 +45,22 @@ export function createSesjaKsef({ db, klient, teraz = () => new Date() }) {
         refresh_token = excluded.refresh_token, refresh_do = excluded.refresh_do,
         ostatni_blad = NULL, zaktualizowane_at = excluded.zaktualizowane_at
     `).run(accessToken, accessDo, refreshToken, refreshDo, teraz().toISOString());
+    // Odcisk PO parze: przerwa między zapisami zostawia nową parę ze starym odciskiem = brak pary (ponowne logowanie),
+    // nigdy starą parę z nowym odciskiem.
+    if (odcisk !== undefined) {
+      db.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
+        ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`)
+        .run(KLUCZ_ODCISKU, odcisk, teraz().toISOString());
+    }
   }
 
   // Odswiezenie zmienia WYLACZNIE access token — refresh token zostaje ten sam (klient.odswiez
   // go nie oddaje), wiec zapis nie ma go czym nadpisac.
-  function zapiszAccess({ accessToken, accessDo }) {
-    db.prepare('UPDATE tokeny_ksef SET access_token = ?, access_do = ?, ostatni_blad = NULL, zaktualizowane_at = ? WHERE id = 1')
-      .run(accessToken, accessDo, teraz().toISOString());
+  // PRZ-102.22: tylko do TEJ pary, którą odświeżaliśmy — w trakcie `odswiez` inny zestaw (nowy token) mógł zapisać
+  // własną parę, a access token starego tokenu wpisany do niej zostałby przejęty przez nowy.
+  function zapiszAccess({ accessToken, accessDo }, refreshToken) {
+    db.prepare('UPDATE tokeny_ksef SET access_token = ?, access_do = ?, ostatni_blad = NULL, zaktualizowane_at = ? WHERE id = 1 AND refresh_token = ?')
+      .run(accessToken, accessDo, teraz().toISOString(), refreshToken);
   }
 
   // Trwaly slad awarii logowania (kolumna byla dotad czyszczona tylko przy sukcesie).
@@ -77,7 +103,7 @@ export function createSesjaKsef({ db, klient, teraz = () => new Date() }) {
     if (w && zywy(w.refresh_do)) {
       try {
         const swiezy = await klient.odswiez(w.refresh_token);
-        zapiszAccess(swiezy);
+        zapiszAccess(swiezy, w.refresh_token);
         return swiezy.accessToken;
       } catch {
         // W1: nieudane odswiezenie NIE moze zostawic sesji martwej do naturalnego uplywu
@@ -92,4 +118,12 @@ export function createSesjaKsef({ db, klient, teraz = () => new Date() }) {
   }
 
   return { accessToken };
+}
+
+// PRZ-102.22: zmiana albo usunięcie tokenu KSeF w Ustawieniach kasuje parę tokenów sesji. Bez tego nowy token
+// jechałby na access/refresh tokenie wydanym STAREMU (np. odwołanemu) — a „Sprawdź połączenie” po wklejeniu złego
+// tokenu mówiłoby „działa”, bo nie logowałoby się nim wcale. Ten sam token zapisany ponownie sesji nie rusza.
+export function usunSesjeKsef(db) {
+  db.prepare('DELETE FROM tokeny_ksef WHERE id = 1').run();
+  db.prepare('DELETE FROM ustawienia WHERE klucz = ?').run(KLUCZ_ODCISKU);
 }

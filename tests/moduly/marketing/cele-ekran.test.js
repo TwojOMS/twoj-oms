@@ -86,6 +86,13 @@ describe('GET /cele — UKLAD SEKCJI (niezmiennik 4.88b)', () => {
     expect(dol.indexOf('panel-cialo')).toBeLessThan(dol.indexOf('<table'));
   });
 
+  it('PRZ-102.05: tabela celów stoi w `.przewijak-tabeli` — przy 390 px panel ją ciął', async () => {
+    // Zmierzone 20.10 przy oknie 390: tabela 440 px w ciele panelu 349 px, `overflow: hidden`
+    // panelu chowało kolumny Termin i Akcje bez paska przewijania.
+    const dol = lista((await wejdz('/cele')).body);
+    expect(dol).toMatch(/<div class="przewijak-tabeli">\s*<table class="tabela">/);
+  });
+
   it('kafle stoja WEWNATRZ ciala panelu', async () => {
     nowy({ nazwa: 'Widoczny' });
     const gora = kafle((await wejdz('/cele')).body);

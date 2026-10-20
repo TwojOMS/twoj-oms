@@ -1,5 +1,6 @@
 import type { ModulOms } from '../../core/kontrakty.ts';
 import { wczytajSprzedawce, type DaneSprzedawcy } from '../../core/sprzedawca.ts';
+import { zrodloRachunkuFirmy } from '../../oms/db/rachunek-firmy.js';
 import { migracjaBaseline, KLUCZE_UPRAWNIEN_W_DNIU_ZAMROZENIA } from './migracje/baseline.ts';
 import { oznaczKluczeZamrozenia } from '../../core/uprawnienia.ts';
 import { migracjaWersjaHasla } from './migracje/0003-wersja-hasla.ts';
@@ -19,5 +20,8 @@ export const modulRdzen: ModulOms<{ sprzedawca: DaneSprzedawcy }> = {
     migracjaKonfiguracjiIntegracji,
   ],
   uprawnienia: [], menu: [],
-  zbuduj: (ctx) => ({ uslugi: { sprzedawca: ctx.konfiguracja.sprzedawca } }),
+  // PRZ-102.20: `rachunekFirmy` — JEDNO źródło rachunku i banku dla maili, proform i WzA: plik (OMS_RACHUNEK/OMS_BANK)
+  // → Ustawienia → Firma → brak, czytane przy każdym użyciu. `sprzedawca.rachunek` to wyłącznie wartość z pliku.
+  zbuduj: (ctx) => ({ uslugi: { sprzedawca: ctx.konfiguracja.sprzedawca,
+    rachunekFirmy: zrodloRachunkuFirmy({ db: ctx.db, zPliku: ctx.konfiguracja.sprzedawca }) } }),
 };

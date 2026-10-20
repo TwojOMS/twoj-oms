@@ -1,13 +1,16 @@
 <h1>Statusy zamówień</h1>
 <p>Zmień nazwy, kolory i kolejność statusów. Statusy systemowe zachowują swoje działanie.</p>
+<p id="statusy-kolejnosc-pomoc" class="ust-pomoc">Przeciągnij status za uchwyt ⋮⋮ lub przesuń go strzałkami w górę i w dół na uchwycie. Kolejność zapisuje się automatycznie.</p>
+<p id="statusy-kolejnosc-komunikat" role="status" aria-live="polite" aria-atomic="true"></p>
+<noscript><p>Do zmiany kolejności włącz JavaScript. Nazwy i kolory możesz edytować poniżej.</p></noscript>
 <% if (komunikat) { %><div class="<%= blad ? 'pas-uprzedzenie' : 'pas-potwierdzenie' %>" role="<%= blad ? 'alert' : 'status' %>"><p><%= komunikat %></p></div><% } %>
 <div class="przewijak-tabeli">
 <table class="tab-pozycje" id="statusy-zamowien">
-  <thead><tr><th>Status</th><th>Nazwa i kolor</th><th>Kolejność</th><th>Rodzaj</th></tr></thead>
+  <thead><tr><th>Status</th><th>Nazwa i kolor</th><th>Rodzaj</th></tr></thead>
   <tbody>
   <% statusy.forEach(function(s, i) { %>
-    <tr>
-      <td><span class="<%= klasaStatusu(s.klucz) %>"><%= s.etykieta %></span></td>
+    <tr data-klucz="<%= s.klucz %>">
+      <td><div class="ust-status-chwyt"><button type="button" class="ust-uchwyt" data-nazwa="<%= s.etykieta %>" aria-label="Przesuń status <%= s.etykieta %>" aria-describedby="statusy-kolejnosc-pomoc" aria-pressed="false">⋮⋮</button><span class="<%= klasaStatusu(s.klucz) %>"><%= s.etykieta %></span></div></td>
       <td><form class="ust-statusy-edycja" method="post" action="/ustawienia/statusy">
         <input type="hidden" name="akcja" value="edytuj"><input type="hidden" name="klucz" value="<%= s.klucz %>">
         <label>Nazwa <input name="etykieta" value="<%= s.etykieta %>" required maxlength="40" aria-label="Nazwa statusu <%= s.etykieta %>"></label>
@@ -16,19 +19,15 @@
         </select></label>
         <button class="ust-przycisk" type="submit">Zapisz</button>
       </form></td>
-      <td><form class="ust-akcje" method="post" action="/ustawienia/statusy">
-        <input type="hidden" name="klucz" value="<%= s.klucz %>">
-        <button class="ust-przycisk" name="akcja" value="gora" <%= i === 0 ? 'disabled' : '' %> aria-label="<%= s.etykieta %> — w górę">↑ W górę</button>
-        <button class="ust-przycisk" name="akcja" value="dol" <%= i === statusy.length - 1 ? 'disabled' : '' %> aria-label="<%= s.etykieta %> — w dół">↓ W dół</button>
-      </form></td>
       <td><% if (s.jak) { %>Jak: <%= s.jak === 'nowe' ? 'Nowe' : 'W realizacji' %>
         <form method="post" action="/ustawienia/statusy"><input type="hidden" name="klucz" value="<%= s.klucz %>"><button class="ust-przycisk grozny" name="akcja" value="usun">Usuń</button></form>
-      <% } else { %>Systemowy<% } %></td>
+      <% } else { %>Systemowy<% if (s.klucz === 'indywidualne') { %> — pokazywany tylko przy zamówieniach indywidualnych<% } %><% } %></td>
     </tr>
   <% }); %>
   </tbody>
 </table>
 </div>
+<script type="module" src="<%= zasob('statusy-kolejnosc.js') %>"></script>
 <section class="ust-sekcja">
   <h2>Dodaj status</h2>
   <form class="ust-formularz" method="post" action="/ustawienia/statusy">

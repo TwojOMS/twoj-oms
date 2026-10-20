@@ -5,6 +5,7 @@ import { czyPobranie } from './wysylka.js';
 import { terminZamowienia } from './blok-platnosci.js';
 import { zlotowki } from './kwoty.js';
 import { fmtDataCzasKrotko } from './format-daty.js';
+import { powodBrakuPaczki, numeryPaczek } from './wiadomosc-wyslane.js';
 
 // TEMATY WIADOMOŚCI DO KLIENTA — jedyne miejsce rozstrzygające „czy wolno wysłać" (22.08.2026).
 //
@@ -15,13 +16,15 @@ import { fmtDataCzasKrotko } from './format-daty.js';
 // ⚠️ WIDOK, TRASA I USŁUGA PYTAJĄ TĘ SAMĄ FUNKCJĘ. Druga kopia warunku po stronie widoku
 // znaczyłaby przycisk, który się pokazuje, a po kliknięciu odmawia — albo, groźniej, odwrotnie.
 
-export const TEMATY = Object.freeze(['potwierdzenie', 'proforma', 'faktura', 'przypomnienie']);
+// PRZ-102.21: `wyslane` — „Zamówienie wysłane", wyłącznie ręcznie z karty (bez automatu przy nadaniu).
+export const TEMATY = Object.freeze(['potwierdzenie', 'proforma', 'faktura', 'przypomnienie', 'wyslane']);
 
 export const NAZWA_TEMATU = Object.freeze({
   potwierdzenie: 'Potwierdzenie przyjęcia zamówienia',
   proforma: 'Proforma',
   faktura: 'Faktura',
   przypomnienie: 'Przypomnienie o płatności',
+  wyslane: 'Zamówienie wysłane',
 });
 
 const odmowa = (powod) => ({ wolno: false, powod });
@@ -44,7 +47,7 @@ const zgoda = Object.freeze({ wolno: true, powod: null });
  * `kontekst`: `{ proforma, faktura, dzis }` — aktualna proforma (wiersz z bazy albo `null`),
  * faktura zamówienia (`z.faktura` albo `null`), dzień odniesienia.
  *
- * ⚠️ WARUNKI WSPÓLNE IDĄ PIERWSZE i dotyczą wszystkich czterech tematów. „Anulowane" bije
+ * ⚠️ WARUNKI WSPÓLNE IDĄ PIERWSZE i dotyczą wszystkich tematów. „Anulowane" bije
  * wszystko: potwierdzenie przyjęcia zamówienia, którego nie ma, proforma do niego, faktura
  * i przypomnienie o zapłacie za nie — każdy z tych maili byłby wtedy nieprawdą.
  */
@@ -105,6 +108,12 @@ export function czyWolnoWyslac(z, temat_id, kontekst = {}) {
     if (saldo.stan === 'blad') return odmowa(`Nie da się policzyć, ile brakuje: ${saldo.blad}`);
     if (saldo.stan !== 'niedoplata') return odmowa('Zamówienie jest opłacone — nie ma o czym przypominać.');
     return zgoda;
+  }
+
+  if (temat_id === 'wyslane') {
+    // Mail twierdzi „zostało wysłane" i podaje numer listu — bez paczki z numerem byłby nieprawdą.
+    const powod = powodBrakuPaczki(z);
+    return powod ? odmowa(powod) : zgoda;
   }
 
   // ⚠️ WARTOWNIK, NIE MARTWY KOD (recenzja 22.08.2026). `TEMATY.includes` na samej górze
@@ -195,6 +204,8 @@ export function stanTematu(z, temat_id, kontekst = {}) {
     // podmiana na zdanie brzmiące jak stan dopuszczalny.
     return [`${kontekst.faktura.numer} · PDF z inFaktu`, ostatnio].filter(Boolean).join(' · ');
   }
+
+  if (temat_id === 'wyslane') return [numeryPaczek(z), ostatnio].filter(Boolean).join(' · ');
 
   const saldo = saldoWplat(z);
   const termin = terminZamowienia(z, kontekst.dzis);

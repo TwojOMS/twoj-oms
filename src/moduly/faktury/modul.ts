@@ -24,12 +24,13 @@ import { registerOkresyRoutes } from './trasy/okresy.js';
 import { registerDokumentyRoutes } from './trasy/dokumenty.js';
 import { registerDrukFakturRoutes } from './trasy/druk.js';
 import { registerUstawieniaFirmyRoutes } from './trasy/ustawienia-firma.js';
-import { zegarKsef, zegarArchiwumSprzedazy } from './zegary.ts';
+import { zegarKsef, zegarArchiwumSprzedazy, zegarAutomatuKsef, createAutomatKsef, ODSTEP_AUTOMATU_KSEF_MS } from './zegary.ts';
 import { paczkaBiuraDlaTras } from './paczka-biura.ts';
 import { skonfigurowanyUrl } from '../../core/konfiguracja-wartosci.ts';
 import { efektywnyTryb } from '../../core/tryb.ts';
 import { adresFirmyZEnv } from '../../core/adres-firmy.ts';
 import { zrodloAdresuFirmy } from '../../oms/db/adres-firmy.js';
+import { zrodloRachunkuFirmy } from '../../oms/db/rachunek-firmy.js';
 import { wczytajKonfiguracjeIntegracji } from '../../oms/db/konfiguracja-integracji.js';
 import { infaktZUstawien, odmowaInfaktuWProbie, odmowaViesWProbie } from './infakt-ustawien.ts';
 import { registerUstawieniaInfaktuRoutes } from './trasy/ustawienia-infakt.js';
@@ -76,15 +77,20 @@ return {
     { klucz: 'pozostale-dokumenty-zamowienia', etykieta: 'Pozostałe dokumenty zamówień', role: ['admin', 'operator'] },
     { klucz: 'okresy', etykieta: 'Okresy rozliczeniowe', role: ['admin', 'operator'] }],
   menu: [{ dzial: 'sprzedaz', grupa: 'obsluga', etykieta: 'Faktury', adres: '/faktury', uprawnienie: 'faktury', kolejnosc: 30 },
-    { dzial: 'sprzedaz', grupa: 'obsluga', etykieta: 'Rozliczenia', adres: '/okresy', uprawnienie: 'okresy', kolejnosc: 40 }],
+    // PRZ-102.03: grupa „Klienci” w menu bocznym (zgodnie z EKRANY.nawigacja).
+    { dzial: 'sprzedaz', grupa: 'klienci', etykieta: 'Rozliczenia', adres: '/okresy', uprawnienie: 'okresy', kolejnosc: 60 }],
   zbuduj: (ctx) => {
     const { db, konfiguracja: k, teraz } = ctx;
     const atrapy = FABRYKI_ATRAP.filter((n) => fabryki[n]);
     if (atrapy.length && !k.proba) throw new Error(`Fabryki ${atrapy.join(', ')} (atrapy piaskownicy) wolno podać tylko z OMS_TRYB=proba`);
     const kanaly = ctx.usluga<Record<string, any>>('kanaly', 'klienciKanalow');
     const adresFirmy = zrodloAdresuFirmy({ db, zPliku: k.nadawca });
+    // PRZ-102.20: rachunek i bank z bieżącej konfiguracji (plik → Ustawienia → Firma → brak) — proforma i maile płatnicze
+    // (config kopiowany do wiadomości) czytają go przy każdym użyciu; `proforma.rachunek` zostaje wartością z pliku.
+    // Źródło nie trzyma stanu (czyta bazę przy każdym wywołaniu), więc własna instancja = ta sama odpowiedź co usługa rdzenia.
+    const rachunekFirmy = zrodloRachunkuFirmy({ db, zPliku: k.proforma });
     const config = { ...ctx.usluga<any>('kanaly', 'config'), proforma: k.proforma, infakt: k.infakt, nadawca: k.nadawca,
-      adresFirmy: adresFirmy.adres };
+      adresFirmy: adresFirmy.adres, rachunekFirmy: rachunekFirmy.biezacy };
     const puls = createPuls({ teraz });
     // PRZ-093.10: inFakt z Ustawień (wiersz „infakt” w konfiguracja_integracji) — tylko gdy plik nie ma INFAKT_API_KEY
     // (.env wygrywa w całości; wtedy ścieżka niżej jest identyczna jak przed zmianą). Pośrednik czyta zapis przy każdym
@@ -132,10 +138,15 @@ return {
     const doczytanieKsef = infakt ? createDoczytanieKsef({ db, infakt, poNumerzeKsef: poNumerzeKsef as any }) : null;
     const czuwaczKsef = infakt && Object.keys(kanaly).length ? (fabryki.createCzuwacz ?? createCzuwaczKsef)({ db, infakt, klienciKanalow: kanaly, fakturaAllegro: fakturaAllegro as any }) : null;
     const czuwaczArchiwumSprzedazy = infakt && archiwum ? (fabryki.createCzuwaczArchiwumSprzedazy ?? createCzuwaczArchiwumSprzedazy)({ db, infakt, katalogArchiwum: archiwum, teraz }) : null;
+    // PRZ-102.12: automat wysyłki do KSeF o godzinie z Ustawień — tylko na tych samych usługach co przycisk
+    // (fakturyWidok + wysylkaKsef). Bez inFaktu przy starcie nie ma ani usług, ani automatu; ekran mówi dlaczego.
+    const automatKsef = wysylkaKsef && fakturyWidok ? createAutomatKsef({ db, fakturyWidok, wysylkaKsef, teraz, log: ctx.log,
+      dostepny: () => !konfiguracjaInfaktu.odlaczonyDoRestartu() }) : null;
     const zegary: Zegar[] = [];
     if (czuwaczKsef) zegary.push(zegarKsef({ czuwacz: czuwaczKsef, puls, odstepMs: k.odstepMs, log: ctx.log }));
     if (czuwaczArchiwumSprzedazy) zegary.push(zegarArchiwumSprzedazy({ czuwacz: czuwaczArchiwumSprzedazy, odstepMs: k.odstepMs, log: ctx.log }));
-    return { uslugi: { config, infakt, puls, vies, faktura, fakturaHurtem, proforma, fakturyWidok, wysylkaKsef, celeLacznosci,
+    if (automatKsef) zegary.push(zegarAutomatuKsef({ automat: automatKsef, odstepMs: ODSTEP_AUTOMATU_KSEF_MS, log: ctx.log }));
+    return { uslugi: { config, infakt, puls, vies, faktura, fakturaHurtem, proforma, fakturyWidok, wysylkaKsef, automatKsef, celeLacznosci,
       fakturaAllegro, poNumerzeKsef, doczytanieKsef, czuwaczKsef, czuwaczArchiwumSprzedazy, paczkaDlaBiura, konfiguracjaInfaktu,
       okres: (o: any) => przypiszDoOkresu({ ...o, db }), zapytania: fakturyDb(db), proformy: proformyDb(db), kolejkaDruku: kolejkaDruku(db) },
       trasy: (app) => {
@@ -152,9 +163,10 @@ return {
         registerDokumentyRoutes(app, opcje); registerDrukFakturRoutes(app, opcje);
         // PRZ-093.08: Ustawienia → Firma — ekran w module faktur (właściciel sprzedawcy na dokumentach),
         // tak jak ekran kuriera DPD siedzi w module wysyłki.
-        registerUstawieniaFirmyRoutes(app, { db, adresFirmy });
+        registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFirmy });
         // PRZ-093.10: Ustawienia → Integracje → inFakt (wzór: ekrany kurierów w module wysyłki).
-        registerUstawieniaInfaktuRoutes(app, { db, konfiguracjaInfaktu: usluga('konfiguracjaInfaktu') });
+        registerUstawieniaInfaktuRoutes(app, { db, konfiguracjaInfaktu: usluga('konfiguracjaInfaktu'),
+          automatKsef: usluga('automatKsef'), teraz });
       }, zegary,
       zdrowie: () => {
         const ocena = ocenZdrowie({ teraz: teraz(), startAt: puls.startAt,

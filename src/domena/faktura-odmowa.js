@@ -16,7 +16,7 @@ import { kwotaOczekiwanaGrosze, zl } from './suma-pozycji.js';
 // stan faktury osobno (domain/faktura-stan.js) — dla WYGODY oka, nie jako zabezpieczenie.
 
 /** Kolejnosc odmow jest czescia reguly — patrz komentarze przy poszczegolnych warunkach. */
-export function powodOdmowyFaktury(z) {
+export function powodOdmowyFaktury(z, { okresyWlaczone = true } = {}) {
   if (!z) return 'Nie ma takiego zamówienia.';
 
   // PRZ-101.04: JEDNA FAKTURA NA ZAMÓWIENIE SCALONE (decyzja właściciela 18.10). Dołączone jest częścią
@@ -48,7 +48,9 @@ export function powodOdmowyFaktury(z) {
   if (z.okres_rozliczeniowy_id) {
     return `Zamówienie ${z.numer} należy do miesięcznego okresu rozliczeniowego i rozlicza się `
       + 'JEDNĄ fakturą zbiorczą za cały miesiąc — pojedynczej faktury panel do niego nie '
-      + `wystawi. Fakturę za ten miesiąc wystawisz na ekranie okresu: /okresy/${z.okres_rozliczeniowy_id}.`;
+      + 'wystawi. ' + (okresyWlaczone
+        ? `Fakturę za ten miesiąc wystawisz na ekranie okresu: /okresy/${z.okres_rozliczeniowy_id}.`
+        : 'Włącz Rozliczenia w Ustawienia → Moduły, żeby wystawić fakturę za okres.');
   }
 
   // TWARDA odmowa, nie samo ukrycie sekcji w widoku: karta w przegladarce pokazuje stan

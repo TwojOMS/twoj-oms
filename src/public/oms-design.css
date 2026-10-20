@@ -118,3 +118,42 @@ a.oms-theme-button,a.oms-theme-button:visited{text-decoration:none}
 @media print{.oms-sidebar,.oms-topbar,.oms-order-statuses,.oms-settings-navigation{display:none!important}.oms-shell,.oms-settings-layout{display:block}.oms-main > .kolumna-glowna{padding:0}}
 
 .oms-shell > .tresc{padding:0;min-width:0}
+
+/* PRZ-102.03 (wariant C): „Analizy i finanse” w górnym pasku — przycisk jak zębatka, lista jak menu konta. */
+.oms-menu-analiz{position:relative}
+.oms-menu-analiz-przycisk{list-style:none;display:flex;align-items:center;gap:7px;height:32px;padding:0 10px;border:1px solid var(--ramka);border-radius:6px;background:var(--powierzchnia);color:var(--tekst);cursor:pointer;white-space:nowrap;font-size:.95rem}
+.oms-menu-analiz-przycisk::-webkit-details-marker{display:none}
+.oms-menu-analiz-przycisk svg{width:16px;height:16px;flex-shrink:0}
+.oms-menu-analiz-przycisk::after{content:"";width:6px;height:6px;margin:0 2px 3px 2px;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:rotate(45deg);flex-shrink:0}
+.oms-menu-analiz-przycisk:hover,.oms-menu-analiz[open]>.oms-menu-analiz-przycisk{background:var(--powierzchnia-2)}
+.oms-menu-analiz-przycisk[aria-current]{background:var(--oms-aktywne-tlo);color:var(--link);font-weight:600;border-color:transparent}
+.oms-menu-analiz-panel{position:absolute;right:0;top:calc(100% + 7px);z-index:30;min-width:13rem;padding:6px;background:var(--powierzchnia);border:1px solid var(--ramka);border-radius:6px;box-shadow:0 6px 18px var(--oms-cien)}
+.oms-menu-analiz-panel ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.oms-menu-analiz-panel a,.oms-menu-analiz-panel a:visited{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:6px;color:var(--tekst);text-decoration:none}
+.oms-menu-analiz-panel a:hover{background:var(--powierzchnia-2)}
+.oms-menu-analiz-panel a[aria-current="page"]{background:var(--oms-aktywne-tlo);color:var(--link);font-weight:600}
+.oms-menu-analiz-panel svg{width:17px;height:17px;flex-shrink:0;color:var(--tekst-przygaszony)}
+.oms-zakladki-analiz{margin-bottom:22px}
+/* 651–1000 px: z podpisem przycisk zjadał całą nazwę ekranu w pasku (768 px: 0 px na „Raporty”, 660 px: pasek
+   szerszy od okna o 61 px — pomiar 20.10.2026). Zostaje ikona; nazwę niesie `title`, a lista i tak ją pokazuje. */
+@media(max-width:760px){.oms-topbar .menu-uzytkownika-nazwa{max-width:5.5rem}}
+@media(max-width:1000px){.oms-menu-analiz-przycisk{padding:0 8px}.oms-menu-analiz-przycisk>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}}
+/* Zwijana grupa menu (telefon: analizy) — nagłówek jak h2 grupy, ale klikalny. */
+.oms-menu-zwijana>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;margin:0;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:0.83rem;font-weight:600;letter-spacing:1.3px;text-transform:uppercase;color:var(--tekst-przygaszony)}
+.oms-menu-zwijana>summary::-webkit-details-marker{display:none}
+.oms-menu-zwijana>summary::after{content:"";width:6px;height:6px;margin:0 4px 2px 0;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:rotate(-45deg);flex-shrink:0}
+.oms-menu-zwijana[open]>summary::after{transform:rotate(45deg);margin-bottom:4px}
+.oms-menu-zwijana>summary:hover{background:var(--powierzchnia-2);color:var(--tekst)}
+.oms-menu-zwijana[open]>summary{margin-bottom:4px}
+/* Telefon: przycisk analiz nie mieści się w pasku (analizy są w menu). Siatka dwóch kolumn z minmax(0,1fr) —
+   przy 1fr najdłuższa pozycja (statusy) rozpychała kolumnę i strona przewijała się w bok o 24 px przy 390 px,
+   ucinając „Przesyłki”, „Wiadomości” (pomiar 20.10.2026). Pozycja ze statusami zajmuje cały wiersz,
+   statusy idą jedną kolumną, żeby „Do zrobienia” nie łamało się na litery. */
+@media(max-width:650px){
+  .oms-menu-analiz{display:none}
+  .oms-menu-mobile .oms-menu ul{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .oms-menu-mobile .oms-menu li.oms-menu-ze-statusami{grid-column:1 / -1}
+  .oms-menu-mobile .oms-menu ul.oms-statusy{display:flex;flex-direction:column}
+  .oms-menu-mobile .oms-menu .oms-statusy a{min-height:40px;align-items:center}
+  .oms-menu-mobile .oms-menu a>span{min-width:0;overflow-wrap:anywhere}
+}

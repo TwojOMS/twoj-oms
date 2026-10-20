@@ -97,6 +97,19 @@ export function createProforma({
     return { ...adresSprzedawcy(config), nip: ustawienia.nip };
   }
 
+  // PRZ-102.20: rachunek i bank z bieżącej konfiguracji (plik → Ustawienia → Firma), czytane przy KAŻDYM wystawieniu
+  // — zapis w panelu działa od następnej proformy, bez restartu. Skład bez `config.rachunekFirmy` czyta
+  // config.proforma jak dotąd. Proforma to prośba o przelew („Przelew bankowy PLN, na rachunek”) — bez numeru
+  // rachunku jej nie wystawiamy (odmowa w FAZIE 1, zanim przepadnie numer z serii).
+  function rachunekDokumentu() {
+    const r = config?.rachunekFirmy ? config.rachunekFirmy() : { rachunek: ustawienia.rachunek, bank: ustawienia.bank };
+    if (!String(r?.rachunek ?? '').trim()) {
+      throw bladOperatora('Panel nie zna rachunku firmy — wpisz numer rachunku w Ustawienia → Firma (/ustawienia/firma) '
+        + 'albo OMS_RACHUNEK w pliku konfiguracji. Proforma NIE została wystawiona i żaden numer z serii nie przepadł.');
+    }
+    return { rachunek: r.rachunek, bank: r.bank };
+  }
+
   // ⚠️ Dane nabywcy WYLACZNIE przez `daneFaktury(z)` — nigdy wprost z `z.klient`/`z.nip`.
   // Ta sama zasada, co w services/faktura.js: operator poprawia je na karcie, bo klient podal
   // zle albo napisal, ze chce zmienic. Czytanie prosto ze sklepu robiloby z tej edycji edycje
@@ -126,6 +139,7 @@ export function createProforma({
     const { wolno, powod } = czyWolnoWystawic(z);
     if (!wolno) throw bladOperatora(powod);
     const sprzedawca = daneSprzedawcy();
+    const { rachunek, bank } = rachunekDokumentu();
     const nabywca = daneNabywcy(z);
     // Katalog na pliki JESZCZE TU, w fazie odmow: nieudane zalozenie katalogu nie zostawia
     // ani wiersza, ani zuzytego numeru — tak samo jak kazda inna odmowa lokalna.
@@ -187,8 +201,8 @@ export function createProforma({
         podsumowanieVat: wierszeVat,
         doZaplatyGr,
         slownie: kwotaSlownie(doZaplatyGr),
-        rachunek: ustawienia.rachunek,
-        bank: ustawienia.bank,
+        rachunek,
+        bank,
       }));
     } catch (e) {
       // ⚠️ WIERSZ KASUJEMY, i to jest decyzja, nie skrot. Wybor byl miedzy skasowaniem

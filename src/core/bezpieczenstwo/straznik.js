@@ -51,7 +51,18 @@ const METODY_NAWIGACJI = ['GET', 'HEAD'];
  *   i tak wpisuje do dziennika logowan wlasna, niezalezna stala `'oms'`. Pole klamalo, ze
  *   cos konfiguruje — usuniete z kontraktu, zamiast zostawic martwy parametr.
  */
-export function zbudujStraznika({ basicAuth, db, nazwaCiasteczka, konta = null }) {
+export function zbudujStraznika({ basicAuth, db, nazwaCiasteczka, konta = null, odlozoneEkrany = () => [] }) {
+  // Panel indywidualny nie wstrzykuje tego odczytu; blokada dotyczy tylko OMS.
+  const sprawdzModul = (req, reply) => {
+    const ekran = ekranDlaAdresu(req.url);
+    if (!odlozoneEkrany().includes(ekran)) return false;
+    reply.code(404).view(sciezkaWidoku('modul-wylaczony.ejs'), {
+      title: 'Moduł wyłączony', wlasnyUklad: true,
+      motyw: motywZNaglowka(req.headers.cookie), admin: req.konto?.admin === true,
+    });
+    return true;
+  };
+  if (konta) konta = { ...konta, sprawdzModul };
   const hamulec = hamulecLogowaniaDla(db);
   return async function straznik(req, reply) {
     if (czyTrasaOtwarta(req.url)) return;
@@ -232,7 +243,11 @@ function dopuscZalogowanego(req, reply, konta, sesja, sekret, nazwaCiasteczka) {
     uprawnienia: konto.uprawnienia, serwisowe: false,
   };
 
+  // PRZ-102.01: osobiste ustawienie, tak jak /konto — niezależne od prawa „ustawienia”.
+  // Dokładna ścieżka: pozostałe ekrany Ustawień zachowują własną bramkę.
+  if (req.url.split('?')[0] === '/ustawienia/powiadomienia') return;
   const ekran = ekranDlaAdresu(req.url);
+  if (konta.sprawdzModul(req, reply)) return reply;
   if (ekran === 'kazdy' || ekran === 'otwarte') return;
   if (ekran === null) return odmow(req, reply);
   if (ekran === 'api') return maDostepDoEkranu(konto, 'api') ? undefined : odmow(req, reply);
@@ -265,6 +280,7 @@ function dopuscSerwisowe(req, reply, konta) {
     uprawnienia: new Set(pelnia ? [...EKRANY.map((e) => e.klucz), 'api'] : ['api']),
     serwisowe: true,
   };
+  if (konta.sprawdzModul(req, reply)) return reply;
   if (pelnia) return;
 
   // ⚠️⚠️ KOLEJKI DRUKU ZOSTAJA KONTU MASZYNOWEMU TAKZE PO DEGRADACJI (recenzja calosci,

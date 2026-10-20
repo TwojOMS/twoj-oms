@@ -19,6 +19,7 @@ import {
   LIMIT_ZADANIA_MS as LIMIT_ZADANIA_INFAKTU_MS, SUFIT_STRON, ROWNOLEGLE_STRON,
 } from '../../../oms/infakt/client.js';
 import { coWolnoWyslac } from '../../../domena/wysylka-ksef.js';
+import { czyWysylacKonsumenckie } from '../../faktury/db/ksef-konsumenckie.js';
 import { podmienLukiKsef, podmienPoTerminie } from '../../../oms/db/ostrzezenia.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 
@@ -77,7 +78,8 @@ export function createCzuwaczOstrzezen({ db, infakt = null, fakturyWidok = null 
   /**
    * Lustro „dokumentów, które WOLNO wysłać do KSeF, a nikt nie wysłał". Zakres liczy
    * `coWolnoWyslac` — DOKŁADNIE ta sama bariera, co pola wyboru na /faktury (rodzaj vat,
-   * brak numeru KSeF, nabywca z NIP-em, brak rezerwacji panelu) — nigdy własna kopia.
+   * brak numeru KSeF, brak rezerwacji panelu) — nigdy własna kopia. B2C domyślnie poza lukami;
+   * po włączeniu przez właściciela trafia do lustra i `ostrzezeniaFaktur` przy kolejnym przebiegu.
    *
    * ⚠️ `ksefZleconaAt` DOKLEJAMY Z `wysylki_ksef` przed barierą, tak samo jak robi to
    * services/faktury-widok.js: świeżo pobrana lista jest przez ~70 s ślepa na wysyłkę
@@ -103,7 +105,7 @@ export function createCzuwaczOstrzezen({ db, infakt = null, fakturyWidok = null 
     );
     const lista = dokumenty.filter(Boolean).map((d) => ({ ...d, ksefZleconaAt: zlecone.get(d?.uuid) ?? null }));
     const poUuid = new Map(lista.map((d) => [d.uuid, d]));
-    const { doWyslania } = coWolnoWyslac(lista.map((d) => d.uuid), lista);
+    const { doWyslania } = coWolnoWyslac(lista.map((d) => d.uuid), lista, czyWysylacKonsumenckie(db));
     podmienLukiKsef(
       db,
       doWyslania.map(({ uuid, numer }) => ({ uuid, numer, invoiceDate: poUuid.get(uuid)?.invoice_date ?? null })),

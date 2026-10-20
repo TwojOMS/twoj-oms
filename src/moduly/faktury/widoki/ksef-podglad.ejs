@@ -30,7 +30,7 @@
   };
 %>
 
-<p class="wroc"><a href="<%= adresPowrotu %>">← Wróć do listy faktur</a></p>
+<p class="wroc"><a href="<%= adresPowrotu %>">← <%= typeof etykietaPowrotu !== 'undefined' && etykietaPowrotu ? etykietaPowrotu : 'Wróć do listy faktur' %></a></p>
 
 <div class="panel panel--groza">
   <div class="panel-glowa panel-glowa--groza"><h2>Wysyłka do KSeF — operacja nieodwracalna</h2></div>
@@ -109,6 +109,8 @@
               operator patrzyl, gdy zaznaczal. %>
           <input type="hidden" name="miesiac" value="<%= miesiac %>">
           <input type="hidden" name="pole" value="<%= pole %>">
+          <%# PRZ-102.23: powrót na kartę zamówienia jedzie dalej tylko po białej liście (powrotWysylkiKsef). %>
+          <% if (typeof powrot !== 'undefined' && powrot) { %><input type="hidden" name="powrot" value="<%= powrot %>"><% } %>
           <button class="btn btn--groza" type="submit" name="potwierdzam" value="wyslij">
             Wyślij <%= faktur(doWyslania.length) %> do KSeF
           </button>

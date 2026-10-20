@@ -65,7 +65,8 @@ export function createGusClient({ klucz, url }, { fetchImpl, http = transport({ 
     // Zły klucz NIE daje błędu HTTP — usługa oddaje pustą wartość. Bez tej kontroli panel
     // szedłby dalej z pustym `sid` i mówił „nie znaleziono firmy" przy KAŻDYM NIP-ie.
     if (!sid) {
-      throw bladOperatora('GUS odrzucił logowanie — sprawdź klucz użytkownika (GUS_KLUCZ).');
+      // PRZ-102.11: klucz bywa w pliku (GUS_KLUCZ) albo w Ustawienia → Integracje → GUS — komunikat wskazuje oba.
+      throw bladOperatora('GUS odrzucił logowanie — sprawdź klucz użytkownika BIR (Ustawienia → Integracje → GUS albo GUS_KLUCZ w pliku konfiguracji).');
     }
     sesja = { sid, do: teraz() + ZYWOTNOSC_SESJI_MS };
     return sid;
@@ -95,5 +96,18 @@ export function createGusClient({ klucz, url }, { fetchImpl, http = transport({ 
     return firmaZOdpowiedzi(wynik);
   }
 
-  return { firmaPoNip, zaloguj, _sesja: () => sesja };
+  /**
+   * PRZ-102.11: „Sprawdź połączenie” z Ustawień — świeże logowanie kluczem (Zaloguj). Niczego w GUS nie zmienia
+   * i o nic nie pyta; zły klucz kończy się tym samym komunikatem co przy pierwszym „Pobierz z GUS”.
+   */
+  async function sprawdzPolaczenie() {
+    sesja = null;
+    await zaloguj();
+    return { ok: true };
+  }
+
+  return { firmaPoNip, zaloguj, sprawdzPolaczenie, _sesja: () => sesja };
 }
+
+/** Metody klienta, które przekazuje pośrednik z Ustawień (moduly/zamowienia/gus-ustawien.ts) i musi mieć atrapa. */
+export const METODY_GUS = Object.freeze(['firmaPoNip', 'zaloguj', 'sprawdzPolaczenie']);

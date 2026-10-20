@@ -102,6 +102,9 @@
   </div>
   <div class="panel-cialo">
     <p><a class="btn btn--glowny" href="/cele/nowy">+ Nowy cel</a></p>
+    <%# PRZ-102.05: przy 390 px tabela (440 px) była cięta przez `overflow: hidden` panelu —
+        kolumny Termin i Akcje znikały bez paska. Przewija się sama, strona nie. %>
+    <div class="przewijak-tabeli">
     <table class="tabela">
       <thead>
         <tr><th>Cel</th><th>Właściciel</th><th>Rytm</th><th>Postęp</th><th>Termin</th><th>Akcje</th></tr>
@@ -143,5 +146,6 @@
         <% }); %>
       </tbody>
     </table>
+    </div>
   </div>
 </section>

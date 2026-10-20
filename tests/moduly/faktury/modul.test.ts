@@ -31,7 +31,7 @@ describe('manifest faktury', () => {
       expect(z.uslugi?.proforma).toHaveProperty('wystaw');
       expect(z.uslugi?.faktura).toHaveProperty('wystaw');
       expect(z.uslugi?.infakt).toHaveProperty('wystaw');
-      expect(z.zegary?.map(x => x.nazwa)).toEqual(['czuwaczKsef', 'czuwaczArchiwumSprzedazy']);
+      expect(z.zegary?.map(x => x.nazwa)).toEqual(['czuwaczKsef', 'czuwaczArchiwumSprzedazy', 'automatKsef']);
       expect(transport).not.toHaveBeenCalled();
       expect((z.uslugi?.puls as { stan: () => unknown }).stan()).toEqual({});
       await z.zegary?.find(x => x.nazwa === 'czuwaczKsef')?.przebieg();

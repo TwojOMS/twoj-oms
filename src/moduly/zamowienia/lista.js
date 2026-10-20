@@ -87,7 +87,8 @@ app.get('/', async (req, reply) => {
     // stary link po zmianie klucza w ETYKIETY) NIE ma cicho pokazywac calej listy —
     // spada do domyslnego widoku roboczego, bo to jest jedyny bezpieczny domyslny stan
     // tego panelu (patrz komentarz przy doZrobienia w domain/status.js).
-    const filtrStatus = typeof req.query?.status === 'string' && Object.hasOwn(etykietyStatusow(db), req.query.status)
+    // Ukryty status dodatkowy pozostaje poprawnym adresem pustej listy.
+    const filtrStatus = typeof req.query?.status === 'string' && (req.query.status === 'indywidualne' || Object.hasOwn(etykietyStatusow(db), req.query.status))
       ? req.query.status
       : null;
     // `?wszystkie=1` istnieje od pierwszej wersji listy i jest opisany w dokumentacji —
@@ -289,8 +290,8 @@ app.get('/', async (req, reply) => {
       adresBezFiltrow: adresZFiltrami({}, kontekst),
       metodyDoFiltra: METODY_DO_FILTRA.map((k) => ({ klucz: k, etykieta: ETYKIETY_WYSYLKI[k] ?? k })),
       // Katalog i etykiety pochodzą z jawnej konfiguracji także przed pierwszym zamówieniem.
-      // PRZ-089: „Indywidualne” tylko tam, gdzie panel zamówień indywidualnych istnieje (OMS_KANAL_INDYWIDUALNY).
-      kanalyDoFiltra: kanalyDoFiltra(config.definicje).filter(k => k.klucz !== 'indywidualne' || config.kanalIndywidualny !== false),
+      // Kanał lub istniejące zamówienia: ta sama reguła, co statusy w menu.
+      kanalyDoFiltra: kanalyDoFiltra(config.definicje).filter(k => k.klucz !== 'indywidualne' || Object.hasOwn(etykietyStatusow(db), 'indywidualne')),
       // Lista metod platnosci Z BAZY, nie ze stalej: sklep dokłada bramki bez pytania nas
       // o zdanie, a wpisana na sztywno lista po cichu przestalaby byc kompletem.
       metodyPlatnosci: opcjeMetodPlatnosci(metodyPlatnosciWBazie(db)),

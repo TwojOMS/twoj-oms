@@ -42,7 +42,7 @@ function konfiguracjaZSzablonu(k: string): Record<string, string> {
     const m = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/.exec(linia);
     if (m) env[m[1]] = m[2];
   }
-  return { ...env, OMS_SPRZEDAWCA_NIP: '1111111111', OMS_RACHUNEK: '50109010140000000000000003',
+  return { ...env, OMS_SPRZEDAWCA_NIP: '1111111111', OMS_RACHUNEK: '09109010140000000000000062',
     DPD_NADAWCA_NAZWA: 'Pracownia Przykładowa sp. z o.o.', DPD_NADAWCA_ULICA: 'Klockowa 1', DPD_NADAWCA_KOD: '00-950', DPD_NADAWCA_MIASTO: 'Warszawa' };
 }
 
@@ -75,6 +75,10 @@ describe('produkcja-pierwszy-start.mjs', () => {
     const { env, port } = await srodowisko();
     const oms = await uruchomOms(env, '127.0.0.1');
     try {
+      // PRZ-102.14: start panelu zakłada granice sam. Usuwamy je, by nadal sprawdzać
+      // niezależną ścieżkę skryptu pierwszego startu (także mutację start-bez-granic).
+      const przedSkryptem = new DatabaseSync(env.OMS_DB_PATH);
+      try { przedSkryptem.exec('DELETE FROM granice_historii'); } finally { przedSkryptem.close(); }
       const r = await uruchomSkrypt(env);
       expect(r.kod, r.stderr).toBe(0);
       const linie = r.stdout.trimEnd().split('\n');
@@ -145,6 +149,10 @@ describe('produkcja-pierwszy-start.mjs', () => {
     const { env } = await srodowisko();
     const oms = await uruchomOms(env, '127.0.0.1');
     await oms.zamknij();
+    // PRZ-102.14: testujemy ręczne narzędzie na brakującej granicy, niezależnie od automatu startu.
+    const przedRecznym = new DatabaseSync(env.OMS_DB_PATH);
+    try { przedRecznym.prepare("DELETE FROM granice_historii WHERE kanal='SKLEP_PRZYKLADOWA'").run(); }
+    finally { przedRecznym.close(); }
     const e = { ...env, WOO_PRZYKLADOWA_OD: '2026-10-20' };
     for (const dzien of ['2026-10-20', '2026-11-01'])
       expect(() => wykonajGranice([env.OMS_DB_PATH, 'SKLEP_PRZYKLADOWA', dzien], e)).toThrow(/WOO_PRZYKLADOWA_OD \(2026-10-20\)/);

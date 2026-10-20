@@ -8,7 +8,8 @@
 <section class="ust-sekcja szw-sekcja">
   <% if (s.wbudowany) { %>
     <p><%= s.zmieniony ? 'Treść zmieniona ' + fmtDataCzasKrotko(s.zmieniono_at) + '.' : 'Treść domyślna, dostarczona z panelem.' %>
-      <% if (s.rodzaj !== 'potwierdzenie' && s.rodzaj !== 'konto') { %>Załącznik PDF dokłada panel, jak dotąd.<% } %></p>
+      <% if (['proforma', 'faktura', 'przypomnienie'].includes(s.rodzaj)) { %>Załącznik PDF dokłada panel, jak dotąd.<% } %>
+      <% if (s.rodzaj === 'wyslane') { %>Wysyłasz go ręcznie z karty zamówienia, gdy paczka ma numer listu — panel nie wysyła go sam przy nadaniu.<% } %></p>
   <% } %>
   <form method="post" action="/ustawienia/szablony-wiadomosci/<%= s.id %>" id="szw-formularz" class="szw-formularz">
     <% if (!s.wbudowany) { %>
@@ -52,6 +53,12 @@
       <span class="wyjasnienie">Wysłane nim wiadomości zostają w historii zamówień.</span>
     </form>
   <% } %>
+
+  <% if (['proforma', 'faktura', 'przypomnienie'].includes(s.rodzaj)) { %>
+    <%# PRZ-102.17: opisy {zamkniecie} i {dane_platnosci} odsyłają „niżej" — tu jest to miejsce. %>
+    <h3 class="szw-naglowek" id="zdania-platnosci">Zdania o płatności</h3>
+    <p>Zdania wstawiane przez <code>{zamkniecie}</code> i <code>{dane_platnosci}</code> — np. „Należność pobierze kurier przy doręczeniu” przy pobraniu albo podziękowanie przy opłaconym zamówieniu — są wspólne dla proformy, faktury i przypomnienia. Zmienisz je na liście szablonów: <a href="/ustawienia/szablony-wiadomosci#zdania-platnosci">Szablony wiadomości → Zdania o płatności</a>. Podgląd tego maila (przycisk „Podgląd” wyżej) pokazuje je w brzmieniu zapisanym tam.</p>
+  <% } %>
 </section>
 
 <% if (podglad) { %>
@@ -59,6 +66,8 @@
     <h2><%= s.rodzaj === 'konto' ? 'Podgląd na przykładowym koncie' : 'Podgląd na przykładowym zamówieniu' %></h2>
     <% if (s.rodzaj === 'konto') { %>
       <p>Pracownica Anna, link zmyślony — prawdziwy, jednorazowy link panel wstawia dopiero przy wysyłce z Ustawień → Użytkownicy. Nic nie zostało zapisane.</p>
+    <% } else if (s.rodzaj === 'wyslane') { %>
+      <p>Zamówienie nr 1024 od Anny Nowak z jedną paczką DPD — dane i numer listu zmyślone. W prawdziwym mailu panel wstawia paczki zamówienia z karty. Nic nie zostało zapisane.</p>
     <% } else { %>
       <p>Zamówienie nr 1024 od Anny Nowak — dane zmyślone, także rachunek w danych do przelewu. W prawdziwym mailu panel wstawia dane zamówienia i rachunek z ustawień firmy. Nic nie zostało zapisane.</p>
     <% } %>

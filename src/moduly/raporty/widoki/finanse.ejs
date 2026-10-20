@@ -103,8 +103,12 @@
       if (nazwa !== `${zakres.od} – ${zakres.do}`) { %> · <%= zakres.od %> – <%= zakres.do %><% } %>
     · <a href="/raporty">sprzedaż</a>
     · <a href="/finanse/dane/<%= zakres.od.slice(0, 7) %>">dane miesiąca</a>
+    · <a href="/finanse/pokrycie">kompletność danych</a>
   </span>
 </div>
+<% if (typeof kosztyWylaczone !== 'undefined' && kosztyWylaczone) { %>
+<div class="pas-uprzedzenie" id="finanse-koszty-wylaczone" role="status"><p><strong>Moduł Koszty jest wyłączony — rachunek pokazuje sprzedaż bez kosztów</strong> pobieranych z KSeF i dopisywanych od teraz. Koszty zapisane wcześniej dalej są w rachunku. Włączysz go w <a href="/ustawienia/moduly">Ustawienia → Moduły</a>.</p></div>
+<% } %>
 
 <%# ——— WYBOR ZAKRESU ————————————————————————————————————————————————————————
     Zwykly formularz GET i piec odnosnikow, bez ani jednej linii skryptu. Skroty sa

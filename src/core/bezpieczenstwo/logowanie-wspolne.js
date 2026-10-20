@@ -12,7 +12,7 @@ import { timingSafeEqual } from 'node:crypto';
 // zero danych klientow i zero sekretow (tests/oms/web-zdrowie.test.js tego pilnuje).
 // Lista jest WSPOLNA dla obu paneli, a trase ma tylko OMS: panel indywidualny oddaje
 // na /health czyste 404 bez logowania — swiadomie (tests/security/zdrowie-otwarte.test.js).
-export const TRASY_OTWARTE = ['/login', '/health'];
+export const TRASY_OTWARTE = ['/login', '/health', '/favicon.ico'];
 
 // ⚠️ ZASOBY STATYCZNE MUSZA BYC OTWARTE — inaczej EKRAN LOGOWANIA RENDERUJE SIE BEZ STYLOW.
 // Zadanie o arkusz albo font NIE MA naglowka `Accept: text/html`, wiec straznik nie uzna go
@@ -30,6 +30,8 @@ export const PREFIKSY_OTWARTE = ['/public/', '/haslo/'];
 
 export function czyTrasaOtwarta(url) {
   const sciezka = String(url ?? '').split('?')[0];
+  // Ścieżka wychodząca z /public nie jest zasobem publicznym.
+  if (sciezka.startsWith('/public/') && sciezka.split('/').includes('..')) return false;
   if (TRASY_OTWARTE.includes(sciezka)) return true;
   return PREFIKSY_OTWARTE.some((p) => sciezka.startsWith(p));
 }

@@ -55,9 +55,10 @@
       <% } else { %>
       Nie ustalono początku danych o wysyłce i płatnościach: w OMS-ie nie ma jeszcze żadnego
       zamówienia. Po pierwszym zamówieniu panel przyjmie za początek dzień tego zamówienia.
-      Jeśli dane o przewoźniku i płatności zaczynają się innego dnia, wpisz go w pliku
-      konfiguracji OMS (<code>oms.env</code>): <code>OMS_STATYSTYKI_PIERWSZY_DZIEN=RRRR-MM-DD</code>,
-      np. <code>2026-07-01</code>, i uruchom OMS ponownie — zastrzeżenie dostaną wtedy tylko
+      Jeśli dane o przewoźniku i płatności zaczynają się innego dnia, administrator ustawi go
+      w Finanse → <a href="/finanse/pokrycie">Kompletność danych</a> (działa od razu, bez restartu)
+      — albo wpisz go w pliku konfiguracji OMS (<code>oms.env</code>): <code>OMS_STATYSTYKI_PIERWSZY_DZIEN=RRRR-MM-DD</code>,
+      np. <code>2026-07-01</code>, i uruchom OMS ponownie. Zastrzeżenie dostaną wtedy tylko
       zakresy zaczynające się przed tym dniem.
       <% } %>
     </div>

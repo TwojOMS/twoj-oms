@@ -58,8 +58,14 @@ describe('PRZ-025 rzeczywista kompozycja bootstrapu', () => {
         ['POST', '/koszty/reczne'], ['POST', '/koszty/firmy'],
         ['POST', '/koszty/reczne/:klucz'], ['POST', '/koszty/reczne/:klucz/usun'],
       ] as const) expect(z.app.hasRoute({ method, url })).toBe(true);
-      expect(z.usluga('koszty', 'czuwaczKosztow')).toBeNull();
-      expect(z.zegary.map(x => x.nazwa)).not.toContain('czuwaczKosztow');
+      // PRZ-102.22: czuwacz i zegar stoją zawsze (token zapisany w Ustawieniach działa bez restartu), ale bez tokenu
+      // nie ma czym pobierać: usługa mówi „niedostępny”, a przebieg zegara wraca pominięty bez wyjścia do sieci.
+      expect(z.usluga<any>('koszty', 'czuwaczKosztow').dostepny()).toBe(false);
+      expect(z.usluga('koszty', 'ksefKlient')).toBeNull();
+      const zegar = z.zegary.find(x => x.nazwa === 'czuwaczKosztow');
+      expect(zegar).toBeTruthy();
+      await expect(z.usluga<any>('koszty', 'czuwaczKosztow').przebieg({ wymuszony: true })).resolves.toEqual({ pominiety: true, powod: 'brak tokenu KSeF' });
+      await zegar!.przebieg();
       expect(transport).not.toHaveBeenCalled();
     } finally { await z.app.close(); z.db.close(); transport.mockRestore(); }
   });

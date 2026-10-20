@@ -1,4 +1,4 @@
-import { etykietyStatusow } from './statusy.js';
+import { statusyWKolejnosci } from './statusy.js';
 // Indeks listy zamówień (PRZ-051).
 //
 // ⚠️ PO CO. Do PRZ-051 każde otwarcie listy czytało CAŁĄ tabelę zamówień z dziećmi i liczyło
@@ -255,7 +255,9 @@ function utworz(db) {
     /** Liczniki panelu bocznego w chwili `teraz` — po `odswiez`. */
     liczniki(teraz) {
       // Każda zakładka statusu ma licznik, także pusta — zero to odpowiedź, nie brak danych.
-      const statusy = Object.fromEntries(Object.keys(etykietyStatusow(db)).map((k) => [k, 0]));
+      // Pełny katalog: ukrycie statusu dodatkowego („Indywidualne”, PRZ-102.15) dotyczy widoku
+      // (menu, filtr, wybór), nie modelu liczników — te zgadzają się z wyrocznią co do klucza.
+      const statusy = Object.fromEntries(statusyWKolejnosci(db).map((s) => [s.klucz, 0]));
       let wszystkie = 0;
       for (const w of db.prepare('SELECT status, COUNT(*) AS n FROM lista_stan GROUP BY status').all()) {
         statusy[w.status] = w.n; wszystkie += w.n;

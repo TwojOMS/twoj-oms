@@ -55,6 +55,11 @@ export function podmienLukiKsef(db, luki, { sprawdzonaAt = teraz() } = {}) {
   });
 }
 
+/** PRZ-102.23: data wystawienia jednego dokumentu z lustra luk (odczyt czuwacza z inFaktu) albo `null`. */
+export function dzienWystawieniaLuki(db, uuid) {
+  return db.prepare('SELECT invoice_date FROM ksef_luki WHERE uuid = ?').get(uuid)?.invoice_date ?? null;
+}
+
 /** Bieżące luki — kolejność stabilna po dacie wystawienia (najstarsza pierwsza). */
 export function lukiKsef(db) {
   return db.prepare('SELECT uuid, numer, invoice_date, sprawdzona_at FROM ksef_luki ORDER BY invoice_date, uuid').all();

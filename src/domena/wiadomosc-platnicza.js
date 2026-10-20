@@ -2,6 +2,7 @@ import { blokPlatnosci, stanPlatnosci, STAN_PLATNOSCI } from './blok-platnosci.j
 import { dzienWarszawa } from './format-daty.js';
 import { PODPIS } from './potwierdzenie-zamowienia.js';
 import { bladOperatora } from './bledy.js';
+import { zdaniaDoMaila, zdanieProformy, naglowekTekstu, DOMYSLNE_ZDANIA, tekstyModelu } from './zdania-platnosci.js';
 
 // TREŚĆ TRZECH MAILI Z DOKUMENTEM ALBO O PIENIĄDZACH (22.08.2026): proforma, faktura,
 // przypomnienie o płatności.
@@ -54,11 +55,13 @@ const WIODACE = Object.freeze({
  * dawało FAKTURZE DO ZAMÓWIENIA ZA POBRANIEM zdanie „Zamówienie jest opłacone" — zanim kurier
  * cokolwiek zainkasował. Cztery stany, cztery różne zdania; żadne z nich nie zgaduje.
  */
-function zamkniecie(temat_id, stan, zalaczonyDokument) {
-  if (stan === STAN_PLATNOSCI.POBRANIE) {
-    return 'Należność pobierze kurier przy doręczeniu — nie trzeba nic przelewać.';
-  }
-  if (stan === STAN_PLATNOSCI.POKRYTE) return 'Zamówienie jest opłacone — dziękujemy.';
+//
+// PRZ-102.17: TREŚĆ zdań z Ustawień → Szablony wiadomości → „Zdania o płatności" (`zdania`, domyślne = dawne zdania
+// stąd, co do znaku — domena/zdania-platnosci.js). WYBÓR zdania (która gałąź) zostaje tutaj i nie da się go zmienić
+// z panelu; zdanie przy pobraniu musi tam mówić o kurierze albo doręczeniu (regulaTresci).
+function zamkniecie(temat_id, stan, zalaczonyDokument, zdania) {
+  if (stan === STAN_PLATNOSCI.POBRANIE) return zdania.pobranie;
+  if (stan === STAN_PLATNOSCI.POKRYTE) return zdania.oplacone;
   // ⚠️ Brak rachunku i błąd wyceny: NIE WOLNO twierdzić niczego o pieniądzach. Odsyłamy
   // do dokumentu, który klient ma w załączniku i który mówi prawdę sam.
   //
@@ -69,16 +72,11 @@ function zamkniecie(temat_id, stan, zalaczonyDokument) {
   // dokumentu. `zalaczonyDokument` przychodzi z usługi, z JUŻ ZŁOŻONEJ listy załączników —
   // nie z tematu maila i nie z drugiej kopii reguły „co się dokłada do czego".
   if (stan === STAN_PLATNOSCI.BRAK_RACHUNKU || stan === STAN_PLATNOSCI.BLAD) {
-    return zalaczonyDokument
-      ? 'Szczegóły płatności znajdziesz na dokumencie w załączniku.'
-      : 'Szczegóły płatności podamy w odpowiedzi na tego maila — wystarczy napisać.';
+    return zalaczonyDokument ? zdania.bez_danych_z_zalacznikiem : zdania.bez_danych_bez_zalacznika;
   }
-  if (temat_id === 'proforma') return 'Po zaksięgowaniu wpłaty przekażemy zamówienie do realizacji.';
-  if (temat_id === 'przypomnienie') {
-    return 'Jeśli płatność już wyszła, prosimy zignorować tę wiadomość. A gdyby coś było '
-      + 'niejasne — wystarczy odpowiedzieć na tego maila.';
-  }
-  return 'Jeśli coś się nie zgadza, wystarczy odpowiedzieć na tego maila.';
+  if (temat_id === 'proforma') return zdania.proforma;
+  if (temat_id === 'przypomnienie') return zdania.przypomnienie;
+  return zdania.pozostale;
 }
 
 /**
@@ -96,6 +94,8 @@ export function modelWiadomosci(z, {
   temat_id, dokument = null, zalacznikProformy = null, zalacznikWywozu = false,
   zalaczonyDokument = false,
   rachunek, odbiorca, dzis, podpis = PODPIS,
+  // PRZ-102.17: zdania z panelu (zdaniaPlatnosciTeraz w usłudze, czytane przy każdym mailu). Brak = domyślne.
+  zdania = null,
 } = {}) {
   // ⚠️ NIEZNANY TEMAT RZUCA, NIE UDAJE PRZYPOMNIENIA (recenzja 22.08.2026). Fallback
   // `WIODACE[temat_id] ?? WIODACE.przypomnienie`, który stał tu wcześniej, po cichu wysyłałby
@@ -109,6 +109,7 @@ export function modelWiadomosci(z, {
   const tytul = dokument?.numer ?? z?.numer ?? '';
   const stan = stanPlatnosci(z, { rachunek });
   const platnosc = blokPlatnosci(z, { rachunek, odbiorca, tytul, dzis });
+  const t = zdaniaDoMaila(zdania ?? {});
 
   return {
     temat_id,
@@ -121,16 +122,19 @@ export function modelWiadomosci(z, {
     // `temat_id === 'przypomnienie'` z podanym `dokument` — a `dokument` przy przypomnieniu
     // bywa numerem FAKTURY (bo to on jedzie do tytułu przelewu), więc zdanie nazywało
     // proformą dokument, który wcale nią nie jest.
-    zdanieDokumentu: zalacznikProformy ? `W załączeniu proforma ${zalacznikProformy}.` : null,
+    zdanieDokumentu: zalacznikProformy ? zdanieProformy(t.zalacznik_proformy, zalacznikProformy) : null,
     // ⚠️ TA SAMA ZASADA, co przy `zdanieDokumentu`: zdanie zalezy od FAKTU Z KOPERTY
     // (`zalacznikWywozu` podaje usluga z JUZ zlozonej listy zalacznikow), nie od tematu
     // maila ani od tego, ze zamowienie „jest WDT". Mail zapowiadajacy dokument, ktorego
     // nie ma w kopercie, jest gorszy niz mail bez dokumentu.
-    zdanieWywozu: zalacznikWywozu
-      ? 'W załączeniu również „Potwierdzenie wywozu towarów" (WDT) — prosimy o podpis '
-        + 'i odesłanie skanu po przewiezieniu towarów na miejsce.'
-      : null,
-    zamkniecie: zamkniecie(temat_id, stan, zalaczonyDokument),
+    zdanieWywozu: zalacznikWywozu ? t.zalacznik_wywozu : null,
+    zamkniecie: zamkniecie(temat_id, stan, zalaczonyDokument, t),
+    // Nagłówki sekcji DO ZAPŁATY i PRZELEW w brzmieniu z panelu (HTML: jak wpisane, styl robi wielkie litery;
+    // tekst: naglowekTekstu). Dane pod nimi liczy blokPlatnosci — z panelu nie da się ich zmienić.
+    naglowki: { doZaplaty: t.naglowek_do_zaplaty, przelew: t.naglowek_przelew },
+    // PRZ-102.19: komplet tekstów (etykiety wierszy przelewu, „brutto", „Pozdrawiamy,") — renderery czytają je
+    // przez `tekstyModelu`. Wartości obok etykiet (`platnosc`) liczy blokPlatnosci, nie panel.
+    teksty: t,
     // Marka podana przez użytkownika; wspólny neutralny fallback z potwierdzeniem.
     sprzedawca: String(podpis ?? '').trim() || PODPIS,
   };
@@ -143,26 +147,52 @@ function sekcja(naglowek, linie) {
 }
 
 /**
- * Blok `{dane_platnosci}` szablonu (PRZ-101.03): DO ZAPŁATY, PRZELEW i zdania o załącznikach — dokładnie te linie,
- * które `jakoTekstWiadomosci` stawia między zdaniem wiodącym a zamknięciem, bez pustej linii na początku.
- * Pusty, gdy nie ma ani przelewu, ani załącznika (np. faktura opłacona bez PDF-u) — wtedy blok znika z maila.
- *
- * ⚠️ `jakoTekstWiadomosci` zostaje nietknięte (mail bez zapisanego szablonu = dzisiejszy co do znaku);
- * zgodność obu pilnuje tests/moduly/wiadomosci/szablony-rownosc.test.js.
+ * Nagłówki sekcji z modelu (PRZ-102.17). Model złożony poza `modelWiadomosci` (np. w starszym teście) nie ma
+ * `naglowki` — wtedy brzmienie domyślne, to samo co przed zmianą. Wersja tekstowa: wielkie litery (`naglowekTekstu`).
  */
-export function blokiTekstuWiadomosci(m) {
-  const linie = [
-    ...sekcja('DO ZAPŁATY', [m.platnosc && `${m.platnosc.doZaplaty} brutto`]),
-    ...sekcja('PRZELEW', m.platnosc ? [
-      `Odbiorca: ${m.platnosc.odbiorca}`,
-      `Rachunek: ${m.platnosc.rachunek}`,
-      `Tytuł przelewu: ${m.platnosc.tytul}`,
-      m.platnosc.termin && `Termin: ${m.platnosc.termin}`,
+export function naglowkiModelu(m) {
+  return {
+    doZaplaty: m?.naglowki?.doZaplaty ?? DOMYSLNE_ZDANIA.naglowek_do_zaplaty,
+    przelew: m?.naglowki?.przelew ?? DOMYSLNE_ZDANIA.naglowek_przelew,
+  };
+}
+const naglowkiTekstu = (m) => {
+  const n = naglowkiModelu(m);
+  return { doZaplaty: naglowekTekstu(n.doZaplaty), przelew: naglowekTekstu(n.przelew) };
+};
+
+/**
+ * Środek maila między zdaniem wiodącym a zamknięciem: DO ZAPŁATY, PRZELEW i zdania o załącznikach — z pustą linią
+ * na początku. JEDNO miejsce dla `blokiTekstuWiadomosci` (szablon) i `jakoTekstWiadomosci` (mail bez szablonu); do
+ * PRZ-102.19 stały to dwie kopie, a etykiety z panelu w dwóch kopiach rozjechałyby się przy pierwszej poprawce.
+ * Etykiety i „brutto" z `tekstyModelu` (PRZ-102.19); wartości obok nich policzył blokPlatnosci.
+ */
+function srodekTekstu(m) {
+  const n = naglowkiTekstu(m);
+  const e = tekstyModelu(m);
+  return [
+    ...sekcja(n.doZaplaty, [m.platnosc && `${m.platnosc.doZaplaty} ${e.dopisek_brutto}`]),
+    ...sekcja(n.przelew, m.platnosc ? [
+      m.platnosc.odbiorca && `${e.etykieta_odbiorca}: ${m.platnosc.odbiorca}`,
+      `${e.etykieta_rachunek}: ${m.platnosc.rachunek}`,
+      `${e.etykieta_tytul}: ${m.platnosc.tytul}`,
+      m.platnosc.termin && `${e.etykieta_termin}: ${m.platnosc.termin}`,
     ] : []),
     ...(m.zdanieDokumentu ? ['', m.zdanieDokumentu] : []),
     ...(m.zdanieWywozu ? ['', m.zdanieWywozu] : []),
   ];
-  return { dane_platnosci: linie.slice(1) };
+}
+
+/**
+ * Blok `{dane_platnosci}` szablonu (PRZ-101.03): DO ZAPŁATY, PRZELEW i zdania o załącznikach — dokładnie te linie,
+ * które `jakoTekstWiadomosci` stawia między zdaniem wiodącym a zamknięciem, bez pustej linii na początku.
+ * Pusty, gdy nie ma ani przelewu, ani załącznika (np. faktura opłacona bez PDF-u) — wtedy blok znika z maila.
+ *
+ * Zgodność z mailem bez szablonu pilnują tests/moduly/wiadomosci/szablony-rownosc.test.js i wzorzec bajt w bajt
+ * (zdania-platnosci-rownosc-prz102-17.test.js).
+ */
+export function blokiTekstuWiadomosci(m) {
+  return { dane_platnosci: srodekTekstu(m).slice(1) };
 }
 
 /**
@@ -176,19 +206,12 @@ export function jakoTekstWiadomosci(m) {
     'Dzień dobry,',
     '',
     m.wiodace,
-    ...sekcja('DO ZAPŁATY', [m.platnosc && `${m.platnosc.doZaplaty} brutto`]),
-    ...sekcja('PRZELEW', m.platnosc ? [
-      `Odbiorca: ${m.platnosc.odbiorca}`,
-      `Rachunek: ${m.platnosc.rachunek}`,
-      `Tytuł przelewu: ${m.platnosc.tytul}`,
-      m.platnosc.termin && `Termin: ${m.platnosc.termin}`,
-    ] : []),
-    ...(m.zdanieDokumentu ? ['', m.zdanieDokumentu] : []),
-    ...(m.zdanieWywozu ? ['', m.zdanieWywozu] : []),
+    ...srodekTekstu(m),
     '',
     m.zamkniecie,
     '',
-    'Pozdrawiamy,',
+    tekstyModelu(m).pozdrowienie,
     m.sprzedawca,
   ].join('\n');
 }
+

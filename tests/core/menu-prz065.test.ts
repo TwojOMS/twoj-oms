@@ -25,7 +25,10 @@ async function render(n:any,k:any=null,extra:any={}){return ejs.renderFile(file,
 describe('PRZ065 menu zaakceptowanej makiety',()=>{
   it('na każdej zakładce pokazuje wszystkie dozwolone ekrany z manifestów',()=>{
     const n=model('/przesylki') as any;
-    expect(n.boczne.flatMap((g:any)=>g.pozycje).map((p:any)=>p.href)).toEqual(['/','/przesylki','/faktury','/wiadomosci','/magazyn','/raporty']);
+    // PRZ-102.03 (wariant C): analizy (`/raporty`) nie stoją już w menu bocznym, tylko pod przyciskiem w pasku —
+    // „wszystkie dozwolone ekrany na każdej zakładce” to teraz boczne + analizy.
+    expect(n.boczne.flatMap((g:any)=>g.pozycje).map((p:any)=>p.href)).toEqual(['/','/przesylki','/faktury','/wiadomosci','/magazyn']);
+    expect(n.analizy.pozycje.map((p:any)=>p.href)).toEqual(['/raporty']);
     expect(n.boczne.flatMap((g:any)=>g.pozycje).filter((p:any)=>p.aktywna).map((p:any)=>p.href)).toEqual(['/przesylki']);
   });
   it('odmawiane uprawnienia i odłożone moduły nie pojawiają się w nowym menu',async()=>{
@@ -38,7 +41,9 @@ describe('PRZ065 menu zaakceptowanej makiety',()=>{
     const n=model('/raporty',null,menu.map(p=>p.uprawnienie==='raporty'?{...p,etykieta:'Raporty <custom>',adres:'/raporty?tryb=custom',kolejnosc:1}:p));
     const h=await render(n);
     expect(h).toContain('href="/raporty?tryb=custom"');expect(h).toContain('Raporty &lt;custom&gt;');
-    expect((n as any).boczne.flatMap((g:any)=>g.pozycje).filter((p:any)=>p.klucz==='raporty')).toHaveLength(1);
+    // PRZ-102.03: raporty żyją w `analizy` (przycisk w pasku), nie w `boczne`.
+    expect((n as any).analizy.pozycje.filter((p:any)=>p.klucz==='raporty')).toHaveLength(1);
+    expect((n as any).boczne.flatMap((g:any)=>g.pozycje).filter((p:any)=>p.klucz==='raporty')).toHaveLength(0);
   });
   it('renderuje nową ramę i zachowuje powrót motywu oraz menu użytkownika',async()=>{
     const k=konto([],true),h=await render(model('/przesylki',k),k);

@@ -276,19 +276,15 @@
                 // (domain/wysylka-ksef.js), wolana przy podgladzie i PONOWNIE przy
                 // zatwierdzeniu — widok nie ma prawa byc jedynym, co pilnuje operacji
                 // nieodwracalnej.
-                // ⚠️⚠️ FAKTURA KONSUMENCKA (nabywca bez NIP-u) TEZ NIE DOSTAJE POLA WYBORU
-                // — decyzja wlasciciela 28.08.2026, blokada twarda jak przy korektach. KSeF
-                // jest przy dokumencie B2C DOBROWOLNY (stanowisko Ministerstwa Finansow), a
-                // wysylki nie da sie cofnac. Pomiar na zywym koncie: na 169 faktur VI–VIII.2026
-                // taki dokument byl DOKLADNIE JEDEN (`30/06/2026`) i byl zarazem jedyna
-                // czerwcowa faktura bez numeru KSeF — czyli „zaznacz wszystkie" w czerwcu
-                // zaznaczaloby wylacznie jego. Uzasadnienie: domain/wysylka-ksef.js.
+                // PRZ-102.26: B2C domyślnie bez pola wyboru. Świadome włączenie w Ustawieniach
+                // dopuszcza faktury z danymi nabywcy; pusta odpowiedź API nadal nie ma pola wyboru.
                 //
-                // ⚠️ ROZSTRZYGA `czyKonsumencka` Z DOMENY, a nie wlasne `if` o `client_tax_code`
+                // ⚠️ ROZSTRZYGA REGUŁA Z DOMENY, a nie wlasne `if` o `client_tax_code`
                 // w szablonie: bariera i ekran maja mowic o dokumencie JEDNO ZDANIE. Numer VAT
                 // UE klienta zagranicznego (WDT) NIE jest brakiem NIP-u — taki wiersz pole
                 // wyboru ma i miec musi.
-                const wolnoZaznaczyc = d.stanKsef === 'brak' && d.rodzaj === 'vat' && !czyKonsumencka(d);
+                // PRZ-102.12: reguła w domenie (`doZaznaczeniaWszystkich`) — tę samą bierze automat KSeF.
+                const wolnoZaznaczyc = doZaznaczeniaWszystkich(d);
               %>
               <tr>
                 <td class="kol-zazn">
@@ -314,7 +310,7 @@
                     <div class="wiersz-szczegoly">
                       Faktura VAT
                       <span class="znacznik znacznik--cichy"
-                        title="Nabywca bez NIP-u — KSeF jest przy takim dokumencie dobrowolny, więc panel go nie wysyła.">konsumencka</span>
+                        title="<%= konsumenckie ? 'Nabywca bez NIP-u — właściciel włączył dobrowolną wysyłkę B2C do KSeF.' : 'Nabywca bez NIP-u — KSeF jest przy takim dokumencie dobrowolny, więc panel go nie wysyła.' %>">konsumencka</span>
                     </div>
                   <% } else { %>
                     <div class="wiersz-szczegoly">Faktura VAT</div>
@@ -390,8 +386,14 @@
       <p class="wyjasnienie">
         Pole wyboru stoi wyłącznie przy fakturach VAT <strong>bez numeru KSeF</strong>, których
         panel jeszcze nie wysyłał: tylko one mają dokąd pojechać. Korekty wysyła się w inFakcie.
+        <% if (konsumenckie) { %>
+        Faktury <strong>konsumenckie</strong> — dla nabywcy bez NIP-u — panel wysyła zgodnie z ustawieniem właściciela,
+        gdy zna numer, kwotę i nabywcę. KSeF jest przy nich <strong>dobrowolny</strong>, a wysyłki nie da się cofnąć.
+        <% } else { %>
         Faktur <strong>konsumenckich</strong> — dla nabywcy bez NIP-u — panel nie wysyła w ogóle:
-        KSeF jest przy nich <strong>dobrowolny</strong>, a wysyłki nie da się cofnąć. Numer VAT UE
+        KSeF jest przy nich <strong>dobrowolny</strong>, a wysyłki nie da się cofnąć.
+        <% } %>
+        Numer VAT UE
         klienta zagranicznego jest NIP-em nabywcy, więc faktura WDT pole wyboru ma.
         „Czeka na numer" znaczy: <strong>panel zlecił już wysyłkę</strong>, a organ numeru
         jeszcze nie nadał — drugie zgłoszenie byłoby duplikatem, którego nie da się skasować.

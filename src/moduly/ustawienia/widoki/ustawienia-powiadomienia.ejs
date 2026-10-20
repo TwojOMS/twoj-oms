@@ -1,0 +1,19 @@
+<h1>Powiadomienia</h1>
+
+<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
+<% if (blad) { %><div class="pas-uprzedzenie"><p><%= blad %></p></div><% } %>
+<% if (niewidoczne.length) { %><p class="pas-uprzedzenie">Nikt w firmie nie widzi: <%= niewidoczne.map(r => r.nazwa).join(', ') %>.</p><% } %>
+
+<section class="ust-sekcja">
+  <h2>Ostrzeżenia na stronie głównej</h2>
+  <p>Wybierz ostrzeżenia widoczne na Twojej liście zamówień. Ten wybór dotyczy tylko Twojego konta.</p>
+  <% if (!moznaZapisac) { %><p>Konto serwisowe widzi wszystkie ostrzeżenia. Zaloguj się własnym kontem, aby zmienić ich widoczność.</p><% } %>
+  <form method="post" action="/ustawienia/powiadomienia">
+    <% rodzaje.forEach(function (r) { %>
+      <p>
+        <label><input type="checkbox" name="widoczne" value="<%= r.typ %>" <%= ukryte.includes(r.typ) ? '' : 'checked' %> <%= moznaZapisac ? '' : 'disabled' %>> <strong><%= r.nazwa %></strong><br><span class="wyjasnienie"><%= r.opis %></span></label>
+      </p>
+    <% }); %>
+    <% if (moznaZapisac) { %><div class="ust-akcje"><button class="ust-przycisk" type="submit">Zapisz</button></div><% } %>
+  </form>
+</section>

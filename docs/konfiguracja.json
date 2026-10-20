@@ -241,7 +241,7 @@
         {
           "id": "AST-086",
           "path": "src/moduly/zdrowie/modul.ts",
-          "line": 14,
+          "line": 15,
           "expression": "env.OMS_TRYB",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -250,7 +250,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/core/tryb.ts:6",
-        "src/moduly/zdrowie/modul.ts:14"
+        "src/moduly/zdrowie/modul.ts:15"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -330,13 +330,13 @@
       "nazwa": "OMS_RACHUNEK",
       "wlasciciel": "rdzen; konsumenci faktury/wysylka",
       "sekcja": "Rdzeń i uruchomienie",
-      "opis": "Numer rachunku bankowego firmy (26 cyfr, format NRB) — drukowany na proformach i używany przy przesyłkach za pobraniem.",
+      "opis": "Numer rachunku firmy (26 cyfr, NRB) — w mailach o płatności, na proformach i przy pobraniu Allegro. Można w panelu (Ustawienia → Firma).",
       "zakres": "produkt",
-      "wymagalnosc": "wymagana przy konfiguracji rdzenia",
-      "domyslna": "brak wartości domyślnej",
-      "wymagalnoscPoLudzku": "wymagana — bez niej panel się nie uruchomi",
-      "skutekBraku": "Odmowa konfiguracji i startu; rachunek z rdzenia trafia też do pobrania WzA.",
-      "walidacja": "Normalizacja jak NIP; NRB 26 cyfr i modulo 97. Surowy odczyt kurierów jest później nadpisany zwalidowanym rachunkiem rdzenia.",
+      "wymagalnosc": "opcjonalna — można w panelu (Ustawienia → Firma); wpisana w pliku musi być poprawna",
+      "domyslna": null,
+      "wymagalnoscPoLudzku": "opcjonalna — rachunek możesz wpisać w panelu (Ustawienia → Firma, tylko administrator); wpisany w pliku wygrywa nad panelem",
+      "skutekBraku": "PRZ-102.20: bez wartości w pliku rachunek pochodzi z Ustawień → Firma (wiersz „rachunek_firmy” w konfiguracja_integracji, usługa rdzenia rachunekFirmy, czytana przy każdym użyciu). Bez rachunku nigdzie panel startuje: maile o płatności idą bez danych do przelewu (stan brak_rachunku), proforma odmawia wystawienia przed nadaniem numeru, pobranie WzA wymagające konta odmawia, a /health ma uwagę „brak rachunku firmy — wpisz w Ustawienia → Firma”. Gdy OMS_RACHUNEK albo OMS_BANK stoi w pliku, plik wygrywa w całości, a zapis w panelu daje 409.",
+      "walidacja": "Normalizacja jak NIP (przedrostek PL, spacje, myślniki); NRB 26 cyfr i modulo 97. Niepoprawna wartość w pliku nadal blokuje start; ten sam test i to samo zdanie dla wpisu w panelu (400). Surowy odczyt kurierów jest później nadpisany rachunkiem z usługi rdzenia rachunekFirmy.",
       "odczyty": [
         {
           "id": "AST-010",
@@ -373,7 +373,8 @@
           "directEnvRead": false
         }
       ],
-      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
+      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a",
+      "skutekBrakuPoLudzku": "Panel wystartuje. Rachunek wpiszesz w panelu (Ustawienia → Firma); dopóki go nie ma, maile o płatności nie pokażą danych do przelewu, a proforma nie zostanie wystawiona."
     },
     {
       "nazwa": "OMS_SPRZEDAWCA_BDO",
@@ -418,11 +419,11 @@
       "nazwa": "OMS_BANK",
       "wlasciciel": "rdzen",
       "sekcja": "Rdzeń i uruchomienie",
-      "opis": "Nazwa Twojego banku, pokazywana w danych dokumentów obok numeru rachunku.",
+      "opis": "Nazwa Twojego banku, pokazywana na proformie obok numeru rachunku. Można w panelu (Ustawienia → Firma, tylko administrator).",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
-      "skutekBraku": "Brak nazwy banku w danych dokumentów.",
+      "skutekBraku": "Brak nazwy banku na proformie. PRZ-102.20: bez OMS_RACHUNEK i OMS_BANK w pliku bank pochodzi z Ustawień → Firma; gdy którakolwiek z nich stoi w pliku, plik wygrywa w całości (także pusty bank), a zapis w panelu daje 409.",
       "walidacja": "trim; pusty tekst daje null.",
       "odczyty": [
         {
@@ -451,7 +452,8 @@
           "directEnvRead": false
         }
       ],
-      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
+      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a",
+      "skutekBrakuPoLudzku": "Proforma nie pokaże nazwy banku. Bank możesz wpisać w panelu (Ustawienia → Firma) razem z rachunkiem — chyba że OMS_RACHUNEK stoi w pliku, wtedy dopisz OMS_BANK do pliku."
     },
     {
       "nazwa": "OMS_USER",
@@ -469,7 +471,7 @@
         {
           "id": "AST-013",
           "path": "src/core/web/modul.ts",
-          "line": 9,
+          "line": 10,
           "expression": "env.OMS_USER",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -477,7 +479,7 @@
         {
           "id": "AST-015",
           "path": "src/core/web/modul.ts",
-          "line": 13,
+          "line": 14,
           "expression": "env.OMS_USER",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -485,8 +487,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/web/modul.ts:9",
-        "src/core/web/modul.ts:13"
+        "src/core/web/modul.ts:10",
+        "src/core/web/modul.ts:14"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -509,7 +511,7 @@
         {
           "id": "AST-014",
           "path": "src/core/web/modul.ts",
-          "line": 9,
+          "line": 10,
           "expression": "env.OMS_PASS",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -517,7 +519,7 @@
         {
           "id": "AST-016",
           "path": "src/core/web/modul.ts",
-          "line": 13,
+          "line": 14,
           "expression": "env.OMS_PASS",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -525,8 +527,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/web/modul.ts:9",
-        "src/core/web/modul.ts:13"
+        "src/core/web/modul.ts:10",
+        "src/core/web/modul.ts:14"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -964,13 +966,22 @@
           "expression": "env[`${p}_OD`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
+        },
+        {
+          "id": "PRZ-102.14-OD",
+          "path": "src/moduly/raporty/konfiguracja.ts",
+          "line": 57,
+          "expression": "env[`${d.prefiks}_OD`]",
+          "kind": "dynamiczny",
+          "via": "zamknięta mapa helpera"
         }
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/moduly/kanaly/kompletnosc.ts:7",
         "src/moduly/kanaly/konfiguracja.ts:25",
-        "src/moduly/kanaly/konfiguracja.ts:117"
+        "src/moduly/kanaly/konfiguracja.ts:117",
+        "src/moduly/raporty/konfiguracja.ts:57"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -1621,7 +1632,7 @@
         {
           "id": "AST-060",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 44,
+          "line": 45,
           "expression": "env.OMS_PROFORMY_KATALOG",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1629,7 +1640,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:44"
+        "src/moduly/faktury/modul.ts:45"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1679,7 +1690,7 @@
         {
           "id": "AST-068",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 58,
+          "line": 59,
           "expression": "env.INFAKT_API_KEY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1687,7 +1698,7 @@
         {
           "id": "AST-069",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 58,
+          "line": 59,
           "expression": "env.INFAKT_API_KEY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1696,7 +1707,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/core/tryb.ts:18",
-        "src/moduly/faktury/modul.ts:58"
+        "src/moduly/faktury/modul.ts:59"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1717,7 +1728,7 @@
         {
           "id": "AST-059",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 42,
+          "line": 43,
           "expression": "env.INFAKT_API_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1725,7 +1736,7 @@
         {
           "id": "AST-070",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 58,
+          "line": 59,
           "expression": "env.INFAKT_API_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1733,8 +1744,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:42",
-        "src/moduly/faktury/modul.ts:58"
+        "src/moduly/faktury/modul.ts:43",
+        "src/moduly/faktury/modul.ts:59"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1755,7 +1766,7 @@
         {
           "id": "AST-071",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 54,
+          "line": 55,
           "expression": "env.INFAKT_ARCHIWUM",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1763,7 +1774,7 @@
         {
           "id": "AST-085",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 26,
+          "line": 36,
           "expression": "env.INFAKT_ARCHIWUM",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1771,8 +1782,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:54",
-        "src/moduly/koszty/modul.ts:26"
+        "src/moduly/faktury/modul.ts:55",
+        "src/moduly/koszty/modul.ts:36"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1787,7 +1798,7 @@
       "wymagalnosc": "wymagana po rozpoczęciu niepustej sekcji KSeF",
       "domyslna": null,
       "wymagalnoscPoLudzku": "opcjonalna; wymagana, jeśli wpisujesz którekolwiek ustawienie KSeF",
-      "skutekBraku": "Bez całej sekcji klient KSeF/koszty jest wyłączony. Niepuste KSEF_NIP/API/ARCHIWUM bez tokenu odmawia konfiguracji.",
+      "skutekBraku": "Bez całej sekcji klient KSeF/koszty z pliku nie powstaje. Niepuste KSEF_NIP/API/ARCHIWUM bez tokenu odmawia konfiguracji. PRZ-102.22: odpowiednik w panelu — Ustawienia → Integracje → KSeF (/ustawienia/integracje/ksef; wiersz „ksef” w konfiguracja_integracji, token jako sekret, NIP opcjonalny = NIP sprzedawcy). Klient KSeF kosztów rozstrzyga przy każdym przebiegu czuwacza, PDF-ie kosztu i paczce kosztów: plik → panel → brak; nowy token z panelu działa od następnego przebiegu bez restartu, zmiana tokenu kasuje sesję KSeF (tokeny_ksef), ten sam token ją zostawia. Gdy KSEF_TOKEN stoi w pliku, ekran jest tylko do odczytu (zapis = 409). Bez tokenu w pliku i w panelu czuwacz kosztów stoi (zegar tyka, przebieg pominięty), /health: czuwaczKosztow.wlaczony=false. Moduł „Koszty” wyłączony w Ustawienia → Moduły: czuwacz nic nie pobiera także z tokenem (/health: stan „koszty wyłączone”).",
       "walidacja": "trim; proba odrzuca niepusty token.",
       "sekret": true,
       "odczyty": [
@@ -1810,7 +1821,7 @@
         {
           "id": "AST-076",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 21,
+          "line": 26,
           "expression": "env.KSEF_TOKEN",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1818,7 +1829,7 @@
         {
           "id": "AST-077",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 22,
+          "line": 27,
           "expression": "env.KSEF_TOKEN",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1827,12 +1838,13 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/core/tryb.ts:18",
-        "src/moduly/koszty/modul.ts:21",
-        "src/moduly/koszty/modul.ts:22"
+        "src/moduly/koszty/modul.ts:26",
+        "src/moduly/koszty/modul.ts:27"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
-      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
+      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a",
+      "skutekBrakuPoLudzku": "Bez tokenu OMS nie pobiera faktur kosztowych z KSeF (koszty ręczne działają). Token można wpisać też w panelu (Ustawienia → Integracje → KSeF), ale token z pliku wygrywa i blokuje ekran."
     },
     {
       "nazwa": "KSEF_NIP",
@@ -1843,13 +1855,13 @@
       "wymagalnosc": "opcjonalna",
       "domyslna": "zwalidowany OMS_SPRZEDAWCA_NIP",
       "domyslnaPoLudzku": "NIP firmy z OMS_SPRZEDAWCA_NIP",
-      "skutekBraku": "Z tokenem KSeF używany jest NIP sprzedawcy z rdzenia. Sam niepusty KSEF_NIP bez tokenu odmawia konfiguracji.",
+      "skutekBraku": "Z tokenem KSeF używany jest NIP sprzedawcy z rdzenia. Sam niepusty KSEF_NIP bez tokenu odmawia konfiguracji. PRZ-102.22: pole „NIP firmy” na ekranie Ustawienia → Integracje → KSeF — opcjonalne, musi być równe OMS_SPRZEDAWCA_NIP.",
       "walidacja": "Jeżeli podany i token aktywny: po normalizacji musi być równy NIP sprzedawcy.",
       "odczyty": [
         {
           "id": "AST-078",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 22,
+          "line": 27,
           "expression": "env.KSEF_NIP",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1857,7 +1869,7 @@
         {
           "id": "AST-081",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 24,
+          "line": 30,
           "expression": "env.KSEF_NIP",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1865,7 +1877,7 @@
         {
           "id": "AST-082",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 24,
+          "line": 30,
           "expression": "env.KSEF_NIP",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1873,12 +1885,13 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/koszty/modul.ts:22",
-        "src/moduly/koszty/modul.ts:24"
+        "src/moduly/koszty/modul.ts:27",
+        "src/moduly/koszty/modul.ts:30"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
-      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
+      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a",
+      "skutekBrakuPoLudzku": "OMS pyta KSeF o faktury zakupowe firmy z OMS_SPRZEDAWCA_NIP — tak samo dla tokenu z pliku i z panelu (Ustawienia → Integracje → KSeF, pole „NIP firmy”)."
     },
     {
       "nazwa": "KSEF_API",
@@ -1888,13 +1901,13 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "https://api.ksef.mf.gov.pl/v2",
-      "skutekBraku": "Z tokenem KSeF klient używa produkcyjnego endpointu. Niepusty adres bez tokenu odmawia konfiguracji.",
+      "skutekBraku": "Z tokenem KSeF klient używa produkcyjnego endpointu. Niepusty adres bez tokenu odmawia konfiguracji. PRZ-102.22: adres dotyczy też tokenu z Ustawienia → Integracje → KSeF; panel go nie pokazuje ani nie zmienia.",
       "walidacja": "Dosłownie pusty tekst oznacza brak ustawienia i zachowuje historyczny default albo wyłączenie. Niepusty URL musi być absolutnym HTTP(S) z hostem i bez otaczających białych znaków; błąd zawiera tylko nazwę.",
       "odczyty": [
         {
           "id": "AST-075",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 18,
+          "line": 23,
           "expression": "env.KSEF_API",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1902,7 +1915,7 @@
         {
           "id": "AST-079",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 22,
+          "line": 27,
           "expression": "env.KSEF_API",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1910,7 +1923,7 @@
         {
           "id": "AST-083",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 25,
+          "line": 32,
           "expression": "env.KSEF_API",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1918,13 +1931,14 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/koszty/modul.ts:18",
-        "src/moduly/koszty/modul.ts:22",
-        "src/moduly/koszty/modul.ts:25"
+        "src/moduly/koszty/modul.ts:23",
+        "src/moduly/koszty/modul.ts:27",
+        "src/moduly/koszty/modul.ts:32"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
-      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
+      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a",
+      "skutekBrakuPoLudzku": "OMS łączy się z produkcyjnym KSeF — tak samo dla tokenu z pliku i z panelu; adres zmienia się tylko w pliku."
     },
     {
       "nazwa": "KSEF_ARCHIWUM",
@@ -1934,13 +1948,13 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
-      "skutekBraku": "Czuwacz może działać bez lokalnego katalogu archiwum; brak zapisów archiwum do tego katalogu. Niepusty katalog bez tokenu odmawia konfiguracji.",
+      "skutekBraku": "Czuwacz może działać bez lokalnego katalogu archiwum; brak zapisów archiwum do tego katalogu. Niepusty katalog bez tokenu odmawia konfiguracji. PRZ-102.22: katalog dotyczy też tokenu z panelu; ustawia się go wyłącznie w pliku.",
       "walidacja": "trim; pusty tekst daje null.",
       "odczyty": [
         {
           "id": "AST-080",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 22,
+          "line": 27,
           "expression": "env.KSEF_ARCHIWUM",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1948,7 +1962,7 @@
         {
           "id": "AST-084",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 26,
+          "line": 36,
           "expression": "env.KSEF_ARCHIWUM",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1956,12 +1970,13 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/koszty/modul.ts:22",
-        "src/moduly/koszty/modul.ts:26"
+        "src/moduly/koszty/modul.ts:27",
+        "src/moduly/koszty/modul.ts:36"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
-      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
+      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a",
+      "skutekBrakuPoLudzku": "Koszty pobierają się do bazy jak zwykle, tylko bez kopii plików na dysku — także przy tokenie z panelu; katalog ustawia się tylko w pliku."
     },
     {
       "nazwa": "GUS_KLUCZ",
@@ -1971,7 +1986,8 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
-      "skutekBraku": "Klient GUS nie jest budowany; brak uzupełniania danych kontrahenta z GUS.",
+      "skutekBraku": "Klient GUS z pliku nie jest budowany. PRZ-102.11: odpowiednik w panelu — Ustawienia → Integracje → GUS (/ustawienia/integracje/gus; wiersz „gus” w konfiguracja_integracji, klucz jako sekret). Usługa GUS rozstrzyga przy każdym żądaniu: plik → panel → brak; bez obu przycisk „Pobierz z GUS” znika, a trasy GUS odmawiają (503). Gdy GUS_KLUCZ stoi w pliku, ekran jest tylko do odczytu (zapis = 409). Zapis, zmiana i usunięcie klucza w panelu działają bez restartu.",
+      "skutekBrakuPoLudzku": "Bez klucza nie ma przycisku „Pobierz z GUS” — dane firmy wpisuje się ręcznie. Klucz można wpisać też w panelu (Ustawienia → Integracje → GUS), ale klucz z pliku wygrywa i blokuje ekran.",
       "walidacja": "truthiness; próba odrzuca każdą surową wartość różną od pustej, także whitespace.",
       "sekret": true,
       "odczyty": [
@@ -2025,7 +2041,8 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "https://wyszukiwarkaregon.stat.gov.pl/wsBIR/UslugaBIRzewnPubl.svc",
-      "skutekBraku": "Przy kluczu GUS używany jest domyślny produkcyjny adres SOAP.",
+      "skutekBraku": "Przy kluczu GUS używany jest domyślny produkcyjny adres SOAP. PRZ-102.11: adres dotyczy też klucza z Ustawienia → Integracje → GUS; panel go nie pokazuje ani nie zmienia.",
+      "skutekBrakuPoLudzku": "OMS łączy się z produkcyjną usługą GUS — tak samo dla klucza z pliku i z panelu.",
       "walidacja": "Dosłownie pusty tekst oznacza brak ustawienia i zachowuje historyczny default albo wyłączenie. Niepusty URL musi być absolutnym HTTP(S) z hostem i bez otaczających białych znaków; błąd zawiera tylko nazwę.",
       "odczyty": [
         {
@@ -2903,7 +2920,7 @@
         {
           "id": "AST-073",
           "path": "src/moduly/wysylka/modul.ts",
-          "line": 64,
+          "line": 65,
           "expression": "env.OMS_ETYKIETY_DIR",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2911,7 +2928,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/modul.ts:64"
+        "src/moduly/wysylka/modul.ts:65"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2934,7 +2951,7 @@
         {
           "id": "AST-074",
           "path": "src/moduly/wysylka/modul.ts",
-          "line": 64,
+          "line": 65,
           "expression": "env.OMS_ETYKIETY_KATALOG",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2942,7 +2959,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/modul.ts:64"
+        "src/moduly/wysylka/modul.ts:65"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2965,7 +2982,7 @@
         {
           "id": "AST-072",
           "path": "src/moduly/wysylka/modul.ts",
-          "line": 54,
+          "line": 55,
           "expression": "env[klucz]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -2973,7 +2990,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/modul.ts:54"
+        "src/moduly/wysylka/modul.ts:55"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2995,7 +3012,7 @@
         {
           "id": "AST-072",
           "path": "src/moduly/wysylka/modul.ts",
-          "line": 54,
+          "line": 55,
           "expression": "env[klucz]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -3003,7 +3020,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/wysylka/modul.ts:54"
+        "src/moduly/wysylka/modul.ts:55"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -3104,8 +3121,8 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
-      "skutekBraku": "Zwroty nie są uznane za poznane dla zakresu raportu, ponieważ zwrotyPoznane wymaga tej daty.",
-      "skutekBrakuPoLudzku": "Bez niej raporty uznają zwroty za nieznane w każdym zakresie dat.",
+      "skutekBraku": "PRZ-102.09: bez wartości env używany jest zapis z Finanse → Kompletność danych (tabela ustawienia), czytany na bieżąco bez restartu. Wartość env wygrywa i blokuje zapis w panelu (409). Gdy również w panelu brak daty: Raporty uznają zwroty za nieznane w każdym zakresie.",
+      "skutekBrakuPoLudzku": "Datę może ustawić administrator w Finanse → Kompletność danych, bez restartu. Plik konfiguracji ma pierwszeństwo. Bez daty w obu miejscach: Raporty uznają zwroty za nieznane w każdym zakresie.",
       "walidacja": "trim; ścisłe RRRR-MM-DD i poprawna data kalendarzowa przez kluczOkresu.",
       "decyzja": "D08",
       "odczyty": [
@@ -3134,8 +3151,8 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
-      "skutekBraku": "Początkiem danych statystyk jest dzień (Warszawa) pierwszego zamówienia w tabeli zamowienia (PRZ-093.07); pasek zastrzeżenia dostają tylko zakresy zaczynające się wcześniej. Pusta baza: pasek z nazwą zmiennej i formatem. Zmienna nie wpływa na liczby, tylko na pasek.",
-      "skutekBrakuPoLudzku": "Za początek danych OMS uznaje dzień pierwszego zamówienia w bazie. Zmienna nie zmienia liczb, tylko pasek ostrzeżenia nad statystykami starszych okresów.",
+      "skutekBraku": "PRZ-102.09: bez wartości env używany jest zapis z Finanse → Kompletność danych (tabela ustawienia), czytany na bieżąco bez restartu. Wartość env wygrywa i blokuje zapis w panelu (409). Gdy również w panelu brak daty: Początkiem danych statystyk jest dzień pierwszego zamówienia (Warszawa); pusta baza pokazuje zastrzeżenie. Data wpływa tylko na pasek, nie na liczby.",
+      "skutekBrakuPoLudzku": "Datę może ustawić administrator w Finanse → Kompletność danych, bez restartu. Plik konfiguracji ma pierwszeństwo. Bez daty w obu miejscach: Początkiem danych statystyk jest dzień pierwszego zamówienia (Warszawa); pusta baza pokazuje zastrzeżenie. Data wpływa tylko na pasek, nie na liczby.",
       "walidacja": "trim; ścisłe RRRR-MM-DD i poprawna data kalendarzowa przez kluczOkresu.",
       "decyzja": "D08",
       "odczyty": [
@@ -3477,7 +3494,7 @@
       "wymagalnosc": "opcjonalna",
       "domyslna": "podpis Obsługa sklepu; nagłówek pusty",
       "skutekBraku": "Neutralny podpis oraz brak nagłówka marki; nie włącza SMTP.",
-      "walidacja": "trim; obecność marki lub stopki uruchamia oprawaMaila; marka zasila podpis i nagłówek.",
+      "walidacja": "trim; obecność marki lub stopki uruchamia oprawaMaila; marka zasila podpis i nagłówek. Niepusta wartość blokuje pole marki w Ustawieniach → Poczta (zapis = 409); bez niej marka z tabeli ustawienia (klucz poczta.podpis.marka), czytana przy każdym mailu.",
       "odczyty": [
         {
           "id": "AST-091",
@@ -3512,7 +3529,8 @@
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
-      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
+      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a",
+      "skutekBrakuPoLudzku": "Maile do klientów podpisane „Obsługa sklepu”, bez nazwy w nagłówku — chyba że markę wpiszesz w panelu (Ustawienia → Integracje → Poczta wychodząca → Podpis maili). Marka z pliku wygrywa z panelem i blokuje to pole."
     },
     {
       "nazwa": "OMS_MAIL_STOPKA",
@@ -3523,7 +3541,7 @@
       "wymagalnosc": "opcjonalna",
       "domyslna": "",
       "skutekBraku": "Brak dodatkowej stopki; nie włącza SMTP.",
-      "walidacja": "Podział po rzeczywistym LF, trim każdej linii i usunięcie pustych; sposób przekazania wielowierszowej wartości zależy od zewnętrznego loadera.",
+      "walidacja": "Podział po rzeczywistym LF, trim każdej linii i usunięcie pustych; sposób przekazania wielowierszowej wartości zależy od zewnętrznego loadera. Niepusta wartość blokuje pole stopki w Ustawieniach → Poczta (zapis = 409); bez niej stopka z tabeli ustawienia (klucz poczta.podpis.stopka), czytana przy każdym mailu.",
       "odczyty": [
         {
           "id": "AST-092",
@@ -3549,7 +3567,8 @@
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
-      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
+      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a",
+      "skutekBrakuPoLudzku": "Maile do klientów bez stopki — chyba że stopkę wpiszesz w panelu (Ustawienia → Integracje → Poczta wychodząca → Podpis maili). Stopka z pliku wygrywa z panelem i blokuje to pole."
     },
     {
       "nazwa": "ALLEGRO_CLIENT_ID",
@@ -4207,7 +4226,7 @@
         {
           "id": "AST-128",
           "path": "src/moduly/zdrowie/modul.ts",
-          "line": 14,
+          "line": 15,
           "expression": "env.OMS_KOPIE_KATALOG",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4215,7 +4234,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zdrowie/modul.ts:14"
+        "src/moduly/zdrowie/modul.ts:15"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -4237,7 +4256,7 @@
         {
           "id": "AST-129",
           "path": "src/moduly/zdrowie/modul.ts",
-          "line": 14,
+          "line": 15,
           "expression": "env.OMS_KOPIA_ZEWNETRZNA",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4245,7 +4264,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zdrowie/modul.ts:14"
+        "src/moduly/zdrowie/modul.ts:15"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -4297,7 +4316,7 @@
         {
           "id": "AST-131",
           "path": "src/core/web/modul.ts",
-          "line": 11,
+          "line": 12,
           "expression": "env.OMS_LOGO_PLIK",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4305,7 +4324,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/web/modul.ts:11"
+        "src/core/web/modul.ts:12"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -4326,7 +4345,7 @@
         {
           "id": "AST-132",
           "path": "src/core/web/modul.ts",
-          "line": 11,
+          "line": 12,
           "expression": "env.OMS_LOGO_ALT",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4334,7 +4353,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/core/web/modul.ts:11"
+        "src/core/web/modul.ts:12"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -4348,8 +4367,8 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
-      "skutekBraku": "Preflight przechodzi; GET /finanse odmawia rachunku z powodu nieustawionej podłogi kosztów. Dane miesięczne działają. Przed wydaniem ustawić początek znanej historii kosztów instalacji.",
-      "skutekBrakuPoLudzku": "Bez niej zakładka FINANSE odmawia pokazania rachunku, bo nie wie, od kiedy znane są koszty; dane miesięczne działają. Ustaw początek znanej historii kosztów.",
+      "skutekBraku": "PRZ-102.09: bez wartości env używany jest zapis z Finanse → Kompletność danych (tabela ustawienia), czytany na bieżąco bez restartu. Wartość env wygrywa i blokuje zapis w panelu (409). Gdy również w panelu brak daty: Finanse odmawiają rachunku i wskazują formularz; dane miesięczne działają.",
+      "skutekBrakuPoLudzku": "Datę może ustawić administrator w Finanse → Kompletność danych, bez restartu. Plik konfiguracji ma pierwszeństwo. Bez daty w obu miejscach: Finanse odmawiają rachunku i wskazują formularz; dane miesięczne działają.",
       "walidacja": "trim; ścisły miesiąc RRRR-MM, 01–12.",
       "decyzja": "PRZ-027F — decyzja Tomka07.10",
       "odczyty": [
@@ -4455,7 +4474,7 @@
         {
           "id": "AST-133",
           "path": "src/moduly/ustawienia/modul.ts",
-          "line": 33,
+          "line": 36,
           "expression": "env.OMS_ADRES_PANELU",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4463,7 +4482,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/ustawienia/modul.ts:33"
+        "src/moduly/ustawienia/modul.ts:36"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -4923,7 +4942,7 @@
     },
     {
       "path": "src/moduly/wysylka/modul.ts",
-      "line": 54,
+      "line": 55,
       "expression": "env[klucz]",
       "names": [
         "OMS_PRZESYLKI_ODSTEP_MS",
@@ -4996,6 +5015,14 @@
         "<P>_CS"
       ],
       "reason": "Zamknięta mapa dynamicznego czytnika, przypięta pełnym SHA LF pliku."
+    },
+    {
+      "path": "src/moduly/raporty/konfiguracja.ts",
+      "line": 57,
+      "expression": "env[`${d.prefiks}_OD`]",
+      "names": [
+        "<P>_OD"
+      ]
     }
   ],
   "dostepy": [
@@ -6110,7 +6137,7 @@
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "line": 18,
+      "line": 23,
       "expression": "env.KSEF_API",
       "key": "KSEF_API",
       "id": "AST-075",
@@ -6123,7 +6150,7 @@
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "line": 21,
+      "line": 26,
       "expression": "env.KSEF_TOKEN",
       "key": "KSEF_TOKEN",
       "id": "AST-076",
@@ -6136,7 +6163,7 @@
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "line": 22,
+      "line": 27,
       "expression": "env.KSEF_TOKEN",
       "key": "KSEF_TOKEN",
       "id": "AST-077",
@@ -6149,7 +6176,7 @@
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "line": 22,
+      "line": 27,
       "expression": "env.KSEF_NIP",
       "key": "KSEF_NIP",
       "id": "AST-078",
@@ -6162,7 +6189,7 @@
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "line": 22,
+      "line": 27,
       "expression": "env.KSEF_API",
       "key": "KSEF_API",
       "id": "AST-079",
@@ -6175,7 +6202,7 @@
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "line": 22,
+      "line": 27,
       "expression": "env.KSEF_ARCHIWUM",
       "key": "KSEF_ARCHIWUM",
       "id": "AST-080",
@@ -6188,7 +6215,7 @@
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "line": 24,
+      "line": 30,
       "expression": "env.KSEF_NIP",
       "key": "KSEF_NIP",
       "id": "AST-081",
@@ -6201,7 +6228,7 @@
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "line": 24,
+      "line": 30,
       "expression": "env.KSEF_NIP",
       "key": "KSEF_NIP",
       "id": "AST-082",
@@ -6214,7 +6241,7 @@
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "line": 25,
+      "line": 32,
       "expression": "env.KSEF_API",
       "key": "KSEF_API",
       "id": "AST-083",
@@ -6227,7 +6254,7 @@
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "line": 26,
+      "line": 36,
       "expression": "env.KSEF_ARCHIWUM",
       "key": "KSEF_ARCHIWUM",
       "id": "AST-084",
@@ -6240,7 +6267,7 @@
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "line": 26,
+      "line": 36,
       "expression": "env.INFAKT_ARCHIWUM",
       "key": "INFAKT_ARCHIWUM",
       "id": "AST-085",
@@ -6805,10 +6832,31 @@
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "line": 23,
+      "line": 29,
+      "expression": "env",
+      "callee": "nipSprzedawcy",
+      "call": "nipSprzedawcy(env, Boolean(token))"
+    },
+    {
+      "path": "src/moduly/koszty/modul.ts",
+      "line": 35,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/koszty/modul.ts",
+      "line": 42,
       "expression": "env",
       "callee": "wczytajSprzedawce",
       "call": "wczytajSprzedawce(env)"
+    },
+    {
+      "path": "src/moduly/koszty/modul.ts",
+      "line": 56,
+      "expression": "env",
+      "callee": "wczytajKoszty",
+      "call": "wczytajKoszty(env)"
     },
     {
       "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
@@ -6846,62 +6894,6 @@
       "call": "sprawdzKonfiguracjeModulow(moduly,o.env)"
     },
     {
-      "path": "src/moduly/raporty/konfiguracja.ts",
-      "line": 18,
-      "expression": "env",
-      "callee": "wczytajRaportyDlaKanalow",
-      "call": "wczytajRaportyDlaKanalow(env, definicjeKanalow(env))"
-    },
-    {
-      "path": "src/moduly/raporty/konfiguracja.ts",
-      "line": 18,
-      "expression": "env",
-      "callee": "definicjeKanalow",
-      "call": "definicjeKanalow(env)"
-    },
-    {
-      "path": "src/moduly/raporty/konfiguracja.ts",
-      "line": 22,
-      "expression": "env",
-      "callee": "wczytajKlasyfikacje",
-      "call": "wczytajKlasyfikacje(env, definicje)"
-    },
-    {
-      "path": "src/moduly/raporty/konfiguracja.ts",
-      "line": 41,
-      "expression": "env",
-      "callee": "regulyHistorii",
-      "call": "regulyHistorii(env)"
-    },
-    {
-      "path": "src/moduly/raporty/konfiguracja.ts",
-      "line": 43,
-      "expression": "env",
-      "callee": "dzien",
-      "call": "dzien(env, 'OMS_RAPORTY_PODLOGA_ZWROTOW')"
-    },
-    {
-      "path": "src/moduly/raporty/konfiguracja.ts",
-      "line": 44,
-      "expression": "env",
-      "callee": "dzien",
-      "call": "dzien(env, 'OMS_STATYSTYKI_PIERWSZY_DZIEN')"
-    },
-    {
-      "path": "src/moduly/raporty/konfiguracja.ts",
-      "line": 47,
-      "expression": "env",
-      "callee": "dzien",
-      "call": "dzien(env, 'OMS_RAPORTY_DATA_IMPORTU_HISTORII')"
-    },
-    {
-      "path": "src/moduly/raporty/modul.ts",
-      "line": 11,
-      "expression": "env",
-      "callee": "wczytajRaportyDlaKanalow",
-      "call": "wczytajRaportyDlaKanalow(env, definicje)"
-    },
-    {
       "path": "src/moduly/lista.ts",
       "line": 26,
       "expression": "env",
@@ -6931,14 +6923,14 @@
     },
     {
       "path": "src/core/web/modul.ts",
-      "line": 14,
+      "line": 15,
       "expression": "env",
       "callee": "efektywnyTryb",
       "call": "efektywnyTryb(env)"
     },
     {
       "path": "src/core/web/modul.ts",
-      "line": 14,
+      "line": 15,
       "expression": "env",
       "callee": "kontoDemo",
       "call": "kontoDemo(env)"
@@ -6958,50 +6950,50 @@
       "call": "kanalIndywidualnyWlaczony(env)"
     },
     {
-      "path": "src/moduly/rdzen/modul.ts",
-      "line": 12,
-      "expression": "env",
-      "callee": "wczytajSprzedawce",
-      "call": "wczytajSprzedawce(env)"
-    },
-    {
       "path": "src/moduly/zamowienia/konfiguracja.ts",
-      "line": 10,
+      "line": 12,
       "expression": "env",
       "callee": "wczytajKlientowWdt",
       "call": "wczytajKlientowWdt(env)"
     },
     {
       "path": "src/moduly/zamowienia/konfiguracja.ts",
-      "line": 11,
+      "line": 13,
       "expression": "env",
       "callee": "wczytajSprzedawce",
       "call": "wczytajSprzedawce(env)"
     },
     {
       "path": "src/moduly/zamowienia/konfiguracja.ts",
-      "line": 14,
+      "line": 16,
       "expression": "env",
       "callee": "kanalIndywidualnyWlaczony",
       "call": "kanalIndywidualnyWlaczony(env)"
     },
     {
       "path": "src/moduly/zamowienia/konfiguracja.ts",
-      "line": 17,
+      "line": 19,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/zamowienia/konfiguracja.ts",
+      "line": 21,
       "expression": "env",
       "callee": "adresFirmyZEnv",
       "call": "adresFirmyZEnv(env)"
     },
     {
       "path": "src/moduly/zamowienia/modul.ts",
-      "line": 24,
+      "line": 28,
       "expression": "env",
       "callee": "efektywnyTryb",
       "call": "efektywnyTryb(env)"
     },
     {
       "path": "src/moduly/zamowienia/modul.ts",
-      "line": 25,
+      "line": 29,
       "expression": "env",
       "callee": "konfiguracjaZamowien",
       "call": "konfiguracjaZamowien(env)"
@@ -7096,55 +7088,6 @@
       "expression": "env",
       "callee": "adresFirmyZEnv",
       "call": "adresFirmyZEnv(env)"
-    },
-    {
-      "path": "src/moduly/wysylka/modul.ts",
-      "line": 65,
-      "expression": "env",
-      "callee": "wczytajKurierow",
-      "call": "wczytajKurierow(env)"
-    },
-    {
-      "path": "src/moduly/wysylka/modul.ts",
-      "line": 70,
-      "expression": "env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(env)"
-    },
-    {
-      "path": "src/moduly/wysylka/modul.ts",
-      "line": 71,
-      "expression": "env",
-      "callee": "odstep",
-      "call": "odstep(env, 'OMS_PRZESYLKI_ODSTEP_MS', 3600000)"
-    },
-    {
-      "path": "src/moduly/wysylka/modul.ts",
-      "line": 72,
-      "expression": "env",
-      "callee": "odstep",
-      "call": "odstep(env, 'OMS_PODJAZDY_ODSTEP_MS', 600000)"
-    },
-    {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 43,
-      "expression": "env",
-      "callee": "wczytajSprzedawce",
-      "call": "wczytajSprzedawce(env)"
-    },
-    {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 52,
-      "expression": "env",
-      "callee": "adresFirmyZEnv",
-      "call": "adresFirmyZEnv(env)"
-    },
-    {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 60,
-      "expression": "env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(env)"
     },
     {
       "path": "src/core/tryb.ts",
@@ -7257,6 +7200,139 @@
       "expression": "process.env",
       "callee": "efektywnyTryb",
       "call": "efektywnyTryb(process.env)"
+    },
+    {
+      "path": "src/moduly/raporty/konfiguracja.ts",
+      "line": 18,
+      "expression": "env",
+      "callee": "wczytajRaportyDlaKanalow",
+      "call": "wczytajRaportyDlaKanalow(env, definicjeKanalow(env))"
+    },
+    {
+      "path": "src/moduly/raporty/konfiguracja.ts",
+      "line": 18,
+      "expression": "env",
+      "callee": "definicjeKanalow",
+      "call": "definicjeKanalow(env)"
+    },
+    {
+      "path": "src/moduly/raporty/konfiguracja.ts",
+      "line": 22,
+      "expression": "env",
+      "callee": "wczytajKlasyfikacje",
+      "call": "wczytajKlasyfikacje(env, definicje)"
+    },
+    {
+      "path": "src/moduly/raporty/konfiguracja.ts",
+      "line": 41,
+      "expression": "env",
+      "callee": "regulyHistorii",
+      "call": "regulyHistorii(env)"
+    },
+    {
+      "path": "src/moduly/raporty/konfiguracja.ts",
+      "line": 43,
+      "expression": "env",
+      "callee": "dzien",
+      "call": "dzien(env, 'OMS_RAPORTY_PODLOGA_ZWROTOW')"
+    },
+    {
+      "path": "src/moduly/raporty/konfiguracja.ts",
+      "line": 44,
+      "expression": "env",
+      "callee": "dzien",
+      "call": "dzien(env, 'OMS_STATYSTYKI_PIERWSZY_DZIEN')"
+    },
+    {
+      "path": "src/moduly/raporty/konfiguracja.ts",
+      "line": 47,
+      "expression": "env",
+      "callee": "dzien",
+      "call": "dzien(env, 'OMS_RAPORTY_DATA_IMPORTU_HISTORII')"
+    },
+    {
+      "path": "src/moduly/raporty/konfiguracja.ts",
+      "line": 57,
+      "expression": "env",
+      "callee": "brakujaceKluczeKanalu",
+      "call": "brakujaceKluczeKanalu(d, env)"
+    },
+    {
+      "path": "src/moduly/raporty/granice-start.js",
+      "line": 50,
+      "expression": "env",
+      "callee": "wczytajRaporty",
+      "call": "wczytajRaporty(env)"
+    },
+    {
+      "path": "src/moduly/raporty/granice-start.js",
+      "line": 89,
+      "expression": "env",
+      "callee": "planGranic",
+      "call": "planGranic(env, teraz)"
+    },
+    {
+      "path": "src/moduly/raporty/modul.ts",
+      "line": 14,
+      "expression": "env",
+      "callee": "wczytajRaportyDlaKanalow",
+      "call": "wczytajRaportyDlaKanalow(env, definicje)"
+    },
+    {
+      "path": "src/moduly/rdzen/modul.ts",
+      "line": 13,
+      "expression": "env",
+      "callee": "wczytajSprzedawce",
+      "call": "wczytajSprzedawce(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 44,
+      "expression": "env",
+      "callee": "wczytajSprzedawce",
+      "call": "wczytajSprzedawce(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 53,
+      "expression": "env",
+      "callee": "adresFirmyZEnv",
+      "call": "adresFirmyZEnv(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 61,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/wysylka/modul.ts",
+      "line": 66,
+      "expression": "env",
+      "callee": "wczytajKurierow",
+      "call": "wczytajKurierow(env)"
+    },
+    {
+      "path": "src/moduly/wysylka/modul.ts",
+      "line": 71,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/wysylka/modul.ts",
+      "line": 72,
+      "expression": "env",
+      "callee": "odstep",
+      "call": "odstep(env, 'OMS_PRZESYLKI_ODSTEP_MS', 3600000)"
+    },
+    {
+      "path": "src/moduly/wysylka/modul.ts",
+      "line": 73,
+      "expression": "env",
+      "callee": "odstep",
+      "call": "odstep(env, 'OMS_PODJAZDY_ODSTEP_MS', 600000)"
     }
   ],
   "prefiksy": {
@@ -7555,12 +7631,12 @@
     },
     {
       "path": "src/core/sprzedawca.ts",
-      "sha256": "04fa866116c961ea4eb4b6050aa6dcaca0e1b9fd5444951bd046062f2ee6f9ef",
+      "sha256": "54bbba5449e8fbe0a9cb1eb7ed4f7db76f161d2efde4aedec8a55b984c907579",
       "normalizacja": "LF"
     },
     {
       "path": "src/core/web/modul.ts",
-      "sha256": "7422b34ed9539c3eff1e929c2f652dc568459587a9c4b869c7fe3d7ccf4557d0",
+      "sha256": "1b4106d017dc0a820542e12c4ba24c935e4c4304aa5b5bec5ef54076f8b3891a",
       "normalizacja": "LF"
     },
     {
@@ -7585,7 +7661,7 @@
     },
     {
       "path": "src/moduly/zamowienia/konfiguracja.ts",
-      "sha256": "494effbe80403d3dddbc004410d82450bdb1250a7c94ec0890760b4a245eee05",
+      "sha256": "00dd4bb7afda0c3ba2abc3c8d9016455f64bb5973d398a0da6f4db93152963f8",
       "normalizacja": "LF"
     },
     {
@@ -7595,27 +7671,27 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "98859adae6cc2b4baa02c7c5dece8070af33980de3a0f05d090ecf07029c8a61",
+      "sha256": "f1b3f6a9e794d28351319d126e5b020015ad2b6e1ca7414947260f4446494123",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/wysylka/modul.ts",
-      "sha256": "023146a4cda7805fb24a81709d6a308ea4864b289593df9f49f4c890ff979397",
+      "sha256": "11ea5f451c0fb2b616fe7dead6762b65735b4531b2be4d7b01693e6e13bfe490",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "sha256": "9390bf606d1f4d7df6d45357db200f6ab51808c4dff9e221b58dc74b27ebf5d0",
+      "sha256": "662d6467bb05f3e5582785d1ebbb7ed59f10a2c147c6364133a82c97e6f6b14e",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/zdrowie/modul.ts",
-      "sha256": "e74545cc48736beb122fc67019e81788139935ca83c5998e8b811aeee75a3bb1",
+      "sha256": "3ba5255c7fa7034ceed5f3ed374d1bfcdd8226eedbe6e89f4c557ce9c32a1913",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/raporty/konfiguracja.ts",
-      "sha256": "466b98dee7509e00b68e5a3559c900e5875b504be4421d47084c5a4552dada30",
+      "sha256": "9191cbea97ce2276b1211535c104193c2c650060504b469be457e007771ca2e6",
       "normalizacja": "LF"
     },
     {
@@ -7655,7 +7731,7 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "65cf1549d6fa62969538bbae0bd25182882e522df713e153b5e4c144fe76b055",
+      "sha256": "9670b68dd080fdeaa56171ff50b3b2e94948cc5cbb7f7ebbb8541880ff98fe87",
       "normalizacja": "LF"
     },
     {
@@ -7687,12 +7763,12 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "98859adae6cc2b4baa02c7c5dece8070af33980de3a0f05d090ecf07029c8a61",
+      "sha256": "f1b3f6a9e794d28351319d126e5b020015ad2b6e1ca7414947260f4446494123",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "sha256": "9390bf606d1f4d7df6d45357db200f6ab51808c4dff9e221b58dc74b27ebf5d0",
+      "sha256": "662d6467bb05f3e5582785d1ebbb7ed59f10a2c147c6364133a82c97e6f6b14e",
       "normalizacja": "LF"
     },
     {
@@ -7707,7 +7783,7 @@
     },
     {
       "path": "src/moduly/zdrowie/modul.ts",
-      "sha256": "e74545cc48736beb122fc67019e81788139935ca83c5998e8b811aeee75a3bb1",
+      "sha256": "3ba5255c7fa7034ceed5f3ed374d1bfcdd8226eedbe6e89f4c557ce9c32a1913",
       "normalizacja": "LF"
     },
     {
@@ -7727,12 +7803,12 @@
     },
     {
       "path": "src/moduly/ustawienia/cele-diagnostyki.ts",
-      "sha256": "3898d892d1b9fe3ab9c0e09186f8d81029facee3f9b70447f90761ab7ad22952",
+      "sha256": "429225d4b8831e0781455e76c74014337245cf687d87ff399ef1f2929e9375e4",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "65cf1549d6fa62969538bbae0bd25182882e522df713e153b5e4c144fe76b055",
+      "sha256": "9670b68dd080fdeaa56171ff50b3b2e94948cc5cbb7f7ebbb8541880ff98fe87",
       "normalizacja": "LF"
     },
     {
@@ -7940,7 +8016,7 @@
       },
       {
         "path": "src/moduly/raporty/konfiguracja.ts",
-        "sha256": "466b98dee7509e00b68e5a3559c900e5875b504be4421d47084c5a4552dada30",
+        "sha256": "9191cbea97ce2276b1211535c104193c2c650060504b469be457e007771ca2e6",
         "odczyty": [
           {
             "expression": "env[klucz]",
@@ -7948,6 +8024,12 @@
               "OMS_RAPORTY_PODLOGA_ZWROTOW",
               "OMS_STATYSTYKI_PIERWSZY_DZIEN",
               "OMS_RAPORTY_DATA_IMPORTU_HISTORII"
+            ]
+          },
+          {
+            "expression": "env[`${d.prefiks}_OD`]",
+            "names": [
+              "<P>_OD"
             ]
           }
         ]
@@ -8008,7 +8090,7 @@
       },
       {
         "path": "src/moduly/wysylka/modul.ts",
-        "sha256": "023146a4cda7805fb24a81709d6a308ea4864b289593df9f49f4c890ff979397",
+        "sha256": "11ea5f451c0fb2b616fe7dead6762b65735b4531b2be4d7b01693e6e13bfe490",
         "odczyty": [
           {
             "expression": "env[klucz]",
@@ -8087,7 +8169,7 @@
       },
       {
         "path": "src/moduly/faktury/modul.ts",
-        "sha256": "98859adae6cc2b4baa02c7c5dece8070af33980de3a0f05d090ecf07029c8a61",
+        "sha256": "ecad709dc38cec4c4aff1c72e729be491b3c2d34899964af117069cd96a42516",
         "expression": "wczytajSprzedawce(env)"
       },
       {
@@ -8117,7 +8199,7 @@
       },
       {
         "path": "src/moduly/koszty/modul.ts",
-        "sha256": "9390bf606d1f4d7df6d45357db200f6ab51808c4dff9e221b58dc74b27ebf5d0",
+        "sha256": "662d6467bb05f3e5582785d1ebbb7ed59f10a2c147c6364133a82c97e6f6b14e",
         "expression": "wczytajSprzedawce(env)"
       },
       {
@@ -8132,7 +8214,7 @@
       },
       {
         "path": "src/moduly/wysylka/modul.ts",
-        "sha256": "023146a4cda7805fb24a81709d6a308ea4864b289593df9f49f4c890ff979397",
+        "sha256": "63d8f9e6cd0e03943c45e891c58c46ea6723fd0e1658ca8a7a9a4a4733e48de1",
         "expression": "wczytajKurierow(env)"
       },
       {
@@ -9759,7 +9841,7 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "d7dd5e9417ac5bf4c3dc4383191eb4d2e24dafa98ada0dcc23a7b97bb99379d0",
+      "sha256": "b703c6b68e33e3aa78ca9bd2ea4836b698fa4b73f80eb28484cb4b5cf7528c4c",
       "normalizacja": "LF"
     },
     {

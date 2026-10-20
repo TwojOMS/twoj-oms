@@ -10,6 +10,7 @@
 </div>
 <% } else { %>
 <h1><%= adminWidok ? konto.imie : 'Moje konto' %></h1>
+<% if (wlasne) { %><p><a href="/ustawienia/powiadomienia">Powiadomienia — wybierz widoczne ostrzeżenia</a></p><% } %>
 
 <% if (zapisano) { %>
   <div class="pas-potwierdzenie"><p><%= zapisano %></p></div>

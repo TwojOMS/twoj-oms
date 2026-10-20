@@ -10,6 +10,14 @@
 // konsument w repo `raporty` nie mogl ich zsumowac z kanalami liczonymi z Apilo. Ten slownik
 // jest WEWNETRZNY — nie wychodzi zadnym endpointem.
 
+// Historia ma tylko klucz raportowy. Jawny typ wygrywa z nazwą; dla kanałów bez
+// definicji zachowujemy dawny prefiks (również dla archiwalnych kont Allegro).
+export function czyKanalRaportowyAllegro(klucz, definicje) {
+  const definicja = definicje?.find(d => d.raport === klucz);
+  if (definicja) return definicja.typ === 'allegro';
+  return klucz.startsWith('ALLEGRO_');
+}
+
 function odmowa(tresc) {
   const e = new Error(tresc);
   e.dlaOperatora = true;

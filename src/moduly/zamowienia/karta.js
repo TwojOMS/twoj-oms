@@ -14,8 +14,10 @@ import { adresOdbiorcy } from '../../domena/adres-odbiorcy.js';
 import { daneFaktury } from '../../domena/dane-faktury.js';
 import { parsujPaczke } from '../../domena/paczka.js';
 import { nipDoZapytania, komunikatAwariiGus } from '../../domena/gus.js';
+import { gusDostepny, KOMUNIKAT_BRAK_GUS } from '../../domena/konfiguracja-gus.js';
 import { ETYKIETY_TERMINU, parsujTerminZamowienia } from '../../domena/termin-platnosci.js';
-import { znormalizujKlienta } from '../../domena/klient-staly.js';
+import { znormalizujKlienta, daneNabywcyNaKarcie } from '../../domena/klient-staly.js';
+import { DOSTAWY } from '../../domena/nowe-zamowienie.js';
 import { klientPoNip, dopiszKlienta, zapiszKlienta } from '../../oms/db/klienci.js';
 import { zmienUstalenia } from './services/rabat.js';
 import { parsujWplate } from '../../domena/platnosci.js';
@@ -189,7 +191,8 @@ app.post('/zamowienia/:id/dane/gus', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
     if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
-    if (!gus) return reply.code(503).send('GUS nie jest skonfigurowany (brak GUS_KLUCZ) — wpisz dane ręcznie.');
+    // PRZ-102.11: klucz z pliku albo z Ustawień, sprawdzany przy każdym żądaniu (zapis działa bez restartu).
+    if (!gusDostepny(gus)) return reply.code(503).type('text/plain; charset=utf-8').send(KOMUNIKAT_BRAK_GUS);
 
     // NIP bierzemy Z FORMULARZA, nie z bazy: operator zwykle właśnie go wpisał albo poprawił,
     // a jeszcze nie zapisał. Branie z bazy pytałoby o STARY numer i cicho oddawało nie tę firmę.
@@ -358,6 +361,18 @@ app.post('/zamowienia/:id/klient/zapamietaj', async (req, reply) => {
     const f = daneFaktury(z);
     const a = adresOdbiorcy(z) ?? {};
     const istniejacy = klientPoNip(db, f.nip);
+    // ⚠️ NOWY KLIENT Z NIEROZPOZNANA DOSTAWA DOSTAJE DOSTAWE NIEUSTALONA (PRZ-102.24): pusta
+    // metoda i pusty koszt. Allegro/Woo daja `nieznana` albo nazwe spoza `DOSTAWY` — walidacja
+    // odbijala wtedy cale „Zapamietaj” z 400, a podstawione „dpd” udawaloby ustalenie, ktorego
+    // nikt nie zrobil. Pusta metoda daje w `znormalizujKlienta` pusta metode i pusty koszt
+    // (kolumny NOT NULL, pusty napis przechodzi).
+    // ⚠️⚠️ KOSZTU Z ZAMOWIENIA NOWY KLIENT NIE DOSTAJE NIGDY, takze przy rozpoznanej metodzie:
+    // to oplata za tamta jedna przesylke, nie ustalenie. Kupon darmowej wysylki dawal klientowi
+    // „wysylka gratis” na stale, koszt null — 0,00, dwie paczki po 19,00 — stale 38,00.
+    // Koszt zostaje pusty, a „Wstaw dane” podstawia kwote domyslna z Ustawien.
+    const metodaNowego = !istniejacy && Object.hasOwn(DOSTAWY, String(z.metoda_wysylki ?? ''))
+      ? z.metoda_wysylki
+      : '';
 
     let dane;
     try {
@@ -369,9 +384,13 @@ app.post('/zamowienia/:id/klient/zapamietaj', async (req, reply) => {
         w_nazwa: a.nazwa, w_firma: a.company, w_ulica: a.ulica, w_kod: a.kod, w_miasto: a.miasto,
         w_telefon: a.telefon, w_email: a.email,
         chce_fakture: z.chce_fakture ? 'on' : '',
-        metoda_wysylki: z.metoda_wysylki,
-        koszt_dostawy_brutto: z.koszt_dostawy_brutto,
-        // ⚠️ Ustalenia bierzemy z zamowienia TYLKO przy nowym wpisie — patrz naglowek trasy.
+        // ⚠️ Dostawa i jej koszt u ISTNIEJACEGO klienta z karty, nie z zamowienia: na karte i tak
+        // nie trafiaja (`daneNabywcyNaKarcie`), a walidacja ponizej odbijala 400 „Nie znam sposobu
+        // dostawy” przy `metoda_wysylki = 'nieznana'` z Allegro/Woo — i adres sie nie aktualizowal.
+        metoda_wysylki: istniejacy ? istniejacy.metoda_wysylki : metodaNowego,
+        koszt_dostawy_brutto: istniejacy ? istniejacy.koszt_dostawy_brutto : '',
+        // ⚠️ Ustalenia bierzemy z zamowienia TYLKO przy nowym wpisie. Istniejacy wpis i tak dostaje
+        // nizej wszystko spoza danych nabywcy z bazy (`daneNabywcyNaKarcie`, PRZ-102.07).
         b2b: (istniejacy ? istniejacy.b2b : z.b2b) ? 'on' : '',
         rabat_procent: istniejacy ? istniejacy.rabat_procent : (z.rabat_procent ?? 0),
         termin_platnosci: istniejacy ? istniejacy.termin_platnosci : z.termin_platnosci,
@@ -383,8 +402,15 @@ app.post('/zamowienia/:id/klient/zapamietaj', async (req, reply) => {
     }
 
     try {
-      if (istniejacy) zapiszKlienta(db, istniejacy.id, dane);
-      else dopiszKlienta(db, dane);
+      // ⚠️⚠️ U ISTNIEJACEGO KLIENTA TYLKO NIEPUSTE DANE NABYWCY. `zapiszKlienta` pisze komplet
+      // kolumn; bez tego jeden klik zerowal umowe zbiorcza i jej kwoty, a zamowienie bez adresu
+      // kasowalo adres z karty (PRZ-102.07).
+      if (istniejacy) {
+        dane = daneNabywcyNaKarcie(istniejacy, dane);
+        zapiszKlienta(db, istniejacy.id, dane);
+      } else {
+        dopiszKlienta(db, dane);
+      }
     } catch (e) {
       dopiszLog(db, id, { akcja: 'klient.zapamietaj', wynik: `BŁĄD: ${e.message}` });
       return reply.code(400).send(`Nie udało się zapamiętać klienta: ${komunikatDlaOperatora(e)}`);

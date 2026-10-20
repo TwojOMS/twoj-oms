@@ -72,9 +72,11 @@ describe('faktury: konfiguracja rzeczywistego manifestu i HTTP', () => {
     const k = modulFaktury.konfiguracja(env());
     const z = modulFaktury.zbuduj({ db: a.db, konfiguracja: k, teraz: () => new Date(), log: () => {},
       usluga: (m, n) => ({ 'kanaly.klienciKanalow': { fixture: {} }, 'kanaly.config': { definicje: [] } })[`${m}.${n}`] });
+    // PRZ-102.12: automat KSeF tyka co minutę i sam rozstrzyga porę (jedna próba na dzień) — budżety czuwaczy
+    // niżej dotyczą tylko zegarów godzinowych.
     expect(z.zegary.map(x => [x.nazwa, x.odstepMs])).toEqual([
-      ['czuwaczKsef', 3600000], ['czuwaczArchiwumSprzedazy', 3600000] ]);
-    for (const zegar of z.zegary) {
+      ['czuwaczKsef', 3600000], ['czuwaczArchiwumSprzedazy', 3600000], ['automatKsef', 60000] ]);
+    for (const zegar of z.zegary.filter(x => x.nazwa !== 'automatKsef')) {
       expect(NAJDLUZSZY_PRZEBIEG_MS).toBeLessThan(zegar.odstepMs);
       expect(NAJDLUZSZY_PRZEBIEG_ARCHIWUM_SPRZEDAZY_MS).toBeLessThan(zegar.odstepMs);
     }
@@ -87,6 +89,6 @@ describe('faktury: konfiguracja rzeczywistego manifestu i HTTP', () => {
       teraz: () => new Date(), log: () => {},
       usluga: (m, n) => ({ 'kanaly.klienciKanalow': { fixture: {} }, 'kanaly.config': { definicje: [] } })[`${m}.${n}`] });
     expect(z.uslugi.czuwaczArchiwumSprzedazy).toBeNull();
-    expect(z.zegary.map(x => x.nazwa)).toEqual(['czuwaczKsef']);
+    expect(z.zegary.map(x => x.nazwa)).toEqual(['czuwaczKsef', 'automatKsef']);
   });
 });

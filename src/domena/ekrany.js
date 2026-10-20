@@ -95,7 +95,9 @@ export const EKRANY = [
   },
   {
     klucz: 'okresy', etykieta: 'Okresy rozliczeniowe', href: '/okresy', prefiksy: ['/okresy'],
-    nawigacja: { dzial: 'sprzedaz', grupa: 'obsluga', kolejnosc: 40, etykieta: 'Rozliczenia' },
+    // PRZ-102.03 (wariant C, właściciel 20.10): Rozliczenia, Stali klienci i Wiadomości to grupa „Klienci” pod
+    // „Obsługą zamówień”; analizy (`analizy-cele`) wyszły z menu bocznego do górnego paska.
+    nawigacja: { dzial: 'sprzedaz', grupa: 'klienci', kolejnosc: 60, etykieta: 'Rozliczenia' },
   },
   {
     klucz: 'faktury', etykieta: 'Faktury', href: '/faktury', prefiksy: ['/faktury'],
@@ -136,11 +138,11 @@ export const EKRANY = [
   },
   {
     klucz: 'klienci', etykieta: 'Stali klienci', href: '/klienci', prefiksy: ['/klienci'],
-    nawigacja: { dzial: 'sprzedaz', grupa: 'obsluga', kolejnosc: 50 },
+    nawigacja: { dzial: 'sprzedaz', grupa: 'klienci', kolejnosc: 50 },
   },
   {
     klucz: 'wiadomosci', etykieta: 'Wiadomości', href: '/wiadomosci', prefiksy: ['/wiadomosci'],
-    nawigacja: { dzial: 'sprzedaz', grupa: 'obsluga', kolejnosc: 60 },
+    nawigacja: { dzial: 'sprzedaz', grupa: 'klienci', kolejnosc: 40 },
   },
   { klucz: 'ustawienia', etykieta: 'Ustawienia', href: '/ustawienia', prefiksy: ['/ustawienia'] },
 ];
@@ -234,6 +236,8 @@ export function tytulEkranuDlaAdresu(url) {
     '/ustawienia/integracje/dpd': 'Kurier DPD Polska',
     '/ustawienia/integracje/inpost': 'Kurier InPost',
     '/ustawienia/integracje/infakt': 'inFakt',
+    '/ustawienia/integracje/gus': 'GUS (dane firm po NIP)',
+    '/ustawienia/integracje/ksef': 'KSeF — faktury kosztowe',
     '/ustawienia/integracje/poczta': 'Poczta wychodząca',
     '/ustawienia/integracje/reklamy': 'Integracje reklam',
   };

@@ -88,7 +88,7 @@ const konta = (k, p = 'data/oms.sqlite') => zapytaj(k, p, 'SELECT login FROM kon
 
 /** Pierwsze wywołanie zakłada szablon; uzupełnienie jak operator (nano). */
 function uzupelnij(k, zmiany = {}) {
-  const pola = { OMS_SPRZEDAWCA_NIP: '1111111111', OMS_RACHUNEK: '50109010140000000000000003', DPD_NADAWCA_NAZWA: 'Pracownia Przykładowa sp. z o.o.',
+  const pola = { OMS_SPRZEDAWCA_NIP: '1111111111', OMS_RACHUNEK: '09109010140000000000000062', DPD_NADAWCA_NAZWA: 'Pracownia Przykładowa sp. z o.o.',
     DPD_NADAWCA_ULICA: 'Klockowa 1', DPD_NADAWCA_KOD: '00-950', DPD_NADAWCA_MIASTO: 'Warszawa', ...zmiany };
   let t = czytaj(k, 'config/produkcja.env');
   for (const [n, w] of Object.entries(pola)) t = t.match(new RegExp(`^${n}=`, 'm')) ? t.replace(new RegExp(`^${n}=.*$`, 'm'), `${n}=${w}`) : `${t}${n}=${w}\n`;
@@ -108,12 +108,15 @@ describe('przejście próba → praca: przygotowanie i odmowy', () => {
     const r = akt(k, ['produkcja']);
     expect(r.status, r.wyjscie).toBe(0);
     expect(r.stdout).toContain('UTWORZONO');
-    for (const n of ['OMS_SPRZEDAWCA_NIP', 'OMS_RACHUNEK']) expect(r.stdout).toContain(n);
+    expect(r.stdout).toContain('OMS_SPRZEDAWCA_NIP');
+    // PRZ-102.20: rachunek też nie jest polem do uzupełnienia (można w panelu: Ustawienia → Firma) — w szablonie, pusty.
+    expect(r.stdout).not.toContain('OMS_RACHUNEK');
     // PRZ-093.08: adres firmy już nie jest polem do uzupełnienia (można go wpisać w panelu) — jest w szablonie, pusty.
     expect(r.stdout).not.toContain('DPD_NADAWCA_');
     const t = czytaj(k, 'config/produkcja.env');
     for (const n of ['DPD_NADAWCA_NAZWA', 'DPD_NADAWCA_ULICA', 'DPD_NADAWCA_KOD', 'DPD_NADAWCA_MIASTO']) expect(t).toMatch(new RegExp(`^${n}=$`, 'm'));
     expect(t).toContain('Ustawienia → Firma');
+    expect(t).toMatch(/^# Rachunek firmy[^\n]*\n#[^\n]*w panelu \(Ustawienia → Firma[^\n]*\nOMS_RACHUNEK=$/m);
     expect(t).toMatch(/^OMS_TRYB=produkcja$/m);
     expect(t).toMatch(/^OMS_PASS=[0-9a-f]{48}$/m);
     expect(t).toMatch(/^OMS_KANALY=\[\]$/m);
@@ -125,7 +128,7 @@ describe('przejście próba → praca: przygotowanie i odmowy', () => {
     // Drugie hasło nie powstaje: plik już jest, a puste pola są odmową z nazwami.
     const r2 = akt(k, ['produkcja']);
     expect(r2.status).toBe(1);
-    expect(r2.stderr).toContain('PRODUKCJA_NIEWYPELNIONE_POLA: OMS_SPRZEDAWCA_NIP OMS_RACHUNEK — ');
+    expect(r2.stderr).toContain('PRODUKCJA_NIEWYPELNIONE_POLA: OMS_SPRZEDAWCA_NIP — ');
     expect(czytaj(k, 'config/produkcja.env')).toBe(t);
   });
 
@@ -138,7 +141,7 @@ describe('przejście próba → praca: przygotowanie i odmowy', () => {
       expect(r.status).toBe(1);
       expect(r.stderr).toContain(`PRODUKCJA_WARTOSC_Z_PROBY: ${n}`);
       expect(r.wyjscie).not.toContain(HASLO_PROBY);
-      uzupelnij(k, { OMS_PASS: 'c'.repeat(48), OMS_SPRZEDAWCA_NIP: '1111111111', OMS_RACHUNEK: '50109010140000000000000003' });
+      uzupelnij(k, { OMS_PASS: 'c'.repeat(48), OMS_SPRZEDAWCA_NIP: '1111111111', OMS_RACHUNEK: '09109010140000000000000062' });
     }
     expect(istnieje(k, 'update-state/blokada')).toBe(false);
     expect(zamowienia(k)).toEqual(['DEMO-001', 'DEMO-002', 'DEMO-003']);
@@ -149,11 +152,12 @@ describe('przejście próba → praca: przygotowanie i odmowy', () => {
     akt(k, ['produkcja']);
     // PRZ-093.08: puste-w-cudzysłowie sprawdzane na NIP-ie (adres firmy przestał być wymagany).
     uzupelnij(k, { OMS_SPRZEDAWCA_NIP: '""', OMS_TRYB: 'proba' });
-    // Druga, pusta linia OMS_RACHUNEK na końcu: compose bierze OSTATNIĄ — więc to brak (recenzja D8 r1).
-    fs.writeFileSync(plik(k, 'config/produkcja.env'), (czytaj(k, 'config/produkcja.env') + 'OMS_RACHUNEK=\n').replaceAll('\n', '\r\n'));
+    // Druga, pusta linia OMS_USER na końcu: compose bierze OSTATNIĄ — więc to brak (recenzja D8 r1). PRZ-102.20: dawniej
+    // sprawdzane na OMS_RACHUNEK, który przestał być wymagany (można go wpisać w panelu).
+    fs.writeFileSync(plik(k, 'config/produkcja.env'), (czytaj(k, 'config/produkcja.env') + 'OMS_USER=\n').replaceAll('\n', '\r\n'));
     const r = akt(k, ['produkcja']);
     expect(r.status).toBe(1);
-    expect(r.stderr).toContain('PRODUKCJA_NIEWYPELNIONE_POLA: OMS_TRYB(=produkcja) OMS_SPRZEDAWCA_NIP OMS_RACHUNEK — ');
+    expect(r.stderr).toContain('PRODUKCJA_NIEWYPELNIONE_POLA: OMS_TRYB(=produkcja) OMS_SPRZEDAWCA_NIP OMS_USER — ');
   });
 
   // PRZ-093.08: firma bez adresu w pliku przechodzi na pracę — adres wpisze w panelu (Ustawienia → Firma).
@@ -164,6 +168,18 @@ describe('przejście próba → praca: przygotowanie i odmowy', () => {
     const r = akt(k, ['produkcja']);
     expect(r.status, r.wyjscie).toBe(0);
     expect(r.stderr).not.toContain('PRODUKCJA_NIEWYPELNIONE_POLA');
+    expect(r.stdout).toContain('NEEDS_ACCEPT operacja=');
+  });
+
+  // PRZ-102.20: firma bez rachunku w pliku przechodzi na pracę — rachunek wpisze w panelu (Ustawienia → Firma).
+  it('bez rachunku w pliku przejście na pracę rusza (pusty rachunek nie jest ani brakiem, ani wartością z próby)', () => {
+    const k = instalacja();
+    akt(k, ['produkcja']);
+    uzupelnij(k, { OMS_RACHUNEK: '' });
+    const r = akt(k, ['produkcja']);
+    expect(r.status, r.wyjscie).toBe(0);
+    expect(r.stderr).not.toContain('PRODUKCJA_NIEWYPELNIONE_POLA');
+    expect(r.stderr).not.toContain('PRODUKCJA_WARTOSC_Z_PROBY');
     expect(r.stdout).toContain('NEEDS_ACCEPT operacja=');
   });
 });

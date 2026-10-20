@@ -5,7 +5,7 @@
 
 <section class="ust-sekcja szw-sekcja" id="szablony-wbudowane">
   <h2>Maile z karty zamówienia</h2>
-  <p>Te cztery maile wysyłasz z karty zamówienia, sekcja Wiadomości. Zmiana działa od następnego maila. Kwoty, dane do przelewu i załączniki PDF liczy panel — w treści wstawiasz je polami.</p>
+  <p>Te maile wysyłasz z karty zamówienia, sekcja Wiadomości. Zmiana działa od następnego maila. Kwoty, dane do przelewu i załączniki PDF liczy panel — w treści wstawiasz je polami.</p>
   <%# Przewijak: na telefonie tabela jedzie w bok u siebie, zamiast rozpychać stronę (PRZ-101.10). %>
   <div class="przewijak-tabeli">
   <table class="tab-pozycje szw-tabela">
@@ -22,6 +22,51 @@
     </tbody>
   </table>
   </div>
+</section>
+
+<%# PRZ-102.17: treść zdań, które panel sam dobiera do maili o płatności. Wybór zdania (która sytuacja) liczy kod. %>
+<section class="ust-sekcja szw-sekcja" id="zdania-platnosci">
+  <h2>Zdania o płatności</h2>
+  <p>Te zdania panel sam wstawia do maili z proformą, fakturą i przypomnieniem — przez pola <code>{zamkniecie}</code> i <code>{dane_platnosci}</code>. Które z nich padnie, zależy od zamówienia: za pobraniem, już opłacone albo do zapłaty przelewem. Kwotę, odbiorcę, rachunek, tytuł i termin przelewu liczy panel — tu zmienisz tylko napisy obok nich (część „Etykiety i stałe teksty”). Puste pole oznacza tekst domyślny. Zmiana działa od następnego maila.</p>
+  <% if (bladZdan) { %><div class="pas-uprzedzenie" role="alert"><p><strong>Nie zapisano.</strong> <%= bladZdan %></p></div><% } %>
+  <form method="post" action="/ustawienia/szablony-wiadomosci/zdania-platnosci" class="szw-zdania">
+    <% [['zamkniecie', 'Zdanie zamykające — pole {zamkniecie}', 'Jedno zdanie nad podpisem, oddzielone kreską. Panel wybiera je według stanu płatności zamówienia.'],
+        ['blok', 'Blok z danymi do przelewu — {dane_platnosci}', 'Nagłówki sekcji i zdania o dołączonych dokumentach. Dane pod nagłówkami wstawia panel.'],
+        /* PRZ-102.19: druga część sekcji — krótkie napisy przy danych, które liczy panel. */
+        ['przelew', 'Etykiety danych do przelewu — {dane_platnosci}', 'Napisy przy kwocie i w tabeli przelewu. Kwotę, odbiorcę, numer rachunku, tytuł i termin wstawia panel — tu ich nie zmienisz.', 'Etykiety i stałe teksty'],
+        ['zamowienie', 'Bloki zamówienia — {pozycje}, {sposob_platnosci}, {wysylka}, {dane_do_faktury}', 'Nagłówki, kolumny tabeli i stałe zwroty w potwierdzeniu przyjęcia i w szablonach własnych. Pozycje, kwoty, adres i dane nabywcy wstawia panel.'],
+        ['podpis', 'Podpis — {podpis}', 'Linia nad marką na końcu każdego maila do klienta. Markę ustawisz w Ustawienia → Poczta.']].forEach(function (g) { %>
+      <% if (g[3]) { %><h3 class="szw-czesc"><%= g[3] %></h3><p class="ust-pomoc">Krótkie napisy (do <%= maksZdan.etykieta %> znaków): litery łacińskie z polskimi, cyfry, spacje i zwykła interpunkcja — bez klamer i bez ciągów sześciu cyfr. Puste pole wraca do tekstu domyślnego.</p><% } %>
+      <h3 class="szw-naglowek"><%= g[1] %></h3>
+      <p class="ust-pomoc"><%= g[2] %></p>
+      <% zdania.filter(function (z) { return z.grupa === g[0]; }).forEach(function (z) { %>
+        <div class="szw-zdanie<%= z.etykieta ? ' szw-zdanie--krotkie' : '' %><%= z.blad || z.odrzucone ? ' szw-zdanie--blad' : '' %>">
+          <label for="zd-<%= z.klucz %>"><%= z.kiedy %></label>
+          <% if (z.naglowek || z.etykieta) { %>
+            <input id="zd-<%= z.klucz %>" name="<%= z.klucz %>" value="<%= z.wartosc %>" maxlength="<%= z.maks %>">
+          <% } else { %>
+            <textarea id="zd-<%= z.klucz %>" name="<%= z.klucz %>" rows="2" maxlength="<%= z.maks %>" spellcheck="true"><%= z.wartosc %></textarea>
+          <% } %>
+          <% if (z.blad) { %><p class="szw-zdanie-blad" role="alert"><%= z.blad %></p><% } %>
+          <% if (!z.blad && z.odrzucone) { %><p class="szw-zdanie-blad" role="alert">Zapisane zdanie nie przechodzi reguł — w mailu idzie domyślne. <%= z.odrzucone %></p><% } %>
+          <% if (z.uwaga) { %><p class="ust-pomoc"><%= z.uwaga %></p><% } %>
+          <div class="szw-zdanie-stan">
+            <% if (z.zmienione) { %>
+              <span class="szw-znacznik">zmienione</span>
+              <button class="ust-przycisk" type="submit" formaction="/ustawienia/szablony-wiadomosci/zdania-platnosci/<%= z.klucz %>/przywroc" formnovalidate>Przywróć domyślne</button>
+              <span>Domyślnie: „<%= z.domyslne %>”</span>
+            <% } else { %>
+              <span class="szw-znacznik">domyślne</span>
+            <% } %>
+          </div>
+        </div>
+      <% }); %>
+    <% }); %>
+    <div class="ust-akcje">
+      <button class="ust-przycisk szw-glowny" type="submit">Zapisz zdania i etykiety</button>
+      <span class="wyjasnienie">Zapisuje wszystkie zdania naraz. Podgląd z nowymi zdaniami zobaczysz w edytorze każdego maila i na karcie zamówienia.</span>
+    </div>
+  </form>
 </section>
 
 <section class="ust-sekcja szw-sekcja" id="szablony-wlasne">

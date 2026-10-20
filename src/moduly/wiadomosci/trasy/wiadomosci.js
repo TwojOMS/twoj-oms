@@ -17,6 +17,7 @@ import { wczytajSzablonyWiadomosci } from '../../../oms/db/szablony-wiadomosci.j
 import { zamowienieWatku } from '../../../oms/db/allegro-watki.js';
 import { pobierzZamowienie } from '../../../oms/db/zamowienia.js';
 import { tekstDoWatku } from '../szablony.js';
+import { zdaniaPlatnosciTeraz } from '../zdania-platnosci.js';
 import { PODPIS } from '../../../domena/potwierdzenie-zamowienia.js';
 
 export function registerWiadomosciRoutes(app, options) {
@@ -26,6 +27,8 @@ export function registerWiadomosciRoutes(app, options) {
   });
 }
 function registerRoutes(app, { db, klienci = {}, podpis = PODPIS }) {
+  // PRZ-102.10: podpis może być funkcją (Ustawienia → Poczta, czytany przy każdym żądaniu) albo stałą.
+  const podpisTeraz = typeof podpis === 'function' ? podpis : () => podpis;
   /**
    * PRZ-101.03: „Wstaw szablon" — szablony własne z podstawionymi polami TEGO wątku. Zamówienie wątku = najnowsze
    * zamówienie z tego konta Allegro z tym samym loginem kupującego; bez niego pola z zamówienia są puste
@@ -37,8 +40,10 @@ function registerRoutes(app, { db, klienci = {}, podpis = PODPIS }) {
     if (!wlasne.length) return { szablony: [], zamowienieSzablonow: null };
     const idZ = zamowienieWatku(db, w.kanal, w.interlocutor_login);
     const z = idZ ? pobierzZamowienie(db, idZ) : null;
+    // PRZ-102.19: „Pozdrawiamy," i stałe teksty bloków z Ustawień → Szablony wiadomości, przy każdym otwarciu wątku.
+    const zdania = zdaniaPlatnosciTeraz(db);
     return {
-      szablony: wlasne.map((s) => ({ id: s.id, nazwa: s.nazwa, tekst: tekstDoWatku(z, s, { podpis }) })),
+      szablony: wlasne.map((s) => ({ id: s.id, nazwa: s.nazwa, tekst: tekstDoWatku(z, s, { podpis: podpisTeraz(), zdania }) })),
       zamowienieSzablonow: z ? { id: z.id, numer: z.numer } : null,
     };
   }

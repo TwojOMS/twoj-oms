@@ -3,6 +3,7 @@
 //
 // Wpięcie:
 //   • poczta — moduł wiadomości z atrapą mailera (poczta.mjs, PRZ-087);
+//   • KSeF kosztów — atrapa klienta dla tokenu z Ustawień (ksef.mjs, PRZ-102.22), fabryka modułu kosztów;
 //   • inFakt i VIES — fabryki modułu faktur (createModulFaktury({ fabryki })), jedyny punkt w kodzie produkcji;
 //   • Woo i Allegro — `nadpisania` usług kanaly.klienciSklepow / klienciKanalow / config (globalnie: decyzja właściciela
 //     14.10 — widzą je wszystkie moduły). Pollery zamówień moduł kanałów buduje u siebie z pustej konfiguracji,
@@ -17,6 +18,8 @@ import { definicjeKanalow, konfiguracjaKanalow } from '../../../src/moduly/kanal
 import { createModulZamowienia } from '../../../src/moduly/zamowienia/modul.ts';
 import { createAtrapaInfaktu, createAtrapaVies } from './infakt.mjs';
 import { createAtrapaGus } from './gus.mjs';
+import { createAtrapaKsef } from './ksef.mjs';
+import { createModulKoszty } from '../../../src/moduly/koszty/modul.ts';
 import { createAtrapaDpd } from './dpd.mjs';
 import { createAtrapaInpost } from './inpost.mjs';
 import { createModulWysylka } from '../../../src/moduly/wysylka/modul.ts';
@@ -34,11 +37,14 @@ export function modulyPiaskownicy(env) {
     createVies: () => createAtrapaVies({ env }),
   };
   // PRZ-083: GUS — atrapa z komunikatem „nie działa w demo”; moduł zamówień składany z tą samą listą zależności.
-  const gus = { createGusClient: () => createAtrapaGus({ env }) };
+  // PRZ-102.11: z kluczem z Ustawień (opcje { klucz, url }) — dla „Sprawdź połączenie” na ekranie GUS.
+  const gus = { createGusClient: (opcje) => createAtrapaGus({ env, klucz: opcje?.klucz ?? null }) };
   return modulyDla(env).map((m) => {
     if (m.nazwa === 'faktury') return createModulFaktury({ fabryki });
     // PRZ-087: poczta — atrapa bez wysyłki, żeby karta zamówienia miała sekcję wiadomości (poczta.mjs).
     if (m.nazwa === 'wiadomosci') return createModulWiadomosciAtrapy(env);
+    // PRZ-102.22: token KSeF z Ustawień (faktury kosztowe) — atrapa zamiast prawdziwego klienta (ksef.mjs).
+    if (m.nazwa === 'koszty') return createModulKoszty({ atrapaKsef: ({ token }) => createAtrapaKsef({ env, token }) });
     if (m.nazwa === 'zamowienia') return createModulZamowienia({ zWiadomosciami: m.wymaga.includes('wiadomosci'), fabryki: gus });
     // PRZ-092: kurier DPD z Ustawień — atrapa zamiast prawdziwego klienta (dpd.mjs); PRZ-093.09: to samo dla InPostu.
     if (m.nazwa === 'wysylka') return createModulWysylka({ fabryki: { createDpd: createAtrapaDpd({ env }), createInpost: createAtrapaInpost({ env }) } });

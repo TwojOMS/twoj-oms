@@ -1,0 +1,24 @@
+<h1>Kompletność danych</h1>
+<p><a href="/finanse">Wróć do Finansów</a></p>
+<p>Te daty określają, od kiedy raporty mają pełne dane. Zapis w panelu działa od razu, bez restartu OMS.</p>
+<% if (zapisano) { %><div class="pas-potwierdzenie" role="status"><p>Zapisano. Raporty korzystają już z nowej daty.</p></div><% } %>
+<% if (blad) { %><div class="pas-uprzedzenie" role="alert"><p><%= blad %></p></div><% } %>
+<% if (!admin) { %><p>Poproś administratora o ustawienie kompletności danych.</p><% } %>
+<% for (const p of pola) { %>
+<section class="ust-sekcja">
+  <h2><%= p.etykieta %></h2>
+  <p><%= p.opis %></p>
+  <p>Źródło: <%= p.zPliku ? 'plik konfiguracji — ' + p.env : (p.wartosc ? 'panel OMS' : 'jeszcze nie ustawiono') %>.</p>
+  <% if (admin) { %>
+  <form method="post" action="/finanse/pokrycie">
+    <input type="hidden" name="klucz" value="<%= p.klucz %>">
+    <%# Etykieta bez formatu: przeglądarka pokazuje własny wybierak (np. „dd.mm.rrrr”), a wysyła zawsze RRRR-MM(-DD);
+        placeholder zostaje dla przeglądarek bez wybieraka miesiąca, w których pole jest zwykłym tekstem. %>
+    <label for="<%= p.klucz %>"><%= p.typ === 'month' ? 'Miesiąc' : 'Dzień' %></label>
+    <input id="<%= p.klucz %>" name="wartosc" type="<%= p.typ %>" value="<%= p.wartosc %>" placeholder="<%= p.typ === 'month' ? 'RRRR-MM' : 'RRRR-MM-DD' %>" required<%= p.zPliku ? ' disabled' : '' %>>
+    <% if (!p.zPliku) { %><button class="ust-przycisk" type="submit">Zapisz</button><% } %>
+  </form>
+  <% if (p.zPliku) { %><p>Edycja w panelu jest zablokowana. Zmiana w pliku konfiguracji wymaga restartu OMS.</p><% } %>
+  <% } else { %><p><%= p.wartosc || 'Brak daty' %></p><% } %>
+</section>
+<% } %>

@@ -12,7 +12,7 @@
 <% if (d.zamowienie) { %>
   <a class="link-numer" title="<%= d.zamowienie.numer %>" href="/zamowienia/<%= d.zamowienie.id %>"><%= d.zamowienie.numer %></a>
 <% } else if (d.okres) { %>
-  <a href="/okresy/<%= d.okres.id %>"><%= d.okres.klient %> <%= d.okres.rok %>-<%= String(d.okres.miesiac).padStart(2, '0') %></a>
+  <% if (modulWlaczony('okresy')) { %><a href="/okresy/<%= d.okres.id %>"><% } %><%= d.okres.klient %> <%= d.okres.rok %>-<%= String(d.okres.miesiac).padStart(2, '0') %><% if (modulWlaczony('okresy')) { %></a><% } %>
 <% } else { %>
   <span class="wiersz-szczegoly">—</span>
 <% } %>

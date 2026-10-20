@@ -19,6 +19,12 @@ import { createInpostClient } from '../../src/oms/kurierzy/inpost.js';
 import { createAtrapaInpost, ODMOWY_INPOST } from '../../deploy/proba/atrapy/inpost.mjs';
 import { createAtrapaWoo, createAtrapaAllegro, ODMOWY_WOO, ODMOWY_ALLEGRO } from '../../deploy/proba/atrapy/kanaly.mjs';
 import { createMailer } from '../../src/core/poczta/smtp.js';
+import { createGusClient, METODY_GUS } from '../../src/oms/gus/client.js';
+import { createAtrapaGus } from '../../deploy/proba/atrapy/gus.mjs';
+import { createKsefClient } from '../../src/oms/ksef/client.js';
+import { createAtrapaKsef } from '../../deploy/proba/atrapy/ksef.mjs';
+import { odmowaKsefWProbie } from '../../src/moduly/koszty/ksef-ustawien.ts';
+import { modulyPiaskownicy } from '../../deploy/proba/atrapy/index.mjs';
 import { pocztaZUstawien } from '../../src/moduly/wiadomosci/poczta-ustawien.ts';
 import { createAtrapaPoczty, createModulWiadomosciAtrapy } from '../../deploy/proba/atrapy/poczta.mjs';
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
@@ -98,6 +104,38 @@ describe('komplet metod', () => {
     await expect(atrapa.sprawdzPolaczenie()).resolves.toEqual({ ok: true });
     await expect(createAtrapaInpost({ env: ENV_DEMO })({ ...opcje, token: 'zle' }).sprawdzPolaczenie()).rejects.toThrow('odrzucił');
     expect(() => createAtrapaInpost({ env: {} })).toThrow('OMS_TRYB=proba');
+  });
+
+  // PRZ-102.11: klucz GUS z Ustawień w piaskownicy — „Sprawdź połączenie” na atrapie, pobranie firmy odmawia jak w demo.
+  it('atrapa GUS ma każdą metodę createGusClient i pośrednika z Ustawień; sprawdzenie nie wychodzi do sieci', async () => {
+    const prawdziwy = metody(createGusClient({ klucz: 'k', url: 'https://x.invalid' }, { fetchImpl: async () => { throw new Error('sieć'); } }))
+      .filter((m) => !m.startsWith('_')); // `_sesja` to podgląd stanu dla testów klienta, nie metoda usługi
+    const atrapa = createAtrapaGus({ env: ENV_DEMO, klucz: 'k' });
+    expect(prawdziwy).toEqual(expect.arrayContaining(['firmaPoNip', 'zaloguj', 'sprawdzPolaczenie']));
+    expect([...prawdziwy, ...METODY_GUS].filter((m) => !metody(atrapa).includes(m))).toEqual([]);
+    await expect(atrapa.sprawdzPolaczenie()).resolves.toEqual({ ok: true });
+    await expect(createAtrapaGus({ env: ENV_DEMO, klucz: 'zle' }).sprawdzPolaczenie()).rejects.toThrow('odrzuciła');
+    await expect(atrapa.firmaPoNip('1234563218')).rejects.toThrow('wersji demonstracyjnej');
+    expect(() => createAtrapaGus({ env: {} })).toThrow('OMS_TRYB=proba');
+  });
+
+  // PRZ-102.22: token KSeF (faktury kosztowe) z Ustawień w piaskownicy — logowanie i lista faktur bez sieci, PDF odmawia.
+  it('atrapa KSeF i odmowa piaskownicy mają każdą metodę createKsefClient; logowanie i lista nie wychodzą do sieci', async () => {
+    const prawdziwy = metody(createKsefClient({ token: 't', nip: '1234563218', fetchImpl: async () => { throw new Error('sieć'); } }));
+    const atrapa = createAtrapaKsef({ env: ENV_DEMO, token: 'zmyslony' });
+    expect(prawdziwy).toEqual(['odswiez', 'pobierzMetadane', 'pobierzXml', 'zaloguj']);
+    expect(prawdziwy.filter((m) => !metody(atrapa).includes(m))).toEqual([]);
+    expect(metody(odmowaKsefWProbie())).toEqual(prawdziwy);
+    await expect(atrapa.zaloguj()).resolves.toHaveProperty('accessToken');
+    await expect(atrapa.pobierzMetadane({ accessToken: 'a', from: '2026-10-19T00:00:00Z', to: '2026-10-20T00:00:00Z' })).resolves.toMatchObject({ faktury: [], hasMore: false });
+    await expect(atrapa.pobierzXml({ accessToken: 'a', ksefNumber: 'K-1' })).rejects.toMatchObject({ status: 400 });
+    await expect(createAtrapaKsef({ env: ENV_DEMO, token: 'zle' }).zaloguj()).rejects.toThrow('odrzuciła');
+    for (const m of prawdziwy) await expect(odmowaKsefWProbie()[m](), m).rejects.toMatchObject({ status: 400 });
+    expect(() => createAtrapaKsef({ env: {} })).toThrow('OMS_TRYB=proba');
+    // Skład piaskownicy wpina atrapę w moduł kosztów; poza trybem próby moduł z atrapą odmawia konfiguracji.
+    const koszty = modulyPiaskownicy(ENV_DEMO).find((m) => m.nazwa === 'koszty');
+    expect(() => koszty.konfiguracja(ENV_DEMO)).not.toThrow();
+    expect(() => koszty.konfiguracja({ ...ENV_DEMO, OMS_TRYB: 'produkcja' })).toThrow('atrapaKsef');
   });
 
   // PRZ-094.04: poczta z Ustawień w piaskownicy — atrapa poczty zastępuje i mailer z pliku, i pośrednika z ekranu.

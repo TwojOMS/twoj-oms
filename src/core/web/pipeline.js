@@ -19,6 +19,7 @@ import { motywZNaglowka, bezpiecznyPowrot } from '../../domena/motyw.js';
 import { bezpiecznyPowrotNaListe } from '../../domena/filtry-listy.js';
 import { wKontekscie } from '../../domena/kontekst-zadania.js';
 import { nawigacjaDla } from '../../domena/menu-stron.js';
+import { wylaczoneModuly } from '../../oms/db/moduly-opcjonalne.js';
 import { indeksListy } from '../../oms/db/indeks-listy.js';
 import { menuKontaDla } from '../../domena/menu-konta.js';
 import { maDostepDoAdresu, tytulEkranuDlaAdresu } from '../../domena/ekrany.js';
@@ -104,6 +105,10 @@ function wczytajLogo(plik) {
   return bajty;
 }
 export function registerWeb(app, {db, config}) {
+// Ten sam znak w belce i na karcie; bez konfiguracji karta używa PNG 32 px z paczki.
+const logo = config.marka?.logoPlik ? wczytajLogo(config.marka.logoPlik) : null;
+const zamienniki = logo ? { 'favicon-32.png': logo, 'favicon-192.png': logo } : {};
+const zasob = adresZasobu(__publicDir, zamienniki);
 const menu = app.menuOms;
 if (!Array.isArray(menu)) throw new Error('Brak menuOms z manifestów Aplikacja.menu');
 const trasyOms = [];
@@ -163,7 +168,7 @@ options: { views: katalogiWidokow() },
       demo: null,
       podgladDemo: false,
       // PRZ-100: adresy /public/*.css|js z wersją (`?v=`) — po wydaniu przeglądarka za pośrednikiem nie trzyma starego pliku.
-      zasob: adresZasobu(__publicDir),
+      zasob,
     },
   });
 app.register(fastifyStatic, { root: __publicDir, prefix: '/public/' });
@@ -171,9 +176,11 @@ app.register(fastifyStatic, { root: __publicDir, prefix: '/public/' });
 // i ich testy nie znają drugiej ścieżki. Plik czytany raz, przy starcie: brak albo nie-PNG
 // to błąd konfiguracji i odmowa startu, a nie cicho podstawiony znak neutralny.
 if (config.marka?.logoPlik) {
-  const logo = wczytajLogo(config.marka.logoPlik);
   app.get('/public/favicon-192.png', async (_req, reply) => reply.type('image/png').send(logo));
+  app.get('/public/favicon-32.png', async (_req, reply) => reply.type('image/png').send(logo));
 }
+// Starsze zakładki i przeglądarki pytające domyślnie o ICO trafiają na ten sam PNG co układ.
+app.get('/favicon.ico', async (_req, reply) => reply.redirect(zasob('favicon-32.png'), 301));
 wczytajSekret(db);
 app.after(() => {
 app.addHook('preHandler', async (_req, reply) => {
@@ -182,6 +189,7 @@ app.addHook('preHandler', async (_req, reply) => {
 });
 app.addHook('onRequest', zbudujStraznika({
       basicAuth: app.basicAuth, db, nazwaCiasteczka: nazwaCiasteczkaOms(config.proba),
+      odlozoneEkrany: () => config.odlozoneEkrany ?? wylaczoneModuly(db),
       // ⚠️ WSTRZYKIWANE, a nie siegane ze srodka straznika: ten sam modul obsluguje panel
       // zamowien indywidualnych, ktory kont NIE MA i ma sie zachowywac dokladnie jak dotad
       // (dowodzi tego tests/security/panel-bez-kont.test.js).
@@ -199,7 +207,8 @@ app.addHook('preHandler', async (req, reply) => {
       const kolory = koloryStatusow(db);
       const etykiety = etykietyStatusow(db);
       const sciezkaPowrotu = sciezkaPowrotuDlaMenu(app, req, config.definicje);
-      const nawigacja = nawigacjaDla({ sciezka: req.url, konto: req.konto ?? null, menu, odlozoneEkrany: config.odlozoneEkrany, etykietyStatusow: etykiety });
+      const odlozoneEkrany = config.odlozoneEkrany ?? wylaczoneModuly(db);
+      const nawigacja = nawigacjaDla({ sciezka: req.url, konto: req.konto ?? null, menu, odlozoneEkrany, etykietyStatusow: etykiety });
       reply.locals = {
         ...(reply.locals ?? {}),
         klasaStatusu: s => klasaStatusu(s, kolory),
@@ -214,6 +223,7 @@ app.addHook('preHandler', async (req, reply) => {
         // oraz tych samych praw co strażnik. Lista i karta nadpisują wyłącznie
         // `panelStatusow`, bo jako jedyne znają rzeczywiste liczniki i aktywny filtr.
         nawigacja,
+        modulWlaczony: (modul) => !odlozoneEkrany.includes(modul),
         // PRZ-085: liczby przy statusach na KAŻDEJ zakładce, nie tylko na liście i karcie.
         licznikiStatusow: await licznikiStatusowDlaMenu(db, req, nawigacja),
         // Kontrolki pytaja o SWOJ adres. Mapowanie adres -> zakres pozostaje jedno,

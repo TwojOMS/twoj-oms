@@ -2,8 +2,8 @@ import type { Srodowisko } from '../../core/kontrakty.ts';
 import { definicjeKanalow, type DefinicjaKanalu } from '../kanaly/konfiguracja.ts';
 import { wczytajKlasyfikacje } from '../kanaly/klasyfikacja.ts';
 import { regulyHistorii } from '../kanaly/historia.ts';
+import { brakujaceKluczeKanalu } from '../kanaly/kompletnosc.ts';
 import { kluczOkresu } from '../../domena/okres-rozliczeniowy.js';
-
 /** Daty pokrycia opisują dane danej instalacji, nie daty wdrożenia firmy autora. */
 function dzien(env: Srodowisko, klucz: string): string | null {
   const wartosc = env[klucz]?.trim();
@@ -51,6 +51,10 @@ export function wczytajRaportyDlaKanalow(env: Srodowisko, definicje: readonly De
       if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(m)) throw new Error('OMS_RAPORTY_PODLOGA_KOSZTOW: oczekiwany miesiąc RRRR-MM');
       return m;
     })(),
+    definicje,
+    // PRZ-102.14: źródła zamówień dla automatu granic — OD i braki kluczy tą samą regułą, co /health (D01).
+    zrodlaKanalow: definicje.map(d => ({ typ: d.typ, prefiks: d.prefiks, raport: d.raport ?? null,
+      od: String(env[`${d.prefiks}_OD`] ?? '').trim(), braki: brakujaceKluczeKanalu(d, env) })),
   };
 }
 

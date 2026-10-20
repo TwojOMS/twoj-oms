@@ -1,4 +1,4 @@
-import { domyslneStatusy, sprawdzStatusy } from '../../domena/statusy-konfiguracja.js';
+import { domyslneStatusy, sprawdzStatusy, statusIndywidualnyAktywny } from '../../domena/statusy-konfiguracja.js';
 import { STATUSY_RECZNE } from '../../domena/status-reczny.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
@@ -6,6 +6,38 @@ const pamiec = new WeakMap();
 const pamiecZadania = new AsyncLocalStorage();
 const rozpoznaniaTabeli = new WeakMap();
 const KLUCZ = 'statusy.konfiguracja';
+const kanalyIndywidualne = new WeakMap();
+// ⚠️ „Czy są zamówienia indywidualne” NIE jest pytaniem na żądanie (PRZ-102.15b): kolumna nie ma
+// indeksu, więc przy braku takich zamówień EXISTS przechodzi CAŁĄ tabelę zamówień — przy każdym
+// żądaniu, wbrew strażnikowi PRZ-051 (tests/prz051/lista-http.test.js). Odpowiedź zapada raz na
+// połączenie, a dalej dopisuje ją wyzwalacz TEMP (jak oms/db/sledzenie-listy.js, bez migracji) przy
+// KAŻDYM zapisie tym połączeniem: poller, zamówienie ręczne, uzupełnienia startowe. Flaga jest
+// jednokierunkowa — skasowanie ostatniego takiego zamówienia albo wycofana transakcja zostawiają
+// status widoczny do restartu (pusta zakładka, nic nie ginie). Zapis innym połączeniem (ręczny
+// SQL, skrypt) zobaczy następny start.
+const historieIndywidualne = new WeakMap();
+const FUNKCJA_HISTORII = 'oms_statusy_jest_indywidualne';
+function sledzHistorieIndywidualnych(db) {
+  // Połączenie bez `function` (opakowanie bazy, np. tylko do odczytu): bez wyzwalacza, jeden odczyt na połączenie.
+  if (typeof db.function !== 'function') {
+    const sa = Boolean(db.prepare('SELECT EXISTS(SELECT 1 FROM zamowienia WHERE indywidualne = 1) AS sa').get().sa);
+    historieIndywidualne.set(db, sa);
+    return;
+  }
+  db.function(FUNKCJA_HISTORII, () => { historieIndywidualne.set(db, true); return null; });
+  for (const [nazwa, op] of [['insert', 'INSERT'], ['update', 'UPDATE OF indywidualne']]) {
+    db.exec(`CREATE TEMP TRIGGER IF NOT EXISTS statusy_indywidualne_${nazwa} AFTER ${op} ON zamowienia
+      WHEN NEW.indywidualne = 1 BEGIN SELECT ${FUNKCJA_HISTORII}(); END`);
+  }
+  // Wyzwalacz przed odczytem: zapis między nimi i tak ustawi flagę.
+  const sa = Boolean(db.prepare('SELECT EXISTS(SELECT 1 FROM zamowienia WHERE indywidualne = 1) AS sa').get().sa);
+  historieIndywidualne.set(db, historieIndywidualne.get(db) === true || sa);
+}
+export function ustawKanalIndywidualnyStatusow(db, wlaczony) {
+  kanalyIndywidualne.set(db, wlaczony);
+  // Kanał włączony (produkcja): status i tak aktywny — zero zapytań, zero wyzwalaczy.
+  if (wlaczony !== true && !historieIndywidualne.has(db)) sledzHistorieIndywidualnych(db);
+}
 function konfiguracjaZJson(db, wartosc) {
   // Wartość zamiast samej daty: dwa zapisy w tej samej milisekundzie też unieważniają pamięć.
   const poprzedni = pamiec.get(db);
@@ -20,19 +52,27 @@ function konfiguracjaZJson(db, wartosc) {
   pamiec.set(db, konfiguracja);
   return konfiguracja;
 }
-// Jedna migawka na żądanie, osobna dla równoległych żądań i baz. Poza HTTP odczyt jak dotąd.
+// Jedna migawka na żądanie, osobna dla równoległych żądań i baz.
 export function wPamieciStatusowZadania(fn) {
-  return pamiecZadania.run(new Map(), fn);
+  return pamiecZadania.run({ konfiguracje: new Map() }, fn);
 }
 function konfiguracjaStatusow(db) {
   const zadanie = pamiecZadania.getStore();
-  if (zadanie?.has(db)) return zadanie.get(db);
+  if (zadanie?.konfiguracje.has(db)) return zadanie.konfiguracje.get(db);
   const zapis = db.prepare('SELECT wartosc FROM ustawienia WHERE klucz = ?').get(KLUCZ);
-  const konfiguracja = konfiguracjaZJson(db, zapis?.wartosc);
-  zadanie?.set(db, konfiguracja);
+  const pelna = konfiguracjaZJson(db, zapis?.wartosc);
+  const kanal = kanalyIndywidualne.get(db) === true;
+  // Połączenie bez modułu zamówień (skrypt, wąski skład): ten sam odczyt raz, przy pierwszym użyciu.
+  if (!kanal && !historieIndywidualne.has(db)) sledzHistorieIndywidualnych(db);
+  const aktywny = statusIndywidualnyAktywny(kanal, !kanal && historieIndywidualne.get(db) === true);
+  const konfiguracja = aktywny ? pelna : { ...pelna,
+    etykiety: Object.freeze(Object.fromEntries(Object.entries(pelna.etykiety).filter(([k]) => k !== 'indywidualne'))),
+  };
+  zadanie?.konfiguracje.set(db, konfiguracja);
   return konfiguracja;
 }
 export function statusyWKolejnosci(db) {
+  // Ustawienia edytują pełny katalog nazw i kolorów, także statusów dodatkowych.
   return konfiguracjaStatusow(db).statusy;
 }
 export function etykietyStatusow(db) {
@@ -52,7 +92,7 @@ export function zapiszStatusy(db, statusy) {
     ON CONFLICT(klucz) DO UPDATE SET wartosc=excluded.wartosc, zmienione_at=excluded.zmienione_at`)
     .run(KLUCZ, JSON.stringify(poprawne), new Date().toISOString());
   pamiec.delete(db);
-  pamiecZadania.getStore()?.delete(db);
+  pamiecZadania.getStore()?.konfiguracje.delete(db);
 }
 
 // Stare, wąskie składy modułów (np. sam rdzeń) nie mają migracji zamówień.

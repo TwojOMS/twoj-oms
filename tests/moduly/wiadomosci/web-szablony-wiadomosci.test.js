@@ -50,14 +50,15 @@ beforeEach(async () => {
 });
 
 describe('ekran Ustawienia → Szablony wiadomości', () => {
-  it('lista: cztery maile wbudowane jako domyślne, zero własnych, przycisk dodawania', async () => {
+  // PRZ-102.21: piąty mail wbudowany „Zamówienie wysłane" — zmiana zachowania listy (było 4 + 2).
+  it('lista: pięć maili wbudowanych jako domyślne, zero własnych, przycisk dodawania', async () => {
     const r = await get(ADRES);
     expect(r.statusCode).toBe(200);
-    for (const n of ['Potwierdzenie przyjęcia zamówienia', 'Proforma', 'Faktura', 'Przypomnienie o płatności']) expect(r.body).toContain(`<td>${n}</td>`);
+    for (const n of ['Potwierdzenie przyjęcia zamówienia', 'Proforma', 'Faktura', 'Przypomnienie o płatności', 'Zamówienie wysłane']) expect(r.body).toContain(`<td>${n}</td>`);
     // PRZ-101.06: dwa maile do zespołu w osobnej sekcji — tu liczymy tylko maile do klienta.
     const klient = r.body.slice(r.body.indexOf('id="szablony-wbudowane"'), r.body.indexOf('id="szablony-wlasne"'));
-    expect(klient.match(/<td>domyślna<\/td>/g)).toHaveLength(4);
-    expect(r.body.match(/<td>domyślna<\/td>/g)).toHaveLength(6);
+    expect(klient.match(/<td>domyślna<\/td>/g)).toHaveLength(5);
+    expect(r.body.match(/<td>domyślna<\/td>/g)).toHaveLength(7);
     expect(r.body).toContain('href="/ustawienia/szablony-wiadomosci/nowy"');
     expect(r.body).toContain('Szablony wiadomości');
   });
