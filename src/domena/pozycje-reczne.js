@@ -5,7 +5,7 @@ import { odczytajNadpisania, obiektAlboPusty, tekst } from './dane-reczne.js';
 // Powód w całości opisany w nagłówku domain/kwoty.js.
 import { grosze, zl } from './kwoty.js';
 import { bladOperatora } from './bledy.js';
-import { bruttoZNetto } from './vat.js';
+import { bruttoZNetto, czyStawkaVat, STAWKA_VAT, STAWKI_VAT } from './vat.js';
 
 // ⚠️ PO CO TO ISTNIEJE. „Klient napisze, że chce dodatkowy szablon albo usługę i musi
 // dopłacić" — zamówienie w sklepie zostaje takie, jakie było, a pozycja dochodzi U NAS.
@@ -136,13 +136,20 @@ function parsujNazwe(surowa) {
  * bruttoZNetto w domain/vat.js) albo tym, co karta pokazuje po zapisie. Zapisane do bazy
  * zaczęłoby z czasem wyglądać jak dana źródłowa i ktoś wysłałby je na fakturę.
  */
-export function parsujNowaPozycje(body) {
+//
+// PRZ-105: pozycja niesie STAWKĘ VAT (`vat`, lista 23/8/5/0 — domain/vat.js). Puste pole = stawka domyślna
+// z Ustawień (`stawkaDomyslna` podaje wołający, moduly/faktury/db/stawka-vat.js); wartość spoza listy to
+// odmowa — pole jest listą, więc obca wartość przyszła spreparowana, a cicha domyślna zmieniłaby fakturę.
+// Netto przelicza się stawką wiersza, a przy nabywcy z UE (`wdt`) stawką 0 — tak jak policzy to dokument.
+// Zapisana zostaje stawka WYBRANA: poprawiony później NIP na krajowy ma dać fakturę z tą stawką, nie z 0.
+export function parsujNowaPozycje(body, { stawkaDomyslna = STAWKA_VAT, wdt = false } = {}) {
   const nazwa = parsujNazwe(body?.nazwa);
   const ilosc = parsujIlosc(body?.ilosc);
+  const vat = parsujStawke(body?.vat, stawkaDomyslna);
   // Brutto wygrywa, gdy podane: to ono jest wartoscia PRZECHOWYWANA, a netto tylko
   // wygodniejszym sposobem jej podania (domain/vat.js: bruttoZNetto).
   const wprost = String(body?.cena_brutto ?? '').trim();
-  const zNetto = wprost === '' ? bruttoZNetto(body?.cena_netto) : null;
+  const zNetto = wprost === '' ? bruttoZNetto(body?.cena_netto, wdt ? '0' : vat) : null;
   const cenaBrutto = parsujCeneBrutto(wprost !== '' ? wprost : zNetto);
   return {
     nazwa,
@@ -150,7 +157,16 @@ export function parsujNowaPozycje(body) {
     ilosc,
     cena_brutto: cenaBrutto,
     brutto_linii: zl(grosze(cenaBrutto, `pozycja "${nazwa}"`) * ilosc),
+    vat,
   };
+}
+
+/** Stawka z pola formularza: pusta → domyślna; spoza listy → odmowa dla operatora (PRZ-105). */
+export function parsujStawke(surowa, stawkaDomyslna = STAWKA_VAT) {
+  const s = String(surowa ?? '').trim();
+  if (s === '') return String(stawkaDomyslna);
+  if (!czyStawkaVat(s)) throw bladOperatora(`Nieznana stawka VAT „${s}” — wybierz ${STAWKI_VAT.join(', ')}%.`);
+  return s;
 }
 
 /**
@@ -268,7 +284,18 @@ export function parsujHurtPozycji(body) {
       'Formularz pozycji przyszedł niekompletny — każdy wiersz musi nieść tyle samo pól. Odśwież kartę i spróbuj jeszcze raz.',
     );
   }
-  return kolumny.klucz.map((_, i) => Object.fromEntries(POLA_HURTU.map((p) => [p, kolumny[p][i]])));
+  // PRZ-105: `vat` jest OPCJONALNY — formularz otwarty przed wydaniem go nie niesie (wtedy stawki się nie
+  // zmienia). Gdy jest, musi mieć tyle wartości, co reszta — z tego samego powodu, co pozostałe kolumny.
+  const stawki = jakoTablica(body?.vat);
+  if (stawki.length && stawki.length !== kolumny.klucz.length) {
+    throw bladOperatora(
+      'Formularz pozycji przyszedł niekompletny — każdy wiersz musi nieść tyle samo pól. Odśwież kartę i spróbuj jeszcze raz.',
+    );
+  }
+  return kolumny.klucz.map((_, i) => ({
+    ...Object.fromEntries(POLA_HURTU.map((p) => [p, kolumny[p][i]])),
+    ...(stawki.length ? { vat: stawki[i] } : {}),
+  }));
 }
 
 /**

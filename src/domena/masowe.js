@@ -9,6 +9,7 @@ import { powodOdmowyFaktury, powodOdmowyZaplaconej } from './faktura-odmowa.js';
 import { stanFaktury } from './faktura-stan.js';
 import { podsumowaniePozycji } from './tabela-pozycji.js';
 import { pozycjeDokumentu } from './pozycje-faktury.js';
+import { STAWKA_VAT } from './vat.js';
 
 // Akcje masowe ze strony głównej: zmiana statusu i nadanie przesyłek domyślnymi parametrami.
 //
@@ -306,7 +307,8 @@ function powodRozjazduDokumentu(z) {
       + `${p.oczekiwanaZl} zł — popraw pozycje na karcie, bo wystawienie faktury i tak odmówi.`;
   }
   try {
-    if (pozycjeDokumentu(z).length === 0) {
+    // Liczy tylko linie — stawka bez znaczenia, wbudowana wystarcza (PRZ-105).
+    if (pozycjeDokumentu(z, { stawkaDomyslna: STAWKA_VAT }).length === 0) {
       return `Zamówienie ${z?.numer} nie ma żadnej pozycji do zafakturowania — faktury bez pozycji panel nie wystawi.`;
     }
   } catch {

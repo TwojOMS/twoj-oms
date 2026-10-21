@@ -1,6 +1,6 @@
 import { pobierzZamowienie, dopiszLog, zapiszNadpisaniaWysylki, zapiszNadpisaniaFaktury, przywrocDaneZeSklepu, dodajPozycjeReczna, zapiszPozycjeReczna, usunPozycjeReczna, zapiszNadpisaniaPozycji } from '../../oms/db/zamowienia.js';
 import { przeliczKwoteRecznego } from '../../oms/db/zamowienia-reczne.js';
-import { DOSTAWY, parsujNoweZamowienie, skopiujFaktureDoWysylki, wstawPozycjeDoFormularza } from '../../domena/nowe-zamowienie.js';
+import { DOSTAWY, parsujNoweZamowienie, skopiujFaktureDoWysylki, wstawPozycjeDoFormularza, dodajWierszFormularza, usunWierszFormularza, wdtZFormularza } from '../../domena/nowe-zamowienie.js';
 import ejs from 'ejs';
 import { join } from 'node:path';
 import { komunikatDlaOperatora, bladOperatora } from '../../domena/bledy.js';
@@ -21,6 +21,7 @@ import { zmienUstalenia, rabatKontraktowy } from './services/rabat.js';
 import { czyNipUe } from '../../domena/wdt.js';
 import { zalozZamowienieReczne } from './services/zamowienie-reczne.js';
 import { przypiszDoOkresu } from '../faktury/services/okres.js';
+import { czytajStawkeDomyslna } from '../faktury/db/stawka-vat.js';
 import {teraz,AKCJA_ALLEGRO_PROBA,allegroWymagaOdpytania,miniaturyEkranu,ktoKlikal,sprzedawcaSpecyfikacji,daneKarty,KATALOG_WIDOKOW,fragment} from './wspolne.js';
 export function registerReczneRoutes(app, kontekst) {
 const {db,config,poller,nadanie,faktura,proforma,kurierzy,gus,syncSklep,wiadomosci,przesylkiAllegro,stanyKanalow,zdrowie,fakturaAllegro,fakturaHurtem,doczytanieKsef,powrotKarty,adresPowrotuNaKarte,wczytajListe,statusyDlaKarty,OKNO_OSTRZEZEN_PRZESYLEK_DNI,zbierzOstrzezenia,wyborWiadomosci,daneWiadomosci,renderujKarte,renderujNowe,magazynEkranu,niesiePolaFormularza,opisZmian,kopiujDaneFakturyDoWysylki,pozycjaZadania,zWynikami,magazynDlaKarty,cennikiInstalacji}=kontekst;
@@ -39,7 +40,8 @@ app.post('/zamowienia/nowe', async (req, reply) => {
     // miesiaca, ktory widnieje na zamowieniu. Jedna wartosc idzie w OBA miejsca.
     const znacznik = new Date().toISOString();
     try {
-      dane = parsujNoweZamowienie(req.body ?? {});
+      // PRZ-105: pusta stawka wiersza = domyślna z Ustawień.
+      dane = parsujNoweZamowienie(req.body ?? {}, { stawkaDomyslna: czytajStawkeDomyslna(db) });
       // ⚠️ KOLEJNOSC W TEJ TRASIE, zeby nikt jej nie przestawial na chybil trafil.
       // Okres (Zadanie 5) i oplata (Zadanie 4B) sa od siebie NIEZALEZNE, ale ich miejsca
       // w trasie juz nie:
@@ -108,12 +110,23 @@ app.post('/zamowienia/nowe', async (req, reply) => {
         + `${dane.pozycje.length} poz., koszt dostawy ${dane.koszt_dostawy_brutto} zł.`
         // Oplata doklejona przez PANEL, nie przez czlowieka — dziennik musi umiec
         // odpowiedziec, skad na fakturze wzial sie wiersz, ktorego operator nie wpisywal.
-        + (oplata ? ` Doklejono „${oplata.nazwa}" ${(oplata.kwotaGr / 100).toFixed(2)} zł (rozliczenie zbiorcze).` : ''),
+        + (oplata ? ` Doklejono „${oplata.nazwa}" ${(oplata.kwotaGr / 100).toFixed(2)} zł (rozliczenie zbiorcze).` : '')
+        // PRZ-104: ręczna data wysyłki zastępuje standardowy termin — dziennik mówi, skąd się wziął.
+        + (dane.termin_wysylki_reczny ? ` Data wysyłki: ${dane.termin_wysylki_reczny.split('-').reverse().join('.')}.` : ''),
     });
     return reply.redirect(`/zamowienia/${id}`);
   });
 app.post('/zamowienia/nowe/kopiuj-do-wysylki', async (req, reply) => (
     renderujNowe(reply, { formularz: skopiujFaktureDoWysylki(req.body ?? {}) })
+  ));
+// PRZ-103: wiersze pozycji bez JavaScriptu — jak „Skopiuj dane do wysylki", przestawiaja
+// formularz i oddaja go, nic nie zapisuja. Z JavaScriptem (public/pozycje-wiersze.js) te same
+// przyciski dzialaja bez przeladowania, a te trasy zostaja droga zapasowa.
+app.post('/zamowienia/nowe/wiersz/dodaj', async (req, reply) => (
+    renderujNowe(reply, { formularz: dodajWierszFormularza(req.body ?? {}) })
+  ));
+app.post('/zamowienia/nowe/wiersz/usun', async (req, reply) => (
+    renderujNowe(reply, { formularz: usunWierszFormularza(req.body ?? {}, req.body?.usun_wiersz) })
   ));
 app.post('/zamowienia/nowe/klient', async (req, reply) => {
     const klucz = String(req.body?.klient_klucz ?? '').trim();
@@ -182,7 +195,9 @@ app.post('/zamowienia/nowe/magazyn/dodaj', async (req, reply) => {
         // „Wstaw dane klienta" — zamówienia jeszcze nie ma, więc nie ma go gdzie czytać):
         // cena z magazynu wchodzi wtedy od razu po ÷1,23 (zgłoszenie właściciela 26.08).
         // Ta sama reguła, która wybierze stawkę faktury — pas nad pozycjami mówi o tym wprost.
-        wdt: czyNipUe(req.body?.f_nip),
+        wdt: wdtZFormularza(req.body),
+        // PRZ-105: przy WDT ÷ stawka domyślna z Ustawień, nie stałe 1,23.
+        stawkaDomyslna: czytajStawkeDomyslna(db),
       });
     } catch (e) {
       // Odmowa ODDAJE FORMULARZ Z POWROTEM razem z wynikami szukania — inaczej operator
@@ -195,7 +210,7 @@ app.post('/zamowienia/nowe/magazyn/dodaj', async (req, reply) => {
       });
     }
 
-    const formularz = wstawPozycjeDoFormularza(req.body ?? {}, pozycja);
+    const formularz = wstawPozycjeDoFormularza(req.body ?? {}, pozycja, { stawkaDomyslna: czytajStawkeDomyslna(db) });
     const wyniki = stan.fraza ? zWynikami(szukajDoZamowienia(db, { fraza: stan.fraza, kanal: stan.cennik })) : null;
     return renderujNowe(reply, { formularz, magazyn: { ...stan, wyniki, dodano: pozycja } });
   });
@@ -392,7 +407,14 @@ app.post('/zamowienia/:id/pozycje/zapisz', async (req, reply) => {
         if (p.reczna) {
           // parsujNowaPozycje, a nie parsujEdycjePozycji: wiersz wlasny potrzebuje TAKZE
           // sumy linii. SKU zostaje nietkniete — edycja go nie obejmuje.
-          reczneDoZapisu.push({ id: p.id, pozycja: parsujNowaPozycje({ ...w, sku: p.sku }) });
+          // PRZ-105: formularz bez pola `vat` (stary, otwarty przed wydaniem) NIE zmienia stawki — bez tego
+          // każda edycja przestawiałaby pozycję z 8% na domyślną. Pole jest → stawka z formularza.
+          const { vat, ...bezStawki } = parsujNowaPozycje({ ...w, sku: p.sku }, {
+            stawkaDomyslna: czytajStawkeDomyslna(db), wdt: czyNipUe(daneFaktury(z).nip),
+          });
+          // Puste pole (wiersz bez listy stawek, np. przy nabywcy z UE) też znaczy „bez zmiany”.
+          const bezZmianyStawki = w.vat === undefined || String(w.vat).trim() === '';
+          reczneDoZapisu.push({ id: p.id, pozycja: bezZmianyStawki ? bezStawki : { ...bezStawki, vat } });
           zmienione.push(p.nazwa);
           continue;
         }
@@ -450,12 +472,14 @@ app.post('/zamowienia/:id/pozycje/z-magazynu', async (req, reply) => {
         cenniki: cennikiInstalacji,
         rabatProcent: z.rabat_procent ?? 0,
         wdt: czyNipUe(daneFaktury(z).nip),
+        stawkaDomyslna: czytajStawkeDomyslna(db),
       });
     } catch (e) {
       return reply.code(400).send(komunikatDlaOperatora(e));
     }
 
-    dodajPozycjeReczna(db, id, pozycja);
+    // PRZ-105: pozycja z magazynu dostaje stawkę domyślną z chwili dopisania (zachowuje ją potem).
+    dodajPozycjeReczna(db, id, { ...pozycja, vat: czytajStawkeDomyslna(db) });
     // Ta sama linijka, co przy pozycji wpisanej z reki: zamowienie RECZNE nie ma kwoty
     // narzuconej przez sklep, wiec bez przeliczenia dopisana pozycja roslaby tylko w tabeli.
     przeliczKwoteRecznego(db, id);
@@ -485,7 +509,11 @@ app.post('/zamowienia/:id/pozycje', async (req, reply) => {
     if (!pobierzZamowienie(db, id)) return reply.code(404).send('Nie ma takiego zamówienia');
     let pozycja;
     try {
-      pozycja = parsujNowaPozycje(req.body);
+      // PRZ-105: stawka z pola (puste = domyślna z Ustawień); przy nabywcy z UE netto liczy się stawką 0.
+      const zam = pobierzZamowienie(db, id);
+      pozycja = parsujNowaPozycje(req.body, {
+        stawkaDomyslna: czytajStawkeDomyslna(db), wdt: czyNipUe(daneFaktury(zam).nip),
+      });
     } catch (e) {
       return reply.code(400).send(komunikatDlaOperatora(e));
     }

@@ -19,7 +19,9 @@
 import { dniRoboczeMiedzy } from './etap-przesylki.js';
 import { dzienWarszawa } from './format-daty.js';
 import { anulowaneEfektywnie } from './status-reczny.js';
-import { typZamowienia, startZegara, terminZamowienia } from './termin-wysylki.js';
+import {
+  typZamowienia, startZegara, terminZamowienia, dzienTerminu, dniPoTerminie, zakresDatyWysylki,
+} from './termin-wysylki.js';
 
 // Ta sama zasada, co `expressPattern` w panelu indywidualnym (src/domain/settings-defaults.js,
 // domyślnie „priorytetowa, ekspres”): ekspres poznaje się po NAZWIE pozycji, bo dodatek
@@ -35,12 +37,6 @@ export function czyEkspres(pozycje) {
 
 const DZIEN_MS = 24 * 3600 * 1000;
 const DNI_TYG = ['nd', 'pn', 'wt', 'śr', 'czw', 'pt', 'sob'];
-
-function nastepnyRoboczy(dzienIso) {
-  let t = Date.parse(`${dzienIso}T00:00:00Z`);
-  do { t += DZIEN_MS; } while ([0, 6].includes(new Date(t).getUTCDay()));
-  return new Date(t).toISOString().slice(0, 10);
-}
 
 const odmianaDniRob = (n) => (n === 1 ? '1 dzień rob.' : `${n} dni rob.`);
 const odmianaDni = (n) => (n === 0 ? 'dziś' : n === 1 ? '1 dzień' : `${n} dni`);
@@ -85,18 +81,26 @@ export function wiekZamowienia(z, teraz = new Date()) {
     if (!startZegara(z)) return { wiek, opis: 'czeka na wpłatę', poTerminie: false, typ };
     return { wiek, opis: '', poTerminie: false, typ };
   }
-  const { start, dzienStartu, limit, cutoffAllegro } = termin;
+  const { start, limit, cutoffAllegro } = termin;
   // Potrzebne niżej, przy wyborze słowa „złożone" vs „opłacone".
   const odZlozenia = Boolean(z?.pobranie) || Boolean(z?.b2b);
 
-  const zuzyte = dniRoboczeMiedzy(start, terazIso);
-  if (zuzyte > limit) return { wiek, opis: `po terminie o ${odmianaDniRob(zuzyte - limit)}`, poTerminie: true, typ };
+  // ⚠️ SPÓŹNIENIE MIERZY `dniPoTerminie` — ta sama miara, co statystyki i karta (PRZ-104).
+  const spoznienie = dniPoTerminie(termin, terazIso);
+  if (spoznienie > 0) return { wiek, opis: `po terminie o ${odmianaDniRob(spoznienie)}`, poTerminie: true, typ };
+  // Ręczna data: sam dzień, bez „x/7 dni rob.” — licznik od wpłaty nie ma tu nic do rzeczy.
+  // Bez wpłaty ręczna data i tak prowadzi zegar (decyzja właściciela 21.10.2026) — dopisek mówi, czego brakuje.
+  if (termin.reczny) {
+    const brakWplaty = termin.start ? '' : ' · czeka na wpłatę';
+    return { wiek, opis: `wysyłka: ${etykietaDnia(termin.reczny, dzis)} · data ręczna${brakWplaty}`, poTerminie: false, typ };
+  }
 
   const prefiks = odZlozenia && !z?.oplacone_at ? 'złożone' : 'opłacone';
   if (limit >= 2) {
+    const zuzyte = dniRoboczeMiedzy(start, terazIso);
     return { wiek, opis: `od ${prefiks === 'złożone' ? 'złożenia' : 'wpłaty'} ${zuzyte}/${limit} dni rob.`, poTerminie: false, typ };
   }
-  const deadline = limit === 0 ? dzienStartu : nastepnyRoboczy(dzienStartu);
+  const deadline = dzienTerminu(termin);
   let opis = `wysyłka: ${etykietaDnia(deadline, dzis)}`;
   // ⚠️ Dopisek 12:00 WYŁĄCZNIE przy starcie PRZED odcięciem (prośba właściciela 23.08). Tam niesie
   // powód, dla którego paczka ma wyjechać jeszcze DZIŚ — czyli jedyne miejsce, gdzie odcięcie
@@ -105,4 +109,59 @@ export function wiekZamowienia(z, teraz = new Date()) {
   // `cutoffAllegro` niesie już oba warunki: kanał Allegro I dzień roboczy przed 12:00.
   if (cutoffAllegro) opis += ` · ${prefiks} przed 12:00`;
   return { wiek, opis, poTerminie: false, typ };
+}
+
+const dzienNaKarcie = (dzienIso) => {
+  const [r, m, d] = dzienIso.split('-');
+  return `${DNI_TYG[new Date(Date.parse(`${dzienIso}T00:00:00Z`)).getUTCDay()]} ${d}.${m}.${r}`;
+};
+
+function objasnienieStandardu(termin, z) {
+  if (termin.cutoffAllegro) return 'standard: Allegro przed 12:00 — wysyłka tego dnia';
+  const od = Boolean(z?.pobranie) || Boolean(z?.b2b) ? 'złożenia' : 'wpłaty';
+  if (termin.typ === 'ekspres') return `standard: ekspres — ${odmianaDniRob(termin.limit)} od ${od}`;
+  if (termin.typ === 'indywidualne') return `standard: indywidualne — ${odmianaDniRob(termin.limit)} od ${od}`;
+  return `standard: ${odmianaDniRob(termin.limit)} od ${od}`;
+}
+
+/**
+ * Wiersz „Termin wysyłki” na karcie zamówienia (PRZ-104) — gotowe napisy, widok niczego nie
+ * skleja. `ocena` mówi, jak poszło: po wysyłce „w terminie / po terminie”, przed — tylko
+ * spóźnienie. `moznaZmienic` = false po wysyłce (decyzja właściciela 21.10.2026: inaczej da się po
+ * fakcie „poprawić” spóźnioną wysyłkę i statystyka przestaje mówić prawdę).
+ */
+export function terminNaKarcie(z, teraz = new Date()) {
+  const terazIso = teraz instanceof Date ? teraz.toISOString() : String(teraz);
+  const termin = terminZamowienia(z);
+  // Granice pola daty w przeglądarce — te same, które sprawdza `parsujDateWysylki` przy zapisie.
+  // ⚠️ MINIONA RĘCZNA DATA OBNIŻA `min` do siebie (recenzja PRZ-104): przy `min = dziś` przeglądarka
+  // nie wysłałaby formularza z obecną wartością — ani „Zapisz”, ani „Przywróć standardowy termin”.
+  const zakres = zakresDatyWysylki(dzienWarszawa(terazIso));
+  const wynik = {
+    reczny: Boolean(termin?.reczny),
+    wartoscPola: termin?.reczny ?? '',
+    poleOd: termin?.reczny && termin.reczny < zakres.od ? termin.reczny : zakres.od,
+    poleDo: zakres.do,
+    moznaZmienic: !z?.wyslane_at,
+    napis: '',
+    objasnienie: '',
+    ocena: '',
+    ocenaZla: false,
+  };
+  if (!termin) {
+    wynik.napis = startZegara(z) ? 'nie da się policzyć (błędna data startu)' : 'zegar ruszy po wpłacie';
+    return wynik;
+  }
+  wynik.napis = `do ${dzienNaKarcie(dzienTerminu(termin))}`;
+  if (!termin.reczny) wynik.objasnienie = objasnienieStandardu(termin, z);
+  if (z?.wyslane_at) {
+    const po = dniPoTerminie(termin, z.wyslane_at);
+    wynik.ocena = po > 0 ? `wysłane po terminie o ${odmianaDniRob(po)}` : 'wysłane w terminie';
+    wynik.ocenaZla = po > 0;
+  } else if (!anulowaneEfektywnie(z)) {
+    const po = dniPoTerminie(termin, terazIso);
+    if (po > 0) wynik.ocena = `po terminie o ${odmianaDniRob(po)}`;
+    wynik.ocenaZla = po > 0;
+  }
+  return wynik;
 }

@@ -128,13 +128,14 @@ describe('trasy zakładania zamówienia', () => {
   const zaloz = (payload) => app.inject({ method: 'POST', url: '/zamowienia/nowe', headers: naglowek, payload });
   const idZOdpowiedzi = (r) => Number(r.headers.location.split('/').pop());
 
-  it('GET pokazuje trzy kolumny karty i pięć wierszy pozycji', async () => {
+  // PRZ-103 (21.10.2026, prośba właściciela „zrób 1 wiersz na start”): kolejne dokłada „+ Dodaj wiersz”.
+  it('GET pokazuje trzy kolumny karty i jeden wiersz pozycji', async () => {
     const r = await app.inject({ method: 'GET', url: '/zamowienia/nowe', headers: naglowek });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Dane do wysyłki');
     expect(r.body).toContain('Dane do faktury');
     expect(r.body).toContain('Szczegóły zamówienia');
-    expect(r.body.match(/name="poz_nazwa"/g)).toHaveLength(5);
+    expect(r.body.match(/name="poz_nazwa"/g)).toHaveLength(1);
   });
 
   it('lista ma odnośnik do zakładania', async () => {

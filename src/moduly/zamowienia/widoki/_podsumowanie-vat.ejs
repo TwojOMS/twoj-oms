@@ -1,0 +1,11 @@
+<%# PRZ-105 — podsumowanie netto / VAT / brutto pod pozycjami (karta i ekran „Nowe zamówienie”). %>
+<%# Liczby liczy DOMENA regułą faktury (domain/podsumowanie-wierszami.js) — widok tylko je wypisuje. %>
+<%# Na ekranie zakładania te same komórki przelicza na żywo public/suma-podglad.js (atrybuty data-*). %>
+<%# `p` = { nettoZl, vatZl, bruttoZl, wdt, zeroKrajowe, blad } — wartości null wypisują się jako „—”. %>
+<dl class="podsumowanie-vat" data-podsumowanie-vat>
+  <div><dt>Razem netto</dt><dd><span data-pv-netto><%= p.nettoZl ?? '—' %></span> zł</dd></div>
+  <div><dt>VAT <span class="pv-wdt" data-pv-wdt<%- p.wdt ? '' : ' hidden' %>>0% — WDT</span></dt><dd><span data-pv-vat><%= p.vatZl ?? '—' %></span> zł</dd></div>
+  <div class="pv-brutto"><dt>Razem brutto <span class="wyjasnienie">z dostawą</span></dt><dd><span data-pv-brutto><%= p.bruttoZl ?? '—' %></span> zł</dd></div>
+</dl>
+<p class="pasek-uwaga pv-zero" data-pv-zero<%- p.zeroKrajowe ? '' : ' hidden' %>><strong>0% krajowe — sprawdź podstawę.</strong> Pozycja ze stawką 0% u nabywcy z Polski pójdzie na fakturę i do KSeF z 0%.</p>
+<% if (p.blad) { %><p class="netto-cicho">Podsumowania VAT nie da się policzyć: <%= p.blad %></p><% } %>

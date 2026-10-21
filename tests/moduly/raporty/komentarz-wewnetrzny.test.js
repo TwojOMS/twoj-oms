@@ -60,7 +60,7 @@ describe('komentarz wewnętrzny nie wychodzi do klienta', () => {
   });
 
   it('nie ma go w pozycjach faktury', () => {
-    const uslugi = pozycjeDokumentu(zamowienie());
+    const uslugi = pozycjeDokumentu(zamowienie(), { stawkaDomyslna: '23' });
     expect(JSON.stringify(uslugi)).not.toContain('NIE POKAZYWAĆ KLIENTOWI');
   });
 });

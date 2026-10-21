@@ -41,6 +41,27 @@ async function przebiegPollera(nad = {}) {
 // po dacie utworzenia.
 const idZamowienia = () => listaZamowien(db).find((z) => z.numer === '1301').id;
 
+// PRZ-105: stawka pozycji ręcznej ląduje w `pozycje.vat` i zmienia się razem z edycją pozycji.
+describe('stawka VAT pozycji ręcznej w bazie (PRZ-105)', () => {
+  it('dodajPozycjeReczna zapisuje vat; zapiszPozycjeReczna go zmienia; bez vat zostawia stary', async () => {
+    await przebiegPollera();
+    const id = idZamowienia();
+    dodajPozycjeReczna(db, id, parsujNowaPozycje({ nazwa: 'Album', ilosc: '1', cena_brutto: '10.80', vat: '8' }));
+    const r = () => db.prepare("SELECT * FROM pozycje WHERE zamowienie_id = ? AND zrodlo = 'reczna'").get(id);
+    expect(r().vat).toBe('8');
+    zapiszPozycjeReczna(db, id, r().id, { nazwa: 'Album', ilosc: 1, cena_brutto: '10.50', brutto_linii: '10.50', vat: '5' });
+    expect(r().vat).toBe('5');
+    zapiszPozycjeReczna(db, id, r().id, { nazwa: 'Album', ilosc: 2, cena_brutto: '10.50', brutto_linii: '21.00' });
+    expect(r().vat).toBe('5');
+  });
+
+  it('stawka spoza listy nie trafia do bazy — odmowa', async () => {
+    await przebiegPollera();
+    const id = idZamowienia();
+    expect(() => dodajPozycjeReczna(db, id, { nazwa: 'X', ilosc: 1, cena_brutto: '1.00', brutto_linii: '1.00', vat: '22' })).toThrow(/stawk/i);
+  });
+});
+
 describe('poller a pozycje dopisane ręcznie', () => {
   // ⚠️ TO JEST TEST, DLA KTOREGO CALE ZADANIE ISTNIEJE. `zapiszPozycje` robi DELETE + INSERT,
   // wiec pozycja dopisana recznie znikalaby w ciagu dwoch minut — razem z pieniedzmi,

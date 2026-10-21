@@ -3,6 +3,7 @@ import { klientPoNip } from '../../../oms/db/klienci.js';
 import { oplataDlaZamowienia, NAZWA_OBSLUGI, NAZWA_KURIERA } from '../../../domena/oplata-obslugi.js';
 import { zl } from '../../../domena/suma-pozycji.js';
 import { dodajPozycjeReczna } from '../../../oms/db/zamowienia.js';
+import { czytajStawkeDomyslna } from '../../faktury/db/stawka-vat.js';
 
 const NAZWY_OPLAT = [NAZWA_OBSLUGI, NAZWA_KURIERA];
 
@@ -68,6 +69,8 @@ export function doklejOplate({
   // wyglada wiersz o zrodle 'reczna' (i ktore odswieza `zmienione_at` zamowienia).
   dodajPozycjeReczna(db, zamowienieId, {
     nazwa: oplata.nazwa, sku: null, ilosc: 1, cena_brutto: kwota, brutto_linii: kwota,
+    // PRZ-105: opłata dostaje stawkę domyślną z chwili doklejenia i ją zachowuje.
+    vat: czytajStawkeDomyslna(db),
   });
 
   return oplata;

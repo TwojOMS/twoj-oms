@@ -2,7 +2,8 @@ import {
   zl, wartoscPozycjiGrosze, kwotaOczekiwanaGrosze, sumaPozycjiZWysylkaGrosze, wysylkaBruttoGrosze,
 } from '../../../domena/suma-pozycji.js';
 import { wysylkaEfektywna } from '../../../domena/wysylka-kwota.js';
-import { STAWKA_VAT } from '../../../domena/vat.js';
+import { czyStawkaVat, stawkaPozycji } from '../../../domena/vat.js';
+import { czytajStawkeDomyslna } from '../db/stawka-vat.js';
 import { bladOperatora } from '../../../domena/bledy.js';
 import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
 import {
@@ -14,7 +15,7 @@ import { datyFaktury } from '../../../domena/termin-platnosci.js';
 // WDT (spec 2026-08-26): stawke i pola payloadu rozstrzyga domena po NIP-ie KLIENTA
 // OKRESU (nabywcy dokumentu); VIES i serie numeracji trzyma WSPOLNA galaz obu drog
 // wystawiania (services/wdt-faktury.js) — zeby okres i karta nie mialy dwoch kopii.
-import { czyNipUe, stawkaDokumentu, polaWdtInfakt } from '../../../domena/wdt.js';
+import { czyNipUe, polaWdtInfakt } from '../../../domena/wdt.js';
 import {
   sprawdzWdtWVies, przygotujSerieWdt, seriaWdtPoAwarii, seriaWdtPoSukcesie,
 } from './wdt-faktury.js';
@@ -28,11 +29,16 @@ import { dzienWarszawa } from '../../../domena/format-daty.js';
  * oplata za obsluge i kuriera trafia na fakture BEZ ani jednej linii kodu o niej tutaj —
  * dokladnie tak samo, jak w services/faktura.js dla pojedynczego zamowienia.
  */
-export function pozycjeOkresu(zamowienia, { stawka = STAWKA_VAT } = {}) {
-  // Stawka przychodzi OD WOLAJACEGO i jest JEDNA na caly dokument, bo dokument ma jednego
-  // nabywce — klienta okresu. Liczenie jej per zamowienie (z NIP-u zamowienia) moglaby
-  // rozjechac jedna zbiorcza fakture na dwie stawki, gdyby ktores zamowienie mialo
-  // uszkodzony numer. Bez opcji zostaje STAWKA_VAT — dotychczasowe zachowanie.
+export function pozycjeOkresu(zamowienia, { stawkaDomyslna, wdt = false } = {}) {
+  // WDT przychodzi OD WOLAJACEGO i jest JEDNO na caly dokument, bo dokument ma jednego nabywce — klienta
+  // okresu. Liczenie go per zamowienie (z NIP-u zamowienia) mogloby rozjechac jedna zbiorcza fakture na dwie
+  // stawki, gdyby ktores zamowienie mialo uszkodzony numer.
+  // PRZ-105: poza WDT stawka jest PER POZYCJA (domain/vat.js: stawkaPozycji), dostawa — domyslna z Ustawien.
+  // Brak domyslnej = wyjatek, nie ciche 23 (ta sama zasada co pozycjeDokumentu).
+  if (!czyStawkaVat(stawkaDomyslna)) {
+    throw new Error(`pozycjeOkresu: brak albo zła stawka domyślna („${stawkaDomyslna}”).`);
+  }
+  const stawka = wdt ? '0' : String(stawkaDomyslna);
   const services = [];
   for (const z of zamowienia) {
     for (const p of z.pozycje ?? []) {
@@ -44,7 +50,7 @@ export function pozycjeOkresu(zamowienia, { stawka = STAWKA_VAT } = {}) {
         // arytmetyki na caly panel, zeby fakturze zbiorczej i karcie nigdy nie roznila sie
         // ani jedna pozycja.
         gross_price: wartoscPozycjiGrosze(p),
-        tax_symbol: stawka,
+        tax_symbol: wdt ? '0' : stawkaPozycji(p, stawkaDomyslna),
       });
     }
     // Koszt dostawy jest czescia `kwota_brutto`, ale nie ma go w pozycjach — bez tej
@@ -268,7 +274,7 @@ export function createFakturaOkresu({
     // dostaje 0% (WDT) na kazdej pozycji; kwoty zamowien sa wtedy kwotami netto, wiec
     // bariera arytmetyczna nizej dziala bez zmian (netto = brutto przy 0%).
     const wdt = czyNipUe(klient?.nip);
-    const services = pozycjeOkresu(zamowienia, { stawka: stawkaDokumentu(klient?.nip) });
+    const services = pozycjeOkresu(zamowienia, { stawkaDomyslna: czytajStawkeDomyslna(db), wdt });
     // ⚠️ Bariera PRZED rezerwacja i przed jakimkolwiek ruchem w inFakcie: nieudana
     // arytmetyka nie ma prawa zostawic po sobie ani rezerwacji, ani zamknietego okresu.
     // Sprawdza DOKLADNIE te sama liste zamowien, ktora poszla do `pozycjeOkresu` — inaczej

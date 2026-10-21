@@ -293,3 +293,42 @@ describe('ekran zakładania nie skacze do góry', () => {
     expect(poDodaniu.body).toMatch(/Dodano do zamówienia:[\s\S]{0,120}Lampa stołowa Grzybek/);
   });
 });
+
+// PRZ-105: kolumna „Stawka VAT” między netto a brutto (domyślna z Ustawień), wiersz dostawy nad „Razem”
+// i podsumowanie netto / VAT / brutto pod tabelą (uwagi właściciela 21.10). Zapis niesie stawkę wiersza do bazy.
+describe('ekran zakładania — stawka VAT, dostawa i podsumowanie (PRZ-105)', () => {
+  const tabela = (html) => html.slice(html.indexOf('data-podglad-kwoty'), html.indexOf('</table>', html.indexOf('data-podglad-kwoty')));
+
+  it('nagłówek: Cena netto → Stawka VAT → Cena brutto; w wierszu lista z zaznaczoną domyślną z Ustawień', async () => {
+    const { zapiszStawkeDomyslna } = await import('../../../src/moduly/faktury/db/stawka-vat.js');
+    zapiszStawkeDomyslna(db, '8');
+    const t = tabela((await ekran()).body);
+    expect(t).toMatch(/Cena netto<\/th>\s*<th class="liczba kol-vat">Stawka VAT<\/th>\s*<th class="liczba">Cena brutto/u);
+    expect(t).toMatch(/name="poz_cena_netto"[\s\S]*?<select name="poz_vat"[\s\S]*?<option value="8" selected>[\s\S]*?name="poz_cena_brutto"/u);
+  });
+
+  it('wiersz dostawy w stopce między „+ Dodaj wiersz” a „Razem”; colspan dodawania obejmuje 8 kolumn', async () => {
+    const t = tabela((await ekran()).body);
+    const stopka = t.slice(t.indexOf('<tfoot>'));
+    expect(stopka.indexOf('wiersz-dodaj')).toBeLessThan(stopka.indexOf('data-wiersz-dostawy'));
+    expect(stopka.indexOf('data-wiersz-dostawy')).toBeLessThan(stopka.indexOf('wiersz-razem'));
+    expect(stopka).toContain('colspan="8"');
+  });
+
+  it('pod tabelą blok Razem netto · VAT · Razem brutto; NIP z UE w formularzu → data-wdt="1" i „0% — WDT”', async () => {
+    const b = (await ekran()).body;
+    expect(b).toContain('data-podsumowanie-vat');
+    expect(b).toMatch(/<form method="post" action="\/zamowienia\/nowe" data-vat="23" data-wdt="0">/u);
+    const r = await wyslij('/zamowienia/nowe/wiersz/dodaj', { f_nip: 'DE123456789', poz_nazwa: [''] });
+    expect(r.body).toMatch(/data-wdt="1"/u);
+    expect(r.body).toMatch(/data-pv-wdt>0% — WDT/u);
+  });
+
+  it('„+ Dodaj wiersz” bez JS: nowy wiersz ma listę z domyślną', async () => {
+    const r = await wyslij('/zamowienia/nowe/wiersz/dodaj', { poz_nazwa: ['A'], poz_vat: ['5'] });
+    const listy = [...tabela(r.body).matchAll(/<select name="poz_vat"[\s\S]*?<\/select>/gu)].map((m) => m[0]);
+    expect(listy).toHaveLength(2);
+    expect(listy[0]).toMatch(/<option value="5" selected>/u);
+    expect(listy[1]).toMatch(/<option value="23" selected>/u);
+  });
+});

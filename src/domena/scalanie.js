@@ -19,6 +19,7 @@ import {
   zl, wartoscPozycjiGrosze, wysylkaBruttoGrosze, kwotaOczekiwanaGrosze,
 } from './suma-pozycji.js';
 import { pozycjeDokumentu, sprawdzSumeDokumentu } from './pozycje-faktury.js';
+import { STAWKA_VAT } from './vat.js';
 import { brakujacaKwotaGrosze } from './platnosci.js';
 import { wysylkaEfektywna } from './wysylka-kwota.js';
 
@@ -300,7 +301,8 @@ export function sprawdzCzlonkowGrupy(glowne, dolaczone) {
   }
   for (const c of [glowne, ...dolaczone]) {
     try {
-      sprawdzSumeDokumentu(pozycjeDokumentu(c), c);
+      // Stawka nie wplywa na bariere (porownuje brutto) — wbudowana wystarcza (PRZ-105).
+      sprawdzSumeDokumentu(pozycjeDokumentu(c, { stawkaDomyslna: STAWKA_VAT }), c);
     } catch (e) {
       throw bladOperatora(`Zamówienie ${c.numer} (w grupie): ${e.message}`);
     }

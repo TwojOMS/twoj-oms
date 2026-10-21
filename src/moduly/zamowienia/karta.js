@@ -1,5 +1,7 @@
 import { etykietyStatusow } from '../../oms/db/statusy.js';
-import { pobierzZamowienie, potwierdzWplate, dopiszLog, zapiszFaktyStatusu, zapiszNadpisanieWysylki, przywrocMetodeWysylkiZeSklepu, zapiszKomentarzWewnetrzny, ostatniWpisLogu } from '../../oms/db/zamowienia.js';
+import { pobierzZamowienie, potwierdzWplate, dopiszLog, zapiszFaktyStatusu, zapiszNadpisanieWysylki, przywrocMetodeWysylkiZeSklepu, zapiszKomentarzWewnetrzny, ostatniWpisLogu, zapiszTerminWysylkiRecznego } from '../../oms/db/zamowienia.js';
+import { parsujDateWysylki, recznyTermin } from '../../domena/termin-wysylki.js';
+import { dzienWarszawa } from '../../domena/format-daty.js';
 import { AKCJA_LOGU as AKCJA_ALLEGRO_PRZESYLKA } from '../wysylka/services/przesylki-allegro.js';
 import { odswiezStatusKuriera, zapiszLubOdpusc } from '../wysylka/services/status-kuriera.js';
 import { wyliczStatus } from '../../domena/status.js';
@@ -350,6 +352,43 @@ app.post('/zamowienia/:id/ustalenia', async (req, reply) => {
           ? ` Pominięto ${wynik.pominiete.length} poz. z ceną wpisaną ręcznie: `
             + `${wynik.pominiete.map((p) => `„${p.nazwa}"`).join(', ')}.`
           : ''),
+    });
+    return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }));
+  });
+// PRZ-104: ręczna data wysyłki („najpóźniej do”) — puste pole = powrót do standardowego terminu.
+// Reguła terminu i walidacja dnia mieszkają w domenie (termin-wysylki.js); trasa tylko parsuje i zapisuje.
+app.post('/zamowienia/:id/termin-wysylki', async (req, reply) => {
+    const id = Number(req.params.id);
+    const z = pobierzZamowienie(db, id);
+    if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+
+    // „Przywróć standardowy termin” to drugi przycisk TEGO SAMEGO formularza (`przywroc=1`):
+    // wtedy pole daty, choć przyszło wypełnione, nie liczy się.
+    const surowe = req.body?.przywroc ? '' : req.body?.data_wysylki;
+    const bylo = recznyTermin(z);
+    // Ta sama data jeszcze raz (np. „Zapisz” bez zmiany przy minionej dacie) — nic się nie dzieje;
+    // inaczej odmowa „wcześniejsza niż dziś” dotyczyłaby daty, której nikt nie zmieniał.
+    if ((String(surowe ?? '').trim() || null) === bylo) return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }));
+
+    let dzien;
+    try {
+      dzien = parsujDateWysylki(surowe, dzienWarszawa(new Date().toISOString()));
+    } catch (e) {
+      // Zła data to błędny formularz, nie awaria — bez wpisu w logu, jak inne odmowy walidacji tej karty.
+      return reply.code(400).send(`Nie zapisano daty wysyłki: ${komunikatDlaOperatora(e)}`);
+    }
+    // ⚠️ PO WYSYŁCE BEZ ZMIAN (decyzja właściciela 21.10.2026) — inaczej spóźnioną wysyłkę dałoby się
+    // „poprawić” po fakcie, a statystyka terminowości przestałaby mówić prawdę. Jedyna blokada stoi
+    // w zapisie (`wyslane_at IS NULL` w UPDATE), więc łapie też paczkę nadaną po otwarciu karty.
+    if (!zapiszTerminWysylkiRecznego(db, id, dzien)) {
+      return reply.code(409).send('Zamówienie jest już wysłane — daty wysyłki nie da się zmienić.');
+    }
+    const naEkran = (d) => d.split('-').reverse().join('.');
+    dopiszLog(db, id, {
+      akcja: 'termin.wysylki',
+      wynik: dzien
+        ? `Ręcznie (${ktoKlikal(req)}): data wysyłki ${naEkran(dzien)} (było: ${bylo ? naEkran(bylo) : 'standardowy termin'}).`
+        : `Ręcznie (${ktoKlikal(req)}): przywrócono standardowy termin wysyłki (było: ${bylo ? naEkran(bylo) : 'standardowy termin'}).`,
     });
     return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }));
   });

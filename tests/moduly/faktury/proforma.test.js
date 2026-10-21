@@ -12,6 +12,7 @@ import { fmtDataCzasKrotko } from '../../../src/domena/format-daty.js';
 import { createProforma } from '../../../src/moduly/faktury/services/proforma.js';
 import { loadOmsConfig } from '../../pomoc/konfiguracja-parytetu.ts';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { zapiszStawkeDomyslna } from '../../../src/moduly/faktury/db/stawka-vat.js';
 
 // Zamowienie ze sklepu: 2 x 61,50 = 123,00 zl, bez dostawy. Te same liczby, co w
 // tests/oms/faktura.test.js — proforma i faktura licza pozycje TA SAMA funkcja
@@ -73,6 +74,18 @@ function zestaw(nad = {}, opcje = {}) {
 
 const logi = (db, id) => db.prepare('SELECT * FROM log WHERE zamowienie_id = ? ORDER BY id').all(id)
   .filter((w) => w.akcja === 'proforma');
+
+// PRZ-105: proforma bierze stawkę domyślną z Ustawień — tę samą, którą dostaje faktura VAT.
+describe('proforma — stawka domyślna z Ustawień (PRZ-105)', () => {
+  it('wpis 8 → podsumowanie VAT proformy ma jeden wiersz 8%', () => {
+    const budujPdf = vi.fn(() => Buffer.from('%PDF-1.3 atrapa'));
+    const { db, id, proforma } = zestaw({}, { budujPdf });
+    zapiszStawkeDomyslna(db, '8');
+    proforma.wystaw(id);
+    const wiersze = budujPdf.mock.calls[0][0].podsumowanieVat;
+    expect(wiersze.filter((w) => !w.suma).map((w) => w.stawka)).toEqual([8]);
+  });
+});
 
 describe('proforma — udana ścieżka', () => {
   it('nadaje numer PF/1/08/2026, zapisuje plik i podpina jego ścieżkę', () => {

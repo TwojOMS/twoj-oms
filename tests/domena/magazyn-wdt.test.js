@@ -22,6 +22,30 @@ describe('cenaWdtGrosze', () => {
   });
 });
 
+// PRZ-105 (decyzja właściciela 21.10): cena z magazynu przy WDT dzieli się przez stawkę DOMYŚLNĄ z Ustawień,
+// nie przez stałe 1,23 — sklep obcej instalacji z domyślną 8 ma w cenie 8%, nie 23%.
+describe('cena WDT przy stawce domyślnej innej niż 23 (PRZ-105)', () => {
+  const produkt = {
+    kanal: 'pro', produkt_id: '77', wariant_id: '', nazwa: 'Album lamp', sku_sklepu: 'PC-ALB-001', cena_gr: 10800,
+  };
+
+  it('cenaWdtGrosze(108,00 zł, 8) → 100,00 zł; 5% → ÷1,05', () => {
+    expect(cenaWdtGrosze(10800, '8')).toBe(10000);
+    expect(cenaWdtGrosze(10500, '5')).toBe(10000);
+  });
+
+  it('pozycjaZProduktu przy wdt i stawce domyślnej 8 → 100,00 zł', () => {
+    expect(pozycjaZProduktu(produkt, '1', { wdt: true, stawkaDomyslna: '8' }).cena_brutto).toBe('100.00');
+  });
+
+  it('przeliczenieRabatu WDT przy stawce domyślnej 8 rozpoznaje pozycję panelu i liczy ÷1,08', () => {
+    const p = { id: 9, nazwa: 'Album lamp', ilosc: 1, zrodlo: 'reczna', cena_katalogowa: '108.00', cena_brutto: '100.00', brutto_linii: '100.00' };
+    expect(czyPozycjaPanelu(p, 0, { wdt: true, stawkaDomyslna: '8' })).toBe(true);
+    const { doZmiany } = przeliczenieRabatu([p], { rabatPoprzedni: 0, rabatNowy: 50, wdt: true, stawkaDomyslna: '8' });
+    expect(doZmiany[0].cena_brutto).toBe('50.00');
+  });
+});
+
 describe('pozycjaZProduktu — klient WDT', () => {
   const produkt = {
     kanal: 'pro', produkt_id: '77', wariant_id: '', nazwa: 'Lampa wisząca Kopuła 70x100cm',

@@ -159,7 +159,7 @@ function parsujIlosc(surowa) {
  * przeliczenia niewidzialna, więc rabat wpisany na karcie po dodaniu towaru nie miałby
  * czego dotknąć.
  */
-export function pozycjaZProduktu(produkt, iloscSurowa, { rabatProcent = 0, wdt = false, cenniki: cennikiInstalacji = BEZ_CENNIKOW } = {}) {
+export function pozycjaZProduktu(produkt, iloscSurowa, { rabatProcent = 0, wdt = false, stawkaDomyslna, cenniki: cennikiInstalacji = BEZ_CENNIKOW } = {}) {
   if (!produkt) throw bladOperatora('Nie ma takiego produktu w magazynie — odczytaj katalogi i spróbuj jeszcze raz.');
   const { kanaly, nazwy } = cennikiInstalacji;
   if (!kanaly.includes(String(produkt.kanal ?? ''))) {
@@ -185,7 +185,8 @@ export function pozycjaZProduktu(produkt, iloscSurowa, { rabatProcent = 0, wdt =
   // właściciela 26.08: wstawka z samym rabatem zostawiała mu 19 pozycji do ręcznego
   // dzielenia — czyli dokładnie ten rodzaj przepisywania, który ten moduł miał skasować.
   const poRabacieGr = cenaPoRabacieGrosze(cenaGr, rabatProcent);
-  const doZaplatyGr = wdt ? cenaWdtGrosze(poRabacieGr) : poRabacieGr;
+  // PRZ-105: przy WDT ÷ stawka domyślna z Ustawień (wołający podaje `stawkaDomyslna`), nie stałe 1,23.
+  const doZaplatyGr = wdt ? cenaWdtGrosze(poRabacieGr, stawkaDomyslna) : poRabacieGr;
   // Identyfikator produktu ma sens WYŁĄCZNIE liczbowy: kolumna `pozycje.produkt_id` jest
   // INTEGER (identyfikatory Woo), a lustro trzyma je jako tekst, bo mieści też Allegro.
   // Nie-liczba idzie jako brak, a nie jako NaN — pozycja ma powstać nawet wtedy.

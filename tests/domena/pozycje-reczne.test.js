@@ -39,11 +39,39 @@ describe('kluczPozycji', () => {
   });
 });
 
+// PRZ-105: stawka pozycji ręcznej — z pola `vat` (lista 23/8/5/0), pusta = domyślna z Ustawień; netto przelicza
+// się stawką wiersza, a przy nabywcy z UE (wdt) stawką 0. Zapisana zostaje stawka WYBRANA (dokument i tak da 0).
+describe('parsujNowaPozycje — stawka VAT (PRZ-105)', () => {
+  const baza = { nazwa: 'Album o lampach', ilosc: '1' };
+
+  it('netto 100 przy stawce 8 → brutto 108,00, vat 8', () => {
+    const p = parsujNowaPozycje({ ...baza, cena_netto: '100', vat: '8' }, { stawkaDomyslna: '23' });
+    expect(p).toMatchObject({ cena_brutto: '108.00', brutto_linii: '108.00', vat: '8' });
+  });
+
+  it('pusta stawka → domyślna z Ustawień; brutto wpisane wygrywa z netto', () => {
+    expect(parsujNowaPozycje({ ...baza, cena_brutto: '50.00', vat: '' }, { stawkaDomyslna: '5' }).vat).toBe('5');
+    expect(parsujNowaPozycje({ ...baza, cena_netto: '100', cena_brutto: '50.00', vat: '8' }, { stawkaDomyslna: '23' }).cena_brutto).toBe('50.00');
+  });
+
+  it('stawka spoza listy (22, zw, abc) → odmowa z „stawka”, nie cicha domyślna', () => {
+    for (const vat of ['22', 'zw', 'abc']) {
+      expect(() => parsujNowaPozycje({ ...baza, cena_brutto: '10.00', vat }, { stawkaDomyslna: '23' })).toThrow(/stawk/i);
+    }
+  });
+
+  it('nabywca z UE (wdt): netto 100 → brutto 100,00 (0%), zapisana stawka wybrana', () => {
+    const p = parsujNowaPozycje({ ...baza, cena_netto: '100', vat: '23' }, { stawkaDomyslna: '23', wdt: true });
+    expect(p).toMatchObject({ cena_brutto: '100.00', vat: '23' });
+  });
+});
+
 describe('parsujNowaPozycje', () => {
   it('przyjmuje nazwę, SKU, ilość i cenę brutto; sumę linii liczy w groszach', () => {
     const p = parsujNowaPozycje({ nazwa: 'Dodatkowy szablon', sku: 'X-1', ilosc: '3', cena_brutto: '61.50' });
+    // PRZ-105: wynik niesie też stawkę — bez pola `vat` domyślną (tu wbudowane 23).
     expect(p).toEqual({
-      nazwa: 'Dodatkowy szablon', sku: 'X-1', ilosc: 3, cena_brutto: '61.50', brutto_linii: '184.50',
+      nazwa: 'Dodatkowy szablon', sku: 'X-1', ilosc: 3, cena_brutto: '61.50', brutto_linii: '184.50', vat: '23',
     });
   });
 

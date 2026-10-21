@@ -180,7 +180,7 @@ describe('zamowienieGrupy — zestaw pozycji faktury grupy', () => {
   it('„suma”: pozycje obu zamówień + wysyłka każdego osobną linią; bariera przechodzi', () => {
     const a = zam(1); const b = zam(2, { koszt_dostawy_brutto: '20.00', kwota_brutto: '120.00' });
     const g = zamowienieGrupy(jakoGlowne(a, [b], 'suma'), [b]);
-    const services = pozycjeDokumentu(g);
+    const services = pozycjeDokumentu(g, { stawkaDomyslna: '23' });
     expect(services.map((s) => [s.name, s.gross_price])).toEqual([
       ['Lampa 1', 10000], ['Lampa 2', 10000], ['Dostawa', 1500], ['Dostawa — zamówienie S-2', 2000],
     ]);
@@ -195,7 +195,7 @@ describe('zamowienieGrupy — zestaw pozycji faktury grupy', () => {
   it('„z zamówienia głównego”, dołączone opłacone: jego wysyłka osobną pozycją, faktura = wpłaty', () => {
     const a = zam(1); const b = zam(2, { koszt_dostawy_brutto: '20.00', kwota_brutto: '120.00' });
     const g = zamowienieGrupy(jakoGlowne(a, [b], 'glowne'), [b]);
-    const services = pozycjeDokumentu(g);
+    const services = pozycjeDokumentu(g, { stawkaDomyslna: '23' });
     expect(services.map((s) => [s.name, s.gross_price])).toEqual([
       ['Lampa 1', 10000], ['Lampa 2', 10000], ['Dostawa', 1500], ['Dostawa — zamówienie S-2', 2000],
     ]);
@@ -214,7 +214,7 @@ describe('zamowienieGrupy — zestaw pozycji faktury grupy', () => {
     for (const decyzja of ['glowne', 'suma']) {
       const a = zam(1); const b = zam(2, b120);
       const g = zamowienieGrupy(jakoGlowne(a, [b], decyzja), [b]);
-      const services = pozycjeDokumentu(g);
+      const services = pozycjeDokumentu(g, { stawkaDomyslna: '23' });
       const wysylki = services.filter((s) => s.name.startsWith('Dostawa'));
       expect(wysylki, decyzja).toEqual([
         expect.objectContaining({ name: 'Dostawa', gross_price: 1500, quantity: 1 }),
@@ -231,13 +231,13 @@ describe('zamowienieGrupy — zestaw pozycji faktury grupy', () => {
     const a = zam(1); const b = zam(2, nieoplacone);
     expect(b.platnosci).toEqual([]);
     const g = zamowienieGrupy(jakoGlowne(a, [b], 'glowne'), [b]);
-    const services = pozycjeDokumentu(g);
+    const services = pozycjeDokumentu(g, { stawkaDomyslna: '23' });
     expect(services.filter((s) => s.name.startsWith('Dostawa')).map((s) => [s.name, s.gross_price])).toEqual([['Dostawa', 1500]]);
     expect(services.reduce((s, x) => s + x.gross_price, 0)).toBe(21500);
     expect(() => sprawdzSumeDokumentu(services, g)).not.toThrow();
     expect(wysylkaGrupyGrosze(a, [b], 'glowne')).toBe(1500);
     const gs = zamowienieGrupy(jakoGlowne(a, [b], 'suma'), [b]);
-    expect(pozycjeDokumentu(gs).map((s) => s.name)).toContain('Dostawa — zamówienie S-2');
+    expect(pozycjeDokumentu(gs, { stawkaDomyslna: '23' }).map((s) => s.name)).toContain('Dostawa — zamówienie S-2');
     expect(kwotaOczekiwanaGrosze(gs)).toBe(23500);
   });
 
@@ -253,14 +253,14 @@ describe('zamowienieGrupy — zestaw pozycji faktury grupy', () => {
   it('dołączone z darmową wysyłką — bez pustej linii', () => {
     const a = zam(1); const b = zam(2, { koszt_dostawy_brutto: '0.00', kwota_brutto: '100.00' });
     const g = zamowienieGrupy(jakoGlowne(a, [b], 'suma'), [b]);
-    expect(pozycjeDokumentu(g).filter((s) => s.name.startsWith('Dostawa')).map((s) => s.name)).toEqual(['Dostawa']);
+    expect(pozycjeDokumentu(g, { stawkaDomyslna: '23' }).filter((s) => s.name.startsWith('Dostawa')).map((s) => s.name)).toEqual(['Dostawa']);
   });
 
   it('linie wysyłek grupy muszą dać kwotę wysyłki — inaczej dokument odmówiony', () => {
     const a = zam(1); const b = zam(2, b120);
     const g = zamowienieGrupy(jakoGlowne(a, [b], 'suma'), [b]);
     const zepsute = { ...g, grupa: { ...g.grupa, wysylki: g.grupa.wysylki.slice(0, 1) } };
-    expect(() => pozycjeDokumentu(zepsute)).toThrow(/wysyłek grupy/);
+    expect(() => pozycjeDokumentu(zepsute, { stawkaDomyslna: '23' })).toThrow(/wysyłek grupy/);
   });
 
   it('pozycja dopisana ręcznie w dołączonym i dane z głównego (nabywca, NIP)', () => {
@@ -269,8 +269,8 @@ describe('zamowienieGrupy — zestaw pozycji faktury grupy', () => {
     dodajPozycjeReczna(db, idB, { nazwa: 'Klosz dodatkowy', ilosc: 1, cena_brutto: '30.00', brutto_linii: '30.00' });
     const b = pobierzZamowienie(db, idB);
     const g = zamowienieGrupy(jakoGlowne(a, [b], 'suma'), [b]);
-    expect(pozycjeDokumentu(g).map((s) => s.name)).toEqual(['Lampa 1', 'Lampa 2', 'Klosz dodatkowy', 'Dostawa', 'Dostawa — zamówienie S-2']);
-    expect(() => sprawdzSumeDokumentu(pozycjeDokumentu(g), g)).not.toThrow();
+    expect(pozycjeDokumentu(g, { stawkaDomyslna: '23' }).map((s) => s.name)).toEqual(['Lampa 1', 'Lampa 2', 'Klosz dodatkowy', 'Dostawa', 'Dostawa — zamówienie S-2']);
+    expect(() => sprawdzSumeDokumentu(pozycjeDokumentu(g, { stawkaDomyslna: '23' }), g)).not.toThrow();
     expect(kwotaOczekiwanaGrosze(g)).toBe(11500 + 14500);
     expect(g.id).toBe(a.id);
     expect(g.numer).toBe('S-1');
@@ -279,7 +279,7 @@ describe('zamowienieGrupy — zestaw pozycji faktury grupy', () => {
   it('ręczne główne + sklepowe dołączone — kwota grupy spójna', () => {
     const r = zam(1, { kwota_brutto: '115.00' }, 'reczne'); const b = zam(2);
     const g = zamowienieGrupy(jakoGlowne(r, [b], 'suma'), [b]);
-    expect(() => sprawdzSumeDokumentu(pozycjeDokumentu(g), g)).not.toThrow();
+    expect(() => sprawdzSumeDokumentu(pozycjeDokumentu(g, { stawkaDomyslna: '23' }), g)).not.toThrow();
     expect(kwotaOczekiwanaGrosze(g)).toBe(23000);
   });
 

@@ -15,7 +15,7 @@ describe('pozycjeDokumentu — stawka dokumentu z NIP-u nabywcy', () => {
   it('nabywca z UE (WDT): każda pozycja i dostawa z tax_symbol 0', () => {
     const services = pozycjeDokumentu(zamowienie({
       nip: 'SK1000000001', kwota_brutto: '139.00', koszt_dostawy_brutto: '16.00',
-    }));
+    }), { stawkaDomyslna: '23' });
     expect(services).toEqual([
       { name: 'STOP', quantity: 2, gross_price: 12300, tax_symbol: '0' },
       { name: 'Dostawa', quantity: 1, gross_price: 1600, tax_symbol: '0' },
@@ -23,7 +23,7 @@ describe('pozycjeDokumentu — stawka dokumentu z NIP-u nabywcy', () => {
   });
 
   it('nabywca krajowy: stawka 23 — dokładnie jak dotąd', () => {
-    const services = pozycjeDokumentu(zamowienie({ nip: '1000001106' }));
+    const services = pozycjeDokumentu(zamowienie({ nip: '1000001106' }), { stawkaDomyslna: '23' });
     expect(services[0].tax_symbol).toBe('23');
   });
 
@@ -34,14 +34,14 @@ describe('pozycjeDokumentu — stawka dokumentu z NIP-u nabywcy', () => {
     const services = pozycjeDokumentu(zamowienie({
       nip: '1000001106',
       klient_reczny_json: JSON.stringify({ nip: 'SK1000000001' }),
-    }));
+    }), { stawkaDomyslna: '23' });
     expect(services[0].tax_symbol).toBe('0');
   });
 
   // Proforma dla WDT drukuje podsumowanie z tej samej listy — 0% ma dać VAT 0
   // i netto równe brutto, bez ani jednej zmiany w podsumowanie-vat.js.
   it('podsumowanie VAT pozycji WDT: netto = brutto, podatek 0', () => {
-    const services = pozycjeDokumentu(zamowienie({ nip: 'SK1000000001' }));
+    const services = pozycjeDokumentu(zamowienie({ nip: 'SK1000000001' }), { stawkaDomyslna: '23' });
     const wiersze = podsumowanieVat(services);
     expect(wiersze[0]).toEqual({ stawka: 0, suma: false, nettoGr: 12300, vatGr: 0, bruttoGr: 12300 });
   });

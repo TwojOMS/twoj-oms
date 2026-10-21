@@ -5,7 +5,7 @@ import { indeksListy } from '../../oms/db/indeks-listy.js';
 import { proformyZamowienia } from '../faktury/db/proformy.js';
 import { aktualnaProforma, czyWolnoWystawic, rozjazdKwotyProformy } from '../../domena/proforma-stan.js';
 import { nastepnyNumerReczny } from '../../oms/db/zamowienia-reczne.js';
-import { DOSTAWY, PLATNOSCI } from '../../domena/nowe-zamowienie.js';
+import { DOSTAWY, PLATNOSCI, liczbaWierszyFormularza, wdtZFormularza } from '../../domena/nowe-zamowienie.js';
 import { nastepnaKolejnosc, skasujPrzesylkeReczna, przesylkiDoSledzenia } from '../wysylka/db/przesylki.js';
 import { ostatniaPozycjaDlaPrzesylki } from '../wysylka/db/kolejka-druku.js';
 import { ostatniaPozycjaDlaFaktury } from '../faktury/db/kolejka-druku-faktur.js';
@@ -32,7 +32,7 @@ import { adresKanalu, rodzajKanalu } from '../../domena/kanaly.js';
 import { przewoznikWiersza } from '../../domena/przewoznik-przesylki.js';
 import { klientListy } from '../../domena/klient-listy.js';
 import { ikonaPlatnosci, ikonaPrzesylki, ikonaChceFaktury, ikonaFaktury, odznakaSyncStatusu } from '../../domena/lista-ikony.js';
-import { wiekZamowienia, czyEkspres } from '../../domena/wiek-zamowienia.js';
+import { wiekZamowienia, czyEkspres, terminNaKarcie } from '../../domena/wiek-zamowienia.js';
 import { kuponyZWiersza } from '../../domena/kupony.js';
 import ejs from 'ejs';
 import { join } from 'node:path';
@@ -47,7 +47,8 @@ import { daneFaktury, firmaNabywcy } from '../../domena/dane-faktury.js';
 import { roznice } from '../../domena/dane-reczne.js';
 import { wczytajUstawienia } from '../../oms/db/ustawienia.js';
 import { kwotyDostawy } from '../../domena/ustawienia-panelu.js';
-import { wierszePozycji, podsumowaniePozycji } from '../../domena/tabela-pozycji.js';
+import { wierszePozycji, podsumowaniePozycji, podsumowanieVatKarty } from '../../domena/tabela-pozycji.js';
+import { czytajStawkeDomyslna } from '../faktury/db/stawka-vat.js';
 import { brakiNaStanieZamowienia } from '../../oms/db/stany-zamowienia.js';
 import { odnosnikPozycji } from '../../domena/link-pozycji.js';
 import { sprawyKarty } from '../../domena/sprawy-karty.js';
@@ -59,9 +60,10 @@ import { wszyscyKlienci, klientPoNip } from '../../oms/db/klienci.js';
 import { rabatKontraktowy } from './services/rabat.js';
 import { saldoWplat, platnoscPrzyOdbiorze, domyslnaKwotaWplaty } from '../../domena/platnosci.js';
 import { dzienWarszawa } from '../../domena/format-daty.js';
+import { zakresDatyWysylki } from '../../domena/termin-wysylki.js';
 import { proponowanaDataSprzedazy } from '../../domena/data-sprzedazy.js';
-import { STAWKA_VAT } from '../../domena/vat.js';
-import { czyNipUe, stawkaDokumentu } from '../../domena/wdt.js';
+import { STAWKI_VAT } from '../../domena/vat.js';
+import { czyNipUe } from '../../domena/wdt.js';
 import { kluczOkresu } from '../../domena/okres-rozliczeniowy.js';
 import { wolnoPrzypisac } from '../../domena/zmiana-okresu.js';
 import { umowaZbiorcza } from '../../domena/klient-zbiorczy.js';
@@ -508,6 +510,9 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // PRZ-101.05: plakietka przewoźnika przy metodzie wysyłki — to samo rozpoznanie co `przewoznikListy` na liście
     // (domena/przewoznik-przesylki.js, po nazwie i metodzie dostawy zamówienia); `null` = bez plakietki.
     przewoznikKarty: przewoznikWiersza(null, z),
+    // PRZ-104: wiersz „Termin wysyłki” w Szczegółach — napisy z domeny (wiek-zamowienia.js), ta sama
+    // miara spóźnienia co zegar listy i statystyki.
+    terminWysylkiKarty: terminNaKarcie(z, new Date()),
     // PRZ-091: karty produktów na minusie, które zdejmuje to zamówienie. Stany wyłączone / zamówienie anulowane = [].
     // Liczone TU, a nie w trasie GET, żeby każda odsłona karty (także po odmowie formularza) mówiła to samo.
     brakiNaStanie: brakiNaStanieZamowienia(db, z.id),
@@ -675,11 +680,13 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // PRZ-101.04: główne grupy scalonej pokazuje pozycje CAŁEJ grupy (ta sama funkcja, co faktura
     // i wydruki), z numerem zamówienia przy każdej. Tryb „Edytuj” całego panelu edytuje wyłącznie
     // pozycje głównego — formularz zapisuje je do jego wiersza, więc dostaje tylko je.
-    pozycjeKarty: wierszePozycji(edytujWszystkiePozycje ? z : zKartyZGrupa(z)).map((w) => {
+    // PRZ-105: stawka każdej pozycji i podsumowanie netto/VAT/brutto — domyślna z Ustawień, ta sama co faktura.
+    pozycjeKarty: wierszePozycji(edytujWszystkiePozycje ? z : zKartyZGrupa(z), { stawkaDomyslna: czytajStawkeDomyslna(db) }).map((w) => {
       const odnosnik = odnosnikPozycji(z, w, { baseUrl: config.sklepy?.[z.sklep]?.baseUrl ?? null });
       return { ...w, linkProduktu: odnosnik?.adres ?? null, linkProduktuTytul: odnosnik?.tytul ?? null };
     }),
     podsumowaniePozycji: podsumowaniePozycji(edytujWszystkiePozycje ? z : zKartyZGrupa(z)),
+    podsumowanieVat: podsumowanieVatKarty(edytujWszystkiePozycje ? z : zKartyZGrupa(z), { stawkaDomyslna: czytajStawkeDomyslna(db) }),
     // Sekcja „Platnosci": suma wplat wobec kwoty zamowienia. Widok NIE liczy tego sam —
     // ta sama zasada, co przy podsumowaniu pozycji wyzej. Porownanie idzie na liczbach
     // calkowitych w groszach, TA SAMA funkcja co bariera arytmetyczna faktury.
@@ -706,12 +713,13 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // idzie na fakture, wiec czlowiek musi ja zobaczyc, zanim stanie sie faktem.
     daneZGus: dodatki.daneZGus ?? null,
     komunikatGus: dodatki.komunikatGus ?? null,
-    // Stawka DOKUMENTU dla skryptu przeliczajacego netto/brutto w formularzu „Dodaj
-    // pozycje" (widok: data-vat na formularzu). JEDNO zrodlo (domain/wdt.js:
-    // stawkaDokumentu, a pod spodem STAWKA_VAT z domain/vat.js) — widok nie ma prawa
-    // wpisac jej u siebie drugi raz. Nabywca z UE dostaje '0': kwoty zamowienia WDT sa
-    // kwotami netto, wiec podpowiedz netto = brutto mowi prawde o dokumencie.
-    stawkaVat: stawkaDokumentu(daneFaktury(z).nip),
+    // Stawka dla skryptu przeliczajacego netto/brutto w formularzu „Dodaj pozycje" (widok: data-vat)
+    // — JEDNO zrodlo, widok nie ma prawa wpisac jej u siebie drugi raz.
+    // PRZ-105: to stawka DOMYŚLNA z Ustawień (zaznaczona w liście stawek formularza), a nie stawka
+    // dokumentu — WDT jedzie osobno (`wdt` niżej, w widoku `data-wdt`), skrypt liczy wtedy stawką 0:
+    // kwoty zamowienia WDT sa kwotami netto, wiec podpowiedz netto = brutto mowi prawde o dokumencie.
+    stawkaVat: czytajStawkeDomyslna(db),
+    stawkiVat: STAWKI_VAT,
     // Pas WDT na karcie — TA SAMA regula, ktora wybiera stawke pozycji faktury
     // (domain/pozycje-faktury.js), wiec pas i dokument nie moga sie rozjechac.
     wdt: czyNipUe(daneFaktury(z).nip),
@@ -811,6 +819,8 @@ function renderujNowe(
       // wiec dwa otwarte formularze pokaza ten sam numer, a dostana rozne. Tak ma byc —
       // rezerwowanie numerow zostawialoby dziury po kazdym porzuconym formularzu.
       numerPodgladowy: nastepnyNumerReczny(db, new Date().getFullYear()),
+      // PRZ-104: granice pola „Data wysyłki” — te same, które sprawdza zapis (parsujDateWysylki).
+      dzisWysylki: zakresDatyWysylki(dzienWarszawa(new Date().toISOString())),
       dostawy: DOSTAWY,
       // ⚠️ MAPA, NIE JEDNA KWOTA — bo ekran musi umiec podmienic wartosc po zmianie metody
       // w liscie rozwijanej, a panel nie odpytuje serwera przy kazdym ruchu pola. Kwoty jada
@@ -818,7 +828,11 @@ function renderujNowe(
       // w skrypcie rozjechalaby sie z ustawieniem przy pierwszej zmianie.
       kwotyDostawy: kwotyDostawy(wczytajUstawienia(db)),
       platnosci: PLATNOSCI,
-      stawkaVat: STAWKA_VAT,
+      stawkaVat: czytajStawkeDomyslna(db),
+      stawkiVat: STAWKI_VAT,
+      // PRZ-105: nabywca z UE po NIP-ie faktury z formularza — ta sama reguła co dokument; dalej na żywo
+      // przestawia ją public/suma-podglad.js.
+      wdtFormularza: wdtZFormularza(formularz),
       gusDziala: gusDostepny(gus),
       // ⚠️ TYLKO AKTYWNI. Klient wygaszony zostaje w bazie (jego zamowienia sa migawka i maja
       // sie dac wytlumaczyc), ale nie ma prawa kusic na liscie wyboru przy telefonie.
@@ -838,12 +852,10 @@ function renderujNowe(
         fraza: '', cennik: cennikiInstalacji.domyslny, kanaly: cennikiInstalacji.kanaly, nazwy: cennikiInstalacji.nazwy,
         odczyt: odczytKatalogu(db, cennikiInstalacji.domyslny), wyniki: null, dodano: null,
       },
-      // ⚠️ FORMULARZ ROSNIE, a piec wierszy to PODLOGA, nie sufit (21.08.2026). Do tej pory
-      // liczba byla stala, wiec szosta pozycja wstawiona z magazynu zniknelaby po cichu:
-      // tablica w `formularz` bylaby dluzsza niz petla w widoku. Zamowienie telefoniczne
-      // na osiem szablonow jest normalnym zamowieniem, a nie przypadkiem brzegowym.
-      liczbaWierszy: Math.max(5, ...['poz_nazwa', 'poz_ilosc', 'poz_cena_brutto', 'poz_sku']
-        .map((k) => (Array.isArray(formularz[k]) ? formularz[k].length : 0))),
+      // ⚠️ FORMULARZ ROSNIE (21.08.2026): szosta pozycja wstawiona z magazynu nie moze zniknac
+      // przez to, ze petla w widoku jest krotsza od tablicy. Od PRZ-103 (21.10) start = jeden wiersz,
+      // kolejne doklada operator, a skasowane nie maja wracac po przycisku.
+      liczbaWierszy: liczbaWierszyFormularza(formularz),
     });
   }
 function magazynEkranu(req, { wyniki = null, dodano = null } = {}) {

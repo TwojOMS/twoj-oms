@@ -356,12 +356,14 @@ describe('skrypt netto/brutto — stawka VAT z data-vat, nie wpisana w skrypcie'
     expect(atrybut).not.toBeNull();
     expect(atrybut[1]).toBe(STAWKA_VAT);
 
-    // 2. Sam <script> nie ma prawa niesc WLASNEJ, niezaleznej kopii stawki — musi ja
-    // odczytac z dokumentu (`dataset.vat`), a nie miec jej zaszytej jako liczbowy literal.
-    const skrypt = r.body.match(/<script>([\s\S]*?)<\/script>/);
-    expect(skrypt).not.toBeNull();
-    expect(skrypt[1]).toContain('dataset.vat');
-    expect(skrypt[1]).not.toMatch(/var\s+VAT\s*=\s*[0-9.]+\s*;/);
+    // 2. Skrypt nie ma prawa niesc WLASNEJ, niezaleznej kopii stawki — musi ja odczytac
+    // z dokumentu (`dataset.vat`). PRZ-105: skrypt jest plikiem (public/cena-netto.js), wiec
+    // sprawdzamy, ze strona go laduje, i czytamy TEN plik — bez liczbowego literalu stawki.
+    expect(r.body).toMatch(/<script type="module" src="\/public\/cena-netto\.js[^"]*"><\/script>/);
+    const skrypt = readFileSync('src/public/cena-netto.js', 'utf8');
+    expect(skrypt).toMatch(/dataset\??\.vat/);
+    const kod = skrypt.replace(/\/\/.*$/gmu, '');
+    expect(kod).not.toMatch(/\b(23|1\.23|0\.23)\b/);
   });
 
   // Formularz zbiorczej edycji ma cena_brutto, ale NIE ma cena_netto (patrz komentarz w

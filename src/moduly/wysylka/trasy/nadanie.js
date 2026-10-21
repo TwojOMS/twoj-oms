@@ -52,6 +52,7 @@ import { parsujNadpisanieKwotyPobrania } from '../../../domena/pobranie-nadania.
 import { wierszePozycji } from '../../../domena/tabela-pozycji.js';
 
 import { odnosnikPozycji } from '../../../domena/link-pozycji.js';
+import { czytajStawkeDomyslna } from '../../faktury/db/stawka-vat.js';
 
 import { ktoKlikal } from '../../zamowienia/lista.js';
 
@@ -120,7 +121,7 @@ app.post('/zamowienia/masowe/nadaj-podglad', async (req, reply) => {
         // Decyzja właściciela 14.10 (po obejrzeniu ekranu): zamiast odbiorcy — CO jedzie w paczce,
         // bo rozmiar wybiera się pod zawartość. TE SAME wiersze, co na karcie i ekranie nadania
         // (wierszePozycji), bez wysyłki i sumy; SKU zaślepki oferty wygaszone jak tam.
-        produkty: wierszePozycji(zamowienieZGrupa(db, z)).filter((w) => !w.wysylka && !w.podsumowanie)
+        produkty: wierszePozycji(zamowienieZGrupa(db, z), { stawkaDomyslna: czytajStawkeDomyslna(db) }).filter((w) => !w.wysylka && !w.podsumowanie)
           .map((w) => ({ ilosc: w.ilosc, nazwa: w.nazwa, sku: w.skuDoPokazania })),
         droga,
         deliveryMethodId,
@@ -469,7 +470,8 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
       // `odnosnikPozycji(z, w, …)` (dolozenie Allegro), a git scalil to BEZ KONFLIKTU —
       // zostal import z link-pozycji.js i wywolanie skasowanej funkcji tutaj. Jesli kiedys
       // trzeba bedzie to zmienic po raz drugi, zmienia sie OBA miejsca naraz.
-      pozycjeKarty: wierszePozycji(zamowienieZGrupa(db, z)).map((w) => {
+      // PRZ-105: netto pozycji stawką domyślną z Ustawień — to samo, co pokazuje karta.
+      pozycjeKarty: wierszePozycji(zamowienieZGrupa(db, z), { stawkaDomyslna: czytajStawkeDomyslna(db) }).map((w) => {
         const odnosnik = odnosnikPozycji(z, w, { baseUrl: config.sklepy?.[z.sklep]?.baseUrl ?? null });
         return { ...w, linkProduktu: odnosnik?.adres ?? null, linkProduktuTytul: odnosnik?.tytul ?? null };
       }),

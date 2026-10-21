@@ -21,6 +21,7 @@
 <% const pozProduktId = jakoTablica(formularz.poz_produkt_id); %>
 <% const pozWariantId = jakoTablica(formularz.poz_wariant_id); %>
 <% const pozCenaKatalogowa = jakoTablica(formularz.poz_cena_katalogowa); %>
+<% const pozVat = jakoTablica(formularz.poz_vat); %>
 <%# Dane z GUS-u NADPISUJA to, co operator wpisal, ale TYLKO W POLACH — dokladnie jak na
     karcie (zamowienie.ejs, sekcja „Dane do faktury”): operator ma zobaczyc nazwe urzedowa,
     zanim stanie sie faktem (REGON potrafi oddac nazwe inna niz uzgodniona z klientem).
@@ -55,13 +56,14 @@
 
 <p class="pasek-uwaga">
   <b>Żadne pole nie jest obowiązkowe.</b>
-  Czego nie wpiszesz przy telefonie, to zostanie na karcie puste do uzupełnienia później.
+  Puste pola można uzupełnić później.
 </p>
 
 <%# JEDEN formularz obejmuje WSZYSTKO ponizej (trzy kolumny + pozycje + stopka) — dwa
     zagniezdzone formularze sa niepoprawnym HTML-em, wiec „Pobierz z GUS” nizej wysyla
     TEN SAM formularz pod inny adres przez `formaction`, zamiast byc osobnym formularzem. %>
-<form method="post" action="/zamowienia/nowe" data-vat="<%= stawkaVat %>">
+<%# PRZ-105: data-vat = stawka DOMYŚLNA z Ustawień (nowy wiersz), data-wdt — nabywca z UE (liczy się wtedy 0%). %>
+<form method="post" action="/zamowienia/nowe" data-vat="<%= stawkaVat %>" data-wdt="<%= wdtFormularza ? '1' : '0' %>">
 
 <%# ⚠️ TEN PRZYCISK MUSI STAC PIERWSZY I DLATEGO WYGLADA NA ZBEDNY (ustalenie recenzji
     2026-08-01). Enter w dowolnym polu wysyla formularz PRZYCISKIEM DOMYSLNYM, a domyslnym
@@ -193,6 +195,11 @@
             z tym, co operator naprawde mial — podstawienie kwoty drugi raz przywracaloby
             wartosc, ktora wlasnie skasowal. %>
         <label>Koszt dostawy (brutto)<input name="koszt_dostawy_brutto" value="<%= formularz.koszt_dostawy_brutto === undefined ? kwotyDostawy[formularz.dostawa || 'dpd'] : wart(formularz.koszt_dostawy_brutto) %>" inputmode="decimal" placeholder="0,00"></label>
+        <%# PRZ-104: „najpozniej do” — zastepuje standardowy termin (zegar listy, „Po terminie”, statystyki). %>
+        <%# Granice min/max to tylko podpowiedz przegladarki; rozstrzyga parsujDateWysylki przy zapisie. %>
+        <label>Data wysyłki <span class="wyjasnienie">puste = standardowy czas</span>
+          <input type="date" name="data_wysylki" value="<%= wart(formularz.data_wysylki) %>" min="<%= dzisWysylki.od %>" max="<%= dzisWysylki.do %>">
+        </label>
         <label>Rodzaj płatności
           <select name="platnosc">
             <% Object.keys(platnosci).forEach(function (klucz) { %>
@@ -259,10 +266,10 @@
     przypadkow i wymaga IDENTYCZNEGO wyniku. Rozjazd wywala test, nie fakture.
     ⚠️ Podglad NIE obejmuje oplaty za obsluge klienta rozliczanego zbiorczo — decyduje o niej
     NIP z konfiguracji SERWERA. Bez ostrzezenia na ekranie, swiadoma decyzja wlasciciela. %>
-<section class="panel">
+<section class="panel" id="pozycje">
   <div class="panel-glowa">
     <h2>Pozycje</h2>
-    <span class="wyjasnienie">wpisz netto albo brutto — drugie policzy się samo (VAT <%= stawkaVat %>%)</span>
+    <span class="wyjasnienie">wpisz netto albo brutto — drugie policzy się samo według stawki VAT wiersza</span>
   </div>
   <div class="panel-cialo">
     <table class="tab-pozycje" data-podglad-kwoty>
@@ -272,18 +279,22 @@
           <th>Nazwa</th>
           <th>SKU</th>
           <th class="liczba">Cena netto</th>
+          <th class="liczba kol-vat">Stawka VAT</th>
           <th class="liczba">Cena brutto</th>
           <th class="liczba">Suma</th>
+          <th class="kol-usun"><span class="poza-okiem">Usuń wiersz</span></th>
         </tr>
       </thead>
       <tbody>
-        <%# Stala liczba wierszy zamiast „+ Dodaj wiersz”: panel nie ma JavaScriptu poza
-            przeliczaniem netto/brutto, a dokladanie wierszy bez przeladowania strony by go
-            wymagalo. `liczbaWierszy` starcza na typowe zamowienie telefoniczne — kolejna
-            pozycja idzie na karte, juz po zapisaniu. %>
+        <%# PRZ-103 (21.10.2026): wiersze DOKLADA i KASUJE operator. „+ Dodaj wiersz” i „Usun”
+            to przyciski tego samego formularza (`formaction`, jak „Pobierz z GUS”) — bez
+            JavaScriptu odsylaja formularz i wracaja z wierszem wiecej albo mniej, nic nie
+            zapisujac. Z JavaScriptem public/pozycje-wiersze.js robi to samo bez przeladowania.
+            ⚠️ Kazdy wiersz MUSI miec wszystkie osiem pol `poz_*` (takze ukryte) — serwer czyta
+            je jako rownolegle tablice, a wiersz bez jednego pola przesunalby reszte. %>
         <% for (let i = 0; i < liczbaWierszy; i++) { %>
-          <tr>
-            <td><input class="pole-ilosc" name="poz_ilosc" value="<%= wart(pozIlosc[i]) %>" placeholder="1"></td>
+          <tr data-wiersz-pozycji>
+            <td><input class="pole-ilosc" type="number" min="1" step="1" inputmode="numeric" name="poz_ilosc" value="<%= pozIlosc[i] === undefined ? '1' : wart(pozIlosc[i]) %>"></td>
             <td><input name="poz_nazwa" value="<%= wart(pozNazwa[i]) %>" placeholder="—"></td>
             <td><input name="poz_sku" value="<%= wart(pozSku[i]) %>" placeholder="opcjonalne">
               <%# ⚠️ TOZSAMOSC PRODUKTU jedzie UKRYTA i wypelnia ja wylacznie „dodaj %>
@@ -297,9 +308,17 @@
               <input type="hidden" name="poz_cena_katalogowa" value="<%= wart(pozCenaKatalogowa[i]) %>">
             </td>
             <td><input class="pole-cena cena-netto" name="poz_cena_netto" value="<%= wart(pozCenaNetto[i]) %>" placeholder="netto" inputmode="decimal"></td>
+            <%# PRZ-105: stawka między netto a brutto (prośba właściciela 21.10); pusta w formularzu = domyślna. %>
+            <% const stawkaW = stawkiVat.includes(String(pozVat[i] ?? '')) ? String(pozVat[i]) : stawkaVat; %>
+            <td class="kol-vat"><select name="poz_vat" aria-label="Stawka VAT"><% stawkiVat.forEach(function (s) { %><option value="<%= s %>"<%= s === stawkaW ? ' selected' : '' %>><%= s %>%</option><% }); %></select></td>
             <td><input class="pole-cena" name="poz_cena_brutto" value="<%= wart(pozCenaBrutto[i]) %>" placeholder="brutto"></td>
             <%# Wypelnia skrypt podgladu; pusta przy wierszu pustym i przy niepelnym. %>
             <td class="liczba" data-suma-linii></td>
+            <td class="kol-usun">
+              <button class="btn btn--maly" formaction="/zamowienia/nowe/wiersz/usun#pozycje"
+                      name="usun_wiersz" value="<%= i %>" data-usun-wiersz
+                      title="Usuń ten wiersz. Nic nie zapisze." aria-label="Usuń wiersz <%= i + 1 %>">×</button>
+            </td>
           </tr>
         <% } %>
       </tbody>
@@ -307,17 +326,41 @@
           pozycji by je uznal. Myslnik zamiast liczby znaczy „wiersz zaczety, ale niepelny” —
           kwota mniejsza o pominiety wiersz wygladalaby na prawdziwa. %>
       <tfoot>
+        <%# PRZ-106 (właściciel 21.10: „dodaj wiersz przenieś pod wiersze, nad RAZEM”). W stopce, nie
+            w <tbody> — skrypty chodzą po `tr[data-wiersz-pozycji]`, a ten wiersz pozycją nie jest. %>
+        <tr class="wiersz-dodaj">
+          <td colspan="8">
+            <button class="btn btn--maly" formaction="/zamowienia/nowe/wiersz/dodaj#pozycje" data-dodaj-wiersz
+                    title="Dołoży pusty wiersz pozycji. Nic nie zapisze.">+ Dodaj wiersz</button>
+            <span class="wyjasnienie">Pusty wiersz jest pomijany przy zapisie.</span>
+          </td>
+        </tr>
+        <%# PRZ-105 (właściciel 21.10: „Dodaj wiersz z dostawą”): dostawa z pola „Koszt dostawy (brutto)” w Szczegółach, %>
+        <%# z netto i stawką — tak jak linia „Dostawa” na fakturze. Liczby wypełnia public/suma-podglad.js. %>
+        <tr class="wiersz-dostawy" data-wiersz-dostawy>
+          <td class="kol-ilosc"></td>
+          <td>Dostawa <span class="wyjasnienie">koszt z pola „Koszt dostawy”</span></td>
+          <td></td>
+          <td class="liczba" data-dostawa-netto>—</td>
+          <td class="liczba kol-vat" data-dostawa-stawka><%= wdtFormularza ? '0% — WDT' : `${stawkaVat}%` %></td>
+          <td class="liczba" data-dostawa-brutto>—</td>
+          <td class="liczba" data-dostawa-suma>—</td>
+          <td></td>
+        </tr>
         <tr class="wiersz-razem">
           <td class="kol-ilosc"></td>
           <td>Razem <span class="wyjasnienie">z dostawą</span></td>
           <td></td>
           <td class="liczba"></td>
+          <td class="liczba kol-vat"></td>
           <td class="liczba"></td>
           <td class="liczba" data-razem>—</td>
+          <td></td>
         </tr>
       </tfoot>
     </table>
-    <p class="wyjasnienie">Pusty wiersz jest pomijany. Kolejne pozycje dopiszesz na karcie, po zapisaniu.</p>
+    <%# PRZ-105: Razem netto · VAT · Razem brutto (właściciel 21.10: „Brak sumy netto”) — regułą faktury, na żywo. %>
+    <%- include('_podsumowanie-vat.ejs', { p: { nettoZl: null, vatZl: null, bruttoZl: null, wdt: wdtFormularza, zeroKrajowe: false, blad: null } }) %>
 
     <%# ——— DODAJ Z MAGAZYNU (21.08.2026) ———————————————————————————————————————————— %>
     <%# ⚠️ TE PRZYCISKI SA CZESCIA WIELKIEGO FORMULARZA EKRANU (zagniezdzanie formularzy %>
@@ -338,8 +381,12 @@
         <%# %>
         <%# ⚠️ TO JEST ODCZYT, wiec GET: ochrona CSRF dotyczy metod zmieniajacych stan, %>
         <%# a szukanie niczego nie zmienia. `hx-include` doklada wybrany cennik. %>
+        <%# PRZ-103: po „Dodaj” kursor wraca do tego pola (`autofocus`, skrypt zaznacza fraze), %>
+        <%# zeby nastepny produkt wpisac od razu, bez siegania po mysz. %>
+        <%# ⚠️ Enter w tym polu SZUKA, a nie zaklada zamowienia (public/pozycje-wiersze.js) — %>
+        <%# domyslny przycisk formularza to ukryte „Zaloz zamowienie” na gorze. %>
         <label class="magazyn-pole">Dodaj z magazynu
-          <input name="magazyn" value="<%= wart(magazyn.fraza) %>" placeholder="nazwa albo SKU, np. „pieszy 70”"
+          <input name="magazyn" value="<%= wart(magazyn.fraza) %>" placeholder="nazwa albo SKU, np. „lampa”"<%= magazyn.dodano ? ' autofocus' : '' %>
                  hx-get="/zamowienia/nowe/magazyn/wyniki"
                  hx-trigger="keyup changed delay:300ms, search"
                  hx-include="[name='cennik']"
@@ -364,7 +411,7 @@
         </label>
         <%# ⚠️ PRZYCISK ZOSTAJE. Bez htmx (wylaczony JavaScript, stara przegladarka) ekran %>
         <%# ma dzialac dokladnie jak dotad — zywe szukanie jest ULATWIENIEM, nie warunkiem. %>
-        <button class="btn" formaction="/zamowienia/nowe/magazyn#magazyn">Szukaj</button>
+        <button class="btn" formaction="/zamowienia/nowe/magazyn#magazyn" data-szukaj-magazyn>Szukaj</button>
         <span class="magazyn-praca" aria-hidden="true">szukam…</span>
       </div>
 
@@ -397,4 +444,5 @@
     `type="module"` z tego samego powodu (plik ma `export`) i przy okazji odracza wykonanie
     do konca parsowania strony — nasluchy sa wiec podpiete, gdy tabela juz istnieje. %>
 <script type="module" src="<%= zasob('suma-podglad.js') %>"></script>
+<script type="module" src="<%= zasob('pozycje-wiersze.js') %>"></script>
 <%- include('_skrypt-koszt-dostawy.ejs', { kwotyDostawy }) %>

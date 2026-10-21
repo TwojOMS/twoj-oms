@@ -4,7 +4,16 @@ import { parsujKosztDostawy } from './koszt-dostawy.js';
 import { grosze, zl } from './kwoty.js';
 import { parsujRabat } from './rabat.js';
 import { parsujTerminZamowienia } from './termin-platnosci.js';
+import { parsujDateWysylki } from './termin-wysylki.js';
+import { dzienWarszawa } from './format-daty.js';
 import { jakoTablica, parsujNowaPozycje } from './pozycje-reczne.js';
+import { STAWKA_VAT, nettoZBruttoDoPokazania } from './vat.js';
+import { czyNipUe } from './wdt.js';
+import { bezEtykietyNip } from './dane-faktury.js';
+
+// PRZ-105: nabywca z UE po NIP-ie z formularza — ta sama droga, którą NIP idzie na dokument (daneFaktury zdejmuje
+// etykietę „NIP:”), inaczej ekran liczyłby 23%, a faktura poszłaby z 0%.
+export const wdtZFormularza = (f) => czyNipUe(bezEtykietyNip(f?.f_nip));
 // Dzielenie imienia i nazwiska NIE jest zdefiniowane tutaj — mieszka we wspólnym module
 // src/domain/nazwa-osoby.js, bo panel (src/domain/oms-order.js) musi używać dokładnie tej
 // samej reguły podziału co ten ekran. Uzasadnienie patrz komentarz przy definicji.
@@ -106,7 +115,15 @@ const KOLUMNY_POZYCJI = ['nazwa', 'sku', 'ilosc', 'cena_netto', 'cena_brutto'];
 // rabatu (domain/rabat.js). Wiersz, w ktorym zostala sama, jest tak samo pusty jak kazdy inny.
 const KOLUMNY_TOZSAMOSCI = ['produkt_id', 'wariant_id', 'cena_katalogowa'];
 
-const pusteWiersz = (w) => KOLUMNY_POZYCJI.every((k) => String(w[k] ?? '').trim() === '');
+// PRZ-105: stawka VAT wiersza (lista 23/8/5/0). Też OBOK `KOLUMNY_POZYCJI`: lista ma zawsze wybraną wartość,
+// więc liczona do pustości robiłaby z każdego nietkniętego wiersza wiersz „zaczęty”.
+const KOLUMNY_STAWKI = ['vat'];
+
+// ⚠️ ILOŚĆ NIE CZYNI WIERSZA NIEPUSTYM (PRZ-106, 21.10.2026): nowy wiersz ma ilość 1 od razu
+// (prośba właściciela — podpowiedź „1” wyglądała na wpisaną wartość), więc nietknięty wiersz z samą
+// ilością musi być pomijany; inaczej zamówienie bez pozycji odmawiałoby zapisu. Ta sama reguła
+// w przeglądarce: public/suma-podglad.js, `pustyWiersz` — pilnuje tego tests/domena/suma-podglad.test.js.
+const pusteWiersz = (w) => KOLUMNY_POZYCJI.filter((k) => k !== 'ilosc').every((k) => String(w[k] ?? '').trim() === '');
 
 // Identyfikatory z ukrytych pol formularza. `produkt_id` jest kolumna INTEGER, `wariant_id`
 // TEXT — patrz schema.sql. Smiec zamiast liczby idzie jako BRAK, a nie jako NaN: pozycja ma
@@ -153,15 +170,19 @@ function cenaKatalogowaWiersza(surowa) {
  * nowy na końcu. Formularz rośnie razem z zamówieniem — pięć wierszy to była podpowiedź
  * dla operatora, a nie granica.
  */
-export function wstawPozycjeDoFormularza(formularz = {}, pozycja) {
+export function wstawPozycjeDoFormularza(formularz = {}, pozycja, { stawkaDomyslna = STAWKA_VAT } = {}) {
+  // PRZ-105 (uwaga właściciela 21.10: „Jeżeli dodam produkt z magazynu to nie ma ceny netto”): netto jest
+  // POKAZANE, liczone stawką wiersza (przy NIP-ie z UE stawką 0 — netto = brutto). Brutto zostaje
+  // wartością przechowywaną: parser bierze brutto, gdy jest, więc netto niczego nie nadpisze.
+  const stawka = String(stawkaDomyslna);
+  const netto = nettoZBruttoDoPokazania(pozycja.cena_brutto, wdtZFormularza(formularz) ? '0' : stawka);
   const pola = {
     poz_nazwa: pozycja.nazwa,
     poz_sku: pozycja.sku ?? '',
     poz_ilosc: String(pozycja.ilosc),
-    // Netto zostaje PUSTE świadomie: brutto jest wartością przechowywaną, a wpisane obok
-    // netto ze sklepu tylko kusiłoby, żeby je poprawić i rozjechać z ceną, którą klient płaci.
-    poz_cena_netto: '',
+    poz_cena_netto: netto ?? '',
     poz_cena_brutto: pozycja.cena_brutto,
+    poz_vat: stawka,
     poz_produkt_id: pozycja.produkt_id == null ? '' : String(pozycja.produkt_id),
     poz_wariant_id: pozycja.wariant_id ?? '',
     // Cena sprzed rabatu jedzie RAZEM z pozycja i tak samo ukryta — bez niej rabat przetrwalby
@@ -192,6 +213,62 @@ export function wstawPozycjeDoFormularza(formularz = {}, pozycja) {
 }
 
 /**
+ * Pola jednego wiersza pozycji na ekranie zakładania — razem z ukrytymi (tożsamość produktu,
+ * cena sprzed rabatu). PRZ-103: dodanie i skasowanie wiersza dzieje się na WSZYSTKICH naraz.
+ */
+export const POLA_WIERSZA_POZYCJI = Object.freeze([
+  'poz_nazwa', 'poz_sku', 'poz_ilosc', 'poz_cena_netto', 'poz_cena_brutto',
+  'poz_produkt_id', 'poz_wariant_id', 'poz_cena_katalogowa', 'poz_vat',
+]);
+
+// Prośba właściciela 21.10 („zrób 1 wiersz na start”) — kolejne dokłada „+ Dodaj wiersz”. Do PRZ-103 było pięć.
+const WIERSZE_NA_START = 1;
+
+/**
+ * Ile wierszy pozycji pokazać. Pierwsze wejście (formularz bez pól pozycji) — jeden pusty.
+ * Formularz, który wrócił z przycisku ekranu, ma tyle wierszy, ile przyszło (co najmniej
+ * jeden): ⚠️ stała podłoga przy KAŻDYM renderze dopełniałaby wiersze, które operator
+ * właśnie skasował — wracałyby po „Pobierz z GUS” albo „Dodaj z magazynu”.
+ */
+export function liczbaWierszyFormularza(formularz = {}) {
+  const obecne = POLA_WIERSZA_POZYCJI.filter((k) => formularz[k] !== undefined);
+  if (!obecne.length) return WIERSZE_NA_START;
+  return Math.max(1, ...obecne.map((k) => jakoTablica(formularz[k]).length));
+}
+
+// Wszystkie tablice wiersza wyrównane do jednej długości — dziura (tablica krótsza od innych)
+// staje się pustym napisem, inaczej usunięcie po indeksie przesunęłoby ją względem reszty.
+function tabliceWierszy(formularz, ile) {
+  return Object.fromEntries(POLA_WIERSZA_POZYCJI.map((k) => {
+    const t = [...jakoTablica(formularz[k])].map((v) => (v == null ? '' : v));
+    while (t.length < ile) t.push('');
+    return [k, t];
+  }));
+}
+
+/** „+ Dodaj wiersz” bez JavaScriptu (PRZ-103): jeden pusty wiersz na końcu. Nic nie zapisuje. */
+export function dodajWierszFormularza(formularz = {}) {
+  const tablice = tabliceWierszy(formularz, liczbaWierszyFormularza(formularz));
+  // Ilość nowego wiersza to 1 (PRZ-106) — ta sama, którą widok wpisuje przy pierwszym wejściu.
+  for (const [k, t] of Object.entries(tablice)) t.push(k === 'poz_ilosc' ? '1' : '');
+  return { ...formularz, ...tablice };
+}
+
+/**
+ * „Usuń” przy wierszu bez JavaScriptu (PRZ-103). ⚠️ Wiersz znika ze WSZYSTKICH tablic naraz —
+ * skasowany tylko w nazwach przesunąłby ceny i produkty o wiersz. Numer spoza tabeli
+ * (podmieniony w HTML-u, stary formularz) nie kasuje niczego.
+ */
+export function usunWierszFormularza(formularz = {}, nr) {
+  const ile = liczbaWierszyFormularza(formularz);
+  const indeks = /^\d+$/.test(String(nr ?? '')) ? Number(nr) : -1;
+  if (indeks < 0 || indeks >= ile) return formularz;
+  const tablice = tabliceWierszy(formularz, ile);
+  for (const t of Object.values(tablice)) t.splice(indeks, 1);
+  return { ...formularz, ...tablice };
+}
+
+/**
  * Pozycje z pięciu wierszy formularza (równoległe tablice `poz_nazwa[]`, `poz_ilosc[]`...
  * — `@fastify/formbody` nie parsuje zagnieżdżonych nawiasów, patrz parsujHurtPozycji).
  *
@@ -200,8 +277,10 @@ export function wstawPozycjeDoFormularza(formularz = {}, pozycja) {
  * nazwę przy telefonie i musi się dowiedzieć, że brakuje ceny. Ciche pominięcie zapisałoby
  * zamówienie bez pozycji, za którą klient ma zapłacić.
  */
-export function parsujPozycjeFormularza(body) {
-  const wszystkie = [...KOLUMNY_POZYCJI, ...KOLUMNY_TOZSAMOSCI];
+export function parsujPozycjeFormularza(body, { stawkaDomyslna = STAWKA_VAT } = {}) {
+  const wszystkie = [...KOLUMNY_POZYCJI, ...KOLUMNY_TOZSAMOSCI, ...KOLUMNY_STAWKI];
+  // PRZ-105: nabywca z UE (NIP faktury z formularza) — netto przelicza się stawką 0, jak policzy dokument.
+  const wdt = wdtZFormularza(body);
   const kolumny = Object.fromEntries(
     wszystkie.map((k) => [k, jakoTablica(body?.[`poz_${k}`])]),
   );
@@ -221,7 +300,7 @@ export function parsujPozycjeFormularza(body) {
       //
       // Tożsamość produktu dokładamy OBOK jej wyniku, a nie do środka: `parsujNowaPozycje`
       // rozstrzyga o nazwie, ilości i pieniądzach — i tylko o tym.
-      pozycje.push({ ...parsujNowaPozycje(wiersz), ...tozsamoscWiersza(wiersz) });
+      pozycje.push({ ...parsujNowaPozycje(wiersz, { stawkaDomyslna, wdt }), ...tozsamoscWiersza(wiersz) });
     } catch (e) {
       throw bladOperatora(`Wiersz ${i + 1}: ${e.message}`);
     }
@@ -269,7 +348,10 @@ export function skopiujFaktureDoWysylki(body = {}) {
  * jakiego oczekują adresOdbiorcy() i daneFaktury() — zamówienie ręczne nie ma sklepu, więc
  * to, co tu zapiszemy, JEST dla panelu daną źródłową.
  */
-export function parsujNoweZamowienie(body = {}) {
+// PRZ-105: `stawkaDomyslna` (Ustawienia → Firma) podaje trasa.
+export function parsujNoweZamowienie(body = {}, {
+  dzis = dzienWarszawa(new Date().toISOString()), stawkaDomyslna = STAWKA_VAT,
+} = {}) {
   const dostawaWybor = String(body?.dostawa ?? 'dpd');
   const platnosc = String(body?.platnosc ?? 'przelew');
   const { metoda: metodaWysylki, pobranie } = metodaWysylkiZWyboru(dostawaWybor, platnosc);
@@ -363,7 +445,10 @@ export function parsujNoweZamowienie(body = {}) {
     // pozycji po zmianie rabatu. Sam zapis kolumny NICZEGO nie przelicza; ceny licza sie
     // przy wstawianiu pozycji z magazynu (domain/magazyn-do-zamowienia.js).
     rabat_procent: parsujRabat(body?.rabat_procent),
+    // PRZ-104: „najpóźniej do” — puste = standardowy termin (domena/termin-wysylki.js). Ta sama
+    // walidacja, co pole na karcie zamówienia: od dziś do roku naprzód.
+    termin_wysylki_reczny: parsujDateWysylki(body?.data_wysylki, dzis),
     nadpisaniaFaktury,
-    pozycje: parsujPozycjeFormularza(body),
+    pozycje: parsujPozycjeFormularza(body, { stawkaDomyslna }),
   };
 }

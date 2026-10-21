@@ -43,7 +43,7 @@
                   <input type="hidden" name="fraza" value="<%= magazyn.fraza %>">
                   <%# ⚠️ CENY TU NIE MA I BYC NIE MOZE — trasa czyta ja z lustra %>
                   <%# po (kanal, produkt, wariant). Pole w HTML-u da sie podmienic. %>
-                  <input class="pole-ilosc" name="ilosc" value="1" aria-label="ilość">
+                  <input class="pole-ilosc" type="number" min="1" step="1" inputmode="numeric" name="ilosc" value="1" aria-label="ilość">
                   <button class="btn btn--maly">Dodaj</button>
                 </form>
               <% } else { %>

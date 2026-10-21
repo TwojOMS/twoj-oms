@@ -1,6 +1,7 @@
 import { bladOperatora } from './bledy.js';
 import { parsujKosztDostawy } from './koszt-dostawy.js';
 import { parsujNowaPozycje } from './pozycje-reczne.js';
+import { czyNipUe } from './wdt.js';
 import { metodaWysylkiZWyboru, PLATNOSCI } from './nowe-zamowienie.js';
 
 /**
@@ -18,14 +19,15 @@ import { metodaWysylkiZWyboru, PLATNOSCI } from './nowe-zamowienie.js';
  * (domain/nowe-zamowienie.js): odmowa w polowie zostawilaby zamowienie z nadanym numerem,
  * ktorego nie da sie zwolnic, a karta panelu dostalaby blad i zalozylaby drugie.
  */
-export function parsujZamowienieZKarty(body = {}) {
+// PRZ-105: `stawkaDomyslna` (z Ustawień) podaje trasa — pozycje bez pola `vat` dostają ją, nie wbudowane 23.
+export function parsujZamowienieZKarty(body = {}, { stawkaDomyslna } = {}) {
   const kartaId = String(body?.kartaId ?? '').trim();
   if (!kartaId) throw bladOperatora('Żądanie bez identyfikatora karty — nie ma czego oznaczyć.');
   const { metoda, pobranie } = metodaWysylkiZWyboru('dpd', 'przelew');
 
   const wejscie = Array.isArray(body?.pozycje) ? body.pozycje : [];
   const pozycje = wejscie.map((p, i) => {
-    try { return parsujNowaPozycje(p); }
+    try { return parsujNowaPozycje(p, { stawkaDomyslna, wdt: czyNipUe(body?.nip) }); }
     catch (e) { throw bladOperatora(`Pozycja ${i + 1}: ${e.message}`); }
   });
 

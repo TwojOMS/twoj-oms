@@ -7279,13 +7279,6 @@
       "call": "wczytajRaportyDlaKanalow(env, definicje)"
     },
     {
-      "path": "src/moduly/rdzen/modul.ts",
-      "line": 13,
-      "expression": "env",
-      "callee": "wczytajSprzedawce",
-      "call": "wczytajSprzedawce(env)"
-    },
-    {
       "path": "src/moduly/faktury/modul.ts",
       "line": 44,
       "expression": "env",
@@ -7333,6 +7326,13 @@
       "expression": "env",
       "callee": "odstep",
       "call": "odstep(env, 'OMS_PODJAZDY_ODSTEP_MS', 600000)"
+    },
+    {
+      "path": "src/moduly/rdzen/modul.ts",
+      "line": 14,
+      "expression": "env",
+      "callee": "wczytajSprzedawce",
+      "call": "wczytajSprzedawce(env)"
     }
   ],
   "prefiksy": {

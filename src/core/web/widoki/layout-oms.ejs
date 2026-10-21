@@ -398,6 +398,9 @@
        układu 50/50 rozpychała sekcję z 180 na 386 px (zmierzone na renderze). */
     .metadane div.skad { display: block; }
     .metadane div.skad > span:first-child { display: block; font-size: .78rem; }
+    /* PRZ-104: „Termin wysyłki” — etykieta w jednej linii, data po prawej, objaśnienie i ocena pod nią. */
+    .metadane div.termin-wysylki > span:first-child { white-space: nowrap; }
+    .metadane div.termin-wysylki > span:last-child { text-align: right; }
     .wiersz-szczegoly-inline { font-size: .8rem; color: var(--tekst-przygaszony); font-weight: 400; }
     tr.po-terminie td { background: var(--blad-tlo-jasne); }
     tr.po-terminie td:first-child { box-shadow: inset 4px 0 0 var(--blad-tekst); }
@@ -1040,6 +1043,17 @@
     .kol-ilosc { width: 3.6rem; }
     .kol-cena { width: 8.5rem; }
     .kol-suma { width: 7.5rem; }
+    /* PRZ-105: stawka VAT pozycji i podsumowanie netto / VAT / brutto pod tabelą. */
+    .kol-vat { width: 5.6rem; }
+    .kol-vat select { font: inherit; font-size: .9rem; padding: .3rem .2rem; border: 1px solid var(--ramka-pola); border-radius: .3rem; width: 100%; }
+    .podsumowanie-vat { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .5rem 2rem; margin: .75rem 0 0; padding: .6rem .5rem 0; border-top: 1px solid var(--ramka); font-variant-numeric: tabular-nums; }
+    .podsumowanie-vat > div { text-align: right; }
+    .podsumowanie-vat dt { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--tekst-przygaszony); }
+    .podsumowanie-vat dd { margin: .15rem 0 0; font-size: 1.05rem; font-weight: 600; white-space: nowrap; }
+    .podsumowanie-vat .pv-brutto dd { font-size: 1.35rem; font-weight: 700; }
+    .podsumowanie-vat .pv-wdt { text-transform: none; letter-spacing: 0; }
+    .pv-zero { margin-top: .5rem; }
+    .pv-zero[hidden], .pv-wdt[hidden] { display: none; }
     .ilosc { font-size: 1.15rem; font-weight: 700; white-space: nowrap; }
     .pole-ilosc { text-align: center; font-weight: 700; }
     /* PRZ-074: pole ilosci ma strzalki — w 3,6 rem cyfra chowala sie pod nimi. */
@@ -1047,6 +1061,12 @@
     .nowa-pozycja .pole-ilosc { width: 4.6rem; }
     .pole-cena { text-align: right; }
     .kol-akcje { width: 10rem; }
+    /* PRZ-103: kolumna „×” przy wierszu pozycji na ekranie zakladania i przycisk „+ Dodaj wiersz”. */
+    .kol-usun { width: 2.6rem; text-align: center; }
+    .tab-pozycje[data-podglad-kwoty] .kol-ilosc { width: 5.2rem; }
+    /* PRZ-106: „+ Dodaj wiersz” w stopce tabeli, nad „Razem” — bez tła wiersza sumy. */
+    .wiersz-dodaj td { padding-top: .5rem; padding-bottom: .5rem; }
+    .wiersz-dodaj .wyjasnienie { margin-left: .75rem; }
     /* `tabular-nums` — cyfry o STALEJ szerokosci (przebudowa karty 2026-08-07). Bez tego
        „1" jest wezsza od „8" i kolumna kwot faluje z wiersza na wiersz, przez co suma nie
        stoi pod skladnikami. Wlasnie to widac bylo jako „tabela sie rozjezdza" najmocniej. */
@@ -1054,7 +1074,7 @@
     .sku { font-size: .78rem; color: var(--tekst-przygaszony); }
     .nowa-pozycja { display: flex; flex-wrap: wrap; gap: .5rem; align-items: flex-end; margin-top: .9rem; padding-top: .9rem; border-top: 1px dashed var(--ramka); }
     .nowa-pozycja label { display: flex; flex-direction: column; gap: .2rem; font-size: .8rem; color: var(--tekst-przygaszony); }
-    .nowa-pozycja input { font: inherit; font-size: .9rem; padding: .35rem .5rem; border: 1px solid var(--ramka-pola); border-radius: .3rem; }
+    .nowa-pozycja input, .nowa-pozycja select { font: inherit; font-size: .9rem; padding: .35rem .5rem; border: 1px solid var(--ramka-pola); border-radius: .3rem; }
 
     /* Paczka — podkarta w sekcji Przesylka. Naglowek „Paczka N" pozwala powiedziec przez */
     /* telefon, o ktora paczke chodzi. */
@@ -1116,7 +1136,8 @@
        wiec ma byc widoczny osobno, a nie zlany z nazwa. */
     .magazyn-rozmiar { margin-left: .4rem; padding: .05rem .35rem; border-radius: .25rem; background: var(--marka-jasna); color: var(--marka-ramka); font-size: .78rem; }
     .formularz-w-linii { display: flex; gap: .4rem; align-items: center; justify-content: flex-end; }
-    .formularz-w-linii .pole-ilosc { width: 3.2rem; }
+    /* PRZ-103: ilosc przy wyniku ma strzalki (type=number) — w 3,2 rem cyfra chowala sie pod nimi (lekcja PRZ-074). */
+    .formularz-w-linii .pole-ilosc { width: 4.6rem; }
 
     /* Pasek „Staly klient" (21.08.2026). Ten sam ksztalt, co pasek magazynu — bo to ten sam
        idiom: pole wyboru + przycisk, ktory NICZEGO nie zapisuje, tylko wypelnia formularz.
@@ -1835,6 +1856,7 @@
       .tab-stala col.kol-ilosc { width: 2.6rem; }
       .tab-stala col.kol-cena { width: 5.6rem; }
       .tab-stala col.kol-suma { width: 5.2rem; }
+      .tab-stala col.kol-vat { width: 3.6rem; }
       .tab-pozycje.tab-stala th, .tab-pozycje.tab-stala td { padding-left: .3rem; padding-right: .3rem; }
       /* Scalanie: siedem rownych kolumn lamalo numer „2473” na „24/73” i ucinalo kwote.
          Tu kolumny licza sie od tresci, bez lamania — tabela jedzie w bok we wlasnym

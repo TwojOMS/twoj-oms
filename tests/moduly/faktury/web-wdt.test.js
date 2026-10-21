@@ -48,13 +48,14 @@ describe('karta zamówienia WDT', () => {
     expect(r.body).toContain(`/zamowienia/${id}/potwierdzenie-wywozu.pdf`);
   });
 
-  // Formularz „Dodaj pozycję" (jedyny nosiciel data-vat) renderuje się w trybie edycji
-  // pozycji — tam podpowiedź netto MUSI liczyć stawką DOKUMENTU: przy WDT netto = brutto.
-  it('edycja pozycji zamówienia WDT niesie data-vat="0"', async () => {
+  // Formularz „Dodaj pozycję" renderuje się w trybie edycji pozycji — tam podpowiedź netto MUSI liczyć
+  // stawką DOKUMENTU: przy WDT netto = brutto. PRZ-105: zmiana nośnika — data-vat to teraz stawka DOMYŚLNA
+  // (zaznaczona w liście stawek), a WDT jedzie osobno jako data-wdt="1" (public/cena-netto.js liczy wtedy 0%).
+  it('edycja pozycji zamówienia WDT niesie data-wdt="1"', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(2601), {});
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}?edytuj=pozycje`, headers: naglowek });
     expect(r.statusCode).toBe(200);
-    expect(r.body).toContain('data-vat="0"');
+    expect(r.body).toMatch(/class="nowa-pozycja" data-vat="23" data-wdt="1"/);
   });
 
   it('karta krajowa NIE ma pasa WDT ani przycisku, a data-vat zostaje 23', async () => {

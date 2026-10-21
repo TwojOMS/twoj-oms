@@ -57,7 +57,7 @@ describe('produkcja: wspierany baseline i poprawne reopen',()=>{
         const z=pobierzZamowienie(otwarta,1)!;
         expect(z).toMatchObject({kwota_brutto:'112.30',koszt_dostawy_brutto:'12.30'});
         expect(z.pozycje[0]).toMatchObject({brutto_linii:'100.00',cena_brutto:'33.33',ilosc:3});
-        expect(pozycjeDokumentu(z).map((p:{gross_price:number})=>p.gross_price)).toEqual([10000,1230]);
+        expect(pozycjeDokumentu(z, { stawkaDomyslna: '23' }).map((p:{gross_price:number})=>p.gross_price)).toEqual([10000,1230]);
         expect(otwarta.prepare("SELECT count(*) AS n FROM migracje WHERE modul='rdzen' AND numer=1").get()).toMatchObject({n:1});
       } finally {otwarta.close();}
     }

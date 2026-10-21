@@ -5,6 +5,7 @@ import {
 } from '../../../src/oms/db/zamowienia.js';
 import { parsujNowaPozycje } from '../../../src/domena/pozycje-reczne.js';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { zapiszStawkeDomyslna } from '../../../src/moduly/faktury/db/stawka-vat.js';
 
 // ⚠️ `sklepy` NIE JEST TU OZDOBA. Odnosnik do produktu powstaje wylacznie wtedy, gdy trasa
 // zna `baseUrl` kanalu — bez tego KAZDY test „nie ma odnosnika" przechodzilby za darmo,
@@ -561,5 +562,112 @@ describe('odnośnik do produktu na karcie', () => {
       }],
     }), {});
     expect((await karta(id)).body).toContain('p=5150');
+  });
+});
+
+// PRZ-105: stawka VAT pozycji ręcznej dopisywanej i edytowanej na karcie.
+describe('karta — stawka VAT pozycji ręcznej (PRZ-105)', () => {
+  const stawkaReczna = (id) => db.prepare("SELECT vat FROM pozycje WHERE zamowienie_id = ? AND zrodlo = 'reczna'").get(id)?.vat;
+
+  it('„Dodaj pozycję” z vat 8 zapisuje 8; netto przelicza się stawką wiersza', async () => {
+    const id = zamowienieZRozjechanymiLicznikami();
+    const r = await wyslij(`/zamowienia/${id}/pozycje`, { nazwa: 'Album', ilosc: '1', cena_netto: '100', vat: '8' });
+    expect(r.statusCode, r.body).toBeLessThan(400);
+    expect(stawkaReczna(id)).toBe('8');
+    expect(pobierzZamowienie(db, id).pozycje.find((p) => p.reczna).cena_brutto).toBe('108.00');
+  });
+
+  it('„Dodaj pozycję” bez pola vat → stawka domyślna z Ustawień (5)', async () => {
+    const id = zamowienieZRozjechanymiLicznikami();
+    zapiszStawkeDomyslna(db, '5');
+    await wyslij(`/zamowienia/${id}/pozycje`, { nazwa: 'Album', ilosc: '1', cena_brutto: '10.50' });
+    expect(stawkaReczna(id)).toBe('5');
+  });
+
+  it('nabywca z UE: netto 100 → brutto 100,00 (0% przy przeliczeniu)', async () => {
+    const id = zamowienieZRozjechanymiLicznikami({ nip: 'DE123456789' });
+    await wyslij(`/zamowienia/${id}/pozycje`, { nazwa: 'Album', ilosc: '1', cena_netto: '100', vat: '23' });
+    expect(pobierzZamowienie(db, id).pozycje.find((p) => p.reczna).cena_brutto).toBe('100.00');
+  });
+
+  it('edycja zbiorcza bez pola vat NIE zmienia stawki pozycji ręcznej (8 zostaje 8)', async () => {
+    const id = zamowienieZRozjechanymiLicznikami();
+    dodajPozycjeReczna(db, id, parsujNowaPozycje({ nazwa: 'Album', ilosc: '1', cena_brutto: '10.80', vat: '8' }));
+    const r = await wyslij(`/zamowienia/${id}/pozycje/zapisz`, {
+      klucz: ['s4321', kluczReczna(id)], nazwa: ['STOP', 'Album'], ilosc: ['2', '2'], cena_brutto: ['61.50', '10.80'],
+    });
+    expect(r.statusCode, r.body).toBeLessThan(400);
+    expect(stawkaReczna(id)).toBe('8');
+  });
+});
+
+// PRZ-105: karta — kolumna „VAT”, podsumowanie netto/VAT/brutto, wybór stawki w „Dodaj pozycję” i w edycji.
+describe('karta — kolumna VAT i podsumowanie (PRZ-105)', () => {
+  const sekcjaPozycji = (html) => html.slice(html.indexOf('id="pozycje"'), html.indexOf('id="przesylka"'));
+
+  it('tabela ma kolumnę „VAT” między nazwą a ceną brutto; wiersze pokazują stawkę', async () => {
+    const id = zamowienieZRozjechanymiLicznikami();
+    dodajPozycjeReczna(db, id, parsujNowaPozycje({ nazwa: 'Album', ilosc: '1', cena_brutto: '10.80', vat: '8' }));
+    const s = sekcjaPozycji((await karta(id)).body);
+    expect(s).toMatch(/<th>Nazwa<\/th><th class="liczba kol-vat">VAT<\/th><th class="liczba">Cena brutto<\/th>/u);
+    expect([...s.matchAll(/<td class="liczba kol-vat">([^<]*)<\/td>/gu)].map((m) => m[1].trim())).toEqual(['23%', '8%', '23%', '']);
+  });
+
+  it('pod tabelą: Razem netto · VAT · Razem brutto — liczby z reguły faktury', async () => {
+    const id = zamowienieZRozjechanymiLicznikami();
+    const s = sekcjaPozycji((await karta(id)).body);
+    // 123,00 / 23% → 100,00; dostawa 89,90 / 23% → 73,09; razem 173,09 netto, 39,81 VAT, 212,90 brutto.
+    expect(s).toMatch(/Razem netto<\/dt><dd><span data-pv-netto>173\.09<\/span> zł/u);
+    expect(s).toMatch(/<span data-pv-vat>39\.81<\/span> zł/u);
+    expect(s).toMatch(/Razem brutto[\s\S]*?<span data-pv-brutto>212\.90<\/span> zł/u);
+  });
+
+  it('nabywca z UE: kolumna „0% — WDT”, VAT 0,00 zł', async () => {
+    const id = zamowienieZRozjechanymiLicznikami({ nip: 'DE123456789' });
+    const s = sekcjaPozycji((await karta(id)).body);
+    expect(s).toContain('0% — WDT');
+    expect(s).toMatch(/<span data-pv-vat>0\.00<\/span> zł/u);
+    expect(s).toMatch(/data-pv-wdt>0% — WDT/u);
+  });
+
+  it('„Dodaj pozycję”: lista stawek z zaznaczoną domyślną z Ustawień, między netto a brutto', async () => {
+    const id = zamowienieZRozjechanymiLicznikami();
+    zapiszStawkeDomyslna(db, '8');
+    const r = await karta(id, '?edytuj=pozycje');
+    const f = /<form method="post" action="\/zamowienia\/\d+\/pozycje" class="nowa-pozycja"[\s\S]*?<\/form>/u.exec(r.body)?.[0] ?? '';
+    expect(f).toMatch(/name="cena_netto"[\s\S]*name="vat"[\s\S]*name="cena_brutto"/u);
+    expect(f).toMatch(/<option value="8" selected>/u);
+  });
+
+  it('edycja zbiorcza: stawka do wyboru przy pozycji ręcznej i zapis ją zmienia', async () => {
+    const id = zamowienieZRozjechanymiLicznikami();
+    dodajPozycjeReczna(db, id, parsujNowaPozycje({ nazwa: 'Album', ilosc: '1', cena_brutto: '10.80', vat: '8' }));
+    const r = await karta(id, '?edytuj=pozycje');
+    const f = /<form method="post" action="\/zamowienia\/\d+\/pozycje\/zapisz">[\s\S]*?<\/form>/u.exec(r.body)?.[0] ?? '';
+    expect((f.match(/<select[^>]*name="vat"/gu) ?? []).length).toBe(1);
+    expect((f.match(/name="vat"/gu) ?? []).length).toBe(3);
+    const z = await wyslij(`/zamowienia/${id}/pozycje/zapisz`, {
+      klucz: ['s4321', kluczReczna(id), 'wysylka'], nazwa: ['STOP', 'Album', 'Wysyłka'], ilosc: ['2', '1', '1'],
+      cena_brutto: ['61.50', '10.80', '89.90'], vat: ['', '5', ''],
+    });
+    expect(z.statusCode, z.body).toBeLessThan(400);
+    expect(db.prepare("SELECT vat FROM pozycje WHERE zamowienie_id = ? AND zrodlo = 'reczna'").get(id).vat).toBe('5');
+  });
+});
+
+// Recenzja PRZ-105 (P3): stara pozycja ręczna bez stawki (vat NULL = „domyślna w chwili faktury”) nie może dostać
+// stawki zamrożonej przez samo „Zapisz pozycje” — lista ma opcję „domyślna (X%)” z pustą wartością.
+describe('edycja zbiorcza — pozycja ręczna bez stawki zostaje bez stawki (PRZ-105)', () => {
+  it('lista ma zaznaczoną „domyślna (23%)” z pustą wartością; zapis zostawia NULL', async () => {
+    const id = zamowienieZRozjechanymiLicznikami();
+    dodajPozycjeReczna(db, id, { nazwa: 'Stara dopłata', ilosc: 1, cena_brutto: '10.00', brutto_linii: '10.00' });
+    const r = await karta(id, '?edytuj=pozycje');
+    const f = /<form method="post" action="\/zamowienia\/\d+\/pozycje\/zapisz">[\s\S]*?<\/form>/u.exec(r.body)?.[0] ?? '';
+    expect(f).toMatch(/<select[^>]*name="vat"[^>]*><option value="" selected>domyślna \(23%\)<\/option>/u);
+    await wyslij(`/zamowienia/${id}/pozycje/zapisz`, {
+      klucz: ['s4321', kluczReczna(id), 'wysylka'], nazwa: ['STOP', 'Stara dopłata', 'Wysyłka'], ilosc: ['2', '1', '1'],
+      cena_brutto: ['61.50', '10.00', '89.90'], vat: ['', '', ''],
+    });
+    expect(db.prepare("SELECT vat FROM pozycje WHERE zamowienie_id = ? AND zrodlo = 'reczna'").get(id).vat).toBeNull();
   });
 });

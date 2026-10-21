@@ -2,7 +2,7 @@
 // Ten moduł nie dotyka bazy i nie zna zegara.
 import { uslugaDostawy } from './wysylka.js';
 import {
-  terminZamowienia, dniRoboczeDoWysylki,
+  terminZamowienia, dniRoboczeDoWysylki, dniPoTerminie,
 } from './termin-wysylki.js';
 import { dzienWarszawa } from './format-daty.js';
 
@@ -102,13 +102,17 @@ export function agregatorTerminowosci() {
     // ⚠️ KOLEJNOŚĆ TYCH DWÓCH WARUNKÓW JEST TREŚCIĄ. Brak startu (nieopłacona przedpłata)
     // sprawdzamy PRZED wysłaniem przed wpłatą — inaczej zamówienie bez `oplacone_at`
     // wpadłoby do „wysłane przed wpłatą", czyli do kubełka opisującego CO INNEGO.
+    // PRZ-104: termin z samej ręcznej daty (bez wpłaty) też nie ma startu — czasu realizacji
+    // nie zmierzymy, więc zostaje w tym samym wyłączeniu.
     const termin = terminZamowienia(z);
-    if (!termin) { wylaczenia.bezStartu += 1; return; }
+    if (!termin?.start) { wylaczenia.bezStartu += 1; return; }
     const dni = dniRoboczeDoWysylki(z, termin);
     if (dni === null) { wylaczenia.przedWplata += 1; return; }
 
     mianownik += 1;
-    if (dni <= termin.limit) wTerminie += 1;
+    // „W terminie” rozstrzyga `dniPoTerminie` (ręczna data albo standard), rozkład niżej
+    // dalej mierzy czas od startu zegara.
+    if (dniPoTerminie(termin, z.wyslane_at) === 0) wTerminie += 1;
     const tenSam = termin.dzienStartu === dzienWarszawa(z.wyslane_at);
     if (tenSam) tegoDnia += 1;
     const kubelek = kubelekCzasu(dni, tenSam);

@@ -12,6 +12,7 @@ import { parsujNowaPozycje } from '../../../src/domena/pozycje-reczne.js';
 import { mapujZamowienie } from '../../../src/domena/mapowanie.js';
 import { createFaktura } from '../../../src/moduly/faktury/services/faktura.js';
 import { stanFaktury } from '../../../src/domena/faktura-stan.js';
+import { zapiszStawkeDomyslna } from '../../../src/moduly/faktury/db/stawka-vat.js';
 
 const zmapowane = (nad = {}) => ({
   zrodlo_id: 1301, numer: '1301',
@@ -135,6 +136,14 @@ describe('faktura — kwoty', () => {
     const { infakt, faktura, id } = zestaw();
     await faktura.wystaw(id);
     expect(infakt.wystaw.mock.calls[0][0].services.every((s) => s.tax_symbol === '23')).toBe(true);
+  });
+
+  // PRZ-105: stawka domyślna z Ustawień → Firma. Wpis 8 ma pojechać na każdą linię sklepową i dostawę.
+  it('stawka domyślna z Ustawień (8) idzie na pozycje sklepowe i dostawę', async () => {
+    const { db, infakt, faktura, id } = zestaw({ kwota_brutto: '139.00', koszt_dostawy_brutto: '16.00' });
+    zapiszStawkeDomyslna(db, '8');
+    await faktura.wystaw(id);
+    expect(infakt.wystaw.mock.calls[0][0].services.map((s) => s.tax_symbol)).toEqual(['8', '8']);
   });
 
   // C3b. Koszt dostawy jest czescia `total` zamowienia, ale NIE ma go w `line_items` —

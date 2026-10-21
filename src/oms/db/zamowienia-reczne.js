@@ -67,8 +67,8 @@ export function utworzZamowienieReczne(db, dane = {}, okresRozliczeniowyId = nul
         koszt_dostawy_brutto, status_woo,
         metoda_platnosci, oplacone_at, anulowane, uwagi, surowe_json, zamowienie_zrodlowe_id,
         utworzone_at, zmienione_at, okres_rozliczeniowy_id, do_siedziby_klienta,
-        karta_id, indywidualne, b2b, termin_platnosci, rabat_procent)
-      VALUES ('reczne',?,?,?,?,?,?,?,?,?,?,'0.00',?,NULL,?,NULL,0,?,NULL,?,?,?,?,?,?,?,?,?,?)
+        karta_id, indywidualne, b2b, termin_platnosci, rabat_procent, termin_wysylki_reczny)
+      VALUES ('reczne',?,?,?,?,?,?,?,?,?,?,'0.00',?,NULL,?,NULL,0,?,NULL,?,?,?,?,?,?,?,?,?,?,?)
     `).run(
       zrodloIdReczne(rok, kolejny), numer,
       JSON.stringify(dane.klient ?? null), JSON.stringify(dane.dostawa ?? null),
@@ -120,6 +120,8 @@ export function utworzZamowienieReczne(db, dane = {}, okresRozliczeniowyId = nul
       // Rabat jest juz WLICZONY w ceny pozycji; ta kolumna niesie wylacznie wiedze, ile go
       // bylo — do pokazania na karcie i do przeliczenia po zmianie (domain/rabat.js).
       Number(dane.rabat_procent) || 0,
+      // PRZ-104: ręczna data wysyłki („najpóźniej do”) albo NULL = standardowy termin.
+      dane.termin_wysylki_reczny ?? null,
     );
     db.exec('COMMIT');
     return Number(info.lastInsertRowid);

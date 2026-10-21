@@ -102,9 +102,10 @@ export const cenaPoRabacie = (cenaKatalogowaGr, rabatProcent) => zl(cenaPoRabaci
 // dodatkowo ÷1,23 na sztuce (cenaWdtGrosze — tam cała wykładnia). JEDNO miejsce, którym
 // liczy i rozpoznanie „pozycji panelu", i nowa cena po zmianie rabatu — druga kopia tej
 // pary rozjechałaby się przy pierwszej zmianie i przeliczenie pomijałoby własne pozycje.
-const cenaPanelowaGrosze = (katalogowaGr, rabatProcent, wdt) => {
+// PRZ-105: przy WDT dzielimy przez stawkę domyślną z Ustawień (`stawkaDomyslna`), nie przez stałe 1,23.
+const cenaPanelowaGrosze = (katalogowaGr, rabatProcent, wdt, stawkaDomyslna) => {
   const po = cenaPoRabacieGrosze(katalogowaGr, rabatProcent);
-  return wdt ? cenaWdtGrosze(po) : po;
+  return wdt ? cenaWdtGrosze(po, stawkaDomyslna) : po;
 };
 
 /**
@@ -121,7 +122,7 @@ const cenaPanelowaGrosze = (katalogowaGr, rabatProcent, wdt) => {
  * zapisanym na zamówieniu. Znacznik trzeba by utrzymywać przy każdej edycji z osobna —
  * i to on rozjechałby się pierwszy.
  */
-export function czyPozycjaPanelu(pozycja, rabatPoprzedni, { wdt = false } = {}) {
+export function czyPozycjaPanelu(pozycja, rabatPoprzedni, { wdt = false, stawkaDomyslna } = {}) {
   // Bez ceny katalogowej nie ma od czego liczyć rabatu. To jest pozycja wpisana z ręki przy
   // telefonie, a wpisana z ręki kwota JEST już ceną uzgodnioną — rabat naliczony od niej
   // odjąłby te same procenty drugi raz.
@@ -134,7 +135,7 @@ export function czyPozycjaPanelu(pozycja, rabatPoprzedni, { wdt = false } = {}) 
   // Przy zamówieniu WDT „cena panelu" zawiera też ÷1,23 (cenaPanelowaGrosze) — bez tego
   // każda pozycja WDT wyglądałaby na ręcznie wycenioną i zmiana rabatu pomijałaby cały
   // wsad z magazynu, z komunikatem mylącym dokładnie tam, gdzie miał wyjaśniać.
-  const oczekiwana = cenaPanelowaGrosze(grosze(katalogowa, `cena katalogowa "${pozycja?.nazwa}"`), rabatPoprzedni, wdt);
+  const oczekiwana = cenaPanelowaGrosze(grosze(katalogowa, `cena katalogowa "${pozycja?.nazwa}"`), rabatPoprzedni, wdt, stawkaDomyslna);
   return grosze(pozycja?.cena_brutto, `pozycja "${pozycja?.nazwa}"`) === oczekiwana;
 }
 
@@ -151,7 +152,7 @@ export function czyPozycjaPanelu(pozycja, rabatPoprzedni, { wdt = false } = {}) 
  * z ręcznie poprawionymi zamieniłyby prawdziwą informację w szum przy każdym zamówieniu
  * mieszanym.
  */
-export function przeliczenieRabatu(pozycje, { rabatPoprzedni, rabatNowy, wdt = false }) {
+export function przeliczenieRabatu(pozycje, { rabatPoprzedni, rabatNowy, wdt = false, stawkaDomyslna }) {
   const stary = parsujRabat(rabatPoprzedni);
   const nowy = parsujRabat(rabatNowy);
   const doZmiany = [];
@@ -160,12 +161,12 @@ export function przeliczenieRabatu(pozycje, { rabatPoprzedni, rabatNowy, wdt = f
   for (const p of pozycje ?? []) {
     const katalogowa = String(p?.cena_katalogowa ?? '').trim();
     if (!katalogowa || p?.zrodlo !== 'reczna') continue;
-    if (!czyPozycjaPanelu(p, stary, { wdt })) {
+    if (!czyPozycjaPanelu(p, stary, { wdt, stawkaDomyslna })) {
       pominiete.push({ id: p.id, nazwa: p.nazwa });
       continue;
     }
     // TA SAMA transformacja, którą rozpoznaliśmy pozycję wyżej — rabat, a przy WDT ÷1,23.
-    const cenaGr = cenaPanelowaGrosze(grosze(katalogowa, `cena katalogowa "${p.nazwa}"`), nowy, wdt);
+    const cenaGr = cenaPanelowaGrosze(grosze(katalogowa, `cena katalogowa "${p.nazwa}"`), nowy, wdt, stawkaDomyslna);
     const ilosc = Number(p.ilosc) || 1;
     // Pozycja, której cena po zmianie wychodzi TAKA SAMA (rabat 0 → 0, albo zaokrąglenie
     // zbiegło się na groszu), nie jest zmianą i nie ma po co jechać do bazy ani do logu.

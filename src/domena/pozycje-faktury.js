@@ -8,8 +8,9 @@ import { wysylkaEfektywna } from './wysylka-kwota.js';
 // ktora zapowiadal komentarz w vat.js. Nabywce dokumentu rozstrzyga daneFaktury(z), czyli
 // TA SAMA regula, ktora wskazuje NIP kartotece inFaktu (services/faktura.js) — reczna
 // poprawka numeru na karcie zmienia wiec stawke razem z nabywca, nigdy osobno.
-import { stawkaDokumentu } from './wdt.js';
+import { czyNipUe } from './wdt.js';
 import { daneFaktury } from './dane-faktury.js';
+import { czyStawkaVat, stawkaPozycji } from './vat.js';
 
 // Nazwa pozycji dostawy na fakturze — jedna, eksportowana stala. Korekta (domain/korekta-pozycje.js)
 // musi rozpoznac wlasna pozycje dostawy po TEJ SAMEJ nazwie; druga kopia literalu rozjechalaby
@@ -35,11 +36,23 @@ export const NAZWA_DOSTAWY = 'Dostawa';
 //
 // Netto pozycji recznej NIE JEDZIE do inFaktu i nie ma prawa pojechac: wysylamy brutto
 // (`gross_price`), tak samo jak przy pozycjach ze sklepu, a podatek liczy inFakt.
-export function pozycjeDokumentu(z) {
-  // RAZ na dokument, nie per pozycja: dokument ma JEDNEGO nabywce, wiec jedna stawke.
+//
+// PRZ-105 (21.10.2026): stawka PER POZYCJA — decyzja właściciela: stawka wybrana w wierszu idzie na fakture inFakt
+// (i dalej do KSeF) oraz na proforme. Pozycja reczna niesie wlasna (`vat`), sklepowa/Allegro i dostawa dostaja
+// domyslna z Ustawien (`stawkaDomyslna`, moduly/faktury/db/stawka-vat.js). Nabywca z UE (WDT) wymusza 0 na
+// KAZDEJ linii — RAZ na dokument, bo dokument ma jednego nabywce.
+//
+// ⚠️ `stawkaDomyslna` jest WYMAGANA. Brak = wyjatek, nie ciche „23”: instalacja z domyslna 8 dostalaby inaczej
+// fakture z 23 z kazdego miejsca, ktore zapomnialo ja podac — bez bledu i bez sladu.
+export function pozycjeDokumentu(z, { stawkaDomyslna } = {}) {
+  if (!czyStawkaVat(stawkaDomyslna)) {
+    throw new Error(`pozycjeDokumentu: brak albo zła stawka domyślna („${stawkaDomyslna}”).`);
+  }
   // Przy 0% (WDT) kwoty zamowienia SA kwotami netto (netto = brutto), wiec cala arytmetyka
   // ponizej — suma linii, dostawa, bariera — dziala bez ani jednej zmiany.
-  const stawka = stawkaDokumentu(daneFaktury(z).nip);
+  const wdt = czyNipUe(daneFaktury(z).nip);
+  const stawkaLinii = (p) => (wdt ? '0' : stawkaPozycji(p, stawkaDomyslna));
+  const stawka = wdt ? '0' : String(stawkaDomyslna);
   const services = z.pozycje.map((p) => ({
     name: p.nazwa,
     quantity: p.ilosc,
@@ -47,8 +60,10 @@ export function pozycjeDokumentu(z) {
     // (domain/suma-pozycji.js) — razem z fallbackiem dla wierszy, ktorych migracja nie
     // umiala uzupelnic. Wczesniej ta regula stala tu w osobnej kopii.
     gross_price: wartoscPozycjiGrosze(p),
-    tax_symbol: stawka,
+    tax_symbol: stawkaLinii(p),
   }));
+  // Dostawa (i dostawy grupy scalonej) — stawka domyslna. Prawnie dostawa dzieli los towaru glownego; przy
+  // pozycjach z roznymi stawkami bierzemy domyslna firmy (decyzja w docs/plany/PRZ-105.md), u nas to rzadkosc.
 
   // Koszt dostawy jest czescia `kwota_brutto`, ale NIE ma go w `line_items` — bez tej
   // pozycji faktura jest zanizona o wysylke przy kazdym platnym transporcie.

@@ -1,6 +1,7 @@
 import { etykietyStatusow } from '../../../oms/db/statusy.js';
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import { parsujZamowienieZKarty } from '../../../domena/zamowienie-z-karty.js';
+import { czytajStawkeDomyslna } from '../../faktury/db/stawka-vat.js';
 import { zalozZamowienieReczne } from '../../zamowienia/services/zamowienie-reczne.js';
 import { dopiszLog, pobierzZamowienie, znajdzZamowieniaPoNumerze, zapiszFaktyStatusu, ostatniWpisLogu } from '../../../oms/db/zamowienia.js';
 import { faktyDlaStatusu, anulowaneEfektywnie } from '../../../domena/status-reczny.js';
@@ -47,7 +48,7 @@ export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syn
     // (D4): `utworzone_at` i rok serii numeracji maja pochodzic z JEDNEJ wartosci.
     const znacznik = new Date().toISOString();
     try {
-      dane = parsujZamowienieZKarty(req.body ?? {});
+      dane = parsujZamowienieZKarty(req.body ?? {}, { stawkaDomyslna: czytajStawkeDomyslna(db) });
     } catch (e) {
       return reply.code(400).send({ powod: komunikatDlaOperatora(e) });
     }

@@ -53,7 +53,7 @@
                   <input type="hidden" name="mag_kanal" value="<%= p.kanal %>">
                   <input type="hidden" name="mag_produkt_id" value="<%= p.produkt_id %>">
                   <input type="hidden" name="mag_wariant_id" value="<%= p.wariant_id %>">
-                  <input class="pole-ilosc" name="mag_ilosc" value="1" aria-label="ilość">
+                  <input class="pole-ilosc" type="number" min="1" step="1" inputmode="numeric" name="mag_ilosc" value="1" aria-label="ilość">
                   <button class="btn btn--maly" formaction="/zamowienia/nowe/magazyn/dodaj#magazyn"
                           name="wybrany" value="<%= nr %>">Dodaj</button>
                 </span>

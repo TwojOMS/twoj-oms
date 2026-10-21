@@ -59,8 +59,13 @@ export function stawkaDokumentu(nip) {
  * Podłoga jeden grosz — ta sama, co przy rabacie: cena zero jest w tym panelu odmową,
  * pozycja gratis wpisuje się jawnie.
  */
-export function cenaWdtGrosze(cenaBruttoGr) {
-  const DZIELNIK = 1 + Number(STAWKA_VAT) / 100;
+//
+// PRZ-105 (decyzja właściciela 21.10): dzielimy przez stawkę DOMYŚLNĄ z Ustawień (wołający czyta
+// moduly/faktury/db/stawka-vat.js) — w cenie sklepowej siedzi stawka sklepu, nie stałe 23.
+// Domyślny parametr STAWKA_VAT jest tu dopuszczalny: funkcja liczy tylko cenę wstawianą do
+// formularza (operator widzi ją przed zapisem), a nie stawkę, która idzie na fakturę.
+export function cenaWdtGrosze(cenaBruttoGr, stawka = STAWKA_VAT) {
+  const DZIELNIK = 1 + Number(stawka) / 100;
   return Math.max(1, Math.round(cenaBruttoGr / DZIELNIK));
 }
 

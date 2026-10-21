@@ -22,7 +22,20 @@ const PROBY = [0, 1, 1000, 4 * 60000, 5 * 60000 - 1, 5 * 60000, 5 * 60000 + 1, 3
 let zamowienia; let rodzaje;
 beforeAll(() => {
   const db = openOmsDb(':memory:');
-  rodzaje = new Map(wstawMieszane(db, { powtorzen: 2 }).map((w) => [w.id, w.rodzaj]));
+  const wstawione = wstawMieszane(db, { powtorzen: 2 });
+  rodzaje = new Map(wstawione.map((w) => [w.id, w.rodzaj]));
+  // PRZ-104: DRUGA kopia każdego rodzaju dostaje ręczną datę wysyłki (przeszłą, bliską, daleką,
+  // także weekendową) — reguła z ręczną datą też musi być monotoniczna, inaczej indeks kłamie.
+  // Pierwsza kopia zostaje bez daty: na niej stoi test gałęzi standardowego terminu niżej
+  // (tam `find` pomija zamówienia z ręczną datą — lista nie idzie w kolejności wstawiania).
+  const daty = ['2026-09-28', '2026-10-02', '2026-10-03', '2026-10-09', '2026-11-20'];
+  const widziane = new Set();
+  let n = 0;
+  for (const w of wstawione) {
+    if (!widziane.has(w.rodzaj)) { widziane.add(w.rodzaj); continue; }
+    db.prepare('UPDATE zamowienia SET termin_wysylki_reczny = ? WHERE id = ?').run(daty[n % daty.length], w.id);
+    n += 1;
+  }
   zamowienia = zamowieniaPoId(db, db.prepare('SELECT id FROM zamowienia').all().map((w) => w.id), { bezSurowych: true });
   db.close();
 });
@@ -78,6 +91,8 @@ describe('PRZ-051 reguły listy w czasie', () => {
     // Zestaw ma przejścia w horyzoncie — inaczej test niczego by nie dowodził.
     expect(zamowienia.some((z) => { const k = klasyfikacjaListy(z, T0); return k.robocze_od > T0; })).toBe(true);
     expect(zamowienia.some((z) => { const k = klasyfikacjaListy(z, T0); return k.po_terminie_od > T0; })).toBe(true);
+    // …także wśród zamówień z ręczną datą (PRZ-104).
+    expect(zamowienia.some((z) => z.termin_wysylki_reczny && klasyfikacjaListy(z, T0).po_terminie_od > T0)).toBe(true);
   });
 
   it('każda gałąź reguł zależna od czasu ma w zestawie zamówienie, które przechodzi w horyzoncie', () => {
@@ -87,14 +102,14 @@ describe('PRZ-051 reguły listy w czasie', () => {
       'paczka-w-trakcie': 'robocze_od', 'paczka-stanie': 'robocze_od', 'faktura-swiezo-w-toku': 'robocze_od',
     };
     for (const [rodzaj, pole] of Object.entries(przejscia)) {
-      const z = zamowienia.find((x) => rodzaje.get(x.id) === rodzaj);
+      const z = zamowienia.find((x) => rodzaje.get(x.id) === rodzaj && !x.termin_wysylki_reczny);
       const k = klasyfikacjaListy(z, T0);
       expect(k[pole], rodzaj).toBeGreaterThan(T0);
       expect(k[pole], rodzaj).toBeLessThan(T0 + HORYZONT_KLASYFIKACJI_MS);
     }
     // Różne limity terminu dają ROSNĄCE chwile (0 < 1 < 2 < 7 dni roboczych) — inaczej te
     // przypadki mierzyłyby jedną gałąź.
-    const termin = (r) => klasyfikacjaListy(zamowienia.find((x) => rodzaje.get(x.id) === r), T0).po_terminie_od;
+    const termin = (r) => klasyfikacjaListy(zamowienia.find((x) => rodzaje.get(x.id) === r && !x.termin_wysylki_reczny), T0).po_terminie_od;
     const kolejne = ['allegro-przed-12', 'oplacone-swiezo', 'ekspres-oplacone', 'indywidualne-oplacone'].map(termin);
     for (let k = 1; k < kolejne.length; k++) expect(kolejne[k]).toBeGreaterThan(kolejne[k - 1]);
   });

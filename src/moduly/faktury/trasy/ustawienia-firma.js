@@ -17,20 +17,27 @@ import { wczytajZapisAdresuFirmy, zapiszAdresFirmy, usunAdresFirmy } from '../..
 import { sprawdzFormularzRachunku, ZAPIS_RACHUNKU_FIRMY, rachunekDoOdczytu } from '../../../domena/rachunek-firmy.js';
 import { wczytajZapisRachunkuFirmy, zapiszRachunekFirmy, usunRachunekFirmy } from '../../../oms/db/rachunek-firmy.js';
 import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';
+// PRZ-105: domyślna stawka VAT — zapisuje tylko administrator (ta sama zasada co rachunek), lista 23/8/5/0.
+import { czytajStawkeDomyslna, zapiszStawkeDomyslna } from '../db/stawka-vat.js';
+import { STAWKI_VAT, czyStawkaVat } from '../../../domena/vat.js';
+
+const ZAPIS_STAWKI = '/ustawienia/firma/stawka-vat';
 
 const KOMUNIKATY = {
   zapisano: 'Zapisano adres firmy. Następna proforma, specyfikacja i paczka DPD wyjdą z tym adresem.',
   usunieto: 'Usunięto adres zapisany na ekranie.',
   rachunek: 'Zapisano rachunek firmy. Następny mail o płatności, proforma i paczka za pobraniem Allegro wyjdą z tym rachunkiem.',
   'rachunek-usuniety': 'Usunięto rachunek zapisany na ekranie.',
+  'stawka-vat': 'Zapisano domyślną stawkę VAT. Działa od następnej pozycji i następnej faktury.',
 };
+const TYLKO_ADMIN_STAWKA = 'Domyślną stawkę VAT zmienia tylko administrator. Formularz niczego nie zapisał.';
 const PUSTY = { nazwa: '', ulica: '', kod: '', miasto: '', kraj: 'PL', telefon: '', email: '' };
 const TYLKO_ADMIN = 'Rachunek firmy zmienia tylko administrator. Formularz niczego nie zapisał.';
 const W_PLIKU = 'Rachunek firmy jest ustawiony w pliku konfiguracji (OMS_RACHUNEK / OMS_BANK w oms.env) — tam go zmień. Formularz niczego nie zapisał.';
 const tekst = (reply, kod, tresc) => reply.code(kod).type('text/plain; charset=utf-8').send(tresc);
 
 export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFirmy }) {
-  function widok(req, reply, { wpisane = null, bledy = [], wpisanyRachunek = null, bledyRachunku = [] } = {}) {
+  function widok(req, reply, { wpisane = null, bledy = [], wpisanyRachunek = null, bledyRachunku = [], bledyStawki = [] } = {}) {
     const zapis = wczytajZapisAdresuFirmy(db);
     const zapisRachunku = wczytajZapisRachunkuFirmy(db);
     return reply.view('ustawienia-firma.ejs', {
@@ -43,6 +50,10 @@ export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFir
         mozeZmieniac: req.konto?.admin === true, odczyt: rachunekDoOdczytu,
         pola: { rachunek: '', bank: '', ...(zapisRachunku?.ustawienia ?? {}), ...(wpisanyRachunek ?? {}) },
         bledy: bledyRachunku,
+      },
+      stawkaVat: {
+        biezaca: czytajStawkeDomyslna(db), stawki: STAWKI_VAT, mozeZmieniac: req.konto?.admin === true,
+        zapis: ZAPIS_STAWKI, bledy: bledyStawki,
       },
     });
   }
@@ -82,6 +93,18 @@ export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFir
     const konto = { id: req.konto.id ?? null, login: req.konto.login ?? null };
     zapiszRachunekFirmy(db, ustawienia, { konto });
     return reply.code(303).redirect(`${EKRAN_ADRESU_FIRMY}?zapisano=rachunek`);
+  });
+
+  // PRZ-105: kolejność odmów jak przy rachunku — konto (403) → wartość spoza listy (400, ekran z komunikatem).
+  app.post(ZAPIS_STAWKI, async (req, reply) => {
+    if (req.konto?.admin !== true) return tekst(reply, 403, TYLKO_ADMIN_STAWKA);
+    const stawka = String(req.body?.stawka ?? '').trim();
+    if (!czyStawkaVat(stawka)) {
+      reply.code(400);
+      return widok(req, reply, { bledyStawki: [`Wybierz jedną ze stawek: ${STAWKI_VAT.join(', ')}%.`] });
+    }
+    zapiszStawkeDomyslna(db, stawka);
+    return reply.code(303).redirect(`${EKRAN_ADRESU_FIRMY}?zapisano=stawka-vat`);
   });
 
   // Jak przy adresie: działa także przy rachunku w pliku (zapis sprzed dopisania do pliku musi dać się usunąć).

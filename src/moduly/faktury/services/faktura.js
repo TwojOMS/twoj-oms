@@ -13,6 +13,7 @@ import { wylaczoneModuly } from '../../../oms/db/moduly-opcjonalne.js';
 // samo dla faktury VAT i dla przyszlej proformy — druga kopia arytmetyki rozjechalaby sie
 // przy pierwszej zmianie i klamalaby o kwocie, ktora klient ma zaplacic.
 import { pozycjeDokumentu, sprawdzSumeDokumentu } from '../../../domena/pozycje-faktury.js';
+import { czytajStawkeDomyslna } from '../db/stawka-vat.js';
 // TA SAMA miara, ktora sprawdza bariera arytmetyczna (sprawdzSumeDokumentu) — wariant
 // „zaplacone" ma napisac na dokumencie DOKLADNIE te kwote, ktora zostala sprawdzona,
 // a nie policzona drugi raz z innego pola.
@@ -128,7 +129,8 @@ export function createFaktura({
 
     // Cala arytmetyka PRZED rezerwacja: to sprawdzenia czysto lokalne, wiec nie ma powodu
     // zajmowac nimi miejsca w tabeli ani zostawiac sierot do sprzatania.
-    const services = pozycjeDokumentu(z);
+    // PRZ-105: stawka per pozycja, domyslna z Ustawien (bez wpisu 23 — payload jak przed zmiana).
+    const services = pozycjeDokumentu(z, { stawkaDomyslna: czytajStawkeDomyslna(db) });
     sprawdzSumeDokumentu(services, z);
 
     // ⚠️ DRUGA BARIERA, O PIENIADZE — „ZAPLACONE" WYMAGA PRAWDZIWYCH WPLAT. Sama regula

@@ -3,7 +3,12 @@ import { parsujPozycjeFormularza } from '../../src/domena/nowe-zamowienie.js';
 import { parsujKosztDostawy } from '../../src/domena/koszt-dostawy.js';
 import { sumaPozycjiZWysylkaGrosze } from '../../src/domena/suma-pozycji.js';
 import { STAWKA_VAT } from '../../src/domena/vat.js';
-import { kwotaFormularzaGrosze, liniaGrosze, pustyWiersz } from '../../src/public/suma-podglad.js';
+import {
+  kwotaFormularzaGrosze, liniaGrosze, pustyWiersz, podsumowanieFormularza, czyNipUe,
+} from '../../src/public/suma-podglad.js';
+import { podsumowanieWierszami } from '../../src/domena/podsumowanie-wierszami.js';
+import { czyNipUe as czyNipUeSerwer } from '../../src/domena/wdt.js';
+import { bezEtykietyNip } from '../../src/domena/dane-faktury.js';
 
 // ⚠️ PO CO TEN PLIK ISTNIEJE (07.08.2026).
 //
@@ -82,6 +87,10 @@ describe('podgląd kwoty w przeglądarce liczy TO SAMO, co serwer przy zapisie',
       { nazwa: 'B', ilosc: '11', cena_brutto: '9.09' },
       { nazwa: 'C', ilosc: '1', cena_netto: '250,49' },
     ], '23,00'],
+    // PRZ-106: nowy wiersz ma ilość 1 od razu (prośba właściciela 21.10) — wiersz z SAMĄ ilością jest
+    // pusty po obu stronach, inaczej nietknięty wiersz blokowałby zapis („Wiersz 2: …”).
+    ['wiersz z samą ilością jest pusty', [{ nazwa: 'A', ilosc: '1', cena_brutto: '10.00' }, { ilosc: '1' }], '19,00'],
+    ['tylko nietknięty wiersz z ilością 1', [{ ilosc: '1' }], '19,00'],
     ['dostawa pusta znaczy zero', [{ nazwa: 'A', ilosc: '1', cena_brutto: '10.00' }], ''],
     ['dostawa zero wpisana wprost', [{ nazwa: 'A', ilosc: '1', cena_brutto: '10.00' }], '0,00'],
   ];
@@ -164,5 +173,71 @@ describe('reguły pojedynczego wiersza', () => {
   it('linia to cena w groszach RAZY ilość, nie odwrotnie zaokrąglona', () => {
     // 3 × 33,33 zł = 99,99 zł — nigdy 100,00 zł liczone od sumy.
     expect(liniaGrosze({ ilosc: '3', cena_brutto: '33.33' }, VAT)).toBe(9999);
+  });
+});
+
+// PRZ-105: stawka WIERSZA (poz_vat), NIP faktury z formularza (f_nip — nabywca z UE = 0%) i podsumowanie
+// netto / VAT / brutto. Kontrakt jak wyżej: przeglądarka liczy TO SAMO, co serwer — parser formularza,
+// `podsumowanieWierszami` (reguła faktury) i `czyNipUe`. Rozjazd wywala test, a nie fakturę.
+describe('PRZ-105 — stawka wiersza, WDT i podsumowanie: przeglądarka == serwer', () => {
+  const cialoZeStawka = (wiersze, koszt, nip) => ({
+    ...cialo(wiersze, koszt), poz_vat: wiersze.map((w) => w.vat ?? ''), f_nip: nip,
+  });
+  function serwer(wiersze, koszt, nip) {
+    try {
+      const pozycje = parsujPozycjeFormularza(cialoZeStawka(wiersze, koszt, nip), { stawkaDomyslna: STAWKA_VAT });
+      const dostawaGr = Math.round(Number(parsujKosztDostawy(koszt)) * 100);
+      const wdt = czyNipUeSerwer(bezEtykietyNip(nip));
+      const linie = pozycje.map((p) => ({ bruttoGr: Math.round(Number(p.brutto_linii) * 100), stawka: wdt ? '0' : p.vat }));
+      if (dostawaGr > 0) linie.push({ bruttoGr: dostawaGr, stawka: wdt ? '0' : STAWKA_VAT });
+      return { ...podsumowanieWierszami(linie), wdt, zeroKrajowe: !wdt && linie.some((l) => String(l.stawka) === '0') };
+    } catch {
+      return null;
+    }
+  }
+
+  const PRZYPADKI = [
+    ['8% z netto', [{ nazwa: 'Album', ilosc: '1', cena_netto: '100', vat: '8' }], '19,00', ''],
+    ['5% z brutto i 23% obok', [
+      { nazwa: 'Album', ilosc: '2', cena_brutto: '10,50', vat: '5' }, { nazwa: 'Lampa', ilosc: '1', cena_brutto: '123.00', vat: '23' },
+    ], '0', ''],
+    ['pusta stawka = domyślna', [{ nazwa: 'A', ilosc: '1', cena_netto: '81,30' }], '', ''],
+    ['grosze wierszami: 2 × 0,50 zł w osobnych wierszach', [
+      { nazwa: 'A', ilosc: '1', cena_brutto: '0.50' }, { nazwa: 'B', ilosc: '1', cena_brutto: '0.50' },
+    ], '', ''],
+    ['0% krajowe', [{ nazwa: 'A', ilosc: '1', cena_brutto: '50.00', vat: '0' }], '19,00', '1000001106'],
+    ['WDT: NIP DE, netto 100 przy 23 → 0%', [{ nazwa: 'A', ilosc: '3', cena_netto: '100', vat: '23' }], '19,00', 'DE123456789'],
+    ['WDT: NIP małymi literami i ze spacją', [{ nazwa: 'A', ilosc: '1', cena_brutto: '40.24', vat: '8' }], '', 'de 123 456 789'],
+    ['WDT: NIP z etykietą „NIP:” (dokument ją zdejmuje)', [{ nazwa: 'A', ilosc: '1', cena_netto: '10', vat: '8' }], '', 'NIP: DE123456789'],
+    ['nie-UE: XY123 to nie WDT', [{ nazwa: 'A', ilosc: '1', cena_netto: '10', vat: '8' }], '', 'XY123'],
+    ['PL z prefiksem to nie WDT', [{ nazwa: 'A', ilosc: '1', cena_netto: '10', vat: '5' }], '', 'PL1000001106'],
+    ['wiersz z samą ilością i stawką jest pusty', [{ nazwa: 'A', ilosc: '1', cena_brutto: '10.00' }, { ilosc: '1', vat: '8' }], '19,00', ''],
+  ];
+
+  it.each(PRZYPADKI)('%s', (_nazwa, wiersze, koszt, nip) => {
+    const s = serwer(wiersze, koszt, nip);
+    expect(s).not.toBeNull();
+    expect(kwotaFormularzaGrosze(wiersze, koszt, VAT, nip)).toBe(s.bruttoGr);
+    expect(podsumowanieFormularza(wiersze, koszt, VAT, nip)).toEqual(s);
+  });
+
+  it('wiersz zaczęty bez ceny → podsumowanie null (myślnik), jak serwer odmówi', () => {
+    expect(serwer([{ nazwa: 'A', ilosc: '1', vat: '8' }], '', '')).toBeNull();
+    expect(podsumowanieFormularza([{ nazwa: 'A', ilosc: '1', vat: '8' }], '', VAT, '')).toBeNull();
+  });
+
+  it('czyNipUe przeglądarki == serwera dla każdego dwuliterowego prefiksu i zapisów ze spacją/kropką', () => {
+    const A = 'A'.charCodeAt(0);
+    for (let i = 0; i < 26; i += 1) {
+      for (let j = 0; j < 26; j += 1) {
+        const kod = String.fromCharCode(A + i, A + j);
+        for (const nip of [`${kod}123456789`, `${kod.toLowerCase()} 123-456.789`, `${kod}1`]) {
+          expect(czyNipUe(nip), nip).toBe(czyNipUeSerwer(bezEtykietyNip(nip)));
+        }
+      }
+    }
+    for (const nip of ['', null, undefined, '1000001106', 'brak', 'PL', 'NIP: DE123456789', 'nip.SK1000000001', 'NIPDE123456789']) {
+      expect(czyNipUe(nip), String(nip)).toBe(czyNipUeSerwer(bezEtykietyNip(nip)));
+    }
   });
 });

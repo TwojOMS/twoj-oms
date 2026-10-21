@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  DOSTAWY, PLATNOSCI, metodaWysylkiZWyboru, parsujNoweZamowienie,
+  DOSTAWY, PLATNOSCI, metodaWysylkiZWyboru, parsujNoweZamowienie, wstawPozycjeDoFormularza, dodajWierszFormularza,
 } from '../../src/domena/nowe-zamowienie.js';
 import { METODY_WYSYLKI } from '../../src/domena/wysylka.js';
 import { adresOdbiorcy } from '../../src/domena/adres-odbiorcy.js';
@@ -197,5 +197,70 @@ describe('parsujNoweZamowienie — pozycje z pięciu wierszy', () => {
     });
     expect(d.pozycje).toHaveLength(1);
     expect(d.pozycje[0].brutto_linii).toBe('30.00');
+  });
+});
+
+// PRZ-105: kolumna „Stawka VAT” (poz_vat) — dziewiąta tablica wiersza. Pusta = domyślna z Ustawień (podaje trasa),
+// sama stawka nie robi wiersza niepustego, NIP z UE (f_nip) przelicza netto stawką 0.
+describe('parsujNoweZamowienie — stawka VAT wiersza (PRZ-105)', () => {
+  const wiersz = (nad = {}) => ({
+    poz_nazwa: ['Album o lampach'], poz_sku: [''], poz_ilosc: ['1'], poz_cena_netto: [''], poz_cena_brutto: [''],
+    poz_vat: [''], ...nad,
+  });
+
+  it('stawka z wiersza: netto 100 przy 8% → brutto 108,00, vat 8', () => {
+    const d = parsujNoweZamowienie(wiersz({ poz_cena_netto: ['100'], poz_vat: ['8'] }), { stawkaDomyslna: '23' });
+    expect(d.pozycje[0]).toMatchObject({ cena_brutto: '108.00', vat: '8' });
+  });
+
+  it('pusta stawka → domyślna podana przez trasę', () => {
+    const d = parsujNoweZamowienie(wiersz({ poz_cena_brutto: ['10.50'] }), { stawkaDomyslna: '5' });
+    expect(d.pozycje[0].vat).toBe('5');
+  });
+
+  it('wiersz z samą ilością i stawką jest pusty — pomijany', () => {
+    const d = parsujNoweZamowienie({
+      poz_nazwa: ['A', ''], poz_sku: ['', ''], poz_ilosc: ['1', '1'], poz_cena_netto: ['', ''],
+      poz_cena_brutto: ['10.00', ''], poz_vat: ['23', '8'],
+    }, { stawkaDomyslna: '23' });
+    expect(d.pozycje).toHaveLength(1);
+  });
+
+  it('stawka spoza listy → odmowa z numerem wiersza', () => {
+    expect(() => parsujNoweZamowienie(wiersz({ poz_cena_brutto: ['10.00'], poz_vat: ['22'] }), { stawkaDomyslna: '23' }))
+      .toThrow(/wiersz 1.*stawk/i);
+  });
+
+  // Recenzja PRZ-105 (P3): dokument zdejmuje etykietę „NIP:” (dane-faktury.js: bezEtykietyNip) — ekran też musi.
+  it('NIP z etykietą „NIP: DE…” to też WDT', () => {
+    const d = parsujNoweZamowienie(wiersz({ f_nip: 'NIP: DE123456789', poz_cena_netto: ['100'], poz_vat: ['23'] }),
+      { stawkaDomyslna: '23' });
+    expect(d.pozycje[0].cena_brutto).toBe('100.00');
+  });
+
+  it('NIP z UE: netto 100 → brutto 100,00 (0%)', () => {
+    const d = parsujNoweZamowienie(wiersz({ f_nip: 'de 123456789', poz_cena_netto: ['100'], poz_vat: ['23'] }),
+      { stawkaDomyslna: '23' });
+    expect(d.pozycje[0].cena_brutto).toBe('100.00');
+  });
+});
+
+describe('wstawPozycjeDoFormularza — netto i stawka produktu z magazynu (PRZ-105, uwaga właściciela 21.10)', () => {
+  const pozycja = { nazwa: 'Lampa', sku: 'L-1', ilosc: 1, cena_brutto: '108.00' };
+
+  it('wstawia stawkę domyślną i netto liczone jej stawką', () => {
+    const f = wstawPozycjeDoFormularza({}, pozycja, { stawkaDomyslna: '8' });
+    expect(f.poz_vat).toEqual(['8']);
+    expect(f.poz_cena_netto).toEqual(['100.00']);
+  });
+
+  it('nabywca z UE: netto = brutto', () => {
+    const f = wstawPozycjeDoFormularza({ f_nip: 'DE123456789' }, pozycja, { stawkaDomyslna: '23' });
+    expect(f.poz_cena_netto).toEqual(['108.00']);
+  });
+
+  it('dodajWierszFormularza dokłada pustą stawkę razem z resztą wiersza', () => {
+    const f = dodajWierszFormularza(wstawPozycjeDoFormularza({}, pozycja, { stawkaDomyslna: '8' }));
+    expect(f.poz_vat).toEqual(['8', '']);
   });
 });

@@ -398,6 +398,13 @@
             <% if (dane.metodaZmienionaRecznie) { %> <span class="znacznik znacznik-reczny">zmienione ręcznie</span><% } %>
           </span>
         </div>
+        <%# PRZ-104: do kiedy paczka ma wyjechać. Napisy i ocena z domeny (terminNaKarcie) — ta sama %>
+        <%# miara, co zegar listy, „Po terminie” i statystyki; widok niczego nie liczy. %>
+        <% const tw = terminWysylkiKarty; %>
+        <div class="termin-wysylki"><span>Termin wysyłki</span><span><%= tw.napis %><%
+          %><% if (tw.reczny) { %> <span class="znacznik znacznik-reczny">ustawiony ręcznie</span><% } %><%
+          %><% if (tw.objasnienie) { %><br><span class="wyjasnienie"><%= tw.objasnienie %></span><% } %><%
+          %><% if (tw.ocena) { %><br><span class="<%= tw.ocenaZla ? 'stan-zle' : 'wyjasnienie' %>"><%= tw.ocena %></span><% } %></span></div>
         <div><span>Status</span><span><%= etykiety[status] %></span></div>
         <%# Platnosc — metoda WPROST ze sklepu („Za pobraniem", „Przelew tradycyjny"). %>
         <%# Zeszla z belki 2026-08-01 razem z reszta faktow opisowych. %>
@@ -583,6 +590,23 @@
           </div>
         </form>
 
+        <%# ——— DATA WYSYLKI (PRZ-104) ————————————————————————————————————————————— %>
+        <%# „Najpozniej do” — zastepuje standardowy termin w zegarze listy, „Po terminie” i statystykach. %>
+        <%# Po wysylce formularza NIE MA (trasa i zapis i tak odmawiaja): spozniona wysylka nie da sie %>
+        <%# „poprawic” po fakcie. Powrot do standardu to drugi przycisk tego samego formularza. %>
+        <% if (terminWysylkiKarty.moznaZmienic) { %>
+          <form method="post" action="/zamowienia/<%= z.id %>/termin-wysylki" class="pola">
+            <input type="hidden" name="powrot" value="<%= powrot %>">
+            <label>Data wysyłki <span class="wyjasnienie">najpóźniej do; puste = standardowy czas</span>
+              <input type="date" name="data_wysylki" value="<%= terminWysylkiKarty.wartoscPola %>" min="<%= terminWysylkiKarty.poleOd %>" max="<%= terminWysylkiKarty.poleDo %>">
+            </label>
+            <div class="stopka-edycji">
+              <button class="btn btn--glowny">Zapisz datę wysyłki</button>
+              <% if (terminWysylkiKarty.reczny) { %><button class="btn" name="przywroc" value="1" formnovalidate>Przywróć standardowy termin</button><% } %>
+            </div>
+          </form>
+        <% } %>
+
         <%# Wyjscia ze stanow, z ktorych panel sam by nie wyszedl — widoczne WYLACZNIE gdy %>
         <%# jest co przywracac (ta sama zasada, co przy „zalatwione recznie" przy przesylce). %>
         <% if (dane.saNadpisanieWysylki) { %>
@@ -714,10 +738,10 @@
         <%# po wierszu z tym, co widzial chwile wczesniej. %>
         <table class="tab-pozycje tab-stala">
           <colgroup>
-            <col class="kol-ilosc"><col><col class="kol-cena"><col class="kol-suma"><col class="kol-akcje">
+            <col class="kol-ilosc"><col><col class="kol-vat"><col class="kol-cena"><col class="kol-suma"><col class="kol-akcje">
           </colgroup>
           <thead>
-            <tr><th class="kol-ilosc">Ilość</th><th>Nazwa</th><th class="liczba">Cena brutto</th><th class="liczba">Suma</th><th class="kol-akcje"></th></tr>
+            <tr><th class="kol-ilosc">Ilość</th><th>Nazwa</th><th class="liczba kol-vat">VAT</th><th class="liczba">Cena brutto</th><th class="liczba">Suma</th><th class="kol-akcje"></th></tr>
           </thead>
           <tbody>
             <% pozycjeKarty.forEach(function (w) { %>
@@ -751,6 +775,16 @@
                     <% if (!w.reczna && w.polaZmienione.length) { %><span class="znacznik znacznik-reczny">zmienione: <%= w.polaZmienione.join(', ') %></span><% } %>
                   </div>
                 </td>
+                <%# PRZ-105: stawkę zmienia się WYŁĄCZNIE przy pozycji ręcznej — sklepowa i wysyłka mają domyślną %>
+                <%# z Ustawień. Pole `vat` jedzie w KAŻDYM wierszu (puste ukryte przy pozostałych), bo %>
+                <%# parsujHurtPozycji zszywa równoległe tablice i odmawia przy różnej długości. %>
+                <td class="liczba kol-vat">
+                  <% if (w.reczna && !wdt) { %>
+                    <select name="vat" aria-label="Stawka VAT"><% if (!w.stawkaWlasna) { %><option value="" selected>domyślna (<%= stawkaVat %>%)</option><% } %><% stawkiVat.forEach(function (s) { %><option value="<%= s %>"<%= s === w.stawkaWlasna ? ' selected' : '' %>><%= s %>%</option><% }); %></select>
+                  <% } else { %>
+                    <input type="hidden" name="vat" value=""><%= w.stawkaOpis %>
+                  <% } %>
+                </td>
                 <td><input class="pole-cena" name="cena_brutto" value="<%= w.cenaBrutto %>" required></td>
                 <td class="liczba"><%= w.suma ?? '—' %> zł</td>
                 <td class="kol-akcje">
@@ -775,6 +809,7 @@
               <tr<%- w.podsumowanie ? ' class="wiersz-razem"' : '' %>>
                 <td class="kol-ilosc"><%= w.podsumowanie ? '' : `${wart(w.ilosc)}×` %></td>
                 <td><%= w.nazwa %></td>
+                <td class="liczba kol-vat"><%= w.stawkaOpis ?? '' %></td>
                 <td class="liczba"><%= w.podsumowanie ? '' : `${wart(w.cenaBrutto)} zł` %></td>
                 <td class="liczba"><%= w.suma ?? '—' %> zł</td>
                 <td></td>
@@ -782,6 +817,7 @@
             <% }); %>
           </tbody>
         </table>
+        <%- include('_podsumowanie-vat.ejs', { p: podsumowanieVat }) %>
         <div class="stopka-edycji">
           <button class="btn btn--glowny">Zapisz pozycje</button>
           <a class="btn" href="<%= adresKarty(null, 'pozycje') %>">Anuluj</a>
@@ -794,7 +830,8 @@
       <%# klienta, wiec doplata pokazuje sie nizej jako niedoplata, dopoki nie wplynie. %>
       <%# data-vat: JEDYNE zrodlo stawki dla skryptu ponizej — patrz komentarz przy nim %>
       <%# i przy STAWKA_VAT w domain/vat.js. %>
-      <form method="post" action="/zamowienia/<%= z.id %>/pozycje" class="nowa-pozycja" data-vat="<%= stawkaVat %>">
+      <%# PRZ-105: data-vat = stawka DOMYŚLNA (zaznaczona niżej), data-wdt — nabywca z UE: skrypt liczy wtedy 0%. %>
+      <form method="post" action="/zamowienia/<%= z.id %>/pozycje" class="nowa-pozycja" data-vat="<%= stawkaVat %>" data-wdt="<%= wdt ? '1' : '0' %>">
         <input type="hidden" name="powrot" value="<%= powrot %>">
         <label>Ilość<input class="pole-ilosc" type="number" min="1" step="1" inputmode="numeric" name="ilosc" value="1" required></label>
         <label>Nazwa<input name="nazwa" required placeholder="np. Dodatkowy szablon"></label>
@@ -802,6 +839,8 @@
         <%# Netto to WYGODA WEJSCIA — serwer i tak przechowuje wylacznie brutto %>
         <%# (domain/vat.js: bruttoZNetto, domain/pozycje-reczne.js: parsujNowaPozycje). %>
         <label>Cena netto<input name="cena_netto" class="pole-cena cena-netto" placeholder="netto" inputmode="decimal"></label>
+        <%# PRZ-105: stawka między netto a brutto (prośba właściciela 21.10), domyślna z Ustawień. %>
+        <label>Stawka VAT<select name="vat"><% stawkiVat.forEach(function (s) { %><option value="<%= s %>"<%= s === stawkaVat ? ' selected' : '' %>><%= s %>%</option><% }); %></select></label>
         <label>Cena brutto<input class="pole-cena" name="cena_brutto" required placeholder="np. 80,00"></label>
         <button class="btn">Dodaj pozycję</button>
       </form>
@@ -819,7 +858,7 @@
           <%# i paskiem spraw — nie jest renderowana od nowa. %>
           <%# ⚠️ TO JEST ODCZYT, wiec GET: ochrona CSRF dotyczy metod zmieniajacych stan. %>
           <label class="magazyn-pole">Dodaj z magazynu
-            <input name="magazyn" value="<%= magazyn.fraza %>" placeholder="nazwa albo SKU, np. „pieszy 70”"
+            <input name="magazyn" value="<%= magazyn.fraza %>" placeholder="nazwa albo SKU, np. „lampa”"
                    hx-get="/zamowienia/<%= z.id %>/magazyn/wyniki"
                    hx-trigger="keyup changed delay:300ms, search"
                    hx-include="#magazyn-pasek [name='cennik'], #magazyn-pasek [name='powrot']"
@@ -863,7 +902,7 @@
     <% } else { %>
       <table class="tab-pozycje tab-stala">
         <colgroup>
-          <col class="kol-mini"><col class="kol-ilosc"><col><col class="kol-cena"><col class="kol-suma">
+          <col class="kol-mini"><col class="kol-ilosc"><col><col class="kol-vat"><col class="kol-cena"><col class="kol-suma">
         </colgroup>
         <thead>
           <%# Kolumna miniatury nie ma naglowka — obrazek opisuje sam siebie, a slowo %>
@@ -871,7 +910,7 @@
           <%# ⚠️ NETTO NIE MA JUZ WLASNEJ KOLUMNY (2026-08-07) — stoi drobnym drukiem pod %>
           <%# cena brutto. Szesc kolumn nie miescilo sie czytelnie, a netto jest liczba %>
           <%# pomocnicza: na fakture i do bariery arytmetycznej idzie BRUTTO. %>
-          <tr><th class="kol-mini"></th><th class="kol-ilosc">Ilość</th><th>Nazwa</th><th class="liczba">Cena brutto</th><th class="liczba">Suma</th></tr>
+          <tr><th class="kol-mini"></th><th class="kol-ilosc">Ilość</th><th>Nazwa</th><th class="liczba kol-vat">VAT</th><th class="liczba">Cena brutto</th><th class="liczba">Suma</th></tr>
         </thead>
         <tbody>
           <% pozycjeKarty.forEach(function (w) { %>
@@ -935,6 +974,8 @@
                   <span class="znacznik znacznik-reczny">zmienione ręcznie: <%= w.polaZmienione.join(', ') %></span>
                 <% } %>
               </td>
+              <%# PRZ-105: stawka pozycji (domain/tabela-pozycji.js — ta sama reguła co faktura). %>
+              <td class="liczba kol-vat"><%= w.stawkaOpis ?? '' %></td>
               <td class="liczba">
                 <% if (!w.podsumowanie) { %>
                   <%# ⚠️ CENA KATALOGOWA STOI OBOK, PRZEKRESLONA — i pokazuje sie WYLACZNIE %>
@@ -956,6 +997,8 @@
           <% }); %>
         </tbody>
       </table>
+      <%# PRZ-105: Razem netto · VAT · Razem brutto — liczone jak faktura (w edycji: pod tabelą formularza). %>
+      <%- include('_podsumowanie-vat.ejs', { p: podsumowanieVat }) %>
     <% } %>
     <%# Kupon rabatowy ze sklepu (kampania WRZESIEN30, 2026-08-25) — w OBU trybach, bo %>
     <%# w edycji tlumaczy, skad wziely sie ceny. Informacja OPISOWA: ceny pozycji wyzej %>

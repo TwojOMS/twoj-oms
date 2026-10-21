@@ -796,3 +796,17 @@ describe('ekran nadania startuje wartościami z ustawień', () => {
     expect(koperta).toContain('<sizeZ>20</sizeZ>');
   });
 });
+
+// Recenzja PRZ-105 (P3): ekran nadania pokazuje netto pozycji — liczone stawką domyślną z Ustawień, jak na karcie.
+describe('ekran nadania — netto stawką domyślną z Ustawień (PRZ-105)', () => {
+  it('domyślna 8: pozycja ręczna 108,00 brutto pokazuje 100.00 zł netto', async () => {
+    const { zapiszStawkeDomyslna } = await import('../../../src/moduly/faktury/db/stawka-vat.js');
+    const { dodajPozycjeReczna } = await import('../../../src/oms/db/zamowienia.js');
+    const { serwer, id } = zServerem();
+    zapiszStawkeDomyslna(db, '8');
+    dodajPozycjeReczna(db, id, { nazwa: 'Album o lampach', ilosc: 1, cena_brutto: '108.00', brutto_linii: '108.00' });
+    await serwer.ready();
+    const r = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}/nadaj`, headers: naglowek });
+    expect(r.body).toMatch(/Album o lampach[\s\S]*?100\.00 zł[\s\S]*?108\.00 zł/u);
+  });
+});

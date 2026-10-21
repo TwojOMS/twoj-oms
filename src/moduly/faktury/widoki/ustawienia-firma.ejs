@@ -83,6 +83,29 @@
 <% } %>
 <% } %>
 
+<%# PRZ-105: domyślna stawka VAT — zapisuje tylko administrator; bez wpisu 23. %>
+<section class="ust-sekcja" id="stawka-vat">
+  <h2>Domyślna stawka VAT</h2>
+  <% if (stawkaVat.bledy.length) { %>
+    <div class="pas-uprzedzenie"><p><strong>Nie zapisano stawki.</strong></p><ul><% stawkaVat.bledy.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
+  <% } %>
+  <p>Podpowiada się w każdej nowej pozycji zamówienia. Dostają ją też pozycje ze sklepu i z Allegro oraz dostawa — w zamówieniach, które nie mają jeszcze faktury. Pozycje dopisane ręcznie zachowują stawkę z chwili dopisania. Nabywca z NIP-em z innego państwa UE zawsze dostaje 0% (WDT).</p>
+  <% if (stawkaVat.biezaca === '0') { %>
+    <p class="pas-uprzedzenie"><strong>0% krajowe — sprawdź podstawę.</strong> Przy nabywcy z Polski faktura pójdzie do KSeF ze stawką 0%.</p>
+  <% } %>
+  <% if (stawkaVat.mozeZmieniac) { %>
+    <form class="ust-formularz" method="post" action="<%= stawkaVat.zapis %>">
+      <label for="stawka-vat-wybor">Stawka</label>
+      <div><select id="stawka-vat-wybor" name="stawka">
+        <% stawkaVat.stawki.forEach(function (s) { %><option value="<%= s %>"<%= s === stawkaVat.biezaca ? ' selected' : '' %>><%= s %>%</option><% }); %>
+      </select></div>
+      <div class="ust-pelna ust-akcje"><button class="btn btn--glowny" type="submit">Zapisz stawkę</button></div>
+    </form>
+  <% } else { %>
+    <p>Ustawiona: <strong><%= stawkaVat.biezaca %>%</strong>. <span class="ust-pomoc">Stawkę zmienia tylko administrator.</span></p>
+  <% } %>
+</section>
+
 <%# PRZ-102.20: rachunek bankowy firmy — zapisuje tylko administrator; plik (OMS_RACHUNEK / OMS_BANK) wygrywa. %>
 <section class="ust-sekcja" id="rachunek-stan">
   <h2>Rachunek bankowy</h2>

@@ -9,6 +9,7 @@ import { wysylkaEfektywna } from '../../domena/wysylka-kwota.js';
 import { nalozNadpisaniaPozycji } from '../../domena/pozycje-reczne.js';
 import { zdjeciePozycji } from '../../domena/miniatury.js';
 import { bladOperatora } from '../../domena/bledy.js';
+import { czyStawkaVat } from '../../domena/vat.js';
 import { ktoTeraz } from '../../domena/kontekst-zadania.js';
 import { idsDolaczonych } from '../../domena/scalanie.js';
 // ⚠️ NIP nabywcy i jego normalizacja — TE SAME funkcje, ktorych uzywa faktura
@@ -259,8 +260,12 @@ export function dodajPozycjeReczna(
   {
     nazwa, sku, ilosc, cena_brutto, brutto_linii,
     produkt_id: produktId = null, wariant_id: wariantId = null, cena_katalogowa: katalogowa = null,
+    vat = null,
   },
 ) {
+  // PRZ-105: stawka VAT pozycji (lista 23/8/5/0). NULL = „domyślna z Ustawień w chwili wystawiania”
+  // (domain/vat.js: stawkaPozycji) — tak zostają pozycje sprzed PRZ-105. Spoza listy = odmowa.
+  if (vat !== null && !czyStawkaVat(vat)) throw bladOperatora(`Nieznana stawka VAT „${vat}”.`);
   // ⚠️ `produkt_id` i `wariant_id` SA OPCJONALNE i domyslnie puste — pozycja wpisana z reki
   // przy telefonie nie ma zadnego produktu w sklepie i NULL jest o niej prawda. Wypelnia je
   // wylacznie „dodaj z magazynu" (21.08.2026): tam operator wskazal konkretny wiersz lustra,
@@ -270,8 +275,9 @@ export function dodajPozycjeReczna(
   // uzgodniona — i taka pozycja jest dla przeliczenia rabatem niewidzialna (domain/rabat.js).
   db.prepare(
     'INSERT INTO pozycje (zamowienie_id, nazwa, sku, ilosc, cena_brutto, cena_netto, brutto_linii, netto_linii, vat,'
-    + " zrodlo, zrodlo_id, produkt_id, wariant_id, cena_katalogowa) VALUES (?,?,?,?,?,NULL,?,NULL,NULL,'reczna',NULL,?,?,?)",
-  ).run(zamowienieId, nazwa, sku ?? null, ilosc, cena_brutto, brutto_linii, produktId, wariantId, katalogowa);
+    + " zrodlo, zrodlo_id, produkt_id, wariant_id, cena_katalogowa) VALUES (?,?,?,?,?,NULL,?,NULL,?,'reczna',NULL,?,?,?)",
+  ).run(zamowienieId, nazwa, sku ?? null, ilosc, cena_brutto, brutto_linii, vat === null ? null : String(vat).trim(),
+    produktId, wariantId, katalogowa);
   db.prepare('UPDATE zamowienia SET zmienione_at = ? WHERE id = ?').run(teraz(), zamowienieId);
   return { nazwa, sku: sku ?? null, ilosc, cena_brutto, brutto_linii };
 }
@@ -286,15 +292,18 @@ function pozycjaZamowienia(db, zamowienieId, pozycjaId) {
 }
 
 /** Edycja pozycji DOPISANEJ RECZNIE — wprost w wierszu, bo jest nasza w calosci. */
-export function zapiszPozycjeReczna(db, zamowienieId, pozycjaId, { nazwa, ilosc, cena_brutto, brutto_linii }) {
+export function zapiszPozycjeReczna(db, zamowienieId, pozycjaId, { nazwa, ilosc, cena_brutto, brutto_linii, vat }) {
   const p = pozycjaZamowienia(db, zamowienieId, pozycjaId);
   if (p.zrodlo !== 'reczna') {
     throw bladOperatora('Pozycji ze sklepu nie zapisuje się wprost — poprawka mieszka obok, jako nadpisanie.');
   }
-  db.prepare('UPDATE pozycje SET nazwa = ?, ilosc = ?, cena_brutto = ?, brutto_linii = ? WHERE id = ?')
-    .run(nazwa, ilosc, cena_brutto, brutto_linii, pozycjaId);
+  // PRZ-105: `vat` nieobecny (np. przeliczenie rabatu) = stawka bez zmian; obecny musi być z listy.
+  const stawka = vat === undefined ? p.vat : vat;
+  if (stawka !== null && stawka !== undefined && !czyStawkaVat(stawka)) throw bladOperatora(`Nieznana stawka VAT „${stawka}”.`);
+  db.prepare('UPDATE pozycje SET nazwa = ?, ilosc = ?, cena_brutto = ?, brutto_linii = ?, vat = ? WHERE id = ?')
+    .run(nazwa, ilosc, cena_brutto, brutto_linii, stawka ?? null, pozycjaId);
   db.prepare('UPDATE zamowienia SET zmienione_at = ? WHERE id = ?').run(teraz(), zamowienieId);
-  return { ...p, nazwa, ilosc, cena_brutto, brutto_linii };
+  return { ...p, nazwa, ilosc, cena_brutto, brutto_linii, vat: stawka ?? null };
 }
 
 // WYJSCIE ze stanu, w ktory panel sam pozwala wejsc (przewodnik OMS, 4.9): omylkowo dopisana
@@ -555,6 +564,17 @@ export function zapiszUstaleniaHandlowe(db, id, { b2b, termin_platnosci: termin,
   db.prepare(
     'UPDATE zamowienia SET b2b = ?, termin_platnosci = ?, rabat_procent = ?, zmienione_at = ? WHERE id = ?',
   ).run(b2b ? 1 : 0, termin ?? null, Number(rabat) || 0, teraz(), id);
+}
+
+/**
+ * PRZ-104: ręczna data wysyłki (`RRRR-MM-DD`) albo `null` = standardowy termin.
+ * ⚠️ `wyslane_at IS NULL` W WARUNKU — blokada po wysyłce (decyzja właściciela 21.10.2026) stoi też
+ * tutaj, nie tylko w trasie: paczka nadana między odczytem karty a kliknięciem nie przepuści
+ * zmiany. Oddaje `true`, gdy zapis się odbył.
+ */
+export function zapiszTerminWysylkiRecznego(db, id, dzien) {
+  return db.prepare('UPDATE zamowienia SET termin_wysylki_reczny = ?, zmienione_at = ? WHERE id = ? AND wyslane_at IS NULL')
+    .run(dzien ?? null, teraz(), id).changes === 1;
 }
 
 export function przywrocDaneZeSklepu(db, id) {

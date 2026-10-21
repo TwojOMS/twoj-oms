@@ -6,6 +6,7 @@ import { klientPoNip } from '../../../oms/db/klienci.js';
 import { pobierzZamowienie, zapiszPozycjeReczna, zapiszUstaleniaHandlowe } from '../../../oms/db/zamowienia.js';
 import { przeliczKwoteRecznego } from '../../../oms/db/zamowienia-reczne.js';
 import { sumaPozycjiZWysylkaGrosze } from '../../../domena/suma-pozycji.js';
+import { czytajStawkeDomyslna } from '../../faktury/db/stawka-vat.js';
 
 // ZMIANA RABATU NA KARCIE — jedyna droga, którą wolno przeliczyć ceny już zapisanego
 // zamówienia (21.08.2026).
@@ -42,6 +43,8 @@ export function zmienUstalenia(db, id, { b2b, termin_platnosci: termin, rabat_pr
     // rozpoznanie „pozycji panelu" i nowa cena musza isc ta sama transformacja —
     // inaczej zmiana rabatu pominelaby caly wsad z magazynu jako „wyceniony recznie".
     wdt: czyNipUe(daneFaktury(przed).nip),
+    // PRZ-105: ÷ stawka domyślna z Ustawień — ta sama, którą pozycja weszła z magazynu.
+    stawkaDomyslna: czytajStawkeDomyslna(db),
   });
 
   db.exec('BEGIN IMMEDIATE');

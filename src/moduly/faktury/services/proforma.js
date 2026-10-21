@@ -7,6 +7,7 @@ import {
 } from '../db/proformy.js';
 import { czyWolnoWystawic } from '../../../domena/proforma-stan.js';
 import { pozycjeDokumentu, sprawdzSumeDokumentu } from '../../../domena/pozycje-faktury.js';
+import { czytajStawkeDomyslna } from '../db/stawka-vat.js';
 import { podsumowanieVat } from '../../../domena/podsumowanie-vat.js';
 import { kwotaSlownie } from '../../../domena/kwota-slownie.js';
 import { daneFaktury } from '../../../domena/dane-faktury.js';
@@ -149,7 +150,8 @@ export function createProforma({
     // TE SAME funkcje, ktore licza fakture VAT (domain/pozycje-faktury.js). Druga kopia
     // arytmetyki rozjechalaby sie przy pierwszej zmianie i klamalaby o kwocie, ktora klient
     // ma przelac — a na proformie ta kwota jest calym sensem dokumentu.
-    const pozycje = pozycjeDokumentu(z);
+    // PRZ-105: stawka per pozycja, domyslna z Ustawien — ta sama, ktora dostaje faktura VAT.
+    const pozycje = pozycjeDokumentu(z, { stawkaDomyslna: czytajStawkeDomyslna(db) });
     sprawdzSumeDokumentu(pozycje, z);
 
     // ── FAZA 3: arytmetyka dokumentu ──────────────────────────────────────────
