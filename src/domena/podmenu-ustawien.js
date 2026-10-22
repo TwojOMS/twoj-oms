@@ -31,12 +31,14 @@ export const POZYCJE_USTAWIEN = [
   { klucz: 'api', etykieta: 'API i webhooki', href: '/ustawienia/api', grupa: 'system', wkrotce: true },
   { klucz: 'szablony-wiadomosci', etykieta: 'Szablony wiadomości', href: '/ustawienia/szablony-wiadomosci', grupa: 'komunikacja' },
   { klucz: 'statusy', etykieta: 'Statusy zamówień', href: '/ustawienia/statusy', grupa: 'sprzedaz' },
+  // PRZ-108.06 (właściciel 21.10): reguły „gdy … to …” i automaty systemowe (automat KSeF) — tylko admin.
+  { klucz: 'automatyzacje', etykieta: 'Automatyzacje', href: '/ustawienia/automatyzacje', grupa: 'sprzedaz', tylkoAdmin: true, beta: true },
 ];
 
 // Kolejność z planu, także dla pozycji dopisywanych przez innych (statusy, szablony wiadomości).
 const KOLEJNOSC = [
   'firma', 'konta', 'role',
-  'statusy', 'zamowienia-i-wysylka', 'magazyn', 'druk',
+  'statusy', 'automatyzacje', 'zamowienia-i-wysylka', 'magazyn', 'druk',
   'szablony-wiadomosci', 'wiadomosci-i-automatyzacje', 'powiadomienia',
   'integracje',
   'moduly', 'diagnostyka', 'aktualizacje', 'kopie', 'import-eksport', 'api',
@@ -48,6 +50,8 @@ const ALIASY = [
   ['/ustawienia/dostawa', 'zamowienia-i-wysylka'],
   ['/ustawienia/formulka', 'wiadomosci-i-automatyzacje'],
   ['/ustawienia/kanaly', 'integracje'],
+  // PRZ-108.06: dawny adres zapisu automatu KSeF (ekran inFaktu) — błąd formularza renderuje ekran Automatyzacji.
+  ['/ustawienia/integracje/infakt/ksef-automat', 'automatyzacje'],
 ];
 
 const podAdresem = (sciezka, href) => sciezka === href || sciezka.startsWith(`${href}/`);

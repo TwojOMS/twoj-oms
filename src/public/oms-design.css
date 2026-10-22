@@ -93,7 +93,48 @@ a.oms-theme-button,a.oms-theme-button:visited{text-decoration:none}
 .oms-settings-navigation .panel-statusow li.aktywna a,.oms-settings-navigation .panel-statusow li.aktywna a:not(.btn):visited,.oms-settings-navigation .panel-statusow li.aktywna a:not(.btn):hover{background:var(--oms-aktywne-tlo);color:var(--link);font-weight:600}
 .oms-settings-navigation .panel-statusow li.wkrotce:not(.aktywna) a,.oms-settings-navigation .panel-statusow li.wkrotce:not(.aktywna) a:not(.btn):visited{color:var(--tekst-przygaszony)}
 .menu-ustawien-wkrotce{flex-shrink:0;padding:0 5px;border:1px solid var(--ramka);border-radius:4px;font-size:.72rem;font-weight:500;line-height:1.5;color:var(--tekst-przygaszony)}
+/* PRZ-108.11: plakietka BETA — ten sam kształt co „wkrótce”, w kolorze marki (pozycja działa, ale się zmienia). */
+.menu-ustawien-beta{flex-shrink:0;padding:0 5px;border:1px solid var(--link);border-radius:4px;font-size:.72rem;font-weight:600;letter-spacing:.04em;line-height:1.5;color:var(--link)}
+.tytul-z-plakietka{display:flex;align-items:center;gap:.6rem}.tytul-z-plakietka h1{margin:0}.tytul-z-plakietka .menu-ustawien-beta{font-size:.75rem}
 .oms-settings-mobile{display:none}
+/* PRZ-108.06: Ustawienia → Automatyzacje — nagłówek grupy kafli („Automaty systemowe”) tym samym krojem co nagłówek grupy
+   menu Ustawień; znacznik „wkrótce” obok tytułu kafla reguł. */
+.aut-grupa{margin:1.6rem 0 .6rem;font-size:.78rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--tekst-przygaszony)}
+.ust-sekcja h2 .menu-ustawien-wkrotce{margin-left:.45rem;vertical-align:2px}
+/* PRZ-108.11: stan automatu KSeF zaraz pod tytułem kafla. */
+.ust-sekcja .aut-stan{margin:-.2rem 0 .8rem;font-size:.92rem}
+/* PRZ-108.07: reguły automatyzacji — kreator, dziennik (makieta makiety-2026-10-21/automatyzacje.html, „dodatki makiety”).
+   Lista wyboru (zdarzenie, kanały, akcja): wzór ekranu Powiadomienia — <p><label><input> <strong> + .wyjasnienie. */
+.aut-wybor{margin:0}
+.aut-wybor p{margin:0 0 .7rem}
+.aut-wybor label{display:inline-flex;gap:.55rem;align-items:flex-start;cursor:pointer}
+.aut-wybor input,.ust-formularz .aut-wybor input{width:auto;min-height:0;margin:.2rem 0 0;padding:0;flex-shrink:0}
+.aut-wybor .wyjasnienie{display:block;margin:.15rem 0 0}
+.aut-wybor h3{margin:1rem 0 .5rem;font-size:.95rem;padding-bottom:.3rem;border-bottom:1px solid var(--ramka)}
+.aut-wybor h3:first-child{margin-top:.2rem}
+.aut-wybor .aut-wylaczone label{cursor:default;color:var(--tekst-przygaszony)}
+.aut-wybor .aut-wylaczone .menu-ustawien-wkrotce{margin-left:.4rem}
+.aut-wybor .plakietka--kanal{margin:0 .1rem 0 0}
+.aut-sekcja{max-width:60rem}
+.aut-sekcja .ust-formularz{grid-template-columns:minmax(9rem,12rem) minmax(0,1fr)}
+.aut-sekcja select,.aut-sekcja input[type="text"],.aut-sekcja input[type="number"]{box-sizing:border-box;padding:.4rem .55rem;font:inherit;font-size:.88rem;border:1px solid var(--ramka-pola);border-radius:4px;background:var(--tlo);color:var(--tekst)}
+.aut-sekcja input[type="text"]{width:100%;max-width:24rem}
+.aut-sekcja input[type="number"]{width:6rem}
+.aut-tabela td{vertical-align:top}
+.aut-tabela td.aut-akcje{text-align:right;white-space:nowrap}
+.aut-tabela .wyjasnienie{margin:.15rem 0 0}
+#regula-dziennik td:first-child{white-space:nowrap}
+.aut-liczby{margin:.2rem 0 .9rem 1.1rem;padding:0;font-size:.9rem}
+.aut-liczby li{margin:.15rem 0}
+.aut-filtr{display:flex;gap:.5rem;align-items:center;margin:0 0 .7rem;font-size:.88rem}
+#regula-stan .ust-akcje form{display:inline}
+/* PRZ-108.08 (C1): lista podrzędna pod przyciskiem (status zdarzenia w kroku 1, statusy warunku w kroku 2) — z makiety. */
+.aut-podlista{margin:-.3rem 0 .8rem 1.55rem;padding-left:.8rem;border-left:2px solid var(--ramka)}
+.aut-podlista p{margin:0 0 .35rem}
+.aut-podlista .ust-pomoc{margin:.35rem 0 0}
+.aut-etykieta-pola,.aut-wybor .aut-etykieta-pola{display:block;cursor:default;margin:0 0 .25rem;font-size:.85rem;color:var(--tekst)}
+.aut-podlista select{box-sizing:border-box;padding:.4rem .55rem;font:inherit;font-size:.88rem;border:1px solid var(--ramka-pola);border-radius:4px;background:var(--tlo);color:var(--tekst);min-width:16rem}
+.aut-w-linii{display:inline;margin:0 0 0 .3rem}
 /* Strona „wkrótce”: opis i punkty tym samym krojem co tekst sekcji, ale w kolorze treści; stan i „Dziś” przygaszone. */
 .ust-wkrotce ul{margin:0 0 .8rem;padding-left:1.2rem}.ust-wkrotce li{margin:.25rem 0;font-size:.88rem;color:var(--tekst)}
 .ust-wkrotce p.ust-wkrotce-opis{margin-bottom:.5rem;color:var(--tekst)}

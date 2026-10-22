@@ -15,6 +15,7 @@ import { migracjaIndeksuListy } from './migracje/0001-indeks-listy.ts';
 import { migracjaScalen } from './migracje/0003-scalenia.ts';
 import { efektywnyTryb } from '../../core/tryb.ts';
 import { zrodloAdresuFirmy } from '../../oms/db/adres-firmy.js';
+import { zrodloNipuIBdoFirmy } from '../../oms/db/nip-bdo-firmy.js';
 import { wczytajKonfiguracjeIntegracji } from '../../oms/db/konfiguracja-integracji.js';
 import { uslugaGus, odmowaGusWProbie } from './gus-ustawien.ts';
 import { registerUstawieniaGusRoutes } from './ustawienia-gus.js';
@@ -46,7 +47,9 @@ export function createModulZamowienia({ zWiadomosciami = false, fabryki = {} as 
     });
     // PRZ-093.08: sprzedawca specyfikacji — plik albo Ustawienia → Firma (czytane przy każdym dokumencie).
     const adresFirmy=zrodloAdresuFirmy({db:ctx.db,zPliku:ctx.konfiguracja.nadawca});
-    const opcje = {db:ctx.db,config:{...ctx.usluga<object>('kanaly','config'),...ctx.konfiguracja,adresFirmy:adresFirmy.adres},
+    // PRZ-108.10: NIP i BDO specyfikacji — plik albo Ustawienia → Firma (każde pole osobno, czytane przy każdym dokumencie).
+    const nipBdoFirmy=zrodloNipuIBdoFirmy({db:ctx.db,zPliku:ctx.konfiguracja.proforma});
+    const opcje = {db:ctx.db,config:{...ctx.usluga<object>('kanaly','config'),...ctx.konfiguracja,adresFirmy:adresFirmy.adres,nipBdoFirmy:nipBdoFirmy.biezacy},
       poller:ctx.usluga('kanaly','poller'),stanyKanalow:ctx.usluga('kanaly','stanyKanalow'),
       // Pełny skład pobiera pocztę z jedynego modułu wiadomości podczas rejestracji tras.
       wiadomosci:null,gus,syncSklep,zdrowie:null,

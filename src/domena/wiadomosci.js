@@ -16,7 +16,7 @@ import { powodBrakuPaczki, numeryPaczek } from './wiadomosc-wyslane.js';
 // ⚠️ WIDOK, TRASA I USŁUGA PYTAJĄ TĘ SAMĄ FUNKCJĘ. Druga kopia warunku po stronie widoku
 // znaczyłaby przycisk, który się pokazuje, a po kliknięciu odmawia — albo, groźniej, odwrotnie.
 
-// PRZ-102.21: `wyslane` — „Zamówienie wysłane", wyłącznie ręcznie z karty (bez automatu przy nadaniu).
+// PRZ-102.21: `wyslane` — „Zamówienie wysłane", ręcznie z karty; PRZ-108.08: także regułą z Ustawienia → Automatyzacje.
 export const TEMATY = Object.freeze(['potwierdzenie', 'proforma', 'faktura', 'przypomnienie', 'wyslane']);
 
 export const NAZWA_TEMATU = Object.freeze({

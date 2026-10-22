@@ -11,7 +11,8 @@ it('osobisty filtr usuwa tylko wybrane typy, bez zmiany wierszy wejściowych', (
 it('każdy typ ma dokładnie jeden opis i to samo źródło kolejności', async () => {
   const powiadomienia = await import('../../src/domena/powiadomienia.js');
   expect(powiadomienia.RODZAJE_OSTRZEZEN.map(r => r.typ)).toEqual(ostrzezenia.KOLEJNOSC);
-  expect(new Set(ostrzezenia.KOLEJNOSC).size).toBe(7);
+  // PRZ-108.08: ósmy typ — „automatyzacja” (reguła wstrzymana, wysyłka niepewna; tylko admin).
+  expect(new Set(ostrzezenia.KOLEJNOSC).size).toBe(8);
   for (const r of powiadomienia.RODZAJE_OSTRZEZEN) {
     expect(r.nazwa.length).toBeGreaterThan(5);
     expect(r.opis.length).toBeGreaterThan(20);

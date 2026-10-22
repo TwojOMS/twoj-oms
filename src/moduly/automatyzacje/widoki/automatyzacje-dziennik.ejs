@@ -1,0 +1,92 @@
+<%# PRZ-108.07: reguła — stan, granica, historia włączeń i dziennik wykonań (makieta, kadr 6). Ostatnie 200 wykonań,
+    filtr stanu. Włączenie z ostrzeżeniem o nieodwracalności i granicy; wstrzymana reguła ma „Wyślij zaległe (N)”
+    i „Pomiń zaległe”. %>
+<p class="szw-powrot"><a href="/ustawienia/automatyzacje">← Automatyzacje</a></p>
+<h1><%= regula.nazwa %></h1>
+<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
+<% if (blad) { %><div class="pas-uprzedzenie" role="alert"><p><strong>Nie włączono.</strong> <%= blad %></p></div><% } %>
+<section class="ust-sekcja aut-sekcja" id="regula-stan">
+  <h2>Stan</h2>
+  <% if (regula.wlaczona && regula.wstrzymana_powod) { %>
+  <p class="ust-stan ust-stan-weryfikacja"><strong>Wstrzymana</strong></p>
+  <div class="pas-uprzedzenie" role="alert"><p><%= regula.wstrzymana_powod %> Nic nie wyjdzie, dopóki nie zdecydujesz, co zrobić z zaległymi.</p></div>
+  <div class="ust-akcje">
+    <form method="post" action="/ustawienia/automatyzacje/<%= regula.id %>/zalegle/wyslij"><button class="btn btn--glowny" type="submit">Wyślij zaległe (<%= zalegle %>)</button></form>
+    <form method="post" action="/ustawienia/automatyzacje/<%= regula.id %>/zalegle/pomin"><button class="ust-przycisk" type="submit">Pomiń zaległe</button></form>
+  </div>
+  <% } else if (regula.wlaczona) { %>
+  <p class="ust-stan ust-stan-ok"><strong>Włączona</strong></p>
+  <% } else { %>
+  <p class="ust-stan"><strong>Wyłączona</strong></p>
+  <% } %>
+  <% if (regula.wlaczona && granica) { %>
+  <p>Od <strong><%= granica %></strong><% if (wlaczyl) { %> (włączył: <%= wlaczyl %>)<% } %>. Liczy zdarzenia od tej chwili — zamówień sprzed włączenia nie rusza: pomija też zamówienia, które przed włączeniem miały już paczkę z numerem listu albo zostały złożone ponad 14 dni wcześniej.</p>
+  <% } %>
+  <p><%= opis %>. Kanały: <strong><%= kanaly.join(', ') || '—' %></strong>. Najwyżej <%= regula.limit_na_godzine %> na godzinę.</p>
+  <%# PRZ-108.08: warunki poza kanałem sprawdzane są w chwili wykonania — zdanie z makiety (kadr 6). %>
+  <% if (warunkiOpis) { %><p class="ust-pomoc">Po opóźnieniu reguła sprawdza, czy zamówienie nadal <%= warunkiOpis %> — dopiero wtedy działa. Inaczej pomija je z powodem w dzienniku i w historii zamówienia.</p><% } %>
+  <% if (noweKanaly.length) { %><p class="ust-pomoc"><strong>Nowe kanały od czasu zapisu: <%= noweKanaly.join(', ') %> — niezaznaczone.</strong> Zaznaczysz je w edycji reguły.</p><% } %>
+  <% for (const k of klopoty) { %><div class="pas-uprzedzenie" role="alert"><p><span class="znacznik znacznik--czerwony"><%= k.krotko %></span> <%= k.zdanie %></p></div><% } %>
+  <% if (!zdarzenieDostepne || !akcjaDostepna) { %><p class="ust-pomoc">Zdarzenie albo akcja tej reguły jest niedostępna w tej wersji OMS-u — reguła nic nie robi.</p><% } %>
+  <% if (regula.wlaczona) { %>
+  <form method="post" action="/ustawienia/automatyzacje/<%= regula.id %>/wylacz">
+    <p class="pas-uprzedzenie">Wyłączenie działa od razu: zaplanowane wykonania tej reguły już nie nastąpią. Ponowne włączenie liczy od nowa — zdarzenia z przerwy zostaną pominięte.</p>
+    <div class="ust-akcje">
+      <button class="ust-przycisk grozny" type="submit">Wyłącz regułę</button>
+      <a class="ust-przycisk" href="/ustawienia/automatyzacje/<%= regula.id %>/edytuj">Edytuj</a>
+    </div>
+  </form>
+  <% } else { %>
+  <form method="post" action="/ustawienia/automatyzacje/<%= regula.id %>/wlacz">
+    <% if (!pocztaGotowa) { %><p class="pas-uprzedzenie">Poczta wychodząca nie jest podłączona — reguły z mailem nie włączysz. Podłącz ją w <a href="/ustawienia/integracje/poczta">Ustawienia → Integracje → Poczta wychodząca</a>.</p><% } %>
+    <% if (zdarzenieDostepne && akcjaDostepna && !klopoty.length) { %>
+    <p class="pas-uprzedzenie">Po włączeniu OMS działa sam, bez podglądu — wysłanego maila nie da się cofnąć. Reguła liczy zdarzenia od chwili włączenia; zamówień sprzed niej nie rusza.</p>
+    <% } %>
+    <div class="ust-akcje">
+      <% if (zdarzenieDostepne && akcjaDostepna && !klopoty.length) { %><button class="btn btn--glowny" type="submit">Włącz regułę</button><% } %>
+      <a class="ust-przycisk" href="/ustawienia/automatyzacje/<%= regula.id %>/edytuj">Edytuj</a>
+    </div>
+  </form>
+  <form method="post" action="/ustawienia/automatyzacje/<%= regula.id %>/usun" style="margin-top:.6rem">
+    <button class="ust-przycisk grozny" type="submit">Usuń regułę</button>
+  </form>
+  <% } %>
+  <h3>Historia włączania</h3>
+  <table class="tab-pozycje">
+    <thead><tr><th>Kiedy</th><th>Kto</th><th>Zmiana</th></tr></thead>
+    <tbody>
+    <% for (const h of historia) { %><tr><td><%= h.kiedy %></td><td><%= h.kto %></td><td><%= h.zmiana %></td></tr><% } %>
+    </tbody>
+  </table>
+</section>
+
+<section class="ust-sekcja szw-sekcja" id="regula-dziennik">
+  <h2>Dziennik wykonań</h2>
+  <form class="aut-filtr" method="get" action="/ustawienia/automatyzacje/<%= regula.id %>">
+    <label for="aut-filtr-stan">Pokaż</label>
+    <select id="aut-filtr-stan" name="stan">
+      <% for (const [wartosc, etykieta] of FILTRY) { %><option value="<%= wartosc %>"<%= filtr === wartosc ? ' selected' : '' %>><%= etykieta %></option><% } %>
+    </select>
+    <button class="ust-przycisk" type="submit">Pokaż</button>
+  </form>
+  <% if (wykonania.length) { %>
+  <div class="przewijak-tabeli">
+    <table class="tab-pozycje aut-tabela">
+      <thead><tr><th>Kiedy</th><th>Zamówienie</th><th>Do kogo</th><th>Wynik</th></tr></thead>
+      <tbody>
+      <% for (const w of wykonania) { %>
+        <tr>
+          <td><%= w.kiedy %></td>
+          <td><a href="/zamowienia/<%= w.zamowienie_id %>"><%= w.numer %></a></td>
+          <td><%= w.adresat || '—' %></td>
+          <td><span class="znacznik <%= w.stan.klasa %>"><%= w.stan.etykieta %></span><% if (w.powod) { %><p class="wyjasnienie"><%= w.powod %></p><% } %></td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table>
+  </div>
+  <% } else { %>
+  <p><%= filtr ? 'Brak wykonań w tym stanie.' : 'Reguła jeszcze nic nie wykonała.' %></p>
+  <% } %>
+  <p class="wyjasnienie">Każde pominięcie, błąd i niepewne wykonanie ma też wpis w historii swojego zamówienia. Dziennik pokazuje ostatnie 200 wykonań.</p>
+</section>

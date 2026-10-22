@@ -32,6 +32,19 @@ describe('domyślny szablon = dzisiejszy mail co do znaku', () => {
   }
 });
 
+// PRZ-108.01: pracownik bez imienia — domyślne „Dzień dobry, {imie}!" dawało „Dzień dobry,!".
+describe('pracownik bez imienia', () => {
+  for (const cel of ['zaproszenie', 'reset']) {
+    for (const imie of ['', '   ', undefined]) {
+      it(`${cel}, imię ${JSON.stringify(imie) ?? 'brak'}: pozdrowienie bez wykrzyknika`, () => {
+        const m = trescMaila({ cel, imie, link: 'https://oms.example/haslo/AbC', szablon: DOMYSLNE[cel] });
+        expect(m.text).toMatch(/^Dzień dobry,\n\nAdministrator /);
+        expect(m.text).not.toMatch(/,!/);
+      });
+    }
+  }
+});
+
 describe('zapisany szablon w prawdziwej wysyłce', () => {
   it('zaproszenie z nowym tematem i treścią, link podstawiony; „Przywróć domyślny" wraca do dzisiejszego', async () => {
     const { db, app, admin, mailer } = panel();

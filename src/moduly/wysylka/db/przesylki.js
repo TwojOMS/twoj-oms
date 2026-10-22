@@ -313,6 +313,18 @@ export function zapiszStatusDpd(db, id, { opis, at, kod = null }) {
     .run(opis ?? null, at ?? null, kod ?? null, id);
 }
 
+// PRZ-108.09 (zmiana C2 automatyzacji): chwila PIERWSZEGO dowodu odbioru przez kuriera (domena/dowod-odbioru.js).
+// Zapis jednorazowy (`odebrana_at IS NULL`): późniejsze skany (w drodze, doręczona) nie przesuwają chwili — zdarzenie
+// „Kurier odebrał paczkę” czyta ją kursorem i nie może zobaczyć tej samej paczki drugi raz. Zwraca zapisaną chwilę
+// albo null, gdy chwila już była.
+// Recenzja 09, usterka 1: `kurierAt` — chwila odbioru U KURIERA (domena/dowod-odbioru.js, chwilaDowoduUKuriera), żeby
+// reguła mogła pominąć dowód spóźniony (pierwszy odczyt śledzenia dni po odbiorze).
+export function zapiszOdbiorPrzesylki(db, id, { at, dowod, kurierAt = null }) {
+  const info = db.prepare('UPDATE przesylki SET odebrana_at = ?, odebrana_dowod = ?, odebrana_kurier_at = ? WHERE id = ? AND odebrana_at IS NULL')
+    .run(at, dowod, kurierAt, id);
+  return Number(info.changes) === 1 ? at : null;
+}
+
 // Znacznik NASZEJ PROBY — i tylko on steruje dlawikiem godzinowym w GET /zamowienia/:id.
 //
 // Wczesniej dlawik czytal status_kuriera_at, czyli czas ZDARZENIA W DPD, i dla kazdej paczki

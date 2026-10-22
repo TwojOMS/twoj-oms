@@ -18,7 +18,6 @@ import { modulZdrowie } from '../../../src/moduly/zdrowie/modul.ts';
 import { wczytajAutomatKsef, zapiszWynikAutomatu } from '../../../src/moduly/faktury/db/ksef-automat.js';
 
 const ADRES = '/ustawienia/integracje/infakt';
-const ZAPIS = `${ADRES}/ksef-automat`;
 
 function panel() {
   const moduly = [modulRdzen, modulWeb, modulKanaly, createModulFaktury(), modulWiadomosci, createModulZamowienia({ zWiadomosciami: true }),
@@ -52,61 +51,9 @@ it('PRZ-102.26: ustawienie B2C domyślnie wyłączone, zapis firmowy i 403 bez p
   } finally { await p.app.close(); p.db.close(); }
 });
 
-describe('PRZ-102.12 Ustawienia → inFakt → automatyczna wysyłka do KSeF', () => {
-  it('ekran: sekcja domyślnie wyłączona, mówi co poleci, ostrzega o nieodwracalności i o braku inFaktu', async () => {
-    const p = panel();
-    const r = await get(p.app, ADRES, p.admin);
-    expect(r.statusCode).toBe(200);
-    const sekcja = /<section class="ust-sekcja" id="ksef-automat">[\s\S]*?<\/section>/u.exec(r.body)?.[0] ?? '';
-    expect(sekcja).toContain('Automatyczna wysyłka do KSeF');
-    expect(sekcja).toContain('name="godzina"');
-    expect(sekcja).toContain('value="20:00"');
-    expect(sekcja).not.toMatch(/name="wlaczony" value="1"[^>]*checked/u);
-    expect(sekcja).toContain('zaznacz wszystkie');
-    expect(sekcja).toContain('nie da się cofnąć');
-    expect(sekcja).toContain('inFakt nie jest podłączony');
-  });
-
-  it('admin zapisuje: włączone 20:00 → 303 i wartości w tabeli ustawień', async () => {
-    const p = panel();
-    const r = await post(p.app, ZAPIS, p.admin, { wlaczony: ['0', '1'], godzina: '20:00' });
-    expect(r.statusCode).toBe(303);
-    expect(r.headers.location).toBe(`${ADRES}?zapisano=ksef-automat#ksef-automat`);
-    expect(wczytajAutomatKsef(p.db)).toMatchObject({ wlaczony: true, godzina: '20:00', zmienil: { login: 'adam' } });
-    const ekran = await get(p.app, r.headers.location, p.admin);
-    expect(ekran.body).toMatch(/name="wlaczony" value="1"[^>]*checked/u);
-    // Wyłączenie tym samym formularzem (samo pole ukryte).
-    const w = await post(p.app, ZAPIS, p.admin, { wlaczony: '0', godzina: '20:00' });
-    expect(w.statusCode).toBe(303);
-    expect(wczytajAutomatKsef(p.db).wlaczony).toBe(false);
-  });
-
-  it('konto bez uprawnienia „ustawienia” nie zapisze (403) i nic nie zmienia', async () => {
-    const p = panel();
-    const r = await post(p.app, ZAPIS, p.ewa, { wlaczony: '1', godzina: '20:00' });
-    expect(r.statusCode).toBe(403);
-    expect(wczytajAutomatKsef(p.db).wlaczony).toBe(false);
-  });
-
-  it.each([['25:00', '1'], ['8:00', '1'], ['', '1'], ['20:00', 'tak'], ['23:59', '1'], ['23:46', '1']])('zła godzina %j / przełącznik %j → 400, nic nie zapisane', async (godzina, wlaczony) => {
-    const p = panel();
-    const r = await post(p.app, ZAPIS, p.admin, { wlaczony, godzina });
-    expect(r.statusCode).toBe(400);
-    expect(r.body).toContain('Nie zapisano');
-    expect(wczytajAutomatKsef(p.db)).toMatchObject({ wlaczony: false, godzina: '20:00' });
-  });
-
-  it('włączenie o 21:30 z godziną 20:00 nie wysyła dziś — ekran mówi „jutro o 20:00”', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(new Date('2026-10-20T19:30:00Z'));
-    const p = panel();
-    const r = await post(p.app, ZAPIS, p.admin, { wlaczony: ['0', '1'], godzina: '20:00' });
-    expect(r.statusCode).toBe(303);
-    expect(wczytajAutomatKsef(p.db).ostatniPrzebieg).toBe('2026-10-20');
-    const ekran = await get(p.app, ADRES, p.admin);
-    expect(ekran.body).toContain('jutro o 20:00');
-  });
-});
+// PRZ-108.06: formularz automatu (przełącznik, godzina, złe wejścia, „jutro o 20:00”) przeniesiony na ekran
+// Ustawienia → Automatyzacje — jego testy są w tests/moduly/automatyzacje/ekran-ksef.test.js (tam też stary adres
+// zapisu i kafel stanu na ekranie inFaktu). Zmiana zachowania: zapis tylko dla admina (dawniej każde konto z „ustawienia”).
 
 describe('PRZ-102.12 wynik ostatniego przebiegu', () => {
   const wynik = {

@@ -96,10 +96,13 @@ describe('domyślny bootstrap BEZ SMTP', () => {
   beforeAll(async () => { smtp.wywolania.length = 0; a = await zbuduj(baza); });
   afterAll(() => zamknij(a));
 
-  it('mailer, potwierdzenie i wiadomości to null, a fabryka SMTP nie została wywołana', () => {
-    const u = (n: string) => a!.usluga('wiadomosci', n);
-    expect({ mailer: u('mailer'), potwierdzenie: u('potwierdzenie'), wiadomosci: u('wiadomosci'), smtp: smtp.wywolania.length })
-      .toEqual({ mailer: null, potwierdzenie: null, wiadomosci: null, smtp: 0 });
+  // PRZ-108.02: usługi powstają zawsze (poczta z Ustawień może dojść po starcie — bez restartu). Mailerem jest
+  // pośrednik ustawień, który bez zapisu nie jest gotowy; `wiadomosci.gotowe()` = false. Fabryki SMTP nikt nie woła.
+  it('bez poczty: mailer to niegotowy pośrednik Ustawień, wiadomości mówią gotowe() = false, fabryka SMTP nie została wywołana', () => {
+    const u = (n: string) => a!.usluga<any>('wiadomosci', n);
+    expect({ zUstawien: u('mailer')?.zUstawien, mailerGotowy: u('mailer')?.gotowy(), potwierdzenie: typeof u('potwierdzenie')?.wyslij,
+      wiadomosciGotowe: u('wiadomosci')?.gotowe(), smtp: smtp.wywolania.length })
+      .toEqual({ zUstawien: true, mailerGotowy: false, potwierdzenie: 'function', wiadomosciGotowe: false, smtp: 0 });
   });
 
   it('brak SMTP nie robi martwego pollera ani czuwacza — oba zegary stoją z realnymi usługami', () => {

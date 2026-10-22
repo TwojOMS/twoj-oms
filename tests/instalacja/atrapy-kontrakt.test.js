@@ -14,9 +14,13 @@ import { createAllegroClient } from '../../src/oms/allegro/client.js';
 import { utworzBazeDemo, ENV_DEMO } from '../../scripts/demo-dane.mjs';
 import { createAtrapaInfaktu } from '../../deploy/proba/atrapy/infakt.mjs';
 import { createDpdClient } from '../../src/oms/kurierzy/dpd.js';
-import { createAtrapaDpd, ODMOWY_DPD } from '../../deploy/proba/atrapy/dpd.mjs';
+import { createAtrapaDpd, ODMOWY_DPD, zdarzeniaAtrapyDpd, surowaOdpowiedzDpd } from '../../deploy/proba/atrapy/dpd.mjs';
 import { createInpostClient } from '../../src/oms/kurierzy/inpost.js';
-import { createAtrapaInpost, ODMOWY_INPOST } from '../../deploy/proba/atrapy/inpost.mjs';
+import {
+  createAtrapaInpost, ODMOWY_INPOST, zdarzeniaAtrapyInpost, surowaOdpowiedzInpost,
+} from '../../deploy/proba/atrapy/inpost.mjs';
+import { openOmsDb } from '../../src/oms/db/db.ts';
+import { dowodOdbioru } from '../../src/domena/dowod-odbioru.js';
 import { createAtrapaWoo, createAtrapaAllegro, ODMOWY_WOO, ODMOWY_ALLEGRO } from '../../deploy/proba/atrapy/kanaly.mjs';
 import { createMailer } from '../../src/core/poczta/smtp.js';
 import { createGusClient, METODY_GUS } from '../../src/oms/gus/client.js';
@@ -230,6 +234,87 @@ describe('kształty inFaktu: prawdziwy klient na encjach atrapy oddaje to samo',
       expect(Number.isInteger(d.gross_price), d.number).toBe(true);
       // Kolumna „Nabywca” (faktury.ejs): firma albo imię i nazwisko — pusta była błędem atrapy (14.10).
       expect(d.client_company_name || [d.client_first_name, d.client_last_name].filter(Boolean).join(' '), d.number).toBeTruthy();
+    }
+  });
+});
+
+// PRZ-108.09 (zmiana C2 planu automatyzacji): atrapy DPD i InPost oddają realistyczny przebieg paczki — zarejestrowana →
+// odebrana przez kuriera (10 min po nadaniu) → w drodze → doręczona — liczony od `utworzona_at` paczki w bazie piaskownicy.
+// Bez tego „Kurier odebrał paczkę” byłoby w piaskownicy martwe (statusPrzesylki() → null). Kształt odpowiedzi atrapy =
+// to, co prawdziwy klient wyczytuje z surowej odpowiedzi kuriera zbudowanej przez atrapę (SOAP DPD, JSON ShipX).
+describe('przebieg przesyłki w atrapach DPD i InPost (PRZ-108.09)', () => {
+  const MIN = 60_000;
+  const T0 = Date.parse('2026-10-21T10:00:00.000Z');
+  const opcjeDpd = { url: 'https://x.invalid', login: 'l', haslo: 'h', fid: '1', infoUrl: 'https://x.invalid/info', channel: 'k',
+    nadawca: { nazwa: 'N', ulica: 'U 1', kod: '00-001', miasto: 'M' } };
+  const opcjeInpost = { url: 'https://x.invalid', token: 't', organizacja: 1, nadawca: { nazwa: 'N', ulica: 'U 1', kod: '00-001', miasto: 'M' } };
+  let baza;
+  const otworz = () => {
+    baza = openOmsDb(':memory:');
+    const zam = baza.prepare("INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at) VALUES ('sklep', ?, ?, '1.00', '2026-10-21')");
+    const pacz = baza.prepare('INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at) VALUES (?, ?, ?, ?, 1, ?)');
+    for (const [i, [kurier, status, numer]] of [['dpd', 'nadana', '0000000000001U'], ['inpost', 'nadana', '000000000000000000000001'],
+      ['dpd', 'do_wyjasnienia', '0000000000002U'], ['dpd', 'blad', '0000000000003U']].entries()) {
+      const id = Number(zam.run(i + 1, String(i + 1)).lastInsertRowid);
+      pacz.run(id, kurier, status, numer, new Date(T0).toISOString());
+    }
+  };
+  const dpd = (terazMs) => createAtrapaDpd({ env: ENV_DEMO, baza: () => baza, teraz: () => new Date(terazMs) })(opcjeDpd);
+  const inpost = (terazMs) => createAtrapaInpost({ env: ENV_DEMO, baza: () => baza, teraz: () => new Date(terazMs) })(opcjeInpost);
+  afterAll(() => baza?.close());
+
+  it('DPD: zarejestrowana do 10 min, potem „odebrana przez Kuriera” (dowód z białej listy), na końcu doręczona; czasy rosną', async () => {
+    otworz();
+    const przed = await dpd(T0 + 9 * MIN).statusPrzesylki('0000000000001U');
+    expect(przed.opis).toBe('Zarejestrowano dane przesyłki, przesyłka jeszcze nie nadana');
+    expect(dowodOdbioru({ status_kuriera: przed.opis }, { historia: przed.historia })).toBeNull();
+    const po = await dpd(T0 + 10 * MIN).statusPrzesylki('0000000000001U');
+    expect(po.opis).toBe('Przesyłka odebrana przez Kuriera');
+    expect(dowodOdbioru({ status_kuriera: po.opis }, { historia: po.historia })).toBe('dpd:ODEBRANA_PRZEZ_KURIERA');
+    const koniec = await dpd(T0 + 3 * 24 * 60 * MIN).statusPrzesylki('0000000000001U');
+    expect(koniec.opis).toBe('Przesyłka doręczona');
+    const czasy = koniec.historia.map((z) => z.at);
+    expect([...czasy].sort()).toEqual(czasy);
+    expect(koniec.historia.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('InPost: „Przesyłka zarejestrowana” do 10 min, potem „Przyjęta w oddziale nadawczym”, na końcu „Odebrana przez klienta”', async () => {
+    otworz();
+    expect((await inpost(T0 + 9 * MIN).statusPrzesylki('000000000000000000000001')).opis).toBe('Przesyłka zarejestrowana');
+    const po = await inpost(T0 + 10 * MIN).statusPrzesylki('000000000000000000000001');
+    expect(dowodOdbioru({ status_kuriera: po.opis })).toBe('inpost:adopted_at_source_branch');
+    expect((await inpost(T0 + 3 * 24 * 60 * MIN).statusPrzesylki('000000000000000000000001')).opis).toBe('Odebrana przez klienta');
+  });
+
+  it('bez nadania nie ma odbioru: nieznany numer, paczka „do wyjaśnienia” albo z błędem, numer innego kuriera, brak bazy → null', async () => {
+    otworz();
+    const pozniej = T0 + 3 * 24 * 60 * MIN;
+    for (const numer of ['9999999999999U', '0000000000002U', '0000000000003U', '000000000000000000000001']) {
+      expect(await dpd(pozniej).statusPrzesylki(numer), numer).toBeNull();
+    }
+    expect(await inpost(pozniej).statusPrzesylki('0000000000001U')).toBeNull();
+    expect(await createAtrapaDpd({ env: ENV_DEMO })(opcjeDpd).statusPrzesylki('0000000000001U')).toBeNull();
+    expect(await createAtrapaInpost({ env: ENV_DEMO })(opcjeInpost).statusPrzesylki('000000000000000000000001')).toBeNull();
+  });
+
+  it('prawdziwy klient DPD na surowej odpowiedzi SOAP atrapy oddaje to samo co atrapa (w każdym etapie)', async () => {
+    otworz();
+    for (const minut of [0, 10, 300, 1230, 4000]) {
+      const teraz = T0 + minut * MIN;
+      const xml = surowaOdpowiedzDpd(zdarzeniaAtrapyDpd(new Date(T0).toISOString(), teraz));
+      const prawdziwy = createDpdClient({ ...opcjeDpd, fetchImpl: async () => new Response(xml, { status: 200 }) });
+      expect(await prawdziwy.statusPrzesylki('0000000000001U'), `${minut} min`).toEqual(await dpd(teraz).statusPrzesylki('0000000000001U'));
+    }
+  });
+
+  it('prawdziwy klient InPost na surowej odpowiedzi ShipX atrapy oddaje to samo co atrapa (w każdym etapie)', async () => {
+    otworz();
+    for (const minut of [0, 10, 300, 1230, 4000]) {
+      const teraz = T0 + minut * MIN;
+      const json = JSON.stringify(surowaOdpowiedzInpost('000000000000000000000001', zdarzeniaAtrapyInpost(new Date(T0).toISOString(), teraz)));
+      const prawdziwy = createInpostClient({ ...opcjeInpost, fetchImpl: async () => new Response(json, { status: 200, headers: { 'content-type': 'application/json' } }) });
+      expect(await prawdziwy.statusPrzesylki('000000000000000000000001'), `${minut} min`)
+        .toEqual(await inpost(teraz).statusPrzesylki('000000000000000000000001'));
     }
   });
 });

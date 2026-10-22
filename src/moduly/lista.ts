@@ -15,11 +15,12 @@ import { modulMarketing } from './marketing/modul.ts';
 import { modulRaporty, createModulRaporty } from './raporty/modul.ts';
 import { modulWiadomosci } from './wiadomosci/modul.ts';
 import { modulApiPanelu } from './api-panelu/modul.ts';
+import { modulAutomatyzacje } from './automatyzacje/modul.ts';
 
 /** Jedyne miejsce włączenia modułów; kolejność wynika z wymaga. */
 export const MODULY: readonly ModulOms[] = [modulRdzen, modulWeb, modulKanaly, modulFaktury,
   modulWiadomosci, createModulZamowienia({ zWiadomosciami: true }), modulWysylka,
-  modulMagazyn, modulZwroty, modulUstawienia, modulKoszty, modulRaporty, modulMarketing, modulApiPanelu, modulZdrowie] as readonly ModulOms[];
+  modulMagazyn, modulZwroty, modulUstawienia, modulAutomatyzacje, modulKoszty, modulRaporty, modulMarketing, modulApiPanelu, modulZdrowie] as readonly ModulOms[];
 
 /** Jedyna zmienna część listy: jawne definicje kanałów danego uruchomienia. */
 export function modulyDla(env: Srodowisko): readonly ModulOms[] {

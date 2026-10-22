@@ -31,6 +31,7 @@ import { efektywnyTryb } from '../../core/tryb.ts';
 import { adresFirmyZEnv } from '../../core/adres-firmy.ts';
 import { zrodloAdresuFirmy } from '../../oms/db/adres-firmy.js';
 import { zrodloRachunkuFirmy } from '../../oms/db/rachunek-firmy.js';
+import { zrodloNipuIBdoFirmy } from '../../oms/db/nip-bdo-firmy.js';
 import { wczytajKonfiguracjeIntegracji } from '../../oms/db/konfiguracja-integracji.js';
 import { infaktZUstawien, odmowaInfaktuWProbie, odmowaViesWProbie } from './infakt-ustawien.ts';
 import { registerUstawieniaInfaktuRoutes } from './trasy/ustawienia-infakt.js';
@@ -89,8 +90,12 @@ return {
     // (config kopiowany do wiadomości) czytają go przy każdym użyciu; `proforma.rachunek` zostaje wartością z pliku.
     // Źródło nie trzyma stanu (czyta bazę przy każdym wywołaniu), więc własna instancja = ta sama odpowiedź co usługa rdzenia.
     const rachunekFirmy = zrodloRachunkuFirmy({ db, zPliku: k.proforma });
+    // PRZ-108.10: NIP i BDO tak samo (każde pole osobno: plik → Ustawienia → Firma → brak), czytane przy każdym dokumencie,
+    // fakturze WDT i zapytaniu VIES; `proforma.nip` / `.bdo` zostają wartościami z pliku.
+    const nipBdoFirmy = zrodloNipuIBdoFirmy({ db, zPliku: k.proforma });
+    const nipTeraz = () => nipBdoFirmy.biezacy().nip;
     const config = { ...ctx.usluga<any>('kanaly', 'config'), proforma: k.proforma, infakt: k.infakt, nadawca: k.nadawca,
-      adresFirmy: adresFirmy.adres, rachunekFirmy: rachunekFirmy.biezacy };
+      adresFirmy: adresFirmy.adres, rachunekFirmy: rachunekFirmy.biezacy, nipBdoFirmy: nipBdoFirmy.biezacy };
     const puls = createPuls({ teraz });
     // PRZ-093.10: inFakt z Ustawień (wiersz „infakt” w konfiguracja_integracji) — tylko gdy plik nie ma INFAKT_API_KEY
     // (.env wygrywa w całości; wtedy ścieżka niżej jest identyczna jak przed zmianą). Pośrednik czyta zapis przy każdym
@@ -126,8 +131,8 @@ return {
     // kombinacja nie istniała: tryb próby odmawia startu z INFAKT_API_KEY, więc bez atrapy inFaktu nie było).
     const vies = !infakt ? null : fabryki.createVies ? fabryki.createVies({ db })
       : k.proba && zUstawienPrzyStarcie ? odmowaViesWProbie()
-      : createVies({ nipSprzedawcy: k.proforma.nip, fetchImpl: undefined });
-    const faktura = infakt ? createFaktura({ db, infakt, vies: vies as any, nipSprzedawcy: k.proforma.nip }) : null;
+      : createVies({ nipSprzedawcy: nipTeraz, fetchImpl: undefined });
+    const faktura = infakt ? createFaktura({ db, infakt, vies: vies as any, nipSprzedawcy: nipTeraz }) : null;
     const fakturaHurtem = faktura ? createFakturaHurtem({ faktura }) : null;
     const proforma = createProforma({ db, config, teraz });
     const paczkaDlaBiura = infakt ? paczkaBiuraDlaTras(() => ctx.usluga('koszty', 'paczkaDlaBiura')) : null;
@@ -163,7 +168,7 @@ return {
         registerDokumentyRoutes(app, opcje); registerDrukFakturRoutes(app, opcje);
         // PRZ-093.08: Ustawienia → Firma — ekran w module faktur (właściciel sprzedawcy na dokumentach),
         // tak jak ekran kuriera DPD siedzi w module wysyłki.
-        registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFirmy });
+        registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFirmy, nipBdoFirmy });
         // PRZ-093.10: Ustawienia → Integracje → inFakt (wzór: ekrany kurierów w module wysyłki).
         registerUstawieniaInfaktuRoutes(app, { db, konfiguracjaInfaktu: usluga('konfiguracjaInfaktu'),
           automatKsef: usluga('automatKsef'), teraz });

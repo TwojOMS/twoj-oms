@@ -1,5 +1,5 @@
 // Odpowiedniki pól formularzy, nie wszystkie ustawienia danej integracji.
-// Źródła: domena/konfiguracja-{dpd,inpost,infakt,gus,ksef-kosztow}.js, core/adres-firmy.ts, domena/rachunek-firmy.js,
+// Źródła: domena/konfiguracja-{dpd,inpost,infakt,gus,ksef-kosztow}.js, core/adres-firmy.ts, domena/rachunek-firmy.js, domena/nip-bdo-firmy.js,
 // moduly/ustawienia/trasy/poczta.js, moduly/wiadomosci/konfiguracja.ts i moduly/wiadomosci/podpis-maili.js (pod src/).
 export const ZMIENNE_PANEL = Object.freeze({
   INFAKT_API_KEY: 'Integracje → inFakt',
@@ -23,6 +23,9 @@ export const ZMIENNE_PANEL = Object.freeze({
   // PRZ-102.20: rachunek i bank — zapisuje tylko administrator (domena/rachunek-firmy.js).
   OMS_RACHUNEK: 'Firma (tylko administrator)',
   OMS_BANK: 'Firma (tylko administrator)',
+  // PRZ-108.10: NIP i BDO — zapisuje tylko administrator, każde pole osobno (domena/nip-bdo-firmy.js).
+  OMS_SPRZEDAWCA_NIP: 'Firma (tylko administrator)',
+  OMS_SPRZEDAWCA_BDO: 'Firma (tylko administrator)',
   SMTP_HOST: 'Integracje → Poczta wychodząca',
   SMTP_PORT: 'Integracje → Poczta wychodząca',
   SMTP_USER: 'Integracje → Poczta wychodząca',

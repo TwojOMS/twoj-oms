@@ -98,3 +98,20 @@ export function polaWdtInfakt(nip, { nipSprzedawcy }) {
     notes: `Wewnątrzwspólnotowa dostawa towarów (WDT), stawka VAT 0%. NIP sprzedawcy: PL${bezPl}.`,
   };
 }
+
+/**
+ * PRZ-108.10: NIP sprzedawcy do adnotacji WDT, rozstrzygnięty PRZED rezerwacją faktury. NIP przychodzi tekstem (stary
+ * kształt) albo funkcją (NIP z Ustawień → Firma, czytany przy każdym wystawieniu). Dla nabywcy krajowego nie jest
+ * potrzebny (null — payload bez pól WDT). Dla WDT bez NIP-u — odmowa operatorska: adnotacja „NIP sprzedawcy: PL.” bez
+ * cyfr to dokument wbrew art. 106e ust. 1 pkt 24, a odmowa po rezerwacji mogłaby zostawić zajęty numer serii.
+ */
+export function nipSprzedawcyDoWdt(nipNabywcy, nipSprzedawcy) {
+  if (!czyNipUe(nipNabywcy)) return null;
+  const nip = String((typeof nipSprzedawcy === 'function' ? nipSprzedawcy() : nipSprzedawcy) ?? '').trim();
+  if (!nip) {
+    throw Object.assign(new Error('Faktura WDT musi nieść NIP sprzedawcy z prefiksem PL, a panel go nie zna. '
+      + 'Wpisz NIP firmy w Ustawienia → Firma (/ustawienia/firma) albo OMS_SPRZEDAWCA_NIP w pliku konfiguracji. '
+      + 'Faktura NIE została wystawiona.'), { dlaOperatora: true });
+  }
+  return nip;
+}

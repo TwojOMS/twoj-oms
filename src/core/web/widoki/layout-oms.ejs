@@ -1907,7 +1907,21 @@
       color: var(--tekst); background: var(--tlo); border: 1px solid var(--ramka-pola); border-radius: 4px; }
     .ust-formularz .ust-pomoc { margin: .25rem 0 0; font-size: .78rem; color: var(--tekst-przygaszony); }
     .ust-formularz .ust-wartosc { padding-top: .4rem; font-size: .9rem; color: var(--tekst); }
+    /* PRZ-108.11: wartość tylko do odczytu (z pliku konfiguracji) + plakietka „wkrótce” w jednej linii. */
+    .ust-formularz .ust-wartosc-wiersz { display: flex; align-items: center; gap: .6rem; padding-top: .4rem; }
+    .ust-formularz .ust-wartosc-wiersz .ust-wartosc { padding-top: 0; font-weight: 600; overflow-wrap: anywhere; }
     .ust-wymagane { color: var(--blad-tekst-mocny); }
+    /* PRZ-108.03b: strefa przeciągania pliku logo (public/logo-przeciaganie.js). Obejmuje zwykłe pole pliku, więc */
+    /* bez skryptu wygląda jak ramka z napisem; skrypt dokłada tylko podświetlenie, nazwę pliku i podgląd. */
+    .logo-strefa { box-sizing: border-box; padding: .8rem .9rem; border: 2px dashed var(--ramka-pola); border-radius: 8px; background: var(--powierzchnia-2); }
+    .logo-strefa .logo-strefa-opis { margin: 0 0 .5rem; font-size: .9rem; font-weight: 600; color: var(--tekst); }
+    .logo-strefa--nad { border-color: var(--link); background: var(--tlo); }
+    .logo-strefa-wybor { display: flex; align-items: center; gap: .7rem; }
+    .logo-strefa-podglad { flex: 0 0 auto; width: 4rem; height: 4rem; margin-top: .6rem; object-fit: contain; background: var(--powierzchnia); border: 1px solid var(--ramka); border-radius: 4px; }
+    .logo-strefa .logo-strefa-stan { margin: 0; font-size: .85rem; color: var(--tekst); }
+    .logo-strefa .logo-strefa-stan:not(:empty) { margin-top: .6rem; }
+    .logo-strefa[data-stan="blad"] { border-color: var(--blad-tekst); }
+    .logo-strefa[data-stan="blad"] .logo-strefa-stan { color: var(--blad-tekst); font-weight: 600; }
     @media (max-width: 40rem) {
       .ust-formularz { grid-template-columns: minmax(0, 1fr); gap: .3rem; }
       .ust-formularz > label { text-align: left; padding-top: .5rem; }
@@ -2223,7 +2237,7 @@
   <% if (!bezPaska) { %>
   <div class="oms-shell">
     <aside class="oms-sidebar">
-      <a class="oms-brand" href="<%= nawigacja.boczne?.[0]?.pozycje?.[0]?.href ?? '/' %>" aria-label="Twój OMS — strona główna"><img class="pas-logo" src="/public/favicon-192.png" alt="<%= typeof marka !== 'undefined' ? marka.logoAlt : '' %>"><span>Twój OMS</span></a>
+      <a class="oms-brand" href="<%= nawigacja.boczne?.[0]?.pozycje?.[0]?.href ?? '/' %>" aria-label="Twój OMS — strona główna"><img class="pas-logo" src="<%= zasob('favicon-192.png') %>" alt="<%= typeof marka !== 'undefined' ? marka.logoAlt : '' %>"><span>Twój OMS</span></a>
       <div class="oms-menu-desktop"><%- include('_menu-panelu.ejs', {nawigacja,statusyMenu,mobilna:false}) %></div>
       <details class="oms-menu-mobile" data-menu="glowne">
         <summary data-menu-trigger="glowne">Menu <span aria-hidden="true">⌄</span></summary>

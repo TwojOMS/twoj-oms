@@ -45,7 +45,11 @@ async function wygeneruj(db, teraz = Date.now()) {
   const { zapiszZamowienie, zapiszFaktyStatusu } = await import('../src/oms/db/zamowienia.js');
   for (let number = 1; number <= 3; number++) {
     const code = String(number).padStart(3, '0');
-    const id = zapiszZamowienie(db, 'demo', {
+    // PRZ-108.04: sklep `reczne`, nie `demo`. Raporty klasyfikują zamówienie po kluczu sklepu z OMS_KANALY, a
+    // instalacja demo ma tę listę pustą — zamówienie o sklepie `demo` kończyło zakładkę RAPORTY odmową (400).
+    // `reczne` produkt zna zawsze (kanał RECZNE), bez konfiguracji i bez wyjątku „demo” w kodzie raportów.
+    // zrodlo_id 1…3 nie koliduje z numeracją ręczną (rok × 100 000 + n), a numery DEMO-nnn są poza serią R/RRRR/nnn.
+    const id = zapiszZamowienie(db, 'reczne', {
       zrodlo_id: number, numer: `DEMO-${code}`,
       klient: { first_name: `Osoba demonstracyjna ${number}`, last_name: 'Dane syntetyczne', email: `demo-${code}@email.invalid`, phone: '' },
       dostawa: { first_name: `Osoba demonstracyjna ${number}`, last_name: 'Dane syntetyczne', address_1: 'Ulica Przykładowa 1', city: 'Miasto demonstracyjne', postcode: '00-000', country: 'PL' },

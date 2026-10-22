@@ -17,6 +17,8 @@ export const OCZEKIWANE_ZEGARY = [
   ['czuwaczReklam', 3600000],
   // PRZ-102.12: automat wysyłki do KSeF (tyka co minutę, sam rozstrzyga porę; domyślnie wyłączony).
   ['automatKsef', 60000],
+  // PRZ-108.07: silnik reguł automatyzacji (co minutę; przy zerze reguł jedno SELECT, zero zapisów).
+  ['automatyzacje', 60000],
 ] as const;
 
 function lokalneEnv(klucze = false) {

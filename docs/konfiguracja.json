@@ -241,7 +241,7 @@
         {
           "id": "AST-086",
           "path": "src/moduly/zdrowie/modul.ts",
-          "line": 15,
+          "line": 16,
           "expression": "env.OMS_TRYB",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -250,7 +250,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/core/tryb.ts:6",
-        "src/moduly/zdrowie/modul.ts:15"
+        "src/moduly/zdrowie/modul.ts:16"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -290,13 +290,13 @@
       "nazwa": "OMS_SPRZEDAWCA_NIP",
       "wlasciciel": "rdzen; konsumenci zamowienia/faktury/koszty",
       "sekcja": "Rdzeń i uruchomienie",
-      "opis": "NIP Twojej firmy (10 cyfr, z poprawną cyfrą kontrolną) — trafia na proformy i dokumenty oraz jest domyślnym NIP-em dla KSeF.",
+      "opis": "NIP firmy (10 cyfr, z poprawną cyfrą kontrolną) — na proformach, specyfikacjach i dokumentach WDT. Można w panelu (Ustawienia → Firma).",
       "zakres": "produkt",
-      "wymagalnosc": "wymagana przy konfiguracji rdzenia",
-      "domyslna": "brak wartości domyślnej",
-      "wymagalnoscPoLudzku": "wymagana — bez niej panel się nie uruchomi",
-      "skutekBraku": "Odmowa konfiguracji i startu aplikacji.",
-      "walidacja": "Normalizacja PL/spacji/myślników; 10 cyfr i suma kontrolna.",
+      "wymagalnosc": "opcjonalna — można w panelu (Ustawienia → Firma); wpisana w pliku musi być poprawna; wymagana w pliku, gdy KSEF_TOKEN stoi w pliku",
+      "domyslna": null,
+      "wymagalnoscPoLudzku": "opcjonalna — NIP możesz wpisać w panelu (Ustawienia → Firma, tylko administrator); wpisany w pliku wygrywa nad panelem",
+      "skutekBraku": "PRZ-108.10: bez wartości w pliku NIP pochodzi z Ustawień → Firma (wiersz „nip_firmy” w konfiguracja_integracji, usługa rdzenia nipBdoFirmy, czytana przy każdym użyciu). Bez NIP-u nigdzie panel startuje: proforma (przed nadaniem numeru), specyfikacja, potwierdzenie wywozu i mail z fakturą WDT odmawiają, faktura WDT i faktura okresu WDT odmawiają przed rezerwacją, VIES pyta bez requesterNumber, token KSeF z panelu nie jest używany, a /health ma uwagę „brak NIP-u firmy — wpisz w Ustawienia → Firma”. Faktura krajowa w inFakcie NIP-u sprzedawcy z OMS-u nie potrzebuje. Gdy OMS_SPRZEDAWCA_NIP stoi w pliku, plik wygrywa dla NIP-u, a zapis NIP-u w panelu daje 409. KSEF_TOKEN w pliku bez NIP-u w pliku = odmowa startu.",
+      "walidacja": "Normalizacja PL/spacji/myślników; 10 cyfr i suma kontrolna. Niepoprawna wartość w pliku nadal blokuje start; ten sam test i to samo zdanie dla wpisu w panelu (400).",
       "odczyty": [
         {
           "id": "AST-009",
@@ -324,7 +324,8 @@
           "directEnvRead": false
         }
       ],
-      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
+      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a",
+      "skutekBrakuPoLudzku": "Panel wystartuje. NIP wpiszesz w panelu (Ustawienia → Firma); dopóki go nie ma, OMS nie wystawi proformy, specyfikacji, potwierdzenia wywozu ani faktury WDT."
     },
     {
       "nazwa": "OMS_RACHUNEK",
@@ -380,12 +381,12 @@
       "nazwa": "OMS_SPRZEDAWCA_BDO",
       "wlasciciel": "rdzen",
       "sekcja": "Rdzeń i uruchomienie",
-      "opis": "Numer rejestrowy BDO firmy (9 cyfr) drukowany na dokumentach; zostaw pusty, jeśli firma go nie ma.",
+      "opis": "Numer rejestrowy BDO firmy (9 cyfr) drukowany na specyfikacji; zostaw pusty, jeśli firma go nie ma. Można w panelu (Ustawienia → Firma).",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
-      "skutekBraku": "Brak BDO w danych dokumentów.",
-      "walidacja": "Jeżeli niepuste: 9 cyfr.",
+      "skutekBraku": "Brak BDO na specyfikacji. PRZ-108.10: bez wartości w pliku BDO pochodzi z Ustawień → Firma (wiersz „bdo_firmy”), niezależnie od NIP-u; gdy OMS_SPRZEDAWCA_BDO stoi w pliku, plik wygrywa dla BDO, a zapis BDO w panelu daje 409.",
+      "walidacja": "Jeżeli niepuste: 9 cyfr (bez czyszczenia spacji). Ten sam test dla wpisu w panelu (400); pusty wpis w panelu = firma bez BDO.",
       "odczyty": [
         {
           "id": "AST-011",
@@ -413,7 +414,8 @@
           "directEnvRead": false
         }
       ],
-      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
+      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a",
+      "skutekBrakuPoLudzku": "Specyfikacja nie pokaże numeru BDO. Numer możesz wpisać w panelu (Ustawienia → Firma, tylko administrator)."
     },
     {
       "nazwa": "OMS_BANK",
@@ -1632,7 +1634,7 @@
         {
           "id": "AST-060",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 45,
+          "line": 46,
           "expression": "env.OMS_PROFORMY_KATALOG",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1640,7 +1642,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:45"
+        "src/moduly/faktury/modul.ts:46"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1690,7 +1692,7 @@
         {
           "id": "AST-068",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 59,
+          "line": 60,
           "expression": "env.INFAKT_API_KEY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1698,7 +1700,7 @@
         {
           "id": "AST-069",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 59,
+          "line": 60,
           "expression": "env.INFAKT_API_KEY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1707,7 +1709,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/core/tryb.ts:18",
-        "src/moduly/faktury/modul.ts:59"
+        "src/moduly/faktury/modul.ts:60"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1728,7 +1730,7 @@
         {
           "id": "AST-059",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 43,
+          "line": 44,
           "expression": "env.INFAKT_API_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1736,7 +1738,7 @@
         {
           "id": "AST-070",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 59,
+          "line": 60,
           "expression": "env.INFAKT_API_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1744,8 +1746,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:43",
-        "src/moduly/faktury/modul.ts:59"
+        "src/moduly/faktury/modul.ts:44",
+        "src/moduly/faktury/modul.ts:60"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1766,7 +1768,7 @@
         {
           "id": "AST-071",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 55,
+          "line": 56,
           "expression": "env.INFAKT_ARCHIWUM",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1774,7 +1776,7 @@
         {
           "id": "AST-085",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 36,
+          "line": 37,
           "expression": "env.INFAKT_ARCHIWUM",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1782,8 +1784,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:55",
-        "src/moduly/koszty/modul.ts:36"
+        "src/moduly/faktury/modul.ts:56",
+        "src/moduly/koszty/modul.ts:37"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1821,7 +1823,7 @@
         {
           "id": "AST-076",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 26,
+          "line": 27,
           "expression": "env.KSEF_TOKEN",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1829,7 +1831,7 @@
         {
           "id": "AST-077",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 27,
+          "line": 28,
           "expression": "env.KSEF_TOKEN",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1838,8 +1840,8 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/core/tryb.ts:18",
-        "src/moduly/koszty/modul.ts:26",
-        "src/moduly/koszty/modul.ts:27"
+        "src/moduly/koszty/modul.ts:28",
+        "src/moduly/koszty/modul.ts:28"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1861,7 +1863,7 @@
         {
           "id": "AST-078",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 27,
+          "line": 28,
           "expression": "env.KSEF_NIP",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1869,7 +1871,7 @@
         {
           "id": "AST-081",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 30,
+          "line": 31,
           "expression": "env.KSEF_NIP",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1877,7 +1879,7 @@
         {
           "id": "AST-082",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 30,
+          "line": 31,
           "expression": "env.KSEF_NIP",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1885,8 +1887,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/koszty/modul.ts:27",
-        "src/moduly/koszty/modul.ts:30"
+        "src/moduly/koszty/modul.ts:28",
+        "src/moduly/koszty/modul.ts:31"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1907,7 +1909,7 @@
         {
           "id": "AST-075",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 23,
+          "line": 24,
           "expression": "env.KSEF_API",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1915,7 +1917,7 @@
         {
           "id": "AST-079",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 27,
+          "line": 28,
           "expression": "env.KSEF_API",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1923,7 +1925,7 @@
         {
           "id": "AST-083",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 32,
+          "line": 33,
           "expression": "env.KSEF_API",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1931,9 +1933,9 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/koszty/modul.ts:23",
-        "src/moduly/koszty/modul.ts:27",
-        "src/moduly/koszty/modul.ts:32"
+        "src/moduly/koszty/modul.ts:24",
+        "src/moduly/koszty/modul.ts:28",
+        "src/moduly/koszty/modul.ts:33"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1954,7 +1956,7 @@
         {
           "id": "AST-080",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 27,
+          "line": 28,
           "expression": "env.KSEF_ARCHIWUM",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1962,7 +1964,7 @@
         {
           "id": "AST-084",
           "path": "src/moduly/koszty/modul.ts",
-          "line": 36,
+          "line": 37,
           "expression": "env.KSEF_ARCHIWUM",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1970,8 +1972,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/koszty/modul.ts:27",
-        "src/moduly/koszty/modul.ts:36"
+        "src/moduly/koszty/modul.ts:28",
+        "src/moduly/koszty/modul.ts:37"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -4226,7 +4228,7 @@
         {
           "id": "AST-128",
           "path": "src/moduly/zdrowie/modul.ts",
-          "line": 15,
+          "line": 16,
           "expression": "env.OMS_KOPIE_KATALOG",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4234,7 +4236,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zdrowie/modul.ts:15"
+        "src/moduly/zdrowie/modul.ts:16"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -4256,7 +4258,7 @@
         {
           "id": "AST-129",
           "path": "src/moduly/zdrowie/modul.ts",
-          "line": 15,
+          "line": 16,
           "expression": "env.OMS_KOPIA_ZEWNETRZNA",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4264,7 +4266,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zdrowie/modul.ts:15"
+        "src/moduly/zdrowie/modul.ts:16"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -4474,7 +4476,7 @@
         {
           "id": "AST-133",
           "path": "src/moduly/ustawienia/modul.ts",
-          "line": 36,
+          "line": 37,
           "expression": "env.OMS_ADRES_PANELU",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4482,7 +4484,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/ustawienia/modul.ts:36"
+        "src/moduly/ustawienia/modul.ts:37"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -6831,34 +6833,6 @@
       "call": "parsujKlientowZbiorczych(env)"
     },
     {
-      "path": "src/moduly/koszty/modul.ts",
-      "line": 29,
-      "expression": "env",
-      "callee": "nipSprzedawcy",
-      "call": "nipSprzedawcy(env, Boolean(token))"
-    },
-    {
-      "path": "src/moduly/koszty/modul.ts",
-      "line": 35,
-      "expression": "env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(env)"
-    },
-    {
-      "path": "src/moduly/koszty/modul.ts",
-      "line": 42,
-      "expression": "env",
-      "callee": "wczytajSprzedawce",
-      "call": "wczytajSprzedawce(env)"
-    },
-    {
-      "path": "src/moduly/koszty/modul.ts",
-      "line": 56,
-      "expression": "env",
-      "callee": "wczytajKoszty",
-      "call": "wczytajKoszty(env)"
-    },
-    {
       "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
       "line": 50,
       "expression": "process.env",
@@ -6895,7 +6869,7 @@
     },
     {
       "path": "src/moduly/lista.ts",
-      "line": 26,
+      "line": 27,
       "expression": "env",
       "callee": "definicjeKanalow",
       "call": "definicjeKanalow(env)"
@@ -6983,20 +6957,6 @@
       "expression": "env",
       "callee": "adresFirmyZEnv",
       "call": "adresFirmyZEnv(env)"
-    },
-    {
-      "path": "src/moduly/zamowienia/modul.ts",
-      "line": 28,
-      "expression": "env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(env)"
-    },
-    {
-      "path": "src/moduly/zamowienia/modul.ts",
-      "line": 29,
-      "expression": "env",
-      "callee": "konfiguracjaZamowien",
-      "call": "konfiguracjaZamowien(env)"
     },
     {
       "path": "src/moduly/wysylka/kurierzy.ts",
@@ -7098,35 +7058,35 @@
     },
     {
       "path": "src/core/aplikacja.ts",
-      "line": 20,
+      "line": 21,
       "expression": "env",
       "callee": "zaufaneProxy",
       "call": "zaufaneProxy(env)"
     },
     {
       "path": "src/core/aplikacja.ts",
-      "line": 23,
+      "line": 24,
       "expression": "env",
       "callee": "sprawdzTrybProby",
       "call": "sprawdzTrybProby(env, [...new Set(kolejnosc.flatMap((m) => m.kluczeIntegracji ?? []))])"
     },
     {
       "path": "src/core/aplikacja.ts",
-      "line": 30,
+      "line": 31,
       "expression": "env",
       "callee": "m.konfiguracja",
       "call": "m.konfiguracja(env)"
     },
     {
       "path": "src/core/aplikacja.ts",
-      "line": 50,
+      "line": 51,
       "expression": "env",
       "callee": "przygotujModuly",
       "call": "przygotujModuly(moduly, env)"
     },
     {
       "path": "src/core/aplikacja.ts",
-      "line": 63,
+      "line": 64,
       "expression": "o.env",
       "callee": "przygotujModuly",
       "call": "przygotujModuly(o.moduly, o.env)"
@@ -7279,27 +7239,6 @@
       "call": "wczytajRaportyDlaKanalow(env, definicje)"
     },
     {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 44,
-      "expression": "env",
-      "callee": "wczytajSprzedawce",
-      "call": "wczytajSprzedawce(env)"
-    },
-    {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 53,
-      "expression": "env",
-      "callee": "adresFirmyZEnv",
-      "call": "adresFirmyZEnv(env)"
-    },
-    {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 61,
-      "expression": "env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(env)"
-    },
-    {
       "path": "src/moduly/wysylka/modul.ts",
       "line": 66,
       "expression": "env",
@@ -7329,10 +7268,73 @@
     },
     {
       "path": "src/moduly/rdzen/modul.ts",
-      "line": 14,
+      "line": 15,
       "expression": "env",
       "callee": "wczytajSprzedawce",
       "call": "wczytajSprzedawce(env)"
+    },
+    {
+      "path": "src/moduly/zamowienia/modul.ts",
+      "line": 29,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/zamowienia/modul.ts",
+      "line": 30,
+      "expression": "env",
+      "callee": "konfiguracjaZamowien",
+      "call": "konfiguracjaZamowien(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 45,
+      "expression": "env",
+      "callee": "wczytajSprzedawce",
+      "call": "wczytajSprzedawce(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 54,
+      "expression": "env",
+      "callee": "adresFirmyZEnv",
+      "call": "adresFirmyZEnv(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 62,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/koszty/modul.ts",
+      "line": 30,
+      "expression": "env",
+      "callee": "nipSprzedawcy",
+      "call": "nipSprzedawcy(env, Boolean(token))"
+    },
+    {
+      "path": "src/moduly/koszty/modul.ts",
+      "line": 36,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/koszty/modul.ts",
+      "line": 45,
+      "expression": "env",
+      "callee": "wczytajSprzedawce",
+      "call": "wczytajSprzedawce(env)"
+    },
+    {
+      "path": "src/moduly/koszty/modul.ts",
+      "line": 62,
+      "expression": "env",
+      "callee": "wczytajKoszty",
+      "call": "wczytajKoszty(env)"
     }
   ],
   "prefiksy": {
@@ -7631,7 +7633,7 @@
     },
     {
       "path": "src/core/sprzedawca.ts",
-      "sha256": "54bbba5449e8fbe0a9cb1eb7ed4f7db76f161d2efde4aedec8a55b984c907579",
+      "sha256": "b005871137423d28551031fa4644173c892ea9e60d88e1cf6939174934d8c947",
       "normalizacja": "LF"
     },
     {
@@ -7671,7 +7673,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "f1b3f6a9e794d28351319d126e5b020015ad2b6e1ca7414947260f4446494123",
+      "sha256": "27198f645809920d6aaa1bef48a3c92261f8ee85d1f5451b0e3eb7eceb56b696",
       "normalizacja": "LF"
     },
     {
@@ -7681,12 +7683,12 @@
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "sha256": "662d6467bb05f3e5582785d1ebbb7ed59f10a2c147c6364133a82c97e6f6b14e",
+      "sha256": "edea868e784422c38236fcfdac1cd3c949064a98ce110169a4b9a2fdc72520b0",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/zdrowie/modul.ts",
-      "sha256": "3ba5255c7fa7034ceed5f3ed374d1bfcdd8226eedbe6e89f4c557ce9c32a1913",
+      "sha256": "153e6eacaa17be80311c07a1bdd6958754707f394b87c84f53283865c9c20c0c",
       "normalizacja": "LF"
     },
     {
@@ -7731,7 +7733,7 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "9670b68dd080fdeaa56171ff50b3b2e94948cc5cbb7f7ebbb8541880ff98fe87",
+      "sha256": "6c5ddff80c471194be14ca466f9e8697cadf8a9234c5ffff79536f24bb089e94",
       "normalizacja": "LF"
     },
     {
@@ -7748,7 +7750,7 @@
   "dodatkoweDowody": [
     {
       "path": "src/core/aplikacja.ts",
-      "sha256": "2d2b3f15fb9afe236e89776060e24f024340b284b249cae1ee702d461b236c3b",
+      "sha256": "a5743cb44cdb9f90840ab74b01cc0f2035adb8ad0e1b4785e4ec9cf4cda5529e",
       "normalizacja": "LF"
     },
     {
@@ -7763,12 +7765,12 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "f1b3f6a9e794d28351319d126e5b020015ad2b6e1ca7414947260f4446494123",
+      "sha256": "27198f645809920d6aaa1bef48a3c92261f8ee85d1f5451b0e3eb7eceb56b696",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "sha256": "662d6467bb05f3e5582785d1ebbb7ed59f10a2c147c6364133a82c97e6f6b14e",
+      "sha256": "edea868e784422c38236fcfdac1cd3c949064a98ce110169a4b9a2fdc72520b0",
       "normalizacja": "LF"
     },
     {
@@ -7783,7 +7785,7 @@
     },
     {
       "path": "src/moduly/zdrowie/modul.ts",
-      "sha256": "3ba5255c7fa7034ceed5f3ed374d1bfcdd8226eedbe6e89f4c557ce9c32a1913",
+      "sha256": "153e6eacaa17be80311c07a1bdd6958754707f394b87c84f53283865c9c20c0c",
       "normalizacja": "LF"
     },
     {
@@ -7793,7 +7795,7 @@
     },
     {
       "path": "src/moduly/lista.ts",
-      "sha256": "2aa8af9159a3d3a0d4f0ae009f65d7da036263af76bab290991bc16a7f68c43e",
+      "sha256": "9bc744a63d9e6c74b130deca18e28de7329d5fc50db43631ce8b619df037fd97",
       "normalizacja": "LF"
     },
     {
@@ -7808,7 +7810,7 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "9670b68dd080fdeaa56171ff50b3b2e94948cc5cbb7f7ebbb8541880ff98fe87",
+      "sha256": "6c5ddff80c471194be14ca466f9e8697cadf8a9234c5ffff79536f24bb089e94",
       "normalizacja": "LF"
     },
     {
@@ -8159,12 +8161,12 @@
     "przekazania": [
       {
         "path": "src/core/aplikacja.ts",
-        "sha256": "2d2b3f15fb9afe236e89776060e24f024340b284b249cae1ee702d461b236c3b",
+        "sha256": "a5743cb44cdb9f90840ab74b01cc0f2035adb8ad0e1b4785e4ec9cf4cda5529e",
         "expression": "sprawdzTrybProby(env, [...new Set(kolejnosc.flatMap((m) => m.kluczeIntegracji ?? []))])"
       },
       {
         "path": "src/core/aplikacja.ts",
-        "sha256": "2d2b3f15fb9afe236e89776060e24f024340b284b249cae1ee702d461b236c3b",
+        "sha256": "a5743cb44cdb9f90840ab74b01cc0f2035adb8ad0e1b4785e4ec9cf4cda5529e",
         "expression": "m.konfiguracja(env)"
       },
       {
@@ -8406,7 +8408,7 @@
     },
     {
       "path": "src/core/aplikacja.ts",
-      "sha256": "abd5223c2395e275bd2d9d7aec9b2cf3519ae5a0f7706b9d611f69925f22696f",
+      "sha256": "a5743cb44cdb9f90840ab74b01cc0f2035adb8ad0e1b4785e4ec9cf4cda5529e",
       "normalizacja": "LF"
     },
     {

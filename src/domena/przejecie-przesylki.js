@@ -1,9 +1,9 @@
 // `PENDING` oznacza rejestrację, nie przekazanie paczki. Nieznany kod też nie
 // może zamykać oczekiwania; API może dodać nowe stany bez uprzedzenia.
-const PRZEJETE_ALLEGRO = new Set([
+export const PRZEJETE_ALLEGRO = new Set([
   'IN_TRANSIT', 'RELEASED_FOR_DELIVERY', 'AVAILABLE_FOR_PICKUP', 'DELIVERED',
 ]);
-const PRZEJETE_DPD = new Map([
+export const PRZEJETE_DPD = new Map([
   ['przyjęcie przesyłki w oddziale dpd', 'PRZYJECIE_W_ODDZIALE'],
   ['przesyłka odebrana przez kuriera', 'ODEBRANA_PRZEZ_KURIERA'],
   ['przesyłka doręczona', 'DORECZONA'],

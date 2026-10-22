@@ -1,5 +1,36 @@
 <h1><%= title %></h1>
 
+<section class="ust-sekcja" id="logo">
+  <h2>Logo</h2>
+  <p>Znak w górnej belce i na karcie przeglądarki. Zmiana działa po przeładowaniu strony.</p>
+  <p><img src="<%= zasob('favicon-192.png') %>" alt="<%= marka.logoAlt %>" width="64" height="64" style="object-fit:contain"></p>
+  <% if (logoInstalacji.wPliku) { %>
+    <p><strong>Logo ustawione w pliku konfiguracji</strong> (<code>OMS_LOGO_PLIK</code>, <code>OMS_LOGO_ALT</code>). Zmień je w tym pliku.</p>
+  <% } else { %>
+    <% if (logoInstalacji.zapis) { %><p>Zapisał <%= logoInstalacji.zapis.kontoLogin ?? '—' %>, <%= fmtDataCzas(logoInstalacji.zapis.zmienionoAt) %>.</p><% } %>
+    <% if (konto?.admin === true && !podgladDemo) { %>
+      <form class="ust-formularz" method="post" enctype="multipart/form-data" action="/ustawienia/firma/logo">
+        <label for="logo-plik">Plik PNG</label>
+        <%# PRZ-108.03b: strefa przeciągania obejmuje to samo pole pliku; bez skryptu (public/logo-przeciaganie.js) %>
+        <%# zostaje zwykły wybór z dysku. Napis i komunikaty czyta czytnik ekranu (role=status), klawiatura używa pola. %>
+        <div class="logo-strefa" data-logo-strefa role="group" aria-labelledby="logo-strefa-opis">
+          <p class="logo-strefa-opis" id="logo-strefa-opis">Przeciągnij plik PNG tutaj albo wybierz z dysku</p>
+          <input id="logo-plik" type="file" name="logo" accept="image/png" required aria-describedby="logo-pomoc logo-stan">
+          <div class="logo-strefa-wybor"><img class="logo-strefa-podglad" data-logo-podglad hidden alt="Podgląd wybranego pliku" width="64" height="64"><p class="logo-strefa-stan" id="logo-stan" data-logo-stan role="status" aria-live="polite"></p></div>
+          <p class="ust-pomoc" id="logo-pomoc">Maksymalnie 256 KB. Najlepiej kwadratowy znak. SVG nie jest obsługiwane.</p>
+        </div>
+        <script type="module" src="<%= zasob('logo-przeciaganie.js') %>"></script>
+        <label for="logo-alt">Tekst alternatywny</label>
+        <div><input id="logo-alt" name="alt" value="<%= marka.logoAlt %>" maxlength="200"><p class="ust-pomoc">Krótka nazwa marki. Puste pole oznacza znak ozdobny.</p></div>
+        <div class="ust-pelna ust-akcje"><button class="btn btn--glowny" type="submit">Zapisz logo</button></div>
+      </form>
+      <% if (logoInstalacji.zapis) { %>
+        <form method="post" action="/ustawienia/firma/logo/usun" style="margin-top:.75rem"><div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń logo</button><span class="ust-pomoc">Przywraca znak domyślny.</span></div></form>
+      <% } %>
+    <% } else { %><p class="ust-pomoc">Logo zmienia tylko administrator.</p><% } %>
+  <% } %>
+</section>
+
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (bledy.length) { %>
   <div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong></p><ul><% bledy.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
@@ -83,6 +114,79 @@
 <% } %>
 <% } %>
 
+<%# PRZ-108.10: NIP i BDO sprzedawcy — zapisuje tylko administrator; plik wygrywa dla swojego pola. %>
+<section class="ust-sekcja" id="nip-stan">
+  <h2>NIP firmy</h2>
+  <% if (nipBdo.bledyNipu.length) { %>
+    <div class="pas-uprzedzenie"><p><strong>Nie zapisano NIP-u.</strong></p><ul><% nipBdo.bledyNipu.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
+  <% } %>
+  <p>NIP stoi jako NIP sprzedawcy na proformach, specyfikacjach do paczek i potwierdzeniach wywozu, w adnotacji faktury WDT i w zapytaniu VIES. Zmiana działa od następnego dokumentu.</p>
+  <% if (nipBdo.nipWPliku) { %>
+    <div class="ust-formularz">
+      <label>NIP</label>
+      <div><div class="ust-wartosc-wiersz"><output class="ust-wartosc"><%= nipBdo.zPliku.nip %></output><span class="menu-ustawien-wkrotce">wkrótce</span></div>
+        <p class="ust-pomoc">Zmiana w panelu — wkrótce. Dziś: plik konfiguracji (<code>OMS_SPRZEDAWCA_NIP</code>).</p></div>
+    </div>
+  <% } else { %>
+    <% if (nipBdo.biezace.nip) { %>
+      <p>Ustawiony: <strong><%= nipBdo.biezace.nip %></strong>.
+        <% if (nipBdo.zapisNipu) { %>Zapisał <%= nipBdo.zapisNipu.kontoLogin ?? '—' %>, <%= fmtDataCzas(nipBdo.zapisNipu.zmienionoAt) %>.<% } %></p>
+    <% } else { %>
+      <p class="pas-uprzedzenie"><strong>Brak NIP-u.</strong> Bez niego OMS nie wystawi proformy, specyfikacji, potwierdzenia wywozu ani faktury WDT.</p>
+    <% } %>
+    <% if (nipBdo.mozeZmieniac) { %>
+      <form id="nip-formularz" class="ust-formularz" method="post" action="/ustawienia/firma/nip"<% if (nipBdo.biezace.nip) { %> onsubmit="return confirm('Zmienić NIP firmy? Wystawione faktury i proformy zostają z poprzednim NIP-em; specyfikacja i potwierdzenie wywozu pobrane ponownie pokażą nowy.')"<% } %>>
+        <label for="nip-numer">NIP <span class="ust-wymagane">*</span></label>
+        <div><input id="nip-numer" name="nip" value="<%= nipBdo.pola.nip %>" maxlength="20" inputmode="numeric" autocomplete="off" required>
+          <p class="ust-pomoc">10 cyfr. Przedrostek PL, spacje i myślniki są dozwolone — OMS sprawdza cyfrę kontrolną.</p></div>
+        <% if (nipBdo.biezace.nip) { %>
+          <%# PRZ-108.10 (recenzja D2): faktury (inFakt) i proformy (plik) mają NIP z chwili wystawienia; specyfikację %>
+          <%# i potwierdzenie wywozu panel składa przy każdym pobraniu i mailu — z bieżącym NIP-em. %>
+          <p class="ust-pelna pas-uprzedzenie">Wystawione faktury i proformy zostają z poprzednim NIP-em; specyfikacja i potwierdzenie wywozu pobrane ponownie pokażą nowy NIP.</p>
+        <% } %>
+        <div class="ust-pelna ust-akcje">
+          <button class="btn btn--glowny" type="submit">Zapisz NIP</button>
+        </div>
+      </form>
+    <% } %>
+  <% } %>
+</section>
+
+<section class="ust-sekcja" id="bdo-stan">
+  <h2>Numer BDO</h2>
+  <% if (nipBdo.bledyBdo.length) { %>
+    <div class="pas-uprzedzenie"><p><strong>Nie zapisano numeru BDO.</strong></p><ul><% nipBdo.bledyBdo.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
+  <% } %>
+  <p>Numer rejestrowy BDO stoi na specyfikacji do paczki. Firma bez numeru BDO zostawia to pole puste.</p>
+  <% if (nipBdo.bdoWPliku) { %>
+    <div class="ust-formularz">
+      <label>BDO</label>
+      <div><div class="ust-wartosc-wiersz"><output class="ust-wartosc"><%= nipBdo.zPliku.bdo %></output><span class="menu-ustawien-wkrotce">wkrótce</span></div>
+        <p class="ust-pomoc">Zmiana w panelu — wkrótce. Dziś: plik konfiguracji (<code>OMS_SPRZEDAWCA_BDO</code>).</p></div>
+    </div>
+  <% } else { %>
+    <% if (nipBdo.biezace.bdo) { %>
+      <p>Ustawiony: <strong><%= nipBdo.biezace.bdo %></strong>.
+        <% if (nipBdo.zapisBdo) { %>Zapisał <%= nipBdo.zapisBdo.kontoLogin ?? '—' %>, <%= fmtDataCzas(nipBdo.zapisBdo.zmienionoAt) %>.<% } %></p>
+    <% } else { %>
+      <p>Brak numeru BDO — specyfikacje wychodzą bez niego.</p>
+    <% } %>
+    <% if (nipBdo.mozeZmieniac) { %>
+      <form id="bdo-formularz" class="ust-formularz" method="post" action="/ustawienia/firma/bdo">
+        <label for="bdo-numer">BDO</label>
+        <div><input id="bdo-numer" name="bdo" value="<%= nipBdo.pola.bdo %>" maxlength="20" inputmode="numeric" autocomplete="off">
+          <p class="ust-pomoc">9 cyfr, bez spacji i myślników. Zostaw puste i zapisz, jeśli firma nie ma numeru BDO.</p></div>
+        <div class="ust-pelna ust-akcje">
+          <button class="btn btn--glowny" type="submit">Zapisz BDO</button>
+        </div>
+      </form>
+    <% } %>
+  <% } %>
+  <% if (!nipBdo.mozeZmieniac && !(nipBdo.nipWPliku && nipBdo.bdoWPliku)) { %>
+    <p class="ust-pomoc">NIP i BDO wpisuje i zmienia tylko administrator.</p>
+  <% } %>
+</section>
+
 <%# PRZ-105: domyślna stawka VAT — zapisuje tylko administrator; bez wpisu 23. %>
 <section class="ust-sekcja" id="stawka-vat">
   <h2>Domyślna stawka VAT</h2>
@@ -114,10 +218,13 @@
   <% } %>
   <p>Ten rachunek stoi w mailach o płatności (dane do przelewu) i na proformach, a przy paczkach Allegro za pobraniem trafia do Allegro jako konto do wypłaty pobrania. Zmiana działa od następnego maila i dokumentu.</p>
   <% if (rachunek.wPliku) { %>
-    <p><strong>Ustawione w pliku konfiguracji</strong> serwera (<code>oms.env</code>, zmienne <code>OMS_RACHUNEK</code> i <code>OMS_BANK</code>). Ten ekran ich nie zmienia — rachunek poprawisz w tym pliku.</p>
     <div class="ust-formularz">
-      <label>Numer rachunku</label><div class="ust-wartosc"><%= rachunek.zPliku.rachunek ? rachunek.odczyt(rachunek.zPliku.rachunek) : '—' %> <span class="ust-pomoc">(ustawione w pliku konfiguracji)</span></div>
-      <label>Bank</label><div class="ust-wartosc"><%= rachunek.zPliku.bank || '—' %> <span class="ust-pomoc">(ustawione w pliku konfiguracji)</span></div>
+      <label>Numer rachunku</label>
+      <div><div class="ust-wartosc-wiersz"><output class="ust-wartosc"><%= rachunek.zPliku.rachunek ? rachunek.odczyt(rachunek.zPliku.rachunek) : '—' %></output><span class="menu-ustawien-wkrotce">wkrótce</span></div>
+        <p class="ust-pomoc">Zmiana w panelu — wkrótce. Dziś: plik konfiguracji (<code>OMS_RACHUNEK</code>).</p></div>
+      <label>Bank</label>
+      <div><div class="ust-wartosc-wiersz"><output class="ust-wartosc"><%= rachunek.zPliku.bank || '—' %></output><span class="menu-ustawien-wkrotce">wkrótce</span></div>
+        <p class="ust-pomoc">Zmiana w panelu — wkrótce. Dziś: plik konfiguracji (<code>OMS_BANK</code>).</p></div>
     </div>
     <% if (rachunek.zapis && rachunek.mozeZmieniac) { %>
       <form method="post" action="/ustawienia/firma/rachunek/usun">

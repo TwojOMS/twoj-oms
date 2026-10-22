@@ -15,12 +15,13 @@
 // (wpis przy kazdym otwarciu karty utopilby prawdziwe awarie).
 
 import {
-  wyczyscBladStatusu, zapiszStatusDpd, zapiszProbeStatusuDpd,
+  wyczyscBladStatusu, zapiszStatusDpd, zapiszProbeStatusuDpd, zapiszOdbiorPrzesylki,
 } from '../db/przesylki.js';
 import { dopiszLog } from '../../../oms/db/zamowienia.js';
 import { zapiszPrzejecie } from '../db/podjazdy.js';
 import { sledzeniePrzesylki } from '../../../domena/sledzenie-przesylki.js';
 import { dowodPrzejecia } from '../../../domena/przejecie-przesylki.js';
+import { dowodOdbioru, chwilaDowoduUKuriera } from '../../../domena/dowod-odbioru.js';
 
 const teraz = () => new Date().toISOString();
 
@@ -125,6 +126,19 @@ export async function odswiezStatusKuriera(db, kurierzy, z, p, { terazMs = Date.
         p.przejeta_at = zapis.przejeta_at;
         p.przejecie_kod = zapis.przejecie_kod;
       }
+    });
+  }
+  // PRZ-108.09 (zdarzenie automatyzacji „Kurier odebrał paczkę”): PIERWSZY dowód odbioru z białej listy — stan zapisany
+  // wyżej (pola w pamięci są już po zapisie), przejęcie WzA albo historia tej odpowiedzi — daje chwilę odbioru (nasz
+  // zegar, w chwili zapisu) raz na paczkę. Osłonięte jak każdy zapis tutaj: awaria nie może zepsuć karty ani zegara.
+  if (!p.odebrana_at) {
+    const historia = wynik?.historia ?? null;
+    const dowod = dowodOdbioru(p, { historia });
+    if (dowod) zapiszLubOdpusc(() => {
+      // Recenzja 09, usterka 1: także chwila odbioru U KURIERA — reguła pominie dowód spóźniony o ponad 48 h.
+      const kurierAt = chwilaDowoduUKuriera(p, { historia });
+      const at = zapiszOdbiorPrzesylki(db, p.id, { at: teraz(), dowod, kurierAt });
+      if (at) { p.odebrana_at = at; p.odebrana_dowod = dowod; p.odebrana_kurier_at = kurierAt; }
     });
   }
   // Akcja w logu niesie NAZWE KURIERA Z WIERSZA (`allegro_wza.status`, `dpd.status`) —

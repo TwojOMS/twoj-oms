@@ -483,7 +483,10 @@ recover() {
 # wymaga adresu w pliku — tego pilnuje sam OMS przy starcie.
 # PRZ-102.20: rachunek firmy (OMS_RACHUNEK) też nie jest wymagany — można go wpisać w panelu (Ustawienia → Firma,
 # tylko administrator). Wpisany w pliku wygrywa nad panelem; zły numer w pliku zatrzymuje start OMS-u.
-WYMAGANE_PRODUKCJI='OMS_SPRZEDAWCA_NIP OMS_USER OMS_PASS'
+# PRZ-108.10: NIP (OMS_SPRZEDAWCA_NIP) i BDO też nie są wymagane — można je wpisać w panelu (Ustawienia → Firma, tylko
+# administrator). Wpisany w pliku wygrywa nad panelem (każde pole osobno); zły NIP albo BDO w pliku zatrzymuje start.
+# KSEF_TOKEN dopisany do pliku nadal wymaga NIP-u w pliku — tego pilnuje sam OMS przy starcie.
+WYMAGANE_PRODUKCJI='OMS_USER OMS_PASS'
 
 # Wartość tak, jak przeczyta ją compose z env_file: OSTATNIA linia NAZWA= (compose bierze ostatnią),
 # bez CR i otaczających '…' / "…".
@@ -512,7 +515,8 @@ OMS_TRYB=produkcja
 # Konto serwisowe: aktualizator zakłada nim pierwszego administratora; potem przestaje logować.
 OMS_USER=serwis
 OMS_PASS=$haslo
-# Sprzedawca na proformie: NIP (10 cyfr, bez kresek), BDO jeśli firma ma.
+# Sprzedawca na proformie: NIP (10 cyfr, bez kresek), BDO (9 cyfr) jeśli firma ma. Opcjonalnie: zostaw puste i wpisz
+# NIP i BDO w panelu (Ustawienia → Firma, tylko administrator). Wpisane tutaj wygrywają nad panelem.
 OMS_SPRZEDAWCA_NIP=
 OMS_SPRZEDAWCA_BDO=
 # Rachunek firmy (26 cyfr, bez PL i spacji): dane do przelewu w mailach i na proformie. Opcjonalnie: zostaw pusty
@@ -627,14 +631,18 @@ produkcja() {
   [ "$(env_wartosc "$ENV_TERAZ" OMS_TRYB)" = proba ] || fail 'TO_NIE_JEST_PROBA: oms.env nie ma OMS_TRYB=proba — przejście już było'
   if [ ! -f "$PRODUKCJA_ENV" ]; then
     szablon_produkcji
-    echo "UTWORZONO $PRODUKCJA_ENV — uzupełnij: $(braki_produkcji | tr '\n' ' ')"
+    braki=$(braki_produkcji | tr '\n' ' ')
+    # PRZ-108.10: szablon ma wszystkie pola wymagane do startu; dane firmy są opcjonalne w pliku (można w panelu).
+    if [ -n "$braki" ]; then echo "UTWORZONO $PRODUKCJA_ENV — uzupełnij: ${braki% }"
+    else echo "UTWORZONO $PRODUKCJA_ENV — dane firmy (NIP, BDO, rachunek, adres) wpisz tutaj albo po przejściu w panelu (Ustawienia → Firma)"; fi
     echo "Edycja: sudo nano $PRODUKCJA_ENV ; potem ponownie: sudo sh $SKRYPT produkcja"
     return 0
   fi
   braki=$(braki_produkcji | tr '\n' ' ')
   [ -z "$braki" ] || fail "PRODUKCJA_NIEWYPELNIONE_POLA: ${braki% } — uzupełnij w $PRODUKCJA_ENV"
   for n in OMS_PASS OMS_SPRZEDAWCA_NIP OMS_RACHUNEK; do
-    # PRZ-102.20: puste pole nie jest wartością z próby (pusty rachunek = wpis w panelu; puste NIP/hasło odrzuciły braki wyżej).
+    # PRZ-102.20, PRZ-108.10: puste pole nie jest wartością z próby (pusty rachunek albo NIP = wpis w panelu; puste hasło
+    # odrzuciły braki wyżej).
     [ -n "$(env_wartosc "$PRODUKCJA_ENV" "$n")" ] || continue
     [ "$(env_wartosc "$PRODUKCJA_ENV" "$n")" != "$(env_wartosc "$ENV_TERAZ" "$n")" ] || fail "PRODUKCJA_WARTOSC_Z_PROBY: $n — wpisz własną wartość, nie z próby"
   done

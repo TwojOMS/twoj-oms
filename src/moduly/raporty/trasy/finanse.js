@@ -1,5 +1,6 @@
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
+import { ekranOdmowyRaportu } from './odmowa-raportu.js';
 import { kluczOkresu } from '../../../domena/okres-rozliczeniowy.js';
 import {
   zakresSkrotu, nazwaOkresu, poprzedniOkres, zakresMiesiaca,
@@ -227,7 +228,8 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
       if (!PODLOGA) return reply.code(400).view('finanse-brak-pokrycia.ejs', {
         title: 'Finanse', admin: req.konto?.admin === true, powrot: req.url,
       });
-      return reply.code(400).send(`Nie da się policzyć rachunku: ${komunikatDlaOperatora(e)}`);
+      // PRZ-108.04: odmowa to ekran panelu z menu, nie goły tekst (nieznany sklep zamówienia, brak granicy kanału).
+      return ekranOdmowyRaportu(reply, e, { ekran: 'Finanse', czynnosc: 'policzyć rachunku' });
     }
   });
 

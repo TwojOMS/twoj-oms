@@ -56,7 +56,8 @@ describe('zbudujAplikacje', () => {
       migracje: [{ numer: 1, nazwa: 'sonda', wykonaj: (d) => d.exec('CREATE TABLE sonda(id INTEGER)') }],
       zbuduj: () => { budow++; return {}; } };
     // PRZ-102.20: brak OMS_RACHUNEK nie jest już błędem startu (rachunek można wpisać w panelu) — zły rachunek nadal jest.
-    await expect(zbudujAplikacje({ moduly: [rdzen, zly], env: { OMS_RACHUNEK: '34109010140000000000000001' }, db }))
+    // PRZ-108.10: brak OMS_SPRZEDAWCA_NIP też nie jest już błędem startu (NIP w panelu) — zły NIP nadal jest.
+    await expect(zbudujAplikacje({ moduly: [rdzen, zly], env: { OMS_SPRZEDAWCA_NIP: '1234563219', OMS_RACHUNEK: '34109010140000000000000001' }, db }))
       .rejects.toThrow(/OMS_SPRZEDAWCA_NIP[\s\S]*OMS_RACHUNEK[\s\S]*ZLY_KLUCZ/);
     expect(budow).toBe(0);
     expect(db.prepare('SELECT * FROM migracje').all()).toEqual([]);

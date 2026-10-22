@@ -21,9 +21,10 @@ export function pocztaOpcjonalna(usluga) {
 }
 
 /**
- * Mailer do maili systemowych albo null. Najpierw `wiadomosci.mailer` (plik .env, atrapa piaskownicy albo poczta
- * z Ustawień zapisana przed startem); bez niego — poczta z Ustawień zapisana już po starcie (PRZ-094.04: zaproszenie
- * i reset hasła działają od razu, bez restartu). Mailer z Ustawień bez kompletnego zapisu (odłączony) = null.
+ * Mailer do maili systemowych albo null. `wiadomosci.mailer` to plik .env, atrapa piaskownicy albo (PRZ-108.02:
+ * zawsze, gdy pliku nie ma) pośrednik poczty z Ustawień, czytający zapis przy każdej wysyłce — zaproszenie i reset
+ * hasła działają od razu po zapisie, bez restartu. Zapasowo `pocztaWychodzaca.ustawien` (stary skład usług).
+ * Mailer z Ustawień bez kompletnego zapisu (nieustawiony albo odłączony) = null.
  * Łapie wyłącznie brak usługi (moduł wiadomości niezbudowany).
  */
 export function mailerOpcjonalny(usluga) {

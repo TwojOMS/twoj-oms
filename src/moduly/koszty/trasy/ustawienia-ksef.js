@@ -5,7 +5,7 @@
 // ⚠️ Token nie wraca na ekran nigdy — także po błędzie formularza (pole tokenu zawsze puste). Komunikat testu
 // połączenia buduje klient KSeF z odpowiedzi serwera (bez tokenu); błąd techniczny idzie tylko do logu, też bez tokenu.
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
-import { sprawdzFormularzKsef, EKRAN_KSEF, ZDANIE_UPRAWNIENIA_KSEF } from '../../../domena/konfiguracja-ksef-kosztow.js';
+import { sprawdzFormularzKsef, EKRAN_KSEF, ZDANIE_UPRAWNIENIA_KSEF, ODMOWA_KSEF_BRAK_NIP } from '../../../domena/konfiguracja-ksef-kosztow.js';
 import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji, stanDlaEkranu }
   from '../../../oms/db/konfiguracja-integracji.js';
 import { usunSesjeKsef } from '../../../oms/ksef/sesja.js';
@@ -18,15 +18,17 @@ const KOMUNIKATY = {
   odlaczono: 'Token KSeF usunięty z OMS-u. Panel nie pobiera już faktur kosztowych; koszty zapisane wcześniej zostają.',
 };
 
-export function registerUstawieniaKsefRoutes(app, { db, zrodloKsef, nipSprzedawcy }) {
+export function registerUstawieniaKsefRoutes(app, { db, zrodloKsef, nipSprzedawcy: nip }) {
   const k = zrodloKsef;
+  // PRZ-108.10: NIP firmy funkcją (plik albo Ustawienia → Firma) — czytany przy każdym widoku i zapisie.
+  const nipTeraz = () => (typeof nip === 'function' ? nip() : nip) ?? null;
   function widok(req, reply, { bledy = [], test = null } = {}) {
     const zapis = wczytajKonfiguracjeIntegracji(db, 'ksef');
     return reply.view('ustawienia-ksef.ejs', {
       nawigacja: nawigacjaUstawien(req, reply), title: tytulEkranuDlaAdresu(EKRAN_KSEF),
-      zEnv: k.zEnv, stan: stanDlaEkranu(zapis), nipZapisu: zapis?.ustawienia?.nip ?? '', nipSprzedawcy,
+      zEnv: k.zEnv, stan: stanDlaEkranu(zapis), nipZapisu: zapis?.ustawienia?.nip ?? '', nipSprzedawcy: nipTeraz(),
       nipNiezgodny: k.nipNiezgodny(), modulWylaczony: wylaczoneModuly(db).includes('koszty'),
-      zdanie: ZDANIE_UPRAWNIENIA_KSEF, bledy, test,
+      zdanie: ZDANIE_UPRAWNIENIA_KSEF, bledy, test, odmowaBrakNip: ODMOWA_KSEF_BRAK_NIP,
       zapisano: KOMUNIKATY[req.query?.zapisano] ?? null,
     });
   }
@@ -38,7 +40,7 @@ export function registerUstawieniaKsefRoutes(app, { db, zrodloKsef, nipSprzedawc
   app.post(EKRAN_KSEF, async (req, reply) => {
     if (k.zEnv) return zEnv(reply);
     const stary = wczytajKonfiguracjeIntegracji(db, 'ksef');
-    const { ustawienia, sekrety, bledy } = sprawdzFormularzKsef(req.body ?? {}, stary, nipSprzedawcy);
+    const { ustawienia, sekrety, bledy } = sprawdzFormularzKsef(req.body ?? {}, stary, nipTeraz());
     if (bledy.length) {
       reply.code(400);
       return widok(req, reply, { bledy });

@@ -1,0 +1,36 @@
+<%# PRZ-102.12 → PRZ-108.06: sekcja automatu wysyłki do KSeF, przeniesiona znak w znak z ekranu inFaktu na
+    Ustawienia → Automatyzacje (zmienił się tylko adres formularza). Co poleci, rozstrzyga ta sama reguła co
+    „zaznacz wszystkie” na ekranie Faktur (domena/wysylka-ksef.js), a wysyła ta sama usługa co przycisk.
+    Wejście: `automat` (trasy/automat-ksef-ekran.js → modelAutomatuKsef) i `konsumenckie`. %>
+<section class="ust-sekcja" id="ksef-automat">
+  <h2>Automatyczna wysyłka do KSeF</h2>
+  <p id="ksef-automat-stan" class="aut-stan">
+    <% if (automat.wlaczony) { %><strong>Włączony</strong> — najbliższy przebieg: <strong><%= automat.najblizszy %></strong>.<% } else { %><strong>Wyłączony.</strong><% } %>
+    <% if (automat.zmienil) { %> Ostatnia zmiana: <%= automat.zmienil.login || '—' %>, <%= fmtDataCzas(automat.zmienil.at) %>.<% } %>
+  </p>
+  <% if (automat.bledy.length) { %>
+    <div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong></p><ul><% automat.bledy.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
+  <% } %>
+  <% if (automat.powodBezczynnosci) { %><p class="pas-uprzedzenie" id="ksef-automat-bezczynny"><%= automat.powodBezczynnosci %></p><% } %>
+  <p class="pas-uprzedzenie">Wysłanej do KSeF faktury nie da się cofnąć ani skasować — zostaje tylko korekta.</p>
+  <form id="ksef-automat-formularz" class="ust-formularz" method="post" action="/ustawienia/automatyzacje/ksef">
+    <label for="ksef-automat-wlaczony">Wysyłaj automatycznie</label>
+    <div><input type="hidden" name="wlaczony" value="0"><input id="ksef-automat-wlaczony" type="checkbox" name="wlaczony" value="1"<% if (automat.formularz.wlaczony) { %> checked<% } %>></div>
+
+    <label for="ksef-automat-godzina">Godzina wysyłki</label>
+    <div><input id="ksef-automat-godzina" type="time" name="godzina" value="<%= automat.formularz.godzina %>" max="23:45" required>
+      <p class="ust-pomoc">Czas polski, najpóźniej 23:45. Jedna próba dziennie, najpóźniej minutę po tej godzinie; jeśli OMS był wtedy wyłączony — zaraz po starcie. Włączenie po dzisiejszej godzinie nie wysyła od razu: pierwszy przebieg będzie jutro.</p></div>
+
+    <div class="ust-pelna ust-akcje">
+      <button class="btn btn--glowny" type="submit">Zapisz</button>
+    </div>
+  </form>
+  <% if (automat.wynik) { %>
+    <p id="ksef-automat-ostatni">Ostatni przebieg (<%= automat.wynik.dzien %>): wysłano <%= automat.wynik.wyslane?.length ?? 0 %>,
+      nie wiadomo <%= automat.wynik.niepewne?.length ?? 0 %>, pominięto <%= automat.wynik.pominiete?.length ?? 0 %><% if (automat.wynik.blad) { %> — zatrzymał się: <%= automat.wynik.blad %><% } %><% if (automat.wynik.stan === 'przerwany') { %> — przerwany restartem OMS-u<% } %>.
+      <a href="/faktury/ksef/automat">Szczegóły</a></p>
+  <% } %>
+  <% if (automat.wstrzymane.length) { %>
+    <p class="pas-uprzedzenie" id="ksef-automat-wstrzymane-licznik">Wstrzymane faktury (inFakt je odrzucił, automat ich nie wyśle): <%= automat.wstrzymane.map(function (w) { return w.numer; }).join(', ') %>. Popraw w inFakcie i wyślij ręcznie albo zwolnij na <a href="/faktury/ksef/automat">ekranie wyniku automatu</a>.</p>
+  <% } %>
+</section>

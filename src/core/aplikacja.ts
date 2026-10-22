@@ -7,6 +7,7 @@ import { rozdajNoweUprawnienia } from './uprawnienia.ts';
 import { sprawdzTrybProby } from './tryb.ts';
 import { zaufaneProxy } from './zaufane-proxy.ts';
 import { BladKonfiguracji, bladWalidatora } from './blad-konfiguracji.ts';
+import { polaczenieBezpieczne } from './bezpieczenstwo/logowanie-wspolne.js';
 
 export type Aplikacja = {
   app: FastifyInstance;
@@ -81,6 +82,17 @@ export async function zbudujAplikacje(o: {
   }
 
   const app = Fastify({ logger: false, requestTimeout: 0, trustProxy });
+  // W rdzeniu, przed trasami i pluginami: także pliki statyczne, odmowy i błędy.
+  app.addHook('onSend', async (req, reply, payload) => {
+    if (!reply.hasHeader('X-Frame-Options')) reply.header('X-Frame-Options', 'DENY');
+    if (!reply.hasHeader('Content-Security-Policy')) reply.header('Content-Security-Policy', "frame-ancestors 'none'");
+    if (!reply.hasHeader('X-Content-Type-Options')) reply.header('X-Content-Type-Options', 'nosniff');
+    if (!reply.hasHeader('Referrer-Policy')) reply.header('Referrer-Policy', 'same-origin');
+    if (polaczenieBezpieczne(req) && !reply.hasHeader('Strict-Transport-Security')) {
+      reply.header('Strict-Transport-Security', 'max-age=15552000');
+    }
+    return payload;
+  });
   app.addHook('onRequest', async (req) => {
     if (!trustProxy && !ostrzezonoOProxy
       && (req.headers['x-forwarded-for'] !== undefined || req.headers['cf-connecting-ip'] !== undefined)) {

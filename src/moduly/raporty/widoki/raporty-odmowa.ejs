@@ -1,0 +1,16 @@
+<%# PRZ-108.04: odmowa liczenia raportu jako ekran panelu (menu z layoutu), nie goły tekst. Powód to zdanie
+    z `komunikatDlaOperatora` — numer zamówienia i klucz sklepu, bez danych klienta. Kod odpowiedzi 400 ustawia trasa. %>
+<div class="glowa-ekranu">
+  <h1><%= ekran %></h1>
+  <span class="krok"><a href="/raporty">sprzedaż</a> · <a href="/finanse">finanse</a></span>
+</div>
+
+<section class="ust-sekcja" id="raport-odmowa">
+  <h2><%= naglowek %></h2>
+  <div class="pas-uprzedzenie" role="alert"><p><%= powod %></p></div>
+  <p>Raport nie zgaduje brakujących ustawień: wrzucenie zamówienia do przypadkowego kanału zafałszowałoby sprzedaż.
+    Zamówienia są w <a href="/">Zamówieniach</a> i nic się z nimi nie stało.</p>
+  <p>Gdy komunikat wskazuje nieznany sklep: sprawdź, czy jego klucz jest na liście kanałów (<code>OMS_KANALY</code> w pliku konfiguracji OMS;
+    instrukcja: <code>docs/instalacja-docker.md</code>, sekcja 9) i czy kanał jest podłączony w
+    <a href="/ustawienia/integracje">Ustawienia → Sklepy i usługi</a>. Po poprawce odśwież tę stronę.</p>
+</section>

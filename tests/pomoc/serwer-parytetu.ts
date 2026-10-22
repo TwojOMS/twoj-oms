@@ -19,6 +19,7 @@ import { modulRaporty } from '../../src/moduly/raporty/modul.ts';
 import { configRaportowFixture } from './raporty-parytetu.js';
 import { modulWiadomosci } from '../../src/moduly/wiadomosci/modul.ts';
 import { modulApiPanelu } from '../../src/moduly/api-panelu/modul.ts';
+import { modulAutomatyzacje } from '../../src/moduly/automatyzacje/modul.ts';
 export { ODSTEP_CZUWACZA_MS } from './bootstrap-parytetu.ts';
 
 /** Adapter wyłącznie danych dawnych testów. HTTP i usługi wykonują prawdziwe moduły. */
@@ -73,7 +74,7 @@ export function buildOmsServer(o: Record<string, any>) {
       countryCode:n.kraj??'PL',email:n.email??'',phone:n.phone??''}};
   }};
   const obserwator:ModulOms={nazwa:'parytet-obserwator',wersja:'1.0.0',wymaga:['wysylka'],migracje:[],menu:[],uprawnienia:[],konfiguracja:()=>null,zbuduj:()=>({trasy:app=>{przechwycony=app;}})};
-  const moduly=[...(o.moduly??[modulRdzen,modulWeb,modulKanaly,modulFaktury,modulWiadomosci,createModulZamowienia({zWiadomosciami:true}),wysylkaHistoryczna,modulMagazyn,modulZwroty,modulKoszty,modulUstawienia,modulRaporty,modulMarketing,modulApiPanelu,modulZdrowie]),
+  const moduly=[...(o.moduly??[modulRdzen,modulWeb,modulKanaly,modulFaktury,modulWiadomosci,createModulZamowienia({zWiadomosciami:true}),wysylkaHistoryczna,modulMagazyn,modulZwroty,modulKoszty,modulUstawienia,modulAutomatyzacje,modulRaporty,modulMarketing,modulApiPanelu,modulZdrowie]),
     obserwator] as readonly ModulOms[];
   const gotowe=zbudujOms({moduly,db:o.db,env,nadpisania});
   // Dawna konstrukcja jest synchroniczna; wszystkie operacje asynchroniczne czekają na skład.

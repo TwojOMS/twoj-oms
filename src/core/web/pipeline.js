@@ -3,6 +3,7 @@ import { katalogiWidokow, sciezkaWidoku } from './widoki.js';
 import fastifyView from '@fastify/view';
 import fastifyStatic from '@fastify/static';
 import { adresZasobu } from './wersja-zasobow.js';
+import { logoInstalacji } from './logo-instalacji.js';
 import fastifyFormbody from '@fastify/formbody';
 import fastifyBasicAuth from '@fastify/basic-auth';
 import ejs from 'ejs';
@@ -107,8 +108,18 @@ function wczytajLogo(plik) {
 export function registerWeb(app, {db, config}) {
 // Ten sam znak w belce i na karcie; bez konfiguracji karta używa PNG 32 px z paczki.
 const logo = config.marka?.logoPlik ? wczytajLogo(config.marka.logoPlik) : null;
-const zamienniki = logo ? { 'favicon-32.png': logo, 'favicon-192.png': logo } : {};
-const zasob = adresZasobu(__publicDir, zamienniki);
+const znak = logoInstalacji(db, { bajty: logo, alt: config.marka?.logoAlt ?? '', wPliku: Boolean(config.marka?.logoPlik) });
+app.decorate('logoInstalacji', znak);
+let ostatnieLogo;
+let adres;
+const zasob = nazwa => {
+  const bajty = znak.biezace().bajty;
+  if (!adres || bajty !== ostatnieLogo) {
+    ostatnieLogo = bajty;
+    adres = adresZasobu(__publicDir, bajty ? { 'favicon-32.png': bajty, 'favicon-192.png': bajty } : {});
+  }
+  return adres(nazwa);
+};
 const menu = app.menuOms;
 if (!Array.isArray(menu)) throw new Error('Brak menuOms z manifestów Aplikacja.menu');
 const trasyOms = [];
@@ -172,12 +183,10 @@ options: { views: katalogiWidokow() },
     },
   });
 app.register(fastifyStatic, { root: __publicDir, prefix: '/public/' });
-// PRZ-060: znak instalacji POD TYM SAMYM ADRESEM, co neutralny znak z paczki — belka, ekrany
-// i ich testy nie znają drugiej ścieżki. Plik czytany raz, przy starcie: brak albo nie-PNG
-// to błąd konfiguracji i odmowa startu, a nie cicho podstawiony znak neutralny.
-if (config.marka?.logoPlik) {
-  app.get('/public/favicon-192.png', async (_req, reply) => reply.type('image/png').send(logo));
-  app.get('/public/favicon-32.png', async (_req, reply) => reply.type('image/png').send(logo));
+// Te same adresy dla pliku, zapisu z panelu i paczki. Zapis działa bez restartu.
+for (const nazwa of ['favicon-192.png', 'favicon-32.png']) {
+  app.get(`/public/${nazwa}`, async (_req, reply) => reply.type('image/png')
+    .send(znak.biezace().bajty ?? readFileSync(join(__publicDir, nazwa))));
 }
 // Starsze zakładki i przeglądarki pytające domyślnie o ICO trafiają na ten sam PNG co układ.
 app.get('/favicon.ico', async (_req, reply) => reply.redirect(zasob('favicon-32.png'), 301));
@@ -236,7 +245,8 @@ app.addHook('preHandler', async (req, reply) => {
         konto: req.konto ?? null,
         menuKonta: menuKontaDla(req.konto ?? null, { powrot: sciezkaPowrotu }),
         // Tekst alternatywny znaku w belce (PRZ-060, OMS_LOGO_ALT); bez niego znak jest ozdobą.
-        marka: { logoAlt: config.marka?.logoAlt ?? '' },
+        marka: { logoAlt: znak.biezace().alt },
+        logoInstalacji: { wPliku: znak.wPliku, ...znak.biezace() },
         // PRZ-075: tryb próby (lista: komunikat demo zamiast alarmu synchronizacji) i konto gościa demo
         // (ekran logowania pokazuje jego login i hasło). Poza trybem próby `demo` jest zawsze null (core/demo.ts).
         proba: config.proba === true,

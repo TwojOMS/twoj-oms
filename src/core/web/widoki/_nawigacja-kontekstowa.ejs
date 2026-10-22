@@ -21,7 +21,7 @@
             <%# PRZ-101.01: pozycja Ustawień bez działającego ekranu — przygaszona, ze znacznikiem „wkrótce”. %>
             <% const klasyGrupy = [p.aktywna ? 'aktywna' : '', p.wkrotce ? 'wkrotce' : ''].filter(Boolean).join(' '); %>
             <li<%- klasyGrupy ? ` class="${klasyGrupy}"` : '' %>>
-              <a href="<%= p.href %>"><span><%= p.etykieta %></span><% if (p.wkrotce) { %><span class="menu-ustawien-wkrotce">wkrótce</span><% } %></a>
+              <a href="<%= p.href %>"><span><%= p.etykieta %></span><% if (p.wkrotce) { %><span class="menu-ustawien-wkrotce">wkrótce</span><% } %><% if (p.beta) { %><span class="menu-ustawien-beta">BETA</span><% } %></a>
             </li>
           <% }); %>
         <% }); %>

@@ -36,7 +36,7 @@ it('konfiguracja modułu web: bez zmiennych brak pliku i pusty alt', () => {
 
 it('bez zmiennych: neutralny znak z paczki i pusty alt', async () => {
   const w = await belkaIZnak({});
-  expect(w.img).toBe('<img class="pas-logo" src="/public/favicon-192.png" alt="">');
+  expect(w.img).toMatch(/^<img class="pas-logo" src="\/public\/favicon-192\.png\?v=[a-f0-9]{10}" alt="">$/);
   expect(w.status).toBe(200);
   expect(w.bajty.equals(neutralny)).toBe(true);
 }, 30000);
@@ -46,7 +46,7 @@ it('z OMS_LOGO_PLIK i OMS_LOGO_ALT: własny PNG pod tym samym adresem i dzisiejs
   try {
     const plik = join(k, 'logo.png'); writeFileSync(plik, wlasny);
     const w = await belkaIZnak({ OMS_LOGO_PLIK: plik, OMS_LOGO_ALT: 'Szkicownia' });
-    expect(w.img).toBe('<img class="pas-logo" src="/public/favicon-192.png" alt="Szkicownia">');
+    expect(w.img).toMatch(/^<img class="pas-logo" src="\/public\/favicon-192\.png\?v=[a-f0-9]{10}" alt="Szkicownia">$/);
     expect([w.status, w.typ]).toEqual([200, 'image/png']);
     expect(w.bajty.equals(wlasny)).toBe(true);
   } finally { rmSync(k, { recursive: true, force: true }); }
@@ -54,7 +54,7 @@ it('z OMS_LOGO_PLIK i OMS_LOGO_ALT: własny PNG pod tym samym adresem i dzisiejs
 
 it('alt jest escapowany jak każdy tekst w szablonie', async () => {
   const w = await belkaIZnak({ OMS_LOGO_ALT: 'A"<b>' });
-  expect(w.img).toBe('<img class="pas-logo" src="/public/favicon-192.png" alt="A&#34;&lt;b&gt;">');
+  expect(w.img).toMatch(/^<img class="pas-logo" src="\/public\/favicon-192\.png\?v=[a-f0-9]{10}" alt="A&#34;&lt;b&gt;">$/);
 }, 30000);
 
 it('brakujący plik albo nie-PNG odmawia startu', async () => {

@@ -39,7 +39,7 @@ import { sposobPlatnosciFaktury } from '../../../domena/sposob-platnosci.js';
 // VIES i seria numeracji — ze WSPOLNEJ galezi obu drog wystawiania (services/wdt-faktury.js),
 // zeby karta i okres nie mialy dwoch kopii tej samej reguly. Sama stawka 0% na pozycjach
 // liczy sie juz w pozycjeDokumentu.
-import { czyNipUe, rozbijNipUe, polaWdtInfakt } from '../../../domena/wdt.js';
+import { czyNipUe, rozbijNipUe, polaWdtInfakt, nipSprzedawcyDoWdt } from '../../../domena/wdt.js';
 import {
   sprawdzWdtWVies, przygotujSerieWdt, seriaWdtPoAwarii, seriaWdtPoSukcesie,
 } from './wdt-faktury.js';
@@ -83,6 +83,8 @@ function dataZaplatyDoOznaczenia(z, invoiceDate) {
  * @param nipSprzedawcy NIP wlasny na adnotacje WDT (art. 106e ust. 1 pkt 24 — prefiks PL).
  *   Domyslna wartosc produkcyjna jak w config.proforma.nip i z tego samego powodu: dana
  *   jawna, ktorej brak nie moze skonczyc sie dokumentem bez wymaganego elementu.
+ *   PRZ-108.10: tekst albo funkcja (NIP z Ustawien → Firma, czytany przy kazdym wystawieniu);
+ *   WDT bez NIP-u odmawia przed rezerwacja (domena/wdt.js, nipSprzedawcyDoWdt).
  * @param teraz zegar — wylacznie do wyboru miesiaca serii WDT, gdy operator nie podal
  *   daty wystawienia. Wstrzykiwany jak w services/wiadomosci.js.
  */
@@ -158,6 +160,9 @@ export function createFaktura({
     // zmienia stawke razem z nabywca, nigdy osobno (por. domain/pozycje-faktury.js).
     const d = daneFaktury(z);
     const wdt = czyNipUe(d.nip);
+    // PRZ-108.10: NIP sprzedawcy do adnotacji WDT — przy KAŻDYM wystawieniu (NIP z Ustawień → Firma bez restartu)
+    // i PRZED rezerwacją: WDT bez NIP-u odmawia tutaj, zanim cokolwiek dotknie bazy, VIES albo inFaktu.
+    const nipWlasny = nipSprzedawcyDoWdt(d.nip, nipSprzedawcy);
 
     // REZERWACJA. Od tej linii druga proba odbija sie od bazy, a nie od naszej uwaznosci.
     const f = rozpocznijFakture(db, zamowienieId);
@@ -254,7 +259,7 @@ export function createFaktura({
         client_id: clientId, services, ...daty, ...sposobPlatnosciFaktury(z),
         // Pola WYLACZNIE dokumentu WDT (domain/wdt.js) — dla nabywcy krajowego oba
         // rozsypania sa puste i payload zostaje bajt w bajt taki, jaki byl.
-        ...polaWdtInfakt(d.nip, { nipSprzedawcy }),
+        ...polaWdtInfakt(d.nip, { nipSprzedawcy: nipWlasny }),
         ...(seriaWdt ? { number: seriaWdt.numer } : {}),
       });
     } catch (e) {

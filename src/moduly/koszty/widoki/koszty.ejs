@@ -115,6 +115,9 @@
           Zwykłe pobranie chodzi raz na dobę, w nocy. Ten przycisk wymusza je od razu —
           potrafi potrwać kilka minut, nie zamykaj wtedy panelu.
         </span>
+      <% } else if (typeof powodBrakuKsef !== 'undefined' && powodBrakuKsef) { %>
+        <%# PRZ-108.10 (recenzja): token KSeF jest zapisany, ale panel nie zna NIP-u firmy. %>
+        <span class="wyjasnienie"><%= powodBrakuKsef %> <a href="/ustawienia/firma">Przejdź do Ustawień → Firma</a>.</span>
       <% } else { %>
         <span class="wyjasnienie">
           Ten panel nie ma podpiętego KSeF, więc nie ma skąd pobierać kosztów — widać tu

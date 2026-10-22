@@ -10,7 +10,7 @@ import {
 } from '../../../domena/okresy-raportu.js';
 import { wszystkieGranice, sufitZApilo } from '../../../oms/db/historia-sprzedazy.js';
 import { zastrzezenia } from '../../../domena/zastrzezenia-historii.js';
-import { komunikatDlaOperatora } from '../../../domena/bledy.js';
+import { ekranOdmowyRaportu } from './odmowa-raportu.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { zl } from '../../../domena/kwoty.js';
 import { PODLOGA_ZWROTOW } from '../../../domena/rachunek-zarzadczy.js';
@@ -54,7 +54,7 @@ export function zarejestrujTrasyRaportow(app, { db, config }) {
         .send(BOM_EXCELA + csv);
     } catch (e) {
       if (!e?.dlaOperatora) throw e;
-      return reply.code(400).send(`Nie da się policzyć raportu: ${komunikatDlaOperatora(e)}`);
+      return ekranOdmowyRaportu(reply, e);
     }
   });
 
@@ -157,7 +157,7 @@ export function zarejestrujTrasyRaportow(app, { db, config }) {
       // ⚠️ Brak granicy kanalu ma dac ZDANIE DLA CZLOWIEKA, nie piecsetke. Blad techniczny
       // leci dalej, do logu — tak samo jak przy /koszty.
       if (!e?.dlaOperatora) throw e;
-      return reply.code(400).send(`Nie da się policzyć raportu: ${komunikatDlaOperatora(e)}`);
+      return ekranOdmowyRaportu(reply, e);
     }
   });
 }

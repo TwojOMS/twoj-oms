@@ -18,6 +18,7 @@ import { GDZIE_KLUCZ_INFAKTU } from '../../../domena/konfiguracja-infakt.js';
 import { bezpiecznaNazwa } from '../../../domena/pliki.js';
 
 import { adresSprzedawcy } from '../../../domena/adres-sprzedawcy.js';
+import { nipSprzedawcy } from '../../../domena/nip-bdo-firmy.js';
 
 import { adresOdbiorcy } from '../../../domena/adres-odbiorcy.js';
 
@@ -143,8 +144,8 @@ app.get('/zamowienia/:id/potwierdzenie-wywozu.pdf', async (req, reply) => {
     let bajty;
     try {
       // Adres sprzedawcy TA SAMA regula, co proforma i specyfikacja (adresSprzedawcy);
-      // NIP z config.proforma.nip — prefiks PL doklada model.
-      const sprzedawca = { ...adresSprzedawcy(config), nip: config?.proforma?.nip ?? null };
+      // NIP — PRZ-108.10: plik albo Ustawienia → Firma, bez NIP-u odmowa (nipSprzedawcy); prefiks PL doklada model.
+      const sprzedawca = { ...adresSprzedawcy(config), nip: nipSprzedawcy(config) };
       bajty = zbudujOswiadczenieWywozuPdf(modelOswiadczenia(z, {
         sprzedawca, dzis: dzienWarszawa(new Date().toISOString()),
       }));

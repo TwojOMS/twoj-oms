@@ -21,7 +21,8 @@ import { METODY_WPLATY_RECZNEJ } from '../../domena/metody-platnosci.js';
 import { linkDoSledzenia } from '../../domena/tracking.js';
 import { powiazaniaDosylki } from '../../domena/dosylka.js';
 import { wczytajAutomatKsef } from '../faktury/db/ksef-automat.js';
-import { ostrzezeniaAutomatuKsef, ostrzezeniaFaktur, ostrzezeniaPrzesylek, ostrzezeniaWiadomosci, ostrzezeniaIntegracji, ostrzezeniaTerminow, ostrzezeniaZwrotow, ostrzezeniaPobran, zlozOstrzezenia, ostrzezeniaDlaKonta } from '../../domena/ostrzezenia.js';
+import { regulyDoOstrzezen } from '../automatyzacje/db/reguly.js';
+import { ostrzezeniaAutomatuKsef, ostrzezeniaAutomatyzacji, ostrzezeniaFaktur, ostrzezeniaPrzesylek, ostrzezeniaWiadomosci, ostrzezeniaIntegracji, ostrzezeniaTerminow, ostrzezeniaZwrotow, ostrzezeniaPobran, zlozOstrzezenia, ostrzezeniaDlaKonta } from '../../domena/ostrzezenia.js';
 import { ukryteTypyKonta } from '../../oms/db/powiadomienia.js';
 import { odrzucenia, lukiKsef, poTerminie, zwrotyBezKorekty, pobraniaBezGotowki, dzienWystawieniaLuki } from '../../oms/db/ostrzezenia.js';
 import { wysylkaKsef as rezerwacjaKsef } from '../faktury/db/wysylki-ksef.js';
@@ -108,7 +109,10 @@ const {
   // (POST /faktury/ksef/podglad). `null` (panel bez inFaktu) = bez przycisku — podgląd i tak odda 503.
   wysylkaKsef = null,
 }=opcje;
-const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, config.definicje, etykietyStatusow(db));
+// PRZ-108.02: usługa wiadomości powstaje także bez poczty (poczta z Ustawień może dojść po starcie) i mówi
+// `gotowe()`, czy poczta jest TERAZ ustawiona. Pytamy przy każdym żądaniu: bez poczty = jak `null` wyżej.
+const wiadomosciCzynne = () => (wiadomosci && wiadomosci.gotowe?.() !== false ? wiadomosci : null);
+const powrotKarty =(req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, config.definicje, etykietyStatusow(db));
 // Cenniki „Dodaj z magazynu" (PRZ-060): `OMS_CENNIKI` albo sklepy Woo z definicji kanałów.
 // Składane RAZ, przy budowie tras — zła lista odmawia startu, a nie pierwszego telefonu.
 const cennikiInstalacji = zbudujCenniki({ lista: config.cenniki ?? null, definicje: config.definicje ?? [] });
@@ -255,6 +259,10 @@ function zbierzOstrzezenia(req) {
         ...ostrzezeniaFaktur({ luki: lukiKsef(db), dzis }),
         // PRZ-102.12: kłopot ostatniego przebiegu automatu KSeF (błąd, przerwany, „nie wiadomo”, pominięte).
         ...(() => { const a = wczytajAutomatKsef(db); return ostrzezeniaAutomatuKsef({ wynik: a.wynik, wstrzymane: a.wstrzymane }); })(),
+        // PRZ-108.08: reguła automatyzacji wstrzymana albo niepewna wysyłka maila — tylko administrator (reguły i ich
+        // dziennik są w Ustawieniach, dostępnych wyłącznie dla niego).
+        ...(req?.konto?.admin ? ostrzezeniaAutomatyzacji({ reguly: regulyDoOstrzezen(db,
+          new Date(teraz.getTime() - 7 * 24 * 3600 * 1000).toISOString()) }) : []),
         ...ostrzezeniaTerminow({ poTerminie: poTerminie(db) }),
         ...ostrzezeniaZwrotow({ zwroty: zwrotyBezKorekty(db), dzis }),
         ...ostrzezeniaPobran({ pobrania: pobraniaBezGotowki(db) }),
@@ -283,16 +291,17 @@ function wyborWiadomosci(req) {
   }
 // Szablony własne z Ustawień → Szablony wiadomości (PRZ-101.03); panel bez poczty albo stara usługa = brak.
 function tematyWlasne() {
-    return wiadomosci?.tematyWlasne?.() ?? [];
+    return wiadomosciCzynne()?.tematyWlasne?.() ?? [];
   }
 function daneWiadomosci(req, z, dodatki = {}) {
-    if (!wiadomosci) return { wiadomosciSekcja: null };
+    const uslugaWiadomosci = wiadomosciCzynne();
+    if (!uslugaWiadomosci) return { wiadomosciSekcja: null };
 
     // ⚠️ JEDEN OBIEKT ZAMOWIENIA NA CALA SEKCJE — `k.z`, ten sam, na ktorym usluga rozstrzyga
     // zgode i sklada maila (poprawka 22.08.2026). Do tej pory adresat brał sie z obiektu
     // trasy, a zgoda i stan tematu z odczytanego tutaj ponownie: dwa zrodla w jednym pasku,
     // z ktorych kazde mogloby opisywac inny stan zamowienia.
-    const k = wiadomosci.kontekst(z.id);
+    const k = uslugaWiadomosci.kontekst(z.id);
     const { stan, wybrany } = wyborWiadomosci(req);
 
     // ⚠️⚠️ REZERWA ZA STARĄ KOLUMNĘ `zamowienia.potwierdzenie_wyslane_at` (ZNALEZISKO RECENZJI
@@ -938,5 +947,5 @@ function magazynDlaKarty(req, z) {
       wyniki: fraza ? zWynikami(szukajDoZamowienia(db, { fraza, kanal: cennik })) : null,
     };
   }
-return {db,config,poller,nadanie,faktura,proforma,kurierzy,gus,syncSklep,wiadomosci,przesylkiAllegro,stanyKanalow,zdrowie,fakturaAllegro,fakturaHurtem,doczytanieKsef,powrotKarty,adresPowrotuNaKarte,wczytajListe,statusyDlaKarty,OKNO_OSTRZEZEN_PRZESYLEK_DNI,zbierzOstrzezenia,wyborWiadomosci,daneWiadomosci,renderujKarte,renderujNowe,magazynEkranu,niesiePolaFormularza,opisZmian,kopiujDaneFakturyDoWysylki,pozycjaZadania,zWynikami,magazynDlaKarty,cennikiInstalacji};
+return {db,config,poller,nadanie,faktura,proforma,kurierzy,gus,syncSklep,wiadomosci,wiadomosciCzynne,przesylkiAllegro,stanyKanalow,zdrowie,fakturaAllegro,fakturaHurtem,doczytanieKsef,powrotKarty,adresPowrotuNaKarte,wczytajListe,statusyDlaKarty,OKNO_OSTRZEZEN_PRZESYLEK_DNI,zbierzOstrzezenia,wyborWiadomosci,daneWiadomosci,renderujKarte,renderujNowe,magazynEkranu,niesiePolaFormularza,opisZmian,kopiujDaneFakturyDoWysylki,pozycjaZadania,zWynikami,magazynDlaKarty,cennikiInstalacji};
 }

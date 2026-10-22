@@ -29,6 +29,7 @@ import { registerUstawieniaAktualizacjiRoutes } from './trasy/aktualizacje.js';
 import { registerUstawieniaWkrotceRoutes } from './trasy/wkrotce.js';
 import { odczytajWydanie, sprawdzNajnowsze } from './aktualizacje.ts';
 import { transport } from '../../integracje/transport.js';
+import { registerLogoRoutes } from './trasy/logo.js';
 
 /** Zachowane ustawienia, konta, logowanie i wspólna rama panelu. */
 export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
@@ -61,6 +62,7 @@ export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
     };
     return {uslugi:{widokIntegracji,lacznosc,aktualizacje},trasy:app=>{
     zarejestrujMenuKontaRol(app,{db:ctx.db});
+    registerLogoRoutes(app,{db:ctx.db});
     registerLogowanieRoutes(app,{db:ctx.db,config:ctx.usluga('web','config')});
     registerUstawieniaPocztyRoutes(app,{db:ctx.db,adresPaneluZEnv:ctx.konfiguracja.adresPanelu,poczta:pocztaOpcjonalna(ctx.usluga),mailer,podpis:podpisOpcjonalny(ctx.usluga),log:ctx.log});
     registerKontaRoutes(app,{db:ctx.db,teraz:ctx.teraz,adresPanelu,mailer,

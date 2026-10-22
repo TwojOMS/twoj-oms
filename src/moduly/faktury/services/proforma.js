@@ -14,6 +14,7 @@ import { daneFaktury } from '../../../domena/dane-faktury.js';
 import { zbudujProformePdf } from '../pdf/proforma-pdf.js';
 import { bladOperatora } from '../../../domena/bledy.js';
 import { adresSprzedawcy } from '../../../domena/adres-sprzedawcy.js';
+import { nipSprzedawcy } from '../../../domena/nip-bdo-firmy.js';
 import { bezpiecznaNazwa } from '../../../domena/pliki.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { zl } from '../../../domena/suma-pozycji.js';
@@ -94,8 +95,10 @@ export function createProforma({
   // wartosciami i PRZESLANIAL nim adres zwalidowany — kazda paczka jechala z pusta ulica,
   // calkowicie po cichu. NIP dokladamy z konfiguracji, bo kurierowi nie byl do niczego
   // potrzebny, a na dokumencie dla klienta jest obowiazkowy.
+  // PRZ-108.10: NIP z bieżącej konfiguracji (plik → Ustawienia → Firma), czytany przy KAŻDYM wystawieniu; bez NIP-u
+  // odmowa w FAZIE 1 (numer z serii nie przepada). Skład bez `config.nipBdoFirmy` czyta config.proforma jak dotąd.
   function daneSprzedawcy() {
-    return { ...adresSprzedawcy(config), nip: ustawienia.nip };
+    return { ...adresSprzedawcy(config), nip: nipSprzedawcy(config) };
   }
 
   // PRZ-102.20: rachunek i bank z bieżącej konfiguracji (plik → Ustawienia → Firma), czytane przy KAŻDYM wystawieniu

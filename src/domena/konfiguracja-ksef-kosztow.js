@@ -35,7 +35,10 @@ export function sprawdzFormularzKsef(body = {}, zapisane = null, nipSprzedawcy =
   const nipSurowy = tekst(body.nip);
   const nip = nipSurowy ? znormalizujNip(nipSurowy) : null;
   if (nipSurowy && nip !== nipSprzedawcy) {
-    bledy.push('NIP musi być NIP-em firmy z konfiguracji (OMS_SPRZEDAWCA_NIP) — KSeF pobiera faktury zakupowe tej firmy. Zostaw pole puste, a OMS użyje NIP-u firmy.');
+    // PRZ-108.10: NIP firmy z pliku albo z Ustawień → Firma; bez niego panel nie ma z czym porównać.
+    bledy.push(nipSprzedawcy
+      ? 'NIP musi być NIP-em firmy (Ustawienia → Firma albo OMS_SPRZEDAWCA_NIP w pliku) — KSeF pobiera faktury zakupowe tej firmy. Zostaw pole puste, a OMS użyje NIP-u firmy.'
+      : 'Panel nie zna jeszcze NIP-u firmy — wpisz go najpierw w Ustawienia → Firma, potem zapisz token (pole NIP możesz zostawić puste).');
   }
   return { ustawienia: { nip }, sekrety: { token: token || stary }, bledy };
 }
@@ -59,6 +62,18 @@ export function nipZapisuZgodny(zapis, nipSprzedawcy) {
  * Czy usługa z modułu kosztów jest gotowa (plik albo zapis z ekranu). Usługa z modułu (`dostepny()`) odpowiada przy
  * każdym żądaniu; zwykły obiekt (testy, starsze składy) — samym istnieniem. Wzór: gusDostepny (konfiguracja-gus.js).
  */
+/**
+ * PRZ-108.10 (recenzja): token z ekranu jest zapisany, ale panel nie zna NIP-u firmy (ani w pliku, ani w Ustawienia →
+ * Firma) — jedno zdanie dla „Sprawdź połączenie”, „Odśwież teraz”, PDF-u kosztu, paczki dla biura i ekranu Koszty,
+ * zamiast mylącego „brak tokenu” / „nie ma podpiętego KSeF”.
+ */
+export const ODMOWA_KSEF_BRAK_NIP = 'Panel nie zna NIP-u firmy — wpisz go w Ustawienia → Firma; token KSeF działa w kontekście tego NIP-u.';
+
+/** Powód niedostępności usługi KSeF do pokazania człowiekowi (dziś: tylko brak NIP-u przy zapisanym tokenie) albo null. */
+export function powodNiedostepnosciKsef(usluga) {
+  return typeof usluga?.powodNiedostepnosci === 'function' ? usluga.powodNiedostepnosci() : null;
+}
+
 export function uslugaKsefDostepna(usluga) {
   return Boolean(usluga) && (typeof usluga.dostepny !== 'function' || usluga.dostepny());
 }

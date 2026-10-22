@@ -37,20 +37,24 @@ export function utworzUslugiWiadomosci({ db, config, klienciKanalow, fabryki = {
   const fabrykaMailera: Fabryka = fabryki.createMailer ?? createMailer;
   const pocztaUstawien = config.poczta ? null : pocztaZUstawien({
     wczytaj: () => wczytajKonfiguracjeIntegracji(db, 'poczta'), fabryka: fabrykaMailera });
-  // Wiadomości do klientów (potwierdzenie, karta zamówienia) składamy przy starcie — tylko gdy poczta już jest.
-  const mailer = config.poczta ? fabrykaMailera(config.poczta) : pocztaUstawien?.gotowy() ? pocztaUstawien : null;
+  // PRZ-108.02: wiadomości do klientów (potwierdzenie, karta zamówienia) powstają ZAWSZE. Bez SMTP_* ich mailerem
+  // jest pośrednik ustawień — czyta zapis przy każdej wysyłce, więc pierwszy zapis poczty na ekranie działa od razu,
+  // bez restartu. Czy poczta jest teraz ustawiona, mówi `wiadomosci.gotowe()`: karta pyta o to przy każdym żądaniu
+  // (brak poczty = sekcji nie ma, wysyłka 503 — jak dawniej, gdy usługa nie powstawała).
+  const mailer = config.poczta ? fabrykaMailera(config.poczta) : pocztaUstawien!;
+  const pocztaGotowa = () => !pocztaUstawien || pocztaUstawien.gotowy();
   const pocztaWychodzaca = { zEnv: Boolean(config.poczta) && !config.atrapaPoczty, atrapa: Boolean(config.atrapaPoczty),
-    wiadomosciKlientow: Boolean(mailer), ustawien: pocztaUstawien };
+    ustawien: pocztaUstawien };
   const czasMaila = () => teraz().toISOString();
   // PRZ-102.10: marka i stopka z Ustawień → Poczta, czytane przy każdym mailu; pole ustawione w pliku wygrywa.
   const zPliku = podpisZPliku(config.oprawaPoczty);
   const podpisPanelu = () => podpisZPanelu(db, zPliku);
-  const potwierdzenie = mailer ? (fabryki.createPotwierdzenie ?? createPotwierdzenie)({
+  const potwierdzenie = (fabryki.createPotwierdzenie ?? createPotwierdzenie)({
     db, mailer, sprzedawca: config.sprzedawca ?? {}, oprawaPoczty: config.oprawaPoczty, podpisPanelu, teraz: czasMaila,
-  }) : null;
-  const wiadomosci = mailer ? (fabryki.createWiadomosci ?? createWiadomosci)({
+  });
+  const wiadomosci = { ...(fabryki.createWiadomosci ?? createWiadomosci)({
     db, mailer, potwierdzenie, proforma, infakt, config, podpisPanelu, teraz: czasMaila,
-  }) : null;
+  }), gotowe: pocztaGotowa };
   return { config, klienciWiadomosci: klienciKanalow, mailer, pocztaWychodzaca, potwierdzenie, wiadomosci,
     pollerWiadomosci, czuwaczFormulki, odswiezanieSpraw };
 }

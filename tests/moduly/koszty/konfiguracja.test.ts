@@ -22,6 +22,13 @@ describe('PRZ-025 konfiguracja KSeF: sekcja cała albo nic', () => {
     expect(() => wczytajKoszty({...env,KSEF_TOKEN:'fixture',KSEF_NIP:'PL 123-456-32-18'}))
       .toThrow(/KSEF_NIP/);
   });
+  // PRZ-108.10: NIP można wpisać w panelu, ale token Z PLIKU nadal wymaga NIP-u W PLIKU (kontekst firmy dla tokenu
+  // z pliku i porównanie z KSEF_NIP przy starcie); bez tokenu w pliku brak NIP-u nie zatrzymuje startu.
+  it('KSEF_TOKEN w pliku bez OMS_SPRZEDAWCA_NIP w pliku odmawia startu; bez tokenu — start z nipSprzedawcy null', () => {
+    expect(() => wczytajKoszty({ KSEF_TOKEN: 'fixture' })).toThrow(/KSEF_TOKEN w pliku konfiguracji wymaga OMS_SPRZEDAWCA_NIP/);
+    expect(wczytajKoszty({}).nipSprzedawcy).toBeNull();
+    expect(wczytajKoszty({}).ksef).toBeNull();
+  });
   it('token używa NIP sprzedawcy OMS bez obowiązku legacy KSEF_NIP', () => {
     expect(wczytajKoszty({...env,KSEF_TOKEN:'fixture'}).ksef?.nip).toBe('1000001193');
     expect(wczytajKoszty({...env,KSEF_TOKEN:'fixture',KSEF_NIP:' '}).ksef?.nip).toBe('1000001193');

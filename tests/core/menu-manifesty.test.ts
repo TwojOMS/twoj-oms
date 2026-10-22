@@ -31,7 +31,11 @@ const eolZrodel = plikiSzablonu.map(p=>{
   return rodzaje[0];
 });
 if(new Set(eolZrodel).size!==1)throw new Error('Mieszane EOL między szablonami nowego menu — nie zgaduj oracle');
-const odtworz = (refs:number[],eol:string=eolZrodel[0]) => refs.map(i=>przed.fragments[i]).join('').replaceAll('\r\n','\n').replaceAll('\n',eol);
+// PRZ-108.03: belka ma teraz wersję PNG, jak ikona karty. Zmieniamy tylko oczekiwany adres
+// w historycznej ramie; cały pozostały HTML nadal porównujemy dosłownie.
+const odtworz = (refs:number[],eol:string=eolZrodel[0]) => refs.map(i=>przed.fragments[i]).join('')
+  .replaceAll('src="/public/favicon-192.png"', `src="${zasob('favicon-192.png')}"`)
+  .replaceAll('\r\n','\n').replaceAll('\n',eol);
 const dane = (przypadek:any) => {
   const konto = przypadek.konto ? {...przypadek.konto,uprawnienia:new Set(przypadek.konto.uprawnienia)} : null;
   return {title:'Fixture menu',motyw:'jasny',htmx:false,bezPaska:przypadek.bezPaska??false,body:'<p>Fixture</p>',panelStatusow:przypadek.panelStatusow,

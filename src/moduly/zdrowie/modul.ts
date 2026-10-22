@@ -6,6 +6,7 @@ import { alarmyKonfiguracjiKanalow, alarmyNazwKanalow } from './bezpiecznik-kana
 import { zegarOstrzezen } from './zegary.ts';
 import { stanKopii, wersjaWydania } from './kopie.ts';
 import { UWAGA_BRAK_RACHUNKU } from '../../domena/rachunek-firmy.js';
+import { UWAGA_BRAK_NIP } from '../../domena/nip-bdo-firmy.js';
 
 export const ODSTEP_OSTRZEZEN_MS=3600000;
 export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewnetrzna:string}> = {
@@ -29,6 +30,7 @@ export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewn
       }
     };
     const rachunekFirmy=opcjonalna<{biezacy:()=>{rachunek:string|null}}>('rdzen','rachunekFirmy');
+    const nipBdoFirmy=opcjonalna<{biezacy:()=>{nip:string|null}}>('rdzen','nipBdoFirmy');
     const zdrowie=()=>{
       const config=ctx.usluga<any>('kanaly','config');
       const kurierzy=ctx.usluga<Record<string,unknown>>('wysylka','kurierzy');
@@ -56,6 +58,8 @@ export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewn
       // PRZ-102.20: bez rachunku (ani w pliku, ani w panelu) panel działa, ale maile o płatności idą bez danych do
       // przelewu, a proforma odmawia — uwaga, nie alarm: to brak ustawienia, nie awaria do budzenia czujki.
       if(rachunekFirmy&&!rachunekFirmy.biezacy().rachunek)wynik.uwagi.push(UWAGA_BRAK_RACHUNKU);
+      // PRZ-108.10: tak samo NIP — bez niego proforma, specyfikacja, wywóz i faktura WDT odmawiają.
+      if(nipBdoFirmy&&!nipBdoFirmy.biezacy().nip)wynik.uwagi.push(UWAGA_BRAK_NIP);
       // PRZ-059: nadzór kopii tylko tam, gdzie compose klienta ustawia OMS_KOPIE_KATALOG.
       if(ctx.konfiguracja.kopieKatalog){
         const kopie=stanKopii({katalog:ctx.konfiguracja.kopieKatalog,zewnetrzna:ctx.konfiguracja.kopiaZewnetrzna,teraz});

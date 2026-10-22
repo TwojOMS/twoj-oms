@@ -30,7 +30,6 @@
   <% if (stan) { %>
     <h2>Ustawiona</h2>
     <p>Serwer <%= stan.ustawienia.host %>, login <%= stan.ustawienia.user %> — zapisał <%= stan.kontoLogin ?? '—' %>, <%= fmtDataCzas(stan.zmienionoAt) %>.</p>
-    <% if (wymagaRestartu) { %><p class="pas-uprzedzenie">Zaproszenia, linki do hasła i wiadomość próbna działają już teraz. Wiadomości do klientów z karty zamówienia włączą się po ponownym uruchomieniu OMS-u (to pierwsze ustawienie poczty w tym panelu); późniejsze zmiany na tym ekranie działają od razu.</p><% } %>
   <% } else { %>
     <h2>Nieustawiona</h2>
     <p>Bez poczty OMS nie wyśle zaproszenia ani linku do hasła — zostaje „Pokaż link” do przekazania ręcznie.</p>

@@ -30,7 +30,9 @@ import { wymagajTrybuProby } from './tryb.mjs';
 import { uruchomPulsPollerow } from './pollery.mjs';
 import { ukryjEkranyDemo } from './ekrany.mjs';
 
-export function modulyPiaskownicy(env) {
+// PRZ-108.09: `baza` — funkcja oddająca bazę piaskownicy (otwiera się DOPIERO po złożeniu modułów, bo migracje biorą
+// listę modułów). Atrapy kurierów czytają z niej `utworzona_at` paczki, żeby oddać realistyczny przebieg statusów.
+export function modulyPiaskownicy(env, { baza = () => null } = {}) {
   wymagajTrybuProby(env, 'moduły piaskownicy');
   const fabryki = {
     createInfaktClient: ({ db, teraz }) => createAtrapaInfaktu({ db, teraz, env }),
@@ -47,7 +49,7 @@ export function modulyPiaskownicy(env) {
     if (m.nazwa === 'koszty') return createModulKoszty({ atrapaKsef: ({ token }) => createAtrapaKsef({ env, token }) });
     if (m.nazwa === 'zamowienia') return createModulZamowienia({ zWiadomosciami: m.wymaga.includes('wiadomosci'), fabryki: gus });
     // PRZ-092: kurier DPD z Ustawień — atrapa zamiast prawdziwego klienta (dpd.mjs); PRZ-093.09: to samo dla InPostu.
-    if (m.nazwa === 'wysylka') return createModulWysylka({ fabryki: { createDpd: createAtrapaDpd({ env }), createInpost: createAtrapaInpost({ env }) } });
+    if (m.nazwa === 'wysylka') return createModulWysylka({ fabryki: { createDpd: createAtrapaDpd({ env, baza }), createInpost: createAtrapaInpost({ env, baza }) } });
     return m;
   });
 }
@@ -66,9 +68,10 @@ export function nadpisaniaPiaskownicy({ db, env, log }) {
 /** OMS piaskownicy z atrapami. Zwraca to samo co uruchomAplikacje ({ aplikacja, zamknij }). */
 export async function uruchomPiaskownice(env = process.env, { host = '0.0.0.0', log } = {}) {
   wymagajTrybuProby(env, 'piaskownica');
-  const moduly = modulyPiaskownicy(env);
+  let db = null;
+  const moduly = modulyPiaskownicy(env, { baza: () => db });
   sprawdzKonfiguracjeModulow(moduly, env);
-  const db = openOmsDb(env.OMS_DB_PATH, { moduly });
+  db = openOmsDb(env.OMS_DB_PATH, { moduly });
   const nadpisania = nadpisaniaPiaskownicy({ db, env, log });
   ukryjEkranyDemo(db, env);
   // Źródła jak w zdrowiu (moduly/zdrowie/modul.ts): klucze sklepów i kanałów z konfiguracji, którą widzą moduły.

@@ -21,6 +21,7 @@ import { zdaniaPlatnosciTeraz } from '../zdania-platnosci.js';
 import { czyNipUe } from '../../../domena/wdt.js';
 import { daneFaktury } from '../../../domena/dane-faktury.js';
 import { adresSprzedawcy, odbiorcaPrzelewu } from '../../../domena/adres-sprzedawcy.js';
+import { nipSprzedawcy } from '../../../domena/nip-bdo-firmy.js';
 import { modelOswiadczenia } from '../../../domena/oswiadczenie-wywozu.js';
 import { zbudujOswiadczenieWywozuPdf } from '../../faktury/pdf/oswiadczenie-wywozu-pdf.js';
 
@@ -169,7 +170,8 @@ export function createWiadomosci({
       // Zdanie w treści maila zapala FAKT z koperty (`zalacznikWywozu` niżej), nie temat.
       if (czyNipUe(daneFaktury(k.z).nip)) {
         const oswiadczenie = zbudujOswiadczenieWywozuPdf(modelOswiadczenia(k.z, {
-          sprzedawca: { ...adresSprzedawcy(config), nip: config?.proforma?.nip ?? null },
+          // PRZ-108.10: NIP z pliku albo Ustawień → Firma; bez NIP-u odmowa (mail z fakturą WDT nie idzie bez wywozu).
+          sprzedawca: { ...adresSprzedawcy(config), nip: nipSprzedawcy(config) },
           dzis: k.dzis,
         }));
         zalaczniki.push({ filename: nazwaPliku('Potwierdzenie_wywozu', k.faktura.numer), content: oswiadczenie });
@@ -222,7 +224,12 @@ export function createWiadomosci({
     };
   }
 
-  async function wyslij(id, temat_id, { ktoKlikal = 'operator' } = {}) {
+  // PRZ-108.08 (automatyzacje, C1): `tryb: 'automat'` — ten sam mail, ta sama zgoda domeny i ten sam skład, inny ślad:
+  // rejestr dostaje `kto` = `ktoKlikal` („automat: <nazwa reguły>”), dziennik karty „Automatycznie (reguła „…”)”, a błąd
+  // złożenia (nic nie poszło) niesie `przedWysylka`, żeby silnik nie uznał go za „niepewne”. Domyślny tryb (ręczny)
+  // zostaje znak w znak — pilnują tego testy wiadomości i tests/moduly/automatyzacje/c1-mail-kupujacy.test.js (test 8).
+  async function wyslij(id, temat_id, { ktoKlikal = 'operator', tryb = 'reczny', regula = null } = {}) {
+    const automat = tryb === 'automat';
     // ⚠️⚠️ ŚLAD TAKŻE WTEDY, GDY NIE BYŁO CZEGO WYSŁAĆ (recenzja całości gałęzi, 22.08.2026 —
     // najpoważniejsza z odłożonych). Do tej pory `try/catch` obejmował WYŁĄCZNIE `sendMail`,
     // a złożenie treści stało poza nim: padnięty inFakt, zniknięty plik proformy i odmowa
@@ -275,6 +282,7 @@ export function createWiadomosci({
       // (z wcięciem i średnikiem) sam stałby się pierwszym wystąpieniem wzorca i mutacja
       // zakomentowałaby KOMENTARZ. Sprawdzone — dokładnie tak przeżyła raz, 22.08.2026.
       odnotujNieudaneZlozenie(blad);
+      if (automat && blad && typeof blad === 'object') blad.przedWysylka = true;
       throw blad;
     }
 
@@ -302,7 +310,7 @@ export function createWiadomosci({
     dopiszLog(db, id, {
       akcja: 'wiadomosc.wyslana',
       // Adresat, temat i załącznik TAK, treść NIE — log karty czyta się na głos przy reklamacji.
-      wynik: `Ręcznie (${ktoKlikal}): „${nazwaTematu(temat_id)}" wysłane na ${w.do}`
+      wynik: `${automat ? `Automatycznie (reguła „${regula ?? ktoKlikal}”)` : `Ręcznie (${ktoKlikal})`}: „${nazwaTematu(temat_id)}" wysłane na ${w.do}`
         + (w.zalaczniki[0] ? ` z załącznikiem ${w.zalaczniki[0].filename}` : ' bez załącznika') + '.',
     });
     return { do: w.do, temat: w.temat, kiedy };

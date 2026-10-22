@@ -56,7 +56,7 @@ describe('ekran Ustawienia → Szablony wiadomości', () => {
     expect(r.statusCode).toBe(200);
     for (const n of ['Potwierdzenie przyjęcia zamówienia', 'Proforma', 'Faktura', 'Przypomnienie o płatności', 'Zamówienie wysłane']) expect(r.body).toContain(`<td>${n}</td>`);
     // PRZ-101.06: dwa maile do zespołu w osobnej sekcji — tu liczymy tylko maile do klienta.
-    const klient = r.body.slice(r.body.indexOf('id="szablony-wbudowane"'), r.body.indexOf('id="szablony-wlasne"'));
+    const klient = r.body.slice(r.body.indexOf('id="szablony-wbudowane"'), r.body.indexOf('id="zdania-platnosci"')); // PRZ-108.11: „Szablony własne” przeniesione na górę ekranu (decyzja właściciela 22.10)
     expect(klient.match(/<td>domyślna<\/td>/g)).toHaveLength(5);
     expect(r.body.match(/<td>domyślna<\/td>/g)).toHaveLength(7);
     expect(r.body).toContain('href="/ustawienia/szablony-wiadomosci/nowy"');

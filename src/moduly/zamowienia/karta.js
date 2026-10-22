@@ -26,7 +26,7 @@ import { parsujWplate } from '../../domena/platnosci.js';
 import { dodajWplateReczna, usunWplateReczna } from '../../oms/db/platnosci.js';
 import {teraz,AKCJA_ALLEGRO_PROBA,allegroWymagaOdpytania,miniaturyEkranu,ktoKlikal,sprzedawcaSpecyfikacji,daneKarty,KATALOG_WIDOKOW,fragment} from './wspolne.js';
 export function registerKartaRoutes(app, kontekst) {
-const {db,config,poller,nadanie,faktura,proforma,kurierzy,gus,syncSklep,wiadomosci,przesylkiAllegro,stanyKanalow,zdrowie,fakturaAllegro,fakturaHurtem,doczytanieKsef,powrotKarty,adresPowrotuNaKarte,wczytajListe,statusyDlaKarty,OKNO_OSTRZEZEN_PRZESYLEK_DNI,zbierzOstrzezenia,wyborWiadomosci,daneWiadomosci,renderujKarte,renderujNowe,magazynEkranu,niesiePolaFormularza,opisZmian,kopiujDaneFakturyDoWysylki,pozycjaZadania,zWynikami,magazynDlaKarty}=kontekst;
+const {db,config,poller,nadanie,faktura,proforma,kurierzy,gus,syncSklep,wiadomosciCzynne,przesylkiAllegro,stanyKanalow,zdrowie,fakturaAllegro,fakturaHurtem,doczytanieKsef,powrotKarty,adresPowrotuNaKarte,wczytajListe,statusyDlaKarty,OKNO_OSTRZEZEN_PRZESYLEK_DNI,zbierzOstrzezenia,wyborWiadomosci,daneWiadomosci,renderujKarte,renderujNowe,magazynEkranu,niesiePolaFormularza,opisZmian,kopiujDaneFakturyDoWysylki,pozycjaZadania,zWynikami,magazynDlaKarty}=kontekst;
 app.get('/zamowienia/:id', async (req, reply) => {
     let z = pobierzZamowienie(db, Number(req.params.id));
     if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
@@ -180,6 +180,7 @@ app.get('/zamowienia/:id', async (req, reply) => {
     // sekcje w stanie „podglad" bez danych podgladu przy pierwszej rozbieznosci miedzy nimi.
     const wyborW = wyborWiadomosci(req);
     const dodatkiKarty = {};
+    const wiadomosci = wiadomosciCzynne();
     if (wiadomosci && wyborW.stan === 'podglad') {
       try {
         dodatkiKarty.wiadomosciPodglad = await wiadomosci.podglad(z.id, wyborW.wybor);
@@ -286,6 +287,8 @@ app.post('/zamowienia/:id/status', async (req, reply) => {
 app.post('/zamowienia/:id/wiadomosc/:temat', async (req, reply) => {
     const id = Number(req.params.id);
     if (!pobierzZamowienie(db, id)) return reply.code(404).send('Nie ma takiego zamówienia');
+    // PRZ-108.02: pytamy przy każdym żądaniu — poczta zapisana w Ustawieniach po starcie działa bez restartu.
+    const wiadomosci = wiadomosciCzynne();
     if (!wiadomosci) return reply.code(503).send('Poczta nie jest skonfigurowana — wiadomości panel nie wyśle.');
 
     try {

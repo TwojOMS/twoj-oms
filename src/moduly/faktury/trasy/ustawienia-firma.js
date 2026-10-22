@@ -17,6 +17,10 @@ import { wczytajZapisAdresuFirmy, zapiszAdresFirmy, usunAdresFirmy } from '../..
 import { sprawdzFormularzRachunku, ZAPIS_RACHUNKU_FIRMY, rachunekDoOdczytu } from '../../../domena/rachunek-firmy.js';
 import { wczytajZapisRachunkuFirmy, zapiszRachunekFirmy, usunRachunekFirmy } from '../../../oms/db/rachunek-firmy.js';
 import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';
+// PRZ-108.10: NIP i BDO sprzedawcy — zapisuje tylko administrator; plik wygrywa DLA SWOJEGO POLA (OMS_SPRZEDAWCA_NIP /
+// OMS_SPRZEDAWCA_BDO): ekran pokazuje wartość z pliku, zapis tego pola = 409. Dwa wiersze w konfiguracja_integracji.
+import { sprawdzFormularzNip, sprawdzFormularzBdo, ZAPIS_NIP_FIRMY, ZAPIS_BDO_FIRMY } from '../../../domena/nip-bdo-firmy.js';
+import { wczytajZapisNipuFirmy, wczytajZapisBdoFirmy, zapiszNipFirmy, zapiszBdoFirmy, usunBdoFirmy } from '../../../oms/db/nip-bdo-firmy.js';
 // PRZ-105: domyślna stawka VAT — zapisuje tylko administrator (ta sama zasada co rachunek), lista 23/8/5/0.
 import { czytajStawkeDomyslna, zapiszStawkeDomyslna } from '../db/stawka-vat.js';
 import { STAWKI_VAT, czyStawkaVat } from '../../../domena/vat.js';
@@ -29,18 +33,34 @@ const KOMUNIKATY = {
   rachunek: 'Zapisano rachunek firmy. Następny mail o płatności, proforma i paczka za pobraniem Allegro wyjdą z tym rachunkiem.',
   'rachunek-usuniety': 'Usunięto rachunek zapisany na ekranie.',
   'stawka-vat': 'Zapisano domyślną stawkę VAT. Działa od następnej pozycji i następnej faktury.',
+  nip: 'Zapisano NIP firmy. Następna proforma, specyfikacja, potwierdzenie wywozu i faktura WDT wyjdą z tym NIP-em. Wystawione faktury i proformy zostają z poprzednim NIP-em; specyfikacja i potwierdzenie wywozu pobrane ponownie pokażą nowy.',
+  bdo: 'Zapisano numer BDO. Następna specyfikacja wyjdzie z tym numerem.',
+  'bdo-usuniety': 'Usunięto numer BDO zapisany na ekranie — specyfikacje wyjdą bez BDO.',
 };
+const TYLKO_ADMIN_NIP = 'NIP i BDO firmy zmienia tylko administrator. Formularz niczego nie zapisał.';
+const NIP_W_PLIKU = 'NIP firmy jest ustawiony w pliku konfiguracji (OMS_SPRZEDAWCA_NIP w oms.env) — tam go zmień. Formularz niczego nie zapisał.';
+const BDO_W_PLIKU = 'Numer BDO jest ustawiony w pliku konfiguracji (OMS_SPRZEDAWCA_BDO w oms.env) — tam go zmień. Formularz niczego nie zapisał.';
 const TYLKO_ADMIN_STAWKA = 'Domyślną stawkę VAT zmienia tylko administrator. Formularz niczego nie zapisał.';
 const PUSTY = { nazwa: '', ulica: '', kod: '', miasto: '', kraj: 'PL', telefon: '', email: '' };
 const TYLKO_ADMIN = 'Rachunek firmy zmienia tylko administrator. Formularz niczego nie zapisał.';
 const W_PLIKU = 'Rachunek firmy jest ustawiony w pliku konfiguracji (OMS_RACHUNEK / OMS_BANK w oms.env) — tam go zmień. Formularz niczego nie zapisał.';
 const tekst = (reply, kod, tresc) => reply.code(kod).type('text/plain; charset=utf-8').send(tresc);
 
-export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFirmy }) {
-  function widok(req, reply, { wpisane = null, bledy = [], wpisanyRachunek = null, bledyRachunku = [], bledyStawki = [] } = {}) {
+export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFirmy, nipBdoFirmy }) {
+  function widok(req, reply, { wpisane = null, bledy = [], wpisanyRachunek = null, bledyRachunku = [], bledyStawki = [],
+    wpisanyNip = null, bledyNipu = [], wpisanyBdo = null, bledyBdo = [] } = {}) {
     const zapis = wczytajZapisAdresuFirmy(db);
     const zapisRachunku = wczytajZapisRachunkuFirmy(db);
+    const zapisNipu = wczytajZapisNipuFirmy(db);
+    const zapisBdo = wczytajZapisBdoFirmy(db);
+    const biezace = nipBdoFirmy.biezacy();
     return reply.view('ustawienia-firma.ejs', {
+      nipBdo: {
+        nipWPliku: nipBdoFirmy.nipWPliku, bdoWPliku: nipBdoFirmy.bdoWPliku, zPliku: nipBdoFirmy.zPliku, biezace,
+        zapisNipu, zapisBdo, mozeZmieniac: req.konto?.admin === true,
+        pola: { nip: wpisanyNip ?? zapisNipu?.ustawienia?.nip ?? '', bdo: wpisanyBdo ?? zapisBdo?.ustawienia?.bdo ?? '' },
+        bledyNipu, bledyBdo,
+      },
       nawigacja: nawigacjaUstawien(req, reply), title: tytulEkranuDlaAdresu(req.url),
       wPliku: adresFirmy.wPliku, zPliku: adresFirmy.zPliku, zapis,
       pola: { ...PUSTY, ...(zapis?.ustawienia ?? {}), ...(wpisane ?? {}) },
@@ -105,6 +125,37 @@ export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFir
     }
     zapiszStawkeDomyslna(db, stawka);
     return reply.code(303).redirect(`${EKRAN_ADRESU_FIRMY}?zapisano=stawka-vat`);
+  });
+
+  // PRZ-108.10: NIP. Kolejność odmów jak przy rachunku: konto (403) → pole w pliku (409) → walidacja (400, zdanie jak
+  // przy starcie). Starych dokumentów nie ruszamy — nowy NIP działa od następnego dokumentu.
+  app.post(ZAPIS_NIP_FIRMY, async (req, reply) => {
+    if (req.konto?.admin !== true) return tekst(reply, 403, TYLKO_ADMIN_NIP);
+    if (nipBdoFirmy.nipWPliku) return tekst(reply, 409, NIP_W_PLIKU);
+    const { ustawienia, bledy } = sprawdzFormularzNip(req.body ?? {});
+    if (bledy.length) {
+      reply.code(400);
+      return widok(req, reply, { wpisanyNip: ustawienia.nip, bledyNipu: bledy });
+    }
+    zapiszNipFirmy(db, ustawienia.nip, { konto: { id: req.konto.id ?? null, login: req.konto.login ?? null } });
+    return reply.code(303).redirect(`${EKRAN_ADRESU_FIRMY}?zapisano=nip`);
+  });
+
+  // PRZ-108.10: BDO — pusty wpis znaczy „firma nie ma BDO” (wiersz z ekranu znika).
+  app.post(ZAPIS_BDO_FIRMY, async (req, reply) => {
+    if (req.konto?.admin !== true) return tekst(reply, 403, TYLKO_ADMIN_NIP);
+    if (nipBdoFirmy.bdoWPliku) return tekst(reply, 409, BDO_W_PLIKU);
+    const { ustawienia, bledy, wpisane } = sprawdzFormularzBdo(req.body ?? {});
+    if (bledy.length) {
+      reply.code(400);
+      return widok(req, reply, { wpisanyBdo: wpisane, bledyBdo: bledy });
+    }
+    if (!ustawienia.bdo) {
+      usunBdoFirmy(db);
+      return reply.code(303).redirect(`${EKRAN_ADRESU_FIRMY}?zapisano=bdo-usuniety`);
+    }
+    zapiszBdoFirmy(db, ustawienia.bdo, { konto: { id: req.konto.id ?? null, login: req.konto.login ?? null } });
+    return reply.code(303).redirect(`${EKRAN_ADRESU_FIRMY}?zapisano=bdo`);
   });
 
   // Jak przy adresie: działa także przy rachunku w pliku (zapis sprzed dopisania do pliku musi dać się usunąć).

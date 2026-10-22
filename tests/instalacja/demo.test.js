@@ -34,6 +34,12 @@ async function visible(env, admin) {
     for (const number of ['DEMO-001', 'DEMO-002', 'DEMO-003']) expect.soft(html).toContain(number);
     const counters = [...html.matchAll(/data-status="w_realizacji">(\d+)</g)].map(match => Number(match[1]));
     expect.soft(counters, 'licznik rzeczywistych zamówień w realizacji po zalogowaniu').toEqual([1]);
+    // PRZ-108.04: README każe obejrzeć „trzy zamówienia DEMO”, a zakładka RAPORTY liczyła je jako nieznany sklep
+    // `demo` i odmawiała (400). Zamówienia z instalatora mają być kanałem, który produkt zna zawsze (ręczne).
+    const raport = await fetch(url + '/raporty', { headers: { cookie } });
+    const raportHtml = await raport.text();
+    expect.soft(raport.status, 'RAPORTY po instalacji demo: ' + raportHtml.slice(0, 200)).toBe(200);
+    expect.soft(raportHtml).not.toContain('Nie da się policzyć raportu');
     const first = rows(env.OMS_DB_PATH)[0];
     expect.soft(first, 'pierwsze zamówienie demo dostępne po zalogowaniu').toBeDefined();
     if (first) {

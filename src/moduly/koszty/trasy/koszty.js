@@ -10,7 +10,7 @@ import { TYPY_KOSZTU } from '../../../domena/typy-kosztow.js';
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { bezpiecznaNazwa } from '../../../domena/pliki.js';
-import { uslugaKsefDostepna } from '../../../domena/konfiguracja-ksef-kosztow.js';
+import { uslugaKsefDostepna, powodNiedostepnosciKsef } from '../../../domena/konfiguracja-ksef-kosztow.js';
 import { createZestawienieKosztow } from '../services/zestawienie-kosztow.js';
 
 // Zakladka KOSZTY. Trasa jest CIENKA: parsuje zadanie, wola domene, renderuje — dokladnie
@@ -95,6 +95,8 @@ export function zarejestrujTrasyKosztow(app, {
       // w bazie dalej sie oglada, tylko nie ma czym go odswiezyc — i przycisk ma tego
       // nie obiecywac.
       mozliwyOdswiez: uslugaKsefDostepna(czuwaczKosztow),
+      // PRZ-108.10 (recenzja): token z ekranu jest, NIP-u firmy brak — ekran mówi to wprost zamiast „nie ma KSeF”.
+      powodBrakuKsef: powodNiedostepnosciKsef(czuwaczKosztow),
       // Przycisk „PDF" ma sie pokazac WYLACZNIE wtedy, gdy jest skad wziac XML — panel bez
       // sekcji KSEF_* dalej oglada lustro w bazie, ale wizualizacji nie ma z czego narysowac
       // (ta sama zasada, co przy `mozliwyOdswiez` wyzej: przycisk nie obiecuje niemozliwego).
@@ -151,7 +153,7 @@ export function zarejestrujTrasyKosztow(app, {
   app.get('/koszty/:ksefNumber/pdf', async (req, reply) => {
     // PRZ-102.22: usługa z modułu odpowiada przy każdym żądaniu (token z Ustawień, bez restartu).
     if (!uslugaKsefDostepna(wizualizacjaKosztu)) {
-      return reply.code(503).send('Panel nie ma podpiętego KSeF — nie ma skąd pobrać dokumentu.');
+      return reply.code(503).send(powodNiedostepnosciKsef(wizualizacjaKosztu) ?? 'Panel nie ma podpiętego KSeF — nie ma skąd pobrać dokumentu.');
     }
     let wynik;
     try {
@@ -205,7 +207,7 @@ export function zarejestrujTrasyKosztow(app, {
   app.post('/koszty/odswiez', async (req, reply) => {
     const miesiac = miesiacPowrotu(req.body?.miesiac);
     if (!uslugaKsefDostepna(czuwaczKosztow)) {
-      return reply.code(503).send('Panel nie ma podpiętego KSeF — nie ma skąd pobrać kosztów.');
+      return reply.code(503).send(powodNiedostepnosciKsef(czuwaczKosztow) ?? 'Panel nie ma podpiętego KSeF — nie ma skąd pobrać kosztów.');
     }
     let komunikat;
     try {

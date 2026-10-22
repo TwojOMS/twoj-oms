@@ -189,7 +189,9 @@ describe('PRZ-102.20 plik wygrywa (produkcja)', () => {
     const p = await panel(PLIK);
     try {
       const ekran = await get(p.app, EKRAN, p.admin);
-      expect(ekran.body).toContain('ustawione w pliku konfiguracji');
+      // PRZ-108.11 (decyzja właściciela 22.10): plakietka „wkrótce” + krótka pomoc zamiast zdania o pliku.
+      expect(ekran.body).toContain('Zmiana w panelu — wkrótce. Dziś: plik konfiguracji (<code>OMS_RACHUNEK</code>).');
+      expect(ekran.body).toContain('Zmiana w panelu — wkrótce. Dziś: plik konfiguracji (<code>OMS_BANK</code>).');
       expect(ekran.body).toContain('Bank z Pliku');
       expect(ekran.body).toContain('34 1090 1014 0000 0000 0000 0000');
       expect(formularz(ekran.body)).toBe('');

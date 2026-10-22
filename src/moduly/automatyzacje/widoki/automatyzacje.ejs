@@ -1,0 +1,67 @@
+<%# PRZ-108.06: Ustawienia → Automatyzacje (makieta makiety-2026-10-21/automatyzacje.html, kadry 1–2).
+    PRZ-108.07 (zmiana B): sekcja reguł z modelu `reguly` (trasy/reguly.js). Tabela i „Dodaj automatyzację” pokazują się
+    dopiero, gdy rejestr zdarzeń i akcji nie jest pusty (albo gdy w bazie są już reguły) — B wydane samo wygląda jak A.
+    ⚠️ Nazwa pliku: `ustawienia-automatyzacje.ejs` należy do autorespondera (wiadomosci/widoki). %>
+<% const r = locals.reguly; const pokazReguly = Boolean(r && (r.dostepne || r.lista.length)); %>
+<%# PRZ-108.11: plakietka BETA obok <h1>, nie w nim — tytuł, okruszek i <title> zostają „Automatyzacje”. %>
+<div class="tytul-z-plakietka"><h1>Automatyzacje</h1><span class="menu-ustawien-beta">BETA</span></div>
+<% if (pokazReguly) { %>
+<p>Reguły „gdy … to …”: OMS sam wykonuje akcję po zdarzeniu, które wskażesz. Reguła działa tylko dla zamówień z zaznaczonych kanałów i dopiero od chwili włączenia — zamówień sprzed włączenia nie rusza.</p>
+<% } else { %>
+<p>Rzeczy, które OMS robi sam — bez kliknięcia, o ustalonej porze albo po zdarzeniu. Tu je włączasz i ustawiasz.</p>
+<% } %>
+
+<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
+
+<% if (pokazReguly) { %>
+<% if (!r.pocztaGotowa) { %>
+<div class="pas-uprzedzenie" role="alert"><p>Poczta wychodząca nie jest podłączona — regułę z mailem zapiszesz, ale nie włączysz. Podłącz pocztę w <a href="/ustawienia/integracje/poczta">Ustawienia → Integracje → Poczta wychodząca</a>.</p></div>
+<% } %>
+<% for (const w of r.wstrzymane) { %>
+<div class="pas-uprzedzenie" role="alert"><p>Reguła <a href="/ustawienia/automatyzacje/<%= w.id %>">„<%= w.nazwa %>”</a> jest wstrzymana: <%= w.wstrzymana %> Zaległe (<%= w.zalegle %>) czekają na Twoją decyzję na ekranie reguły.</p></div>
+<% } %>
+<section class="ust-sekcja szw-sekcja" id="reguly">
+  <h2>Reguły</h2>
+  <% if (r.lista.length) { %>
+  <div class="przewijak-tabeli">
+    <table class="tab-pozycje aut-tabela">
+      <thead><tr><th>Reguła</th><th>Kanały</th><th>Stan</th><th>Ostatnie 7 dni</th><th></th></tr></thead>
+      <tbody>
+      <% for (const w of r.lista) { %>
+        <tr>
+          <td><a href="/ustawienia/automatyzacje/<%= w.id %>"><strong><%= w.nazwa %></strong></a><p class="wyjasnienie"><%= w.opis %></p>
+            <% for (const k of w.klopoty ?? []) { %><p class="wyjasnienie"><span class="znacznik znacznik--czerwony" title="<%= k.zdanie %>"><%= k.krotko %></span></p><% } %></td>
+          <td><%= w.kanaly %></td>
+          <td>
+            <% if (w.wlaczona && w.wstrzymana) { %><span class="znacznik znacznik--w-realizacji">wstrzymana</span>
+            <% } else if (w.wlaczona) { %><span class="znacznik znacznik--wyslane">włączona</span><% if (w.od) { %><p class="wyjasnienie">od <%= w.od %></p><% } %>
+            <% } else { %><span class="znacznik znacznik--szary">wyłączona</span><% } %>
+          </td>
+          <td><% if (w.wyslane || w.pominiete || w.niepewne || w.zalegle) { %><%= w.wyslane %> wykonane<p class="wyjasnienie"><%= w.pominiete %> pominięte<% if (w.niepewne) { %> · <%= w.niepewne %> błędy i niepewne<% } %><% if (w.zalegle) { %> · <%= w.zalegle %> czeka<% } %></p><% } else { %>—<% } %></td>
+          <td class="aut-akcje"><a class="ust-przycisk" href="/ustawienia/automatyzacje/<%= w.id %>/edytuj">Edytuj</a></td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table>
+  </div>
+  <% } else { %>
+  <p>Nie ma jeszcze żadnej reguły.</p>
+  <% } %>
+  <% if (r.dostepne) { %>
+  <div class="ust-akcje" style="margin-top:.8rem"><a class="btn btn--glowny" href="/ustawienia/automatyzacje/nowa">Dodaj automatyzację</a></div>
+  <% } %>
+</section>
+<% } else { %>
+<%# Bez `szw-sekcja` (60rem), dopóki nie ma tabeli reguł — sam opis w szerokim kaflu odstawał od kafli niżej. %>
+<section class="ust-sekcja" id="reguly">
+  <h2>Reguły <span class="menu-ustawien-wkrotce">wkrótce</span></h2>
+  <p>Reguły „gdy … to …”: OMS sam wyśle kupującemu wybrany mail po zdarzeniu, które wskażesz — na przykład gdy zamówienie ze sklepu dostanie status Wysłane. Tej części jeszcze nie ma w panelu.</p>
+</section>
+<% } %>
+
+<h2 class="aut-grupa">Automaty systemowe</h2>
+<%- include('_automat-ksef.ejs', { automat, konsumenckie }) %>
+<section class="ust-sekcja" id="autoodpowiedz">
+  <h2>Autoodpowiedź Allegro</h2>
+  <p>Formułka wysyłana kupującym z Allegro, którzy piszą poza godzinami pracy. <strong><%= autoodpowiedz.wlaczona ? 'Włączona.' : 'Wyłączona.' %></strong> Ustawisz ją w <a href="/ustawienia/wiadomosci-i-automatyzacje">Ustawienia → Autoodpowiedź Allegro</a>.</p>
+</section>

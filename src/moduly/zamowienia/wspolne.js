@@ -11,6 +11,7 @@ import ejs from 'ejs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { adresSprzedawcy } from '../../domena/adres-sprzedawcy.js';
+import { nipSprzedawcy, bdoSprzedawcy } from '../../domena/nip-bdo-firmy.js';
 import { adresOdbiorcy, polaReczneAdresu } from '../../domena/adres-odbiorcy.js';
 import { daneFaktury, polaReczneFaktury, chceFakture, chceFaktureZmienioneRecznie } from '../../domena/dane-faktury.js';
 export const teraz = () => new Date().toISOString();
@@ -33,8 +34,9 @@ export function sprzedawcaSpecyfikacji(config) {
   return {
     nazwa: a.nazwa,
     adres: [a.ulica, [a.kod, a.miasto].filter(Boolean).join(' ')].filter(Boolean).join(', '),
-    nip: config?.proforma?.nip ?? null,
-    bdo: config?.proforma?.bdo ?? null,
+    // PRZ-108.10: NIP i BDO z pliku albo Ustawień → Firma (każde pole osobno); bez NIP-u odmowa, bez BDO — bez BDO.
+    nip: nipSprzedawcy(config),
+    bdo: bdoSprzedawcy(config),
   };
 }
 export function daneKarty(z) {

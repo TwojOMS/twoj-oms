@@ -266,9 +266,11 @@ describe('lista, liczniki, wyszukiwanie, karta', () => {
 
 describe('wydruki głównego obejmują pozycje całej grupy', () => {
   const lampa2 = /Lampa\s+2/;
-  // Specyfikacja wymaga sprzedawcy (config.nadawca) — dane fikcyjne.
+  // Specyfikacja wymaga sprzedawcy (config.nadawca) — dane fikcyjne. PRZ-108.10: i NIP-u (config.proforma.nip) —
+  // bez NIP-u specyfikacja odmawia zamiast wyjść bez NIP-u sprzedawcy.
   beforeEach(async () => {
-    await zbuduj({ config: { ...config, nadawca: { nazwa: 'Pracownia Testowa', ulica: 'ul. Próbna 1', kod: '00-001', miasto: 'Testowo', kraj: 'PL' } } });
+    await zbuduj({ config: { ...config, proforma: { nip: '1234563218' },
+      nadawca: { nazwa: 'Pracownia Testowa', ulica: 'ul. Próbna 1', kod: '00-001', miasto: 'Testowo', kraj: 'PL' } } });
   });
   it.skipIf(!PDFTOTEXT)('specyfikacja, lista produktów i zestawienie — pojedynczo i zbiorczo z listy', async () => {
     const a = zam(1); const b = zam(2);

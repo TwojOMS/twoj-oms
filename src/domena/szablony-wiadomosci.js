@@ -30,8 +30,8 @@ export const MAKS = Object.freeze({ wlasnych: 30, nazwa: 60, temat: 200, tresc: 
 
 /**
  * Szablony wbudowane — te same tematy, co na karcie zamówienia.
- * PRZ-102.21: `wyslane` („Zamówienie wysłane") — wysyłany WYŁĄCZNIE ręcznie z karty; automat przy nadaniu
- * to osobne zadanie (decyzja właściciela 20.10). Zapis w tym samym kluczu ustawień co reszta — bez migracji.
+ * PRZ-102.21: `wyslane` („Zamówienie wysłane") — ręcznie z karty albo regułą z Ustawienia → Automatyzacje
+ * (PRZ-108.08; reguła z tym szablonem wymusza warunek „ma numer listu”). Zapis w tym samym kluczu ustawień co reszta — bez migracji.
  */
 export const WBUDOWANE = Object.freeze(['potwierdzenie', 'proforma', 'faktura', 'przypomnienie', 'wyslane']);
 export const PLATNICZE = Object.freeze(['proforma', 'faktura', 'przypomnienie']);
@@ -63,7 +63,7 @@ const WSZYSTKIE = ['potwierdzenie', 'proforma', 'faktura', 'przypomnienie', 'wys
 export const POLA = Object.freeze([
   { nazwa: 'numer_zamowienia', opis: 'Numer zamówienia.', w: WSZYSTKIE },
   { nazwa: 'data_zamowienia', opis: 'Dzień złożenia zamówienia (RRRR-MM-DD).', w: WSZYSTKIE },
-  { nazwa: 'imie', opis: 'Imię kupującego z adresu dostawy. Gdy go nie ma, pole znika razem z odstępem przed przecinkiem: „Dzień dobry {imie}," daje „Dzień dobry,".',
+  { nazwa: 'imie', opis: 'Imię kupującego z adresu dostawy. Gdy go nie ma, pole znika razem z odstępem przed przecinkiem: „Dzień dobry {imie}," daje „Dzień dobry,"; w „Dzień dobry, {imie}!" znika też wykrzyknik („Dzień dobry,").',
     opisy: { konto: 'Imię pracownika z jego konta (Ustawienia → Użytkownicy).' }, w: [...WSZYSTKIE, 'konto'] },
   // PRZ-101.06: pola maili do zespołu. Link idzie tylko do pracownika — nigdy do logu ani na ekran podglądu.
   { nazwa: 'link', wymagane: ['konto'], powodWymogu: 'bez linku pracownik nie ustawi hasła i nie wejdzie do panelu',
@@ -272,10 +272,17 @@ const wartoscPola = (pola, nazwa) => jedenOdstep(Object.hasOwn(pola, nazwa) ? po
 
 // Pole puste tuż przed znakiem interpunkcji zabiera ze sobą odstęp przed sobą: „Dzień dobry {imie}," przy zamówieniu
 // firmy bez imienia daje „Dzień dobry,", a nie „Dzień dobry ,". Wartość podstawiona nie jest skanowana drugi raz.
-const RE_POLE_Z_ODSTEPEM = /( ?)\{([^{}\n]{0,40})\}(?=([,.;:!?)]?))/g;
-const podstaw = (linia, pola) => linia.replace(RE_POLE_Z_ODSTEPEM, (_c, odstep, nazwa, znak) => {
+// PRZ-108.01: gdy puste pole stoi między znakiem interpunkcji przed sobą a znakiem po sobie („Dzień dobry, {imie}!"),
+// znika też znak po nim — zostaje „Dzień dobry,", nie „Dzień dobry,!". Po zwykłym słowie znak zostaje:
+// „Witaj {imie}!" → „Witaj!".
+const RE_POLE_Z_ODSTEPEM = /( ?)\{([^{}\n]{0,40})\}([,.;:!?)]?)/g;
+const ZNAK_PRZED_POLEM = /[,.;:!?]/;
+const podstaw = (linia, pola) => linia.replace(RE_POLE_Z_ODSTEPEM, (_c, odstep, nazwa, znak, poczatek, calosc) => {
   const wartosc = wartoscPola(pola, nazwa);
-  return !wartosc && znak ? '' : odstep + wartosc;
+  if (wartosc) return odstep + wartosc + znak;
+  if (!znak) return odstep;
+  // Nawias zamykający zostaje zawsze — „(numer: {numer_przesylki})" nie może zgubić pary.
+  return znak !== ')' && ZNAK_PRZED_POLEM.test(calosc.charAt(poczatek - 1)) ? '' : znak;
 });
 
 /**

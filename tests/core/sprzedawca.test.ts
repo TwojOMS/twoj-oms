@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { wczytajSprzedawce } from '../../src/core/sprzedawca.ts';
+import { wczytajSprzedawce, sprawdzNumerNip, sprawdzNumerBdo, ZDANIE_NIP_SUMA, ZDANIE_NIP_FORMAT, ZDANIE_BDO } from '../../src/core/sprzedawca.ts';
 import { poprawnyNip, poprawnyRachunek } from '../../src/core/walidatory.ts';
 
 const OK = { OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000' };
@@ -25,11 +25,25 @@ describe('wczytajSprzedawce', () => {
       .toEqual({ nip: '1234563218', rachunek: '34109010140000000000000000', bdo: null, bank: null });
   });
   // PRZ-102.20: brak rachunku nie blokuje startu — rachunek można wpisać w panelu (Ustawienia → Firma).
-  it('brak NIP-u blokuje start; brak rachunku nie (rachunek: null)', () => {
-    expect(() => wczytajSprzedawce({})).toThrow('OMS_SPRZEDAWCA_NIP');
-    expect(() => wczytajSprzedawce({})).not.toThrow(/OMS_RACHUNEK/);
+  // PRZ-108.10 (zmiana zachowania, decyzja właściciela 21.10 „NIP i BDO w panelu”): brak NIP-u też nie blokuje startu —
+  // NIP wpisuje się w Ustawienia → Firma, a dokumenty bez NIP-u odmawiają przy użyciu
+  // (tests/moduly/ustawienia/nip-bdo-firmy-prz108-10.test.js). Wcześniej ten test żądał odmowy startu.
+  it('brak NIP-u i rachunku nie blokuje startu (nip: null, rachunek: null)', () => {
+    expect(wczytajSprzedawce({})).toEqual({ nip: null, rachunek: null, bdo: null, bank: null });
+    expect(wczytajSprzedawce({ OMS_SPRZEDAWCA_NIP: ' \t ' }).nip).toBeNull();
     expect(wczytajSprzedawce({ OMS_SPRZEDAWCA_NIP: '1234563218' }).rachunek).toBeNull();
     expect(wczytajSprzedawce({ OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '\t' }).rachunek).toBeNull();
+  });
+  it('PRZ-108.10: NIP i BDO z panelu — ta sama walidacja i to samo zdanie co przy starcie, bez wpisanej wartości', () => {
+    expect(sprawdzNumerNip(' pl 123-456-32-18 ')).toEqual({ nip: '1234563218', blad: null });
+    expect(sprawdzNumerNip('  ')).toEqual({ nip: null, blad: null });
+    expect(sprawdzNumerNip('1234563219')).toEqual({ nip: null, blad: ZDANIE_NIP_SUMA });
+    expect(sprawdzNumerNip('12345632x8')).toEqual({ nip: null, blad: ZDANIE_NIP_FORMAT });
+    expect(sprawdzNumerBdo(' 000123456 ')).toEqual({ bdo: '000123456', blad: null });
+    expect(sprawdzNumerBdo('')).toEqual({ bdo: null, blad: null });
+    for (const zly of ['12345', '000 123 456', '00012345x']) expect(sprawdzNumerBdo(zly)).toEqual({ bdo: null, blad: ZDANIE_BDO });
+    expect(() => wczytajSprzedawce({ OMS_SPRZEDAWCA_NIP: '1234563219' })).toThrow(`OMS_SPRZEDAWCA_NIP: ${ZDANIE_NIP_SUMA}`);
+    expect(() => wczytajSprzedawce({ OMS_SPRZEDAWCA_BDO: '12345' })).toThrow(`OMS_SPRZEDAWCA_BDO: ${ZDANIE_BDO}`);
   });
   it('literówka rachunku blokuje start', () => {
     expect(() => wczytajSprzedawce({ ...OK, OMS_RACHUNEK: '34109010140000000000000001' })).toThrow('OMS_RACHUNEK: niepoprawny numer rachunku');
@@ -45,9 +59,10 @@ describe('wczytajSprzedawce', () => {
       try { wczytajSprzedawce(env); } catch (e) { return (e as Error).message; }
       throw new Error('Oczekiwano odmowy startu');
     };
-    it('brak NIP-u: nazwa zmiennej, format i plik konfiguracji (brak rachunku nie jest błędem — PRZ-102.20)', () => {
-      const m = blad({});
-      expect(m).toContain('Brak wymaganej zmiennej: OMS_SPRZEDAWCA_NIP');
+    // PRZ-108.10: brak NIP-u przestał być błędem startu — plik konfiguracji wskazuje teraz komunikat o ZŁYM NIP-ie.
+    it('zły NIP: nazwa zmiennej, format i plik konfiguracji (brak rachunku nie jest błędem — PRZ-102.20)', () => {
+      const m = blad({ OMS_SPRZEDAWCA_NIP: '123' });
+      expect(m).toContain('OMS_SPRZEDAWCA_NIP: niepoprawny NIP');
       expect(m).toContain('10 cyfr');
       expect(m).not.toContain('OMS_RACHUNEK');
       expect(m).toContain('produkcja.env');

@@ -1,0 +1,42 @@
+<%# PRZ-108.07: kreator reguły, krok 1 — „Kiedy ma zadziałać?” (makieta, kadr 3). Zdarzenia z rejestru są do wyboru,
+    reszta katalogu z planu jest przygaszona z dopiskiem „wkrótce”. Pusty rejestr: wszystko przygaszone, bez „Dalej”.
+    PRZ-108.08 (C1): pod „Status zamówienia zmienił się na…” lista statusów (makieta, kadr 3). %>
+<p class="szw-powrot"><a href="/ustawienia/automatyzacje">← Automatyzacje</a></p>
+<h1>Nowa automatyzacja</h1>
+<% if (blad) { %><div class="pas-uprzedzenie" role="alert"><p><%= blad %></p></div><% } %>
+<section class="ust-sekcja aut-sekcja">
+  <h2>Kiedy ma zadziałać?</h2>
+  <% if (dostepnych) { %>
+  <p>OMS sprawdza zdarzenia co minutę. Zdarzenia sprzed włączenia reguły się nie liczą.</p>
+  <%# PRZ-108.08: wybrany status jedzie z formularza nawet przy zdarzeniu bez statusu — krok 2 go wtedy pomija. %>
+  <% } else { %>
+  <p>Żadne zdarzenie nie jest jeszcze dostępne w tej wersji OMS-u, więc reguły nie da się jeszcze zapisać. Poniżej zdarzenia, które dochodzą w kolejnych wydaniach.</p>
+  <% } %>
+  <form method="get" action="/ustawienia/automatyzacje/nowa" class="aut-wybor">
+    <% for (const g of grupy) { %>
+    <h3><%= g.etykieta %></h3>
+    <% for (const z of g.zdarzenia) { %>
+    <% if (z.dostepne) { %>
+    <p><label><input type="radio" name="zdarzenie" value="<%= z.klucz %>"<%= z.zaznaczone ? ' checked' : '' %> required><span><strong><%= z.etykieta %></strong><% if (z.opis) { %><span class="wyjasnienie"><%= z.opis %></span><% } %></span></label></p>
+    <%# PRZ-108.09 (C2): zdanie pod zdarzeniem, dla jakich paczek NIE zadziała („Kurier odebrał paczkę”). %>
+    <% if (z.pomoc) { %><div class="aut-podlista"><p class="ust-pomoc"><%= z.pomoc %></p></div><% } %>
+    <% if (z.opcje) { %>
+    <div class="aut-podlista">
+      <label for="aut-zdarzenie-status" class="aut-etykieta-pola">Status</label>
+      <select id="aut-zdarzenie-status" name="zdarzenie_status">
+        <% for (const o of z.opcje) { %><% if (o.dostepny) { %><option value="<%= o.klucz %>"<%= o.klucz === z.wybranyStatus ? ' selected' : '' %>><%= o.etykieta %><%= o.wlasny ? ' (status własny)' : '' %></option><% } else { %><option disabled><%= o.etykieta %> — wkrótce</option><% } %><% } %>
+      </select>
+      <p class="ust-pomoc">Nowe, Zwrot i Anulowane nie zapisują dziś chwili zmiany, więc nie da się ich jeszcze rozpoznać jako zdarzenia. Jako warunek („status jest …”) działają wszystkie.</p>
+    </div>
+    <% } %>
+    <% } else { %>
+    <p class="aut-wylaczone"><label><input type="radio" name="zdarzenie" disabled><span><%= z.etykieta %><span class="menu-ustawien-wkrotce">wkrótce</span></span></label></p>
+    <% } %>
+    <% } %>
+    <% } %>
+    <div class="ust-akcje" style="margin-top:1rem">
+      <% if (dostepnych) { %><button class="btn btn--glowny" type="submit">Dalej</button><% } %>
+      <a class="ust-przycisk" href="/ustawienia/automatyzacje"><%= dostepnych ? 'Anuluj' : 'Wróć' %></a>
+    </div>
+  </form>
+</section>

@@ -43,7 +43,7 @@ export function registerUstawieniaPocztyRoutes(app, { db, adresPaneluZEnv, poczt
       podglad: usl.podglad(podgladWpisany && !bledyPodpisu.length ? wpisanyPodpis : null) };
   }
   function widok(req, reply, { wpisane = null, bledy = [], bledyAdresu = [], wpisanyAdres = null, proba = null, adresProby = null, podpisMaili = undefined } = {}) {
-    const stanPoczty = poczta() ?? { zEnv: false, atrapa: false, wiadomosciKlientow: false, ustawien: null };
+    const stanPoczty = poczta() ?? { zEnv: false, atrapa: false, ustawien: null };
     const stan = stanDlaEkranu(wczytajKonfiguracjeIntegracji(db, 'poczta'));
     const zapisAdresu = wczytajKonfiguracjeIntegracji(db, 'adres_panelu');
     const adresZapisany = adresPaneluZZapisu(zapisAdresu);
@@ -52,8 +52,6 @@ export function registerUstawieniaPocztyRoutes(app, { db, adresPaneluZEnv, poczt
       nawigacja: nawigacjaUstawien(req, reply), title: 'Poczta wychodząca',
       zEnv: stanPoczty.zEnv, atrapa: stanPoczty.atrapa, stan,
       pola: { ...PUSTY, ...Object.fromEntries(Object.entries(zapisane).map(([k, v]) => [k, String(v ?? '')])), ...(wpisane ?? {}) },
-      // Pierwszy zapis bez poczty przy starcie: wiadomości do klientów (karta zamówienia) powstają przy starcie.
-      wymagaRestartu: !stanPoczty.zEnv && !stanPoczty.atrapa && !stanPoczty.wiadomosciKlientow && Boolean(stanPoczty.ustawien?.gotowy?.()),
       moznaProbowac: Boolean(mailer()),
       adresProby: adresProby ?? emailKonta(db, req.konto?.id ?? -1) ?? '',
       // PRZ-094.10: tylko do podpowiedzi przy pustym polu — link z tokenem liczy wyłącznie trasa admina (konta.js).

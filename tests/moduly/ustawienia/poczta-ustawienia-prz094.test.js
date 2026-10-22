@@ -8,6 +8,7 @@ import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/
 import { createMailer } from '../../../src/core/poczta/smtp.js';
 import { ustawEmail } from '../../../src/moduly/ustawienia/konta-dostep.js';
 import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-integracji.js';
+import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { nowyPanel, jako, get, post } from '../../pomoc/konta-prz068.js';
 import { modulRdzen } from '../../../src/moduly/rdzen/modul.ts';
 import { modulWeb } from '../../../src/core/web/modul.ts';
@@ -72,6 +73,18 @@ const adresForm = (html) => /<form id="adres-panelu-formularz"[\s\S]*?<\/form>/u
 const probaForm = (html) => /<form id="poczta-proba"[\s\S]*?<\/form>/u.exec(html)?.[0] ?? '';
 const bezHasel = (tekst, ...hasla) => hasla.every((h) => !String(tekst).includes(h));
 const NOWA = { imie: 'Nowa Osoba', login: 'nowa', email: 'nowa@pracownia.example.test', rola: 'produkcja' };
+const KLIENT = 'klient@kupujacy.example.test';
+// Zamówienie do wysłania przypomnienia o płatności — dane zmyślone.
+const zamowienieKlienta = () => ({
+  zrodlo_id: 108201, numer: 'T-108-02',
+  klient: { first_name: 'Ewa', last_name: 'Testowa', email: KLIENT },
+  dostawa: { first_name: 'Ewa', last_name: 'Testowa', address_1: 'Zmyślona 1', postcode: '00-001', city: 'Testowo' },
+  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
+  kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00', koszt_dostawy_netto: '0.00',
+  status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-10-20T09:00:00', termin_platnosci: '14',
+  pozycje: [{ zrodlo_id: 108202, nazwa: 'Produkt testowy', sku: 'T-1', ilosc: 1,
+    cena_brutto: '123.00', cena_netto: '100.00', brutto_linii: '123.00', netto_linii: '100.00', vat: null }],
+});
 
 describe('PRZ-094.04 Ustawienia → Integracje → Poczta wychodząca', () => {
   it('pusty ekran: formularz SMTP (hasło jako password, wymagane), adres panelu, „Nieustawiona”; Integracje mają wejście', async () => {
@@ -176,10 +189,46 @@ describe('PRZ-094.04 Ustawienia → Integracje → Poczta wychodząca', () => {
     expect(wyslane.map((w) => [w.host, w.pass === HASLO, w.pass === HASLO_2])).toEqual([[SMTP_A.host, true, false], [SMTP_B.host, false, true]]);
   });
 
-  it('pierwszy zapis bez poczty przy starcie: ekran mówi, że wiadomości do klientów włączą się po restarcie', async () => {
-    const { app, admin } = await panel();
+  // PRZ-108.02: do tej pory wiadomości do klientów (karta zamówienia) powstawały przy starcie tylko wtedy, gdy poczta
+  // już była — pierwszy zapis na ekranie wymagał restartu OMS-u. Teraz działają od razu, a bez poczty odmowa jak dawniej.
+  it('pierwszy zapis bez poczty przy starcie: wiadomość do klienta z karty zamówienia działa od razu, bez restartu', async () => {
+    const { app, admin, ewa, db } = await panel();
+    const id = zapiszZamowienie(db, 'pro', zamowienieKlienta());
+    const karta = () => get(app, `/zamowienia/${id}`, ewa);
+    const wyslijKlientowi = () => post(app, `/zamowienia/${id}/wiadomosc/przypomnienie`, ewa, {});
+
+    // Bez poczty: sekcji wiadomości nie ma, wysyłka = czytelna odmowa, nic nie poszło.
+    expect((await karta()).body).not.toContain('Wyślij nową wiadomość');
+    const przed = await wyslijKlientowi();
+    expect(przed.statusCode).toBe(503);
+    expect(przed.body).toContain('Poczta nie jest skonfigurowana');
+
     await post(app, ADRES, admin, { ...SMTP_A, haslo: HASLO });
-    expect((await get(app, ADRES, admin)).body).toContain('po ponownym uruchomieniu');
+    const ekran = (await get(app, ADRES, admin)).body;
+    expect(ekran.includes('po ponownym uruchomieniu')).toBe(false);
+    expect((await karta()).body).toContain('Wyślij nową wiadomość');
+    const po = await wyslijKlientowi();
+    expect(po.statusCode, po.body).toBe(302);
+    expect(wyslane).toHaveLength(1);
+    expect(wyslane[0]).toMatchObject({ host: SMTP_A.host, port: 465, user: SMTP_A.user, from: SMTP_A.user, to: KLIENT });
+    expect(wyslane[0].pass === HASLO).toBe(true);
+    expect(wyslane[0].subject).toContain('Przypomnienie o płatności');
+
+    // Odłączenie poczty: znowu odmowa, jak przed zapisem — nic nie wychodzi.
+    await post(app, `${ADRES}/odlacz`, admin, {});
+    expect((await karta()).body).not.toContain('Wyślij nową wiadomość');
+    expect((await wyslijKlientowi()).statusCode).toBe(503);
+    expect(wyslane).toHaveLength(1);
+    expect(bezHasel(logi.join('\n'), HASLO), 'hasło w logu').toBe(true);
+  });
+
+  it('SMTP w .env i zapis w bazie: wiadomość do klienta z karty idzie pocztą z pliku', async () => {
+    const { app, ewa, db } = await panel({ env: ENV_SMTP, zapisPrzedStartem: { ustawienia: { host: SMTP_A.host, port: 465, user: SMTP_A.user, nadawca: '' }, sekrety: { haslo: HASLO } } });
+    const id = zapiszZamowienie(db, 'pro', zamowienieKlienta());
+    const r = await post(app, `/zamowienia/${id}/wiadomosc/przypomnienie`, ewa, {});
+    expect(r.statusCode, r.body).toBe(302);
+    expect(wyslane).toHaveLength(1);
+    expect(wyslane[0]).toMatchObject({ host: ENV_SMTP.SMTP_HOST, user: ENV_SMTP.SMTP_USER, to: KLIENT });
   });
 
   it('wiadomość próbna: domyślnie adres zalogowanego admina; błąd serwera poczty = polski komunikat bez hasła i bez stack trace', async () => {
@@ -283,5 +332,15 @@ describe('PRZ-094.04 Ustawienia → Integracje → Poczta wychodząca', () => {
     expect(r.body).toContain('Wysłano wiadomość próbną');
     expect(wyslane).toHaveLength(0); // fabryka prawdziwego SMTP (z zapisu) nie została użyta
     expect(logi.some((l) => l.includes('atrapa poczty') && l.includes('Wiadomość próbna z panelu') && l.includes('nic nie poszło'))).toBe(true);
+  });
+
+  it('piaskownica: wiadomość do klienta z karty idzie przez atrapę, nawet z zapisanym SMTP — nic nie wychodzi', async () => {
+    const { app, admin, ewa, db } = await panel({ wiadomosci: createModulWiadomosciAtrapy({ OMS_TRYB: 'proba' }) });
+    await post(app, ADRES, admin, { ...SMTP_A, haslo: HASLO });
+    const id = zapiszZamowienie(db, 'pro', zamowienieKlienta());
+    const r = await post(app, `/zamowienia/${id}/wiadomosc/przypomnienie`, ewa, {});
+    expect(r.statusCode, r.body).toBe(302);
+    expect(wyslane).toHaveLength(0);
+    expect(logi.some((l) => l.includes('atrapa poczty') && l.includes(KLIENT) && l.includes('nic nie poszło'))).toBe(true);
   });
 });

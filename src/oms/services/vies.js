@@ -35,7 +35,9 @@ export function createVies({ fetchImpl, http = transport({ fetchImpl }), nipSprz
 
     let dane;
     try {
-      const p = new URLSearchParams({ requesterMemberStateCode: 'PL', requesterNumber: String(nipSprzedawcy ?? '') });
+      // PRZ-108.10: NIP może przyjść funkcją (NIP z Ustawień → Firma) — czytany przy każdym zapytaniu, bez restartu.
+      const nip = typeof nipSprzedawcy === 'function' ? nipSprzedawcy() : nipSprzedawcy;
+      const p = new URLSearchParams({ requesterMemberStateCode: 'PL', requesterNumber: String(nip ?? '') });
       const res = await http(`${baseUrl}/${czesci.kraj}/vat/${czesci.numer}?${p.toString()}`, {
         signal: AbortSignal.timeout(LIMIT_MS),
       });

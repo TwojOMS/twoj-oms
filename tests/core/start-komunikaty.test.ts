@@ -34,7 +34,8 @@ function komunikat(stderr: string, zmienna: string) {
 describe('komunikaty rzeczywistego procesu startu', () => {
   it.each([
     ['OMS_TRUST_PROXY', 'true'], ['OMS_TRYB', 'nieznany'],
-    ['OMS_USER', ''], ['OMS_SPRZEDAWCA_NIP', ''], ['OMS_KANALY', '{'],
+    // PRZ-108.10: pusty NIP przestał być błędem (NIP w panelu) — odmowę sprawdzamy na złej cyfrze kontrolnej.
+    ['OMS_USER', ''], ['OMS_SPRZEDAWCA_NIP', '1234563219'], ['OMS_KANALY', '{'],
   ])('%s: czytelna odmowa bez stosu', (zmienna, wartosc) => {
     komunikat(start({ [zmienna]: wartosc }), zmienna);
   });

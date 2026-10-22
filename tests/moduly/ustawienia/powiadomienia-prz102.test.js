@@ -4,7 +4,8 @@ import { podmienLukiKsef } from '../../../src/oms/db/ostrzezenia.js';
 import { RODZAJE_OSTRZEZEN } from '../../../src/domena/powiadomienia.js';
 import { nowyPanel, jako, get, post, BASIC } from '../../pomoc/konta-prz068.js';
 
-const typy = ['integracja', 'faktura-ksef', 'faktura-termin', 'pobranie-korekta', 'zwrot-korekta', 'przesylka', 'wiadomosc-allegro'];
+// PRZ-108.08: ósmy rodzaj „automatyzacja” jest tylko dla administratora — konto sprzedaży nadal widzi siedem pól.
+const typy = ['integracja', 'automatyzacja', 'faktura-ksef', 'faktura-termin', 'pobranie-korekta', 'zwrot-korekta', 'przesylka', 'wiadomosc-allegro'];
 const panele = [];
 afterEach(async () => { for (const p of panele.splice(0)) { await p.app.close(); p.db.close(); } });
 function panel() {
@@ -19,15 +20,18 @@ function panel() {
 const pola = html => html.match(/<input[^>]*type="checkbox"[^>]*>/gu) ?? [];
 
 it('każdy zalogowany widzi siedem domyślnie zaznaczonych pól i link z Mojego konta', async () => {
-  const { app, osoba } = panel();
+  const { app, osoba, admin } = panel();
   const r = await get(app, '/ustawienia/powiadomienia', osoba);
   expect(r.statusCode).toBe(200);
   expect(pola(r.body)).toHaveLength(7);
-  for (const rodzaj of RODZAJE_OSTRZEZEN) {
+  for (const rodzaj of RODZAJE_OSTRZEZEN.filter(x => !x.tylkoAdmin)) {
     expect(r.body.includes(rodzaj.nazwa)).toBe(true);
     expect(r.body.includes(rodzaj.opis)).toBe(true);
   }
-  for (const typ of typy) expect(pola(r.body).find(p => p.includes(`value="${typ}"`))).toContain('checked');
+  expect(r.body).not.toContain('value="automatyzacja"');
+  for (const typ of typy.filter(t => t !== 'automatyzacja')) expect(pola(r.body).find(p => p.includes(`value="${typ}"`))).toContain('checked');
+  const a = await get(app, '/ustawienia/powiadomienia', admin);
+  expect(pola(a.body)).toHaveLength(8);
   expect((await get(app, '/konto', osoba)).body).toContain('href="/ustawienia/powiadomienia"');
   expect((await get(app, '/ustawienia/magazyn', osoba)).statusCode).toBe(403);
 });

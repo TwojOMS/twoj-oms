@@ -1,0 +1,181 @@
+<%# PRZ-108.07: kreator reguły, krok 2, i edycja (makieta, kadry 4–5). Jeden formularz `ust-formularz` w czterech kaflach;
+    „Sprawdź na ostatnich 30 dniach” to ten sam formularz (formaction), bez zapisu — wynik pojawia się nad kaflem 4.
+    PRZ-108.08 (C1): warunki „status jest …”, „ma numer listu” (wymuszony szablonem „Zamówienie wysłane”), dostawa
+    i pobranie — sprawdzane w chwili wykonania; „Do kogo”; w wyniku sprawdzenia paczki i podgląd maila (kadr 5). %>
+<p class="szw-powrot"><a href="<%= regula ? `/ustawienia/automatyzacje/${regula.id}` : '/ustawienia/automatyzacje' %>">← <%= regula ? regula.nazwa : 'Automatyzacje' %></a></p>
+<h1><%= regula ? `${regula.nazwa}` : 'Nowa automatyzacja' %></h1>
+<% if (bledy.length) { %>
+<div class="pas-uprzedzenie" role="alert"><p><strong>Nie zapisano.</strong> <%= bledy.join(' ') %></p></div>
+<% } %>
+<form method="post" action="<%= akcjaFormularza %>">
+  <input type="hidden" name="zdarzenie" value="<%= zdarzenie.klucz %>">
+  <% if (zdarzenie.status !== null) { %><input type="hidden" name="zdarzenie_status" value="<%= zdarzenie.status %>"><% } %>
+  <% if (regula) { %><input type="hidden" name="regula_id" value="<%= regula.id %>"><% } %>
+  <section class="ust-sekcja aut-sekcja">
+    <h2>1. Kiedy</h2>
+    <div class="ust-formularz">
+      <label>Zdarzenie</label>
+      <div>
+        <div class="ust-wartosc"><strong><%= zdarzenie.etykieta %><%= zdarzenie.statusEtykieta ? `: ${zdarzenie.statusEtykieta}` : '' %></strong><% if (!regula) { %> · <a href="/ustawienia/automatyzacje/nowa?zdarzenie=<%= encodeURIComponent(zdarzenie.klucz) %><%= zdarzenie.status ? `&zdarzenie_status=${encodeURIComponent(zdarzenie.status)}` : '' %>&amp;zmien=1">Zmień</a><% } %></div>
+        <p class="ust-pomoc"><% if (zdarzenie.opis) { %><%= zdarzenie.opis %> <% } %><%= zdarzenie.status !== null ? 'Zmiany' : 'Zdarzenia' %> sprzed włączenia reguły się nie liczą.</p>
+      </div>
+      <label for="aut-opoznienie">Opóźnienie</label>
+      <div>
+        <input id="aut-opoznienie" type="number" name="opoznienie" value="<%= formularz.opoznienie ?? '0' %>" min="0" max="<%= OPOZNIENIE_MAX_MIN %>" step="1"> minut
+        <p class="ust-pomoc">0 — od razu, najwięcej 10 080 (7 dni). Warunki niżej sprawdzimy dopiero po tym czasie, tuż przed wysłaniem.<% if (szablonowa) { %> Wszystkie paczki zamówienia z numerem listu w tej chwili trafią do jednego maila.<% } %></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="ust-sekcja aut-sekcja">
+    <h2>2. Dla jakich zamówień</h2>
+    <div class="ust-formularz">
+      <label>Kanały sprzedaży <span class="ust-wymagane">*</span></label>
+      <div class="aut-wybor">
+        <% for (const k of kanaly) { %>
+        <p><label><input type="checkbox" name="kanaly" value="<%= k.klucz %>"<%= k.zaznaczony ? ' checked' : '' %>><span><% if (k.rodzaj) { %><span class="plakietka plakietka--kanal plakietka--<%= k.rodzaj.klucz %>" role="img" aria-label="<%= k.rodzaj.nazwa %>" title="<%= k.rodzaj.nazwa %>"><%= k.rodzaj.znak %></span> <% } %><strong><%= k.etykieta %></strong><% if (k.uwaga) { %><span class="wyjasnienie"><%= k.uwaga %></span><% } %></span></label></p>
+        <% } %>
+        <% for (const k of usuniete) { %>
+        <p><label><input type="checkbox" name="kanaly" value="<%= k %>" checked><span><strong><%= k %></strong><span class="wyjasnienie">Nie ma już w konfiguracji — zaznaczenie zostaje bez skutku.</span></span></label></p>
+        <% } %>
+        <% if (noweKanaly.length) { %>
+        <p class="ust-pomoc"><strong>Nowe kanały od czasu zapisu: <%= noweKanaly.join(', ') %> — niezaznaczone.</strong> Reguła ich nie obejmie, dopóki ich nie zaznaczysz.</p>
+        <% } else { %>
+        <p class="ust-pomoc">Kanał dodany później w konfiguracji nie będzie tu zaznaczony — reguła go nie obejmie, dopóki go nie zaznaczysz.</p>
+        <% } %>
+      </div>
+      <label>Status zamówienia jest</label>
+      <div class="aut-wybor">
+        <p><label><input type="radio" name="status_warunek" value="dowolny"<%= warunki.statusDowolny ? ' checked' : '' %>><span>dowolny</span></label></p>
+        <p><label><input type="radio" name="status_warunek" value="jeden_z"<%= warunki.statusDowolny ? '' : ' checked' %>><span>jednym z:</span></label></p>
+        <div class="aut-podlista">
+          <% for (const s of warunki.statusy) { %>
+          <p><label><input type="checkbox" name="statusy" value="<%= s.klucz %>"<%= s.zaznaczony ? ' checked' : '' %>><span><span class="znacznik znacznik--<%= s.klasa %>"><%= s.etykieta %></span><% if (s.wlasny) { %> <span class="wyjasnienie aut-w-linii">status własny</span><% } %></span></label></p>
+          <% } %>
+        </div>
+        <p class="ust-pomoc">Status, który zamówienie ma w chwili wysyłki — ten sam, co na liście zamówień. Gdy po opóźnieniu jest już inny (np. ktoś cofnął Wysłane), maila nie będzie, a dziennik poda powód.</p>
+      </div>
+      <label>Przesyłka</label>
+      <div class="aut-wybor">
+        <% if (warunki.numerWymuszony) { %>
+        <input type="hidden" name="ma_numer_listu" value="1">
+        <p><label><input type="checkbox" name="ma_numer_listu" value="1" checked disabled><span><strong>ma co najmniej jedną paczkę z numerem listu</strong>
+          <span class="wyjasnienie">Wymagane przez szablon „Zamówienie wysłane” — bez numeru listu ten mail nie ma czego pokazać. Paczki z błędem i „do wyjaśnienia” się nie liczą.</span></span></label></p>
+        <% } else { %>
+        <input type="hidden" name="ma_numer_listu" value="0">
+        <p><label><input type="checkbox" name="ma_numer_listu" value="1"<%= warunki.numer ? ' checked' : '' %>><span><strong>ma co najmniej jedną paczkę z numerem listu</strong>
+          <span class="wyjasnienie">Paczki z błędem i „do wyjaśnienia” się nie liczą. Przy szablonie „Zamówienie wysłane” ten warunek jest obowiązkowy.</span></span></label></p>
+        <% } %>
+      </div>
+      <label for="aut-dostawa">Sposób dostawy</label>
+      <div><select id="aut-dostawa" name="dostawa">
+          <option value=""<%= warunki.dostawa ? '' : ' selected' %>>Wszystkie</option>
+          <% for (const m of warunki.metody) { %><option value="<%= m.klucz %>"<%= warunki.dostawa === m.klucz ? ' selected' : '' %>><%= m.etykieta %></option><% } %>
+        </select>
+        <p class="ust-pomoc">Liczy się sposób dostawy z karty zamówienia, także zmieniony ręcznie.</p></div>
+      <label for="aut-pobranie">Pobranie</label>
+      <div><select id="aut-pobranie" name="pobranie">
+          <% for (const [w, e] of [['dowolne', 'dowolnie'], ['tak', 'tylko za pobraniem'], ['nie', 'tylko bez pobrania']]) { %><option value="<%= w %>"<%= warunki.pobranie === w ? ' selected' : '' %>><%= e %></option><% } %>
+        </select></div>
+      <p class="ust-pelna ust-pomoc">Kanał sprawdzamy w chwili zdarzenia — zamówienia z innych kanałów nie trafiają do dziennika. Status, przesyłkę, dostawę i pobranie sprawdzamy w chwili wysyłki, po opóźnieniu. Jeśli wtedy nie pasują, mail jest pominięty z powodem; gdy zdarzenie powtórzy się później (np. ktoś znów ustawi Wysłane), reguła sprawdzi zamówienie od nowa. Jedno zamówienie dostaje z jednej reguły najwyżej jeden mail.</p>
+    </div>
+  </section>
+
+  <section class="ust-sekcja aut-sekcja">
+    <h2>3. Co zrobić</h2>
+    <div class="ust-formularz">
+      <label>Akcja</label>
+      <div class="aut-wybor">
+        <% for (const a of akcje) { %>
+        <% if (a.dostepna) { %>
+        <p><label><input type="radio" name="akcja" value="<%= a.klucz %>"<%= a.zaznaczona ? ' checked' : '' %> required><span><strong><%= a.etykieta %></strong></span></label></p>
+        <% } else { %>
+        <p class="aut-wylaczone"><label><input type="radio" name="akcja" disabled><span><%= a.etykieta %><span class="menu-ustawien-wkrotce">wkrótce</span></span></label></p>
+        <% } %>
+        <% } %>
+      </div>
+      <% if (szablonowa) { %>
+      <label for="aut-szablon">Szablon maila</label>
+      <div>
+        <select id="aut-szablon" name="szablon">
+          <option value="">— wybierz —</option>
+          <% if (szablonyWbudowane.length) { %>
+          <optgroup label="Maile z karty zamówienia">
+            <% for (const s of szablonyWbudowane) { %><option value="<%= s.id %>"<%= formularz.szablon === s.id ? ' selected' : '' %>><%= s.nazwa %></option><% } %>
+          </optgroup>
+          <% } %>
+          <% if (szablonyWlasne.length) { %>
+          <optgroup label="Szablony własne">
+            <% for (const s of szablonyWlasne) { %><option value="<%= s.id %>"<%= formularz.szablon === s.id ? ' selected' : '' %>><%= s.nazwa %></option><% } %>
+          </optgroup>
+          <% } %>
+        </select>
+        <a href="<%= SZABLONY %>">Edytuj szablony</a>
+        <p class="ust-pomoc">Lista pokazuje szablony, które pasują do zdarzenia. Proforma, faktura i przypomnienie o płatności potrzebują innych zdarzeń. Treść zmienisz w Ustawienia → Szablony wiadomości — zmiana działa od następnego maila.</p>
+      </div>
+      <label>Do kogo</label>
+      <div>
+        <div class="ust-wartosc">Adres e-mail kupującego z zamówienia</div>
+        <p class="ust-pomoc">Ten sam adres, na który idzie mail wysłany ręcznie z karty. Zamówienie bez adresu albo anulowane zostanie pominięte, z wpisem w historii zamówienia. Gdy ten sam mail poszedł już do zamówienia (ręcznie albo inną regułą), automat go nie powtórzy.</p>
+      </div>
+      <% } %>
+    </div>
+  </section>
+
+  <% if (sprawdzenie) { %>
+  <section class="ust-sekcja aut-sekcja" id="sprawdzenie">
+    <h2>Sprawdzenie na ostatnich 30 dniach</h2>
+    <p>Nic nie zostało wysłane ani zapisane. Gdyby ta reguła działała od <%= sprawdzenie.od %>, zadziałałaby dla <strong><%= sprawdzenie.razem %> <%= sprawdzenie.zamowien %></strong>:</p>
+    <ul class="aut-liczby">
+      <li><%= sprawdzenie.wykonaloby %> — <%= sprawdzenie.etykietaAkcji %>,</li>
+      <li><%= sprawdzenie.pominieteRazem %> pominięte<% if (sprawdzenie.pominieteOpis.length) { %> (<%= sprawdzenie.pominieteOpis.join(', ') %>)<% } %>,</li>
+      <li><%= sprawdzenie.odrzuconeRazem %> z innych kanałów<% if (sprawdzenie.odrzuconeOpis.length) { %> — <%= sprawdzenie.odrzuconeOpis.join(', ') %><% } %>.</li>
+    </ul>
+    <p class="ust-pomoc">Status i przesyłkę sprawdzamy tu według stanu z dzisiaj — reguła sprawdzi je <%= sprawdzenie.opoznienie ? `${sprawdzenie.opoznienie} min po zdarzeniu` : 'zaraz po zdarzeniu' %>, więc wynik może się nieznacznie różnić.</p>
+    <% if (sprawdzenie.przyklady.length) { %>
+    <div class="przewijak-tabeli">
+      <table class="tab-pozycje aut-tabela">
+        <thead><tr><th>Zamówienie</th><th>Zdarzenie</th><th>Paczki</th><th>Wynik</th></tr></thead>
+        <tbody>
+        <% for (const p of sprawdzenie.przyklady) { %>
+          <tr><td><a href="/zamowienia/<%= p.zamowienie_id %>"><%= p.numer %></a></td><td><%= p.kiedy %></td><td><%= p.paczki || '—' %></td>
+            <td><%= p.ok ? (p.adresat ? `mail na ${p.adresat}` : sprawdzenie.etykietaAkcji) : `pominięte: ${p.powod ?? 'warunek'}` %></td></tr>
+        <% } %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+    <% if (sprawdzenie.podglad) { %>
+    <h3 class="szw-naglowek">Podgląd maila — zamówienie <%= sprawdzenie.podglad.numer %></h3>
+    <% if (sprawdzenie.podglad.blad) { %>
+    <p class="pas-uprzedzenie">Podglądu nie da się złożyć: <%= sprawdzenie.podglad.blad %></p>
+    <% } else { %>
+    <dl class="dane">
+      <dt>Do</dt><dd><%= sprawdzenie.podglad.do %></dd>
+      <dt>Temat</dt><dd><%= sprawdzenie.podglad.temat %></dd>
+    </dl>
+    <pre class="podglad-maila"><%= sprawdzenie.podglad.tekst %></pre>
+    <% } %>
+    <% } %>
+  </section>
+  <% } %>
+
+  <section class="ust-sekcja aut-sekcja">
+    <h2>4. Nazwa i bezpieczeństwo</h2>
+    <div class="ust-formularz">
+      <label for="aut-nazwa">Nazwa <span class="ust-wymagane">*</span></label>
+      <div><input id="aut-nazwa" type="text" name="nazwa" value="<%= formularz.nazwa ?? '' %>" maxlength="60" required></div>
+      <label for="aut-limit">Najwyżej</label>
+      <div>
+        <input id="aut-limit" type="number" name="limit" value="<%= formularz.limit ?? '20' %>" min="<%= LIMIT_MIN %>" max="<%= LIMIT_MAX %>"> wykonań na godzinę
+        <p class="ust-pomoc">Ponad limit wykonania czekają do następnej godziny (cały OMS: najwyżej 100 na godzinę). Gdy w jednym sprawdzeniu pasuje naraz więcej niż <%= BEZPIECZNIK_NARAZ %> zamówień, reguła sama się wstrzymuje i czeka na Twoją decyzję. Wykonanie spóźnione o ponad <%= PRZETERMINOWANIE_H %> godzin od planowanej chwili nie nastąpi wcale.</p>
+      </div>
+      <p class="ust-pelna ust-pomoc">Pola oznaczone <span class="ust-wymagane">*</span> są wymagane. Zapis niczego nie wysyła — <%= regula ? (regula.wlaczona ? 'reguła zostaje włączona; zmiana zdarzenia albo kanałów liczy zdarzenia od chwili zapisu.' : 'reguła zostaje wyłączona.') : 'reguła zapisuje się wyłączona. Włączasz ją osobno; od tej chwili OMS liczy zdarzenia, zamówień sprzed włączenia nie rusza.' %></p>
+      <div class="ust-pelna ust-akcje">
+        <button class="ust-przycisk" type="submit" formaction="<%= SPRAWDZ %>">Sprawdź na ostatnich 30 dniach</button>
+        <button class="btn btn--glowny" type="submit">Zapisz</button>
+        <a class="ust-przycisk" href="<%= regula ? `/ustawienia/automatyzacje/${regula.id}` : '/ustawienia/automatyzacje' %>">Anuluj</a>
+      </div>
+    </div>
+  </section>
+</form>

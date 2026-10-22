@@ -49,7 +49,7 @@ export const WYGASANIE_INTEGRACJI_MS = 24 * 60 * 60 * 1000;
 export function kluczDozwolony(klucz) {
   return typeof klucz === 'string'
     && klucz.length <= 300
-    && /^(faktura-ksef|faktura-termin|przesylka|wiadomosc|integracja|zwrot|pobranie):./.test(klucz);
+    && /^(faktura-ksef|faktura-termin|przesylka|wiadomosc|integracja|zwrot|pobranie|automatyzacja):./.test(klucz);
 }
 
 /**
@@ -284,6 +284,43 @@ export function ostrzezeniaZwrotow({ zwroty = [], dzis } = {}) {
         etykietaOdrzucenia: 'Ignoruj',
       });
     } catch { /* jw. */ }
+  }
+  return wiersze;
+}
+
+/**
+ * PRZ-108.08 (automatyzacje, C1): reguła wstrzymana bezpiecznikiem (>50 zamówień naraz) i maile, o których nie wiadomo,
+ * czy wyszły (`niepewne` — zerwanie w trakcie wysyłki, restart) albo które padły (`blad`). Tylko dla admina — filtr
+ * robi wołający (zamowienia/kontekst.js), bo przycisk prowadzi do Ustawień, które edytuje wyłącznie administrator.
+ * Klucz wstrzymania niesie chwilę ostatniej zmiany reguły (ponowne wstrzymanie po decyzji = nowy wiersz); klucz
+ * niepewnych — id najnowszego z nich (nowy kłopot przywraca odrzucony wiersz).
+ * Wejście: `[{ id, nazwa, wstrzymana_powod, zmieniona_at, zalegle, niepewne, blad, ostatni_id }]`.
+ */
+export function ostrzezeniaAutomatyzacji({ reguly = [] } = {}) {
+  const wiersze = [];
+  for (const r of Array.isArray(reguly) ? reguly : []) {
+    try {
+      const href = `/ustawienia/automatyzacje/${r.id}`;
+      if (r.wstrzymana_powod) {
+        wiersze.push({
+          klucz: `automatyzacja:wstrzymana:${r.id}:${r.zmieniona_at ?? ''}`,
+          typ: 'automatyzacja',
+          tekst: `Automatyzacja „${r.nazwa}” jest wstrzymana: ${r.wstrzymana_powod} Zaległe (${r.zalegle ?? 0}) czekają na Twoją decyzję.`,
+          przycisk: { href, etykieta: 'Reguła' },
+          etykietaOdrzucenia: 'Ignoruj',
+        });
+      }
+      const n = Number(r.niepewne ?? 0) + Number(r.blad ?? 0);
+      if (n > 0) {
+        wiersze.push({
+          klucz: `automatyzacja:niepewne:${r.id}:${r.ostatni_id ?? ''}`,
+          typ: 'automatyzacja',
+          tekst: `Automatyzacja „${r.nazwa}”: ${n} ${n === 1 ? 'wysyłka' : 'wysyłki'} z ostatnich 7 dni — nie wiadomo, czy mail wyszedł, albo wysyłka padła. Sprawdź w dzienniku reguły, zanim wyślesz ręcznie.`,
+          przycisk: { href: `${href}?stan=bledy`, etykieta: 'Dziennik' },
+          etykietaOdrzucenia: 'Ignoruj',
+        });
+      }
+    } catch { /* uszkodzony wiersz nie ma prawa zabrać tabelki */ }
   }
   return wiersze;
 }

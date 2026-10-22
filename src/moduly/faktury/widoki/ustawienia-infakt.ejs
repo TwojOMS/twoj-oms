@@ -81,9 +81,8 @@
 <% } %>
 <% } %>
 
-<%# PRZ-102.12: automatyczna wysyłka do KSeF. Sekcja poza warunkiem „klucz z pliku / z ekranu” — automat używa
-    inFaktu niezależnie od tego, skąd jest klucz. Co poleci, rozstrzyga ta sama reguła co „zaznacz wszystkie”
-    na ekranie Faktur (domena/wysylka-ksef.js), a wysyła ta sama usługa co przycisk. %>
+<%# PRZ-102.12: sekcje KSeF poza warunkiem „klucz z pliku / z ekranu” — automat i przycisk używają inFaktu niezależnie
+    od tego, skąd jest klucz. %>
 <section class="ust-sekcja" id="ksef-konsumenckie">
   <h2>Faktury konsumenckie w KSeF</h2>
   <form class="ust-formularz" method="post" action="/ustawienia/integracje/infakt/ksef-konsumenckie">
@@ -94,37 +93,14 @@
   </form>
 </section>
 
+<%# PRZ-108.06: formularz automatu wysyłki do KSeF przeniesiony na Ustawienia → Automatyzacje (faktury/widoki/_automat-ksef.ejs).
+    Tu tylko stan i droga do niego; odnośnik widzi admin, bo tylko admin automat ustawia. %>
 <section class="ust-sekcja" id="ksef-automat">
   <h2>Automatyczna wysyłka do KSeF</h2>
-  <% if (automat.bledy.length) { %>
-    <div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong></p><ul><% automat.bledy.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
-  <% } %>
-  <% if (automat.powodBezczynnosci) { %><p class="pas-uprzedzenie" id="ksef-automat-bezczynny"><%= automat.powodBezczynnosci %></p><% } %>
-  <p>Raz dziennie o wybranej godzinie (czas polski) OMS wysyła do KSeF faktury VAT z bieżącego i poprzedniego miesiąca, które nie mają jeszcze numeru KSeF — dokładnie te, które na ekranie Faktur bierze „zaznacz wszystkie”. <%= konsumenckie ? 'Korekt nie wysyła. Faktury dla nabywców bez NIP-u wysyła zgodnie z ustawieniem faktur konsumenckich.' : 'Korekt i faktur dla nabywców bez NIP-u nie wysyła.' %></p>
-  <p class="pas-uprzedzenie">Automat wysyła bez ekranu podglądu. Wysłanej do KSeF faktury nie da się cofnąć ani skasować — zostaje tylko korekta.</p>
-  <form id="ksef-automat-formularz" class="ust-formularz" method="post" action="/ustawienia/integracje/infakt/ksef-automat">
-    <label for="ksef-automat-wlaczony">Wysyłaj automatycznie</label>
-    <div><input type="hidden" name="wlaczony" value="0"><input id="ksef-automat-wlaczony" type="checkbox" name="wlaczony" value="1"<% if (automat.formularz.wlaczony) { %> checked<% } %>>
-      <p class="ust-pomoc">Domyślnie wyłączone. Wyłączenie działa od razu — także w trakcie przebiegu, przed następnym dokumentem.</p></div>
-
-    <label for="ksef-automat-godzina">Godzina wysyłki</label>
-    <div><input id="ksef-automat-godzina" type="time" name="godzina" value="<%= automat.formularz.godzina %>" max="23:45" required>
-      <p class="ust-pomoc">Czas polski, najpóźniej 23:45. Jedna próba dziennie, najpóźniej minutę po tej godzinie; jeśli OMS był wtedy wyłączony — zaraz po starcie. Włączenie po dzisiejszej godzinie nie wysyła od razu: pierwszy przebieg będzie jutro.</p></div>
-
-    <div class="ust-pelna ust-akcje">
-      <button class="btn btn--glowny" type="submit">Zapisz</button>
-    </div>
-  </form>
-  <p id="ksef-automat-stan" style="margin-top:1rem">
-    <% if (automat.wlaczony) { %><strong>Włączony</strong> — najbliższy przebieg: <strong><%= automat.najblizszy %></strong>.<% } else { %><strong>Wyłączony.</strong><% } %>
-    <% if (automat.zmienil) { %> Ostatnia zmiana: <%= automat.zmienil.login || '—' %>, <%= fmtDataCzas(automat.zmienil.at) %>.<% } %>
-  </p>
-  <% if (automat.wynik) { %>
-    <p id="ksef-automat-ostatni">Ostatni przebieg (<%= automat.wynik.dzien %>): wysłano <%= automat.wynik.wyslane?.length ?? 0 %>,
-      nie wiadomo <%= automat.wynik.niepewne?.length ?? 0 %>, pominięto <%= automat.wynik.pominiete?.length ?? 0 %><% if (automat.wynik.blad) { %> — zatrzymał się: <%= automat.wynik.blad %><% } %><% if (automat.wynik.stan === 'przerwany') { %> — przerwany restartem OMS-u<% } %>.
-      <a href="/faktury/ksef/automat">Szczegóły</a></p>
-  <% } %>
-  <% if (automat.wstrzymane.length) { %>
-    <p class="pas-uprzedzenie" id="ksef-automat-wstrzymane-licznik">Wstrzymane faktury (inFakt je odrzucił, automat ich nie wyśle): <%= automat.wstrzymane.map(function (w) { return w.numer; }).join(', ') %>. Popraw w inFakcie i wyślij ręcznie albo zwolnij na <a href="/faktury/ksef/automat">ekranie wyniku automatu</a>.</p>
+  <p><% if (automatStan.wlaczony) { %><strong>Włączona</strong> — najbliższy przebieg: <strong><%= automatStan.najblizszy %></strong>.<% } else { %><strong>Wyłączona.</strong><% } %></p>
+  <% if (admin) { %>
+  <p>Godzinę i przełącznik ustawisz w <a href="/ustawienia/automatyzacje#ksef-automat">Ustawienia → Automatyzacje</a>.</p>
+  <% } else { %>
+  <p>Godzinę i przełącznik ustawia administrator w Ustawienia → Automatyzacje.</p>
   <% } %>
 </section>

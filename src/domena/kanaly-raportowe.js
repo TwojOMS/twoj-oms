@@ -105,7 +105,11 @@ export function kanalOms(w, klasyfikacja) {
     return w.b2b ? 'B2B' : 'RECZNE';
   }
   const zeSklepu = klasyfikacja.sklepy.get(w.sklep);
-  if (!zeSklepu) throw odmowa(`Raport nie zna tego zamówienia: nieznany sklep OMS: ${w.sklep}.`);
+  // PRZ-108.04: numer zamówienia (nie dane klienta) + wskazówka, co sprawdzić — komunikat trafia na ekran panelu.
+  if (!zeSklepu) {
+    const numer = w.numer ? ` ${w.numer}` : '';
+    throw odmowa(`Raport nie zna tego zamówienia${numer}: nieznany sklep OMS: ${w.sklep}. Tego klucza sklepu nie ma w konfiguracji kanałów — sprawdź OMS_KANALY (Ustawienia → Sklepy i usługi).`);
+  }
   return zeSklepu;
 }
 

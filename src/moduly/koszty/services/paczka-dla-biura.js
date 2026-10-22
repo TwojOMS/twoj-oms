@@ -9,7 +9,7 @@ import { wierszArchiwum } from '../../faktury/db/archiwum-sprzedazy.js';
 import { kosztyOtrzymaneWMiesiacu, odrzuconeWMiesiacu } from '../../../oms/db/koszty.js';
 import { zbudujZestawieniePdf } from '../pdf/zestawienie-dla-biura-pdf.js';
 import { zCzekaniemNa429 } from '../../../oms/ksef/limit.js';
-import { uslugaKsefDostepna } from '../../../domena/konfiguracja-ksef-kosztow.js';
+import { uslugaKsefDostepna, powodNiedostepnosciKsef } from '../../../domena/konfiguracja-ksef-kosztow.js';
 
 // Paczka dla biura rachunkowego (spec 2026-09-02, Czesc D): scalony PDF miesiaca — zestawienie
 // czesci i jej dokumenty. Ten modul jest wylacznie SPINACZEM: skad wziac bajty, w jakiej
@@ -148,7 +148,9 @@ export function createPaczkaDlaBiura({
     if (!uslugaKsefDostepna(wizualizacjaKosztu)) {
       throw bladOperatora(
         `Nie udało się przygotować paczki: dokument ${k.numer_dokumentu} nie jest zarchiwizowany, `
-        + 'a panel nie ma podpiętego KSeF, żeby go pobrać.',
+        // PRZ-108.10 (recenzja): przy zapisanym tokenie bez NIP-u firmy — ta przyczyna, wprost.
+        + (powodNiedostepnosciKsef(wizualizacjaKosztu) ? `a KSeF nie działa. ${powodNiedostepnosciKsef(wizualizacjaKosztu)}`
+          : 'a panel nie ma podpiętego KSeF, żeby go pobrać.'),
       );
     }
     try {

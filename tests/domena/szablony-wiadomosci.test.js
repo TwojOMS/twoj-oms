@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   sprawdzSzablon, zlozTresc, zlozTemat, polaZamowienia, polaSzablonu, odczytajSzablony, zapiszSzablon, usunSzablon,
-  szablonDoEdycji, rodzajSzablonu, DOMYSLNE, MAKS, KLUCZ_USTAWIEN,
+  szablonDoEdycji, rodzajSzablonu, DOMYSLNE, MAKS, KLUCZ_USTAWIEN, POLA,
 } from '../../src/domena/szablony-wiadomosci.js';
 
 // PRZ-101.03: szablony wiadomości — reguły zapisu i składanie treści (czysta domena).
@@ -168,6 +168,49 @@ describe('składanie treści', () => {
     expect(zlozTresc('Dzień dobry {imie},\nnr {numer_zamowienia} jutro', { pola: {} }).tekst).toBe('Dzień dobry,\nnr  jutro');
     expect(zlozTresc('Dzień dobry {imie},', { pola: { imie: 'Anna' } }).tekst).toBe('Dzień dobry Anna,');
     expect(zlozTemat('Dla {imie}: zamówienie {numer_zamowienia}', { numer_zamowienia: '7' })).toBe('Dla: zamówienie 7');
+  });
+
+  // PRZ-108.01: szablony zaproszenia i resetu mają „Dzień dobry, {imie}!" — bez imienia wychodziło „Dzień dobry,!".
+  it('puste pole między znakami interpunkcji: znika razem z odstępem i znakiem po sobie', () => {
+    expect(zlozTresc('Dzień dobry, {imie}!\nDalej.', { pola: {} }).tekst).toBe('Dzień dobry,\nDalej.');
+    expect(zlozTresc('Dzień dobry,{imie}!', { pola: {} }).tekst).toBe('Dzień dobry,');
+    expect(zlozTresc('Kwota: {kwota}.', { pola: {} }).tekst).toBe('Kwota:');
+    expect(zlozTemat('Cześć, {imie}!', {})).toBe('Cześć,');
+  });
+
+  it('nawias zamykający po pustym polu zostaje — para nawiasów się nie rozjeżdża', () => {
+    expect(zlozTresc('(numer: {numer_przesylki})', { pola: {} }).tekst).toBe('(numer:)');
+    expect(zlozTresc('Paczka ({numer_przesylki}) w drodze.', { pola: {} }).tekst).toBe('Paczka () w drodze.');
+  });
+
+  it('puste pole po interpunkcji, ale nie po niej samej: znak po polu zostaje', () => {
+    expect(zlozTresc('Witaj {imie}!', { pola: {} }).tekst).toBe('Witaj!');
+    expect(zlozTresc('Dzień dobry {imie},', { pola: {} }).tekst).toBe('Dzień dobry,');
+    expect(zlozTresc('{imie}!', { pola: {} }).tekst).toBe('!');
+  });
+
+  it('pole z wartością nie zmienia się, także między znakami interpunkcji', () => {
+    expect(zlozTresc('Dzień dobry, {imie}!', { pola: { imie: 'Ola' } }).tekst).toBe('Dzień dobry, Ola!');
+    expect(zlozTresc('Dzień dobry,{imie}!', { pola: { imie: 'Ola' } }).tekst).toBe('Dzień dobry,Ola!');
+    expect(zlozTresc('Kwota: {kwota}.', { pola: { kwota: '9 zł' } }).tekst).toBe('Kwota: 9 zł.');
+  });
+
+  it('domyślne szablony z wypełnionymi polami = zwykłe podstawienie, znak po znaku', () => {
+    const bloki = {};
+    const pola = {};
+    for (const p of POLA) {
+      if (p.blok) bloki[p.nazwa] = [`BLOK ${p.nazwa}`];
+      else pola[p.nazwa] = `<${p.nazwa}>`;
+    }
+    const naiwnie = (tekst) => String(tekst).split('\n').map((linia) => {
+      const blok = /^\{([a-z_]+)\}$/.exec(linia);
+      if (blok && bloki[blok[1]]) return bloki[blok[1]][0];
+      return linia.replace(/\{([a-z_]+)\}/g, (_c, n) => pola[n]);
+    }).join('\n');
+    for (const [id, szablon] of Object.entries(DOMYSLNE)) {
+      expect(zlozTresc(szablon.tresc, { pola, bloki }).tekst, `treść ${id}`).toBe(naiwnie(szablon.tresc));
+      expect(zlozTemat(szablon.temat, pola), `temat ${id}`).toBe(naiwnie(szablon.temat));
+    }
   });
 
   it('kupujący firma bez osoby w adresie — nazwa firmy', () => {

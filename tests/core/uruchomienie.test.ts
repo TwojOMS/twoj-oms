@@ -35,7 +35,8 @@ describe('cykl aplikacji', () => {
   it('błąd konfiguracji zamyka bazę bez uruchamiania zegarów', async () => {
     const db = otworzBaze(':memory:');
     const ustaw = vi.spyOn(globalThis, 'setInterval');
-    await expect(uruchomAplikacje({ moduly: [modulRdzen as ModulOms], env: {}, db, host: '127.0.0.1', port: 0 })).rejects.toThrow('OMS_SPRZEDAWCA_NIP');
+    // PRZ-108.10: pusty NIP nie jest już błędem konfiguracji (można w panelu) — błąd daje NIP ze złą sumą kontrolną.
+    await expect(uruchomAplikacje({ moduly: [modulRdzen as ModulOms], env: { OMS_SPRZEDAWCA_NIP: '1234563219' }, db, host: '127.0.0.1', port: 0 })).rejects.toThrow('OMS_SPRZEDAWCA_NIP');
     expect(ustaw).not.toHaveBeenCalled();
     expect(() => db.prepare('SELECT 1')).toThrow();
   });

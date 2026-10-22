@@ -26,12 +26,16 @@
 <% } else { %>
 <section class="ust-sekcja" id="ksef-stan">
   <h2>Stan połączenia</h2>
-  <% if (stan && !nipNiezgodny) { %>
+  <% if (stan && !nipSprzedawcy) { %>
+    <%# PRZ-108.10: NIP firmy może być wpisany w panelu — bez niego token nie ma kontekstu firmy. %>
+    <p class="ust-stan ust-stan-blad"><strong>Nieużywany</strong></p>
+    <p>Panel nie zna NIP-u firmy, więc nie loguje się tym tokenem do KSeF. Wpisz NIP w <a href="/ustawienia/firma">Ustawienia → Firma</a>.</p>
+  <% } else if (stan && !nipNiezgodny) { %>
     <p class="ust-stan ust-stan-ok"><strong>Podłączony</strong></p>
     <p>Token zapisał <%= stan.kontoLogin ?? '—' %>, <%= fmtDataCzas(stan.zmienionoAt) %>. Czuwacz kosztów pobiera nim co noc (o 3) faktury, na których firma jest nabywcą; przycisk „Odśwież teraz” na ekranie <a href="/koszty">Koszty</a> pobiera od razu.</p>
   <% } else if (stan) { %>
     <p class="ust-stan ust-stan-blad"><strong>Nieużywany</strong></p>
-    <p>NIP zapisany przy tokenie (<%= nipZapisu %>) nie zgadza się już z NIP-em firmy w pliku konfiguracji — panel nie loguje się tym tokenem. Zapisz formularz z pustym polem NIP albo usuń token.</p>
+    <p>NIP zapisany przy tokenie (<%= nipZapisu %>) nie zgadza się już z NIP-em firmy (Ustawienia → Firma albo plik konfiguracji) — panel nie loguje się tym tokenem. Zapisz formularz z pustym polem NIP albo usuń token.</p>
   <% } else { %>
     <p class="ust-stan"><strong>Niepodłączony</strong></p>
     <p>Bez tokenu panel nie pobiera faktur kosztowych z KSeF. Koszty dopisane ręcznie na ekranie Koszty działają bez niego.</p>
@@ -54,7 +58,7 @@
 
     <label for="ksef-nip">NIP firmy</label>
     <div><input id="ksef-nip" type="text" name="nip" value="<%= nipZapisu %>" maxlength="20" inputmode="numeric" autocomplete="off" placeholder="<%= nipSprzedawcy ?? '' %>">
-      <p class="ust-pomoc">Zostaw puste — OMS użyje NIP-u firmy z konfiguracji. Jeśli wpiszesz, musi być ten sam.</p></div>
+      <p class="ust-pomoc">Zostaw puste — OMS użyje NIP-u firmy (Ustawienia → Firma albo plik konfiguracji). Jeśli wpiszesz, musi być ten sam.</p></div>
 
     <p class="ust-pelna ust-pomoc">Pola oznaczone <span class="ust-wymagane">*</span> są wymagane.</p>
     <div class="ust-pelna ust-akcje">
@@ -69,6 +73,10 @@
   <h2>Sprawdzenie i usunięcie</h2>
   <form method="post" action="/ustawienia/integracje/ksef/sprawdz">
     <p>Sprawdzenie loguje się do KSeF zapisanym tokenem i czyta listę faktur zakupowych z ostatniej doby. Niczego nie wysyła i nie dopisuje do kosztów.</p>
+    <% if (!zEnv && !nipSprzedawcy) { %>
+      <%# PRZ-108.10 (recenzja): bez NIP-u firmy sprawdzenie i tak odmówi — mówimy to przed kliknięciem. %>
+      <p class="pas-uprzedzenie"><%= odmowaBrakNip %></p>
+    <% } %>
     <div class="ust-akcje"><button class="ust-przycisk" type="submit">Sprawdź połączenie</button></div>
   </form>
   <form method="post" action="/ustawienia/integracje/ksef/odlacz" onsubmit="return confirm('Usunąć token KSeF? Panel przestanie pobierać faktury kosztowe.')" style="margin-top:1rem">

@@ -8,10 +8,11 @@ const aktywne = (sciezka, opcje = { admin: true }) => grupyUstawien(sciezka, opc
 describe('podmenu Ustawień', () => {
   // PRZ-101.01 (właściciel 18.10): poziomy pasek nie mieścił się w wierszu — menu z lewej, w pięciu grupach.
   // „Firma” i „Role i uprawnienia” mieszkają w tej samej liście, nie są doklejane w nawigacja.js.
+  // PRZ-108.06 (właściciel 21.10): „Automatyzacje” w grupie Sprzedaż zaraz po „Statusy zamówień”, tylko dla admina.
   it('administrator dostaje pięć grup w kolejności planu, pozycje w kolejności planu', () => {
     expect(uklad(grupyUstawien('/ustawienia/integracje', { admin: true }))).toEqual([
       ['Firma', ['Dane firmy', 'Użytkownicy', 'Role i uprawnienia']],
-      ['Sprzedaż', ['Statusy zamówień', 'Paczki i koszty dostawy', 'Magazyn', 'Druk i etykiety']],
+      ['Sprzedaż', ['Statusy zamówień', 'Automatyzacje', 'Paczki i koszty dostawy', 'Magazyn', 'Druk i etykiety']],
       ['Komunikacja', ['Szablony wiadomości', 'Autoodpowiedź Allegro', 'Powiadomienia']],
       ['Integracje', ['Sklepy i usługi']],
       ['System', ['Moduły', 'Diagnostyka', 'Aktualizacje', 'Kopie zapasowe', 'Import i eksport', 'API i webhooki']],
@@ -22,7 +23,7 @@ describe('podmenu Ustawień', () => {
     const adresy = Object.fromEntries(podmenuUstawien('/ustawienia', { admin: true }).map((p) => [p.klucz, p.href]));
     expect(adresy).toEqual({
       firma: '/ustawienia/firma', konta: '/ustawienia/konta', role: '/ustawienia/role',
-      statusy: '/ustawienia/statusy', 'zamowienia-i-wysylka': '/ustawienia/zamowienia-i-wysylka', magazyn: '/ustawienia/magazyn', druk: '/ustawienia/druk',
+      statusy: '/ustawienia/statusy', automatyzacje: '/ustawienia/automatyzacje', 'zamowienia-i-wysylka': '/ustawienia/zamowienia-i-wysylka', magazyn: '/ustawienia/magazyn', druk: '/ustawienia/druk',
       'szablony-wiadomosci': '/ustawienia/szablony-wiadomosci', 'wiadomosci-i-automatyzacje': '/ustawienia/wiadomosci-i-automatyzacje', powiadomienia: '/ustawienia/powiadomienia',
       integracje: '/ustawienia/integracje',
       moduly: '/ustawienia/moduly', diagnostyka: '/ustawienia/lacznosc', aktualizacje: '/ustawienia/aktualizacje', kopie: '/ustawienia/kopie',
@@ -38,7 +39,7 @@ describe('podmenu Ustawień', () => {
     expect(menu.find((p) => p.klucz === 'integracje').wkrotce).toBe(false);
   });
 
-  it('konto bez admina nie widzi Użytkowników, Ról, Modułów ani Aktualizacji — reszta jak u admina', () => {
+  it('konto bez admina nie widzi Użytkowników, Ról, Automatyzacji, Modułów ani Aktualizacji — reszta jak u admina', () => {
     expect(uklad(grupyUstawien('/ustawienia/zamowienia-i-wysylka?zapisano=paczka', { admin: false }))).toEqual([
       ['Firma', ['Dane firmy']],
       ['Sprzedaż', ['Statusy zamówień', 'Paczki i koszty dostawy', 'Magazyn', 'Druk i etykiety']],
@@ -77,6 +78,10 @@ describe('podmenu Ustawień', () => {
     ['/ustawienia/kopie', 'kopie'],
     ['/ustawienia/szablony-wiadomosci', 'szablony-wiadomosci'], // PRZ-101.03
     ['/ustawienia/statusy', 'statusy'], // PRZ-101.02
+    // PRZ-108.06: ekran i jego zapis; stary adres zapisu automatu KSeF (400 renderuje ekran Automatyzacji).
+    ['/ustawienia/automatyzacje', 'automatyzacje'],
+    ['/ustawienia/automatyzacje/ksef', 'automatyzacje'],
+    ['/ustawienia/integracje/infakt/ksef-automat', 'automatyzacje'],
   ])('%s podświetla dokładnie jedną pozycję: %s', (sciezka, klucz) => {
     expect(aktywne(sciezka)).toEqual([klucz]);
   });
@@ -96,7 +101,7 @@ describe('podmenu Ustawień', () => {
     ];
     const grupy = grupyUstawien('/ustawienia/statusy/7', { admin: true, pozycje });
     expect(uklad(grupy).slice(1, 3)).toEqual([
-      ['Sprzedaż', ['Statusy zamówień', 'Paczki i koszty dostawy', 'Magazyn', 'Druk i etykiety']],
+      ['Sprzedaż', ['Statusy zamówień', 'Automatyzacje', 'Paczki i koszty dostawy', 'Magazyn', 'Druk i etykiety']],
       ['Komunikacja', ['Szablony wiadomości', 'Autoodpowiedź Allegro', 'Powiadomienia']],
     ]);
     expect(uklad(grupy)[4][1].at(-1)).toBe('Nowa');

@@ -22,6 +22,7 @@ import { zl } from '../../../domena/suma-pozycji.js';
 import { umowaZbiorcza } from '../../../domena/klient-zbiorczy.js';
 import { klientPoKluczu } from '../../../oms/db/klienci.js';
 import { ktoKlikal } from '../../zamowienia/lista.js';
+import { nipSprzedawcyLubBrak } from '../../../domena/nip-bdo-firmy.js';
 
 // Trasy ROZLICZENIA ZBIORCZEGO: miesiac klienta, ktorego kilkadziesiat zamowien skalda sie
 // na JEDNA fakture. Osobny plik z tego samego powodu, co routes/panel.js — routes/zamowienia.js
@@ -233,8 +234,9 @@ export function registerOkresyRoutes(app, { db, config = {}, infakt = null, vies
     try {
       // `vies` i NIP sprzedawcy jada do uslugi dla galezi WDT (klient okresu z numerem
       // VAT-UE) — dla klienta krajowego usluga ich nie dotyka.
+      // PRZ-108.10: NIP sprzedawcy funkcją — plik albo Ustawienia → Firma, czytany przy wystawieniu.
       await createFakturaOkresu({
-        db, infakt, vies, nipSprzedawcy: config.proforma?.nip,
+        db, infakt, vies, nipSprzedawcy: () => nipSprzedawcyLubBrak(config),
       }).wystaw(okres.id, klient);
     } catch (e) {
       // Nieudana proba MUSI zostawic slad — to najgrozniejsza akcja w panelu, a bez wpisu

@@ -15,7 +15,7 @@ import { datyFaktury } from '../../../domena/termin-platnosci.js';
 // WDT (spec 2026-08-26): stawke i pola payloadu rozstrzyga domena po NIP-ie KLIENTA
 // OKRESU (nabywcy dokumentu); VIES i serie numeracji trzyma WSPOLNA galaz obu drog
 // wystawiania (services/wdt-faktury.js) — zeby okres i karta nie mialy dwoch kopii.
-import { czyNipUe, polaWdtInfakt } from '../../../domena/wdt.js';
+import { czyNipUe, polaWdtInfakt, nipSprzedawcyDoWdt } from '../../../domena/wdt.js';
 import {
   sprawdzWdtWVies, przygotujSerieWdt, seriaWdtPoAwarii, seriaWdtPoSukcesie,
 } from './wdt-faktury.js';
@@ -274,6 +274,9 @@ export function createFakturaOkresu({
     // dostaje 0% (WDT) na kazdej pozycji; kwoty zamowien sa wtedy kwotami netto, wiec
     // bariera arytmetyczna nizej dziala bez zmian (netto = brutto przy 0%).
     const wdt = czyNipUe(klient?.nip);
+    // PRZ-108.10: NIP sprzedawcy do adnotacji WDT — przy każdym wystawieniu i PRZED rezerwacją oraz zamknięciem okresu
+    // (WDT bez NIP-u odmawia tutaj; funkcja = NIP z Ustawień → Firma bez restartu).
+    const nipWlasny = nipSprzedawcyDoWdt(klient?.nip, nipSprzedawcy);
     const services = pozycjeOkresu(zamowienia, { stawkaDomyslna: czytajStawkeDomyslna(db), wdt });
     // ⚠️ Bariera PRZED rezerwacja i przed jakimkolwiek ruchem w inFakcie: nieudana
     // arytmetyka nie ma prawa zostawic po sobie ani rezerwacji, ani zamknietego okresu.
@@ -389,7 +392,7 @@ export function createFakturaOkresu({
         ...daty,
         // Pola WYLACZNIE dokumentu WDT (domain/wdt.js) — dla klienta krajowego oba
         // rozsypania sa puste i payload zostaje bajt w bajt taki, jaki byl.
-        ...polaWdtInfakt(klient.nip, { nipSprzedawcy }),
+        ...polaWdtInfakt(klient.nip, { nipSprzedawcy: nipWlasny }),
         ...(seriaWdt ? { number: seriaWdt.numer } : {}),
       });
     } catch (e) {
