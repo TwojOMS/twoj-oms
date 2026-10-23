@@ -24,7 +24,8 @@ import { zdarzeniePaczkaNadana } from '../../../src/moduly/automatyzacje/zdarzen
 import { zdarzenieStatusZmieniony } from '../../../src/moduly/automatyzacje/zdarzenia/status-zmieniony.js';
 import { utworzAkcje } from '../../../src/moduly/automatyzacje/akcje/index.js';
 import { sprawdzanieWarunkow } from '../../../src/moduly/automatyzacje/services/warunki.js';
-import { utworzRegule, wlaczRegule, wyslijZalegle } from '../../../src/moduly/automatyzacje/db/reguly.js';
+import { utworzRegule, wlaczRegule, wyslijZalegle, zmienRegule } from '../../../src/moduly/automatyzacje/db/reguly.js';
+import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 
 const MIN = 60_000;
 const START = Date.parse('2026-10-21T12:00:00.000Z');
@@ -63,11 +64,11 @@ function paczka(db, id, { status = 'nadana', numer } = {}) {
   return db.prepare('SELECT * FROM przesylki WHERE id = last_insert_rowid()').get();
 }
 
-function srodowisko({ poczta = true } = {}) {
+function srodowisko({ poczta = true, wyslij = () => {} } = {}) {
   const db = openOmsDb(':memory:', { moduly: kolejnoscBudowy(MODULY) });
   otwarte.push(db);
   const listy = [];
-  const mailer = { sendMail: async (m) => { listy.push(m); } };
+  const mailer = { sendMail: async (m) => { listy.push(m); await wyslij(m); } };
   const wiadomosci = createWiadomosci({ db, mailer, config: { klienciZbiorczy: [],
     oprawaPoczty: { podpis: 'Pracownia Przykładowa', footer: 'Stopka przykładowa' } } });
   const akcje = utworzAkcje({ wiadomosci: () => wiadomosci });
@@ -90,8 +91,8 @@ const rejestr = (db, id) => db.prepare('SELECT temat_id, adresat, kto FROM wiado
 
 describe('rejestr modułu', () => {
   it('zdarzenia „Paczka nadana” i „Status zmienił się na” są w rejestrze; akcja „mail do kupującego” też', () => {
-    // PRZ-108.09 (C2): dochodzi „Kurier odebrał paczkę” — zmiana zachowania rejestru, nie regresja C1.
-    expect(ZDARZENIA.map((z) => z.klucz)).toEqual(['paczka_nadana', 'paczka_odebrana', 'status_zmieniony']);
+    // PRZ-110.02 (D1): dochodzi „Nowe zamówienie” — rejestr ma teraz cztery zdarzenia.
+    expect(ZDARZENIA.map((z) => z.klucz)).toEqual(['paczka_nadana', 'paczka_odebrana', 'status_zmieniony', 'zamowienie_nowe']);
     expect(utworzAkcje({ wiadomosci: () => null }).map((a) => a.klucz)).toEqual(['mail_kupujacy']);
   });
 });
@@ -549,6 +550,46 @@ describe('7. ten sam mail już poszedł', () => {
   });
 });
 
+describe('PRZ-110.06: zmiana szablonu zaplanowanego wykonania', () => {
+  it.each([
+    ['niepewne', 'niepewne_wczesniej'],
+    ['wyslane', 'juz_wyslany'],
+  ])('%s: bieżący szablon w wykonaniu i brak drugiego maila z innej reguły', async (stan, powod_kod) => {
+    const podczasWysylki = [];
+    const e = srodowisko({ wyslij: () => {
+      podczasWysylki.push(e.db.prepare("SELECT stan, szablon FROM automatyzacje_wykonania WHERE stan = 'w_toku'").get());
+      if (stan === 'niepewne') throw new Error('Brak potwierdzenia po przyjęciu treści');
+    } });
+    e.db.prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('szablony.wiadomosci', ?, '2026-10-21')")
+      .run(JSON.stringify({ wbudowane: {}, wlasne: [
+        { id: 'wlasny-1', nazwa: 'Pierwszy', temat: 'Pierwszy szablon', tresc: 'Pierwsza treść.\n\n{podpis}' },
+        { id: 'wlasny-2', nazwa: 'Drugi', temat: 'Drugi szablon', tresc: 'Druga treść.\n\n{podpis}' },
+      ], licznik: 2 }));
+    const ustawienia = { nazwa: 'Pierwsza reguła', zdarzenie: 'status_zmieniony', zdarzenie_json: { status: 'w_realizacji' },
+      warunki: WARUNKI(), akcja: 'mail_kupujacy', akcja_json: { szablon: 'wlasny-1' },
+      opoznienie_min: 30, limit_na_godzine: 20 };
+    const pierwsza = regula(e, ustawienia);
+    regula(e, { ...ustawienia, nazwa: 'Druga reguła', akcja_json: { szablon: 'wlasny-2' }, opoznienie_min: 45 });
+    przesun(MIN);
+    const id = zamowienie(e.db);
+    ustawStatus(e.db, id, 'w_realizacji');
+    przesun(MIN);
+    await e.przebieg();
+    expect(wykonania(e.db)[0]).toMatchObject({ stan: 'zaplanowane', szablon: 'wlasny-1' });
+    zmienRegule(e.db, pierwsza, { ...ustawienia, akcja_json: { szablon: 'wlasny-2' } });
+    przesun(30 * MIN);
+    await e.przebieg();
+    przesun(15 * MIN);
+    await e.przebieg();
+    expect.soft(wykonania(e.db)[0]).toMatchObject({ stan, szablon: 'wlasny-2' });
+    expect.soft(wykonania(e.db)[1]).toMatchObject({ stan: 'pominiete', powod_kod });
+    expect.soft(podczasWysylki).toEqual([{ stan: 'w_toku', szablon: 'wlasny-2' }]);
+    expect.soft(e.listy).toHaveLength(1);
+    expect(e.listy[0].subject).toBe('Drugi szablon');
+    expect(e.listy[0].text).toContain('Druga treść.');
+  });
+});
+
 describe('8. ręczna ścieżka maila bez zmian (znak w znak)', () => {
   it('wyslij bez trybu: rejestr kto = klikający, wpis „Ręcznie (…)” jak przed C1', async () => {
     const e = srodowisko();
@@ -558,5 +599,71 @@ describe('8. ręczna ścieżka maila bez zmian (znak w znak)', () => {
     expect(rejestr(e.db, id)).toEqual([{ temat_id: 'wyslane', adresat: 'kupujacy@example.invalid', kto: 'adam' }]);
     expect(log(e.db, id).find((l) => l.akcja === 'wiadomosc.wyslana').wynik)
       .toBe('Ręcznie (adam): „Zamówienie wysłane" wysłane na kupujacy@example.invalid bez załącznika.');
+  });
+});
+
+describe('PRZ-110.03: anulowanie przed wykonaniem automatu', () => {
+  const zdarzenia = ['status_zmieniony', 'paczka_nadana', 'paczka_odebrana'];
+  function przygotuj(zdarzenie, szablon = 'wlasny-1') {
+    const e = srodowisko();
+    e.db.prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('szablony.wiadomosci', ?, '2026-10-21')")
+      .run(JSON.stringify({ wbudowane: {}, wlasne: [{ id: 'wlasny-1', nazwa: 'Informacja o zamówieniu',
+        temat: 'Informacja {numer_zamowienia}', tresc: 'Wiadomość o zamówieniu.\n\n{podpis}' }], licznik: 1 }));
+    regula(e, { nazwa: 'Informacja', zdarzenie, zdarzenie_json: zdarzenie === 'status_zmieniony' ? { status: 'w_realizacji' } : {},
+      warunki: WARUNKI(), akcja_json: { szablon }, opoznienie_min: 30 });
+    przesun(MIN);
+    const id = zamowienie(e.db);
+    const p = paczka(e.db, id);
+    if (zdarzenie === 'paczka_odebrana') {
+      e.db.prepare('UPDATE przesylki SET odebrana_at = ? WHERE id = ?').run(new Date().toISOString(), p.id);
+    }
+    ustawStatus(e.db, id, 'w_realizacji');
+    return { ...e, id };
+  }
+
+  it.each(zdarzenia.flatMap((zdarzenie) => ['wlasny-1', 'wyslane'].map((szablon) => [zdarzenie, szablon])))
+  ('%s, %s: anulowane po zdarzeniu → pominięte z kodem i zdaniem w historii, bez maila', async (zdarzenie, szablon) => {
+    const e = przygotuj(zdarzenie, szablon);
+    await e.przebieg();
+    expect(wykonania(e.db)[0].stan).toBe('zaplanowane');
+    przesun(MIN);
+    ustawStatus(e.db, e.id, 'anulowane');
+    przesun(30 * MIN);
+    await e.przebieg();
+    expect(wykonania(e.db)[0]).toMatchObject({ stan: 'pominiete', powod_kod: 'anulowane',
+      powod: 'Zamówienie jest anulowane — wiadomości do klienta nie wysyłamy.' });
+    expect(log(e.db, e.id).find((l) => l.akcja === 'automatyzacja.pominieta').wynik)
+      .toContain('Zamówienie jest anulowane — wiadomości do klienta nie wysyłamy.');
+    expect(log(e.db, e.id).some((l) => l.akcja.startsWith('wiadomosc.'))).toBe(false);
+    expect(rejestr(e.db, e.id)).toEqual([]);
+    expect(e.listy).toEqual([]);
+  });
+
+  it.each(zdarzenia)('%s: własny + nieanulowane → wysłane', async (zdarzenie) => {
+    const e = przygotuj(zdarzenie);
+    await e.przebieg();
+    przesun(31 * MIN);
+    await e.przebieg();
+    expect(wykonania(e.db)[0].stan).toBe('wyslane');
+    expect(rejestr(e.db, e.id)).toEqual([{ temat_id: 'wlasny-1', adresat: 'kupujacy@example.invalid', kto: 'automat: Informacja' }]);
+    expect(e.listy).toHaveLength(1);
+  });
+
+  it('karta: podgląd i ręczna wysyłka własnego do anulowanego nadal działają', async () => {
+    const e = przygotuj('status_zmieniony');
+    ustawStatus(e.db, e.id, 'anulowane');
+    const app = buildOmsServer({ db: e.db, config: { auth: { user: 'operator', pass: 'x' } }, wiadomosci: e.wiadomosci,
+      poller: { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) } });
+    const headers = { authorization: `Basic ${Buffer.from('operator:x').toString('base64')}`, origin: 'http://localhost' };
+    try {
+      const karta = await app.inject({ method: 'GET', url: `/zamowienia/${e.id}?wiadomosc=wlasny-1`, headers });
+      expect(karta.statusCode).toBe(200);
+      expect(karta.body).toContain(`action="/zamowienia/${e.id}/wiadomosc/wlasny-1"`);
+      expect(e.listy).toEqual([]);
+      const wyslane = await app.inject({ method: 'POST', url: `/zamowienia/${e.id}/wiadomosc/wlasny-1`, headers });
+      expect(wyslane.statusCode).toBe(302);
+      expect(rejestr(e.db, e.id)).toEqual([{ temat_id: 'wlasny-1', adresat: 'kupujacy@example.invalid', kto: 'operator' }]);
+      expect(e.listy).toHaveLength(1);
+    } finally { await app.close(); }
   });
 });

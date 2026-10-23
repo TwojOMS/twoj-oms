@@ -1280,6 +1280,9 @@
     .komorka-kwota { white-space: nowrap; }
     /* Pusta lista ma powiedziec, ze jest pusta — inaczej wyglada jak ekran, ktory sie nie wczytal. */
     .pusto { color: var(--tekst-przygaszony); font-style: italic; padding: 1.25rem .85rem; }
+    /* PRZ-109.02: odnosnik w pustej liscie ma byc widoczny jako odnosnik. `td a` wyzej zdejmuje podkreslenie, */
+    /* a kolor --link jest bliski przygaszonemu tekstowi komorki — bez podkreslenia nie widac, ze to link. */
+    td.pusto a, td.pusto a:visited { text-decoration: underline; text-decoration-color: currentColor; }
     /* Wyszukiwarka nad tabela. Etykieta jest DLA CZYTNIKA EKRANU, nie dla oka: pole ma */
     /* podpowiedz w srodku, a naglowka nad tabela nikt nie potrzebuje ogladac. */
     .szukajka { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: 0 0 .75rem; }

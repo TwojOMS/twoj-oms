@@ -33,6 +33,13 @@ export function listaRegul(db) {
   return db.prepare('SELECT * FROM automatyzacje_reguly WHERE usunieta_at IS NULL ORDER BY id').all().map(rozpakuj);
 }
 
+/** Zależności szablonu dla modułu wiadomości: również wyłączone reguły, bez miękko usuniętych. */
+export function regulyUzywajaceSzablonu(db, id) {
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'automatyzacje_reguly'").get()) return [];
+  return listaRegul(db).filter(r => r.akcja_param.szablon === id)
+    .map(({ id, nazwa, wlaczona }) => ({ id, nazwa, wlaczona }));
+}
+
 /** Jedno SELECT — jedyne zapytanie przebiegu zegara, gdy żadna reguła nie jest włączona. */
 export function czySaWlaczone(db) {
   return Boolean(db.prepare('SELECT 1 FROM automatyzacje_reguly WHERE wlaczona = 1 AND usunieta_at IS NULL LIMIT 1').get());
@@ -78,6 +85,9 @@ export function zmienRegule(db, id, r, { login = null, teraz = () => new Date() 
         akcja_json = ?, opoznienie_min = ?, limit_na_godzine = ?, zmieniona_at = ?, zmienil_login = ? WHERE id = ?`)
       .run(r.nazwa, r.zdarzenie, json(r.zdarzenie_json), json(r.warunki), r.akcja, json(r.akcja_json),
         r.opoznienie_min, r.limit_na_godzine, at, login, id);
+    // Kolejka wysyła bieżący szablon reguły — także ślad niepewnej wysyłki musi wskazywać ten sam szablon.
+    db.prepare("UPDATE automatyzacje_wykonania SET szablon = ? WHERE regula_id = ? AND stan = 'zaplanowane'")
+      .run(r.akcja_json?.szablon ?? null, id);
     if (przesun) {
       const g = nowaGranica(teraz(), migawkaGranicy(db));
       db.prepare('UPDATE automatyzacje_reguly SET granica_at = ?, granica_json = ?, kursor_json = NULL WHERE id = ?')

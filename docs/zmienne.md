@@ -1,8 +1,10 @@
 # Zmienne konfiguracji OMS
 
 W instalacji Docker konfiguracja leży w pliku `/opt/oms/config/oms.env` (zobacz [instalację](instalacja-docker.md)).
-Część ustawień wprowadzisz w panelu: Ustawienia → Firma oraz Ustawienia → Integracje (inFakt, DPD, InPost, poczta, adres panelu i podpis maili).
+Część ustawień wprowadzisz w panelu: Ustawienia → Firma (także logo), Ustawienia → Integracje oraz Analizy i finanse → Finanse → Kompletność danych.
 **Plik wygrywa** — ustawiona w nim sekcja integracji lub adres firmy blokuje zapis tej części w panelu.
+Daty kompletności danych zapisuje tylko administrator, bez restartu; data z pliku blokuje zapis swojego pola. Logo i jego opis administrator zmienia bez restartu, o ile plik nie ustala logo.
+Połączenia dodawane w Ustawienia → Integracje → Reklamy są osobne: nie zmieniają plikowych META_TOKEN, META_KONTA i GA4_KLUCZ używanych przez karty kampanii. W panelu wgrywasz też obraz logo, zamiast ustawiać ścieżkę OMS_LOGO_PLIK na serwerze.
 Szczegóły walidacji i aktywacji znajdziesz w [manifeście konfiguracji w repozytorium](https://github.com/TwojOMS/twoj-oms/blob/main/docs/konfiguracja.md).
 
 Tabela jest generowana z manifestu JSON; nie edytuj jej ręcznie.
@@ -119,9 +121,9 @@ Sekcja środowiska narzędzi i testów nie jest listą wymaganych ustawień inst
 | <code>OMS_RAPORTY_DATA_IMPORTU_HISTORII</code> | opcjonalna | brak | Data RRRR-MM-DD importu historii zamówień, pokazywana w zastrzeżeniach raportów obejmujących starsze dane. | Brak daty w zastrzeżeniach historycznego importu. | Nie |
 | <code>OMS_RAPORTY_KONTO_HISTORII</code> | opcjonalna | brak | Numer konta Apilo z historią zamówień — po nim raporty ustalają, dokąd sięga zaimportowana historia. | Bez niej raporty nie wiedzą, dokąd sięga historia z Apilo, i dodają o tym zastrzeżenie. Nie usuwa to ani nie importuje żadnych danych. | Nie |
 | <code>OMS_RAPORTY_NAZWY_KANALOW</code> | opcjonalna | pusta lista (brak własnych nazw) | Własne, czytelne nazwy kanałów w raportach (JSON: nazwa kanału raportowego → etykieta). | Brak własnych etykiet kanałów, widok korzysta z kluczy/pozostałej logiki etykiet. Nie tworzy kanałów. Pusty tekst OMS_RAPORTY_NAZWY_KANALOW= powoduje błąd JSON, zamiast użycia {}. | Nie |
-| <code>OMS_RAPORTY_PODLOGA_ZWROTOW</code> | opcjonalna | brak | Data RRRR-MM-DD, od której dane o zwrotach są kompletne; raporty kończące się wcześniej nie uwzględniają zwrotów. | Datę może ustawić administrator w Finanse → Kompletność danych, bez restartu. Plik konfiguracji ma pierwszeństwo. Bez daty w obu miejscach: Raporty uznają zwroty za nieznane w każdym zakresie. | Nie |
+| <code>OMS_RAPORTY_PODLOGA_ZWROTOW</code> | opcjonalna | brak | Data RRRR-MM-DD, od której dane o zwrotach są kompletne; raporty kończące się wcześniej nie uwzględniają zwrotów. | Datę może ustawić administrator w Finanse → Kompletność danych, bez restartu. Plik konfiguracji ma pierwszeństwo. Bez daty w obu miejscach: Raporty uznają zwroty za nieznane w każdym zakresie. | Tak — Analizy i finanse → Finanse → Kompletność danych (tylko administrator; plik wygrywa; bez restartu) |
 | <code>OMS_RAPORTY_SKLEP_HISTORII</code> | opcjonalna | brak | Nazwa sklepu pokazywana w zastrzeżeniach raportów o zaimportowanej historii zamówień. | Zastrzeżenia historii nie mają własnej nazwy sklepu. Nie steruje filtrowaniem zamówień. | Nie |
-| <code>OMS_STATYSTYKI_PIERWSZY_DZIEN</code> | opcjonalna | brak | Dzień RRRR-MM-DD, od którego OMS ma kompletne dane do statystyk; wcześniejsze zakresy dostają pasek z zastrzeżeniem. | Datę może ustawić administrator w Finanse → Kompletność danych, bez restartu. Plik konfiguracji ma pierwszeństwo. Bez daty w obu miejscach: Początkiem danych statystyk jest dzień pierwszego zamówienia (Warszawa); pusta baza pokazuje zastrzeżenie. Data wpływa tylko na pasek, nie na liczby. | Nie |
+| <code>OMS_STATYSTYKI_PIERWSZY_DZIEN</code> | opcjonalna | brak | Dzień RRRR-MM-DD, od którego OMS ma kompletne dane do statystyk; wcześniejsze zakresy dostają pasek z zastrzeżeniem. | Datę może ustawić administrator w Finanse → Kompletność danych, bez restartu. Plik konfiguracji ma pierwszeństwo. Bez daty w obu miejscach: Początkiem danych statystyk jest dzień pierwszego zamówienia (Warszawa); pusta baza pokazuje zastrzeżenie. Data wpływa tylko na pasek, nie na liczby. | Tak — Analizy i finanse → Finanse → Kompletność danych (tylko administrator; plik wygrywa; bez restartu) |
 
 ## Poczta
 
@@ -182,14 +184,14 @@ Sekcja środowiska narzędzi i testów nie jest listą wymaganych ustawień inst
 
 | Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
 |---|---|---|---|---|---|
-| <code>OMS_LOGO_ALT</code> | opcjonalna | pusty tekst (znak jako ozdoba) | Opis logo dla czytników ekranu; pusty oznacza, że logo to ozdoba, bo obok stoi napis. | Znak w belce ma alt="" — obok stoi tekst „OMS — Panel zamówień”. | Nie |
-| <code>OMS_LOGO_PLIK</code> | opcjonalna | brak (neutralny znak OMS z paczki) | Ścieżka do pliku PNG z logo firmy, pokazywanego w belce panelu; domyślnie neutralny znak z paczki. | Belka panelu pokazuje neutralny znak z paczki. | Nie |
+| <code>OMS_LOGO_ALT</code> | opcjonalna | pusty tekst (znak jako ozdoba) | Opis logo dla czytników ekranu; pusty oznacza, że logo to ozdoba, bo obok stoi napis. | Znak w belce ma alt="" — obok stoi tekst „OMS — Panel zamówień”. | Tak — Ustawienia → Firma → Logo (tylko administrator; plik wygrywa, gdy ustawia też OMS_LOGO_PLIK; bez restartu) |
+| <code>OMS_LOGO_PLIK</code> | opcjonalna | brak (neutralny znak OMS z paczki) | Ścieżka do pliku PNG z logo firmy, pokazywanego w belce panelu; domyślnie neutralny znak z paczki. | Belka panelu pokazuje neutralny znak z paczki. | Tak — Ustawienia → Firma → Logo (tylko administrator; plik wygrywa; bez restartu) |
 
 ## Finanse
 
 | Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
 |---|---|---|---|---|---|
-| <code>OMS_RAPORTY_PODLOGA_KOSZTOW</code> | opcjonalna | brak | Miesiąc RRRR-MM, od którego OMS zna koszty firmy; rachunek zarządczy w zakładce FINANSE liczy się tylko od niego. | Datę może ustawić administrator w Finanse → Kompletność danych, bez restartu. Plik konfiguracji ma pierwszeństwo. Bez daty w obu miejscach: Finanse odmawiają rachunku i wskazują formularz; dane miesięczne działają. | Nie |
+| <code>OMS_RAPORTY_PODLOGA_KOSZTOW</code> | opcjonalna | brak | Miesiąc RRRR-MM, od którego OMS zna koszty firmy; rachunek zarządczy w zakładce FINANSE liczy się tylko od niego. | Datę może ustawić administrator w Finanse → Kompletność danych, bez restartu. Plik konfiguracji ma pierwszeństwo. Bez daty w obu miejscach: Finanse odmawiają rachunku i wskazują formularz; dane miesięczne działają. | Tak — Analizy i finanse → Finanse → Kompletność danych (tylko administrator; plik wygrywa; bez restartu) |
 
 ## Marketing
 

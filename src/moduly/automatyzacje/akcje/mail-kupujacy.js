@@ -11,6 +11,7 @@
 //  3. zgoda domeny (`czyWolnoWyslac` / `czyWolnoWyslacWlasny`): brak adresu, anulowane, brak paczki z numerem →
 //     pominięte z powodem domeny. Bez tego kroku `wyslij` zapisałby na karcie „NIE UDAŁO SIĘ PRZYGOTOWAĆ…” — błąd,
 //     a właściciel chciał pominięcia.
+//     Automat pomija anulowane także przy szablonie własnym; ręczna wysyłka z podglądem na karcie pozostaje dozwolona.
 import { czyWolnoWyslac, czyWolnoWyslacWlasny, NAZWA_TEMATU } from '../../../domena/wiadomosci.js';
 import { adresatKlienta } from '../../../domena/adresat-klienta.js';
 import { fmtDataCzasKrotko } from '../../../domena/format-daty.js';
@@ -65,6 +66,7 @@ export function akcjaMailKupujacy({ wiadomosci }) {
     }
     let k;
     try { k = u.kontekst(wykonanie.zamowienie_id); } catch (e) { return odmowa('brak_zamowienia', e?.message ?? 'Nie ma zamówienia.'); }
+    if (WLASNY.test(szablon) && k.z.anulowane) return odmowa('anulowane', czyWolnoWyslac(k.z, 'wyslane', k).powod);
     const zg = WLASNY.test(szablon) ? czyWolnoWyslacWlasny(k.z) : czyWolnoWyslac(k.z, szablon, k);
     if (!zg.wolno) {
       const kod = !adresatKlienta(k.z) ? 'brak_adresu' : k.z.anulowane ? 'anulowane' : 'odmowa';

@@ -20,6 +20,7 @@ import { listaRol, rolaPoKluczu, przypiszRole, ustawPtaszkiPrzezRole, opisRoliKo
 import { wydajLink, uniewaznijLinkiKonta, zastapPoprzednieLinki, wycofajLink } from '../linki-hasla.js';
 import { zalozKontoZaproszone, zalozKontoZHaslem, ustawEmail, sprawdzEmail, emailKonta, BladKonta } from '../konta-dostep.js';
 import { trescMaila } from '../poczta-kont.js';
+import { oznaczBladPoczty, komunikatWysylkiMaila } from '../../wiadomosci/poczta-ustawien.ts';
 import { wczytajSzablonyWiadomosci } from '../../../oms/db/szablony-wiadomosci.js';
 import { modelKonta, MAKS_IMIENIA } from './moje-konto.js';
 import { POLITYKA_REFERERA_LINKU } from './haslo-link.js';
@@ -221,11 +222,19 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
       try {
         // PRZ-101.06: szablon z Ustawień → Szablony wiadomości → Maile do zespołu, czytany przy każdej wysyłce.
         const szablon = wczytajSzablonyWiadomosci(db).wbudowane[cel] ?? null;
-        await mailer().sendMail({ to: konto.email, ...trescMaila({ cel, imie: konto.imie, link: adresLinku(token), szablon }) });
-      } catch {
+        // PRZ-109.12 (recenzja Astra): znacznik bledu poczty TYLKO na bledzie samego sendMail — blad odczytu szablonu
+        // (np. SQLite z kodem) nie jest odmowa serwera poczty.
+        await mailer().sendMail({ to: konto.email, ...trescMaila({ cel, imie: konto.imie, link: adresLinku(token), szablon }) })
+          .catch((bladWysylki) => { throw oznaczBladPoczty(bladWysylki); });
+      } catch (e) {
         wycofajLink(db, linkId, teraz);
+        // PRZ-109.03: odmowa serwera poczty (kod nodemailera) — zdanie z kodu i wskazówka do Ustawień (ekran tylko dla
+        // admina, więc ją widzi); treść błędu nigdy na ekran. Błąd bez kodu — dawne zdanie co do znaku.
+        const zPoczty = Boolean(/** @type {any} */ (e)?.zTransportuPoczty);
         return stronaKonta(req, reply.code(502), id, {
-          blad: 'Nie udało się wysłać maila — użyj „Pokaż link”. Poprzedni link, jeśli był, nadal działa.',
+          blad: zPoczty
+            ? `Nie udało się wysłać maila: ${komunikatWysylkiMaila(e, { wskazUstawienia: true })} Możesz też użyć „Pokaż link”. Poprzedni link, jeśli był, nadal działa.`
+            : 'Nie udało się wysłać maila — użyj „Pokaż link”. Poprzedni link, jeśli był, nadal działa.',
         });
       }
       zastapPoprzednieLinki(db, { kontoId: id, nowyLinkId: linkId, teraz });

@@ -37,6 +37,7 @@ const UWAGI_KANALOW = {
   woo: 'Sklep sam wysyła kupującemu „Zamówienie zrealizowane”, gdy oznaczysz zamówienie jako wysłane — przy regule z mailem kupujący dostanie dwa maile. Numer listu i link śledzenia są tylko w tym z OMS-u.',
   allegro: 'Allegro samo powiadamia kupującego o wysyłce. Numer paczki nadanej poza panelem OMS pobiera dopiero przy otwarciu karty zamówienia.',
 };
+const UWAGA_WOO_POTWIERDZENIE = 'WooCommerce samo wysyła potwierdzenie przyjęcia zamówienia — z tą regułą kupujący dostanie dwa potwierdzenia. Sprawdź ustawienia maili w sklepie przed włączeniem reguły.';
 const STANY = {
   zaplanowane: { etykieta: 'zaplanowane', klasa: 'znacznik--szary' },
   w_toku: { etykieta: 'w toku', klasa: 'znacznik--szary' },
@@ -198,7 +199,9 @@ function modelFormularza(z, { formularz, regula = null, bledy = [], sprawdzenie 
     },
     kanaly: k.kanaly.map((x) => {
       const rodzaj = rodzajKanalu(x.klucz, z.definicje);
-      return { ...x, rodzaj, uwaga: rodzaj ? UWAGI_KANALOW[rodzaj.klucz] ?? null : null, zaznaczony: zaznaczone.has(x.klucz) };
+      const potwierdzenieWoo = zdarzenie === 'zamowienie_nowe' && rodzaj?.klucz === 'woo';
+      return { ...x, rodzaj, uwaga: potwierdzenieWoo ? UWAGA_WOO_POTWIERDZENIE : rodzaj ? UWAGI_KANALOW[rodzaj.klucz] ?? null : null,
+        waznaUwaga: potwierdzenieWoo, zaznaczony: zaznaczone.has(x.klucz) };
     }),
     usuniete: zmiany.usuniete.filter((x) => zaznaczone.has(x)),
     noweKanaly: zmiany.nowe.map((x) => etykiety.get(x) ?? x),
@@ -230,7 +233,7 @@ function formularzZReguly(r) {
 
 /** Wartości startowe kroku 2 kreatora (makieta, kadr 4): opóźnienie 30 min, status zdarzenia jako warunek, „Zamówienie wysłane”. */
 function formularzStartowy(z, zdarzenie, zdarzenieStatus) {
-  const szablon = zgodnoscSzablonu(zdarzenie, 'wyslane') ? 'wyslane' : '';
+  const szablon = zdarzenie === 'zamowienie_nowe' ? 'potwierdzenie' : zgodnoscSzablonu(zdarzenie, 'wyslane') ? 'wyslane' : '';
   return { zdarzenie, zdarzenie_status: zdarzenieStatus ?? '', opoznienie: '30', limit: String(LIMIT_DOMYSLNY), kanaly: [],
     status_warunek: zdarzenieStatus ? 'jeden_z' : 'dowolny', statusy: zdarzenieStatus ? [zdarzenieStatus] : [],
     ma_numer_listu: wymagaNumeruListu(szablon) ? '1' : '0', dostawa: '', pobranie: 'dowolne',

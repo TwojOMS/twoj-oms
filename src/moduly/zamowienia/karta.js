@@ -1,3 +1,4 @@
+import { ekranOdmowyKarty } from './odmowa-karty.js';
 import { etykietyStatusow } from '../../oms/db/statusy.js';
 import { pobierzZamowienie, potwierdzWplate, dopiszLog, zapiszFaktyStatusu, zapiszNadpisanieWysylki, przywrocMetodeWysylkiZeSklepu, zapiszKomentarzWewnetrzny, ostatniWpisLogu, zapiszTerminWysylkiRecznego } from '../../oms/db/zamowienia.js';
 import { parsujDateWysylki, recznyTermin } from '../../domena/termin-wysylki.js';
@@ -11,6 +12,8 @@ import { powodOdmowyPobraniaGrupy } from '../../domena/scalanie.js';
 import { wartoPytacAllegroONumery } from '../../domena/allegro-numery.js';
 import { join } from 'node:path';
 import { komunikatDlaOperatora } from '../../domena/bledy.js';
+import { maDostepDoAdresu } from '../../domena/ekrany.js';
+import { EKRAN_POCZTY, komunikatWysylkiMaila } from '../wiadomosci/poczta-ustawien.ts';
 import { znormalizujKomentarz } from '../../domena/komentarz-wewnetrzny.js';
 import { adresOdbiorcy } from '../../domena/adres-odbiorcy.js';
 import { daneFaktury } from '../../domena/dane-faktury.js';
@@ -193,9 +196,9 @@ app.get('/zamowienia/:id', async (req, reply) => {
 app.post('/zamowienia/:id/dane/gus', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }), 404);
     // PRZ-102.11: klucz z pliku albo z Ustawień, sprawdzany przy każdym żądaniu (zapis działa bez restartu).
-    if (!gusDostepny(gus)) return reply.code(503).type('text/plain; charset=utf-8').send(KOMUNIKAT_BRAK_GUS);
+    if (!gusDostepny(gus)) return ekranOdmowyKarty(reply, KOMUNIKAT_BRAK_GUS, adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }), 503);
 
     // NIP bierzemy Z FORMULARZA, nie z bazy: operator zwykle właśnie go wpisał albo poprawił,
     // a jeszcze nie zapisał. Branie z bazy pytałoby o STARY numer i cicho oddawało nie tę firmę.
@@ -245,30 +248,30 @@ app.post('/zamowienia/:id/dane/gus', async (req, reply) => {
 app.post('/zamowienia/:id/dane/kopiuj-do-wysylki', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id, { kotwica: 'wysylka' }), 404);
     try {
       kopiujDaneFakturyDoWysylki(id, z, req);
     } catch (e) {
       dopiszLog(db, id, { akcja: 'dane.kopiuj', wynik: `BŁĄD: ${e.message}` });
-      return reply.code(400).send(`Nie udało się skopiować danych: ${komunikatDlaOperatora(e)}`);
+      return ekranOdmowyKarty(reply, `Nie udało się skopiować danych: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id, { kotwica: 'wysylka' }));
     }
     return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'wysylka' }));
   });
 app.post('/zamowienia/:id/status', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
 
     const docelowy = String(req.body?.status ?? '').trim();
     // Odmowa PRZED zapisem: inaczej zostawialaby polowicznie zapisane fakty.
     const odmowa = powodOdmowyStatusu(z, docelowy);
-    if (odmowa) return reply.code(400).send(odmowa);
+    if (odmowa) return ekranOdmowyKarty(reply, odmowa, adresPowrotuNaKarte(req, id));
 
     try {
       zapiszFaktyStatusu(db, id, { ...faktyDlaStatusu(z, docelowy, { powod: req.body?.powod ?? null }), kto: req.konto?.login ?? ktoKlikal(req) });
     } catch (e) {
       dopiszLog(db, id, { akcja: 'status.reczny', wynik: `BŁĄD: ${e.message}` });
-      return reply.code(400).send(`Nie udało się zmienić statusu: ${komunikatDlaOperatora(e)}`);
+      return ekranOdmowyKarty(reply, `Nie udało się zmienić statusu: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id));
     }
 
     // Log zapisuje status FAKTYCZNIE OSIAGNIETY, a nie sam wybor — i to nie jest kosmetyka.
@@ -286,23 +289,26 @@ app.post('/zamowienia/:id/status', async (req, reply) => {
   });
 app.post('/zamowienia/:id/wiadomosc/:temat', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id, { kotwica: 'wiadomosci' }), 404);
     // PRZ-108.02: pytamy przy każdym żądaniu — poczta zapisana w Ustawieniach po starcie działa bez restartu.
     const wiadomosci = wiadomosciCzynne();
-    if (!wiadomosci) return reply.code(503).send('Poczta nie jest skonfigurowana — wiadomości panel nie wyśle.');
+    if (!wiadomosci) return ekranOdmowyKarty(reply, 'Poczta nie jest skonfigurowana — wiadomości panel nie wyśle.', adresPowrotuNaKarte(req, id, { kotwica: 'wiadomosci' }), 503);
 
     try {
       await wiadomosci.wyslij(id, String(req.params.temat), { ktoKlikal: ktoKlikal(req) });
     } catch (e) {
       // ⚠️ Awaria SMTP i odmowa domeny wychodza TA SAMA droga, bo dla operatora to jedno
       // zdanie: „nie poszlo, i dlatego". Slad techniczny zostaje w logu karty (usluga).
-      return reply.code(400).send(`Wiadomość NIE została wysłana: ${komunikatDlaOperatora(e)}`);
+      // PRZ-109.03: odmowa serwera poczty (znacznik z uslugi, kod nodemailera) dostaje zdanie z kodu, a konto
+      // z dostepem do ekranu poczty — takze wskazowke, gdzie poprawic. Tresc bledu nigdy na ekran.
+      const wskazUstawienia = maDostepDoAdresu(req.konto ?? null, EKRAN_POCZTY);
+      return ekranOdmowyKarty(reply, `Wiadomość NIE została wysłana: ${komunikatWysylkiMaila(e, { wskazUstawienia })}`, adresPowrotuNaKarte(req, id, { kotwica: 'wiadomosci' }));
     }
     return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'wiadomosci' }));
   });
 app.post('/zamowienia/:id/komentarz', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return reply.code(404).send('Nie ma takiego zamowienia');
+    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamowienia', adresPowrotuNaKarte(req, id), 404);
 
     let komentarz;
     try {
@@ -310,7 +316,7 @@ app.post('/zamowienia/:id/komentarz', async (req, reply) => {
     } catch (e) {
       // Za dlugi tekst to bledny formularz, a nie awaria — bez wpisu w logu, tak samo jak
       // przy innych odmowach walidacji na tej karcie.
-      return reply.code(400).send(komunikatDlaOperatora(e));
+      return ekranOdmowyKarty(reply, komunikatDlaOperatora(e), adresPowrotuNaKarte(req, id));
     }
 
     zapiszKomentarzWewnetrzny(db, id, komentarz);
@@ -363,7 +369,7 @@ app.post('/zamowienia/:id/ustalenia', async (req, reply) => {
 app.post('/zamowienia/:id/termin-wysylki', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }), 404);
 
     // „Przywróć standardowy termin” to drugi przycisk TEGO SAMEGO formularza (`przywroc=1`):
     // wtedy pole daty, choć przyszło wypełnione, nie liczy się.
@@ -378,13 +384,13 @@ app.post('/zamowienia/:id/termin-wysylki', async (req, reply) => {
       dzien = parsujDateWysylki(surowe, dzienWarszawa(new Date().toISOString()));
     } catch (e) {
       // Zła data to błędny formularz, nie awaria — bez wpisu w logu, jak inne odmowy walidacji tej karty.
-      return reply.code(400).send(`Nie zapisano daty wysyłki: ${komunikatDlaOperatora(e)}`);
+      return ekranOdmowyKarty(reply, `Nie zapisano daty wysyłki: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }));
     }
     // ⚠️ PO WYSYŁCE BEZ ZMIAN (decyzja właściciela 21.10.2026) — inaczej spóźnioną wysyłkę dałoby się
     // „poprawić” po fakcie, a statystyka terminowości przestałaby mówić prawdę. Jedyna blokada stoi
     // w zapisie (`wyslane_at IS NULL` w UPDATE), więc łapie też paczkę nadaną po otwarciu karty.
     if (!zapiszTerminWysylkiRecznego(db, id, dzien)) {
-      return reply.code(409).send('Zamówienie jest już wysłane — daty wysyłki nie da się zmienić.');
+      return ekranOdmowyKarty(reply, 'Zamówienie jest już wysłane — daty wysyłki nie da się zmienić.', adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }), 409);
     }
     const naEkran = (d) => d.split('-').reverse().join('.');
     dopiszLog(db, id, {
@@ -398,7 +404,7 @@ app.post('/zamowienia/:id/termin-wysylki', async (req, reply) => {
 app.post('/zamowienia/:id/klient/zapamietaj', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }), 404);
 
     const f = daneFaktury(z);
     const a = adresOdbiorcy(z) ?? {};
@@ -440,7 +446,7 @@ app.post('/zamowienia/:id/klient/zapamietaj', async (req, reply) => {
         komentarz: istniejacy?.komentarz ?? '',
       });
     } catch (e) {
-      return reply.code(400).send(`Nie udało się zapamiętać klienta: ${komunikatDlaOperatora(e)}`);
+      return ekranOdmowyKarty(reply, `Nie udało się zapamiętać klienta: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }));
     }
 
     try {
@@ -455,7 +461,7 @@ app.post('/zamowienia/:id/klient/zapamietaj', async (req, reply) => {
       }
     } catch (e) {
       dopiszLog(db, id, { akcja: 'klient.zapamietaj', wynik: `BŁĄD: ${e.message}` });
-      return reply.code(400).send(`Nie udało się zapamiętać klienta: ${komunikatDlaOperatora(e)}`);
+      return ekranOdmowyKarty(reply, `Nie udało się zapamiętać klienta: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }));
     }
 
     dopiszLog(db, id, {
@@ -468,7 +474,7 @@ app.post('/zamowienia/:id/klient/zapamietaj', async (req, reply) => {
   });
 app.post('/zamowienia/:id/sync-sklep', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
     if (syncSklep) await syncSklep.odeslijStatus(id);
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });

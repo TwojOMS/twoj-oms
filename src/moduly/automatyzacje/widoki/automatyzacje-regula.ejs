@@ -33,7 +33,7 @@
       <label>Kanały sprzedaży <span class="ust-wymagane">*</span></label>
       <div class="aut-wybor">
         <% for (const k of kanaly) { %>
-        <p><label><input type="checkbox" name="kanaly" value="<%= k.klucz %>"<%= k.zaznaczony ? ' checked' : '' %>><span><% if (k.rodzaj) { %><span class="plakietka plakietka--kanal plakietka--<%= k.rodzaj.klucz %>" role="img" aria-label="<%= k.rodzaj.nazwa %>" title="<%= k.rodzaj.nazwa %>"><%= k.rodzaj.znak %></span> <% } %><strong><%= k.etykieta %></strong><% if (k.uwaga) { %><span class="wyjasnienie"><%= k.uwaga %></span><% } %></span></label></p>
+        <p><label><input type="checkbox" name="kanaly" value="<%= k.klucz %>"<%= k.zaznaczony ? ' checked' : '' %>><span><% if (k.rodzaj) { %><span class="plakietka plakietka--kanal plakietka--<%= k.rodzaj.klucz %>" role="img" aria-label="<%= k.rodzaj.nazwa %>" title="<%= k.rodzaj.nazwa %>"><%= k.rodzaj.znak %></span> <% } %><strong><%= k.etykieta %></strong><% if (k.uwaga) { %><span class="wyjasnienie"><% if (k.waznaUwaga) { %><strong><%= k.uwaga %></strong><% } else { %><%= k.uwaga %><% } %></span><% } %></span></label></p>
         <% } %>
         <% for (const k of usuniete) { %>
         <p><label><input type="checkbox" name="kanaly" value="<%= k %>" checked><span><strong><%= k %></strong><span class="wyjasnienie">Nie ma już w konfiguracji — zaznaczenie zostaje bez skutku.</span></span></label></p>

@@ -17,6 +17,7 @@ COPY src ./src
 COPY scripts/instalacja-wspolne.mjs scripts/instalacja-przygotuj.mjs scripts/instalacja-proba.mjs scripts/instalacja-demo.mjs scripts/instalacja-kontener.mjs ./scripts/
 # PRZ-062: przejście na pracę (pierwsze konto, granice raportu) i granica raportu kanału dodanego później.
 COPY scripts/produkcja-pierwszy-start.mjs scripts/inicjalizuj-granice-bez-historii.mjs ./scripts/
+COPY scripts/link-hasla-admina.mjs ./scripts/
 COPY deploy/klient/kopia.mjs ./deploy/klient/kopia.mjs
 # wydanie.json jest w paczce wydania, nie w repo; wzorzec [n] pozwala zbudować obraz także z repo.
 COPY package.json wydanie.jso[n] ./

@@ -16,6 +16,8 @@ import {
 } from '../zdania-platnosci.js';
 import { MAKS_ZDAN } from '../../../domena/zdania-platnosci.js';
 import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';
+import { regulyUzywajaceSzablonu } from '../../automatyzacje/db/reguly.js';
+import { maDostepDoAdresu } from '../../../domena/ekrany.js';
 
 const ADRES = '/ustawienia/szablony-wiadomosci';
 // PRZ-102.17: sekcja „Zdania o płatności" na liście szablonów. Trasy statyczne — find-my-way stawia je przed `/:id`,
@@ -32,6 +34,9 @@ const KOMUNIKATY = {
 export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, config = {}, teraz = () => new Date() }) {
   // Podstrony edycji świecą w menu tą samą pozycją, co lista (podmenu zna wyłącznie adres listy).
   const nawigacja = (req, reply) => nawigacjaUstawien({ url: ADRES, konto: req.konto }, reply);
+  // Wąski skład bez modułu automatyzacji może mieć bazę zachowaną z wcześniejszego uruchomienia.
+  const regulySzablonu = id => app.hasRoute({ method: 'GET', url: '/ustawienia/automatyzacje/:id' })
+    ? regulyUzywajaceSzablonu(db, id) : [];
 
   /** Szablon pod adresem albo `null` (nieznany id, usunięty szablon własny). */
   function szablonPod(id) {
@@ -45,12 +50,20 @@ export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, config = {},
       title: s.nowy ? 'Nowy szablon wiadomości' : `Szablon: ${s.nazwa}`,
       s, f: formularz ?? { nazwa: s.nazwa ?? '', temat: s.temat, tresc: s.tresc },
       pola: polaSzablonu(s.rodzaj), maks: MAKS, blad, podglad,
+      reguly: !s.wbudowany && !s.nowy ? regulySzablonu(s.id).map(r => ({ ...r,
+        // Dziennik reguły ma dodatkową ochronę admina; gość demo może go tylko oglądać.
+        adres: (req.konto?.admin || req.konto?.podgladDemo)
+          && maDostepDoAdresu(req.konto, `/ustawienia/automatyzacje/${r.id}`) ? `/ustawienia/automatyzacje/${r.id}` : null,
+      })) : [],
       zapisano: req.query?.zapisano === '1' ? 'Zapisano. Następny mail pójdzie z tą treścią.' : null,
     });
   }
 
   function ekranListy(req, reply, { wpisane = null, bledy = {} } = {}) {
     const stan = wczytajSzablonyWiadomosci(db);
+    const reguly = req.query?.zapisano === 'usunieto' && rodzajSzablonu(req.query?.usunietySzablon) === 'wlasny'
+      ? regulySzablonu(req.query.usunietySzablon) : [];
+    const ostrzezenie = reguly.length ? ` Reguły ${reguly.map(r => r.nazwa).join(', ')} mają teraz usunięty szablon.` : '';
     return reply.view('ustawienia-szablony.ejs', {
       nawigacja: nawigacja(req, reply),
       title: 'Szablony wiadomości',
@@ -58,7 +71,7 @@ export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, config = {},
       // PRZ-101.06: maile do pracowników — osobna sekcja, żeby nikt nie pomylił ich z mailami do klientów.
       zespol: KONTA.map((id) => szablonDoEdycji(stan, id)),
       wlasne: stan.wlasne, maks: MAKS,
-      komunikat: wpisane ? null : (KOMUNIKATY[req.query?.zapisano] ?? null),
+      komunikat: wpisane ? null : ((KOMUNIKATY[req.query?.zapisano] ?? '') + ostrzezenie || null),
       zdania: zdaniaDoEkranu(wczytajZapisaneZdania(db), { wpisane, bledy }),
       maksZdan: MAKS_ZDAN,
       bladZdan: Object.keys(bledy).length ? (bledy._ ?? 'Popraw zaznaczone zdania — nic nie zostało zapisane.') : null,
@@ -119,8 +132,15 @@ export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, config = {},
   // Własny: „Usuń". Jedna trasa, bo w obu wypadkach znika wpis z zapisu.
   app.post(`${ADRES}/:id/usun`, async (req, reply) => {
     const id = String(req.params.id);
+    const s = szablonPod(id);
+    const reguly = s && !s.wbudowany && !s.nowy ? regulySzablonu(id) : [];
+    if (reguly.length && req.body?.potwierdzUsuniecie !== '1') {
+      reply.code(400);
+      return ekranEdycji(req, reply, s, { blad: 'Potwierdź, że reguły przestaną wysyłać ten mail.' });
+    }
     const wynik = zmienSzablonyWiadomosci(db, (stan) => usunSzablon(stan, id));
     if (!wynik.ok) return reply.code(404).type('text/plain; charset=utf-8').send(wynik.blad);
-    return reply.code(303).redirect(`${ADRES}?zapisano=${rodzajSzablonu(id) === 'wlasny' ? 'usunieto' : 'przywrocono'}`);
+    const zaleznosci = reguly.length ? `&usunietySzablon=${encodeURIComponent(id)}` : '';
+    return reply.code(303).redirect(`${ADRES}?zapisano=${rodzajSzablonu(id) === 'wlasny' ? 'usunieto' : 'przywrocono'}${zaleznosci}`);
   });
 }

@@ -1,7 +1,14 @@
 // Odpowiedniki pól formularzy, nie wszystkie ustawienia danej integracji.
 // Źródła: domena/konfiguracja-{dpd,inpost,infakt,gus,ksef-kosztow}.js, core/adres-firmy.ts, domena/rachunek-firmy.js, domena/nip-bdo-firmy.js,
 // moduly/ustawienia/trasy/poczta.js, moduly/wiadomosci/konfiguracja.ts i moduly/wiadomosci/podpis-maili.js (pod src/).
+// Daty: moduly/raporty/{pokrycie.js,trasy/pokrycie.js}; logo: moduly/ustawienia/trasy/logo.js i core/web/logo-instalacji.js.
+// Ścieżki są względem Ustawień, poza pełną ścieżką „Analizy i finanse”.
 export const ZMIENNE_PANEL = Object.freeze({
+  OMS_RAPORTY_PODLOGA_KOSZTOW: 'Analizy i finanse → Finanse → Kompletność danych (tylko administrator; plik wygrywa; bez restartu)',
+  OMS_RAPORTY_PODLOGA_ZWROTOW: 'Analizy i finanse → Finanse → Kompletność danych (tylko administrator; plik wygrywa; bez restartu)',
+  OMS_STATYSTYKI_PIERWSZY_DZIEN: 'Analizy i finanse → Finanse → Kompletność danych (tylko administrator; plik wygrywa; bez restartu)',
+  OMS_LOGO_PLIK: 'Firma → Logo (tylko administrator; plik wygrywa; bez restartu)',
+  OMS_LOGO_ALT: 'Firma → Logo (tylko administrator; plik wygrywa, gdy ustawia też OMS_LOGO_PLIK; bez restartu)',
   INFAKT_API_KEY: 'Integracje → inFakt',
   GUS_KLUCZ: 'Integracje → GUS',
   KSEF_TOKEN: 'Integracje → KSeF',

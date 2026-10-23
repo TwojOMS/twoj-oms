@@ -48,7 +48,15 @@
       <span class="wyjasnienie">Wraca treść dostarczona z panelem; Twoja zmiana zniknie.</span>
     </form>
   <% } else if (!s.wbudowany && !s.nowy) { %>
+    <% if (reguly.length) { %>
+      <div class="pas-uprzedzenie" role="note">
+        <p>Ten szablon wysyłają reguły automatyzacji: <% reguly.forEach(function (r, i) { %><% if (i) { %>, <% } %><% if (r.adres) { %><a href="<%= r.adres %>"><%= r.nazwa %></a><% } else { %><%= r.nazwa %><% } %> (<%= r.wlaczona ? 'włączona' : 'wyłączona' %>)<% }); %>. Po usunięciu ich maile przestaną wychodzić — najpierw zmień szablon w regule albo ją wyłącz.</p>
+      </div>
+    <% } %>
     <form method="post" action="/ustawienia/szablony-wiadomosci/<%= s.id %>/usun" class="ust-akcje szw-usun">
+      <% if (reguly.length) { %>
+        <label><input type="checkbox" name="potwierdzUsuniecie" value="1" required> Rozumiem, reguły przestaną wysyłać ten mail</label>
+      <% } %>
       <button class="ust-przycisk grozny" type="submit">Usuń szablon</button>
       <span class="wyjasnienie">Wysłane nim wiadomości zostają w historii zamówień.</span>
     </form>

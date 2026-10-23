@@ -14,6 +14,7 @@ import { kanalyWymagajaceUwagi } from '../../domena/kanal-stan.js';
 import { kluczDozwolony } from '../../domena/ostrzezenia.js';
 import { odrzuc, poTerminie } from '../../oms/db/ostrzezenia.js';
 import { adresKanalu } from '../../domena/kanaly.js';
+import { maDostepDoAdresu } from '../../domena/ekrany.js';
 import { bladPolleraNaEkran } from '../../domena/zdrowie.js';
 import { indeksListy, PRZYCZYNA_POMINIETEGO } from '../../oms/db/indeks-listy.js';
 import ejs from 'ejs';
@@ -262,6 +263,15 @@ app.get('/', async (req, reply) => {
     // kanalach drugi bylby niewidoczny, a przy jednym komunikat mowil o przyczynie
     // technicznej zamiast o skutkach.
     const kanalyDoUwagi = kanalyWymagajaceUwagi(stanyKanalow?.() ?? []);
+    // ⚠️ PRZ-109.02: pusta tabela bez frazy i filtrów znaczy DWIE różne rzeczy. „Nie ma tu nic do zrobienia”
+    // jest prawdą tylko wtedy, gdy zamówienia są, a ta zakładka jest pusta; w nowej instalacji bez żadnego
+    // zamówienia to samo zdanie mówi „wszystko załatwione”, choć kanał sprzedaży nie jest jeszcze podłączony.
+    // Jedno `SELECT 1 … LIMIT 1` i TYLKO przy pustej liście — niepusta lista nie płaci ani zapytania.
+    // Pytamy tabelę zamówień, nie liczniki indeksu: indeks mógł się nie odświeżyć (`indeksNieaktualny`),
+    // a to pytanie ma odpowiedzieć „czy baza cokolwiek ma”, nie „co widać w zakładce”.
+    const bazaBezZamowien = !zamowienia.length && !szukaj && !chipy.length && !db.prepare('SELECT 1 FROM zamowienia LIMIT 1').get();
+    // Odnośnik do „Sklepy i usługi” tylko dla roli, której straznik wpuści na ten ekran (inaczej klik kończy się 403).
+    const odnosnikDoKanalow = bazaBezZamowien && maDostepDoAdresu(req.konto, '/ustawienia/integracje');
     return reply.view('lista.ejs', {
       zamowienia,
       // Liczba WSZYSTKICH pasujących (nagłówek wyników frazy, licznik filtrów) — nie długość
@@ -274,6 +284,8 @@ app.get('/', async (req, reply) => {
         .filter((u, i, wszystkie) => wszystkie.findIndex((x) => x.id === u.id) === i),
       indeksNieaktualny,
       kanalyDoUwagi,
+      bazaBezZamowien,
+      odnosnikDoKanalow,
       // Tabelka ostrzezen (spec 2026-08-29) — same fakty lokalne, zero sieci w tej trasie.
       ostrzezenia: zbierzOstrzezenia(req),
       etykiety: etykietyStatusow(db),

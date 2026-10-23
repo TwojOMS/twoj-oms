@@ -9,7 +9,7 @@
 // Pośrednik o kontrakcie createMailer: KAŻDA wysyłka czyta bieżący zapis z bazy; nowy transport powstaje tylko, gdy
 // zmieniły się dane — więc zmiana serwera albo hasła działa od następnej wysyłki, bez restartu procesu.
 import { konfiguracjaWiadomosci, type PocztaWiadomosci } from './konfiguracja.ts';
-import { bladOperatora } from '../../domena/bledy.js';
+import { bladOperatora, komunikatDlaOperatora } from '../../domena/bledy.js';
 
 export const EKRAN_POCZTY = '/ustawienia/integracje/poczta';
 export const PORT_DOMYSLNY = 465;
@@ -93,6 +93,13 @@ export function pocztaZUstawien({ wczytaj, fabryka }: { wczytaj: () => Zapis; fa
 
 export type PocztaUstawien = ReturnType<typeof pocztaZUstawien>;
 
+/** Trwały log transportu: tylko oczyszczony kod i zdanie ze słownika, nigdy odpowiedź serwera z loginem. */
+export function opisBleduPocztyDoLogu(e: { code?: unknown; message?: string }): string | undefined {
+  if (!e.code) return e.message;
+  const kod = String(e.code).replace(/[^A-Z0-9_]/gu, '').slice(0, 20);
+  return `SMTP error (${kod}) — ${komunikatBleduPoczty({ code: kod })}`;
+}
+
 /** Polski komunikat błędu wysyłki — z kodu nodemailera, nigdy z treści błędu (bywa w niej odpowiedź serwera z loginem). */
 export function komunikatBleduPoczty(e: { code?: unknown; dlaOperatora?: boolean; message?: string } | null | undefined): string {
   if (e?.dlaOperatora && e.message) return e.message;
@@ -104,4 +111,25 @@ export function komunikatBleduPoczty(e: { code?: unknown; dlaOperatora?: boolean
   if (kod === 'ETLS') return 'Połączenie szyfrowane z serwerem poczty nie powiodło się — sprawdź port (465 albo 587).';
   if (kod === 'EENVELOPE') return 'Serwer poczty odrzucił adres nadawcy albo odbiorcy.';
   return `Serwer poczty nie przyjął wiadomości${kod ? ` (kod ${kod.replace(/[^A-Z0-9_]/gu, '').slice(0, 20)})` : ''}.`;
+}
+
+/**
+ * PRZ-109.03: znacznik „ten błąd dał transport poczty”. Stawia go WYŁĄCZNIE `catch` wokół `sendMail` (usługi wiadomości
+ * i potwierdzenia) i tylko przy kodzie nodemailera — ENOENT ze złożenia treści albo TypeError bez kodu znacznika nie
+ * dostają i zostają „błędem technicznym panelu”. Rozróżnienie po miejscu złapania i kodzie, nigdy po treści błędu.
+ */
+export function oznaczBladPoczty<T>(e: T): T {
+  const b = e as unknown as { code?: unknown; zTransportuPoczty?: boolean } | null;
+  if (b && typeof b === 'object' && typeof b.code === 'string' && b.code) b.zTransportuPoczty = true;
+  return e;
+}
+
+/**
+ * Zdanie dla operatora po nieudanej wysyłce: błąd transportu → `komunikatBleduPoczty` (+ gdzie poprawić, gdy ekran
+ * Ustawień jest dla tego konta otwarty), wszystko inne → `komunikatDlaOperatora`. Treść błędu nie wychodzi na ekran.
+ */
+export function komunikatWysylkiMaila(e: { code?: unknown; dlaOperatora?: boolean; message?: string; zTransportuPoczty?: boolean } | null | undefined,
+  { wskazUstawienia = false }: { wskazUstawienia?: boolean } = {}): string {
+  if (!e?.zTransportuPoczty) return komunikatDlaOperatora(e);
+  return komunikatBleduPoczty(e) + (wskazUstawienia ? ' Dane serwera poczty poprawisz w Ustawienia → Integracje → Poczta wychodząca.' : '');
 }

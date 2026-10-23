@@ -5,6 +5,7 @@ import { mailPotwierdzenia } from '../szablony.js';
 import { tekstZeStopka } from '../oprawa.js';
 import { oprawaTeraz } from '../podpis-maili.js';
 import { zdaniaPlatnosciTeraz } from '../zdania-platnosci.js';
+import { oznaczBladPoczty, opisBleduPocztyDoLogu } from '../poczta-ustawien.ts';
 
 // WYSYLKA POTWIERDZENIA PRZYJECIA ZAMOWIENIA (21.08.2026).
 //
@@ -56,9 +57,10 @@ export function createPotwierdzenie({ db, mailer, sprzedawca = {}, oprawaPoczty 
       // nigdy nie bylo — i nikt by tego nie sprawdzil.
       dopiszLog(db, id, {
         akcja: 'potwierdzenie.blad',
-        wynik: `BŁĄD wysyłki potwierdzenia do ${mail.do} (${ktoKlikal}): ${e.message}`,
+        wynik: `BŁĄD wysyłki potwierdzenia do ${mail.do} (${ktoKlikal}): ${opisBleduPocztyDoLogu(e)}`,
       });
-      throw e;
+      // PRZ-109.03: znacznik bledu transportu poczty — trasa karty pokaze zdanie z kodu nodemailera.
+      throw oznaczBladPoczty(e);
     }
 
     const kiedy = teraz();

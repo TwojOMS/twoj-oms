@@ -40,12 +40,19 @@ const kwota = (grosze) => zl(grosze).replace('.', ',');
 // spoza naszej kontroli. Srednik w takim polu rozjechalby wszystkie kolumny na prawo od niego
 // — i to CICHO: plik otworzylby sie normalnie, tylko kwoty wyladowalyby w zlych kolumnach.
 // Cudzyslow w srodku pola podwaja sie; nowa linia tez wymusza otoczenie pola cudzyslowami.
-function pole(wartosc) {
+function poleCsv(wartosc) {
   const tekst = String(wartosc ?? '');
   const trzeba = tekst.includes(';') || tekst.includes(CUDZYSLOW)
     || tekst.includes(CR) || tekst.includes(LF);
   if (!trzeba) return tekst;
   return CUDZYSLOW + tekst.split(CUDZYSLOW).join(CUDZYSLOW + CUDZYSLOW) + CUDZYSLOW;
+}
+
+// ⚠️ TEKST SPOZA OMS-A NIE MOZE STAC SIE FORMULA ARKUSZA. Apostrof dodajemy PRZED
+// cytowaniem CSV. Kwoty ida osobno przez poleCsv — ujemna kwota musi zostac liczba.
+function pole(wartosc) {
+  const tekst = String(wartosc ?? '');
+  return poleCsv(/^[=+\-@\t\r]/.test(tekst) ? "'" + tekst : tekst);
 }
 
 export function nazwaPlikuSprzedazy(od, doDnia) {
@@ -66,17 +73,17 @@ export function csvSprzedazy(wiersze, { zKlientem = false } = {}) {
   const linie = [naglowek.map(pole).join(';')];
   for (const w of wiersze ?? []) {
     const komorki = [
-      w.dzien,
-      w.kanal,
-      w.numer ?? '',
-      ZRODLO[w.zrodlo] ?? w.zrodlo,
-      kwota(w.bruttoGrosze),
-      kwota(w.nettoGrosze),
-      takNie(w.faktura),
-      takNie(w.oplacone),
+      poleCsv(w.dzien),
+      pole(w.kanal),
+      pole(w.numer ?? ''),
+      pole(ZRODLO[w.zrodlo] ?? w.zrodlo),
+      poleCsv(kwota(w.bruttoGrosze)),
+      poleCsv(kwota(w.nettoGrosze)),
+      poleCsv(takNie(w.faktura)),
+      poleCsv(takNie(w.oplacone)),
     ];
-    if (zKlientem) komorki.push(w.email ?? '');
-    linie.push(komorki.map(pole).join(';'));
+    if (zKlientem) komorki.push(pole(w.email ?? ''));
+    linie.push(komorki.join(';'));
   }
   return linie.join(KONIEC_LINII);
 }

@@ -1,6 +1,6 @@
 // PRZ-108.07 (zmiana B planu automatyzacji): rejestr zdarzeń, które silnik umie wykryć.
 // PRZ-108.08 (zmiana C1): „Paczka nadana” i „Status zamówienia zmienił się na”. PRZ-108.09 (C2): „Kurier odebrał
-// paczkę”. Dalej: D kolejne (plan, sekcja 8).
+// paczkę”. PRZ-110.02 (D1): „Nowe zamówienie”. Dalej: D kolejne (plan, sekcja 8).
 //
 // Kontrakt wpisu: { klucz, etykieta, opis, pomoc? (zdanie pod opisem w kreatorze), grupa ('przesylka' | 'zamowienie' | 'dokumenty'),
 //   kandydaci(db, { granica, od, po, parametr, limit, kanaly, regula_id })
@@ -23,5 +23,6 @@
 import { zdarzeniePaczkaNadana } from './paczka-nadana.js';
 import { zdarzenieStatusZmieniony } from './status-zmieniony.js';
 import { zdarzeniePaczkaOdebrana } from './paczka-odebrana.js';
+import { zdarzenieNoweZamowienie } from './nowe-zamowienie.js';
 
-export const ZDARZENIA = Object.freeze([zdarzeniePaczkaNadana, zdarzeniePaczkaOdebrana, zdarzenieStatusZmieniony]);
+export const ZDARZENIA = Object.freeze([zdarzeniePaczkaNadana, zdarzeniePaczkaOdebrana, zdarzenieStatusZmieniony, zdarzenieNoweZamowienie]);

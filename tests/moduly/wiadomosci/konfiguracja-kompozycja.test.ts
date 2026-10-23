@@ -116,7 +116,12 @@ describe('domyślny bootstrap BEZ SMTP', () => {
   it('wysyłka z karty mówi wprost 503, zamiast udawać wysłanie', async () => {
     const id = fikcyjneZamowienie(a!);
     const r = await a!.app.inject({ method: 'POST', url: `/zamowienia/${id}/wiadomosc/potwierdzenie`, headers });
-    expect({ status: r.statusCode, tresc: r.body }).toEqual({ status: 503, tresc: 'Poczta nie jest skonfigurowana — wiadomości panel nie wyśle.' });
+    // PRZ-109.06: to nadal odmowa 503, ale formularz wraca ekranem panelu z drogą na kartę.
+    expect(r.statusCode).toBe(503);
+    expect(r.headers['content-type']).toContain('text/html');
+    expect(r.body).toContain('Poczta nie jest skonfigurowana — wiadomości panel nie wyśle.');
+    expect(r.body).toContain('class="oms-sidebar');
+    expect(r.body).toContain(`href="/zamowienia/${id}#wiadomosci">Wróć do zamówienia</a>`);
   });
 });
 

@@ -73,6 +73,14 @@ describe('eksport CSV z raportów', () => {
     expect(bruttoZPliku(odp.body)).toHaveLength(2);
   });
 
+  it('zabezpiecza numer zamówienia przed wykonaniem formuły w arkuszu', async () => {
+    db.prepare('UPDATE zamowienia SET numer = ? WHERE zrodlo_id = ?').run('=1+1', 9001);
+    const odp = await wejdz('/raporty/eksport.csv?od=2026-07-01&do=2026-07-31');
+    expect(odp.statusCode).toBe(200);
+    expect(odp.body).toContain(";'=1+1;OMS;");
+    expect(odp.body).not.toContain(';=1+1;');
+  });
+
   it('liczy TO SAMO, co ekran — co do grosza, przez obie epoki', async () => {
     const zakres = { od: '2026-06-01', do: '2026-07-31' };
     const zEkranu = sprzedazWOkresie(db, zakres)

@@ -133,7 +133,129 @@ Na innym komputerze w tej samej sieci otwórz w przeglądarce `http://ADRES-SERW
 i zaloguj się. Zobaczysz trzy zamówienia DEMO. Zapisz hasło w menedżerze haseł.
 
 Panel działa po zwykłym HTTP, bez szyfrowania. **Nie przekierowuj portu 3001 na routerze do
-internetu.** Dostęp spoza biura (VPN, HTTPS) to osobny krok.
+internetu.** Dostęp spoza biura przygotuj według [sekcji 7a](#7a-dostęp-spoza-biura-przez-https).
+
+## 7a. Dostęp spoza biura przez HTTPS
+
+Zrób ten krok po przejściu na pracę (sekcja 8), przed udostępnieniem panelu innym osobom.
+Przejście na pracę zastępuje konfigurację próby — jeśli sprawdzasz HTTPS wcześniej, powtórz
+ustawienie proxy i adresu panelu po przejściu. Zalecany wariant: **Caddy na tym samym serwerze**,
+przed OMS-em w Dockerze. Caddy szyfruje połączenie z przeglądarką i sam uzyskuje oraz odnawia
+certyfikat Let's Encrypt. Poniższe polecenia wykonujesz na Debianie 13, tak jak poprzednie kroki.
+
+**1. Przygotuj domenę i dostęp do serwera.** W panelu DNS swojej domeny dodaj rekord A
+`oms.przyklad.pl` wskazujący na publiczny adres IPv4 serwera (wszędzie niżej zastąp tę domenę
+swoją). Rekord AAAA dodaj tylko przy działającym publicznym IPv6; błędny usuń. W zaporze
+dostawcy serwera otwórz TCP 80 i 443; w biurze przekieruj na routerze wyłącznie te dwa porty
+na serwer OMS i dopuść je w jego zaporze. Port 80 jest potrzebny także do uzyskania/odnowienia
+certyfikatu i przekierowania HTTP na HTTPS. Za CGNAT bez własnego publicznego adresu wybierz
+tunel opisany na końcu tej sekcji.
+
+Compose publikuje `0.0.0.0:${OMS_PORT_LAN:-3001}:3001`, czyli HTTP na wszystkich adresach IPv4
+hosta, a nie tylko na `127.0.0.1`. W kontenerze `OMS_PORT` jest ustawione na stałe na 3001;
+zmiana `OMS_PORT` w `oms.env` nie zmieni tego mapowania. Poniżej używamy portu hosta 3001;
+jeśli wcześniej zmieniłeś `OMS_PORT_LAN`, wpisz swój port w `reverse_proxy`.
+**Port HTTP nie może być osiągalny z internetu:** na routerze nie przekierowuj 3001,
+na VPS-ie zamknij go w zaporze dostawcy (także inne porty poza potrzebnymi, np. SSH).
+Samo zablokowanie portu w UFW hosta może nie wystarczyć, bo Docker ma własne reguły.
+Z komputera poza biurem sprawdź, że `curl --connect-timeout 5 http://PUBLICZNY-IP:3001/login`
+nie łączy się z panelem. Jeśli pokazuje stronę, najpierw zamknij ten dostęp.
+
+**2. Zainstaluj Caddy i zapisz konfigurację.** Przed blokiem wykonaj osobno `sudo -v`.
+
+```bash
+sudo apt-get update
+sudo apt-get install -y caddy
+sudo nano /etc/caddy/Caddyfile
+```
+
+Zastąp zawartość pliku (zapis Ctrl+O, Enter, wyjście Ctrl+X):
+
+```caddyfile
+{
+    acme_ca https://acme-v02.api.letsencrypt.org/directory
+}
+
+oms.przyklad.pl {
+    reverse_proxy 127.0.0.1:3001
+}
+```
+
+Nie dodawaj reguł `header` z nagłówkami bezpieczeństwa — nie dubluj ich w proxy: panel wysyła
+je sam. Caddy przekazuje adres gościa w `X-Forwarded-For` i protokół w `X-Forwarded-Proto`.
+
+**3. Ustaw zaufany adres proxy.** To adres bezpośredniego pośrednika widziany przez OMS,
+nie adres komputera gościa. Przy OMS uruchomionym bezpośrednio na hoście byłoby to
+`OMS_TRUST_PROXY=127.0.0.1`. W tej instalacji Docker może zamienić adres źródłowy na bramę
+swojej sieci. Odczytaj ją (standardowy Compose z tej instrukcji ma jedną sieć):
+
+```bash
+sudo docker inspect oms --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}'
+sudo nano /opt/oms/config/oms.env
+```
+
+Dodaj jedną linię `OMS_TRUST_PROXY=ADRES-BRAMY`, zastępując `ADRES-BRAMY` wynikiem, np.
+`OMS_TRUST_PROXY=172.18.0.1`. Nie kopiuj przykładowego adresu bez sprawdzenia. Jeśli Twoja
+konfiguracja Dockera zachowuje loopback, użyj `127.0.0.1`; poprawność potwierdź próbą z punktu 5.
+Format: dokładny IPv4/IPv6 albo CIDR, kilka adresów oddzielonych przecinkami **bez spacji**.
+Nie wpisuj `true`, `*`, zakresu `/0` ani całej sieci użytkowników. Zaufanie bramie oznacza
+zaufanie ruchowi z hosta i wymaga zamknięcia bezpośredniego portu HTTP z punktu 1.
+Zapisz plik i odtwórz kontener (sam `restart` nie wczytuje zmienionego `env_file`):
+
+```bash
+sudo sh /opt/oms/aktualizuj.sh compose up -d --force-recreate oms
+sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+sudo systemctl enable --now caddy
+sudo systemctl reload caddy
+```
+
+Jeśli walidacja lub uruchomienie odmawia, sprawdź `sudo journalctl -u caddy -n 50 --no-pager`.
+Najpierw popraw domenę, DNS lub dostępność portów 80/443; nie omijaj błędów certyfikatu w przeglądarce.
+
+**4. Sprawdź HTTPS i linki.** Na innym komputerze:
+
+```bash
+curl -I https://oms.przyklad.pl/login
+```
+
+Oczekiwane: HTTP 200 oraz poniższe nagłówki (wielkość liter nazw nie ma znaczenia):
+
+```text
+X-Frame-Options: DENY
+Content-Security-Policy: frame-ancestors 'none'
+X-Content-Type-Options: nosniff
+Referrer-Policy: same-origin
+Strict-Transport-Security: max-age=15552000
+```
+
+Zaloguj się pod `https://oms.przyklad.pl/login`. W narzędziach przeglądarki (F12 → Sieć,
+odpowiedź POST `/login`) ciasteczko sesji w `Set-Cookie` ma `Secure` i `HttpOnly`.
+Sam GET `/login` nie ustawia sesji. Panel dodaje HSTS i `Secure` według `X-Forwarded-Proto`
+także bez `OMS_TRUST_PROXY` — te flagi nie potwierdzają poprawnego adresu gościa.
+W Ustawienia → Integracje → Poczta wychodząca → Adres panelu zapisz `https://oms.przyklad.pl`,
+bez `/login`. To adres linków w mailach, m.in. zaproszeń i ustawiania hasła. Jeżeli pole jest
+zablokowane przez istniejące `OMS_ADRES_PANELU`, popraw jego wartość w `oms.env` i odtwórz
+kontener tym samym poleceniem co wyżej.
+
+**5. Sprawdź blokadę prób na koncie próbnym.** Wyloguj się i dla jednego wymyślonego,
+nieistniejącego loginu wpisz pięć razy błędne hasło w ciągu minuty. Piąta odmowa uruchamia
+blokadę (HTTP 429), a szósta próba także zwraca HTTP 429 i „Za dużo nieudanych prób”
+(widać w F12 → Sieć).
+Z drugiego łącza, np. telefonu z wyłączonym Wi-Fi, pierwsza błędna próba tego samego loginu
+powinna dać zwykłą odmowę, bez 429. Jeśli od razu dzieli blokadę, OMS widzi wspólny adres:
+popraw `OMS_TRUST_PROXY` i powtórz po wygaśnięciu blokady (co najmniej minuta).
+Bez tej zmiennej wszyscy za proxy dzielą adres, a ochrona przed zgadywaniem haseł jest słabsza.
+Nie przeprowadzaj próby wieloma loginami ani na koncie pracownika.
+
+**Tunel Cloudflare** jest alternatywą bez otwierania portów przychodzących: uruchom `cloudflared`
+na tym samym hoście lub w kontenerze i skieruj jego publiczną nazwę na HTTP OMS. W `OMS_TRUST_PROXY`
+wpisz adres bezpośredniego pośrednika widziany przez OMS: adres kontenera/hosta `cloudflared`
+(przy przejściu przez publikowany port Dockera może to być brama), **nie zakresy adresów Cloudflare**.
+Nie ufaj całej sieci kontenerów; po zmianie adresu tunelu zaktualizuj wpis i odtwórz OMS.
+Powtórz kontrolę protokołu HTTPS, flag ciasteczka, adresu panelu i oddzielnych blokad jak wyżej;
+bezpośredni port HTTP nadal ma być zamknięty z internetu.
+
+VPN (np. WireGuard) pozwala korzystać z panelu przez prywatną sieć bez wystawiania go do internetu.
 
 ## 8. Przejście na pracę
 
@@ -469,6 +591,14 @@ Serwer wirtualny (VPS) w kontenerze LXC/OpenVZ bywa bez współdzielonych punkt�
 na takim serwerze kopię poza dyskiem robi się inaczej (np. pobieranie kopii przez sieć), poza tą instrukcją.
 
 ## Gdy coś nie działa
+
+### Administrator zapomniał hasła
+
+Właściciel serwera z dostępem SSH uruchamia `sudo sh /opt/oms/aktualizuj.sh link-hasla LOGIN`.
+Bez `LOGIN` polecenie wypisze same loginy administratorów. Konto musi być włączone.
+Otwórz wypisany link w przeglądarce i ustaw nowe hasło; gdy podano samą ścieżkę, doklej ją do adresu panelu.
+Link działa raz przez 48 godzin i unieważnia wcześniejsze linki konta — traktuj go jak hasło, nie przesyłaj w zgłoszeniu.
+Polecenie zapisuje w dzienniku kont ślad „konsola serwera”, bez tokenu; samo nie zmienia hasła ani nie wysyła maila.
 
 ```bash
 cd ~

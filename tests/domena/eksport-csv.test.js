@@ -42,6 +42,43 @@ describe('CSV sprzedaży', () => {
   });
 });
 
+describe('CSV sprzedaży — ochrona przed formułami arkusza', () => {
+  it.each([
+    ['=SUM(1;2)', '"\'=SUM(1;2)"'],
+    ['+48123', "'+48123"],
+    ['-ABC', "'-ABC"],
+    ['@cmd', "'@cmd"],
+    ['\tABC', "'\tABC"],
+    ['\rABC', '"\'\rABC"'],
+    ['-1+1', "'-1+1"],
+  ])('zabezpiecza numer %j apostrofem przed cytowaniem CSV', (numer, komorka) => {
+    expect(csvSprzedazy([wiersz({ numer })])).toBe(
+      'Dzień;Kanał;Numer;Źródło;Brutto;Netto;Faktura;Opłacone\r\n'
+      + `2026-06-10;SZKICOWNIA_PL;${komorka};Apilo;246,00;200,00;nie;tak`,
+    );
+  });
+
+  it('zabezpiecza e-mail w wariancie z klientem', () => {
+    const csv = csvSprzedazy([wiersz({ email: '=x@example.com' })], { zKlientem: true });
+    expect(linie(csv)[1]).toBe("2026-06-10;SZKICOWNIA_PL;WO1;Apilo;246,00;200,00;nie;tak;'=x@example.com");
+  });
+
+  it('zabezpiecza także kanał i nieznane źródło', () => {
+    const csv = csvSprzedazy([wiersz({ kanal: '+KANAL', zrodlo: '@import' })]);
+    expect(linie(csv)[1]).toBe("2026-06-10;'+KANAL;WO1;'@import;246,00;200,00;nie;tak");
+  });
+
+  it('zostawia ujemne brutto i netto liczbami bez apostrofu', () => {
+    const csv = csvSprzedazy([wiersz({ bruttoGrosze: -1250, nettoGrosze: -1000 })]);
+    expect(linie(csv)[1]).toBe('2026-06-10;SZKICOWNIA_PL;WO1;Apilo;-12,50;-10,00;nie;tak');
+  });
+
+  it('nie zmienia numeru ze znakiem równości w środku', () => {
+    const csv = csvSprzedazy([wiersz({ numer: 'AB=12' })]);
+    expect(linie(csv)[1]).toBe('2026-06-10;SZKICOWNIA_PL;AB=12;Apilo;246,00;200,00;nie;tak');
+  });
+});
+
 describe('nazwa pliku', () => {
   it('niesie zakres, żeby dwa eksporty nie nadpisały się w Pobranych', () => {
     expect(nazwaPlikuSprzedazy('2026-06-01', '2026-06-30')).toBe('sprzedaz-2026-06-01_2026-06-30.csv');

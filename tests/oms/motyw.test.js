@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { readFileSync } from 'node:fs';
 import {
   MOTYW_DOMYSLNY, motywZNaglowka, przeciwnyMotyw, ciasteczkoMotywu, bezpiecznyPowrot,
 } from '../../src/domena/motyw.js';
@@ -8,6 +9,16 @@ import { buildOmsServer } from '../pomoc/serwer-parytetu.ts';
 const config = { auth: { user: 'adam', pass: 'x' } };
 const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'), origin: 'http://localhost' };
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
+
+describe('formularz automatyzacji na telefonie', () => {
+  it('do 40rem układa etykiety nad polami jak pozostałe Ustawienia', () => {
+    const layout = readFileSync(new URL('../../src/core/web/widoki/layout-oms.ejs', import.meta.url), 'utf8');
+    const css = readFileSync(new URL('../../src/public/oms-design.css', import.meta.url), 'utf8');
+    expect(layout).toMatch(/@media\s*\(max-width:\s*40rem\)\s*\{\s*\.ust-formularz\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);/);
+    // Bez selektora o tej samej szczegółowości dwie kolumny automatyzacji wygrywają z layoutem.
+    expect(css).toMatch(/@media\s*\(max-width:\s*40rem\)\s*\{\s*\.aut-sekcja\s+\.ust-formularz\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*;?\s*\}/);
+  });
+});
 
 describe('motywZNaglowka', () => {
   it('czyta motyw z ciasteczka', () => {

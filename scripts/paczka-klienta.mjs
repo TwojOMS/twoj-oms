@@ -19,6 +19,7 @@ const DOKLADNE = new Set([
   'scripts/instalacja-demo.mjs', 'scripts/instalacja-otworz.mjs', 'scripts/instalacja-kontener.mjs',
   'scripts/backup-db.mjs', 'scripts/paczka-klienta.mjs', 'scripts/backup-rotation.mjs',
   'scripts/produkcja-pierwszy-start.mjs', 'scripts/inicjalizuj-granice-bez-historii.mjs',
+  'scripts/link-hasla-admina.mjs',
   'docs/instalacja-klienta.md', 'docs/instalacja-docker.md', 'docs/aktualizacje-klienta.md', 'docs/aktualizacja-klienta-v0.md',
 ]);
 // PRZ-094.21: deploy/drukarka/ — agent druku etykiet i faktur (instrukcja w README.md obok skryptów).

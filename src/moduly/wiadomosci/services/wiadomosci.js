@@ -14,6 +14,7 @@ import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { tekstZeStopka } from '../oprawa.js';
 import { oprawaTeraz } from '../podpis-maili.js';
 import { zdaniaPlatnosciTeraz } from '../zdania-platnosci.js';
+import { oznaczBladPoczty, opisBleduPocztyDoLogu } from '../poczta-ustawien.ts';
 // WDT (spec 2026-08-26): mail „Faktura" dla zamowienia z nabywca unijnym dostaje DRUGI
 // zalacznik — „Potwierdzenie wywozu towarow" (art. 42 ust. 4), skladane na swiezo z tych
 // samych danych, co przycisk na karcie (routes/zamowienia.js). Regula rozpoznania jest
@@ -297,9 +298,10 @@ export function createWiadomosci({
       // nigdy nie było.
       dopiszLog(db, id, {
         akcja: 'wiadomosc.blad',
-        wynik: `BŁĄD wysyłki „${nazwaTematu(temat_id)}" do ${w.do} (${ktoKlikal}): ${e.message}`,
+        wynik: `BŁĄD wysyłki „${nazwaTematu(temat_id)}" do ${w.do} (${ktoKlikal}): ${opisBleduPocztyDoLogu(e)}`,
       });
-      throw e;
+      // PRZ-109.03: znacznik dla ekranu (zdanie z kodu nodemailera); ten sam obiekt i kod dla ponowień.
+      throw oznaczBladPoczty(e);
     }
 
     const kiedy = teraz();

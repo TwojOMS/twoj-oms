@@ -570,6 +570,8 @@
         <tr><td class="pusto" colspan="7">
           <% if (szukaj) { %>Brak zamówień pasujących do wyszukiwania.
           <% } else if (chipy.length) { %>Żadne zamówienie nie mieści się w ustawionych filtrach.
+          <%# PRZ-109.02: baza bez ani jednego zamowienia (nowa instalacja) — „nic do zrobienia" bylo tam nieprawda. %>
+          <% } else if (typeof bazaBezZamowien !== 'undefined' && bazaBezZamowien) { %>Nie ma jeszcze żadnych zamówień. Pojawią się tu, gdy podłączysz kanał sprzedaży — sklep WooCommerce albo konto Allegro — albo gdy dodasz zamówienie ręcznie przyciskiem „+ Nowe zamówienie”.<% if (typeof odnosnikDoKanalow !== 'undefined' && odnosnikDoKanalow) { %> Stan kanałów: <a href="/ustawienia/integracje">Ustawienia → Sklepy i usługi</a>.<% } %>
           <% } else { %>Nie ma tu nic do zrobienia.<% } %>
         </td></tr>
       <% } %>

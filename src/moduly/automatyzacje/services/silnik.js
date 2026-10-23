@@ -22,9 +22,13 @@ import {
 import {
   wTransakcji, zaplanuj, doWykonania, zarezerwuj, zakoncz, ponow, oznaczPrzerwane, licznikGodziny,
 } from '../db/wykonania.js';
+import { opisBleduPocztyDoLogu } from '../../wiadomosci/poczta-ustawien.ts';
 
 const ZMIANY = 'SELECT total_changes() AS n';
 const komunikat = (e) => (e instanceof Error ? e.message : String(e));
+// PRZ-109.12: błąd transportu poczty (znacznik z usługi wiadomości) niesie w `message` odpowiedź serwera, a w niej
+// login skrzynki — do logu zamówienia i dziennika wykonań idzie tylko kod i zdanie, jak w `wiadomosc.blad`.
+const opisBleduWysylki = (e) => (e?.zTransportuPoczty ? opisBleduPocztyDoLogu(e) : komunikat(e));
 
 /**
  * Warunki w chwili wykonania, gdy nikt nie podał sprawdzacza (zmiana B; prawdziwy — status, numer listu, dostawa,
@@ -150,14 +154,14 @@ export function createSilnikAutomatyzacji({
       const proby = w.proby + 1;
       if (klasyfikujBladPoczty(e) === 'ponow') {
         if (proby < MAKS_PROB) {
-          ponow(db, w, { nastepna: ponowienieOd(teraz()), powod: `Próba ${proby} nieudana: ${komunikat(e)}` });
+          ponow(db, w, { nastepna: ponowienieOd(teraz()), powod: `Próba ${proby} nieudana: ${opisBleduWysylki(e)}` });
           return 'ponowione';
         }
-        zakoncz(db, w, { stan: 'blad', proby, powod: `${MAKS_PROB} próby nieudane — serwer poczty nie przyjął wiadomości (${komunikat(e)}).`,
+        zakoncz(db, w, { stan: 'blad', proby, powod: `${MAKS_PROB} próby nieudane — serwer poczty nie przyjął wiadomości (${opisBleduWysylki(e)}).`,
           powod_kod: 'poczta', teraz: teraz().toISOString(), nazwa: regula.nazwa });
         return 'blad';
       }
-      zakoncz(db, w, { stan: 'niepewne', powod: `Błąd w trakcie wysyłki (${komunikat(e)}). Nie ponawiamy — sprawdź, czy klient dostał wiadomość.`,
+      zakoncz(db, w, { stan: 'niepewne', powod: `Błąd w trakcie wysyłki (${opisBleduWysylki(e)}). Nie ponawiamy — sprawdź, czy klient dostał wiadomość.`,
         powod_kod: 'niepewne', teraz: teraz().toISOString(), nazwa: regula.nazwa });
       return 'niepewne';
     }

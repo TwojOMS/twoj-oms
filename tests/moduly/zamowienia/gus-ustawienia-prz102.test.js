@@ -92,7 +92,10 @@ describe('PRZ-102.11 Ustawienia → Integracje → GUS', () => {
     }
     const karta = await post(app, `/zamowienia/${id}/dane/gus`, admin, { nip: NIP });
     expect(karta.statusCode).toBe(503);
-    expect(karta.body).toBe(KOMUNIKAT);
+    // PRZ-109.06: odmowa formularza karty zachowuje panel i drogę powrotu.
+    expect(karta.headers['content-type']).toContain('text/html');
+    expect(karta.body).toContain(KOMUNIKAT);
+    expect(karta.body).toContain(`href="/zamowienia/${id}#faktura">Wróć do zamówienia</a>`);
     expect((await post(app, '/zamowienia/nowe/gus', admin, { f_nip: NIP })).body).toContain(KOMUNIKAT);
     expect((await post(app, '/klienci/gus', admin, { f_nip: NIP })).body).toContain(KOMUNIKAT);
     expect(siec).not.toHaveBeenCalled();

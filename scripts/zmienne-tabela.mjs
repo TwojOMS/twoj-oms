@@ -10,6 +10,7 @@ const komorka = tekst => String(tekst).replaceAll('&', '&amp;').replaceAll('<', 
   .replaceAll('>', '&gt;').replaceAll('|', '&#124;').replaceAll('`', '&#96;').replace(/\r?\n/g, '<br>');
 const sekret = z => z.sekret === true || /(?:PASS(?:WORD)?|HASLO|TOKEN|SECRET|KLUCZ)$/.test(z.nazwa)
   || z.nazwa === 'DPD_INFO_CHANNEL';
+const sciezkaPanelu = ekran => ekran.startsWith('Analizy i finanse → ') ? ekran : `Ustawienia → ${ekran}`;
 
 function domyslna(wartosc) {
   if (wartosc === null || wartosc === undefined) return 'brak';
@@ -24,8 +25,10 @@ export function generujTabele(manifest) {
   const wiersze = [
     '# Zmienne konfiguracji OMS', '',
     'W instalacji Docker konfiguracja leży w pliku `/opt/oms/config/oms.env` (zobacz [instalację](instalacja-docker.md)).',
-    'Część ustawień wprowadzisz w panelu: Ustawienia → Firma oraz Ustawienia → Integracje (inFakt, DPD, InPost, poczta, adres panelu i podpis maili).',
+    'Część ustawień wprowadzisz w panelu: Ustawienia → Firma (także logo), Ustawienia → Integracje oraz Analizy i finanse → Finanse → Kompletność danych.',
     '**Plik wygrywa** — ustawiona w nim sekcja integracji lub adres firmy blokuje zapis tej części w panelu.',
+    'Daty kompletności danych zapisuje tylko administrator, bez restartu; data z pliku blokuje zapis swojego pola. Logo i jego opis administrator zmienia bez restartu, o ile plik nie ustala logo.',
+    'Połączenia dodawane w Ustawienia → Integracje → Reklamy są osobne: nie zmieniają plikowych META_TOKEN, META_KONTA i GA4_KLUCZ używanych przez karty kampanii. W panelu wgrywasz też obraz logo, zamiast ustawiać ścieżkę OMS_LOGO_PLIK na serwerze.',
     'Szczegóły walidacji i aktywacji znajdziesz w [manifeście konfiguracji w repozytorium](https://github.com/TwojOMS/twoj-oms/blob/main/docs/konfiguracja.md).', '',
     'Tabela jest generowana z manifestu JSON; nie edytuj jej ręcznie.',
     '„brak” oznacza brak wartości domyślnej (null); pusty tekst jest pokazany osobno.',
@@ -45,7 +48,7 @@ export function generujTabele(manifest) {
         // „Do czego” = opis po ludzku; „Moduł:” to awaryjny zapas, który test w tests/instalacja wyłapuje.
         // „Co się stanie” = wersja po ludzku, jeśli jest; skutekBraku zostaje techniczną dokumentacją manifestu.
         z.opis || `Moduł: ${z.wlasciciel}`, z.skutekBrakuPoLudzku || z.skutekBraku,
-        ZMIENNE_PANEL[z.nazwa] ? `Tak — Ustawienia → ${ZMIENNE_PANEL[z.nazwa]}` : 'Nie'];
+        ZMIENNE_PANEL[z.nazwa] ? `Tak — ${sciezkaPanelu(ZMIENNE_PANEL[z.nazwa])}` : 'Nie'];
       wiersze.push(`| <code>${komorka(z.nazwa)}</code> | ${pola.map(komorka).join(' | ')} |`);
     }
     wiersze.push('');

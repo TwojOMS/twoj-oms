@@ -43,7 +43,7 @@ export function zarejestrujTrasyRaportow(app, { db, config }) {
   // jest sprzed granicy) i wygladalby jak „nie bylo sprzedazy".
   app.get('/raporty/eksport.csv', async (req, reply) => {
     const { zakres, blad } = zakresZZapytania(req.query, dzisiaj());
-    if (blad) return reply.code(400).send(blad);
+    if (blad) return ekranOdmowyRaportu(reply, blad);
     try {
       const wiersze = await sprzedazWOkresieAsync(db, zakres, config.regulySprzedazy);
       const csv = csvSprzedazy(wiersze, { zKlientem: req.query.klient === '1' });
@@ -61,7 +61,7 @@ export function zarejestrujTrasyRaportow(app, { db, config }) {
   app.get('/raporty', async (req, reply) => {
     const dzien = dzisiaj();
     const { zakres, blad } = zakresZZapytania(req.query, dzien);
-    if (blad) return reply.code(400).send(blad);
+    if (blad) return ekranOdmowyRaportu(reply, blad);
 
     try {
       // ⚠️ WSZYSTKIE TRZY OKRESY DOSTAJA SWOJE ZWROTY (Zadanie 11) — inaczej porownanie „rok

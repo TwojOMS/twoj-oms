@@ -109,7 +109,7 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
       // w `od`/`do`. Podstawiony miesiac znaczylby, ze operator patrzy na inny okres,
       // niz wpisal, i wyciaga wnioski o pieniadzach z cudzego miesiaca.
       if (!WZORZEC_MIESIACA.test(miesiac)) {
-        return reply.code(400).send('Niepoprawny miesiąc: oczekiwane RRRR-MM (np. 2026-06).');
+        return ekranOdmowyRaportu(reply, 'Niepoprawny miesiąc: oczekiwane RRRR-MM (np. 2026-06).', { ekran: 'Finanse', czynnosc: 'policzyć rachunku' });
       }
       const m = zakresMiesiaca(miesiac);
       return reply.redirect(`/finanse?od=${m.od}&do=${m.do}`, 302);
@@ -120,11 +120,11 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
       // ⚠️ ZLA DATA I ODWROCONY ZAKRES TO BLAD, NIE PUSTY RACHUNEK — przepuszczone dalej
       // oddaja 200 i zerowy wynik, a zera nikt nie kwestionuje.
       if (!od || !doDnia) {
-        return reply.code(400).send('Niepoprawna data: parametry od i do muszą być '
-          + 'istniejącymi dniami w formacie RRRR-MM-DD.');
+        return ekranOdmowyRaportu(reply, 'Niepoprawna data: parametry od i do muszą być '
+          + 'istniejącymi dniami w formacie RRRR-MM-DD.', { ekran: 'Finanse', czynnosc: 'policzyć rachunku' });
       }
       if (od > doDnia) {
-        return reply.code(400).send('Niepoprawny zakres: parametr od nie może być późniejszy niż do.');
+        return ekranOdmowyRaportu(reply, 'Niepoprawny zakres: parametr od nie może być późniejszy niż do.', { ekran: 'Finanse', czynnosc: 'policzyć rachunku' });
       }
       zakres = { od, do: doDnia, etykieta: null };
     } else {
@@ -139,7 +139,7 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
         // paskiem „nie pokrywa sie z pelnymi miesiacami" i rachunek nie liczy nic.
         zakres = zakresSkrotu(req.query.skrot || 'poprzedni-miesiac', dzien, { doKonca: true });
       } catch (e) {
-        return reply.code(400).send(komunikatDlaOperatora(e));
+        return ekranOdmowyRaportu(reply, komunikatDlaOperatora(e), { ekran: 'Finanse', czynnosc: 'policzyć rachunku' });
       }
     }
 
@@ -236,8 +236,8 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
   // ——— DANE RECZNE MIESIACA: ZUS, PIT-5, VAT-7 ————————————————————————————————————
   // ⚠️ TE TRZY LICZBY NIE PRZYCHODZA Z ZADNEGO API — inFakt trzyma skladki, KPiR i podatek
   // poza planem taryfowym, wiec wlasciciel wpisuje je recznie, raz na miesiac.
-  const ekranDanych = (reply, miesiac) => {
-    const dane = daneMiesiaca(db, miesiac);
+  const ekranDanych = (reply, miesiac, { blad = null, wpisane = null } = {}) => {
+    const dane = wpisane ? null : daneMiesiaca(db, miesiac);
     // ⚠️ ROZJAZD, SKLADNIKI I PRZELEW LICZONE W JEDNYM MIEJSCU (rozjazdZus), NIE PRZEZ
     // WLASNE SUMOWANIE TRZECH POL TUTAJ (przewodnik OMS, 4.5). `rozjazd = razem - skladniki`,
     // wiec `skladniki = razem - rozjazd`: odtwarzamy je z JUZ POLICZONEJ roznicy.
@@ -280,6 +280,8 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
       title: 'Dane miesiąca',
       miesiac,
       dane,
+      blad,
+      wpisane,
       rozjazd,
       skladnikiGrosze,
       razemGrosze,
@@ -311,7 +313,9 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
     // operator patrzy na inny miesiac, niz wpisal w pasku — i wpisze skladki do
     // niewlasciwego okresu.
     if (!WZORZEC_MIESIACA.test(req.params.miesiac)) {
-      return reply.code(400).send('Niepoprawny miesiąc w adresie (oczekiwane RRRR-MM).');
+      return ekranOdmowyRaportu(reply, 'Niepoprawny miesiąc w adresie (oczekiwane RRRR-MM).', {
+        ekran: 'Finanse', czynnosc: 'pokazać danych miesiąca', powrot: `/finanse/dane/${dzisiaj().slice(0, 7)}`,
+      });
     }
     return ekranDanych(reply, req.params.miesiac);
   });
@@ -319,7 +323,9 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
   app.post('/finanse/dane', async (req, reply) => {
     const miesiac = String(req.body?.miesiac ?? '');
     if (!WZORZEC_MIESIACA.test(miesiac)) {
-      return reply.code(400).send('Niepoprawny miesiąc (oczekiwane RRRR-MM).');
+      return ekranOdmowyRaportu(reply, 'Niepoprawny miesiąc (oczekiwane RRRR-MM).', {
+        ekran: 'Finanse', czynnosc: 'pokazać danych miesiąca', powrot: `/finanse/dane/${dzisiaj().slice(0, 7)}`,
+      });
     }
     try {
       // ⚠️ PUSTE POLE ZAPISUJE SIE JAKO BRAK (`null`), nie jako '0.00' — patrz
@@ -328,7 +334,7 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
       zapiszDaneMiesiaca(db, miesiac, req.body ?? {});
     } catch (e) {
       if (!e?.dlaOperatora) throw e;
-      return reply.code(400).send(komunikatDlaOperatora(e));
+      return ekranDanych(reply.code(400), miesiac, { blad: komunikatDlaOperatora(e), wpisane: req.body });
     }
     return reply.redirect(`/finanse/dane/${miesiac}`, 302);
   });

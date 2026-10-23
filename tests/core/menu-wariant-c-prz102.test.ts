@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 import { MODULY } from '../../src/moduly/lista.ts';
 import { nawigacjaDla } from '../../src/domena/menu-stron.js';
 import { menuKontaDla } from '../../src/domena/menu-konta.js';
@@ -72,6 +73,14 @@ describe('PRZ-102.03 menu boczne przy zamówieniach', () => {
 });
 
 describe('PRZ-102.03 analizy w górnym pasku', () => {
+  it('do 900 px oddaje miejsce nazwie ekranu: ukrywa Panel / i podpis konta, zachowując dostępny przycisk', async () => {
+    const css = readFileSync(new URL('../../src/public/oms-design.css', import.meta.url), 'utf8');
+    expect(css).toMatch(/@media\s*\(max-width:\s*900px\)\s*\{\s*\.oms-breadcrumb>span\s*,\s*\.oms-topbar \.menu-uzytkownika-nazwa\s*\{\s*display:\s*none\s*\}\s*\}/);
+    const { pasek } = kawalki(await render('/', admin));
+    expect(pasek).toContain('aria-label="Konto: Admin"');
+    expect(pasek).toContain('class="oms-avatar"');
+  });
+
   it('admin ma w pasku przycisk z sześcioma analizami w kolejności manifestów', async () => {
     const n = model('/', admin) as any;
     expect(n.analizy.pozycje.map((p: any) => p.href)).toEqual(ANALIZY);

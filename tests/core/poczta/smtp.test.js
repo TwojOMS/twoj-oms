@@ -4,6 +4,21 @@ import { createMailer } from '../../../src/core/poczta/smtp.js';
 const smtp = { host: 'h', port: 465, user: 'u', pass: 'secret' };
 
 describe('mailer', () => {
+  it('PRZ-109.07: zachowuje wyłącznie kod, bez response i oryginalnej treści nodemailera', async () => {
+    const oryginal = Object.assign(new Error('535 sklep-login@przyklad.invalid'), {
+      code: 'EAUTH', response: '535 5.7.8 sklep-login@przyklad.invalid', command: 'AUTH PLAIN',
+    });
+    const mailer = createMailer({ smtp, mailFrom: 'poczta@przyklad.invalid',
+      transportFactory: () => ({ sendMail: async () => { throw oryginal; } }) });
+    const blad = await mailer.sendMail({ to: 'kupujacy@przyklad.invalid', subject: 'Lampa', text: 'Test' }).catch(e => e);
+    expect(blad).toBeInstanceOf(Error);
+    expect(blad).not.toBe(oryginal);
+    expect(blad.message).toBe('SMTP error');
+    expect(blad.code).toBe('EAUTH');
+    expect(blad).not.toHaveProperty('response');
+    expect(blad).not.toHaveProperty('command');
+    expect(blad).not.toHaveProperty('cause');
+  });
   it('sends from the configured address', async () => {
     const sendMail = vi.fn().mockResolvedValue({ messageId: '<id>' });
     const mailer = createMailer({ smtp, mailFrom: 'indywidualne@szkicownia.pl', transportFactory: () => ({ sendMail }) });

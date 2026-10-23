@@ -5,7 +5,7 @@
 // reguła nie zależy od warunków ustawionych w regule, obowiązuje każdą.
 import { pobierzZamowienie } from '../../../oms/db/zamowienia.js';
 import { etykietyStatusow } from '../../../oms/db/statusy.js';
-import { sprawdzWarunki, historiaPrzedGranica } from '../../../domena/warunki-automatyzacji.js';
+import { sprawdzWarunki, historiaPrzedGranica, importSpozniony } from '../../../domena/warunki-automatyzacji.js';
 import { odbiorSpozniony } from '../../../domena/dowod-odbioru.js';
 
 export async function sprawdzanieWarunkow({ db, regula, wykonanie }) {
@@ -19,6 +19,10 @@ export async function sprawdzanieWarunkow({ db, regula, wykonanie }) {
   if (regula.zdarzenie === 'paczka_odebrana') {
     const odbior = odbiorSpozniony(z, wykonanie);
     if (!odbior.ok) return odbior;
+  }
+  if (regula.zdarzenie === 'zamowienie_nowe') {
+    const importZamowienia = importSpozniony(z, wykonanie);
+    if (!importZamowienia.ok) return importZamowienia;
   }
   return sprawdzWarunki(z, regula.warunki, { etykiety: etykietyStatusow(db) });
 }

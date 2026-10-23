@@ -14,6 +14,9 @@ import { numerZAllegro } from './przesylka-stan.js';
 
 export const POBRANIE = Object.freeze(['dowolne', 'tak', 'nie']);
 export const ZAMOWIENIE_STARSZE_NIZ_DNI = 14;
+// PRZ-110.02: potwierdzenie przyjęcia po wielodniowej przerwie w synchronizacji myli kupującego.
+// Próg względem chwili zdarzenia, nie włączenia reguły ani terminu wysyłki — celowe opóźnienie reguły go nie wydłuża.
+export const IMPORT_SPOZNIONY_H = 48;
 
 const ok = Object.freeze({ ok: true });
 const nie = (powod) => ({ ok: false, kod: 'warunek', powod });
@@ -66,6 +69,15 @@ export function sprawdzWarunki(z, warunki = {}, { etykiety = {} } = {}) {
 
 const DZIEN_MS = 24 * 3600 * 1000;
 const dataPl = (ms) => new Date(ms).toISOString().slice(0, 10).split('-').reverse().join('.');
+
+/** Warunek tylko dla „Nowe zamówienie”: spóźniony import zostaje w dzienniku, bez automatycznego potwierdzenia. */
+export function importSpozniony(z, wykonanie) {
+  const zlozone = Date.parse(z?.utworzone_at ?? '');
+  const wykryte = Date.parse(wykonanie?.zdarzenie_at ?? '');
+  if (Number.isNaN(zlozone) || Number.isNaN(wykryte) || wykryte - zlozone <= IMPORT_SPOZNIONY_H * 3600_000) return ok;
+  return { ok: false, kod: 'spozniony_import', powod: `Zamówienie złożone ${dataPl(zlozone)} — wykryte przez OMS po ponad `
+    + `${IMPORT_SPOZNIONY_H} godzinach. Potwierdzenie nie idzie automatem; w razie potrzeby wyślij je ręcznie z karty.` };
+}
 
 /**
  * PRZ-108.08 (poprawki po recenzji 08, usterki 1 i 3): „mail do historii” — zamówienie, które wysłano albo złożono

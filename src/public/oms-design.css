@@ -117,6 +117,7 @@ a.oms-theme-button,a.oms-theme-button:visited{text-decoration:none}
 .aut-wybor .plakietka--kanal{margin:0 .1rem 0 0}
 .aut-sekcja{max-width:60rem}
 .aut-sekcja .ust-formularz{grid-template-columns:minmax(9rem,12rem) minmax(0,1fr)}
+@media(max-width:40rem){.aut-sekcja .ust-formularz{grid-template-columns:minmax(0,1fr)}}
 .aut-sekcja select,.aut-sekcja input[type="text"],.aut-sekcja input[type="number"]{box-sizing:border-box;padding:.4rem .55rem;font:inherit;font-size:.88rem;border:1px solid var(--ramka-pola);border-radius:4px;background:var(--tlo);color:var(--tekst)}
 .aut-sekcja input[type="text"]{width:100%;max-width:24rem}
 .aut-sekcja input[type="number"]{width:6rem}
@@ -179,6 +180,9 @@ a.oms-theme-button,a.oms-theme-button:visited{text-decoration:none}
    szerszy od okna o 61 px — pomiar 20.10.2026). Zostaje ikona; nazwę niesie `title`, a lista i tak ją pokazuje. */
 @media(max-width:760px){.oms-topbar .menu-uzytkownika-nazwa{max-width:5.5rem}}
 @media(max-width:1000px){.oms-menu-analiz-przycisk{padding:0 8px}.oms-menu-analiz-przycisk>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}}
+/* PRZ-109.09: przy 655 px nazwa ekranu miała 38 px (najdłuższa: 152 px).
+   Zostają avatar i aria-label konta; miejsce oddają podpis konta i „Panel /”. */
+@media(max-width:900px){.oms-breadcrumb>span,.oms-topbar .menu-uzytkownika-nazwa{display:none}}
 /* Zwijana grupa menu (telefon: analizy) — nagłówek jak h2 grupy, ale klikalny. */
 .oms-menu-zwijana>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;margin:0;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:0.83rem;font-weight:600;letter-spacing:1.3px;text-transform:uppercase;color:var(--tekst-przygaszony)}
 .oms-menu-zwijana>summary::-webkit-details-marker{display:none}

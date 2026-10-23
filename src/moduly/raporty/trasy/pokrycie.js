@@ -4,6 +4,7 @@
 // na każdym POST-cie. Zapis tylko administrator — reszta widzi wartości i prośbę do administratora.
 // Plik konfiguracji wygrywa (jak kurier DPD w PRZ-092): ekran pokazuje wartość i skąd pochodzi, zapis daje 409.
 import { POLA_POKRYCIA, konfiguracjaZPokryciem, zapiszPokrycie } from '../pokrycie.js';
+import { ekranOdmowyRaportu } from './odmowa-raportu.js';
 
 const ADRES = '/finanse/pokrycie';
 // Formularz z ekranu odmowy Finansów wraca tam, skąd przyszedł — tylko na /finanse, nigdy pod obcy adres.
@@ -18,8 +19,9 @@ export function zarejestrujTrasyPokrycia(app, { db, config }) {
   });
   app.get(ADRES, async (req, reply) => widok(req, reply));
   app.post(ADRES, async (req, reply) => {
-    if (req.konto?.admin !== true) return reply.code(403).type('text/plain; charset=utf-8')
-      .send('Daty kompletności danych zapisuje administrator. Poproś go o ustawienie.');
+    if (req.konto?.admin !== true) return ekranOdmowyRaportu(reply,
+      'Daty kompletności danych zapisuje administrator. Poproś go o ustawienie.',
+      { ekran: 'Finanse', czynnosc: 'zapisać dat kompletności danych', kod: 403 });
     const wynik = zapiszPokrycie(db, config, req.body?.klucz, req.body?.wartosc);
     if (wynik.blad) return widok(req, reply.code(wynik.kod), wynik.blad);
     return reply.code(303).redirect(powrotFinansow(req.body?.powrot) ?? `${ADRES}?zapisano=1`);

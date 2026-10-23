@@ -8,6 +8,7 @@
 #   sudo sh /opt/oms/aktualizuj.sh produkcja      przejście z próby na pracę (PRZ-062): pierwszy raz zakłada
 #                                                  config/produkcja.env do uzupełnienia, drugi raz przełącza
 #   sudo sh /opt/oms/aktualizuj.sh zdrowie        pełna odpowiedź /health (alarmy z nazwami zmiennych, bez wartości)
+#   sudo sh /opt/oms/aktualizuj.sh link-hasla [LOGIN]   odzyskanie hasła administratora (bez loginu: lista)
 # Instrukcja: docs/aktualizacja-klienta-v0.md. Semantyka według docs/prz050-aktualizator-plan.md
 # i runnera produkcji deploy/nas/oms-release-remote.sh (deploy → NEEDS_ACCEPT → accept | recover).
 #
@@ -837,5 +838,10 @@ case "${1:-}" in
   compose) shift; compose_biezace "$@" ;;
   produkcja) [ "$#" -eq 1 ] || fail 'Uzycie: aktualizuj.sh produkcja'; produkcja ;;
   zdrowie) [ "$#" -eq 1 ] || fail 'Uzycie: aktualizuj.sh zdrowie'; zdrowie_pelne ;;
-  *) fail 'Uzycie: aktualizuj.sh status|deploy|accept|recover|compose|produkcja|zdrowie' ;;
+  link-hasla)
+    [ "$#" -le 2 ] || fail 'Uzycie: aktualizuj.sh link-hasla [LOGIN]'
+    wymagaj_roota
+    shift
+    "$DOCKER" exec oms node /app/scripts/link-hasla-admina.mjs "$@" ;;
+  *) fail 'Uzycie: aktualizuj.sh status|deploy|accept|recover|compose|produkcja|zdrowie|link-hasla' ;;
 esac
