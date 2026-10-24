@@ -58,14 +58,27 @@ człowieka nie kasuj. Teraz przeczytaj [AGENTS.md](../AGENTS.md).
 
 Hasła SSH ani hasła `sudo` nie wpiszesz, bo twój terminal nie jest interaktywny. Nie proś o nie na czacie.
 
+Polecenie na serwer dawaj człowiekowi jako **jedną linię** do jego terminala na tym komputerze:
+`ssh -t LOGIN@ADRES "polecenie"`. Nigdy w dwóch krokach typu „zaloguj się, potem wpisz”: człowiek wklei drugą
+linię w tym samym oknie Windowsa i odpowie mu `sudo` Windowsa („Sudo is disabled on this machine”). W PowerShellu 5.1
+dawaj na zewnątrz cudzysłów, a w środku tylko apostrofy. PowerShell zdejmuje wewnętrzne cudzysłowy, więc
+`'echo "a (b)"'` dociera do serwera jako `echo a (b)` i bash zgłasza błąd składni.
+
 1. Zapytaj o adres serwera i login. Sprawdź: `ssh -o BatchMode=yes LOGIN@ADRES true`. Działa: idź do punktu 3.
+   Przy pierwszym połączeniu SSH nie zna odcisku serwera i kończy się `Host key verification failed`. Pobierz odcisk
+   (`ssh-keyscan -t ed25519 ADRES`) i pokaż człowiekowi jego skrót (`ssh-keygen -lf`, wiersz `SHA256:…`). Jeśli dostawca
+   VPS podaje odcisk w panelu albo człowiek może go odczytać w konsoli serwera w panelu dostawcy
+   (`ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`), niech porówna. Zwykle nikt mu go nie dał. Wtedy powiedz to wprost,
+   a po jego „tak” dopisz odcisk do `~/.ssh/known_hosts`. Dzięki temu terminal człowieka też nie zapyta o odcisk.
 2. Serwer chce hasła: zaproponuj klucz SSH. Na tym komputerze utwórz go bez hasła:
    `ssh-keygen -t ed25519 -f ~/.ssh/twojoms -N "" -C twojoms-agent` (katalog `.ssh` załóż, jeśli go nie ma).
    PowerShell 5.1 gubi pusty argument `""` i ssh-keygen odpowiada „Too many arguments” — tam uruchom to przez
    `cmd /c`, z `%USERPROFILE%\.ssh\twojoms` zamiast `~/.ssh/twojoms`. Sprawdź, że powstały pliki `twojoms` i `twojoms.pub`.
    Klucz publiczny trafia na serwer raz, a hasło wpisuje człowiek. Najprościej w panelu dostawcy VPS (dodanie klucza SSH),
    inaczej człowiek wkleja w swoim terminalu:
-   - Windows (PowerShell): `type $env:USERPROFILE\.ssh\twojoms.pub | ssh LOGIN@ADRES "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"`
+   - Windows (PowerShell): `type $env:USERPROFILE\.ssh\twojoms.pub | ssh LOGIN@ADRES "mkdir -p ~/.ssh && chmod 700 ~/.ssh && tr -d '\r' | sed '1s/^\xef\xbb\xbf//' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"`.
+     `tr` i `sed` są potrzebne: PowerShell w konsoli UTF-8 dokleja na początku niewidoczny znak (BOM). Wtedy serwer
+     odrzuca klucz, choć polecenie kończy się bez błędu.
    - macOS, Linux: `ssh-copy-id -i ~/.ssh/twojoms.pub LOGIN@ADRES`
 
    Potem sprawdź punkt 1 jeszcze raz z `-i ~/.ssh/twojoms` — ma przejść bez pytania o hasło. Dalej łączysz się
@@ -73,13 +86,14 @@ Hasła SSH ani hasła `sudo` nie wpiszesz, bo twój terminal nie jest interaktyw
 3. `sudo`: sprawdź `ssh … sudo -n true`. Działa (root albo VPS z `sudo` bez hasła, częste w obrazach chmurowych):
    pracujesz sam. Gdy logujesz się jako root, a `sudo` nie ma, zainstaluj go (`apt-get install -y sudo`): polecenia
    w instrukcji mają `sudo`. Gdy `sudo` żąda hasła, człowiek wybiera jedną z dwóch dróg:
-   - **polecenia do wklejenia**: dajesz mu bloki, on wkleja je w swojej sesji (`ssh LOGIN@ADRES`) i odsyła wynik.
-     Wolniej, ale na serwerze nic się nie zmienia;
-   - **tymczasowe `sudo` bez hasła na czas instalacji**: człowiek sam wkleja w swojej sesji jedną linię (LOGIN
-     podstawiasz ty):
-     `echo "LOGIN ALL=(ALL) NOPASSWD:ALL" > /tmp/twojoms-sudo && sudo visudo -cf /tmp/twojoms-sudo && sudo install -m 0440 -o root -g root /tmp/twojoms-sudo /etc/sudoers.d/twojoms-instalacja && rm /tmp/twojoms-sudo`.
+   - **polecenia do wklejenia**: człowiek loguje się na serwer (`ssh LOGIN@ADRES`), a ty czekasz, aż potwierdzi, że
+     widzi znak zachęty serwera (`LOGIN@nazwa:~$`). Dopiero wtedy dajesz mu bloki, on wkleja je w tej sesji i odsyła
+     wynik. Wolniej, ale na serwerze nic się nie zmienia;
+   - **tymczasowe `sudo` bez hasła na czas instalacji**: człowiek wkleja w PowerShellu na tym komputerze jedną linię
+     (LOGIN i ADRES podstawiasz ty) i wpisuje hasło do serwera oraz hasło `sudo`:
+     `ssh -t LOGIN@ADRES "echo 'LOGIN ALL=(ALL) NOPASSWD:ALL' > /tmp/twojoms-sudo && sudo visudo -cf /tmp/twojoms-sudo && sudo install -m 0440 -o root -g root /tmp/twojoms-sudo /etc/sudoers.d/twojoms-instalacja && rm /tmp/twojoms-sudo"`.
      `visudo -cf` sprawdza linię, zanim cokolwiek trafi do `/etc/sudoers.d`, więc literówka nie zepsuje `sudo`.
-     Po instalacji usuwasz ten plik (sekcja „Po instalacji”).
+     Po instalacji usuwasz ten plik, ale dopiero po odczytaniu hasła panelu (sekcja „Po instalacji”).
 4. Bez SSH (człowiek nie chce albo nie może): wypisuj gotowe polecenia (bash) do wklejenia po kolei i proś o wynik
    każdego bloku.
 
@@ -135,6 +149,11 @@ sam, jeśli masz dostęp do serwera (SSH, sekcja 2 wyżej):
 4. `docker compose build`, `docker compose run --rm instalacja`, `docker compose up -d` (sekcje 4–6).
 5. Zweryfikuj `docker compose ps` (stan `healthy`) i `/health`. Dostęp z innego komputera: sekcja 7.
 
+Gdy wysyłasz polecenia skryptem przez `ssh LOGIN@ADRES 'bash -s' < skrypt`, polecenie, które czyta wejście, zjada
+resztę skryptu. Robi to `docker compose run`: w teście 24.10 start panelu się nie wykonał, a skrypt zakończył się
+kodem 0. Dawaj takim poleceniom `</dev/null` albo wgraj skrypt plikiem (`scp`) i uruchom go `bash plik`. Po skrypcie
+sprawdzaj `docker compose ps`, nie kod wyjścia.
+
 Jeśli nie masz dostępu do serwera, nie zgaduj — wypisz człowiekowi gotowe polecenia (bash) do wklejenia
 po kolei i poproś o wynik każdego bloku.
 
@@ -154,13 +173,22 @@ Zanim to zrobisz, wyjaśnij w jednym zdaniu, co się stanie, i poczekaj na wyra�
 
 ## Po instalacji
 
-1. Podsumuj człowiekowi: adres panelu, gdzie leży hasło, czym zrobić kopię (`docs/instalacja-docker.md`, „Codzienna obsługa”),
-   jak zatrzymać i uruchomić panel, co jeszcze nie jest podłączone.
-2. Zaproponuj **następny jeden krok**: pierwsza integracja w kolejności z sekcji 9 `instalacja-docker.md`
+1. **Hasło administratora — zanim cokolwiek posprzątasz.** W próbie lokalnej powiedz, w którym pliku jest. Na serwerze
+   daj człowiekowi jedną linię do jego terminala: `ssh -t LOGIN@ADRES "sudo cat /opt/oms/config/administrator-proby.env"`
+   (po przejściu na pracę: `administrator.env`). Poczekaj, aż zaloguje się do panelu i zapisze hasło w menedżerze
+   haseł. Dopiero potem sprzątasz dostęp (punkt 4). W teście 24.10 agent usunął `sudo` za wcześnie i człowiek utknął.
+2. **Podsumowanie.** Każdy z tych punktów ma się w nim znaleźć — w teście 24.10 zabrakło dwóch ostatnich:
+   - adres panelu i gdzie leży hasło,
+   - co jeszcze nie jest podłączone i czego brakuje (np. kopii poza dyskiem — `docs/instalacja-docker.md`, „Codzienna obsługa”),
+   - jak zatrzymać i uruchomić panel, jako jednolinijkowce do terminala człowieka:
+     `ssh -t LOGIN@ADRES "sudo sh /opt/oms/aktualizuj.sh compose down"` i
+     `ssh -t LOGIN@ADRES "sudo sh /opt/oms/aktualizuj.sh compose up -d"`,
+   - wersja wydania i data instalacji do notatek człowieka (nie do repo): wiersz `biezace:` z
+     `sudo sh /opt/oms/aktualizuj.sh status` — odczytaj go, zanim usuniesz tymczasowe `sudo`. W próbie lokalnej
+     `git rev-parse --short HEAD`.
+3. Zaproponuj **następny jeden krok**: pierwsza integracja w kolejności z sekcji 9 `instalacja-docker.md`
    (inFakt → sklep WooCommerce → Allegro → kurierzy). Po każdej integracji test z prawdziwym, ale niskoryzykownym zamówieniem.
    Poczta wychodząca (zaproszenia do kont, linki do hasła) jest osobnym, niezależnym krokiem: `docs/poczta-smtp.md`.
-3. Zapisz człowiekowi (w jego notatkach, nie w repo) wersję wydania i datę instalacji: na serwerze z Dockerem to wiersz
-   `biezace:` z `sudo sh /opt/oms/aktualizuj.sh status`, w próbie lokalnej `git rev-parse --short HEAD`.
 4. Posprzątaj dostęp z sekcji 2: tymczasowe `sudo` bez hasła usuń (`sudo rm /etc/sudoers.d/twojoms-instalacja`,
    potem `sudo -n true` ma odmówić, chyba że `sudo` bez hasła było tam od początku). Powiedz człowiekowi, gdzie leży klucz SSH (`~/.ssh/twojoms`) i jak odciąć
    agentowi serwer: usunąć z `~/.ssh/authorized_keys` na serwerze linię kończącą się na `twojoms-agent` albo klucz
