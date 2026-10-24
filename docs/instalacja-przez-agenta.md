@@ -48,7 +48,8 @@ Szczegóły i ograniczenia: [instalacja-klienta.md](instalacja-klienta.md).
 Przeprowadź człowieka przez [instalacja-docker.md](instalacja-docker.md) w kolejności sekcji 1–7. Co z tego robisz
 sam, jeśli masz dostęp do serwera (SSH):
 
-1. Sprawdź system i uprawnienia: Debian/Ubuntu, `sudo`, wolne miejsce (min. 16 GB dysku, 4 GB RAM).
+1. Sprawdź system i uprawnienia: Debian/Ubuntu, `sudo`, wolne miejsce (min. 16 GB dysku, 2 GB RAM). Działający OMS
+   zajmuje ok. 140 MB pamięci; przy kilkudziesięciu tysiącach zamówień w bazie po starcie nawet ok. 1 GB, wtedy lepiej 4 GB.
 2. Zainstaluj Dockera z oficjalnego repozytorium (sekcja 1).
 3. Zbuduj paczkę z klona repo (początek instrukcji) i rozpakuj ją według sekcji 3.
 4. `docker compose build`, `docker compose run --rm instalacja`, `docker compose up -d` (sekcje 4–6).
