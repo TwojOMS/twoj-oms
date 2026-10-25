@@ -52,6 +52,7 @@ const KODY_POMINIEC = { warunek: 'niespełniony warunek', brak_adresu: 'bez adre
   dolaczone: 'zamówienie dołączone', anulowane: 'anulowane', szablon_usuniety: 'szablon usunięty', brak_poczty: 'brak poczty',
   odmowa: 'mail niemożliwy' };
 const KOMUNIKATY = { 1: 'Zapisano regułę. Jest wyłączona — włączysz ją przyciskiem niżej.', wlaczona: 'Reguła włączona.',
+  zmieniona_wlaczona: 'Zapisano zmiany. Reguła jest włączona i działa dalej.',
   wylaczona: 'Reguła wyłączona.', zalegle: 'Wstrzymanie zdjęte — zaległe wyjdą z limitami godzinowymi.',
   pominiete: 'Zaległe pominięte, wstrzymanie zdjęte.' };
 
@@ -392,7 +393,7 @@ export function registerRegulyAutomatyzacji(app, zaleznosci) {
     const w = sprawdzRegule(formularz, kontekstReguly(z));
     if (!w.ok) return widokFormularza(req, reply, z, { formularz, regula: r, bledy: w.bledy }, 400);
     zmienRegule(db, r.id, w.regula, { login: login(req), teraz: z.teraz });
-    return z303(reply, `${EKRAN_AUTOMATYZACJI}/${r.id}?zapisano=1`);
+    return z303(reply, `${EKRAN_AUTOMATYZACJI}/${r.id}?zapisano=${r.wlaczona === 1 ? 'zmieniona_wlaczona' : '1'}`);
   }));
 
   app.post(`${EKRAN_AUTOMATYZACJI}/:id/wlacz`, zRegula(async (req, reply, r) => {

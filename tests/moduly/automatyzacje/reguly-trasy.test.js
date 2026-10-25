@@ -263,6 +263,24 @@ describe('14. nowy kanał od zapisu', () => {
     const id = zapiszWprost(p.db);
     const r = await post(p.app, `${EKRAN}/${id}`, p.admin, { ...FORMULARZ, nazwa: 'Po edycji' });
     expect(r.statusCode).toBe(303);
+    expect(r.headers.location).toBe(`${EKRAN}/${id}?zapisano=1`);
     expect(wczytajRegule(p.db, id)).toMatchObject({ nazwa: 'Po edycji', wlaczona: 0 });
+    const d = await get(p.app, r.headers.location, p.admin);
+    expect(d.statusCode).toBe(200);
+    expect(d.body).toContain('Zapisano regułę. Jest wyłączona — włączysz ją przyciskiem niżej.');
+  });
+  it('edycja WŁĄCZONEJ reguły: komunikat mówi, że reguła jest włączona', async () => {
+    const p = panel({ poczta: true });
+    zSzablonemWlasnym(p.db);
+    const id = zapiszWprost(p.db);
+    expect((await post(p.app, `${EKRAN}/${id}/wlacz`, p.admin, {})).statusCode).toBe(303);
+    const r = await post(p.app, `${EKRAN}/${id}`, p.admin, { ...FORMULARZ, nazwa: 'Po edycji' });
+    expect(r.statusCode).toBe(303);
+    expect(r.headers.location).toBe(`${EKRAN}/${id}?zapisano=zmieniona_wlaczona`);
+    expect(wczytajRegule(p.db, id)).toMatchObject({ nazwa: 'Po edycji', wlaczona: 1 });
+    const d = await get(p.app, r.headers.location, p.admin);
+    expect(d.statusCode).toBe(200);
+    expect(d.body).toContain('Zapisano zmiany. Reguła jest włączona i działa dalej.');
+    expect(d.body).not.toContain('Jest wyłączona');
   });
 });

@@ -10,4 +10,5 @@ node_modules/
 /deploy/drukarka/config-faktury.json
 /deploy/drukarka/*.log
 /deploy/drukarka/*.log.1
+
 !.env.example
