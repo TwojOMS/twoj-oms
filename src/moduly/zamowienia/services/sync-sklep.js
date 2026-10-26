@@ -204,5 +204,31 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {} }) {
     return { wyslany: c.status };
   }
 
-  return { odeslijStatus };
+  // PRZ-117: zegar modułu zamówień (modul.ts) ponawia odesłanie statusu po błędzie PRZEJŚCIOWYM. Bezpieczne, bo
+  // obie gałęzie są idempotentne: Allegro czyta stan na żywo i nie wysyła tego, co już ma, a sklep porównuje
+  // z `status_woo`. Po kolei, jak poller po sklepach — kanał nie dostaje serii naraz.
+  async function ponowPrzejsciowe({ teraz = new Date() } = {}) {
+    const od = new Date(teraz.getTime() - OKNO_PONAWIANIA_STATUSU_DNI * 864e5).toISOString();
+    const ids = db.prepare('SELECT id, sync_woo_blad FROM zamowienia WHERE sync_woo_blad IS NOT NULL AND utworzone_at >= ? ORDER BY id')
+      .all(od).filter((z) => bladPrzejsciowy(z.sync_woo_blad)).map((z) => z.id);
+    let wyslane = 0;
+    let bledy = 0;
+    for (const id of ids) {
+      // eslint-disable-next-line no-await-in-loop -- po kolei, jak poller
+      const w = await odeslijStatus(id);
+      if (w.blad) bledy += 1; else wyslane += 1;
+    }
+    return { kandydatow: ids.length, wyslane, bledy };
+  }
+
+  return { odeslijStatus, ponowPrzejsciowe };
 }
+
+// PRZ-117: zamówienia starsze niż dwa tygodnie zegar zostawia człowiekowi („Wyślij ponownie” dalej działa).
+export const OKNO_PONAWIANIA_STATUSU_DNI = 14;
+export const ODSTEP_PONAWIANIA_STATUSU_MS = 15 * 60 * 1000;
+
+// Przejściowe = może minąć samo: nasz limit czasu („żądanie anulowane”, „limit czasu”), awaria transportu
+// („błąd sieci”, „nieosiągalny”) albo 5xx po drugiej stronie. Odmowa 4xx i brak konfiguracji — nie.
+export const bladPrzejsciowy = (opis) =>
+  /żądanie anulowane|limit czasu|błąd sieci|nieosiągaln|(?:HTTP|odpowiedział) 5\d\d/i.test(String(opis ?? ''));

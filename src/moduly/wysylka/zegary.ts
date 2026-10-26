@@ -21,6 +21,9 @@ export function zegarPrzesylek(o: { czuwacz: { przebieg: () => Promise<any> }; o
         + 'się w sufit tego przebiegu — czekają na następne tyknięcie zegara. Nic nie '
         + 'przepadło, ale jeśli ta linia wraca co godzinę, zaległość rośnie szybciej, '
         + 'niż panel ją odrabia.');
+      const not = wynik?.notatki;
+      if (not?.wyslane || not?.bledy) o.log(`czuwacz przesyłek, notatki z numerem listu: ${not.wyslane ?? 0} ponowionych, `
+        + `${not.bledy ?? 0} dalej nie doszło (spróbuje za godzinę, przez 48 h od nadania).`);
     } catch (e) {
       o.puls.blad('czuwaczPrzesylek', e);
       o.log('czuwacz przesyłek:', e instanceof Error ? e.message : String(e));

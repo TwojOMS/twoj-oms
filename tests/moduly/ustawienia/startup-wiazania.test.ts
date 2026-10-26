@@ -87,6 +87,8 @@ it.each([
     if(allegro)expect(paczki.odswiez).toBeTypeOf('function');else expect(paczki).toBeNull();
     if(kurier)expect(czuwacz.przebieg).toBeTypeOf('function');else expect(czuwacz).toBeNull();
     expect(a.zegary.some(z=>z.nazwa==='czuwaczPrzesylek')).toBe(kurier);
+    // PRZ-117: ponawianie statusów stoi, gdy jest dokąd odsyłać (sklep albo kanał), i tylko wtedy.
+    expect(a.zegary.some(z=>z.nazwa==='ponawianieStatusow')).toBe(_nazwa!=='bez integracji');
   }finally{await a.app.close();a.db.close();zakoncz();}
 });
 it('diagnostyka minimalnej rzeczywistej kompozycji pomija brakujące konfiguracje usług',async()=>{

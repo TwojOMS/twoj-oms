@@ -35,6 +35,19 @@ describe('pobierzZamowienia', () => {
     expect(url).toContain('dates_are_gmt=true');
   });
 
+  // PRZ-117: LiteSpeed Cache trzymał tę odpowiedź 30 min (`x-litespeed-cache-control: private,max-age=1800`,
+  // zmierzone 26.10 na żywym sklepie), a poller przy stojącym kursorze pyta CO DWIE MINUTY tym samym adresem —
+  // zamówienie 28466 przyszło do panelu po 31 min. Nagłówek `Cache-Control: no-cache` pamięci nie omija
+  // (zmierzone: dalej `hit`), unikalny parametr w adresie omija.
+  it('każde zapytanie o listę ma inny adres (omija pamięć podręczną serwera sklepu)', async () => {
+    const { c, fetchImpl } = klient(odp(200, [], { 'x-wp-totalpages': '1' }));
+    await c.pobierzZamowienia({ modifiedAfter: '2026-07-29T10:00:00', page: 1 });
+    await c.pobierzZamowienia({ modifiedAfter: '2026-07-29T10:00:00', page: 1 });
+    const [a, b] = fetchImpl.mock.calls.map(([u]) => u);
+    expect(a).not.toBe(b);
+    expect(new URL(a).searchParams.get('modified_after')).toBe('2026-07-29T10:00:00');
+  });
+
   it('oddaje zamówienia i liczbę stron', async () => {
     const { c } = klient(odp(200, [{ id: 1 }], { 'x-wp-totalpages': '3' }));
     expect(await c.pobierzZamowienia({ page: 1 })).toEqual({ zamowienia: [{ id: 1 }], stron: 3 });

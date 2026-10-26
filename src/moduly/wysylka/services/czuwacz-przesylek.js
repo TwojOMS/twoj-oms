@@ -22,11 +22,12 @@ import { przesylkiDoSledzenia } from '../db/przesylki.js';
 import { odswiezStatusKuriera } from './status-kuriera.js';
 import { etapPrzesylki } from '../../../domena/etap-przesylki.js';
 import { oznaczDoreczonePobrania } from './oznaczanie-pobran.js';
+import { ponowZalegleNotatki } from './notatka-nadania.js';
 
 export const OKNO_SLEDZENIA_DNI = 14;
 
 export function createCzuwaczPrzesylek({
-  db, kurierzy = {}, infakt = null, teraz = () => new Date(),
+  db, kurierzy = {}, infakt = null, teraz = () => new Date(), klienci = {},
 }) {
   let trwa = false;
 
@@ -88,8 +89,19 @@ export function createCzuwaczPrzesylek({
         };
       }
 
+      // PRZ-117: notatki z numerem listu, które nie doszły do sklepu — co przebieg (raz na godzinę) przez 48 h.
+      // Własny `try` z tego samego powodu co pobrania: awaria sklepu nie jest awarią śledzenia paczek.
+      let notatki = { kandydatow: 0, wyslane: 0, bledy: 0 };
+      if (Object.keys(klienci).length) {
+        try {
+          notatki = await ponowZalegleNotatki({ db, klienci, teraz: chwila });
+        } catch (e) {
+          notatki = { kandydatow: 0, wyslane: 0, bledy: 1, blad: e.message };
+        }
+      }
+
       return {
-        kandydatow: kandydaci.length, sprawdzone, bledy, pominiete, pobrania,
+        kandydatow: kandydaci.length, sprawdzone, bledy, pominiete, pobrania, notatki,
       };
     } finally {
       trwa = false;

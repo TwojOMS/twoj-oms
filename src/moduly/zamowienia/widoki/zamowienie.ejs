@@ -1184,7 +1184,17 @@
         <% if (p.sync_woo_blad) { %>
           <p class="pasek-blokada">
             SKLEP NIEZSYNCHRONIZOWANY: <%= p.sync_woo_blad %>. Klient mógł nie dostać notatki z numerem listu — uzupełnij w WooCommerce.
+            <%# PRZ-117: notatkę panel ponawia sam co godzinę przez 48 h od nadania; przycisk robi to od razu. %>
+            <% if (String(p.sync_woo_blad).startsWith('notatka: ')) { %>
+              <br>Panel ponawia sam co godzinę przez 48 h od nadania.
+            <% } %>
           </p>
+          <% if (String(p.sync_woo_blad).startsWith('notatka: ') && p.numer_listu) { %>
+            <form method="post" action="/zamowienia/<%= z.id %>/przesylki/<%= p.id %>/notatka">
+              <input type="hidden" name="powrot" value="<%= powrot %>">
+              <button class="btn btn--glowny">Spróbuj ponownie</button>
+            </form>
+          <% } %>
         <% } %>
         <%# PDF i ZPL to dwa rownoprawne formaty etykiety WzA. „Nadaj i drukuj" zapisuje %>
         <%# tylko ZPL, wiec brak PDF-u sam w sobie nie jest awaria. %>

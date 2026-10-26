@@ -4,6 +4,7 @@ import { miniaturyZeStoreApi } from '../../domena/miniatury.js';
 
 export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({ fetchImpl }) }) {
   const auth = 'Basic ' + Buffer.from(`${ck}:${cs}`).toString('base64');
+  let zapytanListy = 0;
 
   async function strzal(sciezka, opcje = {}) {
     let res;
@@ -37,6 +38,11 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
       p.set('modified_after', modifiedAfter);
       p.set('dates_are_gmt', 'true');
     }
+    // PRZ-117: unikalny adres omija pamięć podręczną serwera sklepu. LiteSpeed Cache trzymał tę listę
+    // 30 min (zmierzone 26.10), a przy stojącym kursorze poller pyta tym samym adresem — nowe zamówienie
+    // czekało do pół godziny. Nagłówek `Cache-Control: no-cache` tej pamięci nie omija; Woo nieznany
+    // parametr pomija.
+    p.set('_oms', `${Date.now().toString(36)}-${(++zapytanListy).toString(36)}`);
     const { dane, res } = await strzal(`/orders?${p.toString()}`);
     // Odpowiedz 200, ktora NIE jest tablica, wygladalaby jak "brak nowych zamowien" —
     // a to dokladnie ten failure mode, przed ktorym poller ma chronic. Lepiej glosno

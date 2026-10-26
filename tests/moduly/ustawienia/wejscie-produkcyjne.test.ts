@@ -11,7 +11,7 @@ describe('rzeczywisty src/oms.js → main.ts → MODULY', () => {
   it('uruchamia dokładny zbiór rzeczywistych interwałów i usuwa je przy zamknięciu', async () => {
     const wynik = await wykonajZegary();
     expect(wynik.nazwy).toEqual([...OCZEKIWANE_ZEGARY].sort());
-    expect(wynik.liczba).toBe(12); // PRZ-102.12: + automatKsef; PRZ-108.07: + automatyzacje
+    expect(wynik.liczba).toBe(13); // PRZ-102.12: + automatKsef; PRZ-108.07: + automatyzacje; PRZ-117: + ponawianieStatusow
   });
   it.each(['czuwaczOstrzezen', 'czuwaczKosztow', 'czuwaczArchiwumSprzedazy'])('rzeczywisty zegar %s woła tę samą instancję usługi', async nazwa => {
     await wykonajZegary(nazwa);

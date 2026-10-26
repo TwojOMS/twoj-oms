@@ -119,6 +119,22 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/domknij', async (req, reply) =>
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });
 
+// PRZ-117: „Spróbuj ponownie” przy notatce z numerem listu, która nie doszła do sklepu. Wysyła TĘ SAMĄ notatkę
+// jeszcze raz (services/notatka-nadania.js); nieudana próba odświeża ślad na karcie i nie jest błędem HTTP.
+app.post('/zamowienia/:id/przesylki/:przesylkaId/notatka', async (req, reply) => {
+    const cel = paczkaZadania(req, reply);
+    if (!cel) return reply;
+    const { id, p } = cel;
+    if (!nadanie) return reply.code(503).send('Nadawanie nie jest skonfigurowane (brak sklepu albo kuriera).');
+    try {
+      await nadanie.ponowNotatke(p.id);
+    } catch (e) {
+      dopiszLog(db, id, { akcja: 'sync-woo', wynik: `BŁĄD: notatka (ponowienie): ${e.message}` });
+      return reply.code(400).send(`Nie udało się ponowić notatki: ${komunikatDlaOperatora(e)}`);
+    }
+    return reply.redirect(adresPowrotuNaKarte(req, id));
+  });
+
 app.post('/zamowienia/:id/przesylki/:przesylkaId/sprawa-zalatwiona', async (req, reply) => {
     const cel = paczkaZadania(req, reply);
     if (!cel) return reply;

@@ -400,7 +400,13 @@ export function createInpostClient({
     );
 
     if (!res.ok) {
-      throw bladOperatora(`InPost: nie udało się sprawdzić statusu przesyłki: ${opisBledu({ dane, tekst, status })}`);
+      // PRZ-117: 404 to „śledzenia tej przesyłki jeszcze nie ma” — InPost tak odpowiada tuż po nadaniu (4 z 35
+      // paczek na produkcji, zawsze tylko przy pierwszym pytaniu w sekundzie nadania). Znacznik pozwala usłudze
+      // statusu (services/status-kuriera.js) odróżnić świeżą paczkę od zmyślonego numeru; komunikat bez zmian.
+      throw bladOperatora(
+        `InPost: nie udało się sprawdzić statusu przesyłki: ${opisBledu({ dane, tekst, status })}`,
+        status === 404 ? { brakSledzenia: true } : {},
+      );
     }
 
     // ⚠️ HTTP 200 NIE ZNACZY SUKCES — sprawdzamy KSZTALT odpowiedzi, nie sam status. Proxy

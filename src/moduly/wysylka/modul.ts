@@ -145,7 +145,7 @@ return {
     const podjazdy = Object.keys(klienciAllegro).length
       ? createPodjazdy({ db, allegroDla: (kanal: string) => klienciAllegro[kanal] ?? null, teraz }) : null;
     const przesylkiAllegro = Object.keys(klienciAllegro).length ? createPrzesylkiAllegro({ db, klienci: klienciAllegro }) : null;
-    const czuwaczPrzesylek = Object.keys(kurierzy).length ? createCzuwaczPrzesylek({ db, kurierzy, infakt, teraz }) : null;
+    const czuwaczPrzesylek = Object.keys(kurierzy).length ? createCzuwaczPrzesylek({ db, kurierzy, infakt, teraz, klienci }) : null;
     const czuwaczPodjazdow = podjazdy ? createCzuwaczPodjazdow({ db, podjazdy, kurierzy, teraz }) : null;
     const zegary: Zegar[] = czuwaczPrzesylek ? [zegarPrzesylek({ czuwacz: czuwaczPrzesylek,
       odstepMs: k.odstepPrzesylekMs, puls, log: ctx.log })] : [];

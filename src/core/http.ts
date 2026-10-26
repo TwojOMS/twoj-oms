@@ -139,7 +139,9 @@ export function utworzHttp(o: OpcjeHttp = {}): (adres: string, init?: RequestIni
         const blad = init.signal?.aborted ? anulowane()
           : new Error(`${url.host}: ${limit.aborted ? 'limit czasu' : 'błąd sieci'}`);
         metadaneBledu(blad, limit.aborted ? limit.reason : przyczyna);
-        log(`HTTP ${metoda} ${bezpiecznyAdres}: ${blad.message}`);
+        // PRZ-117: sam kod systemowy (już przefiltrowany w metadaneBledu) rozstrzyga DNS czy połączenie.
+        const kod = (blad as Error & { code?: string }).code;
+        log(`HTTP ${metoda} ${bezpiecznyAdres}: ${blad.message}${kod ? ` (${kod})` : ''}`);
         if (init.signal?.aborted || !moznaPonawiac || proba >= ponowien) throw blad;
         const ms = 2 ** proba * 500;
         if (ms > maksCzekaniaMs) throw blad;

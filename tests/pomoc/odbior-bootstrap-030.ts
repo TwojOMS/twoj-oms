@@ -19,6 +19,8 @@ export const OCZEKIWANE_ZEGARY = [
   ['automatKsef', 60000],
   // PRZ-108.07: silnik reguł automatyzacji (co minutę; przy zerze reguł jedno SELECT, zero zapisów).
   ['automatyzacje', 60000],
+  // PRZ-117: ponawianie statusu po błędzie przejściowym Allegro/sklepu (co 15 min).
+  ['ponawianieStatusow', 900000],
 ] as const;
 
 function lokalneEnv(klucze = false) {

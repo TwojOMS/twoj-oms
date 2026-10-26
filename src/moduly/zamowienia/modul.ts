@@ -8,6 +8,7 @@ import { registerReczneRoutes } from './reczne.js'; import { registerScalanieRou
 import { miniaturyEkranu } from './wspolne.js';
 import * as zapytania from '../../oms/db/zamowienia.js';
 import { createSyncSklep } from './services/sync-sklep.js';
+import { zegarPonawianiaStatusow } from './zegary.ts';
 import { createGusClient } from '../../oms/gus/client.js';
 import { integracje } from '../../integracje/klucze.js';
 import { migracjaStatusowWlasnych } from './migracje/0002-statusy-wlasne.ts';
@@ -54,7 +55,9 @@ export function createModulZamowienia({ zWiadomosciami = false, fabryki = {} as 
       // Pełny skład pobiera pocztę z jedynego modułu wiadomości podczas rejestracji tras.
       wiadomosci:null,gus,syncSklep,zdrowie:null,
     };
-    return {uslugi:{config:opcje.config,zapytania,miniaturyEkranu,opcjeTras:opcje,syncSklep,gus,konfiguracjaGus:gus,
+    // PRZ-117: status po chwilowej awarii kanału/sklepu wraca sam (zegary.ts).
+    const zegary=syncSklep?[zegarPonawianiaStatusow({sync:syncSklep,teraz:ctx.teraz,log:ctx.log})]:[];
+    return {zegary,uslugi:{config:opcje.config,zapytania,miniaturyEkranu,opcjeTras:opcje,syncSklep,gus,konfiguracjaGus:gus,
       wczytajListe:(...a:Parameters<ReturnType<typeof createKontekstZamowien>['wczytajListe']>)=>{if(!kontekst)throw new Error('Trasy zamówień nie zostały jeszcze złożone');return kontekst.wczytajListe(...a);}},
       trasy:app=>{
         kontekst=createKontekstZamowien({...ctx.usluga<object>('zamowienia','opcjeTras'),

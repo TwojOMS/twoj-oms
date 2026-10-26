@@ -20,6 +20,8 @@ export type OpcjeNadania = {
   klienci?: Record<string, Pick<ReturnType<typeof createWooClient>, 'dodajNotatke'>>;
   katalogEtykiet: string;
   paczkaDomyslna?: PaczkaKuriera;
+  /** PRZ-117: odstęp przed powtórką notatki; testy podają atrapę. */
+  czekaj?: (ms: number) => Promise<void>;
 };
 export type OpcjePaczkiNadania = {
   kolejnosc?: number; komentarz?: string | null;

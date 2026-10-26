@@ -20,6 +20,9 @@ import { stanPrzesylki } from '../../../domena/przesylka-stan.js';
 // domyslnej parametru — bez tej linii plik wywalilby sie na `PACZKA_DOMYSLNA is not defined`
 // dopiero przy wywolaniu, czyli przy pierwszym nadaniu.
 import { PACZKA_DOMYSLNA } from '../../../domena/ustawienia-panelu.js';
+import {
+  dodajNotatkeZPowtorka, tekstNotatkiNadania, ponowNotatkeNadania, PREFIKS_NOTATKI,
+} from './notatka-nadania.js';
 
 // ⚠️ STAŁA PRZENIESIONA DO DOMENY 2026-08-17 (domain/ustawienia-panelu.js), bo od tego dnia
 // jest FALLBACKIEM ustawienia, a nie jedynym źródłem wartości. Re-eksport zostaje, bo czyta ją
@@ -33,7 +36,7 @@ import { PACZKA_DOMYSLNA } from '../../../domena/ustawienia-panelu.js';
 export { PACZKA_DOMYSLNA } from '../../../domena/ustawienia-panelu.js';
 
 /** @param {import('../nadanie-typy.ts').OpcjeNadania} opcje */
-export function createNadanie({ db, kurierzy, klienci = {}, katalogEtykiet, paczkaDomyslna = PACZKA_DOMYSLNA }) {
+export function createNadanie({ db, kurierzy, klienci = {}, katalogEtykiet, paczkaDomyslna = PACZKA_DOMYSLNA, czekaj = undefined }) {
   // Katalog zakladamy przy BUDOWIE uslugi, czyli zanim ktokolwiek dotknie DPD.
   // Przy pierwszym uruchomieniu panelu tego katalogu po prostu nie ma, a odkrycie tego
   // dopiero po nadaniu paczki oznaczaloby przydzielony numer listu bez miejsca na etykiete.
@@ -133,14 +136,15 @@ export function createNadanie({ db, kurierzy, klienci = {}, katalogEtykiet, pacz
       // Paczka juz istnieje fizycznie, wiec awaria zapisu notatki NIE moze wycofac nadania —
       // numer listu i etykieta zostaja, notatke odsylamy „best effort".
       try {
-        await klienci[z.sklep].dodajNotatke(z.zrodlo_id, `Nadano ${kurier.toUpperCase()}, list przewozowy ${wynik.numerListu}`);
+        // PRZ-117: jedna powtórka po chwilowym błędzie sieci (services/notatka-nadania.js).
+        await dodajNotatkeZPowtorka(klienci[z.sklep], z.zrodlo_id, tekstNotatkiNadania(kurier, wynik.numerListu), { czekaj });
         dopiszLog(db, z.id, { akcja: 'sync-woo', wynik: 'OK' });
       } catch (przyczyna) {
         const e = /** @type {import('../nadanie-typy.ts').BladNadania} */ (przyczyna);
         // Nieudana synchronizacja MUSI byc widoczna, nie tylko zalogowana: zaden widok nie
         // renderuje tabeli `log`, wiec bez tego zapisu przy przesylce operator nie ma jak
         // sie dowiedziec, ze notatka z numerem listu nie trafila do klienta.
-        zapiszBladSync(db, przesylkaId, `notatka: ${e.message}`);
+        zapiszBladSync(db, przesylkaId, `${PREFIKS_NOTATKI}${e.message}`);
         dopiszLog(db, z.id, { akcja: 'sync-woo', wynik: `BŁĄD: notatka: ${e.message}` });
       }
     }
@@ -518,5 +522,8 @@ export function createNadanie({ db, kurierzy, klienci = {}, katalogEtykiet, pacz
 
   // paczkaDomyslna wystawiona na zewnatrz, zeby ekran nadania (GET /zamowienia/:id/nadaj)
   // mogl nia wypelnic formularz — TA SAMA stala, nie druga kopia w widoku.
-  return { nadaj, sprawdzPonownie, paczkaDomyslna };
+  // PRZ-117: przycisk „Spróbuj ponownie” przy nieudanej notatce — tu, bo tylko nadanie ma klientów sklepów.
+  const ponowNotatke = (/** @type {number} */ przesylkaId) => ponowNotatkeNadania({ db, klienci }, przesylkaId);
+
+  return { nadaj, sprawdzPonownie, ponowNotatke, paczkaDomyslna };
 }

@@ -394,3 +394,19 @@ describe('http — doprecyzowania i granice ponowień', () => {
     expect(await (await utworzHttp({ fetchImpl, czekaj: bezCzekania, log: bezLogu })(adres)).text()).toBe('ok');
   });
 });
+
+// PRZ-117: „błąd sieci” w logu produkcji nie mówił, CO padło — DNS (EAI_AGAIN/ENOTFOUND) czy połączenie
+// (ECONNRESET/UND_ERR_SOCKET). 26.10.2026 to pytanie zostało bez odpowiedzi; kod systemowy idzie teraz do logu
+// (sam kod, nie cause — cause może nieść URL i nagłówki). Komunikat błędu dla wołającego bez zmian.
+describe('http — kod systemowy w logu błędu sieci (PRZ-117)', () => {
+  it('log niesie kod z cause, wyjątek dalej mówi tylko „błąd sieci”', async () => {
+    const log = vi.fn();
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      throw new TypeError('fetch failed', { cause: { code: 'EAI_AGAIN', message: 'getaddrinfo EAI_AGAIN api.example.test' } });
+    });
+    const http = utworzHttp({ fetchImpl, czekaj: bezCzekania, log, ponowien: 0 });
+    const blad = await http(adres).catch((e) => e);
+    expect(blad.message).toBe('api.example.test: błąd sieci');
+    expect(log.mock.calls[0][0]).toBe(`HTTP GET ${adres}: api.example.test: błąd sieci (EAI_AGAIN)`);
+  });
+});

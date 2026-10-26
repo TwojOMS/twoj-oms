@@ -1216,8 +1216,10 @@ describe('src/oms.js pozostaje cienkim punktem wejścia', () => {
       ['automatKsef', 60000],
       // PRZ-108.07: silnik reguł automatyzacji (co minutę; przy zerze reguł jedno SELECT, zero zapisów).
       ['automatyzacje', 60000],
+      // PRZ-117: ponawianie statusu po błędzie przejściowym (co 15 min).
+      ['ponawianieStatusow', 900000],
     ].sort());
-    expect(wynik.liczba).toBe(12);
+    expect(wynik.liczba).toBe(13);
     expect(zrodlo).not.toMatch(/setInterval/);
   });
 });

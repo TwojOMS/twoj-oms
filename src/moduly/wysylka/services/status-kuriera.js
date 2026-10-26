@@ -45,6 +45,12 @@ export function probaStarszaNizGodzina(probaAt, terazMs = Date.now()) {
   return terazMs - czas > GODZINA_MS;
 }
 
+/** PRZ-117: paczka nadana mniej niż dobę temu — kurier może jeszcze nie mieć jej śledzenia. */
+export function swiezoNadana(p, terazMs = Date.now()) {
+  const utworzona = Date.parse(p?.utworzona_at ?? '');
+  return Number.isFinite(utworzona) && terazMs - utworzona < DOBA_MS;
+}
+
 export function probaPrzesylkiWymagana(p, terazMs = Date.now()) {
   if (!p?.status_kuriera_pobrany_at) return true;
   const od = Date.parse(p.status_kuriera_pobrany_at);
@@ -101,10 +107,17 @@ export async function odswiezStatusKuriera(db, kurierzy, z, p, { terazMs = Date.
     // kanalu dostawalaby `trackingDetails: null`, nie do odroznienia od swiezo nadanej.
     wynik = await cel.klient.statusPrzesylki(cel.numer, { ...cel.kontekst, kanal: z?.sklep ?? null });
   } catch (e) {
-    // Rozdzielenie adresatow: awaria kuriera mowi po ludzku, nasza wlasna regresja
-    // (`statusPrzesylki is not a function`, blad bindowania) dostaje przedrostek
-    // BLAD TECHNICZNY — obie zdarzyly sie naprawde i w logu musza wygladac inaczej.
-    blad = e?.dlaOperatora ? e.message : `BŁĄD TECHNICZNY: ${e?.message ?? e}`;
+    // PRZ-117: „śledzenia jeszcze nie ma” (InPost 404) przy paczce młodszej niż doba to „brak zdarzeń”, nie
+    // awaria — tak wyglądała paczka 1493 sekundę po nadaniu, a godzinę później miała już historię. Po dobie 404
+    // znaczy coś innego (zły numer) i znów jest błędem widocznym na karcie.
+    if (e?.brakSledzenia && swiezoNadana(p, terazMs)) {
+      blad = null;
+    } else {
+      // Rozdzielenie adresatow: awaria kuriera mowi po ludzku, nasza wlasna regresja
+      // (`statusPrzesylki is not a function`, blad bindowania) dostaje przedrostek
+      // BLAD TECHNICZNY — obie zdarzyly sie naprawde i w logu musza wygladac inaczej.
+      blad = e?.dlaOperatora ? e.message : `BŁĄD TECHNICZNY: ${e?.message ?? e}`;
+    }
   }
   // Pola w pamieci aktualizujemy TYLKO po udanym zapisie: inaczej karta pokazywalaby
   // status, ktorego w bazie nie ma, a przy nastepnym otwarciu cofalaby sie do starego.
