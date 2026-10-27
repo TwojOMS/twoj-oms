@@ -17,8 +17,10 @@ import { datyFaktury } from '../../../domena/termin-platnosci.js';
 // wystawiania (services/wdt-faktury.js) — zeby okres i karta nie mialy dwoch kopii.
 import { czyNipUe, polaWdtInfakt, nipSprzedawcyDoWdt } from '../../../domena/wdt.js';
 import {
-  sprawdzWdtWVies, przygotujSerieWdt, seriaWdtPoAwarii, seriaWdtPoSukcesie,
+  sprawdzWdtWVies, przygotujSerieWdt, seriaWdtPoAwarii, seriaWdtPoSukcesie, sprawdzNumeracjeWlasna, nazwaProgramu,
 } from './wdt-faktury.js';
+// PRZ-118.06: program fakturowy (kontrakt) zamiast klienta inFaktu — `{ program }` albo stary `{ infakt }`.
+import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 
 /**
@@ -175,8 +177,12 @@ export function sprawdzSumeOkresu(services, zamowienia) {
  * zostaje juz tylko korekta.
  */
 export function createFakturaOkresu({
-  db, infakt, vies = null, nipSprzedawcy, teraz = () => new Date().toISOString(),
+  db, program: programFakturowy = null, infakt = null, vies = null, nipSprzedawcy, teraz = () => new Date().toISOString(),
 }) {
+  const program = zProgramu({ program: programFakturowy, infakt });
+  // Odmiana nazwy programu do komunikatow (inFakt / inFaktu / inFakcie / inFaktem).
+  const nazwa = nazwaProgramu(program);
+
   // Awaria JEDNOZNACZNA = inFakt odpowiedzial i odrzucil (4xx): dokumentu na pewno nie ma.
   // Wszystko inne — 5xx, zerwane polaczenie (to w ogole NIE NIESIE statusu, patrz
   // infakt/client.js), blad techniczny w trakcie wywolania — jest NIEJEDNOZNACZNE.
@@ -190,7 +196,7 @@ export function createFakturaOkresu({
     if (stan === 'do_wyjasnienia' || stan === 'zawieszona') {
       const powod = stan === 'zawieszona'
         ? `Rezerwacja faktury tego okresu wisi od ${okres.utworzona_at} i żadne wystawianie już nie trwa `
-          + '— panel najpewniej został zrestartowany w trakcie wywołania inFaktu.'
+          + `— panel najpewniej został zrestartowany w trakcie wywołania ${nazwa.dopelniacz}.`
         : 'Poprzednia próba wystawienia faktury za ten okres zerwała się w miejscu, w którym dokument mógł już powstać'
           + `${okres.blad_opis ? ` (${okres.blad_opis})` : ''}.`;
       // ⚠️ KOMUNIKAT NIE OBIECUJE PONOWIENIA. Wczesniej mowil „skasuj ja tam, zanim cokolwiek
@@ -198,7 +204,7 @@ export function createFakturaOkresu({
       // wyjscia przez zadne klikniecie. Wyjscie w bazie JEST (`odblokujFaktureOkresu`
       // w db/okresy.js), ale trasy i przycisku jeszcze nie ma — powstana w Zadaniu 9. Do tego
       // czasu komunikat ma mowic prawde: blokada zostaje, dopoki ktos jej swiadomie nie zdejmie.
-      return `${powod} Sprawdź RĘCZNIE w inFakcie, czy faktura za ten okres istnieje. `
+      return `${powod} Sprawdź RĘCZNIE w ${nazwa.miejscownik}, czy faktura za ten okres istnieje. `
         + 'Jeśli JEST i jeszcze nie poszła do KSeF (wysyłkę robi właściciel ręcznie, wieczorem) — '
         + 'skasuj ją tam. Panel sam z tego stanu NIE WYJDZIE i wystawienia nie ponowi: okres '
         + 'zostaje zablokowany, dopóki ktoś go świadomie nie odblokuje. Ta blokada jest po to, '
@@ -266,7 +272,7 @@ export function createFakturaOkresu({
         + `${zFaktura.faktura.numer ? ` (${zFaktura.faktura.numer})` : ' (wystawianie w toku albo do wyjaśnienia)'}`
         + ', więc faktura zbiorcza obciążyłaby klienta za ten sam towar drugi raz. '
         + 'Faktura za okres NIE została wystawiona — rozstrzygnij najpierw tamten dokument '
-        + 'w inFakcie (skasuj go, dopóki nie poszedł wieczorem do KSeF; potem zostaje korekta).',
+        + `w ${nazwa.miejscownik} (skasuj go, dopóki nie poszedł wieczorem do KSeF; potem zostaje korekta).`,
       );
     }
 
@@ -277,6 +283,8 @@ export function createFakturaOkresu({
     // PRZ-108.10: NIP sprzedawcy do adnotacji WDT — przy każdym wystawieniu i PRZED rezerwacją oraz zamknięciem okresu
     // (WDT bez NIP-u odmawia tutaj; funkcja = NIP z Ustawień → Firma bez restartu).
     const nipWlasny = nipSprzedawcyDoWdt(klient?.nip, nipSprzedawcy);
+    // PRZ-118.06: WDT wymaga numeracji wlasnej programu — odmowa lokalna, przed VIES, rezerwacja i zamknieciem okresu.
+    if (wdt) sprawdzNumeracjeWlasna(program);
     const services = pozycjeOkresu(zamowienia, { stawkaDomyslna: czytajStawkeDomyslna(db), wdt });
     // ⚠️ Bariera PRZED rezerwacja i przed jakimkolwiek ruchem w inFakcie: nieudana
     // arytmetyka nie ma prawa zostawic po sobie ani rezerwacji, ani zamknietego okresu.
@@ -298,7 +306,7 @@ export function createFakturaOkresu({
     // jedna kwota „zaplacono" nie mialaby tu sensu. Brak argumentu znaczy, ze gdyby ten wariant
     // kiedykolwiek trafil tu z formularza, domena ODMOWI — zamiast wystawic dokument mowiacy
     // klientowi, ze za miesiac juz zaplacil. Ekran okresu tej opcji nie pokazuje (views/okres.ejs).
-    const daty = termin ? datyFaktury(termin) : {};
+    const daty = termin ? datyFaktury(termin, null, undefined, { nazwa }) : {};
 
     // Nabywca MUSI zostac rozstrzygniety PRZED rezerwacja: brak client_id to faktura
     // bez nabywcy, a szukanie klienta po rezerwacji zostawialoby wiszacy stan „w_toku"
@@ -316,12 +324,13 @@ export function createFakturaOkresu({
     // WDT: numer nabywcy MUSI byc wazny w VIES (art. 42 ust. 1 pkt 1) — sprawdzenie stoi
     // PRZED rezerwacja i zamknieciem okresu, jak lookup nabywcy nizej: odmowa niczego
     // nie blokuje, a dowod weryfikacji (numer konsultacji) idzie do logu zamowien.
-    if (wdt) await sprawdzWdtWVies({ vies, nip: klient.nip, dopisz: dopiszWdt });
+    if (wdt) await sprawdzWdtWVies({ vies, nip: klient.nip, dopisz: dopiszWdt, nazwa });
 
-    const clientId = await infakt.znajdzKlientaPoNip(klient.nip);
-    if (!clientId) {
+    // Przez kontrakt, BEZ zakladania (`zalozGdyBrak: false`): dla inFaktu samo wyszukanie w kartotece po NIP-ie.
+    const nabywca = await program.przygotujNabywce({ nip: klient.nip }, { zalozGdyBrak: false });
+    if (!nabywca) {
       throw bladOperatora(
-        `W inFakcie nie ma klienta o NIP ${klient.nip} — załóż go tam raz, ręcznie, `
+        `W ${nazwa.miejscownik} nie ma klienta o NIP ${klient.nip} — załóż go tam raz, ręcznie, `
         + 'i ponów wystawienie.',
       );
     }
@@ -335,7 +344,7 @@ export function createFakturaOkresu({
 
     // ⚠️ PONOWNY ODCZYT ZBIORU ZAMOWIEN — DOPIERO TERAZ, GDY DRZWI SA JUZ ZAMKNIETE.
     //
-    // `zamowieniaOkresu` wyzej czyta baze PRZED `await infakt.znajdzKlientaPoNip`, a okres
+    // `zamowieniaOkresu` wyzej czyta baze PRZED `await program.przygotujNabywce`, a okres
     // zostaje OTWARTY przez cale to okno — wiec `przypiszDoOkresu` (services/okres.js)
     // przyjmuje w nim nowe zamowienie bez mrugniecia. Zmierzone przed ta poprawka: drugi
     // operator zapisuje zamowienie za 40 zl w trakcie wywolania inFaktu, faktura idzie na
@@ -348,7 +357,7 @@ export function createFakturaOkresu({
     // a tym odczytem nie ma ANI JEDNEGO `await`, wiec porownanie jest szczelne: cokolwiek
     // widzi ten odczyt, to jest juz ostateczna zawartosc miesiaca.
     //
-    // ⚠️ ODMOWA IDZIE PRZED `infakt.wystaw` i ZWALNIA REZERWACJE (`zwolnijFaktureOkresu`),
+    // ⚠️ ODMOWA IDZIE PRZED `program.wystaw` i ZWALNIA REZERWACJE (`zwolnijFaktureOkresu`),
     // czyli zostawia okres DOKLADNIE takim, jaki byl przed proba. Zablokowany okres bylby tu
     // gorszy od bledu, ktory naprawiamy: dokumentu nie ma, a miesiac nie dalby sie
     // zafakturowac wcale.
@@ -365,7 +374,7 @@ export function createFakturaOkresu({
         : `zniknęło zamówienie ${numery(zniknely)}`;
       throw bladOperatora(
         `W trakcie wystawiania faktury zmienił się skład okresu (${co}) — panel przerwał, `
-        + 'zanim cokolwiek poszło do inFaktu. Faktura za okres NIE została wystawiona i nic '
+        + `zanim cokolwiek poszło do ${nazwa.dopelniacz}. Faktura za okres NIE została wystawiona i nic `
         + 'się nie zablokowało: odśwież ekran okresu, sprawdź kwotę i wystaw ją jeszcze raz.',
       );
     }
@@ -377,7 +386,7 @@ export function createFakturaOkresu({
     let seriaWdt = null;
     if (wdt) {
       try {
-        seriaWdt = await przygotujSerieWdt({ db, infakt, dzien: daty.invoice_date ?? dzienWarszawa(teraz()) });
+        seriaWdt = await przygotujSerieWdt({ db, program, dzien: daty.invoice_date ?? dzienWarszawa(teraz()) });
       } catch (e) {
         zwolnijFaktureOkresu(db, okresId);
         throw e;
@@ -386,8 +395,8 @@ export function createFakturaOkresu({
 
     let odp;
     try {
-      odp = await infakt.wystaw({
-        client_id: clientId,
+      odp = await program.wystaw({
+        client_id: nabywca.client_id,
         services,
         ...daty,
         // Pola WYLACZNIE dokumentu WDT (domain/wdt.js) — dla klienta krajowego oba
@@ -398,7 +407,7 @@ export function createFakturaOkresu({
     } catch (e) {
       // Los numeru serii rozstrzyga wspolna galaz: 4xx zwalnia, niejednoznaczna zostawia
       // zajety z glosnym sladem w logu zamowien okresu.
-      seriaWdtPoAwarii({ db, seria: seriaWdt, jednoznaczna: jednoznacznaOdmowa(e), dopisz: dopiszWdt });
+      seriaWdtPoAwarii({ db, seria: seriaWdt, jednoznaczna: jednoznacznaOdmowa(e), dopisz: dopiszWdt, nazwa });
       // 4xx = inFakt ODRZUCIL zadanie, dokumentu na pewno nie ma → wolno poprawic i ponowic.
       // Wszystko inne (5xx, zerwane polaczenie) jest NIEJEDNOZNACZNE → blokada do decyzji.
       if (jednoznacznaOdmowa(e)) zwolnijFaktureOkresu(db, okresId);
@@ -427,11 +436,11 @@ export function createFakturaOkresu({
     // naprawie `stanFakturyOkresu` bylby to okres udajacy rozliczony dokumentem, o ktorym
     // panel nie wie NIC. Niewiedza ma isc do czlowieka, tak samo jak zerwane polaczenie.
     if (!uuid && !numer) {
-      const opis = 'inFakt odpowiedział bez numeru i bez identyfikatora dokumentu '
+      const opis = `${nazwa.mianownik} odpowiedział bez numeru i bez identyfikatora dokumentu `
         + '(puste albo nieczytelne ciało odpowiedzi) — faktura mogła powstać.';
       oznaczOkresDoWyjasnienia(db, okresId, opis);
       throw bladOperatora(
-        `${opis} Sprawdź RĘCZNIE w inFakcie, czy faktura za ten okres istnieje. Jeśli JEST `
+        `${opis} Sprawdź RĘCZNIE w ${nazwa.miejscownik}, czy faktura za ten okres istnieje. Jeśli JEST `
         + 'i jeszcze nie poszła do KSeF (wysyłkę robi właściciel ręcznie, wieczorem) — skasuj ją tam. '
         + 'Panel sam z tego stanu NIE WYJDZIE i wystawienia nie ponowi: okres zostaje zablokowany, '
         + 'dopóki ktoś go świadomie nie odblokuje.',
@@ -453,7 +462,7 @@ export function createFakturaOkresu({
     }
     // Prawda o numerze jest ODPOWIEDZ inFaktu — rozjazd z seria WDT rozstrzyga wspolna
     // galaz (glosny log do zamowien + zwolnienie licznika); patrz services/wdt-faktury.js.
-    seriaWdtPoSukcesie({ db, seria: seriaWdt, numerZwrocony: numer, dopisz: dopiszWdt });
+    seriaWdtPoSukcesie({ db, seria: seriaWdt, numerZwrocony: numer, dopisz: dopiszWdt, nazwa });
     // Slad po pominietych zamowieniach — w tym samym miejscu i tak samo przed zapisem wiersza.
     // Bez tego wypadniecie z faktury zbiorczej byloby ciche i po miesiacu nie do odtworzenia.
     for (const z of anulowane) {
@@ -463,7 +472,7 @@ export function createFakturaOkresu({
       });
     }
 
-    return zakonczFaktureOkresu(db, okresId, { uuid, numer, ksefStatus });
+    return zakonczFaktureOkresu(db, okresId, { uuid, numer, ksefStatus }, { program: program.opis.id });
   }
 
   return { wystaw };

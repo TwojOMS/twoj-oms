@@ -7,6 +7,8 @@ import {
   powodOdmowyKorektyDlaFaktury, powodOdmowyWystawieniaKorekty, korektaNieSprawdzona,
 } from '../../../domena/zwrot.js';
 import { bladOperatora } from '../../../domena/bledy.js';
+import { idDokumentuDla, programDokumentu, czyDokumentProgramu } from '../../../domena/dokument-programu.js';
+import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 /**
  * ⚠️ TRESC KOREKTY, KTORA WIDZI NABYWCA I ORGAN — STALA, NIE POLE Z FORMULARZA.
@@ -48,15 +50,22 @@ const dzien = (t) => String(t ?? '').slice(0, 10);
  *    nigdy nie bylo, jest dokumentem NIEPRAWDZIWYM. Rozbieznosc dostaje ODMOWE PRZED
  *    rezerwacja: nieudana proba nie ma prawa zablokowac poprawnej.
  */
-export function createKorekta({ db, infakt }) {
+// PRZ-118.08: dokument „przed”, korektę i listę korekt daje PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }`
+// przez `zProgramu`); teksty dla człowieka jego nazwą (dla inFaktu znak w znak jak przed zmianą).
+export function createKorekta({ db, program: programPodany = null, infakt = null }) {
+  const program = zProgramu({ program: programPodany, infakt });
+  const nazwa = program?.opis.nazwa;
   async function wystaw(zamowienieId, zwrotId) {
     const z = pobierzZamowienie(db, zamowienieId);
     if (!z) throw bladOperatora('Nie ma takiego zamówienia.');
     // ⚠️ Rozbieznosc z briefem: kolumna nazywa sie `infakt_uuid`, nie `uuid`
     // (schema.sql: `faktury.infakt_uuid`) — tak samo czyta ja domain/ksef-doczytanie.js
     // i routes/zamowienia.js. `z.faktura.uuid` bylby zawsze `undefined`.
-    if (!z.faktura?.infakt_uuid) {
-      throw bladOperatora('To zamówienie nie ma faktury w inFakcie — nie ma czego korygować.');
+    // PRZ-121.A04b: faktura INNEGO programu (np. inFaktu przy innym module) = 409 `bezProgramu` TUTAJ — przed
+    // odczytem „przed” z programu i przed `zarezerwujKorekte`: odmowa nie ma prawa zablokować zwrotu ani pytać obcy program.
+    const uuidFaktury = idDokumentuDla(z.faktura, program);
+    if (!uuidFaktury) {
+      throw bladOperatora(`To zamówienie nie ma faktury w ${nazwa.miejscownik} — nie ma czego korygować.`);
     }
     const w = zwrot(db, zamowienieId, zwrotId);
     if (!w) throw bladOperatora('Nie ma takiego zwrotu przy tym zamówieniu.');
@@ -79,19 +88,19 @@ export function createKorekta({ db, infakt }) {
     if (odmowaZwrotu) throw bladOperatora(odmowaZwrotu);
 
     // ⚠️ „PRZED" Z INFAKTU, nie z zamowienia — faktura mogla zostac poprawiona recznie.
-    const faktura = await infakt.pobierzFakture(z.faktura.infakt_uuid);
-    const { services, blad } = paryKorekty(faktura, w);
+    const faktura = await program.pobierzFakture(uuidFaktury);
+    const { services, blad } = paryKorekty(faktura, w, { nazwaProgramu: nazwa });
     // Odmowa PRZED rezerwacja: nieudana proba nie ma prawa zablokowac poprawnej.
     if (blad) throw bladOperatora(blad);
 
     if (!zarezerwujKorekte(db, zamowienieId, zwrotId)) {
-      throw bladOperatora('Korekta do tego zwrotu została już zlecona — sprawdź ją w inFakcie.');
+      throw bladOperatora(`Korekta do tego zwrotu została już zlecona — sprawdź ją w ${nazwa.miejscownik}.`);
     }
     try {
-      const wynik = await infakt.wystawKorekte({
+      const wynik = await program.wystawKorekte({
         corrected_invoice_number: faktura.number,
         corrected_invoice_date: faktura.invoice_date,
-        corrected_invoice_uuid: faktura.uuid ?? z.faktura.infakt_uuid,
+        corrected_invoice_uuid: faktura.uuid ?? uuidFaktury,
         // ⚠️ STALA, nie `w.powod` — patrz `POWOD_NA_DOKUMENCIE` na gorze pliku.
         correction_reason: POWOD_NA_DOKUMENCIE,
         services,
@@ -141,6 +150,9 @@ export function createKorekta({ db, infakt }) {
     const z = pobierzZamowienie(db, zamowienieId);
     const numerFaktury = z?.faktura?.numer;
     if (!numerFaktury) return;
+    // PRZ-121.A04b (recenzja): faktura INNEGO programu — bez pytania obcego programu. Jego korekta do własnej faktury
+    // o tym samym numerze przykleiłaby się do tego zwrotu (sito 1 porównuje sam numer) i rozliczyła go fałszywie.
+    if (programDokumentu(z.faktura) !== null && !czyDokumentProgramu(z.faktura, program)) return;
     const wszystkie = zwrotyZamowienia(db, zamowienieId);
 
     // ⚠️⚠️ WIECEJ NIZ JEDNA OTWARTA SPRAWA KOREKTY = NIE ZGADUJEMY. TO JEST SWIADOMA DECYZJA,
@@ -190,7 +202,7 @@ export function createKorekta({ db, infakt }) {
       return !d || d >= dzien(w.korekta_zlecona_at);
     };
     try {
-      const lista = await infakt.listaKorekt({});
+      const lista = await program.listaKorekt({});
       // ⚠️ PO `corrected_invoice_number`, NIE po referencji zadania — encja korekty referencji
       // NIE NIESIE (sprawdzone na zywym koncie 2026-08-14).
       const kandydaci = (lista ?? []).filter((k) => k.corrected_invoice_number === numerFaktury
@@ -210,7 +222,7 @@ export function createKorekta({ db, infakt }) {
         // u inFaktu i tak ma to zapamietac; ksztalt wzorowany na wpisie „dokument jest w KSeF".
         dopiszLog(db, zamowienieId, {
           akcja: 'zwrot.korekta.odczyt',
-          wynik: `korekta ${znaleziona.number ?? '(bez numeru)'} znaleziona w inFakcie `
+          wynik: `korekta ${znaleziona.number ?? '(bez numeru)'} znaleziona w ${nazwa.miejscownik} `
             + `i przypisana do zwrotu z ${w.data} (${w.kwota} zł).`,
         });
       }

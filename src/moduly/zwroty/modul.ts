@@ -16,7 +16,11 @@ export const modulZwroty: ModulOms = {
     const korekta = infakt ? createKorekta({ db: ctx.db, infakt }) : null;
     return { uslugi: { korekta }, trasy: (app) => {
       const definicje = ctx.usluga<any>('faktury', 'config').definicje;
-      const opcje = { db: ctx.db, definicje, korekta: ctx.usluga<any>('zwroty', 'korekta') };
+      // PRZ-118.09: `infakt` (klient albo program) — nazwa programu w zdaniach ekranu zwrotu i odmów korekty.
+      // PRZ-121.03b: wybór modułu faktur — zdanie „faktury wyłączone” w odmowie korekty (bez modułu faktur — `null`, stary tekst).
+      let wyborProgramu: any = null;
+      try { wyborProgramu = ctx.usluga<any>('faktury', 'wyborProgramu'); } catch { wyborProgramu = null; }
+      const opcje = { db: ctx.db, definicje, korekta: ctx.usluga<any>('zwroty', 'korekta'), infakt, wyborProgramu };
       registerZwrotyRoutes(app, { db: ctx.db, definicje });
       registerFormularzRoutes(app, opcje);
       registerAkcjeRoutes(app, opcje);

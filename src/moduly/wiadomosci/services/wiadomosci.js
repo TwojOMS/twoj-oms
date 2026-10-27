@@ -10,6 +10,8 @@ import { mailPotwierdzenia, mailPlatniczy, mailWlasny, mailWyslane } from '../sz
 import { DOMYSLNE } from '../../../domena/szablony-wiadomosci.js';
 import { bezpiecznaNazwa } from '../../../domena/pliki.js';
 import { bladOperatora } from '../../../domena/bledy.js';
+import { idDokumentuDla } from '../../../domena/dokument-programu.js';
+import { zdanieBrakuProgramu } from '../../../domena/wybor-programu.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { tekstZeStopka } from '../oprawa.js';
 import { oprawaTeraz } from '../podpis-maili.js';
@@ -25,6 +27,7 @@ import { adresSprzedawcy, odbiorcaPrzelewu } from '../../../domena/adres-sprzeda
 import { nipSprzedawcy } from '../../../domena/nip-bdo-firmy.js';
 import { modelOswiadczenia } from '../../../domena/oswiadczenie-wywozu.js';
 import { zbudujOswiadczenieWywozuPdf } from '../../faktury/pdf/oswiadczenie-wywozu-pdf.js';
+import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 // WYSYŁKA WIADOMOŚCI DO KLIENTA Z KARTY ZAMÓWIENIA (22.08.2026).
 //
@@ -39,10 +42,15 @@ import { zbudujOswiadczenieWywozuPdf } from '../../faktury/pdf/oswiadczenie-wywo
 // miałby dwie drogi wysyłki, dwa miejsca zapisu `potwierdzenie_wyslane_at` i dwa zestawy
 // pułapek do utrzymania.
 
+// PRZ-118.08: PDF faktury pobiera PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
 export function createWiadomosci({
-  db, mailer, potwierdzenie = null, proforma = null, infakt = null, config = {}, podpisPanelu = null,
-  teraz = () => new Date().toISOString(),
+  db, mailer, potwierdzenie = null, proforma = null, program: programPodany = null, infakt = null, config = {},
+  podpisPanelu = null, teraz = () => new Date().toISOString(),
+  // PRZ-121.A04b: wybór modułu faktur (usługa `faktury.wyborProgramu`; `null` = bez modułu faktur) — WYŁĄCZNIE do
+  // zdania „faktury wyłączone” przy jawnym „Brak”; w innym razie odmowa bez programu zostaje znak w znak.
+  wyborProgramu = null,
 }) {
+  const program = zProgramu({ program: programPodany, infakt });
   // Rachunek i odbiorca przelewu pochodzą z jawnej konfiguracji faktur/nadawcy.
   // config.sprzedawca to tożsamość prawna rdzenia; podpis i oprawa poczty są osobną marką.
   // PRZ-102.10: oprawa liczona przy każdym złożeniu maila (plik + podpis z Ustawień → Poczta), nie raz przy starcie.
@@ -157,12 +165,17 @@ export function createWiadomosci({
       // fakturą w bazie pokazuje temat „Faktura" jako dostępny (bariera domeny pyta
       // o `infakt_uuid` i numer, czyli o WIERSZ, a nie o klienta inFaktu) — i dopiero tu
       // wychodziło, że pobrać PDF-u nie ma czym.
-      if (!infakt) {
-        throw bladOperatora('Panel nie ma połączenia z inFaktem — PDF-u faktury nie ma skąd pobrać.');
+      // Bez programu nie ma czyjej nazwy podać — zdanie zostaje o inFakcie (jedyny program w PRZ-118; tekst: zmiana 09).
+      // PRZ-121.A04b: przy JAWNYM „Brak” (plik albo Ustawienia) zdanie „faktury wyłączone”; bez wyboru — stary tekst.
+      if (!program) {
+        throw bladOperatora(zdanieBrakuProgramu(wyborProgramu, 'PDF-u faktury nie ma skąd pobrać.')
+          ?? 'Panel nie ma połączenia z inFaktem — PDF-u faktury nie ma skąd pobrać.');
       }
       // ⚠️ NA ŚWIEŻO Z INFAKTU, nie z kopii: dopiero tam dokument ma numer KSeF w pierwszej
       // linii. Ta sama droga, co przy wysyłce faktury na konto kupującego w Allegro.
-      const bajty = await infakt.pobierzPdf(k.faktura.infakt_uuid);
+      // PRZ-121.A04b: faktura INNEGO programu = 409 `bezProgramu` przed żądaniem — nic nie idzie ani do programu,
+      // ani do klienta (błąd złożenia: ślad „nieudane złożenie” na karcie).
+      const bajty = await program.pobierzPdf(idDokumentuDla(k.faktura, program));
       zalaczniki.push({ filename: nazwaPliku('Faktura', k.faktura.numer), content: bajty });
       // WDT: do koperty dochodzi „Potwierdzenie wywozu towarów" do podpisu przez nabywcę.
       // Awaria składania NIE jest cicha i NIE wysyła faktury bez dokumentu wywozu:

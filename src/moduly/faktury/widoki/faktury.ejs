@@ -46,7 +46,7 @@
 <header class="glowa-ekranu prz065-naglowek">
   <div>
     <h1>Faktury</h1>
-    <p>dokumenty sprzedaży · dane z inFaktu, odczyt na żywo</p>
+    <p>dokumenty sprzedaży · dane z <%= nazwaProgramu.dopelniacz %>, odczyt na żywo</p>
   </div>
   <%# Przycisk „Zestawienie PDF" zdjęty z nagłówka 14.10.2026 (PRZ-074, prośba właściciela: stał
       w dwóch miejscach). Zostaje jeden — przy filtrze miesiąca, z którego bierze miesiąc. %>
@@ -66,12 +66,17 @@
         wiersz „Razem" rysuje się wyłącznie przy niepustej liście, a pusty mówi „Nie wiadomo". %>
   </div>
   <div class="panel-cialo">
+    <%# PRZ-118.07: program fakturowy bez zdolności `nieoplacone` — zdanie zamiast tabeli. Ani „nie udało się”
+        (to nie awaria), ani pusta tabela („nikt nie zalega” byłoby fałszem). %>
+    <% if (locals.brakNieoplaconych) { %>
+      <p class="pusto-sekcja"><%= brakNieoplaconych %></p>
+    <% } else { %>
     <%# ⚠️ WLASNA AWARIA, OSOBNA OD LISTY FAKTUR MIESIACA (recenzja Zadania 7, Finding 1).
         Ten pas czyta `nieoplacone()` z inFaktu — inne zapytanie niz `dokumenty()` pod spodem —
         wiec jego porazka nie ma prawa zgasic pasa, ktory akurat dziala (ten sam wzorzec, co
         przy `bladProform` nizej). %>
     <% if (bladNieoplaconych) { %>
-      <p class="pasek-blokada">Nie udało się pobrać nieopłaconych faktur z inFaktu: <%= bladNieoplaconych %></p>
+      <p class="pasek-blokada">Nie udało się pobrać nieopłaconych faktur z <%= nazwaProgramu.dopelniacz %>: <%= bladNieoplaconych %></p>
     <% } %>
     <div class="przewijak-tabeli prz065-przewijak">
       <table class="prz065-tabela prz065-tabela--naleznosci">
@@ -106,14 +111,15 @@
             <%# Pusta tabela ma POWIEDZIEC, ze jest pusta — inaczej wyglada jak ekran, ktory
                 sie nie wczytal (ta sama zasada, co przy liscie zamowien). %>
             <tr><td colspan="7" class="pusto-sekcja">
-              <% if (bladNieoplaconych) { %>Nie wiadomo — inFakt nie odpowiedział.<% } else { %>
-                Nikt nie zalega z przelewem. Tak twierdzi inFakt.
+              <% if (bladNieoplaconych) { %>Nie wiadomo — <%= nazwaProgramu.mianownik %> nie odpowiedział.<% } else { %>
+                Nikt nie zalega z przelewem. Tak twierdzi <%= nazwaProgramu.mianownik %>.
               <% } %>
             </td></tr>
           <% } %>
         </tbody>
       </table>
     </div>
+    <% } %>
   </div>
 </section>
 
@@ -132,7 +138,7 @@
         pas czyta `dokumenty()` — inne zapytanie do inFaktu niz `nieoplacone()` wyzej — wiec
         jego porazka nie ma prawa zgasic pasa dlugu ani proform pod spodem. %>
     <% if (bladDokumentow) { %>
-      <p class="pasek-blokada">Nie udało się pobrać faktur z inFaktu: <%= bladDokumentow %></p>
+      <p class="pasek-blokada">Nie udało się pobrać faktur z <%= nazwaProgramu.dopelniacz %>: <%= bladDokumentow %></p>
     <% } %>
 
     <%# ⚠️ FILTR JEST OSOBNYM FORMULARZEM I MUSI STAC POZA formularzem wysylki nizej —
@@ -215,7 +221,7 @@
             czeka bez ani jednego znaku na ekranie — panel nie ma JavaScriptu. Od 14.10.2026
             (PRZ-074, prośba właściciela) opis siedzi w podpowiedzi przycisku, nie w zdaniu obok. %>
         <button class="btn btn--drugi btn--maly" type="submit"
-          title="Przegląda ostatnie 3 miesiące w inFakcie i dopisuje brakujące PDF-y do archiwum (rok / miesiąc). Do 10 minut.">Archiwizuj teraz</button>
+          title="Przegląda ostatnie 3 miesiące w <%= nazwaProgramu.miejscownik %> i dopisuje brakujące PDF-y do archiwum (rok / miesiąc). Do 10 minut.">Archiwizuj teraz</button>
       </form>
     <% } %>
 
@@ -364,7 +370,7 @@
                         nie klamie. %>
                     <span class="znacznik znacznik--blad">pozostało <%= d.pozostaloZl %> zł</span>
                   <% } else { %>
-                    <span class="znacznik znacznik--cichy" title="inFakt nie podał ani statusu, ani kwoty">nie wiadomo</span>
+                    <span class="znacznik znacznik--cichy" title="<%= nazwaProgramu.mianownik %> nie podał ani statusu, ani kwoty">nie wiadomo</span>
                   <% } %>
                 </td>
                 <%# ⚠️ RODZAJ I NUMER JADA W ADRESIE — dokladnie ta sama zasada, co przy pasie
@@ -375,7 +381,7 @@
             <% }); %>
             <% if (!dokumenty.length) { %>
               <tr><td colspan="9" class="pusto-sekcja">
-                <% if (bladDokumentow) { %>Nie wiadomo — inFakt nie odpowiedział.<% } else { %>
+                <% if (bladDokumentow) { %>Nie wiadomo — <%= nazwaProgramu.mianownik %> nie odpowiedział.<% } else { %>
                   W tym miesiącu nie ma ani jednego dokumentu.
                 <% } %>
               </td></tr>
@@ -385,7 +391,7 @@
       </div>
       <p class="wyjasnienie">
         Pole wyboru stoi wyłącznie przy fakturach VAT <strong>bez numeru KSeF</strong>, których
-        panel jeszcze nie wysyłał: tylko one mają dokąd pojechać. Korekty wysyła się w inFakcie.
+        panel jeszcze nie wysyłał: tylko one mają dokąd pojechać. Korekty wysyła się w <%= nazwaProgramu.miejscownik %>.
         <% if (konsumenckie) { %>
         Faktury <strong>konsumenckie</strong> — dla nabywcy bez NIP-u — panel wysyła zgodnie z ustawieniem właściciela,
         gdy zna numer, kwotę i nabywcę. KSeF jest przy nich <strong>dobrowolny</strong>, a wysyłki nie da się cofnąć.
@@ -454,7 +460,7 @@
       </table>
     </div>
     <p class="wyjasnienie">
-      Proformy generuje panel u siebie — inFakt takiego dokumentu nie zna. Unieważnione
+      Proformy generuje panel u siebie — <%= nazwaProgramu.mianownik %> takiego dokumentu nie zna. Unieważnione
       zostają na liście, bo klient może mieć przed sobą starszy PDF.
     </p>
   </div>
@@ -474,14 +480,14 @@
 <% if (doOdnotowaniaSkasowania.length) { %>
   <section class="panel prz065-powierzchnia prz065-rzadkie">
     <div class="panel-glowa">
-      <h2>Faktura skasowana w inFakcie</h2>
+      <h2>Faktura skasowana w <%= nazwaProgramu.miejscownik %></h2>
       <span class="dopisek">rzadkie — panel niczego nie kasuje, tylko odnotowuje</span>
     </div>
     <div class="panel-cialo">
       <details>
-        <summary>Odnotuj, że skasowałeś fakturę w inFakcie (<%= doOdnotowaniaSkasowania.length %>)</summary>
+        <summary>Odnotuj, że skasowałeś fakturę w <%= nazwaProgramu.miejscownik %> (<%= doOdnotowaniaSkasowania.length %>)</summary>
         <p class="wyjasnienie">
-          Panel <strong>NICZEGO nie kasuje</strong> w inFakcie — to wyłącznie odnotowanie faktu.
+          Panel <strong>NICZEGO nie kasuje</strong> w <%= nazwaProgramu.miejscownik %> — to wyłącznie odnotowanie faktu.
           Zwolni zamówienie do ponownego wystawienia. Lista obejmuje dokumenty tego miesiąca,
           których panel <strong>nie widział w KSeF</strong> i nie wysłał kupującemu na Allegro —
           faktury z KSeF się nie kasuje, tylko koryguje.

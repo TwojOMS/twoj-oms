@@ -7,6 +7,8 @@ import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { czyPaczkaBezGotowki } from '../../../domena/pobranie-zaplacone.js';
 import { czyPobranie } from '../../../domena/wysylka.js';
 import { OSTATNIA_ZYWA_PACZKA } from '../../wysylka/db/ostatnia-paczka.js';
+import { idDokumentuSql } from '../../../domena/dokument-programu.js';
+import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 // Jedyne miejsce, które zna naraz inFakt i bazę panelu. Reguły są w domain/, I/O tutaj.
 //
@@ -44,9 +46,9 @@ const POLA_DATY = new Set(['invoice_date', 'sale_date']);
 
 // Zamówienia po `faktury.infakt_uuid` — jedno zapytanie na całą listę, nie jedno na wiersz.
 const POWIAZANIA = `
-  SELECT f.infakt_uuid AS uuid, z.id AS zamowienie_id, z.numer AS zamowienie_numer
+  SELECT ${idDokumentuSql('f')} AS uuid, z.id AS zamowienie_id, z.numer AS zamowienie_numer
   FROM faktury f JOIN zamowienia z ON z.id = f.zamowienie_id
-  WHERE f.infakt_uuid IS NOT NULL
+  WHERE ${idDokumentuSql('f')} IS NOT NULL
 `;
 
 // ⚠️ DRUGIE ŹRÓDŁO DOKUMENTÓW WYSTAWIONYCH Z PANELU. Faktura zbiorcza klienta dropshippingowego
@@ -56,9 +58,9 @@ const POWIAZANIA = `
 //
 // Osobne zapytanie na CAŁĄ listę, tak samo jak wyżej — nie jedno na wiersz.
 const POWIAZANIA_OKRESOW = `
-  SELECT infakt_uuid AS uuid, id, klient_klucz, rok, miesiac
+  SELECT ${idDokumentuSql()} AS uuid, id, klient_klucz, rok, miesiac
   FROM okresy_rozliczeniowe
-  WHERE infakt_uuid IS NOT NULL
+  WHERE ${idDokumentuSql()} IS NOT NULL
 `;
 
 // ⚠️⚠️ TRZECIE ŹRÓDŁO FAKTÓW O DOKUMENCIE: WYSYŁKI ZLECONE Z PANELU (recenzja całości,
@@ -110,15 +112,25 @@ const ZLECONE_WYSYLKI = `SELECT uuid, zlecona_at FROM wysylki_ksef`;
 // `OSTATNIA_ZYWA_PACZKA` (services/oznaczanie-pobran.js).
 const POBRANIA_PRZESYLKI = `
   SELECT
-    f.infakt_uuid AS uuid, z.pobranie, z.wysylka_reczna_json,
+    ${idDokumentuSql('f')} AS uuid, z.pobranie, z.wysylka_reczna_json,
     p.status_kuriera, p.status_kuriera_kod
   FROM faktury f
   JOIN zamowienia z ON z.id = f.zamowienie_id
   ${OSTATNIA_ZYWA_PACZKA}
-  WHERE f.infakt_uuid IS NOT NULL AND (z.pobranie = 1 OR z.wysylka_reczna_json IS NOT NULL)
+  WHERE ${idDokumentuSql('f')} IS NOT NULL AND (z.pobranie = 1 OR z.wysylka_reczna_json IS NOT NULL)
 `;
 
-export function createFakturyWidok({ db, infakt }) {
+// PRZ-118.07: listy czyta PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`). Sekcja
+// nieopłaconych to zdolność `nieoplacone` — program bez niej: `brakNieoplaconych` niesie zdanie dla człowieka (trasa
+// pokazuje je zamiast sekcji i nie pyta o listę), a `nieoplacone()` odmawia tym zdaniem. Brak zdolności to NIE awaria
+// i NIE pusta lista: pusta tabela znaczyłaby „nikt nie zalega”.
+export function createFakturyWidok({ db, program: programPodany = null, infakt = null }) {
+  const program = zProgramu({ program: programPodany, infakt });
+  const nazwa = program?.opis?.nazwa;
+  const brakNieoplaconych = program && !program.opis?.zdolnosci?.includes('nieoplacone')
+    ? `${nazwa.mianownik} nie podaje listy nieopłaconych faktur, więc tej sekcji tu nie ma — `
+      + `kto zalega z przelewem, sprawdzisz bezpośrednio w ${nazwa.miejscownik}.`
+    : null;
   function powiazania() {
     const zamowienia = new Map();
     for (const w of db.prepare(POWIAZANIA).all()) {
@@ -192,7 +204,7 @@ export function createFakturyWidok({ db, infakt }) {
       );
     }
     const pytanie = { ...zakres, pole };
-    const [faktury, korekty] = await Promise.all([infakt.listaFaktur(pytanie), infakt.listaKorekt(pytanie)]);
+    const [faktury, korekty] = await Promise.all([program.listaFaktur(pytanie), program.listaKorekt(pytanie)]);
     const mapy = powiazania();
     return scalDokumenty(faktury, korekty).map((d) => wzbogac(d, mapy, dzis));
   }
@@ -206,10 +218,11 @@ export function createFakturyWidok({ db, infakt }) {
   // pustą listę. Tolerancja na poziomie POJEDYNCZEGO WIERSZA (np. `null` w tablicy) zostaje —
   // to obsługuje `wzbogac` niżej przez `d ?? {}`.
   async function nieoplacone({ dzis = dzienWarszawa(new Date().toISOString()) } = {}) {
-    const lista = await infakt.listaNieoplaconych();
+    if (brakNieoplaconych) throw bladOperatora(brakNieoplaconych);
+    const lista = await program.listaNieoplaconych();
     if (!Array.isArray(lista)) {
       throw bladOperatora(
-        'inFakt oddał listę nieopłaconych faktur w formacie, którego panel nie rozumie — '
+        `${nazwa.mianownik} oddał listę nieopłaconych faktur w formacie, którego panel nie rozumie — `
         + 'nie pokazujemy jej, żeby pusta tabela nie znaczyła „nikt nie zalega".',
       );
     }
@@ -261,5 +274,5 @@ export function createFakturyWidok({ db, infakt }) {
     `).all(rok, nrMiesiaca);
   }
 
-  return { dokumenty, nieoplacone, proformy };
+  return { dokumenty, nieoplacone, proformy, brakNieoplaconych };
 }

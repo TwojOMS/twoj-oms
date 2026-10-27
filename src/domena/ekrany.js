@@ -236,6 +236,7 @@ export function tytulEkranuDlaAdresu(url) {
     '/ustawienia/integracje/dpd': 'Kurier DPD Polska',
     '/ustawienia/integracje/inpost': 'Kurier InPost',
     '/ustawienia/integracje/infakt': 'inFakt',
+    '/ustawienia/integracje/program-fakturowy': 'Moduł faktur',
     '/ustawienia/integracje/gus': 'GUS (dane firm po NIP)',
     '/ustawienia/integracje/ksef': 'KSeF — faktury kosztowe',
     '/ustawienia/integracje/poczta': 'Poczta wychodząca',

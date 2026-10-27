@@ -21,7 +21,7 @@
           bo automat wysyła tą samą usługą; dochodzi tylko nagłówek przebiegu i lista „z zasady nie leci”. %>
       <% if (automat.wynik) { %>
         <p id="ksef-automat-przebieg">Przebieg z <b><%= automat.wynik.dzien %></b>, start <%= fmtDataCzas(automat.wynik.startAt) %><% if (automat.wynik.koniecAt) { %>, koniec <%= fmtDataCzas(automat.wynik.koniecAt) %><% } %>. W logu zamówień operator: <b><%= automat.kto %></b>.</p>
-        <% if (automat.wynik.stan === 'przerwany') { %><p class="pasek-blokada"><b>Przebieg przerwany</b> — panel uruchomił się ponownie w trakcie<% if (automat.wynik.wTrakcie && automat.wynik.wTrakcie.numer) { %> wysyłki <b><%= automat.wynik.wTrakcie.numer %></b>. Sprawdź w inFakcie, czy ta faktura ma numer KSeF, zanim wyślesz ją ponownie<% } else { %>. Sprawdź w inFakcie dokumenty z tego dnia<% } %>; automat sam niczego nie ponawia.</p><% } %>
+        <% if (automat.wynik.stan === 'przerwany') { %><p class="pasek-blokada"><b>Przebieg przerwany</b> — panel uruchomił się ponownie w trakcie<% if (automat.wynik.wTrakcie && automat.wynik.wTrakcie.numer) { %> wysyłki <b><%= automat.wynik.wTrakcie.numer %></b>. Sprawdź w <%= nazwaProgramu.miejscownik %>, czy ta faktura ma numer KSeF, zanim wyślesz ją ponownie<% } else { %>. Sprawdź w <%= nazwaProgramu.miejscownik %> dokumenty z tego dnia<% } %>; automat sam niczego nie ponawia.</p><% } %>
         <% if (automat.wynik.stan === 'wylaczony') { %><p class="wyjasnienie">Automat wyłączono w trakcie przebiegu — pozostałe dokumenty nie poleciały.</p><% } %>
         <% if (automat.wynik.stan === 'trwa') { %><p class="wyjasnienie">Przebieg trwa — odśwież za chwilę.</p><% } %>
       <% } else { %>
@@ -40,7 +40,7 @@
           u organu. Rozroznia je `niepewne`: sa tam dokumenty tylko wtedy, gdy panel zdazyl
           poprosic inFakt o wysylke. %>
       <% if (niepewne.length) { %>
-        <p class="pasek-blokada"><b>Panel nie doczekał się odpowiedzi od inFaktu:</b> <%= blad %></p>
+        <p class="pasek-blokada"><b>Panel nie doczekał się odpowiedzi od <%= nazwaProgramu.dopelniacz %>:</b> <%= blad %></p>
       <% } else if (zAutomatu && wyslane.length) { %>
         <%# Poprawka po recenzji PRZ-102.12 (WAŻNE 2): automat zatrzymany PO udanych wysyłkach — „Nic nie poszło”
             byłoby tu fałszem o dokumentach, które już są u organu. Ścieżka ręczna bez zmian. %>
@@ -58,7 +58,7 @@
         <% }); %>
       </ul>
       <p class="wyjasnienie">
-        Panel przekazał dokumenty do inFaktu, a inFakt przekazuje je organowi. Numer KSeF
+        Panel przekazał dokumenty do <%= nazwaProgramu.dopelniacz %>, a <%= nazwaProgramu.mianownik %> przekazuje je organowi. Numer KSeF
         <b>nie pojawia się od razu</b> — zmierzone około siedemdziesiąt sekund. Pokaże się
         na liście faktur, gdy organ potwierdzi przyjęcie; panel dopyta o to sam.
       </p>
@@ -74,8 +74,8 @@
           klient oddaje ja surowa w `odpowiedzInfaktu` (infakt/client.js). %>
       <p class="wyjasnienie">
         Powyższa liczba to <b>własny rachunek panelu</b>: tyle dokumentów panel wysłał.
-        Nie jest to potwierdzenie ani inFaktu, ani organu — panel nie ma dziś czego z nią
-        zestawić i niczego takiego nie udaje. Co naprawdę poszło, widać w inFakcie.
+        Nie jest to potwierdzenie ani <%= nazwaProgramu.dopelniacz %>, ani organu — panel nie ma dziś czego z nią
+        zestawić i niczego takiego nie udaje. Co naprawdę poszło, widać w <%= nazwaProgramu.miejscownik %>.
       </p>
     <% } %>
 
@@ -93,7 +93,7 @@
       <p class="pasek-blokada">
         <b>Nie wysyłaj tych dokumentów ponownie w ciemno.</b> Zerwane połączenie nie znaczy,
         że nic nie poszło — mogły już trafić do KSeF nieodwracalnie, a drugie zgłoszenie
-        byłoby duplikatem u organu. Otwórz inFakt, sprawdź te dokumenty i dopiero wtedy
+        byłoby duplikatem u organu. Otwórz <%= nazwaProgramu.mianownik %>, sprawdź te dokumenty i dopiero wtedy
         zdecyduj. Panel sam niczego nie ponawia. Ślad tej próby jest w logu zamówienia.
       </p>
     <% } %>

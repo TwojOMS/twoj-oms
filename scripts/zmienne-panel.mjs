@@ -10,6 +10,8 @@ export const ZMIENNE_PANEL = Object.freeze({
   OMS_LOGO_PLIK: 'Firma → Logo (tylko administrator; plik wygrywa; bez restartu)',
   OMS_LOGO_ALT: 'Firma → Logo (tylko administrator; plik wygrywa, gdy ustawia też OMS_LOGO_PLIK; bez restartu)',
   INFAKT_API_KEY: 'Integracje → inFakt',
+  // PRZ-121.02: wybór modułu faktur — zapisuje tylko administrator; plik wygrywa; zmiana po ponownym uruchomieniu.
+  OMS_PROGRAM_FAKTUROWY: 'Integracje → Moduł faktur (tylko administrator; plik wygrywa; po ponownym uruchomieniu)',
   GUS_KLUCZ: 'Integracje → GUS',
   KSEF_TOKEN: 'Integracje → KSeF',
   KSEF_NIP: 'Integracje → KSeF',

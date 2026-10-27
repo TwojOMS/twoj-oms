@@ -9,6 +9,7 @@
 // ręcznie w inFakcie, a wtedy drugie zgłoszenie byłoby duplikatem u organu.
 
 import { stanKsef } from './lista-faktur.js';
+import { NAZWA_ZAPASOWA } from './nazwa-programu.js';
 
 /** Typy dokumentów, które wolno wysłać. Korekty świadomie POZA listą (decyzja z 06.08.2026). */
 const WOLNO_WYSLAC = new Set(['vat']);
@@ -86,10 +87,11 @@ function maDaneKonsumenckiej(d) {
     && ['client_company_name', 'client_first_name', 'client_last_name'].some((p) => String(d?.[p] ?? '').trim());
 }
 
-function powodBlokadyKonsumenckiej(d, konsumenckie) {
+function powodBlokadyKonsumenckiej(d, konsumenckie, nazwa = NAZWA_ZAPASOWA) {
   if (!czyKonsumencka(d)) return null;
   if (konsumenckie !== true) return POWOD_KONSUMENCKA;
-  return maDaneKonsumenckiej(d) ? null : 'Brak danych faktury lub nabywcy — panel nie wysyła pustej odpowiedzi inFaktu do KSeF.';
+  return maDaneKonsumenckiej(d) ? null
+    : `Brak danych faktury lub nabywcy — panel nie wysyła pustej odpowiedzi ${nazwa.dopelniacz} do KSeF.`;
 }
 
 /**
@@ -174,7 +176,8 @@ export function powrotWysylkiKsef(powrot, { miesiac, pole } = {}) {
   };
 }
 
-export function coWolnoWyslac(zaznaczone, dokumenty, konsumenckie = false) {
+// PRZ-118.09: `nazwa` = odmiana nazwy programu fakturowego w powodach pominięcia (domyślnie inFakt).
+export function coWolnoWyslac(zaznaczone, dokumenty, konsumenckie = false, nazwa = NAZWA_ZAPASOWA) {
   const doWyslania = [];
   const pominiete = [];
   const widziane = new Set();
@@ -231,7 +234,7 @@ export function coWolnoWyslac(zaznaczone, dokumenty, konsumenckie = false) {
     // inFaktu — wymaga zmiany ustawienia właściciela. „Panel już zlecił" jest PRZEJŚCIOWY (sam znika),
     // więc zostaje ostatni: pokazany przy dokumencie konsumenckim kłamałby, że wystarczy
     // poczekać. Uzasadnienie i pomiar — w docblocku `czyKonsumencka` wyżej.
-    const powodKonsumenckiej = powodBlokadyKonsumenckiej(d, konsumenckie);
+    const powodKonsumenckiej = powodBlokadyKonsumenckiej(d, konsumenckie, nazwa);
     if (powodKonsumenckiej) {
       pominiete.push({ numer: d.number, powod: powodKonsumenckiej });
       continue;

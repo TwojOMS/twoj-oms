@@ -51,6 +51,8 @@ services:
       OMS_REKLAMY_SEKRETY_DIR: /opt/oms/data/reklamy-sekrety
       # PRZ-059: /health alarmuje, gdy najnowsza kopia ma 48 h albo nośnika kopii zewnętrznej nie ma.
       OMS_KOPIE_KATALOG: /opt/oms/backups
+      # PRZ-121.06: przycisk „Uruchom OMS ponownie” (Moduł faktur) — kontener wstaje sam (restart: unless-stopped).
+      OMS_RESTART_Z_PANELU: "tak"
     # Port w sieci lokalnej; zmiana: OMS_PORT_LAN w pliku .env obok. NIE przekierowuj go na routerze
     # do internetu — panel nie ma tu HTTPS.
     ports:

@@ -15,8 +15,8 @@ import { bezpiecznyPowrotNaListe } from '../../../domena/filtry-listy.js';
 import { ktoKlikal } from '../../zamowienia/wspolne.js';
 
 import { createWspolne } from './wspolne.js';
-export function registerFormularzRoutes(app, { db, korekta = null, definicje }) {
-  const { powrotKarty, adresKarty, zamowienieAlbo404, slad, decyzja, pokazKrok1 } = createWspolne({ db, korekta, definicje });
+export function registerFormularzRoutes(app, { db, korekta = null, definicje, infakt = null }) {
+  const { powrotKarty, adresKarty, zamowienieAlbo404, slad, decyzja, pokazKrok1 } = createWspolne({ db, korekta, definicje, infakt });
   app.get('/zamowienia/:id/zwrot', async (req, reply) => {
     let z = zamowienieAlbo404(req, reply);
     if (!z) return reply;

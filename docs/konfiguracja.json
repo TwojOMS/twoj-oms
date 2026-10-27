@@ -45,9 +45,9 @@
   "statystyki": {
     "plikiKodowe": 428,
     "bledyParsera": 0,
-    "odczytyProduktu": 130,
+    "odczytyProduktu": 132,
     "dynamiczneOdczytyProduktu": 33,
-    "zmienneProduktu": 71,
+    "zmienneProduktu": 73,
     "rodzinyDynamiczne": 11,
     "declaracjeGuardOnly": 7,
     "zmienneNarzedziISystemu": 13,
@@ -1634,7 +1634,7 @@
         {
           "id": "AST-060",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 46,
+          "line": 55,
           "expression": "env.OMS_PROFORMY_KATALOG",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1642,7 +1642,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:46"
+        "src/moduly/faktury/modul.ts:55"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1692,7 +1692,7 @@
         {
           "id": "AST-068",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 60,
+          "line": 69,
           "expression": "env.INFAKT_API_KEY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1700,7 +1700,7 @@
         {
           "id": "AST-069",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 60,
+          "line": 69,
           "expression": "env.INFAKT_API_KEY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1709,7 +1709,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/core/tryb.ts:18",
-        "src/moduly/faktury/modul.ts:60"
+        "src/moduly/faktury/modul.ts:69"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1730,7 +1730,7 @@
         {
           "id": "AST-059",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 44,
+          "line": 53,
           "expression": "env.INFAKT_API_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1738,7 +1738,7 @@
         {
           "id": "AST-070",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 60,
+          "line": 69,
           "expression": "env.INFAKT_API_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1746,8 +1746,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:44",
-        "src/moduly/faktury/modul.ts:60"
+        "src/moduly/faktury/modul.ts:53",
+        "src/moduly/faktury/modul.ts:69"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1768,7 +1768,7 @@
         {
           "id": "AST-071",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 56,
+          "line": 65,
           "expression": "env.INFAKT_ARCHIWUM",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1784,12 +1784,77 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:56",
+        "src/moduly/faktury/modul.ts:65",
         "src/moduly/koszty/modul.ts:37"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
       "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
+    },
+    {
+      "nazwa": "OMS_PROGRAM_FAKTUROWY",
+      "wlasciciel": "faktury",
+      "sekcja": "Faktury i koszty",
+      "opis": "Moduł faktur OMS-u: brak (faktury wyłączone) albo infakt; Fakturownia i TwojeFaktury będą dostępne wkrótce.",
+      "zakres": "produkt",
+      "wymagalnosc": "opcjonalna — można w panelu (Ustawienia → Integracje → Moduł faktur); wpisana w pliku musi być poprawna",
+      "wymagalnoscPoLudzku": "opcjonalna — moduł faktur możesz wybrać w panelu (Ustawienia → Integracje → Moduł faktur, tylko administrator); wpisany w pliku wygrywa nad panelem",
+      "domyslna": null,
+      "domyslnaPoLudzku": "brak wyboru: inFakt, jeśli jest podłączony; bez niego faktury są wyłączone",
+      "skutekBraku": "PRZ-121.01: bez wartości w pliku moduł faktur pochodzi z Ustawień (wiersz „program_fakturowy” w konfiguracja_integracji, ustawienia {\"program\": \"brak\"|\"infakt\"}, bez sekretów), a bez zapisu — inFakt, gdy gotowy (INFAKT_API_KEY, klucz z Ustawień przy starcie, atrapa albo szew trybu próby), inaczej „brak” domyślny: moduł składa się jak przed zmianą, komunikaty bez zmian. Jawne „brak” (plik albo Ustawienia): nie powstaje klient inFaktu ani program fakturowy z żadnego źródła; wystawianie, lista FAKTURY, KSeF sprzedaży, czuwacze, automat KSeF, VIES i paczka dla biura = null, klucz inFaktu zostaje w bazie i nie wychodzi z panelu; proformy i KSeF kosztów działają; /health bez zmian (zdanie o wyłączonych fakturach to uwaga modułu, nie alarm). Zmiana zapisu działa po ponownym uruchomieniu; automat KSeF staje od razu po zapisaniu „brak”. Zapis, którego wersja nie zna (np. „fakturownia” po wycofaniu wydania), = „brak” + uwaga.",
+      "skutekBrakuPoLudzku": "Bez niej moduł faktur wybierasz w panelu. Gdy nic nie wybrano, OMS wystawia faktury przez inFakt, jeśli jest podłączony, a bez niego faktur nie wystawia — tak jak dotąd.",
+      "walidacja": "Wielkość liter i spacje bez znaczenia; pusta wartość = brak wyboru w pliku. Inna wartość niż brak albo infakt (także fakturownia i twojefaktury — „wkrótce”) blokuje start zdaniem z nazwą zmiennej (jak OMS_TRYB). Plik wygrywa nad wyborem w panelu.",
+      "sekret": false,
+      "odpowiednikWPanelu": "Ustawienia → Integracje → Moduł faktur (/ustawienia/integracje/program-fakturowy; ekran PRZ-121.02)",
+      "decyzja": "PRZ-121",
+      "odczyty": [
+        {
+          "id": "AST-149",
+          "path": "src/moduly/faktury/modul.ts",
+          "line": 52,
+          "expression": "env.OMS_PROGRAM_FAKTUROWY",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
+        }
+      ],
+      "wywolaniaPosrednie": [],
+      "sciezkaOdczytu": [
+        "src/moduly/faktury/modul.ts:52"
+      ],
+      "aktywacja": "włączenie właściciela w kompozycji",
+      "wlaczoneWMainNaPinie": true
+    },
+    {
+      "nazwa": "OMS_RESTART_Z_PANELU",
+      "wlasciciel": "faktury",
+      "sekcja": "Faktury i koszty",
+      "opis": "Przycisk „Uruchom OMS ponownie” w module faktur: tak (OMS wstaje sam, np. w Dockerze) albo atrapa (demo: przycisk nieaktywny).",
+      "zakres": "produkt",
+      "wymagalnosc": "opcjonalna",
+      "wymagalnoscPoLudzku": "opcjonalna — ustawiona w plikach compose instalacji z Dockerem (tak) i demo (atrapa); bez niej ekran podaje polecenie ręcznego restartu",
+      "domyslna": null,
+      "domyslnaPoLudzku": "brak przycisku — ekran podaje polecenie ręcznego ponownego uruchomienia OMS-u",
+      "skutekBraku": "PRZ-121.06: bez wartości (albo z inną niż tak/atrapa) ekran Ustawienia → Integracje → Moduł faktur przy zdaniu „zadziała po ponownym uruchomieniu” pokazuje „Uruchom ponownie OMS (np. docker compose restart oms).”, a POST /ustawienia/integracje/program-fakturowy/restart odpowiada 404 i nic nie robi. tak: przycisk dla administratora; POST (tylko admin, ochrona Origin jak przy każdym POST) odpowiada stroną z odświeżeniem po 10 s, zapisuje w logu procesu login zlecającego i dopiero po wysłaniu odpowiedzi wysyła SIGTERM do siebie (main.ts zamyka łagodnie, nadzorca podnosi proces; w piaskownicy z node --watch — do procesu rodzica). atrapa: przycisk nieaktywny, POST 404. Nie ustawiać tak bez nadzorcy procesu — panel by nie wstał.",
+      "skutekBrakuPoLudzku": "Bez niej po zmianie modułu faktur ekran podpowiada, jak samemu uruchomić ponownie OMS (program, nie maszynę).",
+      "walidacja": "Wielkość liter i spacje bez znaczenia. tak albo atrapa; inna wartość = jak brak zmiennej (bez przycisku), nie blokuje startu.",
+      "sekret": false,
+      "decyzja": "PRZ-121",
+      "odczyty": [
+        {
+          "id": "AST-150",
+          "path": "src/moduly/faktury/modul.ts",
+          "line": 73,
+          "expression": "env.OMS_RESTART_Z_PANELU",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
+        }
+      ],
+      "wywolaniaPosrednie": [],
+      "sciezkaOdczytu": [
+        "src/moduly/faktury/modul.ts:73"
+      ],
+      "aktywacja": "włączenie właściciela w kompozycji",
+      "wlaczoneWMainNaPinie": true
     },
     {
       "nazwa": "KSEF_TOKEN",
@@ -7288,27 +7353,6 @@
       "call": "konfiguracjaZamowien(env)"
     },
     {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 45,
-      "expression": "env",
-      "callee": "wczytajSprzedawce",
-      "call": "wczytajSprzedawce(env)"
-    },
-    {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 54,
-      "expression": "env",
-      "callee": "adresFirmyZEnv",
-      "call": "adresFirmyZEnv(env)"
-    },
-    {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 62,
-      "expression": "env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(env)"
-    },
-    {
       "path": "src/moduly/koszty/modul.ts",
       "line": 30,
       "expression": "env",
@@ -7335,6 +7379,27 @@
       "expression": "env",
       "callee": "wczytajKoszty",
       "call": "wczytajKoszty(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 54,
+      "expression": "env",
+      "callee": "wczytajSprzedawce",
+      "call": "wczytajSprzedawce(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 63,
+      "expression": "env",
+      "callee": "adresFirmyZEnv",
+      "call": "adresFirmyZEnv(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 71,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
     }
   ],
   "prefiksy": {
@@ -7673,22 +7738,22 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "27198f645809920d6aaa1bef48a3c92261f8ee85d1f5451b0e3eb7eceb56b696",
+      "sha256": "c104c2ea1761708d1ac8ed51ef44836937dfe0d70d72e43c7509d68351b765a6",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/wysylka/modul.ts",
-      "sha256": "586242b66b9f9aad290af02ba8f2415c0b6015d3edae21aaaf04a86befce5bf4",
+      "sha256": "3973d40bd7da3ff3e941b4ad78087b94f1399c2be41eee9a390da6b6714834c3",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "sha256": "edea868e784422c38236fcfdac1cd3c949064a98ce110169a4b9a2fdc72520b0",
+      "sha256": "2891b2bdbc6ec73805b4cc8c6f39c4cf3f04ba283cd7814b894f9113aeb41329",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/zdrowie/modul.ts",
-      "sha256": "153e6eacaa17be80311c07a1bdd6958754707f394b87c84f53283865c9c20c0c",
+      "sha256": "931dafb510eb2d7bfcdad94452ab352d1378c0866cd8e51b8b5de9b41c9c93b1",
       "normalizacja": "LF"
     },
     {
@@ -7765,12 +7830,12 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "27198f645809920d6aaa1bef48a3c92261f8ee85d1f5451b0e3eb7eceb56b696",
+      "sha256": "c104c2ea1761708d1ac8ed51ef44836937dfe0d70d72e43c7509d68351b765a6",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "sha256": "edea868e784422c38236fcfdac1cd3c949064a98ce110169a4b9a2fdc72520b0",
+      "sha256": "2891b2bdbc6ec73805b4cc8c6f39c4cf3f04ba283cd7814b894f9113aeb41329",
       "normalizacja": "LF"
     },
     {
@@ -7785,7 +7850,7 @@
     },
     {
       "path": "src/moduly/zdrowie/modul.ts",
-      "sha256": "153e6eacaa17be80311c07a1bdd6958754707f394b87c84f53283865c9c20c0c",
+      "sha256": "931dafb510eb2d7bfcdad94452ab352d1378c0866cd8e51b8b5de9b41c9c93b1",
       "normalizacja": "LF"
     },
     {
@@ -7800,12 +7865,12 @@
     },
     {
       "path": "src/domena/lacznosc.js",
-      "sha256": "a60253340b5de9479c79e9546833cd205d789bf18be2959684823096f10a180f",
+      "sha256": "54ba09ce7f7525f1319653cebd6130789962e56936b612b1d76c9d68b60cdf01",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/ustawienia/cele-diagnostyki.ts",
-      "sha256": "429225d4b8831e0781455e76c74014337245cf687d87ff399ef1f2929e9375e4",
+      "sha256": "1dff0b9983eb199af4a8cf66d1b692976246efaea4d21a83b4a1358dece45160",
       "normalizacja": "LF"
     },
     {
@@ -8092,7 +8157,7 @@
       },
       {
         "path": "src/moduly/wysylka/modul.ts",
-        "sha256": "586242b66b9f9aad290af02ba8f2415c0b6015d3edae21aaaf04a86befce5bf4",
+        "sha256": "3973d40bd7da3ff3e941b4ad78087b94f1399c2be41eee9a390da6b6714834c3",
         "odczyty": [
           {
             "expression": "env[klucz]",

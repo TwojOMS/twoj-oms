@@ -4,11 +4,19 @@ import { zamowieniaOkresu } from '../../../oms/db/okresy.js';
 import { zajmijWysylkeKsef, zwolnijWysylkeKsef } from '../db/wysylki-ksef.js';
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import { czyWysylacKonsumenckie } from '../db/ksef-konsumenckie.js';
+import { bladOperatora } from '../../../domena/bledy.js';
+import { zProgramu } from '../../../integracje/program-fakturowy.ts';
+import { idDokumentuDla, czyDokumentProgramu } from '../../../domena/dokument-programu.js';
+import { dokumentyPoIdentyfikatorach } from '../db/faktury.js';
 
 // Sufit długości serialiazowanej odpowiedzi trzymanej w logu — pilnuje, żeby jeden gruby
 // ładunek (dokumenty okresu wysyłane partią) nie rozdął wpisu na kartach WSZYSTKICH zamówień
 // tego okresu (`zapiszSlad` dokleja tę samą treść do każdego z nich).
 const LIMIT_ZAPISU_ODPOWIEDZI = 2000;
+const BEZ_NAZWY = Object.freeze({
+  mianownik: 'program fakturowy', dopelniacz: 'programu fakturowego', miejscownik: 'programie fakturowym',
+  narzednik: 'programem fakturowym',
+});
 
 // ⚠️⚠️ FINDING A1 (recenzja całości). Wysyłka do KSeF jest NIEODWRACALNA, więc kształtu
 // odpowiedzi `send.json` nie da się zaobserwować inaczej niż PRAWDZIWYM zgłoszeniem — nie ma
@@ -39,9 +47,21 @@ function bezpiecznaTrescOdpowiedzi(dane) {
 // (`uruchomZegary`). Dotyczy WYŁĄCZNIE dokumentu bez zamówienia i bez okresu: taki dokument
 // nie ma gdzie zapisać śladu w bazie (patrz `zapiszSlad` niżej), a odpowiedź nieodwracalnej
 // wysyłki i tak nie ma prawa przepaść bez śladu.
+//
+// PRZ-118.07: wysyła PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`) — jego zdolność
+// `wyslijDoKsef`. Program bez niej: `niedostepna` niesie zdanie dla człowieka (trasy podglądu i zatwierdzenia
+// oraz automat KSeF pokazują je zamiast ekranu wysyłki), a `wyslij` odmawia nim, zanim cokolwiek zarezerwuje.
+// Strażnik tests/core/straznik-wysylki-ksef-prz118.test.js: w tym pliku nazwa metody pada dokładnie raz — w wywołaniu.
 export function createWysylkaKsef({
-  db, infakt, fakturyWidok, log = console.error,
+  db, program: programPodany = null, infakt = null, fakturyWidok, log = console.error,
 }) {
+  const program = zProgramu({ program: programPodany, infakt });
+  // Bez programu (usługa złożona w teście bez `infakt`) zdania mówią ogólnie — nazwy nie ma skąd wziąć.
+  const nazwa = program?.opis?.nazwa ?? BEZ_NAZWY;
+  const niedostepna = program && !program.opis?.zdolnosci?.includes('wyslijDoKsef')
+    ? `${nazwa.mianownik} nie wysyła do KSeF z OMS-u — panel nie ma jak zlecić mu wysyłki, `
+      + `więc dokumenty wyślesz do KSeF bezpośrednio w ${nazwa.miejscownik}.`
+    : null;
   // Zbiór liczony ZA KAŻDYM RAZEM od nowa, z listy pobranej na świeżo. Podgląd i zatwierdzenie
   // liczą go OSOBNO — przepisanie wyniku podglądu byłoby dokładnie tą pomyłką, przed którą
   // broni się nadanie masowe (przewodnik 4.13a): między jednym ekranem a drugim właściciel
@@ -54,7 +74,31 @@ export function createWysylkaKsef({
   // oddać inną listę i operator zatwierdzałby kwoty innego dokumentu, niż widzi.
   async function przelicz({ uuids, miesiac, pole }) {
     const dokumenty = await fakturyWidok.dokumenty({ miesiac, pole });
-    return { ...coWolnoWyslac(uuids, dokumenty, czyWysylacKonsumenckie(db)), dokumenty };
+    const { doWyslania, pominiete } = coWolnoWyslac(uuids, dokumenty, czyWysylacKonsumenckie(db), nazwa);
+    return { ...odsiejInnyProgram(doWyslania, pominiete), dokumenty };
+  }
+
+  // PRZ-121.04a: dokument, który OMS zna (wiersz faktury zamówienia albo okresu), a który leży w innym programie niż
+  // moduł faktur OMS-u — odmowa `idDokumentuDla` jako POMINIĘTY Z POWODEM, PRZED rezerwacją w `wysylki_ksef`
+  // i PRZED siecią. Liczona tu, w `przelicz`, więc podgląd mówi to samo, co zrobi zatwierdzenie. Identyfikator bez
+  // wiersza w bazie (dokument wystawiony poza OMS-em) przechodzi jak dawniej. Ten sam identyfikator w kilku wierszach
+  // (dwa programy nadały np. „123”): rozstrzyga wiersz modułu faktur, jeśli jest — lista pochodzi z TEGO programu.
+  function odsiejInnyProgram(doWyslania, pominiete) {
+    const znane = dokumentyPoIdentyfikatorach(db, doWyslania.map((d) => d.uuid));
+    const zostaja = [];
+    const odmowione = [];
+    for (const d of doWyslania) {
+      const wiersze = znane.get(String(d.uuid)) ?? [];
+      const wiersz = wiersze.find((w) => czyDokumentProgramu(w, program)) ?? wiersze[0] ?? null;
+      try {
+        idDokumentuDla(wiersz, program);
+        zostaja.push(d);
+      } catch (e) {
+        if (!e?.bezProgramu) throw e;
+        odmowione.push({ numer: d.numer, powod: e.message });
+      }
+    }
+    return { doWyslania: zostaja, pominiete: [...pominiete, ...odmowione] };
   }
 
   const podglad = (args) => przelicz(args);
@@ -99,7 +143,7 @@ export function createWysylkaKsef({
     const dokument = dokumenty.find((x) => x?.uuid === d.uuid);
     const wpis = {
       akcja: 'ksef',
-      wynik: `(${kto}) inFakt odpowiedział na zgłoszenie (${d.numer}). Treść odpowiedzi: ${tresc}`,
+      wynik: `(${kto}) ${nazwa.mianownik} odpowiedział na zgłoszenie (${d.numer}). Treść odpowiedzi: ${tresc}`,
     };
     if (dokument?.zamowienie) { dopiszLog(db, dokument.zamowienie.id, wpis); return; }
     if (dokument?.okres) {
@@ -172,6 +216,8 @@ export function createWysylkaKsef({
   const jednoznacznaOdmowa = (e) => Number.isInteger(e?.status) && e.status >= 400 && e.status < 500;
 
   async function wyslij(args, kto = 'operator') {
+    // Program bez zdolności: odmowa PRZED listą i rezerwacją — nic nie zajęte, nic nie poszło.
+    if (niedostepna) throw bladOperatora(niedostepna);
     const { doWyslania, pominiete, dokumenty } = await przelicz(args);
     // ⚠️ REZERWACJA IDZIE PRZED WSZYSTKIM INNYM — także przed zapisem śladu. Wpis w logu jest
     // dowodem próby, ale niczego nie blokuje: blokuje wyłącznie wiersz w `wysylki_ksef`.
@@ -239,7 +285,7 @@ export function createWysylkaKsef({
     for (const d of zlecone) {
       let odpowiedz;
       try {
-        odpowiedz = await infakt.wyslijDokumentDoKsef(d.uuid);
+        odpowiedz = await program.wyslijDokumentDoKsef(d.uuid);
       } catch (e) {
         // ⚠️⚠️ DWIE AWARIE, DWA SKUTKI DLA REZERWACJI — dokladnie ta sama granica, ktora przy
         // wystawianiu faktury rysuja `zwolnijFakture` i `oznaczFaktureDoWyjasnienia`.
@@ -257,7 +303,7 @@ export function createWysylkaKsef({
             zwolnij([d]);
           } catch (eZwolnienia) {
             opis += ` ⚠️ Nie udało się zdjąć rezerwacji tego dokumentu (${komunikatDlaOperatora(eZwolnienia)}) `
-              + '— panel odmówi kolejnej wysyłki, mimo że inFakt tego zgłoszenia nie przyjął.';
+              + `— panel odmówi kolejnej wysyłki, mimo że ${nazwa.mianownik} tego zgłoszenia nie przyjął.`;
           }
         }
         // ⚠️ PADAJACY ZAPIS SLADU NIE MA PRAWA ZABRAC WYNIKU CALEJ PARTII. Wyjatek z `dopiszLog`
@@ -265,13 +311,13 @@ export function createWysylkaKsef({
         // o wywolaniu, ktore moglo juz wyladowac u organu.
         try {
           zapiszSlad([d], dokumenty, () => (odmowa
-            ? `(${kto}) inFakt ODRZUCIŁ wysyłkę do KSeF (${d.numer}) — dokument NIE poszedł do organu: `
+            ? `(${kto}) ${nazwa.mianownik} ODRZUCIŁ wysyłkę do KSeF (${d.numer}) — dokument NIE poszedł do organu: `
               + `${opis} Popraw dane i zatwierdź wysyłkę jeszcze raz — panel sam NIE ponawia.`
             : `(${kto}) wysyłka do KSeF (${d.numer}) — NIE WIADOMO, czy dokument poszedł: `
-              + `${opis} Sprawdź w inFakcie, zanim wyślesz ponownie — panel sam NIE ponawia.`));
+              + `${opis} Sprawdź w ${nazwa.miejscownik}, zanim wyślesz ponownie — panel sam NIE ponawia.`));
         } catch (eLogu) {
           opis += ` ⚠️ Nie udało się dopisać śladu tej próby do logu zamówienia (${komunikatDlaOperatora(eLogu)}) `
-            + '— w panelu nie ma po niej historii, więc sprawdź w inFakcie tym pilniej.';
+            + `— w panelu nie ma po niej historii, więc sprawdź w ${nazwa.miejscownik} tym pilniej.`;
         }
         // ⚠️ ODRZUCONY DOKUMENT NIE JEST „NIEPEWNY". `niepewne` to kategoria, ktora ekran
         // opisuje zdaniem „mogly juz trafic do KSeF nieodwracalnie" — po odmowie inFaktu
@@ -279,8 +325,8 @@ export function createWysylkaKsef({
         if (odmowa) {
           odrzucone.push({
             numer: d.numer,
-            powod: `inFakt odrzucił to zgłoszenie — ten dokument NIE poszedł do KSeF. ${opis} `
-              + 'Popraw dane w inFakcie i zatwierdź wysyłkę jeszcze raz; panel sam nie ponawia.',
+            powod: `${nazwa.mianownik} odrzucił to zgłoszenie — ten dokument NIE poszedł do KSeF. ${opis} `
+              + `Popraw dane w ${nazwa.miejscownik} i zatwierdź wysyłkę jeszcze raz; panel sam nie ponawia.`,
           });
         } else {
           niepewne.push(d);
@@ -305,7 +351,7 @@ export function createWysylkaKsef({
         // Tamte gubia ZDANIE, ktore da sie odtworzyc; ten gubilby JEDYNA obserwacje ksztaltu
         // odpowiedzi inFaktu, a tej nie da sie powtorzyc inaczej niz wysylajac organowi
         // kolejny prawdziwy dokument.
-        log('ksef: nie udało się zapisać odpowiedzi inFaktu w logu —', bezpiecznaTrescOdpowiedzi(odpowiedz));
+        log(`ksef: nie udało się zapisać odpowiedzi ${nazwa.dopelniacz} w logu —`, bezpiecznaTrescOdpowiedzi(odpowiedz));
       }
     }
 
@@ -321,5 +367,6 @@ export function createWysylkaKsef({
     };
   }
 
-  return { podglad, wyslij };
+  // `nazwaProgramu` — dla automatu KSeF (zdanie „… odłączony”) bez drugiego źródła programu.
+  return { podglad, wyslij, niedostepna, nazwaProgramu: nazwa };
 }

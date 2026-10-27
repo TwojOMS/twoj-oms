@@ -14,6 +14,8 @@ import { wczytajUstawienia } from '../../../oms/db/ustawienia.js';
 import { wczytajAutomatKsef, zapiszUstawieniaAutomatu } from '../db/ksef-automat.js';
 import { czyWysylacKonsumenckie } from '../db/ksef-konsumenckie.js';
 import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';
+import { odmianaNazwyProgramu } from '../../../domena/nazwa-programu.js';
+import { zdanieBrakuProgramu, jawnyBrak } from '../../../domena/wybor-programu.js';
 
 export const EKRAN_AUTOMATYZACJI = '/ustawienia/automatyzacje';
 export const ZAPIS_AUTOMATU_KSEF = `${EKRAN_AUTOMATYZACJI}/ksef`;
@@ -24,11 +26,16 @@ const WIDOK = 'automatyzacje.ejs';
 const KOMUNIKATY = { 'ksef-automat': 'Zapisano ustawienia automatycznej wysyłki do KSeF.' };
 
 // PRZ-102.12: dlaczego automat KSeF nic nie wyśle — jedno zdanie na ekran albo `null`, gdy działa.
-function powodBezczynnosciAutomatu(k, automatKsef) {
+// PRZ-118.09: `nazwa` = odmiana nazwy programu (bez programu — inFakt, jak przed zmianą).
+function powodBezczynnosciAutomatu(k, automatKsef, nazwa) {
+  // PRZ-121.03a: jawny „brak” (plik albo Ustawienia) — automat stoi z powodu wyboru, nie braku klucza. `teraz()` widzi
+  // też „brak” zapisany po starcie (automat staje od razu); bez wyboru zdanie jest `null` i idą stare teksty.
+  const brak = zdanieBrakuProgramu(k.wyborProgramu?.teraz?.() ?? k.wyborProgramu, 'Automatyczna wysyłka do KSeF nic nie wyśle.');
+  if (brak) return brak;
   if (automatKsef && !k.odlaczonyDoRestartu()) return null;
-  if (k.odlaczonyDoRestartu()) return 'inFakt jest odłączony — automat nic nie wyśle, dopóki go nie podłączysz i nie uruchomisz OMS-u ponownie.';
-  if (k.wymagaRestartu()) return 'inFakt jest już podłączony, ale automat ruszy dopiero po ponownym uruchomieniu OMS-u.';
-  return 'inFakt nie jest podłączony — automat nic nie wyśle, dopóki go nie podłączysz (potem potrzebne ponowne uruchomienie OMS-u).';
+  if (k.odlaczonyDoRestartu()) return `${nazwa.mianownik} jest odłączony — automat nic nie wyśle, dopóki go nie podłączysz i nie uruchomisz OMS-u ponownie.`;
+  if (k.wymagaRestartu()) return `${nazwa.mianownik} jest już podłączony, ale automat ruszy dopiero po ponownym uruchomieniu OMS-u.`;
+  return `${nazwa.mianownik} nie jest podłączony — automat nic nie wyśle, dopóki go nie podłączysz (potem potrzebne ponowne uruchomienie OMS-u).`;
 }
 
 /** Stan automatu do kafla „Automatyczna wysyłka do KSeF” na ekranie inFaktu: włączony? najbliższy przebieg. */
@@ -38,16 +45,21 @@ export function stanAutomatuKsef(db, teraz = () => new Date()) {
 }
 
 /** Model sekcji `#ksef-automat` (partial faktury/widoki/_automat-ksef.ejs). */
-export function modelAutomatuKsef({ db, konfiguracjaInfaktu, automatKsef = null, teraz = () => new Date() },
+export function modelAutomatuKsef({ db, konfiguracjaInfaktu, automatKsef = null, teraz = () => new Date(), infakt = null },
   { bledy = [], formularz = null } = {}) {
   const stan = wczytajAutomatKsef(db);
+  // PRZ-118.09: usługa `infakt` modułu faktur (klient albo program) — nazwa w zdaniach sekcji automatu.
+  const nazwaProgramu = odmianaNazwyProgramu(infakt);
   return {
+    nazwaProgramu,
     ...stan,
     // Po błędzie formularza pola pokazują to, co wpisał człowiek, a nie zapis z bazy.
     formularz: formularz ?? { wlaczony: stan.wlaczony, godzina: stan.godzina },
     bledy,
     najblizszy: najblizszyPrzebieg(stan, chwilaWarszawy(teraz())),
-    powodBezczynnosci: powodBezczynnosciAutomatu(konfiguracjaInfaktu, automatKsef),
+    powodBezczynnosci: powodBezczynnosciAutomatu(konfiguracjaInfaktu, automatKsef, nazwaProgramu),
+    // PRZ-121.03b: jawny „brak” (też zapisany po starcie) — linia stanu nie mówi „Włączony — najbliższy przebieg”.
+    stoiPrzezBrak: jawnyBrak(konfiguracjaInfaktu?.wyborProgramu?.teraz?.() ?? konfiguracjaInfaktu?.wyborProgramu),
   };
 }
 

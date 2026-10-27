@@ -2,6 +2,7 @@ import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
 import { zamowienieDoDokumentu } from '../../../oms/db/scalenia.js';
 import { rozpocznijFakture, zakonczFakture, zwolnijFakture, oznaczFaktureDoWyjasnienia } from '../db/faktury.js';
 import { bladOperatora } from '../../../domena/bledy.js';
+import { idDokumentuDla } from '../../../domena/dokument-programu.js';
 import { daneFaktury } from '../../../domena/dane-faktury.js';
 // „Komu wolno wystawic fakture" liczy sie W DOMENIE (domain/faktura-odmowa.js) — JEDNA
 // regula dla wystawiania z karty i dla wystawiania hurtem. Druga kopia rozjechalaby sie
@@ -39,10 +40,13 @@ import { sposobPlatnosciFaktury } from '../../../domena/sposob-platnosci.js';
 // VIES i seria numeracji — ze WSPOLNEJ galezi obu drog wystawiania (services/wdt-faktury.js),
 // zeby karta i okres nie mialy dwoch kopii tej samej reguly. Sama stawka 0% na pozycjach
 // liczy sie juz w pozycjeDokumentu.
-import { czyNipUe, rozbijNipUe, polaWdtInfakt, nipSprzedawcyDoWdt } from '../../../domena/wdt.js';
+import { czyNipUe, polaWdtInfakt, nipSprzedawcyDoWdt } from '../../../domena/wdt.js';
 import {
-  sprawdzWdtWVies, przygotujSerieWdt, seriaWdtPoAwarii, seriaWdtPoSukcesie,
+  sprawdzWdtWVies, przygotujSerieWdt, seriaWdtPoAwarii, seriaWdtPoSukcesie, sprawdzNumeracjeWlasna, nazwaProgramu,
 } from './wdt-faktury.js';
+// PRZ-118.06: program fakturowy (kontrakt) zamiast klienta inFaktu. Usluga przyjmuje `{ program }` albo stary
+// `{ infakt }` (owija go adapter inFaktu) — oba naraz to blad programisty, rzucany przy tworzeniu uslugi.
+import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 /**
  * Data zapłaty do OZNACZENIA faktury w inFakcie — PÓŹNIEJSZA z dwóch dat.
@@ -89,14 +93,18 @@ function dataZaplatyDoOznaczenia(z, invoiceDate) {
  *   daty wystawienia. Wstrzykiwany jak w services/wiadomosci.js.
  */
 export function createFaktura({
-  db, infakt, vies = null, nipSprzedawcy, teraz = () => new Date().toISOString(),
+  db, program: programFakturowy = null, infakt = null, vies = null, nipSprzedawcy, teraz = () => new Date().toISOString(),
 }) {
+  const program = zProgramu({ program: programFakturowy, infakt });
+  // Odmiana nazwy programu do komunikatow (inFakt / inFaktu / inFakcie / inFaktem).
+  const nazwa = nazwaProgramu(program);
+
   // Awaria JEDNOZNACZNA = inFakt odpowiedzial i odrzucil (4xx). Dokumentu na pewno nie ma,
   // wiec wolno zwolnic miejsce pod ponowienie. Wszystko inne — zerwane polaczenie, 5xx,
   // blad techniczny naszego kodu w trakcie wywolania — jest NIEJEDNOZNACZNE i traktujemy je
   // jak "dokument mogl powstac". Domyslna odpowiedz na niewiedze musi byc ostrozna.
   //
-  // UWAGA: to pytanie ma sens WYLACZNIE dla wyjatku z `infakt.wystaw`. Rozstrzyganie nim
+  // UWAGA: to pytanie ma sens WYLACZNIE dla wyjatku z `program.wystaw`. Rozstrzyganie nim
   // awarii z wczesniejszych krokow (patrz podzial faz w `wystaw`) blokowalo zamowienia
   // na stale za bledy, przy ktorych o dokument nikt jeszcze nie poprosil.
   const jednoznacznaOdmowa = (e) => Number.isInteger(e?.status) && e.status >= 400 && e.status < 500;
@@ -152,7 +160,7 @@ export function createFaktura({
     // (`paid_price` w groszach). Liczymy ja `kwotaOczekiwanaGrosze` — czyli TA SAMA
     // funkcja, ktora chwile wyzej sprawdzila `sprawdzSumeDokumentu`; `z.kwota_brutto`
     // rozjechaloby sie z dokumentem przy kazdej pozycji dopisanej recznie.
-    const daty = termin ? datyFaktury(termin, kwotaOczekiwanaGrosze(z)) : {};
+    const daty = termin ? datyFaktury(termin, kwotaOczekiwanaGrosze(z), undefined, { nazwa }) : {};
 
     // Dane nabywcy licza sie RAZ, przed rezerwacja (funkcja czysta) — uzywa ich faza
     // przygotowania (kartoteka) i galaz WDT. Rozpoznanie WDT idzie po TYM SAMYM numerze,
@@ -163,9 +171,12 @@ export function createFaktura({
     // PRZ-108.10: NIP sprzedawcy do adnotacji WDT — przy KAŻDYM wystawieniu (NIP z Ustawień → Firma bez restartu)
     // i PRZED rezerwacją: WDT bez NIP-u odmawia tutaj, zanim cokolwiek dotknie bazy, VIES albo inFaktu.
     const nipWlasny = nipSprzedawcyDoWdt(d.nip, nipSprzedawcy);
+    // PRZ-118.06: WDT wymaga numeracji wlasnej programu (straznik duplikatu serii). Program bez tej zdolnosci
+    // odmawia TU — przed rezerwacja faktury, przed VIES i przed licznikiem serii (nic nie zostaje do zwalniania).
+    if (wdt) sprawdzNumeracjeWlasna(program);
 
     // REZERWACJA. Od tej linii druga proba odbija sie od bazy, a nie od naszej uwaznosci.
-    const f = rozpocznijFakture(db, zamowienieId);
+    const f = rozpocznijFakture(db, zamowienieId, { nazwa });
 
     // FAZA PRZYGOTOWANIA (kroki 1-2). Nic tutaj NIE MOZE stworzyc dokumentu: GET po NIP-ie
     // niczego nie wystawia, POST /clients.json zaklada wpis w kartotece, a nasze wlasne
@@ -174,44 +185,25 @@ export function createFaktura({
     // po `e.status`, wiec duplikat NIP-u w kartotece (blad czysto lokalny, bez statusu),
     // zerwana siec na GET-cie i 500 z zakladania klienta blokowaly zamowienie na stale
     // komunikatem o dokumencie, o ktory nigdy nie poproszono.
-    let clientId;
+    let nabywca;
     try {
-      // Nabywca musi ISTNIEC w kartotece — faktura wskazuje go id, nie danymi.
-      // Bez NIP-u nie szukamy: dopasowanie po nazwie podpieloby fakture pod CUDZY wpis,
-      // a tego (w odroznieniu od duplikatu) nie da sie cofnac.
+      // Nabywca przez kontrakt: `przygotujNabywce` oddaje pola nabywcy do rozsypania w ladunku (dla inFaktu
+      // `{ client_id }` z kartoteki — szukanie po NIP-ie, a gdy brak, zalozenie wpisu: integracje/programy/infakt.ts).
+      // Bez NIP-u adapter nie szuka: dopasowanie po nazwie podpieloby fakture pod CUDZY wpis.
       //
       // ⚠️ Dane nabywcy czytamy `daneFaktury(z)` (policzone przed rezerwacja), czyli TAK
       // SAMO jak karta zamowienia — NIGDY wprost z `z.klient`/`z.nip`. Operator poprawia
       // je na karcie, bo klient podal zle (albo napisal, ze chce zmienic); czytanie tu
       // prosto ze sklepu robiloby z tej edycji edycje POZORNA: panel pokazywalby poprawione
-      // dane, a do inFaktu poszlyby stare — i to na dokumencie, ktorego juz nie da sie
+      // dane, a do programu poszlyby stare — i to na dokumencie, ktorego juz nie da sie
       // tak po prostu zmienic.
       //
       // WDT: numer nabywcy MUSI byc wazny w VIES (art. 42 ust. 1 pkt 1) — bez tego 0%
       // to zanizony VAT nalezny. Odmowa leci z fazy przygotowania, wiec zwalnia rezerwacje.
-      if (wdt) await sprawdzWdtWVies({ vies, nip: d.nip, dopisz: dopiszWdt(zamowienieId) });
-      clientId = d.nip ? await infakt.znajdzKlientaPoNip(d.nip) : null;
-      if (!clientId) {
-        clientId = await infakt.zalozKlienta({
-          // company_name jest WYMAGANE takze dla osoby prywatnej (422 "Prosze podac nazwe firmy").
-          // Fallback na imie i nazwisko robi juz daneFaktury(); tu zostaje ostatnia deska.
-          company_name: d.firma || 'Nabywca',
-          // NIP musi trafic do kartoteki, inaczej `q[nip_eq]` nigdy tego wpisu nie znajdzie
-          // i kazde kolejne zamowienie tego klienta zalozy nastepny duplikat.
-          nip: d.nip || null,
-          // Adres jednym stringiem — sprawdzone, street_number moze zostac puste.
-          // Zgadywanie numeru z tekstu psuloby "Aleja 1 Maja 5" czesciej niz cokolwiek naprawialo.
-          street: d.ulica,
-          postal_code: d.kod,
-          city: d.miasto,
-          // Przy WDT kraj wpisu bierze sie Z PREFIKSU numeru (SK…), nie z `d.kraj`:
-          // zamowienie reczne nie ma pola kraju i oddaje domyslne 'PL', a wpis kartoteki
-          // z krajem PL polozylby fakture unijnego nabywcy na walidacji inFaktu.
-          country: wdt ? rozbijNipUe(d.nip).kraj : d.kraj,
-          email: d.email,
-        });
-      }
-      if (!clientId) throw bladOperatora('inFakt nie oddał identyfikatora nabywcy.');
+      if (wdt) await sprawdzWdtWVies({ vies, nip: d.nip, dopisz: dopiszWdt(zamowienieId), nazwa });
+      // KAZDY blad tej operacji (4xx, 5xx, zerwane polaczenie, TypeError) zwalnia rezerwacje — patrz catch.
+      nabywca = await program.przygotujNabywce(d, { zalozGdyBrak: true });
+      if (!nabywca) throw bladOperatora(`${nazwa.mianownik} nie oddał identyfikatora nabywcy.`);
     } catch (e) {
       zwolnij(f, zamowienieId, e);
       throw e;
@@ -225,7 +217,7 @@ export function createFaktura({
     let seriaWdt = null;
     if (wdt) {
       try {
-        seriaWdt = await przygotujSerieWdt({ db, infakt, dzien: daty.invoice_date ?? dzienWarszawa(teraz()) });
+        seriaWdt = await przygotujSerieWdt({ db, program, dzien: daty.invoice_date ?? dzienWarszawa(teraz()) });
       } catch (e) {
         zwolnij(f, zamowienieId, e);
         throw e;
@@ -255,8 +247,8 @@ export function createFaktura({
       // 07.08.2026, faktura 18/08/2026). Powod, dla ktorego to NIE jest czesc `datyFaktury`:
       // sposob zaplaty nie jest data i nie wynika z wyboru operatora w formularzu, tylko
       // z FAKTU o zamowieniu — patrz domain/sposob-platnosci.js.
-      w = await infakt.wystaw({
-        client_id: clientId, services, ...daty, ...sposobPlatnosciFaktury(z),
+      w = await program.wystaw({
+        client_id: nabywca.client_id, services, ...daty, ...sposobPlatnosciFaktury(z),
         // Pola WYLACZNIE dokumentu WDT (domain/wdt.js) — dla nabywcy krajowego oba
         // rozsypania sa puste i payload zostaje bajt w bajt taki, jaki byl.
         ...polaWdtInfakt(d.nip, { nipSprzedawcy: nipWlasny }),
@@ -265,7 +257,7 @@ export function createFaktura({
     } catch (e) {
       // Los numeru serii rozstrzyga wspolna galaz: 4xx zwalnia, niejednoznaczna zostawia
       // zajety z gloszym sladem w logu (dziura w serii to fakt do wyjasnienia).
-      seriaWdtPoAwarii({ db, seria: seriaWdt, jednoznaczna: jednoznacznaOdmowa(e), dopisz: dopiszWdt(zamowienieId) });
+      seriaWdtPoAwarii({ db, seria: seriaWdt, jednoznaczna: jednoznacznaOdmowa(e), dopisz: dopiszWdt(zamowienieId), nazwa });
       if (jednoznacznaOdmowa(e)) {
         zwolnij(f, zamowienieId, e);
       } else {
@@ -283,8 +275,9 @@ export function createFaktura({
     dopiszLog(db, zamowienieId, { akcja: 'faktura', wynik: w.numer ?? 'OK' });
     // Prawda o numerze jest ODPOWIEDZ inFaktu — rozjazd z seria WDT rozstrzyga wspolna
     // galaz (glosny log + zwolnienie licznika); patrz services/wdt-faktury.js.
-    seriaWdtPoSukcesie({ db, seria: seriaWdt, numerZwrocony: w.numer, dopisz: dopiszWdt(zamowienieId) });
-    zakonczFakture(db, f.id, w);
+    seriaWdtPoSukcesie({ db, seria: seriaWdt, numerZwrocony: w.numer, dopisz: dopiszWdt(zamowienieId), nazwa });
+    // Kolumna `program` = opis.id programu, ktory wystawil (dla inFaktu 'infakt' — tez do `infakt_uuid`).
+    zakonczFakture(db, f.id, w, { program: program.opis.id });
 
     // ⚠️ KROK PO NIEODWRACALNYM — I DLATEGO NIE MA PRAWA NICZEGO ZEPSUĆ.
     //
@@ -330,14 +323,18 @@ export function createFaktura({
     let wynik;
     try {
       const paidDate = dataZaplatyDoOznaczenia(z, invoiceDate);
-      await infakt.oznaczZaplacona(w.uuid, { paidDate });
-      wynik = `Zlecono w inFakcie oznaczenie faktury ${w.numer ?? '(bez numeru)'} jako opłaconej `
-        + `(data zapłaty ${paidDate}). inFakt przetwarza to zadanie w tle.`;
+      // Zdolnosc `oznaczZaplacona`: program bez niej konczy tak jak awaria — wpis w logu, nic nie rzuca.
+      if (typeof program.oznaczZaplacona !== 'function') {
+        throw new Error(`${nazwa.mianownik} nie umie oznaczyć zapłaty — ten program nie ma takiej operacji.`);
+      }
+      await program.oznaczZaplacona(w.uuid, { paidDate });
+      wynik = `Zlecono w ${nazwa.miejscownik} oznaczenie faktury ${w.numer ?? '(bez numeru)'} jako opłaconej `
+        + `(data zapłaty ${paidDate}). ${nazwa.mianownik} przetwarza to zadanie w tle.`;
     } catch (e) {
       wynik = `UWAGA: faktura ${w.numer ?? '(bez numeru)'} została WYSTAWIONA i dokument dla klienta `
         + 'jest poprawny („Zapłacono", pozostało 0,00), ale nie udało się zlecić oznaczenia jej '
-        + 'jako opłaconej — w inFakcie zostanie na liście jako NIEOPŁACONA. Przestaw jej status '
-        + `ręcznie w inFakcie. Faktura jest w porządku, poprawy wymaga tylko status. Powód: ${e.message}`;
+        + `jako opłaconej — w ${nazwa.miejscownik} zostanie na liście jako NIEOPŁACONA. Przestaw jej status `
+        + `ręcznie w ${nazwa.miejscownik}. Faktura jest w porządku, poprawy wymaga tylko status. Powód: ${e.message}`;
     }
     // Nawet zapis do logu nie ma prawa wywalić kroku po nieodwracalnym: gdyby padł (dysk,
     // blokada WAL), faktura i tak jest wystawiona i zapisana, a operator ma zobaczyć sukces.
@@ -364,10 +361,12 @@ export function createFaktura({
     // patrza na DOKLADNIE ten sam wiersz (zLinii dokleja `faktura` do zamowienia).
     const f = pobierzZamowienie(db, zamowienieId)?.faktura;
     if (!f) throw bladOperatora('To zamówienie nie ma jeszcze faktury.');
-    if (!f.infakt_uuid) {
-      throw bladOperatora('Faktura nie została do końca wystawiona — panel nie zna jej numeru w inFakcie.');
+    // PRZ-121.04a: dokument innego programu niż moduł faktur OMS-u — odmowa 409 PRZED siecią (nic nie idzie do programu).
+    const uuid = idDokumentuDla(f, program);
+    if (!uuid) {
+      throw bladOperatora(`Faktura nie została do końca wystawiona — panel nie zna jej numeru w ${nazwa.miejscownik}.`);
     }
-    const bajty = await infakt.pobierzPdf(f.infakt_uuid);
+    const bajty = await program.pobierzPdf(uuid);
     return { bajty, numer: f.numer ?? null };
   }
 

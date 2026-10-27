@@ -5,7 +5,7 @@
 <section class="ust-sekcja" id="ksef-automat">
   <h2>Automatyczna wysyłka do KSeF</h2>
   <p id="ksef-automat-stan" class="aut-stan">
-    <% if (automat.wlaczony) { %><strong>Włączony</strong> — najbliższy przebieg: <strong><%= automat.najblizszy %></strong>.<% } else { %><strong>Wyłączony.</strong><% } %>
+    <% if (automat.wlaczony && automat.stoiPrzezBrak) { %><strong>Stoi — faktury wyłączone.</strong><% } else if (automat.wlaczony) { %><strong>Włączony</strong> — najbliższy przebieg: <strong><%= automat.najblizszy %></strong>.<% } else { %><strong>Wyłączony.</strong><% } %>
     <% if (automat.zmienil) { %> Ostatnia zmiana: <%= automat.zmienil.login || '—' %>, <%= fmtDataCzas(automat.zmienil.at) %>.<% } %>
   </p>
   <% if (automat.bledy.length) { %>
@@ -31,6 +31,6 @@
       <a href="/faktury/ksef/automat">Szczegóły</a></p>
   <% } %>
   <% if (automat.wstrzymane.length) { %>
-    <p class="pas-uprzedzenie" id="ksef-automat-wstrzymane-licznik">Wstrzymane faktury (inFakt je odrzucił, automat ich nie wyśle): <%= automat.wstrzymane.map(function (w) { return w.numer; }).join(', ') %>. Popraw w inFakcie i wyślij ręcznie albo zwolnij na <a href="/faktury/ksef/automat">ekranie wyniku automatu</a>.</p>
+    <p class="pas-uprzedzenie" id="ksef-automat-wstrzymane-licznik">Wstrzymane faktury (<%= automat.nazwaProgramu.mianownik %> je odrzucił, automat ich nie wyśle): <%= automat.wstrzymane.map(function (w) { return w.numer; }).join(', ') %>. Popraw w <%= automat.nazwaProgramu.miejscownik %> i wyślij ręcznie albo zwolnij na <a href="/faktury/ksef/automat">ekranie wyniku automatu</a>.</p>
   <% } %>
 </section>

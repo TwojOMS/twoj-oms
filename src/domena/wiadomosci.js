@@ -6,6 +6,8 @@ import { terminZamowienia } from './blok-platnosci.js';
 import { zlotowki } from './kwoty.js';
 import { fmtDataCzasKrotko } from './format-daty.js';
 import { powodBrakuPaczki, numeryPaczek } from './wiadomosc-wyslane.js';
+import { idDokumentu } from './dokument-programu.js';
+import { NAZWA_ZAPASOWA } from './nazwa-programu.js';
 
 // TEMATY WIADOMOŚCI DO KLIENTA — jedyne miejsce rozstrzygające „czy wolno wysłać" (22.08.2026).
 //
@@ -92,7 +94,7 @@ export function czyWolnoWyslac(z, temat_id, kontekst = {}) {
     // allegro-faktura.js:42): bez numeru klient nie połączy dokumentu z naszą księgowością,
     // a `stanTematu` napisałby „bez numeru · PDF z inFaktu" — mail, który nie umie się
     // nazwać, jest gorszy niż brak przycisku.
-    if (!kontekst.faktura.infakt_uuid || !kontekst.faktura.numer) {
+    if (!idDokumentu(kontekst.faktura) || !kontekst.faktura.numer) {
       return odmowa('Faktura nie została do końca wystawiona w inFakcie — PDF-u nie ma jeszcze skąd pobrać.');
     }
     return zgoda;
@@ -202,7 +204,8 @@ export function stanTematu(z, temat_id, kontekst = {}) {
     // i zarazem zapowiadała operatorowi maila „bez numeru", którego wysłać nie wolno. Gdyby
     // kiedyś zniknął tamten strażnik, ma tu wyjść puste miejsce w napisie, a nie cicha
     // podmiana na zdanie brzmiące jak stan dopuszczalny.
-    return [`${kontekst.faktura.numer} · PDF z inFaktu`, ostatnio].filter(Boolean).join(' · ');
+    // PRZ-118.09: `kontekst.nazwaProgramu` — odmiana nazwy programu fakturowego (domyślnie inFakt).
+    return [`${kontekst.faktura.numer} · PDF z ${(kontekst.nazwaProgramu ?? NAZWA_ZAPASOWA).dopelniacz}`, ostatnio].filter(Boolean).join(' · ');
   }
 
   if (temat_id === 'wyslane') return [numeryPaczek(z), ostatnio].filter(Boolean).join(' · ');

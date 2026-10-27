@@ -32,6 +32,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= title %></title>
+  <% if (locals.odswiez) { %><meta http-equiv="refresh" content="<%= odswiez.sekundy %>; url=<%= odswiez.adres %>"><% } %>
   <%
     // DWIE PALETY (N3, druga fala 2026-09-12), wartosci przepisane WPROST z korzenia
     // `:root`/`html[data-motyw="ciemny"]` w layout-oms.ejs, zeby ekran odmowy nie wymyslal
@@ -61,7 +62,13 @@
 </head>
 <body>
   <div class="pusto">
-    <% if (locals.modulWylaczony) { %>
+    <% if (locals.restart) { %>
+    <%# PRZ-121.06: strona po „Uruchom OMS ponownie” — samodzielna, bo zaraz po niej proces się zamyka (arkusze
+        layoutu mogłyby już nie przyjść); odświeżenie wraca na ekran Moduł faktur. %>
+    <h1>OMS uruchamia się ponownie</h1>
+    <p>OMS uruchamia się ponownie — strona odświeży się za kilka sekund.</p>
+    <p>Jeśli strona się nie odświeży, <a href="<%= odswiez.adres %>">otwórz ekran Moduł faktur</a>.</p>
+    <% } else if (locals.modulWylaczony) { %>
     <h1>Moduł wyłączony</h1>
     <p>Moduł wyłączony — włączysz go w Ustawieniach → Moduły.</p>
     <% if (admin) { %><p><a href="/ustawienia/moduly">Ustawienia → Moduły</a></p>

@@ -10,6 +10,7 @@ import { kosztyOtrzymaneWMiesiacu, odrzuconeWMiesiacu } from '../../../oms/db/ko
 import { zbudujZestawieniePdf } from '../pdf/zestawienie-dla-biura-pdf.js';
 import { zCzekaniemNa429 } from '../../../oms/ksef/limit.js';
 import { uslugaKsefDostepna, powodNiedostepnosciKsef } from '../../../domena/konfiguracja-ksef-kosztow.js';
+import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 // Paczka dla biura rachunkowego (spec 2026-09-02, Czesc D): scalony PDF miesiaca — zestawienie
 // czesci i jej dokumenty. Ten modul jest wylacznie SPINACZEM: skad wziac bajty, w jakiej
@@ -80,8 +81,9 @@ async function porcjami(elementy, ile, fn) {
   return wyniki;
 }
 
+// PRZ-118.08: listy i PDF-y sprzedaży daje PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
 export function createPaczkaDlaBiura({
-  db, infakt, wizualizacjaKosztu = null, katalogSprzedazy = null, katalogKosztow = null,
+  db, program: programPodany = null, infakt = null, wizualizacjaKosztu = null, katalogSprzedazy = null, katalogKosztow = null,
   teraz = () => new Date(), rownolegle = 4, spij = undefined, log = console.error,
   czytajPlik = readFileSync, zbudujZestawienie = zbudujZestawieniePdf,
 }) {
@@ -90,6 +92,9 @@ export function createPaczkaDlaBiura({
   // dlugosc listy, wiec pierwsza porcja (pusta) powtarzalaby sie w kolko. Klamrowanie do
   // minimum 1 tutaj, RAZ, jest tansze niz pilnowanie tego w kazdym miejscu wywolania.
   const rownoleglePaczki = Math.max(1, Number(rownolegle) || 1);
+  const program = zProgramu({ program: programPodany, infakt });
+  // PRZ-118.09: „Wygenerowano … w panelu OMS (<źródło>)” na zestawieniu sprzedaży — mianownik nazwy programu.
+  const zrodloSprzedazy = program?.opis?.nazwa?.mianownik ?? null;
   /**
    * ⚠️ Z DYSKU TYLKO WTEDY, GDY PLIK NA PEWNO JEST TYM DOKUMENTEM. Trzy warunki naraz:
    * wiersz archiwum istnieje, NIE jest oznaczony jako skasowany w inFakcie i jego `odcisk`
@@ -113,8 +118,8 @@ export function createPaczkaDlaBiura({
     }
     try {
       return dok.rodzaj === 'korekta'
-        ? await infakt.pobierzPdfKorekty(dok.uuid)
-        : await infakt.pobierzPdf(dok.uuid);
+        ? await program.pobierzPdfKorekty(dok.uuid)
+        : await program.pobierzPdf(dok.uuid);
     } catch (e) {
       throw bladOperatora(`Nie udało się przygotować paczki: brak dokumentu ${dok.number} (${e.message}).`);
     }
@@ -214,7 +219,7 @@ export function createPaczkaDlaBiura({
     const poUuid = new Map();
     for (const d of dokSprzedazy) {
       if (poUuid.has(d.uuid)) {
-        throw bladOperatora(`Nie udało się przygotować paczki: dokument ${d.number} ma zduplikowany identyfikator (uuid) z innym dokumentem tego miesiąca — sprawdź w inFakcie.`);
+        throw bladOperatora(`Nie udało się przygotować paczki: dokument ${d.number} ma zduplikowany identyfikator (uuid) z innym dokumentem tego miesiąca — sprawdź w ${program.opis.nazwa.miejscownik}.`);
       }
       poUuid.set(d.uuid, d);
     }
@@ -264,14 +269,15 @@ export function createPaczkaDlaBiura({
     const zakres = zakresMiesiaca(miesiac);
     if (!zakres) throw bladOperatora(`„${miesiac ?? ''}" to nie jest miesiąc w formacie RRRR-MM.`);
 
-    const faktury = await infakt.listaFaktur({ ...zakres, pole: 'sale_date' });
-    const korekty = await infakt.listaKorekt({ ...zakres, pole: 'invoice_date' });
+    const faktury = await program.listaFaktur({ ...zakres, pole: 'sale_date' });
+    const korekty = await program.listaKorekt({ ...zakres, pole: 'invoice_date' });
     const paczka = zlozPaczke({ miesiac, faktury, korekty, koszty: [], kwarantanna: 0 });
     const wygenerowano = teraz().toISOString();
     const liczbaDokumentow = paczka.sprzedaz.length;
     const tytul = 'Zestawienie przychodów';
     const zestaw = (liczbaStron) => zbudujZestawienie({
       paczka, czesc: 'sprzedaz', wygenerowano, liczbaStron, liczbaDokumentow, tytul,
+      ...(zrodloSprzedazy ? { zrodlo: zrodloSprzedazy } : {}),
     });
     const proba = await PDFDocument.load(await zestaw(0));
     const stron = proba.getPageCount();
@@ -309,8 +315,8 @@ export function createPaczkaDlaBiura({
     // WYSTAWIENIA (korekta „in minus" rozlicza sie w okresie wystawienia — art. 29a ust. 13).
     // Sekwencyjnie, nie `Promise.all`: przy odmowie z inFaktu drugie zadanie i tak byloby
     // bezuzyteczne, a kolejnosc wolan jest sprawdzalna w tescie.
-    const faktury = sprzedazowa ? await infakt.listaFaktur({ ...zakres, pole: 'sale_date' }) : [];
-    const korekty = sprzedazowa ? await infakt.listaKorekt({ ...zakres, pole: 'invoice_date' }) : [];
+    const faktury = sprzedazowa ? await program.listaFaktur({ ...zakres, pole: 'sale_date' }) : [];
+    const korekty = sprzedazowa ? await program.listaKorekt({ ...zakres, pole: 'invoice_date' }) : [];
     const koszty = sprzedazowa ? [] : kosztyOtrzymaneWMiesiacu(db, miesiac);
     // ⚠️ DOMENA DOSTAJE PUSTE LISTY TEJ CZESCI, KTOREJ W PLIKU NIE MA — i to jest swiadome.
     // `zlozPaczke` potrzebuje `faktury`/`korekty` do ZLOZENIA ODNOSNIKA korekty do faktury
@@ -348,6 +354,8 @@ export function createPaczkaDlaBiura({
     // wydruku, ktory trzyma w rece, a nie sume dwoch osobnych pobran.
     const zestaw = (liczbaStron) => zbudujZestawienie({
       paczka, czesc, wygenerowano, liczbaStron, liczbaDokumentow,
+      // PRZ-118.09: źródło sprzedaży na wydruku = nazwa programu (bez programu — „inFakt” z tabeli wydruku).
+      ...(czesc === 'sprzedaz' && zrodloSprzedazy ? { zrodlo: zrodloSprzedazy } : {}),
     });
     const proba = await PDFDocument.load(await zestaw(0));
     const stron = stronDok + proba.getPageCount();

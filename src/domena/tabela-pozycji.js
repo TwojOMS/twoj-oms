@@ -334,9 +334,14 @@ export function podsumowaniePozycji(zamowienie) {
  * liczby są `null`, a `blad` mówi dlaczego.
  * `zeroKrajowe` — któraś linia ma 0% u nabywcy krajowego (decyzja właściciela 21.10: dozwolone z ostrzeżeniem).
  */
-export function podsumowanieVatKarty(zamowienie, { stawkaDomyslna = STAWKA_VAT } = {}) {
+export function podsumowanieVatKarty(zamowienie, { stawkaDomyslna = STAWKA_VAT, regula = 'wierszami' } = {}) {
   const wdt = wdtZamowienia(zamowienie);
   try {
+    // PRZ-118.09: reguła VAT programu fakturowego (`opis.regulaVat`). Zaimplementowana jest tylko „wierszami”
+    // (inFakt); inna reguła to błąd podsumowania na karcie — jak każdy błąd ceny — a nie cicho inna liczba.
+    if (regula !== 'wierszami') {
+      throw new Error(`Program fakturowy liczy VAT regułą „${regula}”, której panel nie zna — podsumowanie VAT nie powstało.`);
+    }
     const linie = pozycjeDokumentu(zamowienie, { stawkaDomyslna })
       .map((l) => ({ bruttoGr: l.gross_price, stawka: l.tax_symbol }));
     const s = podsumowanieWierszami(linie);

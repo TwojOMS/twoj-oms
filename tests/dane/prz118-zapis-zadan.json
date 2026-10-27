@@ -1,0 +1,744 @@
+{
+  "sha": "e8e9364",
+  "drzewoSrc": "c7542a97d0bd7d17aaa30b340b00cb5cc61180be",
+  "opis": "PRZ-118.01 — złoty zapis żądań do inFaktu. NIE przepisywać po zmianie 01 (plan PRZ-118).",
+  "scenariusze": {
+    "01 faktura krajowa przedpłacona (oznaczenie zapłaty)": [
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/clients.json?q%5Bnip_eq%5D=5250000009",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "POST",
+        "sciezka": "/api/v3/clients.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": {
+          "client": {
+            "city": "Warszawa",
+            "company_name": "Pracownia Półcień sp. z o.o.",
+            "country": "PL",
+            "email": "biuro@polcien.invalid",
+            "nip": "5250000009",
+            "postal_code": "00-950",
+            "street": "Lampowa 1"
+          }
+        }
+      },
+      {
+        "metoda": "POST",
+        "sciezka": "/api/v3/invoices.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": {
+          "invoice": {
+            "client_id": 1,
+            "invoice_date": "2026-10-15",
+            "paid_price": 35700,
+            "services": [
+              {
+                "gross_price": 25800,
+                "name": "Lampa wisząca Półcień",
+                "quantity": 2,
+                "tax_symbol": "23"
+              },
+              {
+                "gross_price": 8400,
+                "name": "Klosz lniany",
+                "quantity": 1,
+                "tax_symbol": "23"
+              },
+              {
+                "gross_price": 1500,
+                "name": "Dostawa",
+                "quantity": 1,
+                "tax_symbol": "23"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "metoda": "POST",
+        "sciezka": "/api/v3/async/invoices/U1/paid.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": {
+          "paid_date": "2026-10-15"
+        }
+      }
+    ],
+    "02 faktura za pobraniem (payment_method)": [
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/clients.json?q%5Bnip_eq%5D=5250000009",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "POST",
+        "sciezka": "/api/v3/invoices.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": {
+          "invoice": {
+            "client_id": 1,
+            "payment_method": "delivery",
+            "services": [
+              {
+                "gross_price": 25800,
+                "name": "Lampa wisząca Półcień",
+                "quantity": 2,
+                "tax_symbol": "23"
+              },
+              {
+                "gross_price": 8400,
+                "name": "Klosz lniany",
+                "quantity": 1,
+                "tax_symbol": "23"
+              },
+              {
+                "gross_price": 1500,
+                "name": "Dostawa",
+                "quantity": 1,
+                "tax_symbol": "23"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "03 faktura WDT z numerem serii (iluMaNumer, number)": [
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/clients.json?q%5Bnip_eq%5D=DE123456789",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "POST",
+        "sciezka": "/api/v3/clients.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": {
+          "client": {
+            "city": "Berlin",
+            "company_name": "Leuchtenwerkstatt Halbschatten GmbH",
+            "country": "DE",
+            "email": "buero@halbschatten.invalid",
+            "nip": "DE123456789",
+            "postal_code": "10115",
+            "street": "Erfundene Straße 1"
+          }
+        }
+      },
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/invoices.json?q%5Bnumber_eq%5D=WDT%2F1%2F10%2F2026",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "POST",
+        "sciezka": "/api/v3/invoices.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": {
+          "invoice": {
+            "client_id": 2,
+            "invoice_date": "2026-10-15",
+            "notes": "Wewnątrzwspólnotowa dostawa towarów (WDT), stawka VAT 0%. NIP sprzedawcy: PL1234563218.",
+            "number": "WDT/1/10/2026",
+            "payment_date": "2026-10-29",
+            "sale_type": "merchandise",
+            "sales_kind": "sprzedaz_podstawowa",
+            "services": [
+              {
+                "gross_price": 25800,
+                "name": "Lampa wisząca Półcień",
+                "quantity": 2,
+                "tax_symbol": "0"
+              },
+              {
+                "gross_price": 8400,
+                "name": "Klosz lniany",
+                "quantity": 1,
+                "tax_symbol": "0"
+              },
+              {
+                "gross_price": 4000,
+                "name": "Dostawa",
+                "quantity": 1,
+                "tax_symbol": "0"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "04 nabywca bez NIP-u (założenie klienta)": [
+      {
+        "metoda": "POST",
+        "sciezka": "/api/v3/clients.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": {
+          "client": {
+            "city": "Kraków",
+            "company_name": "Jan Cienisty",
+            "country": "PL",
+            "email": "jan@cien.invalid",
+            "nip": null,
+            "postal_code": "30-001",
+            "street": "Mroczna 5"
+          }
+        }
+      },
+      {
+        "metoda": "POST",
+        "sciezka": "/api/v3/invoices.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": {
+          "invoice": {
+            "client_id": 3,
+            "invoice_date": "2026-10-14",
+            "payment_date": "2026-10-21",
+            "sale_date": "2026-10-13",
+            "services": [
+              {
+                "gross_price": 25800,
+                "name": "Lampa wisząca Półcień",
+                "quantity": 2,
+                "tax_symbol": "23"
+              },
+              {
+                "gross_price": 8400,
+                "name": "Klosz lniany",
+                "quantity": 1,
+                "tax_symbol": "23"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "05 faktura okresu rozliczeniowego": [
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/clients.json?q%5Bnip_eq%5D=5250000009",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "POST",
+        "sciezka": "/api/v3/invoices.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": {
+          "invoice": {
+            "client_id": 1,
+            "services": [
+              {
+                "gross_price": 25800,
+                "name": "Lampa wisząca Półcień",
+                "quantity": 2,
+                "tax_symbol": "23"
+              },
+              {
+                "gross_price": 8400,
+                "name": "Klosz lniany",
+                "quantity": 1,
+                "tax_symbol": "23"
+              },
+              {
+                "gross_price": 1500,
+                "name": "Dostawa",
+                "quantity": 1,
+                "tax_symbol": "23"
+              },
+              {
+                "gross_price": 25800,
+                "name": "Lampa wisząca Półcień",
+                "quantity": 2,
+                "tax_symbol": "23"
+              },
+              {
+                "gross_price": 8400,
+                "name": "Klosz lniany",
+                "quantity": 1,
+                "tax_symbol": "23"
+              },
+              {
+                "gross_price": 1500,
+                "name": "Dostawa",
+                "quantity": 1,
+                "tax_symbol": "23"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "07 korekta zwrotu (pobierzFakture, wystawKorekte, listaKorekt)": [
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/invoices/U1.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "POST",
+        "sciezka": "/api/v3/async/corrective_invoices.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": {
+          "corrected_invoice_date": "2026-10-15",
+          "corrected_invoice_number": "FV 1/10/2026",
+          "corrected_invoice_uuid": "U1",
+          "correction_reason": "zwrot towaru",
+          "services": [
+            {
+              "correction": false,
+              "gross_price": 25800,
+              "group": 1,
+              "name": "Lampa wisząca Półcień",
+              "quantity": 2,
+              "tax_symbol": "23"
+            },
+            {
+              "correction": true,
+              "gross_price": 12900,
+              "group": 1,
+              "name": "Lampa wisząca Półcień",
+              "quantity": 1,
+              "tax_symbol": "23"
+            },
+            {
+              "correction": false,
+              "gross_price": 8400,
+              "group": 2,
+              "name": "Klosz lniany",
+              "quantity": 1,
+              "tax_symbol": "23"
+            },
+            {
+              "correction": true,
+              "gross_price": 8400,
+              "group": 2,
+              "name": "Klosz lniany",
+              "quantity": 1,
+              "tax_symbol": "23"
+            },
+            {
+              "correction": false,
+              "gross_price": 1500,
+              "group": 3,
+              "name": "Dostawa",
+              "quantity": 1,
+              "tax_symbol": "23"
+            },
+            {
+              "correction": true,
+              "gross_price": 1500,
+              "group": 3,
+              "name": "Dostawa",
+              "quantity": 1,
+              "tax_symbol": "23"
+            }
+          ]
+        }
+      },
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/corrective_invoices.json?offset=0",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      }
+    ],
+    "06 PDF faktury i korekty": [
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/invoices/U1/pdf.json?document_type=original",
+        "naglowki": {},
+        "cialo": null
+      },
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/corrective_invoices/U6/pdf.json?document_type=original",
+        "naglowki": {},
+        "cialo": null
+      }
+    ],
+    "08 zakładka FAKTURY za miesiąc i nieopłacone": [
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/corrective_invoices.json?offset=0&q%5Binvoice_date_gteq%5D=2026-10-01&q%5Binvoice_date_lteq%5D=2026-10-31",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/invoices.json?offset=0&order=payment_date+asc&q%5Bleft_to_pay_gt%5D=0",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/invoices.json?offset=0&q%5Binvoice_date_gteq%5D=2026-10-01&q%5Binvoice_date_lteq%5D=2026-10-31",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/corrective_invoices.json?offset=0&q%5Bsale_date_gteq%5D=2026-10-01&q%5Bsale_date_lteq%5D=2026-10-31",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/invoices.json?offset=0&order=payment_date+asc&q%5Bleft_to_pay_gt%5D=0",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/invoices.json?offset=0&q%5Bsale_date_gteq%5D=2026-10-01&q%5Bsale_date_lteq%5D=2026-10-31",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      }
+    ],
+    "09 podgląd i zatwierdzenie wysyłki 2 dokumentów do KSeF": [
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/corrective_invoices.json?offset=0&q%5Binvoice_date_gteq%5D=2026-10-01&q%5Binvoice_date_lteq%5D=2026-10-31",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/invoices.json?offset=0&q%5Binvoice_date_gteq%5D=2026-10-01&q%5Binvoice_date_lteq%5D=2026-10-31",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/corrective_invoices.json?offset=0&q%5Binvoice_date_gteq%5D=2026-10-01&q%5Binvoice_date_lteq%5D=2026-10-31",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/invoices.json?offset=0&q%5Binvoice_date_gteq%5D=2026-10-01&q%5Binvoice_date_lteq%5D=2026-10-31",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "POST",
+        "sciezka": "/api/v3/ksef2/documents/U1/send.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "POST",
+        "sciezka": "/api/v3/ksef2/documents/U2/send.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      }
+    ],
+    "11 czuwacz pobrań (zegar czuwacza przesyłek)": [
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/invoices/U2.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "POST",
+        "sciezka": "/api/v3/async/invoices/U2/paid.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": {
+          "paid_date": "2026-10-15"
+        }
+      }
+    ],
+    "05b faktura okresu dla nabywcy UE (WDT: VIES, seria, pola WDT)": [
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/clients.json?q%5Bnip_eq%5D=DE123456789",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/invoices.json?q%5Bnumber_eq%5D=WDT%2F2%2F10%2F2026",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "POST",
+        "sciezka": "/api/v3/invoices.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": {
+          "invoice": {
+            "client_id": 2,
+            "notes": "Wewnątrzwspólnotowa dostawa towarów (WDT), stawka VAT 0%. NIP sprzedawcy: PL1234563218.",
+            "number": "WDT/2/10/2026",
+            "sale_type": "merchandise",
+            "sales_kind": "sprzedaz_podstawowa",
+            "services": [
+              {
+                "gross_price": 25800,
+                "name": "Lampa wisząca Półcień",
+                "quantity": 2,
+                "tax_symbol": "0"
+              },
+              {
+                "gross_price": 8400,
+                "name": "Klosz lniany",
+                "quantity": 1,
+                "tax_symbol": "0"
+              },
+              {
+                "gross_price": 4000,
+                "name": "Dostawa",
+                "quantity": 1,
+                "tax_symbol": "0"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "01b przedpłacona z datą wystawienia przed wpłatą (paid_date = data wpłaty)": [
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/clients.json?q%5Bnip_eq%5D=5250000009",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "POST",
+        "sciezka": "/api/v3/invoices.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": {
+          "invoice": {
+            "client_id": 1,
+            "invoice_date": "2026-10-12",
+            "paid_price": 35700,
+            "sale_date": "2026-10-12",
+            "services": [
+              {
+                "gross_price": 25800,
+                "name": "Lampa wisząca Półcień",
+                "quantity": 2,
+                "tax_symbol": "23"
+              },
+              {
+                "gross_price": 8400,
+                "name": "Klosz lniany",
+                "quantity": 1,
+                "tax_symbol": "23"
+              },
+              {
+                "gross_price": 1500,
+                "name": "Dostawa",
+                "quantity": 1,
+                "tax_symbol": "23"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "metoda": "POST",
+        "sciezka": "/api/v3/async/invoices/U8/paid.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": {
+          "paid_date": "2026-10-14"
+        }
+      }
+    ],
+    "11b czuwacz pobrań: doręczenie po dacie wystawienia (paid_date = doręczenie)": [
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/clients.json?q%5Bnip_eq%5D=5250000009",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "POST",
+        "sciezka": "/api/v3/invoices.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": {
+          "invoice": {
+            "client_id": 1,
+            "invoice_date": "2026-10-12",
+            "payment_date": "2026-10-12",
+            "payment_method": "delivery",
+            "services": [
+              {
+                "gross_price": 25800,
+                "name": "Lampa wisząca Półcień",
+                "quantity": 2,
+                "tax_symbol": "23"
+              },
+              {
+                "gross_price": 8400,
+                "name": "Klosz lniany",
+                "quantity": 1,
+                "tax_symbol": "23"
+              },
+              {
+                "gross_price": 1500,
+                "name": "Dostawa",
+                "quantity": 1,
+                "tax_symbol": "23"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/invoices/U9.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      },
+      {
+        "metoda": "POST",
+        "sciezka": "/api/v3/async/invoices/U9/paid.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": {
+          "paid_date": "2026-10-14"
+        }
+      }
+    ],
+    "10 Sprawdź połączenie (klucz z Ustawień)": [
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/invoices.json?offset=0",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
+      }
+    ]
+  }
+}

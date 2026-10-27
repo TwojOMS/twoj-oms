@@ -11,19 +11,23 @@ import { formularzZwrotu, przygotujKrok2, razemZwrotuZl } from '../../../domena/
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import { GDZIE_KLUCZ_INFAKTU } from '../../../domena/konfiguracja-infakt.js';
+import { odmianaNazwyProgramu } from '../../../domena/nazwa-programu.js';
+import { zdanieBrakuProgramu } from '../../../domena/wybor-programu.js';
 import { adresKartyZamowienia } from '../../../domena/adres-karty-zamowienia.js';
 import { bezpiecznyPowrotNaListe } from '../../../domena/filtry-listy.js';
 import { ktoKlikal } from '../../zamowienia/wspolne.js';
 
 import { createWspolne } from './wspolne.js';
-export function registerKorektyRoutes(app, { db, korekta = null, definicje }) {
-  const { powrotKarty, adresKarty, zamowienieAlbo404, slad, decyzja, pokazKrok1 } = createWspolne({ db, korekta, definicje });
+export function registerKorektyRoutes(app, { db, korekta = null, definicje, infakt = null, wyborProgramu = null }) {
+  const { powrotKarty, adresKarty, zamowienieAlbo404, slad, decyzja, pokazKrok1 } = createWspolne({ db, korekta, definicje, infakt });
+  // PRZ-118.09: nazwa programu w odmowach korekty (bez programu — inFakt, jak dotąd).
+  const nazwaProgramu = odmianaNazwyProgramu(infakt);
   app.post('/zamowienia/:id/zwroty/:zwrotId/korekta', async (req, reply) => {
     const z = zamowienieAlbo404(req, reply);
     if (!z) return reply;
     // `null` (panel bez inFaktu) to tryb POPRAWNY — odmawiamy czytelnie, jak nadanie
     // bez skonfigurowanego kuriera.
-    if (!korekta) return reply.code(503).send(`Wystawianie korekt nie jest skonfigurowane (brak inFaktu). ${GDZIE_KLUCZ_INFAKTU}`);
+    if (!korekta) return reply.code(503).send(zdanieBrakuProgramu(wyborProgramu) ?? `Wystawianie korekt nie jest skonfigurowane (brak inFaktu). ${GDZIE_KLUCZ_INFAKTU}`);
     const zwrotId = Number(req.params.zwrotId);
     try {
       await korekta.wystaw(z.id, zwrotId);
@@ -73,7 +77,7 @@ export function registerKorektyRoutes(app, { db, korekta = null, definicje }) {
     const w = zwrot(db, z.id, Number(req.params.zwrotId));
     if (!w) return reply.code(404).send('Nie ma takiego zwrotu przy tym zamówieniu.');
     // Regula (prog, numer, brak rezerwacji) mieszka w domenie — trasa jej nie liczy.
-    const powod = powodOdmowyOdblokowaniaKorekty(w);
+    const powod = powodOdmowyOdblokowaniaKorekty(w, { nazwa: nazwaProgramu });
     if (powod) {
       slad(z.id, 'zwrot.korekta.odblokowanie', `BŁĄD: ${powod}`);
       return reply.code(400).send(powod);
@@ -106,7 +110,7 @@ export function registerKorektyRoutes(app, { db, korekta = null, definicje }) {
     if (!z) return reply;
     const w = zwrot(db, z.id, Number(req.params.zwrotId));
     if (!w) return reply.code(404).send('Nie ma takiego zwrotu przy tym zamówieniu.');
-    const { numer, blad } = parsujNumerKorekty(w, req.body?.numer);
+    const { numer, blad } = parsujNumerKorekty(w, req.body?.numer, { nazwa: nazwaProgramu });
     if (blad) {
       slad(z.id, 'zwrot.korekta.reczna', `BŁĄD: ${blad}`);
       return reply.code(400).send(blad);

@@ -36,6 +36,8 @@ services:
       OMS_DB_PATH: /dane/oms.sqlite
       OMS_PROFORMY_KATALOG: /dane/proformy
       OMS_ETYKIETY_KATALOG: /dane/etykiety
+      # PRZ-121.06: przycisk „Uruchom OMS ponownie” (Moduł faktur) — kontener wstaje sam (restart: unless-stopped).
+      OMS_RESTART_Z_PANELU: "tak"
     # --watch-path zamiast --watch: widoki .ejs i CSS nie są importowane, a też mają przeładować.
     command: ["node", "--watch-path=/app/kod/src", "--watch-path=/app/kod/scripts", "--watch-path=/app/kod/deploy/proba",
       "/app/kod/deploy/proba/start.mjs"]

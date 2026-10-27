@@ -42,7 +42,10 @@ export function createAutomatKsef({
   }
 
   async function przebieg() {
-    if (!dostepny()) return { pominiety: true, powod: 'inFakt odłączony' };
+    // PRZ-118.07: nazwa i zdolność programu z usługi wysyłki — tej samej, którą automat wysyła (jedno źródło programu).
+    if (!dostepny()) return { pominiety: true, powod: `${wysylkaKsef.nazwaProgramu?.mianownik ?? 'program fakturowy'} odłączony` };
+    // Program bez zdolności `wyslijDoKsef`: automat nie ma czym wysłać — pominięty tym samym zdaniem co przycisk.
+    if (wysylkaKsef.niedostepna) return { pominiety: true, powod: wysylkaKsef.niedostepna };
     const stan = wczytajAutomatKsef(db);
     const start = teraz();
     const chwila = chwilaWarszawy(start);
@@ -70,7 +73,7 @@ export function createAutomatKsef({
           .map((d) => ({ uuid: d.uuid, numer: d.number })));
         // Bez numeru KSeF, a poza „zaznacz wszystkie” (korekty, konsumenckie) — do wyniku, z powodem z bariery.
         const zZasady = dokumenty.filter((d) => d?.stanKsef === 'brak' && !doZaznaczenia(d)).map((d) => d.uuid);
-        wynik.poZasadzie.push(...coWolnoWyslac(zZasady, dokumenty, czyWysylacKonsumenckie(db)).pominiete);
+        wynik.poZasadzie.push(...coWolnoWyslac(zZasady, dokumenty, czyWysylacKonsumenckie(db), wysylkaKsef.nazwaProgramu).pominiete);
         for (const d of kandydaci) {
           // Wyłączenie w Ustawieniach działa od razu — także między dokumentami jednego przebiegu.
           if (!wczytajAutomatKsef(db).wlaczony) { wynik.stan = 'wylaczony'; break petla; }

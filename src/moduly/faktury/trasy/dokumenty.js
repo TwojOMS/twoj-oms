@@ -1,4 +1,5 @@
 import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
+import { idDokumentu } from '../../../domena/dokument-programu.js';
 
 import { odblokujFakture, fakturaSkasowanaWInfakcie } from '../db/faktury.js';
 
@@ -14,6 +15,8 @@ import {
 
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import { GDZIE_KLUCZ_INFAKTU } from '../../../domena/konfiguracja-infakt.js';
+import { odmianaNazwyProgramu, ekranProgramu } from '../../../domena/nazwa-programu.js';
+import { zdanieBrakuProgramu } from '../../../domena/wybor-programu.js';
 
 import { bezpiecznaNazwa } from '../../../domena/pliki.js';
 
@@ -44,7 +47,7 @@ import { pobierzOkres } from '../../../oms/db/okresy.js';
 
 import { ktoKlikal } from '../../zamowienia/lista.js';
 
-export function registerDokumentyRoutes(app, { db, config = {}, faktura, fakturaHurtem, proforma, infakt, fakturaAllegro, ksefDoczytanie, wczytajListe, miniaturyEkranu }) {
+export function registerDokumentyRoutes(app, { db, config = {}, faktura, fakturaHurtem, proforma, infakt, fakturaAllegro, ksefDoczytanie, wczytajListe, miniaturyEkranu, wyborProgramu = null }) {
 
 const adresPowrotuNaKarte = (req, id, opcje = {}) => adresKartyZamowienia(id, {
     powrot: powrotKarty(req),
@@ -67,6 +70,10 @@ app.post('/zamowienia/faktury-hurtem/podglad', async (req, reply) => {
       pominiete,
       zaDuzo,
       wystawianieDziala: Boolean(fakturaHurtem),
+      // PRZ-121.03a: zdanie „faktury wyłączone” (tylko przy jawnym „brak”); `null` = widok zostaje przy starym akapicie.
+      zdanieBraku: zdanieBrakuProgramu(wyborProgramu),
+      // PRZ-118.09: nazwa i ekran programu fakturowego (usługa `infakt` modułu faktur — klient albo program).
+      nazwaProgramu: odmianaNazwyProgramu(infakt), ekranProgramu: ekranProgramu(infakt),
       // Adres powrotu jedzie DALEJ ukrytym polem formularza zatwierdzenia — tak samo, jak
       // przy nadaniu zbiorczym (4.13d). Bez tego ekran podgladu zjadalby zawezenie po drodze.
       powrot: bezpiecznyPowrotNaListe(req.body?.powrot, config.definicje),
@@ -87,7 +94,7 @@ app.post('/zamowienia/faktury-hurtem', async (req, reply) => {
     // Podajemy LICZBE milisekund — `null` albo napis daja tam cicha awarie (patrz docblock
     // `wystawWiele`).
     const start = Date.now();
-    if (!fakturaHurtem) return reply.code(503).send(`Wystawianie faktur nie jest skonfigurowane (brak danych inFaktu). ${GDZIE_KLUCZ_INFAKTU}`);
+    if (!fakturaHurtem) return reply.code(503).send(zdanieBrakuProgramu(wyborProgramu) ?? `Wystawianie faktur nie jest skonfigurowane (brak danych inFaktu). ${GDZIE_KLUCZ_INFAKTU}`);
     const wybrane = wybraneZListy(wczytajListe([].concat(req.body?.id ?? [])), req.body?.id);
     // Podzial liczony PONOWNIE, a nie przepisany z ekranu podgladu: miedzy podgladem
     // a zatwierdzeniem klient mogl anulowac zamowienie, a operator z drugiej zakladki
@@ -226,7 +233,7 @@ app.get('/proformy/:id/pdf', async (req, reply) => {
 app.post('/zamowienia/:id/faktura', async (req, reply) => {
     const id = Number(req.params.id);
     if (!pobierzZamowienie(db, id)) return reply.code(404).send('Nie ma takiego zamówienia');
-    if (!faktura) return reply.code(503).send(`inFakt nie jest skonfigurowany. ${GDZIE_KLUCZ_INFAKTU}`);
+    if (!faktura) return reply.code(503).send(zdanieBrakuProgramu(wyborProgramu) ?? `inFakt nie jest skonfigurowany. ${GDZIE_KLUCZ_INFAKTU}`);
     try {
       // Termin i data wystawienia Z FORMULARZA (domain/termin-platnosci.js). Nierozpoznana
       // wartosc dostaje odmowe TAM, w domenie — tutaj przekazujemy surowo, zeby nie istnialy
@@ -284,7 +291,7 @@ app.post('/zamowienia/:id/faktura/skasowana', async (req, reply) => {
     dopiszLog(db, id, {
       akcja: 'faktura.skasowana',
       wynik: `Ręcznie (${ktoKlikal(req)}): faktura ${f.numer ?? '(bez numeru)'} `
-        + `(UUID ${f.infakt_uuid ?? 'brak'}) skasowana ręcznie w inFakcie — panel niczego tam nie kasował, `
+        + `(UUID ${idDokumentu(f) ?? 'brak'}) skasowana ręcznie w inFakcie — panel niczego tam nie kasował, `
         + 'tylko odnotował fakt i zwolnił zamówienie do ponownego wystawienia.',
     });
     // ⚠️ POWROT TAM, SKAD KLIKNIETO (01.09.2026). Od przeniesienia tej akcji na zakladke
@@ -299,7 +306,7 @@ app.post('/zamowienia/:id/faktura/skasowana', async (req, reply) => {
 app.post('/zamowienia/:id/faktura-allegro', async (req, reply) => {
     const id = Number(req.params.id);
     if (!pobierzZamowienie(db, id)) return reply.code(404).send('Nie ma takiego zamówienia');
-    if (!fakturaAllegro) return reply.code(503).send('Kanał Allegro nie jest skonfigurowany — faktury stąd nie wyślesz.');
+    if (!fakturaAllegro) return reply.code(503).send(zdanieBrakuProgramu(wyborProgramu) ?? 'Kanał Allegro nie jest skonfigurowany — faktury stąd nie wyślesz.');
     try {
       await fakturaAllegro.wyslij(id);
     } catch (e) {

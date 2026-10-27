@@ -44,7 +44,7 @@
     <% } %>
 
     <% if (doWystawienia.length) { %>
-      <h3 class="wynik-naglowek">Pójdzie do inFaktu — <%= doWystawienia.length %></h3>
+      <h3 class="wynik-naglowek">Pójdzie do <%= nazwaProgramu.dopelniacz %> — <%= doWystawienia.length %></h3>
       <ul class="lista-wyniku">
         <% doWystawienia.forEach(function (z) { %>
           <li><span class="waga waga--ok">wystawi się</span> <span><b><%= z.numer %></b> · <%= z.klient %> · <%= z.kwota %> zł<% if (z.wariant) { %> · <%= z.wariant %><% } %></span></li>
@@ -76,11 +76,11 @@
           <%# samym odnosnikiem, a nie na gola liste. %>
           <input type="hidden" name="powrot" value="<%= powrot %>">
           <button class="btn btn--groza" type="submit" name="zatwierdzenie" value="wystaw">
-            Wystaw <%= ile(doWystawienia.length, 'fakturę', 'faktury', 'faktur') %> w inFakcie
+            Wystaw <%= ile(doWystawienia.length, 'fakturę', 'faktury', 'faktur') %> w <%= nazwaProgramu.miejscownik %>
           </button>
         </form>
       <% } else if (!wystawianieDziala) { %>
-        <p class="pasek-blokada">Wystawianie faktur nie jest skonfigurowane (brak danych inFaktu) — klucz API wpiszesz w <a href="/ustawienia/integracje/infakt">Ustawienia → Integracje → inFakt</a>.</p>
+        <% if (zdanieBraku) { %><p class="pasek-blokada"><%= zdanieBraku %></p><% } else { %><p class="pasek-blokada">Wystawianie faktur nie jest skonfigurowane (brak danych <%= nazwaProgramu.dopelniacz %>) — klucz API wpiszesz w <a href="<%= ekranProgramu %>">Ustawienia → Integracje → <%= nazwaProgramu.mianownik %></a>.</p><% } %>
       <% } else if (!zaDuzo) { %>
         <p class="pusto-sekcja">Z zaznaczonych zamówień żadnemu nie da się wystawić faktury hurtem.</p>
       <% } %>

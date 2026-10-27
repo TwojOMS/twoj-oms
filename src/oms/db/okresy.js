@@ -6,6 +6,7 @@
 // przestalyby sie do niego dopisywac, bez ani jednego bledu.
 import { STAN, stanFakturyOkresu } from '../../domena/okres-rozliczeniowy.js';
 import { bladOperatora } from '../../domena/bledy.js';
+import { idDokumentuSql } from '../../domena/dokument-programu.js';
 
 const teraz = () => new Date().toISOString();
 
@@ -105,7 +106,7 @@ export function otworzOkresPonownie(db, id) {
 export function rozpocznijFaktureOkresu(db, id) {
   const wynik = db.prepare(
     "UPDATE okresy_rozliczeniowe SET ksef_status = 'w_toku', utworzona_at = ?"
-    + ' WHERE id = ? AND ksef_status IS NULL AND infakt_uuid IS NULL AND numer IS NULL'
+    + ` WHERE id = ? AND ksef_status IS NULL AND ${idDokumentuSql()} IS NULL AND numer IS NULL`
     + ' AND stan <> ?',
   ).run(teraz(), id, STAN.ZAFAKTUROWANY);
   if (wynik.changes === 0) {
@@ -118,11 +119,14 @@ export function rozpocznijFaktureOkresu(db, id) {
   return pobierzOkres(db, id);
 }
 
-export function zakonczFaktureOkresu(db, id, { uuid, numer, ksefStatus }) {
+// PRZ-118.03 — ten sam podwojny zapis co `zakonczFakture` w moduly/faktury/db/faktury.js:
+// `program` + `dokument_id` zawsze, `infakt_uuid` tylko dla inFaktu, jedna instrukcja.
+export function zakonczFaktureOkresu(db, id, { uuid, numer, ksefStatus }, { program = 'infakt' } = {}) {
+  if (typeof program !== 'string' || !program) throw new Error('zakonczFaktureOkresu: brak nazwy programu fakturowego');
   db.prepare(
-    'UPDATE okresy_rozliczeniowe SET infakt_uuid = ?, numer = ?, ksef_status = ?, blad_opis = NULL,'
-    + ' stan = ? WHERE id = ?',
-  ).run(uuid, numer, ksefStatus, STAN.ZAFAKTUROWANY, id);
+    'UPDATE okresy_rozliczeniowe SET program = ?, dokument_id = ?, infakt_uuid = ?, numer = ?, ksef_status = ?,'
+    + ' blad_opis = NULL, stan = ? WHERE id = ?',
+  ).run(program, uuid, program === 'infakt' ? uuid : null, numer, ksefStatus, STAN.ZAFAKTUROWANY, id);
   return pobierzOkres(db, id);
 }
 

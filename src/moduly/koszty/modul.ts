@@ -108,7 +108,7 @@ export function createModulKoszty(o: { createKlient?: typeof createKsefClient; a
             czuwaczKosztow: ctx.usluga<any>('koszty', 'czuwaczKosztow'),
             wizualizacjaKosztu: ctx.usluga<any>('koszty', 'wizualizacjaKosztu'),
             paczkaDlaBiura: ctx.usluga<any>('koszty', 'paczkaDlaBiura') } as any);
-          registerUstawieniaKsefRoutes(app, { db, zrodloKsef, nipSprzedawcy: nipTeraz });
+          registerUstawieniaKsefRoutes(app, { db, zrodloKsef, nipSprzedawcy: nipTeraz, infakt });
         },
         // Zegar stoi zawsze: token zapisany w panelu ma pobierać od następnego tyknięcia. Bez tokenu albo przy
         // wyłączonym module przebieg wraca od razu jako pominięty (zegar loguje tylko „jeszcze trwa”).

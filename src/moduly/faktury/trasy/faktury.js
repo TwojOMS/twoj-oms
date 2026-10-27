@@ -22,6 +22,9 @@ import { fakturyMozliweDoOdnotowaniaSkasowania } from '../db/faktury.js';
 import { stanArchiwumSprzedazy, licznikiArchiwum } from '../db/archiwum-sprzedazy.js';
 import { ktoKlikal } from '../../zamowienia/lista.js';
 import { wylaczoneModuly } from '../../../oms/db/moduly-opcjonalne.js';
+import { zProgramu } from '../../../integracje/program-fakturowy.ts';
+import { odmianaNazwyProgramu } from '../../../domena/nazwa-programu.js';
+import { zdanieBrakuProgramu, EKRAN_WYBORU_PROGRAMU } from '../../../domena/wybor-programu.js';
 
 // Zakladka FAKTURY. Trasa jest CIENKA: parsuje zadanie, wola usluge, renderuje.
 // Reguly sa w domain/lista-faktur.js, sklejenie danych w services/faktury-widok.js.
@@ -46,6 +49,13 @@ const BEZ_INFAKTU = {
   odnosnik: { href: EKRAN_INFAKTU, etykieta: 'Ustawienia → Integracje → inFakt' },
 };
 
+// PRZ-121.03a: przy JAWNYM „brak” zakładka mówi, że faktury są wyłączone (i gdzie obejrzeć stare), a nie prosi o klucz.
+const bezProgramu = (wybor, strona) => {
+  const zdanie = zdanieBrakuProgramu(wybor, 'Wcześniejsze faktury obejrzysz w programie, w którym je wystawiono.');
+  return zdanie ? { ...strona, opis: zdanie, odnosnik: { href: EKRAN_WYBORU_PROGRAMU, etykieta: 'Ustawienia → Integracje → Moduł faktur' } } : strona;
+};
+const DOPISEK_PDF = 'PDF wcześniejszej faktury pobierzesz w programie, w którym ją wystawiono.';
+
 // ⚠️ BIALA LISTA RODZAJOW DOKUMENTU DO POBRANIA PDF-U. Wczesniej trasa nizej brala „wszystko,
 // co nie jest korekta" za fakture VAT — czyli literowka w adresie (`?rodzaj=vt`) albo nowy,
 // nieznany rodzaj z inFaktu jechal po zasob /invoices/ i konczyl sie surowym 404 z API
@@ -65,15 +75,25 @@ const MAX_KOMUNIKATU = 300;
 export const PREFIKS_BLEDU_ARCHIWUM = 'Archiwum: błąd';
 
 export function registerFakturyRoutes(app, {
-  db = null, fakturyWidok = null, infakt = null, wysylkaKsef = null,
+  // PRZ-118.07: PDF z listy czyta PROGRAM FAKTUROWY — `{ program }` albo stary `{ infakt }` (moduł podaje usługę
+  // `infakt`; zProgramu owija klienta inFaktu adapterem, a program z szwu zostawia sobą).
+  db = null, fakturyWidok = null, program: programPodany = null, infakt = null, wysylkaKsef = null,
   czuwaczArchiwumSprzedazy = null,
   // Paczka dla biura rachunkowego (spec 2026-09-02). `null` = panel bez inFaktu, czyli tryb
   // POPRAWNY: nie ma z czego zlozyc paczki, wiec przycisku po prostu nie ma (ta sama zasada,
   // co przy `mozliwyOdswiez` i `mozliwyPdf` na zakladce KOSZTY).
   paczkaDlaBiura = null,
+  // PRZ-121.03a: wybór modułu faktur (usługa `wyborProgramu`); bez niego — teksty jak dotąd.
+  wyborProgramu = null,
 } = {}) {
+  const program = zProgramu({ program: programPodany, infakt });
+  // PRZ-118.09: nazwa programu w zdaniach ekranów (bez programu — inFakt, jak przed zmianą; domena/nazwa-programu.js).
+  const nazwaProgramu = odmianaNazwyProgramu(program);
+  // ⚠️ PRZ-118.07: PROGRAM BEZ ZDOLNOŚCI `wyslijDoKsef` — podgląd i zatwierdzenie odpowiadają zdaniem z usługi wysyłki
+  // (jedno źródło: program, którym usługa naprawdę wysyła), a nie ekranem wysyłki, która i tak by nie poszła.
+  const odmowaWysylki = (reply) => reply.code(409).type('text/plain; charset=utf-8').send(wysylkaKsef.niedostepna);
   app.get('/faktury', async (req, reply) => {
-    if (!fakturyWidok) return reply.view('pusta-strona.ejs', BEZ_INFAKTU);
+    if (!fakturyWidok) return reply.view('pusta-strona.ejs', bezProgramu(wyborProgramu, BEZ_INFAKTU));
 
     const dzis = dzienWarszawa(new Date().toISOString());
     // Nieznany miesiac i nieznane pole wracaja do domyslnych zamiast odmawiac — to jest
@@ -98,9 +118,11 @@ export function registerFakturyRoutes(app, {
     // dzialal poprawnie — a caly sens tej zakladki to degradacja, nie padniecie (ta sama
     // zasada, co przy `proformy` nizej). `Promise.allSettled` trzyma obie proby rownolegle,
     // a mimo to kazda dostaje wlasny wynik.
+    // PRZ-118.07: program bez zdolności `nieoplacone` — o listę nie pytamy, sekcja dostaje zdanie (`brakNieoplaconych`).
+    const brakNieoplaconych = fakturyWidok.brakNieoplaconych ?? null;
     const [wynikDokumentow, wynikNieoplaconych] = await Promise.allSettled([
       fakturyWidok.dokumenty({ miesiac, pole, dzis }),
-      fakturyWidok.nieoplacone({ dzis }),
+      brakNieoplaconych ? [] : fakturyWidok.nieoplacone({ dzis }),
     ]);
     const dokumenty = wynikDokumentow.status === 'fulfilled' ? wynikDokumentow.value : [];
     const bladDokumentow = wynikDokumentow.status === 'rejected'
@@ -124,6 +146,7 @@ export function registerFakturyRoutes(app, {
 
     return reply.view('faktury.ejs', {
       title: 'Faktury',
+      nazwaProgramu,
       miesiac,
       pole,
       zaznaczWszystkie,
@@ -171,6 +194,7 @@ export function registerFakturyRoutes(app, {
         : zl(nieoplacone.reduce((s, d) => s + (Number(d?.left_to_pay) || 0), 0)),
       bladDokumentow,
       bladNieoplaconych,
+      brakNieoplaconych,
       // ⚠️ ARCHIWUM CZYTA SIE Z NASZEJ BAZY, NIE Z NAS-a. Panel nie chodzi tu po dysku, zeby
       // policzyc pliki — pas stanu ma byc tani, bo wisi nad kazdym otwarciem zakladki.
       // Lustrem tego, co lezy na NAS-ie, jest tabela `archiwum_sprzedazy` (db/archiwum-sprzedazy.js).
@@ -209,7 +233,7 @@ export function registerFakturyRoutes(app, {
     // Brak sekcji INFAKT_ARCHIWUM to tryb POPRAWNY — ale wtedy nie ma czego uruchomic,
     // i odmowa ma to POWIEDZIEC (jak przy pobieraniu PDF-u bez inFaktu wyzej).
     if (!czuwaczArchiwumSprzedazy) {
-      return reply.code(503).send('Panel nie ma włączonego archiwum sprzedaży (brak INFAKT_ARCHIWUM).');
+      return reply.code(503).send(zdanieBrakuProgramu(wyborProgramu) ?? 'Panel nie ma włączonego archiwum sprzedaży (brak INFAKT_ARCHIWUM).');
     }
     // Filtr wraca Z OPERATOREM. Bledne wartosci sa tu nieszkodliwe: GET /faktury ma wlasna
     // bramke i wraca do domyslnych — ale przepuszczanie ich dalej niosloby smiec w adresie.
@@ -248,7 +272,7 @@ export function registerFakturyRoutes(app, {
   // od paczki NIE dokleja dokumentów PDF, więc usługa nie wykonuje ich pobrań z inFaktu.
   app.get('/faktury/zestawienie-przychodow', async (req, reply) => {
     if (!paczkaDlaBiura?.zbudujZestawieniePrzychodow) {
-      return reply.code(503).send(`Panel nie ma podpiętego inFaktu — nie ma z czego zbudować zestawienia przychodów. ${GDZIE_KLUCZ_INFAKTU}`);
+      return reply.code(503).send(zdanieBrakuProgramu(wyborProgramu) ?? `Panel nie ma podpiętego inFaktu — nie ma z czego zbudować zestawienia przychodów. ${GDZIE_KLUCZ_INFAKTU}`);
     }
     const miesiac = String(req.query.miesiac ?? '');
     if (!/^\d{4}-\d{2}$/.test(miesiac)) return reply.code(400).send(`„${miesiac}" to nie jest miesiąc w formacie RRRR-MM.`);
@@ -296,7 +320,7 @@ export function registerFakturyRoutes(app, {
   // dostac zdanie, ktore mowi, ze paczka juz powstaje i nie trzeba klikac trzeci raz.
   let paczkaTrwa = false;
   app.get('/faktury/paczka', async (req, reply) => {
-    if (!paczkaDlaBiura) return reply.code(503).send(`Panel nie ma podpiętego inFaktu — nie ma z czego złożyć paczki. ${GDZIE_KLUCZ_INFAKTU}`);
+    if (!paczkaDlaBiura) return reply.code(503).send(zdanieBrakuProgramu(wyborProgramu) ?? `Panel nie ma podpiętego inFaktu — nie ma z czego złożyć paczki. ${GDZIE_KLUCZ_INFAKTU}`);
     if (paczkaTrwa) {
       return reply.code(409).send(
         'Paczka dla biura jest właśnie składana — poczekaj na pobranie pliku i spróbuj ponownie.',
@@ -350,7 +374,7 @@ export function registerFakturyRoutes(app, {
   app.get('/faktury/:uuid/pdf', async (req, reply) => {
     const { uuid } = req.params;
     const rodzaj = req.query.rodzaj;
-    if (!infakt) return reply.code(503).send(`Panel nie ma podpiętego inFaktu. ${GDZIE_KLUCZ_INFAKTU}`);
+    if (!program) return reply.code(503).send(zdanieBrakuProgramu(wyborProgramu, DOPISEK_PDF) ?? `Panel nie ma podpiętego inFaktu. ${GDZIE_KLUCZ_INFAKTU}`);
     // Odmowa CZYTELNA, a nie 404 z inFaktu: rodzaj rozstrzyga, ktory zasob API odpytac,
     // wiec nieznana nazwa znaczy „panel nie wie, po co siegnac", a nie „faktura VAT".
     if (!RODZAJE_PDF.has(rodzaj)) {
@@ -362,7 +386,7 @@ export function registerFakturyRoutes(app, {
     const korekta = rodzaj === 'korekta';
     let bajty;
     try {
-      bajty = korekta ? await infakt.pobierzPdfKorekty(uuid) : await infakt.pobierzPdf(uuid);
+      bajty = korekta ? await program.pobierzPdfKorekty(uuid) : await program.pobierzPdf(uuid);
     } catch (e) {
       return reply.code(400).send(`Nie udało się pobrać dokumentu: ${komunikatDlaOperatora(e)}`);
     }
@@ -378,11 +402,11 @@ export function registerFakturyRoutes(app, {
     const { wynik, wlaczony, godzina, wstrzymane } = db ? wczytajAutomatKsef(db)
       : { wynik: null, wlaczony: false, godzina: null, wstrzymane: [] };
     return reply.view('ksef-wynik.ejs', {
-      title: 'Automat KSeF — wynik', adresPowrotu: '/faktury',
+      title: 'Automat KSeF — wynik', adresPowrotu: '/faktury', nazwaProgramu,
       wyslane: wynik?.wyslane ?? [], niepewne: wynik?.niepewne ?? [], pominiete: wynik?.pominiete ?? [],
       przyjete: null, blad: wynik?.blad ?? null,
       automat: { wynik, wlaczony, godzina, kto: KTO_AUTOMAT, poZasadzie: wynik?.poZasadzie ?? [],
-        wstrzymane: (wstrzymane ?? []).map((w) => ({ ...w, zdanie: zdanieWstrzymanej(w) })) },
+        wstrzymane: (wstrzymane ?? []).map((w) => ({ ...w, zdanie: zdanieWstrzymanej(w, nazwaProgramu) })) },
     });
   });
 
@@ -405,8 +429,9 @@ export function registerFakturyRoutes(app, {
     // Brak sekcji INFAKT_* to tryb POPRAWNY, ale nie da sie wtedy pokazac podgladu czegos,
     // czego nie ma skad wziac — odmowa ma to POWIEDZIEC (jak przy pobieraniu PDF-u wyzej).
     if (!wysylkaKsef) {
-      return reply.code(503).send(`Panel nie ma podpiętego inFaktu — nie ma czego wysłać do KSeF. ${GDZIE_KLUCZ_INFAKTU}`);
+      return reply.code(503).send(zdanieBrakuProgramu(wyborProgramu) ?? `Panel nie ma podpiętego inFaktu — nie ma czego wysłać do KSeF. ${GDZIE_KLUCZ_INFAKTU}`);
     }
+    if (wysylkaKsef.niedostepna) return odmowaWysylki(reply);
     // Jeden zaznaczony checkbox przychodzi z Fastify jako NAPIS, kilka — jako tablica.
     // `[].concat` normalizuje oba przypadki; ta sama normalizacja stoi jeszcze raz
     // w `coWolnoWyslac`, bo regula nie ma prawa polegac na tym, ze wolajacy o niej pamietal.
@@ -438,7 +463,7 @@ export function registerFakturyRoutes(app, {
     }
 
     return reply.view('ksef-podglad.ejs', {
-      title: 'Wysyłka do KSeF', miesiac, pole, adresPowrotu, etykietaPowrotu, powrot, ...wynik,
+      title: 'Wysyłka do KSeF', miesiac, pole, adresPowrotu, etykietaPowrotu, powrot, nazwaProgramu, ...wynik,
     });
   });
 
@@ -453,8 +478,9 @@ export function registerFakturyRoutes(app, {
     // Brak sekcji INFAKT_* to tryb POPRAWNY — ale wtedy nie ma dokad wyslac, i odmowa ma
     // to POWIEDZIEC (jak przy podgladzie wyzej).
     if (!wysylkaKsef) {
-      return reply.code(503).send(`Panel nie ma podpiętego inFaktu — nie ma czego wysłać do KSeF. ${GDZIE_KLUCZ_INFAKTU}`);
+      return reply.code(503).send(zdanieBrakuProgramu(wyborProgramu) ?? `Panel nie ma podpiętego inFaktu — nie ma czego wysłać do KSeF. ${GDZIE_KLUCZ_INFAKTU}`);
     }
+    if (wysylkaKsef.niedostepna) return odmowaWysylki(reply);
     // Jeden zaznaczony checkbox przychodzi z Fastify jako NAPIS, kilka — jako tablica.
     const uuids = [].concat(req.body?.uuid ?? []);
     const miesiac = req.body?.miesiac;
@@ -480,12 +506,12 @@ export function registerFakturyRoutes(app, {
       // „nie wiadomo". Ekran zamiast pieciusetki, bo operator musi wiedziec, ze NIC
       // nie poszlo.
       return reply.view('ksef-wynik.ejs', {
-        title: 'Wysyłka do KSeF', miesiac, pole, adresPowrotu, etykietaPowrotu, ...pusty, blad: komunikatDlaOperatora(e),
+        title: 'Wysyłka do KSeF', miesiac, pole, adresPowrotu, etykietaPowrotu, nazwaProgramu, ...pusty, blad: komunikatDlaOperatora(e),
       });
     }
 
     return reply.view('ksef-wynik.ejs', {
-      title: 'Wysyłka do KSeF', miesiac, pole, adresPowrotu, etykietaPowrotu, ...pusty, ...wynik,
+      title: 'Wysyłka do KSeF', miesiac, pole, adresPowrotu, etykietaPowrotu, nazwaProgramu, ...pusty, ...wynik,
     });
   });
 }

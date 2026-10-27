@@ -183,20 +183,20 @@
     <% if (stanFaktury === 'do_wyjasnienia') { %>
       <p class="pasek-blokada">
         FAKTURA DO WYJAŚNIENIA: <%= wart(okres.blad_opis) %>.
-        Sprawdź RĘCZNIE w inFakcie, czy dokument za ten miesiąc powstał — drugie kliknięcie to drugi dokument.
-        Jeśli tam jest i nie poszedł jeszcze wieczorem do KSeF, skasuj go w inFakcie; jeśli poszedł, zostaje KOREKTA.
+        Sprawdź RĘCZNIE w <%= nazwaProgramu.miejscownik %>, czy dokument za ten miesiąc powstał — drugie kliknięcie to drugi dokument.
+        Jeśli tam jest i nie poszedł jeszcze wieczorem do KSeF, skasuj go w <%= nazwaProgramu.miejscownik %>; jeśli poszedł, zostaje KOREKTA.
       </p>
     <% } else if (stanFaktury === 'zawieszona') { %>
       <p class="pasek-blokada">
         FAKTURA ZAWIESZONA: rezerwacja wisi od <%= fmtDataCzas(okres.utworzona_at) %> i żadne wystawianie już nie trwa
-        (najpewniej panel został zrestartowany w trakcie wywołania inFaktu). Panel sam faktury nie ponowi.
+        (najpewniej panel został zrestartowany w trakcie wywołania <%= nazwaProgramu.dopelniacz %>). Panel sam faktury nie ponowi.
       </p>
     <% } else if (stanFaktury === 'w_toku') { %>
       <p class="pasek-uwaga">Wystawianie faktury za ten okres trwa — odśwież stronę za chwilę.</p>
     <% } else if (stanFaktury !== 'brak') { %>
       <p>
         <strong><%= okres.numer || 'faktura wystawiona (bez numeru w odpowiedzi)' %></strong> —
-        jedna faktura za cały miesiąc, wystawiona w inFakcie z panelu, BEZ wysyłki do KSeF
+        jedna faktura za cały miesiąc, wystawiona w <%= nazwaProgramu.miejscownik %> z panelu, BEZ wysyłki do KSeF
         (tym zajmuje się właściciel ręcznie, wieczorem).
         KSeF: <%= okres.ksef_status || 'jeszcze nie wysłana' %>
       </p>
@@ -231,18 +231,18 @@
         <% } %>
       </p>
     <% } else { %>
-      <p class="pasek-uwaga">inFakt nie jest skonfigurowany — faktury z panelu nie wystawisz. Klucz API wpiszesz w <a href="/ustawienia/integracje/infakt">Ustawienia → Integracje → inFakt</a>.</p>
+      <% if (zdanieBraku) { %><p class="pasek-uwaga"><%= zdanieBraku %></p><% } else { %><p class="pasek-uwaga"><%= nazwaProgramu.mianownik %> nie jest skonfigurowany — faktury z panelu nie wystawisz. Klucz API wpiszesz w <a href="<%= ekranProgramu %>">Ustawienia → Integracje → <%= nazwaProgramu.mianownik %></a>.</p><% } %>
     <% } %>
 
     <%# JEDYNE wyjscie ze stanow, z ktorych panel sam nie wyjdzie. Kolejnosc zdania jest
         istotna: NAJPIERW inFakt, DOPIERO POTEM przycisk (tak samo, jak na karcie zamowienia). %>
     <% if (uwagaFaktury) { %>
       <p class="wyjasnienie">
-        NAJPIERW otwórz inFakt i sprawdź, czy faktura za ten miesiąc tam jest. Jeśli JEST — nic tu nie klikaj:
+        NAJPIERW otwórz <%= nazwaProgramu.mianownik %> i sprawdź, czy faktura za ten miesiąc tam jest. Jeśli JEST — nic tu nie klikaj:
         odblokowanie przy istniejącym dokumencie skończy się DRUGĄ fakturą za ten sam miesiąc. Dopiero gdy jej tam nie ma:
       </p>
       <form method="post" action="/okresy/<%= okres.id %>/faktura/odblokuj">
-        <button class="btn">Sprawdziłem w inFakcie — faktury nie ma, odblokuj</button>
+        <button class="btn">Sprawdziłem w <%= nazwaProgramu.miejscownik %> — faktury nie ma, odblokuj</button>
       </form>
     <% } %>
   </div>
@@ -308,8 +308,8 @@
         Faktura <%= okres.numer || 'za ten okres' %> już istnieje, ale <%= anulowane.length %>
         <%= anulowane.length === 1 ? 'zamówienie tego miesiąca jest dziś anulowane' : 'zamówień tego miesiąca jest dziś anulowanych' %>,
         więc suma liczona na bieżąco (<%= rozliczenie.kwotaFakturyZl %> zł) jest niższa niż w chwili wystawienia — wpłacono
-        <%= rozliczenie.wplaconoZl %> zł. To sytuacja do wyjaśnienia, najpewniej wymagająca korekty w inFakcie —
-        sprawdź ręcznie w inFakcie, a NIE zwracaj pieniędzy klientowi na podstawie samej tej karty.
+        <%= rozliczenie.wplaconoZl %> zł. To sytuacja do wyjaśnienia, najpewniej wymagająca korekty w <%= nazwaProgramu.miejscownik %> —
+        sprawdź ręcznie w <%= nazwaProgramu.miejscownik %>, a NIE zwracaj pieniędzy klientowi na podstawie samej tej karty.
       </p>
     <% } else if (rozliczenie.stan === 'nadplata') { %>
       <p class="wyjasnienie">Wpłacono o <%= rozliczenie.saldoZl %> zł więcej, niż wynosi faktura — sprawdź, czy nadwyżki nie trzeba zwrócić klientowi.</p>

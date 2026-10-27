@@ -1,0 +1,46 @@
+<h1><%= title %></h1>
+<p><a href="/ustawienia/integracje">← Integracje</a></p>
+
+<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
+<% if (ekran.uwaga) { %><div class="pas-uprzedzenie"><p><%= ekran.uwaga %></p></div><% } %>
+<% if (bledy.length) { %>
+  <div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong></p><ul><% bledy.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
+<% } %>
+
+<section class="ust-sekcja" id="modul-faktur-stan">
+  <h2>Teraz działa</h2>
+  <p class="ust-stan"><strong><%= ekran.dziala.etykieta %></strong></p>
+  <p><%= ekran.dziala.zrodlo %></p>
+  <% if (ekran.czeka) { %><p class="pas-uprzedzenie"><%= ekran.czeka %></p><% } %>
+  <% if (ekran.ponowneUruchomienie && ekran.ponowneUruchomienie.recznie) { %>
+    <p class="ust-pomoc">Uruchom ponownie OMS (np. <code>docker compose restart oms</code>).</p>
+  <% } else if (ekran.ponowneUruchomienie) { %>
+    <form id="modul-faktur-restart" method="post" action="<%= ekran.ponowneUruchomienie.adres %>">
+      <div class="ust-akcje">
+        <button class="btn" type="submit"<% if (ekran.ponowneUruchomienie.nieaktywny) { %> disabled<% } %>>Uruchom OMS ponownie</button>
+      </div>
+      <p class="ust-pomoc">Panel będzie niedostępny przez kilka sekund.</p>
+    </form>
+  <% } %>
+</section>
+
+<section class="ust-sekcja" id="modul-faktur-wybor">
+  <h2>Wybór modułu</h2>
+  <form id="modul-faktur-formularz" method="post" action="<%= ekran.adres %>">
+    <div class="aut-wybor">
+      <% ekran.pola.forEach(function (p) { %>
+      <p<% if (p.wkrotce) { %> class="aut-wylaczone"<% } %>><label><input type="radio" name="program" value="<%= p.id %>"<% if (p.zaznaczone) { %> checked<% } %><% if (p.nieaktywne) { %> disabled<% } %>><span><strong><%= p.etykieta %></strong><% if (p.wkrotce) { %><span class="menu-ustawien-wkrotce">wkrótce</span><% } %><% if (p.opis) { %><span class="wyjasnienie"><%= p.opis %><% if (p.odnosnik) { %> <a href="<%= p.odnosnik.adres %>"><%= p.odnosnik.tekst %></a><% } %></span><% } %><% if (p.ostrzezenie) { %><span class="wyjasnienie uwaga"><%= p.ostrzezenie %></span><% } %></span></label></p>
+      <% }); %>
+    </div>
+    <% if (ekran.zPliku) { %>
+      <p class="ust-pomoc">Ustawione w pliku konfiguracji (OMS_PROGRAM_FAKTUROWY) — tam to zmienisz.</p>
+    <% } else if (!ekran.moznaZmieniac) { %>
+      <p class="ust-pomoc">Zmienia administrator.</p>
+    <% } else { %>
+      <div class="ust-akcje">
+        <button class="btn btn--glowny" type="submit">Zapisz</button>
+        <a class="ust-przycisk" href="/ustawienia/integracje">Anuluj</a>
+      </div>
+    <% } %>
+  </form>
+</section>

@@ -224,7 +224,7 @@
     <div class="panel-cialo">
       <%# Grozniejsze od paczki: dokumentu w inFakcie nie da sie „poprawic w drodze". %>
       <% if (stanFaktury === 'wystawiona') { %>
-        <p class="pasek-uwaga">Treści faktury JUŻ WYSTAWIONEJ to nie zmienia — wystawiony dokument popraw KOREKTĄ w inFakcie.</p>
+        <p class="pasek-uwaga">Treści faktury JUŻ WYSTAWIONEJ to nie zmienia — wystawiony dokument popraw KOREKTĄ w <%= nazwaProgramu.miejscownik %>.</p>
       <% } %>
       <%# Wynik „Pobierz z GUS" — komunikat stoi NAD formularzem, bo rozstrzyga, czy to, co %>
       <%# w polach, w ogole przyszlo z REGON-u. Trzy rodzaje, bo trzy rozne rzeczy trzeba %>
@@ -1583,7 +1583,7 @@
               <td>
                 <%# PDF pobierany z inFaktu ZA KAZDYM RAZEM na swiezo — panel nie trzyma %>
                 <%# kopii dokumentu, bo po korekcie kopia klamalaby przy drukarce. %>
-                <% if (z.faktura.infakt_uuid && mozeAdres(`/zamowienia/${z.id}/faktura/pdf`)) { %>
+                <% if (idDokumentuFaktury && !zdanieBraku && mozeAdres(`/zamowienia/${z.id}/faktura/pdf`)) { %>
                   <%# Ta sama zasada, co przy etykiecie: dokument do wydruku otwiera sie OBOK %>
                   <%# karty, a nie zamiast niej. %>
                   <a class="btn btn--maly" href="/zamowienia/<%= z.id %>/faktura/pdf"
@@ -1698,16 +1698,16 @@
       <%# wiedziec, czy zdazyla. %>
       <% if (z.anulowane && z.faktura) { %>
         <p class="pasek-blokada">
-          UWAGA: zamówienie anulowane, a faktura<%= z.faktura.numer ? ` ${z.faktura.numer}` : '' %> jest w inFakcie —
-          anulowanie w sklepie jej NIE kasuje. Jeśli jeszcze nie poszła wieczorem do KSeF, skasuj ją w inFakcie;
+          UWAGA: zamówienie anulowane, a faktura<%= z.faktura.numer ? ` ${z.faktura.numer}` : '' %> jest w <%= nazwaProgramu.miejscownik %> —
+          anulowanie w sklepie jej NIE kasuje. Jeśli jeszcze nie poszła wieczorem do KSeF, skasuj ją w <%= nazwaProgramu.miejscownik %>;
           jeśli już poszła, wystaw KOREKTĘ.
         </p>
       <% } %>
       <% if (stanFaktury === 'do_wyjasnienia') { %>
         <p class="pasek-blokada">
           FAKTURA DO WYJAŚNIENIA: <%= z.faktura.blad_opis %>.
-          Sprawdź RĘCZNIE w inFakcie, czy dokument powstał — drugie kliknięcie to drugi dokument.
-          Jeśli tam jest i jeszcze nie poszedł wieczorem do KSeF, skasuj go w inFakcie; jeśli już poszedł, zostaje KOREKTA.
+          Sprawdź RĘCZNIE w <%= nazwaProgramu.miejscownik %>, czy dokument powstał — drugie kliknięcie to drugi dokument.
+          Jeśli tam jest i jeszcze nie poszedł wieczorem do KSeF, skasuj go w <%= nazwaProgramu.miejscownik %>; jeśli już poszedł, zostaje KOREKTA.
         </p>
       <% } else if (stanFaktury === 'zawieszona') { %>
         <p class="pasek-blokada">
@@ -1728,13 +1728,13 @@
           panel tu nie wystawi — <% if (modulWlaczony('okresy')) { %><a href="/okresy/<%= okresZamowienia.id %>"><% } %>przejdź do okresu <%= nazwaOkresu %><% if (modulWlaczony('okresy')) { %></a><% } else { %> (moduł wyłączony)<% } %>.
           <%# PRZ-102.23: faktura okresu nie należy do tego zamówienia — do KSeF jedzie z listy Faktur %>
           <%# (zaznaczenie → podgląd → wysyłka, albo automat), tak jak dziś; karta nie dokłada drugiej drogi. %>
-          <% if (okresZamowienia.infakt_uuid && mozeAdres('/faktury/ksef/podglad')) { %>
-            Faktura okresu jest już w inFakcie — do KSeF wysyłasz ją z zakładki <a href="/faktury">Faktury</a>, nie z karty zamówienia.
+          <% if (idDokumentuOkresu && mozeAdres('/faktury/ksef/podglad')) { %>
+            Faktura okresu jest już w <%= nazwaProgramu.miejscownik %> — do KSeF wysyłasz ją z zakładki <a href="/faktury">Faktury</a>, nie z karty zamówienia.
           <% } %>
         </p>
       <% } %>
       <% if (!mozliwaFaktura && !z.faktura && !wOkresie) { %>
-        <p class="pasek-uwaga">inFakt nie jest skonfigurowany — faktury z panelu nie wystawisz. Klucz API wpiszesz w <a href="/ustawienia/integracje/infakt">Ustawienia → Integracje → inFakt</a>.</p>
+        <% if (zdanieBraku) { %><p class="pasek-uwaga"><%= zdanieBraku %></p><% } else { %><p class="pasek-uwaga"><%= nazwaProgramu.mianownik %> nie jest skonfigurowany — faktury z panelu nie wystawisz. Klucz API wpiszesz w <a href="<%= ekranProgramu %>">Ustawienia → Integracje → <%= nazwaProgramu.mianownik %></a>.</p><% } %>
       <% } %>
     <% } %>
 
@@ -1859,7 +1859,7 @@
           jest błędna, potrzebna jest KOREKTA.
         </p>
       <% } else if (!mozliwaFakturaAllegro) { %>
-        <p class="pasek-uwaga">Kanał Allegro albo inFakt nie jest skonfigurowany — faktury stąd nie wyślesz. Klucz API inFaktu wpiszesz w <a href="/ustawienia/integracje/infakt">Ustawienia → Integracje → inFakt</a>.</p>
+        <% if (zdanieBraku) { %><p class="pasek-uwaga"><%= zdanieBraku %></p><% } else { %><p class="pasek-uwaga">Kanał Allegro albo <%= nazwaProgramu.mianownik %> nie jest skonfigurowany — faktury stąd nie wyślesz. Klucz API <%= nazwaProgramu.dopelniacz %> wpiszesz w <a href="<%= ekranProgramu %>">Ustawienia → Integracje → <%= nazwaProgramu.mianownik %></a>.</p><% } %>
       <% } else if (zgodaFakturaAllegro.wolno) { %>
         <% if (odrzuconyPrzezAllegro) { %>
           <%# ⚠️ PONOWIENIE PO ODRZUCENIU JEST BEZPIECZNE I DARMOWE, i karta ma to powiedziec %>
@@ -1874,12 +1874,12 @@
           <p class="wyjasnienie">
             Ponowna wysyłka <strong>podmienia plik</strong> przy tym samym zgłoszeniu<%
               %><%= z.faktura.allegro_invoice_id ? ` (${z.faktura.allegro_invoice_id})` : '' %> —
-            drugiego dokumentu u kupującego nie zrobi. Najpierw sprawdź w inFakcie, czy PDF
+            drugiego dokumentu u kupującego nie zrobi. Najpierw sprawdź w <%= nazwaProgramu.miejscownik %>, czy PDF
             jest w porządku; Allegro odrzuca pliki, których nie przepuścił jego antywirus.
           </p>
         <% } else { %>
           <p class="wyjasnienie">
-            PDF pobierze się z inFaktu na świeżo (z numerem KSeF w pierwszej linii dokumentu)
+            PDF pobierze się z <%= nazwaProgramu.dopelniacz %> na świeżo (z numerem KSeF w pierwszej linii dokumentu)
             i trafi na konto kupującego w Allegro. <strong>Tej operacji nie da się cofnąć.</strong>
           </p>
         <% } %>
@@ -1902,14 +1902,14 @@
     <% if (pokazFakture && uwagaFaktury) { %>
       <p class="etykieta-bloku">Odblokowanie</p>
       <p class="wyjasnienie">
-        NAJPIERW otwórz inFakt i sprawdź, czy faktura tam jest. Jeśli JEST — nic tu nie klikaj: odblokowanie przy
-        istniejącym dokumencie skończy się DRUGĄ fakturą w inFakcie (a jeśli obie dożyją wieczornej wysyłki — także drugą w KSeF,
+        NAJPIERW otwórz <%= nazwaProgramu.mianownik %> i sprawdź, czy faktura tam jest. Jeśli JEST — nic tu nie klikaj: odblokowanie przy
+        istniejącym dokumencie skończy się DRUGĄ fakturą w <%= nazwaProgramu.miejscownik %> (a jeśli obie dożyją wieczornej wysyłki — także drugą w KSeF,
         a takiej się nie kasuje, tylko koryguje). Dopiero gdy faktury tam nie ma:
       </p>
       <% if (mozeAdres(`/zamowienia/${z.id}/faktura/odblokuj`)) { %>
         <form method="post" action="/zamowienia/<%= z.id %>/faktura/odblokuj">
           <input type="hidden" name="powrot" value="<%= powrot %>">
-          <button class="btn">Sprawdziłem w inFakcie — faktury nie ma, odblokuj</button>
+          <button class="btn">Sprawdziłem w <%= nazwaProgramu.miejscownik %> — faktury nie ma, odblokuj</button>
         </form>
       <% } %>
     <% } %>

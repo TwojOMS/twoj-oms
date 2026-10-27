@@ -69,9 +69,12 @@ import { kluczOkresu } from '../../domena/okres-rozliczeniowy.js';
 import { wolnoPrzypisac } from '../../domena/zmiana-okresu.js';
 import { umowaZbiorcza } from '../../domena/klient-zbiorczy.js';
 import { pobierzOkres } from '../../oms/db/okresy.js';
+import { idDokumentu } from '../../domena/dokument-programu.js';
 import { MIESIACE } from '../../domena/okres-rozliczeniowy.js';
 import { decyzjaScalenia, zamowienieGrupy } from '../../domena/scalanie.js';
 import { dolaczoneZamowienia, zamowienieZGrupa } from '../../oms/db/scalenia.js';
+import { odmianaNazwyProgramu, ekranProgramu } from '../../domena/nazwa-programu.js';
+import { zdanieBrakuProgramu } from '../../domena/wybor-programu.js';
 import {teraz,AKCJA_ALLEGRO_PROBA,allegroWymagaOdpytania,miniaturyEkranu,ktoKlikal,sprzedawcaSpecyfikacji,daneKarty,KATALOG_WIDOKOW,fragment} from './wspolne.js';
 export function createKontekstZamowien(opcje) {
 const {
@@ -108,7 +111,15 @@ const {
   // PRZ-102.23: przycisk „Wyślij do KSeF” przy fakturze na karcie prowadzi do podglądu tej usługi
   // (POST /faktury/ksef/podglad). `null` (panel bez inFaktu) = bez przycisku — podgląd i tak odda 503.
   wysylkaKsef = null,
+  // PRZ-118.09: usługa `infakt` modułu faktur (surowy klient inFaktu albo program fakturowy; `null` = panel bez
+  // programu) — WYŁĄCZNIE do zdań na karcie (nazwa, ekran programu) i reguły VAT podsumowania (`opis.regulaVat`).
+  infakt = null,
+  // PRZ-121.03b: wybór modułu faktur (usługa `faktury.wyborProgramu`; `null` = bez modułu faktur). Tylko do zdania "zdanieBraku".
+  wyborProgramu = null,
 }=opcje;
+const nazwaProgramu = odmianaNazwyProgramu(infakt);
+// Reguła VAT programu; obiekt bez opisu (surowy klient inFaktu, mock) i brak programu = „wierszami”, jak przed zmianą.
+const regulaVat = infakt?.opis?.regulaVat ?? 'wierszami';
 // PRZ-108.02: usługa wiadomości powstaje także bez poczty (poczta z Ustawień może dojść po starcie) i mówi
 // `gotowe()`, czy poczta jest TERAZ ustawiona. Pytamy przy każdym żądaniu: bez poczty = jak `null` wyżej.
 const wiadomosciCzynne = () => (wiadomosci && wiadomosci.gotowe?.() !== false ? wiadomosci : null);
@@ -258,7 +269,7 @@ function zbierzOstrzezenia(req) {
         ...ostrzezeniaIntegracji({ zdrowie: zdrowie?.() ?? null }),
         ...ostrzezeniaFaktur({ luki: lukiKsef(db), dzis }),
         // PRZ-102.12: kłopot ostatniego przebiegu automatu KSeF (błąd, przerwany, „nie wiadomo”, pominięte).
-        ...(() => { const a = wczytajAutomatKsef(db); return ostrzezeniaAutomatuKsef({ wynik: a.wynik, wstrzymane: a.wstrzymane }); })(),
+        ...(() => { const a = wczytajAutomatKsef(db); return ostrzezeniaAutomatuKsef({ wynik: a.wynik, wstrzymane: a.wstrzymane, nazwa: nazwaProgramu }); })(),
         // PRZ-108.08: reguła automatyzacji wstrzymana albo niepewna wysyłka maila — tylko administrator (reguły i ich
         // dziennik są w Ustawieniach, dostępnych wyłącznie dla niego).
         ...(req?.konto?.admin ? ostrzezeniaAutomatyzacji({ reguly: regulyDoOstrzezen(db,
@@ -342,7 +353,7 @@ function daneWiadomosci(req, z, dodatki = {}) {
       id: temat_id,
       nazwa: NAZWA_TEMATU[temat_id],
       zgoda: czyWolnoWyslac(k.z, temat_id, k),
-      stan: stanTematu(k.z, temat_id, { ...k, ostatnia: ostatnie.get(temat_id) ?? null }),
+      stan: stanTematu(k.z, temat_id, { ...k, ostatnia: ostatnie.get(temat_id) ?? null, nazwaProgramu }),
     }));
     // PRZ-101.03: szablony własne — ta sama lista, ten sam podgląd, ta sama wysyłka i to samo ostrzeżenie
     // „Ta wiadomość poszła już…" (rejestr `wiadomosci` z temat_id = `wlasny-N`).
@@ -511,6 +522,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     pobranie: platnoscPrzyOdbiorze(z),
     terminZamowienia: z.termin_platnosci,
   });
+  const okresZamowienia = z.okres_rozliczeniowy_id ? pobierzOkres(db, z.okres_rozliczeniowy_id) : null;
 
   // Bez tej flagi widok kusil przyciskiem „Wystaw fakturę" takze wtedy, gdy inFakt
   // nie jest w ogole skonfigurowany — klikniecie konczylo sie 503 bez wyjasnienia.
@@ -613,7 +625,12 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // ich sam (domain/sprawy-karty.js): kazda z nich rzadzi juz czyms innym (lista robocza,
     // bariera faktury, wyliczone `oplacone_at`), wiec druga kopia reguly rozjechalaby sie
     // przy pierwszej zmianie i pasek zaczalby klamac o tym, czy jest co robic.
-    sprawy: sprawyKarty(z),
+    sprawy: sprawyKarty(z, Date.now(), { nazwa: nazwaProgramu }),
+    // PRZ-118.09: nazwa i ekran programu fakturowego w zdaniach karty (bez programu — inFakt, jak dotąd).
+    nazwaProgramu, ekranProgramu: ekranProgramu(infakt),
+    // PRZ-121.03b: zdanie „faktury wyłączone” przy jawnym „brak” (plik albo Ustawienia); w innym razie `null` i widok
+    // renderuje dotychczasowe akapity znak w znak.
+    zdanieBraku: zdanieBrakuProgramu(wyborProgramu),
     // ⚠️ Czy to KANAL, liczone TU i TA SAMA funkcja co wszedzie indziej (`czyKanalAllegro`).
     // Widok potrzebuje tego do JEDNEJ rzeczy — brzmienia plakietki przy „Wyslij ponownie" —
     // ale wpisanie tam `z.sklep.startsWith('allegro_')` byloby CZWARTA kopia tego zdania,
@@ -655,13 +672,16 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // Widok NIE liczy sam, czy rezerwacja jest osierocona — to decyzja domenowa i ma
     // brzmiec tak samo tutaj, na liscie roboczej i przy kolizji w bazie.
     stanFaktury: stanFaktury(z.faktura),
+    // PRZ-118.04: identyfikator dokumentu faktury i okresu dla widoku — przez domena/dokument-programu.js.
+    idDokumentuFaktury: idDokumentu(z.faktura),
+    idDokumentuOkresu: idDokumentu(okresZamowienia),
     // PRZ-102.23: „Wyślij do KSeF” przy fakturze (`wysylkaZKarty`) na pewnych faktach z bazy: uuid, numer KSeF,
     // rezerwacja. NIP karty (bieżące dane, edytowalne po wystawieniu) daje tylko dopisek przy przycisku —
     // o konsumenckiej rozstrzyga podgląd na dokumencie z inFaktu. Miesiąc listy z daty wystawienia,
     // którą czuwacz przeczytał z inFaktu (lustro luk), a bez niej z chwili wystawienia w panelu (czas Warszawy).
     // Faktura grupy scalonej ma wiersz tylko przy głównym; faktura okresu nie ma go wcale — przycisku tam nie ma.
     ksefKarty: (() => {
-      const uuid = z.faktura?.infakt_uuid;
+      const uuid = idDokumentu(z.faktura);
       if (!wysylkaKsef || !uuid) return null;
       return wysylkaZKarty({
         uuid,
@@ -695,7 +715,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
       return { ...w, linkProduktu: odnosnik?.adres ?? null, linkProduktuTytul: odnosnik?.tytul ?? null };
     }),
     podsumowaniePozycji: podsumowaniePozycji(edytujWszystkiePozycje ? z : zKartyZGrupa(z)),
-    podsumowanieVat: podsumowanieVatKarty(edytujWszystkiePozycje ? z : zKartyZGrupa(z), { stawkaDomyslna: czytajStawkeDomyslna(db) }),
+    podsumowanieVat: podsumowanieVatKarty(edytujWszystkiePozycje ? z : zKartyZGrupa(z), { stawkaDomyslna: czytajStawkeDomyslna(db), regula: regulaVat }),
     // Sekcja „Platnosci": suma wplat wobec kwoty zamowienia. Widok NIE liczy tego sam —
     // ta sama zasada, co przy podsumowaniu pozycji wyzej. Porownanie idzie na liczbach
     // calkowitych w groszach, TA SAMA funkcja co bariera arytmetyczna faktury.
@@ -787,7 +807,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // Kolumna boczna karty — te same statusy, co na liscie, z zaznaczonym statusem
     // TEGO zamowienia. Rysuje ja uklad (layout-oms.ejs).
     panelStatusow,
-    okresZamowienia: z.okres_rozliczeniowy_id ? pobierzOkres(db, z.okres_rozliczeniowy_id) : null,
+    okresZamowienia,
     // ⚠️ TA SAMA REGULA, KTORA ODMAWIA W TRASIE `POST /zamowienia/:id/okres` — widok jej
     // nie powtarza. `null` znaczy „nie pokazuj przycisku": zamowienie ma juz okres albo
     // wlasna fakture, jest hurtem, albo jego NIP nie nalezy do klienta zbiorczego.

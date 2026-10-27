@@ -6,6 +6,7 @@
 // wygasa, jakie są klucze — mieszkają w domain/ostrzezenia.js, nie tutaj.
 
 import { OSTATNIA_ZYWA_PACZKA } from '../../moduly/wysylka/db/ostatnia-paczka.js';
+import { idDokumentuSql } from '../../domena/dokument-programu.js';
 
 const teraz = () => new Date().toISOString();
 
@@ -132,7 +133,7 @@ export function pobraniaBezGotowki(db) {
   return db.prepare(`
     SELECT
       z.id AS zamowienie_id, z.numer AS zamowienie_numer, z.pobranie, z.wysylka_reczna_json,
-      f.numer AS faktura_numer, f.infakt_uuid,
+      f.numer AS faktura_numer, ${idDokumentuSql('f')} AS dokument_id,
       p.status_kuriera, p.status_kuriera_kod, p.status_kuriera_at
     FROM faktury f
     JOIN zamowienia z ON z.id = f.zamowienie_id

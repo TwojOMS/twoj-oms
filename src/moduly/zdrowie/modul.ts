@@ -22,6 +22,10 @@ export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewn
     const fakturyWidok=ctx.usluga<any>('faktury','fakturyWidok');
     const puls=ctx.usluga<any>('faktury','puls');
     const czuwaczOstrzezen=infakt?createCzuwaczOstrzezen({db:ctx.db,infakt,fakturyWidok}):null;
+    // PRZ-118.08: strażnik budżetu z limitów programu, który naprawdę stoi za czuwaczem (stały strażnik inFaktu zostaje wyżej).
+    if(czuwaczOstrzezen&&czuwaczOstrzezen.najdluzszyPrzebiegMs>=ODSTEP_OSTRZEZEN_MS){
+      throw Error(`Budżet czuwacza ostrzeżeń z limitów programu „${czuwaczOstrzezen.program?.opis.nazwa.mianownik}” (${czuwaczOstrzezen.najdluzszyPrzebiegMs} ms) nie mieści się między tyknięciami zegara (${ODSTEP_OSTRZEZEN_MS} ms) — panel nie wstanie z tym programem.`);
+    }
     // Lookup kosztów odroczony do odczytu: nie wprowadza cyklu z faktury.paczkaDlaBiura.
     const opcjonalna=<T>(modul:string,nazwa:string):T|null=>{
       try{return ctx.usluga<T>(modul,nazwa);}catch(e){

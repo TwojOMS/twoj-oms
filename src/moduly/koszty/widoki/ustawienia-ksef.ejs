@@ -54,7 +54,7 @@
   <form id="ksef-formularz" class="ust-formularz" method="post" action="/ustawienia/integracje/ksef">
     <label for="ksef-token">Token KSeF <span class="ust-wymagane">*</span></label>
     <div><input id="ksef-token" type="password" name="token" value="" maxlength="1000" autocomplete="new-password"<% if (stan?.zapisaneSekrety?.token) { %> placeholder="zapisany — wpisz nowy, żeby zmienić"<% } else { %> required<% } %>>
-      <p class="ust-pomoc">OMS loguje się nim do KSeF tylko po to, żeby czytać faktury zakupowe: nocne pobranie kosztów, PDF kosztu, paczka kosztów dla biura i „Sprawdź połączenie”. Wysyłka faktur sprzedaży idzie przez inFakt i tego tokenu nie używa.</p></div>
+      <p class="ust-pomoc">OMS loguje się nim do KSeF tylko po to, żeby czytać faktury zakupowe: nocne pobranie kosztów, PDF kosztu, paczka kosztów dla biura i „Sprawdź połączenie”. Wysyłka faktur sprzedaży idzie przez <%= nazwaProgramu.mianownik %> i tego tokenu nie używa.</p></div>
 
     <label for="ksef-nip">NIP firmy</label>
     <div><input id="ksef-nip" type="text" name="nip" value="<%= nipZapisu %>" maxlength="20" inputmode="numeric" autocomplete="off" placeholder="<%= nipSprzedawcy ?? '' %>">

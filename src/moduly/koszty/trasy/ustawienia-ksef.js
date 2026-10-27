@@ -12,13 +12,16 @@ import { usunSesjeKsef } from '../../../oms/ksef/sesja.js';
 import { wylaczoneModuly } from '../../../oms/db/moduly-opcjonalne.js';
 import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';
 import { tytulEkranuDlaAdresu } from '../../../domena/ekrany.js';
+import { odmianaNazwyProgramu } from '../../../domena/nazwa-programu.js';
 
 const KOMUNIKATY = {
   zapisano: 'Zapisano token KSeF. Czuwacz kosztów pobierze nim faktury zakupowe przy następnym przebiegu (o 3 w nocy albo „Odśwież teraz” na ekranie Koszty).',
   odlaczono: 'Token KSeF usunięty z OMS-u. Panel nie pobiera już faktur kosztowych; koszty zapisane wcześniej zostają.',
 };
 
-export function registerUstawieniaKsefRoutes(app, { db, zrodloKsef, nipSprzedawcy: nip }) {
+export function registerUstawieniaKsefRoutes(app, { db, zrodloKsef, nipSprzedawcy: nip, infakt = null }) {
+  // PRZ-118.09: zdanie „Wysyłka faktur sprzedaży idzie przez …” — nazwa programu z usługi `infakt` modułu faktur.
+  const nazwaProgramu = odmianaNazwyProgramu(infakt);
   const k = zrodloKsef;
   // PRZ-108.10: NIP firmy funkcją (plik albo Ustawienia → Firma) — czytany przy każdym widoku i zapisie.
   const nipTeraz = () => (typeof nip === 'function' ? nip() : nip) ?? null;
@@ -29,7 +32,7 @@ export function registerUstawieniaKsefRoutes(app, { db, zrodloKsef, nipSprzedawc
       zEnv: k.zEnv, stan: stanDlaEkranu(zapis), nipZapisu: zapis?.ustawienia?.nip ?? '', nipSprzedawcy: nipTeraz(),
       nipNiezgodny: k.nipNiezgodny(), modulWylaczony: wylaczoneModuly(db).includes('koszty'),
       zdanie: ZDANIE_UPRAWNIENIA_KSEF, bledy, test, odmowaBrakNip: ODMOWA_KSEF_BRAK_NIP,
-      zapisano: KOMUNIKATY[req.query?.zapisano] ?? null,
+      zapisano: KOMUNIKATY[req.query?.zapisano] ?? null, nazwaProgramu,
     });
   }
   const zEnv = (reply) => reply.code(409).type('text/plain; charset=utf-8')

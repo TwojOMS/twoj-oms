@@ -36,6 +36,8 @@ export function createModulWiadomosci({ fabryki = {}, uslugi }: {
         klienciKanalow: ctx.usluga('kanaly', 'klienciKanalow'),
         tokenyKanalow: ctx.usluga('kanaly', 'tokenyKanalow'),
         proforma: ctx.usluga('faktury', 'proforma'), infakt: ctx.usluga('faktury', 'infakt'),
+        // PRZ-121.A04b: wybór modułu faktur — zdanie „faktury wyłączone” w odmowie maila z fakturą (bez usługi — `null`).
+        wyborProgramu: (() => { try { return ctx.usluga('faktury', 'wyborProgramu'); } catch { return null; } })(),
         teraz: ctx.teraz, fabryki,
       });
       // Te same dwa argumenty frozen dochodzą do loggera rzeczywistego produktu.

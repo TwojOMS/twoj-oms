@@ -9,6 +9,7 @@ import { zarchiwizujDokument, oznaczSkasowanyDokument } from './archiwum-sprzeda
 // Wylacznie stale — straznik czasu przebiegu nizej liczy sie z PRAWDZIWYCH limitow klienta,
 // a nie z liczb przepisanych do komentarza (ta sama zasada, co w services/czuwacz-kosztow.js).
 import { LIMIT_ZADANIA_MS, NAJDLUZSZA_LISTA_MS } from '../../../oms/infakt/client.js';
+import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 // Nocny czuwacz archiwum sprzedazy (spec 2026-09-02, Czesc B). Zegar godzinowy (bootstrap.js,
 // `uruchomZegary`), praca w JEDNYM oknie na dobe: 4:00 czasu Warszawy — godzine PO czuwaczu
@@ -58,6 +59,12 @@ export const BUDZET_ARCHIWUM_SPRZEDAZY_MS = 10 * 60 * 1000;
 export const NAJDLUZSZY_PRZEBIEG_ARCHIWUM_SPRZEDAZY_MS = BUDZET_ARCHIWUM_SPRZEDAZY_MS
   + NAJDLUZSZA_LISTA_MS + LIMIT_ZADANIA_MS;
 
+// PRZ-118.05: te same trzy składniki z limitów WYBRANEGO programu (`opis.limity`): jedna lista miesiąca
+// = `najdluzszaListaMs`, jedno pobranie dokumentu = `zadanieMs`. Strażnik startu w moduly/faktury/modul.ts.
+export function najdluzszyPrzebiegArchiwumSprzedazyMs(limity) {
+  return BUDZET_ARCHIWUM_SPRZEDAZY_MS + limity.najdluzszaListaMs + limity.zadanieMs;
+}
+
 // ⚠️ HAMULEC NA MARTWE ZRODLO (wzorzec `LIMIT_KOLEJNYCH_BLEDOW_ARCHIWUM`, czuwacz-kosztow.js).
 // inFakt nieosiagalny albo NAS odmontowany znaczy, ze KAZDY nastepny dokument odbije sie tak
 // samo — bez licznika przebieg waliby w martwe zrodlo tyle razy, ile jest dokumentow w trzech
@@ -71,11 +78,14 @@ export const LIMIT_KOLEJNYCH_BLEDOW = 3;
 export const POWOD_TRWA = 'poprzedni przebieg jeszcze trwa';
 export const POWOD_NIE_TA_PORA = 'nie ta pora';
 
+// PRZ-118.07: listy i PDF-y czyta PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`). Budżet
+// przebiegu z `opis.limity` programu liczy `najdluzszyPrzebiegArchiwumSprzedazyMs(limity)` wyżej — strażnik startu w modul.ts.
 export function createCzuwaczArchiwumSprzedazy({
-  db, infakt, katalogArchiwum, teraz = () => new Date(), log = console.error,
+  db, program: programPodany = null, infakt = null, katalogArchiwum, teraz = () => new Date(), log = console.error,
   // Wstrzykiwalne wylacznie dla testow — ta sama zasada, co przy `archiwizuj` w czuwaczu kosztow.
   archiwizuj = zarchiwizujDokument, oznaczSkasowany = oznaczSkasowanyDokument,
 }) {
+  const program = zProgramu({ program: programPodany, infakt });
   // ⚠️ JEDEN PRZEBIEG NARAZ. Zegar tyka niezaleznie od tego, czy poprzedni przebieg sie
   // skonczyl, a przycisk „Odswiez teraz" wcisniety w trakcie nocnego przebiegu dawalby dwa
   // przeglady tych samych miesiecy, piszace rownolegle te same pliki. Zwalniana w `finally`:
@@ -127,7 +137,7 @@ export function createCzuwaczArchiwumSprzedazy({
         const zakres = { ...zakresMiesiaca(miesiac), pole: 'invoice_date' };
         let dokumenty;
         try {
-          const [faktury, korekty] = await Promise.all([infakt.listaFaktur(zakres), infakt.listaKorekt(zakres)]);
+          const [faktury, korekty] = await Promise.all([program.listaFaktur(zakres), program.listaKorekt(zakres)]);
           dokumenty = [...faktury, ...korekty];
         } catch (e) {
           // ⚠️⚠️ MIESIAC BEZ PELNEJ LISTY NIE ROZSTRZYGA O NICZYM — zwlaszcza o skasowaniach.
@@ -150,7 +160,7 @@ export function createCzuwaczArchiwumSprzedazy({
           }
           widziane.add(dokument.uuid);
           try {
-            const w = await archiwizuj({ db, infakt, dokument, katalogBazowy: katalogArchiwum, teraz, log });
+            const w = await archiwizuj({ db, program, dokument, katalogBazowy: katalogArchiwum, teraz, log });
             if (w.stan === 'pobrany') wynik.pobranych += 1;
             else if (w.stan === 'adoptowany') wynik.adoptowanych += 1;
             else if (w.stan === 'nadpisany') wynik.nadpisanych += 1;

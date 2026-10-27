@@ -370,6 +370,10 @@ Pierwsze podłączenie z ekranu włącza zakładkę FAKTURY po ponownym uruchomi
 późniejsza zmiana klucza działa od razu. Wtedy linii `INFAKT_API_KEY` nie wpisuj — gdy jest w pliku, wygrywa
 nad ekranem. Adres API (`INFAKT_API_URL`) i archiwum sprzedaży (`INFAKT_ARCHIWUM`) ustawia się tylko w pliku.
 
+**Moduł faktur — wybór z ekranu:** Ustawienia → Integracje → Moduł faktur (Brak / inFakt;
+Fakturownia i TwojeFaktury — wkrótce). Bez wyboru działa inFakt, gdy ma klucz. Szczegóły:
+`docs/modul-faktur.md`.
+
 **Sklep WooCommerce** — klucze REST ze sklepu (WooCommerce → Ustawienia → Zaawansowane → REST API,
 uprawnienia „odczyt/zapis”):
 

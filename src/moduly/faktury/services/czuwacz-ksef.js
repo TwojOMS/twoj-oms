@@ -7,6 +7,9 @@ import { dopiszLog, ostatniWpisLogu, pobierzZamowienie } from '../../../oms/db/z
 import { wolnoWyslacDoAllegro } from '../../../domena/allegro-faktura.js';
 import { createPoNumerzeKsef } from './po-numerze-ksef.js';
 import {
+  idDokumentu, idDokumentuSql, programDokumentuSql, czyDokumentProgramu,
+} from '../../../domena/dokument-programu.js';
+import {
   warunekCzekaNaKsefSql, KOLUMNA_ZLECONA_Z_PANELU_SQL, czyWierszWZakresieKsef,
 } from '../../../domena/ksef-oczekiwanie.js';
 import {
@@ -16,6 +19,7 @@ import { LIMIT_ZADANIA_MS as LIMIT_ZADANIA_INFAKTU_MS } from '../../../oms/infak
 import { LIMIT_ZAPYTANIA_PRZESYLEK_MS } from '../../../oms/allegro/client.js';
 import { wolnoPytac, poOdpowiedzi } from '../../../domena/bezpiecznik-weryfikacji.js';
 import { stanWeryfikacji, zapiszStanWeryfikacji } from '../../../oms/db/stan-weryfikacji.js';
+import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 // ⚠️⚠️ TO NIE JEST `services/czuwacz-kosztow.js` — tamten pobiera z KSeF faktury, na ktorych
 // jestesmy NABYWCA (zakladka KOSZTY). Ten pyta inFakt o numer KSeF naszej faktury SPRZEDAZOWEJ.
@@ -118,16 +122,20 @@ export const LIMIT_PRZEBIEGU = 50;
 // i rozstrzyga remisy, wiec na pierwszym przebiegu kolejnosc jest dokladnie ta, co dawniej:
 // od najstarszej, czyli od tej, o ktora upomina sie pasek spraw. Kolejka jest CYKLICZNA.
 // PRZ-101.08: funkcja, bo warunek zna klucze Allegro z konfiguracji dopiero po budowie aplikacji.
+//
+// PRZ-121.04a: `f.program` do `czyDokumentProgramu` w petli, a dokumenty modulu faktur OMS-u ida w kolejce PRZED
+// dokumentami innego programu. Tych drugich czuwacz nie pyta i nie stempluje (`ksef_sprawdzona_at` zostaje pusty),
+// wiec bez tego porzadku stalyby wiecznie na poczatku i zajmowalyby sloty `LIMIT_PRZEBIEGU` — ten sam zator, co wyzej.
 const doSprawdzeniaSql = () => `
-  SELECT f.id, f.infakt_uuid, f.zamowienie_id, z.sklep, ${KOLUMNA_ZLECONA_Z_PANELU_SQL}
+  SELECT f.id, f.program, ${idDokumentuSql('f')} AS dokument_id, f.zamowienie_id, z.sklep, ${KOLUMNA_ZLECONA_Z_PANELU_SQL}
   FROM faktury f
   JOIN zamowienia z ON z.id = f.zamowienie_id
   WHERE ${warunekCzekaNaKsefSql()}
     AND (
       f.utworzona_at >= ?
-      OR EXISTS (SELECT 1 FROM wysylki_ksef w WHERE w.uuid = f.infakt_uuid AND w.zlecona_at >= ?)
+      OR EXISTS (SELECT 1 FROM wysylki_ksef w WHERE w.uuid = ${idDokumentuSql('f')} AND w.zlecona_at >= ?)
     )
-  ORDER BY f.ksef_sprawdzona_at NULLS FIRST, f.utworzona_at
+  ORDER BY CASE WHEN ${programDokumentuSql('f')} = ? THEN 0 ELSE 1 END, f.ksef_sprawdzona_at NULLS FIRST, f.utworzona_at
   LIMIT ?
 `;
 
@@ -199,6 +207,13 @@ export const LIMIT_WERYFIKACJI = 50;
 export const NAJDLUZSZY_PRZEBIEG_MS = LIMIT_PRZEBIEGU * LIMIT_ZADANIA_INFAKTU_MS
   + LIMIT_WERYFIKACJI * LIMIT_ZAPYTANIA_PRZESYLEK_MS;
 
+// PRZ-118.05: ta sama arytmetyka z limitów WYBRANEGO programu fakturowego (`opis.limity`, core/kontrakty.ts) — strażnik
+// startu w moduly/faktury/modul.ts liczy nią budżet programu, który naprawdę stoi za czuwaczem. Stała wyżej zostaje
+// (wartość dla inFaktu); test PRZ-118.05 pilnuje, że dla limitów inFaktu obie dają to samo.
+export function najdluzszyPrzebiegMs(limity) {
+  return LIMIT_PRZEBIEGU * limity.zadanieMs + LIMIT_WERYFIKACJI * LIMIT_ZAPYTANIA_PRZESYLEK_MS;
+}
+
 /**
  * ⚠️ ZAKRES: faktury majace numer dokumentu i nie majace jeszcze numeru KSeF, przy zamowieniu,
  * o ktorego fakture kupujacy poprosil (`chce_fakture = 1`) — i to w DWOCH rozlacznych sytuacjach
@@ -212,13 +227,22 @@ export const NAJDLUZSZY_PRZEBIEG_MS = LIMIT_PRZEBIEGU * LIMIT_ZADANIA_INFAKTU_MS
  * Faktura sklepowa, ktorej panel nie wysylal, dalej NIE JEST pytana: numeru w bazie nie dostanie
  * nigdy, wiec pytanie o nia to setki wywolan miesiecznie bez ani jednej nowej informacji.
  */
+// PRZ-118.07: numer KSeF czyta PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`). Budżet
+// przebiegu z `opis.limity` programu liczy `najdluzszyPrzebiegMs(limity)` wyżej — strażnik startu w modul.ts.
 export function createCzuwaczKsef({
-  db, infakt, klienciKanalow = {}, limit = LIMIT_PRZEBIEGU, limitWeryfikacji = LIMIT_WERYFIKACJI,
+  db, program: programPodany = null, infakt = null, klienciKanalow = {}, limit = LIMIT_PRZEBIEGU, limitWeryfikacji = LIMIT_WERYFIKACJI,
   // ⚠️ PARTIA 4: AUTOMAT WYSYLKI FAKTURY DO KUPUJACEGO (07.08.2026, prosba wlasciciela po
   // pierwszej recznej wysylce: „trzeba to rzeczywiscie wrzucic na automat"). Domyslnie BRAK —
   // panel bez kanalu Allegro (albo bez inFaktu) zachowuje sie DOKLADNIE jak dotad.
   fakturaAllegro = null,
+  // PRZ-121.04a: jedna linia na przebieg z liczba dokumentow innego programu, ktore czuwacz pominal.
+  log = console.error,
 }) {
+  const program = zProgramu({ program: programPodany, infakt });
+  // Identyfikator modulu faktur do porzadku kolejki w SQL. `zProgramu` oddaje program zawsze z opisem (surowy klient
+  // inFaktu dostaje adapter), wiec `opis.id` jest tym samym, co porownuje `czyDokumentProgramu` w petli. Bez programu
+  // `NULL` — porownanie nigdy nie jest prawdziwe i kolejka zostaje w dawnym porzadku.
+  const idModulu = program?.opis?.id ?? null;
   // ⚠️⚠️ JEDEN PRZEBIEG NARAZ — ten sam strażnik, co w pollerze (services/poller.js), i z tego
   // samego powodu. `setInterval` tyka co godzine niezaleznie od tego, czy poprzedni przebieg
   // sie skonczyl. Limit pojedynczego zadania inFaktu to 60 s, a petla nizej jest SEKWENCYJNA,
@@ -281,17 +305,24 @@ export function createCzuwaczKsef({
     // wysylki (patrz komentarz przy `doSprawdzeniaSql`). Ma to byc DOKLADNIE ta sama wartosc:
     // dwie liczone osobno rozjechalyby sie o czas wykonania zapytania.
     const doSprawdzenia = db.prepare(doSprawdzeniaSql())
-      .all(podloga, podloga, limit)
+      .all(podloga, podloga, idModulu, limit)
       .filter(czyWierszWZakresieKsef);
     let znalezione = 0;
+    let innyProgram = 0;
 
     for (const f of doSprawdzenia) {
+      // PRZ-121.04a: dokument innego programu niz modul faktur OMS-u — pomijamy, przebieg idzie dalej. Bez pytania
+      // i bez zapisu: o numer KSeF tego dokumentu nie ma kogo zapytac.
+      if (!czyDokumentProgramu(f, program)) {
+        innyProgram += 1;
+        continue;
+      }
       // ⚠️ IZOLACJA NA FAKTURE, NIE NA PRZEBIEG. Jedna faktura skasowana w inFakcie oddaje 404
       // i bez tego `try` — postawionego wokol POJEDYNCZEJ faktury, a nie wokol calej petli —
       // zatrzymywalaby czuwacza dla wszystkich pozostalych: co godzine, na zawsze, a jedynym
       // sladem bylby `console.error` w kontenerze. Ta sama regula, co przy pollerach.
       try {
-        const dane = await infakt.pobierzFakture(f.infakt_uuid);
+        const dane = await program.pobierzFakture(idDokumentu(f));
         zapiszNumerKsef(db, f.id, { ksefNumer: dane.ksefNumer, sprawdzonaAt: teraz() });
         if (dane.ksefNumer) {
           znalezione += 1;
@@ -334,9 +365,14 @@ export function createCzuwaczKsef({
       }
     }
 
+    if (innyProgram) {
+      log(`czuwacz KSeF: pominięte dokumenty innego programu niż moduł faktur OMS-u: ${innyProgram} `
+        + '— o ich numer KSeF OMS nie pyta.');
+    }
+
     await zweryfikujPliki(podloga);
 
-    return { sprawdzone: doSprawdzenia.length, znalezione };
+    return { sprawdzone: doSprawdzenia.length - innyProgram, znalezione };
   }
 
   /**

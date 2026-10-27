@@ -148,7 +148,7 @@ return {
     const czuwaczPrzesylek = Object.keys(kurierzy).length ? createCzuwaczPrzesylek({ db, kurierzy, infakt, teraz, klienci }) : null;
     const czuwaczPodjazdow = podjazdy ? createCzuwaczPodjazdow({ db, podjazdy, kurierzy, teraz }) : null;
     const zegary: Zegar[] = czuwaczPrzesylek ? [zegarPrzesylek({ czuwacz: czuwaczPrzesylek,
-      odstepMs: k.odstepPrzesylekMs, puls, log: ctx.log })] : [];
+      odstepMs: k.odstepPrzesylekMs, puls, log: ctx.log, program: infakt })] : [];
     if (czuwaczPodjazdow) zegary.push(zegarPodjazdow({ czuwacz: czuwaczPodjazdow,
       odstepMs: k.odstepPodjazdowMs, log: ctx.log }));
     return {

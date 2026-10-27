@@ -37,6 +37,15 @@ export function modulyPiaskownicy(env, { baza = () => null } = {}) {
   const fabryki = {
     createInfaktClient: ({ db, teraz }) => createAtrapaInfaktu({ db, teraz, env }),
     createVies: () => createAtrapaVies({ env }),
+    // PRZ-121.06: „Uruchom OMS ponownie” — kontener piaskownicy startuje przez `node --watch-path`, który po wyjściu
+    // dziecka czeka na zmianę pliku zamiast je podnieść. SIGTERM do rodzica (watch): zamyka dziecko i wychodzi,
+    // kontener kończy się, a Docker (`restart: unless-stopped`) podnosi go od nowa. Rodzica tylko pod `--watch` (node
+    // ustawia dziecku WATCH_REPORT_DEPENDENCIES) — inaczej rodzicem bywa systemd użytkownika; wtedy sygnał do siebie.
+    // Bezpiecznik (recenzja): dziecko wychodzi po 20 s, gdyby zawieszony przebieg zegara trzymał je po zamknięciu.
+    zakonczProces: () => {
+      process.kill(process.env.WATCH_REPORT_DEPENDENCIES ? process.ppid : process.pid, 'SIGTERM');
+      setTimeout(() => process.exit(0), 20_000).unref();
+    },
   };
   // PRZ-083: GUS — atrapa z komunikatem „nie działa w demo”; moduł zamówień składany z tą samą listą zależności.
   // PRZ-102.11: z kluczem z Ustawień (opcje { klucz, url }) — dla „Sprawdź połączenie” na ekranie GUS.

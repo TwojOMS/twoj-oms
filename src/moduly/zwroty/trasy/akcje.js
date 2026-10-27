@@ -15,8 +15,8 @@ import { bezpiecznyPowrotNaListe } from '../../../domena/filtry-listy.js';
 import { ktoKlikal } from '../../zamowienia/wspolne.js';
 
 import { createWspolne } from './wspolne.js';
-export function registerAkcjeRoutes(app, { db, korekta = null, definicje }) {
-  const { powrotKarty, adresKarty, zamowienieAlbo404, slad, decyzja, pokazKrok1 } = createWspolne({ db, korekta, definicje });
+export function registerAkcjeRoutes(app, { db, korekta = null, definicje, infakt = null }) {
+  const { powrotKarty, adresKarty, zamowienieAlbo404, slad, decyzja, pokazKrok1 } = createWspolne({ db, korekta, definicje, infakt });
   app.post('/zamowienia/:id/zwroty/:zwrotId/pieniadze', async (req, reply) => {
     const z = zamowienieAlbo404(req, reply);
     if (!z) return reply;

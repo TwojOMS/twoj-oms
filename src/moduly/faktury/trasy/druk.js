@@ -1,4 +1,5 @@
 import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
+import { idDokumentu } from '../../../domena/dokument-programu.js';
 
 import { dodajFaktureDoKolejki, fakturyDoWziecia, zamowienieDlaPozycji, oznaczFaktureWydrukowana, oznaczBladDrukuFaktury, porzucFakture, ostatniaPozycjaDlaFaktury } from '../db/kolejka-druku-faktur.js';
 
@@ -12,7 +13,12 @@ import { bezpiecznaNazwa } from '../../../domena/pliki.js';
 
 import { ktoKlikal } from '../../zamowienia/lista.js';
 
-export function registerDrukFakturRoutes(app, { db, config = {}, faktura, fakturaHurtem, proforma, infakt, fakturaAllegro, ksefDoczytanie, wczytajListe, miniaturyEkranu }) {
+import { zdanieBrakuProgramu } from '../../../domena/wybor-programu.js';
+
+export function registerDrukFakturRoutes(app, { db, config = {}, faktura, fakturaHurtem, proforma, infakt, fakturaAllegro, ksefDoczytanie, wczytajListe, miniaturyEkranu, wyborProgramu = null }) {
+
+// PRZ-121.03a: przy jawnym „brak” zdanie o wyłączonych fakturach zamiast „Panel nie ma podpiętego inFaktu.”.
+const bezProgramu = () => zdanieBrakuProgramu(wyborProgramu, 'PDF wcześniejszej faktury pobierzesz w programie, w którym ją wystawiono.') ?? 'Panel nie ma podpiętego inFaktu.';
 
 const adresPowrotuNaKarte = (req, id, opcje = {}) => adresKartyZamowienia(id, {
     powrot: powrotKarty(req),
@@ -24,7 +30,7 @@ const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.bo
 app.get('/zamowienia/:id/faktura/pdf', async (req, reply) => {
     const id = Number(req.params.id);
     if (!pobierzZamowienie(db, id)) return reply.code(404).send('Nie ma takiego zamówienia');
-    if (!faktura) return reply.code(503).send('Panel nie ma podpiętego inFaktu.');
+    if (!faktura) return reply.code(503).send(bezProgramu());
 
     let wynik;
     try {
@@ -48,7 +54,7 @@ app.post('/zamowienia/:id/faktura/drukuj', async (req, reply) => {
     // ⚠️ `infakt_uuid`, nie sam wiersz faktury: bez niego nie ma czego pobrac z inFaktu
     // (wiersz istnieje takze jako REZERWACJA, przed powstaniem dokumentu — patrz
     // domain/faktura-stan.js). Kolejka z zadaniem bez tresci wracalaby w petli.
-    if (!z.faktura?.infakt_uuid) {
+    if (!idDokumentu(z.faktura)) {
       return reply.code(400).send('Ta faktura nie ma jeszcze dokumentu w inFakcie — nie ma czego drukować.');
     }
     dodajFaktureDoKolejki(db, z.faktura.id);
@@ -81,7 +87,7 @@ app.get('/kolejka-druku-faktur/:id/pdf', async (req, reply) => {
     const id = Number(req.params.id);
     const cel = zamowienieDlaPozycji(db, id);
     if (!cel) return reply.code(404).send('Nie ma takiej pozycji w kolejce druku faktur.');
-    if (!faktura) return reply.code(503).send('Panel nie ma podpiętego inFaktu.');
+    if (!faktura) return reply.code(503).send(bezProgramu());
     let wynik;
     try {
       wynik = await faktura.pdf(cel.zamowienieId);

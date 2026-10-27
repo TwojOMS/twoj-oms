@@ -6,6 +6,7 @@ import { kluczPozycji } from './pozycje-reczne.js';
 // `wysylkaBruttoGrosze` to z kolei JEDYNA definicja „ile kosztowala dostawa" (wartosc EFEKTYWNA,
 // po recznych poprawkach) — czyta ja karta, faktura i sufit zwrotu dostawy nizej.
 import { kwotaOczekiwanaGrosze, wysylkaBruttoGrosze } from './suma-pozycji.js';
+import { NAZWA_ZAPASOWA } from './nazwa-programu.js';
 
 // Regula zwrotu. Modul jest CZYSTY: dostaje zamowienie i cialo formularza, oddaje gotowy
 // ksztalt do zapisu albo odmowe po polsku. Bazy nie dotyka (to db/zwroty.js), a trasa
@@ -461,14 +462,14 @@ export function powodOdmowyUsunieciaZwrotu(w) {
  * kopie rozjechalyby sie przy pierwszej zmianie progu — a rozjechany prog to znowu duplikat
  * u organu.
  */
-function powodOdmowyPrzyZleceniuWToku(w, { teraz }) {
+function powodOdmowyPrzyZleceniuWToku(w, { teraz, nazwa = NAZWA_ZAPASOWA }) {
   if (!w?.korekta_zlecona_at || korektaPrzepadla(w, { teraz })) return null;
   return `Od zlecenia korekty nie minęło jeszcze ${PROG_PRZEPADNIECIA_KOREKTY_MIN} minut — `
-    + 'inFakt może ją właśnie przetwarzać. Odśwież ten ekran za chwilę; numer pojawi się sam. '
+    + `${nazwa.mianownik} może ją właśnie przetwarzać. Odśwież ten ekran za chwilę; numer pojawi się sam. `
     + 'Rozstrzyganie o tej korekcie teraz dałoby drugi dokument do tej samej faktury.';
 }
 
-export function powodOdmowyOdblokowaniaKorekty(w, { teraz = new Date().toISOString() } = {}) {
+export function powodOdmowyOdblokowaniaKorekty(w, { teraz = new Date().toISOString(), nazwa = NAZWA_ZAPASOWA } = {}) {
   if (w?.korekta_numer) {
     return `Korekta ${w.korekta_numer} do tego zwrotu istnieje — nie ma czego odblokowywać. `
       + 'Odblokowanie otworzyłoby drogę do drugiej korekty do tej samej faktury.';
@@ -476,7 +477,7 @@ export function powodOdmowyOdblokowaniaKorekty(w, { teraz = new Date().toISOStri
   if (!w?.korekta_zlecona_at) {
     return 'Do tego zwrotu nie ma zleconej korekty — nie ma czego odblokowywać.';
   }
-  return powodOdmowyPrzyZleceniuWToku(w, { teraz });
+  return powodOdmowyPrzyZleceniuWToku(w, { teraz, nazwa });
 }
 
 /**
@@ -551,19 +552,19 @@ export function powodOdmowyWystawieniaKorekty(w) {
  * `powodOdmowyPrzyZleceniuWToku` wyzej: jedno zdanie, jedno miejsce). Po progu droga zostaje
  * otwarta, bo przy zleceniu, ktore przepadlo, jest to JEDYNE wyjscie.
  */
-export function parsujNumerKorekty(w, surowy, { teraz = new Date().toISOString() } = {}) {
+export function parsujNumerKorekty(w, surowy, { teraz = new Date().toISOString(), nazwa = NAZWA_ZAPASOWA } = {}) {
   const numer = tekst(surowy);
   if (w?.korekta_numer) {
     return {
       numer: null,
       blad: `Ten zwrot ma już zapisaną korektę ${w.korekta_numer} — drugi numer znaczyłby drugi dokument. `
-        + 'Jeśli pierwszy numer jest błędny, popraw go w inFakcie i zgłoś to.',
+        + `Jeśli pierwszy numer jest błędny, popraw go w ${nazwa.miejscownik} i zgłoś to.`,
     };
   }
-  const wToku = powodOdmowyPrzyZleceniuWToku(w, { teraz });
+  const wToku = powodOdmowyPrzyZleceniuWToku(w, { teraz, nazwa });
   if (wToku) return { numer: null, blad: wToku };
   if (!numer) {
-    return { numer: null, blad: 'Podaj numer korekty z inFaktu — bez niego nie ma czego odnotować.' };
+    return { numer: null, blad: `Podaj numer korekty z ${nazwa.dopelniacz} — bez niego nie ma czego odnotować.` };
   }
   return { numer, blad: null };
 }

@@ -1,6 +1,7 @@
 <h1>inFakt</h1>
 <p><a href="/ustawienia/integracje">← Integracje</a></p>
 
+<% if (wybranyBrak) { %><div class="pas-uprzedzenie"><p>inFakt nie jest wybrany jako moduł faktur — klucz zostaje zapisany, OMS go nie używa. <a href="/ustawienia/integracje/program-fakturowy">Moduł faktur</a></p></div><% } %>
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (test) { %>
   <div class="<%= test.ok ? 'pas-potwierdzenie' : 'pas-uprzedzenie' %>" id="infakt-test"><p><strong><%= test.ok ? 'Działa.' : 'Nie działa.' %></strong> <%= test.tekst %></p></div>

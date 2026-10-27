@@ -78,6 +78,10 @@ export function createModulZamowienia({ zWiadomosciami = false, fabryki = {} as 
           fakturaAllegro:ctx.usluga('faktury','fakturaAllegro'),fakturaHurtem:ctx.usluga('faktury','fakturaHurtem'),doczytanieKsef:ctx.usluga('faktury','doczytanieKsef'),
           // PRZ-102.23: przycisk „Wyślij do KSeF” na karcie — tylko gdy jest usługa, do której prowadzi podgląd.
           wysylkaKsef:ctx.usluga('faktury','wysylkaKsef'),
+          // PRZ-118.09: nazwa, ekran i reguła VAT programu fakturowego na karcie (klucz `infakt`, jak w 08).
+          infakt:ctx.usluga('faktury','infakt'),
+          // PRZ-121.03b: wybór modułu faktur — zdanie „faktury wyłączone” zamiast „nie jest skonfigurowany”; bez modułu faktur `null`.
+          wyborProgramu:(()=>{try{return ctx.usluga('faktury','wyborProgramu');}catch{return null;}})(),
         });
         registerListaRoutes(app,kontekst);registerKartaRoutes(app,kontekst);registerReczneRoutes(app,kontekst);registerScalanieRoutes(app,kontekst);
         // PRZ-102.11: Ustawienia → Integracje → GUS (wzór: ekrany kurierów i inFaktu). Usługa nie z nadpisań `gus`

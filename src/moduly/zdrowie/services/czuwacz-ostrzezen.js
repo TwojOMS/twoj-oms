@@ -22,6 +22,7 @@ import { coWolnoWyslac } from '../../../domena/wysylka-ksef.js';
 import { czyWysylacKonsumenckie } from '../../faktury/db/ksef-konsumenckie.js';
 import { podmienLukiKsef, podmienPoTerminie } from '../../../oms/db/ostrzezenia.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
+import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 const teraz = () => new Date().toISOString();
 
@@ -37,7 +38,7 @@ export const SUFIT_STRON_LUK = 20;
 
 // Ile SEKWENCYJNYCH tur żądań kosztuje paginacja przy danym sufcie stron: pierwsza
 // strona + partie po ROWNOLEGLE_STRON (wszystkieStrony w infakt/client.js).
-const tury = (sufitStron) => 1 + Math.ceil((sufitStron - 1) / ROWNOLEGLE_STRON);
+const tury = (sufitStron, rownolegle = ROWNOLEGLE_STRON) => 1 + Math.ceil((sufitStron - 1) / rownolegle);
 
 export const LIMIT_KROKU_LUK_MS = tury(SUFIT_STRON_LUK) * LIMIT_ZADANIA_INFAKTU_MS;
 
@@ -47,6 +48,19 @@ export const LIMIT_KROKU_LUK_MS = tury(SUFIT_STRON_LUK) * LIMIT_ZADANIA_INFAKTU_
 export const LIMIT_KROKU_TERMINOW_MS = tury(SUFIT_STRON) * LIMIT_ZADANIA_INFAKTU_MS;
 
 export const NAJDLUZSZY_PRZEBIEG_OSTRZEZEN_MS = LIMIT_KROKU_LUK_MS + LIMIT_KROKU_TERMINOW_MS;
+
+// PRZ-118.08: ta sama arytmetyka z limitów programu fakturowego (`opis.limity`, core/kontrakty.ts) — czuwacz wystawia
+// budżet programu, który naprawdę za nim stoi. Stałe wyżej zostają (wartości inFaktu); dla limitów inFaktu obie drogi
+// dają to samo (tests/moduly/program-pozostale-prz118.test.js).
+export function limitKrokuLukMs(limity) {
+  return tury(SUFIT_STRON_LUK, limity.rownolegleStron) * limity.zadanieMs;
+}
+export function limitKrokuTerminowMs(limity) {
+  return tury(limity.sufitStron, limity.rownolegleStron) * limity.zadanieMs;
+}
+export function najdluzszyPrzebiegOstrzezenMs(limity) {
+  return limitKrokuLukMs(limity) + limitKrokuTerminowMs(limity);
+}
 
 /**
  * Okno odczytu luk: od pierwszego dnia poprzedniego miesiąca do dnia podanego.
@@ -58,7 +72,9 @@ export function oknoLukKsef(dzis) {
   return { od, do: dzis };
 }
 
-export function createCzuwaczOstrzezen({ db, infakt = null, fakturyWidok = null }) {
+// PRZ-118.08: listę dokumentów daje PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
+export function createCzuwaczOstrzezen({ db, program: programPodany = null, infakt = null, fakturyWidok = null }) {
+  const program = zProgramu({ program: programPodany, infakt });
   // ⚠️ JEDEN PRZEBIEG NARAZ — ten sam strażnik, co w pollerze i czuwaczu KSeF, i z tego
   // samego powodu: setInterval tyka co godzinę niezależnie od tego, czy poprzedni
   // przebieg się skończył. Zwalniany w `finally` — blokada zostawiona po błędzie
@@ -91,14 +107,14 @@ export function createCzuwaczOstrzezen({ db, infakt = null, fakturyWidok = null 
    * wiersze lustra nietknięte (stęchłe dane niosą swoją datę `sprawdzona_at`).
    */
   async function odswiezLukiKsef() {
-    if (typeof infakt?.listaFaktur !== 'function') return;
+    if (typeof program?.listaFaktur !== 'function') return;
     const chwila = teraz();
-    const dokumenty = await infakt.listaFaktur(
+    const dokumenty = await program.listaFaktur(
       { ...oknoLukKsef(dzienWarszawa(chwila)), pole: 'invoice_date' },
       { sufitStron: SUFIT_STRON_LUK },
     );
     if (!Array.isArray(dokumenty)) {
-      throw new Error('inFakt oddał listę dokumentów w kształcie, którego panel nie rozumie — lustro luk KSeF zostaje bez zmian.');
+      throw new Error(`${program.opis.nazwa.mianownik} oddał listę dokumentów w kształcie, którego panel nie rozumie — lustro luk KSeF zostaje bez zmian.`);
     }
     const zlecone = new Map(
       db.prepare('SELECT uuid, zlecona_at FROM wysylki_ksef').all().map((w) => [w.uuid, w.zlecona_at]),
@@ -149,5 +165,6 @@ export function createCzuwaczOstrzezen({ db, infakt = null, fakturyWidok = null 
     return { pominiety: false };
   }
 
-  return { przebieg };
+  // `program` — strażnik startu (moduly/zdrowie/modul.ts) podaje w odmowie nazwę programu, którego budżet liczy.
+  return { przebieg, program, najdluzszyPrzebiegMs: program ? najdluzszyPrzebiegOstrzezenMs(program.opis.limity) : NAJDLUZSZY_PRZEBIEG_OSTRZEZEN_MS };
 }

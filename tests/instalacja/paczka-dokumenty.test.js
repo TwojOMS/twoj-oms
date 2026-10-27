@@ -15,6 +15,11 @@ describe('paczka wydania: dokumenty kurierów', () => {
     expect(fs.existsSync(new URL('../../docs/poczta-smtp.md', import.meta.url))).toBe(true);
   });
 
+  it('PRZ-121.05a: docs/modul-faktur.md jest w paczce i istnieje w repo', () => {
+    expect(plikiPaczki(['docs/modul-faktur.md', 'docs/modul-faktur.txt'])).toEqual(['docs/modul-faktur.md']);
+    expect(fs.existsSync(new URL('../../docs/modul-faktur.md', import.meta.url))).toBe(true);
+  });
+
   it('każdy dokument docs/*.md wskazany w instrukcji instalacji Dockera, który istnieje w repo, jest w paczce', () => {
     const tresc = fs.readFileSync(new URL('../../docs/instalacja-docker.md', import.meta.url), 'utf8');
     // Bez przypinania konkretnej nazwy: kopia open source ma własną (autorską) instrukcję, która odsyła do innych

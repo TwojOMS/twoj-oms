@@ -16,10 +16,10 @@ export type FabrykiWiadomosci = Partial<Record<
 
 /** Jeden synchroniczny składacz produkcyjny dla manifestu i adaptera historycznego. */
 export function utworzUslugiWiadomosci({ db, config, klienciKanalow, fabryki = {},
-  tokenyKanalow = {}, brakiKanalu, proforma = null, infakt = null, teraz = () => new Date(),
+  tokenyKanalow = {}, brakiKanalu, proforma = null, infakt = null, wyborProgramu = null, teraz = () => new Date(),
 }: { db: DatabaseSync; config: any; klienciKanalow: Record<string, any>;
   fabryki?: FabrykiWiadomosci; tokenyKanalow?: Record<string, any>;
-  brakiKanalu?: (kanal: string) => string[]; proforma?: any; infakt?: any; teraz?: () => Date }) {
+  brakiKanalu?: (kanal: string) => string[]; proforma?: any; infakt?: any; wyborProgramu?: any; teraz?: () => Date }) {
   const braki = brakiKanalu ?? ((kanal: string) =>
     tokenyKanalow[kanal]?.stanDlaEkranu().brakujaceUprawnienia ?? []);
   const odswiezanieSpraw = (fabryki.createOdswiezanieSpraw ?? createOdswiezanieSpraw)({
@@ -53,7 +53,7 @@ export function utworzUslugiWiadomosci({ db, config, klienciKanalow, fabryki = {
     db, mailer, sprzedawca: config.sprzedawca ?? {}, oprawaPoczty: config.oprawaPoczty, podpisPanelu, teraz: czasMaila,
   });
   const wiadomosci = { ...(fabryki.createWiadomosci ?? createWiadomosci)({
-    db, mailer, potwierdzenie, proforma, infakt, config, podpisPanelu, teraz: czasMaila,
+    db, mailer, potwierdzenie, proforma, infakt, wyborProgramu, config, podpisPanelu, teraz: czasMaila,
   }), gotowe: pocztaGotowa };
   return { config, klienciWiadomosci: klienciKanalow, mailer, pocztaWychodzaca, potwierdzenie, wiadomosci,
     pollerWiadomosci, czuwaczFormulki, odswiezanieSpraw };

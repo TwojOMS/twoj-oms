@@ -23,12 +23,15 @@ import { odswiezStatusKuriera } from './status-kuriera.js';
 import { etapPrzesylki } from '../../../domena/etap-przesylki.js';
 import { oznaczDoreczonePobrania } from './oznaczanie-pobran.js';
 import { ponowZalegleNotatki } from './notatka-nadania.js';
+import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 export const OKNO_SLEDZENIA_DNI = 14;
 
+// PRZ-118.08: rozliczenie pobrań idzie PROGRAMEM FAKTUROWYM (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
 export function createCzuwaczPrzesylek({
-  db, kurierzy = {}, infakt = null, teraz = () => new Date(), klienci = {},
+  db, kurierzy = {}, program: programPodany = null, infakt = null, teraz = () => new Date(), klienci = {},
 }) {
+  const program = zProgramu({ program: programPodany, infakt });
   let trwa = false;
 
   async function przebieg() {
@@ -75,7 +78,7 @@ export function createCzuwaczPrzesylek({
         kandydatow: 0, obsluzone: 0, ponadSufit: 0, zlecone: 0, pominiete: 0, bezDaty: 0, bledy: 0,
       };
       try {
-        pobrania = await oznaczDoreczonePobrania({ db, infakt });
+        pobrania = await oznaczDoreczonePobrania({ db, program });
       } catch (e) {
         pobrania = {
           kandydatow: 0,

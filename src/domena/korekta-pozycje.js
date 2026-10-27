@@ -3,6 +3,7 @@ import { grosze, zl } from './kwoty.js';
 // (`name: 'Dostawa'`); druga kopia rozjechalaby sie przy pierwszej zmianie i korekta
 // przestalaby rozpoznawac wlasna pozycje dostawy — po cichu. Eksportowana STAMTAD.
 import { NAZWA_DOSTAWY } from './pozycje-faktury.js';
+import { NAZWA_ZAPASOWA } from './nazwa-programu.js';
 
 /**
  * Pary „stan przed / stan po" dla `POST /v3/async/corrective_invoices.json`.
@@ -31,10 +32,12 @@ import { NAZWA_DOSTAWY } from './pozycje-faktury.js';
  * `zwrot` to WIERSZ ODCZYTANY Z BAZY (db/zwroty.js: `zwrotyZamowienia`/`zwrot`), nie wynik
  * `parsujZwrot` — stad pola w snake_case (`kwota_dostawy`), a nie `kwotaDostawy`.
  */
-export function paryKorekty(faktura, zwrot) {
+export function paryKorekty(faktura, zwrot, { nazwaProgramu = NAZWA_ZAPASOWA } = {}) {
+  // PRZ-118.09: `nazwaProgramu` = odmiana nazwy programu fakturowego (domyślnie inFakt — domena/nazwa-programu.js).
   const odmowa = (blad) => ({ services: null, blad });
+  const wProgramie = nazwaProgramu.miejscownik;
   const oryginalne = faktura?.services ?? [];
-  if (!oryginalne.length) return odmowa('Faktura z inFaktu nie ma ani jednej pozycji — korekty nie ma z czego złożyć.');
+  if (!oryginalne.length) return odmowa(`Faktura z ${nazwaProgramu.dopelniacz} nie ma ani jednej pozycji — korekty nie ma z czego złożyć.`);
 
   // ⚠️⚠️ ZDUBLOWANA NAZWA NA FAKTURZE ZATRUWA CALA MAPE PONIZEJ. Mapa `zwracane` jest
   // kluczowana NAZWA, a petla po pozycjach siega do tego samego kubelka przy KAZDEJ linii
@@ -59,7 +62,7 @@ export function paryKorekty(faktura, zwrot) {
     if (ile > 1) {
       return odmowa(
         `Faktura ${faktura?.number ?? ''} ma ${ile} pozycje o tej samej nazwie („${nazwa}")`
-        + ' — korekty nie da się złożyć jednoznacznie. Wystaw ją ręcznie w inFakcie.',
+        + ` — korekty nie da się złożyć jednoznacznie. Wystaw ją ręcznie w ${wProgramie}.`,
       );
     }
   }
@@ -79,7 +82,7 @@ export function paryKorekty(faktura, zwrot) {
     if (!nazwyFaktury.has(nazwa)) {
       return odmowa(
         `Pozycji „${nazwa}" nie ma na fakturze ${faktura?.number ?? ''} — korekty nie da się złożyć.`
-        + ' Sprawdź, czy faktura nie została poprawiona w inFakcie.',
+        + ` Sprawdź, czy faktura nie została poprawiona w ${wProgramie}.`,
       );
     }
   }
@@ -94,7 +97,7 @@ export function paryKorekty(faktura, zwrot) {
   if (dostawaGr && !nazwyFaktury.has(NAZWA_DOSTAWY)) {
     return odmowa(
       `Zwrot obejmuje ${zl(dostawaGr)} zł dostawy, a faktura ${faktura?.number ?? ''} nie ma pozycji`
-      + ` „${NAZWA_DOSTAWY}" — korekty nie da się złożyć. Wystaw ją ręcznie w inFakcie.`,
+      + ` „${NAZWA_DOSTAWY}" — korekty nie da się złożyć. Wystaw ją ręcznie w ${wProgramie}.`,
     );
   }
 
@@ -121,10 +124,10 @@ export function paryKorekty(faktura, zwrot) {
     // `pieniadze_oddane_at` jest na nim dostepne bez dodatkowego zapytania.
     const naprawa = zwrot?.pieniadze_oddane_at
       ? 'Pieniądze za ten zwrot zostały już oddane kupującemu, więc panel go nie skasuje —'
-        + ' wystaw korektę ręcznie w inFakcie i wpisz zwrot dostawy tylko RAZ, tą kwotą, która'
+        + ` wystaw korektę ręcznie w ${wProgramie} i wpisz zwrot dostawy tylko RAZ, tą kwotą, która`
         + ' naprawdę wyszła.'
       : 'Usuń ten zwrot i zapisz go jeszcze raz, z kwotą dostawy w jednym z tych pól — albo'
-        + ' wystaw korektę ręcznie w inFakcie.';
+        + ` wystaw korektę ręcznie w ${wProgramie}.`;
     return odmowa(
       `Zwrot dostawy jest wpisany w dwóch miejscach naraz: jako pozycja „${NAZWA_DOSTAWY}"`
       + ` (${zl(zwracane.get(NAZWA_DOSTAWY).grosze)} zł) i jako zwrot kosztu dostawy`

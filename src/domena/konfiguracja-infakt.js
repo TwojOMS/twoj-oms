@@ -14,6 +14,10 @@
 export const ADRES_INFAKT = 'https://api.infakt.pl/api';
 /** Ekran Ustawienia → Integracje → inFakt — tu odsyłają komunikaty „inFakt nie jest skonfigurowany”. */
 export const EKRAN_INFAKTU = '/ustawienia/integracje/infakt';
+/** Odmiana nazwy „inFakt” do zdań dla człowieka (PRZ-118: `opis.nazwa` programu inFakt; jedno źródło z adapterem). */
+export const NAZWA_INFAKTU = Object.freeze({
+  mianownik: 'inFakt', dopelniacz: 'inFaktu', miejscownik: 'inFakcie', narzednik: 'inFaktem',
+});
 /** Dopisek do odmów „inFakt nie jest skonfigurowany” w odpowiedziach tekstowych (503) — dokąd pójść. */
 export const GDZIE_KLUCZ_INFAKTU = `Klucz API inFaktu wpiszesz w Ustawienia → Integracje → inFakt (${EKRAN_INFAKTU}).`;
 

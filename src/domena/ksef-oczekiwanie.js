@@ -1,6 +1,7 @@
 import { stanFaktury } from './faktura-stan.js';
 import { czyKanalAllegro, kanalyAllegro } from './wysylka.js';
 import { anulowaneEfektywnie } from './status-reczny.js';
+import { idDokumentu, idDokumentuSql } from './dokument-programu.js';
 
 // JEDNA definicja „faktury czekającej na KSeF" — dla czuwacza (services/czuwacz-ksef.js)
 // i dla paska spraw na karcie (domain/sprawy-karty.js).
@@ -26,7 +27,7 @@ import { anulowaneEfektywnie } from './status-reczny.js';
  */
 const WSPOLNE_SQL = `
   f.ksef_numer IS NULL
-  AND f.infakt_uuid IS NOT NULL
+  AND ${idDokumentuSql('f')} IS NOT NULL
   AND f.numer IS NOT NULL              -- rezerwacja bez numeru to jeszcze nie dokument
   AND f.allegro_wyslana_at IS NULL     -- wysłana bez numeru KSeF: kupujący fakturę MA
   AND f.ksef_status IS NOT 'w_toku'
@@ -86,7 +87,7 @@ function galazAllegroSql(klucze) {
  * i panel go u siebie NIE MA. Domknięcie tego wymaga osobnego zadania (kolumna na okresie
  * i druga ścieżka odczytu w czuwaczu) — NIE DA SIĘ tego załatwić poszerzeniem warunku tutaj.
  */
-const GALAZ_ZLECONA_Z_PANELU_SQL = 'EXISTS (SELECT 1 FROM wysylki_ksef w WHERE w.uuid = f.infakt_uuid)';
+const GALAZ_ZLECONA_Z_PANELU_SQL = `EXISTS (SELECT 1 FROM wysylki_ksef w WHERE w.uuid = ${idDokumentuSql('f')})`;
 
 /**
  * Warunek do klauzuli WHERE — część wspólna ORAZ jedna z dwóch rozłącznych gałęzi.
@@ -143,7 +144,7 @@ export function czekaNaKsef(zamowienie) {
   if (!f) return false;
   return stanFaktury(f) === 'wystawiona'
     && Boolean(f.numer)
-    && Boolean(f.infakt_uuid)
+    && Boolean(idDokumentu(f))
     && !f.ksef_numer
     && !f.allegro_wyslana_at
     && Boolean(zamowienie.chce_fakture)

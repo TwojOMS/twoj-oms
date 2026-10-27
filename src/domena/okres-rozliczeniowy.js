@@ -1,5 +1,6 @@
 import { dzienWarszawa } from './format-daty.js';
 import { stanFaktury } from './faktura-stan.js';
+import { idDokumentu } from './dokument-programu.js';
 
 // Okres rozliczeniowy: miesiac, ktorego zamowienia skladaja sie na JEDNA fakture.
 //
@@ -144,7 +145,7 @@ export function okresPrzyjmujeZamowienia(stan) {
 export function stanFakturyOkresu(okres, teraz = Date.now()) {
   if (!okres) return 'brak';
   if (okres.stan === STAN.ZAFAKTUROWANY) return stanFaktury(okres, teraz);
-  if (!okres.ksef_status && !okres.infakt_uuid) return 'brak';
+  if (!okres.ksef_status && !idDokumentu(okres)) return 'brak';
   return stanFaktury(okres, teraz);
 }
 

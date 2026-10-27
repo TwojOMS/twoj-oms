@@ -1,4 +1,5 @@
 import { czyKanalAllegro } from './wysylka.js';
+import { idDokumentu } from './dokument-programu.js';
 
 /**
  * Czy te fakture wolno wyslac kupujacemu przez Allegro. Czysta decyzja: zadnego HTTP,
@@ -40,7 +41,7 @@ export function wolnoWyslacDoAllegro(z) {
   const f = z.faktura;
   // Numer ORAZ UUID: bez numeru kupujacy nie polaczy dokumentu z nasza ksiegowoscia,
   // a bez UUID-a nie ma skad wziac PDF-u (panel nie trzyma kopii dokumentu).
-  if (!f || !f.numer || !f.infakt_uuid) return nie('To zamówienie nie ma jeszcze wystawionej faktury.');
+  if (!f || !f.numer || !idDokumentu(f)) return nie('To zamówienie nie ma jeszcze wystawionej faktury.');
   // ⚠️⚠️ `allegro_wyslana_at` NIE JEST DOWODEM „DOKUMENT U KUPUJACEGO" (recenzja Partii 3, K2).
   // Kolumna niesie wylacznie „PUT .../file sie udal" — a Allegro sprawdza plik antywirusem
   // JUZ POTEM. Przy `REJECTED` kupujacy faktury NIE MA, choc kolumna jest wypelniona.

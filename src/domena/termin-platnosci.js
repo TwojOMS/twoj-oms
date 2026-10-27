@@ -1,5 +1,6 @@
 import { bladOperatora } from './bledy.js';
 import { dzienWarszawa } from './format-daty.js';
+import { NAZWA_ZAPASOWA } from './nazwa-programu.js';
 // Arytmetyka dat mieszka w `domain/kalendarz.js` — TA SAMA, której używa lista faktur.
 // Nie kopiować jej z powrotem tutaj: dwie kopie rozjadą się przy pierwszej poprawce.
 import {
@@ -151,6 +152,8 @@ export function datyFaktury(
   { dataWystawienia, dataSprzedazy, termin } = {},
   kwotaGrosze = null,
   dzis = dzisiajWarszawa(),
+  // PRZ-118.09: odmiana nazwy programu fakturowego do komunikatu (domyślnie inFakt — domena/nazwa-programu.js).
+  { nazwa = NAZWA_ZAPASOWA } = {},
 ) {
   const napisDaty = String(dataWystawienia ?? '').trim() || dzis;
   const numer = numerDniaZNapisu(napisDaty);
@@ -171,7 +174,7 @@ export function datyFaktury(
     if (numerSprzedazy === null) {
       throw bladOperatora(
         `Data sprzedaży „${napisSprzedazy}" nie jest poprawną datą w formacie RRRR-MM-DD — `
-        + 'popraw ją albo zostaw pole puste, żeby inFakt przyjął datę wystawienia.',
+        + `popraw ją albo zostaw pole puste, żeby ${nazwa.mianownik} przyjął datę wystawienia.`,
       );
     }
     // Bez porównania z datą wystawienia: inFakt przyjmuje sprzedaż zarówno WCZEŚNIEJSZĄ

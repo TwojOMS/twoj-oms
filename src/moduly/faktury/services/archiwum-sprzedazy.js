@@ -6,6 +6,7 @@ import { sciezkaArchiwumSprzedazy } from '../../../domena/nazwa-pliku-archiwum.j
 import { odciskDokumentu, rozstrzygnij, rodzajDokumentu } from '../../../domena/archiwum-sprzedazy.js';
 import { wierszArchiwum, zapiszWiersz, oznaczSkasowana } from '../db/archiwum-sprzedazy.js';
 import { bladOperatora } from '../../../domena/bledy.js';
+import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 // Archiwum PDF-ow faktur sprzedazowych i korekt na NAS-ie (spec 2026-09-02, Czesc B).
 // Jeden dokument na raz; petle, budzet czasu i pore nocna trzyma czuwacz
@@ -41,9 +42,11 @@ function zapiszAtomowo(pelna, bajty) {
   }
 }
 
+// PRZ-118.07: PDF pobiera PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
 export async function zarchiwizujDokument({
-  db, infakt, dokument, katalogBazowy, teraz = () => new Date(), log = console.error, usun = unlinkSync,
+  db, program: programPodany = null, infakt = null, dokument, katalogBazowy, teraz = () => new Date(), log = console.error, usun = unlinkSync,
 }) {
+  const program = zProgramu({ program: programPodany, infakt });
   const rodzaj = rodzajDokumentu(dokument);
   const sciezka = sciezkaArchiwumSprzedazy({ invoiceDate: dokument.invoice_date, numer: dokument.number });
   const pelna = join(katalogBazowy, sciezka);
@@ -73,17 +76,17 @@ export async function zarchiwizujDokument({
   }
 
   const bajty = rodzaj === 'korekta'
-    ? await infakt.pobierzPdfKorekty(dokument.uuid)
-    : await infakt.pobierzPdf(dokument.uuid);
+    ? await program.pobierzPdfKorekty(dokument.uuid)
+    : await program.pobierzPdf(dokument.uuid);
   if (!Buffer.isBuffer(bajty) || bajty.subarray(0, 4).toString() !== '%PDF') {
-    throw bladOperatora(`inFakt oddał coś, co nie jest PDF-em dla dokumentu ${dokument.number} — nie zapisano.`);
+    throw bladOperatora(`${program.opis.nazwa.mianownik} oddał coś, co nie jest PDF-em dla dokumentu ${dokument.number} — nie zapisano.`);
   }
 
   try {
     zapiszAtomowo(pelna, bajty);
   } catch (e) {
     log(`Archiwum sprzedazy: zapis dokumentu ${dokument.number} na NAS ("${sciezka}") sie nie udal `
-      + `(${e.message}) — dokument wroci przy kolejnym przebiegu. inFakt ma go nadal.`);
+      + `(${e.message}) — dokument wroci przy kolejnym przebiegu. ${program.opis.nazwa.mianownik} ma go nadal.`);
     return { stan: 'blad_zapisu', sciezka };
   }
 

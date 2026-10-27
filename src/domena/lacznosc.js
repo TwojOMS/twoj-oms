@@ -21,6 +21,9 @@ function hostZAdresu(adres) {
   }
 }
 
+/** Historyczny cel diagnostyki inFaktu bez własnego adresu w konfiguracji (ten sam host co klient). */
+export const ADRES_DIAGNOSTYKI_INFAKTU = 'https://api.infakt.pl';
+
 const cel = (klucz, nazwa, url) => ({ klucz, nazwa, url: String(url ?? ''), host: hostZAdresu(url) });
 
 /**
@@ -36,9 +39,11 @@ export function celeLacznosci(config = {}) {
   for (const [klucz, kanal] of Object.entries(config.kanaly ?? {})) {
     cele.push(cel(`allegro:${klucz}`, kanal?.etykieta ? `Allegro — ${kanal.etykieta}` : `Allegro ${klucz}`, kanal?.api));
   }
-  // Własny adres jest tym samym baseUrl, którego używa skonfigurowany klient.
-  // Bez nadpisania zachowujemy historyczny cel diagnostyki domyślnej usługi.
-  if (config.infakt) cele.push(cel('infakt', 'inFakt', config.infakt.baseUrl ?? 'https://api.infakt.pl'));
+  // PRZ-118.08: program fakturowy — klucz i nazwa z opisu programu (`config.program = { opis, url }`), adres podaje
+  // wołający (ten, którego używa skonfigurowany klient; ustawienia/cele-diagnostyki.ts). Stary kształt `config.infakt`
+  // zostaje dla wołających bez programu: własny adres = baseUrl klienta, bez nadpisania historyczny cel inFaktu.
+  if (config.program) cele.push(cel(config.program.opis.id, config.program.opis.nazwa.mianownik, config.program.url));
+  else if (config.infakt) cele.push(cel('infakt', 'inFakt', config.infakt.baseUrl ?? ADRES_DIAGNOSTYKI_INFAKTU));
   if (config.ksef) cele.push(cel('ksef', 'KSeF', config.ksef.api));
   if (config.dpd) cele.push(cel('dpd', 'DPD', config.dpd.url));
   if (config.inpost) cele.push(cel('inpost', 'InPost', config.inpost.url));

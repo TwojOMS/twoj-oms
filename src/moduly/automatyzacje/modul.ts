@@ -59,7 +59,7 @@ export const modulAutomatyzacje: ModulOms<null> = {
         const faktury = <T>(nazwa: string) => ctx.usluga<T>('faktury', nazwa);
         const definicje = ctx.usluga<{ definicje?: readonly unknown[] }>('kanaly', 'config').definicje ?? [];
         registerEkranAutomatyzacji(app, { db: ctx.db, teraz: ctx.teraz,
-          konfiguracjaInfaktu: faktury('konfiguracjaInfaktu'), automatKsef: faktury('automatKsef'),
+          konfiguracjaInfaktu: faktury('konfiguracjaInfaktu'), automatKsef: faktury('automatKsef'), infakt: faktury('infakt'),
           reguly: { definicje, zdarzenia, akcje, sprawdzWarunki, pocztaGotowa } });
       },
     };

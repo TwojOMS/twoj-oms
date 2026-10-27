@@ -30,6 +30,7 @@ import { fmtWiek } from './zdrowie.js';
 import { zl } from './kwoty.js';
 import { KOLEJNOSC } from './powiadomienia.js';
 import { ekranDlaAdresu, maDostepDoEkranu } from './ekrany.js';
+import { NAZWA_ZAPASOWA } from './nazwa-programu.js';
 export { KOLEJNOSC } from './powiadomienia.js';
 
 // Wyciszenie awarii integracji obowiązuje DOBĘ i wraca samo: awaria naprawiona gaśnie
@@ -87,19 +88,22 @@ export function ostrzezeniaFaktur({ luki = [], dzis } = {}) {
  * dokumenty „nie wiadomo” albo pominięte przy wysyłce. Udany przebieg milczy — szczegóły są pod przyciskiem.
  * Klucz niesie dzień przebiegu: odrzucony wiersz wraca przy następnym kłopocie, nie przy tym samym.
  */
-export function ostrzezeniaAutomatuKsef({ wynik = null, wstrzymane = [] } = {}) {
-  return [...wierszWynikuAutomatu(wynik), ...wierszeWstrzymanych(wstrzymane)];
+export function ostrzezeniaAutomatuKsef({ wynik = null, wstrzymane = [], nazwa = NAZWA_ZAPASOWA } = {}) {
+  return [...wierszWynikuAutomatu(wynik), ...wierszeWstrzymanych(wstrzymane, nazwa)];
 }
 
-/** Zdanie o fakturze wstrzymanej — jedno dla ostrzeżenia i ekranu wyniku (ksef-wynik.ejs). */
-export function zdanieWstrzymanej(w) {
-  return `Faktura ${w?.numer ?? '(bez numeru)'} wstrzymana — automat jej nie wyśle (inFakt odrzucił ją ${w?.dzien ?? '?'}`
-    + `${w?.powod ? `: ${w.powod}` : ''}). Następny krok: popraw w inFakcie i wyślij ręcznie albo zwolnij.`;
+/**
+ * Zdanie o fakturze wstrzymanej — jedno dla ostrzeżenia i ekranu wyniku (ksef-wynik.ejs).
+ * PRZ-118.09: `nazwa` = odmiana nazwy programu (`opis.nazwa`; domyślnie inFakt — domena/nazwa-programu.js).
+ */
+export function zdanieWstrzymanej(w, nazwa = NAZWA_ZAPASOWA) {
+  return `Faktura ${w?.numer ?? '(bez numeru)'} wstrzymana — automat jej nie wyśle (${nazwa.mianownik} odrzucił ją ${w?.dzien ?? '?'}`
+    + `${w?.powod ? `: ${w.powod}` : ''}). Następny krok: popraw w ${nazwa.miejscownik} i wyślij ręcznie albo zwolnij.`;
 }
 
 // Poprawka po recenzji PRZ-102.12 (WAŻNE 1): faktura odrzucona przez inFakt przy wysyłce z automatu jest pomijana
 // w kolejnych przebiegach — wiersz trwa, dopóki człowiek jej nie wyśle albo nie zwolni (klucz = uuid).
-function wierszeWstrzymanych(wstrzymane) {
+function wierszeWstrzymanych(wstrzymane, nazwa) {
   const wiersze = [];
   for (const w of Array.isArray(wstrzymane) ? wstrzymane : []) {
     try {
@@ -107,7 +111,7 @@ function wierszeWstrzymanych(wstrzymane) {
       wiersze.push({
         klucz: `faktura-ksef:automat-wstrzymana:${w.uuid}`,
         typ: 'faktura-ksef',
-        tekst: zdanieWstrzymanej(w),
+        tekst: zdanieWstrzymanej(w, nazwa),
         przycisk: { href: '/faktury/ksef/automat', etykieta: 'Wynik automatu' },
         etykietaOdrzucenia: 'Ignoruj',
       });

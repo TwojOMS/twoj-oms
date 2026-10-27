@@ -5,6 +5,7 @@ import { saldoWplat, platnoscPrzyOdbiorze } from './platnosci.js';
 import { podsumowaniePozycji } from './tabela-pozycji.js';
 import { czyKanalAllegro } from './wysylka.js';
 import { czekaNaKsef as czekaNaKsefDom, czekaNaKsefDluzejNizDobe } from './ksef-oczekiwanie.js';
+import { NAZWA_ZAPASOWA } from './nazwa-programu.js';
 // ⚠️ `weryfikacjaNierozstrzygnieta` STAL TU DO 06.08.2026 i zniknal razem z wyciszona uwaga
 // „Allegro nie potwierdzilo przyjecia pliku" (uzasadnienie przy tamtym miejscu, nizej).
 // Predykat ZOSTAJE w domain/allegro-faktura.js — uzywa go zapytanie czuwacza i to on ma
@@ -37,7 +38,8 @@ const UWAGA = 'uwaga';
  * NIGDY nie rzuca: uszkodzone dane maja pokazac karte bez paska, a nie zamiast karty
  * pokazac 500 — dokladnie ta sama zasada, co przy `podsumowaniePozycji` na liscie.
  */
-export function sprawyKarty(zamowienie, teraz = Date.now()) {
+export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPASOWA } = {}) {
+  // PRZ-118.09: `nazwa` = odmiana nazwy programu fakturowego (domyślnie inFakt — domena/nazwa-programu.js).
   if (!zamowienie) return [];
   const sprawy = [];
 
@@ -58,7 +60,7 @@ export function sprawyKarty(zamowienie, teraz = Date.now()) {
       sprawy.push({
         klucz: 'faktura',
         waga: BLOKADA,
-        tekst: `Faktura do wyjaśnienia${powod}. Sprawdź w inFakcie, czy dokument powstał.`,
+        tekst: `Faktura do wyjaśnienia${powod}. Sprawdź w ${nazwa.miejscownik}, czy dokument powstał.`,
         kotwica: '#faktura',
       });
     } else if (stan === 'zawieszona') {
@@ -125,13 +127,13 @@ export function sprawyKarty(zamowienie, teraz = Date.now()) {
       sprawy.push({
         klucz: 'ksef',
         waga: BLOKADA,
-        tekst: `Faktury ${numerFaktury} NIE MA JUŻ w inFakcie — dokument został tam skasowany, `
+        tekst: `Faktury ${numerFaktury} NIE MA JUŻ w ${nazwa.miejscownik} — dokument został tam skasowany, `
           + 'więc numeru KSeF nikt już nie przyniesie, a panel nie wystawi drugiej. '
           // ⚠️ ODNOTOWANIE PRZENIESIONE NA ZAKLADKE FAKTURY (01.09.2026, prosba właściciela). Zdanie
           // musi kierowac TAM, gdzie ta akcja stoi dzisiaj — sprawa odsylajaca do przycisku,
           // ktorego na karcie juz nie ma, jest gorsza niz brak sprawy.
           + 'Jeśli to ty ją skasowałeś, odnotuj to w zakładce Faktury („Faktura skasowana '
-          + 'w inFakcie”) — zamówienie zwolni się do ponownego wystawienia.',
+          + `w ${nazwa.miejscownik}”) — zamówienie zwolni się do ponownego wystawienia.`,
         kotwica: '#faktura',
       });
     } else if (odczyt === 'ok' && czekaNaKsefDluzejNizDobe(zamowienie, teraz) && !czyKanalAllegro(zamowienie)) {
@@ -166,8 +168,8 @@ export function sprawyKarty(zamowienie, teraz = Date.now()) {
         klucz: 'ksef',
         waga: BLOKADA,
         tekst: `Panel zlecił wysyłkę faktury ${numerFaktury} do KSeF, a numeru nie ma od `
-          + `${zamowienie.faktura?.ksef_zlecona_at} — inFakt odpowiada, że dokumentu tam jeszcze `
-          + 'nie ma. Sprawdź ten dokument w inFakcie: albo zgłoszenie utknęło, albo organ je '
+          + `${zamowienie.faktura?.ksef_zlecona_at} — ${nazwa.mianownik} odpowiada, że dokumentu tam jeszcze `
+          + `nie ma. Sprawdź ten dokument w ${nazwa.miejscownik}: albo zgłoszenie utknęło, albo organ je `
           + 'odrzucił. Panel sam wysyłki NIE ponowi — drugie zgłoszenie byłoby duplikatem, '
           + 'którego nie da się skasować.',
         kotwica: '#faktura',
@@ -191,7 +193,7 @@ export function sprawyKarty(zamowienie, teraz = Date.now()) {
         klucz: 'ksef',
         waga: BLOKADA,
         tekst: `Faktura ${numerFaktury} czeka na KSeF od ${zamowienie.faktura?.utworzona_at} `
-          + '— kupujący jej jeszcze nie ma. Wyślij ten dokument do KSeF w inFakcie albo, '
+          + `— kupujący jej jeszcze nie ma. Wyślij ten dokument do KSeF w ${nazwa.miejscownik} albo, `
           + 'jeśli świadomie godzisz się na dokument bez tego numeru, wyślij go kupującemu '
           + 'przyciskiem „Wyślij do Allegro BEZ numeru KSeF” na tej karcie.',
         kotwica: '#faktura',
@@ -216,7 +218,7 @@ export function sprawyKarty(zamowienie, teraz = Date.now()) {
         // kazal ponowic, panel odmawial, przycisku nie bylo. Teraz odmowa ustepuje przy
         // REJECTED, wiec sprawa moze NAZWAC przycisk, ktory na tej karcie jest.
         tekst: `Allegro ODRZUCIŁO plik faktury ${fa.numer ?? ''} — kupujący jej NIE MA, `
-          + 'mimo że panel plik wysłał. Sprawdź dokument w inFakcie i wyślij go jeszcze raz '
+          + `mimo że panel plik wysłał. Sprawdź dokument w ${nazwa.miejscownik} i wyślij go jeszcze raz `
           + 'przyciskiem „Wyślij plik faktury do Allegro jeszcze raz” na tej karcie — '
           + 'ponowienie PODMIENIA plik przy tym samym zgłoszeniu, drugiego dokumentu nie zrobi.',
         kotwica: '#faktura',

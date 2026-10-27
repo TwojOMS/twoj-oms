@@ -9,6 +9,7 @@ import { wysylkaEfektywna } from '../../domena/wysylka-kwota.js';
 import { nalozNadpisaniaPozycji } from '../../domena/pozycje-reczne.js';
 import { zdjeciePozycji } from '../../domena/miniatury.js';
 import { bladOperatora } from '../../domena/bledy.js';
+import { idDokumentuSql } from '../../domena/dokument-programu.js';
 import { czyStawkaVat } from '../../domena/vat.js';
 import { ktoTeraz } from '../../domena/kontekst-zadania.js';
 import { idsDolaczonych } from '../../domena/scalanie.js';
@@ -766,7 +767,7 @@ export function ustawZamowienieZrodlowe(db, id, zrodloweId) {
 const FAKTURA_BEZ_WARUNKU = `
   SELECT f.*, w.zlecona_at AS ksef_zlecona_at
   FROM faktury f
-  LEFT JOIN wysylki_ksef w ON w.uuid = f.infakt_uuid
+  LEFT JOIN wysylki_ksef w ON w.uuid = ${idDokumentuSql('f')}
 `;
 const FAKTURA_ZAMOWIENIA = `${FAKTURA_BEZ_WARUNKU} WHERE f.zamowienie_id = ?`;
 

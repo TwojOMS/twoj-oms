@@ -1,6 +1,8 @@
 import { zapiszNumerKsef, zapiszNieudanyOdczytKsef } from '../db/faktury.js';
 import { dopiszLog } from '../../../oms/db/zamowienia.js';
 import { czyDoczytacKsef } from '../../../domena/ksef-doczytanie.js';
+import { idDokumentu, czyDokumentProgramu } from '../../../domena/dokument-programu.js';
+import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 // Doczytanie numeru KSeF dla JEDNEJ faktury, przy otwarciu karty zamowienia.
 // Regula „czy w ogole pytac" siedzi w domain/ksef-doczytanie.js — tutaj jest wylacznie I/O.
@@ -28,20 +30,25 @@ import { czyDoczytacKsef } from '../../../domena/ksef-doczytanie.js';
 // Czuwacz dalej robi wiecej niz ta sciezka: chodzi po WSZYSTKICH fakturach czekajacych na numer,
 // co godzine, i ma wlasna druga petle (weryfikacja pliku w Allegro).
 
+// PRZ-118.07: numer KSeF czyta PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
 export function createDoczytanieKsef({
-  db, infakt, poNumerzeKsef = null, teraz = () => new Date().toISOString(),
+  db, program: programPodany = null, infakt = null, poNumerzeKsef = null, teraz = () => new Date().toISOString(),
 }) {
+  const program = zProgramu({ program: programPodany, infakt });
   /**
    * @param faktura wiersz z `faktury` (albo `null`)
    * @param zamowienieId potrzebny wylacznie do wpisu w logu
    * @returns `true`, gdy w bazie przybyl numer KSeF
    */
   async function dlaFaktury(faktura, zamowienieId) {
-    if (!infakt) return false;
+    if (!program) return false;
     if (!czyDoczytacKsef(faktura, Date.now())) return false;
+    // PRZ-121.04a: dokument innego programu niż moduł faktur OMS-u — nie pytamy o niego nikogo i nic nie zapisujemy
+    // (stempel „pytaliśmy” byłby nieprawdą). Karta otwiera się jak zawsze.
+    if (!czyDokumentProgramu(faktura, program)) return false;
 
     try {
-      const dane = await infakt.pobierzFakture(faktura.infakt_uuid);
+      const dane = await program.pobierzFakture(idDokumentu(faktura));
       // ⚠️ ZAPIS TAKZE WTEDY, GDY NUMERU NIE MA. `ksef_sprawdzona_at` to data PYTANIA, nie
       // odpowiedzi — i to na niej stoi dlawik. Bez tego zapisu kazde odswiezenie karty
       // faktury, ktora numeru jeszcze nie ma, bilo do inFaktu od nowa. `zapiszNumerKsef`

@@ -3,6 +3,10 @@ import { stanZaplaty } from '../../../domena/lista-faktur.js';
 import { zajmijOznaczenieZaplaty } from '../db/oznaczenia-zaplaty.js';
 import { dopiszLog } from '../../../oms/db/zamowienia.js';
 import { OSTATNIA_ZYWA_PACZKA } from '../db/ostatnia-paczka.js';
+import {
+  idDokumentu, idDokumentuSql, programDokumentuSql, czyDokumentProgramu,
+} from '../../../domena/dokument-programu.js';
+import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 // DOMKNIĘCIE PĘTLI PIENIĘDZY PRZY POBRANIU (spec 2026-08-28). Kurier inkasuje gotówkę, ale
 // z księgowością nie rozmawia — faktura za pobraniem zostawała więc w inFakcie NIEOPŁACONA
@@ -71,13 +75,13 @@ const jednoznacznaOdmowa = (e) => Number.isInteger(e?.status) && e.status >= 400
 const KANDYDACI = `
   SELECT
     z.id AS zamowienie_id, z.numer AS zamowienie_numer, z.pobranie, z.wysylka_reczna_json,
-    f.infakt_uuid, f.numer AS faktura_numer,
+    ${idDokumentuSql('f')} AS dokument_id, ${programDokumentuSql('f')} AS program, f.numer AS faktura_numer,
     p.status_kuriera, p.status_kuriera_kod, p.status_kuriera_at
   FROM faktury f
   JOIN zamowienia z ON z.id = f.zamowienie_id
   ${OSTATNIA_ZYWA_PACZKA}
-  WHERE f.infakt_uuid IS NOT NULL
-    AND f.infakt_uuid NOT IN (SELECT uuid FROM oznaczenia_zaplaty)
+  WHERE ${idDokumentuSql('f')} IS NOT NULL
+    AND ${idDokumentuSql('f')} NOT IN (SELECT uuid FROM oznaczenia_zaplaty)
     AND (z.pobranie = 1 OR z.wysylka_reczna_json IS NOT NULL)
 `;
 
@@ -130,17 +134,30 @@ export const LIMIT_PRZEBIEGU_POBRAN = 20;
  * na ten przebieg. Obcięcie ma być SŁYCHAĆ: cicha różnica między „nie było nic do zrobienia"
  * a „nie zdążyliśmy" jest dokładnie tą, której nikt później nie odtworzy z logu.
  */
-export async function oznaczDoreczonePobrania({ db, infakt, limit = LIMIT_PRZEBIEGU_POBRAN }) {
-  // Panel bez klienta inFaktu ma po prostu nie mieć tego kroku — to nie jest awaria.
-  if (!infakt?.oznaczZaplacona || !infakt?.pobierzFakture) {
+// PRZ-118.08: dokument i oznaczenie zapłaty daje PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez
+// `zProgramu`); teksty w logu zamówienia jego nazwą (dla inFaktu znak w znak jak przed zmianą).
+export async function oznaczDoreczonePobrania({
+  db, program: programPodany = null, infakt = null, limit = LIMIT_PRZEBIEGU_POBRAN,
+}) {
+  const program = zProgramu({ program: programPodany, infakt });
+  // Panel bez programu fakturowego (albo program bez zdolności `oznaczZaplacona`) ma po prostu nie mieć tego kroku —
+  // to nie jest awaria.
+  if (!program?.oznaczZaplacona || !program?.pobierzFakture) {
     return {
       kandydatow: 0, obsluzone: 0, ponadSufit: 0, zlecone: 0, pominiete: 0, bezDaty: 0, bledy: 0,
     };
   }
 
-  const wiersze = db.prepare(KANDYDACI).all().filter((w) => czyPobranieRozliczone({
-    zamowienie: w, przesylka: w, uuidFaktury: w.infakt_uuid,
+  const { mianownik, miejscownik } = program.opis.nazwa;
+  const rozliczone = db.prepare(KANDYDACI).all().filter((w) => czyPobranieRozliczone({
+    zamowienie: w, przesylka: w, uuidFaktury: idDokumentu(w),
   }));
+  // PRZ-121.A04b: dokument INNEGO programu (np. inFaktu przy innym module faktur) automat POMIJA — bez odczytu,
+  // bez rezerwacji, bez wpisu w logu zamówienia — a przebieg idzie dalej. Odsiew PRZED sufitem: cudze dokumenty nie
+  // wracają do nas nigdy, więc stojąc w `doObslugi` zjadałyby miejsca w każdym przebiegu.
+  // ⚠️ Nie `idDokumentuDla` przy odczycie: jego 409 niesie `bezProgramu`, a ta gałąź niżej PRZERYWA przebieg —
+  // jeden cudzy dokument zatrzymałby oznaczanie wszystkich.
+  const wiersze = rozliczone.filter((w) => czyDokumentProgramu(w, program));
   // Sufit STOI NA WYNIKU REGUŁY, nie na `LIMIT` w SQL: liczba kandydatów ma być prawdziwa,
   // a nie obcięta zanim ktokolwiek ją policzy. Wierszy jest kilkadziesiąt, więc to nic nie
   // kosztuje — ta sama zasada, co przy odsiewaniu etapu u siebie zamiast w zapytaniu.
@@ -162,14 +179,15 @@ export async function oznaczDoreczonePobrania({ db, infakt, limit = LIMIT_PRZEBI
       let dok;
       try {
         // eslint-disable-next-line no-await-in-loop -- dokumenty sekwencyjnie, jak w czuwaczu KSeF
-        dok = await infakt.pobierzFakture(w.infakt_uuid);
+        dok = await program.pobierzFakture(idDokumentu(w));
       } catch (e) {
         bledy += 1;
         // ⚠️ PRZ-093.10 (P2 z recenzji): odmowa POŚREDNIKA „inFakt z Ustawień” (klucz odłączony do restartu,
         // piaskownica bez atrapy) niesie 4xx, ale to nie jest odpowiedź inFaktu o tym dokumencie — do inFaktu nic
         // nie poszło. Bez rezerwacji i bez wpisu w logu zamówienia; przerywamy przebieg, bo każdy następny dokument
         // dostałby tę samą odmowę. Po ponownym podłączeniu następny przebieg oznaczy pobrania jak zwykle.
-        if (e?.bezInfaktu) break;
+        // PRZ-118.08: znacznik ogólny `bezProgramu` (adapter inFaktu dokłada go do `bezInfaktu`).
+        if (e?.bezProgramu) break;
         // ⚠️⚠️ ODMOWA JEDNOZNACZNA (4xx) NIE MA PRAWA WRACAĆ CO GODZINĘ (recenzja poprawkowa
         // 28.08.2026, W5). Faktura SKASOWANA w inFakcie — przepływ wprost wspierany — oddaje
         // 404 NA ZAWSZE: bez rezerwacji byłby jeden `GET` na godzinę, jedna linia w logu
@@ -182,7 +200,7 @@ export async function oznaczDoreczonePobrania({ db, infakt, limit = LIMIT_PRZEBI
         // musi być ostrożna — dokument, którego nie umieliśmy odczytać raz, jutro się odczyta.
         const jednoznaczna = jednoznacznaOdmowa(e);
         if (jednoznaczna) {
-          zajmijOznaczenieZaplaty(db, w.infakt_uuid, {
+          zajmijOznaczenieZaplaty(db, idDokumentu(w), {
             powod: 'nieznana_w_infakcie', dataZaplaty: null,
           });
         }
@@ -190,12 +208,12 @@ export async function oznaczDoreczonePobrania({ db, infakt, limit = LIMIT_PRZEBI
           dopiszLog(db, w.zamowienie_id, {
             akcja: 'faktura',
             wynik: jednoznaczna
-              ? 'UWAGA: paczka za pobraniem została doręczona, ale inFakt NIE ZNA faktury '
+              ? `UWAGA: paczka za pobraniem została doręczona, ale ${mianownik} NIE ZNA faktury `
                 + `${w.faktura_numer ?? '(bez numeru)'} (odrzucił odczyt) — panel NIE ZLECIŁ `
                 + 'oznaczenia zapłaty i NIE BĘDZIE PONAWIAŁ. Jeśli dokument został skasowany '
-                + 'w inFakcie, nie ma tu nic do zrobienia; jeśli nie — sprawdź go ręcznie. '
+                + `w ${miejscownik}, nie ma tu nic do zrobienia; jeśli nie — sprawdź go ręcznie. `
                 + `Powód: ${e.message}`
-              : 'Paczka za pobraniem doręczona, ale inFakt nie oddał dokumentu, więc panel '
+              : `Paczka za pobraniem doręczona, ale ${mianownik} nie oddał dokumentu, więc panel `
                 + `nie zlecił oznaczenia zapłaty. Spróbuje ponownie. Powód: ${e.message}`,
           });
         } catch { /* celowo puste */ }
@@ -222,10 +240,10 @@ export async function oznaczDoreczonePobrania({ db, infakt, limit = LIMIT_PRZEBI
         try {
           dopiszLog(db, w.zamowienie_id, {
             akcja: 'faktura',
-            wynik: 'UWAGA: paczka za pobraniem została doręczona, ale inFakt oddał dokument BEZ '
+            wynik: `UWAGA: paczka za pobraniem została doręczona, ale ${mianownik} oddał dokument BEZ `
               + 'STATUSU I BEZ KWOTY DO ZAPŁATY, więc panel nie wie, czy faktura '
               + `${w.faktura_numer ?? '(bez numeru)'} nie została już opłacona ręcznie — NIE `
-              + 'ZLECIŁ oznaczenia zapłaty i w inFakcie zostaje na razie jako NIEOPŁACONA. '
+              + `ZLECIŁ oznaczenia zapłaty i w ${miejscownik} zostaje na razie jako NIEOPŁACONA. `
               + 'Panel spróbuje ponownie przy następnym przebiegu.',
           });
         } catch { /* celowo puste */ }
@@ -237,7 +255,7 @@ export async function oznaczDoreczonePobrania({ db, infakt, limit = LIMIT_PRZEBI
         pominiete += 1;
         // Rezerwacja ZE ZNANYM POWODEM: nie ma tu nic do zrobienia, a bez wiersza skan pytałby
         // inFakt o ten dokument co godzinę do końca świata.
-        zajmijOznaczenieZaplaty(db, w.infakt_uuid, { powod: 'juz_zaplacona', dataZaplaty: null });
+        zajmijOznaczenieZaplaty(db, idDokumentu(w), { powod: 'juz_zaplacona', dataZaplaty: null });
         continue;
       }
 
@@ -254,14 +272,14 @@ export async function oznaczDoreczonePobrania({ db, infakt, limit = LIMIT_PRZEBI
       // sprzątający ma po czym rozdzielić kubełki.
       if (!paidDate) {
         bezDaty += 1;
-        zajmijOznaczenieZaplaty(db, w.infakt_uuid, { powod: 'brak_daty', dataZaplaty: null });
+        zajmijOznaczenieZaplaty(db, idDokumentu(w), { powod: 'brak_daty', dataZaplaty: null });
         try {
           dopiszLog(db, w.zamowienie_id, {
             akcja: 'faktura',
             wynik: 'UWAGA: paczka za pobraniem została doręczona, ale panel NIE ZNA daty zapłaty '
-              + '(kurier nie podał czasu doręczenia, a inFakt nie podał daty wystawienia), więc '
+              + `(kurier nie podał czasu doręczenia, a ${mianownik} nie podał daty wystawienia), więc `
               + `NIE ZLECIŁ oznaczenia faktury ${w.faktura_numer ?? '(bez numeru)'} jako opłaconej `
-              + '— w inFakcie zostanie jako NIEOPŁACONA. Przestaw jej status ręcznie. Panel NIE '
+              + `— w ${miejscownik} zostanie jako NIEOPŁACONA. Przestaw jej status ręcznie. Panel NIE `
               + 'ponowi tego sam.',
           });
         } catch { /* celowo puste */ }
@@ -272,7 +290,7 @@ export async function oznaczDoreczonePobrania({ db, infakt, limit = LIMIT_PRZEBI
       // „oznaczono" — po awarii NIEJEDNOZNACZNEJ (zerwane połączenie, 5xx) dokument MÓGŁ już
       // zostać oznaczony, więc ponowienie byłoby zgadywaniem. Wiersz zostaje, a wyjściem jest
       // człowiek i skrypt sprzątający.
-      const { zajete } = zajmijOznaczenieZaplaty(db, w.infakt_uuid, {
+      const { zajete } = zajmijOznaczenieZaplaty(db, idDokumentu(w), {
         powod: 'pobranie_doreczone', dataZaplaty: paidDate,
       });
       // Równoległy przebieg zdążył pierwszy — nic się nie stało, po prostu nie nasza kolej.
@@ -281,17 +299,17 @@ export async function oznaczDoreczonePobrania({ db, infakt, limit = LIMIT_PRZEBI
       let wynik;
       try {
         // eslint-disable-next-line no-await-in-loop -- jak wyżej
-        await infakt.oznaczZaplacona(w.infakt_uuid, { paidDate });
+        await program.oznaczZaplacona(idDokumentu(w), { paidDate });
         zlecone += 1;
         // ⚠️ „ZLECONO", NIGDY „OZNACZONO" — panel nie sprawdza, czy status się zmienił.
-        wynik = 'Paczka za pobraniem doręczona — zlecono w inFakcie oznaczenie faktury '
+        wynik = `Paczka za pobraniem doręczona — zlecono w ${miejscownik} oznaczenie faktury `
           + `${w.faktura_numer ?? '(bez numeru)'} jako opłaconej (data zapłaty ${paidDate}). `
-          + 'inFakt przetwarza to zadanie w tle.';
+          + `${mianownik} przetwarza to zadanie w tle.`;
       } catch (e) {
         bledy += 1;
         wynik = 'UWAGA: paczka za pobraniem została doręczona, ale nie udało się zlecić '
           + `oznaczenia faktury ${w.faktura_numer ?? '(bez numeru)'} jako opłaconej — `
-          + 'w inFakcie zostanie jako NIEOPŁACONA. Przestaw jej status ręcznie. Panel NIE '
+          + `w ${miejscownik} zostanie jako NIEOPŁACONA. Przestaw jej status ręcznie. Panel NIE `
           + `ponowi tego sam, bo zlecenie mogło dojść mimo błędu. Powód: ${e.message}`;
       }
       // Nawet zapis do logu nie ma prawa wywalić przebiegu.
@@ -305,7 +323,7 @@ export async function oznaczDoreczonePobrania({ db, infakt, limit = LIMIT_PRZEBI
         dopiszLog(db, w.zamowienie_id, {
           akcja: 'faktura',
           wynik: 'UWAGA: paczka za pobraniem została doręczona, ale rozliczenie faktury '
-            + `${w.faktura_numer ?? '(bez numeru)'} przerwała awaria panelu — w inFakcie `
+            + `${w.faktura_numer ?? '(bez numeru)'} przerwała awaria panelu — w ${miejscownik} `
             + 'zostanie jako NIEOPŁACONA. Sprawdź jej status ręcznie. '
             + `Powód: ${e?.message ?? e}`,
         });
@@ -322,5 +340,6 @@ export async function oznaczDoreczonePobrania({ db, infakt, limit = LIMIT_PRZEBI
     pominiete,
     bezDaty,
     bledy,
+    innyProgram: rozliczone.length - wiersze.length,
   };
 }

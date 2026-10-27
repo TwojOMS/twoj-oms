@@ -39,7 +39,7 @@
         operator dojedzie wzrokiem do przycisku. %>
     <p class="pasek-blokada">
       <b>Tej operacji nie da się cofnąć — dokumentu w KSeF nie kasuje się, tylko koryguje.</b>
-      Dopóki faktura nie poszła, literówkę da się naprawić w inFakcie. Potem zostaje
+      Dopóki faktura nie poszła, literówkę da się naprawić w <%= nazwaProgramu.miejscownik %>. Potem zostaje
       wyłącznie korekta, widoczna u organu.
     </p>
 
@@ -120,7 +120,7 @@
       <% } %>
       <a class="btn" href="<%= adresPowrotu %>">Anuluj</a>
       <span class="wyjasnienie">
-        Panel wysyła dokumenty do inFaktu, a inFakt do KSeF. Numer KSeF <b>nie pojawia się
+        Panel wysyła dokumenty do <%= nazwaProgramu.dopelniacz %>, a <%= nazwaProgramu.mianownik %> do KSeF. Numer KSeF <b>nie pojawia się
         od razu</b> — pokaże się na liście, gdy organ potwierdzi przyjęcie.
       </span>
     </div>

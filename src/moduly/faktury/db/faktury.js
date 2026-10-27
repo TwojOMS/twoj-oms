@@ -1,5 +1,7 @@
 import { bladOperatora } from '../../../domena/bledy.js';
 import { stanFaktury, fakturaWymagaCzlowieka } from '../../../domena/faktura-stan.js';
+import { idDokumentuSql } from '../../../domena/dokument-programu.js';
+import { NAZWA_ZAPASOWA } from '../../../domena/nazwa-programu.js';
 
 const teraz = () => new Date().toISOString();
 
@@ -13,12 +15,13 @@ function wiersz(db, zamowienieId) {
   return db.prepare('SELECT * FROM faktury WHERE zamowienie_id = ?').get(zamowienieId);
 }
 
-function opisKolizji(f) {
+// PRZ-118.09: `nazwa` = odmiana nazwy programu fakturowego (domyślnie inFakt — domena/nazwa-programu.js).
+function opisKolizji(f, nazwa = NAZWA_ZAPASOWA) {
   const stan = stanFaktury(f);
   if (stan === 'do_wyjasnienia') {
     return 'Poprzednia próba wystawienia faktury zerwała się w miejscu, w którym dokument mógł już powstać'
       + `${f.blad_opis ? ` (${f.blad_opis})` : ''}. `
-      + 'Sprawdź RĘCZNIE w inFakcie, czy faktura do tego zamówienia istnieje. Jeśli jej tam nie ma — '
+      + `Sprawdź RĘCZNIE w ${nazwa.miejscownik}, czy faktura do tego zamówienia istnieje. Jeśli jej tam nie ma — `
       + 'odblokuj zamówienie przyciskiem na karcie. Jeśli JEST i jeszcze nie poszła do KSeF '
       + '(wysyłkę robi właściciel ręcznie, wieczorem), po prostu ją tam skasuj, dopiero potem odblokuj — '
       + 'panel jej sam nie ponowi, żeby drugie kliknięcie nie dołożyło drugiego dokumentu. '
@@ -28,8 +31,8 @@ function opisKolizji(f) {
   // Odpowiedz „wlasnie trwa" byla tu wieczna: nic jej nigdy nie zdejmowalo.
   if (stan === 'zawieszona') {
     return `Rezerwacja faktury wisi od ${f.utworzona_at} i żadne wystawianie już nie trwa — `
-      + 'panel najpewniej został zrestartowany w trakcie wywołania inFaktu. '
-      + 'Sprawdź RĘCZNIE w inFakcie, czy faktura do tego zamówienia powstała; jeśli nie, '
+      + `panel najpewniej został zrestartowany w trakcie wywołania ${nazwa.dopelniacz}. `
+      + `Sprawdź RĘCZNIE w ${nazwa.miejscownik}, czy faktura do tego zamówienia powstała; jeśli nie, `
       + 'odblokuj zamówienie przyciskiem na karcie.';
   }
   if (stan === 'w_toku') return 'Wystawianie faktury do tego zamówienia właśnie trwa.';
@@ -39,21 +42,28 @@ function opisKolizji(f) {
 // Wiersz powstaje PRZED wywolaniem inFaktu i to jest cala idempotencja: druga proba
 // (dwuklik, dwie karty, dwa zapytania rownolegle) odbija sie od unikalnego indeksu
 // w bazie, a nie od odczytu `z.faktura` sprzed kilkuset milisekund.
-export function rozpocznijFakture(db, zamowienieId) {
+export function rozpocznijFakture(db, zamowienieId, { nazwa = NAZWA_ZAPASOWA } = {}) {
   try {
     db.prepare("INSERT INTO faktury (zamowienie_id, ksef_status, utworzona_at) VALUES (?, 'w_toku', ?)")
       .run(zamowienieId, teraz());
   } catch (e) {
     const f = String(e.message).includes(SYGNATURA_KOLIZJI) ? wiersz(db, zamowienieId) : null;
-    if (f) throw bladOperatora(opisKolizji(f));
+    if (f) throw bladOperatora(opisKolizji(f, nazwa));
     throw e;
   }
   return wiersz(db, zamowienieId);
 }
 
-export function zakonczFakture(db, id, { uuid, numer, ksefStatus }) {
-  db.prepare('UPDATE faktury SET infakt_uuid = ?, numer = ?, ksef_status = ?, blad_opis = NULL WHERE id = ?')
-    .run(uuid, numer, ksefStatus, id);
+// PRZ-118.03 — podwojny zapis identyfikatora: `program` + `dokument_id` zawsze, a `infakt_uuid`
+// WYLACZNIE dla inFaktu (obraz sprzed zmiany czyta tylko te kolumne i pyta nia inFakt — cudzy
+// identyfikator w niej kazalby mu pytac o nie swoje dokumenty). JEDNA instrukcja: trzy kolumny
+// nie rozjada sie przy awarii w polowie. Brak `program` = inFakt (dzisiejsi wolajacy).
+export function zakonczFakture(db, id, { uuid, numer, ksefStatus }, { program = 'infakt' } = {}) {
+  if (typeof program !== 'string' || !program) throw new Error('zakonczFakture: brak nazwy programu fakturowego');
+  db.prepare(
+    'UPDATE faktury SET program = ?, dokument_id = ?, infakt_uuid = ?, numer = ?, ksef_status = ?, blad_opis = NULL'
+    + ' WHERE id = ?',
+  ).run(program, uuid, program === 'infakt' ? uuid : null, numer, ksefStatus, id);
 }
 
 // Numer KSeF przeczytany z inFaktu przez czuwacza (services/czuwacz-ksef.js). Panel do KSeF
@@ -337,18 +347,41 @@ export function fakturaSkasowanaWInfakcie(db, zamowienieId) {
  */
 export function fakturyMozliweDoOdnotowaniaSkasowania(db, { miesiac } = {}) {
   return db.prepare(
-    `SELECT f.id, f.zamowienie_id, f.numer, f.infakt_uuid, f.utworzona_at,
+    `SELECT f.id, f.zamowienie_id, f.numer, ${idDokumentuSql('f')} AS dokument_id, f.utworzona_at,
             z.numer AS zamowienie_numer
        FROM faktury f
        JOIN zamowienia z ON z.id = f.zamowienie_id
       WHERE f.numer IS NOT NULL
-        AND f.infakt_uuid IS NOT NULL
+        AND ${idDokumentuSql('f')} IS NOT NULL
         AND f.allegro_wyslana_at IS NULL
         AND f.ksef_numer IS NULL
         AND f.ksef_status IS NULL
         ${miesiac ? 'AND substr(f.utworzona_at, 1, 7) = @miesiac' : ''}
       ORDER BY f.utworzona_at DESC`,
   ).all(miesiac ? { miesiac } : {});
+}
+
+/**
+ * PRZ-121.04a — dokumenty znane OMS-owi po identyfikatorze w programie: Map identyfikator → LISTA wierszy
+ * `{ program, dokument_id }` (kształt dla `programDokumentu`/`czyDokumentProgramu`/`idDokumentuDla`). Wysyłka do KSeF
+ * z listy FAKTURY ma sam identyfikator, a program dokumentu zna tylko wiersz faktury zamówienia albo faktury okresu.
+ * Lista, nie jeden wiersz: dwa programy mogą nadać ten sam identyfikator (np. „123”), a o tym, czy dokument należy
+ * do modułu faktur, rozstrzyga wołający. Identyfikatora bez wiersza w mapie nie ma — dokument wystawiony poza
+ * OMS-em przechodzi jak dawniej.
+ */
+export function dokumentyPoIdentyfikatorach(db, identyfikatory) {
+  const lista = [...new Set([].concat(identyfikatory ?? []).filter((x) => x != null && x !== '').map(String))];
+  const mapa = new Map();
+  if (!lista.length) return mapa;
+  const zapytanie = (tabela) => `SELECT program, ${idDokumentuSql()} AS dokument_id FROM ${tabela}
+    WHERE ${idDokumentuSql()} IN (SELECT value FROM json_each(?))`;
+  for (const tabela of ['faktury', 'okresy_rozliczeniowe']) {
+    for (const w of db.prepare(zapytanie(tabela)).all(JSON.stringify(lista))) {
+      if (!mapa.has(w.dokument_id)) mapa.set(w.dokument_id, []);
+      mapa.get(w.dokument_id).push({ program: w.program, dokument_id: w.dokument_id });
+    }
+  }
+  return mapa;
 }
 
 export function createZapytania(db) {

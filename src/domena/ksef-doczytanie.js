@@ -31,6 +31,8 @@
  * ⚠️ Dlawi TEMPO, nie CZAS ZYCIA: karty faktur bez numeru mozna otwierac latami, ale
  * dwadziescia razy F5 w minute to JEDNO zapytanie do inFaktu.
  */
+import { idDokumentu } from './dokument-programu.js';
+
 export const PROG_DOCZYTANIA_KSEF_MS = 2 * 60 * 1000;
 
 /**
@@ -39,7 +41,7 @@ export const PROG_DOCZYTANIA_KSEF_MS = 2 * 60 * 1000;
  */
 export function czyDoczytacKsef(faktura, teraz = Date.now(), progMs = PROG_DOCZYTANIA_KSEF_MS) {
   // Bez uuid nie ma o co pytac: rezerwacja bez dokumentu to jeszcze nie faktura.
-  if (!faktura?.infakt_uuid) return false;
+  if (!idDokumentu(faktura)) return false;
   // ⚠️ NUMER RAZ ZAPISANY KONCZY SPRAWE. Jest jedynym dowodem, ze dokument jest w KSeF, i nic
   // go nie unicestwia — wiec pytanie o niego drugi raz nie moze przyniesc nowej informacji.
   if (faktura.ksef_numer) return false;
