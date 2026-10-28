@@ -11,6 +11,9 @@ const DLUGOSCI = Object.freeze({
   // w `delivery-proposals` zamowienia #1376; do tego dnia usluga byla na bialej liscie WzA
   // bez profilu, wiec formularz podsuwal paczke domyslna 110 × 75 cm, ktora nie wchodzi do skrytki.
   '09bcdcdb-c62a-41c4-ba42-f2c599280e3c': 59,
+  // Allegro Odbior w Punkcie DPD Pickup pobranie (AD). Limit 64 × 38 × 41 cm, 20 kg zmierzony
+  // 28.10.2026 w `delivery-proposals` zamowienia #1508 (PRZ-124).
+  '16af1169-db74-4e94-a16d-f2c599280e3c': 64,
 });
 const WYSOKOSCI = Object.freeze({ S: 8, M: 19, L: 41 });
 

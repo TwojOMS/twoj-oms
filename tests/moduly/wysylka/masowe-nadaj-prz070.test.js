@@ -121,7 +121,8 @@ describe('PRZ-070: podgląd nadania hurtem', () => {
     pobierzMetodeDostawy.mockImplementation(async () => '0aaaaaaa-0000-0000-0000-000000000000');
     const r = await podglad(app, [all]);
     expect(r.statusCode).toBe(200);
-    expect(r.body.slice(r.body.indexOf('Pominięte —'))).toContain('Tej metody dostawy panel nie nada przez „Wysyłam z Allegro');
+    // PRZ-124: nieznana usługa spoza InPostu dostaje własny powód zamiast tekstu o umowie InPostu.
+    expect(r.body.slice(r.body.indexOf('Pominięte —'))).toContain('Panel nie zna jeszcze tej usługi Allegro');
     expect(r.body).not.toContain('<table class="nadanie-hurtem"');
   });
 

@@ -322,7 +322,8 @@
           <h3>Waga i gabaryt</h3>
           <div class="pola">
             <div class="rzad">
-              <label>Waga (kg) <input name="waga" value="<%= gabarytyAllegro.domyslnaWaga ?? '' %>" inputmode="decimal"></label>
+              <%# PRZ-125: `required` — pusta waga zatrzymuje formularz w przegladarce, zamiast odbic sie gola 400 z serwera. %>
+              <label>Waga (kg) <input name="waga" value="<%= gabarytyAllegro.domyslnaWaga ?? '' %>" inputmode="decimal" required></label>
             </div>
             <div class="gabaryty">
               <% Object.entries(gabarytyAllegro.gabaryty).forEach(function ([litera, wysokosc]) { %>

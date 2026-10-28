@@ -93,6 +93,7 @@ describe('co wolno nadac z OMS-u przez Wysylam z Allegro', () => {
       '0fe5b4af-9f09-443d-9d49-62331a20b5b2', // Allegro Automat DHL BOX 24/7 (AD)
       '0560b75e-88c3-4b79-bcf7-62331a20b5b2', // Allegro Odbiór w Punkcie DHL (AD)
       '0b257488-c85d-4507-b967-9b45ffbfa2e8', // Allegro One Box, DPD
+      '16af1169-db74-4e94-a16d-f2c599280e3c', // Allegro Odbiór w Punkcie DPD Pickup pobranie (AD) — PRZ-124, zam. #1508
     ].sort());
     expect(METODY_WZA[PACZKOMAT_INPOST]).toBeUndefined();
     expect(METODY_WZA[KURIER24_INPOST]).toBeUndefined();

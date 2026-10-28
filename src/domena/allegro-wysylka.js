@@ -62,7 +62,21 @@ export const METODY_WZA = {
   '0fe5b4af-9f09-443d-9d49-62331a20b5b2': { nazwa: 'Allegro Automat DHL BOX 24/7 (AD)', pobranie: false, wymagaKonta: false },
   '0560b75e-88c3-4b79-bcf7-62331a20b5b2': { nazwa: 'Allegro Odbiór w Punkcie DHL (AD)', pobranie: false, wymagaKonta: false },
   '0b257488-c85d-4507-b967-9b45ffbfa2e8': { nazwa: 'Allegro One Box, DPD', pobranie: false, wymagaKonta: false },
+  // PRZ-124 (28.10.2026, zam. #1508). Zmierzone w katalogu: owner ALLEGRO, credentialsId null,
+  // cashOnDelivery {"limit":6000,"currency":"PLN","paymentType":"WALLET_TRANSFER","forceRequireIban":false}
+  // — ten sam profil pobrania, co „Kurier DPD pobranie (AD)". `delivery-proposals` #1508 oddalo
+  // `receiver.point` rowny `punkt_odbioru` i kwote pobrania rowna kwocie zamowienia.
+  // Wariant bez pobrania (`06af1169-…`) jest w katalogu, ale nie w zadnym zamowieniu — nie wpisany.
+  '16af1169-db74-4e94-a16d-f2c599280e3c': { nazwa: 'Allegro Odbiór w Punkcie DPD Pickup pobranie (AD)', pobranie: true, wymagaKonta: false },
 };
+
+// Uslugi InPostu, ktore Allegro wystawia na umowie NADAWCY (`owner: CLIENT`, zmierzone 18.09.2026).
+// Sluza WYLACZNIE do brzmienia odmowy — o zgodzie rozstrzyga `METODY_WZA`, nie ta lista.
+const INPOST_UMOWA_NADAWCY = new Set([
+  '2488f7b7-5d1c-4d65-b85c-4cbcf253fd93', // Allegro Paczkomaty InPost
+  'b20ef9e1-faa2-4f25-9032-adbea23e5cb9', // Allegro Paczkomaty InPost pobranie
+  '5d9c7838-e05f-4dec-afdd-58e884170ba7', // Allegro Kurier24 InPost
+]);
 
 const nie = (powod) => ({ wolno: false, powod });
 
@@ -96,10 +110,21 @@ export function wolnoNadacZOms(zamowienie, { deliveryMethodIdZywy } = {}) {
   if (!usluga) {
     // Rozdzielamy dwa POWODY, bo prowadza do dwoch roznych rzeczy po stronie czlowieka:
     // przy InPoscie paczke nadaje sie jak dotad, przy metodzie nieznanej trzeba sprawdzic,
-    // co Allegro dolozylo do slownika.
+    // co Allegro dolozylo do slownika. Do PRZ-124 obie dostawaly tekst o InPoscie — takze
+    // DPD Pickup na umowie Allegro (zam. #1508), co odsylalo czlowieka w zla strone.
+    if (INPOST_UMOWA_NADAWCY.has(deliveryMethodIdZywy)) {
+      return nie(
+        'Tej metody dostawy panel nie nada przez „Wysyłam z Allegro". Metody InPostu Allegro '
+        + 'wystawia na WŁASNEJ UMOWIE nadawcy, a nie na swojej — paczkę nadaj jak dotąd.',
+      );
+    }
+    // ⚠️ `INPOST_UMOWA_NADAWCY` zna 3 z 6 uslug `owner: CLIENT` (brak id Kurier24 pobranie
+    // i miniKurier24 w obu wariantach) — stad zastrzezenie w tekscie, zeby zgloszenie nie
+    // skonczylo sie dopisaniem InPostu do `METODY_WZA`.
     return nie(
-      'Tej metody dostawy panel nie nada przez „Wysyłam z Allegro". Metody InPostu Allegro '
-      + 'wystawia na WŁASNEJ UMOWIE nadawcy, a nie na swojej — paczkę nadaj jak dotąd.',
+      'Panel nie zna jeszcze tej usługi Allegro, więc jej nie nada przez „Wysyłam z Allegro" — '
+      + 'paczkę nadaj jak dotąd. Jeśli to nie InPost, zgłoś usługę do sprawdzenia '
+      + `(id ${deliveryMethodIdZywy}).`,
     );
   }
 

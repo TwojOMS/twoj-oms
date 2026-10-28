@@ -96,6 +96,14 @@ describe('gabaryty Allegro na formularzu nadania', () => {
     expect(f).not.toContain('id="szablon-paczki"');
   });
 
+  // PRZ-125 (zgłoszenie właściciela 28.10, #1508): pusta waga wysyłała formularz i serwer odbijał go
+  // gołym tekstem 400 „Waga musi być…” na czarnym ekranie. Pole jest wymagane w przeglądarce.
+  it('pole wagi przy gabarycie Allegro jest wymagane — pusta waga nie wyśle formularza', async () => {
+    const { serwer, id } = zServerem({ liveId: DPD_AUTOMAT });
+    const f = formularz((await ekran(serwer, id)).body, id);
+    expect(f).toMatch(/<input name="waga" value=""[^>]*\srequired[\s>]/);
+  });
+
   it('One Kurier zachowuje szablon i edytowalne wymiary', async () => {
     const { serwer, id } = zServerem({ liveId: ONE_COURIER, nad: { metoda_wysylki: 'allegro_kurier' } });
     const f = formularz((await ekran(serwer, id)).body, id);
