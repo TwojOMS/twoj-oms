@@ -2,7 +2,7 @@
 // Pełna aplikacja (zbudujOms), prawdziwe trasy, zero sieci: globalny fetch rzuca i sprawdzamy, że nie został wywołany.
 //
 // Cztery ustawienia jak w 03a: „plik” i „ustawienia” (jawny brak, klucz inFaktu w środowisku) dają zdanie;
-// „nic” (bez klucza, bez wyboru) i „infakt bez klucza” zostawiają STARE teksty znak w znak.
+// PRZ-126.P1: na karcie bez faktury powód konfiguracji stoi pod disabled; pozostałe teksty bez zmian.
 import { afterAll, describe, it, expect, vi } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -77,7 +77,9 @@ describe.each([
   it('karta bez faktury: zdanie zamiast „nie jest skonfigurowany”, bez linku do ekranu inFaktu', async () => {
     const c = await zbuduj();
     const html = await karta(c, c.bez);
-    expect(html).toContain(`<p class="pasek-uwaga">${zdanie}</p>`);
+    const powod = ustawienie.plik ? zdanie : `${zdanie} Administrator może włączyć program w Ustawienia → Integracje → Moduł faktur.`;
+    expect(html).toContain(`<p class="wyjasnienie" id="powod-wystawienia-faktury">${powod}</p>`);
+    if (ustawienie.plik) expect(html).not.toContain('Administrator może włączyć program');
     expect(html).not.toContain(STARA_FAKTURA);
     expect(html).not.toContain('href="/ustawienia/integracje/infakt"');
   });
@@ -104,14 +106,14 @@ describe.each([
   ['bez klucza i bez wyboru', { klucz: false }],
   ['wybrany inFakt, klucza nie ma', { klucz: false, zapis: 'infakt' }],
   ['plik: infakt, klucza nie ma', { klucz: false, plik: 'infakt' }],
-])('PRZ-121.03b stare teksty znak w znak: %s', (_n, ustawienie) => {
+])('PRZ-121.03b konfiguracja bez klucza: %s', (_n, ustawienie) => {
   let ctx;
   const zbuduj = async () => (ctx ??= await uruchom(ustawienie));
 
-  it('karta bez faktury: stary akapit z linkiem do ekranu inFaktu', async () => {
+  it('karta bez faktury: PRZ-126.P1 powód konfiguracji pod przyciskiem', async () => {
     const c = await zbuduj();
     const html = await karta(c, c.bez);
-    expect(html).toContain(`<p class="pasek-uwaga">${STARA_FAKTURA} <a href="/ustawienia/integracje/infakt">Ustawienia → Integracje → inFakt</a>.</p>`);
+    expect(html).toContain('<p class="wyjasnienie" id="powod-wystawienia-faktury">inFakt nie jest skonfigurowany — administrator może skonfigurować program w <a href="/ustawienia/integracje/infakt">Ustawienia → Integracje → inFakt</a>.</p>');
     expect(html).not.toContain('Faktury w OMS-ie są wyłączone');
   });
 
@@ -131,7 +133,7 @@ describe.each([
 });
 
 describe('PRZ-121.03b linia stanu automatu KSeF przy „brak”', () => {
-  const ekran = async (c) => odescape((await c.a.app.inject({ method: 'GET', url: '/ustawienia/automatyzacje', headers })).body);
+  const ekran = async (c) => odescape((await c.a.app.inject({ method: 'GET', url: '/ustawienia/automatyzacje/systemowe', headers })).body);
   const LINIA_WLACZONY = '<strong>Włączony</strong> — najbliższy przebieg:';
 
   it('automat włączony, działa (klucz, nic nie wybrano) → „Włączony — najbliższy przebieg”; po zapisie „brak” → „Stoi — faktury wyłączone.”', async () => {

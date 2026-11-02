@@ -74,6 +74,7 @@ const WOLNO_CALY_PLIK = {
   'domena/wybor-programu.js': 'PRZ-121.01: identyfikator modułu „infakt” na liście modułów faktur i w zdaniach o wartości OMS_PROGRAM_FAKTUROWY.',
   'domena/ekrany.js': 'plan 10.1: adres ekranu inFaktu w Ustawieniach.',
   'domena/podmenu-ustawien.js': 'plan 10.1: pozycja menu Ustawienia → Integracje → inFakt.',
+  'domena/katalog-integracji.ts': 'PRZ-127: katalog wymienia marki integracji, w tym usługę inFakt i jej logo.',
   'moduly/ustawienia/widoki/ustawienia-integracje.ejs': 'plan 10.1: kafelek inFaktu na liście integracji.',
   'integracje/program-fakturowy.ts': 'dopisek 02: podkładka `zProgramu` przyjmuje starą nazwę parametru `infakt` i owija ją adapterem (Decyzje techniczne, wiersz „testy”).',
   'domena/nazwa-programu.js':'dopisek 09: zapasowa odmiana i ekran inFaktu, gdy wołający nie podał programu (jedyny program w PRZ-118).',
@@ -99,10 +100,16 @@ const wolnoWModule = (tekst) => /^INFAKT_[A-Z0-9_]+$/.test(tekst) || tekst === '
 
 // Podwójny zapis z PRZ-118.03: dokładne napisy w tych plikach (każdy tyle razy, ile stoi na liście).
 const WOLNO_NAPISY = {
+  // PRZ-127: istniejący adres musi nadal zaznaczać zakładkę automatu po błędzie POST.
+  'domena/dzialy-ustawien.js': ['/ustawienia/integracje/infakt/ksef-automat'],
+  // Jawne przejście do opcji konkretnej integracji; wspólne teksty pozostają neutralne.
+  'moduly/faktury/widoki/ustawienia-faktury-mozliwosci.ejs': ['<a href="/ustawienia/integracje/infakt#ksef-konsumenckie">Opcje KSeF i faktur konsumenckich w inFakcie</a>'],
   'moduly/faktury/db/faktury.js': [
     // domyślny program zapisu i warunek podwójnego zapisu (`program === 'infakt'` → infakt_uuid)
     'infakt', 'infakt',
     'UPDATE faktury SET program = ?, dokument_id = ?, infakt_uuid = ?, numer = ?, ksef_status = ?, blad_opis = NULL',
+    // PRZ-126 P7b: „odnotuj skasowanie” tylko dla wiersza inFaktu (warunek w akcji i parametr listy)
+    'infakt', 'infakt',
   ],
   'oms/db/okresy.js': [
     // to samo dla faktury okresu (`zakonczFaktureOkresu`)
@@ -130,27 +137,27 @@ const ZALEGLOSCI = {
   'domena/pozycje-faktury.js': 1,
   'domena/scalanie.js': 1,
   'domena/wiadomosci.js': 1,
-  'domena/wysylka-ksef.js': 5,
+  'domena/wysylka-ksef.js': 4,
   'domena/zmiana-okresu.js': 1,
   'domena/zwrot.js': 2,
   'moduly/automatyzacje/trasy/ekran.js': 2,
   'moduly/faktury/db/faktury.js': 9,
   'moduly/faktury/modul.ts': 45,
   'moduly/faktury/services/archiwum-sprzedazy.js': 2,
-  'moduly/faktury/services/czuwacz-archiwum-sprzedazy.js': 5,
-  'moduly/faktury/services/czuwacz-ksef.js': 5,
+  'moduly/faktury/services/czuwacz-archiwum-sprzedazy.js': 4,
+  'moduly/faktury/services/czuwacz-ksef.js': 2,
   'moduly/faktury/services/faktura-allegro.js': 2,
   'moduly/faktury/services/faktura-okresu.js': 2,
   'moduly/faktury/services/faktura.js': 2,
   'moduly/faktury/services/faktury-widok.js': 2,
   'moduly/faktury/services/ksef-doczytanie.js': 2,
   'moduly/faktury/services/wysylka-ksef.js': 4,
-  'moduly/faktury/trasy/automat-ksef-ekran.js': 2,
-  'moduly/faktury/trasy/dokumenty.js': 13,
+  'moduly/faktury/trasy/automat-ksef-ekran.js': 1,
+  'moduly/faktury/trasy/dokumenty.js': 11,
   'moduly/faktury/trasy/druk.js': 3,
   'moduly/faktury/trasy/faktury.js': 25,
-  'moduly/faktury/trasy/okresy.js': 13,
-  'moduly/faktury/widoki/faktury.ejs': 4,
+  'moduly/faktury/trasy/okresy.js': 9,
+  'moduly/faktury/widoki/faktury.ejs': 1,
   'moduly/faktury/widoki/ksef-podglad.ejs': 1,
   'moduly/faktury/widoki/okres.ejs': 4,
   'moduly/koszty/pdf/zestawienie-dla-biura-pdf.js': 1,
@@ -162,13 +169,13 @@ const ZALEGLOSCI = {
   'moduly/wiadomosci/uslugi.ts': 3,
   'moduly/wysylka/services/czuwacz-przesylek.js': 2,
   'moduly/wysylka/services/oznaczanie-pobran.js': 2,
-  'moduly/zamowienia/kontekst.js': 4,
-  'moduly/zdrowie/services/czuwacz-ostrzezen.js': 6,
+  'moduly/zamowienia/kontekst.js': 1,
+  'moduly/zdrowie/services/czuwacz-ostrzezen.js': 2,
   'moduly/zwroty/services/korekta.js': 2,
   'moduly/zwroty/trasy/akcje.js': 2,
   'moduly/zwroty/trasy/formularz.js': 2,
-  'moduly/zwroty/trasy/korekty.js': 10,
-  'moduly/zwroty/trasy/wspolne.js': 2,
+  'moduly/zwroty/trasy/korekty.js': 9,
+  'moduly/zwroty/trasy/wspolne.js': 1,
   'oms/db/okresy.js': 2,
   'oms/db/zwroty.js': 1,
 };
@@ -271,6 +278,6 @@ describe('strażnik nazw programu fakturowego (PRZ-118.10)', () => {
     expect(w('moduly/x/modul.ts', "const t = 'Brak inFaktu';")).toEqual(['Brak inFaktu']);
     expect(w('moduly/x/inne.ts', 'const a = env.INFAKT_API_KEY;')).toEqual(['INFAKT_API_KEY']);
     expect(w('oms/infakt/client.js', "const t = 'inFakt';")).toEqual([]);
-    expect(w('moduly/faktury/db/faktury.js', "f('infakt'); g('infakt'); h('infakt');")).toEqual(['infakt']);
+    expect(w('moduly/faktury/db/faktury.js', "f('infakt'); g('infakt'); h('infakt'); i('infakt'); j('infakt');")).toEqual(['infakt']);
   });
 });

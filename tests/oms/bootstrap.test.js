@@ -1,3 +1,4 @@
+import { programInfakt } from '../../src/integracje/programy/infakt.ts';
 import { wykonajWejscie, wykonajZegary, wykonajJednaFabrykeTokenow } from '../pomoc/odbior-bootstrap-030.ts';
 import { describe, it, expect, vi } from 'vitest';
 import { mkdtempSync, writeFileSync } from 'node:fs';
@@ -16,7 +17,7 @@ import {
 import {
   POWOD_TRWA as POWOD_TRWA_ARCHIWUM_SPRZEDAZY,
   POWOD_NIE_TA_PORA as POWOD_NIE_TA_PORA_ARCHIWUM_SPRZEDAZY,
-  BUDZET_ARCHIWUM_SPRZEDAZY_MS, NAJDLUZSZY_PRZEBIEG_ARCHIWUM_SPRZEDAZY_MS,
+  BUDZET_ARCHIWUM_SPRZEDAZY_MS, najdluzszyPrzebiegArchiwumSprzedazyMs,
 } from '../../src/moduly/faktury/services/czuwacz-archiwum-sprzedazy.js';
 import { LIMIT_ZADANIA_MS, NAJDLUZSZE_ODPYTYWANIE_MS } from '../../src/oms/ksef/client.js';
 // ⚠️ DWA KLIENTY, DWIE STALE O TEJ SAMEJ NAZWIE — stad alias. `LIMIT_ZADANIA_MS` wyzej jest
@@ -1187,7 +1188,7 @@ describe('src/oms.js pozostaje cienkim punktem wejścia', () => {
     const sciezka = fileURLToPath(new URL('../../src/oms.js', import.meta.url));
     const zrodlo = readFileSync(sciezka, 'utf8');
     expect(await wykonajWejscie()).toEqual([
-      ['/ustawienia/zamowienia-i-wysylka', 200, 'Paczki i koszty dostawy'],
+      ['/ustawienia/zamowienia-i-wysylka', 200, 'Szablony paczek'],
       ['/faktury', 200, 'Faktury'], ['/magazyn', 200, 'Magazyn'], ['/raporty', 200, 'Raporty'], ['/wiadomosci', 200, 'Wiadomości'],
     ]);
     for (const zakazane of ['createDpdClient', 'createInfaktClient', 'createNadanie', 'createFaktura', 'buildOmsServer']) {
@@ -2150,7 +2151,7 @@ describe('zbudujOms — paczka dla biura rachunkowego', () => {
       createDpd: atrapaDpd(),
       createPaczkaDlaBiuraFn: () => ({
         zbuduj: async (m, czesc) => ({
-          bajty: Buffer.from('%PDF-1.4 p'), nazwa: `paczka-dla-biura-${m}-${czesc}.pdf`, dokumentow: 1, stron: 2,
+          bajty: Buffer.from('%PDF-1.4 p'), nazwa: `zestawienie-faktur-${m}-${czesc}.pdf`, dokumentow: 1, stron: 2,
         }),
       }),
     });
@@ -2162,7 +2163,7 @@ describe('zbudujOms — paczka dla biura rachunkowego', () => {
     });
     expect(r.statusCode).toBe(200);
     expect(r.headers['content-type']).toContain('application/pdf');
-    expect(r.headers['content-disposition']).toContain('paczka-dla-biura-2026-08-sprzedaz.pdf');
+    expect(r.headers['content-disposition']).toContain('zestawienie-faktur-2026-08-sprzedaz.pdf');
   });
 
   // Panel bez inFaktu to tryb POPRAWNY (zakladka faktur jest wtedy pusta celowo) — a bez
@@ -2177,7 +2178,7 @@ describe('zbudujOms — paczka dla biura rachunkowego', () => {
 
 // ⚠️⚠️ STRAZNIK CZASU PRZEBIEGU DLA CZUWACZA KOSZTOW (recenzja calej galezi, W4).
 //
-// `bootstrap.js` pilnowal `NAJDLUZSZY_PRZEBIEG_MS < ODSTEP_CZUWACZA_MS` WYLACZNIE dla czuwacza
+// `bootstrap.js` pilnowal `najdluzszyPrzebiegMs(programInfakt({}).opis.limity) < ODSTEP_CZUWACZA_MS` WYLACZNIE dla czuwacza
 // KSeF. Czuwacz kosztow wisi na tym samym zegarze godzinowym i ma wlasny, znacznie dluzszy
 // najgorszy przypadek (pelne logowanie do KSeF + strony metadanych + budzet archiwum) — a nie
 // mial ani jednej arytmetyki, ktora by go policzyla.
@@ -2202,7 +2203,7 @@ describe('straznik czasu przebiegu czuwacza kosztow', () => {
   });
 
   // Straznik ma POLOZYC PANEL PRZY STARCIE, a nie po cichu rozjechac zegar na produkcji —
-  // dokladnie tak, jak robi to `NAJDLUZSZY_PRZEBIEG_MS` czuwacza KSeF. Sprawdzamy sam warunek,
+  // dokladnie tak, jak robi to `najdluzszyPrzebiegMs(programInfakt({}).opis.limity)` czuwacza KSeF. Sprawdzamy sam warunek,
   // bo `zbudujOms` wykonuje sie dopiero po wczytaniu modulu (a wtedy straznik juz przeszedl).
   it('⚠️ podniesienie sufitu stron ponad dobe zlamaloby warunek straznika', () => {
     const sufitZabojczy = Math.ceil(ODSTEP_OKNA_POBRANIA_MS / LIMIT_ZADANIA_MS);
@@ -2221,7 +2222,7 @@ describe('straznik czasu przebiegu czuwacza kosztow', () => {
 // jeszcze trwa" przez cala noc — a nocne tykniecia gubilby bez sladu.
 describe('straznik czasu przebiegu czuwacza archiwum sprzedazy', () => {
   it('⚠️ najgorszy przebieg LICZY SIE z prawdziwych stalych, a nie z komentarza', () => {
-    expect(NAJDLUZSZY_PRZEBIEG_ARCHIWUM_SPRZEDAZY_MS)
+    expect(najdluzszyPrzebiegArchiwumSprzedazyMs(programInfakt({}).opis.limity))
       .toBeGreaterThanOrEqual(BUDZET_ARCHIWUM_SPRZEDAZY_MS + NAJDLUZSZA_LISTA_MS + LIMIT_ZADANIA_INFAKTU_MS);
   });
 
@@ -2233,7 +2234,7 @@ describe('straznik czasu przebiegu czuwacza archiwum sprzedazy', () => {
   });
 
   it('⚠️ najgorszy przebieg miesci sie miedzy tyknieciami zegara czuwaczy', () => {
-    expect(NAJDLUZSZY_PRZEBIEG_ARCHIWUM_SPRZEDAZY_MS).toBeLessThan(ODSTEP_CZUWACZA_MS);
+    expect(najdluzszyPrzebiegArchiwumSprzedazyMs(programInfakt({}).opis.limity)).toBeLessThan(ODSTEP_CZUWACZA_MS);
   });
 
   // Straznik ma POLOZYC PANEL PRZY STARCIE, a nie po cichu rozjechac zegar na produkcji.

@@ -8,7 +8,7 @@
   <h2>Ostrzeżenia na stronie głównej</h2>
   <p>Wybierz ostrzeżenia widoczne na Twojej liście zamówień. Ten wybór dotyczy tylko Twojego konta.</p>
   <% if (!moznaZapisac) { %><p>Konto serwisowe widzi wszystkie ostrzeżenia. Zaloguj się własnym kontem, aby zmienić ich widoczność.</p><% } %>
-  <form method="post" action="/ustawienia/powiadomienia">
+  <form method="post" action="/konto/powiadomienia">
     <% rodzaje.forEach(function (r) { %>
       <p>
         <label><input type="checkbox" name="widoczne" value="<%= r.typ %>" <%= ukryte.includes(r.typ) ? '' : 'checked' %> <%= moznaZapisac ? '' : 'disabled' %>> <strong><%= r.nazwa %></strong><br><span class="wyjasnienie"><%= r.opis %></span></label>

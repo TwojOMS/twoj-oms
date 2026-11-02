@@ -11,8 +11,8 @@ import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { wczytajAutomatKsef } from '../../../src/moduly/faktury/db/ksef-automat.js';
 
-const EKRAN = '/ustawienia/automatyzacje';
-const ZAPIS = `${EKRAN}/ksef`;
+const EKRAN = '/ustawienia/automatyzacje/systemowe';
+const ZAPIS = '/ustawienia/automatyzacje/ksef';
 const STARY_ZAPIS = '/ustawienia/integracje/infakt/ksef-automat';
 const INFAKT = '/ustawienia/integracje/infakt';
 const PO_ZAPISIE = `${EKRAN}?zapisano=ksef-automat#ksef-automat`;
@@ -64,8 +64,10 @@ describe('PRZ-108.06 ekran Ustawienia → Automatyzacje', () => {
     expect(auto).toContain('Wyłączona');
     expect(auto).toContain('href="/ustawienia/wiadomosci-i-automatyzacje"');
     // PRZ-108.08 (C1): rejestr zdarzeń nie jest już pusty — sekcja reguł z przyciskiem dodawania (zmiana zachowania).
-    expect(r.body).toContain('Dodaj automatyzację');
-    expect(r.body).toContain(`${EKRAN}/nowa`);
+    const reguly = await get(p.app, '/ustawienia/automatyzacje', p.admin);
+    expect(reguly.body).toContain('Dodaj automatyzację');
+    expect(reguly.body).toContain('/ustawienia/automatyzacje/nowa');
+    expect(r.body).not.toContain('Dodaj automatyzację');
   });
 
   it('autoodpowiedź włączona w Ustawieniach → wiersz mówi „Włączona”', async () => {

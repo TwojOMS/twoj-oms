@@ -339,7 +339,7 @@ app.post('/zamowienia/:id/ustalenia', async (req, reply) => {
         b2b: req.body?.b2b !== undefined,
         termin_platnosci: parsujTerminZamowienia(req.body?.termin_platnosci),
         rabat_procent: req.body?.rabat_procent,
-      });
+      }, kontekst.opcjeZw); // PRZ-122.B07c: pozycja „zw” przeliczana rabatem zapisuje się tylko przy TwojeFaktury
     } catch (e) {
       dopiszLog(db, id, { akcja: 'ustalenia', wynik: `BŁĄD: ${e.message}` });
       return reply.code(400).send(`Nie udało się zapisać ustaleń: ${komunikatDlaOperatora(e)}`);

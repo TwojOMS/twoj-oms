@@ -132,7 +132,9 @@ describe('PRZ-102.12 automat KSeF — kiedy wysyła', () => {
     expect(z.logi.some((t) => t.includes('automat KSeF') && t.includes('wysłano 3'))).toBe(true);
   });
 
-  it('zbiór automatu dla miesiąca = pola zaznaczone przez „zaznacz wszystkie” na ekranie Faktur', async () => {
+  // PRZ-126.C07a (D9): „zaznacz wszystkie” zaznacza każdy dokument z uuid (także już w KSeF, korekty, B2C);
+  // automat wysyła z tego zbioru tylko to, co przepuści filtr wysyłki — A i H.
+  it('zbiór automatu dla miesiąca = zaznaczone przez „zaznacz wszystkie” po filtrze wysyłki', async () => {
     const z = zestaw();
     const app = buildOmsServer({ db: z.db, config: { auth: { user: 't', pass: 'h' } }, fakturyWidok: z.fakturyWidok });
     const r = await app.inject({ method: 'GET', url: '/faktury?miesiac=2026-10&pole=invoice_date&zaznacz=1',
@@ -142,9 +144,9 @@ describe('PRZ-102.12 automat KSeF — kiedy wysyła', () => {
     await app.close();
     wlacz(z.db);
     await z.automat('2026-10-20T18:01:00Z').przebieg();
-    expect(zaznaczone).toEqual(['A', 'H']);
+    expect(zaznaczone).toEqual(['A', 'C', 'D', 'E', 'F', 'H']);
     expect(z.infakt.wyslane.filter((u) => z.infakt.dokumenty.find((d) => d.uuid === u).invoice_date.startsWith('2026-10')).sort())
-      .toEqual(zaznaczone);
+      .toEqual(['A', 'H']);
   });
 
   it('bariera liczona od nowa przy wysyłce: faktura zmieniona w inFakcie po wyborze kandydatów (konsumencka, już w KSeF) nie leci', async () => {

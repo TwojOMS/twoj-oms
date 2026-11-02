@@ -2,6 +2,7 @@ import { etykietyStatusow } from '../../../oms/db/statusy.js';
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import { parsujZamowienieZKarty } from '../../../domena/zamowienie-z-karty.js';
 import { czytajStawkeDomyslna } from '../../faktury/db/stawka-vat.js';
+import { zwolnionaZFlagi } from '../../faktury/db/zwolnienie-vat.js';
 import { zalozZamowienieReczne } from '../../zamowienia/services/zamowienie-reczne.js';
 import { dopiszLog, pobierzZamowienie, znajdzZamowieniaPoNumerze, zapiszFaktyStatusu, ostatniWpisLogu } from '../../../oms/db/zamowienia.js';
 import { faktyDlaStatusu, anulowaneEfektywnie } from '../../../domena/status-reczny.js';
@@ -23,7 +24,9 @@ const POWOD_POWTORKI = 'Zamówienie z tej karty już istnieje.';
 // panel wystawia proforme klientowi i sam ja mailuje. `null` (panel bez sekcji
 // OMS_PROFORMY_*) to tryb POPRAWNY — trasa odmawia wtedy czytelnie 503, zamiast udawac,
 // ze dokument powstal.
-export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syncSklep = null, kanalIndywidualny = true }) {
+// PRZ-122.B07c: `opcjeZw()` — flaga „zw” programu fakturowego z kontekstu karty (zamówienia); bez niej jak dotąd.
+export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syncSklep = null, kanalIndywidualny = true,
+  opcjeZw = () => ({ zw: false }) }) {
   // `utworzone_at` wjezdza tu WYLACZNIE po to, zeby galaz `catch` mogla rozstrzygnac, KTO
   // zalozyl znaleziony wiersz (patrz komentarz nizej). Do odpowiedzi 409 nie idzie — jej
   // ksztalt to `{ id, numer, powod }` i tyle wie o niej panel.
@@ -47,8 +50,12 @@ export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syn
     // ⚠️ ZEGAR ODCZYTANY RAZ, NA CALA TRASE — ta sama zasada, co w trasie formularza
     // (D4): `utworzone_at` i rok serii numeracji maja pochodzic z JEDNEJ wartosci.
     const znacznik = new Date().toISOString();
+    const flagaZw = opcjeZw();
     try {
-      dane = parsujZamowienieZKarty(req.body ?? {}, { stawkaDomyslna: czytajStawkeDomyslna(db) });
+      // PRZ-122.B07f: firma zwolniona z VAT — numer UE nabywcy to nie WDT (netto stawką pozycji, nie 0).
+      dane = parsujZamowienieZKarty(req.body ?? {}, {
+        stawkaDomyslna: czytajStawkeDomyslna(db, flagaZw), ...flagaZw, zwolniona: zwolnionaZFlagi(db, flagaZw),
+      });
     } catch (e) {
       return reply.code(400).send({ powod: komunikatDlaOperatora(e) });
     }
@@ -72,7 +79,7 @@ export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syn
       // to jak zwykle „klient jeszcze nie zaplacil". To takze jedyna spojna czytelnosc
       // `okresId: null` ponizej: to zamowienie stoi POZA rozliczeniem zbiorczym.
       const { id, numer } = zalozZamowienieReczne({
-        db, dane, znacznik, okresId: null, naliczajOplate: false,
+        db, dane, znacznik, okresId: null, naliczajOplate: false, ...flagaZw,
       });
       dopiszLog(db, id, {
         akcja: 'zamowienie.z-karty',
@@ -371,7 +378,7 @@ export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syn
     let p;
     try {
       // SYNCHRONICZNIE — caly dokument powstaje u nas, bez sieci (services/proforma.js).
-      p = proforma.wystaw(id);
+      p = proforma.wystaw(id, opcjeZw());
     } catch (e) {
       // ⚠️ ODMOWA MA DOJSC NA ZEWNATRZ W CALOSCI. `czyWolnoWystawic` odmawia po polsku
       // („zamówienie jest anulowane", „wyszłaby na 0,00 zł") i panel wpisuje ten tekst do

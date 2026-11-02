@@ -12,7 +12,7 @@ import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/
 import { jako, get, post } from '../../pomoc/konta-prz068.js';
 import { czytajStawkeDomyslna, zapiszStawkeDomyslna } from '../../../src/moduly/faktury/db/stawka-vat.js';
 
-const EKRAN = '/ustawienia/firma';
+const EKRAN = '/ustawienia/faktury/vat';
 const ZAPIS = '/ustawienia/firma/stawka-vat';
 
 let katalog;

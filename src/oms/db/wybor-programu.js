@@ -21,10 +21,11 @@ export function wczytajWyborProgramu(db) {
 /**
  * Zapisuje wybór — wyłącznie moduł dostępny w tej wersji (ten sam sprawdzian co formularz).
  * @param {any} db @param {string} program
- * @param {{ konto?: { id?: number|null, login?: string|null }|null, teraz?: Date }} [o]
+ * @param {{ konto?: { id?: number|null, login?: string|null }|null, teraz?: Date, zgoda?: boolean }} [o]
+ *   — `zgoda`: jawna zgoda instalacji `OMS_TWOJEFAKTURY=tak` (moduł `dostepny: 'zgoda'` też przyjęty)
  */
-export function zapiszWyborProgramu(db, program, { konto = null, teraz = new Date() } = {}) {
-  const { ustawienia, bledy } = sprawdzFormularzWyboru({ program });
+export function zapiszWyborProgramu(db, program, { konto = null, teraz = new Date(), zgoda = false } = {}) {
+  const { ustawienia, bledy } = sprawdzFormularzWyboru({ program }, { zgoda });
   if (bledy.length) throw new Error(`zapiszWyborProgramu: ${bledy.join(' ')}`);
   zapiszKonfiguracjeIntegracji(db, KLUCZ_WYBORU_PROGRAMU, { ustawienia, sekrety: {} }, { konto, teraz });
 }

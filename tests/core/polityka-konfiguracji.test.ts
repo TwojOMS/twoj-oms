@@ -12,7 +12,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import type { ModulOms } from '../../src/core/kontrakty.ts';
 import { skonfigurowanyUrl } from '../../src/core/konfiguracja-wartosci.ts';
 
-const seller={OMS_SPRZEDAWCA_NIP:'1000001193',OMS_RACHUNEK:'61109010140000071219812874',OMS_PROFORMY_KATALOG:'/tmp/test-proformy'};
+const seller={OMS_SPRZEDAWCA_NIP:'1200001192',OMS_RACHUNEK:'61109010140000071219812874',OMS_PROFORMY_KATALOG:'/tmp/test-proformy'};
 describe('zatwierdzona polityka D02 / D07',()=>{
   it('wyznacza efektywny tryb bez zgadywania literówek',()=>{
     expect(efektywnyTryb({})).toBe('produkcja'); expect(efektywnyTryb({OMS_TRYB:''})).toBe('produkcja');

@@ -226,11 +226,14 @@ describe('ostrzeżenie na stronie głównej (tylko admin)', () => {
 });
 
 describe('stary adres zapisu automatu KSeF', () => {
-  it('błąd formularza → 400 z ekranem Automatyzacji w wersji z regułami (nie „wkrótce”)', async () => {
+  it('błąd formularza → 400 z automatami systemowymi, a reguły są dostępne osobno', async () => {
     const p = panel();
     const r = await post(p.app, '/ustawienia/integracje/infakt/ksef-automat', p.admin, { wlaczony: '1', godzina: '25:00' });
     expect(r.statusCode).toBe(400);
-    expect(r.body).toContain('Dodaj automatyzację');
+    expect(r.body).toContain('Automaty systemowe');
+    const reguly = await get(p.app, EKRAN, p.admin);
+    expect(reguly.statusCode).toBe(200);
+    expect(reguly.body).toContain('Dodaj automatyzację');
     expect(r.body).not.toMatch(/Reguły <span class="menu-ustawien-wkrotce">wkrótce/u);
   });
 });

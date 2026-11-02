@@ -13,6 +13,15 @@ function serwer(infakt) {
 }
 
 describe('GET /faktury/:uuid/pdf', () => {
+  // PRZ-122.B10b: pobranie PDF zamyka fakturę TwojeFaktury — HEAD (domyślnie handler GET w Fastify) nie woła programu.
+  it('HEAD nie pobiera PDF-u (404, program niewołany)', async () => {
+    let wolane = 0;
+    const app = serwer({ pobierzPdf: async () => { wolane += 1; return PDF; }, pobierzPdfKorekty: async () => { wolane += 1; return PDF; } });
+    const r = await app.inject({ method: 'HEAD', url: '/faktury/u1/pdf?rodzaj=vat', headers: AUTH });
+    expect(r.statusCode).toBe(404);
+    expect(wolane).toBe(0);
+  });
+
   it('faktura VAT idzie po zasób /invoices/', async () => {
     let wolane = null;
     const app = serwer({ pobierzPdf: async (u) => { wolane = ['vat', u]; return PDF; }, pobierzPdfKorekty: async () => { throw new Error('nie ten zasób'); } });

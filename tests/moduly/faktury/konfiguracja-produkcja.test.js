@@ -1,3 +1,4 @@
+import { programInfakt } from '../../../src/integracje/programy/infakt.ts';
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -7,8 +8,8 @@ import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { zapewnijOkres } from '../../../src/oms/db/okresy.js';
 import { dopiszKlientaZbiorczego } from './_klient-zbiorczy-pomocniki.js';
 import { modulFaktury } from '../../../src/moduly/faktury/modul.ts';
-import { NAJDLUZSZY_PRZEBIEG_MS } from '../../../src/moduly/faktury/services/czuwacz-ksef.js';
-import { NAJDLUZSZY_PRZEBIEG_ARCHIWUM_SPRZEDAZY_MS } from '../../../src/moduly/faktury/services/czuwacz-archiwum-sprzedazy.js';
+import { najdluzszyPrzebiegMs } from '../../../src/moduly/faktury/services/czuwacz-ksef.js';
+import { najdluzszyPrzebiegArchiwumSprzedazyMs } from '../../../src/moduly/faktury/services/czuwacz-archiwum-sprzedazy.js';
 
 const katalogi = [];
 const aplikacje = [];
@@ -77,8 +78,8 @@ describe('faktury: konfiguracja rzeczywistego manifestu i HTTP', () => {
     expect(z.zegary.map(x => [x.nazwa, x.odstepMs])).toEqual([
       ['czuwaczKsef', 3600000], ['czuwaczArchiwumSprzedazy', 3600000], ['automatKsef', 60000] ]);
     for (const zegar of z.zegary.filter(x => x.nazwa !== 'automatKsef')) {
-      expect(NAJDLUZSZY_PRZEBIEG_MS).toBeLessThan(zegar.odstepMs);
-      expect(NAJDLUZSZY_PRZEBIEG_ARCHIWUM_SPRZEDAZY_MS).toBeLessThan(zegar.odstepMs);
+      expect(najdluzszyPrzebiegMs(programInfakt({}).opis.limity)).toBeLessThan(zegar.odstepMs);
+      expect(najdluzszyPrzebiegArchiwumSprzedazyMs(programInfakt({}).opis.limity)).toBeLessThan(zegar.odstepMs);
     }
     expect(modulFaktury.uprawnienia.find(x => x.klucz === 'okresy').etykieta).toBe('Okresy rozliczeniowe');
   });

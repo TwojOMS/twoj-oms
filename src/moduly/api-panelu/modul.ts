@@ -18,6 +18,7 @@ export const modulApiPanelu: ModulOms<{ kanalIndywidualny: boolean }> = {
         config: ctx.usluga<any>('kanaly', 'config'),
         proforma: ctx.usluga<any>('faktury', 'proforma'),
         syncSklep: ctx.usluga<any>('zamowienia', 'syncSklep'),
+        opcjeZw: ctx.usluga<any>('zamowienia', 'opcjeZw'),
         kanalIndywidualny: ctx.konfiguracja.kanalIndywidualny,
       });
       trasaApiSprzedaz(app, { db: ctx.db });

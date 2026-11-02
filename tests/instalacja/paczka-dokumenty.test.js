@@ -20,6 +20,14 @@ describe('paczka wydania: dokumenty kurierów', () => {
     expect(fs.existsSync(new URL('../../docs/modul-faktur.md', import.meta.url))).toBe(true);
   });
 
+  it('PRZ-123.C10: dokumenty TwojeFaktury obecne w tym drzewie są w paczce', () => {
+    expect(plikiPaczki(['docs/twojefaktury-ksef.md', 'docs/twojefaktury-ksef.txt'])).toEqual(['docs/twojefaktury-ksef.md']);
+    // W kopii publicznej dokumenty modułu wycina ta sama lista co kod.
+    const dokumenty = fs.readdirSync(new URL('../../docs/', import.meta.url))
+      .filter(p => /^twojefaktury.*\.md$/.test(p)).map(p => `docs/${p}`);
+    expect(plikiPaczki(dokumenty)).toEqual([...dokumenty].sort());
+  });
+
   it('każdy dokument docs/*.md wskazany w instrukcji instalacji Dockera, który istnieje w repo, jest w paczce', () => {
     const tresc = fs.readFileSync(new URL('../../docs/instalacja-docker.md', import.meta.url), 'utf8');
     // Bez przypinania konkretnej nazwy: kopia open source ma własną (autorską) instrukcję, która odsyła do innych

@@ -1,5 +1,5 @@
 <h1><%= title %></h1>
-<p><a href="/ustawienia/integracje">← Integracje</a></p>
+<% const zasady = nawigacja?.kontekst?.aktywnaZakladka === 'zasady'; %>
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (ekran.uwaga) { %><div class="pas-uprzedzenie"><p><%= ekran.uwaga %></p></div><% } %>
@@ -7,10 +7,12 @@
   <div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong></p><ul><% bledy.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
 <% } %>
 
+<% if (!zasady) { %>
 <section class="ust-sekcja" id="modul-faktur-stan">
   <h2>Teraz działa</h2>
   <p class="ust-stan"><strong><%= ekran.dziala.etykieta %></strong></p>
   <p><%= ekran.dziala.zrodlo %></p>
+  <% if (ekran.serie) { %><p><a href="/ustawienia/integracje/program-fakturowy/serie">Serie numeracji</a></p><% } %>
   <% if (ekran.czeka) { %><p class="pas-uprzedzenie"><%= ekran.czeka %></p><% } %>
   <% if (ekran.ponowneUruchomienie && ekran.ponowneUruchomienie.recznie) { %>
     <p class="ust-pomoc">Uruchom ponownie OMS (np. <code>docker compose restart oms</code>).</p>
@@ -29,7 +31,7 @@
   <form id="modul-faktur-formularz" method="post" action="<%= ekran.adres %>">
     <div class="aut-wybor">
       <% ekran.pola.forEach(function (p) { %>
-      <p<% if (p.wkrotce) { %> class="aut-wylaczone"<% } %>><label><input type="radio" name="program" value="<%= p.id %>"<% if (p.zaznaczone) { %> checked<% } %><% if (p.nieaktywne) { %> disabled<% } %>><span><strong><%= p.etykieta %></strong><% if (p.wkrotce) { %><span class="menu-ustawien-wkrotce">wkrótce</span><% } %><% if (p.opis) { %><span class="wyjasnienie"><%= p.opis %><% if (p.odnosnik) { %> <a href="<%= p.odnosnik.adres %>"><%= p.odnosnik.tekst %></a><% } %></span><% } %><% if (p.ostrzezenie) { %><span class="wyjasnienie uwaga"><%= p.ostrzezenie %></span><% } %></span></label></p>
+      <p<% if (p.wkrotce) { %> class="aut-wylaczone"<% } %>><label><input type="radio" name="program" value="<%= p.id %>"<% if (p.zaznaczone) { %> checked<% } %><% if (p.nieaktywne) { %> disabled<% } %>><span><strong><%= p.etykieta %></strong><% if (p.wkrotce) { %><span class="menu-ustawien-wkrotce">wkrótce</span><% } %><% if (p.opis) { %><span class="wyjasnienie"><%= p.opis %><% if (p.odnosnik) { %> <a href="<%= p.odnosnik.adres %>"><%= p.odnosnik.tekst %></a><% } %></span><% } %><% if (p.kopia) { %><span class="wyjasnienie"><%= p.kopia %></span><% } %><% if (p.ostrzezenie) { %><span class="wyjasnienie uwaga"><%= p.ostrzezenie %></span><% } %></span></label></p>
       <% }); %>
     </div>
     <% if (ekran.zPliku) { %>
@@ -44,3 +46,24 @@
     <% } %>
   </form>
 </section>
+
+<% } %>
+<% if (zasady) { %>
+<section class="ust-sekcja" id="faktury-dla-kazdego">
+  <h2>Komu wystawiać faktury</h2>
+  <% if (ekran.dlaKazdego.moznaZmieniac) { %>
+    <form method="post" action="<%= ekran.dlaKazdego.adres %>">
+      <p><label><input type="checkbox" name="dlaKazdego" value="tak"<% if (ekran.dlaKazdego.wlaczone) { %> checked<% } %><% if (ekran.dlaKazdego.ostrzezeniePdf && !ekran.dlaKazdego.wlaczone) { %> disabled<% } %>> Wystawiaj fakturę także do zamówień, przy których klient nie prosił o fakturę</label></p>
+      <p class="ust-pomoc">Po włączeniu możesz wystawiać faktury do takich zamówień.</p>
+      <p class="ust-pomoc"><%= ekran.dlaKazdego.zdanieKasa %></p>
+      <% if (ekran.dlaKazdego.ostrzezeniePdf && !bledy.includes(ekran.dlaKazdego.bladWlaczenia)) { %><p class="ust-pomoc"><% if (!ekran.dlaKazdego.wlaczone) { %><%= ekran.dlaKazdego.bladWlaczenia %><% } else { %>Faktury dla osób bez NIP-u nie idą teraz do KSeF, więc klient nie dostanie PDF-a — włącz wysyłkę faktur konsumenckich.<% } %></p><% } %>
+      <div class="ust-akcje"><button class="btn btn--glowny" type="submit">Zapisz</button></div>
+    </form>
+  <% } else { %>
+    <p>Wystawianie faktur także bez prośby klienta: <strong><%= ekran.dlaKazdego.wlaczone ? 'włączone' : 'wyłączone' %></strong>. Zmienia administrator.</p>
+    <p class="ust-pomoc"><%= ekran.dlaKazdego.zdanieKasa %></p>
+    <% if (ekran.dlaKazdego.ostrzezeniePdf && !bledy.includes(ekran.dlaKazdego.bladWlaczenia)) { %><p class="ust-pomoc"><% if (!ekran.dlaKazdego.wlaczone) { %><%= ekran.dlaKazdego.bladWlaczenia %><% } else { %>Faktury dla osób bez NIP-u nie idą teraz do KSeF, więc klient nie dostanie PDF-a — włącz wysyłkę faktur konsumenckich.<% } %></p><% } %>
+  <% } %>
+</section>
+
+<% } %>

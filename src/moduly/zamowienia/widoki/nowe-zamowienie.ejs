@@ -63,7 +63,7 @@
     zagniezdzone formularze sa niepoprawnym HTML-em, wiec „Pobierz z GUS” nizej wysyla
     TEN SAM formularz pod inny adres przez `formaction`, zamiast byc osobnym formularzem. %>
 <%# PRZ-105: data-vat = stawka DOMYŚLNA z Ustawień (nowy wiersz), data-wdt — nabywca z UE (liczy się wtedy 0%). %>
-<form method="post" action="/zamowienia/nowe" data-vat="<%= stawkaVat %>" data-wdt="<%= wdtFormularza ? '1' : '0' %>">
+<form method="post" action="/zamowienia/nowe" data-vat="<%= stawkaVat %>" data-wdt="<%= wdtFormularza ? '1' : '0' %>"<%- zwolniona ? ' data-zwolniona="1"' : '' %>>
 
 <%# ⚠️ TEN PRZYCISK MUSI STAC PIERWSZY I DLATEGO WYGLADA NA ZBEDNY (ustalenie recenzji
     2026-08-01). Enter w dowolnym polu wysyla formularz PRZYCISKIEM DOMYSLNYM, a domyslnym
@@ -310,7 +310,7 @@
             <td><input class="pole-cena cena-netto" name="poz_cena_netto" value="<%= wart(pozCenaNetto[i]) %>" placeholder="netto" inputmode="decimal"></td>
             <%# PRZ-105: stawka między netto a brutto (prośba właściciela 21.10); pusta w formularzu = domyślna. %>
             <% const stawkaW = stawkiVat.includes(String(pozVat[i] ?? '')) ? String(pozVat[i]) : stawkaVat; %>
-            <td class="kol-vat"><select name="poz_vat" aria-label="Stawka VAT"><% stawkiVat.forEach(function (s) { %><option value="<%= s %>"<%= s === stawkaW ? ' selected' : '' %>><%= s %>%</option><% }); %></select></td>
+            <td class="kol-vat"><select name="poz_vat" aria-label="Stawka VAT"><% stawkiVat.forEach(function (s) { %><option value="<%= s %>"<%= s === stawkaW ? ' selected' : '' %>><%= s === 'zw' ? 'zw' : `${s}%` %></option><% }); %></select></td>
             <td><input class="pole-cena" name="poz_cena_brutto" value="<%= wart(pozCenaBrutto[i]) %>" placeholder="brutto"></td>
             <%# Wypelnia skrypt podgladu; pusta przy wierszu pustym i przy niepelnym. %>
             <td class="liczba" data-suma-linii></td>
@@ -342,7 +342,7 @@
           <td>Dostawa <span class="wyjasnienie">koszt z pola „Koszt dostawy”</span></td>
           <td></td>
           <td class="liczba" data-dostawa-netto>—</td>
-          <td class="liczba kol-vat" data-dostawa-stawka><%= wdtFormularza ? '0% — WDT' : `${stawkaVat}%` %></td>
+          <td class="liczba kol-vat" data-dostawa-stawka><%= wdtFormularza ? '0% — WDT' : (stawkaVat === 'zw' ? 'zw' : `${stawkaVat}%`) %></td>
           <td class="liczba" data-dostawa-brutto>—</td>
           <td class="liczba" data-dostawa-suma>—</td>
           <td></td>

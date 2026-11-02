@@ -25,9 +25,9 @@ import { METODY_OBOWIAZKOWE, METODA_ZDOLNOSCI, sprawdzProgramFakturowy } from '.
 import { createAtrapaInfaktu, createAtrapaVies } from '../../../deploy/proba/atrapy/infakt.mjs';
 import { createWysylkaKsef } from '../../../src/moduly/faktury/services/wysylka-ksef.js';
 import { createAutomatKsef } from '../../../src/moduly/faktury/services/ksef-automat.js';
-import { createCzuwaczKsef, NAJDLUZSZY_PRZEBIEG_MS, najdluzszyPrzebiegMs } from '../../../src/moduly/faktury/services/czuwacz-ksef.js';
+import { createCzuwaczKsef, najdluzszyPrzebiegMs } from '../../../src/moduly/faktury/services/czuwacz-ksef.js';
 import {
-  createCzuwaczArchiwumSprzedazy, NAJDLUZSZY_PRZEBIEG_ARCHIWUM_SPRZEDAZY_MS, najdluzszyPrzebiegArchiwumSprzedazyMs,
+  createCzuwaczArchiwumSprzedazy, najdluzszyPrzebiegArchiwumSprzedazyMs,
 } from '../../../src/moduly/faktury/services/czuwacz-archiwum-sprzedazy.js';
 import { dopiszKlientaZbiorczego } from './_klient-zbiorczy-pomocniki.js';
 
@@ -242,8 +242,8 @@ describe('PRZ-118.07 (5) budżet czuwaczy z program.opis.limity', () => {
     const { limity } = program.opis;
     // 50 × 31 s + 50 × 5 s; 30 min + 90 s + 31 s — inne niż stałe inFaktu, więc liczone naprawdę z limitów programu.
     expect(najdluzszyPrzebiegMs(limity)).toBe(50 * 31000 + 50 * 5000);
-    expect(najdluzszyPrzebiegMs(limity)).not.toBe(NAJDLUZSZY_PRZEBIEG_MS);
-    expect(najdluzszyPrzebiegArchiwumSprzedazyMs(limity)).not.toBe(NAJDLUZSZY_PRZEBIEG_ARCHIWUM_SPRZEDAZY_MS);
+    expect(najdluzszyPrzebiegMs(limity)).not.toBe(najdluzszyPrzebiegMs(programInfakt({}).opis.limity));
+    expect(najdluzszyPrzebiegArchiwumSprzedazyMs(limity)).not.toBe(najdluzszyPrzebiegArchiwumSprzedazyMs(programInfakt({}).opis.limity));
     expect(najdluzszyPrzebiegArchiwumSprzedazyMs(limity) - najdluzszyPrzebiegArchiwumSprzedazyMs({ ...limity, najdluzszaListaMs: 0, zadanieMs: 0 }))
       .toBe(90000 + 31000);
     expect(typeof createCzuwaczKsef({ db, program }).przebieg).toBe('function');

@@ -2,7 +2,7 @@ import { bladOperatora } from './bledy.js';
 import { tekst } from './dane-reczne.js';
 import { grosze } from './kwoty.js';
 import { normalizujNip, nipRozpoznany } from './klient-zbiorczy.js';
-import { czyNipUe } from './wdt.js';
+import { czyWdt } from './wdt.js';
 import { parsujKosztDostawy } from './koszt-dostawy.js';
 import { DOSTAWY, PLATNOSCI } from './nowe-zamowienie.js';
 import { parsujRabat } from './rabat.js';
@@ -337,7 +337,7 @@ export function wstawKlientaDoFormularza(formularz = {}, klient) {
  * ⚠️ „wysyłka gratis" jest tu wymieniona z premedytacją: to jedyne ustalenie, którego nie
  * widać w żadnym z wypełnionych pól po wstawieniu (kwota 0,00 wygląda jak pole niewypełnione).
  */
-export function opisKlienta(klient) {
+export function opisKlienta(klient, { zwolniona = false } = {}) {
   if (!klient) return '';
   const czesci = [klient.nazwa];
   if (klient.nip) czesci.push(`NIP ${klient.nip}`);
@@ -345,7 +345,8 @@ export function opisKlienta(klient) {
   // ma to zobaczyc ZANIM zacznie wpisywac ceny, dokladnie jak „wysylka gratis" nizej.
   // Pozycje z magazynu panel przelicza sam (rabat → ÷1,23, od 26.08 wieczor); dopisek
   // zostaje dla cen wpisywanych RECZNIE — te trzeba podac juz w netto.
-  if (czyNipUe(klient.nip)) czesci.push('WDT 0% — magazyn liczy ÷1,23 sam, ceny ręczne wpisuj w NETTO');
+  // PRZ-122.B07h: firma zwolniona z VAT (flagę liczy wołający: `sprzedawcaZwolniony`) — numer UE to nie WDT.
+  if (czyWdt(klient.nip, { zwolniona })) czesci.push('WDT 0% — magazyn liczy ÷1,23 sam, ceny ręczne wpisuj w NETTO');
   if (klient.b2b) czesci.push('B2B');
   if (klient.rabat_procent) czesci.push(`rabat ${klient.rabat_procent}%`);
   const koszt = String(klient.koszt_dostawy_brutto ?? '').trim();

@@ -267,7 +267,7 @@ function modelDziennika(z, r, req) {
     wykonania: wykonaniaReguly(z.db, r.id, { stan: filtr || null }).map((w) => ({
       kiedy: krotko(w.zakonczone_at ?? w.wykryte_at), zamowienie_id: w.zamowienie_id, numer: w.numer_zamowienia ?? w.zamowienie_id,
       adresat: w.adresat, stan: STANY[w.stan] ?? { etykieta: w.stan, klasa: 'znacznik--szary' },
-      powod: w.stan === 'zaplanowane' ? `wyjdzie ${krotko(w.nastepna_proba_at ?? w.termin_at)}${w.proby ? ` (próba ${w.proby + 1})` : ''}` : w.powod,
+      powod: w.stan === 'zaplanowane' ? `wyjdzie ${krotko(w.nastepna_proba_at ?? w.termin_at)}${w.powod_kod === 'okno_poprawek' ? ` — ${w.powod}` : w.proby ? ` (próba ${w.proby + 1})` : ''}` : w.powod,
     })),
     zdarzenieDostepne: z.zdarzenia.some((d) => d.klucz === r.zdarzenie),
     akcjaDostepna: z.akcje.some((a) => a.klucz === r.akcja),

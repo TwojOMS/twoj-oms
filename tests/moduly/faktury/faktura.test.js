@@ -13,12 +13,13 @@ import { mapujZamowienie } from '../../../src/domena/mapowanie.js';
 import { createFaktura } from '../../../src/moduly/faktury/services/faktura.js';
 import { stanFaktury } from '../../../src/domena/faktura-stan.js';
 import { zapiszStawkeDomyslna } from '../../../src/moduly/faktury/db/stawka-vat.js';
+import { zapiszFakturaDlaKazdego } from '../../../src/moduly/faktury/db/faktury-dla-kazdego.js';
 
 const zmapowane = (nad = {}) => ({
   zrodlo_id: 1301, numer: '1301',
   klient: { first_name: 'Jan', last_name: 'Kowalski', company: 'ACME', email: 'j@k.pl', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki' },
   dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null,
-  chce_fakture: 1, nip: '1000001201', kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00',
+  chce_fakture: 1, nip: '1200001200', kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00',
   status_woo: 'processing',
   oplacone_at: '2026-07-29T13:00:00', anulowane: 0, utworzone_at: '2026-07-29T13:19:52',
   pozycje: [{ nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2, cena_brutto: '61.50', vat: null }],
@@ -49,7 +50,7 @@ describe('faktura — nabywca z kartoteki', () => {
     const znajdz = vi.fn().mockResolvedValue(7);
     const { infakt, faktura, id } = zestaw({}, { znajdz });
     await faktura.wystaw(id);
-    expect(znajdz).toHaveBeenCalledWith('1000001201');
+    expect(znajdz).toHaveBeenCalledWith('1200001200');
     expect(infakt.zalozKlienta).not.toHaveBeenCalled();
     expect(infakt.wystaw.mock.calls[0][0].client_id).toBe(7);
   });
@@ -68,7 +69,7 @@ describe('faktura — nabywca z kartoteki', () => {
   it('NIP zamówienia trafia do zakładanego wpisu w kartotece', async () => {
     const { infakt, faktura, id } = zestaw();
     await faktura.wystaw(id);
-    expect(infakt.zalozKlienta.mock.calls[0][0].nip).toBe('1000001201');
+    expect(infakt.zalozKlienta.mock.calls[0][0].nip).toBe('1200001200');
   });
 
   // Bez NIP-u nie ma po czym szukac. Dopasowanie po nazwie podpieloby fakture
@@ -214,7 +215,7 @@ describe('faktura — kwoty', () => {
       billing: { first_name: 'Jan', last_name: 'Kowalski', company: 'ACME', email: 'j@k.pl' },
       shipping: {}, shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }],
       shipping_total: '0.00', shipping_tax: '0.00',
-      meta_data: [{ key: '_billing_faktura', value: '1' }, { key: '_billing_nip', value: '1000001201' }],
+      meta_data: [{ key: '_billing_faktura', value: '1' }, { key: '_billing_nip', value: '1200001200' }],
       ...nad,
     });
 
@@ -814,7 +815,7 @@ describe('faktura — awaria PRZED wystawieniem nie blokuje zamówienia', () => 
   // na ekranie ostrzezenie o dokumencie, o ktory nigdy nie poproszono.
   it('duplikat NIP-u w kartotece → zwolnienie i ponowienie po naprawie w inFakcie', async () => {
     const znajdz = vi.fn()
-      .mockRejectedValueOnce(bezStatusu('W kartotece inFaktu są 2 wpisy z NIP-em 1000001201 — panel nie zgadnie, który jest nabywcą.'))
+      .mockRejectedValueOnce(bezStatusu('W kartotece inFaktu są 2 wpisy z NIP-em 1200001200 — panel nie zgadnie, który jest nabywcą.'))
       .mockResolvedValue(7);
     const { db, infakt, faktura, id } = zestaw({}, { znajdz });
 
@@ -901,6 +902,45 @@ describe('faktura — odmowy przed dotknięciem inFaktu', () => {
     const { infakt, faktura, id } = zestaw({ chce_fakture: 0 });
     await expect(faktura.wystaw(id)).rejects.toThrow(/nie prosił/i);
     expect(infakt.wystaw).not.toHaveBeenCalled();
+  });
+
+  // PRZ-126.F02: opcja firmy „faktura także bez prośby klienta” czytana z bazy przy KAŻDYM wystawieniu.
+  it('bez żądania i opcja wyłączona (brak wpisu i „nie”) → ta sama odmowa operatora, program i tabela faktur nietknięte', async () => {
+    for (const wpis of [null, 'nie']) {
+      const { infakt, db, faktura, id } = zestaw({ chce_fakture: 0, nip: null });
+      if (wpis) zapiszFakturaDlaKazdego(db, false);
+      const e = await faktura.wystaw(id).catch((x) => x);
+      expect(e.message).toBe('Klient nie prosił o fakturę.');
+      expect(e.dlaOperatora).toBe(true);
+      expect(infakt.wystaw).not.toHaveBeenCalled();
+      expect(infakt.znajdzKlientaPoNip).not.toHaveBeenCalled();
+      expect(infakt.zalozKlienta).not.toHaveBeenCalled();
+      expect(db.prepare('SELECT COUNT(*) AS n FROM faktury').get().n).toBe(0);
+    }
+  });
+
+  it('bez żądania i opcja włączona → faktura wystawiona (jeden dokument w programie i wiersz w tabeli)', async () => {
+    const { infakt, db, faktura, id } = zestaw({ chce_fakture: 0, nip: null });
+    zapiszFakturaDlaKazdego(db, true);
+    await faktura.wystaw(id);
+    expect(infakt.wystaw).toHaveBeenCalledTimes(1);
+    expect(wiersz(db, id)?.numer).toBe('FV/1/2026');
+  });
+
+  it('opcja wyłączona po włączeniu → następne wystawienie znów odmawia (bez pamięci podręcznej)', async () => {
+    const { infakt, db, faktura, id } = zestaw({ chce_fakture: 0, nip: null });
+    zapiszFakturaDlaKazdego(db, true);
+    zapiszFakturaDlaKazdego(db, false);
+    await expect(faktura.wystaw(id)).rejects.toThrow('Klient nie prosił o fakturę.');
+    expect(infakt.wystaw).not.toHaveBeenCalled();
+  });
+
+  it('opcja włączona nie zdejmuje odmowy zamówieniu ANULOWANEMU', async () => {
+    const { infakt, db, faktura, id } = zestaw({ chce_fakture: 0, nip: null, anulowane: 1 });
+    zapiszFakturaDlaKazdego(db, true);
+    await expect(faktura.wystaw(id)).rejects.toThrow(/anulowane/i);
+    expect(infakt.wystaw).not.toHaveBeenCalled();
+    expect(wiersz(db, id)).toBeUndefined();
   });
 
   // Decyzja projektowa, taka sama jak przy nadaniu: to sklep B2B, faktura z terminem

@@ -74,7 +74,7 @@ const bazowe = {
 describe('klient KSeF — uwierzytelnienie', () => {
   it('przechodzi challenge → ksef-token → status → redeem i oddaje pare tokenow', async () => {
     const { fetchImpl, wywolania } = atrapa(bazowe);
-    const klient = createKsefClient({ token: 'T', nip: '1000001193', fetchImpl });
+    const klient = createKsefClient({ token: 'T', nip: '1200001192', fetchImpl });
     const wynik = await klient.zaloguj();
 
     expect(wynik).toEqual({
@@ -91,7 +91,7 @@ describe('klient KSeF — uwierzytelnienie', () => {
 
   it('kazde zadanie niesie naglowek problem-details', async () => {
     const { fetchImpl, wywolania } = atrapa(bazowe);
-    await createKsefClient({ token: 'T', nip: '1000001193', fetchImpl }).zaloguj();
+    await createKsefClient({ token: 'T', nip: '1200001192', fetchImpl }).zaloguj();
     for (const w of wywolania) expect(w.naglowki['X-Error-Format']).toBe('problem-details');
   });
 
@@ -100,7 +100,7 @@ describe('klient KSeF — uwierzytelnienie', () => {
   // na pytanie, czy jednorazowa para zostala juz wydana.
   it('kazde zadanie ma wlasny, twardy limit czasu', async () => {
     const { fetchImpl, wywolania } = atrapa(bazowe);
-    await createKsefClient({ token: 'T', nip: '1000001193', fetchImpl }).zaloguj();
+    await createKsefClient({ token: 'T', nip: '1200001192', fetchImpl }).zaloguj();
     expect(wywolania).toHaveLength(5);
     for (const w of wywolania) expect(w.sygnal).toBeInstanceOf(AbortSignal);
     // Wlasny sygnal na kazde zadanie — wspolny starzalby sie razem z procesem.
@@ -109,7 +109,7 @@ describe('klient KSeF — uwierzytelnienie', () => {
 
   it('status i redeem ida na TOKEN OPERACJI, nie na token KSeF', async () => {
     const { fetchImpl, wywolania } = atrapa(bazowe);
-    await createKsefClient({ token: 'T', nip: '1000001193', fetchImpl }).zaloguj();
+    await createKsefClient({ token: 'T', nip: '1200001192', fetchImpl }).zaloguj();
     const stan = wywolania.find((w) => w.url.endsWith('/auth/REF-1'));
     const redeem = wywolania.find((w) => w.url.includes('token/redeem'));
     expect(stan.naglowki.Authorization).toBe('Bearer OP-TOK');
@@ -120,7 +120,7 @@ describe('klient KSeF — uwierzytelnienie', () => {
     const fetchImpl = async () => ({
       ok: false, status: 401, json: async () => ({ detail: 'Nieprawidlowy token' }), text: async () => '',
     });
-    const klient = createKsefClient({ token: 'SEKRET-TOKEN-123', nip: '1000001193', fetchImpl });
+    const klient = createKsefClient({ token: 'SEKRET-TOKEN-123', nip: '1200001192', fetchImpl });
     const e = await zlapBlad(klient.zaloguj());
 
     expect(e.message).toContain('KSeF odmówił przy pobieraniu kluczy MF: HTTP 401');
@@ -147,7 +147,7 @@ describe('klient KSeF — uwierzytelnienie', () => {
     const opoznienia = [];
     const klient = createKsefClient({
       token: 'T',
-      nip: '1000001193',
+      nip: '1200001192',
       fetchImpl: async (url, opcje) => {
         if (url.endsWith('/auth/REF-1')) {
           ile += 1;
@@ -174,7 +174,7 @@ describe('klient KSeF — uwierzytelnienie', () => {
     const opoznienia = [];
     const klient = createKsefClient({
       token: 'SEKRET-TOKEN-123',
-      nip: '1000001193',
+      nip: '1200001192',
       fetchImpl,
       spij: async (ms) => { opoznienia.push(ms); },
     });
@@ -202,7 +202,7 @@ describe('klient KSeF — uwierzytelnienie', () => {
   it('gdy stan jest NIEZNANY (pusta odpowiedz), ODMAWIA zamiast palic redeem', async () => {
     const { fetchImpl, wywolania } = atrapa({ ...bazowe, 'auth/REF-1': { body: null } });
     const klient = createKsefClient({
-      token: 'SEKRET-TOKEN-123', nip: '1000001193', fetchImpl, spij: async () => {},
+      token: 'SEKRET-TOKEN-123', nip: '1200001192', fetchImpl, spij: async () => {},
     });
 
     const e = await zlapBlad(klient.zaloguj());
@@ -217,7 +217,7 @@ describe('klient KSeF — uwierzytelnienie', () => {
   it('gdy stan przychodzi bez pola status, ODMAWIA zamiast palic redeem', async () => {
     const { fetchImpl, wywolania } = atrapa({ ...bazowe, 'auth/REF-1': { body: {} } });
     const klient = createKsefClient({
-      token: 'T', nip: '1000001193', fetchImpl, spij: async () => {},
+      token: 'T', nip: '1200001192', fetchImpl, spij: async () => {},
     });
 
     const e = await zlapBlad(klient.zaloguj());
@@ -235,7 +235,7 @@ describe('klient KSeF — uwierzytelnienie', () => {
       ...bazowe,
       'auth/challenge': { body: { challenge: '2026-CR-9', timestampMs: 1699999999123 } },
     });
-    await createKsefClient({ token: 'SEKRET-TOKEN-123', nip: '1000001193', fetchImpl }).zaloguj();
+    await createKsefClient({ token: 'SEKRET-TOKEN-123', nip: '1200001192', fetchImpl }).zaloguj();
 
     expect(zaszyfrujToken).toHaveBeenCalledTimes(1);
     const argumenty = zaszyfrujToken.mock.calls[0][0];
@@ -249,7 +249,7 @@ describe('klient KSeF — uwierzytelnienie', () => {
         body: { accessToken: { token: 'ACC-2', validUntil: '2026-08-13T09:00:00Z' } },
       },
     });
-    const klient = createKsefClient({ token: 'T', nip: '1000001193', fetchImpl });
+    const klient = createKsefClient({ token: 'T', nip: '1200001192', fetchImpl });
     const wynik = await klient.odswiez('REF-TOKEN');
 
     expect(wynik).toEqual({ accessToken: 'ACC-2', accessDo: '2026-08-13T09:00:00Z' });
@@ -261,7 +261,7 @@ describe('klient KSeF — uwierzytelnienie', () => {
 
   it('zerwane polaczenie to osobny komunikat i tez bez poswiadczen', async () => {
     const fetchImpl = async () => { throw new Error('ECONNRESET'); };
-    const klient = createKsefClient({ token: 'SEKRET-TOKEN-123', nip: '1000001193', fetchImpl });
+    const klient = createKsefClient({ token: 'SEKRET-TOKEN-123', nip: '1200001192', fetchImpl });
     const e = await zlapBlad(klient.zaloguj());
 
     expect(e.message).toContain('KSeF nieosiągalny przy pobieraniu kluczy MF: ECONNRESET');
@@ -271,12 +271,12 @@ describe('klient KSeF — uwierzytelnienie', () => {
 
   it('NIP i challenge jada w ciele, a token KSeF wylacznie zaszyfrowany', async () => {
     const { fetchImpl, wywolania } = atrapa(bazowe);
-    await createKsefClient({ token: 'SEKRET-TOKEN-123', nip: '1000001193', fetchImpl }).zaloguj();
+    await createKsefClient({ token: 'SEKRET-TOKEN-123', nip: '1200001192', fetchImpl }).zaloguj();
     const init = wywolania.find((w) => w.url.includes('auth/ksef-token'));
     const cialo = JSON.parse(init.cialo);
 
     expect(cialo.challenge).toBe('2026-CR-1');
-    expect(cialo.contextIdentifier).toEqual({ type: 'Nip', value: '1000001193' });
+    expect(cialo.contextIdentifier).toEqual({ type: 'Nip', value: '1200001192' });
     expect(init.cialo).not.toContain('SEKRET-TOKEN-123');
     expect(typeof cialo.encryptedToken).toBe('string');
     expect(cialo.encryptedToken.length).toBeGreaterThan(100);
@@ -291,7 +291,7 @@ describe('klient KSeF — uwierzytelnienie', () => {
 describe('klient KSeF — odpowiedzi o niespodziewanym ksztalcie', () => {
   it('pusta lista certyfikatow to czytelna odmowa, nie TypeError', async () => {
     const { fetchImpl, wywolania } = atrapa({ ...bazowe, 'security/public-key-certificates': { body: [] } });
-    const klient = createKsefClient({ token: 'SEKRET-TOKEN-123', nip: '1000001193', fetchImpl });
+    const klient = createKsefClient({ token: 'SEKRET-TOKEN-123', nip: '1200001192', fetchImpl });
     const e = await zlapBlad(klient.zaloguj());
 
     expect(e.message).toContain('KSeF nie oddał certyfikatu klucza publicznego');
@@ -306,7 +306,7 @@ describe('klient KSeF — odpowiedzi o niespodziewanym ksztalcie', () => {
       ...bazowe,
       'auth/ksef-token': { status: 202, body: { referenceNumber: 'REF-1' } },
     });
-    const klient = createKsefClient({ token: 'SEKRET-TOKEN-123', nip: '1000001193', fetchImpl });
+    const klient = createKsefClient({ token: 'SEKRET-TOKEN-123', nip: '1200001192', fetchImpl });
     const e = await zlapBlad(klient.zaloguj());
 
     expect(e.message).toContain('KSeF nie oddał kompletu danych uwierzytelnienia');
@@ -323,7 +323,7 @@ describe('klient KSeF — odpowiedzi o niespodziewanym ksztalcie', () => {
         body: { authenticationToken: { token: 'OP-TOK', validUntil: '2026-08-12T23:00:00Z' } },
       },
     });
-    const e = await zlapBlad(createKsefClient({ token: 'T', nip: '1000001193', fetchImpl }).zaloguj());
+    const e = await zlapBlad(createKsefClient({ token: 'T', nip: '1200001192', fetchImpl }).zaloguj());
 
     expect(e.message).toContain('KSeF nie oddał kompletu danych uwierzytelnienia');
     // Bez numeru referencyjnego adres stanu bylby `/auth/undefined` — takie zadanie nie leci.
@@ -335,7 +335,7 @@ describe('klient KSeF — odpowiedzi o niespodziewanym ksztalcie', () => {
       ...bazowe,
       'auth/token/redeem': { body: { accessToken: { validUntil: '2026-08-12T21:00:00Z' } } },
     });
-    const klient = createKsefClient({ token: 'SEKRET-TOKEN-123', nip: '1000001193', fetchImpl });
+    const klient = createKsefClient({ token: 'SEKRET-TOKEN-123', nip: '1200001192', fetchImpl });
     const e = await zlapBlad(klient.zaloguj());
 
     expect(e.message).toContain('KSeF oddał niekompletną parę tokenów');
@@ -350,14 +350,14 @@ describe('klient KSeF — odpowiedzi o niespodziewanym ksztalcie', () => {
       ...bazowe,
       'auth/token/redeem': { body: { accessToken: { token: 'ACC', validUntil: '2026-08-12T21:00:00Z' } } },
     });
-    const e = await zlapBlad(createKsefClient({ token: 'T', nip: '1000001193', fetchImpl }).zaloguj());
+    const e = await zlapBlad(createKsefClient({ token: 'T', nip: '1200001192', fetchImpl }).zaloguj());
 
     expect(e.message).toContain('KSeF oddał niekompletną parę tokenów');
   });
 
   it('odswiez() bez access tokena w odpowiedzi to czytelna odmowa', async () => {
     const { fetchImpl } = atrapa({ 'auth/token/refresh': { body: {} } });
-    const klient = createKsefClient({ token: 'SEKRET-TOKEN-123', nip: '1000001193', fetchImpl });
+    const klient = createKsefClient({ token: 'SEKRET-TOKEN-123', nip: '1200001192', fetchImpl });
     const e = await zlapBlad(klient.odswiez('REF-TOKEN'));
 
     expect(e.message).toContain('KSeF nie oddał nowego access tokena');
@@ -373,7 +373,7 @@ describe('klient KSeF — odpowiedzi o niespodziewanym ksztalcie', () => {
   // zadanie do MF WYCHODZI, z `encryptedToken` zaszyfrowanym z ladunku `TOKEN|undefined`.
   it('brak challenge w odpowiedzi /auth/challenge (null) to czytelna odmowa, nie TypeError', async () => {
     const { fetchImpl, wywolania } = atrapa({ ...bazowe, 'auth/challenge': { body: null } });
-    const klient = createKsefClient({ token: 'SEKRET-TOKEN-123', nip: '1000001193', fetchImpl });
+    const klient = createKsefClient({ token: 'SEKRET-TOKEN-123', nip: '1200001192', fetchImpl });
     const e = await zlapBlad(klient.zaloguj());
 
     expect(e.message).not.toContain('SEKRET-TOKEN-123');
@@ -385,7 +385,7 @@ describe('klient KSeF — odpowiedzi o niespodziewanym ksztalcie', () => {
 
   it('challenge bez timestampMs ({}) to czytelna odmowa, nie zadanie z niepelnym ladunkiem', async () => {
     const { fetchImpl, wywolania } = atrapa({ ...bazowe, 'auth/challenge': { body: {} } });
-    const klient = createKsefClient({ token: 'SEKRET-TOKEN-123', nip: '1000001193', fetchImpl });
+    const klient = createKsefClient({ token: 'SEKRET-TOKEN-123', nip: '1200001192', fetchImpl });
     const e = await zlapBlad(klient.zaloguj());
 
     expect(e.message).not.toContain('SEKRET-TOKEN-123');

@@ -6,13 +6,15 @@ import { STAWKA_VAT, czyStawkaVat } from '../../../domena/vat.js';
 
 const KLUCZ = 'vat.stawka_domyslna';
 
-export function czytajStawkeDomyslna(db) {
+// PRZ-122.B07a: „zw” jako domyślna wyłącznie z flagą `{ zw: true }` (program wbudowany). Bez flagi zapisane „zw”
+// czyta się jak każdy wpis spoza listy — STAWKA_VAT — więc przy inFakcie nie dojdzie do faktury.
+export function czytajStawkeDomyslna(db, opcje) {
   const w = db?.prepare('SELECT wartosc FROM ustawienia WHERE klucz = ?').get(KLUCZ)?.wartosc;
-  return czyStawkaVat(w) ? String(w).trim() : STAWKA_VAT;
+  return czyStawkaVat(w, opcje) ? String(w).trim() : STAWKA_VAT;
 }
 
-export function zapiszStawkeDomyslna(db, stawka) {
-  if (!czyStawkaVat(stawka)) throw new Error(`Stawka VAT spoza listy: „${stawka}”.`);
+export function zapiszStawkeDomyslna(db, stawka, opcje) {
+  if (!czyStawkaVat(stawka, opcje)) throw new Error(`Stawka VAT spoza listy: „${stawka}”.`);
   db.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
     ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`)
     .run(KLUCZ, String(stawka).trim(), new Date().toISOString());

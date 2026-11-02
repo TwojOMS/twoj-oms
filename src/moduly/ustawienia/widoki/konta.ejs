@@ -16,6 +16,8 @@
   roli (`ekranyRoli`). Ptaszek tutaj, ktorego trasa i tak by zignorowala, wygladalby jak
   dzialajace pole i nie byłby — uprawnienia poprawia sie PO zalozeniu, w sekcji konta ponizej.
 %>
+<% const tylkoLogowania = nawigacja?.kontekst?.aktywnaZakladka === 'logowania'; %>
+<% if (!tylkoLogowania) { %>
 <h1>Użytkownicy i uprawnienia</h1>
 
 <% if (zapisano) { %>
@@ -182,6 +184,9 @@
   </div>
 <% }); %>
 
+<% } %>
+<% if (tylkoLogowania) { %>
+<h1>Historia logowań</h1>
 <%# ——— DZIENNIK LOGOWAN — NA TYM SAMYM EKRANIE (nie osobno): administrator, ktory podejrzewa %>
 <%# wlamanie, ma zobaczyc naraz, kto ma dostep (tabela wyzej) i kto probowal go zdobyc. %>
 <div class="ust-sekcja">
@@ -211,3 +216,5 @@
     </div>
   <% } %>
 </div>
+
+<% } %>

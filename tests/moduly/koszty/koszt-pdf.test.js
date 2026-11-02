@@ -79,7 +79,7 @@ const wiersz = {
   brutto: '123.00',
   waluta: 'PLN',
   rodzaj: 'Vat',
-  ksef_number: '1000001193-20260605-0100AB-CD',
+  ksef_number: '1200001192-20260605-0100AB-CD',
 };
 
 const pozycja = (n = {}) => ({
@@ -110,7 +110,7 @@ describe('PDF wizualizacji kosztu', () => {
 
   gdyJestPdftotext('niesie numer KSeF, numer dokumentu, sprzedawce i kwoty', async () => {
     const tekst = tekstZPdf(await zbudujKosztPdf({ wiersz, pozycje: [] }));
-    for (const oczekiwane of ['1000001193-20260605-0100AB-CD', 'FV/2026/06/12', '5252674798', '123,00']) {
+    for (const oczekiwane of ['1200001192-20260605-0100AB-CD', 'FV/2026/06/12', '5252674798', '123,00']) {
       expect(tekst).toContain(oczekiwane);
     }
   });
@@ -432,7 +432,7 @@ describe('PDF wizualizacji kosztu — komplet elementów art. 106e', () => {
 // w walucie dokumentu (patrz `czyPLN` w domain/koszt-metadane.js). Blok „Razem" drukował
 // wszystkie trzy kwoty z tą samą walutą — czyli podawał VAT w euro, którego nikt nie policzył.
 const XML_EUR = `<Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
-  <Podmiot1><DaneIdentyfikacyjne><NIP>1000001170</NIP><Nazwa>Allegro sp. z o.o.</Nazwa></DaneIdentyfikacyjne></Podmiot1>
+  <Podmiot1><DaneIdentyfikacyjne><NIP>1200001163</NIP><Nazwa>Allegro sp. z o.o.</Nazwa></DaneIdentyfikacyjne></Podmiot1>
   <Podmiot2><DaneIdentyfikacyjne><NIP>1234563218</NIP><Nazwa>Lumina Marek Zywiecki</Nazwa></DaneIdentyfikacyjne></Podmiot2>
   <Fa><KodWaluty>EUR</KodWaluty><P_1>2026-08-01</P_1><P_2>EUR/2026/8/1</P_2><P_6>2026-08-01</P_6>
   <P_13_1>9.60</P_13_1><P_14_1>2.21</P_14_1><P_14_1W>9.44</P_14_1W><P_15>11.81</P_15>

@@ -41,7 +41,7 @@ function liczba(surowe, opis, numerWpisu) {
  * recznie w archiwalnym zamowieniu udawalyby numer zagraniczny, bo kazde zaczyna sie od
  * dwoch liter. Zamkniety slownik znaczy, ze prefiks jest KODEM KRAJU albo nie ma go wcale.
  */
-const KODY_KRAJOW_UE = new Set([
+export const KODY_KRAJOW_UE = new Set([
   'AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL', 'ES', 'FI', 'FR', 'HR', 'HU',
   'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PT', 'RO', 'SE', 'SI', 'SK', 'XI',
 ]);

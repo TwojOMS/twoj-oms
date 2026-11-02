@@ -5,13 +5,14 @@
 <% const r = locals.reguly; const pokazReguly = Boolean(r && (r.dostepne || r.lista.length)); %>
 <%# PRZ-108.11: plakietka BETA obok <h1>, nie w nim — tytuł, okruszek i <title> zostają „Automatyzacje”. %>
 <div class="tytul-z-plakietka"><h1>Automatyzacje</h1><span class="menu-ustawien-beta">BETA</span></div>
+<% const systemowe = nawigacja?.kontekst?.aktywnaZakladka === 'systemowe'; %>
+<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
+<% if (!systemowe) { %>
 <% if (pokazReguly) { %>
 <p>Reguły „gdy … to …”: OMS sam wykonuje akcję po zdarzeniu, które wskażesz. Reguła działa tylko dla zamówień z zaznaczonych kanałów i dopiero od chwili włączenia — zamówień sprzed włączenia nie rusza.</p>
 <% } else { %>
 <p>Rzeczy, które OMS robi sam — bez kliknięcia, o ustalonej porze albo po zdarzeniu. Tu je włączasz i ustawiasz.</p>
 <% } %>
-
-<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 
 <% if (pokazReguly) { %>
 <% if (!r.pocztaGotowa) { %>
@@ -59,9 +60,13 @@
 </section>
 <% } %>
 
+<% } %>
+<% if (systemowe) { %>
 <h2 class="aut-grupa">Automaty systemowe</h2>
 <%- include('_automat-ksef.ejs', { automat, konsumenckie }) %>
 <section class="ust-sekcja" id="autoodpowiedz">
   <h2>Autoodpowiedź Allegro</h2>
   <p>Formułka wysyłana kupującym z Allegro, którzy piszą poza godzinami pracy. <strong><%= autoodpowiedz.wlaczona ? 'Włączona.' : 'Wyłączona.' %></strong> Ustawisz ją w <a href="/ustawienia/wiadomosci-i-automatyzacje">Ustawienia → Autoodpowiedź Allegro</a>.</p>
 </section>
+
+<% } %>

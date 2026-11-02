@@ -30,7 +30,8 @@ import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 // naprawia, a odbiera możliwość sprawdzenia, skąd wzięły się dane na fakturze sprzed pół
 // roku. Ta sama zasada, co przy firmach w słowniku kosztów (db/firmy-reczne.js).
 
-export function registerKlienciRoutes(app, { db, gus = null }) {
+// PRZ-122.B07h: `zwolnionaFirma` — firma zwolniona z VAT (ta sama reguła co serwer); numer UE klienta to wtedy nie WDT.
+export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = () => false }) {
   const ktoKlikal = (req) => req.uzytkownik ?? 'panel';
 
   // ⚠️ `otwarty` ROZSTRZYGA, CZY FORMULARZ W OGÓLE WYCHODZI (prośba właściciela: „na górze
@@ -51,7 +52,7 @@ export function registerKlienciRoutes(app, { db, gus = null }) {
       otwarty,
       // ⚠️ RAZEM Z NIEAKTYWNYMI — to jest jedyny ekran, na którym wygaszony klient ma być
       // widoczny. Gdyby i tu go nie było, „wygaszenie" byłoby nieodwracalne przez panel.
-      klienci: wszyscyKlienci(db, { tylkoAktywni: false }).map((k) => ({ ...k, opis: opisKlienta(k) })),
+      klienci: wszyscyKlienci(db, { tylkoAktywni: false }).map((k) => ({ ...k, opis: opisKlienta(k, { zwolniona: zwolnionaFirma() }) })),
       formularz,
       edytowany,
       blad,
@@ -94,7 +95,7 @@ export function registerKlienciRoutes(app, { db, gus = null }) {
     return reply.view('klient.ejs', {
       title: `Klient: ${klient.nazwa}`,
       klient,
-      opis: opisKlienta(klient),
+      opis: opisKlienta(klient, { zwolniona: zwolnionaFirma() }),
       zamowienia,
       podsumowanie: podsumowanieHistorii(zamowienia),
       // ⚠️ STATUS LICZY DOMENA, nie widok — ta sama funkcja, co na liście i na karcie
@@ -234,7 +235,7 @@ export function registerKlienciRoutes(app, { db, gus = null }) {
     dopiszLog(db, null, {
       akcja: 'klient.zapis',
       wynik: `Ręcznie (${ktoKlikal(req)}): ${edytowany ? 'poprawiono' : 'dopisano'} `
-        + `stałego klienta „${dane.nazwa}" (${dane.klucz}) — ${opisKlienta(dane)}.`,
+        + `stałego klienta „${dane.nazwa}" (${dane.klucz}) — ${opisKlienta(dane, { zwolniona: zwolnionaFirma() })}.`,
     });
     // ⚠️ POPRAWKA WRACA NA KARTĘ TEGO KLIENTA, dopisanie — na listę. Człowiek wchodzi
     // w edycję z karty (przycisk „Edytuj" stoi tam i na liście), więc odesłanie go na

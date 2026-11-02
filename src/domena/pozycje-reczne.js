@@ -142,14 +142,15 @@ function parsujNazwe(surowa) {
 // odmowa — pole jest listą, więc obca wartość przyszła spreparowana, a cicha domyślna zmieniłaby fakturę.
 // Netto przelicza się stawką wiersza, a przy nabywcy z UE (`wdt`) stawką 0 — tak jak policzy to dokument.
 // Zapisana zostaje stawka WYBRANA: poprawiony później NIP na krajowy ma dać fakturę z tą stawką, nie z 0.
-export function parsujNowaPozycje(body, { stawkaDomyslna = STAWKA_VAT, wdt = false } = {}) {
+// PRZ-122.B07a: `zw: true` (program wbudowany) dopuszcza stawkę „zw” — netto = brutto; bez flagi „zw” to odmowa.
+export function parsujNowaPozycje(body, { stawkaDomyslna = STAWKA_VAT, wdt = false, zw = false } = {}) {
   const nazwa = parsujNazwe(body?.nazwa);
   const ilosc = parsujIlosc(body?.ilosc);
-  const vat = parsujStawke(body?.vat, stawkaDomyslna);
+  const vat = parsujStawke(body?.vat, stawkaDomyslna, { zw });
   // Brutto wygrywa, gdy podane: to ono jest wartoscia PRZECHOWYWANA, a netto tylko
   // wygodniejszym sposobem jej podania (domain/vat.js: bruttoZNetto).
   const wprost = String(body?.cena_brutto ?? '').trim();
-  const zNetto = wprost === '' ? bruttoZNetto(body?.cena_netto, wdt ? '0' : vat) : null;
+  const zNetto = wprost === '' ? bruttoZNetto(body?.cena_netto, wdt ? '0' : vat, { zw }) : null;
   const cenaBrutto = parsujCeneBrutto(wprost !== '' ? wprost : zNetto);
   return {
     nazwa,
@@ -161,11 +162,16 @@ export function parsujNowaPozycje(body, { stawkaDomyslna = STAWKA_VAT, wdt = fal
   };
 }
 
-/** Stawka z pola formularza: pusta → domyślna; spoza listy → odmowa dla operatora (PRZ-105). */
-export function parsujStawke(surowa, stawkaDomyslna = STAWKA_VAT) {
+/**
+ * Stawka z pola formularza: pusta → domyślna; spoza listy → odmowa dla operatora (PRZ-105).
+ * `{ zw: true }` (PRZ-122.B07a) dopuszcza „zw”; zdanie odmowy wymienia ją wtedy obok stawek liczbowych.
+ */
+export function parsujStawke(surowa, stawkaDomyslna = STAWKA_VAT, { zw = false } = {}) {
   const s = String(surowa ?? '').trim();
   if (s === '') return String(stawkaDomyslna);
-  if (!czyStawkaVat(s)) throw bladOperatora(`Nieznana stawka VAT „${s}” — wybierz ${STAWKI_VAT.join(', ')}%.`);
+  if (!czyStawkaVat(s, { zw })) {
+    throw bladOperatora(`Nieznana stawka VAT „${s}” — wybierz ${STAWKI_VAT.join(', ')}%${zw === true ? ' albo zw' : ''}.`);
+  }
   return s;
 }
 

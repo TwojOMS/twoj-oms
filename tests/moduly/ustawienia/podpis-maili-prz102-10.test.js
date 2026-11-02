@@ -24,8 +24,8 @@ import { modulUstawienia } from '../../../src/moduly/ustawienia/modul.ts';
 import { modulMarketing } from '../../../src/moduly/marketing/modul.ts';
 import { modulZdrowie } from '../../../src/moduly/zdrowie/modul.ts';
 
-const EKRAN = '/ustawienia/integracje/poczta';
-const ZAPIS = `${EKRAN}/podpis`;
+const EKRAN = '/ustawienia/komunikacja/podpis';
+const ZAPIS = '/ustawienia/integracje/poczta/podpis';
 const ENV_SMTP = { SMTP_HOST: 'smtp.pracownia.example.test', SMTP_USER: 'sklep@pracownia.example.test', SMTP_PASS: 'zmyslone-102-10' };
 const MARKA = 'Pracownia Półcień';
 const STOPKA = 'ul. Lipowa 7, 00-001 Warszawa\nhttps://pracownia.example.test';

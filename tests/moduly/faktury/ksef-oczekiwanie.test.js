@@ -173,6 +173,70 @@ describe('czekaNaKsef — jedna definicja dla czuwacza i dla paska spraw', () =>
   });
 });
 
+// PRZ-126.F03: „faktura do każdego zamówienia". Panel może wystawić fakturę także wtedy, gdy klient
+// o nią nie prosił — a dokument, który panel wysłał do KSeF, MUSI dostać numer, inaczej zakładka
+// „FAKTURY" pokazuje „brak KSeF" na zawsze. Żądanie (`chce_fakture = 1`) zostaje WYŁĄCZNIE w gałęzi
+// Allegro: tam numer służy do wysyłki na Allegro, która i tak jest tylko na żądanie kupującego.
+describe('PRZ-126.F03 — gałąź „zlecił panel" nie pyta o żądanie faktury', () => {
+  const czeka = (db, id) => czekaNaKsef(pobierzZamowienie(db, id));
+  const zSqla = (db) => db.prepare(`
+    SELECT f.zamowienie_id, z.sklep, ${KOLUMNA_ZLECONA_Z_PANELU_SQL}
+    FROM faktury f
+    JOIN zamowienia z ON z.id = f.zamowienie_id
+    WHERE ${warunekCzekaNaKsefSql()}
+  `).all().filter(czyWierszWZakresieKsef).map((w) => w.zamowienie_id);
+
+  it('zamówienie sklepowe BEZ żądania, faktura zlecona do KSeF przez panel — czeka i jest w wyniku SQL', () => {
+    const db = openOmsDb(':memory:');
+    const id = zamowienieZFaktura(db, {
+      zamowienie: { sklep: 'polcien', chce_fakture: 0 }, wyslanaZPanelu: true,
+    });
+    expect(czeka(db, id)).toBe(true);
+    expect(zSqla(db)).toEqual([id]);
+    db.close();
+  });
+
+  it('zamówienie Allegro BEZ żądania, zlecone przez panel — czeka (gałąź panelu)', () => {
+    const db = openOmsDb(':memory:');
+    const id = zamowienieZFaktura(db, {
+      zamowienie: { sklep: 'allegro_polcien', chce_fakture: 0 }, wyslanaZPanelu: true,
+    });
+    expect(czeka(db, id)).toBe(true);
+    expect(zSqla(db)).toEqual([id]);
+    db.close();
+  });
+
+  it('zamówienie Allegro BEZ żądania i BEZ zlecenia — nie czeka, jak dotąd', () => {
+    const db = openOmsDb(':memory:');
+    const id = zamowienieZFaktura(db, { zamowienie: { sklep: 'allegro_polcien', chce_fakture: 0 } });
+    expect(czeka(db, id)).toBe(false);
+    expect(zSqla(db)).toEqual([]);
+    db.close();
+  });
+
+  it('zamówienie sklepowe BEZ żądania i BEZ zlecenia — nie czeka', () => {
+    const db = openOmsDb(':memory:');
+    const id = zamowienieZFaktura(db, { zamowienie: { sklep: 'polcien', chce_fakture: 0 } });
+    expect(czeka(db, id)).toBe(false);
+    expect(zSqla(db)).toEqual([]);
+    db.close();
+  });
+
+  it('część wspólna obowiązuje dalej: bez żądania, zlecona, ale anulowana albo z numerem KSeF — nie czeka', () => {
+    const db = openOmsDb(':memory:');
+    const anulowane = zamowienieZFaktura(db, {
+      zamowienie: { sklep: 'polcien', chce_fakture: 0, anulowane: 1 }, wyslanaZPanelu: true,
+    });
+    const zNumerem = zamowienieZFaktura(db, {
+      zamowienie: { sklep: 'polcien', chce_fakture: 0 }, faktura: { ksef_numer: 'KS-7' }, wyslanaZPanelu: true,
+    });
+    expect(czeka(db, anulowane)).toBe(false);
+    expect(czeka(db, zNumerem)).toBe(false);
+    expect(zSqla(db)).toEqual([]);
+    db.close();
+  });
+});
+
 // ⚠️⚠️ TO JEST TEST, DLA KTÓREGO POWSTAŁ TEN MODUŁ. Warunek SQL (czuwacz) i predykat
 // domeny (pasek spraw) MUSZĄ dawać tę samą odpowiedź — inaczej rozjadą się przy pierwszej
 // zmianie reguły i panel znowu zacznie meldować blokadę przy dokumencie, o który nigdy nie
@@ -217,6 +281,12 @@ describe('warunek SQL i predykat domeny odpowiadają IDENTYCZNIE', () => {
       { zamowienie: { sklep: 'szkicownia', anulowane: 1 }, wyslanaZPanelu: true },
       { zamowienie: { sklep: 'szkicownia', chce_fakture: 0 }, wyslanaZPanelu: true },
       { zamowienie: { sklep: 'szkicownia' }, faktura: { numer: null }, wyslanaZPanelu: true },
+      // PRZ-126.F03: bez żądania faktury — gałąź Allegro dalej go wymaga, gałąź panelu już nie.
+      { zamowienie: { sklep: 'allegro_polcien', chce_fakture: 0 }, wyslanaZPanelu: true },
+      { zamowienie: { sklep: 'ALLEGRO_POLCIEN', chce_fakture: 0 } },
+      { zamowienie: { sklep: 'ALLEGRO_POLCIEN', chce_fakture: 0 }, wyslanaZPanelu: true },
+      { zamowienie: { sklep: 'allegrowy', chce_fakture: 0 }, wyslanaZPanelu: true },
+      { zamowienie: { sklep: 'polcien', chce_fakture: 0, anulowane_recznie: 1 }, wyslanaZPanelu: true },
     ];
     const idy = przypadki.map((p) => zamowienieZFaktura(db, p));
 

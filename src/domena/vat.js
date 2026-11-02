@@ -20,10 +20,47 @@ export const STAWKA_VAT = '23';
 // klientowi wymyśloną stawkę.
 export const STAWKI_VAT = Object.freeze(['23', '8', '5', '0']);
 
-/** Czy to stawka z listy — napis albo liczba; „08”, „8.0” i inne zapisy to NIE (formularz wysyła napis z listy). */
-export function czyStawkaVat(s) {
+// PRZ-122.B07a: „zw” (zwolnienie z VAT) — WYŁĄCZNIE przy programie fakturowym wbudowanym (TwojeFaktury), bo tylko
+// on drukuje adnotację i podstawę zwolnienia. Dopuszcza ją jawna flaga `{ zw: true }` wołającego; bez flagi każda
+// funkcja tego pliku działa jak przed B07a (inFakt „zw” nie dostaje nigdy). Liczy się jak 0: netto = brutto, VAT 0
+// (src/domena/twojefaktury/sumy.js), ale stawką 0% NIE jest — na dokumencie i w podsumowaniu to osobny wiersz.
+export const STAWKI_Z_ZW = Object.freeze([...STAWKI_VAT, 'zw']);
+
+/** Lista stawek dla programu fakturowego: wbudowany (`opis.wbudowany === true`) → z „zw”, każdy inny → STAWKI_VAT. */
+export function stawkiDlaProgramu(opis) {
+  return opis?.wbudowany === true ? STAWKI_Z_ZW : STAWKI_VAT;
+}
+
+/**
+ * PRZ-122.AS1: firma zwolniona z VAT sprzedaje wyłącznie ze stawką „zw” — jedna reguła dla wystawienia (adapter
+ * TwojeFaktury: każda pozycja „zw”) i edycji faktury (lista stawek formularza i zapisu). Niezwolniona → `stawki` bez zmian.
+ * Edycja: `stawkiDokumentu` = stawki pozycji wersji bazowej. Faktura wystawiona przed włączeniem zwolnienia (ma stawkę
+ * inną niż „zw”) zachowuje pełną listę — zwolnienie działa od następnej faktury, nie zmienia wystawionych.
+ */
+export const STAWKI_FIRMY_ZWOLNIONEJ = Object.freeze(['zw']);
+export function stawkiSprzedawcy(stawki, { zwolniona = false, stawkiDokumentu = [] } = {}) {
+  if (zwolniona !== true || stawkiDokumentu.some((s) => s !== 'zw')) return stawki;
+  return STAWKI_FIRMY_ZWOLNIONEJ;
+}
+
+/**
+ * PRZ-122.B07c: opcje `{ zw }` dla programu — z tej samej reguły co lista stawek (`stawkiDlaProgramu`), żeby lista
+ * w formularzu i to, co przyjmuje zapis i liczy dokument, nie mogły się rozjechać. Brak programu / program zewnętrzny → `false`.
+ */
+export function opcjeZwProgramu(opis) {
+  return { zw: stawkiDlaProgramu(opis).includes('zw') };
+}
+
+// Flaga czytana ściśle (`=== true`): drugi argument bywa indeksem z `filter`/`every`, a nie opcjami.
+const zFlaga = (opcje) => opcje?.zw === true;
+
+/**
+ * Czy to stawka z listy — napis albo liczba; „08”, „8.0” i inne zapisy to NIE (formularz wysyła napis z listy).
+ * `{ zw: true }` (PRZ-122.B07a) dopuszcza też „zw”.
+ */
+export function czyStawkaVat(s, opcje) {
   if (s === null || s === undefined) return false;
-  return STAWKI_VAT.includes(String(s).trim());
+  return (zFlaga(opcje) ? STAWKI_Z_ZW : STAWKI_VAT).includes(String(s).trim());
 }
 
 /**
@@ -36,13 +73,15 @@ export function czyStawkaVat(s) {
  * wpisu w Ustawieniach to 23, czyli dokładnie to, co szło na fakturę przed zmianą.
  *
  * ⚠️ NIP nabywcy z UE (WDT) stoi NAD tą funkcją — patrz `pozycjeDokumentu` (domain/pozycje-faktury.js).
+ * `{ zw: true }` (PRZ-122.B07a): ręczna „zw” zostaje „zw”; bez flagi — domyślna, jak każdy zapis spoza listy.
  */
-export function stawkaPozycji(p, domyslna) {
-  if (p?.zrodlo === 'reczna' && czyStawkaVat(p.vat)) return String(p.vat).trim();
+export function stawkaPozycji(p, domyslna, opcje) {
+  if (p?.zrodlo === 'reczna' && czyStawkaVat(p.vat, opcje)) return String(p.vat).trim();
   return String(domyslna);
 }
 
-const dzielnik = (stawka) => 1 + Number(stawka) / 100;
+// PRZ-122.B07a: „zw” z flagą = dzielnik 1 (netto = brutto). Bez flagi — `Number('zw')`, czyli NaN, jak dotąd.
+const dzielnik = (stawka, opcje) => (zFlaga(opcje) && String(stawka).trim() === 'zw' ? 1 : 1 + Number(stawka) / 100);
 
 // ⚠️ TU DZIELENIE BRUTTO PRZEZ STAWKĘ JEST DOZWOLONE — i to jest jedyne takie miejsce
 // w module, więc powód musi być zapisany, żeby nikt tego później nie „poprawił"
@@ -64,13 +103,13 @@ const dzielnik = (stawka) => 1 + Number(stawka) / 100;
 //
 // Nie rzuca: karta zamówienia nie ma prawa paść na uszkodzonej cenie (ta sama zasada, co
 // przy podsumowaniuPozycji i saldzieWplat) — brak danych ma wyglądać jak brak danych.
-export function nettoZBruttoDoPokazania(bruttoZl, stawka = STAWKA_VAT) {
+export function nettoZBruttoDoPokazania(bruttoZl, stawka = STAWKA_VAT, opcje) {
   if (bruttoZl === null || bruttoZl === undefined || String(bruttoZl).trim() === '') return null;
   const n = Number(bruttoZl);
   if (!Number.isFinite(n)) return null;
   // Przez grosze, nie na złotówkach: dzielenie floata przez 1,23 i toFixed(2) potrafi
   // chybić o grosz na wartościach granicznych, a tu i tak wszystko jest całkowite.
-  return (Math.round(Math.round(n * 100) / dzielnik(stawka)) / 100).toFixed(2);
+  return (Math.round(Math.round(n * 100) / dzielnik(stawka, opcje)) / 100).toFixed(2);
 }
 
 /**
@@ -87,11 +126,11 @@ export function nettoZBruttoDoPokazania(bruttoZl, stawka = STAWKA_VAT) {
  *
  * Nie rzuca — brak danych ma wygladac jak brak danych (ta sama zasada, co wyzej).
  */
-export function bruttoZNetto(nettoZl, stawka = STAWKA_VAT) {
+export function bruttoZNetto(nettoZl, stawka = STAWKA_VAT, opcje) {
   if (nettoZl === null || nettoZl === undefined) return null;
   const tekst = String(nettoZl).trim().replace(',', '.');
   if (tekst === '') return null;
   const n = Number(tekst);
   if (!Number.isFinite(n)) return null;
-  return (Math.round(Math.round(n * 100) * dzielnik(stawka)) / 100).toFixed(2);
+  return (Math.round(Math.round(n * 100) * dzielnik(stawka, opcje)) / 100).toFixed(2);
 }

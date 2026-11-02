@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
@@ -47,12 +47,15 @@ const zFaktura = (nad = {}) => {
   ).run(id, nad.uuid === undefined ? 'u1' : nad.uuid, nad.numer ?? 'FV/21/08/2026', '2026-08-07T10:00:00');
   return db.prepare('SELECT * FROM faktury WHERE zamowienie_id = ?').get(id);
 };
+const zgloszenieStanowiska = (nazwa = 'BIURO-1') => app.inject({ method: 'GET', url: `/kolejka-druku-faktur?stanowisko=${nazwa}`, headers: naglowek });
 const karta = async () => (await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek })).body;
 const wyslij = (url, payload) => app.inject({ method: 'POST', url, headers: naglowek, payload });
 
 describe('przycisk „Drukuj" przy fakturze', () => {
   it('stoi obok „Pobierz PDF", gdy dokument istnieje w inFakcie', async () => {
     zFaktura();
+    // PRZ-126.C05a: bez zgłoszonego komputera z drukarką przycisk jest wyszarzony — tu komputer się zgłosił.
+    await zgloszenieStanowiska();
     const html = await karta();
     expect(html).toContain(`/zamowienia/${id}/faktura/pdf`);
     // ⚠️ CAŁY znacznik otwierający, nie sam adres: sprawdzenie po `action=` przepuszcza
@@ -282,5 +285,73 @@ describe('stan wydruku na karcie i wyjście z zapętlenia', () => {
     const html = await karta();
     expect(html).not.toMatch(/czeka w kolejce druku/);
     expect(html).not.toMatch(/Porzuć wydruk/);
+  });
+});
+
+// PRZ-126.C05a: komputer z drukarką zgłasza się przy odpytaniu kolejki; karta bez zgłoszenia wyszarza „Drukuj".
+describe('zgłoszenia komputerów z drukarką (PRZ-126.C05a)', () => {
+  const zapisaneZgloszenia = () => {
+    const w = db.prepare("SELECT wartosc, zmienione_at FROM ustawienia WHERE klucz = 'druk.faktury.stanowiska'").get();
+    return w ? { mapa: JSON.parse(w.wartosc), at: w.zmienione_at } : null;
+  };
+  afterEach(() => { vi.useRealTimers(); });
+
+  it('dwa odpytania w odstępie 10 s → jeden zapis; po 61 s → drugi', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const t0 = new Date('2026-10-29T08:00:00.000Z');
+    vi.setSystemTime(t0);
+    expect((await zgloszenieStanowiska('BIURO-1')).statusCode).toBe(200);
+    expect(zapisaneZgloszenia()).toEqual({ mapa: { 'BIURO-1': t0.toISOString() }, at: t0.toISOString() });
+
+    vi.setSystemTime(new Date(t0.getTime() + 10_000));
+    await zgloszenieStanowiska('BIURO-1');
+    expect(zapisaneZgloszenia().at, 'drugie odpytanie po 10 s nie pisze do bazy').toBe(t0.toISOString());
+
+    const t2 = new Date(t0.getTime() + 61_000);
+    vi.setSystemTime(t2);
+    await zgloszenieStanowiska('BIURO-1');
+    expect(zapisaneZgloszenia()).toEqual({ mapa: { 'BIURO-1': t2.toISOString() }, at: t2.toISOString() });
+  });
+
+  it('odpowiedź dla czuwacza bez zmian, także gdy zapis zgłoszenia się nie uda', async () => {
+    zFaktura();
+    await wyslij(`/zamowienia/${id}/faktura/drukuj`);
+    // Zapis zgłoszenia rzuca (np. baza zablokowana) — reszta tabeli `ustawienia` działa jak zwykle.
+    db.exec(`CREATE TRIGGER awaria_zgloszen BEFORE INSERT ON ustawienia WHEN NEW.klucz = 'druk.faktury.stanowiska'
+      BEGIN SELECT RAISE(ABORT, 'baza zablokowana'); END`);
+    const r = await zgloszenieStanowiska('BIURO-1');
+    expect(r.statusCode).toBe(200);
+    const [poz] = r.json();
+    expect(Object.keys(poz).sort()).toEqual(['id', 'numer', 'zamowienie', 'zamowienieId']);
+  });
+
+  it('karta bez zgłoszeń: „Drukuj" wyszarzony, z dymkiem i zdaniem z odnośnikiem; po zgłoszeniu — czynny', async () => {
+    zFaktura();
+    const bez = await karta();
+    expect(bez).toContain('<button class="btn btn--maly" disabled title="Nie ma podłączonego komputera z drukarką">Drukuj</button>');
+    expect(bez).toContain('Nie ma podłączonego komputera z drukarką — jak go podłączyć: <a href="/ustawienia/druk#faktury">Ustawienia → Druk i etykiety</a>.');
+    // Wyłączony przycisk ma wyglądać na wyszarzony, nie jak czynny „Pobierz PDF” obok.
+    expect(bez).toMatch(/\.btn:disabled[^{]*\{[^}]*opacity:\s*\.45/);
+
+    await zgloszenieStanowiska('BIURO-1');
+    const z = await karta();
+    expect(z).toMatch(/<button class="btn btn--maly">Drukuj<\/button>/);
+    expect(z).not.toContain('disabled title="Nie ma podłączonego komputera z drukarką"');
+    expect(z).not.toContain('/ustawienia/druk#faktury');
+  });
+
+  it('zgłoszenie sprzed ponad 5 minut nie odblokowuje „Drukuj"', async () => {
+    zFaktura();
+    db.prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('druk.faktury.stanowiska', ?, ?)")
+      .run(JSON.stringify({ 'BIURO-1': new Date(Date.now() - 6 * 60_000).toISOString() }), new Date().toISOString());
+    expect(await karta()).toContain('disabled title="Nie ma podłączonego komputera z drukarką"');
+  });
+
+  it('faktura w kolejce przy braku komputera — zdanie „jak go podłączyć" także przy stanie kolejki', async () => {
+    const f = zFaktura();
+    dodajFaktureDoKolejki(db, f.id);
+    const html = await karta();
+    const poKolejce = html.slice(html.indexOf('Faktura czeka w kolejce druku'));
+    expect(poKolejce).toContain('/ustawienia/druk#faktury');
   });
 });

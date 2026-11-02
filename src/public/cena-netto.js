@@ -20,16 +20,19 @@
 
 const zaokr = (x) => (Math.round(x) / 100).toFixed(2);
 const liczba = (v) => Number(String(v ?? '').trim().replace(',', '.'));
+// PRZ-122.B07c: „zw” (zwolnienie — lista ma ją tylko przy TwojeFaktury) liczy się jak 0: netto = brutto, tak jak
+// serwer (domena/vat.js). Bez tego `Number('zw')` = NaN i skrypt brał `data-vat` formularza (np. 23).
+const stawkaLiczbowa = (v) => (String(v ?? '').trim() === 'zw' ? 0 : Number(v));
 
 /** Stawka (liczba) dla wiersza albo `null`, gdy nie ma jej skąd wziąć — wtedy skrypt niczego nie liczy. */
 export function stawkaWiersza(zasieg, formularz) {
   if (formularz?.dataset?.wdt === '1') return 0;
   const lista = zasieg?.querySelector('select[name$="vat"]');
-  const zListy = lista ? Number(lista.value) : NaN;
+  const zListy = lista ? stawkaLiczbowa(lista.value) : NaN;
   if (Number.isFinite(zListy)) return zListy;
   const surowa = formularz?.dataset?.vat;
   if (surowa === undefined || String(surowa).trim() === '') return null;
-  const n = Number(surowa);
+  const n = stawkaLiczbowa(surowa);
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 

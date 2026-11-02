@@ -6,9 +6,14 @@ import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/
 import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-integracji.js';
 import { wczytajWyborProgramu } from '../../../src/oms/db/wybor-programu.js';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
+import { zapewnijOkres, zakonczFaktureOkresu } from '../../../src/oms/db/okresy.js';
+import { dopiszKlientaZbiorczego } from './_klient-zbiorczy-pomocniki.js';
 import { nowyPanel, jako, get, post } from '../../pomoc/konta-prz068.js';
+import { szewTwojeFaktury } from '../../../src/moduly/faktury/wczytaj-szew.ts';
+import { wczytajFaktury } from '../../../src/moduly/faktury/modul.ts';
 
 const ADRES = '/ustawienia/integracje/program-fakturowy';
+const WYSYLKA = `${ADRES}/ksef`;
 const EKRAN_KLUCZA = '/ustawienia/integracje/infakt';
 const KLUCZ_PLIKU = 'zmyslony0klucz0z0pliku0programu0prz121001';
 const KLUCZ_EKRANU = 'zmyslony0klucz0z0ekranu0programu0prz121002';
@@ -21,8 +26,8 @@ beforeEach(() => {
 });
 afterEach(() => { vi.unstubAllGlobals(); });
 
-function panel(env = {}) {
-  const p = nowyPanel({ env });
+function panel(env = {}, kopie) {
+  const p = nowyPanel({ env, ...(kopie ? { nadpisania: { 'zdrowie.kopie': kopie } } : {}) });
   zalozKonto(p.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
   zalozKonto(p.db, { login: 'ewa', imie: 'Ewa', haslo: 'h', rola: 'sprzedaz' });
   ustawUprawnienia(p.db, kontoPoLoginie(p.db, 'ewa').id, ['zamowienia', 'faktury', 'ustawienia']);
@@ -33,6 +38,140 @@ const formularz = (html) => /<form id="modul-faktur-formularz"[\s\S]*?<\/form>/u
 const wartosc = (tag) => /value="([^"]*)"/u.exec(tag)?.[1];
 const nieaktywne = (html) => radia(html).filter((t) => /\sdisabled\b/u.test(t)).map(wartosc);
 const zaznaczone = (html) => radia(html).filter((t) => /\schecked\b/u.test(t)).map(wartosc);
+// Kopia OMS-u bez TwojeFaktury (lista wycięcia): sama zgoda zatrzymuje start — sprawdzamy tylko tę odmowę.
+const bezModuluTf = (env) => {
+  if (szewTwojeFaktury || env.OMS_TWOJEFAKTURY !== 'tak') return false;
+  expect(() => wczytajFaktury(env)).toThrow(/ta wersja OMS-u nie ma modułu TwojeFaktury/);
+  return true;
+};
+const karta = (html, id) => [...html.matchAll(/<p[^>]*><label><input type="radio"[\s\S]*?<\/label><\/p>/gu)].map((m) => m[0]).find((s) => s.includes(`value="${id}"`));
+
+it.each([false, true])('B14f1: karta okresu opisuje wysyłkę tylko dla programu wbudowanego (%s)', async (wbudowany) => {
+  const env = wbudowany ? { OMS_TWOJEFAKTURY: 'tak', OMS_PROGRAM_FAKTUROWY: 'twojefaktury' } : ZE_ZMIENNA('infakt');
+  if (bezModuluTf(env)) return;
+  const { app, db, admin } = panel(env);
+  try {
+    dopiszKlientaZbiorczego(db);
+    const okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
+    const z = zamowienie(db, 711);
+    db.prepare('UPDATE zamowienia SET okres_rozliczeniowy_id = ? WHERE id = ?').run(okres.id, z);
+    const r = await get(app, `/okresy/${okres.id}`, admin);
+    expect(r.statusCode).toBe(200);
+    expect(r.body).toContain('Wystaw fakturę za');
+    expect(r.body.includes('Panel nie wysyła dokumentu do KSeF.')).toBe(!wbudowany);
+    if (wbudowany) {
+      expect(r.body).toContain('Wysyłkę faktur sprzedaży obsługuje TwojeFaktury');
+      expect(r.body).toContain(`href="${WYSYLKA}"`);
+    }
+    zakonczFaktureOkresu(db, okres.id, { uuid: 'b14f1-okres', numer: 'FV/711/2026', ksefStatus: null },
+      { program: wbudowany ? 'twojefaktury' : 'infakt' });
+    const wystawiony = await get(app, `/okresy/${okres.id}`, admin);
+    expect(wystawiony.statusCode).toBe(200);
+    expect(wystawiony.body.includes('BEZ wysyłki do KSeF')).toBe(!wbudowany);
+    if (wbudowany) {
+      expect(wystawiony.body).toContain('Wysyłkę faktur sprzedaży obsługuje TwojeFaktury');
+      expect(wystawiony.body).toContain(`href="${WYSYLKA}"`);
+    }
+    expect(siec).not.toHaveBeenCalled();
+  } finally { await app.close(); db.close(); }
+});
+
+it('B14f1: TwojeFaktury opisuje obecną wysyłkę i pozostawia klucz oraz odnośnik inFaktu', async () => {
+  const env = { OMS_TWOJEFAKTURY: 'tak', OMS_PROGRAM_FAKTUROWY: 'twojefaktury' };
+  if (bezModuluTf(env)) return;
+  const { app, db, admin } = panel(env);
+  try {
+    const r = await get(app, ADRES, admin);
+    expect(r.statusCode).toBe(200);
+    expect.soft(karta(r.body, 'twojefaktury')).toContain('OMS sam wystawia faktury i wysyła je do KSeF — token KSeF wpiszesz w Ustawienia → Integracje → KSeF (ten sam co do kosztów).');
+    expect.soft(karta(r.body, 'infakt')).toContain('Klucz API inFaktu: nie wpisany.');
+    expect.soft(karta(r.body, 'infakt')).toContain(`href="${EKRAN_KLUCZA}"`);
+    expect.soft(karta(r.body, 'infakt')).toContain('Ustawienia inFaktu');
+    expect(siec).not.toHaveBeenCalled();
+  } finally { await app.close(); db.close(); }
+});
+
+it.each([
+  [{ OMS_TWOJEFAKTURY: 'tak', OMS_PROGRAM_FAKTUROWY: 'twojefaktury' }, true, true],
+  [{ OMS_TWOJEFAKTURY: 'tak', OMS_PROGRAM_FAKTUROWY: 'infakt' }, true, false],
+  [{ OMS_PROGRAM_FAKTUROWY: 'infakt' }, false, false],
+])('B14f1: Integracje i token kosztów odpowiadają zgodzie oraz programowi (%j)', async (env, zgoda, wbudowany) => {
+  if (bezModuluTf(env)) return;
+  const { app, db, admin } = panel(env);
+  try {
+    const lista = await get(app, '/ustawienia/integracje', admin);
+    expect(lista.statusCode).toBe(200);
+    expect.soft(lista.body).toContain('Faktury i podatki → Program do faktur');
+    expect.soft(lista.body).toContain(`href="${ADRES}"`);
+    const koszty = await get(app, '/ustawienia/integracje/ksef', admin);
+    expect(koszty.statusCode).toBe(200);
+    if (wbudowany) {
+      for (const html of [koszty.body]) {
+        expect.soft(html).toContain('Ten sam token wysyła też faktury sprzedaży z TwojeFaktury — musi mieć uprawnienie do wystawiania faktur (InvoiceWrite)');
+        // AS4: zdanie kończy się kropką, a odsyłacz doklejamy „ — …” — bez podwójnej interpunkcji.
+        expect.soft(html).not.toMatch(/InvoiceWrite\)\.(<\/strong>)? —/);
+        expect.soft(html).toContain('InvoiceWrite');
+        expect.soft(html).not.toContain('tylko do przeglądania');
+        expect.soft(html).not.toContain('tego tokenu nie używa');
+        expect.soft(html).toContain(`href="${WYSYLKA}"`);
+        expect.soft(html).not.toContain('Panel niczego przez KSeF nie wysyła.');
+        expect.soft(html).not.toContain('panel niczego przez KSeF nie wysyła.');
+      }
+    } else {
+      expect.soft(lista.body).toContain('Moje połączenia');
+      expect.soft(koszty.body).toContain('Wygeneruj w KSeF token z uprawnieniem tylko do przeglądania faktur zakupowych — panel niczego przez KSeF nie wysyła.');
+      expect.soft(koszty.body).toContain('panel niczego przez KSeF nie wysyła.');
+      expect.soft(koszty.body).toContain('Wysyłka faktur sprzedaży idzie przez inFakt i tego tokenu nie używa.');
+      for (const html of [lista.body, koszty.body]) expect.soft(html).not.toContain('InvoiceWrite');
+    }
+    expect(siec).not.toHaveBeenCalled();
+  } finally { await app.close(); db.close(); }
+});
+
+it('B16b: stałe zdanie i ostrzeżenia kopii tylko na karcie programu wbudowanego', async () => {
+  let stan = { brakNadzoru: true };
+  const kopie = vi.fn(() => stan);
+  const { app, db, admin } = panel({}, kopie);
+  const stale = 'Faktury są tylko w bazie tego OMS-u. Kopia bazy musi trafiać poza ten dysk — instrukcja: Kopie zapasowe.';
+  try {
+    expect(kopie).not.toHaveBeenCalled();
+    const brak = await get(app, ADRES, admin);
+    expect(karta(brak.body, 'twojefaktury')).toContain(stale);
+    expect(karta(brak.body, 'twojefaktury')).toContain('Ten OMS nie widzi kopii bazy');
+    stan = { ostatnia: { plik: 'oms-2026-10-27.sqlite', wiekH: 31 }, katalogDostepny: true, zewnetrzna: true, alarmy: [], uwagi: [] };
+    const stara = await get(app, ADRES, admin);
+    expect(karta(stara.body, 'twojefaktury')).toContain('Ostatnia kopia ma 31 h');
+    stan = { ...stan, ostatnia: { plik: 'oms-2026-10-28.sqlite', wiekH: 5 } };
+    const swieza = await get(app, ADRES, admin);
+    expect(karta(swieza.body, 'twojefaktury')).toContain(stale);
+    expect(karta(swieza.body, 'twojefaktury')).not.toContain('wyjasnienie uwaga');
+    expect(karta(swieza.body, 'infakt')).toBe(karta(brak.body, 'infakt'));
+    expect(karta(swieza.body, 'infakt')).not.toContain(stale);
+    stan = { ...stan, zewnetrzna: false };
+    expect(karta((await get(app, ADRES, admin)).body, 'twojefaktury')).toContain('Kopia poza dyskiem nie jest ustawiona');
+    for (const [zewnetrznaStan, zdanie] of [['brak-nosnika', 'podłącz nośnik kopii'], ['ten-sam-dysk', 'nie jest zamontowany'],
+      ['stara-na-nosniku', 'brak kopii z ostatnich 48 h']]) {
+      stan = { ...stan, zewnetrzna: true, zewnetrznaStan };
+      expect(karta((await get(app, ADRES, admin)).body, 'twojefaktury')).toContain(zdanie);
+    }
+    stan = { ...stan, zewnetrznaStan: 'ok' };
+    expect(karta((await get(app, ADRES, admin)).body, 'twojefaktury')).not.toContain('wyjasnienie uwaga');
+    stan = { ...stan, zewnetrzna: false, zewnetrznaStan: 'nieustawiona' };
+    expect(karta((await get(app, ADRES, admin)).body, 'twojefaktury')).toContain('Kopia poza dyskiem nie jest ustawiona');
+    stan = { ...stan, ostatnia: null };
+    expect(karta((await get(app, ADRES, admin)).body, 'twojefaktury')).toContain('Brak kopii bazy');
+    expect(siec).not.toHaveBeenCalled();
+  } finally { await app.close(); db.close(); }
+});
+
+it('B16b: zdanie o kopii jest też w próbie i przy wyjątku usługi', async () => {
+  const { app, db, admin } = panel({ OMS_TRYB: 'proba' }, () => { throw new Error('brak usługi'); });
+  try {
+    const r = await get(app, ADRES, admin);
+    expect(r.statusCode).toBe(200);
+    expect(karta(r.body, 'twojefaktury')).toContain('Faktury są tylko w bazie tego OMS-u.');
+  } finally { await app.close(); db.close(); }
+});
 
 function zamowienie(db, nr) {
   return zapiszZamowienie(db, 'pro', {
@@ -44,6 +183,36 @@ function zamowienie(db, nr) {
 const T = '2026-10-05T09:00:00Z';
 
 describe('PRZ-121.02 ekran Moduł faktur — widok', () => {
+  it.each(['proba', 'produkcja'])('ze zgodą TwojeFaktury można wybrać i zapisać bez sieci (%s)', async (tryb) => {
+    if (!szewTwojeFaktury) {
+      expect(() => wczytajFaktury({ OMS_TRYB: tryb, OMS_TWOJEFAKTURY: 'tak' })).toThrow(/ta wersja OMS-u nie ma modułu TwojeFaktury/);
+      expect(siec).not.toHaveBeenCalled();
+      return;
+    }
+    const { app, db, admin } = panel({ OMS_TRYB: tryb, OMS_TWOJEFAKTURY: 'tak' });
+    try {
+      const r = await get(app, ADRES, admin);
+      expect(nieaktywne(r.body)).toEqual(['fakturownia']);
+      expect((await post(app, ADRES, admin, { program: 'twojefaktury' })).statusCode).toBe(303);
+      expect(wczytajWyborProgramu(db).program).toBe('twojefaktury');
+      expect(siec).not.toHaveBeenCalled();
+    } finally { await app.close(); db.close(); }
+  });
+  it('demo bez zgody pokazuje wkrótce i odmawia POST TwojeFaktury', async () => {
+    const { app, db, admin } = panel({ OMS_TRYB: 'proba' });
+    try {
+      const r = await get(app, ADRES, admin);
+      expect(karta(r.body, 'twojefaktury')).toContain('TwojeFaktury (program wbudowany)');
+      expect(karta(r.body, 'twojefaktury')).toContain('wkrótce');
+      expect(karta(r.body, 'twojefaktury')).not.toContain('Wysyłka do KSeF');
+      expect(nieaktywne(r.body)).toContain('twojefaktury');
+      const zapis = await post(app, ADRES, admin, { program: 'twojefaktury' });
+      expect(zapis.statusCode).toBe(400);
+      expect(zapis.body).toContain('będzie dostępny wkrótce');
+      expect(wczytajWyborProgramu(db)).toBeNull();
+      expect(siec).not.toHaveBeenCalled();
+    } finally { await app.close(); db.close(); }
+  });
   it('PRZ-121.05c: w trybie próby z atrapą piaskownicy klucz API jest niepotrzebny', async () => {
     const { createModulFaktury } = await import('../../../src/moduly/faktury/modul.ts');
     const { MODULY } = await import('../../../src/moduly/lista.ts');
@@ -72,7 +241,7 @@ describe('PRZ-121.02 ekran Moduł faktur — widok', () => {
     expect(formularz(r.body)).toContain('<button class="btn btn--glowny" type="submit">Zapisz</button>');
     // Tytuł jak w menu Ustawień: H1, <title> i okruszek.
     const h1 = /<h1[^>]*>([^<]*)<\/h1>/u.exec(r.body)?.[1];
-    expect(h1).toBe('Moduł faktur');
+    expect(h1).toBe('Program do faktur');
     expect(r.body).toContain(`<title>${h1}</title>`);
     expect(r.body).toMatch(new RegExp(`class="oms-breadcrumb">[\\s\\S]*?<strong>${h1}</strong>`));
   });
@@ -157,7 +326,7 @@ describe('PRZ-121.02 ekran Moduł faktur — zapis', () => {
     const r = await post(app, ADRES, admin, { program });
     expect(r.statusCode).toBe(400);
     expect(r.body).toContain('Nie zapisano');
-    expect(r.body).toContain('<h1>Moduł faktur</h1>');
+    expect(r.body).toContain('<h1>Program do faktur</h1>');
     expect(wczytajWyborProgramu(db)).toBeNull();
   });
 

@@ -1,4 +1,7 @@
 <h1><%= title %></h1>
+<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
+<% const sekcja = nawigacja?.kontekst?.aktywnaZakladka ?? 'dane'; %>
+<% if (sekcja === 'dane') { %>
 
 <section class="ust-sekcja" id="logo">
   <h2>Logo</h2>
@@ -31,7 +34,6 @@
   <% } %>
 </section>
 
-<% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (bledy.length) { %>
   <div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong></p><ul><% bledy.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
 <% } %>
@@ -114,9 +116,13 @@
 <% } %>
 <% } %>
 
+<% } %>
+<% if (sekcja === 'rejestrowe') { %>
 <%# PRZ-108.10: NIP i BDO sprzedawcy — zapisuje tylko administrator; plik wygrywa dla swojego pola. %>
-<section class="ust-sekcja" id="nip-stan">
-  <h2>NIP firmy</h2>
+<section class="ust-sekcja" id="dane-rejestrowe">
+  <h2>Numery rejestrowe</h2>
+<div class="ust-rejestrowe-pole" id="nip-stan">
+  <h3>NIP firmy</h3>
   <% if (nipBdo.bledyNipu.length) { %>
     <div class="pas-uprzedzenie"><p><strong>Nie zapisano NIP-u.</strong></p><ul><% nipBdo.bledyNipu.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
   <% } %>
@@ -150,10 +156,10 @@
       </form>
     <% } %>
   <% } %>
-</section>
+</div>
 
-<section class="ust-sekcja" id="bdo-stan">
-  <h2>Numer BDO</h2>
+<div class="ust-rejestrowe-pole" id="bdo-stan">
+  <h3>Numer BDO</h3>
   <% if (nipBdo.bledyBdo.length) { %>
     <div class="pas-uprzedzenie"><p><strong>Nie zapisano numeru BDO.</strong></p><ul><% nipBdo.bledyBdo.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
   <% } %>
@@ -185,8 +191,11 @@
   <% if (!nipBdo.mozeZmieniac && !(nipBdo.nipWPliku && nipBdo.bdoWPliku)) { %>
     <p class="ust-pomoc">NIP i BDO wpisuje i zmienia tylko administrator.</p>
   <% } %>
+</div>
 </section>
 
+<% } %>
+<% if (sekcja === 'vat') { %>
 <%# PRZ-105: domyślna stawka VAT — zapisuje tylko administrator; bez wpisu 23. %>
 <section class="ust-sekcja" id="stawka-vat">
   <h2>Domyślna stawka VAT</h2>
@@ -201,15 +210,58 @@
     <form class="ust-formularz" method="post" action="<%= stawkaVat.zapis %>">
       <label for="stawka-vat-wybor">Stawka</label>
       <div><select id="stawka-vat-wybor" name="stawka">
-        <% stawkaVat.stawki.forEach(function (s) { %><option value="<%= s %>"<%= s === stawkaVat.biezaca ? ' selected' : '' %>><%= s %>%</option><% }); %>
+        <% stawkaVat.stawki.forEach(function (s) { %><option value="<%= s %>"<%= s === stawkaVat.biezaca ? ' selected' : '' %>><%= s === 'zw' ? 'zw' : s + '%' %></option><% }); %>
       </select></div>
       <div class="ust-pelna ust-akcje"><button class="btn btn--glowny" type="submit">Zapisz stawkę</button></div>
     </form>
   <% } else { %>
-    <p>Ustawiona: <strong><%= stawkaVat.biezaca %>%</strong>. <span class="ust-pomoc">Stawkę zmienia tylko administrator.</span></p>
+    <p>Ustawiona: <strong><%= stawkaVat.biezaca === 'zw' ? 'zw' : stawkaVat.biezaca + '%' %></strong>. <span class="ust-pomoc">Stawkę zmienia tylko administrator.</span></p>
   <% } %>
 </section>
 
+<%# PRZ-122.B07b: zwolnienie z VAT — tylko przy TwojeFaktury (trasa podaje `zwolnienie` = null przy innym programie). %>
+<% if (zwolnienie) { const zp = zwolnienie.pola; %>
+<section class="ust-sekcja" id="zwolnienie-vat">
+  <h2>Zwolnienie z VAT</h2>
+  <% if (zwolnienie.bledy.length) { %>
+    <div class="pas-uprzedzenie"><p><strong>Nie zapisano zwolnienia.</strong></p><ul><% zwolnienie.bledy.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
+  <% } %>
+  <p>Firma zwolniona z VAT wystawia faktury ze stawką „zw” i podstawą zwolnienia na każdej fakturze. Firma, która płaci VAT, a sprzedaje też usługi zwolnione, zapisuje tu podstawę dla pojedynczych pozycji „zw” — bez niej taka faktura nie zostanie wystawiona.</p>
+  <% if (zwolnienie.mozeZmieniac) { %>
+    <form class="ust-formularz" method="post" action="<%= zwolnienie.zapis %>">
+      <label for="zwolnienie-zwolniona">Firma zwolniona z VAT</label>
+      <div><input id="zwolnienie-zwolniona" type="checkbox" name="zwolniona" value="tak"<%= zp.zwolniona ? ' checked' : '' %>>
+        <p class="ust-pomoc">Zaznaczenie ustawia domyślną stawkę „zw”. Odznaczenie przywraca 23%.</p></div>
+      <label for="zwolnienie-podstawa">Podstawa zwolnienia</label>
+      <div><select id="zwolnienie-podstawa" name="podstawa">
+        <option value=""<%= zp.podstawa === '' ? ' selected' : '' %>>— brak —</option>
+        <option value="art113"<%= zp.podstawa === 'art113' ? ' selected' : '' %>><%= zwolnienie.art113 %></option>
+        <option value="art43"<%= zp.podstawa === 'art43' ? ' selected' : '' %>>art. 43 ust. 1 pkt … ustawy o VAT</option>
+        <option value="inna"<%= zp.podstawa === 'inna' ? ' selected' : '' %>>inna podstawa</option>
+      </select></div>
+      <label for="zwolnienie-punkt">Art. 43 — numer punktu</label>
+      <div><input id="zwolnienie-punkt" name="punkt" inputmode="numeric" maxlength="2" value="<%= zp.punkt %>">
+        <p class="ust-pomoc">Tylko przy art. 43: liczba od 1 do 41 (np. 29).</p></div>
+      <label for="zwolnienie-litera">Art. 43 — litera</label>
+      <div><input id="zwolnienie-litera" name="litera" maxlength="1" value="<%= zp.litera %>">
+        <p class="ust-pomoc">Opcjonalnie, jedna mała litera (np. a).</p></div>
+      <label for="zwolnienie-tekst">Inna podstawa — przepis</label>
+      <div><input id="zwolnienie-tekst" name="podstawa_tekst" maxlength="256" value="<%= zp.podstawa_tekst %>">
+        <p class="ust-pomoc">Tylko przy „inna podstawa”: przepis, jak ma stać na fakturze.</p></div>
+      <label for="zwolnienie-rodzaj">Rodzaj podstawy</label>
+      <div><select id="zwolnienie-rodzaj" name="rodzaj">
+          <% [['ustawa', 'ustawa'], ['dyrektywa', 'dyrektywa UE'], ['inna', 'inny przepis']].forEach(function (r) { %><option value="<%= r[0] %>"<%= zp.rodzaj === r[0] ? ' selected' : '' %>><%= r[1] %></option><% }); %>
+        </select></div>
+      <div class="ust-pelna ust-akcje"><button class="btn btn--glowny" type="submit">Zapisz zwolnienie</button></div>
+    </form>
+  <% } else { %>
+    <p><%= zwolnienie.biezace?.zwolniona ? 'Firma zwolniona z VAT' : 'Firma płaci VAT' %><%= zwolnienie.biezace?.podstawa ? ' — podstawa: ' + zwolnienie.biezace.podstawa : '' %>. <span class="ust-pomoc">Zwolnienie zmienia tylko administrator.</span></p>
+  <% } %>
+</section>
+<% } %>
+
+<% } %>
+<% if (sekcja === 'rachunek') { %>
 <%# PRZ-102.20: rachunek bankowy firmy — zapisuje tylko administrator; plik (OMS_RACHUNEK / OMS_BANK) wygrywa. %>
 <section class="ust-sekcja" id="rachunek-stan">
   <h2>Rachunek bankowy</h2>
@@ -263,3 +315,5 @@
     <% } %>
   <% } %>
 </section>
+
+<% } %>

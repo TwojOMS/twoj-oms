@@ -1,5 +1,30 @@
 import { czyKanalAllegro } from './wysylka.js';
 import { idDokumentu } from './dokument-programu.js';
+import { dzienWarszawa } from './format-daty.js';
+
+// PRZ-126 C09e — brzmienia zdań o stanie D w JEDNYM miejscu (do akceptacji właściciela, plan C09 §7 pkt 4).
+export const ODMOWA_ALLEGRO_PO_ZAMIANIE_NIP = 'Kupujący ma w Allegro poprzednią fakturę (sprzed zamiany NIP-u) — '
+  + 'nowej panel nie wysyła sam; wyślij ją z panelu Allegro albo zakładką Wiadomości.';
+
+/**
+ * PRZ-126 C09e — znacznik D (plan C09, Z10): zamówienie przepięte na fakturę zastępczą (zły NIP), gdy poprzednia
+ * faktura mogła już być u kupującego. `przepnijNaZastepcza` zostawia wtedy `allegro_wyslana_at` i zeruje
+ * `allegro_invoice_id`; zwykła wysyłka takiego wiersza nie tworzy (id zapisywane przed `PUT`). `program` zawęża do
+ * TwojeFaktury — ewentualne stare wiersze inFaktu bez id nie są zamianą. `REJECTED` (także spóźniony zapis czuwacza
+ * po przepięciu) to nie D: kupujący starego pliku nie ma, nową wolno zgłosić nowym numerem.
+ */
+export function poZamianieNipWAllegro(f) {
+  return Boolean(f && f.program === 'twojefaktury' && f.allegro_wyslana_at && !f.allegro_invoice_id
+    && f.allegro_weryfikacja !== 'REJECTED');
+}
+
+/** Zdanie karty zamówienia przy znaczniku D albo `null`. Dzień wysyłki w czasie Warszawy jako DD.MM. */
+export function zdanieKartyPoZamianieNip(f) {
+  if (!poZamianieNipWAllegro(f)) return null;
+  const [, mm, dd] = dzienWarszawa(f.allegro_wyslana_at).split('-');
+  return `Kupujący ma w Allegro poprzednią fakturę (sprzed zamiany NIP-u), wysłaną ${dd}.${mm}. `
+    + `Nowej ${f.numer} panel nie wysyła sam.`;
+}
 
 /**
  * Czy te fakture wolno wyslac kupujacemu przez Allegro. Czysta decyzja: zadnego HTTP,
@@ -60,6 +85,10 @@ export function wolnoWyslacDoAllegro(z) {
   // nizej i z tego samego powodu. `ACCEPTED`, `WAITING`, pusto ORAZ status, ktorego dzis
   // nie znamy, to dalej „dokument moze byc u kupujacego" i dalej ODMAWIAMY. Czarna lista
   // („wszystko oprocz ACCEPTED") otwieralaby ponowienie przy kazdym nowym statusie Allegro.
+  //
+  // ⚠️ PRZ-126 C09e — ZNACZNIK D PRZED zdaniem nizej: po zamianie faktury (zly NIP) wiersz wskazuje NOWA
+  // fakture, a „wyslana" byla STARA. Zdanie „Faktura <numer> zostala juz wyslana" podaloby numer nowej — klamstwo.
+  if (poZamianieNipWAllegro(f)) return nie(ODMOWA_ALLEGRO_PO_ZAMIANIE_NIP);
   if (f.allegro_wyslana_at && f.allegro_weryfikacja !== 'REJECTED') {
     return nie(
       `Faktura ${f.numer} została już wysłana do Allegro ${f.allegro_wyslana_at} — kupujący ma ją na koncie. `

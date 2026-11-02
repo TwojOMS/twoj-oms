@@ -97,7 +97,7 @@ describe('PRZ-094.04 Ustawienia → Integracje → Poczta wychodząca', () => {
     expect(f).toMatch(/<input id="poczta-haslo" type="password" name="haslo" value=""[^>]* required>/u);
     expect(adresForm(r.body)).toMatch(/<input id="adres-panelu" name="adres"/u);
     expect(r.body).toContain('Nieustawiona');
-    expect((await get(app, '/ustawienia/integracje', admin)).body).toContain(`href="${ADRES}"`);
+    expect((await get(app, '/ustawienia/integracje/katalog', admin)).body).toContain(`href="${ADRES}"`);
   });
 
   it('zapis SMTP: 303, wiersz „poczta”, hasło jako sekret; hasło nie wraca na ekran; puste hasło nie kasuje zapisanego', async () => {

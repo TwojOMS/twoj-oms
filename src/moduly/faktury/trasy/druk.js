@@ -2,6 +2,7 @@ import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
 import { idDokumentu } from '../../../domena/dokument-programu.js';
 
 import { dodajFaktureDoKolejki, fakturyDoWziecia, zamowienieDlaPozycji, oznaczFaktureWydrukowana, oznaczBladDrukuFaktury, porzucFakture, ostatniaPozycjaDlaFaktury } from '../db/kolejka-druku-faktur.js';
+import { zapiszZgloszenie } from '../db/stanowiska-druku.js';
 
 import { bezpiecznyPowrotNaListe } from '../../../domena/filtry-listy.js';
 
@@ -14,9 +15,12 @@ import { bezpiecznaNazwa } from '../../../domena/pliki.js';
 import { ktoKlikal } from '../../zamowienia/lista.js';
 
 import { zdanieBrakuProgramu } from '../../../domena/wybor-programu.js';
+import { odmianaNazwyProgramu } from '../../../domena/nazwa-programu.js';
+import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
-export function registerDrukFakturRoutes(app, { db, config = {}, faktura, fakturaHurtem, proforma, infakt, fakturaAllegro, ksefDoczytanie, wczytajListe, miniaturyEkranu, wyborProgramu = null }) {
+export function registerDrukFakturRoutes(app, { db, config = {}, faktura, fakturaHurtem, proforma, infakt, fakturaAllegro, ksefDoczytanie, wczytajListe, miniaturyEkranu, wyborProgramu = null, teraz = () => new Date() }) {
 
+const nazwaProgramu = odmianaNazwyProgramu(zProgramu({ infakt }));
 // PRZ-121.03a: przy jawnym „brak” zdanie o wyłączonych fakturach zamiast „Panel nie ma podpiętego inFaktu.”.
 const bezProgramu = () => zdanieBrakuProgramu(wyborProgramu, 'PDF wcześniejszej faktury pobierzesz w programie, w którym ją wystawiono.') ?? 'Panel nie ma podpiętego inFaktu.';
 
@@ -27,7 +31,8 @@ const adresPowrotuNaKarte = (req, id, opcje = {}) => adresKartyZamowienia(id, {
 
 const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, config.definicje);
 
-app.get('/zamowienia/:id/faktura/pdf', async (req, reply) => {
+// PRZ-122.B10b: pobranie zamyka fakturę TwojeFaktury — bez HEAD (Fastify domyślnie = handler GET).
+app.get('/zamowienia/:id/faktura/pdf', { exposeHeadRoute: false }, async (req, reply) => {
     const id = Number(req.params.id);
     if (!pobierzZamowienie(db, id)) return reply.code(404).send('Nie ma takiego zamówienia');
     if (!faktura) return reply.code(503).send(bezProgramu());
@@ -36,6 +41,8 @@ app.get('/zamowienia/:id/faktura/pdf', async (req, reply) => {
     try {
       wynik = await faktura.pdf(id);
     } catch (e) {
+      // B10a: faktura VAT (B2B i B2C — B2C-QR) bez numeru KSeF — „jeszcze nie”, nie błąd (bez wpisu BŁĄD); zdanie z adresem podglądu.
+      if (e?.czekaNaKsef) return reply.code(409).send(komunikatDlaOperatora(e));
       dopiszLog(db, id, { akcja: 'faktura.pdf', wynik: `BŁĄD: ${e.message}` });
       return reply.code(400).send(`Nie udało się pobrać faktury: ${komunikatDlaOperatora(e)}`);
     }
@@ -55,7 +62,7 @@ app.post('/zamowienia/:id/faktura/drukuj', async (req, reply) => {
     // (wiersz istnieje takze jako REZERWACJA, przed powstaniem dokumentu — patrz
     // domain/faktura-stan.js). Kolejka z zadaniem bez tresci wracalaby w petli.
     if (!idDokumentu(z.faktura)) {
-      return reply.code(400).send('Ta faktura nie ma jeszcze dokumentu w inFakcie — nie ma czego drukować.');
+      return reply.code(400).send(`Ta faktura nie ma jeszcze dokumentu w ${nazwaProgramu.miejscownik} — nie ma czego drukować.`);
     }
     dodajFaktureDoKolejki(db, z.faktura.id);
     dopiszLog(db, id, {
@@ -79,11 +86,19 @@ app.post('/zamowienia/:id/faktura/druk-porzuc', async (req, reply) => {
     return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }));
   });
 
-app.get('/kolejka-druku-faktur', async (req) => fakturyDoWziecia(db, {
-    stanowisko: String(req.query?.stanowisko ?? '').trim() || 'nieznane',
-  }));
+app.get('/kolejka-druku-faktur', async (req) => {
+    const stanowisko = String(req.query?.stanowisko ?? '').trim();
+    // PRZ-126.C05a: odpytanie = zgłoszenie komputera z drukarką (karta wyszarza „Drukuj” bez zgłoszenia z 5 min).
+    // Zapis z dławieniem (raz na 60 s na stanowisko); jego błąd nie psuje odpowiedzi dla czuwacza.
+    try {
+      zapiszZgloszenie(db, stanowisko, teraz());
+    } catch (e) {
+      req.log?.warn?.({ druk: 'zgłoszenie stanowiska', blad: e?.message }, 'Druk faktur: nie zapisano zgłoszenia stanowiska');
+    }
+    return fakturyDoWziecia(db, { stanowisko: stanowisko || 'nieznane' });
+  });
 
-app.get('/kolejka-druku-faktur/:id/pdf', async (req, reply) => {
+app.get('/kolejka-druku-faktur/:id/pdf', { exposeHeadRoute: false }, async (req, reply) => {
     const id = Number(req.params.id);
     const cel = zamowienieDlaPozycji(db, id);
     if (!cel) return reply.code(404).send('Nie ma takiej pozycji w kolejce druku faktur.');
@@ -92,6 +107,7 @@ app.get('/kolejka-druku-faktur/:id/pdf', async (req, reply) => {
     try {
       wynik = await faktura.pdf(cel.zamowienieId);
     } catch (e) {
+      if (e?.czekaNaKsef) return reply.code(409).send(komunikatDlaOperatora(e));
       dopiszLog(db, cel.zamowienieId, { akcja: 'faktura.druk', wynik: `BŁĄD pobrania PDF: ${e.message}` });
       return reply.code(400).send(`Nie udało się pobrać faktury: ${komunikatDlaOperatora(e)}`);
     }

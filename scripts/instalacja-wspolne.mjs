@@ -131,3 +131,14 @@ export function coDalejKontener({ konfiguracja, port }) {
     '  4. Zatrzymanie (dane zostają):  sudo docker compose down',
   ];
 }
+
+// Odstęp między zamówieniami demo (domyślnie godzina). Granica raportu przy starcie to „wczoraj” w UTC, a raport
+// liczy dzień zamówienia po Warszawie — trzy zamówienia muszą zmieścić się w dzisiejszym dniu Warszawy, inaczej
+// demo zainstalowane po północy kończy RAPORTY odmową „granica założona za wcześnie”.
+const dzienWarszawy = (ms) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Warsaw' }).format(ms);
+export function krokDemoMs(teraz) {
+  const dzis = dzienWarszawy(teraz);
+  let krok = 3600_000;
+  while (krok > 1 && dzienWarszawy(teraz - 3 * krok) !== dzis) krok = Math.floor(krok / 2);
+  return dzienWarszawy(teraz - 3 * krok) === dzis ? krok : 0;
+}

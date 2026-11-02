@@ -8,6 +8,8 @@ import { registerKlienciRoutes } from './trasy/klienci.js';
 import { registerWiadomosciRoutes } from './trasy/wiadomosci.js';
 import { registerSzablonyWiadomosciRoutes } from './trasy/szablony.js';
 import { utworzPodpisMaili } from './podpis-maili.js';
+import { sprzedawcaZwolniony } from '../faktury/db/zwolnienie-vat.js';
+import { zProgramu } from '../../integracje/program-fakturowy.ts';
 
 export { utworzUslugiWiadomosci } from './uslugi.ts';
 
@@ -56,7 +58,11 @@ export function createModulWiadomosci({ fabryki = {}, uslugi }: {
         registerWiadomosciRoutes(app, { db: ctx.db, klienci, podpis: () => oprawa().podpis });
         registerSzablonyWiadomosciRoutes(app, { db: ctx.db, oprawa, config: u.config, teraz: ctx.teraz });
         const gus = Object.hasOwn(u, 'gus') ? u.gus : ctx.usluga('zamowienia', 'gus');
-        registerKlienciRoutes(app, { db: ctx.db, gus: gus as any });
+        // PRZ-122.B07h: firma zwolniona z VAT — ta sama reguła co karta zamówienia (`sprzedawcaZwolniony`), czytana
+        // przy każdym żądaniu; przy inFakcie (i bez modułu faktur) `false`.
+        const program = zProgramu({ infakt: (() => { try { return ctx.usluga('faktury', 'infakt'); } catch { return null; } })() });
+        const zwolnionaFirma = () => sprzedawcaZwolniony(ctx.db, program?.opis);
+        registerKlienciRoutes(app, { db: ctx.db, gus: gus as any, zwolnionaFirma });
       } };
     },
   };

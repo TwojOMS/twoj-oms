@@ -8,9 +8,9 @@ import { join } from 'node:path';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { createModulFaktury, ODSTEP_FAKTUR_MS } from '../../../src/moduly/faktury/modul.ts';
 import { zapiszKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-integracji.js';
-import { NAJDLUZSZY_PRZEBIEG_MS, najdluzszyPrzebiegMs } from '../../../src/moduly/faktury/services/czuwacz-ksef.js';
+import { najdluzszyPrzebiegMs } from '../../../src/moduly/faktury/services/czuwacz-ksef.js';
 import {
-  NAJDLUZSZY_PRZEBIEG_ARCHIWUM_SPRZEDAZY_MS, najdluzszyPrzebiegArchiwumSprzedazyMs,
+  najdluzszyPrzebiegArchiwumSprzedazyMs,
 } from '../../../src/moduly/faktury/services/czuwacz-archiwum-sprzedazy.js';
 import { programInfakt } from '../../../src/integracje/programy/infakt.ts';
 import { METODY_OBOWIAZKOWE } from '../../../src/integracje/program-fakturowy.ts';
@@ -59,14 +59,14 @@ const kluczZadania = (i: number) => new Headers((siec.mock.calls[i][1] as Reques
 afterEach(() => { vi.unstubAllGlobals(); });
 
 describe('PRZ-118.05 budżet czuwaczy z limitów programu', () => {
-  it('dla limitów inFaktu funkcje budżetu dają dokładnie dzisiejsze stałe', () => {
+  it('dla limitów inFaktu funkcje budżetu zachowują dotychczasowe budżety', () => {
     const { limity } = programInfakt({}).opis;
-    expect(najdluzszyPrzebiegMs(limity)).toBe(NAJDLUZSZY_PRZEBIEG_MS);
-    expect(najdluzszyPrzebiegArchiwumSprzedazyMs(limity)).toBe(NAJDLUZSZY_PRZEBIEG_ARCHIWUM_SPRZEDAZY_MS);
+    expect(najdluzszyPrzebiegMs(limity)).toBe(3250000);
+    expect(najdluzszyPrzebiegArchiwumSprzedazyMs(limity)).toBe(1320000);
     // Funkcje naprawdę czytają limity (nie oddają stałej): +1 ms zadania = +LIMIT_PRZEBIEGU ms przebiegu KSeF.
-    expect(najdluzszyPrzebiegMs({ ...limity, zadanieMs: limity.zadanieMs + 1 }) - NAJDLUZSZY_PRZEBIEG_MS).toBe(50);
+    expect(najdluzszyPrzebiegMs({ ...limity, zadanieMs: limity.zadanieMs + 1 }) - najdluzszyPrzebiegMs(programInfakt({}).opis.limity)).toBe(50);
     expect(najdluzszyPrzebiegArchiwumSprzedazyMs({ ...limity, najdluzszaListaMs: limity.najdluzszaListaMs + 7 })
-      - NAJDLUZSZY_PRZEBIEG_ARCHIWUM_SPRZEDAZY_MS).toBe(7);
+      - najdluzszyPrzebiegArchiwumSprzedazyMs(programInfakt({}).opis.limity)).toBe(7);
   });
 });
 

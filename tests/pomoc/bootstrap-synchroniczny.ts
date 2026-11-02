@@ -6,6 +6,7 @@ import { createModulKanaly } from '../../src/moduly/kanaly/modul.ts';
 import { definicjeKanalow } from '../../src/moduly/kanaly/konfiguracja.ts';
 import { createModulZamowienia } from '../../src/moduly/zamowienia/modul.ts';
 import { createModulFaktury, wczytajFaktury } from '../../src/moduly/faktury/modul.ts';
+import { szewTwojeFaktury } from '../../src/moduly/faktury/wczytaj-szew.ts';
 import { createModulKoszty, wczytajKoszty } from '../../src/moduly/koszty/modul.ts';
 import { modulZdrowie } from '../../src/moduly/zdrowie/modul.ts';
 import { konfiguracjaKanalow } from '../../src/moduly/kanaly/konfiguracja.ts';
@@ -80,6 +81,6 @@ export function zbudujOms(o:any) {
   const kanaly=createModulKanaly(definicjeKanalow(e),false,{fetchImpl:globalThis.fetch});
   wynik.app=buildOmsServer({db,config,env:e,nadpisania,bootstrap:true,
     stanyKanalow:()=>stanyKanalowZKolizjami(Object.values(wynik.tokenyKanalow??{}).map((t:any)=>t.stanDlaEkranu())),
-    moduly:[modulRdzen,modulWeb,kanaly,createModulFaktury({fabryki:fabrykiFaktur}),createModulWiadomosci({fabryki:fabrykiWiadomosci}),createModulZamowienia({zWiadomosciami:true}),createModulWysylka({fabryki}),modulMagazyn,modulZwroty,modulRaporty,createModulMarketing({uslugi:marketing}),modulUstawienia,createModulKoszty({createKlient:o.createKsefKlient,fabryki:fabrykiKosztow}),modulZdrowie,obserwator]});
+    moduly:[modulRdzen,modulWeb,kanaly,createModulFaktury({fabryki:fabrykiFaktur}),...(szewTwojeFaktury?[szewTwojeFaktury.modul]:[]),createModulWiadomosci({fabryki:fabrykiWiadomosci}),createModulZamowienia({zWiadomosciami:true}),createModulWysylka({fabryki}),modulMagazyn,modulZwroty,modulRaporty,createModulMarketing({uslugi:marketing}),modulUstawienia,createModulKoszty({createKlient:o.createKsefKlient,fabryki:fabrykiKosztow}),modulZdrowie,obserwator]});
   return wynik;
 }

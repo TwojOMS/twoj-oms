@@ -4,14 +4,13 @@ import { EKRAN_INFAKTU, GDZIE_KLUCZ_INFAKTU } from '../../../domena/konfiguracja
 import { zl } from '../../../domena/suma-pozycji.js';
 import { MIESIACE } from '../../../domena/okres-rozliczeniowy.js';
 import { bezpiecznaNazwa } from '../../../domena/pliki.js';
-// ⚠️ WIDOK PYTA O TO SAMO, CO BARIERA — TĄ SAMĄ FUNKCJĄ. Pole wyboru przy fakturze
-// konsumenckiej obiecywałoby operatorowi wysyłkę, której `coWolnoWyslac` i tak nie
-// przepuści, a licznik na czerwonym przycisku by kłamał. Kopia tej reguły w szablonie
-// rozjechałaby się z domeną przy pierwszej zmianie — a chodzi o operację nieodwracalną.
-import { czyKonsumencka, doZaznaczeniaWszystkich, powrotWysylkiKsef } from '../../../domena/wysylka-ksef.js';
+import { doZaznaczenia, zakresMiesiaca, sumaListy } from '../../../domena/lista-faktur.js';
+import { csvZaznaczonych, nazwaPlikuZaznaczonych } from '../../../domena/eksport-faktur-csv.js';
+import { MAX_ZAZNACZONYCH } from '../../koszty/services/paczka-dla-biura.js';
+import { czyKonsumencka, powrotWysylkiKsef } from '../../../domena/wysylka-ksef.js';
 import { czyWysylacKonsumenckie } from '../db/ksef-konsumenckie.js';
 import { KTO_AUTOMAT } from '../../../domena/ksef-automat.js';
-import { wczytajAutomatKsef, zwolnijWstrzymane } from '../db/ksef-automat.js';
+import { wczytajAutomatKsef, zwolnijWstrzymane, czyDoZwolnienia } from '../db/ksef-automat.js';
 import { zdanieWstrzymanej } from '../../../domena/ostrzezenia.js';
 import { skrocFormePrawna } from '../../../domena/forma-prawna.js';
 // Lista czesci paczki jedzie z uslugi — trasa jej nie powtarza. Druga kopia rozjechalaby sie
@@ -23,13 +22,20 @@ import { stanArchiwumSprzedazy, licznikiArchiwum } from '../db/archiwum-sprzedaz
 import { ktoKlikal } from '../../zamowienia/lista.js';
 import { wylaczoneModuly } from '../../../oms/db/moduly-opcjonalne.js';
 import { zProgramu } from '../../../integracje/program-fakturowy.ts';
-import { odmianaNazwyProgramu } from '../../../domena/nazwa-programu.js';
+import { odmianaNazwyProgramu, gdzieDokument } from '../../../domena/nazwa-programu.js';
 import { zdanieBrakuProgramu, EKRAN_WYBORU_PROGRAMU } from '../../../domena/wybor-programu.js';
+import { POWOD_BRAK_ZGODY } from '../../../domena/zgoda-ksef.js';
+import { EKRAN_KSEF_SPRZEDAZY } from '../../../domena/ekrany.js';
+
+// Wspólne dla zestawienia za okres i zestawienia zaznaczonych — jedno zdanie, jedno miejsce.
+const zdanieBrakuZestawienia = `Panel nie ma podpiętego inFaktu — nie ma z czego złożyć zestawienia faktur. ${GDZIE_KLUCZ_INFAKTU}`;
 
 // Zakladka FAKTURY. Trasa jest CIENKA: parsuje zadanie, wola usluge, renderuje.
 // Reguly sa w domain/lista-faktur.js, sklejenie danych w services/faktury-widok.js.
 
 const POLA = new Set(['invoice_date', 'sale_date']);
+const TYPY = new Set(['vat', 'korekta']);
+const PLATNOSCI = new Set(['zaplacona', 'niezaplacona']);
 
 // Ile miesiecy wstecz w liscie wyboru. Rok to jeden pelny cykl rozliczeniowy; starsze
 // dokumenty i tak leza w archiwum PDF na NAS-ie.
@@ -66,6 +72,8 @@ const RODZAJE_PDF = new Set(['vat', 'korekta']);
 // Ile znakow komunikatu z adresu wolno pokazac. Tresc sklada trasa nizej, ale przyjsc moze
 // z dowolnego adresu — a akapit dlugosci ekranu rozpychalby zakladke. EJS `<%= %>` i tak
 // escapuje, wiec chodzi tu wylacznie o rozmiar.
+// Katalog archiwum sprzedaży: program wbudowany czyta OMS_ARCHIWUM_SPRZEDAZY, inFakt — dawną zmienną (PRZ-122.B13).
+const zmiennaArchiwum = (program) => (program?.opis?.wbudowany ? 'OMS_ARCHIWUM_SPRZEDAZY' : 'INFAKT_ARCHIWUM');
 const MAX_KOMUNIKATU = 300;
 
 // ⚠️ JEDNO ZRODLO PRZEDROSTKA DLA TRASY I WIDOKU. Trasa sklada tym przedrostkiem komunikat
@@ -89,6 +97,12 @@ export function registerFakturyRoutes(app, {
   const program = zProgramu({ program: programPodany, infakt });
   // PRZ-118.09: nazwa programu w zdaniach ekranów (bez programu — inFakt, jak przed zmianą; domena/nazwa-programu.js).
   const nazwaProgramu = odmianaNazwyProgramu(program);
+  const pokazWynikKsef = (req, reply, dane) => reply.view('ksef-wynik.ejs', {
+    ...dane,
+    programWbudowany: program?.opis?.wbudowany === true,
+    // Tak samo jak zapis zgody: samo uprawnienie do Ustawień daje tylko odczyt.
+    ustawieniaKsef: req.konto?.admin === true && dane.blad === POWOD_BRAK_ZGODY ? EKRAN_KSEF_SPRZEDAZY : null,
+  });
   // ⚠️ PRZ-118.07: PROGRAM BEZ ZDOLNOŚCI `wyslijDoKsef` — podgląd i zatwierdzenie odpowiadają zdaniem z usługi wysyłki
   // (jedno źródło: program, którym usługa naprawdę wysyła), a nie ekranem wysyłki, która i tak by nie poszła.
   const odmowaWysylki = (reply) => reply.code(409).type('text/plain; charset=utf-8').send(wysylkaKsef.niedostepna);
@@ -102,13 +116,19 @@ export function registerFakturyRoutes(app, {
     const miesiac = /^\d{4}-\d{2}$/.test(String(req.query.miesiac ?? ''))
       ? String(req.query.miesiac) : dzis.slice(0, 7);
     const pole = POLA.has(req.query.pole) ? req.query.pole : 'invoice_date';
+    const typ = TYPY.has(req.query.typ) ? req.query.typ : '';
+    const platnosc = PLATNOSCI.has(req.query.platnosc) ? req.query.platnosc : '';
+    const filtry = (typ ? `&typ=${typ}` : '') + (platnosc ? `&platnosc=${platnosc}` : '');
+    if (req.query.wybor === 'pdf') {
+      return reply.redirect(`/faktury?miesiac=${encodeURIComponent(miesiac)}&pole=${encodeURIComponent(pole)}${filtry}`);
+    }
     // „Zaznacz wszystkie" jest ADRESEM, nie skryptem — panel nie ma JavaScriptu, a pole
     // wyboru w nagłówku bez niego nie zaznaczy niczego. Ten sam wzorzec, co nad listą
     // zamówień (routes/zamowienia.js). Adres NIESIE filtr, bo inaczej zaznaczenie
     // przerzucałoby operatora na inny miesiąc niż ten, który ogląda.
     const zaznaczWszystkie = req.query.zaznacz === '1';
     const adres = (zazn) => `/faktury?miesiac=${encodeURIComponent(miesiac)}`
-      + `&pole=${encodeURIComponent(pole)}${zazn ? '&zaznacz=1' : ''}`;
+      + `&pole=${encodeURIComponent(pole)}${filtry}${zazn ? '&zaznacz=1' : ''}`;
 
     // ⚠️ DWIE OSOBNE PROBY, NIE JEDNA (recenzja Zadania 7, Finding 1). `dokumenty` i
     // `nieoplacone` to DWA NIEZALEZNE zapytania do inFaktu — jedno wciaz moze dzialac, gdy
@@ -121,7 +141,7 @@ export function registerFakturyRoutes(app, {
     // PRZ-118.07: program bez zdolności `nieoplacone` — o listę nie pytamy, sekcja dostaje zdanie (`brakNieoplaconych`).
     const brakNieoplaconych = fakturyWidok.brakNieoplaconych ?? null;
     const [wynikDokumentow, wynikNieoplaconych] = await Promise.allSettled([
-      fakturyWidok.dokumenty({ miesiac, pole, dzis }),
+      fakturyWidok.dokumenty({ miesiac, pole, typ, platnosc, dzis }),
       brakNieoplaconych ? [] : fakturyWidok.nieoplacone({ dzis }),
     ]);
     const dokumenty = wynikDokumentow.status === 'fulfilled' ? wynikDokumentow.value : [];
@@ -147,8 +167,15 @@ export function registerFakturyRoutes(app, {
     return reply.view('faktury.ejs', {
       title: 'Faktury',
       nazwaProgramu,
+      programWbudowany: program?.opis?.wbudowany === true,
       miesiac,
       pole,
+      typ,
+      platnosc,
+      adresListy: adres(false),
+      sumaListy: bladDokumentow ? null : sumaListy(dokumenty),
+      zl,
+      doZaznaczenia,
       zaznaczWszystkie,
       adresZaznaczWszystkie: adres(true),
       adresOdznaczWszystkie: adres(false),
@@ -165,13 +192,12 @@ export function registerFakturyRoutes(app, {
       // Z NASZEJ BAZY, a nie z inFaktu — dokument skasowany w inFakcie z tamtej listy
       // ZNIKA, wiec akcja przy wierszu z inFaktu byla by niedostepna dokladnie wtedy,
       // gdy jest potrzebna (db/faktury.js: fakturyMozliweDoOdnotowaniaSkasowania).
-      doOdnotowaniaSkasowania: db ? fakturyMozliweDoOdnotowaniaSkasowania(db, { miesiac }) : [],
+      doOdnotowaniaSkasowania: db && program?.opis?.wbudowany !== true
+        ? fakturyMozliweDoOdnotowaniaSkasowania(db, { miesiac }) : [],
       // Predykat, a NIE nowe pole na dokumencie: `services/faktury-widok.js` ma test-pinner
       // z białą listą pól wyjścia, a widok i tak potrzebuje tu wyłącznie odpowiedzi „tak/nie".
       // Jedno źródło reguły (domain/wysylka-ksef.js) obsługuje obie warstwy.
       czyKonsumencka,
-      // PRZ-102.12: pole wyboru / „zaznacz wszystkie” — ta sama reguła, którą automat KSeF wybiera kandydatów.
-      doZaznaczeniaWszystkich: (d) => doZaznaczeniaWszystkich(d, czyWysylacKonsumenckie(db)),
       konsumenckie: czyWysylacKonsumenckie(db),
       // PRZ-078: forma prawna nabywcy skrócona do wyświetlenia (pełna nazwa w `title`).
       skrocFormePrawna,
@@ -203,6 +229,7 @@ export function registerFakturyRoutes(app, {
       mozliweZestawieniePrzychodow: Boolean(paczkaDlaBiura?.zbudujZestawieniePrzychodow),
       archiwum: {
         wlaczone: Boolean(czuwaczArchiwumSprzedazy),
+        zmienna: zmiennaArchiwum(program),
         stan: db ? stanArchiwumSprzedazy(db) : null,
         liczniki: db ? licznikiArchiwum(db) : { dokumentow: 0, skasowanych: 0 },
       },
@@ -233,12 +260,14 @@ export function registerFakturyRoutes(app, {
     // Brak sekcji INFAKT_ARCHIWUM to tryb POPRAWNY — ale wtedy nie ma czego uruchomic,
     // i odmowa ma to POWIEDZIEC (jak przy pobieraniu PDF-u bez inFaktu wyzej).
     if (!czuwaczArchiwumSprzedazy) {
-      return reply.code(503).send(zdanieBrakuProgramu(wyborProgramu) ?? 'Panel nie ma włączonego archiwum sprzedaży (brak INFAKT_ARCHIWUM).');
+      return reply.code(503).send(zdanieBrakuProgramu(wyborProgramu) ?? `Panel nie ma włączonego archiwum sprzedaży (brak ${zmiennaArchiwum(program)}).`);
     }
     // Filtr wraca Z OPERATOREM. Bledne wartosci sa tu nieszkodliwe: GET /faktury ma wlasna
     // bramke i wraca do domyslnych — ale przepuszczanie ich dalej niosloby smiec w adresie.
     const miesiac = /^\d{4}-\d{2}$/.test(String(req.body?.miesiac ?? '')) ? String(req.body.miesiac) : '';
     const pole = POLA.has(req.body?.pole) ? req.body.pole : 'invoice_date';
+    const typ = TYPY.has(req.body?.typ) ? req.body.typ : '';
+    const platnosc = PLATNOSCI.has(req.body?.platnosc) ? req.body.platnosc : '';
     let komunikat;
     try {
       const w = await czuwaczArchiwumSprzedazy.przebieg({ wymuszony: true });
@@ -264,6 +293,7 @@ export function registerFakturyRoutes(app, {
     }
     return reply.code(303).redirect(
       `/faktury?miesiac=${encodeURIComponent(miesiac)}&pole=${encodeURIComponent(pole)}`
+      + (typ ? `&typ=${typ}` : '') + (platnosc ? `&platnosc=${platnosc}` : '')
       + `&komunikat=${encodeURIComponent(komunikat)}`,
     );
   });
@@ -320,10 +350,10 @@ export function registerFakturyRoutes(app, {
   // dostac zdanie, ktore mowi, ze paczka juz powstaje i nie trzeba klikac trzeci raz.
   let paczkaTrwa = false;
   app.get('/faktury/paczka', async (req, reply) => {
-    if (!paczkaDlaBiura) return reply.code(503).send(zdanieBrakuProgramu(wyborProgramu) ?? `Panel nie ma podpiętego inFaktu — nie ma z czego złożyć paczki. ${GDZIE_KLUCZ_INFAKTU}`);
+    if (!paczkaDlaBiura) return reply.code(503).send(zdanieBrakuProgramu(wyborProgramu) ?? zdanieBrakuZestawienia);
     if (paczkaTrwa) {
       return reply.code(409).send(
-        'Paczka dla biura jest właśnie składana — poczekaj na pobranie pliku i spróbuj ponownie.',
+        'Zestawienie faktur jest właśnie składane — poczekaj na pobranie pliku i spróbuj ponownie.',
       );
     }
     // ⚠️ MIESIAC W ADRESIE ODMAWIA, a nie wraca do domyslnego — inaczej niz filtr w GET /faktury
@@ -340,14 +370,14 @@ export function registerFakturyRoutes(app, {
     const czesc = String(req.query.czesc ?? '');
     if (!CZESCI.includes(czesc)) {
       return reply.code(400).send(
-        `„${czesc}" to nie jest część paczki — panel składa dwa pliki: ${CZESCI.join(', ')}.`,
+        `„${czesc}" to nie jest część zestawienia faktur — panel składa dwa pliki: ${CZESCI.join(', ')}.`,
       );
     }
     // PRZ-102.22: wyłączony moduł Koszty (Ustawienia → Moduły) — część kosztowa odmawia ZANIM cokolwiek sięgnie do KSeF;
     // część sprzedażowa (inFakt) działa bez zmian.
     if (czesc === 'koszty' && db && wylaczoneModuly(db).includes('koszty')) {
       return reply.code(409).type('text/plain; charset=utf-8').send(
-        'Moduł Koszty jest wyłączony — paczka kosztów niedostępna. Włączysz go w Ustawienia → Moduły; paczka sprzedaży działa bez zmian.',
+        'Moduł Koszty jest wyłączony — zestawienie faktur kosztowych niedostępne. Włączysz go w Ustawienia → Moduły; zestawienie faktur sprzedaży działa bez zmian.',
       );
     }
     let wynik;
@@ -360,7 +390,81 @@ export function registerFakturyRoutes(app, {
     } catch (e) {
       // Blad TECHNICZNY leci dalej, do logu — tak samo, jak przy kazdej innej trasie tego pliku.
       if (!e?.dlaOperatora) throw e;
-      return reply.code(400).send(komunikatDlaOperatora(e));
+      // PRZ-126.C06: odmowa usługi = strona w układzie panelu (zdanie + powrót na listę), nie goły tekst w nowej karcie.
+      return odmowaZestawienia(reply, e.status ?? 400, komunikatDlaOperatora(e), miesiac);
+    } finally {
+      paczkaTrwa = false;
+    }
+    return reply.type('application/pdf')
+      .header('Content-Disposition', `attachment; filename="${wynik.nazwa}"`)
+      .send(wynik.bajty);
+  });
+
+  // PRZ-122.B13d1: zestawienie ZAZNACZONYCH faktur z listy (jeden miesiac) — ta sama usluga skladania, co zestawienie
+  // za okres, i TEN SAM zatrzask `paczkaTrwa` (jedno skladanie PDF naraz na proces, niezaleznie od rodzaju).
+  // POST, bo zaznaczenie bywa dlugie (do 100 identyfikatorow) i nie powinno trafiac do adresu ani historii.
+  // Odmowy (400) PRZED wolaniem uslugi — usluga ma te same bramki, tu stoja po to, zeby nie siegac do programu.
+  function odmowaZestawienia(reply, status, opis, miesiac, pole) {
+    const filtry = new URLSearchParams();
+    if (/^\d{4}-\d{2}$/.test(miesiac)) filtry.set('miesiac', miesiac);
+    if (POLA.has(pole)) filtry.set('pole', pole);
+    return reply.code(status).view('pusta-strona.ejs', {
+      title: 'Zestawienie faktur',
+      naglowek: 'Nie udało się przygotować zestawienia faktur',
+      opis,
+      odnosnik: { href: `/faktury${filtry.size ? `?${filtry}` : ''}`, etykieta: '← Wróć do listy faktur' },
+    });
+  }
+
+  app.post('/faktury/lista-zaznaczonych.csv', async (req, reply) => {
+    const body = req.body ?? {};
+    const miesiac = String(body.miesiac ?? '');
+    const pole = String(body.pole ?? '');
+    if (!zakresMiesiaca(miesiac) || !/^\d{4}-\d{2}$/.test(miesiac)) return odmowaZestawienia(reply, 400, `„${miesiac}” to nie jest miesiąc w formacie RRRR-MM.`, miesiac);
+    if (!POLA.has(pole)) return odmowaZestawienia(reply, 400, `„${pole}” to nie jest pole daty listy faktur.`, miesiac, pole);
+    const uuids = [...new Set([].concat(body.uuid ?? []).map((u) => String(u).trim()).filter(Boolean))];
+    if (!uuids.length) return odmowaZestawienia(reply, 400, 'Zaznacz co najmniej jedną fakturę.', miesiac, pole);
+    if (uuids.length > MAX_ZAZNACZONYCH) return odmowaZestawienia(reply, 400, `Można zaznaczyć najwyżej ${MAX_ZAZNACZONYCH} dokumentów.`, miesiac, pole);
+    if (!fakturyWidok) return odmowaZestawienia(reply, 503, 'Lista faktur jest niedostępna.', miesiac, pole);
+    let dokumenty;
+    try {
+      dokumenty = await fakturyWidok.dokumenty({ miesiac, pole, dzis: dzienWarszawa(new Date().toISOString()) });
+    } catch (e) {
+      if (!e?.dlaOperatora) throw e;
+      return odmowaZestawienia(reply, e.status ?? 400, komunikatDlaOperatora(e), miesiac, pole);
+    }
+    const dostepne = new Set(dokumenty.filter((d) => d.uuid).map((d) => String(d.uuid)));
+    const obce = uuids.filter((u) => !dostepne.has(u));
+    if (obce.length) return odmowaZestawienia(reply, 400, `Dokumentów o identyfikatorach ${obce.join(', ')} nie ma na liście faktur ${miesiac}.`, miesiac, pole);
+    const wybrane = new Set(uuids);
+    return reply.type('text/csv; charset=utf-8')
+      .header('Content-Disposition', `attachment; filename="${bezpiecznaNazwa(nazwaPlikuZaznaczonych(miesiac).slice(0, -4))}.csv"`)
+      .send(csvZaznaczonych(dokumenty.filter((d) => d.uuid && wybrane.has(String(d.uuid)))));
+  });
+
+  app.post('/faktury/zestawienie-zaznaczonych', async (req, reply) => {
+    if (!paczkaDlaBiura?.zbudujZaznaczone) return reply.code(503).send(zdanieBrakuProgramu(wyborProgramu) ?? zdanieBrakuZestawienia);
+    if (paczkaTrwa) {
+      return reply.code(409).send(
+        'Zestawienie faktur jest właśnie składane — poczekaj na pobranie pliku i spróbuj ponownie.',
+      );
+    }
+    const body = req.body ?? {};
+    const miesiac = String(body.miesiac ?? '');
+    if (!/^\d{4}-\d{2}$/.test(miesiac)) return odmowaZestawienia(reply, 400, `„${miesiac}" to nie jest miesiąc w formacie RRRR-MM.`, miesiac);
+    const pole = String(body.pole ?? '');
+    if (!POLA.has(pole)) return odmowaZestawienia(reply, 400, `„${pole}" to nie jest pole daty listy faktur — dozwolone: ${[...POLA].join(', ')}.`, miesiac, pole);
+    // Jeden zaznaczony checkbox przychodzi jako napis, kilka — jako tablica.
+    const uuids = [].concat(body.uuid ?? []).map((u) => String(u).trim()).filter(Boolean);
+    if (uuids.length === 0) return odmowaZestawienia(reply, 400, 'Zaznacz co najmniej jedną fakturę.', miesiac, pole);
+    let wynik;
+    paczkaTrwa = true;
+    try {
+      wynik = await paczkaDlaBiura.zbudujZaznaczone({ uuids, miesiac, pole });
+    } catch (e) {
+      if (!e?.dlaOperatora) throw e;
+      // Odmowa „czeka na KSeF" niesie 409; pozostale odmowy operatora — 400.
+      return odmowaZestawienia(reply, e.status ?? 400, komunikatDlaOperatora(e), miesiac, pole);
     } finally {
       paczkaTrwa = false;
     }
@@ -371,7 +475,8 @@ export function registerFakturyRoutes(app, {
 
   // PDF prosto z listy. Osobna trasa od `/zamowienia/:id/faktura/pdf`, bo tamta prowadzi
   // PRZEZ ZAMÓWIENIE — nie objęłaby ani korekt, ani faktur wystawionych poza panelem.
-  app.get('/faktury/:uuid/pdf', async (req, reply) => {
+  // PRZ-122.B10b: pobranie zamyka fakturę TwojeFaktury — HEAD (Fastify domyślnie = handler GET) nie może tego robić.
+  app.get('/faktury/:uuid/pdf', { exposeHeadRoute: false }, async (req, reply) => {
     const { uuid } = req.params;
     const rodzaj = req.query.rodzaj;
     if (!program) return reply.code(503).send(zdanieBrakuProgramu(wyborProgramu, DOPISEK_PDF) ?? `Panel nie ma podpiętego inFaktu. ${GDZIE_KLUCZ_INFAKTU}`);
@@ -388,6 +493,8 @@ export function registerFakturyRoutes(app, {
     try {
       bajty = korekta ? await program.pobierzPdfKorekty(uuid) : await program.pobierzPdf(uuid);
     } catch (e) {
+      // B10a: faktura VAT (B2B i B2C — B2C-QR) bez numeru KSeF — nie błąd, tylko „jeszcze nie”; zdanie podaje adres podglądu.
+      if (e?.czekaNaKsef) return reply.code(409).send(komunikatDlaOperatora(e));
       return reply.code(400).send(`Nie udało się pobrać dokumentu: ${komunikatDlaOperatora(e)}`);
     }
     const nazwa = `${korekta ? 'korekta' : 'faktura'}-${bezpiecznaNazwa(req.query.numer || uuid)}.pdf`;
@@ -396,17 +503,35 @@ export function registerFakturyRoutes(app, {
       .send(bajty);
   });
 
+  // PRZ-122.B10a: podgląd PDF dokumentu programu wbudowanego dla operatora (napis podglądu, bez kodu KSeF) — także
+  // przed numerem KSeF. Otwierany w przeglądarce, nie jako plik do wysłania. Prawo „faktury” z prefiksu adresu.
+  app.get('/faktury/twojefaktury/:id/podglad.pdf', async (req, reply) => {
+    if (typeof program?.podgladPdf !== 'function') {
+      return reply.code(404).send('Podgląd PDF jest tylko dla faktur programu wbudowanego.');
+    }
+    let bajty;
+    try {
+      bajty = await program.podgladPdf(req.params.id);
+    } catch (e) {
+      if (!e?.dlaOperatora) throw e;
+      return reply.code(e.status ?? 400).send(komunikatDlaOperatora(e));
+    }
+    return reply.type('application/pdf')
+      .header('Content-Disposition', `inline; filename="podglad-${bezpiecznaNazwa(req.params.id)}.pdf"`)
+      .send(bajty);
+  });
+
   // PRZ-102.12: wynik ostatniego przebiegu automatu KSeF — ten sam ekran wyniku co po przycisku, bo automat
   // wysyła tą samą usługą i ma te same trzy kategorie (wysłano / nie wiadomo / pominięte). Tylko odczyt z bazy.
   app.get('/faktury/ksef/automat', async (req, reply) => {
-    const { wynik, wlaczony, godzina, wstrzymane } = db ? wczytajAutomatKsef(db)
-      : { wynik: null, wlaczony: false, godzina: null, wstrzymane: [] };
-    return reply.view('ksef-wynik.ejs', {
-      title: 'Automat KSeF — wynik', adresPowrotu: '/faktury', nazwaProgramu,
+    const { wynik, wlaczony, godzina, wstrzymane, tryb } = db ? wczytajAutomatKsef(db)
+      : { wynik: null, wlaczony: false, godzina: null, wstrzymane: [], tryb: null };
+    return pokazWynikKsef(req, reply, {
+      title: 'Automat KSeF — wynik', adresPowrotu: '/faktury', nazwaProgramu, gdzieProgramu: gdzieDokument(program),
       wyslane: wynik?.wyslane ?? [], niepewne: wynik?.niepewne ?? [], pominiete: wynik?.pominiete ?? [],
       przyjete: null, blad: wynik?.blad ?? null,
       automat: { wynik, wlaczony, godzina, kto: KTO_AUTOMAT, poZasadzie: wynik?.poZasadzie ?? [],
-        wstrzymane: (wstrzymane ?? []).map((w) => ({ ...w, zdanie: zdanieWstrzymanej(w, nazwaProgramu) })) },
+        wstrzymane: (wstrzymane ?? []).map((w) => ({ ...w, zdanie: zdanieWstrzymanej(w, nazwaProgramu, undefined, tryb), doZwolnienia: czyDoZwolnienia(w) })) },
     });
   });
 
@@ -416,6 +541,18 @@ export function registerFakturyRoutes(app, {
   app.post('/faktury/ksef/automat/zwolnij', async (req, reply) => {
     const uuid = String(req.body?.uuid ?? '').trim();
     if (!uuid) return reply.code(400).type('text/plain; charset=utf-8').send('Brak identyfikatora faktury do zwolnienia.');
+    // C09ca: wpis „odrzucona” / „nie-wyslano” (TwojeFaktury) — ta wersja nie wraca do kolejki, więc zdjęcie wpisu
+    // obiecywałoby wysyłkę, której nie będzie. Odmowa, wpis zostaje.
+    // ZDROWIE-RECZNIE: w trybie „ręcznie” automat nie wysyła niczego, więc poprawioną wersję wysyła operator.
+    const automat = db ? wczytajAutomatKsef(db) : null;
+    const wpis = automat ? automat.wstrzymane.find((w) => w.uuid === uuid) : null;
+    if (wpis && !czyDoZwolnienia(wpis)) {
+      return reply.code(409).type('text/plain; charset=utf-8').send(wpis.kod === 'odrzucona'
+        ? (automat.tryb === 'reczna'
+          ? 'Tej faktury nie da się zwolnić — automat i tak jej nie wyśle, bo KSeF odrzucił tę wersję. Popraw fakturę w zakładce FAKTURY i wyślij poprawioną wersję ręcznie.'
+          : 'Tej faktury nie da się zwolnić — automat i tak jej nie wyśle, bo KSeF odrzucił tę wersję. Popraw fakturę; nową wersję automat wyśle sam.')
+        : 'Tej faktury nie da się zwolnić — automat i tak jej nie wyśle, bo nie ponawia tej samej wysyłki. Wyślij ją ręcznie bez zmian z zakładki FAKTURY.');
+    }
     if (db) zwolnijWstrzymane(db, uuid);
     return reply.code(303).redirect('/faktury/ksef/automat');
   });
@@ -505,12 +642,12 @@ export function registerFakturyRoutes(app, {
       // dokumentow) — sama awaria wywolania wraca z uslugi jako `blad` razem z lista
       // „nie wiadomo". Ekran zamiast pieciusetki, bo operator musi wiedziec, ze NIC
       // nie poszlo.
-      return reply.view('ksef-wynik.ejs', {
+      return pokazWynikKsef(req, reply, {
         title: 'Wysyłka do KSeF', miesiac, pole, adresPowrotu, etykietaPowrotu, nazwaProgramu, ...pusty, blad: komunikatDlaOperatora(e),
       });
     }
 
-    return reply.view('ksef-wynik.ejs', {
+    return pokazWynikKsef(req, reply, {
       title: 'Wysyłka do KSeF', miesiac, pole, adresPowrotu, etykietaPowrotu, nazwaProgramu, ...pusty, ...wynik,
     });
   });

@@ -14,7 +14,7 @@ const karta = {
   },
   orderData: {
     shipping: { name: 'Jan Kowalski', street: 'Długa 45', postal: '30-001', city: 'Kraków', phone: '500900008' },
-    invoice: { wanted: true, company: 'ACME sp. z o.o.', nip: '1000001112', sameAsShipping: true, street: '', postal: '', city: '' },
+    invoice: { wanted: true, company: 'ACME sp. z o.o.', nip: '1200001105', sameAsShipping: true, street: '', postal: '', city: '' },
   },
 };
 
@@ -31,7 +31,7 @@ describe('buildOmsOrderInput', () => {
         first_name: 'Jan', last_name: 'Kowalski', company: '',
         address_1: 'Długa 45', postcode: '30-001', city: 'Kraków', country: 'PL',
       },
-      nip: '1000001112',
+      nip: '1200001105',
       chceFakture: true,
       kosztDostawyBrutto: '19',
       pozycje: [{
@@ -60,7 +60,7 @@ describe('buildOmsOrderInput', () => {
       ...karta,
       orderData: {
         ...karta.orderData,
-        invoice: { wanted: true, company: 'ACME', nip: '1000001112', sameAsShipping: false, street: 'Krótka 1', postal: '31-002', city: 'Wieliczka' },
+        invoice: { wanted: true, company: 'ACME', nip: '1200001105', sameAsShipping: false, street: 'Krótka 1', postal: '31-002', city: 'Wieliczka' },
       },
     };
     const wynik = buildOmsOrderInput(inny, { publicBaseUrl: null });

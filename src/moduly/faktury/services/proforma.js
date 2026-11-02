@@ -8,6 +8,7 @@ import {
 import { czyWolnoWystawic } from '../../../domena/proforma-stan.js';
 import { pozycjeDokumentu, sprawdzSumeDokumentu } from '../../../domena/pozycje-faktury.js';
 import { czytajStawkeDomyslna } from '../db/stawka-vat.js';
+import { zwolnionaZFlagi } from '../db/zwolnienie-vat.js';
 import { podsumowanieVat } from '../../../domena/podsumowanie-vat.js';
 import { kwotaSlownie } from '../../../domena/kwota-slownie.js';
 import { daneFaktury } from '../../../domena/dane-faktury.js';
@@ -133,7 +134,10 @@ export function createProforma({
    *
    * Zwraca ZAPISANY wiersz proformy (z numerem, id i sciezka pliku).
    */
-  function wystaw(zamowienieId) {
+  // PRZ-122.B07c: `{ zw: true }` podaje trasa przy programie wbudowanym (TwojeFaktury) — pozycja „zw” na proformie jako
+  // „zw” z osobnym wierszem „zw” (VAT 0) w podsumowaniu. Usługa powstaje przed wyborem programu, więc flaga idzie
+  // z wywołaniem; bez niej (program zewnętrzny, API panelu) wynik jak dotąd.
+  function wystaw(zamowienieId, { zw = false } = {}) {
     // PRZ-101.04: główne grupy scalonej — pozycje całej grupy (jak faktura, oms/db/scalenia.js).
     const z = zamowienieDoDokumentu(db, zamowienieId);
 
@@ -154,13 +158,16 @@ export function createProforma({
     // arytmetyki rozjechalaby sie przy pierwszej zmianie i klamalaby o kwocie, ktora klient
     // ma przelac — a na proformie ta kwota jest calym sensem dokumentu.
     // PRZ-105: stawka per pozycja, domyslna z Ustawien — ta sama, ktora dostaje faktura VAT.
-    const pozycje = pozycjeDokumentu(z, { stawkaDomyslna: czytajStawkeDomyslna(db) });
+    // PRZ-122.B07f: firma zwolniona (flaga `zw` + zapisane zwolnienie) — nabywca z numerem UE to nie WDT,
+    // pozycje dostają „zw”, nie 0%. Zwolnienie czytane przy każdym wystawieniu (obie trasy proformy).
+    const zwolniona = zwolnionaZFlagi(db, { zw });
+    const pozycje = pozycjeDokumentu(z, { stawkaDomyslna: czytajStawkeDomyslna(db, { zw }), zw, zwolniona });
     sprawdzSumeDokumentu(pozycje, z);
 
     // ── FAZA 3: arytmetyka dokumentu ──────────────────────────────────────────
     // „Do zaplaty" bierzemy z WIERSZA SUMY podsumowania VAT, a nie z osobnego dodawania
     // pozycji: kwota dużym drukiem ma zgadzac sie co do grosza z tabela, ktora stoi nad nia.
-    const wierszeVat = podsumowanieVat(pozycje);
+    const wierszeVat = podsumowanieVat(pozycje, { zw });
     const doZaplatyGr = wierszeVat.at(-1).bruttoGr;
 
     // ── FAZA 4: numer i wiersz w bazie ────────────────────────────────────────

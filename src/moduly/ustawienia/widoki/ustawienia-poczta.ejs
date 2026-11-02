@@ -1,5 +1,6 @@
-<h1>Poczta wychodząca</h1>
-<p><a href="/ustawienia/integracje">← Integracje</a></p>
+<% const tylkoPodpis = nawigacja?.kontekst?.aktywnaZakladka === 'podpis'; %>
+<h1><%= title %></h1>
+<% if (!tylkoPodpis) { %><p><a href="/ustawienia/integracje">← Integracje</a></p><% } %>
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (proba) { %>
@@ -10,6 +11,7 @@
 <% } %>
 
 <p>Z tej skrzynki OMS wysyła zaproszenia do kont, linki do ustawienia nowego hasła i wiadomości do klientów z karty zamówienia. Dane serwera znajdziesz u dostawcy poczty, zwykle w pomocy pod hasłem „SMTP” albo „program pocztowy”.</p>
+<% if (!tylkoPodpis) { %>
 <% if (atrapa) { %>
   <p class="pas-uprzedzenie">Piaskownica: każdy mail, także próbny, przejmuje atrapa poczty — nic nie wychodzi z serwera, nawet gdy zapiszesz tu prawdziwą skrzynkę.</p>
 <% } %>
@@ -86,7 +88,8 @@
   <% } %>
 </section>
 
-<% if (podpisMaili) { const pm = podpisMaili; const obaZPliku = pm.stan.marka.zPliku && pm.stan.stopka.zPliku; %>
+<% } %>
+<% if (tylkoPodpis && podpisMaili) { const pm = podpisMaili; const obaZPliku = pm.stan.marka.zPliku && pm.stan.stopka.zPliku; %>
 <section class="ust-sekcja" id="podpis-maili">
   <h2>Podpis maili</h2>
   <p>Marka podpisuje maile do klientów („Pozdrawiamy,” i marka) i stoi w ich nagłówku. Stopka to kilka linii pod mailem, np. adres firmy i strona. Zmiana działa od następnego maila.</p>
@@ -130,6 +133,8 @@
 </section>
 <% } %>
 
+<% if (!tylkoPodpis) { %>
+<p><a href="/ustawienia/komunikacja/podpis">Podpis i stopka wiadomości → Komunikacja</a></p>
 <% if (moznaProbowac) { %>
 <section class="ust-sekcja">
   <h2>Wiadomość próbna</h2>
@@ -150,4 +155,6 @@
     <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń ustawienia poczty</button></div>
   </form>
 </section>
+<% } %>
+
 <% } %>

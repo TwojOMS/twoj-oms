@@ -1,10 +1,11 @@
+import { programInfakt } from '../../../src/integracje/programy/infakt.ts';
 import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { lukiKsef, poTerminie } from '../../../src/oms/db/ostrzezenia.js';
 import { ostrzezeniaFaktur } from '../../../src/domena/ostrzezenia.js';
 import { zajmijWysylkeKsef } from '../../../src/moduly/faktury/db/wysylki-ksef.js';
 import {
-  createCzuwaczOstrzezen, oknoLukKsef, SUFIT_STRON_LUK, NAJDLUZSZY_PRZEBIEG_OSTRZEZEN_MS,
+  createCzuwaczOstrzezen, oknoLukKsef, SUFIT_STRON_LUK, najdluzszyPrzebiegOstrzezenMs,
 } from '../../../src/moduly/zdrowie/services/czuwacz-ostrzezen.js';
 import { ODSTEP_CZUWACZA_MS } from '../../../src/oms/bootstrap.ts';
 
@@ -18,7 +19,7 @@ const dok = (uuid, reszta = {}) => ({
   number: `${uuid}/08/2026`,
   invoice_date: '2026-08-27',
   ksef_number: null,
-  client_tax_code: '1000001187',
+  client_tax_code: '1200001186',
   rodzaj: 'vat',
   ...reszta,
 });
@@ -174,6 +175,24 @@ describe('czuwacz ostrzeżeń — izolacja kroków i zdolności', () => {
     db.close();
   });
 
+  // OSTRZ-TF: program bez zdolności `nieoplacone` (TwojeFaktury) — `nieoplacone()` odmawia zdaniem dla człowieka.
+  // To nie awaria: krok terminów milczy (bez błędu przebiegu), a lustro po poprzednim programie znika.
+  it('program bez zdolności nieoplacone: krok terminów milczy i czyści lustro', async () => {
+    const db = openOmsDb(':memory:');
+    await zbuduj({ db, nieoplacone: [przeterminowana('u-40')] }).czuwacz.przebieg();
+    const czuwacz = createCzuwaczOstrzezen({
+      db,
+      infakt: { listaFaktur: async () => [] },
+      fakturyWidok: {
+        brakNieoplaconych: 'TwojeFaktury nie podaje listy nieopłaconych faktur',
+        nieoplacone: async () => { throw new Error('TwojeFaktury nie podaje listy nieopłaconych faktur'); },
+      },
+    });
+    await expect(czuwacz.przebieg()).resolves.toMatchObject({ pominiety: false });
+    expect(poTerminie(db)).toHaveLength(0);
+    db.close();
+  });
+
   it('bez klienta inFaktu i widoku faktur przebieg nie robi nic i nie rzuca', async () => {
     const db = openOmsDb(':memory:');
     const czuwacz = createCzuwaczOstrzezen({ db, infakt: null, fakturyWidok: null });
@@ -216,6 +235,6 @@ describe('okno i budżet', () => {
   // policzenia skutku ma położyć panel przy starcie (strażnik w bootstrap.js), nie po
   // cichu rozjechać zegar.
   it('najgorszy przebieg mieści się między tyknięciami zegara', () => {
-    expect(NAJDLUZSZY_PRZEBIEG_OSTRZEZEN_MS).toBeLessThan(ODSTEP_CZUWACZA_MS);
+    expect(najdluzszyPrzebiegOstrzezenMs(programInfakt({}).opis.limity)).toBeLessThan(ODSTEP_CZUWACZA_MS);
   });
 });

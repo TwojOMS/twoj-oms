@@ -86,12 +86,19 @@
     od tego, skąd jest klucz. %>
 <section class="ust-sekcja" id="ksef-konsumenckie">
   <h2>Faktury konsumenckie w KSeF</h2>
+  <% if (typeof bladKonsumenckich !== 'undefined' && bladKonsumenckich) { %><div class="pas-uprzedzenie" id="ksef-konsumenckie-blad"><p><%= bladKonsumenckich %></p></div><% } %>
+  <%_ /* PRZ-126.J01: zapis tylko admin (jak na ekranie Wysyłka do KSeF); reszta widzi stan. */ -%>
+  <%_ if (admin) { -%>
   <form class="ust-formularz" method="post" action="/ustawienia/integracje/infakt/ksef-konsumenckie">
     <label for="ksef-konsumenckie-wlaczone">Wysyłaj do KSeF także faktury konsumenckie (nabywca bez NIP-u)</label>
     <div><input type="hidden" name="wlaczony" value="0"><input id="ksef-konsumenckie-wlaczone" type="checkbox" name="wlaczony" value="1"<% if (konsumenckie) { %> checked<% } %>>
       <p class="ust-pomoc">Wysyłka B2C do KSeF jest dobrowolna. Po włączeniu faktury dla osób prywatnych pójdą do KSeF z przycisku, z karty zamówienia i automatem (jeśli włączony) — KSeF-u nie da się cofnąć, zostaje korekta. Klient bez dostępu do KSeF dostaje wydruk z kodem QR.</p></div>
     <div class="ust-pelna ust-akcje"><button class="btn btn--glowny" type="submit">Zapisz</button></div>
   </form>
+  <%_ } else { -%>
+  <p>Wysyłaj do KSeF także faktury konsumenckie (nabywca bez NIP-u): <strong id="ksef-konsumenckie-stan"><%= konsumenckie ? 'Włączone' : 'Wyłączone' %></strong></p>
+  <p class="ust-pomoc">Zmienia administrator.</p>
+  <%_ } -%>
 </section>
 
 <%# PRZ-108.06: formularz automatu wysyłki do KSeF przeniesiony na Ustawienia → Automatyzacje (faktury/widoki/_automat-ksef.ejs).
@@ -100,7 +107,7 @@
   <h2>Automatyczna wysyłka do KSeF</h2>
   <p><% if (automatStan.wlaczony) { %><strong>Włączona</strong> — najbliższy przebieg: <strong><%= automatStan.najblizszy %></strong>.<% } else { %><strong>Wyłączona.</strong><% } %></p>
   <% if (admin) { %>
-  <p>Godzinę i przełącznik ustawisz w <a href="/ustawienia/automatyzacje#ksef-automat">Ustawienia → Automatyzacje</a>.</p>
+  <p>Godzinę i przełącznik ustawisz w <a href="/ustawienia/automatyzacje/systemowe#ksef-automat">Ustawienia → Automatyzacje</a>.</p>
   <% } else { %>
   <p>Godzinę i przełącznik ustawia administrator w Ustawienia → Automatyzacje.</p>
   <% } %>

@@ -25,11 +25,26 @@ function kopia(k: string, nazwa: string, wiekH: number) {
 }
 
 describe('stanKopii', () => {
+  it('stan nośnika odzwierciedla brak, starą i świeżą kopię bez zmiany alarmów', () => {
+    const lok = katalog(); const usb = katalog();
+    kopia(lok, 'oms-2026-10-10.sqlite', 2);
+    fs.writeFileSync(path.join(usb, ZNACZNIK_NOSNIKA), '');
+    const sprawdz = () => stanKopii({ katalog: lok, zewnetrzna: usb, teraz: TERAZ, urzadzenie: osobny(usb) });
+    expect(sprawdz()).toMatchObject({ zewnetrznaStan: 'stara-na-nosniku', alarmy: [`kopia poza dyskiem: brak kopii w ${usb}`], uwagi: [] });
+    kopia(usb, 'oms-2026-10-10.sqlite', 50);
+    expect(sprawdz()).toMatchObject({ zewnetrznaStan: 'stara-na-nosniku', alarmy: ['kopia poza dyskiem: najnowsza oms-2026-10-10.sqlite ma 50 h (próg 48 h)'], uwagi: [] });
+    kopia(usb, 'oms-2026-10-10.sqlite', 2);
+    expect(sprawdz()).toMatchObject({ zewnetrznaStan: 'ok', alarmy: [], uwagi: [] });
+    kopia(lok, 'oms-2026-10-10.sqlite', 50);
+    expect(sprawdz()).toMatchObject({ zewnetrznaStan: 'ok', alarmy: ['kopia bazy: najnowsza oms-2026-10-10.sqlite ma 50 h (próg 48 h)'], uwagi: [] });
+  });
   it('świeża kopia lokalna i na nośniku: bez alarmów i uwag', () => {
     const lok = katalog(); const usb = katalog();
     kopia(lok, 'oms-2026-10-10.sqlite', 9); kopia(usb, 'oms-2026-10-10.sqlite', 9);
     fs.writeFileSync(path.join(usb, ZNACZNIK_NOSNIKA), '');
-    expect(stanKopii({ katalog: lok, zewnetrzna: usb, teraz: TERAZ, urzadzenie: osobny(usb) })).toEqual({ alarmy: [], uwagi: [] });
+    // PRZ-122.B16a: wynik niesie też pola dla panelu (ostatnia, katalogDostepny, zewnetrzna) — /health czyta tylko alarmy i uwagi.
+    expect(stanKopii({ katalog: lok, zewnetrzna: usb, teraz: TERAZ, urzadzenie: osobny(usb) })).toMatchObject({ alarmy: [], uwagi: [], zewnetrznaStan: 'ok' });
+    expect(stanKopii({ katalog: lok, zewnetrzna: usb, teraz: TERAZ }).zewnetrznaStan).toBe('ten-sam-dysk');
     // Znacznik jest, ale katalog na tym samym dysku co kopie lokalne: montowanie się nie udało.
     expect(stanKopii({ katalog: lok, zewnetrzna: usb, teraz: TERAZ }).alarmy)
       .toEqual([`kopia poza dyskiem: ${usb} jest na tym samym dysku co ${lok} — nośnik niezamontowany`]);
@@ -49,10 +64,12 @@ describe('stanKopii', () => {
   it('brak kopii, brak nośnika i nieustawiony cel: każde jawnie', () => {
     const lok = katalog(); const usb = katalog();
     const bez = stanKopii({ katalog: lok, zewnetrzna: '', teraz: TERAZ });
+    expect(bez.zewnetrznaStan).toBe('nieustawiona');
     expect(bez.alarmy).toEqual([`kopia bazy: brak kopii w ${lok}`]);
     expect(bez.uwagi).toEqual(['kopia poza dyskiem: nieustawiona — awaria dysku serwera zabierze bazę razem z kopiami (OMS_KOPIA_ZEWNETRZNA)']);
     kopia(lok, 'oms-2026-10-10.sqlite', 1);
     // Pendrive niepodłączony: katalog istnieje (pusty, na dysku serwera), ale nie ma znacznika nośnika.
+    expect(stanKopii({ katalog: lok, zewnetrzna: usb, teraz: TERAZ }).zewnetrznaStan).toBe('brak-nosnika');
     expect(stanKopii({ katalog: lok, zewnetrzna: usb, teraz: TERAZ }).alarmy)
       .toEqual([`kopia poza dyskiem: brak nośnika w ${usb} (brak pliku ${ZNACZNIK_NOSNIKA})`]);
     fs.writeFileSync(path.join(usb, ZNACZNIK_NOSNIKA), '');

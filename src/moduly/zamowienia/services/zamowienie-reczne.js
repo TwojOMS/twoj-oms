@@ -45,10 +45,11 @@ import { doklejOplate } from './oplata.js';
  * Warunek „jesli okresId jest null" bylby CICHY i przy pierwszym zamowieniu zbiorczym
  * zalozonym poza okresem skasowalby oplate tam, gdzie sie nalezy.
  */
-export function zalozZamowienieReczne({ db, dane, znacznik, okresId = null, naliczajOplate = true }) {
+// PRZ-122.B07c: `zw` (program wbudowany, trasa podaje z kontekstu) — pozycje i opłata ze stawką „zw”; bez flagi jak dotąd.
+export function zalozZamowienieReczne({ db, dane, znacznik, okresId = null, naliczajOplate = true, zw = false }) {
   const id = utworzZamowienieReczne(db, { ...dane, utworzone_at: znacznik }, okresId);
   try {
-    return dokoncz({ db, dane, id, naliczajOplate });
+    return dokoncz({ db, dane, id, naliczajOplate, zw });
   } catch (e) {
     // ⚠️ NUMER JUZ ZOSTAL NADANY i nie da sie go zwolnic — `utworzZamowienieReczne` domyka
     // wlasna transakcje, wiec wyjatek z dalszych krokow zostawia zamowienie POL-ZALOZONE
@@ -65,8 +66,8 @@ export function zalozZamowienieReczne({ db, dane, znacznik, okresId = null, nali
   }
 }
 
-function dokoncz({ db, dane, id, naliczajOplate }) {
-  for (const pozycja of dane.pozycje ?? []) dodajPozycjeReczna(db, id, pozycja);
+function dokoncz({ db, dane, id, naliczajOplate, zw }) {
+  for (const pozycja of dane.pozycje ?? []) dodajPozycjeReczna(db, id, pozycja, { zw });
 
   // ⚠️⚠️ RABAT UMOWNY WCHODZI TU: PO POZYCJACH, ale PRZED `doklejOplate` — i ta kolejnosc
   // jest o pieniadze (23.08.2026). Prog darmowej dostawy liczy sie od wartosci towaru
@@ -86,7 +87,7 @@ function dokoncz({ db, dane, id, naliczajOplate }) {
       b2b: dane.b2b,
       termin_platnosci: dane.termin_platnosci,
       rabat_procent: kontrakt.stawka.procent,
-    });
+    }, { zw });
   }
   // ⚠️ OPLATA WCHODZI PO TOWARZE, NIGDY PRZED. Prog darmowej dostawy liczy sie od
   // wartosci towaru, a ta istnieje dopiero wtedy, gdy pozycje sa w bazie. Odwrotna
@@ -112,6 +113,7 @@ function dokoncz({ db, dane, id, naliczajOplate }) {
     // cichym zerem — zero znaczy „towar za 0 zl", czyli ponizej progu, czyli oplata
     // kurierska doklejona bez podstawy.
     wartoscTowaruGr: wartoscTowaruGrosze(pobierzZamowienie(db, id).pozycje),
+    zw,
   });
   // Kwota zamowienia recznego IDZIE ZA POZYCJAMI I DOSTAWA (patrz przeliczKwoteRecznego).
   // Wolane PO doklejeniu oplaty — inaczej kwota zamowienia nie objelaby jej i karta

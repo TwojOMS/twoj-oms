@@ -550,7 +550,9 @@ describe('trasa wystawienia faktury', () => {
     const faktura = createFaktura({ db, infakt });
     const serwer = buildOmsServer({ db, config, poller, faktura });
     const id = zapiszZamowienie(db, 'pro', zmapowane(1601, {
-      chce_fakture: 1, nip: '1000001201', kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00', ...nad,
+      // PRZ-126.P1: aktywny formularz wymaga kompletu danych nabywcy.
+      klient: { first_name: 'Jan', last_name: 'Przykładowy', address_1: 'Fikcyjna 1', postcode: '00-001', city: 'Miasto Testowe' },
+      chce_fakture: 1, nip: '1200001200', kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00', ...nad,
     }), {});
     return { serwer, id, infakt };
   };
@@ -568,7 +570,8 @@ describe('trasa wystawienia faktury', () => {
     await serwer.ready();
     const r = await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/faktura`, headers: naglowek });
     expect(r.statusCode).toBe(302);
-    expect(r.headers.location).toBe(`/zamowienia/${id}`);
+    // PRZ-126.C02: po wystawieniu operator zostaje przy sekcji faktury, nie na górze karty.
+    expect(r.headers.location).toBe(`/zamowienia/${id}#faktura`);
     expect(infakt.wystaw).toHaveBeenCalledTimes(1);
     expect(pobierzZamowienie(db, id).faktura.numer).toBe('FV/1/2026');
   });
@@ -625,8 +628,15 @@ describe('trasa wystawienia faktury', () => {
     await serwer.ready();
     const r = await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/faktura`, headers: naglowek });
     expect(r.statusCode).toBe(400);
-    expect(r.body).not.toContain('Cannot read properties');
-    expect(r.body).toMatch(/logu/i);
+    // PRZ-126.C02: odmowa wraca jako karta zamówienia, a komunikat stoi w akapicie #blad-faktury.
+    // Karta ma też (od dawna, przed C02) pasek i podsumowanie „Faktura do wyjaśnienia: <opis>” z opisem
+    // zapisanym przy rezerwacji — tam szczegół zostaje jak dotąd (do uzgodnienia z programem).
+    // Poza tymi miejscami tekstu sterownika na ekranie być nie może.
+    const komunikat = r.body.match(/id="blad-faktury">([^<]*)</)?.[1] ?? '';
+    expect(komunikat).toMatch(/logu/i);
+    expect(komunikat).not.toContain('Cannot read properties');
+    const bezPaskaWyjasnienia = r.body.replace(/faktura do wyjaśnienia:[^<]*/gi, '');
+    expect(bezPaskaWyjasnienia).not.toContain('Cannot read properties');
     const wpis = db.prepare("SELECT * FROM log WHERE zamowienie_id = ? AND akcja = 'faktura.http'").get(id);
     expect(wpis.wynik).toContain('Cannot read properties');
   });
@@ -675,21 +685,21 @@ describe('trasa wystawienia faktury', () => {
   });
 
   // Przycisk prowadzacy prosto w 503 to zaproszenie do klikania w nic.
-  it('bez skonfigurowanego inFaktu widok NIE kusi przyciskiem', async () => {
+  it('bez skonfigurowanego inFaktu widok wyszarza przycisk (PRZ-126.P1)', async () => {
     const serwer = buildOmsServer({ db, config, poller });
     await serwer.ready();
     const id = zapiszZamowienie(db, 'pro', zmapowane(1603, { chce_fakture: 1 }), {});
     const r = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
-    expect(r.body).not.toContain('Wystaw fakturę');
+    expect(r.body).toMatch(/<button[^>]*disabled[^>]*>Wystaw fakturę<\/button>/);
     expect(r.body).toMatch(/inFakt nie jest skonfigurowany/);
   });
 
   // C2, druga linia obrony (pierwsza siedzi w wystaw()).
-  it('anulowane zamówienie nie pokazuje sekcji faktury', async () => {
+  it('anulowane zamówienie wyszarza przycisk faktury (PRZ-126.P1)', async () => {
     const { serwer, id } = zFaktura({ anulowane: 1 });
     await serwer.ready();
     const r = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
-    expect(r.body).not.toContain('Wystaw fakturę');
+    expect(r.body).toMatch(/<button[^>]*disabled[^>]*>Wystaw fakturę<\/button>/);
   });
 
   it('faktura „do wyjaśnienia” → ostrzeżenie i BRAK przycisku ponowienia', async () => {
@@ -751,7 +761,7 @@ describe('odblokowanie faktury po sprawdzeniu w inFakcie', () => {
     const serwer = buildOmsServer({ db, config, poller, faktura: createFaktura({ db, infakt }) });
     await serwer.ready();
     const id = zapiszZamowienie(db, 'pro', zmapowane(1702, {
-      chce_fakture: 1, nip: '1000001201', kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00',
+      chce_fakture: 1, nip: '1200001200', kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00',
     }), {});
     doWyjasnienia(id);
 
@@ -900,7 +910,7 @@ describe('faktura skasowana w inFakcie — wyjście dla operatora', () => {
     const serwer = buildOmsServer({ db, config, poller, faktura: createFaktura({ db, infakt }) });
     await serwer.ready();
     const id = zapiszZamowienie(db, 'pro', zmapowane(1705, {
-      chce_fakture: 1, nip: '1000001201', kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00',
+      chce_fakture: 1, nip: '1200001200', kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00',
     }), {});
     wystawiona(id);
 
@@ -1345,15 +1355,14 @@ describe('anulowanie po nadaniu i po fakturze — karta nie milczy', () => {
     expect(r.body).toContain('1000000000001U');
   });
 
-  // Kontrola negatywna: anulowane zamowienie, do ktorego nic sie nie zdazylo wydarzyc,
-  // ma dalej NIE pokazywac sekcji faktury ani ostrzezen o paczce.
+  // PRZ-126.P1: anulowane bez dokumentu ma wyszarzony przycisk; bez alarmu o istniejącej paczce/fakturze.
   it('anulowane bez przesyłki i faktury nie dorabia ostrzeżeń', async () => {
     const id = zAnulowanym(2003);
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).toContain('ANULOWANE');
     expect(r.body).not.toMatch(/JUŻ ISTNIEJE/i);
     expect(r.body).not.toMatch(/KOREKTĘ/);
-    expect(r.body).not.toContain('Wystaw fakturę');
+    expect(r.body).toMatch(/<button[^>]*disabled[^>]*>Wystaw fakturę<\/button>/);
   });
 });
 

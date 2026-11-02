@@ -221,11 +221,17 @@ function wierszPozycji(doc, y, pozycja, lp) {
   doc.text(nazwa, KOLUMNY.nazwa.x, y, { width: KOLUMNY.nazwa.w, align: 'left' });
   komorka(doc, pozycja?.quantity ?? '', KOLUMNY.ilosc, y);
   komorka(doc, kwota(cenaJednostkowaGr(pozycja)), KOLUMNY.cena, y);
-  komorka(doc, `${String(pozycja?.tax_symbol ?? '')}%`, KOLUMNY.stawka, y);
+  komorka(doc, etykietaStawki(pozycja?.tax_symbol), KOLUMNY.stawka, y);
   gruby(doc, 9);
   komorka(doc, kwota(pozycja?.gross_price ?? 0), KOLUMNY.wartosc, y);
 
   return y + wys;
+}
+
+// PRZ-122.B07b (uwaga (3) z odbioru B07a): „zw” to nie procent — drukowane „zw”, nie „zw%”. Liczbowe jak dotąd.
+function etykietaStawki(s) {
+  const t = String(s ?? '').trim();
+  return t === 'zw' ? 'zw' : `${String(s ?? '')}%`;
 }
 
 function tabelaVat(doc, y, wiersze = []) {
@@ -249,7 +255,7 @@ function tabelaVat(doc, y, wiersze = []) {
     // tę samą rzecz — a przy jednej stawce oba warianty wyglądają identycznie, więc pomyłka
     // wyszłaby dopiero na dokumencie z dwiema stawkami.
     if (w.suma) gruby(doc, 9); else zwykly(doc, 9);
-    komorka(doc, w.suma ? 'Suma' : `${w.stawka}%`, KOLUMNY_VAT.stawka, biezace);
+    komorka(doc, w.suma ? 'Suma' : etykietaStawki(w.stawka), KOLUMNY_VAT.stawka, biezace);
     komorka(doc, kwota(w.nettoGr), KOLUMNY_VAT.netto, biezace);
     komorka(doc, kwota(w.vatGr), KOLUMNY_VAT.vat, biezace);
     komorka(doc, kwota(w.bruttoGr), KOLUMNY_VAT.brutto, biezace);

@@ -5,7 +5,7 @@
 // ⚠️ Gdy token jest w .env (KSEF_TOKEN), .env WYGRYWA i ekran tylko to pokazuje — instalacja skonfigurowana plikiem
 // (w tym produkcja właściciela) nie zmienia zachowania po tej zmianie.
 // ⚠️ Token służy WYŁĄCZNIE do czytania faktur zakupowych (czuwacz kosztów, PDF kosztu, paczka kosztów). Wysyłka
-// sprzedaży do KSeF idzie przez inFakt i tego tokenu nie dotyka.
+// sprzedaży obsługuje wybrany program; TwojeFaktury wymaga osobnej zgody na wysyłkę.
 // Adres API (KSEF_API) i archiwum XML (KSEF_ARCHIWUM) NIE są polami formularza — zostają wyłącznie w pliku.
 import { znormalizujNip } from './gus.js';
 
@@ -13,6 +13,7 @@ import { znormalizujNip } from './gus.js';
 export const EKRAN_KSEF = '/ustawienia/integracje/ksef';
 /** Zdanie na ekranie — jakie uprawnienie ma mieć token (właściciel 20.10). */
 export const ZDANIE_UPRAWNIENIA_KSEF = 'Wygeneruj w KSeF token z uprawnieniem tylko do przeglądania faktur zakupowych — panel niczego przez KSeF nie wysyła.';
+export const ZDANIE_TOKENU_KOSZTOW_TWOJEFAKTURY = 'Ten sam token wysyła też faktury sprzedaży z TwojeFaktury — musi mieć uprawnienie do wystawiania faktur (InvoiceWrite).';
 
 const tekst = (v) => String(v ?? '').trim();
 

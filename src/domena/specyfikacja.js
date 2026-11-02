@@ -131,10 +131,13 @@ export function daneSpecyfikacji(z, { sprzedawca, dzis = dzienWarszawa(new Date(
     // ⚠️ `chceFakture` (a nie kolumna `chce_fakture`) — reczna poprawka na karcie wygrywa.
     // Operator zmienia to pole wlasnie wtedy, gdy klient rozmyslil sie po zlozeniu zamowienia,
     // a kartka ma mowic o stanie PO poprawce.
-    paragon: !chceFakture(z),
+    //
+    // PRZ-126.F02: faktura wystawiona BEZ prośby klienta (opcja firmy „faktura dla każdego”)
+    // też jest dokumentem sprzedaży — wtedy nie „paragon”. Bez faktury z numerem: jak dotąd.
+    paragon: !chceFakture(z) && !z?.faktura?.numer,
     // Wybor faktury to fakt niezalezny od jej numeru: specyfikacja czesto powstaje
     // przed wystawieniem, a klient musi widziec wybrany rodzaj dokumentu.
-    fakturaWybrana: chceFakture(z),
+    fakturaWybrana: chceFakture(z) || Boolean(z?.faktura?.numer),
     // ⚠️ UWAGI KLIENTA WRACAJA DO KLIENTA (24.08.2026, prosba wlasciciela). Zrodlo to
     // `customer_note` ze sklepu albo `messageToSeller` z Allegro (kolumna `zamowienia.uwagi`)
     // — czyli zdanie, ktore klient sam napisal. Wydrukowane na kartce jest potwierdzeniem,

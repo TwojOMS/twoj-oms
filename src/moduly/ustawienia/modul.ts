@@ -30,6 +30,7 @@ import { registerUstawieniaWkrotceRoutes } from './trasy/wkrotce.js';
 import { odczytajWydanie, sprawdzNajnowsze } from './aktualizacje.ts';
 import { transport } from '../../integracje/transport.js';
 import { registerLogoRoutes } from './trasy/logo.js';
+import { registerKopieRoutes } from './trasy/kopie.js';
 
 /** Zachowane ustawienia, konta, logowanie i wspólna rama panelu. */
 export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
@@ -38,13 +39,29 @@ export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
   uprawnienia:[{klucz:'ustawienia',etykieta:'Ustawienia',role:['administrator']}],
   menu:[{dzial:'ustawienia',etykieta:'Ustawienia',adres:'/ustawienia',uprawnienie:'ustawienia',kolejnosc:100}],
   zbuduj:ctx=>{
+    const opcjonalna=(modul:string,nazwa:string):any=>{
+      try{return ctx.usluga(modul,nazwa);}catch(e){
+        if(e instanceof Error && e.message.startsWith('Usługa „'))return null;
+        throw e;
+      }
+    };
     const wynikRol = synchronizujRole(ctx.db, { teraz: ctx.teraz }); // PRZ-068: synchronicznie, przed pierwszym zapytaniem (patrz plan §0.5)
     const opisRol = opisSynchronizacjiRol(wynikRol); // loginy i klucze ról, bez danych wrażliwych (recenzja D8 r1)
     if (opisRol) ctx.log(opisRol);
     const widokIntegracji=createWidokIntegracji({
       db:ctx.db,reklamy:ctx.usluga('marketing','reklamy'),
+      zgodaTf: () => { try { return ctx.usluga<{ zgoda?: boolean }>('faktury', 'wyborProgramu')?.zgoda === true; } catch { return false; } },
+      programFakturowy: () => { try { return ctx.usluga<any>('faktury', 'programFakturowy'); } catch { return null; } },
       stanyKanalow:()=>ctx.usluga<()=>any[]>('kanaly','stanyKanalow')(),
       wiazanieKanalow:ctx.usluga('kanaly','wiazanieKanalow'),
+      kanaly:()=>ctx.usluga('kanaly','config'), proba:ctx.usluga<{proba?:boolean}>('web','config')?.proba===true,
+      integracje:()=>{
+        const zapisane = new Set(ctx.db.prepare('SELECT integracja FROM konfiguracja_integracji').all().map((r:any)=>r.integracja));
+        const klucze:Record<string,string>={dpd:'dpd',inpost:'inpost',infakt:'infakt',ksef:'ksef',gus:'gus',smtp:'poczta'};
+        const uslugi:Record<string,any>={dpd:opcjonalna('wysylka','kurierDpd'),inpost:opcjonalna('wysylka','kurierInpost'),
+          infakt:opcjonalna('faktury','konfiguracjaInfaktu'),ksef:opcjonalna('koszty','zrodloKsef'),gus:opcjonalna('zamowienia','konfiguracjaGus'),smtp:pocztaOpcjonalna(ctx.usluga)()};
+        return Object.entries(klucze).map(([id,klucz])=>({id,skonfigurowana:uslugi[id]?.zEnv===true||uslugi[id]?.atrapa===true||zapisane.has(klucz),zrodlo:uslugi[id]?.zEnv?'serwer':'panel'}));
+      },
     });
     const lacznosc = { sprawdz: () => import('../../oms/services/lacznosc.js').then(async ({ sprawdzLacznosc }) => {
       return sprawdzLacznosc({ cele: celeDiagnostyki(ctx.usluga) as any });
@@ -63,6 +80,8 @@ export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
     return {uslugi:{widokIntegracji,lacznosc,aktualizacje},trasy:app=>{
     zarejestrujMenuKontaRol(app,{db:ctx.db});
     registerLogoRoutes(app,{db:ctx.db});
+    registerKopieRoutes(app,{konfiguracja:()=>opcjonalna('zdrowie','konfiguracjaKopii')?.()??{},teraz:ctx.teraz,
+      nadzor:()=>ctx.usluga<()=>any>('zdrowie','kopie')()});
     registerLogowanieRoutes(app,{db:ctx.db,config:ctx.usluga('web','config')});
     registerUstawieniaPocztyRoutes(app,{db:ctx.db,adresPaneluZEnv:ctx.konfiguracja.adresPanelu,poczta:pocztaOpcjonalna(ctx.usluga),mailer,podpis:podpisOpcjonalny(ctx.usluga),log:ctx.log});
     registerKontaRoutes(app,{db:ctx.db,teraz:ctx.teraz,adresPanelu,mailer,
@@ -74,14 +93,15 @@ export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
     registerUstawieniaWysylkiRoutes(app,{db:ctx.db});
     registerUstawieniaMagazynuRoutes(app,{db:ctx.db});
     registerUstawieniaModulowRoutes(app,{db:ctx.db});
-    registerPowiadomieniaRoutes(app,{db:ctx.db});
+    registerPowiadomieniaRoutes(app,{db:ctx.db,loginDemo:ctx.usluga<{demo?:{login:string}|null}>('web','config')?.demo?.login??null});
     registerUstawieniaStatusowRoutes(app,{db:ctx.db});
     registerUstawieniaFormulkiRoutes(app,{db:ctx.db});
     registerDiagnostykaRoutes(app,{db:ctx.db,config:ctx.usluga('kanaly','config'),lacznosc:ctx.usluga('ustawienia','lacznosc')});
     registerPanelRoutes(app);
     registerUstawieniaAktualizacjiRoutes(app,{aktualizacje:ctx.usluga('ustawienia','aktualizacje')});
-    registerUstawieniaWkrotceRoutes(app);
+    registerUstawieniaWkrotceRoutes(app,{kopie:()=>ctx.usluga<()=>any>('zdrowie','kopie')(),drukFaktur:()=>ctx.usluga<()=>any>('faktury','stanDrukuFaktur')?.()});
     app.get('/ustawienia/integracje',(req,reply)=>widokIntegracji(req,reply));
+    app.get('/ustawienia/integracje/katalog',(req,reply)=>widokIntegracji(req,reply));
     app.get('/ustawienia/integracje/reklamy',(req,reply)=>widokIntegracji(req,reply,{tylkoReklamy:true}));
     registerUstawieniaRoutes(app,{db:ctx.db,reklamy:ctx.usluga('marketing','reklamy')});
   }};},

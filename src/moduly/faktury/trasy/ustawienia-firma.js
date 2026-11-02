@@ -23,9 +23,17 @@ import { sprawdzFormularzNip, sprawdzFormularzBdo, ZAPIS_NIP_FIRMY, ZAPIS_BDO_FI
 import { wczytajZapisNipuFirmy, wczytajZapisBdoFirmy, zapiszNipFirmy, zapiszBdoFirmy, usunBdoFirmy } from '../../../oms/db/nip-bdo-firmy.js';
 // PRZ-105: domyślna stawka VAT — zapisuje tylko administrator (ta sama zasada co rachunek), lista 23/8/5/0.
 import { czytajStawkeDomyslna, zapiszStawkeDomyslna } from '../db/stawka-vat.js';
-import { STAWKI_VAT, czyStawkaVat } from '../../../domena/vat.js';
+import { STAWKA_VAT, STAWKI_VAT, czyStawkaVat, stawkiDlaProgramu } from '../../../domena/vat.js';
+// PRZ-122.B07b: zwolnienie z VAT — sekcja i zapis WYŁĄCZNIE przy TwojeFaktury (program wbudowany; inFakt bez zmian).
+// Zapisuje tylko administrator (403), przy innym programie 409, pusta podstawa przy zwolnionej firmie albo „inna” bez
+// tekstu → 400 ze zdaniem. Firma zwolniona → domyślna stawka „zw” (czytana z flagą tylko przy programie wbudowanym).
+import { sprawdzFormularzZwolnienia, czytajZwolnienie, zapiszZwolnienie, polaFormularzaZwolnienia, PODSTAWA_ART_113 } from '../db/zwolnienie-vat.js';
 
 const ZAPIS_STAWKI = '/ustawienia/firma/stawka-vat';
+const ZAPIS_ZWOLNIENIA = '/ustawienia/firma/zwolnienie-vat';
+const PROGRAM_WBUDOWANY = 'twojefaktury';
+const TYLKO_ADMIN_ZWOLNIENIE = 'Zwolnienie z VAT zmienia tylko administrator. Formularz niczego nie zapisał.';
+const ZWOLNIENIE_INNY_PROGRAM = 'Zwolnienie z VAT ustawiasz tylko przy programie TwojeFaktury — w innym programie fakturowym ustaw je u niego. Formularz niczego nie zapisał.';
 
 const KOMUNIKATY = {
   zapisano: 'Zapisano adres firmy. Następna proforma, specyfikacja i paczka DPD wyjdą z tym adresem.',
@@ -33,6 +41,7 @@ const KOMUNIKATY = {
   rachunek: 'Zapisano rachunek firmy. Następny mail o płatności, proforma i paczka za pobraniem Allegro wyjdą z tym rachunkiem.',
   'rachunek-usuniety': 'Usunięto rachunek zapisany na ekranie.',
   'stawka-vat': 'Zapisano domyślną stawkę VAT. Działa od następnej pozycji i następnej faktury.',
+  zwolnienie: 'Zapisano zwolnienie z VAT. Działa od następnej faktury; wystawione zostają bez zmian.',
   nip: 'Zapisano NIP firmy. Następna proforma, specyfikacja, potwierdzenie wywozu i faktura WDT wyjdą z tym NIP-em. Wystawione faktury i proformy zostają z poprzednim NIP-em; specyfikacja i potwierdzenie wywozu pobrane ponownie pokażą nowy.',
   bdo: 'Zapisano numer BDO. Następna specyfikacja wyjdzie z tym numerem.',
   'bdo-usuniety': 'Usunięto numer BDO zapisany na ekranie — specyfikacje wyjdą bez BDO.',
@@ -46,9 +55,12 @@ const TYLKO_ADMIN = 'Rachunek firmy zmienia tylko administrator. Formularz nicze
 const W_PLIKU = 'Rachunek firmy jest ustawiony w pliku konfiguracji (OMS_RACHUNEK / OMS_BANK w oms.env) — tam go zmień. Formularz niczego nie zapisał.';
 const tekst = (reply, kod, tresc) => reply.code(kod).type('text/plain; charset=utf-8').send(tresc);
 
-export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFirmy, nipBdoFirmy }) {
+// `wyborProgramu` (usługa faktury.wyborProgramu, PRZ-121.01) — `program` działający od startu; bez niej jak dotąd (inFakt).
+export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFirmy, nipBdoFirmy, wyborProgramu = null }) {
+  const wbudowany = () => wyborProgramu?.program === PROGRAM_WBUDOWANY;
+  const opcjeZw = () => ({ zw: wbudowany() });
   function widok(req, reply, { wpisane = null, bledy = [], wpisanyRachunek = null, bledyRachunku = [], bledyStawki = [],
-    wpisanyNip = null, bledyNipu = [], wpisanyBdo = null, bledyBdo = [] } = {}) {
+    wpisanyNip = null, bledyNipu = [], wpisanyBdo = null, bledyBdo = [], wpisaneZwolnienie = null, bledyZwolnienia = [] } = {}) {
     const zapis = wczytajZapisAdresuFirmy(db);
     const zapisRachunku = wczytajZapisRachunkuFirmy(db);
     const zapisNipu = wczytajZapisNipuFirmy(db);
@@ -72,13 +84,20 @@ export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFir
         bledy: bledyRachunku,
       },
       stawkaVat: {
-        biezaca: czytajStawkeDomyslna(db), stawki: STAWKI_VAT, mozeZmieniac: req.konto?.admin === true,
-        zapis: ZAPIS_STAWKI, bledy: bledyStawki,
+        biezaca: czytajStawkeDomyslna(db, opcjeZw()), stawki: stawkiDlaProgramu({ wbudowany: wbudowany() }),
+        mozeZmieniac: req.konto?.admin === true, zapis: ZAPIS_STAWKI, bledy: bledyStawki,
       },
+      zwolnienie: wbudowany() ? {
+        zapis: ZAPIS_ZWOLNIENIA, mozeZmieniac: req.konto?.admin === true, biezace: czytajZwolnienie(db), art113: PODSTAWA_ART_113,
+        pola: { ...polaFormularzaZwolnienia(czytajZwolnienie(db)), ...(wpisaneZwolnienie ?? {}) }, bledy: bledyZwolnienia,
+      } : null,
     });
   }
 
   app.get(EKRAN_ADRESU_FIRMY, async (req, reply) => widok(req, reply));
+  for (const adres of ['/ustawienia/firma/rejestrowe', '/ustawienia/firma/rachunek', '/ustawienia/faktury/vat']) {
+    app.get(adres, async (req, reply) => widok(req, reply));
+  }
 
   app.post(EKRAN_ADRESU_FIRMY, async (req, reply) => {
     if (adresFirmy.wPliku) {
@@ -112,19 +131,35 @@ export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFir
     }
     const konto = { id: req.konto.id ?? null, login: req.konto.login ?? null };
     zapiszRachunekFirmy(db, ustawienia, { konto });
-    return reply.code(303).redirect(`${EKRAN_ADRESU_FIRMY}?zapisano=rachunek`);
+    return reply.code(303).redirect('/ustawienia/firma/rachunek?zapisano=rachunek');
   });
 
   // PRZ-105: kolejność odmów jak przy rachunku — konto (403) → wartość spoza listy (400, ekran z komunikatem).
   app.post(ZAPIS_STAWKI, async (req, reply) => {
     if (req.konto?.admin !== true) return tekst(reply, 403, TYLKO_ADMIN_STAWKA);
     const stawka = String(req.body?.stawka ?? '').trim();
-    if (!czyStawkaVat(stawka)) {
+    if (!czyStawkaVat(stawka, opcjeZw())) {
       reply.code(400);
-      return widok(req, reply, { bledyStawki: [`Wybierz jedną ze stawek: ${STAWKI_VAT.join(', ')}%.`] });
+      return widok(req, reply, { bledyStawki: [`Wybierz jedną ze stawek: ${STAWKI_VAT.join(', ')}%${wbudowany() ? ' albo zw' : ''}.`] });
     }
-    zapiszStawkeDomyslna(db, stawka);
-    return reply.code(303).redirect(`${EKRAN_ADRESU_FIRMY}?zapisano=stawka-vat`);
+    zapiszStawkeDomyslna(db, stawka, opcjeZw());
+    return reply.code(303).redirect('/ustawienia/faktury/vat?zapisano=stawka-vat');
+  });
+
+  // PRZ-122.B07b: zwolnienie z VAT. Kolejność odmów: konto (403) → program inny niż wbudowany (409) → walidacja (400).
+  app.post(ZAPIS_ZWOLNIENIA, async (req, reply) => {
+    if (req.konto?.admin !== true) return tekst(reply, 403, TYLKO_ADMIN_ZWOLNIENIE);
+    if (!wbudowany()) return tekst(reply, 409, ZWOLNIENIE_INNY_PROGRAM);
+    const { ustawienia, bledy, wpisane } = sprawdzFormularzZwolnienia(req.body ?? {});
+    if (bledy.length) {
+      reply.code(400);
+      return widok(req, reply, { wpisaneZwolnienie: wpisane, bledyZwolnienia: bledy });
+    }
+    zapiszZwolnienie(db, ustawienia);
+    // Firma zwolniona → domyślna „zw”; wycofanie zwolnienia przywraca 23, jeśli domyślną była „zw” (inną zostawia).
+    if (ustawienia.zwolniona) zapiszStawkeDomyslna(db, 'zw', { zw: true });
+    else if (czytajStawkeDomyslna(db, { zw: true }) === 'zw') zapiszStawkeDomyslna(db, STAWKA_VAT);
+    return reply.code(303).redirect('/ustawienia/faktury/vat?zapisano=zwolnienie');
   });
 
   // PRZ-108.10: NIP. Kolejność odmów jak przy rachunku: konto (403) → pole w pliku (409) → walidacja (400, zdanie jak
@@ -138,7 +173,7 @@ export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFir
       return widok(req, reply, { wpisanyNip: ustawienia.nip, bledyNipu: bledy });
     }
     zapiszNipFirmy(db, ustawienia.nip, { konto: { id: req.konto.id ?? null, login: req.konto.login ?? null } });
-    return reply.code(303).redirect(`${EKRAN_ADRESU_FIRMY}?zapisano=nip`);
+    return reply.code(303).redirect('/ustawienia/firma/rejestrowe?zapisano=nip');
   });
 
   // PRZ-108.10: BDO — pusty wpis znaczy „firma nie ma BDO” (wiersz z ekranu znika).
@@ -152,16 +187,16 @@ export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFir
     }
     if (!ustawienia.bdo) {
       usunBdoFirmy(db);
-      return reply.code(303).redirect(`${EKRAN_ADRESU_FIRMY}?zapisano=bdo-usuniety`);
+      return reply.code(303).redirect('/ustawienia/firma/rejestrowe?zapisano=bdo-usuniety');
     }
     zapiszBdoFirmy(db, ustawienia.bdo, { konto: { id: req.konto.id ?? null, login: req.konto.login ?? null } });
-    return reply.code(303).redirect(`${EKRAN_ADRESU_FIRMY}?zapisano=bdo`);
+    return reply.code(303).redirect('/ustawienia/firma/rejestrowe?zapisano=bdo');
   });
 
   // Jak przy adresie: działa także przy rachunku w pliku (zapis sprzed dopisania do pliku musi dać się usunąć).
   app.post(`${ZAPIS_RACHUNKU_FIRMY}/usun`, async (req, reply) => {
     if (req.konto?.admin !== true) return tekst(reply, 403, TYLKO_ADMIN);
     usunRachunekFirmy(db);
-    return reply.code(303).redirect(`${EKRAN_ADRESU_FIRMY}?zapisano=rachunek-usuniety`);
+    return reply.code(303).redirect('/ustawienia/firma/rachunek?zapisano=rachunek-usuniety');
   });
 }

@@ -21,6 +21,22 @@ export function czyNipUe(nip) {
   return WZORZEC_UE.test(normalizujNip(nip));
 }
 
+/**
+ * PRZ-122.B07d: czy dokument dla tego nabywcy jest WDT. Sprzedawca zwolniony z VAT (art. 113) nie robi WDT — 0% wymaga
+ * czynnego podatnika VAT-UE; sprzedaż firmie z UE to wtedy zwykła sprzedaż krajowa „zw” (decyzja właściciela 27.10).
+ * Flagę liczy wołający (`sprzedawcaZwolniony` w moduly/faktury/db/zwolnienie-vat.js — tylko program wbudowany).
+ * Bez flagi = `czyNipUe`, czyli dokładnie jak przed zmianą. `czyNipUe` zostaje do samego rozpoznania numeru.
+ */
+export function czyWdt(nip, { zwolniona = false } = {}) {
+  return czyNipUe(nip) && zwolniona !== true;
+}
+
+/** PRZ-122.B07d: początek komunikatu „to nie WDT” — log przy wystawieniu, pas na karcie, odmowa straży adaptera. */
+export const NIE_WDT_ZWOLNIONA = 'Sprzedawca zwolniony z VAT — to nie jest WDT';
+
+/** Wpis w logu zamówienia przy wystawieniu faktury „zw” firmy zwolnionej dla nabywcy z numerem VAT UE. */
+export const LOG_NIE_WDT_ZWOLNIONA = `${NIE_WDT_ZWOLNIONA}; faktura „zw” (numer VAT UE nabywcy na fakturze, bez VIES i bez serii WDT).`;
+
 /** Kod kraju i numer do zapytania VIES — `null` dla numeru krajowego. */
 export function rozbijNipUe(nip) {
   const m = WZORZEC_UE.exec(normalizujNip(nip));

@@ -44,7 +44,7 @@ const get = (url) => app.inject({ method: 'GET', url, headers: naglowek });
 // BETAMET — klient z prawdziwego zgloszenia (21.08.2026): zamowienie mailem, wysylka gratis,
 // FV przelew 14 dni, kanal B2B.
 const BETAMET = {
-  nazwa: 'BETAMET sp. z o.o.', klucz: 'betamet', nip: '100-00-01-023',
+  nazwa: 'BETAMET sp. z o.o.', klucz: 'betamet', nip: '120-00-01-022',
   f_firma: 'BETAMET sp. z o.o.', f_ulica: 'Fabryczna 4', f_kod: '00-650', f_miasto: 'Pęki',
   f_email: 'faktury@betamet.pl',
   w_nazwa: 'Jan Kowalski', w_firma: 'BETAMET sp. z o.o.', w_ulica: 'Fabryczna 4',
@@ -62,7 +62,7 @@ describe('baza stałych klientów', () => {
     expect(k.nazwa).toBe('BETAMET sp. z o.o.');
     // ⚠️ NIP LEZY ZNORMALIZOWANY — same cyfry. Zapisany z myslnikami nie dopasowalby sie
     // do niczego, a wlasnie dopasowanie jest jedynym powodem tej kolumny.
-    expect(k.nip).toBe('1000001023');
+    expect(k.nip).toBe('1200001022');
     expect(k.b2b).toBe(1);
     expect(k.rabat_procent).toBe(30);
     expect(k.koszt_dostawy_brutto).toBe('0.00');
@@ -200,7 +200,7 @@ describe('wstawienie danych do nowego zamówienia', () => {
     const wstawione = await post('/zamowienia/nowe/klient', { klient_klucz: 'betamet' });
     expect(wstawione.statusCode).toBe(200);
     await post('/zamowienia/nowe', {
-      w_nazwa: 'Jan Kowalski', f_firma: 'BETAMET sp. z o.o.', f_nip: '1000001023',
+      w_nazwa: 'Jan Kowalski', f_firma: 'BETAMET sp. z o.o.', f_nip: '1200001022',
       dostawa: 'dpd', platnosc: 'przelew', koszt_dostawy_brutto: '0',
       b2b: 'on', termin_platnosci: '14', rabat_procent: '30',
       poz_nazwa: 'Szablon inwalida 30x30', poz_ilosc: '10', poz_cena_brutto: '52.43',
@@ -224,7 +224,7 @@ describe('zapamiętaj tego klienta', () => {
     dane: {
       klient: { first_name: 'Jan', last_name: 'Kowalski', company: 'BETAMET sp. z o.o.', address_1: 'Fabryczna 4', postcode: '00-650', city: 'Pęki', email: 'zamowienia@betamet.pl' },
       dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: 'BETAMET sp. z o.o.', address_1: 'Fabryczna 4', postcode: '00-650', city: 'Pęki' },
-      nip: '1000001023', chce_fakture: 1, metoda_wysylki: 'dpd', koszt_dostawy_brutto: '0.00',
+      nip: '1200001022', chce_fakture: 1, metoda_wysylki: 'dpd', koszt_dostawy_brutto: '0.00',
       metoda_platnosci: 'Przelew', b2b: 1, termin_platnosci: '14', rabat_procent: 0, pozycje: [],
     },
   });
@@ -232,7 +232,7 @@ describe('zapamiętaj tego klienta', () => {
   it('zakłada wpis z danych zamówienia', async () => {
     const { id } = zalozZamowienie();
     expect((await post(`/zamowienia/${id}/klient/zapamietaj`)).statusCode).toBe(302);
-    const k = klientPoNip(db, '1000001023');
+    const k = klientPoNip(db, '1200001022');
     expect(k.nazwa).toBe('BETAMET sp. z o.o.');
     expect(k.faktura.ulica).toBe('Fabryczna 4');
     expect(k.b2b).toBe(1);
@@ -252,10 +252,10 @@ describe('zapamiętaj tego klienta', () => {
   it('późniejsza poprawka w bazie NIE zmienia adresu na istniejącym zamówieniu', async () => {
     const { id } = zalozZamowienie();
     await post(`/zamowienia/${id}/klient/zapamietaj`);
-    const k = klientPoNip(db, '1000001023');
+    const k = klientPoNip(db, '1200001022');
     await post('/klienci', { ...BETAMET, id: String(k.id), f_ulica: 'Nowa 99', w_ulica: 'Nowa 99' });
 
-    expect(klientPoNip(db, '1000001023').faktura.ulica).toBe('Nowa 99');
+    expect(klientPoNip(db, '1200001022').faktura.ulica).toBe('Nowa 99');
     expect(pobierzZamowienie(db, id).klient.address_1).toBe('Fabryczna 4');
     expect((await get(`/zamowienia/${id}`)).body).toContain('Fabryczna 4');
   });
@@ -366,7 +366,7 @@ describe('zmiana ustaleń na karcie', () => {
 describe('pobierz z GUS na ekranie klientów', () => {
   const FIRMA = {
     firma: '„BETAMET" SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ',
-    nip: '1000001023',
+    nip: '1200001022',
     ulica: 'Fabryczna 4',
     kod: '00-650',
     miasto: 'Pęki',
@@ -375,21 +375,21 @@ describe('pobierz z GUS na ekranie klientów', () => {
 
   it('wypełnia pola faktury i zostawia formularz otwarty', async () => {
     await zbuduj({ gusKlient: atrapaGus({ firma: FIRMA }) });
-    const odp = await post('/klienci/gus', { f_nip: '100-00-01-023', nazwa: '' });
+    const odp = await post('/klienci/gus', { f_nip: '120-00-01-022', nazwa: '' });
     expect(odp.statusCode).toBe(200);
     expect(odp.body).toContain('Fabryczna 4');
     expect(odp.body).toContain('00-650');
     expect(odp.body).toContain('REGON 123456789');
     expect(odp.body).toContain('name="klucz"');
     // NIP idzie do zapytania ZNORMALIZOWANY — z myślnikami REGON nie znajdzie niczego.
-    expect(gus.pytania).toEqual(['1000001023']);
+    expect(gus.pytania).toEqual(['1200001022']);
   });
 
   // ⚠️⚠️ NIC NIE ZAPISUJE. Ta sama obietnica, co przy dwóch pozostałych kopiach tego
   // przycisku: pobranie z GUS-u wypełnia pola do sprawdzenia, a nie zakłada klienta.
   it('NIE zapisuje klienta', async () => {
     await zbuduj({ gusKlient: atrapaGus({ firma: FIRMA }) });
-    await post('/klienci/gus', { f_nip: '1000001023', nazwa: 'BETAMET' });
+    await post('/klienci/gus', { f_nip: '1200001022', nazwa: 'BETAMET' });
     expect(wszyscyKlienci(db, { tylkoAktywni: false })).toHaveLength(0);
   });
 
@@ -397,9 +397,9 @@ describe('pobierz z GUS na ekranie klientów', () => {
   // w całej okazałości. Pusta uzupełnia się z GUS-u, wpisana ZOSTAJE.
   it('pustą nazwę uzupełnia z GUS-u, a wpisanej nie rusza', async () => {
     await zbuduj({ gusKlient: atrapaGus({ firma: FIRMA }) });
-    expect((await post('/klienci/gus', { f_nip: '1000001023', nazwa: '' })).body)
+    expect((await post('/klienci/gus', { f_nip: '1200001022', nazwa: '' })).body)
       .toContain('SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ');
-    const zWlasna = await post('/klienci/gus', { f_nip: '1000001023', nazwa: 'BETAMET sp. z o.o.' });
+    const zWlasna = await post('/klienci/gus', { f_nip: '1200001022', nazwa: 'BETAMET sp. z o.o.' });
     expect(zWlasna.body).toContain('value="BETAMET sp. z o.o."');
   });
 
@@ -413,7 +413,7 @@ describe('pobierz z GUS na ekranie klientów', () => {
   // Awaria GUS-u nie ma prawa wywalić ekranu razem z tym, co operator zdążył wpisać.
   it('awaria GUS-u zostawia formularz z wpisanymi danymi', async () => {
     await zbuduj({ gusKlient: atrapaGus({ rzuca: 'BIR nie odpowiada' }) });
-    const odp = await post('/klienci/gus', { f_nip: '1000001023', nazwa: 'Wpisane ręcznie' });
+    const odp = await post('/klienci/gus', { f_nip: '1200001022', nazwa: 'Wpisane ręcznie' });
     expect(odp.body).toMatch(/Nie udało się zapytać GUS/);
     expect(odp.body).toContain('value="Wpisane ręcznie"');
   });
@@ -423,7 +423,7 @@ describe('pobierz z GUS na ekranie klientów', () => {
   it('bez skonfigurowanego GUS-u przycisku nie ma, a trasa tłumaczy dlaczego', async () => {
     await zbuduj({ gusKlient: null });
     expect((await get('/klienci?nowy')).body).not.toContain('Pobierz z GUS');
-    expect((await post('/klienci/gus', { f_nip: '1000001023' })).body).toMatch(/GUS nie jest skonfigurowany/);
+    expect((await post('/klienci/gus', { f_nip: '1200001022' })).body).toMatch(/GUS nie jest skonfigurowany/);
   });
 });
 
@@ -497,7 +497,7 @@ describe('karta stałego klienta', () => {
     const k = await dopiszIWez();
     const body = (await get(`/klienci/${k.id}`)).body;
     expect(body).toContain('BETAMET sp. z o.o.');
-    expect(body).toContain('1000001023');
+    expect(body).toContain('1200001022');
     expect(body).toContain('Fabryczna 4');
     expect(body).toContain('faktury@betamet.pl');
     expect(body).toContain('600100200');
@@ -552,7 +552,7 @@ describe('historia zamówień na karcie klienta', () => {
   it('pokazuje zamówienia TEGO podmiotu i pomija cudze', async () => {
     await dopisz();
     const k = wszyscyKlienci(db).at(-1);
-    const nasze = zamowienie({ nip: '1000001023', cena: '123.00' });
+    const nasze = zamowienie({ nip: '1200001022', cena: '123.00' });
     const obce = zamowienie({ nip: '5252674798', cena: '999.00' });
     const body = (await get(`/klienci/${k.id}`)).body;
     expect(body).toContain(`/zamowienia/${nasze}"`);
@@ -561,13 +561,13 @@ describe('historia zamówień na karcie klienta', () => {
     expect(body).not.toContain('999,00');
   });
 
-  // ⚠️⚠️ NIP zapisany z myslnikami („100-00-01-023") albo z prefiksem „PL" to NORMALNY stan
+  // ⚠️⚠️ NIP zapisany z myslnikami („120-00-01-022") albo z prefiksem „PL" to NORMALNY stan
   // zamowienia ze sklepu. Porownanie napisow wprost nie znalazloby ani jednego zamowienia,
   // a ekran pokazalby pustke — czyli zdanie „ten klient nic nie zamawial", ktore jest falszem.
   it('dopasowuje NIP zapisany z myślnikami i z prefiksem PL', async () => {
     await dopisz();
     const k = wszyscyKlienci(db).at(-1);
-    const a = zamowienie({ nip: 'PL 100-00-01-023', cena: '10.00' });
+    const a = zamowienie({ nip: 'PL 120-00-01-022', cena: '10.00' });
     expect((await get(`/klienci/${k.id}`)).body).toContain(`/zamowienia/${a}"`);
   });
 
@@ -579,7 +579,7 @@ describe('historia zamówień na karcie klienta', () => {
     const k = wszyscyKlienci(db).at(-1);
     const id = zamowienie({ nip: '1111111111', cena: '55.00' });
     expect((await post(`/zamowienia/${id}/dane/faktura`, {
-      firma: 'BETAMET sp. z o.o.', nip: '1000001023', ulica: 'Fabryczna 4', kod: '00-650', miasto: 'Pęki', email: '',
+      firma: 'BETAMET sp. z o.o.', nip: '1200001022', ulica: 'Fabryczna 4', kod: '00-650', miasto: 'Pęki', email: '',
     })).statusCode).toBe(302);
     expect((await get(`/klienci/${k.id}`)).body).toContain(`/zamowienia/${id}"`);
   });
@@ -604,8 +604,8 @@ describe('historia zamówień na karcie klienta', () => {
   it('anulowane liczy się do liczby zamówień, ale NIE do kwoty', async () => {
     await dopisz();
     const k = wszyscyKlienci(db).at(-1);
-    zamowienie({ nip: '1000001023', cena: '100.00' });
-    const drugie = zamowienie({ nip: '1000001023', cena: '900.00' });
+    zamowienie({ nip: '1200001022', cena: '100.00' });
+    const drugie = zamowienie({ nip: '1200001022', cena: '900.00' });
     zapiszFaktyStatusu(db, drugie, { anulowane_recznie: 1 });
     const body = (await get(`/klienci/${k.id}`)).body;
     expect(body).toContain('2 zamówienia');

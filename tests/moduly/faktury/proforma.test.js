@@ -27,7 +27,7 @@ const zmapowane = (nad = {}) => ({
   metoda_wysylki: 'dpd',
   kwota_pobrania: null,
   chce_fakture: 0,
-  nip: '1000001201',
+  nip: '1200001200',
   kwota_brutto: '123.00',
   koszt_dostawy_brutto: '0.00',
   status_woo: 'processing',
@@ -298,7 +298,7 @@ describe('proforma — dane na dokumencie', () => {
     const { id, proforma, budujPdf } = zPodgladem();
     proforma.wystaw(id);
     expect(budujPdf.mock.calls[0][0].nabywca).toMatchObject({
-      nazwa: 'ACME', nip: '1000001201', ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki',
+      nazwa: 'ACME', nip: '1200001200', ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki',
     });
   });
 

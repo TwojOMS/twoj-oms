@@ -1,10 +1,10 @@
 import type { ModulOms, Zegar } from '../../core/kontrakty.ts';
 import { ocenZdrowie } from '../../domena/zdrowie.js';
 import { registerZdrowieRoutes } from './trasy.js';
-import { createCzuwaczOstrzezen, NAJDLUZSZY_PRZEBIEG_OSTRZEZEN_MS } from './services/czuwacz-ostrzezen.js';
+import { createCzuwaczOstrzezen } from './services/czuwacz-ostrzezen.js';
 import { alarmyKonfiguracjiKanalow, alarmyNazwKanalow } from './bezpiecznik-kanalow.ts';
 import { zegarOstrzezen } from './zegary.ts';
-import { stanKopii, wersjaWydania } from './kopie.ts';
+import { stanKopii, wersjaWydania, nadzorKopiiWymagany, uwagaBezNadzoruKopii } from './kopie.ts';
 import { UWAGA_BRAK_RACHUNKU } from '../../domena/rachunek-firmy.js';
 import { UWAGA_BRAK_NIP } from '../../domena/nip-bdo-firmy.js';
 
@@ -12,7 +12,6 @@ export const ODSTEP_OSTRZEZEN_MS=3600000;
 export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewnetrzna:string}> = {
   nazwa:'zdrowie',wersja:'1.0.0',wymaga:['rdzen','web','kanaly','faktury','wysylka'],
   konfiguracja:env=>{
-    if(NAJDLUZSZY_PRZEBIEG_OSTRZEZEN_MS>=ODSTEP_OSTRZEZEN_MS)throw Error('Budżet czuwacza ostrzeżeń nie mieści się między tyknięciami.');
     return {proba:env.OMS_TRYB==='proba',kopieKatalog:(env.OMS_KOPIE_KATALOG??'').trim(),kopiaZewnetrzna:(env.OMS_KOPIA_ZEWNETRZNA??'').trim()};
   },migracje:[],uprawnienia:[],menu:[],
   zbuduj:ctx=>{
@@ -22,7 +21,7 @@ export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewn
     const fakturyWidok=ctx.usluga<any>('faktury','fakturyWidok');
     const puls=ctx.usluga<any>('faktury','puls');
     const czuwaczOstrzezen=infakt?createCzuwaczOstrzezen({db:ctx.db,infakt,fakturyWidok}):null;
-    // PRZ-118.08: strażnik budżetu z limitów programu, który naprawdę stoi za czuwaczem (stały strażnik inFaktu zostaje wyżej).
+    // PRZ-118.08: strażnik budżetu z limitów programu, który naprawdę stoi za czuwaczem.
     if(czuwaczOstrzezen&&czuwaczOstrzezen.najdluzszyPrzebiegMs>=ODSTEP_OSTRZEZEN_MS){
       throw Error(`Budżet czuwacza ostrzeżeń z limitów programu „${czuwaczOstrzezen.program?.opis.nazwa.mianownik}” (${czuwaczOstrzezen.najdluzszyPrzebiegMs} ms) nie mieści się między tyknięciami zegara (${ODSTEP_OSTRZEZEN_MS} ms) — panel nie wstanie z tym programem.`);
     }
@@ -35,6 +34,15 @@ export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewn
     };
     const rachunekFirmy=opcjonalna<{biezacy:()=>{rachunek:string|null}}>('rdzen','rachunekFirmy');
     const nipBdoFirmy=opcjonalna<{biezacy:()=>{nip:string|null}}>('rdzen','nipBdoFirmy');
+    // PRZ-122.B16a: stan kopii bazy dla panelu (tabelka ostrzeżeń). Z katalogiem — wynik stanKopii; bez niego
+    // tylko informacja, czy brak nadzoru jest groźny (program wbudowany trzyma faktury wyłącznie w bazie).
+    const kopie=()=>{
+      const katalog=ctx.konfiguracja.kopieKatalog;
+      if(katalog)return stanKopii({katalog,zewnetrzna:ctx.konfiguracja.kopiaZewnetrzna,teraz:ctx.teraz()});
+      const wbudowany=infakt?.opis?.wbudowany===true;
+      const wymagany=nadzorKopiiWymagany({wbudowany,proba:ctx.konfiguracja.proba});
+      return {brakNadzoru:true as const,wbudowany,wymagany,nazwa:wymagany?String(infakt.opis.nazwa?.mianownik??''):null};
+    };
     const zdrowie=()=>{
       const config=ctx.usluga<any>('kanaly','config');
       const kurierzy=ctx.usluga<Record<string,unknown>>('wysylka','kurierzy');
@@ -71,13 +79,18 @@ export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewn
         wynik.uwagi.push(...kopie.uwagi);
         // PRZ-062: klucz kanału niezgodny z regułą Allegro — tylko w instalacji klienta (ten sam przełącznik).
         wynik.alarmy.push(...alarmyNazwKanalow(config.definicje??[]));
+      }else{
+        // PRZ-122.B16a: program wbudowany bez nadzoru kopii — uwaga (ok bez zmian); program zewnętrzny: /health bajt w bajt jak dotąd.
+        const k=kopie();
+        if('wymagany' in k&&k.wymagany)wynik.uwagi.push(uwagaBezNadzoruKopii(k.nazwa??''));
       }
       wynik.ok=wynik.alarmy.length===0;
       // Na końcu odpowiedzi (umowa kolejności kluczy z czujką monitoring).
       return wersja?{...wynik,wersja}:wynik;
     };
     const zegary:Zegar[]=czuwaczOstrzezen?[zegarOstrzezen({czuwacz:czuwaczOstrzezen,puls,odstepMs:ODSTEP_OSTRZEZEN_MS,log:ctx.log})]:[];
-    return {uslugi:{zdrowie,czuwaczOstrzezen},zegary,zdrowie,
+    const konfiguracjaKopii=()=>({katalog:ctx.konfiguracja.kopieKatalog,zewnetrzna:ctx.konfiguracja.kopiaZewnetrzna});
+    return {uslugi:{zdrowie,czuwaczOstrzezen,kopie,konfiguracjaKopii},zegary,zdrowie,
       trasy:app=>registerZdrowieRoutes(app,{zdrowie})};
   },
 };

@@ -8,7 +8,7 @@ const zamowienie = (nad = {}) => ({
     first_name: 'Jan', last_name: 'Kowalski', company: 'ACME sp. z o.o.', email: 'j@k.pl',
     address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL',
   },
-  nip: '1000001201',
+  nip: '1200001200',
   ...nad,
 });
 
@@ -16,7 +16,7 @@ describe('daneFaktury — dane podstawowe', () => {
   it('firma i NIP pochodzą ze sklepu', () => {
     const d = daneFaktury(zamowienie());
     expect(d.firma).toBe('ACME sp. z o.o.');
-    expect(d.nip).toBe('1000001201');
+    expect(d.nip).toBe('1200001200');
   });
 
   it('przenosi kod i miasto bez zmian', () => {

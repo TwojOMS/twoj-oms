@@ -20,7 +20,7 @@ const surowe = {
   // 73.09 + 16.81 = 89.90; razem z pozycjami (123.00) daje total 212.90.
   shipping_total: '73.09', shipping_tax: '16.81',
   line_items: [{ id: 4321, name: 'STOP', sku: 'PRO-STOP-001', quantity: 2, total: '100.00', total_tax: '23.00', subtotal: '100.00', subtotal_tax: '23.00' }],
-  meta_data: [{ key: '_billing_faktura', value: '1' }, { key: '_billing_nip', value: '1000001201' }],
+  meta_data: [{ key: '_billing_faktura', value: '1' }, { key: '_billing_nip', value: '1200001200' }],
 };
 
 describe('mapujZamowienie', () => {
@@ -36,7 +36,7 @@ describe('mapujZamowienie', () => {
   it('czyta chęć faktury i NIP z meta', () => {
     const z = mapujZamowienie(surowe, mapa);
     expect(z.chce_fakture).toBe(1);
-    expect(z.nip).toBe('1000001201');
+    expect(z.nip).toBe('1200001200');
   });
 
   // Puste _billing_faktura znaczy "nie chce" — tak wyglada zamowienie bez zaznaczonego pola.
@@ -63,9 +63,9 @@ describe('mapujZamowienie', () => {
   // martwe na jedynym sklepie, dla którego panel je zbudował. Dane zgodne z prawdziwym
   // zamówieniem 1267: NIP jest, `_billing_faktura` nie istnieje wcale.
   it('brak _billing_faktura, ale jest NIP → chce faktury (pro.szkicownia.pl)', () => {
-    const z = mapujZamowienie({ ...surowe, meta_data: [{ key: '_billing_nip', value: '1000001081' }] }, mapa);
+    const z = mapujZamowienie({ ...surowe, meta_data: [{ key: '_billing_nip', value: '1200001074' }] }, mapa);
     expect(z.chce_fakture).toBe(1);
-    expect(z.nip).toBe('1000001081');
+    expect(z.nip).toBe('1200001074');
   });
 
   it('brak date_paid → oplacone_at null', () => {

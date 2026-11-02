@@ -17,6 +17,10 @@ export function odmianaNazwyProgramu(program) {
   return program?.opis?.nazwa ?? NAZWA_ZAPASOWA;
 }
 
+export function gdzieDokument(program) {
+  return program?.opis?.wbudowany === true ? 'w zakładce FAKTURY OMS-u' : `w ${odmianaNazwyProgramu(program).miejscownik}`;
+}
+
 /** Ekran Ustawień programu (odnośnik „klucz API wpiszesz w …”): `opis.ekran`, a bez opisu — ekran inFaktu. */
 export function ekranProgramu(program) {
   return program?.opis?.ekran ?? EKRAN_INFAKTU;

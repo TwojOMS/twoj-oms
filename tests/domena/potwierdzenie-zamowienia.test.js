@@ -103,7 +103,7 @@ describe('treść potwierdzenia', () => {
   // moment, w którym da się to bezkosztowo sprostować, przechodził bez śladu.
   it('o fakturze mówi ZAWSZE — „Nie” też jest odpowiedzią', () => {
     expect(trescPotwierdzenia(zam()).tekst).toContain('FAKTURA\n  Nie');
-    const zF = zam({ chce_fakture: 1, nip: '1000001023', klient: { email: 'k@f.pl', company: 'BETAMET sp. z o.o.' } });
+    const zF = zam({ chce_fakture: 1, nip: '1200001022', klient: { email: 'k@f.pl', company: 'BETAMET sp. z o.o.' } });
     expect(trescPotwierdzenia(zF).tekst).toContain('Tak — wystawimy na');
   });
 

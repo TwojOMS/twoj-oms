@@ -33,6 +33,12 @@ describe('sprzedaz', () => {
     const p = zlozPaczke({ miesiac: '2026-08', faktury: [f({ ksef_number: null })], korekty: [], koszty: [], kwarantanna: 0 });
     expect(p.sprzedaz[0].uwagi).toContain('bez KSeF');
   });
+  // PRZ-126.C06: dokument, który wszedł do paczki podglądem (TwojeFaktury, bez numeru KSeF), mówi to w wierszu.
+  it('bez numeru KSeF ze znacznikiem podglądu — uwaga „bez numeru KSeF — w paczce podgląd”, kwoty w sumach', () => {
+    const p = zlozPaczke({ miesiac: '2026-08', faktury: [f({ ksef_number: null, bezNumeruKsef: true })], korekty: [], koszty: [], kwarantanna: 0 });
+    expect(p.sprzedaz[0].uwagi).toEqual(['bez numeru KSeF — w paczce podgląd']);
+    expect(p.sumy.sprzedaz).toEqual(zlozPaczke({ miesiac: '2026-08', faktury: [f({ ksef_number: null })], korekty: [], koszty: [], kwarantanna: 0 }).sumy.sprzedaz);
+  });
   it('korekta: „korekta do <numer>" gdy pierwotna w paczce, inaczej id', () => {
     const p = zlozPaczke({
       miesiac: '2026-08', faktury: [f({ id: 10, number: '5/08/2026' })],
@@ -228,7 +234,7 @@ describe('koszty', () => {
   });
   it('kwarantanna > 0 daje ostrzezenie', () => {
     const p = zlozPaczke({ miesiac: '2026-08', faktury: [], korekty: [], koszty: [], kwarantanna: 2 });
-    expect(p.ostrzezenia).toEqual(['2 dokumenty kosztowe leżą w kwarantannie panelu i NIE ma ich w tej paczce.']);
+    expect(p.ostrzezenia).toEqual(['2 dokumenty kosztowe leżą w kwarantannie panelu i NIE ma ich w tym zestawieniu.']);
   });
   it('kolejnosc kosztow: po dacie otrzymania, potem numer', () => {
     const p = zlozPaczke({ miesiac: '2026-08', faktury: [], korekty: [], kwarantanna: 0, koszty: [k({ ksef_number: 'b', dzien_otrzymania: '2026-08-05', numer_dokumentu: 'B' }), k({ ksef_number: 'a', dzien_otrzymania: '2026-08-05', numer_dokumentu: 'A' }), k({ ksef_number: 'c', dzien_otrzymania: '2026-08-01' })] });

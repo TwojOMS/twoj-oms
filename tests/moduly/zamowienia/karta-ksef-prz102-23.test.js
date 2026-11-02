@@ -13,7 +13,7 @@ import { createFakturyWidok } from '../../../src/moduly/faktury/services/faktury
 import { createWysylkaKsef } from '../../../src/moduly/faktury/services/wysylka-ksef.js';
 import { podmienLukiKsef } from '../../../src/oms/db/ostrzezenia.js';
 import { zapewnijOkres, zakonczFaktureOkresu, rozpocznijFaktureOkresu } from '../../../src/oms/db/okresy.js';
-import { POWOD_KONSUMENCKA, POWOD_KOREKTA, UWAGA_BEZ_NIP_NA_KARCIE } from '../../../src/domena/wysylka-ksef.js';
+import { POWOD_KONSUMENCKA, POWOD_KOREKTA, POWOD_KOREKTA_CZEKA, UWAGA_BEZ_NIP_NA_KARCIE } from '../../../src/domena/wysylka-ksef.js';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 import { nowyPanel, jako, get } from '../../pomoc/konta-prz068.js';
@@ -70,6 +70,35 @@ function panel(dokumenty = [dok('u1', '2026-10-20')]) {
 const karta = (app, id) => app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: AUTH });
 const PRZYCISK = /<form[^>]*action="\/faktury\/ksef\/podglad"[\s\S]*?Wyślij do KSeF<\/button>\s*<\/form>/;
 const ukryte = (html, nazwa) => [...html.matchAll(new RegExp(`name="${nazwa}" value="([^"]*)"`, 'g'))].map((m) => m[1]);
+
+it.each([true, false])('C01b: karta przekazuje program do opisu rezerwacji, wbudowany=%s', async (wbudowany) => {
+  const db = openOmsDb(':memory:');
+  const infakt = { ...falszywyInfakt([dok('u1', '2026-10-20')]), opis: { wbudowany } };
+  const fakturyWidok = createFakturyWidok({ db, infakt });
+  const wysylkaKsef = createWysylkaKsef({ db, infakt, fakturyWidok, log: () => {} });
+  const app = buildOmsServer({ db, config: config(), fakturyWidok, wysylkaKsef, infakt });
+  apki.push(app);
+  const id = zamowienieZFaktura(db);
+  zajmijWysylkeKsef(db, 'u1', { numer: 'u1/10/2026', kiedy: '2026-10-20T18:00:00.000Z' });
+  const r = await karta(app, id);
+  expect(r.statusCode).toBe(200);
+  expect(r.body).toContain('Panel już zlecił wysyłkę tego dokumentu do KSeF (20.10.2026, 20:00)');
+  expect(r.body.includes('otwórz ten dokument w inFakcie')).toBe(!wbudowany);
+});
+
+it('C01b: podgląd i zatwierdzenie inFaktu z numerem i rezerwacją pokazują numer', async () => {
+  const numer = '1234563218-20261029-ABCDEF123456-AB';
+  const { db, app, infakt } = panel([dok('u1', '2026-10-20', { ksef_number: numer })]);
+  zajmijWysylkeKsef(db, 'u1', { numer: 'u1/10/2026', kiedy: '2026-10-20T18:00:00.000Z' });
+  for (const url of ['/faktury/ksef/podglad', '/faktury/ksef/wyslij']) {
+    const r = await app.inject({ method: 'POST', url, headers: AUTH,
+      payload: { uuid: 'u1', miesiac: '2026-10', pole: 'invoice_date', potwierdzam: '1' } });
+    expect(r.statusCode).toBe(200);
+    expect(r.body).toContain(`Ten dokument jest już w KSeF (${numer}).`);
+    expect(r.body).not.toContain('Panel już zlecił');
+  }
+  expect(infakt.wyslane).toEqual([]);
+});
 
 it('PRZ-102.26: włączone B2C — przycisk karty bez fałszywej odmowy, podgląd i wysyłka na atrapie', async () => {
   const { db, app, infakt } = panel([dok('u1', '2026-10-20', { client_tax_code: '' })]);
@@ -152,7 +181,7 @@ describe('PRZ-102.23 przycisk „Wyślij do KSeF” na karcie', () => {
     zajmijWysylkeKsef(db, 'u1', { numer: 'u1/10/2026', kiedy: '2026-10-20T18:00:00.000Z' });
     const r = await karta(app, id);
     expect(r.body).not.toMatch(PRZYCISK);
-    expect(r.body).toContain('Panel już zlecił wysyłkę tego dokumentu do KSeF (2026-10-20T18:00:00.000Z)');
+    expect(r.body).toContain('Panel już zlecił wysyłkę tego dokumentu do KSeF (20.10.2026, 20:00)');
     // Kolumna stanu mówi to samo, co lista Faktur — nie „jeszcze nie wysłana” obok „panel już zlecił”.
     expect(r.body).toContain('zlecona z panelu — czeka na numer KSeF');
     expect(r.body).not.toContain('jeszcze nie wysłana do KSeF');
@@ -174,6 +203,45 @@ describe('PRZ-102.23 przycisk „Wyślij do KSeF” na karcie', () => {
     expect(r.body).toContain('KOR/1/10/2026');
     expect(r.body).toContain(POWOD_KOREKTA);
     expect(r.body).not.toMatch(PRZYCISK);
+  });
+
+  it('PRZ-123 C09: program z własną wysyłką korekt (wbudowany) → zdanie o czekaniu na pierwotną, nie „w inFakcie”', async () => {
+    const db = openOmsDb(':memory:');
+    const infakt = { ...falszywyInfakt([dok('u1', '2026-10-20')]), opis: { wbudowany: true } };
+    const fakturyWidok = createFakturyWidok({ db, infakt });
+    const wysylkaKsef = createWysylkaKsef({ db, infakt, fakturyWidok, log: () => {} });
+    const app = buildOmsServer({ db, config: config(), fakturyWidok, wysylkaKsef, infakt });
+    apki.push(app);
+    const id = zamowienieZFaktura(db, { ksefNumer: 'KSEF-FAKTURY' });
+    db.prepare(`INSERT INTO zwroty (zamowienie_id, data, kwota, korekta_numer, korekta_uuid, utworzony_at) VALUES (?, '2026-10-20', '12.30', 'KOR/1/10/2026', 'k1', '2026-10-20T10:00:00.000Z')`).run(id);
+    const r = await karta(app, id);
+    expect(r.statusCode).toBe(200);
+    expect(r.body).toContain(POWOD_KOREKTA_CZEKA);
+    expect(r.body).not.toContain(POWOD_KOREKTA);
+  });
+
+  it('PRZ-123 C09b: „korekta czeka” tylko przy korekcie, która naprawdę czeka (bez numeru KSeF swojego i pierwotnej)', async () => {
+    const db = openOmsDb(':memory:');
+    const korekty = {
+      k1: { uuid: 'k1', rodzaj: 'korekta', ksef_number: 'KSEF-KOREKTY-1', ksef_korygowanej: 'KSEF-FAKTURY' },
+      k2: { uuid: 'k2', rodzaj: 'korekta', ksef_number: null, ksef_korygowanej: null },
+    };
+    const infakt = {
+      ...falszywyInfakt([dok('u1', '2026-10-20')]), opis: { wbudowany: true },
+      pobierzFakture: async (id) => korekty[id] ?? null,
+    };
+    const fakturyWidok = createFakturyWidok({ db, infakt });
+    const wysylkaKsef = createWysylkaKsef({ db, infakt, fakturyWidok, log: () => {} });
+    const app = buildOmsServer({ db, config: config(), fakturyWidok, wysylkaKsef, infakt });
+    apki.push(app);
+    const id = zamowienieZFaktura(db, { ksefNumer: 'KSEF-FAKTURY' });
+    const zwrot = db.prepare(`INSERT INTO zwroty (zamowienie_id, data, kwota, korekta_numer, korekta_uuid, utworzony_at) VALUES (?, '2026-10-20', '12.30', ?, ?, '2026-10-20T10:00:00.000Z')`);
+    zwrot.run(id, 'KOR/1/10/2026', 'k1');
+    expect((await karta(app, id)).body).not.toContain(POWOD_KOREKTA_CZEKA);
+    zwrot.run(id, 'KOR/2/10/2026', 'k2');
+    const r = await karta(app, id);
+    expect(r.statusCode).toBe(200);
+    expect(r.body.split(POWOD_KOREKTA_CZEKA)).toHaveLength(2);
   });
 
   it('faktura wstrzymana przez automat → przycisk jest (ręczna wysyłka to droga wyjścia)', async () => {

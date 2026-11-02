@@ -12,7 +12,7 @@ const zam = (nad = {}) => ({
   numer: 'R/2026/015', utworzone_at: '2026-08-21T09:00:00Z', sklep: 'reczne',
   kwota_brutto: '990.00', koszt_dostawy_brutto: '0.00', metoda_wysylki: 'dpd',
   metoda_platnosci: 'Przelew', termin_platnosci: '14', anulowane: 0, chce_fakture: 1,
-  nip: '1000001046',
+  nip: '1200001039',
   klient: {
     email: 'sklep@betamet.pl', company: '"BETAMET" SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ',
     address_1: 'ul. Przemysłowa 1', postcode: '62-070', city: 'Zakrzewo',
@@ -65,7 +65,7 @@ describe('sekcja faktury', () => {
   it('przy „chcę fakturę" mówi TAK i wypisuje dane nabywcy', () => {
     const h = html();
     expect(h).toContain('Tak — wystawimy na:');
-    expect(h).toContain('NIP 1000001046');
+    expect(h).toContain('NIP 1200001039');
     expect(h).toContain('ul. Przemysłowa 1');
     expect(h).toContain('62-070 Zakrzewo');
   });

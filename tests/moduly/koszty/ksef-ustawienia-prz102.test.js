@@ -79,9 +79,9 @@ describe('PRZ-102.22 Ustawienia → Integracje → KSeF (faktury kosztowe)', () 
   it('Integracje mają kartę KSeF; pusty ekran: pole tokenu (hasło), NIP opcjonalny, zdanie o uprawnieniu, bez adresu API', async () => {
     const o = await oms();
     try {
-      const lista = await o.get('/ustawienia/integracje');
+      const lista = await o.get('/ustawienia/integracje/katalog');
       expect(lista.body).toContain(`href="${ADRES}"`);
-      expect(lista.body).toContain('KSeF — faktury kosztowe');
+      expect(lista.body).toContain('pobierania faktur kosztowych');
       const r = await o.get(ADRES);
       expect(r.statusCode, r.body).toBe(200);
       const f = formularz(r.body);

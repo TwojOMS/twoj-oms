@@ -165,6 +165,10 @@ export type OpisProgramu = Readonly<{
   adres: string;
   /** Ekran Ustawień programu: '/ustawienia/integracje/infakt'. */
   ekran: string;
+  /** PRZ-122: program wbudowany w OMS (TwojeFaktury) — dokument jest w panelu, nie w programie zewnętrznym. */
+  wbudowany?: true;
+  /** Decyzja właściciela 28.10.2026 pkt 4: WDT numerowane w serii faktur programu, bez serii WDT panelu. */
+  wdtWSeriiFaktur?: boolean;
 }>;
 
 /** Pozycja dokumentu: `gross_price` = SUMA LINII brutto w groszach (domena/pozycje-faktury.js), VAT liczy program. */

@@ -70,12 +70,12 @@ function dpdKlientZZpl() {
   return { dpd, fetchImpl };
 }
 
-function zServerem({ nad = {}, dpd, woo } = {}) {
+function zServerem({ nad = {}, dpd, woo, infakt } = {}) {
   const katalogEtykiet = mkdtempSync(join(tmpdir(), 'oms-nadaj-'));
   const dpdKl = dpd ?? dpdKlient().dpd;
   const wooKl = woo ?? { dodajNotatke: vi.fn().mockResolvedValue({}) };
   const nadanie = createNadanie({ db, kurierzy: { dpd: dpdKl }, woo: wooKl, katalogEtykiet });
-  const serwer = buildOmsServer({ db, config, poller, nadanie });
+  const serwer = buildOmsServer({ db, config, poller, nadanie, ...(infakt === undefined ? {} : { infakt }) });
   const id = zapiszZamowienie(db, 'pro', zmapowane(nad), {});
   return { serwer, id };
 }
@@ -808,5 +808,18 @@ describe('ekran nadania — netto stawką domyślną z Ustawień (PRZ-105)', () 
     await serwer.ready();
     const r = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}/nadaj`, headers: naglowek });
     expect(r.body).toMatch(/Album o lampach[\s\S]*?100\.00 zł[\s\S]*?108\.00 zł/u);
+  });
+
+  // PRZ-122: przy programie wbudowanym (TwojeFaktury) pozycja „zw” ma netto = brutto — jak na karcie.
+  it('program wbudowany: pozycja „zw” 57,00 brutto pokazuje 57.00 zł netto, nie brutto÷1,23', async () => {
+    const { dodajPozycjeReczna } = await import('../../../src/oms/db/zamowienia.js');
+    const { programTestowy } = await import('../../pomoc/program-testowy.js');
+    const p = programTestowy({ id: 'twojefaktury' });
+    const { serwer, id } = zServerem({ infakt: { ...p, opis: Object.freeze({ ...p.opis, wbudowany: true }) } });
+    dodajPozycjeReczna(db, id, { nazwa: 'Kurs lutowania', ilosc: 1, cena_brutto: '57.00', brutto_linii: '57.00', vat: 'zw' }, { zw: true });
+    await serwer.ready();
+    const r = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}/nadaj`, headers: naglowek });
+    expect(r.body).toMatch(/Kurs lutowania[\s\S]*?57\.00 zł[\s\S]*?57\.00 zł/u);
+    expect(r.body).not.toContain('46.34 zł');
   });
 });

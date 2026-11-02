@@ -2,8 +2,8 @@
 <h1><%= strona.tytul %></h1>
 
 <section class="ust-sekcja ust-wkrotce">
-  <p class="ust-wkrotce-stan">Ten ekran jeszcze nie działa.</p>
-  <p class="ust-wkrotce-opis"><%= strona.opis %></p>
+  <% if (!strona.dziala) { %><p class="ust-wkrotce-stan">Ten ekran jeszcze nie działa.</p><% } %>
+  <p class="ust-wkrotce-opis"><%= strona.opis %><% if (strona.dziala) { %> Jeszcze nie ma:<% } %></p>
   <ul>
     <% strona.punkty.forEach(function (punkt) { %><li><%= punkt %></li>
     <% }); %>
@@ -11,4 +11,25 @@
   <% if (strona.dzis) { %>
     <p class="ust-wkrotce-dzis"><strong>Dziś:</strong> <%= strona.dzis %><% if (strona.odnosnik) { %> Otwórz: <a href="<%= strona.odnosnik.href %>"><%= strona.odnosnik.etykieta %></a><% } %></p>
   <% } %>
+  <% if (strona.stan) { %><p><strong>Teraz:</strong> <%= strona.stan %></p><% } %>
 </section>
+<% if (strona.instrukcjaFaktur) { %>
+  <section id="faktury" class="ust-sekcja ust-wkrotce">
+    <h2>Drukowanie faktur</h2>
+    <% if (!strona.stanDruku) { %>
+      <p>Panel nie ma jeszcze danych o komputerach z drukarką</p>
+    <% } else if (!strona.stanDruku.stanowiska?.length) { %>
+      <p>Żaden komputer z drukarką się nie zgłosił</p>
+    <% } else { %>
+      <ul>
+        <% strona.stanDruku.stanowiska.forEach(function (stanowisko) { %>
+          <li><%= stanowisko.nazwa %> — zgłosił się <%= stanowisko.minutTemu === 0 ? 'przed chwilą' : `${stanowisko.minutTemu} min temu` %> — <%= stanowisko.aktywne ? 'aktywny' : 'nieaktywny' %></li>
+        <% }); %>
+      </ul>
+    <% } %>
+    <h3>Jak podłączyć komputer z drukarką</h3>
+    <ol>
+      <% strona.instrukcjaFaktur.forEach(function (krok) { %><li><%= krok %></li><% }); %>
+    </ol>
+  </section>
+<% } %>

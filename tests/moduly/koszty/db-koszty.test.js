@@ -383,17 +383,17 @@ describe('kategorie kosztow', () => {
     const db = openOmsDb();
     expect(db.prepare('SELECT COUNT(*) c FROM kategorie_kosztow').get().c).toBe(0);
     expect(kategoriaDlaNip(db, '5252674798')).toBeNull();
-    expect(kategoriaDlaNip(db, '1000001141')).toBeNull();
+    expect(kategoriaDlaNip(db, '1200001134')).toBeNull();
   });
 
   // Zmiany wlasciciela z 2026-08-13: OVH przechodzi na „Hosting i domeny", a faktury
   // Plastics Group dostaja od razu wlasna kategorie (material wchodzi w produkt → zmienny).
   it('operator przypina OVH do „Hosting i domeny", a Plastics Group do „Materiały do produkcji"', () => {
     const db = openOmsDb();
-    przypnijKategorie(db, '1000001158', 'Hosting i domeny', 'staly');
-    przypnijKategorie(db, '1000001164', 'Materiały do produkcji', 'zmienny');
-    expect(kategoriaDlaNip(db, '1000001158')).toEqual({ kategoria: 'Hosting i domeny', typ: 'staly' });
-    expect(kategoriaDlaNip(db, '1000001164')).toEqual({ kategoria: 'Materiały do produkcji', typ: 'zmienny' });
+    przypnijKategorie(db, '1200001140', 'Hosting i domeny', 'staly');
+    przypnijKategorie(db, '1200001157', 'Materiały do produkcji', 'zmienny');
+    expect(kategoriaDlaNip(db, '1200001140')).toEqual({ kategoria: 'Hosting i domeny', typ: 'staly' });
+    expect(kategoriaDlaNip(db, '1200001157')).toEqual({ kategoria: 'Materiały do produkcji', typ: 'zmienny' });
   });
 
   it('nieznany NIP nie ma kategorii — i to ma byc widoczne, nie zgadniete', () => {
@@ -530,14 +530,14 @@ describe('slownik kategorii kosztow', () => {
 });
 
 // ⚠️⚠️ ZMIANA NAZWY KATEGORII NIE DOCIERA PRZEZ `INSERT OR IGNORE`. Wgranie startowe dokłada
-// wyłącznie to, czego w bazie NIE MA — wiersz `1000001158 → 'Hosting'`, który leży na produkcji
+// wyłącznie to, czego w bazie NIE MA — wiersz `1200001140 → 'Hosting'`, który leży na produkcji
 // od pierwszego uruchomienia modułu, przeszedłby obok każdej poprawki napisu w tablicy.
 describe('migracja: „Hosting" → „Hosting i domeny"', () => {
   // Baza w stanie SPRZED zmiany: przypisanie ze starą nazwą, bez śladu po migracji.
   const bazaSprzedZmiany = () => {
     const sciezka = plikBazy();
     const db = openOmsDb(sciezka);
-    przypnijKategorie(db, '1000001158', 'Hosting', 'staly');
+    przypnijKategorie(db, '1200001140', 'Hosting', 'staly');
     db.prepare('DELETE FROM migracje_jednorazowe').run();
     db.close();
     return sciezka;
@@ -545,7 +545,7 @@ describe('migracja: „Hosting" → „Hosting i domeny"', () => {
 
   it('stara nazwa w bazie produkcyjnej dostaje nowa przy najblizszym starcie', () => {
     const db = openOmsDb(bazaSprzedZmiany());
-    expect(kategoriaDlaNip(db, '1000001158')).toEqual({ kategoria: 'Hosting i domeny', typ: 'staly' });
+    expect(kategoriaDlaNip(db, '1200001140')).toEqual({ kategoria: 'Hosting i domeny', typ: 'staly' });
     // ...i po zmianie nie zostaje w panelu ani jedna kategoria o starej nazwie.
     expect(wszystkieKategorie(db).map((k) => k.kategoria)).not.toContain('Hosting');
     db.close();
@@ -558,10 +558,10 @@ describe('migracja: „Hosting" → „Hosting i domeny"', () => {
   it('⚠️ po wykonaniu NIE cofa wlasnej zmiany operatora, ktory wroci do starej nazwy', () => {
     const sciezka = plikBazy();
     const db1 = openOmsDb(sciezka);
-    przypnijKategorie(db1, '1000001158', 'Hosting', 'staly');
+    przypnijKategorie(db1, '1200001140', 'Hosting', 'staly');
     db1.close();
     const db2 = openOmsDb(sciezka);
-    expect(kategoriaDlaNip(db2, '1000001158')).toEqual({ kategoria: 'Hosting', typ: 'staly' });
+    expect(kategoriaDlaNip(db2, '1200001140')).toEqual({ kategoria: 'Hosting', typ: 'staly' });
     db2.close();
   });
 
@@ -570,10 +570,10 @@ describe('migracja: „Hosting" → „Hosting i domeny"', () => {
     const db1 = openOmsDb(sciezka);
     // Operator zdążył przenieść OVH do własnej kategorii, zanim migracja się wykonała…
     db1.prepare('DELETE FROM migracje_jednorazowe').run();
-    przypnijKategorie(db1, '1000001158', 'Serwery', 'staly');
+    przypnijKategorie(db1, '1200001140', 'Serwery', 'staly');
     db1.close();
     const db2 = openOmsDb(sciezka);
-    expect(kategoriaDlaNip(db2, '1000001158')).toEqual({ kategoria: 'Serwery', typ: 'staly' });
+    expect(kategoriaDlaNip(db2, '1200001140')).toEqual({ kategoria: 'Serwery', typ: 'staly' });
     db2.close();
   });
 });

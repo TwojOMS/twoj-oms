@@ -15,6 +15,7 @@
 // ją pomija, dopóki człowiek nie wyśle jej ręcznie albo nie kliknie „Zwolnij” (poprawka po recenzji).
 // Pojedyncze wysyłki zamiast jednej partii są właśnie po to: przy martwym inFakcie „nie wiadomo” jest jeden
 // dokument, a nie wszystkie zaznaczone.
+// Automat programu z własną wysyłką (TwojeFaktury) jest w ksef-automat-wbudowany.js — ten plik nie importuje kodu TF.
 import { coWolnoWyslac, doZaznaczeniaWszystkich } from '../../../domena/wysylka-ksef.js';
 import { czyWysylacKonsumenckie } from '../db/ksef-konsumenckie.js';
 import {
@@ -32,7 +33,9 @@ export function createAutomatKsef({
   db, fakturyWidok, wysylkaKsef, teraz = () => new Date(), log = console.error, dostepny = () => true,
 }) {
   // Proces właśnie wstał — wynik „trwa” w bazie to przebieg, który padł razem z poprzednim procesem.
-  const doZaznaczenia = (d) => doZaznaczeniaWszystkich(d, czyWysylacKonsumenckie(db));
+  // PRZ-123 C08: korekty jako kandydaci tylko, gdy usługa wysyłki je dopuszcza (program wbudowany).
+  const opcje = { korekty: wysylkaKsef?.korekty === true };
+  const doZaznaczenia = (d) => doZaznaczeniaWszystkich(d, czyWysylacKonsumenckie(db), opcje);
   oznaczPrzerwanyPrzebieg(db, teraz().toISOString());
 
   function dopiszWynik(wynik, w) {
@@ -73,7 +76,7 @@ export function createAutomatKsef({
           .map((d) => ({ uuid: d.uuid, numer: d.number })));
         // Bez numeru KSeF, a poza „zaznacz wszystkie” (korekty, konsumenckie) — do wyniku, z powodem z bariery.
         const zZasady = dokumenty.filter((d) => d?.stanKsef === 'brak' && !doZaznaczenia(d)).map((d) => d.uuid);
-        wynik.poZasadzie.push(...coWolnoWyslac(zZasady, dokumenty, czyWysylacKonsumenckie(db), wysylkaKsef.nazwaProgramu).pominiete);
+        wynik.poZasadzie.push(...coWolnoWyslac(zZasady, dokumenty, czyWysylacKonsumenckie(db), wysylkaKsef.nazwaProgramu, undefined, opcje).pominiete);
         for (const d of kandydaci) {
           // Wyłączenie w Ustawieniach działa od razu — także między dokumentami jednego przebiegu.
           if (!wczytajAutomatKsef(db).wlaczony) { wynik.stan = 'wylaczony'; break petla; }

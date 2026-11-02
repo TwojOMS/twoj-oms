@@ -11,8 +11,10 @@ if (!baza) throw new Error('Brak OMS_DB_PATH');
 // z zamówieniami przy pierwszej zmianie kanałów demo (14.10: „nieznany sklep OMS: allegro”).
 const { ENV_DEMO } = await import('../../scripts/demo-dane.mjs');
 for (const [klucz, wartosc] of Object.entries(ENV_DEMO)) process.env[klucz] = wartosc;
+// Plik dojeżdża przez wyslij bez odtworzenia kontenera i jego zmiennych z compose.
+process.env.OMS_TWOJEFAKTURY ??= 'tak';
 
-if (!fs.existsSync(baza)) {
+async function utworzBaze() {
   // Osierocone -wal/-shm po bazie skasowanej przy resecie — bez nich generator odmówiłby nadpisania.
   for (const p of [`${baza}-wal`, `${baza}-shm`]) fs.rmSync(p, { force: true });
   for (const k of [process.env.OMS_PROFORMY_KATALOG, process.env.OMS_ETYKIETY_KATALOG]) if (k) fs.mkdirSync(k, { recursive: true });
@@ -28,6 +30,11 @@ if (!fs.existsSync(baza)) {
   finally { db.close(); }
   console.log(`piaskownica: świeże demo na ${dzis} w ${Date.now() - t0} ms — ${JSON.stringify(wynik)}`);
 }
+
+const { wykonajZlecenieResetu } = await import('../../src/oms/db/reset-demo.js');
+const reset = await wykonajZlecenieResetu({ baza, utworzBaze });
+if (reset) console.log(`piaskownica: reset z panelu (zlecił ${reset.zlecenie?.login ?? '?'}), zachowane: ${reset.zachowane.join(', ')}, numeracja: ${reset.numeracja}`);
+if (!fs.existsSync(baza)) await utworzBaze();
 
 // PRZ-076: OMS z atrapami inFaktu, VIES, Woo i Allegro (deploy/proba/atrapy) — Faktury i Magazyn mają dane demo,
 // a nic nie wychodzi z kontenera. Zamiast src/oms.js, który składa produkcyjne integracje (bez kluczy: puste zakładki).

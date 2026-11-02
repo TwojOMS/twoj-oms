@@ -1,6 +1,7 @@
 // PRZ-102.12 — ekran automatu wysyłki do KSeF (Ustawienia → Integracje → inFakt), wynik ostatniego przebiegu
 // i wiersz na stronie głównej. Prawdziwy serwer i prawdziwe moduły, konta z rolami; inFakt niepodłączony
 // (ekran ma wtedy powiedzieć, że automat nic nie wyśle) — żadne żądanie nie wychodzi z procesu.
+import ejs from 'ejs';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { nowyPanel, jako, get, post } from '../../pomoc/konta-prz068.js';
@@ -15,7 +16,7 @@ import { modulMagazyn } from '../../../src/moduly/magazyn/modul.ts';
 import { modulUstawienia } from '../../../src/moduly/ustawienia/modul.ts';
 import { modulMarketing } from '../../../src/moduly/marketing/modul.ts';
 import { modulZdrowie } from '../../../src/moduly/zdrowie/modul.ts';
-import { wczytajAutomatKsef, zapiszWynikAutomatu } from '../../../src/moduly/faktury/db/ksef-automat.js';
+import { wczytajAutomatKsef, zapiszWynikAutomatu, zapiszTrybAutomatu } from '../../../src/moduly/faktury/db/ksef-automat.js';
 
 const ADRES = '/ustawienia/integracje/infakt';
 
@@ -110,6 +111,106 @@ describe('PRZ-102.12 wynik ostatniego przebiegu', () => {
     const z = await post(p.app, '/faktury/ksef/automat/zwolnij', p.ewa, { uuid: 'B' });
     expect(z.statusCode).toBe(303);
     expect(wczytajAutomatKsef(p.db).wstrzymane).toEqual([]);
+  });
+
+  // PRZ-123 C09ca: przy wpisie „odrzucona” / „nie-wyslano” (TwojeFaktury) zdjęcie wpisu niczego nie wysyła — ta wersja
+  // nie wraca do kolejki automatu — więc „Zwolnij” nie ma, a trasa odmawia.
+  const wstrzymaj = (p, wpisy) => p.db.prepare('INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)')
+    .run('ksef.automat.wstrzymane', JSON.stringify(wpisy), '2026-10-27T10:15:00.000Z');
+  const ODRZUCONA = { uuid: 'R', numer: 'R/10/2026', dzien: '2026-10-27', powod: 'kod 450: błąd semantyki', kod: 'odrzucona', wersja: 1 };
+  const NIE_DOSZLA = { uuid: 'N', numer: 'N/10/2026', dzien: '2026-10-27', powod: 'kod 401', kod: 'nie-wyslano', wersja: 1 };
+  const formularzZwolnij = (body, uuid) => new RegExp(`action="/faktury/ksef/automat/zwolnij"[^>]*>\\s*<input type="hidden" name="uuid" value="${uuid}"`, 'u').test(body);
+
+  it('C09ca: wpis „odrzucona” i „nie-wyslano” — bez formularza „Zwolnij”, ze zdaniem, co zrobić; wpis bez kodu — z formularzem', async () => {
+    const p = panel();
+    wstrzymaj(p, [ODRZUCONA, NIE_DOSZLA, { uuid: 'B', numer: 'B/10/2026', dzien: '2026-10-20', powod: 'inFakt odrzucił (422)' }]);
+    const r = await get(p.app, '/faktury/ksef/automat', p.ewa);
+    expect(r.statusCode).toBe(200);
+    expect(formularzZwolnij(r.body, 'R')).toBe(false);
+    expect(formularzZwolnij(r.body, 'N')).toBe(false);
+    expect(formularzZwolnij(r.body, 'B')).toBe(true);
+    // Krok jest już w zdaniu wpisu (zdanieWstrzymanej); w miejscu przycisku — krótka notka, bez powtórzenia zdania.
+    expect(r.body).toContain('Nie do zwolnienia — popraw fakturę.');
+    expect(r.body).toContain('Nie do zwolnienia — wyślij ręcznie.');
+  });
+
+  it('K440c2: wpis „duplikat-niesprawdzony” — przycisk „Sprawdź ponownie” i prawdziwe wyjaśnienie; inne wpisy nadal „Zwolnij”', async () => {
+    const p = panel();
+    const DUPLIKAT = { uuid: 'D', numer: 'D/10/2026', dzien: '2026-10-27', powod: 'nie udało się pobrać faktury z KSeF', kod: 'duplikat-niesprawdzony', wersja: 1 };
+    wstrzymaj(p, [DUPLIKAT, { uuid: 'B', numer: 'B/10/2026', dzien: '2026-10-20', powod: 'inFakt odrzucił (422)' }]);
+    const r = await get(p.app, '/faktury/ksef/automat', p.ewa);
+    expect(r.statusCode).toBe(200);
+    const wiersz = (uuid) => (r.body.split('<li>').find((l) => l.includes(`value="${uuid}"`)) ?? '').split('</li>')[0];
+    expect(formularzZwolnij(r.body, 'D')).toBe(true);
+    expect(wiersz('D')).toContain('Sprawdź ponownie');
+    expect(wiersz('D')).not.toContain('Zwolnij</button>');
+    expect(wiersz('B')).toContain('Zwolnij</button>');
+    expect(wiersz('B')).not.toContain('Sprawdź ponownie');
+    expect(r.body).toContain('„Sprawdź ponownie” niczego nie wysyła — panel jeszcze raz pobierze z KSeF fakturę o tym numerze i porówna ją z wysłaną.');
+    // Tylko wpisy zwykłe: stare wyjaśnienie „Zwolnij” zostaje, bez zdania o duplikacie.
+    const q = panel();
+    wstrzymaj(q, [{ uuid: 'B', numer: 'B/10/2026', dzien: '2026-10-20', powod: 'inFakt odrzucił (422)' }]);
+    const r2 = await get(q.app, '/faktury/ksef/automat', q.ewa);
+    expect(r2.body).toContain('„Zwolnij” niczego nie wysyła');
+    expect(r2.body).not.toContain('Sprawdź ponownie');
+    // POST jak „Zwolnij”: zdejmuje wpis, 303.
+    const z = await post(p.app, '/faktury/ksef/automat/zwolnij', p.ewa, { uuid: 'D' });
+    expect(z.statusCode).toBe(303);
+    expect(wczytajAutomatKsef(p.db).wstrzymane.map((w) => w.uuid)).toEqual(['B']);
+  });
+
+  it('K440c2: pasek wstrzymanych (TwojeFaktury) — zdanie z następnym krokiem zamiast „wymagają człowieka”', async () => {
+    const wstrzymane = [{ uuid: 'D', numer: 'D/10/2026' }, { uuid: 'E', numer: 'E/10/2026' }];
+    const automat = { wyborTrybu: true, tryb: 'o_godzinie', stoiPrzezBrak: false, najblizszy: 'jutro', odstepEdycji: 5, coIleMin: 5, odstepMaks: 60,
+      bledy: [], wstrzymane, zwolnienieMozliwe: true, nazwaProgramu: { mianownik: 'TwojeFaktury', miejscownik: 'w TwojeFaktury' },
+      formularz: { wlaczony: true, godzina: '18:00', tryb: 'o_godzinie', odstepEdycji: 5 }, wynik: null, zmienil: null };
+    const html = await ejs.renderFile('src/moduly/faktury/widoki/_automat-ksef.ejs', { automat, konsumenckie: false, fmtDataCzas: (x) => String(x) });
+    expect(html).toContain('Wstrzymane faktury (automat ich nie wyśle): D/10/2026, E/10/2026.');
+    expect(html).toContain('Co się stało i jaki jest następny krok');
+    expect(html).not.toMatch(/wymaga(ją)? człowieka/u);
+  });
+
+  it('C09ca: POST „Zwolnij” przy wpisie „nie-wyslano” / „odrzucona” → 409 po polsku, wpis zostaje; bez kodu — jak dotąd', async () => {
+    const p = panel();
+    wstrzymaj(p, [ODRZUCONA, NIE_DOSZLA, { uuid: 'B', numer: 'B/10/2026', dzien: '2026-10-20', powod: 'inFakt odrzucił (422)' }]);
+    for (const uuid of ['N', 'R']) {
+      const z = await post(p.app, '/faktury/ksef/automat/zwolnij', p.ewa, { uuid });
+      expect(z.statusCode).toBe(409);
+      expect(z.body).toMatch(/automat i tak jej nie wyśle/u);
+    }
+    expect(wczytajAutomatKsef(p.db).wstrzymane.map((w) => w.uuid)).toEqual(['R', 'N', 'B']);
+    const z = await post(p.app, '/faktury/ksef/automat/zwolnij', p.ewa, { uuid: 'B' });
+    expect(z.statusCode).toBe(303);
+    expect(wczytajAutomatKsef(p.db).wstrzymane.map((w) => w.uuid)).toEqual(['R', 'N']);
+  });
+
+  // PRZ-123 ZDROWIE-RECZNIE (poprawka po recenzji): w trybie „ręcznie” automat niczego nie wysyła, więc ekran automatu
+  // i odmowa „Zwolnij” przy wpisie „odrzucona” nie mogą obiecywać, że poprawioną wersję „automat wyśle sam”.
+  it('ZDROWIE-RECZNIE: tryb „ręcznie” + wpis „odrzucona” — ekran i 409 każą wysłać poprawioną wersję ręcznie', async () => {
+    const p = panel();
+    zapiszTrybAutomatu(p.db, { tryb: 'reczna', odstepEdycji: 15, login: 'adam' });
+    wstrzymaj(p, [ODRZUCONA]);
+    const r = await get(p.app, '/faktury/ksef/automat', p.ewa);
+    expect(r.statusCode).toBe(200);
+    expect(r.body).toContain('wyślij poprawioną wersję ręcznie');
+    expect(r.body).not.toContain('automat wyśle sam');
+    const z = await post(p.app, '/faktury/ksef/automat/zwolnij', p.ewa, { uuid: 'R' });
+    expect(z.statusCode).toBe(409);
+    expect(z.body).toContain('wyślij poprawioną wersję ręcznie');
+    expect(z.body).not.toContain('automat wyśle sam');
+  });
+
+  it('ZDROWIE-RECZNIE: tryb „po wystawieniu” + wpis „odrzucona” — ekran i 409 jak dotąd: poprawioną wersję automat wyśle sam', async () => {
+    const p = panel();
+    zapiszTrybAutomatu(p.db, { tryb: 'po_wystawieniu', odstepEdycji: 15, login: 'adam' });
+    wstrzymaj(p, [ODRZUCONA]);
+    const r = await get(p.app, '/faktury/ksef/automat', p.ewa);
+    expect(r.body).toContain('poprawioną wersję automat wyśle sam');
+    expect(r.body).not.toContain('wyślij poprawioną wersję ręcznie');
+    const z = await post(p.app, '/faktury/ksef/automat/zwolnij', p.ewa, { uuid: 'R' });
+    expect(z.statusCode).toBe(409);
+    expect(z.body).toContain('automat wyśle sam');
+    expect(z.body).not.toContain('ręcznie');
   });
 
   it('strona główna: wiersz ostrzeżenia przy błędzie automatu, z przyciskiem do wyniku', async () => {

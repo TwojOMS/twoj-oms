@@ -28,6 +28,15 @@ export function programDokumentu(f) {
   return f.program ?? 'infakt';
 }
 
+/**
+ * Numer KSeF z wyniku `pobierzFakture` albo `null`. Adapter inFaktu oddaje go jako `ksefNumer`, program wbudowany
+ * (TwojeFaktury) w kształcie v3 jako `ksef_number` (core/kontrakty.ts `WierszDokumentu`) — czuwacz i karta czytają
+ * oba, inaczej przy TwojeFaktury `faktury.ksef_numer` nie powstaje nigdy (PRZ-123.CZUWACZ-NUMER). Pusty napis = brak.
+ */
+export function numerKsefDokumentu(dane) {
+  return dane?.ksefNumer || dane?.ksef_number || null;
+}
+
 const ALIAS = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 /**

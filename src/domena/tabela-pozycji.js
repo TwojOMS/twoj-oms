@@ -3,7 +3,7 @@ import {
 } from './suma-pozycji.js';
 import { KLUCZ_WYSYLKI, wysylkaEfektywna } from './wysylka-kwota.js';
 import { nettoZBruttoDoPokazania, stawkaPozycji, czyStawkaVat, STAWKA_VAT } from './vat.js';
-import { czyNipUe } from './wdt.js';
+import { czyWdt } from './wdt.js';
 import { daneFaktury } from './dane-faktury.js';
 import { pozycjeDokumentu } from './pozycje-faktury.js';
 import { podsumowanieWierszami } from './podsumowanie-wierszami.js';
@@ -39,14 +39,19 @@ function sumaLiniiBrutto(p) {
 //    netto wolno pokazac jako wyliczone ze stawki VAT — patrz komentarz w domain/vat.js.
 //    WYLACZNIE do pokazania: do inFaktu i tak idzie brutto.
 // PRZ-105: netto naszej ceny liczone stawką TEJ pozycji (przy WDT 0 — netto = brutto), nie stałym 23.
-function cenaNetto(p, stawka) {
+function cenaNetto(p, stawka, opcje) {
   if (p.cena_netto != null && String(p.cena_netto).trim() !== '') return p.cena_netto;
-  return naszaCena(p) ? nettoZBruttoDoPokazania(p.cena_brutto, stawka) : null;
+  return naszaCena(p) ? nettoZBruttoDoPokazania(p.cena_brutto, stawka, opcje) : null;
 }
 
 // PRZ-105: stawka wiersza — ta sama reguła, którą wybiera ją faktura (domain/pozycje-faktury.js).
-const wdtZamowienia = (z) => czyNipUe(daneFaktury(z ?? {}).nip);
-const opisStawki = (stawka, wdt) => (wdt ? '0% — WDT' : `${stawka}%`);
+// PRZ-122.B07a: „zw” (tylko z flagą `zw`) opisana bez znaku procentu — to nie jest stawka procentowa.
+// PRZ-122.B07f: `zwolniona` (firma zwolniona z VAT, liczy wołający: `sprzedawcaZwolniony`) — numer UE nabywcy to nie WDT.
+const wdtZamowienia = (z, zwolniona) => czyWdt(daneFaktury(z ?? {}).nip, { zwolniona });
+const opisStawki = (stawka, wdt, zw = false) => {
+  if (wdt) return '0% — WDT';
+  return zw === true && stawka === 'zw' ? 'zw' : `${stawka}%`;
+};
 
 // Czy kwota tej linii pochodzi OD NAS, a nie ze sklepu. `zrodlo` sprawdzamy obok `reczna`
 // celowo: `reczna` zaklada warstwa odczytu, a wiersz, ktory ja ominal, ma dalej wygladac na
@@ -71,7 +76,7 @@ const naszaCena = (p) => Boolean(p.reczna) || p.zrodlo === 'reczna'
 // tamtego zdania („kazde dodatkowe pole dotykajace kwoty to kolejne miejsce, w ktorym mozna
 // sie pomylic o pieniadze") zostaje w mocy: poprawka jedzie przez TA SAMA barierę
 // arytmetyczną, przez ten sam czlon roznicowy i przez te same walidatory, co pozycje.
-function wierszWysylki(zamowienie, lp, { stawka, wdt }) {
+function wierszWysylki(zamowienie, lp, { stawka, wdt, zw = false }) {
   const w = wysylkaEfektywna(zamowienie);
   return {
     lp,
@@ -89,10 +94,10 @@ function wierszWysylki(zamowienie, lp, { stawka, wdt }) {
     // przecenionej pozycji wyzej. Do inFaktu i tak jedzie brutto.
     // PRZ-105: przy zamówieniu RĘCZNYM netto ze sklepu nie istnieje nigdy — liczymy je tak samo, do pokazania.
     cenaNetto: w.cena_netto ?? ((w.polaZmienione.length || zamowienie?.sklep === 'reczne')
-      ? nettoZBruttoDoPokazania(w.cena_brutto, stawka) : null),
+      ? nettoZBruttoDoPokazania(w.cena_brutto, stawka, { zw }) : null),
     // PRZ-105: dostawa ma stawkę domyślną (przy WDT 0) — tak jak linia „Dostawa” na fakturze.
     stawka,
-    stawkaOpis: opisStawki(stawka, wdt),
+    stawkaOpis: opisStawki(stawka, wdt, zw),
     cenaBrutto: w.cena_brutto ?? null,
     // Suma wysylki jest zawsze KWOTA BRUTTO CALEJ LINII (cena × ilosc) — TA SAMA funkcja,
     // ktora wchodzi do sumy pod tabela, do bariery arytmetycznej i na fakture. Przy braku
@@ -204,7 +209,8 @@ function wysylkaJestJuzPozycja(zamowienie, wiersze) {
 // tabela, suma, saldo wplat, bariera i faktura widza DOKLADNIE te same liczby.
 // PRZ-105: `stawkaDomyslna` z Ustawień podaje karta (kontekst.js) i ekran nadania (pokazuje netto). Maile,
 // które czytają wyłącznie brutto, wołają bez opcji — wbudowana stawka nie zmienia żadnej kwoty, którą czytają.
-export function wierszePozycji(zamowienie, { stawkaDomyslna = STAWKA_VAT } = {}) {
+// PRZ-122.B07a: `zw: true` (program wbudowany) — stawka „zw” w wierszu, netto = brutto; bez flagi jak dotąd.
+export function wierszePozycji(zamowienie, { stawkaDomyslna = STAWKA_VAT, zw = false, zwolniona = false } = {}) {
   // ⚠️ ZAMÓWIENIE RĘCZNE NIE OZNACZA NICZEGO JAKO „ręczne" (07.08.2026, prośba właściciela).
   // Oba znaczniki — „dopisana ręcznie" przy wierszu i „zmienione: …" przy polach — odpowiadają
   // na pytanie „czym to się różni od tego, co przysłał SKLEP". Przy zamówieniu telefonicznym
@@ -216,8 +222,8 @@ export function wierszePozycji(zamowienie, { stawkaDomyslna = STAWKA_VAT } = {})
   // i tym, że pozycja zapisuje się wprost, a nie jako różnica wobec sklepu. Gaśnie WYŁĄCZNIE
   // `oznaczReczna`, czyli sam napis.
   const zeSklepu = zamowienie?.sklep !== 'reczne';
-  const wdt = wdtZamowienia(zamowienie);
-  const stawkaWiersza = (p) => (wdt ? '0' : stawkaPozycji(p, stawkaDomyslna));
+  const wdt = wdtZamowienia(zamowienie, zwolniona);
+  const stawkaWiersza = (p) => (wdt ? '0' : stawkaPozycji(p, stawkaDomyslna, { zw }));
   const wiersze = (zamowienie?.pozycje ?? []).map((p, i) => ({
     lp: i + 1,
     // Trwaly identyfikator pozycji (domain/pozycje-reczne.js) — to on jedzie w adresie
@@ -256,12 +262,12 @@ export function wierszePozycji(zamowienie, { stawkaDomyslna = STAWKA_VAT } = {})
     // znaczy, rozstrzyga kanal — i rozstrzyga to domena, nie widok.
     ofertaId: p.oferta_id ?? null,
     ilosc: p.ilosc,
-    cenaNetto: cenaNetto(p, stawkaWiersza(p)),
+    cenaNetto: cenaNetto(p, stawkaWiersza(p), { zw }),
     stawka: stawkaWiersza(p),
-    stawkaOpis: opisStawki(stawkaWiersza(p), wdt),
+    stawkaOpis: opisStawki(stawkaWiersza(p), wdt, zw),
     // Własna stawka pozycji ręcznej albo null (stara pozycja, `vat` NULL — „domyślna w chwili faktury”):
     // edycja zbiorcza pokazuje wtedy opcję „domyślna (X%)”, żeby sam zapis nie zamroził stawki.
-    stawkaWlasna: (p.zrodlo === 'reczna' || p.reczna) && czyStawkaVat(p.vat) ? String(p.vat).trim() : null,
+    stawkaWlasna: (p.zrodlo === 'reczna' || p.reczna) && czyStawkaVat(p.vat, { zw }) ? String(p.vat).trim() : null,
     cenaBrutto: p.cena_brutto,
     // ⚠️ CENA SPRZED RABATU — POKAZYWANA WYLACZNIE WTEDY, GDY ROZNI SIE OD CENY PLACONEJ
     // (21.08.2026). Przy rabacie zerowym obie sa identyczne i wypisanie ich obok siebie
@@ -295,7 +301,7 @@ export function wierszePozycji(zamowienie, { stawkaDomyslna = STAWKA_VAT } = {})
     podsumowanie: false,
   }));
   if (!wysylkaJestJuzPozycja(zamowienie, wiersze)) {
-    wiersze.push(wierszWysylki(zamowienie, wiersze.length + 1, { stawka: wdt ? '0' : String(stawkaDomyslna), wdt }));
+    wiersze.push(wierszWysylki(zamowienie, wiersze.length + 1, { stawka: wdt ? '0' : String(stawkaDomyslna), wdt, zw }));
   }
   wiersze.push(wierszPodsumowania(podsumowaniePozycji(zamowienie)));
   return wiersze;
@@ -333,18 +339,19 @@ export function podsumowaniePozycji(zamowienie) {
  * Nie rzuca — karta nie ma prawa paść na uszkodzonej cenie (zasada `podsumowaniePozycji`): przy błędzie
  * liczby są `null`, a `blad` mówi dlaczego.
  * `zeroKrajowe` — któraś linia ma 0% u nabywcy krajowego (decyzja właściciela 21.10: dozwolone z ostrzeżeniem).
+ * PRZ-122.B07a: `zw: true` (program wbudowany) — linie „zw” liczone netto = brutto, VAT 0 (nie „0% krajowe”).
  */
-export function podsumowanieVatKarty(zamowienie, { stawkaDomyslna = STAWKA_VAT, regula = 'wierszami' } = {}) {
-  const wdt = wdtZamowienia(zamowienie);
+export function podsumowanieVatKarty(zamowienie, { stawkaDomyslna = STAWKA_VAT, regula = 'wierszami', zw = false, zwolniona = false } = {}) {
+  const wdt = wdtZamowienia(zamowienie, zwolniona);
   try {
     // PRZ-118.09: reguła VAT programu fakturowego (`opis.regulaVat`). Zaimplementowana jest tylko „wierszami”
     // (inFakt); inna reguła to błąd podsumowania na karcie — jak każdy błąd ceny — a nie cicho inna liczba.
     if (regula !== 'wierszami') {
       throw new Error(`Program fakturowy liczy VAT regułą „${regula}”, której panel nie zna — podsumowanie VAT nie powstało.`);
     }
-    const linie = pozycjeDokumentu(zamowienie, { stawkaDomyslna })
+    const linie = pozycjeDokumentu(zamowienie, { stawkaDomyslna, zw, zwolniona })
       .map((l) => ({ bruttoGr: l.gross_price, stawka: l.tax_symbol }));
-    const s = podsumowanieWierszami(linie);
+    const s = podsumowanieWierszami(linie, { zw });
     return {
       nettoZl: zl(s.nettoGr), vatZl: zl(s.vatGr), bruttoZl: zl(s.bruttoGr), wdt,
       zeroKrajowe: !wdt && linie.some((l) => String(l.stawka) === '0'), blad: null,

@@ -46,7 +46,7 @@ describe('stawkaDokumentu', () => {
   });
 
   it('nabywca krajowy i brak NIP-u → STAWKA_VAT, dokładnie ta sama stała', () => {
-    expect(stawkaDokumentu('1000001106')).toBe(STAWKA_VAT);
+    expect(stawkaDokumentu('1200001097')).toBe(STAWKA_VAT);
     expect(stawkaDokumentu(null)).toBe(STAWKA_VAT);
   });
 });
@@ -60,7 +60,7 @@ describe('numerWdt', () => {
 
 describe('polaWdtInfakt', () => {
   it('dla nabywcy krajowego oddaje PUSTY obiekt — payload krajowy zostaje bajt w bajt', () => {
-    expect(polaWdtInfakt('1000001106', { nipSprzedawcy: '1234563218' })).toEqual({});
+    expect(polaWdtInfakt('1200001097', { nipSprzedawcy: '1234563218' })).toEqual({});
   });
 
   it('dla nabywcy unijnego niesie typ sprzedaży i adnotację z NIP-em sprzedawcy z prefiksem PL', () => {

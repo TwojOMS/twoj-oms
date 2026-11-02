@@ -24,8 +24,10 @@ const NAZWY_OPLAT = [NAZWA_OBSLUGI, NAZWA_KURIERA];
  * ma ani jednego progu i ani jednej kwoty.
  */
 export function doklejOplate({
-  db, zamowienieId, nip, etykietaKlienta, bezWysylki, wartoscTowaruGr,
+  db, zamowienieId, nip, etykietaKlienta, bezWysylki, wartoscTowaruGr, zw = false,
 }) {
+  // PRZ-122.B07c: `zw` (program wbudowany) — domyślna „zw” firmy zwolnionej trafia też na opłatę; bez flagi jak dotąd.
+  const opcjeZw = { zw };
   const klient = umowaZbiorcza(klientPoNip(db, nip));
   // Zaden klient zbiorczy — nie ma czego liczyc i nie ma po co pilnowac wartosci towaru
   // (zamowienia spoza rozliczenia zbiorczego ida ta trasa tysiacami).
@@ -70,8 +72,8 @@ export function doklejOplate({
   dodajPozycjeReczna(db, zamowienieId, {
     nazwa: oplata.nazwa, sku: null, ilosc: 1, cena_brutto: kwota, brutto_linii: kwota,
     // PRZ-105: opłata dostaje stawkę domyślną z chwili doklejenia i ją zachowuje.
-    vat: czytajStawkeDomyslna(db),
-  });
+    vat: czytajStawkeDomyslna(db, opcjeZw),
+  }, opcjeZw);
 
   return oplata;
 }

@@ -1,12 +1,42 @@
 import { describe, it, expect } from 'vitest';
 import {
   dniDoTerminu, stanTerminu, opisTerminu, zakresMiesiaca, stanKsef, scalDokumenty, PROG_WKROTCE_DNI,
-  czekaNaPrzelew, stanZaplaty,
+  czekaNaPrzelew, stanZaplaty, doZestawienia, doZaznaczenia, plakietkaKsef,
 } from '../../src/domena/lista-faktur.js';
 
 // Dokument taki, jaki oddaje lista inFaktu — nadpisywane pole po polu w każdym teście niżej.
 const dok = (nadpisz) => ({
   number: '64/07/2026', status: 'sent', left_to_pay: 88842, payment_method: 'transfer', ...nadpisz,
+});
+
+describe('plakietkaKsef', () => {
+  it.each([
+    ['jest', null], ['odrzucona', 'odrzucona w KSeF'], ['blad', 'błąd wysyłki'],
+    ['czeka', 'czeka na numer'], ['brak', 'czeka na wysyłkę'],
+  ])('stan TF %s → %s', (ksef, napis) => {
+    expect(plakietkaKsef({ stanKsef: 'brak', stanDokumentu: { ksef } })).toBe(napis);
+  });
+  it('numer ma pierwszeństwo przed każdym stanem', () => {
+    for (const ksef of ['jest', 'odrzucona', 'blad', 'czeka', 'brak']) {
+      expect(plakietkaKsef({ ksef_number: 'NUMER-TESTOWY', stanDokumentu: { ksef } })).toBeNull();
+    }
+  });
+  it('inFakt: numer, zlecenie i brak wysyłki', () => {
+    expect(plakietkaKsef({ stanKsef: 'jest' })).toBeNull();
+    expect(plakietkaKsef({ stanKsef: 'wyslana_czeka' })).toBe('czeka na numer');
+    expect(plakietkaKsef({ stanKsef: 'brak' })).toBe('czeka na wysyłkę');
+  });
+});
+
+describe('do zestawienia PDF', () => {
+  it('dopuszcza faktury i korekty z uuid, poza czekającymi na KSeF', () => {
+    expect(doZestawienia({ rodzaj: 'vat', uuid: 'a' })).toBe(true);
+    expect(doZestawienia({ rodzaj: 'korekta', uuid: 'b' })).toBe(true);
+    expect(doZestawienia({ rodzaj: 'vat', uuid: 'c', stanDokumentu: { czekaNaKsef: true } })).toBe(true); // PRZ-126.C06: wchodzi podglądem
+    expect(doZestawienia({ rodzaj: 'vat' })).toBe(false);
+    expect(doZestawienia({ rodzaj: 'proforma', uuid: 'd' })).toBe(false);
+    expect(doZestawienia(null)).toBe(false);
+  });
 });
 
 describe('czeka na przelew', () => {
@@ -252,4 +282,15 @@ describe('stanZaplaty i czekaNaPrzelew mówią to samo', () => {
   it.each(przypadki)('zapłacona wg stanu ⇔ nie czeka na przelew: %o', (d) => {
     expect(czekaNaPrzelew(d)).toBe(stanZaplaty(d) === 'do_zaplaty');
   });
+});
+
+describe('C07a: zaznaczanie dokumentów na liście', () => {
+  it.each([undefined, null, {}, { uuid: '' }])('bez uuid nie ma pola: %j', (d) => {
+    expect(doZaznaczenia(d)).toBe(false);
+  });
+  it.each([
+    { uuid: 'a', ksef_number: 'KS' }, { uuid: 'b', rodzaj: 'korekta' },
+    { uuid: 'c', client_tax_code: null }, { uuid: 'd', stanKsef: 'wyslana_czeka' },
+    { uuid: 'e' },
+  ])('każdy uuid ma pole: %j', (d) => { expect(doZaznaczenia(d)).toBe(true); });
 });

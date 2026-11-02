@@ -2225,7 +2225,8 @@
       wyjscia na swiat, a plik jest ten sam, ktorego uzywa panel indywidualny — jedna kopia
       w repo, nie dwie do rozjechania. %>
   <% if (htmx) { %><script src="<%= zasob('htmx.min.js') %>"></script><% } %>
-  <link rel="stylesheet" href="<%= zasob('oms-design.css') %>">
+  <link rel="stylesheet" href="<%= zasob('oms-design.css') %>"><% if (typeof nawigacja !== 'undefined' && nawigacja?.kontekst?.dzial === 'ustawienia') { %>
+  <link rel="stylesheet" href="<%= zasob('oms-ustawienia.css') %>"><% } %>
 </head>
 <body>
   <%# PRZ-085: ekran bez własnego `panelStatusow` bierze liczby z pipeline'u (`licznikiStatusow`); `locals.`, bo
@@ -2238,7 +2239,7 @@
       : statusyWzorcowe;
   %>
   <% if (!bezPaska) { %>
-  <div class="oms-shell">
+  <div class="oms-shell<%= nawigacja?.kontekst?.dzial === 'ustawienia' ? ' oms-shell--ustawienia' : '' %>">
     <aside class="oms-sidebar">
       <a class="oms-brand" href="<%= nawigacja.boczne?.[0]?.pozycje?.[0]?.href ?? '/' %>" aria-label="Twój OMS — strona główna"><img class="pas-logo" src="<%= zasob('favicon-192.png') %>" alt="<%= typeof marka !== 'undefined' ? marka.logoAlt : '' %>"><span>Twój OMS</span></a>
       <div class="oms-menu-desktop"><%- include('_menu-panelu.ejs', {nawigacja,statusyMenu,mobilna:false}) %></div>
@@ -2261,7 +2262,7 @@
       </div>
       <% } %>
       <header class="oms-topbar">
-        <div class="oms-breadcrumb"><span>Panel</span><span aria-hidden="true">/</span><strong><%= title %></strong></div>
+        <div class="oms-breadcrumb"><span>Panel</span><span aria-hidden="true">/</span><strong><%= title %></strong></div><% if (nawigacja?.kontekst?.dzial === 'ustawienia') { %><%- include('_menu-ustawien-aplikacji.ejs', {nawigacja,statusyMenu}) %><% } %>
         <div class="oms-top-actions">
           <%# PRZ-102.03 (wariant C): analizy poza menu bocznym — rozwijana lista na wzór menu konta. Pozycje już %>
           <%# przefiltrowane prawami i `odlozoneEkrany` (nawigacjaDla); rola bez żadnej analizy przycisku nie dostaje. %>
@@ -2295,6 +2296,7 @@
             </details>
           </div>
           <div class="oms-settings-content">
+            <%- include('_zakladki-ustawien.ejs', {nawigacja}) %>
         <% } %>
         <%# PRZ-083: gosc demo publicznego OGLADA Ustawienia — tresc martwa (inert), nad nia jedno zdanie. Zapis i tak %>
         <%# zatrzymuje hak podglad-demo.js (403); `inert` oszczedza gosciowi klikania w cos, co nie zadziala. %>

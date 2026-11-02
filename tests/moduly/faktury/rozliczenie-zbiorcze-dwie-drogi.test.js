@@ -56,7 +56,8 @@ function dodajZamowienie({ numer, kwota = '100.00', okresId = okres.id, anulowan
     + " VALUES ('reczne', ?, ?, ?, ?, 1, ?, ?, ?, '2026-07-10T10:00:00.000Z')",
   ).run(
     Number(String(numer).replace(/\D/g, '')), numer, kwota, KLIENT.nip,
-    JSON.stringify({ company: KLIENT.nazwa, first_name: 'Jan', last_name: 'Kowalski' }),
+    // PRZ-126.P1: komplet danych dla aktywnego formularza poza okresem.
+    JSON.stringify({ company: KLIENT.nazwa, first_name: 'Jan', last_name: 'Kowalski', address_1: 'Fikcyjna 1', postcode: '00-001', city: 'Miasto Testowe' }),
     okresId, anulowane ? 1 : 0,
   );
   const id = db.prepare('SELECT id FROM zamowienia WHERE numer = ?').get(numer).id;
@@ -170,12 +171,13 @@ describe('K1 — trasy i karta zamowienia', () => {
     expect(odp.body).toMatch(/faktura za lipiec 2026/);
   });
 
-  it('karta NIE POKAZUJE przycisku „Wystaw fakturę" dla zamowienia w okresie', async () => {
+  it('karta wyszarza przycisk „Wystaw fakturę" dla zamowienia w okresie (PRZ-126.P1)', async () => {
     const zamId = dodajZamowienie({ numer: 'R/2026/001' });
     const odp = await get(`/zamowienia/${zamId}`);
     // Celujemy w FORMULARZ wystawienia, nie w cale cialo: slowo „faktura" jest na karcie
     // wszedzie (naglowek sekcji, dane do faktury), wiec asercja o nim niczego by nie znaczyla.
     expect(odp.body).not.toMatch(new RegExp(`action="/zamowienia/${zamId}/faktura"`));
+    expect(odp.body).toMatch(/<button[^>]*disabled[^>]*>Wystaw fakturę<\/button>/);
   });
 
   it('...ale zamowienie POZA okresem dalej ma ten przycisk', async () => {

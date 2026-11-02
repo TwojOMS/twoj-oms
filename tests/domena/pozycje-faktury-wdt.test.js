@@ -23,7 +23,7 @@ describe('pozycjeDokumentu — stawka dokumentu z NIP-u nabywcy', () => {
   });
 
   it('nabywca krajowy: stawka 23 — dokładnie jak dotąd', () => {
-    const services = pozycjeDokumentu(zamowienie({ nip: '1000001106' }), { stawkaDomyslna: '23' });
+    const services = pozycjeDokumentu(zamowienie({ nip: '1200001097' }), { stawkaDomyslna: '23' });
     expect(services[0].tax_symbol).toBe('23');
   });
 
@@ -32,7 +32,7 @@ describe('pozycjeDokumentu — stawka dokumentu z NIP-u nabywcy', () => {
   // pokazywałaby nabywcę SK, a stawka szłaby po starym numerze.
   it('nadpisany ręcznie NIP rozstrzyga stawkę', () => {
     const services = pozycjeDokumentu(zamowienie({
-      nip: '1000001106',
+      nip: '1200001097',
       klient_reczny_json: JSON.stringify({ nip: 'SK1000000001' }),
     }), { stawkaDomyslna: '23' });
     expect(services[0].tax_symbol).toBe('0');

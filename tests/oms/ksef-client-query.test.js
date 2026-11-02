@@ -22,7 +22,7 @@ describe('klient KSeF — metadane faktur', () => {
       zapisane = { url, cialo: JSON.parse(opcje.body) };
       return { ok: true, status: 200, json: async () => ({ invoices: [], hasMore: false, isTruncated: false }) };
     };
-    const klient = createKsefClient({ token: 'T', nip: '1000001193', fetchImpl });
+    const klient = createKsefClient({ token: 'T', nip: '1200001192', fetchImpl });
     await klient.pobierzMetadane({ accessToken: 'ACC', from: '2026-05-01T00:00:00Z', to: '2026-06-01T00:00:00Z', pageOffset: 2 });
 
     expect(zapisane.cialo.subjectType).toBe('Subject2');
@@ -158,10 +158,10 @@ describe('klient KSeF — pobranie XML dokumentu (archiwum)', () => {
       };
     };
     const klient = createKsefClient({ token: 'T', nip: '1', fetchImpl });
-    const xml = await klient.pobierzXml({ accessToken: 'ACC-XML', ksefNumber: '1000001193-20260605-0100AB-CD' });
+    const xml = await klient.pobierzXml({ accessToken: 'ACC-XML', ksefNumber: '1200001192-20260605-0100AB-CD' });
 
     expect(xml).toBe('<Faktura>tresc</Faktura>');
-    expect(widziane.url).toContain('/invoices/ksef/1000001193-20260605-0100AB-CD');
+    expect(widziane.url).toContain('/invoices/ksef/1200001192-20260605-0100AB-CD');
     expect(widziane.opcje.method).toBe('GET');
     expect(widziane.opcje.headers.Authorization).toBe('Bearer ACC-XML');
     expect(widziane.opcje.headers['X-Error-Format']).toBe('problem-details');

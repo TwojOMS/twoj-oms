@@ -45,9 +45,9 @@
   "statystyki": {
     "plikiKodowe": 428,
     "bledyParsera": 0,
-    "odczytyProduktu": 132,
+    "odczytyProduktu": 138,
     "dynamiczneOdczytyProduktu": 33,
-    "zmienneProduktu": 73,
+    "zmienneProduktu": 76,
     "rodzinyDynamiczne": 11,
     "declaracjeGuardOnly": 7,
     "zmienneNarzedziISystemu": 13,
@@ -241,7 +241,7 @@
         {
           "id": "AST-086",
           "path": "src/moduly/zdrowie/modul.ts",
-          "line": 16,
+          "line": 15,
           "expression": "env.OMS_TRYB",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -250,7 +250,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/core/tryb.ts:6",
-        "src/moduly/zdrowie/modul.ts:16"
+        "src/moduly/zdrowie/modul.ts:15"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1634,7 +1634,7 @@
         {
           "id": "AST-060",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 55,
+          "line": 74,
           "expression": "env.OMS_PROFORMY_KATALOG",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1642,7 +1642,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:55"
+        "src/moduly/faktury/modul.ts:74"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1668,8 +1668,8 @@
       "wymagalnosc": "opcjonalna; bramka włączenia inFaktu",
       "domyslna": null,
       "wymagalnoscPoLudzku": "opcjonalna; wpisanie klucza włącza integrację z inFakt",
-      "skutekBraku": "Nie powstają klient inFaktu, wystawianie faktur, VIES, usługi KSeF sprzedaży i paczka biura; proformy nadal dostępne. Zdrowie dodaje uwagę, nie gwarantuje alarmu. PRZ-093.10: odpowiednik w panelu — Ustawienia → Integracje → inFakt (/ustawienia/integracje/infakt; wiersz „infakt” w konfiguracja_integracji, klucz jako sekret; adres API zawsze produkcyjny). Gdy INFAKT_API_KEY stoi w pliku, cała konfiguracja inFaktu idzie z pliku, a ekran jest tylko do odczytu (zapis = 409). Pierwsze podłączenie z ekranu włącza faktury po restarcie, zmiana klucza działa od razu.",
-      "skutekBrakuPoLudzku": "Bez klucza nie działają faktury z inFakt, VIES, KSeF sprzedaży ani paczka dla biura; proformy nadal tak. Klucz można wpisać też w panelu, ale klucz z pliku wygrywa i blokuje ekran.",
+      "skutekBraku": "Nie powstają klient inFaktu, wystawianie faktur, VIES, usługi KSeF sprzedaży i zestawienie faktur; proformy nadal dostępne. Zdrowie dodaje uwagę, nie gwarantuje alarmu. PRZ-093.10: odpowiednik w panelu — Ustawienia → Integracje → inFakt (/ustawienia/integracje/infakt; wiersz „infakt” w konfiguracja_integracji, klucz jako sekret; adres API zawsze produkcyjny). Gdy INFAKT_API_KEY stoi w pliku, cała konfiguracja inFaktu idzie z pliku, a ekran jest tylko do odczytu (zapis = 409). Pierwsze podłączenie z ekranu włącza faktury po restarcie, zmiana klucza działa od razu.",
+      "skutekBrakuPoLudzku": "Bez klucza nie działają faktury z inFakt, VIES, KSeF sprzedaży ani zestawienie faktur; proformy nadal tak. Klucz można wpisać też w panelu, ale klucz z pliku wygrywa i blokuje ekran.",
       "walidacja": "truthiness bez trim do uruchomienia; próba odrzuca każdą surową wartość różną od pustej, także whitespace.",
       "sekret": true,
       "odczyty": [
@@ -1692,7 +1692,7 @@
         {
           "id": "AST-068",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 69,
+          "line": 85,
           "expression": "env.INFAKT_API_KEY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1700,7 +1700,7 @@
         {
           "id": "AST-069",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 69,
+          "line": 85,
           "expression": "env.INFAKT_API_KEY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1709,7 +1709,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/core/tryb.ts:18",
-        "src/moduly/faktury/modul.ts:69"
+        "src/moduly/faktury/modul.ts:85"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1730,7 +1730,7 @@
         {
           "id": "AST-059",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 53,
+          "line": 72,
           "expression": "env.INFAKT_API_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1738,7 +1738,7 @@
         {
           "id": "AST-070",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 69,
+          "line": 85,
           "expression": "env.INFAKT_API_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1746,8 +1746,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:53",
-        "src/moduly/faktury/modul.ts:69"
+        "src/moduly/faktury/modul.ts:72",
+        "src/moduly/faktury/modul.ts:85"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1761,14 +1761,14 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
-      "skutekBraku": "Nie powstaje czuwacz archiwum sprzedaży; paczka biura nie ma tego lokalnego katalogu i korzysta z pozostałych źródeł usługi. PRZ-093.10: tylko w pliku (katalog na serwerze, nie pole ekranu); działa też z kluczem wpisanym w Ustawienia → Integracje → inFakt.",
-      "skutekBrakuPoLudzku": "Bez niej OMS nie robi nocnego archiwum faktur sprzedaży, a paczka dla biura korzysta z pozostałych źródeł. Ustawiasz ją tylko w pliku; działa też z kluczem inFakt wpisanym w panelu.",
+      "skutekBraku": "Dla inFaktu nie powstaje czuwacz archiwum sprzedaży; Zestawienie faktur nie ma tego lokalnego katalogu i korzysta z pozostałych źródeł usługi. PRZ-093.10: tylko w pliku (katalog na serwerze, nie pole ekranu); działa też z kluczem wpisanym w Ustawienia → Integracje → inFakt.",
+      "skutekBrakuPoLudzku": "Bez niej OMS nie robi nocnego archiwum sprzedaży z inFaktu, a zestawienie faktur korzysta z pozostałych źródeł. Ustawiasz ją tylko w pliku; działa też z kluczem inFakt wpisanym w panelu.",
       "walidacja": "trim; pusty tekst daje null; odczyt zarówno w fakturach, jak kosztach.",
       "odczyty": [
         {
           "id": "AST-071",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 65,
+          "line": 81,
           "expression": "env.INFAKT_ARCHIWUM",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1780,16 +1780,65 @@
           "expression": "env.INFAKT_ARCHIWUM",
           "kind": "statyczny",
           "via": "bezpośrednio"
+        },
+        {
+          "id": "AST-154",
+          "path": "src/moduly/koszty/modul.ts",
+          "line": 39,
+          "expression": "env.INFAKT_ARCHIWUM",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
         }
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:65",
-        "src/moduly/koszty/modul.ts:37"
+        "src/moduly/faktury/modul.ts:81",
+        "src/moduly/koszty/modul.ts:37",
+        "src/moduly/koszty/modul.ts:39"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
       "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
+    },
+    {
+      "nazwa": "OMS_ARCHIWUM_SPRZEDAZY",
+      "wlasciciel": "faktury",
+      "sekcja": "Faktury i koszty",
+      "opis": "Zarezerwowane dla modułu niedostępnego w tym wydaniu. Nie ustawiaj tej zmiennej.",
+      "zakres": "produkt",
+      "wymagalnosc": "opcjonalna",
+      "domyslna": null,
+      "skutekBraku": "Ta zmienna nie włącza funkcji w tym wydaniu.",
+      "skutekBrakuPoLudzku": "Ta zmienna nie włącza funkcji w tym wydaniu.",
+      "walidacja": "Nie ustawiaj tej zmiennej w tym wydaniu.",
+      "odczyty": [
+        {
+          "id": "AST-153",
+          "path": "src/moduly/faktury/modul.ts",
+          "line": 87,
+          "expression": "env.OMS_ARCHIWUM_SPRZEDAZY",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
+        },
+        {
+          "id": "AST-155",
+          "path": "src/moduly/koszty/modul.ts",
+          "line": 39,
+          "expression": "env.OMS_ARCHIWUM_SPRZEDAZY",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
+        }
+      ],
+      "wywolaniaPosrednie": [],
+      "sciezkaOdczytu": [
+        "src/moduly/faktury/modul.ts:87",
+        "src/moduly/koszty/modul.ts:39"
+      ],
+      "aktywacja": "niedostępna w tym wydaniu",
+      "wlaczoneWMainNaPinie": true,
+      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a",
+      "wymagalnoscPoLudzku": "nie ustawiaj w tym wydaniu",
+      "domyslnaPoLudzku": "nieustawiona"
     },
     {
       "nazwa": "OMS_PROGRAM_FAKTUROWY",
@@ -1798,20 +1847,20 @@
       "opis": "Moduł faktur OMS-u: brak (faktury wyłączone) albo infakt; Fakturownia i TwojeFaktury będą dostępne wkrótce.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna — można w panelu (Ustawienia → Integracje → Moduł faktur); wpisana w pliku musi być poprawna",
-      "wymagalnoscPoLudzku": "opcjonalna — moduł faktur możesz wybrać w panelu (Ustawienia → Integracje → Moduł faktur, tylko administrator); wpisany w pliku wygrywa nad panelem",
+      "wymagalnoscPoLudzku": "opcjonalna — moduł faktur możesz wybrać w panelu (Ustawienia → Faktury i podatki → Program do faktur, tylko administrator); wpisany w pliku wygrywa nad panelem",
       "domyslna": null,
       "domyslnaPoLudzku": "brak wyboru: inFakt, jeśli jest podłączony; bez niego faktury są wyłączone",
-      "skutekBraku": "PRZ-121.01: bez wartości w pliku moduł faktur pochodzi z Ustawień (wiersz „program_fakturowy” w konfiguracja_integracji, ustawienia {\"program\": \"brak\"|\"infakt\"}, bez sekretów), a bez zapisu — inFakt, gdy gotowy (INFAKT_API_KEY, klucz z Ustawień przy starcie, atrapa albo szew trybu próby), inaczej „brak” domyślny: moduł składa się jak przed zmianą, komunikaty bez zmian. Jawne „brak” (plik albo Ustawienia): nie powstaje klient inFaktu ani program fakturowy z żadnego źródła; wystawianie, lista FAKTURY, KSeF sprzedaży, czuwacze, automat KSeF, VIES i paczka dla biura = null, klucz inFaktu zostaje w bazie i nie wychodzi z panelu; proformy i KSeF kosztów działają; /health bez zmian (zdanie o wyłączonych fakturach to uwaga modułu, nie alarm). Zmiana zapisu działa po ponownym uruchomieniu; automat KSeF staje od razu po zapisaniu „brak”. Zapis, którego wersja nie zna (np. „fakturownia” po wycofaniu wydania), = „brak” + uwaga.",
+      "skutekBraku": "PRZ-121.01: bez wartości w pliku moduł faktur pochodzi z Ustawień (wiersz „program_fakturowy” w konfiguracja_integracji, ustawienia {\"program\": \"brak\"|\"infakt\"}, bez sekretów), a bez zapisu — inFakt, gdy gotowy (INFAKT_API_KEY, klucz z Ustawień przy starcie, atrapa albo szew trybu próby), inaczej „brak” domyślny: moduł składa się jak przed zmianą, komunikaty bez zmian. Jawne „brak” (plik albo Ustawienia): nie powstaje klient inFaktu ani program fakturowy z żadnego źródła; wystawianie, lista FAKTURY, KSeF sprzedaży, czuwacze, automat KSeF, VIES i zestawienie faktur = null, klucz inFaktu zostaje w bazie i nie wychodzi z panelu; proformy i KSeF kosztów działają; /health bez zmian (zdanie o wyłączonych fakturach to uwaga modułu, nie alarm). Zmiana zapisu działa po ponownym uruchomieniu; automat KSeF staje od razu po zapisaniu „brak”. Zapis, którego wersja nie zna (np. „fakturownia” po wycofaniu wydania), = „brak” + uwaga.",
       "skutekBrakuPoLudzku": "Bez niej moduł faktur wybierasz w panelu. Gdy nic nie wybrano, OMS wystawia faktury przez inFakt, jeśli jest podłączony, a bez niego faktur nie wystawia — tak jak dotąd.",
-      "walidacja": "Wielkość liter i spacje bez znaczenia; pusta wartość = brak wyboru w pliku. Inna wartość niż brak albo infakt (także fakturownia i twojefaktury — „wkrótce”) blokuje start zdaniem z nazwą zmiennej (jak OMS_TRYB). Plik wygrywa nad wyborem w panelu.",
+      "walidacja": "Dozwolone brak albo infakt. Pusta wartość pozostawia wybór w panelu; inne programy są niedostępne. Plik ma pierwszeństwo przed panelem.",
       "sekret": false,
-      "odpowiednikWPanelu": "Ustawienia → Integracje → Moduł faktur (/ustawienia/integracje/program-fakturowy; ekran PRZ-121.02)",
+      "odpowiednikWPanelu": "Ustawienia → Faktury i podatki → Program do faktur (/ustawienia/integracje/program-fakturowy; ekran PRZ-121.02)",
       "decyzja": "PRZ-121",
       "odczyty": [
         {
           "id": "AST-149",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 52,
+          "line": 71,
           "expression": "env.OMS_PROGRAM_FAKTUROWY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1819,7 +1868,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:52"
+        "src/moduly/faktury/modul.ts:71"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true
@@ -1843,7 +1892,7 @@
         {
           "id": "AST-150",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 73,
+          "line": 90,
           "expression": "env.OMS_RESTART_Z_PANELU",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1851,10 +1900,74 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:73"
+        "src/moduly/faktury/modul.ts:90"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true
+    },
+    {
+      "wlasciciel": "faktury",
+      "sekcja": "Faktury i koszty",
+      "zakres": "produkt",
+      "wymagalnosc": "opcjonalna",
+      "domyslna": null,
+      "decyzja": "PRZ-123",
+      "odczyty": [
+        {
+          "id": "AST-156",
+          "path": "src/moduly/faktury/modul.ts",
+          "line": 97,
+          "expression": "env.OMS_PROBA_KSEF_TEST_API",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
+        }
+      ],
+      "wywolaniaPosrednie": [],
+      "sciezkaOdczytu": [
+        "src/moduly/faktury/modul.ts:97"
+      ],
+      "aktywacja": "niedostępna w tym wydaniu",
+      "wlaczoneWMainNaPinie": true,
+      "nazwa": "OMS_PROBA_KSEF_TEST_API",
+      "opis": "Zarezerwowane dla modułu niedostępnego w tym wydaniu. Nie ustawiaj tej zmiennej.",
+      "wymagalnoscPoLudzku": "nie ustawiaj w tym wydaniu",
+      "domyslnaPoLudzku": "nieustawiona",
+      "skutekBraku": "Ta zmienna nie włącza funkcji w tym wydaniu.",
+      "skutekBrakuPoLudzku": "Ta zmienna nie włącza funkcji w tym wydaniu.",
+      "walidacja": "Nie ustawiaj tej zmiennej w tym wydaniu.",
+      "sekret": false
+    },
+    {
+      "wlasciciel": "faktury",
+      "sekcja": "Faktury i koszty",
+      "zakres": "produkt",
+      "wymagalnosc": "opcjonalna",
+      "domyslna": null,
+      "decyzja": "PRZ-123",
+      "odczyty": [
+        {
+          "id": "AST-157",
+          "path": "src/moduly/faktury/modul.ts",
+          "line": 97,
+          "expression": "env.OMS_PROBA_KSEF_TEST_TOKEN",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
+        }
+      ],
+      "wywolaniaPosrednie": [],
+      "sciezkaOdczytu": [
+        "src/moduly/faktury/modul.ts:97"
+      ],
+      "aktywacja": "niedostępna w tym wydaniu",
+      "wlaczoneWMainNaPinie": true,
+      "nazwa": "OMS_PROBA_KSEF_TEST_TOKEN",
+      "opis": "Zarezerwowane dla modułu niedostępnego w tym wydaniu. Nie ustawiaj tej zmiennej.",
+      "wymagalnoscPoLudzku": "nie ustawiaj w tym wydaniu",
+      "domyslnaPoLudzku": "nieustawiona",
+      "skutekBraku": "Ta zmienna nie włącza funkcji w tym wydaniu.",
+      "skutekBrakuPoLudzku": "Ta zmienna nie włącza funkcji w tym wydaniu.",
+      "walidacja": "Nie ustawiaj tej zmiennej w tym wydaniu.",
+      "sekret": true
     },
     {
       "nazwa": "KSEF_TOKEN",
@@ -1865,7 +1978,7 @@
       "wymagalnosc": "wymagana po rozpoczęciu niepustej sekcji KSeF",
       "domyslna": null,
       "wymagalnoscPoLudzku": "opcjonalna; wymagana, jeśli wpisujesz którekolwiek ustawienie KSeF",
-      "skutekBraku": "Bez całej sekcji klient KSeF/koszty z pliku nie powstaje. Niepuste KSEF_NIP/API/ARCHIWUM bez tokenu odmawia konfiguracji. PRZ-102.22: odpowiednik w panelu — Ustawienia → Integracje → KSeF (/ustawienia/integracje/ksef; wiersz „ksef” w konfiguracja_integracji, token jako sekret, NIP opcjonalny = NIP sprzedawcy). Klient KSeF kosztów rozstrzyga przy każdym przebiegu czuwacza, PDF-ie kosztu i paczce kosztów: plik → panel → brak; nowy token z panelu działa od następnego przebiegu bez restartu, zmiana tokenu kasuje sesję KSeF (tokeny_ksef), ten sam token ją zostawia. Gdy KSEF_TOKEN stoi w pliku, ekran jest tylko do odczytu (zapis = 409). Bez tokenu w pliku i w panelu czuwacz kosztów stoi (zegar tyka, przebieg pominięty), /health: czuwaczKosztow.wlaczony=false. Moduł „Koszty” wyłączony w Ustawienia → Moduły: czuwacz nic nie pobiera także z tokenem (/health: stan „koszty wyłączone”).",
+      "skutekBraku": "Bez całej sekcji klient KSeF/koszty z pliku nie powstaje. Niepuste KSEF_NIP/API/ARCHIWUM bez tokenu odmawia konfiguracji. PRZ-102.22: odpowiednik w panelu — Ustawienia → Integracje → KSeF (/ustawienia/integracje/ksef; wiersz „ksef” w konfiguracja_integracji, token jako sekret, NIP opcjonalny = NIP sprzedawcy). Klient KSeF kosztów rozstrzyga przy każdym przebiegu czuwacza, PDF-ie kosztu i zestawieniu faktur kosztowych: plik → panel → brak; nowy token z panelu działa od następnego przebiegu bez restartu, zmiana tokenu kasuje sesję KSeF (tokeny_ksef), ten sam token ją zostawia. Gdy KSEF_TOKEN stoi w pliku, ekran jest tylko do odczytu (zapis = 409). Bez tokenu w pliku i w panelu czuwacz kosztów stoi (zegar tyka, przebieg pominięty), /health: czuwaczKosztow.wlaczony=false. Moduł „Koszty” wyłączony w Ustawienia → Moduły: czuwacz nic nie pobiera także z tokenem (/health: stan „koszty wyłączone”).",
       "walidacja": "trim; proba odrzuca niepusty token.",
       "sekret": true,
       "odczyty": [
@@ -1900,13 +2013,22 @@
           "expression": "env.KSEF_TOKEN",
           "kind": "statyczny",
           "via": "bezpośrednio"
+        },
+        {
+          "id": "AST-151",
+          "path": "src/moduly/faktury/modul.ts",
+          "line": 93,
+          "expression": "env.KSEF_TOKEN",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
         }
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/core/tryb.ts:18",
         "src/moduly/koszty/modul.ts:28",
-        "src/moduly/koszty/modul.ts:28"
+        "src/moduly/koszty/modul.ts:28",
+        "src/moduly/faktury/modul.ts:93"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1994,13 +2116,22 @@
           "expression": "env.KSEF_API",
           "kind": "statyczny",
           "via": "bezpośrednio"
+        },
+        {
+          "id": "AST-152",
+          "path": "src/moduly/faktury/modul.ts",
+          "line": 93,
+          "expression": "env.KSEF_API",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
         }
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/moduly/koszty/modul.ts:24",
         "src/moduly/koszty/modul.ts:28",
-        "src/moduly/koszty/modul.ts:33"
+        "src/moduly/koszty/modul.ts:33",
+        "src/moduly/faktury/modul.ts:93"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -4293,7 +4424,7 @@
         {
           "id": "AST-128",
           "path": "src/moduly/zdrowie/modul.ts",
-          "line": 16,
+          "line": 15,
           "expression": "env.OMS_KOPIE_KATALOG",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4301,7 +4432,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zdrowie/modul.ts:16"
+        "src/moduly/zdrowie/modul.ts:15"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -4323,7 +4454,7 @@
         {
           "id": "AST-129",
           "path": "src/moduly/zdrowie/modul.ts",
-          "line": 16,
+          "line": 15,
           "expression": "env.OMS_KOPIA_ZEWNETRZNA",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4331,7 +4462,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zdrowie/modul.ts:16"
+        "src/moduly/zdrowie/modul.ts:15"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -4702,6 +4833,38 @@
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
       "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
+    },
+    {
+      "nazwa": "OMS_TWOJEFAKTURY",
+      "wlasciciel": "faktury",
+      "sekcja": "Faktury i koszty",
+      "opis": "Zmienna nie jest używana do włączania funkcji w tym wydaniu. Moduł TwojeFaktury jest niedostępny.",
+      "zakres": "produkt",
+      "wymagalnosc": "nie ustawiaj w tym wydaniu",
+      "wymagalnoscPoLudzku": "nie ustawiaj w tym wydaniu",
+      "domyslna": null,
+      "domyslnaPoLudzku": "nieustawiona",
+      "skutekBraku": "TwojeFaktury pozostaje niedostępne; inFakt i Brak działają normalnie.",
+      "skutekBrakuPoLudzku": "TwojeFaktury pozostaje niedostępne; inFakt i Brak działają normalnie.",
+      "walidacja": "Nie ustawiaj tej zmiennej. Próba włączenia nieobecnego modułu zatrzymuje start aplikacji.",
+      "sekret": false,
+      "decyzja": "PRZ-122, decyzja właściciela 28.10.2026",
+      "odczyty": [
+        {
+          "id": "ZGODA-TF-1",
+          "path": "src/domena/wybor-programu.js",
+          "line": 34,
+          "expression": "env.OMS_TWOJEFAKTURY",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
+        }
+      ],
+      "wywolaniaPosrednie": [],
+      "sciezkaOdczytu": [
+        "src/domena/wybor-programu.js:34"
+      ],
+      "aktywacja": "niedostępna w tym wydaniu",
+      "wlaczoneWMainNaPinie": true
     }
   ],
   "mapowaniaDynamiczne": [
@@ -5995,7 +6158,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "line": 33,
+      "line": 39,
       "expression": "env.INFAKT_API_URL",
       "key": "INFAKT_API_URL",
       "id": "AST-059",
@@ -6008,7 +6171,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "line": 35,
+      "line": 41,
       "expression": "env.OMS_PROFORMY_KATALOG",
       "key": "OMS_PROFORMY_KATALOG",
       "id": "AST-060",
@@ -6021,7 +6184,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "line": 42,
+      "line": 49,
       "expression": "env.DPD_NADAWCA_NAZWA",
       "key": "DPD_NADAWCA_NAZWA",
       "id": "AST-061",
@@ -6034,7 +6197,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "line": 42,
+      "line": 49,
       "expression": "env.DPD_NADAWCA_ULICA",
       "key": "DPD_NADAWCA_ULICA",
       "id": "AST-062",
@@ -6047,7 +6210,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "line": 43,
+      "line": 50,
       "expression": "env.DPD_NADAWCA_KOD",
       "key": "DPD_NADAWCA_KOD",
       "id": "AST-063",
@@ -6060,7 +6223,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "line": 43,
+      "line": 50,
       "expression": "env.DPD_NADAWCA_MIASTO",
       "key": "DPD_NADAWCA_MIASTO",
       "id": "AST-064",
@@ -6073,7 +6236,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "line": 44,
+      "line": 51,
       "expression": "env.DPD_NADAWCA_KRAJ",
       "key": "DPD_NADAWCA_KRAJ",
       "id": "AST-065",
@@ -6086,7 +6249,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "line": 44,
+      "line": 51,
       "expression": "env.DPD_NADAWCA_TELEFON",
       "key": "DPD_NADAWCA_TELEFON",
       "id": "AST-066",
@@ -6099,7 +6262,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "line": 45,
+      "line": 52,
       "expression": "env.DPD_NADAWCA_EMAIL",
       "key": "DPD_NADAWCA_EMAIL",
       "id": "AST-067",
@@ -6112,7 +6275,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "line": 47,
+      "line": 54,
       "expression": "env.INFAKT_API_KEY",
       "key": "INFAKT_API_KEY",
       "id": "AST-068",
@@ -6125,7 +6288,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "line": 47,
+      "line": 54,
       "expression": "env.INFAKT_API_KEY",
       "key": "INFAKT_API_KEY",
       "id": "AST-069",
@@ -6138,7 +6301,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "line": 47,
+      "line": 54,
       "expression": "env.INFAKT_API_URL",
       "key": "INFAKT_API_URL",
       "id": "AST-070",
@@ -6151,7 +6314,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "line": 48,
+      "line": 55,
       "expression": "env.INFAKT_ARCHIWUM",
       "key": "INFAKT_ARCHIWUM",
       "id": "AST-071",
@@ -6934,10 +7097,24 @@
     },
     {
       "path": "src/moduly/lista.ts",
-      "line": 27,
+      "line": 32,
+      "expression": "env",
+      "callee": "zgodaTwojeFaktury",
+      "call": "zgodaTwojeFaktury(env)"
+    },
+    {
+      "path": "src/moduly/lista.ts",
+      "line": 40,
       "expression": "env",
       "callee": "definicjeKanalow",
       "call": "definicjeKanalow(env)"
+    },
+    {
+      "path": "src/moduly/lista.ts",
+      "line": 43,
+      "expression": "env",
+      "callee": "zgodaInstalacji",
+      "call": "zgodaInstalacji(env)"
     },
     {
       "path": "src/core/demo.ts",
@@ -7353,6 +7530,48 @@
       "call": "konfiguracjaZamowien(env)"
     },
     {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 65,
+      "expression": "env",
+      "callee": "zgodaTwojeFaktury",
+      "call": "zgodaTwojeFaktury(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 73,
+      "expression": "env",
+      "callee": "wczytajSprzedawce",
+      "call": "wczytajSprzedawce(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 79,
+      "expression": "env",
+      "callee": "adresFirmyZEnv",
+      "call": "adresFirmyZEnv(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 88,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 98,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 126,
+      "expression": "env",
+      "callee": "wczytajFaktury",
+      "call": "wczytajFaktury(env, szew)"
+    },
+    {
       "path": "src/moduly/koszty/modul.ts",
       "line": 30,
       "expression": "env",
@@ -7368,38 +7587,17 @@
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "line": 45,
+      "line": 47,
       "expression": "env",
       "callee": "wczytajSprzedawce",
       "call": "wczytajSprzedawce(env)"
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "line": 62,
+      "line": 64,
       "expression": "env",
       "callee": "wczytajKoszty",
       "call": "wczytajKoszty(env)"
-    },
-    {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 54,
-      "expression": "env",
-      "callee": "wczytajSprzedawce",
-      "call": "wczytajSprzedawce(env)"
-    },
-    {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 63,
-      "expression": "env",
-      "callee": "adresFirmyZEnv",
-      "call": "adresFirmyZEnv(env)"
-    },
-    {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 71,
-      "expression": "env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(env)"
     }
   ],
   "prefiksy": {
@@ -7493,7 +7691,7 @@
       "wlasciciel": "faktury",
       "zmienna": null,
       "odstepMs": 3600000,
-      "warunek": "inFakt i co najmniej jeden klient Allegro",
+      "warunek": "program faktur i (co najmniej jeden klient Allegro albo wbudowane TwojeFaktury — rozstrzyganie niepewnych wysyłek KSeF)",
       "source": {
         "path": "src/moduly/faktury/modul.ts",
         "uwaga": "Fabryka zegara/wywołanie w module; bez starego numeru linii"
@@ -7708,7 +7906,7 @@
     },
     {
       "path": "src/domena/klient-zbiorczy.js",
-      "sha256": "edfe45cb95e04878994af36e18f2df366b4c2eef91242de6a380c8a8451c296a",
+      "sha256": "cf697edf4c2dc278d08b45af92e81741f1e1a43ce914fa4c5b1b4c4f717adacf",
       "normalizacja": "LF"
     },
     {
@@ -7738,22 +7936,22 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "c104c2ea1761708d1ac8ed51ef44836937dfe0d70d72e43c7509d68351b765a6",
+      "sha256": "a82169086b836dd01bcc292eef6af661ae274755f5f967684be03a6903d329ca",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/wysylka/modul.ts",
-      "sha256": "3973d40bd7da3ff3e941b4ad78087b94f1399c2be41eee9a390da6b6714834c3",
+      "sha256": "9c0ef8ca37af60e21a86df5d069e22477673c1e1894995ebc003327c02067ce7",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "sha256": "2891b2bdbc6ec73805b4cc8c6f39c4cf3f04ba283cd7814b894f9113aeb41329",
+      "sha256": "d0f0d8b13dd4732e33907cc92e9ed5ea567aa2efe558667705c676de16f01068",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/zdrowie/modul.ts",
-      "sha256": "931dafb510eb2d7bfcdad94452ab352d1378c0866cd8e51b8b5de9b41c9c93b1",
+      "sha256": "19a27682942b627ccfc3c9443a7d1125cd8cc26b636fbec73cee54ef6718dc25",
       "normalizacja": "LF"
     },
     {
@@ -7798,7 +7996,7 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "6c5ddff80c471194be14ca466f9e8697cadf8a9234c5ffff79536f24bb089e94",
+      "sha256": "6113b07a9357ab205a22209fe44754f39d6af88dc948d263521847b0271f5e34",
       "normalizacja": "LF"
     },
     {
@@ -7830,12 +8028,12 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "c104c2ea1761708d1ac8ed51ef44836937dfe0d70d72e43c7509d68351b765a6",
+      "sha256": "a82169086b836dd01bcc292eef6af661ae274755f5f967684be03a6903d329ca",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "sha256": "2891b2bdbc6ec73805b4cc8c6f39c4cf3f04ba283cd7814b894f9113aeb41329",
+      "sha256": "d0f0d8b13dd4732e33907cc92e9ed5ea567aa2efe558667705c676de16f01068",
       "normalizacja": "LF"
     },
     {
@@ -7850,7 +8048,7 @@
     },
     {
       "path": "src/moduly/zdrowie/modul.ts",
-      "sha256": "931dafb510eb2d7bfcdad94452ab352d1378c0866cd8e51b8b5de9b41c9c93b1",
+      "sha256": "19a27682942b627ccfc3c9443a7d1125cd8cc26b636fbec73cee54ef6718dc25",
       "normalizacja": "LF"
     },
     {
@@ -7860,7 +8058,7 @@
     },
     {
       "path": "src/moduly/lista.ts",
-      "sha256": "9bc744a63d9e6c74b130deca18e28de7329d5fc50db43631ce8b619df037fd97",
+      "sha256": "860343814fb887532a4466aa2afdb80b8e0ccbb565ab3007d66eed89801c944c",
       "normalizacja": "LF"
     },
     {
@@ -7875,12 +8073,12 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "6c5ddff80c471194be14ca466f9e8697cadf8a9234c5ffff79536f24bb089e94",
+      "sha256": "6113b07a9357ab205a22209fe44754f39d6af88dc948d263521847b0271f5e34",
       "normalizacja": "LF"
     },
     {
       "path": "src/oms/ksef/client.js",
-      "sha256": "3702733daf985e9fbde18f55e08c225c815d65c3aa69947365888f3dd57a0342",
+      "sha256": "8c7882c947f6b28ef94a90d9bf844fa0c48e75dfa554da3a80858d8f764bf503",
       "normalizacja": "LF"
     },
     {
@@ -8157,7 +8355,7 @@
       },
       {
         "path": "src/moduly/wysylka/modul.ts",
-        "sha256": "3973d40bd7da3ff3e941b4ad78087b94f1399c2be41eee9a390da6b6714834c3",
+        "sha256": "9c0ef8ca37af60e21a86df5d069e22477673c1e1894995ebc003327c02067ce7",
         "odczyty": [
           {
             "expression": "env[klucz]",
@@ -8236,7 +8434,7 @@
       },
       {
         "path": "src/moduly/faktury/modul.ts",
-        "sha256": "ecad709dc38cec4c4aff1c72e729be491b3c2d34899964af117069cd96a42516",
+        "sha256": "5389cf0327c514ca3680f51f622c79361c484222f2df3be29c882758f96d7ebd",
         "expression": "wczytajSprzedawce(env)"
       },
       {
@@ -8763,7 +8961,7 @@
     },
     {
       "path": "src/domena/ekrany.js",
-      "sha256": "a69366134c6d90a07d2420e158fe25ef79db7af8748a5efbe494c97cfdfb5db6",
+      "sha256": "61b01b86888092dd2d4345288434317b857ff10645c4afe534b816fb9230cfa1",
       "normalizacja": "LF"
     },
     {
@@ -9583,7 +9781,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "b38eb3171b9f50be99c7739819df8e3293272aefcd26237f64c1095c2a5e2b2a",
+      "sha256": "5389cf0327c514ca3680f51f622c79361c484222f2df3be29c882758f96d7ebd",
       "normalizacja": "LF"
     },
     {
@@ -10758,27 +10956,27 @@
       {
         "nazwa": "OMS_PROFORMY_KATALOG",
         "sciezkaOdczytu": [
-          "src/moduly/faktury/modul.ts:35"
+          "src/moduly/faktury/modul.ts:71"
         ]
       },
       {
         "nazwa": "INFAKT_API_KEY",
         "sciezkaOdczytu": [
           "src/core/tryb.ts:17",
-          "src/moduly/faktury/modul.ts:47"
+          "src/moduly/faktury/modul.ts:69"
         ]
       },
       {
         "nazwa": "INFAKT_API_URL",
         "sciezkaOdczytu": [
-          "src/moduly/faktury/modul.ts:33",
-          "src/moduly/faktury/modul.ts:47"
+          "src/moduly/faktury/modul.ts:69",
+          "src/moduly/faktury/modul.ts:69"
         ]
       },
       {
         "nazwa": "INFAKT_ARCHIWUM",
         "sciezkaOdczytu": [
-          "src/moduly/faktury/modul.ts:48",
+          "src/moduly/faktury/modul.ts:81",
           "src/moduly/koszty/modul.ts:26"
         ]
       },
@@ -10873,7 +11071,7 @@
         "sciezkaOdczytu": [
           "src/moduly/zamowienia/konfiguracja.ts:11",
           "src/moduly/wysylka/kurierzy.ts:8",
-          "src/moduly/faktury/modul.ts:42",
+          "src/moduly/faktury/modul.ts:49",
           "scripts/oms-import-istniejacy-podjazd-dpd.mjs:19"
         ]
       },
@@ -10882,7 +11080,7 @@
         "sciezkaOdczytu": [
           "src/moduly/zamowienia/konfiguracja.ts:11",
           "src/moduly/wysylka/kurierzy.ts:8",
-          "src/moduly/faktury/modul.ts:42",
+          "src/moduly/faktury/modul.ts:49",
           "scripts/oms-import-istniejacy-podjazd-dpd.mjs:20"
         ]
       },
@@ -10891,7 +11089,7 @@
         "sciezkaOdczytu": [
           "src/moduly/zamowienia/konfiguracja.ts:11",
           "src/moduly/wysylka/kurierzy.ts:8",
-          "src/moduly/faktury/modul.ts:43",
+          "src/moduly/faktury/modul.ts:50",
           "scripts/oms-import-istniejacy-podjazd-dpd.mjs:21"
         ]
       },
@@ -10900,7 +11098,7 @@
         "sciezkaOdczytu": [
           "src/moduly/zamowienia/konfiguracja.ts:11",
           "src/moduly/wysylka/kurierzy.ts:8",
-          "src/moduly/faktury/modul.ts:43",
+          "src/moduly/faktury/modul.ts:50",
           "scripts/oms-import-istniejacy-podjazd-dpd.mjs:22"
         ]
       },
@@ -10909,14 +11107,14 @@
         "sciezkaOdczytu": [
           "src/moduly/zamowienia/konfiguracja.ts:11",
           "src/moduly/wysylka/kurierzy.ts:20",
-          "src/moduly/faktury/modul.ts:44"
+          "src/moduly/faktury/modul.ts:51"
         ]
       },
       {
         "nazwa": "DPD_NADAWCA_TELEFON",
         "sciezkaOdczytu": [
           "src/moduly/wysylka/kurierzy.ts:21",
-          "src/moduly/faktury/modul.ts:44",
+          "src/moduly/faktury/modul.ts:51",
           "scripts/oms-import-istniejacy-podjazd-dpd.mjs:24"
         ]
       },
@@ -10924,7 +11122,7 @@
         "nazwa": "DPD_NADAWCA_EMAIL",
         "sciezkaOdczytu": [
           "src/moduly/wysylka/kurierzy.ts:21",
-          "src/moduly/faktury/modul.ts:45",
+          "src/moduly/faktury/modul.ts:52",
           "scripts/oms-import-istniejacy-podjazd-dpd.mjs:25"
         ]
       },

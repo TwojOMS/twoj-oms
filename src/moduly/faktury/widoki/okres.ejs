@@ -183,8 +183,8 @@
     <% if (stanFaktury === 'do_wyjasnienia') { %>
       <p class="pasek-blokada">
         FAKTURA DO WYJAŚNIENIA: <%= wart(okres.blad_opis) %>.
-        Sprawdź RĘCZNIE w <%= nazwaProgramu.miejscownik %>, czy dokument za ten miesiąc powstał — drugie kliknięcie to drugi dokument.
-        Jeśli tam jest i nie poszedł jeszcze wieczorem do KSeF, skasuj go w <%= nazwaProgramu.miejscownik %>; jeśli poszedł, zostaje KOREKTA.
+        Sprawdź RĘCZNIE <%= typeof gdzieProgramu !== 'undefined' ? gdzieProgramu : `w ${nazwaProgramu.miejscownik}` %>, czy dokument za ten miesiąc powstał — drugie kliknięcie to drugi dokument.
+        Jeśli tam jest i nie poszedł jeszcze wieczorem do KSeF, skasuj go <%= typeof gdzieProgramu !== 'undefined' ? gdzieProgramu : `w ${nazwaProgramu.miejscownik}` %>; jeśli poszedł, zostaje KOREKTA.
       </p>
     <% } else if (stanFaktury === 'zawieszona') { %>
       <p class="pasek-blokada">
@@ -196,8 +196,9 @@
     <% } else if (stanFaktury !== 'brak') { %>
       <p>
         <strong><%= okres.numer || 'faktura wystawiona (bez numeru w odpowiedzi)' %></strong> —
-        jedna faktura za cały miesiąc, wystawiona w <%= nazwaProgramu.miejscownik %> z panelu, BEZ wysyłki do KSeF
-        (tym zajmuje się właściciel ręcznie, wieczorem).
+        jedna faktura za cały miesiąc, wystawiona w <%= nazwaProgramu.miejscownik %> z panelu<% if (wbudowany) { %>.
+        Wysyłkę faktur sprzedaży obsługuje TwojeFaktury — <a href="/ustawienia/integracje/program-fakturowy/ksef">Wysyłka do KSeF</a>.<% } else { %>, BEZ wysyłki do KSeF
+        (tym zajmuje się właściciel ręcznie, wieczorem).<% } %>
         KSeF: <%= okres.ksef_status || 'jeszcze nie wysłana' %>
       </p>
     <% } else if (mozliwaFaktura && zamowienia.length > 0) { %>
@@ -212,7 +213,7 @@
             zdanie ma opisywac DOKUMENT, ktory powstanie, a nie ekran. %>
         Jedna faktura na <%= zamowienia.length %> zamówień, na kwotę <%= wart(rozliczenie.kwotaFakturyZl) %> zł.
         Wystawienie ZAMYKA okres — od tej chwili zamówienie z datą złożenia z tego miesiąca
-        nie dopisze się do niego samo. Panel nie wysyła dokumentu do KSeF.
+        nie dopisze się do niego samo. <% if (wbudowany) { %>Wysyłkę faktur sprzedaży obsługuje TwojeFaktury — <a href="/ustawienia/integracje/program-fakturowy/ksef">Wysyłka do KSeF</a>.<% } else { %>Panel nie wysyła dokumentu do KSeF.<% } %>
       </p>
     <% } else if (mozliwaFaktura) { %>
       <%# ⚠️ DOMKNIECIE 3 (recenzja Zadania 9, runda 2). Przycisk „Wystaw fakturę" na
@@ -309,7 +310,7 @@
         <%= anulowane.length === 1 ? 'zamówienie tego miesiąca jest dziś anulowane' : 'zamówień tego miesiąca jest dziś anulowanych' %>,
         więc suma liczona na bieżąco (<%= rozliczenie.kwotaFakturyZl %> zł) jest niższa niż w chwili wystawienia — wpłacono
         <%= rozliczenie.wplaconoZl %> zł. To sytuacja do wyjaśnienia, najpewniej wymagająca korekty w <%= nazwaProgramu.miejscownik %> —
-        sprawdź ręcznie w <%= nazwaProgramu.miejscownik %>, a NIE zwracaj pieniędzy klientowi na podstawie samej tej karty.
+        sprawdź ręcznie <%= typeof gdzieProgramu !== 'undefined' ? gdzieProgramu : `w ${nazwaProgramu.miejscownik}` %>, a NIE zwracaj pieniędzy klientowi na podstawie samej tej karty.
       </p>
     <% } else if (rozliczenie.stan === 'nadplata') { %>
       <p class="wyjasnienie">Wpłacono o <%= rozliczenie.saldoZl %> zł więcej, niż wynosi faktura — sprawdź, czy nadwyżki nie trzeba zwrócić klientowi.</p>

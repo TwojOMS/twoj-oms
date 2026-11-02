@@ -5,7 +5,7 @@
 <section class="ust-sekcja" id="ksef-automat">
   <h2>Automatyczna wysyłka do KSeF</h2>
   <p id="ksef-automat-stan" class="aut-stan">
-    <% if (automat.wlaczony && automat.stoiPrzezBrak) { %><strong>Stoi — faktury wyłączone.</strong><% } else if (automat.wlaczony) { %><strong>Włączony</strong> — najbliższy przebieg: <strong><%= automat.najblizszy %></strong>.<% } else { %><strong>Wyłączony.</strong><% } %>
+    <% if (automat.wyborTrybu && automat.tryb !== 'reczna' && automat.stoiPrzezBrak) { %><strong>Stoi — faktury wyłączone.</strong><% } else if (automat.wyborTrybu && automat.tryb === 'reczna') { %><strong>Ręcznie</strong> — automat nic nie wysyła; faktury wysyłasz do KSeF z zakładki FAKTURY.<% } else if (automat.wyborTrybu && automat.tryb === 'po_wystawieniu') { %><strong>Po wystawieniu</strong> — przebieg <strong><%= automat.najblizszy %></strong>, faktura idzie <%= automat.odstepEdycji %> min po ostatniej zmianie.<% } else if (automat.wyborTrybu) { %><strong>O godzinie</strong> — najbliższy przebieg: <strong><%= automat.najblizszy %></strong>.<% } else if (automat.wlaczony && automat.stoiPrzezBrak) { %><strong>Stoi — faktury wyłączone.</strong><% } else if (automat.wlaczony) { %><strong>Włączony</strong> — najbliższy przebieg: <strong><%= automat.najblizszy %></strong>.<% } else { %><strong>Wyłączony.</strong><% } %>
     <% if (automat.zmienil) { %> Ostatnia zmiana: <%= automat.zmienil.login || '—' %>, <%= fmtDataCzas(automat.zmienil.at) %>.<% } %>
   </p>
   <% if (automat.bledy.length) { %>
@@ -13,13 +13,33 @@
   <% } %>
   <% if (automat.powodBezczynnosci) { %><p class="pas-uprzedzenie" id="ksef-automat-bezczynny"><%= automat.powodBezczynnosci %></p><% } %>
   <p class="pas-uprzedzenie">Wysłanej do KSeF faktury nie da się cofnąć ani skasować — zostaje tylko korekta.</p>
+  <%_ if (automat.ostrzezenieKonsumenckie) { _%>
+  <p class="pas-uprzedzenie" id="ksef-automat-konsumenckie"><%= automat.ostrzezenieKonsumenckie %></p>
+  <%_ } _%>
   <form id="ksef-automat-formularz" class="ust-formularz" method="post" action="/ustawienia/automatyzacje/ksef">
+  <%_ if (automat.wyborTrybu) { _%>
+    <label>Tryb wysyłki</label>
+    <div class="aut-wybor" id="ksef-automat-tryb">
+      <p><label><input type="radio" name="tryb" value="reczna"<%= automat.formularz.tryb === 'reczna' ? ' checked' : '' %>><span><strong>Ręcznie</strong><span class="wyjasnienie">Automat nic nie wysyła. Zaznaczasz faktury w zakładce FAKTURY i wysyłasz przyciskiem.</span></span></label></p>
+      <p><label><input type="radio" name="tryb" value="po_wystawieniu"<%= automat.formularz.tryb === 'po_wystawieniu' ? ' checked' : '' %>><span><strong>Po wystawieniu</strong><span class="wyjasnienie">Co <%= automat.coIleMin %> minut OMS wysyła faktury, przy których od ostatniej zmiany minął odstęp na poprawki.</span></span></label></p>
+      <p><label><input type="radio" name="tryb" value="o_godzinie"<%= automat.formularz.tryb === 'o_godzinie' ? ' checked' : '' %>><span><strong>O godzinie</strong><span class="wyjasnienie">Raz dziennie, zbiorczo — wszystkie czekające faktury o godzinie niżej.</span></span></label></p>
+    </div>
+
+    <label for="ksef-automat-odstep">Odstęp na poprawki</label>
+    <div><input id="ksef-automat-odstep" type="number" name="odstep_edycji" value="<%= automat.formularz.odstepEdycji %>" min="0" max="<%= automat.odstepMaks %>" step="1" inputmode="numeric" required> min
+      <p class="ust-pomoc">Tylko w trybie „Po wystawieniu”: tyle minut po wystawieniu albo ostatniej zmianie faktura czeka, żebyś mógł ją jeszcze poprawić. Od 0 do <%= automat.odstepMaks %>.</p></div>
+
+    <label for="ksef-automat-godzina">Godzina wysyłki</label>
+    <div><input id="ksef-automat-godzina" type="time" name="godzina" value="<%= automat.formularz.godzina %>" max="23:45" required>
+      <p class="ust-pomoc">Tylko w trybie „O godzinie”. Czas polski, najpóźniej 23:45. Jedna próba dziennie; jeśli OMS był wtedy wyłączony — zaraz po starcie. Wybranie po dzisiejszej godzinie nie wysyła od razu: pierwszy przebieg będzie jutro.</p></div>
+  <%_ } else { _%>
     <label for="ksef-automat-wlaczony">Wysyłaj automatycznie</label>
     <div><input type="hidden" name="wlaczony" value="0"><input id="ksef-automat-wlaczony" type="checkbox" name="wlaczony" value="1"<% if (automat.formularz.wlaczony) { %> checked<% } %>></div>
 
     <label for="ksef-automat-godzina">Godzina wysyłki</label>
     <div><input id="ksef-automat-godzina" type="time" name="godzina" value="<%= automat.formularz.godzina %>" max="23:45" required>
       <p class="ust-pomoc">Czas polski, najpóźniej 23:45. Jedna próba dziennie, najpóźniej minutę po tej godzinie; jeśli OMS był wtedy wyłączony — zaraz po starcie. Włączenie po dzisiejszej godzinie nie wysyła od razu: pierwszy przebieg będzie jutro.</p></div>
+  <%_ } _%>
 
     <div class="ust-pelna ust-akcje">
       <button class="btn btn--glowny" type="submit">Zapisz</button>
@@ -31,6 +51,6 @@
       <a href="/faktury/ksef/automat">Szczegóły</a></p>
   <% } %>
   <% if (automat.wstrzymane.length) { %>
-    <p class="pas-uprzedzenie" id="ksef-automat-wstrzymane-licznik">Wstrzymane faktury (<%= automat.nazwaProgramu.mianownik %> je odrzucił, automat ich nie wyśle): <%= automat.wstrzymane.map(function (w) { return w.numer; }).join(', ') %>. Popraw w <%= automat.nazwaProgramu.miejscownik %> i wyślij ręcznie albo zwolnij na <a href="/faktury/ksef/automat">ekranie wyniku automatu</a>.</p>
+    <p class="pas-uprzedzenie" id="ksef-automat-wstrzymane-licznik">Wstrzymane faktury (<% if (!automat.wyborTrybu) { %><%= automat.nazwaProgramu.mianownik %> je odrzucił, <% } %>automat ich nie wyśle): <%= automat.wstrzymane.map(function (w) { return w.numer; }).join(', ') %>. <% if (automat.wyborTrybu) { %>Co się stało i jaki jest następny krok — na <a href="/faktury/ksef/automat">ekranie wyniku automatu</a>.<% } else { %>Popraw <%= automat.gdzieProgramu || `w ${automat.nazwaProgramu.miejscownik}` %> i wyślij ręcznie<% if (automat.zwolnienieMozliwe !== false) { %> albo zwolnij na <a href="/faktury/ksef/automat">ekranie wyniku automatu</a><% } else { %> — szczegóły na <a href="/faktury/ksef/automat">ekranie wyniku automatu</a><% } %>.<% } %></p>
   <% } %>
 </section>

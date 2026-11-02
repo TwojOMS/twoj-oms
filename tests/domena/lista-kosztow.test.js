@@ -14,7 +14,7 @@ const w = (n = {}) => ({
   netto: '100.00', vat: '23.00', brutto: '123.00', waluta: 'PLN', rodzaj: 'Vat', ...n,
 });
 const mapa = { 5252674798: { kategoria: 'Prowizje sprzedażowe', typ: 'zmienny' },
-  1000001069: { kategoria: 'Kurierzy', typ: 'zmienny' } };
+  1200001051: { kategoria: 'Kurierzy', typ: 'zmienny' } };
 const kategoria = (nip) => mapa[nip] ?? null;
 
 describe('widok miesiaca kosztow', () => {
@@ -31,7 +31,7 @@ describe('widok miesiaca kosztow', () => {
       wiersze: [
         w(),
         w({
-          ksef_number: 'K2', sprzedawca_nip: '1000001069',
+          ksef_number: 'K2', sprzedawca_nip: '1200001051',
           netto: '300.00', vat: '69.00', brutto: '369.00',
         }),
       ],

@@ -11,8 +11,8 @@
 //   • Zła wartość w ZAPISIE (formularz jej nie przyjmie; zostaje po wycofaniu wydania, które znało więcej modułów)
 //     = „brak” + uwaga. Odmowa startu położyłaby panel po wycofaniu, a inFakt wystawiałby faktury w programie,
 //     którego nikt nie wybrał.
-//   • Fakturownia i TwojeFaktury tylko z jawnego wyboru, nigdy domyślnie. Dziś „wkrótce” (`dostepny: false`) —
-//     PRZ-119 / PRZ-122 odblokowują je jednym polem.
+//   • Fakturownia i TwojeFaktury tylko z jawnego wyboru, nigdy domyślnie. Bez dostępności „wkrótce” —
+//     PRZ-119 odblokowuje Fakturownię; TwojeFaktury wymaga jawnej zgody instalacji.
 import { NAZWA_INFAKTU, EKRAN_INFAKTU } from './konfiguracja-infakt.js';
 
 export const ZMIENNA_PROGRAMU = 'OMS_PROGRAM_FAKTUROWY';
@@ -24,13 +24,21 @@ export const MODULY_FAKTUR = Object.freeze([
   Object.freeze({ id: 'brak', etykieta: 'Brak', dostepny: true }),
   Object.freeze({ id: 'infakt', etykieta: NAZWA_INFAKTU.mianownik, dostepny: true }),
   Object.freeze({ id: 'fakturownia', etykieta: 'Fakturownia', dostepny: false }),
-  Object.freeze({ id: 'twojefaktury', etykieta: 'TwojeFaktury (program wbudowany)', dostepny: false }),
+  Object.freeze({ id: 'twojefaktury', etykieta: 'TwojeFaktury (program wbudowany)', dostepny: 'zgoda' }),
 ]);
 
 const normalizuj = (v) => String(v ?? '').trim().toLowerCase();
 const modul = (id) => MODULY_FAKTUR.find((m) => m.id === id) ?? null;
-const dostepne = () => MODULY_FAKTUR.filter((m) => m.dostepny).map((m) => m.id);
-const wkrotce = () => MODULY_FAKTUR.filter((m) => !m.dostepny).map((m) => m.id);
+/** Jawna zgoda instalacji; błędna wartość blokuje start. */
+export function zgodaTwojeFaktury(env) {
+  const wartosc = normalizuj(env.OMS_TWOJEFAKTURY);
+  if (!wartosc) return false;
+  if (wartosc === 'tak') return true;
+  throw new Error('OMS_TWOJEFAKTURY: wpisz tak albo usuń zmienną.');
+}
+export const modulDostepny = (m, { zgoda = false } = {}) => m?.dostepny === true || (m?.dostepny === 'zgoda' && zgoda);
+const dostepne = (zgoda) => MODULY_FAKTUR.filter((m) => modulDostepny(m, { zgoda })).map((m) => m.id);
+const wkrotce = (zgoda) => MODULY_FAKTUR.filter((m) => !modulDostepny(m, { zgoda })).map((m) => m.id);
 
 /** Etykieta modułu na ekran i do zdań („Brak”, „inFakt”…); nieznany identyfikator wraca bez zmian. */
 export const etykietaModulu = (id) => modul(id)?.etykieta ?? String(id);
@@ -40,11 +48,11 @@ export const etykietaModulu = (id) => modul(id)?.etykieta ?? String(id);
  * (wielkość liter i spacje bez znaczenia). Każda inna wartość — także moduł „wkrótce” — rzuca: panel nie wstaje.
  * @returns {string|null}
  */
-export function wyborZPliku(wartosc) {
+export function wyborZPliku(wartosc, { zgoda = false } = {}) {
   const v = normalizuj(wartosc);
   if (!v) return null;
-  if (modul(v)?.dostepny) return v;
-  const lista = `${dostepne().join(' albo ')} (${wkrotce().join(', ')} — wkrótce)`;
+  if (modulDostepny(modul(v), { zgoda })) return v;
+  const lista = `${dostepne(zgoda).join(' albo ')} (${wkrotce(zgoda).join(', ')} — wkrótce)`;
   if (modul(v)) {
     throw new Error(`${ZMIENNA_PROGRAMU}: moduł faktur „${v}” będzie dostępny wkrótce, ta wersja OMS-u go nie ma — wpisz ${lista} lub usuń zmienną.`);
   }
@@ -58,14 +66,14 @@ export const uwagaZlegoZapisu = (wartosc) =>
 /**
  * Reguła wyboru. `zPliku` — wynik `wyborZPliku` (już sprawdzony); `zUstawien` — surowa wartość z zapisu albo `null`,
  * gdy wiersza nie ma; `infaktGotowy` — inFakt dałby się złożyć bez wyboru (plik, zapis z ekranu, atrapa, szew próby).
- * @param {{ zPliku?: string|null, zUstawien?: string|null, infaktGotowy?: boolean }} [o]
+ * @param {{ zPliku?: string|null, zUstawien?: string|null, infaktGotowy?: boolean, zgoda?: boolean }} [o]
  * @returns {{ program: string, zrodlo: 'plik'|'ustawienia'|'domyslny', uwaga: string|null }}
  */
-export function wybierzProgram({ zPliku = null, zUstawien = null, infaktGotowy = false } = {}) {
+export function wybierzProgram({ zPliku = null, zUstawien = null, infaktGotowy = false, zgoda = false } = {}) {
   if (zPliku) return { program: zPliku, zrodlo: 'plik', uwaga: null };
   if (zUstawien !== null && zUstawien !== undefined) {
     const v = normalizuj(zUstawien);
-    if (modul(v)?.dostepny) return { program: v, zrodlo: 'ustawienia', uwaga: null };
+    if (modulDostepny(modul(v), { zgoda })) return { program: v, zrodlo: 'ustawienia', uwaga: null };
     return { program: 'brak', zrodlo: 'ustawienia', uwaga: uwagaZlegoZapisu(zUstawien) };
   }
   return { program: infaktGotowy ? 'infakt' : 'brak', zrodlo: 'domyslny', uwaga: null };
@@ -75,9 +83,9 @@ export function wybierzProgram({ zPliku = null, zUstawien = null, infaktGotowy =
  * Formularz ekranu: przyjmuje wyłącznie dostępny moduł (dziś „brak” albo „infakt”).
  * @returns {{ ustawienia: { program: string }, bledy: string[] }}
  */
-export function sprawdzFormularzWyboru(body = {}) {
+export function sprawdzFormularzWyboru(body = {}, { zgoda = false } = {}) {
   const v = normalizuj(body?.program);
-  if (modul(v)?.dostepny) return { ustawienia: { program: v }, bledy: [] };
+  if (modulDostepny(modul(v), { zgoda })) return { ustawienia: { program: v }, bledy: [] };
   if (modul(v)) return { ustawienia: { program: v }, bledy: [`Moduł „${etykietaModulu(v)}” będzie dostępny wkrótce — wybierz inny.`] };
   return { ustawienia: { program: v }, bledy: ['Wybierz moduł faktur z listy.'] };
 }

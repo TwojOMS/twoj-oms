@@ -44,19 +44,19 @@ describe('createInfaktClient.znajdzKlientaPoNip', () => {
   // i kazaloby zakladac duplikat przy kazdej fakturze.
   it('szuka przez q[nip_eq], nie przez zwykłe q', async () => {
     const { c, fetchImpl } = klient(odp(200, { entities: [{ id: 7 }], metainfo: { total_count: 1 } }));
-    await c.znajdzKlientaPoNip('1000001201');
+    await c.znajdzKlientaPoNip('1200001200');
     const url = fetchImpl.mock.calls[0][0];
-    expect(url).toContain('q%5Bnip_eq%5D=1000001201');
+    expect(url).toContain('q%5Bnip_eq%5D=1200001200');
   });
 
   it('oddaje id, gdy klient jest w kartotece', async () => {
     const { c } = klient(odp(200, { entities: [{ id: 7 }], metainfo: { total_count: 1 } }));
-    expect(await c.znajdzKlientaPoNip('1000001201')).toBe(7);
+    expect(await c.znajdzKlientaPoNip('1200001200')).toBe(7);
   });
 
   it('oddaje null, gdy kartoteka go nie ma', async () => {
     const { c } = klient(odp(200, { entities: [], metainfo: { total_count: 0 } }));
-    expect(await c.znajdzKlientaPoNip('1000001201')).toBeNull();
+    expect(await c.znajdzKlientaPoNip('1200001200')).toBeNull();
   });
 
   // Kartoteka ma ~275 wpisow zakladanych latami, wiec duplikat po NIP-ie jest realny.
@@ -64,14 +64,14 @@ describe('createInfaktClient.znajdzKlientaPoNip', () => {
   // a zly nabywca na dokumencie w KSeF to korekta, nie poprawka.
   it('więcej niż jedno trafienie → odmowa, a nie losowy wybór nabywcy', async () => {
     const { c } = klient(odp(200, { entities: [{ id: 7 }, { id: 9 }], metainfo: { total_count: 2 } }));
-    await expect(c.znajdzKlientaPoNip('1000001201')).rejects.toThrow(/2 wpisów/);
+    await expect(c.znajdzKlientaPoNip('1200001200')).rejects.toThrow(/2 wpisów/);
   });
 
   // total_count wygrywa z dlugoscia entities: przy paginacji strona moze miec 1 wpis,
   // a duplikaty i tak istniec.
   it('duplikat widoczny tylko w total_count też blokuje', async () => {
     const { c } = klient(odp(200, { entities: [{ id: 7 }], metainfo: { total_count: 3 } }));
-    await expect(c.znajdzKlientaPoNip('1000001201')).rejects.toThrow(/3 wpisów/);
+    await expect(c.znajdzKlientaPoNip('1200001200')).rejects.toThrow(/3 wpisów/);
   });
 });
 

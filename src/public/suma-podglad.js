@@ -70,11 +70,13 @@ export function pustyWiersz(w) {
  * ⚠️ BRUTTO WYGRYWA, GDY PODANE — netto jest tylko wygodniejszym sposobem jego podania
  * (`parsujNowaPozycje`). Serwer przelicza z netta WYŁĄCZNIE przy pustym polu brutto.
  */
-export function liniaGrosze(w, procentVat, wdt = false) {
+export function liniaGrosze(w, procentVat, wdt = false, { zw = true } = {}) {
   const szt = ilosc(w?.ilosc);
   if (szt === null) return null;
+  const stawka = stawkaWiersza(w, procentVat, wdt, zw);
+  if (stawka === null) return null;
   const wprost = String(w?.cena_brutto ?? '').trim();
-  const gr = wprost !== '' ? grosze(wprost) : bruttoZNetto(w?.cena_netto, stawkaWiersza(w, procentVat, wdt));
+  const gr = wprost !== '' ? grosze(wprost) : bruttoZNetto(w?.cena_netto, procentLiczbowy(stawka));
   // Cena zero i ujemna to odmowa po stronie serwera (`parsujCeneBrutto`), więc i tutaj.
   if (gr === null || gr <= 0) return null;
   return gr * szt;
@@ -103,23 +105,42 @@ export function czyNipUe(nip) {
   return Boolean(m && m[1] !== 'PL' && KODY_KRAJOW_UE.has(m[1]));
 }
 
-/** Stawka liczbowa wiersza: WDT → 0, wpisana w wierszu → ona, pusta → domyślna formularza. */
-function stawkaWiersza(w, procentDomyslny, wdt) {
+/**
+ * `domena/wdt.js: czyWdt` — WDT = numer UE nabywcy, ale nie u firmy zwolnionej z VAT (PRZ-122.B07g, decyzja właściciela
+ * 27.10: sprzedawca zwolniony z art. 113 nie robi WDT). Flagę niesie formularz: `data-zwolniona="1"`.
+ */
+export function czyWdt(nip, { zwolniona = false } = {}) {
+  return czyNipUe(nip) && !zwolniona;
+}
+
+/**
+ * Stawka wiersza: WDT → 0, wpisana w wierszu → ona, pusta → domyślna formularza. Liczba albo 'zw'.
+ * PRZ-122.B07a: „zw” (lista ma ją tylko przy programie wbudowanym — domena z flagą `zw`) zostaje napisem 'zw':
+ * liczy się jak 0 (`procentLiczbowy`), ale „0% krajowym” nie jest.
+ */
+// PRZ-122.B07b (uwaga (4) z odbioru B07a): `zw: false` (formularz bez „zw” na liście — program inny niż wbudowany)
+// → wiersz „zw” to `null`: serwer bez flagi odmawia (`parsujStawke`), więc podgląd pokazuje myślnik, nie kwotę po 0%.
+// Domyślnie `zw: true` — tak liczyły te funkcje od B07a (test wspólnej tablicy).
+function stawkaWiersza(w, procentDomyslny, wdt, zw = true) {
   if (wdt) return 0;
   const s = String(w?.vat ?? '').trim();
+  if (s === 'zw') return zw ? 'zw' : null;
   return s !== '' && Number.isFinite(Number(s)) ? Number(s) : procentDomyslny;
 }
+
+/** `domena/podsumowanie-wierszami.js` z flagą `zw`: „zw” → 0 (netto = brutto, VAT 0), reszta liczbą. */
+const procentLiczbowy = (stawka) => (String(stawka).trim() === 'zw' ? 0 : Number(stawka));
 
 /**
  * Podsumowanie netto / VAT / brutto formularza — regułą faktury, z dostawą jako osobną linią (stawka domyślna,
  * przy WDT 0). `null` tam, gdzie kwota też jest `null` (serwer by odmówił).
  */
-export function podsumowanieFormularza(wiersze, kosztDostawy, procentVat, nip = '') {
-  const wdt = czyNipUe(nip);
+export function podsumowanieFormularza(wiersze, kosztDostawy, procentVat, nip = '', { zw = true, zwolniona = false } = {}) {
+  const wdt = czyWdt(nip, { zwolniona });
   const linie = [];
   for (const w of wiersze ?? []) {
     if (pustyWiersz(w)) continue;
-    const linia = liniaGrosze(w, procentVat, wdt);
+    const linia = liniaGrosze(w, procentVat, wdt, { zw });
     if (linia === null) return null;
     linie.push({ bruttoGr: linia, stawka: stawkaWiersza(w, procentVat, wdt) });
   }
@@ -129,7 +150,7 @@ export function podsumowanieFormularza(wiersze, kosztDostawy, procentVat, nip = 
   let nettoGr = 0;
   let bruttoGr = 0;
   for (const l of linie) {
-    nettoGr += Math.round((l.bruttoGr * 100) / (100 + l.stawka));
+    nettoGr += Math.round((l.bruttoGr * 100) / (100 + procentLiczbowy(l.stawka)));
     bruttoGr += l.bruttoGr;
   }
   return { nettoGr, vatGr: bruttoGr - nettoGr, bruttoGr, wdt, zeroKrajowe: !wdt && linie.some((l) => l.stawka === 0) };
@@ -151,12 +172,12 @@ function dostawaGrosze(kosztDostawy) {
  * pokazuje wtedy myślnik zamiast liczby: kwota mniejsza o pominięty wiersz byłaby gorsza
  * niż jej brak, bo wygląda na prawdziwą.
  */
-export function kwotaFormularzaGrosze(wiersze, kosztDostawy, procentVat, nip = '') {
-  const wdt = czyNipUe(nip);
+export function kwotaFormularzaGrosze(wiersze, kosztDostawy, procentVat, nip = '', { zw = true, zwolniona = false } = {}) {
+  const wdt = czyWdt(nip, { zwolniona });
   let suma = 0;
   for (const w of wiersze ?? []) {
     if (pustyWiersz(w)) continue;
-    const linia = liniaGrosze(w, procentVat, wdt);
+    const linia = liniaGrosze(w, procentVat, wdt, { zw });
     if (linia === null) return null;
     suma += linia;
   }
@@ -177,10 +198,20 @@ export function podepnij(dokument) {
   if (!tabela) return null;
   const formularz = tabela.closest('form');
   const surowyProcent = formularz ? formularz.dataset.vat : undefined;
-  const procent = surowyProcent === undefined || String(surowyProcent).trim() === '' ? NaN : Number(surowyProcent);
+  // PRZ-122.B07b (uwaga (2) z odbioru B07a): `data-vat="zw"` (firma zwolniona, TwojeFaktury) to stawka, nie zepsuty
+  // atrybut — wcześniej `Number('zw')` wyłączał podgląd. „zw” dozwolone, gdy jest domyślną albo stoi na liście stawek
+  // formularza (lista z programu: tylko wbudowany ją ma) — tak samo, jak serwer dostaje flagę `zw`.
+  const zwDomyslna = surowyProcent !== undefined && String(surowyProcent).trim() === 'zw';
+  const procent = zwDomyslna ? 'zw'
+    : surowyProcent === undefined || String(surowyProcent).trim() === '' ? NaN : Number(surowyProcent);
   // Brak albo zepsuty atrybut wyłącza WYŁĄCZNIE podgląd — formularz działa dalej, bo kwotę
   // i tak liczy serwer przy zapisie (ta sama zasada, co w public/cena-netto.js). PRZ-105: 0 to stawka.
-  if (!Number.isFinite(procent) || procent < 0) return null;
+  if (!zwDomyslna && (!Number.isFinite(procent) || procent < 0)) return null;
+  // PRZ-122.B07g: `data-zwolniona="1"` (firma zwolniona z VAT) — numer UE nabywcy to nie WDT, `data-wdt` zostaje „0”.
+  const opcjeZw = {
+    zw: zwDomyslna || Boolean(formularz && formularz.querySelector('option[value="zw"]')),
+    zwolniona: Boolean(formularz && formularz.dataset.zwolniona === '1'),
+  };
 
   // ⚠️ WIERSZE CZYTANE PRZY KAZDYM PRZELICZENIU, nie raz przy wczytaniu (PRZ-103): operator
   // dokłada i kasuje wiersze bez przeładowania (public/pozycje-wiersze.js). Lista zapamiętana
@@ -203,7 +234,7 @@ export function podepnij(dokument) {
     const wiersze = Array.from(tabela.querySelectorAll('tbody tr'));
     const dane = wiersze.map(odczytaj);
     const nip = poleNip ? poleNip.value : '';
-    const wdt = czyNipUe(nip);
+    const wdt = czyWdt(nip, { zwolniona: opcjeZw.zwolniona });
     // public/cena-netto.js czyta data-wdt przy następnym wpisaniu ceny — ten sam nabywca, ta sama stawka.
     // Zmiana nabywcy (krajowy ↔ UE) przelicza NETTO wierszy z brutto (brutto jest przechowywane i zostaje):
     // bez tego wiersz pokazywałby netto po 23%, a dokument poszedłby z 0%.
@@ -213,32 +244,33 @@ export function podepnij(dokument) {
         const pn = tr.querySelector('[name="poz_cena_netto"]');
         const b = grosze(dane[i].cena_brutto);
         if (!pn || b === null) return;
-        const s = stawkaWiersza(dane[i], procent, wdt);
-        pn.value = zl(Math.round(b / (1 + s / 100)));
+        const s = stawkaWiersza(dane[i], procent, wdt, opcjeZw.zw);
+        if (s === null) return;
+        pn.value = zl(Math.round(b / (1 + procentLiczbowy(s) / 100)));
         dane[i].cena_netto = pn.value;
       });
     }
     wiersze.forEach((tr, i) => {
       const komorka = tr.querySelector('[data-suma-linii]');
       if (!komorka) return;
-      const linia = pustyWiersz(dane[i]) ? null : liniaGrosze(dane[i], procent, wdt);
+      const linia = pustyWiersz(dane[i]) ? null : liniaGrosze(dane[i], procent, wdt, opcjeZw);
       komorka.textContent = linia === null ? '' : `${zl(linia)} zł`;
     });
     const koszt = poleDostawy ? poleDostawy.value : '';
     if (komorkaRazem) {
-      const suma = kwotaFormularzaGrosze(dane, koszt, procent, nip);
+      const suma = kwotaFormularzaGrosze(dane, koszt, procent, nip, opcjeZw);
       komorkaRazem.textContent = suma === null ? '—' : `${zl(suma)} zł`;
     }
     // Wiersz dostawy (właściciel 21.10: „Dodaj wiersz z dostawą”) — ta sama linia, co „Dostawa” na fakturze.
     const dostawa = dostawaGrosze(koszt);
     const stawkaDostawy = wdt ? 0 : procent;
-    const nettoDostawy = dostawa === null ? null : Math.round((dostawa * 100) / (100 + stawkaDostawy));
+    const nettoDostawy = dostawa === null ? null : Math.round((dostawa * 100) / (100 + procentLiczbowy(stawkaDostawy)));
     ustaw('[data-dostawa-brutto]', dostawa === null ? '—' : `${zl(dostawa)} zł`);
     ustaw('[data-dostawa-suma]', dostawa === null ? '—' : `${zl(dostawa)} zł`);
     ustaw('[data-dostawa-netto]', nettoDostawy === null ? '—' : `${zl(nettoDostawy)} zł`);
-    ustaw('[data-dostawa-stawka]', wdt ? '0% — WDT' : `${procent}%`);
+    ustaw('[data-dostawa-stawka]', wdt ? '0% — WDT' : zwDomyslna ? 'zw' : `${procent}%`);
     // Podsumowanie netto / VAT / brutto (właściciel 21.10: „Brak sumy netto”).
-    const p = podsumowanieFormularza(dane, koszt, procent, nip);
+    const p = podsumowanieFormularza(dane, koszt, procent, nip, opcjeZw);
     ustaw('[data-pv-netto]', p ? zl(p.nettoGr) : '—');
     ustaw('[data-pv-vat]', p ? zl(p.vatGr) : '—');
     ustaw('[data-pv-brutto]', p ? zl(p.bruttoGr) : '—');

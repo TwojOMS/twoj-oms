@@ -108,7 +108,7 @@ describe('PRZ-093.10 Ustawienia → inFakt', () => {
     expect(r.body).toContain('https://api.infakt.pl/api');
     expect(r.body).toContain('INFAKT_ARCHIWUM');
     expect(podglad.infakt).toBeNull();
-    expect((await get(app, '/ustawienia/integracje', admin)).body).toContain(`href="${ADRES}"`);
+    expect((await get(app, '/ustawienia/integracje/katalog', admin)).body).toContain(`href="${ADRES}"`);
   });
 
   it('ekrany faktur bez inFaktu odsyłają do Ustawienia → Integracje → inFakt', async () => {
@@ -242,5 +242,41 @@ describe('PRZ-093.10 Ustawienia → inFakt', () => {
     expect((await post(app, `${ADRES}/odlacz`, ewa, {})).statusCode).toBe(403);
     expect(wczytajKonfiguracjeIntegracji(db, 'infakt')).not.toBeNull();
     expect(siec).not.toHaveBeenCalled();
+  });
+
+  it('PRZ-126.C04: przełącznik konsumenckich z wartością spoza 0/1 — 400 z ekranem inFaktu i błędem (HTML), nic nie zapisane', async () => {
+    const { app, admin, db } = panel();
+    const r = await app.inject({ method: 'POST', url: `${ADRES}/ksef-konsumenckie`,
+      headers: { ...admin, accept: 'text/html', origin: 'http://localhost', 'content-type': 'application/x-www-form-urlencoded' },
+      payload: 'wlaczony=0&wlaczony=tak' });
+    expect(r.statusCode).toBe(400);
+    expect(r.headers['content-type']).toMatch(/text\/html/u);
+    expect(r.body).toContain('<h1>inFakt</h1>');
+    expect(r.body).toContain('id="ksef-konsumenckie-blad"');
+    expect(r.body).toContain('Nieprawidłowa wartość przełącznika faktur konsumenckich.');
+    expect(db.prepare("SELECT 1 FROM ustawienia WHERE klucz = 'ksef.konsumenckie'").get()).toBeUndefined();
+  });
+
+  // PRZ-126.J01: o tym, co idzie do KSeF, decyduje admin — jak na ekranie Wysyłka do KSeF (TwojeFaktury).
+  it('PRZ-126.J01: przełącznik konsumenckich — konto z „ustawienia” bez admina dostaje 403 i stan bez formularza; admin zapisuje', async () => {
+    const p = panel();
+    zalozKonto(p.db, { login: 'ola', imie: 'Ola', haslo: 'h', rola: 'biuro' });
+    ustawUprawnienia(p.db, kontoPoLoginie(p.db, 'ola').id, ['ustawienia']);
+    const ola = jako(p.db, 'ola');
+    const wartosc = () => p.db.prepare("SELECT wartosc FROM ustawienia WHERE klucz = 'ksef.konsumenckie'").get()?.wartosc;
+    const url = `${ADRES}/ksef-konsumenckie`;
+    expect((await post(p.app, url, ola, { wlaczony: ['0', '1'] })).statusCode).toBe(403);
+    expect(wartosc()).toBeUndefined();
+    const ekran = await get(p.app, ADRES, ola);
+    expect(ekran.statusCode).toBe(200);
+    expect(ekran.body).not.toContain(`action="${url}"`);
+    expect(ekran.body).toContain('Zmienia administrator.');
+    expect(ekran.body).toMatch(/id="ksef-konsumenckie-stan">Wyłączone/u);
+    expect((await post(p.app, url, p.admin, { wlaczony: ['0', '1'] })).statusCode).toBe(303);
+    expect(wartosc()).toBe('1');
+    expect((await post(p.app, url, ola, { wlaczony: '0' })).statusCode).toBe(403);
+    expect(wartosc()).toBe('1');
+    expect((await get(p.app, ADRES, ola)).body).toMatch(/id="ksef-konsumenckie-stan">Włączone/u);
+    expect((await get(p.app, ADRES, p.admin)).body).toContain(`action="${url}"`);
   });
 });

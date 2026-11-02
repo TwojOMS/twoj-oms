@@ -3,6 +3,7 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { zapiszNumerKsef } from '../../../src/moduly/faktury/db/faktury.js';
 import { createCzuwaczKsef, LIMIT_PRZEBIEGU, PODLOGA_DNI } from '../../../src/moduly/faktury/services/czuwacz-ksef.js';
+import { zajmijWysylkeKsef } from '../../../src/moduly/faktury/db/wysylki-ksef.js';
 
 // Czuwacz KSeF (Plan B, Zadanie 7). Panel do KSeF NIGDY nie wysyla — wlasciciel robi to sam,
 // recznie, w ciagu dnia. Ten przebieg WYLACZNIE PYTA inFakt, czy juz wyslal, bo do Allegro ma
@@ -213,6 +214,20 @@ describe('czuwacz KSeF — zakres pytania', () => {
     await createCzuwaczKsef({ db, infakt }).przebieg();
 
     expect(infakt.pytania).toEqual([]);
+    db.close();
+  });
+
+  // PRZ-126.F03: faktura do zamówienia, przy którym klient NIE prosił o fakturę, wysłana do KSeF
+  // z panelu — numer musi przyjść, inaczej zakładka „FAKTURY" pokazuje „brak KSeF" na zawsze.
+  it('pyta o fakturę bez żądania, której wysyłkę do KSeF zlecił panel', async () => {
+    const db = openOmsDb(':memory:');
+    zFaktura(db, { sklep: 'polcien', chceFakture: 0, uuid: 'u-polcien-1' });
+    zajmijWysylkeKsef(db, 'u-polcien-1', { numer: 'FV/12/2026' });
+    const infakt = liczacaAtrapa();
+
+    await createCzuwaczKsef({ db, infakt }).przebieg();
+
+    expect(infakt.pytania).toEqual(['u-polcien-1']);
     db.close();
   });
 });
@@ -668,6 +683,19 @@ describe('automat: faktura do Allegro po pojawieniu się numeru KSeF', () => {
       .run(id);
     const { wolania, usluga } = atrapaWysylki();
     await czuwaczZ(db, { fakturaAllegro: usluga }).przebieg();
+    expect(wolania).toEqual([]);
+  });
+
+  // PRZ-126.F03: zakres czuwacza poszerzył się o faktury bez żądania zlecone przez panel. Numer KSeF
+  // dostaje także zamówienie z Allegro, ale do Allegro NIE jedzie — kupujący o fakturę nie prosił
+  // (`wolnoWyslacDoAllegro`, domain/allegro-faktura.js). To jest ta „druga siatka" z komentarza wyżej.
+  it('Allegro bez żądania, zlecone przez panel: numer KSeF zapisany, do Allegro nie jedzie', async () => {
+    const db = openOmsDb(':memory:');
+    const id = zFaktura(db, { sklep: 'allegro_polcien', chceFakture: 0, uuid: 'u-polcien-2' });
+    zajmijWysylkeKsef(db, 'u-polcien-2', { numer: 'FV/12/2026' });
+    const { wolania, usluga } = atrapaWysylki();
+    await czuwaczZ(db, { fakturaAllegro: usluga }).przebieg();
+    expect(fakturaZ(db, id).ksef_numer).toBe('KS-1');
     expect(wolania).toEqual([]);
   });
 

@@ -63,7 +63,7 @@ describe('mail „Faktura" przy zamówieniu WDT', () => {
   });
 
   it('mail faktury KRAJOWEJ: jeden załącznik, ani słowa o wywozie', async () => {
-    const { mailer, wiadomosci, id } = zestaw({ nip: '1000001201' });
+    const { mailer, wiadomosci, id } = zestaw({ nip: '1200001200' });
     await wiadomosci.wyslij(id, 'faktura');
     const mail = mailer.sendMail.mock.calls[0][0];
     expect(mail.attachments).toHaveLength(1);

@@ -1,12 +1,13 @@
 import { przeliczenieRabatu, parsujRabat } from '../../../domena/rabat.js';
 import { stawkaKontraktowa, decyzjaRabatu } from '../../../domena/rabat-kontraktowy.js';
-import { czyNipUe } from '../../../domena/wdt.js';
+import { czyWdt } from '../../../domena/wdt.js';
 import { daneFaktury } from '../../../domena/dane-faktury.js';
 import { klientPoNip } from '../../../oms/db/klienci.js';
 import { pobierzZamowienie, zapiszPozycjeReczna, zapiszUstaleniaHandlowe } from '../../../oms/db/zamowienia.js';
 import { przeliczKwoteRecznego } from '../../../oms/db/zamowienia-reczne.js';
 import { sumaPozycjiZWysylkaGrosze } from '../../../domena/suma-pozycji.js';
 import { czytajStawkeDomyslna } from '../../faktury/db/stawka-vat.js';
+import { zwolnionaZFlagi } from '../../faktury/db/zwolnienie-vat.js';
 
 // ZMIANA RABATU NA KARCIE — jedyna droga, którą wolno przeliczyć ceny już zapisanego
 // zamówienia (21.08.2026).
@@ -30,7 +31,9 @@ import { czytajStawkeDomyslna } from '../../faktury/db/stawka-vat.js';
  *   pozycja pominięta (cena wpisana ręcznie) wygląda z zewnątrz jak rabat, który „nie
  *   zadziałał", i operator szukałby usterki tam, gdzie jej nie ma.
  */
-export function zmienUstalenia(db, id, { b2b, termin_platnosci: termin, rabat_procent: rabatSurowy }) {
+// PRZ-122.B07c: `opcje` = `{ zw: true }` (program wbudowany) — przeliczona pozycja ze stawką „zw” zapisuje się z nią.
+// Stawka domyślna do ÷ przy WDT czytana bez flagi (jak dotąd): „zw” nie jest dzielnikiem ceny.
+export function zmienUstalenia(db, id, { b2b, termin_platnosci: termin, rabat_procent: rabatSurowy }, opcje) {
   const przed = pobierzZamowienie(db, id);
   if (!przed) return null;
 
@@ -42,7 +45,8 @@ export function zmienUstalenia(db, id, { b2b, termin_platnosci: termin, rabat_pr
     // Zamowienie WDT (nabywca z numerem VAT-UE): ceny panelu zawieraja ÷1,23, wiec
     // rozpoznanie „pozycji panelu" i nowa cena musza isc ta sama transformacja —
     // inaczej zmiana rabatu pominelaby caly wsad z magazynu jako „wyceniony recznie".
-    wdt: czyNipUe(daneFaktury(przed).nip),
+    // PRZ-122.B07f: firma zwolniona z VAT (flaga `zw` + zapisane zwolnienie) — numer UE to nie WDT, rabat od brutto.
+    wdt: czyWdt(daneFaktury(przed).nip, { zwolniona: zwolnionaZFlagi(db, opcje) }),
     // PRZ-105: ÷ stawka domyślna z Ustawień — ta sama, którą pozycja weszła z magazynu.
     stawkaDomyslna: czytajStawkeDomyslna(db),
   });
@@ -55,7 +59,7 @@ export function zmienUstalenia(db, id, { b2b, termin_platnosci: termin, rabat_pr
       // i przepisał cenę wiersza, który za dwie minuty i tak nadpisze poller.
       zapiszPozycjeReczna(db, id, p.id, {
         nazwa: p.nazwa, ilosc: p.ilosc, cena_brutto: p.cena_brutto, brutto_linii: p.brutto_linii,
-      });
+      }, opcje);
     }
     zapiszUstaleniaHandlowe(db, id, { b2b, termin_platnosci: termin, rabat_procent: rabat });
     // Dotyczy WYŁĄCZNIE zamówień ręcznych i sama o tym wie (`if (z.sklep !== 'reczne') return`).

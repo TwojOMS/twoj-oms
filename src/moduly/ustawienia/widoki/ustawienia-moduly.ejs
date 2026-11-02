@@ -1,4 +1,5 @@
-<h1>Moduły</h1>
+<h1>Włączone funkcje</h1>
+<p>Import i eksport oraz API i webhooki są planowane. Nie są jeszcze dostępne w tym ekranie.</p>
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (blad) { %><div class="pas-uprzedzenie" role="alert"><p><%= blad %></p></div><% } %>
 <p>Wyłączony moduł znika z menu, a jego adresy są zablokowane. Dane zostają w bazie. Włączenie przywraca dostęp bez restartu.</p>
@@ -6,7 +7,6 @@
 <section class="ust-sekcja">
   <h2><%= m.nazwa %></h2>
   <p><%= m.opis %></p>
-  <p><strong><%= wlaczony ? 'Włączony' : 'Wyłączony' %></strong></p>
   <% if (m.klucz === 'klienci' && zaleznosci.rabaty > 0) { %>
   <p><%= zaleznosci.rabaty %> stałych klientów z rabatem — rabaty nadal działają, edycja po włączeniu modułu.</p>
   <% } %>
@@ -21,7 +21,7 @@
   <form method="post" action="/ustawienia/moduly">
     <input type="hidden" name="modul" value="<%= m.klucz %>">
     <input type="hidden" name="wlacz" value="<%= wlaczony ? '0' : '1' %>">
-    <div class="ust-akcje"><button class="ust-przycisk" type="submit"><%= wlaczony ? 'Wyłącz' : 'Włącz' %> <%= m.nazwa %></button></div>
+    <div class="ust-akcje"><button class="ust-przelacznik" type="submit" role="switch" aria-checked="<%= wlaczony ? 'true' : 'false' %>" aria-label="<%= m.nazwa %>"><span class="ust-przelacznik-tor" aria-hidden="true"><span></span></span><span aria-hidden="true"><%= wlaczony ? 'Włączony' : 'Wyłączony' %></span></button></div>
   </form>
 </section>
 <% } %>

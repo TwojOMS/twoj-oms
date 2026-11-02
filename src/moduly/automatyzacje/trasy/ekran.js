@@ -13,6 +13,7 @@ import { modelListyRegul, registerRegulyAutomatyzacji } from './reguly.js';
 export function registerEkranAutomatyzacji(app, {
   db, teraz, konfiguracjaInfaktu, automatKsef = null, reguly = null, infakt = null,
 }) {
+  app.get('/ustawienia/automatyzacje/systemowe', async (req, reply) => tylkoAdmin(req, reply) ?? widokEkranuAutomatyzacji(req, reply, zaleznosci));
   const dodatki = reguly ? () => ({ reguly: modelListyRegul({ db, teraz, ...reguly }) }) : undefined;
   // PRZ-108.08: ten sam model dla odpowiedzi 400 starego adresu zapisu automatu KSeF (ekran inFaktu, moduł faktur).
   if (dodatki) zglosDodatkiEkranuAutomatyzacji(db, dodatki);

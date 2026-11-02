@@ -50,6 +50,49 @@ describe('GET /faktury — nabywca ze skróconą formą prawną', () => {
 });
 
 describe('GET /faktury', () => {
+  it('C07a: jeden wybór do KSeF i PDF obejmuje każdy uuid i zachowuje filtry', async () => {
+    const baza = { client_company_name: 'Pracownia Półcień', kwotaZl: '1.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' };
+    const app = serwer({ dokumenty: [
+      { ...baza, uuid: 'ksef', number: '1', rodzaj: 'vat', stanKsef: 'jest', ksef_number: 'X' },
+      { ...baza, uuid: 'nowa', number: '2', rodzaj: 'vat', client_tax_code: '4534240685' },
+      { ...baza, uuid: 'korektaPdf', number: '3', rodzaj: 'korekta' },
+      { ...baza, uuid: 'b2c', number: '4', rodzaj: 'vat', client_tax_code: null },
+      { ...baza, uuid: 'oczekuje', number: '5', rodzaj: 'vat', stanDokumentu: { czekaNaKsef: true, dokumentId: 4 } },
+      { ...baza, number: 'bez-uuid', rodzaj: 'vat' },
+    ] });
+    const r = await app.inject({ method: 'GET', url: '/faktury?miesiac=2026-07&pole=sale_date&zaznacz=1', headers: AUTH });
+    expect(r.statusCode).toBe(200);
+    for (const uuid of ['ksef', 'nowa', 'korektaPdf', 'b2c', 'oczekuje']) {
+      expect(r.body).toMatch(new RegExp(`type="checkbox" name="uuid" value="${uuid}"\\s+checked`));
+    }
+    expect(r.body.match(/type="checkbox" name="uuid"/g)).toHaveLength(5);
+    expect(r.body).toContain('<form method="post" action="/faktury/ksef/podglad">');
+    expect(r.body).toContain('formaction="/faktury/ksef/podglad">Wyślij do KSeF</button>');
+    expect(r.body).toMatch(/<details class="wydruki wydruki--masowe">\s*<summary class="btn btn--maly">Pobierz<\/summary>\s*<div class="wydruki-menu wydruki-menu--lewe">\s*<button type="submit" formaction="\/faktury\/zestawienie-zaznaczonych">Zestawienie PDF \(XML i UPO w załącznikach\)<\/button>\s*<button type="submit" formaction="\/faktury\/lista-zaznaczonych\.csv">Lista zaznaczonych \(CSV, Excel\)<\/button>\s*<\/div>/);
+    expect(r.body).toContain('name="miesiac" value="2026-07"');
+    expect(r.body).toContain('name="pole" value="sale_date"');
+    expect(r.body).toContain('/faktury?miesiac=2026-07&amp;pole=sale_date');
+    expect(r.body).not.toContain('/faktury/ksef/wyslij');
+    expect(r.body).not.toContain('wybor=pdf');
+    expect(r.body).not.toContain('name="wybor"');
+    expect(r.body).not.toContain('Wybierz faktury do PDF');
+    expect(r.body).not.toContain('>Anuluj</a>');
+    const niezaznaczone = await app.inject({ method: 'GET', url: '/faktury?miesiac=2026-07&pole=sale_date', headers: AUTH });
+    expect(niezaznaczone.body).toContain('/faktury?miesiac=2026-07&amp;pole=sale_date&amp;zaznacz=1');
+    expect(niezaznaczone.body).not.toMatch(/name="uuid"[^>]+checked/);
+    await app.close();
+  });
+
+  it.each([
+    ['', 'invoice_date'], ['&pole=sale_date', 'sale_date'],
+  ])('C07a: dawny tryb PDF przekierowuje 302 z zachowaniem miesiąca i pola daty: %s', async (query, pole) => {
+    const app = serwer();
+    const r = await app.inject({ method: 'GET', url: `/faktury?wybor=pdf&miesiac=2026-10${query}`, headers: AUTH });
+    expect(r.statusCode).toBe(302);
+    expect(r.headers.location).toBe(`/faktury?miesiac=2026-10&pole=${pole}`);
+    await app.close();
+  });
+
   it('renderuje trzy pasy i domyślnie bieżący miesiąc po dacie wystawienia', async () => {
     const app = serwer({ dokumenty: [{
       uuid: 'u1', number: '1/08/2026', rodzaj: 'vat', invoice_date: '2026-08-03', sale_date: '2026-08-03',
@@ -77,54 +120,40 @@ describe('GET /faktury', () => {
     expect(r.body).toContain('1378.50');
   });
 
-  // ⚠️ Zaznaczać wolno WYŁĄCZNIE to, co da się wysłać. Checkbox przy dokumencie z numerem
-  // KSeF robiłby z licznika zaznaczeń nieprawdę, a z przycisku obietnicę bez pokrycia.
-  it('checkbox stoi tylko przy dokumencie BEZ numeru KSeF', async () => {
+  // C07a: wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
+  it('checkbox stoi przy dokumencie z numerem KSeF i bez numeru', async () => {
     const app = serwer({ dokumenty: [
       { uuid: 'zKsef', number: '1/08/2026', rodzaj: 'vat', stanKsef: 'jest', ksef_number: 'X', client_tax_code: '1234563218', kwotaZl: '1.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
       { uuid: 'bezKsef', number: '2/08/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null, client_tax_code: '1234563218', kwotaZl: '1.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
     ] });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
     expect(r.body).toContain('value="bezKsef"');
-    expect(r.body).not.toContain('value="zKsef"');
+    expect(r.body).toContain('value="zKsef"');
   });
 
-  // ⚠️ KOREKTA TEZ NIE DOSTAJE POLA WYBORU (decyzja wlasciciela 06.08.2026: korekty wysyla
-  // sie w inFakcie). Bariera stoi w domain/wysylka-ksef.js, ale checkbox obiecywalby
-  // operatorowi cos, czego bariera i tak nie przepusci — a licznik zaznaczen klamalby.
-  it('checkbox NIE stoi przy korekcie, nawet bez numeru KSeF', async () => {
+  // C07a: wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
+  it('checkbox stoi także przy korekcie bez numeru KSeF', async () => {
     const app = serwer({ dokumenty: [
       { uuid: 'korekta', number: '1/KOR/07/2026', rodzaj: 'korekta', stanKsef: 'brak', ksef_number: null, kwotaZl: '-138.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
     ] });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
     expect(r.body).toContain('1/KOR/07/2026');
-    expect(r.body).not.toContain('value="korekta"');
+    expect(r.body).toContain('value="korekta"');
   });
 
-  // ⚠️⚠️ FAKTURA KONSUMENCKA (NABYWCA BEZ NIP-u) NIE DOSTAJE POLA WYBORU — decyzja
-  // wlasciciela 28.08.2026, blokada twarda jak przy korektach. KSeF jest przy dokumencie B2C
-  // DOBROWOLNY (stanowisko Ministerstwa Finansow), a wysylki nie da sie cofnac. Pomiar na
-  // zywym koncie: na 169 faktur VI–VIII.2026 taki dokument byl DOKLADNIE JEDEN (`30/06/2026`)
-  // i byl zarazem jedyna czerwcowa faktura bez numeru KSeF — czyli „zaznacz wszystkie"
-  // w czerwcu zaznaczaloby wylacznie jego i wyslalo.
-  //
-  // ⚠️ TEN TEST RENDERUJE TRASE, a nie wola regule. Bariera (domain/wysylka-ksef.js) ma wlasne
-  // testy; tutaj chodzi o to, ze widok NIE OBIECUJE operatorowi wysylki, ktorej bariera i tak
-  // nie przepusci — bo obietnica na ekranie jest jedynym miejscem, gdzie czlowiek ma szanse
-  // zlapac pomylke przed operacja nieodwracalna.
-  it('checkbox NIE stoi przy fakturze konsumenckiej (nabywca bez NIP-u), a przy firmowej stoi', async () => {
+  // C07a: wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
+  it('checkbox stoi przy fakturze konsumenckiej i firmowej', async () => {
     const app = serwer({ dokumenty: [
       { uuid: 'konsument', number: '30/06/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null, client_tax_code: null, client_first_name: 'Jan', client_last_name: 'Kowalski', kwotaZl: '138.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
       { uuid: 'firma', number: '31/06/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null, client_tax_code: '1234563218', client_company_name: 'Firma X', kwotaZl: '246.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
     ] });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
     expect(r.statusCode).toBe(200);
-    // Wiersz jest na ekranie — panel go NIE UKRYWA, tylko nie proponuje wysylki.
+    // Zaznaczenie nie usuwa informacji, że dokument jest konsumencki.
     expect(r.body).toContain('30/06/2026');
     expect(r.body).toContain('value="firma"');
-    expect(r.body).not.toContain('value="konsument"');
-    // ⚠️ POWOD MA BYC NAZWANY, tak jak „Korekta" przy korekcie. Wiersz bez pola wyboru
-    // i bez slowa wygladalby jak usterka listy, a to jest stan NORMALNY.
+    expect(r.body).toContain('value="konsument"');
+    // Oznaczenie konsumenta zostaje niezależne od pola wyboru.
     expect(r.body).toContain('>konsumencka</span>');
   });
 
@@ -140,45 +169,39 @@ describe('GET /faktury', () => {
     expect(r.body).not.toContain('>konsumencka</span>');
   });
 
-  // „Zaznacz wszystkie" jest ODNOSNIKIEM, nie skryptem — zaznacza wylacznie wiersze, ktore
-  // MAJA pole wyboru. Odtworzenie CZERWCA z pomiaru: gdyby konsumencka miala pole wyboru,
-  // ten jeden klik wyslalby ja do KSeF bezpowrotnie.
-  it('„zaznacz wszystkie" nie zaznacza faktury konsumenckiej', async () => {
+  // C07a: wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
+  it('„zaznacz wszystkie" zaznacza także fakturę konsumencką', async () => {
     const app = serwer({ dokumenty: [
       { uuid: 'konsument', number: '30/06/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null, client_tax_code: '', kwotaZl: '138.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
       { uuid: 'firma', number: '31/06/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null, client_tax_code: '1234563218', kwotaZl: '246.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
     ] });
     const r = await app.inject({ method: 'GET', url: '/faktury?zaznacz=1', headers: AUTH });
-    expect(r.body).toContain('value="firma"');
-    expect(r.body).not.toContain('value="konsument"');
+    expect(r.body).toMatch(/value="firma"\s+checked/);
+    expect(r.body).toMatch(/value="konsument"\s+checked/);
   });
 
-  // ⚠️⚠️ TRZECI STAN KSeF (recenzja calosci, Finding 1). Miedzy zleceniem wysylki a nadaniem
-  // numeru mija ~70 sekund. Do poprawki wiersz mowil wtedy „brak", mial pole wyboru i wracal
-  // do zaznaczenia — a zatwierdzenie i tak odbiloby sie od rezerwacji w bazie. Ekran, ktorego
-  // jedynym zadaniem jest zlapac pomylke przed operacja nieodwracalna, klamal.
-  it('dokument, którego wysyłkę panel już zlecił, NIE MA pola wyboru i mówi, że czeka na numer', async () => {
+  // C07a: wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
+  it('dokument, którego wysyłkę panel już zlecił, ma pole wyboru i mówi, że czeka na numer', async () => {
     const app = serwer({ dokumenty: [
-      { uuid: 'czeka', number: '3/08/2026', rodzaj: 'vat', stanKsef: 'wyslana_czeka', ksef_number: null, ksefZleconaAt: '2026-08-06T14:00:00.000Z', client_tax_code: '1234563218', kwotaZl: '1.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
+      { uuid: 'czeka', number: '3/08/2026', rodzaj: 'vat', stanKsef: 'wyslana_czeka', plakietka: 'czeka na numer', ksef_number: null, ksefZleconaAt: '2026-08-06T14:00:00.000Z', client_tax_code: '1234563218', kwotaZl: '1.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
     ] });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
     expect(r.body).toContain('3/08/2026');
-    expect(r.body).not.toContain('value="czeka"');
+    expect(r.body).toContain('value="czeka"');
     // ⚠️⚠️ ANI SLOWA O TYM, ZE DOKUMENT „JEST W KSeF" — panel tego NIE WIE, numer nadaje organ.
     expect(r.body).toMatch(/czeka na numer/i);
     expect(r.body).not.toMatch(/w KSeF<\/span>/);
   });
 
-  // „Zaznacz wszystkie" jest ODNOSNIKIEM, nie skryptem — zaznacza wylacznie wiersze, ktore
-  // MAJA pole wyboru. Dokument juz zlecony nie ma dokad pojechac drugi raz.
-  it('„zaznacz wszystkie" nie zaznacza dokumentu czekającego na numer KSeF', async () => {
+  // C07a: wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
+  it('„zaznacz wszystkie" zaznacza także dokument czekający na numer KSeF', async () => {
     const app = serwer({ dokumenty: [
-      { uuid: 'czeka', number: '3/08/2026', rodzaj: 'vat', stanKsef: 'wyslana_czeka', ksef_number: null, ksefZleconaAt: '2026-08-06T14:00:00.000Z', client_tax_code: '1234563218', kwotaZl: '1.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
+      { uuid: 'czeka', number: '3/08/2026', rodzaj: 'vat', stanKsef: 'wyslana_czeka', plakietka: 'czeka na numer', ksef_number: null, ksefZleconaAt: '2026-08-06T14:00:00.000Z', client_tax_code: '1234563218', kwotaZl: '1.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
       { uuid: 'bezKsef', number: '2/08/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null, ksefZleconaAt: null, client_tax_code: '1234563218', kwotaZl: '1.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
     ] });
     const r = await app.inject({ method: 'GET', url: '/faktury?zaznacz=1', headers: AUTH });
-    expect(r.body).toContain('value="bezKsef"');
-    expect(r.body).not.toContain('value="czeka"');
+    expect(r.body).toMatch(/value="bezKsef"\s+checked/);
+    expect(r.body).toMatch(/value="czeka"\s+checked/);
   });
 
   // ⚠️ Ekran podgladu (Zadanie 9) przelicza zbior PONOWNIE z na nowo pobranej listy, wiec
@@ -724,7 +747,7 @@ describe('GET /faktury/paczka', () => {
         zbuduj: async (m, czesc) => {
           wolania.push([m, czesc]);
           return {
-            bajty: Buffer.from('%PDF-1.4 p'), nazwa: `paczka-dla-biura-${m}-${czesc}.pdf`, dokumentow: 3, stron: 9,
+            bajty: Buffer.from('%PDF-1.4 p'), nazwa: `zestawienie-faktur-${m}-${czesc}.pdf`, dokumentow: 3, stron: 9,
           };
         },
       },
@@ -732,9 +755,9 @@ describe('GET /faktury/paczka', () => {
     const r = await app.inject({ method: 'GET', url: '/faktury/paczka?miesiac=2026-08&czesc=sprzedaz', headers: AUTH });
     expect(r.statusCode).toBe(200);
     expect(r.headers['content-type']).toContain('application/pdf');
-    expect(r.headers['content-disposition']).toContain('paczka-dla-biura-2026-08-sprzedaz.pdf');
+    expect(r.headers['content-disposition']).toContain('zestawienie-faktur-2026-08-sprzedaz.pdf');
     const k = await app.inject({ method: 'GET', url: '/faktury/paczka?miesiac=2026-08&czesc=koszty', headers: AUTH });
-    expect(k.headers['content-disposition']).toContain('paczka-dla-biura-2026-08-koszty.pdf');
+    expect(k.headers['content-disposition']).toContain('zestawienie-faktur-2026-08-koszty.pdf');
     // ⚠️ CZESC JEDZIE DO USLUGI, a nie ginie po drodze — bez tego oba odnosniki oddawalyby
     // ten sam plik pod dwiema nazwami.
     expect(wolania).toEqual([['2026-08', 'sprzedaz'], ['2026-08', 'koszty']]);
@@ -833,7 +856,7 @@ describe('GET /faktury/paczka', () => {
     // Drugie zadanie leci, gdy pierwsze WISI na `zbuduj` — dokladnie tak, jak drugie klikniecie.
     const drugie = await app.inject({ method: 'GET', url: '/faktury/paczka?miesiac=2026-08&czesc=koszty', headers: AUTH });
     expect(drugie.statusCode).toBe(409);
-    expect(drugie.body).toContain('składana');
+    expect(drugie.body).toContain('Zestawienie faktur jest właśnie składane');
     odblokuj();
     expect((await pierwsze).statusCode).toBe(200);
     // ⚠️ Usluga zawolana RAZ — 409 ma odbic zadanie PRZED robota, a nie po niej.

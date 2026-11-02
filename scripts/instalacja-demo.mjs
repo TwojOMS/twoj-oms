@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { opcje, PLIKI_INSTALACJI, powodPotomka, sekretyKatalogu, oczyscPowod, coDalejLokalnie } from './instalacja-wspolne.mjs';
+import { opcje, PLIKI_INSTALACJI, powodPotomka, sekretyKatalogu, oczyscPowod, coDalejLokalnie, krokDemoMs } from './instalacja-wspolne.mjs';
 
 const LIMIT_ETAPU_MS = 60_000;
 
@@ -39,9 +39,11 @@ function etap(name, katalog, port) {
   }
 }
 // Daty względem chwili instalacji (PRZ-089): ze sztywnym 2026-01-01…03 pierwszy ekran nowicjusza po pół roku
-// pokazywał „po terminie o 204 dni rob.”. Zamówienie N złożone N godzin temu, wpłata 10 min później.
-const godzinTemu = (teraz, h, min = 0) => new Date(teraz - h * 3600_000 + min * 60_000).toISOString();
+// pokazywał „po terminie o 204 dni rob.”. Zamówienie N złożone N godzin temu, wpłata 10 min później — po północy
+// odstępy krótsze, żeby wszystkie zostały w dzisiejszym dniu Warszawy (`krokDemoMs`).
 async function wygeneruj(db, teraz = Date.now()) {
+  const krok = krokDemoMs(teraz);
+  const godzinTemu = (od, h, min = 0) => new Date(od - h * krok + min * krok / 60).toISOString();
   const { zapiszZamowienie, zapiszFaktyStatusu } = await import('../src/oms/db/zamowienia.js');
   for (let number = 1; number <= 3; number++) {
     const code = String(number).padStart(3, '0');

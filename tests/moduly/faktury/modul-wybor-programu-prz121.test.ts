@@ -12,10 +12,31 @@ import { zapiszKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-i
 import { zapiszWyborProgramu } from '../../../src/oms/db/wybor-programu.js';
 import { METODY_OBOWIAZKOWE } from '../../../src/integracje/program-fakturowy.ts';
 import { zbudujOms } from '../../../src/oms/bootstrap.ts';
+import { szewTwojeFaktury } from '../../../src/moduly/faktury/wczytaj-szew.ts';
 
 const KATALOG = mkdtempSync(join(tmpdir(), 'prz-121-01-'));
 const ENV = { OMS_PROFORMY_KATALOG: KATALOG, OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000' };
 const PROBA = { ...ENV, OMS_TRYB: 'proba' };
+
+it('zgoda instalacji jest walidowana podczas startu', () => {
+  expect(() => wczytajFaktury({ ...ENV, OMS_TWOJEFAKTURY: 'nie' })).toThrow(/OMS_TWOJEFAKTURY/);
+  if (!szewTwojeFaktury) {
+    expect(() => wczytajFaktury({ ...ENV, OMS_TWOJEFAKTURY: ' Tak ' })).toThrow(/ta wersja OMS-u nie ma modułu TwojeFaktury/);
+    return;
+  }
+  expect(wczytajFaktury({ ...ENV, OMS_TWOJEFAKTURY: ' Tak ' })).toMatchObject({ zgodaTf: true });
+});
+it.each(['proba', 'produkcja'])('wybór z pliku wymaga zgody niezależnie od trybu %s', (tryb) => {
+  const env = { ...ENV, OMS_TRYB: tryb, OMS_PROGRAM_FAKTUROWY: 'twojefaktury' };
+  expect(() => wczytajFaktury(env)).toThrow(/OMS_PROGRAM_FAKTUROWY.*wkrótce/);
+  if (!szewTwojeFaktury) {
+    expect(() => wczytajFaktury({ ...env, OMS_TWOJEFAKTURY: 'tak' })).toThrow(/ta wersja OMS-u nie ma modułu TwojeFaktury/);
+    return;
+  }
+  const { db, sprobuj } = zbuduj(createModulFaktury(), { ...env, OMS_TWOJEFAKTURY: 'tak' });
+  try { expect(sprobuj().uslugi.programFakturowy.opis.id).toBe('twojefaktury'); }
+  finally { db.close(); }
+});
 const KLUCZ_PLIKU = 'zmyslony-klucz-pliku-prz121-0000000000001';
 const KLUCZ_EKRANU = 'zmyslony-klucz-ekranu-prz121-000000000001';
 const STARE_ZDANIE = 'Fakturowanie inFakt nie jest skonfigurowane.';

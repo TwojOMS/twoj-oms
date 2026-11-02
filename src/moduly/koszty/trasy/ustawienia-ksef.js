@@ -5,7 +5,7 @@
 // ⚠️ Token nie wraca na ekran nigdy — także po błędzie formularza (pole tokenu zawsze puste). Komunikat testu
 // połączenia buduje klient KSeF z odpowiedzi serwera (bez tokenu); błąd techniczny idzie tylko do logu, też bez tokenu.
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
-import { sprawdzFormularzKsef, EKRAN_KSEF, ZDANIE_UPRAWNIENIA_KSEF, ODMOWA_KSEF_BRAK_NIP } from '../../../domena/konfiguracja-ksef-kosztow.js';
+import { sprawdzFormularzKsef, EKRAN_KSEF, ZDANIE_UPRAWNIENIA_KSEF, ZDANIE_TOKENU_KOSZTOW_TWOJEFAKTURY, ODMOWA_KSEF_BRAK_NIP } from '../../../domena/konfiguracja-ksef-kosztow.js';
 import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji, stanDlaEkranu }
   from '../../../oms/db/konfiguracja-integracji.js';
 import { usunSesjeKsef } from '../../../oms/ksef/sesja.js';
@@ -21,7 +21,9 @@ const KOMUNIKATY = {
 
 export function registerUstawieniaKsefRoutes(app, { db, zrodloKsef, nipSprzedawcy: nip, infakt = null }) {
   // PRZ-118.09: zdanie „Wysyłka faktur sprzedaży idzie przez …” — nazwa programu z usługi `infakt` modułu faktur.
-  const nazwaProgramu = odmianaNazwyProgramu(infakt);
+  const program = infakt;
+  const nazwaProgramu = odmianaNazwyProgramu(program);
+  const wbudowany = program?.opis?.wbudowany === true;
   const k = zrodloKsef;
   // PRZ-108.10: NIP firmy funkcją (plik albo Ustawienia → Firma) — czytany przy każdym widoku i zapisie.
   const nipTeraz = () => (typeof nip === 'function' ? nip() : nip) ?? null;
@@ -31,7 +33,8 @@ export function registerUstawieniaKsefRoutes(app, { db, zrodloKsef, nipSprzedawc
       nawigacja: nawigacjaUstawien(req, reply), title: tytulEkranuDlaAdresu(EKRAN_KSEF),
       zEnv: k.zEnv, stan: stanDlaEkranu(zapis), nipZapisu: zapis?.ustawienia?.nip ?? '', nipSprzedawcy: nipTeraz(),
       nipNiezgodny: k.nipNiezgodny(), modulWylaczony: wylaczoneModuly(db).includes('koszty'),
-      zdanie: ZDANIE_UPRAWNIENIA_KSEF, bledy, test, odmowaBrakNip: ODMOWA_KSEF_BRAK_NIP,
+      zdanie: wbudowany ? ZDANIE_TOKENU_KOSZTOW_TWOJEFAKTURY : ZDANIE_UPRAWNIENIA_KSEF,
+      wbudowany, bledy, test, odmowaBrakNip: ODMOWA_KSEF_BRAK_NIP,
       zapisano: KOMUNIKATY[req.query?.zapisano] ?? null, nazwaProgramu,
     });
   }

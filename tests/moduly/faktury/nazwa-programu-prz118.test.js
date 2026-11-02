@@ -9,7 +9,9 @@
 // U1, U2… w kolejności pierwszego wystąpienia na stronie, wersja zasobów (`?v=`) wycięta — zmiana CSS nie jest
 // zmianą tekstu. Panel nie ma tokenów CSRF ani nonce w HTML (sprawdzone: brak w layoucie i w tych widokach).
 //
-// ⚠️ Migawki NIE przepisuje się, żeby zazielenić test po zmianie 09 — to jest cały dowód „wynik dla inFaktu bez zmian”.
+// PRZ-126.P1: cztery karty bez własnej faktury mają nowy przycisk/powód; ich migawki zmieniono świadomie.
+// PRZ-126.P36e: lista faktur ma filtry typ/płatność i wiersz Razem; migawkę ekranu listy zmieniono świadomie.
+// Pozostałe ekrany nadal sprawdzają wynik PRZ-118.09; dostępność przycisku sprawdza wystaw-fakture-zawsze-prz126.test.js.
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -31,6 +33,7 @@ import { podsumowanieVatKarty } from '../../../src/domena/tabela-pozycji.js';
 import { modulyDla } from '../../../src/moduly/lista.ts';
 import { createModulFaktury } from '../../../src/moduly/faktury/modul.ts';
 import { createAtrapaVies } from '../../../deploy/proba/atrapy/infakt.mjs';
+import { zapiszZgloszenie } from '../../../src/moduly/faktury/db/stanowiska-druku.js';
 
 const KATALOG_TESTU = dirname(fileURLToPath(import.meta.url));
 const KORZEN = join(KATALOG_TESTU, '../../..');
@@ -103,6 +106,8 @@ const zamowienie = (numer, nad = {}) => ({
  */
 export async function ekranyZProgramem(a, { awaria }) {
   const db = a.db;
+  // PRZ-126.C05a: komputer z drukarką faktur zgłoszony — „Drukuj” na karcie czynny, jak w migawce sprzed zmiany 09.
+  zapiszZgloszenie(db, 'BIURO-1', new Date());
   const ekrany = {};
   const http = (metoda, url, pola) => a.app.inject({ method: metoda, url, headers: metoda === 'GET' ? AUTH : POST,
     ...(metoda === 'GET' ? {} : { payload: typeof pola === 'string' ? pola : new URLSearchParams(pola ?? {}).toString() }) });
@@ -203,7 +208,7 @@ export async function ekranyZProgramem(a, { awaria }) {
     pominiete: [], blad: 'zerwane połączenie', poZasadzie: [] });
   wstrzymajFakture(db, { uuid: 'dok-wstrzymany-8', numer: 'FV 8/10/2026', dzien: '2026-10-14', powod: 'nabywca bez adresu' });
   await ekran('automat KSeF — wynik', 'GET', '/faktury/ksef/automat');
-  await ekran('Ustawienia → Automatyzacje', 'GET', '/ustawienia/automatyzacje');
+  await ekran('Ustawienia → Automatyzacje', 'GET', '/ustawienia/automatyzacje/systemowe');
   zapiszWynikAutomatu(db, { dzien: '2026-10-14', stan: 'przerwany', startAt: '2026-10-14T18:00:00.000Z', koniecAt: null,
     wTrakcie: null, wyslane: [], niepewne: [], pominiete: [], blad: null, poZasadzie: [] });
   await ekran('automat KSeF — przerwany przed pierwszym dokumentem', 'GET', '/faktury/ksef/automat');
@@ -234,6 +239,8 @@ async function ekranyAllegro(db, ekran, przedrostek, nr) {
 /** Ekrany bez programu fakturowego — tam, gdzie widok mówi o braku inFaktu. */
 export async function ekranyBezProgramu(a) {
   const db = a.db;
+  // PRZ-126.C05a: jak w ekranyZProgramem — komputer z drukarką zgłoszony, „Drukuj” czynny jak w migawce.
+  zapiszZgloszenie(db, 'BIURO-1', new Date());
   const ekrany = {};
   const http = (metoda, url, pola) => a.app.inject({ method: metoda, url, headers: metoda === 'GET' ? AUTH : POST,
     ...(metoda === 'GET' ? {} : { payload: typeof pola === 'string' ? pola : new URLSearchParams(pola ?? {}).toString() }) });
@@ -251,7 +258,7 @@ export async function ekranyBezProgramu(a) {
   expect((await http('POST', `/zamowienia/${zo}/okres`, {})).statusCode).toBe(302);
   const { okres_rozliczeniowy_id: okresId } = db.prepare('SELECT okres_rozliczeniowy_id FROM zamowienia WHERE id = ?').get(zo);
   await ekran('bez programu: okres', 'GET', `/okresy/${okresId}`);
-  await ekran('bez programu: Ustawienia → Automatyzacje', 'GET', '/ustawienia/automatyzacje');
+  await ekran('bez programu: Ustawienia → Automatyzacje', 'GET', '/ustawienia/automatyzacje/systemowe');
   await ekran('bez programu: Ustawienia → KSeF kosztów', 'GET', '/ustawienia/integracje/ksef');
   await ekranyAllegro(db, ekran, 'bez programu: ', 401);
   return ekrany;
@@ -308,13 +315,13 @@ describe('PRZ-118.09 nazwa programu w tekstach i widokach', () => {
       const zapis = await b.app.inject({ method: 'POST', url: '/ustawienia/integracje/infakt', headers: POST,
         payload: new URLSearchParams({ apiKey: KLUCZ }).toString() });
       expect(zapis.statusCode, zapis.body.slice(0, 300)).toBe(303);
-      const r1 = await b.app.inject({ method: 'GET', url: '/ustawienia/automatyzacje', headers: AUTH });
+      const r1 = await b.app.inject({ method: 'GET', url: '/ustawienia/automatyzacje/systemowe', headers: AUTH });
       expect(r1.statusCode).toBe(200);
       wynik['klucz w Ustawieniach przed restartem: Automatyzacje'] = wpisMigawki(r1.body);
       await b.app.close();
       c = await zbudujOms({ env: envTestu(katalog, { zKluczem: false }), db: b.db, teraz, log: () => {} });
       usunKonfiguracjeIntegracji(c.db, 'infakt');
-      const r2 = await c.app.inject({ method: 'GET', url: '/ustawienia/automatyzacje', headers: AUTH });
+      const r2 = await c.app.inject({ method: 'GET', url: '/ustawienia/automatyzacje/systemowe', headers: AUTH });
       expect(r2.statusCode).toBe(200);
       wynik['program odłączony do restartu: Automatyzacje'] = wpisMigawki(r2.body);
     } finally { await b.app.close(); if (c) await c.app.close(); b.db.close(); }
@@ -328,11 +335,24 @@ describe('PRZ-118.09 nazwa programu w tekstach i widokach', () => {
         opis: 'PRZ-118.09 — HTML ekranów z inFaktem i bez programu SPRZED zmiany 09. NIE przepisywać po zmianie 09.',
         ekrany: wynik }, null, 1)}\n`);
     }
+    // PRZ-127: tylko sześć migawek Ustawień zmienia nawigację; pozostałe dokumenty pozostają strażnikiem zachowania.
     const migawka = JSON.parse(readFileSync(MIGAWKA, 'utf8')).ekrany;
     expect(Object.keys(wynik)).toEqual(Object.keys(migawka));
-    // Kopia open source: rama strony ma komentarze CSS oczyszczone z danych wlasciciela, wiec jej odcisk z migawki
-    // nie pasuje — porownujemy tresc ekranu (<main>).
-    for (const k of Object.keys(migawka)) expect(wynik[k].glowna, `ekran „${k}”`).toEqual(migawka[k].glowna);
+    for (const k of Object.keys(migawka)) {
+      // C07b dodaje pozycję menu w historycznych wpisach; FAKTURY ma już tę pozycję po aktualizacji P36d.
+      const pdf = '<button type="submit" formaction="/faktury/zestawienie-zaznaczonych">Zestawienie PDF (XML i UPO w załącznikach)</button>';
+      const csv = '<button type="submit" formaction="/faktury/lista-zaznaczonych.csv">Lista zaznaczonych (CSV, Excel)</button>';
+      // PRZ-126 P2 i P8 (właściciel): akapit „własny rachunek panelu” po wysyłce do KSeF i objaśnienie pod tabelą faktur
+      // usunięte przy każdym programie; puste linie po zdjętych blokach EJS nie liczą się do porównania.
+      const p8 = /\n[ \t]*<p class="wyjasnienie">\s*(?:Pole wyboru jest przy każdym dokumencie|Powyższa liczba to <b>własny rachunek)[\s\S]*?<\/p>/gu;
+      // PRZ-126 DRB: Druk w Ustawieniach działa — pozycja menu bez klasy i plakietki „wkrótce”.
+      const drukDawniej = '<li class="wkrotce">\n              <a href="/ustawienia/druk"><span>Druk i etykiety</span><span class="menu-ustawien-wkrotce">wkrótce</span></a>';
+      const drukTeraz = '<li>\n              <a href="/ustawienia/druk"><span>Druk i etykiety</span></a>';
+      const bezPustych = (html) => html.replace(/\n[ \t]*(?=\n)/gu, '');
+      const oczekiwane = { ...migawka[k], glowna: bezPustych((migawka[k].glowna.includes(csv) ? migawka[k].glowna : migawka[k].glowna.replace(pdf, `${pdf}\n            ${csv}`)).replace(p8, '').replaceAll(drukDawniej, drukTeraz)) };
+      // Kopia: oczyszczone komentarze ramy zmieniaja wyłącznie jej odcisk; status i tresc nadal porownujemy.
+      expect({ ...wynik[k], glowna: bezPustych(wynik[k].glowna) }, `ekran „${k}”`).toEqual({ ...oczekiwane, reszta: wynik[k].reszta });
+    }
   }, 120_000);
 
   // Program testowy („Testownik”) nad tą samą atrapą: każda metoda kontraktu woła adapter inFaktu na atrapie,
@@ -380,7 +400,7 @@ describe('PRZ-118.09 nazwa programu w tekstach i widokach', () => {
     expect(tekst('FAKTURY')).toContain('Faktura skasowana w Testowniku');
     expect(tekst('FAKTURY — program nie odpowiada')).toContain('Nie wiadomo — Testownik nie odpowiedział.');
     expect(tekst('KSeF — podgląd')).toContain('Panel wysyła dokumenty do Testownika, a Testownik do KSeF.');
-    expect(tekst('KSeF — wynik')).toContain('Co naprawdę poszło, widać w Testowniku.');
+    expect(tekst('KSeF — wynik')).toContain('Panel przekazał dokumenty do Testownika, a Testownik przekazuje je organowi.');
     expect(tekst('automat KSeF — wynik')).toContain('Testownik odrzucił ją');
     expect(tekst('faktury hurtem — podgląd')).toContain('Pójdzie do Testownika');
     expect(tekst('faktury hurtem — podgląd')).toContain('w Testowniku </button>');

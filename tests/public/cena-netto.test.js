@@ -101,3 +101,25 @@ describe('przelicz — wynik zgodny z serwerem (domain/vat.js)', () => {
     expect(w.brutto.value).toBe('');
   });
 });
+
+// PRZ-122.B07c (recenzja): „zw” (zwolnienie, tylko przy TwojeFaktury) liczy się jak 0 — netto = brutto. Wcześniej
+// `Number('zw')` = NaN i skrypt brał `data-vat` formularza (23): netto 100 wpisywało brutto 123,00.
+describe('stawka „zw” = 0 (netto = brutto)', () => {
+  it('„zw” z listy w wierszu wygrywa z data-vat 23', () => {
+    expect(stawkaWiersza(wiersz({ vat: 'zw' }).tr, formularz({ vat: '23', wdt: '0' }))).toBe(0);
+  });
+  it('„zw” w data-vat (domyślna firmy zwolnionej), bez listy → 0', () => {
+    expect(stawkaWiersza(wiersz().tr, formularz({ vat: 'zw' }))).toBe(0);
+  });
+  it('netto 100 przy „zw” → brutto 100.00; brutto 57 → netto 57.00', () => {
+    const a = wiersz({ netto: '100', vat: 'zw' });
+    przelicz({ target: a.netto }, formularz({ vat: '23', wdt: '0' }));
+    expect(a.brutto.value).toBe('100.00');
+    const b = wiersz({ brutto: '57', vat: 'zw' });
+    przelicz({ target: b.brutto }, formularz({ vat: '23', wdt: '0' }));
+    expect(b.netto.value).toBe('57.00');
+    const c = wiersz({ netto: '100' });
+    przelicz({ target: c.netto }, formularz({ vat: 'zw' }));
+    expect(c.brutto.value).toBe('100.00');
+  });
+});

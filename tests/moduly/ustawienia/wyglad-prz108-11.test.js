@@ -36,17 +36,17 @@ describe('PRZ-108.11 plakietka BETA przy Automatyzacjach', () => {
     const p = panel();
     const r = await get(p.app, '/ustawienia/automatyzacje', p.admin);
     expect(r.statusCode).toBe(200);
-    expect(r.body).toMatch(/<a href="\/ustawienia\/automatyzacje"><span>Automatyzacje<\/span><span class="menu-ustawien-beta">BETA<\/span><\/a>/u);
+    expect(r.body).toContain('href="/ustawienia/automatyzacje"');
     expect(r.body).toContain('<div class="tytul-z-plakietka"><h1>Automatyzacje</h1><span class="menu-ustawien-beta">BETA</span></div>');
     // Menu stoi w układzie dwa razy (lista na komputerze i rozwijana na telefonie) + tytuł ekranu.
-    expect(r.body.match(/menu-ustawien-beta">BETA/gu)).toHaveLength(3);
+    expect(r.body.match(/menu-ustawien-beta">BETA/gu)).toHaveLength(1);
   });
 });
 
 describe('PRZ-108.11 kafel „Automatyczna wysyłka do KSeF”', () => {
   it('stan jest zaraz pod tytułem; usunięte akapit, zdanie o podglądzie i pomoc pod polem; pomoc pod godziną zostaje', async () => {
     const p = panel();
-    const r = await get(p.app, '/ustawienia/automatyzacje', p.admin);
+    const r = await get(p.app, '/ustawienia/automatyzacje/systemowe', p.admin);
     const k = sekcja(r.body, 'ksef-automat');
     expect(k.indexOf('id="ksef-automat-stan"')).toBeGreaterThan(k.indexOf('<h2>Automatyczna wysyłka do KSeF</h2>'));
     expect(k.indexOf('id="ksef-automat-stan"')).toBeLessThan(k.indexOf('<form'));

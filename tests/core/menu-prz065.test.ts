@@ -75,8 +75,8 @@ describe('PRZ065 odbiór regresji ramy',()=>{
     const h=await render(n,k);
     expect(h).toContain('<main class="kolumna-glowna">');
     expect(h.slice(h.indexOf('<main class="kolumna-glowna">'))).toContain('<h1>Przesyłki</h1>');
-    for(const url of ['/ustawienia/zamowienia-i-wysylka','/ustawienia/integracje','/ustawienia/wiadomosci-i-automatyzacje','/ustawienia/lacznosc','/ustawienia/konta'])expect(h).toContain('href="'+url+'"');
-    expect(h.match(/<li class="aktywna">\s*<a href="\/ustawienia\/lacznosc">/g)).toHaveLength(2);
+    for(const url of ['/ustawienia/firma','/ustawienia/zamowienia-i-wysylka','/ustawienia/integracje','/ustawienia/szablony-wiadomosci','/ustawienia/lacznosc','/ustawienia/konta'])expect(h).toContain('href="'+url+'"');
+    expect(h.match(/<li class="aktywna">\s*<a href="\/ustawienia\/moduly" aria-current="page">/g)).toHaveLength(2);
   });
   it('statusy runtime zachowują wartości, nowe stany, adresy i escapowanie poza wycinkiem snapshotu menu',async()=>{
     const h=await render(model('/'),null,{panelStatusow:[{klucz:'do_zrobienia',etykieta:'Pilne <test>',href:'/?status=do_zrobienia&kanal=demo',liczba:37,aktywna:true},{klucz:'nowy_stan',etykieta:'Dodatkowy',href:'/?status=nowy_stan',liczba:0}]});

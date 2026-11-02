@@ -6,9 +6,6 @@ import {
   wierszeMiesiaca, stanArchiwumSprzedazy, odnotujUdanyPrzebiegArchiwum, zapiszBladArchiwum,
 } from '../db/archiwum-sprzedazy.js';
 import { zarchiwizujDokument, oznaczSkasowanyDokument } from './archiwum-sprzedazy.js';
-// Wylacznie stale — straznik czasu przebiegu nizej liczy sie z PRAWDZIWYCH limitow klienta,
-// a nie z liczb przepisanych do komentarza (ta sama zasada, co w services/czuwacz-kosztow.js).
-import { LIMIT_ZADANIA_MS, NAJDLUZSZA_LISTA_MS } from '../../../oms/infakt/client.js';
 import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 // Nocny czuwacz archiwum sprzedazy (spec 2026-09-02, Czesc B). Zegar godzinowy (bootstrap.js,
@@ -35,16 +32,16 @@ export const BUDZET_ARCHIWUM_SPRZEDAZY_MS = 10 * 60 * 1000;
 // (recenzja calej galezi). `bootstrap.js` odmawia startu panelu, gdy ta liczba nie miesci sie
 // miedzy tyknieciami zegara czuwaczy, wiec podniesienie ktorejkolwiek ze skladowych bez
 // policzenia skutku ma POLOZYC PANEL PRZY STARCIE, a nie po cichu rozjechac nocny zegar.
-// Ta sama regula, co przy `NAJDLUZSZY_PRZEBIEG_MS` (czuwacz-ksef.js) i `NAJDLUZSZY_PRZEBIEG_
+// Ta sama regula, co przy `najdluzszyPrzebiegMs(limity)` (czuwacz-ksef.js) i `NAJDLUZSZY_PRZEBIEG_
 // KOSZTOW_MS` (czuwacz-kosztow.js).
 //
 // Trzy skladniki, kazdy z modulu, ktory go naprawde narzuca:
 //   • BUDZET CZASU tego czuwacza — bramka stoi PRZED pobraniem dokumentu ORAZ przed listami
 //     kolejnego miesiaca, wiec ogranicza CALA petle miesiecy, nie tylko pobierania;
-//   • JEDNA LISTA MIESIACA (`NAJDLUZSZA_LISTA_MS`, infakt/client.js) — ta, ktora zdazyla
+//   • JEDNA LISTA MIESIACA (`limity.najdluzszaListaMs` programu) — ta, ktora zdazyla
 //     wystartowac tuz przed granica budzetu. Faktury i korekty ida rownolegle (`Promise.all`),
 //     wiec liczy sie DLUZSZA z nich, a nie suma;
-//   • JEDNO POBRANIE DOKUMENTU (`LIMIT_ZADANIA_MS`) — z tego samego powodu: budzet sprawdza
+//   • JEDNO POBRANIE DOKUMENTU (`limity.zadanieMs`) — z tego samego powodu: budzet sprawdza
 //     sie PRZED pobraniem, nie w jego trakcie.
 //
 // ⚠️ SUMA JEST SUFITEM HOJNYM, I TO JEST CELOWE: ostatnie dwa skladniki wykluczaja sie
@@ -56,9 +53,6 @@ export const BUDZET_ARCHIWUM_SPRZEDAZY_MS = 10 * 60 * 1000;
 // wszystkich miesiecy od podlogi (a tych przybywa z kazdym miesiacem kalendarza) i „najgorszy
 // przypadek" rosl bez zadnej granicy — dokladnie ten rodzaj arytmetyki, ktora wyglada
 // na straznika i nie strzeze niczego.
-export const NAJDLUZSZY_PRZEBIEG_ARCHIWUM_SPRZEDAZY_MS = BUDZET_ARCHIWUM_SPRZEDAZY_MS
-  + NAJDLUZSZA_LISTA_MS + LIMIT_ZADANIA_MS;
-
 // PRZ-118.05: te same trzy składniki z limitów WYBRANEGO programu (`opis.limity`): jedna lista miesiąca
 // = `najdluzszaListaMs`, jedno pobranie dokumentu = `zadanieMs`. Strażnik startu w moduly/faktury/modul.ts.
 export function najdluzszyPrzebiegArchiwumSprzedazyMs(limity) {
@@ -120,9 +114,9 @@ export function createCzuwaczArchiwumSprzedazy({
         // Bramka nizej (w petli po dokumentach) NIE WYSTARCZA: przy miesiacach bez ani jednego
         // dokumentu petla wewnetrzna sie nie zakreci, wiec budzet nie bylby sprawdzony ANI RAZU,
         // a pierwszy przebieg od podlogi ciagnie listy WSZYSTKICH miesiecy — kazda do jedenastu
-        // sekwencyjnych rund po 60 s (infakt/client.js, `NAJDLUZSZA_LISTA_MS`), i tych miesiecy
-        // przybywa z kazdym miesiacem kalendarza. Bez tej bramki `NAJDLUZSZY_PRZEBIEG_ARCHIWUM_
-        // SPRZEDAZY_MS` bylby liczba bez pokrycia, a straznik w bootstrap.js — straznikiem
+        // sekwencyjnych rund (limit `najdluzszaListaMs` programu), i tych miesiecy
+        // przybywa z kazdym miesiacem kalendarza. Bez tej bramki `najdluzszyPrzebiegArchiwumSprzedazyMs`
+        // bylby liczba bez pokrycia, a straznik w bootstrap.js — straznikiem
         // niczego. Zaleglosc nie przepada: podloga zostaje niezrobiona, reszta jedzie nastepnej nocy.
         if (teraz().getTime() >= koniecBudzetu) {
           log('Archiwum sprzedazy: budzet czasu wyczerpany przed miesiacem ' + miesiac

@@ -2,6 +2,7 @@ import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
 import { idDokumentu } from '../../../domena/dokument-programu.js';
 
 import { odblokujFakture, fakturaSkasowanaWInfakcie } from '../db/faktury.js';
+import { czyFakturaDlaKazdego } from '../db/faktury-dla-kazdego.js';
 
 import { zapiszLubOdpusc } from '../../wysylka/services/status-kuriera.js';
 
@@ -44,10 +45,12 @@ import { przypiszZamowienieDoOkresu } from '../../../oms/db/okresy.js';
 import { umowaZbiorcza } from '../../../domena/klient-zbiorczy.js';
 
 import { pobierzOkres } from '../../../oms/db/okresy.js';
+import { opcjeZwProgramu } from '../../../domena/vat.js';
 
 import { ktoKlikal } from '../../zamowienia/lista.js';
+import { ekranOdmowyKarty } from '../../zamowienia/odmowa-karty.js';
 
-export function registerDokumentyRoutes(app, { db, config = {}, faktura, fakturaHurtem, proforma, infakt, fakturaAllegro, ksefDoczytanie, wczytajListe, miniaturyEkranu, wyborProgramu = null }) {
+export function registerDokumentyRoutes(app, { db, config = {}, faktura, fakturaHurtem, proforma, infakt: programFaktur, fakturaAllegro, ksefDoczytanie, wczytajListe, miniaturyEkranu, wyborProgramu = null, kartaZamowienia = /** @type {any} */ (null) }) {
 
 const adresPowrotuNaKarte = (req, id, opcje = {}) => adresKartyZamowienia(id, {
     powrot: powrotKarty(req),
@@ -56,9 +59,13 @@ const adresPowrotuNaKarte = (req, id, opcje = {}) => adresKartyZamowienia(id, {
 
 const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, config.definicje);
 
+// PRZ-126.F02: podgląd i wykonanie hurtu pytają regułę z TYMI SAMYMI opcjami; „faktura także bez
+// prośby klienta” czytana z bazy przy każdym żądaniu (wyłączenie działa od następnego kliknięcia).
+const opcjeOdmowy = (reply) => ({ okresyWlaczone: reply.locals.modulWlaczony('okresy'), dlaKazdego: czyFakturaDlaKazdego(db) });
+
 app.post('/zamowienia/faktury-hurtem/podglad', async (req, reply) => {
     const wybrane = wybraneZListy(wczytajListe([].concat(req.body?.id ?? [])), req.body?.id);
-    const { doWystawienia, pominiete } = podzielDoFaktury(wybrane, Date.now(), { okresyWlaczone: reply.locals.modulWlaczony('okresy') });
+    const { doWystawienia, pominiete } = podzielDoFaktury(wybrane, Date.now(), opcjeOdmowy(reply));
     const zaDuzo = powodZaDuzejPartii(doWystawienia.length);
     return reply.view('faktury-hurtem-podglad.ejs', {
       doWystawienia: doWystawienia.map((z) => ({
@@ -72,8 +79,8 @@ app.post('/zamowienia/faktury-hurtem/podglad', async (req, reply) => {
       wystawianieDziala: Boolean(fakturaHurtem),
       // PRZ-121.03a: zdanie „faktury wyłączone” (tylko przy jawnym „brak”); `null` = widok zostaje przy starym akapicie.
       zdanieBraku: zdanieBrakuProgramu(wyborProgramu),
-      // PRZ-118.09: nazwa i ekran programu fakturowego (usługa `infakt` modułu faktur — klient albo program).
-      nazwaProgramu: odmianaNazwyProgramu(infakt), ekranProgramu: ekranProgramu(infakt),
+      // PRZ-118.09: nazwa i ekran programu fakturowego (usługa programu w module faktur — klient albo program).
+      nazwaProgramu: odmianaNazwyProgramu(programFaktur), ekranProgramu: ekranProgramu(programFaktur),
       // Adres powrotu jedzie DALEJ ukrytym polem formularza zatwierdzenia — tak samo, jak
       // przy nadaniu zbiorczym (4.13d). Bez tego ekran podgladu zjadalby zawezenie po drodze.
       powrot: bezpiecznyPowrotNaListe(req.body?.powrot, config.definicje),
@@ -99,7 +106,7 @@ app.post('/zamowienia/faktury-hurtem', async (req, reply) => {
     // Podzial liczony PONOWNIE, a nie przepisany z ekranu podgladu: miedzy podgladem
     // a zatwierdzeniem klient mogl anulowac zamowienie, a operator z drugiej zakladki
     // wystawic fakture. Formularz przyniosl identyfikatory, nie decyzje.
-    const { doWystawienia, pominiete } = podzielDoFaktury(wybrane, Date.now(), { okresyWlaczone: reply.locals.modulWlaczony('okresy') });
+    const { doWystawienia, pominiete } = podzielDoFaktury(wybrane, Date.now(), opcjeOdmowy(reply));
     const zaDuzo = powodZaDuzejPartii(doWystawienia.length);
     // ⚠️ ODMOWA JEST TWARDA, a nie samym ukryciem przycisku na ekranie podgladu: miedzy
     // podgladem a zatwierdzeniem operator mogl otworzyc druga zakladke.
@@ -201,7 +208,8 @@ app.post('/zamowienia/:id/proforma', async (req, reply) => {
     if (!pobierzZamowienie(db, id)) return reply.code(404).send('Nie ma takiego zamówienia');
     if (!proforma) return reply.code(503).send('Proformy nie są skonfigurowane.');
     try {
-      proforma.wystaw(id);
+      // PRZ-122.B07c: stawka „zw” tylko przy programie wbudowanym (opis programu; surowy klient opisu nie ma).
+      proforma.wystaw(id, opcjeZwProgramu(programFaktur?.opis));
     } catch (e) {
       // Slad w logu z osobna akcja („proforma.http"), tak jak przy fakturze VAT
       // („faktura.http") — services/proforma.js loguje juz WLASNA akcje („proforma") przy
@@ -230,6 +238,21 @@ app.get('/proformy/:id/pdf', async (req, reply) => {
       .send(wynik.bajty);
   });
 
+// PRZ-126.C02: odmowa wystawienia wraca jako KARTA zamówienia z błędem przy polu (`pole` z domeny,
+// np. 'nip'), a wpisane w formularzu termin i daty zostają. Bez usługi karty (moduł zamówień nie
+// złożony) — strona odmowy w układzie panelu z powrotem na kartę, nigdy goły tekst.
+const odmowaWystawienia = (req, reply, id, kod, tekst, pole = null) => {
+    const karta = kartaZamowienia?.();
+    if (!karta) return ekranOdmowyKarty(reply, tekst, adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }), kod);
+    reply.code(kod);
+    return karta(req, reply, pobierzZamowienie(db, id), {
+      bladFaktury: { tekst, pole },
+      formularzWystawienia: {
+        termin: req.body?.termin, dataWystawienia: req.body?.data_wystawienia, dataSprzedazy: req.body?.data_sprzedazy,
+      },
+    });
+  };
+
 app.post('/zamowienia/:id/faktura', async (req, reply) => {
     const id = Number(req.params.id);
     if (!pobierzZamowienie(db, id)) return reply.code(404).send('Nie ma takiego zamówienia');
@@ -255,9 +278,9 @@ app.post('/zamowienia/:id/faktura', async (req, reply) => {
       // Nieudana proba wystawienia MUSI zostawic slad: to najgrozniejsza akcja w panelu,
       // a bez wpisu w logu awaria sieci po stronie inFaktu wygladalaby jak "nic sie nie stalo".
       dopiszLog(db, id, { akcja: 'faktura.http', wynik: `BŁĄD: ${e.message}` });
-      return reply.code(400).send(`Nie udało się wystawić faktury: ${komunikatDlaOperatora(e)}`);
+      return odmowaWystawienia(req, reply, id, 400, `Nie udało się wystawić faktury: ${komunikatDlaOperatora(e)}`, e?.pole ?? null);
     }
-    return reply.redirect(adresPowrotuNaKarte(req, id));
+    return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }));
   });
 
 app.post('/zamowienia/:id/faktura/odblokuj', async (req, reply) => {
@@ -281,6 +304,11 @@ app.post('/zamowienia/:id/faktura/odblokuj', async (req, reply) => {
 app.post('/zamowienia/:id/faktura/skasowana', async (req, reply) => {
     const id = Number(req.params.id);
     if (!pobierzZamowienie(db, id)) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (programFaktur?.opis?.wbudowany === true) {
+      const powod = `Faktury ${odmianaNazwyProgramu(programFaktur).dopelniacz} nie da się skasować — są w bazie panelu. Błędny dokument popraw korektą.`;
+      dopiszLog(db, id, { akcja: 'faktura.skasowana', wynik: `ODMOWA: ${powod}` });
+      return reply.code(400).send(powod);
+    }
     let f;
     try {
       f = fakturaSkasowanaWInfakcie(db, id);

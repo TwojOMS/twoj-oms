@@ -24,13 +24,25 @@ function wylacz(p, lista) {
   p.db.prepare(`INSERT OR REPLACE INTO ustawienia (klucz,wartosc,zmienione_at)
     VALUES ('moduly.wylaczone',?,'2026-10-20')`).run(JSON.stringify(lista));
 }
+it('okres bez faktury: powód pod przyciskiem zawiera odnośnik do okresu tylko przy włączonym module', async () => {
+  const p = panel();
+  p.db.prepare("UPDATE okresy_rozliczeniowe SET infakt_uuid=NULL, numer=NULL, stan='otwarty' WHERE id=1").run();
+  const r = await get(p.app, '/zamowienia/1', BASIC);
+  expect(r.statusCode).toBe(200);
+  expect(r.body).toContain('<p class="wyjasnienie" id="powod-wystawienia-faktury">Zamówienie rozlicza się fakturą zbiorczą — otwórz <a href="/okresy/1">okres październik 2026</a>, aby wystawić fakturę za cały okres.</p>');
+  wylacz(p, ['okresy']);
+  const bezModulu = await get(p.app, '/zamowienia/1', BASIC);
+  expect(bezModulu.statusCode).toBe(200);
+  expect(bezModulu.body).not.toContain('href="/okresy/');
+  expect(bezModulu.body).toContain('administrator może włączyć Rozliczenia w Ustawienia → Moduły');
+});
 it('karta zachowuje treść okresu i klienta, a po wyłączeniu usuwa tylko odnośniki', async () => {
   const p = panel();
   const wlaczona = await get(p.app, '/zamowienia/1', BASIC);
   expect(wlaczona.statusCode).toBe(200);
   for (const fragment of ['<a href="/okresy/1">faktura za październik 2026</a>',
     '<a href="/okresy/1">okres październik 2026</a>', '<a href="/okresy/1">okresie październik 2026</a>',
-    '<a href="/okresy/1">przejdź do okresu październik 2026</a>', '<a href="/klienci/1">Pracownia Przykładowa</a>']) {
+    '<a href="/faktury">Faktury</a>', '<a href="/klienci/1">Pracownia Przykładowa</a>']) {
     expect(wlaczona.body).toContain(fragment);
   }
   // Taki rozliczony okres faktycznie pozwala wyłączyć oba moduły przez ekran Ustawień.
@@ -39,7 +51,7 @@ it('karta zachowuje treść okresu i klienta, a po wyłączeniu usuwa tylko odno
   expect(r.statusCode).toBe(200);
   expect(r.body).toContain('faktura za październik 2026');
   expect(r.body).toContain('w bazie jako Pracownia Przykładowa');
-  expect(r.body).toContain('przejdź do okresu październik 2026 (moduł wyłączony)');
+  expect(r.body).toContain('Faktura za okres jest już wystawiona');
   expect(r.body).not.toContain('href="/okresy/');
   expect(r.body).not.toContain('href="/klienci');
 });

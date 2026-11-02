@@ -1,10 +1,55 @@
 import { naNumerDnia, zNumeruDnia, sklejDate, numerDniaZNapisu } from './kalendarz.js';
+import { groszeZInfaktu } from './paczka-dla-biura.js';
+
+/** Suma bieżącej listy: kompletne kwoty, korekty ze znakiem, osobno na walutę. */
+export function sumaListy(dokumenty) {
+  const suma = { ile: dokumenty.length, niepelne: false };
+  for (const d of dokumenty) {
+    // Para zamiany nie może rozjechać sum przy filtrowaniu po rodzaju dokumentu.
+    if (d?.zastapiona_przez || d?.zastepujaca) continue;
+    const nettoGr = groszeZInfaktu(d?.net_price);
+    const vatGr = groszeZInfaktu(d?.tax_price);
+    const bruttoGr = groszeZInfaktu(d?.gross_price);
+    if (nettoGr === null || vatGr === null || bruttoGr === null) {
+      suma.niepelne = true;
+      continue;
+    }
+    const waluta = String(d?.currency ?? '').trim().toUpperCase() || 'PLN';
+    // Własna właściwość także dla nietypowej nazwy waluty z danych dostawcy.
+    if (!Object.hasOwn(suma, waluta)) Object.defineProperty(suma, waluta, {
+      value: { nettoGr: 0, bruttoGr: 0 }, enumerable: true,
+    });
+    suma[waluta].nettoGr += nettoGr;
+    suma[waluta].bruttoGr += bruttoGr;
+  }
+  return suma;
+}
+
+export function filtrujDokumenty(dokumenty, { typ = '', platnosc = '' } = {}) {
+  return dokumenty.filter((d) => {
+    if (['vat', 'korekta'].includes(typ) && d?.rodzaj !== typ) return false;
+    if (!['zaplacona', 'niezaplacona'].includes(platnosc)) return true;
+    if (d?.rodzaj === 'korekta') return false;
+    const stan = stanZaplaty(d);
+    return platnosc === 'zaplacona' ? stan === 'zaplacona' : ['do_zaplaty', 'nieznany'].includes(stan);
+  });
+}
 
 // Czyste reguły listy faktur — bez sieci, bez bazy, bez zegara (dzień przychodzi argumentem).
 // Tych samych odpowiedzi potrzebują trzy warstwy: usługa widoku, sam widok i testy.
 
+// PRZ-126.C07a: wspólny wybór do pobierania i podglądu KSeF. Wysyłkę filtruje coWolnoWyslac.
+export function doZaznaczenia(d) {
+  return Boolean(d?.uuid);
+}
+
 /** Do ilu dni przed terminem świecimy ostrzegawczo. Tydzień = jeden cykl przelewów. */
 export const PROG_WKROTCE_DNI = 7;
+
+// PRZ-126.C06: dokument czekający na numer KSeF też — w zestawieniu wchodzi podglądem z uwagą w wierszu.
+export function doZestawienia(d) {
+  return Boolean(d?.uuid && (d.rodzaj === 'vat' || d.rodzaj === 'korekta'));
+}
 
 export function dniDoTerminu(termin, dzis) {
   const a = numerDniaZNapisu(String(termin ?? '').trim());
@@ -74,6 +119,17 @@ export const stanKsef = (dok, zlecona = false) => {
   return zlecona ? 'wyslana_czeka' : 'brak';
 };
 
+/** Mały znacznik przy numerze; numer KSeF ma pierwszeństwo przed stanami przejściowymi. */
+export function plakietkaKsef(d) {
+  if (d?.ksef_number) return null;
+  const stan = d?.stanDokumentu?.ksef ?? d?.stanKsef ?? 'brak';
+  if (stan === 'jest') return null;
+  if (stan === 'odrzucona') return 'odrzucona w KSeF';
+  if (stan === 'blad') return 'błąd wysyłki';
+  if (stan === 'czeka' || stan === 'wyslana_czeka') return 'czeka na numer';
+  return 'czeka na wysyłkę';
+}
+
 /** Status inFaktu znaczący „zapłacone". Jedyny, jaki wolno tu rozpoznać — patrz niżej. */
 const STATUS_ZAPLACONA = 'paid';
 
@@ -99,8 +155,12 @@ const PLATNOSC_POBRANIE = 'delivery';
  * a `do_zaplaty` byłoby przy nim oskarżeniem klienta o dług, którego nikt nie zmierzył.
  * Pas długów traktuje `nieznany` jak `do_zaplaty` (patrz `czekaNaPrzelew`) — bo tam milczenie
  * kosztuje więcej niż fałszywy alarm — ale KOLUMNA ma prawo powiedzieć „nie wiem".
+ *
+ * PRZ-126.C09d: CZWARTY stan `zastapiona` — faktura TwojeFaktury zastąpiona przy złym NIP-ie (`zastapiona_przez`
+ * z wiersza listy). Saldo ma 0, ale nie została zapłacona: wpłaty przeszły na nową. Nie jest długiem.
  */
 export function stanZaplaty(dok) {
+  if (dok?.zastapiona_przez) return 'zastapiona';
   if (dok?.status === STATUS_ZAPLACONA) return 'zaplacona';
   // Zero ZNACZY „nic nie zostało" tylko wtedy, gdy inFakt naprawdę podał liczbę.
   // ⚠️ `Number(null)` TO `0`, a `Number('')` też — samo `Number.isFinite(Number(x))` uznałoby
@@ -172,7 +232,8 @@ export function stanZaplaty(dok) {
  * widoczne gdziekolwiek.
  */
 export function czekaNaPrzelew(dok, { pobranieBezGotowki = false } = {}) {
-  if (stanZaplaty(dok) === 'zaplacona') return false;
+  const stan = stanZaplaty(dok);
+  if (stan === 'zaplacona' || stan === 'zastapiona') return false;
   // Pieniądze odbiera kurier, więc nie ma na co czekać i nie ma kogo upominać — ale
   // WYŁĄCZNIE dopóki paczka jest w drodze albo naprawdę doszła.
   if (dok?.payment_method === PLATNOSC_POBRANIE && !pobranieBezGotowki) return false;

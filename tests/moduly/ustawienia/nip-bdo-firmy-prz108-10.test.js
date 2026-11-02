@@ -32,7 +32,7 @@ vi.mock('../../../src/moduly/faktury/pdf/oswiadczenie-wywozu-pdf.js', async (ory
   return { ...m, zbudujOswiadczenieWywozuPdf: vi.fn((...a) => m.zbudujOswiadczenieWywozuPdf(...a)) };
 });
 
-const EKRAN = '/ustawienia/firma';
+const EKRAN = '/ustawienia/firma/rejestrowe';
 const ZAPIS_NIP = '/ustawienia/firma/nip';
 const ZAPIS_BDO = '/ustawienia/firma/bdo';
 const KSEF = '/ustawienia/integracje/ksef';

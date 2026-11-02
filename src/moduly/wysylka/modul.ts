@@ -158,7 +158,7 @@ return {
       trasy: (app) => {
         registerPrzesylkiRoutes(app, { db });
         registerPodjazdyRoutes(app, { db, podjazdy: ctx.usluga<any>('wysylka', 'podjazdy'), adresDomyslny: k.adresPodjazdu });
-        const opcje = { db, nadanie: ctx.usluga<ReturnType<typeof createNadanie> | null>('wysylka', 'nadanie'), kurierzy: ctx.usluga<MapaKurierow>('wysylka', 'kurierzy'), config,
+        const opcje = { db, nadanie: ctx.usluga<ReturnType<typeof createNadanie> | null>('wysylka', 'nadanie'), kurierzy: ctx.usluga<MapaKurierow>('wysylka', 'kurierzy'), config, programFaktur: infakt,
           syncSklep: { odeslijStatus: (...args: unknown[]) => ctx.usluga<any>('zamowienia', 'syncSklep')?.odeslijStatus(...args) },
           wczytajListe: (...a: unknown[]) => ctx.usluga<(...a: unknown[]) => unknown[]>('zamowienia', 'wczytajListe')(...a),
           miniaturyEkranu: (...args: unknown[]) => ctx.usluga<(...args: unknown[]) => unknown>('zamowienia', 'miniaturyEkranu')(...args),

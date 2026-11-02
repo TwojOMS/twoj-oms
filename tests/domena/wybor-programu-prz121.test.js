@@ -16,11 +16,26 @@ const ZDANIE_USTAWIEN = 'Faktury w OMS-ie są wyłączone — w Ustawienia → I
 const ZDANIE_PLIKU = 'Faktury w OMS-ie są wyłączone — w pliku konfiguracji jest OMS_PROGRAM_FAKTUROWY=brak.';
 
 describe('PRZ-121.01 lista modułów faktur', () => {
-  it('brak i inFakt dostępne; Fakturownia i TwojeFaktury „wkrótce”', () => {
+  it('brak i inFakt dostępne; Fakturownia „wkrótce”, TwojeFaktury tylko za zgodą instalacji', () => {
     expect(MODULY_FAKTUR.map((m) => [m.id, m.dostepny])).toEqual([
-      ['brak', true], ['infakt', true], ['fakturownia', false], ['twojefaktury', false]]);
+      ['brak', true], ['infakt', true], ['fakturownia', false], ['twojefaktury', 'zgoda']]);
     expect(MODULY_FAKTUR.find((m) => m.id === 'twojefaktury').etykieta).toBe('TwojeFaktury (program wbudowany)');
   });
+});
+
+it('TwojeFaktury dostępne tylko za zgodą instalacji', () => {
+  expect(wyborZPliku('twojefaktury', { zgoda: true })).toBe('twojefaktury');
+  expect(() => wyborZPliku('twojefaktury', { zgoda: false })).toThrow('wkrótce');
+  expect(wybierzProgram({ zUstawien: 'twojefaktury', zgoda: true }).program).toBe('twojefaktury');
+  expect(wybierzProgram({ zUstawien: 'twojefaktury', zgoda: false })).toMatchObject({ program: 'brak', uwaga: expect.any(String) });
+  expect(sprawdzFormularzWyboru({ program: 'twojefaktury' }, { zgoda: true }).bledy).toEqual([]);
+  const db = openOmsDb();
+  try {
+    expect(() => zapiszWyborProgramu(db, 'twojefaktury')).toThrow('wkrótce');
+    expect(wczytajWyborProgramu(db)).toBeNull();
+    zapiszWyborProgramu(db, 'twojefaktury', { zgoda: true });
+    expect(wczytajWyborProgramu(db).program).toBe('twojefaktury');
+  } finally { db.close(); }
 });
 
 describe('PRZ-121.01 OMS_PROGRAM_FAKTUROWY z pliku', () => {

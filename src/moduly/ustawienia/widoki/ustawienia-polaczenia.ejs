@@ -1,0 +1,40 @@
+<h1><%= title %></h1>
+<% const kategorie = { sklepy: 'Sklepy i marketplace’y', wysylka: 'Wysyłka', faktury: 'Fakturowanie i dane firm', poczta: 'Poczta', reklamy: 'Reklamy i analityka' }; %>
+<% const stany = { dziala: 'Działa', uwaga: 'Wymaga uwagi', niesprawdzone: 'Niesprawdzone', wylaczone: 'Wyłączone' }; %>
+<% const zrodla = { serwer: 'Zarządzane w konfiguracji serwera', panel: 'Ustawione w panelu', konto_allegro: 'Powiązane konto Allegro' }; %>
+<% if (blad) { %><div class="pas-uprzedzenie"><%= blad %></div><% } %>
+<% if (zapisano) { %><div class="pas-potwierdzenie"><%= zapisano %></div><% } %>
+<% if (katalog) { %>
+<p>Wybierz usługę. Dane połączenia ustawiasz tutaj, a sposób pracy firmy w odpowiednim dziale Ustawień.</p>
+<form method="get" action="/ustawienia/integracje/katalog" class="ust-filtry">
+  <label>Szukaj integracji<input type="search" name="szukaj" value="<%= filtry.szukaj %>" placeholder="Nazwa lub opis"></label>
+  <label>Kategoria<select name="kategoria"><option value="">Wszystkie kategorie</option><% Object.entries(kategorie).forEach(([id,nazwa]) => { %><option value="<%= id %>"<%= filtry.kategoria === id ? ' selected' : '' %>><%= nazwa %></option><% }); %></select></label>
+  <input type="hidden" name="planowane" value="nie"><label class="ust-checkbox"><input type="checkbox" name="planowane" value="tak"<%= filtry.planowane ? ' checked' : '' %>> Pokaż planowane</label>
+  <button class="btn" type="submit">Filtruj</button>
+</form>
+<% Object.entries(kategorie).forEach(([id,nazwa]) => { const wpisy = uslugi.filter(u => u.kategoria === id); if (!wpisy.length) return; %>
+<section class="ust-kategoria"><h2><%= nazwa %></h2><div class="ust-katalog">
+<% wpisy.forEach(u => { const ile=polaczenia.filter(p=>p.usluga===u.id).length; %>
+<article class="ust-karta-integracji"><div class="ust-logo-marki"><img src="/public<%= u.logo %>" alt="<%= u.nazwa %>" loading="lazy"></div>
+<h3><%= u.nazwa %></h3><p><%= u.opis %></p>
+<span class="ust-znacznik"><%= u.dostepnosc === 'planowana' ? 'Planowana' : u.dostepnosc === 'przez_konfiguracje' ? 'Przez konfigurację' : 'Dostępna' %></span>
+<% if (ile) { %><p class="ust-pomoc">Połączenia: <%= ile %></p><% } %>
+<% if (u.href) { %><a class="ust-przycisk" href="<%= u.href %>"><%= ile ? 'Zarządzaj' : u.dostepnosc === 'przez_konfiguracje' ? 'Jak podłączyć' : 'Konfiguruj' %></a><% } else { %><span class="ust-pomoc">W przygotowaniu — bez daty udostępnienia</span><% } %>
+</article><% }); %></div></section><% }); %>
+<% if (!uslugi.length) { %><p class="ust-sekcja">Brak usług pasujących do filtrów.</p><% } %>
+<% } else { %>
+<p>Stan każdego konta jest oceniany osobno. Zapisany klucz nie jest potwierdzeniem działającego połączenia.</p>
+<p><a class="btn btn--glowny" href="/ustawienia/integracje/katalog">Dodaj <%= polaczenia.length ? 'integrację' : 'pierwszą integrację' %></a></p>
+<% if (!polaczenia.length) { %><section class="ust-sekcja"><h2>Nie masz jeszcze połączeń</h2><p>Wybierz usługę z katalogu i skonfiguruj połączenie.</p></section><% } %>
+<div class="ust-lista-polaczen"><% polaczenia.forEach(p => { const u=wszystkieUslugi.find(u=>u.id===p.usluga); const kanal = kanaly.find(k=>k.stan.kanal===p.kanal); %>
+<article class="ust-polaczenie"><div class="ust-logo-marki"><% if (u) { %><img src="/public<%= u.logo %>" alt="<%= u.nazwa %>"><% } %></div>
+<div><h2><%= u?.nazwa ?? p.usluga %> <span class="ust-pomoc"><%= p.nazwa === p.usluga ? '' : p.nazwa %></span></h2><p><%= p.opis %></p>
+<p><span class="ust-znacznik ust-stan-<%= p.stan %>"><%= stany[p.stan] %></span> <% if (p.atrapa) { %><span class="ust-znacznik">Atrapa piaskownicy</span><% } %></p>
+<p class="ust-pomoc"><%= zrodla[p.zrodlo] %>. Ostatni udany odczyt: <%= p.ostatniSukcesAt ? fmtDataCzas(p.ostatniSukcesAt) : 'Nie ustalono' %>.</p>
+<% if (u?.href && !['allegro','wza','woocommerce'].includes(p.usluga)) { %><a href="<%= u.href %>">Konfiguracja i test połączenia</a><% } %>
+<% if (p.usluga==='allegro' && kanal?.wiazanie) { %><div class="pas-uprzedzenie"><p>Wiązanie w toku. Zaloguj się na właściwe konto Allegro.</p><a href="<%= kanal.wiazanie.adres %>" target="_blank" rel="noopener noreferrer">Otwórz stronę Allegro</a><p>Kod: <strong><%= kanal.wiazanie.userCode %></strong></p></div>
+<% } else if (p.usluga==='allegro' && kanal?.stan.wolnoWiazac) { %><form method="post" action="/ustawienia/kanaly/<%= encodeURIComponent(p.kanal) %>/wiazanie"><button class="ust-przycisk" type="submit">Połącz z Allegro</button></form><% } %>
+</div></article><% }); %></div>
+<section class="ust-sekcja"><h2>Konfiguracja kanałów sprzedaży</h2><p>Kilka kont Allegro i sklepów WooCommerce jest pokazanych jako osobne połączenia. Dodawanie kanałów odbywa się w konfiguracji serwera (<code>OMS_KANALY</code>); ten ekran nie tworzy nowego sklepu.</p><p>Wysyłam z Allegro korzysta z powiązanego konta. Nie daje niezależnego dostępu do wszystkich przewoźników.</p></section>
+<p>Program do wystawiania faktur wybierasz w <a href="/ustawienia/integracje/program-fakturowy">Faktury i podatki → Program do faktur</a>.</p>
+<% } %>

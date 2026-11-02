@@ -890,10 +890,9 @@ describe('POST /faktury/ksef/wyslij', () => {
       expect(r.body).not.toMatch(/rozjeżdżaj/i);
       expect(r.body).not.toMatch(/przyjął/i);
       expect(r.body).not.toMatch(/nie dostał liczby/i);
-      // ...ale liczba WYSLANYCH przez panel dalej stoi, razem z zastrzezeniem, ze to jest
-      // wylacznie wlasny rachunek panelu.
+      // Liczba wysłanych przez panel dalej stoi, bez usuniętego objaśnienia.
       expect(r.body).toMatch(/Wysłano — czeka na numer KSeF — 2/);
-      expect(r.body).toMatch(/panel wysłał|własny rachunek panelu/i);
+      expect(r.body).not.toMatch(/własny rachunek panelu/i);
     }
   });
 

@@ -1,0 +1,15 @@
+<h1><%= title %></h1>
+<% if (bledy.length) { %>
+  <div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong></p><ul><% bledy.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
+<% } %>
+<section class="ust-sekcja">
+  <h2>Przywrócenie danych demo</h2>
+  <p>Dane demo, w tym zamówienia, dokumenty i dodatkowe konta, zostaną zastąpione świeżymi danymi.</p>
+  <p>Konto administratora zostanie założone od nowa z pliku konfiguracji, z hasłem z pliku — po resecie zaloguj się ponownie. Zachowane zostaną:</p>
+  <ul><li>Moduł faktur: <%= program %></li><li>NIP firmy: <%= nip || 'brak' %></li><li>Numeracja faktur: <%= numer ? `następna ${numer}` : 'brak' %></li></ul>
+  <form method="post" action="<%= adres %>/reset">
+    <p><label><input type="checkbox" name="potwierdzam" value="tak"> Rozumiem, że dane demo zostaną zastąpione</label></p>
+    <div class="ust-akcje"><button class="btn btn--glowny" type="submit">Przywróć dane demo</button></div>
+    <p class="ust-pomoc">Panel będzie niedostępny przez kilka sekund.</p>
+  </form>
+</section>

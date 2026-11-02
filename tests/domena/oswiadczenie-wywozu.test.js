@@ -47,7 +47,7 @@ describe('modelOswiadczenia', () => {
   });
 
   it('odmawia dla nabywcy krajowego — to dokument wyłącznie WDT', () => {
-    expect(() => modelOswiadczenia(zamowienieWdt({ nip: '1000001106' }), { sprzedawca: SPRZEDAWCA }))
+    expect(() => modelOswiadczenia(zamowienieWdt({ nip: '1200001097' }), { sprzedawca: SPRZEDAWCA }))
       .toThrow(/WDT|VAT-UE/);
   });
 

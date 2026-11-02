@@ -15,7 +15,7 @@ export function registerDiagnostykaRoutes(app, { db, config = {}, lacznosc = nul
     }
     return reply.view('lacznosc.ejs', {
       nawigacja: nawigacjaUstawien(req, reply),
-      zapisano: null, title: 'Diagnostyka', wyniki, blad,
+      zapisano: null, title: 'Stan systemu', wyniki, blad,
       podsumowanie: podsumowanie(wyniki), sprawdzoneAt: new Date().toISOString(),
       bezpieczniki: kanalyZOtwartymBezpiecznikiem(db),
     });

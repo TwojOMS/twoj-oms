@@ -315,6 +315,7 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
   }
 
   app.get('/ustawienia/konta', async (req, reply) => tylkoAdmin(req, reply) ?? widok(req, reply));
+  app.get('/ustawienia/zespol/logowania', async (req, reply) => tylkoAdmin(req, reply) ?? widok(req, reply));
 
   app.post('/ustawienia/konta/wyloguj-wszystkie', async (req, reply) => {
     const odmowa = tylkoAdmin(req, reply);

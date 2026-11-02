@@ -16,7 +16,7 @@ import { kwotaOczekiwanaGrosze, zl } from './suma-pozycji.js';
 // stan faktury osobno (domain/faktura-stan.js) — dla WYGODY oka, nie jako zabezpieczenie.
 
 /** Kolejnosc odmow jest czescia reguly — patrz komentarze przy poszczegolnych warunkach. */
-export function powodOdmowyFaktury(z, { okresyWlaczone = true } = {}) {
+export function powodOdmowyFaktury(z, { okresyWlaczone = true, dlaKazdego = false } = {}) {
   if (!z) return 'Nie ma takiego zamówienia.';
 
   // PRZ-101.04: JEDNA FAKTURA NA ZAMÓWIENIE SCALONE (decyzja właściciela 18.10). Dołączone jest częścią
@@ -68,7 +68,10 @@ export function powodOdmowyFaktury(z, { okresyWlaczone = true } = {}) {
   // „chce fakture" i panel wnioskuje je z NIP-u (mapowanie.js), wiec czlowiek musi miec
   // prawo to rozstrzygnac — klient regularnie dzwoni po fakture juz po zlozeniu
   // zamowienia. Przelacznik dziala w OBIE strony i wygrywa z domyslem ze sklepu.
-  if (!chceFakture(z)) return 'Klient nie prosił o fakturę.';
+  // PRZ-126.F02: `dlaKazdego` = opcja firmy „faktura także bez prośby klienta” (Ustawienia;
+  // db/faktury-dla-kazdego.js). Domyślnie `false`: wołający, który jej nie poda, odmawia jak dotąd.
+  // Opcja zdejmuje WYŁĄCZNIE tę odmowę — scalone, okres i anulowane stoją wyżej i nadal odmawiają.
+  if (!dlaKazdego && !chceFakture(z)) return 'Klient nie prosił o fakturę.';
   return null;
 }
 

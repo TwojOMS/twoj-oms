@@ -19,8 +19,13 @@ import { idDokumentu, idDokumentuSql } from './dokument-programu.js';
 // że dają IDENTYCZNĄ odpowiedź na całym zestawie granicznych przypadków.
 
 /**
- * Część WSPÓLNA obu gałęzi: dokument istnieje, numeru KSeF nie ma, a zamówienie żyje
- * i o fakturę prosiło. Aliasy: `f` = faktury, `z` = zamowienia.
+ * Część WSPÓLNA obu gałęzi: dokument istnieje, numeru KSeF nie ma, a zamówienie żyje.
+ * Aliasy: `f` = faktury, `z` = zamowienia.
+ *
+ * ⚠️ PRZ-126.F03: ŻĄDANIA FAKTURY (`z.chce_fakture = 1`) TU NIE MA — siedzi wyłącznie w gałęzi
+ * Allegro (`warunekCzekaNaKsefSql`). Panel może wystawić fakturę do zamówienia, przy którym klient
+ * o nią nie prosił („faktura do każdego zamówienia"), a dokument wysłany przez panel do KSeF musi
+ * dostać numer bez względu na żądanie — inaczej zakładka „FAKTURY" pokazuje „brak KSeF" na zawsze.
  *
  * ⚠️ `IS NOT` zamiast `<>`: `<>` na NULL-u daje NULL (czyli fałsz), więc odrzucałoby każdą
  * fakturę z pustym `ksef_status` — a to jest właśnie stan normalnej, wystawionej faktury.
@@ -32,7 +37,6 @@ const WSPOLNE_SQL = `
   AND f.allegro_wyslana_at IS NULL     -- wysłana bez numeru KSeF: kupujący fakturę MA
   AND f.ksef_status IS NOT 'w_toku'
   AND f.ksef_status IS NOT 'do_wyjasnienia'
-  AND z.chce_fakture = 1
   AND COALESCE(z.anulowane, 0) = 0
   AND COALESCE(z.anulowane_recznie, 0) = 0
 `;
@@ -80,7 +84,7 @@ function galazAllegroSql(klucze) {
  *
  * ⚠️⚠️ ZNANA LUKA: FAKTURA OKRESU (dokument zbiorczy klienta dropshippingowego) TĄ GAŁĘZIĄ NIE
  * WCHODZI, choć panel naprawdę ją do KSeF wysyła. Warunek żyje w zapytaniu
- * `FROM faktury f JOIN zamowienia z` z `z.chce_fakture = 1`, a dokument okresu nie ma ANI
+ * `FROM faktury f JOIN zamowienia z`, a dokument okresu nie ma ANI
  * wiersza w `faktury`, ANI zamówienia: leży w `okresy_rozliczeniowe` (db/okresy.js), która nie
  * ma nawet kolumny `ksef_numer` — więc nie ma dokąd zapisać odpowiedzi. Skutek: numer KSeF dla
  * faktury okresu widać wyłącznie na zakładce „FAKTURY", prosto z inFaktu (services/faktury-widok.js),
@@ -90,7 +94,14 @@ function galazAllegroSql(klucze) {
 const GALAZ_ZLECONA_Z_PANELU_SQL = `EXISTS (SELECT 1 FROM wysylki_ksef w WHERE w.uuid = ${idDokumentuSql('f')})`;
 
 /**
- * Warunek do klauzuli WHERE — część wspólna ORAZ jedna z dwóch rozłącznych gałęzi.
+ * Warunek do klauzuli WHERE — część wspólna ORAZ jedna z dwóch gałęzi:
+ * `(kanał Allegro AND chce_fakture = 1) OR zlecona przez panel` (PRZ-126.F03).
+ *
+ * ⚠️ ŻĄDANIE FAKTURY TYLKO W GAŁĘZI ALLEGRO: tam numer służy do wysyłki faktury na Allegro, a ta
+ * idzie wyłącznie na żądanie kupującego (domain/allegro-faktura.js, `wolnoWyslacDoAllegro`).
+ * Gałąź panelu o żądanie nie pyta — dokument, który panel wysłał do KSeF, zawsze ma dostać numer.
+ * Allegro bez żądania, ale zlecone przez panel, wchodzi gałęzią panelu i dostaje numer; na Allegro
+ * i tak nie pojedzie, bo zatrzymuje je `wolnoWyslacDoAllegro`. Predykat `czekaNaKsef` — identycznie.
  *
  * ⚠️ FUNKCJA, NIE STAŁA (PRZ-101.08): klucze Allegro z konfiguracji znane są dopiero po budowie
  * aplikacji, a stała liczyłaby się przy imporcie modułu — z pustym zbiorem.
@@ -98,7 +109,7 @@ const GALAZ_ZLECONA_Z_PANELU_SQL = `EXISTS (SELECT 1 FROM wysylki_ksef w WHERE w
 export function warunekCzekaNaKsefSql(klucze = kanalyAllegro()) {
   return `
   ${WSPOLNE_SQL}
-  AND (${galazAllegroSql(klucze)} OR ${GALAZ_ZLECONA_Z_PANELU_SQL})
+  AND ((${galazAllegroSql(klucze)} AND z.chce_fakture = 1) OR ${GALAZ_ZLECONA_Z_PANELU_SQL})
 `;
 }
 
@@ -138,6 +149,9 @@ export function czyWierszWZakresieKsef(wiersz) {
  * odczycie zamówienia (db/zamowienia.js), tak samo jak `chce_fakture` przychodzi ze swojej.
  * Obiekt bez tego pola (fikstura, wywołanie z widoku) zachowuje się jak przed zmianą: znaczy
  * „panel tego dokumentu nie wysyłał".
+ *
+ * ⚠️ PRZ-126.F03: `chce_fakture` należy WYŁĄCZNIE do gałęzi Allegro — tak samo jak w SQL-u wyżej.
+ * Gałąź „panel zlecił wysyłkę" nie pyta o żądanie faktury.
  */
 export function czekaNaKsef(zamowienie) {
   const f = zamowienie?.faktura;
@@ -147,9 +161,8 @@ export function czekaNaKsef(zamowienie) {
     && Boolean(idDokumentu(f))
     && !f.ksef_numer
     && !f.allegro_wyslana_at
-    && Boolean(zamowienie.chce_fakture)
     && !anulowaneEfektywnie(zamowienie)
-    && (czyKanalAllegro(zamowienie) || Boolean(f.ksef_zlecona_at));
+    && ((czyKanalAllegro(zamowienie) && Boolean(zamowienie.chce_fakture)) || Boolean(f.ksef_zlecona_at));
 }
 
 /**

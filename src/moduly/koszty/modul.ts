@@ -35,6 +35,8 @@ export function wczytajKoszty(env: Srodowisko) {
     // Piaskownica: token z ekranu nie wychodzi do KSeF (atrapa albo odmowa).
     proba: efektywnyTryb(env) === 'proba',
     katalogKosztow: env.KSEF_ARCHIWUM?.trim() || null, katalogSprzedazy: env.INFAKT_ARCHIWUM?.trim() || null,
+    // PRZ-122.B13b: archiwum programu wbudowanego (jak faktury/modul.ts) — wybór w zbuduj, gdy program jest znany.
+    katalogSprzedazyWbudowanego: env.OMS_ARCHIWUM_SPRZEDAZY?.trim() || env.INFAKT_ARCHIWUM?.trim() || null,
     odstepMs: ODSTEP_KOSZTOW_MS };
 }
 // Z tokenem w pliku brak NIP-u sprzedawcy W PLIKU zatrzymuje start jak dotąd (token z pliku = kontekst z pliku; KSEF_NIP
@@ -92,7 +94,10 @@ export function createModulKoszty(o: { createKlient?: typeof createKsefClient; a
       const czuwaczKosztow = czuwaczZeZrodla(zrodloKsef);
       const wizualizacjaKosztu = wizualizacjaZeZrodla(zrodloKsef);
       const paczkaDlaBiura = infakt ? (o.fabryki?.createPaczkaDlaBiuraFn ?? createPaczkaDlaBiura)({ db, infakt, wizualizacjaKosztu,
-        katalogSprzedazy: k.katalogSprzedazy, katalogKosztow: k.katalogKosztow, teraz, log } as any) : null;
+        katalogSprzedazy: ctx.usluga<any>('faktury', 'programFakturowy')?.opis?.wbudowany === true
+          ? k.katalogSprzedazyWbudowanego : k.katalogSprzedazy, katalogKosztow: k.katalogKosztow, teraz, log,
+        // PRZ-122.ZGODA-TFb: XML i UPO programu wbudowanego z usługi modułu faktur; bez niej paczka jak u inFaktu.
+        plikiKsef: (() => { try { return ctx.usluga<any>('faktury', 'plikiKsefDokumentu'); } catch { return null; } })() } as any) : null;
       // `ksefKlient`/`ksefSesja` — zestaw z PLIKU (null bez KSEF_TOKEN); bieżący zestaw (także z panelu) daje `zrodloKsef`.
       return { uslugi: { config: k, ksefKlient: zPliku?.klient ?? null, ksefSesja: zPliku?.sesja ?? null, zrodloKsef,
         czuwaczKosztow, wizualizacjaKosztu, paczkaDlaBiura,

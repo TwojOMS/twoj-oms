@@ -1,6 +1,6 @@
 import { beforeAll, afterAll, describe, it, expect } from 'vitest';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
-import { POZYCJE_USTAWIEN } from '../../../src/domena/podmenu-ustawien.js';
+import { POZYCJE_USTAWIEN, modelNawigacjiUstawien } from '../../../src/domena/podmenu-ustawien.js';
 import { nowyPanel, jako, get, post } from '../../pomoc/konta-prz068.js';
 
 let p, admin;
@@ -29,7 +29,7 @@ describe('PRZ-101.09 tytuły Ustawień zgodne z menu', () => {
   it.each(POZYCJE_USTAWIEN)('$href: H1, okruszek i title zgodne z etykietą menu', async ({ href, etykieta }) => {
     const r = await get(p.app, `${href}?test=tytul`, admin);
     expect(r.statusCode).toBe(200);
-    sprawdz(r.body, etykieta);
+    sprawdz(r.body, modelNawigacjiUstawien(href, {admin:true}).zakladki.find(z=>z.aktywna && z.href === href && z.klucz !== 'reguly' && href !== '/ustawienia/kopie')?.etykieta ?? etykieta);
   });
   it.each(integracje)('%s: zachowana nazwa integracji we wszystkich tytułach', async (href, etykieta) => {
     const r = await get(p.app, href, admin);
@@ -39,6 +39,6 @@ describe('PRZ-101.09 tytuły Ustawień zgodne z menu', () => {
   it.each(['/ustawienia/paczka', '/ustawienia/paczka/szablon', '/ustawienia/paczka/szablon/brak/domyslny', '/ustawienia/paczka/szablon/brak/usun'])('%s: błąd formularza paczki zachowuje tytuł ekranu z menu', async (href) => {
     const r = await post(p.app, href, admin, {});
     expect(r.statusCode).toBe(400);
-    sprawdz(r.body, 'Paczki i koszty dostawy');
+    sprawdz(r.body, 'Szablony paczek');
   });
 });

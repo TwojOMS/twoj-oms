@@ -11,17 +11,17 @@ import { formularzZwrotu, przygotujKrok2, razemZwrotuZl } from '../../../domena/
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import { GDZIE_KLUCZ_INFAKTU } from '../../../domena/konfiguracja-infakt.js';
-import { odmianaNazwyProgramu } from '../../../domena/nazwa-programu.js';
+import { odmianaNazwyProgramu, gdzieDokument } from '../../../domena/nazwa-programu.js';
 import { zdanieBrakuProgramu } from '../../../domena/wybor-programu.js';
 import { adresKartyZamowienia } from '../../../domena/adres-karty-zamowienia.js';
 import { bezpiecznyPowrotNaListe } from '../../../domena/filtry-listy.js';
 import { ktoKlikal } from '../../zamowienia/wspolne.js';
 
 import { createWspolne } from './wspolne.js';
-export function registerKorektyRoutes(app, { db, korekta = null, definicje, infakt = null, wyborProgramu = null }) {
-  const { powrotKarty, adresKarty, zamowienieAlbo404, slad, decyzja, pokazKrok1 } = createWspolne({ db, korekta, definicje, infakt });
+export function registerKorektyRoutes(app, { db, korekta = null, definicje, infakt: programFaktur = null, wyborProgramu = null }) {
+  const { powrotKarty, adresKarty, zamowienieAlbo404, slad, decyzja, pokazKrok1 } = createWspolne({ db, korekta, definicje, infakt: programFaktur });
   // PRZ-118.09: nazwa programu w odmowach korekty (bez programu — inFakt, jak dotąd).
-  const nazwaProgramu = odmianaNazwyProgramu(infakt);
+  const nazwaProgramu = odmianaNazwyProgramu(programFaktur), gdzieProgramu = gdzieDokument(programFaktur);
   app.post('/zamowienia/:id/zwroty/:zwrotId/korekta', async (req, reply) => {
     const z = zamowienieAlbo404(req, reply);
     if (!z) return reply;
@@ -110,7 +110,7 @@ export function registerKorektyRoutes(app, { db, korekta = null, definicje, infa
     if (!z) return reply;
     const w = zwrot(db, z.id, Number(req.params.zwrotId));
     if (!w) return reply.code(404).send('Nie ma takiego zwrotu przy tym zamówieniu.');
-    const { numer, blad } = parsujNumerKorekty(w, req.body?.numer, { nazwa: nazwaProgramu });
+    const { numer, blad } = parsujNumerKorekty(w, req.body?.numer, { nazwa: nazwaProgramu, gdzie: gdzieProgramu });
     if (blad) {
       slad(z.id, 'zwrot.korekta.reczna', `BŁĄD: ${blad}`);
       return reply.code(400).send(blad);

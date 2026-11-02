@@ -1,77 +1,40 @@
-# Moduł faktur — jak wybrać
+# Program do faktur
 
-Moduł faktur określa, czy OMS wystawia faktury i z jakiego programu korzysta.
-Wybierasz go w **Ustawienia → Integracje → Moduł faktur**.
+Wybór programu jest w **Ustawienia → Faktury i podatki → Program do faktur**.
+Dotyczy całej instalacji. Zmienia go administrator.
 
-## Dostępne opcje
+## Dostępne programy
 
-| opcja | co oznacza |
+| opcja | działanie |
 |---|---|
-| **Brak** | OMS nie wystawia faktur. |
-| **inFakt** | OMS korzysta z inFaktu. Potrzebny jest skonfigurowany klucz inFaktu. |
-| **Fakturownia — wkrótce** | Opcja jest nieaktywna. Nie można jej jeszcze wybrać. |
-| **TwojeFaktury (program wbudowany) — wkrótce** | Opcja jest nieaktywna. Docelowo OMS sam wystawi faktury i wyśle je do KSeF, bez zewnętrznego programu. |
+| Brak | OMS nie wystawia faktur. Proformy i pobieranie kosztów z KSeF działają niezależnie. |
+| inFakt | OMS wystawia faktury przez podłączone konto inFaktu. |
+| Fakturownia — wkrótce | Zapowiedź, opcji nie można wybrać. |
+| TwojeFaktury — wkrótce | Zapowiedź. To wydanie nie zawiera kodu tego modułu i nie można go włączyć ustawieniem. |
 
-Jeśli niczego nie wybierzesz, OMS używa inFaktu, gdy jest skonfigurowany.
-W przeciwnym razie faktury są wyłączone.
+Bez jawnego wyboru OMS korzysta z inFaktu, jeśli jest podłączony; w przeciwnym razie nie wystawia faktur.
 
-## 1. Wybierz moduł
+## Zmiana programu
 
-1. Otwórz **Ustawienia → Integracje → Moduł faktur**.
-2. Wybierz **Brak** albo **inFakt**.
-3. Kliknij **Zapisz**.
-4. Uruchom ponownie OMS, aby zapisany wybór zaczął działać. Chodzi o program OMS, nie o cały serwer ani komputer.
-   Kliknij **Uruchom OMS ponownie** na tym samym ekranie (panel będzie niedostępny przez kilka sekund) albo,
-   gdy przycisku nie ma, wpisz na serwerze w katalogu instalacji `docker compose restart oms`.
-   Przycisk jest tylko tam, gdzie OMS wstaje sam po zatrzymaniu (instalacja z Dockerem, `OMS_RESTART_Z_PANELU=tak`).
+1. Otwórz **Ustawienia → Faktury i podatki → Program do faktur**.
+2. Wybierz **Brak** albo **inFakt** i zapisz.
+3. Uruchom ponownie OMS. Użyj przycisku na ekranie, jeśli instalacja go udostępnia,
+   albo na serwerze w katalogu instalacji wykonaj <code>docker compose restart oms</code>.
 
-Ekran mogą oglądać osoby z uprawnieniem do Ustawień. Zapis jest dostępny tylko dla administratora.
-Wybór dotyczy całej firmy.
+Do restartu działa poprzedni program. Automat wysyłki do KSeF zatrzymuje się od razu po zapisaniu „Brak”.
+Ekran pokazuje program działający teraz i wybór oczekujący na restart.
+Podłączanie inFaktu jest w katalogu Integracji; zasady fakturowania i VAT mają osobne zakładki w „Faktury i podatki”.
 
-Ekran pokazuje **Teraz działa** oraz zapisany wybór, który czeka na ponowne uruchomienie.
-Gdy działa inFakt, po zapisaniu **Brak** zobaczysz:
-„Zapisany moduł faktur „Brak” zadziała po ponownym uruchomieniu OMS-u — do tego czasu działa „inFakt”. Automatyczna wysyłka do KSeF już stoi.”
-Ręczne wystawianie nadal działa do restartu. **Automat KSeF zatrzymuje się od razu.**
-Gdy działa **Brak**, po zapisaniu **inFakt** z kluczem zobaczysz:
-„Zapisany moduł faktur „inFakt” zadziała po ponownym uruchomieniu OMS-u — do tego czasu faktury są wyłączone.”
-Jeśli inFakt nie ma klucza, komunikat brzmi:
-„Zapisany moduł faktur „inFakt” nie ma klucza API — wpisz go w Ustawienia → Integracje → inFakt (/ustawienia/integracje/infakt); faktury ruszą po ponownym uruchomieniu OMS-u.”
+## Faktury po wybraniu „Brak”
 
-## 2. Co zmienia „Brak”
+Wcześniejsze faktury pozostają w programie, w którym je wystawiono. OMS nie pobiera wtedy ich PDF,
+nie wystawia korekt i nie wysyła dokumentów do KSeF, Allegro ani mailem.
+Zmiana programu nie przenosi dokumentów między programami.
 
-Gdy zacznie działać **Brak**, OMS nie wystawia faktur. Zapisany klucz inFaktu zostaje w bazie,
-ale OMS go nie używa.
+## Konfiguracja w pliku
 
-Wcześniejsze faktury zostają w programie, w którym je wystawiono. Numer zapisanej faktury nadal
-widać na karcie zamówienia. Po wybraniu **Brak** w Ustawieniach ekran **FAKTURY** pokazuje zamiast listy:
-„Faktury w OMS-ie są wyłączone — w Ustawienia → Integracje → Moduł faktur wybrano „Brak”. Wcześniejsze faktury obejrzysz w programie, w którym je wystawiono.”
-Przy wyborze w pliku pierwsze zdanie brzmi:
-„Faktury w OMS-ie są wyłączone — w pliku konfiguracji jest OMS_PROGRAM_FAKTUROWY=brak.”
-Lista jest pobierana z programu fakturowego i nie ma lokalnej kopii.
+<code>OMS_PROGRAM_FAKTUROWY=brak</code> albo <code>OMS_PROGRAM_FAKTUROWY=infakt</code> ma pierwszeństwo przed wyborem w panelu.
+Pozostałe programy są niedostępne. Nie ustawiaj zmiennych włączających nieobecne moduły.
 
-Przy **Brak** OMS nie pobierze PDF-u wcześniejszej faktury, nie wyśle jej mailem, do Allegro ani do KSeF.
-Nie wystawi też korekty. Zamiast tych czynności pokaże komunikat o wyłączonych fakturach.
-Przy pobieraniu PDF-u dopisze: „PDF wcześniejszej faktury pobierzesz w programie, w którym ją wystawiono.”
-Zdanie o wyłączonych fakturach dotyczy jawnego wyboru **Brak** w Ustawieniach albo w pliku.
-Gdy niczego nie wybrano i inFakt nie jest skonfigurowany, OMS pokazuje komunikaty o braku konfiguracji inFaktu.
-
-**Brak** nie wyłącza proform ani KSeF kosztów. Moduł kosztów korzysta z osobnego tokenu tylko do odczytu.
-
-## Gdy moduł jest ustawiony w pliku konfiguracji
-
-Zmienna `OMS_PROGRAM_FAKTUROWY` ma pierwszeństwo przed wyborem zapisanym w panelu.
-Przy ustawieniu w pliku pola na ekranie są nieaktywne. Zmianę wykonujesz w pliku konfiguracji.
-
-Możesz ustawić `OMS_PROGRAM_FAKTUROWY=brak` albo `OMS_PROGRAM_FAKTUROWY=infakt`.
-Wielkość liter i spacje na początku i końcu nie mają znaczenia. Zła wartość zatrzymuje start OMS-u.
-Na przykład przy `OMS_PROGRAM_FAKTUROWY=infkat` komunikat brzmi:
-„OMS_PROGRAM_FAKTUROWY: nieznany moduł faktur „infkat” — wpisz brak albo infakt (fakturownia, twojefaktury — wkrótce) lub usuń zmienną.”
-Wartości `fakturownia` i `twojefaktury` też zatrzymują start: te opcje są jeszcze niedostępne.
-Przy `OMS_PROGRAM_FAKTUROWY=fakturownia` zobaczysz:
-„OMS_PROGRAM_FAKTUROWY: moduł faktur „fakturownia” będzie dostępny wkrótce, ta wersja OMS-u go nie ma — wpisz brak albo infakt (fakturownia, twojefaktury — wkrótce) lub usuń zmienną.”
-
-## Wycofanie do wcześniejszej wersji
-
-Wersja OMS-u bez ekranu Moduł faktur nie zna zapisanego wyboru modułu faktur. Po wycofaniu do takiej wersji
-wybór **Brak** nie chroni przed wystawianiem faktur. Jeśli klucz inFaktu jest zapisany,
-OMS znów wystawia faktury w inFakcie.
+Przy wycofaniu do wersji bez wyboru programu zapis „Brak” może być pomijany — jeśli klucz inFaktu pozostaje
+skonfigurowany, wcześniejsza wersja znów z niego skorzysta.

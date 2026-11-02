@@ -15,9 +15,6 @@
 // się wtedy błędem — puls zgłosi „ostatni przebieg zakończył się błędem", czyli wiersz
 // `integracja` na stronie głównej.
 
-import {
-  LIMIT_ZADANIA_MS as LIMIT_ZADANIA_INFAKTU_MS, SUFIT_STRON, ROWNOLEGLE_STRON,
-} from '../../../oms/infakt/client.js';
 import { coWolnoWyslac } from '../../../domena/wysylka-ksef.js';
 import { czyWysylacKonsumenckie } from '../../faktury/db/ksef-konsumenckie.js';
 import { podmienLukiKsef, podmienPoTerminie } from '../../../oms/db/ostrzezenia.js';
@@ -37,21 +34,13 @@ const teraz = () => new Date().toISOString();
 export const SUFIT_STRON_LUK = 20;
 
 // Ile SEKWENCYJNYCH tur żądań kosztuje paginacja przy danym sufcie stron: pierwsza
-// strona + partie po ROWNOLEGLE_STRON (wszystkieStrony w infakt/client.js).
-const tury = (sufitStron, rownolegle = ROWNOLEGLE_STRON) => 1 + Math.ceil((sufitStron - 1) / rownolegle);
-
-export const LIMIT_KROKU_LUK_MS = tury(SUFIT_STRON_LUK) * LIMIT_ZADANIA_INFAKTU_MS;
+// strona + partie po `limity.rownolegleStron` programu.
+const tury = (sufitStron, rownolegle) => 1 + Math.ceil((sufitStron - 1) / rownolegle);
 
 // Krok terminów jedzie listą nieopłaconych (fakturyWidok.nieoplacone) — ta paginuje do
-// GLOBALNEGO sufitu klienta (60 stron = 600 dokumentów; historyczny szczyt pasa długów
-// to 67 wierszy, realnie 1 strona).
-export const LIMIT_KROKU_TERMINOW_MS = tury(SUFIT_STRON) * LIMIT_ZADANIA_INFAKTU_MS;
-
-export const NAJDLUZSZY_PRZEBIEG_OSTRZEZEN_MS = LIMIT_KROKU_LUK_MS + LIMIT_KROKU_TERMINOW_MS;
-
+// sufitu `limity.sufitStron` programu (dla inFaktu: 60 stron = 600 dokumentów).
 // PRZ-118.08: ta sama arytmetyka z limitów programu fakturowego (`opis.limity`, core/kontrakty.ts) — czuwacz wystawia
-// budżet programu, który naprawdę za nim stoi. Stałe wyżej zostają (wartości inFaktu); dla limitów inFaktu obie drogi
-// dają to samo (tests/moduly/program-pozostale-prz118.test.js).
+// budżet programu, który naprawdę za nim stoi.
 export function limitKrokuLukMs(limity) {
   return tury(SUFIT_STRON_LUK, limity.rownolegleStron) * limity.zadanieMs;
 }
@@ -141,6 +130,12 @@ export function createCzuwaczOstrzezen({ db, program: programPodany = null, infa
   async function odswiezPoTerminie() {
     if (typeof fakturyWidok?.nieoplacone !== 'function') return;
     const chwila = teraz();
+    // Program bez zdolności `nieoplacone` (np. TwojeFaktury): to nie awaria, tylko brak źródła — lustro pustoszeje
+    // (wpisy po poprzednim programie nie wiszą), przebieg nie zgłasza błędu co tyknięcie.
+    if (fakturyWidok.brakNieoplaconych) {
+      podmienPoTerminie(db, [], { sprawdzonaAt: chwila });
+      return;
+    }
     const lista = await fakturyWidok.nieoplacone();
     podmienPoTerminie(
       db,
@@ -166,5 +161,5 @@ export function createCzuwaczOstrzezen({ db, program: programPodany = null, infa
   }
 
   // `program` — strażnik startu (moduly/zdrowie/modul.ts) podaje w odmowie nazwę programu, którego budżet liczy.
-  return { przebieg, program, najdluzszyPrzebiegMs: program ? najdluzszyPrzebiegOstrzezenMs(program.opis.limity) : NAJDLUZSZY_PRZEBIEG_OSTRZEZEN_MS };
+  return { przebieg, program, najdluzszyPrzebiegMs: program ? najdluzszyPrzebiegOstrzezenMs(program.opis.limity) : 0 };
 }

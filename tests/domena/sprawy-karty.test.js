@@ -263,6 +263,16 @@ describe('faktura czekająca na KSeF (Allegro)', () => {
     });
   });
 
+  // PRZ-126 (F03): faktura do zamowienia z Allegro, przy ktorym kupujacy NIE prosil o fakture,
+  // ale panel zlecil wysylke do KSeF. Przycisku „bez numeru KSeF" tu nie ma (Allegro odmawia).
+  it('Allegro bez żądania faktury, zlecone panelem: treść „Panel zlecił”, bez wysyłki do Allegro', () => {
+    const z = allegro({ ksef_zlecona_at: '2026-08-05T10:05:00Z' }, { sklep: 'allegro_polcien', chce_fakture: 0 });
+    const s = sprawyKarty(z, TERAZ + 25 * GODZINA).find((w) => w.klucz === 'ksef');
+    expect(s).toBeTruthy();
+    expect(s.tekst).toMatch(/Panel zlecił/);
+    expect(s.tekst).not.toMatch(/Allegro/);
+  });
+
   it('zamówienie, przy którym kupujący faktury nie chciał, nie jest sprawą', () => {
     expect(klucze(allegro({}, { chce_fakture: 0 }), TERAZ + 25 * GODZINA)).not.toContain('ksef');
   });

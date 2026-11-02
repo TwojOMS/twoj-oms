@@ -75,7 +75,11 @@ describe('POST /faktury/ksef/podglad', () => {
     const app = serwer([dok('u1', '1/08/2026'), dok('u3', '3/08/2026', 'JUZ-W-KSEF')]);
     const r = await app.inject({ method: 'POST', url: '/faktury/ksef/podglad', headers: AUTH,
       payload: { uuid: ['u1', 'u3'], miesiac: '2026-08', pole: 'invoice_date' } });
+    expect(r.statusCode).toBe(200);
     expect(r.body).toContain('3/08/2026');
+    expect(r.body).toContain('Poleci do KSeF — 1');
+    expect(r.body).toContain('Pominięte — 1');
+    expect(r.body).toMatch(/Wyślij 1 fakturę do KSeF/);
     expect(r.body).toMatch(/jest już w KSeF/i);
   });
 

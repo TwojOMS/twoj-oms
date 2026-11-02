@@ -9,12 +9,14 @@ import { daneFaktury } from '../../../domena/dane-faktury.js';
 // przy pierwszej zmianie i tryb masowy zaczalby przepuszczac to, czego karta odmawia.
 import { powodOdmowyFaktury, powodOdmowyZaplaconej } from '../../../domena/faktura-odmowa.js';
 import { wylaczoneModuly } from '../../../oms/db/moduly-opcjonalne.js';
+import { czyFakturaDlaKazdego } from '../db/faktury-dla-kazdego.js';
 // pozycje() i sprawdzSume() wyjete do domain/pozycje-faktury.js (pod nazwami pozycjeDokumentu
 // i sprawdzSumeDokumentu): to CZYSTE funkcje argumentu `z`, ktore musza liczyc DOKLADNIE tak
 // samo dla faktury VAT i dla przyszlej proformy — druga kopia arytmetyki rozjechalaby sie
 // przy pierwszej zmianie i klamalaby o kwocie, ktora klient ma zaplacic.
 import { pozycjeDokumentu, sprawdzSumeDokumentu } from '../../../domena/pozycje-faktury.js';
 import { czytajStawkeDomyslna } from '../db/stawka-vat.js';
+import { opcjeZwProgramu } from '../../../domena/vat.js';
 // TA SAMA miara, ktora sprawdza bariera arytmetyczna (sprawdzSumeDokumentu) — wariant
 // „zaplacone" ma napisac na dokumencie DOKLADNIE te kwote, ktora zostala sprawdzona,
 // a nie policzona drugi raz z innego pola.
@@ -40,13 +42,19 @@ import { sposobPlatnosciFaktury } from '../../../domena/sposob-platnosci.js';
 // VIES i seria numeracji — ze WSPOLNEJ galezi obu drog wystawiania (services/wdt-faktury.js),
 // zeby karta i okres nie mialy dwoch kopii tej samej reguly. Sama stawka 0% na pozycjach
 // liczy sie juz w pozycjeDokumentu.
-import { czyNipUe, polaWdtInfakt, nipSprzedawcyDoWdt } from '../../../domena/wdt.js';
+// PRZ-122.B07d: WDT = numer UE nabywcy I sprzedawca niezwolniony (`czyWdt` + `sprzedawcaZwolniony`, tylko program
+// wbudowany). Firma zwolniona z VAT dla nabywcy z UE wystawia zwykłą fakturę „zw”: bez VIES, serii i pól WDT.
+import {
+  czyNipUe, czyWdt, polaWdtInfakt, nipSprzedawcyDoWdt, LOG_NIE_WDT_ZWOLNIONA,
+} from '../../../domena/wdt.js';
+import { sprzedawcaZwolniony } from '../db/zwolnienie-vat.js';
 import {
   sprawdzWdtWVies, przygotujSerieWdt, seriaWdtPoAwarii, seriaWdtPoSukcesie, sprawdzNumeracjeWlasna, nazwaProgramu,
 } from './wdt-faktury.js';
 // PRZ-118.06: program fakturowy (kontrakt) zamiast klienta inFaktu. Usluga przyjmuje `{ program }` albo stary
 // `{ infakt }` (owija go adapter inFaktu) — oba naraz to blad programisty, rzucany przy tworzeniu uslugi.
 import { zProgramu } from '../../../integracje/program-fakturowy.ts';
+import { gdzieDokument } from '../../../domena/nazwa-programu.js';
 
 /**
  * Data zapłaty do OZNACZENIA faktury w inFakcie — PÓŹNIEJSZA z dwóch dat.
@@ -98,6 +106,8 @@ export function createFaktura({
   const program = zProgramu({ program: programFakturowy, infakt });
   // Odmiana nazwy programu do komunikatow (inFakt / inFaktu / inFakcie / inFaktem).
   const nazwa = nazwaProgramu(program);
+  // PRZ-122.B07c: flaga `zw` z opisu programu (TwojeFaktury) — ta sama reguła, co lista stawek w formularzach.
+  const opcjeZw = opcjeZwProgramu(program?.opis);
 
   // Awaria JEDNOZNACZNA = inFakt odpowiedzial i odrzucil (4xx). Dokumentu na pewno nie ma,
   // wiec wolno zwolnic miejsce pod ponowienie. Wszystko inne — zerwane polaczenie, 5xx,
@@ -134,13 +144,19 @@ export function createFaktura({
     // z „nie ma takiego zamowienia", bo `powodOdmowyFaktury` odpowiada tez na brak wiersza.
     // Sama regula (i cale jej uzasadnienie) siedzi w domain/faktura-odmowa.js: tu zostaje
     // WYLACZNIE moment, w ktorym o nia pytamy.
-    const odmowa = powodOdmowyFaktury(z, { okresyWlaczone: !wylaczoneModuly(db).includes('okresy') });
+    // PRZ-126.F02: opcja „faktura także bez prośby klienta” czytana z bazy przy KAŻDYM wystawieniu.
+    const odmowa = powodOdmowyFaktury(z, {
+      okresyWlaczone: !wylaczoneModuly(db).includes('okresy'), dlaKazdego: czyFakturaDlaKazdego(db),
+    });
     if (odmowa) throw bladOperatora(odmowa);
 
     // Cala arytmetyka PRZED rezerwacja: to sprawdzenia czysto lokalne, wiec nie ma powodu
     // zajmowac nimi miejsca w tabeli ani zostawiac sierot do sprzatania.
     // PRZ-105: stawka per pozycja, domyslna z Ustawien (bez wpisu 23 — payload jak przed zmiana).
-    const services = pozycjeDokumentu(z, { stawkaDomyslna: czytajStawkeDomyslna(db) });
+    // PRZ-122.B07c: „zw” wyłącznie przy programie wbudowanym (opcjeZw z opisu programu); inny program — jak dotąd.
+    // PRZ-122.B07d: zwolnienie sprzedawcy czytane przy KAŻDYM wystawieniu (rezygnacja w Ustawieniach bez restartu).
+    const zwolniona = sprzedawcaZwolniony(db, program?.opis);
+    const services = pozycjeDokumentu(z, { stawkaDomyslna: czytajStawkeDomyslna(db, opcjeZw), ...opcjeZw, zwolniona });
     sprawdzSumeDokumentu(services, z);
 
     // ⚠️ DRUGA BARIERA, O PIENIADZE — „ZAPLACONE" WYMAGA PRAWDZIWYCH WPLAT. Sama regula
@@ -167,16 +183,18 @@ export function createFaktura({
     // ktory pojdzie do kartoteki i na dokument, wiec reczna poprawka NIP-u na karcie
     // zmienia stawke razem z nabywca, nigdy osobno (por. domain/pozycje-faktury.js).
     const d = daneFaktury(z);
-    const wdt = czyNipUe(d.nip);
+    const wdt = czyWdt(d.nip, { zwolniona });
+    // Nabywca z UE u sprzedawcy zwolnionego — nie WDT; ślad w logu zamówienia przy wystawieniu.
+    const nieWdtZwolniona = zwolniona && czyNipUe(d.nip);
     // PRZ-108.10: NIP sprzedawcy do adnotacji WDT — przy KAŻDYM wystawieniu (NIP z Ustawień → Firma bez restartu)
     // i PRZED rezerwacją: WDT bez NIP-u odmawia tutaj, zanim cokolwiek dotknie bazy, VIES albo inFaktu.
-    const nipWlasny = nipSprzedawcyDoWdt(d.nip, nipSprzedawcy);
+    const nipWlasny = wdt ? nipSprzedawcyDoWdt(d.nip, nipSprzedawcy) : null;
     // PRZ-118.06: WDT wymaga numeracji wlasnej programu (straznik duplikatu serii). Program bez tej zdolnosci
     // odmawia TU — przed rezerwacja faktury, przed VIES i przed licznikiem serii (nic nie zostaje do zwalniania).
-    if (wdt) sprawdzNumeracjeWlasna(program);
+    if (wdt && !program.opis.wdtWSeriiFaktur) sprawdzNumeracjeWlasna(program);
 
     // REZERWACJA. Od tej linii druga proba odbija sie od bazy, a nie od naszej uwaznosci.
-    const f = rozpocznijFakture(db, zamowienieId, { nazwa });
+    const f = rozpocznijFakture(db, zamowienieId, { nazwa, program });
 
     // FAZA PRZYGOTOWANIA (kroki 1-2). Nic tutaj NIE MOZE stworzyc dokumentu: GET po NIP-ie
     // niczego nie wystawia, POST /clients.json zaklada wpis w kartotece, a nasze wlasne
@@ -201,6 +219,7 @@ export function createFaktura({
       // WDT: numer nabywcy MUSI byc wazny w VIES (art. 42 ust. 1 pkt 1) — bez tego 0%
       // to zanizony VAT nalezny. Odmowa leci z fazy przygotowania, wiec zwalnia rezerwacje.
       if (wdt) await sprawdzWdtWVies({ vies, nip: d.nip, dopisz: dopiszWdt(zamowienieId), nazwa });
+      else if (nieWdtZwolniona) dopiszWdt(zamowienieId)('wdt.zwolnienie', LOG_NIE_WDT_ZWOLNIONA);
       // KAZDY blad tej operacji (4xx, 5xx, zerwane polaczenie, TypeError) zwalnia rezerwacje — patrz catch.
       nabywca = await program.przygotujNabywce(d, { zalozGdyBrak: true });
       if (!nabywca) throw bladOperatora(`${nazwa.mianownik} nie oddał identyfikatora nabywcy.`);
@@ -215,7 +234,7 @@ export function createFaktura({
     // WSPOLNA galaz (services/wdt-faktury.js); awaria zwalnia tez rezerwacje faktury,
     // bo dokumentu na pewno jeszcze nie ma.
     let seriaWdt = null;
-    if (wdt) {
+    if (wdt && !program.opis.wdtWSeriiFaktur) {
       try {
         seriaWdt = await przygotujSerieWdt({ db, program, dzien: daty.invoice_date ?? dzienWarszawa(teraz()) });
       } catch (e) {
@@ -251,7 +270,7 @@ export function createFaktura({
         client_id: nabywca.client_id, services, ...daty, ...sposobPlatnosciFaktury(z),
         // Pola WYLACZNIE dokumentu WDT (domain/wdt.js) — dla nabywcy krajowego oba
         // rozsypania sa puste i payload zostaje bajt w bajt taki, jaki byl.
-        ...polaWdtInfakt(d.nip, { nipSprzedawcy: nipWlasny }),
+        ...(wdt ? polaWdtInfakt(d.nip, { nipSprzedawcy: nipWlasny }) : {}),
         ...(seriaWdt ? { number: seriaWdt.numer } : {}),
       });
     } catch (e) {
@@ -333,8 +352,10 @@ export function createFaktura({
     } catch (e) {
       wynik = `UWAGA: faktura ${w.numer ?? '(bez numeru)'} została WYSTAWIONA i dokument dla klienta `
         + 'jest poprawny („Zapłacono", pozostało 0,00), ale nie udało się zlecić oznaczenia jej '
-        + `jako opłaconej — w ${nazwa.miejscownik} zostanie na liście jako NIEOPŁACONA. Przestaw jej status `
-        + `ręcznie w ${nazwa.miejscownik}. Faktura jest w porządku, poprawy wymaga tylko status. Powód: ${e.message}`;
+        + (program.opis?.wbudowany
+          ? `jako opłaconej — ${gdzieDokument(program)} będzie widoczna jako NIEOPŁACONA. Zapłaty nie da się w OMS-ie zapisać ręcznie — przekaż ten wpis osobie, która utrzymuje OMS.`
+          : `jako opłaconej — w ${nazwa.miejscownik} zostanie na liście jako NIEOPŁACONA. Przestaw jej status ręcznie ${gdzieDokument(program)}.`)
+        + ` Faktura jest w porządku, poprawy wymaga tylko status. Powód: ${e.message}`;
     }
     // Nawet zapis do logu nie ma prawa wywalić kroku po nieodwracalnym: gdyby padł (dysk,
     // blokada WAL), faktura i tak jest wystawiona i zapisana, a operator ma zobaczyć sukces.

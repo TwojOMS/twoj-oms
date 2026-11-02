@@ -3,7 +3,9 @@ import {
   ostrzezeniaFaktur, ostrzezeniaPrzesylek, ostrzezeniaWiadomosci, ostrzezeniaIntegracji,
   ostrzezeniaTerminow, ostrzezeniaZwrotow, ostrzezeniaPobran,
   zlozOstrzezenia, kluczDozwolony, WYGASANIE_INTEGRACJI_MS,
+  ostrzezeniaKopii, ostrzezeniaDlaKonta, zdanieWstrzymanej, ostrzezeniaAutomatuKsef,
 } from '../../src/domena/ostrzezenia.js';
+import { ekranyRoli } from '../../src/domena/ekrany.js';
 import { ocenZdrowie } from '../../src/domena/zdrowie.js';
 
 // 2026-08-29 to SOBOTA — daty w przypadkach niżej są dobrane jawnie pod regułę dni
@@ -537,5 +539,108 @@ describe('ostrzezeniaPobran — paczka bez gotówki przy wystawionej fakturze', 
 describe('kluczDozwolony — prefiks pobrania', () => {
   it('przyjmuje klucz ostrzeżenia o pobraniu bez gotówki', () => {
     expect(kluczDozwolony('pobranie:1259:2026-08-27T14:00:00.000')).toBe(true);
+  });
+});
+
+// PRZ-122.B16a: kopia bazy w tabelce ostrzeżeń (wynik usługi zdrowie.kopie; zmyślone pliki).
+describe('ostrzezeniaKopii — stan kopii bazy z usługi zdrowie.kopie', () => {
+  const stan = (o) => ({ alarmy: [], uwagi: [], katalogDostepny: true, zewnetrzna: false, ostatnia: null, ...o });
+  const PRZYCISK = { href: '/ustawienia/kopie', etykieta: 'Kopie zapasowe' };
+
+  it('stara kopia na nośniku ma wiersz także obok starej kopii lokalnej', () => {
+    const ostatnia = { plik: 'oms-2026-10-27.sqlite', wiekH: 2 };
+    const nosnik = { klucz: 'integracja:kopia:nosnik', typ: 'integracja', przycisk: PRZYCISK, etykietaOdrzucenia: 'Wycisz na 24 h', tekst: 'Kopia poza dyskiem nie odświeża się — na nośniku brak kopii z ostatnich 48 h (sprawdź oms-kopia).' };
+    expect(ostrzezeniaKopii({ kopie: stan({ ostatnia, zewnetrznaStan: 'stara-na-nosniku' }) })).toEqual([nosnik]);
+    const oba = ostrzezeniaKopii({ kopie: stan({ ostatnia: { ...ostatnia, wiekH: 50 }, zewnetrznaStan: 'stara-na-nosniku' }) });
+    expect(oba.map(w => w.klucz)).toEqual(['integracja:kopia:stara:2026-10-27', 'integracja:kopia:nosnik']);
+    expect(oba[1]).toEqual(nosnik);
+  });
+
+  it('nośnik ma osobny wiersz obok ostrzeżenia o starej kopii', () => {
+    const swieza = { plik: 'oms-2026-10-27.sqlite', wiekH: 5 };
+    const brak = ostrzezeniaKopii({ kopie: stan({ ostatnia: swieza, zewnetrznaStan: 'brak-nosnika' }) });
+    expect(brak).toEqual([{ klucz: 'integracja:kopia:nosnik', typ: 'integracja', przycisk: PRZYCISK, etykietaOdrzucenia: 'Wycisz na 24 h', tekst: 'Kopia poza dyskiem nie trafia na nośnik — podłącz nośnik kopii (brak znacznika w katalogu).' }]);
+    expect(ostrzezeniaKopii({ kopie: stan({ ostatnia: swieza, zewnetrznaStan: 'ten-sam-dysk' }) })[0].tekst).toBe('Kopia poza dyskiem leży na dysku serwera — nośnik kopii nie jest zamontowany.');
+    expect(ostrzezeniaKopii({ kopie: stan({ ostatnia: { ...swieza, wiekH: 31 }, zewnetrznaStan: 'brak-nosnika' }) }).map(w => w.klucz)).toEqual(['integracja:kopia:stara:2026-10-27', 'integracja:kopia:nosnik']);
+    expect(ostrzezeniaKopii({ kopie: stan({ ostatnia: swieza, zewnetrznaStan: 'ok' }) })).toEqual([]);
+    expect(ostrzezeniaKopii({ kopie: { brakNadzoru: true, wymagany: false, zewnetrznaStan: 'brak-nosnika' } })).toEqual([]);
+    expect(ostrzezeniaKopii({ kopie: stan({ katalogDostepny: false, zewnetrznaStan: 'brak-nosnika' }) })).toHaveLength(2);
+  });
+
+  it('bez usługi albo ze świeżą kopią (25 h) — nic', () => {
+    expect(ostrzezeniaKopii({ kopie: null })).toEqual([]);
+    expect(ostrzezeniaKopii()).toEqual([]);
+    expect(ostrzezeniaKopii({ kopie: stan({ ostatnia: { plik: 'oms-2026-10-27.sqlite', wiekH: 25 } }) })).toEqual([]);
+  });
+
+  it('kopia 31 h — jeden wiersz integracji z datą kopii w kluczu, przycisk do Kopii zapasowych, wyciszenie 24 h', () => {
+    expect(ostrzezeniaKopii({ kopie: stan({ ostatnia: { plik: 'oms-2026-10-27.sqlite', wiekH: 31 } }) })).toEqual([{
+      klucz: 'integracja:kopia:stara:2026-10-27', typ: 'integracja',
+      tekst: 'Ostatnia kopia bazy ma 31 h — oms-kopia nie zrobił kopii w ostatniej dobie.',
+      przycisk: PRZYCISK, etykietaOdrzucenia: 'Wycisz na 24 h',
+    }]);
+    expect(kluczDozwolony('integracja:kopia:stara:2026-10-27')).toBe(true);
+  });
+
+  it('nowa (ale nadal stara) kopia zmienia klucz — wyciszenie starej nie chowa nowej', () => {
+    const a = ostrzezeniaKopii({ kopie: stan({ ostatnia: { plik: 'oms-2026-10-26.sqlite', wiekH: 49 } }) });
+    const b = ostrzezeniaKopii({ kopie: stan({ ostatnia: { plik: 'oms-2026-10-27.sqlite', wiekH: 31 } }) });
+    expect(a).toHaveLength(1);
+    expect(a[0].tekst).toBe('Ostatnia kopia bazy ma 49 h — oms-kopia nie zrobił kopii w ostatniej dobie.');
+    expect(a[0].klucz).not.toBe(b[0].klucz);
+  });
+
+  it('brak kopii i niewidoczny katalog — osobne zdania', () => {
+    expect(ostrzezeniaKopii({ kopie: stan({}) }).map((w) => [w.klucz, w.tekst]))
+      .toEqual([['integracja:kopia:brak', 'Brak kopii bazy w katalogu kopii.']]);
+    expect(ostrzezeniaKopii({ kopie: stan({ katalogDostepny: false }) }).map((w) => [w.klucz, w.tekst]))
+      .toEqual([['integracja:kopia:niedostepny', 'OMS nie widzi katalogu kopii.']]);
+  });
+
+  it('brak nadzoru: wiersz tylko, gdy program wbudowany wymaga kopii; nazwa programu z usługi', () => {
+    expect(ostrzezeniaKopii({ kopie: { brakNadzoru: true, wbudowany: false, wymagany: false, nazwa: null } })).toEqual([]);
+    expect(ostrzezeniaKopii({ kopie: { brakNadzoru: true, wbudowany: true, wymagany: false, nazwa: 'Księgownik' } })).toEqual([]);
+    const [w, ...reszta] = ostrzezeniaKopii({ kopie: { brakNadzoru: true, wbudowany: true, wymagany: true, nazwa: 'Księgownik' } });
+    expect(reszta).toEqual([]);
+    expect(w).toMatchObject({ klucz: 'integracja:kopia:brak-nadzoru', typ: 'integracja', przycisk: PRZYCISK,
+      tekst: 'Faktury Księgownik są tylko w bazie, a ten OMS nie widzi katalogu kopii.' });
+  });
+
+  it('konto bez ekranu Ustawienia nie widzi wiersza kopii; administrator widzi', () => {
+    const wiersze = ostrzezeniaKopii({ kopie: stan({}) });
+    const konto = (rola, admin = false) => ({ id: 1, admin, uprawnienia: new Set(ekranyRoli(rola)) });
+    expect(ekranyRoli('produkcja')).not.toContain('ustawienia');
+    expect(ostrzezeniaDlaKonta({ wiersze, konto: konto('produkcja') })).toEqual([]);
+    expect(ostrzezeniaDlaKonta({ wiersze, konto: konto('administrator', true) })).toEqual(wiersze);
+  });
+});
+
+describe('PRZ-123 K440c — wpisy wstrzymane: zdanie „co dalej”', () => {
+  const POWOD = 'KSeF zgłosił, że faktura FV/9/10/2026 już tam jest (numer KSeF 1234563218-20261027-0B0B0B0B0B0B-0B), '
+    + 'ale nie oddał jej treści (kod 404), … Następny krok: znajdź fakturę … potem kliknij „Sprawdź ponownie” …';
+  const wpis = { uuid: 'u-9', numer: 'FV/9/10/2026', dzien: '2026-10-28', kod: 'duplikat-niesprawdzony', wersja: 1, powod: POWOD };
+
+  it('zdanieWstrzymanej duplikat-niesprawdzony = powod', () => {
+    expect(zdanieWstrzymanej(wpis)).toBe(POWOD);
+  });
+
+  it('duplikat-niesprawdzony bez powodu → zapas z numerem i krokiem „Sprawdź ponownie”', () => {
+    expect(zdanieWstrzymanej({ ...wpis, powod: null })).toBe('Faktura FV/9/10/2026: KSeF zgłosił duplikat, a panel nie '
+      + 'sprawdził oryginału. Następny krok: kliknij „Sprawdź ponownie” na ekranie wyniku automatu KSeF.');
+  });
+
+  it('korekta-nieaktualna: „nie poszła do KSeF”, z „Następny krok:”, bez „wymaga”', () => {
+    const z = zdanieWstrzymanej({ uuid: 'k-1', numer: 'KOR/1/10/2026', kod: 'korekta-nieaktualna', wersja: 1 });
+    expect(z).toBe('Korekta KOR/1/10/2026 nie poszła do KSeF — faktura pierwotna zmieniła się po wystawieniu korekty, '
+      + 'więc automat KSeF jej nie wyśle. Następny krok: wystaw nową korektę do aktualnej wersji faktury pierwotnej.');
+    expect(z).not.toMatch(/wymaga/u);
+  });
+
+  it('Zdrowie: jeden wiersz wpisu z przyciskiem „Wynik automatu” → /faktury/ksef/automat', () => {
+    const wiersze = ostrzezeniaAutomatuKsef({ wstrzymane: [wpis] });
+    expect(wiersze).toEqual([expect.objectContaining({
+      klucz: 'faktura-ksef:automat-wstrzymana:u-9', tekst: POWOD,
+      przycisk: { href: '/faktury/ksef/automat', etykieta: 'Wynik automatu' },
+    })]);
   });
 });

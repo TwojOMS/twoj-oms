@@ -20,7 +20,7 @@ const naglowki = {
 // Zamówienie ze SKLEPU — czyli takie, jakie ma karta na torze automatycznym: bez `karta_id`.
 const ZE_SKLEPU = {
   zrodlo_id: 28060, numer: '28060', kwota_brutto: '343.00', kwota_pobrania: null,
-  metoda_wysylki: 'dpd', chce_fakture: 1, nip: '1000001129', status_woo: 'processing',
+  metoda_wysylki: 'dpd', chce_fakture: 1, nip: '1200001111', status_woo: 'processing',
   oplacone_at: '2026-08-19T10:00:00', anulowane: 0, utworzone_at: '2026-08-19T09:55:00',
   pozycje: [],
   dostawa: {
@@ -53,7 +53,7 @@ describe('GET /api/zamowienia/:id/dostawa', () => {
     expect(d.adres.nazwa).toContain('Anna');
     expect(d.metoda).toMatch(/DPD/i);
     expect(d.dokument).toBe('faktura');
-    expect(d.faktura).toMatchObject({ nip: '1000001129' });
+    expect(d.faktura).toMatchObject({ nip: '1200001111' });
     expect(d.faktura.firma).toContain('Pracownia');
   });
 

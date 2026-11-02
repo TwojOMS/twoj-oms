@@ -42,7 +42,7 @@ export function nazwaSzablonu(db, szablon) {
 export function akcjaMailKupujacy({ wiadomosci }) {
   const usluga = () => wiadomosci?.() ?? null;
 
-  async function zgoda({ db, regula, wykonanie }) {
+  async function zgoda({ db, regula, wykonanie, teraz = () => new Date() }) {
     const u = usluga();
     if (!u) return odmowa('brak_poczty', 'brak poczty wychodzącej — podłącz ją w Ustawienia → Integracje → Poczta wychodząca.');
     const szablon = regula.akcja_param?.szablon ?? regula.akcja_json?.szablon ?? null;
@@ -71,6 +71,17 @@ export function akcjaMailKupujacy({ wiadomosci }) {
     if (!zg.wolno) {
       const kod = !adresatKlienta(k.z) ? 'brak_adresu' : k.z.anulowane ? 'anulowane' : 'odmowa';
       return odmowa(kod, zg.powod);
+    }
+    // PRZ-122.MAIL-OKNO: po wszystkich odmowach (mają pierwszeństwo) — faktura, którą sprzedawca jeszcze poprawia
+    // (okno poprawek; dla VAT: do numeru KSeF), nie idzie teraz: `pobierzPdf` zamknąłby ją. Mail czeka i idzie sam.
+    // Wyścig gotowa → pobierzPdf (poprawka w ułamku sekundy między nimi) jest nieszkodliwy: PDF renderuje się z wersji
+    // zapisanej w zdarzeniu zamknięcia (B10b), więc klient dostaje dokładnie to, co zamknięto.
+    if (szablon === 'faktura' && typeof u.fakturaGotowaDoWydania === 'function') {
+      const g = await u.fakturaGotowaDoWydania(wykonanie.zamowienie_id, teraz());
+      if (!g.gotowa) {
+        return { ok: false, odloz: true, kod: 'okno_poprawek', adresat: adresatKlienta(k.z),
+          powod: `Okno poprawek faktury jeszcze trwa (${g.powod}) — mail pójdzie sam po jego końcu.` };
+      }
     }
     return { ok: true, adresat: adresatKlienta(k.z) };
   }

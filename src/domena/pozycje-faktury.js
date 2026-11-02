@@ -8,7 +8,7 @@ import { wysylkaEfektywna } from './wysylka-kwota.js';
 // ktora zapowiadal komentarz w vat.js. Nabywce dokumentu rozstrzyga daneFaktury(z), czyli
 // TA SAMA regula, ktora wskazuje NIP kartotece inFaktu (services/faktura.js) — reczna
 // poprawka numeru na karcie zmienia wiec stawke razem z nabywca, nigdy osobno.
-import { czyNipUe } from './wdt.js';
+import { czyWdt } from './wdt.js';
 import { daneFaktury } from './dane-faktury.js';
 import { czyStawkaVat, stawkaPozycji } from './vat.js';
 
@@ -44,14 +44,23 @@ export const NAZWA_DOSTAWY = 'Dostawa';
 //
 // ⚠️ `stawkaDomyslna` jest WYMAGANA. Brak = wyjatek, nie ciche „23”: instalacja z domyslna 8 dostalaby inaczej
 // fakture z 23 z kazdego miejsca, ktore zapomnialo ja podac — bez bledu i bez sladu.
-export function pozycjeDokumentu(z, { stawkaDomyslna } = {}) {
-  if (!czyStawkaVat(stawkaDomyslna)) {
+//
+// PRZ-122.B07a: `zw: true` (wyłącznie program wbudowany) przepuszcza stawkę „zw” — domyślną i pozycji ręcznej.
+// Bez flagi (inFakt) „zw” jak dotąd: domyślna „zw” = wyjątek, ręczna „zw” = stawka domyślna. WDT bez zmian (0).
+// PRZ-122.B07d: `zwolniona: true` (sprzedawca zwolniony z VAT, `sprzedawcaZwolniony`) — numer UE nabywcy to NIE WDT,
+// stawki jak dla polskiego nabywcy. Bez flagi jak dotąd.
+/**
+ * @param {any} z
+ * @param {{ stawkaDomyslna?: string|number, zw?: boolean, zwolniona?: boolean }} [opcje]
+ */
+export function pozycjeDokumentu(z, { stawkaDomyslna, zw = false, zwolniona = false } = {}) {
+  if (!czyStawkaVat(stawkaDomyslna, { zw })) {
     throw new Error(`pozycjeDokumentu: brak albo zła stawka domyślna („${stawkaDomyslna}”).`);
   }
   // Przy 0% (WDT) kwoty zamowienia SA kwotami netto (netto = brutto), wiec cala arytmetyka
   // ponizej — suma linii, dostawa, bariera — dziala bez ani jednej zmiany.
-  const wdt = czyNipUe(daneFaktury(z).nip);
-  const stawkaLinii = (p) => (wdt ? '0' : stawkaPozycji(p, stawkaDomyslna));
+  const wdt = czyWdt(daneFaktury(z).nip, { zwolniona });
+  const stawkaLinii = (p) => (wdt ? '0' : stawkaPozycji(p, stawkaDomyslna, { zw }));
   const stawka = wdt ? '0' : String(stawkaDomyslna);
   const services = z.pozycje.map((p) => ({
     name: p.nazwa,

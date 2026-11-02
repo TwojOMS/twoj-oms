@@ -25,7 +25,7 @@ describe('PRZ-091 Ustawienia → Magazyn', () => {
     const { app, admin } = panel();
     const r = await get(app, '/ustawienia/magazyn', admin);
     expect(r.statusCode, r.body).toBe(200);
-    expect(r.body).toMatch(/<li class="aktywna">\s*<a href="\/ustawienia\/magazyn">/u);
+    expect(r.body).toContain('href="/ustawienia/magazyn" aria-current="page"');
     const s = sekcja(r.body);
     expect(s).toContain('<strong>Wyłączone.</strong>');
     expect(s).not.toContain('Włączone</strong> od');

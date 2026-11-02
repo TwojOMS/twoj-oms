@@ -2,6 +2,8 @@
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 
+<% const dostawa = nawigacja?.kontekst?.aktywnaZakladka === 'dostawa'; %>
+<% if (!dostawa) { %>
 <div class="ust-sekcja">
   <h2>Szablony paczek</h2>
   <p>
@@ -48,6 +50,8 @@
   </form>
 </div>
 
+<% } %>
+<% if (dostawa) { %>
 <div class="ust-sekcja">
   <h2>Koszty dostawy</h2>
   <p>Kwota startowa na ekranie zakładania zamówienia, osobna dla każdej metody.</p>
@@ -69,3 +73,5 @@
     <% if (ustawieniaZmienione) { %> Ostatnia zmiana: <strong><%= fmtDataCzas(ustawieniaZmienione) %></strong>.<% } %>
   </p>
 </div>
+
+<% } %>

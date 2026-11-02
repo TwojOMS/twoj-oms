@@ -1,9 +1,10 @@
+import { programInfakt } from '../../../src/integracje/programy/infakt.ts';
 import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { zapiszWeryfikacjeAllegro } from '../../../src/moduly/faktury/db/faktury.js';
 import {
-  createCzuwaczKsef, LIMIT_WERYFIKACJI, PODLOGA_DNI, NAJDLUZSZY_PRZEBIEG_MS,
+  createCzuwaczKsef, LIMIT_WERYFIKACJI, PODLOGA_DNI, najdluzszyPrzebiegMs,
 } from '../../../src/moduly/faktury/services/czuwacz-ksef.js';
 import { ODSTEP_CZUWACZA_MS } from '../../pomoc/serwer-parytetu.ts';
 import {
@@ -316,7 +317,7 @@ describe('czuwacz — pętla weryfikacji jest OGRANICZONA', () => {
   // policzona z prawdziwych stalych obu klientow (60 s inFakt × 50 + 5 s Allegro × 50 = 54 min
   // 10 s), a bootstrap.js odmawia startu panelu, gdy przestanie sie zgadzac.
   it('najgorszy przebieg OBU pętli mieści się między tyknięciami zegara czuwacza', () => {
-    expect(NAJDLUZSZY_PRZEBIEG_MS).toBeLessThan(ODSTEP_CZUWACZA_MS);
+    expect(najdluzszyPrzebiegMs(programInfakt({}).opis.limity)).toBeLessThan(ODSTEP_CZUWACZA_MS);
   });
 
   it('jeden przebieg bierze najwyżej LIMIT_WERYFIKACJI faktur', async () => {

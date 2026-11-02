@@ -75,9 +75,25 @@ export async function zarchiwizujDokument({
     return { stan: 'adoptowany', sciezka };
   }
 
-  const bajty = rodzaj === 'korekta'
-    ? await program.pobierzPdfKorekty(dokument.uuid)
-    : await program.pobierzPdf(dokument.uuid);
+  // PRZ-122.B10c: `pobierzPdf` programu wbudowanego zamyka fakturę (wydano_nabywcy), więc archiwum nie bierze jej
+  // w odstępie na poprawki (reguła w adapterze: `gotowyDoWydania`). Pominięcie bez pliku i wiersza = wraca następnej
+  // nocy; to nie błąd. Program bez tej metody (inFakt) — jak dotąd.
+  if (rodzaj !== 'korekta' && typeof program.gotowyDoWydania === 'function'
+    && !(await program.gotowyDoWydania(dokument.uuid, teraz()))) {
+    return { stan: 'w_edycji', sciezka };
+  }
+
+  let bajty;
+  try {
+    bajty = rodzaj === 'korekta'
+      ? await program.pobierzPdfKorekty(dokument.uuid)
+      : await program.pobierzPdf(dokument.uuid);
+  } catch (e) {
+    // PRZ-122.B10a: faktura VAT (B2B i B2C — B2C-QR) bez numeru KSeF — archiwum trzyma PDF dla nabywcy, więc czeka (bez pliku i wiersza);
+    // następny przebieg pobierze ją po numerze. To nie błąd przebiegu.
+    if (e?.czekaNaKsef) return { stan: 'czeka_na_ksef', sciezka };
+    throw e;
+  }
   if (!Buffer.isBuffer(bajty) || bajty.subarray(0, 4).toString() !== '%PDF') {
     throw bladOperatora(`${program.opis.nazwa.mianownik} oddał coś, co nie jest PDF-em dla dokumentu ${dokument.number} — nie zapisano.`);
   }

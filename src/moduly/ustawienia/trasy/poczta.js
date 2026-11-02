@@ -49,7 +49,7 @@ export function registerUstawieniaPocztyRoutes(app, { db, adresPaneluZEnv, poczt
     const adresZapisany = adresPaneluZZapisu(zapisAdresu);
     const zapisane = stan?.ustawienia ?? {};
     return reply.view('ustawienia-poczta.ejs', {
-      nawigacja: nawigacjaUstawien(req, reply), title: 'Poczta wychodząca',
+      nawigacja: nawigacjaUstawien(req, reply), title: nawigacjaUstawien(req, reply).kontekst.aktywnyDzial === 'komunikacja' ? 'Podpis i stopka' : 'Poczta wychodząca',
       zEnv: stanPoczty.zEnv, atrapa: stanPoczty.atrapa, stan,
       pola: { ...PUSTY, ...Object.fromEntries(Object.entries(zapisane).map(([k, v]) => [k, String(v ?? '')])), ...(wpisane ?? {}) },
       moznaProbowac: Boolean(mailer()),
@@ -68,7 +68,7 @@ export function registerUstawieniaPocztyRoutes(app, { db, adresPaneluZEnv, poczt
     .send(`${co} jest ustawiony w pliku konfiguracji (oms.env) — tam go zmień. Formularz niczego nie zapisał.`);
   const kto = (req) => (req.konto ? { id: req.konto.id ?? null, login: req.konto.login ?? null } : null);
 
-  app.get(EKRAN_POCZTY, async (req, reply) => {
+  const widokGet = async (req, reply) => {
     // PRZ-102.10: „Podgląd” podpisu to GET z wpisanymi polami — niczego nie zapisuje (jak podgląd szablonu wiadomości).
     const usl = podpis();
     if (req.query?.podglad === undefined || !usl) return widok(req, reply);
@@ -76,7 +76,9 @@ export function registerUstawieniaPocztyRoutes(app, { db, adresPaneluZEnv, poczt
     for (const p of ['marka', 'stopka']) if (req.query[p] !== undefined) wpisane[p] = String(req.query[p]).slice(0, 2000);
     const { wartosci, bledy: bledyPodpisu } = usl.sprawdz(wpisane);
     return widok(req, reply, { podpisMaili: ekranPodpisu({ wpisanyPodpis: bledyPodpisu.length ? wpisane : wartosci, bledyPodpisu, podgladWpisany: true }) });
-  });
+  };
+  app.get(EKRAN_POCZTY, widokGet);
+  app.get('/ustawienia/komunikacja/podpis', widokGet);
 
   app.post(EKRAN_POCZTY, async (req, reply) => {
     if (poczta()?.zEnv) return odmowaZPliku(reply, 'Serwer poczty (SMTP_…)');
@@ -148,7 +150,7 @@ export function registerUstawieniaPocztyRoutes(app, { db, adresPaneluZEnv, poczt
       const wpisane = Object.fromEntries(Object.entries(pola).map(([k, v]) => [k, v.slice(0, 2000)]));
       return widok(req, reply, { podpisMaili: ekranPodpisu({ wpisanyPodpis: wpisane, bledyPodpisu: wynik.bledy }) });
     }
-    return reply.code(303).redirect(`${EKRAN_POCZTY}?zapisano=podpis#podpis-maili`);
+    return reply.code(303).redirect('/ustawienia/komunikacja/podpis?zapisano=podpis#podpis-maili');
   });
 
   // Usunięcie działa także przy SMTP w .env: hasło zapisane z ekranu, zanim ktoś dopisał SMTP do pliku, musi dać się usunąć.

@@ -6,7 +6,7 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { modulFaktury, createModulFaktury } from '../../../src/moduly/faktury/modul.ts';
 
 const env = { OMS_PROFORMY_KATALOG: mkdtempSync(join(tmpdir(), 'prz023-')),
-  OMS_SPRZEDAWCA_NIP: '1000001193', OMS_RACHUNEK: '61109010140000071219812874' };
+  OMS_SPRZEDAWCA_NIP: '1200001192', OMS_RACHUNEK: '61109010140000071219812874' };
 
 describe('manifest faktury', () => {
   it('wymaga jawnej konfiguracji sprzedawcy i katalogu proform', () => {

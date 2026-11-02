@@ -298,17 +298,19 @@ function bajty(doc) {
  *   `liczbaStron`      — ile stron ma CALY PLIK tej czesci (nie samo zestawienie i nie oba
  *                        pliki razem) — po tej liczbie ksiegowa sprawdza kompletnosc wydruku.
  *   `liczbaDokumentow` — ile dokumentow niesie ta czesc paczki.
+ *   `kryterium`        — PRZ-122.B13d1: napis „Kryterium: …” w metryczce; domyslnie `KRYTERIUM[czesc]`
+ *                        (zestawienie zaznaczonych faktur podaje wlasny — dobor recznie z listy FAKTURY).
  *   `sekcje`, `sumyRazem`, `zrodlo` — tylko zestawienie KOSZTOW (PRZ-086): kilka tabel pod
  *                        wlasnymi naglowkami (`{ naglowek, opis, wiersze, sumy, pusto, etykietaSum }`),
  *                        suma laczna pod nimi i opis zrodla na wydruku. Bez nich — jedna tabela.
  */
 export async function zbudujZestawieniePdf({
-  paczka, czesc, wygenerowano, liczbaStron, liczbaDokumentow, tytul = null,
+  paczka, czesc, wygenerowano, liczbaStron, liczbaDokumentow, tytul = null, kryterium = null,
   sekcje: sekcjeWejscie = null, sumyRazem = null, zrodlo = null,
 }) {
   const tytulWydruku = tytul
     ? `${tytul} — ${opisMiesiaca(paczka.miesiac)}`
-    : `Paczka dla biura rachunkowego — ${opisMiesiaca(paczka.miesiac)} — część: ${CZESC_W_NAGLOWKU[czesc]}`;
+    : `Zestawienie faktur — ${opisMiesiaca(paczka.miesiac)} — część: ${CZESC_W_NAGLOWKU[czesc]}`;
   const opisSekcji = tytul ?? TYTUL[czesc];
   const doc = new PDFDocument({
     size: 'A4',
@@ -342,7 +344,7 @@ export async function zbudujZestawieniePdf({
   y += 19;
   gruby(doc, 10).text(TYTUL[czesc], L, y, { lineBreak: false });
   y += 15;
-  const metryczka = `Kryterium: ${KRYTERIUM[czesc]}. Wygenerowano ${fmtDataCzasKrotko(wygenerowano)} w panelu OMS (${zrodlo ?? ZRODLO[czesc]}).`;
+  const metryczka = `Kryterium: ${kryterium ?? KRYTERIUM[czesc]}. Wygenerowano ${fmtDataCzasKrotko(wygenerowano)} w panelu OMS (${zrodlo ?? ZRODLO[czesc]}).`;
   zwykly(doc, 7.5, SZARY_TEKST).text(metryczka, L, y, { width: R - L });
   y += doc.heightOfString(metryczka, { width: R - L }) + 6;
 

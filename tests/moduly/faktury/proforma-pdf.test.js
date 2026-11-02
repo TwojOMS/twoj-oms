@@ -96,7 +96,7 @@ function daneWzoru(nadpisania = {}) {
       kod: '02-791',
       miasto: 'Warszawa',
       kraj: 'Polska',
-      nip: '1000001135',
+      nip: '1200001128',
     },
     podsumowanieVat: podsumowanieVat(pozycje),
     doZaplatyGr,

@@ -32,8 +32,10 @@ import { klasaStatusu, modyfikatorStatusu } from './klasa-statusu.js';
 // (Przesyłki, Faktury…). Z TEGO SAMEGO indeksu co lista (PRZ-051), więc liczby się zgadzają.
 // ⚠️ Bez liczb, gdy indeksu nie ma (panel indywidualny, baza bez migracji) albo się nie odświeżył:
 // liczba sprzed zapisu, który nie doszedł, twierdziłaby coś, czego nie ma, a strona ma się otworzyć.
-async function licznikiStatusowDlaMenu(db, req, nawigacja) {
-  if (req.method !== 'GET' || !nawigacja?.kontekst?.statusy?.length) return null;
+// Domyślnie tylko GET (POST zwykle kończy się przekierowaniem); `naZadanie` — trasa, która po POST renderuje
+// stronę (formularz z błędem, C07c), prosi o liczby sama przez `reply.locals.licznikiMenuNaZadanie()`.
+async function licznikiStatusowDlaMenu(db, req, nawigacja, { naZadanie = false } = {}) {
+  if ((!naZadanie && req.method !== 'GET') || !nawigacja?.kontekst?.statusy?.length) return null;
   try {
     const teraz = Date.now();
     const indeks = indeksListy(db);
@@ -235,6 +237,7 @@ app.addHook('preHandler', async (req, reply) => {
         modulWlaczony: (modul) => !odlozoneEkrany.includes(modul),
         // PRZ-085: liczby przy statusach na KAŻDEJ zakładce, nie tylko na liście i karcie.
         licznikiStatusow: await licznikiStatusowDlaMenu(db, req, nawigacja),
+        licznikiMenuNaZadanie: () => licznikiStatusowDlaMenu(db, req, nawigacja, { naZadanie: true }),
         // Kontrolki pytaja o SWOJ adres. Mapowanie adres -> zakres pozostaje jedno,
         // wspolne ze straznikiem; widok nie utrzymuje drugiej listy praw.
         mozeAdres: (url) => maDostepDoAdresu(req.konto ?? null, url),

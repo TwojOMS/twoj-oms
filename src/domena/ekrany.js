@@ -12,7 +12,11 @@
 // tak samo, jak straznik wola ja na prawdziwym adresie (`/zamowienia/12/faktura`).
 
 import { czyTrasaOtwarta } from '../core/bezpieczenstwo/logowanie-wspolne.js';
-import { POZYCJE_USTAWIEN, podmenuUstawien } from './podmenu-ustawien.js';
+import { POZYCJE_USTAWIEN, podmenuUstawien, modelNawigacjiUstawien } from './podmenu-ustawien.js';
+
+/** PRZ-123.C04b: Ustawienia → Integracje → Moduł faktur → Wysyłka do KSeF. Tutaj (PRZ-122.ZGODA-TFb), żeby wspólny ekran
+ * wyboru modułu (trasy/ustawienia-programu.js) linkował do niego bez importu trasy TwojeFaktury. */
+export const EKRAN_KSEF_SPRZEDAZY = '/ustawienia/integracje/program-fakturowy/ksef';
 
 // ⚠️⚠️ DLACZEGO `/zamowienia` ROZPADA SIE NA CZTERY ZAKRESY.
 // Jeden stary klucz `dokumenty-zamowienia` obejmowal razem faktury, zwroty, proformy i
@@ -151,7 +155,7 @@ export const EKRANY = [
 // koncie bez ptaszka znaczyloby czlowieka zamknietego w panelu, ktorego nie umie opuscic;
 // przelacznik motywu nie niesie zadnej informacji.
 // PRZ-069: strona własnego konta (imię, zmiana hasła) — bez ptaszka, także dla konta bez żadnego ekranu.
-const DLA_KAZDEGO = ['/wyloguj', '/motyw', '/konto', '/konto/imie', '/konto/haslo'];
+const DLA_KAZDEGO = ['/wyloguj', '/motyw', '/konto', '/konto/imie', '/konto/haslo', '/konto/powiadomienia'];
 
 // ⚠️⚠️ TRASY, KTORE ODPYTUJE MASZYNA, A NIE CZLOWIEK — i to jest cala ich definicja.
 //
@@ -232,11 +236,20 @@ export function maDostepDoAdresu(konto, url) {
 /** Domyślny tytuł strony z tej samej prezentacyjnej mapy, która nazywa nawigację. */
 export function tytulEkranuDlaAdresu(url) {
   const sciezka = String(url ?? '').split('?')[0];
+  if (sciezka.startsWith('/ustawienia')) {
+    const model = modelNawigacjiUstawien(url, { admin: true, daneDemo: true });
+    const zakladka = model.zakladki.find(z => z.aktywna);
+    if (zakladka && !sciezka.startsWith('/ustawienia/integracje/') || model.aktywnyDzial === 'faktury') {
+      if (zakladka) return zakladka.etykieta;
+    }
+  }
   const integracje = {
     '/ustawienia/integracje/dpd': 'Kurier DPD Polska',
     '/ustawienia/integracje/inpost': 'Kurier InPost',
     '/ustawienia/integracje/infakt': 'inFakt',
     '/ustawienia/integracje/program-fakturowy': 'Moduł faktur',
+    '/ustawienia/integracje/program-fakturowy/serie': 'Serie numeracji',
+    '/ustawienia/integracje/program-fakturowy/ksef': 'Wysyłka faktur do KSeF',
     '/ustawienia/integracje/gus': 'GUS (dane firm po NIP)',
     '/ustawienia/integracje/ksef': 'KSeF — faktury kosztowe',
     '/ustawienia/integracje/poczta': 'Poczta wychodząca',

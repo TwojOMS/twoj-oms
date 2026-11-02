@@ -103,7 +103,7 @@ describe('PRZ-102.11 Ustawienia → Integracje → GUS', () => {
 
   it('Integracje mają wejście do GUS; pusty ekran: pole klucza (hasło), „Niepodłączony”, skąd wziąć klucz, bez adresu usługi', async () => {
     const { app, admin } = panel();
-    expect((await get(app, '/ustawienia/integracje', admin)).body).toContain(`href="${ADRES}"`);
+    expect((await get(app, '/ustawienia/integracje/katalog', admin)).body).toContain(`href="${ADRES}"`);
     const r = await get(app, ADRES, admin);
     expect(r.statusCode, r.body).toBe(200);
     const f = formularz(r.body);

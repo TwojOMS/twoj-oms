@@ -1,0 +1,14 @@
+<h1><%= title %></h1>
+<% if (rodzaj === 'numeracja') { %>
+<section class="ust-sekcja"><h2>Numeracja faktur</h2>
+<p><%= program === 'brak' ? 'OMS nie wystawia faktur. Numeracja będzie dostępna po wybraniu programu do faktur.' : 'Numeracją zarządza zewnętrzny program do faktur. Numery zmieniasz w tym programie.' %></p>
+</section>
+<% } else { %>
+<%- include('_ksef-zastosowania.ejs') %>
+<section class="ust-sekcja"><h2>Wysyłka faktur sprzedaży</h2>
+<% if (program === 'brak') { %><p>OMS nie wystawia faktur sprzedaży. Odbiór kosztów pozostaje dostępny.</p>
+<% } else { %><p>Wysyłkę i faktury konsumenckie obsługuje wybrany program do faktur.</p><p>
+<a href="/ustawienia/integracje/infakt#ksef-konsumenckie">Opcje KSeF i faktur konsumenckich w inFakcie</a>
+</p><% } %>
+</section>
+<% } %>

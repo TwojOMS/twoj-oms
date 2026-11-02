@@ -1,4 +1,5 @@
 import { bladOperatora, komunikatDlaOperatora } from './bledy.js';
+import { poprawnyNip } from '../core/walidatory.ts';
 
 // Wyszukiwanie firmy po NIP-ie w bazie REGON (GUS BIR1.1). CZYSTA warstwa: normalizacja
 // NIP-u, składanie koperty SOAP i czytanie odpowiedzi. Sieć siedzi w gus/client.js.
@@ -19,14 +20,8 @@ export function znormalizujNip(surowy) {
 // cyfrach jest częstsza niż firma, której nie ma w REGON-ie — a odpowiedź GUS-u na oba
 // przypadki wygląda tak samo („nie znaleziono"), więc bez tej kontroli operator dostawałby
 // mylący komunikat i szukał firmy, zamiast poprawić cyfrę.
-const WAGI = [6, 5, 7, 2, 3, 4, 5, 6, 7];
-
 export function nipPoprawny(nip) {
-  if (!/^\d{10}$/.test(nip)) return false;
-  const suma = WAGI.reduce((acc, waga, i) => acc + waga * Number(nip[i]), 0);
-  const kontrolna = suma % 11;
-  // Reszta 10 nie ma cyfry kontrolnej — takiego NIP-u po prostu nie ma.
-  return kontrolna !== 10 && kontrolna === Number(nip[9]);
+  return poprawnyNip(nip);
 }
 
 /** NIP gotowy do zapytania albo odmowa Z WYJASNIENIEM, co poprawić. */

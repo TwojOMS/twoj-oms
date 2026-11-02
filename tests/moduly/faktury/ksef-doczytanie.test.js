@@ -73,6 +73,16 @@ describe('doczytanie numeru KSeF przy otwarciu karty', () => {
     expect(String(ostatniWpisLogu(db, id, "ksef")?.wynik).includes("KSEF-1")).toBe(true);
   });
 
+  // PRZ-123.CZUWACZ-NUMER: TwojeFaktury oddaje numer jako `ksef_number` (ksztalt v3).
+  it('zapisuje numer z odczytu TwojeFaktury (`ksef_number`)', async () => {
+    const { db, id } = baza();
+    const usluga = createDoczytanieKsef({
+      db, infakt: { pobierzFakture: async () => ({ number: '1/08/2026', ksef_number: 'KSEF-TF' }) },
+    });
+    expect(await usluga.dlaFaktury(fakturaZ(db, id), id)).toBe(true);
+    expect(fakturaZ(db, id).ksef_numer).toBe('KSEF-TF');
+  });
+
   // ⚠️ ZAPIS STEMPLA TAKZE PRZY PUSTEJ ODPOWIEDZI — bez niego dlawik nie dziala i kazde
   // odswiezenie karty bije do inFaktu od nowa.
   it('bez numeru nie melduje zmiany, ale odnotowuje pytanie', async () => {

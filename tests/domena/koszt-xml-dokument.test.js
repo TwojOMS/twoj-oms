@@ -28,7 +28,7 @@ const XML_PELNY = `<?xml version="1.0" encoding="utf-8"?>
   <Podmiot1>
     <PrefiksPodatnika>PL</PrefiksPodatnika>
     <DaneIdentyfikacyjne>
-      <NIP>1000001069</NIP>
+      <NIP>1200001051</NIP>
       <Nazwa>DPD Polska Sp. z o.o.</Nazwa>
     </DaneIdentyfikacyjne>
     <Adres>
@@ -134,7 +134,7 @@ const XML_PELNY = `<?xml version="1.0" encoding="utf-8"?>
 
 // PayU: faktura ZWOLNIONA (`P_13_7`, stawka pozycji `zw`), z podstawą zwolnienia w `P_19A`
 // i zapłatą opisową (`PlatnoscInna/OpisPlatnosci`) zamiast formy z listy.
-const XML_ZWOLNIONY = `<?xml version="1.0" encoding="utf-8"?><Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/"><Naglowek><DataWytworzeniaFa>2026-08-08T01:18:07</DataWytworzeniaFa></Naglowek><Podmiot1><DaneIdentyfikacyjne><NIP>1000001075</NIP><Nazwa>PayU S.A.</Nazwa></DaneIdentyfikacyjne><Adres><KodKraju>PL</KodKraju><AdresL1>Grunwaldzka 186 ; 60-166 Poznań</AdresL1></Adres></Podmiot1><Podmiot2><DaneIdentyfikacyjne><NIP>1234563218</NIP><Nazwa>Lumina Marek Zywiecki</Nazwa></DaneIdentyfikacyjne><Adres><KodKraju>PL</KodKraju><AdresL1>Pęki, ul. 1 Maja 5; 00650 Pęki</AdresL1></Adres></Podmiot2><Fa><KodWaluty>PLN</KodWaluty><P_1>2026-08-08</P_1><P_2>2027/1400138343</P_2><P_6>2026-08-07</P_6><P_13_7>29</P_13_7><P_15>29</P_15><Adnotacje><P_16>2</P_16><P_17>2</P_17><P_18>2</P_18><P_18A>2</P_18A><Zwolnienie><P_19>1</P_19><P_19A>ZWOLNIENIE NA PODSTAWIE ART. 43, UST. 1, PKT 40 USTAWY O VAT</P_19A></Zwolnienie><NoweSrodkiTransportu><P_22N>1</P_22N></NoweSrodkiTransportu><P_23>2</P_23><PMarzy><P_PMarzyN>1</P_PMarzyN></PMarzy></Adnotacje><RodzajFaktury>VAT</RodzajFaktury><FaWiersz><NrWierszaFa>1</NrWierszaFa><P_7>Opłata aktywacyjna w serwisie PayU.pl</P_7><P_8A>ST</P_8A><P_8B>1</P_8B><P_9A>29</P_9A><P_11>29</P_11><P_12>zw</P_12></FaWiersz><Platnosc><Zaplacono>1</Zaplacono><DataZaplaty>2026-08-07</DataZaplaty><PlatnoscInna>1</PlatnoscInna><OpisPlatnosci>Pobrano z wpływów. Faktura nie wymaga zapłaty</OpisPlatnosci></Platnosc></Fa></Faktura>`;
+const XML_ZWOLNIONY = `<?xml version="1.0" encoding="utf-8"?><Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/"><Naglowek><DataWytworzeniaFa>2026-08-08T01:18:07</DataWytworzeniaFa></Naglowek><Podmiot1><DaneIdentyfikacyjne><NIP>1200001068</NIP><Nazwa>PayU S.A.</Nazwa></DaneIdentyfikacyjne><Adres><KodKraju>PL</KodKraju><AdresL1>Grunwaldzka 186 ; 60-166 Poznań</AdresL1></Adres></Podmiot1><Podmiot2><DaneIdentyfikacyjne><NIP>1234563218</NIP><Nazwa>Lumina Marek Zywiecki</Nazwa></DaneIdentyfikacyjne><Adres><KodKraju>PL</KodKraju><AdresL1>Pęki, ul. 1 Maja 5; 00650 Pęki</AdresL1></Adres></Podmiot2><Fa><KodWaluty>PLN</KodWaluty><P_1>2026-08-08</P_1><P_2>2027/1400138343</P_2><P_6>2026-08-07</P_6><P_13_7>29</P_13_7><P_15>29</P_15><Adnotacje><P_16>2</P_16><P_17>2</P_17><P_18>2</P_18><P_18A>2</P_18A><Zwolnienie><P_19>1</P_19><P_19A>ZWOLNIENIE NA PODSTAWIE ART. 43, UST. 1, PKT 40 USTAWY O VAT</P_19A></Zwolnienie><NoweSrodkiTransportu><P_22N>1</P_22N></NoweSrodkiTransportu><P_23>2</P_23><PMarzy><P_PMarzyN>1</P_PMarzyN></PMarzy></Adnotacje><RodzajFaktury>VAT</RodzajFaktury><FaWiersz><NrWierszaFa>1</NrWierszaFa><P_7>Opłata aktywacyjna w serwisie PayU.pl</P_7><P_8A>ST</P_8A><P_8B>1</P_8B><P_9A>29</P_9A><P_11>29</P_11><P_12>zw</P_12></FaWiersz><Platnosc><Zaplacono>1</Zaplacono><DataZaplaty>2026-08-07</DataZaplaty><PlatnoscInna>1</PlatnoscInna><OpisPlatnosci>Pobrano z wpływów. Faktura nie wymaga zapłaty</OpisPlatnosci></Platnosc></Fa></Faktura>`;
 
 describe('dokumentZXml — komplet elementów art. 106e z XML-a FA(3)', () => {
   it('czyta nagłówek, obie strony transakcji i metryczkę dokumentu', () => {
@@ -149,7 +149,7 @@ describe('dokumentZXml — komplet elementów art. 106e z XML-a FA(3)', () => {
     expect(d.naleznoscOgolem).toBe('709.48');
 
     expect(d.sprzedawca.nazwa).toBe('DPD Polska Sp. z o.o.');
-    expect(d.sprzedawca.identyfikator).toBe('NIP: 1000001069');
+    expect(d.sprzedawca.identyfikator).toBe('NIP: 1200001051');
     expect(d.sprzedawca.adres).toEqual(['ul. Spokojna 5', '02-274 Warszawa']);
 
     expect(d.nabywca.nazwa).toBe('Lumina Marek Zywiecki');

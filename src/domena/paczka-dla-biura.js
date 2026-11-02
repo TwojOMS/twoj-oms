@@ -53,7 +53,7 @@ export function porownajNumery(a, b) {
 //
 // Brak wartosci oddajemy jako `null`, a nie jako 0 — rozroznienie „zero zlotych" od „inFakt
 // nie podal kwoty" jest tu roznica miedzy poprawna suma a suma po cichu za mala o fakture.
-function groszeZInfaktu(wartosc) {
+export function groszeZInfaktu(wartosc) {
   if (wartosc === null || wartosc === undefined || String(wartosc).trim() === '') return null;
   const n = Number(wartosc);
   return Number.isFinite(n) ? Math.round(n) : null;
@@ -74,6 +74,9 @@ const kontrahentZ = (d) => String(d?.client_company_name ?? '').trim()
 const UWAGA_BRAK_KWOTY = 'brak kwoty w inFakcie — sprawdź fakturę';
 // Uwaga kosztu wpisanego ręcznie — jedna stała, bo zestawienie kosztów (PRZ-086) ją z wierszy zdejmuje.
 const UWAGA_PAPIER = 'dokument papierowy poza KSeF — dołącz oryginał';
+// PRZ-126.C06: dokument bez numeru KSeF wszedł do paczki PODGLĄDEM (program wbudowany, `podgladPdf`) — znacznik
+// `bezNumeruKsef` stawia usługa paczki dopiero po pobraniu bajtów. Bez znacznika (inFakt) — dawne „bez KSeF”.
+export const UWAGA_PODGLAD = 'bez numeru KSeF — w paczce podgląd';
 
 function wierszSprzedazy(d, miesiac, numeryPoId) {
   const uwagi = [];
@@ -103,7 +106,12 @@ function wierszSprzedazy(d, miesiac, numeryPoId) {
     const pierwotna = wskazany || numeryPoId.get(String(d.parent_id ?? ''));
     uwagi.push(pierwotna ? `korekta do ${pierwotna}` : `korekta do faktury id ${d.parent_id ?? '?'}`);
   }
-  if (!d.ksef_number) uwagi.push('bez KSeF');
+  // PRZ-126.C09d (Z5): zamiana faktury przy złym NIP-ie (program wbudowany) — stara, KOR do zera i nowa idą do okresu
+  // sprzedaży starej; każda dostaje tę samą uwagę z numerem STAREJ. Tylko tekst — kwoty i kolejność bez zmian.
+  const zastapiona = d.zastapiona_przez ? d.number : (d.zastepujaca ? d.corrected_invoice_number : d.zastepuje);
+  if (zastapiona) uwagi.push(`zamiana faktury ${zastapiona} (błędny NIP) — rozlicz w tym okresie`);
+  if (d.bezNumeruKsef) uwagi.push(UWAGA_PODGLAD);
+  else if (!d.ksef_number) uwagi.push('bez KSeF');
   return {
     rodzaj: d.rodzaj === 'korekta' ? 'korekta' : 'vat',
     uuid: d.uuid,
@@ -230,8 +238,7 @@ export function zlozZestawienieKosztow({ miesiac, koszty = [], kwarantanna = 0 }
     reczne,
     opisRecznych: 'Dokumenty spoza KSeF (zagraniczne, papierowe) — do zestawienia dołącz ich oryginały.',
     sumy: { ksef: sumy(ksef), reczne: sumy(reczne), razem: p.sumy.koszty },
-    // Zdanie o kwarantannie pochodzi z paczki — tu księgowa trzyma ZESTAWIENIE, nie paczkę.
-    ostrzezenia: p.ostrzezenia.map((o) => o.replace('w tej paczce', 'w tym zestawieniu')),
+    ostrzezenia: [...p.ostrzezenia],
   };
 }
 
@@ -272,7 +279,7 @@ export function zlozPaczke({
   // Kwarantanna to dokumenty, ktorych panel nie umial zapisac jako koszt. Paczka MUSI o nich
   // powiedziec wprost — milczenie znaczyloby dla ksiegowej „to jest caly miesiac".
   if (kwarantanna > 0) {
-    ostrzezenia.push(`${liczebnik(kwarantanna, 'dokument kosztowy leży', 'dokumenty kosztowe leżą', 'dokumentów kosztowych leży')} w kwarantannie panelu i NIE ma ich w tej paczce.`);
+    ostrzezenia.push(`${liczebnik(kwarantanna, 'dokument kosztowy leży', 'dokumenty kosztowe leżą', 'dokumentów kosztowych leży')} w kwarantannie panelu i NIE ma ich w tym zestawieniu.`);
   }
   return {
     miesiac,

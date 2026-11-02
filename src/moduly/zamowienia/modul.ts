@@ -58,7 +58,11 @@ export function createModulZamowienia({ zWiadomosciami = false, fabryki = {} as 
     // PRZ-117: status po chwilowej awarii kanału/sklepu wraca sam (zegary.ts).
     const zegary=syncSklep?[zegarPonawianiaStatusow({sync:syncSklep,teraz:ctx.teraz,log:ctx.log})]:[];
     return {zegary,uslugi:{config:opcje.config,zapytania,miniaturyEkranu,opcjeTras:opcje,syncSklep,gus,konfiguracjaGus:gus,
-      wczytajListe:(...a:Parameters<ReturnType<typeof createKontekstZamowien>['wczytajListe']>)=>{if(!kontekst)throw new Error('Trasy zamówień nie zostały jeszcze złożone');return kontekst.wczytajListe(...a);}},
+      wczytajListe:(...a:Parameters<ReturnType<typeof createKontekstZamowien>['wczytajListe']>)=>{if(!kontekst)throw new Error('Trasy zamówień nie zostały jeszcze złożone');return kontekst.wczytajListe(...a);},
+      // PRZ-122.B07c: flaga „zw” programu fakturowego z kontekstu karty — API panelu liczy tak samo jak karta.
+      opcjeZw:()=>{if(!kontekst)throw new Error('Trasy zamówień nie zostały jeszcze złożone');return kontekst.opcjeZw;},
+      // PRZ-126.C02: odmowa wystawienia faktury (moduł faktur) wraca jako karta z błędem przy polu.
+      renderujKarte:(...a:Parameters<ReturnType<typeof createKontekstZamowien>['renderujKarte']>)=>{if(!kontekst)throw new Error('Trasy zamówień nie zostały jeszcze złożone');return kontekst.renderujKarte(...a);}},
       trasy:app=>{
         kontekst=createKontekstZamowien({...ctx.usluga<object>('zamowienia','opcjeTras'),
           zdrowie:()=>{
@@ -66,6 +70,16 @@ export function createModulZamowienia({ zWiadomosciami = false, fabryki = {} as 
             try{odczyt=ctx.usluga<()=>unknown>('zdrowie','zdrowie');}
             catch(e){
               if(e instanceof Error&&e.message==='Usługa „zdrowie.zdrowie" nie istnieje albo moduł „zdrowie" nie jest zbudowany przed wołającym')return null;
+              throw e;
+            }
+            return odczyt();
+          },
+          // PRZ-122.B16a: stan kopii bazy do tabelki ostrzeżeń; bez modułu zdrowie — brak wiersza, nie błąd.
+          kopie:()=>{
+            let odczyt:()=>unknown;
+            try{odczyt=ctx.usluga<()=>unknown>('zdrowie','kopie');}
+            catch(e){
+              if(e instanceof Error&&e.message==='Usługa „zdrowie.kopie" nie istnieje albo moduł „zdrowie" nie jest zbudowany przed wołającym')return null;
               throw e;
             }
             return odczyt();
@@ -82,6 +96,18 @@ export function createModulZamowienia({ zWiadomosciami = false, fabryki = {} as 
           infakt:ctx.usluga('faktury','infakt'),
           // PRZ-121.03b: wybór modułu faktur — zdanie „faktury wyłączone” zamiast „nie jest skonfigurowany”; bez modułu faktur `null`.
           wyborProgramu:(()=>{try{return ctx.usluga('faktury','wyborProgramu');}catch{return null;}})(),
+          // PRZ-126.C05a: stan komputerów z drukarką faktur; bez usługi albo przy błędzie `null` = „Drukuj” jak dziś.
+          stanDrukuFaktur:()=>{try{return ctx.usluga<()=>unknown>('faktury','stanDrukuFaktur')()??null;}catch{return null;}},
+          // PRZ-122.ZGODA-TFb: niepewne wysyłki KSeF programu wbudowanego (usługa modułu faktur); bez niej — bez ostrzeżenia.
+          niepewneKsef:(teraz:Date)=>{
+            let odczyt:(t:Date)=>unknown[];
+            try{odczyt=ctx.usluga<(t:Date)=>unknown[]>('faktury','niepewneKsefPonadDobe');}
+            catch(e){
+              if(e instanceof Error&&e.message==='Usługa „faktury.niepewneKsefPonadDobe" nie istnieje albo moduł „faktury" nie jest zbudowany przed wołającym')return [];
+              throw e;
+            }
+            return odczyt(teraz);
+          },
         });
         registerListaRoutes(app,kontekst);registerKartaRoutes(app,kontekst);registerReczneRoutes(app,kontekst);registerScalanieRoutes(app,kontekst);
         // PRZ-102.11: Ustawienia → Integracje → GUS (wzór: ekrany kurierów i inFaktu). Usługa nie z nadpisań `gus`

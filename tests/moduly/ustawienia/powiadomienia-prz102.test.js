@@ -32,7 +32,7 @@ it('każdy zalogowany widzi siedem domyślnie zaznaczonych pól i link z Mojego 
   for (const typ of typy.filter(t => t !== 'automatyzacja')) expect(pola(r.body).find(p => p.includes(`value="${typ}"`))).toContain('checked');
   const a = await get(app, '/ustawienia/powiadomienia', admin);
   expect(pola(a.body)).toHaveLength(8);
-  expect((await get(app, '/konto', osoba)).body).toContain('href="/ustawienia/powiadomienia"');
+  expect((await get(app, '/konto', osoba)).body).toContain('href="/konto/powiadomienia"');
   expect((await get(app, '/ustawienia/magazyn', osoba)).statusCode).toBe(403);
 });
 

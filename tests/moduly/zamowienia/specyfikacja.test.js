@@ -287,6 +287,24 @@ describe('informacja o dokumencie sprzedazy', () => {
   });
 });
 
+// PRZ-126.F02: faktura wystawiona bez prośby klienta (opcja firmy) — kartka nie może mówić „paragon”.
+describe('informacja o dokumencie sprzedazy — faktura bez zadania (PRZ-126)', () => {
+  it('bez zadania, z wystawiona faktura: bez znacznika paragonu, faktura wybrana', () => {
+    const d = daneSpecyfikacji(zam({ chce_fakture: 0, faktura: { numer: 'FV/7/10/2026' } }), { sprzedawca: SPRZEDAWCA });
+    expect(d.paragon).toBe(false);
+    expect(d.fakturaWybrana).toBe(true);
+    expect(d.faktura).toEqual({ numer: 'FV/7/10/2026' });
+  });
+
+  it('bez zadania i bez faktury (takze sama rezerwacja bez numeru): paragon jak dzis', () => {
+    for (const faktura of [undefined, null, { numer: null }]) {
+      const d = daneSpecyfikacji(zam({ chce_fakture: 0, faktura }), { sprzedawca: SPRZEDAWCA });
+      expect(d.paragon).toBe(true);
+      expect(d.fakturaWybrana).toBe(false);
+    }
+  });
+});
+
 describe('uwagi klienta', () => {
   it('przechodza na kartke tak, jak je napisal klient', () => {
     const d = daneSpecyfikacji(

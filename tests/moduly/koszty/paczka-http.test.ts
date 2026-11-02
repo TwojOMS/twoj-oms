@@ -28,7 +28,7 @@ describe('PRZ-025 paczka kosztów przez przyjęte trasy faktur', () => {
       const r = await z.app.inject({ method:'GET',url:'/faktury/paczka?miesiac=2026-08&czesc=sprzedaz',headers });
       expect(r.statusCode).toBe(200);
       expect(r.headers['content-type']).toContain('application/pdf');
-      expect(r.headers['content-disposition']).toContain('paczka-dla-biura-2026-08-sprzedaz.pdf');
+      expect(r.headers['content-disposition']).toContain('zestawienie-faktur-2026-08-sprzedaz.pdf');
       expect((await PDFDocument.load(r.rawPayload)).getPageCount()).toBe(4);
       expect(infakt.listaFaktur).toHaveBeenCalledWith({od:'2026-08-01',do:'2026-08-31',pole:'sale_date'});
       expect(infakt.listaKorekt).toHaveBeenCalledWith({od:'2026-08-01',do:'2026-08-31',pole:'invoice_date'});
@@ -36,6 +36,24 @@ describe('PRZ-025 paczka kosztów przez przyjęte trasy faktur', () => {
       expect(infakt.pobierzPdf).toHaveBeenCalledWith('u-faktura');
       expect(infakt.pobierzPdfKorekty).toHaveBeenCalledTimes(1);
       expect(infakt.pobierzPdfKorekty).toHaveBeenCalledWith('u-korekta');
+      expect(transport).not.toHaveBeenCalled();
+    } finally { await z.app.close(); z.db.close(); transport.mockRestore(); }
+  });
+  // PRZ-126.C06-6: inFakt nie ma podglądu — dokument bez numeru KSeF nadal zatrzymuje paczkę (409), ale odmowa jest
+  // stroną w układzie panelu z powrotem na listę, a nie surowym napisem.
+  it('HTTP inFakt bez podglądu: korekta czeka na KSeF → 409 strona panelu z komunikatem i powrotem na listę', async () => {
+    const czeka = Object.assign(new Error('Korekta KOR/08/2026 czeka na numer KSeF'), { czekaNaKsef: true });
+    const infakt = { listaFaktur: vi.fn().mockResolvedValue([faktura]), listaKorekt: vi.fn().mockResolvedValue([{ ...korekta, ksef_number: null }]),
+      pobierzPdf: vi.fn().mockResolvedValue(await pdf(1)), pobierzPdfKorekty: vi.fn().mockRejectedValue(czeka) };
+    const transport = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Sieć zabroniona'));
+    const z = await zbudujOms({ env, nadpisania: { 'faktury.infakt': infakt } });
+    try {
+      const r = await z.app.inject({ method:'GET',url:'/faktury/paczka?miesiac=2026-08&czesc=sprzedaz',headers });
+      expect(r.statusCode).toBe(409);
+      expect(r.headers['content-type']).toContain('text/html');
+      expect(r.body).toContain('<html');
+      expect(r.body).toContain('Korekta KOR/08/2026 czeka na numer KSeF');
+      expect(r.body).toContain('href="/faktury?miesiac=2026-08"');
       expect(transport).not.toHaveBeenCalled();
     } finally { await z.app.close(); z.db.close(); transport.mockRestore(); }
   });

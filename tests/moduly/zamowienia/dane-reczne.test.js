@@ -24,7 +24,7 @@ const zmapowane = (nad = {}) => ({
     phone: '+48500600700', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL',
   },
   dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: '', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '1000001201',
+  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '1200001200',
   kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00', status_woo: 'processing',
   oplacone_at: null, anulowane: 0, utworzone_at: '2026-07-29T13:19:52',
   pozycje: [{ nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 1, cena_brutto: '123.00', brutto_linii: '123.00', vat: null }],
@@ -163,7 +163,7 @@ describe('daneFaktury — nadpisania ręczne', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
     const z = pobierzZamowienie(db, id);
     expect(daneFaktury(z)).toEqual(daneFakturyZeSklepu(z));
-    expect(daneFaktury(z).nip).toBe('1000001201');
+    expect(daneFaktury(z).nip).toBe('1200001200');
     expect(daneFaktury(z).firma).toBe('ACME sp. z o.o.');
   });
 
@@ -293,7 +293,7 @@ describe('ręczne poprawki a synchronizacja ze sklepem', () => {
     billing: { first_name: 'Jan', last_name: 'Kowalski', company: 'ACME sp. z o.o.', email: 'j@k.pl', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
     shipping: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
     shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }],
-    line_items: [], meta_data: [{ key: '_billing_nip', value: '1000001201' }],
+    line_items: [], meta_data: [{ key: '_billing_nip', value: '1200001200' }],
     ...nad,
   });
 
@@ -340,7 +340,7 @@ describe('przywrocDaneZeSklepu', () => {
     przywrocDaneZeSklepu(db, id);
     const z = pobierzZamowienie(db, id);
     expect(adresOdbiorcy(z).kod).toBe('00-650');
-    expect(daneFaktury(z).nip).toBe('1000001201');
+    expect(daneFaktury(z).nip).toBe('1200001200');
     expect(chceFakture(z)).toBe(true);
     expect(polaReczneAdresu(z)).toEqual([]);
     expect(polaReczneFaktury(z)).toEqual([]);
@@ -392,7 +392,7 @@ describe('faktura czyta poprawione dane klienta', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane({ chce_fakture: 0, nip: null }), {});
     const faktura = createFaktura({ db, infakt });
     await expect(faktura.wystaw(id)).rejects.toThrow('Klient nie prosił o fakturę.');
-    zapiszNadpisaniaFaktury(db, id, { nip: '1000001201' }, 1);
+    zapiszNadpisaniaFaktury(db, id, { nip: '1200001200' }, 1);
     await expect(faktura.wystaw(id)).resolves.toBeTruthy();
   });
 

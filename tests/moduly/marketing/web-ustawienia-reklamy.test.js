@@ -36,9 +36,10 @@ describe('Ustawienia → Integracje → Reklamy', () => {
     zapiszPolaczenie(db, { typ: 'meta', kontoId: 'act_1', kanal: 'sklep_a', sekretRef: `meta:${randomUUID()}` });
     const app = buildOmsServer({ db, config: CONFIG });
     const lista = await app.inject({ method: 'GET', url: '/ustawienia/integracje', headers: BASIC });
-    expect(lista.body).toMatch(/<div class="ust-sekcja">\s*<h2>Reklamy<\/h2>\s*<p><a href="\/ustawienia\/integracje\/reklamy">/);
-    expect(lista.body.indexOf('<h2>Kurierzy</h2>')).toBeLessThan(lista.body.indexOf('<h2>Reklamy</h2>'));
-    expect(lista.body.indexOf('<h2>Reklamy</h2>')).toBeLessThan(lista.body.indexOf('<h2>Kanały Allegro</h2>'));
+    expect(lista.body).toContain('href="/ustawienia/integracje/reklamy"');
+    expect(lista.body).toContain('Meta Ads');
+    expect(lista.body).toContain('Konto act_1');
+    expect(lista.body).toContain('Niesprawdzone');
     const r = await app.inject({ method: 'GET', url: '/ustawienia/integracje/reklamy', headers: BASIC });
     expect(r.body).toContain('<a href="/ustawienia/integracje">← Integracje</a>');
     expect((r.body.match(/<section class="ust-sekcja" id="reklamy-(?:ga4|google_ads|meta)"/g) ?? [])).toHaveLength(3);

@@ -28,7 +28,7 @@ describe('PRZ-025 realna kompozycja KSeF', () => {
     expect(() => wczytajKoszty(env)).not.toThrow();
     expect(wczytajKoszty(env).odstepMs).toBe(3600000);
     expect(wczytajKoszty(env).ksef?.nip).toBe(env.OMS_SPRZEDAWCA_NIP);
-    expect(() => wczytajKoszty({...env,KSEF_NIP:'1000001193'})).toThrow('KSEF_NIP');
+    expect(() => wczytajKoszty({...env,KSEF_NIP:'1200001192'})).toThrow('KSEF_NIP');
   });
   it('czuwacz i PDF HTTP korzystają z jednego klienta i jednej trwałej sesji', async () => {
     const katalog = mkdtempSync(join(tmpdir(),'prz025-archiwum-'));

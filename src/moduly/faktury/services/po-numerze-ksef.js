@@ -42,6 +42,17 @@ export function createPoNumerzeKsef({ db, fakturaAllegro = null }) {
         wynik: 'AUTOMAT: numer KSeF się pojawił, więc panel sam wysłał fakturę do kupującego.',
       });
     } catch (e) {
+      // PRZ-122.B10a: PDF dla nabywcy czeka na numer KSeF w programie (np. numer bieżącej wersji jeszcze nie przyszedł)
+      // — „później”, nie błąd; slotu w Allegro nic nie zajęło (PDF pobiera się przed zgłoszeniem).
+      // ⚠️ `ksef_numer` ZOSTAJE (zapiszNumerKsef: numer raz zapisany się nie kasuje) — wysyłka przyciskiem na karcie.
+      if (e?.czekaNaKsef) {
+        dopiszLog(db, zamowienieId, {
+          akcja: 'faktura-allegro',
+          wynik: `AUTOMAT: faktura czeka na numer KSeF — PDF dla kupującego jeszcze niegotowy. ${e.message} `
+            + 'Gdy KSeF przyjmie fakturę, wyślij ją przyciskiem na karcie.',
+        });
+        return;
+      }
       dopiszLog(db, zamowienieId, {
         akcja: 'faktura-allegro',
         wynik: `AUTOMAT: nie udało się wysłać faktury do Allegro — ${e.message} `

@@ -17,7 +17,7 @@ import { createAtrapaWoo, createAtrapaAllegro, zbudujAtrapyKanalow } from '../..
 import { createAtrapaPoczty, createModulWiadomosciAtrapy } from '../../deploy/proba/atrapy/poczta.mjs';
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
 
-const DZIS = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' });
+const DZIS = '2026-10-28';
 // Zapamiętany przed blokadą: test sam rozmawia z panelem oryginałem, a blokada łapie wyłącznie wołania aplikacji.
 const oryginalnyFetch = globalThis.fetch;
 const katalogi = [];
@@ -33,6 +33,9 @@ describe('piaskownica z atrapami — Faktury i Magazyn na danych demo', () => {
   let env, live, url, cookie, siec;
   const logi = [];
   beforeAll(async () => {
+    // Scenariusz wymaga kilku dokumentów w bieżącym miesiącu, także gdy test uruchomiono 1. dnia miesiąca.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(DZIS + 'T12:00:00Z'));
     // Prawdziwy fetch zabroniony: atrapa, która po cichu woła sieć, ma tu wybuchnąć (i zostać w siec.mock.calls).
     siec = vi.spyOn(globalThis, 'fetch').mockImplementation(async (adres) => {
       throw new Error(`atrapy: zabronione wyjście do sieci ${adres}`);
@@ -48,7 +51,7 @@ describe('piaskownica z atrapami — Faktury i Magazyn na danych demo', () => {
     vi.spyOn(console, 'log').mockImplementation(log);
     url = live.aplikacja.app.listeningOrigin;
   }, 90000);
-  afterAll(async () => { await live?.zamknij(); vi.restoreAllMocks(); });
+  afterAll(async () => { await live?.zamknij(); vi.restoreAllMocks(); vi.useRealTimers(); });
 
   const zadanie = (adres, o = {}) => oryginalnyFetch(url + adres, { redirect: 'manual', ...o, headers: { cookie, origin: url, ...(o.headers ?? {}) } });
   const strona = async (adres) => {

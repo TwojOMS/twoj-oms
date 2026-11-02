@@ -96,10 +96,20 @@ export function zakoncz(db, wykonanie, { stan, powod = null, powod_kod = null, a
   });
 }
 
-/** Chwilowy błąd poczty przed przyjęciem listu: z powrotem do kolejki, próba + 1, następna za 15 min. */
+/** Chwilowy błąd poczty przed przyjęciem listu: z powrotem do kolejki, próba + 1, następna za 15 min; kasuje kod odłożenia (MOK2). */
 export function ponow(db, wykonanie, { nastepna, powod }) {
-  db.prepare(`UPDATE automatyzacje_wykonania SET stan = 'zaplanowane', proby = proby + 1, nastepna_proba_at = ?, powod = ?
+  db.prepare(`UPDATE automatyzacje_wykonania SET stan = 'zaplanowane', proby = proby + 1, nastepna_proba_at = ?, powod = ?, powod_kod = NULL
     WHERE id = ? AND stan = 'w_toku'`).run(nastepna, powod, wykonanie.id);
+}
+
+/**
+ * PRZ-122.MAIL-OKNO: akcja jeszcze nie może iść (faktura w oknie poprawek) — wiersz ZOSTAJE `zaplanowane`, następna
+ * próba za 15 min, powód widoczny na ekranie reguł. Bez `proby + 1` (każda poprawka zaczyna okno od nowa; granicą jest
+ * przeterminowanie 48 h) i bez wpisu w historii zamówienia (to nie pominięcie). Tylko przed rezerwacją.
+ */
+export function odloz(db, wykonanie, { nastepna, powod, kod }) {
+  db.prepare(`UPDATE automatyzacje_wykonania SET nastepna_proba_at = ?, powod = ?, powod_kod = ?
+    WHERE id = ? AND stan = 'zaplanowane'`).run(nastepna, powod, kod ?? 'okno_poprawek', wykonanie.id);
 }
 
 /**

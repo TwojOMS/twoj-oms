@@ -19,6 +19,7 @@ import { createModulZamowienia } from '../../../src/moduly/zamowienia/modul.ts';
 import { createAtrapaInfaktu, createAtrapaVies } from './infakt.mjs';
 import { createAtrapaGus } from './gus.mjs';
 import { createAtrapaKsef } from './ksef.mjs';
+import { createAtrapaKsefWysylki } from './ksef-wysylka.mjs';
 import { createModulKoszty } from '../../../src/moduly/koszty/modul.ts';
 import { createAtrapaDpd } from './dpd.mjs';
 import { createAtrapaInpost } from './inpost.mjs';
@@ -34,7 +35,14 @@ import { ukryjEkranyDemo } from './ekrany.mjs';
 // listę modułów). Atrapy kurierów czytają z niej `utworzona_at` paczki, żeby oddać realistyczny przebieg statusów.
 export function modulyPiaskownicy(env, { baza = () => null } = {}) {
   wymagajTrybuProby(env, 'moduły piaskownicy');
+  // Szew składa KSeF raz. Pamiętamy instancję także przy ponownym wywołaniu fabryki: numery i awaria zostają.
+  let ksefWysylki;
   const fabryki = {
+    atrapaKsefWysylki: () => (ksefWysylki ??= {
+      ...createAtrapaKsefWysylki({ env }),
+      fabryka: ({ token }) => createAtrapaKsef({ env, token }),
+      spij: async () => {},
+    }),
     createInfaktClient: ({ db, teraz }) => createAtrapaInfaktu({ db, teraz, env }),
     createVies: () => createAtrapaVies({ env }),
     // PRZ-121.06: „Uruchom OMS ponownie” — kontener piaskownicy startuje przez `node --watch-path`, który po wyjściu

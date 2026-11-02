@@ -21,7 +21,7 @@ const zmapowane = (nad = {}) => ({
     phone: '+48500600700', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL',
   },
   dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: '', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '1000001201',
+  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '5234567891',
   kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00', status_woo: 'processing',
   oplacone_at: null, anulowane: 0, utworzone_at: '2026-07-29T13:19:52',
   pozycje: [{ nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 1, cena_brutto: '123.00', brutto_linii: '123.00', vat: null }],
@@ -38,7 +38,7 @@ const FORMULARZ_WYSYLKI = {
   miasto: 'Pęki', phone: '+48500600700', email: 'j@k.pl',
 };
 const FORMULARZ_FAKTURY = {
-  firma: 'ACME sp. z o.o.', nip: '1000001201', ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki',
+  firma: 'ACME sp. z o.o.', nip: '5234567891', ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki',
   chce_fakture: 'on',
 };
 
@@ -377,9 +377,9 @@ describe('POST /zamowienia/:id/dane/wysylka', () => {
 describe('POST /zamowienia/:id/dane/faktura', () => {
   it('zapisuje wyłącznie zmieniony NIP', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    await wyslij(`/zamowienia/${id}/dane/faktura`, { ...FORMULARZ_FAKTURY, nip: '5252445556' });
+    await wyslij(`/zamowienia/${id}/dane/faktura`, { ...FORMULARZ_FAKTURY, nip: '1234563218' });
     const w = db.prepare('SELECT klient_reczny_json FROM zamowienia WHERE id = ?').get(id);
-    expect(JSON.parse(w.klient_reczny_json)).toEqual({ nip: '5252445556' });
+    expect(JSON.parse(w.klient_reczny_json)).toEqual({ nip: '1234563218' });
   });
 
   it('odznaczenie „klient chce fakturę" zapisuje nadpisanie 0', async () => {
@@ -398,15 +398,26 @@ describe('POST /zamowienia/:id/dane/faktura', () => {
 });
 
 describe('POST /zamowienia/:id/dane/przywroc', () => {
+  // PRZ-126.C02 (recenzja): nieudane przywracanie dawalo karte 400 bez slowa komunikatu.
+  it('błąd zapisu przy przywracaniu wraca na kartę z komunikatem', async () => {
+    const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
+    zapiszNadpisaniaWysylki(db, id, { kod: '00-651' });
+    db.exec("CREATE TRIGGER t_przywroc BEFORE UPDATE ON zamowienia BEGIN SELECT RAISE(ABORT, 'tylko odczyt'); END");
+    const r = await wyslij(`/zamowienia/${id}/dane/przywroc`, {});
+    expect(r.statusCode).toBe(400);
+    expect(r.body).toContain('<html');
+    expect(r.body).toMatch(/id="blad-dane-przywroc">Nie udało się zapisać danych/);
+  });
+
   it('kasuje wszystkie nadpisania i zdejmuje oznaczenia z karty', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
     zapiszNadpisaniaWysylki(db, id, { kod: '00-651' });
-    zapiszNadpisaniaFaktury(db, id, { nip: '5252445556' }, 0);
+    zapiszNadpisaniaFaktury(db, id, { nip: '1234563218' }, 0);
     const r = await wyslij(`/zamowienia/${id}/dane/przywroc`, {});
     expect(r.statusCode).toBe(302);
     const z = pobierzZamowienie(db, id);
     expect(adresOdbiorcy(z).kod).toBe('00-650');
-    expect(daneFaktury(z).nip).toBe('1000001201');
+    expect(daneFaktury(z).nip).toBe('5234567891');
     expect(chceFakture(z)).toBe(true);
     expect((await karta(id)).body).not.toContain('zmienione ręcznie');
   });
@@ -442,10 +453,10 @@ describe('POST /zamowienia/:id/dane/przywroc', () => {
   it('zamówienie ręczne z wpisanym NIP-em do faktury NIE pokazuje przycisku przywracania', async () => {
     const id = utworzZamowienieReczne(db, { metoda_wysylki: 'dpd' });
     await wyslij(`/zamowienia/${id}/dane/faktura`, {
-      firma: 'ACME sp. z o.o.', nip: '1000001201', chce_fakture: 'on',
+      firma: 'ACME sp. z o.o.', nip: '5234567891', chce_fakture: 'on',
     });
     const r = await karta(id);
-    expect(r.body).toContain('1000001201');
+    expect(r.body).toContain('5234567891');
     expect(r.body).not.toContain('Przywróć dane ze sklepu');
   });
 

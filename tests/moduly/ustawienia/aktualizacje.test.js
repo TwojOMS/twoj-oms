@@ -24,7 +24,7 @@ const sekcja = (html, id) => {
   expect(m, `brak sekcji #${id}`).not.toBeNull();
   return m[0];
 };
-const AKTYWNA = /<li class="aktywna">\s*<a href="\/ustawienia\/aktualizacje">/u;
+const AKTYWNA = /<a href="\/ustawienia\/aktualizacje" aria-current="page">/u;
 const INSTRUKCJA = 'href="https://github.com/TwojOMS/twoj-oms/blob/main/docs/aktualizacja-klienta-v0.md"';
 
 describe('PRZ-099 Ustawienia → Aktualizacje', () => {

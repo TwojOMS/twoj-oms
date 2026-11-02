@@ -3,12 +3,12 @@ import { naWiersz, czyPLN } from '../../src/domena/koszt-metadane.js';
 import { grosze } from '../../src/domena/kwoty.js';
 
 const przyklad = {
-  ksefNumber: '1000001193-20260605-0100AB-CD',
+  ksefNumber: '1200001192-20260605-0100AB-CD',
   invoiceNumber: 'FV/2026/06/12',
   issueDate: '2026-06-05',
   permanentStorageDate: '2026-06-05T14:03:11.000Z',
   seller: { nip: '5252674798', name: 'Allegro sp. z o.o.' },
-  buyer: { identifier: { type: 'Nip', value: '1000001193' } },
+  buyer: { identifier: { type: 'Nip', value: '1200001192' } },
   netAmount: 1067.0, vatAmount: 245.41, grossAmount: 1312.41,
   currency: 'PLN', invoiceType: 'Vat', hasAttachment: false,
 };
@@ -16,7 +16,7 @@ const przyklad = {
 describe('metadane KSeF → wiersz panelu', () => {
   it('przepisuje komplet pol', () => {
     expect(naWiersz(przyklad)).toEqual({
-      ksefNumber: '1000001193-20260605-0100AB-CD',
+      ksefNumber: '1200001192-20260605-0100AB-CD',
       numerDokumentu: 'FV/2026/06/12',
       sprzedawcaNip: '5252674798',
       sprzedawcaNazwa: 'Allegro sp. z o.o.',

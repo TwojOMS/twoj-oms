@@ -264,7 +264,7 @@ describe('ekran zakładania nie skacze do góry', () => {
 
   it('„Wstaw dane" stałego klienta wraca do paska wyboru', async () => {
     dopiszKlienta(db, {
-      klucz: 'betamet', nazwa: 'BETAMET sp. z o.o.', nip: '1000001023', b2b: 1, rabat_procent: 0,
+      klucz: 'betamet', nazwa: 'BETAMET sp. z o.o.', nip: '1200001022', b2b: 1, rabat_procent: 0,
       chce_fakture: 1, metoda_wysylki: 'dpd', koszt_dostawy_brutto: '19.00', platnosc: 'przelew',
       termin_platnosci: '14', komentarz: null, aktywny: 1, faktura: {}, wysylka: {},
     });

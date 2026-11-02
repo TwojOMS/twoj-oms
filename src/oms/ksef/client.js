@@ -1,5 +1,5 @@
 import { transport } from '../../integracje/transport.js';
-import { kluczZCertyfikatu, zaszyfrujToken } from './szyfrowanie.js';
+import { kluczMf, kluczZCertyfikatu, zaszyfrujToken } from './szyfrowanie.js';
 import { bladOperatora } from '../../domena/bledy.js';
 
 // Klient KSeF v2 — CZESC UWIERZYTELNIAJACA.
@@ -164,7 +164,7 @@ export function createKsefClient({
         + 'tokena i uwierzytelnienia nie rozpoczęto. Spróbuj ponownie za chwilę.',
       );
     }
-    const klucz = kluczZCertyfikatu(certy[0].certificate);
+    const klucz = kluczZCertyfikatu(kluczMf(certy, 'KsefTokenEncryption'));
 
     const ch = await zapytaj('/auth/challenge', { metoda: 'POST', gdzie: 'inicjalizacji uwierzytelnienia' });
     // ⚠️ TEN SAM STRAZNIK KSZTALTU, CO PRZY CERTYFIKACIE I PRZY ODPOWIEDZI KSEF-TOKEN, TYLKO

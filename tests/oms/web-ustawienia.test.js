@@ -19,6 +19,7 @@ beforeEach(async () => {
 });
 
 const get = () => app.inject({ method: 'GET', url: '/ustawienia/zamowienia-i-wysylka', headers: naglowek });
+const getDostawa = () => app.inject({ method: 'GET', url: '/ustawienia/wysylka/dostawa', headers: naglowek });
 const post = (url, payload) => app.inject({ method: 'POST', url, headers: naglowekPost, payload });
 
 // ⚠️ WYCINAMY SEKCJĘ, nie całe ciało odpowiedzi — arkusz stylów jedzie w <style> układu
@@ -73,7 +74,7 @@ describe('ekran ustawień — domyślna paczka', () => {
 
 describe('ekran ustawień — koszty dostawy', () => {
   it('pokazuje 19,00 dla każdej metody na bazie bez ustawień', async () => {
-    const s = sekcja((await get()).body, 'ust-dostawa');
+    const s = sekcja((await getDostawa()).body, 'ust-dostawa');
 
     expect(s, 'brak sekcji kosztów dostawy').not.toBeNull();
     expect(s).toContain('name="dpd" value="19,00"');
@@ -82,7 +83,7 @@ describe('ekran ustawień — koszty dostawy', () => {
   });
 
   it('nazywa metody tak samo, jak ekran zakładania zamówienia', async () => {
-    const s = sekcja((await get()).body, 'ust-dostawa');
+    const s = sekcja((await getDostawa()).body, 'ust-dostawa');
 
     expect(s).toContain('DPD — kurier');
     expect(s).toContain('InPost Paczkomat');
@@ -101,7 +102,7 @@ describe('ekran ustawień — koszty dostawy', () => {
   it('po zapisie pokazuje kwoty z przecinkiem', async () => {
     await post('/ustawienia/dostawa', { dpd: '19,00', inpost_paczkomat: '13', odbior_osobisty: '0' });
 
-    const s = sekcja((await get()).body, 'ust-dostawa');
+    const s = sekcja((await getDostawa()).body, 'ust-dostawa');
     expect(s).toContain('name="inpost_paczkomat" value="13,00"');
     expect(s).toContain('name="odbior_osobisty" value="0,00"');
   });

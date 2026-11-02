@@ -18,7 +18,7 @@ export function registerUstawieniaMagazynuRoutes(app, { db }) {
     const przelacznik = przelacznikStanow(db);
     return reply.view('ustawienia-magazyn.ejs', {
       nawigacja: nawigacjaUstawien(req, reply),
-      title: 'Magazyn',
+      title: 'Stany magazynowe',
       przelacznik,
       // Było już kiedyś włączone — ponowne włączenie zacznie liczyć od nowa (ostrzeżenie przy przycisku).
       bylWlaczony: przelacznik.historia.some((w) => w.wlaczone),

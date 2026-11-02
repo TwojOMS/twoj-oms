@@ -6,6 +6,7 @@ import { bladOperatora } from '../../../domena/bledy.js';
 import { odciskDokumentu } from '../../../domena/archiwum-sprzedazy.js';
 import { zlozPaczke } from '../../../domena/paczka-dla-biura.js';
 import { wierszArchiwum } from '../../faktury/db/archiwum-sprzedazy.js';
+import { doNazwyPliku } from '../../../domena/nazwa-pliku-archiwum.js';
 import { kosztyOtrzymaneWMiesiacu, odrzuconeWMiesiacu } from '../../../oms/db/koszty.js';
 import { zbudujZestawieniePdf } from '../pdf/zestawienie-dla-biura-pdf.js';
 import { zCzekaniemNa429 } from '../../../oms/ksef/limit.js';
@@ -66,7 +67,19 @@ const czytaj = (katalog, sciezka, czytajPlik) => {
  * i do adresu (`?czesc=sprzedaz`). Ta sama para kluczy siedzi w `KOLUMNY`/`TYTUL`
  * w pdf/zestawienie-dla-biura-pdf.js i w `zlozPaczke` — zmiana tutaj wymaga zmiany tam.
  */
+import { gdzieDokument } from '../../../domena/nazwa-programu.js';
+
 export const CZESCI = ['sprzedaz', 'koszty'];
+
+// PRZ-122.B13d1: zestawienie ZAZNACZONYCH faktur (z listy FAKTURY). Limit, bo trasa jest synchroniczna, a inFakt oddaje
+// PDF-y po `rownolegle` naraz — wiekszy wybor to zestawienie za caly miesiac. Napisy w jednym miejscu (właściciel moze je zmienic).
+export const MAX_ZAZNACZONYCH = 100;
+const POLA_ZAZNACZONYCH = ['invoice_date', 'sale_date'];
+export const ZAZNACZONE = {
+  tytul: 'Zestawienie zaznaczonych faktur',
+  kryterium: 'faktury zaznaczone na liście FAKTURY',
+  nazwaPliku: (miesiac) => `zestawienie-faktur-${miesiac}-zaznaczone.pdf`,
+};
 
 // Pobieranie porcjami po `ile` naraz. inFakt znosi kilka rownoleglych zadan, ale caly miesiac
 // naraz (setki faktur) to zaproszenie do 429 i do wyczerpania gniazd — a przy okazji do
@@ -82,10 +95,12 @@ async function porcjami(elementy, ile, fn) {
 }
 
 // PRZ-118.08: listy i PDF-y sprzedaży daje PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
+// PRZ-122.ZGODA-TFb: `plikiKsef(uuid)` → { xml, upo } | null — pliki KSeF programu wbudowanego z parametru (moduł faktur;
+// w testach paczka-dla-biura-twojefaktury.js). Ten plik nie importuje kodu TwojeFaktury; bez funkcji — paczka jak u inFaktu.
 export function createPaczkaDlaBiura({
   db, program: programPodany = null, infakt = null, wizualizacjaKosztu = null, katalogSprzedazy = null, katalogKosztow = null,
   teraz = () => new Date(), rownolegle = 4, spij = undefined, log = console.error,
-  czytajPlik = readFileSync, zbudujZestawienie = zbudujZestawieniePdf,
+  czytajPlik = readFileSync, zbudujZestawienie = zbudujZestawieniePdf, plikiKsef = null,
 }) {
   // ⚠️ ZERO (albo cokolwiek nie-dodatniego) w `rownolegle` wywracaloby `porcjami` w
   // NIESKONCZONA PETLE: krok `i += ile` z `ile === 0` nigdy nie przesuwa `i` dalej niz
@@ -103,7 +118,7 @@ export function createPaczkaDlaBiura({
    * nie poszla do KSeF, a `updated_at` w API NIE ISTNIEJE (pomiar 2026-09-02) — bez
    * porownania odcisku biuro dostaloby wersje sprzed poprawki, wygladajaca na aktualna.
    */
-  async function bajtySprzedazy(dok) {
+  async function bajtySprzedazy(dok, podglady) {
     const wiersz = wierszArchiwum(db, dok.uuid);
     if (wiersz && !wiersz.skasowana_at && wiersz.odcisk === odciskDokumentu(dok)) {
       let z;
@@ -112,7 +127,7 @@ export function createPaczkaDlaBiura({
       } catch (e) {
         // Plik ISTNIEJE (inaczej `czytaj` oddalaby `null` bez wolania `czytajPlik`), ale nie
         // da sie go przeczytac — awaria wspolnego zasobu (NAS-u), a nie „nie mam, wez z sieci".
-        throw bladOperatora(`Nie udało się przygotować paczki: nie da się odczytać pliku dokumentu ${dok.number} z archiwum (${e.message}).`);
+        throw bladOperatora(`Nie udało się przygotować zestawienia faktur: nie da się odczytać pliku dokumentu ${dok.number} z archiwum (${e.message}).`);
       }
       if (z) return z;
     }
@@ -121,7 +136,18 @@ export function createPaczkaDlaBiura({
         ? await program.pobierzPdfKorekty(dok.uuid)
         : await program.pobierzPdf(dok.uuid);
     } catch (e) {
-      throw bladOperatora(`Nie udało się przygotować paczki: brak dokumentu ${dok.number} (${e.message}).`);
+      // PRZ-126.C06 (właściciel 29.10: „nic nie blokuje. tylko informacją że nie ma ksef”): dokument bez numeru KSeF
+      // (faktura VAT B2B/B2C, korekta) wchodzi PODGLĄDEM programu — napis „PODGLĄD — nie jest fakturą”, bez zdarzenia
+      // `wydano_nabywcy` (biuro nie jest nabywcą) — a wiersz zestawienia dostaje uwagę (znacznik `bezNumeruKsef`).
+      if (e?.czekaNaKsef && typeof program.podgladPdf === 'function') {
+        podglady.add(dok.uuid);
+        return program.podgladPdf(dok.uuid);
+      }
+      // Program bez podglądu (inFakt) — paczka czeka (409) z tym samym zdaniem, a nie „brak dokumentu” (PRZ-122.B10a).
+      if (e?.czekaNaKsef) {
+        throw bladOperatora(`Nie udało się przygotować zestawienia faktur: ${e.message}`, { status: 409, czekaNaKsef: true });
+      }
+      throw bladOperatora(`Nie udało się przygotować zestawienia faktur: brak dokumentu ${dok.number} (${e.message}).`);
     }
   }
 
@@ -147,12 +173,12 @@ export function createPaczkaDlaBiura({
     try {
       z = czytaj(katalogKosztow, k.sciezka_pdf, czytajPlik);
     } catch (e) {
-      throw bladOperatora(`Nie udało się przygotować paczki: nie da się odczytać pliku dokumentu ${k.numer_dokumentu} z archiwum (${e.message}).`);
+      throw bladOperatora(`Nie udało się przygotować zestawienia faktur: nie da się odczytać pliku dokumentu ${k.numer_dokumentu} z archiwum (${e.message}).`);
     }
     if (z) return z;
     if (!uslugaKsefDostepna(wizualizacjaKosztu)) {
       throw bladOperatora(
-        `Nie udało się przygotować paczki: dokument ${k.numer_dokumentu} nie jest zarchiwizowany, `
+        `Nie udało się przygotować zestawienia faktur: dokument ${k.numer_dokumentu} nie jest zarchiwizowany, `
         // PRZ-108.10 (recenzja): przy zapisanym tokenie bez NIP-u firmy — ta przyczyna, wprost.
         + (powodNiedostepnosciKsef(wizualizacjaKosztu) ? `a KSeF nie działa. ${powodNiedostepnosciKsef(wizualizacjaKosztu)}`
           : 'a panel nie ma podpiętego KSeF, żeby go pobrać.'),
@@ -165,7 +191,7 @@ export function createPaczkaDlaBiura({
       );
       return wynik.bajty;
     } catch (e) {
-      throw bladOperatora(`Nie udało się przygotować paczki: brak dokumentu ${k.numer_dokumentu} (${e.message}).`);
+      throw bladOperatora(`Nie udało się przygotować zestawienia faktur: brak dokumentu ${k.numer_dokumentu} (${e.message}).`);
     }
   }
 
@@ -194,14 +220,28 @@ export function createPaczkaDlaBiura({
       doc.getPageIndices();
       return doc;
     } catch (e) {
-      throw bladOperatora(`Nie udało się przygotować paczki: plik dokumentu ${numer} nie daje się wczytać jako PDF (${e.message}).`);
+      throw bladOperatora(`Nie udało się przygotować zestawienia faktur: plik dokumentu ${numer} nie daje się wczytać jako PDF (${e.message}).`);
     }
+  }
+
+  /**
+   * Korekty okresu: po dacie WYSTAWIENIA (art. 29a ust. 13), z jednym wyjatkiem — PRZ-126.C09d: KOR do zera z zamiany
+   * faktury przy zlym NIP-ie (`zastepujaca`, tylko program wbudowany) nalezy do okresu SPRZEDAZY starej, razem ze stara
+   * i nowa. Inaczej przychod wychodzi podwojnie w miesiacu starej, a KOR w miesiacu zamiany. Kazda KOR trafia do
+   * dokladnie jednego miesiaca: z listy po wystawieniu odpada KOR z zamiany, z listy po sprzedazy zostaje tylko ona.
+   * Program zewnetrzny (inFakt) takich korekt nie ma — bez drugiego zapytania.
+   */
+  async function korektyOkresu(zakres) {
+    const poWystawieniu = await program.listaKorekt({ ...zakres, pole: 'invoice_date' });
+    if (program.opis?.wbudowany !== true) return poWystawieniu;
+    const poSprzedazy = await program.listaKorekt({ ...zakres, pole: 'sale_date' });
+    return [...poWystawieniu.filter((d) => !d.zastepujaca), ...poSprzedazy.filter((d) => d.zastepujaca)];
   }
 
   /**
    * Strony czesci SPRZEDAZOWEJ: faktury i korekty w kolejnosci wierszy zestawienia.
    */
-  async function stronySprzedazy(paczka, faktury, korekty) {
+  async function stronySprzedazy(paczka, faktury, korekty, podglady) {
     // Wiersze zestawienia (z domeny) niosa tylko `uuid`/`klucz` — surowe dokumenty trzymamy
     // w mapach, zeby strony szly DOKLADNIE w kolejnosci wierszy zestawienia. Odwrotnie
     // (iteracja po surowych listach) rozjechalaby wydruk z numeracja „lp." przy pierwszej
@@ -219,7 +259,7 @@ export function createPaczkaDlaBiura({
     const poUuid = new Map();
     for (const d of dokSprzedazy) {
       if (poUuid.has(d.uuid)) {
-        throw bladOperatora(`Nie udało się przygotować paczki: dokument ${d.number} ma zduplikowany identyfikator (uuid) z innym dokumentem tego miesiąca — sprawdź w ${program.opis.nazwa.miejscownik}.`);
+        throw bladOperatora(`Nie udało się przygotować zestawienia faktur: dokument ${d.number} ma zduplikowany identyfikator (uuid) z innym dokumentem tego miesiąca — sprawdź ${gdzieDokument(program)}.`);
       }
       poUuid.set(d.uuid, d);
     }
@@ -231,10 +271,41 @@ export function createPaczkaDlaBiura({
         // Wartownik na wypadek niespojnosci z domena (`zlozPaczke`) — wiersz zestawienia bez
         // dopasowania w surowej liscie. Nie powinno sie zdarzyc, ale gdyby sie zdarzylo, ma
         // to byc odmowa z numerem, a nie prosba o bajty `undefined.uuid`.
-        if (!dok) throw bladOperatora(`Nie udało się przygotować paczki: brak danych dokumentu ${w.numer} (niespójność wewnętrzna zestawienia).`);
-        return wczytaj(await bajtySprzedazy(dok), w.numer);
+        if (!dok) throw bladOperatora(`Nie udało się przygotować zestawienia faktur: brak danych dokumentu ${w.numer} (niespójność wewnętrzna zestawienia).`);
+        return wczytaj(await bajtySprzedazy(dok, podglady), w.numer);
       },
     );
+  }
+
+  /**
+   * PRZ-126.C06: zestawienie po pobraniu stron — dokumenty, które weszły podglądem, dostają znacznik `bezNumeruKsef`
+   * (uwaga w wierszu). Kolejność wierszy i sumy te same co w pierwszym złożeniu (znacznik zmienia tylko uwagę).
+   */
+  function zPodgladami(paczka, wejscie, podglady) {
+    if (podglady.size === 0) return paczka;
+    const oznacz = (lista) => lista.map((d) => (podglady.has(d.uuid) ? { ...d, bezNumeruKsef: true } : d));
+    return zlozPaczke({ ...wejscie, faktury: oznacz(wejscie.faktury), korekty: oznacz(wejscie.korekty) });
+  }
+
+  /**
+   * PRZ-122.B13b: przy programie wbudowanym (TwojeFaktury) kazdy dokument w KSeF dostaje w paczce dwa zalaczniki PDF:
+   * `{numer}.xml` (dokladnie bajty wyslane do KSeF) i `{numer}-upo.xml` (gdy UPO jest). Paczka jest jednym scalonym
+   * PDF-em, wiec XML i UPO jada jako pliki osadzone (EmbeddedFiles) — strony i stopka bez zmian. Dokument bez KSeF
+   * (od C06 w paczce podglad) i inFakt — bez zalacznikow. Numer w nazwie jak w archiwum (`doNazwyPliku`).
+   */
+  async function dolaczPlikiKsef(wynik, wiersze) {
+    if (program?.opis?.wbudowany !== true || !plikiKsef) return;
+    for (const w of wiersze) {
+      const pliki = plikiKsef(w.uuid);
+      if (!pliki) continue;
+      const nazwa = doNazwyPliku(w.numer) || 'bez-numeru';
+      // eslint-disable-next-line no-await-in-loop
+      await wynik.attach(pliki.xml, `${nazwa}.xml`, { mimeType: 'application/xml', description: `KSeF ${w.numer}` });
+      if (pliki.upo) {
+        // eslint-disable-next-line no-await-in-loop
+        await wynik.attach(Buffer.from(pliki.upo, 'utf8'), `${nazwa}-upo.xml`, { mimeType: 'application/xml', description: `UPO ${w.numer}` });
+      }
+    }
   }
 
   /** Strony czesci KOSZTOWEJ: faktury zakupowe w kolejnosci wierszy zestawienia. */
@@ -248,7 +319,7 @@ export function createPaczkaDlaBiura({
       // odmowa, ktora wywrocilaby cala paczke.
       if (!w.maPlik) continue;
       const k = kosztyPoKluczu.get(w.klucz);
-      if (!k) throw bladOperatora(`Nie udało się przygotować paczki: brak danych kosztu ${w.numer} (niespójność wewnętrzna zestawienia).`);
+      if (!k) throw bladOperatora(`Nie udało się przygotować zestawienia faktur: brak danych kosztu ${w.numer} (niespójność wewnętrzna zestawienia).`);
       // ⚠️ SEKWENCYJNIE, mimo ze sprzedaz idzie po cztery: koszty jada przez WSPOLNA sesje
       // KSeF (ta sama, ktorej uzywa nocny czuwacz) i wspolny limit 16/min. Rownolegle zadania
       // wyscigowaly by sie o odswiezenie tokenu i naganialy 429 zamiast go unikac.
@@ -270,7 +341,7 @@ export function createPaczkaDlaBiura({
     if (!zakres) throw bladOperatora(`„${miesiac ?? ''}" to nie jest miesiąc w formacie RRRR-MM.`);
 
     const faktury = await program.listaFaktur({ ...zakres, pole: 'sale_date' });
-    const korekty = await program.listaKorekt({ ...zakres, pole: 'invoice_date' });
+    const korekty = await korektyOkresu(zakres);
     const paczka = zlozPaczke({ miesiac, faktury, korekty, koszty: [], kwarantanna: 0 });
     const wygenerowano = teraz().toISOString();
     const liczbaDokumentow = paczka.sprzedaz.length;
@@ -295,50 +366,13 @@ export function createPaczkaDlaBiura({
   }
 
   /**
-   * JEDEN plik paczki: `czesc` = 'sprzedaz' albo 'koszty' (patrz naglowek modulu — dwa pliki
-   * to decyzja wlasciciela z 2026-09-02 wieczorem, a nie szczegol implementacji).
+   * Czesc wspolna zestawienia za okres (`zbuduj`) i zestawienia zaznaczonych (`zbudujZaznaczone`, PRZ-122.B13d1):
+   * dwa przebiegi zestawienia, scalenie z dokumentami, tytul, zalaczniki KSeF (czesc sprzedazowa), straznik stron.
+   * Wydzielona mechanicznie z `zbuduj` — obie sciezki skladaja plik JEDNA funkcja.
    */
-  async function zbuduj(miesiac, czesc) {
-    const zakres = zakresMiesiaca(miesiac);
-    if (!zakres) throw bladOperatora(`„${miesiac ?? ''}" to nie jest miesiąc w formacie RRRR-MM.`);
-    // ⚠️ NIEZNANA CZESC ODMAWIA, a nie wraca do domyslnej. Domyslna („niech bedzie sprzedaz")
-    // oddawalaby ksiegowej plik z INNYMI dokumentami, niz zamowila — a paczka sprzedazowa
-    // wyglada dokladnie tak samo jak kosztowa, dopoki sie jej nie otworzy. Ta sama zasada,
-    // co przy miesiacu wyzej.
-    if (!CZESCI.includes(czesc)) {
-      throw bladOperatora(`„${czesc ?? ''}" to nie jest część paczki — panel składa dwa pliki: ${CZESCI.join(', ')}.`);
-    }
-    const sprzedazowa = czesc === 'sprzedaz';
-
-    // ⚠️ DWA ROZNE POLA DATY, I TO NIE JEST NIEKONSEKWENCJA: sprzedaz bierzemy po DACIE
-    // SPRZEDAZY (to ona wyznacza okres VAT — art. 19a ustawy o VAT), a korekty po dacie
-    // WYSTAWIENIA (korekta „in minus" rozlicza sie w okresie wystawienia — art. 29a ust. 13).
-    // Sekwencyjnie, nie `Promise.all`: przy odmowie z inFaktu drugie zadanie i tak byloby
-    // bezuzyteczne, a kolejnosc wolan jest sprawdzalna w tescie.
-    const faktury = sprzedazowa ? await program.listaFaktur({ ...zakres, pole: 'sale_date' }) : [];
-    const korekty = sprzedazowa ? await program.listaKorekt({ ...zakres, pole: 'invoice_date' }) : [];
-    const koszty = sprzedazowa ? [] : kosztyOtrzymaneWMiesiacu(db, miesiac);
-    // ⚠️ DOMENA DOSTAJE PUSTE LISTY TEJ CZESCI, KTOREJ W PLIKU NIE MA — i to jest swiadome.
-    // `zlozPaczke` potrzebuje `faktury`/`korekty` do ZLOZENIA ODNOSNIKA korekty do faktury
-    // pierwotnej („korekta do <numer>"), wiec plik sprzedazowy dostaje obie listy naprawde;
-    // plik kosztowy nie ma zadnej korekty do opisania, wiec puste listy niczego mu nie zabieraja.
-    //
-    // ⚠️ KWARANTANNA (dokumenty KOSZTOWE, ktorych panel nie umial zapisac) liczy sie WYLACZNIE
-    // do pliku kosztowego. Ostrzezenie o niej jest zdaniem „ten rejestr NIE jest calym
-    // miesiacem" — postawione nad zestawieniem sprzedazy mowiloby o brakach w dokumentach,
-    // ktorych ten plik w ogole nie niesie.
-    const paczka = zlozPaczke({
-      miesiac,
-      faktury,
-      korekty,
-      koszty,
-      kwarantanna: sprzedazowa ? 0 : odrzuconeWMiesiacu(db, miesiac),
-    });
-
-    const dokumentyPdf = sprzedazowa
-      ? await stronySprzedazy(paczka, faktury, korekty)
-      : await stronyKosztow(paczka, koszty);
-
+  async function scalZDokumentami({
+    paczka, czesc, dokumentyPdf, tytulPliku, opcjeZestawienia = {},
+  }) {
     const stronDok = dokumentyPdf.reduce((s, d) => s + d.getPageCount(), 0);
     const wygenerowano = teraz().toISOString();
     const liczbaDokumentow = paczka[czesc].length;
@@ -353,7 +387,7 @@ export function createPaczkaDlaBiura({
     // ⚠️ LICZBA STRON JEST LICZBA STRON TEGO PLIKU, nie obu razem: ksiegowa liczy kartki
     // wydruku, ktory trzyma w rece, a nie sume dwoch osobnych pobran.
     const zestaw = (liczbaStron) => zbudujZestawienie({
-      paczka, czesc, wygenerowano, liczbaStron, liczbaDokumentow,
+      paczka, czesc, wygenerowano, liczbaStron, liczbaDokumentow, ...opcjeZestawienia,
       // PRZ-118.09: źródło sprzedaży na wydruku = nazwa programu (bez programu — „inFakt” z tabeli wydruku).
       ...(czesc === 'sprzedaz' && zrodloSprzedazy ? { zrodlo: zrodloSprzedazy } : {}),
     });
@@ -369,7 +403,8 @@ export function createPaczkaDlaBiura({
       const strony = await wynik.copyPages(src, src.getPageIndices());
       for (const s of strony) wynik.addPage(s);
     }
-    wynik.setTitle(`Paczka dla biura ${miesiac} — ${czesc}`);
+    wynik.setTitle(tytulPliku);
+    if (czesc === 'sprzedaz') await dolaczPlikiKsef(wynik, paczka.sprzedaz);
     // ⚠️ STRAZNIK NA KONIEC: `stron` (napis w stopce KAZDEJ strony zestawienia) MUSI zgadzac
     // sie z faktyczna liczba stron scalonego pliku. Zalozenie o dwoch przebiegach ("Do
     // rozstrzygniecia" w raporcie Task 11, pkt 3) jest zalozeniem, nie dowodem — gdyby kiedys
@@ -377,16 +412,115 @@ export function createPaczkaDlaBiura({
     // przebiegami), stopka klamalaby o kompletnosci wydruku PO CICHU. Lepsza odmowa tutaj niz
     // ksiegowa liczaca strony wydruku przeciw stopce, ktora sie nie zgadza.
     if (stron !== wynik.getPageCount()) {
-      throw bladOperatora(`Nie udało się przygotować paczki: liczba stron w stopce (${stron}) nie zgadza się z plikiem (${wynik.getPageCount()}).`);
+      throw bladOperatora(`Nie udało się przygotować zestawienia faktur: liczba stron w stopce (${stron}) nie zgadza się z plikiem (${wynik.getPageCount()}).`);
     }
     return {
       bajty: Buffer.from(await wynik.save()),
-      nazwa: `paczka-dla-biura-${miesiac}-${czesc}.pdf`,
-      czesc,
       dokumentow: liczbaDokumentow,
       stron,
     };
   }
 
-  return { zbuduj, zbudujZestawieniePrzychodow };
+  /**
+   * JEDEN plik paczki: `czesc` = 'sprzedaz' albo 'koszty' (patrz naglowek modulu — dwa pliki
+   * to decyzja wlasciciela z 2026-09-02 wieczorem, a nie szczegol implementacji).
+   */
+  async function zbuduj(miesiac, czesc) {
+    const zakres = zakresMiesiaca(miesiac);
+    if (!zakres) throw bladOperatora(`„${miesiac ?? ''}" to nie jest miesiąc w formacie RRRR-MM.`);
+    // ⚠️ NIEZNANA CZESC ODMAWIA, a nie wraca do domyslnej. Domyslna („niech bedzie sprzedaz")
+    // oddawalaby ksiegowej plik z INNYMI dokumentami, niz zamowila — a paczka sprzedazowa
+    // wyglada dokladnie tak samo jak kosztowa, dopoki sie jej nie otworzy. Ta sama zasada,
+    // co przy miesiacu wyzej.
+    if (!CZESCI.includes(czesc)) {
+      throw bladOperatora(`„${czesc ?? ''}" to nie jest część zestawienia faktur — panel składa dwa pliki: ${CZESCI.join(', ')}.`);
+    }
+    const sprzedazowa = czesc === 'sprzedaz';
+
+    // ⚠️ DWA ROZNE POLA DATY, I TO NIE JEST NIEKONSEKWENCJA: sprzedaz bierzemy po DACIE
+    // SPRZEDAZY (to ona wyznacza okres VAT — art. 19a ustawy o VAT), a korekty po dacie
+    // WYSTAWIENIA (korekta „in minus" rozlicza sie w okresie wystawienia — art. 29a ust. 13).
+    // Sekwencyjnie, nie `Promise.all`: przy odmowie z inFaktu drugie zadanie i tak byloby
+    // bezuzyteczne, a kolejnosc wolan jest sprawdzalna w tescie.
+    const faktury = sprzedazowa ? await program.listaFaktur({ ...zakres, pole: 'sale_date' }) : [];
+    const korekty = sprzedazowa ? await korektyOkresu(zakres) : [];
+    const koszty = sprzedazowa ? [] : kosztyOtrzymaneWMiesiacu(db, miesiac);
+    // ⚠️ DOMENA DOSTAJE PUSTE LISTY TEJ CZESCI, KTOREJ W PLIKU NIE MA — i to jest swiadome.
+    // `zlozPaczke` potrzebuje `faktury`/`korekty` do ZLOZENIA ODNOSNIKA korekty do faktury
+    // pierwotnej („korekta do <numer>"), wiec plik sprzedazowy dostaje obie listy naprawde;
+    // plik kosztowy nie ma zadnej korekty do opisania, wiec puste listy niczego mu nie zabieraja.
+    //
+    // ⚠️ KWARANTANNA (dokumenty KOSZTOWE, ktorych panel nie umial zapisac) liczy sie WYLACZNIE
+    // do pliku kosztowego. Ostrzezenie o niej jest zdaniem „ten rejestr NIE jest calym
+    // miesiacem" — postawione nad zestawieniem sprzedazy mowiloby o brakach w dokumentach,
+    // ktorych ten plik w ogole nie niesie.
+    const wejscie = {
+      miesiac,
+      faktury,
+      korekty,
+      koszty,
+      kwarantanna: sprzedazowa ? 0 : odrzuconeWMiesiacu(db, miesiac),
+    };
+    const paczka = zlozPaczke(wejscie);
+
+    const podglady = new Set();
+    const dokumentyPdf = sprzedazowa
+      ? await stronySprzedazy(paczka, faktury, korekty, podglady)
+      : await stronyKosztow(paczka, koszty);
+
+    const { bajty, dokumentow, stron } = await scalZDokumentami({
+      paczka: zPodgladami(paczka, wejscie, podglady), czesc, dokumentyPdf, tytulPliku: `Zestawienie faktur ${miesiac} — ${czesc}`,
+    });
+    return {
+      bajty,
+      nazwa: `zestawienie-faktur-${miesiac}-${czesc}.pdf`,
+      czesc,
+      dokumentow,
+      stron,
+    };
+  }
+
+  /**
+   * PRZ-122.B13d1: zestawienie ZAZNACZONYCH faktur z listy FAKTURY (jeden miesiac) — strona zestawienia, potem PDF-y
+   * dokumentow, przy programie wbudowanym XML i UPO jako zalaczniki; skladane ta sama `scalZDokumentami`.
+   * Zaznaczenie niesie TYLKO identyfikatory: listy pobieramy na swiezo za `miesiac` z tym samym `pole` co lista
+   * (jak `przelicz` w services/wysylka-ksef.js). Odmowy PRZED jakimkolwiek `pobierzPdf`: pusto / zly miesiac / zle pole,
+   * ponad `MAX_ZAZNACZONYCH`, uuid spoza listy (z identyfikatorem — wszystko albo nic, jak zestawienie za okres).
+   */
+  async function zbudujZaznaczone({ uuids, miesiac, pole } = {}) {
+    const zakres = zakresMiesiaca(miesiac);
+    if (!zakres) throw bladOperatora(`„${miesiac ?? ''}" to nie jest miesiąc w formacie RRRR-MM.`);
+    if (!POLA_ZAZNACZONYCH.includes(pole)) {
+      throw bladOperatora(`„${pole ?? ''}" to nie jest pole daty listy faktur — dozwolone: ${POLA_ZAZNACZONYCH.join(', ')}.`);
+    }
+    const wybrane = [...new Set([].concat(uuids ?? []).map((u) => String(u).trim()).filter(Boolean))];
+    if (wybrane.length === 0) throw bladOperatora('Zaznacz co najmniej jedną fakturę.');
+    if (wybrane.length > MAX_ZAZNACZONYCH) {
+      throw bladOperatora(`Zaznaczono ${wybrane.length} dokumentów — jedno zestawienie zaznaczonych mieści najwyżej ${MAX_ZAZNACZONYCH}. Większy wybór pobierzesz jako zestawienie faktur za cały miesiąc.`);
+    }
+    const faktury = await program.listaFaktur({ ...zakres, pole });
+    const korekty = await program.listaKorekt({ ...zakres, pole });
+    const naLiscie = new Set([...faktury, ...korekty].map((d) => String(d.uuid)));
+    const obce = wybrane.filter((u) => !naLiscie.has(u));
+    if (obce.length > 0) {
+      throw bladOperatora(`Nie udało się przygotować zestawienia zaznaczonych faktur: dokumentów o identyfikatorach ${obce.join(', ')} nie ma na liście faktur ${miesiac} — odśwież listę i zaznacz ponownie.`);
+    }
+    const zaznaczone = new Set(wybrane);
+    const fakturyZ = faktury.filter((d) => zaznaczone.has(String(d.uuid)));
+    const korektyZ = korekty.filter((d) => zaznaczone.has(String(d.uuid)));
+    const wejscie = { miesiac, faktury: fakturyZ, korekty: korektyZ, koszty: [], kwarantanna: 0 };
+    const paczka = zlozPaczke(wejscie);
+    const podglady = new Set();
+    const dokumentyPdf = await stronySprzedazy(paczka, fakturyZ, korektyZ, podglady);
+    const { bajty, dokumentow, stron } = await scalZDokumentami({
+      paczka: zPodgladami(paczka, wejscie, podglady),
+      czesc: 'sprzedaz',
+      dokumentyPdf,
+      tytulPliku: `${ZAZNACZONE.tytul} — ${miesiac}`,
+      opcjeZestawienia: { tytul: ZAZNACZONE.tytul, kryterium: ZAZNACZONE.kryterium },
+    });
+    return { bajty, nazwa: ZAZNACZONE.nazwaPliku(miesiac), dokumentow, stron };
+  }
+
+  return { zbuduj, zbudujZestawieniePrzychodow, zbudujZaznaczone };
 }

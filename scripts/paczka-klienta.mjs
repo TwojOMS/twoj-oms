@@ -28,7 +28,8 @@ const PREFIKSY = ['src/', 'deploy/klient/', 'deploy/drukarka/'];
 const WZORCE = [/^docs\/kurier-[a-z0-9-]+\.md$/,
   // PRZ-094.04: instrukcja poczty wychodzącej (Ustawienia → Integracje → Poczta wychodząca).
   /^docs\/poczta-smtp\.md$/,
-  /^docs\/modul-faktur\.md$/];
+  /^docs\/modul-faktur\.md$/,
+  /^docs\/twojefaktury(?:-ksef)?\.md$/];
 
 /** Lista plików paczki z listy plików commita: dokładne nazwy, wzorce dokumentów kurierów + całe src/ i deploy/klient/. */
 export function plikiPaczki(plikiCommita) {

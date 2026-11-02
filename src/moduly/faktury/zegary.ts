@@ -32,6 +32,7 @@ export function zegarArchiwumSprzedazy(o: { czuwacz: { przebieg: () => Promise<a
 
 // Re-eksport dla modul.ts: jeden wiersz importu zamiast dwóch — dodatkowy wiersz przesunąłby linie odczytów env
 // w modul.ts, które docs/konfiguracja.json trzyma z numerem linii (strażnik konfiguracji).
+// PRZ-122.ZGODA-TFb: automat TwojeFaktury (ksef-automat-wbudowany.js) importuje modul.ts wprost — ten plik nie sięga do kodu TF.
 export { createAutomatKsef, ODSTEP_AUTOMATU_KSEF_MS } from './services/ksef-automat.js';
 
 // PRZ-102.12: automat wysyłki do KSeF — tyka co minutę, sam rozstrzyga porę (domena/ksef-automat.js). Wyjątek nie

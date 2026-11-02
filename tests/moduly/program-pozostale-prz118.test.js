@@ -22,7 +22,7 @@ import { createWiadomosci } from '../../src/moduly/wiadomosci/services/wiadomosc
 import { createCzuwaczPrzesylek } from '../../src/moduly/wysylka/services/czuwacz-przesylek.js';
 import { oznaczDoreczonePobrania } from '../../src/moduly/wysylka/services/oznaczanie-pobran.js';
 import {
-  createCzuwaczOstrzezen, NAJDLUZSZY_PRZEBIEG_OSTRZEZEN_MS, najdluzszyPrzebiegOstrzezenMs,
+  createCzuwaczOstrzezen, najdluzszyPrzebiegOstrzezenMs,
 } from '../../src/moduly/zdrowie/services/czuwacz-ostrzezen.js';
 import { celeLacznosci } from '../../src/domena/lacznosc.js';
 import { programInfakt } from '../../src/integracje/programy/infakt.ts';
@@ -117,7 +117,7 @@ describe('PRZ-118.08 (1) usługi pozostałych modułów wołają program testowy
     expect(program.ile('listaFaktur')).toBe(1);
     // Testownik: zadanie 30 s, sufit 20 stron, 2 strony naraz → luki 11 tur + terminy 11 tur = 22 × 30 s.
     expect(czuwacz.najdluzszyPrzebiegMs).toBe(22 * 30_000);
-    expect(najdluzszyPrzebiegOstrzezenMs(programInfakt({}).opis.limity)).toBe(NAJDLUZSZY_PRZEBIEG_OSTRZEZEN_MS);
+    expect(najdluzszyPrzebiegOstrzezenMs(programInfakt({}).opis.limity)).toBe(960000);
     const zly = programTestowy({ metody: { listaFaktur: async () => ({ blad: 'nie lista' }) } });
     await expect(createCzuwaczOstrzezen({ db, program: zly }).przebieg())
       .rejects.toThrow('Testownik oddał listę dokumentów w kształcie, którego panel nie rozumie');

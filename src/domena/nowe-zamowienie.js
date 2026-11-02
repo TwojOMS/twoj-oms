@@ -8,12 +8,13 @@ import { parsujDateWysylki } from './termin-wysylki.js';
 import { dzienWarszawa } from './format-daty.js';
 import { jakoTablica, parsujNowaPozycje } from './pozycje-reczne.js';
 import { STAWKA_VAT, nettoZBruttoDoPokazania } from './vat.js';
-import { czyNipUe } from './wdt.js';
+import { czyWdt } from './wdt.js';
 import { bezEtykietyNip } from './dane-faktury.js';
 
 // PRZ-105: nabywca z UE po NIP-ie z formularza — ta sama droga, którą NIP idzie na dokument (daneFaktury zdejmuje
 // etykietę „NIP:”), inaczej ekran liczyłby 23%, a faktura poszłaby z 0%.
-export const wdtZFormularza = (f) => czyNipUe(bezEtykietyNip(f?.f_nip));
+// PRZ-122.B07f: `zwolniona` (firma zwolniona z VAT, liczy trasa) — numer UE nabywcy to wtedy nie WDT.
+export const wdtZFormularza = (f, { zwolniona = false } = {}) => czyWdt(bezEtykietyNip(f?.f_nip), { zwolniona });
 // Dzielenie imienia i nazwiska NIE jest zdefiniowane tutaj — mieszka we wspólnym module
 // src/domain/nazwa-osoby.js, bo panel (src/domain/oms-order.js) musi używać dokładnie tej
 // samej reguły podziału co ten ekran. Uzasadnienie patrz komentarz przy definicji.
@@ -170,12 +171,13 @@ function cenaKatalogowaWiersza(surowa) {
  * nowy na końcu. Formularz rośnie razem z zamówieniem — pięć wierszy to była podpowiedź
  * dla operatora, a nie granica.
  */
-export function wstawPozycjeDoFormularza(formularz = {}, pozycja, { stawkaDomyslna = STAWKA_VAT } = {}) {
+// PRZ-122.B07b: `zw: true` (program wbudowany) — domyślna „zw” liczy netto = brutto zamiast „NaN”.
+export function wstawPozycjeDoFormularza(formularz = {}, pozycja, { stawkaDomyslna = STAWKA_VAT, zw = false, zwolniona = false } = {}) {
   // PRZ-105 (uwaga właściciela 21.10: „Jeżeli dodam produkt z magazynu to nie ma ceny netto”): netto jest
   // POKAZANE, liczone stawką wiersza (przy NIP-ie z UE stawką 0 — netto = brutto). Brutto zostaje
   // wartością przechowywaną: parser bierze brutto, gdy jest, więc netto niczego nie nadpisze.
   const stawka = String(stawkaDomyslna);
-  const netto = nettoZBruttoDoPokazania(pozycja.cena_brutto, wdtZFormularza(formularz) ? '0' : stawka);
+  const netto = nettoZBruttoDoPokazania(pozycja.cena_brutto, wdtZFormularza(formularz, { zwolniona }) ? '0' : stawka, { zw });
   const pola = {
     poz_nazwa: pozycja.nazwa,
     poz_sku: pozycja.sku ?? '',
@@ -277,10 +279,12 @@ export function usunWierszFormularza(formularz = {}, nr) {
  * nazwę przy telefonie i musi się dowiedzieć, że brakuje ceny. Ciche pominięcie zapisałoby
  * zamówienie bez pozycji, za którą klient ma zapłacić.
  */
-export function parsujPozycjeFormularza(body, { stawkaDomyslna = STAWKA_VAT } = {}) {
+// PRZ-122.B07b (uwaga (1) z odbioru B07a): flaga `zw` dochodzi do `parsujNowaPozycje` — bez niej domyślna „zw” dawała
+// netto „NaN”, a wiersz „zw” odmowę także przy programie wbudowanym.
+export function parsujPozycjeFormularza(body, { stawkaDomyslna = STAWKA_VAT, zw = false, zwolniona = false } = {}) {
   const wszystkie = [...KOLUMNY_POZYCJI, ...KOLUMNY_TOZSAMOSCI, ...KOLUMNY_STAWKI];
   // PRZ-105: nabywca z UE (NIP faktury z formularza) — netto przelicza się stawką 0, jak policzy dokument.
-  const wdt = wdtZFormularza(body);
+  const wdt = wdtZFormularza(body, { zwolniona });
   const kolumny = Object.fromEntries(
     wszystkie.map((k) => [k, jakoTablica(body?.[`poz_${k}`])]),
   );
@@ -300,7 +304,7 @@ export function parsujPozycjeFormularza(body, { stawkaDomyslna = STAWKA_VAT } = 
       //
       // Tożsamość produktu dokładamy OBOK jej wyniku, a nie do środka: `parsujNowaPozycje`
       // rozstrzyga o nazwie, ilości i pieniądzach — i tylko o tym.
-      pozycje.push({ ...parsujNowaPozycje(wiersz, { stawkaDomyslna, wdt }), ...tozsamoscWiersza(wiersz) });
+      pozycje.push({ ...parsujNowaPozycje(wiersz, { stawkaDomyslna, wdt, zw }), ...tozsamoscWiersza(wiersz) });
     } catch (e) {
       throw bladOperatora(`Wiersz ${i + 1}: ${e.message}`);
     }
@@ -350,7 +354,7 @@ export function skopiujFaktureDoWysylki(body = {}) {
  */
 // PRZ-105: `stawkaDomyslna` (Ustawienia → Firma) podaje trasa.
 export function parsujNoweZamowienie(body = {}, {
-  dzis = dzienWarszawa(new Date().toISOString()), stawkaDomyslna = STAWKA_VAT,
+  dzis = dzienWarszawa(new Date().toISOString()), stawkaDomyslna = STAWKA_VAT, zw = false, zwolniona = false,
 } = {}) {
   const dostawaWybor = String(body?.dostawa ?? 'dpd');
   const platnosc = String(body?.platnosc ?? 'przelew');
@@ -449,6 +453,6 @@ export function parsujNoweZamowienie(body = {}, {
     // walidacja, co pole na karcie zamówienia: od dziś do roku naprzód.
     termin_wysylki_reczny: parsujDateWysylki(body?.data_wysylki, dzis),
     nadpisaniaFaktury,
-    pozycje: parsujPozycjeFormularza(body, { stawkaDomyslna }),
+    pozycje: parsujPozycjeFormularza(body, { stawkaDomyslna, zw, zwolniona }),
   };
 }

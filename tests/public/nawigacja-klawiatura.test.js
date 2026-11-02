@@ -36,6 +36,25 @@ const pozycja = (panel) => ({
 afterEach(() => { vi.useRealTimers(); });
 
 describe('podlaczMenu', () => {
+  it('C07a: Pobierz zostawia Enter natywnemu details, a Escape zamyka i przywraca fokus', () => {
+    const html = readFileSync('src/moduly/faktury/widoki/faktury.ejs', 'utf8');
+    expect(html).toMatch(/<details class="wydruki wydruki--masowe">\s*<summary class="btn btn--maly">Pobierz<\/summary>/);
+    const pobierz = szczegoly('Pobierz');
+    const root = korzen([pobierz]);
+    const preventDefault = vi.fn();
+    podlaczMenu(root);
+    root.emit('keydown', { key: 'Enter', target: pobierz.summary, preventDefault });
+    expect(preventDefault).not.toHaveBeenCalled();
+    // Natywna akcja summary po Enterze (prawdziwą przeglądarkę sprawdza odbiór ekranu).
+    pobierz.open = true;
+    pobierz.emit('toggle');
+    expect(pobierz.open).toBe(true);
+    root.emit('keydown', { key: 'Escape', preventDefault });
+    expect(pobierz.open).toBe(false);
+    expect(pobierz.summary.focus).toHaveBeenCalledOnce();
+    expect(preventDefault).toHaveBeenCalledOnce();
+  });
+
   it('Escape zamyka otwarty panel i oddaje fokus jego summary', () => {
     const konto = szczegoly('konto');
     konto.open = true;
@@ -131,6 +150,7 @@ describe('podlaczMenu', () => {
   it.each([
     'src/moduly/zamowienia/widoki/zamowienie.ejs',
     'src/moduly/zamowienia/widoki/lista.ejs',
+    'src/moduly/faktury/widoki/faktury.ejs',
   ])('widok %s oznacza menu wydruków klasą, którą łapie selektor', (plik) => {
     expect(readFileSync(plik, 'utf8')).toMatch(/<details class="wydruki[ "]/);
   });

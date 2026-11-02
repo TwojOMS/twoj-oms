@@ -25,10 +25,11 @@ describe('PRZ-102.02 wyłączanie modułów', () => {
     const p = panel();
     const ekran = await get(p.app, '/ustawienia/moduly', p.admin);
     expect(ekran.statusCode).toBe(200);
-    expect(ekran.body).toContain('Wyłącz Stali klienci');
-    expect(ekran.body).toContain('Wyłącz Rozliczenia');
+    expect(ekran.body).toContain('role="switch" aria-checked="true" aria-label="Stali klienci"');
+    expect(ekran.body).toContain('role="switch" aria-checked="true" aria-label="Rozliczenia"');
     expect((await przelacz(p, 'klienci')).statusCode).toBe(303);
     expect(JSON.parse(p.db.prepare("SELECT wartosc FROM ustawienia WHERE klucz='moduly.wylaczone'").get().wartosc)).toEqual(['klienci']);
+    expect((await get(p.app, '/ustawienia/moduly', p.admin)).body).toContain('role="switch" aria-checked="false" aria-label="Stali klienci"');
     const menu = await get(p.app, '/', p.admin);
     expect(menu.body).not.toContain('href="/klienci"');
     const odmowa = await get(p.app, '/klienci?nowy', p.admin);

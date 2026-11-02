@@ -53,10 +53,14 @@ import { wierszePozycji } from '../../../domena/tabela-pozycji.js';
 
 import { odnosnikPozycji } from '../../../domena/link-pozycji.js';
 import { czytajStawkeDomyslna } from '../../faktury/db/stawka-vat.js';
+import { sprzedawcaZwolniony } from '../../faktury/db/zwolnienie-vat.js';
+import { opcjeZwProgramu } from '../../../domena/vat.js';
 
 import { ktoKlikal } from '../../zamowienia/lista.js';
 
-export function registerNadanieRoutes(app, { db, nadanie, kurierzy = {}, wczytajListe, miniaturyEkranu, config, syncSklep }) {
+export function registerNadanieRoutes(app, { db, nadanie, kurierzy = {}, wczytajListe, miniaturyEkranu, config, syncSklep, programFaktur = null }) {
+  // PRZ-122: „zw” tylko przy programie wbudowanym — netto pozycji jak na karcie (kontekst.js).
+  const opcjeZw = opcjeZwProgramu(programFaktur?.opis);
 
 const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, config.definicje);
 
@@ -121,7 +125,7 @@ app.post('/zamowienia/masowe/nadaj-podglad', async (req, reply) => {
         // Decyzja właściciela 14.10 (po obejrzeniu ekranu): zamiast odbiorcy — CO jedzie w paczce,
         // bo rozmiar wybiera się pod zawartość. TE SAME wiersze, co na karcie i ekranie nadania
         // (wierszePozycji), bez wysyłki i sumy; SKU zaślepki oferty wygaszone jak tam.
-        produkty: wierszePozycji(zamowienieZGrupa(db, z), { stawkaDomyslna: czytajStawkeDomyslna(db) }).filter((w) => !w.wysylka && !w.podsumowanie)
+        produkty: wierszePozycji(zamowienieZGrupa(db, z), { stawkaDomyslna: czytajStawkeDomyslna(db, opcjeZw), ...opcjeZw }).filter((w) => !w.wysylka && !w.podsumowanie)
           .map((w) => ({ ilosc: w.ilosc, nazwa: w.nazwa, sku: w.skuDoPokazania })),
         droga,
         deliveryMethodId,
@@ -471,7 +475,10 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
       // zostal import z link-pozycji.js i wywolanie skasowanej funkcji tutaj. Jesli kiedys
       // trzeba bedzie to zmienic po raz drugi, zmienia sie OBA miejsca naraz.
       // PRZ-105: netto pozycji stawką domyślną z Ustawień — to samo, co pokazuje karta.
-      pozycjeKarty: wierszePozycji(zamowienieZGrupa(db, z), { stawkaDomyslna: czytajStawkeDomyslna(db) }).map((w) => {
+      // PRZ-122.B07g: firma zwolniona z VAT — numer UE nabywcy to nie WDT (netto stawką pozycji, jak na karcie).
+      pozycjeKarty: wierszePozycji(zamowienieZGrupa(db, z), {
+        stawkaDomyslna: czytajStawkeDomyslna(db, opcjeZw), ...opcjeZw, zwolniona: sprzedawcaZwolniony(db, programFaktur?.opis),
+      }).map((w) => {
         const odnosnik = odnosnikPozycji(z, w, { baseUrl: config.sklepy?.[z.sklep]?.baseUrl ?? null });
         return { ...w, linkProduktu: odnosnik?.adres ?? null, linkProduktuTytul: odnosnik?.tytul ?? null };
       }),

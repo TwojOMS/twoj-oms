@@ -113,8 +113,8 @@ describe('PRZ-060 — paczka klienta bez danych firmy właściciela', () => {
   it('skaner łapie każde słowo i każdy rodzaj numeru (bez tego zielone nic nie znaczy)', () => {
     for (const tekst of ['// sklep Szkicownia.pl', 'LUMINA', 'drugamarka', 'Trzeciamarka', 'Amarka', 'Zywiecki', 'Fundacja Fundacja Przykładowa',
       'C:\\Users\\adam\\x', '\\\\serwer\\indyw', '192.168.0.10', 'rola Ewa', 'kod 00-650', '/root/monitoring.sh']) expect(naruszenia('src/x.js', tekst)).not.toEqual([]);
-    expect(naruszenia('src/x.js', 'NIP 100-000-11-93')).toEqual(['src/x.js: NIP z poprawną sumą kontrolną 1000001193']);
-    expect(naruszenia('src/x.js', 'NIP 100 000 11 93')).toEqual(['src/x.js: NIP z poprawną sumą kontrolną 1000001193']);
+    expect(naruszenia('src/x.js', 'NIP 120-000-11-92')).toEqual(['src/x.js: NIP z poprawną sumą kontrolną 1200001192']);
+    expect(naruszenia('src/x.js', 'NIP 120 000 11 92')).toEqual(['src/x.js: NIP z poprawną sumą kontrolną 1200001192']);
     expect(naruszenia('src/x.js', 'saga i Julia')).toEqual([]);
     expect(naruszenia('src/x.ejs', 'Wiążące są liczby biura „Biuro Rachunkowe".')).not.toEqual([]);
     expect(naruszenia('src/x.js', '// Wiazace sa liczby biura Biuro Rachunkowe.')).not.toEqual([]);

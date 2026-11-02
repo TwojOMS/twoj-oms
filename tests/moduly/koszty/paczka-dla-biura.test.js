@@ -1,8 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PDFDocument } from 'pdf-lib';
+import PDFKit from 'pdfkit';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszKoszt, zapiszSciezki } from '../../../src/oms/db/koszty.js';
 import { zapiszWiersz } from '../../../src/moduly/faktury/db/archiwum-sprzedazy.js';
@@ -55,10 +56,18 @@ describe('paczka dla biura', () => {
     const p = createPaczkaDlaBiura({
       db, infakt: infaktAtrapa(), wizualizacjaKosztu: wiz, teraz,
     });
-    const w = await p.zbuduj('2026-08', 'sprzedaz');
-    expect(w.nazwa).toBe('paczka-dla-biura-2026-08-sprzedaz.pdf');
+    const rysowanie = vi.spyOn(PDFKit.prototype, 'text');
+    let w;
+    try {
+      w = await p.zbuduj('2026-08', 'sprzedaz');
+      const naglowki = rysowanie.mock.calls.map(([tekst]) => tekst).filter((tekst) => typeof tekst === 'string' && tekst.includes('część:'));
+      expect(naglowki.length).toBeGreaterThan(0);
+      expect(naglowki.every((tekst) => tekst.startsWith('Zestawienie faktur — ') && !tekst.includes('Paczka'))).toBe(true);
+    } finally { rysowanie.mockRestore(); }
+    expect(w.nazwa).toBe('zestawienie-faktur-2026-08-sprzedaz.pdf');
     expect(w.dokumentow).toBe(1);
     const doc = await PDFDocument.load(w.bajty);
+    expect(doc.getTitle()).toBe('Zestawienie faktur 2026-08 — sprzedaz');
     expect(doc.getPageCount()).toBe(1 + 2); // zestawienie sprzedazy + faktura 2 str.
     expect(w.stron).toBe(3);
     // ⚠️ ANI JEDNEGO SIEGNIECIA DO KSeF: plik sprzedazowy nie niesie kosztow, wiec pytanie
@@ -77,7 +86,7 @@ describe('paczka dla biura', () => {
     const w = await createPaczkaDlaBiura({
       db, infakt: inf, wizualizacjaKosztu: wiz, teraz,
     }).zbuduj('2026-08', 'koszty');
-    expect(w.nazwa).toBe('paczka-dla-biura-2026-08-koszty.pdf');
+    expect(w.nazwa).toBe('zestawienie-faktur-2026-08-koszty.pdf');
     expect(w.dokumentow).toBe(1);
     expect((await PDFDocument.load(w.bajty)).getPageCount()).toBe(1 + 3);
     expect(w.stron).toBe(4);

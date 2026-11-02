@@ -6,7 +6,7 @@ export function registerUstawieniaModulowRoutes(app, { db }) {
   const tylkoAdmin = (req, reply) => req.konto?.admin ? null
     : reply.code(403).view('brak-dostepu.ejs', { title: 'Brak dostępu', wlasnyUklad: true });
   const widok = (req, reply, blad = null) => reply.view('ustawienia-moduly.ejs', {
-    title: 'Moduły', nawigacja: nawigacjaUstawien(req, reply), moduly: MODULY_OPCJONALNE,
+    title: 'Włączone funkcje', nawigacja: nawigacjaUstawien(req, reply), moduly: MODULY_OPCJONALNE,
     wylaczone: wylaczoneModuly(db), zaleznosci: zaleznosciModulow(db), blad,
     zapisano: req.query?.zapisano === '1' ? 'Zapisano ustawienia modułów.' : null,
   });

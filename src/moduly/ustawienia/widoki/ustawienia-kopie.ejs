@@ -1,0 +1,19 @@
+<h1>Kopie zapasowe</h1>
+<p>Rzeczywisty odczyt tej instalacji. Wyświetlane daty i rozmiary pochodzą z plików; nie potwierdzają poprawnego odtworzenia.</p>
+<% const stany = { nie_skonfigurowano: 'Nie skonfigurowano', nieustalono: 'Nie ustalono', brak: 'Brak kopii bazy', uwaga: 'Wymaga uwagi', odczytano: 'Odczytano metadane', blad: 'Błąd odczytu' }; %>
+<% if (!historia) { %>
+<div class="ust-kopie-stany">
+<section class="ust-sekcja"><h2>Kopia lokalna</h2><p><strong><%= stany[kopie.stan] %></strong></p><p><%= kopie.opis %></p></section>
+<section class="ust-sekcja"><h2>Kopia poza serwerem</h2><p><strong><%= stany[kopie.zewnetrzna.stan] %></strong></p><p><%= kopie.zewnetrzna.opis %></p></section>
+</div>
+<section class="ust-sekcja"><h2>Zakres i ograniczenia</h2><ul><% kopie.zakres.forEach(z => { %><li><%= z %></li><% }); %></ul>
+<p>Retencja: <strong>Nie ustalono</strong>. Harmonogram: <strong>Nie ustalono</strong> — proces WWW nie otrzymuje tych ustawień wykonawcy kopii.</p>
+<p>Brak potwierdzonej kopii na innym nośniku oznacza, że awaria dysku może zabrać bazę razem z kopiami lokalnymi. Istniejący nadzór zgłasza alarm po 48 godzinach bez świeżej kopii bazy.</p></section>
+<section class="ust-sekcja"><h2>Dostępne operacje</h2><p>W tym ekranie dostępny jest odczyt stanu. Wykonanie kopii, pobieranie, test zawartości i przywracanie nie są dostępne z menu.</p></section>
+<% } else { %>
+<% [{nazwa:'Pliki lokalne',stan:kopie},{nazwa:'Pliki poza serwerem',stan:kopie.zewnetrzna}].forEach(g => { %>
+<section class="ust-sekcja"><h2><%= g.nazwa %></h2><p><strong><%= stany[g.stan.stan] %></strong> — <%= g.stan.opis %></p>
+<% if (g.stan.historia.length) { %><div class="przewijak-tabeli" tabindex="0" role="region" aria-label="<%= g.nazwa %>"><table class="tab-pozycje"><thead><tr><th>Plik</th><th>Zakres</th><th>Data pliku</th><th>Wiek</th><th>Rozmiar</th></tr></thead><tbody>
+<% g.stan.historia.forEach(p => { %><tr><td><%= p.plik %></td><td><%= p.rodzaj === 'baza' ? 'Baza' : 'Etykiety i proformy' %></td><td><%= fmtDataCzas(p.data) %></td><td><%= p.wiekH %> h</td><td><%= p.rozmiar.toLocaleString('pl-PL') %> B</td></tr><% }); %>
+</tbody></table></div><% } else if (g.stan.stan !== 'blad') { %><p>Brak dostępnej historii plików.</p><% } %></section><% }); %>
+<% } %>

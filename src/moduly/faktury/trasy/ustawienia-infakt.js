@@ -17,13 +17,13 @@ const KOMUNIKATY = { zapisano: 'Zapisano klucz API inFaktu.', odlaczono: 'inFakt
 
 export function registerUstawieniaInfaktuRoutes(app, { db, konfiguracjaInfaktu, automatKsef = null, teraz = () => new Date(), infakt = null }) {
   const k = konfiguracjaInfaktu;
-  function widok(req, reply, { bledy = [], test = null } = {}) {
+  function widok(req, reply, { bledy = [], test = null, bladKonsumenckich = null } = {}) {
     const stan = stanDlaEkranu(wczytajKonfiguracjeIntegracji(db, 'infakt'));
     return reply.view('ustawienia-infakt.ejs', {
       nawigacja: nawigacjaUstawien(req, reply), title: 'inFakt',
       zEnv: k.zEnv, adresWPliku: k.adresWPliku, archiwumWPliku: k.archiwumWPliku, stan, adresApi: ADRES_INFAKT,
       bledy, test,
-      konsumenckie: czyWysylacKonsumenckie(db),
+      konsumenckie: czyWysylacKonsumenckie(db), bladKonsumenckich,
       zapisano: KOMUNIKATY[req.query?.zapisano] ?? null,
       wymagaRestartu: k.wymagaRestartu(), odlaczonyDoRestartu: k.odlaczonyDoRestartu(),
       // PRZ-121.02: wybrany „Brak” (plik albo Ustawienia, także zapisany po starcie) — klucz zostaje, OMS go nie używa.
@@ -43,10 +43,14 @@ export function registerUstawieniaInfaktuRoutes(app, { db, konfiguracjaInfaktu, 
     .send('inFakt jest ustawiony w pliku konfiguracji (oms.env, INFAKT_API_KEY) — tam go zmień. Formularz niczego nie zapisał.');
 
   // Prefiks /ustawienia: zapis tylko z prawem do Ustawień, również gdy klucz API pochodzi z pliku.
+  // PRZ-126.J01: i tylko admin — ten sam klucz zmienia tylko admin na ekranie Wysyłka do KSeF (ustawienia-ksef-sprzedazy.js),
+  // a trasa jest czynna także przy TwojeFaktury. Gościa demo zatrzymuje wcześniej hak podglądu.
   app.post(`${EKRAN_INFAKTU}/ksef-konsumenckie`, async (req, reply) => {
+    if (req.konto?.admin !== true) return reply.code(403).view('brak-dostepu.ejs', { title: 'Brak dostępu', wlasnyUklad: true });
     const wartosci = [].concat(req.body?.wlaczony ?? '0');
     if (wartosci.some((w) => w !== '0' && w !== '1')) {
-      return reply.code(400).send('Nieprawidłowa wartość przełącznika faktur konsumenckich.');
+      reply.code(400); // PRZ-126.C04: ekran z błędem przy przełączniku, nie surowy tekst
+      return widok(req, reply, { bladKonsumenckich: 'Nieprawidłowa wartość przełącznika faktur konsumenckich. Nic nie zapisano.' });
     }
     zapiszKonsumenckie(db, wartosci.includes('1'));
     return reply.code(303).redirect(`${EKRAN_INFAKTU}#ksef-konsumenckie`);

@@ -6,7 +6,7 @@ import {
 
 const zmapowane = {
   zrodlo_id: 1301, numer: '1301', klient: { email: 'j@k.pl' }, dostawa: { city: 'Pęki' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '1000001201',
+  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '1200001200',
   kwota_brutto: '212.90', status_woo: 'processing', oplacone_at: null, anulowane: 0,
   utworzone_at: '2026-07-29T13:19:52',
   pozycje: [{ nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2, cena_brutto: '50.00', vat: null }],

@@ -83,7 +83,7 @@ const TEKSTOWE = [
   { nazwa: 'GET /faktury/zestawienie-przychodow', metoda: 'GET', url: () => '/faktury/zestawienie-przychodow?miesiac=2026-10', kod: 503,
     stary: `Panel nie ma podpiętego inFaktu — nie ma z czego zbudować zestawienia przychodów. ${G}` },
   { nazwa: 'GET /faktury/paczka', metoda: 'GET', url: () => '/faktury/paczka?miesiac=2026-10', kod: 503,
-    stary: `Panel nie ma podpiętego inFaktu — nie ma z czego złożyć paczki. ${G}` },
+    stary: `Panel nie ma podpiętego inFaktu — nie ma z czego złożyć zestawienia faktur. ${G}` },
   { nazwa: 'GET /faktury/:uuid/pdf', metoda: 'GET', url: () => '/faktury/u1/pdf?rodzaj=vat', kod: 503, dopisek: DOPISEK_PDF,
     stary: `Panel nie ma podpiętego inFaktu. ${G}` },
   { nazwa: 'POST /faktury/ksef/podglad', metoda: 'POST', url: () => '/faktury/ksef/podglad', kod: 503,
@@ -114,7 +114,7 @@ const STRONY = [
     stary: 'Wystawianie faktur nie jest skonfigurowane (brak danych inFaktu) — klucz API wpiszesz w' },
   { nazwa: 'GET /okresy/:id (karta okresu)', metoda: 'GET', url: (c) => `/okresy/${c.okresId}`, kod: 200,
     stary: 'inFakt nie jest skonfigurowany — faktury z panelu nie wystawisz. Klucz API wpiszesz w' },
-  { nazwa: 'GET /ustawienia/automatyzacje (powód bezczynności automatu)', metoda: 'GET', url: () => '/ustawienia/automatyzacje', kod: 200, dopisek: DOPISEK_AUTOMATU,
+  { nazwa: 'GET /ustawienia/automatyzacje (powód bezczynności automatu)', metoda: 'GET', url: () => '/ustawienia/automatyzacje/systemowe', kod: 200, dopisek: DOPISEK_AUTOMATU,
     stary: 'inFakt nie jest podłączony — automat nic nie wyśle, dopóki go nie podłączysz (potem potrzebne ponowne uruchomienie OMS-u).' },
 ];
 
@@ -189,7 +189,7 @@ describe.each([
 });
 
 describe('PRZ-121.03a ekran automatu KSeF i zapis „brak” po starcie', () => {
-  const ekran = async (c) => odescape((await c.a.app.inject({ method: 'GET', url: '/ustawienia/automatyzacje', headers })).body);
+  const ekran = async (c) => odescape((await c.a.app.inject({ method: 'GET', url: '/ustawienia/automatyzacje/systemowe', headers })).body);
 
   it('automat WŁĄCZONY i działa (klucz, nic nie wybrano), potem zapis „brak” → ekran mówi, że automat stoi', async () => {
     const katalog = mkdtempSync(join(tmpdir(), 'brak-automat-prz121-')); katalogi.push(katalog);

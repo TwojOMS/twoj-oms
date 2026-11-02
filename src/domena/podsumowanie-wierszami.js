@@ -14,15 +14,17 @@ import { czyStawkaVat } from './vat.js';
 
 /**
  * @param {{ bruttoGr: number, stawka: string|number }[]} linie — linie towarów i dostawy, grosze całkowite
+ * @param {{ zw?: boolean }} [opcje] — PRZ-122.B07a: `zw: true` (program wbudowany) dopuszcza „zw”: netto = brutto, VAT 0
  * @returns {{ nettoGr: number, vatGr: number, bruttoGr: number }}
  */
-export function podsumowanieWierszami(linie = []) {
+export function podsumowanieWierszami(linie = [], opcje = {}) {
   let nettoGr = 0;
   let bruttoGr = 0;
   linie.forEach((l, i) => {
     if (!Number.isInteger(l?.bruttoGr)) throw new Error(`Linia ${i + 1}: kwota brutto nie w całych groszach („${l?.bruttoGr}”).`);
-    if (!czyStawkaVat(l.stawka)) throw new Error(`Linia ${i + 1}: stawka VAT spoza listy („${l.stawka}”).`);
-    nettoGr += Math.round((l.bruttoGr * 100) / (100 + Number(l.stawka)));
+    if (!czyStawkaVat(l.stawka, opcje)) throw new Error(`Linia ${i + 1}: stawka VAT spoza listy („${l.stawka}”).`);
+    const procent = String(l.stawka).trim() === 'zw' ? 0 : Number(l.stawka);
+    nettoGr += Math.round((l.bruttoGr * 100) / (100 + procent));
     bruttoGr += l.bruttoGr;
   });
   return { nettoGr, vatGr: bruttoGr - nettoGr, bruttoGr };

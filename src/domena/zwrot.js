@@ -1,4 +1,5 @@
 import { grosze, zl } from './kwoty.js';
+import { groszeZKwoty } from './kwota.js';
 // Klucz pozycji zamowienia — TA SAMA regula, ktorej uzywa `pozycje_reczne_json`.
 // Powtorzona tu bylaby druga tozsamoscia pozycji i rozjechalaby sie przy pierwszej zmianie.
 import { kluczPozycji } from './pozycje-reczne.js';
@@ -107,9 +108,18 @@ export function juzZwrocone(zwroty) {
   return mapa;
 }
 
+export function kwotaZwrotuGrosze(w) {
+  const kwota = groszeZKwoty(normalizujKwote(w.kwota), 'zwrot');
+  if (kwota === null) throw new Error('Brak kwoty zwrotu');
+  const dostawa = w.kwota_dostawy ? groszeZKwoty(normalizujKwote(w.kwota_dostawy), 'zwrot dostawy') : 0;
+  const razem = Number(BigInt(kwota) + BigInt(dostawa));
+  if (!Number.isSafeInteger(razem)) throw new Error('Kwota zwrotu poza bezpiecznym zakresem');
+  return razem;
+}
+
 export function sumaZwrotowGrosze(zwroty) {
   return (zwroty ?? []).reduce(
-    (s, w) => s + grosze(w.kwota, 'zwrot') + (w.kwota_dostawy ? grosze(w.kwota_dostawy, 'zwrot dostawy') : 0),
+    (s, w) => s + kwotaZwrotuGrosze(w),
     0,
   );
 }
@@ -552,13 +562,13 @@ export function powodOdmowyWystawieniaKorekty(w) {
  * `powodOdmowyPrzyZleceniuWToku` wyzej: jedno zdanie, jedno miejsce). Po progu droga zostaje
  * otwarta, bo przy zleceniu, ktore przepadlo, jest to JEDYNE wyjscie.
  */
-export function parsujNumerKorekty(w, surowy, { teraz = new Date().toISOString(), nazwa = NAZWA_ZAPASOWA } = {}) {
+export function parsujNumerKorekty(w, surowy, { teraz = new Date().toISOString(), nazwa = NAZWA_ZAPASOWA, gdzie = `w ${nazwa.miejscownik}` } = {}) {
   const numer = tekst(surowy);
   if (w?.korekta_numer) {
     return {
       numer: null,
       blad: `Ten zwrot ma już zapisaną korektę ${w.korekta_numer} — drugi numer znaczyłby drugi dokument. `
-        + `Jeśli pierwszy numer jest błędny, popraw go w ${nazwa.miejscownik} i zgłoś to.`,
+        + `Jeśli pierwszy numer jest błędny, popraw go ${gdzie} i zgłoś to.`,
     };
   }
   const wToku = powodOdmowyPrzyZleceniuWToku(w, { teraz, nazwa });

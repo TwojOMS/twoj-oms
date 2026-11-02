@@ -12,6 +12,19 @@ const dok = (n) => ({
 });
 
 describe('co wolno wysłać do KSeF', () => {
+  it.each([true, false])('rozstrzygnięcie KSeF wygrywa z rezerwacją, wbudowany=%s', (wbudowany) => {
+    const program = { opis: { wbudowany } };
+    const numer = '1234563218-20261029-ABCDEF123456-AB';
+    const d = { ...dok(1), ksefZleconaAt: '2026-08-06T14:00:00.000Z', ksef_number: numer };
+    const przyjeta = coWolnoWyslac(['u1'], [d], false, undefined, program);
+    expect(przyjeta.doWyslania).toEqual([]);
+    expect(przyjeta.pominiete[0].powod).toContain('jest już w KSeF');
+    expect(przyjeta.pominiete[0].powod).not.toContain('zlecił');
+    expect(przyjeta.pominiete[0].powod).toContain(numer);
+    const w = coWolnoWyslac(['u1'], [{ ...dok(1), ksefZleconaAt: '2026-08-06T14:00:00.000Z' }], false, undefined, program);
+    expect(w.pominiete[0].powod).toContain('zlecił');
+    expect(w.pominiete[0].powod).toContain('06.08.2026, 16:00');
+  });
   it('przepuszcza faktury VAT bez numeru KSeF', () => {
     const w = coWolnoWyslac(['u1', 'u2'], [dok(1), dok(2)]);
     expect(w.doWyslania.map((d) => d.uuid)).toEqual(['u1', 'u2']);
@@ -51,7 +64,7 @@ describe('co wolno wysłać do KSeF', () => {
   // Data zlecenia jest dla czlowieka: po niej odnajdzie te wysylke w logu zamowienia.
   it('powód niesie moment, w którym panel zlecił wysyłkę', () => {
     const zlecony = { ...dok(4), ksefZleconaAt: '2026-08-06T14:00:00.000Z' };
-    expect(coWolnoWyslac(['u4'], [zlecony]).pominiete[0].powod).toMatch(/2026-08-06T14:00:00\.000Z/);
+    expect(coWolnoWyslac(['u4'], [zlecony]).pominiete[0].powod).toContain('06.08.2026, 16:00');
   });
 
   // ⚠️ TO JEST LICZBA NA CZERWONYM PRZYCISKU. Ekran podgladu pisze „Poleci do KSeF — N"

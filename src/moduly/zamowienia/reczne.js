@@ -7,7 +7,7 @@ import { komunikatDlaOperatora, bladOperatora } from '../../domena/bledy.js';
 import { cennikDlaZamowienia, pozycjaZProduktu } from '../../domena/magazyn-do-zamowienia.js';
 import { szukajDoZamowienia, produktDoZamowienia } from '../../oms/db/magazyn.js';
 import { adresZeSklepu, POLA_ADRESU_RECZNE } from '../../domena/adres-odbiorcy.js';
-import { daneFaktury, daneFakturyZeSklepu, POLA_FAKTURY_RECZNE } from '../../domena/dane-faktury.js';
+import { bezEtykietyNip, daneFaktury, daneFakturyZeSklepu, POLA_FAKTURY_RECZNE } from '../../domena/dane-faktury.js';
 import { nadpisaniaPoZapisie } from '../../domena/dane-reczne.js';
 import { parsujNowaPozycje, parsujEdycjePozycji, roznicePozycji, ustawNadpisaniePozycji, parsujHurtPozycji, ustawWMapie, jakoTablica } from '../../domena/pozycje-reczne.js';
 import { KLUCZ_WYSYLKI, parsujEdycjeWysylki, rozniceWysylki, wysylkaZeSklepu } from '../../domena/wysylka-kwota.js';
@@ -18,13 +18,19 @@ import { wstawKlientaDoFormularza } from '../../domena/klient-staly.js';
 import { parsujRabat } from '../../domena/rabat.js';
 import { klientPoKluczu } from '../../oms/db/klienci.js';
 import { zmienUstalenia, rabatKontraktowy } from './services/rabat.js';
-import { czyNipUe } from '../../domena/wdt.js';
+import { czyWdt, czyNipUe } from '../../domena/wdt.js';
+import { poprawnyNip } from '../../core/walidatory.ts';
+import { KODY_KRAJOW_UE } from '../../domena/klient-zbiorczy.js';
+import { czyStawkaVat } from '../../domena/vat.js';
 import { zalozZamowienieReczne } from './services/zamowienie-reczne.js';
 import { przypiszDoOkresu } from '../faktury/services/okres.js';
 import { czytajStawkeDomyslna } from '../faktury/db/stawka-vat.js';
 import {teraz,AKCJA_ALLEGRO_PROBA,allegroWymagaOdpytania,miniaturyEkranu,ktoKlikal,sprzedawcaSpecyfikacji,daneKarty,KATALOG_WIDOKOW,fragment} from './wspolne.js';
 export function registerReczneRoutes(app, kontekst) {
-const {db,config,poller,nadanie,faktura,proforma,kurierzy,gus,syncSklep,wiadomosci,przesylkiAllegro,stanyKanalow,zdrowie,fakturaAllegro,fakturaHurtem,doczytanieKsef,powrotKarty,adresPowrotuNaKarte,wczytajListe,statusyDlaKarty,OKNO_OSTRZEZEN_PRZESYLEK_DNI,zbierzOstrzezenia,wyborWiadomosci,daneWiadomosci,renderujKarte,renderujNowe,magazynEkranu,niesiePolaFormularza,opisZmian,kopiujDaneFakturyDoWysylki,pozycjaZadania,zWynikami,magazynDlaKarty,cennikiInstalacji}=kontekst;
+const {db,config,poller,nadanie,faktura,proforma,kurierzy,gus,syncSklep,wiadomosci,przesylkiAllegro,stanyKanalow,zdrowie,fakturaAllegro,fakturaHurtem,doczytanieKsef,powrotKarty,adresPowrotuNaKarte,wczytajListe,statusyDlaKarty,OKNO_OSTRZEZEN_PRZESYLEK_DNI,zbierzOstrzezenia,wyborWiadomosci,daneWiadomosci,renderujKarte,renderujNowe,magazynEkranu,niesiePolaFormularza,opisZmian,kopiujDaneFakturyDoWysylki,pozycjaZadania,zWynikami,magazynDlaKarty,cennikiInstalacji,opcjeZw,zwolnionaFirma}=kontekst;
+// PRZ-122.B07c: `opcjeZw` (kontekst.js) — „zw” tylko przy TwojeFaktury. Stawka domyślna czytana z flagą wszędzie, gdzie
+// trafia do pozycji albo do netto na ekranie; bez flagi (WDT ÷ stawka w magazynie) zostaje odczyt jak dotąd.
+const stawkaDomyslnaZw = () => czytajStawkeDomyslna(db, opcjeZw);
 app.get('/zamowienia/nowe', async (req, reply) => renderujNowe(reply));
 app.post('/zamowienia/nowe', async (req, reply) => {
     // ⚠️ CALY FORMULARZ PARSUJEMY PRZED PIERWSZYM ZAPISEM DO BAZY. Odmowa w polowie
@@ -41,7 +47,8 @@ app.post('/zamowienia/nowe', async (req, reply) => {
     const znacznik = new Date().toISOString();
     try {
       // PRZ-105: pusta stawka wiersza = domyślna z Ustawień.
-      dane = parsujNoweZamowienie(req.body ?? {}, { stawkaDomyslna: czytajStawkeDomyslna(db) });
+      // PRZ-122.B07f: firma zwolniona — numer UE nabywcy to nie WDT, netto liczone stawką wiersza.
+      dane = parsujNoweZamowienie(req.body ?? {}, { stawkaDomyslna: stawkaDomyslnaZw(), ...opcjeZw, zwolniona: zwolnionaFirma() });
       // ⚠️ KOLEJNOSC W TEJ TRASIE, zeby nikt jej nie przestawial na chybil trafil.
       // Okres (Zadanie 5) i oplata (Zadanie 4B) sa od siebie NIEZALEZNE, ale ich miejsca
       // w trasie juz nie:
@@ -85,7 +92,7 @@ app.post('/zamowienia/nowe', async (req, reply) => {
       //
       // `znacznik` to ten sam odczyt zegara, ktory rozstrzygnal okres wyzej (D4) — funkcja
       // wpisze go w `utworzone_at`.
-      ({ id, oplata } = zalozZamowienieReczne({ db, dane, znacznik, okresId }));
+      ({ id, oplata } = zalozZamowienieReczne({ db, dane, znacznik, okresId, ...opcjeZw }));
     } catch (e) {
       // ⚠️ Zamowienie moglo juz powstac (numer nadany, pozycji brak) — tego nie da sie
       // wycofac, bo `utworzZamowienieReczne` domyka wlasna transakcje. Dlatego komunikat
@@ -195,7 +202,8 @@ app.post('/zamowienia/nowe/magazyn/dodaj', async (req, reply) => {
         // „Wstaw dane klienta" — zamówienia jeszcze nie ma, więc nie ma go gdzie czytać):
         // cena z magazynu wchodzi wtedy od razu po ÷1,23 (zgłoszenie właściciela 26.08).
         // Ta sama reguła, która wybierze stawkę faktury — pas nad pozycjami mówi o tym wprost.
-        wdt: wdtZFormularza(req.body),
+        // PRZ-122.B07f: przy firmie zwolnionej z VAT numer UE to nie WDT — cena bez ÷.
+        wdt: wdtZFormularza(req.body, { zwolniona: zwolnionaFirma() }),
         // PRZ-105: przy WDT ÷ stawka domyślna z Ustawień, nie stałe 1,23.
         stawkaDomyslna: czytajStawkeDomyslna(db),
       });
@@ -210,7 +218,9 @@ app.post('/zamowienia/nowe/magazyn/dodaj', async (req, reply) => {
       });
     }
 
-    const formularz = wstawPozycjeDoFormularza(req.body ?? {}, pozycja, { stawkaDomyslna: czytajStawkeDomyslna(db) });
+    const formularz = wstawPozycjeDoFormularza(req.body ?? {}, pozycja, {
+      stawkaDomyslna: stawkaDomyslnaZw(), ...opcjeZw, zwolniona: zwolnionaFirma(),
+    });
     const wyniki = stan.fraza ? zWynikami(szukajDoZamowienia(db, { fraza: stan.fraza, kanal: stan.cennik })) : null;
     return renderujNowe(reply, { formularz, magazyn: { ...stan, wyniki, dodano: pozycja } });
   });
@@ -267,7 +277,11 @@ function zapisDanych(sciezka, obsluga) {
         kotwica = obsluga(id, z, req) ?? '';
       } catch (e) {
         dopiszLog(db, id, { akcja: `dane.${sciezka}`, wynik: `BŁĄD: ${e.message}` });
-        return reply.code(400).send(`Nie udało się zapisać danych: ${komunikatDlaOperatora(e)}`);
+        // PRZ-126.C02: karta z sekcją w edycji i wpisanymi wartościami, nie goły tekst.
+        reply.code(400);
+        return renderujKarte(req, reply, pobierzZamowienie(db, id), { bladDanych: {
+          sekcja: sciezka, tekst: `Nie udało się zapisać danych: ${komunikatDlaOperatora(e)}`, pole: e?.pole ?? null, wartosci: req.body ?? {},
+        } });
       }
       return reply.redirect(adresPowrotuNaKarte(req, id, {
         kotwica: kotwica.replace(/^#/, '') || null,
@@ -292,6 +306,20 @@ zapisDanych('faktura', (id, z, req) => {
       throw bladOperatora('Żądanie nie niosło ani jednego pola formularza — panel niczego nie zmienił.');
     }
     const nadpisania = nadpisaniaPoZapisie(z.klient_reczny_json, daneFakturyZeSklepu(z), req.body ?? {}, POLA_FAKTURY_RECZNE);
+    const danePoZmianie = daneFaktury({ ...z, klient_reczny_json: JSON.stringify(nadpisania) });
+    const surowyNip = danePoZmianie.nip;
+    // PRZ-126 NIP (recenzja): etykieta „NIP:” zdjęta przed sprawdzeniem, inaczej „NI” udaje prefiks kraju.
+    const normalizuj = (n) => String(bezEtykietyNip(n) ?? '').replace(/[\s.\-/]/g, '').toUpperCase().replace(/^NIP/, '');
+    const numer = normalizuj(surowyNip);
+    // Sprawdzamy tylko numer wpisany przez operatora: niezmieniony NIP ze sklepu nie blokuje
+    // poprawy adresu ani przełącznika (zły numer i tak zatrzyma wystawienie, `z-ladunku`).
+    const zmienionyNip = numer !== normalizuj(daneFakturyZeSklepu(z).nip);
+    const kraj = String(danePoZmianie.kraj ?? 'PL').toUpperCase();
+    const zagraniczny = (/^[A-Z]{2}/.test(numer) && !numer.startsWith('PL'))
+      || (kraj !== 'PL' && !KODY_KRAJOW_UE.has(kraj));
+    if (numer && zmienionyNip && !czyNipUe(numer) && !zagraniczny && !poprawnyNip(numer.replace(/^PL/, ''))) {
+      throw bladOperatora(`NIP „${surowyNip}” jest niepoprawny — sprawdź cyfry.`, { pole: 'nip' });
+    }
     // Pole wyboru: przegladarka przysyla je TYLKO gdy zaznaczone, wiec brak klucza znaczy
     // „odznaczone", a nie „nie tknieto". Zapisujemy nadpisanie wylacznie wtedy, gdy decyzja
     // czlowieka rozni sie od tego, co wnioskuje sklep — inaczej samo otwarcie i zapisanie
@@ -315,7 +343,7 @@ zapisDanych('faktura', (id, z, req) => {
         b2b: poZapisie.b2b,
         termin_platnosci: poZapisie.termin_platnosci,
         rabat_procent: kontrakt.stawka.procent,
-      });
+      }, opcjeZw);
       dopiszLog(db, id, {
         akcja: 'rabat.kontraktowy',
         wynik: `Rabat ${kontrakt.stawka.procent}% z umowy klienta nałożony po zapisaniu NIP-u:`
@@ -376,6 +404,8 @@ app.post('/zamowienia/:id/pozycje/zapisz', async (req, reply) => {
     let mapa = odczytajNadpisania(z.pozycje_reczne_json);
     const reczneDoZapisu = [];
     const zmienione = [];
+    // PRZ-122.B07f: firma zwolniona z VAT — numer UE nabywcy to nie WDT (netto stawką wiersza).
+    const zwolniona = zwolnionaFirma();
     try {
       for (const w of parsujHurtPozycji(req.body)) {
         // Klucz spoza tego zamowienia POMIJAMY PO CICHU. Poller przenumerowuje pozycje co
@@ -410,10 +440,16 @@ app.post('/zamowienia/:id/pozycje/zapisz', async (req, reply) => {
           // PRZ-105: formularz bez pola `vat` (stary, otwarty przed wydaniem) NIE zmienia stawki — bez tego
           // każda edycja przestawiałaby pozycję z 8% na domyślną. Pole jest → stawka z formularza.
           const { vat, ...bezStawki } = parsujNowaPozycje({ ...w, sku: p.sku }, {
-            stawkaDomyslna: czytajStawkeDomyslna(db), wdt: czyNipUe(daneFaktury(z).nip),
+            stawkaDomyslna: stawkaDomyslnaZw(), wdt: czyWdt(daneFaktury(z).nip, { zwolniona }), ...opcjeZw,
           });
           // Puste pole (wiersz bez listy stawek, np. przy nabywcy z UE) też znaczy „bez zmiany”.
           const bezZmianyStawki = w.vat === undefined || String(w.vat).trim() === '';
+          // PRZ-122.B07c (recenzja): stawkę ZAPISANĄ w pozycji sprawdzamy tu, przed bazą. „zw” zostawiona przez
+          // TwojeFaktury po zmianie programu rzucałaby dopiero w zapiszPozycjeReczna — po zapisie części wierszy.
+          if (bezZmianyStawki && p.vat !== null && p.vat !== undefined && !czyStawkaVat(p.vat, opcjeZw)) {
+            throw bladOperatora(`Pozycja „${p.nazwa}” ma stawkę „${p.vat}”, której obecny program fakturowy nie obsługuje`
+              + ' — wybierz stawkę w jej wierszu.');
+          }
           reczneDoZapisu.push({ id: p.id, pozycja: bezZmianyStawki ? bezStawki : { ...bezStawki, vat } });
           zmienione.push(p.nazwa);
           continue;
@@ -428,7 +464,7 @@ app.post('/zamowienia/:id/pozycje/zapisz', async (req, reply) => {
     }
 
     // Dopiero TERAZ baza. Wszystko wyzej moglo jeszcze odmowic bez sladu.
-    for (const r of reczneDoZapisu) zapiszPozycjeReczna(db, id, r.id, r.pozycja);
+    for (const r of reczneDoZapisu) zapiszPozycjeReczna(db, id, r.id, r.pozycja, opcjeZw);
     zapiszNadpisaniaPozycji(db, id, Object.keys(mapa).length ? mapa : null);
     // Bariera arytmetyczna zamowienia RECZNEGO liczy sie z pozycji (kwoty nie narzuca zaden
     // sklep) — bez przeliczenia tutaj zapis wielu wierszy naraz zostawialby kwote nieaktualna.
@@ -471,7 +507,8 @@ app.post('/zamowienia/:id/pozycje/z-magazynu', async (req, reply) => {
       pozycja = pozycjaZProduktu(produkt, req.body?.ilosc, {
         cenniki: cennikiInstalacji,
         rabatProcent: z.rabat_procent ?? 0,
-        wdt: czyNipUe(daneFaktury(z).nip),
+        // PRZ-122.B07f: firma zwolniona z VAT — numer UE to nie WDT, cena z magazynu bez ÷.
+        wdt: czyWdt(daneFaktury(z).nip, { zwolniona: zwolnionaFirma() }),
         stawkaDomyslna: czytajStawkeDomyslna(db),
       });
     } catch (e) {
@@ -479,7 +516,7 @@ app.post('/zamowienia/:id/pozycje/z-magazynu', async (req, reply) => {
     }
 
     // PRZ-105: pozycja z magazynu dostaje stawkę domyślną z chwili dopisania (zachowuje ją potem).
-    dodajPozycjeReczna(db, id, { ...pozycja, vat: czytajStawkeDomyslna(db) });
+    dodajPozycjeReczna(db, id, { ...pozycja, vat: stawkaDomyslnaZw() }, opcjeZw);
     // Ta sama linijka, co przy pozycji wpisanej z reki: zamowienie RECZNE nie ma kwoty
     // narzuconej przez sklep, wiec bez przeliczenia dopisana pozycja roslaby tylko w tabeli.
     przeliczKwoteRecznego(db, id);
@@ -512,12 +549,12 @@ app.post('/zamowienia/:id/pozycje', async (req, reply) => {
       // PRZ-105: stawka z pola (puste = domyślna z Ustawień); przy nabywcy z UE netto liczy się stawką 0.
       const zam = pobierzZamowienie(db, id);
       pozycja = parsujNowaPozycje(req.body, {
-        stawkaDomyslna: czytajStawkeDomyslna(db), wdt: czyNipUe(daneFaktury(zam).nip),
+        stawkaDomyslna: stawkaDomyslnaZw(), wdt: czyWdt(daneFaktury(zam).nip, { zwolniona: zwolnionaFirma() }), ...opcjeZw,
       });
     } catch (e) {
       return reply.code(400).send(komunikatDlaOperatora(e));
     }
-    dodajPozycjeReczna(db, id, pozycja);
+    dodajPozycjeReczna(db, id, pozycja, opcjeZw);
     // Zamowienie RECZNE nie ma kwoty narzuconej przez sklep — bez przeliczenia tutaj
     // dopisana pozycja rosla by tylko w tabeli, a `kwota_brutto` zostawaloby przy '0.00'.
     przeliczKwoteRecznego(db, id);

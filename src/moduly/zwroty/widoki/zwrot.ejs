@@ -228,12 +228,12 @@
                 Korekta zlecona <%= w.korekta_zlecona_at %>. Panel NIE SPRAWDZIŁ w <%= nazwaProgramu.miejscownik %>, czy
                 dokument powstał — to zamówienie ma więcej niż jeden zwrot z otwartą sprawą korekty,
                 a panel nie umie rozstrzygnąć, do którego zwrotu należy znaleziony dokument.
-                Sprawdź sam w <%= nazwaProgramu.miejscownik %>, który zwrot ma korektę, zanim zdecydujesz, co dalej.
+                Sprawdź sam <%= typeof gdzieProgramu !== 'undefined' ? gdzieProgramu : `w ${nazwaProgramu.miejscownik}` %>, który zwrot ma korektę, zanim zdecydujesz, co dalej.
               </span>
             <% } else { %>
               <span class="pasek-blokada">
                 Korekta zlecona <%= w.korekta_zlecona_at %>, ale <%= nazwaProgramu.mianownik %> nie wystawił dokumentu —
-                zlecenie zostało odrzucone. Sprawdź w <%= nazwaProgramu.miejscownik %> i zgłoś to, zanim zlecisz drugie.
+                zlecenie zostało odrzucone. Sprawdź <%= typeof gdzieProgramu !== 'undefined' ? gdzieProgramu : `w ${nazwaProgramu.miejscownik}` %> i zgłoś to, zanim zlecisz drugie.
               </span>
             <% } %>
             <%# ⚠️⚠️ WYJSCIE ZE STANU BEZ WYJSCIA (C2, 2026-08-15). Do tego dnia komunikat wyzej %>

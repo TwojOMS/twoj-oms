@@ -20,11 +20,13 @@ import {
   czySaWlaczone, wlaczoneReguly, regulaRozpakowana, wstrzymajRegule, zapiszKursor, POWOD_KANAL_ODZNACZONY,
 } from '../db/reguly.js';
 import {
-  wTransakcji, zaplanuj, doWykonania, zarezerwuj, zakoncz, ponow, oznaczPrzerwane, licznikGodziny,
+  wTransakcji, zaplanuj, doWykonania, zarezerwuj, zakoncz, ponow, odloz, oznaczPrzerwane, licznikGodziny,
 } from '../db/wykonania.js';
 import { opisBleduPocztyDoLogu } from '../../wiadomosci/poczta-ustawien.ts';
 
 const ZMIANY = 'SELECT total_changes() AS n';
+// Odłożenie wyznacza próbę za 15 minut; godzina tolerancji pozwala rozpoznać działający OMS mimo opóźnień.
+const MAKS_CISZA_ODLOZENIA_MS = 60 * 60_000;
 const komunikat = (e) => (e instanceof Error ? e.message : String(e));
 // PRZ-109.12: błąd transportu poczty (znacznik z usługi wiadomości) niesie w `message` odpowiedź serwera, a w niej
 // login skrzynki — do logu zamówienia i dziennika wykonań idzie tylko kod i zdanie, jak w `wiadomosc.blad`.
@@ -109,7 +111,11 @@ export function createSilnikAutomatyzacji({
     }
     const chwila = teraz();
     if (czyPrzeterminowane(w.termin_at, chwila)) {
-      return { koniec: pominiete(w, regula, 'przeterminowane', 'Minęło ponad 48 godzin od planowanej chwili wysyłki (OMS był wyłączony?). Mail po takim czasie bardziej myli, niż pomaga.') };
+      const powod = w.powod_kod === 'okno_poprawek' && w.nastepna_proba_at
+        && chwila.getTime() - new Date(w.nastepna_proba_at).getTime() <= MAKS_CISZA_ODLOZENIA_MS
+        ? `Faktura przez 48 godzin nie wyszła z okna poprawek ani nie dostała numeru KSeF — mail nie został wysłany. Ostatnio: ${w.powod}`
+        : 'Minęło ponad 48 godzin od planowanej chwili wysyłki (OMS był wyłączony?). Mail po takim czasie bardziej myli, niż pomaga.';
+      return { koniec: pominiete(w, regula, 'przeterminowane', powod) };
     }
     const od = godzineWczesniej(chwila);
     if (licznikGodziny(db, { od }) >= LIMIT_OMS_NA_GODZINE) return { koniec: 'limit_oms' };
@@ -133,7 +139,12 @@ export function createSilnikAutomatyzacji({
       return pominiete(w, regula, 'brak_poczty', 'brak poczty wychodzącej — podłącz ją w Ustawienia → Integracje → Poczta wychodząca.');
     }
     if (akcja.zgoda) {
-      const zgoda = await akcja.zgoda({ db, regula, wykonanie: w });
+      const zgoda = await akcja.zgoda({ db, regula, wykonanie: w, teraz });
+      // PRZ-122.MAIL-OKNO: „jeszcze nie teraz” (faktura w oknie poprawek) — wiersz czeka, próby nie maleją.
+      if (zgoda?.odloz) {
+        odloz(db, w, { nastepna: ponowienieOd(teraz()), powod: zgoda.powod ?? 'Akcja poprosiła o odłożenie.', kod: zgoda.kod });
+        return 'odlozone';
+      }
       if (!zgoda?.ok) return pominiete(w, regula, zgoda?.kod ?? 'odmowa', zgoda?.powod ?? 'Akcja odmówiła wykonania.');
     }
     ({ regula, koniec } = przedRezerwacja(w));
@@ -244,7 +255,9 @@ export async function symulujRegule({ db, regula, zdarzenie, akcja = null, spraw
     const glowne = db.prepare('SELECT scalone_do FROM zamowienia WHERE id = ?').get(k.zamowienie_id)?.scalone_do;
     let odmowa = glowne ? { ok: false, kod: 'dolaczone', powod: `dołączone do zamówienia ${glowne} — mail idzie z głównego` }
       : await warunki({ db, regula, wykonanie });
-    if (odmowa?.ok && akcja?.zgoda) odmowa = await akcja.zgoda({ db, regula, wykonanie });
+    if (odmowa?.ok && akcja?.zgoda) odmowa = await akcja.zgoda({ db, regula, wykonanie, teraz });
+    // PRZ-122.MAIL-OKNO: odłożenie = mail pójdzie, tylko później → „wykonałoby”, nie „pominięte”.
+    if (odmowa?.odloz) odmowa = { ok: true, adresat: odmowa.adresat ?? null };
     if (odmowa?.ok) wynik.wykonaloby += 1;
     else {
       const kod = odmowa?.kod ?? 'warunek';

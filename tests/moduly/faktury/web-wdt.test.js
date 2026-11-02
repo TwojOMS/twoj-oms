@@ -59,7 +59,7 @@ describe('karta zamówienia WDT', () => {
   });
 
   it('karta krajowa NIE ma pasa WDT ani przycisku, a data-vat zostaje 23', async () => {
-    const id = zapiszZamowienie(db, 'pro', zmapowane(2602, { nip: '1000001201' }), {});
+    const id = zapiszZamowienie(db, 'pro', zmapowane(2602, { nip: '1200001200' }), {});
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}?edytuj=pozycje`, headers: naglowek });
     expect(r.statusCode).toBe(200);
     expect(r.body).not.toContain('WDT ze stawką 0%');
@@ -79,7 +79,7 @@ describe('GET /zamowienia/:id/potwierdzenie-wywozu.pdf', () => {
   });
 
   it('dla zamówienia krajowego odmawia z powodem (400), nie surowym błędem', async () => {
-    const id = zapiszZamowienie(db, 'pro', zmapowane(2604, { nip: '1000001201' }), {});
+    const id = zapiszZamowienie(db, 'pro', zmapowane(2604, { nip: '1200001200' }), {});
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}/potwierdzenie-wywozu.pdf`, headers: naglowek });
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/WDT|VAT-UE/);
@@ -121,7 +121,7 @@ describe('ceny z magazynu przy WDT', () => {
 
   it('karta zamówienia KRAJOWEGO: ta sama wstawka bez ÷1,23 — jak dotąd', async () => {
     zapiszProduktSklepowy(db, produkt());
-    const id = zapiszZamowienie(db, 'reczne', zmapowane(2606, { zrodlo_id: 202600032, nip: '1000001201' }), {});
+    const id = zapiszZamowienie(db, 'reczne', zmapowane(2606, { zrodlo_id: 202600032, nip: '1200001200' }), {});
     db.prepare('UPDATE zamowienia SET rabat_procent = 50 WHERE id = ?').run(id);
     await app.inject({
       method: 'POST',
@@ -157,7 +157,7 @@ describe('ceny z magazynu przy WDT', () => {
       url: '/zamowienia/nowe/magazyn/dodaj',
       headers: naglowek,
       payload: {
-        f_nip: '1000001201', rabat_procent: '50', cennik: 'pro',
+        f_nip: '1200001200', rabat_procent: '50', cennik: 'pro',
         wybrany: '0', mag_kanal: 'pro', mag_produkt_id: '28040', mag_wariant_id: '', mag_ilosc: '2',
       },
     });
@@ -173,6 +173,6 @@ describe('opisKlienta — stały klient z numerem VAT-UE', () => {
   });
 
   it('klient krajowy bez dopisku', () => {
-    expect(opisKlienta({ nazwa: 'ACME', nip: '1000001201', aktywny: 1 })).not.toContain('WDT');
+    expect(opisKlienta({ nazwa: 'ACME', nip: '1200001200', aktywny: 1 })).not.toContain('WDT');
   });
 });

@@ -7,7 +7,7 @@ import { dopiszLog, ostatniWpisLogu, pobierzZamowienie } from '../../../oms/db/z
 import { wolnoWyslacDoAllegro } from '../../../domena/allegro-faktura.js';
 import { createPoNumerzeKsef } from './po-numerze-ksef.js';
 import {
-  idDokumentu, idDokumentuSql, programDokumentuSql, czyDokumentProgramu,
+  idDokumentu, idDokumentuSql, programDokumentuSql, czyDokumentProgramu, numerKsefDokumentu,
 } from '../../../domena/dokument-programu.js';
 import {
   warunekCzekaNaKsefSql, KOLUMNA_ZLECONA_Z_PANELU_SQL, czyWierszWZakresieKsef,
@@ -15,7 +15,6 @@ import {
 import {
   statusWeryfikacji, WARUNEK_WERYFIKACJA_NIEROZSTRZYGNIETA_SQL,
 } from '../../../domena/allegro-faktura.js';
-import { LIMIT_ZADANIA_MS as LIMIT_ZADANIA_INFAKTU_MS } from '../../../oms/infakt/client.js';
 import { LIMIT_ZAPYTANIA_PRZESYLEK_MS } from '../../../oms/allegro/client.js';
 import { wolnoPytac, poOdpowiedzi } from '../../../domena/bezpiecznik-weryfikacji.js';
 import { stanWeryfikacji, zapiszStanWeryfikacji } from '../../../oms/db/stan-weryfikacji.js';
@@ -194,8 +193,8 @@ const DO_WERYFIKACJI = `
 //   50 faktur × 60 s (limit zadania inFaktu) + 50 faktur × 5 s (limit odczytu z Allegro)
 //   = 50 min + 4 min 10 s = 54 min 10 s < 60 min
 //
-// Ta arytmetyka NIE JEST komentarzem: `NAJDLUZSZY_PRZEBIEG_MS` liczy ja z prawdziwych stalych
-// obu klientow, a bootstrap.js odmawia startu panelu, gdy wynik nie miesci sie miedzy tyknieciami
+// Ta arytmetyka NIE JEST komentarzem: `najdluzszyPrzebiegMs(limity)` liczy ja z limitów programu
+// i klienta Allegro, a bootstrap.js odmawia startu panelu, gdy wynik nie miesci sie miedzy tyknieciami
 // zegara. Podniesienie ktoregokolwiek limitu bez policzenia skutku ma polozyc panel przy starcie,
 // a nie po cichu rozjechac zegar czuwacza na produkcji.
 export const LIMIT_WERYFIKACJI = 50;
@@ -204,25 +203,24 @@ export const LIMIT_WERYFIKACJI = 50;
 // przebiegu i wyprowadził się do services/czuwacz-ostrzezen.js razem z lustrem terminów
 // płatności — suma najgorszych przypadków przestała mieścić się między tyknięciami
 // (54:10 + luki 5:00 + terminy 11:00 > 60:00). Uzasadnienie w nagłówku tamtego pliku.
-export const NAJDLUZSZY_PRZEBIEG_MS = LIMIT_PRZEBIEGU * LIMIT_ZADANIA_INFAKTU_MS
-  + LIMIT_WERYFIKACJI * LIMIT_ZAPYTANIA_PRZESYLEK_MS;
-
 // PRZ-118.05: ta sama arytmetyka z limitów WYBRANEGO programu fakturowego (`opis.limity`, core/kontrakty.ts) — strażnik
-// startu w moduly/faktury/modul.ts liczy nią budżet programu, który naprawdę stoi za czuwaczem. Stała wyżej zostaje
-// (wartość dla inFaktu); test PRZ-118.05 pilnuje, że dla limitów inFaktu obie dają to samo.
+// startu w moduly/faktury/modul.ts liczy nią budżet programu, który naprawdę stoi za czuwaczem.
 export function najdluzszyPrzebiegMs(limity) {
   return LIMIT_PRZEBIEGU * limity.zadanieMs + LIMIT_WERYFIKACJI * LIMIT_ZAPYTANIA_PRZESYLEK_MS;
 }
 
 /**
- * ⚠️ ZAKRES: faktury majace numer dokumentu i nie majace jeszcze numeru KSeF, przy zamowieniu,
- * o ktorego fakture kupujacy poprosil (`chce_fakture = 1`) — i to w DWOCH rozlacznych sytuacjach
- * (domain/ksef-oczekiwanie.js):
+ * ⚠️ ZAKRES: faktury majace numer dokumentu i nie majace jeszcze numeru KSeF, przy zywym
+ * zamowieniu — w DWOCH sytuacjach (domain/ksef-oczekiwanie.js):
  *
- *  1. zamowienie z KANALU Allegro — dokument ma DOKAD pojechac, gdy numer sie pojawi;
+ *  1. zamowienie z KANALU Allegro, o ktorego fakture kupujacy poprosil (`chce_fakture = 1`) —
+ *     dokument ma DOKAD pojechac, gdy numer sie pojawi;
  *  2. dokument, ktorego wysylke do KSeF ZLECIL PANEL (wiersz w `wysylki_ksef`) — numer trzeba
  *     dociagnac takze dla faktury sklepowej, bo inaczej zakladka „FAKTURY" pokazuje „brak KSeF"
- *     przy dokumencie, ktory wlasnie stamtad wyszedl, i pokazuje to juz zawsze.
+ *     przy dokumencie, ktory wlasnie stamtad wyszedl, i pokazuje to juz zawsze. PRZ-126.F03: ta
+ *     galaz NIE pyta o `chce_fakture` — panel moze wystawic fakture takze bez zadania klienta
+ *     („faktura do kazdego zamowienia"). Allegro bez zadania dostaje wtedy numer, ale na Allegro
+ *     nie jedzie: zatrzymuje je `wolnoWyslacDoAllegro` (domain/allegro-faktura.js).
  *
  * Faktura sklepowa, ktorej panel nie wysylal, dalej NIE JEST pytana: numeru w bazie nie dostanie
  * nigdy, wiec pytanie o nia to setki wywolan miesiecznie bez ani jednej nowej informacji.
@@ -237,6 +235,9 @@ export function createCzuwaczKsef({
   fakturaAllegro = null,
   // PRZ-121.04a: jedna linia na przebieg z liczba dokumentow innego programu, ktore czuwacz pominal.
   log = console.error,
+  // PRZ-123.C07b: rozstrzyganie niepewnych wysyłek TwojeFaktury (services/ksef-rozstrzygniecie.js) — WYŁĄCZNIE program
+  // wbudowany. Domyślnie brak: czuwacz inFaktu zachowuje się i pyta dokładnie jak dotąd.
+  rozstrzyganie = null,
 }) {
   const program = zProgramu({ program: programPodany, infakt });
   // Identyfikator modulu faktur do porzadku kolejki w SQL. `zProgramu` oddaje program zawsze z opisem (surowy klient
@@ -296,6 +297,11 @@ export function createCzuwaczKsef({
   const { wyslijDoAllegroJesliWolno } = createPoNumerzeKsef({ db, fakturaAllegro });
 
   async function jedenPrzebieg() {
+    // PRZ-123.C07b: najpierw rozstrzygnięcie niepewnych wysyłek (może dać numer KSeF), dopiero potem odczyt numerów.
+    // Awaria rozstrzygania nie zatrzymuje odczytu numerów.
+    if (rozstrzyganie) {
+      try { await rozstrzyganie.przebieg(); } catch (e) { log('ksef: rozstrzyganie niepewnych wysyłek nie wyszło', String(e?.message ?? e)); }
+    }
     const podloga = new Date(Date.now() - PODLOGA_DNI * 24 * 60 * 60 * 1000).toISOString();
     // ⚠️ FILTR DZIALA WYLACZNIE NA GALAZ ALLEGROWA (`czyWierszWZakresieKsef`), a rozpoznanie
     // kanalu zostaje w nim WSPOLNYM predykatem — nigdy wlasna kopia `startsWith('allegro_')`.
@@ -322,11 +328,19 @@ export function createCzuwaczKsef({
       // zatrzymywalaby czuwacza dla wszystkich pozostalych: co godzine, na zawsze, a jedynym
       // sladem bylby `console.error` w kontenerze. Ta sama regula, co przy pollerach.
       try {
-        const dane = await program.pobierzFakture(idDokumentu(f));
-        zapiszNumerKsef(db, f.id, { ksefNumer: dane.ksefNumer, sprawdzonaAt: teraz() });
-        if (dane.ksefNumer) {
+        const dok = idDokumentu(f);
+        const dane = await program.pobierzFakture(dok);
+        // TwojeFaktury oddaje `null` dla id, ktorego nie zna. To NIE jest 404 inFaktu („skasowany") — TF nie kasuje
+        // dokumentow, wiec to niespojne id: odczyt „blad" z wpisem w historii, bez blokady „skasowana" na karcie,
+        // ktora zwolnilaby zamowienie do ponownego wystawienia (druga faktura na te sama sprzedaz).
+        if (dane == null) throw new Error('program faktur nie zna tego dokumentu');
+        const numer = numerKsefDokumentu(dane);
+        // PRZ-126 C09f: zapis tylko do wiersza, który dalej wskazuje pytany dokument — zamiana faktury mogła go
+        // w trakcie pytania przepiąć na nową. Wtedy numer starej nie trafia nigdzie, a nowa poczeka na swój przebieg.
+        const zapisano = zapiszNumerKsef(db, f.id, { ksefNumer: numer, sprawdzonaAt: teraz(), dokumentId: dok });
+        if (numer && zapisano) {
           znalezione += 1;
-          dopiszLog(db, f.zamowienie_id, { akcja: 'ksef', wynik: `dokument jest w KSeF (${dane.ksefNumer})` });
+          dopiszLog(db, f.zamowienie_id, { akcja: 'ksef', wynik: `dokument jest w KSeF (${numer})` });
           // ⚠️ DOPIERO TERAZ, PO ZAPISIE NUMERU. Bramka wysylki czyta `ksef_numer` z BAZY,
           // wiec wolanie przed `zapiszNumerKsef` odbijaloby sie od „faktura nie jest jeszcze
           // w KSeF" — czyli automat nie odpalilby sie NIGDY, i to bez ani jednego sladu.
@@ -349,7 +363,8 @@ export function createCzuwaczKsef({
         // przy kazdej odmowie HTTP), a NIE z dopasowania „404" w tekscie komunikatu — tresc
         // komunikatu jest dla czlowieka i wolno ja zmienic bez uprzedzenia.
         const odczyt = e?.status === 404 ? 'nieznana' : 'blad';
-        zapiszNieudanyOdczytKsef(db, f.id, { sprawdzonaAt: teraz(), odczyt });
+        // PRZ-126 C09g — wiersz przepięty w trakcie pytania na fakturę zastępczą: błąd dotyczy starej, nic nie piszemy.
+        if (!zapiszNieudanyOdczytKsef(db, f.id, { sprawdzonaAt: teraz(), odczyt, dokumentId: idDokumentu(f) })) continue;
         // Log przy ZAMOWIENIU, nie tylko na konsoli: karta jest jedynym miejscem, w ktorym
         // czlowiek szuka historii tego dokumentu.
         //
@@ -379,7 +394,7 @@ export function createCzuwaczKsef({
    * ⚠️ DRUGI KROK TEGO SAMEGO PRZEBIEGU, a nie drugi zegar — i to jest decyzja. Osobny zegar
    * znaczylby drugiego straznika „jeden przebieg naraz" i druga podloge do pilnowania, a obie
    * petle pytaja o TE SAMA fakture w dwoch kolejnych etapach jej zycia (najpierw numer KSeF,
-   * potem los pliku u kupujacego). Cena jest policzona wyzej przy `NAJDLUZSZY_PRZEBIEG_MS`.
+   * potem los pliku u kupujacego). Cena jest policzona wyzej przy `najdluzszyPrzebiegMs(limity)`.
    *
    * ⚠️ PODLOGA WSPOLNA Z PIERWSZA PETLA — ta sama wartosc, ten sam moment obliczenia. Dwie
    * podlogi liczone osobno rozjechalyby sie o czas trwania pierwszej petli (do 50 minut).
@@ -428,7 +443,9 @@ export function createCzuwaczKsef({
         // Dwa mozliwe ksztalty odpowiedzi — patrz `statusWeryfikacji` (domain/allegro-faktura.js).
         // Przy dzisiejszym 400 lista jest pusta, `status` wychodzi `null`, a zapis NIC NIE RUSZA.
         const status = statusWeryfikacji(nasza);
-        zapiszWeryfikacjeAllegro(db, f.id, status);
+        // PRZ-126 C09g — zapis tylko do wiersza, który dalej niesie pytane zgłoszenie. Zamiana faktury mogła je w trakcie
+        // wyzerować (stan D): status starego zgłoszenia nie ma wtedy żadnych skutków — ani zapisu, ani logu.
+        if (!zapiszWeryfikacjeAllegro(db, f.id, status, f.allegro_invoice_id)) continue;
         // ⚠️ LOG ROSNIE OD ZDARZEN, NIE OD PRZEBIEGOW. `WAITING` co godzine to nie jest zdarzenie:
         // dopisywanie go daloby 24 identyczne wiersze na dobe i utopiloby prawdziwa historie
         // dokumentu w tydzien. Odnotowujemy WYLACZNIE rozstrzygniecie.

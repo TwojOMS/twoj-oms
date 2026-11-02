@@ -65,7 +65,7 @@ describe('createVies().sprawdz', () => {
 
   it('numer krajowy → niedostępny bez ani jednego zapytania (nie ma czego pytać)', async () => {
     const fetchImpl = fakeFetch(ODPOWIEDZ_WAZNA);
-    const w = await createVies({ fetchImpl, nipSprzedawcy: '1234563218' }).sprawdz('1000001106');
+    const w = await createVies({ fetchImpl, nipSprzedawcy: '1234563218' }).sprawdz('1200001097');
     expect(w.wynik).toBe('niedostepny');
     expect(fetchImpl.wywolania).toHaveLength(0);
   });

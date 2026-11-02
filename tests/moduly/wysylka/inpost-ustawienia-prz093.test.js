@@ -65,7 +65,7 @@ describe('PRZ-093.09 Ustawienia → Kurier InPost', () => {
 
   it('Integracje → Kurierzy mają wejście do InPostu obok DPD', async () => {
     const { app, admin } = panel();
-    const r = await get(app, '/ustawienia/integracje', admin);
+    const r = await get(app, '/ustawienia/integracje/katalog', admin);
     expect(r.body).toContain('href="/ustawienia/integracje/dpd"');
     expect(r.body).toContain(`href="${ADRES}"`);
   });

@@ -9,6 +9,7 @@ import {
 import { bladOperatora } from '../../../domena/bledy.js';
 import { idDokumentuDla, programDokumentu, czyDokumentProgramu } from '../../../domena/dokument-programu.js';
 import { zProgramu } from '../../../integracje/program-fakturowy.ts';
+import { gdzieDokument } from '../../../domena/nazwa-programu.js';
 
 /**
  * ⚠️ TRESC KOREKTY, KTORA WIDZI NABYWCA I ORGAN — STALA, NIE POLE Z FORMULARZA.
@@ -94,7 +95,7 @@ export function createKorekta({ db, program: programPodany = null, infakt = null
     if (blad) throw bladOperatora(blad);
 
     if (!zarezerwujKorekte(db, zamowienieId, zwrotId)) {
-      throw bladOperatora(`Korekta do tego zwrotu została już zlecona — sprawdź ją w ${nazwa.miejscownik}.`);
+      throw bladOperatora(`Korekta do tego zwrotu została już zlecona — sprawdź ją ${gdzieDokument(program)}.`);
     }
     try {
       const wynik = await program.wystawKorekte({

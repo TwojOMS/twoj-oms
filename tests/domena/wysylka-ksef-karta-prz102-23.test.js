@@ -9,6 +9,21 @@ const NIP = '1234563218';
 const karta = (o = {}) => ({ uuid: 'u1', ksefNumer: null, nip: NIP, zleconaAt: null, dzienWystawienia: '2026-10-20', ...o });
 
 describe('wysylkaZKarty', () => {
+  it.each([true, false])('rezerwacja na karcie uwzględnia program wbudowany=%s', (wbudowany) => {
+    const program = { opis: { wbudowany } };
+    const w = wysylkaZKarty(karta({ program, zleconaAt: '2026-10-20T18:00:00.000Z' }));
+    expect(w.powod).toContain('(20.10.2026, 20:00)');
+    expect(w.powod.includes('inFak')).toBe(!wbudowany);
+    if (wbudowany) expect(w.powod).toBe('Panel już zlecił wysyłkę tego dokumentu do KSeF (20.10.2026, 20:00).');
+  });
+
+  it.each([true, false])('dopisek bez NIP-u przy TF nie odsyła do inFaktu, konsumenckie=%s', (konsumenckie) => {
+    const w = wysylkaZKarty(karta({ nip: null, konsumenckie, program: { opis: { wbudowany: true } } }));
+    expect(w.uwaga).toContain('na ekranie podglądu');
+    expect(w.uwaga).not.toContain('inFak');
+    expect(w.uwaga).not.toMatch(/ w (TwojeFaktur|inFak|programie)/);
+    expect(wysylkaZKarty(karta({ nip: null, konsumenckie })).uwaga).toContain('w inFakcie');
+  });
   it('faktura VAT z NIP-em, bez KSeF i bez rezerwacji → przycisk z uuid, miesiącem i polem daty wystawienia', () => {
     expect(wysylkaZKarty(karta())).toEqual({ wolno: true, uuid: 'u1', miesiac: '2026-10', pole: 'invoice_date', stan: 'brak' });
   });
@@ -38,8 +53,10 @@ describe('wysylkaZKarty', () => {
     expect(w).toEqual({ wolno: false, powod: powodJuzZlecona('2026-10-20T18:00:00.000Z'), stan: 'wyslana_czeka' });
   });
 
-  it('z numerem KSeF → bez przycisku i bez drugiego zdania (stan wiersza już mówi „KSeF <numer>”)', () => {
-    expect(wysylkaZKarty(karta({ ksefNumer: 'KSEF-1', zleconaAt: '2026-10-20T18:00:00.000Z' }))).toEqual({ wolno: false, powod: null, stan: 'jest' });
+  it.each([true, false])('z numerem KSeF i rezerwacją → stan z numerem bez zdania o zleceniu, wbudowany=%s', (wbudowany) => {
+    const numer = '1234563218-20261029-ABCDEF123456-AB';
+    const w = wysylkaZKarty(karta({ program: { opis: { wbudowany } }, ksefNumer: numer, zleconaAt: '2026-10-20T18:00:00.000Z' }));
+    expect(w).toEqual({ wolno: false, powod: null, stan: 'jest' });
   });
 
   it('pewne fakty panelu wygrywają z brakiem NIP-u: numer KSeF i rezerwacja dają swoje zdanie, nie przycisk', () => {

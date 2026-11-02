@@ -263,10 +263,12 @@ export function dodajPozycjeReczna(
     produkt_id: produktId = null, wariant_id: wariantId = null, cena_katalogowa: katalogowa = null,
     vat = null,
   },
+  opcje,
 ) {
   // PRZ-105: stawka VAT pozycji (lista 23/8/5/0). NULL = „domyślna z Ustawień w chwili wystawiania”
   // (domain/vat.js: stawkaPozycji) — tak zostają pozycje sprzed PRZ-105. Spoza listy = odmowa.
-  if (vat !== null && !czyStawkaVat(vat)) throw bladOperatora(`Nieznana stawka VAT „${vat}”.`);
+  // PRZ-122.B07c: `opcje` = `{ zw: true }` (program wbudowany) dopuszcza „zw”; bez nich jak dotąd.
+  if (vat !== null && !czyStawkaVat(vat, opcje)) throw bladOperatora(`Nieznana stawka VAT „${vat}”.`);
   // ⚠️ `produkt_id` i `wariant_id` SA OPCJONALNE i domyslnie puste — pozycja wpisana z reki
   // przy telefonie nie ma zadnego produktu w sklepie i NULL jest o niej prawda. Wypelnia je
   // wylacznie „dodaj z magazynu" (21.08.2026): tam operator wskazal konkretny wiersz lustra,
@@ -293,14 +295,15 @@ function pozycjaZamowienia(db, zamowienieId, pozycjaId) {
 }
 
 /** Edycja pozycji DOPISANEJ RECZNIE — wprost w wierszu, bo jest nasza w calosci. */
-export function zapiszPozycjeReczna(db, zamowienieId, pozycjaId, { nazwa, ilosc, cena_brutto, brutto_linii, vat }) {
+// PRZ-122.B07c: `opcje` = `{ zw: true }` (program wbudowany) dopuszcza stawkę „zw” — nową i zostawioną bez zmian.
+export function zapiszPozycjeReczna(db, zamowienieId, pozycjaId, { nazwa, ilosc, cena_brutto, brutto_linii, vat }, opcje) {
   const p = pozycjaZamowienia(db, zamowienieId, pozycjaId);
   if (p.zrodlo !== 'reczna') {
     throw bladOperatora('Pozycji ze sklepu nie zapisuje się wprost — poprawka mieszka obok, jako nadpisanie.');
   }
   // PRZ-105: `vat` nieobecny (np. przeliczenie rabatu) = stawka bez zmian; obecny musi być z listy.
   const stawka = vat === undefined ? p.vat : vat;
-  if (stawka !== null && stawka !== undefined && !czyStawkaVat(stawka)) throw bladOperatora(`Nieznana stawka VAT „${stawka}”.`);
+  if (stawka !== null && stawka !== undefined && !czyStawkaVat(stawka, opcje)) throw bladOperatora(`Nieznana stawka VAT „${stawka}”.`);
   db.prepare('UPDATE pozycje SET nazwa = ?, ilosc = ?, cena_brutto = ?, brutto_linii = ?, vat = ? WHERE id = ?')
     .run(nazwa, ilosc, cena_brutto, brutto_linii, stawka ?? null, pozycjaId);
   db.prepare('UPDATE zamowienia SET zmienione_at = ? WHERE id = ?').run(teraz(), zamowienieId);

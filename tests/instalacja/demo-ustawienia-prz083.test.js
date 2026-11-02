@@ -136,9 +136,13 @@ describe('PRZ-083: Ustawienia w demo — gość ogląda wszystko', () => {
     expect(html).toContain('Właściciel firmy');
     expect(html).toContain('Anna Wiśniewska');
     expect(html).toContain('Marek Zieliński');
-    // Dziennik zmyślony, nie pusty: „nikt się nie logował” przeczyłoby tabeli kont wyżej.
-    expect(html).not.toContain('Jeszcze nikt się nie logował');
-    expect(html).toContain('203.0.113.24');
+    // Dziennik ma własną zakładkę; w podglądzie jest zmyślony, nie pusty.
+    const dziennik = await get('/ustawienia/zespol/logowania');
+    expect(dziennik.status).toBe(200);
+    expect(dziennik.html).not.toContain('ktos@prywatny-adres.example');
+    expect(dziennik.html).not.toContain('127.0.0.1');
+    expect(dziennik.html).not.toContain('Jeszcze nikt się nie logował');
+    expect(dziennik.html).toContain('203.0.113.24');
     const db = baza();
     const idAdmina = db.prepare('SELECT id FROM konta WHERE login = ?').get(ADMIN.login).id;
     db.close();
@@ -160,10 +164,18 @@ describe('PRZ-083: Ustawienia w demo — gość ogląda wszystko', () => {
     expect(html).not.toMatch(/nie rozwiązuje się|ENOTFOUND|fetch failed/);
   });
 
-  it('Integracje: oba kanały Allegro demo połączone (nie „brak skonfigurowanych kanałów”)', async () => {
+  it('Integracje: osobne konta Allegro i Wysyłam z Allegro oraz sklep Woo są oznaczone jako niesprawdzone atrapy', async () => {
     const { html } = await get('/ustawienia/integracje');
-    expect(html).not.toContain('nie ma skonfigurowanych kanałów Allegro');
-    expect(html.match(/połączenie ważne jeszcze \d+ dni/g) ?? []).toHaveLength(2);
+    const karty = html.match(/<article class="ust-polaczenie">[\s\S]*?<\/article>/g) ?? [];
+    for (const [nazwa, liczba] of [['Allegro', 2], ['Wysyłam z Allegro', 2], ['WooCommerce', 1]]) {
+      const uslugi = karty.filter(k => k.includes(`alt="${nazwa}"`));
+      expect(uslugi, nazwa).toHaveLength(liczba);
+      for (const karta of uslugi) {
+        expect(karta).toContain('Niesprawdzone');
+        expect(karta).toContain('Atrapa piaskownicy');
+        expect(karta).not.toContain('ust-stan-dziala');
+      }
+    }
     // Zdrowe kanały nie wołają o pomoc na liście zamówień.
     const lista = (await get('/')).html;
     expect(lista).not.toContain('class="pas-awaria"');
@@ -173,8 +185,12 @@ describe('PRZ-083: Ustawienia w demo — gość ogląda wszystko', () => {
   it('administrator demo widzi prawdziwe dane i może zapisywać — podgląd dotyczy tylko gościa', async () => {
     const { html } = await get('/ustawienia/konta', admin);
     expect(html).toContain(ADMIN.login);
-    expect(html).toContain('ktos@prywatny-adres.example');
     expect(html).not.toContain(PODGLAD);
+    const dziennik = await get('/ustawienia/zespol/logowania', admin);
+    expect(dziennik.status).toBe(200);
+    expect(dziennik.html).toContain('ktos@prywatny-adres.example');
+    expect(dziennik.html).toContain('127.0.0.1');
+    expect(dziennik.html).not.toContain(PODGLAD);
     const r = await post('/ustawienia/role/nowa', { nazwa: 'Rola testowa admina' }, admin);
     expect(r.status).not.toBe(403);
   });

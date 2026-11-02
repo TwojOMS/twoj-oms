@@ -20,6 +20,8 @@
 %>
 <% const wart = (v) => (v ? v : '—'); %>
 <% const oznaczenie = (pola, pole) => (pola.includes(pole) ? ' <span class="znacznik znacznik-reczny">zmienione ręcznie</span>' : ''); %>
+<%_ /* PRZ-126.C05a: żaden komputer z drukarką faktur nie zgłosił się w 5 min → „Drukuj” wyszarzony; `null` (brak usługi) = jak dziś. */ -%>
+<%_ const bezDrukarkiFaktur = typeof drukarkaFaktur !== 'undefined' && Boolean(drukarkaFaktur) && !drukarkaFaktur.podlaczone; -%>
 <%# ⚠️ ROZLICZENIE ZBIORCZE — jeden fakt, ktory zmienia znaczenie DWOCH sekcji karty
     (Faktura i Platnosci). Do 2026-08-03 karta nie niosla go w ogole: operator widzial
     zwykle zamowienie firmowe z NIP-em i przycisk „Wystaw fakturę", a to zamowienie
@@ -182,15 +184,19 @@
         <% if (dane.jestNadanaPaczka) { %>
           <p class="pasek-uwaga">Poprawka dotyczy dopiero KOLEJNYCH przesyłek — kursu paczki JUŻ NADANEJ to nie zmienia. Jeśli paczka jedzie pod zły adres, załatw to w panelu DPD.</p>
         <% } %>
+        <%# PRZ-126.C02: odmowa zapisu wraca tu z komunikatem i wpisanymi wartościami. %>
+        <% const bladWysylki = bladDanych?.sekcja === 'wysylka' ? bladDanych : null; %>
+        <% const w = { ...dane.wysylka, ...(bladWysylki ? wartosciDanych ?? {} : {}) }; %>
+        <% if (bladWysylki) { %><p class="pasek-blokada" id="blad-dane-wysylki"><%= bladWysylki.tekst %></p><% } %>
         <form method="post" action="/zamowienia/<%= z.id %>/dane/wysylka" class="pola">
           <input type="hidden" name="powrot" value="<%= powrot %>">
-          <label>Imię i nazwisko<input name="nazwa" value="<%= dane.wysylka.nazwa %>"><%- oznaczenie(dane.wysylkaReczne, 'nazwa') %></label>
-          <label>Firma<input name="company" value="<%= dane.wysylka.company %>"><%- oznaczenie(dane.wysylkaReczne, 'company') %></label>
-          <label>Ulica<input name="ulica" value="<%= dane.wysylka.ulica ?? '' %>"><%- oznaczenie(dane.wysylkaReczne, 'ulica') %></label>
-          <label>Kod pocztowy<input name="kod" value="<%= dane.wysylka.kod ?? '' %>"><%- oznaczenie(dane.wysylkaReczne, 'kod') %></label>
-          <label>Miasto<input name="miasto" value="<%= dane.wysylka.miasto ?? '' %>"><%- oznaczenie(dane.wysylkaReczne, 'miasto') %></label>
-          <label>Telefon<input name="phone" value="<%= dane.wysylka.phone ?? '' %>"><%- oznaczenie(dane.wysylkaReczne, 'phone') %></label>
-          <label>E-mail<input name="email" value="<%= dane.wysylka.email ?? '' %>"><%- oznaczenie(dane.wysylkaReczne, 'email') %></label>
+          <label>Imię i nazwisko<input name="nazwa" value="<%= w.nazwa %>"><%- oznaczenie(dane.wysylkaReczne, 'nazwa') %></label>
+          <label>Firma<input name="company" value="<%= w.company %>"><%- oznaczenie(dane.wysylkaReczne, 'company') %></label>
+          <label>Ulica<input name="ulica" value="<%= w.ulica ?? '' %>"><%- oznaczenie(dane.wysylkaReczne, 'ulica') %></label>
+          <label>Kod pocztowy<input name="kod" value="<%= w.kod ?? '' %>"><%- oznaczenie(dane.wysylkaReczne, 'kod') %></label>
+          <label>Miasto<input name="miasto" value="<%= w.miasto ?? '' %>"><%- oznaczenie(dane.wysylkaReczne, 'miasto') %></label>
+          <label>Telefon<input name="phone" value="<%= w.phone ?? '' %>"><%- oznaczenie(dane.wysylkaReczne, 'phone') %></label>
+          <label>E-mail<input name="email" value="<%= w.email ?? '' %>"><%- oznaczenie(dane.wysylkaReczne, 'email') %></label>
           <%# Kraj CELOWO poza formularzem: panel obsluguje wylacznie przesylki krajowe. %>
           <p class="wyjasnienie">Kraj: <%= dane.wysylka.kraj %> — panel nadaje wyłącznie przesyłki krajowe.</p>
           <div class="stopka-edycji">
@@ -224,7 +230,7 @@
     <div class="panel-cialo">
       <%# Grozniejsze od paczki: dokumentu w inFakcie nie da sie „poprawic w drodze". %>
       <% if (stanFaktury === 'wystawiona') { %>
-        <p class="pasek-uwaga">Treści faktury JUŻ WYSTAWIONEJ to nie zmienia — wystawiony dokument popraw KOREKTĄ w <%= nazwaProgramu.miejscownik %>.</p>
+        <p class="pasek-uwaga">Treści faktury JUŻ WYSTAWIONEJ to nie zmienia — wystawiony dokument popraw KOREKTĄ <%= typeof gdzieProgramu !== 'undefined' ? gdzieProgramu : `w ${nazwaProgramu.miejscownik}` %>.</p>
       <% } %>
       <%# Wynik „Pobierz z GUS" — komunikat stoi NAD formularzem, bo rozstrzyga, czy to, co %>
       <%# w polach, w ogole przyszlo z REGON-u. Trzy rodzaje, bo trzy rozne rzeczy trzeba %>
@@ -236,29 +242,39 @@
         <%# ⚠️ Dane z GUS-u NADPISUJA to, co w bazie, ale TYLKO W POLACH — zapisuje dopiero %>
         <%# „Zapisz". Nazwa nabywcy idzie na fakture, wiec czlowiek ma ja zobaczyc, zanim %>
         <%# stanie sie faktem (REGON potrafi oddac nazwe urzedowa inna niz uzgodniona). %>
-        <% const f = daneZGus ? { ...dane.faktura, ...daneZGus } : dane.faktura; %>
+        <% const wpisaneFaktury = bladDanych?.sekcja === 'faktura' ? wartosciDanych : null; %>
+        <% const f = { ...dane.faktura, ...(daneZGus ?? {}), ...(wpisaneFaktury ?? {}) }; %>
+        <%# PRZ-126.C02: błąd przy polu — z odmowy wystawienia (pole domeny: nip/nazwa/kraj) albo zapisu. %>
+        <%# Pole „nazwa” domeny to na karcie „firma”; „kraj” nie ma pola, więc stoi nad formularzem. %>
+        <% const bladSekcji = bladFakturyWDanych ? bladFaktury : (bladDanych?.sekcja === 'faktura' ? bladDanych : null); %>
+        <% const poleBledu = { nip: 'nip', nazwa: 'firma', firma: 'firma' }[bladSekcji?.pole] ?? null; %>
+        <% const atrybutyBledu = (p) => poleBledu === p ? ` aria-invalid="true" aria-describedby="blad-${p}"` : ''; %>
+        <% if (bladFakturyWDanych) { %><p class="pasek-uwaga">Popraw dane i wystaw ponownie.</p><% } %>
+        <% if (bladSekcji && !poleBledu) { %><p class="pasek-blokada" id="blad-dane-faktury"><%= bladSekcji.tekst %></p><% } %>
         <form method="post" action="/zamowienia/<%= z.id %>/dane/faktura" class="pola">
           <input type="hidden" name="powrot" value="<%= powrot %>">
           <%# „Chce fakture" PIERWSZE: to pytanie rozstrzyga, czy reszta pol ma w ogole %>
           <%# znaczenie. Sklep PRO nie ma takiego pola — panel wnioskuje je z NIP-u, a to %>
           <%# z natury bywa nietrafione (klient dzwoni po fakture po zlozeniu zamowienia). %>
           <label class="pole-przelacznik">
-            <input type="checkbox" name="chce_fakture" <%= dane.chceFakture ? 'checked' : '' %>>
+            <input type="checkbox" name="chce_fakture" <%= (wpisaneFaktury ? bladDanych.wartosci.chce_fakture !== undefined : dane.chceFakture) ? 'checked' : '' %>>
             Klient chce fakturę
           </label>
-          <label>Nazwa firmy<input name="firma" value="<%= f.firma ?? '' %>"><%- oznaczenie(dane.fakturaReczne, 'firma') %></label>
+          <label>Nazwa firmy<input name="firma" value="<%= f.firma ?? '' %>"<%- atrybutyBledu('firma') %>><%- oznaczenie(dane.fakturaReczne, 'firma') %>
+            <% if (poleBledu === 'firma') { %><p class="blad-pola pasek-blokada" id="blad-firma"><%= bladSekcji.tekst %></p><% } %></label>
           <%# NIP i „Pobierz z GUS" w jednym rzedzie: przycisk wysyla TEN SAM formularz pod %>
           <%# inny adres (formaction), wiec pyta o numer WLASNIE WPISANY, a nie o ten z bazy. %>
           <%# Zagniezdzenie drugiego formularza byloby niepoprawnym HTML-em. %>
           <label>NIP
             <span class="pole-z-przyciskiem">
-              <input name="nip" value="<%= f.nip ?? '' %>">
+              <input name="nip" value="<%= f.nip ?? '' %>"<%- atrybutyBledu('nip') %>>
               <% if (mozliwyGus) { %>
                 <button class="btn btn--maly" formaction="/zamowienia/<%= z.id %>/dane/gus"
                   title="Pobierze nazwę i adres z bazy REGON. Nic nie zapisze — wypełni pola do sprawdzenia.">Pobierz z GUS</button>
               <% } %>
             </span>
             <%- oznaczenie(dane.fakturaReczne, 'nip') %>
+            <% if (poleBledu === 'nip') { %><p class="blad-pola pasek-blokada" id="blad-nip"><%= bladSekcji.tekst %></p><% } %>
           </label>
           <label>Ulica<input name="ulica" value="<%= f.ulica ?? '' %>"><%- oznaczenie(dane.fakturaReczne, 'ulica') %></label>
           <label>Kod pocztowy<input name="kod" value="<%= f.kod ?? '' %>"><%- oznaczenie(dane.fakturaReczne, 'kod') %></label>
@@ -634,6 +650,8 @@
       <%# raz zostawalaby na karcie na zawsze, bo dane ze sklepu juz nigdy by jej nie przebily. %>
       <%# WIDOCZNE TAKZE W ODCZYCIE — to jest awaryjne wyjscie, a te nie moga wymagac %>
       <%# wchodzenia w tryb edycji, zeby je znalezc. %>
+      <%_ /* PRZ-126.C02: odmowa „przywroc” (i kazdej innej trasy danych poza wysylka/faktura) tez wraca z komunikatem. */ -%>
+      <%_ if (bladDanych && bladDanych.sekcja !== 'wysylka' && bladDanych.sekcja !== 'faktura') { %><p class="pasek-blokada" id="blad-dane-<%= bladDanych.sekcja %>"><%= bladDanych.tekst %></p><% } -%>
       <% if (dane.saNadpisania && mozeAdres(`/zamowienia/${z.id}/dane/przywroc`)) { %>
         <form method="post" action="/zamowienia/<%= z.id %>/dane/przywroc">
           <input type="hidden" name="powrot" value="<%= powrot %>">
@@ -780,7 +798,7 @@
                 <%# parsujHurtPozycji zszywa równoległe tablice i odmawia przy różnej długości. %>
                 <td class="liczba kol-vat">
                   <% if (w.reczna && !wdt) { %>
-                    <select name="vat" aria-label="Stawka VAT"><% if (!w.stawkaWlasna) { %><option value="" selected>domyślna (<%= stawkaVat %>%)</option><% } %><% stawkiVat.forEach(function (s) { %><option value="<%= s %>"<%= s === w.stawkaWlasna ? ' selected' : '' %>><%= s %>%</option><% }); %></select>
+                    <select name="vat" aria-label="Stawka VAT"><% if (!w.stawkaWlasna) { %><option value="" selected>domyślna (<%= stawkaVat === 'zw' ? 'zw' : `${stawkaVat}%` %>)</option><% } %><% stawkiVat.forEach(function (s) { %><option value="<%= s %>"<%= s === w.stawkaWlasna ? ' selected' : '' %>><%= s === 'zw' ? 'zw' : `${s}%` %></option><% }); %></select>
                   <% } else { %>
                     <input type="hidden" name="vat" value=""><%= w.stawkaOpis %>
                   <% } %>
@@ -831,7 +849,7 @@
       <%# data-vat: JEDYNE zrodlo stawki dla skryptu ponizej — patrz komentarz przy nim %>
       <%# i przy STAWKA_VAT w domain/vat.js. %>
       <%# PRZ-105: data-vat = stawka DOMYŚLNA (zaznaczona niżej), data-wdt — nabywca z UE: skrypt liczy wtedy 0%. %>
-      <form method="post" action="/zamowienia/<%= z.id %>/pozycje" class="nowa-pozycja" data-vat="<%= stawkaVat %>" data-wdt="<%= wdt ? '1' : '0' %>">
+      <form method="post" action="/zamowienia/<%= z.id %>/pozycje" class="nowa-pozycja" data-vat="<%= stawkaVat %>" data-wdt="<%= wdt ? '1' : '0' %>"<%- zwolniona ? ' data-zwolniona="1"' : '' %>>
         <input type="hidden" name="powrot" value="<%= powrot %>">
         <label>Ilość<input class="pole-ilosc" type="number" min="1" step="1" inputmode="numeric" name="ilosc" value="1" required></label>
         <label>Nazwa<input name="nazwa" required placeholder="np. Dodatkowy szablon"></label>
@@ -840,7 +858,8 @@
         <%# (domain/vat.js: bruttoZNetto, domain/pozycje-reczne.js: parsujNowaPozycje). %>
         <label>Cena netto<input name="cena_netto" class="pole-cena cena-netto" placeholder="netto" inputmode="decimal"></label>
         <%# PRZ-105: stawka między netto a brutto (prośba właściciela 21.10), domyślna z Ustawień. %>
-        <label>Stawka VAT<select name="vat"><% stawkiVat.forEach(function (s) { %><option value="<%= s %>"<%= s === stawkaVat ? ' selected' : '' %>><%= s %>%</option><% }); %></select></label>
+        <%# PRZ-122.B07c: „zw” (tylko TwojeFaktury) to nie procent — etykieta bez „%”. %>
+        <label>Stawka VAT<select name="vat"><% stawkiVat.forEach(function (s) { %><option value="<%= s %>"<%= s === stawkaVat ? ' selected' : '' %>><%= s === 'zw' ? 'zw' : `${s}%` %></option><% }); %></select></label>
         <label>Cena brutto<input class="pole-cena" name="cena_brutto" required placeholder="np. 80,00"></label>
         <button class="btn">Dodaj pozycję</button>
       </form>
@@ -1494,7 +1513,7 @@
 <%# karcie. Scalenie bez tego rozdzielenia ukryloby proforme wszedzie tam, gdzie klient nie %>
 <%# zazyczyl sobie faktury — czyli w wiekszosci zamowien. %>
 <% const uwagaFaktury = stanFaktury === 'do_wyjasnienia' || stanFaktury === 'zawieszona'; %>
-<% const pokazFakture = (dane.chceFakture && !z.anulowane) || uwagaFaktury || z.faktura; %>
+<% /* PRZ-126.F02: fakturaDlaKazdego = opcja firmy „faktura także bez prośby klienta” (domyślnie wyłączona). */ const pokazFakture = ((dane.chceFakture || fakturaDlaKazdego) && !z.anulowane) || uwagaFaktury || z.faktura; %>
 <section class="panel" id="faktura">
   <%# Kotwica po dawnej sekcji proformy — stare odnosniki (#proforma) maja dalej dzialac. %>
   <span id="proforma"></span>
@@ -1516,6 +1535,16 @@
         bez niego dostawa jest krajowa (23%).
       </p>
     <% } %>
+    <%_ /* PRZ-122.B07g: firma zwolniona z VAT (TwojeFaktury + art. 113) i nabywca z numerem VAT UE — to NIE WDT
+       (decyzja właściciela 27.10). `zwolnionaUe` liczy trasa (renderujKarte) tą samą regułą co dokument. */ -%>
+    <%_ if (zwolnionaUe) { -%>
+      <p class="pasek-uwaga">
+        Nabywca ma numer VAT UE <strong><%= dane.faktura.nip %></strong>.
+        <strong>Sprzedawca zwolniony z VAT — to nie jest WDT.</strong>
+        Faktura „zw” z podstawą z Ustawień, numer VAT UE nabywcy na fakturze. Dotyczy towarów — usługa dla firmy
+        z UE (art. 28b) wymaga numeru VAT-UE sprzedawcy; takiej faktury tu nie wystawiaj.
+      </p>
+    <%_ } -%>
     <%# ——— PRZYPISANIE DO OKRESU ROZLICZENIOWEGO ————————————————————————————————————— %>
     <%# ⚠️ WYJSCIE Z POMYLKI, KTORA NIE MIALA WYJSCIA do 17.08.2026. Zamowienie trafia do %>
     <%# miesiaca po NIP-ie przy ZAKLADANIU — literowka albo brak NIP-u znaczyly, ze wypada %>
@@ -1579,11 +1608,28 @@
                 <% } else { %>
                   <span class="waga">jeszcze nie wysłana do KSeF</span>
                 <% } %>
+                <%_ /* PRZ-122.B20e: stan faktury programu wbudowanego (z adaptera, kontekst.js) — tylko przy prawie do ekranu. */ -%>
+                <%_ const ekranFaktury = fakturaWbudowana && mozeAdres(`/faktury/twojefaktury/${fakturaWbudowana.dokumentId}`); -%>
+                <%_ if (ekranFaktury) { -%>
+                  <div class="netto-cicho"><%= fakturaWbudowana.otwarty ? 'Fakturę możesz poprawić, dopóki nie wyjdzie do KSeF ani do nabywcy'
+                    : fakturaWbudowana.zamknieta === 'nabywca' ? 'zamknięta: PDF wydany nabywcy' : 'zamknięta: wysłana do KSeF' %></div>
+                <%_ } -%>
               </td>
               <td>
+                <%_ if (ekranFaktury) { -%>
+                  <a class="btn btn--maly" href="/faktury/twojefaktury/<%= encodeURIComponent(fakturaWbudowana.dokumentId) %>"><%= fakturaWbudowana.otwarty ? 'Popraw fakturę' : 'Faktura' %></a>
+                <%_ } -%>
                 <%# PDF pobierany z inFaktu ZA KAZDYM RAZEM na swiezo — panel nie trzyma %>
                 <%# kopii dokumentu, bo po korekcie kopia klamalaby przy drukarce. %>
-                <% if (idDokumentuFaktury && !zdanieBraku && mozeAdres(`/zamowienia/${z.id}/faktura/pdf`)) { %>
+                <% /* PRZ-122.B10a: faktura B2B bez numeru KSeF — PDF dla nabywcy jeszcze niegotowy: zamiast
+                      pobrania i wydruku stan i podgląd dla operatora (z napisem podglądu). */
+                   if (idDokumentuFaktury && !zdanieBraku && fakturaWbudowana?.czekaNaKsef) { %>
+                  <span class="waga" title="PDF dla nabywcy będzie gotowy po przyjęciu faktury przez KSeF">czeka na KSeF</span>
+                  <% if (mozeAdres(`/faktury/twojefaktury/${fakturaWbudowana.dokumentId}/podglad.pdf`)) { %>
+                    <a class="btn btn--maly" href="/faktury/twojefaktury/<%= encodeURIComponent(fakturaWbudowana.dokumentId) %>/podglad.pdf"
+                       target="_blank" rel="noopener noreferrer">Podgląd PDF</a>
+                  <% } %>
+                <% } else if (idDokumentuFaktury && !zdanieBraku && mozeAdres(`/zamowienia/${z.id}/faktura/pdf`)) { %>
                   <%# Ta sama zasada, co przy etykiecie: dokument do wydruku otwiera sie OBOK %>
                   <%# karty, a nie zamiast niej. %>
                   <a class="btn btn--maly" href="/zamowienia/<%= z.id %>/faktura/pdf"
@@ -1596,8 +1642,12 @@
                   <% if (mozeAdres(`/zamowienia/${z.id}/faktura/drukuj`)) { %>
                     <form method="post" action="/zamowienia/<%= z.id %>/faktura/drukuj" class="w-linii">
                       <input type="hidden" name="powrot" value="<%= powrot %>">
-                      <button class="btn btn--maly">Drukuj</button>
+                      <button class="btn btn--maly"<% if (bezDrukarkiFaktur) { %> disabled title="Nie ma podłączonego komputera z drukarką"<% } %>>Drukuj</button>
                     </form>
+                    <%_ if (bezDrukarkiFaktur) { -%>
+                    <style>.btn:disabled, .btn:disabled:hover { opacity: .45; cursor: not-allowed; background: var(--powierzchnia); }</style>
+                    <p class="wyjasnienie">Nie ma podłączonego komputera z drukarką — jak go podłączyć: <a href="/ustawienia/druk#faktury">Ustawienia → Druk i etykiety</a>.</p>
+                    <%_ } -%>
                   <% } %>
                 <% } %>
                 <%# PRZ-102.23: ten sam podgląd co z listy Faktur (dwa kroki, bariera liczona od nowa), %>
@@ -1653,7 +1703,7 @@
               <td>Korekta</td>
               <td><%= w.korekta_numer %></td>
               <td><%= w.data %></td>
-              <td class="netto-cicho"><%= powodKorektyKsef %></td>
+              <td class="netto-cicho"><%= (locals.korektyBezCzekania || []).includes(w.korekta_numer) ? '' : powodKorektyKsef %></td>
               <td></td>
             </tr>
           <% }); %>
@@ -1706,7 +1756,7 @@
       <% if (stanFaktury === 'do_wyjasnienia') { %>
         <p class="pasek-blokada">
           FAKTURA DO WYJAŚNIENIA: <%= z.faktura.blad_opis %>.
-          Sprawdź RĘCZNIE w <%= nazwaProgramu.miejscownik %>, czy dokument powstał — drugie kliknięcie to drugi dokument.
+          Sprawdź RĘCZNIE <%= typeof gdzieProgramu !== 'undefined' ? gdzieProgramu : `w ${nazwaProgramu.miejscownik}` %>, czy dokument powstał — drugie kliknięcie to drugi dokument.
           Jeśli tam jest i jeszcze nie poszedł wieczorem do KSeF, skasuj go w <%= nazwaProgramu.miejscownik %>; jeśli już poszedł, zostaje KOREKTA.
         </p>
       <% } else if (stanFaktury === 'zawieszona') { %>
@@ -1717,25 +1767,7 @@
       <% } else if (stanFaktury === 'w_toku') { %>
         <p class="pasek-uwaga">Wystawianie faktury trwa — odśwież stronę za chwilę.</p>
       <% } %>
-      <% if (wOkresie && !z.faktura) { %>
-        <%# ⚠️ ZAMIAST PRZYCISKU — ZDANIE Z LINKIEM (recenzja koncowa galezi, K1). To samo %>
-        <%# zamowienie dawalo sie zafakturowac dwa razy: raz stad, raz z ekranu okresu. %>
-        <%# Prawdziwa odmowa siedzi w services/faktura.js — tutaj nie kusimy przyciskiem %>
-        <%# i mowimy, gdzie fakture naprawde sie wystawia. %>
-        <p class="pasek-uwaga">
-          Zamówienie rozlicza się ZBIORCZO: klient dostaje jedną fakturę za cały
-          <%= nazwaOkresu %>, a nie osobny dokument do tego zamówienia. Pojedynczej faktury
-          panel tu nie wystawi — <% if (modulWlaczony('okresy')) { %><a href="/okresy/<%= okresZamowienia.id %>"><% } %>przejdź do okresu <%= nazwaOkresu %><% if (modulWlaczony('okresy')) { %></a><% } else { %> (moduł wyłączony)<% } %>.
-          <%# PRZ-102.23: faktura okresu nie należy do tego zamówienia — do KSeF jedzie z listy Faktur %>
-          <%# (zaznaczenie → podgląd → wysyłka, albo automat), tak jak dziś; karta nie dokłada drugiej drogi. %>
-          <% if (idDokumentuOkresu && mozeAdres('/faktury/ksef/podglad')) { %>
-            Faktura okresu jest już w <%= nazwaProgramu.miejscownik %> — do KSeF wysyłasz ją z zakładki <a href="/faktury">Faktury</a>, nie z karty zamówienia.
-          <% } %>
-        </p>
-      <% } %>
-      <% if (!mozliwaFaktura && !z.faktura && !wOkresie) { %>
-        <% if (zdanieBraku) { %><p class="pasek-uwaga"><%= zdanieBraku %></p><% } else { %><p class="pasek-uwaga"><%= nazwaProgramu.mianownik %> nie jest skonfigurowany — faktury z panelu nie wystawisz. Klucz API wpiszesz w <a href="<%= ekranProgramu %>">Ustawienia → Integracje → <%= nazwaProgramu.mianownik %></a>.</p><% } %>
-      <% } %>
+      <%# PRZ-126.P1: powód blokady okresu lub konfiguracji stoi raz, pod przyciskiem. %>
     <% } %>
 
     <%# ——— 2. WYSTAWIENIE FAKTURY ————————————————————————————————————————————————————— %>
@@ -1744,8 +1776,15 @@
     <%# (to rezerwacja albo gotowy dokument), wiec `!z.faktura` odsiewa je wszystkie naraz. %>
     <%# Splaszczenie bylo potrzebne, zeby pola i przycisk daly sie rozdzielic: przycisk stoi %>
     <%# teraz we WSPOLNEJ stopce z proforma, a lancuch trzymal je w jednym wezle. %>
-    <% const wolnoWystawicFakture = pokazFakture && !z.faktura && !wOkresie && mozliwaFaktura
-      && mozeAdres(`/zamowienia/${z.id}/faktura`); %>
+    <%_ /* PRZ-126.C02: odmowa wystawienia nad formularzem; błąd w danych nabywcy stoi pod polem w „Dane do faktury”. */ -%>
+    <%_ /* Tagi zamykane myślnikiem: karta bez błędu ma HTML bajt w bajt jak dotąd (migawka PRZ-118.09). */ -%>
+    <%_ if (bladFaktury && bladFakturyWDanych) { -%>
+        <p class="pasek-blokada" id="blad-faktury">Faktura NIE została wystawiona — <a href="#dane-faktury">popraw dane do faktury</a> i wystaw ponownie.</p>
+    <%_ } else if (bladFaktury) { -%>
+        <p class="pasek-blokada" id="blad-faktury"><%= bladFaktury.tekst %></p>
+    <%_ } -%>
+    <% const wolnoWystawicFakture = wystawienieFaktury?.mozna; %>
+    <%_ const terminWybrany = String(formularzWystawienia?.termin ?? domyslnyTermin); -%>
     <% if (wolnoWystawicFakture) { %>
       <p class="etykieta-bloku">Wystaw fakturę</p>
       <%# ⚠️ Brak wplaty NIE BLOKUJE faktury i to jest swiadome (services/faktura.js): %>
@@ -1772,12 +1811,12 @@
             <%# Pierwsze jest „przy odbiorze" — wariant, ktory najwyzej powtarza date %>
             <%# wystawienia jako termin zaplaty. %>
             <select name="termin">
-              <option value="<%= terminy.przyOdbiorze %>"<%= domyslnyTermin === terminy.przyOdbiorze ? ' selected' : '' %>>przy odbiorze</option>
+              <option value="<%= terminy.przyOdbiorze %>"<%= terminWybrany === String(terminy.przyOdbiorze) ? ' selected' : '' %>>przy odbiorze</option>
               <% terminy.dni.forEach(function (d) { %>
-                <option value="<%= d %>"<%= domyslnyTermin === d ? ' selected' : '' %>><%= d %> dni</option>
+                <option value="<%= d %>"<%= terminWybrany === String(d) ? ' selected' : '' %>><%= d %> dni</option>
               <% }); %>
-              <option value="<%= terminy.bezTerminu %>"<%= domyslnyTermin === terminy.bezTerminu ? ' selected' : '' %>>bez terminu — faktura nieopłacona</option>
-              <option value="<%= terminy.zaplacone %>"<%= domyslnyTermin === terminy.zaplacone ? ' selected' : '' %>>zapłacone</option>
+              <option value="<%= terminy.bezTerminu %>"<%= terminWybrany === String(terminy.bezTerminu) ? ' selected' : '' %>>bez terminu — faktura nieopłacona</option>
+              <option value="<%= terminy.zaplacone %>"<%= terminWybrany === String(terminy.zaplacone) ? ' selected' : '' %>>zapłacone</option>
             </select>
           </label>
           <%# `type="date"` daje kalendarz po kliknieciu BEZ ani jednej linii skryptu — %>
@@ -1786,14 +1825,14 @@
           <%# ⚠️ PODPOWIEDZ POD POLEM, nie w etykiecie: wpleciona w etykiete rozpychala ja %>
           <%# na dwa wiersze i sasiednie pola przestawaly stac w jednej linii. %>
           <label>Data wystawienia
-            <input type="date" name="data_wystawienia">
+            <input type="date" name="data_wystawienia"<% if (formularzWystawienia?.dataWystawienia) { %> value="<%= formularzWystawienia.dataWystawienia %>"<% } %>>
             <span class="wyjasnienie">puste = dzisiaj</span>
           </label>
           <%# Data sprzedazy (Zadanie 6). Pole wypelnione PROPOZYCJA z reguly prawnej %>
           <%# (domain/data-sprzedazy.js), ale to WCIAZ TYLKO PROPOZYCJA — na dokument idzie %>
           <%# to, co operator widzi w polu. `wyjasnienie` mowi DLACZEGO ta data, nie tylko jaka. %>
           <label>Data sprzedaży
-            <input type="date" name="data_sprzedazy" value="<%= propozycjaSprzedazy.data %>">
+            <input type="date" name="data_sprzedazy" value="<%= formularzWystawienia?.dataSprzedazy ?? propozycjaSprzedazy.data %>">
             <span class="wyjasnienie"><%= propozycjaSprzedazy.wyjasnienie %></span>
           </label>
         </div>
@@ -1817,6 +1856,9 @@
         <% } %>
       <% } else if (drukFaktury.status === 'oczekuje') { %>
         <p class="wyjasnienie">Faktura czeka w kolejce druku — wyjedzie, gdy komputer z drukarką ją zabierze.</p>
+        <%_ if (bezDrukarkiFaktur) { -%>
+        <p class="wyjasnienie">Nie ma podłączonego komputera z drukarką — jak go podłączyć: <a href="/ustawienia/druk#faktury">Ustawienia → Druk i etykiety</a>.</p>
+        <%_ } -%>
       <% } else if (drukFaktury.status === 'wydrukowano') { %>
         <p class="wyjasnienie">Wydrukowano <%= fmtDataCzas(drukFaktury.wydrukowane_at) %>.</p>
       <% } else if (drukFaktury.status === 'porzucone') { %>
@@ -1849,7 +1891,12 @@
       <%# ODRZUCILO plik — kupujacy jej NIE MA", a ta sekcja obok: „kupujacy ma ja na %>
       <%# swoim koncie". Zdanie o koncie kupujacego NIE MA PRAWA pokazac sie przy REJECTED. %>
       <% var odrzuconyPrzezAllegro = z.faktura.allegro_weryfikacja === 'REJECTED'; %>
-      <% if (z.faktura.allegro_wyslana_at && !odrzuconyPrzezAllegro) { %>
+      <% /* PRZ-126 C09e — znacznik D: zamowienie przepiete na fakture zastepcza (zly NIP), a u kupujacego jest
+            POPRZEDNIA faktura. „Kupujacy ma ja na swoim koncie" klamaloby o nowej. Zdanie liczy domena.
+            Komentarz w tym samym tagu co if — osobne linie komentarza EJS zmienialyby HTML migawki PRZ-118.09. */
+         if (zdanieAllegroPoZamianieNip) { %>
+        <p><%= zdanieAllegroPoZamianieNip %></p>
+      <% } else if (z.faktura.allegro_wyslana_at && !odrzuconyPrzezAllegro) { %>
         <p>
           Faktura <strong>wysłana do Allegro</strong> <%= fmtDataCzas(z.faktura.allegro_wyslana_at) %> —
           kupujący ma ją na swoim koncie. Weryfikacja pliku: <%= z.faktura.allegro_weryfikacja || 'nieznana' %>.
@@ -1874,7 +1921,7 @@
           <p class="wyjasnienie">
             Ponowna wysyłka <strong>podmienia plik</strong> przy tym samym zgłoszeniu<%
               %><%= z.faktura.allegro_invoice_id ? ` (${z.faktura.allegro_invoice_id})` : '' %> —
-            drugiego dokumentu u kupującego nie zrobi. Najpierw sprawdź w <%= nazwaProgramu.miejscownik %>, czy PDF
+            drugiego dokumentu u kupującego nie zrobi. Najpierw sprawdź <%= typeof gdzieProgramu !== 'undefined' ? gdzieProgramu : `w ${nazwaProgramu.miejscownik}` %>, czy PDF
             jest w porządku; Allegro odrzuca pliki, których nie przepuścił jego antywirus.
           </p>
         <% } else { %>
@@ -1946,10 +1993,15 @@
     <%# przejmuje Enter z jego pol. Formularz proformy nie ma i nie ma miec ani jednego pola. %>
     <% const jestProforma = mozliwaProforma && zgodaProforma.wolno
       && mozeAdres(`/zamowienia/${z.id}/proforma`); %>
-    <% if (wolnoWystawicFakture || jestProforma) { %>
+    <% if (wystawienieFaktury || jestProforma) { %>
       <div class="stopka-edycji">
-        <% if (wolnoWystawicFakture) { %>
-          <button class="btn btn--glowny" form="wystaw-fakture">Wystaw fakturę</button>
+        <% if (wystawienieFaktury) { %>
+          <div>
+            <button class="btn btn--glowny" form="wystaw-fakture"<% if (!wolnoWystawicFakture) { %> disabled aria-describedby="powod-wystawienia-faktury" style="background: var(--powierzchnia-2); color: var(--tekst-przygaszony); border-color: var(--ramka); cursor: not-allowed"<% } %>>Wystaw fakturę</button>
+            <% if (!wolnoWystawicFakture) { %>
+              <p class="wyjasnienie" id="powod-wystawienia-faktury"><%= wystawienieFaktury.powod %><% if (wystawienieFaktury.odnosnik) { %><a href="<%= wystawienieFaktury.odnosnik.href %>"><%= wystawienieFaktury.odnosnik.tekst %></a><% } %><%= wystawienieFaktury.poOdnosniku ?? '' %></p>
+            <% } %>
+          </div>
         <% } %>
         <% if (jestProforma) { %>
           <form method="post" action="/zamowienia/<%= z.id %>/proforma">

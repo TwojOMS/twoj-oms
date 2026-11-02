@@ -34,7 +34,7 @@ describe('podmenu Ustawień', () => {
   // PRZ-102.01: Powiadomienia są działającym ustawieniem osobistym, nie atrapą.
   it('„wkrótce” mają dokładnie cztery atrapy, reszta to działające ekrany', () => {
     const menu = podmenuUstawien('/ustawienia', { admin: true });
-    expect(menu.filter((p) => p.wkrotce).map((p) => p.klucz)).toEqual(['druk', 'kopie', 'import-eksport', 'api']);
+    expect(menu.filter((p) => p.wkrotce).map((p) => p.klucz)).toEqual(['import-eksport', 'api']);
     expect(menu.find((p) => p.klucz === 'powiadomienia').wkrotce).toBe(false);
     expect(menu.find((p) => p.klucz === 'integracje').wkrotce).toBe(false);
   });

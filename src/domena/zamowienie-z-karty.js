@@ -1,7 +1,7 @@
 import { bladOperatora } from './bledy.js';
 import { parsujKosztDostawy } from './koszt-dostawy.js';
 import { parsujNowaPozycje } from './pozycje-reczne.js';
-import { czyNipUe } from './wdt.js';
+import { czyWdt } from './wdt.js';
 import { metodaWysylkiZWyboru, PLATNOSCI } from './nowe-zamowienie.js';
 
 /**
@@ -20,14 +20,16 @@ import { metodaWysylkiZWyboru, PLATNOSCI } from './nowe-zamowienie.js';
  * ktorego nie da sie zwolnic, a karta panelu dostalaby blad i zalozylaby drugie.
  */
 // PRZ-105: `stawkaDomyslna` (z Ustawień) podaje trasa — pozycje bez pola `vat` dostają ją, nie wbudowane 23.
-export function parsujZamowienieZKarty(body = {}, { stawkaDomyslna } = {}) {
+// PRZ-122.B07c: `zw` (flaga programu wbudowanego) dopuszcza stawkę „zw” — jak na karcie; bez flagi jak dotąd.
+// PRZ-122.B07f: `zwolniona` (firma zwolniona z VAT) — numer UE nabywcy to nie WDT, ceny bez stawki 0.
+export function parsujZamowienieZKarty(body = {}, { stawkaDomyslna, zw = false, zwolniona = false } = {}) {
   const kartaId = String(body?.kartaId ?? '').trim();
   if (!kartaId) throw bladOperatora('Żądanie bez identyfikatora karty — nie ma czego oznaczyć.');
   const { metoda, pobranie } = metodaWysylkiZWyboru('dpd', 'przelew');
 
   const wejscie = Array.isArray(body?.pozycje) ? body.pozycje : [];
   const pozycje = wejscie.map((p, i) => {
-    try { return parsujNowaPozycje(p, { stawkaDomyslna, wdt: czyNipUe(body?.nip) }); }
+    try { return parsujNowaPozycje(p, { stawkaDomyslna, wdt: czyWdt(body?.nip, { zwolniona }), zw }); }
     catch (e) { throw bladOperatora(`Pozycja ${i + 1}: ${e.message}`); }
   });
 

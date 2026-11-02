@@ -266,13 +266,13 @@ describe('ekran kont', () => {
     expect(r.body).toContain('Sprzedaż + zmiany');
   });
 
-  it('dziennik logowan jest NA TYM SAMYM ekranie i pokazuje proby nieudane', async () => {
+  it('zakładka Historii logowań pokazuje proby nieudane', async () => {
     const { db, app } = nowyPanel();
     zalozKonto(db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
     dopiszLogowanie(db, { login: 'ktos-obcy', usluga: 'oms', wynik: 'zle-haslo' });
 
     const r = await app.inject({
-      method: 'GET', url: '/ustawienia/konta',
+      method: 'GET', url: '/ustawienia/zespol/logowania',
       headers: { ...HTML, ...jako(db, 'adam') },
     });
 
@@ -413,7 +413,7 @@ describe('ekran kont', () => {
     dopiszLogowanie(db, { login: '<script>alert(2)</script>', usluga: 'oms', wynik: 'zle-haslo' });
 
     const r = await app.inject({
-      method: 'GET', url: '/ustawienia/konta',
+      method: 'GET', url: '/ustawienia/zespol/logowania',
       headers: { ...HTML, ...jako(db, 'adam') },
     });
 
@@ -530,7 +530,7 @@ describe('ekran kont', () => {
     dopiszLogowanie(db, { login: 'ktos-obcy', usluga: 'oms', wynik: 'zle-haslo', ip: '10.20.30.40' });
 
     const r = await app.inject({
-      method: 'GET', url: '/ustawienia/konta',
+      method: 'GET', url: '/ustawienia/zespol/logowania',
       headers: { ...HTML, ...jako(db, 'adam') },
     });
 
@@ -548,7 +548,7 @@ describe('ekran kont', () => {
     dopiszLogowanie(db, { login: 'ktos', usluga: 'oms', wynik: 'przyszly-typ-logowania' });
 
     const r = await app.inject({
-      method: 'GET', url: '/ustawienia/konta',
+      method: 'GET', url: '/ustawienia/zespol/logowania',
       headers: { ...HTML, ...jako(db, 'adam') },
     });
 

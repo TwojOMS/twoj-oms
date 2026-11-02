@@ -1,7 +1,7 @@
 import { zapiszNumerKsef, zapiszNieudanyOdczytKsef } from '../db/faktury.js';
 import { dopiszLog } from '../../../oms/db/zamowienia.js';
 import { czyDoczytacKsef } from '../../../domena/ksef-doczytanie.js';
-import { idDokumentu, czyDokumentProgramu } from '../../../domena/dokument-programu.js';
+import { idDokumentu, czyDokumentProgramu, numerKsefDokumentu } from '../../../domena/dokument-programu.js';
 import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 // Doczytanie numeru KSeF dla JEDNEJ faktury, przy otwarciu karty zamowienia.
@@ -48,16 +48,18 @@ export function createDoczytanieKsef({
     if (!czyDokumentProgramu(faktura, program)) return false;
 
     try {
-      const dane = await program.pobierzFakture(idDokumentu(faktura));
+      const dok = idDokumentu(faktura);
+      const numer = numerKsefDokumentu(await program.pobierzFakture(dok));
       // ⚠️ ZAPIS TAKZE WTEDY, GDY NUMERU NIE MA. `ksef_sprawdzona_at` to data PYTANIA, nie
       // odpowiedzi — i to na niej stoi dlawik. Bez tego zapisu kazde odswiezenie karty
       // faktury, ktora numeru jeszcze nie ma, bilo do inFaktu od nowa. `zapiszNumerKsef`
       // uzywa COALESCE, wiec pusta odpowiedz nie skasuje numeru zapisanego wczesniej.
-      zapiszNumerKsef(db, faktura.id, { ksefNumer: dane?.ksefNumer ?? null, sprawdzonaAt: teraz() });
-      if (!dane?.ksefNumer) return false;
+      // PRZ-126 C09f: z `dokumentId` — wiersz przepięty w trakcie pytania na fakturę zastępczą nie dostaje numeru starej.
+      const zapisano = zapiszNumerKsef(db, faktura.id, { ksefNumer: numer, sprawdzonaAt: teraz(), dokumentId: dok });
+      if (!numer || !zapisano) return false;
       // Log dopiero po zapisie i tylko przy FAKCIE — inaczej historia zamowienia rosnie
       // proporcjonalnie do liczby odslon karty, a nie do liczby zdarzen.
-      dopiszLog(db, zamowienieId, { akcja: 'ksef', wynik: `dokument jest w KSeF (${dane.ksefNumer})` });
+      dopiszLog(db, zamowienieId, { akcja: 'ksef', wynik: `dokument jest w KSeF (${numer})` });
       // ⚠️⚠️ NASTEPSTWO ZAPISU NUMERU — BEZ TEGO FAKTURA NIE POJDZIE DO ALLEGRO NIGDY.
       // Zapisanie numeru wycina fakture z kolejki czuwacza (`ksef_numer IS NULL`), a to
       // czuwacz byl jedynym miejscem, ktore po znalezieniu numeru wysylalo dokument
@@ -79,7 +81,8 @@ export function createDoczytanieKsef({
       // karty, a karta ma sie otworzyc takze przy pelnym dysku (ta sama zasada, co przy
       // `zapiszLubOdpusc` w routes/zamowienia.js).
       try {
-        zapiszNieudanyOdczytKsef(db, faktura.id, { sprawdzonaAt: teraz() });
+        // PRZ-126 C09g — z `dokumentId`: wiersz przepięty w trakcie pytania na zastępczą nie dostaje stempla starej.
+        zapiszNieudanyOdczytKsef(db, faktura.id, { sprawdzonaAt: teraz(), dokumentId: idDokumentu(faktura) });
       } catch { /* karta wazniejsza niz slad */ }
       return false;
     }

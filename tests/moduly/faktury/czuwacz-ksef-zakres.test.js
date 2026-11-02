@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
+import { zapiszZamowienie, ostatniWpisLogu } from '../../../src/oms/db/zamowienia.js';
 import { rozpocznijFakture, zakonczFakture } from '../../../src/moduly/faktury/db/faktury.js';
 import { zajmijWysylkeKsef } from '../../../src/moduly/faktury/db/wysylki-ksef.js';
 import { createCzuwaczKsef } from '../../../src/moduly/faktury/services/czuwacz-ksef.js';
@@ -80,6 +80,37 @@ describe('zakres czuwacza po dolozeniu wysylki z panelu', () => {
 
     expect(pytane).toEqual([uuid]);
     expect(db.prepare('SELECT ksef_numer FROM faktury').get().ksef_numer).toBe('KSEF-1');
+    db.close();
+  });
+
+  // PRZ-123.CZUWACZ-NUMER: TwojeFaktury oddaje dokument w ksztalcie v3 (`ksef_number`, nie `ksefNumer`).
+  // Bez odczytu obu pol numer nie trafial do bazy nigdy, a faktura nie szla do Allegro po numerze KSeF.
+  it('zapisuje numer KSeF z odczytu TwojeFaktury (`ksef_number`)', async () => {
+    const db = openOmsDb(':memory:');
+    zamowienieZFaktura(db, { sklep: 'pro', wyslanaZPanelu: true });
+    const { czuwacz } = pytaniaCzuwacza(db, null, {
+      infakt: { pobierzFakture: async () => ({ number: '1/08/2026', ksef_number: 'KSEF-TF' }) },
+    });
+
+    await czuwacz.przebieg();
+
+    expect(db.prepare('SELECT ksef_numer FROM faktury').get().ksef_numer).toBe('KSEF-TF');
+    db.close();
+  });
+
+  // Recenzja CZUWACZ-NUMER: `null` z programu (TwojeFaktury nie zna id) to blad odczytu ze sladem w historii —
+  // ani cichy „ok", ani „nieznana" (ta robi na karcie blokade „skasowana" i zwalnia zamowienie).
+  it('`null` z programu zapisuje odczyt „blad" i wpis w historii', async () => {
+    const db = openOmsDb(':memory:');
+    zamowienieZFaktura(db, { sklep: 'pro', wyslanaZPanelu: true });
+    const { czuwacz } = pytaniaCzuwacza(db, null, { infakt: { pobierzFakture: async () => null } });
+
+    await czuwacz.przebieg();
+
+    const w = db.prepare('SELECT ksef_numer, ksef_odczyt FROM faktury').get();
+    expect(w).toEqual({ ksef_numer: null, ksef_odczyt: 'blad' });
+    const zamId = db.prepare('SELECT zamowienie_id FROM faktury').get().zamowienie_id;
+    expect(String(ostatniWpisLogu(db, zamId, 'ksef')?.wynik)).toContain('nie zna tego dokumentu');
     db.close();
   });
 

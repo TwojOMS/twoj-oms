@@ -21,7 +21,7 @@
           bo automat wysyła tą samą usługą; dochodzi tylko nagłówek przebiegu i lista „z zasady nie leci”. %>
       <% if (automat.wynik) { %>
         <p id="ksef-automat-przebieg">Przebieg z <b><%= automat.wynik.dzien %></b>, start <%= fmtDataCzas(automat.wynik.startAt) %><% if (automat.wynik.koniecAt) { %>, koniec <%= fmtDataCzas(automat.wynik.koniecAt) %><% } %>. W logu zamówień operator: <b><%= automat.kto %></b>.</p>
-        <% if (automat.wynik.stan === 'przerwany') { %><p class="pasek-blokada"><b>Przebieg przerwany</b> — panel uruchomił się ponownie w trakcie<% if (automat.wynik.wTrakcie && automat.wynik.wTrakcie.numer) { %> wysyłki <b><%= automat.wynik.wTrakcie.numer %></b>. Sprawdź w <%= nazwaProgramu.miejscownik %>, czy ta faktura ma numer KSeF, zanim wyślesz ją ponownie<% } else { %>. Sprawdź w <%= nazwaProgramu.miejscownik %> dokumenty z tego dnia<% } %>; automat sam niczego nie ponawia.</p><% } %>
+        <% if (automat.wynik.stan === 'przerwany') { %><p class="pasek-blokada"><b>Przebieg przerwany</b> — panel uruchomił się ponownie w trakcie<% if (automat.wynik.wTrakcie && automat.wynik.wTrakcie.numer) { %> wysyłki <b><%= automat.wynik.wTrakcie.numer %></b>. Sprawdź <%= typeof gdzieProgramu !== 'undefined' ? gdzieProgramu : `w ${nazwaProgramu.miejscownik}` %>, czy ta faktura ma numer KSeF, zanim wyślesz ją ponownie<% } else { %>. Sprawdź <%= typeof gdzieProgramu !== 'undefined' ? gdzieProgramu : `w ${nazwaProgramu.miejscownik}` %> dokumenty z tego dnia<% } %>; automat sam niczego nie ponawia.</p><% } %>
         <% if (automat.wynik.stan === 'wylaczony') { %><p class="wyjasnienie">Automat wyłączono w trakcie przebiegu — pozostałe dokumenty nie poleciały.</p><% } %>
         <% if (automat.wynik.stan === 'trwa') { %><p class="wyjasnienie">Przebieg trwa — odśwież za chwilę.</p><% } %>
       <% } else { %>
@@ -47,6 +47,9 @@
         <p class="pasek-blokada"><b>Automat zatrzymał się po wysłaniu <%= wyslane.length %> <%= wyslane.length === 1 ? 'dokumentu' : 'dokumentów' %>: <%= wyslane.map(function (w) { return w.numer; }).join(', ') %>.</b> Powód zatrzymania: <%= blad %> Pozostałe dokumenty nie poleciały; automat ich dziś nie ponowi.</p>
       <% } else { %>
         <p class="pasek-blokada"><b>Nic nie poszło do KSeF:</b> <%= blad %></p>
+        <% if (locals.ustawieniaKsef) { %>
+          <p><a href="<%= ustawieniaKsef %>">Otwórz ustawienia wysyłki do KSeF</a></p>
+        <% } %>
       <% } %>
     <% } %>
 
@@ -58,24 +61,11 @@
         <% }); %>
       </ul>
       <p class="wyjasnienie">
+        <% if (programWbudowany) { %>Dokumenty wysłane do KSeF. Numer KSeF nie pojawia się od razu; pokaże się na liście faktur, gdy KSeF potwierdzi przyjęcie — panel dopyta o to sam.<% } else { %>
         Panel przekazał dokumenty do <%= nazwaProgramu.dopelniacz %>, a <%= nazwaProgramu.mianownik %> przekazuje je organowi. Numer KSeF
         <b>nie pojawia się od razu</b> — zmierzone około siedemdziesiąt sekund. Pokaże się
         na liście faktur, gdy organ potwierdzi przyjęcie; panel dopyta o to sam.
-      </p>
-      <%# ⚠️⚠️ TU STALY DWA OSTRZEZENIA O LICZBIE PRZYJETYCH — „liczby sie rozjezdzaja" i „panel
-          nie dostal liczby przyjetych" — i ZADNE nie moglo sie zapalic (recenzja calosci,
-          Finding 3). `wyslijDokumentDoKsef` wyrzucalo tresc odpowiedzi inFaktu i oddawalo `przyjete`
-          rowne DLUGOSCI TEGO, CO SAMO WYSLALO: liczba byla wiec zawsze zgodna i nigdy pusta,
-          a ekran zestawial ja sam ze soba. Wygladal na sprawdzony, chociaz nikt nic nie
-          sprawdzil — czyli robil dokladnie to, przed czym mial bronic.
-          Ekran mowi teraz WYLACZNIE to, co panel wie: ile dokumentow WYSLAL.
-          ⚠️ Zdania o liczbie przyjetej przez inFakt wolno tu dolozyc DOPIERO wtedy, gdy ksztalt
-          odpowiedzi `send.json` zostanie zaobserwowany na pierwszej nadzorowanej wysylce —
-          klient oddaje ja surowa w `odpowiedzInfaktu` (infakt/client.js). %>
-      <p class="wyjasnienie">
-        Powyższa liczba to <b>własny rachunek panelu</b>: tyle dokumentów panel wysłał.
-        Nie jest to potwierdzenie ani <%= nazwaProgramu.dopelniacz %>, ani organu — panel nie ma dziś czego z nią
-        zestawić i niczego takiego nie udaje. Co naprawdę poszło, widać w <%= nazwaProgramu.miejscownik %>.
+        <% } %>
       </p>
     <% } %>
 
@@ -116,13 +106,19 @@
       <ul class="lista-wyniku" id="ksef-automat-wstrzymane">
         <% automat.wstrzymane.forEach(function (w) { %>
           <li><span class="waga waga--blokada">wstrzymana</span> <span><%= w.zdanie %></span>
+            <%_ /* C09ca: odrzucona / „nie doszła” (TwojeFaktury) — zdjęcie wpisu niczego by nie wysłało, więc bez „Zwolnij”.
+                   Tagi z obcinaniem białych znaków: wpis bez kodu renderuje ten sam HTML co przed zmianą (migawka PRZ-118.09). */ -%>
+            <%_ if (w.doZwolnienia === false) { -%>
+            <span class="wyjasnienie"><%= w.kod === 'odrzucona' ? 'Nie do zwolnienia — popraw fakturę.' : 'Nie do zwolnienia — wyślij ręcznie.' %></span></li>
+            <%_ } else { -%>
             <form method="post" action="/faktury/ksef/automat/zwolnij" style="display:inline">
               <input type="hidden" name="uuid" value="<%= w.uuid %>">
-              <button class="btn" type="submit">Zwolnij</button>
+              <button class="btn" type="submit"><%= w.kod === 'duplikat-niesprawdzony' ? 'Sprawdź ponownie' : 'Zwolnij' %></button>
             </form></li>
+            <%_ } -%>
         <% }); %>
       </ul>
-      <p class="wyjasnienie">„Zwolnij” niczego nie wysyła — faktura wraca do automatu i poleci przy najbliższym przebiegu. Faktura wysłana ręcznie (z numerem KSeF) znika z tej listy sama.</p>
+      <p class="wyjasnienie"><% if (automat.wstrzymane.some(function (w) { return w.doZwolnienia !== false && w.kod !== 'duplikat-niesprawdzony'; })) { %>„Zwolnij” niczego nie wysyła — faktura wraca do automatu i poleci przy najbliższym przebiegu. <% } %><% if (automat.wstrzymane.some(function (w) { return w.kod === 'duplikat-niesprawdzony'; })) { %>„Sprawdź ponownie” niczego nie wysyła — panel jeszcze raz pobierze z KSeF fakturę o tym numerze i porówna ją z wysłaną. <% } %>Faktura wysłana ręcznie (z numerem KSeF) znika z tej listy sama.</p>
     <% } %>
 
     <% if (zAutomatu && automat.poZasadzie.length) { %>

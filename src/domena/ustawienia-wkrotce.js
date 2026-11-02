@@ -2,25 +2,24 @@
 // (moduly/ustawienia/trasy/wkrotce.js). Każde „Dziś” sprawdzone w kodzie 18.10.2026; bez dat i obietnic.
 export const STRONY_WKROTCE = Object.freeze([
   {
-    klucz: 'druk', href: '/ustawienia/druk', tytul: 'Druk i etykiety',
+    // PRZ-126: drukowanie faktur już działa (sekcja niżej) — bez ramki „nie działa” i plakietki w menu.
+    klucz: 'druk', href: '/ustawienia/druk', tytul: 'Etykiety i druk', dziala: true,
     opis: 'Jedno miejsce na ustawienia wydruków, niezależnie od kuriera.',
     punkty: [
       'domyślny format etykiety: 10×15 cm albo kartka A4',
       'drukarka, na którą agent druku wysyła etykiety i faktury',
       'wydruki zbiorcze: etykiety i faktury kilku zamówień naraz',
     ],
-    dzis: 'Format etykiety DPD wybierasz w ustawieniach kuriera, a drukowanie w biurze robi agent druku (opis w deploy/drukarka/README.md).',
+    dzis: 'Format etykiety DPD wybierasz w ustawieniach kuriera, a drukowanie w biurze robi agent druku.',
     odnosnik: { href: '/ustawienia/integracje/dpd', etykieta: 'Kurier DPD' },
-  },
-  {
-    klucz: 'kopie', href: '/ustawienia/kopie', tytul: 'Kopie zapasowe',
-    opis: 'Podgląd i obsługa kopii bazy z poziomu panelu.',
-    punkty: [
-      'harmonogram kopii',
-      'miejsce kopii: ten sam dysk albo nośnik zewnętrzny',
-      'przywracanie wybranej kopii z panelu',
+    instrukcjaFaktur: [
+      'Przygotuj komputer z Windows podłączony do drukarki i sprawdź, czy drukarka działa.',
+      'Pobierz agenta druku i skopiuj katalog deploy/drukarka na ten komputer.',
+      'Skopiuj config-faktury.przyklad.json jako config-faktury.json i wpisz adres Twojego panelu, login i hasło konta serwisowego (opis w paczce) oraz nazwę drukarki dokładnie tak, jak pokazuje ją Windows.',
+      'W konfiguracji wskaż program do otwierania PDF i sprawdź jego ustawienia.',
+      'Uruchom próbny wydruk dowolnego pliku PDF według opisu w paczce instalacyjnej.',
+      'Uruchom czuwacz faktur i sprawdź na tej stronie, czy panel widzi komputer. Pełny opis znajdziesz w paczce instalacyjnej, w katalogu deploy/drukarka.',
     ],
-    dzis: 'W instalacji z Dockera kopię bazy robi raz dziennie kontener oms-kopia — opis w docs/instalacja-docker.md, sekcje „Codzienna obsługa” i „Kopia poza dyskiem”.',
   },
   {
     klucz: 'import-eksport', href: '/ustawienia/import-eksport', tytul: 'Import i eksport',

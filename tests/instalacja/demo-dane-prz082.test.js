@@ -1,6 +1,6 @@
 // PRZ-082 — poprawki demo od właściciela (14.10): każdy punkt listy ma tu swój test, żeby kolejna zmiana generatora
 // (albo nowy reset) nie zgubiła go po cichu. Demo stoi jak w kontenerze: generator + atrapy piaskownicy + konto gościa.
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -15,7 +15,10 @@ import { bezRuchu, etapPrzesylki } from '../../src/domena/etap-przesylki.js';
 import { utworzBazeDemo, ENV_DEMO } from '../../scripts/demo-dane.mjs';
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
 
-const DZIS = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' });
+// PRZ-127: reprodukcja na czystym 2aea4fe3 ujawniła zależność od 31. dnia miesiąca:
+// ostatnie 30 dni reklam nie zawierają wtedy żadnego zamkniętego miesiąca.
+// Scenariusz wymaga takiego miesiąca; stały zegar dotyczy wyłącznie tego testu.
+const DZIS = '2026-10-15';
 const plusDni = (dzien, n) => new Date(Date.parse(`${dzien}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
 const katalogi = [];
 afterAll(() => { for (const p of katalogi.splice(0)) fs.rmSync(p, { recursive: true, force: true }); });
@@ -49,6 +52,8 @@ describe('napis resetu na ekranie logowania (punkt 1)', () => {
 describe('demo po poprawkach PRZ-082', () => {
   let env, live, url, admin, gosc;
   beforeAll(async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(`${DZIS}T10:00:00Z`));
     const k = fs.mkdtempSync(path.join(os.tmpdir(), 'oms-demo-prz082-')); katalogi.push(k);
     for (const d of ['proformy', 'etykiety']) fs.mkdirSync(path.join(k, d), { recursive: true });
     env = { ...ENV_DEMO, OMS_DB_PATH: path.join(k, 'oms.sqlite'), OMS_PORT: '0', OMS_USER: 'serwis-demo',
@@ -73,7 +78,7 @@ describe('demo po poprawkach PRZ-082', () => {
     admin = await zaloguj('demo-admin', 'haslo-testu-demo-1');
     gosc = await zaloguj('demo', 'demo');
   }, 90000);
-  afterAll(async () => { await live?.zamknij(); });
+  afterAll(async () => { await live?.zamknij(); vi.useRealTimers(); });
 
   const strona = async (adres, cookie = admin) => {
     const r = await fetch(url + adres, { headers: { cookie }, redirect: 'manual' });

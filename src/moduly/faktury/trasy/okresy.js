@@ -17,7 +17,7 @@ import { podsumowaniePozycji } from '../../../domena/tabela-pozycji.js';
 import { adresOdbiorcy } from '../../../domena/adres-odbiorcy.js';
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import { GDZIE_KLUCZ_INFAKTU } from '../../../domena/konfiguracja-infakt.js';
-import { odmianaNazwyProgramu, ekranProgramu } from '../../../domena/nazwa-programu.js';
+import { odmianaNazwyProgramu, ekranProgramu, gdzieDokument } from '../../../domena/nazwa-programu.js';
 import { zdanieBrakuProgramu } from '../../../domena/wybor-programu.js';
 import { wolnoOdpiac } from '../../../domena/zmiana-okresu.js';
 import { zl } from '../../../domena/suma-pozycji.js';
@@ -143,7 +143,7 @@ function daneOkresu(db, config, okres) {
   };
 }
 
-export function registerOkresyRoutes(app, { db, config = {}, infakt = null, vies = null, wyborProgramu = null }) {
+export function registerOkresyRoutes(app, { db, config = {}, infakt: program = null, vies = null, wyborProgramu = null }) {
   // Zdejmuje z kazdej trasy powtarzajace sie „a jesli takiego okresu nie ma". 404 zamiast
   // wywrotki na `undefined.id` — dokladnie jak przy zamowieniu.
   const okresZadania = (req, reply) => {
@@ -206,9 +206,10 @@ export function registerOkresyRoutes(app, { db, config = {}, infakt = null, vies
       // Bez tej flagi widok kusilby „Wystaw fakturę" takze wtedy, gdy inFakt nie jest
       // skonfigurowany — klikniecie konczyloby sie 503 bez wyjasnienia (ta sama zasada,
       // co `mozliwaFaktura` na karcie zamowienia).
-      mozliwaFaktura: Boolean(infakt),
+      mozliwaFaktura: Boolean(program),
+      wbudowany: program?.opis?.wbudowany === true,
       // PRZ-118.09: nazwa i ekran programu fakturowego w zdaniach karty okresu (bez programu — inFakt, jak dotąd).
-      nazwaProgramu: odmianaNazwyProgramu(infakt), ekranProgramu: ekranProgramu(infakt),
+      nazwaProgramu: odmianaNazwyProgramu(program), ekranProgramu: ekranProgramu(program), gdzieProgramu: gdzieDokument(program),
       // PRZ-121.03a: zdanie „faktury wyłączone” (tylko przy jawnym „brak”); `null` = stary akapit z widoku.
       zdanieBraku: zdanieBrakuProgramu(wyborProgramu),
       // Czy okres w ogole przyjmuje jeszcze zamowienia — steruje przyciskiem „Zamknij".
@@ -227,7 +228,7 @@ export function registerOkresyRoutes(app, { db, config = {}, infakt = null, vies
   app.post('/okresy/:id/wystaw-fakture', async (req, reply) => {
     const okres = okresZadania(req, reply);
     if (!okres) return reply;
-    if (!infakt) return reply.code(503).send(zdanieBrakuProgramu(wyborProgramu) ?? `inFakt nie jest skonfigurowany — faktury z panelu nie wystawisz. ${GDZIE_KLUCZ_INFAKTU}`);
+    if (!program) return reply.code(503).send(zdanieBrakuProgramu(wyborProgramu) ?? `inFakt nie jest skonfigurowany — faktury z panelu nie wystawisz. ${GDZIE_KLUCZ_INFAKTU}`);
     // Nabywca bierze sie z konfiguracji po kluczu okresu — okres wie, czyj jest. Panel NIE
     // zaklada tu klienta sam (uzasadnienie w services/faktura-okresu.js).
     const klient = klientOkresu(db, okres);
@@ -242,7 +243,7 @@ export function registerOkresyRoutes(app, { db, config = {}, infakt = null, vies
       // VAT-UE) — dla klienta krajowego usluga ich nie dotyka.
       // PRZ-108.10: NIP sprzedawcy funkcją — plik albo Ustawienia → Firma, czytany przy wystawieniu.
       await createFakturaOkresu({
-        db, infakt, vies, nipSprzedawcy: () => nipSprzedawcyLubBrak(config),
+        db, infakt: program, vies, nipSprzedawcy: () => nipSprzedawcyLubBrak(config),
       }).wystaw(okres.id, klient);
     } catch (e) {
       // Nieudana proba MUSI zostawic slad — to najgrozniejsza akcja w panelu, a bez wpisu

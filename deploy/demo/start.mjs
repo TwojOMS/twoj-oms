@@ -9,6 +9,8 @@
 // Bez harmonogramu Synology i bez sudo — kontener resetuje się sam.
 import fs from 'node:fs';
 
+if (process.env.OMS_TWOJEFAKTURY) throw new Error('Demo nie może startować z OMS_TWOJEFAKTURY — usuń zmienną.');
+
 const baza = process.env.OMS_DB_PATH;
 if (process.env.OMS_TRYB !== 'proba') throw new Error('Demo startuje wyłącznie z OMS_TRYB=proba');
 if (!baza) throw new Error('Brak OMS_DB_PATH');

@@ -24,8 +24,9 @@ export function registerUstawieniaWysylkiRoutes(app,{db}) {
     });
   }
 
-  app.get('/ustawienia', async (_req, reply) => reply.redirect('/ustawienia/zamowienia-i-wysylka'));
+  app.get('/ustawienia', async (_req, reply) => reply.redirect('/ustawienia/firma'));
   app.get('/ustawienia/zamowienia-i-wysylka', async (req, reply) => widokWysylki(req, reply));
+  app.get('/ustawienia/wysylka/dostawa', async (req, reply) => widokWysylki(req, reply));
   app.post('/ustawienia/paczka', async (req, reply) => {
     const { wartosci, bledy } = sprawdzPaczke(req.body ?? {});
     if (bledy.length) {
@@ -79,7 +80,7 @@ export function registerUstawieniaWysylkiRoutes(app,{db}) {
       return widokWysylki(req, reply, { wpisaneKoszty: req.body ?? {}, bledyKosztow: bledy });
     }
     zapiszUstawienia(db, wartosci);
-    return reply.redirect('/ustawienia/zamowienia-i-wysylka?zapisano=dostawa');
+    return reply.redirect('/ustawienia/wysylka/dostawa?zapisano=dostawa');
   });
 
 }

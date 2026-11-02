@@ -38,6 +38,38 @@ describe('powod odmowy faktury', () => {
   });
 });
 
+// PRZ-126.F02: opcja firmy „faktura także bez prośby klienta”. Wyłączona (domyślnie) = odmowa jak dziś;
+// włączona zdejmuje WYŁĄCZNIE odmowę „nie prosił” — scalone, okres i anulowane nadal odmawiają tą samą treścią.
+describe('powod odmowy faktury — opcja dla kazdego (PRZ-126)', () => {
+  const bezZadania = (n) => zam({ chce_fakture: 0, nip: null, ...n });
+
+  it('bez opcji i z dlaKazdego: false odmawia zamowieniu bez zadania dokladnie ta sama trescia', () => {
+    expect(powodOdmowyFaktury(bezZadania())).toBe('Klient nie prosił o fakturę.');
+    expect(powodOdmowyFaktury(bezZadania(), {})).toBe('Klient nie prosił o fakturę.');
+    expect(powodOdmowyFaktury(bezZadania(), { okresyWlaczone: true, dlaKazdego: false })).toBe('Klient nie prosił o fakturę.');
+  });
+
+  it('z dlaKazdego: true przepuszcza zamowienie bez zadania', () => {
+    expect(powodOdmowyFaktury(bezZadania(), { dlaKazdego: true })).toBeNull();
+  });
+
+  it('z dlaKazdego: true nadal odmawia anulowanemu, scalonemu i z okresu — ta sama tresc co bez opcji', () => {
+    for (const n of [
+      { anulowane: 1 },
+      { scalone_do: 9, scalone_do_numer: '3009' },
+      { okres_rozliczeniowy_id: 7 },
+    ]) {
+      const dzis = powodOdmowyFaktury(bezZadania(n));
+      expect(dzis).not.toBeNull();
+      expect(powodOdmowyFaktury(bezZadania(n), { dlaKazdego: true })).toBe(dzis);
+    }
+  });
+
+  it('z dlaKazdego: true odmawia brakowi zamowienia', () => {
+    expect(powodOdmowyFaktury(null, { dlaKazdego: true })).toBe('Nie ma takiego zamówienia.');
+  });
+});
+
 describe('powod odmowy wariantowi zaplaconemu', () => {
   it('przepuszcza pokrycie co do grosza i nadplate', () => {
     const pokryte = zam({ kwota_brutto: '123.00', platnosci: [{ kwota: '123.00' }] });

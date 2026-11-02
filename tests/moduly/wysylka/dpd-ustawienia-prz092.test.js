@@ -61,7 +61,7 @@ describe('PRZ-092 Ustawienia → Kurier DPD', () => {
 
   it('Integracje mają wejście do kuriera DPD', async () => {
     const { app, admin } = panel();
-    const r = await get(app, '/ustawienia/integracje', admin);
+    const r = await get(app, '/ustawienia/integracje/katalog', admin);
     expect(r.body).toContain('href="/ustawienia/integracje/dpd"');
   });
 

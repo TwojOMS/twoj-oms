@@ -18,7 +18,7 @@ import { zapiszKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-i
 
 const NIP = '1234563218';
 const PASEK = 'Moduł Koszty jest wyłączony — rachunek pokazuje sprzedaż bez kosztów';
-const PACZKA = 'Moduł Koszty jest wyłączony — paczka kosztów niedostępna';
+const PACZKA = 'Moduł Koszty jest wyłączony — zestawienie faktur kosztowych niedostępne';
 const wylacz = (db, lista) => db.prepare("INSERT OR REPLACE INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('moduly.wylaczone', ?, '2026-10-20')")
   .run(JSON.stringify(lista));
 const dzienTemu = (dni) => new Date(Date.now() - dni * 86400000).toISOString().slice(0, 10);
@@ -48,7 +48,7 @@ describe('PRZ-102.22 moduł Koszty do wyłączenia', () => {
   it('Moduły mają przełącznik Koszty; wyłączenie: brak w menu analiz, /koszty… 404 „Moduł wyłączony”; włączenie przywraca bez restartu', async () => {
     const p = panel();
     const ekran = await get(p.app, '/ustawienia/moduly', p.admin);
-    expect(ekran.body).toContain('Wyłącz Koszty');
+    expect(ekran.body).toContain('role="switch" aria-checked="true" aria-label="Koszty"');
     expect((await get(p.app, '/', p.admin)).body).toContain('href="/koszty"');
     const r = await post(p.app, '/ustawienia/moduly', p.admin, { modul: 'koszty', wlacz: '0' });
     expect(r.statusCode, r.body).toBe(303);
@@ -74,7 +74,7 @@ describe('PRZ-102.22 moduł Koszty do wyłączenia', () => {
     const ekran = await get(p.app, '/ustawienia/moduly', p.admin);
     expect(ekran.body).toContain('2 kosztów w bazie — zostaną, Finanse dalej je liczą; nowych panel nie pobierze');
     const sekcja = /<section class="ust-sekcja">\s*<h2>Koszty<\/h2>[\s\S]*?<\/section>/u.exec(ekran.body)?.[0] ?? '';
-    expect(sekcja).toContain('Wyłącz Koszty');
+    expect(sekcja).toContain('role="switch" aria-checked="true" aria-label="Koszty"');
     expect(sekcja).not.toContain('wyłączenie zablokowane');
     expect((await post(p.app, '/ustawienia/moduly', p.admin, { modul: 'koszty', wlacz: '0' })).statusCode).toBe(303);
     expect((await post(p.app, '/ustawienia/moduly', p.admin, { modul: 'okresy', wlacz: '0' })).statusCode).toBe(409);

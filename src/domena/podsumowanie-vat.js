@@ -72,8 +72,13 @@ function groszeZPozycji(s, i) {
 // „zw", „np" i inne symbole NIE są tu obsługiwane celowo: panel takich pozycji nie wystawia,
 // a zgadnięcie, że „zw" znaczy 0%, wydrukowałoby klientowi wymyśloną stawkę na dokumencie.
 // Gdyby kiedyś były potrzebne, ma to być ŚWIADOMA zmiana z testem.
-function stawkaZPozycji(s, i) {
+//
+// PRZ-122.B07a — ta świadoma zmiana: „zw” WYŁĄCZNIE z flagą `zw` (program wbudowany, który drukuje adnotację
+// i podstawę zwolnienia). Wtedy wynikiem jest napis 'zw', nie liczba: osobny wiersz „zw” (netto = brutto, VAT 0),
+// nigdy sklejony z wierszem 0%. Bez flagi „zw” to odmowa jak dotąd.
+function stawkaZPozycji(s, i, zw) {
   const surowa = typeof s?.tax_symbol === 'number' ? String(s.tax_symbol) : String(s?.tax_symbol ?? '').trim();
+  if (zw === true && surowa === 'zw') return 'zw';
   if (!/^\d+$/.test(surowa)) {
     throw bladOperatora(
       `Pozycja ${i + 1} ma nierozpoznaną stawkę VAT („${s?.tax_symbol ?? ''}") — `
@@ -103,18 +108,23 @@ function stawkaZPozycji(s, i) {
  * Pusta lista daje pusty wynik i NIE rzuca: „nie ma czego podsumować" to nie jest błąd tego
  * modułu. Zamówienie bez pozycji odrzuca wcześniej `sprawdzSumeDokumentu`, i tam jest na to
  * właściwe miejsce — komunikat o pustym zamówieniu ma paść raz, nie w dwóch modułach.
+ *
+ * PRZ-122.B07a: `{ zw: true }` — wiersz „zw” (stawka 'zw', VAT 0) na końcu, po stawkach liczbowych.
  */
-export function podsumowanieVat(services = []) {
+export function podsumowanieVat(services = [], { zw = false } = {}) {
   const bruttoWgStawki = new Map();
   services.forEach((s, i) => {
-    const stawka = stawkaZPozycji(s, i);
+    const stawka = stawkaZPozycji(s, i, zw);
     bruttoWgStawki.set(stawka, (bruttoWgStawki.get(stawka) ?? 0) + groszeZPozycji(s, i));
   });
   if (bruttoWgStawki.size === 0) return [];
 
+  const zwolnione = bruttoWgStawki.get('zw');
+  bruttoWgStawki.delete('zw');
   const wiersze = [...bruttoWgStawki.entries()]
     .sort(([a], [b]) => b - a)
     .map(([stawka, bruttoGr]) => wierszStawki(stawka, bruttoGr));
+  if (zwolnione !== undefined) wiersze.push({ stawka: 'zw', suma: false, nettoGr: zwolnione, vatGr: 0, bruttoGr: zwolnione });
 
   // Suma jest sumą WIERSZY, nie drugim liczeniem podatku od sumy wszystkich pozycji.
   // Przy dwóch stawkach te dwie drogi dają różne liczby, a kolumna sumy na dokumencie ma

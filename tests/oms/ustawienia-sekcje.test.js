@@ -29,12 +29,12 @@ beforeEach(async () => {
   await app.ready();
 });
 
-describe('pięć sekcji Ustawień', () => {
-  it('wejście /ustawienia prowadzi do Zamówień i wysyłki', async () => {
+describe('działy i zakładki Ustawień', () => {
+  it('wejście /ustawienia prowadzi do Firmy', async () => {
     const r = await app.inject({ method: 'GET', url: '/ustawienia', headers: BASIC });
 
     expect(r.statusCode).toBe(302);
-    expect(r.headers.location).toBe('/ustawienia/zamowienia-i-wysylka');
+    expect(r.headers.location).toBe('/ustawienia/firma');
   });
 
   it('nie wyświetla dowolnej treści z parametru potwierdzenia', async () => {
@@ -46,16 +46,19 @@ describe('pięć sekcji Ustawień', () => {
     expect(fragmentGlownejKolumny(r.body)).not.toContain('&lt;script&gt;obcy&lt;/script&gt;');
   });
 
-  it('sekcja wysyłkowa zawiera komplet paczki i kosztów, bez kontrolek z innych sekcji', async () => {
+  it('zakładki wysyłkowe zachowują komplet pól paczki i kosztów, bez kontrolek z innych działów', async () => {
     const r = await app.inject({ method: 'GET', url: '/ustawienia/zamowienia-i-wysylka', headers: BASIC });
     const tresc = fragmentGlownejKolumny(r.body);
 
     expect(r.statusCode).toBe(200);
-    expect(r.body).toContain('<title>Paczki i koszty dostawy</title>');
-    expect(tresc).toContain('<h1>Paczki i koszty dostawy</h1>');
-    for (const pole of ['waga', 'dlugosc', 'szerokosc', 'wysokosc', 'dpd', 'inpost_paczkomat', 'odbior_osobisty']) {
+    expect(r.body).toContain('<title>Szablony paczek</title>');
+    expect(tresc).toContain('<h1>Szablony paczek</h1>');
+    for (const pole of ['waga', 'dlugosc', 'szerokosc', 'wysokosc']) {
       expect(tresc).toContain(`name="${pole}"`);
     }
+    const dostawa = await app.inject({ method: 'GET', url: '/ustawienia/wysylka/dostawa', headers: BASIC });
+    for (const pole of ['dpd', 'inpost_paczkomat', 'odbior_osobisty']) expect(fragmentGlownejKolumny(dostawa.body)).toContain(`name="${pole}"`);
+    expect(tresc).not.toContain('name="dpd"');
     expect(tresc).not.toContain('name="tresc"');
     expect(tresc).not.toContain('Konto Allegro:');
     expect(tresc).not.toContain('wyloguj-wszystkie');
@@ -66,9 +69,10 @@ describe('pięć sekcji Ustawień', () => {
     const tresc = fragmentGlownejKolumny(r.body);
 
     expect(r.statusCode).toBe(200);
-    expect(tresc).toContain('<h1>Sklepy i usługi</h1>');
-    expect(tresc).toContain('Konto Allegro: <strong>szkicownia-pl</strong>');
-    expect(tresc).toContain('ważne jeszcze 21 dni');
+    expect(tresc).toContain('<h1>Moje połączenia</h1>');
+    expect(tresc).toContain('Konto Allegro: szkicownia-pl');
+    expect(tresc).toContain('Niesprawdzone');
+    expect(tresc).toContain('Ostatni udany odczyt: Nie ustalono');
     expect(tresc).not.toContain('name="waga"');
   });
 
@@ -89,9 +93,9 @@ describe('pięć sekcji Ustawień', () => {
     const r = await app.inject({ method: 'GET', url: '/ustawienia/lacznosc', headers: BASIC });
 
     expect(r.statusCode).toBe(200);
-    expect(r.body).toContain('<title>Diagnostyka</title>');
-    expect(fragmentGlownejKolumny(r.body)).toContain('<h1>Diagnostyka</h1>');
-    const aktywne = r.body.match(/<li class="aktywna">\s*<a href="\/ustawienia\/lacznosc">/g) ?? [];
+    expect(r.body).toContain('<title>Stan systemu</title>');
+    expect(fragmentGlownejKolumny(r.body)).toContain('<h1>Stan systemu</h1>');
+    const aktywne = r.body.match(/<li class="aktywna">\s*<a href="\/ustawienia\/moduly" aria-current="page">/g) ?? [];
     // Ten sam model jest renderowany raz w menu desktopowym i raz w zwijanym menu telefonu.
     expect(aktywne).toHaveLength(2);
   });
@@ -118,7 +122,7 @@ describe('pięć sekcji Ustawień', () => {
 
   it.each([
     ['/ustawienia/paczka', { waga: '2', dlugosc: '100', szerokosc: '70', wysokosc: '5' }, '/ustawienia/zamowienia-i-wysylka?zapisano=paczka', 'Zapisano domyślną paczkę.'],
-    ['/ustawienia/dostawa', { dpd: '19', inpost_paczkomat: '13', odbior_osobisty: '0' }, '/ustawienia/zamowienia-i-wysylka?zapisano=dostawa', 'Zapisano koszty dostawy.'],
+    ['/ustawienia/dostawa', { dpd: '19', inpost_paczkomat: '13', odbior_osobisty: '0' }, '/ustawienia/wysylka/dostawa?zapisano=dostawa', 'Zapisano koszty dostawy.'],
     ['/ustawienia/formulka', { tresc: '', od: '18', do: '8', karencja: '10' }, '/ustawienia/wiadomosci-i-automatyzacje?zapisano=formulka', 'Zapisano ustawienia autorespondera.'],
   ])('%s po zapisie wraca do własnej sekcji i pokazuje komunikat', async (url, payload, location, komunikat) => {
     const r = await app.inject({ method: 'POST', url, headers: { ...BASIC, ...ORIGIN }, payload });

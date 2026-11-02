@@ -152,6 +152,14 @@
 .prz065-faktury .belka-masowa .belka-etykieta-masowa { color: var(--prz-muted); font-size:1rem; font-weight: 600; }
 .prz065-faktury .belka-masowa .btn--groza { background: var(--prz-accent); border-color: var(--prz-accent); color: var(--na-marce, #fff); }
 .prz065-faktury .belka-masowa .cicho { color: var(--prz-muted); font-size:0.92rem; }
+/* C07c: menu „Pobierz” stoi przy prawym końcu belki — otwiera się w lewo, do wnętrza karty (od lewej krawędzi
+   przycisku wychodziło przy 1280 px poza kartę). Na telefonie belka jest kolumną — tam znów od lewej, z zawijaniem. */
+.prz065-faktury .wydruki--masowe .wydruki-menu--lewe { left: auto; right: 0; }
+/* C07c: kolumna „Zaznacz” (C07a) wypchnęła tabelę o ~23 px poza kartę przy 1280 px, PDF był ucięty.
+   Węższy odstęp w komórkach i zawijany znacznik płatności („pozostało 1666.36 zł”) — mieści się bez przewijania. */
+.prz065-faktury .prz065-tabela--dokumenty th,
+.prz065-faktury .prz065-tabela--dokumenty td { padding-left: 8px; padding-right: 8px; }
+.prz065-faktury .prz065-tabela--dokumenty .znacznik { white-space: normal; }
 
 /* Makieta prowadzi najpierw przez etap, potem przez zawężenie danych. */
 .prz065-przesylki .panel-cialo { display: flex; flex-direction: column; }
@@ -177,6 +185,8 @@
   .prz065-tabela th, .prz065-tabela td { padding: 9px 8px; }
   /* .prz065-drugorzedny-pdf zostaje widoczny także na telefonie — od PRZ-074 to jedyny przycisk zestawienia. */
   .prz065-faktury .belka-masowa { align-items: flex-start; flex-direction: column; }
+  .prz065-faktury .wydruki--masowe .wydruki-menu--lewe { left: 0; right: auto; max-width: calc(100vw - 32px); }
+  .prz065-faktury .wydruki--masowe .wydruki-menu button { white-space: normal; }
 
   /* Telefon nie dostaje miniaturowej wersji desktopowej tabeli: jeden wiersz = karta. */
   .prz065-przesylki .prz065-przewijak { overflow: visible; }

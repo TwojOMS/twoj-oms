@@ -1,6 +1,6 @@
 import { bladOperatora } from '../../../domena/bledy.js';
 import {
-  zakresMiesiaca, scalDokumenty, stanKsef, stanTerminu, opisTerminu, czekaNaPrzelew, stanZaplaty,
+  zakresMiesiaca, scalDokumenty, stanKsef, stanTerminu, opisTerminu, czekaNaPrzelew, stanZaplaty, plakietkaKsef, filtrujDokumenty,
 } from '../../../domena/lista-faktur.js';
 import { zl } from '../../../domena/suma-pozycji.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
@@ -166,7 +166,7 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
   // map, więc gdyby ten sam `infakt_uuid` trafił kiedyś do obu tabel, dokument dostałby OBA
   // pola naraz. Test „gdy ten sam infakt_uuid trafi do obu tabel (sztucznie)…" w
   // tests/oms/faktury-widok.test.js wymusza tę kolizję celowo i pina dzisiejsze zachowanie.
-  function wzbogac(d, mapy, dzis) {
+  function wzbogac(d, mapy, dzis, tabela = false) {
     // ⚠️ STEMPEL REZERWACJI JEDZIE NA DOKUMENCIE, a nie tylko w wyliczonym `stanKsef`. Bariera
     // (`coWolnoWyslac` w domain/wysylka-ksef.js) pyta o FAKT, nie o napis — a ekran pokazuje
     // po nim, KIEDY panel zlecił tę wysyłkę, bo to jest pierwsza rzecz, której szuka człowiek
@@ -191,10 +191,15 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
       // zapłaty w inFakcie zostawia nietknięte. Kwota zostaje na obiekcie, ale wolno ją
       // pokazać WYŁĄCZNIE przy `do_zaplaty`.
       stanZaplaty: stanZaplaty(d),
+      // Pola tabeli dokumentów; kontrakt pasa należności pozostaje osobny.
+      ...(tabela ? {
+        nettoZl: zl(Number(d?.net_price ?? 0)),
+        plakietka: plakietkaKsef({ ...d, stanKsef: stanKsef(d, Boolean(ksefZleconaAt)) }),
+      } : {}),
     };
   }
 
-  async function dokumenty({ miesiac, pole = 'invoice_date', dzis = dzienWarszawa(new Date().toISOString()) } = {}) {
+  async function dokumenty({ miesiac, pole = 'invoice_date', typ = '', platnosc = '', dzis = dzienWarszawa(new Date().toISOString()) } = {}) {
     const zakres = zakresMiesiaca(miesiac);
     if (!zakres) throw bladOperatora(`„${miesiac ?? ''}" to nie jest miesiąc w formacie RRRR-MM.`);
     if (!POLA_DATY.has(pole)) {
@@ -206,7 +211,15 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
     const pytanie = { ...zakres, pole };
     const [faktury, korekty] = await Promise.all([program.listaFaktur(pytanie), program.listaKorekt(pytanie)]);
     const mapy = powiazania();
-    return scalDokumenty(faktury, korekty).map((d) => wzbogac(d, mapy, dzis));
+    const wiersze = filtrujDokumenty(scalDokumenty(faktury, korekty), { typ, platnosc })
+      .map((d) => wzbogac(d, mapy, dzis, true));
+    // Stan VAT i korekty z adaptera: odnośnik do dokumentu i plakietka przy numerze.
+    if (program.opis?.wbudowany !== true || typeof program.stanDokumentu !== 'function') return wiersze;
+    return Promise.all(wiersze.map(async (d) => {
+      if (!['vat', 'korekta'].includes(d.rodzaj) || !d.uuid) return d;
+      const stanDokumentu = await program.stanDokumentu(d.uuid);
+      return { ...d, stanDokumentu, plakietka: plakietkaKsef({ ...d, stanDokumentu }) };
+    }));
   }
 
   // ⚠️ TU CELOWO NIE ROBIMY „?? []" / `Array.isArray ? x : []` — inaczej niż `dokumenty()`

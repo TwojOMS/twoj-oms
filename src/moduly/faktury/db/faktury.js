@@ -1,7 +1,7 @@
 import { bladOperatora } from '../../../domena/bledy.js';
 import { stanFaktury, fakturaWymagaCzlowieka } from '../../../domena/faktura-stan.js';
 import { idDokumentuSql } from '../../../domena/dokument-programu.js';
-import { NAZWA_ZAPASOWA } from '../../../domena/nazwa-programu.js';
+import { NAZWA_ZAPASOWA, gdzieDokument } from '../../../domena/nazwa-programu.js';
 
 const teraz = () => new Date().toISOString();
 
@@ -16,12 +16,13 @@ function wiersz(db, zamowienieId) {
 }
 
 // PRZ-118.09: `nazwa` = odmiana nazwy programu fakturowego (domyślnie inFakt — domena/nazwa-programu.js).
-function opisKolizji(f, nazwa = NAZWA_ZAPASOWA) {
+function opisKolizji(f, nazwa = NAZWA_ZAPASOWA, program) {
+  const gdzie = program ? gdzieDokument(program) : `w ${nazwa.miejscownik}`;
   const stan = stanFaktury(f);
   if (stan === 'do_wyjasnienia') {
     return 'Poprzednia próba wystawienia faktury zerwała się w miejscu, w którym dokument mógł już powstać'
       + `${f.blad_opis ? ` (${f.blad_opis})` : ''}. `
-      + `Sprawdź RĘCZNIE w ${nazwa.miejscownik}, czy faktura do tego zamówienia istnieje. Jeśli jej tam nie ma — `
+      + `Sprawdź RĘCZNIE ${gdzie}, czy faktura do tego zamówienia istnieje. Jeśli jej tam nie ma — `
       + 'odblokuj zamówienie przyciskiem na karcie. Jeśli JEST i jeszcze nie poszła do KSeF '
       + '(wysyłkę robi właściciel ręcznie, wieczorem), po prostu ją tam skasuj, dopiero potem odblokuj — '
       + 'panel jej sam nie ponowi, żeby drugie kliknięcie nie dołożyło drugiego dokumentu. '
@@ -32,7 +33,7 @@ function opisKolizji(f, nazwa = NAZWA_ZAPASOWA) {
   if (stan === 'zawieszona') {
     return `Rezerwacja faktury wisi od ${f.utworzona_at} i żadne wystawianie już nie trwa — `
       + `panel najpewniej został zrestartowany w trakcie wywołania ${nazwa.dopelniacz}. `
-      + `Sprawdź RĘCZNIE w ${nazwa.miejscownik}, czy faktura do tego zamówienia powstała; jeśli nie, `
+      + `Sprawdź RĘCZNIE ${gdzie}, czy faktura do tego zamówienia powstała; jeśli nie, `
       + 'odblokuj zamówienie przyciskiem na karcie.';
   }
   if (stan === 'w_toku') return 'Wystawianie faktury do tego zamówienia właśnie trwa.';
@@ -42,13 +43,13 @@ function opisKolizji(f, nazwa = NAZWA_ZAPASOWA) {
 // Wiersz powstaje PRZED wywolaniem inFaktu i to jest cala idempotencja: druga proba
 // (dwuklik, dwie karty, dwa zapytania rownolegle) odbija sie od unikalnego indeksu
 // w bazie, a nie od odczytu `z.faktura` sprzed kilkuset milisekund.
-export function rozpocznijFakture(db, zamowienieId, { nazwa = NAZWA_ZAPASOWA } = {}) {
+export function rozpocznijFakture(db, zamowienieId, { nazwa = NAZWA_ZAPASOWA, program } = {}) {
   try {
     db.prepare("INSERT INTO faktury (zamowienie_id, ksef_status, utworzona_at) VALUES (?, 'w_toku', ?)")
       .run(zamowienieId, teraz());
   } catch (e) {
     const f = String(e.message).includes(SYGNATURA_KOLIZJI) ? wiersz(db, zamowienieId) : null;
-    if (f) throw bladOperatora(opisKolizji(f, nazwa));
+    if (f) throw bladOperatora(opisKolizji(f, nazwa, program));
     throw e;
   }
   return wiersz(db, zamowienieId);
@@ -79,11 +80,17 @@ export function zakonczFakture(db, id, { uuid, numer, ksefStatus }, { program = 
 // ⚠️ COALESCE, a nie zwykle przypisanie: przebieg, ktory numeru nie dostal (inFakt jeszcze go
 // nie ma), NIE MA PRAWA skasowac numeru zapisanego wczesniej. Numer KSeF jest jedynym dowodem,
 // ze dokument naprawde jest w KSeF — a to warunek wyslania faktury do Allegro.
-export function zapiszNumerKsef(db, id, { ksefNumer, sprawdzonaAt }) {
-  db.prepare(
+//
+// PRZ-126 C09f: `dokumentId` = dokument, o który pytano program. Zamiana faktury (zły NIP) może przepiąć wiersz na
+// nową fakturę W TRAKCIE pytania — wtedy odpowiedź dotyczy starej i jej numer nie ma prawa trafić do wiersza nowej.
+// Porównanie po `idDokumentuSql()`, bo stare wiersze inFaktu mają sam `infakt_uuid`. Zwraca, czy wiersz się zmienił.
+export function zapiszNumerKsef(db, id, { ksefNumer, sprawdzonaAt, dokumentId = null }) {
+  const info = db.prepare(
     "UPDATE faktury SET ksef_numer = COALESCE(?, ksef_numer), ksef_sprawdzona_at = ?,"
-    + " ksef_odczyt = 'ok' WHERE id = ?",
-  ).run(ksefNumer ?? null, sprawdzonaAt, id);
+    + " ksef_odczyt = 'ok' WHERE id = ?"
+    + (dokumentId == null ? '' : ` AND ${idDokumentuSql()} = ?`),
+  ).run(ksefNumer ?? null, sprawdzonaAt, id, ...(dokumentId == null ? [] : [String(dokumentId)]));
+  return Number(info.changes) === 1;
 }
 
 // Odczyt, ktory sie NIE UDAL. Zapisujemy go z tego samego powodu, dla ktorego zapisujemy udany:
@@ -93,9 +100,15 @@ export function zapiszNumerKsef(db, id, { ksefNumer, sprawdzonaAt }) {
 //
 // ⚠️ NIE DOTYKA `ksef_numer`: nieudany odczyt nie jest dowodem na nic, a numer raz zapisany
 // jest jedynym dowodem, ze dokument jest w KSeF.
-export function zapiszNieudanyOdczytKsef(db, id, { sprawdzonaAt, odczyt = 'blad' }) {
-  db.prepare('UPDATE faktury SET ksef_sprawdzona_at = ?, ksef_odczyt = ? WHERE id = ?')
-    .run(sprawdzonaAt, odczyt, id);
+//
+// PRZ-126 C09g — `dokumentId` jak w `zapiszNumerKsef`: nieudany odczyt STAREJ faktury nie stempluje wiersza
+// przepiętego w trakcie pytania na zastępczą (nowa poczeka na własne pytanie). Zwraca, czy wiersz się zmienił.
+export function zapiszNieudanyOdczytKsef(db, id, { sprawdzonaAt, odczyt = 'blad', dokumentId = null }) {
+  const info = db.prepare(
+    'UPDATE faktury SET ksef_sprawdzona_at = ?, ksef_odczyt = ? WHERE id = ?'
+    + (dokumentId == null ? '' : ` AND ${idDokumentuSql()} = ?`),
+  ).run(sprawdzonaAt, odczyt, id, ...(dokumentId == null ? [] : [String(dokumentId)]));
+  return Number(info.changes) === 1;
 }
 
 // ⚠️⚠️ DWA OSOBNE ZAPISY, I TO JEST CALA REZERWACJA PRZED KROKIEM NIEODWRACALNYM.
@@ -195,9 +208,106 @@ export function zapiszWysylkeDoAllegro(db, id, { wyslanaAt, weryfikacja }) {
 //
 // To ta sama klasa usterki, którą recenzja Partii 2 nazwała „kolumną write-only", tylko odwrócona:
 // tam kolumna zapisywana bez czytelnika, tu czytelnik kasowany przez zapis bez treści.
-export function zapiszWeryfikacjeAllegro(db, id, status) {
-  if (!status) return;
-  db.prepare('UPDATE faktury SET allegro_weryfikacja = ? WHERE id = ?').run(status, id);
+//
+// PRZ-126 C09g — `allegroInvoiceId` = zgłoszenie, o które czuwacz pytał. Zamiana faktury (zły NIP) zeruje
+// `allegro_invoice_id` przepiętego wiersza; spóźniony status starego zgłoszenia nie trafia wtedy do wiersza nowej
+// faktury. Zwraca, czy wiersz się zmienił — przy false wołający nie robi żadnych skutków tego statusu.
+export function zapiszWeryfikacjeAllegro(db, id, status, allegroInvoiceId = null) {
+  if (!status) return false;
+  const info = db.prepare(
+    'UPDATE faktury SET allegro_weryfikacja = ? WHERE id = ?'
+    + (allegroInvoiceId == null ? '' : ' AND allegro_invoice_id = ?'),
+  ).run(status, id, ...(allegroInvoiceId == null ? [] : [String(allegroInvoiceId)]));
+  return Number(info.changes) === 1;
+}
+
+// PRZ-126 C09f — tekst odmowy, gdy wysyłka faktury do Allegro właśnie trwa (plan C09, Z8/Z10). Ten sam dla ekranu
+// (usługa sprawdza przed transakcją) i dla `przepnijNaZastepcza` (sprawdza pod blokadą).
+export const ODMOWA_WYSYLKA_ALLEGRO = 'Trwa wysyłka faktury do Allegro — spróbuj za chwilę.';
+const odmowaWysylkiAllegro = () => bladOperatora(ODMOWA_WYSYLKA_ALLEGRO, { kod: 'wysylka-allegro', status: 409 });
+// Wiersz zamówienia wskazuje już inną fakturę niż ta, którą operator zamienia (druga zamiana, nieaktualna karta).
+const odmowaZmienionejFaktury = () => bladOperatora(
+  'Faktura tego zamówienia zmieniła się w międzyczasie — odśwież kartę i spróbuj jeszcze raz.',
+  { kod: 'zamiana-zamowienie', status: 409 },
+);
+
+function chwila(teraz) {
+  const ms = new Date(teraz).getTime();
+  if (!Number.isFinite(ms)) throw new Error(`stan Allegro: niepoprawny zegar „${teraz}”`);
+  return ms;
+}
+
+// PRZ-126 C09f — stan wiersza `faktury` wobec Allegro w chwili zamiany faktury (macierz Z10). Czysta: bez bazy,
+// nie rzuca na wierszu (rzuca tylko na zepsutym zegarze). `teraz` — ms, Date albo ISO; `prog` jak dzierżawa wysyłki.
+// 'w-toku'       — świeża dzierżawa `allegro_zgloszenie_at` (≥ teraz − prog): `wyslij` może jeszcze pisać do wiersza;
+// 'brak'         — ani zgłoszenia, ani pliku;
+// 'zgloszona'    — zgłoszenie jest, pliku nie wysłano;
+// 'odrzucona'    — plik wysłany, Allegro go odrzuciło (`REJECTED`): kupujący dokumentu nie ma;
+// 'u-kupujacego' — plik wysłany, stan inny niż `REJECTED` (WAITING, ACCEPTED, pusty, nieznany — biała lista
+//                  jak w `wolnoWyslacDoAllegro`): dokument może być u kupującego.
+export function stanAllegroWiersza(f, { teraz = Date.now(), prog = PROG_ZAJECIA_WYSYLKI_MS } = {}) {
+  const sierota = new Date(chwila(teraz) - prog).toISOString();
+  // To samo porównanie tekstowe dat ISO, co w `zajmijWysylkeDoAllegro` (tam: wolno zająć, gdy `< sierota`).
+  if (f?.allegro_zgloszenie_at && !(f.allegro_zgloszenie_at < sierota)) return 'w-toku';
+  if (f?.allegro_wyslana_at) return f.allegro_weryfikacja === 'REJECTED' ? 'odrzucona' : 'u-kupujacego';
+  if (f?.allegro_invoice_id) return 'zgloszona';
+  return 'brak';
+}
+
+// ⚠️⚠️ PRZ-126 C09f — PRZEPIĘCIE ZAMÓWIENIA NA FAKTURĘ ZASTĘPCZĄ (zły NIP, plan C09 Z10).
+//
+// Działa W TRANSAKCJI WOŁAJĄCEGO (usługa zamiany: `BEGIN IMMEDIATE` → `zastapFakture` → to → `COMMIT`) — nie otwiera
+// własnej, więc odmowa i każdy wyjątek cofają całą zamianę razem z dokumentami TF.
+//
+// Warunki są w `WHERE`, nie tylko w `if`-ie nad nim (ta sama zasada, co `zajmijWysylkeDoAllegro`): wiersz musi dalej
+// wskazywać starą fakturę, a dzierżawa wysyłki do Allegro musi być pusta albo przeterminowana (sierota). Trwający
+// `wyslij` zapisuje po `faktury.id` — bez tego warunku wpisałby stare zgłoszenie do przepiętego wiersza.
+//
+// Jeden UPDATE (prawe strony w SQLite widzą wartości sprzed zapisu):
+// - `ksef_*` i `blad_opis` zerowane JAWNIE: `zapiszNumerKsef` ma COALESCE i numer KSeF starej udawałby numer nowej;
+// - `allegro_invoice_id` zerowany zawsze: plik nowej nie może trafić do zgłoszenia ze starym numerem (B), a czuwacz
+//   nie może dalej pytać o stare zgłoszenie (D — warunek weryfikacji wymaga id);
+// - `allegro_wyslana_at`/`allegro_weryfikacja` ZOSTAJĄ tylko w D (dokument może być u kupującego — automat nie
+//   wysyła drugiego); w C (`REJECTED`) znikają, bo inaczej `wolnoWyslacDoAllegro` odmawiałby nowej na zawsze;
+// - `allegro_zgloszenie_at` (dzierżawa) — tu może być już tylko sierota, więc zerowana.
+export function przepnijNaZastepcza(db, {
+  zamowienieId, staryDokumentId, nowyDokumentId, numer, teraz = Date.now(), prog = PROG_ZAJECIA_WYSYLKI_MS,
+} = {}) {
+  if (zamowienieId == null || staryDokumentId == null || staryDokumentId === '') {
+    throw new Error('przepnijNaZastepcza: brak zamówienia albo starej faktury');
+  }
+  if (nowyDokumentId == null || nowyDokumentId === '' || typeof numer !== 'string' || !numer) {
+    throw new Error('przepnijNaZastepcza: brak identyfikatora albo numeru nowej faktury');
+  }
+  if (String(nowyDokumentId) === String(staryDokumentId)) {
+    throw new Error('przepnijNaZastepcza: nowa faktura to ta sama co stara');
+  }
+  const ms = chwila(teraz);
+  const f = wiersz(db, zamowienieId);
+  if (!f) throw bladOperatora('To zamówienie nie ma faktury do zamiany.', { kod: 'zamiana-zamowienie', status: 404 });
+  if (f.dokument_id == null || String(f.dokument_id) !== String(staryDokumentId)) throw odmowaZmienionejFaktury();
+  const stanAllegro = stanAllegroWiersza(f, { teraz: ms, prog });
+  if (stanAllegro === 'w-toku') throw odmowaWysylkiAllegro();
+
+  const info = db.prepare(
+    'UPDATE faktury SET dokument_id = ?, numer = ?,'
+    + ' ksef_status = NULL, ksef_numer = NULL, ksef_sprawdzona_at = NULL, ksef_odczyt = NULL, blad_opis = NULL,'
+    + ' allegro_invoice_id = NULL, allegro_pytana_at = NULL, allegro_zgloszenie_at = NULL,'
+    + " allegro_wyslana_at = CASE WHEN allegro_wyslana_at IS NOT NULL AND allegro_weryfikacja IS NOT 'REJECTED'"
+    + ' THEN allegro_wyslana_at END,'
+    + " allegro_weryfikacja = CASE WHEN allegro_wyslana_at IS NOT NULL AND allegro_weryfikacja IS NOT 'REJECTED'"
+    + ' THEN allegro_weryfikacja END'
+    + ' WHERE zamowienie_id = ? AND dokument_id = ?'
+    + ' AND (allegro_zgloszenie_at IS NULL OR allegro_zgloszenie_at < ?)',
+  ).run(String(nowyDokumentId), numer, zamowienieId, String(staryDokumentId), new Date(ms - prog).toISOString());
+
+  if (Number(info.changes) !== 1) {
+    // Stan zmienił się między odczytem a zapisem. Dzierżawa → ta sama odmowa co wyżej; inaczej wiersz przepięto gdzie indziej.
+    const poZapisie = wiersz(db, zamowienieId);
+    if (poZapisie && stanAllegroWiersza(poZapisie, { teraz: ms, prog }) === 'w-toku') throw odmowaWysylkiAllegro();
+    throw odmowaZmienionejFaktury();
+  }
+  return { stanAllegro, staryAllegroInvoiceId: f.allegro_invoice_id ?? null };
 }
 
 // Awaria JEDNOZNACZNA: inFakt odrzucil zadanie (4xx) albo nie doszlo nawet do proby
@@ -278,6 +388,15 @@ export function fakturaSkasowanaWInfakcie(db, zamowienieId) {
   const f = wiersz(db, zamowienieId);
   if (!f) throw bladOperatora('To zamówienie nie ma zablokowanej faktury — nie ma czego kasować.');
   const stan = stanFaktury(f);
+  // PRZ-126 P7b (recenzja): o tym, czy dokument da się skasować w inFakcie, mówi program WIERSZA, nie bieżący
+  // program. Faktura TwojeFaktury zostaje w bazie panelu także po przełączeniu na inFakt albo „brak” — zwolnienie
+  // zamówienia dałoby drugą fakturę na tę samą sprzedaż. Pusty `program` = wiersz bez dokumentu (migracja 0008).
+  if (f.program && f.program !== 'infakt') {
+    throw bladOperatora(
+      `Faktura ${f.numer ? `${f.numer} ` : ''}pochodzi z programu wbudowanego w panel — tam dokumentu `
+      + 'nie da się skasować. Błędny dokument popraw korektą.',
+    );
+  }
   if (stan !== 'wystawiona') {
     throw bladOperatora(
       stan === 'w_toku'
@@ -343,7 +462,7 @@ export function fakturaSkasowanaWInfakcie(db, zamowienieId) {
  *
  * Warunki (te same, co w barierze): dokument MA numer (jest co odnotowac) · NIE poszedl do
  * kupujacego w Allegro · nie ma ZADNEGO sladu w KSeF (obie kolumny puste — `ksef_status`
- * z chwili wystawienia i `ksef_numer` od czuwacza).
+ * z chwili wystawienia i `ksef_numer` od czuwacza) · dokument jest z inFaktu (`program` wiersza, PRZ-126 P7b).
  */
 export function fakturyMozliweDoOdnotowaniaSkasowania(db, { miesiac } = {}) {
   return db.prepare(
@@ -356,9 +475,10 @@ export function fakturyMozliweDoOdnotowaniaSkasowania(db, { miesiac } = {}) {
         AND f.allegro_wyslana_at IS NULL
         AND f.ksef_numer IS NULL
         AND f.ksef_status IS NULL
+        AND COALESCE(f.program, @program) = @program
         ${miesiac ? 'AND substr(f.utworzona_at, 1, 7) = @miesiac' : ''}
       ORDER BY f.utworzona_at DESC`,
-  ).all(miesiac ? { miesiac } : {});
+  ).all({ program: 'infakt', ...(miesiac ? { miesiac } : {}) });
 }
 
 /**

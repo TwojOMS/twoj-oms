@@ -64,7 +64,7 @@ describe('faktura WDT — payload do inFaktu', () => {
   });
 
   it('faktura KRAJOWA nie dostaje ŻADNEGO z pól WDT — payload bajt w bajt jak dotąd', async () => {
-    const { infakt, vies, faktura, id } = zestawWdt({ nip: '1000001201' });
+    const { infakt, vies, faktura, id } = zestawWdt({ nip: '1200001200' });
     await faktura.wystaw(id);
     const p = infakt.wystaw.mock.calls[0][0];
     for (const pole of ['number', 'sale_type', 'sales_kind', 'notes']) {

@@ -2,7 +2,7 @@ import {
   zl, wartoscPozycjiGrosze, kwotaOczekiwanaGrosze, sumaPozycjiZWysylkaGrosze, wysylkaBruttoGrosze,
 } from '../../../domena/suma-pozycji.js';
 import { wysylkaEfektywna } from '../../../domena/wysylka-kwota.js';
-import { czyStawkaVat, stawkaPozycji } from '../../../domena/vat.js';
+import { czyStawkaVat, stawkaPozycji, opcjeZwProgramu } from '../../../domena/vat.js';
 import { czytajStawkeDomyslna } from '../db/stawka-vat.js';
 import { bladOperatora } from '../../../domena/bledy.js';
 import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
@@ -15,12 +15,17 @@ import { datyFaktury } from '../../../domena/termin-platnosci.js';
 // WDT (spec 2026-08-26): stawke i pola payloadu rozstrzyga domena po NIP-ie KLIENTA
 // OKRESU (nabywcy dokumentu); VIES i serie numeracji trzyma WSPOLNA galaz obu drog
 // wystawiania (services/wdt-faktury.js) — zeby okres i karta nie mialy dwoch kopii.
-import { czyNipUe, polaWdtInfakt, nipSprzedawcyDoWdt } from '../../../domena/wdt.js';
+// PRZ-122.B07d: WDT = numer UE klienta okresu I sprzedawca niezwolniony (`czyWdt` + `sprzedawcaZwolniony`).
+import {
+  czyNipUe, czyWdt, polaWdtInfakt, nipSprzedawcyDoWdt, LOG_NIE_WDT_ZWOLNIONA,
+} from '../../../domena/wdt.js';
+import { sprzedawcaZwolniony } from '../db/zwolnienie-vat.js';
 import {
   sprawdzWdtWVies, przygotujSerieWdt, seriaWdtPoAwarii, seriaWdtPoSukcesie, sprawdzNumeracjeWlasna, nazwaProgramu,
 } from './wdt-faktury.js';
 // PRZ-118.06: program fakturowy (kontrakt) zamiast klienta inFaktu — `{ program }` albo stary `{ infakt }`.
 import { zProgramu } from '../../../integracje/program-fakturowy.ts';
+import { gdzieDokument } from '../../../domena/nazwa-programu.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 
 /**
@@ -31,13 +36,14 @@ import { dzienWarszawa } from '../../../domena/format-daty.js';
  * oplata za obsluge i kuriera trafia na fakture BEZ ani jednej linii kodu o niej tutaj —
  * dokladnie tak samo, jak w services/faktura.js dla pojedynczego zamowienia.
  */
-export function pozycjeOkresu(zamowienia, { stawkaDomyslna, wdt = false } = {}) {
+// PRZ-122.B07c: `zw: true` (program wbudowany) przepuszcza „zw” — domyślną i pozycji ręcznej; bez flagi jak dotąd.
+export function pozycjeOkresu(zamowienia, { stawkaDomyslna, wdt = false, zw = false } = {}) {
   // WDT przychodzi OD WOLAJACEGO i jest JEDNO na caly dokument, bo dokument ma jednego nabywce — klienta
   // okresu. Liczenie go per zamowienie (z NIP-u zamowienia) mogloby rozjechac jedna zbiorcza fakture na dwie
   // stawki, gdyby ktores zamowienie mialo uszkodzony numer.
   // PRZ-105: poza WDT stawka jest PER POZYCJA (domain/vat.js: stawkaPozycji), dostawa — domyslna z Ustawien.
   // Brak domyslnej = wyjatek, nie ciche 23 (ta sama zasada co pozycjeDokumentu).
-  if (!czyStawkaVat(stawkaDomyslna)) {
+  if (!czyStawkaVat(stawkaDomyslna, { zw })) {
     throw new Error(`pozycjeOkresu: brak albo zła stawka domyślna („${stawkaDomyslna}”).`);
   }
   const stawka = wdt ? '0' : String(stawkaDomyslna);
@@ -52,7 +58,7 @@ export function pozycjeOkresu(zamowienia, { stawkaDomyslna, wdt = false } = {}) 
         // arytmetyki na caly panel, zeby fakturze zbiorczej i karcie nigdy nie roznila sie
         // ani jedna pozycja.
         gross_price: wartoscPozycjiGrosze(p),
-        tax_symbol: wdt ? '0' : stawkaPozycji(p, stawkaDomyslna),
+        tax_symbol: wdt ? '0' : stawkaPozycji(p, stawkaDomyslna, { zw }),
       });
     }
     // Koszt dostawy jest czescia `kwota_brutto`, ale nie ma go w pozycjach — bez tej
@@ -182,6 +188,8 @@ export function createFakturaOkresu({
   const program = zProgramu({ program: programFakturowy, infakt });
   // Odmiana nazwy programu do komunikatow (inFakt / inFaktu / inFakcie / inFaktem).
   const nazwa = nazwaProgramu(program);
+  // PRZ-122.B07c: flaga `zw` z opisu programu (TwojeFaktury); inny program — jak dotąd.
+  const opcjeZw = opcjeZwProgramu(program?.opis);
 
   // Awaria JEDNOZNACZNA = inFakt odpowiedzial i odrzucil (4xx): dokumentu na pewno nie ma.
   // Wszystko inne — 5xx, zerwane polaczenie (to w ogole NIE NIESIE statusu, patrz
@@ -204,7 +212,7 @@ export function createFakturaOkresu({
       // wyjscia przez zadne klikniecie. Wyjscie w bazie JEST (`odblokujFaktureOkresu`
       // w db/okresy.js), ale trasy i przycisku jeszcze nie ma — powstana w Zadaniu 9. Do tego
       // czasu komunikat ma mowic prawde: blokada zostaje, dopoki ktos jej swiadomie nie zdejmie.
-      return `${powod} Sprawdź RĘCZNIE w ${nazwa.miejscownik}, czy faktura za ten okres istnieje. `
+      return `${powod} Sprawdź RĘCZNIE ${gdzieDokument(program)}, czy faktura za ten okres istnieje. `
         + 'Jeśli JEST i jeszcze nie poszła do KSeF (wysyłkę robi właściciel ręcznie, wieczorem) — '
         + 'skasuj ją tam. Panel sam z tego stanu NIE WYJDZIE i wystawienia nie ponowi: okres '
         + 'zostaje zablokowany, dopóki ktoś go świadomie nie odblokuje. Ta blokada jest po to, '
@@ -272,20 +280,23 @@ export function createFakturaOkresu({
         + `${zFaktura.faktura.numer ? ` (${zFaktura.faktura.numer})` : ' (wystawianie w toku albo do wyjaśnienia)'}`
         + ', więc faktura zbiorcza obciążyłaby klienta za ten sam towar drugi raz. '
         + 'Faktura za okres NIE została wystawiona — rozstrzygnij najpierw tamten dokument '
-        + `w ${nazwa.miejscownik} (skasuj go, dopóki nie poszedł wieczorem do KSeF; potem zostaje korekta).`,
+        + `${gdzieDokument(program)} (skasuj go, dopóki nie poszedł wieczorem do KSeF; potem zostaje korekta).`,
       );
     }
 
     // Stawka dokumentu z NIP-u KLIENTA OKRESU — nabywcy faktury zbiorczej. Nabywca z UE
     // dostaje 0% (WDT) na kazdej pozycji; kwoty zamowien sa wtedy kwotami netto, wiec
     // bariera arytmetyczna nizej dziala bez zmian (netto = brutto przy 0%).
-    const wdt = czyNipUe(klient?.nip);
+    // PRZ-122.B07d: sprzedawca zwolniony z VAT (program wbudowany) nie robi WDT — faktura „zw”, bez VIES i serii.
+    const zwolniona = sprzedawcaZwolniony(db, program?.opis);
+    const wdt = czyWdt(klient?.nip, { zwolniona });
+    const nieWdtZwolniona = zwolniona && czyNipUe(klient?.nip);
     // PRZ-108.10: NIP sprzedawcy do adnotacji WDT — przy każdym wystawieniu i PRZED rezerwacją oraz zamknięciem okresu
     // (WDT bez NIP-u odmawia tutaj; funkcja = NIP z Ustawień → Firma bez restartu).
-    const nipWlasny = nipSprzedawcyDoWdt(klient?.nip, nipSprzedawcy);
+    const nipWlasny = wdt ? nipSprzedawcyDoWdt(klient?.nip, nipSprzedawcy) : null;
     // PRZ-118.06: WDT wymaga numeracji wlasnej programu — odmowa lokalna, przed VIES, rezerwacja i zamknieciem okresu.
-    if (wdt) sprawdzNumeracjeWlasna(program);
-    const services = pozycjeOkresu(zamowienia, { stawkaDomyslna: czytajStawkeDomyslna(db), wdt });
+    if (wdt && !program.opis.wdtWSeriiFaktur) sprawdzNumeracjeWlasna(program);
+    const services = pozycjeOkresu(zamowienia, { stawkaDomyslna: czytajStawkeDomyslna(db, opcjeZw), wdt, ...opcjeZw });
     // ⚠️ Bariera PRZED rezerwacja i przed jakimkolwiek ruchem w inFakcie: nieudana
     // arytmetyka nie ma prawa zostawic po sobie ani rezerwacji, ani zamknietego okresu.
     // Sprawdza DOKLADNIE te sama liste zamowien, ktora poszla do `pozycjeOkresu` — inaczej
@@ -325,13 +336,15 @@ export function createFakturaOkresu({
     // PRZED rezerwacja i zamknieciem okresu, jak lookup nabywcy nizej: odmowa niczego
     // nie blokuje, a dowod weryfikacji (numer konsultacji) idzie do logu zamowien.
     if (wdt) await sprawdzWdtWVies({ vies, nip: klient.nip, dopisz: dopiszWdt, nazwa });
+    else if (nieWdtZwolniona) dopiszWdt('wdt.zwolnienie', LOG_NIE_WDT_ZWOLNIONA);
 
     // Przez kontrakt, BEZ zakladania (`zalozGdyBrak: false`): dla inFaktu samo wyszukanie w kartotece po NIP-ie.
     const nabywca = await program.przygotujNabywce({ nip: klient.nip }, { zalozGdyBrak: false });
     if (!nabywca) {
       throw bladOperatora(
-        `W ${nazwa.miejscownik} nie ma klienta o NIP ${klient.nip} — załóż go tam raz, ręcznie, `
-        + 'i ponów wystawienie.',
+        program.opis?.wbudowany
+          ? `W OMS-ie nie ma klienta o NIP ${klient.nip} — dodaj go z danymi do faktury na ekranie Stali klienci i ponów wystawienie.`
+          : `W ${nazwa.miejscownik} nie ma klienta o NIP ${klient.nip} — załóż go tam raz, ręcznie, i ponów wystawienie.`,
       );
     }
 
@@ -384,7 +397,7 @@ export function createFakturaOkresu({
     // i zwalnianie licznika trzyma WSPOLNA galaz (services/wdt-faktury.js); awaria zwalnia
     // tez rezerwacje okresu, bo dokumentu na pewno jeszcze nie ma.
     let seriaWdt = null;
-    if (wdt) {
+    if (wdt && !program.opis.wdtWSeriiFaktur) {
       try {
         seriaWdt = await przygotujSerieWdt({ db, program, dzien: daty.invoice_date ?? dzienWarszawa(teraz()) });
       } catch (e) {
@@ -401,7 +414,7 @@ export function createFakturaOkresu({
         ...daty,
         // Pola WYLACZNIE dokumentu WDT (domain/wdt.js) — dla klienta krajowego oba
         // rozsypania sa puste i payload zostaje bajt w bajt taki, jaki byl.
-        ...polaWdtInfakt(klient.nip, { nipSprzedawcy: nipWlasny }),
+        ...(wdt ? polaWdtInfakt(klient.nip, { nipSprzedawcy: nipWlasny }) : {}),
         ...(seriaWdt ? { number: seriaWdt.numer } : {}),
       });
     } catch (e) {
@@ -440,7 +453,7 @@ export function createFakturaOkresu({
         + '(puste albo nieczytelne ciało odpowiedzi) — faktura mogła powstać.';
       oznaczOkresDoWyjasnienia(db, okresId, opis);
       throw bladOperatora(
-        `${opis} Sprawdź RĘCZNIE w ${nazwa.miejscownik}, czy faktura za ten okres istnieje. Jeśli JEST `
+        `${opis} Sprawdź RĘCZNIE ${gdzieDokument(program)}, czy faktura za ten okres istnieje. Jeśli JEST `
         + 'i jeszcze nie poszła do KSeF (wysyłkę robi właściciel ręcznie, wieczorem) — skasuj ją tam. '
         + 'Panel sam z tego stanu NIE WYJDZIE i wystawienia nie ponowi: okres zostaje zablokowany, '
         + 'dopóki ktoś go świadomie nie odblokuje.',

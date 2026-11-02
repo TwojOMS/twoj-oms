@@ -90,3 +90,55 @@ export function najblizszyPrzebieg(stan, chwila) {
   if (chwila.godzina >= stan.godzina) return 'w ciągu minuty';
   return `dziś o ${stan.godzina}`;
 }
+
+// ── PRZ-123 C09: tryby wysyłki programu z własną wysyłką (TwojeFaktury) ─────────────────────────────────────────
+// „reczna” (domyślnie) — automat nic nie robi; „po_wystawieniu” — co 5 minut, faktura idzie, gdy od zapisu jej
+// OSTATNIEJ wersji minął odstęp na poprawki; „o_godzinie” — raz dziennie zbiorczo, jak automat inFaktu.
+export const TRYBY_AUTOMATU = Object.freeze(['reczna', 'po_wystawieniu', 'o_godzinie']);
+export const TRYB_DOMYSLNY = 'reczna';
+export const ODSTEP_EDYCJI_DOMYSLNY = 15;
+export const ODSTEP_EDYCJI_MAKS = 120;
+/** Co ile minut idzie przebieg „po wystawieniu” (zegar tyka co minutę, przebieg — raz na takie okno). */
+export const CO_ILE_PO_WYSTAWIENIU_MIN = 5;
+const OKNO_MS = CO_ILE_PO_WYSTAWIENIU_MIN * 60_000;
+
+/** Odstęp z bazy albo formularza: liczba całkowita 0–120, inaczej `null`. */
+export function odstepEdycji(wartosc) {
+  const tekst = String(wartosc ?? '').trim();
+  if (!/^\d{1,3}$/u.test(tekst)) return null;
+  const n = Number(tekst);
+  return n <= ODSTEP_EDYCJI_MAKS ? n : null;
+}
+
+/** Początek 5-minutowego okna przebiegu (ms) — jeden przebieg „po wystawieniu” na okno. */
+export const oknoPrzebiegu = (teraz) => Math.floor(teraz.getTime() / OKNO_MS) * OKNO_MS;
+
+/** Czy od zapisu ostatniej wersji faktury minął odstęp na poprawki. Brak czasu wersji → nie (nie zgadujemy). */
+export function poOdstepieEdycji(wersjaAt, odstepMin, teraz) {
+  const t = Date.parse(String(wersjaAt ?? ''));
+  if (!Number.isFinite(t)) return false;
+  return teraz.getTime() >= t + odstepMin * 60_000;
+}
+
+/** Najwcześniejsza chwila wysyłki „po wystawieniu”: koniec odstępu zaokrąglony w górę do okna przebiegu. */
+export function chwilaWysylkiPoWystawieniu(wersjaAt, odstepMin) {
+  const t = Date.parse(String(wersjaAt ?? ''));
+  if (!Number.isFinite(t)) return null;
+  return new Date(Math.ceil((t + odstepMin * 60_000) / OKNO_MS) * OKNO_MS);
+}
+
+/** Formularz trybu (ekran automatu przy programie z własną wysyłką). Błąd → 400, nic nie zapisane. */
+export function sprawdzFormularzTrybu(body = {}) {
+  const bledy = [];
+  const tryb = typeof body?.tryb === 'string' ? body.tryb : '';
+  if (!TRYBY_AUTOMATU.includes(tryb)) bledy.push('Wybierz tryb wysyłki: ręcznie, po wystawieniu albo o godzinie.');
+  const surowy = String(body?.odstep_edycji ?? '').trim();
+  const odstep = surowy === '' ? ODSTEP_EDYCJI_DOMYSLNY : odstepEdycji(surowy);
+  if (odstep === null) bledy.push(`Odstęp na poprawki to liczba pełnych minut od 0 do ${ODSTEP_EDYCJI_MAKS}.`);
+  const godzina = typeof body?.godzina === 'string' ? body.godzina : '';
+  if (!WZOR_GODZINY.test(godzina)) bledy.push(`„${godzina}” to nie jest godzina w formacie GG:MM (00:00–${NAJPOZNIEJSZA_GODZINA}).`);
+  else if (godzina > NAJPOZNIEJSZA_GODZINA) {
+    bledy.push(`Najpóźniejsza godzina wysyłki to ${NAJPOZNIEJSZA_GODZINA} — zegar sprawdza porę co minutę, a przebieg musi zmieścić się przed północą.`);
+  }
+  return { tryb, odstepEdycji: odstep ?? ODSTEP_EDYCJI_DOMYSLNY, godzina, bledy };
+}

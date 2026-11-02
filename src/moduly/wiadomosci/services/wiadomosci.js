@@ -8,8 +8,8 @@ import { adresatKlienta } from '../../../domena/adresat-klienta.js';
 import { wczytajSzablonyWiadomosci } from '../../../oms/db/szablony-wiadomosci.js';
 import { mailPotwierdzenia, mailPlatniczy, mailWlasny, mailWyslane } from '../szablony.js';
 import { DOMYSLNE } from '../../../domena/szablony-wiadomosci.js';
-import { bezpiecznaNazwa } from '../../../domena/pliki.js';
 import { bladOperatora } from '../../../domena/bledy.js';
+import { bezpiecznaNazwa } from '../../../domena/pliki.js';
 import { idDokumentuDla } from '../../../domena/dokument-programu.js';
 import { zdanieBrakuProgramu } from '../../../domena/wybor-programu.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
@@ -21,7 +21,8 @@ import { oznaczBladPoczty, opisBleduPocztyDoLogu } from '../poczta-ustawien.ts';
 // zalacznik — „Potwierdzenie wywozu towarow" (art. 42 ust. 4), skladane na swiezo z tych
 // samych danych, co przycisk na karcie (routes/zamowienia.js). Regula rozpoznania jest
 // TA SAMA, ktora wybiera stawke faktury (domain/wdt.js).
-import { czyNipUe } from '../../../domena/wdt.js';
+import { czyWdt } from '../../../domena/wdt.js';
+import { sprzedawcaZwolniony } from '../../faktury/db/zwolnienie-vat.js';
 import { daneFaktury } from '../../../domena/dane-faktury.js';
 import { adresSprzedawcy, odbiorcaPrzelewu } from '../../../domena/adres-sprzedawcy.js';
 import { nipSprzedawcy } from '../../../domena/nip-bdo-firmy.js';
@@ -92,7 +93,7 @@ export function createWiadomosci({
    * rozjechałby się z prawdziwym mailem przy pierwszej poprawce — a cała wartość ekranu
    * podglądu polega na tym, że pokazuje DOKŁADNIE to, co pójdzie.
    */
-  async function zloz(id, temat_id) {
+  async function zloz(id, temat_id, { podglad = false } = {}) {
     const k = kontekst(id);
     // PRZ-101.03: szablony z Ustawień czytane przy KAŻDYM złożeniu — zmiana działa od następnego maila,
     // podgląd i wysyłka widzą ten sam zapis (oba wołają tę funkcję).
@@ -175,14 +176,24 @@ export function createWiadomosci({
       // linii. Ta sama droga, co przy wysyłce faktury na konto kupującego w Allegro.
       // PRZ-121.A04b: faktura INNEGO programu = 409 `bezProgramu` przed żądaniem — nic nie idzie ani do programu,
       // ani do klienta (błąd złożenia: ślad „nieudane złożenie” na karcie).
-      const bajty = await program.pobierzPdf(idDokumentuDla(k.faktura, program));
+      // PRZ-122.B10b: `pobierzPdf` to wydanie nabywcy — przy TwojeFaktury ZAMYKA fakturę. Podgląd maila (karta,
+      // sprawdzanie reguły automatyzacji) niczego nie wydaje: bierze podgląd programu, gdy program go ma.
+      const idPdf = idDokumentuDla(k.faktura, program);
+      // Faktura VAT (B2B i B2C — B2C-QR) bez numeru KSeF: podgląd odmawia (409) zdaniem z adaptera — tym samym co odmowa
+      // PDF przy wysyłce (B2B: „zwykle w kilka minut”; konsumencka przy wyłączonym przełączniku: „nie idą teraz do KSeF”).
+      const czeka = podglad && program.podgladPdf ? await program.zdanieCzekaniaNaKsef?.(idPdf) : null;
+      if (czeka) {
+        throw bladOperatora(`${czeka}. Mail z fakturą wyślesz potem.`, { status: 409, kod: 'czeka-na-ksef', czekaNaKsef: true });
+      }
+      const bajty = podglad && program.podgladPdf ? await program.podgladPdf(idPdf) : await program.pobierzPdf(idPdf);
       zalaczniki.push({ filename: nazwaPliku('Faktura', k.faktura.numer), content: bajty });
       // WDT: do koperty dochodzi „Potwierdzenie wywozu towarów" do podpisu przez nabywcę.
       // Awaria składania NIE jest cicha i NIE wysyła faktury bez dokumentu wywozu:
       // odmowa z powodem (np. brak adresu sprzedawcy w konfiguracji) idzie tą samą drogą,
       // co każda nieudana kompozycja — do operatora i do logu (`nieudane-zlozenie`).
       // Zdanie w treści maila zapala FAKT z koperty (`zalacznikWywozu` niżej), nie temat.
-      if (czyNipUe(daneFaktury(k.z).nip)) {
+      // PRZ-122.B07h: firma zwolniona z VAT (TwojeFaktury + zapisane zwolnienie) nie robi WDT — bez wywozu.
+      if (czyWdt(daneFaktury(k.z).nip, { zwolniona: sprzedawcaZwolniony(db, program.opis) })) {
         const oswiadczenie = zbudujOswiadczenieWywozuPdf(modelOswiadczenia(k.z, {
           // PRZ-108.10: NIP z pliku albo Ustawień → Firma; bez NIP-u odmowa (mail z fakturą WDT nie idzie bez wywozu).
           sprzedawca: { ...adresSprzedawcy(config), nip: nipSprzedawcy(config) },
@@ -231,7 +242,7 @@ export function createWiadomosci({
   }
 
   async function podglad(id, temat_id) {
-    const w = await zloz(id, temat_id);
+    const w = await zloz(id, temat_id, { podglad: true });
     return {
       do: w.do, temat: w.temat, tekst: w.tekst, html: w.html,
       zalacznik: w.zalaczniki[0]?.filename ?? null,
@@ -338,5 +349,26 @@ export function createWiadomosci({
   /** Szablony własne do menu na karcie — czytane przy każdym renderze (zmiana bez restartu). */
   const tematyWlasne = () => wczytajSzablonyWiadomosci(db).wlasne.map(({ id, nazwa }) => ({ id, nazwa }));
 
-  return { kontekst, podglad, wyslij, tematyWlasne };
+  /**
+   * PRZ-122.MAIL-OKNO: czy faktura zamówienia może iść do nabywcy w chwili `chwila` (pyta reguła automatyzacji przed
+   * wysyłką — `pobierzPdf` w programie wbudowanym zamyka dokument). `{ gotowa: true }` bez programu, bez faktury,
+   * dla dokumentu innego programu (wysyłka odmówi jak dotąd) i dla programu bez `gotowyDoWydania` — wtedy bez zmian.
+   * Dwa pytania: okno poprawek (`gotowyDoWydania`) ORAZ numer KSeF (`zdanieCzekaniaNaKsef`) — VAT bez numeru jest dla
+   * okna „gotowa” (okno pilnuje automat KSeF), ale `pobierzPdf` odmówi 409, więc dla VAT koniec okna = numer KSeF.
+   */
+  async function fakturaGotowaDoWydania(zamowienieId, chwila) {
+    const k = kontekst(zamowienieId);
+    if (!program || !k.faktura || typeof program.gotowyDoWydania !== 'function') return { gotowa: true };
+    let idPdf;
+    try { idPdf = idDokumentuDla(k.faktura, program); } catch { return { gotowa: true }; }
+    if (idPdf == null) return { gotowa: true };
+    const czeka = await program.zdanieCzekaniaNaKsef?.(idPdf);
+    if (czeka) return { gotowa: false, powod: czeka };
+    if (!(await program.gotowyDoWydania(idPdf, chwila))) {
+      return { gotowa: false, powod: 'od ostatniej zmiany faktury nie minął odstęp na poprawki z Ustawień KSeF' };
+    }
+    return { gotowa: true };
+  }
+
+  return { kontekst, podglad, wyslij, tematyWlasne, fakturaGotowaDoWydania };
 }

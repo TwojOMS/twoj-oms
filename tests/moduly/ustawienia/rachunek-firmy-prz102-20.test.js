@@ -22,7 +22,7 @@ vi.mock('../../../src/moduly/faktury/pdf/proforma-pdf.js', async (oryginal) => {
   return { ...m, zbudujProformePdf: vi.fn((...a) => m.zbudujProformePdf(...a)) };
 });
 
-const EKRAN = '/ustawienia/firma';
+const EKRAN = '/ustawienia/firma/rachunek';
 const ZAPIS = '/ustawienia/firma/rachunek';
 const PLIK = { OMS_RACHUNEK: '34109010140000000000000000', OMS_BANK: 'Bank z Pliku' };
 // Drugi poprawny NRB (suma mod 97) — zmyślony, inny niż w pliku.
@@ -90,7 +90,7 @@ describe('PRZ-102.20 start bez rachunku w pliku', () => {
     try {
       const pf = await post(p.app, `/zamowienia/${p.id}/proforma`, p.admin);
       expect(pf.statusCode).toBe(400);
-      expect(pf.body).toContain(EKRAN);
+      expect(pf.body).toContain('/ustawienia/firma');
       expect(vi.mocked(zbudujProformePdf)).not.toHaveBeenCalled();
       expect(p.db.prepare('SELECT COUNT(*) AS n FROM proformy').get().n).toBe(0);
       const m = await p.usluga('wiadomosci', 'wiadomosci').podglad(p.id, 'przypomnienie');
@@ -177,8 +177,8 @@ describe('PRZ-102.20 walidacja i dostęp', () => {
     const p = await panel(Object.fromEntries(Object.keys(ADRES).map((k) => [k, ''])));
     try {
       await post(p.app, ZAPIS, p.admin, { rachunek: PANEL, bank: 'Bank Przykładowy' });
-      await post(p.app, EKRAN, p.admin, { nazwa: 'Pracownia', ulica: 'Ulica 1', kod: '00-950', miasto: 'Nibylandia', kraj: 'PL' });
-      await post(p.app, `${EKRAN}/usun`, p.admin);
+      await post(p.app, '/ustawienia/firma', p.admin, { nazwa: 'Pracownia', ulica: 'Ulica 1', kod: '00-950', miasto: 'Nibylandia', kraj: 'PL' });
+      await post(p.app, '/ustawienia/firma/usun', p.admin);
       expect(wczytajKonfiguracjeIntegracji(p.db, 'rachunek_firmy').ustawienia).toEqual({ rachunek: PANEL, bank: 'Bank Przykładowy' });
     } finally { await p.zamknij(); }
   });

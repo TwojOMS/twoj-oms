@@ -6,7 +6,7 @@ import { podzielDoFaktury, wariantFakturyHurtem, ETYKIETA_WARIANTU } from '../..
 const POZYCJA = { nazwa: 'STOP 70x100', sku: 'STOP-70', ilosc: 1, cena_brutto: '104.00', brutto_linii: '104.00' };
 const zam = (n) => ({
   id: 1, numer: '1589', utworzone_at: '2026-10-13T13:13:48Z', okres_rozliczeniowy_id: null, anulowane: 0,
-  chce_fakture: 1, nip: '1000001052', kwota_brutto: '104.00', pozycje: [POZYCJA], platnosci: [], faktura: null,
+  chce_fakture: 1, nip: '1200001045', kwota_brutto: '104.00', pozycje: [POZYCJA], platnosci: [], faktura: null,
   wyslane_at: null, ...n,
 });
 

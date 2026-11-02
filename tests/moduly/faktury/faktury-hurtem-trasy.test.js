@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { SUFIT_FAKTUR_HURTEM } from '../../../src/domena/masowe.js';
+import { zapiszFakturaDlaKazdego } from '../../../src/moduly/faktury/db/faktury-dla-kazdego.js';
 import {
   AUTH, POST, zamowienie, serwer, cialo,
 } from './_hurtem-pomocniki.js';
@@ -236,6 +237,51 @@ describe('trasy faktur hurtem', () => {
     const a = zamowienie(db, { numer: 'A', zrodlo: 1, oplacone: true });
     const r = await app.inject({ method: 'POST', url: '/zamowienia/faktury-hurtem', headers: POST, payload: cialo([a]) });
     expect(r.statusCode).toBe(503);
+  });
+
+  // PRZ-126.F02: opcja firmy „faktura także bez prośby klienta”. Podgląd i wykonanie czytają ją
+  // tą samą funkcją przy każdym żądaniu — nie mogą się rozjechać.
+  describe('zamowienie bez zadania faktury (PRZ-126)', () => {
+    function przygotuj() {
+      let dostane = null;
+      const { app, db } = serwer({
+        wystawWiele: async (lista) => {
+          dostane = lista.map((z) => z.id);
+          return { wystawione: lista.map((z) => ({ id: z.id, numer: z.numer, numerFaktury: 'F' })), bledy: [], nietkniete: [] };
+        },
+      });
+      const a = zamowienie(db, { numer: 'A', zrodlo: 1, oplacone: true });
+      const b = zamowienie(db, { numer: 'B', zrodlo: 2, oplacone: true });
+      db.prepare('UPDATE zamowienia SET chce_fakture = 0, nip = NULL WHERE id = ?').run(b);
+      return { app, db, a, b, dostane: () => dostane };
+    }
+    const podglad = (app, ids) => app.inject({
+      method: 'POST', url: '/zamowienia/faktury-hurtem/podglad', headers: POST, payload: cialo(ids),
+    });
+    const wykonaj = (app, ids) => app.inject({
+      method: 'POST', url: '/zamowienia/faktury-hurtem', headers: POST, payload: cialo(ids),
+    });
+
+    it('opcja wylaczona: pominiete z dzisiejszym powodem, do uslugi nie trafia', async () => {
+      const { app, a, b, dostane } = przygotuj();
+      const p = await podglad(app, [a, b]);
+      expect(p.statusCode).toBe(200);
+      expect(idZPodgladu(p.body)).toEqual([a]);
+      expect(p.body).toMatch(/<b>B<\/b> — Klient nie prosił o fakturę\./);
+      await wykonaj(app, [a, b]);
+      expect(dostane()).toEqual([a]);
+    });
+
+    it('opcja wlaczona: w „do wystawienia” i trafia do uslugi', async () => {
+      const { app, db, a, b, dostane } = przygotuj();
+      zapiszFakturaDlaKazdego(db, true);
+      const p = await podglad(app, [a, b]);
+      expect(p.statusCode).toBe(200);
+      expect(idZPodgladu(p.body)).toEqual([a, b]);
+      expect(p.body).not.toMatch(/nie prosił o fakturę/);
+      await wykonaj(app, [a, b]);
+      expect(dostane()).toEqual([a, b]);
+    });
   });
 
   it('wymaga logowania', async () => {

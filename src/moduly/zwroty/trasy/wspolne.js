@@ -13,10 +13,10 @@ import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import { adresKartyZamowienia } from '../../../domena/adres-karty-zamowienia.js';
 import { bezpiecznyPowrotNaListe } from '../../../domena/filtry-listy.js';
 import { ktoKlikal } from '../../zamowienia/wspolne.js';
-import { odmianaNazwyProgramu } from '../../../domena/nazwa-programu.js';
+import { odmianaNazwyProgramu, gdzieDokument } from '../../../domena/nazwa-programu.js';
 
 // Helpery widoku i odmów frozen, używane przez osiem domykanych tras.
-export function createWspolne({ db, korekta = null, definicje, infakt = null }) {
+export function createWspolne({ db, korekta = null, definicje, infakt: programFaktur = null }) {
   const korektaDostepna = Boolean(korekta);
   const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, definicje);
   const adresKarty = (req, id) => adresKartyZamowienia(id, { powrot: powrotKarty(req) }, definicje);
@@ -106,7 +106,8 @@ export function createWspolne({ db, korekta = null, definicje, infakt = null }) 
       formularz,
       korektaDostepna,
       // PRZ-118.09: nazwa programu fakturowego w zdaniach o korekcie (bez programu — inFakt, jak dotąd).
-      nazwaProgramu: odmianaNazwyProgramu(infakt),
+      nazwaProgramu: odmianaNazwyProgramu(programFaktur),
+      gdzieProgramu: gdzieDokument(programFaktur),
       blad: bladEkranu,
       ...daneRozliczenia(z),
     });

@@ -16,7 +16,9 @@ const headers = { authorization: `Basic ${Buffer.from('operator:fixture').toStri
 
 describe('PRZ-025 rzeczywista kompozycja bootstrapu', () => {
   it('baza przygotowana przez fabrykę i initializer sekretu Web pozwala czytać koszty po zablokowaniu zapisów', async () => {
-    const db = openOmsDb();
+    // Fabryka migruje te same moduły, które potem buduje bootstrap (faktury mają własną migrację od PRZ-122.B02).
+    const moduly = [modulRdzen, modulWeb, modulKanaly, modulFaktury, modulKoszty];
+    const db = openOmsDb(':memory:', { moduly: moduly as any });
     wczytajSekret(db);
     const zapis = vi.fn(() => { throw new Error('SQLITE_FULL: database or disk is full'); });
     const bazaBezZapisow = {
@@ -31,7 +33,7 @@ describe('PRZ-025 rzeczywista kompozycja bootstrapu', () => {
     try {
       expect(db.prepare('SELECT count(*) n FROM slownik_kategorii_kosztow').get()?.n).toBe(11);
       const budowa = zbudujOms({env,db:bazaBezZapisow as any,
-        moduly:[modulRdzen,modulWeb,modulKanaly,modulFaktury,modulKoszty] as any});
+        moduly:moduly as any});
       // Rejection po powtórnym INSERT ma być błędem asercji, a nie nieobsłużonym wyjątkiem.
       await expect(budowa).resolves.toHaveProperty('app');
       z = await budowa;
