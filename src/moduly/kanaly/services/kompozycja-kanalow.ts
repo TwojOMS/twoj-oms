@@ -25,7 +25,7 @@ import {bladPolleraNaEkran} from '../../../domena/zdrowie.js';
 import {ustawKanalyAllegro} from '../../../domena/wysylka.js';
 import {utworzHttp} from '../../../core/http.ts';
 import {strzezAllegroProby,type ProfilAllegroProby} from '../straz-allegro-proby.ts';
-export type OpcjeKompozycji={fetchImpl?:typeof fetch;limitCzasuMs?:number;userAgent?:string;strazAllegro?:ProfilAllegroProby;autoryzacjaAtrapy?:{http:(u:string,i?:RequestInit)=>Promise<Response>;softwareStatementId:string;redirectUri:string;userAgent:string}};
+export type OpcjeKompozycji={klientWooZastepczy?:(u:{baseUrl:string;ck:string;cs:string})=>Record<string,any>|null;fetchImpl?:typeof fetch;limitCzasuMs?:number;userAgent?:string;strazAllegro?:ProfilAllegroProby;autoryzacjaAtrapy?:{http:(u:string,i?:RequestInit)=>Promise<Response>;softwareStatementId:string;redirectUri:string;userAgent:string}};
 export function zbudujUslugiKanalow(ctx:KontekstModulu<ReturnType<typeof konfiguracjaKanalow>>,definicje:readonly DefinicjaKanalu[],o:OpcjeKompozycji){
  const {db,konfiguracja:config}=ctx;const envKanaly=config.kanaly,envSklepy=config.sklepy;
  const repozytoriumKanalow=createRepozytoriumKanalow({db,definicjeEnv:definicje,konfiguracjaEnv:envKanaly,teraz:ctx.teraz});
@@ -48,7 +48,7 @@ export function zbudujUslugiKanalow(ctx:KontekstModulu<ReturnType<typeof konfigu
   return {...HOSTY_ALLEGRO[k.srodowisko],clientId:a.clientId,clientSecret:a.clientSecret,get userAgent(){return userAgent();},od:k.odUtc};
  }
  const skonfigurowany=(k:PolaczenieKanalu)=>k.zrodlo!=='env'||Boolean(envKanaly[k.klucz]);
- const wooRuntime=createSklepyWooRuntime({db,repozytorium:repozytoriumKanalow});
+ const wooRuntime=createSklepyWooRuntime({db,repozytorium:repozytoriumKanalow,klientWooZastepczy:o.klientWooZastepczy});
  const limitCzasuMs=o.limitCzasuMs??30000;
  const rejestrKanalow=createRejestrKanalow({repozytorium:repozytoriumKanalow,skonfigurowany,db,teraz:ctx.teraz,limitCzasuMs,fetchImpl:o.fetchImpl||!opcje?fetchAllegro:(u,i)=>opcje.http(String(u),i),fabryki:{woo:wooRuntime.fabryka,allegro:({polaczenie,http,httpAutoryzacji,sprawdzZapis})=>{
   const u=ustawienia(polaczenie.klucz);

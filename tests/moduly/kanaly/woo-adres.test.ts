@@ -7,6 +7,11 @@ describe('adres Woo',()=>{
    ['www.sklep-polcien.test','https://www.sklep-polcien.test'],['sklep-polcien.test/','https://sklep-polcien.test'],['http://sklep-polcien.test','https://sklep-polcien.test'],
   ])expect(normalizujAdresSklepu(wejscie,tryb)).toBe(wynik);
  });
+ // PRZ-150.01: jeden ukośnik po schemacie to literówka, nie host „http” — wynik jak dla http:// i https://.
+ it.each(['http:/sklep.pl','https:/sklep.pl','HTTP:/sklep.pl','HTTPS:/sklep.pl/','  http:/sklep.pl  '])('naprawia jeden ukośnik po schemacie: %s',adres=>{
+  for(const tryb of ['produkcja','proba'])expect(normalizujAdresSklepu(adres,tryb)).toBe('https://sklep.pl');
+ });
+ it.each(['ftp://sklep.pl','file:/sklep.pl'])('nie przyjmuje innych schematów: %s',adres=>{expect(normalizujAdresSklepu(adres,'produkcja')).not.toBe('https://sklep.pl');});
  it.each(['sklep.pl:8080/sciezka','localhost:8080'])('przyjmuje port bez schematu: %s',adres=>{expect(normalizujAdresSklepu(adres,'produkcja')).toBe('https://'+adres);});
  it.each(['javascript:alert(1)','mailto:a@b'])('odrzuca schemat bez ukośników: %s',adres=>{expect(normalizujAdresSklepu(adres,'produkcja')).toBeNull();});
  it('odrzuca dane logowania',()=>{expect(normalizujAdresSklepu('https://user:pass@sklep-polcien.test','produkcja')).toBeNull();});

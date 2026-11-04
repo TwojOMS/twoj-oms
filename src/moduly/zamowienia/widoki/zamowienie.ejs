@@ -1701,12 +1701,39 @@
           <%# (Zadanie 8, jeszcze nieistniejace — trasa korekty siedzi za `korektaDostepna` %>
           <%# w routes/zwroty.js), ten wiersz nie rysuje sie NIGDY. %>
           <% (z.zwroty || []).filter(function (w) { return w.korekta_numer; }).forEach(function (w) { %>
+            <% const k = (locals.ksefKorektKarty || {})[w.id]; %>
             <tr>
               <td>Korekta</td>
               <td><%= w.korekta_numer %></td>
               <td><%= w.data %></td>
-              <td class="netto-cicho"><%= (locals.korektyBezCzekania || []).includes(w.korekta_numer) ? '' : powodKorektyKsef %></td>
-              <td></td>
+              <td>
+                <% if (k?.numer) { %>
+                  <span class="waga waga--ok">KSeF</span> <%= k.numer %>
+                <% } else if (k?.stan === 'wyslana_czeka') { %>
+                  <span class="waga">zlecona z panelu — czeka na numer KSeF</span>
+                <% } else if (k?.powod) { %>
+                  <span class="netto-cicho"><%= k.powod %></span>
+                <% } else if (k?.stan === 'brak') { %>
+                  <span class="waga">jeszcze nie wysłana do KSeF</span>
+                <% } else if (w.korekta_uuid) { %>
+                  <%= (locals.korektyBezCzekania || []).includes(w.korekta_numer) ? '' : powodKorektyKsef %>
+                <% } %>
+              </td>
+              <td>
+                <% if (k && mozeAdres(`/faktury/${w.korekta_uuid}/pdf`)) { %>
+                  <a class="btn btn--maly" href="/faktury/<%= encodeURIComponent(w.korekta_uuid) %>/pdf?rodzaj=korekta&amp;numer=<%= encodeURIComponent(w.korekta_numer) %>"
+                     target="_blank" rel="noopener noreferrer">PDF</a>
+                <% } %>
+                <% if (k?.wolno && mozeAdres('/faktury/ksef/podglad')) { %>
+                  <form method="post" action="/faktury/ksef/podglad" class="w-linii">
+                    <input type="hidden" name="uuid" value="<%= k.uuid %>">
+                    <input type="hidden" name="miesiac" value="<%= k.miesiac %>">
+                    <input type="hidden" name="pole" value="<%= k.pole %>">
+                    <input type="hidden" name="powrot" value="/zamowienia/<%= z.id %>">
+                    <button class="btn btn--maly">Wyślij do KSeF</button>
+                  </form>
+                <% } %>
+              </td>
             </tr>
           <% }); %>
         </tbody>
@@ -1926,7 +1953,7 @@
       <% } else if (z.faktura.allegro_wyslana_at && !odrzuconyPrzezAllegro) { %>
         <p>
           Faktura <strong>wysłana do Allegro</strong> <%= fmtDataCzas(z.faktura.allegro_wyslana_at) %> —
-          kupujący ma ją na swoim koncie. Weryfikacja pliku: <%= z.faktura.allegro_weryfikacja || 'nieznana' %>.
+          kupujący ma ją na swoim koncie. Weryfikacja pliku: <%= z.faktura.allegro_weryfikacja === 'WAITING' ? 'Allegro nie podaje jej wyniku — panel nie wie, czy plik przeszedł' : z.faktura.allegro_weryfikacja || 'nieznana' %>.
         </p>
         <p class="wyjasnienie">
           Tego się nie cofa: panel nie ma jak zabrać dokumentu z konta kupującego. Jeśli faktura

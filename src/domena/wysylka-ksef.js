@@ -12,11 +12,14 @@ import { stanKsef } from './lista-faktur.js';
 import { NAZWA_ZAPASOWA } from './nazwa-programu.js';
 import { fmtDataCzasKrotko } from './format-daty.js';
 
-/** Typy dokumentów, które wolno wysłać zawsze. Korekty POZA listą (06.08.2026); od C08 tylko program wbudowany — `rodzajDoWyslania`. */
+/** Typy dokumentów, które wolno wysłać zawsze. Korekty POZA listą (06.08.2026); od C08 przy fladze `korekty` (od PRZ-151 D2: program, który wysyła do KSeF) — `rodzajDoWyslania`. */
 const WOLNO_WYSLAC = new Set(['vat']);
 
-/** Zdanie o korekcie — jedno dla podglądu (`coWolnoWyslac`) i wiersza korekty na karcie zamówienia (PRZ-102.23). */
-export const POWOD_KOREKTA = 'Korekty wysyła się w inFakcie — panel ich nie wysyła.';
+/**
+ * Zdanie o korekcie — jedno dla podglądu (`coWolnoWyslac`) i wiersza korekty na karcie zamówienia (PRZ-102.23).
+ * PRZ-151 (rozdz. 8): zostaje tylko dla programu, który nie wysyła do KSeF z OMS-u — bez nazwy programu.
+ */
+export const POWOD_KOREKTA = 'Ten program faktur nie wysyła korekt do KSeF z OMS-u — wyślesz je bezpośrednio w programie faktur.';
 /** PRZ-123 C09: to samo miejsce przy programie z własną wysyłką (TwojeFaktury) — korekta czeka na pierwotną w KSeF. */
 export const POWOD_KOREKTA_CZEKA = 'Korekta czeka na fakturę pierwotną — wyślesz ją do KSeF, gdy pierwotna dostanie numer KSeF.';
 
@@ -123,9 +126,10 @@ export function doZaznaczeniaWszystkich(d, konsumenckie = false, { korekty = fal
 }
 
 /**
- * PRZ-123 C08: czy RODZAJ dokumentu pozwala go wysłać. Faktura VAT — zawsze. Korekta — tylko przy programie
- * wbudowanym (`korekty: true`, TwojeFaktury) i tylko gdy faktura pierwotna jest już w KSeF (`ksef_korygowanej`
- * w wierszu listy); bez tego czeka na pierwotną. inFakt i inne programy (`korekty: false`) — korekty jak dziś.
+ * PRZ-123 C08: czy RODZAJ dokumentu pozwala go wysłać. Faktura VAT — zawsze. Korekta — tylko przy `korekty: true`
+ * (PRZ-151 D2: program, który wysyła do KSeF z OMS-u — wbudowany albo zewnętrzny) i tylko gdy faktura pierwotna jest
+ * już w KSeF (`ksef_korygowanej` w wierszu listy); bez tego czeka na pierwotną. Program bez wysyłki (`korekty: false`)
+ * — korekty z POWOD_KOREKTA.
  */
 function rodzajDoWyslania(d, korekty) {
   if (WOLNO_WYSLAC.has(d?.rodzaj)) return true;
@@ -154,7 +158,8 @@ function rodzajDoWyslania(d, korekty) {
  * Bez przycisku tylko na pewnych faktach panelu: numer KSeF (bez zdania: stan wiersza mówi „KSeF <numer>”)
  * i rezerwacja (`powodJuzZlecona`).
  */
-export function wysylkaZKarty({ uuid, ksefNumer = null, nip = null, zleconaAt = null, dzienWystawienia = null, konsumenckie = false, program } = {}) {
+// PRZ-151 (151-02): `rodzaj` ('vat' | 'korekta') zmienia wyłącznie zdanie o braku daty — reguła jest ta sama.
+export function wysylkaZKarty({ uuid, ksefNumer = null, nip = null, zleconaAt = null, dzienWystawienia = null, konsumenckie = false, program, rodzaj = 'vat' } = {}) {
   if (!uuid) return null;
   const stan = stanKsef({ ksef_number: ksefNumer || null }, Boolean(zleconaAt));
   if (stan === 'jest') return { wolno: false, powod: null, stan };
@@ -168,7 +173,8 @@ export function wysylkaZKarty({ uuid, ksefNumer = null, nip = null, zleconaAt = 
   // Miesiąc listy Faktur, na której ten dokument leży (filtr po dacie wystawienia). Bez daty nie zgadujemy.
   const miesiac = /^\d{4}-\d{2}-\d{2}/.test(String(dzienWystawienia ?? '')) ? String(dzienWystawienia).slice(0, 7) : null;
   if (!miesiac) {
-    return { wolno: false, powod: 'Panel nie zna daty wystawienia tej faktury — wyślij ją z zakładki Faktury.', stan };
+    const czego = rodzaj === 'korekta' ? 'tej korekty' : 'tej faktury';
+    return { wolno: false, powod: `Panel nie zna daty wystawienia ${czego} — wyślij ją z zakładki Faktury.`, stan };
   }
   return { wolno: true, uuid, miesiac, pole: 'invoice_date', stan, ...uwaga };
 }
@@ -205,7 +211,8 @@ export function powrotWysylkiKsef(powrot, { miesiac, pole, typ, platnosc } = {})
 }
 
 // PRZ-118.09: `nazwa` = odmiana nazwy programu fakturowego w powodach pominięcia (domyślnie inFakt).
-// PRZ-123 C08: `korekty` — korekta faktury już w KSeF jest kandydatem (tylko program wbudowany; `rodzajDoWyslania`).
+// PRZ-123 C08: `korekty` — korekta faktury już w KSeF jest kandydatem (od PRZ-151 D2: program, który wysyła do KSeF;
+// `rodzajDoWyslania`).
 export function coWolnoWyslac(zaznaczone, dokumenty, konsumenckie = false, nazwa = NAZWA_ZAPASOWA, program, { korekty = false } = {}) {
   const doWyslania = [];
   const pominiete = [];

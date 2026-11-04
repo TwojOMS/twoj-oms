@@ -137,7 +137,8 @@ const ZALEGLOSCI = {
   'domena/pozycje-faktury.js': 1,
   'domena/scalanie.js': 1,
   'domena/wiadomosci.js': 1,
-  'domena/wysylka-ksef.js': 4,
+  // PRZ-151.C02: 4 → 3 — POWOD_KOREKTA bez „w inFakcie” (plan PRZ-151, rozdz. 8).
+  'domena/wysylka-ksef.js': 3,
   'domena/zmiana-okresu.js': 1,
   'domena/zwrot.js': 2,
   'moduly/automatyzacje/trasy/ekran.js': 2,

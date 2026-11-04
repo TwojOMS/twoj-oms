@@ -26,8 +26,11 @@ describe('C08 — flaga domyślnie wyłączona: korekty jak dziś (inFakt, progr
   it('coWolnoWyslac bez flagi: korekta z numerem KSeF pierwotnej → POWOD_KOREKTA znak w znak', () => {
     const w = coWolnoWyslac(['v1', 'k1'], [vat(1), kor(1)]);
     expect(w.doWyslania.map((d) => d.uuid)).toEqual(['v1']);
-    expect(w.pominiete).toEqual([{ numer: 'FK/1/11/2026', powod: 'Korekty wysyła się w inFakcie — panel ich nie wysyła.' }]);
-    expect(POWOD_KOREKTA).toBe('Korekty wysyła się w inFakcie — panel ich nie wysyła.');
+    // PRZ-151.C02 (plan PRZ-151, rozdz. 8): nowe brzmienie POWOD_KOREKTA — bez nazwy programu; zostaje tylko dla
+    // programu, który nie wysyła do KSeF (flaga false). Do PRZ-151: „Korekty wysyła się w inFakcie — panel ich nie wysyła.”
+    const ZDANIE = 'Ten program faktur nie wysyła korekt do KSeF z OMS-u — wyślesz je bezpośrednio w programie faktur.';
+    expect(w.pominiete).toEqual([{ numer: 'FK/1/11/2026', powod: ZDANIE }]);
+    expect(POWOD_KOREKTA).toBe(ZDANIE);
   });
 
   it('coWolnoWyslac z jawnym { korekty: false } — to samo co bez flagi', () => {

@@ -5,6 +5,6 @@
 <% if (locals.komunikat) { %><div class="pas-potwierdzenie" role="status"><p><%= locals.komunikat %></p></div><% } %>
 <%- include('../../../core/web/konfigurator/kroki-konfiguratora', { kroki }) %>
 <% const krok = konfigurator.kroki[formularzId ? 1 : 0]; %>
-<%- include('../../../core/web/konfigurator/krok-konfiguratora', { zakresDatyStartu: locals.zakresDatyStartu, krok, akcja: adresAkcji(konfigurator,krok,'nowy'), formularzId, wersja: 0, wartosci: { uprawnienia: locals.wartosci?.uprawnienia }, poWyborze: include('woo-mail-wyslane', { mailWyslane: locals.mailWyslane ?? null, przelacznik: true, ukryty: locals.wartosci?.uprawnienia !== 'odczyt' }) }) %>
+<%- include('../../../core/web/konfigurator/krok-konfiguratora', { zakresDatyStartu: locals.zakresDatyStartu, krok, akcja: adresAkcji(konfigurator,krok,'nowy'), formularzId, wersja: 0, wartosci: { uprawnienia: locals.wartosci?.uprawnienia }, poWyborze: include('woo-mail-wyslane', { mailWyslane: locals.mailWyslane ?? null, przelacznik: true, ukryty: locals.wartosci?.uprawnienia !== 'odczyt' }), przedPrzyciskiem: !formularzId && locals.adresPrzykladowy ? `<p class="ust-pomoc">W piaskownicy działa adres sklepu przykładowego: ${locals.adresPrzykladowy.replace(/[&<>"']/g, (z) => '&#' + z.charCodeAt(0) + ';')}.</p>` : '' }) %>
 <p class="ust-pomoc">Szkic sklepu zapiszesz po podaniu kluczy REST. Domyślna data startu to dzisiaj; przed aktywacją możesz ją zmienić w kroku 4.</p>
 </div>

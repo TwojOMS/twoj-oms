@@ -9,7 +9,7 @@ import {uprawnieniaSklepu,czyOdmowaZapisu,bladKluczaTylkoOdczyt} from '../../../
 
 /** Klient i adapter powstają leniwie w rejestrze; jego pamięć klucz+generacja
  * unieważnia oba po zmianie kluczy, adresu albo mapowania. */
-export function createSklepyWooRuntime(o:{db:DatabaseSync;repozytorium:RepozytoriumKanalow}) {
+export function createSklepyWooRuntime(o:{db:DatabaseSync;repozytorium:RepozytoriumKanalow;klientWooZastepczy?:(u:{baseUrl:string;ck:string;cs:string})=>Record<string,any>|null}) {
  function ustawienia(klucz:string){
   const k=o.repozytorium.listaTypu('woo').find(k=>k.klucz===klucz);
   const d=o.db.prepare('SELECT adres,ustawienia_json FROM kanaly_sklepy WHERE klucz=?').get(klucz) as {adres:string;ustawienia_json:string}|undefined;
@@ -31,7 +31,8 @@ export function createSklepyWooRuntime(o:{db:DatabaseSync;repozytorium:Repozytor
    if(!r.ok&&(r.status<300||r.status>=400))throw new Error(`WooCommerce: HTTP ${r.status}.`);
    return r;
   };
-  const klient=new Proxy(createWooClient({...u,fetchImpl:undefined,http:bezpieczneHttp,tylkoTenSamOrigin:true}),{get(target,key){
+  const zastepczy=o.klientWooZastepczy?.(u);
+  const klient=new Proxy(zastepczy??createWooClient({...u,fetchImpl:undefined,http:bezpieczneHttp,tylkoTenSamOrigin:true}),{get(target,key){
    const f=Reflect.get(target,key);
    return typeof f==='function'?async(...args:unknown[])=>{
     try{return await f.apply(target,args);}catch(e){
@@ -40,6 +41,7 @@ export function createSklepyWooRuntime(o:{db:DatabaseSync;repozytorium:Repozytor
      // Komunikat budujemy sami z URL (znormalizowany origin), bez treści odpowiedzi sklepu.
      if(e instanceof Error&&e.name==='WooInnyOrigin')throw e;
      if(e instanceof Error&&(e.name==='WooTylkoOdczyt'||e.name==='WooKluczTylkoOdczyt'))throw e;
+     if(zastepczy&&e instanceof Error&&e.name==='WooOperacjaPrzykladowa')throw e;
      throw new Error('Nie udało się wykonać operacji sklepu WooCommerce.');
     }
    }:f;

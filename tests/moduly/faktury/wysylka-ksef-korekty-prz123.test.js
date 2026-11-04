@@ -1,7 +1,9 @@
-// PRZ-123 C08 — usługa wysyłki KSeF i automat dzienny podają regule flagę `korekty` z `program.opis.wbudowany`.
+// PRZ-123 C08 — usługa wysyłki KSeF i automat dzienny podają regule flagę `korekty`; od PRZ-151.C02 (plan PRZ-151, D2)
+// flaga = program ma zdolność `wyslijDoKsef`, a nie „program wbudowany”.
 // Prawdziwe `createFakturyWidok`, `createWysylkaKsef`, `createAutomatKsef` na prawdziwej bazie (:memory:) i programie
 // fakturowym w procesie (bez sieci). Dwa programy o tym samym koncie dokumentów:
-//   • `test` (bez `opis.wbudowany`) — korekty jak dziś: POWOD_KOREKTA znak w znak, automat ich nie rusza;
+//   • `test` (bez `opis.wbudowany`, ze zdolnością `wyslijDoKsef`) — PRZ-151.C02 zmienia oczekiwanie (zamierzona zmiana
+//     zachowania, właściciel: „automatem powinna iść razem z fakturami”): korekty jak przy wbudowanym — K1 leci, K0 czeka;
 //   • wbudowany (`opis.wbudowany: true`, jak TwojeFaktury) — korekta faktury już w KSeF jest kandydatem (podgląd,
 //     zatwierdzenie, automat), korekta faktury jeszcze nie w KSeF czeka (C09: POWOD_KOREKTA_CZEKA — nie „w inFakcie”).
 // Dane zmyślone (NIP-y testowe, numery KSeF wg wzoru TNumerKSeF).
@@ -15,7 +17,6 @@ import { POWOD_KOREKTA } from '../../../src/domena/wysylka-ksef.js';
 
 const NIP = '1234500011';
 const KSEF_PIERWOTNEJ = '1234563218-20261003-0A1B2C3D4E5F-01';
-const ZDANIE_KOREKTY = 'Korekty wysyła się w inFakcie — panel ich nie wysyła.';
 const ZDANIE_CZEKA = 'Korekta czeka na fakturę pierwotną — wyślesz ją do KSeF, gdy pierwotna dostanie numer KSeF.';
 const NAZWA = Object.freeze({ mianownik: 'Program', dopelniacz: 'Programu', miejscownik: 'Programie', narzednik: 'Programem' });
 
@@ -64,38 +65,35 @@ function zestaw({ wbudowany }) {
 const ARGS = { uuids: ['V', 'K1', 'K0'], miesiac: '2026-10', pole: 'invoice_date' };
 const wlacz = (db) => zapiszUstawieniaAutomatu(db, { wlaczony: true, godzina: '20:00', ostatniPrzebieg: null, login: 'adam' });
 
-describe('C08 — program `test` (nie wbudowany): korekty jak dziś', () => {
-  it('flaga usługi wyłączona', () => {
+// PRZ-151.C02: do tej pory „korekty jak dziś” (flaga false, obie korekty z POWOD_KOREKTA, automat tylko V). Zmiana
+// zamierzona (plan PRZ-151, 151-02): program, który wysyła do KSeF, wysyła też korekty z pierwotną w KSeF.
+describe('C08 / PRZ-151.C02 — program `test` (nie wbudowany, wysyła do KSeF): korekty jak przy wbudowanym', () => {
+  it('flaga usługi włączona (zdolność `wyslijDoKsef`)', () => {
     const z = zestaw({ wbudowany: false });
-    try { expect(z.wysylkaKsef.korekty).toBe(false); } finally { z.db.close(); }
+    try { expect(z.wysylkaKsef.korekty).toBe(true); } finally { z.db.close(); }
   });
 
-  it('podgląd i zatwierdzenie: obie korekty odrzucone zdaniem POWOD_KOREKTA znak w znak, leci tylko VAT', async () => {
+  it('podgląd i zatwierdzenie: V i K1 lecą, K0 (pierwotna nie w KSeF) czeka z POWOD_KOREKTA_CZEKA', async () => {
     const z = zestaw({ wbudowany: false });
     try {
-      expect(POWOD_KOREKTA).toBe(ZDANIE_KOREKTY);
+      expect(POWOD_KOREKTA).not.toBe(ZDANIE_CZEKA);
       const p = await z.wysylkaKsef.podglad(ARGS);
-      expect(p.doWyslania.map((d) => d.uuid)).toEqual(['V']);
-      expect(p.pominiete).toEqual([
-        { numer: 'K1/10/2026', powod: ZDANIE_KOREKTY },
-        { numer: 'K0/10/2026', powod: ZDANIE_KOREKTY },
-      ]);
+      expect(p.doWyslania.map((d) => d.uuid)).toEqual(['V', 'K1']);
+      expect(p.pominiete).toEqual([{ numer: 'K0/10/2026', powod: ZDANIE_CZEKA }]);
       const w = await z.wysylkaKsef.wyslij(ARGS, 'adam');
-      expect(z.program.wyslane).toEqual(['V']);
-      expect(w.pominiete.map((x) => x.powod)).toEqual([ZDANIE_KOREKTY, ZDANIE_KOREKTY]);
+      expect(z.program.wyslane).toEqual(['V', 'K1']);
+      expect(w.pominiete.map((x) => x.powod)).toEqual([ZDANIE_CZEKA]);
     } finally { z.db.close(); }
   });
 
-  it('automat dzienny: wysyła tylko VAT, korekty w „po zasadzie” z POWOD_KOREKTA', async () => {
+  it('automat dzienny: wysyła V i K1, K0 w „po zasadzie” z POWOD_KOREKTA_CZEKA', async () => {
     const z = zestaw({ wbudowany: false });
     try {
       wlacz(z.db);
       const w = await z.automat('2026-10-20T18:01:00Z').przebieg();
-      expect(z.program.wyslane).toEqual(['V']);
-      expect(w.poZasadzie).toEqual(expect.arrayContaining([
-        { numer: 'K1/10/2026', powod: ZDANIE_KOREKTY },
-        { numer: 'K0/10/2026', powod: ZDANIE_KOREKTY },
-      ]));
+      expect([...z.program.wyslane].sort()).toEqual(['K1', 'V']);
+      expect(w.poZasadzie).toEqual(expect.arrayContaining([{ numer: 'K0/10/2026', powod: ZDANIE_CZEKA }]));
+      expect(w.poZasadzie.map((x) => x.numer)).not.toContain('K1/10/2026');
     } finally { z.db.close(); }
   });
 });

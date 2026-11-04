@@ -281,7 +281,8 @@ export function createAtrapaInfaktu({ db, teraz = () => new Date(), log = (...t)
     const dok = jeden(uuid);
     if (!dok || dok.rodzaj !== 'korekta') throw bladOperatora('inFakt odrzucił odczyt korekty (404): Zasób którego szukasz nie został znaleziony', { status: 404 });
     return { uuid: dok.uuid ?? uuid, number: dok.number,
-      corrected_invoice_number: dok.corrected_invoice_number, invoice_date: dok.invoice_date, rodzaj: 'korekta' };
+      corrected_invoice_number: dok.corrected_invoice_number, invoice_date: dok.invoice_date, rodzaj: 'korekta',
+      ksef_number: dok.ksef_number ?? null };
   }
 
   async function pobierzFakture(uuid) {

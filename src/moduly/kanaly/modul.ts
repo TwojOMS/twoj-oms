@@ -7,6 +7,7 @@ import {registerTrasyAllegro} from './trasy-allegro.ts';
 import {registerTrasyWoo} from './trasy-woo.ts';
 import {createSklepyWoo} from './services/sklepy-woo.ts';
 import {createWooClient} from '../../oms/woo/client.js';
+import {klientSklepuPrzykladowego} from './services/atrapa-sklepu-przykladowego.ts';
 import {migracjaKanalowSprzedazy} from './migracje/0001-kanaly-sprzedazy.ts';
 import {migracjaDiagnostykiAllegro} from './migracje/0002-diagnostyka-allegro.ts';
 import {migracjaTypuKanaluISklepow} from './migracje/0003-kanaly-typ-sklepy.ts';
@@ -26,11 +27,17 @@ export function createModulKanaly(definicje:readonly DefinicjaKanalu[],niekomple
    // PRZ-148.07: w trybie próby transport Allegro odmawia hosta poza jawnym profilem Sandbox. Wyjątek: atrapa
    // autoryzacji razem z wstrzykniętym transportem (cały ruch Allegro idzie do atrapy, nie do sieci).
    const atrapaAllegro=Boolean(o.autoryzacjaAtrapy&&o.fetchImpl);
-   const uslugi=zbudujUslugiKanalow(ctx,definicje,tryb==='proba'&&!atrapaAllegro?{...o,strazAllegro:profilAllegro}:o);
+   const przykladowySklep=(adres:string)=>Object.values(ctx.usluga<any>('kanaly','config').sklepy??{}).some((s:any)=>s?.atrapa===true&&s.baseUrl===adres);
+   const opcje:OpcjeKompozycji={...o,...(tryb==='proba'?{
+    // Rejestr tworzy klienta dopiero po zbudowaniu usług: regułę adresu sprawdzamy leniwie.
+    klientWooZastepczy:d=>przykladowySklep(d.baseUrl)?klientSklepuPrzykladowego(d):null,
+    ...(!atrapaAllegro?{strazAllegro:profilAllegro}:{}),
+   }:{})};
+   const uslugi=zbudujUslugiKanalow(ctx,definicje,opcje);
    const envSklepy=definicje.filter(d=>d.typ==='woo').map(d=>({klucz:d.klucz,nazwa:d.etykieta??d.klucz,adres:uslugi.config.sklepy[d.klucz]?.baseUrl??'',od:uslugi.config.sklepy[d.klucz]?.od??'',mapowanie:uslugi.config.sklepy[d.klucz]?.mapowanie??{instancje:{}}}));
-   const sklepyWoo=createSklepyWoo({db:ctx.db,repozytorium:uslugi.repozytoriumKanalow,envSklepy,teraz:ctx.teraz,tryb,
-    przykladowySklep:adres=>Object.values(ctx.usluga<any>('kanaly','config').sklepy??{}).some((s:any)=>s?.atrapa===true&&s.baseUrl===adres),
-    klient:d=>createWooClient({...d,fetchImpl:o.fetchImpl,tylkoTenSamOrigin:true}),poAktywacji:k=>{
+   const sklepyWoo=createSklepyWoo({db:ctx.db,repozytorium:uslugi.repozytoriumKanalow,envSklepy,teraz:ctx.teraz,tryb,przykladowySklep,
+    // PRZ-150.01: adres atrapy nie istnieje w sieci — w próbie kreator rozmawia ze sklepem przykładowym bez sieci.
+    klient:d=>tryb==='proba'&&przykladowySklep(d.baseUrl)?klientSklepuPrzykladowego(d):createWooClient({...d,fetchImpl:o.fetchImpl,tylkoTenSamOrigin:true}),poAktywacji:k=>{
      let odbiorca:((kanal:typeof k)=>void)|undefined;
      try{odbiorca=ctx.usluga('raporty','poAktywacjiKanalu');}catch(e){if(!(e instanceof Error)||!e.message.includes('raporty.poAktywacjiKanalu')||!e.message.includes('nie istnieje'))throw e;}
      odbiorca?.(k);

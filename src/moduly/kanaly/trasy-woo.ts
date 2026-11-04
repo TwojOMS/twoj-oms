@@ -69,6 +69,8 @@ export function registerTrasyWoo(app:FastifyInstance,o:{db:DatabaseSync;repozyto
    formularzId:'',metody,mapowanie,metodyOms:METODY_WYSYLKI.filter(m=>!m.startsWith('allegro_')),etykiety:ETYKIETY_WYSYLKI,
    stan:k?db.prepare('SELECT ostatni_przebieg_at,zsynchronizowane_do,ostatni_blad FROM stan_pollera WHERE sklep=?').get(k.klucz):null,
    moznaUsunac:Boolean(k&&k.zrodlo==='panel'&&woo.blokadaUsuniecia(k.klucz)===null),
+   // PRZ-150.01: w piaskownicy jedyny działający adres to sklep przykładowy z konfiguracji — mówimy jaki.
+   adresPrzykladowy:o.tryb==='proba'?(Object.values(configListy().sklepy??{}) as any[]).find(s=>s?.atrapa===true&&s.baseUrl)?.baseUrl??null:null,
    blad:bladMetod,komunikat:d?.sprawdzono_at?'Połączenie ze sklepem działa.':null,...extra,
   });
  }

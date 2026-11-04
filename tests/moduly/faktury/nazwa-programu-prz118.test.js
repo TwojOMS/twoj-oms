@@ -354,7 +354,13 @@ describe('PRZ-118.09 nazwa programu w tekstach i widokach', () => {
       const bezPustych = (html) => html.replace(/\n[ \t]*(?=\n)/gu, '');
       // PRZ-142.01 (zlecenie A 04.11): przesyłka ręczna nie zakłada DPD — „nie pyta kuriera”.
       const dpd = (html) => html.replaceAll('o nic nie pyta DPD —', 'o nic nie pyta kuriera —');
-      const oczekiwane = { ...migawka[k], glowna: bezPustych(dpd((migawka[k].glowna.includes(csv) ? migawka[k].glowna : migawka[k].glowna.replace(pdf, `${pdf}\n            ${csv}`)).replace(p8, '').replaceAll(drukDawniej, drukTeraz))) };
+      // PRZ-151.C01 (plan D7): korekta zwrotu z panelu jest powiązana z zamówieniem zwrotu — w kolumnie powiązania
+      // listy FAKTURY stoi odnośnik do zamówienia zamiast „—”. Zmiana świadoma, tylko w wierszu tej korekty.
+      const k151 = (html) => html.replace(
+        /(<strong>1\/KOR\/10\/2026<\/strong>[\s\S]*?<td>\s*)<span class="wiersz-szczegoly">—<\/span>/u,
+        '$1<a class="link-numer" title="PC-101" href="/zamowienia/1">PC-101</a>',
+      );
+      const oczekiwane = { ...migawka[k], glowna: bezPustych(k151(dpd((migawka[k].glowna.includes(csv) ? migawka[k].glowna : migawka[k].glowna.replace(pdf, `${pdf}\n            ${csv}`)).replace(p8, '').replaceAll(drukDawniej, drukTeraz)))) };
       // PRZ-147.03 (zlecenie właściciela 04.11): sekcja „Faktura” karty ma przy zwrocie bez korekty przycisk, zdanie blokady
       // albo odnośnik do ekranu zwrotu — nowy blok, poza zakresem migawki 09.
       const k147 = /\n[ \t]*<(p|div) class="wyjasnienie" id="korekta-zwrotu-\d+">[\s\S]*?<\/\1>/gu;

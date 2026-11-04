@@ -34,6 +34,8 @@ import { ostrzezeniaAutomatuKsef, ostrzezeniaNiepewnychKsef, ostrzezeniaAutomaty
 import { ukryteTypyKonta } from '../../oms/db/powiadomienia.js';
 import { odrzucenia, lukiKsef, poTerminie, zwrotyBezKorekty, pobraniaBezGotowki, dzienWystawieniaLuki } from '../../oms/db/ostrzezenia.js';
 import { wysylkaKsef as rezerwacjaKsef } from '../faktury/db/wysylki-ksef.js';
+import { createWysylkaKsef } from '../faktury/services/wysylka-ksef.js';
+import { zProgramu } from '../../integracje/program-fakturowy.ts';
 import { wysylkaZKarty, POWOD_KOREKTA, POWOD_KOREKTA_CZEKA } from '../../domena/wysylka-ksef.js';
 import { czyWysylacKonsumenckie } from '../faktury/db/ksef-konsumenckie.js';
 import { czyFakturaDlaKazdego } from '../faktury/db/faktury-dla-kazdego.js';
@@ -142,6 +144,10 @@ const drukarkaFaktur = () => {
   try { return stanDrukuFaktur() ?? null; } catch { return null; }
 };
 const nazwaProgramu = odmianaNazwyProgramu(programFaktur);
+// Zdolność wysyłki rozstrzyga wyłącznie usługa KSeF. Starsze atrapy usług bez flagi
+// korzystają z tej samej fabryki; jej utworzenie nie odczytuje ani nie wysyła dokumentów.
+const wysylaKorekty = wysylkaKsef?.korekty ?? createWysylkaKsef({ db, program: programFaktur }).korekty;
+const programKarty = zProgramu(opcje);
 const gdzieProgramu = gdzieDokument(programFaktur);
 // Reguła VAT programu; obiekt bez opisu (surowy klient inFaktu, mock) i brak programu = „wierszami”, jak przed zmianą.
 const regulaVat = programFaktur?.opis?.regulaVat ?? 'wierszami';
@@ -588,6 +594,37 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
       } catch { /* zdanie „czeka” zostaje */ }
     }
   }
+  // PRZ-151.C04: jeden odczyt korekty programu zewnętrznego na zwrot.
+  // Numer korekty i rezerwacja mają pierwszeństwo przed blokadą pierwotnej.
+  const ksefKorektKarty = {};
+  // Zachowujemy też rozpoznanie wbudowanego programu ze starszych, niepełnych obiektów `infakt`.
+  if (programKarty?.opis?.wbudowany !== true && programFaktur?.opis?.wbudowany !== true) {
+    const zdolnosci = programKarty?.opis?.zdolnosci ?? [];
+    for (const w of (z.zwroty || []).filter((x) => x.korekta_uuid)) {
+      ksefKorektKarty[w.id] = { wolno: false, powod: POWOD_KOREKTA };
+      if (!wysylaKorekty || !zdolnosci.includes('odczytKorekty')) continue;
+      try {
+        const k = await programKarty.pobierzKorekte(w.korekta_uuid);
+        if (!k) throw new Error('Brak korekty');
+        const stan = wysylkaZKarty({
+          rodzaj: 'korekta', program: programKarty, uuid: w.korekta_uuid,
+          ksefNumer: k.ksef_number,
+          zleconaAt: rezerwacjaKsef(db, w.korekta_uuid)?.zlecona_at ?? null,
+          dzienWystawienia: k.invoice_date || (w.korekta_zlecona_at ? dzienWarszawa(w.korekta_zlecona_at) : null),
+          nip: daneFaktury(z).nip, konsumenckie: czyWysylacKonsumenckie(db),
+        });
+        const ksefKorygowanej = !k.corrected_invoice_number || k.corrected_invoice_number === z.faktura?.numer
+          ? z.faktura?.ksef_numer : null;
+        ksefKorektKarty[w.id] = {
+          ...stan, numer: k.ksef_number,
+          ...(stan.stan === 'brak' && !ksefKorygowanej ? { wolno: false, powod: POWOD_KOREKTA_CZEKA } : {}),
+        };
+      } catch {
+        ksefKorektKarty[w.id] = { wolno: false,
+          powod: `Panel nie odczytał tej korekty z ${nazwaProgramu.dopelniacz} — stan KSeF sprawdzisz w zakładce Faktury.` };
+      }
+    }
+  }
   // PRZ-148.03: zwrot z dostawą bez korekty — pozycje faktury z programu, żeby karta znała regułę „faktura bez pozycji
   // Dostawa” (domena/zwrot.js) zanim operator kliknie. Pytamy tylko w tym stanie; błąd odczytu → przycisk zostaje,
   // a odmowę da jak dotąd usługa korekty.
@@ -788,6 +825,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     })(),
     powodKorektyKsef: programFaktur?.opis?.wbudowany === true ? POWOD_KOREKTA_CZEKA : POWOD_KOREKTA, // C09: TwojeFaktury wysyła korekty
     korektyBezCzekania,
+    ksefKorektKarty,
     // PRZ-147.03: „Wystaw korektę” w sekcji Faktura — mapa `id zwrotu -> stan` dla zwrotów bez numeru korekty przy
     // zamówieniu z fakturą. Blokada z TYCH SAMYCH reguł domeny co ekran zwrotu i usługa korekty; widok tylko czyta.
     korektaNaKarcie: z.faktura ? Object.fromEntries((z.zwroty ?? []).filter((w) => !w.korekta_numer).map((w) => [w.id, {

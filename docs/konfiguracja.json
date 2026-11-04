@@ -7219,20 +7219,6 @@
     },
     {
       "path": "src/moduly/kanaly/modul.ts",
-      "line": 21,
-      "expression": "env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(env)"
-    },
-    {
-      "path": "src/moduly/kanaly/modul.ts",
-      "line": 21,
-      "expression": "env",
-      "callee": "profilAllegroProby",
-      "call": "profilAllegroProby(env)"
-    },
-    {
-      "path": "src/moduly/kanaly/modul.ts",
       "line": 22,
       "expression": "env",
       "callee": "efektywnyTryb",
@@ -7240,7 +7226,21 @@
     },
     {
       "path": "src/moduly/kanaly/modul.ts",
+      "line": 22,
+      "expression": "env",
+      "callee": "profilAllegroProby",
+      "call": "profilAllegroProby(env)"
+    },
+    {
+      "path": "src/moduly/kanaly/modul.ts",
       "line": 23,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/kanaly/modul.ts",
+      "line": 24,
       "expression": "env",
       "callee": "konfiguracjaKanalow",
       "call": "konfiguracjaKanalow(definicje,env,niekompletneJakoAlarm)"
@@ -8236,7 +8236,7 @@
     },
     {
       "path": "src/moduly/kanaly/modul.ts",
-      "sha256": "45c9f2570b57ece7d07a8194469937b47e9141bfa5a0c372405e0ca297323fe1",
+      "sha256": "1de6f38d91a466ba0a247ddc301a9c8b4c34bea4ba8437545d6eb36a5849e01d",
       "normalizacja": "LF"
     },
     {

@@ -62,12 +62,15 @@ export function createWysylkaKsef({
   const program = zProgramu({ program: programPodany, infakt });
   // Bez programu (usługa złożona w teście bez `infakt`) zdania mówią ogólnie — nazwy nie ma skąd wziąć.
   const nazwa = program?.opis?.nazwa ?? BEZ_NAZWY;
-  const niedostepna = program && !program.opis?.zdolnosci?.includes('wyslijDoKsef')
+  // PRZ-151 D2: jedna odpowiedź „czy program wysyła do KSeF z OMS-u” dla `niedostepna` i flagi `korekty`.
+  const wysyla = program?.opis?.zdolnosci?.includes('wyslijDoKsef') === true;
+  const niedostepna = program && !wysyla
     ? `${nazwa.mianownik} nie wysyła do KSeF z OMS-u — panel nie ma jak zlecić mu wysyłki, `
       + `więc dokumenty wyślesz do KSeF bezpośrednio w ${nazwa.miejscownik}.`
     : null;
-  // PRZ-123 C08: korekty wysyła do KSeF wyłącznie program wbudowany (TwojeFaktury); inFakt i reszta — jak dziś.
-  const korekty = program?.opis?.wbudowany === true;
+  // PRZ-123 C08 → PRZ-151 D2: korekty (z pierwotną już w KSeF) wysyła każdy program, który wysyła do KSeF z OMS-u —
+  // wbudowany i zewnętrzny; program bez tej zdolności — POWOD_KOREKTA.
+  const korekty = wysyla;
   // Zbiór liczony ZA KAŻDYM RAZEM od nowa, z listy pobranej na świeżo. Podgląd i zatwierdzenie
   // liczą go OSOBNO — przepisanie wyniku podglądu byłoby dokładnie tą pomyłką, przed którą
   // broni się nadanie masowe (przewodnik 4.13a): między jednym ekranem a drugim właściciel
@@ -379,8 +382,9 @@ export function createWysylkaKsef({
 
     // PRZ-123 C09ca: wpis automatu „nie doszła” (TwojeFaktury) ma mówić o OSTATNIM wyniku tej wersji — także po
     // ręcznym ponowieniu (odrzucona → wpis odrzuconej; nie wiadomo / w KSeF → wpis znika). Awaria zapisu nie zabiera
-    // wyniku wysyłki — następna wysyłka uzgodni wpis jeszcze raz.
-    if (korekty) {
+    // wyniku wysyłki — następna wysyłka uzgodni wpis jeszcze raz. PRZ-151 D2: warunek własny (program wbudowany), nie
+    // flaga `korekty` — ta od PRZ-151 obejmuje też programy zewnętrzne, a uzgodnienie dotyczy tylko wpisów TwojeFaktury.
+    if (program?.opis?.wbudowany === true) {
       try {
         uzgodnijWstrzymane(db, zlecone.map((d) => d.uuid), undefined, wpisTf);
       } catch (e) {

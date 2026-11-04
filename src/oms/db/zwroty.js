@@ -343,3 +343,19 @@ export function zwrotyDlaZamowien(db, zamowienieIds) {
   }
   return mapa;
 }
+
+/**
+ * PRZ-151.C01 — korekty wystawione z panelu, dla CAŁEJ listy dokumentów naraz (jedno zapytanie, nie jedno na
+ * wiersz): uuid korekty → zamówienie zwrotu i numer KSeF faktury tego zamówienia (`null`, gdy faktura go nie ma
+ * albo jej nie ma). Zakładka FAKTURY wiąże po tym korektę z zamówieniem (ślad wysyłki na karcie) i — gdy program
+ * nie podaje numeru KSeF faktury pierwotnej — bierze go stąd jako pierwsze źródło (plan PRZ-151, D3 i D7).
+ * Tylko odczyt. `faktury` ma UNIQUE (zamowienie_id), więc najwyżej jeden wiersz na korektę ze zwrotu.
+ */
+export function korektyZwrotowZFakturaZamowienia(db) {
+  return db.prepare(
+    'SELECT zw.korekta_uuid AS uuid, z.id AS zamowienie_id, z.numer AS zamowienie_numer, f.numer, f.ksef_numer'
+    + ' FROM zwroty zw JOIN zamowienia z ON z.id = zw.zamowienie_id'
+    + ' LEFT JOIN faktury f ON f.zamowienie_id = zw.zamowienie_id'
+    + ' WHERE zw.korekta_uuid IS NOT NULL',
+  ).all();
+}

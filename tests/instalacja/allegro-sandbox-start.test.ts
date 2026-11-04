@@ -51,3 +51,22 @@ it('PRZ-148.07: plik profilu Sandbox to jawny profil — allegrosandbox.pl przec
   expect(ostrzezenia.filter(t=>t.includes('https://allegro.pl/'))).toEqual([]);
  }finally{warn.mockRestore();}
 });
+it('PRZ-150.03: plik profilu bez `klucz` — profil Sandbox i straż zostają, stałego kanału z pliku nie ma',async()=>{
+ const {przygotujUruchomienieSandbox}=await import('../../deploy/proba/sandbox-uruchomienie.ts');
+ const calls:string[]=[];
+ const plan=przygotujUruchomienieSandbox(env,{srodowisko:'sandbox'},async(u)=>{calls.push(String(u));return Response.json({device_code:'KOD-POLCIEN',user_code:'ABC-123',verification_uri:'https://example.test/skojarz',expires_in:600,interval:5});});
+ db=openOmsDb();a=await zbudujAplikacje({db,env,moduly:plan.moduly,nadpisania:plan.nadpisania(db),log:()=>{}});
+ const config=a.usluga<any>('kanaly','config');
+ expect(config.definicje.filter((d:any)=>/^allegro_sandbox_/.test(d.klucz))).toEqual([]);
+ expect(Object.keys(config.braki).filter(k=>/^allegro_sandbox_/.test(k))).toEqual([]);
+ expect(a.usluga<any>('kanaly','stanyKanalow')().filter((s:any)=>/^allegro_sandbox_/.test(s.klucz??s.kanal??''))).toEqual([]);
+ expect(a.usluga<any>('kanaly','repozytoriumKanalow').pobierz('allegro_sandbox_proba')).toBeFalsy();
+ const aplikacja=a.usluga<any>('kanaly','aplikacjaAllegro'),para={clientId:'polcien-device-id',clientSecret:'SEKRET-POLCIEN'},aktor={id:1,login:'admin'};
+ await aplikacja.sprawdzIZapiszAplikacjeDevice('sandbox',para,aktor);
+ expect(calls).toContain('https://allegro.pl.allegrosandbox.pl/auth/oauth/device');
+ calls.length=0;
+ expect((await aplikacja.sprawdzIZapiszAplikacjeDevice('produkcja',para,aktor)).ok).toBe(false);
+ expect(calls).toEqual([]);
+ expect(()=>przygotujUruchomienieSandbox(env,{srodowisko:'produkcja'})).toThrow();
+ expect(()=>przygotujUruchomienieSandbox({...env,OMS_TRYB:'produkcja'},{srodowisko:'sandbox'})).toThrow();
+});

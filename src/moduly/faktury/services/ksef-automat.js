@@ -33,7 +33,7 @@ export function createAutomatKsef({
   db, fakturyWidok, wysylkaKsef, teraz = () => new Date(), log = console.error, dostepny = () => true,
 }) {
   // Proces właśnie wstał — wynik „trwa” w bazie to przebieg, który padł razem z poprzednim procesem.
-  // PRZ-123 C08: korekty jako kandydaci tylko, gdy usługa wysyłki je dopuszcza (program wbudowany).
+  // PRZ-123 C08: korekty jako kandydaci tylko, gdy usługa wysyłki je dopuszcza (PRZ-151 D2: program, który wysyła do KSeF).
   const opcje = { korekty: wysylkaKsef?.korekty === true };
   const doZaznaczenia = (d) => doZaznaczeniaWszystkich(d, czyWysylacKonsumenckie(db), opcje);
   oznaczPrzerwanyPrzebieg(db, teraz().toISOString());
@@ -60,7 +60,35 @@ export function createAutomatKsef({
     };
     if (!zajmijPrzebieg(db, chwila.dzien, wynik, start.toISOString())) return { pominiety: true, powod: 'dziś już był przebieg' };
 
+    // Jeden dokument: zapis „w locie”, wysyłka, wynik. Zwraca true, gdy przebieg ma stanąć (wyłączenie albo błąd).
+    async function wyslijJeden(d, miesiac) {
+      // Wyłączenie w Ustawieniach działa od razu — także między dokumentami jednego przebiegu.
+      if (!wczytajAutomatKsef(db).wlaczony) { wynik.stan = 'wylaczony'; return true; }
+      // Dokument „w locie” zapisany PRZED wysyłką: po restarcie w trakcie ekran i ostrzeżenie wskażą, który
+      // sprawdzić w inFakcie.
+      wynik.wTrakcie = { uuid: d.uuid, numer: d.number };
+      zapiszWynikAutomatu(db, wynik, teraz().toISOString());
+      const w = await wysylkaKsef.wyslij({ uuids: [d.uuid], miesiac, pole: POLE_DATY_AUTOMATU }, KTO_AUTOMAT);
+      wynik.wTrakcie = null;
+      dopiszWynik(wynik, w);
+      if (w.blad) {
+        wynik.blad = w.blad; wynik.stan = 'blad';
+        // Jednoznaczna odmowa inFaktu: nic nie poszło i nic nie jest „nie wiadomo” — usługa zdjęła rezerwację,
+        // więc bez wstrzymania ta faktura stawałaby jutro pierwsza i znowu zatrzymywała automat.
+        if (!w.wyslane?.length && !w.niepewne?.length) {
+          wstrzymajFakture(db, { uuid: d.uuid, numer: d.number, dzien: chwila.dzien, powod: w.blad }, teraz().toISOString());
+        }
+      }
+      zapiszWynikAutomatu(db, wynik, teraz().toISOString());
+      return wynik.stan === 'blad';
+    }
+
     try {
+      // Dwie rundy (recenzja C02): najpierw faktury z obu miesięcy (każdy miesiąc zaraz po pobraniu listy), potem
+      // korekty z obu miesięcy w kolejności listy. Pewna odmowa korekty kończy przebieg, więc żadna korekta — także
+      // z poprzedniego miesiąca albo z późniejszą datą — nie zatrzyma faktur VAT do jutra.
+      const korektyNaPotem = [];
+      let stop = false;
       petla: for (const miesiac of miesiaceAutomatu(chwila.dzien)) {
         const dokumenty = await fakturyWidok.dokumenty({ miesiac, pole: POLE_DATY_AUTOMATU });
         // Wstrzymane (odrzucone wcześniej przez inFakt): z numerem KSeF albo z rezerwacją — człowiek je wysłał,
@@ -78,25 +106,13 @@ export function createAutomatKsef({
         const zZasady = dokumenty.filter((d) => d?.stanKsef === 'brak' && !doZaznaczenia(d)).map((d) => d.uuid);
         wynik.poZasadzie.push(...coWolnoWyslac(zZasady, dokumenty, czyWysylacKonsumenckie(db), wysylkaKsef.nazwaProgramu, undefined, opcje).pominiete);
         for (const d of kandydaci) {
-          // Wyłączenie w Ustawieniach działa od razu — także między dokumentami jednego przebiegu.
-          if (!wczytajAutomatKsef(db).wlaczony) { wynik.stan = 'wylaczony'; break petla; }
-          // Dokument „w locie” zapisany PRZED wysyłką: po restarcie w trakcie ekran i ostrzeżenie wskażą, który
-          // sprawdzić w inFakcie.
-          wynik.wTrakcie = { uuid: d.uuid, numer: d.number };
-          zapiszWynikAutomatu(db, wynik, teraz().toISOString());
-          const w = await wysylkaKsef.wyslij({ uuids: [d.uuid], miesiac, pole: POLE_DATY_AUTOMATU }, KTO_AUTOMAT);
-          wynik.wTrakcie = null;
-          dopiszWynik(wynik, w);
-          if (w.blad) {
-            wynik.blad = w.blad; wynik.stan = 'blad';
-            // Jednoznaczna odmowa inFaktu: nic nie poszło i nic nie jest „nie wiadomo” — usługa zdjęła rezerwację,
-            // więc bez wstrzymania ta faktura stawałaby jutro pierwsza i znowu zatrzymywała automat.
-            if (!w.wyslane?.length && !w.niepewne?.length) {
-              wstrzymajFakture(db, { uuid: d.uuid, numer: d.number, dzien: chwila.dzien, powod: w.blad }, teraz().toISOString());
-            }
-          }
-          zapiszWynikAutomatu(db, wynik, teraz().toISOString());
-          if (wynik.stan === 'blad') break petla;
+          if (d.rodzaj === 'korekta') { korektyNaPotem.push({ d, miesiac }); continue; }
+          if (await wyslijJeden(d, miesiac)) { stop = true; break petla; }
+        }
+      }
+      if (!stop) {
+        for (const { d, miesiac } of korektyNaPotem) {
+          if (await wyslijJeden(d, miesiac)) break;
         }
       }
     } catch (e) {

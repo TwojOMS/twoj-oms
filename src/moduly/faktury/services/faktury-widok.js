@@ -7,7 +7,8 @@ import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { czyPaczkaBezGotowki } from '../../../domena/pobranie-zaplacone.js';
 import { czyPobranie } from '../../../domena/wysylka.js';
 import { OSTATNIA_ZYWA_PACZKA } from '../../wysylka/db/ostatnia-paczka.js';
-import { idDokumentuSql } from '../../../domena/dokument-programu.js';
+import { idDokumentuSql, czyDokumentProgramu } from '../../../domena/dokument-programu.js';
+import { korektyZwrotowZFakturaZamowienia } from '../../../oms/db/zwroty.js';
 import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 // Jedyne miejsce, które zna naraz inFakt i bazę panelu. Reguły są w domain/, I/O tutaj.
@@ -49,6 +50,15 @@ const POWIAZANIA = `
   SELECT ${idDokumentuSql('f')} AS uuid, z.id AS zamowienie_id, z.numer AS zamowienie_numer
   FROM faktury f JOIN zamowienia z ON z.id = f.zamowienie_id
   WHERE ${idDokumentuSql('f')} IS NOT NULL
+`;
+
+// PRZ-151.C01 — numer KSeF faktury po jej NUMERZE, drugie źródło `ksef_korygowanej` korekty (plan PRZ-151, D3).
+// Program i identyfikator jadą razem, bo ten sam numer może mieć faktura innego programu (np. po zmianie modułu
+// faktur) — liczy się tylko wiersz programu, który dał listę (`czyDokumentProgramu`). JEDNO zapytanie na listę.
+const KSEF_FAKTUR_PO_NUMERZE = `
+  SELECT numer, ksef_numer, program, ${idDokumentuSql()} AS dokument_id
+  FROM faktury
+  WHERE numer IS NOT NULL AND ksef_numer IS NOT NULL AND ksef_numer <> ''
 `;
 
 // ⚠️ DRUGIE ŹRÓDŁO DOKUMENTÓW WYSTAWIONYCH Z PANELU. Faktura zbiorcza klienta dropshippingowego
@@ -136,6 +146,18 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
     for (const w of db.prepare(POWIAZANIA).all()) {
       zamowienia.set(w.uuid, { id: w.zamowienie_id, numer: w.zamowienie_numer });
     }
+    // PRZ-151.C01 (D7): korekta wystawiona z panelu należy do zamówienia swojego zwrotu — ślad wysyłki do KSeF
+    // trafia wtedy do logu karty jak przy fakturze. Faktura zamówienia (wyżej) ma pierwszeństwo przy kolizji uuid.
+    const ksefKorektZwrotow = new Map();
+    for (const w of korektyZwrotowZFakturaZamowienia(db)) {
+      if (!zamowienia.has(w.uuid)) zamowienia.set(w.uuid, { id: w.zamowienie_id, numer: w.zamowienie_numer });
+      if (w.ksef_numer) ksefKorektZwrotow.set(w.uuid, { numer: w.numer, ksef: w.ksef_numer });
+    }
+    const ksefFakturPoNumerze = new Map();
+    for (const w of db.prepare(KSEF_FAKTUR_PO_NUMERZE).all()) {
+      if (!czyDokumentProgramu(w, program) || ksefFakturPoNumerze.has(w.numer)) continue;
+      ksefFakturPoNumerze.set(w.numer, w.ksef_numer);
+    }
     const okresy = new Map();
     for (const w of db.prepare(POWIAZANIA_OKRESOW).all()) {
       okresy.set(w.uuid, { id: w.id, klient: w.klient_klucz, rok: w.rok, miesiac: w.miesiac });
@@ -151,8 +173,24 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
       if (czyPaczkaBezGotowki(w)) bezGotowki.add(w.uuid);
     }
     return {
-      zamowienia, okresy, wysylkiKsef, bezGotowki,
+      zamowienia, okresy, wysylkiKsef, bezGotowki, ksefKorektZwrotow, ksefFakturPoNumerze,
     };
+  }
+
+  // PRZ-151.C01 — numer KSeF faktury pierwotnej dla korekty, której program go nie podaje (inFakt). Trzy źródła
+  // PO KOLEI (plan PRZ-151, D3): 1) korekta zwrotu z panelu → faktura zamówienia tego zwrotu; 2) faktura panelu
+  // o numerze `corrected_invoice_number`; 3) wiersz VAT tej samej listy o tym numerze. Brak → `null`, a reguła
+  // wysyłki (`rodzajDoWyslania`, domena/wysylka-ksef.js) odmawia: nie wiemy = nie wysyłamy.
+  // Źródło 1 obowiązuje tylko dla faktury, którą korekta koryguje (recenzja PRZ-151.C01): faktura zamówienia mogła
+  // zostać skasowana w programie i zastąpiona nową (A bez KSeF → B z KSeF), a korekta A nie może dostać numeru B.
+  // Program podaje numer korygowanej i jest on inny niż numer obecnej faktury zamówienia → dalej źródła 2 i 3.
+  function ksefKorygowanej(d, mapy) {
+    const numer = d.corrected_invoice_number;
+    const zwrot = mapy.ksefKorektZwrotow.get(d.uuid);
+    const zeZwrotu = zwrot && (!numer || zwrot.numer === numer) ? zwrot.ksef : null;
+    return zeZwrotu
+      || (numer ? mapy.ksefFakturPoNumerze.get(numer) || mapy.ksefZListy?.get(numer) : null)
+      || null;
   }
 
   // ⚠️ `d` bywa `null`: zdegradowana odpowiedź inFaktu potrafi wstawić pustą pozycję do
@@ -174,6 +212,9 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
     const ksefZleconaAt = mapy.wysylkiKsef.get(d?.uuid) ?? null;
     return {
       ...(d ?? {}),
+      // Wiersz z WŁASNYM polem (TwojeFaktury, także `null` = pierwotna jeszcze nie w KSeF) zostaje nietknięty.
+      ...(d?.rodzaj === 'korekta' && !Object.hasOwn(d, 'ksef_korygowanej')
+        ? { ksef_korygowanej: ksefKorygowanej(d, mapy) } : {}),
       zamowienie: mapy.zamowienia.get(d?.uuid) ?? null,
       okres: mapy.okresy.get(d?.uuid) ?? null,
       stanKsef: stanKsef(d, Boolean(ksefZleconaAt)),
@@ -210,7 +251,13 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
     }
     const pytanie = { ...zakres, pole };
     const [faktury, korekty] = await Promise.all([program.listaFaktur(pytanie), program.listaKorekt(pytanie)]);
-    const mapy = powiazania();
+    // Trzecie źródło `ksef_korygowanej` (D3): faktury VAT z TEJ SAMEJ listy, numer → numer KSeF.
+    const ksefZListy = new Map();
+    for (const f of Array.isArray(faktury) ? faktury : []) {
+      if (f?.rodzaj !== 'vat' || !f.number || !f.ksef_number || ksefZListy.has(f.number)) continue;
+      ksefZListy.set(f.number, f.ksef_number);
+    }
+    const mapy = { ...powiazania(), ksefZListy };
     const wiersze = filtrujDokumenty(scalDokumenty(faktury, korekty), { typ, platnosc })
       .map((d) => wzbogac(d, mapy, dzis, true));
     // Stan VAT i korekty z adaptera: odnośnik do dokumentu.

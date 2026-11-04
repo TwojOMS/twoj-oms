@@ -69,8 +69,8 @@ it('piaskownica dopuszcza wyłącznie adres atrapy z konfiguracji kanałów',asy
   expect(r.statusCode).toBe(status);
   if(status===400){expect(r.body).toContain('Piaskownica nie łączy się z prawdziwymi sklepami — działa tu tylko sklep przykładowy.');expect(f.calls).toEqual([]);}
  }
- expect(f.calls.length).toBeGreaterThan(0);
- expect(f.calls.every(u=>u.startsWith('https://atrapa.example.invalid/'))).toBe(true);
+ // PRZ-150.01: adres atrapy obsługuje atrapa w module (bez sieci) — transport nie dostaje żadnego żądania.
+ expect(f.calls).toEqual([]);
 });
 it.each(['sklep-polcien.test/','  http://sklep-polcien.test/  '])('komunikat zmiany HTTP zależy od schematu po usunięciu spacji: %s',async adres=>{
  const f=await setup();

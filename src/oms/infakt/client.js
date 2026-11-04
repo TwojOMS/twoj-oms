@@ -240,7 +240,10 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
   async function pobierzKorekte(uuid) {
     const dane = await zapytaj(`/v3/corrective_invoices/${encodeURIComponent(uuid)}.json`, { method: 'GET' }, 'odczyt korekty');
     return { uuid: dane?.uuid ?? uuid, number: dane?.number,
-      corrected_invoice_number: dane?.corrected_invoice_number, invoice_date: dane?.invoice_date, rodzaj: 'korekta' };
+      corrected_invoice_number: dane?.corrected_invoice_number, invoice_date: dane?.invoice_date, rodzaj: 'korekta',
+      ksef_number: dane?.ksef_number ?? null, ksef_status: dane?.ksef_data?.status ?? null,
+      ksef_opis: typeof dane?.ksef_data?.status_description === 'string' ? dane.ksef_data.status_description.slice(0, 300) : null,
+      status: dane?.status ?? null };
   }
 
   /**
