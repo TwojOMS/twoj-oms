@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { dodajZwrot, zarezerwujKorekte } from '../../../src/oms/db/zwroty.js';
@@ -29,7 +31,7 @@ function faktura(db, id, extra = {}) {
 function serwer(db, p) {
   const moduly = MODULY.map((m) => m.nazwa === 'faktury' ? createModulFaktury({ fabryki: { programFakturowy: () => p } }) : m);
   return buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'fixture' } }, moduly,
-    env: { OMS_TRYB: 'proba', OMS_ETYKIETY_KATALOG: '/srv/praca/kierownik-petla/tmp/cB05ba2', OMS_PROFORMY_KATALOG: '/srv/praca/kierownik-petla/tmp/cB05ba2' },
+    env: { OMS_TRYB: 'proba', OMS_ETYKIETY_KATALOG: join(tmpdir(), 'oms-test-cB05ba2'), OMS_PROFORMY_KATALOG: join(tmpdir(), 'oms-test-cB05ba2') },
     fakturaAllegro: {} });
 }
 const miejsce = (wbudowany) => wbudowany ? 'w zakładce FAKTURY OMS-u' : 'w Testowniku';

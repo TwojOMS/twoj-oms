@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapewnijOkres } from '../../../src/oms/db/okresy.js';
 import { dodajWplateOkresu } from '../../../src/oms/db/platnosci.js';
@@ -14,7 +16,7 @@ function serwer(db, wbudowany) {
   p.opis = { ...p.opis, wbudowany };
   const moduly = MODULY.map((m) => m.nazwa === 'faktury' ? createModulFaktury({ fabryki: { programFakturowy: () => p } }) : m);
   return buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'fixture' } }, moduly,
-    env: { OMS_TRYB: 'proba', OMS_ETYKIETY_KATALOG: '/srv/praca/kierownik-petla/tmp/cB05bb', OMS_PROFORMY_KATALOG: '/srv/praca/kierownik-petla/tmp/cB05bb' } });
+    env: { OMS_TRYB: 'proba', OMS_ETYKIETY_KATALOG: join(tmpdir(), 'oms-test-cB05bb'), OMS_PROFORMY_KATALOG: join(tmpdir(), 'oms-test-cB05bb') } });
 }
 describe('miejsce dokumentu w widokach faktur', () => {
   for (const wbudowany of [false, true]) {

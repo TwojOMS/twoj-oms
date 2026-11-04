@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { dodajWplateReczna } from '../../../src/oms/db/platnosci.js';
@@ -28,7 +29,7 @@ function przygotuj({ brutto = '212.90', k = '50.00', p = '50.00', pobranie = 1 }
     const xml = readFileSync(new URL(`./fixtures/dpd/${nazwa}`, import.meta.url), 'utf8');
     fetchDpd.mockResolvedValueOnce({ status: 200, ok: true, text: async () => xml });
   }
-  katalog = mkdtempSync('/srv/praca/kierownik-petla/tmp/145-02/etykiety-');
+  katalog = mkdtempSync(join(tmpdir(), 'oms-145-02-etykiety-'));
   const dpd = createDpdClient({ url: 'https://dpd.example.test/api', login: '99999999', haslo: 'x', fid: '100145', nadawca: adres, fetchImpl: fetchDpd });
   const nadanie = createNadanie({ db, kurierzy: { dpd }, katalogEtykiet: katalog });
   const config = { auth: { user: 'operator', pass: 'atrapa' }, definicje: [{ klucz: 'polcien', typ: 'woo', prefiks: 'PC', etykieta: 'Pracownia Półcień', raport: 'PC' }], kanaly: { polcien: {} }, sklepy: {} };
