@@ -12,7 +12,7 @@ import { znormalizujNip } from './gus.js';
 /** Ekran Ustawienia → Integracje → KSeF. */
 export const EKRAN_KSEF = '/ustawienia/integracje/ksef';
 /** Zdanie na ekranie — jakie uprawnienie ma mieć token (właściciel 20.10). */
-export const ZDANIE_UPRAWNIENIA_KSEF = 'Wygeneruj w KSeF token z uprawnieniem tylko do przeglądania faktur zakupowych — panel niczego przez KSeF nie wysyła.';
+export const ZDANIE_UPRAWNIENIA_KSEF = 'Wygeneruj w KSeF token z uprawnieniem tylko do przeglądania faktur zakupowych — OMS niczego przez KSeF nie wysyła.';
 export const ZDANIE_TOKENU_KOSZTOW_TWOJEFAKTURY = 'Ten sam token wysyła też faktury sprzedaży z TwojeFaktury — musi mieć uprawnienie do wystawiania faktur (InvoiceWrite).';
 
 const tekst = (v) => String(v ?? '').trim();

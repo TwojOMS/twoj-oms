@@ -2,6 +2,7 @@ import { createReadStream, existsSync } from 'node:fs';
 
 import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
 
+import { panelKuriera } from '../../../domena/moduly-kurierow.ts';
 import { odblokujPrzesylke, domknijPrzesylke, zalatwPrzesylkeRecznie, skasujPrzesylkeReczna, ukryjPrzesylke, przywrocPrzesylke } from '../db/przesylki.js';
 
 import { dodajDoKolejki, pozycjeDoWziecia, zplDlaPozycji, oznaczWydrukowano, oznaczBladDruku, porzucPozycje } from '../db/kolejka-druku.js';
@@ -19,6 +20,7 @@ import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import { bezpiecznaNazwa } from '../../../domena/pliki.js';
 
 import { ktoKlikal } from '../../zamowienia/lista.js';
+import { zplPrzyNadaniu } from '../services/nadanie.js';
 
 export function registerEtykietyRoutes(app, { db, nadanie, kurierzy = {}, wczytajListe, miniaturyEkranu, config }) {
 
@@ -49,7 +51,7 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/sprawdz', async (req, reply) =>
     const cel = paczkaZadania(req, reply);
     if (!cel) return reply;
     const { id, p } = cel;
-    if (!nadanie) return reply.code(503).send('Nadawanie nie jest skonfigurowane (brak danych kuriera).');
+    if (!nadanie || nadanie.gotowe?.() === false) return reply.code(503).send('Nadawanie nie jest skonfigurowane (brak danych kuriera).');
     let wynik;
     try {
       wynik = await nadanie.sprawdzPonownie(p.id);
@@ -70,7 +72,7 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/sprawdz', async (req, reply) =>
         if (swieza?.etykieta_zpl_sciezka) {
           dodajDoKolejki(db, swieza.id);
           dopiszLog(db, id, { akcja: 'kolejka-druku.dodanie', wynik: 'OK (Sprawdź ponownie)' });
-        } else if (swieza?.kurier !== 'allegro_wza') {
+        } else if (zplPrzyNadaniu(swieza?.kurier)) {
           dopiszLog(db, id, { akcja: 'kolejka-druku.dodanie', wynik: 'BRAK ZPL — nie dodano do kolejki (Sprawdź ponownie)' });
         }
       } catch (e) {
@@ -87,9 +89,9 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/odblokuj', async (req, reply) =
     const numerListu = String(req.body?.numer_listu ?? '').trim();
     const kto = ktoKlikal(req);
     const opis = numerListu
-      ? `Ręcznie (${kto}): nadanie paczki nr ${p.kolejnosc} zawisło, w panelu DPD paczka MA numer listu ${numerListu} — `
+      ? `Ręcznie (${kto}): nadanie paczki nr ${p.kolejnosc} zawisło, w ${panelKuriera(p.kurier)} paczka MA numer listu ${numerListu} — `
         + 'ponowienie z panelu jest zablokowane, dokończ sprawę u kuriera.'
-      : `Ręcznie (${kto}): nadanie paczki nr ${p.kolejnosc} zawisło, w panelu DPD paczki NIE MA — zwolnione pod ponowienie.`;
+      : `Ręcznie (${kto}): nadanie paczki nr ${p.kolejnosc} zawisło, w ${panelKuriera(p.kurier)} paczki NIE MA — zwolnione pod ponowienie.`;
     try {
       odblokujPrzesylke(db, p.id, { numerListu, opis });
     } catch (e) {
@@ -113,7 +115,7 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/domknij', async (req, reply) =>
     }
     dopiszLog(db, id, {
       akcja: 'przesylka.domkniecie',
-      wynik: `Ręcznie (${ktoKlikal(req)}): sprawdzone w panelu DPD, paczka nr ${p.kolejnosc} (list ${p.numer_listu}) jest nadana`
+      wynik: `Ręcznie (${ktoKlikal(req)}): sprawdzone w ${panelKuriera(p.kurier)}, paczka nr ${p.kolejnosc} (list ${p.numer_listu}) jest nadana`
         + `${p.blad_opis ? ` — powód wyjaśnienia: ${p.blad_opis}` : ''}.`,
     });
     return reply.redirect(adresPowrotuNaKarte(req, id));
@@ -125,7 +127,7 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/notatka', async (req, reply) =>
     const cel = paczkaZadania(req, reply);
     if (!cel) return reply;
     const { id, p } = cel;
-    if (!nadanie) return reply.code(503).send('Nadawanie nie jest skonfigurowane (brak sklepu albo kuriera).');
+    if (!nadanie || nadanie.gotowe?.() === false) return reply.code(503).send('Nadawanie nie jest skonfigurowane (brak sklepu albo kuriera).');
     try {
       await nadanie.ponowNotatke(p.id);
     } catch (e) {
@@ -257,7 +259,7 @@ app.get('/zamowienia/:id/przesylki/:przesylkaId/etykieta', async (req, reply) =>
     // Brak pliku to nie awaria serwera, tylko brak zasobu — 500 z pelna sciezka w JSON-ie
     // wystawialby uklad katalogow serwera na ekran operatora (i do historii przegladarki).
     if (!existsSync(sciezka)) {
-      return reply.code(404).send('Plik etykiety nie istnieje na dysku — pobierz etykietę z panelu DPD po numerze listu.');
+      return reply.code(404).send(`Plik etykiety nie istnieje na dysku — pobierz etykietę z ${panelKuriera(p.kurier)} po numerze listu.`);
     }
     const nazwaPliku = `etykieta-${bezpiecznaNazwa(p.numer_listu ?? z.numer)}.pdf`;
     return reply.type('application/pdf')

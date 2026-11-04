@@ -1,5 +1,5 @@
 <h1>inFakt</h1>
-<p><a href="/ustawienia/integracje">← Integracje</a></p>
+<p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
 
 <% if (wybranyBrak) { %><div class="pas-uprzedzenie"><p>inFakt nie jest wybrany jako moduł faktur — klucz zostaje zapisany, OMS go nie używa. <a href="/ustawienia/integracje/program-fakturowy">Moduł faktur</a></p></div><% } %>
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
@@ -12,11 +12,12 @@
 
 <% if (zEnv) { %>
 <section class="ust-sekcja" id="infakt-stan">
-  <h2>Podłączony w pliku konfiguracji</h2>
-  <p>inFakt jest ustawiony w pliku konfiguracji serwera (<code>oms.env</code>, zmienne <code>INFAKT_…</code>). Ten ekran go nie zmienia — klucz API, adres i archiwum sprzedaży poprawisz w tym pliku.</p>
+  <h2>Ustawione przez administratora serwera</h2>
+  <p>inFakt jest ustawiony na serwerze. Ten ekran go nie zmienia — klucz API, adres i archiwum sprzedaży poprawi administrator serwera.</p>
+  <details class="ust-pomoc"><summary>Dla administratora serwera</summary><p>Plik <code>oms.env</code>: klucz <code>INFAKT_API_KEY</code>, adres API <code>INFAKT_API_URL</code> i katalog archiwum <code>INFAKT_ARCHIWUM</code>.</p></details>
   <% if (stan) { %>
     <form method="post" action="/ustawienia/integracje/infakt/odlacz">
-      <p>W OMS-ie został też klucz zapisany wcześniej na tym ekranie. Plik konfiguracji ma pierwszeństwo, więc nie jest używany.</p>
+      <p>W OMS-ie został też klucz zapisany wcześniej na tym ekranie. Ustawienia na serwerze mają pierwszeństwo, więc nie jest używany.</p>
       <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń zapisany klucz</button></div>
     </form>
   <% } %>
@@ -30,7 +31,7 @@
     <h2>Stan połączenia</h2>
     <p class="ust-stan ust-stan-ok"><strong>Podłączony</strong></p>
     <p>Klucz API zapisał <%= stan.kontoLogin ?? '—' %>, <%= fmtDataCzas(stan.zmienionoAt) %>.</p>
-    <% if (wymagaRestartu) { %><p class="pas-uprzedzenie">Zakładka Faktury, wystawianie faktur i wysyłka do KSeF włączą się po ponownym uruchomieniu OMS-u (to pierwsze podłączenie inFaktu w tym panelu). „Sprawdź połączenie” działa już teraz, a późniejsza zmiana klucza — od razu.</p><% } %>
+    <% if (wymagaRestartu) { %><p class="pas-uprzedzenie">Zakładka Faktury, wystawianie faktur i wysyłka do KSeF włączą się po ponownym uruchomieniu OMS-u (to pierwsze podłączenie inFaktu w tym OMS-ie). „Sprawdź połączenie” działa już teraz, a późniejsza zmiana klucza — od razu.</p><% } %>
   <% } else { %>
     <h2>Stan połączenia</h2>
     <p class="ust-stan"><strong>Niepodłączony</strong></p>
@@ -50,14 +51,16 @@
     <div><input id="infakt-klucz" type="password" name="apiKey" value="" maxlength="200" autocomplete="new-password"<% if (stan?.zapisaneSekrety?.apiKey) { %> placeholder="zapisany — wpisz nowy, żeby zmienić"<% } else { %> required<% } %>>
       <p class="ust-pomoc">Klucz API z inFaktu (Ustawienia → API). OMS wystawia nim faktury sprzedaży, czyta ich listę i PDF-y, a na Twoje polecenie wysyła je do KSeF.</p></div>
 
-    <label>Adres API</label>
-    <div><div class="ust-wartosc"><code><%= adresApi %></code></div>
-      <p class="ust-pomoc">Produkcyjne API inFaktu. Inny adres da się ustawić tylko w pliku konfiguracji (<code>INFAKT_API_URL</code> razem z <code>INFAKT_API_KEY</code>).</p>
-      <% if (adresWPliku) { %><p class="ust-pomoc uwaga">W pliku konfiguracji jest <code>INFAKT_API_URL</code> bez <code>INFAKT_API_KEY</code> — ten adres nie dotyczy klucza z tego ekranu.</p><% } %></div>
+    <label for="infakt-adres-api">Adres API</label>
+    <div><div class="ust-wartosc"><output id="infakt-adres-api"><code><%= adresApi %></code></output></div>
+      <p class="ust-pomoc">Produkcyjne API inFaktu. Inny adres da się ustawić tylko na serwerze.</p>
+      <details class="ust-pomoc"><summary>Dla administratora serwera</summary><p>Inny adres API: <code>INFAKT_API_URL</code> razem z <code>INFAKT_API_KEY</code> w <code>oms.env</code>.</p></details>
+      <% if (adresWPliku) { %><p class="ust-pomoc uwaga">Na serwerze ustawiono adres API bez klucza API — ten adres nie dotyczy klucza z tego ekranu.</p><% } %></div>
 
-    <label>Archiwum sprzedaży</label>
-    <div><div class="ust-wartosc"><%= archiwumWPliku ? 'Włączone — katalog z pliku konfiguracji.' : 'Wyłączone.' %></div>
-      <p class="ust-pomoc">Nocne kopie PDF faktur w katalogu na serwerze. Katalog ustawia się tylko w pliku konfiguracji (<code>INFAKT_ARCHIWUM</code>) — to ścieżka na dysku serwera, nie dane konta inFakt.</p></div>
+    <label for="infakt-archiwum">Archiwum sprzedaży</label>
+    <div><div class="ust-wartosc"><output id="infakt-archiwum"><%= archiwumWPliku ? 'Włączone — katalog na serwerze.' : 'Wyłączone.' %></output></div>
+      <p class="ust-pomoc">Nocne kopie PDF faktur w katalogu na serwerze. Katalog ustawia się tylko na serwerze — to ścieżka na dysku serwera, nie dane konta inFakt.</p>
+      <details class="ust-pomoc"><summary>Dla administratora serwera</summary><p>Katalog archiwum: <code>INFAKT_ARCHIWUM</code> w <code>oms.env</code>.</p></details></div>
 
     <p class="ust-pelna ust-pomoc">Pola oznaczone <span class="ust-wymagane">*</span> są wymagane.</p>
     <div class="ust-pelna ust-akcje">
@@ -91,7 +94,7 @@
   <%_ if (admin) { -%>
   <form class="ust-formularz" method="post" action="/ustawienia/integracje/infakt/ksef-konsumenckie">
     <label for="ksef-konsumenckie-wlaczone">Wysyłaj do KSeF także faktury konsumenckie (nabywca bez NIP-u)</label>
-    <div><input type="hidden" name="wlaczony" value="0"><input id="ksef-konsumenckie-wlaczone" type="checkbox" name="wlaczony" value="1"<% if (konsumenckie) { %> checked<% } %>>
+    <div><div class="aut-wybor"><input type="hidden" name="wlaczony" value="0"><input id="ksef-konsumenckie-wlaczone" type="checkbox" name="wlaczony" value="1"<% if (konsumenckie) { %> checked<% } %>></div>
       <p class="ust-pomoc">Wysyłka B2C do KSeF jest dobrowolna. Po włączeniu faktury dla osób prywatnych pójdą do KSeF z przycisku, z karty zamówienia i automatem (jeśli włączony) — KSeF-u nie da się cofnąć, zostaje korekta. Klient bez dostępu do KSeF dostaje wydruk z kodem QR.</p></div>
     <div class="ust-pelna ust-akcje"><button class="btn btn--glowny" type="submit">Zapisz</button></div>
   </form>

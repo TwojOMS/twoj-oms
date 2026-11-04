@@ -24,6 +24,7 @@ import { dirname, join } from 'node:path';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { rozpocznijPrzesylke } from '../../../src/moduly/wysylka/db/przesylki.js';
+import { zapiszUmowePobrania } from '../../../src/moduly/wysylka/db/umowy-pobrania.js';
 import { createNadanie } from '../../../src/moduly/wysylka/services/nadanie.js';
 import { createDpdClient } from '../../../src/oms/kurierzy/dpd.js';
 import { createInpostClient } from '../../../src/oms/kurierzy/inpost.js';
@@ -37,11 +38,11 @@ const odp = (status, tekst) => ({ status, ok: status >= 200 && status < 300, tex
 const config = { auth: { user: 'adam', pass: 'x' } };
 const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'), origin: 'http://localhost' };
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
-const NADAWCA = { nazwa: 'Lumina', ulica: 'ul. 1 Maja 5', kod: '00-650', miasto: 'Pęki', kraj: 'PL', phone: '338451234', email: 'sklep@szkicownia.pl' };
+const NADAWCA = { nazwa: 'Pracownia Półcień', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', phone: '338451234', email: 'sklep@swietlik.example.test' };
 
 // Adres odbiorcy zgodny z `zmapowane()` niżej — POST wymaga go w formularzu.
 const ADRES = {
-  nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki',
+  nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa',
   phone: '+48500600700', email: 'j@k.pl',
 };
 // Formularz taki, jaki odesłałaby PRAWDZIWA przeglądarka z ekranu nadania zamówienia
@@ -52,7 +53,7 @@ const PACZKA_Z_POBRANIEM = { ...PACZKA, kwota_pobrania: '212.90' };
 const zmapowane = (nad = {}) => ({
   zrodlo_id: 1267, numer: '1267',
   klient: { email: 'j@k.pl', phone: '+48500600700' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
+  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
   status_woo: 'processing', oplacone_at: '2026-07-29T13:00:00', anulowane: 0,
   utworzone_at: '2026-07-29T13:19:52', pozycje: [], ...nad,
@@ -69,7 +70,7 @@ function dpdKlient({ paczek = 2 } = {}) {
       .mockResolvedValueOnce(odp(200, fixture('v4-ok.xml')))
       .mockResolvedValueOnce(odp(200, fixture('v4-ok-zpl.xml')));
   }
-  const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '278216', nadawca: NADAWCA, fetchImpl });
+  const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '876543', nadawca: NADAWCA, fetchImpl });
   return { dpd, fetchImpl };
 }
 
@@ -196,6 +197,9 @@ describe('parsujNadpisanieKwotyPobrania — walidacja kwoty', () => {
     ['tekst z jednostką', '310 zł'],
     ['notacja wykładnicza', '1e3'],
     ['zapis szesnastkowy', '0x10'],
+    // PRZ-145.01 (E5-D2): pół grosza nie istnieje — dawniej „0.005” jechało do DPD dosłownie.
+    ['pół grosza', '0.005'],
+    ['trzy miejsca po przecinku', '12,345'],
   ])('%s → ODMOWA, kwota nie rusza w stronę kuriera', (_nazwa, wejscie) => {
     const w = parsuj(wejscie);
     expect(w.kwotaPobrania).toBeUndefined();
@@ -204,6 +208,11 @@ describe('parsujNadpisanieKwotyPobrania — walidacja kwoty', () => {
 
   // ⚠️ BEZ GÓRNEGO PROGU — świadoma decyzja właściciela 04.08. Literówka „31033" zamiast
   // „310,33" MA przejść do kuriera; jedyną obroną jest wpis w logu zamówienia (sekcja D).
+  // PRZ-145.01: Woo z trzema miejscami w ustawieniach sklepu oddaje „212.900” — to ta sama kwota.
+  it('końcowe zera po groszach przechodzą („212.900”)', () => {
+    expect(parsuj('212.900')).toEqual({ kwotaPobrania: '212.900' });
+  });
+
   it('kwota podejrzanie wysoka PRZECHODZI — progu nie ma i nie ma go być', () => {
     expect(parsuj('31033')).toEqual({ kwotaPobrania: '31033' });
   });
@@ -535,7 +544,7 @@ describe('wywołania spoza formularza zachowują się DOKŁADNIE jak dziś', () 
 // Testy niżej idą przez PRAWDZIWY klient ShipX z atrapą `fetch` (nie przez atrapę klienta),
 // bo pytanie brzmi „co poszło w ciele żądania do InPostu", a nie „czy funkcję wywołano".
 describe('paczkomat za pobraniem — kwota z formularza jedzie do InPostu', () => {
-  const NADAWCA_INPOST = { nazwa: 'Lumina', ulica: 'ul. 1 Maja 5', kod: '00-650', miasto: 'Pęki', kraj: 'PL', phone: '+48500600700', email: 'sklep@szkicownia.pl' };
+  const NADAWCA_INPOST = { nazwa: 'Pracownia Półcień', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', phone: '+48500600700', email: 'sklep@swietlik.example.test' };
   const PACZKOMAT = {
     metoda_wysylki: 'inpost_paczkomat', pobranie: 1, kwota_pobrania: '212.90',
     punkt_odbioru: 'SLN06M', punkt_odbioru_opis: 'Przy myjni',
@@ -639,6 +648,60 @@ describe('paczkomat za pobraniem — kwota z formularza jedzie do InPostu', () =
       payload: { ...FORMULARZ, kwota_pobrania: '310.33' },
     });
     expect(logi(id).some((w) => w.akcja === 'nadanie.pobranie' && w.wynik.includes('310.33'))).toBe(true);
+  });
+
+  // PRZ-137.03 (D2, D3): zamiennik za pobraniem paczkomatem — z umową firmy `cod` jedzie
+  // także na paczce nr 2 (z jawnym zaznaczeniem), a ekran nie podpowiada „panelu DPD".
+  describe('zamiennik paczkomatem (paczka nr 2, PRZ-137.03)', () => {
+    function poPierwszejPaczce({ umowa }) {
+      const t = zServeremInpost();
+      zapiszUmowePobrania(db, 'inpost', umowa);
+      rozpocznijPrzesylke(db, t.id, 'inpost', 1);
+      db.prepare("UPDATE przesylki SET status = 'nadana', numer_listu = 'X1' WHERE zamowienie_id = ?").run(t.id);
+      return t;
+    }
+    // Sekcja pobrania paczki N > 1: od pasów nad polem wyboru do podpowiedzi pod kwotą.
+    // (pas odmowy, jeśli jest, stoi tuż nad pasem „DOMYŚLNIE…", w zasięgu 1000 znaków).
+    const sekcjaPobrania = (html) => {
+      const pas = html.indexOf('DOMYŚLNIE TA PACZKA JEDZIE BEZ POBRANIA');
+      const doKonca = html.indexOf('</div>', html.indexOf('Kwota działa'));
+      expect(pas).toBeGreaterThan(1000);
+      expect(doKonca).toBeGreaterThan(pas);
+      return html.slice(pas - 1000, doKonca);
+    };
+
+    it('umowa wł. + zaznaczone pobranie → `cod` = kwota, wiersz nadany', async () => {
+      const { serwer, id, fetchImpl } = poPierwszejPaczce({ umowa: true });
+      await serwer.ready();
+      const r = await serwer.inject({
+        method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+        payload: { ...FORMULARZ, kolejnosc: '2', pobranie_na_tej_paczce: 'tak', kwota_pobrania: '212.90' },
+      });
+      expect(r.statusCode).toBe(302);
+      expect(cialoPrzesylki(fetchImpl).cod).toEqual({ amount: 212.9, currency: 'PLN' });
+      expect(db.prepare('SELECT status FROM przesylki WHERE zamowienie_id = ? AND kolejnosc = 2').get(id)).toEqual({ status: 'nadana' });
+    });
+
+    it('ekran paczki nr 2: sekcja pobrania nie odsyła do „panelu DPD", nagłówek nie mówi o DPD', async () => {
+      const { serwer, id } = poPierwszejPaczce({ umowa: true });
+      await serwer.ready();
+      const r = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}/nadaj`, headers: naglowek });
+      expect(r.statusCode).toBe(200);
+      expect(r.body).toContain('name="pobranie_na_tej_paczce"');
+      expect(sekcjaPobrania(r.body)).toContain('w panelu InPost');
+      expect(sekcjaPobrania(r.body)).not.toContain('DPD');
+      expect(r.body).not.toMatch(/Do DPD pojedzie referencja/);
+      expect(r.body).not.toMatch(/Jeśli zaznaczysz pobranie na tej paczce/);
+    });
+
+    it('ekran paczki nr 2, umowa wył.: zapowiada odmowę „wymaga umowy" przed kliknięciem, bez DPD', async () => {
+      const { serwer, id } = poPierwszejPaczce({ umowa: false });
+      await serwer.ready();
+      const r = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}/nadaj`, headers: naglowek });
+      expect(r.statusCode).toBe(200);
+      expect(r.body).toMatch(/Jeśli zaznaczysz pobranie na tej paczce: pobranie przez InPost wymaga umowy/);
+      expect(sekcjaPobrania(r.body)).not.toContain('DPD');
+    });
   });
 
   // ⚠️⚠️ INPOST POŁKNĄŁ POBRANIE — GDZIE MA WYLĄDOWAĆ WIERSZ PRZESYŁKI (27.08.2026).

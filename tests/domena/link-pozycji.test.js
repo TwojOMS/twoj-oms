@@ -2,12 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { odnosnikPozycji } from '../../src/domena/link-pozycji.js';
 import { SKU_PLACEHOLDERA } from '../../src/domena/indywidualne.js';
 
-const SKLEP = 'https://szkicownia.pl';
+const SKLEP = 'https://swietlik.example.test';
 
 // Kanal rozpoznaje sie po `zamowienia.sklep` — TA SAMA wartosc, ktora rozdziela zamowienia
 // w bazie i w pollerze (config.js, KANALY).
-const zeSklepu = { sklep: 'szkicownia' };
-const zAllegro = { sklep: 'allegro_szkicownia' };
+const zeSklepu = { sklep: 'swietlik' };
+const zAllegro = { sklep: 'allegro_swietlik' };
 
 const wiersz = (nad = {}) => ({ produktId: 28040, ofertaId: null, sku: 'PRO-1', reczna: false, ...nad });
 const adres = (...a) => odnosnikPozycji(...a)?.adres ?? null;
@@ -15,12 +15,12 @@ const adres = (...a) => odnosnikPozycji(...a)?.adres ?? null;
 describe('odnosnikPozycji — sklep (WooCommerce)', () => {
   it('sklada adres po identyfikatorze produktu', () => {
     expect(adres(zeSklepu, wiersz({ produktId: 31337 }), { baseUrl: SKLEP }))
-      .toBe('https://szkicownia.pl/?post_type=product&p=31337');
+      .toBe('https://swietlik.example.test/?post_type=product&p=31337');
   });
 
   it('ucina koncowy ukosnik adresu sklepu', () => {
-    expect(adres(zeSklepu, wiersz({ produktId: 5 }), { baseUrl: 'https://szkicownia.pl/' }))
-      .toBe('https://szkicownia.pl/?post_type=product&p=5');
+    expect(adres(zeSklepu, wiersz({ produktId: 5 }), { baseUrl: 'https://swietlik.example.test/' }))
+      .toBe('https://swietlik.example.test/?post_type=product&p=5');
   });
 
   it('podpis odnosnika mowi o sklepie', () => {
@@ -57,7 +57,7 @@ describe('odnosnikPozycji — sklep (WooCommerce)', () => {
 
   // ⚠️ Granica w druga strone: identyfikator OFERTY nie ma prawa udawac produktu w sklepie.
   // Bez tego pozycja z Allegro zapisana omylkowo pod sklepowym kanalem prowadzilaby do
-  // `szkicownia.pl/?post_type=product&p=1234567890` — adresu, ktorego nie ma.
+  // `swietlik.example.test/?post_type=product&p=1234567890` — adresu, ktorego nie ma.
   it('sam identyfikator oferty nie robi odnosnika w kanale sklepowym', () => {
     expect(adres(zeSklepu, wiersz({ produktId: null, ofertaId: '1234567890' }), { baseUrl: SKLEP })).toBe(null);
   });
@@ -78,7 +78,7 @@ describe('odnosnikPozycji — Allegro', () => {
   });
 
   it('oba kanaly Allegro dzialaja tak samo', () => {
-    expect(adres({ sklep: 'allegro_amarka' }, wiersz({ ofertaId: '1234567890' })))
+    expect(adres({ sklep: 'allegro_polcien2' }, wiersz({ ofertaId: '1234567890' })))
       .toBe('https://allegro.pl/oferta/1234567890');
   });
 
@@ -123,6 +123,6 @@ describe('odnosnikPozycji — kanal nieznany', () => {
   it('brak zamowienia nie wywala odnosnika', () => {
     expect(odnosnikPozycji(null, wiersz())).toBe(null);
     expect(odnosnikPozycji(undefined, wiersz(), { baseUrl: SKLEP })?.adres)
-      .toBe('https://szkicownia.pl/?post_type=product&p=28040');
+      .toBe('https://swietlik.example.test/?post_type=product&p=28040');
   });
 });

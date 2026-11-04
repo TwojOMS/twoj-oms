@@ -15,7 +15,7 @@ const zam = (nad = {}) => ({
   chce_fakture: 0,
   anulowane: 0,
   klient: { email: 'klient@firma.pl', phone: '600100200' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: 'BETAMET sp. z o.o.', address_1: 'Fabryczna 4', postcode: '00-650', city: 'Pęki' },
+  dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: 'Wzorowy Kontrahent', address_1: 'ul. Testowa 7', postcode: '00-950', city: 'Warszawa' },
   pozycje: [
     { nazwa: 'Lampa stołowa Grzybek 30x45', sku: 'LMP-GRZ-30', ilosc: 3, cena_brutto: '74.90', brutto_linii: '224.70' },
   ],
@@ -93,9 +93,9 @@ describe('treść potwierdzenia', () => {
 
   it('niesie adres dostawy — ten sam, który pojedzie na etykietę', () => {
     const t = trescPotwierdzenia(zam()).tekst;
-    expect(t).toContain('BETAMET sp. z o.o.');
-    expect(t).toContain('Fabryczna 4');
-    expect(t).toContain('00-650 Pęki');
+    expect(t).toContain('Wzorowy Kontrahent');
+    expect(t).toContain('ul. Testowa 7');
+    expect(t).toContain('00-950 Warszawa');
   });
 
   // ⚠️ SEKCJA FAKTURY POKAZUJE SIĘ ZAWSZE — także z odpowiedzią „Nie” (21.08.2026,
@@ -103,16 +103,16 @@ describe('treść potwierdzenia', () => {
   // moment, w którym da się to bezkosztowo sprostować, przechodził bez śladu.
   it('o fakturze mówi ZAWSZE — „Nie” też jest odpowiedzią', () => {
     expect(trescPotwierdzenia(zam()).tekst).toContain('FAKTURA\n  Nie');
-    const zF = zam({ chce_fakture: 1, nip: '1200001022', klient: { email: 'k@f.pl', company: 'BETAMET sp. z o.o.' } });
+    const zF = zam({ chce_fakture: 1, nip: '1234500028', klient: { email: 'k@f.pl', company: 'Wzorowy Kontrahent' } });
     expect(trescPotwierdzenia(zF).tekst).toContain('Tak — wystawimy na');
   });
 
   // ⚠️ PODPISUJEMY SIĘ MARKĄ, nie nazwą podmiotu (decyzja właściciela 21.08.2026).
-  // Klient zna Szkicownia.pl; Lumina Marek Zywiecki widuje dopiero na fakturze i musiałby
+  // Klient zna Swietlik.example.test; Pracownia Półcień Anna Wzorcowa widuje dopiero na fakturze i musiałby
   // się domyślić, że to ten sam sprzedawca.
   it('podpisuje się marką, nie nazwą podmiotu', () => {
-    expect(trescPotwierdzenia(zam()).tekst).toContain('Szkicownia.pl');
-    expect(trescPotwierdzenia(zam()).tekst).not.toContain('Lumina');
+    expect(trescPotwierdzenia(zam()).tekst).toContain('Swietlik.example.test');
+    expect(trescPotwierdzenia(zam()).tekst).not.toContain('Pracownia Półcień');
   });
 
   // Mail ma byc czytelny takze w kliencie tekstowym i w podgladzie na telefonie.
@@ -124,24 +124,24 @@ describe('treść potwierdzenia', () => {
 describe('adres dostawy w mailu', () => {
   // ⚠️ Zmierzone na zywym zamowieniu R/2026/013 (21.08.2026): zamowienie telefoniczne bywa
   // zakladane z samym e-mailem klienta, a panel pokazuje ten e-mail w polu nazwy odbiorcy.
-  // Bez warunku mail twierdzilby, ze dostawa pojdzie „na anna.nowak@example.org".
+  // Bez warunku mail twierdzilby, ze dostawa pojdzie „na odbiorca@example.test".
   it('sama nazwa bez ulicy i miasta NIE jest adresem', () => {
-    const z = zam({ dostawa: { first_name: 'anna.nowak@example.org' }, klient: { email: 'anna.nowak@example.org' } });
+    const z = zam({ dostawa: { first_name: 'odbiorca@example.test' }, klient: { email: 'odbiorca@example.test' } });
     const t = trescPotwierdzenia(z).tekst;
     expect(t).toContain('(adres do uzgodnienia)');
-    expect(t).not.toMatch(/WYSYŁKA: DPD\n\s+p\.nowak/);
+    expect(t).not.toMatch(/WYSYŁKA: DPD\n\s+odbiorca/);
   });
 
   it('sama miejscowość wystarczy, żeby pokazać adres', () => {
-    const z = zam({ dostawa: { first_name: 'Jan', last_name: 'Kowalski', postcode: '00-650', city: 'Pęki' } });
+    const z = zam({ dostawa: { first_name: 'Jan', last_name: 'Kowalski', postcode: '00-950', city: 'Warszawa' } });
     const t = trescPotwierdzenia(z).tekst;
-    expect(t).toContain('00-650 Pęki');
+    expect(t).toContain('00-950 Warszawa');
     expect(t).not.toContain('(adres do uzgodnienia)');
   });
 
   it('pełny adres dalej idzie w całości', () => {
     const t = trescPotwierdzenia(zam()).tekst;
-    expect(t).toContain('BETAMET sp. z o.o.');
-    expect(t).toContain('Fabryczna 4');
+    expect(t).toContain('Wzorowy Kontrahent');
+    expect(t).toContain('ul. Testowa 7');
   });
 });

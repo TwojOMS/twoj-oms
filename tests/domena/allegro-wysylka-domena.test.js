@@ -9,7 +9,7 @@ const PACZKOMAT_INPOST = '2488f7b7-5d1c-4d65-b85c-4cbcf253fd93'; // owner: CLIEN
 const KURIER24_INPOST = '5d9c7838-e05f-4dec-afdd-58e884170ba7'; // owner: CLIENT
 
 const zamowienie = (n = {}) => ({
-  sklep: 'allegro_szkicownia', metoda_wysylki: 'allegro_dpd', anulowane: 0, ...n,
+  sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_dpd', anulowane: 0, ...n,
 });
 
 describe('co wolno nadac z OMS-u przez Wysylam z Allegro', () => {

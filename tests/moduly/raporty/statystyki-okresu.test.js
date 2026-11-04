@@ -10,7 +10,7 @@ let kolejny = 0;
 const wstaw = (d = {}) => {
   kolejny += 1;
   const w = {
-    sklep: 'szkicownia', zrodlo_id: kolejny, numer: `N${kolejny}`,
+    sklep: 'swietlik', zrodlo_id: kolejny, numer: `N${kolejny}`,
     metoda_wysylki: 'dpd', metoda_wysylki_nazwa: null, pobranie: 0, b2b: 0, indywidualne: 0,
     metoda_platnosci: 'BLIK', kwota_brutto: '100.00',
     klient_json: JSON.stringify({ email: 'k@klient.pl', first_name: 'Jan' }),
@@ -77,10 +77,10 @@ describe('zamowieniaOkresu — wykluczenia', () => {
   });
 
   it('zamówienie własne wypada — także gdy adres siedzi w poprawce ręcznej', () => {
-    wstaw({ klient_json: JSON.stringify({ email: 'wlasciciel@example.com' }), numer: 'MOJE' });
+    wstaw({ klient_json: JSON.stringify({ email: 'anna.wzorcowa@example.test' }), numer: 'MOJE' });
     wstaw({
       klient_json: JSON.stringify({ email: 'k@klient.pl' }),
-      klient_reczny_json: JSON.stringify({ email: 'ewa.zywiecki@gmail.com' }),
+      klient_reczny_json: JSON.stringify({ email: 'jan.wzorcowy@example.test' }),
       numer: 'EWA',
     });
     wstaw({ numer: 'PRAWDZIWE' });

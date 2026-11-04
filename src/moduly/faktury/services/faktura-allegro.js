@@ -175,5 +175,5 @@ export function createFakturaAllegro({ db, program: programPodany = null, infakt
     return { invoiceId, weryfikacja };
   }
 
-  return { wyslij };
+  return { wyslij, gotowe: () => Object.keys(klienciKanalow).length > 0 };
 }

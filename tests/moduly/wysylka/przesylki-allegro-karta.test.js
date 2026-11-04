@@ -43,7 +43,7 @@ const poller = { stan: () => ({ ostatni_przebieg_at: '2026-08-04T12:00:00', osta
 
 const zmapowane = (id, nad = {}) => ({
   zrodlo_id: String(id), numer: String(id), klient: { first_name: 'Jan', email: 'j@k.pl' },
-  dostawa: { city: 'Pęki' }, metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, chce_fakture: 0,
+  dostawa: { city: 'Warszawa' }, metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, chce_fakture: 0,
   nip: null, kwota_brutto: '99.00', status_woo: null, oplacone_at: '2026-08-04T09:00:00',
   anulowane: 0, utworzone_at: '2026-08-04T08:00:00',
   pozycje: [{ nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 1, cena_brutto: '99.00', vat: null }],
@@ -89,9 +89,9 @@ const zGodzinami = async (kroki) => {
 
 describe('karta zamówienia dociąga numer listu z Allegro', () => {
   it('numer z Allegro trafia do bazy i JEST WIDOCZNY na karcie', async () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane('e2a1'), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane('e2a1'), {});
     const odp = await otworzKarte(id, {
-      klienci: { allegro_szkicownia: klientZ([{ waybill: 'AD0LK57DLG0756H4H', carrierId: 'ALLEGRO' }]) },
+      klienci: { allegro_swietlik: klientZ([{ waybill: 'AD0LK57DLG0756H4H', carrierId: 'ALLEGRO' }]) },
     });
 
     expect(odp.statusCode).toBe(200);
@@ -107,7 +107,7 @@ describe('karta zamówienia dociąga numer listu z Allegro', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane('4321', { metoda_wysylki: 'dpd' }), {});
     const klient = klientZ([{ waybill: 'AD1' }]);
 
-    const odp = await otworzKarte(id, { klienci: { pro: klient, allegro_szkicownia: klient } });
+    const odp = await otworzKarte(id, { klienci: { pro: klient, allegro_swietlik: klient } });
 
     expect(odp.statusCode).toBe(200);
     expect(klient.pobierzPrzesylki).not.toHaveBeenCalled();
@@ -144,12 +144,12 @@ describe('karta zamówienia dociąga numer listu z Allegro', () => {
   // bez ani jednej przesylki, mimo ze numery po stronie Allegro byly.
   // Regula stoi teraz w domain/allegro-numery.js; te trzy testy pilnuja OBU jej stron.
   it('zamówienie WYSŁANE, które MA już paczkę, nie jest odpytywane', async () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane('e2a1'), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane('e2a1'), {});
     zarejestrujPrzesylkeReczna(db, id, { kurier: 'allegro', kolejnosc: 1, numerListu: 'AD1' });
     oznaczWyslane(db, id);
     const klient = klientZ([{ waybill: 'AD1' }]);
 
-    await otworzKarte(id, { klienci: { allegro_szkicownia: klient } });
+    await otworzKarte(id, { klienci: { allegro_swietlik: klient } });
 
     expect(klient.pobierzPrzesylki).not.toHaveBeenCalled();
   });
@@ -158,13 +158,13 @@ describe('karta zamówienia dociąga numer listu z Allegro', () => {
   // bo numer, ktorego Allegro nie oddalo przez miesiac, nie pojawi sie juz nigdy, a karty
   // stare oglada sie NAJCZESCIEJ (reklamacje, faktury).
   it('zamówienie WYSŁANE dawno i bez paczki też nie jest odpytywane', async () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane('e2a3'), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane('e2a3'), {});
     oznaczWyslane(db, id);
     db.prepare('UPDATE zamowienia SET wyslane_at = ? WHERE id = ?')
       .run(new Date(Date.now() - 45 * 86400_000).toISOString(), id);
     const klient = klientZ([{ waybill: 'AD3' }]);
 
-    await otworzKarte(id, { klienci: { allegro_szkicownia: klient } });
+    await otworzKarte(id, { klienci: { allegro_swietlik: klient } });
 
     expect(klient.pobierzPrzesylki).not.toHaveBeenCalled();
   });
@@ -172,11 +172,11 @@ describe('karta zamówienia dociąga numer listu z Allegro', () => {
   // ⚠️⚠️ TO JEST ZALATANA DZIURA. Zamowienie oznaczone jako wyslane, ale BEZ ani jednej
   // paczki, to stan, w ktorym panel nie ma numeru i nie ma go skad wziac inaczej.
   it('zamówienie WYSŁANE świeżo i BEZ paczki jest odpytywane — numer dojeżdża', async () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane('e2a2'), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane('e2a2'), {});
     oznaczWyslane(db, id);
     const klient = klientZ([{ waybill: 'A005FK03X8', carrierId: 'ALLEGRO' }]);
 
-    await otworzKarte(id, { klienci: { allegro_szkicownia: klient } });
+    await otworzKarte(id, { klienci: { allegro_swietlik: klient } });
 
     expect(klient.pobierzPrzesylki).toHaveBeenCalled();
     const [p] = przesylki(id);
@@ -188,10 +188,10 @@ describe('karta zamówienia dociąga numer listu z Allegro', () => {
   // 500, timeout) NIE MOZE wywalic karty — ta sama zasada, co przy odswiezaniu statusu
   // kuriera. Karta ma sie wyrenderowac, a awaria ma zostac WIDOCZNA w logu.
   it('awaria Allegro NIE wywala karty, a ślad idzie do logu', async () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane('e2a1'), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane('e2a1'), {});
     const klient = { pobierzPrzesylki: vi.fn().mockRejectedValue(new Error('Allegro: HTTP 401 przy /shipments')) };
 
-    const odp = await otworzKarte(id, { klienci: { allegro_szkicownia: klient } });
+    const odp = await otworzKarte(id, { klienci: { allegro_swietlik: klient } });
 
     expect(odp.statusCode).toBe(200);
     expect(log(id).some((w) => w.akcja === 'allegro.przesylka' && /401/.test(w.wynik))).toBe(true);
@@ -202,9 +202,9 @@ describe('karta zamówienia dociąga numer listu z Allegro', () => {
   // wiersz „BŁĄD", czyli zasypywalo historie zamowienia dokladnie w chwili, w ktorej ktos
   // probuje ja czytac przy diagnozie. Dlawik: porownanie z OSTATNIM wpisem tej akcji.
   it('ten sam błąd Allegro NIE dopisuje się do logu przy każdej kolejnej odsłonie karty', async () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane('e2a1'), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane('e2a1'), {});
     const klient = { pobierzPrzesylki: vi.fn().mockRejectedValue(new Error('Allegro: HTTP 401 przy /shipments')) };
-    const klienci = { allegro_szkicownia: klient };
+    const klienci = { allegro_swietlik: klient };
 
     // Godzina miedzy odslonami — inaczej pytanie zdlawiloby samo odpytywanie (I-3 nizej)
     // i test nie mierzylby juz dlawika WPISU DO LOGU, tylko dlawik zapytan.
@@ -224,14 +224,14 @@ describe('karta zamówienia dociąga numer listu z Allegro', () => {
   // Dlawik nie moze byc „zapisz raz i zamilcz": INNY blad to INNY fakt (401 po cofnietej
   // zgodzie i 500 po stronie Allegro wymagaja czego innego), wiec musi trafic do logu.
   it('INNY błąd Allegro dopisuje się mimo dławika', async () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane('e2a1'), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane('e2a1'), {});
     const klient = {
       pobierzPrzesylki: vi.fn()
         .mockRejectedValueOnce(new Error('Allegro: HTTP 401 przy /shipments'))
         .mockRejectedValueOnce(new Error('Allegro: HTTP 401 przy /shipments'))
         .mockRejectedValueOnce(new Error('Allegro: HTTP 500 przy /shipments')),
     };
-    const klienci = { allegro_szkicownia: klient };
+    const klienci = { allegro_swietlik: klient };
 
     await zGodzinami([
       () => otworzKarte(id, { klienci }),
@@ -267,9 +267,9 @@ describe('karta zamówienia dociąga numer listu z Allegro', () => {
     // Liczba 20 zostaje, bo to ona niesie sens testu („dwadzieścia razy F5"). Rośnie
     // wyłącznie budżet czasu — zachowanie sprawdzane jest bez zmian.
     it('dwadzieścia odsłon tej samej karty to JEDNO zapytanie do Allegro', { timeout: 30_000 }, async () => {
-      const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane('e2a1'), {});
+      const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane('e2a1'), {});
       const klient = klientZ([]);
-      const klienci = { allegro_szkicownia: klient };
+      const klienci = { allegro_swietlik: klient };
 
       for (let i = 0; i < 20; i += 1) await otworzKarte(id, { klienci });
 
@@ -280,8 +280,8 @@ describe('karta zamówienia dociąga numer listu z Allegro', () => {
     // zamowienie czeka na spakowanie, wiec Allegro dlugo nie ma zadnej przesylki. Dlawik
     // oparty o zapis wiersza przesylki albo o wpis bledu nie objalby wlasnie tej sciezki.
     it('znacznik próby powstaje TAKŻE gdy Allegro nie ma żadnej przesyłki', async () => {
-      const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane('e2a1'), {});
-      await otworzKarte(id, { klienci: { allegro_szkicownia: klientZ([]) } });
+      const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane('e2a1'), {});
+      await otworzKarte(id, { klienci: { allegro_swietlik: klientZ([]) } });
       expect(log(id).filter((w) => w.akcja === 'allegro.przesylka.proba')).toHaveLength(1);
       expect(przesylki(id)).toHaveLength(0);
     });
@@ -289,9 +289,9 @@ describe('karta zamówienia dociąga numer listu z Allegro', () => {
     // …i gdy odpytywanie PADLO. Inaczej dlawik nie objalby dokladnie tego przypadku, w ktorym
     // boli najbardziej: przy awarii kanalu kazde otwarcie karty szloby do Allegro na nowo.
     it('awaria Allegro też zużywa próbę — kolejne odsłony nie pytają', async () => {
-      const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane('e2a1'), {});
+      const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane('e2a1'), {});
       const klient = { pobierzPrzesylki: vi.fn().mockRejectedValue(new Error('Allegro: HTTP 401 przy /shipments')) };
-      const klienci = { allegro_szkicownia: klient };
+      const klienci = { allegro_swietlik: klient };
 
       await otworzKarte(id, { klienci });
       await otworzKarte(id, { klienci });
@@ -303,9 +303,9 @@ describe('karta zamówienia dociąga numer listu z Allegro', () => {
     // Dlawik ma OPOZNIAC, a nie ZABRANIAC: po godzinie karta pyta znowu, bo numer listu
     // pojawia sie w Allegro dopiero przy pakowaniu i musi dojsc do panelu tego samego dnia.
     it('po godzinie karta pyta znowu', async () => {
-      const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane('e2a1'), {});
+      const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane('e2a1'), {});
       const klient = klientZ([]);
-      const klienci = { allegro_szkicownia: klient };
+      const klienci = { allegro_swietlik: klient };
 
       await zGodzinami([
         () => otworzKarte(id, { klienci }),
@@ -318,10 +318,10 @@ describe('karta zamówienia dociąga numer listu z Allegro', () => {
     // Dlawik jest PER ZAMOWIENIE (wpis w logu wisi przy zamowieniu), wiec swiezo otwarta
     // karta drugiego zamowienia nie dziedziczy „pytane przed chwila" po pierwszej.
     it('dławik jednego zamówienia nie zamyka ust drugiemu', async () => {
-      const pierwsze = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane('e2a1'), {});
-      const drugie = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane('e2a2'), {});
+      const pierwsze = zapiszZamowienie(db, 'allegro_swietlik', zmapowane('e2a1'), {});
+      const drugie = zapiszZamowienie(db, 'allegro_swietlik', zmapowane('e2a2'), {});
       const klient = klientZ([]);
-      const klienci = { allegro_szkicownia: klient };
+      const klienci = { allegro_swietlik: klient };
 
       await otworzKarte(pierwsze, { klienci });
       await otworzKarte(drugie, { klienci });
@@ -347,8 +347,8 @@ describe('karta zamówienia dociąga numer listu z Allegro', () => {
   // technicznego (brak etykiety NIE jest przy nim sprawa do zalatwienia), wiec widok musi
   // rozroznic te dwa przypadki po `kurier`.
   it('karta nie proponuje kasowania paczki przyszłej z Allegro', async () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane('e2a1'), {});
-    const odp = await otworzKarte(id, { klienci: { allegro_szkicownia: klientZ([{ waybill: 'AD1' }]) } });
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane('e2a1'), {});
+    const odp = await otworzKarte(id, { klienci: { allegro_swietlik: klientZ([{ waybill: 'AD1' }]) } });
 
     expect(odp.body).not.toContain('skasuj-reczna');
     expect(odp.body).toContain('nadana w Allegro');
@@ -360,12 +360,12 @@ describe('karta zamówienia dociąga numer listu z Allegro', () => {
   // zostawala wtedy na zawsze: rejestracja reczna ustawia `wyslane_at`, wiec prawdziwy numer
   // juz sie nie dociagnie. Rozstrzyga ZRODLO NUMERU, nie kurier.
   it('karta PROPONUJE kasowanie numeru WPISANEGO Z RĘKI, choć kurier to „allegro"', async () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane('e2a1'), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane('e2a1'), {});
     // Dokladnie to, co robi trasa POST /zamowienia/:id/przesylki/reczna przy tym kanale.
     zarejestrujPrzesylkeReczna(db, id, { kurier: 'allegro', kolejnosc: 1, numerListu: 'AD-LITEROWKA' });
     oznaczWyslane(db, id);
 
-    const odp = await otworzKarte(id, { klienci: { allegro_szkicownia: klientZ([]) } });
+    const odp = await otworzKarte(id, { klienci: { allegro_swietlik: klientZ([]) } });
 
     expect(odp.body).toContain('skasuj-reczna');
     // …i opis nie klamie o tym, skad wzial sie numer.

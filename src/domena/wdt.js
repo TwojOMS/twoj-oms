@@ -115,6 +115,19 @@ export function polaWdtInfakt(nip, { nipSprzedawcy }) {
   };
 }
 
+/** Korekta WDT wymaga zgodności numeru UE i wszystkich stawek dokumentu „przed”. */
+export function rodzajKorekty(nipNabywcy, pozycjeFaktury, { zwolniona = false } = {}) {
+  if (!czyWdt(nipNabywcy, { zwolniona })) return 'krajowa';
+  return pozycjeFaktury?.length > 0 && pozycjeFaktury.every((p) => String(p.tax_symbol).trim() === '0')
+    ? 'wdt' : 'niezgodna';
+}
+
+/** Adnotacja ma wspólne źródło z fakturą; inFakt nie przepisuje jej na korektę. */
+export function polaWdtKorekty(nip, { nipSprzedawcy, uwagi }) {
+  const pola = polaWdtInfakt(nip, { nipSprzedawcy });
+  return pola.notes ? { ...pola, notes: `${pola.notes} ${uwagi}` } : {};
+}
+
 /**
  * PRZ-108.10: NIP sprzedawcy do adnotacji WDT, rozstrzygnięty PRZED rezerwacją faktury. NIP przychodzi tekstem (stary
  * kształt) albo funkcją (NIP z Ustawień → Firma, czytany przy każdym wystawieniu). Dla nabywcy krajowego nie jest

@@ -1,0 +1,29 @@
+<%# PRZ-136.07: jeden wiersz listy „Moje połączenia” (model z services/polaczenia-integracji.ts). Dane: p, idWiersza. %>
+<% const u = wszystkieUslugi.find(x => x.id === p.usluga);
+   const kanal = p.kanal ? kanaly.find(k => k.stan.kanal === p.kanal) : undefined;
+   const tytul = p.nazwaLudzka ?? (p.nazwa === p.usluga ? (u?.nazwa ?? p.nazwa) : p.nazwa);
+   const modyfikator = { blad: ' pol-wiersz--blad', uwaga: ' pol-wiersz--uwaga', wylaczone: ' pol-wiersz--wstrzymane' }[p.stan] ?? '';
+   const pastylka = { blad: ' pol-stan--blad', uwaga: ' pol-stan--uwaga', dziala: ' pol-stan--dziala', wylaczone: ' pol-stan--wstrzymane' }[p.stan] ?? '';
+   const czesci = [];
+   if (u && u.nazwa !== tytul) czesci.push(u.nazwa);
+   if (p.konto) czesci.push('konto ' + p.konto);
+   if (p.wysylkaAllegro) czesci.push('Wysyłam z Allegro: ' + (p.wysylkaAllegro === 'wlaczona' ? 'włączone' : 'wyłączone'));
+   const linia = czesci.join(' · ');
+   const problem = p.stan === 'blad' || p.stan === 'uwaga';
+   const wiazanie = p.usluga === 'allegro' ? kanal?.wiazanie : null;
+   const polacz = p.usluga === 'allegro' && !wiazanie && kanal?.stan.wolnoWiazac;
+   const kiedy = p.czasOdczytu ? fmtKiedy(p.czasOdczytu) : ''; %>
+<li class="pol-wiersz<%= modyfikator %>" id="<%= idWiersza %>" data-usluga="<%= p.usluga %>">
+<span class="pol-logo"><% const inicjal = { ksef: 'K', gus: 'G', meta: 'M' }[p.usluga]; if (inicjal) { %><span class="pol-inicjal" aria-hidden="true"><%= inicjal %></span><% } else if (u) { %><img src="/public<%= u.logo %>" alt="" width="40" height="40"><% } %></span>
+<div class="pol-opis">
+<p class="pol-nazwa"><% if (p.akcja) { %><a href="<%= p.akcja.href %>"><%= tytul %></a><% } else { %><%= tytul %><% } %></p>
+<% if (linia) { %><p class="pol-konto"><%= linia.charAt(0).toUpperCase() + linia.slice(1) %></p><% } %>
+<% if (problem && p.komunikat) { %><p class="pol-komunikat pol-komunikat--<%= p.stan %>"><%= p.komunikat %></p><% } %>
+<% if (wiazanie) { %><p class="pol-komunikat pol-komunikat--uwaga">Wiązanie w toku. Zaloguj się na właściwe konto Allegro: <a href="<%= wiazanie.adres %>" target="_blank" rel="noopener noreferrer">Otwórz stronę Allegro</a>. Kod: <strong><%= wiazanie.userCode %></strong></p><% } %>
+</div>
+<div class="pol-stan-kol"><span class="pol-stan<%= pastylka %>"><span class="pol-kropka" aria-hidden="true"></span><%= p.etykietaStanu %></span><% if (kiedy) { %>
+<span class="pol-czas">Ostatni udany odczyt: <time datetime="<%= p.czasOdczytu %>"><%= kiedy %></time></span><% } %></div>
+<div class="pol-akcje"><% if (polacz) { %><form method="post" action="/ustawienia/kanaly/<%= encodeURIComponent(p.kanal) %>/wiazanie"><button class="btn btn--glowny btn--maly" type="submit">Połącz z Allegro</button></form><% } %>
+<% if (p.akcja) { %><a class="btn <%= p.akcja.glowna && !polacz ? 'btn--glowny' : 'btn--drugi' %> btn--maly" href="<%= p.akcja.href %>"><%= p.akcja.etykieta %></a><% } %>
+<% if ((p.wiecej ?? []).length) { %><details class="pol-wiecej"><summary class="btn btn--cichy btn--maly" aria-label="Więcej akcji: <%= tytul %>">Więcej</summary><div class="pol-wiecej-menu"><% p.wiecej.forEach(w => { %><a href="<%= w.href %>"><%= w.etykieta %></a><% }); %></div></details><% } %></div>
+</li>

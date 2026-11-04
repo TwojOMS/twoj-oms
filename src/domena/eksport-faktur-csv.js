@@ -1,5 +1,6 @@
 import { BOM_EXCELA } from './eksport-csv.js';
 import { zl } from './kwoty.js';
+import { wKsef } from './lista-faktur.js';
 
 // Pola tekstowe chronimy przed formułą Excela przed cytowaniem CSV.
 const pole = (v, tekst = true) => {
@@ -20,7 +21,7 @@ export function csvZaznaczonych(wiersze) {
       : ({ zaplacona: 'zapłacona', do_zaplaty: 'do zapłaty', nieznany: 'nie wiadomo' }[d.stanZaplaty] ?? 'nie wiadomo');
     linie.push([pole(d.number), pole(d.invoice_date), pole(nabywca), pole(d.client_tax_code),
       pole(kwota(d.net_price), false), pole(kwota(d.tax_price), false), pole(kwota(d.gross_price ?? 0), false),
-      pole(d.ksef_number), pole(platnosc)].join(';'));
+      pole(wKsef(d) ? String(d.ksef_number).trim() : ''), pole(platnosc)].join(';'));
   }
   return BOM_EXCELA + linie.join('\r\n');
 }

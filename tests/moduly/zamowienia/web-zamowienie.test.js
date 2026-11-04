@@ -19,7 +19,7 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: '2026-07-29T12:00:00', ostatni_blad: null }) };
 
 const zmapowane = (id, nad = {}) => ({
-  zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Pęki' },
+  zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', email: 'j@k.pl', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' }, dostawa: { city: 'Warszawa' },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
   status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-07-29T13:19:52',
   pozycje: [{ nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2, cena_brutto: '61.50', vat: null }],
@@ -390,7 +390,7 @@ describe('trasy nadania i etykiety', () => {
   // samą treść adresu, więc wystarczy dowolny KOMPLETNY adres.
   const PACZKA = {
     waga: '1', dlugosc: '110', szerokosc: '75', wysokosc: '1', kolejnosc: '1',
-    nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki',
+    nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa',
   };
   let katalogEtykiet, dpd, woo;
 
@@ -1066,10 +1066,28 @@ describe('zawieszone nadanie — wyjście dla operatora', () => {
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('ZAWIESZONE');
-    expect(r.body).toMatch(/NAJPIERW otwórz panel DPD/);
+    expect(r.body).toMatch(/NAJPIERW zajrzyj do panelu DPD/);
     expect(r.body).toContain(`/zamowienia/${id}/przesylki/${pid(id)}/odblokuj`);
     // Przycisk nadania to zaproszenie do klikania w nic: odbije sie od indeksu czesciowego.
     expect(r.body).not.toContain('Nadaj paczkę');
+  });
+
+  // PRZ-142.01: komunikaty mówią o kurierze TEJ przesyłki, nie zakładają DPD.
+  it('przesyłka InPost: karta odsyła do panelu InPost, nie DPD; bez znanego kuriera — „panelu kuriera”', async () => {
+    const id = zapiszZamowienie(db, 'pro', zmapowane(1905), {});
+    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, utworzona_at) VALUES (?, 'inpost', 'w_trakcie', ?)")
+      .run(id, DAWNO);
+    const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
+    expect(r.body).toMatch(/NAJPIERW zajrzyj do panelu InPost/);
+    expect(r.body).toContain('Sprawdziłem w panelu InPost — odblokuj');
+    const blok = r.body.slice(r.body.indexOf('NADANIE ZAWIESZONE'), r.body.indexOf('</form>', r.body.indexOf('/odblokuj')));
+    expect(blok).toContain('NADANIE ZAWIESZONE');
+    expect(blok).not.toContain('DPD');
+    const id2 = zapiszZamowienie(db, 'pro', zmapowane(1906), {});
+    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, utworzona_at) VALUES (?, 'nieznany', 'w_trakcie', ?)")
+      .run(id2, DAWNO);
+    const r2 = await app.inject({ method: 'GET', url: `/zamowienia/${id2}`, headers: naglowek });
+    expect(r2.body).toMatch(/NAJPIERW zajrzyj do panelu kuriera/);
   });
 
   it('świeże nadanie NIE dostaje formularza odblokowania', async () => {
@@ -1131,7 +1149,7 @@ describe('zawieszone nadanie — wyjście dla operatora', () => {
       method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
       payload: {
         waga: '1', dlugosc: '110', szerokosc: '75', wysokosc: '1', kolejnosc: '1',
-        nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki',
+        nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa',
       },
     });
     expect(r.statusCode).toBe(302);
@@ -1733,7 +1751,7 @@ describe('karta zamówienia — „Pobierz" i „Drukuj" (kolejka druku)', () =>
   });
 
   it('WzA z samym ZPL-em pokazuje Drukuj bez fałszywego alarmu o braku etykiety', async () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(2110), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(2110), {});
     przesylka(id, { kurier: 'allegro_wza', etykieta_sciezka: null, etykieta_zpl_sciezka: '/e/1.zpl' });
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.statusCode).toBe(200);
@@ -1750,7 +1768,7 @@ describe('karta zamówienia — „Pobierz" i „Drukuj" (kolejka druku)', () =>
   });
 
   it('WzA bez PDF-u i ZPL-u ostrzega o Allegro, nie o DPD', async () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(2111), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(2111), {});
     przesylka(id, { kurier: 'allegro_wza', etykieta_sciezka: null });
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.statusCode).toBe(200);
@@ -1886,7 +1904,7 @@ describe('kurier bez śledzenia nie zaśmieca logu', () => {
   const surowaZDpd = JSON.stringify({ carrierTrackingData: { carrierId: 'DPD', carrierWaybill: '1049000000001U' } });
 
   it('karta paczki allegro_wza BEZ pary przewoźnika nie dopisuje błędu przy otwarciu', async () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(8801), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(8801), {});
     const p = rozpocznijPrzesylke(db, id, 'allegro_wza');
     zakonczPrzesylke(db, p.id, { numerListu: 'AD0TESTBEZPARY', etykietaSciezka: '/tmp/e.pdf', surowa: '<x/>' });
     const app = buildOmsServer({ db, config, poller, kurierzy: { allegro_wza: { bezSledzenia: true } } });
@@ -1898,7 +1916,7 @@ describe('kurier bez śledzenia nie zaśmieca logu', () => {
   });
 
   it('karta paczki allegro_wza Z parą pyta podwykonawcę DPD numerem carrierWaybill', async () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(8802), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(8802), {});
     const p = rozpocznijPrzesylke(db, id, 'allegro_wza');
     zakonczPrzesylke(db, p.id, { numerListu: 'AD0TESTZPARA', etykietaSciezka: '/tmp/e.pdf', surowa: surowaZDpd });
     const pytania = [];

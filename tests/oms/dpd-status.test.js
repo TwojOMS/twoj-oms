@@ -8,16 +8,16 @@ const __dir = dirname(fileURLToPath(import.meta.url));
 const fixture = (n) => readFileSync(join(__dir, 'fixtures', 'dpd', n), 'utf8');
 const odp = (status, tekst) => ({ status, ok: status >= 200 && status < 300, text: async () => tekst });
 
-const nadawca = { nazwa: 'Lumina', ulica: 'ul. 1 Maja 5', kod: '00-650', miasto: 'Pęki', kraj: 'PL' };
+const nadawca = { nazwa: 'Pracownia Półcień', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL' };
 
 // KANAL jest CELOWO rozny od FID-u i nie jest podciagiem zadnego innego poswiadczenia.
-// W realnej konfiguracji obie wartosci bywaja takie same ('278216') — i wtedy test
+// W realnej konfiguracji obie wartosci bywaja takie same ('876543') — i wtedy test
 // maskowania kanalu NIE GRYZIE, bo kanal maskuje sie „przy okazji" jako FID. Skasowanie
 // `channel` z listy w oczysc() przechodzilo wowczas na zielono.
 const KANAL = 'KANAL-9001';
-const LOGIN = '27821601';
+const LOGIN = '<login>';
 const HASLO = 'SEKRETNE-HASLO';
-const FID = '278216';
+const FID = '876543';
 
 const zbuduj = (fetchImpl) => createDpdClient({
   url: 'https://dpd/api', infoUrl: 'https://dpd/info', channel: KANAL,

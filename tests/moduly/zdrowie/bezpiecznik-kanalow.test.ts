@@ -35,7 +35,8 @@ async function sprawdz(nad: Record<string, string | undefined>, sklep?: string, 
     expect(Object.keys(wynik)).toEqual(klucze);
     for (const sekret of ['HASLO-NIE-UJAWNIAJ','CK-NIE-UJAWNIAJ','CS-NIE-UJAWNIAJ','ID-NIE-UJAWNIAJ','SECRET-NIE-UJAWNIAJ']) expect(odpowiedz.body).not.toContain(sekret);
     expect(fetch).not.toHaveBeenCalled();
-    return { wynik, config: a.usluga<any>('kanaly', 'config'), zegary: a.zegary.map(z => z.nazwa) };
+    const config=a.usluga<any>('kanaly','config');
+    return { wynik, config:{...config,kanaly:{...config.kanaly},sklepy:{...config.sklepy}}, zegary: a.zegary.map(z => z.nazwa) };
   } finally {
     await a?.app.close(); a?.db.close();
     rmSync(katalog, { recursive: true, force: true });
@@ -52,13 +53,13 @@ describe('D01: bezpiecznik rzeczywistej bazy i bootstrapu', () => {
     const { wynik, config, zegary } = await sprawdz({ OMS_KANALY: JSON.stringify([woo]), ...pelneWoo, [nazwa]: undefined }, 'polnoc');
     expect(wynik.ok).toBe(false);
     expect(wynik.alarmy).toContain(`kanał polnoc: brak kompletnej konfiguracji (${nazwa})`);
-    expect(config.sklepy).toEqual({}); expect(zegary).not.toContain('poller');
+    expect(config.sklepy).toEqual({}); expect(zegary.filter(z=>z==='poller')).toHaveLength(1);
   });
   it.each(['RYNEK_CLIENT_ID','RYNEK_CLIENT_SECRET','RYNEK_USER_AGENT','RYNEK_OD'])('częściowe Allegro: brak %s alarmuje i nie tworzy klienta', async nazwa => {
     const { wynik, config, zegary } = await sprawdz({ OMS_KANALY: JSON.stringify([allegro]), ...pelneAllegro, [nazwa]: undefined }, 'rynek');
     expect(wynik.ok).toBe(false);
     expect(wynik.alarmy).toContain(`kanał rynek: brak kompletnej konfiguracji (${nazwa})`);
-    expect(config.kanaly).toEqual({}); expect(zegary).not.toContain('poller');
+    expect(config.kanaly).toEqual({}); expect(zegary.filter(z=>z==='poller')).toHaveLength(1);
   });
   it('zdefiniowany Woo bez żadnych kluczy podaje wszystkie brakujące nazwy', async () => {
     const { wynik } = await sprawdz({ OMS_KANALY: JSON.stringify([woo]) }, 'polnoc');

@@ -72,3 +72,5 @@ export function createAtrapaDpd({ env = process.env, log = () => {}, baza = () =
     atrapa: true,
   });
 }
+
+export const createAtrapa = createAtrapaDpd;

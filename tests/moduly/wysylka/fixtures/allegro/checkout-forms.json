@@ -16,8 +16,8 @@
         "preferences": { "language": "pl-PL" },
         "address": {
           "street": "Testowa 1",
-          "city": "Pęki",
-          "postCode": "00-650",
+          "city": "Warszawa",
+          "postCode": "00-950",
           "countryCode": "PL"
         }
       },
@@ -39,8 +39,8 @@
       "delivery": {
         "address": {
           "street": "Testowa 1",
-          "city": "Pęki",
-          "zipCode": "00-650",
+          "city": "Warszawa",
+          "zipCode": "00-950",
           "countryCode": "PL",
           "firstName": "Jan",
           "lastName": "Kowalski",

@@ -16,10 +16,10 @@ export type FabrykiWiadomosci = Partial<Record<
 
 /** Jeden synchroniczny składacz produkcyjny dla manifestu i adaptera historycznego. */
 export function utworzUslugiWiadomosci({ db, config, klienciKanalow, fabryki = {},
-  tokenyKanalow = {}, brakiKanalu, proforma = null, infakt = null, wyborProgramu = null, teraz = () => new Date(),
+  tokenyKanalow = {}, brakiKanalu, wolnoZapisywac = () => true, proforma = null, infakt = null, wyborProgramu = null, teraz = () => new Date(),
 }: { db: DatabaseSync; config: any; klienciKanalow: Record<string, any>;
   fabryki?: FabrykiWiadomosci; tokenyKanalow?: Record<string, any>;
-  brakiKanalu?: (kanal: string) => string[]; proforma?: any; infakt?: any; wyborProgramu?: any; teraz?: () => Date }) {
+  brakiKanalu?: (kanal: string) => string[]; wolnoZapisywac?: (kanal: string) => boolean; proforma?: any; infakt?: any; wyborProgramu?: any; teraz?: () => Date }) {
   const braki = brakiKanalu ?? ((kanal: string) =>
     tokenyKanalow[kanal]?.stanDlaEkranu().brakujaceUprawnienia ?? []);
   const odswiezanieSpraw = (fabryki.createOdswiezanieSpraw ?? createOdswiezanieSpraw)({
@@ -29,7 +29,7 @@ export function utworzUslugiWiadomosci({ db, config, klienciKanalow, fabryki = {
     db, klienci: klienciKanalow, sprawy: odswiezanieSpraw, brakiKanalu: braki, teraz,
   });
   const czuwaczFormulki = (fabryki.createCzuwaczFormulki ?? createCzuwaczFormulki)({
-    db, klienci: klienciKanalow, brakiKanalu: braki, teraz,
+    db, klienci: klienciKanalow, brakiKanalu: braki, wolnoZapisywac, teraz,
   });
   // PRZ-094.04: poczta z pliku (SMTP_*) albo — gdy pliku nie ma — z Ustawień (wiersz „poczta”, pocztaZUstawien czyta
   // zapis przy każdej wysyłce). Plik wygrywa w całości: z SMTP_* pośrednik ustawień w ogóle nie powstaje. Piaskownica

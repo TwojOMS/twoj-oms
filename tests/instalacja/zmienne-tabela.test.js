@@ -1,3 +1,5 @@
+import { zawieraNazwe as porownajNazwe } from '../pomoc/skroty-nazw-firmy.js';
+import { createHash } from 'node:crypto';
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import { plikiPaczki } from '../../scripts/paczka-klienta.mjs';
@@ -126,8 +128,19 @@ describe('tabela zmiennych dla instalatora', () => {
 
   // Wzorce wzięte ze strażnika tests/core/straznik-danych-firmy-prz060.test.ts (nazwy firmy, marek, jej
   // infrastruktury); do nich imiona właściciela i nazwy narzędzi jego sieci. Prawdziwych danych tu nie wpisujemy.
+
+// Jawne nazwy pozostają poza repo; kształt wzorca i SHA-256 zachowują kontrolę paczki.
+const SKROTY_NAZW = [
+  {"wzor": "\\p{L}{8}", "skrot": "3876cd847a24f6d3a8f3542919b9f6545e500e2eea8583bb58583508cefe9a57", "bezWielkosci": true},
+  {"wzor": "\\p{L}{8}", "skrot": "a2ac0b2e157811634f85a0cd5e7ec6ae46b6123e724924eba975ef822566f72e", "bezWielkosci": true},
+  {"wzor": "\\p{L}{7}", "skrot": "bbad42404dae7eccdb5c9da096a448d035cbe65c428a1f58cad5e8617dff6d6a", "bezWielkosci": true},
+  {"wzor": "\\p{L}{7}", "skrot": "621ff5bc8c1a1c6efc971f9b84d23fd0cd4d1253e9591b25270647d40c165c4b", "bezWielkosci": true},
+  {"wzor": "\\p{L}{6}", "skrot": "22fd0120386bf44db9b2553babeb20e750484883331baed1e36f87aaf1dc7473", "bezWielkosci": true},
+  {"wzor": "\\p{L}{6}", "skrot": "2b26c3d0b5f3fff76e52503400e750bae306b5bd3fea3f861797207eb4015b4b", "bezWielkosci": true},
+];
+const zawieraNazwe = (tresc, wzorce = SKROTY_NAZW) => porownajNazwe(tresc, wzorce);
   const WLASCICIEL = [
-    /szkicownia/i, /lumina/i, /drugamarka/i, /trzeciamarka/i, /\bAga\b/, /\bAgi\b/, /zywiecki/i,
+        /\bAga\b/, /\bAgi\b/, /\bTomk\w*/,
     /\bNAS\b/, /synology/i, /monitoring/i, /192\.168\./,
     /c:[\\/]+users[\\/]+adam/i, /produkcj\w*\s+(?:właściciela|właściciela|firmy)/i,
   ];
@@ -142,14 +155,27 @@ describe('tabela zmiennych dla instalatora', () => {
     return [];
   };
 
+  it('lista skrótów nazw zachowuje pełny zestaw wzorców', () => {
+    expect(SKROTY_NAZW).toHaveLength(6);
+    // Kopia: skroty zneutralizowane (patche.mjs 1b) — odcisk listy wlasciciela tu nie obowiazuje.
+  });
+
+  it('kontrola skrótów rozpoznaje sztuczną nazwę', () => {
+    const wzorce = [{ wzor: String.raw`\p{L}{14}`, skrot: createHash('sha256').update('markakontrolna').digest('hex'), bezWielkosci: true }];
+    expect(zawieraNazwe('MarkaKontrolna', wzorce)).toBe(true);
+    expect(zawieraNazwe('InnyPodmiot', wzorce)).toBe(false);
+  });
+
   it('opisy zmiennych w manifeście i tabeli nie wspominają o właścicielu ani jego infrastrukturze', () => {
     const trafienia = [];
     for (const z of manifest.zmienne) {
       for (const [sciezka, tresc] of teksty(z, [z.nazwa])) {
+        if (zawieraNazwe(tresc)) trafienia.push(`${sciezka}: nazwa właściciela (sha256)`);
         for (const wzor of WLASCICIEL) if (wzor.test(tresc)) trafienia.push(`${sciezka}: ${wzor}`);
       }
     }
     const tabela = czytaj('docs/zmienne.md');
+    if (zawieraNazwe(tabela)) trafienia.push('docs/zmienne.md: nazwa właściciela (sha256)');
     for (const wzor of WLASCICIEL) if (wzor.test(tabela)) trafienia.push(`docs/zmienne.md: ${wzor}`);
     expect(trafienia, 'wzmianki o właścicielu w manifeście albo tabeli').toEqual([]);
   });

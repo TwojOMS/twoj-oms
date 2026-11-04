@@ -9,6 +9,20 @@ export function wczytajTokeny(db, kanal) {
   return db.prepare('SELECT * FROM tokeny_kanalu WHERE kanal = ?').get(kanal) ?? null;
 }
 
+// Brak tabeli oznacza starszego konsumenta/CLI. Po migracji trwała blokada obowiązuje
+// także stare uchwyty usług; sama nieobecność tokenów nie zabezpiecza spóźnionego refresh.
+export function generacjaDostepu(db, kanal) {
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='kanaly_sprzedazy'").get()) return 0;
+  return Number(db.prepare('SELECT generacja FROM kanaly_sprzedazy WHERE klucz=?').get(kanal)?.generacja ?? 0);
+}
+export function sprawdzGeneracjeDostepu(db, kanal, oczekiwana) {
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='kanaly_sprzedazy'").get()) return;
+  const r = db.prepare('SELECT generacja,autoryzacja FROM kanaly_sprzedazy WHERE klucz=?').get(kanal);
+  if (r?.autoryzacja === 'odlaczone' || (oczekiwana !== undefined && Number(r?.generacja ?? 0) !== oczekiwana)) {
+    const e = new Error('Dostęp do konta Allegro został zmieniony.'); e.name = 'KanalZatrzymany'; throw e;
+  }
+}
+
 // ⚠️ CALA PARA ZAWSZE RAZEM, JEDNYM ZAPISEM. Refresh token Allegro jest JEDNORAZOWY: udane
 // odswiezenie rotuje access ORAZ refresh, a stary refresh jest od tej chwili spalony po
 // stronie Allegro. Zapis „tylko access token" zostawilby w bazie wartosc, ktora NA PEWNO
@@ -16,7 +30,8 @@ export function wczytajTokeny(db, kanal) {
 //
 // `ostatni_blad` gasnie przy KAZDYM udanym zapisie i to jest wyjscie ze stanu wymagajacego
 // uwagi (niezmiennik 4.9): kanal polaczony na nowo nie ma prawa dalej wygladac na zepsuty.
-export function zapiszTokeny(db, kanal, { accessToken, refreshToken, wygasaAt, refreshWygasaAt }) {
+export function zapiszTokeny(db, kanal, { accessToken, refreshToken, wygasaAt, refreshWygasaAt }, oczekiwanaGeneracja) {
+  sprawdzGeneracjeDostepu(db, kanal, oczekiwanaGeneracja);
   db.prepare(`
     INSERT INTO tokeny_kanalu (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, ostatni_blad, zaktualizowane_at)
     VALUES (?,?,?,?,?,NULL,?)

@@ -50,7 +50,7 @@ describe('PRZ-070: podgląd faktur hurtem z pobraniem', () => {
     const { app, db } = serwer();
     const op = zamowienie(db, { numer: 'OP', zrodlo: 1, oplacone: true });
     const pb = zapiszZamowienie(db, 'pro', {
-      zrodlo_id: 2, numer: 'PB', klient: { first_name: 'Jan' }, dostawa: {},
+      zrodlo_id: 2, numer: 'PB', klient: { first_name: 'Jan', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' }, dostawa: {},
       metoda_wysylki: 'dpd', pobranie: 1, kwota_pobrania: '100.00', chce_fakture: 1, nip: '1234563218',
       kwota_brutto: '100.00', status_woo: 'processing', oplacone_at: null, anulowane: 0, pozycje: [POZYCJA_100],
     }, {});

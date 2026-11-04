@@ -50,7 +50,7 @@ describe('PRZ-024 — rzeczywisty zapis zwrotu przez chronione HTTP', () => {
   it('utrwala nagłówek, pozycje, kwotę dostawy i log sukcesu po ponownym otwarciu bazy', async () => {
     await przypadek(async ({ id, wyslij, stan, otworzPonownie }) => {
       const r = await wyslij();
-      expect(r.statusCode).toBe(302); expect(r.headers.location).toBe(`/zamowienia/${id}`);
+      expect(r.statusCode).toBe(302); expect(r.headers.location).toBe(`/zamowienia/${id}/zwrot`);
       await otworzPonownie();
       const s = stan();
       expect(s.zwroty).toHaveLength(1); expect(s.pozycje).toHaveLength(1);
@@ -109,11 +109,11 @@ describe('PRZ-024 — rzeczywisty zapis zwrotu przez chronione HTTP', () => {
   it('zachowuje powrót do listy i odrzuca zewnętrzny adres przekierowania', async () => {
     await przypadek(async ({ id, cialo, wyslij }) => {
       const r = await wyslij({ ...cialo, powrot: '/?status=zwrot' });
-      expect(r.statusCode).toBe(302); expect(r.headers.location).toBe(`/zamowienia/${id}?powrot=%2F%3Fstatus%3Dzwrot`);
+      expect(r.statusCode).toBe(302); expect(r.headers.location).toBe(`/zamowienia/${id}/zwrot?powrot=%2F%3Fstatus%3Dzwrot`);
     });
     await przypadek(async ({ id, cialo, wyslij }) => {
       const r = await wyslij({ ...cialo, powrot: 'https://obca.example/' });
-      expect(r.statusCode).toBe(302); expect(r.headers.location).toBe(`/zamowienia/${id}`);
+      expect(r.statusCode).toBe(302); expect(r.headers.location).toBe(`/zamowienia/${id}/zwrot`);
     });
   });
   it('nieistniejące zamówienie daje 404, manifest nie dodaje tabel ani zegarów', async () => {

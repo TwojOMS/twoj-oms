@@ -92,6 +92,8 @@
       <button class="btn btn--maly">Wyślij ponownie</button>
     </form>
   <% } %>
+  <%# PRZ-149.04: sklep „Odczyt” — OMS nie zmienia tam statusu ani nie dopisuje notatki; mówimy to wprost. %>
+  <% if (typeof sklepTylkoOdczyt !== 'undefined' && sklepTylkoOdczyt) { %><p class="pasek-uwaga" id="sklep-tylko-odczyt"><%= sklepTylkoOdczyt %></p><% } %>
   <%# ⚠️ ROZLICZENIE ZBIORCZE STOI W BELCE — jedyny wyjatek od zasady „belka niesie tylko
       numer i status" (nizej). Powod jest inny niz przy faktach, ktore z belki zeszly:
       TAMTE karta powtarzala w sekcjach nizej, a tego NIE MA NIGDZIE INDZIEJ. Operator,
@@ -182,7 +184,7 @@
         <%# wiekszosci. Tresc BEZ ZMIAN: to nie jest zmiekczenie ostrzezenia, tylko %>
         <%# przeniesienie go tam, gdzie cos znaczy. %>
         <% if (dane.jestNadanaPaczka) { %>
-          <p class="pasek-uwaga">Poprawka dotyczy dopiero KOLEJNYCH przesyłek — kursu paczki JUŻ NADANEJ to nie zmienia. Jeśli paczka jedzie pod zły adres, załatw to w panelu DPD.</p>
+          <p class="pasek-uwaga">Poprawka dotyczy dopiero KOLEJNYCH przesyłek — kursu paczki JUŻ NADANEJ to nie zmienia. Jeśli paczka jedzie pod zły adres, załatw to w <%= dane.panelNadanych %>.</p>
         <% } %>
         <%# PRZ-126.C02: odmowa zapisu wraca tu z komunikatem i wpisanymi wartościami. %>
         <% const bladWysylki = bladDanych?.sekcja === 'wysylka' ? bladDanych : null; %>
@@ -561,7 +563,7 @@
             <input name="punkt_odbioru" value="<%= z.punkt_odbioru || '' %>" placeholder="np. WRO10B">
           </label>
           <% if (dane.jestNadanaPaczka) { %>
-            <p class="pasek-uwaga">Zmiana metody nie zmienia paczki JUŻ NADANEJ — pobranie (albo jego brak) pojechało z nią do DPD w chwili nadania. Odkręcaj w panelu DPD.</p>
+            <p class="pasek-uwaga">Zmiana metody nie zmienia paczki JUŻ NADANEJ — pobranie (albo jego brak) pojechało z nią do kuriera w chwili nadania. Odkręcaj w <%= dane.panelNadanych %>.</p>
           <% } %>
           <div class="stopka-edycji">
             <button class="btn btn--glowny">Zmień metodę</button>
@@ -1053,7 +1055,7 @@
       <% z.przesylki.forEach(function (p) { %>
         <p class="pasek-blokada">
           UWAGA: przesyłka do tego zamówienia JUŻ ISTNIEJE (paczka <%= p.kolejnosc %><%= p.numer_listu ? `, list ${p.numer_listu}` : '' %>) —
-          anulowanie w sklepie nie zawraca paczki. Sprawdź w panelu DPD, czy da się ją jeszcze zatrzymać.
+          anulowanie w sklepie nie zawraca paczki. Sprawdź w <%= dane.panelKuriera(p.kurier) %>, czy da się ją jeszcze zatrzymać.
         </p>
       <% }); %>
     <% } %>
@@ -1159,26 +1161,26 @@
         <%# Stany, z ktorych panel sam nie wyjdzie — kazdy z wlasnym, jedynym wyjsciem. %>
         <% if (poz.stan === 'do_wyjasnienia') { %>
           <p class="pasek-blokada">
-            PRZESYŁKA DO WYJAŚNIENIA. DPD przydzieliło numer listu, ale nadanie nie dokończyło się: <%= p.blad_opis %>.
-            Ponowne nadanie z panelu jest niemożliwe (DPD odrzuca powtórzoną referencję) — dokończ sprawę w panelu DPD.
+            PRZESYŁKA DO WYJAŚNIENIA. Kurier przydzielił numer listu, ale nadanie nie dokończyło się: <%= p.blad_opis %>.
+            Ponowne nadanie z panelu jest niemożliwe (kurier odrzuca powtórzoną referencję) — dokończ sprawę w <%= dane.panelKuriera(p.kurier) %>.
           </p>
           <form method="post" action="/zamowienia/<%= z.id %>/przesylki/<%= p.id %>/domknij">
             <input type="hidden" name="powrot" value="<%= powrot %>">
-            <button class="btn">Sprawdziłem w panelu DPD — paczka jest nadana, domknij sprawę</button>
+            <button class="btn">Sprawdziłem w <%= dane.panelKuriera(p.kurier) %> — paczka jest nadana, domknij sprawę</button>
           </form>
         <% } %>
         <% if (poz.stan === 'zawieszona') { %>
           <p class="pasek-blokada">
             NADANIE ZAWIESZONE: wiersz wisi od <%= fmtDataCzas(p.utworzona_at) %> i żadne wysyłanie już nie trwa — panel
-            najpewniej został zrestartowany w trakcie wywołania DPD i nie wie, czy paczka u kuriera powstała.
-            NAJPIERW otwórz panel DPD i sprawdź, czy paczka nr <%= p.kolejnosc %> do zamówienia <%= z.numer %> tam jest.
+            najpewniej został zrestartowany w trakcie wywołania kuriera i nie wie, czy paczka u kuriera powstała.
+            NAJPIERW zajrzyj do <%= dane.panelKuriera(p.kurier) %> i sprawdź, czy paczka nr <%= p.kolejnosc %> do zamówienia <%= z.numer %> tam jest.
             Jeśli MA numer listu — wpisz go: ponowienie i tak zostałoby odrzucone
             (DUPLICATED_PARCEL_SEARCH_KEY), a paczka fizycznie istnieje. Jeśli jej nie ma, zostaw pole puste.
           </p>
           <form method="post" action="/zamowienia/<%= z.id %>/przesylki/<%= p.id %>/odblokuj" class="pola-w-rzedzie">
             <input type="hidden" name="powrot" value="<%= powrot %>">
-            <input name="numer_listu" placeholder="numer listu z panelu DPD (jeśli jest)">
-            <button class="btn">Sprawdziłem w panelu DPD — odblokuj</button>
+            <input name="numer_listu" placeholder="numer listu z <%= dane.panelKuriera(p.kurier) %> (jeśli jest)">
+            <button class="btn">Sprawdziłem w <%= dane.panelKuriera(p.kurier) %> — odblokuj</button>
           </form>
         <% } %>
         <% if (poz.stan === 'w_trakcie') { %>
@@ -1220,7 +1222,7 @@
         <% if (!p.etykieta_sciezka && !p.etykieta_zpl_sciezka && poz.stan === 'nadana' && !p.nadana_recznie && !p.etykieta_reczna) { %>
           <% const wskazowkaEtykiety = p.kurier === 'allegro_wza'
             ? 'sprawdź ją w panelu Allegro.'
-            : p.kurier === 'dpd' ? 'pobierz ją z panelu DPD.' : 'sprawdź ją w panelu przewoźnika.'; %>
+            : 'pobierz ją z ' + dane.panelKuriera(p.kurier) + '.'; %>
           <p class="pasek-blokada">Etykieta niezapisana — <%= wskazowkaEtykiety %></p>
         <% } %>
         <%# ⚠️ DWA ROZNE ZDANIA POD JEDNA KOLUMNA `nadana_recznie`. Znacznik znaczy „panel tej %>
@@ -1311,7 +1313,7 @@
       <details class="drobne">
         <summary>Paczka nadana poza panelem?</summary>
         <p class="wyjasnienie">
-          Panel NIC tu nie nadaje i o nic nie pyta DPD — wyłącznie odnotowuje paczkę nadaną przez Ciebie.
+          Panel NIC tu nie nadaje i o nic nie pyta kuriera — wyłącznie odnotowuje paczkę nadaną przez Ciebie.
           Etykiety ani wydruku dla niej nie będzie, ale śledzenie po numerze listu działa normalnie.
         </p>
         <form method="post" action="/zamowienia/<%= z.id %>/przesylki/reczna" class="pola-w-rzedzie">
@@ -1709,6 +1711,31 @@
           <% }); %>
         </tbody>
       </table>
+      <%# PRZ-147.03: przy zwrocie bez numeru korekty — ten sam przycisk co na ekranie zwrotu (ta sama trasa POST), %>
+      <%# zdanie blokady z domeny albo, przy zleceniu w toku, odnośnik do ekranu zwrotu (tam widać stan zlecenia). %>
+      <% const korektaNaKarcie = locals.korektaNaKarcie || {}; %>
+      <% (z.zwroty || []).filter(function (w) { return korektaNaKarcie[w.id]; }).forEach(function (w) { %>
+        <% const k = korektaNaKarcie[w.id]; %>
+        <% const adresKorekty = `/zamowienia/${z.id}/zwroty/${w.id}/korekta`; %>
+        <% if (k.zlecona) { %>
+          <p class="wyjasnienie" id="korekta-zwrotu-<%= w.id %>">Zwrot z <%= w.data %> (<%= w.kwota %> zł<% if (w.kwota_dostawy) { %> + dostawa <%= w.kwota_dostawy %> zł<% } %>): Korekta zlecona — stan na ekranie zwrotu.<% if (mozeAdres(`/zamowienia/${z.id}/zwrot`)) { %> <a class="btn btn--maly" href="<%= adresPodwidoku('zwrot') %>">Przejdź na ekran zwrotu</a><% } %></p>
+        <% } else if (k.blokada) { %>
+          <p class="wyjasnienie" id="korekta-zwrotu-<%= w.id %>">Zwrot z <%= w.data %> (<%= w.kwota %> zł<% if (w.kwota_dostawy) { %> + dostawa <%= w.kwota_dostawy %> zł<% } %>): <span class="pasek-blokada"><%= k.blokada %></span></p>
+        <% } else if (k.bezDostawy && k.programFaktur && mozeAdres(adresKorekty)) { %>
+          <%# PRZ-148.03: faktura bez pozycji „Dostawa” — przycisk wyłączony ze zdaniem z domeny zamiast POST z gołą odmową. %>
+          <div class="wyjasnienie" id="korekta-zwrotu-<%= w.id %>">Zwrot z <%= w.data %> (<%= w.kwota %> zł<% if (w.kwota_dostawy) { %> + dostawa <%= w.kwota_dostawy %> zł<% } %>) nie ma jeszcze korekty.
+            <button type="button" class="btn btn--maly" disabled title="<%= k.bezDostawy %>">Wystaw korektę</button>
+            <span class="pasek-blokada"><%= k.bezDostawy %></span>
+          </div>
+        <% } else if (k.programFaktur && mozeAdres(adresKorekty)) { %>
+          <div class="wyjasnienie" id="korekta-zwrotu-<%= w.id %>">Zwrot z <%= w.data %> (<%= w.kwota %> zł<% if (w.kwota_dostawy) { %> + dostawa <%= w.kwota_dostawy %> zł<% } %>) nie ma jeszcze korekty.
+            <form method="post" class="w-linii" action="<%= adresKorekty %>">
+              <input type="hidden" name="powrot" value="<%= powrot %>">
+              <button type="submit" class="btn btn--maly">Wystaw korektę</button>
+            </form>
+          </div>
+        <% } %>
+      <% }); %>
       <%# Zdanie zamiast przycisku (rezerwacja) albo dopisek przy przycisku (brak NIP-u na karcie — o konsumenckiej %>
       <%# rozstrzyga podgląd na dokumencie z inFaktu). Oba z domeny (`wysylkaZKarty`). %>
       <% const zdanieKsef = ksefKarty && (ksefKarty.wolno ? ksefKarty.uwaga : ksefKarty.powod); %>

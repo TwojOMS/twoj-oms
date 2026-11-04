@@ -4,13 +4,13 @@
 import { describe, it, expect } from 'vitest';
 import { renderMailHtml } from '../../../src/core/poczta/mail-html.js';
 
-const LINK = 'https://pro.szkicownia.pl/?oferta=1293&t=abc';
+const LINK = 'https://pro.swietlik.example.test/?oferta=1293&t=abc';
 
 describe('przycisk akceptacji w HTML', () => {
   it('para „etykieta: / adres" staje się przyciskiem', () => {
     const t = ['pozdrawiam', '', 'Akceptuję wycenę — przejdź do zamówienia:', LINK].join('\n');
     const h = renderMailHtml({ text: t });
-    expect(h).toMatch(/<a[^>]+href="https:\/\/pro\.szkicownia\.pl\/\?oferta=1293&amp;t=abc"[^>]*>[\s\S]*?Akceptuję wycenę/);
+    expect(h).toMatch(/<a[^>]+href="https:\/\/pro\.swietlik\.example\.test\/\?oferta=1293&amp;t=abc"[^>]*>[\s\S]*?Akceptuję wycenę/);
     // Etykieta NIE zostaje osobnym akapitem nad przyciskiem.
     expect(h).not.toMatch(/<p[^>]*>Akceptuję wycenę — przejdź do zamówienia:<\/p>/);
   });
@@ -19,7 +19,7 @@ describe('przycisk akceptacji w HTML', () => {
   // gdzie go nie chcemy — np. w mailu z danymi do przelewu.
   it('goły adres BEZ linii z dwukropkiem nad nim zostaje zwykłym linkiem', () => {
     const h = renderMailHtml({ text: `Dzień dobry\n${LINK}` });
-    expect(h).toContain('href="https://pro.szkicownia.pl/?oferta=1293&amp;t=abc"');
+    expect(h).toContain('href="https://pro.swietlik.example.test/?oferta=1293&amp;t=abc"');
     expect(h).not.toContain('display:inline-block');
   });
 

@@ -141,7 +141,7 @@ describe('PRZ-102.10 podpis maili w Ustawieniach → Poczta', () => {
     const ekran = await get(p.app, EKRAN, p.admin);
     expect(sekcja(ekran.body)).toContain(MARKA_PLIKU);
     expect(sekcja(ekran.body)).toContain(STOPKA_PLIKU);
-    expect(sekcja(ekran.body)).toContain('ustawione w pliku konfiguracji');
+    expect(sekcja(ekran.body)).toContain('ustawione na serwerze');
     expect(sekcja(ekran.body)).not.toMatch(/<input id="podpis-marka"/u);
 
     for (const pole of [{ marka: 'Inna marka' }, { stopka: 'Inna stopka' }]) {

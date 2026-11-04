@@ -4,39 +4,39 @@ import {
 } from '../pomoc/cenniki-historyczne-fixture.js';
 
 const produkt = (nad = {}) => ({
-  kanal: 'szkicownia', produkt_id: '28040', wariant_id: '', nazwa: 'Lampa stołowa Grzybek',
+  kanal: 'swietlik', produkt_id: '28040', wariant_id: '', nazwa: 'Lampa stołowa Grzybek',
   sku_sklepu: 'LS-GRZ-70', cena_gr: 7490, rozmiar_tekst: '70x100', ...nad,
 });
 
 describe('cennik — Allegro nigdy nie jest źródłem ceny', () => {
   it('zamknięta lista to wyłącznie sklepy', () => {
-    expect(KANALY_CENNIKA).toEqual(['szkicownia', 'pro']);
+    expect(KANALY_CENNIKA).toEqual(['swietlik', 'pro']);
   });
 
   it('zamówienie ze sklepu bierze cennik tego sklepu', () => {
     expect(cennikDlaZamowienia({ sklepZamowienia: 'pro' })).toBe('pro');
-    expect(cennikDlaZamowienia({ sklepZamowienia: 'szkicownia' })).toBe('szkicownia');
+    expect(cennikDlaZamowienia({ sklepZamowienia: 'swietlik' })).toBe('swietlik');
   });
 
   // ⚠️ SEDNO ZGLOSZENIA. Kanal allegrowy zamowienia NIE przenosi sie na cennik: cene
   // z prowizja podstawiona do zamowienia telefonicznego zawyzalaby je o kwote, ktorej
   // nikomu nie placimy.
   it('zamówienie z Allegro NIE daje cennika allegrowego, tylko detal', () => {
-    expect(cennikDlaZamowienia({ sklepZamowienia: 'allegro_szkicownia' })).toBe('szkicownia');
-    expect(cennikDlaZamowienia({ sklepZamowienia: 'allegro_amarka' })).toBe('szkicownia');
+    expect(cennikDlaZamowienia({ sklepZamowienia: 'allegro_swietlik' })).toBe('swietlik');
+    expect(cennikDlaZamowienia({ sklepZamowienia: 'allegro_polcien2' })).toBe('swietlik');
   });
 
   it('zamówienie ręczne zaczyna od detalu', () => {
     expect(cennikDlaZamowienia({ sklepZamowienia: 'reczne' })).toBe(CENNIK_DOMYSLNY);
-    expect(cennikDlaZamowienia({})).toBe('szkicownia');
+    expect(cennikDlaZamowienia({})).toBe('swietlik');
   });
 
   it('świadomy wybór operatora wygrywa z kanałem zamówienia', () => {
-    expect(cennikDlaZamowienia({ sklepZamowienia: 'szkicownia', wybrany: 'pro' })).toBe('pro');
+    expect(cennikDlaZamowienia({ sklepZamowienia: 'swietlik', wybrany: 'pro' })).toBe('pro');
   });
 
   it('wybór spoza listy jest ignorowany, nie przepuszczany', () => {
-    expect(cennikDlaZamowienia({ sklepZamowienia: 'reczne', wybrany: 'allegro_szkicownia' })).toBe('szkicownia');
+    expect(cennikDlaZamowienia({ sklepZamowienia: 'reczne', wybrany: 'allegro_swietlik' })).toBe('swietlik');
     expect(cennikDlaZamowienia({ sklepZamowienia: 'pro', wybrany: 'wymyślony' })).toBe('pro');
   });
 });
@@ -100,7 +100,7 @@ describe('pozycjaZProduktu', () => {
   // ⚠️ TU SIE PILNUJE PIENIEDZY: produkt z kanalu allegrowego ma ODMOWIC, nawet gdyby
   // ktos podal go wprost w formularzu.
   it('produkt z Allegro → odmowa, choćby miał cenę', () => {
-    expect(() => pozycjaZProduktu(produkt({ kanal: 'allegro_szkicownia', cena_gr: 9900 }), '1'))
+    expect(() => pozycjaZProduktu(produkt({ kanal: 'allegro_swietlik', cena_gr: 9900 }), '1'))
       .toThrow(/nie jest cennikiem/);
   });
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { rozkladMetod } from '../../src/domena/statystyki-platnosci.js';
 
-const z = (metoda, sklep = 'szkicownia') => ({ metoda_platnosci: metoda, sklep });
+const z = (metoda, sklep = 'swietlik') => ({ metoda_platnosci: metoda, sklep });
 
 describe('rozkladMetod', () => {
   // ⚠️ Na produkcji baza trzyma „BLIK" (15×) i „Blik" (28×) jako dwa różne napisy.
@@ -34,8 +34,8 @@ describe('rozkladMetod', () => {
   it('zamówienia Allegro stoją POZA procentami, z własnym licznikiem', () => {
     const w = rozkladMetod([
       z('BLIK'), z('Przelew'),
-      z('Allegro (płatność online)', 'allegro_szkicownia'),
-      z('Za pobraniem', 'allegro_amarka'),
+      z('Allegro (płatność online)', 'allegro_swietlik'),
+      z('Za pobraniem', 'allegro_polcien2'),
     ]);
     expect(w.wszystkie).toBe(4);
     expect(w.mianownik).toBe(2);
@@ -46,7 +46,7 @@ describe('rozkladMetod', () => {
 
   // ⚠️ Kanał rozstrzyga KOLUMNA `sklep`, nie treść metody — metoda jest edytowalna z karty.
   it('kanał poznaje się po sklepie, nie po napisie metody', () => {
-    const w = rozkladMetod([z('Allegro (płatność online)', 'szkicownia')]);
+    const w = rozkladMetod([z('Allegro (płatność online)', 'swietlik')]);
     expect(w.allegroBezInformacji).toBe(0);
     expect(w.mianownik).toBe(1);
   });
@@ -60,7 +60,7 @@ describe('rozkladMetod', () => {
   });
 
   it('same zamówienia Allegro dają null w udziałach, nie dzielenie przez zero', () => {
-    const w = rozkladMetod([z('Allegro (płatność online)', 'allegro_szkicownia')]);
+    const w = rozkladMetod([z('Allegro (płatność online)', 'allegro_swietlik')]);
     expect(w.mianownik).toBe(0);
     expect(w.pozycje).toEqual([]);
     expect(w.allegroBezInformacji).toBe(1);

@@ -291,7 +291,7 @@
               <%# „Wystawiona" i „Sprzedaż" scalone w jedną kolumnę (PRZ-074, 14.10.2026): tabela
                   wystawała o 153 px przy 1280 px szerokości, a obie daty są zwykle te same. %>
               <th>Numer</th><th>Zamówienie</th><th>Data</th>
-              <th>Nabywca</th><th class="liczba">Netto</th><th class="liczba">Brutto</th><th>Płatność</th><th></th>
+              <th>Nabywca</th><th class="liczba">Netto</th><th class="liczba">Brutto</th><th>Płatność</th><th>KSeF</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -315,13 +315,10 @@
                 </td>
                 <td>
                   <%_ if (d.stanDokumentu && mozeAdres(`/faktury/twojefaktury/${d.stanDokumentu.dokumentId}`)) { -%>
-                  <a href="/faktury/twojefaktury/<%= encodeURIComponent(d.stanDokumentu.dokumentId) %>" title="<%= d.ksef_number ?? '' %>"><strong><%= d.number %></strong></a>
+                  <a href="/faktury/twojefaktury/<%= encodeURIComponent(d.stanDokumentu.dokumentId) %>"><strong><%= d.number %></strong></a>
                   <%_ } else { -%>
-                  <strong title="<%= d.ksef_number ?? '' %>"><%= d.number %></strong>
+                  <strong><%= d.number %></strong>
                   <%_ } -%>
-                  <% if (d.plakietka) { %>
-                    <div class="wiersz-szczegoly"><span class="znacznik znacznik--cichy"><%= d.plakietka %></span></div>
-                  <% } %>
                   <% if (d.rodzaj === 'korekta') { %>
                     <div class="wiersz-szczegoly"><span class="znacznik znacznik--korekta">Korekta</span></div>
                   <%# Znacznik konsumenta pozostaje informacją o rodzaju sprzedaży,
@@ -373,6 +370,9 @@
                   <div class="wiersz-szczegoly">zamiast <%= d.zastepuje %></div>
                   <%_ } -%>
                 </td>
+                <td><% if (d.wKsef) { %><span class="znacznik znacznik--ok">KSeF</span><%
+                  // „brak” tylko przy dokumencie, którego nikt nie wysłał; „czeka na numer”, błąd i odmowa zostają puste.
+                  %><% } else if (d.stanKsef === 'brak' && (!d.stanDokumentu || d.stanDokumentu.ksef === 'brak')) { %><span class="znacznik znacznik--cichy">brak</span><% } %></td>
                 <%# ⚠️ RODZAJ I NUMER JADA W ADRESIE — dokladnie ta sama zasada, co przy pasie
                     nieoplaconych wyzej; korekta jest INNYM zasobem inFaktu niz faktura VAT
                     (routes/faktury.js), wiec trasa musi wiedziec, ktory to dokument. %>
@@ -380,22 +380,28 @@
               </tr>
             <% }); %>
             <% if (!dokumenty.length) { %>
-              <tr><td colspan="9" class="pusto-sekcja">
-                <% if (bladDokumentow) { %>Nie wiadomo — <%= nazwaProgramu.mianownik %> nie odpowiedział.<% } else { %>
+              <tr><td colspan="10" class="pusto-sekcja">
+                <% if (bladDokumentow) { %>Nie wiadomo — <%= nazwaProgramu.mianownik %> nie odpowiedział.<% } else if (typ || platnosc) { %>
+                  Żaden dokument z tego miesiąca nie pasuje do wybranych filtrów.
+                <% } else { %>
                   W tym miesiącu nie ma ani jednego dokumentu.
                 <% } %>
               </td></tr>
             <% } %>
           </tbody>
-          <% if (sumaListy) { %>
-            <tfoot><tr class="wiersz-razem"><td colspan="9">
-              Razem <%= ile(sumaListy.ile, 'dokument', 'dokumenty', 'dokumentów') %>,
-              <%= pole === 'sale_date' ? 'sprzedaż w' : 'wystawione w' %> <%= miesiac.slice(5, 7) %>.<%= miesiac.slice(0, 4) %>
-              <% Object.entries(sumaListy).forEach(function ([waluta, s]) { if (waluta === 'ile' || waluta === 'niepelne') return; %>
-                <% var jedn = waluta === 'PLN' ? 'zł' : waluta; %>· netto <%= zl(s.nettoGr).replace('.', ',') %> <%= jedn %> · brutto <%= zl(s.bruttoGr).replace('.', ',') %> <%= jedn %>
+          <% if (stopkaRazem?.length) { %>
+            <tfoot>
+              <%# Układ jak w tabeli „Nieopłacone": napis po lewej, kwoty pod kolumnami Netto i Brutto
+                  (kolumny 6 i 7 z 10). Liczbę dokumentów podaje tylko pierwszy wiersz. %>
+              <% stopkaRazem.forEach(function (linia, i) { %>
+                <tr class="wiersz-razem">
+                  <td colspan="5"><% if (i === 0) { %>Razem — <%= ile(linia.ile, 'dokument', 'dokumenty', 'dokumentów') %><% } %><% if (linia.niepelne && !linia.waluta) { %> · niepełne — pominięto dokumenty bez kwoty<% } %></td>
+                  <td class="liczba"><%= linia.netto %></td>
+                  <td class="liczba"><%= linia.brutto %></td>
+                  <td colspan="3"><% if (linia.niepelne && linia.waluta) { %><span class="wiersz-szczegoly">niepełne — pominięto dokumenty bez kwoty</span><% } %></td>
+                </tr>
               <% }); %>
-              · korekty ze znakiem minus; faktury zastąpione przy złym NIP nie wchodzą<%= sumaListy.niepelne ? ' · niepełne — pominięto dokumenty bez kwoty' : '' %>
-            </td></tr></tfoot>
+            </tfoot>
           <% } %>
         </table>
       </div>

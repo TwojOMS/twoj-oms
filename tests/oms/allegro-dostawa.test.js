@@ -93,7 +93,7 @@ describe('metody dostawy Allegro', () => {
     // opłaconej jako paczkomat.
     //
     // ⚠️ ZMIERZONE, NIE PRZEPISANE: `GET /shipment-management/delivery-services` na koncie
-    // `allegro_szkicownia` oddaje dla tego id `owner: CLIENT` i `credentialsId: null`, czyli
+    // `allegro_swietlik` oddaje dla tego id `owner: CLIENT` i `credentialsId: null`, czyli
     // Allegro tej etykiety NIE SPRZEDAJE — paczka jedzie na NASZEJ umowie InPostu, tak samo
     // jak wariant bez pobrania. Dlatego `allegro_paczkomat`, a nie wpis do `METODY_WZA`.
     ['b20ef9e1-faa2-4f25-9032-adbea23e5cb9', 1, 'Allegro Paczkomaty InPost pobranie', 'allegro_paczkomat'],
@@ -190,7 +190,7 @@ describe('kontrakt: mapowanie Allegro × słownik metod', () => {
     id: 'e2a1-…',
     status: 'READY_FOR_PROCESSING',
     payment: { type: 'ONLINE', paidAmount: kwota('90.00') },
-    delivery: { method: { id: metodaId, name: nazwa }, cost: kwota('0.00'), address: { street: 'Ul. 1', city: 'Pęki', zipCode: '00-650' } },
+    delivery: { method: { id: metodaId, name: nazwa }, cost: kwota('0.00'), address: { street: 'Ul. 1', city: 'Warszawa', zipCode: '00-950' } },
     lineItems: [{ id: 'li-1', offer: { name: 'Szablon' }, quantity: 2, price: kwota('45.00'), tax: { rate: '23.00' } }],
     surcharges: [],
     summary: { totalToPay: kwota('90.00') },
@@ -225,8 +225,8 @@ describe('kontrakt: mapowanie Allegro × słownik metod', () => {
 // Dyskryminatorem jest KANAL (`sklep`), bo `sklep` jest trwaly — ustawia go poller kanalu,
 // a metoda jest z definicji edytowalna.
 describe('sprawdzZmianeMetody — kanał Allegro nie da się przestawić na dostawę panelu', () => {
-  const zAllegro = { id: 1, sklep: 'allegro_szkicownia', metoda_wysylki: 'allegro_dpd' };
-  const zeSklepu = { id: 2, sklep: 'szkicownia', metoda_wysylki: 'dpd' };
+  const zAllegro = { id: 1, sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_dpd' };
+  const zeSklepu = { id: 2, sklep: 'swietlik', metoda_wysylki: 'dpd' };
 
   it.each(['dpd', 'inpost_paczkomat', 'odbior_osobisty'])('odmawia przestawienia na „%s”', (metoda) => {
     const { nadpisanie, blad } = sprawdzZmianeMetody(metoda, false, '', '', zAllegro);
@@ -276,8 +276,8 @@ describe('sprawdzZmianeMetody — kanał Allegro nie da się przestawić na dost
   });
 
   it('czyKanalAllegro rozpoznaje oba konta i nie wywraca się na braku danych', () => {
-    expect(czyKanalAllegro({ sklep: 'allegro_szkicownia' })).toBe(true);
-    expect(czyKanalAllegro({ sklep: 'allegro_amarka' })).toBe(true);
+    expect(czyKanalAllegro({ sklep: 'allegro_swietlik' })).toBe(true);
+    expect(czyKanalAllegro({ sklep: 'allegro_polcien2' })).toBe(true);
     expect(czyKanalAllegro({})).toBe(false);
     expect(czyKanalAllegro(null)).toBe(false);
     expect(czyKanalAllegro(undefined)).toBe(false);

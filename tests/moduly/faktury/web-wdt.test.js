@@ -10,7 +10,7 @@ import { opisKlienta } from '../../../src/domena/klient-staly.js';
 const config = {
   auth: { user: 'adam', pass: 'x' },
   nadawca: {
-    nazwa: 'Lumina Marek Zywiecki', ulica: '1 Maja 5', kod: '00-650', miasto: 'Pęki', kraj: 'PL',
+    nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
   },
   proforma: { nip: '1234563218' },
 };
@@ -98,7 +98,7 @@ describe('ceny z magazynu przy WDT', () => {
   const produkt = (nad = {}) => ({
     kanal: 'pro', produkt_id: '28040', wariant_id: '', nazwa: 'Lampa stołowa Kałamarz',
     sku_sklepu: 'PRO-KAL-001', cena_gr: 10890, rozmiar_tekst: '30x45cm', kategorie: [], zdjecia: [],
-    adres: 'https://pro.szkicownia.pl/produkt/kalamarz', odczytane_at: '2026-08-26T08:00:00', ...nad,
+    adres: 'https://pro.swietlik.example.test/produkt/kalamarz', odczytane_at: '2026-08-26T08:00:00', ...nad,
   });
 
   it('karta zamówienia WDT: pozycja z magazynu wchodzi po rabacie i ÷1,23', async () => {

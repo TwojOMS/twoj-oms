@@ -278,14 +278,16 @@ export function createInpostClient({
   //    po cichu pominac pobranie — cicha przedplata znaczy, ze nikt nie zainkasuje pieniedzy
   //    i nikt sie o tym nie dowie.
   //
-  // ⚠️ POBRANIE JEDZIE WYLACZNIE NA PIERWSZEJ PACZCE. Kwota nalezy do ZAMOWIENIA, nie do
-  // paczki: powtorzona na paczce nr 2 znaczy, ze klient zaplaci ja DRUGI RAZ.
+  // ⚠️ Kwota nalezy do ZAMOWIENIA, nie do paczki: powtorzona na paczce nr 2 znaczy, ze klient
+  // zaplaci ja DRUGI RAZ. Dlatego jedzie tylko na paczce, na ktorej ma jechac
+  // (`pobranieNaTejPaczce`): domyslnie nr 1, a na paczce N > 1 wylacznie z JAWNEJ decyzji
+  // operatora (zamiennik za pobraniem, PRZ-137.03 D2) — ta sama zasada co w dpd.js.
   // ⚠️ `nadpisanie` (Z4) to kwota poprawiona na ekranie nadania — WARTOSC, nigdy obejscie
-  // warunku „tylko paczka nr 1" ponizej. Brak nadpisania (wywolania spoza formularza,
+  // warunku `pobranieNaTejPaczce` ponizej. Brak nadpisania (wywolania spoza formularza,
   // nadanie zbiorcze) znaczy „kwota z zamowienia", dokladnie jak dotad.
-  function kwotaPobrania(zamowienie, kolejnosc, nadpisanie) {
+  function kwotaPobrania(zamowienie, pobranieNaTejPaczce, nadpisanie) {
     const surowa = nadpisanie ?? zamowienie?.kwota_pobrania;
-    if (kolejnosc !== 1 || surowa == null) return null;
+    if (!pobranieNaTejPaczce || surowa == null) return null;
     const kwota = Number(String(surowa).trim());
     if (!Number.isFinite(kwota)) {
       throw bladOperatora(`InPost: nie umiem odczytać kwoty pobrania: „${surowa}”.`);
@@ -310,9 +312,9 @@ export function createInpostClient({
   }
 
   // ⚠️ ADRES NADAWCY — NIE ZGADUJEMY NUMERU DOMU. `config.nadawca.ulica` to JEDEN napis
-  // („ul. 1 Maja 5"), a ShipX rozbija adres na `street` i `building_number`. Projekt podjal
+  // („ul. 11 Listopada 7"), a ShipX rozbija adres na `street` i `building_number`. Projekt podjal
   // juz raz swiadomie te sama decyzje (services/faktura.js: „Zgadywanie numeru z tekstu
-  // psuloby 'Aleja 1 Maja 5' czesciej niz cokolwiek naprawialo"), wiec caly napis idzie
+  // psuloby 'Aleja 11 Listopada 7' czesciej niz cokolwiek naprawialo"), wiec caly napis idzie
   // w `line1`, a `street`/`building_number` w ogole nie wyjezdzaja.
   //
   // ⚠️ DO POTWIERDZENIA PRZY PIERWSZYM PRAWDZIWYM NADANIU. Gdyby ShipX odmowil przyjecia
@@ -550,6 +552,9 @@ export function createInpostClient({
     // zmieniona przy destrukturyzacji, bo `kwotaPobrania` to funkcja w tym module (ta sama
     // pulapka, co `adres` w dpd.js: przeslonieta nazwa wywalilaby nadaj() na TypeError).
     kwotaPobrania: kwotaPrzekazana,
+    // ⚠️ Jak w dpd.js: domyslnie `kolejnosc === 1` (dawne zachowanie dla kazdego, kto tego
+    // nie poda); jawne `true` przy paczce N > 1 to decyzja operatora z ekranu nadania.
+    pobranieNaTejPaczce = kolejnosc === 1,
   }) {
     // ⚠️ Adres odbiorcy: od chwili, gdy ekran nadania pozwala operatorowi POPRAWIC adres,
     // TU nie wolno go przeliczac z `zamowienie` — to bylaby edycja POZORNA: operator
@@ -587,7 +592,7 @@ export function createInpostClient({
     const template = szablonGabarytu(paczka?.gabaryt);
     const waga = wagaWKg(paczka?.waga);
     const telefon = naTelefonInPost(odbiorca.phone);
-    const cod = kwotaPobrania(zamowienie, kolejnosc, kwotaPrzekazana);
+    const cod = kwotaPobrania(zamowienie, pobranieNaTejPaczce, kwotaPrzekazana);
 
     // Referencja: InPost NIE odsiewa po niej duplikatow (Apilo w ogole jej nie wypelnia),
     // wiec jedyna ochrona przed druga paczka zostaje indeks czesciowy w naszej bazie.
@@ -626,7 +631,7 @@ export function createInpostClient({
         phone: telefon,
       },
       // Nadawce wysylamy JAWNIE, mimo ze organizacja ma wlasny adres: ten w InPoscie jest
-      // NIEAKTUALNY (Lipowa 91 zamiast 1 Maja 5), a etykieta ma mowic prawde.
+      // NIEAKTUALNY (stary adres firmy zamiast obecnego), a etykieta ma mowic prawde.
       sender: adresNadawcy(),
       parcels: [{ template, weight: { amount: waga, unit: 'kg' } }],
       reference,

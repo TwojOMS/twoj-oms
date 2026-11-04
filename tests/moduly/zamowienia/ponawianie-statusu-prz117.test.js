@@ -19,7 +19,7 @@ let db;
 beforeEach(() => { db = openOmsDb(':memory:'); });
 
 const zAllegro = (zrodlo = 'afd93fe0-0000-0000-0000-000000000001', nad = {}) => {
-  const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(zrodlo, {
+  const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(zrodlo, {
     zrodlo_id: zrodlo, metoda_wysylki: 'allegro_paczkomat', status_woo: 'READY_FOR_PROCESSING', ...nad,
   }), {});
   db.prepare('UPDATE zamowienia SET wyslane_at = ? WHERE id = ?').run('2026-10-26T12:12:40Z', id);
@@ -33,7 +33,7 @@ describe('PRZ-117: zegar ponawia status po błędzie przejściowym', () => {
       pobierzStanRealizacji: vi.fn().mockResolvedValue('PROCESSING'),
       ustawStatusRealizacji: vi.fn().mockRejectedValueOnce(anulowane()).mockResolvedValue({}),
     };
-    const sync = createSyncSklep({ db, klienciKanalow: { allegro_szkicownia: klient } });
+    const sync = createSyncSklep({ db, klienciKanalow: { allegro_swietlik: klient } });
     const id = zAllegro();
     await sync.odeslijStatus(id);
     expect(pobierzZamowienie(db, id).sync_woo_blad).toMatch(/żądanie anulowane/);
@@ -48,7 +48,7 @@ describe('PRZ-117: zegar ponawia status po błędzie przejściowym', () => {
       pobierzStanRealizacji: vi.fn().mockResolvedValue('PROCESSING'),
       ustawStatusRealizacji: vi.fn().mockRejectedValue(new Error('Allegro: HTTP 422 przy /order/checkout-forms/{id}/fulfillment')),
     };
-    const sync = createSyncSklep({ db, klienciKanalow: { allegro_szkicownia: klient } });
+    const sync = createSyncSklep({ db, klienciKanalow: { allegro_swietlik: klient } });
     const id = zAllegro();
     await sync.odeslijStatus(id);
     expect(await sync.ponowPrzejsciowe({ teraz: TERAZ })).toEqual({ kandydatow: 0, wyslane: 0, bledy: 0 });
@@ -58,7 +58,7 @@ describe('PRZ-117: zegar ponawia status po błędzie przejściowym', () => {
 
   it(`zamówienie starsze niż ${OKNO_PONAWIANIA_STATUSU_DNI} dni zegar zostawia człowiekowi`, async () => {
     const klient = { pobierzStanRealizacji: vi.fn().mockResolvedValue('PROCESSING'), ustawStatusRealizacji: vi.fn() };
-    const sync = createSyncSklep({ db, klienciKanalow: { allegro_szkicownia: klient } });
+    const sync = createSyncSklep({ db, klienciKanalow: { allegro_swietlik: klient } });
     const id = zAllegro('stare-1', { utworzone_at: '2026-09-01T10:00:00Z' });
     db.prepare("UPDATE zamowienia SET sync_woo_blad = 'status „SENT\" nie dojechał do Allegro: api.allegro.pl: żądanie anulowane' WHERE id = ?").run(id);
     expect(await sync.ponowPrzejsciowe({ teraz: TERAZ })).toEqual({ kandydatow: 0, wyslane: 0, bledy: 0 });
@@ -81,7 +81,7 @@ describe('PRZ-117: co jest błędem przejściowym', () => {
   it.each([
     ['status „SENT" nie dojechał do Allegro: api.allegro.pl: żądanie anulowane', true],
     ['nie udało się sprawdzić stanu w Allegro: api.allegro.pl: limit czasu', true],
-    ['status „completed" nie dojechał do sklepu: Sklep nieosiągalny: szkicownia.pl: błąd sieci', true],
+    ['status „completed" nie dojechał do sklepu: Sklep nieosiągalny: swietlik.example.test: błąd sieci', true],
     ['status „completed" nie dojechał do sklepu: Sklep odpowiedział 503: brak powodu', true],
     ['status „completed" nie dojechał do sklepu: Sklep odpowiedział 400: zły status', false],
     ['panel nie ma połączenia z „allegro_x" (brak konfiguracji)', false],

@@ -48,7 +48,7 @@ function zSzablonemWlasnym(db) {
 const reguly = (db) => db.prepare('SELECT * FROM automatyzacje_reguly ORDER BY id').all();
 const teraz = () => new Date();
 const zapiszWprost = (db, o = {}) => utworzRegule(db, { nazwa: 'Reguła wprost', zdarzenie: 'test_zdarzenie', zdarzenie_json: {},
-  warunki: { kanaly: ['pro', 'szkicownia'], kanalyZnane: ['pro', 'szkicownia', 'allegro_szkicownia', 'reczne', 'indywidualne'] },
+  warunki: { kanaly: ['pro', 'swietlik'], kanalyZnane: ['pro', 'swietlik', 'allegro_swietlik', 'reczne', 'indywidualne'] },
   akcja: 'test_akcja', akcja_json: { szablon: 'wlasny-1' }, opoznienie_min: 0, limit_na_godzine: 20, ...o }, { login: 'adam', teraz });
 
 describe('rejestr zdarzeń pusty (B wydane samo)', () => {
@@ -174,13 +174,13 @@ describe('13. kreator i zapis', () => {
     const wczoraj = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
     wstaw.run('pro', 1, 'S-1', '10.00', '2026-10-01T10:00:00', wczoraj);
     wstaw.run('pro', 2, 'S-2', '10.00', '2026-10-01T10:00:00', wczoraj);
-    wstaw.run('allegro_szkicownia', 3, 'S-3', '10.00', '2026-10-01T10:00:00', wczoraj);
+    wstaw.run('allegro_swietlik', 3, 'S-3', '10.00', '2026-10-01T10:00:00', wczoraj);
     const r = await post(p.app, `${EKRAN}/sprawdz`, p.admin, FORMULARZ);
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Sprawdzenie na ostatnich 30 dniach');
     expect(r.body).toContain('Nic nie zostało wysłane ani zapisane');
     expect(r.body).toMatch(/zadziałałaby dla <strong>2 zamówień<\/strong>/u);
-    expect(r.body).toContain('Allegro szkicownia_pl (1)');
+    expect(r.body).toContain('Allegro swietlik_pl (1)');
     expect(reguly(p.db)).toEqual([]);
     expect(p.db.prepare('SELECT COUNT(*) AS n FROM automatyzacje_wykonania').get().n).toBe(0);
   });
@@ -252,10 +252,10 @@ describe('14. nowy kanał od zapisu', () => {
     const e = await get(p.app, `${EKRAN}/${id}/edytuj`, p.admin);
     expect(e.statusCode).toBe(200);
     expect(e.body).toMatch(/name="kanaly" value="pro" checked/u);
-    expect(e.body).toMatch(/name="kanaly" value="allegro_amarka">/u);
-    expect(e.body).toContain('Nowe kanały od czasu zapisu: Allegro AmarkaPL — niezaznaczone');
+    expect(e.body).toMatch(/name="kanaly" value="allegro_polcien2">/u);
+    expect(e.body).toContain('Nowe kanały od czasu zapisu: Allegro Półcień Druga — niezaznaczone');
     const d = await get(p.app, `${EKRAN}/${id}`, p.admin);
-    expect(d.body).toContain('Nowe kanały od czasu zapisu: Allegro AmarkaPL — niezaznaczone');
+    expect(d.body).toContain('Nowe kanały od czasu zapisu: Allegro Półcień Druga — niezaznaczone');
   });
   it('edycja zapisuje zmiany (303) i nie włącza reguły', async () => {
     const p = panel();

@@ -46,6 +46,23 @@ const bez = (p: Record<string, unknown>, ...klucze: string[]) => {
 };
 
 describe('sprawdzProgramFakturowy — odmowa startu przy złym programie', () => {
+  it('pobierzKorekte jest opcjonalne i wymaga zdolności odczytKorekty', async () => {
+    const pobierzKorekte = async () => ({ uuid: 'kor-a', number: 'KOR/1', rodzaj: 'korekta' });
+    const p: ProgramFakturowy = { ...wzorcowy(), pobierzKorekte,
+      opis: { ...OPIS, zdolnosci: [...OPIS.zdolnosci, 'odczytKorekty'] } };
+    expect(sprawdzProgramFakturowy(p)).toBe(p);
+    expect(await p.pobierzKorekte!('kor-a')).toMatchObject({ uuid: 'kor-a', number: 'KOR/1' });
+    expect(() => sprawdzProgramFakturowy(bez(p, 'pobierzKorekte'))).toThrow(/pobierzKorekte/);
+    expect(() => sprawdzProgramFakturowy({ ...wzorcowy(), pobierzKorekte })).toThrow(/odczytKorekty/);
+  });
+  it('statusKorekty jest opcjonalny i wymaga zgodnej deklaracji zdolności', async () => {
+    const statusKorekty = async (): Promise<import('../../src/core/kontrakty.ts').StatusKorekty> => ({ stan: 'w_toku', uuid: null, bledy: [] });
+    const p: ProgramFakturowy = { ...wzorcowy(), statusKorekty, opis: { ...OPIS, zdolnosci: [...OPIS.zdolnosci, 'statusKorekty'] } };
+    expect(sprawdzProgramFakturowy(p)).toBe(p);
+    expect(await p.statusKorekty!('REF-TEST')).toEqual({ stan: 'w_toku', uuid: null, bledy: [] });
+    expect(() => sprawdzProgramFakturowy(bez(p, 'statusKorekty'))).toThrow(/statusKorekty/);
+    expect(() => sprawdzProgramFakturowy({ ...wzorcowy(), statusKorekty })).toThrow(/statusKorekty/);
+  });
   it('pełny program przechodzi i wraca ten sam obiekt', () => {
     const p = wzorcowy();
     const sprawdzony: ProgramFakturowy = sprawdzProgramFakturowy(p);

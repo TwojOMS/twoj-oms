@@ -66,10 +66,10 @@ describe('historia sprzedazy', () => {
   });
 
   it('granice zapisuja sie i czytaja jako mapa', () => {
-    ustawGranice(db, 'SZKICOWNIA_PL', '2026-07-02', 'pomiar', null);
-    ustawGranice(db, 'SZKICOWNIA_PRO', '2026-07-29', 'pomiar', 'brak w Apilo');
-    expect(granice(db).get('SZKICOWNIA_PL')).toBe('2026-07-02');
-    expect(granice(db).get('SZKICOWNIA_PRO')).toBe('2026-07-29');
+    ustawGranice(db, 'SWIETLIK_PL', '2026-07-02', 'pomiar', null);
+    ustawGranice(db, 'SWIETLIK_PRO', '2026-07-29', 'pomiar', 'brak w Apilo');
+    expect(granice(db).get('SWIETLIK_PL')).toBe('2026-07-02');
+    expect(granice(db).get('SWIETLIK_PRO')).toBe('2026-07-29');
   });
 
   it('kursor importu przezywa zapis i odczyt', () => {
@@ -79,22 +79,22 @@ describe('historia sprzedazy', () => {
   });
 
   it('WIERSZ APILO NIE MOZE NIESC KLUCZA SKLEPOWEGO — dwie przestrzenie id w jednym PK', () => {
-    expect(() => zapiszHistorie(db, { ...zam('woo:szkicownia:28225'), zrodlo: 'apilo' }))
+    expect(() => zapiszHistorie(db, { ...zam('woo:swietlik:28225'), zrodlo: 'apilo' }))
       .toThrow(/klucz sklepowy/);
   });
 
   it('WIERSZ SKLEPOWY MUSI NIESC PREFIKS — inaczej nadpisze zamowienie z Apilo', () => {
-    expect(() => zapiszHistorie(db, { ...zam('28225'), zrodlo: 'woo:szkicownia' }))
+    expect(() => zapiszHistorie(db, { ...zam('28225'), zrodlo: 'woo:swietlik' }))
       .toThrow(/musi miec klucz/);
   });
 
   it('zapisuje zrodlo i surowy status sklepu', () => {
     zapiszHistorie(db, {
-      ...zam('woo:szkicownia:28225'), zrodlo: 'woo:szkicownia', statusZrodla: 'completed',
+      ...zam('woo:swietlik:28225'), zrodlo: 'woo:swietlik', statusZrodla: 'completed',
     });
     const w = db.prepare('SELECT zrodlo, status_zrodla FROM sprzedaz_historyczna WHERE apilo_id = ?')
-      .get('woo:szkicownia:28225');
-    expect(w.zrodlo).toBe('woo:szkicownia');
+      .get('woo:swietlik:28225');
+    expect(w.zrodlo).toBe('woo:swietlik');
     expect(w.status_zrodla).toBe('completed');
   });
 

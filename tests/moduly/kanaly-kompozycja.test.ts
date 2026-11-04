@@ -5,6 +5,7 @@ import {zapiszTokeny} from '../../src/oms/db/tokeny.js';
 import {zbudujAplikacje} from '../../src/core/aplikacja.ts';
 import {modulRdzen} from '../../src/moduly/rdzen/modul.ts';
 import type {ModulOms} from '../../src/core/kontrakty.ts';
+import {migracjaKanalowSprzedazy} from '../../src/moduly/kanaly/migracje/0001-kanaly-sprzedazy.ts';
 
 afterEach(()=>vi.unstubAllGlobals());
 const definicje=[{klucz:'polnoc',typ:'woo',prefiks:'SKLEP_POLNOC'},{klucz:'poludnie',typ:'woo',prefiks:'SKLEP_POLUDNIE'}] as const;
@@ -14,6 +15,7 @@ const env={SKLEP_POLNOC_URL:'https://polnoc.invalid',SKLEP_POLNOC_CK:'fikcyjny',
 const zam=(id:number,data:string)=>({id,number:String(id),status:'processing',total:'10.00',date_created_gmt:data,date_modified_gmt:'2026-09-01T10:00:00',
  billing:{},shipping:{},shipping_lines:[{method_id:'flat_rate',instance_id:'1'}],line_items:[],meta_data:[]});
 function buduj(m:ReturnType<typeof createModulKanaly>,db:ReturnType<typeof openOmsDb>,konfiguracja:ReturnType<typeof m.konfiguracja>,log:(...tekst:string[])=>void=()=>{}){
+ migracjaKanalowSprzedazy.wykonaj(db);
  return m.zbuduj({db,konfiguracja,teraz:()=>new Date(),log,usluga:()=>{throw Error('Brak usługi ustawienia.widokIntegracji');}});
 }
 it('dwa prawdziwe klienty Woo: awaria pierwszego nie blokuje zapisu drugiego, każdy ma własne OD',async()=>{
@@ -54,7 +56,7 @@ it('rzeczywisty zegar doczepia pobieranie zdjęć Allegro także po błędzie Wo
   expect(url.searchParams.get('lineItems.boughtAt.gte')).toContain('2026-05-01');
  }finally{db.close();}
 });
-it('z.trasy rejestruje endpoint i używa renderera ustawień dla rzeczywistego braku kanałów',async()=>{
+it('endpoint wymaga administratora także bez modułu web i nie używa starego renderera wiązania',async()=>{
  const db=openOmsDb();const renderer=vi.fn((_req,reply,d)=>reply.send(d));
  const provider:ModulOms<null>={nazwa:'ustawienia',wersja:'1.0.0',wymaga:['rdzen'],migracje:[],menu:[],uprawnienia:[],konfiguracja:()=>null,
   zbuduj:()=>({uslugi:{widokIntegracji:renderer}})};
@@ -63,20 +65,20 @@ it('z.trasy rejestruje endpoint i używa renderera ustawień dla rzeczywistego b
   a=await zbudujAplikacje({db,moduly:[modulRdzen,createModulKanaly([]),provider] as ModulOms[],
    env:{OMS_SPRZEDAWCA_NIP:'1234563218',OMS_RACHUNEK:'34109010140000000000000000'}});
   const r=await a.app.inject({method:'POST',url:'/ustawienia/kanaly/rynek/wiazanie'});
-  expect(r.statusCode).toBe(503);expect(r.json()).toEqual({blad:'Panel nie ma podpiętych kanałów Allegro.'});
-  expect(a.usluga('kanaly','wiazanieKanalow')).toBeNull();expect(a.usluga('ustawienia','widokIntegracji')).toBe(renderer);
-  expect(renderer).toHaveBeenCalledOnce();expect(renderer.mock.calls[0][2]).toEqual({blad:'Panel nie ma podpiętych kanałów Allegro.'});
+  expect(r.statusCode).toBe(403);expect(r.body).toContain('administrator');
+  expect(a.usluga('kanaly','wiazanieKanalow')).not.toBeNull();expect(a.usluga('ustawienia','widokIntegracji')).toBe(renderer);
+  expect(renderer).not.toHaveBeenCalled();
  }finally{await a?.app.close();db.close();}
 });
-it.each([false,true])('jawny brak PRZ-032 w prawdziwej kompozycji rdzen+kanaly, skonfigurowane Allegro=%s',async(allegro)=>{
+it.each([false,true])('brak uwierzytelnienia zamyka nową ścieżkę także bez renderera, skonfigurowane Allegro=%s',async(allegro)=>{
  const db=openOmsDb();let aplikacja:Awaited<ReturnType<typeof zbudujAplikacje>>|undefined;
  try{
   const m=createModulKanaly(allegro?[{klucz:'rynek',typ:'allegro',prefiks:'RYNEK'}]:[]);
   aplikacja=await zbudujAplikacje({db,moduly:[modulRdzen,m] as ModulOms[],env:{OMS_SPRZEDAWCA_NIP:'1234563218',OMS_RACHUNEK:'34109010140000000000000000',
    ...(allegro?{RYNEK_CLIENT_ID:'fikcyjny',RYNEK_CLIENT_SECRET:'fikcyjny',RYNEK_USER_AGENT:'Fixture/1.0 (+https://fixture.invalid)',RYNEK_OD:'2026-01-01'}:{})}});
   const r=await aplikacja.app.inject({method:'POST',url:'/ustawienia/kanaly/nieznany/wiazanie'});
-  expect(r.statusCode).toBe(503);
-  expect(r.json()).toEqual({blad:'Widok ustawień integracji jest niedostępny.'});
+  expect(r.statusCode).toBe(403);
+  expect(r.body).toContain('administrator');
   expect(r.body).not.toContain('ustawienia.widokIntegracji');
   expect(r.body).not.toContain('Usługa');expect(r.body).not.toContain('nie jest zbudowany');
  }finally{await aplikacja?.app.close();db.close();}

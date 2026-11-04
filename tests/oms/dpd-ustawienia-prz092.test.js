@@ -15,7 +15,7 @@ const odp = (status, tekst) => ({ status, ok: status >= 200 && status < 300, tex
 
 const LOGIN = '99999999';
 const HASLO = 'SEKRETNE-HASLO';
-const FID = '278216';
+const FID = '876543';
 const nadawca = { nazwa: 'Pracownia Testowa', ulica: 'Zmyślona 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL' };
 const zamowienie = {
   numer: '501', kwota_brutto: '100.00', kwota_pobrania: null,

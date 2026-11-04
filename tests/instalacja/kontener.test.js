@@ -1,3 +1,4 @@
+import { wzorzecNazw } from '../pomoc/skroty-nazw-firmy.js';
 // PRZ-058: instalacja OMS w Dockerze u klienta — compose, obraz, pierwszy start i paczka wydania.
 import { afterEach, describe, expect, it } from 'vitest';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -29,7 +30,7 @@ function usluga(nazwa) {
 describe('compose i obraz klienta PRZ-058', () => {
   it('jest neutralny: zero nazw firmy autora, kanałów i adresów sieci domowej', () => {
     for (const tekst of [compose(), dockerfile(), ...['diagnostyka.sh', 'aktualizuj.sh', 'kopia.mjs'].map(p => fs.readFileSync(path.join(KLIENT, p), 'utf8'))]) {
-      expect(tekst).not.toMatch(/szkicownia|lumina|zetaklient|drugamarka|trzeciamarka|synology|volume1|192\.168|panel-zamowien/i);
+      expect(wzorzecNazw([{"wzor": "\\p{L}{8}", "skrot": "3876cd847a24f6d3a8f3542919b9f6545e500e2eea8583bb58583508cefe9a57", "bezWielkosci": true}, {"wzor": "\\p{L}{8}", "skrot": "a2ac0b2e157811634f85a0cd5e7ec6ae46b6123e724924eba975ef822566f72e", "bezWielkosci": true}, {"wzor": "\\p{L}{7}", "skrot": "bbad42404dae7eccdb5c9da096a448d035cbe65c428a1f58cad5e8617dff6d6a", "bezWielkosci": true}, {"wzor": "\\p{L}{7}", "skrot": "621ff5bc8c1a1c6efc971f9b84d23fd0cd4d1253e9591b25270647d40c165c4b", "bezWielkosci": true}], /zetaklient|synology|volume1|192\.168|panel-zamowien/i).test(tekst)).toBe(false);
     }
   });
 

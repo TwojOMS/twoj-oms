@@ -1,4 +1,5 @@
 import { bladOperatora } from './bledy.js';
+import { METODA_DOMYSLNA } from './moduly-kurierow.ts';
 import { parsujKosztDostawy } from './koszt-dostawy.js';
 import { parsujNowaPozycje } from './pozycje-reczne.js';
 import { czyWdt } from './wdt.js';
@@ -25,7 +26,7 @@ import { metodaWysylkiZWyboru, PLATNOSCI } from './nowe-zamowienie.js';
 export function parsujZamowienieZKarty(body = {}, { stawkaDomyslna, zw = false, zwolniona = false } = {}) {
   const kartaId = String(body?.kartaId ?? '').trim();
   if (!kartaId) throw bladOperatora('Żądanie bez identyfikatora karty — nie ma czego oznaczyć.');
-  const { metoda, pobranie } = metodaWysylkiZWyboru('dpd', 'przelew');
+  const { metoda, pobranie } = metodaWysylkiZWyboru(METODA_DOMYSLNA, 'przelew');
 
   const wejscie = Array.isArray(body?.pozycje) ? body.pozycje : [];
   const pozycje = wejscie.map((p, i) => {

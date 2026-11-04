@@ -18,13 +18,52 @@
 // N > 1 jako ZAMIENNIK pierwszej (wyrzucona etykieta). Oba miejsca — to i klient kuriera —
 // czytaja wtedy TEN SAM fakt (`pobranieNaTejPaczce`), a nie kazde swoj numer.
 
-// Kwota po normalizacji przecinka: same cyfry, opcjonalna czesc dziesietna. Number()
-// samo w sobie NIE WYSTARCZA, bo przepuszcza zapisy, ktore do kuriera jada ZNAK W ZNAK:
-// '1e3' i '0x10' sa dla niego skonczonymi liczbami, ale w <amount> to smiec, ktory DPD
-// odczyta po swojemu albo odrzuci. Przy wadze paczki (domain/paczka.js) ta dziura jest
-// nieszkodliwa, bo tam do kuriera idzie LICZBA; tu idzie NAPIS, wiec zamykamy ja.
+// Kwota po normalizacji przecinka: same cyfry, opcjonalnie jedno albo dwa miejsca po kropce
+// (plus końcowe zera — Woo formatuje `total` według liczby miejsc ustawionej w sklepie, więc
+// „212.900” to ta sama kwota co „212.90”). Number() samo w sobie NIE WYSTARCZA, bo
+// przepuszcza zapisy, ktore do kuriera jada ZNAK W ZNAK: '1e3' i '0x10' sa dla niego
+// skonczonymi liczbami, ale w <amount> to smiec, ktory DPD odczyta po swojemu albo odrzuci.
+// PRZ-145.01 (E5-D2): pół grosza („0.005”, „12.345”) też odpada — `grosze()` zaokrągliłoby to
+// po cichu, a do kuriera poszedłby napis, którego nikt nie wpisał jako kwoty w złotych.
 // Kazda prawdziwa kwota ('212.90', '310,33', '31033', '212') przechodzi bez zmian.
-const KSZTALT_KWOTY = /^\d+(\.\d+)?$/;
+export const KSZTALT_KWOTY = /^\d+(\.\d{1,2}0*)?$/;
+
+/**
+ * PRZ-145.01 (E5-D2): JEDEN odczyt kwoty pobrania — dla pola na ekranie, dla usługi nadania
+ * spoza HTTP i dla hurtu. Zwraca `{ kwota, groszeKwoty }` (kwota znormalizowana: przecinek na
+ * kropkę, przycięta) albo `{ blad, rodzaj }`, gdzie `rodzaj` to 'pusta' | 'ksztalt' | 'zero'.
+ * Teksty błędów są BEZ końcówki „Panel niczego nie nadał.” — dokleja ją wołający.
+ */
+export function odczytajKwotePobrania(surowa) {
+  const przycieta = String(surowa ?? '').trim();
+  if (!przycieta) {
+    return {
+      rodzaj: 'pusta',
+      blad: 'Kwota pobrania jest pusta — podaj kwotę, którą kurier ma zainkasować od klienta. '
+        + 'Puste pole NIE znaczy „nadaj bez pobrania": paczka pojechałaby jako przedpłacona, '
+        + 'a kurier nie pobrałby ani złotówki.',
+    };
+  }
+  // Przecinek dziesietny to polska klawiatura, nie blad wpisu — dokladnie jak przy wadze
+  // paczki (domain/paczka.js). Do kuriera idzie zawsze wersja z KROPKA.
+  const znormalizowana = przycieta.replace(',', '.');
+  const liczba = Number(znormalizowana);
+  if (!KSZTALT_KWOTY.test(znormalizowana) || !Number.isFinite(liczba)) {
+    return {
+      rodzaj: 'ksztalt',
+      blad: `Nie umiem odczytać kwoty pobrania: „${przycieta}" — wpisz samą liczbę `
+        + '(przecinek albo kropka dziesiętna, bez „zł" i bez spacji).',
+    };
+  }
+  if (liczba <= 0) {
+    return {
+      rodzaj: 'zero',
+      blad: 'Kwota pobrania musi być większa od zera — paczka za pobraniem bez kwoty to towar '
+        + 'oddany za darmo.',
+    };
+  }
+  return { kwota: znormalizowana, groszeKwoty: Math.round(liczba * 100) };
+}
 
 /**
  * Zwraca `{ kwotaPobrania }` — napis gotowy do wstawienia w kopertę kuriera — albo
@@ -62,31 +101,9 @@ export function parsujNadpisanieKwotyPobrania(
   // pojechalby z kwota Z ZAMOWIENIA zamiast z tej, ktora operator wpisal.
   if (!pobranie || !pobranieNaTejPaczce) return { kwotaPobrania: undefined };
 
-  const przycieta = String(dane?.kwota_pobrania ?? '').trim();
-  if (!przycieta) {
-    return {
-      blad: 'Kwota pobrania jest pusta — podaj kwotę, którą kurier ma zainkasować od klienta. '
-        + 'Puste pole NIE znaczy „nadaj bez pobrania": paczka pojechałaby jako przedpłacona, '
-        + 'a kurier nie pobrałby ani złotówki. Panel niczego nie nadał.',
-    };
-  }
-
-  // Przecinek dziesietny to polska klawiatura, nie blad wpisu — dokladnie jak przy wadze
-  // paczki (domain/paczka.js). Do kuriera idzie zawsze wersja z KROPKA.
-  const znormalizowana = przycieta.replace(',', '.');
-  const liczba = Number(znormalizowana);
-  if (!KSZTALT_KWOTY.test(znormalizowana) || !Number.isFinite(liczba)) {
-    return {
-      blad: `Nie umiem odczytać kwoty pobrania: „${przycieta}" — wpisz samą liczbę `
-        + '(przecinek albo kropka dziesiętna, bez „zł" i bez spacji). Panel niczego nie nadał.',
-    };
-  }
-  if (liczba <= 0) {
-    return {
-      blad: 'Kwota pobrania musi być większa od zera — paczka za pobraniem bez kwoty to towar '
-        + 'oddany za darmo. Panel niczego nie nadał.',
-    };
-  }
-
-  return { kwotaPobrania: znormalizowana };
+  // PRZ-145.01 (E5-D2): odczyt robi `odczytajKwotePobrania` — ta sama funkcja co usługa
+  // spoza HTTP i hurt; parser dokleja tylko końcówkę i oddaje dawny kształt wyniku.
+  const odczyt = odczytajKwotePobrania(dane?.kwota_pobrania);
+  if (odczyt.blad) return { blad: `${odczyt.blad} Panel niczego nie nadał.` };
+  return { kwotaPobrania: odczyt.kwota };
 }

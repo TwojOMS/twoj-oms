@@ -16,16 +16,16 @@ export const zwrotyWOkresie = (db, zakres) => sprzedaz.zwrotyWOkresie(db, zakres
 export const nettoZamowieniaGrosze = (brutto, email) => sprzedaz.nettoZamowieniaGrosze(brutto, email, KLIENCI_WDT);
 export const rachunekOkresu = (db, zakres) => rachunek(db, zakres, { regulySprzedazy: regulyFixture, podlogaKosztow: PODLOGA });
 export const zamowieniaOkresu = (db, zakres) => zamowienia(db, zakres, regulyFixture);
-export const zastrzezenia = o => zastrzezeniaProdukcja({ ...o, nazwaSklepu: 'szkicownia.pl', dataImportu: '2026-08-27' });
+export const zastrzezenia = o => zastrzezeniaProdukcja({ ...o, nazwaSklepu: 'swietlik.example.test', dataImportu: '2026-08-27' });
 export const configRaportowFixture = {
   podlogaKosztow: PODLOGA,
   kontoHistorii: 9,
   regulySprzedazy: regulyFixture, podlogaZwrotow: PODLOGA_ZWROTOW, pierwszyDzienOms: '2026-07-03',
-  nazwaSklepuHistorii: 'szkicownia.pl', dataImportuHistorii: '2026-08-27',
+  nazwaSklepuHistorii: 'swietlik.example.test', dataImportuHistorii: '2026-08-27',
   nazwyKanalow: {
-    ALLEGRO_SZKICOWNIA: 'Allegro szkicownia_pl', ALLEGRO_AMARKA: 'Allegro Amarka',
-    SZKICOWNIA_PL: 'Szkicownia.pl', SZKICOWNIA_PRO: 'Szkicownia PRO', INDYWIDUALNE: 'Indywidualne',
+    ALLEGRO_SWIETLIK: 'Allegro swietlik_pl', ALLEGRO_POLCIEN2: 'Allegro Półcień Druga',
+    SWIETLIK_PL: 'Swietlik.example.test', SWIETLIK_PRO: 'Pracownia Świetlik PRO', INDYWIDUALNE: 'Indywidualne',
     RECZNE: 'Ręczne', DROPSHIPPING: 'Dropshipping', B2B: 'B2B', GDD: 'GDD (Fundacja)',
-    PRESTASHOP_ARCHIWUM: 'Prestashop (archiwum)', WOO_AMARKA: 'Woo Amarka (archiwum)', ETSY_ARCHIWUM: 'Etsy (archiwum)',
+    PRESTASHOP_ARCHIWUM: 'Prestashop (archiwum)', WOO_POLCIEN2: 'Woo Półcień Druga (archiwum)', ETSY_ARCHIWUM: 'Etsy (archiwum)',
   },
 };

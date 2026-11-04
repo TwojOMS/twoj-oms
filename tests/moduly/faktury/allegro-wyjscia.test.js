@@ -22,13 +22,13 @@ const przed = (ms) => new Date(Date.now() - ms).toISOString();
 // do INSERT-a caly komplet kolumn, a brakujace pola trafiaja tam jako `undefined`, czego
 // node:sqlite nie zwiaze (fikstura z planu nie dawala sie wykonac ani raz).
 function baza({
-  sklep = 'allegro_szkicownia', chce = 1, ksefStatus = null, ksefNumer = null,
+  sklep = 'allegro_swietlik', chce = 1, ksefStatus = null, ksefNumer = null,
   invoiceId = null, wyslanaAt = null, utworzonaAt = przed(30 * GODZINA),
 } = {}) {
   const db = openOmsDb(':memory:');
   const id = zapiszZamowienie(db, sklep, {
     zrodlo_id: 'CF-1', numer: 'CF-1', kwota_brutto: '100.00', chce_fakture: chce, pozycje: [],
-    klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Pęki' },
+    klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
     metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, nip: null, status_woo: null,
     oplacone_at: '2026-08-05T09:00:00', anulowane: 0, utworzone_at: '2026-08-05T08:00:00',
   }, {});

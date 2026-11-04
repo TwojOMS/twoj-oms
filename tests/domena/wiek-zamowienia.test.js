@@ -4,7 +4,7 @@ import { wiekZamowienia, czyEkspres } from '../../src/domena/wiek-zamowienia.js'
 // Wiersz jak z listaZamowien: fakty, ktorych zegar uzywa. Daty bez strefy = czas sklepu
 // (Warszawa), daty z `Z` = nasze znaczniki UTC — obie skale musza dzialac.
 const zam = (nad = {}) => ({
-  sklep: 'szkicownia', utworzone_at: '2026-08-18T10:00:00', oplacone_at: '2026-08-18T10:00:00',
+  sklep: 'swietlik', utworzone_at: '2026-08-18T10:00:00', oplacone_at: '2026-08-18T10:00:00',
   pobranie: 0, b2b: 0, indywidualne: 0, anulowane: 0, anulowane_recznie: null,
   wyslane_at: null, pozycje: [{ nazwa: 'Lampa wisząca' }], ...nad,
 });
@@ -19,7 +19,7 @@ describe('czyEkspres', () => {
   });
 });
 
-describe('wiek i zegar — typ krótki (sklep szkicownia)', () => {
+describe('wiek i zegar — typ krótki (sklep swietlik)', () => {
   it('opłacone wtorek → środa „wysyłka: dziś”, w terminie', () => {
     const w = wiekZamowienia(zam(), '2026-08-19T09:00:00Z');
     expect(w.poTerminie).toBe(false);
@@ -39,7 +39,7 @@ describe('wiek i zegar — typ krótki (sklep szkicownia)', () => {
 });
 
 describe('Allegro — odcięcie 12:00 w czasie polskim', () => {
-  const allegro = (nad = {}) => zam({ sklep: 'allegro_szkicownia', ...nad });
+  const allegro = (nad = {}) => zam({ sklep: 'allegro_swietlik', ...nad });
   it('opłacone pn 11:59 czasu PL → „wysyłka: dziś · opłacone przed 12:00”; wtorek po terminie', () => {
     const start = { oplacone_at: '2026-08-17T11:59:00', utworzone_at: '2026-08-17T11:50:00' };
     const w = wiekZamowienia(allegro(start), '2026-08-17T14:00:00Z');
@@ -110,7 +110,7 @@ describe('start zegara', () => {
     expect(w.poTerminie).toBe(true);
   });
   it('pobranie Allegro: dopisek mówi „złożone”, nie „opłacone”', () => {
-    const w = wiekZamowienia(zam({ sklep: 'allegro_szkicownia', pobranie: 1, oplacone_at: null,
+    const w = wiekZamowienia(zam({ sklep: 'allegro_swietlik', pobranie: 1, oplacone_at: null,
       utworzone_at: '2026-08-17T09:00:00' }), '2026-08-17T14:00:00Z');
     expect(w.opis).toBe('wysyłka: dziś · złożone przed 12:00');
   });
@@ -144,7 +144,7 @@ describe('odporność na śmieciowe daty', () => {
   });
   it('data-śmieć (Allegro) też nie rzuca', () => {
     expect(() => wiekZamowienia(
-      zam({ sklep: 'allegro_szkicownia', oplacone_at: '0000-00-00T00:00:00Z' }),
+      zam({ sklep: 'allegro_swietlik', oplacone_at: '0000-00-00T00:00:00Z' }),
       '2026-08-19T09:00:00Z',
     )).not.toThrow();
   });

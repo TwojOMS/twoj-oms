@@ -100,7 +100,7 @@ export function wstawMieszane(db, { powtorzen = 3 } = {}) {
         const id = Number(insZ.run(sklep, n, `M-${n}`,
           JSON.stringify({ first_name: `Imię${n}`, last_name: n % 4 === 0 ? 'Kowalski' : `Zażółć${n}`, email: `m${n}@email.invalid`,
             ...(r.telefon ? { phone: `+48 600 ${String(n).padStart(3, '0')} 777` } : {}) }),
-          JSON.stringify({ first_name: `Imię${n}`, last_name: n % 4 === 0 ? 'Kowalski' : `Zażółć${n}`, city: n % 2 ? 'Pęki' : 'Miasto' }),
+          JSON.stringify({ first_name: `Imię${n}`, last_name: n % 4 === 0 ? 'Kowalski' : `Zażółć${n}`, city: n % 2 ? 'Łódź' : 'Miasto' }),
           r.wysylkaReczna ? 'dpd' : n % 2 ? 'dpd' : 'inpost_paczkomat', '10.00', r.oplacone ?? null, r.anulowane ?? 0, r.anulowaneRecznie ?? null, r.wReal ?? null, null, utw,
           r.wyslane ?? null, n % 2 ? 'Przelew' : 'BLIK', r.indywidualne ?? null, r.sync ?? null, r.pobranie ?? 0, r.b2b ?? 0).lastInsertRowid);
         insP.run(id, r.pozycja ?? `Produkt ${n % 5}`, `SKU-${n}`);

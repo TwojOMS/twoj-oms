@@ -15,32 +15,18 @@
 // albo rozszerzenia pliku to jedna linia tutaj.
 import { nazwaDostawy, metodaWysylki } from './wysylka.js';
 
-export const PRZEWOZNICY = Object.freeze({
-  dpd: Object.freeze({
-    klucz: 'dpd', nazwa: 'DPD', logo: '/public/przewoznicy/dpd.svg',
-    sledzenie: 'https://tracktrace.dpd.com.pl/parcelDetails?typ=1&p1=',
-  }),
-  inpost: Object.freeze({
-    klucz: 'inpost', nazwa: 'InPost', logo: '/public/przewoznicy/inpost.svg',
-    sledzenie: 'https://inpost.pl/sledzenie-przesylek?number=',
-  }),
-  dhl: Object.freeze({
-    klucz: 'dhl', nazwa: 'DHL', logo: '/public/przewoznicy/dhl.svg',
-    sledzenie: 'https://www.dhl.com/pl-pl/home/sledzenie-przesylek.html?tracking-id=',
-  }),
-  orlen: Object.freeze({
-    klucz: 'orlen', nazwa: 'ORLEN Paczka', logo: '/public/przewoznicy/orlen.svg',
-    sledzenie: 'https://www.orlenpaczka.pl/sledz-paczke/?numer=',
-  }),
-  'allegro-one': Object.freeze({
-    klucz: 'allegro-one', nazwa: 'Allegro One', logo: '/public/przewoznicy/allegro-one.png',
-    sledzenie: 'https://allegro.pl/allegrodelivery/sledzenie-paczki?numer=',
-  }),
-  packeta: Object.freeze({
-    klucz: 'packeta', nazwa: 'Packeta', logo: '/public/przewoznicy/packeta.png',
-    sledzenie: 'https://tracking.packeta.com/pl/?id=',
-  }),
-});
+import { OPISY_PRZEWOZNIKOW } from './przewoznicy.ts';
+
+const opisy = Object.values(OPISY_PRZEWOZNIKOW);
+export const PRZEWOZNICY = Object.freeze(Object.fromEntries(opisy.map(
+  ({ klucz, nazwa, logo, sledzenie }) => [klucz, Object.freeze({
+    klucz, nazwa, logo, sledzenie: sledzenie.replace('{numer}', ''),
+  })],
+)));
+
+const mapaRozpoznania = (pole) => Object.fromEntries(opisy.flatMap(
+  opis => (opis.rozpoznanie[pole] ?? []).map(wartosc => [wartosc, opis.klucz]),
+));
 
 // `Object.hasOwn`, nie `PRZEWOZNICY[klucz]`: klucz przychodzi z adresu (`?kurier=`), a
 // `__proto__`/`constructor` daloby obiekt zamiast „nieznany".
@@ -48,10 +34,10 @@ const wpis = (klucz) => (typeof klucz === 'string' && Object.hasOwn(PRZEWOZNICY,
 
 // Kod nadania → przewoznik. Kod mowi, kim NADALISMY, wiec jest wazniejszy niz metoda zamowienia:
 // zmierzone `inpost||dpd` (2 szt.) to paczka InPostu, mimo ze klient wybral DPD.
-const Z_KODU = { dpd: 'dpd', inpost: 'inpost' };
+const Z_KODU = mapaRozpoznania('kod');
 
 // Kod `carrier_allegro` → przewoznik. Tylko sygnaly jednoznaczne; ALLEGRO celowo nieobecne.
-const Z_CARRIERA = { INPOST: 'inpost', PACKETA: 'packeta' };
+const Z_CARRIERA = mapaRozpoznania('carrier');
 
 // SLOWA W NAZWIE USLUGI. ⚠️ KOLEJNOSC JEST TRESCIA:
 //  1. Packeta PRZED ORLEN — „…Automaty Paczkowe Packeta, ORLEN Paczka" to wysylka na Slowacje,
@@ -61,25 +47,15 @@ const Z_CARRIERA = { INPOST: 'inpost', PACKETA: 'packeta' };
 //  3. „One" na koncu — „Allegro One Box, One Kurier" i „Allegro One Kurier - dostawa jutro"
 //     to siec Allegro One.
 // Pelne slowa, bez rozrozniania wielkosci liter: „Phone", „DPDX", „Orlenowo" niczego nie znacza.
-const SLOWA = [
-  ['packeta', 'packeta'],
-  ['dpd', 'dpd'],
-  ['inpost', 'inpost'],
-  ['dhl', 'dhl'],
-  ['orlen', 'orlen'],
-  ['one', 'allegro-one'],
-];
+const SLOWA = [...opisy].sort((a, b) => a.kolejnoscSlow - b.kolejnoscSlow)
+  .flatMap(opis => (opis.rozpoznanie.slowa ?? []).map(s => [s, opis.klucz]));
 const slowo = (s) => new RegExp(`(?:^|[^\\p{L}\\p{N}])${s}(?:[^\\p{L}\\p{N}]|$)`, 'iu');
 const WZORCE = SLOWA.map(([s, klucz]) => [slowo(s), klucz]);
 
 // Metoda wysylki → przewoznik. ZAPAS, gdy nazwa uslugi nic nie mowi (brak nazwy od Allegro albo
 // ogolna nazwa slownikowa po recznej zmianie metody). `allegro_punkt`/`allegro_inne` celowo
 // nieobecne: punkt to ORLEN, DHL BOX albo One Box — zgadywanie byloby klamstwem w filtrze.
-const Z_METODY = {
-  dpd: 'dpd', allegro_dpd: 'dpd',
-  inpost_paczkomat: 'inpost', allegro_paczkomat: 'inpost',
-  allegro_kurier: 'allegro-one',
-};
+const Z_METODY = mapaRozpoznania('metody');
 
 /**
  * Prawdziwy przewoznik przesylki albo `null`, gdy nie da sie go ustalic.

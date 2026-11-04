@@ -32,7 +32,7 @@ const config = { auth: { user: 'adam', pass: 'x' } };
 const naglowek = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}`, origin: 'http://localhost' };
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
 const NADAWCA = {
-  nazwa: 'Lumina', ulica: 'ul. 1 Maja 5', kod: '00-650', miasto: 'Pęki', kraj: 'PL',
+  nazwa: 'Pracownia Półcień', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
 };
 
 const zmapowane = (nad = {}) => ({
@@ -60,14 +60,14 @@ function dpdKlient() {
     .mockResolvedValueOnce(odp(200, fixture('v10-ok.xml')))
     .mockResolvedValueOnce(odp(200, fixture('v4-ok.xml')));
   return createDpdClient({
-    url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '278216', nadawca: NADAWCA, fetchImpl,
+    url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '876543', nadawca: NADAWCA, fetchImpl,
   });
 }
 
 let db;
 beforeEach(() => { db = openOmsDb(':memory:'); });
 
-function zServerem({ nad = {}, sklep = 'allegro_szkicownia' } = {}) {
+function zServerem({ nad = {}, sklep = 'allegro_swietlik' } = {}) {
   const katalogEtykiet = mkdtempSync(join(tmpdir(), 'oms-bezwyboru-'));
   const nadanie = createNadanie({ db, kurierzy: { dpd: dpdKlient() }, katalogEtykiet });
   const kurierzy = { allegro_wza: { pobierzMetodeDostawy: async () => '0d83955a-4297-4169-adef-9790d53b11ff' } };

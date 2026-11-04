@@ -6,10 +6,10 @@ import {
 
 // Czwartek 2026-08-13 to dzień roboczy; 2026-08-15 to sobota.
 const sklepowe = (d = {}) => ({
-  sklep: 'szkicownia', pobranie: 0, b2b: 0, indywidualne: 0, pozycje: [],
+  sklep: 'swietlik', pobranie: 0, b2b: 0, indywidualne: 0, pozycje: [],
   utworzone_at: '2026-08-13T06:00:00Z', oplacone_at: '2026-08-13T06:00:00Z', ...d,
 });
-const allegrowe = (d = {}) => sklepowe({ sklep: 'allegro_szkicownia', ...d });
+const allegrowe = (d = {}) => sklepowe({ sklep: 'allegro_swietlik', ...d });
 
 // Te dwa eksporty istnieją, żeby `wiekZamowienia` nie powtarzało reguły u siebie —
 // więc mają własne asercje, a nie tylko pokrycie przez `terminZamowienia`.
@@ -19,7 +19,7 @@ describe('typZamowienia / startZegara', () => {
     expect(typZamowienia(allegrowe())).toBe('allegro');
     expect(typZamowienia(sklepowe({ indywidualne: 1 }))).toBe('indywidualne');
     expect(typZamowienia(sklepowe({
-      indywidualne: 1, sklep: 'allegro_szkicownia', pozycje: [{ nazwa: 'Ekspres 24h' }],
+      indywidualne: 1, sklep: 'allegro_swietlik', pozycje: [{ nazwa: 'Ekspres 24h' }],
     }))).toBe('ekspres');
   });
 

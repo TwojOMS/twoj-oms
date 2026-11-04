@@ -1,6 +1,6 @@
 // PRZ-060: znak w belce panelu z konfiguracji instalacji (OMS_LOGO_PLIK, OMS_LOGO_ALT).
 // Bez zmiennych — neutralny znak z paczki i pusty alt; z wartościami produkcji właściciela — jego PNG
-// pod tym samym adresem i alt „Szkicownia”, czyli belka bajt w bajt jak przed PRZ-060.
+// pod tym samym adresem i alt „Pracownia Świetlik”, czyli belka bajt w bajt jak przed PRZ-060.
 import { it, expect, vi } from 'vitest';
 import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -45,8 +45,8 @@ it('z OMS_LOGO_PLIK i OMS_LOGO_ALT: własny PNG pod tym samym adresem i dzisiejs
   const k = mkdtempSync(join(tmpdir(), 'oms-logo-'));
   try {
     const plik = join(k, 'logo.png'); writeFileSync(plik, wlasny);
-    const w = await belkaIZnak({ OMS_LOGO_PLIK: plik, OMS_LOGO_ALT: 'Szkicownia' });
-    expect(w.img).toMatch(/^<img class="pas-logo" src="\/public\/favicon-192\.png\?v=[a-f0-9]{10}" alt="Szkicownia">$/);
+    const w = await belkaIZnak({ OMS_LOGO_PLIK: plik, OMS_LOGO_ALT: 'Pracownia Świetlik' });
+    expect(w.img).toMatch(/^<img class="pas-logo" src="\/public\/favicon-192\.png\?v=[a-f0-9]{10}" alt="Pracownia Świetlik">$/);
     expect([w.status, w.typ]).toEqual([200, 'image/png']);
     expect(w.bajty.equals(wlasny)).toBe(true);
   } finally { rmSync(k, { recursive: true, force: true }); }

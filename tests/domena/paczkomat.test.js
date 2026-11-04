@@ -7,7 +7,7 @@ import { MAPOWANIE_SKLEPOW, metodaZLinii, metodaWysylkiZamowienia } from '../pom
 import { mapujZamowienie, punktOdbioruZeSurowych } from '../../src/domena/mapowanie.js';
 import { podzielDoNadania } from '../../src/domena/masowe.js';
 
-const SZKICOWNIA = MAPOWANIE_SKLEPOW.szkicownia;
+const SWIETLIK = MAPOWANIE_SKLEPOW.swietlik;
 
 // ⚠️ KSZTALTY ODWZOROWANE Z ZYWEGO SKLEPU (odczyt 2026-08-01) — nie zmyslone. Kody
 // WRO10B / JAB03M / SLN06M to trzy prawdziwe paczkomaty z produkcji.
@@ -52,19 +52,19 @@ describe('paczkomat jest pełnoprawną metodą wysyłki', () => {
   });
 });
 
-describe('rozpoznanie po instance_id — instancja 12 szkicownia.pl', () => {
+describe('rozpoznanie po instance_id — instancja 12 swietlik.example.test', () => {
   it('instancja 12 to paczkomat InPost', () => {
-    expect(metodaZLinii(zPaczkomatem(), SZKICOWNIA.instancje)).toEqual({ metoda: 'inpost_paczkomat' });
+    expect(metodaZLinii(zPaczkomatem(), SWIETLIK.instancje)).toEqual({ metoda: 'inpost_paczkomat' });
   });
 
   // ⚠️ TO SA PIENIADZE. Sklep dzis NIE sprzedaje paczkomatu za pobraniem, a rozpoznanie
   // ShipX nie potwierdza nawet, czy umowa je obejmuje (44/44 przesylki maja `cod` puste).
   // Dopisanie tu pobrania kazaloby kurierowi inkasowac od klienta, ktory juz zaplacil.
   it('instancja 12 NIE niesie pobrania', () => {
-    expect(metodaWysylkiZamowienia(zPaczkomatem(), SZKICOWNIA)).toEqual({
+    expect(metodaWysylkiZamowienia(zPaczkomatem(), SWIETLIK)).toEqual({
       metoda: 'inpost_paczkomat', pobranie: false,
     });
-    const z = mapujZamowienie(zPaczkomatem(), SZKICOWNIA);
+    const z = mapujZamowienie(zPaczkomatem(), SWIETLIK);
     expect(z.pobranie).toBe(0);
     expect(z.kwota_pobrania).toBeNull();
   });
@@ -75,7 +75,7 @@ describe('rozpoznanie po instance_id — instancja 12 szkicownia.pl', () => {
     const podszywka = zPaczkomatem({
       shipping_lines: [{ instance_id: 3, method_id: 'easypack_parcel_machines', method_title: 'InPost Paczkomat' }],
     });
-    expect(metodaWysylkiZamowienia(podszywka, SZKICOWNIA)).toEqual({ metoda: 'dpd', pobranie: false });
+    expect(metodaWysylkiZamowienia(podszywka, SWIETLIK)).toEqual({ metoda: 'dpd', pobranie: false });
   });
 });
 
@@ -87,7 +87,7 @@ describe('kod paczkomatu z meta_data zamówienia', () => {
   });
 
   it('trafia do zamówienia razem z metodą', () => {
-    const z = mapujZamowienie(zPaczkomatem(), SZKICOWNIA);
+    const z = mapujZamowienie(zPaczkomatem(), SWIETLIK);
     expect(z.metoda_wysylki).toBe('inpost_paczkomat');
     expect(z.punkt_odbioru).toBe('WRO10B');
     expect(z.punkt_odbioru_opis).toBe('Przy Centrum Handlowyn Borek');
@@ -96,7 +96,7 @@ describe('kod paczkomatu z meta_data zamówienia', () => {
   it.each(['JAB03M', 'SLN06M'])('działa na prawdziwym kodzie %s', (kod) => {
     const z = mapujZamowienie(
       zPaczkomatem({ meta_data: [{ key: '_parcel_machine_id', value: kod }] }),
-      SZKICOWNIA,
+      SWIETLIK,
     );
     expect(z.punkt_odbioru).toBe(kod);
     expect(z.punkt_odbioru_opis).toBeNull();
@@ -107,7 +107,7 @@ describe('kod paczkomatu z meta_data zamówienia', () => {
   it('pusty kod i brak meta czyta się jako NULL, nie jako pusty napis', () => {
     expect(punktOdbioruZeSurowych({ meta_data: [{ key: '_parcel_machine_id', value: '' }] }).kod).toBeNull();
     expect(punktOdbioruZeSurowych({}).kod).toBeNull();
-    expect(mapujZamowienie(zPaczkomatem({ meta_data: [] }), SZKICOWNIA).punkt_odbioru).toBeNull();
+    expect(mapujZamowienie(zPaczkomatem({ meta_data: [] }), SWIETLIK).punkt_odbioru).toBeNull();
   });
 
   // Zamowienie DPD nie ma tej meta i ma z niej wyjsc puste — bez tego kolumna wygladalaby
@@ -117,7 +117,7 @@ describe('kod paczkomatu z meta_data zamówienia', () => {
       shipping_lines: [{ instance_id: 3, method_id: 'flexible_shipping', method_title: 'Kurier DPD' }],
       meta_data: [],
     });
-    const z = mapujZamowienie(dpd, SZKICOWNIA);
+    const z = mapujZamowienie(dpd, SWIETLIK);
     expect(z.metoda_wysylki).toBe('dpd');
     expect(z.punkt_odbioru).toBeNull();
   });

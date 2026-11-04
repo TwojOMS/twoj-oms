@@ -1,4 +1,5 @@
 import { bladOperatora } from './bledy.js';
+import { METODA_DOMYSLNA } from './moduly-kurierow.ts';
 import { tekst } from './dane-reczne.js';
 import { grosze } from './kwoty.js';
 import { normalizujNip, nipRozpoznany } from './klient-zbiorczy.js';
@@ -318,7 +319,7 @@ export function wstawKlientaDoFormularza(formularz = {}, klient) {
     // znaczy „odznaczone" — i tak właśnie odczyta to `parsujNoweZamowienie`.
     f_chce_fakture: klient.chce_fakture ? 'on' : '',
     b2b: klient.b2b ? 'on' : '',
-    dostawa: klient.metoda_wysylki ?? 'dpd',
+    dostawa: klient.metoda_wysylki ?? METODA_DOMYSLNA,
     // ⚠️ PUSTY KOSZT = DOSTAWA NIEUSTALONA (klient z zamówienia z nierozpoznaną dostawą,
     // PRZ-102.24), a nie „gratis”. Puste pole zapisałoby zamówienie z 0,00; `undefined` zostawia
     // ekranowi kwotę domyślną z Ustawień dla wybranej dostawy.

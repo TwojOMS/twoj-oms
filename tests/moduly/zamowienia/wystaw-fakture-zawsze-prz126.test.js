@@ -68,16 +68,21 @@ it.each([
   expect(tekst(r.body).split(powody[powod])).toHaveLength(2);
   expect(r.body).not.toContain('id="wystaw-fakture"');
 });
-it('bez adresu: prośba klienta daje aktywny przycisk i POST wystawia jedną fakturę', async () => {
+// PRZ-126.PT5: do 03.11 ten test sprawdzał, że brak adresu NIE blokuje (aktywny przycisk, faktura
+// wystawiona). Od PT5 adres nabywcy jest wymagany (art. 106e ust. 1 pkt 3) — test sprawdza odmowę.
+// Pełny zestaw przypadków: tests/moduly/zamowienia/adres-nabywcy-wymagany-pt.test.js.
+it('bez adresu: prośba klienta daje szary przycisk z powodem, a POST odmawia bez faktury i bez programu', async () => {
   const p = await panel({ klient: { address_1: '', postcode: '', city: '' } });
   const r = await p.get();
   expect(r.statusCode).toBe(200);
-  expect(przycisk(r.body)).toBeDefined();
-  expect(przycisk(r.body)).not.toContain('disabled');
-  expect(r.body).not.toContain('id="powod-wystawienia-faktury"');
-  expect((await p.post()).statusCode).toBe(302);
-  expect(p.db.prepare('SELECT count(*) AS n FROM faktury WHERE zamowienie_id=?').get(p.id).n).toBe(1);
-  expect(p.infakt.wystaw).toHaveBeenCalledTimes(1);
+  expect(przycisk(r.body)).toContain('disabled');
+  expect(r.body).toContain('<p class="wyjasnienie" id="powod-wystawienia-faktury">Brak adresu nabywcy (ulica, kod pocztowy, miasto) — '
+    + '<a href="#dane-faktury">uzupełnij dane do faktury</a>.</p>');
+  const post = await p.post();
+  expect(post.statusCode).toBe(400);
+  expect(post.body).toContain('Brak adresu nabywcy (ulica, kod pocztowy, miasto).');
+  expect(p.db.prepare('SELECT count(*) AS n FROM faktury WHERE zamowienie_id=?').get(p.id).n).toBe(0);
+  expect(p.infakt.wystaw).not.toHaveBeenCalled();
 });
 it.each([false, true])('okres z fakturą: dokładnie jedno zdanie, link do Faktur zależy od uprawnień (ograniczona rola=%s)', async (rola) => {
   const p = await panel({ okres: true, fakturaOkresu: true, rola });

@@ -7,6 +7,7 @@ import { miniaturaPozycji } from '../../domena/miniatura-pozycji.js';
 import { miniaturyLustra, paryPozycji } from '../../oms/db/miniatury-lustra.js';
 import { kuponyZWiersza } from '../../domena/kupony.js';
 import { atrybucjaZWiersza, opisAtrybucji } from '../../domena/atrybucja.js';
+import { panelKuriera } from '../../domena/moduly-kurierow.ts';
 import ejs from 'ejs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -94,6 +95,16 @@ export function daneKarty(z) {
     // `przesylki.adres_uzyty`) i zadna poprawka na karcie go nie zawroci. Ta sama flaga
     // sluzy ostrzezeniu przy metodzie wysylki — zmiana metody tez nie zawraca paczki.
     jestNadanaPaczka: (z.przesylki ?? []).some((p) => p.status === 'nadana'),
+    // PRZ-142.01: „panelu InPost" / „panelu kuriera" dla komunikatów o przesyłce (widok woła z `p.kurier`).
+    panelKuriera,
+    // To samo dla zdań o paczkach JUŻ NADANYCH ogółem: panele wszystkich kurierów, którzy je nadali
+    // („panelu DPD / InPost"); bez nadanej albo przy nieznanym kurierze — „panelu kuriera".
+    panelNadanych: (() => {
+      const nazwy = [...new Set((z.przesylki ?? []).filter((p) => p.status === 'nadana')
+        .map((p) => panelKuriera(p.kurier).replace(/^panelu /, '')))];
+      const znane = nazwy.filter((n) => n !== 'kuriera');
+      return znane.length === 0 || znane.length < nazwy.length ? 'panelu kuriera' : `panelu ${znane.join(' / ')}`;
+    })(),
     // Lista wyboru statusu. Widok jej NIE sklada sam — inaczej „Wyslane" wrociloby do
     // rozwijanego pola przy pierwszej zmianie ETYKIETY, mimo ze trasa i tak by je odrzucila.
     opcjeStatusu: z.opcje_statusow ?? OPCJE_STATUSU,

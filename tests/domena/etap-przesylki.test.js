@@ -67,7 +67,7 @@ describe('etapPrzesylki', () => {
 // tlumaczeniem, zmienia sie najlatwiej ze wszystkiego. Klasyfikowanie polskiego opisu
 // dzialaloby dzis i zamilkloby po cichu przy pierwszej korekcie tekstu u Allegro.
 //
-// Kody i opisy ZMIERZONE sonda na zywym API 25.08.2026 (konto allegro_szkicownia, paczki
+// Kody i opisy ZMIERZONE sonda na zywym API 25.08.2026 (konto allegro_swietlik, paczki
 // #42 AD0SSC8LN5Q06GPJN i #50 A005DUH6H5 — obie Allegro Punkt, nadane POZA panelem).
 describe('etapPrzesylki — kod Allegro', () => {
   it('kod rozstrzyga etap', () => {

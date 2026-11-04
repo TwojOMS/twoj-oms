@@ -24,7 +24,7 @@ import { wylaczoneModuly } from '../../oms/db/moduly-opcjonalne.js';
 import { indeksListy } from '../../oms/db/indeks-listy.js';
 import { menuKontaDla } from '../../domena/menu-konta.js';
 import { maDostepDoAdresu, tytulEkranuDlaAdresu } from '../../domena/ekrany.js';
-import { fmtDataCzas, fmtDataCzasKrotko } from '../../domena/format-daty.js';
+import { fmtDataCzas, fmtDataCzasKrotko, fmtKiedy } from '../../domena/format-daty.js';
 import { etapPrzesylki, etykietaEtapu, dniKalendarzowe } from '../../domena/etap-przesylki.js';
 import { etykietaWysylki, nazwaDostawy } from '../../domena/wysylka.js';
 import { klasaStatusu, modyfikatorStatusu } from './klasa-statusu.js';
@@ -161,7 +161,7 @@ options: { views: katalogiWidokow() },
     // widok skladajacy ten dopisek u siebie zgubilby go przy pierwszym przeoczeniu, a to
     // jest informacja o pieniadzach, ktore kurier ma zainkasowac.
     defaultContext: {
-      title: 'Zamówienia', fmtDataCzas, fmtDataCzasKrotko, klasaStatusu, modyfikatorStatusu,
+      title: 'Zamówienia', fmtDataCzas, fmtDataCzasKrotko, fmtKiedy, klasaStatusu, modyfikatorStatusu,
       etykietaStatusu: klucz => klucz,
       etapPrzesylki, etykietaEtapu, dniKalendarzowe,
       etykietaWysylki,

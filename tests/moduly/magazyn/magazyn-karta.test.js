@@ -44,7 +44,7 @@ beforeEach(() => {
 function produkt(nazwa, nadpisania = {}) {
   numerKolejny += 1;
   return zapiszProduktSklepowy(db, {
-    kanal: 'allegro_szkicownia', produkt_id: `p-${numerKolejny}`, wariant_id: '',
+    kanal: 'allegro_swietlik', produkt_id: `p-${numerKolejny}`, wariant_id: '',
     nazwa, odczytane_at: '2026-08-12T06:00:00.000Z', ...nadpisania,
   });
 }
@@ -144,10 +144,10 @@ describe('GET /magazyn/:id — karta jest DOMYSLNIE DO ODCZYTU', () => {
   it('odnosnik „Edytuj" NIESIE DALEJ szukanie, zamiast je kasowac', async () => {
     const id = kartaO('Kandelabr srebrny');
     const dane = sekcja(
-      (await get(serwer(), `/magazyn/${id}?fraza=kandelabr&kanal=allegro_szkicownia`)).body, 'dane-karty',
+      (await get(serwer(), `/magazyn/${id}?fraza=kandelabr&kanal=allegro_swietlik`)).body, 'dane-karty',
     );
     expect(dane).toContain('fraza=kandelabr');
-    expect(dane).toContain('kanal=allegro_szkicownia');
+    expect(dane).toContain('kanal=allegro_swietlik');
   });
 
   it('„?edytuj=dane" otwiera formularz i ZNACZY panel, ze zmiany czekaja niezapisane', async () => {
@@ -814,9 +814,9 @@ describe('dopisanie oferty — PODPOWIEDZI PROPONUJA, wiaze klikniecie', () => {
 describe('dopisanie oferty — WYSZUKIWARKA, nie sama lista podpowiedzi', () => {
   function katalog() {
     const id = kartaO('Kandelabr srebrny');
-    oferta('KANDELABR ozdobny wysoki', { kanal: 'allegro_szkicownia' });
-    oferta('Żarówka LED trójkąt E27', { kanal: 'allegro_amarka' });
-    oferta('Abażur lniany duży', { kanal: 'allegro_szkicownia' });
+    oferta('KANDELABR ozdobny wysoki', { kanal: 'allegro_swietlik' });
+    oferta('Żarówka LED trójkąt E27', { kanal: 'allegro_polcien2' });
+    oferta('Abażur lniany duży', { kanal: 'allegro_swietlik' });
     return id;
   }
 
@@ -838,7 +838,7 @@ describe('dopisanie oferty — WYSZUKIWARKA, nie sama lista podpowiedzi', () => 
 
   it('filtr konta Allegro zaweza wyniki szukania', async () => {
     const id = katalog();
-    expect(nazwyKandydatow((await get(serwer(), `/magazyn/${id}?fraza=&kanal=allegro_amarka`)).body))
+    expect(nazwyKandydatow((await get(serwer(), `/magazyn/${id}?fraza=&kanal=allegro_polcien2`)).body))
       .toEqual(['Żarówka LED trójkąt E27']);
   });
 

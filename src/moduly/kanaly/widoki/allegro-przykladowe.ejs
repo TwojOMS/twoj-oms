@@ -1,0 +1,10 @@
+<%# PRZ-146.01: konto przykładowe piaskownicy (atrapa z konfiguracji, bez wpisu w repozytorium) albo nieznany klucz. %>
+<div class="allegro-konfiguracja">
+<h1><%= title %></h1>
+<p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
+<% if (przykladowe) { %>
+<p class="ust-wstep">Konto przykładowe piaskownicy (zamówienia demo). Nie da się go odłączyć ani usunąć.</p>
+<% } else { %>
+<p class="ust-wstep">Nie znaleziono połączenia Allegro.</p>
+<% } %>
+</div>

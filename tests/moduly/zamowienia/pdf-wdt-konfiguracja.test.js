@@ -74,7 +74,7 @@ describe('PRZ-021: rzeczywisty PDF bez danych dawnej firmy', () => {
     try {
       const p = await specyfikacja(a);
       expect(p.tekst).toContain(`Wystawiono w panelu zamówień ${nazwa}`);
-      expect(p.tekst).not.toContain('Szkicownia');
+      expect(p.tekst).not.toContain('Pracownia Świetlik');
       expect(p.autor).toBe(nazwa);
       expect(p.tekst).toContain('NIP: 1234563218');
       expect(p.tekst).not.toContain('PL 123-456-32-18');
@@ -88,14 +88,14 @@ describe('PRZ-021: rzeczywisty PDF bez danych dawnej firmy', () => {
     for (const strona of p.strony) {
       expect(strona).toContain('Wystawiono w panelu zamówień Firma testowa Żółw');
       expect(strona).toContain('Dokument informacyjny — nie jest fakturą VAT ani paragonem fiskalnym.');
-      expect(strona).not.toContain('Szkicownia');
+      expect(strona).not.toContain('Pracownia Świetlik');
     }
     expect(p.autor).toBe('Firma testowa Żółw');
   });
   it.each(['pojedynczy', 'wiele'])('brak nazwy nie przywraca dawnej marki: %s', async wariant => {
     const p = await odczytajPdf(await (wariant === 'pojedynczy' ? zbudujSpecyfikacjePdf({ numer: 'TEST' }) : zbudujSpecyfikacjeWieluPdf([{ numer: 'TEST' }])));
     expect(p.tekst).toContain('Wystawiono w panelu zamówień');
-    expect(p.tekst).not.toContain('Szkicownia');
+    expect(p.tekst).not.toContain('Pracownia Świetlik');
     expect(p.autor).toBe('Twój OMS');
   });
 });

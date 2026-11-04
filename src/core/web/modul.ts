@@ -15,6 +15,7 @@ export function createModulWeb(definicje: readonly DefinicjaKanalu[]): ModulOms<
       proba:efektywnyTryb(env)==='proba',demo:kontoDemo(env)};
   },
   zbuduj:ctx=>({uslugi:{config:{...ctx.konfiguracja,
+    get definicje() { try { return ctx.usluga<{definicje:readonly DefinicjaKanalu[]}>('kanaly','config').definicje; } catch { return definicje; } },
     get odlozoneEkrany() { return wylaczoneModuly(ctx.db); },
   }},trasy:app=>{
     registerWeb(app,{db:ctx.db,config:ctx.usluga('web','config')});

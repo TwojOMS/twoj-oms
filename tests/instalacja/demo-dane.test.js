@@ -1,3 +1,4 @@
+import { wzorzecNazw } from '../pomoc/skroty-nazw-firmy.js';
 // PRZ-072 — generator danych demo (scripts/demo-dane.mjs): każda zakładka menu ma dane, dane są
 // zmyślone, generator jest deterministyczny i nie nadpisuje istniejącej bazy.
 //
@@ -139,7 +140,7 @@ describe('generator danych demo na świeżej bazie', () => {
       const maile = [...new Set(tekst.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/gi) ?? [])];
       expect(maile.length).toBeGreaterThan(10);
       expect(maile.filter((m) => !/@example\.invalid$/i.test(m))).toEqual([]);
-      expect(tekst).not.toMatch(/stencil|lumina|drugamarka|trzeciamarka|zywiecki/i);
+      expect(wzorzecNazw([{"wzor": "\\p{L}{7}", "skrot": "c6c60e0a2a507cd86e6f25a4232e3fbe8ddc5ad0653c53906011a280c12ad2e0", "bezWielkosci": true}, {"wzor": "\\p{L}{8}", "skrot": "a2ac0b2e157811634f85a0cd5e7ec6ae46b6123e724924eba975ef822566f72e", "bezWielkosci": true}, {"wzor": "\\p{L}{7}", "skrot": "bbad42404dae7eccdb5c9da096a448d035cbe65c428a1f58cad5e8617dff6d6a", "bezWielkosci": true}, {"wzor": "\\p{L}{7}", "skrot": "621ff5bc8c1a1c6efc971f9b84d23fd0cd4d1253e9591b25270647d40c165c4b", "bezWielkosci": true}, {"wzor": "\\p{L}{6}", "skrot": "22fd0120386bf44db9b2553babeb20e750484883331baed1e36f87aaf1dc7473", "bezWielkosci": true}, {"wzor": "\\p{L}{6}", "skrot": "90169bc179e0b72e1c17e7e07adcb8c6c8d57e97e32822f302cd8548700c5fda", "bezWielkosci": true}]).test(tekst)).toBe(false);
       const nipy = [...db.prepare('SELECT nip FROM zamowienia WHERE nip IS NOT NULL UNION SELECT nip FROM klienci WHERE nip IS NOT NULL').all()].map((w) => w.nip);
       expect(nipy.length).toBeGreaterThan(5);
       expect(nipy.filter((n) => !/^(999\d{7}|[A-Z]{2}999\d+)$/.test(n))).toEqual([]);

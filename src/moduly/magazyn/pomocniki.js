@@ -17,13 +17,14 @@ import { opisWymiarow, centymetryZMilimetrow, milimetryZCentymetrow, gramyZKilog
 import { czyPaczkomat } from '../../domena/paczkomat.js';
 import { zl } from '../../domena/kwoty.js';
 import { fmtDataCzas } from '../../domena/format-daty.js';
+import { listaNaZadanie } from '../kanaly/kolekcje-na-zadanie.ts';
 export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicje }) {
   const adresKanalu = (klucz) => opisKanalu(klucz, definicje);
   const KANALY_SKLEPOW = kanalySklepow;
   const KANALY_ALLEGRO = kanalyAllegro;
-  const KANALY_MAGAZYNU = [...kanalySklepow, ...kanalyAllegro];
+  const KANALY_MAGAZYNU = listaNaZadanie(()=>[...kanalySklepow, ...kanalyAllegro]);
   // PRZ-090: bez sklepu Woo karty powstają z ofert Allegro — ta sama lista dla zakładania, „pominiętych” i grup.
-  const KANALY_ZRODLOWE = kanalyZrodloweKart(kanalySklepow, kanalyAllegro);
+  const KANALY_ZRODLOWE = listaNaZadanie(()=>kanalyZrodloweKart(kanalySklepow, kanalyAllegro));
   const filtryZZapytania = q => filtryDomeny(q, KANALY_MAGAZYNU);
   const ocenZapis = (w,p,j) => ocenZapisDomeny(w,p,j,kanalySklepow);
   const grupujPominiete = p => grupujDomeny(p,KANALY_ZRODLOWE);
@@ -78,9 +79,7 @@ const POLA_FORMULARZA_FILTROW = Object.freeze(
 // Nazwy kanalow bierzemy z `domain/kanaly.js` — TEJ SAMEJ mapy, ktora opisuje kolumne
 // „Kanal sprzedazy" na liscie zamowien i pozycje filtra kanalu. Druga mapa etykiet
 // rozjechalaby sie przy pierwszej zmianie nazwy konta.
-const NAGLOWKI_KANALOW = Object.freeze(
-  KOLUMNY_KANALOW.map((klucz) => ({ klucz, etykieta: adresKanalu(klucz) })),
-);
+const NAGLOWKI_KANALOW = listaNaZadanie(()=>KOLUMNY_KANALOW.map((klucz) => ({ klucz, etykieta: adresKanalu(klucz) })));
 
 // ⚠️ ZAKLADKA MA ODPOWIEDZIEC TAKZE WTEDY, GDY PANEL NIE MA ANI JEDNEGO SKLEPU. Ikona
 // w pasku prowadzaca w 404 wyglada jak usterka panelu, a nie jak funkcja, ktorej jeszcze

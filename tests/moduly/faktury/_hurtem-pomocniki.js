@@ -18,7 +18,7 @@ export const POST = { ...AUTH, origin: 'http://localhost', 'content-type': 'appl
 // (config.nadawca + config.proforma.nip/bdo) naprawde dociera na dokument PRZEZ TRASE, a nie
 // tylko w teście jednostkowym domain/specyfikacja.test.js z ręcznie podanym `sprzedawca`.
 export const NADAWCA = {
-  nazwa: 'Lumina Marek Zywiecki', ulica: 'ul. 1 Maja 5', kod: '00-650', miasto: 'Pęki', kraj: 'PL',
+  nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
 };
 // ⚠️ CELOWO INNY NIP NIZ NABYWCY (`zamowienie()` nizej wpisuje kazdemu zamowieniu NIP
 // '1234563218'). Gdyby oba byly rowne, test sprawdzajacy „NIP sprzedawcy trafil na dokument"
@@ -53,7 +53,7 @@ export function zamowienie(db, {
   numer, zrodlo, oplacone, pozycje = [POZYCJA_100], utworzoneAt = undefined,
 }) {
   const id = zapiszZamowienie(db, 'pro', {
-    zrodlo_id: zrodlo, numer, klient: { first_name: 'Jan' }, dostawa: {},
+    zrodlo_id: zrodlo, numer, klient: { first_name: 'Jan', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' }, dostawa: {},
     metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '1234563218',
     kwota_brutto: '100.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
     pozycje, utworzone_at: utworzoneAt,

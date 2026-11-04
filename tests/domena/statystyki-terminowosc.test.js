@@ -3,7 +3,7 @@ import { terminowosc } from '../../src/domena/statystyki-wysylki.js';
 
 // Czwartek 13.08.2026, opłacone 06:00Z = 08:00 PL.
 const z = (d = {}) => ({
-  sklep: 'szkicownia', pobranie: 0, b2b: 0, indywidualne: 0, pozycje: [],
+  sklep: 'swietlik', pobranie: 0, b2b: 0, indywidualne: 0, pozycje: [],
   utworzone_at: '2026-08-13T06:00:00Z', oplacone_at: '2026-08-13T06:00:00Z',
   wyslane_at: '2026-08-13T14:00:00Z', ...d,
 });
@@ -128,7 +128,7 @@ describe('terminowosc — trzy wyłączenia stoją osobno i NIE wchodzą do proc
 describe('terminowosc — limit zależy od typu zamówienia', () => {
   it('Allegro przed 12:00 wysłane nazajutrz jest PO terminie, sklepowe nie', () => {
     const jutro = '2026-08-14T07:00:00Z';
-    expect(terminowosc([z({ sklep: 'allegro_szkicownia', wyslane_at: jutro })]).wTerminie).toBe(0);
+    expect(terminowosc([z({ sklep: 'allegro_swietlik', wyslane_at: jutro })]).wTerminie).toBe(0);
     expect(terminowosc([z({ wyslane_at: jutro })]).wTerminie).toBe(1);
   });
 

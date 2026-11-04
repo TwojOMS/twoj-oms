@@ -1,4 +1,6 @@
-import type { ModulOms, Srodowisko, Zegar } from '../../core/kontrakty.ts';
+import type { ModulOms, OpisKuriera, Srodowisko, Zegar } from '../../core/kontrakty.ts';
+import type { FastifyInstance } from 'fastify';
+import { MODULY_KURIEROW, type RejestrKurierow } from '../../domena/moduly-kurierow.ts';
 import { integracje } from '../../integracje/klucze.js';
 import { createNadanie } from './services/nadanie.js';
 import { createPodjazdy } from './services/podjazdy.js';
@@ -23,12 +25,15 @@ import { bladOperatora } from '../../domena/bledy.js';
 import { zegarPrzesylek, zegarPodjazdow } from './zegary.ts';
 import { sprzatnijOsadStatusu } from './sprzatanie.js';
 import { ocenZdrowie } from '../../domena/zdrowie.js';
+import { PACZKA_DOMYSLNA } from '../../domena/ustawienia-panelu.js';
 import type { DaneSprzedawcy } from '../../core/sprzedawca.ts';
 import { zrodloRachunkuFirmy } from '../../oms/db/rachunek-firmy.js';
 import type { MapaKurierow } from './kurierzy.ts';
 import { interwal } from '../../core/konfiguracja-wartosci.ts';
 import { opcjeKlientaDpd } from '../../domena/konfiguracja-dpd.js';
 import { opcjeKlientaInpost } from '../../domena/konfiguracja-inpost.js';
+import { adresAkcji, stanKrokow } from '../../core/web/konfigurator/konfigurator.ts';
+import { nawigacjaUstawien } from '../ustawienia/nawigacja.js';
 
 type MapaKlientow = Record<string, any>;
 type KonfiguracjaWysylki = {
@@ -40,16 +45,41 @@ type KonfiguracjaWysylki = {
   proba: boolean;
 };
 
-// PRZ-092: piaskownica bez atrapy DPD (deploy/proba/atrapy/dpd.mjs) — czytelna odmowa zamiast żądania do DPD.
-const odmowaDpdWProbie = () => {
-  const odmowa = async () => { throw bladOperatora('Piaskownica: prawdziwe DPD jest tu wyłączone — nic nie poszło do DPD.', { status: 400 }); };
-  return { nadaj: odmowa, statusPrzesylki: odmowa, sprawdzPolaczenie: odmowa };
+type Odmowa = (...a: unknown[]) => Promise<never>;
+/**
+ * PRZ-092/093.09/135: piaskownica bez atrapy kuriera (opis.piaskownica.atrapa) — czytelna odmowa zamiast żądania do
+ * kuriera: dane wpisane na :3005 nie mogą wyjść do DPD ani InPostu. Metody DOKŁADNIE jak u adaptera (R3) — wynikają
+ * z umiejętności opisu; dodatkowe sprawdzPrzesylke u DPD przestawiłoby nadanie.js na drogę asynchroniczną.
+ * Zgodność z adapterem pilnuje tests/moduly/wysylka/kurierzy-kontrakt-prz135.test.ts.
+ */
+export const odmowaWProbie = (opis: OpisKuriera) => (_opcjeKlienta?: unknown) => {
+  const odmowa: Odmowa = async () => { throw bladOperatora(opis.piaskownica.komunikat, { status: 400 }); };
+  const u = opis.umiejetnosci;
+  return {
+    nadaj: odmowa,
+    ...(u.nadanieAsynchroniczne ? { sprawdzPrzesylke: odmowa } : {}),
+    ...(opis.pobieranieEtykiety ? { pobierzEtykiete: odmowa } : {}),
+    ...(u.sledzenie === 'wlasne' ? { statusPrzesylki: odmowa } : {}),
+    ...(opis.umowa === 'wlasna' ? { sprawdzPolaczenie: odmowa } : {}),
+  };
 };
-// PRZ-093.09: to samo dla InPostu z Ustawień (atrapa: deploy/proba/atrapy/inpost.mjs) — token z :3005 nie wychodzi.
-const odmowaInpostWProbie = () => {
-  const odmowa = async () => { throw bladOperatora('Piaskownica: prawdziwy InPost jest tu wyłączony — nic nie poszło do InPostu.', { status: 400 }); };
-  return { nadaj: odmowa, sprawdzPrzesylke: odmowa, pobierzEtykiete: odmowa, statusPrzesylki: odmowa, sprawdzPolaczenie: odmowa };
-};
+
+/**
+ * PRZ-135.07b (D6): kurier z `konfigurator.kroki` dostaje wspólny widok kroków (src/core/web/konfigurator/) pod swoją
+ * `konfigurator.sciezka`, z pierwszym krokiem jako bieżącym. Zapis kroków (trasy POST) dopisuje moduł kuriera.
+ * Dziś żaden kurier nie ma kroków (DPD i InPost mają własne formularze), więc trasa nie powstaje.
+ */
+export function registerKrokiKurierowRoutes(app: FastifyInstance, rejestr: RejestrKurierow = MODULY_KURIEROW): void {
+  for (const opis of Object.values(rejestr)) {
+    const konfigurator = opis.konfigurator, krok = konfigurator.kroki?.[0];
+    if (!konfigurator.kroki || !krok) continue;
+    const kroki = stanKrokow({ kroki: konfigurator.kroki }, { biezacy: krok.id, zrobione: [] });
+    app.get(konfigurator.sciezka, async (req, reply) => reply.view('core/web/konfigurator/konfigurator-krokow.ejs', {
+      nawigacja: nawigacjaUstawien(req, reply), title: konfigurator.etykieta, etykieta: konfigurator.etykieta, kroki, krok,
+      akcja: krok.formularz ? adresAkcji(konfigurator, krok, opis.klucz) : '',
+    }));
+  }
+}
 
 function odstep(env: Srodowisko, klucz: string, domyslny: number): number {
   return interwal(env[klucz], klucz, domyslny, 60000);
@@ -58,8 +88,9 @@ function odstep(env: Srodowisko, klucz: string, domyslny: number): number {
 export function createModulWysylka({ fabryki = {} }: { fabryki?: FabrykiKurierow } = {}): ModulOms<KonfiguracjaWysylki> {
 return {
   nazwa: 'wysylka', wersja: '1.0.0', wymaga: ['rdzen', 'web', 'kanaly', 'zamowienia', 'faktury'],
-  kluczeIntegracji: [...integracje.dpd.kluczeIntegracji, ...integracje.inpost.kluczeIntegracji,
-    ...integracje.allegro.kluczeIntegracji, ...integracje.infakt.kluczeIntegracji],
+  // PRZ-135: klucze kurierów z opisów (bez powtórzeń, w kolejności rejestru) + inFakt (oznaczanie pobrań).
+  kluczeIntegracji: [...new Set(Object.values(MODULY_KURIEROW).flatMap(opis => [...opis.kluczeEnv])),
+    ...integracje.infakt.kluczeIntegracji],
   konfiguracja: (env) => {
     // Dawna nazwa ma pierwszeństwo: istniejące listy wskazują ten sam wolumen.
     const katalogEtykiet = env.OMS_ETYKIETY_DIR?.trim() || env.OMS_ETYKIETY_KATALOG?.trim() || '/var/lib/panel/etykiety';
@@ -101,13 +132,13 @@ return {
     const wczytajDpd = () => wczytajKonfiguracjeIntegracji(db, 'dpd');
     // PRZ-093.08: nadawca DPD z Ustawień = adres firmy (plik → Ustawienia → Firma), czytany przy każdej paczce.
     const dpdUstawien = k.kurierzy.dpd ? null : kurierDpdZUstawien({ wczytaj: wczytajDpd, nadawca: adresFirmy.adres,
-      fabryka: fabryki.createDpd ?? (k.proba ? odmowaDpdWProbie : createDpdClient) });
+      fabryka: fabryki.createDpd ?? (k.proba ? odmowaWProbie(MODULY_KURIEROW.dpd) : createDpdClient) });
     if (dpdUstawien && wczytajDpd()) kurierzy.dpd = dpdUstawien;
     // PRZ-093.09: InPost z Ustawień — ta sama zasada: tylko gdy plik nie ma INPOST_TOKEN (.env wygrywa), nadawca =
     // adres firmy czytany przy każdej paczce, piaskownica bez atrapy dostaje odmowę zamiast prawdziwego klienta.
     const wczytajInpost = () => wczytajKonfiguracjeIntegracji(db, 'inpost');
     const inpostUstawien = k.kurierzy.inpost ? null : kurierInpostZUstawien({ wczytaj: wczytajInpost, nadawca: adresFirmy.adres,
-      fabryka: fabryki.createInpost ?? (k.proba ? odmowaInpostWProbie : createInpostClient) });
+      fabryka: fabryki.createInpost ?? (k.proba ? odmowaWProbie(MODULY_KURIEROW.inpost) : createInpostClient) });
     if (inpostUstawien && wczytajInpost()) kurierzy.inpost = inpostUstawien;
     // Ten sam wybór źródła co nadanie; zapis i opcje klienta czytane przy każdym otwarciu Łączności.
     const celeLacznosci = () => {
@@ -120,7 +151,9 @@ return {
           : k.kurierzy.inpost ? { url: k.kurierzy.inpost.url } : null,
       };
     };
-    const bezKurierowPrzyStarcie = !Object.keys(kurierzy).length;
+    const dpdPrzyStarcie=Boolean(kurierzy.dpd),inpostPrzyStarcie=Boolean(kurierzy.inpost);
+    const kurierzyDostepni=()=>Boolean((dpdPrzyStarcie&&kurierzy.dpd)||(inpostPrzyStarcie&&kurierzy.inpost)||Object.keys(klienciAllegro).length);
+    const bezKurierowPrzyStarcie = !kurierzyDostepni();
     const kurierDpd = {
       zEnv: Boolean(k.kurierzy.dpd), adresFirmy: adresFirmy.biezacy,
       // Mapa `kurierzy` jest wspólna (nadanie, czuwacz, trasy) — podmiana wpisu działa od następnego żądania.
@@ -139,20 +172,28 @@ return {
     sprzatnijOsadStatusu(db, kurierzy, ctx.log);
     const infakt = ctx.usluga<any>('faktury', 'infakt');
     const puls = ctx.usluga<any>('faktury', 'puls');
-    const jestSklep = Object.keys(klienci).length > 0;
-    const nadanie = Object.keys(kurierzy).length && jestSklep
-      ? createNadanie({ db, kurierzy, klienci, katalogEtykiet: k.katalogEtykiet }) : null;
-    const podjazdy = Object.keys(klienciAllegro).length
-      ? createPodjazdy({ db, allegroDla: (kanal: string) => klienciAllegro[kanal] ?? null, teraz }) : null;
-    const przesylkiAllegro = Object.keys(klienciAllegro).length ? createPrzesylkiAllegro({ db, klienci: klienciAllegro }) : null;
-    const czuwaczPrzesylek = Object.keys(kurierzy).length ? createCzuwaczPrzesylek({ db, kurierzy, infakt, teraz, klienci }) : null;
+    const nadanieGotowe=()=>kurierzyDostepni()&&(Object.keys(klienci).length>0||Object.keys(klienciAllegro).length>0);
+    let implementacjaNadania:ReturnType<typeof createNadanie>|undefined;
+    const nadanieBiezace=()=>{
+      if(!nadanieGotowe())throw bladOperatora('Nadawanie nie jest skonfigurowane (brak sklepu lub konta Allegro i kuriera).',{status:503});
+      return implementacjaNadania??=createNadanie({db,kurierzy,klienci,katalogEtykiet:k.katalogEtykiet});
+    };
+    if(nadanieGotowe())nadanieBiezace(); // Walidacja katalogu przed pierwszym kontaktem z kurierem.
+    const nadanie={gotowe:nadanieGotowe,paczkaDomyslna:PACZKA_DOMYSLNA,
+      nadaj:(...a:Parameters<ReturnType<typeof createNadanie>['nadaj']>)=>nadanieBiezace().nadaj(...a),
+      sprawdzPonownie:(...a:Parameters<ReturnType<typeof createNadanie>['sprawdzPonownie']>)=>nadanieBiezace().sprawdzPonownie(...a),
+      ponowNotatke:(...a:Parameters<ReturnType<typeof createNadanie>['ponowNotatke']>)=>nadanieBiezace().ponowNotatke(...a),
+    };
+    const podjazdy = createPodjazdy({ db, allegroDla: (kanal: string) => klienciAllegro[kanal] ?? null, teraz });
+    const przesylkiAllegro = createPrzesylkiAllegro({ db, klienci: klienciAllegro });
+    const czuwaczPrzesylek = createCzuwaczPrzesylek({ db, kurierzy, infakt, teraz, klienci });
     const czuwaczPodjazdow = podjazdy ? createCzuwaczPodjazdow({ db, podjazdy, kurierzy, teraz }) : null;
     const zegary: Zegar[] = czuwaczPrzesylek ? [zegarPrzesylek({ czuwacz: czuwaczPrzesylek,
       odstepMs: k.odstepPrzesylekMs, puls, log: ctx.log, program: infakt })] : [];
     if (czuwaczPodjazdow) zegary.push(zegarPodjazdow({ czuwacz: czuwaczPodjazdow,
       odstepMs: k.odstepPodjazdowMs, log: ctx.log }));
     return {
-      uslugi: { nadanie, podjazdy, przesylkiAllegro, kurierzy, kurierDpd, kurierInpost, czuwaczPrzesylek, czuwaczPodjazdow, celeLacznosci,
+      uslugi: { nadanie, podjazdy, przesylkiAllegro, kurierzy, kurierDpd, kurierInpost, czuwaczPrzesylek, czuwaczPodjazdow, celeLacznosci,kurierzyDostepni,
         config: { ...config, ...k.kurierzy, pobranieNadawca, nadawca: k.kurierzy.dpd?.nadawca ?? null, katalogEtykiet: k.katalogEtykiet },
         przesylki: przesylki(db), zapytaniaPodjazdow: podjazdyDb(db), kolejkaDruku: kolejkaDruku(db) },
       trasy: (app) => {
@@ -167,14 +208,15 @@ return {
         registerEtykietyRoutes(app, opcje);
         registerUstawieniaDpdRoutes(app, { db, kurierDpd });
         registerUstawieniaInpostRoutes(app, { db, kurierInpost });
+        registerKrokiKurierowRoutes(app);
       },
       zegary,
       zdrowie: () => {
         const ocena = ocenZdrowie({ teraz: teraz(), startAt: puls.startAt,
           // PRZ-092: liczone z czuwacza zbudowanego przy starcie, nie z żywej mapy — kurier dodany w Ustawieniach do
           // panelu bez kurierów nie ma czuwacza do restartu, więc nie może dawać alarmu „brak przebiegu” ani gasić uwagi.
-          przesylkiWlaczone: Boolean(czuwaczPrzesylek), pulsPrzesylek: puls.stan().czuwaczPrzesylek ?? null });
-        if (!czuwaczPrzesylek) ocena.uwagi.push('Nadawanie nie jest skonfigurowane.');
+          przesylkiWlaczone: kurierzyDostepni(), pulsPrzesylek: puls.stan().czuwaczPrzesylek ?? null });
+        if (!kurierzyDostepni()) ocena.uwagi.push('Nadawanie nie jest skonfigurowane.');
         return ocena;
       },
     };

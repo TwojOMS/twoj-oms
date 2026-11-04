@@ -7,6 +7,7 @@ import {
   dodajZwrot, zwrot, zarezerwujKorekte, zapiszKorekte, zapiszRecznyNumerKorekty,
 } from '../../../src/oms/db/zwroty.js';
 import { createKorekta } from '../../../src/moduly/zwroty/services/korekta.js';
+import { createInfaktClient } from '../../../src/oms/infakt/client.js';
 
 // ⚠️ Rozbieznosc z briefem: fikstura ponizej dostala `sku` i `vat` — brief ich nie mial,
 // a `pozycje.sku`/`pozycje.vat` sa w schemacie kolumnami BEZ `COALESCE` w zapiszPozycje
@@ -47,6 +48,46 @@ beforeEach(() => {
 });
 
 describe('wystawienie korekty', () => {
+  it('wysyła POST korekty z notes Zwrot towaru i symbolem other (PRZ-147.05)', async () => {
+    const fetchImpl = vi.fn().mockImplementation(async (_url, opcje) => ({
+      ok: true,
+      status: opcje.method === 'POST' ? 201 : 200,
+      json: async () => (opcje.method === 'POST'
+        ? { invoice_task_reference_number: 'REF-PRZ147' }
+        : { ...FAKTURA, client_id: 14701 }),
+    }));
+    const infakt = createInfaktClient({ apiKey: 'test', fetchImpl });
+    await createKorekta({ db, infakt }).wystaw(id, zwrotId);
+    const [, opcje] = fetchImpl.mock.calls.find(([, o]) => o.method === 'POST');
+    const body = JSON.parse(opcje.body);
+    expect(Object.keys(body)).toEqual(['corrective_invoice']);
+    expect(body.corrective_invoice.notes).toBe('Zwrot towaru');
+    expect(body.corrective_invoice.correction_reason).toBe('other');
+  });
+
+  it.each([
+    [{ client_id: 14701, client_company_name: 'Pracownia Półcień' }, { client_id: 14701 }],
+    [{ client_company_name: 'Pracownia Półcień', client_tax_code: '1111111111', client_city: '', client_first_name: null },
+      { client_company_name: 'Pracownia Półcień', client_tax_code: '1111111111' }],
+    [{}, {}],
+  ])('przenosi nabywcę z faktury: %j', async (nabywca, oczekiwane) => {
+    const infakt = {
+      pobierzFakture: vi.fn().mockResolvedValue({ ...FAKTURA, ...nabywca }),
+      wystawKorekte: vi.fn().mockResolvedValue({ referencja: 'REF-PRZ147', uuid: null, numer: null }),
+    };
+    await createKorekta({ db, infakt }).wystaw(id, zwrotId);
+    const payload = infakt.wystawKorekte.mock.calls[0][0];
+    expect(Object.fromEntries(Object.entries(payload).filter(([k]) => k.startsWith('client_')))).toEqual(oczekiwane);
+  });
+
+  it('pobierzFakture → null: odmowa dla operatora, nie TypeError, bez rezerwacji (PRZ-147.01)', async () => {
+    const infakt = { pobierzFakture: vi.fn().mockResolvedValue(null), wystawKorekte: vi.fn() };
+    const err = await createKorekta({ db, infakt }).wystaw(id, zwrotId).catch((e) => e);
+    expect(err.dlaOperatora).toBeTruthy();
+    expect(infakt.wystawKorekte).not.toHaveBeenCalled();
+    expect(zwrot(db, id, zwrotId).korekta_zlecona_at).toBeNull();
+  });
+
   it('zapisuje referencje i NIE obiecuje numeru, ktorego nie dostal', async () => {
     const infakt = {
       pobierzFakture: vi.fn().mockResolvedValue(FAKTURA),
@@ -124,6 +165,7 @@ describe('wystawienie korekty', () => {
     await createKorekta({ db, infakt }).wystaw(id, wId);
     const payload = infakt.wystawKorekte.mock.calls[0][0];
     expect(payload.correction_reason).toBe('zwrot towaru');
+    expect(payload.notes).toBe('Zwrot towaru');
     expect(JSON.stringify(payload)).not.toMatch(/rozmyśliła|blikiem|0501234567/);
     // Notatka NIE ZNIKA — zostaje tam, gdzie jest przydatna: w panelu.
     expect(zwrot(db, id, wId).powod).toBe(notatka);

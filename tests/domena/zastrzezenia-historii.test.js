@@ -8,7 +8,7 @@ describe('zastrzezenia do okresu sprzed ery Apilo', () => {
 
   it('okres siegajacy przed granice mowi, ze to WYLACZNIE sklep', () => {
     const z = zastrzezenia({ od: '2016-01-01', sufitApilo: '2024-10-07' });
-    expect(z.join(' ')).toMatch(/wyłącznie sprzedaż sklepu szkicownia\.pl/i);
+    expect(z.join(' ')).toMatch(/wyłącznie sprzedaż sklepu swietlik\.example\.test/i);
     expect(z.join(' ')).toMatch(/Allegro/);
   });
 

@@ -263,7 +263,7 @@ describe('PRZ-094.04 Ustawienia → Integracje → Poczta wychodząca', () => {
   it('SMTP w .env wygrywa: ekran tylko informuje, zapis = 409 bez zmian w bazie; próbna idzie pocztą z pliku', async () => {
     const { app, admin, db } = await panel({ env: ENV_SMTP });
     const r = await get(app, ADRES, admin);
-    expect(r.body).toContain('w pliku konfiguracji');
+    expect(r.body).toContain('na serwerze');
     expect(smtpForm(r.body)).toBe('');
     expect(adresForm(r.body)).not.toBe(''); // adres panelu nie jest w pliku — ta część zostaje do ustawienia
     expect(bezHasel(r.body, HASLO_PLIKU), 'hasło z pliku na ekranie').toBe(true);

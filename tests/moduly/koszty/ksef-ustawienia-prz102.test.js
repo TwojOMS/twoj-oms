@@ -16,7 +16,7 @@ const NIP = '1234563218';
 const TOKEN = '20261020-EC-ZMYSLONY0001|nip-1234563218|aaaaaaaaaaaaaaaa';
 const TOKEN_2 = '20261020-EC-ZMYSLONY0002|nip-1234563218|bbbbbbbbbbbbbbbb';
 const TOKEN_PLIKU = '20261020-EC-ZMYSLONYPLIK|nip-1234563218|cccccccccccccccc';
-const ZDANIE = 'Wygeneruj w KSeF token z uprawnieniem tylko do przeglądania faktur zakupowych — panel niczego przez KSeF nie wysyła.';
+const ZDANIE = 'Wygeneruj w KSeF token z uprawnieniem tylko do przeglądania faktur zakupowych — OMS niczego przez KSeF nie wysyła.';
 const ENV = { OMS_USER: 'operator', OMS_PASS: 'fixture', OMS_SPRZEDAWCA_NIP: NIP, OMS_RACHUNEK: '34109010140000000000000000',
   OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir() };
 // 03:30 czasu Warszawy — pora nocnego pobrania kosztów (zegar bez `wymuszony` pobiera tylko o 3).
@@ -180,7 +180,7 @@ describe('PRZ-102.22 Ustawienia → Integracje → KSeF (faktury kosztowe)', () 
       expect(wczytajKonfiguracjeIntegracji(o.db, 'ksef').sekrety).toEqual({ token: TOKEN });
       const ekran = await o.get(ADRES);
       expect(ekran.statusCode).toBe(200);
-      expect(ekran.body).toContain('pliku konfiguracji');
+      expect(ekran.body).toContain('na serwerze');
       expect(formularz(ekran.body)).toBe('');
       for (const t of [TOKEN, TOKEN_PLIKU]) expect(ekran.body.includes(t)).toBe(false);
       await o.zegar().przebieg();

@@ -25,7 +25,7 @@ function szpieg(cialo, { ok = true, status = 200 } = {}) {
   return { wywolania, fetchImpl };
 }
 
-const KANAL = 'allegro_szkicownia';
+const KANAL = 'allegro_swietlik';
 
 const klientZ = (cialo, opcje) => {
   const s = szpieg(cialo, opcje);
@@ -133,14 +133,14 @@ describe('klient sledzenia Allegro', () => {
   });
 
   // ⚠️⚠️ KONTO WYBIERA KANAL ZAMOWIENIA, NIE „PIERWSZE Z BRZEGU". Kanaly to OSOBNE konta
-  // Allegro (dzis `allegro_szkicownia` i `allegro_amarka`), a zasob sledzenia widzi
+  // Allegro (dzis `allegro_swietlik` i `allegro_polcien2`), a zasob sledzenia widzi
   // wylacznie przesylki wlasnego konta. Pierwsza wersja tej zmiany brala
   // `Object.values(klienciKanalow)[0]` — dzialaloby dla jednego kanalu i MILCZALO dla
   // drugiego, a milczenie ma tu ksztalt `trackingDetails: null`, czyli jest nieodroznialne
   // od paczki swiezo nadanej. Zadna lampka by sie nie zapalila.
   it('kanal bez podpietego konta to null — i zadnego pytania nie idzie', async () => {
     const { klient, wywolania } = klientZ({ waybills: [] });
-    await expect(klient.statusPrzesylki('X', { carrier: 'ALLEGRO', kanal: 'allegro_amarka' })).resolves.toBe(null);
+    await expect(klient.statusPrzesylki('X', { carrier: 'ALLEGRO', kanal: 'allegro_polcien2' })).resolves.toBe(null);
     expect(wywolania).toHaveLength(0);
   });
 

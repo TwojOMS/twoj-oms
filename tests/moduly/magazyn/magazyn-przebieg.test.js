@@ -18,12 +18,23 @@ function wstrzymana() {
 }
 
 const db = { to: 'atrapa bazy' };
+// Scenariusze przebiegu mają skonfigurowane źródło. Pusta instalacja odmawia
+// startu do czasu dodania pierwszego konta (PRZ-128).
+const przebiegZeZrodlem = (opcje) => createMagazynPrzebieg({ sklepy: { pro: {} }, ...opcje });
 
 describe('createMagazynPrzebieg', () => {
+  it('pusta instalacja odmawia, a źródło dodane po starcie odblokowuje odczyt bez restartu', async () => {
+    const allegro = {}, odswiez = vi.fn(async () => ({ kanaly: [] }));
+    const przebieg = createMagazynPrzebieg({ db, allegro, odswiez });
+    expect(przebieg.start()).toEqual({ wystartowal: false });expect(odswiez).not.toHaveBeenCalled();
+    allegro.pierwsze = {};
+    expect(przebieg.start()).toEqual({ wystartowal: true });
+    await vi.waitFor(() => expect(przebieg.stan().trwa).toBe(false));expect(odswiez).toHaveBeenCalledOnce();
+  });
   it('start WRACA, zanim odczyt sie skonczy, i melduje, ze przebieg trwa', async () => {
     const { obietnica, dokoncz } = wstrzymana();
     const odswiez = vi.fn(() => obietnica);
-    const przebieg = createMagazynPrzebieg({ db, odswiez });
+    const przebieg = przebiegZeZrodlem({ db, odswiez });
 
     const wynik = przebieg.start();
 
@@ -40,7 +51,7 @@ describe('createMagazynPrzebieg', () => {
   it('drugie klikniecie W TRAKCIE przebiegu NIE startuje drugiego odczytu', async () => {
     const { obietnica, dokoncz } = wstrzymana();
     const odswiez = vi.fn(() => obietnica);
-    const przebieg = createMagazynPrzebieg({ db, odswiez });
+    const przebieg = przebiegZeZrodlem({ db, odswiez });
 
     przebieg.start();
     const drugi = przebieg.start();
@@ -58,7 +69,7 @@ describe('createMagazynPrzebieg', () => {
   it('...ale PO zakonczeniu startuje normalnie (straznik milczy, gdy nic nie trwa)', async () => {
     let numer = 0;
     const odswiez = vi.fn(async () => ({ kanaly: [{ kanal: 'pro', zapisane: numer += 1, znikniete: 0, blad: null }] }));
-    const przebieg = createMagazynPrzebieg({ db, odswiez });
+    const przebieg = przebiegZeZrodlem({ db, odswiez });
 
     przebieg.start();
     await vi.waitFor(() => expect(przebieg.stan().trwa).toBe(false));
@@ -71,9 +82,9 @@ describe('createMagazynPrzebieg', () => {
   it('wynik kanalow (zapisane, znikniete, blad) zostaje w stanie do pokazania na ekranie', async () => {
     const kanaly = [
       { kanal: 'pro', zapisane: 104, znikniete: 2, blad: null },
-      { kanal: 'szkicownia', zapisane: 0, znikniete: 0, blad: 'Kanał szkicownia: odczyt oddał 0 pozycji' },
+      { kanal: 'swietlik', zapisane: 0, znikniete: 0, blad: 'Kanał swietlik: odczyt oddał 0 pozycji' },
     ];
-    const przebieg = createMagazynPrzebieg({ db, odswiez: async () => ({ kanaly }) });
+    const przebieg = przebiegZeZrodlem({ db, odswiez: async () => ({ kanaly }) });
 
     przebieg.start();
     await vi.waitFor(() => expect(przebieg.stan().trwa).toBe(false));
@@ -83,7 +94,7 @@ describe('createMagazynPrzebieg', () => {
   });
 
   it('awaria CALEGO przebiegu laduje w stanie, a nie w niezlapanej obietnicy', async () => {
-    const przebieg = createMagazynPrzebieg({
+    const przebieg = przebiegZeZrodlem({
       db,
       odswiez: async () => { throw new Error('„nie-chwila" nie jest chwilą'); },
     });
@@ -99,7 +110,7 @@ describe('createMagazynPrzebieg', () => {
 
   it('udany przebieg NIE zostawia bledu po poprzednim (straznik milczy)', async () => {
     let padnij = true;
-    const przebieg = createMagazynPrzebieg({
+    const przebieg = przebiegZeZrodlem({
       db,
       odswiez: async () => {
         if (padnij) throw new Error('pierwszy raz padlo');
@@ -120,14 +131,14 @@ describe('createMagazynPrzebieg', () => {
   it('postep odczytu idzie do stanu, zeby ekran mial co pokazac', async () => {
     const { obietnica, dokoncz } = wstrzymana();
     let zglos;
-    const przebieg = createMagazynPrzebieg({
+    const przebieg = przebiegZeZrodlem({
       db,
       odswiez: ({ postep }) => { zglos = postep; return obietnica; },
     });
 
     przebieg.start();
-    zglos({ kanal: 'szkicownia', zrobione: 120, zTego: 668 });
-    expect(przebieg.stan().postep).toEqual({ kanal: 'szkicownia', zrobione: 120, zTego: 668 });
+    zglos({ kanal: 'swietlik', zrobione: 120, zTego: 668 });
+    expect(przebieg.stan().postep).toEqual({ kanal: 'swietlik', zrobione: 120, zTego: 668 });
 
     dokoncz({ kanaly: [] });
     await vi.waitFor(() => expect(przebieg.stan().trwa).toBe(false));
@@ -136,7 +147,7 @@ describe('createMagazynPrzebieg', () => {
   });
 
   it('stan oddany na zewnatrz jest KOPIA — ekran nie ma jak przestawic przebiegu', async () => {
-    const przebieg = createMagazynPrzebieg({
+    const przebieg = przebiegZeZrodlem({
       db, odswiez: async () => ({ kanaly: [{ kanal: 'pro', zapisane: 1, znikniete: 0, blad: null }] }),
     });
     przebieg.start();
@@ -152,7 +163,7 @@ describe('createMagazynPrzebieg', () => {
 
   it('klienci sklepow i Allegro ida do odczytu tak, jak je zbudowal bootstrap', async () => {
     const sklepy = { pro: { pobierzWszystkieProdukty: () => [] } };
-    const allegro = { allegro_szkicownia: { pobierzOferty: () => [] } };
+    const allegro = { allegro_swietlik: { pobierzOferty: () => [] } };
     const odswiez = vi.fn(async () => ({ kanaly: [] }));
     const przebieg = createMagazynPrzebieg({ db, sklepy, allegro, odswiez });
 

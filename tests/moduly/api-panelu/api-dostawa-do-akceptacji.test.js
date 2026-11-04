@@ -78,10 +78,10 @@ describe('GET /api/zamowienia/:id/dostawa', () => {
   it('⚠️ poprawiony ręcznie adres i metoda biją wartości ze sklepu', async () => {
     const id = zaloz();
     db.prepare('UPDATE zamowienia SET dostawa_reczna_json = ?, wysylka_reczna_json = ? WHERE id = ?')
-      .run(JSON.stringify({ ulica: 'Krótka 1', miasto: 'Pęki', kod: '00-650' }), JSON.stringify({ metoda: 'inpost_paczkomat' }), id);
+      .run(JSON.stringify({ ulica: 'Krótka 1', miasto: 'Warszawa', kod: '00-950' }), JSON.stringify({ metoda: 'inpost_paczkomat' }), id);
     const d = (await pobierz(id)).json();
     expect(d.adres.ulica).toBe('Krótka 1');
-    expect(d.adres.miasto).toBe('Pęki');
+    expect(d.adres.miasto).toBe('Warszawa');
     expect(d.metoda).toMatch(/InPost|Paczkomat/i);
   });
 

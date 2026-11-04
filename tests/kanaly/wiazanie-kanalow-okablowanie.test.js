@@ -26,14 +26,14 @@ function tokenyAtrapa({ odpowiedzi }) {
     // ⚠️ Kanal MUSI byc wiazalny, inaczej bariera odrzuca zadanie zanim petla ruszy.
     // Tu: dziala, ale brakuje mu uprawnienia — dokladnie stan produkcji z 28.08.2026.
     stanDlaEkranu: () => ({
-      kanal: 'allegro_szkicownia', polaczony: true, zostaloDni: 90,
+      kanal: 'allegro_swietlik', polaczony: true, zostaloDni: 90,
       brakujaceUprawnienia: ['allegro:api:messaging'],
     }),
   };
 }
 
 const uslugaZ = (tokeny, log = () => {}) => createWiazanieKanalow({
-  tokenyKanalow: { allegro_szkicownia: tokeny }, log,
+  tokenyKanalow: { allegro_swietlik: tokeny }, log,
 });
 
 describe('okablowanie wiązania: usługa → PRAWDZIWA pętla device flow', () => {
@@ -45,15 +45,15 @@ describe('okablowanie wiązania: usługa → PRAWDZIWA pętla device flow', () =
       });
       const usluga = uslugaZ(tokeny);
 
-      const start = await usluga.rozpocznij('allegro_szkicownia');
+      const start = await usluga.rozpocznij('allegro_swietlik');
       expect(start.ok).toBe(true);
-      expect(usluga.stan('allegro_szkicownia').userCode).toBe('kod1234');
+      expect(usluga.stan('allegro_swietlik').userCode).toBe('kod1234');
 
       // Pętla śpi między próbami — bez `spij` poleciałby tu TypeError.
       await vi.advanceTimersByTimeAsync(60_000);
 
       // ⚠️ Sukces KASUJE wpis z mapy; błąd zostawiłby go z polem `blad`.
-      expect(usluga.stan('allegro_szkicownia')).toBeNull();
+      expect(usluga.stan('allegro_swietlik')).toBeNull();
     } finally {
       vi.useRealTimers();
     }
@@ -65,9 +65,9 @@ describe('okablowanie wiązania: usługa → PRAWDZIWA pętla device flow', () =
       const log = vi.fn();
       const tokeny = tokenyAtrapa({ odpowiedzi: [] });
       tokeny.rozpocznijPowiazanie = async () => { throw new Error('Allegro: HTTP 503 przy /device'); };
-      const usluga = createWiazanieKanalow({ tokenyKanalow: { allegro_szkicownia: tokeny }, log });
+      const usluga = createWiazanieKanalow({ tokenyKanalow: { allegro_swietlik: tokeny }, log });
 
-      await usluga.rozpocznij('allegro_szkicownia');
+      await usluga.rozpocznij('allegro_swietlik');
       await vi.advanceTimersByTimeAsync(1000);
 
       // Bez tego jedynym śladem po awarii jest zdanie „Wiązanie przerwane błędem panelu."

@@ -12,6 +12,8 @@
 // czerwienią przy usłudze, której ten panel w ogóle nie używa — a czerwień, której nie da
 // się naprawić, uczy nie czytać ekranu.
 
+import { MODULY_KURIEROW } from './moduly-kurierow.ts';
+
 /** Host z adresu albo `null`, gdy adresu nie da się przeczytać (zła wartość w konfiguracji). */
 function hostZAdresu(adres) {
   try {
@@ -45,8 +47,9 @@ export function celeLacznosci(config = {}) {
   if (config.program) cele.push(cel(config.program.opis.id, config.program.opis.nazwa.mianownik, config.program.url));
   else if (config.infakt) cele.push(cel('infakt', 'inFakt', config.infakt.baseUrl ?? ADRES_DIAGNOSTYKI_INFAKTU));
   if (config.ksef) cele.push(cel('ksef', 'KSeF', config.ksef.api));
-  if (config.dpd) cele.push(cel('dpd', 'DPD', config.dpd.url));
-  if (config.inpost) cele.push(cel('inpost', 'InPost', config.inpost.url));
+  for (const { klucz, nazwa, umowa } of Object.values(MODULY_KURIEROW)) {
+    if (umowa === 'wlasna' && config[klucz]) cele.push(cel(klucz, nazwa, config[klucz].url));
+  }
   if (config.gus) cele.push(cel('gus', 'GUS (REGON)', config.gus.url));
 
   return cele;

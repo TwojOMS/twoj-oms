@@ -10,6 +10,13 @@ const rows = [
 ];
 
 describe('CSV zaznaczonych faktur', () => {
+  it('zachowuje numer KSeF w CSV i usuwa puste wartości oraz spacje', () => {
+    const csv = csvZaznaczonych([' KS-1 ', '', '   ', null, undefined, 123]
+      .map((ksef_number) => ({ ...rows[0], ksef_number })));
+    const linie = csv.slice(1).split('\r\n');
+    expect(linie[0].split(';')[7]).toBe('Numer KSeF');
+    expect(linie.slice(1).map((l) => l.split(';')[7])).toEqual(['KS-1', '', '', '', '', '123']);
+  });
   it.each(['=', '+', '-', '@'])('zabezpiecza tekst nabywcy zaczynający się od %s', (znak) => {
     expect(csvZaznaczonych([{ ...rows[0], client_company_name: `${znak}nazwa;"x"` }]))
       .toContain(`"'${znak}nazwa;""x"""`);

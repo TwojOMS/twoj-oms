@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ofertyPodjazdu } from '../../src/domena/podjazdy.js';
 
-const adres = { name: 'Firma', street: 'Polna 1', postalCode: '32-600', city: 'Pęki', countryCode: 'PL', email: 'test@example.com', phone: '500600700' };
+const adres = { name: 'Firma', street: 'Polna 1', postalCode: '32-600', city: 'Warszawa', countryCode: 'PL', email: 'test@example.com', phone: '500600700' };
 const termin = { date: '2026-09-30', minTime: '13:00', maxTime: '17:00' };
 const oferta = (shipmentId, pickupTimes = [termin]) => ({ shipmentId, pickupTimes });
 const element = (...proposals) => ({ proposals, address: adres });

@@ -51,7 +51,7 @@ describe('czyIndywidualneZeSurowych', () => {
     expect(czyIndywidualneZeSurowych(z)).toBe(true);
   });
 
-  // ⚠️ TO JEST TEST, KTORY MUSI GRYZC. Zamowienie z TEGO SAMEGO sklepu (szkicownia.pl),
+  // ⚠️ TO JEST TEST, KTORY MUSI GRYZC. Zamowienie z TEGO SAMEGO sklepu (swietlik.example.test),
   // ale zlozone zwyklym koszykiem, NIE jest indywidualne. Regula, ktora przepuszcza
   // wszystko z tego sklepu, jest bezuzyteczna i wlasnie tak bylaby napisana po skrocie.
   it('zwykle zamowienie sklepowe NIE jest indywidualne', () => {

@@ -4,7 +4,7 @@ import { EKRAN_INFAKTU, GDZIE_KLUCZ_INFAKTU } from '../../../domena/konfiguracja
 import { zl } from '../../../domena/suma-pozycji.js';
 import { MIESIACE } from '../../../domena/okres-rozliczeniowy.js';
 import { bezpiecznaNazwa } from '../../../domena/pliki.js';
-import { doZaznaczenia, zakresMiesiaca, sumaListy } from '../../../domena/lista-faktur.js';
+import { doZaznaczenia, zakresMiesiaca, sumaListy, stopkaRazem } from '../../../domena/lista-faktur.js';
 import { csvZaznaczonych, nazwaPlikuZaznaczonych } from '../../../domena/eksport-faktur-csv.js';
 import { MAX_ZAZNACZONYCH } from '../../koszty/services/paczka-dla-biura.js';
 import { czyKonsumencka, powrotWysylkiKsef } from '../../../domena/wysylka-ksef.js';
@@ -173,7 +173,7 @@ export function registerFakturyRoutes(app, {
       typ,
       platnosc,
       adresListy: adres(false),
-      sumaListy: bladDokumentow ? null : sumaListy(dokumenty),
+      stopkaRazem: bladDokumentow ? null : stopkaRazem(sumaListy(dokumenty)),
       zl,
       doZaznaczenia,
       zaznaczWszystkie,
@@ -404,10 +404,12 @@ export function registerFakturyRoutes(app, {
   // za okres, i TEN SAM zatrzask `paczkaTrwa` (jedno skladanie PDF naraz na proces, niezaleznie od rodzaju).
   // POST, bo zaznaczenie bywa dlugie (do 100 identyfikatorow) i nie powinno trafiac do adresu ani historii.
   // Odmowy (400) PRZED wolaniem uslugi — usluga ma te same bramki, tu stoja po to, zeby nie siegac do programu.
-  function odmowaZestawienia(reply, status, opis, miesiac, pole) {
+  function odmowaZestawienia(reply, status, opis, miesiac, pole, typ, platnosc) {
     const filtry = new URLSearchParams();
     if (/^\d{4}-\d{2}$/.test(miesiac)) filtry.set('miesiac', miesiac);
     if (POLA.has(pole)) filtry.set('pole', pole);
+    if (TYPY.has(typ)) filtry.set('typ', typ);
+    if (PLATNOSCI.has(platnosc)) filtry.set('platnosc', platnosc);
     return reply.code(status).view('pusta-strona.ejs', {
       title: 'Zestawienie faktur',
       naglowek: 'Nie udało się przygotować zestawienia faktur',
@@ -418,24 +420,25 @@ export function registerFakturyRoutes(app, {
 
   app.post('/faktury/lista-zaznaczonych.csv', async (req, reply) => {
     const body = req.body ?? {};
+    const odmowa = (status, opis, miesiac, pole) => odmowaZestawienia(reply, status, opis, miesiac, pole, body.typ, body.platnosc);
     const miesiac = String(body.miesiac ?? '');
     const pole = String(body.pole ?? '');
-    if (!zakresMiesiaca(miesiac) || !/^\d{4}-\d{2}$/.test(miesiac)) return odmowaZestawienia(reply, 400, `„${miesiac}” to nie jest miesiąc w formacie RRRR-MM.`, miesiac);
-    if (!POLA.has(pole)) return odmowaZestawienia(reply, 400, `„${pole}” to nie jest pole daty listy faktur.`, miesiac, pole);
+    if (!zakresMiesiaca(miesiac) || !/^\d{4}-\d{2}$/.test(miesiac)) return odmowa(400, `„${miesiac}” to nie jest miesiąc w formacie RRRR-MM.`, miesiac);
+    if (!POLA.has(pole)) return odmowa(400, `„${pole}” to nie jest pole daty listy faktur.`, miesiac, pole);
     const uuids = [...new Set([].concat(body.uuid ?? []).map((u) => String(u).trim()).filter(Boolean))];
-    if (!uuids.length) return odmowaZestawienia(reply, 400, 'Zaznacz co najmniej jedną fakturę.', miesiac, pole);
-    if (uuids.length > MAX_ZAZNACZONYCH) return odmowaZestawienia(reply, 400, `Można zaznaczyć najwyżej ${MAX_ZAZNACZONYCH} dokumentów.`, miesiac, pole);
-    if (!fakturyWidok) return odmowaZestawienia(reply, 503, 'Lista faktur jest niedostępna.', miesiac, pole);
+    if (!uuids.length) return odmowa(400, 'Zaznacz co najmniej jedną fakturę.', miesiac, pole);
+    if (uuids.length > MAX_ZAZNACZONYCH) return odmowa(400, `Można zaznaczyć najwyżej ${MAX_ZAZNACZONYCH} dokumentów.`, miesiac, pole);
+    if (!fakturyWidok) return odmowa(503, 'Lista faktur jest niedostępna.', miesiac, pole);
     let dokumenty;
     try {
       dokumenty = await fakturyWidok.dokumenty({ miesiac, pole, dzis: dzienWarszawa(new Date().toISOString()) });
     } catch (e) {
       if (!e?.dlaOperatora) throw e;
-      return odmowaZestawienia(reply, e.status ?? 400, komunikatDlaOperatora(e), miesiac, pole);
+      return odmowa(e.status ?? 400, komunikatDlaOperatora(e), miesiac, pole);
     }
     const dostepne = new Set(dokumenty.filter((d) => d.uuid).map((d) => String(d.uuid)));
     const obce = uuids.filter((u) => !dostepne.has(u));
-    if (obce.length) return odmowaZestawienia(reply, 400, `Dokumentów o identyfikatorach ${obce.join(', ')} nie ma na liście faktur ${miesiac}.`, miesiac, pole);
+    if (obce.length) return odmowa(400, `Dokumentów o identyfikatorach ${obce.join(', ')} nie ma na liście faktur ${miesiac}.`, miesiac, pole);
     const wybrane = new Set(uuids);
     return reply.type('text/csv; charset=utf-8')
       .header('Content-Disposition', `attachment; filename="${bezpiecznaNazwa(nazwaPlikuZaznaczonych(miesiac).slice(0, -4))}.csv"`)
@@ -450,13 +453,14 @@ export function registerFakturyRoutes(app, {
       );
     }
     const body = req.body ?? {};
+    const odmowa = (status, opis, miesiac, pole) => odmowaZestawienia(reply, status, opis, miesiac, pole, body.typ, body.platnosc);
     const miesiac = String(body.miesiac ?? '');
-    if (!/^\d{4}-\d{2}$/.test(miesiac)) return odmowaZestawienia(reply, 400, `„${miesiac}" to nie jest miesiąc w formacie RRRR-MM.`, miesiac);
+    if (!/^\d{4}-\d{2}$/.test(miesiac)) return odmowa(400, `„${miesiac}" to nie jest miesiąc w formacie RRRR-MM.`, miesiac);
     const pole = String(body.pole ?? '');
-    if (!POLA.has(pole)) return odmowaZestawienia(reply, 400, `„${pole}" to nie jest pole daty listy faktur — dozwolone: ${[...POLA].join(', ')}.`, miesiac, pole);
+    if (!POLA.has(pole)) return odmowa(400, `„${pole}" to nie jest pole daty listy faktur — dozwolone: ${[...POLA].join(', ')}.`, miesiac, pole);
     // Jeden zaznaczony checkbox przychodzi jako napis, kilka — jako tablica.
     const uuids = [].concat(body.uuid ?? []).map((u) => String(u).trim()).filter(Boolean);
-    if (uuids.length === 0) return odmowaZestawienia(reply, 400, 'Zaznacz co najmniej jedną fakturę.', miesiac, pole);
+    if (uuids.length === 0) return odmowa(400, 'Zaznacz co najmniej jedną fakturę.', miesiac, pole);
     let wynik;
     paczkaTrwa = true;
     try {
@@ -464,7 +468,7 @@ export function registerFakturyRoutes(app, {
     } catch (e) {
       if (!e?.dlaOperatora) throw e;
       // Odmowa „czeka na KSeF" niesie 409; pozostale odmowy operatora — 400.
-      return odmowaZestawienia(reply, e.status ?? 400, komunikatDlaOperatora(e), miesiac, pole);
+      return odmowa(e.status ?? 400, komunikatDlaOperatora(e), miesiac, pole);
     } finally {
       paczkaTrwa = false;
     }
@@ -575,11 +579,13 @@ export function registerFakturyRoutes(app, {
     const uuids = [].concat(req.body?.uuid ?? []);
     const miesiac = req.body?.miesiac;
     const pole = req.body?.pole;
+    const typ = TYPY.has(req.body?.typ) ? req.body.typ : '';
+    const platnosc = PLATNOSCI.has(req.body?.platnosc) ? req.body.platnosc : '';
     // Adres powrotu niesie filtr, na ktory operator patrzyl — „Wróć" ma go oddac tam,
-    // skad przyszedl, a nie na domyslny miesiac. Bledne wartosci sa tu nieszkodliwe:
-    // GET /faktury ma wlasna bramke i wraca do domyslnych.
+    // skad przyszedl, a nie na domyslny miesiac. `typ` i `platnosc` tylko z bialej listy — trafiaja do
+    // ukrytych pol formularza; miesiac i pole sprawdza GET /faktury, ktory wraca do domyslnych.
     // PRZ-102.23: przycisk z karty zamowienia niesie `powrot` — wraca sie na karte (biala lista w domenie).
-    const { adres: adresPowrotu, etykieta: etykietaPowrotu, powrot } = powrotWysylkiKsef(req.body?.powrot, { miesiac, pole });
+    const { adres: adresPowrotu, etykieta: etykietaPowrotu, powrot } = powrotWysylkiKsef(req.body?.powrot, { miesiac, pole, typ, platnosc });
 
     // ⚠️ PRZY PUSTYM ZAZNACZENIU NIE PYTAMY inFAKTU W OGOLE — nie ma czego liczyc, a ekran
     // i tak konczy sie komunikatem bez przycisku wysylki.
@@ -600,7 +606,7 @@ export function registerFakturyRoutes(app, {
     }
 
     return reply.view('ksef-podglad.ejs', {
-      title: 'Wysyłka do KSeF', miesiac, pole, adresPowrotu, etykietaPowrotu, powrot, nazwaProgramu, ...wynik,
+      title: 'Wysyłka do KSeF', miesiac, pole, typ, platnosc, adresPowrotu, etykietaPowrotu, powrot, nazwaProgramu, ...wynik,
     });
   });
 
@@ -623,7 +629,7 @@ export function registerFakturyRoutes(app, {
     const miesiac = req.body?.miesiac;
     const pole = req.body?.pole;
     // Powrot ma oddac operatora tam, skad przyszedl — na TEN miesiac i TO pole daty albo na karte zamowienia.
-    const { adres: adresPowrotu, etykieta: etykietaPowrotu } = powrotWysylkiKsef(req.body?.powrot, { miesiac, pole });
+    const { adres: adresPowrotu, etykieta: etykietaPowrotu } = powrotWysylkiKsef(req.body?.powrot, { miesiac, pole, typ: req.body?.typ, platnosc: req.body?.platnosc });
     // Wartosci domyslne stoja PRZED rozpakowaniem wyniku, zeby brak ktoregokolwiek pola
     // nie wywalil widoku wlasnie na tym ekranie — jedynym sladzie nieodwracalnej operacji.
     const pusty = { wyslane: [], pominiete: [], niepewne: [], przyjete: null, blad: null };

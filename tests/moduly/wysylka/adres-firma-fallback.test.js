@@ -38,7 +38,7 @@ const fixture = (n) => readFileSync(join(__dir, 'fixtures', 'dpd', n), 'utf8');
 const odp = (status, tekst) => ({ status, ok: status >= 200 && status < 300, text: async () => tekst });
 const OK_DPD = () => [odp(200, fixture('v10-ok.xml')), odp(200, fixture('v4-ok.xml')), odp(200, fixture('v4-ok-zpl.xml'))];
 
-const NADAWCA = { nazwa: 'Lumina Marek Zywiecki', ulica: 'ul. 1 Maja 5', kod: '00-650', miasto: 'Pęki', kraj: 'PL', phone: '338451234', email: 'sklep@szkicownia.pl' };
+const NADAWCA = { nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', phone: '338451234', email: 'sklep@swietlik.example.test' };
 
 // Osoba prywatna: ANI shipping.company, ANI billing.company. Dokladnie ten przypadek, ktory
 // wlasciciel widzial na zrzucie.
@@ -57,7 +57,7 @@ const osobaPrywatna = (nad = {}) => ({
   pozycje: [],
   dostawa: {
     first_name: 'Piotr', last_name: 'Wrona', company: '',
-    address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL',
+    address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL',
   },
   klient: { first_name: 'Piotr', last_name: 'Wrona', company: '', email: 'r@b.pl', phone: '+48500600700' },
   ...nad,
@@ -89,7 +89,7 @@ describe('pole „Firma": warstwa domenowa NIE podstawia juz nazwiska', () => {
   // wspolnego z fallbackiem na nazwisko.
   it('firma z bloku PLATNOSCI przy tym samym adresie dalej dziala', () => {
     const z = osobaPrywatna({
-      klient: { ...osobaPrywatna().klient, company: 'Gammatech Sp. z o.o.', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki' },
+      klient: { ...osobaPrywatna().klient, company: 'Gammatech Sp. z o.o.', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa' },
     });
     expect(adresOdbiorcy(z).company).toBe('Gammatech Sp. z o.o.');
   });
@@ -143,7 +143,7 @@ describe('nadpisanie {"company": null} znaczy „operator swiadomie wyczyscil"',
 describe('etykieta DPD dostaje niepuste <company> — sciezka FORMULARZOWA', () => {
   it('parsujAdresOdbiorcy podstawia nazwisko pod puste pole firmy (fallback zostaje TUTAJ)', () => {
     const { adres } = parsujAdresOdbiorcy({
-      nazwa: 'Piotr Wrona', company: '', ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki', kraj: 'PL',
+      nazwa: 'Piotr Wrona', company: '', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
     });
     expect(adres.company).toBe('Piotr Wrona');
   });
@@ -151,9 +151,9 @@ describe('etykieta DPD dostaje niepuste <company> — sciezka FORMULARZOWA', () 
   it('adres z formularza daje <company> z nazwiskiem w kopercie SOAP', async () => {
     const fetchImpl = vi.fn();
     OK_DPD().forEach((o) => fetchImpl.mockResolvedValueOnce(o));
-    const c = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '278216', nadawca: NADAWCA, fetchImpl });
+    const c = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '876543', nadawca: NADAWCA, fetchImpl });
     const { adres } = parsujAdresOdbiorcy({
-      nazwa: 'Piotr Wrona', company: '', ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki', kraj: 'PL',
+      nazwa: 'Piotr Wrona', company: '', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
     });
     await c.nadaj({ zamowienie: osobaPrywatna(), paczka: { waga: 1, dlugosc: 40, szerokosc: 30, wysokosc: 10 }, adres });
     const receiver = fetchImpl.mock.calls[0][1].body.match(/<receiver>[\s\S]*?<\/receiver>/)[0];
@@ -169,7 +169,7 @@ describe('etykieta DPD dostaje niepuste <company> — sciezka HURTEM (bez formul
   it('klient DPD wolany BEZ jawnego adresu (fallback na adresOdbiorcy) dalej wysyla nazwisko', async () => {
     const fetchImpl = vi.fn();
     OK_DPD().forEach((o) => fetchImpl.mockResolvedValueOnce(o));
-    const c = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '278216', nadawca: NADAWCA, fetchImpl });
+    const c = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '876543', nadawca: NADAWCA, fetchImpl });
     await c.nadaj({ zamowienie: osobaPrywatna(), paczka: { waga: 1, dlugosc: 40, szerokosc: 30, wysokosc: 10 } });
     const receiver = fetchImpl.mock.calls[0][1].body.match(/<receiver>[\s\S]*?<\/receiver>/)[0];
     expect(receiver).toContain('<company>Piotr Wrona</company>');
@@ -179,7 +179,7 @@ describe('etykieta DPD dostaje niepuste <company> — sciezka HURTEM (bez formul
     const db = openOmsDb(':memory:');
     const fetchImpl = vi.fn();
     OK_DPD().forEach((o) => fetchImpl.mockResolvedValueOnce(o));
-    const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '278216', nadawca: NADAWCA, fetchImpl });
+    const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '876543', nadawca: NADAWCA, fetchImpl });
     const nadanie = createNadanie({
       db, kurierzy: { dpd }, klienci: {}, katalogEtykiet: mkdtempSync(join(tmpdir(), 'oms-firma-')),
     });
@@ -197,7 +197,7 @@ describe('etykieta DPD dostaje niepuste <company> — sciezka HURTEM (bez formul
   it('poprawione recznie nazwisko wchodzi w <company>, nie tylko w <name>', async () => {
     const fetchImpl = vi.fn();
     OK_DPD().forEach((o) => fetchImpl.mockResolvedValueOnce(o));
-    const c = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '278216', nadawca: NADAWCA, fetchImpl });
+    const c = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '876543', nadawca: NADAWCA, fetchImpl });
     const z = osobaPrywatna({ dostawa_reczna_json: JSON.stringify({ nazwa: 'Anna Nowak' }) });
     await c.nadaj({ zamowienie: z, paczka: { waga: 1, dlugosc: 40, szerokosc: 30, wysokosc: 10 } });
     const receiver = fetchImpl.mock.calls[0][1].body.match(/<receiver>[\s\S]*?<\/receiver>/)[0];
@@ -212,7 +212,7 @@ describe('etykieta DPD dostaje niepuste <company> — sciezka HURTEM (bez formul
     const db = openOmsDb(':memory:');
     const fetchImpl = vi.fn();
     OK_DPD().forEach((o) => fetchImpl.mockResolvedValueOnce(o));
-    const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '278216', nadawca: NADAWCA, fetchImpl });
+    const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '876543', nadawca: NADAWCA, fetchImpl });
     const nadanie = createNadanie({
       db, kurierzy: { dpd }, klienci: {}, katalogEtykiet: mkdtempSync(join(tmpdir(), 'oms-firma-')),
     });
@@ -283,7 +283,7 @@ describe('InPost nie dostaje company_name, gdy firmy nie ma', () => {
   it('sciezka FORMULARZOWA (fallback z adres-formularza.js) → dalej brak company_name', async () => {
     const { c, fetchImpl } = klientInpost();
     const { adres } = parsujAdresOdbiorcy({
-      nazwa: 'Piotr Wrona', company: '', ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki', kraj: 'PL',
+      nazwa: 'Piotr Wrona', company: '', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
       phone: '+48500600700', email: 'r@b.pl',
     });
     expect(adres.company).toBe('Piotr Wrona');
@@ -308,7 +308,7 @@ describe('widoki: pole „Firma" jest puste przy zamowieniu osoby prywatnej', ()
     db = openOmsDb(':memory:');
     const fetchImpl = vi.fn();
     OK_DPD().forEach((o) => fetchImpl.mockResolvedValueOnce(o));
-    const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '278216', nadawca: NADAWCA, fetchImpl });
+    const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '876543', nadawca: NADAWCA, fetchImpl });
     app = buildOmsServer({
       db,
       config: { auth: { user: 'adam', pass: 'x' } },

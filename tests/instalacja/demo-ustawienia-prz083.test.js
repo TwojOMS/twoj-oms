@@ -164,16 +164,18 @@ describe('PRZ-083: Ustawienia w demo — gość ogląda wszystko', () => {
     expect(html).not.toMatch(/nie rozwiązuje się|ENOTFOUND|fetch failed/);
   });
 
-  it('Integracje: osobne konta Allegro i Wysyłam z Allegro oraz sklep Woo są oznaczone jako niesprawdzone atrapy', async () => {
+  it('Integracje: osobne konta Allegro (z Wysyłam z Allegro w koncie) oraz sklep Woo są oznaczone jako niesprawdzone atrapy', async () => {
     const { html } = await get('/ustawienia/integracje');
-    const karty = html.match(/<article class="ust-polaczenie">[\s\S]*?<\/article>/g) ?? [];
-    for (const [nazwa, liczba] of [['Allegro', 2], ['Wysyłam z Allegro', 2], ['WooCommerce', 1]]) {
-      const uslugi = karty.filter(k => k.includes(`alt="${nazwa}"`));
-      expect(uslugi, nazwa).toHaveLength(liczba);
+    // PRZ-136.07: wiersze listy zamiast kart; usługę niesie data-usluga, atrapę etykieta „Dane przykładowe”.
+    const karty = html.match(/<li class="pol-wiersz[\s\S]*?<\/li>/g) ?? [];
+    // PRZ-136.06 (U6): Wysyłam z Allegro nie jest osobną kartą, tylko cechą konta Allegro.
+    for (const [usluga, liczba] of [['allegro', 2], ['wza', 0], ['woocommerce', 1]]) {
+      const uslugi = karty.filter(k => k.includes(`data-usluga="${usluga}"`));
+      expect(uslugi, usluga).toHaveLength(liczba);
       for (const karta of uslugi) {
-        expect(karta).toContain('Niesprawdzone');
-        expect(karta).toContain('Atrapa piaskownicy');
-        expect(karta).not.toContain('ust-stan-dziala');
+        expect(karta).toContain('Dane przykładowe');
+        expect(karta).not.toContain('pol-stan--dziala');
+        if (usluga === 'allegro') expect(karta).toContain('Wysyłam z Allegro: włączone');
       }
     }
     // Zdrowe kanały nie wołają o pomoc na liście zamówień.

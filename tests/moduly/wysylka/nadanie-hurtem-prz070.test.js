@@ -6,7 +6,7 @@ import { createNadanieHurtem, BUDZET_NADANIA_HURTEM_MS } from '../../../src/modu
 // PRZ-070: pętla nadania hurtem — kolejno, z budżetem czasu, z drukiem i logiem kwoty pobrania.
 const baza = (n, nad = {}) => ({
   zrodlo_id: n, numer: String(n), klient: {},
-  dostawa: { first_name: 'Jan', last_name: 'K', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
+  dostawa: { first_name: 'Jan', last_name: 'K', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '104.00', status_woo: 'processing',
   oplacone_at: null, anulowane: 0, utworzone_at: '2026-10-13T13:13:48Z', pozycje: [], ...nad,
 });

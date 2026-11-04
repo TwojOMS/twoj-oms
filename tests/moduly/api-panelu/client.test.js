@@ -77,19 +77,19 @@ describe('createOmsClient', () => {
 // Odczyt zamowienia po numerze ze SKLEPU — to zastepuje dopasowanie przez Apilo w torze auto.
 describe('getByShopOrder', () => {
   it('pyta o numer Z NAZWA SKLEPU — numer sam w sobie nie jest unikalny', async () => {
-    // ⚠️ To nie jest ostroznosc na wyrost: szkicownia.pl i PRO numeruja NIEZALEZNIE, wiec
+    // ⚠️ To nie jest ostroznosc na wyrost: swietlik.example.test i PRO numeruja NIEZALEZNIE, wiec
     // zamowienie 28060 moze istniec w obu. Karta podpieta do cudzego zamowienia to ta sama
     // klasa bledu, ktora zlikwidowalo przejscie z dopasowania po adresie e-mail na numer oferty.
     const { fetchImpl, wywolania } = atrapa([{ status: 200, body: {
-      id: 41, numer: '28060', sklep: 'szkicownia', oplacone: true, anulowane: false,
+      id: 41, numer: '28060', sklep: 'swietlik', oplacone: true, anulowane: false,
       kwotaBrutto: '429.00', indywidualne: true,
     } }]);
     const oms = createOmsClient({ ...konfig, fetchImpl });
-    const wynik = await oms.getByShopOrder('28060', 'szkicownia');
+    const wynik = await oms.getByShopOrder('28060', 'swietlik');
 
-    expect(wywolania[0].url).toBe('http://oms:3001/api/zamowienia/po-numerze/28060?sklep=szkicownia');
+    expect(wywolania[0].url).toBe('http://oms:3001/api/zamowienia/po-numerze/28060?sklep=swietlik');
     expect(wynik).toEqual({
-      id: 41, numer: '28060', sklep: 'szkicownia', oplacone: true, anulowane: false,
+      id: 41, numer: '28060', sklep: 'swietlik', oplacone: true, anulowane: false,
       kwotaBrutto: '429.00', indywidualne: true,
     });
   });
@@ -99,19 +99,19 @@ describe('getByShopOrder', () => {
     // a jego pojawieniem sie w OMS-ie jest okno, w ktorym 404 nie jest awaria.
     const { fetchImpl } = atrapa([{ status: 404, body: { powod: 'nie ma' } }]);
     const oms = createOmsClient({ ...konfig, fetchImpl });
-    expect(await oms.getByShopOrder('28060', 'szkicownia')).toBeNull();
+    expect(await oms.getByShopOrder('28060', 'swietlik')).toBeNull();
   });
 
   it('409 (kilka trafien) RZUCA — nie wolno zgadywac, ktore zamowienie jest wlasciwe', async () => {
     const { fetchImpl } = atrapa([{ status: 409, body: { powod: 'dwa zamowienia o tym numerze' } }]);
     const oms = createOmsClient({ ...konfig, fetchImpl });
-    await expect(oms.getByShopOrder('28060', 'szkicownia')).rejects.toThrow(/dwa zamowienia/);
+    await expect(oms.getByShopOrder('28060', 'swietlik')).rejects.toThrow(/dwa zamowienia/);
   });
 
   it('401 mowi o konfiguracji, nie o zamowieniu', async () => {
     const { fetchImpl } = atrapa([{ status: 401, body: {} }]);
     const oms = createOmsClient({ ...konfig, fetchImpl });
-    await expect(oms.getByShopOrder('28060', 'szkicownia')).rejects.toThrow(/OMS_USER/);
+    await expect(oms.getByShopOrder('28060', 'swietlik')).rejects.toThrow(/OMS_USER/);
   });
 
   it('brak nazwy sklepu odrzucamy U SIEBIE, bez pytania OMS-u', async () => {
@@ -124,8 +124,8 @@ describe('getByShopOrder', () => {
   it('numer ze znakami specjalnymi jedzie zakodowany', async () => {
     const { fetchImpl, wywolania } = atrapa([{ status: 200, body: { id: 1, numer: 'R/2026/007' } }]);
     const oms = createOmsClient({ ...konfig, fetchImpl });
-    await oms.getByShopOrder('R/2026/007', 'szkicownia');
-    expect(wywolania[0].url).toContain('/po-numerze/R%2F2026%2F007?sklep=szkicownia');
+    await oms.getByShopOrder('R/2026/007', 'swietlik');
+    expect(wywolania[0].url).toContain('/po-numerze/R%2F2026%2F007?sklep=swietlik');
   });
 });
 

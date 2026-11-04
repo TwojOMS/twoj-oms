@@ -164,7 +164,10 @@ export function zarezerwujKorekte(db, zamowienieId, zwrotId, kiedy = teraz()) {
     const powod = powodOdmowyKorektyDlaFaktury({ id: zwrotId }, wszystkie);
     if (powod) throw bladOperatora(powod);
     const wynik = db.prepare(
-      'UPDATE zwroty SET korekta_zlecona_at = ?, korekta_blad = NULL'
+      // PRZ-147.02b: `korekta_referencja = NULL` — referencja starego, odrzuconego zlecenia nie może przeżyć
+      // nowej rezerwacji. Inaczej zerwane połączenie przy nowym zleceniu zostawia starą referencję, a odczyt
+      // jej statusu (422) zwolniłby NOWĄ rezerwację, choć dokument mógł powstać.
+      'UPDATE zwroty SET korekta_zlecona_at = ?, korekta_blad = NULL, korekta_referencja = NULL'
       + ' WHERE id = ? AND zamowienie_id = ? AND korekta_zlecona_at IS NULL AND korekta_numer IS NULL',
     ).run(kiedy, zwrotId, zamowienieId);
     db.exec('COMMIT');
@@ -196,6 +199,23 @@ export function zapiszBladKorekty(db, zamowienieId, zwrotId, opis) {
   db.prepare(
     'UPDATE zwroty SET korekta_zlecona_at = NULL, korekta_blad = ? WHERE id = ? AND zamowienie_id = ?',
   ).run(String(opis).slice(0, 500), zwrotId, zamowienieId);
+}
+
+/**
+ * PRZ-147.02b: zwolnienie rezerwacji po ODRZUCENIU zlecenia, które inFakt zgłosił w STATUSIE zadania (422 przy
+ * odczycie, nie przy wysłaniu). Zwalnia WYŁĄCZNIE to zlecenie, o które pytaliśmy: warunek na referencji pilnuje,
+ * żeby odpowiedź o starym zleceniu nie zwolniła nowszego, a `korekta_numer IS NULL` i
+ * `korekta_zlecona_at IS NOT NULL` — żeby nie ruszyć zwrotu już rozliczonego ani niezarezerwowanego.
+ * Referencja ZOSTAJE (ślad, o które zlecenie chodziło); czyści ją dopiero nowa rezerwacja.
+ * Wynik: true, gdy zwolniono dokładnie jeden wiersz.
+ */
+export function odrzucZlecenieKorekty(db, zamowienieId, zwrotId, referencja, opis) {
+  const wynik = db.prepare(
+    'UPDATE zwroty SET korekta_zlecona_at = NULL, korekta_blad = ?'
+    + ' WHERE id = ? AND zamowienie_id = ? AND korekta_referencja = ?'
+    + ' AND korekta_numer IS NULL AND korekta_zlecona_at IS NOT NULL',
+  ).run(String(opis).slice(0, 500), zwrotId, zamowienieId, referencja);
+  return wynik.changes === 1;
 }
 
 /**

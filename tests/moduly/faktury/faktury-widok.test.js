@@ -414,6 +414,8 @@ describe('widok faktur — wysyłka do KSeF zlecona z panelu', () => {
     ]) });
     const [d] = await w.dokumenty({ miesiac: '2026-08', pole: 'invoice_date' });
     expect(d.stanKsef).toBe('wyslana_czeka');
+    expect(d.wKsef).toBe(false);
+    expect(d).not.toHaveProperty('plakietka');
     expect(d.ksefZleconaAt).toBe('2026-08-06T14:00:00.000Z');
   });
 
@@ -424,6 +426,7 @@ describe('widok faktur — wysyłka do KSeF zlecona z panelu', () => {
     ]) });
     const [d] = await w.dokumenty({ miesiac: '2026-08', pole: 'invoice_date' });
     expect(d.stanKsef).toBe('brak');
+    expect(d.wKsef).toBe(false);
     expect(d.ksefZleconaAt).toBeNull();
   });
 
@@ -448,6 +451,8 @@ describe('widok faktur — wysyłka do KSeF zlecona z panelu', () => {
     ]) });
     const [d] = await w.dokumenty({ miesiac: '2026-08', pole: 'invoice_date' });
     expect(d.stanKsef).toBe('wyslana_czeka');
+    expect(d.wKsef).toBe(false);
+    expect(d).not.toHaveProperty('plakietka');
     expect(d.zamowienie).toBeNull();
   });
 

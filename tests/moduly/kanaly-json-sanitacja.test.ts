@@ -80,6 +80,27 @@ describe('błędy JSON konfiguracji kanałów bez wartości wejściowej', () => 
     const mapowanie = { instancje: [], poPozycji: [] };
     expect(konfiguracjaKanalow(definicje, { ...env, DEMO_MAPOWANIE: JSON.stringify(mapowanie) }).sklepy.demo.mapowanie).toEqual(mapowanie);
   });
+  describe('PRZ-134: opcjonalne bramkiPobrania w mapowaniu sklepu z pliku', () => {
+    const zBramkami = (bramkiPobrania: unknown) => ({ ...env, DEMO_MAPOWANIE: JSON.stringify({ instancje: {}, poPozycji: [], bramkiPobrania }) });
+    it('odrzuca wartość, która nie jest tablicą krótkich identyfikatorów, bez przepisywania jej do komunikatu', () => {
+      for (const zle of ['cod', null, {}, [1], [''], ['ma spację'], ['a'.repeat(65)], [`${sekret}/`], Array.from({ length: 21 }, (_, i) => `b${i}`)]) {
+        const m = komunikat(() => konfiguracjaKanalow(definicje, zBramkami(zle)));
+        expect(m).toBe('DEMO_MAPOWANIE: niepoprawne bramkiPobrania');
+        expect(m).not.toContain(sekret);
+      }
+    });
+    it('przyjmuje pustą tablicę i do 20 identyfikatorów bramek', () => {
+      expect(konfiguracjaKanalow(definicje, zBramkami([])).sklepy.demo.mapowanie.bramkiPobrania).toEqual([]);
+      const dobre = ['cod', 'wtyczka_pobranie.dpd', 'Pobranie-2:x', 'a'.repeat(64), ...Array.from({ length: 16 }, (_, i) => `b${i}`)];
+      expect(konfiguracjaKanalow(definicje, zBramkami(dobre)).sklepy.demo.mapowanie.bramkiPobrania).toEqual(dobre);
+    });
+    it('brak pola zostawia mapowanie takie jak dziś', () => {
+      const mapowanie = { instancje: { 3: { metoda: 'dpd', pobranie: true } }, poPozycji: [] };
+      const wynik = konfiguracjaKanalow(definicje, { ...env, DEMO_MAPOWANIE: JSON.stringify(mapowanie) }).sklepy.demo.mapowanie;
+      expect(wynik).toEqual(mapowanie);
+      expect('bramkiPobrania' in wynik).toBe(false);
+    });
+  });
   it('odmawia tablic klucza lub prefiksu, które przez coercion omijają unikalność', () => {
     const zObejściem = [
       { klucz: ['polnoc'], typ: 'woo', prefiks: ['SHARED'] },
@@ -97,7 +118,7 @@ describe('błędy JSON konfiguracji kanałów bez wartości wejściowej', () => 
     const mapowanie = { instancje: {}, poPozycji: [] };
     expect(konfiguracjaKanalow(definicje, { ...env, DEMO_MAPOWANIE: JSON.stringify(mapowanie) })).toEqual({
       sklepy: { demo: { baseUrl: 'https://example.test', ck: 'test', cs: 'test', mapowanie, od: '2026-01-01T00:00:00', historia: null } },
-      kanaly: {}, odstepMs: 120000, definicje,
+      kanaly: {}, odstepMs: 120000, definicje, deviceEnv: {}, userAgent: expect.stringMatching(/^TwojOMS\//), userAgentZEnv: '',
     });
   });
 });

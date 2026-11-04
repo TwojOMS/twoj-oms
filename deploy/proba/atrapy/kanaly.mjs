@@ -66,6 +66,12 @@ export function createAtrapaWoo({ db, kanal, log = (...t) => console.log(...t), 
   };
   return {
     ...Object.fromEntries(ODMOWY_WOO.map((m) => [m, odmowa(`sklepu ${kanal}`, m)])),
+    sprawdzPolaczenie: async () => ({ ok: true }),
+    pobierzMetodyWysylki: async () => [],
+    pobierzBramkiPlatnosci: async () => [
+      { id: 'cod', tytul: 'Płatność przy odbiorze', nazwaWoo: 'Pobranie', wlaczona: true },
+      { id: 'bacs', tytul: 'Przelew bankowy', nazwaWoo: 'Przelew', wlaczona: true },
+    ],
     pobierzWszystkieProdukty: async () => structuredClone(katalog().produkty),
     pobierzWarianty: async (id) => structuredClone(katalog().warianty.get(String(id)) ?? []),
     pobierzMiniatury: async () => new Map(katalog().miniatury),
@@ -104,6 +110,8 @@ export function createAtrapaAllegro({ db, kanal, log = (...t) => console.log(...
 
   return {
     ...Object.fromEntries(ODMOWY_ALLEGRO.map((m) => [m, odmowa(`Allegro ${kanal}`, m)])),
+    pobierzMojeKonto: async () => ({ id: kanal === 'allegro' ? '100001' : '100002', login: `atrapa-${kanal}` }),
+    sprawdzZakresZamowien: async () => Number(db.prepare('SELECT count(*) AS n FROM zamowienia WHERE sklep=?').get(kanal).n),
     pobierzOferty: async () => ofertyAllegro(kanal),
     // Metoda dostawy nieznana (null) zamiast odmowy: kurier WzA pyta o nią przy budowie ekranu nadania.
     pobierzMetodeDostawy: async () => null,

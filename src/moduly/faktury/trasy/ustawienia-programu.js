@@ -16,6 +16,7 @@ import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';
 import { PROG_UWAGI_KOPII_H } from '../../../domena/ostrzezenia.js';
 import { czyFakturaDlaKazdego, zapiszFakturaDlaKazdego, ZDANIE_KASA } from '../db/faktury-dla-kazdego.js';
 import { czyWysylacKonsumenckie } from '../db/ksef-konsumenckie.js';
+import { stanIntegracji, polaczeniaIntegracji } from '../../ustawienia/services/polaczenia-integracji.ts';
 // B16c/B16d: nośnik kopii ustawiony, ale kopia nie trafia na niego (zdania jak w tabelce ostrzeżeń, krócej).
 const UWAGI_NOSNIKA = {
   'brak-nosnika': 'Kopia poza dyskiem nie trafia na nośnik — podłącz nośnik kopii.',
@@ -75,12 +76,16 @@ export function registerUstawieniaProgramuRoutes(app, { db, wyborProgramu, konfi
     const zapisany = wyborProgramu.teraz();
     const zPliku = dziala.zrodlo === 'plik';
     const moznaZmieniac = req.konto?.admin === true && !zPliku;
+    const polaczenie = dziala.program === k.idModulu ? polaczeniaIntegracji({ db, proba,
+      integracje: [{ id: k.idModulu, ...stanIntegracji({ usluga: k, zapisany: !!k.kluczZapisany?.() }), atrapa: true }],
+    }).find(p => p.usluga === k.idModulu) : null;
 
     let zrodlo;
     if (zPliku) zrodlo = `Ustawione w pliku konfiguracji (${ZMIENNA_PROGRAMU}) — tam to zmienisz.`;
     else if (dziala.zrodlo === 'ustawienia') zrodlo = 'Wybrane w tym ekranie.';
     else zrodlo = dziala.program === 'brak' ? 'Nic nie wybrano i żaden program nie jest podłączony.'
-      : 'Nic nie wybrano. OMS używa tego modułu, bo jest podłączony.';
+      : polaczenie?.podlaczone === false ? 'Nic nie wybrano. Domyślny moduł nie jest podłączony.'
+        : 'Nic nie wybrano. OMS używa tego modułu, bo jest podłączony.';
 
     // Zmiana czeka na restart tylko wtedy, gdy to wybór człowieka (jak w Zdrowiu).
     const czeka = zapisany.zrodlo !== 'domyslny' && !zPliku
@@ -114,7 +119,7 @@ export function registerUstawieniaProgramuRoutes(app, { db, wyborProgramu, konfi
     const ponowneUruchomienie = !czeka ? null
       : tryb ? (req.konto?.admin === true ? { adres: ADRES_RESTARTU, nieaktywny: tryb !== 'tak' } : null)
         : { recznie: true };
-    return { dziala: { etykieta: etykietaModulu(dziala.program), zrodlo }, czeka, ponowneUruchomienie,
+    return { dziala: { etykieta: etykietaModulu(dziala.program), stanPolaczenia: polaczenie?.etykietaStanu, zrodlo }, czeka, ponowneUruchomienie,
       serie: zgoda && dziala.program === 'twojefaktury',
       dlaKazdego: { adres: ADRES_DLA_KAZDEGO, wlaczone: czyFakturaDlaKazdego(db),
         moznaZmieniac: req.konto?.admin === true, zdanieKasa: ZDANIE_KASA, bladWlaczenia: BLAD_WLACZENIA_BEZ_KSEF,

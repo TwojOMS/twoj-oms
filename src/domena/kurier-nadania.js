@@ -1,4 +1,67 @@
-import { metodaWysylki, czyPobranie } from './wysylka.js';
+import { metodaWysylki, czyPobranie, metodaZeSklepu, pobranieZeSklepu } from './wysylka.js';
+import {
+  MODULY_KURIEROW, kurierDlaMetody, metodyNaUmowie, metodyZZpl, pobranieNaUmowie, pobranieNaDosylce,
+} from './moduly-kurierow.ts';
+import { czyKanalWbudowany } from './kanaly.js';
+
+/**
+ * PRZ-137.01 (D1, decyzja właściciela 03.11): „pobranie ze sklepu" — sklep SPRZEDAŁ tę dostawę za
+ * pobraniem i nikt w OMS-ie nie zmienił ani metody, ani pobrania. Takie pobranie jedzie
+ * z kwotą niezależnie od przełącznika „umowa na pobranie" — skoro sklep ma tę metodę aktywną,
+ * firma ma ją u kuriera. Punktu odbioru NIE porównujemy: poprawiona skrytka to ta sama umowa.
+ *
+ * ⚠️ Brak kanału (`sklep` puste) = NIE sklepowe: przełącznik obowiązuje, czyli surowiej.
+ */
+export function pobranieSklepowe(z) {
+  const kanal = String(z?.sklep ?? '').trim();
+  if (!kanal || czyKanalWbudowany(kanal)) return false;
+  return pobranieZeSklepu(z) && czyPobranie(z) && metodaWysylki(z) === metodaZeSklepu(z);
+}
+
+/**
+ * PRZ-137.01 (D2): czy nadanie TĄ metodą wymaga włączonej umowy firmy na pobranie. `true`
+ * WYŁĄCZNIE dla pobrania OMS-owego (ręczne, zmienione na karcie) u kuriera z pobraniem
+ * 'adapter' w rejestrze, gdy firma nie zaznaczyła umowy. Kurier 'umowa' (DPD, WzA) — nigdy;
+ * 'brak' odmawia gdzie indziej.
+ * PRZ-137.03 (D2): `zamiennik` — pobranie na paczce N > 1 to ZAWSZE pobranie OMS-owe (decyzja
+ * operatora, nie sklepu), więc „pobranie ze sklepu" go nie zwalnia z umowy.
+ */
+export function wymagaUmowyPobrania(z, metoda, rejestr = MODULY_KURIEROW, umowy = /** @type {readonly string[]} */ ([]), { zamiennik = false } = {}) {
+  if (!czyPobranie(z) || (!zamiennik && pobranieSklepowe(z))) return false;
+  const kurier = kurierDlaMetody(metoda, rejestr);
+  if (kurier === null || rejestr[kurier]?.umiejetnosci?.pobranie !== 'adapter') return false;
+  return !pobranieNaUmowie(metoda, rejestr, umowy);
+}
+
+/**
+ * PRZ-137.02 (D2): powód odmowy, gdy `wymagaUmowyPobrania` daje `true` — JEDEN tekst dla hurtu
+ * (masowe.js) i karty (services/nadanie.js, ostrzeżenie w nadaj.ejs). Nazwa kuriera z rejestru,
+ * bez założenia, że zostaje DPD. Mała litera na początku (hurt wstawia go jako powód pominięcia).
+ */
+export function powodUmowyPobrania(metoda, rejestr = MODULY_KURIEROW) {
+  const kurier = kurierDlaMetody(metoda, rejestr);
+  const nazwa = (kurier !== null && rejestr[kurier]?.nazwa) || 'tego kuriera';
+  return `pobranie przez ${nazwa} wymaga umowy — włącz ją w Ustawieniach → Integracje albo zmień kuriera na karcie zamówienia`;
+}
+
+/**
+ * PRZ-137.03 (D2, D3): powód odmowy zamiennika za pobraniem (paczka N > 1, zaznaczone pobranie
+ * na tej paczce) tą metodą albo `null`, gdy wolno. Kurier bez `pobranieNaDosylce` → tekst
+ * neutralny D3 (bez założenia, który kurier zostaje); kurier 'adapter' bez umowy firmy → ten sam
+ * powód co przy paczce nr 1. Mała litera na początku, jak `powodUmowyPobrania`.
+ */
+export function powodOdmowyZamiennika(z, metoda, {
+  rejestr = MODULY_KURIEROW, umowyPobrania = /** @type {readonly string[]} */ ([]),
+} = {}) {
+  if (!czyPobranie(z)) return null;
+  if (!pobranieNaDosylce(metoda, rejestr)) {
+    const kurier = kurierDlaMetody(metoda, rejestr);
+    const nazwa = (kurier !== null && rejestr[kurier]?.nazwa) || 'ten kurier';
+    return `${nazwa} nie przyjmie pobrania na kolejnej paczce — wybierz kuriera, który je przyjmuje, albo wyłącz pobranie na tej paczce`;
+  }
+  if (wymagaUmowyPobrania(z, metoda, rejestr, umowyPobrania, { zamiennik: true })) return powodUmowyPobrania(metoda, rejestr);
+  return null;
+}
 
 // Kurier, ktorym NADAJEMY te konkretna paczke — a nie metoda, ktora klient wybral kupujac.
 //
@@ -30,11 +93,13 @@ import { metodaWysylki, czyPobranie } from './wysylka.js';
 // wlasnie z tego powodu). Wybor z ekranu nadania jest JEDNORAZOWY: dotyczy tej paczki,
 // niczego nie zapisuje do zamowienia. Ta sama rodzina co kod paczkomatu i kwota pobrania.
 
-/** Metody, ktore panel umie nadac SAM. Musi byc podzbiorem kluczy `DLA_METODY`. */
-const DO_WYBORU = [
-  { klucz: 'dpd', etykieta: 'DPD — nasza umowa' },
-  { klucz: 'inpost_paczkomat', etykieta: 'Paczkomat InPost — nasza umowa' },
-];
+/**
+ * Metody, ktore panel umie nadac SAM (NASZA umowa) — PRZ-135.04a: z rejestru kurierow, metody
+ * kurierow z `umowa: 'wlasna'` w kolejnosci rejestru (dzis DPD, paczkomat InPost), z etykieta
+ * wyboru (`etykietaWyboru`, zapasowo `etykieta`). Podzbior metod z kurierem z definicji.
+ */
+const doWyboru = (rejestr) => metodyNaUmowie('wlasna', rejestr)
+  .map((m) => ({ klucz: m.klucz, etykieta: m.etykietaWyboru ?? m.etykieta }));
 
 /**
  * Czy to zamowienie wymaga, zeby czlowiek WSKAZAL kuriera, zanim panel cokolwiek nada.
@@ -66,7 +131,14 @@ const DO_WYBORU = [
 // zostaja z innego powodu niz wtedy: nie dlatego, ze panel ich nie umie, tylko dlatego,
 // ze wskazanie czlowieka ma dalej rzadzic — to jest furtka na DOSYLKE nasza umowa
 // (zamiennik za zgubiona), ktorej `NADAJEMY_SAMI` by odebralo.
+// PRZ-135.04a: ta mapa zostaje JAWNA (regula pieniedzy, nie dane kuriera). Cel musi byc metoda
+// kuriera na NASZEJ umowie z rejestru — inaczej panel nie wystartuje, zamiast cicho odmawiac.
 const NADAJEMY_SAMI = { allegro_paczkomat: 'inpost_paczkomat' };
+for (const [metoda, cel] of Object.entries(NADAJEMY_SAMI)) {
+  if (!metodyNaUmowie('wlasna').some((m) => m.klucz === cel)) {
+    throw new Error(`NADAJEMY_SAMI: ${metoda} → ${cel}, a ${cel} nie jest metodą kuriera na własnej umowie w rejestrze`);
+  }
+}
 
 // ⚠️⚠️ `allegro_dpd` PRZESTAL WYMAGAC WSKAZANIA KURIERA (11.08.2026, plan „Wysylam z Allegro").
 //
@@ -95,12 +167,13 @@ const NADAJEMY_SAMI = { allegro_paczkomat: 'inpost_paczkomat' };
 // (decyzja właściciela 18.09: „oprocz paczkomatow"). Uslugi InPostu maja w katalogu Allegro
 // `owner: CLIENT`, czyli NASZA umowe: nadanie ich „przez Allegro" bylo by drugim, platnym
 // przewozem do klienta, ktory swoj ma juz oplacony.
-const WZA_DOMYSLNIE = {
-  allegro_dpd: 'allegro_dpd',
-  allegro_punkt: 'allegro_punkt',
-  allegro_kurier: 'allegro_kurier',
-  allegro_inne: 'allegro_inne',
-};
+//
+// PRZ-135.04a: lista = metody kuriera z `umowa: 'platformy'` w rejestrze (dzis WzA: allegro_dpd,
+// allegro_punkt, allegro_kurier, allegro_inne). Usuniecie metody tam = odmowa jej nadania tu.
+const wzaDomyslnie = (rejestr) => Object.fromEntries(
+  metodyNaUmowie('platformy', rejestr).map((m) => [m.klucz, m.klucz]),
+);
+const WZA_DOMYSLNIE = wzaDomyslnie(MODULY_KURIEROW);
 
 export function wymagaWyboruKuriera(z) {
   const metoda = String(metodaWysylki(z) ?? '');
@@ -142,22 +215,46 @@ export function wymagaWyboruKuriera(z) {
 // platny przewoz (lekcja z 11.08.2026, opisana nad ta stala). Test-straznik pilnuje, ze obie
 // mapy maja te same klucze.
 const ETYKIETA_WZA = 'Wysyłam z Allegro — umowa Allegro (domyślnie)';
-const WZA_DO_WYBORU = Object.fromEntries(
-  Object.keys(WZA_DOMYSLNIE).map((metoda) => [metoda, { klucz: 'wza', etykieta: ETYKIETA_WZA }]),
+const wzaDoWyboru = (rejestr) => Object.fromEntries(
+  Object.keys(wzaDomyslnie(rejestr)).map((metoda) => [metoda, { klucz: 'wza', etykieta: ETYKIETA_WZA }]),
 );
 
-export function kurierzyDoWyboru(z, kolejnosc = 1, { pobranieNaTejPaczce = kolejnosc === 1 } = {}) {
+// Reguly liczone raz na rejestr: produkcyjny przy imporcie, testowy (podany parametrem) przy wywolaniu.
+const REGULY = new WeakMap();
+function regulyNadania(rejestr) {
+  let r = REGULY.get(rejestr);
+  if (!r) {
+    r = { doWyboru: doWyboru(rejestr), wzaDoWyboru: wzaDoWyboru(rejestr) };
+    REGULY.set(rejestr, r);
+  }
+  return r;
+}
+
+export function kurierzyDoWyboru(z, kolejnosc = 1, {
+  pobranieNaTejPaczce = kolejnosc === 1, rejestr = MODULY_KURIEROW, umowyPobrania = /** @type {readonly string[]} */ ([]),
+} = {}) {
+  const { doWyboru: DO_WYBORU, wzaDoWyboru: WZA_DO_WYBORU } = regulyNadania(rejestr);
   // ⚠️ WzA IDZIE PIERWSZE i tak ma zostac: przy zamowieniu z Allegro to jest droga wlasciwa,
   // a nasza umowa jest wyjatkiem (dosylka, zamiennik za zgubiona). Kolejnosc na ekranie jest
   // tu podpowiedzia, ktora kosztuje pieniadze, gdy stoi odwrotnie.
-  const wza = WZA_DO_WYBORU[String(metodaWysylki(z) ?? '')];
+  const metoda = String(metodaWysylki(z) ?? '');
+  const wza = Object.hasOwn(WZA_DO_WYBORU, metoda) ? WZA_DO_WYBORU[metoda] : undefined;
   if (czyPobranie(z) && pobranieNaTejPaczce) {
     // ⚠️ POBRANIE PRZEZ WzA WESZLO 11.08.2026 — i wlasnie tu bylo do odblokowania.
     // Ograniczenie do samego DPD chronilo przed PACZKOMATEM bez inkasa (umowa z InPostem na
     // pobranie NIEPOTWIERDZONA), a nie przed Allegro: tam inkaso jest czescia uslugi
     // (`13f26351-…`, limit 6000 zl, `paymentType: WALLET_TRANSFER` — zmierzone). Wyliczamy
     // wiec, co WOLNO, zamiast odsiewac wszystko poza DPD.
-    const wolnoPrzyPobraniu = wza ? [wza, ...DO_WYBORU.filter((k) => k.klucz === 'dpd')] : DO_WYBORU.filter((k) => k.klucz === 'dpd');
+    // PRZ-135.04a: „DPD" = kurierzy z `pobranie: 'umowa'` w rejestrze (dzis tylko DPD; InPost
+    // ma 'adapter', czyli umie kwote, ale umowy na inkaso nie ma — patrz komentarz nad funkcja).
+    // PRZ-135.T2: umowa firmy na pobranie (np. InPost) awansuje kuriera z 'adapter'.
+    // PRZ-137.03 (D2): zamiennik (paczka 2+ z pobraniem) — tylko kurierzy, ktorych adapter
+    // wiezie pobranie na kolejnej paczce (`pobranieNaDosylce`: DPD, InPost z umowa firmy);
+    // WzA bierze pobranie z zamowienia Allegro, wiec przy zamienniku znika z listy.
+    const dosylka = kolejnosc > 1;
+    const naUmowie = DO_WYBORU.filter((k) => (!dosylka || pobranieNaDosylce(k.klucz, rejestr))
+      && pobranieNaUmowie(k.klucz, rejestr, umowyPobrania));
+    const wolnoPrzyPobraniu = wza && (!dosylka || pobranieNaDosylce(metoda, rejestr)) ? [wza, ...naUmowie] : naUmowie;
     return wolnoPrzyPobraniu;
   }
   return wza ? [wza, ...DO_WYBORU] : DO_WYBORU;
@@ -176,7 +273,9 @@ export function kurierzyDoWyboru(z, kolejnosc = 1, { pobranieNaTejPaczce = kolej
  * wskazanego kuriera, ale ekran nie jest bariera — bariera musi przezyc zadanie POST
  * zlozone z reki albo ze starej, otwartej karty.
  */
-export function metodaNadania(z, wybor, { kolejnosc = 1 } = {}) {
+// PRZ-135.T2: `umowyPobrania` = `umowyPobraniaFirmy(db)` (moduly/wysylka/db/umowy-pobrania.js);
+// pominiete daje `[]`, czyli surowiej, nigdy luzniej.
+export function metodaNadania(z, wybor, { kolejnosc = 1, umowyPobrania = /** @type {readonly string[]} */ ([]) } = {}) {
   const metoda = metodaWysylki(z);
   // ⚠️ METODA, KTORA PANEL NADAJE SAM MIMO ALLEGROWEGO KANALU (dzis: paczkomat). Wskazanie
   // jest tu IGNOROWANE tak samo, jak przy zamowieniach sklepowych — inaczej wracalaby furtka
@@ -188,7 +287,7 @@ export function metodaNadania(z, wybor, { kolejnosc = 1 } = {}) {
   if (!wymagaWyboruKuriera(z)) return { metoda };
 
   const wskazany = String(wybor ?? '').trim();
-  const dozwolone = kurierzyDoWyboru(z, kolejnosc);
+  const dozwolone = kurierzyDoWyboru(z, kolejnosc, { umowyPobrania });
   if (!wskazany) {
     // Brak wskazania = droga domyślna, czyli „Wysyłam z Allegro" — tam, gdzie ją mamy.
     if (Object.hasOwn(WZA_DOMYSLNIE, String(metoda ?? ''))) return { metoda: WZA_DOMYSLNIE[metoda] };
@@ -230,7 +329,8 @@ export function metodaNadania(z, wybor, { kolejnosc = 1 } = {}) {
  * w allegro-faktura.js i z tego samego powodu: kurier dolozony jutro nie ma prawa odziedziczyc
  * obietnicy wydruku tylko dlatego, ze nie nazywa sie „allegro".
  */
-export const METODY_Z_ZPL = ['dpd', 'inpost_paczkomat', ...Object.keys(WZA_DOMYSLNIE)];
+// PRZ-135.04a: z rejestru — metody kurierow z `etykieta.zpl` (dzis DPD, paczkomat, 4 metody WzA).
+export const METODY_Z_ZPL = [...metodyZZpl()];
 
 export function nadanieDaZpl(metodaUzyta) {
   return METODY_Z_ZPL.includes(String(metodaUzyta ?? ''));

@@ -47,13 +47,13 @@ describe('poller rozmawia z kanałem przez adapter, nie z WooCommerce', () => {
       zamowienia: [{ identyfikator: 77, zlozoneKiedy: '2026-08-01T10:00:00Z', zmienioneKiedy: '2026-08-02T11:00:00Z' }],
       stron: 1,
     }]);
-    const poller = createPoller({ db, kanal, sklep: 'allegro_szkicownia', od: null });
+    const poller = createPoller({ db, kanal, sklep: 'allegro_swietlik', od: null });
 
     const wynik = await poller.przebieg();
 
     expect(wynik.pobrane).toBe(1);
     expect(poller.stan().zsynchronizowane_do).toBe('2026-08-02T11:00:00Z');
-    expect(db.prepare('SELECT zrodlo_id FROM zamowienia WHERE sklep = ?').get('allegro_szkicownia').zrodlo_id).toBe(77);
+    expect(db.prepare('SELECT zrodlo_id FROM zamowienia WHERE sklep = ?').get('allegro_swietlik').zrodlo_id).toBe(77);
   });
 
   it('PODŁOGA po dacie złożenia obowiązuje tak samo — a kursor i tak przeskakuje pominięte', async () => {
@@ -62,7 +62,7 @@ describe('poller rozmawia z kanałem przez adapter, nie z WooCommerce', () => {
       zamowienia: [{ identyfikator: 1, zlozoneKiedy: '2019-05-05T10:00:00Z', zmienioneKiedy: '2026-08-02T11:00:00Z' }],
       stron: 1,
     }]);
-    const poller = createPoller({ db, kanal, sklep: 'allegro_szkicownia', od: '2026-07-01' });
+    const poller = createPoller({ db, kanal, sklep: 'allegro_swietlik', od: '2026-07-01' });
 
     const wynik = await poller.przebieg();
 
@@ -87,7 +87,7 @@ describe('poller rozmawia z kanałem przez adapter, nie z WooCommerce', () => {
       ],
       stron: 1,
     }]);
-    const poller = createPoller({ db, kanal, sklep: 'allegro_szkicownia', od: null });
+    const poller = createPoller({ db, kanal, sklep: 'allegro_swietlik', od: null });
 
     expect((await poller.przebieg()).pobrane).toBe(2);
     expect(poller.stan().zsynchronizowane_do).toBe('2026-08-02T15:00:00Z');
@@ -100,7 +100,7 @@ describe('poller rozmawia z kanałem przez adapter, nie z WooCommerce', () => {
   it('przekazuje kanałowi okno: `od`, ZAPISANY `kursor` i numer strony', async () => {
     const db = baza();
     const kanal = kanalObcy([{ zamowienia: [], stron: 1 }]);
-    const poller = createPoller({ db, kanal, sklep: 'allegro_szkicownia', od: '2026-07-01' });
+    const poller = createPoller({ db, kanal, sklep: 'allegro_swietlik', od: '2026-07-01' });
 
     await poller.przebieg();
 
@@ -120,7 +120,7 @@ describe('poller rozmawia z kanałem przez adapter, nie z WooCommerce', () => {
       zamowienia: [{ identyfikator: 5, zlozoneKiedy: '2026-07-15T10:00:00Z', zmienioneKiedy: '2026-08-02T11:00:00Z' }],
       stron: 1,
     }]);
-    const poller = createPoller({ db, kanal, sklep: 'allegro_szkicownia', od: '2026-07-01' });
+    const poller = createPoller({ db, kanal, sklep: 'allegro_swietlik', od: '2026-07-01' });
 
     await poller.przebieg();
     // Pusty stan pollera: kursor jest NULLEM, a nie wartoscia `od`.

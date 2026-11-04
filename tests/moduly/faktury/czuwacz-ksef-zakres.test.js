@@ -130,7 +130,7 @@ describe('zakres czuwacza po dolozeniu wysylki z panelu', () => {
 
   it('faktury allegrowe pyta dalej, jak dotąd', async () => {
     const db = openOmsDb(':memory:');
-    const uuid = zamowienieZFaktura(db, { sklep: 'allegro_szkicownia', wyslanaZPanelu: false });
+    const uuid = zamowienieZFaktura(db, { sklep: 'allegro_swietlik', wyslanaZPanelu: false });
     const { pytane, czuwacz } = pytaniaCzuwacza(db);
 
     await czuwacz.przebieg();

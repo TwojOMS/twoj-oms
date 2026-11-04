@@ -45,7 +45,7 @@ const GODZINA_MS = 60 * 60 * 1000;
 // juz tylko kompromitujace.
 const MAKS_WIEK_WIADOMOSCI_MS = 24 * GODZINA_MS;
 
-export function createCzuwaczFormulki({ db, klienci = {}, brakiKanalu = () => [], teraz = () => new Date() }) {
+export function createCzuwaczFormulki({ db, klienci = {}, brakiKanalu = () => [], wolnoZapisywac = () => true, teraz = () => new Date() }) {
   let trwa = false;
 
   async function przebieg() {
@@ -99,6 +99,9 @@ export function createCzuwaczFormulki({ db, klienci = {}, brakiKanalu = () => []
         // formulke NA ZAWSZE: po przewiazaniu nigdy by juz nie poszla. Pomijamy PRZED
         // zapisem dowodu, wiec watek czeka nietkniety.
         if (brakiKanalu(w.kanal).includes('allegro:api:messaging')) { pominiete += 1; continue; }
+        // Po reconnect kolejka czeka na osobny przegląd. Pomijamy PRZED rezerwacją
+        // dowodu, żeby blokada transportu nie zużyła jedynej próby autorespondera.
+        if (!wolnoZapisywac(w.kanal)) { pominiete += 1; continue; }
 
         // ⚠️ NAJPIERW DOWOD. Gdy zapis odmowi (wyscig z drugim przebiegiem — indeks
         // `allegro_formulka_raz`), NIE wysylamy: to znaczy, ze ktos byl szybszy.

@@ -1,10 +1,29 @@
 import { bladKonfiguracji } from '../../core/blad-konfiguracji.ts';
-import type { Srodowisko } from '../../core/kontrakty.ts';
+import type { Srodowisko } from '../../core/kontrakty.ts'; import { czyTypKanalu, TYPY_KANALOW, sprawdzOpisyKanalow, type TypKanaluZnany } from '../../domena/moduly-kanalow.ts';
 import { METODY_WYSYLKI } from '../../domena/wysylka.js';
 import { konfiguracjaHistorii } from './historia.ts';
 import { brakujaceKluczeKanalu } from './kompletnosc.ts';
 import { interwal, skonfigurowanyUrl } from '../../core/konfiguracja-wartosci.ts';
-export type DefinicjaKanalu = { klucz: string; typ: 'woo' | 'allegro'; prefiks: string; etykieta?: string; raport?: string };
+import {readFileSync} from 'node:fs';
+const wersjaProduktu: string = JSON.parse(readFileSync(new URL('../../../package.json',import.meta.url),'utf8')).version;
+export type AplikacjeDeviceEnv = Partial<Record<'produkcja'|'sandbox',{clientId:string;clientSecret:string}>>;
+export function userAgentAllegro(env: Srodowisko) {
+  const wartosc=String(env.OMS_ALLEGRO_USER_AGENT??'').trim()||`TwojOMS/${wersjaProduktu} (+https://twojoms.pl)`;
+  if(!WZOR_USER_AGENT_ALLEGRO.test(wartosc))throw bladKonfiguracji('OMS_ALLEGRO_USER_AGENT: niepoprawny nagłówek User-Agent Allegro');
+  return wartosc;
+}
+function aplikacjeDeviceEnv(env: Srodowisko): AplikacjeDeviceEnv {
+  const produkcja={clientId:env.OMS_ALLEGRO_DEVICE_CLIENT_ID??'',clientSecret:env.OMS_ALLEGRO_DEVICE_CLIENT_SECRET??''};
+  const sandbox={clientId:env.OMS_ALLEGRO_SANDBOX_DEVICE_CLIENT_ID??'',clientSecret:env.OMS_ALLEGRO_SANDBOX_DEVICE_CLIENT_SECRET??''};
+  const nazwy={produkcja:'OMS_ALLEGRO_DEVICE_CLIENT_',sandbox:'OMS_ALLEGRO_SANDBOX_DEVICE_CLIENT_'},wynik:AplikacjeDeviceEnv={};
+  for(const [s,p] of Object.entries({produkcja,sandbox})) {
+    if(!p.clientId&&!p.clientSecret)continue;
+    const zla=[['ID',p.clientId],['SECRET',p.clientSecret]].find(([,v])=>!(v.length>0&&v.length<=200&&!/\s/.test(v)));if(zla)throw bladKonfiguracji(`${nazwy[s as keyof typeof nazwy]}${zla[0]}: aplikacja Device Allegro (${s}) wymaga razem Client ID i Client Secret bez białych znaków, do 200 znaków.`);
+    wynik[s as keyof AplikacjeDeviceEnv]=p;
+  }
+  return wynik;
+}
+export type DefinicjaKanalu = { klucz: string; typ: TypKanaluZnany; prefiks: string; etykieta?: string; raport?: string };
 function parsujJson(tekst: string, nazwa: string): any {
   try { return JSON.parse(tekst); }
   catch { throw bladKonfiguracji(`${nazwa}: niepoprawny JSON`); }
@@ -12,13 +31,13 @@ function parsujJson(tekst: string, nazwa: string): any {
 function obiekt(wartosc: unknown): wartosc is Record<string, any> {
   return wartosc !== null && typeof wartosc === 'object' && !Array.isArray(wartosc);
 }
-function mapowanieSklepu(tekst: string, nazwa: string) {
+export function mapowanieSklepu(tekst: string, nazwa: string) { // PRZ-134: opcjonalne bramkiPobrania (identyfikatory payment_method Woo); brak pola = jak dziś
   const mapowanie = parsujJson(tekst, nazwa);
   if (!obiekt(mapowanie) || !mapowanie.instancje || !Array.isArray(mapowanie.poPozycji)) throw bladKonfiguracji(`${nazwa}: oczekiwano instancje i poPozycji`);
   for (const m of [...Object.values(mapowanie.instancje), ...mapowanie.poPozycji] as { metoda?: string }[]) {
     if (!obiekt(m) || !m.metoda || !METODY_WYSYLKI.includes(m.metoda) || m.metoda.startsWith('allegro_')) throw bladKonfiguracji(`${nazwa}: niedozwolona metoda sklepu`);
   }
-  return mapowanie;
+  if ('bramkiPobrania' in mapowanie) { const b: unknown = mapowanie.bramkiPobrania; if (!Array.isArray(b) || b.length > 20 || !b.every((x) => typeof x === 'string' && /^[A-Za-z0-9_.:-]{1,64}$/.test(x))) throw bladKonfiguracji(`${nazwa}: niepoprawne bramkiPobrania`); } return mapowanie;
 }
 const WZOR_USER_AGENT_ALLEGRO = /^[^\s/()]+\/[0-9][^\s/()]*\s\(\+https?:\/\/[^\s()]+\)$/;
 function parsujUserAgentAllegro(env: Srodowisko, nazwa: string) {
@@ -46,7 +65,7 @@ const OPIS_KANALOW = 'docs/instalacja-docker.md, sekcja 9';
 const WZOR_KLUCZA = /^[a-z][a-z0-9_-]*$/;
 const WZOR_PREFIKSU = /^[A-Z][A-Z0-9_]*$/;
 const KLUCZE_ZASTRZEZONE = ['reczne', 'indywidualne', '__proto__', 'constructor', 'prototype'];
-const RAPORTY_ZASTRZEZONE = ['RECZNE', 'B2B', 'DROPSHIPPING', 'GDD', 'INDYWIDUALNE', 'SKLEP', 'SKLEP_INDYWIDUALNE', 'ALLEGRO'];
+export const RAPORTY_ZASTRZEZONE = ['RECZNE', 'B2B', 'DROPSHIPPING', 'GDD', 'INDYWIDUALNE', 'SKLEP', 'SKLEP_INDYWIDUALNE', 'ALLEGRO'];
 function odczytajListeKanalow(tekst: string): unknown {
   try { return JSON.parse(tekst); }
   catch (e) {
@@ -67,7 +86,7 @@ function wadaDefinicji(k: unknown, numer: number, nazwy: Map<string, number>, pr
   const nazwa = typeof k.klucz === 'string' && WZOR_KLUCZA.test(k.klucz) && k.klucz.length <= 64 ? ` (klucz „${k.klucz}”)` : '';
   const pozycja = `${gdzie}${nazwa}`;
   if (typeof k.klucz !== 'string' || !WZOR_KLUCZA.test(k.klucz)) return `${pozycja}: pole „klucz” ma być tekstem z małych liter, cyfr, _ i -, zaczynającym się od litery (np. woo_sklep)`;
-  if (typeof k.typ !== 'string' || !['woo', 'allegro'].includes(k.typ)) return `${pozycja}: pole „typ” ma być „woo” albo „allegro”`;
+  if (!czyTypKanalu(k.typ)) return `${pozycja}: pole „typ” ma być ${TYPY_KANALOW.map(typ => `„${typ}”`).join(' albo ')}`;
   if (typeof k.prefiks !== 'string' || !WZOR_PREFIKSU.test(k.prefiks)) return `${pozycja}: pole „prefiks” ma być tekstem z wielkich liter, cyfr i _, zaczynającym się od litery (np. WOO_SKLEP)`;
   const kluczPowtorzony = nazwy.get(k.klucz);
   if (kluczPowtorzony !== undefined) return `${pozycja}: pole „klucz” powtarza pozycję ${kluczPowtorzony} — każdy kanał ma mieć inny klucz`;
@@ -83,7 +102,7 @@ function wadaDefinicji(k: unknown, numer: number, nazwy: Map<string, number>, pr
   }
   return null;
 }
-export function definicjeKanalow(env: Srodowisko): DefinicjaKanalu[] {
+export function definicjeKanalow(env: Srodowisko, moduly?: Parameters<typeof sprawdzOpisyKanalow>[0]): DefinicjaKanalu[] { sprawdzOpisyKanalow(moduly);
   const d = odczytajListeKanalow(env.OMS_KANALY ?? '[]') as DefinicjaKanalu[];
   if (!Array.isArray(d)) throw bladKonfiguracji(`OMS_KANALY: oczekiwano listy kanałów w nawiasach [ ], np. ${PRZYKLAD_KANALOW}. Opis: ${OPIS_KANALOW}.`);
   const raporty = new Map<string, number>();
@@ -135,5 +154,26 @@ export function konfiguracjaKanalow(definicje: readonly DefinicjaKanalu[], env: 
     }
   }
   const odstepMs = interwal(env.OMS_POLLER_MS, 'OMS_POLLER_MS', 120000, 30000);
-  return niekompletneJakoAlarm ? { sklepy, kanaly, odstepMs, braki, definicje: [...definicje] } : { sklepy, kanaly, odstepMs, definicje: [...definicje] };
+  const wspolne={sklepy,kanaly,odstepMs,definicje:[...definicje],deviceEnv:aplikacjeDeviceEnv(env),userAgent:userAgentAllegro(env),userAgentZEnv:String(env.OMS_ALLEGRO_USER_AGENT??'').trim()};
+  return {...wspolne,...(niekompletneJakoAlarm?{braki}:{})};
+}
+export type PolaUserAgentAllegro = {nazwa:string;wersja:string;adres:string};
+/** Puste pola przywracają nagłówek produktu; cudza nazwa wymaga własnego kontaktu. */
+export function zlozUserAgentAllegro(pola:PolaUserAgentAllegro):string {
+  const nazwa=pola.nazwa.trim(),wersja=pola.wersja.trim(),adres=pola.adres.trim();
+  // Nagłówek HTTP przyjmuje tylko ASCII: „Półcień” zapisane bez tej odmowy wywraca każde żądanie do Allegro.
+  if(/[^\x21-\x7E]/.test(nazwa+wersja+adres))throw new Error('Nazwa, wersja i adres mogą zawierać tylko litery bez polskich znaków, cyfry i znaki interpunkcyjne (np. PracowniaPolcien zamiast Pracownia Półcień).');
+  if(nazwa&&!adres)throw new Error('Podaj adres strony z informacją o aplikacji — Allegro kontaktuje się przez niego z autorem integracji.');
+  if(adres){
+    let url:URL;try{url=new URL(adres);}catch{throw new Error('Podaj poprawny adres strony z informacją o aplikacji (http lub https).');}
+    if(!['http:','https:'].includes(url.protocol)||!url.hostname)throw new Error('Podaj poprawny adres strony z informacją o aplikacji (http lub https).');
+  }
+  const naglowek=`${nazwa||'TwojOMS'}/${wersja||wersjaProduktu} (+${adres||'https://twojoms.pl'})`;
+  if(!WZOR_USER_AGENT_ALLEGRO.test(naglowek))throw new Error('Nazwa i wersja nie mogą zawierać spacji, ukośników ani nawiasów. Wersja musi zaczynać się cyfrą. Adres musi używać http lub https i nie zawierać spacji ani nawiasów.');
+  return naglowek;
+}
+/** Zapis z panelu jako nagłówek; uszkodzony wiersz w bazie nie blokuje Allegro — wraca nagłówek produktu. */
+export function userAgentZZapisu(ustawienia:Partial<PolaUserAgentAllegro>|undefined):string|null {
+  if(!ustawienia)return null;
+  try{return zlozUserAgentAllegro({nazwa:'',wersja:'',adres:'',...ustawienia});}catch{return null;}
 }

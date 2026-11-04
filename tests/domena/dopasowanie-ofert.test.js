@@ -24,7 +24,7 @@ const karta = (id, nazwa, szerokosc_mm = null, wysokosc_mm = null) => ({
 
 // Oferta tak, jak wyglada wiersz lustra: sama nazwa sprzedazowa.
 const oferta = (nazwa, reszta = {}) => ({
-  id: 1, kanal: 'allegro_szkicownia', nazwa, rozmiar_tekst: null, ...reszta,
+  id: 1, kanal: 'allegro_swietlik', nazwa, rozmiar_tekst: null, ...reszta,
 });
 
 const nazwy = (lista) => lista.map((p) => p.karta.nazwa);

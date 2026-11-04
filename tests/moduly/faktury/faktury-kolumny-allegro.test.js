@@ -35,7 +35,7 @@ const nowyPlik = () => join(mkdtempSync(join(tmpdir(), 'oms-faktury-allegro-')),
 function zZamowieniem(db) {
   db.prepare(
     "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at)"
-    + " VALUES ('allegro_szkicownia', 1, '1', '10.00', '2026-08-06')",
+    + " VALUES ('allegro_swietlik', 1, '1', '10.00', '2026-08-06')",
   ).run();
   return db;
 }

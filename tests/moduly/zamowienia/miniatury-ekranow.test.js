@@ -43,7 +43,7 @@ const zmapowane = (nad = {}) => ({
   klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'j@k.pl', phone: '+48500600700' },
   dostawa: {
     first_name: 'Jan', last_name: 'Kowalski', company: '', address_1: 'Polna 1',
-    postcode: '00-650', city: 'Pęki', country: 'PL',
+    postcode: '00-950', city: 'Warszawa', country: 'PL',
   },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
   kwota_brutto: '212.90', koszt_dostawy_brutto: '0.00', status_woo: 'processing',
@@ -57,7 +57,7 @@ const zmapowane = (nad = {}) => ({
 
 // Wiersz LUSTRA dla tego samego produktu, z adresem, ktory sklep NAPRAWDE wygenerowal.
 const wLustrze = (db, nad = {}) => zapiszProduktSklepowy(db, {
-  kanal: 'szkicownia', produkt_id: '944', wariant_id: '', nazwa: 'Ozdobny KAN',
+  kanal: 'swietlik', produkt_id: '944', wariant_id: '', nazwa: 'Ozdobny KAN',
   zdjecia_json: JSON.stringify([ORYGINAL]), miniatura: PRAWDZIWY,
   odczytane_at: '2026-08-12T06:00:00.000Z', ...nad,
 });
@@ -101,7 +101,7 @@ beforeEach(async () => {
   await app.ready();
 });
 
-const zalozZamowienie = (sklep = 'szkicownia', nad = {}) => {
+const zalozZamowienie = (sklep = 'swietlik', nad = {}) => {
   zapiszZamowienie(db, sklep, zmapowane(nad), {});
   return db.prepare('SELECT id FROM zamowienia WHERE sklep=? AND zrodlo_id=?')
     .get(sklep, nad.zrodlo_id ?? 5501).id;
@@ -238,7 +238,7 @@ describe('lista zamówień — koszt odczytu miniatur', () => {
     const zbuduj = (od, ile) => {
       for (let i = 0; i < ile; i += 1) {
         const numer = od + i;
-        zapiszZamowienie(db, 'szkicownia', zmapowane({
+        zapiszZamowienie(db, 'swietlik', zmapowane({
           zrodlo_id: numer,
           numer: String(numer),
           pozycje: [1, 2, 3].map((n) => ({
@@ -268,7 +268,7 @@ describe('lista zamówień — koszt odczytu miniatur', () => {
 
   // Lista samych zamowien recznych nie ma o co pytac lustra — i nie ma prawa go dotknac.
   it('lista bez ani jednej pozycji sklepowej nie dokłada żadnego zapytania', async () => {
-    zapiszZamowienie(db, 'szkicownia', zmapowane({ pozycje: [] }), {});
+    zapiszZamowienie(db, 'swietlik', zmapowane({ pozycje: [] }), {});
     const [licznikowa, licznik] = bazaZLicznikiem(db, 'produkty_sklepowe');
     const appPusty = buildOmsServer({ db: licznikowa, config, poller });
     await appPusty.ready();

@@ -8,7 +8,7 @@ import { stanKanalu } from '../../src/domena/kanal-stan.js';
 // dziala I MA KOMPLET", i otwiera sie dokladnie tam, gdzie wiazanie jest potrzebne.
 
 const zdrowy = (nad = {}) => ({
-  kanal: 'allegro_szkicownia',
+  kanal: 'allegro_swietlik',
   polaczony: true,
   zostaloDni: 90,
   refreshWygasaAt: '2026-11-26T06:39:38.998Z',

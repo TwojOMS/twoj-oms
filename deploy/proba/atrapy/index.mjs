@@ -21,8 +21,7 @@ import { createAtrapaGus } from './gus.mjs';
 import { createAtrapaKsef } from './ksef.mjs';
 import { createAtrapaKsefWysylki } from './ksef-wysylka.mjs';
 import { createModulKoszty } from '../../../src/moduly/koszty/modul.ts';
-import { createAtrapaDpd } from './dpd.mjs';
-import { createAtrapaInpost } from './inpost.mjs';
+import { MODULY_KURIEROW } from '../../../src/domena/moduly-kurierow.ts';
 import { createModulWysylka } from '../../../src/moduly/wysylka/modul.ts';
 import { createModulWiadomosciAtrapy } from './poczta.mjs';
 import { createAtrapaLacznosci } from './lacznosc.mjs';
@@ -31,8 +30,21 @@ import { wymagajTrybuProby } from './tryb.mjs';
 import { uruchomPulsPollerow } from './pollery.mjs';
 import { ukryjEkranyDemo } from './ekrany.mjs';
 
+// Ścieżki w rejestrze są względem korzenia repozytorium; import wykonujemy raz, bez uruchamiania serwera.
+const atrapyKurierow = await Promise.all(Object.values(MODULY_KURIEROW)
+  .filter((opis) => opis.piaskownica.atrapa.trim())
+  .map(async (opis) => ({ opis, modul: await import(new URL(`../../../${opis.piaskownica.atrapa}`, import.meta.url).href) })));
+
+export function fabrykiKurierowPiaskownicy({ env, baza = () => null }) {
+  wymagajTrybuProby(env, 'fabryki kurierów piaskownicy');
+  return Object.fromEntries(atrapyKurierow.map(({ opis, modul }) => [
+    `create${opis.klucz[0].toUpperCase()}${opis.klucz.slice(1)}`, modul.createAtrapa({ env, baza }),
+  ]));
+}
+
 // PRZ-108.09: `baza` — funkcja oddająca bazę piaskownicy (otwiera się DOPIERO po złożeniu modułów, bo migracje biorą
 // listę modułów). Atrapy kurierów czytają z niej `utworzona_at` paczki, żeby oddać realistyczny przebieg statusów.
+/** @param {any} env @param {{baza?:()=>import('node:sqlite').DatabaseSync|null}} [opcje] */
 export function modulyPiaskownicy(env, { baza = () => null } = {}) {
   wymagajTrybuProby(env, 'moduły piaskownicy');
   // Szew składa KSeF raz. Pamiętamy instancję także przy ponownym wywołaniu fabryki: numery i awaria zostają.
@@ -65,8 +77,7 @@ export function modulyPiaskownicy(env, { baza = () => null } = {}) {
     // PRZ-102.22: token KSeF z Ustawień (faktury kosztowe) — atrapa zamiast prawdziwego klienta (ksef.mjs).
     if (m.nazwa === 'koszty') return createModulKoszty({ atrapaKsef: ({ token }) => createAtrapaKsef({ env, token }) });
     if (m.nazwa === 'zamowienia') return createModulZamowienia({ zWiadomosciami: m.wymaga.includes('wiadomosci'), fabryki: gus });
-    // PRZ-092: kurier DPD z Ustawień — atrapa zamiast prawdziwego klienta (dpd.mjs); PRZ-093.09: to samo dla InPostu.
-    if (m.nazwa === 'wysylka') return createModulWysylka({ fabryki: { createDpd: createAtrapaDpd({ env, baza }), createInpost: createAtrapaInpost({ env, baza }) } });
+    if (m.nazwa === 'wysylka') return createModulWysylka({ fabryki: fabrykiKurierowPiaskownicy({ env, baza }) });
     return m;
   });
 }

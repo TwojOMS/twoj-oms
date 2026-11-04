@@ -79,16 +79,15 @@ it.each([
   ['aktywny DPD',{...envWoo,DPD_URL:'https://dpd.invalid/ws',DPD_LOGIN:'atrapa',DPD_PASSWORD:'atrapa',DPD_FID:'1',
     DPD_INFO_URL:'https://dpd-info.invalid/ws',DPD_INFO_CHANNEL:'atrapa',DPD_NADAWCA_NAZWA:'Fixture',DPD_NADAWCA_ULICA:'Testowa 1',
     DPD_NADAWCA_KOD:'00-001',DPD_NADAWCA_MIASTO:'Test'},false,true],
-] as const)('rzeczywisty bootstrap zachowuje null i aktywne usługi śledzenia: %s',async(_nazwa,env,allegro,kurier)=>{
+] as const)('rzeczywisty bootstrap przygotowuje dynamiczne usługi śledzenia: %s',async(_nazwa,env,_allegro,_kurier)=>{
   const zakoncz=blokada();const a=await zbudujOms({env});
   try{
     const paczki=a.usluga<any>('wysylka','przesylkiAllegro');
     const czuwacz=a.usluga<any>('wysylka','czuwaczPrzesylek');
-    if(allegro)expect(paczki.odswiez).toBeTypeOf('function');else expect(paczki).toBeNull();
-    if(kurier)expect(czuwacz.przebieg).toBeTypeOf('function');else expect(czuwacz).toBeNull();
-    expect(a.zegary.some(z=>z.nazwa==='czuwaczPrzesylek')).toBe(kurier);
-    // PRZ-117: ponawianie statusów stoi, gdy jest dokąd odsyłać (sklep albo kanał), i tylko wtedy.
-    expect(a.zegary.some(z=>z.nazwa==='ponawianieStatusow')).toBe(_nazwa!=='bez integracji');
+    expect(paczki.odswiez).toBeTypeOf('function');
+    expect(czuwacz.przebieg).toBeTypeOf('function');
+    expect(a.zegary.filter(z=>z.nazwa==='czuwaczPrzesylek')).toHaveLength(1);
+    expect(a.zegary.filter(z=>z.nazwa==='ponawianieStatusow')).toHaveLength(1);
   }finally{await a.app.close();a.db.close();zakoncz();}
 });
 it('diagnostyka minimalnej rzeczywistej kompozycji pomija brakujące konfiguracje usług',async()=>{

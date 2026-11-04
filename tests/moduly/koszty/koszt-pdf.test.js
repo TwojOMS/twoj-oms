@@ -187,8 +187,8 @@ const XML_DO_WYDRUKU = `<?xml version="1.0" encoding="utf-8"?>
     <Adres><KodKraju>PL</KodKraju><AdresL1>ul. Różana 7/3</AdresL1><AdresL2>00-001 Warszawa</AdresL2></Adres>
   </Podmiot1>
   <Podmiot2>
-    <DaneIdentyfikacyjne><NIP>1234563218</NIP><Nazwa>Lumina Marek Zywiecki</Nazwa></DaneIdentyfikacyjne>
-    <Adres><KodKraju>PL</KodKraju><AdresL1>1 Maja 5</AdresL1><AdresL2>00-650 Pęki</AdresL2></Adres>
+    <DaneIdentyfikacyjne><NIP>1234563218</NIP><Nazwa>Pracownia Półcień Anna Wzorcowa</Nazwa></DaneIdentyfikacyjne>
+    <Adres><KodKraju>PL</KodKraju><AdresL1>Przykładowa 1</AdresL1><AdresL2>00-950 Warszawa</AdresL2></Adres>
   </Podmiot2>
   <Fa>
     <KodWaluty>PLN</KodWaluty>
@@ -216,14 +216,14 @@ const XML_DO_WYDRUKU = `<?xml version="1.0" encoding="utf-8"?>
       <Zaplacono>1</Zaplacono><DataZaplaty>2026-06-07</DataZaplaty>
       <TerminPlatnosci><Termin>2026-06-19</Termin></TerminPlatnosci>
       <FormaPlatnosci>6</FormaPlatnosci>
-      <RachunekBankowy><NrRB>77109010140000000000000002</NrRB></RachunekBankowy>
+      <RachunekBankowy><NrRB>61109010140000071219812874</NrRB></RachunekBankowy>
     </Platnosc>
   </Fa>
 </Faktura>`;
 
 const XML_KOREKTA = `<Faktura><Podmiot1><DaneIdentyfikacyjne><NIP>5252674798</NIP>
   <Nazwa>Księgarnia Świąteczna sp. z o.o.</Nazwa></DaneIdentyfikacyjne></Podmiot1>
-  <Podmiot2><DaneIdentyfikacyjne><NIP>1234563218</NIP><Nazwa>Lumina Marek Zywiecki</Nazwa>
+  <Podmiot2><DaneIdentyfikacyjne><NIP>1234563218</NIP><Nazwa>Pracownia Półcień Anna Wzorcowa</Nazwa>
   </DaneIdentyfikacyjne></Podmiot2>
   <Fa><KodWaluty>PLN</KodWaluty><P_1>2026-06-20</P_1><P_2>KOR/2026/06/1</P_2>
   <P_13_1>-100.00</P_13_1><P_14_1>-23.00</P_14_1><P_15>-123.00</P_15>
@@ -245,7 +245,7 @@ describe('PDF wizualizacji kosztu — komplet elementów art. 106e', () => {
     // ⚠️ Nagłówki sekcji idą KAPITALIKAMI (tak samo jak w proformie i specyfikacji) — test
     // czyta wydruk, więc sprawdza to, co naprawdę stoi na papierze.
     expect(tekst).toContain('NABYWCA');
-    expect(tekst).toContain('Lumina Marek Zywiecki');
+    expect(tekst).toContain('Pracownia Półcień Anna Wzorcowa');
     expect(tekst).toContain('1234563218');
   });
 
@@ -253,8 +253,8 @@ describe('PDF wizualizacji kosztu — komplet elementów art. 106e', () => {
     const tekst = tekstZPdf(await zXml(XML_DO_WYDRUKU));
     expect(tekst).toContain('ul. Różana 7/3');
     expect(tekst).toContain('00-001 Warszawa');
-    expect(tekst).toContain('1 Maja 5');
-    expect(tekst).toContain('00-650 Pęki');
+    expect(tekst).toContain('Przykładowa 1');
+    expect(tekst).toContain('00-950 Warszawa');
   });
 
   gdyJestPdftotext('niesie datę sprzedaży i miejsce wystawienia', async () => {
@@ -309,7 +309,7 @@ describe('PDF wizualizacji kosztu — komplet elementów art. 106e', () => {
     expect(tekst).toContain('Zapłacono');
     expect(tekst).toContain('przelew');
     expect(tekst).toContain('2026-06-19');
-    expect(tekst).toContain('77109010140000000000000002');
+    expect(tekst).toContain('61109010140000071219812874');
   });
 
   gdyJestPdftotext('niesie kwotę należności ogółem (P_15) jako „do zapłaty"', async () => {
@@ -433,7 +433,7 @@ describe('PDF wizualizacji kosztu — komplet elementów art. 106e', () => {
 // wszystkie trzy kwoty z tą samą walutą — czyli podawał VAT w euro, którego nikt nie policzył.
 const XML_EUR = `<Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
   <Podmiot1><DaneIdentyfikacyjne><NIP>1200001163</NIP><Nazwa>Allegro sp. z o.o.</Nazwa></DaneIdentyfikacyjne></Podmiot1>
-  <Podmiot2><DaneIdentyfikacyjne><NIP>1234563218</NIP><Nazwa>Lumina Marek Zywiecki</Nazwa></DaneIdentyfikacyjne></Podmiot2>
+  <Podmiot2><DaneIdentyfikacyjne><NIP>1234563218</NIP><Nazwa>Pracownia Półcień Anna Wzorcowa</Nazwa></DaneIdentyfikacyjne></Podmiot2>
   <Fa><KodWaluty>EUR</KodWaluty><P_1>2026-08-01</P_1><P_2>EUR/2026/8/1</P_2><P_6>2026-08-01</P_6>
   <P_13_1>9.60</P_13_1><P_14_1>2.21</P_14_1><P_14_1W>9.44</P_14_1W><P_15>11.81</P_15>
   <RodzajFaktury>VAT</RodzajFaktury>

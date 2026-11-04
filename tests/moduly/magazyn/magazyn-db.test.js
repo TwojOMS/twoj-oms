@@ -107,7 +107,7 @@ describe('oznaczZnikniete', () => {
 
   it('nie dotyka innego kanału', () => {
     const db = openOmsDb(':memory:');
-    zapiszProduktSklepowy(db, P({ kanal: 'szkicownia', produkt_id: '9', wariant_id: '' }));
+    zapiszProduktSklepowy(db, P({ kanal: 'swietlik', produkt_id: '9', wariant_id: '' }));
     expect(oznaczZnikniete(db, 'pro', '2026-08-07T10:00:00Z')).toBe(0);
   });
 
@@ -139,9 +139,9 @@ describe('liczZyweProdukty', () => {
     const db = openOmsDb(':memory:');
     zapiszProduktSklepowy(db, P({ kanal: 'pro', produkt_id: '1', wariant_id: '' }));
     zapiszProduktSklepowy(db, P({ kanal: 'pro', produkt_id: '2', wariant_id: '' }));
-    zapiszProduktSklepowy(db, P({ kanal: 'szkicownia', produkt_id: '3', wariant_id: '' }));
+    zapiszProduktSklepowy(db, P({ kanal: 'swietlik', produkt_id: '3', wariant_id: '' }));
     expect(liczZyweProdukty(db, 'pro')).toBe(2);
-    expect(liczZyweProdukty(db, 'szkicownia')).toBe(1);
+    expect(liczZyweProdukty(db, 'swietlik')).toBe(1);
   });
 
   // ⚠️ Produkt wycofany NIE jest juz obecnoscia w kanale. Gdyby sie liczyl, kanal wygaszony
@@ -155,7 +155,7 @@ describe('liczZyweProdukty', () => {
   });
 
   it('kanał, którego nie ma w lustrze, daje zero, a nie błąd', () => {
-    expect(liczZyweProdukty(openOmsDb(':memory:'), 'allegro_amarka')).toBe(0);
+    expect(liczZyweProdukty(openOmsDb(':memory:'), 'allegro_polcien2')).toBe(0);
   });
 });
 
@@ -249,11 +249,11 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     const w = utworzKarte(db, { nazwa: 'Szpulka 70x100', szerokosc_mm: 700, wysokosc_mm: 1000 });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ kanal: 'pro', cena_gr: 7490 })), w);
     powiazProdukt(db, zapiszProduktSklepowy(db,
-      P({ kanal: 'allegro_szkicownia', produkt_id: '76251', wariant_id: '', cena_gr: 8900 })), w);
+      P({ kanal: 'allegro_swietlik', produkt_id: '76251', wariant_id: '', cena_gr: 8900 })), w);
     const [wiersz] = kartyZKanalami(db, {});
     expect(wiersz.kanaly.pro.cena_gr).toBe(7490);
-    expect(wiersz.kanaly.allegro_szkicownia.cena_gr).toBe(8900);
-    expect(wiersz.kanaly.szkicownia).toBeUndefined();
+    expect(wiersz.kanaly.allegro_swietlik.cena_gr).toBe(8900);
+    expect(wiersz.kanaly.swietlik).toBeUndefined();
   });
 
   it('karta bez produktów ma pusty zestaw kanałów, a nie brak pola', () => {
@@ -408,10 +408,10 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
   it('filtr kanału zostawia karty obecne w tym kanale', () => {
     const db = openOmsDb(':memory:');
     const a = utworzKarte(db, { nazwa: 'TylkoPro' });
-    const b = utworzKarte(db, { nazwa: 'TylkoSzkicownia' });
+    const b = utworzKarte(db, { nazwa: 'TylkoSwietlik' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ kanal: 'pro' })), a);
     powiazProdukt(db, zapiszProduktSklepowy(db,
-      P({ kanal: 'szkicownia', produkt_id: '5', wariant_id: '' })), b);
+      P({ kanal: 'swietlik', produkt_id: '5', wariant_id: '' })), b);
     expect(kartyZKanalami(db, { filtry: { kanal: 'pro' } }).map((x) => x.nazwa)).toEqual(['TylkoPro']);
   });
 
@@ -428,11 +428,11 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     const w = utworzKarte(db, { nazwa: 'Dwukanalowy' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ kanal: 'pro', cena_gr: 7490 })), w);
     powiazProdukt(db, zapiszProduktSklepowy(db,
-      P({ kanal: 'szkicownia', produkt_id: '2', wariant_id: '', cena_gr: 5000 })), w);
+      P({ kanal: 'swietlik', produkt_id: '2', wariant_id: '', cena_gr: 5000 })), w);
     const wiersze = kartyZKanalami(db, { filtry: { kanal: 'pro' } });
     expect(wiersze.map((x) => x.nazwa)).toEqual(['Dwukanalowy']);
     expect(wiersze[0].kanaly.pro.cena_gr).toBe(7490);
-    expect(wiersze[0].kanaly.szkicownia.cena_gr).toBe(5000);
+    expect(wiersze[0].kanaly.swietlik.cena_gr).toBe(5000);
   });
 
   // ⚠️ ROZSTRZYGNIĘCIE: filtr kategorii szuka we WSZYSTKICH kategoriach produktu, nie
@@ -502,7 +502,7 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     powiazProdukt(db, zapiszProduktSklepowy(db,
       P({ kanal: 'pro', kategorie_json: '["Aplikacje"]' })), w);
     powiazProdukt(db, zapiszProduktSklepowy(db,
-      P({ kanal: 'szkicownia', produkt_id: '2', wariant_id: '', kategorie_json: '["Aplikacje"]' })), w);
+      P({ kanal: 'swietlik', produkt_id: '2', wariant_id: '', kategorie_json: '["Aplikacje"]' })), w);
     expect(kartyZKanalami(db, { filtry: { kategoria: 'Aplikacje' } }).map((x) => x.nazwa))
       .toEqual(['Podwojny']);
   });
@@ -558,9 +558,9 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     const w = utworzKarte(db, { nazwa: 'Mieszana' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ kanal: 'pro', cena_gr: 2000 })), w);
     powiazProdukt(db, zapiszProduktSklepowy(db,
-      P({ kanal: 'allegro_szkicownia', produkt_id: '2', wariant_id: '', cena_gr: 20000 })), w);
+      P({ kanal: 'allegro_swietlik', produkt_id: '2', wariant_id: '', cena_gr: 20000 })), w);
     expect(kartyZKanalami(db, { filtry: { kanal: 'pro', cenaOd: 10000 } })).toEqual([]);
-    expect(kartyZKanalami(db, { filtry: { kanal: 'allegro_szkicownia', cenaOd: 10000 } })
+    expect(kartyZKanalami(db, { filtry: { kanal: 'allegro_swietlik', cenaOd: 10000 } })
       .map((x) => x.nazwa)).toEqual(['Mieszana']);
   });
 
@@ -571,7 +571,7 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     utworzKarte(db, { nazwa: 'Plecionka' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ kanal: 'pro' })), a);
     powiazProdukt(db, zapiszProduktSklepowy(db,
-      P({ kanal: 'szkicownia', produkt_id: '2', wariant_id: '' })), b);
+      P({ kanal: 'swietlik', produkt_id: '2', wariant_id: '' })), b);
     expect(kartyZKanalami(db, { fraza: 'szpulka', filtry: { kanal: 'pro' } }).map((x) => x.nazwa))
       .toEqual(['Szpulka']);
   });
@@ -818,7 +818,7 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
     // DWA z czterech kart bez SKU, żeby „do przejęcia" nie mogło być kopią „bez SKU".
     bezSku.slice(0, DO_PRZEJECIA).forEach((kartaId, i) => {
       powiazProdukt(db, zapiszProduktSklepowy(db, {
-        kanal: 'szkicownia', produkt_id: `90${i}`, nazwa: `Zrodlo ${i}`, sku_sklepu: `PD1${i}`,
+        kanal: 'swietlik', produkt_id: `90${i}`, nazwa: `Zrodlo ${i}`, sku_sklepu: `PD1${i}`,
         cena_gr: 2900, odczytane_at: '2026-08-20T10:00:00Z',
       }), kartaId);
     });
@@ -873,7 +873,7 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
   it('do przejęcia liczy wyłącznie te, którym ŻYWY produkt ma co oddać', () => {
     const db = openOmsDb(':memory:');
     const produkt = (nad) => zapiszProduktSklepowy(db, {
-      kanal: 'szkicownia', cena_gr: 1000, odczytane_at: '2026-08-21T10:00:00Z', ...nad,
+      kanal: 'swietlik', cena_gr: 1000, odczytane_at: '2026-08-21T10:00:00Z', ...nad,
     });
 
     // (1) produkt żywy i powiązany, ale sklep numeru nie ma — nie ma czego przejąć.
@@ -887,7 +887,7 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
     produkt({ produkt_id: '3', nazwa: 'Niczyj', sku_sklepu: 'PD30' });
     utworzKarte(db, { nazwa: 'BezProduktu' });
 
-    expect(oznaczZnikniete(db, 'szkicownia', '2026-08-21T10:00:00Z'), 'DOKŁADNIE jeden wypadł ze sklepu')
+    expect(oznaczZnikniete(db, 'swietlik', '2026-08-21T10:00:00Z'), 'DOKŁADNIE jeden wypadł ze sklepu')
       .toBe(1);
 
     expect(zliczeniaBrakow(db)).toMatchObject({ razem: 3, bezSku: 3, doPrzejecia: 0 });
@@ -896,10 +896,10 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
   it('zliczeniaNiepowiazanych: żywe bez karty, w tym oferty Allegro', () => {
     const db = openOmsDb(':memory:');
     const przy = (nad) => ({ cena_gr: 100, odczytane_at: '2026-08-20T10:00:00Z', ...nad });
-    zapiszProduktSklepowy(db, przy({ kanal: 'szkicownia', produkt_id: '1', nazwa: 'A' }));
-    zapiszProduktSklepowy(db, przy({ kanal: 'allegro_szkicownia', produkt_id: '2', nazwa: 'B' }));
-    zapiszProduktSklepowy(db, przy({ kanal: 'allegro_amarka', produkt_id: '3', nazwa: 'C' }));
-    expect(zliczeniaNiepowiazanych(db, ['allegro_szkicownia', 'allegro_amarka'])).toEqual({ pominiete: 3, ofertyAllegro: 2 });
+    zapiszProduktSklepowy(db, przy({ kanal: 'swietlik', produkt_id: '1', nazwa: 'A' }));
+    zapiszProduktSklepowy(db, przy({ kanal: 'allegro_swietlik', produkt_id: '2', nazwa: 'B' }));
+    zapiszProduktSklepowy(db, przy({ kanal: 'allegro_polcien2', produkt_id: '3', nazwa: 'C' }));
+    expect(zliczeniaNiepowiazanych(db, ['allegro_swietlik', 'allegro_polcien2'])).toEqual({ pominiete: 3, ofertyAllegro: 2 });
   });
 
   // ⚠️ Produkt POWIĄZANY nie jest pominięty, a produkt ZNIKNIĘTY ze sklepu nie jest robotą
@@ -908,18 +908,18 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
   it('zliczeniaNiepowiazanych pomija powiązane i zniknięte', () => {
     const db = openOmsDb(':memory:');
     const powiazany = zapiszProduktSklepowy(db, {
-      kanal: 'szkicownia', produkt_id: '1', nazwa: 'A', cena_gr: 100, odczytane_at: '2026-08-20T10:00:00Z',
+      kanal: 'swietlik', produkt_id: '1', nazwa: 'A', cena_gr: 100, odczytane_at: '2026-08-20T10:00:00Z',
     });
     powiazProdukt(db, powiazany, utworzKarte(db, { nazwa: 'W' }));
     zapiszProduktSklepowy(db, {
-      kanal: 'allegro_szkicownia', produkt_id: '2', nazwa: 'B', cena_gr: 100, odczytane_at: '2026-08-20T10:00:00Z',
+      kanal: 'allegro_swietlik', produkt_id: '2', nazwa: 'B', cena_gr: 100, odczytane_at: '2026-08-20T10:00:00Z',
     });
     zapiszProduktSklepowy(db, {
-      kanal: 'allegro_szkicownia', produkt_id: '3', nazwa: 'C', cena_gr: 100, odczytane_at: '2026-08-19T10:00:00Z',
+      kanal: 'allegro_swietlik', produkt_id: '3', nazwa: 'C', cena_gr: 100, odczytane_at: '2026-08-19T10:00:00Z',
     });
-    expect(oznaczZnikniete(db, 'allegro_szkicownia', '2026-08-20T10:00:00Z'), 'jeden NAPRAWDĘ zniknął')
+    expect(oznaczZnikniete(db, 'allegro_swietlik', '2026-08-20T10:00:00Z'), 'jeden NAPRAWDĘ zniknął')
       .toBe(1);
 
-    expect(zliczeniaNiepowiazanych(db, ['allegro_szkicownia', 'allegro_amarka'])).toEqual({ pominiete: 1, ofertyAllegro: 1 });
+    expect(zliczeniaNiepowiazanych(db, ['allegro_swietlik', 'allegro_polcien2'])).toEqual({ pominiete: 1, ofertyAllegro: 1 });
   });
 });

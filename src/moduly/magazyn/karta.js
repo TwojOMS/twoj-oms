@@ -312,7 +312,7 @@ export function createKartaMagazynu({ db, kanalyAllegro, definicje }) {
 export function registerKartaMagazynu(app, { db, magazyn, kanalyAllegro, definicje }) {
   const { ekranKarty, brakKarty } = createKartaMagazynu({ db, kanalyAllegro, definicje });
   app.get('/magazyn/:id', async (req, reply) => {
-    if (!magazyn) return reply.view('pusta-strona.ejs', BEZ_SKLEPOW);
+    if (!magazyn || magazyn.gotowy?.() === false) return reply.view('pusta-strona.ejs', BEZ_SKLEPOW);
     const karta = kartaPoId(db, req.params.id);
     if (!karta) return brakKarty(reply, req.params.id);
     // ⚠️ TA TRASA WYLACZNIE CZYTA. Podpowiedzi sa PROPOZYCJA — wejscie na karte nie wiaze
@@ -323,7 +323,7 @@ export function registerKartaMagazynu(app, { db, magazyn, kanalyAllegro, definic
   // PRZ-091 — ruch ręczny (przyjęcie / korekta). Odmowa wraca na kartę z kodem 400 i tym, co wpisano.
   // Ten sam klucz drugi raz (podwójne kliknięcie) — przekierowanie jak po sukcesie, bez drugiego ruchu.
   app.post('/magazyn/:id/ruch', async (req, reply) => {
-    if (!magazyn) return reply.view('pusta-strona.ejs', BEZ_SKLEPOW);
+    if (!magazyn || magazyn.gotowy?.() === false) return reply.view('pusta-strona.ejs', BEZ_SKLEPOW);
     const karta = kartaPoId(db, req.params.id);
     if (!karta) return brakKarty(reply, req.params.id);
     if (!stanKarty(db, karta.id)) {

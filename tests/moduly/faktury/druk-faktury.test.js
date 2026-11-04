@@ -33,7 +33,7 @@ beforeEach(async () => {
   app = buildOmsServer({ db, config, poller, faktura });
   await app.ready();
   id = zapiszZamowienie(db, 'pro', {
-    zrodlo_id: 4242, numer: '4242', klient: { first_name: 'Jan' }, dostawa: { city: 'Pęki' },
+    zrodlo_id: 4242, numer: '4242', klient: { first_name: 'Jan' }, dostawa: { city: 'Warszawa' },
     metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '6762432557',
     kwota_brutto: '123.00', koszt_dostawy_brutto: '23.00', status_woo: 'processing',
     oplacone_at: null, anulowane: 0, utworzone_at: '2026-08-01T09:00:00',

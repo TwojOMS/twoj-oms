@@ -60,7 +60,7 @@ describe('PRZ-108.10 faktura WDT — NIP sprzedawcy przy użyciu', () => {
   });
 
   it('faktura KRAJOWA bez NIP-u sprzedawcy wystawia się jak dotąd (inFakt zna sprzedawcę z konta)', async () => {
-    const { infakt, id, faktura } = zestaw(() => null, { nip: '7777777777', klient: { company: 'Krajowy Nabywca' } });
+    const { infakt, id, faktura } = zestaw(() => null, { nip: '7777777777', klient: { company: 'Krajowy Nabywca', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' } });
     await faktura.wystaw(id);
     expect(infakt.wystaw).toHaveBeenCalledTimes(1);
     expect(Object.hasOwn(infakt.wystaw.mock.calls[0][0], 'notes')).toBe(false);

@@ -19,7 +19,7 @@ const START = new Date('2026-08-28T12:00:00Z');
 
 let licznik = 0;
 
-function zFaktura(db, { sklep = 'allegro_szkicownia', invoiceId } = {}) {
+function zFaktura(db, { sklep = 'allegro_swietlik', invoiceId } = {}) {
   licznik += 1;
   const id = zapiszZamowienie(db, sklep, {
     zrodlo_id: `${sklep}-${licznik}`,
@@ -54,7 +54,7 @@ const infaktNieruszany = {
 };
 
 // Atrapa liczaca pytania. `odpowiedz` moze byc tablica albo funkcja (zrodloId) => tablica.
-function kanaly(odpowiedz = [], kanal = 'allegro_szkicownia') {
+function kanaly(odpowiedz = [], kanal = 'allegro_swietlik') {
   const pytania = [];
   return {
     pytania,
@@ -103,7 +103,7 @@ describe('bezpiecznik odpytywania zasobu faktur Allegro w czuwaczu', () => {
 
     await createCzuwaczKsef({ db, infakt: infaktNieruszany, klienciKanalow: k.klienci }).przebieg();
 
-    expect(stanWeryfikacji(db, 'allegro_szkicownia').bezpiecznik_od).toBe(START.toISOString());
+    expect(stanWeryfikacji(db, 'allegro_swietlik').bezpiecznik_od).toBe(START.toISOString());
   });
 
   it('przebieg godzinę później NIE pyta ani razu', async () => {
@@ -146,7 +146,7 @@ describe('bezpiecznik odpytywania zasobu faktur Allegro w czuwaczu', () => {
     vi.setSystemTime(new Date(START.getTime() + 25 * GODZINA));
     await czuwacz.przebieg();                                   // sonda -> zamyka
 
-    expect(stanWeryfikacji(db, 'allegro_szkicownia').bezpiecznik_od).toBe(null);
+    expect(stanWeryfikacji(db, 'allegro_swietlik').bezpiecznik_od).toBe(null);
 
     const przedTrzecim = k.pytania.length;
     vi.setSystemTime(new Date(START.getTime() + 26 * GODZINA));
@@ -168,13 +168,13 @@ describe('bezpiecznik odpytywania zasobu faktur Allegro w czuwaczu', () => {
 
   it('bezpiecznik jednego kanału NIE zamyka odpytywania drugiego', async () => {
     const db = openOmsDb(':memory:');
-    for (let i = 0; i < 4; i += 1) zFaktura(db, { sklep: 'allegro_szkicownia' });
-    for (let i = 0; i < 2; i += 1) zFaktura(db, { sklep: 'allegro_amarka' });
+    for (let i = 0; i < 4; i += 1) zFaktura(db, { sklep: 'allegro_swietlik' });
+    for (let i = 0; i < 2; i += 1) zFaktura(db, { sklep: 'allegro_polcien2' });
 
     const pytaniaDrugiego = [];
     const klienci = {
       ...kanaly([]).klienci,
-      allegro_amarka: {
+      allegro_polcien2: {
         pobierzFakturyZamowienia: async (z) => { pytaniaDrugiego.push(z); return [wpis('INV-X')]; },
       },
     };
@@ -182,7 +182,7 @@ describe('bezpiecznik odpytywania zasobu faktur Allegro w czuwaczu', () => {
     await createCzuwaczKsef({ db, infakt: infaktNieruszany, klienciKanalow: klienci }).przebieg();
 
     expect(pytaniaDrugiego).toHaveLength(2);
-    expect(stanWeryfikacji(db, 'allegro_amarka').bezpiecznik_od).toBe(null);
+    expect(stanWeryfikacji(db, 'allegro_polcien2').bezpiecznik_od).toBe(null);
   });
 
   it('RZUT nie otwiera bezpiecznika — to błąd inny niż 400 i nie dowodzi, że zasób jest martwy', async () => {
@@ -193,7 +193,7 @@ describe('bezpiecznik odpytywania zasobu faktur Allegro w czuwaczu', () => {
     for (let i = 0; i < 4; i += 1) zFaktura(db);
     const pytania = [];
     const klienci = {
-      allegro_szkicownia: {
+      allegro_swietlik: {
         pobierzFakturyZamowienia: async (z) => {
           pytania.push(z);
           throw new Error('Allegro: HTTP 503 przy /order/checkout-forms/x/invoices');
@@ -204,7 +204,7 @@ describe('bezpiecznik odpytywania zasobu faktur Allegro w czuwaczu', () => {
     await createCzuwaczKsef({ db, infakt: infaktNieruszany, klienciKanalow: klienci }).przebieg();
 
     expect(pytania).toHaveLength(4);
-    expect(stanWeryfikacji(db, 'allegro_szkicownia')).toBeUndefined();
+    expect(stanWeryfikacji(db, 'allegro_swietlik')).toBeUndefined();
   });
 
   it('działający zasób: bezpiecznik się nie otwiera i zachowanie jest dokładnie jak dotąd', async () => {
@@ -215,6 +215,6 @@ describe('bezpiecznik odpytywania zasobu faktur Allegro w czuwaczu', () => {
     await createCzuwaczKsef({ db, infakt: infaktNieruszany, klienciKanalow: k.klienci }).przebieg();
 
     expect(k.pytania).toHaveLength(6);
-    expect(stanWeryfikacji(db, 'allegro_szkicownia').bezpiecznik_od).toBe(null);
+    expect(stanWeryfikacji(db, 'allegro_swietlik').bezpiecznik_od).toBe(null);
   });
 });

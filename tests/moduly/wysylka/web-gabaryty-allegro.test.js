@@ -14,8 +14,8 @@ const AUTH = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}
 const CONFIG = { auth: { user: 'adam', pass: 'x' } };
 const POLLER = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
 const ADRES = {
-  nazwa: 'Jan Kowalski', company: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-650',
-  miasto: 'Pęki', kraj: 'PL', phone: '+48500600700', email: 'j@k.pl',
+  nazwa: 'Jan Kowalski', company: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950',
+  miasto: 'Warszawa', kraj: 'PL', phone: '+48500600700', email: 'j@k.pl',
 };
 
 const zamowienie = (nad = {}) => ({
@@ -23,7 +23,7 @@ const zamowienie = (nad = {}) => ({
   klient: { email: 'j@allegromail.pl', phone: '+48500600700' },
   dostawa: {
     first_name: 'Jan', last_name: 'Kowalski', company: '', address_1: 'Polna 1',
-    postcode: '00-650', city: 'Pęki', country: 'PL',
+    postcode: '00-950', city: 'Warszawa', country: 'PL',
   },
   metoda_wysylki: 'allegro_punkt', kwota_pobrania: null, chce_fakture: 0, nip: null,
   kwota_brutto: '99.00', status_woo: 'processing', oplacone_at: '2026-09-20T13:00:00',
@@ -42,7 +42,7 @@ function zServerem({ liveId = ONE_BOX, nad = {} } = {}) {
     return stan.liveId;
   } } };
   const serwer = buildOmsServer({ db, config: CONFIG, poller: POLLER, nadanie, kurierzy });
-  const id = zapiszZamowienie(db, 'allegro_szkicownia', zamowienie(nad), {});
+  const id = zapiszZamowienie(db, 'allegro_swietlik', zamowienie(nad), {});
   return { serwer, id, nadania, stan };
 }
 

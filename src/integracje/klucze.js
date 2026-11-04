@@ -1,3 +1,4 @@
+import { modulKanalu } from '../domena/moduly-kanalow.ts';
 // Metadane dla konfiguracji modułów etapu 3. Moduł przejmuje kluczeIntegracji
 // z właściwej deklaracji, dzięki czemu rdzeń blokuje poświadczenia w trybie próby.
 const deklaracja = (...kluczeIntegracji) => Object.freeze({ kluczeIntegracji: Object.freeze(kluczeIntegracji) });
@@ -5,9 +6,7 @@ const deklaracja = (...kluczeIntegracji) => Object.freeze({ kluczeIntegracji: Ob
 // prefiksu env zamiast wpisywać nazwy kont konkretnej firmy.
 export function kluczeKanalu(typ, prefiks) {
   if (!/^[A-Z][A-Z0-9_]*$/.test(prefiks)) throw new Error('Nieprawidłowy prefiks kanału');
-  if (typ === 'allegro') return deklaracja(`${prefiks}_CLIENT_ID`, `${prefiks}_CLIENT_SECRET`);
-  if (typ === 'woo') return deklaracja(`${prefiks}_CK`, `${prefiks}_CS`);
-  throw new Error('Nieznany typ kanału');
+  return deklaracja(...modulKanalu(typ).kluczeEnv.sekrety.map(s => `${prefiks}_${s}`));
 }
 export const integracje = Object.freeze({
   allegro: deklaracja('ALLEGRO_CLIENT_ID', 'ALLEGRO_CLIENT_SECRET'),

@@ -1,5 +1,5 @@
-<h1>Kurier InPost</h1>
-<p><a href="/ustawienia/integracje">← Integracje</a></p>
+<h1>InPost</h1>
+<p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (test) { %>
@@ -11,11 +11,12 @@
 
 <% if (zEnv) { %>
 <section class="ust-sekcja" id="inpost-stan">
-  <h2>Podłączony w pliku konfiguracji</h2>
-  <p>Kurier InPost jest ustawiony w pliku konfiguracji serwera (<code>oms.env</code>, zmienne <code>INPOST_…</code>). Ten ekran go nie zmienia — dane InPost poprawisz w tym pliku.</p>
+  <h2>Ustawione przez administratora serwera</h2>
+  <p>Kurier InPost jest ustawiony na serwerze. Ten ekran go nie zmienia — dane InPost poprawi administrator serwera.</p>
+  <details class="ust-pomoc"><summary>Dla administratora serwera</summary><p>Plik <code>oms.env</code>: zmienne <code>INPOST_…</code>, w tym adres API <code>INPOST_URL</code>.</p></details>
   <% if (stan) { %>
     <form method="post" action="/ustawienia/integracje/inpost/odlacz">
-      <p>W OMS-ie zostały też dane InPost zapisane wcześniej na tym ekranie. Plik konfiguracji ma pierwszeństwo, więc nie są używane.</p>
+      <p>W OMS-ie zostały też dane InPost zapisane wcześniej na tym ekranie. Ustawienia na serwerze mają pierwszeństwo, więc nie są używane.</p>
       <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń zapisane dane InPost</button></div>
     </form>
   <% } %>
@@ -26,7 +27,7 @@
   <% if (stan) { %>
     <p class="ust-stan ust-stan-ok"><strong>Podłączony</strong></p>
     <p>„<%= stan.ustawienia.nazwa %>” — zapisał <%= stan.kontoLogin ?? '—' %>, <%= fmtDataCzas(stan.zmienionoAt) %>.</p>
-    <% if (wymagaRestartu) { %><p class="pas-uprzedzenie">Nadawanie paczek włączy się po ponownym uruchomieniu OMS-u (to pierwszy kurier w tym panelu). Kolejne zmiany na tym ekranie działają od razu.</p><% } %>
+    <% if (wymagaRestartu) { %><p class="pas-uprzedzenie">Nadawanie paczek włączy się po ponownym uruchomieniu OMS-u (to pierwszy kurier w tym OMS-ie). Kolejne zmiany na tym ekranie działają od razu.</p><% } %>
   <% } else { %>
     <p class="ust-stan"><strong>Niepodłączony</strong></p>
   <% } %>
@@ -45,13 +46,13 @@
     <div><input id="inpost-nazwa" name="nazwa" value="<%= pola.nazwa %>" maxlength="60" required>
       <p class="ust-pomoc">Dowolna nazwa, po której rozpoznasz ten rodzaj wysyłki.</p></div>
 
-    <label>Adres nadawcy</label>
+    <label for="inpost-nadawca">Adres nadawcy</label>
     <div>
-      <% const n = adresFirmy.adres; if (n && n.nazwa && n.ulica && n.kod && n.miasto) { %><div class="ust-wartosc"><%= n.nazwa %>, <%= n.ulica %>, <%= n.kod %> <%= n.miasto %></div>
-        <% if (!n.phone || !n.email) { const brak = [!n.phone && (adresFirmy.zrodlo === 'plik' ? 'DPD_NADAWCA_TELEFON' : 'telefon'), !n.email && (adresFirmy.zrodlo === 'plik' ? 'DPD_NADAWCA_EMAIL' : 'e-mail')].filter(Boolean).join(' i '); %>
-          <div class="ust-wartosc uwaga">InPost wymaga telefonu i e-maila nadawcy — <% if (adresFirmy.zrodlo === 'plik') { %>adres firmy stoi w pliku konfiguracji, dopisz tam <%= brak %>.<% } else { %>dopisz <%= brak %> w <a href="<%= ekranAdresu %>">Ustawienia → Firma</a>.<% } %> Bez nich InPost nie nada paczki.</div><% } %>
-      <% } else { %><div class="ust-wartosc uwaga">Brak — wpisz adres firmy w <a href="<%= ekranAdresu %>">Ustawienia → Firma</a>. Bez adresu InPost nie nada paczki.</div><% } %>
-      <p class="ust-pomoc">Widoczny na etykiecie. To adres firmy — ten sam trafia na proformy i specyfikacje, dlatego ustawia się go w jednym miejscu: <a href="<%= ekranAdresu %>">Ustawienia → Firma</a><%= adresFirmy.zrodlo === 'plik' ? ' (tutaj: z pliku konfiguracji, DPD_NADAWCA_…)' : '' %>.</p>
+      <% const n = adresFirmy.adres; if (n && n.nazwa && n.ulica && n.kod && n.miasto) { %><div class="ust-wartosc"><output id="inpost-nadawca"><%= n.nazwa %>, <%= n.ulica %>, <%= n.kod %> <%= n.miasto %></output></div>
+        <% if (!n.phone || !n.email) { const brak = [!n.phone && (adresFirmy.zrodlo === 'plik' ? 'telefonu' : 'telefon'), !n.email && (adresFirmy.zrodlo === 'plik' ? 'e-maila' : 'e-mail')].filter(Boolean).join(' i '); %>
+          <div class="ust-wartosc uwaga">InPost wymaga telefonu i e-maila nadawcy — <% if (adresFirmy.zrodlo === 'plik') { %>adres firmy jest ustawiony na serwerze. Poproś administratora o uzupełnienie <%= brak %> w Ustawienia → Firma.<% } else { %>dopisz <%= brak %> w <a href="<%= ekranAdresu %>">Ustawienia → Firma</a>.<% } %> Bez nich InPost nie nada paczki.</div><% } %>
+      <% } else { %><div class="ust-wartosc uwaga"><output id="inpost-nadawca">Brak — wpisz adres firmy w <a href="<%= ekranAdresu %>">Ustawienia → Firma</a>. Bez adresu InPost nie nada paczki.</output></div><% } %>
+      <p class="ust-pomoc">Widoczny na etykiecie. To adres firmy — ten sam trafia na proformy i specyfikacje, dlatego ustawia się go w jednym miejscu: <a href="<%= ekranAdresu %>">Ustawienia → Firma</a><%= adresFirmy.zrodlo === 'plik' ? ' (tutaj: ustawiony na serwerze)' : '' %>.</p>
     </div>
 
     <h3>Ustawienia</h3>
@@ -67,9 +68,10 @@
     <div><input id="inpost-paczkomat" name="paczkomatNadawczy" value="<%= pola.paczkomatNadawczy %>" maxlength="20" autocomplete="off">
       <p class="ust-pomoc">Opcjonalny kod paczkomatu albo PaczkoPunktu, w którym zostawiasz paczki (np. ABC01M albo POP-WAW206). Puste pole — OMS nie podaje go InPostowi.</p></div>
 
-    <label>Adres API</label>
-    <div><div class="ust-wartosc"><code><%= adresApi %></code></div>
-      <p class="ust-pomoc">Produkcyjne API ShipX. Inny adres da się ustawić tylko w pliku konfiguracji (<code>INPOST_URL</code>).</p></div>
+    <label for="inpost-adres-api">Adres API</label>
+    <div><div class="ust-wartosc"><output id="inpost-adres-api"><code><%= adresApi %></code></output></div>
+      <p class="ust-pomoc">Produkcyjne API ShipX. Inny adres da się ustawić tylko na serwerze.</p>
+      <details class="ust-pomoc"><summary>Dla administratora serwera</summary><p>Inny adres API: <code>INPOST_URL</code> w <code>oms.env</code>.</p></details></div>
 
     <p class="ust-pelna ust-pomoc">Wagę i gabaryt skrytki (A, B, C) wybierasz przy nadaniu paczki. Pola oznaczone <span class="ust-wymagane">*</span> są wymagane.</p>
     <div class="ust-pelna ust-akcje">
@@ -78,8 +80,20 @@
     </div>
   </form>
 </section>
+<% } %>
 
-<% if (stan) { %>
+<section class="ust-sekcja" id="inpost-pobranie">
+  <h2>Pobranie przy paczkomatach</h2>
+  <form method="post" action="/ustawienia/integracje/inpost/pobranie">
+    <p><label for="inpost-umowa"><input id="inpost-umowa" type="checkbox" name="umowa" value="tak"<% if (pobranie.wlaczone) { %> checked<% } %>> Mam umowę z InPostem na przesyłki za pobraniem (paczkomat za pobraniem)</label></p>
+    <p class="ust-pomoc">Bez umowy OMS nadaje przez InPost tylko pobranie sprzedane przez sklep (paczka nr 1, kwota z zamówienia). Umowa jest potrzebna, gdy pobranie dodajesz w OMS-ie albo nadajesz zamiennik za pobraniem (paczka nr 2 i kolejne) — po jej włączeniu paczkomat będzie do wyboru także tam.</p>
+    <p class="ust-pomoc">Włącz tylko wtedy, gdy Twoja umowa z InPostem obejmuje pobranie. Bez niej InPost może przyjąć paczkę bez pobrania, a klient odbierze ją bez zapłaty. Po każdym nadaniu OMS sprawdza, czy InPost potwierdził kwotę, i jeśli nie, oznacza paczkę „do wyjaśnienia”.</p>
+    <p class="ust-stan<%= pobranie.wlaczone ? ' ust-stan-ok' : '' %>">Stan: <strong><%= pobranie.wlaczone ? 'włączone' : 'wyłączone' %><% if (pobranie.zmienionoAt) { %> od <%= fmtDataCzas(pobranie.zmienionoAt) %><% } %></strong></p>
+    <div class="ust-akcje"><button class="btn btn--glowny" type="submit">Zapisz</button></div>
+  </form>
+</section>
+
+<% if (!zEnv && stan) { %>
 <section class="ust-sekcja">
   <h2>Sprawdzenie i odłączenie</h2>
   <form method="post" action="/ustawienia/integracje/inpost/sprawdz">
@@ -91,5 +105,4 @@
     <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Odłącz InPost</button></div>
   </form>
 </section>
-<% } %>
 <% } %>

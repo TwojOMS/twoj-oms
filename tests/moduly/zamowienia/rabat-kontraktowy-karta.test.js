@@ -64,7 +64,7 @@ const zapiszFakture = async (id, pola, headers = naglowek) => {
     method: 'POST',
     url: `/zamowienia/${id}/dane/faktura`,
     headers,
-    payload: { firma: 'Pracownia Przykładowa sp. z o.o.', ulica: 'Długa 1', kod: '43-300', miasto: 'Pęki', ...pola },
+    payload: { firma: 'Pracownia Przykładowa sp. z o.o.', ulica: 'Długa 1', kod: '43-300', miasto: 'Warszawa', ...pola },
   });
   await app.close();
   return odp;

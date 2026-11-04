@@ -1,6 +1,6 @@
 import { bladOperatora } from '../../../domena/bledy.js';
 import {
-  zakresMiesiaca, scalDokumenty, stanKsef, stanTerminu, opisTerminu, czekaNaPrzelew, stanZaplaty, plakietkaKsef, filtrujDokumenty,
+  zakresMiesiaca, scalDokumenty, stanKsef, stanTerminu, opisTerminu, czekaNaPrzelew, stanZaplaty, wKsef, filtrujDokumenty,
 } from '../../../domena/lista-faktur.js';
 import { zl } from '../../../domena/suma-pozycji.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
@@ -194,7 +194,7 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
       // Pola tabeli dokumentów; kontrakt pasa należności pozostaje osobny.
       ...(tabela ? {
         nettoZl: zl(Number(d?.net_price ?? 0)),
-        plakietka: plakietkaKsef({ ...d, stanKsef: stanKsef(d, Boolean(ksefZleconaAt)) }),
+        wKsef: wKsef(d),
       } : {}),
     };
   }
@@ -213,12 +213,12 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
     const mapy = powiazania();
     const wiersze = filtrujDokumenty(scalDokumenty(faktury, korekty), { typ, platnosc })
       .map((d) => wzbogac(d, mapy, dzis, true));
-    // Stan VAT i korekty z adaptera: odnośnik do dokumentu i plakietka przy numerze.
+    // Stan VAT i korekty z adaptera: odnośnik do dokumentu.
     if (program.opis?.wbudowany !== true || typeof program.stanDokumentu !== 'function') return wiersze;
     return Promise.all(wiersze.map(async (d) => {
       if (!['vat', 'korekta'].includes(d.rodzaj) || !d.uuid) return d;
       const stanDokumentu = await program.stanDokumentu(d.uuid);
-      return { ...d, stanDokumentu, plakietka: plakietkaKsef({ ...d, stanDokumentu }) };
+      return { ...d, stanDokumentu };
     }));
   }
 

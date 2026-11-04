@@ -83,10 +83,10 @@ function daneWzoru(nadpisania = {}) {
     dataWystawienia: '2026-08-04',
     sposobZaplaty: 'Przelew bankowy',
     sprzedawca: {
-      nazwa: 'Lumina Marek Zywiecki',
-      ulica: '1 Maja 5',
-      kod: '00-650',
-      miasto: 'Pęki',
+      nazwa: 'Pracownia Półcień Anna Wzorcowa',
+      ulica: 'Przykładowa 1',
+      kod: '00-950',
+      miasto: 'Warszawa',
       kraj: 'Polska',
       nip: '1234563218',
     },
@@ -141,8 +141,8 @@ describe.skipIf(!PDFTOTEXT)('zbudujProformePdf — treść odczytana z gotowego 
   it('zwraca wszystkie polskie znaki w całości', () => {
     const tekst = tekstZPdf(zbudujProformePdf(daneWzoru()));
 
-    expect(tekst).toContain('Lumina Marek Zywiecki');
-    expect(tekst).toContain('Pęki');
+    expect(tekst).toContain('Pracownia Półcień Anna Wzorcowa');
+    expect(tekst).toContain('Warszawa');
     expect(tekst).toContain('Wiosenna 17/71');
     expect(tekst).toContain('wysyłka kurierem DPD');
     expect(tekst).toContain('sześćset pięćdziesiąt cztery złote');

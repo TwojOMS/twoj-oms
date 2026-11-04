@@ -56,7 +56,7 @@ describe('lustro reklam oddzielne dla każdej instalacji i konta', () => {
     const insert = db.prepare(`INSERT INTO zamowienia
       (sklep,zrodlo_id,numer,kwota_brutto,atrybucja_json,utworzone_at) VALUES (?,?,?,?,?,?)`);
     insert.run('pro', 1451, '1451', '144.80', JSON.stringify({ source: 'direct' }), '2026-09-22T12:00:00Z');
-    insert.run('szkicownia', 1451, '1451', '999.00', null, '2026-09-22T12:00:00Z');
+    insert.run('swietlik', 1451, '1451', '999.00', null, '2026-09-22T12:00:00Z');
     const order = db.prepare("SELECT id FROM zamowienia WHERE sklep = 'pro' AND numer = '1451'").get();
     db.prepare(`INSERT INTO pozycje (zamowienie_id,nazwa,ilosc,cena_brutto,brutto_linii,netto_linii,zrodlo)
       VALUES (?,?,?,?,?,?,?)`).run(order.id, 'Produkt', 2, '59.90', '119.80', '97.40', 'sklep');

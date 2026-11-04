@@ -1,3 +1,4 @@
+import { wzorzecNazw } from '../pomoc/skroty-nazw-firmy.js';
 // PRZ-062: cały panel na kanałach pod nazwami klienta (allegro_przykladowa, woo_przykladowa) — tak, jak klient je
 // skonfiguruje według docs/instalacja-docker.md, sekcja „Przejście na pracę”: definicje w OMS_KANALY
 // z etykietą i identyfikatorem raportu, fałszywe klucze (bez sieci), granice raportu założone skryptem
@@ -39,9 +40,9 @@ const KLUCZE = {
 const NAZWY_RAPORTU = { ALLEGRO_PRZYKLADOWA: 'Allegro Pracownia Przykładowa', SKLEP_PRZYKLADOWA: 'sklep.przykladowa.example' };
 
 // Nazwy firmy autora (te same wzorce co strażnik paczki PRZ-060) i jej historyczne kanały z fixture testów.
-const SLOWA_FIRMY = [/szkicownia/i, /lumina/i, /drugamarka/i, /trzeciamarka/i, /amarka/i, /zywiecki/i, /fundacja przyk/i, /\bGDD\b/];
+const SLOWA_FIRMY = [wzorzecNazw([{"wzor": "\\p{L}{8}", "skrot": "3876cd847a24f6d3a8f3542919b9f6545e500e2eea8583bb58583508cefe9a57", "bezWielkosci": true}]), wzorzecNazw([{"wzor": "\\p{L}{8}", "skrot": "a2ac0b2e157811634f85a0cd5e7ec6ae46b6123e724924eba975ef822566f72e", "bezWielkosci": true}]), wzorzecNazw([{"wzor": "\\p{L}{7}", "skrot": "bbad42404dae7eccdb5c9da096a448d035cbe65c428a1f58cad5e8617dff6d6a", "bezWielkosci": true}]), wzorzecNazw([{"wzor": "\\p{L}{7}", "skrot": "621ff5bc8c1a1c6efc971f9b84d23fd0cd4d1253e9591b25270647d40c165c4b", "bezWielkosci": true}]), wzorzecNazw([{"wzor": "\\p{L}{6}\\s*\\p{L}{5}", "skrot": "bc2697af073f87f25c42ba4846fffd02becfd0a936fd018ef3c8de7def6f9347", "bezWielkosci": true}]), wzorzecNazw([{"wzor": "\\p{L}{6}", "skrot": "22fd0120386bf44db9b2553babeb20e750484883331baed1e36f87aaf1dc7473", "bezWielkosci": true}, {"wzor": "\\p{L}{6}", "skrot": "2b26c3d0b5f3fff76e52503400e750bae306b5bd3fea3f861797207eb4015b4b", "bezWielkosci": true}]), wzorzecNazw([{"wzor": "\\p{L}{6} \\p{L}{2} \\p{L}{4}", "skrot": "ab34ab845f401834235d3974c5f0fd83d4858addd09ab8ab753c246b9ac81766", "bezWielkosci": true}]), /\bGDD\b/];
 function firmaW(tekst: string): string[] {
-  const trafienia = SLOWA_FIRMY.filter(w => w.test(tekst)).map(String);
+  const trafienia = SLOWA_FIRMY.flatMap((w, i) => w.test(tekst) ? [`wzorzec nazwy firmy #${i + 1}`] : []);
   for (const k of definicjeKanalowHistoryczne) {
     if (tekst.includes(k.etykieta)) trafienia.push(`etykieta ${k.etykieta}`);
     if (new RegExp(`(value="|kanal=|>)${k.klucz}("|&|<|$)`, 'm').test(tekst)) trafienia.push(`klucz ${k.klucz}`);

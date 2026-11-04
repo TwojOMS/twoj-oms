@@ -23,12 +23,12 @@ function baza(accessToken) {
   db.prepare(`INSERT INTO tokeny_kanalu
     (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
     VALUES (?,?,?,?,?,?)`)
-    .run('allegro_szkicownia', accessToken, 'refresz', '2027-01-01T00:00:00.000Z',
+    .run('allegro_swietlik', accessToken, 'refresz', '2027-01-01T00:00:00.000Z',
       '2027-01-01T00:00:00.000Z', '2026-08-28T06:39:38.999Z');
   return db;
 }
 
-const stan = (db) => createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia }).stanDlaEkranu();
+const stan = (db) => createTokeny({ db, kanal: 'allegro_swietlik', ustawienia }).stanDlaEkranu();
 
 describe('stanDlaEkranu — brakujące uprawnienia', () => {
   it('token z kompletem nie zgłasza braków', () => {

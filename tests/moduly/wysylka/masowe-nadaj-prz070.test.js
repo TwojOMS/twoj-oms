@@ -24,7 +24,7 @@ const odp = (status, tekst) => ({ status, ok: status >= 200 && status < 300, tex
 const zamowienie = (n, nad = {}) => ({
   zrodlo_id: n, numer: String(n),
   klient: { email: 'j@k.pl', phone: '+48500600700' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
+  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
   metoda_wysylki: 'dpd', punkt_odbioru: null, kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '104.00',
   status_woo: 'processing', oplacone_at: '2026-10-13T13:00:00', anulowane: 0,
   utworzone_at: '2026-10-13T13:13:48Z', pozycje: [], ...nad,
@@ -68,7 +68,7 @@ describe('PRZ-070: podgląd nadania hurtem', () => {
         { nazwa: 'Szablon cyfry 0–9', sku: 'PRO-CYF-10', ilosc: 1, cena_brutto: '24.00', vat: null },
       ],
     }), {});
-    const all = zapiszZamowienie(db, 'allegro_szkicownia', zamowienie(7001, { metoda_wysylki: 'allegro_dpd', kwota_brutto: '74.90' }), {});
+    const all = zapiszZamowienie(db, 'allegro_swietlik', zamowienie(7001, { metoda_wysylki: 'allegro_dpd', kwota_brutto: '74.90' }), {});
     const r = await podglad(app, [pro, all]);
     expect(r.statusCode).toBe(200);
     const t = tabela(r.body);
@@ -102,7 +102,7 @@ describe('PRZ-070: podgląd nadania hurtem', () => {
   it('awaria odczytu usługi Allegro: wiersz w „Pominięte”, DPD dalej w partii', async () => {
     const { app, db } = zestaw({ awariaAllegro: true });
     const pro = zapiszZamowienie(db, 'pro', zamowienie(1589), {});
-    const all = zapiszZamowienie(db, 'allegro_szkicownia', zamowienie(7001, {
+    const all = zapiszZamowienie(db, 'allegro_swietlik', zamowienie(7001, {
       metoda_wysylki: 'allegro_dpd', pobranie: 1, kwota_pobrania: '176.89', oplacone_at: null,
     }), {});
     const r = await podglad(app, [pro, all]);
@@ -117,7 +117,7 @@ describe('PRZ-070: podgląd nadania hurtem', () => {
 
   it('nieznana usługa Allegro: „Pominięte” z powodem z wolnoNadacZOms', async () => {
     const { app, db, pobierzMetodeDostawy } = zestaw();
-    const all = zapiszZamowienie(db, 'allegro_szkicownia', zamowienie(7001, { metoda_wysylki: 'allegro_inne' }), {});
+    const all = zapiszZamowienie(db, 'allegro_swietlik', zamowienie(7001, { metoda_wysylki: 'allegro_inne' }), {});
     pobierzMetodeDostawy.mockImplementation(async () => '0aaaaaaa-0000-0000-0000-000000000000');
     const r = await podglad(app, [all]);
     expect(r.statusCode).toBe(200);
@@ -128,7 +128,7 @@ describe('PRZ-070: podgląd nadania hurtem', () => {
 
   it('One Box: S/M/L z S i waga 1; paczkomat: A/B/C z A', async () => {
     const { app, db, pobierzMetodeDostawy } = zestaw();
-    const ob = zapiszZamowienie(db, 'allegro_szkicownia', zamowienie(7002, { metoda_wysylki: 'allegro_punkt', punkt_odbioru: 'P1' }), {});
+    const ob = zapiszZamowienie(db, 'allegro_swietlik', zamowienie(7002, { metoda_wysylki: 'allegro_punkt', punkt_odbioru: 'P1' }), {});
     const pk = zapiszZamowienie(db, 'pro', zamowienie(1590, { metoda_wysylki: 'inpost_paczkomat', punkt_odbioru: 'KRA01M' }), {});
     pobierzMetodeDostawy.mockImplementation(async () => ONE_BOX);
     const r = await podglad(app, [ob, pk]);
@@ -154,7 +154,7 @@ describe('PRZ-070: zatwierdzenie nadania hurtem', () => {
 
   it('Allegro: usługa z ekranu ≠ żywa → wiersz NIE jedzie, powód na ekranie wyniku', async () => {
     const { app, db, nadanie } = zestaw();
-    const all = zapiszZamowienie(db, 'allegro_szkicownia', zamowienie(7001, { metoda_wysylki: 'allegro_dpd' }), {});
+    const all = zapiszZamowienie(db, 'allegro_swietlik', zamowienie(7001, { metoda_wysylki: 'allegro_dpd' }), {});
     const r = await zatwierdz(app, { id: String(all), [`usluga_${all}`]: ONE_BOX, [`szablon_${all}`]: 'mala' });
     expect(nadanie.nadaj).not.toHaveBeenCalled();
     expect(r.body).toContain('Usługa dostawy Allegro zmieniła się — odśwież podgląd nadania.');
@@ -162,7 +162,7 @@ describe('PRZ-070: zatwierdzenie nadania hurtem', () => {
 
   it('Allegro zgodne: nadanie z paczką niosącą oczekiwaną usługę', async () => {
     const { app, db, nadanie } = zestaw();
-    const all = zapiszZamowienie(db, 'allegro_szkicownia', zamowienie(7001, { metoda_wysylki: 'allegro_dpd' }), {});
+    const all = zapiszZamowienie(db, 'allegro_swietlik', zamowienie(7001, { metoda_wysylki: 'allegro_dpd' }), {});
     await zatwierdz(app, { id: String(all), [`usluga_${all}`]: DPD_AD, [`szablon_${all}`]: 'mala' });
     expect(wywolanieDla(nadanie, all)[1]).toEqual({ waga: 0.5, dlugosc: 30, szerokosc: 20, wysokosc: 10, oczekiwanyDeliveryMethodId: DPD_AD });
   });
@@ -180,7 +180,7 @@ describe('PRZ-070: zatwierdzenie nadania hurtem', () => {
   it('„Nadaj i drukuj” przekazuje drukowac, także przy „Wysyłam z Allegro”', async () => {
     const { app, db, nadanie } = zestaw();
     const d = zapiszZamowienie(db, 'pro', zamowienie(1), {});
-    const all = zapiszZamowienie(db, 'allegro_szkicownia', zamowienie(7001, { metoda_wysylki: 'allegro_dpd' }), {});
+    const all = zapiszZamowienie(db, 'allegro_swietlik', zamowienie(7001, { metoda_wysylki: 'allegro_dpd' }), {});
     await zatwierdz(app, { id: [String(d), String(all)], [`usluga_${all}`]: DPD_AD, zatwierdzenie: 'nadaj_i_drukuj' });
     expect(wywolanieDla(nadanie, d)[2].drukowac).toBe(true);
     expect(wywolanieDla(nadanie, all)[2].drukowac).toBe(true);
@@ -204,8 +204,8 @@ describe('PRZ-070: hurt przez PRAWDZIWY klient DPD (atrapa fetch)', () => {
       .mockResolvedValueOnce(odp(200, fixture('v4-ok.xml')))
       .mockResolvedValueOnce(odp(200, fixture('v4-ok-zpl.xml')));
     const dpd = createDpdClient({
-      url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '278216',
-      nadawca: { nazwa: 'Nadawca', ulica: 'ul. Testowa 1', kod: '00-650', miasto: 'Pęki', kraj: 'PL' }, fetchImpl,
+      url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '876543',
+      nadawca: { nazwa: 'Nadawca', ulica: 'ul. Testowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL' }, fetchImpl,
     });
     const nadanie = createNadanie({
       db: db0, kurierzy: { dpd }, woo: { dodajNotatke: vi.fn().mockResolvedValue({}) },

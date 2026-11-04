@@ -9,6 +9,7 @@ import { registerPowiadomieniaRoutes } from './trasy/powiadomienia.js';
 import { registerUstawieniaStatusowRoutes } from './trasy/statusy.js';
 import {registerUstawieniaRoutes} from '../marketing/trasy/integracje.js';
 import { createWidokIntegracji } from './integracje.js';
+import { stanIntegracji } from './services/polaczenia-integracji.ts';
 import { registerUstawieniaFormulkiRoutes } from '../wiadomosci/trasy/ustawienia.js';
 import { registerDiagnostykaRoutes } from './trasy/diagnostyka.js';
 import { registerPanelRoutes } from './trasy/panel.js';
@@ -31,6 +32,17 @@ import { odczytajWydanie, sprawdzNajnowsze } from './aktualizacje.ts';
 import { transport } from '../../integracje/transport.js';
 import { registerLogoRoutes } from './trasy/logo.js';
 import { registerKopieRoutes } from './trasy/kopie.js';
+import { MODULY_KURIEROW, type KluczKuriera } from '../../domena/moduly-kurierow.ts';
+
+/** PRZ-135 D6: kurierzy z własnym konfiguratorem (umowa własna, z metodami nadania), w kolejności rejestru. */
+const kurierzyWlasni = () => Object.values(MODULY_KURIEROW).filter((opis) => opis.umowa === 'wlasna' && opis.metody.length > 0);
+
+/** Usługa modułu wysyłki z kurierem z Ustawień i klucz w konfiguracja_integracji — rejestr nie ma na to pól
+ *  (właściciel rejestru: 04a), więc mapa zostaje tu, po kluczach rejestru. */
+const KONFIGURACJA_KURIEROW: Partial<Record<KluczKuriera, { usluga: string; integracja: string }>> = {
+  dpd: { usluga: 'kurierDpd', integracja: 'dpd' },
+  inpost: { usluga: 'kurierInpost', integracja: 'inpost' },
+};
 
 /** Zachowane ustawienia, konta, logowanie i wspólna rama panelu. */
 export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
@@ -55,12 +67,19 @@ export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
       stanyKanalow:()=>ctx.usluga<()=>any[]>('kanaly','stanyKanalow')(),
       wiazanieKanalow:ctx.usluga('kanaly','wiazanieKanalow'),
       kanaly:()=>ctx.usluga('kanaly','config'), proba:ctx.usluga<{proba?:boolean}>('web','config')?.proba===true,
+      polaczeniaAllegro:()=>{
+        const config=ctx.usluga<any>('kanaly','config');
+        return (opcjonalna('kanaly','repozytoriumKanalow')?.lista()??[]).filter((p:any)=>!config.kanaly[p.klucz]?.atrapa);
+      },
+      sklepyWoo:()=>opcjonalna('kanaly','repozytoriumKanalow')?.listaTypu('woo')??[],
       integracje:()=>{
         const zapisane = new Set(ctx.db.prepare('SELECT integracja FROM konfiguracja_integracji').all().map((r:any)=>r.integracja));
-        const klucze:Record<string,string>={dpd:'dpd',inpost:'inpost',infakt:'infakt',ksef:'ksef',gus:'gus',smtp:'poczta'};
-        const uslugi:Record<string,any>={dpd:opcjonalna('wysylka','kurierDpd'),inpost:opcjonalna('wysylka','kurierInpost'),
+        const kurierzy = kurierzyWlasni().flatMap((o)=>{ const k=KONFIGURACJA_KURIEROW[o.klucz]; return k?[{id:o.idKatalogu,...k}]:[]; });
+        const klucze:Record<string,string>={...Object.fromEntries(kurierzy.map((k)=>[k.id,k.integracja])),infakt:'infakt',ksef:'ksef',gus:'gus',smtp:'poczta'};
+        const uslugi:Record<string,any>={...Object.fromEntries(kurierzy.map((k)=>[k.id,opcjonalna('wysylka',k.usluga)])),
           infakt:opcjonalna('faktury','konfiguracjaInfaktu'),ksef:opcjonalna('koszty','zrodloKsef'),gus:opcjonalna('zamowienia','konfiguracjaGus'),smtp:pocztaOpcjonalna(ctx.usluga)()};
-        return Object.entries(klucze).map(([id,klucz])=>({id,skonfigurowana:uslugi[id]?.zEnv===true||uslugi[id]?.atrapa===true||zapisane.has(klucz),zrodlo:uslugi[id]?.zEnv?'serwer':'panel'}));
+        // B1: atrapa nie podłącza — ten sam warunek co ekran usługi (zapis albo plik konfiguracji).
+        return Object.entries(klucze).map(([id,klucz])=>({id,...stanIntegracji({usluga:uslugi[id],zapisany:zapisane.has(klucz)})}));
       },
     });
     const lacznosc = { sprawdz: () => import('../../oms/services/lacznosc.js').then(async ({ sprawdzLacznosc }) => {

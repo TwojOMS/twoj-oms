@@ -29,7 +29,7 @@ describe('PRZ-026 — rzeczywisty skład i chroniona karta', () => {
     const fetch = vi.fn(async () => { throw Error('Test nie zezwala na sieć'); }); vi.stubGlobal('fetch', fetch);
     const a = await zbudujOms({ env });
     try {
-      expect(a.usluga('magazyn', 'magazyn')).toBeNull();
+      expect(a.usluga('magazyn', 'magazyn').gotowy()).toBe(false);
       const r = await a.app.inject({ url: '/magazyn/7', headers: auth });
       expect(r.statusCode).toBe(200); expect(r.body).toContain('nie ma podpiętego żadnego sklepu');
       expect(fetch).not.toHaveBeenCalled();

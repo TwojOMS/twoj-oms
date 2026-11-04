@@ -5,11 +5,11 @@ import { ostrzezenia } from '../../src/domena/ostrzezenia-raportu.js';
 // granicy: sprzedazWOkresie/granicaDla PRZERYWA na kanale bez wpisu w granice_historii, wiec
 // w prawdziwych danych (import 2309 zamowien juz przeszedl) granica dla GDD musi istniec.
 const granice = [
-  { kanal: 'SZKICOWNIA_PL', do_dnia: '2026-07-02', zrodlo: 'pomiar', uwaga: null },
+  { kanal: 'SWIETLIK_PL', do_dnia: '2026-07-02', zrodlo: 'pomiar', uwaga: null },
   { kanal: 'GDD', do_dnia: '2026-07-02', zrodlo: 'pomiar', uwaga: null },
 ];
 const w = (extra = {}) => ({
-  zrodlo: 'historia', zrodloDanych: 'apilo', id: 'A', dzien: '2026-06-10', kanal: 'SZKICOWNIA_PL',
+  zrodlo: 'historia', zrodloDanych: 'apilo', id: 'A', dzien: '2026-06-10', kanal: 'SWIETLIK_PL',
   bruttoGrosze: 10000, nettoGrosze: 8130, faktura: false, oplacone: true,
   email: 'a@b.pl', tagi: [3], pozycje: [], ...extra,
 });
@@ -35,9 +35,9 @@ describe('pas ostrzezen', () => {
   it('⚠️ HISTORIA ZE SKLEPU NIE JEST „BEZ TAGU" — Woo tagow Apilo nie zna i nigdy nie znalo', () => {
     // Import ze sklepu wnosi ~8 500 takich wierszy. Bez tego warunku pas krzyczalby o nich
     // przy KAZDYM raporcie siegajacym przed pazdziernik 2024.
-    expect(kody([w({ zrodloDanych: 'woo:szkicownia', tagi: [] })])).not.toContain('bez-tagu');
+    expect(kody([w({ zrodloDanych: 'woo:swietlik', tagi: [] })])).not.toContain('bez-tagu');
     // ...a wiersz z Apilo obok niego nadal sie liczy.
-    expect(kody([w({ zrodloDanych: 'woo:szkicownia', tagi: [] }), w({ tagi: [] })])).toContain('bez-tagu');
+    expect(kody([w({ zrodloDanych: 'woo:swietlik', tagi: [] }), w({ tagi: [] })])).toContain('bez-tagu');
   });
 
   it('liczy zamowienia BEZ POTWIERDZONEJ PLATNOSCI', () => {

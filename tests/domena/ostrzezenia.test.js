@@ -106,7 +106,7 @@ describe('ostrzezeniaPrzesylek — paczka bez ruchu', () => {
 
 describe('ostrzezeniaWiadomosci — wątek czeka na odpowiedź', () => {
   const watek = (reszta = {}) => ({
-    kanal: 'allegro_szkicownia',
+    kanal: 'allegro_swietlik',
     thread_id: 'w-1',
     interlocutor_login: 'kupujacy77',
     last_message_date_time: '2026-08-29T06:30:00.000Z',
@@ -123,7 +123,7 @@ describe('ostrzezeniaWiadomosci — wątek czeka na odpowiedź', () => {
   it('ostatnia wiadomość od kupującego alarmuje z loginem', () => {
     const [w] = ostrzezeniaWiadomosci({ watki: [watek()], teraz: TERAZ });
     expect(w.typ).toBe('wiadomosc-allegro');
-    expect(w.klucz).toBe('wiadomosc:allegro_szkicownia:w-1:2026-08-29T06:30:00.000Z');
+    expect(w.klucz).toBe('wiadomosc:allegro_swietlik:w-1:2026-08-29T06:30:00.000Z');
     expect(w.tekst).toContain('Nowa wiadomość z Allegro');
     expect(w.tekst).toContain('kupujacy77');
     expect(w.przycisk).toEqual({ href: '/wiadomosci', etykieta: 'Wiadomości' });
@@ -247,7 +247,7 @@ describe('ostrzezeniaIntegracji — z wyniku ocenZdrowie', () => {
     expect(w.typ).toBe('integracja');
     expect(w.klucz).toBe('integracja:poller:woo_pro');
     expect(w.tekst).toContain('woo_pro');
-    // ⚠️ ZGLOSZENIE WLASCICIELA 10.09.2026: „Poller allegro_amarka nie działa: The
+    // ⚠️ ZGLOSZENIE WLASCICIELA 10.09.2026: „Poller allegro_polcien2 nie działa: The
     // operation was aborted due to timeout". Polska ramka, angielski srodek — bo srodek
     // pisze Node. Wiersz tabelki czyta czlowiek, wiec caly jest po polsku.
     expect(w.tekst).toContain('połączenie nie doszło do skutku');
@@ -260,9 +260,9 @@ describe('ostrzezeniaIntegracji — z wyniku ocenZdrowie', () => {
     const zdrowie = ocenZdrowie({
       teraz: TERAZ,
       startAt: '2026-08-20T00:00:00.000Z',
-      zrodla: ['allegro_amarka'],
+      zrodla: ['allegro_polcien2'],
       stanyPollera: [{
-        sklep: 'allegro_amarka',
+        sklep: 'allegro_polcien2',
         ostatni_przebieg_at: '2026-08-29T09:59:00.000Z',
         ostatni_blad: 'The operation was aborted due to timeout',
         ostatni_blad_od_at: '2026-08-29T09:40:00.000Z',
@@ -272,7 +272,7 @@ describe('ostrzezeniaIntegracji — z wyniku ocenZdrowie', () => {
       }],
     });
     const [w] = ostrzezeniaIntegracji({ zdrowie });
-    expect(w.tekst).toBe('Poller allegro_amarka nie działa: przekroczony czas oczekiwania na odpowiedź');
+    expect(w.tekst).toBe('Poller allegro_polcien2 nie działa: przekroczony czas oczekiwania na odpowiedź');
   });
 
   it('⚠️ CZKNIECIE SIECI NIE MALUJE WIERSZA — usterki, ktora juz przeszla, nie pokazujemy', () => {
@@ -282,9 +282,9 @@ describe('ostrzezeniaIntegracji — z wyniku ocenZdrowie', () => {
     const czknieccie = (proby) => ocenZdrowie({
       teraz: TERAZ,
       startAt: '2026-08-20T00:00:00.000Z',
-      zrodla: ['allegro_amarka'],
+      zrodla: ['allegro_polcien2'],
       stanyPollera: [{
-        sklep: 'allegro_amarka',
+        sklep: 'allegro_polcien2',
         ostatni_przebieg_at: '2026-08-29T09:59:00.000Z',
         ostatni_blad: 'The operation was aborted due to timeout',
         ostatni_blad_od_at: '2026-08-29T09:55:00.000Z',
@@ -367,7 +367,7 @@ describe('ostrzezeniaIntegracji — z wyniku ocenZdrowie', () => {
       startAt: '2026-08-20T00:00:00.000Z',
       zrodla: ['woo_pro'],
       stanyPollera: [{ sklep: 'woo_pro', ostatni_przebieg_at: '2026-08-29T09:59:00.000Z', ostatni_blad: null }],
-      kanaly: [{ kanal: 'allegro_szkicownia', zyje: false, pilne: true, powod: 'Kanał nie działa.' }],
+      kanaly: [{ kanal: 'allegro_swietlik', zyje: false, pilne: true, powod: 'Kanał nie działa.' }],
     });
     expect(ostrzezeniaIntegracji({ zdrowie })).toHaveLength(0);
   });
@@ -423,7 +423,7 @@ describe('kluczDozwolony — biała lista prefiksów dla trasy POST', () => {
   it.each([
     'faktura-ksef:u-1',
     'przesylka:7:2026-08-24T08:00:00.000Z',
-    'wiadomosc:allegro_szkicownia:w-1:2026-08-29T06:30:00.000Z',
+    'wiadomosc:allegro_swietlik:w-1:2026-08-29T06:30:00.000Z',
     'integracja:poller:woo_pro',
     'faktura-termin:2:141112',
     'zwrot:9',

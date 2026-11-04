@@ -14,6 +14,7 @@
 // Ustawienie sklepu niosace jednostke wymiarow. ⚠️ NAZWA W JEDNYM MIEJSCU: literowka
 // w drugiej kopii dalaby „nie znam jednostki" na calym kanale i wygladalaby na awarie sklepu.
 import { czyWolnoNadpisac } from '../../../domena/zapis-do-sklepu.js';
+import { czyTylkoOdczyt, TYLKO_ODCZYT } from '../../../domena/woo-uprawnienia.js';
 
 const USTAWIENIE_JEDNOSTKI = 'woocommerce_dimension_unit';
 
@@ -101,6 +102,11 @@ export async function wyslijDoSklepow({ sklepy, zmiany } = {}) {
       // ⚠️ ODMOWA, NIE CICHE POMINIECIE: pominiete po cichu wyglada na ekranie tak samo,
       // jak zapisane.
       wyniki.push({ zmiana, ok: false, blad: BEZ_KLIENTA(zmiana?.kanal) });
+      continue;
+    }
+    // PRZ-149.04: sklep podłączony kluczem „Odczyt” — nie piszemy (i nie czytamy przed zapisem), tylko mówimy dlaczego.
+    if (czyTylkoOdczyt(klient)) {
+      wyniki.push({ zmiana, ok: false, blad: TYLKO_ODCZYT });
       continue;
     }
 

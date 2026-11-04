@@ -161,9 +161,12 @@ describe('sprawdzZmianeMetody — bramka na pieniadze', () => {
   });
 
   // Przecinek dziesietny to najczestsza literowka polskiej klawiatury, a Number('12,50')
-  // to NaN — bez tej odmowy kwota poszlaby do DPD jako smiec albo cicho zniknela.
-  it('kwota z przecinkiem dziesietnym jest odmowa, a nie cichym NaN', () => {
-    expect(sprawdzZmianeMetody('dpd', true, '12,50').blad).toMatch(/nie umiem odczytać/i);
+  // to NaN. Od PRZ-145.02 (plan E5, gotowe 5) karta normalizuje go jak ekran nadania:
+  // zapisuje '12.50', zamiast odmawiac albo cicho gubic kwote.
+  it('kwota z przecinkiem dziesietnym zapisuje sie znormalizowana, nie jako NaN', () => {
+    const w = sprawdzZmianeMetody('dpd', true, '12,50');
+    expect(w.blad).toBeFalsy();
+    expect(w.nadpisanie.kwota_pobrania).toBe('12.50');
   });
 
   it('metoda spoza listy panelu jest odmowa', () => {

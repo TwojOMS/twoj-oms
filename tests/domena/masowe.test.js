@@ -162,7 +162,7 @@ describe('podzielDoNadania', () => {
   // nadaje paczki tego kanalu przez „Wysyłam z Allegro" — hurt idzie ta sama droga, co karta.
   // Zdanie „paczki tego kanału nadajesz w Allegro" przestalo byc prawda i zniknelo.
   it('zamówienie z Allegro idzie drogą „Wysyłam z Allegro”, nie z „nieznana metoda”', () => {
-    const wynik = podzielDoNadania([{ id: 1, sklep: 'allegro_szkicownia', metoda_wysylki: 'allegro_dpd', numer: 'A1' }]);
+    const wynik = podzielDoNadania([{ id: 1, sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_dpd', numer: 'A1' }]);
     expect(wynik.doNadania).toHaveLength(1);
     expect(wynik.doNadania[0].rodzajFormularza).toBe('wza');
   });
@@ -239,7 +239,7 @@ describe('podzielDoNadania', () => {
   // ustawia poller i ktorego zaden formularz panelu nie rusza.
   it('zamówienie Z KANAŁU Allegro z ręcznie przestawioną metodą na „dpd” NIE trafia do nadania zbiorczego', () => {
     const { doNadania, pominiete } = podzielDoNadania([
-      zam({ id: 7, numer: 'A7', sklep: 'allegro_szkicownia', metoda_wysylki: 'dpd' }),
+      zam({ id: 7, numer: 'A7', sklep: 'allegro_swietlik', metoda_wysylki: 'dpd' }),
     ]);
     expect(doNadania).toEqual([]);
     expect(pominiete).toHaveLength(1);
@@ -254,7 +254,7 @@ describe('podzielDoNadania', () => {
     'kanał Allegro bije metodę „%s” wpisaną ręcznie — powód zawsze ten sam',
     (metoda) => {
       const { doNadania, pominiete } = podzielDoNadania([
-        zam({ sklep: 'allegro_amarka', metoda_wysylki: metoda }),
+        zam({ sklep: 'allegro_polcien2', metoda_wysylki: metoda }),
       ]);
       expect(doNadania).toEqual([]);
       expect(pominiete[0].powod).toBe('zamówienie z Allegro ma ręcznie ustawioną metodę sklepową — nadaj je z karty zamówienia');
@@ -265,8 +265,8 @@ describe('podzielDoNadania', () => {
   // zwykle DPD (ta sama kolumna „Dostawa"), wiec wpadnie w to samo zaznaczenie „wszystkie".
   it('mieszane zaznaczenie: sklepowe DPD idzie, allegrowe przestawione na DPD zostaje', () => {
     const { doNadania, pominiete } = podzielDoNadania([
-      zam({ id: 1, numer: 'D', sklep: 'szkicownia', metoda_wysylki: 'dpd' }),
-      zam({ id: 2, numer: 'A', sklep: 'allegro_szkicownia', metoda_wysylki: 'dpd' }),
+      zam({ id: 1, numer: 'D', sklep: 'swietlik', metoda_wysylki: 'dpd' }),
+      zam({ id: 2, numer: 'A', sklep: 'allegro_swietlik', metoda_wysylki: 'dpd' }),
     ]);
     expect(doNadania.map((z) => z.numer)).toEqual(['D']);
     expect(pominiete.map((p) => p.numer)).toEqual(['A']);
@@ -275,14 +275,14 @@ describe('podzielDoNadania', () => {
   // Druga strona tej samej reguly: siatka kanalowa NIE MOZE zatrzymac zamowien sklepowych.
   // Bez tego testu „odmawiaj zawsze" przechodziloby jako poprawka.
   it('zamówienie ze sklepu dalej idzie do nadania — siatka kanałowa nie łapie za szeroko', () => {
-    const { doNadania, pominiete } = podzielDoNadania([zam({ sklep: 'szkicownia', metoda_wysylki: 'dpd' })]);
+    const { doNadania, pominiete } = podzielDoNadania([zam({ sklep: 'swietlik', metoda_wysylki: 'dpd' })]);
     expect(doNadania).toHaveLength(1);
     expect(pominiete).toEqual([]);
   });
 
   // Ta sama pulapka, co przy metodach: klucz sklepu zaczynajacy sie od „allegro" BEZ
-  // podkreslnika nie jest kanalem Allegro (klucze kanalow to `allegro_szkicownia`
-  // i `allegro_amarka` — config.js, stala KANALY).
+  // podkreslnika nie jest kanalem Allegro (klucze kanalow to `allegro_swietlik`
+  // i `allegro_polcien2` — config.js, stala KANALY).
   it('klucz sklepu „allegrowy” nie jest kanałem Allegro', () => {
     const { doNadania } = podzielDoNadania([zam({ sklep: 'allegrowy', metoda_wysylki: 'dpd' })]);
     expect(doNadania).toHaveLength(1);

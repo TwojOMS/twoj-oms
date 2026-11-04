@@ -34,7 +34,7 @@ beforeEach(() => {
   // Zamowienie PANELU po granicy — w tym samym pliku, gdy zakres obejmuje obie epoki.
   db.prepare(
     'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at, indywidualne)'
-    + " VALUES ('szkicownia', 9001, '28500', '123.00', '2026-07-10 12:00:00', 0)",
+    + " VALUES ('swietlik', 9001, '28500', '123.00', '2026-07-10 12:00:00', 0)",
   ).run();
 });
 

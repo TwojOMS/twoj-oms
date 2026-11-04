@@ -89,13 +89,14 @@ describe('okablowanie: wiadomości Allegro', () => {
     } finally { wyslij.mockRestore(); }
   });
 
-  // ⚠️⚠️ DRUGA INSTANCJA `createAllegroClient` NA KANAL to druga deduplikacja odswiezania
-  // we wlasnej `WeakMap` — dokladnie ta droga, ktora w nocy 13/14.08.2026 SPALILA refresh
-  // token kanalu `allegro_szkicownia`. Nowe uslugi MUSZA brac istniejaca mape `klienciKanalow`.
+  // PRZ-128: klienci powstają leniwie. Konsumenci współdzielą jedną mapę i te same
+  // uchwyty; deduplikację refresh per DB/kanał sprawdzają rzeczywiste testy tokenów.
   it('usługi biorą ISTNIEJĄCĄ mapę klientów, a nie własne instancje', () => {
     expect(licz.poller[0]?.o.klienci).toBe(kanaly);
     expect(licz.czuwacz[0]?.o.klienci).toBe(kanaly);
-    expect({ klient: licz.klient, tokeny: licz.tokeny }).toEqual({ klient: kanalyEnv.length, tokeny: kanalyEnv.length });
+    const klienci = kanalyEnv.map(d=>kanaly[d.klucz]);
+    for (const [i,d] of kanalyEnv.entries()) expect(kanaly[d.klucz]).toBe(klienci[i]);
+    expect(licz.klient).toBe(kanalyEnv.length);
   });
 
   it('odświeżanie spraw jest podpięte do przebiegu pollera, a nie do własnego zegara', () => {

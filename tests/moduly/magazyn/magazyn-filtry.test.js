@@ -4,7 +4,7 @@ import {
   BRAKI_MAGAZYNU, PACZKOMAT_DO_FILTRA, BRAKI_ETYKIETY,
 } from '../../../src/domena/magazyn-filtry.js';
 // Jawne wejście historycznych testów; pętle sprawdzają filtr i zachowanie bazy.
-const KANALY_MAGAZYNU = ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka'];
+const KANALY_MAGAZYNU = ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2'];
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { utworzKarte, zapiszProduktSklepowy, powiazProdukt, kartyZKanalami } from '../../../src/oms/db/magazyn.js';
 
@@ -28,7 +28,7 @@ describe('filtryZZapytania — czytanie adresu', () => {
       paczkomat: 'nieoznaczone',
       cenaOd: '10',
       cenaDo: '99',
-    }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka'])).toEqual({
+    }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2'])).toEqual({
       fraza: 'szpulka',
       kanal: 'pro',
       kategoria: 'Aplikacje',
@@ -44,15 +44,15 @@ describe('filtryZZapytania — czytanie adresu', () => {
   it('puste pole ceny to brak filtru, a nie zero', () => {
     // Zero jest WARTOSCIA: „od 0 zl" przepuszcza produkty za darmo i rodzicow wariantowych.
     // Puste pole formularza ma znaczyc „nie zawezaj", i te dwie rzeczy nie moga byc tym samym.
-    expect(filtryZZapytania({ cenaOd: '' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).cenaOd).toBe(null);
-    expect(filtryZZapytania({ cenaOd: '   ' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).cenaOd).toBe(null);
-    expect(filtryZZapytania({}, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).cenaOd).toBe(null);
-    expect(filtryZZapytania({ cenaOd: '0' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).cenaOd).toBe(0);
+    expect(filtryZZapytania({ cenaOd: '' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).cenaOd).toBe(null);
+    expect(filtryZZapytania({ cenaOd: '   ' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).cenaOd).toBe(null);
+    expect(filtryZZapytania({}, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).cenaOd).toBe(null);
+    expect(filtryZZapytania({ cenaOd: '0' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).cenaOd).toBe(0);
   });
 
   it('cena z przecinkiem dziesietnym, bo tak sie ja pisze po polsku', () => {
-    expect(filtryZZapytania({ cenaOd: '74,90' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).cenaOd).toBe(7490);
-    expect(filtryZZapytania({ cenaOd: '74.90' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).cenaOd).toBe(7490);
+    expect(filtryZZapytania({ cenaOd: '74,90' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).cenaOd).toBe(7490);
+    expect(filtryZZapytania({ cenaOd: '74.90' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).cenaOd).toBe(7490);
   });
 
   it('cena, ktorej nie umiemy przeliczyc, spada do braku filtru zamiast wywalac ekran', () => {
@@ -60,49 +60,49 @@ describe('filtryZZapytania — czytanie adresu', () => {
     // zapisywane do bazy. Ale tutaj kwota przychodzi z paska adresu, wiec literowka ma
     // pokazac liste, a nie pieciusetke.
     for (const zla of ['abc', '10zl', '1e5', '-5', '10.', 'NaN', '99 99']) {
-      expect(filtryZZapytania({ cenaOd: zla }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).cenaOd).toBe(null);
-      expect(filtryZZapytania({ cenaDo: zla }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).cenaDo).toBe(null);
+      expect(filtryZZapytania({ cenaOd: zla }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).cenaOd).toBe(null);
+      expect(filtryZZapytania({ cenaDo: zla }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).cenaDo).toBe(null);
     }
   });
 
   it('nieznana wartosc filtru jest odrzucana, nie przekazywana dalej', () => {
-    expect(filtryZZapytania({ kanal: 'sklep-ktorego-nie-ma' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).kanal).toBe(null);
-    expect(filtryZZapytania({ brak: 'cokolwiek' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).brak).toBe(null);
-    expect(filtryZZapytania({ paczkomat: 'moze' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).paczkomat).toBe(null);
+    expect(filtryZZapytania({ kanal: 'sklep-ktorego-nie-ma' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).kanal).toBe(null);
+    expect(filtryZZapytania({ brak: 'cokolwiek' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).brak).toBe(null);
+    expect(filtryZZapytania({ paczkomat: 'moze' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).paczkomat).toBe(null);
   });
 
   it('nazwa z lancucha prototypow nie przechodzi przez zadna z bialych list', () => {
     // ⚠️ `LISTA[x] ?? domyslne` oddaje funkcje z `Object.prototype` — realna pieciusetka
     // zlapana przy Zadaniu 4 na `?sort=constructor`. Filtry czytaja z tego samego adresu.
     for (const zly of ['constructor', 'toString', 'hasOwnProperty', '__proto__', 'valueOf']) {
-      expect(filtryZZapytania({ kanal: zly }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).kanal).toBe(null);
-      expect(filtryZZapytania({ brak: zly }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).brak).toBe(null);
-      expect(filtryZZapytania({ paczkomat: zly }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).paczkomat).toBe(null);
+      expect(filtryZZapytania({ kanal: zly }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).kanal).toBe(null);
+      expect(filtryZZapytania({ brak: zly }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).brak).toBe(null);
+      expect(filtryZZapytania({ paczkomat: zly }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).paczkomat).toBe(null);
     }
   });
 
   it('powtorzony parametr adresu (tablica) nie leci dalej jako tablica', () => {
     // Fastify oddaje `?fraza=a&fraza=b` jako tablice. Tablica w LIKE albo w `=` konczy sie
     // wiazaniem, ktorego node:sqlite nie przyjmie — czyli pieciusetka z paska adresu.
-    expect(filtryZZapytania({ fraza: ['a', 'b'] }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).fraza).toBe(null);
-    expect(filtryZZapytania({ kanal: ['pro', 'szkicownia'] }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).kanal).toBe(null);
-    expect(filtryZZapytania({ kategoria: ['Boho', 'Aplikacje'] }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).kategoria).toBe(null);
-    expect(filtryZZapytania({ cenaOd: ['10', '20'] }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).cenaOd).toBe(null);
+    expect(filtryZZapytania({ fraza: ['a', 'b'] }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).fraza).toBe(null);
+    expect(filtryZZapytania({ kanal: ['pro', 'swietlik'] }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).kanal).toBe(null);
+    expect(filtryZZapytania({ kategoria: ['Boho', 'Aplikacje'] }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).kategoria).toBe(null);
+    expect(filtryZZapytania({ cenaOd: ['10', '20'] }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).cenaOd).toBe(null);
   });
 
   it('fraza jest przycinana, a sama biel to brak frazy', () => {
-    expect(filtryZZapytania({ fraza: '  szpulka  ' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).fraza).toBe('szpulka');
-    expect(filtryZZapytania({ fraza: '   ' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).fraza).toBe(null);
+    expect(filtryZZapytania({ fraza: '  szpulka  ' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).fraza).toBe('szpulka');
+    expect(filtryZZapytania({ fraza: '   ' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).fraza).toBe(null);
   });
 
   it('kategoria NIE ma zamknietej listy — nazwy przychodza ze sklepow', () => {
     // Odwrotnie niz kanaly: kategorie doklada SKLEP, bez pytania nas o zdanie (ta sama
     // asymetria, co przy metodach platnosci na liscie zamowien). Nazwa nietrafiona po prostu
     // nie trafi w zaden karta — i to jest inna sytuacja niz „wartosc spoza slownika".
-    expect(filtryZZapytania({ kategoria: 'Kategoria, ktorej jeszcze nie ma' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).kategoria)
+    expect(filtryZZapytania({ kategoria: 'Kategoria, ktorej jeszcze nie ma' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).kategoria)
       .toBe('Kategoria, ktorej jeszcze nie ma');
-    expect(filtryZZapytania({ kategoria: '  Boho  ' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).kategoria).toBe('Boho');
-    expect(filtryZZapytania({ kategoria: '' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).kategoria).toBe(null);
+    expect(filtryZZapytania({ kategoria: '  Boho  ' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).kategoria).toBe('Boho');
+    expect(filtryZZapytania({ kategoria: '' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).kategoria).toBe(null);
   });
 });
 
@@ -183,7 +183,7 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
     katalog();
     expect(BRAKI_MAGAZYNU).toContain('komplet');
     expect(BRAKI_ETYKIETY.komplet).toBe('komplet — nic nie brakuje');
-    expect(filtryZZapytania({ brak: 'komplet' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).brak).toBe('komplet');
+    expect(filtryZZapytania({ brak: 'komplet' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).brak).toBe('komplet');
     // Cztery niepelne karty z `katalog()` maja tu NIE BYC — inaczej „komplet" znaczyloby
     // „cokolwiek", a hurt puszczony po tym zawezeniu ruszylby caly katalog.
     expect(kartyZKanalami(db, { filtry: { brak: 'komplet' } }).map((w) => w.nazwa))
@@ -206,7 +206,7 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
     // wlasnie taka wartoscia — dlatego nie ma go w BRAKI_MAGAZYNU.
     expect(BRAKI_MAGAZYNU).not.toContain('allegro');
     expect(kartyZKanalami(db, { filtry: { brak: 'allegro' } })).toEqual([]);
-    expect(filtryZZapytania({ brak: 'allegro' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']).brak).toBe(null);
+    expect(filtryZZapytania({ brak: 'allegro' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).brak).toBe(null);
   });
 
   it('KAZDY kanal ze slownika zaweza do SWOJEJ karty, a nie do „byle majacej produkt"', () => {
@@ -255,7 +255,7 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
       ['kanal', KANALY_MAGAZYNU], ['brak', BRAKI_MAGAZYNU], ['paczkomat', PACZKOMAT_DO_FILTRA],
     ]) {
       for (const w of wartosci) {
-        expect(filtryZZapytania({ [pole]: w }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka'])[pole], `${pole}=${w}`).toBe(w);
+        expect(filtryZZapytania({ [pole]: w }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2'])[pole], `${pole}=${w}`).toBe(w);
       }
     }
   });
@@ -263,7 +263,7 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
 
 describe('saJakiesFiltry', () => {
   it('milczy przy pustym komplecie', () => {
-    expect(saJakiesFiltry(filtryZZapytania({}, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']))).toBe(false);
+    expect(saJakiesFiltry(filtryZZapytania({}, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']))).toBe(false);
     expect(saJakiesFiltry({})).toBe(false);
     expect(saJakiesFiltry(null)).toBe(false);
   });
@@ -275,12 +275,12 @@ describe('saJakiesFiltry', () => {
       { fraza: 'szpulka' }, { kanal: 'pro' }, { kategoria: 'Boho' }, { brak: 'sku' },
       { paczkomat: 'tak' }, { cenaOd: '10' }, { cenaDo: '10' },
     ]) {
-      expect(saJakiesFiltry(filtryZZapytania(q, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka'])), JSON.stringify(q)).toBe(true);
+      expect(saJakiesFiltry(filtryZZapytania(q, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2'])), JSON.stringify(q)).toBe(true);
     }
   });
 
   it('cena zerowa TEZ jest filtrem — zero to wartosc, nie brak', () => {
-    expect(saJakiesFiltry(filtryZZapytania({ cenaOd: '0' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']))).toBe(true);
+    expect(saJakiesFiltry(filtryZZapytania({ cenaOd: '0' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']))).toBe(true);
   });
 });
 
@@ -309,7 +309,7 @@ describe('parametryUkryte — formularze niosa nawzajem swoje wartosci', () => {
     // Filtry trzymamy w groszach (tego chce baza), a pole formularza mowi zlotowkami.
     // Przepisanie surowej wartosci do ukrytego pola zamienia „od 10 zl" w „od 1000 zl"
     // przy pierwszym klknieciu w naglowek sortujacy, a w „od 100 000 zl" przy drugim.
-    const u = parametryUkryte(filtryZZapytania({ cenaOd: '10', cenaDo: '74,90' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']));
+    const u = parametryUkryte(filtryZZapytania({ cenaOd: '10', cenaDo: '74,90' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']));
     expect(u).toContainEqual({ name: 'cenaOd', value: '10.00' });
     expect(u).toContainEqual({ name: 'cenaDo', value: '74.90' });
   });
@@ -318,10 +318,10 @@ describe('parametryUkryte — formularze niosa nawzajem swoje wartosci', () => {
     const pierwsze = filtryZZapytania({
       fraza: 'szpulka', kanal: 'pro', kategoria: 'Boho', brak: 'sku',
       paczkomat: 'nieoznaczone', cenaOd: '10', cenaDo: '74,90',
-    }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']);
+    }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']);
     const jakZapytanie = (pary) => Object.fromEntries(pary.map((p) => [p.name, p.value]));
-    const drugie = filtryZZapytania(jakZapytanie(parametryUkryte(pierwsze)), ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']);
-    const trzecie = filtryZZapytania(jakZapytanie(parametryUkryte(drugie)), ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']);
+    const drugie = filtryZZapytania(jakZapytanie(parametryUkryte(pierwsze)), ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']);
+    const trzecie = filtryZZapytania(jakZapytanie(parametryUkryte(drugie)), ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']);
 
     expect(drugie).toEqual(pierwsze);
     expect(trzecie).toEqual(pierwsze);
@@ -332,7 +332,7 @@ describe('parametryUkryte — formularze niosa nawzajem swoje wartosci', () => {
     // znaczyloby, ze formularz filtrow wysyla `kanal` ukrytym polem I polem wyboru naraz.
     // Fastify oddaje wtedy TABLICE, parser slusznie odrzuca ja do `null` i filtr znika
     // dokladnie w tym formularzu, ktory sluzy do jego ustawiania.
-    const filtry = filtryZZapytania({ fraza: 'szpulka', kanal: 'pro', cenaOd: '10' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']);
+    const filtry = filtryZZapytania({ fraza: 'szpulka', kanal: 'pro', cenaOd: '10' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']);
     const u = parametryUkryte(filtry, { pomin: ['kanal', 'kategoria', 'brak', 'paczkomat', 'cenaOd', 'cenaDo'] });
 
     expect(u).toEqual([{ name: 'fraza', value: 'szpulka' }]);
@@ -342,7 +342,7 @@ describe('parametryUkryte — formularze niosa nawzajem swoje wartosci', () => {
 
 describe('wartosciPol — to, co stoi w polach formularza', () => {
   it('cena w polu jest ZLOTOWKA, tak jak ja wpisano', () => {
-    const w = wartosciPol(filtryZZapytania({ cenaOd: '10', cenaDo: '74,90' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']));
+    const w = wartosciPol(filtryZZapytania({ cenaOd: '10', cenaDo: '74,90' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']));
     // `value="1000"` przy „od 10 zl" utrwaliloby setke jako nowa wartosc filtru przy
     // pierwszym klknieciu „Filtruj" — po cichu, bo obie postacie sa poprawnymi liczbami.
     expect(w.cenaOd).toBe('10.00');
@@ -350,7 +350,7 @@ describe('wartosciPol — to, co stoi w polach formularza', () => {
   });
 
   it('brak wartosci to PUSTY NAPIS, a nie „null" do skasowania recznie', () => {
-    const w = wartosciPol(filtryZZapytania({}, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']));
+    const w = wartosciPol(filtryZZapytania({}, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']));
     for (const klucz of ['fraza', 'kanal', 'kategoria', 'brak', 'paczkomat', 'cenaOd', 'cenaDo']) {
       expect(w[klucz], klucz).toBe('');
     }
@@ -359,7 +359,7 @@ describe('wartosciPol — to, co stoi w polach formularza', () => {
   it('przepisuje pozostale pola bez zmiany', () => {
     const w = wartosciPol(filtryZZapytania({
       fraza: 'szpulka', kanal: 'pro', kategoria: 'Boho', brak: 'sku', paczkomat: 'nieoznaczone',
-    }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']));
+    }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']));
     expect(w).toMatchObject({
       fraza: 'szpulka', kanal: 'pro', kategoria: 'Boho', brak: 'sku', paczkomat: 'nieoznaczone',
     });
@@ -371,7 +371,7 @@ describe('adresMagazynu — filtry przezywaja klikniecie w naglowek sortujacy', 
     const filtry = filtryZZapytania({
       fraza: 'szpulka', kanal: 'pro', kategoria: 'Boho', brak: 'sku',
       paczkomat: 'nieoznaczone', cenaOd: '10', cenaDo: '99',
-    }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']);
+    }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']);
     const adres = adresMagazynu(filtry, { sort: 'sku', kier: 'desc' });
 
     expect(adres.startsWith('/magazyn?')).toBe(true);
@@ -395,16 +395,16 @@ describe('adresMagazynu — filtry przezywaja klikniecie w naglowek sortujacy', 
   });
 
   it('koduje znaki, ktore inaczej rozbilyby adres na dwa parametry', () => {
-    const adres = adresMagazynu(filtryZZapytania({ fraza: 'a&kanal=szkicownia' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']), { sort: 'nazwa', kier: 'asc' });
-    expect(adres).not.toContain('a&kanal=szkicownia');
+    const adres = adresMagazynu(filtryZZapytania({ fraza: 'a&kanal=swietlik' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']), { sort: 'nazwa', kier: 'asc' });
+    expect(adres).not.toContain('a&kanal=swietlik');
     const q = new URLSearchParams(adres.slice(adres.indexOf('?') + 1));
-    expect(q.get('fraza')).toBe('a&kanal=szkicownia');
+    expect(q.get('fraza')).toBe('a&kanal=swietlik');
     expect(q.get('kanal')).toBe(null);
   });
 
   it('kolejnosc parametrow jest STALA — ten sam widok ma zawsze ten sam adres', () => {
-    const a = adresMagazynu(filtryZZapytania({ kanal: 'pro', fraza: 'x' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']), { sort: 'nazwa', kier: 'asc' });
-    const b = adresMagazynu(filtryZZapytania({ fraza: 'x', kanal: 'pro' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']), { sort: 'nazwa', kier: 'asc' });
+    const a = adresMagazynu(filtryZZapytania({ kanal: 'pro', fraza: 'x' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']), { sort: 'nazwa', kier: 'asc' });
+    const b = adresMagazynu(filtryZZapytania({ fraza: 'x', kanal: 'pro' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']), { sort: 'nazwa', kier: 'asc' });
     expect(a).toBe(b);
   });
 
@@ -431,7 +431,7 @@ describe('adresMagazynu — filtry przezywaja klikniecie w naglowek sortujacy', 
   });
 
   it('tryb doklada sie do PELNEGO kompletu, a nie zastepuje go', () => {
-    const filtry = filtryZZapytania({ fraza: 'szpulka', kanal: 'pro', brak: 'sku' }, ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka']);
+    const filtry = filtryZZapytania({ fraza: 'szpulka', kanal: 'pro', brak: 'sku' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']);
     const adres = adresMagazynu(filtry, { sort: 'braki', kier: 'desc', widok: 'katalog' });
     const q = new URLSearchParams(adres.slice(adres.indexOf('?') + 1));
 

@@ -26,8 +26,8 @@ const XML_FA3 = `<?xml version="1.0" encoding="UTF-8"?>
   </Podmiot1>
   <Podmiot2>
     <DaneIdentyfikacyjne>
-      <NIP>5492443929</NIP>
-      <Nazwa>Skąpańde Marek Zywiecki</Nazwa>
+      <NIP>1234563218</NIP>
+      <Nazwa>Pracownia Półcień Anna Wzorcowa</Nazwa>
     </DaneIdentyfikacyjne>
   </Podmiot2>
   <Fa>

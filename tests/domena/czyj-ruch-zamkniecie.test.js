@@ -15,7 +15,7 @@ import { czyjRuch } from '../../src/domena/czyj-ruch-watku.js';
 // nie jak usterka.
 
 const w = (extra = {}) => ({
-  kanal: 'allegro_szkicownia',
+  kanal: 'allegro_swietlik',
   thread_id: 't1',
   ostatnia_od_kupujacego: 1,
   last_message_date_time: '2026-07-21T12:31:46.767Z',

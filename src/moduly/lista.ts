@@ -2,7 +2,7 @@ import type { ModulOms, Srodowisko } from '../core/kontrakty.ts';
 import { modulRdzen } from './rdzen/modul.ts';
 import { modulWeb, createModulWeb } from '../core/web/modul.ts';
 import { modulKanaly, createModulKanaly } from './kanaly/modul.ts';
-import { definicjeKanalow } from './kanaly/konfiguracja.ts';
+import { definicjeKanalow, userAgentAllegro } from './kanaly/konfiguracja.ts';
 import { createModulZamowienia } from './zamowienia/modul.ts';
 import { modulFaktury, createModulFaktury } from './faktury/modul.ts';
 import { szewTwojeFaktury } from './faktury/wczytaj-szew.ts';
@@ -42,7 +42,7 @@ export function modulyDla(env: Srodowisko, o: { szewTwojeFaktury?: SzewTwojeFakt
   const szewDrzewa = podmiana ? o.szewTwojeFaktury ?? null : szewTwojeFaktury;
   const szew = zgodaInstalacji(env) ? szewDrzewa : null;
   return MODULY.filter(modul => modul.nazwa !== 'twojefaktury').flatMap(modul => {
-    if (modul.nazwa === 'kanaly') return [createModulKanaly(definicje, true) as ModulOms];
+    if (modul.nazwa === 'kanaly') return [createModulKanaly(definicje, true, {userAgent:userAgentAllegro(env)}) as ModulOms];
     if (modul.nazwa === 'web') return [createModulWeb(definicje) as ModulOms];
     if (modul.nazwa === 'raporty') return [createModulRaporty(definicje) as ModulOms];
     if (modul.nazwa === 'faktury') {

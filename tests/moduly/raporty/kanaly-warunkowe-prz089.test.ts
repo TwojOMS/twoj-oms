@@ -32,7 +32,7 @@ describe('PRZ-089 kanały raportowe GDD i INDYWIDUALNE tylko z konfiguracji', ()
       .toThrow(/OMS_KANAL_INDYWIDUALNY/);
     expect(() => kanalIndywidualnyWlaczony({ OMS_KANAL_INDYWIDUALNY: 'tak' })).toThrow(/OMS_KANAL_INDYWIDUALNY/);
   });
-  it('konfiguracja produkcji Szkicownia (fixture historii) — te same pięć kanałów algorytmicznych co przed PRZ-089', () => {
+  it('konfiguracja produkcji Pracownia Świetlik (fixture historii) — te same pięć kanałów algorytmicznych co przed PRZ-089', () => {
     const r = wczytajKlasyfikacje(envRaportowHistorycznyFixture, definicjeKanalowHistoryczne as any).raporty;
     for (const k of ['DROPSHIPPING', 'GDD', 'B2B', 'RECZNE', 'INDYWIDUALNE']) expect(r.has(k), k).toBe(true);
   });

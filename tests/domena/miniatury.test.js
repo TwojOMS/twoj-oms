@@ -7,8 +7,8 @@ import { zdjecieLinii, adresMiniatury } from '../../src/domena/miniatury.js';
 
 describe('zdjecieLinii — co zapisujemy z odpowiedzi sklepu', () => {
   it('bierze adres zdjęcia z linii zamówienia', () => {
-    expect(zdjecieLinii({ image: { id: 1092, src: 'https://pro.szkicownia.pl/x.jpg' } }))
-      .toBe('https://pro.szkicownia.pl/x.jpg');
+    expect(zdjecieLinii({ image: { id: 1092, src: 'https://pro.swietlik.example.test/x.jpg' } }))
+      .toBe('https://pro.swietlik.example.test/x.jpg');
   });
 
   it('linia bez zdjęcia daje null, nie pusty napis', () => {
@@ -29,10 +29,10 @@ describe('zdjecieLinii — co zapisujemy z odpowiedzi sklepu', () => {
 
 describe('adresMiniatury — wariant 150×150 wygenerowany przez WordPressa', () => {
   it('wstawia rozmiar przed rozszerzeniem, zachowując je', () => {
-    expect(adresMiniatury('https://pro.szkicownia.pl/wp-content/uploads/2026/07/szablon.jpg'))
-      .toBe('https://pro.szkicownia.pl/wp-content/uploads/2026/07/szablon-150x150.jpg');
-    expect(adresMiniatury('https://pro.szkicownia.pl/wp-content/uploads/2026/07/SZABLON-EV.png'))
-      .toBe('https://pro.szkicownia.pl/wp-content/uploads/2026/07/SZABLON-EV-150x150.png');
+    expect(adresMiniatury('https://pro.swietlik.example.test/wp-content/uploads/2026/07/szablon.jpg'))
+      .toBe('https://pro.swietlik.example.test/wp-content/uploads/2026/07/szablon-150x150.jpg');
+    expect(adresMiniatury('https://pro.swietlik.example.test/wp-content/uploads/2026/07/SZABLON-EV.png'))
+      .toBe('https://pro.swietlik.example.test/wp-content/uploads/2026/07/SZABLON-EV-150x150.png');
   });
 
   // Kropka w nazwie katalogu albo w nazwie pliku bez rozszerzenia nie ma prawa rozerwać

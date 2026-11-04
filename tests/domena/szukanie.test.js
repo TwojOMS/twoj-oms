@@ -9,7 +9,7 @@ const zamowienie = (nad = {}) => ({
   numer: '1276',
   sklep: 'pro',
   klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'jan@example.pl', phone: '+48 500 900 010', company: null },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Lipowa 12', postcode: '00-650', city: 'Pęki', country: 'PL' },
+  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Papierowa 12', postcode: '00-950', city: 'Łódź', country: 'PL' },
   pozycje: [{ nazwa: 'Szablon STOP', sku: 'PRO-STOP-001', ilosc: 1 }],
   przesylki: [],
   faktura: null,
@@ -18,7 +18,7 @@ const zamowienie = (nad = {}) => ({
 
 describe('normalizuj', () => {
   it('sprowadza do małych liter, ścina spacje i składa polskie znaki do ASCII', () => {
-    expect(normalizuj('  Pęki   Łódź ')).toBe('peki lodz');
+    expect(normalizuj('  Łódź   Łódź ')).toBe('lodz lodz');
     expect(normalizuj('ŻÓŁW')).toBe('zolw');
   });
 
@@ -36,7 +36,7 @@ describe('pola do szukania', () => {
     expect(pola).toContain('1276');
     expect(pola).toContain('Kowalski');
     expect(pola).toContain('jan@example.pl');
-    expect(pola).toContain('Pęki');
+    expect(pola).toContain('Łódź');
     expect(pola).toContain('Szablon STOP');
     expect(pola).toContain('PRO-STOP-001');
     expect(pola).toContain('1000000000001U');
@@ -70,15 +70,15 @@ describe('dopasowanie frazy', () => {
 
   it('nie zważa na wielkość liter ani na polskie znaki', () => {
     expect(pasujeDoSzukania(zamowienie(), 'kowalski')).toBe(true);
-    expect(pasujeDoSzukania(zamowienie(), 'peki')).toBe(true);
-    expect(pasujeDoSzukania(zamowienie(), 'PĘKI')).toBe(true);
+    expect(pasujeDoSzukania(zamowienie(), 'lodz')).toBe(true);
+    expect(pasujeDoSzukania(zamowienie(), 'ŁÓDŹ')).toBe(true);
   });
 
   // ⚠️ Mutacja: `some` zamiast `every` ma zaczerwienić TEN test. Przy „albo" im dokładniej
   // ktoś opisze, czego szuka, tym więcej dostanie wyników — czyli wyszukiwarka działa
   // dokładnie odwrotnie, niż człowiek zakłada.
   it('KAŻDE słowo frazy musi trafić — nie wystarczy jedno', () => {
-    expect(pasujeDoSzukania(zamowienie(), 'kowalski peki')).toBe(true);
+    expect(pasujeDoSzukania(zamowienie(), 'kowalski lodz')).toBe(true);
     expect(pasujeDoSzukania(zamowienie(), 'kowalski gdansk')).toBe(false);
   });
 
@@ -110,20 +110,20 @@ describe('fraza zapisana jak liczba (NIP, telefon, list przewozowy)', () => {
     expect(pasujeDoSzukania(zamowienie(), '500900010')).toBe(true);
   });
 
-  // Sama fraza tekstowa dalej działa jak zwykłe „zawiera" — „32" znajdzie kod 00-650 i to
+  // Sama fraza tekstowa dalej działa jak zwykłe „zawiera" — „95" znajdzie kod 00-950 i to
   // jest w porządku. Chodzi WYŁĄCZNIE o drogę cyfrową, która ignoruje separatory: dla
   // dwóch cyfr trafiałaby w środek każdej dłuższej liczby w zamówieniu.
   it('fraza krótsza niż trzy cyfry nie idzie drogą cyfrową', () => {
     // „5-0" nie występuje jako tekst w żadnym polu; po zignorowaniu myślnika („50") siedzi
-    // w środku kodu 00-650. Bez progu to zamówienie wyskoczyłoby na taką frazę.
+    // w środku kodu 00-950. Bez progu to zamówienie wyskoczyłoby na taką frazę.
     expect(pasujeDoSzukania(zamowienie(), '5-0')).toBe(false);
     // Trzy cyfry to już świadome szukanie — i tą samą drogą trafiają.
-    expect(pasujeDoSzukania(zamowienie(), '65-0')).toBe(true);
+    expect(pasujeDoSzukania(zamowienie(), '95-0')).toBe(true);
   });
 
   it('kod pocztowy z myślnikiem i bez trafia tak samo', () => {
-    expect(pasujeDoSzukania(zamowienie(), '00-650')).toBe(true);
-    expect(pasujeDoSzukania(zamowienie(), '00650')).toBe(true);
+    expect(pasujeDoSzukania(zamowienie(), '00-950')).toBe(true);
+    expect(pasujeDoSzukania(zamowienie(), '00950')).toBe(true);
   });
 
   // ⚠️ Mutacja: sklejenie wszystkich cyfr zamówienia w JEDEN ciąg ma zaczerwienić TEN test —

@@ -25,7 +25,7 @@ const URL_API = 'https://shipx.test/v1';
 // bez nich (`sender: email: required, phone: required`) — a fikstura bez tych pol opisywala
 // nadawce, ktory NIGDY nie moglby nadac prawdziwej paczki. Dlatego cala suita byla zielona,
 // podczas gdy produkcja odmawiala pierwszego nadania do paczkomatu (zam. 28173). Nie usuwac.
-const nadawca = { nazwa: 'Lumina Marek Zywiecki', ulica: 'ul. 1 Maja 5', kod: '00-650', miasto: 'Pęki', kraj: 'PL', phone: '338451234', email: 'sklep@szkicownia.pl' };
+const nadawca = { nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', phone: '338451234', email: 'sklep@swietlik.example.test' };
 
 // Zamowienie 28045 z rozpoznania: telefon w Woo ma prefiks '+48', a w przesylce InPostu
 // leza gole dziewiec cyfr. Paczkomat SLN06M to jeden z trzech kodow zmierzonych na koncie.
@@ -34,7 +34,7 @@ const zamowienie = {
   kwota_pobrania: null,
   punkt_odbioru: 'SLN06M',
   punkt_odbioru_opis: 'Przy myjni bezdotykowej',
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
+  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
   klient: { email: 'j@k.pl', phone: '+48500900008' },
 };
 
@@ -187,8 +187,8 @@ describe('createInpostClient.nadaj — kształt żądania z rozpoznania', () => 
     const { c, fetchImpl } = klient(OK());
     await c.nadaj({ zamowienie, paczka });
     const { sender } = cialoPost(fetchImpl);
-    expect(sender.company_name).toBe('Lumina Marek Zywiecki');
-    expect(sender.address).toEqual({ line1: 'ul. 1 Maja 5', city: 'Pęki', post_code: '00-650', country_code: 'PL' });
+    expect(sender.company_name).toBe('Pracownia Półcień Anna Wzorcowa');
+    expect(sender.address).toEqual({ line1: 'ul. Przykładowa 1', city: 'Warszawa', post_code: '00-950', country_code: 'PL' });
     expect(sender.address.street).toBeUndefined();
     expect(sender.address.building_number).toBeUndefined();
   });
@@ -632,7 +632,7 @@ describe('createInpostClient — walidacja konfiguracji', () => {
   });
 
   it('nadawca z PUSTYMI polami → błąd wskazujący pola, a nie cicha zgoda', () => {
-    const pusty = { nazwa: 'Lumina', ulica: '', kod: '', miasto: '' };
+    const pusty = { nazwa: 'Pracownia Półcień', ulica: '', kod: '', miasto: '' };
     expect(() => createInpostClient({ ...pelna, nadawca: pusty }))
       .toThrow(/nadawca\.ulica.*nadawca\.kod.*nadawca\.miasto/);
   });
@@ -705,13 +705,13 @@ describe('createInpostClient — twarde limity czasu', () => {
 // i z nazwa brakujacej zmiennej srodowiskowej.
 // ═══════════════════════════════════════════════════════════════════════════════════
 describe('createInpostClient — e-mail i telefon nadawcy (usterka 05.08.2026)', () => {
-  const pelnyNadawca = { ...nadawca, phone: '338451234', email: 'sklep@szkicownia.pl' };
+  const pelnyNadawca = { ...nadawca, phone: '338451234', email: 'sklep@swietlik.example.test' };
 
   it('sender w żądaniu niesie e-mail i telefon nadawcy', async () => {
     const { c, fetchImpl } = klient(OK(), { nadawca: pelnyNadawca });
     await c.nadaj({ zamowienie, paczka });
     const { sender } = cialoPost(fetchImpl);
-    expect(sender.email).toBe('sklep@szkicownia.pl');
+    expect(sender.email).toBe('sklep@swietlik.example.test');
     expect(sender.phone).toBe('338451234');
   });
 

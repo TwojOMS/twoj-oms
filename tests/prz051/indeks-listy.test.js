@@ -79,9 +79,9 @@ describe('PRZ-051 indeks listy', () => {
     expect(strona({}, `${a}-${b}-${c}`).ids).toEqual([w.telefon.id]);
     expect(strona({}, `(${a}) ${b} ${c}`).ids).toEqual([w.telefon.id]);
     // Następna, INNA fraza w tym samym połączeniu ma dać swój wynik (funkcja SQL pamięta frazę).
-    const peki = wyrocznia(T).wszystkie.filter((z) => pasujeDoSzukania(z, 'peki')).map((z) => z.id);
-    expect(peki.length).toBeGreaterThan(5);
-    expect([...strona({}, 'peki').ids].sort()).toEqual([...peki].sort());
+    const lodz = wyrocznia(T).wszystkie.filter((z) => pasujeDoSzukania(z, 'lodz')).map((z) => z.id);
+    expect(lodz.length).toBeGreaterThan(5);
+    expect([...strona({}, 'lodz').ids].sort()).toEqual([...lodz].sort());
   });
 
   it('równe daty: strony się nie nakładają i niczego nie gubią', async () => {

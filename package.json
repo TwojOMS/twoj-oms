@@ -10,7 +10,7 @@
     "start": "node src/oms.js",
     "test": "vitest run",
     "typy": "tsc -p tsconfig.json",
-    "sprawdz": "npm run typy && node scripts/straznik-migracji.mjs && node scripts/straznik-konfiguracji.mjs && npm test"
+    "sprawdz": "npm run typy && node scripts/straznik-migracji.mjs && node scripts/straznik-konfiguracji.mjs && node scripts/straznik-kanalow.mjs && node scripts/straznik-kurierow.mjs && npm test"
   },
   "dependencies": {
     "@fastify/basic-auth": "6.3.0",

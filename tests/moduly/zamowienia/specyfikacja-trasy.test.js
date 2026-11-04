@@ -105,8 +105,8 @@ describe('trasa pojedyncza: GET /zamowienia/:id/specyfikacja.pdf', () => {
     });
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${a}/specyfikacja.pdf`, headers: AUTH });
     const tekst = pdfNaTekst(r.rawPayload);
-    expect(tekst).toContain('Lumina Marek Zywiecki');
-    expect(tekst).toContain('1 Maja 5');
+    expect(tekst).toContain('Pracownia Półcień Anna Wzorcowa');
+    expect(tekst).toContain('Przykładowa 1');
     // ⚠️ NIP dolozony do skladu 12.08.2026 (recenzja): przy zamowieniach firmowych ta kartka
     // ZASTEPUJE wydruk faktury, wiec dokument bez NIP-u wystawcy byl widoczna dziura.
     expect(tekst).toContain(NIP);

@@ -173,7 +173,7 @@
         <label>Dostawa
           <select name="dostawa">
             <% Object.keys(dostawy).forEach(function (klucz) { %>
-              <% const wybrana = formularz.dostawa ? formularz.dostawa === klucz : klucz === 'dpd'; %>
+              <% const wybrana = formularz.dostawa ? formularz.dostawa === klucz : klucz === dostawaDomyslna; %>
               <option value="<%= klucz %>"<%= wybrana ? ' selected' : '' %>><%= dostawy[klucz] %></option>
             <% }); %>
           </select>
@@ -182,7 +182,7 @@
             Pole stoi ZAWSZE, a nie pokazuje sie po wybraniu paczkomatu: przelaczanie widoku
             wymagaloby JavaScriptu, ktorego ten ekran nie ma poza przeliczaniem kwot.
             Wpisane przy innej dostawie po prostu NIE ZAPISUJE SIE (domain/nowe-zamowienie.js) —
-            kod zostawiony przy DPD bylby smieciem udajacym adres. %>
+            kod zostawiony przy innej dostawie bylby smieciem udajacym adres. %>
         <label>Kod paczkomatu
           <input name="punkt_odbioru" value="<%= wart(formularz.punkt_odbioru) %>" placeholder="np. KTY01M">
         </label>
@@ -194,7 +194,7 @@
             po „Pobierz z GUS”, po „Skopiuj dane do wysylki” i po odmowie zapisu formularz wraca
             z tym, co operator naprawde mial — podstawienie kwoty drugi raz przywracaloby
             wartosc, ktora wlasnie skasowal. %>
-        <label>Koszt dostawy (brutto)<input name="koszt_dostawy_brutto" value="<%= formularz.koszt_dostawy_brutto === undefined ? kwotyDostawy[formularz.dostawa || 'dpd'] : wart(formularz.koszt_dostawy_brutto) %>" inputmode="decimal" placeholder="0,00"></label>
+        <label>Koszt dostawy (brutto)<input name="koszt_dostawy_brutto" value="<%= formularz.koszt_dostawy_brutto === undefined ? kwotyDostawy[formularz.dostawa || dostawaDomyslna] : wart(formularz.koszt_dostawy_brutto) %>" inputmode="decimal" placeholder="0,00"></label>
         <%# PRZ-104: „najpozniej do” — zastepuje standardowy termin (zegar listy, „Po terminie”, statystyki). %>
         <%# Granice min/max to tylko podpowiedz przegladarki; rozstrzyga parsujDateWysylki przy zapisie. %>
         <label>Data wysyłki <span class="wyjasnienie">puste = standardowy czas</span>

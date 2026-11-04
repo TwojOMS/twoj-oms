@@ -10,7 +10,7 @@ const odp = (status, body, naglowki = {}) => ({
 
 function klient(res, { ck = 'ck', cs = 'cs' } = {}) {
   const fetchImpl = vi.fn().mockResolvedValue(res);
-  return { c: createWooClient({ baseUrl: 'https://pro.szkicownia.pl', ck, cs, fetchImpl }), fetchImpl };
+  return { c: createWooClient({ baseUrl: 'https://pro.swietlik.example.test', ck, cs, fetchImpl }), fetchImpl };
 }
 
 describe('pobierzZamowienia', () => {
@@ -66,7 +66,7 @@ describe('pobierzZamowienia', () => {
 
   it('sklep nieosiągalny → czytelny błąd', async () => {
     const fetchImpl = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
-    const c = createWooClient({ baseUrl: 'https://pro.szkicownia.pl', ck: 'ck', cs: 'cs', fetchImpl });
+    const c = createWooClient({ baseUrl: 'https://pro.swietlik.example.test', ck: 'ck', cs: 'cs', fetchImpl });
     await expect(c.pobierzZamowienia({ page: 1 })).rejects.toThrow(/nieosiągalny/);
   });
 
@@ -115,7 +115,7 @@ describe('sekret nie wycieka do komunikatu błędu', () => {
 
   it('sklep nieosiągalny nie ujawnia kluczy', async () => {
     const fetchImpl = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
-    const c = createWooClient({ baseUrl: 'https://pro.szkicownia.pl', ck: CK, cs: CS, fetchImpl });
+    const c = createWooClient({ baseUrl: 'https://pro.swietlik.example.test', ck: CK, cs: CS, fetchImpl });
     const err = await c.pobierzZamowienia({ page: 1 }).catch((e) => e);
     bezSekretu(err);
   });

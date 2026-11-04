@@ -26,9 +26,30 @@ describe('sposób płatności na fakturze — reguła', () => {
   });
 });
 
+describe('metody przyjmowane przez program fakturowy', () => {
+  const przyjmuje = ['transfer', 'delivery', 'card', 'cash', 'other'];
+  it.each([
+    ['Karta płatnicza', 'card'], ['Apple Pay', 'card'], ['apple_pay', 'card'],
+    ['gotówka', 'cash'], ['Przelew bankowy', 'transfer'],
+  ])('%s → %s', (metoda_platnosci, payment_method) => {
+    expect(sposobPlatnosciFaktury({ metoda_platnosci }, { przyjmuje })).toEqual({ payment_method });
+  });
+  it.each(['Przelewy24', 'BLIK', 'PayU', 'Allegro', '', 'Brama Półcień'])('%s pozostawia domyślną metodę programu', (metoda_platnosci) => {
+    expect(sposobPlatnosciFaktury({ metoda_platnosci }, { przyjmuje })).toEqual({});
+  });
+  it('pobranie wygrywa z kartą, także przy nadpisaniu wysyłki', () => {
+    expect(sposobPlatnosciFaktury({ metoda_platnosci: 'Karta', pobranie: 1 }, { przyjmuje })).toEqual({ payment_method: 'delivery' });
+  });
+  it('odrzuca metody spoza listy programu, także pobranie', () => {
+    expect(sposobPlatnosciFaktury({ metoda_platnosci: 'Karta płatnicza' })).toEqual({});
+    expect(sposobPlatnosciFaktury({ pobranie: 1 }, { przyjmuje: [] })).toEqual({});
+    expect(sposobPlatnosciFaktury({ metoda_platnosci: 'gotówka' }, { przyjmuje: ['card'] })).toEqual({});
+  });
+});
+
 const zmapowane = (nad = {}) => ({
   zrodlo_id: 1301, numer: '1301',
-  klient: { first_name: 'Jan', last_name: 'Kowalski', company: 'ACME', email: 'j@k.pl', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki' },
+  klient: { first_name: 'Jan', last_name: 'Kowalski', company: 'ACME', email: 'j@k.pl', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa' },
   dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null,
   chce_fakture: 1, nip: '1200001200', kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00',
   status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-07-29T13:19:52',

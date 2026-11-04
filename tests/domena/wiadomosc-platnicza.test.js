@@ -9,14 +9,14 @@ const zam = (nad = {}) => ({
   // ⚠️ E-MAIL SIEDZI W `klient`, nie w `dostawa` — `adresOdbiorcy` i `daneFaktury` czytają
   // OBA `klient.email` (różnią się dopiero ręcznymi nadpisaniami). Fikstura z `dostawa.email`
   // dawałaby zamówienie BEZ adresata i milczącą odmowę.
-  klient: { email: 'sklep@betamet.pl' },
+  klient: { email: 'sklep@example.test' },
   pozycje: [{ zrodlo_id: 1, nazwa: 'Szablon', ilosc: 10, cena_brutto: '99.00', brutto_linii: '990.00' }],
   koszt_dostawy_brutto: '0.00', ...nad,
 });
 
 const opcje = {
   rachunek: '07 1090 1014 0000 0000 0000 0001',
-  odbiorca: 'Lumina Marek Zywiecki',
+  odbiorca: 'Pracownia Półcień Anna Wzorcowa',
   dzis: '2026-08-22',
 };
 
@@ -57,7 +57,7 @@ describe('model wiadomości', () => {
     expect(m.platnosc).toMatchObject({ doZaplaty: '990,00 zł', tytul: 'PF/3/08/2026', termin: 'termin 14 dni — do 2026-09-04' });
     expect(m.zdanieDokumentu).toBe('W załączeniu proforma PF/3/08/2026.');
     expect(m.zamkniecie).toContain('Jeśli płatność już wyszła');
-    expect(m.sprzedawca).toBe('Szkicownia.pl');
+    expect(m.sprzedawca).toBe('Swietlik.example.test');
   });
 
   // ⚠️⚠️ BŁĄD Z RECENZJI (22.08.2026): zdanie o załączonej proformie zależało od TEMATU
@@ -183,7 +183,7 @@ describe('wersja tekstowa', () => {
     expect(t).toContain('PRZELEW');
     expect(t).toContain('Tytuł przelewu: PF/3/08/2026');
     expect(t).toContain('Termin: termin 14 dni — do 2026-09-04');
-    expect(t.endsWith('Szkicownia.pl')).toBe(true);
+    expect(t.endsWith('Swietlik.example.test')).toBe(true);
   });
 
   // ⚠️ Bez bloku płatności tekst NIE MA pustych nagłówków — sekcja bez treści czyta się
@@ -205,7 +205,7 @@ describe('renderer HTML', () => {
   it('jest kompletnym dokumentem z kopertą', () => {
     const html = renderWiadomoscHtml(model());
     expect(html).toContain('<!doctype html>');
-    expect(html).toContain('SZKICOWNIA');
+    expect(html).toContain('SWIETLIK');
   });
 
   // ⚠️ TABELA, nie akapit ze spacjami — dane do przelewu klient PRZEPISUJE do banku.

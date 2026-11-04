@@ -7,7 +7,7 @@ import { parsujAdresOdbiorcy } from '../../src/domena/adres-formularza.js';
 // serwera — trasa POST przekazuje go dalej DOKŁADNIE takim, jaki stąd wyjdzie (patrz brief
 // „adres-edytowalny": „do DPD leci dokładnie to, co było w formularzu w chwili zatwierdzenia").
 const pelny = () => ({
-  nazwa: 'Jan Kowalski', company: '', ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki',
+  nazwa: 'Jan Kowalski', company: '', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa',
   kraj: 'PL', phone: '+48500600700', email: 'j@k.pl',
 });
 
@@ -16,8 +16,8 @@ describe('parsujAdresOdbiorcy', () => {
     const { adres, blad } = parsujAdresOdbiorcy(pelny());
     expect(blad).toBeUndefined();
     expect(adres).toEqual({
-      nazwa: 'Jan Kowalski', company: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-650',
-      miasto: 'Pęki', kraj: 'PL', phone: '+48500600700', email: 'j@k.pl',
+      nazwa: 'Jan Kowalski', company: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950',
+      miasto: 'Warszawa', kraj: 'PL', phone: '+48500600700', email: 'j@k.pl',
     });
   });
 
@@ -27,8 +27,8 @@ describe('parsujAdresOdbiorcy', () => {
   });
 
   it('kod pocztowy z myślnikiem przechodzi BEZ ZMIAN — normalizacja jest wyłącznie w kliencie DPD', () => {
-    const { adres } = parsujAdresOdbiorcy({ ...pelny(), kod: '00-650' });
-    expect(adres.kod).toBe('00-650');
+    const { adres } = parsujAdresOdbiorcy({ ...pelny(), kod: '00-950' });
+    expect(adres.kod).toBe('00-950');
   });
 
   // Fallback firmy na imię i nazwisko — dokładnie ten sam, co dziś w adresOdbiorcy().
@@ -89,9 +89,9 @@ describe('parsujAdresOdbiorcy', () => {
   });
 
   it('białe znaki dookoła wartości są przycinane', () => {
-    const { adres } = parsujAdresOdbiorcy({ ...pelny(), ulica: '  Polna 1  ', miasto: '  Pęki  ' });
+    const { adres } = parsujAdresOdbiorcy({ ...pelny(), ulica: '  Polna 1  ', miasto: '  Warszawa  ' });
     expect(adres.ulica).toBe('Polna 1');
-    expect(adres.miasto).toBe('Pęki');
+    expect(adres.miasto).toBe('Warszawa');
   });
 
   it('brak jakichkolwiek danych (pusty obiekt) → błąd o wszystkich trzech polach', () => {

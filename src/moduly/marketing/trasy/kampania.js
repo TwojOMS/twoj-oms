@@ -14,6 +14,7 @@ import {
   stanPolaczenia, metaKampanie, potwierdzoneZamowienia,
 } from '../../../oms/db/reklamy.js';
 import { podsumujReklamy } from '../../../domena/reklamy.js';
+import { polaczeniaIntegracji } from '../../ustawienia/services/polaczenia-integracji.ts';
 
 // Zakladka /kampania (WRZESIEN30, 2026-08-25). Trasa jest CIENKA — wzorzec
 // routes/raporty.js: wybiera kampanie, wola domene, renderuje. Etap 0 liczy WYLACZNIE
@@ -53,14 +54,17 @@ function stanZPolaczen(lista, stany) {
   return 'weryfikacja';
 }
 
-function daneReklam(db, kampanie, dzis, widok, liczbaDni) {
+function daneReklam(db, kampanie, dzis, widok, liczbaDni, proba) {
   const od = poczatekOkresu(dzis, liczbaDni);
   const polaczenia = polaczeniaReklam(db);
   const dla = (typ) => polaczenia.filter((p) => p.typ === typ);
   const stany = new Map(polaczenia.map((p) => [p.id, stanPolaczenia(db, p.id)]));
+  const stanyListy = new Map(polaczeniaIntegracji({ db, proba }).map(p => [p.id, p]));
   const odczyty = (typ) => dla(typ).map((p) => ({
     typ, kontoId: p.kontoId, kanal: p.kanal, waluta: p.waluta, strefa: p.strefa,
     stan: stanZPolaczen([p], [stany.get(p.id)]),
+    // Etykieta z listy „Moje połączenia” tylko dla atrapy („Dane przykładowe”); poza nią widok rozróżnia brak uprawnień, błąd i weryfikację.
+    etykietaStanu: stanyListy.get(`reklamy:${p.id}`)?.atrapa ? stanyListy.get(`reklamy:${p.id}`).etykietaStanu : null,
     ostatniSukcesAt: stany.get(p.id)?.ostatniSukcesAt ?? null,
     kodBledu: stany.get(p.id)?.kodBledu ?? null,
   }));
@@ -105,7 +109,7 @@ function daneReklam(db, kampanie, dzis, widok, liczbaDni) {
   }, promocyjne, widok, liczbaDni, dzis };
 }
 
-export function zarejestrujTrasyKampanii(app, { db, config = {}, definicje, czuwaczKampanii = null, czuwaczReklam = null }) {
+export function zarejestrujTrasyKampanii(app, { db, config = {}, proba = config.proba === true, definicje, czuwaczKampanii = null, czuwaczReklam = null }) {
   app.post('/kampania/odswiez-reklamy', async (_req, reply) => {
     if (!czuwaczReklam) return reply.code(503).send('Odczyt reklam nie jest dostępny.');
     await czuwaczReklam.przebieg();
@@ -145,7 +149,7 @@ export function zarejestrujTrasyKampanii(app, { db, config = {}, definicje, czuw
       const widok = WIDOKI_REKLAM.has(req.query?.widok) ? req.query.widok : 'podsumowanie';
       const liczbaDni = String(req.query?.okres) === '30' ? 30 : 7;
       return reply.view('reklamy.ejs', { title: 'Reklamy',
-        ...daneReklam(db, kampanie, dzis, widok, liczbaDni), mozliweOdswiezenieReklam: Boolean(czuwaczReklam) });
+        ...daneReklam(db, kampanie, dzis, widok, liczbaDni, proba), mozliweOdswiezenieReklam: Boolean(czuwaczReklam) });
     }
     const kampania = wybierzKampanie(kampanie, dzis, szukanyKod);
     const zamowienia = zamowieniaZKuponami(db);

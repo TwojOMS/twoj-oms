@@ -159,7 +159,7 @@ describe('trasy zakładania zamówienia', () => {
     const r = await zaloz({
       w_nazwa: 'Anna Kowalska', w_ulica: 'Krótka 12', w_kod: '32-600', w_miasto: 'Oświęcim',
       w_telefon: '600100200', w_email: 'anna@example.pl',
-      f_chce_fakture: 'on', f_firma: 'LUMINA', f_nip: '6762432557',
+      f_chce_fakture: 'on', f_firma: 'PRACOWNIA PÓŁCIEŃ', f_nip: '6762432557',
       f_ulica: 'Przykładowa 5', f_kod: '32-600', f_miasto: 'Oświęcim',
       dostawa: 'dpd', platnosc: 'przelew', koszt_dostawy_brutto: '23,00',
       poz_nazwa: ['Szablon', 'Projekt', '', '', ''],
@@ -176,7 +176,7 @@ describe('trasy zakładania zamówienia', () => {
       nazwa: 'Anna Kowalska', ulica: 'Krótka 12', kod: '32-600', miasto: 'Oświęcim',
       kraj: 'PL', phone: '600100200', email: 'anna@example.pl',
     });
-    expect(daneFaktury(z)).toMatchObject({ firma: 'LUMINA', nip: '6762432557', miasto: 'Oświęcim' });
+    expect(daneFaktury(z)).toMatchObject({ firma: 'PRACOWNIA PÓŁCIEŃ', nip: '6762432557', miasto: 'Oświęcim' });
     expect(z.chce_fakture).toBe(1);
     expect(z.pozycje).toHaveLength(2);
     // 2×80 + 1×50 + 23 dostawy. Bariera arytmetyczna musi sie zgadzac OD RAZU — inaczej
@@ -302,11 +302,11 @@ describe('pobranie z GUS przed założeniem zamówienia', () => {
 
   it('wypełnia pola odpowiedzią z REGON-u i NICZEGO nie zapisuje', async () => {
     const app = zbuduj({
-      firmaPoNip: async () => ({ firma: 'LUMINA Marek Zywiecki', nip: '6762432557', regon: '123', ulica: 'Przykładowa 5', kod: '32-600', miasto: 'Oświęcim' }),
+      firmaPoNip: async () => ({ firma: 'PRACOWNIA PÓŁCIEŃ Anna Wzorcowa', nip: '6762432557', regon: '123', ulica: 'Przykładowa 5', kod: '32-600', miasto: 'Oświęcim' }),
     });
     const r = await pytaj(app, { f_nip: '6762432557', w_nazwa: 'Anna Kowalska' });
     expect(r.statusCode).toBe(200);
-    expect(r.body).toContain('LUMINA Marek Zywiecki');
+    expect(r.body).toContain('PRACOWNIA PÓŁCIEŃ Anna Wzorcowa');
     // Reszta formularza NIE MOZE zniknac — operator wpisuje ja w trakcie tej samej rozmowy.
     expect(r.body).toContain('Anna Kowalska');
     // ⚠️ Nic nie powstalo: to jest cala roznica miedzy „pobierz" a „zapisz".
@@ -442,7 +442,7 @@ describe('powiązanie dosyłki z karty', () => {
   // z pierwszym z brzegu.
   it('numer pasujący do dwóch zamówień dostaje odmowę, nie ciche powiązanie', async () => {
     const zmapowane = (zrodloId) => ({
-      zrodlo_id: zrodloId, numer: '5555', klient: { email: 'a@b.pl' }, dostawa: { city: 'Pęki' },
+      zrodlo_id: zrodloId, numer: '5555', klient: { email: 'a@b.pl' }, dostawa: { city: 'Warszawa' },
       metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
       kwota_brutto: '10.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
       utworzone_at: '2026-07-31T09:00:00', pozycje: [],

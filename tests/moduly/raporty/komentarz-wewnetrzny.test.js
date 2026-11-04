@@ -51,7 +51,7 @@ const zamowienie = () => ({
   pozycje: [{ nazwa: 'STOP 70x100', sku: 'STOP-70', ilosc: 2, cena_brutto: '50.00', brutto_linii: '100.00' }],
 });
 
-const SPRZEDAWCA = { nazwa: 'Lumina', adres: 'Pęki', nip: '5492447186', bdo: '000123456' };
+const SPRZEDAWCA = { nazwa: 'Pracownia Półcień', adres: 'Warszawa', nip: '5492447186', bdo: '000123456' };
 
 describe('komentarz wewnętrzny nie wychodzi do klienta', () => {
   it('nie ma go w specyfikacji do paczki', () => {

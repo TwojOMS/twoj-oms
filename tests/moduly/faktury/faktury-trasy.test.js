@@ -181,7 +181,7 @@ describe('GET /faktury', () => {
   });
 
   // C07a: wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
-  it('dokument, którego wysyłkę panel już zlecił, ma pole wyboru i mówi, że czeka na numer', async () => {
+  it('dokument, którego wysyłkę panel już zlecił, ma pole wyboru i pustą komórkę KSeF', async () => {
     const app = serwer({ dokumenty: [
       { uuid: 'czeka', number: '3/08/2026', rodzaj: 'vat', stanKsef: 'wyslana_czeka', plakietka: 'czeka na numer', ksef_number: null, ksefZleconaAt: '2026-08-06T14:00:00.000Z', client_tax_code: '1234563218', kwotaZl: '1.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
     ] });
@@ -189,7 +189,7 @@ describe('GET /faktury', () => {
     expect(r.body).toContain('3/08/2026');
     expect(r.body).toContain('value="czeka"');
     // ⚠️⚠️ ANI SLOWA O TYM, ZE DOKUMENT „JEST W KSeF" — panel tego NIE WIE, numer nadaje organ.
-    expect(r.body).toMatch(/czeka na numer/i);
+    expect(r.body).not.toMatch(/czeka na numer/i);
     expect(r.body).not.toMatch(/w KSeF<\/span>/);
   });
 

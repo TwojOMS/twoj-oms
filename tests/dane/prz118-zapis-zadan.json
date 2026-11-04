@@ -333,61 +333,74 @@
           "content-type": "application/json"
         },
         "cialo": {
-          "corrected_invoice_date": "2026-10-15",
-          "corrected_invoice_number": "FV 1/10/2026",
-          "corrected_invoice_uuid": "U1",
-          "correction_reason": "zwrot towaru",
-          "services": [
-            {
-              "correction": false,
-              "gross_price": 25800,
-              "group": 1,
-              "name": "Lampa wisząca Półcień",
-              "quantity": 2,
-              "tax_symbol": "23"
-            },
-            {
-              "correction": true,
-              "gross_price": 12900,
-              "group": 1,
-              "name": "Lampa wisząca Półcień",
-              "quantity": 1,
-              "tax_symbol": "23"
-            },
-            {
-              "correction": false,
-              "gross_price": 8400,
-              "group": 2,
-              "name": "Klosz lniany",
-              "quantity": 1,
-              "tax_symbol": "23"
-            },
-            {
-              "correction": true,
-              "gross_price": 8400,
-              "group": 2,
-              "name": "Klosz lniany",
-              "quantity": 1,
-              "tax_symbol": "23"
-            },
-            {
-              "correction": false,
-              "gross_price": 1500,
-              "group": 3,
-              "name": "Dostawa",
-              "quantity": 1,
-              "tax_symbol": "23"
-            },
-            {
-              "correction": true,
-              "gross_price": 1500,
-              "group": 3,
-              "name": "Dostawa",
-              "quantity": 1,
-              "tax_symbol": "23"
-            }
-          ]
+          "corrective_invoice": {
+            "client_id": 1,
+            "corrected_invoice_date": "2026-10-15",
+            "corrected_invoice_number": "FV 1/10/2026",
+            "corrected_invoice_uuid": "U1",
+            "correction_reason": "other",
+            "notes": "Zwrot towaru",
+            "services": [
+              {
+                "correction": false,
+                "gross_price": 25800,
+                "group": 1,
+                "name": "Lampa wisząca Półcień",
+                "quantity": 2,
+                "tax_symbol": "23"
+              },
+              {
+                "correction": true,
+                "gross_price": 12900,
+                "group": 1,
+                "name": "Lampa wisząca Półcień",
+                "quantity": 1,
+                "tax_symbol": "23"
+              },
+              {
+                "correction": false,
+                "gross_price": 8400,
+                "group": 2,
+                "name": "Klosz lniany",
+                "quantity": 1,
+                "tax_symbol": "23"
+              },
+              {
+                "correction": true,
+                "gross_price": 8400,
+                "group": 2,
+                "name": "Klosz lniany",
+                "quantity": 1,
+                "tax_symbol": "23"
+              },
+              {
+                "correction": false,
+                "gross_price": 1500,
+                "group": 3,
+                "name": "Dostawa",
+                "quantity": 1,
+                "tax_symbol": "23"
+              },
+              {
+                "correction": true,
+                "gross_price": 1500,
+                "group": 3,
+                "name": "Dostawa",
+                "quantity": 1,
+                "tax_symbol": "23"
+              }
+            ]
+          }
         }
+      },
+      {
+        "metoda": "GET",
+        "sciezka": "/api/v3/async/corrective_invoices/status/atrapa-U6.json",
+        "naglowki": {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "cialo": null
       },
       {
         "metoda": "GET",

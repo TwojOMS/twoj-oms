@@ -12,7 +12,7 @@ const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null })
 
 const zmapowane = (id, nad = {}) => ({
   zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'j@k.pl' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
+  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '123.00',
   koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
   utworzone_at: '2026-07-31T09:00:00',
@@ -77,29 +77,29 @@ describe('statusDlaSklepu — kiedy panel ma przestawic zamowienie w sklepie', (
   // = „panel nie ma polaczenia ze sklepem" — sprawa NIE DO ZALATWIENIA na pasku karty.
   it('zamówienie z Allegro NIE generuje statusu do sklepu (Plan A nie pisze do Allegro)', () => {
     expect(statusDlaSklepu(z({
-      wyslane_at: '2026-08-03T10:00:00', sklep: 'allegro_szkicownia', status_woo: 'READY_FOR_PROCESSING',
+      wyslane_at: '2026-08-03T10:00:00', sklep: 'allegro_swietlik', status_woo: 'READY_FOR_PROCESSING',
     }))).toBeNull();
   });
 
   // Straznik ma lapac KANAL po prefiksie, a nie jeden konkretny klucz — drugie konto
-  // (AmarkaPL) jest dokladnie tak samo nie-sklepem.
+  // (Półcień Druga) jest dokladnie tak samo nie-sklepem.
   it('drugi kanał Allegro tak samo nie generuje statusu', () => {
     expect(statusDlaSklepu(z({
-      wyslane_at: '2026-08-03T10:00:00', sklep: 'allegro_amarka', status_woo: 'SENT',
+      wyslane_at: '2026-08-03T10:00:00', sklep: 'allegro_polcien2', status_woo: 'SENT',
     }))).toBeNull();
   });
 
-  // ⚠️ Straznik NIE MA PRAWA UCISZYC SKLEPOW. szkicownia.pl i pro.szkicownia.pl to zywe sklepy,
+  // ⚠️ Straznik NIE MA PRAWA UCISZYC SKLEPOW. swietlik.example.test i pro.swietlik.example.test to zywe sklepy,
   // a `completed` jest tym, co wysyla klientowi maila „zamowienie zrealizowane".
-  it('sklep szkicownia.pl DALEJ generuje status', () => {
-    expect(statusDlaSklepu(z({ wyslane_at: '2026-08-03T10:00:00', sklep: 'szkicownia' }))).toBe('completed');
+  it('sklep swietlik.example.test DALEJ generuje status', () => {
+    expect(statusDlaSklepu(z({ wyslane_at: '2026-08-03T10:00:00', sklep: 'swietlik' }))).toBe('completed');
   });
 
-  // Straznik oparty na BIALEJ LISCIE sklepow („tylko pro i szkicownia") przechodzilby oba
+  // Straznik oparty na BIALEJ LISCIE sklepow („tylko pro i swietlik") przechodzilby oba
   // testy wyzej i uciszal KAZDY nowy sklep dopiety do panelu. Ma odrzucac kanaly, a nie
   // przepuszczac znajomych.
   it('nowy sklep, o którym strażnik nie wie, dalej generuje status', () => {
-    expect(statusDlaSklepu(z({ wyslane_at: '2026-08-03T10:00:00', sklep: 'szkicownia_b2c' }))).toBe('completed');
+    expect(statusDlaSklepu(z({ wyslane_at: '2026-08-03T10:00:00', sklep: 'swietlik_b2c' }))).toBe('completed');
   });
 });
 
@@ -116,6 +116,17 @@ describe('createSyncSklep — odeslanie statusu do sklepu', () => {
     return wewn;
   };
   const log = (id) => db.prepare('SELECT * FROM log WHERE zamowienie_id = ?').all(id);
+
+  it('nieczynna kompozycja nie dopisuje błędu, a pierwsze źródło uruchamia tę samą usługę', async () => {
+    const id=wyslane(4599),klienci={};
+    const sync=createSyncSklep({db,klienci,czynny:()=>Object.keys(klienci).length>0});
+    expect(await sync.odeslijStatus(id)).toMatchObject({wyslany:null,powod:'brak źródeł synchronizacji'});
+    expect(pobierzZamowienie(db,id).sync_woo_blad).toBeNull();
+    expect(log(id)).toHaveLength(0);
+    const woo={ustawStatus:vi.fn().mockResolvedValue({})};klienci.pro=woo;
+    await sync.odeslijStatus(id);
+    expect(woo.ustawStatus).toHaveBeenCalledWith(4599,'completed');
+  });
 
   it('strzela w sklep numerem ZE SKLEPU (zrodlo_id), nie wewnetrznym id panelu', async () => {
     const id = wyslane(4501);
@@ -278,35 +289,35 @@ describe('createSyncSklep — dwa sklepy naraz', () => {
     return id;
   };
 
-  it('status zamówienia ze szkicownia.pl idzie do szkicownia.pl, a nie do PRO', async () => {
+  it('status zamówienia ze swietlik.example.test idzie do swietlik.example.test, a nie do PRO', async () => {
     const pro = { ustawStatus: vi.fn().mockResolvedValue({}) };
-    const szkicownia = { ustawStatus: vi.fn().mockResolvedValue({}) };
-    const sync = createSyncSklep({ db, klienci: { pro, szkicownia } });
+    const swietlik = { ustawStatus: vi.fn().mockResolvedValue({}) };
+    const sync = createSyncSklep({ db, klienci: { pro, swietlik } });
 
-    await sync.odeslijStatus(zamowienie('szkicownia', 4700));
+    await sync.odeslijStatus(zamowienie('swietlik', 4700));
 
-    expect(szkicownia.ustawStatus).toHaveBeenCalledWith(4700, 'completed');
+    expect(swietlik.ustawStatus).toHaveBeenCalledWith(4700, 'completed');
     expect(pro.ustawStatus).not.toHaveBeenCalled();
   });
 
-  it('i odwrotnie — status z PRO nie zahacza o szkicownia.pl', async () => {
+  it('i odwrotnie — status z PRO nie zahacza o swietlik.example.test', async () => {
     const pro = { ustawStatus: vi.fn().mockResolvedValue({}) };
-    const szkicownia = { ustawStatus: vi.fn().mockResolvedValue({}) };
-    const sync = createSyncSklep({ db, klienci: { pro, szkicownia } });
+    const swietlik = { ustawStatus: vi.fn().mockResolvedValue({}) };
+    const sync = createSyncSklep({ db, klienci: { pro, swietlik } });
 
     await sync.odeslijStatus(zamowienie('pro', 4701));
 
     expect(pro.ustawStatus).toHaveBeenCalledWith(4701, 'completed');
-    expect(szkicownia.ustawStatus).not.toHaveBeenCalled();
+    expect(swietlik.ustawStatus).not.toHaveBeenCalled();
   });
 
   // Sklep nieskonfigurowany to NIE jest awaria panelu: status zostaje zapisany, a slad
   // mowi wprost, KTOREGO sklepu brakuje — inaczej komunikat „brak konfiguracji" przy
   // dwoch sklepach nie mowilby nic.
   it('brak konfiguracji nazywa sklep po imieniu', async () => {
-    const id = zamowienie('szkicownia', 4702);
+    const id = zamowienie('swietlik', 4702);
     await createSyncSklep({ db, klienci: { pro: { ustawStatus: vi.fn() } } }).odeslijStatus(id);
-    expect(pobierzZamowienie(db, id).sync_woo_blad).toContain('szkicownia');
+    expect(pobierzZamowienie(db, id).sync_woo_blad).toContain('swietlik');
   });
 });
 
@@ -330,18 +341,18 @@ describe('createSyncSklep — kanal Allegro nie jest sklepem', () => {
   // („panel nie ma polaczenia ze sklepem"), czyli wieszal na pasku karty sprawe, ktorej
   // operator nie ma jak zamknac — przy zamowieniu, ktore jest calkowicie w porzadku.
   it('wysłane zamówienie z Allegro NIE zostawia śladu błędu synchronizacji', async () => {
-    const id = zamowienieKanalu('allegro_szkicownia', 100200300);
-    const wynik = await createSyncSklep({ db, klienci: { szkicownia: { ustawStatus: vi.fn() } } }).odeslijStatus(id);
+    const id = zamowienieKanalu('allegro_swietlik', 100200300);
+    const wynik = await createSyncSklep({ db, klienci: { swietlik: { ustawStatus: vi.fn() } } }).odeslijStatus(id);
     expect(pobierzZamowienie(db, id).sync_woo_blad).toBeNull();
     expect(wynik.blad).toBeUndefined();
   });
 
   it('nie strzela statusem do ŻADNEGO ze sklepów — numer z Allegro nie oznacza tam niczego', async () => {
-    const szkicownia = { ustawStatus: vi.fn().mockResolvedValue({}) };
+    const swietlik = { ustawStatus: vi.fn().mockResolvedValue({}) };
     const pro = { ustawStatus: vi.fn().mockResolvedValue({}) };
-    await createSyncSklep({ db, klienci: { szkicownia, pro } })
-      .odeslijStatus(zamowienieKanalu('allegro_amarka', 100200301));
-    expect(szkicownia.ustawStatus).not.toHaveBeenCalled();
+    await createSyncSklep({ db, klienci: { swietlik, pro } })
+      .odeslijStatus(zamowienieKanalu('allegro_polcien2', 100200301));
+    expect(swietlik.ustawStatus).not.toHaveBeenCalled();
     expect(pro.ustawStatus).not.toHaveBeenCalled();
   });
 
@@ -351,8 +362,8 @@ describe('createSyncSklep — kanal Allegro nie jest sklepem', () => {
   // — a Plan A nie wysyla do Allegro NICZEGO.
   it('nie wysyła statusu nawet wtedy, gdy klient kanału JEST w mapie', async () => {
     const kanal = { ustawStatus: vi.fn().mockResolvedValue({}) };
-    const id = zamowienieKanalu('allegro_szkicownia', 100200302);
-    await createSyncSklep({ db, klienci: { allegro_szkicownia: kanal } }).odeslijStatus(id);
+    const id = zamowienieKanalu('allegro_swietlik', 100200302);
+    await createSyncSklep({ db, klienci: { allegro_swietlik: kanal } }).odeslijStatus(id);
     expect(kanal.ustawStatus).not.toHaveBeenCalled();
     expect(pobierzZamowienie(db, id).sync_woo_blad).toBeNull();
   });
@@ -369,11 +380,11 @@ describe('trasy — zamówienie z Allegro nie wiesza sprawy nie do załatwienia'
   beforeEach(async () => {
     db = openOmsDb(':memory:');
     woo = { ustawStatus: vi.fn().mockResolvedValue({}), dodajNotatke: vi.fn().mockResolvedValue({}) };
-    app = buildOmsServer({ db, config, poller, syncSklep: createSyncSklep({ db, klienci: { szkicownia: woo } }) });
+    app = buildOmsServer({ db, config, poller, syncSklep: createSyncSklep({ db, klienci: { swietlik: woo } }) });
     await app.ready();
   });
   const wyslij = (url, payload) => app.inject({ method: 'POST', url, headers: naglowek, payload });
-  const zKanalu = (zrodloId) => zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(zrodloId, {
+  const zKanalu = (zrodloId) => zapiszZamowienie(db, 'allegro_swietlik', zmapowane(zrodloId, {
     zrodlo_id: String(zrodloId), metoda_wysylki: 'allegro_dpd', status_woo: 'READY_FOR_PROCESSING',
   }), {});
 
@@ -396,9 +407,9 @@ describe('trasy — zamówienie z Allegro nie wiesza sprawy nie do załatwienia'
   // ⚠️ DRUGA DROGA. Akcja masowa wola te sama `odeslijStatus` w petli — bez tego testu
   // bramka moglaby byc martwa dokladnie tam, gdzie jednym kliknieciem zamyka sie
   // kilkanascie zamowien naraz. Ten sam test pilnuje, ze SKLEP obok dalej dostaje status.
-  it('masowa zmiana statusu: Allegro milczy, a szkicownia.pl DALEJ dostaje „completed"', async () => {
+  it('masowa zmiana statusu: Allegro milczy, a swietlik.example.test DALEJ dostaje „completed"', async () => {
     const kanal = zKanalu(100300402);
-    const sklep = zapiszZamowienie(db, 'szkicownia', zmapowane(4801), {});
+    const sklep = zapiszZamowienie(db, 'swietlik', zmapowane(4801), {});
 
     const r = await wyslij('/zamowienia/masowe/status', { id: [String(kanal), String(sklep)], status: 'wyslane' });
 
@@ -454,7 +465,7 @@ describe('opis miejsca w logu i w śladzie błędu', () => {
     return wewn;
   };
   const zKanalu = (zrodloId) => {
-    const wewn = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(zrodloId, {
+    const wewn = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(zrodloId, {
       zrodlo_id: String(zrodloId), metoda_wysylki: 'allegro_dpd', status_woo: 'READY_FOR_PROCESSING',
     }), {});
     db.prepare("UPDATE zamowienia SET wyslane_at = '2026-08-05T12:00:00' WHERE id = ?").run(wewn);
@@ -476,7 +487,7 @@ describe('opis miejsca w logu i w śladzie błędu', () => {
 
   it('ALLEGRO: log mówi „status w Allegro ustawiony na …"', async () => {
     const id = zKanalu('CF-901');
-    await createSyncSklep({ db, klienci: {}, klienciKanalow: { allegro_szkicownia: kanal() } })
+    await createSyncSklep({ db, klienci: {}, klienciKanalow: { allegro_swietlik: kanal() } })
       .odeslijStatus(id);
     expect(logi(id)).toContain('status w Allegro ustawiony na „SENT"');
   });
@@ -492,7 +503,7 @@ describe('opis miejsca w logu i w śladzie błędu', () => {
   it('ALLEGRO: ślad błędu mówi „nie dojechał do Allegro"', async () => {
     const id = zKanalu('CF-902');
     const zly = kanal({ ustawStatusRealizacji: vi.fn(async () => { throw new Error('HTTP 503'); }) });
-    await createSyncSklep({ db, klienci: {}, klienciKanalow: { allegro_szkicownia: zly } }).odeslijStatus(id);
+    await createSyncSklep({ db, klienci: {}, klienciKanalow: { allegro_swietlik: zly } }).odeslijStatus(id);
     expect(pobierzZamowienie(db, id).sync_woo_blad).toContain('nie dojechał do Allegro');
   });
 });

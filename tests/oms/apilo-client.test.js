@@ -3,7 +3,7 @@ import { createApiloClient } from '../../src/oms/apilo/client.js';
 
 function creds(overrides = {}) {
   return {
-    host: 'https://szkicownia.apilo.com', clientId: '3', clientSecret: 'sec',
+    host: 'https://swietlik.apilo.com', clientId: '3', clientSecret: 'sec',
     accessToken: 'AAA', accessTokenExpireAt: '2999-01-01T00:00:00+0000',
     refreshToken: 'RRR', refreshTokenExpireAt: '2999-01-01T00:00:00+0000',
     ...overrides,
@@ -13,7 +13,7 @@ function creds(overrides = {}) {
 function makeClient(credState, fetchImpl) {
   let state = credState;
   return createApiloClient({
-    host: 'https://szkicownia.apilo.com', credentialsPath: '/x.json', fetchImpl,
+    host: 'https://swietlik.apilo.com', credentialsPath: '/x.json', fetchImpl,
     readFile: () => JSON.stringify(state),
     writeFile: (p, data) => { state = JSON.parse(data); },
     now: () => Date.parse('2026-07-13T00:00:00Z'),
@@ -27,7 +27,7 @@ describe('apilo client', () => {
     const res = await client.request('GET', '/rest/api/orders/?limit=1');
     expect(res).toEqual({ ok: 1 });
     const [url, opts] = fetchImpl.mock.calls[0];
-    expect(url).toBe('https://szkicownia.apilo.com/rest/api/orders/?limit=1');
+    expect(url).toBe('https://swietlik.apilo.com/rest/api/orders/?limit=1');
     expect(opts.headers.Authorization).toBe('bearer AAA');
   });
   it('throws with status on >=400', async () => {
@@ -44,7 +44,7 @@ describe('apilo client', () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({ ok: 1 }), { status: 200 }));
     const client = makeClient(creds({ accessTokenExpireAt: '2026-07-13T00:00:30Z' }), fetchImpl);
     await client.request('GET', '/rest/api/orders/');
-    expect(fetchImpl.mock.calls[0][0]).toBe('https://szkicownia.apilo.com/rest/auth/token/');
+    expect(fetchImpl.mock.calls[0][0]).toBe('https://swietlik.apilo.com/rest/auth/token/');
     expect(fetchImpl.mock.calls[1][1].headers.Authorization).toBe('bearer NEW');
   });
   it('returns .status on non-JSON error body (e.g. HTML 502)', async () => {

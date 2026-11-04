@@ -1,3 +1,5 @@
+import { OPISY_PRZEWOZNIKOW } from './przewoznicy.ts';
+
 // KOGO PYTAC O STATUS TEJ PACZKI — jedna czysta regula dla karty zamowienia i dla
 // czuwacza przesylek. Do 23.08 wybor byl prosty (`kurierzy[p.kurier]`), a WzA nosilo
 // `bezSledzenia: true` i 23 paczki byly slepe.
@@ -32,7 +34,9 @@ function paraPrzewoznika(obiekt) {
 // Mapa podwykonawcow WzA: identyfikator przewoznika z zasobu Allegro → klucz naszego
 // klienta w mapie kurierow. Tylko zmierzony DPD idzie WLASNYM kanalem;
 // pozostale WzA przechodza nizej do odczytu Allegro z identyfikatorami jego zasobu.
-const PODWYKONAWCY_WZA = { DPD: 'dpd' };
+const PODWYKONAWCY_WZA = Object.fromEntries(Object.values(OPISY_PRZEWOZNIKOW)
+  .filter(opis => opis.sledzenieWza)
+  .map(opis => [opis.sledzenieWza.carrier, opis.sledzenieWza.kurier]));
 
 // ⚠️⚠️ DECYDUJE ZADEKLAROWANA FLAGA `bezSledzenia`, NIGDY OBECNOSC METODY. Wnioskowanie
 // z braku `statusPrzesylki` uciszyloby regresje u kuriera, ktory sledzenie MIEC POWINIEN

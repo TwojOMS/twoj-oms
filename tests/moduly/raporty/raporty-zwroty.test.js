@@ -8,7 +8,7 @@ import { agreguj } from '../../../src/domena/agregacja-sprzedazy.js';
 import { rachunekOkresu, PODLOGA_ZWROTOW } from '../../pomoc/raporty-parytetu.js';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 
-// ⚠️ sklep 'pro' → kanalOms (domain/kanaly-raportowe.js, mapa SKLEPY) mapuje na 'SZKICOWNIA_PRO',
+// ⚠️ sklep 'pro' → kanalOms (domain/kanaly-raportowe.js, mapa SKLEPY) mapuje na 'SWIETLIK_PRO',
 // NIE na 'PRO'. Brief mówił 'PRO' — to nazwa, której w kodzie nie ma; poprawione po sprawdzeniu
 // src/oms/domain/kanaly-raportowe.js.
 const zmapowane = (nad = {}) => ({
@@ -25,7 +25,7 @@ beforeEach(() => {
   // ⚠️ granice_historii ma kolumny (kanal, do_dnia, zrodlo, uwaga) — nie (kanal, granica), jak
   // mówił brief. `zrodlo` jest NOT NULL. Uzywamy pomocnika `ustawGranice` (db/historia-sprzedazy.js),
   // tak jak robi to tests/oms/sprzedaz-okresu.test.js, zamiast recznego INSERT-u ze zla nazwa kolumny.
-  ustawGranice(db, 'SZKICOWNIA_PRO', '2025-12-31', 'test', null);
+  ustawGranice(db, 'SWIETLIK_PRO', '2025-12-31', 'test', null);
   // ⚠️ zapiszZamowienie zwraca PLAIN `id` (liczbe), nie `{ id }` — brief mial `.id` na koncu,
   // co dawaloby `undefined`. Sprawdzone w src/oms/db/zamowienia.js (`return id;`) i potwierdzone
   // wzorcem uzycia w kilkunastu innych testach (np. tests/oms/dane-reczne.test.js).
@@ -46,7 +46,7 @@ describe('zwroty w okresie', () => {
     const [w] = zwrotyWOkresie(db, ZAKRES);
     expect(w.bruttoGrosze).toBe(12300);
     expect(w.nettoGrosze).toBe(10000);
-    expect(w.kanal).toBe('SZKICOWNIA_PRO');
+    expect(w.kanal).toBe('SWIETLIK_PRO');
   });
 
   it('zwrot do zamowienia ANULOWANEGO nie wchodzi do raportu', () => {
@@ -60,7 +60,7 @@ describe('agregacja ze zwrotami', () => {
   it('zwrot pomniejsza sprzedaz, ale NIE zmienia liczby zamowien ani sztuk', () => {
     const wiersze = sprzedazWOkresie(db, ZAKRES);
     const bez = agreguj(wiersze, []);
-    const ze = agreguj(wiersze, [{ dzien: '2026-08-14', kanal: 'SZKICOWNIA_PRO', bruttoGrosze: 5000, nettoGrosze: 4065 }]);
+    const ze = agreguj(wiersze, [{ dzien: '2026-08-14', kanal: 'SWIETLIK_PRO', bruttoGrosze: 5000, nettoGrosze: 4065 }]);
     expect(ze.kpi.zamowien).toBe(bez.kpi.zamowien);
     expect(ze.kpi.sztuk).toBe(bez.kpi.sztuk);
     expect(ze.kpi.aovGrosze).toBe(bez.kpi.aovGrosze);

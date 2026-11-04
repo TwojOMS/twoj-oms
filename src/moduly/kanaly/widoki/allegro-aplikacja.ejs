@@ -1,0 +1,80 @@
+<div class="allegro-konfiguracja">
+<h1>Podłącz konto Allegro</h1>
+<p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
+<p class="ust-pomoc">krok 0 z <%= krokiKreatora.length - 1 %></p>
+<%- include('../../../core/web/konfigurator/kroki-konfiguratora.ejs', {kroki: krokiKreatora}) %>
+<% if (blad) { %><div class="pas-blad" role="alert"><p><%= blad %></p>
+<% if (brakujace.length) { %><p>Brakuje:</p><ul><% for (const u of brakujace) { %><li><code><%= u.nazwa %></code><% if (u.opis) { %> — <%= u.opis %><% } %><% if (u.sekcja) { %> (sekcja „<%= u.sekcja %>”)<% } %></li><% } %></ul><% } %></div><% } %>
+<section class="ust-sekcja">
+  <h2>0. Aplikacja Allegro</h2>
+  <p><%= cel %></p>
+  <% const polaKroku1 = (krokiKreatora.find(k => k.numer === 1) || {}).formularz; const opcjeSrodowiska = ((polaKroku1 ? polaKroku1.pola : []).find(p => p.id === 'srodowisko') || {}).opcje || []; %>
+  <form method="get" action="<%= root %>/aplikacja" id="aplikacja-wybor-srodowiska">
+    <p><label for="aplikacja-srodowisko">Środowisko</label><br>
+    <select id="aplikacja-srodowisko" name="srodowisko">
+      <% for (const o of opcjeSrodowiska) { %><option value="<%= o.wartosc %>"<%= o.wartosc === srodowisko ? ' selected' : '' %>><%= o.etykieta %></option>
+      <% } %>
+    </select>
+    <button class="ust-przycisk" type="submit">Zmień</button></p>
+  </form>
+  <script>
+    document.getElementById('aplikacja-srodowisko').addEventListener('change', function () { this.form.submit(); });
+  </script>
+
+  <% if (stan === 'env') { %>
+  <p>Ustawione przez administratora serwera — zmienisz je tylko na serwerze.</p>
+  <details class="ust-pomoc"><summary>Dla administratora serwera</summary><p>Ustawienia w pliku <code>oms.env</code>.</p></details>
+  <p><a class="ust-przycisk" href="<%= root %>/nowe">Dalej: podłącz konto</a></p>
+  <% } else { %>
+  <% if (stan === 'zapisana') { %>
+  <div class="pas-potwierdzenie" role="status"><p>Aplikacja zapisana: Client ID ••••<%= koncowka %>, sekret zapisany.</p></div>
+  <p><a class="ust-przycisk" href="<%= root %>/nowe">Dalej: podłącz konto</a></p>
+  <% } %>
+  <% if (wUzyciu) { %>
+  <p>Najpierw odłącz konta Allegro połączone tą aplikacją.</p>
+  <% } else { %>
+  <% if (stan === 'zapisana') { %><h3>Zmień aplikację</h3><p class="ust-pomoc">Wpisz oba pola od nowa.</p>
+  <% } else { %>
+  <ol class="instrukcja-aplikacji">
+    <% for (const k of kroki) { %>
+    <li><%= k.tekst %>
+      <% if (k.kod) { %><code><%= k.kod %></code><% } %>
+      <% if (k.cytat) { %>„<%= k.cytat %>”<% } %><%= k.po || '' %>
+      <% if (k.lista) { %>
+      <ul>
+        <% for (const u of uprawnienia) { %><li><code><%= u.nazwa %></code> — <%= u.opis %></li><% } %>
+      </ul>
+      <% } %>
+    </li>
+    <% } %>
+  </ol>
+  <% } %>
+  <form method="post" action="<%= root %>/aplikacja-urzadzenia">
+    <input type="hidden" name="srodowisko" value="<%= srodowisko %>">
+    <p><label for="aplikacja-client-id">Identyfikator aplikacji (Client ID)</label><br><input id="aplikacja-client-id" name="clientId" required maxlength="200" autocomplete="off" value="<%= clientId %>"></p>
+    <p><label for="aplikacja-client-secret">Klucz tajny aplikacji (Client Secret)</label><br><input id="aplikacja-client-secret" name="clientSecret" type="password" required maxlength="200" autocomplete="off"></p>
+    <button class="btn btn--glowny" type="submit">Zapisz i sprawdź</button>
+  </form>
+  <% } %>
+  <% } %>
+  <details id="user-agent"<%= (uaBlad || uaZapisano) ? ' open' : '' %>>
+    <summary>Zaawansowane: jak OMS przedstawia się Allegro</summary>
+    <% if (uaBlad) { %><div class="pas-blad" role="alert"><p><%= uaBlad %></p></div><% } %>
+    <% if (uaZapisano) { %><p role="status">Zapisano. OMS od teraz przedstawia się Allegro tym nagłówkiem.</p><% } %>
+    <p>Bieżący nagłówek User-Agent: <code><%= naglowekUserAgent %></code></p>
+    <% if (userAgentZEnv) { %>
+    <p>Ustawione przez administratora serwera — zmienisz je tylko na serwerze.</p>
+    <details class="ust-pomoc"><summary>Dla administratora serwera</summary><p>Ustawienia w pliku <code>oms.env</code>.</p></details>
+    <% } else { %>
+    <p>Puste pola przywracają dane Twój OMS. Pusta wersja oznacza wersję produktu. Własna nazwa wymaga adresu strony, przez którą Allegro może skontaktować się z autorem integracji.</p>
+    <form method="post" action="<%= root %>/user-agent?srodowisko=<%= srodowisko %>">
+      <input type="hidden" name="srodowisko" value="<%= srodowisko %>">
+      <p><label for="ua-nazwa">Nazwa aplikacji (opcjonalnie, bez spacji)</label><br><input id="ua-nazwa" name="nazwa" value="<%= polaUserAgent.nazwa %>"></p>
+      <p><label for="ua-wersja">Wersja (opcjonalnie)</label><br><input id="ua-wersja" name="wersja" value="<%= polaUserAgent.wersja %>"></p>
+      <p><label for="ua-adres">Adres strony z informacją (http/https, opcjonalnie)</label><br><input id="ua-adres" name="adres" type="url" value="<%= polaUserAgent.adres %>"></p>
+      <button class="ust-przycisk" type="submit">Zapisz</button>
+    </form>
+    <% } %>
+  </details>
+</section>
+</div>

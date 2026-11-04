@@ -23,16 +23,16 @@ const iso = (sekundTemu) => new Date(TERAZ.getTime() - sekundTemu * 1000).toISOS
 const zdrowe = (nad = {}) => ocenZdrowie({
   teraz: TERAZ,
   startAt: new Date(TERAZ.getTime() - 24 * 3600 * 1000),
-  zrodla: ['pro', 'szkicownia'],
+  zrodla: ['pro', 'swietlik'],
   stanyPollera: [
     { sklep: 'pro', ostatni_przebieg_at: iso(60), ostatni_blad: null },
-    { sklep: 'szkicownia', ostatni_przebieg_at: iso(90), ostatni_blad: null },
+    { sklep: 'swietlik', ostatni_przebieg_at: iso(90), ostatni_blad: null },
   ],
   ksefWlaczony: true,
   pulsKsef: { okAt: iso(600), bladAt: null, blad: null },
   kosztyWlaczone: true,
   stanKosztow: { ostatnie_udane_at: iso(9 * 3600), ostatni_blad: null, ostatni_blad_at: null },
-  kanaly: [{ kanal: 'allegro_szkicownia', zyje: true, pilne: false, uprzedzenie: false, zostaloDni: 84, refreshWygasaAt: '2026-11-14', powod: null }],
+  kanaly: [{ kanal: 'allegro_swietlik', zyje: true, pilne: false, uprzedzenie: false, zostaloDni: 84, refreshWygasaAt: '2026-11-14', powod: null }],
   ...nad,
 });
 
@@ -57,21 +57,21 @@ describe('ocenZdrowie — poller (stan_pollera per zrodlo)', () => {
     const w = zdrowe({
       stanyPollera: [
         { sklep: 'pro', ostatni_przebieg_at: iso(16 * 60), ostatni_blad: null },
-        { sklep: 'szkicownia', ostatni_przebieg_at: iso(14 * 60), ostatni_blad: null },
+        { sklep: 'swietlik', ostatni_przebieg_at: iso(14 * 60), ostatni_blad: null },
       ],
     });
     expect(w.ok).toBe(false);
     expect(w.alarmy.some((a) => a.includes('pro') && a.includes('poller'))).toBe(true);
     // Drugie zrodlo jest PONIZEJ progu i NIE wpada do alarmow — awaria jednego kanalu
     // nie moze wygladac jak awaria wszystkich (to samo rozroznienie, co w petli pollera).
-    expect(w.alarmy.some((a) => a.includes('szkicownia'))).toBe(false);
+    expect(w.alarmy.some((a) => a.includes('swietlik'))).toBe(false);
   });
 
   it('zapisany blad zrodla to alarm z trescia bledu', () => {
     const w = zdrowe({
       stanyPollera: [
         { sklep: 'pro', ostatni_przebieg_at: iso(30), ostatni_blad: 'fetch failed' },
-        { sklep: 'szkicownia', ostatni_przebieg_at: iso(90), ostatni_blad: null },
+        { sklep: 'swietlik', ostatni_przebieg_at: iso(90), ostatni_blad: null },
       ],
     });
     expect(w.ok).toBe(false);
@@ -86,7 +86,7 @@ describe('ocenZdrowie — poller (stan_pollera per zrodlo)', () => {
     };
     const stary = zdrowe(bezWiersza);
     expect(stary.ok).toBe(false);
-    expect(stary.alarmy.some((a) => a.includes('szkicownia'))).toBe(true);
+    expect(stary.alarmy.some((a) => a.includes('swietlik'))).toBe(true);
 
     const mlody = zdrowe({ ...bezWiersza, startAt: new Date(TERAZ.getTime() - 60 * 1000) });
     expect(mlody.ok).toBe(true);
@@ -96,7 +96,7 @@ describe('ocenZdrowie — poller (stan_pollera per zrodlo)', () => {
     const w = zdrowe({
       stanyPollera: [
         { sklep: 'pro', ostatni_przebieg_at: iso(60), ostatni_blad: null },
-        { sklep: 'szkicownia', ostatni_przebieg_at: iso(90), ostatni_blad: null },
+        { sklep: 'swietlik', ostatni_przebieg_at: iso(90), ostatni_blad: null },
         { sklep: 'stary_kanal', ostatni_przebieg_at: iso(999999), ostatni_blad: 'martwy' },
       ],
     });
@@ -208,7 +208,7 @@ describe('ocenZdrowie — czuwacz przesylek (puls, zegar #4 od 23.08)', () => {
 describe('ocenZdrowie — kanaly Allegro (ocenione wczesniej przez stanKanalu)', () => {
   it('kanal pilny to alarm z jego powodem', () => {
     const w = zdrowe({
-      kanaly: [{ kanal: 'allegro_szkicownia', zyje: false, pilne: true, uprzedzenie: false, zostaloDni: null, refreshWygasaAt: null, powod: 'Kanał allegro_szkicownia nie pobiera zamówień' }],
+      kanaly: [{ kanal: 'allegro_swietlik', zyje: false, pilne: true, uprzedzenie: false, zostaloDni: null, refreshWygasaAt: null, powod: 'Kanał allegro_swietlik nie pobiera zamówień' }],
     });
     expect(w.ok).toBe(false);
     expect(w.alarmy.some((a) => a.includes('nie pobiera zamówień'))).toBe(true);
@@ -216,7 +216,7 @@ describe('ocenZdrowie — kanaly Allegro (ocenione wczesniej przez stanKanalu)',
 
   it('uprzedzenie (token na dniach) to UWAGA, nie alarm — panel dziala', () => {
     const w = zdrowe({
-      kanaly: [{ kanal: 'allegro_szkicownia', zyje: true, pilne: false, uprzedzenie: true, zostaloDni: 5, refreshWygasaAt: '2026-08-27', powod: 'Kanał allegro_szkicownia: połączenie z Allegro wygasa 2026-08-27' }],
+      kanaly: [{ kanal: 'allegro_swietlik', zyje: true, pilne: false, uprzedzenie: true, zostaloDni: 5, refreshWygasaAt: '2026-08-27', powod: 'Kanał allegro_swietlik: połączenie z Allegro wygasa 2026-08-27' }],
     });
     expect(w.ok).toBe(true);
     expect(w.uwagi.some((u) => u.includes('wygasa'))).toBe(true);
@@ -262,7 +262,7 @@ describe('ocenZdrowie — kolejność kluczy jest umową z czujką monitoring', 
 
   it('czujka wycina TREŚĆ uwag swoim wzorcem', () => {
     const json = JSON.stringify(zdrowe({
-      kanaly: [{ kanal: 'allegro_szkicownia', zyje: true, pilne: false, uprzedzenie: true, zostaloDni: 5, refreshWygasaAt: '2026-09-15', powod: 'token allegro_szkicownia wygasa za 5 dni' }],
+      kanaly: [{ kanal: 'allegro_swietlik', zyje: true, pilne: false, uprzedzenie: true, zostaloDni: 5, refreshWygasaAt: '2026-09-15', powod: 'token allegro_swietlik wygasa za 5 dni' }],
     }));
     expect(json.match(SED_UWAGI)?.[1]).toContain('wygasa za 5 dni');
   });

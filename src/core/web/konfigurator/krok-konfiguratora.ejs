@@ -1,0 +1,50 @@
+<section class="ust-sekcja">
+  <h2><%= krok.numer %>. <%= krok.tytul %></h2>
+  <% if (locals.zwiniety) { %><p><%= locals.zwiniety %></p><details><summary><%= locals.pokaz ?? 'Pokaż formularz' %></summary><% } %>
+  <%# PRZ-149.04: wybór nad instrukcją należy do formularza kroku (atrybut form); punkt `wybor.punkt` ma wariant na każdą opcję.
+     Bez `required`: wybór zawsze ma wartość (domyślna), a „required” w kroku z zapisanymi kluczami znaczy tylko puste pola sekretów. %>
+  <% const wybor = krok.formularz ? krok.wybor : undefined; const formularzKroku = `konfigurator-${krok.id}-formularz`;
+     const wybrane = wybor ? String(wartosci?.[wybor.pole.id] ?? wybor.pole.domyslna ?? '') : ''; %>
+  <% if (wybor) { const id = `konfigurator-${krok.id}-${wybor.pole.id}`; %>
+  <p><label for="<%= id %>"><%= wybor.pole.etykieta %></label><br>
+    <select id="<%= id %>" name="<%= wybor.pole.id %>" form="<%= formularzKroku %>">
+      <% for (const opcja of wybor.pole.opcje ?? []) { %><option value="<%= opcja.wartosc %>"<% if (wybrane === opcja.wartosc) { %> selected<% } %>><%= opcja.etykieta %></option><% } %>
+    </select>
+  </p>
+  <%- locals.poWyborze ?? '' %>
+  <% } %>
+  <% if (krok.instrukcja?.length) { %>
+  <ol><% for (const [i, punkt] of krok.instrukcja.entries()) { %><li><p><% if (wybor && i === wybor.punkt) { for (const [w, tresc] of Object.entries(wybor.warianty)) { %><span data-wybor="<%= w %>"<% if (w !== wybrane) { %> hidden<% } %>><%= tresc %></span><% } } else { %><%= punkt %><% } %></p></li><% } %></ol>
+  <% } %>
+  <% if (wybor) { %><script>(function(){var s=document.getElementById('konfigurator-<%= krok.id %>-<%= wybor.pole.id %>');if(!s)return;var k=s.closest('section')||document;var u=function(){k.querySelectorAll('[data-wybor]').forEach(function(p){p.hidden=p.getAttribute('data-wybor')!==s.value;});};s.addEventListener('change',u);u();})();</script><% } %>
+  <% if (krok.formularz) { %>
+  <form<% if (wybor) { %> id="<%= formularzKroku %>"<% } %> method="post" action="<%= akcja %>">
+    <input type="hidden" name="formularzId" value="<%= formularzId %>">
+    <input type="hidden" name="wersja" value="<%= wersja %>">
+    <% for (const pole of krok.formularz.pola) {
+      const id = `konfigurator-${krok.id}-${pole.id}`;
+      const wartosc = wartosci?.[pole.id] ?? pole.domyslna ?? '';
+    %>
+    <p><label for="<%= id %>"><%= pole.etykieta %></label><br>
+      <% if (pole.rodzaj === 'sekret') { %>
+      <input id="<%= id %>" name="<%= pole.id %>" type="password" autocomplete="off"<% if (pole.wymagane && !wartosci?.[pole.id]) { %> required<% } %>>
+      <% if (wartosci?.[pole.id]) { %><span>zapisane</span><% } %>
+      <% } else if (pole.rodzaj === 'wybor') { %>
+      <select id="<%= id %>" name="<%= pole.id %>"<% if (pole.wymagane) { %> required<% } %>>
+        <% for (const opcja of pole.opcje ?? []) { %><option value="<%= opcja.wartosc %>"<% if (wartosc === opcja.wartosc) { %> selected<% } %>><%= opcja.etykieta %></option><% } %>
+      </select>
+      <% } else { %>
+      <input id="<%= id %>" name="<%= pole.id %>" type="<%= pole.rodzaj === 'data' ? 'date' : 'text' %>"<% if (pole.rodzaj === 'adres') { %> inputmode="url"<% } %> value="<%= wartosc %>"<% if (pole.rodzaj === 'data' && locals.zakresDatyStartu) { %> min="<%= locals.zakresDatyStartu.min %>" max="<%= locals.zakresDatyStartu.max %>"<% } %><% if (pole.przyklad) { %> placeholder="<%= pole.przyklad %>"<% } %><% if (pole.wymagane) { %> required<% } %>>
+      <% } %>
+      <% if (pole.pomoc) { %><br><span><%= pole.pomoc %></span><% } %>
+    </p>
+    <% } %>
+    <%- locals.przedPrzyciskiem ?? '' %>
+    <% if (locals.pomocFormularza) { %><p class="ust-pomoc"><%= locals.pomocFormularza %></p><% } %>
+    <button class="btn btn--glowny" type="submit"><%= locals.przycisk ?? krok.formularz.przycisk %></button>
+  </form>
+  <% } else if (krok.widok) { %>
+  <%- include(krok.widok) %>
+  <% } %>
+  <% if (locals.zwiniety) { %></details><% } %>
+<% if (!locals.otwarta) { %></section><% } %>

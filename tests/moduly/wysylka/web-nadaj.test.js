@@ -17,15 +17,15 @@ const odp = (status, tekst) => ({ status, ok: status >= 200 && status < 300, tex
 const config = { auth: { user: 'adam', pass: 'x' } };
 const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'), origin: 'http://localhost' };
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
-const NADAWCA = { nazwa: 'Lumina Marek Zywiecki', ulica: 'ul. 1 Maja 5', kod: '00-650', miasto: 'Pęki', kraj: 'PL' };
+const NADAWCA = { nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL' };
 // Adres odbiorcy, DOKŁADNIE taki, jaki GET wypełniłby na ekranie nadania z adresOdbiorcy()
 // dla domyślnego `zmapowane()` niżej — od Zadania „adres edytowalny" POST wymaga go W
 // FORMULARZU (patrz domain/adres-formularza.js: puste pole wymagane blokuje zatwierdzenie),
 // więc każdy test, który ma dojść do prawdziwego wywołania nadaj(), musi go podać, tak jak
 // PRAWDZIWA przeglądarka odesłałaby wartości, którymi GET wypełnił pola.
 const ADRES = {
-  nazwa: 'Jan Kowalski', company: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-650',
-  miasto: 'Pęki', kraj: 'PL', phone: '+48500600700', email: 'j@k.pl',
+  nazwa: 'Jan Kowalski', company: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950',
+  miasto: 'Warszawa', kraj: 'PL', phone: '+48500600700', email: 'j@k.pl',
 };
 //  jest teraz czescia formularza nadania i trasa POST bez niej odmawia —
 // to ona pilnuje podwojnego klikniecia (patrz komentarz przy POST /zamowienia/:id/nadaj).
@@ -34,7 +34,7 @@ const PACZKA = { waga: '1', dlugosc: '110', szerokosc: '75', wysokosc: '1', kole
 const zmapowane = (nad = {}) => ({
   zrodlo_id: 1301, numer: '1301',
   klient: { email: 'j@k.pl', phone: '+48500600700' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: '', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
+  dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: '', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
   status_woo: 'processing', oplacone_at: '2026-07-29T13:00:00', anulowane: 0,
   utworzone_at: '2026-07-29T13:19:52', pozycje: [], ...nad,
@@ -47,7 +47,7 @@ function dpdKlient() {
   const fetchImpl = vi.fn()
     .mockResolvedValueOnce(odp(200, fixture('v10-ok.xml')))
     .mockResolvedValueOnce(odp(200, fixture('v4-ok.xml')));
-  const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '278216', nadawca: NADAWCA, fetchImpl });
+  const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '876543', nadawca: NADAWCA, fetchImpl });
   return { dpd, fetchImpl };
 }
 
@@ -66,7 +66,7 @@ function dpdKlientZZpl() {
     .mockResolvedValueOnce(odp(200, fixture('v10-ok.xml')))
     .mockResolvedValueOnce(odp(200, fixture('v4-ok.xml')))
     .mockResolvedValueOnce(odp(200, fixture('v4-ok-zpl.xml')));
-  const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '278216', nadawca: NADAWCA, fetchImpl });
+  const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '876543', nadawca: NADAWCA, fetchImpl });
   return { dpd, fetchImpl };
 }
 
@@ -130,8 +130,8 @@ describe('GET /zamowienia/:id/nadaj — ekran nadania', () => {
     expect(r.body).toContain('Jan');
     expect(r.body).toContain('Kowalski');
     expect(r.body).toContain('Polna 1');
-    expect(r.body).toContain('00-650');
-    expect(r.body).toContain('Pęki');
+    expect(r.body).toContain('00-950');
+    expect(r.body).toContain('Warszawa');
     expect(r.body).toContain('PL');
     expect(r.body).toContain('+48500600700');
     expect(r.body).toContain('j@k.pl');
@@ -316,8 +316,8 @@ describe('GET /zamowienia/:id/nadaj — ekran nadania', () => {
 // wisi na miniaturze, a gdy miniatury nie ma — na nazwie. Bez tego drugiego pozycja z Allegro
 // nie ma na czym powiesić linku (Allegro nie oddaje zdjęcia pozycji).
 describe('GET /zamowienia/:id/nadaj — pozycja prowadzi do swojego źródła', () => {
-  const configZeSklepem = { auth: { user: 'adam', pass: 'x' }, sklepy: { pro: { baseUrl: 'https://pro.szkicownia.pl' } } };
-  const ZDJECIE = 'https://pro.szkicownia.pl/wp-content/uploads/2026/07/lampa.jpg';
+  const configZeSklepem = { auth: { user: 'adam', pass: 'x' }, sklepy: { pro: { baseUrl: 'https://pro.swietlik.example.test' } } };
+  const ZDJECIE = 'https://pro.swietlik.example.test/wp-content/uploads/2026/07/lampa.jpg';
 
   // Własny wariant `zServerem` — inny sklep (kanał!) i konfiguracja z `baseUrl`. Reszta
   // pliku celowo pracuje na config bez sklepów, żeby nie zależała od adresu, którego
@@ -358,7 +358,7 @@ describe('GET /zamowienia/:id/nadaj — pozycja prowadzi do swojego źródła', 
   // Odnośnik przypięty WYŁĄCZNIE do obrazka nie pokazałby się w tym kanale ANI RAZU.
   it('pozycja z Allegro — odnośnik na nazwie, bo miniatury nie ma', async () => {
     const html = await ekran({
-      sklep: 'allegro_szkicownia',
+      sklep: 'allegro_swietlik',
       query: '?kurier=dpd',
       nad: {
         metoda_wysylki: 'allegro_dpd',
@@ -380,7 +380,7 @@ describe('GET /zamowienia/:id/nadaj — pozycja prowadzi do swojego źródła', 
   // z domain/tracking.js: link donikąd jest gorszy niż jego brak.
   it('pozycja z Allegro bez identyfikatora oferty nie dostaje odnośnika', async () => {
     const html = await ekran({
-      sklep: 'allegro_szkicownia',
+      sklep: 'allegro_swietlik',
       query: '?kurier=dpd',
       nad: {
         metoda_wysylki: 'allegro_dpd',
@@ -673,7 +673,7 @@ describe('ekran nadania i POST /nadaj: do DPD leci DOKŁADNIE to, co było w for
   // teście operator nigdy nawet nie widział na wejściu — payload jest jedynym źródłem).
   it('operator POPRAWIA miasto w formularzu → DPD dostaje POPRAWIONĄ wartość, NIE oryginalny adres zamówienia', async () => {
     const { dpd, fetchImpl } = dpdKlient();
-    // Zamówienie w sklepie ma miasto 'Pęki' (zmapowane() domyślnie) — operator w tym
+    // Zamówienie w sklepie ma miasto 'Warszawa' (zmapowane() domyślnie) — operator w tym
     // teście wysyła formularz z INNYM miastem, jakby poprawił literówkę albo adres dosyłki.
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
@@ -688,10 +688,10 @@ describe('ekran nadania i POST /nadaj: do DPD leci DOKŁADNIE to, co było w for
     expect(receiver).toContain('Ulica-Po-Poprawce-Operatora');
     // Kontrola negatywna: gdyby POST/nadanie.js/dpd.js po cichu wrócił do adresu z
     // zamówienia (edycja pozorna), <receiver> niósłby ORYGINALNE miasto zamówienia
-    // ('Pęki' — patrz zmapowane().dostawa) zamiast poprawki operatora. Sprawdzamy
+    // ('Warszawa' — patrz zmapowane().dostawa) zamiast poprawki operatora. Sprawdzamy
     // WYŁĄCZNIE <receiver>, nie całą kopertę: <sender> (nadawca, NADAWCA) legalnie
-    // niesie 'Pęki' jako WŁASNE miasto i nie ma nic wspólnego z tą poprawką.
-    expect(receiver).not.toContain('>Pęki<');
+    // niesie 'Warszawa' jako WŁASNE miasto i nie ma nic wspólnego z tą poprawką.
+    expect(receiver).not.toContain('>Warszawa<');
   });
 
   it('to samo dla miasta bez edycji — pole niebędące pierwszym w formularzu też musi się zgadzać', async () => {

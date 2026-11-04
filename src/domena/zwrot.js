@@ -8,6 +8,7 @@ import { kluczPozycji } from './pozycje-reczne.js';
 // po recznych poprawkach) — czyta ja karta, faktura i sufit zwrotu dostawy nizej.
 import { kwotaOczekiwanaGrosze, wysylkaBruttoGrosze } from './suma-pozycji.js';
 import { NAZWA_ZAPASOWA } from './nazwa-programu.js';
+import { NAZWA_DOSTAWY } from './pozycje-faktury.js';
 
 // Regula zwrotu. Modul jest CZYSTY: dostaje zamowienie i cialo formularza, oddaje gotowy
 // ksztalt do zapisu albo odmowe po polsku. Bazy nie dotyka (to db/zwroty.js), a trasa
@@ -542,6 +543,30 @@ export function powodOdmowyWystawieniaKorekty(w) {
       + 'stanu „przed" po pierwszej korekcie, a błędna korekta liczy się u organu jak prawdziwa.';
   }
   return null;
+}
+
+/**
+ * PRZ-148.03: zwrot kosztu dostawy da się ująć w korekcie TYLKO przy fakturze z pozycją „Dostawa” — inaczej panel
+ * nie ma czego pomniejszyć, a korekta bez tych pieniędzy rozjechałaby panel i dokument u organu (dawniej działo się
+ * to po cichu; uzasadnienie przy `paryKorekty`, domena/korekta-pozycje.js, który woła TĘ funkcję). Faktura bez tej
+ * linii zdarza się normalnie: darmowa wysyłka, dostawa pod inną nazwą, dokument poprawiony ręcznie w programie.
+ *
+ * `faktura` to dokument z programu fakturowego (`{ number, services }`). Pozycje nieznane (brak dokumentu, brak
+ * listy) → `null`: karta i ekran zwrotu nie zgadują, a odmowę i tak da usługa korekty po odczycie dokumentu.
+ */
+export function powodOdmowyKorektyBezDostawy(w, faktura, { nazwa = NAZWA_ZAPASOWA } = {}) {
+  if (!Array.isArray(faktura?.services)) return null;
+  const dostawaGr = w?.kwota_dostawy ? grosze(w.kwota_dostawy, 'zwrot dostawy') : 0;
+  if (!dostawaGr) return null;
+  if (faktura.services.some((s) => s?.name === NAZWA_DOSTAWY)) return null;
+  return `Zwrot obejmuje ${zl(dostawaGr)} zł dostawy, a faktura ${faktura?.number ?? ''} nie ma pozycji`
+    + ` „${NAZWA_DOSTAWY}" — korekty nie da się złożyć. Wystaw ją ręcznie w ${nazwa.miejscownik}.`;
+}
+
+/** PRZ-148.03: czy dla tego zwrotu karta/ekran muszą znać pozycje faktury (zwrot z dostawą, jeszcze bez korekty). */
+export function zwrotWymagaPozycjiDostawy(w) {
+  if (!w || w.korekta_numer || w.korekta_zlecona_at || !w.kwota_dostawy) return false;
+  return grosze(w.kwota_dostawy, 'zwrot dostawy') > 0;
 }
 
 /**

@@ -10,7 +10,7 @@
 <% if (!zasady) { %>
 <section class="ust-sekcja" id="modul-faktur-stan">
   <h2>Teraz działa</h2>
-  <p class="ust-stan"><strong><%= ekran.dziala.etykieta %></strong></p>
+  <p class="ust-stan"><strong><%= ekran.dziala.etykieta %><% if (ekran.dziala.stanPolaczenia) { %> — <%= ekran.dziala.stanPolaczenia %><% } %></strong></p>
   <p><%= ekran.dziala.zrodlo %></p>
   <% if (ekran.serie) { %><p><a href="/ustawienia/integracje/program-fakturowy/serie">Serie numeracji</a></p><% } %>
   <% if (ekran.czeka) { %><p class="pas-uprzedzenie"><%= ekran.czeka %></p><% } %>
@@ -31,7 +31,7 @@
   <form id="modul-faktur-formularz" method="post" action="<%= ekran.adres %>">
     <div class="aut-wybor">
       <% ekran.pola.forEach(function (p) { %>
-      <p<% if (p.wkrotce) { %> class="aut-wylaczone"<% } %>><label><input type="radio" name="program" value="<%= p.id %>"<% if (p.zaznaczone) { %> checked<% } %><% if (p.nieaktywne) { %> disabled<% } %>><span><strong><%= p.etykieta %></strong><% if (p.wkrotce) { %><span class="menu-ustawien-wkrotce">wkrótce</span><% } %><% if (p.opis) { %><span class="wyjasnienie"><%= p.opis %><% if (p.odnosnik) { %> <a href="<%= p.odnosnik.adres %>"><%= p.odnosnik.tekst %></a><% } %></span><% } %><% if (p.kopia) { %><span class="wyjasnienie"><%= p.kopia %></span><% } %><% if (p.ostrzezenie) { %><span class="wyjasnienie uwaga"><%= p.ostrzezenie %></span><% } %></span></label></p>
+      <p<% if (p.wkrotce) { %> class="aut-wylaczone"<% } %>><label><input type="radio" name="program" value="<%= p.id %>"<% if (p.zaznaczone) { %> checked<% } %><% if (p.nieaktywne) { %> disabled<% } %>><span><strong><%= p.etykieta %></strong><% if (p.wkrotce) { %> <span class="menu-ustawien-wkrotce">wkrótce</span><% } %><% if (p.opis) { %><span class="wyjasnienie"><%= p.opis %><% if (p.odnosnik) { %> <a href="<%= p.odnosnik.adres %>"><%= p.odnosnik.tekst %></a><% } %></span><% } %><% if (p.kopia) { %><span class="wyjasnienie"><%= p.kopia %></span><% } %><% if (p.ostrzezenie) { %><span class="wyjasnienie uwaga"><%= p.ostrzezenie %></span><% } %></span></label></p>
       <% }); %>
     </div>
     <% if (ekran.zPliku) { %>

@@ -1,3 +1,4 @@
+import { wzorzecNazw } from '../../pomoc/skroty-nazw-firmy.js';
 import { describe, it, expect, vi, beforeAll, afterAll, type MockInstance } from 'vitest';
 import { tmpdir } from 'node:os';
 import { zbudujOms } from '../../../src/oms/bootstrap.ts';
@@ -25,7 +26,7 @@ const baza = { OMS_USER: 'operator', OMS_PASS: 'fixture',
   OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir() };
 const poczta = { SMTP_HOST: 'smtp.fikcja.test', SMTP_USER: 'nadawca@fikcja.test', SMTP_PASS: 'Haslo-Fikcyjne-7Q' };
 const headers = { authorization: `Basic ${Buffer.from('operator:fixture').toString('base64')}`, origin: 'http://localhost' };
-const FIRMY = /szkicownia|lumina|zywiecki/i;
+const FIRMY = wzorzecNazw([{"wzor": "\\p{L}{8}", "skrot": "3876cd847a24f6d3a8f3542919b9f6545e500e2eea8583bb58583508cefe9a57", "bezWielkosci": true}, {"wzor": "\\p{L}{8}", "skrot": "a2ac0b2e157811634f85a0cd5e7ec6ae46b6123e724924eba975ef822566f72e", "bezWielkosci": true}, {"wzor": "\\p{L}{6}", "skrot": "22fd0120386bf44db9b2553babeb20e750484883331baed1e36f87aaf1dc7473", "bezWielkosci": true}, {"wzor": "\\p{L}{6}", "skrot": "2b26c3d0b5f3fff76e52503400e750bae306b5bd3fea3f861797207eb4015b4b", "bezWielkosci": true}]);
 
 type Oms = Awaited<ReturnType<typeof zbudujOms>>;
 const zbuduj = async (env: Record<string, string>, log?: (...tekst: string[]) => void) => zbudujOms({ env, log });
@@ -175,7 +176,7 @@ describe('domyślny bootstrap Z SMTP — tożsamość rzeczywistych usług', () 
   });
 
   it('konfiguracja wiadomości nie zasiewa danych żadnej firmy', () => {
-    expect(JSON.stringify(u('config'))).not.toMatch(FIRMY);
+    expect(FIRMY.test(JSON.stringify(u('config')))).toBe(false);
   });
 });
 

@@ -1,5 +1,5 @@
-<h1>Kurier DPD Polska</h1>
-<p><a href="/ustawienia/integracje">← Integracje</a></p>
+<h1>DPD</h1>
+<p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (test) { %>
@@ -11,11 +11,12 @@
 
 <% if (zEnv) { %>
 <section class="ust-sekcja" id="dpd-stan">
-  <h2>Podłączony w pliku konfiguracji</h2>
-  <p>Kurier DPD jest ustawiony w pliku konfiguracji serwera (<code>oms.env</code>, zmienne <code>DPD_…</code>). Ten ekran go nie zmienia — dane DPD poprawisz w tym pliku.</p>
+  <h2>Ustawione przez administratora serwera</h2>
+  <p>Kurier DPD jest ustawiony na serwerze. Ten ekran go nie zmienia — dane DPD poprawi administrator serwera.</p>
+  <details class="ust-pomoc"><summary>Dla administratora serwera</summary><p>Plik <code>oms.env</code>: zmienne <code>DPD_…</code>.</p></details>
   <% if (stan) { %>
     <form method="post" action="/ustawienia/integracje/dpd/odlacz">
-      <p>W OMS-ie zostały też dane DPD zapisane wcześniej na tym ekranie. Plik konfiguracji ma pierwszeństwo, więc nie są używane.</p>
+      <p>W OMS-ie zostały też dane DPD zapisane wcześniej na tym ekranie. Ustawienia na serwerze mają pierwszeństwo, więc nie są używane.</p>
       <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń zapisane dane DPD</button></div>
     </form>
   <% } %>
@@ -26,7 +27,7 @@
   <% if (stan) { %>
     <p class="ust-stan ust-stan-ok"><strong>Podłączony</strong></p>
     <p>„<%= stan.ustawienia.nazwa %>” — zapisał <%= stan.kontoLogin ?? '—' %>, <%= fmtDataCzas(stan.zmienionoAt) %>.</p>
-    <% if (wymagaRestartu) { %><p class="pas-uprzedzenie">Nadawanie paczek włączy się po ponownym uruchomieniu OMS-u (to pierwszy kurier w tym panelu). Kolejne zmiany na tym ekranie działają od razu.</p><% } %>
+    <% if (wymagaRestartu) { %><p class="pas-uprzedzenie">Nadawanie paczek włączy się po ponownym uruchomieniu OMS-u (to pierwszy kurier w tym OMS-ie). Kolejne zmiany na tym ekranie działają od razu.</p><% } %>
   <% } else { %>
     <p class="ust-stan"><strong>Niepodłączony</strong></p>
   <% } %>
@@ -45,11 +46,12 @@
     <div><input id="dpd-nazwa" name="nazwa" value="<%= pola.nazwa %>" maxlength="60" required>
       <p class="ust-pomoc">Dowolna nazwa, po której rozpoznasz ten rodzaj wysyłki.</p></div>
 
-    <label>Adres nadawcy</label>
+    <label for="dpd-nadawca">Adres nadawcy</label>
     <div>
-      <% const n = adresFirmy.adres; if (n && n.nazwa && n.ulica && n.kod && n.miasto) { %><div class="ust-wartosc"><%= n.nazwa %>, <%= n.ulica %>, <%= n.kod %> <%= n.miasto %></div>
-      <% } else { %><div class="ust-wartosc uwaga">Brak — wpisz adres firmy w <a href="<%= ekranAdresu %>">Ustawienia → Firma</a>. Bez adresu DPD nie nada paczki.</div><% } %>
-      <p class="ust-pomoc">Widoczny na etykiecie. To adres firmy — ten sam trafia na proformy i specyfikacje, dlatego ustawia się go w jednym miejscu: <a href="<%= ekranAdresu %>">Ustawienia → Firma</a><%= adresFirmy.zrodlo === 'plik' ? ' (tutaj: z pliku konfiguracji, DPD_NADAWCA_…)' : '' %>.</p>
+      <% const n = adresFirmy.adres; if (n && n.nazwa && n.ulica && n.kod && n.miasto) { %><div class="ust-wartosc"><output id="dpd-nadawca"><%= n.nazwa %>, <%= n.ulica %>, <%= n.kod %> <%= n.miasto %></output></div>
+      <% } else { %><div class="ust-wartosc uwaga"><output id="dpd-nadawca">Brak — wpisz adres firmy w <a href="<%= ekranAdresu %>">Ustawienia → Firma</a>. Bez adresu DPD nie nada paczki.</output></div><% } %>
+      <p class="ust-pomoc">Widoczny na etykiecie. To adres firmy — ten sam trafia na proformy i specyfikacje, dlatego ustawia się go w jednym miejscu: <a href="<%= ekranAdresu %>">Ustawienia → Firma</a><%= adresFirmy.zrodlo === 'plik' ? ' (tutaj: ustawiony na serwerze)' : '' %>.</p>
+      <% if (adresFirmy.zrodlo === 'plik') { %><details class="ust-pomoc"><summary>Dla administratora serwera</summary><p>Adres nadawcy: zmienne <code>DPD_NADAWCA_…</code> w <code>oms.env</code>.</p></details><% } %>
     </div>
 
     <h3>Ustawienia</h3>

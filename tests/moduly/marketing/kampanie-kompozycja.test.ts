@@ -13,7 +13,7 @@ it('K rzeczywiste HTTP rejestruje warianty reklam i integracje, pusty start bez 
   expect(r.statusCode).toBe(200);expect(r.body).toContain('Reklamy');
  }
  const r=await a.app.inject({method:'GET',url:'/ustawienia/integracje/reklamy',headers:h});
- expect(r.statusCode).toBe(200);expect(r.body).toContain('Integracje reklam');expect(r.body).toContain('Google przez GA4');
+ expect(r.statusCode).toBe(200);expect(r.body).toContain('Integracje reklam');expect(r.body).toContain('Google Analytics 4');
  const wspolny=await a.app.inject({method:'GET',url:'/ustawienia/integracje/katalog',headers:h});expect(wspolny.statusCode).toBe(200);expect(wspolny.body).toContain('Google Analytics 4');
  for(const url of ['/kampania/odswiez','/kampania/odswiez-reklamy','/ustawienia/integracje/reklamy/zapisz','/ustawienia/integracje/reklamy/test'])expect(a.app.hasRoute({method:'POST',url})).toBe(true);
  expect(a.db.prepare('SELECT COUNT(*) AS n FROM kampanie').get()?.n).toBe(0);

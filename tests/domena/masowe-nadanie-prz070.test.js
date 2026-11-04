@@ -39,7 +39,7 @@ describe('PRZ-070: podział do nadania hurtem', () => {
   it.each(['allegro_dpd', 'allegro_punkt', 'allegro_kurier', 'allegro_inne'])(
     'Allegro %s idzie drogą „Wysyłam z Allegro”',
     (metoda) => {
-      const { doNadania, pominiete } = podzielDoNadania([zam({ sklep: 'allegro_szkicownia', metoda_wysylki: metoda })]);
+      const { doNadania, pominiete } = podzielDoNadania([zam({ sklep: 'allegro_swietlik', metoda_wysylki: metoda })]);
       expect(pominiete).toEqual([]);
       expect(doNadania[0].metodaUzyta).toBe(metoda);
       expect(doNadania[0].rodzajFormularza).toBe('wza');
@@ -49,7 +49,7 @@ describe('PRZ-070: podział do nadania hurtem', () => {
   it('Allegro DPD za pobraniem idzie — kwotę poda Allegro', () => {
     const { doNadania, uwagi } = podzielDoNadania([
       zam({
-        sklep: 'allegro_szkicownia', metoda_wysylki: 'allegro_dpd', pobranie: 1, kwota_pobrania: '176.89', oplacone_at: null,
+        sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_dpd', pobranie: 1, kwota_pobrania: '176.89', oplacone_at: null,
       }),
     ]);
     expect(doNadania).toHaveLength(1);
@@ -58,7 +58,7 @@ describe('PRZ-070: podział do nadania hurtem', () => {
 
   it('paczkomat z Allegro i ze sklepu idzie naszym InPostem', () => {
     const { doNadania } = podzielDoNadania([
-      zam({ id: 1, numer: 'A', sklep: 'allegro_szkicownia', metoda_wysylki: 'allegro_paczkomat', punkt_odbioru: 'KRA01M' }),
+      zam({ id: 1, numer: 'A', sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_paczkomat', punkt_odbioru: 'KRA01M' }),
       zam({ id: 2, numer: 'S', metoda_wysylki: 'inpost_paczkomat', punkt_odbioru: 'WRO10B' }),
     ]);
     expect(doNadania.map((z) => [z.numer, z.metodaUzyta, z.rodzajFormularza])).toEqual([
@@ -71,12 +71,22 @@ describe('PRZ-070: podział do nadania hurtem', () => {
     expect(pominiete[0].powod).toMatch(/nie ma kodu paczkomatu/);
   });
 
-  it('pobranie do paczkomatu odpada — umowa z InPostem na pobranie niepotwierdzona', () => {
+  // PRZ-137.01: przełącznik umowy obowiązuje tylko pobranie OMS-owe (tu: zamówienie ręczne);
+  // pobranie sprzedane przez sklep idzie do nadania (tests/domena/pobranie-sklepowe-137.test.ts).
+  it('ręczne pobranie do paczkomatu bez umowy firmy odpada', () => {
+    const { doNadania, pominiete } = podzielDoNadania([
+      zam({ sklep: 'reczne', metoda_wysylki: 'inpost_paczkomat', punkt_odbioru: 'WRO10B', pobranie: 1, kwota_pobrania: '50.00' }),
+    ]);
+    expect(doNadania).toEqual([]);
+    expect(pominiete[0].powod).toBe('pobranie przez InPost wymaga umowy — włącz ją w Ustawieniach → Integracje albo zmień kuriera na karcie zamówienia');
+  });
+
+  it('sklepowe pobranie do paczkomatu idzie do nadania mimo wyłączonej umowy', () => {
     const { doNadania, pominiete } = podzielDoNadania([
       zam({ metoda_wysylki: 'inpost_paczkomat', punkt_odbioru: 'WRO10B', pobranie: 1, kwota_pobrania: '50.00' }),
     ]);
-    expect(doNadania).toEqual([]);
-    expect(pominiete[0].powod).toBe('pobranie do paczkomatu — nadaj z karty zamówienia (umowa z InPostem na pobranie jest niepotwierdzona)');
+    expect(pominiete).toEqual([]);
+    expect(doNadania[0].rodzajFormularza).toBe('paczkomat');
   });
 
   // ⚠️⚠️ PIENIĄDZE: druga, płatna paczka naszą umową do klienta, który ma dostawę u Allegro.
@@ -84,7 +94,7 @@ describe('PRZ-070: podział do nadania hurtem', () => {
     'kanał Allegro z ręcznie ustawioną metodą „%s” odpada',
     (metoda) => {
       const { doNadania, pominiete } = podzielDoNadania([
-        zam({ sklep: 'allegro_amarka', metoda_wysylki: metoda, punkt_odbioru: 'WRO10B' }),
+        zam({ sklep: 'allegro_polcien2', metoda_wysylki: metoda, punkt_odbioru: 'WRO10B' }),
       ]);
       expect(doNadania).toEqual([]);
       expect(pominiete[0].powod).toBe('zamówienie z Allegro ma ręcznie ustawioną metodę sklepową — nadaj je z karty zamówienia');

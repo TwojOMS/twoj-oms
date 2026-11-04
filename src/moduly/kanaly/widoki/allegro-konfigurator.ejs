@@ -1,0 +1,32 @@
+<div class="allegro-konfiguracja">
+<h1>Podłącz konto Allegro</h1>
+<p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
+<% if (blad) { %><div class="pas-blad" role="alert"><p><%= blad %></p></div><% } %>
+<% if (komunikat) { %><div class="pas-potwierdzenie" role="status"><p><%= komunikat %></p></div><% } %>
+<%# PRZ-146.05 (B1): bez aplikacji Device w żadnym środowisku bieżący jest krok 0 (numerKroku z trasy); krok 1 zostaje zwinięty pod nim. %>
+<%- include('../../../core/web/konfigurator/kroki-konfiguratora.ejs',{kroki}) %>
+<% const krok1 = kroki.find(x => x.numer === 1), polaSrodowiska = (krok1.formularz.pola.find(p => p.id === 'srodowisko') || {}).opcje || []; %>
+<% const wybraneSrodowisko = (locals.wartosci && wartosci.srodowisko) || 'produkcja'; %>
+<% if (numerKroku === 0) { %>
+<section class="ust-sekcja">
+  <h2>0. Aplikacja Allegro</h2>
+  <p class="ust-pomoc"><a href="<%= root %>/aplikacja?srodowisko=produkcja">Najpierw załóż aplikację Allegro (krok 0).</a> Konto testowe łączy się przez <a href="<%= root %>/aplikacja?srodowisko=sandbox">aplikację w Allegro Sandbox</a>.</p>
+</section>
+<% } %>
+<%- include('../../../core/web/konfigurator/krok-konfiguratora.ejs',{zakresDatyStartu:locals.zakresDatyStartu,krok:krok1,otwarta:true,akcja:root+'/'+krok1.formularz.akcja+(locals.zastap?'?zastap='+encodeURIComponent(locals.zastap)+'&wersja='+encodeURIComponent(locals.zastapWersja ?? ''):''),przedPrzyciskiem:numerKroku > 0 ? include('allegro-bez-aplikacji.ejs',{polaSrodowiska,deviceGotowe,wybraneSrodowisko,root}) : '',...(numerKroku === 0 ? {zwiniety:'Nazwę i zakres zamówień możesz wpisać już teraz — konto połączysz po założeniu aplikacji.',pokaz:'Pokaż krok 1'} : {})}) %>
+<% if (numerKroku > 0) { %>
+<script>(function(){var s=document.getElementById('konfigurator-nazwa-srodowisko');if(!s)return;var u=function(){document.querySelectorAll('[data-bez-aplikacji]').forEach(function(p){p.hidden=p.getAttribute('data-bez-aplikacji')!==s.value;});};s.addEventListener('change',u);u();})();</script>
+<% } %>
+</section>
+<% if (dcrDostepne) { %>
+<section class="ust-sekcja">
+  <h2>Przygotowanie aplikacji Allegro</h2>
+  <p>Nowa instalacja korzysta z krótkiego kodu rejestracji aplikacji uzyskanego w Allegro. Kolejne konta używają już zapisanej aplikacji. Jeśli instalacja nie ma jeszcze dostępu do tej metody, pokażemy komunikat po próbie rejestracji.</p>
+  <form method="post" action="<%= root %>/aplikacja">
+    <p><label for="allegro-app-srodowisko">Środowisko aplikacji</label><br><select id="allegro-app-srodowisko" name="srodowisko"><option value="sandbox">Allegro Sandbox</option><option value="produkcja">Allegro</option></select></p>
+    <p><label for="allegro-kod">Krótki kod z Allegro</label><br><input id="allegro-kod" name="kod" type="password" required maxlength="2048" autocomplete="off"></p>
+    <button class="ust-przycisk" type="submit">Zarejestruj aplikację</button>
+  </form>
+</section>
+<% } %>
+</div>

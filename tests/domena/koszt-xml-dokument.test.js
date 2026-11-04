@@ -40,19 +40,19 @@ const XML_PELNY = `<?xml version="1.0" encoding="utf-8"?>
   <Podmiot2>
     <DaneIdentyfikacyjne>
       <NIP>1234563218</NIP>
-      <Nazwa>Lumina Marek Zywiecki</Nazwa>
+      <Nazwa>Pracownia Półcień Anna Wzorcowa</Nazwa>
     </DaneIdentyfikacyjne>
     <Adres>
       <KodKraju>PL</KodKraju>
-      <AdresL1>1 Maja 5</AdresL1>
-      <AdresL2>00-650 Pęki</AdresL2>
+      <AdresL1>Przykładowa 1</AdresL1>
+      <AdresL2>00-950 Warszawa</AdresL2>
     </Adres>
     <AdresKoresp>
       <KodKraju>PL</KodKraju>
-      <AdresL1>UL. KRAKOWSKA 91</AdresL1>
-      <AdresL2>00-650 PĘKI</AdresL2>
+      <AdresL1>ul. Przykładowa 1</AdresL1>
+      <AdresL2>00-950 WARSZAWA</AdresL2>
     </AdresKoresp>
-    <NrKlienta>278216</NrKlienta>
+    <NrKlienta>876543</NrKlienta>
     <JST>2</JST>
     <GV>2</GV>
   </Podmiot2>
@@ -60,7 +60,7 @@ const XML_PELNY = `<?xml version="1.0" encoding="utf-8"?>
     <KodWaluty>PLN</KodWaluty>
     <P_1>2026-08-04</P_1>
     <P_1M>Warszawa</P_1M>
-    <P_2>BC11206615</P_2>
+    <P_2>BC44539948</P_2>
     <P_6>2026-07-31</P_6>
     <P_13_1>544.45</P_13_1>
     <P_14_1>125.23</P_14_1>
@@ -125,7 +125,7 @@ const XML_PELNY = `<?xml version="1.0" encoding="utf-8"?>
       </TerminPlatnosci>
       <FormaPlatnosci>6</FormaPlatnosci>
       <RachunekBankowy>
-        <NrRB>77109010140000000000000002</NrRB>
+        <NrRB>61109010140000071219812874</NrRB>
         <SWIFT>INGBPLPW</SWIFT>
       </RachunekBankowy>
     </Platnosc>
@@ -134,13 +134,13 @@ const XML_PELNY = `<?xml version="1.0" encoding="utf-8"?>
 
 // PayU: faktura ZWOLNIONA (`P_13_7`, stawka pozycji `zw`), z podstawą zwolnienia w `P_19A`
 // i zapłatą opisową (`PlatnoscInna/OpisPlatnosci`) zamiast formy z listy.
-const XML_ZWOLNIONY = `<?xml version="1.0" encoding="utf-8"?><Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/"><Naglowek><DataWytworzeniaFa>2026-08-08T01:18:07</DataWytworzeniaFa></Naglowek><Podmiot1><DaneIdentyfikacyjne><NIP>1200001068</NIP><Nazwa>PayU S.A.</Nazwa></DaneIdentyfikacyjne><Adres><KodKraju>PL</KodKraju><AdresL1>Grunwaldzka 186 ; 60-166 Poznań</AdresL1></Adres></Podmiot1><Podmiot2><DaneIdentyfikacyjne><NIP>1234563218</NIP><Nazwa>Lumina Marek Zywiecki</Nazwa></DaneIdentyfikacyjne><Adres><KodKraju>PL</KodKraju><AdresL1>Pęki, ul. 1 Maja 5; 00650 Pęki</AdresL1></Adres></Podmiot2><Fa><KodWaluty>PLN</KodWaluty><P_1>2026-08-08</P_1><P_2>2027/1400138343</P_2><P_6>2026-08-07</P_6><P_13_7>29</P_13_7><P_15>29</P_15><Adnotacje><P_16>2</P_16><P_17>2</P_17><P_18>2</P_18><P_18A>2</P_18A><Zwolnienie><P_19>1</P_19><P_19A>ZWOLNIENIE NA PODSTAWIE ART. 43, UST. 1, PKT 40 USTAWY O VAT</P_19A></Zwolnienie><NoweSrodkiTransportu><P_22N>1</P_22N></NoweSrodkiTransportu><P_23>2</P_23><PMarzy><P_PMarzyN>1</P_PMarzyN></PMarzy></Adnotacje><RodzajFaktury>VAT</RodzajFaktury><FaWiersz><NrWierszaFa>1</NrWierszaFa><P_7>Opłata aktywacyjna w serwisie PayU.pl</P_7><P_8A>ST</P_8A><P_8B>1</P_8B><P_9A>29</P_9A><P_11>29</P_11><P_12>zw</P_12></FaWiersz><Platnosc><Zaplacono>1</Zaplacono><DataZaplaty>2026-08-07</DataZaplaty><PlatnoscInna>1</PlatnoscInna><OpisPlatnosci>Pobrano z wpływów. Faktura nie wymaga zapłaty</OpisPlatnosci></Platnosc></Fa></Faktura>`;
+const XML_ZWOLNIONY = `<?xml version="1.0" encoding="utf-8"?><Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/"><Naglowek><DataWytworzeniaFa>2026-08-08T01:18:07</DataWytworzeniaFa></Naglowek><Podmiot1><DaneIdentyfikacyjne><NIP>1200001068</NIP><Nazwa>PayU S.A.</Nazwa></DaneIdentyfikacyjne><Adres><KodKraju>PL</KodKraju><AdresL1>Grunwaldzka 186 ; 60-166 Poznań</AdresL1></Adres></Podmiot1><Podmiot2><DaneIdentyfikacyjne><NIP>1234563218</NIP><Nazwa>Pracownia Półcień Anna Wzorcowa</Nazwa></DaneIdentyfikacyjne><Adres><KodKraju>PL</KodKraju><AdresL1>Warszawa, ul. Przykładowa 1; 00950 Warszawa</AdresL1></Adres></Podmiot2><Fa><KodWaluty>PLN</KodWaluty><P_1>2026-08-08</P_1><P_2>2027/1400138343</P_2><P_6>2026-08-07</P_6><P_13_7>29</P_13_7><P_15>29</P_15><Adnotacje><P_16>2</P_16><P_17>2</P_17><P_18>2</P_18><P_18A>2</P_18A><Zwolnienie><P_19>1</P_19><P_19A>ZWOLNIENIE NA PODSTAWIE ART. 43, UST. 1, PKT 40 USTAWY O VAT</P_19A></Zwolnienie><NoweSrodkiTransportu><P_22N>1</P_22N></NoweSrodkiTransportu><P_23>2</P_23><PMarzy><P_PMarzyN>1</P_PMarzyN></PMarzy></Adnotacje><RodzajFaktury>VAT</RodzajFaktury><FaWiersz><NrWierszaFa>1</NrWierszaFa><P_7>Opłata aktywacyjna w serwisie PayU.pl</P_7><P_8A>ST</P_8A><P_8B>1</P_8B><P_9A>29</P_9A><P_11>29</P_11><P_12>zw</P_12></FaWiersz><Platnosc><Zaplacono>1</Zaplacono><DataZaplaty>2026-08-07</DataZaplaty><PlatnoscInna>1</PlatnoscInna><OpisPlatnosci>Pobrano z wpływów. Faktura nie wymaga zapłaty</OpisPlatnosci></Platnosc></Fa></Faktura>`;
 
 describe('dokumentZXml — komplet elementów art. 106e z XML-a FA(3)', () => {
   it('czyta nagłówek, obie strony transakcji i metryczkę dokumentu', () => {
     const d = dokumentZXml(XML_PELNY);
     expect(d.dataWytworzenia).toBe('2026-08-04T09:20:10');
-    expect(d.numer).toBe('BC11206615');
+    expect(d.numer).toBe('BC44539948');
     expect(d.dataWystawienia).toBe('2026-08-04');
     expect(d.miejsceWystawienia).toBe('Warszawa');
     expect(d.dataSprzedazy).toBe('2026-07-31');
@@ -152,10 +152,10 @@ describe('dokumentZXml — komplet elementów art. 106e z XML-a FA(3)', () => {
     expect(d.sprzedawca.identyfikator).toBe('NIP: 1200001051');
     expect(d.sprzedawca.adres).toEqual(['ul. Spokojna 5', '02-274 Warszawa']);
 
-    expect(d.nabywca.nazwa).toBe('Lumina Marek Zywiecki');
+    expect(d.nabywca.nazwa).toBe('Pracownia Półcień Anna Wzorcowa');
     expect(d.nabywca.identyfikator).toBe('NIP: 1234563218');
     // ⚠️ Adres, nie AdresKoresp — na fakturze stoi siedziba nabywcy.
-    expect(d.nabywca.adres).toEqual(['1 Maja 5', '00-650 Pęki']);
+    expect(d.nabywca.adres).toEqual(['Przykładowa 1', '00-950 Warszawa']);
   });
 
   it('⚠️ NABYWCA JEST NA DOKUMENCIE — bez niego wizualizacja nie nadaje się do biura', () => {
@@ -201,7 +201,7 @@ describe('dokumentZXml — komplet elementów art. 106e z XML-a FA(3)', () => {
       dataZaplaty: '2026-08-06',
       termin: '2026-08-14',
       forma: 'przelew',
-      rachunek: '77109010140000000000000002',
+      rachunek: '61109010140000071219812874',
       opis: '',
     });
   });
@@ -325,8 +325,8 @@ describe('dokumentZXml — komplet elementów art. 106e z XML-a FA(3)', () => {
       const zPrzedrostkiem = XML_PELNY
         .replace(/<(\/?)([A-Z][A-Za-z_0-9]*)([ >])/g, `<$1${przedrostek}:$2$3`);
       const d = dokumentZXml(zPrzedrostkiem);
-      expect(d.numer).toBe('BC11206615');
-      expect(d.nabywca.nazwa).toBe('Lumina Marek Zywiecki');
+      expect(d.numer).toBe('BC44539948');
+      expect(d.nabywca.nazwa).toBe('Pracownia Półcień Anna Wzorcowa');
       expect(d.pozycje).toHaveLength(3);
       expect(d.stawki).toHaveLength(3);
       expect(d.platnosc.forma).toBe('przelew');

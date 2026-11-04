@@ -10,7 +10,7 @@ const ZPL = Buffer.from('^XA^FO20,20^FDTEST^FS^XZ');
 const propozycja = () => ({
   suggestedInput: {
     deliveryMethodId: null, // ⚠️ Allegro ZAWSZE oddaje tu null — zmierzone 10.08.2026.
-    sender: { company: 'Szkicownia', street: 'ul. 1 Maja 5', postalCode: '00-650', city: 'Pęki' },
+    sender: { company: 'Pracownia Świetlik', street: 'ul. Przykładowa 1', postalCode: '00-950', city: 'Warszawa' },
     receiver: { name: 'Kupujący', street: 'Polna 1', postalCode: '00-001', city: 'Warszawa', email: 'abc+1@allegromail.pl' },
     packages: [{ type: 'PACKAGE', length: 120, width: 80, height: 55, weight: 0.5 }],
     insurance: { amount: '79.00', currency: 'PLN' },
@@ -53,7 +53,7 @@ function klientAllegro(n = {}) {
   };
 }
 
-const zamowienie = { id: 1125, sklep: 'allegro_szkicownia', metoda_wysylki: 'allegro_dpd', zrodlo_id: 'ord-abc', anulowane: 0 };
+const zamowienie = { id: 1125, sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_dpd', zrodlo_id: 'ord-abc', anulowane: 0 };
 const paczka = { waga: 1, dlugosc: 110, szerokosc: 75, wysokosc: 1 };
 
 const zbuduj = (n = {}) => {
@@ -335,8 +335,8 @@ describe('kurier allegro_wza — konto per kanał', () => {
       metodaZywa: async () => DPD,
       odstepMs: 0,
     });
-    await k.nadaj({ zamowienie: { ...zamowienie, sklep: 'allegro_amarka' }, paczka, kolejnosc: 1 });
-    expect(podane).toEqual(['allegro_amarka']);
+    await k.nadaj({ zamowienie: { ...zamowienie, sklep: 'allegro_polcien2' }, paczka, kolejnosc: 1 });
+    expect(podane).toEqual(['allegro_polcien2']);
   });
 });
 
@@ -537,7 +537,7 @@ describe('„Sprawdź ponownie" przyjmuje OBA identyfikatory', () => {
 // ⚠️⚠️ POBRANIE OD STRONY ADAPTERA (Zadanie 6, 11.08.2026). Zmierzone na zamówieniu #1148.
 describe('kurier allegro_wza — pobranie', () => {
   const DPD_POBRANIE = '13f26351-26fb-48d4-b5dd-f2c599280e3c';
-  const KONTO = { nazwa: 'Lumina Marek Zywiecki', rachunek: '34109010140000000000000000' };
+  const KONTO = { nazwa: 'Pracownia Półcień Anna Wzorcowa', rachunek: '34109010140000000000000000' };
 
   const zPobraniem = (n = {}) => {
     const { api, wolania } = klientAllegro({
@@ -608,6 +608,55 @@ describe('kurier allegro_wza — pobranie', () => {
     const { input } = wolania.find((x) => x.nazwa === 'utworz').a[0];
     expect(input).toHaveProperty('cashOnDelivery');
     expect(input.cashOnDelivery).toBeNull();
+  });
+
+  // ⚠️⚠️ PRZ-142.02: kwota pobrania nalezy do ZAMOWIENIA, nie do paczki. Podpowiedz Allegro
+  // niesie ja przy KAZDYM zapytaniu, takze przy dosylce — bez warunku na numer paczki
+  // klient placilby drugi raz. Wzor: dpd.js i inpost.js (`pobranieNaTejPaczce`).
+  describe('dosyłka (paczka nr 2) — pobranie tylko z jawnej decyzji', () => {
+    const KONTO_ZMYSLONE = { nazwa: 'Pracownia Półcień', rachunek: '00000000000000000000000000' };
+    const kod = { amount: '212.90', currency: 'PLN', ownerName: null, iban: null };
+    const zamowienieZmyslone = { id: 9142, sklep: 'allegro_polcien', metoda_wysylki: 'allegro_dpd', zrodlo_id: 'ord-polcien-1', anulowane: 0 };
+    const wyslane = (wolania) => wolania.find((x) => x.nazwa === 'utworz').a[0].input;
+
+    it('paczka nr 1 za pobraniem — jedzie złota kwota 212.90', async () => {
+      const { k, wolania } = zPobraniem({ cod: kod, konto: KONTO_ZMYSLONE });
+      await k.nadaj({ zamowienie: zamowienieZmyslone, paczka, kolejnosc: 1 });
+      expect(wyslane(wolania).cashOnDelivery).toEqual({ amount: '212.90', currency: 'PLN' });
+    });
+
+    it('paczka nr 1 z jawnym pobranieNaTejPaczce: false — i tak kwota Allegro 212.90', async () => {
+      const { k, wolania } = zPobraniem({ cod: kod, konto: KONTO_ZMYSLONE });
+      await k.nadaj({ zamowienie: zamowienieZmyslone, paczka, kolejnosc: 1, pobranieNaTejPaczce: false });
+      expect(wyslane(wolania).cashOnDelivery).toEqual({ amount: '212.90', currency: 'PLN' });
+    });
+
+    it('paczka nr 1 z jawnym false na usłudze PRZEDPŁACONEJ z kwotą — dalej ODMAWIA', async () => {
+      const { k, wolania } = zPobraniem({ metoda: DPD, cod: kod, konto: KONTO_ZMYSLONE });
+      await expect(k.nadaj({ zamowienie: zamowienieZmyslone, paczka, kolejnosc: 1, pobranieNaTejPaczce: false }))
+        .rejects.toThrow(/przedpłacona/i);
+      expect(wolania.some((x) => x.nazwa === 'utworz')).toBe(false);
+    });
+
+    it('paczka nr 2 bez zaznaczenia pobrania — cashOnDelivery: null JAWNIE', async () => {
+      const { k, wolania } = zPobraniem({ cod: kod, konto: KONTO_ZMYSLONE });
+      await k.nadaj({ zamowienie: zamowienieZmyslone, paczka, kolejnosc: 2 });
+      const input = wyslane(wolania);
+      expect(input).toHaveProperty('cashOnDelivery');
+      expect(input.cashOnDelivery).toBeNull();
+    });
+
+    it('paczka nr 2 z jawnym pobranieNaTejPaczce: false — cashOnDelivery: null', async () => {
+      const { k, wolania } = zPobraniem({ cod: kod, konto: KONTO_ZMYSLONE });
+      await k.nadaj({ zamowienie: zamowienieZmyslone, paczka, kolejnosc: 2, pobranieNaTejPaczce: false });
+      expect(wyslane(wolania).cashOnDelivery).toBeNull();
+    });
+
+    it('paczka nr 2 z jawną decyzją operatora — kwota jedzie', async () => {
+      const { k, wolania } = zPobraniem({ cod: kod, konto: KONTO_ZMYSLONE });
+      await k.nadaj({ zamowienie: zamowienieZmyslone, paczka, kolejnosc: 2, pobranieNaTejPaczce: true });
+      expect(wyslane(wolania).cashOnDelivery).toEqual({ amount: '212.90', currency: 'PLN' });
+    });
   });
 
   // Brak konta w konfiguracji NIE JEST tu przeszkodą — usługa go nie potrzebuje. Panel,

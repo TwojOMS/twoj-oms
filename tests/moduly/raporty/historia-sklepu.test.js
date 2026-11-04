@@ -16,30 +16,30 @@ const zam = (nad = {}) => ({
 
 describe('wiersz historii ze sklepu', () => {
   it('NIE PRZENOSI ANI JEDNEJ DANEJ OSOBOWEJ', () => {
-    const w = wierszHistorii('szkicownia', zam());
+    const w = wierszHistorii('swietlik', zam());
     expect(w.klientEmail).toBeNull();
     expect(w.klientNazwa).toBeNull();
     // Bariera na przyszlosc: gdyby ktos dolozyl pole, test ma je zlapac.
     expect(JSON.stringify(w)).not.toMatch(/klient\.pl|Anna|Nowak/);
   });
 
-  it('klucz ma prefiks sklepu, a konto wskazuje kanal SZKICOWNIA_PL', () => {
-    const w = wierszHistorii('szkicownia', zam());
-    expect(w.apiloId).toBe('woo:szkicownia:28225');
-    expect(w.zrodlo).toBe('woo:szkicownia');
-    expect(w.platformAccountId).toBe(KONTA_SKLEPOW.get('szkicownia'));
+  it('klucz ma prefiks sklepu, a konto wskazuje kanal SWIETLIK_PL', () => {
+    const w = wierszHistorii('swietlik', zam());
+    expect(w.apiloId).toBe('woo:swietlik:28225');
+    expect(w.zrodlo).toBe('woo:swietlik');
+    expect(w.platformAccountId).toBe(KONTA_SKLEPOW.get('swietlik'));
     expect(w.platformAccountId).toBe(9);
   });
 
   it('brutto pozycji to total + total_tax — `total` w Woo jest NETTO linii', () => {
-    const w = wierszHistorii('szkicownia', zam());
+    const w = wierszHistorii('swietlik', zam());
     const produkt = w.pozycje.find((p) => p.typ === 1);
     expect(produkt.bruttoLinii).toBe('196.80');
     expect(produkt.ilosc).toBe(2);
   });
 
   it('WYSYLKA JEST POZYCJA TYPU 2 — inaczej konkurowalaby z szablonami w rankingu', () => {
-    const w = wierszHistorii('szkicownia', zam());
+    const w = wierszHistorii('swietlik', zam());
     const wysylka = w.pozycje.find((p) => p.nazwa === 'Kurier DPD');
     expect(wysylka.typ).toBe(2);
     expect(wysylka.bruttoLinii).toBe('49.20');
@@ -47,18 +47,18 @@ describe('wiersz historii ze sklepu', () => {
 
   it('DZIEN LICZY SIE Z CZASU GMT, NIE Z LOKALNEGO — inaczej noc wpada w zla dobe', () => {
     const nocLatem = zam({ date_created: '2014-06-14T00:30:00', date_created_gmt: '2014-06-13T22:30:00' });
-    expect(wierszHistorii('szkicownia', nocLatem).dzien).toBe('2014-06-14');
+    expect(wierszHistorii('swietlik', nocLatem).dzien).toBe('2014-06-14');
     const nocZima = zam({ date_created: '2014-01-14T00:30:00', date_created_gmt: '2014-01-13T23:30:00' });
-    expect(wierszHistorii('szkicownia', nocZima).dzien).toBe('2014-01-14');
+    expect(wierszHistorii('swietlik', nocZima).dzien).toBe('2014-01-14');
   });
 
   it('utworzone_at niesie strefe — bez `Z` reszta panelu przeczyta to jako czas warszawski', () => {
-    expect(wierszHistorii('szkicownia', zam()).utworzoneAt).toBe('2014-06-13T17:29:24Z');
+    expect(wierszHistorii('swietlik', zam()).utworzoneAt).toBe('2014-06-13T17:29:24Z');
   });
 
   it('oplacone rozpoznajemy po date_paid_gmt', () => {
-    expect(wierszHistorii('szkicownia', zam()).paymentStatus).toBe(2);
-    expect(wierszHistorii('szkicownia', zam({ date_paid_gmt: null })).paymentStatus).toBeNull();
+    expect(wierszHistorii('swietlik', zam()).paymentStatus).toBe(2);
+    expect(wierszHistorii('swietlik', zam({ date_paid_gmt: null })).paymentStatus).toBeNull();
   });
 
   it('ZASLEPKA PANELU OFERT ZOSTAJE ROZPOZNAWALNA — original_code jak w erze Apilo', () => {
@@ -68,16 +68,16 @@ describe('wiersz historii ze sklepu', () => {
         variation_id: 0, quantity: 1, total: '100.00', total_tax: '23.00',
       }],
     });
-    expect(wierszHistorii('szkicownia', zZaslepka).pozycje[0].originalCode).toBe('28040|0');
+    expect(wierszHistorii('swietlik', zZaslepka).pozycje[0].originalCode).toBe('28040|0');
   });
 
   it('status Apilo zostaje pusty, surowy status sklepu jest zapisany', () => {
-    const w = wierszHistorii('szkicownia', zam());
+    const w = wierszHistorii('swietlik', zam());
     expect(w.status).toBeNull();
     expect(w.statusZrodla).toBe('completed');
   });
 
   it('nieznany sklep PRZERYWA — kanal bez konta nie ma jak sie policzyc', () => {
-    expect(() => wierszHistorii('drugamarka', zam())).toThrow(/drugamarka/);
+    expect(() => wierszHistorii('nieznany_sklep', zam())).toThrow(/nieznany_sklep/);
   });
 });

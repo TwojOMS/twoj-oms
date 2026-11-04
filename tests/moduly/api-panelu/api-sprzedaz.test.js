@@ -124,11 +124,11 @@ describe('GET /api/sprzedaz', () => {
     it('obie granice okna sa DOMKNIETE — polnoc dnia `od` i ostatnia milisekunda dnia `do`', async () => {
       // Północ dnia `od` w formacie SKLEPOWYM (czas Warszawy bez „Z") — porównanie napisów
       // z instantem UTC gubiło ją, bo '2026-07-01T00:00:00' < '2026-07-01T00:00:00.000Z'.
-      dodaj({ numer: 'W/1', utworzone: '2026-07-01T00:00:00', sklep: 'szkicownia' });
+      dodaj({ numer: 'W/1', utworzone: '2026-07-01T00:00:00', sklep: 'swietlik' });
       // Ostatnia milisekunda dnia `do` w czasie warszawskim (23:59:59.999 = 21:59:59.999Z).
       dodaj({ numer: 'R/2026/002', utworzone: '2026-07-31T21:59:59.999Z' });
       // Ostatnia milisekunda dnia PRZED oknem — po drugiej stronie domknięcia.
-      dodaj({ numer: 'W/0', utworzone: '2026-06-30T23:59:59', sklep: 'szkicownia' });
+      dodaj({ numer: 'W/0', utworzone: '2026-06-30T23:59:59', sklep: 'swietlik' });
 
       expect(await numery('/api/sprzedaz?od=2026-07-01&do=2026-07-31')).toEqual(['W/1', 'R/2026/002']);
     });
@@ -136,7 +136,7 @@ describe('GET /api/sprzedaz', () => {
     it('zamowienie ZE SKLEPU liczy sie w czasie sklepu, bez przeliczania drugi raz', async () => {
       // `date_created` z Woo jest JUŻ w czasie Warszawy — doklejenie mu strefy przesunęłoby
       // je o dwie godziny (latem) i zamówienie z 1 lipca 01:30 wypadłoby z lipca.
-      dodaj({ numer: 'W/2', utworzone: '2026-07-01T01:30:00', sklep: 'szkicownia' });
+      dodaj({ numer: 'W/2', utworzone: '2026-07-01T01:30:00', sklep: 'swietlik' });
       expect(await numery('/api/sprzedaz?od=2026-07-01&do=2026-07-01')).toEqual(['W/2']);
     });
   });
@@ -226,7 +226,7 @@ describe('GET /api/sprzedaz', () => {
     });
 
     it('zamowienie ZE SKLEPU dostaje swoj dzien bez przeliczania drugi raz', async () => {
-      dodaj({ numer: 'W/1', utworzone: '2026-07-06T00:30:00', sklep: 'szkicownia' });
+      dodaj({ numer: 'W/1', utworzone: '2026-07-06T00:30:00', sklep: 'swietlik' });
 
       const odp = await serwer().inject({
         method: 'GET', url: '/api/sprzedaz?od=2026-07-01&do=2026-07-31', headers: naglowek,
@@ -249,10 +249,10 @@ describe('GET /api/sprzedaz', () => {
   // ── W3: kanał wynika ze ŹRÓDŁA zamówienia ─────────────────────────────────────────────
   // Zamówienie ze sklepu bez okresu wychodziło jako 'B2B', a konsument (raporty/src/
   // klasyfikacja.mjs) ma osobne kanały SKLEP_WOO (konto Apilo 9) i B2B (konto 12) i bierze
-  // je z Apilo. Suma Apilo + ten endpoint liczyłaby detal ze szkicownia.pl DWA RAZY.
+  // je z Apilo. Suma Apilo + ten endpoint liczyłaby detal ze swietlik.example.test DWA RAZY.
   describe('kanal', () => {
     it('zamowienie SKLEPOWE nie dostaje ani B2B, ani DROPSHIPPING', async () => {
-      dodaj({ numer: 'W/1', utworzone: '2026-07-10T10:00:00', sklep: 'szkicownia' });
+      dodaj({ numer: 'W/1', utworzone: '2026-07-10T10:00:00', sklep: 'swietlik' });
       dodaj({ numer: 'W/2', utworzone: '2026-07-11T10:00:00', sklep: 'pro' });
 
       const odp = await serwer().inject({
@@ -268,7 +268,7 @@ describe('GET /api/sprzedaz', () => {
       // Źródło rozstrzyga PRZED okresem: gdyby ktoś kiedyś doczepił zamówienie sklepowe do
       // okresu rozliczeniowego, nie ma ono prawa wejść do raportu jako dropshipping.
       const o = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
-      dodaj({ numer: 'W/1', utworzone: '2026-07-10T10:00:00', sklep: 'szkicownia', okresId: o.id });
+      dodaj({ numer: 'W/1', utworzone: '2026-07-10T10:00:00', sklep: 'swietlik', okresId: o.id });
 
       const odp = await serwer().inject({
         method: 'GET', url: '/api/sprzedaz?od=2026-07-01&do=2026-07-31', headers: naglowek,
@@ -277,7 +277,7 @@ describe('GET /api/sprzedaz', () => {
     });
 
     it('zamowienie sklepowe ZOSTAJE w odpowiedzi — konsument ma je jawnie odrzucic', async () => {
-      dodaj({ numer: 'W/1', utworzone: '2026-07-10T10:00:00', sklep: 'szkicownia' });
+      dodaj({ numer: 'W/1', utworzone: '2026-07-10T10:00:00', sklep: 'swietlik' });
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-11T10:00:00.000Z' });
 
       expect(await numery('/api/sprzedaz?od=2026-07-01&do=2026-07-31'))
@@ -292,8 +292,8 @@ describe('GET /api/sprzedaz', () => {
     // nazwa PRZERYWA raport) byl przez to obejsciem wylaczony: konsument nie widzial nowej
     // nazwy, wiec nie mial na czym rzucic.
     it('zamowienie z Allegro wychodzi jako ALLEGRO, a NIE jako SKLEP', async () => {
-      dodaj({ numer: 'ALG-1', utworzone: '2026-08-10T10:00:00', sklep: 'allegro_szkicownia' });
-      dodaj({ numer: 'ALG-2', utworzone: '2026-08-10T11:00:00', sklep: 'allegro_amarka' });
+      dodaj({ numer: 'ALG-1', utworzone: '2026-08-10T10:00:00', sklep: 'allegro_swietlik' });
+      dodaj({ numer: 'ALG-2', utworzone: '2026-08-10T11:00:00', sklep: 'allegro_polcien2' });
 
       const odp = await serwer().inject({
         method: 'GET', url: '/api/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
@@ -304,30 +304,30 @@ describe('GET /api/sprzedaz', () => {
     });
 
     // ⚠️ NAZWA JEST TU CALA TRESCIA TESTU. Konsument (C:\Users\uzytkownik\raporty\src\klasyfikacja.mjs)
-    // MA JUZ kanaly 'ALLEGRO_SZKICOWNIA' i 'ALLEGRO_AMARKA', liczone Z APILO (konta 3 i 27).
+    // MA JUZ kanaly 'ALLEGRO_SWIETLIK' i 'ALLEGRO_POLCIEN2', liczone Z APILO (konta 3 i 27).
     // Oddanie stad ktorejkolwiek z tych nazw daloby raport sumujacy oba zrodla, ktory policzylby
     // te zamowienia DWA RAZY — zawyzona sprzedaz, nie blad, wiec nikt by tego nie zauwazyl.
     // Ta sama zasada, dla ktorej kanal sklepowy nazywa sie 'SKLEP', a nie 'SKLEP_WOO'.
-    it('nazwa kanalu NIE JEST nazwa kanalu apilowego (ALLEGRO_SZKICOWNIA / ALLEGRO_AMARKA)', async () => {
-      dodaj({ numer: 'ALG-1', utworzone: '2026-08-10T10:00:00', sklep: 'allegro_szkicownia' });
+    it('nazwa kanalu NIE JEST nazwa kanalu apilowego (ALLEGRO_SWIETLIK / ALLEGRO_POLCIEN2)', async () => {
+      dodaj({ numer: 'ALG-1', utworzone: '2026-08-10T10:00:00', sklep: 'allegro_swietlik' });
 
       const odp = await serwer().inject({
         method: 'GET', url: '/api/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
       });
       const kanaly = odp.json().zamowienia.map((z) => z.kanal);
-      // Po TABLICY, nie po tresci odpowiedzi: 'ALLEGRO_SZKICOWNIA' zawiera w sobie 'ALLEGRO',
+      // Po TABLICY, nie po tresci odpowiedzi: 'ALLEGRO_SWIETLIK' zawiera w sobie 'ALLEGRO',
       // wiec `not.toContain` na `odp.body` bylby falszywie czerwony zawsze (ta sama pulapka,
       // co przy SKLEP_INDYWIDUALNE nizej).
       expect(Array.isArray(kanaly)).toBe(true);
-      expect(kanaly).not.toContain('ALLEGRO_SZKICOWNIA');
-      expect(kanaly).not.toContain('ALLEGRO_AMARKA');
+      expect(kanaly).not.toContain('ALLEGRO_SWIETLIK');
+      expect(kanaly).not.toContain('ALLEGRO_POLCIEN2');
     });
 
     // Zamowienia z Allegro NIE USUWAMY z odpowiedzi — konsument ma je zobaczyc i SWIADOMIE
     // zdecydowac, co z nimi zrobic. Cichy filtr po stronie serwera znaczylby, ze nikt po
     // drugiej stronie nie wie, ze cokolwiek odpadlo.
     it('zamowienie z Allegro ZOSTAJE w odpowiedzi, a nie znika', async () => {
-      dodaj({ numer: 'ALG-1', utworzone: '2026-08-10T10:00:00', sklep: 'allegro_szkicownia' });
+      dodaj({ numer: 'ALG-1', utworzone: '2026-08-10T10:00:00', sklep: 'allegro_swietlik' });
       dodaj({ numer: 'R/2026/001', utworzone: '2026-08-11T10:00:00.000Z' });
 
       expect(await numery('/api/sprzedaz?od=2026-08-01&do=2026-08-31'))
@@ -354,7 +354,7 @@ describe('GET /api/sprzedaz', () => {
     // sprzedaz, nie blad, wiec nikt by tego nie zauwazyl. To ta sama pulapka, przed ktora
     // chroni etykieta 'SKLEP' (a nie 'SKLEP_WOO').
     it('zamowienie indywidualne wychodzi jako SKLEP_INDYWIDUALNE, NIE jako INDYWIDUALNE', async () => {
-      dodaj({ numer: 'W/I1', utworzone: '2026-08-10T10:00:00', sklep: 'szkicownia', indywidualne: 1 });
+      dodaj({ numer: 'W/I1', utworzone: '2026-08-10T10:00:00', sklep: 'swietlik', indywidualne: 1 });
 
       const odp = await serwer().inject({
         method: 'GET', url: '/api/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
@@ -371,10 +371,10 @@ describe('GET /api/sprzedaz', () => {
     });
 
     it('zwykle zamowienie z TEGO SAMEGO sklepu dalej wychodzi jako SKLEP', async () => {
-      // Regula indywidualna nie ma prawa przemalowac calego sklepu `szkicownia` — inaczej
-      // caly detal ze szkicownia.pl wyszedlby w zlym kanale.
-      dodaj({ numer: 'W/1', utworzone: '2026-08-10T10:00:00', sklep: 'szkicownia', indywidualne: 0 });
-      dodaj({ numer: 'W/I1', utworzone: '2026-08-11T10:00:00', sklep: 'szkicownia', indywidualne: 1 });
+      // Regula indywidualna nie ma prawa przemalowac calego sklepu `swietlik` — inaczej
+      // caly detal ze swietlik.example.test wyszedlby w zlym kanale.
+      dodaj({ numer: 'W/1', utworzone: '2026-08-10T10:00:00', sklep: 'swietlik', indywidualne: 0 });
+      dodaj({ numer: 'W/I1', utworzone: '2026-08-11T10:00:00', sklep: 'swietlik', indywidualne: 1 });
 
       const odp = await serwer().inject({
         method: 'GET', url: '/api/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
@@ -388,7 +388,7 @@ describe('GET /api/sprzedaz', () => {
     // i jawnie odrzucic. Zamowienie znikniete z okna jest tak samo zle, jak policzone
     // dwa razy, tylko myli w druga strone.
     it('zamowienie indywidualne ZOSTAJE w odpowiedzi, a nie znika', async () => {
-      dodaj({ numer: 'W/I1', utworzone: '2026-08-10T10:00:00', sklep: 'szkicownia', indywidualne: 1 });
+      dodaj({ numer: 'W/I1', utworzone: '2026-08-10T10:00:00', sklep: 'swietlik', indywidualne: 1 });
       dodaj({ numer: 'R/2026/001', utworzone: '2026-08-11T10:00:00.000Z' });
 
       expect(await numery('/api/sprzedaz?od=2026-08-01&do=2026-08-31'))
@@ -401,8 +401,8 @@ describe('GET /api/sprzedaz', () => {
       const o = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 8 });
       dodaj({ numer: 'R/2026/001', utworzone: '2026-08-10T10:00:00.000Z', okresId: o.id });
       dodaj({ numer: 'R/2026/002', utworzone: '2026-08-11T10:00:00.000Z' });
-      dodaj({ numer: 'W/1', utworzone: '2026-08-12T10:00:00', sklep: 'szkicownia' });
-      dodaj({ numer: 'W/I1', utworzone: '2026-08-13T10:00:00', sklep: 'szkicownia', indywidualne: 1 });
+      dodaj({ numer: 'W/1', utworzone: '2026-08-12T10:00:00', sklep: 'swietlik' });
+      dodaj({ numer: 'W/I1', utworzone: '2026-08-13T10:00:00', sklep: 'swietlik', indywidualne: 1 });
 
       const odp = await serwer().inject({
         method: 'GET', url: '/api/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
@@ -436,7 +436,7 @@ describe('GET /api/sprzedaz', () => {
       // do bazy w odwrotnej kolejności, więc `return 0` w komparatorze (albo sortowanie po
       // surowej kolumnie) zostawiłoby kolejność wstawienia i test padnie.
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-09T23:00:00.000Z' });
-      dodaj({ numer: 'W/1', utworzone: '2026-07-10T00:30:00', sklep: 'szkicownia' });
+      dodaj({ numer: 'W/1', utworzone: '2026-07-10T00:30:00', sklep: 'swietlik' });
 
       expect(await numery('/api/sprzedaz?od=2026-07-09&do=2026-07-10'))
         .toEqual(['W/1', 'R/2026/001']);

@@ -1,0 +1,4 @@
+<%# PRZ-149.04 (C8): przy kluczu „Odczyt” sklep nie dostaje statusu wysyłki, więc mail o wysyłce może wysłać OMS.
+    mailWyslane: true = dla tego sklepu jest włączona reguła z szablonem „wyslane”, false = nie ma, null = brak modułu automatyzacji.
+    W kroku 2 akapit przełącza wybór (data-wybor), w kroku 5 stoi sam. Nic tu niczego nie włącza. %>
+<% if (mailWyslane === true || mailWyslane === false) { %><p class="ust-pomoc"<% if (locals.przelacznik) { %> data-wybor="odczyt"<% if (locals.ukryty) { %> hidden<% } %><% } %>>Przy kluczu „Odczyt” OMS nie zmieni statusu w sklepie, więc sklep sam nie powiadomi klienta. Zamiast niego mail o wysyłce może wysyłać OMS — automatyzacja z szablonem „Zamówienie wysłane” (<a href="/ustawienia/automatyzacje">Ustawienia → Automatyzacje</a>).<% if (mailWyslane) { %> Dla tego sklepu jest włączona.<% } else { %> <a href="/ustawienia/automatyzacje">Włącz mail »Zamówienie wysłane« z OMS</a>.<% } %></p><% } %>

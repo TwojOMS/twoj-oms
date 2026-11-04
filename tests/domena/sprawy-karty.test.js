@@ -92,7 +92,7 @@ describe('faktura czekająca na KSeF (Allegro)', () => {
   // odezwac: czuwacz zapytal, inFakt ODPOWIEDZIAL, a numeru KSeF tam nie ma. Bez tego dowodu
   // brak numeru nie znaczy nic — patrz testy nizej.
   const allegro = (faktura = {}, nad = {}) => zamowienie({
-    sklep: 'allegro_szkicownia',
+    sklep: 'allegro_swietlik',
     chce_fakture: 1,
     faktura: {
       ksef_status: null, numer: 'FV/12/2026', infakt_uuid: 'u1', utworzona_at: WYSTAWIONA,
@@ -188,7 +188,7 @@ describe('faktura czekająca na KSeF (Allegro)', () => {
   // sprawa. Inaczej pasek meldowalby blokade przy KAZDEJ fakturze sklepowej starszej niz doba,
   // czyli przy wszystkich.
   it('faktura ze sklepu nie jest sprawą, choćby czekała miesiąc', () => {
-    const z = allegro({}, { sklep: 'szkicownia' });
+    const z = allegro({}, { sklep: 'swietlik' });
     expect(klucze(z, TERAZ + 30 * 24 * GODZINA)).not.toContain('ksef');
   });
 
@@ -196,7 +196,7 @@ describe('faktura czekająca na KSeF (Allegro)', () => {
   // PANEL, czeka na numer tak samo — takze ze sklepu. `ksef_zlecona_at` to kolumna `zlecona_at`
   // z `wysylki_ksef`, dokladana przy odczycie zamowienia.
   describe('faktura SKLEPOWA, ktorej wysylke do KSeF zlecil panel', () => {
-    const sklepowa = (nad = {}) => allegro({ ksef_zlecona_at: '2026-08-05T10:05:00Z', ...nad }, { sklep: 'szkicownia' });
+    const sklepowa = (nad = {}) => allegro({ ksef_zlecona_at: '2026-08-05T10:05:00Z', ...nad }, { sklep: 'swietlik' });
 
     it('po dobie bez numeru KSeF jest BLOKADĄ', () => {
       const s = sprawyKarty(sklepowa(), TERAZ + 25 * GODZINA).find((w) => w.klucz === 'ksef');

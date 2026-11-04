@@ -1,0 +1,71 @@
+<div class="allegro-konfiguracja">
+<h1><%= /^allegro(\s|$)/i.test(k.nazwa) ? k.nazwa : 'Allegro: ' + k.nazwa %></h1>
+<p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
+<% if (blad) { %><div class="pas-blad" role="alert"><p><%= blad %></p></div><% } %>
+<% if (komunikat) { %><div class="pas-potwierdzenie" role="status"><p><%= komunikat %></p></div><% } %>
+<%# U25: steper tylko w kreatorze; działające konto (krok 5) pokazuje stan. %>
+<%# PRZ-146.03 (B5/B6): szkic, który nigdy nie był połączony — bez sekcji Połączenie, Nazwa i Odłączenie; zamiast nich „Przerwij podłączanie”. %>
+<% const szkic = numerKroku !== 5 && k.zrodlo === 'panel' && !k.kontoId && (k.autoryzacja === 'brak' || k.autoryzacja === 'oczekuje_potwierdzenia') && historia === 0; %>
+<% const krok1 = szkic && k.autoryzacja === 'brak' ? adres + '/krok-1' : null; %>
+<% if (numerKroku !== 5) { %><%- include('../../../core/web/konfigurator/kroki-konfiguratora.ejs',{kroki: kroki.map(x => x.numer === 1 && krok1 ? {...x, href: krok1} : x)}) %><% } %>
+<% if (krok1) { %><p><a href="<%= krok1 %>">← Wróć do kroku 1</a> <span class="ust-pomoc">— zmiana nazwy, środowiska i daty startu</span></p><% } %>
+<% if (numerKroku !== 5 && !szkic) { %><%- include('allegro-stan.ejs',{tylkoPolaczenie:true}) %><% } %>
+<% if (brakUprawnien) { %><p><a href="<%= root %>/aplikacja?srodowisko=<%= k.srodowisko %>">Krok 0, punkt 6 — uprawnienia aplikacji</a></p><% } %>
+<% if (numerKroku === 4) { %>
+  <% if (k.zrodlo === 'panel' && k.generacja === 0 && k.generacjaImportu === 0) { %>
+  <%- include('../../../core/web/konfigurator/krok-konfiguratora.ejs',{zakresDatyStartu:locals.zakresDatyStartu,krok,otwarta:true,akcja:root+'/'+krok.formularz.akcja.replace(':kanal',encodeURIComponent(k.klucz))}) %>
+  <% } else { %><section class="ust-sekcja">
+  <h2>4. Data startu</h2><p>Data startu jest już ustalona — zamówień sprzed niej OMS nie pobierze.</p><% } %>
+  <form method="post" action="<%= adres %>/aktywuj">
+    <input type="hidden" name="probaId" value="<%= kandydat.probaId %>"><input type="hidden" name="wersja" value="<%= kandydat.wersja %>">
+    <input type="hidden" name="potwierdz" value="tak">
+    <p>Podłączasz konto Allegro <strong><%= kandydat.login %></strong> (ID <%= kandydat.kontoId %>), środowisko <%= k.srodowisko === 'sandbox' ? 'Sandbox' : 'sprzedażowe' %>.</p>
+    <p><label for="allegro-import">Pobieranie po zapisaniu</label><br><select id="allegro-import" name="pobieraj"><option value="nie">Pozostaw wyłączone</option><% if (!k.kontoId) { %><option value="tak">Włącz pobieranie zamówień</option><% } %></select><br>
+    <span class="ust-pomoc"><% if (!k.kontoId) { %>Włącz — OMS zacznie pobierać zamówienia od <%= String(wartosci.od).split('-').reverse().join('.') %> zaraz po zapisaniu. <% } %>Pozostaw wyłączone — konto zostanie podłączone, pobieranie włączysz później na ekranie konta.</span></p>
+    <button class="btn btn--glowny" type="submit">Podłącz konto</button>
+  </form>
+<%# PRZ-148.06 (5): formularz /aktywuj w karcie kroku 4. %>
+</section>
+<% } else if (numerKroku === 5) { %>
+<%- include('allegro-stan.ejs') %>
+<% } else { %>
+<%- include('../../../core/web/konfigurator/krok-konfiguratora.ejs',{zakresDatyStartu:locals.zakresDatyStartu,krok,akcja:''}) %>
+<% } %>
+<% if (!szkic) { %>
+<section class="ust-sekcja"><h2>Nazwa w OMS</h2>
+  <form method="post" action="<%= adres %>/nazwa"><input type="hidden" name="wersja" value="<%= k.wersja %>"><p><label for="allegro-nazwa">Nazwa połączenia</label><br><input id="allegro-nazwa" name="nazwa" value="<%= k.nazwa %>" maxlength="80" required></p><button class="ust-przycisk" type="submit">Zapisz nazwę</button></form>
+  <p>Zmiana nazwy zachowuje konto, historię i powiązania.</p>
+</section>
+<% } %>
+<% if (k.autoryzacja === 'polaczone') { %>
+<section class="ust-sekcja"><h2>Przegląd zapisów do Allegro</h2><p><%= zapisyZablokowane ? 'Po ponownym połączeniu OMS wstrzymuje zapisy do Allegro. Najpierw sprawdź operacje oczekujące.' : 'Sprawdź operacje z niejednoznacznym wynikiem i zdecyduj, które można ponowić.' %></p>
+  <form method="post" action="<%= adres %>/przeglad"><input type="hidden" name="wersja" value="<%= k.wersja %>"><button class="ust-przycisk" type="submit">Przejrzyj operacje</button></form>
+</section>
+<% } %>
+<% if (przeglad) { %>
+<section class="ust-sekcja"><h2>Przegląd operacji</h2>
+  <p>Lista obejmuje lokalne dane do sprawdzenia. Nie potwierdza, czy operacja została wykonana w Allegro. Pozostaw zaznaczone operacje z nieznanym skutkiem. Odznaczenie zwalnia blokadę i pozwala ponowić operację; samo zatwierdzenie niczego nie wysyła.</p>
+  <% const nazwy={statusy:'Statusy zamówień',faktury:'Faktury',przesylki:'Przesyłki',podjazdy:'Podjazdy',wiadomosci:'Wątki wiadomości',odpowiedziNiepotwierdzone:'Niepotwierdzone odpowiedzi'}; %>
+  <% for (const [typ,wiersze] of Object.entries(przeglad.kandydaci)) { %>
+    <details><summary><%= nazwy[typ] %>: <%= wiersze.length %></summary><ul><% for (const w of wiersze) { %><li><%= w.zamowienie_id ? 'Zamówienie '+w.zamowienie_id+'; ' : '' %><%= w.thread_id ? 'Wątek '+w.thread_id : 'ID '+w.id %></li><% } %></ul></details>
+  <% } %>
+  <form method="post" action="<%= adres %>/zapisy"><input type="hidden" name="przegladId" value="<%= przeglad.przegladId %>">
+    <% for (const w of przeglad.niejednoznaczne) { %><p><label><input type="checkbox" name="pozostaw" value="<%= w.id %>" checked> Pozostaw zablokowaną operację <%= w.metoda %> <%= w.sciezka %></label></p><% } %>
+    <p><label><input type="checkbox" name="potwierdz" value="tak" required> Sprawdziłem listę. Zezwalam na pozostałe zapisy do Allegro.</label></p><button class="ust-przycisk" type="submit">Zatwierdź przegląd</button>
+  </form>
+</section>
+<% } %>
+<% if (szkic) { %>
+<details class="allegro-przerwij"><summary>Przerwij podłączanie</summary>
+  <p>Szkic tego połączenia zostanie usunięty. Konto Allegro nie jest jeszcze podłączone, więc w OMS nic więcej się nie zmieni.</p>
+  <form method="post" action="<%= adres %>/przerwij"><input type="hidden" name="wersja" value="<%= k.wersja %>"><input type="hidden" name="potwierdz" value="tak"><button class="ust-przycisk grozny" type="submit">Usuń szkic połączenia</button></form>
+</details>
+<% } else if (k.autoryzacja !== 'odlaczone') { %>
+<section class="ust-sekcja"><h2>Odłączenie konta</h2>
+  <p>Odłączenie zatrzyma cały dostęp tego kanału do Allegro i usunie aktywne poświadczenia z OMS. Zachowasz <%= historia %> zamówień i ich historię. Zgoda w Allegro pozostanie do odwołania w ustawieniach konta Allegro.</p>
+  <form method="post" action="<%= adres %>/odlacz"><input type="hidden" name="wersja" value="<%= k.wersja %>"><p><label><input type="checkbox" name="potwierdz" value="tak" required> Chcę odłączyć to konto</label></p><button class="ust-przycisk grozny" type="submit">Odłącz konto</button></form>
+</section>
+<%# B9: bez JS zostaje „required” na polu wyboru; z JS przycisk jest nieaktywny do zaznaczenia. %>
+<script>(function(){var f=document.querySelector('.allegro-konfiguracja form[action$="/odlacz"]');if(!f)return;var c=f.querySelector('input[name="potwierdz"]'),b=f.querySelector('button[type="submit"]');if(!c||!b)return;var u=function(){b.disabled=!c.checked;};c.addEventListener('change',u);u();})();</script>
+<% } %>
+</div>

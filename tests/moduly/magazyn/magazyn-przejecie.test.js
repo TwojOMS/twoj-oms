@@ -137,7 +137,7 @@ describe('przejeciaZeSklepu', () => {
   it('produkty o RÓŻNYCH numerach nie dają propozycji, tylko trafiają do człowieka', () => {
     const [p] = przejeciaZeSklepu(
       [W(1, 'Bursztyn')],
-      [P(1, 'LMP-PLA-118', 'pro'), P(1, 'PD10', 'szkicownia')],
+      [P(1, 'LMP-PLA-118', 'pro'), P(1, 'PD10', 'swietlik')],
       null,
     );
     expect(p.sku).toBeNull();
@@ -152,7 +152,7 @@ describe('przejeciaZeSklepu', () => {
   it('ten sam numer w dwóch kanałach jest jedną odpowiedzią, nie rozbieżnością', () => {
     const [p] = przejeciaZeSklepu(
       [W(1, 'Bursztyn')],
-      [P(1, 'PD10', 'pro'), P(1, 'PD10', 'szkicownia')],
+      [P(1, 'PD10', 'pro'), P(1, 'PD10', 'swietlik')],
       null,
     );
     expect(p.sku).toBe('PD10');
@@ -164,7 +164,7 @@ describe('przejeciaZeSklepu', () => {
   it('numery różniące się WYŁĄCZNIE wielkością liter też idą do człowieka', () => {
     const [p] = przejeciaZeSklepu(
       [W(1, 'Bursztyn')],
-      [P(1, 'PD10', 'pro'), P(1, 'pd10', 'szkicownia')],
+      [P(1, 'PD10', 'pro'), P(1, 'pd10', 'swietlik')],
       null,
     );
     expect(p.sku).toBeNull();
@@ -253,8 +253,8 @@ describe('przejeciaZeSklepu', () => {
   });
 
   it('źródło numeru jest częścią odpowiedzi', () => {
-    const [p] = przejeciaZeSklepu([W(1, 'Bursztyn')], [P(1, 'PD10', 'szkicownia', 'Lampka')], null);
-    expect(p.zrodlo).toContain('szkicownia');
+    const [p] = przejeciaZeSklepu([W(1, 'Bursztyn')], [P(1, 'PD10', 'swietlik', 'Lampka')], null);
+    expect(p.zrodlo).toContain('swietlik');
     expect(p.zrodlo).toContain('Lampka');
   });
 
@@ -407,7 +407,7 @@ describe('POST /magazyn/przejmij-podglad', () => {
   it('rozbieżność jest widoczna przy karcie, a przycisk zapisu nie obejmuje tej pozycji', async () => {
     const id = kartaO('Bursztyn');
     produktO(id, { sku: 'LMP-PLA-118', kanal: 'pro' });
-    produktO(id, { sku: 'PD10', kanal: 'szkicownia' });
+    produktO(id, { sku: 'PD10', kanal: 'swietlik' });
     const r = await podglad(serwer(), { zaznaczone: String(id) });
     expect(wierszPozycji(r.body, 'Bursztyn')).toMatch(/różne numery/i);
     // Formularz zatwierdzenia niesie WYLACZNIE numery kart gotowych do przejecia.
@@ -495,7 +495,7 @@ describe('POST /magazyn/przejmij-zapisz', () => {
     const sporny = kartaO('Bursztyn');
     const czysty = kartaO('Dąbek');
     produktO(sporny, { sku: 'LMP-PLA-118', kanal: 'pro' });
-    produktO(sporny, { sku: 'PD10', kanal: 'szkicownia' });
+    produktO(sporny, { sku: 'PD10', kanal: 'swietlik' });
     produktO(czysty, { sku: 'PD11' });
     await zatwierdz(serwer(), { zaznaczone: [String(sporny), String(czysty)] });
     expect(wiersz(sporny).sku).toBeNull();

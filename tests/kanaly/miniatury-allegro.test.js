@@ -90,11 +90,11 @@ describe('adresMiniatury — wariant s150 wyprowadzany ze ścieżki Allegro', ()
     expect(adresMiniatury('https://9.allegroimg.com/original')).toBe('https://9.allegroimg.com/original');
   });
 
-  // ⚠️ REGUŁA ALLEGRO NIE MA PRAWA SIĘGNĄĆ PO ADRES ZE SKLEPU — `pro` i `szkicownia` działają
+  // ⚠️ REGUŁA ALLEGRO NIE MA PRAWA SIĘGNĄĆ PO ADRES ZE SKLEPU — `pro` i `swietlik` działają
   // i mają zostać nietknięte. Warunek to HOST, nie „adres zawiera /original/".
   it('nie tyka adresów spoza allegroimg.com', () => {
-    expect(adresMiniatury('https://pro.szkicownia.pl/wp-content/uploads/original/stop.jpg'))
-      .toBe('https://pro.szkicownia.pl/wp-content/uploads/original/stop-150x150.jpg');
+    expect(adresMiniatury('https://pro.swietlik.example.test/wp-content/uploads/original/stop.jpg'))
+      .toBe('https://pro.swietlik.example.test/wp-content/uploads/original/stop-150x150.jpg');
     expect(adresMiniatury('https://zle.pl/original/aa/bb')).toBe('https://zle.pl/original/aa/bb');
     // Host, który tylko KOŃCZY się podobnie — nie jest Allegro.
     expect(adresMiniatury('https://zleallegroimg.com/original/aa/bb'))
@@ -201,7 +201,7 @@ describe('klient Allegro — pobranie oferty', () => {
 
 const zmapowane = (zrodloId, pozycje) => ({
   zrodlo_id: String(zrodloId), numer: String(zrodloId), klient: { first_name: 'Jan' },
-  dostawa: { city: 'Pęki' }, metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, chce_fakture: 0,
+  dostawa: { city: 'Warszawa' }, metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, chce_fakture: 0,
   nip: null, kwota_brutto: '99.00', status_woo: null, oplacone_at: null,
   anulowane: 0, utworzone_at: '2026-08-04T08:00:00',
   pozycje,
@@ -215,7 +215,7 @@ const pozycjaAllegro = (ofertaId, nazwa = 'Szablon STOP') => ({
 let db;
 beforeEach(() => { db = openOmsDb(':memory:'); });
 
-const zamowienieAllegro = (ofertaId, { sklep = 'allegro_szkicownia', zrodloId = 'e2a1' } = {}) =>
+const zamowienieAllegro = (ofertaId, { sklep = 'allegro_swietlik', zrodloId = 'e2a1' } = {}) =>
   zapiszZamowienie(db, sklep, zmapowane(zrodloId, [pozycjaAllegro(ofertaId)]), {});
 
 const klientZ = (odpowiedzi) => ({
@@ -230,7 +230,7 @@ describe('pamięć podręczna zdjęć ofert', () => {
   it('pobranie zapisuje adres, a drugie wywołanie NIE IDZIE DO SIECI', async () => {
     zamowienieAllegro('17169409755');
     const klient = klientZ({ 17169409755: { images: [ORYGINAL] } });
-    const usluga = createZdjeciaAllegro({ db, klienci: { allegro_szkicownia: klient } });
+    const usluga = createZdjeciaAllegro({ db, klienci: { allegro_swietlik: klient } });
 
     expect(await usluga.uzupelnij()).toEqual({ pobrane: 1, bezZdjecia: 0, nieudane: 0 });
     expect(klient.pobierzOferte).toHaveBeenCalledTimes(1);
@@ -246,21 +246,21 @@ describe('pamięć podręczna zdjęć ofert', () => {
   it('adres przeżywa ponowną synchronizację zamówienia', async () => {
     const id = zamowienieAllegro('55');
     const klient = klientZ({ 55: { images: [ORYGINAL] } });
-    await createZdjeciaAllegro({ db, klienci: { allegro_szkicownia: klient } }).uzupelnij();
+    await createZdjeciaAllegro({ db, klienci: { allegro_swietlik: klient } }).uzupelnij();
 
     // Poller przechodzi drugi raz: DELETE + INSERT pozycji.
-    zapiszZamowienie(db, 'allegro_szkicownia', zmapowane('e2a1', [pozycjaAllegro('55')]), {});
+    zapiszZamowienie(db, 'allegro_swietlik', zmapowane('e2a1', [pozycjaAllegro('55')]), {});
 
     expect(pobierzZamowienie(db, id).pozycje[0].zdjecie_url).toBe(ORYGINAL);
     // ...i nie pytamy o nią drugi raz.
-    await createZdjeciaAllegro({ db, klienci: { allegro_szkicownia: klient } }).uzupelnij();
+    await createZdjeciaAllegro({ db, klienci: { allegro_swietlik: klient } }).uzupelnij();
     expect(klient.pobierzOferte).toHaveBeenCalledTimes(1);
   });
 
   it('oferta BEZ zdjęcia zapisuje się jako odpowiedź i też nie wraca do kolejki', async () => {
     zamowienieAllegro('77');
     const klient = klientZ({ 77: { images: [] } });
-    const usluga = createZdjeciaAllegro({ db, klienci: { allegro_szkicownia: klient } });
+    const usluga = createZdjeciaAllegro({ db, klienci: { allegro_swietlik: klient } });
 
     expect(await usluga.uzupelnij()).toEqual({ pobrane: 0, bezZdjecia: 1, nieudane: 0 });
     const w = zdjecieOfertyZBazy(db, '77');
@@ -277,7 +277,7 @@ describe('pamięć podręczna zdjęć ofert', () => {
   it('błąd zapisuje ślad, NIE RZUCA i nie wraca do kolejki od razu', async () => {
     zamowienieAllegro('403');
     const klient = klientZ({ 403: new Error('Allegro: HTTP 403 przy /sale/product-offers/403') });
-    const usluga = createZdjeciaAllegro({ db, klienci: { allegro_szkicownia: klient } });
+    const usluga = createZdjeciaAllegro({ db, klienci: { allegro_swietlik: klient } });
 
     expect(await usluga.uzupelnij()).toEqual({ pobrane: 0, bezZdjecia: 0, nieudane: 1 });
     const w = zdjecieOfertyZBazy(db, '403');
@@ -296,7 +296,7 @@ describe('pamięć podręczna zdjęć ofert', () => {
     const dawno = new Date(Date.now() - PONOWIENIE_PO_MS - 1000).toISOString();
     zapiszProbeZdjecia(db, '500', { blad: 'Allegro: HTTP 500', at: dawno });
 
-    expect(ofertyDoSprawdzenia(db, 'allegro_szkicownia', { limit: 10 })).toEqual(['500']);
+    expect(ofertyDoSprawdzenia(db, 'allegro_swietlik', { limit: 10 })).toEqual(['500']);
   });
 
   it('udana próba NIE wraca do kolejki nawet po latach', () => {
@@ -304,26 +304,26 @@ describe('pamięć podręczna zdjęć ofert', () => {
     const dawno = new Date(Date.now() - 1000 * PONOWIENIE_PO_MS).toISOString();
     zapiszProbeZdjecia(db, '600', { zdjecieUrl: ORYGINAL, at: dawno });
 
-    expect(ofertyDoSprawdzenia(db, 'allegro_szkicownia', { limit: 10 })).toEqual([]);
+    expect(ofertyDoSprawdzenia(db, 'allegro_swietlik', { limit: 10 })).toEqual([]);
   });
 
   // ⚠️ `GET /sale/product-offers/{id}` oddaje WŁASNĄ ofertę zalogowanego sprzedawcy: pytanie
   // kontem A o ofertę konta B odbiłoby się błędem, który zapisalibyśmy jako fakt o ofercie.
   it('pyta wyłącznie o oferty SWOJEGO kanału', async () => {
-    zamowienieAllegro('AAA', { sklep: 'allegro_szkicownia', zrodloId: 'a1' });
-    zamowienieAllegro('BBB', { sklep: 'allegro_amarka', zrodloId: 'b1' });
+    zamowienieAllegro('AAA', { sklep: 'allegro_swietlik', zrodloId: 'a1' });
+    zamowienieAllegro('BBB', { sklep: 'allegro_polcien2', zrodloId: 'b1' });
 
-    expect(ofertyDoSprawdzenia(db, 'allegro_szkicownia', { limit: 10 })).toEqual(['AAA']);
-    expect(ofertyDoSprawdzenia(db, 'allegro_amarka', { limit: 10 })).toEqual(['BBB']);
+    expect(ofertyDoSprawdzenia(db, 'allegro_swietlik', { limit: 10 })).toEqual(['AAA']);
+    expect(ofertyDoSprawdzenia(db, 'allegro_polcien2', { limit: 10 })).toEqual(['BBB']);
   });
 
   // Pierwszy przebieg po wdrożeniu widzi CAŁE archiwum kanału naraz.
   it('jeden przebieg pyta o najwyżej LIMIT_OFERT_NA_PRZEBIEG ofert', async () => {
     for (let i = 0; i < LIMIT_OFERT_NA_PRZEBIEG + 5; i += 1) {
-      zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(`z${i}`, [pozycjaAllegro(`of-${String(i).padStart(3, '0')}`)]), {});
+      zapiszZamowienie(db, 'allegro_swietlik', zmapowane(`z${i}`, [pozycjaAllegro(`of-${String(i).padStart(3, '0')}`)]), {});
     }
     const klient = klientZ({});
-    await createZdjeciaAllegro({ db, klienci: { allegro_szkicownia: klient } }).uzupelnij();
+    await createZdjeciaAllegro({ db, klienci: { allegro_swietlik: klient } }).uzupelnij();
 
     expect(klient.pobierzOferte).toHaveBeenCalledTimes(LIMIT_OFERT_NA_PRZEBIEG);
   });
@@ -331,7 +331,7 @@ describe('pamięć podręczna zdjęć ofert', () => {
   // Kanał skonfigurowany do odczytu zamówień, ale bez tej metody u klienta, to tryb POPRAWNY.
   it('klient bez pobierzOferte po prostu nie jest pytany', async () => {
     zamowienieAllegro('1');
-    const usluga = createZdjeciaAllegro({ db, klienci: { allegro_szkicownia: { pobierzPrzesylki: vi.fn() } } });
+    const usluga = createZdjeciaAllegro({ db, klienci: { allegro_swietlik: { pobierzPrzesylki: vi.fn() } } });
 
     await expect(usluga.uzupelnij()).resolves.toEqual({ pobrane: 0, bezZdjecia: 0, nieudane: 0 });
   });
@@ -341,7 +341,7 @@ describe('pamięć podręczna zdjęć ofert', () => {
   it('pozycje sklepowe nie wchodzą do kolejki', () => {
     zapiszZamowienie(db, 'pro', zmapowane('1281', [{
       nazwa: 'Szablon', sku: 'PRO-1', ilosc: 1, cena_brutto: '10.00', vat: '23',
-      zdjecie_url: 'https://pro.szkicownia.pl/x.jpg', produkt_id: 7, oferta_id: null,
+      zdjecie_url: 'https://pro.swietlik.example.test/x.jpg', produkt_id: 7, oferta_id: null,
     }]), {});
 
     expect(ofertyDoSprawdzenia(db, 'pro', { limit: 10 })).toEqual([]);
@@ -355,7 +355,7 @@ describe('pamięć podręczna zdjęć ofert', () => {
 describe('miniatura dociera na ekran', () => {
   it('lista zamówień pokazuje adres z pamięci ofert', async () => {
     zamowienieAllegro('900');
-    await createZdjeciaAllegro({ db, klienci: { allegro_szkicownia: klientZ({ 900: { images: [ORYGINAL] } }) } }).uzupelnij();
+    await createZdjeciaAllegro({ db, klienci: { allegro_swietlik: klientZ({ 900: { images: [ORYGINAL] } }) } }).uzupelnij();
 
     const [z] = listaZamowien(db);
     expect(z.pozycje[0].zdjecie_url).toBe(ORYGINAL);
@@ -365,7 +365,7 @@ describe('miniatura dociera na ekran', () => {
 
   it('karta zamówienia pokazuje ten sam adres, co lista', async () => {
     const id = zamowienieAllegro('901');
-    await createZdjeciaAllegro({ db, klienci: { allegro_szkicownia: klientZ({ 901: { images: [ORYGINAL] } }) } }).uzupelnij();
+    await createZdjeciaAllegro({ db, klienci: { allegro_swietlik: klientZ({ 901: { images: [ORYGINAL] } }) } }).uzupelnij();
 
     const [w] = wierszePozycji(pobierzZamowienie(db, id));
     expect(w.zdjecie).toBe(ORYGINAL);
@@ -380,18 +380,18 @@ describe('miniatura dociera na ekran', () => {
     expect(adresMiniatury(null)).toBe(null);
   });
 
-  // ⚠️ ZERO ZMIAN W ZACHOWANIU SKLEPÓW — `pro` i `szkicownia` sprzedają i ich miniatury działają.
+  // ⚠️ ZERO ZMIAN W ZACHOWANIU SKLEPÓW — `pro` i `swietlik` sprzedają i ich miniatury działają.
   it('pozycja sklepowa czyta dalej WŁASNĄ kolumnę', () => {
     zapiszZamowienie(db, 'pro', zmapowane('1281', [{
       nazwa: 'Szablon', sku: 'PRO-1', ilosc: 1, cena_brutto: '10.00', vat: '23',
-      zdjecie_url: 'https://pro.szkicownia.pl/wp-content/uploads/2026/07/stop.jpg',
+      zdjecie_url: 'https://pro.swietlik.example.test/wp-content/uploads/2026/07/stop.jpg',
       produkt_id: 7, oferta_id: null,
     }]), {});
 
     const [z] = listaZamowien(db);
-    expect(z.pozycje[0].zdjecie_url).toBe('https://pro.szkicownia.pl/wp-content/uploads/2026/07/stop.jpg');
+    expect(z.pozycje[0].zdjecie_url).toBe('https://pro.swietlik.example.test/wp-content/uploads/2026/07/stop.jpg');
     expect(adresMiniatury(z.pozycje[0].zdjecie_url))
-      .toBe('https://pro.szkicownia.pl/wp-content/uploads/2026/07/stop-150x150.jpg');
+      .toBe('https://pro.swietlik.example.test/wp-content/uploads/2026/07/stop-150x150.jpg');
   });
 
   it('pozycja dopisana ręcznie dalej nie ma zdjęcia i nie wywala odczytu', async () => {
@@ -399,7 +399,7 @@ describe('miniatura dociera na ekran', () => {
     db.prepare(
       "INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, zrodlo) VALUES (?,?,?,?,'reczna')",
     ).run(id, 'Dopłata za projekt', 1, '50.00');
-    await createZdjeciaAllegro({ db, klienci: { allegro_szkicownia: klientZ({ 903: { images: [ORYGINAL] } }) } }).uzupelnij();
+    await createZdjeciaAllegro({ db, klienci: { allegro_swietlik: klientZ({ 903: { images: [ORYGINAL] } }) } }).uzupelnij();
 
     const pozycje = pobierzZamowienie(db, id).pozycje;
     expect(pozycje.map((p) => p.zdjecie_url)).toEqual([ORYGINAL, null]);
@@ -422,7 +422,7 @@ describe('awaria zdjęć nie dotyka pollera', () => {
     const poller = createPoller({
       db,
       kanal: kanalZ([{ id: 'x1', oferta: '11', updatedAt: '2026-08-04T10:00:00Z', boughtAt: '2026-08-04T09:00:00Z' }]),
-      sklep: 'allegro_szkicownia',
+      sklep: 'allegro_swietlik',
     });
     // Uzupełnianie, które wybucha najgorzej jak potrafi — poza pętlą per oferta.
     const zdjecia = { uzupelnij: vi.fn(async () => { throw new Error('Allegro leży'); }) };
@@ -444,7 +444,7 @@ describe('awaria zdjęć nie dotyka pollera', () => {
   it('błąd PRZEBIEGU dochodzi do wołającego nietknięty, a zdjęcia i tak się dociągają', async () => {
     const kanal = kanalZ([]);
     kanal.pobierzStrone = vi.fn(async () => { throw new Error('Allegro: HTTP 401 przy /order/checkout-forms'); });
-    const poller = createPoller({ db, kanal, sklep: 'allegro_szkicownia' });
+    const poller = createPoller({ db, kanal, sklep: 'allegro_swietlik' });
     const zdjecia = { uzupelnij: vi.fn(async () => { throw new Error('i to też leży'); }) };
 
     await expect(zPobieraniemZdjec(poller, zdjecia).przebieg()).rejects.toThrow('HTTP 401');
@@ -462,16 +462,16 @@ describe('awaria zdjęć nie dotyka pollera', () => {
 
   // Jedna oferta o złym kształcie nie ma prawa zabrać miniatur wszystkim pozostałym.
   it('awaria JEDNEJ oferty nie przerywa uzupełniania pozostałych', async () => {
-    zapiszZamowienie(db, 'allegro_szkicownia', zmapowane('z1', [pozycjaAllegro('of-1')]), {});
-    zapiszZamowienie(db, 'allegro_szkicownia', zmapowane('z2', [pozycjaAllegro('of-2')]), {});
-    zapiszZamowienie(db, 'allegro_szkicownia', zmapowane('z3', [pozycjaAllegro('of-3')]), {});
+    zapiszZamowienie(db, 'allegro_swietlik', zmapowane('z1', [pozycjaAllegro('of-1')]), {});
+    zapiszZamowienie(db, 'allegro_swietlik', zmapowane('z2', [pozycjaAllegro('of-2')]), {});
+    zapiszZamowienie(db, 'allegro_swietlik', zmapowane('z3', [pozycjaAllegro('of-3')]), {});
     const klient = klientZ({
       'of-1': { images: [ORYGINAL] },
       'of-2': new Error('Allegro: HTTP 500 przy /sale/product-offers/of-2'),
       'of-3': { images: [ORYGINAL] },
     });
 
-    const wynik = await createZdjeciaAllegro({ db, klienci: { allegro_szkicownia: klient } }).uzupelnij();
+    const wynik = await createZdjeciaAllegro({ db, klienci: { allegro_swietlik: klient } }).uzupelnij();
 
     expect(wynik).toEqual({ pobrane: 2, bezZdjecia: 0, nieudane: 1 });
     expect(zdjecieOfertyZBazy(db, 'of-3').zdjecie_url).toBe(ORYGINAL);

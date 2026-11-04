@@ -1,5 +1,5 @@
-<h1>GUS (dane firm po NIP)</h1>
-<p><a href="/ustawienia/integracje">← Integracje</a></p>
+<h1>GUS</h1>
+<p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (test) { %>
@@ -11,11 +11,12 @@
 
 <% if (zEnv) { %>
 <section class="ust-sekcja" id="gus-stan">
-  <h2>Podłączony w pliku konfiguracji</h2>
-  <p>Klucz GUS jest ustawiony w pliku konfiguracji serwera (<code>oms.env</code>, zmienna <code>GUS_KLUCZ</code>). Ten ekran go nie zmienia — klucz poprawisz w tym pliku.</p>
+  <h2>Ustawione przez administratora serwera</h2>
+  <p>Klucz GUS jest ustawiony na serwerze. Ten ekran go nie zmienia — klucz poprawi administrator serwera.</p>
+  <details class="ust-pomoc"><summary>Dla administratora serwera</summary><p>Plik <code>oms.env</code>: zmienna <code>GUS_KLUCZ</code>.</p></details>
   <% if (stan) { %>
     <form method="post" action="/ustawienia/integracje/gus/odlacz">
-      <p>W OMS-ie został też klucz zapisany wcześniej na tym ekranie. Plik konfiguracji ma pierwszeństwo, więc nie jest używany.</p>
+      <p>W OMS-ie został też klucz zapisany wcześniej na tym ekranie. Ustawienia na serwerze mają pierwszeństwo, więc nie jest używany.</p>
       <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń zapisany klucz</button></div>
     </form>
   <% } %>

@@ -10,7 +10,7 @@ import { createWiadomosci } from '../../../src/moduly/wiadomosci/services/wiadom
 
 const CONFIG = {
   nadawca: {
-    nazwa: 'Lumina Marek Zywiecki', ulica: '1 Maja 5', kod: '00-650', miasto: 'Pęki', kraj: 'PL',
+    nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
   },
   proforma: { nip: '1234563218', rachunek: '34109010140000000000000000' },
 };

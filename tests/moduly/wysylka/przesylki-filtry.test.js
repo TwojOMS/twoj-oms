@@ -62,7 +62,7 @@ beforeEach(() => {
   const id2 = zapiszZamowienie(db, 'pro', zmapowane(2), {});
   nadana(db, id2, 'dpd', 'DPD-22', { utworzona: '2026-08-22T08:00:00.000Z' });
 
-  const id3 = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(3), {});
+  const id3 = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(3), {});
   // 23:30 UTC = 25.08 o 01:30 czasu warszawskiego. Wiersz-pulapka na liczenie dnia z UTC.
   nadana(db, id3, 'allegro_wza', 'WZA-25', { utworzona: '2026-08-24T23:30:00.000Z' });
 
@@ -158,7 +158,7 @@ describe('listy rozwijane filtrow', () => {
 
   it('lista zrodel zostaje pelna po wybraniu jednego zrodla', async () => {
     const r = await pobierz('/przesylki?pokaz=wszystkie&sklep=pro');
-    expect(r.body).toContain('value="allegro_szkicownia"');
+    expect(r.body).toContain('value="allegro_swietlik"');
     expect(r.body).toContain('value="pro"');
   });
 

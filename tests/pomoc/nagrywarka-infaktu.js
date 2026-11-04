@@ -64,6 +64,7 @@ export function createNagrywarkaInfaktu({ teraz, kluczApi }) {
   const zapis = [];        // { scenariusz, partia, metoda, sciezka, naglowki, cialo }
   const obce = [];         // żądania spoza inFaktu: { host, metoda, sciezka }
   const bledneKlucze = []; // żądania do inFaktu bez klucza testowego w X-inFakt-ApiKey
+  const klienciFaktur = new Map(); // API oddaje także identyfikator nabywcy dokumentu.
   let scenariusz = null;
   let wLocie = 0;
   let partia = 0;
@@ -109,10 +110,11 @@ export function createNagrywarkaInfaktu({ teraz, kluczApi }) {
     if (metoda === 'POST' && s === '/v3/clients.json') return odpowiedzJson(201, { id: await atrapa.zalozKlienta(cialo?.client) });
     if (metoda === 'POST' && s === '/v3/invoices.json') {
       const w = await atrapa.wystaw(cialo?.invoice);
+      klienciFaktur.set(w.uuid, cialo?.invoice?.client_id);
       return odpowiedzJson(201, atrapa.surowaEncja(w.uuid));
     }
     if (metoda === 'POST' && s === '/v3/async/corrective_invoices.json') {
-      const w = await atrapa.wystawKorekte(cialo ?? {});
+      const w = await atrapa.wystawKorekte(cialo?.corrective_invoice ?? {});
       return odpowiedzJson(201, { invoice_task_reference_number: w.referencja, processing_code: 100 });
     }
     if (metoda === 'GET' && (m = /^\/v3\/(invoices|corrective_invoices)\/([^/]+)\/pdf\.json$/.exec(s))) {
@@ -128,7 +130,7 @@ export function createNagrywarkaInfaktu({ teraz, kluczApi }) {
     if (metoda === 'GET' && (m = /^\/v3\/invoices\/([^/]+)\.json$/.exec(s))) {
       const encja = atrapa.surowaEncja(decodeURIComponent(m[1]));
       if (!encja || encja.kind !== 'vat') return odpowiedzJson(404, { error: 'Zasób którego szukasz nie został znaleziony' });
-      return odpowiedzJson(200, encja);
+      return odpowiedzJson(200, { ...encja, client_id: klienciFaktur.get(encja.uuid) });
     }
     if (metoda === 'POST' && (m = /^\/v3\/ksef2\/documents\/([^/]+)\/send\.json$/.exec(s))) {
       const w = await atrapa.wyslijDokumentDoKsef(decodeURIComponent(m[1]));

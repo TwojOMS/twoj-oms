@@ -12,7 +12,7 @@ const meta = (pary) => ({ meta_data: Object.entries(pary).map(([key, value]) => 
 const SUROWE_28224 = meta({
   _wc_order_attribution_source_type: 'typein',
   _wc_order_attribution_utm_source: '(direct)',
-  _wc_order_attribution_session_entry: 'https://szkicownia.pl/produkt/lampa-wiszaca-kopula/',
+  _wc_order_attribution_session_entry: 'https://swietlik.example.test/produkt/lampa-wiszaca-kopula/',
   _wc_order_attribution_session_start_time: '2026-08-25 17:37:13',
   _wc_order_attribution_session_pages: '18',
   _wc_order_attribution_session_count: '1',
@@ -28,7 +28,7 @@ describe('atrybucjaZeSurowych', () => {
       medium: null,
       kampania: null,
       odsylacz: null,
-      wejscie: 'https://szkicownia.pl/produkt/lampa-wiszaca-kopula/',
+      wejscie: 'https://swietlik.example.test/produkt/lampa-wiszaca-kopula/',
       start: '2026-08-25 17:37:13',
       stron: 18,
       sesja: 1,
@@ -121,17 +121,17 @@ describe('opisAtrybucji', () => {
   // czyta „bezposrednie" jako „klientka wpisala adres z palca" — i odklada kampanie do szuflady
   // „nic nie dala". Zdanie jest OSTROZNE: mowi „bywa", nie „to na pewno stamtad".
   it('bezpośrednie wejście w głąb sklepu dostaje wskazówkę o linku z aplikacji', () => {
-    const w = opis({ wejscie: 'https://szkicownia.pl/produkt/lampa-wiszaca-kopula/' }).wskazowka;
+    const w = opis({ wejscie: 'https://swietlik.example.test/produkt/lampa-wiszaca-kopula/' }).wskazowka;
     expect(w).toMatch(/aplikacj/i);
   });
 
   it('bezpośrednie wejście na stronę główną wskazówki NIE dostaje', () => {
-    expect(opis({ wejscie: 'https://szkicownia.pl/' }).wskazowka).toBeNull();
+    expect(opis({ wejscie: 'https://swietlik.example.test/' }).wskazowka).toBeNull();
     expect(opis({ wejscie: null }).wskazowka).toBeNull();
   });
 
   it('wejście z wyszukiwarki wskazówki nie dostaje, choćby było w głąb sklepu', () => {
-    expect(opis({ typ: 'organic', zrodlo: 'google', wejscie: 'https://szkicownia.pl/produkt/x/' }).wskazowka).toBeNull();
+    expect(opis({ typ: 'organic', zrodlo: 'google', wejscie: 'https://swietlik.example.test/produkt/x/' }).wskazowka).toBeNull();
   });
 
   // Grupowanie na zakladce kampanii idzie po KLUCZU, nie po etykiecie — etykieta jest

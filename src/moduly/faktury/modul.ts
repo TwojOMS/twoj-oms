@@ -296,13 +296,13 @@ return {
     const paczkaDlaBiura = infakt ? paczkaBiuraDlaTras(() => ctx.usluga('koszty', 'paczkaDlaBiura')) : null;
     const fakturyWidok = infakt ? createFakturyWidok({ db, infakt }) : null;
     const wysylkaKsef = infakt && fakturyWidok ? createWysylkaKsef({ db, infakt, fakturyWidok, wpisTf: (tf?.wpisTwojeFaktury ?? null) as any }) : null;
-    const fakturaAllegro = infakt && Object.keys(kanaly).length ? createFakturaAllegro({ db, infakt, klienciKanalow: kanaly }) : null;
+    const fakturaAllegro = infakt ? createFakturaAllegro({ db, infakt, klienciKanalow: kanaly }) : null;
     const poNumerzeKsef = createPoNumerzeKsef({ db, fakturaAllegro: fakturaAllegro as any });
     const doczytanieKsef = infakt ? createDoczytanieKsef({ db, infakt, poNumerzeKsef: poNumerzeKsef as any }) : null;
     // PRZ-123.C07b: rozstrzyganie niepewnych wysyłek KSeF — tylko program wbudowany; czuwacz działa wtedy także bez
     // kanałów. Przy inFakcie argumenty czuwacza bez zmian (bez klucza `rozstrzyganie`).
     const rozstrzyganieKsef = tf && wbudowany ? tf.createRozstrzyganieKsef({ db, ksef: polaczenieKsef, teraz, log: ctx.log }) : null;
-    const czuwaczKsef = infakt && (Object.keys(kanaly).length || rozstrzyganieKsef) ? (fabryki.createCzuwacz ?? createCzuwaczKsef)({ db, infakt, klienciKanalow: kanaly, fakturaAllegro: fakturaAllegro as any,
+    const czuwaczKsef = infakt ? (fabryki.createCzuwacz ?? createCzuwaczKsef)({ db, infakt, klienciKanalow: kanaly, fakturaAllegro: fakturaAllegro as any,
       ...(rozstrzyganieKsef ? { rozstrzyganie: rozstrzyganieKsef } : {}) }) : null;
     const czuwaczArchiwumSprzedazy = infakt && archiwum ? (fabryki.createCzuwaczArchiwumSprzedazy ?? createCzuwaczArchiwumSprzedazy)({ db, infakt, katalogArchiwum: archiwum, teraz }) : null;
     // PRZ-102.12: automat wysyłki do KSeF o godzinie z Ustawień — tylko na tych samych usługach co przycisk
@@ -363,7 +363,7 @@ return {
       }, zegary,
       zdrowie: () => {
         const ocena = ocenZdrowie({ teraz: teraz(), startAt: puls.startAt,
-          ksefWlaczony: Boolean(czuwaczKsef), pulsKsef: (puls.stan().czuwaczKsef ?? null) as any });
+          ksefWlaczony: Boolean(czuwaczKsef) && Object.keys(kanaly).length > 0, pulsKsef: (puls.stan().czuwaczKsef ?? null) as any });
         // PRZ-121.01: jawny „brak” — zdanie o wyłączonych fakturach; inaczej stary tekst znak w znak. Uwagi, nie alarmy:
         // /health i jego `ok` się nie zmieniają.
         const wylaczoneZdanie = zdanieBrakuProgramu(wybor);

@@ -44,7 +44,7 @@ beforeEach(() => {
   paczka('U-PDF', { pdf: '/tmp/e.pdf' });
   paczka('U-ZPL', { zpl: '/tmp/e.zpl', at: '2026-09-14T10:00:00.000Z' });
   paczka('U-MAN', { reczna: true, kurier: 'inpost' });
-  paczka('U-PENDING', { sklep: 'allegro_szkicownia', kurier: 'allegro', kod: 'PENDING' });
+  paczka('U-PENDING', { sklep: 'allegro_swietlik', kurier: 'allegro', kod: 'PENDING' });
   paczka('U-REG', { etap: 'Zarejestrowano dane przesyłki, jeszcze nie nadana' });
   paczka('NO-PROOF');
   paczka('MOVED', { pdf: '/tmp/e.pdf', etap: 'Przesyłka odebrana przez Kuriera' });

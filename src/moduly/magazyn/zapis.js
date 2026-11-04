@@ -106,7 +106,7 @@ export function registerZapisMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
   // ⚠️⚠️ TA TRASA NICZEGO NIE WYSYLA. Podglad jest OBOWIAZKOWY i jest osobna trasa wlasnie
   // po to, zeby zapis do zywego sklepu nie dal sie wywolac przez pomylke w polu formularza.
   app.post('/magazyn/podglad-zapisu', async (req, reply) => {
-    if (!magazyn) return reply.code(503).send(BEZ_SKLEPOW_ODMOWA);
+    if (!magazyn || magazyn.gotowy?.() === false) return reply.code(503).send(BEZ_SKLEPOW_ODMOWA);
     const zawezenie = pole(req.body, 'zawezenie') ?? '';
     const karty = kartyZZadania(req);
     if (!karty) return ekranZapisu(reply, { zawezenie, blad: ZAPIS_BEZ_ZAZNACZENIA, kod: 400 });
@@ -128,7 +128,7 @@ export function registerZapisMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
   // swiadectwem operacji, ktorej nie da sie cofnac klknieciem — ta sama zasada, co przy
   // nadaniu zbiorczym, gdzie numery listow zostaja na ekranie.
   app.post('/magazyn/zapisz-do-sklepow', async (req, reply) => {
-    if (!magazyn) return reply.code(503).send(BEZ_SKLEPOW_ODMOWA);
+    if (!magazyn || magazyn.gotowy?.() === false) return reply.code(503).send(BEZ_SKLEPOW_ODMOWA);
     const zawezenie = pole(req.body, 'zawezenie') ?? '';
     const karty = kartyZZadania(req);
     if (!karty) return ekranZapisu(reply, { zawezenie, blad: ZAPIS_BEZ_ZAZNACZENIA, kod: 400 });

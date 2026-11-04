@@ -76,7 +76,7 @@ function pdfNaTekst(buf) {
   }
 }
 
-const SPRZEDAWCA = { nazwa: 'Lumina Marek Zywiecki', adres: 'ul. 1 Maja 5, 00-650 Pęki', bdo: '000123456' };
+const SPRZEDAWCA = { nazwa: 'Pracownia Półcień Anna Wzorcowa', adres: 'ul. Przykładowa 1, 00-950 Warszawa', bdo: '000123456' };
 const dane = (n = {}) => ({
   numer: '3001',
   dataZamowienia: '2026-08-05',
@@ -121,8 +121,8 @@ describe.skipIf(!PDFTOTEXT)('PDF specyfikacji — tresc odczytana z gotowego dok
   // Buffer wyglada tak samo w obu razach.
   it('wypisuje polskie znaki, a nie dziury', async () => {
     const tekst = pdfNaTekst(await zbudujSpecyfikacjePdf(dane()));
-    expect(tekst).toContain('Zywiecki');
-    expect(tekst).toContain('Pęki');
+    expect(tekst).toContain('Półcień');
+    expect(tekst).toContain('Przykładowa');
     expect(tekst).not.toContain('�');
   });
 

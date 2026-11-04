@@ -45,6 +45,8 @@ export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewn
     };
     const zdrowie=()=>{
       const config=ctx.usluga<any>('kanaly','config');
+      const rejestr=opcjonalna<{lista:()=>{klucz:string;autoryzacja:string;pobieranie:string}[]}>('kanaly','rejestrKanalow');
+      const zrodlaAllegro=rejestr?rejestr.lista().filter(k=>['polaczone','brak'].includes(k.autoryzacja)&&k.pobieranie==='wlaczone').map(k=>k.klucz):Object.keys(config.kanaly);
       const kurierzy=ctx.usluga<Record<string,unknown>>('wysylka','kurierzy');
       // PRZ-102.22: koszty mówią to funkcją (token z Ustawień i przełącznik modułu bez restartu); wartość — starsze składy.
       const wlaczone=opcjonalna<boolean|(()=>boolean)>('koszty','kosztyWlaczone');
@@ -56,10 +58,10 @@ export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewn
       const teraz=ctx.teraz();
       const wynik=ocenZdrowie({teraz,startAt:puls.startAt,
         // JS domeny bez JSDoc inferuje [] jako never[]; ta granica jest taka jak w faktury/wysylka.
-        zrodla:[...Object.keys(config.sklepy),...Object.keys(config.kanaly)] as any,
+        zrodla:[...Object.keys(config.sklepy),...zrodlaAllegro] as any,
         stanyPollera:ctx.db.prepare('SELECT sklep, ostatni_przebieg_at, ostatni_blad, ostatni_blad_od_at, ostatni_blad_rodzaj, ostatni_blad_prob FROM stan_pollera').all() as any,
-        ksefWlaczony:Boolean(ctx.usluga('faktury','czuwaczKsef')),pulsKsef:p.czuwaczKsef??null,
-        przesylkiWlaczone:Object.keys(kurierzy).length>0,pulsPrzesylek:p.czuwaczPrzesylek??null,
+        ksefWlaczony:Boolean(ctx.usluga('faktury','czuwaczKsef'))&&Object.keys(config.kanaly).length>0,pulsKsef:p.czuwaczKsef??null,
+        przesylkiWlaczone:opcjonalna<()=>boolean>('wysylka','kurierzyDostepni')?.()??Object.keys(kurierzy).length>0,pulsPrzesylek:p.czuwaczPrzesylek??null,
         ostrzezeniaWlaczone:Boolean(czuwaczOstrzezen),pulsOstrzezen:p.czuwaczOstrzezen??null,
         kosztyWlaczone,kosztyModulWylaczony,kosztyWlaczoneOd,stanKosztow:stanKosztow?.()??null,
         kanaly:ctx.usluga<()=>any[]>('kanaly','stanyKanalow')() as any,

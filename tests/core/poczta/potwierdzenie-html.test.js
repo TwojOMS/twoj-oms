@@ -12,14 +12,14 @@ const zam = (nad = {}) => ({
   numer: 'R/2026/015', utworzone_at: '2026-08-21T09:00:00Z', sklep: 'reczne',
   kwota_brutto: '990.00', koszt_dostawy_brutto: '0.00', metoda_wysylki: 'dpd',
   metoda_platnosci: 'Przelew', termin_platnosci: '14', anulowane: 0, chce_fakture: 1,
-  nip: '1200001039',
+  nip: '1234500028',
   klient: {
-    email: 'sklep@betamet.pl', company: '"BETAMET" SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ',
-    address_1: 'ul. Przemysłowa 1', postcode: '62-070', city: 'Zakrzewo',
+    email: 'sklep@example.test', company: 'Wzorowy "Kontrahent" sp. z o.o.',
+    address_1: 'ul. Testowa 7', postcode: '00-950', city: 'Warszawa',
   },
   dostawa: {
-    company: '"BETAMET" SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ',
-    address_1: 'ul. Przemysłowa 1', postcode: '62-070', city: 'Zakrzewo',
+    company: 'Wzorowy "Kontrahent" sp. z o.o.',
+    address_1: 'ul. Testowa 7', postcode: '00-950', city: 'Warszawa',
   },
   pozycje: [{ nazwa: 'Szablon INWALIDA 70x100', ilosc: 10, cena_brutto: '99.00', brutto_linii: '990.00' }],
   ...nad,
@@ -65,9 +65,9 @@ describe('sekcja faktury', () => {
   it('przy „chcę fakturę" mówi TAK i wypisuje dane nabywcy', () => {
     const h = html();
     expect(h).toContain('Tak — wystawimy na:');
-    expect(h).toContain('NIP 1200001039');
-    expect(h).toContain('ul. Przemysłowa 1');
-    expect(h).toContain('62-070 Zakrzewo');
+    expect(h).toContain('NIP 1234500028');
+    expect(h).toContain('ul. Testowa 7');
+    expect(h).toContain('00-950 Warszawa');
   });
 
   // ⚠️ Pokazuje się ZAWSZE — także z odpowiedzią „Nie". To jedyny moment, w którym klient
@@ -81,30 +81,30 @@ describe('sekcja faktury', () => {
   // ⚠️ BEZ E-MAILA — na fakturze go nie ma, a wypisany kusi, żeby go poprawiać jako „dane
   // do faktury", czym nie jest.
   it('nie wypisuje adresu e-mail nabywcy', () => {
-    expect(html()).not.toContain('sklep@betamet.pl');
+    expect(html()).not.toContain('sklep@example.test');
   });
 });
 
 describe('adres dostawy', () => {
   it('idzie w całości', () => {
-    expect(html()).toMatch(/ul\. Przemysłowa 1<br>62-070 Zakrzewo/);
+    expect(html()).toMatch(/ul\. Testowa 7<br>00-950 Warszawa/);
   });
 
   // Ta sama reguła, co w wersji tekstowej: sama nazwa (bywa nią e-mail) nie jest adresem.
   it('bez ulicy i miasta mówi „do uzgodnienia"', () => {
-    expect(html({ dostawa: { first_name: 'anna.nowak@example.org' } }))
+    expect(html({ dostawa: { first_name: 'odbiorca@example.test' } }))
       .toContain('adres do uzgodnienia');
   });
 });
 
 describe('higiena maila', () => {
-  // ⚠️ CUDZYSŁOWY W NAZWIE FIRMY SĄ TU REGUŁĄ, NIE PRZYPADKIEM — „BETAMET" i FIRMA BUDOWLANA
-  // „B.D.M." tak wyglądają w REGON-ie. Niezaescapowane rozwaliłyby atrybut `style` albo
+  // ⚠️ CUDZYSŁOWY W NAZWIE FIRMY SĄ TU REGUŁĄ, NIE PRZYPADKIEM — „Kontrahent" i FIRMA BUDOWLANA
+  // „Wzorcowa" tak wyglądają w REGON-ie. Niezaescapowane rozwaliłyby atrybut `style` albo
   // `srcdoc` na ekranie podglądu.
   it('escapuje cudzysłowy w nazwie firmy', () => {
     const h = html();
-    expect(h).toContain('&quot;BETAMET&quot;');
-    expect(h).not.toContain('"BETAMET"');
+    expect(h).toContain('&quot;Kontrahent&quot;');
+    expect(h).not.toContain('"Kontrahent"');
   });
 
   it('style wyłącznie inline — Gmail i Outlook wycinają <style> z <head>', () => {
@@ -121,13 +121,13 @@ describe('higiena maila', () => {
   it('koperta jest ta sama, co w mailach z wyceną', () => {
     const h = html();
     expect(h).toMatch(/^<!doctype html>/);
-    expect(h).toContain('SZKICOWNIA');
+    expect(h).toContain('SWIETLIK');
   });
 
   // ⚠️ Podpisujemy się MARKĄ, nie nazwą podmiotu (decyzja właściciela 21.08.2026).
-  it('podpisuje się Szkicownia.pl', () => {
+  it('podpisuje się Swietlik.example.test', () => {
     const h = html();
-    expect(h).toContain('Szkicownia.pl');
-    expect(h).not.toContain('Lumina');
+    expect(h).toContain('Swietlik.example.test');
+    expect(h).not.toContain('Pracownia Półcień');
   });
 });

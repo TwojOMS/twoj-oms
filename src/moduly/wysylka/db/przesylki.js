@@ -2,6 +2,7 @@ import { bladOperatora } from '../../../domena/bledy.js';
 import {
   stanPrzesylki, sprawyDoZalatwieniaRecznie, STANY_BLOKUJACE_KOLEJNA, ZRODLO_NUMERU, numerZAllegro,
 } from '../../../domena/przesylka-stan.js';
+import { panelKuriera } from '../../../domena/moduly-kurierow.ts';
 
 const teraz = () => new Date().toISOString();
 
@@ -71,15 +72,15 @@ function opisKolizji(zywa) {
   }
   if (stan === 'do_wyjasnienia') {
     return `To zamówienie ma przesyłkę do wyjaśnienia (list ${zywa.numer_listu}). `
-      + 'DPD odrzuci ponowne nadanie z tą samą referencją — sprawdź paczkę w panelu DPD.';
+      + `Kurier odrzuci ponowne nadanie z tą samą referencją — sprawdź paczkę w ${panelKuriera(zywa.kurier)}.`;
   }
   // Wiersz starszy niz prog to sierota po restarcie procesu, a nie trwajace wywolanie.
   // Odpowiedz „wlasnie trwa" byla tu WIECZNA: nic jej nigdy nie zdejmowalo, a jedynym
   // wyjsciem zostawal reczny UPDATE w pliku SQLite.
   if (stan === 'zawieszona') {
     return `Nadanie tego zamówienia wisi od ${zywa.utworzona_at} i żadne wysyłanie już nie trwa — `
-      + 'panel najpewniej został zrestartowany w trakcie wywołania DPD. '
-      + 'Sprawdź RĘCZNIE w panelu DPD, czy paczka do tego zamówienia powstała: '
+      + 'panel najpewniej został zrestartowany w trakcie wywołania kuriera. '
+      + `Sprawdź RĘCZNIE w ${panelKuriera(zywa.kurier)}, czy paczka do tego zamówienia powstała: `
       + 'jeśli ma już numer listu, ponowienie i tak zostanie odrzucone (DUPLICATED_PARCEL_SEARCH_KEY). '
       + 'Decyzję podejmij przyciskiem na karcie zamówienia.';
   }
@@ -425,13 +426,13 @@ export function odblokujPrzesylke(db, przesylkaId, { numerListu = null, opis } =
     if (stan === 'do_wyjasnienia') {
       throw bladOperatora(
         `Ta przesyłka jest już opisana jako „do wyjaśnienia" (list ${p.numer_listu}) — odblokowywać nie ma czego. `
-        + 'Dokończ sprawę w panelu DPD i domknij ją przyciskiem na karcie.',
+        + `Dokończ sprawę w ${panelKuriera(p.kurier)} i domknij ją przyciskiem na karcie.`,
       );
     }
     throw bladOperatora(
       `Ta przesyłka jest nadana${p.numer_listu ? ` (list ${p.numer_listu})` : ''} — `
       + 'odblokowanie pozwoliłoby nadać drugą paczkę pod TYM SAMYM numerem kolejnym, '
-      + 'czyli z tą samą referencją, którą DPD już zna. Kolejną paczkę nadaje się '
+      + 'czyli z tą samą referencją, którą kurier już zna. Kolejną paczkę nadaje się '
       + 'przyciskiem „Nadaj kolejną paczkę" na karcie.',
     );
   }
@@ -516,7 +517,7 @@ export function skasujPrzesylkeReczna(db, przesylkaId) {
   if (!p) throw bladOperatora('Nie ma takiej przesyłki — nie ma czego kasować.');
   if (!p.nadana_recznie) {
     throw bladOperatora(
-      'Ta przesyłka NIE jest zarejestrowana ręcznie — DPD naprawdę przydzieliło jej numer listu '
+      'Ta przesyłka NIE jest zarejestrowana ręcznie — kurier naprawdę przydzielił jej numer listu '
       + `${p.numer_listu ? `(${p.numer_listu}) ` : ''}i paczka fizycznie istnieje u kuriera. Skasowanie `
       + 'wiersza otworzyłoby drogę do drugiego nadania pod tą samą referencją. Panel nie kasuje takich przesyłek.',
     );

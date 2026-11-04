@@ -21,7 +21,7 @@ function metadane(katalog, nazwa) {
   return execFileSync(existsSync(fallback) ? fallback : 'pdfinfo', ['-enc', 'UTF-8', join(katalog, nazwa + '.pdf')], { encoding: 'utf8' });
 }
 describe('PDF: dane sprzedawcy przez rzeczywistą konfigurację', () => {
-  it('obie stopki i metadane biorą nazwę z wejścia, bez domyślnego Szkicownia', () => {
+  it('obie stopki i metadane biorą nazwę z wejścia, bez domyślnego Pracownia Świetlik', () => {
     const katalog = mkdtempSync(join(tmpdir(), 'pdf-konfig-'));
     try {
       const k = wczytajFaktury({ OMS_PROFORMY_KATALOG: katalog, OMS_SPRZEDAWCA_NIP: '1234563218',
@@ -39,7 +39,7 @@ describe('PDF: dane sprzedawcy przez rzeczywistą konfigurację', () => {
       for (const [nazwa, pdf] of [['proforma', proforma], ['wywoz', wywoz]]) {
         const t = tekst(pdf, katalog, nazwa);
         expect(t).toContain('Wystawiono w panelu zamówień Firma testowa Żółw');
-        expect(t).not.toContain('Szkicownia');
+        expect(t).not.toContain('Pracownia Świetlik');
         expect(metadane(katalog, nazwa)).toMatch(/Author:\s+Firma testowa Żółw/);
       }
       expect(tekst(wywoz, katalog, 'wywoz')).toContain('PL1234563218');

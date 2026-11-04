@@ -3,7 +3,7 @@
 // instancji daje `<PREFIKS>_MAPOWANIE`. Jawne dane zamrożonych testów; produkcja nie importuje tego pliku.
 export * from '../../src/domena/mapowanie-wysylki.js';
 
-// ⚠️⚠️ INSTANCJA 9 NA SZKICOWNIA.PL TO PULAPKA, KTORA KOSZTUJE TOWAR — i potwierdzila sie
+// ⚠️⚠️ INSTANCJA 9 NA SWIETLIK.EXAMPLE.TEST TO PULAPKA, KTORA KOSZTUJE TOWAR — i potwierdzila sie
 // na zywym sklepie 2026-08-01. Nazywa sie „Kurier DPD pobranie", ale jej `method_id` to
 // `local_pickup`, czyli w WooCommerce „odbior osobisty". Panel czytajacy RODZAJ metody
 // zamiast `instance_id` wyslalby te paczke BEZ pobrania: kurier nie zainkasowalby ani
@@ -22,19 +22,19 @@ export const MAPOWANIE_SKLEPOW = {
     // obok metody, a nie osobna nazwa metody (2026-08-01).
     instancje: { 1: { metoda: 'dpd' }, 2: { metoda: 'dpd', pobranie: true }, 3: { metoda: 'dpd' } },
     // ⚠️ TA REGULA MUSIALA TU DOJSC 21.08.2026 i jest to koszt PRZEPROWADZKI WTYCZKI OFERT
-    // na pro.szkicownia.pl (19.08). Do tego dnia stala WYLACZNIE pod `szkicownia` — bo tam stala
+    // na pro.swietlik.example.test (19.08). Do tego dnia stala WYLACZNIE pod `swietlik` — bo tam stala
     // wtyczka — wiec pierwsze zamowienie z oferty zlozone na PRO (nr 1294) wyladowalo jako
     // „Nieznana metoda": sklep nie daje przy nim ani jednej linii wysylki, a warstwa zapasowa
     // dla PRO byla pusta. Objawilo sie to dopiero na karcie, dwa dni pozniej.
     //
-    // Dopasowanie po SKU, nie po nazwie — identycznie jak na szkicownia.pl (patrz nizej). PRO
+    // Dopasowanie po SKU, nie po nazwie — identycznie jak na swietlik.example.test (patrz nizej). PRO
     // nie sprzedaje dzis paczkomatu, wiec jedynym transportem, ktory moze stac za oferta,
     // jest kurier; gdyby to sie zmienilo, ta tablica jest jedynym miejscem do poprawienia.
     poPozycji: [
       { sku: 'psm-zam-placeholder', metoda: 'dpd' },
     ],
   },
-  szkicownia: {
+  swietlik: {
     instancje: {
       3: { metoda: 'dpd' },
       9: { metoda: 'dpd', pobranie: true },

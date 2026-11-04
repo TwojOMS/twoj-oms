@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { KATALOG_INTEGRACJI } from '../../../src/domena/katalog-integracji.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 import { zalozKonto, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
@@ -11,7 +12,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { registerUstawieniaRoutes } from '../../../src/moduly/marketing/trasy/integracje.js';
 import { createMagazynSekretow } from '../../../src/moduly/marketing/uslugi/reklamy-sekrety.js';
-import { polaczenia, zapiszPolaczenie, stanPolaczenia } from '../../../src/oms/db/reklamy.js';
+import { fmtKiedy } from '../../../src/domena/format-daty.js';
+import { polaczenia, zapiszPolaczenie, stanPolaczenia, zapiszStan } from '../../../src/oms/db/reklamy.js';
 
 const CONFIG = { auth: { user: 'serwis', pass: 'haslo-env' }, klienciZbiorczy: [] };
 const BASIC = { authorization: `Basic ${Buffer.from('serwis:haslo-env').toString('base64')}` };
@@ -21,9 +23,11 @@ describe('Ustawienia → Integracje → Reklamy', () => {
     const app = buildOmsServer({ db: openOmsDb(':memory:'), config: CONFIG });
     const r = await app.inject({ method: 'GET', url: '/ustawienia/integracje/reklamy', headers: BASIC });
     expect(r.statusCode).toBe(200);
-    expect(r.body).toContain('Google przez GA4');
-    expect(r.body).toContain('Google Ads API');
-    expect(r.body).toContain('Meta');
+    // PRZ-138.02: nazwy wierszy z katalogu integracji, nie własne.
+    for (const id of ['ga4', 'google_ads', 'meta']) {
+      expect(r.body).toContain(`<h2>${KATALOG_INTEGRACJI.find((w) => w.id === id).nazwa}</h2>`);
+    }
+    expect(r.body).not.toContain('<h2>Google przez GA4</h2>');
     expect((r.body.match(/Niepodłączone/g) ?? [])).toHaveLength(3);
     expect((r.body.match(/Skopiuj prompt dla agenta/g) ?? [])).toHaveLength(3);
     expect(r.body).not.toContain('name="tresc"');
@@ -41,14 +45,29 @@ describe('Ustawienia → Integracje → Reklamy', () => {
     expect(lista.body).toContain('Konto act_1');
     expect(lista.body).toContain('Niesprawdzone');
     const r = await app.inject({ method: 'GET', url: '/ustawienia/integracje/reklamy', headers: BASIC });
-    expect(r.body).toContain('<a href="/ustawienia/integracje">← Integracje</a>');
+    expect(r.body).toContain('<a href="/ustawienia/integracje">← Moje połączenia</a>');
     expect((r.body.match(/<section class="ust-sekcja" id="reklamy-(?:ga4|google_ads|meta)"/g) ?? [])).toHaveLength(3);
     expect((r.body.match(/<p class="ust-stan"><strong>Niepodłączone<\/strong>/g) ?? [])).toHaveLength(2);
     // Meta jest zapisana, ale bez udanego odczytu — plakietka „Weryfikacja", nie „Niepodłączone".
     expect(r.body).toMatch(/ust-stan ust-stan-weryfikacja"><strong>Weryfikacja<\/strong>/);
     expect((r.body.match(/<aside class="ust-instrukcja"/g) ?? [])).toHaveLength(2);
     expect(r.body).toContain('class="ust-prompt"');
+    // PRZ-141.02: pole z promptem ma wysokość dobraną do treści (rows >= 7), nie stałe 7 wierszy.
+    const rows = [...r.body.matchAll(/class="ust-prompt" readonly rows="(\d+)"/g)].map((m) => Number(m[1]));
+    expect(rows).toHaveLength(2);
+    for (const n of rows) expect(n).toBeGreaterThan(7);
     expect(r.body).not.toContain('style="width:100%"');
+    await app.close();
+  });
+
+  it('PRZ-141.02: ostatni udany odczyt w formacie panelu (fmtKiedy), nie surowym znacznikiem', async () => {
+    const db = openOmsDb(':memory:');
+    const p = zapiszPolaczenie(db, { typ: 'meta', kontoId: 'act_1', kanal: 'sklep_a', sekretRef: `meta:${randomUUID()}` });
+    zapiszStan(db, { polaczenieId: p.id, ostatniaProbaAt: '2026-09-23T09:00:00Z', ostatniSukcesAt: '2026-09-23T09:00:00Z' });
+    const app = buildOmsServer({ db, config: CONFIG });
+    const r = await app.inject({ method: 'GET', url: '/ustawienia/integracje/reklamy', headers: BASIC });
+    expect(r.body).toContain(`Ostatni udany odczyt: ${fmtKiedy('2026-09-23T09:00:00Z')}`);
+    expect(r.body).not.toMatch(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/);
     await app.close();
   });
 
@@ -126,7 +145,7 @@ describe('Ustawienia → Integracje → Reklamy', () => {
       const { post, ekran } = await kliknijTest(app, polaczenie);
       expect(post.headers.location).toMatch(/^\/ustawienia\/integracje\/reklamy\?/);
       expect(ekran.headers['content-type']).toContain('text/html');
-      expect(ekran.body).toMatch(/<div class="pas-potwierdzenie"[^>]*><p>Odczyt działa — Meta, konto act_123\.<\/p><\/div>/);
+      expect(ekran.body).toMatch(/<div class="pas-potwierdzenie"[^>]*><p>Odczyt działa — Meta Ads, konto act_123\.<\/p><\/div>/);
       expect(ekran.body).not.toContain('"stan"');
       expect(ekran.body).not.toContain('tajny-token');
       await app.close();
@@ -137,7 +156,7 @@ describe('Ustawienia → Integracje → Reklamy', () => {
         throw new Error('HTTP 500 {"error":"token tajny-token odrzucony"} at fetch (node:internal)');
       });
       const { ekran } = await kliknijTest(app, polaczenie);
-      expect(ekran.body).toMatch(/<div class="pas-uprzedzenie"[^>]*><p>Test odczytu nie powiódł się — Meta, konto act_123\. Sprawdź połączenie ze źródłem i ponów test\.<\/p><\/div>/);
+      expect(ekran.body).toMatch(/<div class="pas-uprzedzenie"[^>]*><p>Test odczytu nie powiódł się — Meta Ads, konto act_123\. Sprawdź połączenie ze źródłem i ponów test\.<\/p><\/div>/);
       expect(ekran.body).not.toContain('pas-potwierdzenie');
       for (const nie of ['tajny-token', 'HTTP 500', 'node:internal', '"stan"', 'BLAD_ODCZYTU"}']) expect(ekran.body).not.toContain(nie);
       await app.close();

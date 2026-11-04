@@ -23,21 +23,21 @@ describe('adresSprzedawcy', () => {
   it('sklada nazwe, ulice, kod, miasto i kraj z config.nadawca', () => {
     const config = {
       nadawca: {
-        nazwa: 'Lumina Marek Zywiecki', ulica: 'ul. 1 Maja 5', kod: '00-650', miasto: 'Pęki', kraj: 'PL',
+        nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
       },
     };
     expect(adresSprzedawcy(config)).toEqual({
-      nazwa: 'Lumina Marek Zywiecki', ulica: 'ul. 1 Maja 5', kod: '00-650', miasto: 'Pęki', kraj: 'PL',
+      nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
     });
   });
 
   it('bez nazwy odmawia z DOKLADNIE tą trescia komunikatu', () => {
-    const config = { nadawca: { ulica: 'ul. 1 Maja 5' } };
+    const config = { nadawca: { ulica: 'ul. Przykładowa 1' } };
     expect(() => adresSprzedawcy(config)).toThrow(KOMUNIKAT);
   });
 
   it('bez ulicy odmawia z DOKLADNIE tą trescia komunikatu', () => {
-    const config = { nadawca: { nazwa: 'Lumina Marek Zywiecki' } };
+    const config = { nadawca: { nazwa: 'Pracownia Półcień Anna Wzorcowa' } };
     expect(() => adresSprzedawcy(config)).toThrow(KOMUNIKAT);
   });
 

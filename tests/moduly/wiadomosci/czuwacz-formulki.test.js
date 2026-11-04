@@ -25,7 +25,7 @@ const PRZED_CHWILA = '2026-08-28T20:57:00Z'; // 3 minuty temu
 
 function dodajWatek(db, nadpisz = {}) {
   zapiszWatek(db, {
-    kanal: 'allegro_szkicownia', threadId: 't1', interlocutorLogin: 'kup',
+    kanal: 'allegro_swietlik', threadId: 't1', interlocutorLogin: 'kup',
     lastMessageDateTime: DAWNO, typ: 'COMMON', przeczytany: 0,
     ostatniaOdKupujacego: 1, ostatniaTresc: 'pytanie', pobranyAt: DAWNO, ...nadpisz,
   });
@@ -40,10 +40,17 @@ function klientSzpieg(zachowanie = async () => ({ id: 'm1' })) {
 }
 
 const czuwacz = (db, klient) => createCzuwaczFormulki({
-  db, klienci: { allegro_szkicownia: klient }, teraz,
+  db, klienci: { allegro_swietlik: klient }, teraz,
 });
 
 describe('autoresponder — czuwacz formulki', () => {
+  it('blokada po reconnect nie rezerwuje dowodu; dopiero zatwierdzenie pozwala wysłać', async () => {
+    const db = baza(); dodajWatek(db); const k = klientSzpieg(); let wolno = false;
+    const c = createCzuwaczFormulki({db,klienci:{allegro_swietlik:k},teraz,wolnoZapisywac:()=>wolno});
+    await c.przebieg(); expect(k.wyslane).toEqual([]); expect(dowody(db,'allegro_swietlik','t1')).toEqual([]);
+    wolno = true; await c.przebieg(); expect(k.wyslane).toHaveLength(1); expect(dowody(db,'allegro_swietlik','t1')).toHaveLength(1);
+    db.close();
+  });
   it('wysyla formulke, gdy wszystkie warunki sa spelnione', async () => {
     const db = baza(); dodajWatek(db);
     const k = klientSzpieg();
@@ -91,7 +98,7 @@ describe('autoresponder — czuwacz formulki', () => {
 
   it('NIE wysyla drugi raz w tym samym watku — raz na watek, nigdy wiecej', async () => {
     const db = baza(); dodajWatek(db);
-    const { id } = zapiszDowod(db, { kanal: 'allegro_szkicownia', threadId: 't1', rodzaj: 'formulka', tresc: 'stara' }, DAWNO);
+    const { id } = zapiszDowod(db, { kanal: 'allegro_swietlik', threadId: 't1', rodzaj: 'formulka', tresc: 'stara' }, DAWNO);
     oznaczWyslane(db, id, DAWNO);
     const k = klientSzpieg();
     await czuwacz(db, k).przebieg();
@@ -115,7 +122,7 @@ describe('autoresponder — czuwacz formulki', () => {
     let bylDowodPrzedWyslaniem = false;
     const k = {
       wyslijWiadomosc: async () => {
-        bylDowodPrzedWyslaniem = dowody(db, 'allegro_szkicownia', 't1').length === 1;
+        bylDowodPrzedWyslaniem = dowody(db, 'allegro_swietlik', 't1').length === 1;
         return { id: 'm1' };
       },
     };
@@ -127,14 +134,14 @@ describe('autoresponder — czuwacz formulki', () => {
     const db = baza(); dodajWatek(db);
     const k = klientSzpieg(async () => { throw new Error('Allegro: HTTP 500 przy /messaging'); });
     const wynik = await czuwacz(db, k).przebieg();
-    expect(dowody(db, 'allegro_szkicownia', 't1')[0].blad).toContain('HTTP 500');
+    expect(dowody(db, 'allegro_swietlik', 't1')[0].blad).toContain('HTTP 500');
     expect(wynik.bledy).toHaveLength(1);
   });
 
   it('BEZPIECZNIK: po pieciu formulkach w godzine czuwacz sie wstrzymuje', async () => {
     const db = baza();
     for (let i = 0; i < MAKS_FORMULEK_NA_GODZINE; i += 1) {
-      const { id } = zapiszDowod(db, { kanal: 'allegro_szkicownia', threadId: `stary${i}`, rodzaj: 'formulka', tresc: 'x' }, '2026-08-28T20:50:00Z');
+      const { id } = zapiszDowod(db, { kanal: 'allegro_swietlik', threadId: `stary${i}`, rodzaj: 'formulka', tresc: 'x' }, '2026-08-28T20:50:00Z');
       oznaczWyslane(db, id, '2026-08-28T20:50:00Z');
     }
     dodajWatek(db);
@@ -160,7 +167,7 @@ describe('autoresponder — czuwacz formulki', () => {
 // ⚠️⚠️ GORNA GRANICA WIEKU — decyzja wlasciciela z 29.08.2026 (24 godziny).
 //
 // Powod: 29.08 wyszlo, ze poller bral ZLA wiadomosc jako ostatnia (Allegro oddaje od
-// najnowszej), przez co WSZYSTKIE 18 watkow szkicownia kwalifikowalo sie do formulki — w tym
+// najnowszej), przez co WSZYSTKIE 18 watkow swietlik kwalifikowalo sie do formulki — w tym
 // rozmowy z maja i lipca. Sama poprawka kolejnosci to naprawila, ale przy okazji wyszlo,
 // ze czuwacz NIE MIAL ZADNEJ granicy wieku: okno godzin sprawdza wylacznie GODZINE I DZIEN
 // TYGODNIA nadejscia, a karencja jest minimum, nie maksimum.
@@ -180,7 +187,7 @@ describe('czuwacz formulki — gorna granica wieku wiadomosci', () => {
     const db = baza();
     dodajWatek(db, { lastMessageDateTime: STARA_25H, pobranyAt: STARA_25H });
     const klient = klientSzpieg();
-    const c = createCzuwaczFormulki({ db, klienci: { allegro_szkicownia: klient }, teraz });
+    const c = createCzuwaczFormulki({ db, klienci: { allegro_swietlik: klient }, teraz });
 
     const wynik = await c.przebieg();
 
@@ -188,14 +195,14 @@ describe('czuwacz formulki — gorna granica wieku wiadomosci', () => {
     expect(klient.wyslane).toEqual([]);
     // ⚠️ Watek zostaje NIETKNIETY — bez dowodu, ktory przy regule „raz na watek"
     // zablokowalby formulke na zawsze, gdyby kupujacy napisal ponownie.
-    expect(dowody(db, 'allegro_szkicownia', 't1')).toEqual([]);
+    expect(dowody(db, 'allegro_swietlik', 't1')).toEqual([]);
   });
 
   it('granica jest OSTRA: rowno doba to juz za stara', async () => {
     const db = baza();
     dodajWatek(db, { lastMessageDateTime: ROWNO_24H, pobranyAt: ROWNO_24H });
     const klient = klientSzpieg();
-    const c = createCzuwaczFormulki({ db, klienci: { allegro_szkicownia: klient }, teraz });
+    const c = createCzuwaczFormulki({ db, klienci: { allegro_swietlik: klient }, teraz });
 
     expect((await c.przebieg()).wyslane).toBe(0);
   });
@@ -204,7 +211,7 @@ describe('czuwacz formulki — gorna granica wieku wiadomosci', () => {
     const db = baza();
     dodajWatek(db, { lastMessageDateTime: SWIEZA_23H, pobranyAt: SWIEZA_23H });
     const klient = klientSzpieg();
-    const c = createCzuwaczFormulki({ db, klienci: { allegro_szkicownia: klient }, teraz });
+    const c = createCzuwaczFormulki({ db, klienci: { allegro_swietlik: klient }, teraz });
 
     // Gdyby granica byla za ciasna, autoresponder milczalby tam, gdzie ma odpowiadac —
     // a cisza autorespondera wyglada jak brak pytan, nie jak usterka.
@@ -223,9 +230,9 @@ describe('czuwacz formulki — wątek zamknięty ręcznie', () => {
   it('NIE wysyła formułki do wątku oznaczonego jako załatwiony', async () => {
     const db = baza();
     dodajWatek(db, { lastMessageDateTime: SWIEZA, pobranyAt: SWIEZA });
-    zamknijWatek(db, 'allegro_szkicownia', 't1', SWIEZA, '2026-08-28T20:45:00Z');
+    zamknijWatek(db, 'allegro_swietlik', 't1', SWIEZA, '2026-08-28T20:45:00Z');
     const klient = klientSzpieg();
-    const c = createCzuwaczFormulki({ db, klienci: { allegro_szkicownia: klient }, teraz });
+    const c = createCzuwaczFormulki({ db, klienci: { allegro_swietlik: klient }, teraz });
 
     expect((await c.przebieg()).wyslane).toBe(0);
     expect(klient.wyslane).toEqual([]);
@@ -235,9 +242,9 @@ describe('czuwacz formulki — wątek zamknięty ręcznie', () => {
     const db = baza();
     dodajWatek(db, { lastMessageDateTime: SWIEZA, pobranyAt: SWIEZA });
     // Zamkniete na stanie STARSZYM niz obecna ostatnia wiadomosc — czyli kupujacy wrocil.
-    zamknijWatek(db, 'allegro_szkicownia', 't1', '2026-08-28T19:00:00Z', '2026-08-28T19:10:00Z');
+    zamknijWatek(db, 'allegro_swietlik', 't1', '2026-08-28T19:00:00Z', '2026-08-28T19:10:00Z');
     const klient = klientSzpieg();
-    const c = createCzuwaczFormulki({ db, klienci: { allegro_szkicownia: klient }, teraz });
+    const c = createCzuwaczFormulki({ db, klienci: { allegro_swietlik: klient }, teraz });
 
     // Inaczej jedno klikniecie uciszaloby watek na zawsze.
     expect((await c.przebieg()).wyslane).toBe(1);

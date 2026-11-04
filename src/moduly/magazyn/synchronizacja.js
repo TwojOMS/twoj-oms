@@ -2,7 +2,7 @@
 export function registerSynchronizacjaMagazynu(app, { db, magazyn, sklepy, pomoc, karta }) {
   const { produktyPominiete, utworzKartyZNiepowiazanych, grupujPominiete, BEZ_SKLEPOW, BEZ_SKLEPOW_ODMOWA, zEtykietaKanalu, bezpiecznyWroc } = pomoc;
   app.post('/magazyn/odswiez', async (req, reply) => {
-    if (!magazyn) return reply.code(503).send(BEZ_SKLEPOW_ODMOWA);
+    if (!magazyn || magazyn.gotowy?.() === false) return reply.code(503).send(BEZ_SKLEPOW_ODMOWA);
     magazyn.start();
     // 303, a nie 302: po POST-cie przegladarka ma pojsc GET-em, zeby odswiezenie strony
     // nie proponowalo powtorzenia odczytu.
@@ -13,7 +13,7 @@ export function registerSynchronizacjaMagazynu(app, { db, magazyn, sklepy, pomoc
   // przyciskiem (`produktyPominiete` chodzi po tym samym zapytaniu i tej samej regule),
   // wiec pokazuje dokladnie to, co przycisk pominal.
   app.get('/magazyn/pominiete', async (req, reply) => {
-    if (!magazyn) return reply.view('pusta-strona.ejs', BEZ_SKLEPOW);
+    if (!magazyn || magazyn.gotowy?.() === false) return reply.view('pusta-strona.ejs', BEZ_SKLEPOW);
     return reply.view('magazyn-pominiete.ejs', {
       title: 'Magazyn — pominięte',
       utworzone: null,
@@ -28,7 +28,7 @@ export function registerSynchronizacjaMagazynu(app, { db, magazyn, sklepy, pomoc
   // miejscem, w ktorym widac, CZEGO panel nie tknal — dlatego trasa RENDERUJE wynik,
   // zamiast przekierowac na liste (ta sama zasada, co przy nadaniu zbiorczym).
   app.post('/magazyn/utworz-karty', async (req, reply) => {
-    if (!magazyn) return reply.code(503).send(BEZ_SKLEPOW_ODMOWA);
+    if (!magazyn || magazyn.gotowy?.() === false) return reply.code(503).send(BEZ_SKLEPOW_ODMOWA);
     const { utworzone } = utworzKartyZNiepowiazanych(db);
     return reply.view('magazyn-pominiete.ejs', {
       title: 'Magazyn — pominięte',

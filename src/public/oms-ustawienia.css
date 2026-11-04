@@ -7,12 +7,18 @@
 .oms-settings-layout .panel-statusow a{border-radius:6px;padding:.8rem .7rem}
 .oms-settings-layout .panel-statusow li.aktywna>a{border-left:0;background:color-mix(in srgb,var(--link) 14%,transparent);color:var(--link);font-weight:600}
 .oms-settings-content .ust-sekcja{border:1px solid var(--ramka);border-radius:8px;padding:1.3rem;max-width:none;box-shadow:none}
+.oms-settings-content .ust-instrukcja { max-width: none; }
+.pol-inicjal { display:flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; background:var(--powierzchnia-2); color:var(--tekst); font-size:20px; font-weight:600; }
 .ust-filtry{display:flex;align-items:end;gap:1rem;flex-wrap:wrap;margin:1.5rem 0}.ust-filtry label{display:flex;flex-direction:column;gap:.4rem}.ust-filtry .ust-checkbox{flex-direction:row;align-items:center;align-self:center}.ust-filtry input[type=search]{min-width:220px}
 .ust-filtry input[type=search],.ust-filtry select{font:inherit;min-height:38px;padding:.4rem .6rem;border:1px solid var(--ramka-pola);border-radius:5px;background:var(--powierzchnia);color:var(--tekst)}
 .ust-katalog{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1rem;margin-bottom:2rem}.ust-karta-integracji{border:1px solid var(--ramka);border-radius:8px;padding:1.3rem;display:flex;flex-direction:column;align-items:start;gap:.6rem;background:var(--powierzchnia)}.ust-karta-integracji h3,.ust-karta-integracji p{margin:0}.ust-karta-integracji p{min-height:2.5em}.ust-karta-integracji .ust-przycisk{margin-top:auto}.ust-logo-marki{width:116px;height:54px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:6px;padding:8px;box-sizing:border-box}.ust-logo-marki img{max-width:100%;max-height:100%;object-fit:contain}
+/* PRZ-136.09: usługi planowane wyciszone, akcje karty: „Dodaj” + zwykły link „Zarządzaj”. */
+.ust-karta-integracji--planowana{background:transparent;border-style:dashed}.ust-karta-integracji--planowana .ust-logo-marki{opacity:.55}.ust-karta-integracji--planowana h3,.ust-karta-integracji--planowana p{color:var(--st-szary-tekst)}
+.ust-znacznik--wkrotce{background:var(--st-szary-tlo);color:var(--st-szary-tekst);font-weight:600;border-radius:999px;padding:.15rem .6rem}
+.ust-karta-akcje{margin-top:auto;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}.ust-link{font-size:.9rem}
 .ust-znacznik{display:inline-block;font-size:.76rem;padding:.22rem .5rem;border-radius:4px;background:color-mix(in srgb,currentColor 8%,transparent)}.ust-stan-dziala{color:#27855c}.ust-stan-uwaga{color:#a56a10}.ust-polaczenie{display:grid;grid-template-columns:116px 1fr;gap:1.3rem;padding:1.5rem 0;border-bottom:1px solid var(--ramka)}.ust-polaczenie h2{margin:0;font-size:1.05rem}.ust-polaczenie p{margin:.5rem 0}.ust-kopie-stany{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
 .oms-settings-content input,.oms-settings-content textarea,.oms-settings-content select{max-width:100%;box-sizing:border-box}.oms-settings-content :focus-visible{outline:3px solid var(--link);outline-offset:3px}
-@media(max-width:700px){.ust-zakladki{gap:.2rem 1rem}.ust-zakladki a{font-size:.85rem}.ust-kopie-stany{grid-template-columns:1fr}.ust-polaczenie{grid-template-columns:1fr;gap:.8rem}.ust-filtry{display:grid;grid-template-columns:1fr}.ust-filtry input[type=search]{min-width:0;width:100%}.ust-katalog{grid-template-columns:1fr}.oms-settings-content .ust-sekcja{padding:1rem}.ust-formularz{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:700px){.ust-zakladki{gap:.2rem 1rem}.ust-zakladki a{font-size:.85rem}.ust-kopie-stany{grid-template-columns:1fr}.ust-polaczenie{grid-template-columns:1fr;gap:.8rem}.ust-filtry{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.6rem;align-items:end}.ust-filtry>label:first-child{grid-column:1}.ust-filtry>button{grid-column:2;grid-row:1}.ust-filtry>label:nth-of-type(2),.ust-filtry>.ust-checkbox{grid-column:1/-1}.ust-filtry input[type=search]{min-width:0;width:100%}.ust-filtry select{width:100%}.ust-katalog{grid-template-columns:1fr}.oms-settings-content .ust-sekcja{padding:1rem}.ust-formularz{grid-template-columns:minmax(0,1fr)}}
 .oms-shell--ustawienia{grid-template-columns:minmax(0,1fr)}
 .oms-shell--ustawienia>.oms-sidebar,.oms-shell--ustawienia .oms-breadcrumb{display:none}
 .ust-menu-aplikacji{display:flex;align-items:center;gap:1.5rem;min-width:0}.ust-menu-skroty{display:flex;gap:1.3rem}.ust-menu-skroty a{color:var(--tekst);text-decoration:none;font-size:.9rem}.ust-menu-skroty a:hover{color:var(--link)}
@@ -29,3 +35,115 @@
 .ust-rejestrowe-pole+.ust-rejestrowe-pole{border-top:1px solid var(--ramka);margin-top:1.5rem;padding-top:1.5rem}
 .ust-rejestrowe-pole>h3{margin-top:1rem}
 @media(prefers-reduced-motion:reduce){.ust-przelacznik-tor>span{transition:none}}
+.allegro-konfiguracja>h1{font-size:1.4rem;margin-block:1.5rem .7rem}
+.allegro-konfiguracja .ust-sekcja p{max-width:78ch}
+.allegro-dane{display:grid;grid-template-columns:minmax(180px,1fr) minmax(0,2fr);gap:.65rem 1.2rem;margin:1.2rem 0 0}
+.allegro-dane dt{color:var(--tekst-przygaszony)}.allegro-dane dd{margin:0;overflow-wrap:anywhere}
+.allegro-konfiguracja input:not([type=hidden]):not([type=checkbox]),.allegro-konfiguracja select{font:inherit;color:var(--tekst);background:var(--powierzchnia);border:1px solid var(--ramka-pola);border-radius:5px;min-height:40px;padding:.5rem .65rem;width:30rem;max-width:100%;margin-top:.4rem}
+.allegro-konfiguracja input[type=checkbox]{accent-color:var(--marka);width:1rem;height:1rem;vertical-align:middle;margin-right:.4rem}
+.allegro-konfiguracja .ust-przycisk{min-height:40px}
+.allegro-konfiguracja details{margin-block:.6rem;overflow-wrap:anywhere}
+/* PRZ-146.03: kod Device do przepisania, przyciski kroku 3, „Przerwij podłączanie”, odłączenie nieaktywne do zaznaczenia. */
+.allegro-kod{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem 1rem;margin:.4rem 0 1.2rem}
+.allegro-kod code{font-family:ui-monospace,Consolas,monospace;font-size:1.6rem;font-weight:600;letter-spacing:.08em;padding:.3rem .7rem;border:1px solid var(--ramka-pola);border-radius:5px;background:var(--powierzchnia);user-select:all}
+.allegro-akcje-konta{margin-block:1rem;gap:.75rem}.allegro-akcje-konta form{margin:0}
+.allegro-przerwij{margin-top:2rem}.allegro-przerwij>summary{cursor:pointer;color:var(--link);text-decoration:underline;text-decoration-color:var(--link-podkreslenie);font-size:.9rem;width:max-content}
+.allegro-konfiguracja .ust-przycisk:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:700px){.allegro-akcje-konta{flex-direction:column;align-items:stretch}.allegro-kod code{font-size:1.3rem}.allegro-dane{grid-template-columns:minmax(0,1fr);gap:.25rem}.allegro-dane dt:not(:first-child){margin-top:.6rem}.allegro-konfiguracja>h1{font-size:1.2rem}}
+/* Pasek kroków konfiguratorów kanałów (kroki-kanalu.ejs); app.css nie jest ładowany w Ustawieniach. */
+.oms-settings-content .stepper{list-style:none;display:flex;margin:1rem 0 1.2rem;padding:0;max-width:56rem}
+.oms-settings-content .step{flex:1;display:flex;flex-direction:column;align-items:center;gap:.35rem;position:relative;text-align:center;min-width:0}
+.oms-settings-content .step::before{content:"";position:absolute;top:12px;left:calc(-50% + 17px);right:calc(50% + 17px);height:2px;background:var(--ramka)}
+.oms-settings-content .step:first-child::before{display:none}
+.oms-settings-content .step.done::before,.oms-settings-content .step.current::before{background:var(--marka)}
+.oms-settings-content .step-dot{width:24px;height:24px;border-radius:50%;z-index:1;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;background:var(--powierzchnia);border:2px solid var(--ramka);color:var(--tekst-przygaszony)}
+.oms-settings-content .step.done .step-dot{background:var(--marka);border-color:var(--marka);color:var(--na-marce)}
+.oms-settings-content .step.current .step-dot{border-color:var(--marka);color:var(--marka)}
+.oms-settings-content .step-label{font-size:.78rem;color:var(--tekst-przygaszony);line-height:1.25;padding:0 .3em}
+.oms-settings-content .step.current .step-label{color:var(--tekst)}
+@media(max-width:720px){.oms-settings-content .step-label{display:none}.oms-settings-content .step.current .step-label{display:block}}
+
+/* PRZ-136: lista „Moje połączenia” (makieta docs/plany/PRZ-136-makieta-polaczenia.html, blok „PRZ-136”; pusty stan w 08) */
+.pol-podsumowanie { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem 1rem; padding: 0 0 .9rem; border-bottom: 1px solid var(--ramka); margin: 0 0 1.1rem; max-width: 60rem; }
+.pol-podsumowanie-liczby { display: flex; flex-wrap: wrap; gap: .35rem 1.1rem; margin: 0; font-size: .88rem; color: var(--tekst-przygaszony); }
+.pol-licznik { display: inline-flex; align-items: center; gap: .35rem; color: inherit; text-decoration: none; }
+a.pol-licznik:hover { color: var(--tekst); text-decoration: underline; }
+.pol-licznik strong { color: var(--tekst); font-weight: 600; }
+
+.pol-kropka { width: .5rem; height: .5rem; border-radius: 50%; background: var(--st-szary-kropka); flex: none; }
+.pol-licznik--dziala .pol-kropka, .pol-stan--dziala .pol-kropka { background: var(--ok-kropka); }
+.pol-licznik--uwaga .pol-kropka, .pol-stan--uwaga .pol-kropka { background: var(--uwaga-kreska); }
+.pol-licznik--blad .pol-kropka, .pol-stan--blad .pol-kropka { background: var(--blad-tekst); }
+
+.pol-grupa { max-width: 60rem; margin: 0 0 1.4rem; }
+.pol-grupa > h2, .pol-wstrzymane > summary { font-size: .74rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--tekst-przygaszony); margin: 0 0 .4rem; }
+.pol-grupa-ile { font-weight: 400; letter-spacing: 0; margin-left: .25rem; }
+
+.pol-lista { list-style: none; margin: 0; padding: 0; background: var(--powierzchnia); border: 1px solid var(--ramka); border-radius: 8px; }
+.pol-wiersz { display: grid; grid-template-columns: 40px minmax(0, 1fr) 14.5rem 13rem; gap: .2rem 1rem; align-items: center; padding: .75rem 1rem; border-top: 1px solid var(--ramka); }
+.pol-wiersz:first-child { border-top: 0; }
+.pol-wiersz--uwaga { box-shadow: inset 3px 0 0 var(--uwaga-kreska); }
+.pol-wiersz--blad { box-shadow: inset 3px 0 0 var(--blad-tekst); }
+.pol-wiersz--wstrzymane .pol-logo img { filter: grayscale(1); opacity: .7; }
+
+.pol-logo { width: 40px; height: 40px; border-radius: 6px; background: #fff; border: 1px solid var(--ramka); display: flex; align-items: center; justify-content: center; overflow: hidden; align-self: start; }
+.pol-logo img { width: 30px; height: 30px; object-fit: contain; }
+
+.pol-opis { min-width: 0; }
+.pol-opis p { margin: 0; }
+.pol-nazwa { font-weight: 600; font-size: .95rem; }
+.pol-nazwa a { color: var(--tekst); text-decoration: none; }
+.pol-nazwa a:hover { text-decoration: underline; }
+.pol-konto { font-size: .82rem; color: var(--tekst-przygaszony); overflow-wrap: anywhere; }
+.pol-komunikat { font-size: .84rem; margin-top: .3rem !important; }
+.pol-komunikat--uwaga { color: var(--uwaga-tekst); }
+.pol-komunikat--blad { color: var(--blad-tekst); }
+
+.pol-stan-kol { display: flex; flex-direction: column; align-items: flex-start; gap: .2rem; }
+.pol-stan { display: inline-flex; align-items: center; gap: .35rem; font-size: .78rem; font-weight: 600; padding: .15rem .5rem; border-radius: 999px; background: var(--st-szary-tlo); color: var(--st-szary-tekst); }
+.pol-stan--dziala { background: var(--ok-tlo); color: var(--ok-tekst); }
+.pol-stan--uwaga { background: var(--uwaga-tlo); color: var(--uwaga-tekst); }
+.pol-stan--blad { background: var(--blad-tlo); color: var(--blad-tekst); }
+.pol-czas { font-size: .76rem; color: var(--tekst-przygaszony); }
+
+.pol-akcje .btn { white-space: nowrap; }
+.pol-akcje { display: flex; align-items: center; justify-content: flex-end; gap: .35rem; }
+.pol-wiecej { position: relative; }
+.pol-wiecej > summary { list-style: none; cursor: pointer; }
+.pol-wiecej > summary::-webkit-details-marker { display: none; }
+.pol-wiecej-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 5; min-width: 12rem; background: var(--powierzchnia); border: 1px solid var(--ramka); border-radius: 6px; padding: .25rem 0; }
+.pol-wiecej-menu a { display: block; padding: .4rem .8rem; font-size: .86rem; color: var(--tekst); text-decoration: none; }
+.pol-wiecej-menu a:hover { background: var(--hover-wiersza); }
+
+.pol-wstrzymane { max-width: 60rem; margin: 0 0 1.4rem; }
+.pol-wstrzymane > summary { cursor: pointer; }
+.pol-wstrzymane-pomoc { text-transform: none; letter-spacing: 0; font-weight: 400; margin-left: .5rem; }
+.pol-wstrzymane[open] > summary { margin-bottom: .4rem; }
+
+.pol-stopka { max-width: 60rem; font-size: .82rem; color: var(--tekst-przygaszony); margin: 0; }
+.pol-pusto { max-width: 46rem; background: var(--powierzchnia); border: 1px solid var(--ramka); border-radius: 8px; padding: 1.4rem 1.5rem; }
+.pol-pusto > h2 { margin: 0 0 .4rem; font-size: 1.15rem; }
+.pol-pusto > p { margin: 0 0 1rem; color: var(--tekst-przygaszony); font-size: .92rem; }
+.pol-pusto-kroki { list-style: none; margin: 0 0 1rem; padding: 0; }
+.pol-pusto-kroki > li { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; gap: .2rem .9rem; align-items: center; padding: .8rem 0; border-top: 1px solid var(--ramka); }
+.pol-pusto-nr { width: 1.7rem; height: 1.7rem; border-radius: 50%; border: 1px solid var(--marka); color: var(--marka); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: .85rem; }
+.pol-pusto-kroki h3 { margin: 0; font-size: .95rem; }
+.pol-pusto-kroki p { margin: .1rem 0 0; font-size: .84rem; color: var(--tekst-przygaszony); }
+.pol-pusto-akcje { display: flex; flex-wrap: wrap; gap: .35rem; justify-content: flex-end; }
+.pol-pusto-wszystkie { margin: 0; font-size: .88rem; }
+
+@media (max-width: 760px) {
+  .pol-wiersz { grid-template-columns: 40px minmax(0, 1fr); padding: .75rem .8rem; }
+  .pol-stan-kol { grid-column: 2; flex-direction: row; flex-wrap: wrap; align-items: center; gap: .2rem .6rem; }
+  .pol-akcje { grid-column: 2; justify-content: flex-start; margin-top: .3rem; }
+  .pol-podsumowanie > .btn { width: 100%; justify-content: center; box-sizing: border-box; }
+  .pol-pusto { padding: 1.1rem 1rem; }
+  .pol-pusto-kroki > li { grid-template-columns: 2rem minmax(0, 1fr); }
+  .pol-pusto-akcje { grid-column: 2; justify-content: flex-start; margin-top: .4rem; }
+}
+
+/* PRZ-148.06: podpowiedź pod polem i ostrzeżenie w formularzu kreatora (nad przyciskiem). */
+.ust-pomoc { font-size: .85rem; color: var(--tekst-przygaszony); }
+.ust-sekcja p.ust-uwaga, .ust-uwaga { color: var(--uwaga-tekst); background: var(--uwaga-tlo); padding: .5rem .75rem; border-radius: 5px; font-size: .88rem; }
+.ust-uwaga a { color: inherit; font-weight: 600; }
+.ust-sekcja form + form { margin-top: 1.25rem; }

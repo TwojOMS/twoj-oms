@@ -48,7 +48,7 @@ it('lista i podgląd w Ustawieniach pokazują wysłane zamówienie z jedną prze
   expect(r.statusCode).toBe(200);
   expect(r.body).toContain('Twoje zamówienie nr 1024 zostało wysłane.');
   expect(r.body).toContain('0000123456789U');
-  expect(r.body).toContain('https://tracktrace.dpd.com.pl/parcelDetails?p1=0000123456789U');
+  expect(r.body).toContain('https://tracktrace.dpd.com.pl/parcelDetails?typ=1&amp;p1=0000123456789U');
   expect(r.body).not.toContain('Załącznik PDF dokłada panel');
   expect(poczta).toHaveLength(0);
 });
@@ -74,8 +74,8 @@ it('karta, podgląd i ręczna wysyłka używają tej samej treści DPD, bez auto
   const p = await usluga.podglad(id, 'wyslane');
   expect(p.tekst).toContain('DPD');
   expect(p.tekst).toContain('0000123456789U');
-  expect(p.tekst).toContain('https://tracktrace.dpd.com.pl/parcelDetails?p1=0000123456789U');
-  expect(p.html).toContain('<a href="https://tracktrace.dpd.com.pl/parcelDetails?p1=0000123456789U"');
+  expect(p.tekst).toContain('https://tracktrace.dpd.com.pl/parcelDetails?typ=1&p1=0000123456789U');
+  expect(p.html).toContain('<a href="https://tracktrace.dpd.com.pl/parcelDetails?typ=1&amp;p1=0000123456789U"');
   expect(p.tekst).toContain('Stopka przykładowa');
   expect(p.html).toContain('Stopka przykładowa');
   expect(p.zalacznik).toBeNull();
@@ -104,7 +104,7 @@ it('wszystkie paczki, nieznany kurier bez linku i punkt odbioru; HTML numeru jes
   const p = await usluga.podglad(id, 'wyslane');
   expect(p.tekst).toContain('A\"<img src=x>&');
   expect(p.html).toContain('A&quot;&lt;img src=x&gt;&amp;');
-  expect(p.html).toContain('href="https://tracktrace.dpd.com.pl/parcelDetails?p1=A%22%3Cimg%20src%3Dx%3E%26"');
+  expect(p.html).toContain('href="https://tracktrace.dpd.com.pl/parcelDetails?typ=1&amp;p1=A%22%3Cimg%20src%3Dx%3E%26"');
   expect(p.html).not.toContain('<img src=x>');
   expect(p.tekst).toContain('DRUGA-1');
   expect(p.tekst).toContain('Punkt Przykładowy');

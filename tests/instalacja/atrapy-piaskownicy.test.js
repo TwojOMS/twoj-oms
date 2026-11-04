@@ -5,6 +5,9 @@
 //   1) obraz produkcji nie kopiuje deploy/ (Dockerfile), 2) atrapy i złożenie odmawiają poza OMS_TRYB=proba,
 //   3) moduł faktur odmawia fabryk atrap poza trybem próby (tests/moduly/faktury/modul.test.ts).
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+// Fixture potrzebuje kilku faktur bieżącego miesiąca; pierwszy dzień daje tylko jedną.
+// Data jest stała wyłącznie w tym teście, zegary sieci i aplikacji pozostają rzeczywiste.
+vi.hoisted(()=>{vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-11-15T12:00:00Z'));});
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -27,7 +30,7 @@ function envDla() {
   return { ...ENV_DEMO, OMS_DB_PATH: path.join(k, 'oms.sqlite'), OMS_PORT: '0', OMS_USER: 'serwis-atrap',
     OMS_PASS: 'haslo-serwisowe-atrap', OMS_PROFORMY_KATALOG: path.join(k, 'proformy'), OMS_ETYKIETY_KATALOG: path.join(k, 'etykiety') };
 }
-afterAll(() => { for (const p of katalogi.splice(0)) fs.rmSync(p, { recursive: true, force: true }); });
+afterAll(() => { for (const p of katalogi.splice(0)) fs.rmSync(p, { recursive: true, force: true });vi.useRealTimers(); });
 
 describe('piaskownica z atrapami — Faktury i Magazyn na danych demo', () => {
   let env, live, url, cookie, siec;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fmtDataCzas, fmtDataCzasKrotko } from '../../src/domena/format-daty.js';
+import { fmtDataCzas, fmtDataCzasKrotko, fmtKiedy } from '../../src/domena/format-daty.js';
 
 // Zadanie „strona główna", punkt C: jeden format daty w całym module OMS, z rozróżnieniem
 // dwóch skal czasu — patrz komentarz w src/oms/domain/format-daty.js i przewodnik OMS 4.7/6.
@@ -67,5 +67,33 @@ describe('fmtDataCzasKrotko — format krótki, bez sekund', () => {
 
   it('pusta wartość → pusty string', () => {
     expect(fmtDataCzasKrotko('')).toBe('');
+  });
+});
+
+// PRZ-136.06 (U9): czas odczytu na liście połączeń — „dziś 22:22”, „wczoraj 08:10”, „3 listopada”.
+describe('fmtKiedy — dzień liczony w Warszawie, nie w UTC', () => {
+  const teraz = new Date('2026-11-03T21:30:00Z'); // 3.11 22:30 w Warszawie
+  it('ten sam dzień → „dziś GG:MM” w czasie polskim', () => {
+    expect(fmtKiedy('2026-11-03T21:22:00Z', teraz)).toBe('dziś 22:22');
+  });
+  it('2.11 23:59 w Warszawie (22:59 UTC) → „wczoraj 23:59”', () => {
+    expect(fmtKiedy('2026-11-02T22:59:00Z', teraz)).toBe('wczoraj 23:59');
+  });
+  it('3.11 00:01 w Warszawie (2.11 23:01 UTC) → „dziś 00:01”', () => {
+    expect(fmtKiedy('2026-11-02T23:01:00Z', teraz)).toBe('dziś 00:01');
+  });
+  it('„teraz” tuż po północy w Warszawie (23:30 UTC poprzedniego dnia) przesuwa „dziś” na nowy dzień', () => {
+    const poPolnocy = new Date('2026-11-03T23:30:00Z'); // 4.11 00:30 w Warszawie
+    expect(fmtKiedy('2026-11-03T21:22:00Z', poPolnocy)).toBe('wczoraj 22:22');
+  });
+  it('starsza data → „3 listopada 14:05”, z innego roku z rokiem i godziną', () => {
+    expect(fmtKiedy('2026-11-01T10:00:00Z', teraz)).toBe('1 listopada 11:00');
+    expect(fmtKiedy('2025-12-31T22:30:00Z', teraz)).toBe('31 grudnia 2025 23:30');
+  });
+  it('wczoraj przez granicę miesiąca', () => {
+    expect(fmtKiedy('2026-10-31T12:00:00Z', new Date('2026-11-01T09:00:00Z'))).toBe('wczoraj 13:00');
+  });
+  it.each([null, undefined, '', 'nie-data'])('%s → pusty string', (v) => {
+    expect(fmtKiedy(v, teraz)).toBe('');
   });
 });

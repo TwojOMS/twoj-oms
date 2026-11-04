@@ -2,6 +2,7 @@ import { pobierzZamowienie, dopiszLog, oznaczWyslane, znajdzZamowieniaPoNumerze,
 import { zamowienieZGrupa } from '../../../oms/db/scalenia.js'; // PRZ-101.04: paczka głównego = pozycje całej grupy
 
 import { nastepnaKolejnosc, zarejestrujPrzesylkeReczna } from '../db/przesylki.js';
+import { umowyPobraniaFirmy } from '../db/umowy-pobrania.js';
 
 import { wstawEtykieteDoKolejki } from '../services/kolejka-po-nadaniu.js';
 
@@ -9,9 +10,13 @@ import { mozliwaKolejnaPaczka } from '../../../domena/przesylka-stan.js';
 
 import { powodBrakuGotowosciNadania } from '../../../domena/gotowosc-nadania.js';
 
-import { wymagaWyboruKuriera, kurierzyDoWyboru, metodaNadania, nadanieDaZpl } from '../../../domena/kurier-nadania.js';
+import { wymagaWyboruKuriera, kurierzyDoWyboru, metodaNadania, nadanieDaZpl, wymagaUmowyPobrania, powodUmowyPobrania, powodOdmowyZamiennika } from '../../../domena/kurier-nadania.js';
+// PRZ-135.05: kształt formularza, punkt odbioru i napis drogi — z rejestru kurierów, nie z literału metody.
+import { metodaKuriera, MODULY_KURIEROW, kurierDlaMetody } from '../../../domena/moduly-kurierow.ts';
 
 import { metodaWysylki, czyPobranie, kwotaPobrania, punktOdbioru } from '../../../domena/wysylka.js';
+import { przedplatyPrzedPobraniem, niedoplataPobrania } from '../../../domena/platnosci.js';
+import { zl } from '../../../domena/kwoty.js';
 
 import { domyslnyRozmiarWiersza, polaWiersza, paczkaWiersza } from '../../../domena/nadanie-hurtem.js';
 
@@ -47,7 +52,7 @@ import { wczytajUstawienia } from '../../../oms/db/ustawienia.js';
 
 import { domyslnaPaczka } from '../../../domena/ustawienia-panelu.js';
 
-import { parsujNadpisanieKwotyPobrania } from '../../../domena/pobranie-nadania.js';
+import { parsujNadpisanieKwotyPobrania, odczytajKwotePobrania } from '../../../domena/pobranie-nadania.js';
 
 import { wierszePozycji } from '../../../domena/tabela-pozycji.js';
 
@@ -57,6 +62,13 @@ import { sprzedawcaZwolniony } from '../../faktury/db/zwolnienie-vat.js';
 import { opcjeZwProgramu } from '../../../domena/vat.js';
 
 import { ktoKlikal } from '../../zamowienia/lista.js';
+
+// PRZ-137.03: „w panelu <kurier>" przy kurierze na naszej umowie, inaczej neutralnie.
+function panelKuriera(metoda) {
+  const kurier = kurierDlaMetody(metoda, MODULY_KURIEROW);
+  const opis = kurier === null ? null : MODULY_KURIEROW[kurier];
+  return opis?.umowa === 'wlasna' ? `w panelu ${opis.nazwa}` : 'w panelu przewoźnika';
+}
 
 export function registerNadanieRoutes(app, { db, nadanie, kurierzy = {}, wczytajListe, miniaturyEkranu, config, syncSklep, programFaktur = null }) {
   // PRZ-122: „zw” tylko przy programie wbudowanym — netto pozycji jak na karcie (kontekst.js).
@@ -100,7 +112,8 @@ const groszeZ = (k) => Math.round(Number(String(k ?? '').replace(',', '.')) * 10
 
 app.post('/zamowienia/masowe/nadaj-podglad', async (req, reply) => {
     const wybrane = wybraneZListy(wczytajListe([].concat(req.body?.id ?? [])), req.body?.id);
-    const { doNadania, pominiete, uwagi } = podzielDoNadania(wybrane);
+    const umowyPobrania = umowyPobraniaFirmy(db);
+    const { doNadania, pominiete, uwagi } = podzielDoNadania(wybrane, { umowyPobrania });
     const ustawieniaPaczek = wczytajUstawienia(db);
     // ⚠️ Z USTAWIEN, nie ze stalej modulu (17.08.2026). Podglad musi pokazywac DOKLADNIE
     // to, co pojedzie do kuriera po zatwierdzeniu — a trasa zatwierdzajaca czyta to samo zrodlo.
@@ -109,7 +122,12 @@ app.post('/zamowienia/masowe/nadaj-podglad', async (req, reply) => {
     const odpadle = [];
     for (const z of doNadania) {
       let deliveryMethodId = null;
-      let droga = z.rodzajFormularza === 'paczkomat' ? `Paczkomat InPost — ${punktOdbioru(z)}` : 'DPD umowa własna';
+      // Napis drogi z rejestru (`etykietaDrogi`); metoda z punktem odbioru dokleja kod punktu.
+      // Przy WzA `etykietaDrogi` nie ma — napis i tak nadpisuje usługa Allegro niżej.
+      const metodaWiersza = metodaKuriera(z.metodaUzyta);
+      let droga = metodaWiersza?.punktOdbioru
+        ? `${metodaWiersza.etykietaDrogi} — ${punktOdbioru(z)}`
+        : (metodaWiersza?.etykietaDrogi ?? '');
       if (z.rodzajFormularza === 'wza') {
         const u = await uslugaAllegro(z);
         if (u.blad) {
@@ -156,13 +174,14 @@ app.post('/zamowienia/masowe/nadaj', async (req, reply) => {
     // Moment PRZYJŚCIA żądania — budżet partii mierzy czekanie człowieka, a człowiek czeka
     // także przez sekundy odczytu listy i pytań do Allegro (services/nadanie-hurtem.js).
     const start = Date.now();
-    if (!nadanie) return reply.code(503).send('Nadawanie nie jest skonfigurowane (brak danych DPD).');
+    if (!nadanie || nadanie.gotowe?.() === false) return reply.code(503).send('Nadawanie nie jest skonfigurowane (brak danych DPD).');
     const wybrane = wybraneZListy(wczytajListe([].concat(req.body?.id ?? [])), req.body?.id);
     // Podzial liczony PONOWNIE, a nie przepisany z ekranu podgladu: miedzy podgladem
     // a zatwierdzeniem poller mogl przyniesc anulowanie, a formularz przyniosly identyfikatory,
     // nie decyzje. Ta sama zasada, co przy numerze kolejnym paczki na ekranie pojedynczego
     // nadania — panel nie ufa temu, co wrocilo z przegladarki, w sprawach nieodwracalnych.
-    const { doNadania, pominiete } = podzielDoNadania(wybrane);
+    const umowyPobrania = umowyPobraniaFirmy(db);
+    const { doNadania, pominiete } = podzielDoNadania(wybrane, { umowyPobrania });
 
     // ⚠️⚠️ RAZ NA CALA PACZKE ZAMOWIEN, PRZED PETLA. Odczyt w petli znaczylby, ze zmiana
     // ustawienia w trakcie nadawania hurtem rozdziela partie na paczki o dwoch roznych
@@ -335,7 +354,7 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
     if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
     // PRZ-101.04: dołączone nie ma ekranu nadania — paczka jedzie z głównego.
     if (z.scalone_do) return reply.redirect(`/zamowienia/${z.scalone_do}/nadaj`);
-    if (!nadanie) return reply.code(503).send('Nadawanie nie jest skonfigurowane (brak danych DPD).');
+    if (!nadanie || nadanie.gotowe?.() === false) return reply.code(503).send('Nadawanie nie jest skonfigurowane (brak danych DPD).');
     const powrot = powrotKarty(req);
     const wspolnyPowrot = {
       powrot,
@@ -376,7 +395,9 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
     // ma JavaScriptu (poza cena pozycji recznych) — a od kuriera zalezy KSZTALT calego
     // formularza: DPD chce wymiarow, paczkomat gabarytu A/B/C i kodu automatu.
     const wyborKuriera = wymagaWyboruKuriera(z) ? String(req.query?.kurier ?? '').trim() : '';
-    const { metoda: metodaUzyta, blad: bladKuriera } = metodaNadania(z, wyborKuriera, { kolejnosc: nastepnaKolejnosc(db, id) });
+    const umowyPobrania = umowyPobraniaFirmy(db);
+    const kolejnosc = nastepnaKolejnosc(db, id);
+    const { metoda: metodaUzyta, blad: bladKuriera } = metodaNadania(z, wyborKuriera, { kolejnosc, umowyPobrania });
 
     // ⚠️⚠️ EKRAN WYBORU ZSZEDL Z DROGI (decyzja właściciela 19.09.2026: „lepiej bez ekranu wyboru —
     // niech idzie od razu odpowiednia opcja"). Do 18.09 stawal przy KAZDYM zamowieniu z Allegro,
@@ -394,17 +415,32 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
     // nasza umowe; zdjecie go z drogi bez zostawienia wejscia zabraloby te mozliwosc calkowicie.
     // To ta sama rodzina bledu, co „droga domyslna musi byc na liscie wyboru" (11.08.2026):
     // regula bez dostepnego wejscia po prostu nie istnieje.
-    const maDrogeDomyslna = wymagaWyboruKuriera(z) && !metodaNadania(z, '', { kolejnosc: nastepnaKolejnosc(db, id) }).blad;
+    const maDrogeDomyslna = wymagaWyboruKuriera(z) && !metodaNadania(z, '', { kolejnosc, umowyPobrania }).blad;
     const poproszonoOWybor = String(req.query?.wybor ?? '') === '1';
     if (wymagaWyboruKuriera(z) && !wyborKuriera && (!maDrogeDomyslna || poproszonoOWybor)) {
+      const dostepniKurierzy = kurierzyDoWyboru(z, kolejnosc, { umowyPobrania });
+      const zPobraniemNaTejPaczce = kolejnosc > 1 && czyPobranie(z)
+        ? kurierzyDoWyboru(z, kolejnosc, { umowyPobrania, pobranieNaTejPaczce: true }).map((k) => k.klucz)
+        : null;
+      // Podpowiedź tylko wtedy, gdy samo włączenie umowy udostępni paczkomat.
+      // PRZ-137.02 (D2): ten ekran to WYBÓR KURIERA W OMS-ie, więc każde pobranie wskazane tu
+      // obcym kurierem jest OMS-owe — podpowiedź o umowie jest tu zawsze na miejscu. Pobranie
+      // sklepowe przez paczkomat (`allegro_paczkomat`, Woo `inpost_paczkomat`) tego ekranu nie
+      // widzi: `wymagaWyboruKuriera` daje `false` i nadanie idzie prosto do formularza
+      // paczkomatu, bez pytania o przełącznik (services/nadanie.js, `wymagaUmowyPobrania`).
+      const inpost = MODULY_KURIEROW.inpost;
+      const metodaPaczkomatu = inpost.metody[0].klucz;
+      const paczkomatPoWlaczeniu = kurierzyDoWyboru(z, kolejnosc, { umowyPobrania: [...umowyPobrania, inpost.klucz] })
+        .some((k) => k.klucz === metodaPaczkomatu);
       return reply.view('nadaj-kurier.ejs', {
         z,
         ...wspolnyPowrot,
         // `adresKanalu` NIE jest w defaultContext (web/server.js) — nazwa kanalu skladana
         // w widoku bylaby druga mapa etykiet obok domain/kanaly.js.
         kanal: adresKanalu(z.sklep, config.definicje),
-        kolejnosc: nastepnaKolejnosc(db, id),
-        kurierzy: kurierzyDoWyboru(z, nastepnaKolejnosc(db, id)),
+        kolejnosc,
+        kurierzy: dostepniKurierzy,
+        zPobraniemNaTejPaczce,
         // ⚠️ Rozstrzyga TRESC OSTRZEZENIA na tym ekranie: przy usludze, ktora umiemy kupic
         // u Allegro, nasza umowa jest odstepstwem; przy nieznanej — jedyna droga panelu.
         // Liczone z drogi domyslnej, nie z listy przyciskow, bo to ona mowi, co zrobi
@@ -412,7 +448,8 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
         maWza: maDrogeDomyslna,
         // Sam fakt, ze przy pobraniu na paczce nr 1 zostaje jeden kurier, jest dla operatora
         // niezrozumialy bez powodu — a powod jest o pieniadze (patrz kurier-nadania.js).
-        tylkoDpdPrzezPobranie: Boolean(z.pobranie) && nastepnaKolejnosc(db, id) === 1,
+        paczkomatPoUmowiePobrania: czyPobranie(z) && paczkomatPoWlaczeniu
+          && !dostepniKurierzy.some((k) => k.klucz === metodaPaczkomatu),
       });
     }
     // Wskazanie spoza listy (stara karta, adres z reki) odbija sie TU, a nie po wypelnieniu
@@ -439,6 +476,30 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
     }
     const adres = adresOdbiorcy(z);
     const ustawieniaPaczek = wczytajUstawienia(db);
+    // PRZ-145.02: niedopłata z kwoty zamówienia, niezależna od wpisanej kwoty pobrania.
+    // PRZ-148.05: nieczytelna wpłata (np. 'abc') rzuca już przy sumie przedpłat — dlatego suma
+    // jest W ŚRODKU try; zamiast 500 ekran dostaje zdanie, pole kwoty zostaje puste, a POST
+    // i tak odmówi (usługa liczy przedpłaty tą samą funkcją).
+    let przedplatyPobraniaGr = 0;
+    let niedoplata = null;
+    let bladKwotPobrania = null;
+    let wplatyNieczytelne = false;
+    if (czyPobranie(z)) {
+      try {
+        przedplatyPobraniaGr = przedplatyPrzedPobraniem(z);
+        if (przedplatyPobraniaGr > 0) {
+          niedoplata = niedoplataPobrania(z);
+          bladKwotPobrania = niedoplata?.blad ?? null;
+        }
+      } catch (e) {
+        req.log.warn(e, 'nadanie: nieczytelne wpłaty przy ekranie pobrania');
+        wplatyNieczytelne = true;
+        bladKwotPobrania = `Wpłaty zamówienia są nieczytelne — panel nie policzy niedopłaty: ${komunikatDlaOperatora(e)} Popraw wpłatę na karcie zamówienia.`;
+      }
+    }
+    const niedoplataGr = niedoplata?.niedoplataGr;
+    const odczytPobrania = odczytajKwotePobrania(kwotaPobrania(z));
+    const kwotaPobraniaGr = odczytPobrania.groszeKwoty ?? (odczytPobrania.rodzaj === 'zero' ? 0 : null);
     return reply.view('nadaj.ejs', {
       z,
       ...wspolnyPowrot,
@@ -447,6 +508,11 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
       // paczka do automatu dostalaby pola wymiarow, a formularz nie niosl by ani kodu
       // punktu, ani gabarytu. To jest cala poprawka zgloszenia o paczkomatach z Allegro.
       metodaUzyta,
+      // PRZ-135.05: widok pyta umiejętności metody z rejestru kurierów (bez importu w widoku):
+      // `formularzPaczkomatu` — gabaryt A/B/C i ostrzeżenie o czasie nadania,
+      // `zPunktemOdbioru` — pole kodu punktu, adres pocztowy zwinięty.
+      formularzPaczkomatu: metodaKuriera(metodaUzyta)?.formularz === 'paczkomat',
+      zPunktemOdbioru: Boolean(metodaKuriera(metodaUzyta)?.punktOdbioru),
       // ⚠️ „NADAJ I DRUKUJ" TYLKO TAM, GDZIE BEDZIE ZPL (zgloszenie właściciela 01.09.2026).
       // Regula liczy sie w DOMENIE (kurier-nadania.js: nadanieDaZpl) — widok ma ja tylko
       // pokazac. Przy WzA przycisk wybiera format ZPL JUZ PRZY TWORZENIU przesylki.
@@ -499,6 +565,31 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
       // porownuje z aktualnym stanem bazy — patrz komentarz przy POST nizej. To jest cala
       // ochrona przed podwojnym klknieciem po dopuszczeniu wielu paczek.
       kolejnosc: nastepnaKolejnosc(db, id),
+      // PRZ-137.02 (D2): ostrzeżenie „wymaga umowy" TYLKO przy pobraniu OMS-owym (ręczne,
+      // zmienione na karcie) u kuriera bez włączonej umowy — ten sam warunek i tekst, którym
+      // POST (services/nadanie.js) odmówi. Pobranie sklepowe i DPD: `null`, bez ostrzeżenia.
+      // Paczka N > 1 ma własny pas o pobraniu, a POST pyta tam o jawne zaznaczenie.
+      umowaPobraniaWymagana: kolejnosc === 1 && wymagaUmowyPobrania(z, metodaUzyta, MODULY_KURIEROW, umowyPobrania)
+        ? powodUmowyPobrania(metodaUzyta)
+        : null,
+      przedplatyPobrania: przedplatyPobraniaGr > 0 ? zl(przedplatyPobraniaGr) : null,
+      niedoplataPobrania: niedoplataGr != null ? zl(niedoplataGr) : null,
+      podstawaPobrania: niedoplata?.podstawaGr != null ? zl(niedoplata.podstawaGr) : null,
+      // PRZ-148.05: przy brutto 0/pustym podstawą jest K — etykieta mówi, od czego liczono.
+      opisPodstawyPobrania: niedoplata?.podstawa === 'pobranie' ? 'kwota pobrania na zamówieniu' : 'kwota zamówienia',
+      bladKwotPobrania,
+      roznicaPobrania: kwotaPobraniaGr != null && niedoplataGr != null
+        && kwotaPobraniaGr !== niedoplataGr,
+      proponowanePobranie: wplatyNieczytelne ? null : przedplatyPobraniaGr > 0
+        ? (niedoplataGr > 0 || (niedoplataGr === 0 && odczytPobrania.groszeKwoty != null) ? zl(niedoplataGr) : null)
+        : kwotaPobrania(z),
+      limitPobrania: niedoplataGr != null ? zl(niedoplataGr) : null,
+      brakKwotyPobrania: czyPobranie(z) && String(kwotaPobrania(z) ?? '').trim() === '',
+      // PRZ-137.03 (D2, D3): paczka N > 1 — powód, którym POST odmówi, JEŚLI operator zaznaczy
+      // pobranie na tej paczce (ten sam warunek i tekst co services/nadanie.js); `null` = wolno.
+      odmowaZamiennika: kolejnosc > 1 ? powodOdmowyZamiennika(z, metodaUzyta, { umowyPobrania }) : null,
+      // Gdzie odkręcić pobranie po nadaniu — kurier tej paczki, nie zawsze DPD.
+      panelKuriera: panelKuriera(metodaUzyta),
     });
   });
 
@@ -508,7 +599,7 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
     if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
     // PRZ-101.04: dołączone — odmowa PRZED formularzem paczki (inaczej odbijałoby się od adresu albo wymiarów).
     if (z.scalone_do) return reply.code(400).send(powodBrakuGotowosciNadania(z));
-    if (!nadanie) return reply.code(503).send('Nadawanie nie jest skonfigurowane (brak danych DPD).');
+    if (!nadanie || nadanie.gotowe?.() === false) return reply.code(503).send('Nadawanie nie jest skonfigurowane (brak danych DPD).');
     // Walidacja PRZED dotknieciem kuriera, w tym samym duchu co walidacja kraju/kwoty
     // pobrania w dpd.js: wartosc nieliczbowa albo ujemna dostaje czytelna odmowe, NIGDY
     // cichy powrot do wartosci domyslnej — kurier rozlicza po wadze i gabarycie, wiec to sa
@@ -527,9 +618,9 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
     // wskazania pada TUTAJ, przed jakimkolwiek parsowaniem paczki: inaczej allegrowy
     // paczkomat przeszedlby przez `parsujPaczke` i poleciał do kuriera jako paczka
     // z wymiarami 110x75x1 cm, ktore nie mieszcza sie w zadnej skrytce.
-    // ⚠️ DECYZJA „POBRANIE NA TEJ PACZCE" (04.09.2026) — czytana PRZED wyborem kuriera, bo
-    // to ona rozstrzyga, kogo w ogole wolno wskazac (paczkomat bez potwierdzonego inkasa
-    // odpada wszedzie tam, gdzie pobranie naprawde jedzie — domain/kurier-nadania.js).
+    // ⚠️ DECYZJA „POBRANIE NA TEJ PACZCE" — operator podejmuje ją w formularzu PO wyborze
+    // kuriera. Ekran wyboru tylko oznacza ograniczenia; bariera w services/nadanie.js
+    // (powodOdmowyZamiennika) sprawdza, czy wybrany kurier przyjmie pobranie na dosyłce.
     // Pole ma znaczenie WYLACZNIE przy zamowieniu za pobraniem: przy przedplacie zaznaczenie
     // niczego nie zmienia i nie ma prawa zamienic zamowienia w pobraniowe.
     const pobranieNaTejPaczceZadane = req.body?.pobranie_na_tej_paczce === 'tak';
@@ -538,7 +629,8 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
       && (kolejnoscSpodziewana === 1 || pobranieNaTejPaczceZadane);
 
     const surowyKurier = String(req.body?.kurier ?? '').trim();
-    const { metoda: metodaUzyta, blad: bladKuriera } = metodaNadania(z, surowyKurier, { kolejnosc: kolejnoscSpodziewana });
+    const umowyPobrania = umowyPobraniaFirmy(db);
+    const { metoda: metodaUzyta, blad: bladKuriera } = metodaNadania(z, surowyKurier, { kolejnosc: kolejnoscSpodziewana, umowyPobrania });
     if (bladKuriera) return reply.code(400).send(bladKuriera);
 
     let deliveryMethodIdAllegro = null;
@@ -559,16 +651,17 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
       if (!zgodaWza.wolno) return reply.code(400).send(zgodaWza.powod);
     }
 
-    // ⚠️ ŚWIADOMIE NIE MA TU BARIERY „pobranie + paczkomat" — i to jest decyzja, nie
-    // przeoczenie. Sklepowe zamowienie paczkomatowe za pobraniem nadaje sie DZIS i ma na to
-    // testy (sekcja F w kwota-pobrania-nadania.test.js), wiec odmowa w tym miejscu zabralaby
-    // dzialajaca sciezke przy okazji zmiany, ktora jej nie dotyczy. Ostroznosc wobec
-    // niepotwierdzonej umowy z InPostem zyje tam, gdzie zyla dotad: na liscie wyboru kuriera
-    // (domain/kurier-nadania.js), ktora teraz odsiewa paczkomat takze wtedy, gdy pobranie
-    // jedzie na paczce N > 1.
+    // ⚠️ BARIERA „pobranie bez umowy" NIE STOI W TEJ TRASIE, tylko w USŁUDZE
+    // (services/nadanie.js, `wymagaUmowyPobrania` przed `rozpocznijPrzesylke`) — PRZ-137.02 (D2).
+    // Tam łapie także wywołania spoza HTTP. Odmawia WYŁĄCZNIE pobrania OMS-owego (ręczne,
+    // metoda albo pobranie zmienione na karcie) u kuriera bez włączonej umowy; sklepowe
+    // zamówienie paczkomatowe za pobraniem jedzie z kwotą jak dotąd (sekcja F
+    // w kwota-pobrania-nadania.test.js, pobranie-umowa-oms-137.test.js). Lista wyboru kuriera
+    // (domena/kurier-nadania.js) dalej odsiewa paczkomat przy pobraniu bez umowy.
 
     const gabarytyAllegro = profilGabarytuAllegro(deliveryMethodIdAllegro);
-    const { paczka, blad } = metodaUzyta === 'inpost_paczkomat'
+    const metodaRejestru = metodaKuriera(metodaUzyta);
+    const { paczka, blad } = metodaRejestru?.formularz === 'paczkomat'
       ? parsujPaczkeInpost(req.body)
       : gabarytyAllegro
         ? parsujGabarytAllegro(req.body, deliveryMethodIdAllegro)
@@ -631,7 +724,7 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
     // ⚠️ `metodaUzyta`, nie `z.metoda_wysylki` (2026-08-07) — z tego samego powodu, co przy
     // parserze paczki wyzej. Bez tego allegrowa paczka wskazana jako paczkomat leciala by
     // do InPostu BEZ kodu automatu z formularza.
-    const punktOdbioru = metodaUzyta === 'inpost_paczkomat'
+    const punktOdbioru = metodaRejestru?.punktOdbioru
       ? String(req.body?.punkt_odbioru ?? '').trim().toUpperCase()
       : undefined;
 
@@ -662,6 +755,7 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
         // Decyzja jedzie DO USLUGI, nie tylko do widoku — dokladnie jak `kurierWybrany`
         // nizej i z tego samego powodu: bariera musi stac tam, gdzie wolaja ja WSZYSCY.
         pobranieNaTejPaczce,
+        potwierdzonaNiedoplata: pobranieNaTejPaczce ? req.body?.potwierdz_niedoplate : undefined,
         // Wskazanie jedzie DO USLUGI, a nie tylko do widoku: bariera musi stac tam, gdzie
         // wolaja ja WSZYSCY (takze nadanie zbiorcze i wywolania wsadowe), a nie w trasie.
         kurierWybrany: surowyKurier,

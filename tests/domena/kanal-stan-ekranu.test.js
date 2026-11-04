@@ -4,7 +4,7 @@ import { stanKanalu, kanalyWymagajaceUwagi, DNI_UPRZEDZENIA } from '../../src/do
 // Wejsciem jest DOKLADNIE to, co oddaje `stanDlaEkranu()` z allegro/tokeny.js — biala lista
 // pol bez poswiadczen (niezmiennik 4.10).
 const zdrowy = (n = {}) => ({
-  kanal: 'allegro_szkicownia',
+  kanal: 'allegro_swietlik',
   polaczony: true,
   zostaloDni: 89,
   refreshWygasaAt: '2026-11-12T06:24:30.186Z',
@@ -87,7 +87,7 @@ describe('stan kanału na ekranie', () => {
   });
 
   it('powód niesie nazwę kanału — przy dwóch kanałach to jedyna różnica na ekranie', () => {
-    expect(stanKanalu(zdrowy({ ostatniBlad: BLAD_ZUZYTEGO })).powod).toContain('allegro_szkicownia');
+    expect(stanKanalu(zdrowy({ ostatniBlad: BLAD_ZUZYTEGO })).powod).toContain('allegro_swietlik');
   });
 
   // ⚠️ NIGDY POSWIADCZEN NA EKRAN (4.10). Wejscie ich nie ma, ale gdyby ktos kiedys wolal te

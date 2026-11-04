@@ -7,12 +7,12 @@ import { wybierzKampanie, stanKampanii, agregatKuponow } from '../../src/domena/
 
 const KAMPANIA = {
   id: 1, kod: 'wrzesien30', nazwa: 'Nowy początek. Bez remontu.',
-  od_dnia: '2026-08-24', do_dnia: '2026-09-07', sklep: 'szkicownia', cel_uzyc: 10,
+  od_dnia: '2026-08-24', do_dnia: '2026-09-07', sklep: 'swietlik', cel_uzyc: 10,
 };
 
 // Ksztalt zLinii: kupony_json prosto z kolumny, kwoty napisami, anulowane efektywne.
 const zam = (nad = {}) => ({
-  id: 1, numer: '28224', sklep: 'szkicownia', kwota_brutto: '150.72',
+  id: 1, numer: '28224', sklep: 'swietlik', kwota_brutto: '150.72',
   utworzone_at: '2026-08-25T17:42:45Z', anulowane: 0, oplacone_at: '2026-08-25T17:43:27Z',
   kupony_json: '[{"kod":"wrzesien30","rabat":"58.17"}]',
   pozycje: [], ...nad,

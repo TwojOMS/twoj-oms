@@ -298,6 +298,19 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
     return r.json().catch(() => null);
   }
 
+  async function pobierzMojeKonto() {
+    const d = await get('/me', LIMIT_ZAPYTANIA_STATUSU_MS);
+    if (typeof d?.id !== 'string' || !/^\d{1,32}$/.test(d.id) || typeof d?.login !== 'string' || !d.login || d.login.length > 128)
+      throw new Error('Allegro nie zwróciło tożsamości konta.');
+    return { id: d.id, login: d.login };
+  }
+  async function sprawdzZakresZamowien({ odUtc }) {
+    const p = new URLSearchParams({ limit: '1', offset: '0', 'lineItems.boughtAt.gte': naDateAllegro(odUtc, 'podłoga'), sort: 'lineItems.boughtAt' });
+    const d = await get(`/order/checkout-forms?${p}`, LIMIT_ZAPYTANIA_ZAMOWIEN_MS);
+    if (!Array.isArray(d?.checkoutForms) || !Number.isSafeInteger(d.totalCount) || d.totalCount < 0)
+      throw new Error('Allegro nie potwierdziło liczby zamówień w zakresie.');
+    return d.totalCount;
+  }
   async function pobierzZamowienia({ od, kursor, strona }) {
     // Bez tego `(undefined - 1) * 100` daje `offset=NaN` — zapytanie leci, Allegro odpowiada
     // czymkolwiek, a poller myli to z koncem listy.
@@ -904,7 +917,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
     // i `pobierzOferty` (CALA lista, `/sale/offers`, lustro magazynu) roznia sie jedna
     // litera i strzelaja w DWA ROZNE zasoby. Stoja obok siebie celowo — para widoczna
     // w jednym miejscu jest mniej grozna niz dwie nazwy rozrzucone po module.
-    pobierzZamowienia, pobierzPrzesylki, pobierzOferte, pobierzOferty, pobierzStanRealizacji,
+    pobierzMojeKonto, sprawdzZakresZamowien, pobierzZamowienia, pobierzPrzesylki, pobierzOferte, pobierzOferty, pobierzStanRealizacji,
     ustawStatusRealizacji, pobierzFakturyZamowienia, zglosFakture, wyslijPlikFaktury,
     pobierzPropozycjeWysylki, pobierzMetodeDostawy, utworzPrzesylke, stanTworzeniaPrzesylki,
     pobierzPrzesylkeWza, pobierzEtykieteWza, pobierzSledzenie,

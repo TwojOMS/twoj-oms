@@ -8,7 +8,7 @@ import { adresOdbiorcy, brakujacePolaAdresu } from '../../../src/domena/adres-od
 
 const baza = () => { return openOmsDb(':memory:'); };
 const zam = (nadpisz = {}) => ({
-  zrodlo_id: 'abc', numer: 'abc', klient: { imie: 'Jan' }, dostawa: { miasto: 'Pęki' },
+  zrodlo_id: 'abc', numer: 'abc', klient: { imie: 'Jan' }, dostawa: { miasto: 'Warszawa' },
   metoda_wysylki: 'allegro_dpd', pobranie: 0, kwota_pobrania: null,
   punkt_odbioru: null, punkt_odbioru_opis: null, chce_fakture: 1, nip: '549',
   kwota_brutto: '99.00', koszt_dostawy_brutto: '0.00', koszt_dostawy_netto: '0.00',
@@ -17,7 +17,7 @@ const zam = (nadpisz = {}) => ({
   pozycje: [], ...nadpisz,
 });
 
-const czytaj = (db, sklep = 'allegro_szkicownia') => db
+const czytaj = (db, sklep = 'allegro_swietlik') => db
   .prepare('SELECT * FROM zamowienia WHERE sklep = ?').get(sklep);
 
 // =================================================================================
@@ -32,39 +32,39 @@ const czytaj = (db, sklep = 'allegro_szkicownia') => db
 describe('zapis: brak danych u źródła nie kasuje danych u nas', () => {
   it('gdy kanał przestanie oddawać adres (null), panel go NIE KASUJE', () => {
     const db = baza();
-    zapiszZamowienie(db, 'allegro_szkicownia', zam(), {});
-    zapiszZamowienie(db, 'allegro_szkicownia', zam({ klient: null, dostawa: null }), {});
+    zapiszZamowienie(db, 'allegro_swietlik', zam(), {});
+    zapiszZamowienie(db, 'allegro_swietlik', zam({ klient: null, dostawa: null }), {});
 
     const w = czytaj(db);
     expect(JSON.parse(w.klient_json)).toEqual({ imie: 'Jan' });
-    expect(JSON.parse(w.dostawa_json)).toEqual({ miasto: 'Pęki' });
+    expect(JSON.parse(w.dostawa_json)).toEqual({ miasto: 'Warszawa' });
   });
 
   it('ale ZMIANA danych dalej nadpisuje — to nie jest zamrożenie', () => {
     const db = baza();
-    zapiszZamowienie(db, 'allegro_szkicownia', zam(), {});
-    zapiszZamowienie(db, 'allegro_szkicownia', zam({ klient: { imie: 'Anna' } }), {});
+    zapiszZamowienie(db, 'allegro_swietlik', zam(), {});
+    zapiszZamowienie(db, 'allegro_swietlik', zam({ klient: { imie: 'Anna' } }), {});
 
     expect(JSON.parse(czytaj(db).klient_json)).toEqual({ imie: 'Anna' });
   });
 
   it('brak klucza w ogóle (undefined) też nie kasuje', () => {
     const db = baza();
-    zapiszZamowienie(db, 'allegro_szkicownia', zam(), {});
+    zapiszZamowienie(db, 'allegro_swietlik', zam(), {});
     const bez = zam();
     delete bez.klient;
     delete bez.dostawa;
-    zapiszZamowienie(db, 'allegro_szkicownia', bez, {});
+    zapiszZamowienie(db, 'allegro_swietlik', bez, {});
 
     const w = czytaj(db);
     expect(JSON.parse(w.klient_json)).toEqual({ imie: 'Jan' });
-    expect(JSON.parse(w.dostawa_json)).toEqual({ miasto: 'Pęki' });
+    expect(JSON.parse(w.dostawa_json)).toEqual({ miasto: 'Warszawa' });
   });
 
   it('ochrona działa POLE PO POLU: pusty klient nie blokuje aktualizacji dostawy', () => {
     const db = baza();
-    zapiszZamowienie(db, 'allegro_szkicownia', zam(), {});
-    zapiszZamowienie(db, 'allegro_szkicownia', zam({ klient: null, dostawa: { miasto: 'Oświęcim' } }), {});
+    zapiszZamowienie(db, 'allegro_swietlik', zam(), {});
+    zapiszZamowienie(db, 'allegro_swietlik', zam({ klient: null, dostawa: { miasto: 'Oświęcim' } }), {});
 
     const w = czytaj(db);
     expect(JSON.parse(w.klient_json)).toEqual({ imie: 'Jan' });
@@ -78,7 +78,7 @@ describe('zapis: brak danych u źródła nie kasuje danych u nas', () => {
     // Przy zakladaniu wiersza nie ma czego chronic. Wartosc ma wyladowac w bazie taka,
     // jaka przyszla — inaczej „brak adresu" nie dalby sie odroznic od „adres jeszcze
     // nie doczytany".
-    zapiszZamowienie(db, 'allegro_szkicownia', zam({ klient: null, dostawa: null }), {});
+    zapiszZamowienie(db, 'allegro_swietlik', zam({ klient: null, dostawa: null }), {});
     const w = czytaj(db);
     // ⚠️ SPRAWDZAMY SUROWA KOLUMNE, NIE `JSON.parse` — bo to jedyne miejsce, w ktorym widac
     // roznice: SQL-owy NULL i tekst 'null' oba parsuja sie do `null`, wiec test na wartosci
@@ -90,7 +90,7 @@ describe('zapis: brak danych u źródła nie kasuje danych u nas', () => {
     expect(w.klient_json).toBe('null');
     expect(w.dostawa_json).toBe('null');
 
-    zapiszZamowienie(db, 'allegro_szkicownia', zam(), {});
+    zapiszZamowienie(db, 'allegro_swietlik', zam(), {});
     expect(JSON.parse(czytaj(db).klient_json)).toEqual({ imie: 'Jan' });
   });
 
@@ -100,13 +100,13 @@ describe('zapis: brak danych u źródła nie kasuje danych u nas', () => {
   // i `punkt_odbioru` to jest JAWNY DLUG, nazwany w przewodniku 4.7a — nie przeoczenie.
   it('reguła dotyczy WYŁĄCZNIE klient_json i dostawa_json', () => {
     const db = baza();
-    zapiszZamowienie(db, 'allegro_szkicownia', zam({
+    zapiszZamowienie(db, 'allegro_swietlik', zam({
       nip: '5492443180', status_woo: 'READY_FOR_PROCESSING',
       punkt_odbioru: 'KRA01A', punkt_odbioru_opis: 'Paczkomat, Rynek 1',
       koszt_dostawy_brutto: '15.00', metoda_platnosci: 'ONLINE', uwagi: 'proszę o fakturę',
       oplacone_at: '2026-08-01T11:00:00Z',
     }), {});
-    zapiszZamowienie(db, 'allegro_szkicownia', zam({
+    zapiszZamowienie(db, 'allegro_swietlik', zam({
       nip: null, status_woo: null, punkt_odbioru: null, punkt_odbioru_opis: null,
       koszt_dostawy_brutto: null, metoda_platnosci: null, uwagi: null, oplacone_at: null,
     }), {});
@@ -126,11 +126,11 @@ describe('zapis: brak danych u źródła nie kasuje danych u nas', () => {
   // wiersza, a oba te testy uzywaja tego samego `zrodlo_id`.
   it('ochrona nie przecieka między kanałami', () => {
     const db = baza();
-    zapiszZamowienie(db, 'allegro_szkicownia', zam(), {});
+    zapiszZamowienie(db, 'allegro_swietlik', zam(), {});
     zapiszZamowienie(db, 'pro', zam({ klient: { imie: 'Ewa' } }), {});
-    zapiszZamowienie(db, 'allegro_szkicownia', zam({ klient: null }), {});
+    zapiszZamowienie(db, 'allegro_swietlik', zam({ klient: null }), {});
 
-    expect(JSON.parse(czytaj(db, 'allegro_szkicownia').klient_json)).toEqual({ imie: 'Jan' });
+    expect(JSON.parse(czytaj(db, 'allegro_swietlik').klient_json)).toEqual({ imie: 'Jan' });
     expect(JSON.parse(czytaj(db, 'pro').klient_json)).toEqual({ imie: 'Ewa' });
   });
 });
@@ -138,7 +138,7 @@ describe('zapis: brak danych u źródła nie kasuje danych u nas', () => {
 // =================================================================================
 // CZESC 2 — WOOCOMMERCE MA DZIALAC DOKLADNIE JAK PRZED TA ZMIANA
 //
-// pro.szkicownia.pl i szkicownia.pl to ZYWE sklepy, prawdziwe paczki i prawdziwe nadania DPD
+// pro.swietlik.example.test i swietlik.example.test to ZYWE sklepy, prawdziwe paczki i prawdziwe nadania DPD
 // oraz InPost. Wyczyszczony w sklepie blok `shipping` MA zejsc do panelu — bo `surowyAdres`
 // (domain/adres-odbiorcy.js) czyta adres WYLACZNIE z bloku `dostawa`, a `brakujacePolaAdresu`
 // jest JEDYNYM bezpiecznikiem przed nadaniem paczki bez adresu. Zamrozony STARY adres
@@ -238,8 +238,8 @@ const surowe = ({ buyerAddress, deliveryAddress, invoice = null, buyer = {} } = 
 
 // Adres, ktory Allegro oddaje normalnie.
 const kopertaPelna = () => ({
-  firstName: 'Jan', lastName: 'Kowalski', street: 'Rynek 1', zipCode: '00-650',
-  city: 'Pęki', countryCode: 'PL', phoneNumber: '600100200',
+  firstName: 'Jan', lastName: 'Kowalski', street: 'Rynek 1', zipCode: '00-950',
+  city: 'Warszawa', countryCode: 'PL', phoneNumber: '600100200',
 });
 // Ta sama koperta PO WYGASNIECIU danych: struktura zostaje, pola sa wyzerowane.
 // ⚠️ `countryCode` ZOSTAJE — kod kraju nie jest dana osobowa, wiec ma najwieksze szanse
@@ -299,10 +299,10 @@ describe('mapowanie Allegro: wygasła koperta to BRAK adresu, nie adres pusty', 
     expect(z.klient.address_1).toBe(null);
 
     const db = baza();
-    zapiszZamowienie(db, 'allegro_szkicownia', zam({
-      klient: { city: 'Pęki', address_1: 'Rynek 1' }, dostawa: { city: 'Pęki', address_1: 'Rynek 1' },
+    zapiszZamowienie(db, 'allegro_swietlik', zam({
+      klient: { city: 'Warszawa', address_1: 'Rynek 1' }, dostawa: { city: 'Warszawa', address_1: 'Rynek 1' },
     }), {});
-    zapiszZamowienie(db, 'allegro_szkicownia', zam({ klient: z.klient, dostawa: z.dostawa }), {});
+    zapiszZamowienie(db, 'allegro_swietlik', zam({ klient: z.klient, dostawa: z.dostawa }), {});
     expect(JSON.parse(czytaj(db).klient_json).city).toBe('Oświęcim');
     expect(JSON.parse(czytaj(db).klient_json).address_1).toBe(null);
   });
@@ -323,7 +323,7 @@ describe('mapowanie Allegro: wygasła koperta to BRAK adresu, nie adres pusty', 
     }), mapowanie);
     expect(z.klient.address_1).toBe('Rynek 1');
     expect(z.klient.email).toBe('a1b2c3@allegromail.pl');
-    expect(z.dostawa.city).toBe('Pęki');
+    expect(z.dostawa.city).toBe('Warszawa');
     expect(z.dostawa.phone).toBe('600100200');
   });
 });
@@ -337,7 +337,7 @@ describe('mapowanie + zapis razem: adres przeżywa wygaśnięcie danych', () => 
       surowe({ buyerAddress: kopertaPelna(), deliveryAddress: kopertaPelna() }),
       mapowanie,
     );
-    zapiszZamowienie(db, 'allegro_szkicownia', { ...pelne, zrodlo_id: 'a-1', pozycje: [] }, {});
+    zapiszZamowienie(db, 'allegro_swietlik', { ...pelne, zrodlo_id: 'a-1', pozycje: [] }, {});
 
     // ...dwie minuty pozniej Allegro oddaje juz tylko mail posrednika i telefon.
     const wygasle = mapujZamowienieAllegro(
@@ -347,11 +347,11 @@ describe('mapowanie + zapis razem: adres przeżywa wygaśnięcie danych', () => 
       }),
       mapowanie,
     );
-    zapiszZamowienie(db, 'allegro_szkicownia', { ...wygasle, zrodlo_id: 'a-1', pozycje: [] }, {});
+    zapiszZamowienie(db, 'allegro_swietlik', { ...wygasle, zrodlo_id: 'a-1', pozycje: [] }, {});
 
     const w = czytaj(db);
     expect(JSON.parse(w.klient_json).address_1).toBe('Rynek 1');
-    expect(JSON.parse(w.dostawa_json).city).toBe('Pęki');
+    expect(JSON.parse(w.dostawa_json).city).toBe('Warszawa');
 
     // I to, co naprawde ma znaczenie: ekran nadania dalej ma komplet adresu.
     const adres = adresOdbiorcy({

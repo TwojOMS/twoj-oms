@@ -12,7 +12,7 @@
 import { dniRoboczeMiedzy } from './etap-przesylki.js';
 import { dzienWarszawa, fmtDataCzas, fmtDataCzasKrotko } from './format-daty.js';
 import { czyEkspres } from './wiek-zamowienia.js';
-import { czyKanalAllegro } from './wysylka.js';
+import { umiejetnosciZamowienia } from './moduly-kanalow.ts';
 import { bladOperatora } from './bledy.js';
 
 const czyRoboczy = (dzienIso) => {
@@ -85,7 +85,7 @@ export function typZamowienia(z) {
   if (z?.indywidualne) return 'indywidualne';
   // PRZ-101.08: kanał Allegro z konfiguracji (dowolny klucz) liczy się jak Allegro. Luźniejsza reguła
   // „zaczyna się od allegro, bez względu na wielkość liter” zostaje obok — tak liczyła produkcja.
-  if (czyKanalAllegro(z) || String(z?.sklep ?? '').toLowerCase().startsWith('allegro')) return 'allegro';
+  if (umiejetnosciZamowienia(z).terminWysylki || String(z?.sklep ?? '').toLowerCase().startsWith('allegro')) return 'allegro';
   return 'krotki';
 }
 

@@ -1,4 +1,5 @@
-import { chceFakture } from './dane-faktury.js';
+import { chceFakture, daneFaktury } from './dane-faktury.js';
+import { brakiAdresuNabywcy, zdanieBrakuAdresu } from './adres-nabywcy-faktury.js';
 import { odmianaNazwyProgramu, ekranProgramu } from './nazwa-programu.js';
 
 // Dostępność na karcie BEZ faktury. POST zachowuje własne zabezpieczenia i rezerwację.
@@ -25,5 +26,9 @@ export function wystawienieFaktury(z, { mozliwaFaktura, mozeAdres, dlaKazdego, p
   if (!mozeAdres) return nie('Twoje konto nie ma prawa wystawiać faktur — poproś administratora o dostęp do wystawiania faktur.');
   if (!chceFakture(z) && !dlaKazdego) return nie('Klient nie prosił o fakturę. Administrator może to włączyć w Ustawienia → Faktury („faktura także bez prośby klienta”)'
     + (program?.opis?.wbudowany === true ? `; przy ${nazwa.miejscownik} najpierw „Faktury konsumenckie w KSeF”.` : '.'));
+  // PRZ-126.PT5: ta sama reguła co odmowa serwera (faktura-odmowa.js), sprawdzana ostatnia.
+  const braki = brakiAdresuNabywcy(daneFaktury(z));
+  if (braki.length) return nie(`Brak adresu nabywcy (${zdanieBrakuAdresu(braki)}) — `,
+    { href: '#dane-faktury', tekst: 'uzupełnij dane do faktury' }, '.');
   return { mozna: true, powod: null };
 }

@@ -11,7 +11,7 @@ const DPD_WZA = '03f26351-f683-4db2-8895-f2c599280e3c';
 function dane() {
   const db = openOmsDb();
   db.prepare(`INSERT INTO zamowienia (sklep,zrodlo_id,numer,utworzone_at,kwota_brutto)
-    VALUES ('allegro_szkicownia',1,'A1','2026-09-22T08:00:00Z','0')`).run();
+    VALUES ('allegro_swietlik',1,'A1','2026-09-22T08:00:00Z','0')`).run();
   const z = db.prepare('SELECT id FROM zamowienia WHERE numer=?').get('A1');
   const dodaj = db.prepare(`INSERT INTO przesylki
     (zamowienie_id,kurier,status,numer_listu,id_przesylki_kuriera,etykieta_sciezka,utworzona_at,kolejnosc)

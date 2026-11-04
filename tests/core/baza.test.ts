@@ -92,6 +92,55 @@ describe('migracje', () => {
     } finally { db.close(); }
   });
 
+  // PRZ-130: odcisk „po” migracji jest odciskiem „przed” następnej w tym samym wywołaniu — kontrola ma widzieć
+  // obiekty utworzone przez poprzednią migrację, nie stan sprzed całego wywołania.
+  it('w jednym wywołaniu kolejna migracja nie usunie kolumny z tabeli założonej przez poprzednią', () => {
+    const db = otworzBaze(':memory:');
+    try {
+      const m = rdzen([
+        { numer: 2, nazwa: 'nowa tabela', wykonaj: (d) => d.exec('CREATE TABLE nowa (id INTEGER, wartosc TEXT)') },
+        // surowy exec z prototypu omija kontrolę tekstu SQL — zostaje tylko porównanie odcisków
+        { numer: 3, nazwa: 'usuwa kolumne', wykonaj: (d) => Object.getPrototypeOf(d).exec.call(d, 'ALTER TABLE nowa DROP COLUMN wartosc') },
+      ]);
+      expect(() => wykonajMigracje(db, [m])).toThrow(/rdzen\/3.*Usunięte lub zmienione: nowa\.wartosc/s);
+      expect(db.prepare('SELECT numer FROM migracje ORDER BY numer').all()).toEqual([{ numer: 1 }, { numer: 2 }]);
+      expect(db.prepare('PRAGMA table_xinfo(nowa)').all().map((k: any) => k.name)).toEqual(['id', 'wartosc']);
+    } finally { db.close(); }
+  });
+
+  it('w jednym wywołaniu kolejna migracja nie doda unikalnego indeksu na tabeli założonej przez poprzednią', () => {
+    const db = otworzBaze(':memory:');
+    try {
+      const m = rdzen([
+        { numer: 2, nazwa: 'nowa tabela', wykonaj: (d) => d.exec('CREATE TABLE nowa (id INTEGER)') },
+        { numer: 3, nazwa: 'unikalny indeks', wykonaj: (d) => d.exec('CREATE UNIQUE INDEX nowa_id ON nowa (id)') },
+      ]);
+      expect(() => wykonajMigracje(db, [m])).toThrow(/rdzen\/3.*nowe ograniczenia: nowa indeks nowa_id u=1/s);
+      expect(db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name = 'nowa_id'").get()).toEqual({ n: 0 });
+    } finally { db.close(); }
+  });
+
+  // PRZ-130 (recenzja): między COMMIT jednej migracji a BEGIN IMMEDIATE następnej inny proces (np. skrypt
+  // z openOmsDb przy wydaniu) może zmienić schemat — zapamiętany odcisk nie może go przesłonić.
+  it('zmiana schematu z drugiego połączenia między migracjami nie ukrywa nowego ograniczenia', () => {
+    const plik = join(mkdtempSync(join(tmpdir(), 'baza-prz130-')), 'oms.db');
+    const db = otworzBaze(plik);
+    const obce = otworzBaze(plik);
+    try {
+      const drugi: ModulOms = {
+        nazwa: 'drugi', wersja: '1.0.0', wymaga: [], konfiguracja: () => ({}), uprawnienia: [], menu: [], zbuduj: () => ({}),
+        // getter czyta pętla po COMMIT ostatniej migracji rdzenia, przed BEGIN pierwszej migracji tego modułu
+        get migracje() {
+          obce.exec('CREATE TABLE obca (id INTEGER)');
+          return [{ numer: 1, nazwa: 'indeks na obcej', wykonaj: (d: BazaSqlite) => d.exec('CREATE UNIQUE INDEX obca_id ON obca (id)') }];
+        },
+      };
+      const m = rdzen([{ numer: 2, nazwa: 'swoja tabela', wykonaj: (d) => d.exec('CREATE TABLE swoja (id INTEGER)') }]);
+      expect(() => wykonajMigracje(db, [m, drugi])).toThrow(/drugi\/1.*nowe ograniczenia: obca indeks obca_id u=1/s);
+      expect(db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name = 'obca_id'").get()).toEqual({ n: 0 });
+    } finally { obce.close(); db.close(); }
+  });
+
   it('blokuje wyzwalacz na tabeli migracje przed zapisaniem znacznika', () => {
     const db = otworzBaze(':memory:');
     try {
@@ -370,5 +419,104 @@ describe('migracje', () => {
     b.exec('CREATE TABLE t (x INTEGER NOT NULL)');
     b.exec('ALTER TABLE t ADD COLUMN y TEXT');
     expect(schematBazy(a)).toEqual(schematBazy(b));
+  });
+});
+
+// PRZ-131: odcisk jest zapamiętywany po tekście schematu — na tym samym połączeniu każda zmiana schematu musi dać
+// nowy odcisk, a powrót do poprzedniego schematu — poprzedni.
+describe('pamięć odcisku schematu', () => {
+  it('każda zmiana schematu na tym samym połączeniu zmienia odcisk', () => {
+    const db = new DatabaseSync(':memory:');
+    try {
+      db.exec('CREATE TABLE t (id INTEGER PRIMARY KEY, x TEXT)');
+      const kolejne = [schematBazy(db)];
+      for (const sql of [
+        'ALTER TABLE t ADD COLUMN y TEXT',
+        'CREATE INDEX t_x ON t (x)',
+        'CREATE VIEW v AS SELECT id FROM t',
+        'CREATE TRIGGER g AFTER INSERT ON t BEGIN SELECT 1; END',
+        'CREATE TEMP TRIGGER tg AFTER UPDATE ON main.t BEGIN SELECT 1; END',
+      ]) {
+        db.exec(sql);
+        const teraz = schematBazy(db);
+        expect(kolejne.some((o) => JSON.stringify(o) === JSON.stringify(teraz)), sql).toBe(false);
+        kolejne.push(teraz);
+      }
+      db.exec('DROP TRIGGER temp.tg');
+      expect(schematBazy(db)).toEqual(kolejne.at(-2));
+    } finally { db.close(); }
+  });
+
+  it('wyzwalacz przeniesiony z main do temp z identycznym tekstem zmienia odcisk', () => {
+    const db = new DatabaseSync(':memory:');
+    try {
+      db.exec('CREATE TABLE t (id INTEGER)');
+      db.exec('CREATE TRIGGER g AFTER INSERT ON t BEGIN SELECT 1; END');
+      const wMain = schematBazy(db);
+      db.exec('DROP TRIGGER g');
+      db.exec('CREATE TEMP TRIGGER g AFTER INSERT ON t BEGIN SELECT 1; END');
+      // ten sam tekst w sqlite_temp_master co wcześniej w sqlite_master (SQLite nie zapisuje słowa TEMP)
+      expect(db.prepare("SELECT sql FROM sqlite_temp_master WHERE name = 'g'").get())
+        .toEqual({ sql: 'CREATE TRIGGER g AFTER INSERT ON t BEGIN SELECT 1; END' });
+      expect(schematBazy(db)).not.toEqual(wMain);
+      expect(schematBazy(db).some((w) => w.startsWith('temp trigger g '))).toBe(true);
+    } finally { db.close(); }
+  });
+
+  // Recenzja PRZ-131: gdyby migracja obeszła nakładkę i podmieniła tekst w sqlite_master przez writable_schema, tekst
+  // (klucz pamięci odcisku) wyglądałby jak przed migracją, a schemat połączenia już nie. node:sqlite działa w trybie
+  // defensywnym i taki zapis odrzuca — ten test przypina to założenie (gdy przestanie, wrócić do klucza odcisku).
+  it('zapis do sqlite_master przez writable_schema jest odrzucony', () => {
+    const db = otworzBaze(':memory:');
+    try {
+      wykonajMigracje(db, [rdzen()]);
+      db.exec('CREATE TABLE chroniona (id INTEGER, wartosc TEXT)');
+      const tekst = (db.prepare("SELECT sql FROM sqlite_master WHERE name = 'chroniona'").get() as { sql: string }).sql;
+      schematBazy(db);
+      const m = rdzen([{ numer: 2, nazwa: 'podmiana tekstu', wykonaj: (d) => {
+        const surowy = (sql: string) => Object.getPrototypeOf(d).exec.call(d, sql);
+        surowy('ALTER TABLE chroniona DROP COLUMN wartosc');
+        surowy('PRAGMA writable_schema = ON');
+        surowy(`UPDATE sqlite_master SET sql = '${tekst.replaceAll("'", "''")}' WHERE name = 'chroniona'`);
+        surowy('PRAGMA writable_schema = OFF');
+      } }]);
+      expect(() => wykonajMigracje(db, [m])).toThrow(/sqlite_master may not be modified/);
+      expect(db.prepare('PRAGMA table_xinfo(chroniona)').all().map((k: any) => k.name)).toEqual(['id', 'wartosc']);
+    } finally { db.close(); }
+  });
+
+  it('tabela TEMP przesłaniająca główną zmienia odcisk (kolumny z tabeli TEMP)', () => {
+    const db = new DatabaseSync(':memory:');
+    try {
+      db.exec('CREATE TABLE t (id INTEGER, x TEXT)');
+      const przed = schematBazy(db);
+      db.exec('CREATE TEMP TABLE t (id INTEGER, inna TEXT NOT NULL)');
+      expect(schematBazy(db)).not.toEqual(przed);
+      expect(schematBazy(db).some((w) => w.startsWith('t.inna '))).toBe(true);
+    } finally { db.close(); }
+  });
+
+  it('zwraca kopię — zmiana wyniku nie psuje następnego odczytu', () => {
+    const db = new DatabaseSync(':memory:');
+    try {
+      db.exec('CREATE TABLE t (id INTEGER)');
+      const pierwszy = schematBazy(db);
+      const wzor = [...pierwszy];
+      pierwszy.push('obcy wpis');
+      pierwszy.reverse();
+      expect(schematBazy(db)).toEqual(wzor);
+    } finally { db.close(); }
+  });
+
+  it('kontrola migracji widzi kolumnę dodaną poza migracją między dwoma wywołaniami', () => {
+    const db = otworzBaze(':memory:');
+    try {
+      wykonajMigracje(db, [rdzen()]);
+      db.exec('CREATE TABLE chroniona (id INTEGER, wartosc TEXT)');
+      // ten sam schemat liczony raz (pamięć), potem kolumna znika — kontrola musi to zobaczyć
+      schematBazy(db);
+      const m = rdzen([{ numer: 2, nazwa: 'usuwa kolumne', wykonaj: (d) => Object.getPrototypeOf(d).exec.call(d, 'ALTER TABLE chroniona DROP COLUMN wartosc') }]);
+      expect(() => wykonajMigracje(db, [m])).toThrow(/Usunięte lub zmienione: chroniona\.wartosc/);
+    } finally { db.close(); }
   });
 });

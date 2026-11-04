@@ -23,7 +23,7 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 1301, numer: '1301', klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Pęki' },
+  zrodlo_id: 1301, numer: '1301', klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
   koszt_dostawy_brutto: '12.90', status_woo: 'processing', oplacone_at: null, anulowane: 0,
   utworzone_at: '2026-07-29T13:19:52',
@@ -46,8 +46,8 @@ function zamowienieReczneZPoprawkami() {
   const id = utworzZamowienieReczne(db, {
     metoda_wysylki: 'dpd',
     koszt_dostawy_brutto: '19.00',
-    klient: { first_name: 'Jan', last_name: 'Kowalski', city: 'Pęki' },
-    dostawa: { first_name: 'Jan', last_name: 'Kowalski', city: 'Pęki' },
+    klient: { first_name: 'Jan', last_name: 'Kowalski', city: 'Warszawa' },
+    dostawa: { first_name: 'Jan', last_name: 'Kowalski', city: 'Warszawa' },
   });
   dodajPozycjeReczna(db, id, {
     nazwa: 'Szablon', sku: null, ilosc: 1, cena_brutto: '61.50', brutto_linii: '61.50',
@@ -57,7 +57,7 @@ function zamowienieReczneZPoprawkami() {
   // sprawdza. Pierwsza wersja zapalała tylko dwa — i weryfikacja mutacyjna to pokazała:
   // przywrócenie znaczników faktury, przełącznika i metody wysyłki NIE wywalało testu, bo
   // fikstura nie miała czego oznaczyć.
-  zapiszNadpisaniaWysylki(db, id, { kod: '00-650', miasto: 'Pęki' });          // adres paczki
+  zapiszNadpisaniaWysylki(db, id, { kod: '00-950', miasto: 'Warszawa' });          // adres paczki
   zapiszNadpisaniaFaktury(db, id, { firma: 'Kowalski sp. z o.o.' }, 1);        // dane nabywcy + „chce fakturę"
   zapiszNadpisanieWysylki(db, id, { metoda: 'inpost_paczkomat', pobranie: 0 }); // metoda dostawy
   zapiszNadpisaniaPozycji(db, id, { [KLUCZ_WYSYLKI]: { cena_brutto: '25.00' } }); // kwota wysyłki
@@ -120,7 +120,7 @@ describe('zamówienie ZE SKLEPU — znaczniki zostają', () => {
 
   it('poprawione dane klienta dalej są podpisane', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    zapiszNadpisaniaWysylki(db, id, { kod: '00-651' });
+    zapiszNadpisaniaWysylki(db, id, { kod: '00-951' });
     expect((await karta(id)).body).toContain('zmienione ręcznie');
   });
 

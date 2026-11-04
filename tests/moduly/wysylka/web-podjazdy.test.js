@@ -7,7 +7,7 @@ const auth = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}
 it('ekran podjazdu pokazuje adres i przekazuje do serwisu tylko zaznaczone ID', async () => {
   const db = openOmsDb();
   db.prepare(`INSERT INTO zamowienia (sklep,zrodlo_id,numer,utworzone_at,kwota_brutto)
-    VALUES ('allegro_szkicownia',1,'A1','2026-09-22T08:00:00Z','0')`).run();
+    VALUES ('allegro_swietlik',1,'A1','2026-09-22T08:00:00Z','0')`).run();
   const zid = db.prepare('SELECT id FROM zamowienia').get().id;
   db.prepare(`INSERT INTO przesylki (zamowienie_id,kurier,status,numer_listu,utworzona_at)
     VALUES (?,'allegro_wza','nadana','AD-1','2026-09-22T08:00:00Z')`).run(zid);
@@ -36,21 +36,21 @@ it('ekran podjazdu pokazuje adres i przekazuje do serwisu tylko zaznaczone ID', 
 
 it('podgląd ma osobny formularz tylko dla potwierdzonego kuriera, bez mieszania grup', async () => {
   const db = openOmsDb();
-  const adres = { name: 'Firma', street: 'Polna 1', postalCode: '32-600', city: 'Pęki',
+  const adres = { name: 'Firma', street: 'Polna 1', postalCode: '32-600', city: 'Warszawa',
     countryCode: 'PL', email: 'f@example.com', phone: '500600700' };
   const podjazdy = { przygotuj: vi.fn(async () => ({ id: 'podglad-1', data: '2026-09-23', adres,
     wygasaAt: '2026-09-23T12:00:00Z', grupy: [
-      { id: 'dpd', kanal: 'allegro_szkicownia', etykieta: 'Allegro Kurier DPD',
+      { id: 'dpd', kanal: 'allegro_swietlik', etykieta: 'Allegro Kurier DPD',
         kurierOdbierajacy: 'DPD', moznaZlecac: true,
         przesylki: [{ numerListu: 'AD-1' }],
         terminy: [{ date: '2026-09-23', minTime: '13:00', maxTime: '17:00' }] },
-      { id: 'one', kanal: 'allegro_amarka', etykieta: 'Allegro One Kurier',
+      { id: 'one', kanal: 'allegro_polcien2', etykieta: 'Allegro One Kurier',
         kurierOdbierajacy: null, moznaZlecac: false,
         przesylki: [{ numerListu: 'AO-1' }],
         terminy: [{ date: '2026-09-23', minTime: '13:00', maxTime: '17:00' }] },
     ] })) };
   const app = buildOmsServer({ db, config: { auth: { user: 'adam', pass: 'x' },
-    nadawca: { nazwa: 'Firma', ulica: 'Polna 1', kod: '32-600', miasto: 'Pęki', kraj: 'PL',
+    nadawca: { nazwa: 'Firma', ulica: 'Polna 1', kod: '32-600', miasto: 'Warszawa', kraj: 'PL',
       email: 'f@example.com', phone: '500600700' } }, podjazdy });
   const response = await app.inject({ method: 'POST', url: '/przesylki/podjazdy/podglad',
     headers: { ...auth, origin: 'http://localhost' }, payload: { ids: '1', data: '2026-09-23', ...adres } });
@@ -66,9 +66,9 @@ it('podgląd ma osobny formularz tylko dla potwierdzonego kuriera, bez mieszania
 
 it('po zleceniu jednej grupy wraca do podglądu z wynikiem i pozostałym formularzem', async () => {
   const db = openOmsDb();
-  const adres = { name: 'Firma', street: 'Polna 1', postalCode: '32-600', city: 'Pęki',
+  const adres = { name: 'Firma', street: 'Polna 1', postalCode: '32-600', city: 'Warszawa',
     countryCode: 'PL', email: 'f@example.com', phone: '500600700' };
-  const pozostala = { id: 'one', kanal: 'allegro_szkicownia', etykieta: 'Allegro One Kurier',
+  const pozostala = { id: 'one', kanal: 'allegro_swietlik', etykieta: 'Allegro One Kurier',
     kurierOdbierajacy: 'ALLEGRO_ONE_KURIER', moznaZlecac: true,
     przesylki: [{ numerListu: 'AO-2' }],
     terminy: [{ date: '2026-09-23', minTime: '13:00', maxTime: '17:00' }] };
@@ -99,7 +99,7 @@ it('po zleceniu jednej grupy wraca do podglądu z wynikiem i pozostałym formula
 it('historia pokazuje także stare aktywne i odrzucone podjazdy poza 60 dniami listy', async () => {
   const db = openOmsDb();
   const z = db.prepare(`INSERT INTO zamowienia (sklep,zrodlo_id,numer,utworzone_at,kwota_brutto)
-    VALUES ('allegro_szkicownia',1,'A1','2026-01-01T08:00:00Z','0')`).run();
+    VALUES ('allegro_swietlik',1,'A1','2026-01-01T08:00:00Z','0')`).run();
   db.prepare('UPDATE zamowienia SET metoda_wysylki_nazwa=? WHERE id=?')
     .run('Allegro Kurier DPD', Number(z.lastInsertRowid));
   const p = db.prepare(`INSERT INTO przesylki
@@ -111,7 +111,7 @@ it('historia pokazuje także stare aktywne i odrzucone podjazdy poza 60 dniami l
       .run(`preview-${nr}`, '{}', '2026-01-01T10:00:00Z', '2026-01-01T08:00:00Z');
     const info = db.prepare(`INSERT INTO podjazdy
       (podglad_id,grupa_id,command_id,kanal,przewoznik,adres_json,termin_json,stan,pickup_id,utworzony_at)
-      VALUES (?,? ,?,'allegro_szkicownia','DPD','{}',?, ?,?,'2026-01-01T08:00:00Z')`)
+      VALUES (?,? ,?,'allegro_swietlik','DPD','{}',?, ?,?,'2026-01-01T08:00:00Z')`)
       .run(`preview-${nr}`, 'dpd', `command-${nr}`,
         JSON.stringify({ date: '2026-01-02', minTime: '13:00', maxTime: '17:00' }), stan,
         nr === 1 ? 'pickup-1' : null);
@@ -140,12 +140,12 @@ it.each([
   ['rozdzielone', 'To starszy podgląd. Wybierz paczki ponownie'],
 ])('brak terminu pokazuje diagnozę %s i terminy każdej paczki', async (przyczyna, komunikat) => {
   const db = openOmsDb();
-  const adres = { name: 'Firma', street: 'Polna 1', postalCode: '32-600', city: 'Pęki',
+  const adres = { name: 'Firma', street: 'Polna 1', postalCode: '32-600', city: 'Warszawa',
     countryCode: 'PL', email: 'f@example.com', phone: '500600700' };
   const okno = { date: '2026-09-30', minTime: '10:00', maxTime: '14:00' };
   const podjazdy = { przygotuj: vi.fn(async () => ({ id: 'podglad-d', data: '2026-09-30', adres,
     wygasaAt: '2026-09-30T12:00:00Z', grupy: [
-      { id: 'dpd', kanal: 'allegro_szkicownia', etykieta: 'Allegro Kurier DPD',
+      { id: 'dpd', kanal: 'allegro_swietlik', etykieta: 'Allegro Kurier DPD',
         kurierOdbierajacy: 'DPD', moznaZlecac: true,
         przesylki: [{ numerListu: 'AD-1' }, { numerListu: 'AD-2' }], terminy: [],
         diagnoza: { przyczyna, grupAllegro: 2, paczki: [
@@ -154,7 +154,7 @@ it.each([
         ] } },
     ] })) };
   const app = buildOmsServer({ db, config: { auth: { user: 'adam', pass: 'x' },
-    nadawca: { nazwa: 'Firma', ulica: 'Polna 1', kod: '32-600', miasto: 'Pęki', kraj: 'PL',
+    nadawca: { nazwa: 'Firma', ulica: 'Polna 1', kod: '32-600', miasto: 'Warszawa', kraj: 'PL',
       email: 'f@example.com', phone: '500600700' } }, podjazdy });
   const response = await app.inject({ method: 'POST', url: '/przesylki/podjazdy/podglad',
     headers: { ...auth, origin: 'http://localhost' }, payload: { ids: '1', data: '2026-09-30', ...adres } });

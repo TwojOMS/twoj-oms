@@ -5,7 +5,7 @@ import { parsujGabarytAllegro, profilGabarytuAllegro, sprawdzLimityGabarytuAlleg
 // PRZ-124 (zgloszenie właściciela 28.10.2026, zamowienie #1508): „Allegro Odbior w Punkcie DPD Pickup
 // pobranie (AD)" odbijalo sie o biala liste WzA komunikatem o InPoscie — a to nie InPost.
 //
-// Zmierzone 28.10.2026 na koncie `allegro_szkicownia`:
+// Zmierzone 28.10.2026 na koncie `allegro_swietlik`:
 //  - `GET /shipment-management/delivery-services` (310 uslug: 304 ALLEGRO, 6 CLIENT):
 //    owner: ALLEGRO, carrierId: ALLEGRO, credentialsId: null,
 //    cashOnDelivery: {limit: 6000, currency: PLN, paymentType: WALLET_TRANSFER, forceRequireIban: false}
@@ -13,7 +13,7 @@ import { parsujGabarytAllegro, profilGabarytuAllegro, sprawdzLimityGabarytuAlleg
 //    cashOnDelivery.amount = kwota zamowienia, deliveryType PUDO, PACKAGE 64 × 38 × 41 cm, 20 kg.
 const DPD_PICKUP_POBRANIE = '16af1169-db74-4e94-a16d-f2c599280e3c';
 
-const zamowienie = { sklep: 'allegro_szkicownia', anulowane: 0, metoda_wysylki: 'allegro_inne', kwota_pobrania: '83.29' };
+const zamowienie = { sklep: 'allegro_swietlik', anulowane: 0, metoda_wysylki: 'allegro_inne', kwota_pobrania: '83.29' };
 
 const LIMITY_1508 = [{ deliveryType: 'PUDO', paymentType: 'POSTPAID', packageType: 'PACKAGE', limits: {
   cashOnDelivery: { amount: '6000', currency: 'PLN' },

@@ -25,7 +25,7 @@ function db() {
 
 function przesylka(baza, numer = 'A') {
   const zamowienie = baza.prepare(
-    "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at) VALUES ('allegro_szkicownia', ?, ?, '10.00', '2026-09-22T08:00:00.000Z')",
+    "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at) VALUES ('allegro_swietlik', ?, ?, '10.00', '2026-09-22T08:00:00.000Z')",
   ).run(Number(numer.charCodeAt(0)), `A-${numer}`);
   return Number(baza.prepare(
     "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, utworzona_at) VALUES (?, 'allegro_wza', 'nadana', ?, '2026-09-22T08:00:00.000Z')",
@@ -33,8 +33,8 @@ function przesylka(baza, numer = 'A') {
 }
 
 const rezerwacja = (ids, overrides = {}) => ({
-  podgladId: 'podglad-1', grupaId: 'allegro_szkicownia|method-dpd', commandId: 'command-1',
-  kanal: 'allegro_szkicownia', przewoznik: 'DPD', adres: { city: 'Pęki', postCode: '00-650' },
+  podgladId: 'podglad-1', grupaId: 'allegro_swietlik|method-dpd', commandId: 'command-1',
+  kanal: 'allegro_swietlik', przewoznik: 'DPD', adres: { city: 'Warszawa', postCode: '00-950' },
   termin: { date: '2026-09-23', minTime: '08:00', maxTime: '12:00' }, kto: 'adam',
   utworzonaAt: '2026-09-22T09:00:00.000Z', przesylki: ids.map((id) => ({
     przesylkaId: id, shipmentId: `shipment-${id}`, numerListu: `LIST-${id}`,
@@ -106,7 +106,7 @@ describe('podjazdy: trwała rezerwacja', () => {
     const druga = openOmsDb(plik); otwarte.push(druga);
     zarezerwujPodjazd(pierwsza, rezerwacja([a, b]));
     expect(() => zarezerwujPodjazd(druga, rezerwacja([b, c], {
-      podgladId: 'podglad-2', grupaId: 'allegro_szkicownia|method-one', commandId: 'command-2',
+      podgladId: 'podglad-2', grupaId: 'allegro_swietlik|method-one', commandId: 'command-2',
     }))).toThrow(/rezerw/i);
     expect(pierwsza.prepare('SELECT COUNT(*) AS c FROM podjazdy_przesylki WHERE przesylka_id = ?').get(c).c).toBe(0);
   });
@@ -133,9 +133,9 @@ describe('podjazdy zamówione wcześniej poza OMS', () => {
     const baza = db(); const id = przesylka(baza);
     baza.prepare("UPDATE przesylki SET id_przesylki_kuriera='shipment-A', etykieta_zpl_sciezka='/etykiety/A.zpl' WHERE id=?").run(id);
     const dane = { przesylkaId: id, shipmentId: 'shipment-A', numerListu: 'LIST-A',
-      kanal: 'allegro_szkicownia', metoda: '03f26351-f683-4db2-8895-f2c599280e3c',
+      kanal: 'allegro_swietlik', metoda: '03f26351-f683-4db2-8895-f2c599280e3c',
       commandId: 'command-external', pickupId: 'pickup-external', pickupCarrier: 'DPD',
-      carrierPickupId: 'AD-123', adres: { city: 'Pęki' },
+      carrierPickupId: 'AD-123', adres: { city: 'Warszawa' },
       termin: { date: '2026-09-23', minTime: '13:00', maxTime: '17:00' } };
     const pierwszy = importujPotwierdzonyPodjazd(baza, dane);
     expect(pierwszy).toMatchObject({ stan: 'potwierdzony', pickup_id: 'pickup-external', pickup_carrier: 'DPD' });

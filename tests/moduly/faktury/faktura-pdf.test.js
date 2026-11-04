@@ -12,7 +12,7 @@ const PDF = Buffer.from('%PDF-1.4 udawany dokument');
 
 const zmapowane = (id) => ({
   zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'j@k.pl' },
-  dostawa: { city: 'Pęki' }, metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '6762432557',
+  dostawa: { city: 'Warszawa' }, metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '6762432557',
   kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
   metoda_platnosci: 'Przelew tradycyjny', utworzone_at: '2026-07-31T09:00:00',
   pozycje: [{ nazwa: 'STOP', sku: 'S1', ilosc: 1, cena_brutto: '123.00', brutto_linii: '123.00', vat: null }],

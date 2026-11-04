@@ -13,7 +13,7 @@ export type KurierSledzenia = {
   statusPrzesylki: (numer: string, kontekst?: { kanal?: string; carrier?: string }) => Promise<unknown>;
   bezSledzenia?: boolean;
 };
-export type ZamowienieNadania = ZamowienieDoWysylki & { pochodzenie?: string };
+export type ZamowienieNadania = ZamowienieDoWysylki & { pochodzenie?: string; kwota_brutto?: string | number | null };
 export type OpcjeNadania = {
   db: Parameters<typeof pobierzZamowienie>[0];
   kurierzy: MapaKurierow;
@@ -28,6 +28,8 @@ export type OpcjePaczkiNadania = {
   adres?: AdresOdbiorcyKuriera; punktOdbioru?: string | null;
   kwotaPobrania?: string | null; kurierWybrany?: string;
   pobranieNaTejPaczce?: boolean; drukowac?: boolean;
+  /** PRZ-145.01 (E5-D4): niedopłata, którą operator potwierdził na ekranie (kwota pobrania poniżej niej). */
+  potwierdzonaNiedoplata?: string | null;
 };
 /** Metadane wyjątków rzucanych przez rzeczywiste adaptery kurierskie. */
 export type BladNadania = Error & {

@@ -59,7 +59,7 @@ beforeEach(() => {
     status: 'Przesyłka doręczona', statusAt: '2026-08-22T12:00:00.000', utworzona: '2026-08-22T08:00:00.000Z',
   });
 
-  const id3 = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(3), {});
+  const id3 = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(3), {});
   nadana(db, id3, 'allegro_wza', 'WZA-25', { utworzona: '2026-08-24T23:30:00.000Z' });
 
   app = buildOmsServer({ db, config: CONFIG });

@@ -34,14 +34,14 @@ describe('kanaly historyczne (Apilo)', () => {
     expect(h({ platform_account_id: 9, pozycje: [{ original_code: '28040|1' }] }))
       .toBe('INDYWIDUALNE');
     expect(h({ platform_account_id: 9, pozycje: [{ original_code: '123|1' }] }))
-      .toBe('SZKICOWNIA_PL');
+      .toBe('SWIETLIK_PL');
   });
 
   it('konta sklepowe, allegrowe i archiwalne', () => {
-    expect(h({ platform_account_id: 3 })).toBe('ALLEGRO_SZKICOWNIA');
-    expect(h({ platform_account_id: 27 })).toBe('ALLEGRO_AMARKA');
+    expect(h({ platform_account_id: 3 })).toBe('ALLEGRO_SWIETLIK');
+    expect(h({ platform_account_id: 27 })).toBe('ALLEGRO_POLCIEN2');
     expect(h({ platform_account_id: 24 })).toBe('PRESTASHOP_ARCHIWUM');
-    expect(h({ platform_account_id: 15 })).toBe('WOO_AMARKA');
+    expect(h({ platform_account_id: 15 })).toBe('WOO_POLCIEN2');
     expect(h({ platform_account_id: 6 })).toBe('ETSY_ARCHIWUM');
   });
 
@@ -51,9 +51,9 @@ describe('kanaly historyczne (Apilo)', () => {
 });
 
 describe('kanaly OMS', () => {
-  it('znacznik indywidualnego wygrywa ze sklepem — oba maja sklep=szkicownia', () => {
-    expect(kanalOms({ sklep: 'szkicownia', indywidualne: 1 }, klasyfikacjaHistorycznaFixture)).toBe('INDYWIDUALNE');
-    expect(kanalOms({ sklep: 'szkicownia', indywidualne: 0 }, klasyfikacjaHistorycznaFixture)).toBe('SZKICOWNIA_PL');
+  it('znacznik indywidualnego wygrywa ze sklepem — oba maja sklep=swietlik', () => {
+    expect(kanalOms({ sklep: 'swietlik', indywidualne: 1 }, klasyfikacjaHistorycznaFixture)).toBe('INDYWIDUALNE');
+    expect(kanalOms({ sklep: 'swietlik', indywidualne: 0 }, klasyfikacjaHistorycznaFixture)).toBe('SWIETLIK_PL');
   });
 
   it('reczne dzieli okres rozliczeniowy — bez okresu to RECZNE, nie B2B', () => {
@@ -64,9 +64,9 @@ describe('kanaly OMS', () => {
   });
 
   it('sklepy kanalowe', () => {
-    expect(kanalOms({ sklep: 'pro' }, klasyfikacjaHistorycznaFixture)).toBe('SZKICOWNIA_PRO');
-    expect(kanalOms({ sklep: 'allegro_szkicownia' }, klasyfikacjaHistorycznaFixture)).toBe('ALLEGRO_SZKICOWNIA');
-    expect(kanalOms({ sklep: 'allegro_amarka' }, klasyfikacjaHistorycznaFixture)).toBe('ALLEGRO_AMARKA');
+    expect(kanalOms({ sklep: 'pro' }, klasyfikacjaHistorycznaFixture)).toBe('SWIETLIK_PRO');
+    expect(kanalOms({ sklep: 'allegro_swietlik' }, klasyfikacjaHistorycznaFixture)).toBe('ALLEGRO_SWIETLIK');
+    expect(kanalOms({ sklep: 'allegro_polcien2' }, klasyfikacjaHistorycznaFixture)).toBe('ALLEGRO_POLCIEN2');
   });
 
   it('NIEZNANY sklep PRZERYWA', () => {

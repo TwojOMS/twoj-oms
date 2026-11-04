@@ -1,6 +1,6 @@
 <% const tylkoPodpis = nawigacja?.kontekst?.aktywnaZakladka === 'podpis'; %>
 <h1><%= title %></h1>
-<% if (!tylkoPodpis) { %><p><a href="/ustawienia/integracje">← Integracje</a></p><% } %>
+<% if (!tylkoPodpis) { %><p><a href="/ustawienia/integracje">← Moje połączenia</a></p><% } %>
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (proba) { %>
@@ -18,11 +18,12 @@
 
 <% if (zEnv) { %>
 <section class="ust-sekcja" id="poczta-stan">
-  <h2>Ustawiona w pliku konfiguracji</h2>
-  <p>Serwer poczty jest ustawiony w pliku konfiguracji serwera (<code>oms.env</code>, zmienne <code>SMTP_…</code> i <code>MAIL_FROM</code>). Ten ekran go nie zmienia — serwer, login i hasło poprawisz w tym pliku.</p>
+  <h2>Ustawione przez administratora serwera</h2>
+  <p>Serwer poczty jest ustawiony na serwerze. Ten ekran go nie zmienia — serwer, login i hasło poprawi administrator serwera.</p>
+  <details class="ust-pomoc"><summary>Dla administratora serwera</summary><p>Plik <code>oms.env</code>: zmienne <code>SMTP_…</code> i <code>MAIL_FROM</code>.</p></details>
   <% if (stan) { %>
     <form method="post" action="/ustawienia/integracje/poczta/odlacz">
-      <p>W OMS-ie zostały też ustawienia poczty zapisane wcześniej na tym ekranie. Plik konfiguracji ma pierwszeństwo, więc nie są używane.</p>
+      <p>W OMS-ie zostały też ustawienia poczty zapisane wcześniej na tym ekranie. Ustawienia na serwerze mają pierwszeństwo, więc nie są używane.</p>
       <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń zapisane ustawienia poczty</button></div>
     </form>
   <% } %>
@@ -71,13 +72,14 @@
 <% } %>
 
 <section class="ust-sekcja" id="adres-panelu-stan">
-  <h2>Adres panelu w mailach</h2>
+  <h2>Adres OMS-u w mailach</h2>
   <% if (adresZEnv) { %>
-    <p>Linki w zaproszeniach i mailach z hasłem prowadzą pod <code><%= adresZEnv %></code> — adres z pliku konfiguracji (<code>OMS_ADRES_PANELU</code>). Ten ekran go nie zmienia.</p>
+    <p>Linki w zaproszeniach i mailach z hasłem prowadzą pod <code><%= adresZEnv %></code> — adres ustawiony na serwerze. Ten ekran go nie zmienia.</p>
+    <details class="ust-pomoc"><summary>Dla administratora serwera</summary><p>Adres OMS-u: <code>OMS_ADRES_PANELU</code> w <code>oms.env</code>.</p></details>
   <% } else { %>
-    <p>Pod tym adresem pracownik otworzy link z zaproszenia albo z maila o nowym haśle. Wpisz go, gdy zespół otwiera panel pod innym adresem niż Ty teraz — tym, który ludzie mają w zakładkach. Adres musi działać tam, gdzie pracownik czyta pocztę, np. w domu, jeśli ktoś zagląda do niej poza biurem.</p>
+    <p>Pod tym adresem pracownik otworzy link z zaproszenia albo z maila o nowym haśle. Wpisz go, gdy zespół otwiera OMS pod innym adresem niż Ty teraz — tym, który ludzie mają w zakładkach. Adres musi działać tam, gdzie pracownik czyta pocztę, np. w domu, jeśli ktoś zagląda do niej poza biurem.</p>
     <form id="adres-panelu-formularz" class="ust-formularz" method="post" action="/ustawienia/integracje/poczta/adres">
-      <label for="adres-panelu">Adres panelu</label>
+      <label for="adres-panelu">Adres OMS-u</label>
       <div><input id="adres-panelu" name="adres" value="<%= wpisanyAdres %>" maxlength="200" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://panel.twoja-firma.pl">
         <p class="ust-pomoc"><% if (adresDomyslny) { %>Puste — linki prowadzą pod adres, z którego korzystasz: <code><%= adresDomyslny %></code>.<% } else { %>Puste — OMS nie rozpoznał adresu, z którego korzystasz, więc wysyłka mailem nie zadziała, dopóki go tu nie wpiszesz.<% } %><% if (zapisAdresu) { %> Wyczyść pole i zapisz, żeby do tego wrócić.<% } %></p>
         <p class="ust-pomoc">http:// albo https://, nazwa hosta i ewentualnie port, np. http://192.168.1.20:3001. Bez ścieżki i bez „?”.<% if (zapisAdresu) { %> Zapisał <%= zapisAdresu.kontoLogin ?? '—' %>, <%= fmtDataCzas(zapisAdresu.zmienionoAt) %>.<% } %></p></div>
@@ -101,7 +103,8 @@
     <label for="podpis-marka">Marka</label>
     <% if (pm.stan.marka.zPliku) { %>
       <div><p class="ust-wartosc"><%= pm.stan.marka.wartosc %></p>
-        <p class="ust-pomoc">To pole jest ustawione w pliku konfiguracji (<code>OMS_MAIL_MARKA</code>) — zmienisz je tylko tam.</p></div>
+        <p class="ust-pomoc">To pole jest ustawione na serwerze — zmieni je administrator serwera.</p>
+        <details class="ust-pomoc"><summary>Dla administratora serwera</summary><p>Zmienna <code>OMS_MAIL_MARKA</code> w <code>oms.env</code>.</p></details></div>
     <% } else { %>
       <div><input id="podpis-marka" name="marka" value="<%= pm.pola.marka %>" maxlength="120" autocomplete="off" placeholder="Obsługa sklepu">
         <p class="ust-pomoc">Jedna linia, do 120 znaków. Puste — maile podpisane „Obsługa sklepu”, bez nazwy w nagłówku.</p></div>
@@ -110,7 +113,8 @@
     <label for="podpis-stopka">Stopka</label>
     <% if (pm.stan.stopka.zPliku) { %>
       <div><p class="ust-wartosc"><% pm.stan.stopka.wartosc.split('\n').forEach(function (l, i) { %><% if (i) { %><br><% } %><%= l %><% }); %></p>
-        <p class="ust-pomoc">To pole jest ustawione w pliku konfiguracji (<code>OMS_MAIL_STOPKA</code>) — zmienisz je tylko tam.</p></div>
+        <p class="ust-pomoc">To pole jest ustawione na serwerze — zmieni je administrator serwera.</p>
+        <details class="ust-pomoc"><summary>Dla administratora serwera</summary><p>Zmienna <code>OMS_MAIL_STOPKA</code> w <code>oms.env</code>.</p></details></div>
     <% } else { %>
       <div><textarea id="podpis-stopka" name="stopka" rows="4" maxlength="600" autocomplete="off"><%= pm.pola.stopka %></textarea>
         <p class="ust-pomoc">Do 8 linii, np. nazwa i adres firmy, telefon, strona. Puste — mail bez stopki.</p></div>

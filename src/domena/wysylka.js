@@ -16,7 +16,7 @@
 // WYLACZNIE dlatego, ze rozni sie platnoscia.
 //
 // Dlatego sa teraz DWIE niezalezne wartosci: RODZAJ DOSTAWY (ta lista) i `pobranie` (0/1,
-// kolumna obok). Dolozenie kuriera to jeden wpis tutaj, nie dwa.
+// kolumna obok). Dolozenie kuriera to jeden wpis w rejestrze `moduly-kurierow.ts`, nie dwa.
 //
 // `inpost_paczkomat` doszedl 2026-08-01 (Etap 2, paczkomaty). Jest tu WYLACZNIE rodzajem
 // dostawy — pobranie paczkomatowe jest flaga obok, dokladnie jak przy DPD, a nie osobna
@@ -34,10 +34,25 @@
 // `allegro_inne` NIE JEST tym samym, co `nieznana`. „Nieznana" znaczy „metoda DO WYJASNIENIA,
 // popraw ja na karcie"; `allegro_inne` znaczy „Allegro dolozylo usluge, ktorej jeszcze nie
 // nazwalismy" — i nie ma z tym zadnej roboty, bo tego kanalu i tak nie nadajemy.
-export const METODY_WYSYLKI = [
-  'dpd', 'inpost_paczkomat', 'odbior_osobisty',
+// (Stan z 04.08. Od 11.08 cztery z nich nadaje „Wysylam z Allegro" — kurier `allegro_wza`
+// w rejestrze `moduly-kurierow.ts`, ktory od PRZ-135.04a zastepuje mape `DLA_METODY`.)
+//
+// PRZ-135.04a (D4): na poczatku metody kurierow na WLASNEJ umowie, czytane z rejestru;
+// za nimi stala lista metod kanalu bez wlasnego kuriera (odbior osobisty i metody Allegro).
+const METODY_KANALU = [
+  'odbior_osobisty',
   'allegro_dpd', 'allegro_paczkomat', 'allegro_punkt', 'allegro_kurier', 'allegro_inne',
 ];
+
+/**
+ * Metody wysylki dla podanego rejestru kurierow (domyslnie produkcyjnego).
+ * @param {import('./moduly-kurierow.ts').RejestrKurierow} [rejestr]
+ * @returns {string[]}
+ */
+export function metodyWysylki(rejestr = MODULY_KURIEROW) {
+  return [...metodyNaUmowie('wlasna', rejestr).map((m) => m.klucz), ...METODY_KANALU];
+}
+export const METODY_WYSYLKI = metodyWysylki();
 
 /**
  * Czy zamowienie przyszlo KANALEM Allegro — po kolumnie `zamowienia.sklep`, nie po metodzie.
@@ -60,42 +75,44 @@ export const METODY_WYSYLKI = [
  * prefiks — zachowanie sprzed zmiany. Prefiks WYGRYWA: sklep `allegro_x` z `typ: 'woo'` dalej jest
  * brany za Allegro (strażnik PRZ-062 alarmuje o takim kluczu w instalacji klienta).
  */
-let kanalyAllegroZKonfiguracji = new Set();
-/** Klucze kanalow `typ: 'allegro'` z konfiguracji uruchomienia — woła wyłącznie moduł kanałów przy budowie. */
-export function ustawKanalyAllegro(klucze) { kanalyAllegroZKonfiguracji = new Set(klucze ?? []); }
-/** Ustawiony zbior (kopia) — dla zapytan SQL, ktore musza dzielic po kanale tak samo jak predykat. */
-export const kanalyAllegro = () => [...kanalyAllegroZKonfiguracji];
-export const czyKanalAllegro = (z, klucze = kanalyAllegroZKonfiguracji) => {
-  const sklep = String(z?.sklep ?? '');
-  return sklep.startsWith('allegro_') || klucze.has(sklep);
-};
+import { umiejetnosciZamowienia } from './moduly-kanalow.ts';
+import { MODULY_KURIEROW, metodyNaUmowie, metodaKuriera } from './moduly-kurierow.ts';
+import { odczytajKwotePobrania } from './pobranie-nadania.js';
+export { ustawKanalyAllegro, kanalyAllegro, czyKanalAllegro } from './moduly-kanalow.ts';
 
 // Nazwy metod DLA CZLOWIEKA — jedno zrodlo dla kolumny „Dostawa" w tabeli, pola wyboru
 // w filtrach i chipa aktywnego filtra. Wpisane osobno w kazdym z tych miejsc rozjechalyby
 // sie przy pierwszej zmianie nazwy, a filtr „DPD (pobranie)" pokazywalby wtedy wiersze
 // opisane inaczej niz wybrana pozycja listy. 'nieznana' JEST tu, bo to realna wartosc
 // kolumny (metoda, ktorej panel nie rozpoznal), a nie brak danych.
-export const ETYKIETY_WYSYLKI = {
-  // ⚠️ „Kurier DPD", a nie samo „DPD" (prosba właściciela 25.08.2026). Odkad kolumna „Dostawa"
-  // pokazuje pelne nazwy uslug Allegro („Allegro Kurier DPD", „Allegro One Box"), samotne
-  // „DPD" czytalo sie jak nazwa PRZEWOZNIKA obok nazw USLUG — a to jest nasza wlasna usluga
-  // kurierska, na NASZEJ umowie. Para „Kurier DPD" / „Allegro Kurier DPD" mowi teraz wprost,
-  // czyja umowa jedzie paczka, i to jest cala roznica, ktora operator musi tu zobaczyc.
-  dpd: 'Kurier DPD',
-  inpost_paczkomat: 'InPost Paczkomat',
+//
+// PRZ-135.04a: nazwy metod KURIEROW („Kurier DPD" — prosba właściciela 25.08.2026 — i brzmienie
+// metod Allegro, razem z powodami) stoja w rejestrze `moduly-kurierow.ts` (`metoda.etykieta`).
+// Tu zostaja tylko metody kanalu bez kuriera. Metoda bez etykiety = wyjatek przy imporcie.
+const ETYKIETY_KANALU = {
   odbior_osobisty: 'Odbiór osobisty',
-  // Metody Allegro. Brzmienie ustalone z wlascicielem („Allegro DPD, Allegro Paczkomat,
-  // Allegro Orlen") — kazda zaczyna sie od „Allegro", zeby w kolumnie „Dostawa" od razu bylo
-  // widac, ze tej paczki NIE nadaje sie z panelu. `allegro_punkt` zbiera automaty i punkty
-  // (ORLEN, DHL BOX, One Box) w jedna nazwe: dla operatora roznica jest zadna, a slownik
-  // rozbity na przewoznikow rozjezdzalby sie z kazda nowa usluga Allegro.
-  allegro_dpd: 'Allegro Kurier DPD',
+  // Paczkomat z Allegro nadajemy sami naszym InPostem (`NADAJEMY_SAMI` w kurier-nadania.js),
+  // wiec nie jest metoda zadnego kuriera; brzmienie z rodziny „Allegro …" jak metody WzA.
   allegro_paczkomat: 'Allegro Paczkomat InPost',
-  allegro_punkt: 'Allegro punkt / automat',
-  allegro_kurier: 'Allegro One Kurier',
-  allegro_inne: 'Allegro — inna metoda',
-  nieznana: 'Nieznana metoda',
 };
+
+/**
+ * Etykiety metod wysylki dla podanego rejestru kurierow (domyslnie produkcyjnego) + `nieznana`.
+ * @param {import('./moduly-kurierow.ts').RejestrKurierow} [rejestr]
+ * @returns {Record<string, string>}
+ */
+export function etykietyWysylki(rejestr = MODULY_KURIEROW) {
+  /** @type {Record<string, string>} */
+  const wynik = {};
+  for (const m of metodyWysylki(rejestr)) {
+    const etykieta = metodaKuriera(m, rejestr)?.etykieta ?? ETYKIETY_KANALU[m];
+    if (!etykieta) throw new Error(`Metoda wysylki ${m} nie ma etykiety`);
+    wynik[m] = etykieta;
+  }
+  wynik.nieznana = 'Nieznana metoda';
+  return wynik;
+}
+export const ETYKIETY_WYSYLKI = etykietyWysylki();
 
 /**
  * Nazwa dostawy DLA CZLOWIEKA, razem z dopiskiem o pobraniu.
@@ -389,7 +406,7 @@ export const metodaZmienionaRecznie = (z) => metodaWysylki(z) !== metodaZeSklepu
  *
  * ⚠️ PIATY ARGUMENT OD 2026-08-04 (Allegro): CALE ZAMOWIENIE, po to i tylko po to, zeby
  * bramka znala KANAL. Bez niego funkcja widzi wylacznie nazwe metody, a nazwa metody jest
- * tym, co ten formularz wlasnie zmienia — patrz `czyKanalAllegro` wyzej. Argument jest
+ * tym, co ten formularz wlasnie zmienia — rozstrzyga umiejętność kanału. Argument jest
  * OPCJONALNY (wywolanie bez niego zachowuje sie jak dotad), bo nie kazdy wolajacy ma
  * zamowienie pod reka; jedyny dzisiejszy wolajacy — trasa karty — ma je i podaje.
  */
@@ -408,7 +425,7 @@ export function sprawdzZmianeMetody(metoda, czyPobranieWybrane, surowaKwota, sur
   // kurier (inpost_kurier, Etap 4) otworzylby te furtke z powrotem — po cichu. Poprawka
   // metody W OBREBIE kanalu (allegro_inne → allegro_paczkomat) zostaje mozliwa, bo to jest
   // jedyna reczna korekta, ktora przy tym kanale ma sens.
-  if (czyKanalAllegro(zamowienie) && !metoda.startsWith('allegro_')) {
+  if (umiejetnosciZamowienia(zamowienie).wysylkaPlatformy && !metoda.startsWith('allegro_')) {
     return {
       nadpisanie: null,
       blad: 'To zamówienie przyszło z Allegro — paczki tego kanału nadajesz w Allegro, więc panel nie '
@@ -432,7 +449,7 @@ export function sprawdzZmianeMetody(metoda, czyPobranieWybrane, surowaKwota, sur
   // punkt odbioru w ogole ma. Wielkie litery, bo tak wygladaja kody InPostu na etykietach
   // i w API („wro10b" przepisane z uwag klienta zostaloby odrzucone przez ShipX); to ta
   // sama rodzina normalizacji, co telefon bez `+48` (domain/telefon.js).
-  const punkt = metoda === 'inpost_paczkomat' ? String(surowyPunkt ?? '').trim().toUpperCase() : '';
+  const punkt = metodaKuriera(metoda)?.punktOdbioru ? String(surowyPunkt ?? '').trim().toUpperCase() : '';
   const zPunktem = (o) => (punkt ? { ...o, punkt_odbioru: punkt } : o);
 
   // Zwykla wysylka NIE ZAPISUJE kwoty w ogole — nie „zapisuje zero". Klucza po prostu nie
@@ -450,15 +467,16 @@ export function sprawdzZmianeMetody(metoda, czyPobranieWybrane, surowaKwota, sur
         + 'to paczka, za którą kurier nic nie zainkasuje.',
     };
   }
-  const kwota = Number(przycieta);
-  // Przecinek dziesietny to najczestsza literowka polskiej klawiatury, a Number('12,50')
-  // to NaN. Ciche pominiecie wyslaloby paczke jako przedplacona — patrz ten sam straznik
-  // po stronie kuriera (kurierzy/dpd.js).
-  if (!Number.isFinite(kwota)) {
-    return { nadpisanie: null, blad: `Nie umiem odczytać kwoty pobrania: „${przycieta}” (użyj kropki dziesiętnej).` };
-  }
-  if (kwota <= 0) {
+  const odczyt = odczytajKwotePobrania(przycieta);
+  // Zachowujemy dotychczasowe zdanie dla zera i kwot ujemnych.
+  if (odczyt.blad && Number(przycieta.replace(',', '.')) <= 0) {
     return { nadpisanie: null, blad: 'Kwota pobrania musi być większa od zera.' };
   }
-  return { nadpisanie: zPunktem({ metoda, pobranie: 1, kwota_pobrania: przycieta }), blad: null };
+  if (odczyt.rodzaj === 'ksztalt') {
+    return { nadpisanie: null, blad: `Nie umiem odczytać kwoty pobrania: „${przycieta}” (wpisz kwotę w złotych, np. 12,50).` };
+  }
+  if (odczyt.blad) {
+    return { nadpisanie: null, blad: 'Kwota pobrania musi być większa od zera.' };
+  }
+  return { nadpisanie: zPunktem({ metoda, pobranie: 1, kwota_pobrania: odczyt.kwota }), blad: null };
 }

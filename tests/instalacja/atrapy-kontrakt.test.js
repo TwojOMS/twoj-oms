@@ -48,15 +48,34 @@ beforeAll(async () => {
 afterAll(() => { db?.close(); fs.rmSync(katalog, { recursive: true, force: true }); });
 
 describe('komplet metod', () => {
+  it('status korekty atrapy wskazuje zapisany dokument także po odtworzeniu klienta', async () => {
+    const [faktura] = await infakt.listaFaktur();
+    const zlecenie = await infakt.wystawKorekte({ corrected_invoice_uuid: faktura.uuid, services: [], notes: 'Zwrot towaru' });
+    const status = await infakt.statusKorekty(zlecenie.referencja);
+    expect(zlecenie.referencja).toMatch(/^atrapa-/);
+    expect(status).toEqual({ stan: 'wystawiona', uuid: expect.any(String), bledy: [] });
+    expect((await infakt.listaKorekt()).some((k) => k.uuid === status.uuid)).toBe(true);
+    const odtworzony = createAtrapaInfaktu({ db, env: ENV_DEMO, log: ciche });
+    expect(await odtworzony.statusKorekty(zlecenie.referencja)).toEqual(status);
+    expect(await odtworzony.statusKorekty('atrapa-nieznana')).toEqual({ stan: 'nieznany', uuid: null, bledy: [] });
+    expect(await odtworzony.statusKorekty('')).toEqual({ stan: 'nieznany', uuid: null, bledy: [] });
+  });
   it('atrapa inFaktu ma każdą metodę createInfaktClient', () => {
     const prawdziwy = metody(createInfaktClient({ apiKey: 'x', fetchImpl: async () => { throw new Error('sieć'); } }));
     expect(prawdziwy.length).toBeGreaterThanOrEqual(13);
     expect(prawdziwy.filter((m) => !metody(infakt).includes(m))).toEqual([]);
   });
 
-  it('atrapa Woo ma każdą metodę createWooClient; odmowy to podzbiór metod klienta', () => {
+  it('atrapa Woo ma każdą metodę createWooClient; odmowy to podzbiór metod klienta', async () => {
     const prawdziwy = metody(createWooClient({ baseUrl: 'https://x.invalid', ck: 'a', cs: 'b', fetchImpl: async () => { throw new Error('sieć'); } }));
-    const atrapa = metody(createAtrapaWoo({ db, kanal: 'polcien', env: ENV_DEMO, log: ciche }));
+    const klientAtrapy = createAtrapaWoo({ db, kanal: 'polcien', env: ENV_DEMO, log: ciche });
+    const atrapa = metody(klientAtrapy);
+    expect(prawdziwy).toEqual(expect.arrayContaining(['sprawdzPolaczenie', 'pobierzMetodyWysylki', 'pobierzBramkiPlatnosci']));
+    expect(atrapa).toContain('pobierzBramkiPlatnosci');
+    expect(await klientAtrapy.pobierzBramkiPlatnosci()).toEqual([
+      { id: 'cod', tytul: 'Płatność przy odbiorze', nazwaWoo: 'Pobranie', wlaczona: true },
+      { id: 'bacs', tytul: 'Przelew bankowy', nazwaWoo: 'Przelew', wlaczona: true },
+    ]);
     expect(prawdziwy.length).toBeGreaterThanOrEqual(10);
     expect(prawdziwy.filter((m) => !atrapa.includes(m))).toEqual([]);
     expect(ODMOWY_WOO.filter((m) => !prawdziwy.includes(m))).toEqual([]);

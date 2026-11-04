@@ -93,7 +93,7 @@ describe('produkcja-pierwszy-start.mjs', () => {
       const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
       try {
         const g = db.prepare('SELECT kanal, zrodlo FROM granice_historii ORDER BY kanal').all().map((w: any) => `${w.kanal}:${w.zrodlo}`);
-        // PRZ-089: GDD i INDYWIDUALNE (kanały Szkicownia) tylko z konfiguracji — czysta instalacja ich nie zakłada.
+        // PRZ-089: GDD i INDYWIDUALNE (kanały Pracownia Świetlik) tylko z konfiguracji — czysta instalacja ich nie zakłada.
         expect(g).toEqual(['B2B', 'DROPSHIPPING', 'RECZNE', 'SKLEP_PRZYKLADOWA'].map(k => `${k}:oms-bez-historii`));
       } finally { db.close(); }
       // Drugi raz: konto już jest — odmowa, bez nowego hasła na stdout.

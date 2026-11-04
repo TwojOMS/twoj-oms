@@ -38,25 +38,25 @@ const cialoNieJson = ({ ok = true, status = 200 } = {}) => ({
 describe('tokeny kanału Allegro', () => {
   it('token ważny jest oddawany bez ani jednego wyjścia do sieci', async () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'ZYWY', refreshToken: 'r', wygasaAt: zaDni(1), refreshWygasaAt: zaDni(80),
     });
     const fetchImpl = () => { throw new Error('siec nie miala byc wolana'); };
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     expect(await t.waznyToken()).toBe('ZYWY');
   });
 
   it('token wygasły jest odświeżany, a NOWA para NADPISUJE starą', async () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
     });
     const fetchImpl = async () => ({
       ok: true,
       json: async () => ({ access_token: 'NOWY', refresh_token: 'NOWY_R', expires_in: 43199 }),
     });
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     expect(await t.waznyToken()).toBe('NOWY');
     // ⚠️ Stary refresh token jest juz SPALONY po stronie Allegro. Zostawienie go w bazie
@@ -72,17 +72,17 @@ describe('tokeny kanału Allegro', () => {
 
   it('bliskie wygaśnięcie refresh tokena jest SPRAWĄ, zanim stanie się awarią', () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'a', refreshToken: 'r', wygasaAt: zaDni(1), refreshWygasaAt: zaDni(DNI_OSTRZEZENIA - 1),
     });
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl: () => {} });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl: () => {} });
 
     expect(t.stan().wymagaPowiazania).toBe(true);
   });
 
   it('brak tokenów NIE RZUCA — kanał ma powiedzieć „połącz mnie", a nie wywalić panel', () => {
     const db = baza();
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl: () => {} });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl: () => {} });
     expect(t.stan().wymagaPowiazania).toBe(true);
   });
 
@@ -92,10 +92,10 @@ describe('tokeny kanału Allegro', () => {
   // przechodzi niezauwazone).
   it('kanał ze świeżą parą NIE prosi o ponowne połączenie', () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'a', refreshToken: 'r', wygasaAt: zaDni(1), refreshWygasaAt: zaDniZZapasem(80),
     });
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl: () => {} });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl: () => {} });
 
     expect(t.stan().wymagaPowiazania).toBe(false);
     expect(t.stan().zostaloDni).toBe(80);
@@ -103,15 +103,15 @@ describe('tokeny kanału Allegro', () => {
 
   it('granica ostrzeżenia: DOKŁADNIE DNI_OSTRZEZENIA dni to już sprawa, dzień więcej — jeszcze nie', () => {
     const db = baza();
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl: () => {} });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl: () => {} });
 
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'a', refreshToken: 'r', wygasaAt: zaDni(1), refreshWygasaAt: zaDniZZapasem(DNI_OSTRZEZENIA),
     });
     expect(t.stan().zostaloDni).toBe(DNI_OSTRZEZENIA);
     expect(t.stan().wymagaPowiazania).toBe(true);
 
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'a', refreshToken: 'r', wygasaAt: zaDni(1), refreshWygasaAt: zaDniZZapasem(DNI_OSTRZEZENIA + 1),
     });
     expect(t.stan().zostaloDni).toBe(DNI_OSTRZEZENIA + 1);
@@ -122,21 +122,21 @@ describe('tokeny kanału Allegro', () => {
   // przebiegu pollera, ktory chodzi po wielu stronach zamowien. Odswiezamy Z WYPRZEDZENIEM.
   it('token wygasający za dwie minuty jest odświeżany PRZED użyciem (margines)', async () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'PRAWIE_MARTWY',
       refreshToken: 'STARY_R',
       wygasaAt: new Date(Date.now() + 2 * 60 * 1000).toISOString(),
       refreshWygasaAt: zaDni(80),
     });
     const fetchImpl = async () => odpowiedz({ access_token: 'NOWY', refresh_token: 'NOWY_R', expires_in: 43199 });
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     expect(await t.waznyToken()).toBe('NOWY');
   });
 
   it('odświeżenie idzie na /token, z Basic z poświadczeń kanału i grant_type=refresh_token', async () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
     });
     const wywolania = [];
@@ -144,7 +144,7 @@ describe('tokeny kanału Allegro', () => {
       wywolania.push({ url, opcje });
       return odpowiedz({ access_token: 'NOWY', refresh_token: 'NOWY_R', expires_in: 43199 });
     };
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     await t.waznyToken();
 
@@ -160,11 +160,11 @@ describe('tokeny kanału Allegro', () => {
 
   it('nowa para dostaje ważność z expires_in, a refresh tokena — z udokumentowanych 3 miesięcy', async () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(10),
     });
     const fetchImpl = async () => odpowiedz({ access_token: 'NOWY', refresh_token: 'NOWY_R', expires_in: 43199 });
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     await t.waznyToken();
 
@@ -188,12 +188,12 @@ describe('tokeny kanału Allegro', () => {
   // petla ponowien spalilaby swiezo wydana pare. Jedno wyjscie do sieci, slad w bazie, koniec.
   it('odrzucone odświeżenie NIE PONAWIA, nie kasuje starej pary i zostawia ślad dla człowieka', async () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
     });
     let prob = 0;
     const fetchImpl = async () => { prob += 1; return odpowiedz({ error: 'invalid_grant' }, { ok: false, status: 400 }); };
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     await expect(t.waznyToken()).rejects.toThrow(/odświeżenie tokenu odrzucone/i);
     expect(prob).toBe(1);
@@ -209,14 +209,14 @@ describe('tokeny kanału Allegro', () => {
   it('ani wyjątek, ani ślad w bazie nie niosą poświadczeń kanału ani tokenów', async () => {
     const db = baza();
     const tajne = { clientId: 'KLIENT_X', clientSecret: 'SEKRET_X', auth: 'https://przyklad/auth/oauth' };
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'ACCESS_X', refreshToken: 'REFRESH_X', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
     });
     const fetchImpl = async () => odpowiedz(
       { error: 'invalid_client', error_description: 'SEKRET_X jest zly' },
       { ok: false, status: 401 },
     );
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia: tajne, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia: tajne, fetchImpl });
 
     const blad = await t.waznyToken().then(() => null, (e) => e);
     const basic = Buffer.from('KLIENT_X:SEKRET_X').toString('base64');
@@ -230,10 +230,10 @@ describe('tokeny kanału Allegro', () => {
 
   it('stan dla ekranu nie niesie ani access, ani refresh tokena', () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'ACCESS_X', refreshToken: 'REFRESH_X', wygasaAt: zaDni(1), refreshWygasaAt: zaDniZZapasem(80),
     });
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl: () => {} });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl: () => {} });
 
     const dlaEkranu = t.stanDlaEkranu();
     expect(JSON.stringify(dlaEkranu)).not.toContain('ACCESS_X');
@@ -246,7 +246,7 @@ describe('tokeny kanału Allegro', () => {
     const db = baza();
     let prob = 0;
     const fetchImpl = async () => { prob += 1; return odpowiedz({}); };
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     await expect(t.waznyToken()).rejects.toThrow(/nie jest połączony/i);
     expect(prob).toBe(0);
@@ -264,7 +264,7 @@ describe('device flow kanału Allegro', () => {
         verification_uri_complete: 'https://allegro.pl/device?user_code=ABCD',
       });
     };
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     const dane = await t.rozpocznijPowiazanie();
 
@@ -280,10 +280,10 @@ describe('device flow kanału Allegro', () => {
   it('kod jeszcze niepotwierdzony nie jest awarią i NICZEGO nie zapisuje do bazy', async () => {
     const db = baza();
     const fetchImpl = async () => odpowiedz({ error: 'authorization_pending' }, { ok: false, status: 400 });
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     expect(await t.dokonczPowiazanie('DC')).toEqual({ gotowe: false, powod: 'authorization_pending' });
-    expect(wczytajTokeny(db, 'allegro_szkicownia')).toBe(null);
+    expect(wczytajTokeny(db, 'allegro_swietlik')).toBe(null);
     expect(t.stan().wymagaPowiazania).toBe(true);
   });
 
@@ -293,14 +293,14 @@ describe('device flow kanału Allegro', () => {
   // dalej wygladalby na zepsuty.
   it('potwierdzone wiązanie zapisuje parę, gasi ostrzeżenie i czyści poprzedni błąd', async () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(1),
     });
-    zapiszBladTokenu(db, 'allegro_szkicownia', 'Odświeżenie tokenu odrzucone (HTTP 400).');
-    expect(wczytajTokeny(db, 'allegro_szkicownia').ostatni_blad).toMatch(/400/);
+    zapiszBladTokenu(db, 'allegro_swietlik', 'Odświeżenie tokenu odrzucone (HTTP 400).');
+    expect(wczytajTokeny(db, 'allegro_swietlik').ostatni_blad).toMatch(/400/);
 
     const fetchImpl = async () => odpowiedz({ access_token: 'A', refresh_token: 'R', expires_in: 43199 });
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     expect(await t.dokonczPowiazanie('DC')).toEqual({ gotowe: true });
 
@@ -318,7 +318,7 @@ describe('device flow kanału Allegro', () => {
       wywolania.push({ url, opcje });
       return odpowiedz({ access_token: 'A', refresh_token: 'R', expires_in: 43199 });
     };
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     await t.dokonczPowiazanie('DC-123');
 
@@ -346,7 +346,7 @@ describe('nagłówek User-Agent — WSZYSTKIE trzy żądania OAuth do Allegro', 
 
   it('ODŚWIEŻENIE tokenu niesie User-Agent z konfiguracji', async () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
     });
     const wywolania = [];
@@ -354,7 +354,7 @@ describe('nagłówek User-Agent — WSZYSTKIE trzy żądania OAuth do Allegro', 
       wywolania.push({ url, opcje });
       return odpowiedz({ access_token: 'NOWY', refresh_token: 'NOWY_R', expires_in: 43199 });
     };
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     expect(await t.waznyToken()).toBe('NOWY');
 
@@ -372,7 +372,7 @@ describe('nagłówek User-Agent — WSZYSTKIE trzy żądania OAuth do Allegro', 
       wywolania.push({ url, opcje });
       return odpowiedz({ device_code: 'DC', user_code: 'ABCD', interval: 5, expires_in: 600 });
     };
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     await t.rozpocznijPowiazanie();
 
@@ -387,7 +387,7 @@ describe('nagłówek User-Agent — WSZYSTKIE trzy żądania OAuth do Allegro', 
       wywolania.push({ url, opcje });
       return odpowiedz({ access_token: 'A', refresh_token: 'R', expires_in: 43199 });
     };
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     expect(await t.dokonczPowiazanie('DC-123')).toEqual({ gotowe: true });
 
@@ -408,7 +408,7 @@ describe('nagłówek User-Agent — WSZYSTKIE trzy żądania OAuth do Allegro', 
       wywolania.push({ url, opcje });
       return odpowiedz({ device_code: 'DC', user_code: 'ABCD', interval: 5, expires_in: 600 });
     };
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia: inny, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia: inny, fetchImpl });
 
     await t.rozpocznijPowiazanie();
 
@@ -425,7 +425,7 @@ describe('nagłówek User-Agent — WSZYSTKIE trzy żądania OAuth do Allegro', 
       wywolania.push({ url, opcje });
       return odpowiedz({ device_code: 'DC', user_code: 'ABCD', interval: 5, expires_in: 600 });
     };
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     await t.rozpocznijPowiazanie();
 
@@ -443,13 +443,13 @@ describe('nagłówek User-Agent — WSZYSTKIE trzy żądania OAuth do Allegro', 
 describe('odpowiedź o nieoczekiwanym kształcie nie ma prawa spalić pary bez śladu', () => {
   it('200 BEZ expires_in: para jest ZAPISANA (z zapasową ważnością), a nie zgubiona', async () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
     });
     // Odpowiedz z para tokenow, ale bez `expires_in` — kiedys `new Date(NaN).toISOString()`
     // rzucalo tu RangeError i zapis nigdy sie nie wykonywal.
     const fetchImpl = async () => odpowiedz({ access_token: 'NOWY', refresh_token: 'NOWY_R' });
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     expect(await t.waznyToken()).toBe('NOWY');
 
@@ -469,12 +469,12 @@ describe('odpowiedź o nieoczekiwanym kształcie nie ma prawa spalić pary bez �
 
   it('200 BEZ pary tokenów: ślad w bazie ZANIM poleci wyjątek, stara para nietknięta', async () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
     });
     // 200 z pustym ciałem: Allegro zrotowalo pare, ale nam jej nie oddalo.
     const fetchImpl = async () => odpowiedz({});
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     await expect(t.waznyToken()).rejects.toThrow(/bez pary tokenów/i);
 
@@ -488,11 +488,11 @@ describe('odpowiedź o nieoczekiwanym kształcie nie ma prawa spalić pary bez �
 
   it('200 z ciałem, które NIE JEST JSON-em: ślad i komunikat, a nie SyntaxError', async () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
     });
     const fetchImpl = async () => cialoNieJson();
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     const blad = await t.waznyToken().then(() => null, (e) => e);
     expect(blad).toBeInstanceOf(Error);
@@ -504,11 +504,11 @@ describe('odpowiedź o nieoczekiwanym kształcie nie ma prawa spalić pary bez �
 
   it('ODMOWA z ciałem, które NIE JEST JSON-em, też zostawia ślad (5xx z HTML-em)', async () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
     });
     const fetchImpl = async () => cialoNieJson({ ok: false, status: 502 });
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     const blad = await t.waznyToken().then(() => null, (e) => e);
     expect(blad).not.toBeInstanceOf(SyntaxError);
@@ -519,7 +519,7 @@ describe('odpowiedź o nieoczekiwanym kształcie nie ma prawa spalić pary bez �
   it('device flow: 200 bez expires_in zapisuje parę, 200 bez refresh tokena NICZEGO nie zapisuje', async () => {
     const db = baza();
     const t = createTokeny({
-      db, kanal: 'allegro_szkicownia', ustawienia,
+      db, kanal: 'allegro_swietlik', ustawienia,
       fetchImpl: async () => odpowiedz({ access_token: 'A', refresh_token: 'R' }),
     });
     expect(await t.dokonczPowiazanie('DC')).toEqual({ gotowe: true });
@@ -528,13 +528,13 @@ describe('odpowiedź o nieoczekiwanym kształcie nie ma prawa spalić pary bez �
 
     const db2 = baza();
     const t2 = createTokeny({
-      db: db2, kanal: 'allegro_szkicownia', ustawienia,
+      db: db2, kanal: 'allegro_swietlik', ustawienia,
       fetchImpl: async () => odpowiedz({ access_token: 'A' }),
     });
     // Sam access token bez refresh tokena to kanal, ktory umrze za 12 godzin i nikt nie
     // bedzie wiedzial dlaczego. Lepiej powiedziec „jeszcze nie gotowe".
     expect(await t2.dokonczPowiazanie('DC')).toEqual({ gotowe: false, powod: 'odpowiedź bez pary tokenów' });
-    expect(wczytajTokeny(db2, 'allegro_szkicownia')).toBe(null);
+    expect(wczytajTokeny(db2, 'allegro_swietlik')).toBe(null);
   });
 
   // Ta sciezka jest ODPYTYWANA CO KILKA SEKUND, dopoki czlowiek nie kliknie w przegladarce —
@@ -543,12 +543,12 @@ describe('odpowiedź o nieoczekiwanym kształcie nie ma prawa spalić pary bez �
   it('device flow: ciało, które NIE JEST JSON-em, to „jeszcze nie gotowe", a nie awaria', async () => {
     const db = baza();
     const t = createTokeny({
-      db, kanal: 'allegro_szkicownia', ustawienia,
+      db, kanal: 'allegro_swietlik', ustawienia,
       fetchImpl: async () => cialoNieJson({ ok: false, status: 502 }),
     });
 
     expect(await t.dokonczPowiazanie('DC')).toEqual({ gotowe: false, powod: 'HTTP 502' });
-    expect(wczytajTokeny(db, 'allegro_szkicownia')).toBe(null);
+    expect(wczytajTokeny(db, 'allegro_swietlik')).toBe(null);
   });
 });
 
@@ -558,7 +558,7 @@ describe('odpowiedź o nieoczekiwanym kształcie nie ma prawa spalić pary bez �
 describe('dwa równoległe odświeżenia nie wysyłają tego samego refresh tokena dwa razy', () => {
   it('DWIE OSOBNE instancje createTokeny nad tą samą bazą robią DOKŁADNIE JEDNO wyjście do sieci', async () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
     });
 
@@ -575,8 +575,8 @@ describe('dwa równoległe odświeżenia nie wysyłają tego samego refresh toke
 
     // ⚠️ DWIE OSOBNE INSTANCJE, tak jak w panelu: `createTokeny` bywa wolane per zadanie
     // HTTP. Deduplikacja trzymana w polu instancji przepuscilaby ten wyscig.
-    const a = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
-    const b = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const a = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
+    const b = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     const oba = Promise.all([a.waznyToken(), b.waznyToken()]);
     zwolnij();
@@ -590,7 +590,7 @@ describe('dwa równoległe odświeżenia nie wysyłają tego samego refresh toke
 
   it('inny kanał w tej samej bazie NIE jest blokowany przez trwające odświeżenie', async () => {
     const db = baza();
-    for (const kanal of ['allegro_szkicownia', 'allegro_pro']) {
+    for (const kanal of ['allegro_swietlik', 'allegro_pro']) {
       zapiszTokeny(db, kanal, {
         accessToken: 'STARY', refreshToken: `STARY_R_${kanal}`, wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
       });
@@ -602,19 +602,19 @@ describe('dwa równoległe odświeżenia nie wysyłają tego samego refresh toke
       await wstrzymanie;
       return odpowiedz({ access_token: `NOWY_${stary}`, refresh_token: 'NOWY_R', expires_in: 43199 });
     };
-    const a = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const a = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
     const b = createTokeny({ db, kanal: 'allegro_pro', ustawienia, fetchImpl });
 
     const oba = Promise.all([a.waznyToken(), b.waznyToken()]);
     zwolnij();
-    expect(await oba).toEqual(['NOWY_STARY_R_allegro_szkicownia', 'NOWY_STARY_R_allegro_pro']);
+    expect(await oba).toEqual(['NOWY_STARY_R_allegro_swietlik', 'NOWY_STARY_R_allegro_pro']);
   });
 
   // ⚠️ TA SAMA LEKCJA CO BLOKADA POLLERA (`wTrakcie` w services/poller.js): blokada
   // niezwolniona po BLEDZIE wycisza kanal na zawsze, i to cicho — panel dalej dziala.
   it('nieudane odświeżenie ZWALNIA blokadę: następna próba znów wychodzi do sieci', async () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
     });
     let prob = 0;
@@ -623,11 +623,11 @@ describe('dwa równoległe odświeżenia nie wysyłają tego samego refresh toke
       if (prob === 1) return odpowiedz({ error: 'server_error' }, { ok: false, status: 503 });
       return odpowiedz({ access_token: 'NOWY', refresh_token: 'NOWY_R', expires_in: 43199 });
     };
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     await expect(t.waznyToken()).rejects.toThrow(/odrzucone/i);
     // Druga instancja — blokada nie ma prawa przezyc ani bledu, ani zmiany instancji.
-    const t2 = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t2 = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
     expect(await t2.waznyToken()).toBe('NOWY');
     expect(prob).toBe(2);
   });
@@ -636,7 +636,7 @@ describe('dwa równoległe odświeżenia nie wysyłają tego samego refresh toke
   // token ZAPISANY w bazie, a nie poleciec spalonym refresh tokenem ze swojego odczytu.
   it('drugie wywołanie, które przyszło tuż po zakończonym odświeżeniu, NIE wychodzi do sieci', async () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
     });
     let prob = 0;
@@ -644,7 +644,7 @@ describe('dwa równoległe odświeżenia nie wysyłają tego samego refresh toke
       prob += 1;
       return odpowiedz({ access_token: 'NOWY', refresh_token: 'NOWY_R', expires_in: 43199 });
     };
-    const t = createTokeny({ db, kanal: 'allegro_szkicownia', ustawienia, fetchImpl });
+    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     expect(await t.waznyToken()).toBe('NOWY');
     expect(await t.waznyToken()).toBe('NOWY');
@@ -658,11 +658,11 @@ describe('dwa równoległe odświeżenia nie wysyłają tego samego refresh toke
 describe('komunikat odmowy mówi PRAWDĘ o tym, co człowiek ma zrobić', () => {
   const zOdmowa = (dane, status) => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
     });
     const t = createTokeny({
-      db, kanal: 'allegro_szkicownia', ustawienia,
+      db, kanal: 'allegro_swietlik', ustawienia,
       fetchImpl: async () => odpowiedz(dane, { ok: false, status }),
     });
     return t;
@@ -733,16 +733,16 @@ describe('komunikat odmowy mówi PRAWDĘ o tym, co człowiek ma zrobić', () => 
 describe('ślad po błędzie niesie WŁASNY znacznik czasu', () => {
   it('zapiszBladTokenu odświeża zaktualizowane_at, a nie zostawia daty ostatniego sukcesu', () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'a', refreshToken: 'r', wygasaAt: zaDni(1), refreshWygasaAt: zaDni(80),
     });
     // Udany zapis sprzed trzech dni — dokladnie ta sytuacja, ktora myli operatora.
     const trzyDniTemu = new Date(Date.now() - 3 * 86400000).toISOString();
-    db.prepare('UPDATE tokeny_kanalu SET zaktualizowane_at = ? WHERE kanal = ?').run(trzyDniTemu, 'allegro_szkicownia');
+    db.prepare('UPDATE tokeny_kanalu SET zaktualizowane_at = ? WHERE kanal = ?').run(trzyDniTemu, 'allegro_swietlik');
 
-    zapiszBladTokenu(db, 'allegro_szkicownia', 'Odświeżenie tokenu odrzucone (HTTP 400).');
+    zapiszBladTokenu(db, 'allegro_swietlik', 'Odświeżenie tokenu odrzucone (HTTP 400).');
 
-    const w = wczytajTokeny(db, 'allegro_szkicownia');
+    const w = wczytajTokeny(db, 'allegro_swietlik');
     expect(w.ostatni_blad).toMatch(/400/);
     expect(w.zaktualizowane_at).not.toBe(trzyDniTemu);
     expect(Date.now() - Date.parse(w.zaktualizowane_at)).toBeLessThan(5000);
@@ -761,13 +761,13 @@ describe('ślad po błędzie niesie WŁASNY znacznik czasu', () => {
 describe('odświeżanie tokenu po błędzie sieci NIE PONAWIA — refresh token jest jednorazowy', () => {
   it('wyjątek z fetch leci w górę po JEDNYM żądaniu i NIE RUSZA pary w bazie', async () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
     });
     let wywolan = 0;
     const t = createTokeny({
       db,
-      kanal: 'allegro_szkicownia',
+      kanal: 'allegro_swietlik',
       ustawienia,
       fetchImpl: async () => {
         wywolan += 1;
@@ -779,20 +779,20 @@ describe('odświeżanie tokenu po błędzie sieci NIE PONAWIA — refresh token 
     // ⚠️ DOKLADNIE JEDNO. Kazde kolejne poleciałoby tokenem, ktory Allegro mogl juz zrotowac.
     expect(wywolan).toBe(1);
     // Para zostaje NIETKNIETA — najblizszy przebieg pollera sprobuje nia jeszcze raz.
-    const w = wczytajTokeny(db, 'allegro_szkicownia');
+    const w = wczytajTokeny(db, 'allegro_swietlik');
     expect(w.refresh_token).toBe('STARY_R');
     expect(w.access_token).toBe('STARY');
   });
 
   it('kolejne wywołanie po błędzie sieci znów PRÓBUJE — blokada odświeżania została zwolniona', async () => {
     const db = baza();
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
     });
     let wywolan = 0;
     const t = createTokeny({
       db,
-      kanal: 'allegro_szkicownia',
+      kanal: 'allegro_swietlik',
       ustawienia,
       fetchImpl: async () => {
         wywolan += 1;
@@ -805,7 +805,7 @@ describe('odświeżanie tokenu po błędzie sieci NIE PONAWIA — refresh token 
     // ⚠️ Niezwolniona blokada wyciszylaby kanal DO RESTARTU PROCESU — cicho, bo panel dalej
     // dziala. Ponowienie robi tu POLLER przy nastepnym tyknieciu, a nie petla w kodzie.
     expect(await t.waznyToken()).toBe('NOWY');
-    expect(wczytajTokeny(db, 'allegro_szkicownia').refresh_token).toBe('NOWY_R');
+    expect(wczytajTokeny(db, 'allegro_swietlik').refresh_token).toBe('NOWY_R');
     expect(wywolan).toBe(2);
   });
 });
@@ -839,7 +839,7 @@ describe('tabela tokenow w bazie JUZ ISTNIEJACEJ', () => {
     const pierwsza = openOmsDb(plik);
     pierwsza.prepare(
       "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at)"
-      + " VALUES ('szkicownia', 1267, '1267', '123.45', '2026-07-29')",
+      + " VALUES ('swietlik', 1267, '1267', '123.45', '2026-07-29')",
     ).run();
     pierwsza.prepare(
       'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, utworzona_at)'
@@ -857,15 +857,15 @@ describe('tabela tokenow w bazie JUZ ISTNIEJACEJ', () => {
     expect(przesylka.numer_listu).toBe('0000123456789A');
     expect(druga.prepare('SELECT kwota_brutto FROM zamowienia WHERE id = 1').get().kwota_brutto).toBe('123.45');
 
-    zapiszTokeny(druga, 'allegro_szkicownia', {
+    zapiszTokeny(druga, 'allegro_swietlik', {
       accessToken: 'a', refreshToken: 'r', wygasaAt: zaDni(1), refreshWygasaAt: zaDni(80),
     });
-    expect(wczytajTokeny(druga, 'allegro_szkicownia').access_token).toBe('a');
+    expect(wczytajTokeny(druga, 'allegro_swietlik').access_token).toBe('a');
     druga.close();
 
     // Kolejne otwarcie oznaczonego baseline nie ma prawa skasować zapisanej pary.
     const trzecia = openOmsDb(plik);
-    expect(wczytajTokeny(trzecia, 'allegro_szkicownia').refresh_token).toBe('r');
+    expect(wczytajTokeny(trzecia, 'allegro_swietlik').refresh_token).toBe('r');
     trzecia.close();
   });
 });

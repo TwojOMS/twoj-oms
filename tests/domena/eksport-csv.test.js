@@ -4,7 +4,7 @@ import { csvSprzedazy, nazwaPlikuSprzedazy } from '../../src/domena/eksport-csv.
 
 const wiersz = (dodatki = {}) => ({
   dzien: '2026-06-10',
-  kanal: 'SZKICOWNIA_PL',
+  kanal: 'SWIETLIK_PL',
   numer: 'WO1',
   zrodlo: 'historia',
   bruttoGrosze: 24600,
@@ -21,7 +21,7 @@ describe('CSV sprzedaży', () => {
   it('oddaje nagłówek i wiersz: średnik, kwoty po polsku, źródło po ludzku', () => {
     const csv = csvSprzedazy([wiersz()]);
     expect(linie(csv)[0]).toBe('Dzień;Kanał;Numer;Źródło;Brutto;Netto;Faktura;Opłacone');
-    expect(linie(csv)[1]).toBe('2026-06-10;SZKICOWNIA_PL;WO1;Apilo;246,00;200,00;nie;tak');
+    expect(linie(csv)[1]).toBe('2026-06-10;SWIETLIK_PL;WO1;Apilo;246,00;200,00;nie;tak');
   });
 
   // Numer zamowienia przychodzi ze sklepu i z Apilo — czyli spoza naszej kontroli. Srednik
@@ -54,13 +54,13 @@ describe('CSV sprzedaży — ochrona przed formułami arkusza', () => {
   ])('zabezpiecza numer %j apostrofem przed cytowaniem CSV', (numer, komorka) => {
     expect(csvSprzedazy([wiersz({ numer })])).toBe(
       'Dzień;Kanał;Numer;Źródło;Brutto;Netto;Faktura;Opłacone\r\n'
-      + `2026-06-10;SZKICOWNIA_PL;${komorka};Apilo;246,00;200,00;nie;tak`,
+      + `2026-06-10;SWIETLIK_PL;${komorka};Apilo;246,00;200,00;nie;tak`,
     );
   });
 
   it('zabezpiecza e-mail w wariancie z klientem', () => {
     const csv = csvSprzedazy([wiersz({ email: '=x@example.com' })], { zKlientem: true });
-    expect(linie(csv)[1]).toBe("2026-06-10;SZKICOWNIA_PL;WO1;Apilo;246,00;200,00;nie;tak;'=x@example.com");
+    expect(linie(csv)[1]).toBe("2026-06-10;SWIETLIK_PL;WO1;Apilo;246,00;200,00;nie;tak;'=x@example.com");
   });
 
   it('zabezpiecza także kanał i nieznane źródło', () => {
@@ -70,12 +70,12 @@ describe('CSV sprzedaży — ochrona przed formułami arkusza', () => {
 
   it('zostawia ujemne brutto i netto liczbami bez apostrofu', () => {
     const csv = csvSprzedazy([wiersz({ bruttoGrosze: -1250, nettoGrosze: -1000 })]);
-    expect(linie(csv)[1]).toBe('2026-06-10;SZKICOWNIA_PL;WO1;Apilo;-12,50;-10,00;nie;tak');
+    expect(linie(csv)[1]).toBe('2026-06-10;SWIETLIK_PL;WO1;Apilo;-12,50;-10,00;nie;tak');
   });
 
   it('nie zmienia numeru ze znakiem równości w środku', () => {
     const csv = csvSprzedazy([wiersz({ numer: 'AB=12' })]);
-    expect(linie(csv)[1]).toBe('2026-06-10;SZKICOWNIA_PL;AB=12;Apilo;246,00;200,00;nie;tak');
+    expect(linie(csv)[1]).toBe('2026-06-10;SWIETLIK_PL;AB=12;Apilo;246,00;200,00;nie;tak');
   });
 });
 

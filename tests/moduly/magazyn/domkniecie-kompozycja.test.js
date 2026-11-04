@@ -53,7 +53,7 @@ describe('PRZ-026 — brakujące trasy w rzeczywistym składzie', () => {
       const r = await a.app.inject({ url: '/magazyn?fraza=Kandelabr&kanal=polnoc', headers });
       expect(r.statusCode).toBe(200); expect(r.body).toContain('Kandelabr testowy');
       for (const kanal of ['polnoc','poludnie','wschod','zachod']) expect(r.body).toContain(kanal);
-      for (const kanal of ['allegro_szkicownia','allegro_amarka']) expect(r.body).not.toContain(kanal);
+      for (const kanal of ['allegro_swietlik','allegro_polcien2']) expect(r.body).not.toContain(kanal);
       expect(a.db.prepare('SELECT * FROM produkty_sklepowe ORDER BY id').all()).toEqual(przed);
       expect(fetch).not.toHaveBeenCalled();
     } finally { await a.app.close(); a.db.close(); }

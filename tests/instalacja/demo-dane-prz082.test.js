@@ -1,3 +1,4 @@
+import { wzorzecNazw } from '../pomoc/skroty-nazw-firmy.js';
 // PRZ-082 — poprawki demo od właściciela (14.10): każdy punkt listy ma tu swój test, żeby kolejna zmiana generatora
 // (albo nowy reset) nie zgubiła go po cichu. Demo stoi jak w kontenerze: generator + atrapy piaskownicy + konto gościa.
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -220,7 +221,7 @@ describe('demo po poprawkach PRZ-082', () => {
       const tekst = ['zamowienia', 'podjazdy', 'proformy', 'przesylki', 'firmy_reczne']
         .flatMap((t) => db.prepare(`SELECT * FROM ${t}`).all().map((w) => JSON.stringify(w))).join('\n');
       expect((tekst.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/gi) ?? []).filter((m) => !/@example\.invalid$/i.test(m))).toEqual([]);
-      expect(tekst).not.toMatch(/stencil|lumina|drugamarka|trzeciamarka|zywiecki/i);
+      expect(wzorzecNazw([{"wzor": "\\p{L}{7}", "skrot": "c6c60e0a2a507cd86e6f25a4232e3fbe8ddc5ad0653c53906011a280c12ad2e0", "bezWielkosci": true}, {"wzor": "\\p{L}{8}", "skrot": "a2ac0b2e157811634f85a0cd5e7ec6ae46b6123e724924eba975ef822566f72e", "bezWielkosci": true}, {"wzor": "\\p{L}{7}", "skrot": "bbad42404dae7eccdb5c9da096a448d035cbe65c428a1f58cad5e8617dff6d6a", "bezWielkosci": true}, {"wzor": "\\p{L}{7}", "skrot": "621ff5bc8c1a1c6efc971f9b84d23fd0cd4d1253e9591b25270647d40c165c4b", "bezWielkosci": true}, {"wzor": "\\p{L}{6}", "skrot": "22fd0120386bf44db9b2553babeb20e750484883331baed1e36f87aaf1dc7473", "bezWielkosci": true}, {"wzor": "\\p{L}{6}", "skrot": "90169bc179e0b72e1c17e7e07adcb8c6c8d57e97e32822f302cd8548700c5fda", "bezWielkosci": true}]).test(tekst)).toBe(false);
     });
   });
 });

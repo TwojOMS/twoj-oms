@@ -103,7 +103,8 @@ describe('ekran zwrotu', () => {
       ]).toString(),
     });
     expect(zapis.statusCode).toBe(302);
-    expect(zapis.headers.location).toBe(`/zamowienia/${id}?powrot=%2F%3Fstatus%3Dnowe%26kanal%3Dpro`);
+    // PRZ-147.03: po rejestracji ekran zwrotu (następny krok — korekta), z tym samym powrotem.
+    expect(zapis.headers.location).toBe(`/zamowienia/${id}/zwrot?powrot=%2F%3Fstatus%3Dnowe%26kanal%3Dpro`);
   });
 
   it('pokazuje pozycje zamowienia z polem ilosci', async () => {
@@ -114,7 +115,7 @@ describe('ekran zwrotu', () => {
     expect(r.body).toContain('value="s77"');
   });
 
-  it('zapisuje zwrot czesciowy i wraca na karte', async () => {
+  it('zapisuje zwrot czesciowy i prowadzi na ekran zwrotu (PRZ-147.03)', async () => {
     const r = await app.inject({
       method: 'POST', url: `/zamowienia/${id}/zwrot`, headers: AUTH,
       payload: new URLSearchParams([
@@ -124,7 +125,7 @@ describe('ekran zwrotu', () => {
       ]).toString(),
     });
     expect(r.statusCode).toBe(302);
-    expect(r.headers.location).toBe(`/zamowienia/${id}`);
+    expect(r.headers.location).toBe(`/zamowienia/${id}/zwrot`);
     const lista = zwrotyZamowienia(db, id);
     expect(lista).toHaveLength(1);
     expect(lista[0].pozycje).toHaveLength(1);

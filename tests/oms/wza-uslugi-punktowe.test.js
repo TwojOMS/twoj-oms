@@ -8,7 +8,7 @@ import { wybierzKuriera } from '../../src/oms/kurierzy/index.js';
 //
 // ⚠️⚠️ WSZYSTKIE IDENTYFIKATORY ZMIERZONE, NIE PRZEPISANE. Zrodlo: `delivery.method.id`
 // z SUROWYCH zamowien produkcyjnych, zestawione z `GET /shipment-management/delivery-services`
-// (18.09.2026, konto `allegro_szkicownia`, 305 uslug: 299 `owner: ALLEGRO`, 6 `owner: CLIENT`).
+// (18.09.2026, konto `allegro_swietlik`, 305 uslug: 299 `owner: ALLEGRO`, 6 `owner: CLIENT`).
 // Dopasowanie PO NAZWIE jest zawodne i dlatego go nie ma: „Allegro Kurier DPD" daje w katalogu
 // CZTERY trafienia, a uslugi DHL z naszych zamowien nie pasuja do katalogu wcale, bo tam
 // nazywaja sie z sufiksem „(AD)".
@@ -36,7 +36,7 @@ const INPOST_CUDZA_UMOWA = [
 ];
 
 const zamowienie = (metoda) => ({
-  sklep: 'allegro_szkicownia', anulowane: 0, metoda_wysylki: metoda, kwota_pobrania: null,
+  sklep: 'allegro_swietlik', anulowane: 0, metoda_wysylki: metoda, kwota_pobrania: null,
 });
 
 describe('osiem usług punktowych i kurierskich w białej liście WzA', () => {

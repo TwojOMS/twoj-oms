@@ -168,7 +168,7 @@ describe('PRZ-102.11 Ustawienia → Integracje → GUS', () => {
     expect(wczytajKonfiguracjeIntegracji(db, 'gus').sekrety).toEqual({ klucz: KLUCZ });
     const ekran = await get(app, ADRES, admin);
     expect(ekran.statusCode).toBe(200);
-    expect(ekran.body).toContain('pliku konfiguracji');
+    expect(ekran.body).toContain('na serwerze');
     expect(formularz(ekran.body)).toBe('');
     for (const k of [KLUCZ, KLUCZ_PLIKU]) expect(ekran.body.includes(k)).toBe(false);
     const karta = await post(app, `/zamowienia/${id}/dane/gus`, admin, { nip: NIP });

@@ -1,6 +1,8 @@
-import { grosze, zl, kwotaOczekiwanaGrosze } from './suma-pozycji.js';
+import { grosze, zl, kwotaOczekiwanaGrosze, kwotaZamowieniaGrosze } from './suma-pozycji.js';
 import { bladOperatora } from './bledy.js';
-import { czyPobranie } from './wysylka.js';
+import { czyPobranie, kwotaPobrania, pobranieZeSklepu } from './wysylka.js';
+import { normalizujMetode } from './metody-platnosci.js';
+import { odczytajKwotePobrania } from './pobranie-nadania.js';
 // „Dzis” liczone W CZASIE WARSZAWSKIM, ta sama funkcja, ktora drukuje daty na karcie —
 // kontener chodzi z TZ=UTC, wiec gole `new Date()` miedzy polnoca a druga w nocy oddawaloby
 // DZIEN POPRZEDNI, a data „dzisiejsza” z formularza wygladalaby na wsteczna.
@@ -18,6 +20,84 @@ const opisWplaty = (p) => `wpłata z ${p?.data ?? p?.utworzona_at ?? '(bez daty)
 /** Suma WSZYSTKICH wplat zamowienia, w groszach. Rzuca na kwocie pustej/nieliczbowej. */
 export function sumaWplatGrosze(platnosci) {
   return (platnosci ?? []).reduce((acc, p) => acc + grosze(p.kwota, opisWplaty(p)), 0);
+}
+
+/** Przedpłaty poza inkasem kuriera, w groszach. Stare date_paid Woo nie jest przedpłatą — ale tylko
+ *  wtedy, gdy pobranie sprzedał SKLEP; pobranie włączone na karcie po opłacie online to dalej przedpłata. */
+export function przedplatyPrzedPobraniem(z, wplaty = z?.platnosci) {
+  return sumaWplatGrosze((wplaty ?? []).filter((p) =>
+    !(czyPobranie(z) && (p.zrodlo === 'pobranie' || (p.zrodlo === 'sklep' && pobranieZeSklepu(z))))
+    && normalizujMetode(p.metoda).klucz !== 'pobranie'));
+}
+
+/** Maksymalne pobranie po przedpłatach, w groszach (efektywna kwota z zamówienia). */
+export function resztaDoPobrania(z, wplaty = z?.platnosci) {
+  return Math.max(0, grosze(kwotaPobrania(z), 'kwota pobrania') - przedplatyPrzedPobraniem(z, wplaty));
+}
+
+export const brakKwoty = (kwota) => kwota === null || kwota === undefined || String(kwota).trim() === '';
+
+/**
+ * PRZ-143.05 (E3-D4): najwyższe pobranie po przedpłatach, w groszach — także bez kwoty pobrania.
+ * Podstawa = efektywna kwota pobrania, a gdy jej brak — kwota zamówienia (`kwota_brutto`).
+ * `null`, gdy brak obu: wtedy nie ma od czego liczyć i nadanie odmawia. Nigdy nie woła
+ * `grosze()` na pustej kwocie (ten wyjątek mówi o „fakturze bez ceny" i wywracał ekran nadania).
+ */
+export function limitPobraniaGrosze(z, wplaty = z?.platnosci) {
+  const kwota = kwotaPobrania(z);
+  let podstawaGr;
+  let podstawa;
+  if (!brakKwoty(kwota)) {
+    podstawaGr = grosze(kwota, 'kwota pobrania');
+    podstawa = 'pobranie';
+  } else if (!brakKwoty(z?.kwota_brutto)) {
+    podstawaGr = kwotaZamowieniaGrosze(z);
+    podstawa = 'zamowienie';
+  } else {
+    return null;
+  }
+  return { limit: Math.max(0, podstawaGr - przedplatyPrzedPobraniem(z, wplaty)), podstawa };
+}
+
+/** Tekst (b) z planu PRZ-137 E5-D2, bez końcówki „Panel niczego nie nadał.” — dokleja ją wołający. */
+export const bladKwotyPobraniaZamowienia = (surowa) =>
+  `Kwota pobrania na zamówieniu jest nieczytelna („${surowa}”) — popraw ją w „Szczegółach zamówienia” na karcie.`;
+
+/**
+ * PRZ-145.01 (E5-D1): niedopłata przy pobraniu = KWOTA ZAMÓWIENIA minus przedpłaty, w groszach.
+ * Wpisana kwota pobrania NIE jest niedopłatą (dziura (e): K 50, wpłata 50, zamówienie 212.90
+ * dawało „pobierz najwyżej 0” i sklep tracił 162.90 zł).
+ *
+ * Podstawa: `kwota_brutto`, gdy czytelna i > 0; inaczej kwota pobrania K (dawna reguła — zero
+ * przy pobraniu to wada importu, nie „opłacone”). Wynik: `{ niedoplataGr, przedplatyGr,
+ * podstawaGr, podstawa }`, `{ blad }` (zdanie dla operatora, bez końcówki) albo `null`, gdy nie
+ * ma od czego liczyć. Nigdy nie rzuca z powodu K ani brutto.
+ *
+ * ⚠️ K ≤ 0 przy podstawie 'pobranie' daje `null`, nie „niedopłatę 0”: bez kwoty zamówienia nie
+ * wiadomo, ile klient jest winien, a zero dałoby paczkę bez pobrania mimo wpłat (odmowa zamiast
+ * cichej przedpłaty).
+ */
+export function niedoplataPobrania(z, wplaty = z?.platnosci) {
+  let podstawaGr = null;
+  let podstawa = 'zamowienie';
+  if (!brakKwoty(z?.kwota_brutto)) {
+    try {
+      podstawaGr = kwotaZamowieniaGrosze(z);
+    } catch {
+      return { blad: `Kwota zamówienia jest nieczytelna („${z.kwota_brutto}”) — panel nie policzy niedopłaty. Sprawdź zamówienie w sklepie albo popraw je na karcie.` };
+    }
+  }
+  if (podstawaGr === null || podstawaGr <= 0) {
+    const surowaK = kwotaPobrania(z);
+    if (brakKwoty(surowaK)) return null;
+    const odczyt = odczytajKwotePobrania(surowaK);
+    if (odczyt.rodzaj === 'ksztalt') return { blad: bladKwotyPobraniaZamowienia(surowaK) };
+    if (odczyt.blad) return null;
+    podstawaGr = odczyt.groszeKwoty;
+    podstawa = 'pobranie';
+  }
+  const przedplatyGr = przedplatyPrzedPobraniem(z, wplaty);
+  return { niedoplataGr: Math.max(0, podstawaGr - przedplatyGr), przedplatyGr, podstawaGr, podstawa };
 }
 
 // Data wplaty, ktora PRZEKROCZYLA prog kwoty zamowienia — czyli chwila, od ktorej

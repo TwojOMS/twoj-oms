@@ -19,7 +19,7 @@ import { ktoKlikal } from '../../zamowienia/wspolne.js';
 
 import { createWspolne } from './wspolne.js';
 export function registerKorektyRoutes(app, { db, korekta = null, definicje, infakt: programFaktur = null, wyborProgramu = null }) {
-  const { powrotKarty, adresKarty, zamowienieAlbo404, slad, decyzja, pokazKrok1 } = createWspolne({ db, korekta, definicje, infakt: programFaktur });
+  const { powrotKarty, adresKarty, adresZwrotu, zamowienieAlbo404, slad, decyzja, pokazKrok1 } = createWspolne({ db, korekta, definicje, infakt: programFaktur });
   // PRZ-118.09: nazwa programu w odmowach korekty (bez programu — inFakt, jak dotąd).
   const nazwaProgramu = odmianaNazwyProgramu(programFaktur), gdzieProgramu = gdzieDokument(programFaktur);
   app.post('/zamowienia/:id/zwroty/:zwrotId/korekta', async (req, reply) => {
@@ -48,7 +48,9 @@ export function registerKorektyRoutes(app, { db, korekta = null, definicje, infa
     // ⚠️ Rozbieznosc z briefem: `reply.redirect(302, url)` NIE ISTNIEJE od Fastify 5
     // (w v4 bylo FSTDEP021; sygnatura to `redirect(url, code)`), a caly ten plik
     // uzywa jednoargumentowego wywolania (302 jest domyslnym kodem). Ta sama forma tutaj.
-    return reply.redirect(adresKarty(req, z.id));
+    // PRZ-147.03 (decyzja 9): ekran zwrotu, nie karta — tylko on pokazuje stan zlecenia,
+    // a jego przeladowanie odczytuje status.
+    return reply.redirect(adresZwrotu(req, z.id));
   });
 
   // ---------------------------------------------------------------------------------

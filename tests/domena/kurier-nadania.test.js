@@ -8,7 +8,7 @@ import {
 // mimo to pokazywała „Nadaj paczkę" i ekran nadania wypełniał komplet pól: odmowa padała
 // dopiero z `wybierzKuriera`, po zapakowaniu paczki.
 
-const zam = (o = {}) => ({ sklep: 'allegro_szkicownia', metoda_wysylki: 'allegro_dpd', pobranie: 0, ...o });
+const zam = (o = {}) => ({ sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_dpd', pobranie: 0, ...o });
 
 describe('kiedy panel musi zapytać o kuriera', () => {
   // ⚠️ PACZKOMAT WYPADL Z TEJ LISTY 07.08.2026 (druga fala) — Allegro etykiety paczkomatowej
@@ -23,7 +23,7 @@ describe('kiedy panel musi zapytać o kuriera', () => {
 
   it('zamówienie ze sklepu — nie, nic się dla niego nie zmienia', () => {
     expect(wymagaWyboruKuriera({ sklep: 'pro', metoda_wysylki: 'dpd' })).toBe(false);
-    expect(wymagaWyboruKuriera({ sklep: 'szkicownia', metoda_wysylki: 'inpost_paczkomat' })).toBe(false);
+    expect(wymagaWyboruKuriera({ sklep: 'swietlik', metoda_wysylki: 'inpost_paczkomat' })).toBe(false);
     expect(wymagaWyboruKuriera({ sklep: 'reczne', metoda_wysylki: 'odbior_osobisty' })).toBe(false);
   });
 });
@@ -68,10 +68,15 @@ describe('kogo wolno wskazać', () => {
   // pobraniem przez paczkomat → InPost nie inkasuje NIC → towar oddany za darmo, bez ani
   // jednego błędu po drodze. Dyskryminatorem jest więc „czy pobranie jedzie na TEJ paczce",
   // a nie sam numer paczki.
-  it('gdy pobranie jedzie na paczce nr 2: WzA i DPD, NIGDY paczkomat', () => {
+  // PRZ-137.03: adapter InPostu wysyła już cod na zamienniku, więc paczkomat wraca do listy —
+  // ale tylko z umową firmy na pobranie (tu jej brak). WzA odpada: Allegro nie przyjmie
+  // pobrania na kolejnej paczce (`pobranieNaDosylce: false`).
+  it('gdy pobranie jedzie na paczce nr 2: sam DPD — bez WzA i bez paczkomatu bez umowy', () => {
     const lista = kurierzyDoWyboru(zam({ pobranie: 1 }), 2, { pobranieNaTejPaczce: true }).map((k) => k.klucz);
-    expect(lista).toEqual(['wza', 'dpd']);
+    expect(lista).toEqual(['dpd']);
     expect(lista).not.toContain('inpost_paczkomat');
+    expect(kurierzyDoWyboru(zam({ pobranie: 1 }), 2, { pobranieNaTejPaczce: true, umowyPobrania: ['inpost'] })
+      .map((k) => k.klucz)).toEqual(['dpd', 'inpost_paczkomat']);
   });
 
   // Zamówienie przedpłacone nie ma czego inkasować — jawna decyzja niczego tu nie zmienia
@@ -99,13 +104,13 @@ describe('metoda, którą panel naprawdę nada', () => {
   // („Wysyłam z Allegro"). Odmowa ZOSTAJE dla metod, których panel nadal nie umie nadać, i to
   // ona jest tu sprawdzana, żeby zmiana nie rozlała się na całą rodzinę `allegro_*`.
   it('brak wskazania to ODMOWA tam, gdzie panel nie ma drogi domyślnej', () => {
-    const r = metodaNadania({ sklep: 'allegro_szkicownia', metoda_wysylki: 'allegro_metoda_z_przyszlosci' }, undefined);
+    const r = metodaNadania({ sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_metoda_z_przyszlosci' }, undefined);
     expect(r.metoda).toBeUndefined();
     expect(r.blad).toMatch(/wskaż kuriera/i);
   });
 
   it('brak wskazania przy allegro_dpd prowadzi do „Wysyłam z Allegro", nie do odmowy', () => {
-    const r = metodaNadania({ sklep: 'allegro_szkicownia', metoda_wysylki: 'allegro_dpd' }, undefined);
+    const r = metodaNadania({ sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_dpd' }, undefined);
     expect(r.metoda).toBe('allegro_dpd');
     expect(r.blad).toBeUndefined();
   });
@@ -114,7 +119,7 @@ describe('metoda, którą panel naprawdę nada', () => {
   // `NADAJEMY_SAMI` (tamta mapa IGNORUJE wskazanie człowieka). Zamiennik za zgubioną paczkę
   // dalej da się nadać naszą umową, świadomym wskazaniem na ekranie nadania.
   it('wskazanie NASZEGO kuriera przy allegro_dpd dalej działa — dosyłka', () => {
-    const r = metodaNadania({ sklep: 'allegro_szkicownia', metoda_wysylki: 'allegro_dpd' }, 'dpd');
+    const r = metodaNadania({ sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_dpd' }, 'dpd');
     expect(r).toMatchObject({ metoda: 'dpd', wskazanyRecznie: true });
   });
 
@@ -128,7 +133,7 @@ describe('metoda, którą panel naprawdę nada', () => {
   // inkasa — omijając tablicę dostaw (domain/mapowanie-wysylki.js), która istnieje właśnie
   // po to, żeby tego pilnować.
   it('dla zamówienia SPOZA Allegro wybór jest IGNOROWANY, nie honorowany', () => {
-    const sklepowe = { sklep: 'szkicownia', metoda_wysylki: 'dpd', pobranie: 1 };
+    const sklepowe = { sklep: 'swietlik', metoda_wysylki: 'dpd', pobranie: 1 };
     expect(metodaNadania(sklepowe, 'inpost_paczkomat')).toEqual({ metoda: 'dpd' });
     expect(metodaNadania(sklepowe, 'dpd')).toEqual({ metoda: 'dpd' });
   });
@@ -159,7 +164,7 @@ describe('metoda, którą panel naprawdę nada', () => {
 // pierwszej paczki z tamtej strony po prostu nie ma i nie ma czego dublować. Przy
 // `allegro_dpd` etykieta istnieje i tam pytanie o kuriera ZOSTAJE.
 describe('paczkomat z Allegro idzie naszym InPostem, bez pytania', () => {
-  const paczkomat = { sklep: 'allegro_szkicownia', metoda_wysylki: 'allegro_paczkomat', pobranie: 0 };
+  const paczkomat = { sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_paczkomat', pobranie: 0 };
 
   it('nie wymaga wskazania kuriera', () => {
     expect(wymagaWyboruKuriera(paczkomat)).toBe(false);
@@ -176,8 +181,8 @@ describe('paczkomat z Allegro idzie naszym InPostem, bez pytania', () => {
   // przy BRAKU wskazania idzie „Wysyłam z Allegro" (test wyżej). Gdyby ta funkcja oddała
   // `false`, ekran nadania przestałby w ogóle pokazywać wybór — i furtka zniknęłaby po cichu.
   it('allegro_dpd dalej POZWALA wskazać kuriera, choć już go nie wymaga', () => {
-    expect(wymagaWyboruKuriera({ sklep: 'allegro_szkicownia', metoda_wysylki: 'allegro_dpd' })).toBe(true);
-    expect(metodaNadania({ sklep: 'allegro_szkicownia', metoda_wysylki: 'allegro_dpd' }, undefined).blad)
+    expect(wymagaWyboruKuriera({ sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_dpd' })).toBe(true);
+    expect(metodaNadania({ sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_dpd' }, undefined).blad)
       .toBeUndefined();
   });
 
@@ -188,8 +193,8 @@ describe('paczkomat z Allegro idzie naszym InPostem, bez pytania', () => {
   // na dosyłkę NASZĄ umową (zamiennik za zgubioną) zostaje otwarta. Różnica wobec stanu
   // sprzed zmiany jest w tym, co dzieje się przy BRAKU wskazania: dotąd odmowa, teraz WzA.
   it('allegro_punkt i allegro_inne DALEJ przechodzą przez pytanie o kuriera', () => {
-    expect(wymagaWyboruKuriera({ sklep: 'allegro_szkicownia', metoda_wysylki: 'allegro_punkt' })).toBe(true);
-    expect(wymagaWyboruKuriera({ sklep: 'allegro_szkicownia', metoda_wysylki: 'allegro_inne' })).toBe(true);
+    expect(wymagaWyboruKuriera({ sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_punkt' })).toBe(true);
+    expect(wymagaWyboruKuriera({ sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_inne' })).toBe(true);
   });
 
   // ⚠️ Skoro wyboru nie ma, to i nadpisanie go nie ma prawa nic zmienić — inaczej wracałaby
@@ -229,7 +234,7 @@ describe('paczkomat z Allegro idzie naszym InPostem, bez pytania', () => {
 // opłaconą dostawę. Testy domeny świeciły na zielono, bo pytały o `metodaNadania(z, undefined)`
 // — czyli o stan, którego ekran nie umiał wyprodukować.
 describe('droga domyślna musi być NA LIŚCIE WYBORU, nie tylko w regule', () => {
-  const allegroDpd = { sklep: 'allegro_szkicownia', metoda_wysylki: 'allegro_dpd' };
+  const allegroDpd = { sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_dpd' };
 
   it('lista wyboru dla allegro_dpd zawiera „Wysyłam z Allegro" i to ONO jest pierwsze', () => {
     const lista = kurierzyDoWyboru(allegroDpd);
@@ -247,7 +252,7 @@ describe('droga domyślna musi być NA LIŚCIE WYBORU, nie tylko w regule', () =
   });
 
   it('metody bez drogi domyślnej listy nie dostają — odmowa zostaje', () => {
-    const punkt = { sklep: 'allegro_szkicownia', metoda_wysylki: 'allegro_metoda_z_przyszlosci' };
+    const punkt = { sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_metoda_z_przyszlosci' };
     expect(kurierzyDoWyboru(punkt).map((k) => k.klucz)).not.toContain('wza');
     expect(metodaNadania(punkt, 'wza').blad).toMatch(/Nie umiem nadać/);
   });
@@ -274,7 +279,7 @@ describe('nadanieDaZpl — czy jest co wstawić do kolejki druku', () => {
   it('WzA może zamówić ZPL po świadomym kliknięciu „Nadaj i drukuj”', () => {
     // `metodaNadania` oddaje przy WzA metodę zamówienia, a nie klucz „wza" — pilnujemy
     // DOKŁADNIE tej wartości, która trafia do widoku jako `metodaUzyta`.
-    const zAllegro = { sklep: 'allegro_szkicownia', metoda_wysylki: 'allegro_dpd' };
+    const zAllegro = { sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_dpd' };
     expect(metodaNadania(zAllegro, 'wza').metoda).toBe('allegro_dpd');
     expect(nadanieDaZpl('allegro_dpd')).toBe(true);
     expect(nadanieDaZpl('allegro_punkt')).toBe(true);

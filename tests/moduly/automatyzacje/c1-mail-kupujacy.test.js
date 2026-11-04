@@ -283,7 +283,7 @@ describe('2. przykład właściciela end-to-end', () => {
     expect(e.listy).toHaveLength(1);
     expect(e.listy[0].to).toBe('kupujacy@example.invalid');
     expect(e.listy[0].text).toContain(p.numer_listu);
-    expect(e.listy[0].text).toContain(`https://tracktrace.dpd.com.pl/parcelDetails?p1=${p.numer_listu}`);
+    expect(e.listy[0].text).toContain(`https://tracktrace.dpd.com.pl/parcelDetails?typ=1&p1=${p.numer_listu}`);
   });
 });
 
@@ -508,7 +508,7 @@ describe('6. wysłane — ślad w rejestrze, dzienniku i poczcie', () => {
     expect(wpis.wynik).toBe('Automatycznie (reguła „Wysłane — sklep”): „Zamówienie wysłane" wysłane na kupujacy@example.invalid bez załącznika.');
     expect(e.listy).toHaveLength(1);
     expect(e.listy[0].text).toContain(p.numer_listu);
-    expect(e.listy[0].text).toContain(`https://tracktrace.dpd.com.pl/parcelDetails?p1=${p.numer_listu}`);
+    expect(e.listy[0].text).toContain(`https://tracktrace.dpd.com.pl/parcelDetails?typ=1&p1=${p.numer_listu}`);
   });
 });
 

@@ -3,6 +3,9 @@ import { ukryjIdentyfikatoryHttp } from '../../core/http.ts';
 import { bladOperatora } from '../../domena/bledy.js';
 import { PROG_ZAWIESZONEJ_FAKTURY_MS } from '../../domena/faktura-stan.js';
 
+// inFakt przyjmuje symbol słownika; kontrakt programu niesie tekst przyczyny.
+export const symbolPowoduKorekty = (powod) => (powod === 'mistake' || powod === 'other' ? powod : 'other');
+
 // Panel NIGDY nie liczy VAT-u i nie generuje dokumentu — przekazuje pozycje, inFakt
 // wystawia fakture.
 //
@@ -234,6 +237,12 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
   // `wszystkieStrony`; druga pętla po stronach byłaby drugim miejscem do zepsucia.
   const listaKorekt = (zakres) => wszystkieStrony('corrective_invoices', zakres, 'korekta');
 
+  async function pobierzKorekte(uuid) {
+    const dane = await zapytaj(`/v3/corrective_invoices/${encodeURIComponent(uuid)}.json`, { method: 'GET' }, 'odczyt korekty');
+    return { uuid: dane?.uuid ?? uuid, number: dane?.number,
+      corrected_invoice_number: dane?.corrected_invoice_number, invoice_date: dane?.invoice_date, rodzaj: 'korekta' };
+  }
+
   /**
    * Dokumenty, za które klient jeszcze nie zapłacił — CAŁA historia, nie miesiąc.
    *
@@ -367,13 +376,43 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
   async function wystawKorekte(payload) {
     const dane = await zapytaj('/v3/async/corrective_invoices.json', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ corrective_invoice: {
+        ...payload, correction_reason: symbolPowoduKorekty(payload.correction_reason),
+      } }),
     }, 'wystawienie korekty');
     return {
       referencja: dane?.invoice_task_reference_number ?? null,
       uuid: dane?.uuid ?? null,
       numer: dane?.number ?? null,
     };
+  }
+
+  /** Status zadania jest odrębny od HTTP przyjęcia zlecenia. */
+  async function statusKorekty(referencja) {
+    const nieznany = { stan: 'nieznany', uuid: null, bledy: [] };
+    if (!referencja) return nieznany;
+    let dane;
+    try {
+      dane = await zapytaj(`/v3/async/corrective_invoices/status/${encodeURIComponent(referencja)}.json`, { method: 'GET' }, 'odczyt statusu korekty');
+    } catch (e) {
+      if (e?.status === 404) return nieznany;
+      throw e;
+    }
+    const nazwy = {
+      client_id: 'klient', correction_reason: 'powód korekty', services: 'pozycje', sale_type: 'rodzaj sprzedaży',
+      corrected_invoice_number: 'numer faktury korygowanej',
+      corrected_invoice_date: 'data faktury korygowanej', base: 'dokument',
+    };
+    const bledy = Object.entries(dane?.invoice_errors ?? {}).flatMap(([pole, wartosc]) => {
+      const komunikaty = (Array.isArray(wartosc) ? wartosc : [wartosc])
+        .filter((k) => typeof k === 'string' && k.trim());
+      return komunikaty.length ? [{ pole: Object.hasOwn(nazwy, pole) ? nazwy[pole] : pole, komunikaty }] : [];
+    });
+    const kod = dane?.processing_code;
+    if (kod === 422 || (kod >= 400 && kod < 500 && bledy.length)) return { stan: 'odrzucona', uuid: null, bledy };
+    if ((kod === 200 || kod === 201) && dane?.invoice_uuid) return { stan: 'wystawiona', uuid: dane.invoice_uuid, bledy: [] };
+    if ([100, 120, 140].includes(kod)) return { stan: 'w_toku', uuid: null, bledy: [] };
+    return nieznany;
   }
 
   /**
@@ -501,6 +540,17 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
       invoice_date: dane?.invoice_date ?? null,
       uuid: dane?.uuid ?? uuid,
       services: dane?.services ?? [],
+      client_id: dane?.client_id,
+      client_company_name: dane?.client_company_name,
+      client_first_name: dane?.client_first_name,
+      client_last_name: dane?.client_last_name,
+      client_street: dane?.client_street,
+      client_street_number: dane?.client_street_number,
+      client_flat_number: dane?.client_flat_number,
+      client_city: dane?.client_city,
+      client_post_code: dane?.client_post_code,
+      client_tax_code: dane?.client_tax_code,
+      client_country: dane?.client_country,
       // ⚠️ POTRZEBNE SKANOWI POBRAŃ (services/oznaczanie-pobran.js), a nie czuwaczowi KSeF.
       // `status` — żeby dokument oznaczony ręcznie w inFakcie wypadł z kandydatów zamiast
       // dostać drugie zlecenie (pomiar 28.08: `18/08/2026` jest `delivery` I `paid`).
@@ -643,7 +693,7 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
   return Object.fromEntries(Object.entries({
     znajdzKlientaPoNip, zalozKlienta, wystaw, oznaczZaplacona, pobierzPdf, pobierzFakture,
     listaFaktur, listaKorekt, listaNieoplaconych, pobierzPdfKorekty, wyslijDokumentDoKsef,
-    wystawKorekte, iluMaNumer, sprawdzPolaczenie,
+    wystawKorekte, statusKorekty, pobierzKorekte, iluMaNumer, sprawdzPolaczenie,
   }).map(([nazwa, metoda]) => [nazwa, async (...args) => {
     try { return await metoda(...args); }
     catch (e) { throw bezpiecznyBlad(e); }
@@ -654,5 +704,5 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
 export const METODY_INFAKTU = Object.freeze([
   'znajdzKlientaPoNip', 'zalozKlienta', 'wystaw', 'oznaczZaplacona', 'pobierzPdf', 'pobierzFakture',
   'listaFaktur', 'listaKorekt', 'listaNieoplaconych', 'pobierzPdfKorekty', 'wyslijDokumentDoKsef',
-  'wystawKorekte', 'iluMaNumer', 'sprawdzPolaczenie',
+  'wystawKorekte', 'statusKorekty', 'pobierzKorekte', 'iluMaNumer', 'sprawdzPolaczenie',
 ]);

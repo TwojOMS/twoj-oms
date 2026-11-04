@@ -14,11 +14,11 @@ const odp = (status, tekst) => ({ status, ok: status >= 200 && status < 300, tex
 
 const zamowienie = {
   numer: '1301', kwota_brutto: '212.90', kwota_pobrania: null,
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
+  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
   klient: { email: 'j@k.pl', phone: '+48500600700' },
 };
 const paczka = { waga: 1, dlugosc: 40, szerokosc: 30, wysokosc: 10 };
-const nadawca = { nazwa: 'Lumina Marek Zywiecki', ulica: 'ul. 1 Maja 5', kod: '00-650', miasto: 'Pęki', kraj: 'PL' };
+const nadawca = { nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL' };
 
 // Fikstury (v4-ok.xml: <reference>99999999#TEST-OMS-...) pochodzą z Zadania 8, gdzie
 // login w odpowiedzi serwera byl juz podmieniony na 99999999 — LOGIN tutaj MUSI sie z nim
@@ -26,7 +26,7 @@ const nadawca = { nazwa: 'Lumina Marek Zywiecki', ulica: 'ul. 1 Maja 5', kod: '0
 // nigdy nie wystapilby w fiksturze i "brak loginu w tekscie" bylby prawdziwy przez przypadek).
 const LOGIN = '99999999';
 const HASLO = 'SEKRETNE-HASLO';
-const FID = '278216';
+const FID = '876543';
 
 function klient(odpowiedzi, override = {}) {
   const fetchImpl = vi.fn();
@@ -107,26 +107,26 @@ describe('createDpdClient.nadaj', () => {
     expect(fetchImpl.mock.calls[1][1].body).toContain('<sessionId>1403466702</sessionId>');
   });
 
-  // PULAPKA Z ZADANIA 8: '00-650' -> NONEXISTING_POSTAL_CODE, '00650' -> OK.
+  // PULAPKA Z ZADANIA 8: '00-950' -> NONEXISTING_POSTAL_CODE, '00950' -> OK.
   // Woo oddaje kod Z MYSLNIKIEM, wiec bez tej normalizacji nadanie pada na kazdym zamowieniu.
   it('usuwa myślnik z kodu pocztowego odbiorcy i nadawcy', async () => {
     const { c, fetchImpl } = klient(OK());
     await c.nadaj({ zamowienie, paczka });
     const body = fetchImpl.mock.calls[0][1].body;
-    expect(body).toContain('<postalCode>00650</postalCode>');
-    expect(body).not.toContain('00-650');
+    expect(body).toContain('<postalCode>00950</postalCode>');
+    expect(body).not.toContain('00-950');
   });
 
-  // Zamówienie 1275 z briefu: sklep na pro.szkicownia.pl rozbija adres na address_1 (ulica)
+  // Zamówienie 1275 z briefu: sklep na pro.swietlik.example.test rozbija adres na address_1 (ulica)
   // i address_2 (numer budynku) — patrz adres-odbiorcy.js. Koperta SOAP MUSI nieść oba
-  // razem, bo to jest dokładnie to, co jedzie do kuriera: paczka na "Lipowa" bez numeru
+  // razem, bo to jest dokładnie to, co jedzie do kuriera: paczka na "Papierowa" bez numeru
   // 91 nie jest do doręczenia.
   it('adres odbiorcy z rozbitym address_1/address_2 (zamówienie 1275) niesie ulicę Z numerem', async () => {
     const { c, fetchImpl } = klient(OK());
-    const zam = { ...zamowienie, dostawa: { ...zamowienie.dostawa, address_1: 'Lipowa', address_2: '91' } };
+    const zam = { ...zamowienie, dostawa: { ...zamowienie.dostawa, address_1: 'Papierowa', address_2: '24' } };
     await c.nadaj({ zamowienie: zam, paczka });
     const receiver = fetchImpl.mock.calls[0][1].body.match(/<receiver>[\s\S]*?<\/receiver>/)[0];
-    expect(receiver).toContain('<address>Lipowa 91</address>');
+    expect(receiver).toContain('<address>Papierowa 24</address>');
   });
 
   it('podaje pełny adres nadawcy, nie sam fid', async () => {
@@ -213,7 +213,7 @@ describe('createDpdClient.nadaj', () => {
   // faultstring DPD niesie LOGIN ("Login failed for login: <login> ..."), a komunikat
   // trafia do bazy i do logu. Powod zachowujemy, poswiadczenia nie.
   it('błąd DPD niesie powód, ale bez loginu i hasła', async () => {
-    // Uzywamy LOGIN ze stalej testowej (nie na sztywno "27821601"), zeby test faktycznie
+    // Uzywamy LOGIN ze stalej testowej (nie na sztywno "<login>"), zeby test faktycznie
     // sprawdzal maskowanie skonfigurowanego loginu, a nie przypadkowa niezgodnosc wartosci.
     const fault = `<soap:Fault><faultstring>Login failed for login: ${LOGIN} with status: INCORRECT_LOGIN_OR_PASSWORD</faultstring></soap:Fault>`;
     const { c } = klient([odp(500, fault)]);
@@ -224,8 +224,8 @@ describe('createDpdClient.nadaj', () => {
   });
 
   // Ustalenie z recenzji: DISALLOWED_FID / ERROR_NO_FID_PERMISSION / ACCESS_DENIED_FOR_FID
-  // przenosza FID do komunikatu. '278216' jest dzis maskowany tylko PRZYPADKIEM, bo jest
-  // prefiksem loginu '27821601' — przy loginie '99999999' ta przypadkowa oslona znika.
+  // przenosza FID do komunikatu. '876543' jest dzis maskowany tylko PRZYPADKIEM, bo jest
+  // prefiksem loginu '<login>' — przy loginie '99999999' ta przypadkowa oslona znika.
   it('błąd DPD maskuje też FID, nie tylko login i hasło', async () => {
     const fault = `<soap:Fault><faultstring>DISALLOWED_FID for masterFid: ${FID}</faultstring></soap:Fault>`;
     const { c } = klient([odp(500, fault)]);
@@ -429,10 +429,10 @@ describe('createDpdClient.nadaj', () => {
 describe('createDpdClient.nadaj — adres odbiorcy PRZEKAZANY, nie czytany ponownie z zamówienia', () => {
   it('adres przekazany jawnie RÓŻNI SIĘ od adresOdbiorcy(zamowienie) → w kopercie ląduje PRZEKAZANY', async () => {
     const { c, fetchImpl } = klient(OK());
-    // Kontrola: adresOdbiorcy(zamowienie) dla tego `zamowienie` skłąda miasto 'Pęki' —
-    // gdyby dpd.js czytał adres ponownie z zamówienia, w kopercie wylądowałoby 'Pęki',
+    // Kontrola: adresOdbiorcy(zamowienie) dla tego `zamowienie` skłąda miasto 'Warszawa' —
+    // gdyby dpd.js czytał adres ponownie z zamówienia, w kopercie wylądowałoby 'Warszawa',
     // NIE marker poniżej.
-    expect(adresOdbiorcy(zamowienie).miasto).toBe('Pęki');
+    expect(adresOdbiorcy(zamowienie).miasto).toBe('Warszawa');
     const adresPoprawionyPrzezOperatora = {
       ...adresOdbiorcy(zamowienie),
       miasto: 'Miasto-Po-Poprawce-Operatora',
@@ -442,7 +442,7 @@ describe('createDpdClient.nadaj — adres odbiorcy PRZEKAZANY, nie czytany ponow
     const receiver = fetchImpl.mock.calls[0][1].body.match(/<receiver>[\s\S]*?<\/receiver>/)[0];
     expect(receiver).toContain('Miasto-Po-Poprawce-Operatora');
     expect(receiver).toContain('Ulica-Po-Poprawce-Operatora');
-    expect(receiver).not.toContain('>Pęki<');
+    expect(receiver).not.toContain('>Warszawa<');
   });
 
   it('brak przekazanego adresu (wywołanie spoza ekranu nadania) → fallback na adresOdbiorcy(zamowienie), nie awaria', async () => {
@@ -452,7 +452,7 @@ describe('createDpdClient.nadaj — adres odbiorcy PRZEKAZANY, nie czytany ponow
     const { c, fetchImpl } = klient(OK());
     await c.nadaj({ zamowienie, paczka });
     const receiver = fetchImpl.mock.calls[0][1].body.match(/<receiver>[\s\S]*?<\/receiver>/)[0];
-    expect(receiver).toContain('>Pęki<');
+    expect(receiver).toContain('>Warszawa<');
   });
 });
 
@@ -546,7 +546,7 @@ describe('createDpdClient — walidacja konfiguracji', () => {
   // jechalaby wtedy z pusta ulica, kodem i miastem nadawcy, a DPD i tak oddawaloby
   // numer listu, wiec nikt by sie nie zorientowal.
   it('nadawca z PUSTYMI polami → błąd, a nie cicha zgoda', () => {
-    const pusty = { nazwa: 'Lumina', ulica: '', kod: '', miasto: '', kraj: 'PL' };
+    const pusty = { nazwa: 'Pracownia Półcień', ulica: '', kod: '', miasto: '', kraj: 'PL' };
     expect(() => createDpdClient({ ...pelnaKonfiguracja, nadawca: pusty }))
       .toThrow(/nadawca\.ulica.*nadawca\.kod.*nadawca\.miasto/);
   });

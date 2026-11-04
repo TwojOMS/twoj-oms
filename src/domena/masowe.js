@@ -1,11 +1,15 @@
 import { powodOdmowyStatusu, anulowaneEfektywnie } from './status-reczny.js';
-import { czyPobranie, czyKanalAllegro, metodaWysylki, kwotaPobrania } from './wysylka.js';
-import { metodaNadania } from './kurier-nadania.js';
+import { czyPobranie, metodaWysylki, kwotaPobrania } from './wysylka.js';
+import { umiejetnosciZamowienia } from './moduly-kanalow.ts';
+import { metodaNadania, wymagaUmowyPobrania, powodUmowyPobrania } from './kurier-nadania.js';
+import { metodaKuriera, MODULY_KURIEROW } from './moduly-kurierow.ts';
 import { powodBrakuGotowosciNadania } from './gotowosc-nadania.js';
-import { parsujNadpisanieKwotyPobrania } from './pobranie-nadania.js';
+import { odczytajKwotePobrania } from './pobranie-nadania.js';
+import { brakKwoty, przedplatyPrzedPobraniem, niedoplataPobrania } from './platnosci.js';
+import { zl } from './kwoty.js';
 import { proponowanaDataSprzedazy } from './data-sprzedazy.js';
 import { terminFaktury, ZAPLACONE } from './termin-platnosci.js';
-import { powodOdmowyFaktury, powodOdmowyZaplaconej } from './faktura-odmowa.js';
+import { powodOdmowyFaktury, powodOdmowyZaplaconej, powodBrakuAdresu } from './faktura-odmowa.js';
 import { stanFaktury } from './faktura-stan.js';
 import { podsumowaniePozycji } from './tabela-pozycji.js';
 import { pozycjeDokumentu } from './pozycje-faktury.js';
@@ -74,27 +78,27 @@ export function podzielDoStatusu(zamowienia, docelowy) {
 //
 // Pobranie wchodzi do hurtu z kwotą Z ZAMÓWIENIA (decyzja właściciela 14.10). Kwota jest widoczna
 // w uwagach ekranu podglądu, a usługa nadania zapisuje ją do logu przed wywołaniem kuriera.
-const WZA = ['allegro_dpd', 'allegro_punkt', 'allegro_kurier', 'allegro_inne'];
+//
+// PRZ-135.04a: rodzaj formularza (i lista WzA) czytany z rejestru kurierów — `metoda.formularz`
+// metody kuriera ('dpd' = paczka z wymiarami, 'paczkomat', 'wza'); metoda bez kuriera → null.
 
 /** Kształt wiersza na ekranie podglądu: od kuriera zależy, o jaki rozmiar pytamy. */
 export function rodzajFormularzaNadania(metodaUzyta) {
-  if (metodaUzyta === 'dpd') return 'dpd';
-  if (metodaUzyta === 'inpost_paczkomat') return 'paczkomat';
-  if (WZA.includes(metodaUzyta)) return 'wza';
-  return null;
+  return metodaKuriera(metodaUzyta)?.formularz ?? null;
 }
 
 /**
  * Podział zaznaczonych na te, które pójdą do kuriera, pominięte z powodem i uwagi —
  * czyli rzeczy, które nadania NIE blokują, ale mają być widoczne przed kliknięciem.
  * Przepuszczone niosą `metodaUzyta` i `rodzajFormularza` — trasa nie liczy ich drugi raz.
+ * PRZ-135.T2: `umowyPobrania` = `umowyPobraniaFirmy(db)`; pominięte daje `[]` (jak dotąd).
  */
-export function podzielDoNadania(zamowienia) {
+export function podzielDoNadania(zamowienia, { umowyPobrania = /** @type {readonly string[]} */ ([]) } = {}) {
   const doNadania = [];
   const pominiete = [];
   const uwagi = [];
   for (const z of zamowienia ?? []) {
-    const decyzja = decyzjaNadania(z);
+    const decyzja = decyzjaNadania(z, umowyPobrania);
     if (decyzja.powod) {
       pominiete.push({ id: z.id, numer: z.numer, powod: decyzja.powod });
       continue;
@@ -127,7 +131,7 @@ export function podzielDoNadania(zamowienia) {
 // Kolejność warunków = kolejność ważności: pierwszy trafiony powód jest tym, który operator
 // zobaczy. Anulowanie idzie przed wszystkim, bo to jedyny stan, w którym paczka nie powinna
 // wyjechać W OGÓLE, a nie „nie tędy".
-function decyzjaNadania(z) {
+function decyzjaNadania(z, umowyPobrania = /** @type {readonly string[]} */ ([])) {
   if (anulowaneEfektywnie(z)) return { powod: 'zamówienie jest anulowane' };
   const metoda = String(metodaWysylki(z) ?? 'nieznana');
   const allegrowaMetoda = metoda.startsWith('allegro_');
@@ -135,12 +139,12 @@ function decyzjaNadania(z) {
   // z karty, kanał (`sklep`) — nie: ustawia go poller i żaden formularz panelu go nie rusza.
   // Zamówienie z Allegro przestawione na metodę sklepową poszłoby naszą umową, czyli DRUGĄ,
   // płatną paczką do klienta z opłaconą dostawą u Allegro. Nie do cofnięcia.
-  if (czyKanalAllegro(z) && !allegrowaMetoda) {
+  if (umiejetnosciZamowienia(z).wysylkaPlatformy && !allegrowaMetoda) {
     return { powod: 'zamówienie z Allegro ma ręcznie ustawioną metodę sklepową — nadaj je z karty zamówienia' };
   }
   // Odwrotna furtka: zamówienie sklepowe przestawione na metodę allegrową. Adapter WzA i tak
   // odmówi (`wolnoNadacZOms` pyta o kanał), ale ekran podglądu nie ma tego obiecywać.
-  if (!czyKanalAllegro(z) && allegrowaMetoda) {
+  if (!umiejetnosciZamowienia(z).wysylkaPlatformy && allegrowaMetoda) {
     return { powod: 'metoda allegrowa przy zamówieniu spoza Allegro — popraw metodę na karcie zamówienia' };
   }
   // Żywa paczka = wszystko poza nieudanym nadaniem. Przy 'blad' u kuriera nic nie powstało
@@ -150,14 +154,15 @@ function decyzjaNadania(z) {
   //
   // Hurtem nadajemy WYŁĄCZNIE paczkę nr 1. Dosyłka i zamiennik za zgubioną są decyzjami
   // jednostkowymi, z powodem wpisywanym do logu — nie czymś, co wychodzi z zaznaczenia
-  // wiersza na liście.
+  // wiersza na liście. Brak flagi pobranieNaTejPaczce w hurcie jest zamierzony:
+  // na paczce nr 1 usługa nadania zawsze stosuje pobranie z zamówienia.
   if ((z?.przesylki ?? []).some((p) => p?.status !== 'blad')) {
     return { powod: 'ma już nadaną paczkę — dosyłkę nadaj z karty zamówienia' };
   }
   if (metoda === 'odbior_osobisty') return { powod: 'odbiór osobisty — nie ma czego nadawać' };
   // Droga domyślna karty dla paczki nr 1, bez wskazania kuriera. Furtka „naszą umową" przy
   // zamówieniu z Allegro (dosyłka, zamiennik) zostaje decyzją jednostkową z ekranu karty.
-  const { metoda: metodaUzyta, blad } = metodaNadania(z, '', { kolejnosc: 1 });
+  const { metoda: metodaUzyta, blad } = metodaNadania(z, '', { kolejnosc: 1, umowyPobrania });
   if (blad) return { powod: blad };
   const rodzaj = rodzajFormularzaNadania(metodaUzyta);
   if (!rodzaj) return { powod: 'nieznana metoda wysyłki — ustaw ją na karcie zamówienia' };
@@ -166,20 +171,49 @@ function decyzjaNadania(z) {
   // ⚠️ TO SĄ PIENIĄDZE. Pytamy o POBRANIE w wartości EFEKTYWNEJ (po ręcznych korektach),
   // dokładnie tej, którą operator widzi w kolumnie „Dostawa".
   if (czyPobranie(z)) {
-    // ⚠️ Umowa z InPostem na pobranie NIEPOTWIERDZONA (domena/kurier-nadania.js) — paczka
-    // mogłaby pojechać bez inkasa. Karta zostawia tu furtkę dla człowieka, hurt nie.
-    if (rodzaj === 'paczkomat') {
-      return { powod: 'pobranie do paczkomatu — nadaj z karty zamówienia (umowa z InPostem na pobranie jest niepotwierdzona)' };
+    // PRZ-137.01 (D2): przełącznik umowy na pobranie obowiązuje tylko pobranie OMS-owe
+    // (ręczne, zmienione na karcie) u kuriera 'adapter'. Pobranie sprzedane przez sklep jedzie
+    // z kwotą niezależnie od przełącznika (decyzja właściciela 03.11). Nazwa kuriera z rejestru.
+    if (wymagaUmowyPobrania(z, metodaUzyta, MODULY_KURIEROW, umowyPobrania)) {
+      return { powod: powodUmowyPobrania(metodaUzyta) };
     }
-    // DPD bez kwoty nie wstawia <cod>: paczka jedzie jak przedpłacona i NIGDZIE nie ma błędu.
-    // Przy WzA kwotę bierze adapter z podpowiedzi Allegro, więc pusta kolumna nie szkodzi.
-    if (rodzaj === 'dpd' && kwotaPobrania(z) == null) {
+    // DPD (a od PRZ-135.T2 także paczkomat na umowie firmy) bez kwoty nie wstawia <cod>/`cod`:
+    // paczka jedzie jak przedpłacona i NIGDZIE nie ma błędu. Dlatego sprawdzamy KAŻDY rodzaj
+    // poza WzA — przy WzA kwotę bierze adapter z podpowiedzi Allegro, więc pusta kolumna nie szkodzi.
+    if (rodzaj !== 'wza' && kwotaPobrania(z) == null) {
       return { powod: 'pobranie bez kwoty — uzupełnij kwotę pobrania na karcie zamówienia' };
     }
     // Recenzja D8 (P3-1): kwotę sprawdza TA SAMA funkcja, co pole na ekranie nadania karty —
-    // zero, pusty napis albo zły zapis („104.", „1e2") dałyby w DPD paczkę bez <cod>.
-    if (rodzaj === 'dpd' && parsujNadpisanieKwotyPobrania({ kwota_pobrania: kwotaPobrania(z) }, { pobranie: true, kolejnosc: 1 }).blad) {
-      return { powod: `kwota pobrania jest niepoprawna — popraw ją na karcie zamówienia („${kwotaPobrania(z)}”)` };
+    // zero, pusty napis albo zły zapis („104.", „1e2") dałyby paczkę bez <cod>/`cod`.
+    const surowaK = kwotaPobrania(z);
+    const odczytK = odczytajKwotePobrania(surowaK);
+    const przedplaty = przedplatyPrzedPobraniem(z);
+    if (rodzaj !== 'wza' && odczytK.blad) {
+      // PRZ-145.01: tekst bez zmian — przypina go dosłownie `pobranie-umowa-firmy-t2.test.ts`
+      // (plan E5-D5 chciał dopisku „— brak kwoty pobrania” przy zerze; brief kazał zostawić ten test).
+      return { powod: `kwota pobrania jest niepoprawna — popraw ją na karcie zamówienia („${surowaK}”)` };
+    }
+    if (przedplaty > 0) {
+      // Hurt NIGDY nie nadaje zamówienia z przedpłatą — tylko mówi, co zrobić na karcie.
+      // PRZ-145.01 (E5-D1/E5-D5): porównanie z NIEDOPŁATĄ (kwota zamówienia minus wpłaty),
+      // nie z wpisaną kwotą pobrania.
+      if (brakKwoty(surowaK)) {
+        return { powod: 'częściowo opłacone, brak kwoty pobrania — nadaj z karty' };
+      }
+      if (odczytK.rodzaj === 'ksztalt') {
+        return { powod: `kwota pobrania jest niepoprawna — popraw ją na karcie zamówienia („${surowaK}”)` };
+      }
+      const nd = niedoplataPobrania(z);
+      if (!nd) return { powod: 'częściowo opłacone, brak kwoty pobrania — nadaj z karty' };
+      if (nd.blad) {
+        return { powod: (nd.blad.charAt(0).toLowerCase() + nd.blad.slice(1)).replace(/\.$/, '') };
+      }
+      if (nd.niedoplataGr === 0) return { powod: 'opłacone — wyłącz pobranie' };
+      const kGr = odczytK.blad ? 0 : odczytK.groszeKwoty;
+      // Dziura (e): kwota POniżej niedopłaty — mówimy wprost, o ile. Powyżej niedopłaty karta
+      // i tak odmówi („pobierz najwyżej …”), więc powód zostaje dawny.
+      if (kGr >= nd.niedoplataGr) return { powod: 'częściowo opłacone — nadaj z karty' };
+      return { powod: `kwota pobrania ${zl(kGr)} zł różni się od niedopłaty ${zl(nd.niedoplataGr)} zł — nadaj z karty` };
     }
   }
   return { metodaUzyta, rodzaj };
@@ -368,6 +402,8 @@ export function wariantFakturyHurtem(z, dzis) {
  * innym powodem, niz podalaby karta przy tym samym zamowieniu:
  *  1. `powodOdmowyFaktury` — okres rozliczeniowy, anulowanie, brak zgody klienta;
  *  2. stan istniejacej rezerwacji faktury (`stanFaktury`) — czy nie ma juz dokumentu;
+ *  2a. adres nabywcy (`powodBrakuAdresu`, PRZ-126.PT5) — PO stanie faktury, zeby zamowienie
+ *     z dokumentem uslyszalo o dokumencie, a nie o adresie;
  *  3. bariera arytmetyczna — czy pozycje sumuja sie do kwoty zamowienia (patrz
  *     `powodRozjazduDokumentu` wyzej; w `wystaw()` to `sprawdzSumeDokumentu`);
  *  4. `wariantFakturyHurtem` — przy pobraniu wariant bez odmowy, poza nim
@@ -380,8 +416,9 @@ export function podzielDoFaktury(zamowienia, teraz = Date.now(), opcje = {}) {
   const doWystawienia = [];
   const pominiete = [];
   for (const z of zamowienia ?? []) {
-    const powod = powodOdmowyFaktury(z, opcje)
+    const powod = powodOdmowyFaktury(z, { ...opcje, bezAdresu: true })
       ?? powodStanuFaktury(z, teraz)
+      ?? powodBrakuAdresu(z)
       ?? powodRozjazduDokumentu(z)
       ?? wariantFakturyHurtem(z).powod
       ?? null;

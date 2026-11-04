@@ -35,8 +35,14 @@ Sekcja środowiska narzędzi i testów nie jest listą wymaganych ustawień inst
 
 | Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
 |---|---|---|---|---|---|
+| <code>OMS_ALLEGRO_DEVICE_CLIENT_ID</code> | opcjonalna | brak wartości domyślnej | Identyfikator aplikacji Allegro do łączenia kont kodem w środowisku produkcyjnym. | Aplikację Allegro można zapisać w panelu, jeśli nie podano jej w pliku konfiguracji. | Nie |
+| <code>OMS_ALLEGRO_DEVICE_CLIENT_SECRET</code> | opcjonalna | sekret — nie wklejaj do czatu ani do repo | Sekret aplikacji Allegro do łączenia kont kodem w środowisku produkcyjnym. | Aplikację Allegro można zapisać w panelu, jeśli nie podano jej w pliku konfiguracji. | Nie |
+| <code>OMS_ALLEGRO_SANDBOX_DEVICE_CLIENT_ID</code> | opcjonalna | brak wartości domyślnej | Identyfikator aplikacji Allegro do łączenia kont kodem w środowisku testowym. | Aplikację Allegro można zapisać w panelu, jeśli nie podano jej w pliku konfiguracji. | Nie |
+| <code>OMS_ALLEGRO_SANDBOX_DEVICE_CLIENT_SECRET</code> | opcjonalna | sekret — nie wklejaj do czatu ani do repo | Sekret aplikacji Allegro do łączenia kont kodem w środowisku testowym. | Aplikację Allegro można zapisać w panelu, jeśli nie podano jej w pliku konfiguracji. | Nie |
+| <code>OMS_ALLEGRO_USER_AGENT</code> | opcjonalna | TwojOMS/&lt;wersja&gt; (+https://twojoms.pl) | Nazwa, wersja i adres strony OMS przedstawiane Allegro przy łączeniu kont. | OMS przedstawia Allegro swoją nazwę, wersję i adres strony. | Nie |
 | <code>OMS_KANALY</code> | opcjonalna; bez wpisanych kanałów OMS niczego nie pobiera | [] | Lista Twoich kanałów sprzedaży (sklepy WooCommerce i konta Allegro) w formacie JSON — każdy z kluczem, typem i prefiksem zmiennych. | Bez niej OMS nie ma kanałów i niczego nie pobiera. Pusta wartość to błąd — wpisz [] albo listę. Gdy w bazie są zamówienia kanału spoza listy z ostatnich 30 dni, /health świeci na czerwono. | Nie |
 | <code>OMS_POLLER_MS</code> | opcjonalna | 120000 | Co ile milisekund OMS pyta sklepy i Allegro o nowe zamówienia (domyślnie 120000, najmniej 30000). | OMS pobiera nowe zamówienia co 2 minuty, jeśli jest choć jeden aktywny kanał. | Nie |
+| <code>OMS_PROBA_ALLEGRO_SANDBOX</code> | opcjonalna | pusty tekst | Wartość „tak” pozwala piaskownicy łączyć się z Allegro Sandbox; prawdziwe Allegro jest w trybie próby zawsze zablokowane. | Piaskownica, demo i lokalny serwer nie łączą się z Allegro. Ustaw „tak” tylko w piaskownicy z prywatnym profilem Allegro Sandbox. | Nie |
 
 ## Dynamiczne prefiksy kanałów
 

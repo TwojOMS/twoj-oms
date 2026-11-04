@@ -21,7 +21,7 @@ const zmapowane = (nad = {}) => ({
   zrodlo_id: 1301,
   numer: '1301',
   klient: {
-    first_name: 'Jan', last_name: 'Kowalski', company: 'ACME', email: 'j@k.pl', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki',
+    first_name: 'Jan', last_name: 'Kowalski', company: 'ACME', email: 'j@k.pl', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa',
   },
   dostawa: {},
   metoda_wysylki: 'dpd',
@@ -41,10 +41,10 @@ const zmapowane = (nad = {}) => ({
 });
 
 const NADAWCA = {
-  nazwa: 'Lumina Marek Zywiecki',
-  ulica: 'ul. 1 Maja 5',
-  kod: '00-650',
-  miasto: 'Pęki',
+  nazwa: 'Pracownia Półcień Anna Wzorcowa',
+  ulica: 'ul. Przykładowa 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
   kraj: 'PL',
   phone: '',
 };
@@ -298,7 +298,7 @@ describe('proforma — dane na dokumencie', () => {
     const { id, proforma, budujPdf } = zPodgladem();
     proforma.wystaw(id);
     expect(budujPdf.mock.calls[0][0].nabywca).toMatchObject({
-      nazwa: 'ACME', nip: '1200001200', ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki',
+      nazwa: 'ACME', nip: '1200001200', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa',
     });
   });
 
@@ -308,7 +308,7 @@ describe('proforma — dane na dokumencie', () => {
     const { id, proforma, budujPdf } = zPodgladem();
     proforma.wystaw(id);
     expect(budujPdf.mock.calls[0][0].sprzedawca).toMatchObject({
-      nazwa: 'Lumina Marek Zywiecki', ulica: 'ul. 1 Maja 5', kod: '00-650', miasto: 'Pęki', kraj: 'PL', nip: '1234563218',
+      nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', nip: '1234563218',
     });
   });
 

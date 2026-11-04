@@ -1,4 +1,4 @@
-import { czyKanalAllegro } from './wysylka.js';
+import { umiejetnosciZamowienia } from './moduly-kanalow.ts';
 
 // Usluga ShipX, na ktorej ma pojechac paczka do paczkomatu — czyli TARYFA, wedlug ktorej
 // InPost ja rozliczy.
@@ -46,7 +46,7 @@ export function czySmart(zamowienie) {
 /**
  * Usluga ShipX dla tej przesylki.
  *
- * ⚠️ ROZSTRZYGA KANAL (`czyKanalAllegro`, po kolumnie `sklep`), A NIE METODA WYSYLKI — i to
+ * ⚠️ ROZSTRZYGA UMIEJĘTNOŚĆ KANAŁU (po kolumnie `sklep`), A NIE METODA WYSYLKI — i to
  * jest ta sama zasada, ktora chroni odmowe nadawania w domain/masowe.js. Metoda jest
  * EDYTOWALNA z karty zamowienia, wiec taryfa kluczowana metoda mialaby furtke: wystarczyloby
  * przestawic zamowienie sklepowe na paczkomat, zeby wyszlo na taryfie allegrowej (albo
@@ -55,6 +55,6 @@ export function czySmart(zamowienie) {
  * nie zmienia.
  */
 export function uslugaInpost(zamowienie) {
-  if (!czyKanalAllegro(zamowienie)) return USLUGA_SKLEP;
+  if (!umiejetnosciZamowienia(zamowienie).wysylkaPlatformy) return USLUGA_SKLEP;
   return czySmart(zamowienie) ? USLUGA_ALLEGRO_SMART : USLUGA_ALLEGRO;
 }

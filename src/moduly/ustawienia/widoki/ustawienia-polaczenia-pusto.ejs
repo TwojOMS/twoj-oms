@@ -1,0 +1,22 @@
+<%# PRZ-136.08: stan pusty „Moje połączenia” (U12) — trzy kroki; adresy konfiguratorów z katalogu integracji. %>
+<% const usluga = (id) => wszystkieUslugi.find(u => u.id === id) || {};
+   const adres = (id) => usluga(id).href || '/ustawienia/integracje/katalog';
+   const nazwa = (id) => usluga(id).nazwa || id;
+   const dostepne = (kategoria, poza = []) => wszystkieUslugi.filter(u => u.kategoria === kategoria && u.dostepnosc === 'dostepna' && u.href && !poza.includes(u.id)).map(u => [u.id, null, false]);
+   const kroki = [
+     { nazwa: 'Sprzedaż', opis: 'Zamówienia z Allegro albo sklepu WooCommerce trafiają do listy zamówień same.', akcje: [['allegro', 'Podłącz Allegro', true], ['woocommerce', 'Podłącz WooCommerce', false]] },
+     { nazwa: 'Wysyłka', opis: 'Etykiety kurierów nadasz prosto z zamówienia.', akcje: dostepne('wysylka') },
+     { nazwa: 'Faktury i KSeF', opis: 'Faktury wystawi program do faktur, a faktury kosztowe pobierzesz z KSeF.', akcje: dostepne('faktury', ['gus']) },
+   ]; %>
+<section class="pol-pusto" aria-labelledby="pusto-tytul">
+  <h2 id="pusto-tytul">Nie masz jeszcze żadnego połączenia</h2>
+  <p>Połączenia przynoszą do OMS zamówienia, nadają paczki i wystawiają faktury. Zacznij od miejsca, w którym sprzedajesz — resztę dodasz, kiedy będzie potrzebna.</p>
+  <ol class="pol-pusto-kroki">
+<% kroki.forEach((k, i) => { %>    <li>
+      <span class="pol-pusto-nr" aria-hidden="true"><%= i + 1 %></span>
+      <div><h3><%= k.nazwa %></h3><p><%= k.opis %></p></div>
+      <div class="pol-pusto-akcje"><% k.akcje.forEach(([id, etykieta, glowny]) => { %><a class="btn <%= glowny ? 'btn--glowny' : 'btn--drugi' %> btn--maly" href="<%= adres(id) %>"><%= etykieta || nazwa(id) %></a> <% }); %></div>
+    </li>
+<% }); %>  </ol>
+  <p class="pol-pusto-wszystkie"><a href="/ustawienia/integracje/katalog">Zobacz wszystkie integracje</a></p>
+</section>

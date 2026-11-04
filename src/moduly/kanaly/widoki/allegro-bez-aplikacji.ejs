@@ -1,0 +1,6 @@
+<%# PRZ-148.06 (3): ostrzeżenie kroku 1 — brak aplikacji Device w wybranym środowisku; w formularzu nad przyciskiem „Dalej”. %>
+<% for (const opcja of polaSrodowiska) { if (!deviceGotowe[opcja.wartosc]) { %>
+<p class="ust-uwaga" data-bez-aplikacji="<%= opcja.wartosc %>"<%= opcja.wartosc === wybraneSrodowisko ? '' : ' hidden' %> role="status"><%= opcja.etykieta %>: aplikacja Allegro w tym środowisku nie jest jeszcze założona — bez niej konta nie połączysz. <a href="<%= root %>/aplikacja?srodowisko=<%= opcja.wartosc %>">Załóż ją w kroku 0</a>.</p>
+<% } } %>
+<%# PRZ-149.03 (C2): krok 1 z założoną aplikacją — jak dodać kolejne konto. %>
+<p class="ust-pomoc" data-kolejne-konta>Aplikację zakładasz raz na środowisko — kolejne konta podłączasz od kroku 1. W kroku 2 zaloguj się na to konto, które chcesz podłączyć (najlepiej w oknie prywatnym).</p>

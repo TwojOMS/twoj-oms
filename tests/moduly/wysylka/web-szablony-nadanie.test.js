@@ -8,7 +8,7 @@ import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 
 const config = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] };
 const headers = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'), origin: 'http://localhost' };
-const adres = { nazwa: 'Jan Kowalski', company: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki', kraj: 'PL', phone: '+48500600700', email: 'j@k.pl' };
+const adres = { nazwa: 'Jan Kowalski', company: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', phone: '+48500600700', email: 'j@k.pl' };
 
 function zestaw(metoda = 'dpd') {
   const db = openOmsDb(':memory:');
@@ -19,7 +19,7 @@ function zestaw(metoda = 'dpd') {
   const z = {
     zrodlo_id: metoda === 'dpd' ? 3101 : 3102, numer: metoda === 'dpd' ? '3101' : '3102',
     klient: { email: 'j@k.pl', phone: '+48500600700' },
-    dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
+    dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
     metoda_wysylki: metoda, punkt_odbioru: metoda === 'inpost_paczkomat' ? 'KRA01M' : null,
     kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
     status_woo: 'processing', oplacone_at: '2026-07-29T13:00:00', anulowane: 0,

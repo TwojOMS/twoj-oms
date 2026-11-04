@@ -1,12 +1,15 @@
 import { naNumerDnia, zNumeruDnia, sklejDate, numerDniaZNapisu } from './kalendarz.js';
 import { groszeZInfaktu } from './paczka-dla-biura.js';
+import { zl } from './kwoty.js';
 
 /** Suma bieżącej listy: kompletne kwoty, korekty ze znakiem, osobno na walutę. */
 export function sumaListy(dokumenty) {
-  const suma = { ile: dokumenty.length, niepelne: false };
+  // `ile` = wiersze wchodzące do sumy (bez zastąpionej pary), tyle samo co w napisie „Razem — N dokumentów”.
+  const suma = { ile: 0, niepelne: false };
   for (const d of dokumenty) {
     // Para zamiany nie może rozjechać sum przy filtrowaniu po rodzaju dokumentu.
     if (d?.zastapiona_przez || d?.zastepujaca) continue;
+    suma.ile += 1;
     const nettoGr = groszeZInfaktu(d?.net_price);
     const vatGr = groszeZInfaktu(d?.tax_price);
     const bruttoGr = groszeZInfaktu(d?.gross_price);
@@ -119,15 +122,33 @@ export const stanKsef = (dok, zlecona = false) => {
   return zlecona ? 'wyslana_czeka' : 'brak';
 };
 
-/** Mały znacznik przy numerze; numer KSeF ma pierwszeństwo przed stanami przejściowymi. */
-export function plakietkaKsef(d) {
-  if (d?.ksef_number) return null;
-  const stan = d?.stanDokumentu?.ksef ?? d?.stanKsef ?? 'brak';
-  if (stan === 'jest') return null;
-  if (stan === 'odrzucona') return 'odrzucona w KSeF';
-  if (stan === 'blad') return 'błąd wysyłki';
-  if (stan === 'czeka' || stan === 'wyslana_czeka') return 'czeka na numer';
-  return 'czeka na wysyłkę';
+/** Numer jest dowodem przyjęcia dokumentu przez KSeF. */
+export function wKsef(dok) {
+  return Boolean(String(dok?.ksef_number ?? '').trim());
+}
+
+/** Linie stopki w kolumnach (netto, brutto) — kwoty z sumaListy, tu tylko zapis tekstem. */
+export function stopkaRazem(suma) {
+  if (!suma.ile) return [];
+  const waluty = Object.keys(suma).filter((w) => w !== 'ile' && w !== 'niepelne')
+    .sort((a, b) => a === b ? 0 : a === 'PLN' ? -1 : b === 'PLN' ? 1 : a.localeCompare(b));
+  const niepelne = Boolean(suma.niepelne);
+  // Same dokumenty bez kwoty: bez tej linii ostrzeżenie „niepełne” znikało razem ze stopką.
+  if (!waluty.length) return niepelne ? [{ waluta: '', netto: '', brutto: '', niepelne, ile: suma.ile }] : [];
+  return waluty.map((waluta) => {
+    const s = suma[waluta];
+    const jednostka = waluta === 'PLN' ? 'zł' : waluta;
+    const kwota = (gr) => `${zl(gr).replace('.', ',')} ${jednostka}`;
+    return { waluta, netto: kwota(s.nettoGr), brutto: kwota(s.bruttoGr), niepelne, ile: suma.ile };
+  });
+}
+
+/** Gotowe linie stopki; liczenie kwot pozostaje w sumaListy. */
+export function liniaRazem(suma) {
+  const ostrzezenie = 'niepełne — pominięto dokumenty bez kwoty';
+  return stopkaRazem(suma).map((l) => (l.waluta === ''
+    ? { waluta: '', tekst: `Razem: ${ostrzezenie}` }
+    : { waluta: l.waluta, tekst: `Razem: netto ${l.netto} · brutto ${l.brutto}` + (l.niepelne ? ` · ${ostrzezenie}` : '') }));
 }
 
 /** Status inFaktu znaczący „zapłacone". Jedyny, jaki wolno tu rozpoznać — patrz niżej. */

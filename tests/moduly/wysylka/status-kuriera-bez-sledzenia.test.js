@@ -26,7 +26,7 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: '2026-08-12T06:00:00', ostatni_blad: null }) };
 
 const zmapowane = (id, nad = {}) => ({
-  zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Pęki' },
+  zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '100.00',
   status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-08-11T06:00:00',
   pozycje: [{ nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 1, cena_brutto: '100.00', vat: null }],
@@ -51,14 +51,14 @@ beforeEach(() => { db = openOmsDb(':memory:'); });
 
 describe('osad po kurierze bez śledzenia', () => {
   it('kurier bez śledzenia zostawia zamówienie na liście roboczej — dopóki osad nie zniknie', () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(9001), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(9001), {});
     const pid = nadanaZBledem(db, id, 'allegro_wza');
     // To jest właśnie odznaka, którą właściciel widzi na liście „do zrobienia".
     expect(sprawyPrzesylki(wiersz(db, pid))).toContain('status u kuriera niedostępny');
   });
 
   it('otwarcie karty KASUJE osad przy kurierze bez śledzenia', async () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(9002), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(9002), {});
     const pid = nadanaZBledem(db, id, 'allegro_wza');
     const app = buildOmsServer({ db, config, poller, kurierzy: { allegro_wza: { bezSledzenia: true } } });
     await app.ready();
@@ -98,7 +98,7 @@ describe('osad po kurierze bez śledzenia', () => {
 // zbudowanej w bootstrapie, więc nie zna żadnej nazwy kuriera na pamięć.
 describe('wyczyscBladStatusuBezSledzenia', () => {
   it('kasuje osad tylko u wskazanych kurierów', () => {
-    const id1 = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(9101), {});
+    const id1 = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(9101), {});
     const bezSled = nadanaZBledem(db, id1, 'allegro_wza');
     const id2 = zapiszZamowienie(db, 'pro', zmapowane(9102), {});
     const zeSled = nadanaZBledem(db, id2, 'dpd', 'INCORRECT_LOGIN_OR_PASSWORD');
@@ -111,7 +111,7 @@ describe('wyczyscBladStatusuBezSledzenia', () => {
   });
 
   it('pusta lista kurierów nie rusza NICZEGO', () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(9103), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(9103), {});
     const pid = nadanaZBledem(db, id, 'allegro_wza');
 
     expect(wyczyscBladStatusuBezSledzenia(db, [])).toBe(0);
@@ -121,7 +121,7 @@ describe('wyczyscBladStatusuBezSledzenia', () => {
   // Kolumna `status_kuriera_pobrany_at` zostaje NIETKNIĘTA: to znacznik dławika, a nie część
   // błędu. Skasowanie go kazałoby panelowi pytać od nowa przy każdym otwarciu karty.
   it('nie rusza znacznika próby ani statusu', () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(9104), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(9104), {});
     const pid = nadanaZBledem(db, id, 'allegro_wza');
     const przed = wiersz(db, pid).status_kuriera_pobrany_at;
 
@@ -136,8 +136,8 @@ describe('wyczyscBladStatusuBezSledzenia', () => {
 // jednego wywołania") ma w tym projekcie własny komentarz w bootstrap.js i już się zdarzyła.
 describe('bootstrap sprząta osad przy starcie', () => {
   const KANAL = {
-    ALLEGRO_SZKICOWNIA_CLIENT_ID: 'id', ALLEGRO_SZKICOWNIA_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SZKICOWNIA_OD: '2026-07-01', ALLEGRO_SZKICOWNIA_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: 'PrzykladowyPanel/0.0.0 (+https://przyklad.invalid/panel)',
   };
 
@@ -146,7 +146,7 @@ describe('bootstrap sprząta osad przy starcie', () => {
     // bo pamięciowa baza powstaje dopiero w środku `zbudujOms`.
     const plik = join(mkdtempSync(join(tmpdir(), 'oms-osad-')), 'oms.sqlite');
     const zasiew = openOmsDb(plik);
-    const id = zapiszZamowienie(zasiew, 'allegro_szkicownia', zmapowane(9201), {});
+    const id = zapiszZamowienie(zasiew, 'allegro_swietlik', zmapowane(9201), {});
     const pid = nadanaZBledem(zasiew, id, 'allegro_wza');
     const idDpd = zapiszZamowienie(zasiew, 'pro', zmapowane(9202), {});
     const pidDpd = nadanaZBledem(zasiew, idDpd, 'dpd', 'INCORRECT_LOGIN_OR_PASSWORD');
@@ -156,15 +156,15 @@ describe('bootstrap sprząta osad przy starcie', () => {
       env: {
         OMS_AUTH_USER: 'adam', OMS_AUTH_PASS: 'x', OMS_DB_PATH: plik,
         OMS_ETYKIETY_DIR: mkdtempSync(join(tmpdir(), 'oms-etyk-')),
-        SHOP_PRO_URL: 'https://pro.szkicownia.test', SHOP_PRO_CK: 'ck', SHOP_PRO_CS: 'cs',
+        SHOP_PRO_URL: 'https://pro.swietlik.test', SHOP_PRO_CK: 'ck', SHOP_PRO_CS: 'cs',
         // ⚠️ DPD MUSI BYĆ SKONFIGUROWANY, inaczej ten test niczego nie pilnuje: bez niego
         // mapa kurierów ma JEDNEGO kuriera i „sprzątaj u wszystkich" znaczy dokładnie to
         // samo, co „sprzątaj u bezSledzenia". Wyszło z mutacji — filtr podmieniony na
         // `() => true` przechodził, dopóki w mapie nie było kuriera ze śledzeniem.
-        DPD_URL: 'https://dpd/api', DPD_LOGIN: '99999999', DPD_PASSWORD: 'tajne', DPD_FID: '278216',
-        DPD_NADAWCA_NAZWA: 'Lumina', DPD_NADAWCA_ULICA: 'Fabryczna 7',
-        DPD_NADAWCA_KOD: '00-650', DPD_NADAWCA_MIASTO: 'Pęki',
-        DPD_INFO_URL: 'https://dpd/info', DPD_INFO_CHANNEL: '278216',
+        DPD_URL: 'https://dpd/api', DPD_LOGIN: '99999999', DPD_PASSWORD: 'tajne', DPD_FID: '876543',
+        DPD_NADAWCA_NAZWA: 'Pracownia Półcień', DPD_NADAWCA_ULICA: 'Fabryczna 7',
+        DPD_NADAWCA_KOD: '00-950', DPD_NADAWCA_MIASTO: 'Warszawa',
+        DPD_INFO_URL: 'https://dpd/info', DPD_INFO_CHANNEL: '876543',
         ...KANAL,
       },
       createDpd: () => ({ nadaj: () => {}, statusPrzesylki: async () => null }),
@@ -184,11 +184,11 @@ describe('bootstrap sprząta osad przy starcie', () => {
     const plik = join(mkdtempSync(join(tmpdir(), 'oms-osad2-')), 'oms.sqlite');
     const zasiew = openOmsDb(plik);
     const surowaZPara = JSON.stringify({ carrierTrackingData: { carrierId: 'DPD', carrierWaybill: '1049000000077U' } });
-    const idBez = zapiszZamowienie(zasiew, 'allegro_szkicownia', zmapowane(9301), {});
+    const idBez = zapiszZamowienie(zasiew, 'allegro_swietlik', zmapowane(9301), {});
     const pBez = rozpocznijPrzesylke(zasiew, idBez, 'allegro_wza');
     zakonczPrzesylke(zasiew, pBez.id, { numerListu: 'AD0BEZ', etykietaSciezka: '/tmp/e.pdf', surowa: '<x/>' });
     zapiszProbeStatusuDpd(zasiew, pBez.id, { at: '2026-08-11T06:00:00.000Z', blad: 'osad' });
-    const idZ = zapiszZamowienie(zasiew, 'allegro_szkicownia', zmapowane(9302), {});
+    const idZ = zapiszZamowienie(zasiew, 'allegro_swietlik', zmapowane(9302), {});
     const pZ = rozpocznijPrzesylke(zasiew, idZ, 'allegro_wza');
     zakonczPrzesylke(zasiew, pZ.id, { numerListu: 'AD0ZPARA', etykietaSciezka: '/tmp/e.pdf', surowa: surowaZPara });
     zapiszProbeStatusuDpd(zasiew, pZ.id, { at: '2026-08-11T06:00:00.000Z', blad: 'DPD: INCORRECT_LOGIN_OR_PASSWORD' });
@@ -198,11 +198,11 @@ describe('bootstrap sprząta osad przy starcie', () => {
       env: {
         OMS_AUTH_USER: 'adam', OMS_AUTH_PASS: 'x', OMS_DB_PATH: plik,
         OMS_ETYKIETY_DIR: mkdtempSync(join(tmpdir(), 'oms-etyk2-')),
-        SHOP_PRO_URL: 'https://pro.szkicownia.test', SHOP_PRO_CK: 'ck', SHOP_PRO_CS: 'cs',
-        DPD_URL: 'https://dpd/api', DPD_LOGIN: '99999999', DPD_PASSWORD: 'tajne', DPD_FID: '278216',
-        DPD_NADAWCA_NAZWA: 'Lumina', DPD_NADAWCA_ULICA: 'Fabryczna 7',
-        DPD_NADAWCA_KOD: '00-650', DPD_NADAWCA_MIASTO: 'Pęki',
-        DPD_INFO_URL: 'https://dpd/info', DPD_INFO_CHANNEL: '278216',
+        SHOP_PRO_URL: 'https://pro.swietlik.test', SHOP_PRO_CK: 'ck', SHOP_PRO_CS: 'cs',
+        DPD_URL: 'https://dpd/api', DPD_LOGIN: '99999999', DPD_PASSWORD: 'tajne', DPD_FID: '876543',
+        DPD_NADAWCA_NAZWA: 'Pracownia Półcień', DPD_NADAWCA_ULICA: 'Fabryczna 7',
+        DPD_NADAWCA_KOD: '00-950', DPD_NADAWCA_MIASTO: 'Warszawa',
+        DPD_INFO_URL: 'https://dpd/info', DPD_INFO_CHANNEL: '876543',
         ...KANAL,
       },
       createDpd: () => ({ nadaj: () => {}, statusPrzesylki: async () => null }),
@@ -216,7 +216,7 @@ describe('bootstrap sprząta osad przy starcie', () => {
   it('bez DPD, lecz z kontem Allegro zachowuje błąd śledzalnego One Box', () => {
     const plik = join(mkdtempSync(join(tmpdir(), 'oms-one-osad-')), 'oms.sqlite');
     const zasiew = openOmsDb(plik);
-    const idOne = zapiszZamowienie(zasiew, 'allegro_szkicownia', zmapowane(9401), {});
+    const idOne = zapiszZamowienie(zasiew, 'allegro_swietlik', zmapowane(9401), {});
     const pOne = rozpocznijPrzesylke(zasiew, idOne, 'allegro_wza');
     const rawOne = JSON.stringify({
       carrier: 'ALLEGRO',
@@ -225,7 +225,7 @@ describe('bootstrap sprząta osad przy starcie', () => {
     zakonczPrzesylke(zasiew, pOne.id, { numerListu: 'AD0ONE', etykietaSciezka: '/tmp/one.pdf', surowa: rawOne });
     zapiszProbeStatusuDpd(zasiew, pOne.id, { at: '2026-09-21T07:00:00.000Z', blad: 'Allegro: HTTP 503' });
 
-    const idBez = zapiszZamowienie(zasiew, 'allegro_szkicownia', zmapowane(9402), {});
+    const idBez = zapiszZamowienie(zasiew, 'allegro_swietlik', zmapowane(9402), {});
     const pBez = nadanaZBledem(zasiew, idBez, 'allegro_wza');
     zasiew.close();
 
@@ -233,7 +233,7 @@ describe('bootstrap sprząta osad przy starcie', () => {
       env: {
         OMS_AUTH_USER: 'adam', OMS_AUTH_PASS: 'x', OMS_DB_PATH: plik,
         OMS_ETYKIETY_DIR: mkdtempSync(join(tmpdir(), 'oms-one-etyk-')),
-        SHOP_PRO_URL: 'https://pro.szkicownia.test', SHOP_PRO_CK: 'ck', SHOP_PRO_CS: 'cs',
+        SHOP_PRO_URL: 'https://pro.swietlik.test', SHOP_PRO_CK: 'ck', SHOP_PRO_CS: 'cs',
         ...KANAL,
       },
       createAllegroWza: () => ({ nadaj: () => {}, bezSledzenia: true }),

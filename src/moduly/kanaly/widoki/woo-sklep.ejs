@@ -1,0 +1,94 @@
+<div class="allegro-konfiguracja">
+<h1>WooCommerce — <%= k.nazwa %></h1>
+<p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
+<% if (k.zrodlo === 'env') { %><p>Połączenie i adres sklepu ustawił administrator serwera — zmiany zgłoś jemu.</p><% } else { %><p>Adres sklepu: <%= adresSklepu %></p><% } %>
+<% const tylkoOdczyt = k.zrodlo === 'env'; %>
+<% const bezEdycjiMapowania = tylkoOdczyt || Boolean(locals.mapowanieBezSklepu); %>
+<% const decyzjaPobrania = Array.isArray(mapowanie.bramkiPobrania) ? mapowanie.bramkiPobrania.map(String) : null; %>
+<% const pasekPobrania = !tylkoOdczyt && !decyzjaPobrania && Object.keys(mapowanie.instancje ?? {}).length > 0; %>
+<% const pasekPobraniaHtml = '<div class="pas-blad" role="alert"><p>Uzupełnij pobranie w kroku 3. Do czasu zapisu żadne zamówienie z tego sklepu nie dostanie pobrania.</p></div>'; %>
+<% if (blad) { %><div class="pas-blad" role="alert"><p><%= blad %></p></div><% } %>
+<% if (komunikat) { %><div class="pas-potwierdzenie" role="status"><p><%= komunikat %></p></div><% } %>
+<% if (k.autoryzacja !== 'polaczone') { %><%- include('../../../core/web/konfigurator/kroki-konfiguratora', { kroki }) %><% } %>
+<%# PRZ-134.PT9: nieaktywny sklep z panelu pokazuje sekcje tylko do bieżącego kroku; dalsze są wyłącznie na pasku kroków. %>
+<% const krokowo = !tylkoOdczyt && k.autoryzacja !== 'polaczone'; %>
+<% const iBiez = Math.max(0, kroki.findIndex(s => s.stan === 'biezacy')); %>
+<% const widac = (i) => !krokowo || i <= iBiez; const zwiniety = (i) => krokowo && i < iBiez; %>
+<% const opisAutoryzacji = {polaczone:'aktywny',brak:'nieaktywny — po sprawdzeniu kluczy i mapowaniu kliknij „Aktywuj”',odlaczone:'odłączony'}; const opisPobierania = {wlaczone:'włączone',wylaczone:'wyłączone'}; %>
+<% if (!tylkoOdczyt && k.autoryzacja === 'odlaczone') { %><div class="pas-potwierdzenie" role="status"><p>Sklep odłączony — podaj nowe klucze, aby podłączyć go ponownie.</p></div><% } %>
+<section class="ust-sekcja"><h2>1. <%= konfigurator.kroki[0].tytul %></h2><p><%= k.nazwa %><% if (adresSklepu) { %> — <%= adresSklepu %><% } %></p></section>
+<% if (!tylkoOdczyt) { const krok = konfigurator.kroki[1]; %>
+<%- include('../../../core/web/konfigurator/krok-konfiguratora', { zakresDatyStartu: locals.zakresDatyStartu, krok, akcja: adresAkcji(konfigurator,krok,k.klucz), formularzId, wersja: k.wersja, wartosci, poWyborze: include('woo-mail-wyslane', { mailWyslane: locals.mailWyslane ?? null, przelacznik: true, ukryty: wartosci.uprawnienia !== 'odczyt' }), ...(wartosci.ck ? { przycisk: 'Sprawdź zapisane lub nowe klucze', pomocFormularza: 'Klucze są zapisane. Zostaw pola puste, aby sprawdzić zapisane klucze. Wpisz oba nowe, aby je zapisać i sprawdzić.' } : {}), ...(zwiniety(1) ? { zwiniety: 'Klucze REST — połączenie działa.', pokaz: 'Sprawdź albo zmień klucze' } : {}) }) %>
+<% } else { %><section class="ust-sekcja"><h2>2. <%= konfigurator.kroki[1].tytul %></h2><p>Klucze REST ustawione na serwerze.</p></section><% } %>
+<% if (widac(2)) { %>
+<section class="ust-sekcja"><h2>3. <%= konfigurator.kroki[2].tytul %></h2>
+<% if (zwiniety(2)) { const ile = Object.keys(mapowanie.instancje ?? {}).length; %><p>Metody wysyłki — zapisane (przypisane metody: <%= ile %>; pobranie: <%= decyzjaPobrania?.length ? 'bramki ' + decyzjaPobrania.join(', ') : 'żadne' %>).</p><details><summary>Zmień mapowanie</summary><% } %>
+<% if (pasekPobrania) { %><%- pasekPobraniaHtml %><% } %>
+<% if (!bezEdycjiMapowania) { %><form method="post" action="<%= adres %>/mapowanie"><input type="hidden" name="wersja" value="<%= k.wersja %>"><% } %>
+<% if (metody.length) { %>
+<div class="przewijak-tabeli">
+<table><thead><tr><th>Strefa</th><th>Metoda w sklepie (Identyfikator instalacji)</th><th>Nadawaj jako</th><th>Za pobraniem</th></tr></thead><tbody>
+<% for (const metoda of metody) { const przypisanie = mapowanie.instancje?.[metoda.instanceId]?.metoda ?? ''; const zPobraniem = mapowanie.instancje?.[metoda.instanceId]?.pobranie === true; const sugestia = /pobran/i.test(String(metoda.tytul ?? '')); %>
+<tr><td><%= metoda.strefa %></td><td><%= metoda.tytul %> (<%= metoda.instanceId %>)<% if (metoda.metodaWoo === 'local_pickup') { %><br>local_pickup — zwykle odbiór osobisty; sprawdź ustawienie w sklepie.<% } %></td><td>
+<% if (bezEdycjiMapowania) { %><%= etykiety[przypisanie] ?? 'Nie przypisuj' %><% } else { %>
+<select name="instancja_<%= metoda.instanceId %>" aria-label="Nadawaj jako: <%= metoda.tytul %>"><option value="">Nie przypisuj</option><% for (const m of metodyOms) { %><option value="<%= m %>"<% if (przypisanie === m) { %> selected<% } %>><%= etykiety[m] ?? m %></option><% } %></select>
+<% } %></td><td>
+<% if (bezEdycjiMapowania) { %><%= zPobraniem ? 'Tak' : 'Nie' %><% } else { %><input type="checkbox" name="pobranie_<%= metoda.instanceId %>" value="tak"<% if (zPobraniem) { %> checked<% } %> aria-label="Za pobraniem: <%= metoda.tytul %>"><% } %>
+<% if (sugestia) { %> <span class="ust-pomoc">Nazwa sugeruje pobranie</span><% } %></td></tr><% } %>
+</tbody></table>
+</div>
+<% } else { %><p>Brak metod wysyłki do przypisania.</p><% } %>
+<% if (!bezEdycjiMapowania) { const bramkiSklepu = Array.isArray(locals.bramki) ? locals.bramki : null; const sugerujeBramka = (b) => /pobran|przy odbiorze|cash on delivery/i.test(String(b.tytul ?? '') + ' ' + String(b.nazwaWoo ?? '')); %>
+<h3>Płatność przy odbiorze (pobranie)</h3>
+<p>Zaznacz bramki płatności, przy których kurier ma pobrać pieniądze. Kwota pobrania = wartość zamówienia.</p>
+<p>Bramka z tej listy sama oznacza pobranie, także na metodzie bez zaznaczenia. Kolumnę „Za pobraniem” zaznacz tylko przy metodzie przeznaczonej wyłącznie na pobranie (np. „Kurier DPD pobranie”), nie przy zwykłym „Kurier DPD”.</p>
+<% if (bramkiSklepu) { const lista = [...bramkiSklepu.map(b => ({ id: String(b.id), tytul: b.tytul || String(b.id), nazwaWoo: b.nazwaWoo, wlaczona: b.wlaczona, brak: false })), ...(decyzjaPobrania ?? []).filter(id => !bramkiSklepu.some(b => String(b.id) === id)).map(id => ({ id, tytul: id, brak: true }))]; %>
+<% for (const b of lista) { const zaznaczona = decyzjaPobrania ? decyzjaPobrania.includes(b.id) : b.id === 'cod'; %>
+<p><label><% if (!bezEdycjiMapowania) { %><input type="checkbox" name="bramki" value="<%= b.id %>"<% if (zaznaczona) { %> checked<% } %>> <% } else { %><%= zaznaczona ? '☑' : '☐' %> <% } %><%= b.tytul %> (<%= b.id %>)<% if (b.wlaczona === false) { %> — wyłączona w sklepie<% } %><% if (b.brak) { %> — nie ma jej już w sklepie<% } %><% if (sugerujeBramka(b)) { %> — <span class="ust-pomoc">Nazwa sugeruje pobranie</span><% } %></label></p>
+<% } %>
+<% if (!lista.length) { %><p>Sklep nie zwrócił żadnej bramki płatności.</p><% } %>
+<% } else { %>
+<p><%= locals.bladBramek || 'Nie udało się odczytać bramek płatności ze sklepu.' %> Identyfikator znajdziesz w WooCommerce → Ustawienia → Płatności (w adresie strony bramki po <code>section=</code>).</p>
+<% if (!bezEdycjiMapowania) { %><p><label>Identyfikatory bramek za pobraniem, oddzielone przecinkami <input name="bramki_tekst" value="<%= decyzjaPobrania ? decyzjaPobrania.join(', ') : 'cod' %>" maxlength="1400" autocomplete="off"></label></p><% } %>
+<% } %>
+<% if (decyzjaPobrania && !decyzjaPobrania.length) { %><p>Zapisano: żadne zamówienie z tego sklepu nie będzie za pobraniem.</p><% } %>
+<% if (!bezEdycjiMapowania) { %><input type="hidden" name="pobranie_decyzja" value="1"><% } %>
+<p>Gdy bramka płatności i metoda wysyłki mówią co innego (np. metoda „za pobraniem”, a klient zapłacił przelewem), zamówienie trafi do OMS z metodą „nieznana” — sprawdzisz je na karcie.</p>
+<% } else { %><p>Pobranie: <%= decyzjaPobrania ? 'bramki ' + (decyzjaPobrania.length ? decyzjaPobrania.join(', ') : 'żadne') : tylkoOdczyt ? 'według metod wysyłki ustawionych na serwerze' : 'decyzja jeszcze niezapisana' %></p><% } %>
+<% if (!bezEdycjiMapowania) { %><p><button class="ust-przycisk" type="submit">Zapisz mapowanie</button></p><p>Zmiana dotyczy zamówień pobranych od teraz i tych, które zmienią się w sklepie.</p></form><% } %>
+<p>Zamówienia z metodą bez przypisania trafią do OMS z metodą „nieznana”. Przed nadaniem ustaw metodę ręcznie na karcie zamówienia.</p>
+<% if (zwiniety(2)) { %></details><% } %>
+</section>
+<% } %>
+<% if (widac(3)) { %>
+<% if (!tylkoOdczyt && k.generacjaImportu === 0) { const krok = konfigurator.kroki[3]; %>
+<%- include('../../../core/web/konfigurator/krok-konfiguratora', { zakresDatyStartu: locals.zakresDatyStartu, krok, akcja: adresAkcji(konfigurator,krok,k.klucz), formularzId, wersja: k.wersja, wartosci, otwarta: true }) %>
+<% } else { %><section class="ust-sekcja"><h2>4. <%= konfigurator.kroki[3].tytul %></h2><p>Zamówienia od dnia: <%= wartosci.od %></p><p>Zamówień sprzed tej daty OMS nie pobierze, także później.</p><% } %>
+<% if (krokowo) { %>
+<p>Sklep: <%= opisAutoryzacji[k.autoryzacja] ?? k.autoryzacja %>. Pobieranie zamówień: <%= opisPobierania[k.pobieranie] ?? k.pobieranie %>.</p>
+<form method="post" action="<%= adres %>/aktywuj"><input type="hidden" name="wersja" value="<%= k.wersja %>"><button class="ust-przycisk" type="submit">Aktywuj</button></form>
+<% } %>
+</section>
+<% } %>
+<% if (!krokowo) { %>
+<section class="ust-sekcja"><h2>5. <%= konfigurator.kroki[4].tytul %></h2>
+<% if (pasekPobrania) { %><%- pasekPobraniaHtml %><% } %>
+<p>Sklep: <%= opisAutoryzacji[k.autoryzacja] ?? k.autoryzacja %>. Pobieranie zamówień: <%= opisPobierania[k.pobieranie] ?? k.pobieranie %>.</p>
+<%# PRZ-149.04: tryb klucza z kroku 2; sklep bez zapisanego wyboru (i z pliku konfiguracji) pracuje jako Zapis/odczyt. %>
+<% const uprawnieniaKlucza = wartosci.uprawnienia === 'odczyt' ? 'odczyt' : 'zapis'; %>
+<p>Uprawnienia klucza: <%= uprawnieniaKlucza === 'odczyt' ? 'Odczyt' : 'Zapis/odczyt' %>.</p>
+<% if (uprawnieniaKlucza === 'odczyt') { %><%- include('woo-mail-wyslane', { mailWyslane: locals.mailWyslane ?? null }) %><% } %>
+<p>Ostatni przebieg: <%= stan?.ostatni_przebieg_at ? fmtDataCzasKrotko(stan.ostatni_przebieg_at) : 'Brak' %>. <% if (stan?.zsynchronizowane_do) { %><%# Kursor pollera to date_modified_gmt z Woo — bez strefy, ale w UTC. %><% const sukces = String(stan.zsynchronizowane_do); %>Zamówienia uzupełnione do: <%= fmtDataCzasKrotko(/(Z|[+-]\d\d:?\d\d)$/.test(sukces) ? sukces : sukces + 'Z') %>.<% } else { %>Jeszcze nie pobrano zamówień.<% } %><% if (stan?.ostatni_blad) { %> Ostatnie pobieranie się nie udało — sprawdź połączenie ze sklepem.<% } %></p>
+<% if (!tylkoOdczyt && k.autoryzacja === 'polaczone') { %><form method="post" action="<%= adres %>/pobieranie"><input type="hidden" name="wersja" value="<%= k.wersja %>"><input type="hidden" name="wlaczone" value="<%= k.pobieranie === 'wlaczone' ? 'nie' : 'tak' %>"><button class="ust-przycisk" type="submit"><%= k.pobieranie === 'wlaczone' ? 'Wstrzymaj' : 'Wznów' %></button></form><% } %>
+</section>
+<% } %>
+<% if (!tylkoOdczyt) { %>
+<section class="ust-sekcja"><h2>Zarządzanie sklepem</h2>
+<form method="post" action="<%= adres %>/nazwa"><input type="hidden" name="wersja" value="<%= k.wersja %>"><p><label>Nazwa w OMS <input name="nazwa" value="<%= k.nazwa %>" required maxlength="80"></label></p><p><button class="ust-przycisk" type="submit">Zmień nazwę</button></p></form>
+<% if (k.autoryzacja !== 'odlaczone') { %><form method="post" action="<%= adres %>/odlacz"><input type="hidden" name="wersja" value="<%= k.wersja %>"><p><label><input type="checkbox" name="potwierdz" value="tak" required> Odłączyć sklep? OMS przestanie pobierać zamówienia i usunie klucze REST. Zamówienia już pobrane zostaną.</label></p><button class="ust-przycisk" type="submit">Odłącz</button></form><% } %>
+<% if (locals.moznaUsunac) { %><form method="post" action="<%= adres %>/usun"><input type="hidden" name="wersja" value="<%= k.wersja %>"><p><label><input type="checkbox" name="potwierdz" value="tak" required> Usunąć sklep z OMS? Znikną nazwa, adres i klucze REST. Z tego sklepu nie pobrano jeszcze żadnych zamówień.</label></p><button class="ust-przycisk" type="submit">Usuń sklep</button></form>
+<% } else if (k.autoryzacja === 'odlaczone') { %><p>Sklep jest odłączony. Usunąć go nie można, bo pobrał już zamówienia albo produkty — zostają w OMS.</p>
+<% } else if (k.autoryzacja !== 'polaczone') { %><p>Sklep ma już pobrane zamówienia — możesz go tylko odłączyć.</p><% } %>
+</section>
+<% } %>
+</div>

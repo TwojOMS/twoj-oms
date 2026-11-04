@@ -55,26 +55,21 @@
     <%# Zwykle odnosniki, nie formularz: wybor NICZEGO nie zmienia i niczego nie rezerwuje — %>
     <%# prowadzi wylacznie na ekran nadania w odpowiednim wariancie. Zadanie GET jest tu     %>
     <%# poprawne wlasnie dlatego, ze jest bez skutkow ubocznych.                             %>
-    <ul class="wybor-kuriera">
+    <% if (zPobraniemNaTejPaczce !== null && kurierzy.some((k) => !zPobraniemNaTejPaczce.includes(k.klucz))) { %><p class="podpowiedz">Pobranie na tej paczce przyjmą tylko kurierzy bez dopisku „tylko bez pobrania na tej paczce”.</p>
+    <% } %><ul class="wybor-kuriera">
       <% kurierzy.forEach(function (k) { %>
         <li>
           <a class="btn btn--glowny" href="<%= adresNadania(k.klucz) %>">
             <%= k.etykieta %>
-          </a>
+          </a><% if (zPobraniemNaTejPaczce !== null && !zPobraniemNaTejPaczce.includes(k.klucz)) { %>
+          <span class="podpowiedz">tylko bez pobrania na tej paczce</span><% } %>
         </li>
       <% }); %>
     </ul>
 
-    <% if (tylkoDpdPrzezPobranie) { %>
-      <%# Jeden kurier na liscie bez podania powodu wyglada jak usterka. Powod jest o        %>
-      <%# pieniadze: rozpoznanie 01.08.2026 pokazalo, ze na naszej umowie z InPostem nie ma  %>
-      <%# wariantu pobraniowego (44 przesylki konta, wszystkie z pustym `cod`) — paczka      %>
-      <%# poszlaby wiec do automatu BEZ INKASA i bez ani jednego bledu po drodze.            %>
+    <% if (paczkomatPoUmowiePobrania) { %>
       <p class="podpowiedz">
-        Paczkomat jest niedostępny dla tej paczki, bo zamówienie jest <strong>za
-        pobraniem</strong>, a pobranie na naszej umowie z InPostem nie jest potwierdzone —
-        paczka pojechałaby bez inkasa. Przy dosyłce (paczka nr 2 i dalsze) pobranie i tak
-        nie jedzie, więc tam paczkomat będzie do wyboru.
+        Paczkomat za pobraniem włączysz w <a href="/ustawienia/integracje/inpost#inpost-pobranie">Ustawienia → Integracje → Kurier InPost</a>, jeśli masz umowę na pobranie.
       </p>
     <% } %>
   </div>

@@ -19,7 +19,7 @@ import { powodBrakuGotowosciNadania } from '../../../src/domena/gotowosc-nadania
 const TOKEN = 'eyJTESTOWY.TOKEN-INPOST.NIE-MA-PRAWA-WYCIEC';
 const ORGANIZACJA = 13235;
 const URL_API = 'https://shipx.test/v1';
-const NADAWCA = { nazwa: 'Lumina Marek Zywiecki', ulica: 'ul. 1 Maja 5', kod: '00-650', miasto: 'Pęki', kraj: 'PL', phone: '338451234', email: 'sklep@szkicownia.pl' };
+const NADAWCA = { nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', phone: '338451234', email: 'sklep@swietlik.example.test' };
 
 // Prawdziwy numer paczkomatowy ma 24 cyfry; identyfikator przesylki w ShipX to liczba.
 const NUMER = '520000123456789012345678';
@@ -29,7 +29,7 @@ const ZPL = '^XA^FO50,50^FDInPost^FS^XZ';
 
 const zmapowane = (nad = {}) => ({
   zrodlo_id: 28045, numer: '28045', klient: { email: 'j@k.pl', phone: '+48500900008' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
+  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
   metoda_wysylki: 'inpost_paczkomat', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
   punkt_odbioru: 'SLN06M', punkt_odbioru_opis: 'Przy myjni bezdotykowej',
   status_woo: 'processing', oplacone_at: '2026-08-01T10:00:00', anulowane: 0,
@@ -536,7 +536,7 @@ describe('Zadanie 7 — ekran nadania dla paczkomatu', () => {
     expect(r.body).toContain('name="kod"');
     expect(r.body).toContain('name="miasto"');
     expect(r.body).toContain('value="Polna 1"');
-    expect(r.body).toContain('value="00-650"');
+    expect(r.body).toContain('value="00-950"');
     expect(r.body).toContain('<details');
     expect(r.body).toContain('</details>');
   });
@@ -546,7 +546,7 @@ describe('Zadanie 7 — ekran nadania dla paczkomatu', () => {
     const { app, id } = zestawHttp({ inpostKlient: inpost });
     const r = await app.inject({
       method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
-      payload: { waga: '2.5', gabaryt: 'B', kolejnosc: '1', nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki', kraj: 'PL', punkt_odbioru: 'SLN06M' },
+      payload: { waga: '2.5', gabaryt: 'B', kolejnosc: '1', nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', punkt_odbioru: 'SLN06M' },
     });
     expect(r.statusCode).toBe(302);
     expect(inpost.nadaj).toHaveBeenCalledTimes(1);
@@ -560,7 +560,7 @@ describe('Zadanie 7 — ekran nadania dla paczkomatu', () => {
     const { app, id } = zestawHttp({ inpostKlient: inpost });
     const r = await app.inject({
       method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
-      payload: { waga: '1', gabaryt: 'A', kolejnosc: '1', nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki', kraj: 'PL', punkt_odbioru: 'wro10b' },
+      payload: { waga: '1', gabaryt: 'A', kolejnosc: '1', nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', punkt_odbioru: 'wro10b' },
     });
     expect(r.statusCode).toBe(302);
     expect(inpost.nadaj.mock.calls[0][0].punktOdbioru).toBe('WRO10B');
@@ -571,7 +571,7 @@ describe('Zadanie 7 — ekran nadania dla paczkomatu', () => {
     const { app, id } = zestawHttp({ inpostKlient: inpost });
     const r = await app.inject({
       method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
-      payload: { waga: '1', kolejnosc: '1', nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki', kraj: 'PL', punkt_odbioru: 'SLN06M' },
+      payload: { waga: '1', kolejnosc: '1', nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', punkt_odbioru: 'SLN06M' },
     });
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/gabaryt/i);
@@ -583,7 +583,7 @@ describe('Zadanie 7 — ekran nadania dla paczkomatu', () => {
     const { app, id } = zestawHttp({ inpostKlient: inpost });
     const r = await app.inject({
       method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
-      payload: { waga: '1', gabaryt: 'Z', kolejnosc: '1', nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki', kraj: 'PL', punkt_odbioru: 'SLN06M' },
+      payload: { waga: '1', gabaryt: 'Z', kolejnosc: '1', nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', punkt_odbioru: 'SLN06M' },
     });
     expect(r.statusCode).toBe(400);
     expect(inpost.nadaj).not.toHaveBeenCalled();
@@ -640,11 +640,11 @@ describe('zbudujOms — InPost w mapie kurierów', () => {
   const katalogEtykiet = () => mkdtempSync(join(tmpdir(), 'oms-boot-'));
   const PELNE = {
     OMS_AUTH_USER: 'adam', OMS_AUTH_PASS: 'x', OMS_DB_PATH: ':memory:',
-    SHOP_PRO_URL: 'https://pro.szkicownia.test', SHOP_PRO_CK: 'ck', SHOP_PRO_CS: 'cs',
-    DPD_URL: 'https://dpd/api', DPD_LOGIN: '99999999', DPD_PASSWORD: 'tajne', DPD_FID: '278216',
-    DPD_NADAWCA_NAZWA: 'Lumina Marek Zywiecki', DPD_NADAWCA_ULICA: 'ul. 1 Maja 5',
-    DPD_NADAWCA_KOD: '00-650', DPD_NADAWCA_MIASTO: 'Pęki',
-    DPD_INFO_URL: 'https://dpd/info', DPD_INFO_CHANNEL: '278216',
+    SHOP_PRO_URL: 'https://pro.swietlik.test', SHOP_PRO_CK: 'ck', SHOP_PRO_CS: 'cs',
+    DPD_URL: 'https://dpd/api', DPD_LOGIN: '99999999', DPD_PASSWORD: 'tajne', DPD_FID: '876543',
+    DPD_NADAWCA_NAZWA: 'Pracownia Półcień Anna Wzorcowa', DPD_NADAWCA_ULICA: 'ul. Przykładowa 1',
+    DPD_NADAWCA_KOD: '00-950', DPD_NADAWCA_MIASTO: 'Warszawa',
+    DPD_INFO_URL: 'https://dpd/info', DPD_INFO_CHANNEL: '876543',
   };
   const env = (nad = {}) => ({ ...PELNE, OMS_ETYKIETY_DIR: katalogEtykiet(), ...nad });
   const atrapaDpd = () => vi.fn(() => ({ nadaj: vi.fn() }));
@@ -700,7 +700,7 @@ describe('usługa ShipX i paczkomat nadawczy w ciele żądania', () => {
   // zmapowanego zamowienia — pierwsza wersja tego testu wkladala ja do `nad` i test byl
   // ZIELONY dla wariantu „bez Smart", bo `surowe_json` zostawalo puste. Czyli mierzylby
   // domyslke, nie regule.
-  const zPrawdziwymKlientem = ({ paczkomatNadawczy, sklep = 'szkicownia', nad = {}, surowe: raw = {} } = {}) => {
+  const zPrawdziwymKlientem = ({ paczkomatNadawczy, sklep = 'swietlik', nad = {}, surowe: raw = {} } = {}) => {
     const cialaZadan = [];
     const fetchImpl = vi.fn(async (adres, opcje) => {
       if (String(adres).includes('format=pdf')) return { status: 200, ok: true, arrayBuffer: async () => Buffer.from(PDF, 'latin1') };
@@ -729,7 +729,7 @@ describe('usługa ShipX i paczkomat nadawczy w ciele żądania', () => {
   // TYCS01M ma po stronie InPostu przesylke `inpost_locker_allegro_smart` z tym samym punktem.
   it('paczkomat z Allegro ze Smart! jedzie na taryfie allegro_smart', async () => {
     const { nadanie, id, cialaZadan } = zPrawdziwymKlientem({
-      sklep: 'allegro_szkicownia',
+      sklep: 'allegro_swietlik',
       nad: { metoda_wysylki: 'allegro_paczkomat' }, surowe: dostawa(true),
     });
     await nadanie.nadaj(id, paczka);
@@ -738,7 +738,7 @@ describe('usługa ShipX i paczkomat nadawczy w ciele żądania', () => {
 
   it('paczkomat z Allegro bez Smart! jedzie na taryfie allegro zwykłej', async () => {
     const { nadanie, id, cialaZadan } = zPrawdziwymKlientem({
-      sklep: 'allegro_szkicownia',
+      sklep: 'allegro_swietlik',
       nad: { metoda_wysylki: 'allegro_paczkomat' }, surowe: dostawa(false),
     });
     await nadanie.nadaj(id, paczka);

@@ -3,7 +3,8 @@ import { powodOdmowyFaktury, powodOdmowyZaplaconej } from '../../src/domena/fakt
 
 const zam = (n) => ({
   id: 1, numer: '3001', okres_rozliczeniowy_id: null, anulowane: 0, chce_fakture: 1,
-  nip: '1234563218', kwota_brutto: '123.00', pozycje: [], platnosci: [], ...n,
+  nip: '1234563218', kwota_brutto: '123.00', pozycje: [], platnosci: [],
+  klient: { company: 'Pracownia Półcień', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa', country: 'PL' }, ...n,
 });
 
 describe('powod odmowy faktury', () => {
@@ -67,6 +68,42 @@ describe('powod odmowy faktury — opcja dla kazdego (PRZ-126)', () => {
 
   it('z dlaKazdego: true odmawia brakowi zamowienia', () => {
     expect(powodOdmowyFaktury(null, { dlaKazdego: true })).toBe('Nie ma takiego zamówienia.');
+  });
+});
+
+// PRZ-126.PT5 (decyzja 8): bez adresu nabywcy nie ma faktury. Reguła czyta `daneFaktury(z)`
+// (ręczne nadpisanie wygrywa) i stoi OSTATNIA — anulowane, okres, scalone i „nie prosił” mówią pierwsze.
+describe('powod odmowy faktury — adres nabywcy (PRZ-126.PT5)', () => {
+  const bezAdresu = (n) => zam({ klient: { company: 'Pracownia Półcień' }, ...n });
+
+  it('odmawia bez adresu i wymienia braki po kolei', () => {
+    expect(powodOdmowyFaktury(bezAdresu())).toBe(
+      'Brak adresu nabywcy (ulica, kod pocztowy, miasto). Uzupełnij dane do faktury na karcie zamówienia.');
+    expect(powodOdmowyFaktury(zam({ klient: { address_1: 'Lampowa 1', city: 'Warszawa' } }))).toBe(
+      'Brak adresu nabywcy (kod pocztowy). Uzupełnij dane do faktury na karcie zamówienia.');
+  });
+
+  it('osoba prywatna (bez NIP i firmy) z adresem — można; bez adresu — odmowa', () => {
+    const osoba = { first_name: 'Ala', last_name: 'Przykładowa' };
+    expect(powodOdmowyFaktury(zam({ nip: null, klient: { ...osoba, address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' } }))).toBeNull();
+    expect(powodOdmowyFaktury(zam({ nip: null, klient: osoba }))).toMatch(/^Brak adresu nabywcy/);
+  });
+
+  it('nabywca zagraniczny bez kodu pocztowego — można', () => {
+    expect(powodOdmowyFaktury(zam({ klient: { address_1: 'Lampenweg 1', city: 'Berlin', country: 'DE' } }))).toBeNull();
+  });
+
+  it('adres uzupełniony ręcznie przy pustym adresie ze sklepu — można', () => {
+    const reczny = JSON.stringify({ ulica: 'Lampowa 1', kod: '00-950', miasto: 'Warszawa' });
+    expect(powodOdmowyFaktury(bezAdresu({ klient_reczny_json: reczny }))).toBeNull();
+  });
+
+  it('adres sprawdzany ostatni: anulowane, okres, scalone i brak prośby wygrywają', () => {
+    expect(powodOdmowyFaktury(bezAdresu({ anulowane: 1 }))).toMatch(/anulowane/i);
+    expect(powodOdmowyFaktury(bezAdresu({ okres_rozliczeniowy_id: 7 }))).toContain('/okresy/7');
+    expect(powodOdmowyFaktury(bezAdresu({ scalone_do: 9, scalone_do_numer: '3009' }))).toMatch(/scalone/);
+    expect(powodOdmowyFaktury(bezAdresu({ chce_fakture: 0, nip: null }))).toBe('Klient nie prosił o fakturę.');
+    expect(powodOdmowyFaktury(bezAdresu({ chce_fakture: 0, nip: null }), { dlaKazdego: true })).toMatch(/^Brak adresu nabywcy/);
   });
 });
 

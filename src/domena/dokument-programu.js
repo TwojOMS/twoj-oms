@@ -93,3 +93,17 @@ export function idDokumentuDla(f, program) {
   throw bladOperatora(`Ta faktura jest w ${gdzie}, a moduł faktur OMS-u to teraz „${etykietaModulu(idProgramu(program))}” — otworzysz ją w ${gdzie}. Nic nie poszło do programu.`,
     { status: 409, bezProgramu: true });
 }
+
+/**
+ * PRZ-148.03 (recenzja): podgląd faktury przy renderowaniu karty i ekranu zwrotu — z własnym krótkim terminem.
+ * Zawieszony program fakturowy nie może trzymać strony do limitu klienta (inFakt: 60 s); po terminie albo przy
+ * błędzie → `null`, czyli ekran zachowuje się jak bez odczytu (przycisk zostaje, odmowę da usługa korekty).
+ */
+export const TERMIN_PODGLADU_FAKTURY_MS = 2500;
+export async function podgladFakturyZTerminem(program, id, ms = TERMIN_PODGLADU_FAKTURY_MS) {
+  let zegar;
+  const termin = new Promise((ok) => { zegar = setTimeout(() => ok(null), ms); });
+  try {
+    return await Promise.race([Promise.resolve().then(() => program.pobierzFakture(id)).catch(() => null), termin]);
+  } finally { clearTimeout(zegar); }
+}

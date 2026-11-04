@@ -73,11 +73,11 @@ describe('kod pocztowy', () => {
   // REGON oddaje kod BEZ myślnika, a panel/Woo/DPD używają postaci z myślnikiem — bez
   // tego każde pobranie z GUS-u oznaczałoby pole jako „zmienione ręcznie".
   it('dokłada myślnik', () => {
-    expect(sformatujKod('00650')).toBe('00-650');
+    expect(sformatujKod('00950')).toBe('00-950');
   });
 
   it('kod już z myślnikiem zostaje nietknięty', () => {
-    expect(sformatujKod('00-650')).toBe('00-650');
+    expect(sformatujKod('00-950')).toBe('00-950');
   });
 
   it('śmieci zostają, jakie były (lepiej pokazać dziwną wartość niż ją zjeść)', () => {

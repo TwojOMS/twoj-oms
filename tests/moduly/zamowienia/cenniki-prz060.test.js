@@ -12,7 +12,7 @@ const definicje = [
   { klucz: 'sklep_b', typ: 'woo', prefiks: 'SKLEP_B' },
 ];
 // Wartość OMS_CENNIKI do dopisania w .env.oms produkcji właściciela przy PRZ-061 (nie jest sekretem).
-const CENNIKI_TOMKA = '[{"kanal":"szkicownia","nazwa":"szkicownia.pl"},{"kanal":"pro","nazwa":"pro.szkicownia.pl (PRO)"}]';
+const CENNIKI_TOMKA = '[{"kanal":"swietlik","nazwa":"swietlik.example.test"},{"kanal":"pro","nazwa":"pro.swietlik.example.test (PRO)"}]';
 const produkt = (nad = {}) => ({ kanal: 'sklep_a', produkt_id: '1', wariant_id: '', nazwa: 'Produkt', cena_gr: 1000, rozmiar_tekst: null, ...nad });
 
 describe('PRZ-060 — OMS_CENNIKI', () => {
@@ -38,7 +38,7 @@ describe('PRZ-060 — OMS_CENNIKI', () => {
     expect(() => konfiguracjaZamowien({ ...seller, OMS_CENNIKI: '[]' })).toThrow(/OMS_CENNIKI/);
     expect(konfiguracjaZamowien(seller).cenniki).toBeNull();
     expect(konfiguracjaZamowien({ ...seller, OMS_CENNIKI: CENNIKI_TOMKA }).cenniki).toEqual([
-      { kanal: 'szkicownia', nazwa: 'szkicownia.pl' }, { kanal: 'pro', nazwa: 'pro.szkicownia.pl (PRO)' },
+      { kanal: 'swietlik', nazwa: 'swietlik.example.test' }, { kanal: 'pro', nazwa: 'pro.swietlik.example.test (PRO)' },
     ]);
   });
 });
@@ -81,17 +81,17 @@ describe('PRZ-060 — wartości produkcji właściciela dają dzisiejsze napisy'
   const c = cenniki({ lista: parsujCenniki(CENNIKI_TOMKA), definicje: [] });
 
   it('lista, domyślny i nazwy jak stałe sprzed PRZ-060', () => {
-    expect(c.kanaly).toEqual(['szkicownia', 'pro']);
-    expect(c.domyslny).toBe('szkicownia');
-    expect(c.nazwy).toEqual({ szkicownia: 'szkicownia.pl', pro: 'pro.szkicownia.pl (PRO)' });
-    expect(cennikDlaZamowienia({ sklepZamowienia: 'allegro_szkicownia' }, c)).toBe('szkicownia');
-    expect(cennikDlaZamowienia({ sklepZamowienia: 'szkicownia', wybrany: 'pro' }, c)).toBe('pro');
+    expect(c.kanaly).toEqual(['swietlik', 'pro']);
+    expect(c.domyslny).toBe('swietlik');
+    expect(c.nazwy).toEqual({ swietlik: 'swietlik.example.test', pro: 'pro.swietlik.example.test (PRO)' });
+    expect(cennikDlaZamowienia({ sklepZamowienia: 'allegro_swietlik' }, c)).toBe('swietlik');
+    expect(cennikDlaZamowienia({ sklepZamowienia: 'swietlik', wybrany: 'pro' }, c)).toBe('pro');
   });
 
   it('komunikaty odmowy co do znaku', () => {
-    expect(() => pozycjaZProduktu(produkt({ kanal: 'allegro_szkicownia' }), '1', { cenniki: c }))
-      .toThrow('Kanał „allegro_szkicownia" nie jest cennikiem — ceny biorą się wyłącznie ze sklepów szkicownia.pl i pro.szkicownia.pl (PRO).');
+    expect(() => pozycjaZProduktu(produkt({ kanal: 'allegro_swietlik' }), '1', { cenniki: c }))
+      .toThrow('Kanał „allegro_swietlik" nie jest cennikiem — ceny biorą się wyłącznie ze sklepów swietlik.example.test i pro.swietlik.example.test (PRO).');
     expect(() => pozycjaZProduktu(produkt({ kanal: 'pro', nazwa: 'Pieszy', cena_gr: null }), '1', { cenniki: c }))
-      .toThrow('Produkt „Pieszy" nie ma ceny w cenniku pro.szkicownia.pl (PRO) — dopisz go ręcznie z ceną albo wybierz drugi cennik.');
+      .toThrow('Produkt „Pieszy" nie ma ceny w cenniku pro.swietlik.example.test (PRO) — dopisz go ręcznie z ceną albo wybierz drugi cennik.');
   });
 });

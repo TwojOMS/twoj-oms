@@ -1,5 +1,5 @@
 import { czyPozycjaPlaceholdera } from './indywidualne.js';
-import { czyKanalAllegro } from './wysylka.js';
+import { modulZamowienia } from './moduly-kanalow.ts';
 
 // Dokad prowadzi POZYCJA zamowienia — jedno pytanie, jedna odpowiedz, jeden plik.
 // Regula mieszka tutaj, a nie w widoku — dokladnie tak samo, jak adres miniatury
@@ -99,12 +99,6 @@ const WZORCE = {
   allegro: { adres: adresOferty, tytul: 'Otwórz ofertę na Allegro' },
 };
 
-// Rodzaj kanalu liczy WSPOLNY predykat `czyKanalAllegro` (domain/wysylka.js), a nie wlasna
-// kopia `startsWith('allegro_')`. Kopii tej reguly bylo w repo juz kilka i jedna z nich
-// zostala zdjeta 04.08.2026 wlasnie dlatego, ze zaczynala zyc wlasnym zyciem
-// (patrz domain/sync-sklep.js).
-const rodzajKanalu = (zamowienie) => (czyKanalAllegro(zamowienie) ? 'allegro' : 'sklep');
-
 /**
  * Odnosnik z pozycji zamowienia do jej zrodla — `{ adres, tytul }` albo `null`.
  *
@@ -117,7 +111,7 @@ const rodzajKanalu = (zamowienie) => (czyKanalAllegro(zamowienie) ? 'allegro' : 
  * @param {{baseUrl?: string|null}} opcje korzen sklepu (config.sklepy[<sklep>].baseUrl)
  */
 export function odnosnikPozycji(zamowienie, wiersz, { baseUrl = null } = {}) {
-  const wzorzec = WZORCE[rodzajKanalu(zamowienie)];
+  const wzorzec = WZORCE[modulZamowienia(zamowienie).wzorzecLinku];
   const adres = wzorzec?.adres(wiersz ?? {}, baseUrl) ?? null;
   return adres ? { adres, tytul: wzorzec.tytul } : null;
 }

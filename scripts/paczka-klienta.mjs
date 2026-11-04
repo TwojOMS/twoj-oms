@@ -24,11 +24,13 @@ const DOKLADNE = new Set([
 ]);
 // PRZ-094.21: deploy/drukarka/ — agent druku etykiet i faktur (instrukcja w README.md obok skryptów).
 const PREFIKSY = ['src/', 'deploy/klient/', 'deploy/drukarka/'];
-// Dokumenty kurierów (docs/kurier-dpd.md, docs/kurier-inpost.md…): instrukcja instalacji odsyła do nich z ekranu Integracji.
-const WZORCE = [/^docs\/kurier-[a-z0-9-]+\.md$/,
+// Dokumenty kurierów (docs/kurier-dpd.md, docs/kurier-inpost.md…): instrukcja instalacji odsyła do nich z ekranu Integracji. docs/kurier-jako-modul.md to przewodnik dla programisty — poza paczką.
+const WZORCE = [/^docs\/kurier-(?!jako-modul\.md$)[a-z0-9-]+\.md$/,
   // PRZ-094.04: instrukcja poczty wychodzącej (Ustawienia → Integracje → Poczta wychodząca).
   /^docs\/poczta-smtp\.md$/,
   /^docs\/modul-faktur\.md$/,
+  // PRZ-132.13: podłączenie Allegro w panelu (kreator, aplikacja typu urządzenie).
+  /^docs\/allegro-podlaczenie\.md$/,
   /^docs\/twojefaktury(?:-ksef)?\.md$/];
 
 /** Lista plików paczki z listy plików commita: dokładne nazwy, wzorce dokumentów kurierów + całe src/ i deploy/klient/. */

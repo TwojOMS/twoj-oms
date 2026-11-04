@@ -13,15 +13,15 @@ import { fmtDataCzasKrotko } from '../../../src/domena/format-daty.js';
 
 const config = {
   auth: { user: 'adam', pass: 'x' },
-  sprzedawca: { nazwa: 'Lumina Marek Zywiecki' },
+  sprzedawca: { nazwa: 'Pracownia Półcień Anna Wzorcowa' },
   proforma: { rachunek: '07 1090 1014 0000 0000 0000 0001' },
-  nadawca: { nazwa: 'Lumina Marek Zywiecki' },
+  nadawca: { nazwa: 'Pracownia Półcień Anna Wzorcowa' },
 };
 
 const zmapowane = (nad = {}) => ({
   zrodlo_id: 6001, numer: '202600014',
-  klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'klient@firma.pl', company: 'BETAMET sp. z o.o.' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Fabryczna 4', postcode: '00-650', city: 'Pęki' },
+  klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'klient@firma.pl', company: 'Wzorowy Kontrahent' },
+  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'ul. Testowa 7', postcode: '00-950', city: 'Warszawa' },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
   kwota_brutto: '990.00', koszt_dostawy_brutto: '0.00', koszt_dostawy_netto: '0.00',
   status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-08-21T09:15:00',

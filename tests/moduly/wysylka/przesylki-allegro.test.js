@@ -15,7 +15,7 @@ import { skasujPrzesylkeReczna } from '../../../src/moduly/wysylka/db/przesylki.
 
 const zmapowane = (id, nad = {}) => ({
   zrodlo_id: String(id), numer: String(id), klient: { first_name: 'Jan', email: 'j@k.pl' },
-  dostawa: { city: 'Pęki' }, metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, chce_fakture: 0,
+  dostawa: { city: 'Warszawa' }, metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, chce_fakture: 0,
   nip: null, kwota_brutto: '99.00', status_woo: null, oplacone_at: '2026-08-04T09:00:00',
   anulowane: 0, utworzone_at: '2026-08-04T08:00:00',
   pozycje: [{ nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 1, cena_brutto: '99.00', vat: null }],
@@ -27,7 +27,7 @@ beforeEach(() => {
   db = openOmsDb(':memory:');
 });
 
-const zamowienie = (sklep = 'allegro_szkicownia', nad = {}) => zapiszZamowienie(db, sklep, zmapowane('e2a1', nad), {});
+const zamowienie = (sklep = 'allegro_swietlik', nad = {}) => zapiszZamowienie(db, sklep, zmapowane('e2a1', nad), {});
 
 const klientZ = (przesylki) => ({ pobierzPrzesylki: vi.fn().mockResolvedValue(przesylki) });
 const usluga = (klienci) => createPrzesylkiAllegro({ db, klienci });
@@ -38,7 +38,7 @@ const log = (id) => db.prepare('SELECT * FROM log WHERE zamowienie_id = ?').all(
 describe('numery listów z Allegro', () => {
   it('dopisuje przesyłkę z kurierem ALLEGRO, nie z domyślnym DPD', async () => {
     const id = zamowienie();
-    const u = usluga({ allegro_szkicownia: klientZ([{ waybill: 'AD0LK57DLG0756H4H', carrierId: 'ALLEGRO' }]) });
+    const u = usluga({ allegro_swietlik: klientZ([{ waybill: 'AD0LK57DLG0756H4H', carrierId: 'ALLEGRO' }]) });
 
     expect(await u.odswiez(id)).toEqual({ dopisane: 1 });
 
@@ -56,8 +56,8 @@ describe('numery listów z Allegro', () => {
   // metodzie wpisalby wtedy zapasowe 'dpd' i numer „AD…" poszedlby do DPD. Kurier tej paczki
   // wynika z KANALU (kolumna `sklep`), a kanal jest trwaly — metoda jest edytowalna z karty.
   it('kurier to allegro TAKZE przy metodzie, ktorej panel nie zna', async () => {
-    const id = zamowienie('allegro_szkicownia', { metoda_wysylki: 'nieznana' });
-    await usluga({ allegro_szkicownia: klientZ([{ waybill: 'AD1', carrierId: 'ALLEGRO' }]) }).odswiez(id);
+    const id = zamowienie('allegro_swietlik', { metoda_wysylki: 'nieznana' });
+    await usluga({ allegro_swietlik: klientZ([{ waybill: 'AD1', carrierId: 'ALLEGRO' }]) }).odswiez(id);
     expect(wiersze(id)[0].kurier).toBe('allegro');
   });
 
@@ -68,14 +68,14 @@ describe('numery listów z Allegro', () => {
   // ktorego panel nie odzyska: karta pyta Allegro tylko dopoki zamowienie nie ma `wyslane_at`.
   it('numer odczytany z API dostaje zrodlo_numeru „allegro" — to ono, a nie kurier, go chroni', async () => {
     const id = zamowienie();
-    await usluga({ allegro_szkicownia: klientZ([{ waybill: 'AD1', carrierId: 'ALLEGRO' }]) }).odswiez(id);
+    await usluga({ allegro_swietlik: klientZ([{ waybill: 'AD1', carrierId: 'ALLEGRO' }]) }).odswiez(id);
     expect(wiersze(id)[0].zrodlo_numeru).toBe('allegro');
     expect(() => skasujPrzesylkeReczna(db, wiersze(id)[0].id)).toThrow(/Allegro/);
   });
 
   it('POWTORZENIE nie tworzy drugiego wiersza — usługa bywa wołana wielokrotnie', async () => {
     const id = zamowienie();
-    const u = usluga({ allegro_szkicownia: klientZ([{ waybill: 'AD1', carrierId: 'ALLEGRO' }]) });
+    const u = usluga({ allegro_swietlik: klientZ([{ waybill: 'AD1', carrierId: 'ALLEGRO' }]) });
 
     expect(await u.odswiez(id)).toEqual({ dopisane: 1 });
     expect(await u.odswiez(id)).toEqual({ dopisane: 0 });
@@ -88,7 +88,7 @@ describe('numery listów z Allegro', () => {
 
   it('brak przesyłek u Allegro NIE JEST błędem — paczka mogła jeszcze nie wyjechać', async () => {
     const id = zamowienie();
-    await expect(usluga({ allegro_szkicownia: klientZ([]) }).odswiez(id)).resolves.toEqual({ dopisane: 0 });
+    await expect(usluga({ allegro_swietlik: klientZ([]) }).odswiez(id)).resolves.toEqual({ dopisane: 0 });
     expect(wiersze(id)).toHaveLength(0);
   });
 
@@ -99,7 +99,7 @@ describe('numery listów z Allegro', () => {
   it('przesyłka BEZ numeru listu jest pomijana, a nie zapisywana ani rzucana', async () => {
     const id = zamowienie();
     const u = usluga({
-      allegro_szkicownia: klientZ([{ waybill: null, carrierId: 'ALLEGRO' }, { waybill: '   ', carrierId: 'ALLEGRO' }]),
+      allegro_swietlik: klientZ([{ waybill: null, carrierId: 'ALLEGRO' }, { waybill: '   ', carrierId: 'ALLEGRO' }]),
     });
     await expect(u.odswiez(id)).resolves.toEqual({ dopisane: 0 });
     expect(wiersze(id)).toHaveLength(0);
@@ -109,7 +109,7 @@ describe('numery listów z Allegro', () => {
   // node:sqlite wiaze liczby jako zmiennoprzecinkowe, wiec w kolumnie TEXT ladowaloby „123.0".
   it('numer przysłany LICZBĄ zapisuje się jako napis, bez ogona „.0"', async () => {
     const id = zamowienie();
-    await usluga({ allegro_szkicownia: klientZ([{ waybill: 6000123456789, carrierId: 'ALLEGRO' }]) }).odswiez(id);
+    await usluga({ allegro_swietlik: klientZ([{ waybill: 6000123456789, carrierId: 'ALLEGRO' }]) }).odswiez(id);
     expect(wiersze(id)[0].numer_listu).toBe('6000123456789');
   });
 
@@ -124,8 +124,8 @@ describe('numery listów z Allegro', () => {
   // ktory dziala dla numeru oddanego przed oznaczeniem wysylki.
   it('DRUGI numer listu dopisuje się jako paczka nr 2', async () => {
     const id = zamowienie();
-    await usluga({ allegro_szkicownia: klientZ([{ waybill: 'AD1' }]) }).odswiez(id);
-    const wynik = await usluga({ allegro_szkicownia: klientZ([{ waybill: 'AD1' }, { waybill: 'AD2' }]) }).odswiez(id);
+    await usluga({ allegro_swietlik: klientZ([{ waybill: 'AD1' }]) }).odswiez(id);
+    const wynik = await usluga({ allegro_swietlik: klientZ([{ waybill: 'AD1' }, { waybill: 'AD2' }]) }).odswiez(id);
 
     expect(wynik).toEqual({ dopisane: 1 });
     expect(wiersze(id).map((p) => [p.kolejnosc, p.numer_listu])).toEqual([[1, 'AD1'], [2, 'AD2']]);
@@ -133,7 +133,7 @@ describe('numery listów z Allegro', () => {
 
   it('TEN SAM numer dwa razy w JEDNEJ odpowiedzi daje jeden wiersz', async () => {
     const id = zamowienie();
-    const wynik = await usluga({ allegro_szkicownia: klientZ([{ waybill: 'AD1' }, { waybill: 'AD1' }]) }).odswiez(id);
+    const wynik = await usluga({ allegro_swietlik: klientZ([{ waybill: 'AD1' }, { waybill: 'AD1' }]) }).odswiez(id);
     expect(wynik).toEqual({ dopisane: 1 });
     expect(wiersze(id)).toHaveLength(1);
   });
@@ -144,10 +144,10 @@ describe('numery listów z Allegro', () => {
   // Allegro o zamowienie z WooCommerce i dopisac mu paczke z kurierem 'allegro' — czyli
   // paczke, ktorej nikt nie nadal, do zamowienia, ktore panel POWINIEN nadac sam.
   it('zamówienie SPOZA kanału Allegro nie jest w ogóle odpytywane', async () => {
-    const id = zapiszZamowienie(db, 'szkicownia', zmapowane('e2a1', { metoda_wysylki: 'dpd' }), {});
+    const id = zapiszZamowienie(db, 'swietlik', zmapowane('e2a1', { metoda_wysylki: 'dpd' }), {});
     const klient = klientZ([{ waybill: 'AD1' }]);
 
-    await expect(usluga({ szkicownia: klient }).odswiez(id)).resolves.toEqual({ dopisane: 0 });
+    await expect(usluga({ swietlik: klient }).odswiez(id)).resolves.toEqual({ dopisane: 0 });
 
     expect(klient.pobierzPrzesylki).not.toHaveBeenCalled();
     expect(wiersze(id)).toHaveLength(0);
@@ -156,14 +156,14 @@ describe('numery listów z Allegro', () => {
   it('kanał bez skonfigurowanego klienta i nieistniejące zamówienie oddają zero', async () => {
     const id = zamowienie();
     await expect(usluga({}).odswiez(id)).resolves.toEqual({ dopisane: 0 });
-    await expect(usluga({ allegro_szkicownia: klientZ([{ waybill: 'AD1' }]) }).odswiez(999999))
+    await expect(usluga({ allegro_swietlik: klientZ([{ waybill: 'AD1' }]) }).odswiez(999999))
       .resolves.toEqual({ dopisane: 0 });
   });
 
   it('pyta Allegro o identyfikator ZE ZRODLA, a nie o nasze id wiersza', async () => {
     const id = zamowienie();
     const klient = klientZ([]);
-    await usluga({ allegro_szkicownia: klient }).odswiez(id);
+    await usluga({ allegro_swietlik: klient }).odswiez(id);
     expect(klient.pobierzPrzesylki).toHaveBeenCalledWith('e2a1');
   });
 
@@ -179,7 +179,7 @@ describe('numery listów z Allegro', () => {
   // gdy czlowiek powie, ze paczka pojechala — belka statusu na karcie dziala tu jak wszedzie.
   it('NIE ustawia wyslane_at — status zostaje przy człowieku', async () => {
     const id = zamowienie();
-    await usluga({ allegro_szkicownia: klientZ([{ waybill: 'AD1' }]) }).odswiez(id);
+    await usluga({ allegro_swietlik: klientZ([{ waybill: 'AD1' }]) }).odswiez(id);
     expect(pobierzZamowienie(db, id).wyslane_at).toBeNull();
   });
 
@@ -188,7 +188,7 @@ describe('numery listów z Allegro', () => {
   // rozmawial i zadnego pliku nie dostanie (patrz sprawyPrzesylki w domain/przesylka-stan.js).
   it('wiersz jest oznaczony jako nadany poza panelem i nie robi sprawy „brak etykiety"', async () => {
     const id = zamowienie();
-    await usluga({ allegro_szkicownia: klientZ([{ waybill: 'AD1' }]) }).odswiez(id);
+    await usluga({ allegro_swietlik: klientZ([{ waybill: 'AD1' }]) }).odswiez(id);
     const [p] = wiersze(id);
     expect(p.nadana_recznie).toBe(1);
     expect(p.etykieta_sciezka).toBeNull();
@@ -197,7 +197,7 @@ describe('numery listów z Allegro', () => {
 
   it('zapisuje w logu, że numer PRZYSZEDŁ z Allegro, a panel niczego nie nadał', async () => {
     const id = zamowienie();
-    await usluga({ allegro_szkicownia: klientZ([{ waybill: 'AD0LK57DLG0756H4H' }]) }).odswiez(id);
+    await usluga({ allegro_swietlik: klientZ([{ waybill: 'AD0LK57DLG0756H4H' }]) }).odswiez(id);
     const wpis = log(id).find((w) => w.akcja === 'allegro.przesylka');
     expect(wpis.wynik).toContain('AD0LK57DLG0756H4H');
     expect(wpis.wynik).toMatch(/nada/i);
@@ -210,7 +210,7 @@ describe('numery listów z Allegro', () => {
   it('awaria Allegro leci w górę, a nie udaje braku przesyłek', async () => {
     const id = zamowienie();
     const klient = { pobierzPrzesylki: vi.fn().mockRejectedValue(new Error('Allegro: HTTP 401 przy /shipments')) };
-    await expect(usluga({ allegro_szkicownia: klient }).odswiez(id)).rejects.toThrow(/HTTP 401/);
+    await expect(usluga({ allegro_swietlik: klient }).odswiez(id)).rejects.toThrow(/HTTP 401/);
     expect(wiersze(id)).toHaveLength(0);
   });
 });
@@ -226,7 +226,7 @@ describe('numery listów z Allegro', () => {
 describe('identyfikator przewoźnika z Allegro', () => {
   it('zapisuje carrierId razem z numerem listu', async () => {
     const id = zamowienie();
-    const u = usluga({ allegro_szkicownia: klientZ([{ waybill: 'A005DUH6H5', carrierId: 'ALLEGRO' }]) });
+    const u = usluga({ allegro_swietlik: klientZ([{ waybill: 'A005DUH6H5', carrierId: 'ALLEGRO' }]) });
 
     expect(await u.odswiez(id)).toEqual({ dopisane: 1 });
 
@@ -239,7 +239,7 @@ describe('identyfikator przewoźnika z Allegro', () => {
   // HTTP 200 z `trackingDetails: null`, czyli odpowiedz nie do odroznienia od „brak zdarzen".
   it('brak carrierId w odpowiedzi zapisuje NULL, nie zgadywana stala', async () => {
     const id = zamowienie();
-    const u = usluga({ allegro_szkicownia: klientZ([{ waybill: 'A005DUH6H5' }]) });
+    const u = usluga({ allegro_swietlik: klientZ([{ waybill: 'A005DUH6H5' }]) });
 
     await u.odswiez(id);
 
@@ -249,7 +249,7 @@ describe('identyfikator przewoźnika z Allegro', () => {
 
   it('przewoźnik inny niż ALLEGRO idzie do bazy dokładnie taki, jaki przyszedł', async () => {
     const id = zamowienie();
-    const u = usluga({ allegro_szkicownia: klientZ([{ waybill: 'A005DUH6H5', carrierId: 'INPOST' }]) });
+    const u = usluga({ allegro_swietlik: klientZ([{ waybill: 'A005DUH6H5', carrierId: 'INPOST' }]) });
 
     await u.odswiez(id);
 

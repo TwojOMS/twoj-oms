@@ -15,7 +15,7 @@ const ORGANIZACJA = 13235;
 const URL_API = 'https://shipx.test/v1';
 const NUMER = '520000123456789012345678';
 
-const nadawca = { nazwa: 'Lumina', ulica: 'ul. 1 Maja 5', kod: '00-650', miasto: 'Pęki', kraj: 'PL', phone: '338451234', email: 'sklep@szkicownia.pl' };
+const nadawca = { nazwa: 'Pracownia Półcień', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', phone: '338451234', email: 'sklep@swietlik.example.test' };
 
 const json = (status, cialo) => ({
   status,

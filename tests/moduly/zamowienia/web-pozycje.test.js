@@ -13,15 +13,15 @@ import { zapiszStawkeDomyslna } from '../../../src/moduly/faktury/db/stawka-vat.
 const config = {
   auth: { user: 'adam', pass: 'x' },
   sklepy: {
-    pro: { baseUrl: 'https://pro.szkicownia.pl' },
-    szkicownia: { baseUrl: 'https://szkicownia.pl' },
+    pro: { baseUrl: 'https://pro.swietlik.example.test' },
+    swietlik: { baseUrl: 'https://swietlik.example.test' },
   },
 };
 const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'), origin: 'http://localhost' };
 const poller = { stan: () => ({ ostatni_przebieg_at: '2026-07-29T12:00:00', ostatni_blad: null }) };
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 1301, numer: '1301', klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Pęki' },
+  zrodlo_id: 1301, numer: '1301', klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
   koszt_dostawy_brutto: '89.90', koszt_dostawy_netto: '73.09', status_woo: 'processing',
   oplacone_at: null, anulowane: 0, utworzone_at: '2026-07-29T13:19:52',
@@ -539,14 +539,14 @@ describe('odnośnik do produktu na karcie', () => {
   });
 
   it('pozycja z oferty NIE prowadzi do ukrytego produktu-zaślepki', async () => {
-    const id = zapiszZamowienie(db, 'szkicownia', zOferty(), {});
+    const id = zapiszZamowienie(db, 'swietlik', zOferty(), {});
     const body = (await karta(id)).body;
     expect(body).not.toContain('post_type=product&amp;p=28040');
     expect(body).not.toContain('post_type=product&p=28040');
   });
 
   it('SKU zaślepki nie pokazuje się, ani w odczycie, ani w edycji', async () => {
-    const id = zapiszZamowienie(db, 'szkicownia', zOferty(), {});
+    const id = zapiszZamowienie(db, 'swietlik', zOferty(), {});
     expect((await karta(id)).body).not.toContain('psm-zam-placeholder');
     expect((await karta(id, '?edytuj=pozycje')).body).not.toContain('psm-zam-placeholder');
   });

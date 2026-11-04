@@ -1,3 +1,4 @@
+import { wzorzecNazw } from '../../pomoc/skroty-nazw-firmy.js';
 import { describe, it, expect, vi, beforeAll, afterAll, type MockInstance } from 'vitest';
 import { tmpdir } from 'node:os';
 import { zbudujOms } from '../../../src/oms/bootstrap.ts';
@@ -21,7 +22,7 @@ const env = { OMS_USER: 'operator', OMS_PASS: 'fixture',
   OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir(),
   SMTP_HOST: 'smtp.fikcja.test', SMTP_USER: 'nadawca@fikcja.test', SMTP_PASS: 'fikcyjne' };
 const headers = { authorization: `Basic ${Buffer.from('operator:fixture').toString('base64')}`, origin: 'http://localhost' };
-const FIRMY = /szkicownia|lumina/i;
+const FIRMY = wzorzecNazw([{"wzor": "\\p{L}{8}", "skrot": "3876cd847a24f6d3a8f3542919b9f6545e500e2eea8583bb58583508cefe9a57", "bezWielkosci": true}, {"wzor": "\\p{L}{8}", "skrot": "a2ac0b2e157811634f85a0cd5e7ec6ae46b6123e724924eba975ef822566f72e", "bezWielkosci": true}]);
 const MARKA = 'Pracownia <Fikcja> & Syn';
 const STOPKA = 'ul. Testowa 1 <b>Testowo</b>';
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -62,8 +63,8 @@ for (const temat of ['potwierdzenie', 'przypomnienie']) {
     });
 
     it('tekst i HTML bez marki firmy zaszytej w kodzie', () => {
-      expect({ tekst: FIRMY.exec(w.p.tekst)?.[0] ?? null, html: FIRMY.exec(w.p.html)?.[0] ?? null })
-        .toEqual({ tekst: null, html: null });
+      expect({ tekst: FIRMY.test(w.p.tekst), html: FIRMY.test(w.p.html) })
+        .toEqual({ tekst: false, html: false });
     });
 
     it('podpis to neutralne „Obsługa sklepu” — ten sam w tekście i w HTML-u', () => {
@@ -83,13 +84,13 @@ for (const temat of ['potwierdzenie', 'przypomnienie']) {
 
     it('tekst podpisany marką z konfiguracji, ze stopką, bez firmy z kodu', () => {
       expect({ podpis: w.p.tekst.includes(`Pozdrawiamy,\n${MARKA}`), stopka: w.p.tekst.includes(STOPKA),
-        firma: FIRMY.exec(w.p.tekst)?.[0] ?? null }).toEqual({ podpis: true, stopka: true, firma: null });
+        firma: FIRMY.test(w.p.tekst) }).toEqual({ podpis: true, stopka: true, firma: false });
     });
 
     it('HTML ma tę samą markę i stopkę, escapowane — surowy znacznik z konfiguracji nie przechodzi', () => {
       expect({ marka: w.p.html.includes(esc(MARKA)), stopka: w.p.html.includes(esc(STOPKA)),
         surowe: w.p.html.includes('<Fikcja>') || w.p.html.includes('<b>Testowo</b>'),
-        firma: FIRMY.exec(w.p.html)?.[0] ?? null }).toEqual({ marka: true, stopka: true, surowe: false, firma: null });
+        firma: FIRMY.test(w.p.html) }).toEqual({ marka: true, stopka: true, surowe: false, firma: false });
     });
 
     it('wysłany mail jest dokładnie podglądem', () => {

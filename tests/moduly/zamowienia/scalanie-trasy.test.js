@@ -17,7 +17,7 @@ const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null })
 
 const zmapowane = (id, nad = {}) => ({
   zrodlo_id: id, numer: `S-${id}`,
-  klient: { first_name: 'Anna', last_name: 'Przykładowa', email: 'anna@example.invalid', phone: '600100200' },
+  klient: { first_name: 'Anna', last_name: 'Przykładowa', email: 'anna@example.invalid', phone: '600100200', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' },
   dostawa: { first_name: 'Anna', last_name: 'Przykładowa', address_1: 'Lipowa 3', postcode: '00-950', city: 'Testowo', country: 'PL' },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '1111111111',
   kwota_brutto: '115.00', koszt_dostawy_brutto: '15.00', status_woo: 'processing', oplacone_at: '2026-10-10T10:00:00Z',

@@ -33,20 +33,20 @@ const ileKart = () => db.prepare('SELECT COUNT(*) AS ile FROM karty_produktow').
 // Trzy oferty Allegro (celowo bez karty), jeden zepsuty wariant (realna robota),
 // jeden zdrowy produkt sklepowy (karta powstanie).
 function lustro() {
-  zapisz({ kanal: 'allegro_szkicownia', produkt_id: 'a1', nazwa: 'Trójnóg podłogowy DUZY' });
-  zapisz({ kanal: 'allegro_szkicownia', produkt_id: 'a2', nazwa: 'Kandelabr ozdobny wysoki' });
-  zapisz({ kanal: 'allegro_amarka', produkt_id: 'b1', nazwa: 'Lampion ozdobny' });
-  zapisz({ kanal: 'szkicownia', produkt_id: '77', wariant_id: '78', nazwa: 'Motyw bez rozmiaru' });
+  zapisz({ kanal: 'allegro_swietlik', produkt_id: 'a1', nazwa: 'Trójnóg podłogowy DUZY' });
+  zapisz({ kanal: 'allegro_swietlik', produkt_id: 'a2', nazwa: 'Kandelabr ozdobny wysoki' });
+  zapisz({ kanal: 'allegro_polcien2', produkt_id: 'b1', nazwa: 'Lampion ozdobny' });
+  zapisz({ kanal: 'swietlik', produkt_id: '77', wariant_id: '78', nazwa: 'Motyw bez rozmiaru' });
   zapisz({ kanal: 'pro', produkt_id: '944', nazwa: 'Kandelabr 70x100 cm' });
 }
 
 describe('grupujPominiete', () => {
   it('grupuje po POWODZIE i liczy pozycje w grupie', () => {
     const grupy = grupujPominiete([
-      { id: 1, kanal: 'allegro_szkicownia', nazwa: 'A', powod: 'kanał „allegro_szkicownia" nie zakłada kart' },
-      { id: 2, kanal: 'allegro_szkicownia', nazwa: 'B', powod: 'kanał „allegro_szkicownia" nie zakłada kart' },
-      { id: 3, kanal: 'szkicownia', nazwa: 'C', powod: 'wariant bez rozmiaru' },
-    ], ['pro', 'szkicownia']);
+      { id: 1, kanal: 'allegro_swietlik', nazwa: 'A', powod: 'kanał „allegro_swietlik" nie zakłada kart' },
+      { id: 2, kanal: 'allegro_swietlik', nazwa: 'B', powod: 'kanał „allegro_swietlik" nie zakłada kart' },
+      { id: 3, kanal: 'swietlik', nazwa: 'C', powod: 'wariant bez rozmiaru' },
+    ], ['pro', 'swietlik']);
 
     expect(grupy).toHaveLength(2);
     expect(grupy.map((g) => g.ile)).toEqual([1, 2]);
@@ -55,11 +55,11 @@ describe('grupujPominiete', () => {
 
   it('ROBOTA idzie na gore, rzeczy celowe na dol — nawet gdy celowych jest wielokrotnie wiecej', () => {
     const oferty = Array.from({ length: 447 }, (_, i) => ({
-      id: i, kanal: 'allegro_szkicownia', nazwa: `oferta ${i}`, powod: 'kanał „allegro_szkicownia" nie zakłada kart',
+      id: i, kanal: 'allegro_swietlik', nazwa: `oferta ${i}`, powod: 'kanał „allegro_swietlik" nie zakłada kart',
     }));
-    const robota = [{ id: 900, kanal: 'szkicownia', nazwa: 'X', powod: 'wariant bez rozmiaru' }];
+    const robota = [{ id: 900, kanal: 'swietlik', nazwa: 'X', powod: 'wariant bez rozmiaru' }];
 
-    const grupy = grupujPominiete([...oferty, ...robota], ['pro', 'szkicownia']);
+    const grupy = grupujPominiete([...oferty, ...robota], ['pro', 'swietlik']);
 
     expect(grupy[0].celowo).toBe(false);
     expect(grupy[0].ile).toBe(1);
@@ -68,12 +68,12 @@ describe('grupujPominiete', () => {
   });
 
   it('grupa jest CELOWA tylko wtedy, gdy ZADNA jej pozycja nie pochodzi z kanalu sklepowego', () => {
-    const [tylkoAllegro] = grupujPominiete([{ id: 1, kanal: 'allegro_szkicownia', powod: 'p' }], ['pro', 'szkicownia']);
+    const [tylkoAllegro] = grupujPominiete([{ id: 1, kanal: 'allegro_swietlik', powod: 'p' }], ['pro', 'swietlik']);
     const [mieszana] = grupujPominiete([
-      { id: 1, kanal: 'allegro_szkicownia', powod: 'p' },
-      { id: 2, kanal: 'szkicownia', powod: 'p' },
-    ], ['pro', 'szkicownia']);
-    const [sklepowa] = grupujPominiete([{ id: 3, kanal: 'pro', powod: 'p' }], ['pro', 'szkicownia']);
+      { id: 1, kanal: 'allegro_swietlik', powod: 'p' },
+      { id: 2, kanal: 'swietlik', powod: 'p' },
+    ], ['pro', 'swietlik']);
+    const [sklepowa] = grupujPominiete([{ id: 3, kanal: 'pro', powod: 'p' }], ['pro', 'swietlik']);
 
     expect(tylkoAllegro.celowo).toBe(true);
     // Produkt ze sklepu pominiety z tego samego powodu jest ROBOTA — grupa przestaje
@@ -83,17 +83,17 @@ describe('grupujPominiete', () => {
   });
 
   it('pusta lista daje pusty wynik, a nie grupe o zerowej liczbie', () => {
-    expect(grupujPominiete([], ['pro', 'szkicownia'])).toEqual([]);
-    expect(grupujPominiete(undefined, ['pro', 'szkicownia'])).toEqual([]);
+    expect(grupujPominiete([], ['pro', 'swietlik'])).toEqual([]);
+    expect(grupujPominiete(undefined, ['pro', 'swietlik'])).toEqual([]);
   });
 
   it('kolejnosc grup jest POWTARZALNA przy remisie liczb', () => {
     const dane = [
-      { id: 1, kanal: 'szkicownia', powod: 'bez nazwy' },
-      { id: 2, kanal: 'szkicownia', powod: 'wariant bez rozmiaru' },
+      { id: 1, kanal: 'swietlik', powod: 'bez nazwy' },
+      { id: 2, kanal: 'swietlik', powod: 'wariant bez rozmiaru' },
     ];
-    const a = grupujPominiete(dane, ['pro', 'szkicownia']).map((g) => g.powod);
-    const b = grupujPominiete([...dane].reverse(), ['pro', 'szkicownia']).map((g) => g.powod);
+    const a = grupujPominiete(dane, ['pro', 'swietlik']).map((g) => g.powod);
+    const b = grupujPominiete([...dane].reverse(), ['pro', 'swietlik']).map((g) => g.powod);
     expect(a).toEqual(b);
   });
 });
@@ -150,9 +150,9 @@ describe('GET /magazyn/pominiete', () => {
     // ⚠️ TEN SAM KANAL MA SIE NAZYWAC TAK SAMO, CO NA LISCIE. Ekran pokazywal surowy klucz
     // z lustra, a lista obok — etykiete z `domain/kanaly.js`; czlowiek porownujacy oba
     // ekrany musial sam zgadnac, czy patrzy na to samo konto.
-    expect(r.body).toContain('<td>Allegro AmarkaPL</td>');
-    expect(r.body).toContain('<td>szkicownia.pl</td>');
-    expect(r.body).not.toContain('<td>allegro_amarka</td>');
+    expect(r.body).toContain('<td>Allegro Półcień Druga</td>');
+    expect(r.body).toContain('<td>swietlik.example.test</td>');
+    expect(r.body).not.toContain('<td>allegro_polcien2</td>');
   });
 
   it('nic do pominiecia MOWI, ze nic nie ma', async () => {

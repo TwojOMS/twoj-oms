@@ -1,15 +1,15 @@
-// tests/mail/mail-html.test.js — oprawa HTML maili z panelu (skórka SZKICOWNIA PRO).
+// tests/mail/mail-html.test.js — oprawa HTML maili z panelu (skórka SWIETLIK PRO).
 // Treść pozostaje plain-textem zatwierdzonym przez człowieka; renderMailHtml tylko ją
 // opakowuje (wordmark, akapity, tabela wyceny z kanonicznych linii, stopka).
 import { describe, it, expect } from 'vitest';
 import { renderMailHtml } from '../../pomoc/mail-html-parytetu.js';
 
 describe('renderMailHtml — oprawa', () => {
-  it('zawiera wordmark SZKICOWNIA PRO i kolory identyfikacji', () => {
+  it('zawiera wordmark SWIETLIK PRO i kolory identyfikacji', () => {
     const html = renderMailHtml({ text: 'Dzień dobry,' });
-    expect(html).toContain('SZKICOWNIA');
+    expect(html).toContain('SWIETLIK');
     expect(html).toContain('PRO');
-    expect(html).toContain('by szkicownia.pl');
+    expect(html).toContain('by swietlik.example.test');
     expect(html).toContain('#F7F3EC'); // Płótno — tło
     expect(html).toContain('#3E5566'); // Stal — akcent
   });
@@ -29,9 +29,9 @@ describe('renderMailHtml — oprawa', () => {
   });
 
   it('linkifikuje URL-e (mail z linkiem do sklepu musi być klikalny)', () => {
-    const link = 'https://szkicownia.pl/?oferta=12&t=abc';
+    const link = 'https://swietlik.example.test/?oferta=12&t=abc';
     const html = renderMailHtml({ text: `Link:\n${link}` });
-    expect(html).toMatch(/<a [^>]*href="https:\/\/szkicownia\.pl\/\?oferta=12&amp;t=abc"/);
+    expect(html).toMatch(/<a [^>]*href="https:\/\/swietlik\.example\.test\/\?oferta=12&amp;t=abc"/);
   });
 });
 
@@ -87,10 +87,10 @@ describe('renderMailHtml — tabela wyceny', () => {
 
 describe('renderMailHtml — stopka', () => {
   it('renderuje linie stopki, każda w osobnym wierszu', () => {
-    const html = renderMailHtml({ text: 'x', footer: 'Lumina Marek Zywiecki\nindywidualne@szkicownia.pl' });
-    expect(html).toContain('Lumina Marek Zywiecki');
-    expect(html).toContain('indywidualne@szkicownia.pl');
-    expect(html).toMatch(/Lumina Marek Zywiecki<br\s*\/?>/);
+    const html = renderMailHtml({ text: 'x', footer: 'Pracownia Półcień Anna Wzorcowa\nindywidualne@swietlik.example.test' });
+    expect(html).toContain('Pracownia Półcień Anna Wzorcowa');
+    expect(html).toContain('indywidualne@swietlik.example.test');
+    expect(html).toMatch(/Pracownia Półcień Anna Wzorcowa<br\s*\/?>/);
   });
 
   it('escapuje stopkę (edytowalna w ustawieniach)', () => {
@@ -180,7 +180,7 @@ describe('dodatki bez kwoty — „w cenie" i „gratis" po prawej, jak kwota', 
   it('⚠️ długie zdanie z dwukropkiem otwierające akapit NIE jest nagłówkiem', () => {
     const t = ['Dzień dobry,', '',
       'dziękuję za akceptację wyceny — poniżej przesyłam wszystkie dane potrzebne do wpłaty:',
-      'Lumina Marek Zywiecki'].join('\n');
+      'Pracownia Półcień Anna Wzorcowa'].join('\n');
     const html = renderMailHtml({ text: t });
     expect(naglowkiZ(html)).toEqual([]);
     expect(html).toContain('poniżej przesyłam wszystkie dane potrzebne do wpłaty:');

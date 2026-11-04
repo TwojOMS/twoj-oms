@@ -10,22 +10,22 @@ describe('celeLacznosci', () => {
   it('sklepy biora sie z konfiguracji, po jednym celu na sklep', () => {
     const cele = celeLacznosci({
       sklepy: {
-        pro: { baseUrl: 'https://pro.szkicownia.pl' },
-        szkicownia: { baseUrl: 'https://szkicownia.pl' },
+        pro: { baseUrl: 'https://pro.swietlik.example.test' },
+        swietlik: { baseUrl: 'https://swietlik.example.test' },
       },
     });
-    expect(cele.map((c) => c.klucz)).toEqual(['sklep:pro', 'sklep:szkicownia']);
-    expect(cele[0]).toMatchObject({ host: 'pro.szkicownia.pl', url: 'https://pro.szkicownia.pl' });
+    expect(cele.map((c) => c.klucz)).toEqual(['sklep:pro', 'sklep:swietlik']);
+    expect(cele[0]).toMatchObject({ host: 'pro.swietlik.example.test', url: 'https://pro.swietlik.example.test' });
   });
 
   it('kanaly Allegro daja cel na swoj adres API', () => {
     const cele = celeLacznosci({
       kanaly: {
-        allegro_szkicownia: { api: 'https://api.allegro.pl' },
-        allegro_amarka: { api: 'https://api.allegro.pl' },
+        allegro_swietlik: { api: 'https://api.allegro.pl' },
+        allegro_polcien2: { api: 'https://api.allegro.pl' },
       },
     });
-    expect(cele.map((c) => c.klucz)).toEqual(['allegro:allegro_szkicownia', 'allegro:allegro_amarka']);
+    expect(cele.map((c) => c.klucz)).toEqual(['allegro:allegro_swietlik', 'allegro:allegro_polcien2']);
     expect(cele.every((c) => c.host === 'api.allegro.pl')).toBe(true);
   });
 
@@ -73,7 +73,7 @@ describe('podsumowanie', () => {
 
 // ——— USLUGA: SPRAWDZENIE IDZIE PO SIECI, ALE TESTY NIE ——————————————————————————————
 describe('sprawdzLacznosc', () => {
-  const cel = { klucz: 'sklep:pro', nazwa: 'Sklep PRO', url: 'https://pro.szkicownia.pl', host: 'pro.szkicownia.pl' };
+  const cel = { klucz: 'sklep:pro', nazwa: 'Sklep PRO', url: 'https://pro.swietlik.example.test', host: 'pro.swietlik.example.test' };
 
   it('cel osiagalny: DNS rozwiazany i odpowiedz HTTP', async () => {
     const [w] = await sprawdzLacznosc({
@@ -155,7 +155,7 @@ describe('sprawdzLacznosc', () => {
   it('sprawdzenie NIE wysyla zadnych naglowkow autoryzacji', async () => {
     const naglowki = [];
     await sprawdzLacznosc({
-      cele: [{ klucz: 'allegro:allegro_szkicownia', nazwa: 'Allegro', url: 'https://api.allegro.pl', host: 'api.allegro.pl' }],
+      cele: [{ klucz: 'allegro:allegro_swietlik', nazwa: 'Allegro', url: 'https://api.allegro.pl', host: 'api.allegro.pl' }],
       lookup: async () => ({ address: '1.2.3.4' }),
       fetchImpl: async (url, opcje) => { naglowki.push(opcje?.headers ?? {}); return { status: 200 }; },
     });

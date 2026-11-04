@@ -3,10 +3,10 @@ import { createAllegroClient } from '../../src/oms/allegro/client.js';
 
 const ustawienia = {
   api: 'https://api.allegro.pl',
-  userAgent: 'OMS-szkicownia/1.0.0 (+https://szkicownia.pl/oms/)',
+  userAgent: 'OMS-swietlik/1.0.0 (+https://swietlik.example.test/oms/)',
 };
 const tokeny = { waznyToken: async () => 'TOKEN-PODJAZD' };
-const adres = { companyName: 'Szkicownia', street: 'Testowa', zipCode: '32-600', city: 'Oświęcim', countryCode: 'PL' };
+const adres = { companyName: 'Pracownia Świetlik', street: 'Testowa', zipCode: '32-600', city: 'Oświęcim', countryCode: 'PL' };
 const pickupTime = { date: '2026-09-23', minTime: '09:00', maxTime: '13:00' };
 
 function klientZeSzpiegiem(odpowiedzi = [{ ok: true, status: 200, json: async () => ({}) }]) {

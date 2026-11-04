@@ -13,8 +13,8 @@ const mapa = {
 const surowe = {
   id: 1301, number: '1301', status: 'processing', total: '212.90',
   date_paid: '2026-07-29T13:21:26', date_created: '2026-07-29T13:19:52',
-  billing: { first_name: 'Jan', last_name: 'Kowalski', email: 'j@k.pl', phone: '+48500600700', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL', company: 'ACME' },
-  shipping: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
+  billing: { first_name: 'Jan', last_name: 'Kowalski', email: 'j@k.pl', phone: '+48500600700', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL', company: 'ACME' },
+  shipping: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
   shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }],
   // Woo trzyma koszt wysylki na poziomie ZAMOWIENIA, netto + osobny podatek.
   // 73.09 + 16.81 = 89.90; razem z pozycjami (123.00) daje total 212.90.
@@ -58,11 +58,11 @@ describe('mapujZamowienie', () => {
     expect(z.nip).toBeNull();
   });
 
-  // Sedno naprawy A. pro.szkicownia.pl (jedyny sklep Etapu 1) NIE ustawia w ogóle
-  // `_billing_faktura` — tylko szkicownia.pl to robi. Bez tego testu fakturowanie jest
+  // Sedno naprawy A. pro.swietlik.example.test (jedyny sklep Etapu 1) NIE ustawia w ogóle
+  // `_billing_faktura` — tylko swietlik.example.test to robi. Bez tego testu fakturowanie jest
   // martwe na jedynym sklepie, dla którego panel je zbudował. Dane zgodne z prawdziwym
   // zamówieniem 1267: NIP jest, `_billing_faktura` nie istnieje wcale.
-  it('brak _billing_faktura, ale jest NIP → chce faktury (pro.szkicownia.pl)', () => {
+  it('brak _billing_faktura, ale jest NIP → chce faktury (pro.swietlik.example.test)', () => {
     const z = mapujZamowienie({ ...surowe, meta_data: [{ key: '_billing_nip', value: '1200001074' }] }, mapa);
     expect(z.chce_fakture).toBe(1);
     expect(z.nip).toBe('1200001074');
@@ -379,12 +379,12 @@ describe('mapujZamowienie', () => {
         meta_data: [
           { key: '_wc_order_attribution_source_type', value: 'typein' },
           { key: '_wc_order_attribution_utm_source', value: '(direct)' },
-          { key: '_wc_order_attribution_session_entry', value: 'https://szkicownia.pl/produkt/x/' },
+          { key: '_wc_order_attribution_session_entry', value: 'https://swietlik.example.test/produkt/x/' },
           { key: '_wc_order_attribution_device_type', value: 'Mobile' },
         ],
       };
       expect(mapujZamowienie(zAtrybucja, mapa).atrybucja).toMatchObject({
-        typ: 'typein', zrodlo: '(direct)', wejscie: 'https://szkicownia.pl/produkt/x/', urzadzenie: 'Mobile',
+        typ: 'typein', zrodlo: '(direct)', wejscie: 'https://swietlik.example.test/produkt/x/', urzadzenie: 'Mobile',
       });
     });
 

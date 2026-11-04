@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { wgMiesiecy, dokumenty, klienci } from '../../src/domena/agregacja-sprzedazy.js';
 
 const w = (dzien, brutto, extra = {}) => ({
-  zrodlo: 'oms', id: 1, dzien, kanal: 'SZKICOWNIA_PL', bruttoGrosze: brutto,
+  zrodlo: 'oms', id: 1, dzien, kanal: 'SWIETLIK_PL', bruttoGrosze: brutto,
   nettoGrosze: Math.round(brutto / 1.23), faktura: false, oplacone: true,
   email: 'a@b.pl', tagi: [], pozycje: [], ...extra,
 });

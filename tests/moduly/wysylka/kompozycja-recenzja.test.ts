@@ -110,14 +110,14 @@ describe('poprawki recenzji — rzeczywiste manifesty i HTTP', () => {
     } finally { await a.app.close(); a.db.close(); }
   });
 
-  it.each([false, true])('czynne nadanie wymaga Woo: sklep=%s', async zWoo => {
+  it.each([false, true])('nadanie obsługuje samo Allegro i Allegro z Woo: sklep=%s', async zWoo => {
     const fetch = vi.fn(async () => { throw new Error('test nie zezwala na API'); });
     vi.stubGlobal('fetch', fetch);
     const a = await kompozycja(zWoo);
     try {
-      const nadanie = a.usluga('wysylka', 'nadanie');
-      if (zWoo) expect(nadanie).toHaveProperty('nadaj');
-      else expect(nadanie).toBeNull();
+      const nadanie = a.usluga<{gotowe:()=>boolean}>('wysylka', 'nadanie');
+      expect(nadanie).toHaveProperty('nadaj');
+      expect(nadanie.gotowe()).toBe(true);
       expect(fetch).not.toHaveBeenCalled();
     } finally { await a.app.close(); a.db.close(); }
   });

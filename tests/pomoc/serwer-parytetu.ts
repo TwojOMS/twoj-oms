@@ -31,8 +31,8 @@ export function buildOmsServer(o: Record<string, any>) {
   // Dawne testy auth-only korzystały ze stałych kanałów kontrolera magazynu.
   // To jawne dane fixture; produkcyjny bootstrap nadal wymaga konfiguracji kanałów.
   const configKanalow={...config,
-    sklepy:config.sklepy??{pro:{},szkicownia:{}},
-    kanaly:config.kanaly??{allegro_szkicownia:{},allegro_amarka:{}}};
+    sklepy:config.sklepy??{pro:{},swietlik:{}},
+    kanaly:config.kanaly??{allegro_swietlik:{},allegro_polcien2:{}}};
   const env={OMS_SPRZEDAWCA_NIP:'1234563218',OMS_RACHUNEK:'34109010140000000000000000',
     OMS_USER:config.auth?.user??'operator',OMS_PASS:config.auth?.pass??'atrapa',
     OMS_ETYKIETY_KATALOG:tmpdir(),OMS_PROFORMY_KATALOG:tmpdir(),

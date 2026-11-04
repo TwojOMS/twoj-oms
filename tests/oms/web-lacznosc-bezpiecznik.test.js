@@ -19,14 +19,14 @@ beforeEach(() => {
 
 describe('bezpiecznik weryfikacji na ekranie łączności', () => {
   it('otwarty bezpiecznik jest WIDOCZNY, z nazwą kanału i datą', async () => {
-    zapiszStanWeryfikacji(db, 'allegro_szkicownia', {
+    zapiszStanWeryfikacji(db, 'allegro_swietlik', {
       kolejnePuste: 3, bezpiecznikOd: '2026-08-20T10:00:00Z', ostatniaProbaAt: '2026-08-28T11:00:00Z',
     });
 
     const r = await wejdz({ method: 'GET', url: '/ustawienia/lacznosc' });
 
     expect(r.statusCode).toBe(200);
-    expect(r.body).toContain('allegro_szkicownia');
+    expect(r.body).toContain('allegro_swietlik');
     expect(r.body).toContain('2026-08-20');
     expect(r.body).toMatch(/raz na dobę/i);
   });
@@ -39,7 +39,7 @@ describe('bezpiecznik weryfikacji na ekranie łączności', () => {
   });
 
   it('zamknięty bezpiecznik nie jest pokazywany jako otwarty', async () => {
-    zapiszStanWeryfikacji(db, 'allegro_szkicownia', {
+    zapiszStanWeryfikacji(db, 'allegro_swietlik', {
       kolejnePuste: 0, bezpiecznikOd: null, ostatniaProbaAt: '2026-08-28T11:00:00Z',
     });
 

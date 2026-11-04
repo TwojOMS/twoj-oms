@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { poPolsku } from '../../src/domena/blad-po-polsku.js';
 
-// ZGLOSZENIE WLASCICIELA 10.09.2026: „Poller allegro_amarka nie działa: The operation
+// ZGLOSZENIE WLASCICIELA 10.09.2026: „Poller allegro_polcien2 nie działa: The operation
 // was aborted due to timeout". Polska ramka, angielski srodek — bo srodek pisze Node.
 
 describe('poPolsku — angielskie frazy techniczne na ekranie', () => {

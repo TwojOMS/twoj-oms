@@ -4,7 +4,7 @@ import { diagnozaTerminow, normalizujTelefon, ofertyPodjazdu } from '../../src/d
 // PRZ-055: ten sam numer w dwóch zapisach (9 cyfr i +48) to ten sam kontakt odbioru.
 // Porównanie adresu normalizuje telefon TĄ SAMĄ funkcją po obu stronach; każda inna
 // różnica — inny numer, ulica, kod — nadal blokuje ofertę.
-const adres = { name: 'Firma', street: 'Polna 1', postalCode: '32-600', city: 'Pęki', countryCode: 'PL', email: 'test@example.com', phone: '500600700' };
+const adres = { name: 'Firma', street: 'Polna 1', postalCode: '32-600', city: 'Warszawa', countryCode: 'PL', email: 'test@example.com', phone: '500600700' };
 const termin = { date: '2026-10-09', minTime: '13:00', maxTime: '17:00' };
 const odpowiedz = (address) => [{ proposals: [{ shipmentId: 'a', pickupTimes: [termin] }], address }];
 const terminy = (wyslany, odeslany) => ofertyPodjazdu(odpowiedz(odeslany), ['a'], wyslany);

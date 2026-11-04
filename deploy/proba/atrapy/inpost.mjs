@@ -67,3 +67,5 @@ export function createAtrapaInpost({ env = process.env, log = () => {}, baza = (
     atrapa: true,
   });
 }
+
+export const createAtrapa = createAtrapaInpost;

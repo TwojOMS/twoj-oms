@@ -8,7 +8,7 @@ import {
   LIMIT_WYSYLKI_FAKTURY_MS,
 } from '../../src/oms/allegro/client.js';
 
-const ustawienia = { api: 'https://api.allegro.pl', userAgent: 'OMS-szkicownia/1.0.0 (+https://szkicownia.pl/oms/)' };
+const ustawienia = { api: 'https://api.allegro.pl', userAgent: 'OMS-swietlik/1.0.0 (+https://swietlik.example.test/oms/)' };
 const tokeny = { waznyToken: async () => 'TOKEN' };
 const pdf = (bajtow = 100) => Buffer.concat([Buffer.from('%PDF-1.4'), Buffer.alloc(bajtow)]);
 
@@ -215,11 +215,11 @@ describe('klient Allegro — faktura', () => {
   // w jednym pliku zostawiłoby drugi z listą, która milczy o połowie metod.
   // Podjazdy (22.09): trzy odczyty i jedno nieodwracalne zlecenie, z osobnym
   // kontraktem i blokadą w tests/oms/allegro-podjazdy-klient.test.js.
-  it('biała lista metod obejmuje teraz DOKŁADNIE dwadzieścia sześć', () => {
+  it('biała lista metod obejmuje teraz DOKŁADNIE dwadzieścia osiem (PRZ-128: dwa odczyty)', () => {
     const { k } = klient();
     expect(Object.keys(k).sort()).toEqual([
       'deklarujZalacznikWiadomosci',
-      'pobierzEtykieteWza', 'pobierzFakturyZamowienia', 'pobierzMetodeDostawy', 'pobierzOferte',
+      'pobierzEtykieteWza', 'pobierzFakturyZamowienia', 'pobierzMetodeDostawy', 'pobierzMojeKonto', 'pobierzOferte',
       'pobierzOferty', 'pobierzPodjazd', 'pobierzPropozycjePodjazdu', 'pobierzPropozycjeWysylki',
       // ⚠️ `pobierzWatki` i `pobierzWiadomosci` — Centrum wiadomości (spec 2026-08-28),
       // wyłącznie odczyt (`GET /messaging/threads…`).
@@ -227,7 +227,7 @@ describe('klient Allegro — faktura', () => {
       'pobierzPrzesylkeWza', 'pobierzPrzesylki', 'pobierzSledzenie', 'pobierzSprawy',
       'pobierzStanRealizacji',
       'pobierzWatki', 'pobierzWiadomosci', 'pobierzZamowienia',
-      'stanTworzeniaPrzesylki', 'stanZleceniaPodjazdu',
+      'sprawdzZakresZamowien', 'stanTworzeniaPrzesylki', 'stanZleceniaPodjazdu',
       // Centrum wiadomosci (spec 2026-08-28): `wyslijWiadomosc` PISZE i jest
       // NIEODWRACALNE — nie wydaje pieniedzy, ale po drugiej stronie jest czlowiek,
       // ktory dostaje powiadomienie. Bariera zapisu nizej rosnie razem z nia.

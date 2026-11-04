@@ -150,8 +150,15 @@ export function createAllegroWzaClient({
     return { shipmentId: commandId, numerListu: null, wTrakcieTworzenia: true, etykietaPdf: null, etykietaZpl: null, surowa: null };
   }
 
+  // ⚠️⚠️ `pobranieNaTejPaczce` (PRZ-142.02): kwota pobrania nalezy do ZAMOWIENIA, a podpowiedz
+  // Allegro niesie ja przy KAZDYM zapytaniu — takze przy dosylce. Domyslnie `kolejnosc === 1`,
+  // jak w dpd.js i inpost.js; na paczce N > 1 inkaso jedzie wylacznie z jawnej decyzji operatora,
+  // inaczej kupujacy placilby drugi raz.
   /** @param {import('../../core/kontrakty.ts').ZlecenieKuriera} zlecenie */
-  async function nadaj({ zamowienie, paczka, kolejnosc = 1, kwotaPobrania = null, drukowac = false }) {
+  async function nadaj({
+    zamowienie, paczka, kolejnosc = 1, kwotaPobrania = null, drukowac = false,
+    pobranieNaTejPaczce = kolejnosc === 1,
+  }) {
     // ⚠️ ZYWY ODCZYT METODY, nie kolumna. Allegro nie podbija `updatedAt` przy zmianach
     // w zamowieniu, wiec nasza kopia bywa nieswieza z definicji (zmierzone 05.08.2026).
     const deliveryMethodIdZywy = await metodaZywa(zamowienie);
@@ -236,7 +243,8 @@ export function createAllegroWzaClient({
     // 15000 przy „DPD Polska") i moze zmienic bez pytania nas o zdanie.
     const limitPobrania = (propozycja?.deliveryOptions ?? [])
       .find((o) => o?.limits?.cashOnDelivery?.amount)?.limits?.cashOnDelivery?.amount ?? null;
-    const pobranie = pobranieDoWysylki({
+    // Pomijamy regule TYLKO na dosylce: paczka nr 1 zawsze slucha podpowiedzi Allegro (recenzja 142-02).
+    const pobranie = kolejnosc > 1 && !pobranieNaTejPaczce ? { wolno: true, cashOnDelivery: null } : pobranieDoWysylki({
       pobranieUslugi: zgoda.pobranie,
       cashOnDelivery: p.cashOnDelivery,
       limit: limitPobrania,

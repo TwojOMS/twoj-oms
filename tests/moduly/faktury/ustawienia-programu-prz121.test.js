@@ -115,12 +115,12 @@ it.each([
         expect.soft(html).not.toContain('tego tokenu nie używa');
         expect.soft(html).toContain(`href="${WYSYLKA}"`);
         expect.soft(html).not.toContain('Panel niczego przez KSeF nie wysyła.');
-        expect.soft(html).not.toContain('panel niczego przez KSeF nie wysyła.');
+        expect.soft(html).not.toContain('OMS niczego przez KSeF nie wysyła.');
       }
     } else {
       expect.soft(lista.body).toContain('Moje połączenia');
-      expect.soft(koszty.body).toContain('Wygeneruj w KSeF token z uprawnieniem tylko do przeglądania faktur zakupowych — panel niczego przez KSeF nie wysyła.');
-      expect.soft(koszty.body).toContain('panel niczego przez KSeF nie wysyła.');
+      expect.soft(koszty.body).toContain('Wygeneruj w KSeF token z uprawnieniem tylko do przeglądania faktur zakupowych — OMS niczego przez KSeF nie wysyła.');
+      expect.soft(koszty.body).toContain('OMS niczego przez KSeF nie wysyła.');
       expect.soft(koszty.body).toContain('Wysyłka faktur sprzedaży idzie przez inFakt i tego tokenu nie używa.');
       for (const html of [lista.body, koszty.body]) expect.soft(html).not.toContain('InvoiceWrite');
     }

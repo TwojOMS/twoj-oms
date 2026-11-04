@@ -2,6 +2,7 @@ import { dataPokryciaWplat } from './platnosci.js';
 import { kwotaOczekiwanaGrosze, zl } from './suma-pozycji.js';
 import { dzienWarszawa } from './format-daty.js';
 import { normalizujMetode } from './metody-platnosci.js';
+import { czyPobranie } from './wysylka.js';
 
 // Reguła prawna: kiedy obowiązek podatkowy VAT powstaje z ZAPŁATY (art. 19a ust. 8), a kiedy
 // z WYDANIA towaru (art. 19a ust. 1) — patrz „Podstawa prawna" w planie
@@ -59,6 +60,16 @@ function poPolsku(dataIso) {
 const czyInkasoKuriera = (platnosc) => normalizujMetode(platnosc?.metoda).klucz === 'pobranie';
 
 /**
+ * ⚠️ PRZY POBRANIU WPŁATA `zrodlo='sklep'` NIE JEST PRZEDPŁATĄ (PRZ-137.05, decyzja właściciela:
+ * „przy metodzie pobranie date_paid nie tworzy wpłaty"). Od tej zmiany mapowanie Woo jej nie
+ * tworzy, ale zamówienia zapisane wcześniej, których sklep już nie przyśle, nadal ją mają —
+ * i to z metodą, której słownik nie zna („Płatność przy odbiorze"), więc `czyInkasoKuriera`
+ * jej nie odsieje. Filtr idzie po ŹRÓDLE i tylko przy `czyPobranie(zamowienie)`: wpłata
+ * ręczna (prawdziwy przelew przed wysyłką) dalej uruchamia art. 19a ust. 8.
+ */
+const czyDatePaidPrzyPobraniu = (zamowienie, platnosc) => platnosc?.zrodlo === 'sklep' && czyPobranie(zamowienie);
+
+/**
  * Propozycja daty sprzedaży na fakturę wg reguły prawnej. Wołana PRZY KAŻDYM OTWARCIU KARTY
  * zamówienia, więc NIE MOŻE rzucić — uszkodzona/nieliczbowa kwota (w zamówieniu, w pozycji
  * albo we wpłacie) ma dać sensowny wynik w gałęzi „wydanie", a nie wywalić widok.
@@ -94,7 +105,8 @@ export function proponowanaDataSprzedazy(zamowienie, dzis = dzisWarszawa()) {
     // `czyInkasoKuriera` wyżej. Kwota progu zostaje PEŁNA (`kwotaOczekiwanaGrosze`), więc
     // zamówienie opłacone w części przelewem, a w części pobraniem, nie domyka się przed
     // dostawą i słusznie spada do gałęzi „wydanie".
-    const przedplaty = (zamowienie?.platnosci ?? []).filter((p) => !czyInkasoKuriera(p));
+    const przedplaty = (zamowienie?.platnosci ?? [])
+      .filter((p) => !czyInkasoKuriera(p) && !czyDatePaidPrzyPobraniu(zamowienie, p));
     dataZaplaty = dataPokryciaWplat(przedplaty, progOczekiwanyZl);
   } catch {
     // Kwota zamówienia, pozycji albo którejś wpłaty jest uszkodzona/nieliczbowa — nie da się

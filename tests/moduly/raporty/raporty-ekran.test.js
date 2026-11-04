@@ -106,10 +106,10 @@ describe('ekran /raporty', () => {
   });
 
   it('BRAK GRANICY KANALU daje czytelna odmowe, nie piecsetke', async () => {
-    db.prepare("DELETE FROM granice_historii WHERE kanal = 'SZKICOWNIA_PL'").run();
+    db.prepare("DELETE FROM granice_historii WHERE kanal = 'SWIETLIK_PL'").run();
     const odp = await wejdz('/raporty?od=2026-06-01&do=2026-06-30');
     expect(odp.statusCode).toBe(400);
-    expect(odp.body).toContain('SZKICOWNIA_PL');
+    expect(odp.body).toContain('SWIETLIK_PL');
   });
 
   // ⚠️ DATA KALENDARZOWO NIEPOPRAWNA, ale w dobrym FORMACIE — wzorzec `\d{4}-\d{2}-\d{2}`
@@ -126,12 +126,12 @@ describe('ekran /raporty', () => {
     expect(odp.body).toMatch(/skr[oó]t/i);
   });
 
-  // ⚠️ NAZWA KANALU NA EKRANIE JEST DLA CZLOWIEKA. Identyfikator z bazy („SZKICOWNIA_PL")
+  // ⚠️ NAZWA KANALU NA EKRANIE JEST DLA CZLOWIEKA. Identyfikator z bazy („SWIETLIK_PL")
   // czyta sie jak zrzut z konsoli i nie mowi wlascicielowi nic ponad to, co juz wie.
   it('kanaly maja nazwy czytelne, nie identyfikatory z bazy', async () => {
     const odp = await wejdz('/raporty?od=2026-06-01&do=2026-06-30');
-    expect(odp.body).toContain('Szkicownia.pl');
-    expect(odp.body).not.toContain('SZKICOWNIA_PL');
+    expect(odp.body).toContain('Swietlik.example.test');
+    expect(odp.body).not.toContain('SWIETLIK_PL');
   });
 
   // ⚠️⚠️ ZERO ZNACZY „BEZ ZMIAN" i jest zdaniem o faktach. Przy pustym okresie poprzednim
@@ -411,7 +411,7 @@ describe('kanaly — delta wzgledem poprzedniego okresu', () => {
     const s = sekcja((await wejdz('/raporty?od=2026-06-01&do=2026-06-30')).body);
     expect(s).toContain('class="kanal-okienko"');
     const karta = okienko(s);
-    expect(karta).toContain('Szkicownia.pl');
+    expect(karta).toContain('Swietlik.example.test');
     expect(karta).toContain('246,00 zł');
     expect(karta).toContain('1 zamówienie');
     expect(karta).toContain('100,0%');
@@ -425,7 +425,7 @@ describe('kanaly — delta wzgledem poprzedniego okresu', () => {
   // liczba jego zamowien i jego kwota rownaja sie KPI raportu — karta podstawiajaca
   // cokolwiek z gory ekranu wygladalaby wtedy poprawnie (zmierzone: taka mutacja przezyla).
   // Dwa kanaly o ROZNEJ liczbie zamowien rozdzielaja wszystkie te liczby:
-  // Szkicownia.pl 300,00 / 2 zam. / śr. 150,00 · Ręczne 100,00 / 1 zam. / śr. 100,00,
+  // Swietlik.example.test 300,00 / 2 zam. / śr. 150,00 · Ręczne 100,00 / 1 zam. / śr. 100,00,
   // a caly okres — 400,00 / 3 zam. / śr. 133,33. Zadna para sie nie powtarza.
   it('okienko ma KAŻDY wiersz kanału i niesie liczby TEGO kanału', async () => {
     zamowienie('K2', '2026-06-12', '100.00', { platformAccountId: 21 });
@@ -436,7 +436,7 @@ describe('kanaly — delta wzgledem poprzedniego okresu', () => {
     expect(s.match(/class="kanal-okienko"/g)).toHaveLength(2);
 
     const [pierwszy, drugi] = wiersze.map(okienko);
-    expect(pierwszy).toContain('Szkicownia.pl');
+    expect(pierwszy).toContain('Swietlik.example.test');
     expect(pierwszy).toContain('300,00 zł');
     expect(pierwszy).toContain('2 zamówienia');
     expect(pierwszy).toContain('75,0%');
@@ -455,7 +455,7 @@ describe('kanaly — delta wzgledem poprzedniego okresu', () => {
   it('wiersz kanału nie ma już natywnego dymka, tylko aria-label', async () => {
     const s = sekcja((await wejdz('/raporty?od=2026-06-01&do=2026-06-30')).body);
     expect(s).not.toMatch(/<div class="kanal-wiersz"[^>]*\stitle=/);
-    expect(s).toMatch(/aria-label="[^"]*Szkicownia\.pl[^"]*246,00 zł/);
+    expect(s).toMatch(/aria-label="[^"]*Swietlik\.example\.test[^"]*246,00 zł/);
   });
 });
 
@@ -535,13 +535,13 @@ describe('pas ostrzezen — zwiniety', () => {
   // ⚠️ Osobny pas od tego wyzej i CELOWO NIEZWIJANY: tamten mowi o danych okresu, ten
   // o tym, czego archiwum nie wie o epoce sprzed importu z Apilo.
   it('okres siegajacy przed ere Apilo NIESIE zastrzezenie i NIE jest zwiniety', async () => {
-    zamowienie('WOO1', '2016-03-01', '100.00', { zrodlo: 'woo:szkicownia', apiloId: 'woo:szkicownia:1' });
+    zamowienie('WOO1', '2016-03-01', '100.00', { zrodlo: 'woo:swietlik', apiloId: 'woo:swietlik:1' });
     const odp = await wejdz('/raporty?od=2016-01-01&do=2016-12-31');
     // ⚠️⚠️ ASERCJA CELUJE W `class="…"`, NIE W GOLA NAZWE KLASY. Gola nazwa trafia w blok
     // <style> layoutu (jest tam regula `.pasek-uwaga--epoka p`) i przechodzi ZAWSZE — takze
     // wtedy, gdy pas w ogole sie nie renderuje. Zlapane wlasnie tym testem przy pisaniu.
     expect(tresc(odp.body)).toMatch(/class="[^"]*pasek-uwaga--epoka/);
-    expect(tresc(odp.body)).toMatch(/wyłącznie sprzedaż sklepu szkicownia\.pl/);
+    expect(tresc(odp.body)).toMatch(/wyłącznie sprzedaż sklepu swietlik\.example\.test/);
     // Pas ma byc widoczny bez rozwijania — czyli <div>, nie <details> jak pas ostrzezen.
     expect(tresc(odp.body)).toMatch(/<div class="pasek-uwaga pasek-uwaga--epoka"/);
   });

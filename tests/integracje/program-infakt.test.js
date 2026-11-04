@@ -19,10 +19,10 @@ import { sprawdzProgramFakturowy } from '../../src/integracje/program-fakturowy.
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
 
 const metody = (o) => Object.keys(o).filter((k) => typeof o[k] === 'function').sort();
-const WSZYSTKIE_ZDOLNOSCI = ['nieoplacone', 'numeracjaWlasna', 'oznaczZaplacona', 'wyslijDoKsef'];
+const WSZYSTKIE_ZDOLNOSCI = ['nieoplacone', 'numeracjaWlasna', 'odczytKorekty', 'oznaczZaplacona', 'statusKorekty', 'wyslijDoKsef'];
 const METODY_PROGRAMU = [
-  'iluMaNumer', 'listaFaktur', 'listaKorekt', 'listaNieoplaconych', 'oznaczZaplacona', 'pobierzFakture', 'pobierzPdf',
-  'pobierzPdfKorekty', 'przygotujNabywce', 'sprawdzPolaczenie', 'wyslijDokumentDoKsef', 'wystaw', 'wystawKorekte',
+  'iluMaNumer', 'listaFaktur', 'listaKorekt', 'listaNieoplaconych', 'oznaczZaplacona', 'pobierzFakture', 'pobierzKorekte', 'pobierzPdf',
+  'pobierzPdfKorekty', 'przygotujNabywce', 'sprawdzPolaczenie', 'statusKorekty', 'wyslijDokumentDoKsef', 'wystaw', 'wystawKorekte',
 ];
 // metoda klienta ↔ zdolność, którą jej obecność daje (plan PRZ-118, „Kontrakt — 14 metod klienta”)
 const ZDOLNOSC_METODY = {
@@ -37,6 +37,14 @@ const posrednik = () => infaktZUstawien({ wczytaj: () => null, fabryka: () => { 
 const mock = (bez = []) => Object.fromEntries(METODY_INFAKTU.filter((m) => !bez.includes(m)).map((m) => [m, vi.fn(async () => null)]));
 
 describe('owinięty inFakt przechodzi kontrakt', () => {
+  it('PRZ-147: pośrednik udostępnia statusKorekty i adapter przekazuje wynik', async () => {
+    const klient = mock();
+    klient.statusKorekty.mockResolvedValue({ stan: 'wystawiona', uuid: 'kor-test', bledy: [] });
+    const p = programInfakt(klient);
+    expect(await p.statusKorekty('REF-TEST')).toEqual({ stan: 'wystawiona', uuid: 'kor-test', bledy: [] });
+    expect(klient.statusKorekty).toHaveBeenCalledWith('REF-TEST');
+    expect(typeof posrednik().statusKorekty).toBe('function');
+  });
   it('(1) prawdziwy klient: przechodzi sprawdzProgramFakturowy, zdolności — wszystkie cztery', () => {
     const p = programInfakt(klientPrawdziwy());
     expect(sprawdzProgramFakturowy(p)).toBe(p);

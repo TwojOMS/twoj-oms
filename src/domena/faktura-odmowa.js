@@ -1,4 +1,5 @@
-import { chceFakture } from './dane-faktury.js';
+import { chceFakture, daneFaktury } from './dane-faktury.js';
+import { brakiAdresuNabywcy, zdanieBrakuAdresu } from './adres-nabywcy-faktury.js';
 import { sumaWplatGrosze } from './platnosci.js';
 import { kwotaOczekiwanaGrosze, zl } from './suma-pozycji.js';
 
@@ -16,7 +17,7 @@ import { kwotaOczekiwanaGrosze, zl } from './suma-pozycji.js';
 // stan faktury osobno (domain/faktura-stan.js) — dla WYGODY oka, nie jako zabezpieczenie.
 
 /** Kolejnosc odmow jest czescia reguly — patrz komentarze przy poszczegolnych warunkach. */
-export function powodOdmowyFaktury(z, { okresyWlaczone = true, dlaKazdego = false } = {}) {
+export function powodOdmowyFaktury(z, { okresyWlaczone = true, dlaKazdego = false, bezAdresu = false } = {}) {
   if (!z) return 'Nie ma takiego zamówienia.';
 
   // PRZ-101.04: JEDNA FAKTURA NA ZAMÓWIENIE SCALONE (decyzja właściciela 18.10). Dołączone jest częścią
@@ -72,7 +73,21 @@ export function powodOdmowyFaktury(z, { okresyWlaczone = true, dlaKazdego = fals
   // db/faktury-dla-kazdego.js). Domyślnie `false`: wołający, który jej nie poda, odmawia jak dotąd.
   // Opcja zdejmuje WYŁĄCZNIE tę odmowę — scalone, okres i anulowane stoją wyżej i nadal odmawiają.
   if (!dlaKazdego && !chceFakture(z)) return 'Klient nie prosił o fakturę.';
-  return null;
+
+  // PRZ-126.PT5: bez adresu nabywcy nie ma faktury (art. 106e ust. 1 pkt 3; reguła
+  // i uzasadnienie w domena/adres-nabywcy-faktury.js). OSTATNIA: pozostałe powody mówią
+  // pierwsze. Czyta `daneFaktury(z)`, więc adres uzupełniony ręcznie na karcie wystarcza.
+  // `bezAdresu`: hurt pyta o adres osobno, PO stanie faktury (masowe.js) — zamówienie z wystawioną
+  // albo niewyjaśnioną fakturą ma usłyszeć o niej, a nie o brakującym adresie.
+  return bezAdresu ? null : powodBrakuAdresu(z);
+}
+
+/** PRZ-126.PT5: powód odmowy z braku adresu nabywcy albo `null`. */
+export function powodBrakuAdresu(z) {
+  const braki = brakiAdresuNabywcy(daneFaktury(z));
+  return braki.length
+    ? `Brak adresu nabywcy (${zdanieBrakuAdresu(braki)}). Uzupełnij dane do faktury na karcie zamówienia.`
+    : null;
 }
 
 /**

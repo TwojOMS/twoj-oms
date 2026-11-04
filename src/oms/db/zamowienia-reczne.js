@@ -1,4 +1,5 @@
 import { formatujNumer, kolejnyZNumeru, zrodloIdReczne } from '../../domena/numeracja.js';
+import { METODA_DOMYSLNA } from '../../domena/moduly-kurierow.ts';
 import { sumaPozycjiZWysylkaGrosze } from '../../domena/suma-pozycji.js';
 import { pobranieZeSklepu, nadpisanieWysylki } from '../../domena/wysylka.js';
 import { pobierzZamowienie, zapiszNadpisanieWysylki } from './zamowienia.js';
@@ -75,7 +76,7 @@ export function utworzZamowienieReczne(db, dane = {}, okresRozliczeniowyId = nul
       // ⚠️ Pobranie jedzie WLASNA kolumna (2026-08-01) — bez tego zamowienie telefoniczne
       // przyjete „za pobraniem" wpadaloby do bazy jako przedplacone i kurier nie mialby
       // czego zainkasowac. Kwote przeliczy zaraz przeliczKwoteRecznego (pozycji jeszcze nie ma).
-      dane.metoda_wysylki ?? 'dpd', dane.pobranie ? 1 : 0, dane.kwota_pobrania ?? null,
+      dane.metoda_wysylki ?? METODA_DOMYSLNA, dane.pobranie ? 1 : 0, dane.kwota_pobrania ?? null,
       // ⚠️ KOD PACZKOMATU idzie do KOLUMNY, nie do nadpisania (07.08.2026). Przy zamówieniu
       // ręcznym nie ma sklepu, który mógłby ją przepisać — to MY jesteśmy tu źródłem — więc
       // kolumna jest właściwym miejscem, dokładnie jak `metoda_wysylki` obok. Ręczna korekta

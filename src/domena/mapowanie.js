@@ -1,4 +1,4 @@
-import { metodaWysylkiZamowienia } from './mapowanie-wysylki.js';
+import { metodaWysylkiZamowienia, bramkaPobrania } from './mapowanie-wysylki.js';
 import { zdjecieLinii } from './miniatury.js';
 import { czyIndywidualneZeSurowych } from './indywidualne.js';
 import { kuponyZeSurowych } from './kupony.js';
@@ -155,7 +155,17 @@ export function mapujZamowienie(surowe, mapowanie) {
     koszt_dostawy_brutto: kosztDostawyBrutto(surowe),
     koszt_dostawy_netto: kosztDostawyNetto(surowe),
     status_woo: surowe.status ?? null,
-    oplacone_at: utcSklepu(surowe.date_paid_gmt, surowe.date_paid),
+    // ⚠️ PRZY POBRANIU `date_paid` NIE JEST WPŁATĄ (PRZ-137.05, decyzja właściciela). Woo wypełnia
+    // je także przy płatności przy odbiorze (np. przy oznaczeniu „zrealizowane"), a stąd
+    // powstaje wpłata `zrodlo='sklep'` (db/platnosci.js): saldo „pokryte" i data sprzedaży
+    // z dnia zapłaty, choć kurier zainkasuje dopiero przy doręczeniu. Tak samo jak Allegro
+    // (allegro-mapowanie.js, `oplacone_at: pobranie ? null : …`).
+    // ⚠️ Także przy bramce pobrania, gdy dostawa nie jest jeszcze w mapowaniu („nieznana",
+    // `pobranie:false`): operator ustawi pobranie na karcie, a wpłata `sklep` odżywałaby przy
+    // każdej synchronizacji (recenzja A1). Odbiór osobisty z bramką pobrania — bez zmian.
+    oplacone_at: (pobranie || (metoda !== 'odbior_osobisty' && bramkaPobrania(surowe, mapowanie) === true))
+      ? null
+      : utcSklepu(surowe.date_paid_gmt, surowe.date_paid),
     // Metoda platnosci ze sklepu — CZYTELNA nazwa (`payment_method_title`: „Przelewy24",
     // „Przelew tradycyjny"), nie identyfikator (`payment_method`: 'p24', 'bacs'). To pole
     // ogląda wyłącznie człowiek w tabeli wpłat na karcie, więc ma być tym, co widział

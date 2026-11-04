@@ -6,7 +6,7 @@ export const KROKI = Object.freeze({
   BRAK_UPRAWNIEN: 'Sprawdź uprawnienia tylko do odczytu dla wybranego konta i ponów test.',
   BRAK_WALUTY: 'Sprawdź walutę konta lub właściwości i ponów test.',
   BLAD_ODCZYTU: 'Sprawdź połączenie ze źródłem i ponów test.',
-  ADS_API_NIEDOSTEPNE: 'Raport Google przez GA4 działa bez Ads API; to opcjonalne połączenie wymaga produkcyjnego dostępu.',
+  ADS_API_NIEDOSTEPNE: 'Raport Google Analytics 4 działa bez Google Ads API; to opcjonalne połączenie wymaga produkcyjnego dostępu.',
 });
 
 function wynikBledu(stan, kodBledu) {

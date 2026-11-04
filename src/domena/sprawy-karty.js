@@ -3,7 +3,7 @@ import { stanFaktury } from './faktura-stan.js';
 import { anulowaneWymagaUwagi } from './status.js';
 import { saldoWplat, platnoscPrzyOdbiorze } from './platnosci.js';
 import { podsumowaniePozycji } from './tabela-pozycji.js';
-import { czyKanalAllegro } from './wysylka.js';
+import { modulZamowienia, umiejetnosciZamowienia } from './moduly-kanalow.ts';
 import { czekaNaKsef as czekaNaKsefDom, czekaNaKsefDluzejNizDobe } from './ksef-oczekiwanie.js';
 import { NAZWA_ZAPASOWA } from './nazwa-programu.js';
 // ⚠️ `weryfikacjaNierozstrzygnieta` STAL TU DO 06.08.2026 i zniknal razem z wyciszona uwaga
@@ -111,7 +111,7 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
     // ktorego wysylke do KSeF zlecil PANEL, choćby ze sklepu. Faktura sklepowa, ktorej nikt
     // z panelu nie wyslal, dalej nie jest zadna sprawa — nie ma DOKAD pojechac i numeru nie
     // dostanie nigdy, wiec blokada przy niej swiecilaby przy KAZDEJ fakturze sklepowej.
-    // Rozpoznanie kanalu siedzi we wspolnym warunku, predykatem `czyKanalAllegro`.
+    // Umiejętność kanału siedzi we wspólnym warunku oczekiwania na KSeF.
     //
     // ⚠️ TRESC sprawy rozne gałęzie maja ROZNA (patrz nizej): wyjscia, ktore panel wskazuje,
     // sa przy fakturze allegrowej inne niz przy sklepowej.
@@ -137,7 +137,7 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
         kotwica: '#faktura',
       });
     } else if (odczyt === 'ok' && czekaNaKsefDluzejNizDobe(zamowienie, teraz)
-      && !(czyKanalAllegro(zamowienie) && zamowienie.chce_fakture)) {
+      && !(umiejetnosciZamowienia(zamowienie).plikFaktury && zamowienie.chce_fakture)) {
       // ⚠️ PRZ-126 (F03): Allegro BEZ zadania faktury, zleconej przez panel, tez idzie tutaj —
       // kupujacy na nia nie czeka, a wysylki do Allegro bez numeru `wolnoWyslacDoAllegro` odmawia.
       // ⚠️⚠️ DOKUMENT, KTOREGO WYSYLKE DO KSeF ZLECIL PANEL, A NUMERU NIE MA OD DOBY. Od
@@ -357,9 +357,8 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
       // ⚠️ BRZMIENIE PO KANALE, NIE PO NAZWIE KOLUMNY. Slad bledu siedzi w jednej kolumnie
       // (`sync_woo_blad`), bo pasek „Do zalatwienia" jest jeden — ale „nie dojechal do
       // sklepu" przy zamowieniu z Allegro wysyla czlowieka szukac usterki w WooCommerce,
-      // gdzie tego zamowienia NIE MA. Rozpoznanie wspolnym predykatem (domain/wysylka.js),
-      // nigdy wlasna kopia `startsWith('allegro_')`.
-      const gdzie = czyKanalAllegro(zamowienie) ? 'do Allegro' : 'do sklepu';
+      // gdzie tego zamowienia NIE MA. Odmianę nazwy podaje opis modułu kanału.
+      const gdzie = `do ${modulZamowienia(zamowienie).komunikaty.dopelniacz}`;
       sprawy.push({
         klucz: 'sync-sklep',
         waga: BLOKADA,

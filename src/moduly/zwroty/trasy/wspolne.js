@@ -5,12 +5,13 @@ import {
 import {
   parsujZwrot, powodOdmowyUsunieciaZwrotu, korektaPrzepadla, powodOdmowyOdblokowaniaKorekty,
   parsujNumerKorekty, korektaNieSprawdzona, powodOdmowyKorektyDlaFaktury,
-  powodOdmowyRejestracjiZwrotu, wierszeFormularzaZwrotu,
+  powodOdmowyRejestracjiZwrotu, wierszeFormularzaZwrotu, powodOdmowyKorektyBezDostawy, zwrotWymagaPozycjiDostawy,
 } from '../../../domena/zwrot.js';
+import { idDokumentu, czyDokumentProgramu, podgladFakturyZTerminem } from '../../../domena/dokument-programu.js';
 import { formularzZwrotu, przygotujKrok2, razemZwrotuZl } from '../../../domena/zwrot-formularz.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
-import { adresKartyZamowienia } from '../../../domena/adres-karty-zamowienia.js';
+import { adresKartyZamowienia, adresEkranuZwrotu } from '../../../domena/adres-karty-zamowienia.js';
 import { bezpiecznyPowrotNaListe } from '../../../domena/filtry-listy.js';
 import { ktoKlikal } from '../../zamowienia/wspolne.js';
 import { odmianaNazwyProgramu, gdzieDokument } from '../../../domena/nazwa-programu.js';
@@ -20,6 +21,8 @@ export function createWspolne({ db, korekta = null, definicje, infakt: programFa
   const korektaDostepna = Boolean(korekta);
   const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, definicje);
   const adresKarty = (req, id) => adresKartyZamowienia(id, { powrot: powrotKarty(req) }, definicje);
+  // PRZ-147.03: ekran zwrotu z tym samym `powrot` (przekierowanie po zleceniu korekty, „Odśwież stan”).
+  const adresZwrotu = (req, id) => adresEkranuZwrotu(id, { powrot: powrotKarty(req) }, definicje);
 
   const zamowienieAlbo404 = (req, reply) => {
     const id = Number(req.params.id);
@@ -79,7 +82,21 @@ export function createWspolne({ db, korekta = null, definicje, infakt: programFa
    * „Wstecz — popraw" z kroku 2 i odmowa reguly wracaja na ekran Z ZACHOWANYMI wartosciami,
    * zamiast kazac operatorowi wpisywac wszystko od nowa.
    */
-  const pokazKrok1 = (req, reply, z, { blad = null, wpisane = null, kod = 200 } = {}) => {
+  // PRZ-148.03: zwrot z dostawą bez korekty — pozycje faktury z programu, żeby ekran znał regułę „faktura bez pozycji
+  // Dostawa” (domena/zwrot.js) zanim operator kliknie. Mapa `id zwrotu -> zdanie`; błąd odczytu → pusta mapa
+  // (przycisk zostaje, odmowę da jak dotąd usługa korekty).
+  const korektaBezDostawy = async (z) => {
+    if (!korektaDostepna || typeof programFaktur?.pobierzFakture !== 'function'
+      || !czyDokumentProgramu(z.faktura, programFaktur)) return {};
+    const zDostawa = (z.zwroty ?? []).filter(zwrotWymagaPozycjiDostawy);
+    if (!zDostawa.length) return {};
+    const faktura = await podgladFakturyZTerminem(programFaktur, idDokumentu(z.faktura));
+    if (!faktura) return {};
+    const nazwa = odmianaNazwyProgramu(programFaktur);
+    return Object.fromEntries(zDostawa.map((w) => [w.id, powodOdmowyKorektyBezDostawy(w, faktura, { nazwa })]));
+  };
+
+  const pokazKrok1 = async (req, reply, z, { blad = null, wpisane = null, kod = 200 } = {}) => {
     const dzis = dzienWarszawa(new Date().toISOString());
     let formularz = null;
     // ⚠️ DROBIAZG 2 (recenzja 2026-08-15): zamowienie ANULOWANE dostawalo pelny, wypelniony
@@ -102,6 +119,7 @@ export function createWspolne({ db, korekta = null, definicje, infakt: programFa
       z,
       powrot: powrotKarty(req),
       adresKarty: adresKarty(req, z.id),
+      adresZwrotu: adresZwrotu(req, z.id),
       dzis,
       formularz,
       korektaDostepna,
@@ -110,8 +128,9 @@ export function createWspolne({ db, korekta = null, definicje, infakt: programFa
       gdzieProgramu: gdzieDokument(programFaktur),
       blad: bladEkranu,
       ...daneRozliczenia(z),
+      korektaBezDostawy: await korektaBezDostawy(z),
     });
   };
 
-  return { powrotKarty, adresKarty, zamowienieAlbo404, slad, decyzja, pokazKrok1 };
+  return { powrotKarty, adresKarty, adresZwrotu, zamowienieAlbo404, slad, decyzja, pokazKrok1 };
 }

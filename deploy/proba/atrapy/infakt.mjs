@@ -198,7 +198,8 @@ export function createAtrapaInfaktu({ db, teraz = () => new Date(), log = (...t)
     const dzien = dzienWarszawy(teraz());
     const [rok, miesiac] = dzien.split('-');
     const n = wszystkie('korekta').length + 1;
-    zapisz({ uuid: randomUUID(), number: `${n}/KOR/${miesiac}/${rok}`, kind: 'correction', currency: 'PLN', rodzaj: 'korekta',
+    const uuid = randomUUID();
+    zapisz({ uuid, number: `${n}/KOR/${miesiac}/${rok}`, kind: 'correction', currency: 'PLN', rodzaj: 'korekta',
       invoice_date: dzien, sale_date: dzien, payment_date: dzien, corrected_invoice_number: faktura.number,
       corrected_invoice_date: faktura.invoice_date, correction_reason: payload.correction_reason ?? null,
       status: 'paid', left_to_pay: 0, ...sumy(services), services: structuredClone(services), payment_method: faktura.payment_method,
@@ -207,7 +208,16 @@ export function createAtrapaInfaktu({ db, teraz = () => new Date(), log = (...t)
       notes: 'ATRAPA piaskownicy — dokument demonstracyjny', created_at: teraz().toISOString() });
     ślad(`zlecono korektę faktury ${faktura.number} (numer pokaże odczyt listy, jak w inFakcie)`);
     // Jak w prawdziwym API: 201 z referencją zadania, bez uuid i numeru dokumentu.
-    return { referencja: `atrapa-${randomUUID()}`, uuid: null, numer: null };
+    return { referencja: `atrapa-${uuid}`, uuid: null, numer: null };
+  }
+
+  async function statusKorekty(referencja) {
+    zasiej();
+    const dok = typeof referencja === 'string' && referencja.startsWith('atrapa-')
+      ? jeden(referencja.slice('atrapa-'.length)) : null;
+    return dok?.rodzaj === 'korekta'
+      ? { stan: 'wystawiona', uuid: dok.uuid, bledy: [] }
+      : { stan: 'nieznany', uuid: null, bledy: [] };
   }
 
   // ── PDF ───────────────────────────────────────────────────────────────────────────────────────────
@@ -266,13 +276,24 @@ export function createAtrapaInfaktu({ db, teraz = () => new Date(), log = (...t)
     return { referencja: `atrapa-${randomUUID()}` };
   }
 
+  async function pobierzKorekte(uuid) {
+    zasiej();
+    const dok = jeden(uuid);
+    if (!dok || dok.rodzaj !== 'korekta') throw bladOperatora('inFakt odrzucił odczyt korekty (404): Zasób którego szukasz nie został znaleziony', { status: 404 });
+    return { uuid: dok.uuid ?? uuid, number: dok.number,
+      corrected_invoice_number: dok.corrected_invoice_number, invoice_date: dok.invoice_date, rodzaj: 'korekta' };
+  }
+
   async function pobierzFakture(uuid) {
     if (!uuid) throw bladOperatora('Ta faktura nie ma numeru dokumentu w inFakcie.');
     zasiej();
     const dok = jeden(uuid);
     if (!dok || dok.rodzaj !== 'vat') throw bladOperatora('inFakt odrzucił odczyt faktury (404): Zasób którego szukasz nie został znaleziony', { status: 404 });
     return { numer: dok.number ?? null, ksefNumer: dok.ksef_number || null, number: dok.number ?? null, invoice_date: dok.invoice_date ?? null,
-      uuid: dok.uuid ?? uuid, services: dok.services ?? [], status: dok.status ?? null, left_to_pay: dok.left_to_pay ?? null };
+      uuid: dok.uuid ?? uuid, services: dok.services ?? [], status: dok.status ?? null, left_to_pay: dok.left_to_pay ?? null,
+      ...Object.fromEntries(['client_id', 'client_company_name', 'client_first_name', 'client_last_name', 'client_street',
+        'client_street_number', 'client_flat_number', 'client_city', 'client_post_code', 'client_tax_code', 'client_country']
+        .map((pole) => [pole, dok[pole]])) };
   }
 
   async function wyslijDokumentDoKsef(uuid) {
@@ -308,7 +329,7 @@ export function createAtrapaInfaktu({ db, teraz = () => new Date(), log = (...t)
   return {
     znajdzKlientaPoNip, zalozKlienta, wystaw, oznaczZaplacona, pobierzPdf, pobierzFakture,
     listaFaktur, listaKorekt, listaNieoplaconych, pobierzPdfKorekty, wyslijDokumentDoKsef,
-    wystawKorekte, iluMaNumer, sprawdzPolaczenie, surowaEncja, atrapa: true,
+    wystawKorekte, statusKorekty, pobierzKorekte, iluMaNumer, sprawdzPolaczenie, surowaEncja, atrapa: true,
   };
 }
 

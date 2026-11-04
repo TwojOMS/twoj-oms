@@ -40,11 +40,11 @@ beforeEach(() => {
   db = openOmsDb(':memory:');
   nr = 0;
   paczka({ kurier: 'dpd', numer: 'DPD-WLASNA' });
-  paczka({ sklep: 'allegro_szkicownia', kurier: 'allegro_wza', numer: 'AD-WZA', metoda: 'allegro_dpd', nazwa: 'Allegro Kurier DPD' });
-  paczka({ sklep: 'allegro_szkicownia', kurier: 'allegro', numer: 'AD-ALL', metoda: 'allegro_dpd', nazwa: 'Allegro Kurier DPD pobranie', carrier: 'ALLEGRO' });
+  paczka({ sklep: 'allegro_swietlik', kurier: 'allegro_wza', numer: 'AD-WZA', metoda: 'allegro_dpd', nazwa: 'Allegro Kurier DPD' });
+  paczka({ sklep: 'allegro_swietlik', kurier: 'allegro', numer: 'AD-ALL', metoda: 'allegro_dpd', nazwa: 'Allegro Kurier DPD pobranie', carrier: 'ALLEGRO' });
   paczka({ kurier: 'inpost', numer: 'INP-1', metoda: 'inpost_paczkomat' });
-  paczka({ sklep: 'allegro_szkicownia', kurier: 'allegro', numer: 'ONE-1', metoda: 'allegro_punkt', nazwa: 'Allegro One Box, One Kurier', carrier: 'ALLEGRO' });
-  paczka({ sklep: 'allegro_szkicownia', kurier: 'allegro_wza', numer: 'NIEZNANY-1', metoda: 'allegro_punkt', nazwa: null });
+  paczka({ sklep: 'allegro_swietlik', kurier: 'allegro', numer: 'ONE-1', metoda: 'allegro_punkt', nazwa: 'Allegro One Box, One Kurier', carrier: 'ALLEGRO' });
+  paczka({ sklep: 'allegro_swietlik', kurier: 'allegro_wza', numer: 'NIEZNANY-1', metoda: 'allegro_punkt', nazwa: null });
   app = buildOmsServer({ db, config: CONFIG });
 });
 

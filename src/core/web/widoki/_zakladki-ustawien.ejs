@@ -1,7 +1,7 @@
 <% const k = nawigacja.kontekst; const d = k.dzialy?.find(d => d.aktywna); %>
 <% if (d) { %>
-<div class="ust-okruszki">Ustawienia <span aria-hidden="true">/</span> <%= d.etykieta %></div>
-<div class="ust-dzial-tytul" role="heading" aria-level="1"><%= d.etykieta %></div>
+<div class="ust-okruszki">Ustawienia <span aria-hidden="true">/</span> <% if (d.klucz === 'integracje') { %><a href="/ustawienia/integracje">Integracje</a><% } else { %><%= d.etykieta %><% } %></div>
+<% if (d.klucz !== 'integracje') { %><div class="ust-dzial-tytul" role="heading" aria-level="1"><%= d.etykieta %></div><% } %>
 <nav class="ust-zakladki" aria-label="Zakładki: <%= d.etykieta %>"><% k.zakladki.forEach(function(z) { %>
   <a href="<%= z.href %>"<%- z.aktywna ? ' aria-current="page"' : '' %>><%= z.etykieta %></a>
 <% }); %></nav>

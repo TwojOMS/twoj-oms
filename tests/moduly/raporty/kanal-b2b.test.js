@@ -47,12 +47,12 @@ describe('reguła kanału', () => {
     expect(kanalOms({ sklep: 'reczne', b2b: 1, okres_rozliczeniowy_id: 7 }, klasyfikacjaHistorycznaFixture)).toBe('DROPSHIPPING');
   });
 
-  // ⚠️ Sprzedaz przez pro.szkicownia.pl ma WLASNY kanal i to on mowi, SKAD przyszly pieniadze.
+  // ⚠️ Sprzedaz przez pro.swietlik.example.test ma WLASNY kanal i to on mowi, SKAD przyszly pieniadze.
   // `B2B` w tym slowniku znaczy „sprzedaz hurtowa poza sklepem". Sklejenie ich dawaloby dwa
   // kanaly opisujace ten sam pieniadz.
   it('zamówienie ze sklepu NIGDY nie zmienia kanału przez ten znacznik', () => {
-    expect(kanalOms({ sklep: 'pro', b2b: 1 }, klasyfikacjaHistorycznaFixture)).toBe('SZKICOWNIA_PRO');
-    expect(kanalOms({ sklep: 'szkicownia', b2b: 1 }, klasyfikacjaHistorycznaFixture)).toBe('SZKICOWNIA_PL');
+    expect(kanalOms({ sklep: 'pro', b2b: 1 }, klasyfikacjaHistorycznaFixture)).toBe('SWIETLIK_PRO');
+    expect(kanalOms({ sklep: 'swietlik', b2b: 1 }, klasyfikacjaHistorycznaFixture)).toBe('SWIETLIK_PL');
   });
 
   it('zamówienie indywidualne wygrywa ze wszystkim', () => {

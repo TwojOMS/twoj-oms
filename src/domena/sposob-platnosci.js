@@ -1,4 +1,5 @@
 import { czyPobranie } from './wysylka.js';
+import { normalizujMetode } from './metody-platnosci.js';
 
 /**
  * Sposob platnosci na fakturze — pole `payment_method` w payloadzie inFaktu.
@@ -41,16 +42,21 @@ export const PLATNOSC_POBRANIE = 'delivery';
  *
  * ⚠️ PUSTY OBIEKT, A NIE `{ payment_method: 'transfer' }`, i to jest decyzja. Zamowienie
  * przedplacone bywa oplacone karta, Przelewami24 albo PayU (kolumna `metoda_platnosci`), a
- * panel nie ma mapy tych metod na slownik inFaktu i wpisanie im wszystkim „przelewu" byloby
+ * wpisanie im wszystkim „przelewu" byloby
  * TAKIM SAMYM klamstwem, jakie wlasnie naprawiamy — tyle ze wpisanym przez nas, a nie przez
- * ustawienie konta. Dla wszystkiego poza pobraniem payload zostaje wiec bajt w bajt taki,
- * jaki panel wysylal dotad.
+ * ustawienie konta. Mapujemy tylko jednoznaczne metody i tylko wartości przyjmowane
+ * przez program. Bez deklaracji pozostaje samo `delivery`: zapis `card` w inFakcie
+ * nie został zmierzony. Bramki online pozostawiają domyślną metodę programu.
  *
  * ⚠️ `czyPobranie` (domain/wysylka.js), a NIE kolumna `pobranie` wprost: reczna korekta
  * metody wysylki na karcie wygrywa nad tym, co powiedzial sklep. Zamowienie przestawione
  * recznie na pobranie ma dostac dokument mowiacy o pobraniu — inaczej poprawka na karcie
  * i tresc faktury rozjechalyby sie po cichu.
  */
-export function sposobPlatnosciFaktury(z) {
-  return czyPobranie(z) ? { payment_method: PLATNOSC_POBRANIE } : {};
+export function sposobPlatnosciFaktury(z, { przyjmuje = ['delivery'] } = {}) {
+  const tekst = String(z?.metoda_platnosci ?? '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+  const bon = /(karta|karty|bon|bony)[\s_-]*(podarunk|prezentow)|gift[\s_-]*card|voucher/u.test(tekst);
+  const mapa = { karta: 'card', apple_pay: 'card', gotowka: 'cash', przelew: 'transfer' };
+  const metoda = czyPobranie(z) ? PLATNOSC_POBRANIE : bon ? 'voucher' : mapa[normalizujMetode(z?.metoda_platnosci).klucz];
+  return przyjmuje.includes(metoda) ? { payment_method: metoda } : {};
 }

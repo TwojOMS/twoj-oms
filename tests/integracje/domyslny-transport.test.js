@@ -8,6 +8,7 @@ import { createVies } from '../../src/oms/services/vies.js';
 import { sprawdzLacznosc } from '../../src/oms/services/lacznosc.js';
 import { createAllegroClient } from '../../src/oms/allegro/client.js';
 import { createTokeny } from '../../src/oms/allegro/tokeny.js';
+import {openOmsDb} from '../../src/oms/db/db.ts';
 import { utworzHttp } from '../../src/core/http.ts';
 
 const url = 'https://przyklad.invalid';
@@ -16,7 +17,8 @@ const ustawienia = { api: url, auth: url, clientId: 'test', clientSecret: 'sekre
 const dpd = () => createDpdClient({ url, login: 'test', haslo: 'test', fid: '1', infoUrl: url, channel: '1', nadawca });
 const infakt = () => createInfaktClient({ apiKey: 'test', baseUrl: url });
 const ksef = () => createKsefClient({ token: 'test', nip: '1234563218', baseUrl: url });
-const tokeny = () => createTokeny({ db: {}, kanal: 'test', ustawienia });
+const bazy=[];
+const tokeny = () => {const db=openOmsDb();bazy.push(db);return createTokeny({ db, kanal: 'test', ustawienia });};
 const nadajDpd = () => dpd().nadaj({ zamowienie: { numer: '1', kwota_pobrania: null }, paczka: { waga: 1, dlugosc: 10, szerokosc: 10, wysokosc: 10 }, adres: nadawca });
 const xmlKsef = () => ksef().pobierzXml({ accessToken: 'test', ksefNumber: 'test' });
 const lacznosc = () => sprawdzLacznosc({ cele: [{ nazwa: 'test', host: 'przyklad.invalid', url }], lookup: async () => ({ address: '127.0.0.1' }) });
@@ -42,7 +44,7 @@ function wiszacyFetch() {
   return f;
 }
 
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
+afterEach(() => { for(const db of bazy.splice(0))db.close();vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe('domyślny transport wszystkich pozostałych klientów', () => {
   const wywolania = [

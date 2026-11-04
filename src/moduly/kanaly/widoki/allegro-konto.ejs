@@ -1,0 +1,11 @@
+<p>Allegro podało konto <strong><%= kandydat.login %></strong> (ID <%= kandydat.kontoId %>). Jeśli to konto chcesz podłączyć — kliknij Dalej.</p>
+<div class="ust-akcje allegro-akcje-konta">
+<form method="post" action="<%= adres %>/potwierdz">
+  <input type="hidden" name="probaId" value="<%= kandydat.probaId %>"><input type="hidden" name="wersja" value="<%= kandydat.wersja %>">
+  <button class="btn btn--glowny" type="submit">To moje konto — dalej</button>
+</form>
+<form method="post" action="<%= adres %>/anuluj">
+  <input type="hidden" name="probaId" value="<%= kandydat.probaId %>"><input type="hidden" name="wersja" value="<%= kandydat.wersja %>">
+  <button class="btn btn--drugi" type="submit">To nie to konto — zacznij od nowa</button>
+</form>
+</div>

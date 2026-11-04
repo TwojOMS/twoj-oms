@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createWiazanieKanalow } from '../../src/moduly/kanaly/services/wiazanie-kanalow.js';
 
-const stanZdrowy = { kanal: 'allegro_szkicownia', polaczony: true, zostaloDni: 89, ostatniBlad: null };
+const stanZdrowy = { kanal: 'allegro_swietlik', polaczony: true, zostaloDni: 89, ostatniBlad: null };
 const stanMartwy = { ...stanZdrowy, ostatniBlad: 'invalid_grant' };
 
 // Atrapa `przeprowadzWiazanie`: oddaje kod przez `naStart` i NIE konczy petli, dopoki
@@ -20,7 +20,7 @@ const zbuduj = (n = {}) => {
   const { fn, wywolania } = n.petla ?? atrapaPetli();
   const tokeny = { stanDlaEkranu: () => (n.stanEkranu ?? stanMartwy) };
   const u = createWiazanieKanalow({
-    tokenyKanalow: { allegro_szkicownia: tokeny, ...(n.dodatkowe ?? {}) },
+    tokenyKanalow: { allegro_swietlik: tokeny, ...(n.dodatkowe ?? {}) },
     przeprowadz: fn,
     teraz: n.teraz ?? (() => 1000),
   });
@@ -30,7 +30,7 @@ const zbuduj = (n = {}) => {
 describe('wiązanie kanału z panelu', () => {
   it('oddaje kod od razu, nie czekając na potwierdzenie', async () => {
     const { u } = zbuduj();
-    const w = await u.rozpocznij('allegro_szkicownia');
+    const w = await u.rozpocznij('allegro_swietlik');
     expect(w.ok).toBe(true);
     expect(w.stan.userCode).toBe('xtsxfpnh');
     expect(w.stan.adres).toContain('xtsxfpnh');
@@ -39,7 +39,7 @@ describe('wiązanie kanału z panelu', () => {
   // ⚠️ BARIERA PIERWSZA. Ponowne wiazanie uniewaznia dzialajaca pare po stronie Allegro.
   it('ODMAWIA kanału zdrowego — i nie woła Allegro', async () => {
     const { u, fn } = zbuduj({ stanEkranu: stanZdrowy });
-    const w = await u.rozpocznij('allegro_szkicownia');
+    const w = await u.rozpocznij('allegro_swietlik');
     expect(w.ok).toBe(false);
     expect(w.powod).toMatch(/działa/i);
     expect(fn).not.toHaveBeenCalled();
@@ -50,8 +50,8 @@ describe('wiązanie kanału z panelu', () => {
   // Allegro o WLASNY kod, a potwierdzenie nowego uniewaznia poprzedni.
   it('drugie kliknięcie oddaje TEN SAM kod, a nie nowy', async () => {
     const { u, fn } = zbuduj();
-    const pierwsze = await u.rozpocznij('allegro_szkicownia');
-    const drugie = await u.rozpocznij('allegro_szkicownia');
+    const pierwsze = await u.rozpocznij('allegro_swietlik');
+    const drugie = await u.rozpocznij('allegro_swietlik');
     expect(drugie.juzTrwa).toBe(true);
     expect(drugie.stan.userCode).toBe(pierwsze.stan.userCode);
     expect(fn).toHaveBeenCalledTimes(1);
@@ -62,10 +62,10 @@ describe('wiązanie kanału z panelu', () => {
   it('po wygaśnięciu kodu wolno zacząć od nowa', async () => {
     let czas = 1000;
     const { u, fn } = zbuduj({ teraz: () => czas });
-    await u.rozpocznij('allegro_szkicownia');
+    await u.rozpocznij('allegro_swietlik');
     czas = 1000 + 1800000 + 1;
-    expect(u.stan('allegro_szkicownia')).toBeNull();
-    await u.rozpocznij('allegro_szkicownia');
+    expect(u.stan('allegro_swietlik')).toBeNull();
+    await u.rozpocznij('allegro_swietlik');
     expect(fn).toHaveBeenCalledTimes(2);
   });
 
@@ -83,8 +83,8 @@ describe('wiązanie kanału z panelu', () => {
       return new Promise(() => {});
     });
     const { u } = zbuduj({ petla });
-    await u.rozpocznij('allegro_szkicownia');
-    expect(JSON.stringify(u.stan('allegro_szkicownia'))).not.toContain('SEKRET');
+    await u.rozpocznij('allegro_swietlik');
+    expect(JSON.stringify(u.stan('allegro_swietlik'))).not.toContain('SEKRET');
     expect(oryginalna).not.toHaveBeenCalled();
   });
 
@@ -96,9 +96,9 @@ describe('wiązanie kanału z panelu', () => {
       return { gotowe: false, komunikat: 'Czas na potwierdzenie upłynął.' };
     }) };
     const { u } = zbuduj({ petla });
-    await u.rozpocznij('allegro_szkicownia');
+    await u.rozpocznij('allegro_swietlik');
     await new Promise((r) => { setTimeout(r, 0); });
-    expect(u.stan('allegro_szkicownia').blad).toMatch(/upłynął/);
+    expect(u.stan('allegro_swietlik').blad).toMatch(/upłynął/);
   });
 
   // ⚠️ Odrzucona obietnica petli bez `.catch` to `unhandled rejection`, ktore kladzie CALY
@@ -109,8 +109,8 @@ describe('wiązanie kanału z panelu', () => {
       throw new Error('sieć padła');
     }) };
     const { u } = zbuduj({ petla });
-    await expect(u.rozpocznij('allegro_szkicownia')).resolves.toMatchObject({ ok: true });
+    await expect(u.rozpocznij('allegro_swietlik')).resolves.toMatchObject({ ok: true });
     await new Promise((r) => { setTimeout(r, 0); });
-    expect(u.stan('allegro_szkicownia').blad).toMatch(/przerwane/i);
+    expect(u.stan('allegro_swietlik').blad).toMatch(/przerwane/i);
   });
 });

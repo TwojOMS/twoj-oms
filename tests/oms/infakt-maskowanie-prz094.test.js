@@ -11,7 +11,7 @@ const argumenty = {
   znajdzKlientaPoNip: ['1234567890'], zalozKlienta: [{}], wystaw: [{}], wystawKorekte: [{}],
   oznaczZaplacona: ['demo'], pobierzPdf: ['demo'], pobierzPdfKorekty: ['demo'], pobierzFakture: ['demo'],
   listaFaktur: [{}], listaKorekt: [{}], listaNieoplaconych: [], iluMaNumer: ['FV-demo'],
-  wyslijDokumentDoKsef: ['demo'], sprawdzPolaczenie: [],
+  wyslijDokumentDoKsef: ['demo'], sprawdzPolaczenie: [], statusKorekty: ['REF-demo'], pobierzKorekte: ['demo-uuid'],
 };
 function bezSekretu(wartosc) {
   const tekst = inspect(wartosc, { depth: 30 });

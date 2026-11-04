@@ -13,7 +13,7 @@ const poz = (nazwa, ilosc, brutto, typ = 1) => ({ nazwa, ilosc, bruttoGrosze: br
 
 describe('agregacja', () => {
   it('KPI liczy sprzedaz, zamowienia i srednia wartosc', () => {
-    const { kpi } = agreguj([w('SZKICOWNIA_PL', 10000), w('SZKICOWNIA_PL', 20000)]);
+    const { kpi } = agreguj([w('SWIETLIK_PL', 10000), w('SWIETLIK_PL', 20000)]);
     expect(kpi).toMatchObject({ bruttoGrosze: 30000, zamowien: 2, aovGrosze: 15000 });
   });
 
@@ -22,13 +22,13 @@ describe('agregacja', () => {
   });
 
   it('kanaly ida malejaco i maja udzial', () => {
-    const { kanaly } = agreguj([w('SZKICOWNIA_PL', 10000), w('ALLEGRO_SZKICOWNIA', 30000)]);
-    expect(kanaly[0].kanal).toBe('ALLEGRO_SZKICOWNIA');
+    const { kanaly } = agreguj([w('SWIETLIK_PL', 10000), w('ALLEGRO_SWIETLIK', 30000)]);
+    expect(kanaly[0].kanal).toBe('ALLEGRO_SWIETLIK');
     expect(kanaly[0].udzial).toBeCloseTo(75, 1);
   });
 
   it('WYSYLKA I USLUGI wchodza do sumy, ale NIE do rankingu produktow ani do sztuk', () => {
-    const wiersz = w('SZKICOWNIA_PL', 15000, [
+    const wiersz = w('SWIETLIK_PL', 15000, [
       poz('Szablon Hamptons', 1, 10000, 1),
       poz('Wysyłka kurierem DPD', 1, 1900, 1),
       poz('Realizacja priorytetowa', 1, 3100, 1),
@@ -41,28 +41,28 @@ describe('agregacja', () => {
 
   it('ranking sumuje ten sam produkt z roznych zamowien', () => {
     const { produkty } = agreguj([
-      w('SZKICOWNIA_PL', 10000, [poz('Szablon A', 2, 10000)]),
-      w('ALLEGRO_SZKICOWNIA', 5000, [poz('Szablon A', 1, 5000)]),
+      w('SWIETLIK_PL', 10000, [poz('Szablon A', 2, 10000)]),
+      w('ALLEGRO_SWIETLIK', 5000, [poz('Szablon A', 1, 5000)]),
     ]);
     expect(produkty[0]).toMatchObject({ nazwa: 'Szablon A', sztuk: 3, bruttoGrosze: 15000 });
   });
 
   it('ranking ma najwyzej dziesiec pozycji', () => {
     const wiersze = Array.from({ length: 14 }, (_, i) =>
-      w('SZKICOWNIA_PL', 1000 * (i + 1), [poz(`P${i}`, 1, 1000 * (i + 1))]));
+      w('SWIETLIK_PL', 1000 * (i + 1), [poz(`P${i}`, 1, 1000 * (i + 1))]));
     expect(agreguj(wiersze).produkty).toHaveLength(10);
   });
 });
 
 describe('delty', () => {
   it('liczy zmiane procentowa', () => {
-    const teraz = agreguj([w('SZKICOWNIA_PL', 20000)]).kpi;
-    const wczesniej = agreguj([w('SZKICOWNIA_PL', 10000)]).kpi;
+    const teraz = agreguj([w('SWIETLIK_PL', 20000)]).kpi;
+    const wczesniej = agreguj([w('SWIETLIK_PL', 10000)]).kpi;
     expect(delty(teraz, wczesniej).brutto).toBeCloseTo(100, 1);
   });
 
   it('BRAK PORownania to null, nie zero i nie nieskonczonosc', () => {
-    const teraz = agreguj([w('SZKICOWNIA_PL', 20000)]).kpi;
+    const teraz = agreguj([w('SWIETLIK_PL', 20000)]).kpi;
     expect(delty(teraz, agreguj([]).kpi).brutto).toBeNull();
     expect(delty(teraz, null).brutto).toBeNull();
   });
@@ -142,7 +142,7 @@ describe('udzialyDokumentow — proporcja faktura/paragon', () => {
 // ——— PRZEBIEG SPRZEDAZY: DZIEN PO DNIU I TYDZIEN PO TYGODNIU (17.08.2026) ————————————
 // Lista dni/tygodni przychodzi Z ZAKRESU (okresy-raportu.js), nie z danych — okres bez
 // sprzedazy ma miec slupek z zerem, inaczej luka wyglada jak jej brak (wzorzec wgMiesiecy).
-const dzien = (d, brutto) => ({ ...w('SZKICOWNIA_PL', brutto), dzien: d });
+const dzien = (d, brutto) => ({ ...w('SWIETLIK_PL', brutto), dzien: d });
 
 describe('wgDni', () => {
   it('dzien bez sprzedazy ma wiersz z zerem', () => {
@@ -191,18 +191,18 @@ describe('deltyKanalow', () => {
   const kanal = (k, brutto) => ({ kanal: k, bruttoGrosze: brutto, zamowien: 1, aovGrosze: brutto, udzial: 50 });
 
   it('kanal obecny w obu okresach dostaje zmiane procentowa', () => {
-    const wynik = deltyKanalow([kanal('SZKICOWNIA_PL', 15000)], [kanal('SZKICOWNIA_PL', 10000)]);
+    const wynik = deltyKanalow([kanal('SWIETLIK_PL', 15000)], [kanal('SWIETLIK_PL', 10000)]);
     expect(wynik[0].zmiana).toBeCloseTo(50, 5);
   });
 
   // ⚠️ BRAK PODSTAWY DAJE null, NIE ZERO I NIE „+∞%" — ta sama zasada, co w delty().
   it('kanal nieobecny wczesniej dostaje null, nie zero', () => {
-    const wynik = deltyKanalow([kanal('GDD', 15000)], [kanal('SZKICOWNIA_PL', 10000)]);
+    const wynik = deltyKanalow([kanal('GDD', 15000)], [kanal('SWIETLIK_PL', 10000)]);
     expect(wynik[0].zmiana).toBeNull();
   });
 
   it('brak calego okresu poprzedniego daje null na kazdym kanale', () => {
-    const wynik = deltyKanalow([kanal('SZKICOWNIA_PL', 15000)], undefined);
+    const wynik = deltyKanalow([kanal('SWIETLIK_PL', 15000)], undefined);
     expect(wynik[0].zmiana).toBeNull();
   });
 
@@ -217,8 +217,8 @@ describe('deltyKanalow', () => {
 describe('udzialTop', () => {
   it('procent brutto okresu pokryty lista produktow', () => {
     const { udzialTop } = agreguj([
-      w('SZKICOWNIA_PL', 10000, [poz('Szablon A', 1, 4000)]),
-      w('SZKICOWNIA_PL', 10000, [poz('Wysyłka kurierem DPD', 1, 1900, 1)]),
+      w('SWIETLIK_PL', 10000, [poz('Szablon A', 1, 4000)]),
+      w('SWIETLIK_PL', 10000, [poz('Wysyłka kurierem DPD', 1, 1900, 1)]),
     ]);
     // 4000 z 20000 — wysylka nie jest produktem, wiec nie pokrywa niczego.
     expect(udzialTop).toBeCloseTo(20, 5);

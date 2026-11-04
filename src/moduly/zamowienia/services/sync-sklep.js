@@ -1,8 +1,10 @@
 import { pobierzZamowienie, dopiszLog, zapiszBladSyncSklepu, zapiszStanRealizacji } from '../../../oms/db/zamowienia.js';
 import { statusDlaSklepu } from '../../../domena/sync-sklep.js';
 import { statusDlaAllegro, stanAllegroPotwierdzaZgodnosc } from '../../../domena/allegro-status.js';
-import { czyKanalAllegro } from '../../../domena/wysylka.js';
+import { umiejetnosciZamowienia } from '../../../domena/moduly-kanalow.ts';
+import { zwrotneZamowienia } from '../../../integracje/kanal-modul.ts';
 import { idsDolaczonych, PREFIKS_BLEDU_DOLACZONYCH as PREFIKS_DOLACZONYCH } from '../../../domena/scalanie.js';
+import { czyTylkoOdczyt, TYLKO_ODCZYT } from '../../../domena/woo-uprawnienia.js';
 
 /**
  * Odesłanie statusu zamówienia tam, skąd przyszło: do sklepu (WooCommerce) albo do kanału
@@ -33,7 +35,7 @@ import { idsDolaczonych, PREFIKS_BLEDU_DOLACZONYCH as PREFIKS_DOLACZONYCH } from
 const SKLEP = { nazwa: 'sklep', w: 'w sklepie', dokad: 'do sklepu' };
 const KANAL_ALLEGRO = { nazwa: 'Allegro', w: 'w Allegro', dokad: 'do Allegro' };
 
-export function createSyncSklep({ db, klienci = {}, klienciKanalow = {} }) {
+export function createSyncSklep({ db, klienci = {}, klienciKanalow = {}, czynny = () => true }) {
   // ⚠️ JEDNA USLUGA, DWIE GALEZIE — a nie druga usluga obok (spec §7). Trasy wolaja
   // `odeslijStatus` w CZTERECH miejscach (zmiana statusu z karty, zmiana MASOWA, paczka
   // nadana poza panelem, „Wyslij ponownie") i zadne z nich nie ma prawa wiedziec, czy
@@ -52,7 +54,7 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {} }) {
   // zamowienia z Allegro i kazda zmiana ich statusu wieszalaby „panel nie ma polaczenia",
   // czyli usterke, ktora domknal Etap 4 (04.08.2026). Kanal NIEOBECNY W NIEPUSTEJ MAPIE to
   // co innego — to prawdziwa dziura w konfiguracji jednego z dwoch kont i ma byc widoczna.
-  const znaKanaly = Object.keys(klienciKanalow).length > 0;
+  const znaKanaly = () => Object.keys(klienciKanalow).length > 0;
 
   // ⚠️ GALAZ ALLEGRO JEST ASYNCHRONICZNA, A SKLEPOWA NIE — i to nie jest niekonsekwencja.
   // Stan realizacji w Allegro trzeba przeczytac NA ZYWO tuz przed decyzja, bo nasza kopia
@@ -61,8 +63,8 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {} }) {
   // dokladnie wtedy, gdy jest rozjazd. Sklepy tego problemu nie maja: `status_woo`
   // odswieza poller, a status w WooCommerce zmienia wylacznie panel.
   async function cel(z) {
-    if (czyKanalAllegro(z)) {
-      if (!znaKanaly) return null;
+    if (umiejetnosciZamowienia(z).statusZwrotny === 'mapa') {
+      if (!znaKanaly()) return null;
       // ⚠️ Bez `zrodlo_id` nie ma jak zbudowac sciezki `/order/checkout-forms/{id}/...`:
       // odczyt poszedlby pod adres z „undefined" w srodku i wrocilby bledem, ktorego
       // operator nie ma jak zalatwic. Regula (`statusDlaAllegro`) i tak by odmowila —
@@ -108,6 +110,9 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {} }) {
   // wiedzieć o grupie. Dołączone jest ukryte z listy, więc jego nieudane odesłanie ląduje także
   // na GŁÓWNYM (`sync_woo_blad` + log) — „Wyślij ponownie” na głównym ponawia całą grupę.
   async function odeslijStatus(id) {
+    // Kompozycja utrzymuje usługę od startu, także bez źródeł. Sprawdzamy żywy
+    // stan przy każdym użyciu; brak wszystkich połączeń nie tworzy nowej sprawy.
+    if (!czynny()) return { wyslany: null, powod: 'brak źródeł synchronizacji' };
     const wynik = await odeslijJedno(id);
     const z = pobierzZamowienie(db, id);
     const dolaczone = idsDolaczonych(z);
@@ -184,9 +189,17 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {} }) {
       return { wyslany: null, blad: opis };
     }
 
+    // PRZ-149.04: sklep „Odczyt” — status zmienia człowiek w sklepie. To nie awaria (ponowienie nic nie da),
+    // więc bez śladu `sync_woo_blad`; komunikat idzie do wyniku i logu. Ślad sprzed przełączenia na „Odczyt”
+    // (np. odmowa klucza tylko do odczytu) znika — inaczej karta trzymałaby blokadę z martwym „Wyślij ponownie”.
+    if (czyTylkoOdczyt(c.klient)) {
+      if (z.sync_woo_blad) zapiszBladSyncSklepu(db, id, null);
+      dopiszLog(db, id, { akcja: c.akcja, wynik: `POMINIĘTO: ${TYLKO_ODCZYT}` });
+      return { wyslany: null, powod: TYLKO_ODCZYT };
+    }
+
     try {
-      if (czyKanalAllegro(z)) await c.klient.ustawStatusRealizacji(z.zrodlo_id, c.status);
-      else await c.klient.ustawStatus(z.zrodlo_id, c.status);
+      await zwrotneZamowienia(z, c.klient).ustawStatus(z.zrodlo_id, c.status);
     } catch (e) {
       zapiszBladSyncSklepu(db, id, `status „${c.status}" nie dojechał ${c.gdzie.dokad}: ${e.message}`);
       dopiszLog(db, id, { akcja: c.akcja, wynik: `BŁĄD: ${e.message}` });
@@ -208,6 +221,7 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {} }) {
   // obie gałęzie są idempotentne: Allegro czyta stan na żywo i nie wysyła tego, co już ma, a sklep porównuje
   // z `status_woo`. Po kolei, jak poller po sklepach — kanał nie dostaje serii naraz.
   async function ponowPrzejsciowe({ teraz = new Date() } = {}) {
+    if (!czynny()) return { kandydatow: 0, wyslane: 0, bledy: 0 };
     const od = new Date(teraz.getTime() - OKNO_PONAWIANIA_STATUSU_DNI * 864e5).toISOString();
     const ids = db.prepare('SELECT id, sync_woo_blad FROM zamowienia WHERE sync_woo_blad IS NOT NULL AND utworzone_at >= ? ORDER BY id')
       .all(od).filter((z) => bladPrzejsciowy(z.sync_woo_blad)).map((z) => z.id);
@@ -221,7 +235,13 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {} }) {
     return { kandydatow: ids.length, wyslane, bledy };
   }
 
-  return { odeslijStatus, ponowPrzejsciowe };
+  // PRZ-149.04: dla karty — czy sklep zamówienia jest podłączony kluczem „Odczyt”. Klient niepołączonego
+  // sklepu potrafi rzucić już przy odczycie (rejestr kanałów) — wtedy po prostu „nie”.
+  function tylkoOdczyt(sklep) {
+    try { return czyTylkoOdczyt(klienci[sklep]); } catch { return false; }
+  }
+
+  return { odeslijStatus, ponowPrzejsciowe, tylkoOdczyt };
 }
 
 // PRZ-117: zamówienia starsze niż dwa tygodnie zegar zostawia człowiekowi („Wyślij ponownie” dalej działa).

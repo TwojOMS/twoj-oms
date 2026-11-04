@@ -4,7 +4,7 @@ import { linkDoSledzenia } from '../../src/domena/tracking.js';
 describe('linkDoSledzenia', () => {
   it('składa link DPD z numerem listu', () => {
     // Dokladny wzorzec potwierdzony w Zadaniu 8 na prawdziwym numerze.
-    expect(linkDoSledzenia('dpd', '00123456789012')).toBe('https://tracktrace.dpd.com.pl/parcelDetails?p1=00123456789012');
+    expect(linkDoSledzenia('dpd', '00123456789012')).toBe('https://tracktrace.dpd.com.pl/parcelDetails?typ=1&p1=00123456789012');
   });
 
   // ⚠️ Wzorzec InPostu sprawdzony 2026-08-04 na zywej stronie, tak samo jak wzorzec DPD

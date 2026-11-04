@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { modelOswiadczenia } from '../../src/domena/oswiadczenie-wywozu.js';
 
 const SPRZEDAWCA = {
-  nazwa: 'Lumina Marek Zywiecki', ulica: '1 Maja 5', kod: '00-650', miasto: 'Pęki', nip: '1234563218',
+  nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'Przykładowa 1', kod: '00-950', miasto: 'Warszawa', nip: '1234563218',
 };
 
 const zamowienieWdt = (nad = {}) => ({

@@ -8,6 +8,8 @@ import { registerReczneRoutes } from './reczne.js'; import { registerScalanieRou
 import { miniaturyEkranu } from './wspolne.js';
 import * as zapytania from '../../oms/db/zamowienia.js';
 import { createSyncSklep } from './services/sync-sklep.js';
+import { MODULY_KANALOW } from '../../domena/moduly-kanalow.ts';
+import { sprawdzZapisZwrotny, zwrotneAllegro, zwrotneSklepu } from '../../integracje/kanal-modul.ts';
 import { zegarPonawianiaStatusow } from './zegary.ts';
 import { createGusClient } from '../../oms/gus/client.js';
 import { integracje } from '../../integracje/klucze.js';
@@ -36,7 +38,11 @@ export function createModulZamowienia({ zWiadomosciami = false, fabryki = {} as 
     let kontekst:ReturnType<typeof createKontekstZamowien>|undefined;
     const klienci=ctx.usluga<Record<string,any>>('kanaly','klienciSklepow');
     const klienciKanalow=ctx.usluga<Record<string,any>>('kanaly','klienciKanalow');
-    const syncSklep=Object.keys(klienci).length||Object.keys(klienciKanalow).length?createSyncSklep({db:ctx.db,klienci,klienciKanalow}):null;
+    // Adaptery sprawdzane raz na moduł, bez klientów: `klienciKanalow` to mapa na żądanie, a odczyt konta Allegro
+    // bez skonfigurowanej aplikacji rzuca — przejście po mapie przy składaniu położyłoby start całego OMS-u.
+    sprawdzZapisZwrotny(MODULY_KANALOW.woo, zwrotneSklepu({ ustawStatus: async () => undefined }));
+    sprawdzZapisZwrotny(MODULY_KANALOW.allegro, zwrotneAllegro({ ustawStatusRealizacji: async () => undefined }));
+    const syncSklep=createSyncSklep({db:ctx.db,klienci,klienciKanalow,czynny:()=>Object.keys(klienci).length>0||Object.keys(klienciKanalow).length>0});
     // PRZ-102.11: usługa GUS z bieżącej konfiguracji (plik → atrapa piaskownicy → Ustawienia → brak), pytana przy
     // każdym żądaniu — klucz zapisany w Ustawienia → Integracje → GUS działa bez restartu (gus-ustawien.ts).
     const gus=uslugaGus({

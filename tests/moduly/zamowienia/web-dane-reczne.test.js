@@ -18,9 +18,9 @@ const zmapowane = (nad = {}) => ({
   zrodlo_id: 1501, numer: '1501',
   klient: {
     first_name: 'Jan', last_name: 'Kowalski', company: 'ACME sp. z o.o.', email: 'j@k.pl',
-    phone: '+48500600700', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL',
+    phone: '+48500600700', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL',
   },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: '', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
+  dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: '', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '5234567891',
   kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00', status_woo: 'processing',
   oplacone_at: null, anulowane: 0, utworzone_at: '2026-07-29T13:19:52',
@@ -34,11 +34,11 @@ const FORMULARZ_WYSYLKI = {
   // Pole `company` niesie firme z bloku PLATNOSCI: sklep zostawia shipping.company puste,
   // a panel podstawia wtedy firme z platnosci (ten sam adres) — i to ona stoi w formularzu
   // na karcie, dopoki nikt go nie tknal. Formularz w tescie ma byc tym, co wysyla karta.
-  nazwa: 'Jan Kowalski', company: 'ACME sp. z o.o.', ulica: 'Polna 1', kod: '00-650',
-  miasto: 'Pęki', phone: '+48500600700', email: 'j@k.pl',
+  nazwa: 'Jan Kowalski', company: 'ACME sp. z o.o.', ulica: 'Polna 1', kod: '00-950',
+  miasto: 'Warszawa', phone: '+48500600700', email: 'j@k.pl',
 };
 const FORMULARZ_FAKTURY = {
-  firma: 'ACME sp. z o.o.', nip: '5234567891', ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki',
+  firma: 'ACME sp. z o.o.', nip: '5234567891', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa',
   chce_fakture: 'on',
 };
 
@@ -161,7 +161,7 @@ describe('tryb edycji danych klienta (?edytuj=wysylka / ?edytuj=faktura)', () =>
   // /zamowienia/:id (bez ?edytuj), więc wystarczy sprawdzić, że to przekierowanie zostaje.
   it('po zapisaniu formularza wysyłki wracamy na widok odczytu (przekierowanie bez ?edytuj)', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    const r = await wyslij(`/zamowienia/${id}/dane/wysylka`, { ...FORMULARZ_WYSYLKI, kod: '00-651' });
+    const r = await wyslij(`/zamowienia/${id}/dane/wysylka`, { ...FORMULARZ_WYSYLKI, kod: '00-951' });
     expect(r.statusCode).toBe(302);
     expect(r.headers.location).toBe(`/zamowienia/${id}`);
   });
@@ -189,7 +189,7 @@ describe('tryb edycji danych klienta (?edytuj=wysylka / ?edytuj=faktura)', () =>
   // formularzem edycji (patrz zamowienie.ejs), więc musi być widoczny w obu.
   it('„Przywróć dane ze sklepu" jest dostępne zarówno w odczycie, jak i w edycji', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    zapiszNadpisaniaWysylki(db, id, { kod: '00-651' });
+    zapiszNadpisaniaWysylki(db, id, { kod: '00-951' });
     expect((await karta(id)).body).toContain('Przywróć dane ze sklepu');
     const wEdycji = await app.inject({ method: 'GET', url: `/zamowienia/${id}?edytuj=wysylka`, headers: naglowek });
     expect(wEdycji.body).toContain('Przywróć dane ze sklepu');
@@ -298,10 +298,10 @@ describe('zwijanie sekcji „Dane do faktury", gdy klient nie chce faktury', () 
 describe('POST /zamowienia/:id/dane/wysylka', () => {
   it('zapisuje WYŁĄCZNIE pole zmienione wobec sklepu', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    const r = await wyslij(`/zamowienia/${id}/dane/wysylka`, { ...FORMULARZ_WYSYLKI, kod: '00-651' });
+    const r = await wyslij(`/zamowienia/${id}/dane/wysylka`, { ...FORMULARZ_WYSYLKI, kod: '00-951' });
     expect(r.statusCode).toBe(302);
     const w = db.prepare('SELECT dostawa_reczna_json FROM zamowienia WHERE id = ?').get(id);
-    expect(JSON.parse(w.dostawa_reczna_json)).toEqual({ kod: '00-651' });
+    expect(JSON.parse(w.dostawa_reczna_json)).toEqual({ kod: '00-951' });
   });
 
   it('formularz identyczny ze sklepem nie zostawia żadnego nadpisania', async () => {
@@ -326,7 +326,7 @@ describe('POST /zamowienia/:id/dane/wysylka', () => {
 
   it('zapisuje ślad w logu zamówienia', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    await wyslij(`/zamowienia/${id}/dane/wysylka`, { ...FORMULARZ_WYSYLKI, kod: '00-651' });
+    await wyslij(`/zamowienia/${id}/dane/wysylka`, { ...FORMULARZ_WYSYLKI, kod: '00-951' });
     const wpisy = db.prepare('SELECT * FROM log WHERE zamowienie_id = ?').all(id);
     expect(wpisy.some((w) => w.akcja === 'dane.wysylka' && String(w.wynik).includes('kod'))).toBe(true);
   });
@@ -401,7 +401,7 @@ describe('POST /zamowienia/:id/dane/przywroc', () => {
   // PRZ-126.C02 (recenzja): nieudane przywracanie dawalo karte 400 bez slowa komunikatu.
   it('błąd zapisu przy przywracaniu wraca na kartę z komunikatem', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    zapiszNadpisaniaWysylki(db, id, { kod: '00-651' });
+    zapiszNadpisaniaWysylki(db, id, { kod: '00-951' });
     db.exec("CREATE TRIGGER t_przywroc BEFORE UPDATE ON zamowienia BEGIN SELECT RAISE(ABORT, 'tylko odczyt'); END");
     const r = await wyslij(`/zamowienia/${id}/dane/przywroc`, {});
     expect(r.statusCode).toBe(400);
@@ -411,12 +411,12 @@ describe('POST /zamowienia/:id/dane/przywroc', () => {
 
   it('kasuje wszystkie nadpisania i zdejmuje oznaczenia z karty', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    zapiszNadpisaniaWysylki(db, id, { kod: '00-651' });
+    zapiszNadpisaniaWysylki(db, id, { kod: '00-951' });
     zapiszNadpisaniaFaktury(db, id, { nip: '1234563218' }, 0);
     const r = await wyslij(`/zamowienia/${id}/dane/przywroc`, {});
     expect(r.statusCode).toBe(302);
     const z = pobierzZamowienie(db, id);
-    expect(adresOdbiorcy(z).kod).toBe('00-650');
+    expect(adresOdbiorcy(z).kod).toBe('00-950');
     expect(daneFaktury(z).nip).toBe('5234567891');
     expect(chceFakture(z)).toBe(true);
     expect((await karta(id)).body).not.toContain('zmienione ręcznie');
@@ -425,7 +425,7 @@ describe('POST /zamowienia/:id/dane/przywroc', () => {
   it('przycisk przywracania pokazuje się TYLKO gdy jest co przywracać', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
     expect((await karta(id)).body).not.toContain('Przywróć dane ze sklepu');
-    zapiszNadpisaniaWysylki(db, id, { kod: '00-651' });
+    zapiszNadpisaniaWysylki(db, id, { kod: '00-951' });
     expect((await karta(id)).body).toContain('Przywróć dane ze sklepu');
   });
 
@@ -439,7 +439,7 @@ describe('POST /zamowienia/:id/dane/przywroc', () => {
       metoda_wysylki: 'dpd', klient: { first_name: 'Jan', last_name: 'Kowalski' },
     });
     await wyslij(`/zamowienia/${id}/dane/wysylka`, {
-      nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki',
+      nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa',
     });
     const r = await karta(id);
     // Sedno bledu, ktory mial byc naprawiony: adres MA zostac widoczny na karcie —
@@ -464,7 +464,7 @@ describe('POST /zamowienia/:id/dane/przywroc', () => {
   // I6 nie ma prawa wygasic przycisku tam, gdzie „ze sklepu" naprawde cos znaczy.
   it('zamówienie ze sklepu z tą samą poprawką NADAL pokazuje przycisk (bez regresji)', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    zapiszNadpisaniaWysylki(db, id, { kod: '00-651' });
+    zapiszNadpisaniaWysylki(db, id, { kod: '00-951' });
     expect((await karta(id)).body).toContain('Przywróć dane ze sklepu');
   });
 });
@@ -516,13 +516,13 @@ describe('ekran nadania startuje z danych Z KARTY, nie ze sklepu', () => {
 
   it('formularz nadania niesie ręcznie poprawiony kod pocztowy', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    zapiszNadpisaniaWysylki(db, id, { kod: '00-651', miasto: 'Nowa Wieś' });
+    zapiszNadpisaniaWysylki(db, id, { kod: '00-951', miasto: 'Nowa Wieś' });
     const serwer = zNadaniem();
     await serwer.ready();
     const r = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}/nadaj`, headers: naglowek });
     expect(r.statusCode).toBe(200);
-    expect(r.body).toContain('value="00-651"');
+    expect(r.body).toContain('value="00-951"');
     expect(r.body).toContain('value="Nowa Wieś"');
-    expect(r.body).not.toContain('value="00-650"');
+    expect(r.body).not.toContain('value="00-950"');
   });
 });

@@ -1,5 +1,5 @@
 import { transport } from '../../integracje/transport.js';
-import { wczytajTokeny, zapiszTokeny, zapiszBladTokenu } from '../db/tokeny.js';
+import { wczytajTokeny, zapiszTokeny, zapiszBladTokenu, generacjaDostepu, sprawdzGeneracjeDostepu } from '../db/tokeny.js';
 import { powodSieci } from '../../domena/wiazanie-kanalu.js';
 import { brakujaceUprawnienia } from '../../domena/uprawnienia-kanalu.js';
 import { kontoZTokenu } from '../../domena/tozsamosc-kanalu.js';
@@ -182,7 +182,7 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
 
   // Zapis pary po KAZDEJ udanej odpowiedzi (odswiezenie i device flow) — jedno miejsce,
   // zeby liczenie dat nie rozjechalo sie miedzy dwiema sciezkami.
-  function zapiszPare(d) {
+  function zapiszPare(d, generacja) {
     // ⚠️ `expires_in` bywa stringiem („43199”) — `Number` to prostuje, a `Number.isFinite`
     // odsiewa `undefined`, `null` i smiec. BEZ tego `new Date(NaN).toISOString()` RZUCA
     // RangeError, zapis nigdy sie nie wykonuje, a para po stronie Allegro jest juz zrotowana.
@@ -193,10 +193,12 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
       refreshToken: d.refresh_token,
       wygasaAt: new Date(Date.now() + zycie * 1000).toISOString(),
       refreshWygasaAt: new Date(Date.now() + DNI_ZYCIA_REFRESH * 86400000).toISOString(),
-    });
+    }, generacja);
   }
 
   async function odswiez(refreshToken) {
+    const generacja = generacjaDostepu(db, kanal);
+    sprawdzGeneracjeDostepu(db, kanal, generacja);
     // ⚠️ TUTAJ OSLONY NA `fetch` NIE MA I MIEC NIE MOZE — i to jest decyzja, a nie
     // przeoczenie (sprawdzone przy naprawie wiazania, 2026-08-05).
     //
@@ -222,6 +224,7 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
     // albo puste cialo. Bez tego `.json()` rzuca SyntaxError i ginie CALA obsluga ponizej —
     // razem ze sladem dla czlowieka.
     const d = (await r.json().catch(() => null)) ?? {};
+    sprawdzGeneracjeDostepu(db, kanal, generacja);
     if (!r.ok) {
       // ⚠️ NIE PONAWIAMY. Kazda proba po nieudanym odswiezeniu leci tokenem, ktory Allegro
       // mogl juz zrotowac — petla ponowien spalilaby swiezo wydana pare.
@@ -250,7 +253,7 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
     // ⚠️ ZAPIS CALEJ PARY, RAZEM Z `refresh_token`. Stary refresh jest po tej odpowiedzi
     // spalony po stronie Allegro — zostawienie go w bazie znaczy, ze kolejne odswiezenie
     // poleci wartoscia, ktora na pewno nie zadziala.
-    zapiszPare(d);
+    zapiszPare(d, generacja);
     return d.access_token;
   }
 
@@ -290,6 +293,7 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
   }
 
   async function waznyToken() {
+    sprawdzGeneracjeDostepu(db, kanal);
     const w = wiersz();
     // Kanal niepolaczony ma powiedziec CO ZROBIC, a nie wywalic sie na `undefined`.
     if (!w?.refresh_token) throw new Error(`Allegro ${kanal}: kanał nie jest połączony — użyj „Połącz z Allegro”, czyli ${POLECENIE_WIAZANIA(kanal)}.`);
@@ -298,6 +302,7 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
 
   // Device flow: krok 1. Oddaje `user_code` i adres, ktore czlowiek przepisuje w przegladarce.
   async function rozpocznijPowiazanie() {
+    sprawdzGeneracjeDostepu(db, kanal);
     const r = await http(`${ustawienia.auth}/device`, {
       method: 'POST',
       headers: naglowki(),
@@ -311,6 +316,8 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
   // ⚠️ NIE RZUCA przy `authorization_pending` — to normalny etap wiazania, a nie awaria.
   // Wyjatek kazalby ekranowi migac bledem przy kazdym odpytaniu.
   async function dokonczPowiazanie(deviceCode) {
+    const generacja = generacjaDostepu(db, kanal);
+    sprawdzGeneracjeDostepu(db, kanal, generacja);
     // ⚠️ OSLONA NA SAM `fetch`, NIE TYLKO NA `.json()`. Ciało odpowiedzi bylo tu chronione
     // od poczatku, ale wyjatek POLACZENIOWY (zadanie w ogole nie wyszlo) leciał w gore,
     // omijal `ocenPowod` i wypadal ze skryptu jako awaria krytyczna: „Wiązanie przerwane:
@@ -339,7 +346,7 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
     if (!r.ok || !d.access_token || !d.refresh_token) {
       return { gotowe: false, powod: kodOauth(d) ?? (r.ok ? 'odpowiedź bez pary tokenów' : `HTTP ${r.status}`) };
     }
-    zapiszPare(d);
+    zapiszPare(d, generacja);
     return { gotowe: true };
   }
 

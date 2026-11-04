@@ -1,4 +1,5 @@
 import { bladOperatora } from './bledy.js';
+import { METODA_DOMYSLNA, metodaKuriera } from './moduly-kurierow.ts';
 import { tekst } from './dane-reczne.js';
 import { parsujKosztDostawy } from './koszt-dostawy.js';
 import { grosze, zl } from './kwoty.js';
@@ -356,7 +357,7 @@ export function skopiujFaktureDoWysylki(body = {}) {
 export function parsujNoweZamowienie(body = {}, {
   dzis = dzienWarszawa(new Date().toISOString()), stawkaDomyslna = STAWKA_VAT, zw = false, zwolniona = false,
 } = {}) {
-  const dostawaWybor = String(body?.dostawa ?? 'dpd');
+  const dostawaWybor = String(body?.dostawa ?? METODA_DOMYSLNA);
   const platnosc = String(body?.platnosc ?? 'przelew');
   const { metoda: metodaWysylki, pobranie } = metodaWysylkiZWyboru(dostawaWybor, platnosc);
 
@@ -420,7 +421,7 @@ export function parsujNoweZamowienie(body = {}, {
     //
     // Wielkie litery, bo tak wyglądają kody InPostu na etykietach i w ShipX: „kty01m"
     // przepisane ze słuchu zostałoby przez API odrzucone.
-    punkt_odbioru: metodaWysylki === 'inpost_paczkomat'
+    punkt_odbioru: metodaKuriera(metodaWysylki)?.punktOdbioru === true
       ? (tekst(body?.punkt_odbioru)?.toUpperCase() ?? null)
       : null,
     // ⚠️ TO NIE JEST SPOSOB DOSTAWY, tylko odpowiedz na pytanie „kto placi za transport".

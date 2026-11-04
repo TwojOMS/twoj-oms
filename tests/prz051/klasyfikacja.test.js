@@ -72,7 +72,7 @@ describe('PRZ-051 reguły listy w czasie', () => {
     const filtry = [{}, { od: '2026-09-15' }, { do: '2026-09-15' }, { wysylka: 'dpd' }, { wysylka: 'nieznana' },
       { platnosc: 'blik' }, { platnosc: 'Przelew tradycyjny' }, { kanal: 'kanal_b' }, { kanal: 'indywidualne' },
       { od: '2026-09-12', do: '2026-09-20', kanal: 'kanal_a', wysylka: 'inpost_paczkomat' }];
-    const frazy = ['kowalski', 'peki', 'PĘKI', 'zazolc1', 'M-1', 'produkt 3', 'l1', 'sku-2 kowalski', '000', 'brak-takiego'];
+    const frazy = ['kowalski', 'lodz', 'ŁÓDŹ', 'zazolc1', 'M-1', 'produkt 3', 'l1', 'sku-2 kowalski', '000', 'brak-takiego'];
     let sprawdzone = 0;
     for (const z of zamowienia) {
       const k = klasyfikacjaListy(z, T0);

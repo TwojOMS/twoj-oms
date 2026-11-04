@@ -1,4 +1,5 @@
 import { gusDostepny } from '../../domena/konfiguracja-gus.js';
+import { TYLKO_ODCZYT } from '../../domena/woo-uprawnienia.js';
 import { wystawienieFaktury } from '../../domena/wystawienie-faktury.js';
 import { maDostepDoAdresu } from '../../domena/ekrany.js';
 import { wylaczoneModuly } from '../../oms/db/moduly-opcjonalne.js';
@@ -8,6 +9,7 @@ import { indeksListy } from '../../oms/db/indeks-listy.js';
 import { proformyZamowienia } from '../faktury/db/proformy.js';
 import { aktualnaProforma, czyWolnoWystawic, rozjazdKwotyProformy } from '../../domena/proforma-stan.js';
 import { nastepnyNumerReczny } from '../../oms/db/zamowienia-reczne.js';
+import { METODA_DOMYSLNA } from '../../domena/moduly-kurierow.ts';
 import { DOSTAWY, PLATNOSCI, liczbaWierszyFormularza, wdtZFormularza } from '../../domena/nowe-zamowienie.js';
 import { nastepnaKolejnosc, skasujPrzesylkeReczna, przesylkiDoSledzenia } from '../wysylka/db/przesylki.js';
 import { ostatniaPozycjaDlaPrzesylki } from '../wysylka/db/kolejka-druku.js';
@@ -16,6 +18,9 @@ import { stanFaktury } from '../../domena/faktura-stan.js';
 import { stanPrzesylki, sprawyZamowienia, sprawyDoZalatwieniaRecznie, mozliwaKolejnaPaczka, numerWpisanyZReki, mozliweUkrycie, przesylkaUkryta } from '../../domena/przesylka-stan.js';
 import { wyliczStatus, doZrobienia, anulowaneWymagaUwagi, uwagaDolaczonychAnulowanych } from '../../domena/status.js';
 import { podsumowanieZwrotow } from '../../domena/zwrot-widok.js';
+import {
+  powodOdmowyKorektyDlaFaktury, powodOdmowyWystawieniaKorekty, powodOdmowyKorektyBezDostawy, zwrotWymagaPozycjiDostawy,
+} from '../../domena/zwrot.js';
 import { powodBrakuGotowosciNadania } from '../../domena/gotowosc-nadania.js';
 import { etykietaWysylki, czyKanalAllegro } from '../../domena/wysylka.js';
 import { bezpiecznyPowrotNaListe } from '../../domena/filtry-listy.js';
@@ -74,7 +79,7 @@ import { kluczOkresu } from '../../domena/okres-rozliczeniowy.js';
 import { wolnoPrzypisac } from '../../domena/zmiana-okresu.js';
 import { umowaZbiorcza } from '../../domena/klient-zbiorczy.js';
 import { pobierzOkres } from '../../oms/db/okresy.js';
-import { idDokumentu, czyDokumentProgramu } from '../../domena/dokument-programu.js';
+import { idDokumentu, czyDokumentProgramu, podgladFakturyZTerminem } from '../../domena/dokument-programu.js';
 import { MIESIACE } from '../../domena/okres-rozliczeniowy.js';
 import { decyzjaScalenia, zamowienieGrupy } from '../../domena/scalanie.js';
 import { dolaczoneZamowienia, zamowienieZGrupa } from '../../oms/db/scalenia.js';
@@ -583,6 +588,14 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
       } catch { /* zdanie „czeka” zostaje */ }
     }
   }
+  // PRZ-148.03: zwrot z dostawą bez korekty — pozycje faktury z programu, żeby karta znała regułę „faktura bez pozycji
+  // Dostawa” (domena/zwrot.js) zanim operator kliknie. Pytamy tylko w tym stanie; błąd odczytu → przycisk zostaje,
+  // a odmowę da jak dotąd usługa korekty.
+  let fakturaKorekty = null;
+  if (typeof programFaktur?.pobierzFakture === 'function' && czyDokumentProgramu(z.faktura, programFaktur)
+    && (z.zwroty ?? []).some(zwrotWymagaPozycjiDostawy)) {
+    fakturaKorekty = await podgladFakturyZTerminem(programFaktur, idDokumentu(z.faktura));
+  }
   // PRZ-122.B07f: firma zwolniona z VAT — numer UE nabywcy to nie WDT (ceny, stawki i podsumowanie jak u krajowego).
   const zwolniona = zwolnionaFirma();
 
@@ -711,6 +724,8 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // „nie dojechal do Allegro"; bez tej flagi karta twierdzilaby OBOK, ze „Sklep nie przyjal
     // statusu" — czyli jedna karta wskazywalaby dwa rozne miejsca usterki naraz.
     kanalAllegro: czyKanalAllegro(z),
+    // PRZ-149.04: sklep podłączony kluczem „Odczyt” — karta mówi wprost, że status/notatkę zmienia się w sklepie.
+    sklepTylkoOdczyt: syncSklep?.tylkoOdczyt?.(z.sklep) === true ? TYLKO_ODCZYT : null,
     // ⚠️ CZY WOLNO WYSLAC FAKTURE NA KONTO KUPUJACEGO — liczone TU, jedna funkcja domenowa,
     // TA SAMA, ktora odmawia w usludze (services/faktura-allegro.js). Widok NIE ma prawa
     // liczyc tego sam: przycisk pokazany przy zamowieniu, ktore bariera i tak odrzuci,
@@ -726,7 +741,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     zdanieAllegroPoZamianieNip: zdanieKartyPoZamianieNip(z.faktura),
     // Czy usluga w ogole jest podpieta. Bez kanalu Allegro albo bez inFaktu przycisk
     // kusilby akcja konczaca sie 503 — ta sama zasada, co `mozliwaFaktura`/`mozliwyGus`.
-    mozliwaFakturaAllegro: Boolean(fakturaAllegro),
+    mozliwaFakturaAllegro: Boolean(fakturaAllegro) && fakturaAllegro.gotowe?.() !== false,
     // Dane klienta w postaci, ktora panel uwaza za prawdziwa (reczne poprawki nalozone
     // na sklep) — TA SAMA funkcja, ktora czyta ekran nadania i fakturowanie. Widok nie
     // sklada tego sam z `z.klient`/`z.dostawa`: dwie kopie tej samej reguly rozjechalyby
@@ -773,6 +788,14 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     })(),
     powodKorektyKsef: programFaktur?.opis?.wbudowany === true ? POWOD_KOREKTA_CZEKA : POWOD_KOREKTA, // C09: TwojeFaktury wysyła korekty
     korektyBezCzekania,
+    // PRZ-147.03: „Wystaw korektę” w sekcji Faktura — mapa `id zwrotu -> stan` dla zwrotów bez numeru korekty przy
+    // zamówieniu z fakturą. Blokada z TYCH SAMYCH reguł domeny co ekran zwrotu i usługa korekty; widok tylko czyta.
+    korektaNaKarcie: z.faktura ? Object.fromEntries((z.zwroty ?? []).filter((w) => !w.korekta_numer).map((w) => [w.id, {
+      zlecona: Boolean(w.korekta_zlecona_at),
+      blokada: powodOdmowyKorektyDlaFaktury(w, z.zwroty) ?? powodOdmowyWystawieniaKorekty(w),
+      programFaktur: Boolean(programFaktur),
+      bezDostawy: powodOdmowyKorektyBezDostawy(w, fakturaKorekty, { nazwa: nazwaProgramu }),
+    }])) : {},
     // Zadanie 4: sekcja „Pozycje" — lp/nazwa/SKU/ilosc/netto/brutto/suma, wysylka jako
     // OSTATNI wiersz. Widok NIE liczy niczego sam — ta sama zasada, co przy stanie
     // przesylki wyzej: wiersze i podsumowanie (razem z ostrzezeniem o rozjezdzie z kwota
@@ -939,6 +962,9 @@ function renderujNowe(
       // PRZ-104: granice pola „Data wysyłki” — te same, które sprawdza zapis (parsujDateWysylki).
       dzisWysylki: zakresDatyWysylki(dzienWarszawa(new Date().toISOString())),
       dostawy: DOSTAWY,
+      // PRZ-143.03: domyślna dostawa formularza — metoda domyślna rejestru kurierów, a gdy nie ma jej
+      // na liście DOSTAWY, pierwsza z listy. Widok nie zna żadnego klucza na sztywno.
+      dostawaDomyslna: (METODA_DOMYSLNA in DOSTAWY) ? METODA_DOMYSLNA : Object.keys(DOSTAWY)[0],
       // ⚠️ MAPA, NIE JEDNA KWOTA — bo ekran musi umiec podmienic wartosc po zmianie metody
       // w liscie rozwijanej, a panel nie odpytuje serwera przy kazdym ruchu pola. Kwoty jada
       // z JEDNEGO zrodla (domain/ustawienia-panelu.js: kwotyDostawy): druga kopia liczb

@@ -44,7 +44,7 @@ beforeEach(() => {
 function oferta(nazwa, nadpisania = {}) {
   numerKolejny += 1;
   return zapiszProduktSklepowy(db, {
-    kanal: 'allegro_szkicownia', produkt_id: `oferta-${numerKolejny}`, wariant_id: '',
+    kanal: 'allegro_swietlik', produkt_id: `oferta-${numerKolejny}`, wariant_id: '',
     nazwa, odczytane_at: '2026-08-11T06:00:00.000Z', ...nadpisania,
   });
 }
@@ -187,7 +187,7 @@ describe('GET /magazyn/powiazania — lista ofert i kandydaci', () => {
     await get(app, '/magazyn/powiazania');
 
     expect(kartaOferty(id)).toBe(null);
-    expect(niepowiazaneOfertyAllegro(db, ['allegro_szkicownia', 'allegro_amarka'])).toHaveLength(1);
+    expect(niepowiazaneOfertyAllegro(db, ['allegro_swietlik', 'allegro_polcien2'])).toHaveLength(1);
   });
 
   // ⚠️⚠️ ROZSTRZYGNIECIE 3: 447 wierszy razy ~965 kart to megabajty. Lista podpowiedzi
@@ -436,9 +436,9 @@ describe('GET /magazyn/powiazania — szukanie i kolejnosc z adresu', () => {
   function katalog() {
     kartaO('Kandelabr srebrny');
     kartaO('Lampion srebrny');
-    oferta('KANDELABR ozdobny', { kanal: 'allegro_szkicownia' });
-    oferta('LAMPION ozdobny', { kanal: 'allegro_amarka' });
-    oferta('ABAŻUR ozdobny', { kanal: 'allegro_szkicownia' });
+    oferta('KANDELABR ozdobny', { kanal: 'allegro_swietlik' });
+    oferta('LAMPION ozdobny', { kanal: 'allegro_polcien2' });
+    oferta('ABAŻUR ozdobny', { kanal: 'allegro_swietlik' });
   }
 
   it('fraza zaweza liste ofert', async () => {
@@ -449,7 +449,7 @@ describe('GET /magazyn/powiazania — szukanie i kolejnosc z adresu', () => {
 
   it('filtr konta Allegro zaweza liste ofert', async () => {
     katalog();
-    expect(nazwyOfert((await get(serwer(), '/magazyn/powiazania?kanal=allegro_amarka')).body))
+    expect(nazwyOfert((await get(serwer(), '/magazyn/powiazania?kanal=allegro_polcien2')).body))
       .toEqual(['LAMPION ozdobny']);
   });
 
@@ -493,10 +493,10 @@ describe('GET /magazyn/powiazania — szukanie i kolejnosc z adresu', () => {
     // Niezmiennik 4.13b: filtry LACZA SIE z fraza, a nie kasuja jej. Formularz GET wysyla
     // wylacznie WLASNE pola, wiec kazdy z nich musi niesc wartosci drugiego ukrytym polem.
     katalog();
-    const r = await get(serwer(), '/magazyn/powiazania?fraza=ozdobny&kanal=allegro_szkicownia');
+    const r = await get(serwer(), '/magazyn/powiazania?fraza=ozdobny&kanal=allegro_swietlik');
     const szukajka = /<form class="szukajka"[\s\S]*?<\/form>/.exec(r.body)[0];
 
-    expect(szukajka).toContain('<input type="hidden" name="kanal" value="allegro_szkicownia">');
+    expect(szukajka).toContain('<input type="hidden" name="kanal" value="allegro_swietlik">');
     expect(szukajka).toContain('value="ozdobny"');
   });
 });

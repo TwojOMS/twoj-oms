@@ -3,7 +3,7 @@ import { dodajZwrot } from '../../../oms/db/zwroty.js';
 import { parsujZwrot } from '../../../domena/zwrot.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
-import { adresKartyZamowienia } from '../../../domena/adres-karty-zamowienia.js';
+import { adresEkranuZwrotu } from '../../../domena/adres-karty-zamowienia.js';
 import { bezpiecznyPowrotNaListe } from '../../../domena/filtry-listy.js';
 import { ktoKlikal } from '../../zamowienia/wspolne.js';
 
@@ -11,7 +11,8 @@ import { ktoKlikal } from '../../zamowienia/wspolne.js';
 // Guard uwierzytelniania, ptaszków i CSRF zapewnia wymagany moduł web.
 export function registerZwrotyRoutes(app, { db, definicje }) {
   const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, definicje);
-  const adresKarty = (req, id) => adresKartyZamowienia(id, { powrot: powrotKarty(req) }, definicje);
+  // PRZ-147.03: po rejestracji ekran zwrotu — tam następnym krokiem jest „Wystaw korektę”.
+  const adresZwrotu = (req, id) => adresEkranuZwrotu(id, { powrot: powrotKarty(req) }, definicje);
 
   const zamowienieAlbo404 = (req, reply) => {
     const id = Number(req.params.id);
@@ -53,6 +54,6 @@ export function registerZwrotyRoutes(app, { db, definicje }) {
       + `, pozycji: ${zapisany.pozycje.length}`
       + `${zapisany.powod ? `; powód: ${zapisany.powod}` : ''}.`,
     ));
-    return reply.redirect(adresKarty(req, z.id));
+    return reply.redirect(adresZwrotu(req, z.id));
   });
 }

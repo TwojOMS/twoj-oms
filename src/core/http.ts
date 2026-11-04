@@ -135,6 +135,8 @@ export function utworzHttp(o: OpcjeHttp = {}): (adres: string, init?: RequestIni
       try {
         odpowiedz = await fetchImpl(adres, { ...init, signal });
       } catch (przyczyna) {
+        // PRZ-148.07: odmowa hosta zapada przed siecią — komunikat dla operatora, bez ponowień.
+        if (przyczyna instanceof Error && przyczyna.name === 'OdmowaHosta') throw przyczyna;
         // Nie logujemy błędu transportu ani cause: mogą zawierać URL i nagłówki.
         const blad = init.signal?.aborted ? anulowane()
           : new Error(`${url.host}: ${limit.aborted ? 'limit czasu' : 'błąd sieci'}`);

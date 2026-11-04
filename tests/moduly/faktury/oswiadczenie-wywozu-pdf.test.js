@@ -46,7 +46,7 @@ function tekstZPdf(bajty) {
 }
 
 const SPRZEDAWCA = {
-  nazwa: 'Lumina Marek Zywiecki', ulica: '1 Maja 5', kod: '00-650', miasto: 'Pęki', nip: '1234563218',
+  nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'Przykładowa 1', kod: '00-950', miasto: 'Warszawa', nip: '1234563218',
 };
 
 const model = (nad = {}) => modelOswiadczenia({
@@ -83,8 +83,8 @@ describe('zbudujOswiadczenieWywozuPdf', () => {
     expect(tekst).toContain('Nr rejestracyjny');
     expect(tekst).toContain('podpis nabywcy');
     // Polskie znaki — jedyny test, ktory lapie zgubiony font.
-    expect(tekst).toContain('Pęki');
-    expect(tekst).toContain('Zywiecki');
+    expect(tekst).toContain('Warszawa');
+    expect(tekst).toContain('Wzorcowa');
   });
 
   it.skipIf(!PDFTOTEXT)('długa tabela łamie się na strony, a każda strona ma stopkę z numerem zamówienia', () => {

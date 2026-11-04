@@ -49,7 +49,7 @@ describe('ocenZdrowie — blad pollera typu „awaria" (siec, sklep, timeout)', 
   it('EKRAN TEZ MILCZY PRZY PIERWSZEJ WPADCE — decyzja wlasciciela 10.09.2026', () => {
     // ⚠️ DO 09.09.2026 STALO TU `zdrowy: false`, z uzasadnieniem „czknieccie ma byc widoczne
     // NA EKRANIE i milczec na TELEFONIE". Doba pozniej wlasciciel zobaczyl, ile to warte:
-    // strona glowna pokazala „Poller allegro_amarka nie działa: The operation was
+    // strona glowna pokazala „Poller allegro_polcien2 nie działa: The operation was
     // aborted due to timeout", Ustawienia → Łączność odpowiedzialy „wszystko ok" (bo dwie
     // minuty wczesniej nastepny przebieg zgasil blad), a jedynym skutkiem bylo szukanie
     // awarii, ktorej juz nie bylo.

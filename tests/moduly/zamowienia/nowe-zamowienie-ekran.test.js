@@ -69,15 +69,15 @@ describe('paczkomat na ekranie zakładania', () => {
 
 describe('„Skopiuj dane do wysyłki" przy zakładaniu', () => {
   const faktura = {
-    f_firma: 'Pracownia Przykładowa sp. z o.o.', f_ulica: 'Przemysłowa 4', f_kod: '00-650',
-    f_miasto: 'Pęki', f_email: 'faktury@przykladowa.example',
+    f_firma: 'Pracownia Przykładowa sp. z o.o.', f_ulica: 'Przemysłowa 4', f_kod: '00-950',
+    f_miasto: 'Warszawa', f_email: 'faktury@przykladowa.example',
   };
 
   it('przepisuje firmę, adres i e-mail', () => {
     const wynik = skopiujFaktureDoWysylki({ ...faktura, w_nazwa: 'Jan Kowalski', w_telefon: '600100200' });
     expect(wynik).toMatchObject({
       w_firma: 'Pracownia Przykładowa sp. z o.o.', w_ulica: 'Przemysłowa 4',
-      w_kod: '00-650', w_miasto: 'Pęki', w_email: 'faktury@przykladowa.example',
+      w_kod: '00-950', w_miasto: 'Warszawa', w_email: 'faktury@przykladowa.example',
     });
   });
 
@@ -105,7 +105,7 @@ describe('„Skopiuj dane do wysyłki" przy zakładaniu', () => {
     const r = await wyslij('/zamowienia/nowe/kopiuj-do-wysylki', { ...faktura, w_nazwa: 'Jan Kowalski' });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('name="w_firma" value="Pracownia Przykładowa sp. z o.o."');
-    expect(r.body).toContain('name="w_miasto" value="Pęki"');
+    expect(r.body).toContain('name="w_miasto" value="Warszawa"');
     // Ani jednego zamówienia w bazie — przycisk tylko przestawia pola.
     expect(db.prepare('SELECT COUNT(*) AS ile FROM zamowienia').get().ile).toBe(0);
   });
@@ -119,7 +119,7 @@ describe('„Skopiuj dane do wysyłki" przy zakładaniu', () => {
     const skopiowany = skopiujFaktureDoWysylki({ ...faktura, w_nazwa: 'Jan Kowalski', w_telefon: '600100200' });
     await wyslij('/zamowienia/nowe', { ...skopiowany, dostawa: 'dpd', platnosc: 'przelew' });
     const adres = adresOdbiorcy(pobierzZamowienie(db, 1));
-    expect(adres).toMatchObject({ nazwa: 'Jan Kowalski', ulica: 'Przemysłowa 4', miasto: 'Pęki' });
+    expect(adres).toMatchObject({ nazwa: 'Jan Kowalski', ulica: 'Przemysłowa 4', miasto: 'Warszawa' });
   });
 });
 
@@ -264,7 +264,7 @@ describe('ekran zakładania nie skacze do góry', () => {
 
   it('„Wstaw dane" stałego klienta wraca do paska wyboru', async () => {
     dopiszKlienta(db, {
-      klucz: 'betamet', nazwa: 'BETAMET sp. z o.o.', nip: '1200001022', b2b: 1, rabat_procent: 0,
+      klucz: 'kontrahent', nazwa: 'Wzorowy Kontrahent', nip: '1234500028', b2b: 1, rabat_procent: 0,
       chce_fakture: 1, metoda_wysylki: 'dpd', koszt_dostawy_brutto: '19.00', platnosc: 'przelew',
       termin_platnosci: '14', komentarz: null, aktywny: 1, faktura: {}, wysylka: {},
     });
@@ -277,16 +277,16 @@ describe('ekran zakładania nie skacze do góry', () => {
   // klika się pięć razy pod rząd, więc jego kotwica boli najbardziej.
   it('„Dodaj" z magazynu wraca do wyszukiwarki i potwierdza, co dodał', async () => {
     zapiszProduktSklepowy(db, {
-      kanal: 'szkicownia', produkt_id: '28040', wariant_id: '', nazwa: 'Lampa stołowa Grzybek',
+      kanal: 'swietlik', produkt_id: '28040', wariant_id: '', nazwa: 'Lampa stołowa Grzybek',
       sku_sklepu: 'LMP-GRZ-30', cena_gr: 7490, rozmiar_tekst: '30x45', kategorie: [], zdjecia: [],
-      adres: 'https://szkicownia.pl/produkt/grzybek', odczytane_at: '2026-08-21T08:00:00',
+      adres: 'https://swietlik.example.test/produkt/grzybek', odczytane_at: '2026-08-21T08:00:00',
     });
-    const zWynikami = await wyslij('/zamowienia/nowe/magazyn', { magazyn: 'grzybek', cennik: 'szkicownia' });
+    const zWynikami = await wyslij('/zamowienia/nowe/magazyn', { magazyn: 'grzybek', cennik: 'swietlik' });
     expect(zWynikami.body).toContain('formaction="/zamowienia/nowe/magazyn/dodaj#magazyn"');
 
     const poDodaniu = await wyslij('/zamowienia/nowe/magazyn/dodaj', {
-      magazyn: 'grzybek', cennik: 'szkicownia', wybrany: '0',
-      mag_kanal: 'szkicownia', mag_produkt_id: '28040', mag_wariant_id: '', mag_ilosc: '3',
+      magazyn: 'grzybek', cennik: 'swietlik', wybrany: '0',
+      mag_kanal: 'swietlik', mag_produkt_id: '28040', mag_wariant_id: '', mag_ilosc: '3',
     });
     // Potwierdzenie stoi przy wyszukiwarce, bo tam wraca ekran — dopisana pozycja jest wyżej,
     // często poza widokiem.

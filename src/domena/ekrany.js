@@ -244,14 +244,14 @@ export function tytulEkranuDlaAdresu(url) {
     }
   }
   const integracje = {
-    '/ustawienia/integracje/dpd': 'Kurier DPD Polska',
-    '/ustawienia/integracje/inpost': 'Kurier InPost',
+    '/ustawienia/integracje/dpd': 'DPD',
+    '/ustawienia/integracje/inpost': 'InPost',
     '/ustawienia/integracje/infakt': 'inFakt',
     '/ustawienia/integracje/program-fakturowy': 'Moduł faktur',
     '/ustawienia/integracje/program-fakturowy/serie': 'Serie numeracji',
     '/ustawienia/integracje/program-fakturowy/ksef': 'Wysyłka faktur do KSeF',
-    '/ustawienia/integracje/gus': 'GUS (dane firm po NIP)',
-    '/ustawienia/integracje/ksef': 'KSeF — faktury kosztowe',
+    '/ustawienia/integracje/gus': 'GUS',
+    '/ustawienia/integracje/ksef': 'KSeF',
     '/ustawienia/integracje/poczta': 'Poczta wychodząca',
     '/ustawienia/integracje/reklamy': 'Integracje reklam',
   };

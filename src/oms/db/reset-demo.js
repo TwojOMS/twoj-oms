@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { KLUCZ_ZLECENIA_RESETU, ZACHOWANE_PRZY_RESECIE } from '../../domena/reset-demo.js';
+import { KLUCZ_ZLECENIA_RESETU, ZACHOWANE_PRZY_RESECIE, ZACHOWANE_SANDBOX_ALLEGRO } from '../../domena/reset-demo.js';
 
+const maTabele = (db, nazwa) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(nazwa));
 const maNumeracje = (db) => ['tf_serie', 'tf_liczniki'].every(nazwa =>
   db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(nazwa));
 
@@ -12,7 +13,42 @@ export function zlecResetDemo(db, { login, teraz = new Date() }) {
     .run(KLUCZ_ZLECENIA_RESETU, JSON.stringify({ zlecono, login }), zlecono);
 }
 
-export function odczytajZlecenieResetu(db) {
+// PRZ-149.01: konfiguracja rzeczywistego Allegro Sandbox w piaskownicy — wiersze z poświadczeniami (sekrety_json,
+// tokeny_kanalu) jak w bazie; kopia resetu leży obok bazy z tymi samymi uprawnieniami (0600, katalog dane/ 0700).
+function odczytajSandbox(db) {
+  const konfiguracja = db.prepare(`SELECT * FROM konfiguracja_integracji WHERE integracja IN (${ZACHOWANE_SANDBOX_ALLEGRO.map(() => '?').join(',')})`)
+    .all(...ZACHOWANE_SANDBOX_ALLEGRO);
+  const kanaly = maTabele(db, 'kanaly_sprzedazy')
+    ? db.prepare("SELECT * FROM kanaly_sprzedazy WHERE zrodlo = 'panel' AND srodowisko = 'sandbox'").all() : [];
+  const token = maTabele(db, 'tokeny_kanalu') ? db.prepare('SELECT * FROM tokeny_kanalu WHERE kanal = ?') : null;
+  const tokeny = token ? kanaly.map(k => token.get(k.klucz)).filter(Boolean) : [];
+  return { konfiguracja, kanaly, tokeny };
+}
+
+// Kolumny wspólne starego wiersza i nowej tabeli — nowa baza po migracjach może mieć ich więcej (DEFAULT) albo mniej.
+function wstaw(db, tabela, wiersz, konflikt) {
+  const kolumny = new Set(db.prepare(`PRAGMA table_info(${tabela})`).all().map(k => k.name));
+  const pola = Object.keys(wiersz).filter(k => kolumny.has(k));
+  return db.prepare(`INSERT OR ${konflikt} INTO ${tabela} (${pola.map(p => `"${p}"`).join(',')}) VALUES (${pola.map(() => '?').join(',')})`)
+    .run(...pola.map(p => wiersz[p])).changes;
+}
+
+function przywrocSandbox(db, { konfiguracja, kanaly, tokeny }) {
+  let nKonf = 0, nKanaly = 0;
+  // Konta panelu po resecie są nowe — konto_id wskazywałby cudze konto; konto_login zostaje jako ślad.
+  for (const w of konfiguracja) nKonf += wstaw(db, 'konfiguracja_integracji', { ...w, konto_id: null }, 'REPLACE');
+  if (!maTabele(db, 'kanaly_sprzedazy')) return { konfiguracja: nKonf, kanaly: 0 };
+  for (const k of kanaly) {
+    // Klucz zajęty w świeżym demo = kanał demo; jego tokenów nie nadpisujemy cudzymi.
+    if (!wstaw(db, 'kanaly_sprzedazy', k, 'IGNORE')) continue;
+    nKanaly++;
+    const t = tokeny.find(w => w.kanal === k.klucz);
+    if (t && maTabele(db, 'tokeny_kanalu')) wstaw(db, 'tokeny_kanalu', t, 'REPLACE');
+  }
+  return { konfiguracja: nKonf, kanaly: nKanaly };
+}
+
+export function odczytajZlecenieResetu(db, { zachowajSandbox = false } = {}) {
   // Baza bez tabeli `ustawienia` (np. pusty plik) = brak zlecenia — start jak przed RESET-DEMO.
   if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ustawienia'").get()) return null;
   const wpis = db.prepare('SELECT wartosc FROM ustawienia WHERE klucz = ?').get(KLUCZ_ZLECENIA_RESETU);
@@ -25,10 +61,11 @@ export function odczytajZlecenieResetu(db) {
     serie: db.prepare('SELECT kod, rodzaj, format, reset, zmieniono_at, konto_login FROM tf_serie').all(),
     liczniki: db.prepare('SELECT s.kod, l.okres, l.ostatni FROM tf_liczniki l JOIN tf_serie s ON s.id = l.seria_id').all(),
   } : null;
-  return { zlecenie, zachowane, numeracja };
+  return { zlecenie, zachowane, numeracja, sandbox: zachowajSandbox ? odczytajSandbox(db) : null };
 }
 
-export function przywrocPoResecie(db, { zachowane, numeracja }) {
+// `stan.sandbox` dostaje liczby przywróconych wierszy Sandbox (bez wartości) — do logu startu.
+export function przywrocPoResecie(db, { zachowane, numeracja, sandbox = null }, stan = {}) {
   db.exec('BEGIN IMMEDIATE');
   try {
     const integracja = db.prepare(`INSERT INTO konfiguracja_integracji (integracja, ustawienia_json, sekrety_json, konto_id, konto_login, zmieniono_at)
@@ -46,6 +83,7 @@ export function przywrocPoResecie(db, { zachowane, numeracja }) {
         ON CONFLICT(seria_id, okres) DO UPDATE SET ostatni=MAX(tf_liczniki.ostatni, excluded.ostatni)`);
       for (const l of numeracja.liczniki) licznik.run(l.kod, l.okres, l.ostatni);
     }
+    stan.sandbox = sandbox ? przywrocSandbox(db, sandbox) : null;
     db.exec('COMMIT');
     return dostepna ? 'zachowana' : 'brak';
   } catch (e) {
@@ -71,7 +109,29 @@ function czytajKopie(kopia, baza) {
   }
 }
 
-export async function wykonajZlecenieResetu({ baza, utworzBaze }) {
+// PRZ-149.01: `nas-proba.sh reset` działa poza kontenerem (bez gwarancji sqlite3 na hoście), więc nie kasuje już bazy,
+// tylko zostawia ten znacznik w dane/. Start zamienia go na zwykłe zlecenie resetu w bazie — dalej jak reset z panelu
+// (kopia, świeże demo, przywrócenie). Bazy nie da się otworzyć = dawne zachowanie: kasujemy ją, start zakłada demo.
+export const znacznikResetuProby = (baza) => `${baza}.reset-proba`;
+
+function przyjmijZnacznikProby(baza) {
+  const znacznik = znacznikResetuProby(baza);
+  if (!fs.existsSync(znacznik)) return;
+  if (fs.existsSync(baza) && !fs.existsSync(kopiaResetu(baza))) {
+    try {
+      const db = new DatabaseSync(baza);
+      try { zlecResetDemo(db, { login: 'nas-proba.sh reset' }); } finally { db.close(); }
+    } catch (e) {
+      // Zajęta baza (stary proces jeszcze trzyma zapis) to nie uszkodzenie: rzucamy, znacznik zostaje na następny start.
+      if ([5, 6].includes((e?.errcode ?? 0) & 0xff)) throw e;
+      for (const plik of [baza, `${baza}-wal`, `${baza}-shm`]) fs.rmSync(plik, { force: true });
+    }
+  }
+  fs.rmSync(znacznik, { force: true });
+}
+
+export async function wykonajZlecenieResetu({ baza, utworzBaze, zachowajSandbox = false }) {
+  przyjmijZnacznikProby(baza);
   const kopia = kopiaResetu(baza);
   if (!fs.existsSync(baza) && !fs.existsSync(kopia)) return null;
   const zKopii = czytajKopie(kopia, baza);
@@ -79,7 +139,7 @@ export async function wykonajZlecenieResetu({ baza, utworzBaze }) {
     let dane = zKopii;
     if (!dane) {
       const db = new DatabaseSync(baza, { readOnly: true });
-      try { dane = odczytajZlecenieResetu(db); } finally { db.close(); }
+      try { dane = odczytajZlecenieResetu(db, { zachowajSandbox }); } finally { db.close(); }
       if (!dane) return null;
       fs.writeFileSync(`${kopia}.tmp`, JSON.stringify(dane), { mode: 0o600 });
       fs.renameSync(`${kopia}.tmp`, kopia);
@@ -87,10 +147,10 @@ export async function wykonajZlecenieResetu({ baza, utworzBaze }) {
     for (const plik of [baza, `${baza}-wal`, `${baza}-shm`]) fs.rmSync(plik, { force: true });
     await utworzBaze();
     const nowa = new DatabaseSync(baza);
-    let numeracja;
-    try { numeracja = przywrocPoResecie(nowa, dane); } finally { nowa.close(); }
+    let numeracja; const stan = {};
+    try { numeracja = przywrocPoResecie(nowa, dane, stan); } finally { nowa.close(); }
     fs.rmSync(kopia, { force: true });
-    return { zlecenie: dane.zlecenie, zachowane: dane.zachowane.map(w => w.integracja), numeracja };
+    return { zlecenie: dane.zlecenie, zachowane: dane.zachowane.map(w => w.integracja), numeracja, sandbox: stan.sandbox };
   } catch (e) {
     throw new Error('Nie udało się wykonać resetu demo', { cause: e });
   }

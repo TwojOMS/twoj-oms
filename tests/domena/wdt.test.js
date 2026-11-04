@@ -3,6 +3,28 @@ import {
   czyNipUe, rozbijNipUe, stawkaDokumentu, numerWdt, polaWdtInfakt,
 } from '../../src/domena/wdt.js';
 import { STAWKA_VAT } from '../../src/domena/vat.js';
+import { rodzajKorekty, polaWdtKorekty } from '../../src/domena/wdt.js';
+
+describe('PRZ-148 korekta WDT', () => {
+  it.each([
+    ['DE123456789', [{ tax_symbol: '0' }, { tax_symbol: ' 0 ' }], {}, 'wdt'],
+    ['DE123456789', [{ tax_symbol: '0' }, { tax_symbol: '23' }], {}, 'niezgodna'],
+    ['DE123456789', [{ tax_symbol: null }], {}, 'niezgodna'],
+    ['DE123456789', [], {}, 'niezgodna'],
+    ['DE123456789', [{ tax_symbol: 'zw' }], { zwolniona: true }, 'krajowa'],
+    ['1234563218', [{ tax_symbol: '0' }], {}, 'krajowa'],
+  ])('klasyfikuje %s, %j, %j jako %s', (nip, pozycje, opcje, wynik) => {
+    expect(rodzajKorekty(nip, pozycje, opcje)).toBe(wynik);
+  });
+  it('korzysta z jednej adnotacji WDT i dopisuje uwagi po spacji', () => {
+    const opcje = { nipSprzedawcy: '1234563218', uwagi: 'Zwrot towaru' };
+    expect(polaWdtKorekty('DE123456789', opcje)).toEqual({
+      ...polaWdtInfakt('DE123456789', opcje),
+      notes: `${polaWdtInfakt('DE123456789', opcje).notes} Zwrot towaru`,
+    });
+    expect(polaWdtKorekty('1234563218', opcje)).toEqual({});
+  });
+});
 
 // Rozpoznanie WDT idzie po NIP-ie nabywcy DOKUMENTU, w postaci dowolnej (surowej albo
 // znormalizowanej) — bo kolumny bazy bywają znormalizowane, a nadpisania ręczne surowe.

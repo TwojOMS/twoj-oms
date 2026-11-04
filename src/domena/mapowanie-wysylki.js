@@ -95,5 +95,43 @@ export function metodaWysylkiZamowienia(surowe, mapowanie) {
   // ⚠️ Nierozpoznana dostawa NIE MOŻE nieść pobrania: panel i tak jej nie nada, a
   // „nieznana + pobranie" wyglądałoby na paczkę, za którą kurier ma coś zainkasować.
   if (!METODY_WYSYLKI.includes(wpis?.metoda)) return { metoda: 'nieznana', pobranie: false };
-  return { metoda: wpis.metoda, pobranie: Boolean(wpis.pobranie) };
+  const metoda = wpis.metoda;
+  const flaga = Boolean(wpis.pobranie);
+  // PRZ-134 (plan D1/D2): sklep z panelu wskazuje bramki płatności „zapłacę przy odbiorze"
+  // (`bramkiPobrania`, identyfikatory `payment_method` Woo). Kolejność ma powód:
+  //  - brak listy → dokładnie jak przed PRZ-134 (sklepy z pliku, dawna mapa PRZ-060 — złoty test);
+  //  - brak bramki w zamówieniu (założone w wp-adminie, suma 0) → też jak dziś, z flagi instancji;
+  //  - odbiór osobisty → nigdy pobranie: inkasuje kurier, a tu kuriera nie ma (domena odrzuca tę parę,
+  //    wysylka.js); sprzedawca bierze pieniądze przy wydaniu;
+  //  - bramka z listy → pobranie, także na metodzie bez flagi (typowy sklep: jeden kurier, wybór płatności w kasie);
+  //  - flaga instancji przy bramce spoza listy → sprzeczność, panel nie zgaduje.
+  // Porównanie dokładne (bez zmiany wielkości liter): identyfikatory bramek Woo to stałe napisy.
+  const bramka = bramkaPobrania(surowe, mapowanie);
+  if (bramka === null) return { metoda, pobranie: flaga };
+  if (metoda === 'odbior_osobisty') return { metoda, pobranie: false };
+  if (bramka) return { metoda, pobranie: true };
+  if (flaga) return wynikSprzecznosciPobrania(metoda);
+  return { metoda, pobranie: false };
+}
+
+/**
+ * Czy klient zapłacił bramką „zapłacę przy odbiorze" z listy sklepu (`bramkiPobrania`).
+ * `null` = nie da się powiedzieć (sklep bez listy albo zamówienie bez bramki) — wtedy decyduje
+ * flaga instancji; `true`/`false` = bramka jest / nie jest na liście. Jedno miejsce tej reguły:
+ * czyta ją `metodaWysylkiZamowienia` wyżej i mapowanie `date_paid` (PRZ-137.05, mapowanie.js).
+ */
+export function bramkaPobrania(surowe, mapowanie) {
+  const bramki = mapowanie?.bramkiPobrania;
+  if (!Array.isArray(bramki)) return null;
+  const bramka = String(surowe?.payment_method ?? '').trim();
+  if (!bramka) return null;
+  return bramki.includes(bramka);
+}
+
+// PRZ-134 (D2): instancja mówi „pobranie", a klient zapłacił bramką spoza `bramkiPobrania` (np. „Kurier
+// DPD pobranie" + przelew). Obie pomyłki kosztują — bez pobrania towar idzie za darmo, z pobraniem klient
+// płaci dwa razy — więc zamówienie wychodzi jako „nieznana": karta blokuje nadanie z panelu, a operator
+// ustawia metodę i pobranie ręcznie. ⚠️ Wariant czeka na decyzję właściciela; zmienia się go TU, jedną linią.
+function wynikSprzecznosciPobrania(_metoda) {
+  return { metoda: 'nieznana', pobranie: false };
 }

@@ -69,7 +69,7 @@ export function createOmsClient({ baseUrl, user, pass, fetchImpl = fetch }) {
    * (co 2 minuty), a panel pyta o nie numerem sklepowym i czyta `oplacone`.
    *
    * ⚠️ NAZWA SKLEPU JEST WYMAGANA I ODRZUCAMY JEJ BRAK U SIEBIE. Numer zamowienia NIE jest
-   * unikalny miedzy sklepami — szkicownia.pl i PRO numeruja niezaleznie, wiec `28060` moze
+   * unikalny miedzy sklepami — swietlik.example.test i PRO numeruja niezaleznie, wiec `28060` moze
    * istniec w obu. Zapytanie bez sklepu moze wiec dostac cudze zamowienie, a karta podpieta
    * do cudzego zamowienia to ta sama klasa bledu, ktora zlikwidowalo przejscie z dopasowania
    * po adresie e-mail na numer oferty. Odmowa PRZED wyjsciem w siec jest tansza niz poleganie

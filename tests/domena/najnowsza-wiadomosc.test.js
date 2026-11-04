@@ -4,7 +4,7 @@ import { najnowszaWiadomosc } from '../../src/domena/najnowsza-wiadomosc.js';
 // ⚠️⚠️ ZMIERZONE NA PRODUKCJI 29.08.2026: `GET /messaging/messages` ODDAJE OD NAJNOWSZEJ.
 // Poller brał `wiadomosci[wiadomosci.length - 1]`, czyli — przy prawdziwej kolejności —
 // NAJSTARSZĄ wiadomość wątku, prawie zawsze pytanie kupującego. Skutek: wszystkie 18 wątków
-// szkicownia miało `ostatnia_od_kupujacego = 1` i NIGDY BY NIE ZGASŁO, mimo że właściciel
+// swietlik miało `ostatnia_od_kupujacego = 1` i NIGDY BY NIE ZGASŁO, mimo że właściciel
 // odpisał na każdy z nich jeszcze 7 sierpnia. Dokładnie ta „lampka na zawsze", przed którą
 // ostrzega komentarz w `czyj-ruch-watku.js`.
 //

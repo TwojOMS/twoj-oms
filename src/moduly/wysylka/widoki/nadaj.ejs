@@ -19,7 +19,7 @@
 <%# drugi raz — a to jest jedyna droga do dwoch paczek, ktorej indeks juz nie zatrzyma, %>
 <%# bo pierwsze wywolanie wciaz trwa i to ono trzyma wiersz. TRESC ZOSTAJE, zmienia sie %>
 <%# tylko klasa (pasek-uwaga zamiast goleg .uwaga), zeby pasowala do reszty panelu. %>
-<% if (metodaUzyta === 'inpost_paczkomat') { %>
+<% if (formularzPaczkomatu) { %>
   <p class="pasek-uwaga">
     Nadanie do paczkomatu potrafi potrwać nawet ok. 2,5 minuty — InPost przyznaje numer listu
     z opóźnieniem. NIE klikaj drugi raz i nie zamykaj strony: jeśli numer nie zdąży przyjść,
@@ -32,8 +32,8 @@
 <% if (kolejnosc > 1) { %>
   <p class="pasek-uwaga">
     To jest KOLEJNA paczka do tego zamówienia (nr <%= kolejnosc %>) — poprzednie już istnieją u kuriera
-    i nadanie tej ich nie zastępuje ani nie anuluje. Do DPD pojedzie referencja
-    „<%= z.numer %>/<%= kolejnosc %>", bo powtórzenia samego numeru zamówienia DPD nie przyjmie.
+    i nadanie tej ich nie zastępuje ani nie anuluje. Do kuriera pojedzie referencja
+    „<%= z.numer %>/<%= kolejnosc %>", żeby odróżnić tę paczkę od poprzednich.
   </p>
 <% } %>
 
@@ -80,7 +80,7 @@
         <%# kurierzy/inpost.js: punktOdbioru) i NIE zapisuje sie do zamowienia. Trwala %>
         <%# korekta ma swoje miejsce w „Szczegolach zamowienia" (zamowienie.ejs) — to %>
         <%# jest INNE pole, nie duplikat tamtego. %>
-        <% if (metodaUzyta === 'inpost_paczkomat') { %>
+        <% if (zPunktemOdbioru) { %>
           <div class="paczkomat">
             <div class="paczkomat-glowa">Paczkomat — miejsce odbioru</div>
             <div class="paczkomat-cialo">
@@ -113,7 +113,7 @@
           <%# paczkomatu. Przy DPD pola stoja tu wprost; przy paczkomacie schodza do %>
           <%# <details> nizej (do paczkomatu i tak nie jada — adresem jest kod), ale to %>
           <%# DALEJ te same pola formularza, nie druga kopia. %>
-          <% if (metodaUzyta !== 'inpost_paczkomat') { %>
+          <% if (!zPunktemOdbioru) { %>
             <label for="pole-ulica">Ulica i numer
               <input id="pole-ulica" name="ulica" value="<%= adres.ulica ?? '' %>">
               <% if (brakujacePola.includes('ulica')) { %><span class="uwaga">BRAK — DPD wymaga tego pola</span><% } %>
@@ -143,7 +143,7 @@
         <%# jak krajowe (parsujAdresOdbiorcy domyslnie ustawia 'PL' pod jego nieobecnosc). %>
         <input type="hidden" name="kraj" value="<%= adres.kraj %>">
 
-        <% if (metodaUzyta === 'inpost_paczkomat') { %>
+        <% if (zPunktemOdbioru) { %>
           <details class="adres-zwiniety">
             <summary>Adres pocztowy z zamówienia (do paczkomatu nie jedzie)</summary>
             <div class="pola">
@@ -172,7 +172,7 @@
         <% if (brakujacePola.length) { %>
           <p class="pasek-blokada">
             Zamówieniu brakuje danych, których DPD wymaga do nadania (<%= brakujacePola.join(', ') %>).
-            Uzupełnij je w polach adresu wyżej<% if (metodaUzyta === 'inpost_paczkomat') { %>,
+            Uzupełnij je w polach adresu wyżej<% if (zPunktemOdbioru) { %>,
             w zwiniętej sekcji „Adres pocztowy z zamówienia"<% } %> — inaczej panel odmówi nadania.
           </p>
         <% } %>
@@ -225,10 +225,25 @@
         <%# do kuriera przy TYM nadaniu (routes/zamowienia.js → services/nadanie.js → %>
         <%# kurierzy/dpd.js) i NIE zapisuje sie do zamowienia. Trwala korekta ma swoje %>
         <%# miejsce w „Szczegolach zamowienia" na karcie — to jest INNE pole. %>
-        <%# ⚠️ Wartosc startowa to `z.kwota_pobrania`, czyli DOKLADNIE ta liczba, ktora %>
-        <%# pojechalaby do DPD, gdyby operator nic nie zmienil. Widok jej NIE LICZY %>
-        <%# sam — druga implementacja tej samej kwoty rozjechalaby sie z tamta. %>
+        <%# ⚠️ Wartosc startowa to `proponowanePobranie` z trasy: przy przedplatach reszta liczona %>
+        <%# w domenie (PRZ-137.04), bez nich `kwotaPobrania(z)` = dawne `z.kwota_pobrania`. Widok %>
+        <%# jej NIE LICZY sam — druga implementacja tej samej kwoty rozjechalaby sie z tamta. %>
         <% if (z.pobranie) { %>
+          <% if (bladKwotPobrania) { %>
+            <p class="pasek-uwaga"><%= bladKwotPobrania %></p>
+          <% } %>
+          <% if (przedplatyPobrania && kolejnosc === 1) { %>
+            <% if (niedoplataPobrania && Number(niedoplataPobrania) > 0) { %>
+              <p class="pasek-uwaga">Zamówienie ma wpłaty <%= przedplatyPobrania %> zł — niedopłata <%= niedoplataPobrania %> zł (<%= opisPodstawyPobrania %> <%= podstawaPobrania %> zł minus wpłaty). Pobierz <%= niedoplataPobrania %> zł.<% if (roznicaPobrania) { %> Kwota pobrania na zamówieniu (<%= z.kwota_pobrania %> zł) różni się od niedopłaty.<% } %></p>
+            <% } else if (brakKwotyPobrania && !bladKwotPobrania) { %>
+              <p class="pasek-uwaga">Brak kwoty pobrania na zamówieniu. Zamówienie ma wpłaty <%= przedplatyPobrania %> zł — wpisz kwotę do zainkasowania<% if (limitPobrania) { %>, najwyżej <%= limitPobrania %> zł (kwota zamówienia minus wpłaty)<% } %>.</p>
+            <% } else if (!bladKwotPobrania && !limitPobrania) { %>
+              <%# PRZ-148.05: K ≤ 0 i brak brutto — niedopłaty nie da się policzyć, więc bez „najwyżej  zł”. %>
+              <p class="pasek-blokada">Zamówienie ma wpłaty <%= przedplatyPobrania %> zł, ale nie ma kwoty zamówienia ani kwoty pobrania większej od zera — panel nie policzy niedopłaty. Uzupełnij kwotę pobrania na karcie zamówienia albo wyłącz pobranie.</p>
+            <% } else if (!bladKwotPobrania) { %>
+              <p class="pasek-blokada">Zamówienie ma wpłaty <%= przedplatyPobrania %> zł — pobierz najwyżej <%= limitPobrania %> zł albo wyłącz pobranie na karcie zamówienia.</p>
+            <% } %>
+          <% } %>
           <% if (kolejnosc > 1) { %>
             <%# ⚠️ DO 04.09.2026 BYL TU SAM CZERWONY PAS I KONIEC — pobranie na paczce N > 1 %>
             <%# bylo NIEMOZLIWE. Zdarzenie na zamowieniu 1385 pokazalo brakujacy przypadek: %>
@@ -241,6 +256,13 @@
             <%# Oba elementy stoja jawnie, a regula „kwota dziala tylko przy zaznaczonym polu" %>
             <%# jest WYPISANA — to uczciwsze niz pole, ktore wyglada na aktywne i po cichu %>
             <%# ginie w trasie POST (domain/pobranie-nadania.js pilnuje tego po stronie serwera). %>
+            <%# PRZ-137.03 (D3): kurier, który nie wiezie pobrania na kolejnej paczce, albo %>
+            <%# paczkomat bez umowy — POST odmówi TYM tekstem (powodOdmowyZamiennika). %>
+            <% if (odmowaZamiennika) { %>
+              <p class="pasek-blokada">
+                Jeśli zaznaczysz pobranie na tej paczce: <%= odmowaZamiennika %> — inaczej panel odmówi nadania.
+              </p>
+            <% } %>
             <p class="pasek-uwaga">
               DOMYŚLNIE TA PACZKA JEDZIE BEZ POBRANIA. Kwota <%= z.kwota_pobrania || '(brak kwoty)' %> zł należy
               do zamówienia, a nie do paczki, i jest już na paczce nr 1 — kurier zainkasuje ją RAZ, przy tamtej
@@ -251,6 +273,11 @@
                 <input type="checkbox" id="pole-pobranie-tutaj" name="pobranie_na_tej_paczce" value="tak">
                 Pobranie ma pojechać na TEJ paczce
               </label>
+              <% if (przedplatyPobrania) { %>
+                <p class="podpowiedz">
+                  Jeśli zaznaczysz pobranie na tej paczce: zamówienie ma wpłaty <%= przedplatyPobrania %> zł — <% if (niedoplataPobrania && Number(niedoplataPobrania) > 0) { %>niedopłata <%= niedoplataPobrania %> zł (<%= opisPodstawyPobrania %> <%= podstawaPobrania %> zł minus wpłaty). Pobierz <%= niedoplataPobrania %> zł.<% if (roznicaPobrania) { %> Kwota pobrania na zamówieniu (<%= z.kwota_pobrania %> zł) różni się od niedopłaty.<% } %><% } else if (limitPobrania) { %>pobierz najwyżej <%= limitPobrania %> zł.<% } else { %>uzupełnij kwotę pobrania na karcie zamówienia.<% } %>
+                </p>
+              <% } %>
               <p class="podpowiedz">
                 Zaznacz <strong>wyłącznie</strong> wtedy, gdy ta paczka jest <strong>zamiennikiem</strong> paczki
                 nr 1, a nie dosyłką obok niej — czyli gdy tamta etykieta została wyrzucona i paczka nr 1 nigdy
@@ -259,22 +286,43 @@
               </p>
               <label for="pole-kwota-pobrania">Kwota pobrania do zainkasowania</label>
               <div class="pole-kwoty">
-                <input id="pole-kwota-pobrania" name="kwota_pobrania" value="<%= z.kwota_pobrania ?? '' %>" inputmode="decimal">
+                <input id="pole-kwota-pobrania" name="kwota_pobrania" value="<%= proponowanePobranie ?? '' %>" inputmode="decimal">
                 <span class="jednostka">zł</span>
               </div>
+              <% if (niedoplataPobrania && Number(niedoplataPobrania) > 0) { %>
+                <label>
+                  <input type="checkbox" name="potwierdz_niedoplate" value="<%= niedoplataPobrania %>">
+                  Wiem, że kwota pobrania różni się od niedopłaty <%= niedoplataPobrania %> zł — nadaj z kwotą wpisaną w polu
+                </label>
+              <% } %>
               <p class="podpowiedz">
-                Kwota działa <strong>tylko przy zaznaczonym polu powyżej</strong>. Bez zaznaczenia paczka jedzie
+                Kwota działa <strong>tylko przy zaznaczonym polu „Pobranie ma pojechać na TEJ paczce”</strong>. Bez zaznaczenia paczka jedzie
                 bez pobrania, a wpisana tu liczba jest ignorowana. Po nadaniu nie da się tego odkręcić inaczej
-                niż w panelu DPD.
+                niż <%= panelKuriera %>.
               </p>
             </div>
           <% } else { %>
+            <%# PRZ-137.02 (D2): pobranie OMS-owe (ręczne, zmienione na karcie) u kuriera bez %>
+            <%# włączonej umowy na pobranie — panel odmówi nadania TYM tekstem. Warunek i tekst %>
+            <%# liczy trasa z domeny (wymagaUmowyPobrania, powodUmowyPobrania); pobranie %>
+            <%# sprzedane przez sklep tego paska nie dostaje. %>
+            <% if (umowaPobraniaWymagana) { %>
+              <p class="pasek-blokada">
+                <%= umowaPobraniaWymagana.charAt(0).toUpperCase() + umowaPobraniaWymagana.slice(1) %> — inaczej panel odmówi nadania.
+              </p>
+            <% } %>
             <div class="pole-pieniadze">
               <label for="pole-kwota-pobrania">Kwota pobrania do zainkasowania</label>
               <div class="pole-kwoty">
-                <input id="pole-kwota-pobrania" name="kwota_pobrania" value="<%= z.kwota_pobrania ?? '' %>" inputmode="decimal">
+                <input id="pole-kwota-pobrania" name="kwota_pobrania" value="<%= proponowanePobranie ?? '' %>" inputmode="decimal">
                 <span class="jednostka">zł</span>
               </div>
+              <% if (niedoplataPobrania && Number(niedoplataPobrania) > 0) { %>
+                <label>
+                  <input type="checkbox" name="potwierdz_niedoplate" value="<%= niedoplataPobrania %>">
+                  Wiem, że kwota pobrania różni się od niedopłaty <%= niedoplataPobrania %> zł — nadaj z kwotą wpisaną w polu
+                </label>
+              <% } %>
               <%# ⚠️⚠️ DO 01.09.2026 POLE PRZY ALLEGRO STALO PUSTE (prosba właściciela o zmiane). %>
               <%# Powodem byla niewiedza panelu: numery listow z Allegro dociagaja sie tylko %>
               <%# dopoki `wyslane_at` jest puste, wiec karta potrafi pokazywac „brak paczek" %>
@@ -289,8 +337,8 @@
               <%#   2. paczka nr 2 i dalsze — czerwony pas wyzej, a pole kwoty dziala dopiero %>
               <%#      po jawnym zaznaczeniu „pobranie ma pojechac na TEJ paczce". %>
               <p class="podpowiedz">
-                Wypełnione kwotą zamówienia. Zmiana dotyczy <strong>tylko tej paczki</strong> —
-                po nadaniu nie da się jej odkręcić inaczej niż w panelu DPD.
+                <%= przedplatyPobrania ? 'Wypełnione resztą po przedpłatach.' : 'Wypełnione kwotą zamówienia.' %> Zmiana dotyczy <strong>tylko tej paczki</strong> —
+                po nadaniu nie da się jej odkręcić inaczej niż <%= panelKuriera %>.
               </p>
             </div>
           <% } %>
@@ -303,7 +351,7 @@
         <%# zaznaczony domyslnie na A, a nie pole tekstowe z domyslna wartoscia — patrz %>
         <%# domain/paczka.js: parsujPaczkeInpost. Dla DPD (galaz „else") ekran ma %>
         <%# ANI JEDNEJ zmiany w polach wobec tego, co bylo. %>
-        <% if (metodaUzyta === 'inpost_paczkomat') { %>
+        <% if (formularzPaczkomatu) { %>
           <h3>Waga i gabaryt</h3>
           <div class="pola">
             <div class="rzad">

@@ -20,13 +20,13 @@ describe('PRZ053 jawne kanały',()=>{
   expect(kanalyDoFiltra(a).map(x=>x.klucz)).toEqual(['allegro_przykladowa','pusty','reczne','indywidualne']);
   expect(kanalyDoFiltra(b).map(x=>x.klucz)).toEqual(['market_inny','reczne','indywidualne']);
   expect(kanalyDoFiltra(a)[0].etykieta).toBe('Pracownia Przykładowa <demo>');
-  expect(JSON.stringify(kanalyDoFiltra([]))).not.toMatch(/szkicownia|amarka/i);
+  expect(JSON.stringify(kanalyDoFiltra([]))).not.toMatch(/sten[c]ils|polcien2/i);
  });
  it('zachowuje bezpieczny powrót i odrzuca obcy kanał',()=>{
   expect(bezpiecznyPowrotNaListe('/?wszystkie=1&kanal=allegro_przykladowa',a)).toBe('/?wszystkie=1&kanal=allegro_przykladowa');
   expect(bezpiecznyPowrotNaListe('//example.invalid/?kanal=pusty',a)).toBe('/');
   expect(bezpiecznyPowrotNaListe('/?kanal=pusty&kanal=pusty',a)).toBe('/');
-  expect(parsujFiltry({kanal:'allegro_szkicownia'},a).kanal).toBeNull();
+  expect(parsujFiltry({kanal:'allegro_swietlik'},a).kanal).toBeNull();
  });
  it('wymaga jawnego katalogu, także dla pustego query',()=>{
   expect(()=>parsujFiltry({})).toThrow(TypeError);
@@ -62,7 +62,7 @@ describe('PRZ053 jawne kanały',()=>{
  it('niepełne mapowanie nie przywraca firmy',()=>{
   const c=wczytajRaporty(env([{klucz:'nowy',typ:'woo',prefiks:'N'}])).regulySprzedazy.klasyfikacja;
   expect(()=>kanalOms({sklep:'nowy'},c)).toThrow(/nieznany sklep/);
-  expect(()=>kanalOms({sklep:'szkicownia'},c)).toThrow(/nieznany sklep/);
+  expect(()=>kanalOms({sklep:'swietlik'},c)).toThrow(/nieznany sklep/);
   expect(()=>kanalOms({sklep:'reczne'})).toThrow(TypeError);
  });
 });

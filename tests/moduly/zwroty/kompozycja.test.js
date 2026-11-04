@@ -37,7 +37,7 @@ describe('PRZ-024 — zwroty w produkcyjnej kompozycji', () => {
       });
       // Ta asercja musi dać 404 zamiast 302 po wyłączeniu manifestu w bootstrapie.
       expect(r.statusCode).toBe(302);
-      expect(r.headers.location).toBe(`/zamowienia/${id}`);
+      expect(r.headers.location).toBe(`/zamowienia/${id}/zwrot`);
       await aplikacja.app.close(); aplikacja.db.close(); aplikacja = null;
       ponownie = openOmsDb(plik);
       const zwroty = ponownie.prepare('SELECT * FROM zwroty WHERE zamowienie_id=?').all(id);

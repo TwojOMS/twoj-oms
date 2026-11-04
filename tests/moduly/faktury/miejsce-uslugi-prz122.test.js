@@ -16,7 +16,8 @@ function program(wbudowany, metody = {}) {
 function baza() {
   const db = openOmsDb(':memory:');
   const okres = zapewnijOkres(db, { klientKlucz: 'polcien', rok: 2026, miesiac: 7 });
-  db.prepare("INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id, utworzone_at) VALUES ('reczne', 1, 'R/1', '100.00', ?, '2026-07-01')").run(okres.id);
+  db.prepare("INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id, utworzone_at, klient_json) VALUES ('reczne', 1, 'R/1', '100.00', ?, '2026-07-01', ?)")
+    .run(okres.id, JSON.stringify({ address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' }));
   const id = db.prepare("SELECT id FROM zamowienia WHERE numer = 'R/1'").get().id;
   db.prepare("INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo) VALUES (?, 'Lampa', 1, '100.00', '100.00', 'reczna')").run(id);
   return { db, okres, id };
@@ -87,7 +88,7 @@ describe('miejsce dokumentu w komunikatach usług', () => {
       const db = openOmsDb(':memory:');
       const p = program(wbudowany, { oznaczZaplacona: async () => { throw new Error('awaria'); } });
       try {
-        const id = zapiszZamowienie(db, 'pro', { zrodlo_id: 10, numer: '10', klient: { first_name: 'Jan', last_name: 'Testowy' }, dostawa: {},
+        const id = zapiszZamowienie(db, 'pro', { zrodlo_id: 10, numer: '10', klient: { first_name: 'Jan', last_name: 'Testowy', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' }, dostawa: {},
           metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: null, kwota_brutto: '100.00', koszt_dostawy_brutto: '0.00',
           status_woo: 'processing', oplacone_at: '2026-07-01', anulowane: 0,
           pozycje: [{ zrodlo_id: 1, nazwa: 'Lampa', sku: 'L1', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00', vat: null }] }, {});

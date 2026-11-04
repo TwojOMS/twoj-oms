@@ -143,7 +143,7 @@ describe('PRZ-092 Ustawienia → Kurier DPD', () => {
       DPD_INFO_URL: 'https://dpd.invalid/info', DPD_INFO_CHANNEL: 'k' };
     const { app, admin, db, utworzone } = panel({ env });
     const r = await get(app, '/ustawienia/integracje/dpd', admin);
-    expect(r.body).toContain('w pliku konfiguracji');
+    expect(r.body).toContain('na serwerze');
     expect(formularz(r.body)).toBe('');
     expect(r.body).not.toContain('z-pliku');
     const zapis = await post(app, '/ustawienia/integracje/dpd', admin, FORMULARZ);

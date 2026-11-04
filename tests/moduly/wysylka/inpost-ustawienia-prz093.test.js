@@ -182,7 +182,7 @@ describe('PRZ-093.09 Ustawienia → Kurier InPost', () => {
     const env = { ...NADAWCA, INPOST_TOKEN: 'eyJ.Z-PLIKU.zmyslony', INPOST_ORGANIZACJA: '1' };
     const { app, admin, db, utworzone } = panel({ env });
     const r = await get(app, ADRES, admin);
-    expect(r.body).toContain('w pliku konfiguracji');
+    expect(r.body).toContain('na serwerze');
     expect(formularz(r.body)).toBe('');
     expect(r.body).not.toContain('Z-PLIKU');
     const zapis = await post(app, ADRES, admin, FORMULARZ);
@@ -245,7 +245,7 @@ describe('PRZ-093.09 Ustawienia → Kurier InPost', () => {
     const { app, admin } = panel({ env: bezKontaktu });
     const r = await get(app, ADRES, admin);
     expect(r.body).toContain('InPost wymaga telefonu i e-maila nadawcy');
-    expect(r.body).toContain('DPD_NADAWCA_TELEFON i DPD_NADAWCA_EMAIL');
+    expect(r.body).toContain('Poproś administratora o uzupełnienie telefonu i e-maila w Ustawienia → Firma.'); // PRZ-136.02: zamiast nazw zmiennych DPD_…
     expect(r.body).not.toMatch(/dopisz [^<]* w <a href="\/ustawienia\/firma"/u);
   });
 

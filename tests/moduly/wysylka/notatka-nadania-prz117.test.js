@@ -1,5 +1,5 @@
 // PRZ-117 — notatka z numerem listu, która nie doszła do sklepu (zamówienie 1491, 26.10.2026: „Sklep nieosiągalny:
-// szkicownia.pl: błąd sieci”). Do tej poprawki ślad wisiał na karcie bez wyjścia poza „załatw ręcznie” — 1419 i 1437
+// swietlik.example.test: błąd sieci”). Do tej poprawki ślad wisiał na karcie bez wyjścia poza „załatw ręcznie” — 1419 i 1437
 // wisiały 13 dni. Teraz: jedna szybka powtórka przy samym nadaniu, przycisk „Spróbuj ponownie” i zegar przez 48 h.
 import { describe, it, expect, vi } from 'vitest';
 import { mkdtempSync } from 'node:fs';
@@ -15,7 +15,7 @@ import {
 const NUMER = '1000000000001U';
 const zmapowane = () => ({
   zrodlo_id: 1301, numer: '1301', klient: { email: 'j@k.pl', phone: '+48500600700' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
+  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
   status_woo: 'processing', oplacone_at: '2026-07-29T13:00:00', anulowane: 0,
   utworzone_at: '2026-07-29T13:19:52', pozycje: [],

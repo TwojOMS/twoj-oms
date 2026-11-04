@@ -37,7 +37,7 @@ describe('PRZ-089 lista zamówień bez podłączonych kanałów', () => {
     });
     expect(html).not.toContain('Brak synchronizacji');
     expect(html).toContain('Żaden kanał sprzedaży nie jest podłączony');
-    // Filtr kanałów obcego człowieka: bez „Indywidualne” (kanał panelu zamówień indywidualnych Szkicownia).
+    // Filtr kanałów obcego człowieka: bez „Indywidualne” (kanał panelu zamówień indywidualnych Pracownia Świetlik).
     expect(html).toContain('<option value="reczne"');
     expect(html).not.toContain('<option value="indywidualne"');
   });

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createAllegroClient } from '../../src/oms/allegro/client.js';
 
-const ustawienia = { api: 'https://api.allegro.pl', userAgent: 'OMS-szkicownia/1.0.0 (+https://szkicownia.pl/oms/)' };
+const ustawienia = { api: 'https://api.allegro.pl', userAgent: 'OMS-swietlik/1.0.0 (+https://swietlik.example.test/oms/)' };
 const tokeny = { waznyToken: async () => 'TOKEN' };
 const DPD = '03f26351-f683-4db2-8895-f2c599280e3c';
 
@@ -14,7 +14,7 @@ function klientZeSzpiegiem(odpowiedz) {
 
 const wejscie = (n = {}) => ({
   deliveryMethodId: DPD,
-  sender: { name: 'Szkicownia' },
+  sender: { name: 'Pracownia Świetlik' },
   receiver: { name: 'Kupujący' },
   packages: [{ type: 'PACKAGE' }],
   labelFormat: 'PDF',
@@ -142,7 +142,7 @@ describe('biała lista rośnie o cztery metody — świadomie', () => {
     const { klient } = klientZeSzpiegiem();
     expect(Object.keys(klient).sort()).toEqual([
       'deklarujZalacznikWiadomosci',
-      'pobierzEtykieteWza', 'pobierzFakturyZamowienia', 'pobierzMetodeDostawy', 'pobierzOferte',
+      'pobierzEtykieteWza', 'pobierzFakturyZamowienia', 'pobierzMetodeDostawy', 'pobierzMojeKonto', 'pobierzOferte',
       // Podjazdy (22.09): trzy odczyty i jedno zlecenie; kontrakt w osobnym teście.
       'pobierzOferty', 'pobierzPodjazd', 'pobierzPropozycjePodjazdu', 'pobierzPropozycjeWysylki',
       // ⚠️ `pobierzWatki` i `pobierzWiadomosci` — Centrum wiadomości (spec 2026-08-28),
@@ -151,7 +151,7 @@ describe('biała lista rośnie o cztery metody — świadomie', () => {
       'pobierzPrzesylkeWza', 'pobierzPrzesylki', 'pobierzSledzenie', 'pobierzSprawy',
       'pobierzStanRealizacji',
       'pobierzWatki', 'pobierzWiadomosci', 'pobierzZamowienia',
-      'stanTworzeniaPrzesylki', 'stanZleceniaPodjazdu',
+      'sprawdzZakresZamowien', 'stanTworzeniaPrzesylki', 'stanZleceniaPodjazdu',
       // Centrum wiadomosci (spec 2026-08-28): `wyslijWiadomosc` PISZE i jest
       // NIEODWRACALNE — nie wydaje pieniedzy, ale po drugiej stronie jest czlowiek,
       // ktory dostaje powiadomienie. Bariera zapisu nizej rosnie razem z nia.

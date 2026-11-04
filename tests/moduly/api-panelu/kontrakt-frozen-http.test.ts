@@ -31,7 +31,7 @@ const Z = any(zamowieniaDb); const P = any(platnosciDb); const O = any(okresyDb)
 const ZR = any(zamowienieReczne); const ZK = any(zKarty); const SR = any(statusReczny);
 const K = any(konta); const SS = any(sekretSesji); const S = any(sesja);
 
-const SHA_KLIENTA_FROZEN = '1e6f4d35942c7da916bc44fe9f65d4d4b8541c0f1d15614685145d877b2b8c68';
+const SHA_KLIENTA_FROZEN = '94024644483c9429b09df18dc56b738b1899b8cb6358815b6c0d473c04945209';
 const METODY = ['createFromCard', 'getForCard', 'getByShopOrder', 'getDostawa', 'wystawProforme',
   'pobierzProformePdf', 'oznaczWRealizacji', 'getStanWysylki'];
 const LOGIN = 'panel-api';

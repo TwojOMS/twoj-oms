@@ -19,20 +19,20 @@ const odp = (status, tekst) => ({ status, ok: status >= 200 && status < 300, tex
 const config = { auth: { user: 'adam', pass: 'x' } };
 const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'), origin: 'http://localhost' };
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
-const NADAWCA = { nazwa: 'Lumina', ulica: 'ul. 1 Maja 5', kod: '00-650', miasto: 'Pęki', kraj: 'PL' };
+const NADAWCA = { nazwa: 'Pracownia Półcień', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL' };
 // Adres odbiorcy zgodny z `zmapowane().dostawa/klient` niżej — od Zadania „adres edytowalny"
 // trasa POST wymaga go W FORMULARZU (puste pole wymagane blokuje zatwierdzenie, patrz
 // domain/adres-formularza.js), więc każdy POST w tym pliku musi go nieść, tak jak niosłaby
 // go prawdziwa przeglądarka odsyłająca wartości, którymi GET wypełnił formularz.
 const ADRES = {
-  nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki', phone: '+48500600700', email: 'j@k.pl',
+  nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa', phone: '+48500600700', email: 'j@k.pl',
 };
 const PACZKA = { waga: '1', dlugosc: '110', szerokosc: '75', wysokosc: '1', ...ADRES };
 
 const zmapowane = (nad = {}) => ({
   zrodlo_id: 1267, numer: '1267',
   klient: { email: 'j@k.pl', phone: '+48500600700' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
+  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
   status_woo: 'processing', oplacone_at: '2026-07-29T13:00:00', anulowane: 0,
   utworzone_at: '2026-07-29T13:19:52', pozycje: [], ...nad,
@@ -51,7 +51,7 @@ function dpdKlient({ paczek = 2 } = {}) {
       .mockResolvedValueOnce(odp(200, fixture('v4-ok.xml')))
       .mockResolvedValueOnce(odp(200, fixture('v4-ok-zpl.xml')));
   }
-  const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '278216', nadawca: NADAWCA, fetchImpl });
+  const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '876543', nadawca: NADAWCA, fetchImpl });
   return { dpd, fetchImpl };
 }
 
@@ -524,7 +524,7 @@ describe('karta zamówienia — akcja nadania', () => {
     expect(r.body).toContain('1048069488099X');
     expect(r.body).toMatch(/Paczka 1/);
     expect(r.body).toMatch(/Paczka 2/);
-    expect(r.body).toContain('tracktrace.dpd.com.pl/parcelDetails?p1=1048069488099X');
+    expect(r.body).toContain('tracktrace.dpd.com.pl/parcelDetails?typ=1&amp;p1=1048069488099X');
   });
 
   it('każda paczka ma WŁASNY link „Pobierz" wskazujący konkretną przesyłkę', async () => {

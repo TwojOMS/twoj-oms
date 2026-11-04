@@ -22,7 +22,8 @@ import { zapiszZamowienie } from '../../../oms/db/zamowienia.js';
 // jeden przebieg naraz, kursor za najpozniejsza PRZETWORZONA modyfikacja) zostaja przez to
 // JEDNE dla wszystkich kanalow. Druga ich kopia rozjechalaby sie po cichu, a pierwsza
 // wersja tych regul wciagnela kilka tysiecy zamowien naraz.
-export function createPoller({ db, kanal, sklep, od = null }) {
+/** @param {{db:any, kanal:any, sklep:string, od?:string|null, kontrola?:()=>void}} opcje */
+export function createPoller({ db, kanal, sklep, od = null, kontrola = () => {} }) {
   // Zamowienie starsze niz `od` pomijamy przy ZAPISIE, ale kursor i tak przesuwamy —
   // inaczej przy kazdym przebiegu czytalibysmy je od nowa w kolko.
   const zeStarego = (surowe) => {
@@ -123,6 +124,7 @@ export function createPoller({ db, kanal, sklep, od = null }) {
 
   async function przebieg() {
     if (wTrakcie) return { pobrane: 0, pominiety: true };
+    kontrola();
     wTrakcie = true;
     const poprzedni = stan().zsynchronizowane_do;
     let kursor = poprzedni;
@@ -148,9 +150,12 @@ export function createPoller({ db, kanal, sklep, od = null }) {
         // po dacie zlozenia — gdyby dostawalo `kursor` juz podmieniony na `od`, na pustym
         // stanie zawsze trafialoby w galaz „mam kursor" i pytalo o WSZYSTKO zmodyfikowane
         // od daty startowej, czyli o cale archiwum. Woo sklada je sam: `kursor ?? od`.
+        kontrola();
         const { zamowienia, stron: ile } = await kanal.pobierzStrone({ od, kursor: poprzedni, strona });
+        kontrola();
         stron = ile;
         for (const surowe of zamowienia) {
+          kontrola();
           if (!zeStarego(surowe)) {
             // Mapowanie W IZOLACJI (patrz komentarz przy `powodPominiecia`): odmowa dotyczy
             // TEGO zamowienia i tylko jego. `null` znaczy „nie ma czego zapisac", a nie
@@ -164,6 +169,7 @@ export function createPoller({ db, kanal, sklep, od = null }) {
             // ⚠️ ZAPIS POZA `try` — jego awaria jest systemowa i MA przerwac przebieg
             // (kursor zostaje, zamowienia wroca). Patrz komentarz wyzej.
             if (model) {
+              kontrola();
               zapiszZamowienie(db, sklep, model, surowe);
               pobrane += 1;
             }
@@ -185,7 +191,8 @@ export function createPoller({ db, kanal, sklep, od = null }) {
     } catch (e) {
       // Kursor zostaje na poprzedniej wartosci: lepiej pobrac te same zamowienia
       // drugi raz (zapis jest idempotentny) niz zgubic je na zawsze.
-      zapiszStan({ kursor: poprzedni, blad: e.message, rodzaj: 'awaria' });
+      // Zamknięta generacja nie może zapisać nawet metadanych przebiegu.
+      if (e.name !== 'KanalZatrzymany') zapiszStan({ kursor: poprzedni, blad: e.message, rodzaj: 'awaria' });
       throw e;
     } finally {
       // `finally`, nie koniec bloku `try`: przebieg zakonczony bledem MUSI zwolnic
@@ -200,6 +207,7 @@ export function createPoller({ db, kanal, sklep, od = null }) {
     // to pasek na liscie (bootstrap.js: `stan()` wybiera pollera z niepustym bledem).
     // Bez tego zapisu izolacja zamienialaby awarie glosna na CICHA — a to gorzej niz stojacy
     // kanal, bo stojacy kanal chociaz widac po braku nowych zamowien.
+    kontrola();
     zapiszStan({
       kursor,
       blad: powody.length ? opisPominietych(powody) : null,

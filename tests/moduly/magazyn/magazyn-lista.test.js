@@ -142,7 +142,7 @@ describe('GET /magazyn — tabela kart', () => {
     // nazw rozjechalaby sie z kolumna „Kanal sprzedazy" na liscie zamowien.
     const naglowki = [...r.body.matchAll(/<th class="magazyn-kanal">([^<]*)<\/th>/g)].map((m) => m[1].trim());
     expect(naglowki).toEqual([
-      'pro.szkicownia.pl', 'szkicownia.pl', 'Allegro szkicownia_pl', 'Allegro AmarkaPL',
+      'pro.swietlik.example.test', 'swietlik.example.test', 'Allegro swietlik_pl', 'Allegro Półcień Druga',
     ]);
   });
 
@@ -153,9 +153,9 @@ describe('GET /magazyn — tabela kart', () => {
   it('cena KAZDEGO czytanego kanalu stoi w SWOJEJ kolumnie', async () => {
     kartaZProduktem({ nazwa: 'Kandelabr' }, [
       { kanal: 'pro', produkt_id: 'p1', cena_gr: 7490 },
-      { kanal: 'szkicownia', produkt_id: 's1', cena_gr: 9900 },
-      { kanal: 'allegro_szkicownia', produkt_id: 'a1', cena_gr: 11100 },
-      { kanal: 'allegro_amarka', produkt_id: 'b1', cena_gr: 22200 },
+      { kanal: 'swietlik', produkt_id: 's1', cena_gr: 9900 },
+      { kanal: 'allegro_swietlik', produkt_id: 'a1', cena_gr: 11100 },
+      { kanal: 'allegro_polcien2', produkt_id: 'b1', cena_gr: 22200 },
     ]);
     // ⚠️ TRYB KATALOGOWY — to on niesie ceny kanalow po przebudowie (Zadanie 5).
     const r = await get(serwer(), '/magazyn?widok=katalog');
@@ -221,7 +221,7 @@ describe('GET /magazyn — tabela kart', () => {
   // pod zadnym zdjeciem tego sklepu NIE MA (zmierzone: 608 z 684 adresow = 404).
   it('miniatura idzie z lustra, a nie z reguly po nazwie pliku, i wczytuje sie leniwie', async () => {
     kartaZProduktem({ nazwa: 'Kandelabr' }, [{
-      kanal: 'szkicownia',
+      kanal: 'swietlik',
       produkt_id: '7179',
       zdjecia_json: JSON.stringify(['https://sklep-polcien.example.invalid/wp-content/uploads/2024/03/kandelabr.jpg']),
       miniatura: 'https://sklep-polcien.example.invalid/wp-content/uploads/2024/03/kandelabr-247x296.jpg',
@@ -242,7 +242,7 @@ describe('GET /magazyn — tabela kart', () => {
   // sama po najblizszym odczycie katalogow.
   it('wiersz bez zapisanej miniatury nie pokazuje ani zgadnietego adresu, ani oryginalu', async () => {
     kartaZProduktem({ nazwa: 'Plecionka' }, [{
-      kanal: 'szkicownia',
+      kanal: 'swietlik',
       produkt_id: '7180',
       zdjecia_json: JSON.stringify(['https://sklep-polcien.example.invalid/wp-content/uploads/2024/03/plecionka.jpg']),
       miniatura: null,
@@ -257,7 +257,7 @@ describe('GET /magazyn — tabela kart', () => {
   it('adres produktu spoza http(s) NIE trafia do odnosnika', async () => {
     kartaZProduktem({ nazwa: 'Kandelabr' }, [
       { kanal: 'pro', produkt_id: '944', cena_gr: 7490, adres: 'https://pro.sklep-polcien.example.invalid/produkt/kandelabr' },
-      { kanal: 'szkicownia', produkt_id: '55', cena_gr: 9900, adres: 'javascript:alert(1)' },
+      { kanal: 'swietlik', produkt_id: '55', cena_gr: 9900, adres: 'javascript:alert(1)' },
     ]);
     // ⚠️ Odnosniki do sklepow siedza w komorkach kanalow, czyli w TRYBIE KATALOGOWYM
     // (Zadanie 5) — bariera adresu jest ta sama, zmienil sie wylacznie ekran, na ktorym stoi.
@@ -375,7 +375,7 @@ describe('GET /magazyn — stan ostatniego odczytu', () => {
     // przechodzilby nawet wtedy, gdyby komunikat wyladowal na dole strony bez zadnego
     // zwiazku z kanalem, ktorego dotyczy.
     expect(r.body).toMatch(
-      /<td>pro\.szkicownia\.pl<\/td>[\s\S]{0,600}Jeśli kanał naprawdę został wygaszony, oznacz jego wiersze ręcznie\./,
+      /<td>pro\.swietlik\.example\.test<\/td>[\s\S]{0,600}Jeśli kanał naprawdę został wygaszony, oznacz jego wiersze ręcznie\./,
     );
   });
 
@@ -398,7 +398,7 @@ describe('GET /magazyn — stan ostatniego odczytu', () => {
     // (prog na ubytku uniemozliwilby wycofanie czegokolwiek ze sprzedazy). Zgubiona kolumna
     // znaczy, ze tego sklepu nie zauwazy juz nikt.
     expect(r.body).toMatch(
-      /<td>pro\.szkicownia\.pl<\/td>\s*<td class="liczba">104<\/td>\s*<td class="liczba">3<\/td>/,
+      /<td>pro\.swietlik\.example\.test<\/td>\s*<td class="liczba">104<\/td>\s*<td class="liczba">3<\/td>/,
     );
     expect(r.body).not.toContain('Odczyt przerwany');
   });
@@ -406,13 +406,13 @@ describe('GET /magazyn — stan ostatniego odczytu', () => {
   it('trwajacy przebieg pokazuje postep, a zakonczony juz nie', async () => {
     const wTrakcie = serwer(atrapaMagazynu({
       ...STAN_PUSTY, trwa: true, zaczety_at: '2026-08-11T07:00:00.000Z',
-      postep: { kanal: 'szkicownia', zrobione: 120, zTego: 668 },
+      postep: { kanal: 'swietlik', zrobione: 120, zTego: 668 },
     }));
     const r = await get(wTrakcie, '/magazyn');
     // Obie liczby w JEDNYM napisie i przy nazwie czytanego kanalu — osobne `toContain`
     // przechodzilyby takze wtedy, gdyby na ekran trafila jedna z nich albo obie w oderwaniu
     // od siebie („120" i „668" to dwie liczby, „120 z 668" to zdanie o postepie).
-    expect(r.body).toMatch(/szkicownia\.pl<\/strong>\s*—\s*120 z 668\./);
+    expect(r.body).toMatch(/swietlik\.example\.test<\/strong>\s*—\s*120 z 668\./);
 
     const po = await get(serwer(), '/magazyn');
     expect(po.body).not.toContain('668');
@@ -428,7 +428,7 @@ describe('GET /magazyn — odczyt katalogów zwinięty do linii', () => {
     const stan = {
       ...STAN_PUSTY,
       skonczony_at: '2026-08-24T19:14:00Z',
-      kanaly: [{ kanal: 'szkicownia', zapisane: 828, znikniete: 0, blad: null }],
+      kanaly: [{ kanal: 'swietlik', zapisane: 828, znikniete: 0, blad: null }],
     };
     const r = await get(serwer(atrapaMagazynu(stan)), '/magazyn');
 
@@ -442,7 +442,7 @@ describe('GET /magazyn — odczyt katalogów zwinięty do linii', () => {
     const stan = {
       ...STAN_PUSTY,
       skonczony_at: '2026-08-24T19:14:00Z',
-      kanaly: [{ kanal: 'szkicownia', zapisane: 0, znikniete: 0, blad: 'odmowa 500' }],
+      kanaly: [{ kanal: 'swietlik', zapisane: 0, znikniete: 0, blad: 'odmowa 500' }],
     };
     const r = await get(serwer(atrapaMagazynu(stan)), '/magazyn');
 
@@ -451,7 +451,7 @@ describe('GET /magazyn — odczyt katalogów zwinięty do linii', () => {
 
   it('przebieg w trakcie = details OTWARTY', async () => {
     const stan = {
-      ...STAN_PUSTY, trwa: true, postep: { kanal: 'szkicownia', zrobione: 3, zTego: 828 },
+      ...STAN_PUSTY, trwa: true, postep: { kanal: 'swietlik', zrobione: 3, zTego: 828 },
     };
     const r = await get(serwer(atrapaMagazynu(stan)), '/magazyn');
 
@@ -537,7 +537,7 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
   // roznilo by sie od „zawezone jednym".
   function katalog() {
     kartaZProduktem({ nazwa: 'Szpulka na PRO' }, [{ kanal: 'pro', produkt_id: '1', cena_gr: 7490 }]);
-    kartaZProduktem({ nazwa: 'Szpulka na szkicownia' }, [{ kanal: 'szkicownia', produkt_id: '2', cena_gr: 3000 }]);
+    kartaZProduktem({ nazwa: 'Szpulka na swietlik' }, [{ kanal: 'swietlik', produkt_id: '2', cena_gr: 3000 }]);
     kartaZProduktem({ nazwa: 'Kandelabr na PRO' }, [{ kanal: 'pro', produkt_id: '3', cena_gr: 9900 }]);
   }
   // ⚠️ NAZWA JEST ODNOSNIKIEM NA KARTE PRODUKTU (Zadanie 11) — i wzorzec ma tego pilnowac,
@@ -559,7 +559,7 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
     // Kazde kryterium z osobna zostawia dwa karty — dopiero razem jeden. Gdyby trasa gubila
     // ktorekolwiek, ta asercja pokazalaby dwa wiersze zamiast jednego.
     expect(nazwyWTabeli((await get(app, '/magazyn?fraza=Szpulka')).body))
-      .toEqual(['Szpulka na PRO', 'Szpulka na szkicownia']);
+      .toEqual(['Szpulka na PRO', 'Szpulka na swietlik']);
     expect(nazwyWTabeli((await get(app, '/magazyn?kanal=pro')).body))
       .toEqual(['Kandelabr na PRO', 'Szpulka na PRO']);
     expect(nazwyWTabeli((await get(app, '/magazyn?fraza=Szpulka&kanal=pro')).body))
@@ -932,7 +932,7 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
     // Kolejnosc kolumn katalogu ZOSTAJE DZISIEJSZA — ceny miedzy kategoria a paczkomatem.
     const naglowki = [...r.body.matchAll(/<th class="magazyn-kanal">([^<]*)<\/th>/g)].map((m) => m[1].trim());
     expect(naglowki).toEqual([
-      'pro.szkicownia.pl', 'szkicownia.pl', 'Allegro szkicownia_pl', 'Allegro AmarkaPL',
+      'pro.swietlik.example.test', 'swietlik.example.test', 'Allegro swietlik_pl', 'Allegro Półcień Druga',
     ]);
   });
 

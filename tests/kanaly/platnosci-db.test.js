@@ -16,7 +16,7 @@ const surowe = (id, nad = {}) => ({
 });
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 1301, numer: '1301', klient: { email: 'j@k.pl' }, dostawa: { city: 'Pęki' },
+  zrodlo_id: 1301, numer: '1301', klient: { email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
   kwota_brutto: '212.90', status_woo: 'processing', oplacone_at: null, anulowane: 0,
   utworzone_at: '2026-07-29T13:19:52', pozycje: [],

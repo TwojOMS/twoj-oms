@@ -126,3 +126,29 @@ export const fmtDataCzasKrotko = (wartosc) => sformatuj(wartosc, false);
  * Różnica to dwie godziny latem, czyli zamówienie z nocy widoczne w innym dniu, niż filtruje.
  */
 export const dzienWarszawa = (wartosc) => sformatuj(wartosc, false).slice(0, 10);
+
+const MIESIACE_DOPELNIACZ = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia',
+  'września', 'października', 'listopada', 'grudnia'];
+
+/** Dzień przed `RRRR-MM-DD` (kalendarzowo, bez strefy — sam dzień już jest warszawski). */
+function dzienWczesniej(dzien) {
+  const [rok, miesiac, d] = dzien.split('-').map(Number);
+  return new Date(Date.UTC(rok, miesiac - 1, d - 1)).toISOString().slice(0, 10);
+}
+
+/**
+ * PRZ-136.06 (U9): czas „kiedy” na liście połączeń — `dziś 22:22`, `wczoraj 08:10`, `3 listopada 14:05`
+ * (z rokiem przed godziną, gdy inny niż bieżący: `3 listopada 2025 14:05`). Granica dnia w Europe/Warsaw: ta sama `sformatuj`, co reszta panelu,
+ * dla wartości i dla „teraz”. Pusta / nieparsowalna wartość → pusty string (widok wtedy nie pisze linii).
+ */
+export function fmtKiedy(wartosc, teraz = new Date()) {
+  const pelna = sformatuj(wartosc, false);
+  if (!pelna) return '';
+  const dzien = pelna.slice(0, 10);
+  const godzina = pelna.slice(11, 16);
+  const dzis = sformatuj(teraz.toISOString(), false).slice(0, 10);
+  if (dzien === dzis) return `dziś ${godzina}`;
+  if (dzien === dzienWczesniej(dzis)) return `wczoraj ${godzina}`;
+  const [rok, miesiac, d] = dzien.split('-');
+  return `${Number(d)} ${MIESIACE_DOPELNIACZ[Number(miesiac) - 1]}${rok === dzis.slice(0, 4) ? '' : ` ${rok}`} ${godzina}`;
+}

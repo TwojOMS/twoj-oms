@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { openOmsDb } from '../../src/oms/db/db.ts';
 import { buildOmsServer } from '../pomoc/serwer-parytetu.ts';
 import { zalozKonto, ustawUprawnienia } from '../../src/core/bezpieczenstwo/konta.js';
@@ -22,8 +22,8 @@ beforeEach(async () => {
     config: CONFIG,
     lacznosc: { sprawdz: async () => [] },
     stanyKanalow: () => [{
-      kanal: 'allegro_szkicownia', pilne: false, uprzedzenie: false, zostaloDni: 21,
-      kontoAllegro: 'szkicownia-pl', powod: null, wolnoWiazac: false,
+      kanal: 'allegro_swietlik', pilne: false, uprzedzenie: false, zostaloDni: 21,
+      kontoAllegro: 'swietlik-pl', powod: null, wolnoWiazac: false,
     }],
   });
   await app.ready();
@@ -69,10 +69,13 @@ describe('działy i zakładki Ustawień', () => {
     const tresc = fragmentGlownejKolumny(r.body);
 
     expect(r.statusCode).toBe(200);
+    // PRZ-136.14 (#11): jak inne działy — jeden prawdziwy <h1> z tytułem zakładki obok nagłówka ARIA działu z powłoki.
+    expect((tresc.match(/<h1[\s>]/g) ?? [])).toHaveLength(1);
     expect(tresc).toContain('<h1>Moje połączenia</h1>');
-    expect(tresc).toContain('Konto Allegro: szkicownia-pl');
+    expect(tresc).toContain('Moje połączenia');
+    expect(tresc).toContain('konto swietlik-pl');
     expect(tresc).toContain('Niesprawdzone');
-    expect(tresc).toContain('Ostatni udany odczyt: Nie ustalono');
+    expect(tresc).not.toContain('Nie ustalono');
     expect(tresc).not.toContain('name="waga"');
   });
 
@@ -133,21 +136,20 @@ describe('działy i zakładki Ustawień', () => {
     expect(fragmentGlownejKolumny(ekran.body)).toContain(komunikat);
   });
 
-  it('udane rozpoczęcie wiązania wraca do Integracji', async () => {
+  it('nowa trasa nie uruchamia dawnej atrapy samoczynnie zapisującej parę', async () => {
+    const rozpocznij=vi.fn(async()=>({ok:true}));
     const wiazanieApp = buildOmsServer({
       db: openOmsDb(':memory:'), config: CONFIG,
       stanyKanalow: () => [],
-      wiazanieKanalow: { stan: () => null, rozpocznij: async () => ({ ok: true }) },
+      wiazanieKanalow: { stan: () => null, rozpocznij },
     });
     const r = await wiazanieApp.inject({
-      method: 'POST', url: '/ustawienia/kanaly/allegro_szkicownia/wiazanie',
+      method: 'POST', url: '/ustawienia/kanaly/allegro_swietlik/wiazanie',
       headers: { ...BASIC, ...ORIGIN }, payload: {},
     });
 
-    expect(r.statusCode).toBe(302);
-    expect(r.headers.location).toBe('/ustawienia/integracje?zapisano=kanal');
-    const ekran = await wiazanieApp.inject({ method: 'GET', url: r.headers.location, headers: BASIC });
-    expect(fragmentGlownejKolumny(ekran.body)).toContain('Rozpoczęto wiązanie kanału Allegro.');
+    expect(r.statusCode).toBe(404);
+    expect(rozpocznij).not.toHaveBeenCalled();
     await wiazanieApp.close();
   });
 

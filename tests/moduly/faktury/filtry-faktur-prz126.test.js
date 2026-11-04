@@ -54,7 +54,7 @@ it('GET filtruje widoczne dokumenty i sumę, zachowuje filtry w zaznaczeniu i PO
     const korekty = await get('typ=korekta');
     expect(korekty).toContain('KOR-MINUS');
     expect(korekty).not.toContain('VAT-DLUG');
-    expect(korekty).toContain('netto -68,30 zł · brutto -84,00 zł');
+    expect(korekty).toMatch(/<td class="liczba">-68,30 zł<\/td>\s*<td class="liczba">-84,00 zł<\/td>/u);
     const dlug = await get('platnosc=niezaplacona');
     expect(dlug).toContain('VAT-DLUG');
     expect(dlug).not.toContain('VAT-PAID');
@@ -66,7 +66,11 @@ it('GET filtruje widoczne dokumenty i sumę, zachowuje filtry w zaznaczeniu i PO
     expect(html).toContain('typ=korekta&amp;platnosc=niezaplacona&amp;zaznacz=1');
     expect(html).toContain('name="typ" value="korekta"');
     expect(html).toContain('name="platnosc" value="niezaplacona"');
-    expect(html).toContain('Razem 0 dokumentów');
+    const tabelaDokumentow = html.match(/<table[^>]*>[\s\S]*?<\/table>/gu)
+      .find((t) => t.includes('prz065-tabela--dokumenty'));
+    expect(tabelaDokumentow).not.toContain('wiersz-razem');
+    expect(html).toContain('Żaden dokument z tego miesiąca nie pasuje do wybranych filtrów.');
+    expect(html).toContain('colspan="10"');
     const zazn = await get('typ=vat&platnosc=niezaplacona&zaznacz=1');
     expect(zazn).toMatch(/value="VAT-DLUG"[^>]*checked/);
     expect(zazn).toContain('typ=vat&amp;platnosc=niezaplacona');

@@ -17,7 +17,7 @@ import { zapiszFakturaDlaKazdego } from '../../../src/moduly/faktury/db/faktury-
 
 const zmapowane = (nad = {}) => ({
   zrodlo_id: 1301, numer: '1301',
-  klient: { first_name: 'Jan', last_name: 'Kowalski', company: 'ACME', email: 'j@k.pl', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki' },
+  klient: { first_name: 'Jan', last_name: 'Kowalski', company: 'ACME', email: 'j@k.pl', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa' },
   dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null,
   chce_fakture: 1, nip: '1200001200', kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00',
   status_woo: 'processing',
@@ -87,25 +87,25 @@ describe('faktura — nabywca z kartoteki', () => {
     await faktura.wystaw(id);
     const k = infakt.zalozKlienta.mock.calls[0][0];
     expect(k.street).toBe('Polna 1');
-    expect(k.postal_code).toBe('00-650');
-    expect(k.city).toBe('Pęki');
+    expect(k.postal_code).toBe('00-950');
+    expect(k.city).toBe('Warszawa');
   });
 
-  // Zamówienie 1275 z briefu: sklep na pro.szkicownia.pl rozbija adres na billing.address_1
+  // Zamówienie 1275 z briefu: sklep na pro.swietlik.example.test rozbija adres na billing.address_1
   // (ulica) i billing.address_2 (numer budynku) — faktura wychodziłaby bez numeru budynku
   // nabywcy, mimo że dokument ma być dowodem księgowym z poprawnym adresem.
   it('adres nabywcy z rozbitym address_1/address_2 (zamówienie 1275) trafia do street Z numerem', async () => {
-    const rozbity = { klient: { first_name: 'Jan', last_name: 'Kowalski', company: 'ACME', email: 'j@k.pl', address_1: 'Lipowa', address_2: '91', postcode: '00-650', city: 'Pęki' } };
+    const rozbity = { klient: { first_name: 'Jan', last_name: 'Kowalski', company: 'ACME', email: 'j@k.pl', address_1: 'Papierowa', address_2: '24', postcode: '00-950', city: 'Warszawa' } };
     const { infakt, faktura, id } = zestaw(rozbity);
     await faktura.wystaw(id);
     const k = infakt.zalozKlienta.mock.calls[0][0];
-    expect(k.street).toBe('Lipowa 91');
+    expect(k.street).toBe('Papierowa 24');
   });
 
   // inFakt wymaga company_name TAKZE dla osoby prywatnej (422 "Prosze podac nazwe firmy").
   // Kod ma to wypelnic sam, a nie oddawac ten komunikat operatorowi.
   it('bez firmy wstawia imię i nazwisko w company_name', async () => {
-    const bezFirmy = { klient: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki' } };
+    const bezFirmy = { klient: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa' } };
     const { infakt, faktura, id } = zestaw(bezFirmy);
     await faktura.wystaw(id);
     expect(infakt.zalozKlienta.mock.calls[0][0].company_name).toBe('Jan Kowalski');
@@ -212,7 +212,7 @@ describe('faktura — kwoty', () => {
   describe('suma linii nie dzieląca się równo przez ilość', () => {
     const zeSklepu = (nad) => ({
       id: 1301, number: '1301', status: 'processing', date_created: '2026-07-29T13:19:52',
-      billing: { first_name: 'Jan', last_name: 'Kowalski', company: 'ACME', email: 'j@k.pl' },
+      billing: { first_name: 'Jan', last_name: 'Kowalski', company: 'ACME', email: 'j@k.pl', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' },
       shipping: {}, shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }],
       shipping_total: '0.00', shipping_tax: '0.00',
       meta_data: [{ key: '_billing_faktura', value: '1' }, { key: '_billing_nip', value: '1200001200' }],

@@ -14,7 +14,7 @@ import {
 // z `target_point: TYCS01M`.
 
 const allegro = (smart, nad = {}) => ({
-  sklep: 'allegro_szkicownia',
+  sklep: 'allegro_swietlik',
   metoda_wysylki: 'allegro_paczkomat',
   surowe_json: JSON.stringify({ delivery: { smart, pickupPoint: { id: 'MALK01APP' } } }),
   ...nad,
@@ -46,7 +46,7 @@ describe('czySmart', () => {
 
 describe('usługa ShipX dla przesyłki', () => {
   it('zamówienie ze sklepu jedzie jak dotąd — standard', () => {
-    expect(uslugaInpost({ sklep: 'szkicownia', metoda_wysylki: 'inpost_paczkomat' })).toBe(USLUGA_SKLEP);
+    expect(uslugaInpost({ sklep: 'swietlik', metoda_wysylki: 'inpost_paczkomat' })).toBe(USLUGA_SKLEP);
     expect(uslugaInpost({ sklep: 'pro' })).toBe(USLUGA_SKLEP);
     expect(uslugaInpost({ sklep: 'reczne' })).toBe(USLUGA_SKLEP);
   });
@@ -64,13 +64,13 @@ describe('usługa ShipX dla przesyłki', () => {
   // z InPostem. Kolumna `sklep` jest trwala — ustawia ja poller kanalu.
   it('przestawienie METODY na karcie NIE zmienia taryfy', () => {
     expect(uslugaInpost(allegro(true, { metoda_wysylki: 'inpost_paczkomat' }))).toBe(USLUGA_ALLEGRO_SMART);
-    expect(uslugaInpost({ sklep: 'szkicownia', metoda_wysylki: 'allegro_paczkomat' })).toBe(USLUGA_SKLEP);
+    expect(uslugaInpost({ sklep: 'swietlik', metoda_wysylki: 'allegro_paczkomat' })).toBe(USLUGA_SKLEP);
   });
 
   // Zamówienie allegrowe, którego surowych danych panel nie ma (stary wiersz, uszkodzony
   // zapis) — taryfa allegrowa ZWYKŁA. To wariant bez zniżki, więc bezpieczniejszy niż
   // zadeklarowanie Smart!, którego kupujący mógł nie mieć.
   it('Allegro bez surowych danych → taryfa allegro zwykła, nie standard', () => {
-    expect(uslugaInpost({ sklep: 'allegro_amarka', surowe_json: null })).toBe(USLUGA_ALLEGRO);
+    expect(uslugaInpost({ sklep: 'allegro_polcien2', surowe_json: null })).toBe(USLUGA_ALLEGRO);
   });
 });

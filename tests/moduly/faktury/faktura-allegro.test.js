@@ -9,7 +9,7 @@ import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 const PDF = Buffer.concat([Buffer.from('%PDF-1.4'), Buffer.alloc(64)]);
 
 function baza({
-  sklep = 'allegro_szkicownia', chce = 1, ksefNumer = 'KS-1', invoiceId = null, wyslanaAt = null,
+  sklep = 'allegro_swietlik', chce = 1, ksefNumer = 'KS-1', invoiceId = null, wyslanaAt = null,
   utworzonaAt = '2026-08-05T10:00:00Z', zgloszenieAt = null, weryfikacja = null,
 } = {}) {
   const db = openOmsDb(':memory:');
@@ -19,7 +19,7 @@ function baza({
   // `oplacone_at`, `anulowane`). Ksztalt nizej jest tym, ktorego uzywaja pozostale testy kanalu.
   const id = zapiszZamowienie(db, sklep, {
     zrodlo_id: 'CF-1', numer: 'CF-1', kwota_brutto: '100.00', chce_fakture: chce, pozycje: [],
-    klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Pęki' },
+    klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
     metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, nip: null, status_woo: null,
     oplacone_at: '2026-08-05T09:00:00', anulowane: 0, utworzone_at: '2026-08-05T08:00:00',
   }, {});
@@ -69,7 +69,7 @@ describe('wolnoWyslacDoAllegro', () => {
   // dokladnie ten przypadek, o ktory pytaja asercje nizej: fakture, ktora NAPRAWDE stanela.
   const DWIE_DOBY_TEMU = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   const z = (n) => ({
-    sklep: 'allegro_szkicownia',
+    sklep: 'allegro_swietlik',
     chce_fakture: 1,
     faktura: {
       numer: '1/2026', infakt_uuid: 'u', ksef_numer: 'KS', utworzona_at: DWIE_DOBY_TEMU, ...n,
@@ -82,9 +82,9 @@ describe('wolnoWyslacDoAllegro', () => {
     expect(wolnoWyslacDoAllegro({ ...z({}), chce_fakture: 0 }).powod).toMatch(/nie prosił/);
   });
   it('odmawia zamówieniu ze sklepu', () => {
-    expect(wolnoWyslacDoAllegro({ ...z({}), sklep: 'szkicownia' }).powod).toMatch(/Allegro/);
+    expect(wolnoWyslacDoAllegro({ ...z({}), sklep: 'swietlik' }).powod).toMatch(/Allegro/);
   });
-  it('odmawia bez faktury', () => expect(wolnoWyslacDoAllegro({ sklep: 'allegro_szkicownia', chce_fakture: 1 }).wolno).toBe(false));
+  it('odmawia bez faktury', () => expect(wolnoWyslacDoAllegro({ sklep: 'allegro_swietlik', chce_fakture: 1 }).wolno).toBe(false));
 
   // ⚠️⚠️ FURTKA „BEZ NUMERU KSEF" ZNIKNELA 01.09.2026 (decyzja właściciela: „fv ida zawsze z ksef").
   // Do tego dnia stal tu komplet testow opcji `bezKsef` — zdejmowala DOKLADNIE JEDNA odmowe
@@ -148,7 +148,7 @@ describe('wysłanie faktury do Allegro', () => {
     const log = [];
     const usluga = createFakturaAllegro({
       db, infakt: { pobierzPdf: async () => PDF },
-      klienciKanalow: { allegro_szkicownia: klientOk(log) },
+      klienciKanalow: { allegro_swietlik: klientOk(log) },
     });
 
     await usluga.wyslij(id);
@@ -169,7 +169,7 @@ describe('wysłanie faktury do Allegro', () => {
     const log = [];
     const usluga = createFakturaAllegro({
       db, infakt: { pobierzPdf: async () => PDF },
-      klienciKanalow: { allegro_szkicownia: klientOk(log) },
+      klienciKanalow: { allegro_swietlik: klientOk(log) },
     });
 
     await usluga.wyslij(id);
@@ -188,7 +188,7 @@ describe('wysłanie faktury do Allegro', () => {
     const usluga = createFakturaAllegro({
       db, infakt: { pobierzPdf: async () => PDF },
       klienciKanalow: {
-        allegro_szkicownia: {
+        allegro_swietlik: {
           pobierzFakturyZamowienia: async () => [],
           zglosFakture: async () => ({ id: 'INV-7' }),
           wyslijPlikFaktury: async () => { throw new Error('sieć padła'); },
@@ -207,7 +207,7 @@ describe('wysłanie faktury do Allegro', () => {
     const usluga = createFakturaAllegro({
       db, infakt: { pobierzPdf: async () => PDF },
       klienciKanalow: {
-        allegro_szkicownia: {
+        allegro_swietlik: {
           pobierzFakturyZamowienia: async () => [{ id: 'INV-7', invoiceNumber: '12/08/2026' }],
           zglosFakture: async () => { log.push('ZGLOSZONO DRUGI RAZ'); return { id: 'INV-8' }; },
           wyslijPlikFaktury: async (cf, inv) => { log.push(['plik', inv]); return {}; },
@@ -229,7 +229,7 @@ describe('wysłanie faktury do Allegro', () => {
     const usluga = createFakturaAllegro({
       db, infakt: { pobierzPdf: async () => PDF },
       klienciKanalow: {
-        allegro_szkicownia: {
+        allegro_swietlik: {
           pobierzFakturyZamowienia: async () => [],
           zglosFakture: async () => { log.push('ZGLOSZONO DRUGI RAZ'); return { id: 'INV-8' }; },
           wyslijPlikFaktury: async (cf, inv) => { log.push(['plik', inv]); return {}; },
@@ -251,7 +251,7 @@ describe('wysłanie faktury do Allegro', () => {
     const usluga = createFakturaAllegro({
       db, infakt: { pobierzPdf: async () => PDF },
       klienciKanalow: {
-        allegro_szkicownia: {
+        allegro_swietlik: {
           pobierzFakturyZamowienia: async () => [{ id: 'INV-9', invoiceNumber: '12/08/2026' }],
           zglosFakture: async () => { log.push('ZGLOSZONO DRUGI RAZ'); return { id: 'INV-X' }; },
           wyslijPlikFaktury: async (cf, inv) => { log.push(['plik', inv]); return {}; },
@@ -274,7 +274,7 @@ describe('wysłanie faktury do Allegro', () => {
     const log = [];
     const pobierzPdf = vi.fn(async () => PDF);
     const usluga = createFakturaAllegro({
-      db, infakt: { pobierzPdf }, klienciKanalow: { allegro_szkicownia: klientOk(log) },
+      db, infakt: { pobierzPdf }, klienciKanalow: { allegro_swietlik: klientOk(log) },
     });
     await expect(usluga.wyslij(id)).rejects.toThrow(/KSeF/);
     // Stary klucz podany mimo wszystko ma byc BEZ ZNACZENIA, a nie cichym wytrychem.
@@ -290,7 +290,7 @@ describe('wysłanie faktury do Allegro', () => {
     const log = [];
     const pobierzPdf = vi.fn(async () => PDF);
     const usluga = createFakturaAllegro({
-      db, infakt: { pobierzPdf }, klienciKanalow: { allegro_szkicownia: klientOk(log) },
+      db, infakt: { pobierzPdf }, klienciKanalow: { allegro_swietlik: klientOk(log) },
     });
     await expect(usluga.wyslij(id)).rejects.toThrow(/już/i);
     expect(pobierzPdf).not.toHaveBeenCalled();
@@ -320,7 +320,7 @@ describe('wysłanie faktury do Allegro', () => {
       // PDF-u z inFaktu i to jest DOKŁADNIE to okno, w którym drugie żądanie wchodziło.
       infakt: { pobierzPdf: async () => { await new Promise((r) => { setTimeout(r, 5); }); return PDF; } },
       klienciKanalow: {
-        allegro_szkicownia: {
+        allegro_swietlik: {
           pobierzFakturyZamowienia: async () => [],
           zglosFakture: async () => { zgloszenia.push('POST'); return { id: `INV-${zgloszenia.length}` }; },
           wyslijPlikFaktury: async (cf, inv) => { pliki.push(inv); return {}; },
@@ -354,7 +354,7 @@ describe('wysłanie faktury do Allegro', () => {
       db,
       infakt: { pobierzPdf: async () => PDF },
       klienciKanalow: {
-        allegro_szkicownia: {
+        allegro_swietlik: {
           pobierzFakturyZamowienia: async () => [],
           zglosFakture: async () => ({ id: 'INV-7' }),
           wyslijPlikFaktury: async (cf, inv) => {
@@ -381,7 +381,7 @@ describe('wysłanie faktury do Allegro', () => {
     const log = [];
     const usluga = createFakturaAllegro({
       db, infakt: { pobierzPdf: async () => PDF },
-      klienciKanalow: { allegro_szkicownia: klientOk(log) },
+      klienciKanalow: { allegro_swietlik: klientOk(log) },
     });
 
     await expect(usluga.wyslij(id)).resolves.toBeTruthy();
@@ -394,7 +394,7 @@ describe('wysłanie faktury do Allegro', () => {
     const log = [];
     const pobierzPdf = vi.fn(async () => PDF);
     const usluga = createFakturaAllegro({
-      db, infakt: { pobierzPdf }, klienciKanalow: { allegro_szkicownia: klientOk(log) },
+      db, infakt: { pobierzPdf }, klienciKanalow: { allegro_swietlik: klientOk(log) },
     });
 
     await expect(usluga.wyslij(id)).rejects.toThrow(/trwa/i);
@@ -417,7 +417,7 @@ describe('wysłanie faktury do Allegro', () => {
       db,
       // Dokladnie to, co oddaje inFakt przy bledzie: cialo, ktore nie jest PDF-em.
       infakt: { pobierzPdf: async () => Buffer.from('{"errors":["Nie ma takiej faktury"]}') },
-      klienciKanalow: { allegro_szkicownia: klientOk(log) },
+      klienciKanalow: { allegro_swietlik: klientOk(log) },
     });
 
     await expect(usluga.wyslij(id)).rejects.toThrow(/PDF/i);
@@ -432,7 +432,7 @@ describe('wysłanie faktury do Allegro', () => {
     const log = [];
     const usluga = createFakturaAllegro({
       db, infakt: { pobierzPdf: async () => ({ errors: ['404'] }) },
-      klienciKanalow: { allegro_szkicownia: klientOk(log) },
+      klienciKanalow: { allegro_swietlik: klientOk(log) },
     });
 
     await expect(usluga.wyslij(id)).rejects.toThrow(/PDF/i);
@@ -445,7 +445,7 @@ describe('wysłanie faktury do Allegro', () => {
     const zaDuzy = Buffer.concat([Buffer.from('%PDF-1.4'), Buffer.alloc(MAKS_ROZMIAR_FAKTURY_B)]);
     const usluga = createFakturaAllegro({
       db, infakt: { pobierzPdf: async () => zaDuzy },
-      klienciKanalow: { allegro_szkicownia: klientOk(log) },
+      klienciKanalow: { allegro_swietlik: klientOk(log) },
     });
 
     await expect(usluga.wyslij(id)).rejects.toThrow(/2 MB/);
@@ -461,7 +461,7 @@ describe('wysłanie faktury do Allegro', () => {
     const usluga = createFakturaAllegro({
       db,
       infakt: { pobierzPdf: async () => (zepsuty ? Buffer.from('{"errors":[]}') : PDF) },
-      klienciKanalow: { allegro_szkicownia: klientOk(log) },
+      klienciKanalow: { allegro_swietlik: klientOk(log) },
     });
 
     await expect(usluga.wyslij(id)).rejects.toThrow(/PDF/i);
@@ -472,7 +472,7 @@ describe('wysłanie faktury do Allegro', () => {
   it('kanał bez podpiętego klienta odmawia czytelnie, zamiast wywalić się na undefined', async () => {
     const { db, id } = baza();
     const usluga = createFakturaAllegro({ db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: {} });
-    await expect(usluga.wyslij(id)).rejects.toThrow(/allegro_szkicownia/);
+    await expect(usluga.wyslij(id)).rejects.toThrow(/allegro_swietlik/);
   });
 });
 
@@ -497,7 +497,7 @@ describe('trasa POST /zamowienia/:id/faktura-allegro', () => {
     const { db, id } = baza();
     const log = [];
     const app = await serwer(db, createFakturaAllegro({
-      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_szkicownia: klientOk(log) },
+      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_swietlik: klientOk(log) },
     }));
 
     const r = await app.inject({ method: 'POST', url: `/zamowienia/${id}/faktura-allegro`, headers: naglowek });
@@ -517,7 +517,7 @@ describe('trasa POST /zamowienia/:id/faktura-allegro', () => {
     const { db, id } = baza({ ksefNumer: null });
     const log = [];
     const app = await serwer(db, createFakturaAllegro({
-      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_szkicownia: klientOk(log) },
+      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_swietlik: klientOk(log) },
     }));
 
     const r = await app.inject({ method: 'POST', url: `/zamowienia/${id}/faktura-allegro`, headers: naglowek });
@@ -534,7 +534,7 @@ describe('trasa POST /zamowienia/:id/faktura-allegro', () => {
     const { db, id } = baza();
     const log = [];
     const app = await serwer(db, createFakturaAllegro({
-      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_szkicownia: klientOk(log) },
+      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_swietlik: klientOk(log) },
     }));
 
     await app.inject({ method: 'POST', url: `/zamowienia/${id}/faktura-allegro`, headers: naglowek });
@@ -555,7 +555,7 @@ describe('trasa POST /zamowienia/:id/faktura-allegro', () => {
   it('nieistniejące zamówienie dostaje 404', async () => {
     const { db } = baza();
     const app = await serwer(db, createFakturaAllegro({
-      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_szkicownia: klientOk() },
+      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_swietlik: klientOk() },
     }));
     const r = await app.inject({ method: 'POST', url: '/zamowienia/9999/faktura-allegro', headers: naglowek });
     expect(r.statusCode).toBe(404);
@@ -566,7 +566,7 @@ describe('trasa POST /zamowienia/:id/faktura-allegro', () => {
   it('karta pokazuje przycisk, gdy wolno', async () => {
     const { db, id } = baza();
     const app = await serwer(db, createFakturaAllegro({
-      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_szkicownia: klientOk() },
+      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_swietlik: klientOk() },
     }));
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.statusCode).toBe(200);
@@ -577,7 +577,7 @@ describe('trasa POST /zamowienia/:id/faktura-allegro', () => {
   it('karta bez numeru KSeF pokazuje POWÓD zamiast przycisku', async () => {
     const { db, id } = baza({ ksefNumer: null });
     const app = await serwer(db, createFakturaAllegro({
-      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_szkicownia: klientOk() },
+      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_swietlik: klientOk() },
     }));
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.statusCode).toBe(200);
@@ -588,7 +588,7 @@ describe('trasa POST /zamowienia/:id/faktura-allegro', () => {
   it('karta po wysłaniu mówi, że dokument jest u kupującego, i nie kusi przyciskiem', async () => {
     const { db, id } = baza({ wyslanaAt: '2026-08-05T11:00:00Z' });
     const app = await serwer(db, createFakturaAllegro({
-      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_szkicownia: klientOk() },
+      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_swietlik: klientOk() },
     }));
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.statusCode).toBe(200);
@@ -608,7 +608,7 @@ describe('trasa POST /zamowienia/:id/faktura-allegro', () => {
     const { db, id } = baza({ ksefNumer: null, utworzonaAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString() });
     const log = [];
     const app = await serwer(db, createFakturaAllegro({
-      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_szkicownia: klientOk(log) },
+      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_swietlik: klientOk(log) },
     }));
 
     // Karta: ani przycisku, ani adresu — takze po dobie, kiedy furtka dawniej sie otwierala.
@@ -640,7 +640,7 @@ describe('trasa POST /zamowienia/:id/faktura-allegro', () => {
       db,
       infakt: { pobierzPdf: async () => PDF },
       klienciKanalow: {
-        allegro_szkicownia: {
+        allegro_swietlik: {
           pobierzFakturyZamowienia: async () => [],
           zglosFakture: async () => { log.push('ZGLOSZONO DRUGI RAZ'); return { id: 'INV-8' }; },
           wyslijPlikFaktury: async (cf, inv) => { log.push(['plik', inv]); return {}; },
@@ -661,7 +661,7 @@ describe('trasa POST /zamowienia/:id/faktura-allegro', () => {
       wyslanaAt: '2026-08-05T11:00:00Z', weryfikacja: 'REJECTED', invoiceId: 'INV-7',
     });
     const app = await serwer(db, createFakturaAllegro({
-      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_szkicownia: klientOk() },
+      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_swietlik: klientOk() },
     }));
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
 
@@ -680,7 +680,7 @@ describe('trasa POST /zamowienia/:id/faktura-allegro', () => {
   it('karta przy ACCEPTED dalej mówi, że dokument jest u kupującego, i NIE kusi przyciskiem', async () => {
     const { db, id } = baza({ wyslanaAt: '2026-08-05T11:00:00Z', weryfikacja: 'ACCEPTED' });
     const app = await serwer(db, createFakturaAllegro({
-      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_szkicownia: klientOk() },
+      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_swietlik: klientOk() },
     }));
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
 
@@ -691,9 +691,9 @@ describe('trasa POST /zamowienia/:id/faktura-allegro', () => {
   // Zamowienie ze SKLEPU nie ma dokad wyslac faktury — karta nie ma o tym mowic ani slowa,
   // bo „nie przyszlo z Allegro" przy kazdym zamowieniu sklepowym jest szumem, nie informacja.
   it('karta zamówienia ze sklepu w ogóle o Allegro nie wspomina', async () => {
-    const { db, id } = baza({ sklep: 'szkicownia' });
+    const { db, id } = baza({ sklep: 'swietlik' });
     const app = await serwer(db, createFakturaAllegro({
-      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_szkicownia: klientOk() },
+      db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_swietlik: klientOk() },
     }));
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.statusCode).toBe(200);

@@ -23,7 +23,7 @@ function baza({ program = 'twojefaktury', invoiceId = null, weryfikacja = 'ACCEP
   const db = openOmsDb(':memory:');
   const id = zapiszZamowienie(db, 'allegro_polcien', {
     zrodlo_id: 'PC-1', numer: 'PC-1', kwota_brutto: '100.00', chce_fakture: 1, pozycje: [],
-    klient: { first_name: 'Jan', company: 'Pracownia Półcień', email: 'jan@polcien.example' }, dostawa: { city: 'Pęki' },
+    klient: { first_name: 'Jan', company: 'Pracownia Półcień', email: 'jan@polcien.example' }, dostawa: { city: 'Warszawa' },
     metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, nip: '1234563218', status_woo: null,
     oplacone_at: '2026-10-20T09:00:00', anulowane: 0, utworzone_at: '2026-10-20T08:00:00',
   }, {});

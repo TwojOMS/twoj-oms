@@ -1,5 +1,5 @@
 import { stanFaktury } from './faktura-stan.js';
-import { czyKanalAllegro, kanalyAllegro } from './wysylka.js';
+import { umiejetnosciZamowienia, kanalyAllegro } from './moduly-kanalow.ts';
 import { anulowaneEfektywnie } from './status-reczny.js';
 import { idDokumentu, idDokumentuSql } from './dokument-programu.js';
 
@@ -131,7 +131,7 @@ export const KOLUMNA_ZLECONA_Z_PANELU_SQL = `${GALAZ_ZLECONA_Z_PANELU_SQL} AS zl
  * czyli dokładnie to, po co ta gałąź powstała.
  */
 export function czyWierszWZakresieKsef(wiersz) {
-  return czyKanalAllegro(wiersz) || Boolean(wiersz?.zlecona_z_panelu);
+  return umiejetnosciZamowienia(wiersz).plikFaktury || Boolean(wiersz?.zlecona_z_panelu);
 }
 
 /**
@@ -162,7 +162,7 @@ export function czekaNaKsef(zamowienie) {
     && !f.ksef_numer
     && !f.allegro_wyslana_at
     && !anulowaneEfektywnie(zamowienie)
-    && ((czyKanalAllegro(zamowienie) && Boolean(zamowienie.chce_fakture)) || Boolean(f.ksef_zlecona_at));
+    && ((umiejetnosciZamowienia(zamowienie).plikFaktury && Boolean(zamowienie.chce_fakture)) || Boolean(f.ksef_zlecona_at));
 }
 
 /**

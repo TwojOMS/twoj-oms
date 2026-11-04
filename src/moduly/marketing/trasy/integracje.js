@@ -1,3 +1,4 @@
+import { KATALOG_INTEGRACJI } from '../../../domena/katalog-integracji.ts';
 import { tytulEkranuDlaAdresu } from '../../../domena/ekrany.js';
 import { ZDANIE_TOKENU_KOSZTOW_TWOJEFAKTURY } from '../../../domena/konfiguracja-ksef-kosztow.js';
 import {randomUUID} from 'node:crypto';
@@ -5,7 +6,9 @@ import {polaczenia,stanPolaczenia,zapiszPolaczenie,zapiszStan} from '../../../om
 import {promptReklam} from '../../../domena/prompt-reklam.js';
 import {testPolaczenie,KROKI} from '../uslugi/test-polaczenia-reklam.js';
 import {nawigacjaUstawien} from '../../ustawienia/nawigacja.js';
-const ZRODLA = Object.freeze({ ga4: 'Google przez GA4', google_ads: 'Google Ads API', meta: 'Meta' });
+// PRZ-138.02: nazwy źródeł reklam z katalogu integracji (jedno brzmienie na kafelku i na ekranie).
+const nazwaZKatalogu = (id) => KATALOG_INTEGRACJI.find((w) => w.id === id)?.nazwa ?? id;
+const ZRODLA = Object.freeze({ ga4: nazwaZKatalogu('ga4'), google_ads: nazwaZKatalogu('google_ads'), meta: nazwaZKatalogu('meta') });
 const KROK_NIESKONFIGUROWANY = 'TEST_NIESKONFIGUROWANY';
 const KOMUNIKAT_NIESKONFIGUROWANY = 'Test połączeń reklam nie jest skonfigurowany na tym serwerze.';
 
@@ -34,7 +37,7 @@ export function createWidokReklam({db,stanyKanalow=null,wiazanieKanalow=null,rek
  const wspolnyKontekst=(req,reply)=>({nawigacja:nawigacjaUstawien(req,reply),zapisano:req.query?.zapisano==='reklamy'?'Zapisano połączenie reklam.':req.query?.zapisano==='kanal'?'Rozpoczęto wiązanie kanału Allegro.':null});
   function widokIntegracji(req, reply, { blad = null, tylkoReklamy = false } = {}) {
     const zgoda = zgodaTf();
-    const nazwy = { ga4: 'Google przez GA4', google_ads: 'Google Ads API', meta: 'Meta' };
+    const nazwy = ZRODLA;
     const wszystkie = polaczenia(db);
     const zrodlaReklam = Object.entries(nazwy).map(([typ, etykieta]) => {
       const przypisane = wszystkie.filter((p) => p.typ === typ);

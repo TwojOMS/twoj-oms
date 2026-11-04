@@ -21,9 +21,9 @@ const zmapowane = (nad = {}) => ({
   zrodlo_id: 1501, numer: '1501',
   klient: {
     first_name: 'Jan', last_name: 'Kowalski', company: 'ACME sp. z o.o.', email: 'j@k.pl',
-    phone: '+48500600700', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL',
+    phone: '+48500600700', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL',
   },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: '', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
+  dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: '', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '1200001200',
   kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00', status_woo: 'processing',
   oplacone_at: null, anulowane: 0, utworzone_at: '2026-07-29T13:19:52',
@@ -69,11 +69,11 @@ describe('migracja kolumn z ręcznymi poprawkami', () => {
     const plik = plikBazy();
     const pierwsza = openOmsDb(plik);
     const id = zapiszZamowienie(pierwsza, 'pro', zmapowane(), {});
-    zapiszNadpisaniaWysylki(pierwsza, id, { kod: '00-651' });
+    zapiszNadpisaniaWysylki(pierwsza, id, { kod: '00-951' });
     pierwsza.close();
 
     const druga = openOmsDb(plik);
-    expect(adresOdbiorcy(pobierzZamowienie(druga, id)).kod).toBe('00-651');
+    expect(adresOdbiorcy(pobierzZamowienie(druga, id)).kod).toBe('00-951');
     druga.close();
   });
 });
@@ -91,21 +91,21 @@ describe('adresOdbiorcy — nadpisania ręczne', () => {
 
   it('nadpisane pole wygrywa ze sklepem', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    zapiszNadpisaniaWysylki(db, id, { kod: '00-651' });
-    expect(adresOdbiorcy(pobierzZamowienie(db, id)).kod).toBe('00-651');
+    zapiszNadpisaniaWysylki(db, id, { kod: '00-951' });
+    expect(adresOdbiorcy(pobierzZamowienie(db, id)).kod).toBe('00-951');
   });
 
   // ⚠️ SEDNO nadpisania POLOWEGO. Poprawka jednego kodu pocztowego NIE MOZE zamrozic
   // reszty danych: zmiana nazwiska w sklepie ma dalej dochodzic.
   it('nienadpisane pola dalej płyną ze sklepu po zmianie w sklepie', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    zapiszNadpisaniaWysylki(db, id, { kod: '00-651' });
+    zapiszNadpisaniaWysylki(db, id, { kod: '00-951' });
     const wSklepie = zmapowane();
     wSklepie.dostawa = { ...wSklepie.dostawa, last_name: 'Nowak' };
     zapiszZamowienie(db, 'pro', wSklepie, {});
     const a = adresOdbiorcy(pobierzZamowienie(db, id));
     expect(a.nazwa).toBe('Jan Nowak');
-    expect(a.kod).toBe('00-651');
+    expect(a.kod).toBe('00-951');
   });
 
   it('nadpisanie na wartość pustą czyści pole (a nie wraca do sklepu)', () => {
@@ -133,7 +133,7 @@ describe('adresOdbiorcy — nadpisania ręczne', () => {
     db.prepare('UPDATE zamowienia SET dostawa_reczna_json = ? WHERE id = ?').run('{to nie jest json', id);
     const z = pobierzZamowienie(db, id);
     expect(() => adresOdbiorcy(z)).not.toThrow();
-    expect(adresOdbiorcy(z).kod).toBe('00-650');
+    expect(adresOdbiorcy(z).kod).toBe('00-950');
   });
 });
 
@@ -145,7 +145,7 @@ describe('polaReczneAdresu — oznaczenie „zmienione ręcznie"', () => {
 
   it('zgłasza WYŁĄCZNIE pole odbiegające od sklepu', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    zapiszNadpisaniaWysylki(db, id, { kod: '00-651' });
+    zapiszNadpisaniaWysylki(db, id, { kod: '00-951' });
     expect(polaReczneAdresu(pobierzZamowienie(db, id))).toEqual(['kod']);
   });
 
@@ -153,7 +153,7 @@ describe('polaReczneAdresu — oznaczenie „zmienione ręcznie"', () => {
   // NIE odbiega od sklepu.
   it('nadpisanie równe wartości ze sklepu nie jest oznaczane', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    zapiszNadpisaniaWysylki(db, id, { kod: '00-650' });
+    zapiszNadpisaniaWysylki(db, id, { kod: '00-950' });
     expect(polaReczneAdresu(pobierzZamowienie(db, id))).toEqual([]);
   });
 });
@@ -215,14 +215,14 @@ describe('chceFakture — przełącznik ręczny', () => {
 });
 
 // ---------------------------------------------------------------------------------
-// sklejUlice() — sklep na pro.szkicownia.pl rozbija adres na address_1 (ulica) i
-// address_2 (numer budynku). Zamowienie 1275 z briefu: address_1='Lipowa',
-// address_2='91' — panel czytal dotad WYLACZNIE address_1 i gubil numer budynku.
+// sklejUlice() — sklep na pro.swietlik.example.test rozbija adres na address_1 (ulica) i
+// address_2 (numer budynku). Zamowienie 1275 z briefu: address_1='Papierowa',
+// address_2='24' — panel czytal dotad WYLACZNIE address_1 i gubil numer budynku.
 // ---------------------------------------------------------------------------------
 
 describe('sklejUlice', () => {
   it('skleja ulicę i numer budynku jedną spacją (zamówienie 1275 z briefu)', () => {
-    expect(sklejUlice('Lipowa', '91')).toBe('Lipowa 91');
+    expect(sklejUlice('Papierowa', '24')).toBe('Papierowa 24');
   });
 
   it('sam address_1, bez address_2 (pusty string) — dokładnie ulica, bez spacji na końcu', () => {
@@ -238,11 +238,11 @@ describe('sklejUlice', () => {
   });
 
   it('address_2 same białe znaki — traktowane jak puste, bez spacji na końcu', () => {
-    expect(sklejUlice('Lipowa', '   ')).toBe('Lipowa');
+    expect(sklejUlice('Papierowa', '   ')).toBe('Papierowa');
   });
 
   it('przycina białe znaki z obu części przed sklejeniem, bez podwójnej spacji', () => {
-    expect(sklejUlice('  Lipowa  ', '  91  ')).toBe('Lipowa 91');
+    expect(sklejUlice('  Papierowa  ', '  24  ')).toBe('Papierowa 24');
   });
 
   it('oba puste — null, nie pusty string ani sama spacja', () => {
@@ -264,11 +264,11 @@ describe('roznice', () => {
   const POLA = ['ulica', 'kod', 'miasto'];
 
   it('formularz identyczny ze sklepem → żadnego nadpisania', () => {
-    expect(roznice({ ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki' }, { ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki' }, POLA)).toEqual({});
+    expect(roznice({ ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa' }, { ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa' }, POLA)).toEqual({});
   });
 
   it('zmienione jedno pole → nadpisanie tylko tego jednego', () => {
-    expect(roznice({ ulica: 'Polna 1', kod: '00-650', miasto: 'Pęki' }, { ulica: 'Polna 1', kod: '00-651', miasto: 'Pęki' }, POLA)).toEqual({ kod: '00-651' });
+    expect(roznice({ ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa' }, { ulica: 'Polna 1', kod: '00-951', miasto: 'Warszawa' }, POLA)).toEqual({ kod: '00-951' });
   });
 
   it('puste pole ze sklepu i puste w formularzu to ta sama wartość', () => {
@@ -290,8 +290,8 @@ describe('ręczne poprawki a synchronizacja ze sklepem', () => {
   const surowe = (nad = {}) => ({
     id: 1501, number: '1501', status: 'processing', total: '123.00',
     date_created: '2026-07-29T10:00:00', date_modified: '2026-07-29T11:00:00', date_modified_gmt: '2026-07-29T09:00:00',
-    billing: { first_name: 'Jan', last_name: 'Kowalski', company: 'ACME sp. z o.o.', email: 'j@k.pl', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
-    shipping: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
+    billing: { first_name: 'Jan', last_name: 'Kowalski', company: 'ACME sp. z o.o.', email: 'j@k.pl', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
+    shipping: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
     shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }],
     line_items: [], meta_data: [{ key: '_billing_nip', value: '1200001200' }],
     ...nad,
@@ -303,14 +303,14 @@ describe('ręczne poprawki a synchronizacja ze sklepem', () => {
     await poller.przebieg();
 
     const id = db.prepare('SELECT id FROM zamowienia').get().id;
-    zapiszNadpisaniaWysylki(db, id, { kod: '00-651', miasto: 'Nowa Wieś' });
+    zapiszNadpisaniaWysylki(db, id, { kod: '00-951', miasto: 'Nowa Wieś' });
     zapiszNadpisaniaFaktury(db, id, { nip: '5252445556' }, 0);
 
     // Drugi przebieg — dokladnie to, co dzieje sie na produkcji co dwie minuty.
     await poller.przebieg();
 
     const z = pobierzZamowienie(db, id);
-    expect(adresOdbiorcy(z).kod).toBe('00-651');
+    expect(adresOdbiorcy(z).kod).toBe('00-951');
     expect(adresOdbiorcy(z).miasto).toBe('Nowa Wieś');
     expect(daneFaktury(z).nip).toBe('5252445556');
     expect(chceFakture(z)).toBe(false);
@@ -318,11 +318,11 @@ describe('ręczne poprawki a synchronizacja ze sklepem', () => {
 
   it('zapiszZamowienie nie dotyka kolumn z ręcznymi poprawkami', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    zapiszNadpisaniaWysylki(db, id, { kod: '00-651' });
+    zapiszNadpisaniaWysylki(db, id, { kod: '00-951' });
     zapiszNadpisaniaFaktury(db, id, { nip: '5252445556' }, 1);
     zapiszZamowienie(db, 'pro', zmapowane(), {});
     const w = db.prepare('SELECT * FROM zamowienia WHERE id = ?').get(id);
-    expect(JSON.parse(w.dostawa_reczna_json)).toEqual({ kod: '00-651' });
+    expect(JSON.parse(w.dostawa_reczna_json)).toEqual({ kod: '00-951' });
     expect(JSON.parse(w.klient_reczny_json)).toEqual({ nip: '5252445556' });
     expect(w.chce_fakture_reczne).toBe(1);
   });
@@ -335,11 +335,11 @@ describe('ręczne poprawki a synchronizacja ze sklepem', () => {
 describe('przywrocDaneZeSklepu', () => {
   it('kasuje WSZYSTKIE nadpisania — adres, fakturę i przełącznik', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    zapiszNadpisaniaWysylki(db, id, { kod: '00-651' });
+    zapiszNadpisaniaWysylki(db, id, { kod: '00-951' });
     zapiszNadpisaniaFaktury(db, id, { nip: '5252445556' }, 0);
     przywrocDaneZeSklepu(db, id);
     const z = pobierzZamowienie(db, id);
-    expect(adresOdbiorcy(z).kod).toBe('00-650');
+    expect(adresOdbiorcy(z).kod).toBe('00-950');
     expect(daneFaktury(z).nip).toBe('1200001200');
     expect(chceFakture(z)).toBe(true);
     expect(polaReczneAdresu(z)).toEqual([]);
@@ -373,11 +373,11 @@ describe('faktura czyta poprawione dane klienta', () => {
   it('zakłada nabywcę z POPRAWIONĄ nazwą, adresem i NIP-em', async () => {
     const { infakt, faktura, id } = zestaw();
     zapiszNadpisaniaFaktury(db, id, {
-      firma: 'BETA sp. z o.o.', nip: '5252445556', ulica: 'Lipowa 7', kod: '00-651', miasto: 'Oświęcim',
+      firma: 'BETA sp. z o.o.', nip: '5252445556', ulica: 'Papierowa 7', kod: '00-951', miasto: 'Oświęcim',
     }, null);
     await faktura.wystaw(id);
     expect(infakt.zalozKlienta).toHaveBeenCalledWith(expect.objectContaining({
-      company_name: 'BETA sp. z o.o.', nip: '5252445556', street: 'Lipowa 7', postal_code: '00-651', city: 'Oświęcim',
+      company_name: 'BETA sp. z o.o.', nip: '5252445556', street: 'Papierowa 7', postal_code: '00-951', city: 'Oświęcim',
     }));
   });
 

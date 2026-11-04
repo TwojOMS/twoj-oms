@@ -8,12 +8,19 @@ import {
 } from '../db/przesylki.js';
 import { wybierzKuriera } from '../../../oms/kurierzy/index.js';
 import { bladOperatora } from '../../../domena/bledy.js';
+import { czyTylkoOdczyt, TYLKO_ODCZYT } from '../../../domena/woo-uprawnienia.js';
 import { bezpiecznaNazwa } from '../../../domena/pliki.js';
 import { adresOdbiorcy } from '../../../domena/adres-odbiorcy.js';
 import { powodBrakuGotowosciNadania } from '../../../domena/gotowosc-nadania.js';
 // Kurier WSKAZANY przez czlowieka — potrzebny wylacznie zamowieniom z Allegro, ktorych
 // metody panel nie umie nadac sam. Patrz domain/kurier-nadania.js.
-import { metodaNadania } from '../../../domena/kurier-nadania.js';
+import { metodaNadania, wymagaUmowyPobrania, powodUmowyPobrania, powodOdmowyZamiennika } from '../../../domena/kurier-nadania.js';
+import { czyPobranie, kwotaPobrania as kwotaPobraniaZamowienia } from '../../../domena/wysylka.js';
+import { przedplatyPrzedPobraniem, niedoplataPobrania, bladKwotyPobraniaZamowienia } from '../../../domena/platnosci.js';
+import { zl } from '../../../domena/kwoty.js';
+import { odczytajKwotePobrania } from '../../../domena/pobranie-nadania.js';
+import { umowyPobraniaFirmy } from '../db/umowy-pobrania.js';
+import { MODULY_KURIEROW, modulKuriera, metodaKuriera } from '../../../domena/moduly-kurierow.ts';
 import { stanPrzesylki } from '../../../domena/przesylka-stan.js';
 // ⚠️ OSOBNY `import` OBOK RE-EKSPORTU NIZEJ I TO NIE JEST DUBLOWANIE. `export { X } from '...'`
 // NIE wprowadza `X` do zasiegu modulu, a `createNadanie` uzywa tej stalej jako wartosci
@@ -34,6 +41,12 @@ import {
 // Tutaj wartość służy WYŁĄCZNIE jako punkt startowy dla wywołań spoza HTTP: trasy czytają
 // paczkę z ustawień (routes/zamowienia.js) i przekazują ją jawnie.
 export { PACZKA_DOMYSLNA } from '../../../domena/ustawienia-panelu.js';
+
+// PRZ-135: czy brak ZPL po nadaniu to fakt do logu — z opisu kuriera (WzA: etykieta PDF z wyboru, świadomy brak).
+// Kurier spoza rejestru: jak dotąd (zapis „BRAK”). Bez rzucania — tu numer listu jest już przydzielony.
+/** @param {unknown} kurier */
+export const zplPrzyNadaniu = (kurier) => typeof kurier !== 'string' || !Object.hasOwn(MODULY_KURIEROW, kurier)
+  || modulKuriera(kurier).umiejetnosci.etykieta.zplPrzyNadaniu;
 
 /** @param {import('../nadanie-typy.ts').OpcjeNadania} opcje */
 export function createNadanie({ db, kurierzy, klienci = {}, katalogEtykiet, paczkaDomyslna = PACZKA_DOMYSLNA, czekaj = undefined }) {
@@ -83,7 +96,7 @@ export function createNadanie({ db, kurierzy, klienci = {}, katalogEtykiet, pacz
         sciezkaZpl = null;
         dopiszLog(db, z.id, { akcja: 'etykieta-zpl', wynik: `BŁĄD zapisu: ${e.message}` });
       }
-    } else if (kurier !== 'allegro_wza') {
+    } else if (zplPrzyNadaniu(kurier)) {
       // DPD nie oddalo ZPL-a (siec, zly status, brak documentData — patrz zplBladOpis
       // w kurierzy/dpd.js). To FAKT do zapisania, nie awaria nadania: operator ma PDF
       // i widzi na karcie, ze druku na Zebrze nie bedzie, zamiast po cichu czekac
@@ -132,6 +145,10 @@ export function createNadanie({ db, kurierzy, klienci = {}, katalogEtykiet, pacz
         akcja: 'sync-woo',
         wynik: `POMINIĘTO: brak konfiguracji sklepu „${z.sklep}" — notatka nie ma dokąd pojechać.`,
       });
+    } else if (czyTylkoOdczyt(klienci[z.sklep])) {
+      // PRZ-149.04: sklep podłączony kluczem „Odczyt” — świadome pominięcie, nie awaria. Bez śladu
+      // `sync_woo_blad`, bo zegar ponowień i tak nie ma czego wysłać; karta mówi to sama (sklepTylkoOdczyt).
+      dopiszLog(db, z.id, { akcja: 'sync-woo', wynik: `POMINIĘTO: ${TYLKO_ODCZYT}` });
     } else {
       // Paczka juz istnieje fizycznie, wiec awaria zapisu notatki NIE moze wycofac nadania —
       // numer listu i etykieta zostaja, notatke odsylamy „best effort".
@@ -187,7 +204,7 @@ export function createNadanie({ db, kurierzy, klienci = {}, katalogEtykiet, pacz
    */
   async function nadaj(zamowienieId, paczka = paczkaDomyslna, {
     kolejnosc = 1, komentarz = null, adres, punktOdbioru, kwotaPobrania, kurierWybrany,
-    pobranieNaTejPaczce = kolejnosc === 1, drukowac = false,
+    pobranieNaTejPaczce = kolejnosc === 1, drukowac = false, potwierdzonaNiedoplata,
   } = {}) {
     /** @type {import('../nadanie-typy.ts').ZamowienieNadania | null} */
     const z = pobierzZamowienie(db, zamowienieId);
@@ -234,7 +251,8 @@ export function createNadanie({ db, kurierzy, klienci = {}, katalogEtykiet, pacz
     // ta linia niczego nie zmienia. Dla zamowienia z Allegro BEZ wskazanego kuriera oddaje
     // ODMOWE — i to jest ta sama bariera, co dotad („metoda nie jest obslugiwana"), tylko
     // wreszcie mowiaca czlowiekowi, co ma zrobic, zamiast odsylac go z zapakowana paczka.
-    const { metoda: metodaUzyta, blad: bladKuriera, wskazanyRecznie } = metodaNadania(z, kurierWybrany, { kolejnosc });
+    const umowyPobrania = umowyPobraniaFirmy(db);
+    const { metoda: metodaUzyta, blad: bladKuriera, wskazanyRecznie } = metodaNadania(z, kurierWybrany, { kolejnosc, umowyPobrania });
     if (bladKuriera) throw bladOperatora(bladKuriera);
 
     const braki = powodBrakuGotowosciNadania(z, metodaUzyta);
@@ -242,6 +260,87 @@ export function createNadanie({ db, kurierzy, klienci = {}, katalogEtykiet, pacz
 
     // Odmowa PRZED dotknieciem kuriera: nieznana metoda nie ma prawa wygenerowac listu.
     const { nazwa, klient } = wybierzKuriera(metodaUzyta, kurierzy);
+    // ⚠️ PRZ-137.03 (D2, D3): ZAMIENNIK ZA POBRANIEM (paczka N > 1, zaznaczone pobranie na tej
+    // paczce) — decyduje KURIER, nie formularz: wolno tylko kurierowi z `pobranieNaDosylce`
+    // (DPD, InPost) i — przy 'adapter' — z wlaczona umowa firmy. Zamiennik to zawsze pobranie
+    // OMS-owe, wiec „pobranie ze sklepu" go nie zwalnia. Odmowa neutralna (bez „nadaj DPD"),
+    // PRZED wierszem przesylki i przed kurierem.
+    // Paczka nr 1 zamowienia za pobraniem wiezie pobranie ZAWSZE (jak przed PRZ-137.03, gdy adapter
+    // InPostu pytal o `kolejnosc`): jawne `false` z wywolania spoza trasy nie robi z niej cichej przedplaty.
+    if (kolejnosc === 1 && czyPobranie(z)) pobranieNaTejPaczce = true;
+    if (kolejnosc > 1 && pobranieNaTejPaczce) {
+      const odmowa = powodOdmowyZamiennika(z, metodaUzyta, { umowyPobrania });
+      if (odmowa) throw bladOperatora(`${odmowa.charAt(0).toUpperCase()}${odmowa.slice(1)}. Panel niczego nie nadał.`);
+    }
+    // ⚠️ PRZ-137.02 (D2): BARIERA UMOWY NA POBRANIE — PRZED `rozpocznijPrzesylke` i przed
+    // kurierem, wiec odmowa nie zostawia wiersza i nie wysyla ani jednego zadania. Dotyczy
+    // WYLACZNIE pobrania OMS-owego (reczne zamowienie, metoda albo pobranie zmienione na
+    // karcie) u kuriera 'adapter' bez wlaczonej umowy firmy. Pobranie sprzedane przez sklep
+    // jedzie z kwota jak dotad; DPD ('umowa') — nigdy tu nie staje. Ta sama regula i ten sam
+    // tekst co w hurcie (domena/masowe.js), wiec karta i hurt juz sie nie rozjezdzaja.
+    // Paczka nr 1 ZAWSZE (surowiej): bariera nie pyta o `pobranieNaTejPaczce`, bo wywolania
+    // spoza trasy HTTP potrafia podac `false` przy zamowieniu za pobraniem. Paczka N > 1 —
+    // warunek zamiennika wyzej; bez zaznaczenia pobrania nie niesie `cod`, umowa niepotrzebna.
+    if (kolejnosc === 1 && wymagaUmowyPobrania(z, metodaUzyta, MODULY_KURIEROW, umowyPobrania)) {
+      const powod = powodUmowyPobrania(metodaUzyta);
+      throw bladOperatora(`${powod.charAt(0).toUpperCase()}${powod.slice(1)}. Panel niczego nie nadał.`);
+    }
+    // PRZ-137.04: przed utworzeniem przesyłki i kurierem; POST ani wywołanie spoza HTTP
+    // nie mogą wysłać pełnego pobrania po przedpłacie. Nie zmniejszamy go po cichu.
+    // PRZ-145.01 (plan PRZ-137, E5-D1..E5-D4): jedna bariera dla ekranu i wywołań spoza HTTP.
+    //  • kwotę pobrania (jawną albo z zamówienia) czyta `odczytajKwotePobrania` — ta sama
+    //    funkcja co pole ekranu i hurt; żadna ścieżka nie woła `grosze()` na surowym napisie;
+    //  • niedopłata = KWOTA ZAMÓWIENIA minus wpłaty (`niedoplataPobrania`), nie wpisane K;
+    //  • kwota poniżej niedopłaty jedzie tylko z potwierdzeniem BIEŻĄCEJ niedopłaty z ekranu.
+    // Do kuriera idzie kwota znormalizowana (kropka), nie surowy napis z bazy.
+    let kwotaDoKuriera = kwotaPobrania;
+    let potwierdzonaNd = null;
+    if (czyPobranie(z) && pobranieNaTejPaczce) {
+      const jawna = kwotaPobrania != null;
+      const surowaK = jawna ? kwotaPobrania : kwotaPobraniaZamowienia(z);
+      const odczyt = odczytajKwotePobrania(surowaK);
+      const nieczytelna = jawna
+        ? `${odczyt.blad} Panel niczego nie nadał.`
+        : `${bladKwotyPobraniaZamowienia(surowaK)} Panel niczego nie nadał.`;
+      const przedplaty = przedplatyPrzedPobraniem(z);
+      if (przedplaty === 0) {
+        // WzA bez kwoty z ekranu: kwotę bierze adapter z podpowiedzi Allegro (jak dotąd).
+        const wza = metodaKuriera(metodaUzyta)?.formularz === 'wza';
+        if (!wza || jawna) {
+          if (odczyt.rodzaj === 'pusta' || odczyt.rodzaj === 'zero') {
+            throw bladOperatora('Brak kwoty pobrania (0.00 zł) — zamówienie jest za pobraniem, a kurier niczego by nie zainkasował. Uzupełnij kwotę pobrania na karcie zamówienia albo wyłącz pobranie. Panel niczego nie nadał.');
+          }
+          if (odczyt.blad) throw bladOperatora(nieczytelna);
+          kwotaDoKuriera = odczyt.kwota;
+        }
+      } else {
+        const nd = niedoplataPobrania(z);
+        if (!nd) {
+          throw bladOperatora('Brak kwoty pobrania i kwoty zamówienia — uzupełnij kwotę pobrania na karcie zamówienia. Panel niczego nie nadał.');
+        }
+        if (nd.blad !== undefined) throw bladOperatora(`${nd.blad} Panel niczego nie nadał.`);
+        const N = nd.niedoplataGr;
+        const odmowa = `Zamówienie ma wpłaty ${zl(przedplaty)} zł — pobierz najwyżej ${zl(N)} zł albo wyłącz pobranie. Panel niczego nie nadał.`;
+        if (N === 0) {
+          // Opłacone w całości: paczka jedzie bez pobrania (kwota ≤ 0 albo pusta), jak dotąd.
+          if (!odczyt.blad) throw bladOperatora(odmowa);
+          if (odczyt.rodzaj === 'ksztalt' && !(Number(String(surowaK).trim().replace(',', '.')) <= 0)) {
+            throw bladOperatora(nieczytelna);
+          }
+        } else {
+          if (odczyt.blad !== undefined || odczyt.groszeKwoty > N) throw bladOperatora(odmowa);
+          if (odczyt.groszeKwoty < N) {
+            // Potwierdzenie ważne tylko dla BIEŻĄCEJ niedopłaty — stara liczba z ekranu
+            // (wpłata dopisana w międzyczasie) albo „tak” nie wystarcza.
+            if (odczytajKwotePobrania(potwierdzonaNiedoplata).groszeKwoty !== N) {
+              throw bladOperatora(`Kwota pobrania ${zl(odczyt.groszeKwoty)} zł różni się od niedopłaty ${zl(N)} zł (kwota zamówienia ${zl(nd.podstawaGr)} zł minus wpłaty ${zl(przedplaty)} zł) — pobierz ${zl(N)} zł albo potwierdź inną kwotę na ekranie nadania. Panel niczego nie nadał.`);
+            }
+            potwierdzonaNd = N;
+          }
+          kwotaDoKuriera = odczyt.kwota;
+        }
+      }
+    }
     const przesylka = rozpocznijPrzesylke(db, zamowienieId, nazwa, kolejnosc);
 
     // ⚠️ WSKAZANIE KURIERA DO LOGU — PRZED wywolaniem kuriera, tak jak kwota pobrania nizej
@@ -292,10 +391,13 @@ export function createNadanie({ db, kurierzy, klienci = {}, katalogEtykiet, pacz
     // OMS, 4.7), a nadpisanie z tego ekranu i tak sie do niej nie zapisuje.
     // Wpis pada PRZED nadaniem, zeby zostal takze wtedy, gdy nadanie padnie z paczka JUZ
     // UTWORZONA u kuriera (stan `do_wyjasnienia` — wtedy pobranie fizycznie istnieje).
-    if (kwotaPobrania != null) {
+    // PRZ-145.01 (E5-D4): kwota poniżej niedopłaty jedzie tylko z potwierdzeniem — wtedy
+    // potwierdzona niedopłata stoi w tym samym wpisie.
+    if (kwotaPobrania != null || potwierdzonaNd != null) {
       dopiszLog(db, zamowienieId, {
         akcja: 'nadanie.pobranie',
-        wynik: `kwota do zainkasowania przez kuriera: ${kwotaPobrania} zł`,
+        wynik: `kwota do zainkasowania przez kuriera: ${kwotaDoKuriera} zł`
+          + (potwierdzonaNd != null ? `; potwierdzona niedopłata: ${zl(potwierdzonaNd)} zł` : ''),
       });
     }
 
@@ -312,14 +414,14 @@ export function createNadanie({ db, kurierzy, klienci = {}, katalogEtykiet, pacz
         akcja: 'nadanie.pobranie',
         wynik: `Ręcznie: pobranie jedzie na paczce nr ${kolejnosc}, a nie na pierwszej `
           + '(paczka nr 1 jest zamiennikiem wyrzuconej etykiety, nie dosyłką obok niej). '
-          + `Kurier zainkasuje ${kwotaPobrania ?? z.kwota_pobrania} zł.`,
+          + `Kurier zainkasuje ${kwotaDoKuriera ?? z.kwota_pobrania} zł.`,
       });
     }
 
     let wynik;
     try {
       wynik = await klient.nadaj({
-        zamowienie: z, paczka, kolejnosc, adres: adresUzyty, punktOdbioru, kwotaPobrania,
+        zamowienie: z, paczka, kolejnosc, adres: adresUzyty, punktOdbioru, kwotaPobrania: kwotaDoKuriera,
         pobranieNaTejPaczce, drukowac,
       });
     } catch (przyczyna) {
@@ -525,5 +627,5 @@ export function createNadanie({ db, kurierzy, klienci = {}, katalogEtykiet, pacz
   // PRZ-117: przycisk „Spróbuj ponownie” przy nieudanej notatce — tu, bo tylko nadanie ma klientów sklepów.
   const ponowNotatke = (/** @type {number} */ przesylkaId) => ponowNotatkeNadania({ db, klienci }, przesylkaId);
 
-  return { nadaj, sprawdzPonownie, ponowNotatke, paczkaDomyslna };
+  return { nadaj, sprawdzPonownie, ponowNotatke, paczkaDomyslna, gotowe: () => true };
 }

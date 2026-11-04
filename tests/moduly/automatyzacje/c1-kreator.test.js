@@ -135,7 +135,7 @@ describe('9. kreator z prawdziwym rejestrem', () => {
     const z1 = zamowienieWyslane(p.db, { numer: '0000000000119U' });
     zamowienieWyslane(p.db, { email: '', numer: '0000000000120U' });
     zamowienieWyslane(p.db); // bez paczki
-    zamowienieWyslane(p.db, { sklep: 'allegro_szkicownia', numer: '0000000000121U' });
+    zamowienieWyslane(p.db, { sklep: 'allegro_swietlik', numer: '0000000000121U' });
     const przed = p.db.prepare('SELECT total_changes() AS n').get().n;
     const r = await post(p.app, `${EKRAN}/sprawdz`, p.admin, FORM);
     expect(p.db.prepare('SELECT total_changes() AS n').get().n).toBe(przed);
@@ -144,11 +144,11 @@ describe('9. kreator z prawdziwym rejestrem', () => {
     expect(r.body).toMatch(/1 — Wyślij mail do kupującego/u);
     expect(r.body).toContain('bez adresu e-mail');
     expect(r.body).toContain('niespełniony warunek');
-    expect(r.body).toContain('Allegro szkicownia_pl (1)');
+    expect(r.body).toContain('Allegro swietlik_pl (1)');
     expect(r.body).toContain('DPD 0000000000119U'); // ta sama funkcja co stan tematu na karcie (numeryPaczek)
     expect(r.body).toContain('mail na kupujacy@example.invalid');
     expect(r.body).toContain(`Podgląd maila — zamówienie ${pobierzZamowienie(p.db, z1).numer}`);
-    expect(r.body).toContain('https://tracktrace.dpd.com.pl/parcelDetails?p1=0000000000119U');
+    expect(r.body).toContain('https://tracktrace.dpd.com.pl/parcelDetails?typ=1&amp;p1=0000000000119U');
     expect(p.listy).toEqual([]);
   });
 });

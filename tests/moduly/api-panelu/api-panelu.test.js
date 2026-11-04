@@ -32,7 +32,7 @@ const zeSklepu = (nad = {}) => ({
   zrodlo_id: 5001,
   numer: '28060',
   klient: {
-    first_name: 'Jan', last_name: 'Kowalski', email: 'j@k.pl', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki',
+    first_name: 'Jan', last_name: 'Kowalski', email: 'j@k.pl', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa',
   },
   dostawa: {},
   metoda_wysylki: 'dpd',
@@ -67,7 +67,7 @@ describe('GET /api/zamowienia/po-numerze/:numer', () => {
   });
 
   // ⚠️⚠️ TEN TEST JEST O PIENIADZACH I JEST POWODEM ISTNIENIA PARAMETRU `sklep`.
-  // NUMER ZAMOWIENIA NIE JEST UNIKALNY MIEDZY SKLEPAMI: szkicownia.pl i pro.szkicownia.pl
+  // NUMER ZAMOWIENIA NIE JEST UNIKALNY MIEDZY SKLEPAMI: swietlik.example.test i pro.swietlik.example.test
   // numeruja NIEZALEZNIE, wiec `28060` istnieje w obu naraz i zadna kolumna w bazie tego
   // nie zabrania. Trasa, ktora bierze „pierwsze trafienie", podpina karte panelu pod CUDZE
   // zamowienie — a wtedy panel czyta cudza zaplate, oznacza karte jako oplacona i ETAP IV
@@ -77,7 +77,7 @@ describe('GET /api/zamowienia/po-numerze/:numer', () => {
   // Test pyta o TEN SAM numer DWA RAZY, raz o kazdy sklep, i kazde pytanie ma oddac INNE
   // zamowienie. Polowa z jednym pytaniem przechodziłaby takze przy „wez pierwsze z brzegu".
   it('ten sam numer w dwoch sklepach — oddaje zamowienie ze WSKAZANEGO sklepu', async () => {
-    const idSzkicownia = zapiszZamowienie(db, 'szkicownia', zeSklepu({ zrodlo_id: 5001 }), {});
+    const idSwietlik = zapiszZamowienie(db, 'swietlik', zeSklepu({ zrodlo_id: 5001 }), {});
     const idPro = zapiszZamowienie(db, 'pro', zeSklepu({
       zrodlo_id: 7002,
       kwota_brutto: '456.00',
@@ -85,11 +85,11 @@ describe('GET /api/zamowienia/po-numerze/:numer', () => {
         nazwa: 'Szablon PRO', sku: 'PRO-1', ilosc: 1, cena_brutto: '456.00', vat: null,
       }],
     }), {});
-    expect(idSzkicownia).not.toBe(idPro);
+    expect(idSwietlik).not.toBe(idPro);
 
-    const zeSzkicownia = await pytaj('28060', '?sklep=szkicownia');
-    expect(zeSzkicownia.statusCode).toBe(200);
-    expect(zeSzkicownia.json()).toMatchObject({ id: idSzkicownia, sklep: 'szkicownia', kwotaBrutto: '123.00' });
+    const zeSwietlik = await pytaj('28060', '?sklep=swietlik');
+    expect(zeSwietlik.statusCode).toBe(200);
+    expect(zeSwietlik.json()).toMatchObject({ id: idSwietlik, sklep: 'swietlik', kwotaBrutto: '123.00' });
 
     const zPro = await pytaj('28060', '?sklep=pro');
     expect(zPro.statusCode).toBe(200);
@@ -97,18 +97,18 @@ describe('GET /api/zamowienia/po-numerze/:numer', () => {
   });
 
   it('oddaje caly kontrakt pol, ktorego panel oczekuje', async () => {
-    const id = zapiszZamowienie(db, 'szkicownia', zeSklepu({
+    const id = zapiszZamowienie(db, 'swietlik', zeSklepu({
       indywidualne: 1,
       // Zaplata ze sklepu idzie do tabeli `platnosci` (zsynchronizujWplateSklepu), a
       // `oplacone` liczy sie Z NIEJ przy odczycie — tak samo jak w reszcie OMS-u.
       oplacone_at: '2026-08-18T11:00:00',
     }), {});
-    const res = await pytaj('28060', '?sklep=szkicownia');
+    const res = await pytaj('28060', '?sklep=swietlik');
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({
       id,
       numer: '28060',
-      sklep: 'szkicownia',
+      sklep: 'swietlik',
       oplacone: true,
       anulowane: false,
       kwotaBrutto: '123.00',
@@ -121,14 +121,14 @@ describe('GET /api/zamowienia/po-numerze/:numer', () => {
   // ze sklepu musi dac `false`, inaczej poller panelu ustawilby `paid_at` karcie, ktorej
   // klient jeszcze nie oplacil.
   it('zamowienie bez zaplaty oddaje oplacone:false', async () => {
-    zapiszZamowienie(db, 'szkicownia', zeSklepu(), {});
-    const res = await pytaj('28060', '?sklep=szkicownia');
+    zapiszZamowienie(db, 'swietlik', zeSklepu(), {});
+    const res = await pytaj('28060', '?sklep=swietlik');
     expect(res.json().oplacone).toBe(false);
   });
 
   it('anulowane zamowienie oddaje anulowane:true', async () => {
-    zapiszZamowienie(db, 'szkicownia', zeSklepu({ anulowane: 1 }), {});
-    const res = await pytaj('28060', '?sklep=szkicownia');
+    zapiszZamowienie(db, 'swietlik', zeSklepu({ anulowane: 1 }), {});
+    const res = await pytaj('28060', '?sklep=swietlik');
     expect(res.json().anulowane).toBe(true);
   });
 
@@ -140,7 +140,7 @@ describe('GET /api/zamowienia/po-numerze/:numer', () => {
   // Polowa kontrolna na koncu dowodzi, ze 400 bierze sie z BRAKU PARAMETRU, a nie z tego,
   // ze trasa i tak nic by nie znalazla.
   it('bez parametru sklep — 400, mimo ze trafienie jest DOKLADNIE JEDNO', async () => {
-    const id = zapiszZamowienie(db, 'szkicownia', zeSklepu(), {});
+    const id = zapiszZamowienie(db, 'swietlik', zeSklepu(), {});
     const res = await pytaj('28060');
     expect(res.statusCode).toBe(400);
     expect(res.json().powod).toMatch(/sklep/i);
@@ -148,7 +148,7 @@ describe('GET /api/zamowienia/po-numerze/:numer', () => {
     // za odpowiedz na pytanie „ktore to zamowienie".
     expect(res.json().id).toBeUndefined();
 
-    const zSklepem = await pytaj('28060', '?sklep=szkicownia');
+    const zSklepem = await pytaj('28060', '?sklep=swietlik');
     expect(zSklepem.statusCode).toBe(200);
     expect(zSklepem.json().id).toBe(id);
   });
@@ -159,7 +159,7 @@ describe('GET /api/zamowienia/po-numerze/:numer', () => {
   // `?sklep=` i wrocilaby do „szukaj wszedzie", czyli dokladnie tam, przed czym stoi ten
   // parametr. Spacja jest ta sama pomylka po obcieciu.
   it('pusty albo bialy sklep — 400, tak samo jak brak parametru', async () => {
-    zapiszZamowienie(db, 'szkicownia', zeSklepu(), {});
+    zapiszZamowienie(db, 'swietlik', zeSklepu(), {});
     for (const zapytanie of ['?sklep=', '?sklep=%20']) {
       const res = await pytaj('28060', zapytanie);
       expect(res.statusCode, `dla ${zapytanie}`).toBe(400);
@@ -168,8 +168,8 @@ describe('GET /api/zamowienia/po-numerze/:numer', () => {
   });
 
   it('numer nieznany — 404 z czytelnym powodem', async () => {
-    zapiszZamowienie(db, 'szkicownia', zeSklepu(), {});
-    const res = await pytaj('99999', '?sklep=szkicownia');
+    zapiszZamowienie(db, 'swietlik', zeSklepu(), {});
+    const res = await pytaj('99999', '?sklep=swietlik');
     expect(res.statusCode).toBe(404);
     // ⚠️ Sam kod 404 NIE GRYZIE — to domyslna odpowiedz Fastify na kazdy nieistniejacy adres,
     // wiec przeszedlby takze wtedy, gdyby trasa w ogole nie byla zarejestrowana. Ta sama
@@ -182,7 +182,7 @@ describe('GET /api/zamowienia/po-numerze/:numer', () => {
   // ciche oddanie tamtego zamowienia. Bez tego testu implementacja, ktora filtruje po sklepie
   // tylko wtedy, gdy trafien jest wiecej niz jedno, swiecilaby na zielono.
   it('numer istnieje, ale w INNYM sklepie — 404, nie cudze zamowienie', async () => {
-    zapiszZamowienie(db, 'szkicownia', zeSklepu(), {});
+    zapiszZamowienie(db, 'swietlik', zeSklepu(), {});
     const res = await pytaj('28060', '?sklep=pro');
     expect(res.statusCode).toBe(404);
     expect(res.json().powod).toMatch(/nie ma zamówienia/i);
@@ -195,11 +195,11 @@ describe('GET /api/zamowienia/po-numerze/:numer', () => {
   // z Apilo. Dwa wiersze o tym samym numerze w tym samym sklepie sa wiec osiagalne — i wtedy
   // jedyna uczciwa odpowiedz brzmi „nie wiem, ktore", bo zgadniecie wiaze karte na stale.
   it('dwa zamowienia o tym samym numerze W TYM SAMYM sklepie — 409, nigdy „wez pierwsze"', async () => {
-    const a = zapiszZamowienie(db, 'szkicownia', zeSklepu({ zrodlo_id: 5001 }), {});
-    const b = zapiszZamowienie(db, 'szkicownia', zeSklepu({ zrodlo_id: 5002 }), {});
+    const a = zapiszZamowienie(db, 'swietlik', zeSklepu({ zrodlo_id: 5001 }), {});
+    const b = zapiszZamowienie(db, 'swietlik', zeSklepu({ zrodlo_id: 5002 }), {});
     expect(a).not.toBe(b);
 
-    const res = await pytaj('28060', '?sklep=szkicownia');
+    const res = await pytaj('28060', '?sklep=swietlik');
     expect(res.statusCode).toBe(409);
     expect(res.json().powod).toMatch(/więcej niż jedn/i);
     // Ani jednego identyfikatora „na wszelki wypadek": panel, ktory dostanie `id`, uzyje go.
@@ -209,9 +209,9 @@ describe('GET /api/zamowienia/po-numerze/:numer', () => {
   // Basic Auth stoi PRZED wszystkim (security/straznik.js) — trasa dopisana do modulu
   // dziedziczy go z serwera, ale plan wymaga TESTU, nie zalozenia.
   it('bez Basic Auth — 401, a nie odpowiedz z danymi', async () => {
-    zapiszZamowienie(db, 'szkicownia', zeSklepu(), {});
+    zapiszZamowienie(db, 'swietlik', zeSklepu(), {});
     const res = await app.inject({
-      method: 'GET', url: '/api/zamowienia/po-numerze/28060?sklep=szkicownia', headers: { host: 'localhost' },
+      method: 'GET', url: '/api/zamowienia/po-numerze/28060?sklep=swietlik', headers: { host: 'localhost' },
     });
     expect(res.statusCode).toBe(401);
   });
@@ -232,10 +232,10 @@ describe('proforma dla panelu — /api/zamowienia/:id/proforma i /api/proformy/:
   const ZEGAR = () => new Date('2026-08-18T10:00:00.000Z');
 
   const NADAWCA = {
-    nazwa: 'Lumina Marek Zywiecki',
-    ulica: 'ul. 1 Maja 5',
-    kod: '00-650',
-    miasto: 'Pęki',
+    nazwa: 'Pracownia Półcień Anna Wzorcowa',
+    ulica: 'ul. Przykładowa 1',
+    kod: '00-950',
+    miasto: 'Warszawa',
     kraj: 'PL',
     phone: '',
   };
@@ -256,9 +256,9 @@ describe('proforma dla panelu — /api/zamowienia/:id/proforma i /api/proformy/:
     // niosacej identyfikator ZAMOWIENIA. Mutacja `{ id: p.id }` → `{ id }` przechodzila przez
     // cala suite na zielono, a panel sklada z tej wartosci adres pobrania PDF-u: pomylka
     // oznacza zalacznik z CUDZEGO dokumentu albo 404 w mailu do klienta.
-    zapiszZamowienie(db, 'szkicownia', zeSklepu({ zrodlo_id: 4001, numer: '28001' }), {});
-    zapiszZamowienie(db, 'szkicownia', zeSklepu({ zrodlo_id: 4002, numer: '28002' }), {});
-    const id = zapiszZamowienie(db, 'szkicownia', zeSklepu(nad), {});
+    zapiszZamowienie(db, 'swietlik', zeSklepu({ zrodlo_id: 4001, numer: '28001' }), {});
+    zapiszZamowienie(db, 'swietlik', zeSklepu({ zrodlo_id: 4002, numer: '28002' }), {});
+    const id = zapiszZamowienie(db, 'swietlik', zeSklepu(nad), {});
     const proforma = zProforma ? createProforma({ db, config: configProforma, teraz: ZEGAR }) : null;
     const app = buildOmsServer({ db, config: configProforma, proforma });
     await app.ready();

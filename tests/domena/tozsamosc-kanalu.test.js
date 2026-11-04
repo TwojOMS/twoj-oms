@@ -2,15 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { kontoZTokenu, kolizjeKont } from '../../src/domena/tozsamosc-kanalu.js';
 
 // ⚠️⚠️ TEN MODUL POWSTAL PO POMYLCE Z 28.08.2026. Wlasciciel kliknal „Polacz z Allegro"
-// przy kanale `allegro_amarka`, bedac zalogowanym w przegladarce na konto `szkicownia`.
-// Device flow zrobil DOKLADNIE to, o co go poproszono: zwiazal kanal amarka z kontem
-// szkicownia. Panel nie mial jak tego zauwazyc — kanal byl polaczony, bez bledu, z kompletem
+// przy kanale `allegro_polcien2`, bedac zalogowanym w przegladarce na konto `swietlik`.
+// Device flow zrobil DOKLADNIE to, o co go poproszono: zwiazal kanal polcien2 z kontem
+// swietlik. Panel nie mial jak tego zauwazyc — kanal byl polaczony, bez bledu, z kompletem
 // osmiu zakresow i 89 dniami waznosci, czyli ZDROWY wedle kazdego sita, jakie mial.
 //
-// Przez ~40 minut poller ciagnal cudze zamowienia pod nazwa amarka: 6 zdublowanych
+// Przez ~40 minut poller ciagnal cudze zamowienia pod nazwa polcien2: 6 zdublowanych
 // zamowien, 5 zdublowanych platnosci (czyli przychod policzony dwa razy), 18 watkow i 59
 // wiadomosci w lustrze oraz PRZESTAWIONY KURSOR POLLERA — a ten ostatni po cichu pomijalby
-// prawdziwe zamowienia amarka z calego okna.
+// prawdziwe zamowienia polcien2 z calego okna.
 //
 // Ekran nie pokazywal ani slowa o tym, z jakim kontem kanal jest zwiazany.
 
@@ -40,17 +40,17 @@ describe('konto Allegro odczytane z tokenu', () => {
 describe('kolizja kont miedzy kanalami', () => {
   it('wskazuje OBA kanaly wiszace na tym samym koncie', () => {
     const wynik = kolizjeKont([
-      { kanal: 'allegro_szkicownia', kontoAllegro: '36457435' },
-      { kanal: 'allegro_amarka', kontoAllegro: '36457435' },
+      { kanal: 'allegro_swietlik', kontoAllegro: '36457435' },
+      { kanal: 'allegro_polcien2', kontoAllegro: '36457435' },
     ]);
     // Oba, bo panel nie wie KTORY jest zly — wie tylko, ze dwa kanaly to dwa konta.
-    expect(wynik).toEqual(['allegro_amarka', 'allegro_szkicownia']);
+    expect(wynik).toEqual(['allegro_polcien2', 'allegro_swietlik']);
   });
 
   it('milczy, gdy kazdy kanal ma swoje konto', () => {
     expect(kolizjeKont([
-      { kanal: 'allegro_szkicownia', kontoAllegro: '36457435' },
-      { kanal: 'allegro_amarka', kontoAllegro: '75246625' },
+      { kanal: 'allegro_swietlik', kontoAllegro: '36457435' },
+      { kanal: 'allegro_polcien2', kontoAllegro: '75246625' },
     ])).toEqual([]);
   });
 
@@ -59,8 +59,8 @@ describe('kolizja kont miedzy kanalami', () => {
     // czyli zaprasza do nadpisania dzialajacej pary tokenow. „Nie wiem" nie moze
     // uruchamiac nieodwracalnego kroku (ta sama regula co w brakujaceUprawnienia).
     expect(kolizjeKont([
-      { kanal: 'allegro_szkicownia', kontoAllegro: null },
-      { kanal: 'allegro_amarka', kontoAllegro: null },
+      { kanal: 'allegro_swietlik', kontoAllegro: null },
+      { kanal: 'allegro_polcien2', kontoAllegro: null },
     ])).toEqual([]);
   });
 

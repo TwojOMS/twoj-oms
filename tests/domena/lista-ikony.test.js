@@ -88,7 +88,7 @@ describe('ikonaPrzesylki', () => {
   it('jedna paczka z numerem → stan "nadana", link ze WSPÓLNEJ funkcji linkDoSledzenia', () => {
     const ikona = ikonaPrzesylki({ id: 1, przesylki: [{ numer_listu: '1000000000001U', kurier: 'dpd' }] });
     expect(ikona.stan).toBe('nadana');
-    expect(ikona.href).toBe('https://tracktrace.dpd.com.pl/parcelDetails?p1=1000000000001U');
+    expect(ikona.href).toBe('https://tracktrace.dpd.com.pl/parcelDetails?typ=1&p1=1000000000001U');
   });
 
   // Kilka paczek naraz: nie da się wybrać "której" z poziomu listy — link ma prowadzić
@@ -220,16 +220,16 @@ describe('ikonaFaktury', () => {
 // w WooCommerce, gdzie tego zamówienia po prostu NIE MA.
 describe('odznakaSyncStatusu', () => {
   it('bez śladu nie ma odznaki', () => {
-    expect(odznakaSyncStatusu({ sklep: 'szkicownia', sync_woo_blad: null })).toBeNull();
+    expect(odznakaSyncStatusu({ sklep: 'swietlik', sync_woo_blad: null })).toBeNull();
   });
 
   it('zamówienie sklepowe ze śladem mówi o sklepie', () => {
-    expect(odznakaSyncStatusu({ sklep: 'szkicownia', sync_woo_blad: 'HTTP 503' }))
+    expect(odznakaSyncStatusu({ sklep: 'swietlik', sync_woo_blad: 'HTTP 503' }))
       .toBe('status nie dojechał do sklepu');
   });
 
   it('zamówienie z kanału mówi o Allegro, nie o sklepie', () => {
-    const odznaka = odznakaSyncStatusu({ sklep: 'allegro_szkicownia', sync_woo_blad: 'HTTP 503' });
+    const odznaka = odznakaSyncStatusu({ sklep: 'allegro_swietlik', sync_woo_blad: 'HTTP 503' });
     expect(odznaka).toBe('status nie dojechał do Allegro');
     expect(odznaka).not.toMatch(/sklep/i);
   });

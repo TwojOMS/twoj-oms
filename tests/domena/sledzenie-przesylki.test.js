@@ -101,6 +101,22 @@ describe('sledzeniePrzesylki', () => {
     });
   });
 
+  // PRZ-135.03: podwykonawcę WzA wyznacza pole rejestru `sledzenieWza` — dziś tylko DPD. Paczka WzA jadąca
+  // InPostem NIE idzie do naszego ShipX, choć klient InPost jest w mapie.
+  it('WzA z carrierem INPOST pyta Allegro, nie naszego klienta InPost', () => {
+    const surowa = JSON.stringify({
+      carrier: 'ALLEGRO',
+      packages: [{ waybill: 'AD0IW', transportingInfo: [{ carrierId: 'INPOST', carrierWaybill: 'IW9' }] }],
+    });
+    expect(sledzeniePrzesylki(
+      { kurier: 'allegro_wza', numer_listu: 'AD0IW', odpowiedz_surowa: surowa },
+      { ...KURIERZY, allegro: allegroSledzenie },
+    )).toEqual({
+      klient: allegroSledzenie, numer: 'AD0IW', podwykonawca: null,
+      kontekst: { carrier: 'ALLEGRO' },
+    });
+  });
+
   it('Allegro nie jest pytane, gdy brakuje carrier lub numer nie zgadza się z pakietem', () => {
     const paczka = { kurier: 'allegro_wza', numer_listu: 'AD0PRAWIDLOWY' };
     const klienci = { ...KURIERZY, allegro: allegroSledzenie };

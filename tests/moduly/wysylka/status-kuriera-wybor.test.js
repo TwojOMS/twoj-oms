@@ -23,7 +23,7 @@ const NUMER_DPD = '1000000000001U';
 const NUMER_INPOST = '520000123456789012345678';
 
 const zmapowane = (id, nad = {}) => ({
-  zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Pęki' },
+  zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
   status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-07-29T13:19:52',
   pozycje: [{ nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2, cena_brutto: '61.50', vat: null }],
@@ -230,7 +230,7 @@ describe('odświeżanie statusu pyta kuriera TEJ przesyłki', () => {
 // wywalal niczego w calej suicie, a etap po cichu wracalby do dopasowania po opisie.
 describe('kod zdarzenia przezywa zapis', () => {
   const zPaczkaAllegro = (zrodloId) => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(zrodloId), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(zrodloId), {});
     db.prepare(
       'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, carrier_allegro, utworzona_at)'
       + " VALUES (?, 'allegro', 'nadana', 'A005DUH6H5', 1, 'ALLEGRO', '2026-07-29T13:00:00')",

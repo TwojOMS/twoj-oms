@@ -17,6 +17,7 @@ const POZYCJA = {
 const zam = (n) => ({
   id: 1, numer: '3001', utworzone_at: '2026-08-05T10:00:00.000Z',
   okres_rozliczeniowy_id: null, anulowane: 0, chce_fakture: 1, nip: '1234563218',
+  klient: { address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' },
   kwota_brutto: '100.00', pozycje: [POZYCJA], platnosci: [{ kwota: '100.00' }], faktura: null, ...n,
 });
 

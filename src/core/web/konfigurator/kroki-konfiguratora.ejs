@@ -1,0 +1,8 @@
+<ol class="stepper" aria-label="Kroki konfiguracji">
+<% for (const krok of kroki) { %>
+  <li class="step <%= krok.stan === 'biezacy' ? 'current' : krok.stan === 'zrobione' ? 'done' : '' %>"<% if (krok.stan === 'biezacy') { %> aria-current="step"<% } %>>
+    <span class="step-dot" aria-hidden="true"><%= krok.numer %></span>
+    <span class="step-label"><% if (krok.stan === 'biezacy') { %><strong><%= krok.numer %>. <%= krok.tytul %></strong><% } else if (krok.href) { %><a href="<%= krok.href %>"><%= krok.numer %>. <%= krok.tytul %></a><% } else { %><%= krok.numer %>. <%= krok.tytul %><% } %><% if (krok.stan === 'zrobione') { %> — zrobione<% } %></span>
+  </li>
+<% } %>
+</ol>

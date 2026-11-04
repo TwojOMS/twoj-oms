@@ -18,7 +18,7 @@ export function createModulMarketing({fabryki={},uslugi}:{fabryki?:FabrykiMarket
   if(!ctx.konfiguracja.proba){if(u.czuwaczKampanii)zegary.push(zegarKampanii({czuwaczKampanii:u.czuwaczKampanii,log:ctx.log}));zegary.push(zegarReklam({czuwaczReklam:u.czuwaczReklam,log:ctx.log}));}
   return {uslugi:u,zegary,trasy:app=>{
    zarejestrujTrasyCelow(app,{db:ctx.db});
-   zarejestrujTrasyKampanii(app,{db:ctx.db,config:ctx.usluga('marketing','config'),definicje:ctx.usluga<{definicje:readonly {klucz:string;etykieta?:string}[]}>('web','config').definicje,czuwaczKampanii:ctx.usluga('marketing','czuwaczKampanii'),czuwaczReklam:ctx.usluga('marketing','czuwaczReklam')});
+   zarejestrujTrasyKampanii(app,{db:ctx.db,config:ctx.usluga('marketing','config'),proba:ctx.konfiguracja.proba,definicje:ctx.usluga<{definicje:readonly {klucz:string;etykieta?:string}[]}>('web','config').definicje,czuwaczKampanii:ctx.usluga('marketing','czuwaczKampanii'),czuwaczReklam:ctx.usluga('marketing','czuwaczReklam')});
   }};
  }};
 }

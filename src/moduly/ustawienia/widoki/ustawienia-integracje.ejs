@@ -1,5 +1,5 @@
 <h1><%= title %></h1>
-<% if (tylkoReklamy) { %><p><a href="/ustawienia/integracje">← Integracje</a></p><% } %>
+<% if (tylkoReklamy) { %><p><a href="/ustawienia/integracje">← Moje połączenia</a></p><% } %>
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (testOdczytu) { %><div class="<%= testOdczytu.ok ? 'pas-potwierdzenie' : 'pas-uprzedzenie' %>" id="reklamy-test"><p><%= testOdczytu.tekst %></p></div><% } %>
@@ -19,7 +19,7 @@
       <div class="ust-kanal">
         <p class="ust-stan <%= wynik === 'Działa' ? 'ust-stan-ok' : wynik === 'Błąd' ? 'ust-stan-blad' : 'ust-stan-weryfikacja' %>"><strong><%= wynik %></strong></p>
         <p>Konto <%= polaczenie.kontoId %>, kanał <%= polaczenie.kanal ?? 'nieprzypisany' %>.</p>
-        <% if (polaczenie.stan?.ostatniSukcesAt) { %><p>Ostatni udany odczyt: <%= fmtDataCzas(polaczenie.stan.ostatniSukcesAt) %></p><% } %>
+        <% if (polaczenie.stan?.ostatniSukcesAt) { %><p>Ostatni udany odczyt: <%= fmtKiedy(polaczenie.stan.ostatniSukcesAt) %></p><% } %>
         <% if (polaczenie.stan?.kodBledu) { %><p>Kod błędu: <%= polaczenie.stan.kodBledu %></p><% } %>
         <% if (mozeKonfigurowacReklamy) { %>
           <form method="post" action="/ustawienia/integracje/reklamy/test">
@@ -35,7 +35,7 @@
 <aside class="ust-instrukcja" id="reklamy-<%= zrodlo.typ %>-instrukcja">
   <h3>Co jest potrzebne i jak to podłączyć</h3>
   <p>Potrzebne: konto źródła, kanał OMS i poświadczenie tylko do odczytu zapisane w sekretach serwera.</p>
-  <textarea id="prompt-<%= zrodlo.typ %>" class="ust-prompt" readonly rows="7"><%= zrodlo.prompt %></textarea>
+  <textarea id="prompt-<%= zrodlo.typ %>" class="ust-prompt" readonly rows="<%= Math.min(40, Math.max(7, String(zrodlo.prompt || '').split('\n').reduce((n, l) => n + Math.max(1, Math.ceil(l.length / 80)), 0) + 1)) %>"><%= zrodlo.prompt %></textarea>
   <div class="ust-akcje">
     <button class="ust-przycisk" type="button" onclick="this.parentElement.previousElementSibling.select(); document.execCommand('copy')">Skopiuj prompt dla agenta</button>
   </div>
@@ -47,7 +47,7 @@
   <h2>Dodaj połączenie</h2>
   <form id="reklamy-formularz" class="ust-formularz" method="post" action="/ustawienia/integracje/reklamy/zapisz">
     <label for="reklamy-typ">Źródło <span class="ust-wymagane">*</span></label>
-    <div><select id="reklamy-typ" name="typ" required><option value="ga4">Google przez GA4</option><option value="meta">Meta</option></select>
+    <div><select id="reklamy-typ" name="typ" required><option value="ga4"><%= zrodlaReklam.find((z) => z.typ === 'ga4')?.etykieta %></option><option value="meta"><%= zrodlaReklam.find((z) => z.typ === 'meta')?.etykieta %></option></select>
       <p class="ust-pomoc">Każde źródło podłączasz osobno.</p></div>
 
     <label for="reklamy-konto">ID konta lub właściwości <span class="ust-wymagane">*</span></label>
@@ -77,32 +77,28 @@
 <% } else { %>
 <div class="ust-sekcja">
   <h2>Poczta</h2>
-  <p><a href="/ustawienia/integracje/poczta">Poczta wychodząca (SMTP)</a> — serwer, login i hasło skrzynki, adres panelu do linków w mailach, wiadomość próbna.</p>
+  <p><a href="/ustawienia/integracje/poczta">Poczta wychodząca (SMTP)</a> — serwer, login i hasło skrzynki, adres OMS-u do linków w mailach, wiadomość próbna.</p>
 </div>
 <div class="ust-sekcja">
   <h2>Faktury</h2>
   <p><a href="/ustawienia/integracje/program-fakturowy">Moduł faktur</a> — czy OMS wystawia faktury i w którym programie: <%= zgodaTf ? 'Brak, inFakt albo TwojeFaktury' : 'Brak albo inFakt' %>.</p>
   <% if (zgodaTf) { %><p><a href="/ustawienia/integracje/program-fakturowy/ksef">Wysyłka do KSeF</a> — wysyłka faktur sprzedaży z TwojeFaktury.</p><% } %>
   <p><a href="/ustawienia/integracje/infakt">inFakt</a> — klucz API do wystawiania faktur sprzedaży, sprawdzenie połączenia.</p>
-  <p><a href="/ustawienia/integracje/ksef">KSeF — faktury kosztowe</a> — <% if (wbudowany) { %><%= String(zdanieTokenKosztow).replace(/\.$/, "") %> — <a href="/ustawienia/integracje/program-fakturowy/ksef">Wysyłka do KSeF</a>.<% } else { %>token tylko do przeglądania faktur zakupowych: nocne pobieranie kosztów, sprawdzenie połączenia. Panel niczego przez KSeF nie wysyła.<% } %></p>
+  <p><a href="/ustawienia/integracje/ksef">KSeF — faktury kosztowe</a> — <% if (wbudowany) { %><%= String(zdanieTokenKosztow).replace(/\.$/, "") %> — <a href="/ustawienia/integracje/program-fakturowy/ksef">Wysyłka do KSeF</a>.<% } else { %>token tylko do przeglądania faktur zakupowych: nocne pobieranie kosztów, sprawdzenie połączenia. OMS niczego przez KSeF nie wysyła.<% } %></p>
 </div>
 <div class="ust-sekcja">
   <h2>Dane firm</h2>
   <p><a href="/ustawienia/integracje/gus">GUS (dane firm po NIP)</a> — klucz do bazy REGON: przycisk „Pobierz z GUS” wpisuje nazwę i adres firmy po NIP-ie, sprawdzenie połączenia.</p>
 </div>
 <div class="ust-sekcja">
-  <h2>Kurierzy</h2>
-  <p><a href="/ustawienia/integracje/dpd">DPD Polska</a> — login, numer klienta i hasło od DPD, typ etykiety, sprawdzenie połączenia.</p>
-  <p><a href="/ustawienia/integracje/inpost">InPost (paczkomaty)</a> — token API ShipX i numer organizacji, paczkomat nadawczy, sprawdzenie połączenia.</p>
-</div>
-<div class="ust-sekcja">
   <h2>Reklamy</h2>
-  <p><a href="/ustawienia/integracje/reklamy">Google przez GA4, Google Ads API i Meta</a> — dostęp tylko do odczytu, dzienne statystyki kampanii, test odczytu połączenia.</p>
+  <p><a href="/ustawienia/integracje/reklamy">Meta Ads, Google Analytics 4 i Google Ads</a> — dostęp tylko do odczytu, dzienne statystyki kampanii, test odczytu połączenia.</p>
 </div>
 <div class="ust-sekcja">
   <h2>Kanały Allegro</h2>
+  <% if (mozeKonfigurowacReklamy) { %><p><a href="/ustawienia/integracje/allegro/nowe">Podłącz konto i zarządzaj połączeniami Allegro</a></p><% } %>
   <% if (!kanaly.length) { %>
-    <p class="pusto-sekcja">Ten panel nie ma skonfigurowanych kanałów Allegro.</p>
+    <p class="pusto-sekcja">Ten OMS nie ma skonfigurowanych kanałów Allegro.</p>
   <% } %>
   <% kanaly.forEach((kanal) => { %>
     <div class="ust-kanal">
@@ -113,6 +109,7 @@
         <% } else { %>działa<%= kanal.stan.zostaloDni != null ? ` (połączenie ważne jeszcze ${kanal.stan.zostaloDni} dni)` : '' %><% } %>
       </p>
       <p>Konto Allegro: <strong><%= kanal.stan.kontoAllegro ?? 'nieznane' %></strong></p>
+      <% if (mozeKonfigurowacReklamy) { %><p><a href="/ustawienia/integracje/allegro/<%= encodeURIComponent(kanal.stan.kanal) %>">Konfiguruj połączenie</a></p><% } %>
       <% if (kanal.stan.powod) { %><p><%= kanal.stan.powod %></p><% } %>
       <% if (kanal.wiazanie) { %>
         <div class="pas-uprzedzenie">

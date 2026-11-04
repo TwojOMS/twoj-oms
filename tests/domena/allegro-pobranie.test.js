@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { pobranieDoWysylki } from '../../src/domena/allegro-wysylka.js';
 
-const KONTO = { ownerName: 'Lumina Marek Zywiecki', iban: '34109010140000000000000000' };
+const KONTO = { ownerName: 'Pracownia Półcień Anna Wzorcowa', iban: '34109010140000000000000000' };
 const COD = { amount: '83.99', currency: 'PLN', ownerName: null, iban: null };
 const wolaj = (n = {}) => pobranieDoWysylki({ pobranieUslugi: true, cashOnDelivery: COD, limit: '6000', ...KONTO, ...n });
 
@@ -30,7 +30,7 @@ describe('pobranie przez Wysyłam z Allegro — pieniądze kupującego', () => {
   it('gdy usługa WYMAGA konta — dokłada je, a bez niego odmawia', () => {
     const w = wolaj({ wymaganeKonto: true });
     expect(w.cashOnDelivery).toEqual({
-      amount: '83.99', currency: 'PLN', ownerName: 'Lumina Marek Zywiecki', iban: 'PL34109010140000000000000000',
+      amount: '83.99', currency: 'PLN', ownerName: 'Pracownia Półcień Anna Wzorcowa', iban: 'PL34109010140000000000000000',
     });
     expect(wolaj({ wymaganeKonto: true, iban: '123' }).wolno).toBe(false);
     expect(wolaj({ wymaganeKonto: true, ownerName: ' ' }).wolno).toBe(false);

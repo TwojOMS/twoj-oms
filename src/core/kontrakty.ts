@@ -73,6 +73,48 @@ export type KanalSprzedazy<Z = unknown> = {
   readonly mapuj: (surowe: unknown) => Z;
 };
 
+// Kurier jako moduł (PRZ-135)
+export type PobranieKuriera = 'brak' | 'adapter' | 'umowa';
+// adapter: umie wysłać kwotę; umowa: dodatkowo wolno wybrać przy pobraniu na paczce.
+// PRZ-135.T2: 'adapter' awansuje do 'umowa' ustawieniem firmy (wysylka.umowa_pobrania.<kurier> = tak).
+export type UmiejetnosciKuriera = {
+  pobranie: PobranieKuriera;
+  // PRZ-137.03 (D2): czy adapter wiezie pobranie na paczce N > 1 (zamiennik za pobraniem) z jawnej
+  // decyzji operatora. Brak = nie (odmowa D3, neutralna — bez założenia, który kurier zostaje).
+  pobranieNaDosylce?: boolean;
+  nadanieAsynchroniczne: boolean;
+  sledzenie: 'brak' | 'wlasne' | 'przez_przewoznika';
+  etykieta: { zpl: boolean; zplPrzyNadaniu: boolean };
+};
+export type MetodaKuriera = {
+  klucz: string;
+  etykieta: string;
+  etykietaWyboru?: string;
+  etykietaDrogi?: string;
+  formularz: 'dpd' | 'paczkomat' | 'wza';
+  punktOdbioru: boolean;
+};
+export type OpisKuriera = {
+  klucz: string; nazwa: string; logo: string; idKatalogu: string; opisKatalogu: string;
+  umowa: 'wlasna' | 'platformy';
+  przewoznicy: readonly string[];
+  metody: readonly MetodaKuriera[];
+  umiejetnosci: UmiejetnosciKuriera;
+  /** Adapter ma `pobierzEtykiete` (ponowne pobranie etykiety po nadaniu). InPost tak; DPD i WzA nie —
+   *  WzA mimo `sprawdzPrzesylke`. Czyta odmowaWProbie w modul.ts wysyłki; zgodność z adapterami DPD i InPost sprawdza
+   *  tests/moduly/wysylka/kurierzy-kontrakt-prz135.test.ts. */
+  pobieranieEtykiety: boolean;
+  sledzenieAdres?: (numer: string) => string;
+  kluczeEnv: readonly string[];
+  konfigurator: { sciezka: string; etykieta: string; zdanie: string; kroki?: readonly KrokKonfiguratora[] };
+  piaskownica: { atrapa: string; komunikat: string };
+};
+export type OpisPrzewoznika = {
+  klucz: string; nazwa: string; logo: string; sledzenie: string;
+  rozpoznanie: { kod?: readonly string[]; carrier?: readonly string[]; slowa?: readonly string[];
+    metody?: readonly string[] };
+};
+
 // Kurier — kształt zmierzony 29.09 w kurierzy/dpd.js, inpost.js, allegro-wza.js i services/nadanie.js.
 // PRZ-022: modele danych faktycznie przekazywanych przez nadanie.js do klientów.
 export type WynikNadania = {
@@ -146,7 +188,66 @@ export type Kurier<Z = ZlecenieKuriera> = {
 
 export type OdmianaNazwy = Readonly<{ mianownik: string; dopelniacz: string; miejscownik: string; narzednik: string }>;
 
-export type ZdolnoscProgramu = 'nieoplacone' | 'oznaczZaplacona' | 'wyslijDoKsef' | 'numeracjaWlasna';
+// Kanał sprzedaży jako moduł (PRZ-133).
+// Każda umiejętność jest obowiązkowa i stała dla platformy, nie dla konta.
+export type ZapisZwrotnyKanalu = Readonly<{
+  ustawStatus?: (idZrodla: string, status: string) => Promise<unknown>;
+}>;
+
+export type UmiejetnosciKanalu = Readonly<{
+  zdarzenia: 'odpytywanie' | 'skrzynka';
+  wymagaAkceptacji: boolean;
+  statusZwrotny: 'brak' | 'wyslane' | 'mapa';
+  numerListu: 'brak' | 'notatka' | 'przesylki';
+  plikFaktury: boolean;
+  wiadomosci: boolean;
+  wysylkaPlatformy: boolean;
+  terminWysylki: boolean;
+  scalanie: boolean;
+  stany: 'brak' | 'produkty' | 'oferty';
+}>;
+
+export type RodzajPola = 'tekst' | 'adres' | 'sekret' | 'data' | 'wybor';
+export type PoleKonfiguratora = Readonly<{
+  id: string;
+  etykieta: string;
+  rodzaj: RodzajPola;
+  wymagane: boolean;
+  pomoc?: string;
+  przyklad?: string;
+  domyslna?: string;
+  opcje?: readonly Readonly<{ wartosc: string; etykieta: string }>[];
+}>;
+export type KrokKonfiguratora = Readonly<{
+  id: string;
+  numer: number;
+  tytul: string;
+  instrukcja?: readonly string[];
+  // PRZ-149.04: wybór nad instrukcją (pole formularza kroku); punkt instrukcji `punkt` ma wariant na każdą opcję.
+  wybor?: Readonly<{ pole: PoleKonfiguratora; punkt: number; warianty: Readonly<Record<string, string>> }>;
+  // Dokładnie jedno z formularz/widok — walidacja kroków dojdzie w K04.
+  formularz?: Readonly<{ akcja: string; przycisk: string; pola: readonly PoleKonfiguratora[] }>;
+  widok?: string;
+}>;
+export type OpisKonfiguratora = Readonly<{
+  sciezka: string;
+  nowy: string;
+  dodaj: string;
+  kroki: readonly KrokKonfiguratora[];
+}>;
+export type OpisKanalu = Readonly<{
+  typ: string;
+  nazwa: string;
+  litera: string;
+  komunikaty: OdmianaNazwy;
+  idKatalogu: string;
+  wzorzecLinku: string;
+  umiejetnosci: UmiejetnosciKanalu;
+  kluczeEnv: Readonly<{ sekrety: readonly string[]; wymagane: readonly string[] }>;
+  konfigurator: OpisKonfiguratora;
+}>;
+
+export type ZdolnoscProgramu = 'nieoplacone' | 'oznaczZaplacona' | 'wyslijDoKsef' | 'numeracjaWlasna' | 'statusKorekty' | 'odczytKorekty';
 
 export type OpisProgramu = Readonly<{
   /** Wartość kolumny `program`: 'infakt'. */
@@ -169,6 +270,8 @@ export type OpisProgramu = Readonly<{
   wbudowany?: true;
   /** Decyzja właściciela 28.10.2026 pkt 4: WDT numerowane w serii faktur programu, bez serii WDT panelu. */
   wdtWSeriiFaktur?: boolean;
+  /** Wartości v3 przyjmowane przy zapisie; brak deklaracji = tylko `delivery`. */
+  sposobyPlatnosci?: readonly string[];
 }>;
 
 /** Pozycja dokumentu: `gross_price` = SUMA LINII brutto w groszach (domena/pozycje-faktury.js), VAT liczy program. */
@@ -189,7 +292,9 @@ export type LadunekFaktury = Readonly<{
 
 /** Ładunek `wystawKorekte` (zwroty/services/korekta.js): pozycje przed i po korekcie, wskazanie faktury korygowanej. */
 export type LadunekKorekty = Readonly<{
+  client_id?: unknown;
   corrected_invoice_number?: string; corrected_invoice_date?: string; corrected_invoice_uuid?: string;
+  /** Tekst przyczyny; symbol słownika dobiera program fakturowy. */
   correction_reason?: string; correction_reason_symbol?: string;
   services?: readonly Readonly<Record<string, unknown>>[];
   [pole: string]: unknown;
@@ -212,6 +317,13 @@ export type NabywcaDokumentu = Readonly<{
   miasto?: string | null; kraj?: string | null; email?: string | null;
 }>;
 
+/** Neutralny wynik odczytu zlecenia korekty; nazwy pól błędów tłumaczy klient programu. */
+export type StatusKorekty = Readonly<{
+  stan: 'w_toku' | 'wystawiona' | 'odrzucona' | 'nieznany';
+  uuid: string | null;
+  bledy: readonly Readonly<{ pole: string; komunikaty: readonly string[] }>[];
+}>;
+
 type Operacja<A extends unknown[], W> = (...a: A) => Promise<W>;
 
 export type ProgramFakturowy = {
@@ -227,6 +339,10 @@ export type ProgramFakturowy = {
   readonly pobierzFakture: Operacja<[id: string, ...reszta: unknown[]], WierszDokumentu | null>;
   readonly listaFaktur: Operacja<unknown[], readonly WierszDokumentu[]>;
   readonly listaKorekt: Operacja<unknown[], readonly WierszDokumentu[]>;
+  /** Zdolność 'statusKorekty'; tylko pewna odmowa daje stan 'odrzucona'. */
+  readonly statusKorekty?: Operacja<[referencja: string], StatusKorekty>;
+  /** Zdolność 'odczytKorekty'; pojedynczy dokument wskazany przez status zlecenia. */
+  readonly pobierzKorekte?: Operacja<[uuid: string], WierszDokumentu | null>;
   /** Zdolność 'nieoplacone'. */
   readonly listaNieoplaconych?: Operacja<unknown[], readonly WierszDokumentu[]>;
   /** Zdolność 'oznaczZaplacona'. */

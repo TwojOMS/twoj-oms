@@ -8,7 +8,7 @@
 // na produkcji.
 import { describe, it, expect, vi } from 'vitest';
 import { ofertaNaProdukt } from '../../src/domena/allegro-oferta.js';
-const KANALY_ALLEGRO = ['allegro_szkicownia', 'allegro_amarka'];
+const KANALY_ALLEGRO = ['allegro_swietlik', 'allegro_polcien2'];
 import {
   createAllegroClient, LIMIT_STRONY_OFERT, MAKS_STRON_OFERT,
   LIMIT_ZAPYTANIA_OFERT_MS, LIMIT_ZAPYTANIA_ZAMOWIEN_MS, LIMIT_ZAPYTANIA_PRZESYLEK_MS,
@@ -24,7 +24,7 @@ const oferta = (nadpisz = {}) => ({
   ...nadpisz,
 });
 
-const KANAL = 'allegro_szkicownia';
+const KANAL = 'allegro_swietlik';
 
 describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
   it('przepisuje ofertę na wiersz lustra', () => {
@@ -34,7 +34,7 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
       sellingMode: { price: { amount: '89.00', currency: 'PLN' } },
       primaryImage: { url: 'https://a.allegroimg.com/original/aaa/bbb' },
       external: { id: 'PRO-GRZYBEK-001' },
-    }, KANAL, ['allegro_szkicownia', 'allegro_amarka']);
+    }, KANAL, ['allegro_swietlik', 'allegro_polcien2']);
 
     expect(p.produkt_id).toBe('1234567890');
     expect(p.nazwa).toBe('Lampa stołowa Grzybek 30x45 cm');
@@ -48,8 +48,8 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
   // po KANALE — a upsert leci po `(kanal, produkt_id, wariant_id)`. Kanal wziety skadinad
   // rozjechalby sie z tym, co mapowanie uwaza za zrodlo wiersza.
   it('wiersz niesie kanał i pusty wariant — Allegro nie ma wariantów', () => {
-    const p = ofertaNaProdukt(oferta(), 'allegro_amarka', ['allegro_szkicownia', 'allegro_amarka']);
-    expect(p.kanal).toBe('allegro_amarka');
+    const p = ofertaNaProdukt(oferta(), 'allegro_polcien2', ['allegro_swietlik', 'allegro_polcien2']);
+    expect(p.kanal).toBe('allegro_polcien2');
     // ⚠️ NIE `null`. W SQLite NULL-e w UNIQUE sa wzajemnie ROZNE, wiec przy NULL ta sama
     // oferta wpadalaby do tabeli przy KAZDYM odczycie i mnozyla wiersze.
     expect(p.wariant_id).toBe('');
@@ -57,24 +57,24 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
 
   // ⚠️ BIALA LISTA KANALOW. Kanal jest kluczem, po ktorym magazyn rozdziela wiersze
   // i po ktorym `oznaczZnikniete` decyduje, czyj katalog wlasnie zniknal. Literowka
-  // („allegro_stencil") zalozylaby kanal-widmo: wiersze, ktorych nie widzi zaden filtr,
+  // („allegro_swietli") zalozylaby kanal-widmo: wiersze, ktorych nie widzi zaden filtr,
   // i katalog prawdziwego kanalu oznaczony jako wycofany przy nastepnym przebiegu.
   it('kanał spoza białej listy NIE zakłada widmowego kanału', () => {
-    expect(() => ofertaNaProdukt(oferta(), 'allegro_stencil', ['allegro_szkicownia', 'allegro_amarka'])).toThrow(/allegro_stencil/);
-    expect(() => ofertaNaProdukt(oferta(), 'ALLEGRO_SZKICOWNIA', ['allegro_szkicownia', 'allegro_amarka'])).toThrow(/kanał/i);
-    expect(() => ofertaNaProdukt(oferta(), undefined, ['allegro_szkicownia', 'allegro_amarka'])).toThrow(/kanał/i);
+    expect(() => ofertaNaProdukt(oferta(), 'allegro_swietli', ['allegro_swietlik', 'allegro_polcien2'])).toThrow(/allegro_swietli/);
+    expect(() => ofertaNaProdukt(oferta(), 'ALLEGRO_SWIETLIK', ['allegro_swietlik', 'allegro_polcien2'])).toThrow(/kanał/i);
+    expect(() => ofertaNaProdukt(oferta(), undefined, ['allegro_swietlik', 'allegro_polcien2'])).toThrow(/kanał/i);
     // Kanal SKLEPOWY tez nie: wiersz z Allegro w kanale `pro` wygladalby na liscie jak
     // produkt sklepu, a zapis SKU poleciałby do WooCommerce.
-    expect(() => ofertaNaProdukt(oferta(), 'pro', ['allegro_szkicownia', 'allegro_amarka'])).toThrow(/pro/);
+    expect(() => ofertaNaProdukt(oferta(), 'pro', ['allegro_swietlik', 'allegro_polcien2'])).toThrow(/pro/);
   });
 
   // ⚠️ PARA DO TESTU WYZEJ: straznik ma MILCZEC na obu prawdziwych kontach. Bez tego
   // warunek zaostrzony do jednego kanalu (albo odwrocony) przeszedlby na zielono,
-  // a drugie konto — 29 ofert AmarkaPL — nie wczytaloby sie ani razu.
+  // a drugie konto — 29 ofert Półcień Druga — nie wczytaloby sie ani razu.
   it('oba prawdziwe konta przechodzą bez słowa', () => {
-    expect(KANALY_ALLEGRO.map((kanal) => ofertaNaProdukt(oferta(), kanal, KANALY_ALLEGRO).kanal)).toEqual(['allegro_szkicownia', 'allegro_amarka']);
+    expect(KANALY_ALLEGRO.map((kanal) => ofertaNaProdukt(oferta(), kanal, KANALY_ALLEGRO).kanal)).toEqual(['allegro_swietlik', 'allegro_polcien2']);
     for (const kanal of KANALY_ALLEGRO) {
-      expect(ofertaNaProdukt(oferta(), kanal, ['allegro_szkicownia', 'allegro_amarka']).kanal).toBe(kanal);
+      expect(ofertaNaProdukt(oferta(), kanal, ['allegro_swietlik', 'allegro_polcien2']).kanal).toBe(kanal);
     }
   });
 
@@ -82,12 +82,12 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
   // na WSZYSTKICH sprawdzonych ofertach obu kont (0/40). Powiazanie produktu z oferta jest
   // przez to reczne — ale mapowanie ma to przezyc, a nie wywalic caly odczyt.
   it('brak external nie wywraca mapowania', () => {
-    const p = ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '10.00', currency: 'PLN' } } }, KANAL, ['allegro_szkicownia', 'allegro_amarka']);
+    const p = ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '10.00', currency: 'PLN' } } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']);
     expect(p.sku_sklepu).toBe(null);
   });
 
   it('external bez pola id też daje null, a nie undefined', () => {
-    const p = ofertaNaProdukt(oferta({ external: {} }), KANAL, ['allegro_szkicownia', 'allegro_amarka']);
+    const p = ofertaNaProdukt(oferta({ external: {} }), KANAL, ['allegro_swietlik', 'allegro_polcien2']);
     // `undefined` node:sqlite ODMAWIA zwiazac — pole, ktorego Allegro nie przyslalo,
     // wywaliloby caly przebieg odczytu zamiast zostawic pusta kolumne.
     expect(p.sku_sklepu).toBe(null);
@@ -96,7 +96,7 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
 
   // ⚠️ Identyfikator z wiodacym zerem przepuszczony przez liczbe wraca jako INNA oferta.
   it('identyfikator zostaje napisem, z wiodącymi zerami', () => {
-    const p = ofertaNaProdukt({ id: '0071234567', name: 'X', sellingMode: { price: { amount: '1.00', currency: 'PLN' } } }, KANAL, ['allegro_szkicownia', 'allegro_amarka']);
+    const p = ofertaNaProdukt({ id: '0071234567', name: 'X', sellingMode: { price: { amount: '1.00', currency: 'PLN' } } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']);
     expect(p.produkt_id).toBe('0071234567');
     expect(p.adres).toBe('https://allegro.pl/oferta/0071234567');
   });
@@ -105,7 +105,7 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
   // z SQLite (RangeError), czyli JEDEN wiersz przestaje renderowac CALA liste magazynu.
   // `String(Number('9007199254740993'))` to '9007199254740992': innej oferty, cicho.
   it('identyfikator powyżej 2^53 przechodzi znak w znak', () => {
-    const p = ofertaNaProdukt({ id: '9007199254740993', name: 'X', sellingMode: { price: { amount: '1.00', currency: 'PLN' } } }, KANAL, ['allegro_szkicownia', 'allegro_amarka']);
+    const p = ofertaNaProdukt({ id: '9007199254740993', name: 'X', sellingMode: { price: { amount: '1.00', currency: 'PLN' } } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']);
     expect(p.produkt_id).toBe('9007199254740993');
     expect(p.produkt_id).not.toBe(String(Number('9007199254740993')));
   });
@@ -114,10 +114,10 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
   // sa juz stracone w chwili `JSON.parse` — i zadne mapowanie ich nie odzyska. Ma o tym
   // powiedzieć wyjatek przy pierwszym odczycie, a nie cichy wiersz o zlym kluczu.
   it('identyfikator, który NIE jest napisem, wywala odczyt zamiast go po cichu przepisać', () => {
-    expect(() => ofertaNaProdukt({ id: 1234567890, name: 'X' }, KANAL, ['allegro_szkicownia', 'allegro_amarka'])).toThrow(/identyfikator/i);
-    expect(() => ofertaNaProdukt({ name: 'X' }, KANAL, ['allegro_szkicownia', 'allegro_amarka'])).toThrow(/identyfikator/i);
-    expect(() => ofertaNaProdukt({ id: '', name: 'X' }, KANAL, ['allegro_szkicownia', 'allegro_amarka'])).toThrow(/identyfikator/i);
-    expect(() => ofertaNaProdukt(null, KANAL, ['allegro_szkicownia', 'allegro_amarka'])).toThrow(/identyfikator/i);
+    expect(() => ofertaNaProdukt({ id: 1234567890, name: 'X' }, KANAL, ['allegro_swietlik', 'allegro_polcien2'])).toThrow(/identyfikator/i);
+    expect(() => ofertaNaProdukt({ name: 'X' }, KANAL, ['allegro_swietlik', 'allegro_polcien2'])).toThrow(/identyfikator/i);
+    expect(() => ofertaNaProdukt({ id: '', name: 'X' }, KANAL, ['allegro_swietlik', 'allegro_polcien2'])).toThrow(/identyfikator/i);
+    expect(() => ofertaNaProdukt(null, KANAL, ['allegro_swietlik', 'allegro_polcien2'])).toThrow(/identyfikator/i);
   });
 
   // `produkty_sklepowe.nazwa` jest NOT NULL, a nazwa oferty to JEDYNA rzecz, po ktorej
@@ -125,25 +125,25 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
   // jest bezuzyteczny, a bez tego straznika wywalilby sie dopiero na bazie, komunikatem
   // „NOT NULL constraint failed" w polowie 447 ofert.
   it('oferta bez nazwy wywala mapowanie, a nie zapis do bazy', () => {
-    expect(() => ofertaNaProdukt({ id: '1' }, KANAL, ['allegro_szkicownia', 'allegro_amarka'])).toThrow(/nazw/i);
-    expect(() => ofertaNaProdukt({ id: '1', name: '   ' }, KANAL, ['allegro_szkicownia', 'allegro_amarka'])).toThrow(/nazw/i);
+    expect(() => ofertaNaProdukt({ id: '1' }, KANAL, ['allegro_swietlik', 'allegro_polcien2'])).toThrow(/nazw/i);
+    expect(() => ofertaNaProdukt({ id: '1', name: '   ' }, KANAL, ['allegro_swietlik', 'allegro_polcien2'])).toThrow(/nazw/i);
     // Komunikat ma powiedziec, KTORA oferta — 447 ofert w jednym przebiegu.
-    expect(() => ofertaNaProdukt({ id: '1234567890' }, KANAL, ['allegro_szkicownia', 'allegro_amarka'])).toThrow(/1234567890/);
+    expect(() => ofertaNaProdukt({ id: '1234567890' }, KANAL, ['allegro_swietlik', 'allegro_polcien2'])).toThrow(/1234567890/);
   });
 
   it('kwota liczona w groszach bez błędu zmiennoprzecinkowego', () => {
-    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '74.90', currency: 'PLN' } } }, KANAL, ['allegro_szkicownia', 'allegro_amarka']).cena_gr)
+    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '74.90', currency: 'PLN' } } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).cena_gr)
       .toBe(7490);
-    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '0.07', currency: 'PLN' } } }, KANAL, ['allegro_szkicownia', 'allegro_amarka']).cena_gr)
+    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '0.07', currency: 'PLN' } } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).cena_gr)
       .toBe(7);
   });
 
   // ⚠️ ZMIERZONE w Zadaniu 0: Allegro oddaje kwote z JEDNYM miejscem po przecinku
   // („79.0", „28.9"), nie dwoma. Samo mnozenie daje 2890.0000000000005.
   it('kwota z jednym miejscem po przecinku (tak oddaje Allegro)', () => {
-    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '79.0', currency: 'PLN' } } }, KANAL, ['allegro_szkicownia', 'allegro_amarka']).cena_gr)
+    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '79.0', currency: 'PLN' } } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).cena_gr)
       .toBe(7900);
-    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '28.9', currency: 'PLN' } } }, KANAL, ['allegro_szkicownia', 'allegro_amarka']).cena_gr)
+    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '28.9', currency: 'PLN' } } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).cena_gr)
       .toBe(2890);
   });
 
@@ -155,21 +155,21 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
   // NIEPOWTARZALNA i widoczna dopiero przy porownaniu ceny z ta w sklepie. Przeliczenie
   // idzie po CYFRACH napisu, nie przez liczbe zmiennoprzecinkowa.
   it('kwota z trzecim miejscem po przecinku zaokrągla się arytmetycznie, nie zmiennoprzecinkowo', () => {
-    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '1.005', currency: 'PLN' } } }, KANAL, ['allegro_szkicownia', 'allegro_amarka']).cena_gr)
+    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '1.005', currency: 'PLN' } } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).cena_gr)
       .toBe(101);
-    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '2.675', currency: 'PLN' } } }, KANAL, ['allegro_szkicownia', 'allegro_amarka']).cena_gr)
+    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '2.675', currency: 'PLN' } } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).cena_gr)
       .toBe(268);
     // W dol tez, zeby zaokraglenie nie bylo zwyklym „zawsze w gore".
-    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '1.004', currency: 'PLN' } } }, KANAL, ['allegro_szkicownia', 'allegro_amarka']).cena_gr)
+    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '1.004', currency: 'PLN' } } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).cena_gr)
       .toBe(100);
   });
 
   it('oferta bez ceny daje null, nie zero', () => {
     // ⚠️ 0 znaczyloby „za darmo" i wpadaloby w kazdy filtr ceny od zera w gore.
-    expect(ofertaNaProdukt({ id: '1', name: 'X' }, KANAL, ['allegro_szkicownia', 'allegro_amarka']).cena_gr).toBe(null);
-    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: {} }, KANAL, ['allegro_szkicownia', 'allegro_amarka']).cena_gr).toBe(null);
-    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: {} } }, KANAL, ['allegro_szkicownia', 'allegro_amarka']).cena_gr).toBe(null);
-    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: null, currency: 'PLN' } } }, KANAL, ['allegro_szkicownia', 'allegro_amarka']).cena_gr).toBe(null);
+    expect(ofertaNaProdukt({ id: '1', name: 'X' }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).cena_gr).toBe(null);
+    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: {} }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).cena_gr).toBe(null);
+    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: {} } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).cena_gr).toBe(null);
+    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: null, currency: 'PLN' } } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).cena_gr).toBe(null);
   });
 
   // ⚠️⚠️ TO SA PIENIADZE I KOLUMNA `INTEGER`. Kwota, ktorej nie umiemy przeliczyc, nie ma
@@ -179,7 +179,7 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
   it('kwota nie do przeliczenia wywala odczyt GŁOŚNO, zamiast wpaść do kolumny INTEGER', () => {
     const zKwota = (amount) => () => ofertaNaProdukt(
       { id: '1234567890', name: 'X', sellingMode: { price: { amount, currency: 'PLN' } } }, KANAL,
-     ['allegro_szkicownia', 'allegro_amarka']);
+     ['allegro_swietlik', 'allegro_polcien2']);
     // Przecinek dziesietny — najbardziej prawdopodobna zmiana po stronie Allegro.
     expect(zKwota('89,00')).toThrow(/89,00/);
     expect(zKwota('')).toThrow(/kwot/i);
@@ -209,10 +209,10 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
   // to nie jest ten sam przypadek, co smiec. Para do testu wyzej: straznik ma MILCZEC
   // na wszystkim, co da sie policzyc dokladnie.
   it('kwota, którą da się przeliczyć, przechodzi bez słowa', () => {
-    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: 89, currency: 'PLN' } } }, KANAL, ['allegro_szkicownia', 'allegro_amarka']).cena_gr).toBe(8900);
-    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: 28.9, currency: 'PLN' } } }, KANAL, ['allegro_szkicownia', 'allegro_amarka']).cena_gr).toBe(2890);
-    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '0.00', currency: 'PLN' } } }, KANAL, ['allegro_szkicownia', 'allegro_amarka']).cena_gr).toBe(0);
-    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: ' 89.00 ', currency: 'PLN' } } }, KANAL, ['allegro_szkicownia', 'allegro_amarka']).cena_gr).toBe(8900);
+    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: 89, currency: 'PLN' } } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).cena_gr).toBe(8900);
+    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: 28.9, currency: 'PLN' } } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).cena_gr).toBe(2890);
+    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '0.00', currency: 'PLN' } } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).cena_gr).toBe(0);
+    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: ' 89.00 ', currency: 'PLN' } } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).cena_gr).toBe(8900);
   });
 
   // ⚠️⚠️ WALUTA. `produkty_sklepowe.cena_gr` to goly INTEGER i kolumny waluty NIE MA, wiec
@@ -226,9 +226,9 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
   it('cena w walucie innej niż PLN wywala odczyt, bo kolumna waluty nie niesie', () => {
     const zWaluta = (currency) => () => ofertaNaProdukt(
       { id: '1234567890', name: 'X', sellingMode: { price: { amount: '89.00', currency } } }, KANAL,
-     ['allegro_szkicownia', 'allegro_amarka']);
+     ['allegro_swietlik', 'allegro_polcien2']);
     expect(zWaluta('EUR')).toThrow(/EUR/);
-    // AmarkaPL sprzedaje na piec rynkow (allegro-cz, -sk, -hu) — to nie jest przypadek
+    // Półcień Druga sprzedaje na piec rynkow (allegro-cz, -sk, -hu) — to nie jest przypadek
     // teoretyczny, tylko jedna zmiana po stronie Allegro.
     expect(zWaluta('CZK')).toThrow(/CZK/);
     // Komunikat ma nazwac oferte i powiedziec, czego oczekiwalismy.
@@ -240,7 +240,7 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
   // da sie zweryfikowac, nie wolno zgadywac na „pewnie PLN". Bez tego przypadku straznik
   // przepuszczajacy `undefined` (najczestszy ksztalt bledu) przechodzilby na zielono.
   it('cena BEZ waluty też wywala odczyt — waluty się nie zgaduje', () => {
-    const zCena = (price) => () => ofertaNaProdukt({ id: '1234567890', name: 'X', sellingMode: { price } }, KANAL, ['allegro_szkicownia', 'allegro_amarka']);
+    const zCena = (price) => () => ofertaNaProdukt({ id: '1234567890', name: 'X', sellingMode: { price } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']);
     expect(zCena({ amount: '89.00' })).toThrow(/walu/i);
     expect(zCena({ amount: '89.00', currency: null })).toThrow(/walu/i);
     expect(zCena({ amount: '89.00', currency: 985 })).toThrow(/walu/i);
@@ -254,10 +254,10 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
   it('gdy zła jest i waluta, i kwota — komunikat mówi o WALUCIE', () => {
     expect(() => ofertaNaProdukt(
       { id: '1234567890', name: 'X', sellingMode: { price: { amount: 'brak', currency: 'EUR' } } }, KANAL,
-     ['allegro_szkicownia', 'allegro_amarka'])).toThrow(/walu/i);
+     ['allegro_swietlik', 'allegro_polcien2'])).toThrow(/walu/i);
     expect(() => ofertaNaProdukt(
       { id: '1234567890', name: 'X', sellingMode: { price: { amount: 'brak', currency: 'EUR' } } }, KANAL,
-     ['allegro_szkicownia', 'allegro_amarka'])).not.toThrow(/nie umiem przeliczyć/);
+     ['allegro_swietlik', 'allegro_polcien2'])).not.toThrow(/nie umiem przeliczyć/);
   });
 
   // ⚠️ PARA DO OBU TESTOW WYZEJ: straznik ma MILCZEC, gdy waluta jest wlasciwa, ORAZ nie ma
@@ -265,10 +265,10 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
   // zostaje `null`. Bez tego straznik zaostrzony do „kazda oferta musi miec walute"
   // wywalilby odczyt na kazdej ofercie bez ceny.
   it('PLN przechodzi bez słowa, a brak ceny w ogóle nie pyta o walutę', () => {
-    expect(ofertaNaProdukt(oferta(), KANAL, ['allegro_szkicownia', 'allegro_amarka']).cena_gr).toBe(8900);
-    expect(ofertaNaProdukt({ id: '1', name: 'X' }, KANAL, ['allegro_szkicownia', 'allegro_amarka']).cena_gr).toBe(null);
-    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: {} } }, KANAL, ['allegro_szkicownia', 'allegro_amarka']).cena_gr).toBe(null);
-    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: null } } }, KANAL, ['allegro_szkicownia', 'allegro_amarka']).cena_gr).toBe(null);
+    expect(ofertaNaProdukt(oferta(), KANAL, ['allegro_swietlik', 'allegro_polcien2']).cena_gr).toBe(8900);
+    expect(ofertaNaProdukt({ id: '1', name: 'X' }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).cena_gr).toBe(null);
+    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: {} } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).cena_gr).toBe(null);
+    expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: null } } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).cena_gr).toBe(null);
   });
 
   // ⚠️ Bez tego oferta zakonczona udaje zywa — i wchodzi do generatora SKU oraz na liste
@@ -277,15 +277,15 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
     expect(ofertaNaProdukt({
       id: '1', name: 'X', sellingMode: { price: { amount: '1.0', currency: 'PLN' } },
       publication: { status: 'ACTIVE' },
-    }, KANAL, ['allegro_szkicownia', 'allegro_amarka']).status_publikacji).toBe('ACTIVE');
+    }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).status_publikacji).toBe('ACTIVE');
     expect(ofertaNaProdukt({
       id: '1', name: 'X', sellingMode: { price: { amount: '1.0', currency: 'PLN' } },
       publication: { status: 'ENDED' },
-    }, KANAL, ['allegro_szkicownia', 'allegro_amarka']).status_publikacji).toBe('ENDED');
+    }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).status_publikacji).toBe('ENDED');
   });
 
   it('brak publication daje null, a nie undefined', () => {
-    const p = ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '1.0', currency: 'PLN' } } }, KANAL, ['allegro_szkicownia', 'allegro_amarka']);
+    const p = ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '1.0', currency: 'PLN' } } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']);
     expect(p.status_publikacji).toBe(null);
     expect(p.status_publikacji).not.toBeUndefined();
   });
@@ -294,29 +294,29 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
   // galeria kosztowalaby 447 osobnych wywolan `/sale/product-offers/{id}`. Zdjecia do karty
   // produktu i tak bierzemy ze SKLEPU, gdzie Woo oddaje komplet za darmo.
   it('zdjęcia to tablica JSON z jednym adresem — dokładnie tym, co przyszło', () => {
-    const p = ofertaNaProdukt(oferta(), KANAL, ['allegro_szkicownia', 'allegro_amarka']);
+    const p = ofertaNaProdukt(oferta(), KANAL, ['allegro_swietlik', 'allegro_polcien2']);
     expect(JSON.parse(p.zdjecia_json)).toEqual(['https://a.allegroimg.com/original/aaa/bbb']);
   });
 
   it('brak zdjęcia głównego daje null, a nie pustą tablicę w JSON-ie', () => {
-    expect(ofertaNaProdukt(oferta({ primaryImage: undefined }), KANAL, ['allegro_szkicownia', 'allegro_amarka']).zdjecia_json).toBe(null);
-    expect(ofertaNaProdukt(oferta({ primaryImage: {} }), KANAL, ['allegro_szkicownia', 'allegro_amarka']).zdjecia_json).toBe(null);
-    expect(ofertaNaProdukt(oferta({ primaryImage: { url: '   ' } }), KANAL, ['allegro_szkicownia', 'allegro_amarka']).zdjecia_json).toBe(null);
+    expect(ofertaNaProdukt(oferta({ primaryImage: undefined }), KANAL, ['allegro_swietlik', 'allegro_polcien2']).zdjecia_json).toBe(null);
+    expect(ofertaNaProdukt(oferta({ primaryImage: {} }), KANAL, ['allegro_swietlik', 'allegro_polcien2']).zdjecia_json).toBe(null);
+    expect(ofertaNaProdukt(oferta({ primaryImage: { url: '   ' } }), KANAL, ['allegro_swietlik', 'allegro_polcien2']).zdjecia_json).toBe(null);
   });
 
   // Ten adres laduje wprost w atrybucie `src` naszego HTML-a (ta sama regula, co
   // w domain/miniatury.js). Allegro jest zrodlem zaufanym, ale wpuszczanie tam czegokolwiek
   // poza http(s) nie ma uzasadnienia i kosztuje jedna linie.
   it('adres zdjęcia inny niż http(s) nie trafia do lustra', () => {
-    expect(ofertaNaProdukt(oferta({ primaryImage: { url: 'javascript:alert(1)' } }), KANAL, ['allegro_szkicownia', 'allegro_amarka']).zdjecia_json).toBe(null);
-    expect(ofertaNaProdukt(oferta({ primaryImage: { url: '/original/aaa' } }), KANAL, ['allegro_szkicownia', 'allegro_amarka']).zdjecia_json).toBe(null);
+    expect(ofertaNaProdukt(oferta({ primaryImage: { url: 'javascript:alert(1)' } }), KANAL, ['allegro_swietlik', 'allegro_polcien2']).zdjecia_json).toBe(null);
+    expect(ofertaNaProdukt(oferta({ primaryImage: { url: '/original/aaa' } }), KANAL, ['allegro_swietlik', 'allegro_polcien2']).zdjecia_json).toBe(null);
   });
 
   // ⚠️ Rozmiar jest w nazwie tylko w ~40% ofert (zmierzone w Zadaniu 0), a `wymiaryZTekstu`
   // NIGDY nie zgaduje. Do lustra idzie CALA nazwa jako tekst zrodlowy rozmiaru — wyprowadzenie
   // milimetrow jest osobna regula i osobnym krokiem.
   it('rozmiar_tekst to nazwa oferty, bo Allegro nie ma osobnego pola rozmiaru', () => {
-    const p = ofertaNaProdukt(oferta({ name: 'Kopuła - lampa wisząca do kuchni nad stół, klosz 60cm' }), KANAL, ['allegro_szkicownia', 'allegro_amarka']);
+    const p = ofertaNaProdukt(oferta({ name: 'Kopuła - lampa wisząca do kuchni nad stół, klosz 60cm' }), KANAL, ['allegro_swietlik', 'allegro_polcien2']);
     expect(p.rozmiar_tekst).toBe('Kopuła - lampa wisząca do kuchni nad stół, klosz 60cm');
     expect(p.rozmiar_tekst).toBe(p.nazwa);
   });
@@ -325,7 +325,7 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
   // w odpowiedzi (zmierzone: 490, 15) i jest kuszacy — a raz zapisany stan zaczyna byc
   // czytany jako prawda, mimo ze odswieza sie wylacznie przyciskiem.
   it('oddaje DOKŁADNIE kolumny lustra i ani jednej więcej — bez stanów magazynowych', () => {
-    const p = ofertaNaProdukt(oferta({ stock: { available: 490, sold: 12 }, stats: { watchersCount: 3 } }), KANAL, ['allegro_szkicownia', 'allegro_amarka']);
+    const p = ofertaNaProdukt(oferta({ stock: { available: 490, sold: 12 }, stats: { watchersCount: 3 } }), KANAL, ['allegro_swietlik', 'allegro_polcien2']);
     expect(Object.keys(p).sort()).toEqual([
       'adres', 'cena_gr', 'kanal', 'miniatura', 'nazwa', 'produkt_id', 'rozmiar_tekst',
       'sku_sklepu', 'status_publikacji', 'wariant_id', 'zdjecia_json',
@@ -338,7 +338,7 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
   it('nie tyka obiektu wejściowego', () => {
     const wejscie = oferta();
     const kopia = structuredClone(wejscie);
-    ofertaNaProdukt(wejscie, KANAL, ['allegro_szkicownia', 'allegro_amarka']);
+    ofertaNaProdukt(wejscie, KANAL, ['allegro_swietlik', 'allegro_polcien2']);
     expect(wejscie).toEqual(kopia);
   });
 });
@@ -520,7 +520,7 @@ describe('pobierzOferty — stronicowanie', () => {
     expect(blad.message).not.toContain('ATRAPA');
   });
 
-  // Granica ma chronic przed absurdem, a nie ucinac prawdziwe konto: 447 ofert szkicownia_pl
+  // Granica ma chronic przed absurdem, a nie ucinac prawdziwe konto: 447 ofert swietlik_pl
   // ma przejsc w calosci, z zapasem.
   it('granica stron mieści oba prawdziwe konta z zapasem', () => {
     expect(MAKS_STRON_OFERT * LIMIT_STRONY_OFERT).toBeGreaterThan(4 * 447);

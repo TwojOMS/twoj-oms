@@ -68,7 +68,7 @@ describe('PRZ-093.10 Ustawienia → inFakt', () => {
         try {
           const id = zapiszZamowienie(p.db, 'demo', {
             zrodlo_id: 'maskowanie-09403', numer: 'DEMO-09403',
-            klient: { first_name: 'Adam', last_name: 'Przykładowy' }, dostawa: {},
+            klient: { first_name: 'Adam', last_name: 'Przykładowy', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' }, dostawa: {},
             metoda_wysylki: 'demo', kwota_pobrania: null,
             status_woo: 'processing', oplacone_at: null,
             chce_fakture: 1, nip: null, kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00',
@@ -206,7 +206,7 @@ describe('PRZ-093.10 Ustawienia → inFakt', () => {
   it('inFakt w pliku .env wygrywa: ekran tylko informuje, zapis = 409 i niczego nie rusza, klient z pliku', async () => {
     const { app, admin, db, podglad } = panel({ env: { INFAKT_API_KEY: KLUCZ_PLIKU } });
     const r = await get(app, ADRES, admin);
-    expect(r.body).toContain('w pliku konfiguracji');
+    expect(r.body).toContain('na serwerze');
     expect(formularz(r.body)).toBe('');
     expect(r.body.includes(KLUCZ_PLIKU), 'klucz z pliku na ekranie').toBe(false);
     const zapis = await post(app, ADRES, admin, { apiKey: KLUCZ });

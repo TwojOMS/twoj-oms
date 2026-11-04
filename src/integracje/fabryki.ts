@@ -1,4 +1,5 @@
 import type { KanalSprzedazy, Kurier } from '../core/kontrakty.ts';
+import type { KluczKurieraNadania } from '../domena/moduly-kurierow.ts';
 import { createWooAdapter as woo } from '../oms/woo/adapter.js';
 import { createAllegroAdapter as allegro } from '../oms/allegro/adapter.js';
 import { createDpdClient as dpd } from '../oms/kurierzy/dpd.js';
@@ -22,3 +23,10 @@ export function createInpostClient(o: Parameters<typeof inpost>[0]) {
 export function createAllegroWzaClient(o: Parameters<typeof wza>[0]) {
   return wza(o) satisfies Kurier;
 }
+
+// PRZ-135 (D2): fabryka dla każdego kuriera z metodami w rejestrze — brak wpisu nowego kuriera = błąd tsc.
+export const FABRYKI_KURIEROW = {
+  dpd: createDpdClient,
+  inpost: createInpostClient,
+  allegro_wza: createAllegroWzaClient,
+} satisfies { [K in KluczKurieraNadania]: (o: never) => Kurier };

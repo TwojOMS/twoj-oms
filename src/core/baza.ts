@@ -1,5 +1,6 @@
 import type { DatabaseSync as BazaSqlite } from 'node:sqlite';
 import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { ModulOms } from './kontrakty.ts';
@@ -24,6 +25,10 @@ export function wykonajMigracje(db: BazaSqlite, moduly: readonly ModulOms[], ter
   const byla = db.prepare('SELECT 1 FROM migracje WHERE modul = ? AND numer = ?');
   const zapisz = db.prepare('INSERT INTO migracje (modul, numer, nazwa, zastosowana_at) VALUES (?, ?, ?, ?)');
   const wynik: WynikMigracji[] = [];
+  // PRZ-130: odcisk „po” udanej migracji jest odciskiem „przed” następnej — w tym połączeniu zmienia się między nimi
+  // tylko tabela migracje, której odcisk nie obejmuje. Liczony dwa razy zajmował połowę budowy bazy w każdym teście.
+  // Inny proces może zmienić schemat między COMMIT a BEGIN IMMEDIATE — wtedy schema_version jest inny i liczymy od nowa.
+  let poPoprzedniej = null as OdciskMigracji | null;
   for (const m of moduly) {
     for (const mig of [...m.migracje].sort((a, b) => a.numer - b.numer)) {
       if (byla.get(m.nazwa, mig.numer)) continue;
@@ -32,8 +37,9 @@ export function wykonajMigracje(db: BazaSqlite, moduly: readonly ModulOms[], ter
       try {
         const kontroluj = !(m.nazwa === 'rdzen' && mig.numer === 1);
         if (!kontroluj && kolumnyBazy(db).size) tryb = 'oznaczona';
-        const przed = kontroluj ? schematBazy(db) : [];
-        const kolumnyPrzed = kontroluj ? kolumnyBazy(db) : new Map<string, Kolumna[]>();
+        const znany = poPoprzedniej && poPoprzedniej.wersja === wersjaSchematu(db) ? poPoprzedniej : null;
+        const przed = kontroluj ? znany?.schemat ?? schematBazy(db) : [];
+        const kolumnyPrzed = kontroluj ? znany?.kolumny ?? kolumnyBazy(db) : new Map<string, Kolumna[]>();
         const exec = db.exec;
         const prepare = db.prepare;
         const sprawdz = (sql: string) => {
@@ -45,19 +51,23 @@ export function wykonajMigracje(db: BazaSqlite, moduly: readonly ModulOms[], ter
         }
         try { mig.wykonaj(db); }
         finally { db.exec = exec; db.prepare = prepare; }
+        let poTej: OdciskMigracji | null = null;
         if (kontroluj) {
-          const po = new Set(schematBazy(db));
+          const schematPo = schematBazy(db);
+          const kolumnyPo = kolumnyBazy(db);
+          const po = new Set(schematPo);
           const usuniete = przed.filter((wpis) => !po.has(wpis));
           const wyzwalacze = db.prepare(`SELECT name, tbl_name, 'main' AS schemat FROM sqlite_master WHERE type = 'trigger'
             UNION ALL SELECT name, tbl_name, 'temp' AS schemat FROM sqlite_temp_master WHERE type = 'trigger'`).all() as { name: string; tbl_name: string; schemat: string }[];
-          const noweOgraniczenia = [...po].filter((wpis) => !przed.includes(wpis) && (
+          const bylo = new Set(przed);
+          const noweOgraniczenia = [...po].filter((wpis) => !bylo.has(wpis) && (
             [...kolumnyPrzed.keys()].some((t) => wpis.startsWith(`${t} CHECK `) || wpis.startsWith(`${t} FK `)
               || (wpis.startsWith(`${t} indeks `) && wpis.includes(' u=1 ')))
             || wyzwalacze.some((w) => (w.tbl_name === 'migracje' || kolumnyPrzed.has(w.tbl_name))
               && wpis.startsWith(`${w.schemat === 'temp' ? 'temp ' : ''}trigger ${w.name} `))
           ));
           const bezDomyslnej: string[] = [];
-          for (const [tabela, kolumny] of kolumnyBazy(db)) {
+          for (const [tabela, kolumny] of kolumnyPo) {
             const stare = kolumnyPrzed.get(tabela);
             if (!stare) continue;
             for (const k of kolumny) {
@@ -69,9 +79,11 @@ export function wykonajMigracje(db: BazaSqlite, moduly: readonly ModulOms[], ter
           if (usuniete.length || bezDomyslnej.length || noweOgraniczenia.length) {
             throw new Error(`Migracja nieaddytywna. Usunięte lub zmienione: ${usuniete.join('; ') || '—'}; NOT NULL bez DEFAULT: ${bezDomyslnej.join('; ') || '—'}; nowe ograniczenia: ${noweOgraniczenia.join('; ') || '—'}`);
           }
+          poTej = { schemat: schematPo, kolumny: kolumnyPo, wersja: wersjaSchematu(db) };
         }
         zapisz.run(m.nazwa, mig.numer, mig.nazwa, teraz().toISOString());
         db.exec('COMMIT');
+        poPoprzedniej = poTej;
       } catch (e) {
         if (db.isTransaction) db.exec('ROLLBACK');
         throw new Error(`Migracja ${m.nazwa}/${mig.numer} „${mig.nazwa}" nie powiodła się: ${(e as Error).message}`);
@@ -85,10 +97,14 @@ export function wykonajMigracje(db: BazaSqlite, moduly: readonly ModulOms[], ter
 type Kolumna = { name: string; type: string; notnull: number; dflt_value: string | null; pk: number; hidden: number };
 type Indeks = { name: string; unique: number; origin: string; partial: number };
 type KolumnaIndeksu = { seqno: number; name: string | null; desc: number; coll: string; key: number };
-type KluczObcy = { id: number; seq: number; table: string; from: string; to: string | null; on_update: string; on_delete: string; match: string };
+type OdciskMigracji = { schemat: string[]; kolumny: Map<string, Kolumna[]>; wersja: string };
+type KluczObcy ={ id: number; seq: number; table: string; from: string; to: string | null; on_update: string; on_delete: string; match: string };
 type TokenSql = { slowo: string; kanon: string; pozycja: number };
 
 const cytuj = (nazwa: string): string => `"${nazwa.replaceAll('"', '""')}"`;
+/** Licznik zmian schematu main i TEMP — SQLite podbija go przy każdym DDL, także z innego połączenia. */
+const wersjaSchematu = (db: BazaSqlite): string => ['main', 'temp']
+  .map((s) => (db.prepare(`PRAGMA ${s}.schema_version`).get() as { schema_version: number }).schema_version).join('/');
 const TOKEN_SQL = /--[^\n]*|\/\*[\s\S]*?\*\/|'(?:''|[^'])*'|"(?:""|[^"])*"|`(?:``|[^`])*`|\[[^\]]*\]|[a-z_][a-z_0-9$]*|(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?|[^\s]/gi;
 
 function tokenySql(sql: string): TokenSql[] {
@@ -185,14 +201,61 @@ function deklaracjeKolumn(tokeny: TokenSql[]): Map<string, TokenSql[]> {
   return wynik;
 }
 
+// PRZ-131: oba odciski są czystą funkcją schematu, a schemat SQLite to tekst CREATE obiektów w sqlite_master
+// i sqlite_temp_master (z niego biorą się table_xinfo, klucze obce, indeksy i opcje tabel). Pamiętamy je po skrócie tego
+// tekstu: testy budują tę samą bazę tysiące razy, a odcisk był ~połową czasu budowy. Wołający dostają kopie.
+// W kluczu jest też schema_version (recenzja): tekst podmieniony przez writable_schema nie zmienia schematu wczytanego
+// w połączeniu, który czytają PRAGMA-y odcisku, ale każdy DDL podbija licznik — taki rozjazd nie trafi w pamięć.
+const ODCISKOW_W_PAMIECI = 32;
+const odciski = new Map<string, { schemat?: string[]; kolumny?: Map<string, Kolumna[]> }>();
+
+/** Klucz i odcisk z jednego stanu bazy: poza transakcją wołającego — we własnej transakcji odczytu (inny proces
+ *  z DDL między zapytaniami utrwaliłby w pamięci odcisk innego schematu pod tym kluczem). */
+function wSpojnymOdczycie<T>(db: BazaSqlite, odczyt: () => T): T {
+  if (db.isTransaction) return odczyt();
+  db.exec('BEGIN');
+  try { return odczyt(); }
+  finally { db.exec('COMMIT'); }
+}
+
+function wpisOdcisku(db: BazaSqlite) {
+  const obiekty = db.prepare(`SELECT 'main' AS s, type, name, tbl_name, sql FROM sqlite_master
+    UNION ALL SELECT 'temp', type, name, tbl_name, sql FROM sqlite_temp_master`).all() as Record<string, string | null>[];
+  const skrot = createHash('sha256').update(`${wersjaSchematu(db)}\u0001`);
+  for (const o of obiekty) skrot.update(`${o.s}\0${o.type}\0${o.name}\0${o.tbl_name}\0${o.sql ?? ''}\u0001`);
+  const klucz = skrot.digest('base64');
+  let wpis = odciski.get(klucz);
+  if (!wpis) {
+    wpis = {};
+    odciski.set(klucz, wpis);
+    if (odciski.size > ODCISKOW_W_PAMIECI) odciski.delete(odciski.keys().next().value!);
+  }
+  return wpis;
+}
+
 function kolumnyBazy(db: BazaSqlite): Map<string, Kolumna[]> {
+  const kolumny = wSpojnymOdczycie(db, () => {
+    const wpis = wpisOdcisku(db);
+    return (wpis.kolumny ??= policzKolumnyBazy(db));
+  });
+  return new Map([...kolumny].map(([tabela, k]) => [tabela, k.map((kolumna) => ({ ...kolumna }))]));
+}
+
+/** Strukturalny odcisk kolumn, ograniczeń, indeksów, opcji tabel i pozostałych obiektów, także wyzwalaczy TEMP. Bez danych i tabeli migracje. */
+export function schematBazy(db: BazaSqlite): string[] {
+  return [...wSpojnymOdczycie(db, () => {
+    const wpis = wpisOdcisku(db);
+    return (wpis.schemat ??= policzSchematBazy(db));
+  })];
+}
+
+function policzKolumnyBazy(db: BazaSqlite): Map<string, Kolumna[]> {
   const tabele = db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'
     AND name NOT LIKE 'sqlite_%' AND name <> 'migracje' ORDER BY name`).all() as { name: string }[];
   return new Map(tabele.map(({ name }) => [name, db.prepare(`PRAGMA table_xinfo(${cytuj(name)})`).all() as Kolumna[]]));
 }
 
-/** Strukturalny odcisk kolumn, ograniczeń, indeksów, opcji tabel i pozostałych obiektów, także wyzwalaczy TEMP. Bez danych i tabeli migracje. */
-export function schematBazy(db: BazaSqlite): string[] {
+function policzSchematBazy(db: BazaSqlite): string[] {
   const tabele = db.prepare(`SELECT name, sql FROM sqlite_master WHERE type = 'table'
     AND name NOT LIKE 'sqlite_%' AND name <> 'migracje' ORDER BY name`).all() as { name: string; sql: string }[];
   const opcje = db.prepare('PRAGMA table_list').all() as { schema: string; name: string; wr: number; strict: number }[];

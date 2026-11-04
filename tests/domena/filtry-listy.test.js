@@ -157,7 +157,7 @@ describe('pasujeDoFiltrow', () => {
 });
 
 describe('filtr kanału sprzedaży', () => {
-  const zamKanal = (nad = {}) => zam({ sklep: 'szkicownia', indywidualne: 0, ...nad });
+  const zamKanal = (nad = {}) => zam({ sklep: 'swietlik', indywidualne: 0, ...nad });
 
   it('czyta kanał z adresu', () => {
     expect(parsujFiltry({ kanal: 'pro' }, definicjeKanalowHistoryczne).kanal).toBe('pro');
@@ -169,7 +169,7 @@ describe('filtr kanału sprzedaży', () => {
 
   it('zawęża do wskazanego sklepu', () => {
     expect(pasujeDoFiltrow(zamKanal({ sklep: 'pro' }), { kanal: 'pro' })).toBe(true);
-    expect(pasujeDoFiltrow(zamKanal({ sklep: 'szkicownia' }), { kanal: 'pro' })).toBe(false);
+    expect(pasujeDoFiltrow(zamKanal({ sklep: 'swietlik' }), { kanal: 'pro' })).toBe(false);
   });
 
   it('„indywidualne" zawęża do znacznika, nie do sklepu', () => {
@@ -177,11 +177,11 @@ describe('filtr kanału sprzedaży', () => {
     expect(pasujeDoFiltrow(zamKanal({ indywidualne: 0 }), { kanal: 'indywidualne' })).toBe(false);
   });
 
-  // ⚠️ TEST, KTORY MUSI GRYZC. Zamowienie indywidualne JEST zamowieniem szkicownia.pl —
-  // stamtad przyszlo i tam ma numer. Wykluczenie go z ?kanal=szkicownia znaczyloby, ze dwa
+  // ⚠️ TEST, KTORY MUSI GRYZC. Zamowienie indywidualne JEST zamowieniem swietlik.example.test —
+  // stamtad przyszlo i tam ma numer. Wykluczenie go z ?kanal=swietlik znaczyloby, ze dwa
   // filtry trzeba zsumowac, zeby zobaczyc wszystko z jednego sklepu.
-  it('„szkicownia" obejmuje TAKŻE zamówienia indywidualne', () => {
-    expect(pasujeDoFiltrow(zamKanal({ indywidualne: 1 }), { kanal: 'szkicownia' })).toBe(true);
+  it('„swietlik" obejmuje TAKŻE zamówienia indywidualne', () => {
+    expect(pasujeDoFiltrow(zamKanal({ indywidualne: 1 }), { kanal: 'swietlik' })).toBe(true);
   });
 
   it('kanał liczy się do „czy są jakieś filtry" i jedzie w adresie', () => {
@@ -194,20 +194,20 @@ describe('filtr kanału sprzedaży', () => {
   // moglaby sie w ogole znalezc.
   it('pozycje filtra to zamknięta lista kanałów, razem z „indywidualne" i Allegro', () => {
     expect(kanalyDoFiltra(definicjeKanalowHistoryczne).map((k) => k.klucz)).toEqual([
-      'pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka', 'reczne', 'indywidualne',
+      'pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2', 'reczne', 'indywidualne',
     ]);
   });
 
   // ⚠️ Luka znaleziona przy Zadaniu 8 (raport .superpowers/sdd/allegro/zadanie-8-raport.md):
   // kolumna listy nazywala kanaly Allegro poprawnie przez adresKanalu, ale filtr (pole
   // wyboru nad tabela i `?kanal=` w adresie) je odrzucal, bo `KANALY_DO_FILTRA` byla
-  // zamknieta lista bez tych dwoch kluczy. Test dowodzi, ze `?kanal=allegro_szkicownia`
+  // zamknieta lista bez tych dwoch kluczy. Test dowodzi, ze `?kanal=allegro_swietlik`
   // JEST przyjmowany i faktycznie zaweza liste — nie jest cicho ignorowany.
   it('kanały Allegro są przyjmowane przez filtr i zawężają listę', () => {
-    expect(parsujFiltry({ kanal: 'allegro_szkicownia' }, definicjeKanalowHistoryczne).kanal).toBe('allegro_szkicownia');
-    expect(parsujFiltry({ kanal: 'allegro_amarka' }, definicjeKanalowHistoryczne).kanal).toBe('allegro_amarka');
-    expect(pasujeDoFiltrow(zamKanal({ sklep: 'allegro_szkicownia' }), { kanal: 'allegro_szkicownia' })).toBe(true);
-    expect(pasujeDoFiltrow(zamKanal({ sklep: 'allegro_amarka' }), { kanal: 'allegro_szkicownia' })).toBe(false);
+    expect(parsujFiltry({ kanal: 'allegro_swietlik' }, definicjeKanalowHistoryczne).kanal).toBe('allegro_swietlik');
+    expect(parsujFiltry({ kanal: 'allegro_polcien2' }, definicjeKanalowHistoryczne).kanal).toBe('allegro_polcien2');
+    expect(pasujeDoFiltrow(zamKanal({ sklep: 'allegro_swietlik' }), { kanal: 'allegro_swietlik' })).toBe(true);
+    expect(pasujeDoFiltrow(zamKanal({ sklep: 'allegro_polcien2' }), { kanal: 'allegro_swietlik' })).toBe(false);
   });
 
   // ⚠️ Etykiety sklada `adresKanalu` — TA SAMA funkcja, ktora opisuje kanal w kolumnie
@@ -215,9 +215,9 @@ describe('filtr kanału sprzedaży', () => {
   // i pole wyboru nazywaloby to samo inaczej niz wiersz tabeli.
   it('etykiety pozycji bierze z adresKanalu, nie z własnej mapy', () => {
     expect(kanalyDoFiltra(definicjeKanalowHistoryczne)).toEqual(
-      ['pro', 'szkicownia', 'allegro_szkicownia', 'allegro_amarka', 'reczne', 'indywidualne'].map((k) => ({ klucz: k, etykieta: adresKanalu(k, definicjeKanalowHistoryczne) })),
+      ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2', 'reczne', 'indywidualne'].map((k) => ({ klucz: k, etykieta: adresKanalu(k, definicjeKanalowHistoryczne) })),
     );
-    expect(kanalyDoFiltra(definicjeKanalowHistoryczne)[0]).toEqual({ klucz: 'pro', etykieta: 'pro.szkicownia.pl' });
+    expect(kanalyDoFiltra(definicjeKanalowHistoryczne)[0]).toEqual({ klucz: 'pro', etykieta: 'pro.swietlik.example.test' });
   });
 });
 

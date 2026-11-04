@@ -1,0 +1,8 @@
+{
+  "invoice_task_reference_number": "REF-PRZ147-ODMOWA",
+  "processing_code": 422,
+  "invoice_errors": {
+    "client_id": ["Proszę wybrać klienta."],
+    "correction_reason": ["Proszę podać powód korekty."]
+  }
+}

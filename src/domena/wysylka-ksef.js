@@ -191,12 +191,14 @@ const POWROT_NA_KARTE = /^\/zamowienia\/[1-9]\d{0,9}$/;
  * PRZ-102.23: dokąd prowadzi „Wróć”/„Anuluj” na ekranach podglądu i wyniku wysyłki do KSeF. `powrot` jedzie
  * dalej w formularzu zatwierdzenia tylko wtedy, gdy przeszedł białą listę (inaczej `null`).
  */
-export function powrotWysylkiKsef(powrot, { miesiac, pole } = {}) {
+export function powrotWysylkiKsef(powrot, { miesiac, pole, typ, platnosc } = {}) {
   if (typeof powrot === 'string' && POWROT_NA_KARTE.test(powrot)) {
     return { adres: `${powrot}#faktura`, etykieta: 'Wróć do zamówienia', powrot };
   }
+  const filtrTyp = ['vat', 'korekta'].includes(typ) ? `&typ=${typ}` : '';
+  const filtrPlatnosc = ['zaplacona', 'niezaplacona'].includes(platnosc) ? `&platnosc=${platnosc}` : '';
   return {
-    adres: `/faktury?miesiac=${encodeURIComponent(miesiac ?? '')}&pole=${encodeURIComponent(pole ?? '')}`,
+    adres: `/faktury?miesiac=${encodeURIComponent(miesiac ?? '')}&pole=${encodeURIComponent(pole ?? '')}${filtrTyp}${filtrPlatnosc}`,
     etykieta: 'Wróć do listy faktur',
     powrot: null,
   };

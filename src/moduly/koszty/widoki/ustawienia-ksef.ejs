@@ -1,5 +1,5 @@
-<h1>KSeF — faktury kosztowe</h1>
-<p><a href="/ustawienia/integracje">← Integracje</a></p>
+<h1>KSeF</h1>
+<p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (test) { %>
@@ -9,16 +9,17 @@
   <div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong></p><ul><% bledy.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
 <% } %>
 <% if (modulWylaczony) { %>
-  <div class="pas-uprzedzenie" id="ksef-modul"><p>Moduł Koszty jest wyłączony (<a href="/ustawienia/moduly">Ustawienia → Moduły</a>) — panel nie pobiera faktur kosztowych, nawet z zapisanym tokenem.</p></div>
+  <div class="pas-uprzedzenie" id="ksef-modul"><p>Moduł Koszty jest wyłączony (<a href="/ustawienia/moduly">Ustawienia → Moduły</a>) — OMS nie pobiera faktur kosztowych, nawet z zapisanym tokenem.</p></div>
 <% } %>
 
 <% if (zEnv) { %>
 <section class="ust-sekcja" id="ksef-stan">
-  <h2>Podłączony w pliku konfiguracji</h2>
-  <p>Token KSeF jest ustawiony w pliku konfiguracji serwera (<code>oms.env</code>, zmienna <code>KSEF_TOKEN</code>). Ten ekran go nie zmienia — token poprawisz w tym pliku.</p>
+  <h2>Ustawione przez administratora serwera</h2>
+  <p>Token KSeF jest ustawiony na serwerze. Ten ekran go nie zmienia — token poprawi administrator serwera.</p>
+  <details class="ust-pomoc"><summary>Dla administratora serwera</summary><p>Plik <code>oms.env</code>: zmienna <code>KSEF_TOKEN</code>.</p></details>
   <% if (stan) { %>
     <form method="post" action="/ustawienia/integracje/ksef/odlacz">
-      <p>W OMS-ie został też token zapisany wcześniej na tym ekranie. Plik konfiguracji ma pierwszeństwo, więc nie jest używany.</p>
+      <p>W OMS-ie został też token zapisany wcześniej na tym ekranie. Ustawienia na serwerze mają pierwszeństwo, więc nie jest używany.</p>
       <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń zapisany token</button></div>
     </form>
   <% } %>
@@ -27,18 +28,18 @@
 <section class="ust-sekcja" id="ksef-stan">
   <h2>Stan połączenia</h2>
   <% if (stan && !nipSprzedawcy) { %>
-    <%# PRZ-108.10: NIP firmy może być wpisany w panelu — bez niego token nie ma kontekstu firmy. %>
+    <%# PRZ-108.10: NIP firmy może być wpisany w OMS-ie — bez niego token nie ma kontekstu firmy. %>
     <p class="ust-stan ust-stan-blad"><strong>Nieużywany</strong></p>
-    <p>Panel nie zna NIP-u firmy, więc nie loguje się tym tokenem do KSeF. Wpisz NIP w <a href="/ustawienia/firma">Ustawienia → Firma</a>.</p>
+    <p>OMS nie zna NIP-u firmy, więc nie loguje się tym tokenem do KSeF. Wpisz NIP w <a href="/ustawienia/firma">Ustawienia → Firma</a>.</p>
   <% } else if (stan && !nipNiezgodny) { %>
     <p class="ust-stan ust-stan-ok"><strong>Podłączony</strong></p>
     <p>Token zapisał <%= stan.kontoLogin ?? '—' %>, <%= fmtDataCzas(stan.zmienionoAt) %>. Czuwacz kosztów pobiera nim co noc (o 3) faktury, na których firma jest nabywcą; przycisk „Odśwież teraz” na ekranie <a href="/koszty">Koszty</a> pobiera od razu.</p>
   <% } else if (stan) { %>
     <p class="ust-stan ust-stan-blad"><strong>Nieużywany</strong></p>
-    <p>NIP zapisany przy tokenie (<%= nipZapisu %>) nie zgadza się już z NIP-em firmy (Ustawienia → Firma albo plik konfiguracji) — panel nie loguje się tym tokenem. Zapisz formularz z pustym polem NIP albo usuń token.</p>
+    <p>NIP zapisany przy tokenie (<%= nipZapisu %>) nie zgadza się już z NIP-em firmy (Ustawienia → Firma albo ustawienia na serwerze) — OMS nie loguje się tym tokenem. Zapisz formularz z pustym polem NIP albo usuń token.</p>
   <% } else { %>
     <p class="ust-stan"><strong>Niepodłączony</strong></p>
-    <p>Bez tokenu panel nie pobiera faktur kosztowych z KSeF. Koszty dopisane ręcznie na ekranie Koszty działają bez niego.</p>
+    <p>Bez tokenu OMS nie pobiera faktur kosztowych z KSeF. Koszty dopisane ręcznie na ekranie Koszty działają bez niego.</p>
   <% } %>
 </section>
 <% if (!stan) { %>
@@ -50,7 +51,7 @@
 
 <section class="ust-sekcja">
   <h2>Token</h2>
-  <p id="ksef-uprawnienie"><strong><%= wbudowany ? String(zdanie).replace(/\.$/, "") : zdanie %></strong><% if (wbudowany) { %> — <a href="/ustawienia/integracje/program-fakturowy/ksef">Wysyłka do KSeF</a>.<% } %></p>
+  <p id="ksef-uprawnienie" class="ust-wstep"><strong><%= wbudowany ? String(zdanie).replace(/\.$/, "") : zdanie %></strong><% if (wbudowany) { %> — <a href="/ustawienia/integracje/program-fakturowy/ksef">Wysyłka do KSeF</a>.<% } %></p>
   <form id="ksef-formularz" class="ust-formularz" method="post" action="/ustawienia/integracje/ksef">
     <label for="ksef-token">Token KSeF <span class="ust-wymagane">*</span></label>
     <div><input id="ksef-token" type="password" name="token" value="" maxlength="1000" autocomplete="new-password"<% if (stan?.zapisaneSekrety?.token) { %> placeholder="zapisany — wpisz nowy, żeby zmienić"<% } else { %> required<% } %>>
@@ -58,7 +59,7 @@
 
     <label for="ksef-nip">NIP firmy</label>
     <div><input id="ksef-nip" type="text" name="nip" value="<%= nipZapisu %>" maxlength="20" inputmode="numeric" autocomplete="off" placeholder="<%= nipSprzedawcy ?? '' %>">
-      <p class="ust-pomoc">Zostaw puste — OMS użyje NIP-u firmy (Ustawienia → Firma albo plik konfiguracji). Jeśli wpiszesz, musi być ten sam.</p></div>
+      <p class="ust-pomoc">Zostaw puste — OMS użyje NIP-u firmy (Ustawienia → Firma albo ustawienia na serwerze). Jeśli wpiszesz, musi być ten sam.</p></div>
 
     <p class="ust-pelna ust-pomoc">Pola oznaczone <span class="ust-wymagane">*</span> są wymagane.</p>
     <div class="ust-pelna ust-akcje">
@@ -79,7 +80,7 @@
     <% } %>
     <div class="ust-akcje"><button class="ust-przycisk" type="submit">Sprawdź połączenie</button></div>
   </form>
-  <form method="post" action="/ustawienia/integracje/ksef/odlacz" onsubmit="return confirm('Usunąć token KSeF? Panel przestanie pobierać faktury kosztowe.')" style="margin-top:1rem">
+  <form method="post" action="/ustawienia/integracje/ksef/odlacz" onsubmit="return confirm('Usunąć token KSeF? OMS przestanie pobierać faktury kosztowe.')" style="margin-top:1rem">
     <p>Usunięcie kasuje token z OMS-u. Koszty pobrane wcześniej i dopisane ręcznie zostają.</p>
     <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń token</button></div>
   </form>

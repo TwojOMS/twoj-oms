@@ -251,6 +251,8 @@ export function wygenerujDaneDemo(db, { ziarno = 72, dzis, env = ENV_DEMO }) {
     const dostawa = osobaZ ? { first_name: osobaZ.imie, last_name: osobaZ.nazwisko, address_1: osobaZ.ulica,
       city: osobaZ.miasto, postcode: osobaZ.kod, country: 'PL' }
       : { first_name: '', last_name: '', company: firma.nazwa, address_1: firma.ulica, city: firma.miasto, postcode: firma.kod, country: firma.kraj };
+    // PRZ-126.PT4: adres nabywcy = adres z dostawy (karta i faktura się zgadzają); bez niego faktura nie ma pełnych danych.
+    Object.assign(klient, { address_1: dostawa.address_1, postcode: dostawa.postcode, city: dostawa.city, country: dostawa.country });
     const metoda = z.wysylka, nazwaMetody = NAZWY_WYSYLKI[metoda], kosztDostawyGr = KOSZT_WYSYLKI_GR[metoda];
     const pobranie = ['cod', 'allegro_pobranie'].includes(z.platnosc);
     const poz = pozycje(z.pozycje, { rabat: firma && !ue ? firma.rabat_procent : 0, wdt: ue });
@@ -521,6 +523,8 @@ function pomocnicyUzupelnien(db, { dzis, koniecDnia, numery, kolejnyList, liczni
       : { first_name: '', last_name: '', company: firma.nazwa, email: `zamowienia.d${++nrMaila}@example.invalid`, phone: '' };
     const dostawa = osobaZ ? { first_name: osobaZ.imie, last_name: osobaZ.nazwisko, address_1: osobaZ.ulica, city: osobaZ.miasto, postcode: osobaZ.kod, country: 'PL' }
       : { first_name: '', last_name: '', company: firma.nazwa, address_1: firma.ulica, city: firma.miasto, postcode: firma.kod, country: 'PL' };
+    // PRZ-126.PT4: adres nabywcy = adres z dostawy (karta i faktura się zgadzają); bez niego faktura nie ma pełnych danych.
+    Object.assign(klient, { address_1: dostawa.address_1, postcode: dostawa.postcode, city: dostawa.city, country: dostawa.country });
     const poz = pozycje(koszyk, { rabat: firma?.rabat_procent ?? 0 });
     const kosztGr = KOSZT_WYSYLKI_GR[wysylka];
     const sumaGr = poz.reduce((s, x) => s + Math.round(Number(x.brutto_linii) * 100), 0) + kosztGr;

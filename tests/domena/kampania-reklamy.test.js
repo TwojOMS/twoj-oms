@@ -11,12 +11,12 @@ import {
 
 const KAMPANIA = {
   id: 1, kod: 'wrzesien30', nazwa: 'Nowy początek. Bez remontu.',
-  od_dnia: '2026-08-24', do_dnia: '2026-09-07', sklep: 'szkicownia', cel_uzyc: 10,
+  od_dnia: '2026-08-24', do_dnia: '2026-09-07', sklep: 'swietlik', cel_uzyc: 10,
 };
 
 // Ksztalt zLinii, jak w kampania-domena.test.js.
 const zam = (nad = {}) => ({
-  id: 1, numer: '28225', sklep: 'szkicownia', kwota_brutto: '64.79',
+  id: 1, numer: '28225', sklep: 'swietlik', kwota_brutto: '64.79',
   utworzone_at: '2026-08-27T10:54:27Z', anulowane: 0, oplacone_at: '2026-08-27T10:55:11Z',
   kupony_json: null,
   atrybucja_json: '{"typ":"utm","zrodlo":"facebook","medium":"cpc","kampania":"wrzesien30"}',
@@ -203,7 +203,7 @@ describe('stanKampanii — użycia po końcu okna', () => {
     expect(stan.uzycPoOknie).toBe(0);
   });
 
-  // ⚠️ Kod uzyty na INNYM sklepie po 7.09 to nie „niewygaszony kupon szkicownia" — alert
+  // ⚠️ Kod uzyty na INNYM sklepie po 7.09 to nie „niewygaszony kupon swietlik" — alert
   // o wygasnieciu ma bic wylacznie na wlasnym sklepie kampanii.
   it('inny sklep po końcu okna też nie alarmuje o kuponie', () => {
     const stan = stanKampanii({

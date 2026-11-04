@@ -4,6 +4,7 @@ import { grosze, zl } from './kwoty.js';
 // przestalaby rozpoznawac wlasna pozycje dostawy — po cichu. Eksportowana STAMTAD.
 import { NAZWA_DOSTAWY } from './pozycje-faktury.js';
 import { NAZWA_ZAPASOWA } from './nazwa-programu.js';
+import { powodOdmowyKorektyBezDostawy } from './zwrot.js';
 
 /**
  * Pary „stan przed / stan po" dla `POST /v3/async/corrective_invoices.json`.
@@ -94,12 +95,9 @@ export function paryKorekty(faktura, zwrot, { nazwaProgramu = NAZWA_ZAPASOWA } =
   // kwote dostawy zawsze, wiec panel i dokument u organu rozjezdzaly sie po cichu, dokladnie
   // o te 19 zl. Faktura bez linii dostawy zdarza sie normalnie: darmowa wysylka, dostawa
   // wliczona w cene, dokument poprawiony recznie w inFakcie.
-  if (dostawaGr && !nazwyFaktury.has(NAZWA_DOSTAWY)) {
-    return odmowa(
-      `Zwrot obejmuje ${zl(dostawaGr)} zł dostawy, a faktura ${faktura?.number ?? ''} nie ma pozycji`
-      + ` „${NAZWA_DOSTAWY}" — korekty nie da się złożyć. Wystaw ją ręcznie w ${wProgramie}.`,
-    );
-  }
+  // PRZ-148.03: reguła i zdanie w domenie zwrotu — te same czyta karta zamówienia i ekran zwrotu.
+  const bezDostawy = powodOdmowyKorektyBezDostawy(zwrot, faktura, { nazwa: nazwaProgramu });
+  if (bezDostawy) return odmowa(bezDostawy);
 
   // ⚠️⚠️ DWA ZRODLA DLA JEDNEJ LINII — ODMOWA, A NIE CICHE NADPISANIE (recenzja kontrolna
   // 2026-08-15). Zwracana POZYCJA moze nazywac sie dokladnie „Dostawa" (bo tak nazywa sie

@@ -4,7 +4,7 @@ import {
 } from '../../src/domena/adres-odbiorcy.js';
 
 const zamowienie = (nad = {}) => ({
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: '', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
+  dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: '', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
   klient: { phone: '+48500600700', email: 'j@k.pl' },
   ...nad,
 });
@@ -33,8 +33,8 @@ describe('adresOdbiorcy', () => {
   it('przenosi ulicę, kod i miasto bez zmian', () => {
     const a = adresOdbiorcy(zamowienie());
     expect(a.ulica).toBe('Polna 1');
-    expect(a.kod).toBe('00-650');
-    expect(a.miasto).toBe('Pęki');
+    expect(a.kod).toBe('00-950');
+    expect(a.miasto).toBe('Warszawa');
   });
 
   it('telefon i e-mail pochodzą z bloku klient (billing), nie z dostawy', () => {
@@ -79,14 +79,14 @@ describe('adresOdbiorcy', () => {
   });
 });
 
-// Sklep na pro.szkicownia.pl rozbija adres na address_1 (ulica) i address_2 (numer budynku).
-// Zamowienia z briefu: 1267 (numer w address_1, address_2 puste), 1275 (address_1='Lipowa',
-// address_2='91' — panel gubil numer), 1276 (jak 1267). Panel MUSI sklejac oba pola w JEDNEJ
+// Sklep na pro.swietlik.example.test rozbija adres na address_1 (ulica) i address_2 (numer budynku).
+// Zamowienia z briefu: 1267 (numer w address_1, address_2 puste), 1275 (address_1='Papierowa',
+// address_2='24' — panel gubil numer), 1276 (jak 1267). Panel MUSI sklejac oba pola w JEDNEJ
 // funkcji, z ktorej korzysta karta, ekran nadania i klient DPD (patrz PRZEWODNIK 4.7).
 describe('adresOdbiorcy — sklejanie address_1 i address_2', () => {
-  it('zamówienie 1275: address_1="Lipowa" + address_2="91" → ulica "Lipowa 91"', () => {
-    const z = zamowienie({ dostawa: { ...zamowienie().dostawa, address_1: 'Lipowa', address_2: '91' } });
-    expect(adresOdbiorcy(z).ulica).toBe('Lipowa 91');
+  it('zamówienie 1275: address_1="Papierowa" + address_2="24" → ulica "Papierowa 24"', () => {
+    const z = zamowienie({ dostawa: { ...zamowienie().dostawa, address_1: 'Papierowa', address_2: '24' } });
+    expect(adresOdbiorcy(z).ulica).toBe('Papierowa 24');
   });
 
   it('zamówienie 1267/1276: numer już w address_1, address_2 puste → bez zmian, bez spacji na końcu', () => {
@@ -101,20 +101,20 @@ describe('adresOdbiorcy — sklejanie address_1 i address_2', () => {
   });
 
   it('adresZeSklepu (baza porównania i przywracania) też oddaje sklejoną ulicę', () => {
-    const z = zamowienie({ dostawa: { ...zamowienie().dostawa, address_1: 'Lipowa', address_2: '91' } });
-    expect(adresZeSklepu(z).ulica).toBe('Lipowa 91');
+    const z = zamowienie({ dostawa: { ...zamowienie().dostawa, address_1: 'Papierowa', address_2: '24' } });
+    expect(adresZeSklepu(z).ulica).toBe('Papierowa 24');
   });
 
   it('ręczna poprawka ulicy wygrywa nad sklejeniem ze sklepu', () => {
     const z = zamowienie({
-      dostawa: { ...zamowienie().dostawa, address_1: 'Lipowa', address_2: '91' },
+      dostawa: { ...zamowienie().dostawa, address_1: 'Papierowa', address_2: '24' },
       dostawa_reczna_json: JSON.stringify({ ulica: 'Inna 5' }),
     });
     expect(adresOdbiorcy(z).ulica).toBe('Inna 5');
   });
 
   it('adres z niepustym address_2, bez ręcznej poprawki, NIE jest oznaczony jako zmieniony ręcznie', () => {
-    const z = zamowienie({ dostawa: { ...zamowienie().dostawa, address_1: 'Lipowa', address_2: '91' } });
+    const z = zamowienie({ dostawa: { ...zamowienie().dostawa, address_1: 'Papierowa', address_2: '24' } });
     expect(polaReczneAdresu(z)).toEqual([]);
   });
 });

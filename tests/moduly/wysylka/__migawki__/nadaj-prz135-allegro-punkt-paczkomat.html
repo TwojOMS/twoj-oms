@@ -1,0 +1,355 @@
+<main class="kolumna-glowna">
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+
+
+
+
+
+
+
+
+<div class="glowa-ekranu">
+  <h1>Nadanie paczki nr 1</h1>
+  <span class="krok">zamówienie <a class="link-numer" title="PC-5101" href="/zamowienia/1">PC-5101</a></span>
+</div>
+
+
+
+
+
+
+
+
+
+  <p class="pasek-uwaga">
+    Nadanie do paczkomatu potrafi potrwać nawet ok. 2,5 minuty — InPost przyznaje numer listu
+    z opóźnieniem. NIE klikaj drugi raz i nie zamykaj strony: jeśli numer nie zdąży przyjść,
+    karta zamówienia pokaże „przesyłka tworzona u kuriera" i przycisk „Sprawdź ponownie".
+  </p>
+
+
+
+
+
+
+
+
+
+
+
+
+<form method="post" action="/zamowienia/1/nadaj">
+  <input type="hidden" name="powrot" value="/">
+  
+  
+  
+  
+  
+  <input type="hidden" name="kolejnosc" value="1">
+  
+
+  
+  
+  
+  
+  
+    <input type="hidden" name="kurier" value="inpost_paczkomat">
+  
+
+  <div class="nadanie-kolumny">
+
+    
+    <section class="panel">
+      <div class="panel-glowa">
+        <h2>Odbiorca</h2>
+      </div>
+      <div class="panel-cialo">
+
+        
+        
+        
+        
+        
+        
+        
+        
+        
+          <div class="paczkomat">
+            <div class="paczkomat-glowa">Paczkomat — miejsce odbioru</div>
+            <div class="paczkomat-cialo">
+              <label for="pole-punkt-odbioru">Kod paczkomatu</label>
+              <input id="pole-punkt-odbioru" name="punkt_odbioru" value="WAW01M">
+              
+              <p class="podpowiedz">Poprawka dotyczy tylko tej przesyłki — nie zapisuje się do zamówienia.</p>
+            </div>
+          </div>
+        
+
+        
+        
+        
+        
+        
+        
+        
+        
+        <div class="pola">
+          <div class="pola-para">
+            <label for="pole-nazwa">Imię i nazwisko <input id="pole-nazwa" name="nazwa" value="Ola Półcień"></label>
+            <label for="pole-company">Firma <input id="pole-company" name="company" value="Pracownia Półcień"></label>
+          </div>
+
+          
+          
+          
+          
+          
+          
+
+          <div class="pola-para">
+            <label for="pole-phone">Telefon <input id="pole-phone" name="phone" value="+48500100200"></label>
+            <label for="pole-email">E-mail <input id="pole-email" name="email" value="ola@polcien.example"></label>
+          </div>
+        </div>
+
+        
+        
+        
+        
+        
+        <input type="hidden" name="kraj" value="PL">
+
+        
+          <details class="adres-zwiniety">
+            <summary>Adres pocztowy z zamówienia (do paczkomatu nie jedzie)</summary>
+            <div class="pola">
+              <label for="pole-ulica">Ulica i numer
+                <input id="pole-ulica" name="ulica" value="Cienista 3">
+                
+              </label>
+              <div class="pola-para">
+                <label for="pole-kod">Kod pocztowy
+                  <input id="pole-kod" name="kod" value="00-950">
+                  
+                </label>
+                <label for="pole-miasto">Miasto
+                  <input id="pole-miasto" name="miasto" value="Warszawa">
+                  
+                </label>
+              </div>
+            </div>
+          </details>
+        
+
+        
+        
+        
+        
+        
+
+      </div>
+    </section>
+
+    
+    <section class="panel">
+      <div class="panel-glowa">
+        <h2>Szczegóły zamówienia</h2>
+      </div>
+      <div class="panel-cialo">
+
+        <div class="fakty">
+          <div><span class="k">Nr zamówienia</span><span class="w"><a class="link-numer" title="PC-5101" href="/zamowienia/1">PC-5101</a></span></div>
+          
+          
+          
+          
+          <div><span class="k">Metoda dostawy</span><span class="w">Allegro punkt / automat</span></div>
+          
+          
+          
+          
+            <div><span class="k">Nadajemy</span><span class="w">InPost Paczkomat — nasza umowa <a class="drobne" href="/zamowienia/1/nadaj">(zmień)</a></span></div>
+          
+        </div>
+
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+
+        
+        
+        
+        
+        
+        
+        
+        
+          <h3>Waga i gabaryt</h3>
+          <div class="pola">
+            <div class="rzad">
+              <label>Waga (kg) <input name="waga" value="1" inputmode="decimal"></label>
+            </div>
+            <div class="gabaryty">
+              
+                <label>
+                  <input type="radio" name="gabaryt" value="A" checked>
+                  Gabaryt A (8 × 38 × 64 cm)
+                </label>
+              
+                <label>
+                  <input type="radio" name="gabaryt" value="B" >
+                  Gabaryt B (19 × 38 × 64 cm)
+                </label>
+              
+                <label>
+                  <input type="radio" name="gabaryt" value="C" >
+                  Gabaryt C (41 × 38 × 64 cm)
+                </label>
+              
+            </div>
+          </div>
+        
+
+      </div>
+    </section>
+
+  </div>
+
+  
+  
+  
+  
+  
+  <section class="panel">
+    <div class="panel-glowa">
+      <h2>Zawartość paczki</h2>
+      <span class="dopisek">podgląd — edycja pozycji jest na karcie zamówienia</span>
+    </div>
+    <div class="panel-cialo">
+      <table class="tab-pozycje">
+        <thead>
+          <tr><th class="kol-mini"></th><th class="kol-ilosc">Ilość</th><th>Nazwa</th><th class="liczba">Cena netto</th><th class="liczba">Cena brutto</th><th class="liczba">Suma</th></tr>
+        </thead>
+        <tbody>
+          
+            
+            
+            
+            
+            
+            <tr>
+              <td class="kol-mini">
+                
+              </td>
+              <td class="kol-ilosc ilosc">1×</td>
+              <td>
+                
+                
+                
+                
+                
+                
+                
+                
+                  Wysyłka
+                
+                
+                
+                
+              </td>
+              <td class="liczba">— zł</td>
+              <td class="liczba">— zł</td>
+              <td class="liczba">0.00 zł</td>
+            </tr>
+          
+            
+            
+            
+            
+            
+            <tr class="wiersz-razem">
+              <td class="kol-mini">
+                
+              </td>
+              <td class="kol-ilosc ilosc"></td>
+              <td>
+                
+                
+                
+                
+                
+                
+                
+                
+                  Razem
+                
+                
+                
+                
+              </td>
+              <td class="liczba"></td>
+              <td class="liczba"></td>
+              <td class="liczba">0.00 zł</td>
+            </tr>
+          
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <div class="stopka-akcji">
+    <button type="submit" class="btn btn--glowny" name="zatwierdzenie" value="nadaj">Nadaj przesyłkę</button>
+    
+      <button type="submit" class="btn btn--drugi" name="zatwierdzenie" value="nadaj_i_drukuj">Nadaj i drukuj</button>
+    
+    <span class="rozpychacz"></span>
+    <a class="btn btn--cichy" href="/zamowienia/1">Anuluj</a>
+  </div>
+  
+  
+</form>
+
+        
+        
+      </main>

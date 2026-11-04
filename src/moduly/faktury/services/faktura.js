@@ -267,7 +267,7 @@ export function createFaktura({
       // sposob zaplaty nie jest data i nie wynika z wyboru operatora w formularzu, tylko
       // z FAKTU o zamowieniu — patrz domain/sposob-platnosci.js.
       w = await program.wystaw({
-        client_id: nabywca.client_id, services, ...daty, ...sposobPlatnosciFaktury(z),
+        client_id: nabywca.client_id, services, ...daty, ...sposobPlatnosciFaktury(z, { przyjmuje: program.opis?.sposobyPlatnosci }),
         // Pola WYLACZNIE dokumentu WDT (domain/wdt.js) — dla nabywcy krajowego oba
         // rozsypania sa puste i payload zostaje bajt w bajt taki, jaki byl.
         ...(wdt ? polaWdtInfakt(d.nip, { nipSprzedawcy: nipWlasny }) : {}),

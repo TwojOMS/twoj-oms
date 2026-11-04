@@ -12,7 +12,8 @@ import { linkDoSledzenia } from './tracking.js';
 import { chceFakture } from './dane-faktury.js';
 import { stanFaktury } from './faktura-stan.js';
 import { fmtDataCzas } from './format-daty.js';
-import { czyPobranie, czyKanalAllegro } from './wysylka.js';
+import { czyPobranie } from './wysylka.js';
+import { modulZamowienia } from './moduly-kanalow.ts';
 
 /**
  * Płatność. Pobranie WYGRYWA nad opłacone/nieopłacone: przy wysyłce za pobraniem brak
@@ -120,11 +121,11 @@ export function ikonaFaktury(z) {
  * przesyłki (`sprawyZamowienia`): tekst liczy DOMENA, widok go nie skleja.
  *
  * ⚠️ BRZMIENIE PO KANALE, NIE PO NAZWIE KOLUMNY — dokładnie jak na pasku karty
- * (domain/sprawy-karty.js) i tym samym predykatem (`czyKanalAllegro`). „Do sklepu" przy
+ * (domain/sprawy-karty.js). „Do sklepu" przy
  * zamówieniu z Allegro wysyłałoby operatora szukać usterki w WooCommerce, gdzie tego
  * zamówienia NIE MA.
  */
 export function odznakaSyncStatusu(z) {
   if (!z?.sync_woo_blad) return null;
-  return czyKanalAllegro(z) ? 'status nie dojechał do Allegro' : 'status nie dojechał do sklepu';
+  return `status nie dojechał do ${modulZamowienia(z).komunikaty.dopelniacz}`;
 }

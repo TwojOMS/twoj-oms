@@ -53,7 +53,7 @@ describe('czuwacz przesylek', () => {
   });
 
   it('paczka WzA z para przewoznika idzie do podwykonawcy DPD', async () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(4), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(4), {});
     nadana(db, id, 'allegro_wza', { numer: 'AD0XYZ', surowa: surowaWzaDpd });
     const pytania = [];
     const dpd = { statusPrzesylki: async (n) => { pytania.push(n); return { opis: 'Wydana do doręczenia', at: '2026-08-23T08:00:00.000' }; } };
@@ -71,7 +71,7 @@ describe('czuwacz przesylek', () => {
   // szesc dni. Trzy paczki wisialy w zakladce jako „bez ruchu", bedac DORECZONYMI.
   // Karta dziala, bo tam leci prawdziwy wiersz zamowienia — i to ukrylo usterke.
   it('paczka kanalu Allegro dostaje KANAL zamowienia, a nie atrape bez `sklep`', async () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(20), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(20), {});
     const pid = nadana(db, id, 'allegro', { numer: 'A005FK03X8' });
     db.prepare('UPDATE przesylki SET carrier_allegro = ? WHERE id = ?').run('ALLEGRO', pid);
 
@@ -85,7 +85,7 @@ describe('czuwacz przesylek', () => {
     const czuwacz = createCzuwaczPrzesylek({ db, kurierzy: { allegro }, teraz: TERAZ });
 
     const w = await czuwacz.przebieg();
-    expect(konteksty).toEqual([{ carrier: 'ALLEGRO', kanal: 'allegro_szkicownia' }]);
+    expect(konteksty).toEqual([{ carrier: 'ALLEGRO', kanal: 'allegro_swietlik' }]);
     expect(w).toMatchObject({ kandydatow: 1, sprawdzone: 1, bledy: 0 });
     const wiersz = db.prepare('SELECT status_kuriera, status_kuriera_kod FROM przesylki WHERE id = ?').get(pid);
     expect(wiersz.status_kuriera_kod).toBe('DELIVERED');

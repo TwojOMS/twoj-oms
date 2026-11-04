@@ -3,14 +3,14 @@ import { ocenKandydata, wspolneTerminy, podjazdPoTerminie, diagnozaTerminow } fr
 
 const paczka = {
   id: 7, kurier: 'allegro_wza', status: 'nadana', etykieta_zpl_sciezka: '/labels/7.zpl',
-  sklep: 'allegro_szkicownia', id_przesylki_kuriera: 'shipment-7', przejeta_at: null,
+  sklep: 'allegro_swietlik', id_przesylki_kuriera: 'shipment-7', przejeta_at: null,
 };
 const meta = { id: 'shipment-7', deliveryMethodId: 'method-1', pickupAvailable: true, transport: ['DPD'] };
 
 describe('kwalifikacja do podjazdu WzA', () => {
   it('dopuszcza tylko paczkę WzA z gotową etykietą i potwierdzonym ID zasobu', () => {
     expect(ocenKandydata({ przesylka: paczka, metaWza: meta, aktywneZlecenie: null })).toEqual({
-      wolno: true, powod: null, grupa: 'allegro_szkicownia|method-1',
+      wolno: true, powod: null, grupa: 'allegro_swietlik|method-1',
     });
     for (const zmiana of [
       { kurier: 'dpd' }, { etykieta_zpl_sciezka: null }, { przejeta_at: '2026-09-22T10:00:00Z' },

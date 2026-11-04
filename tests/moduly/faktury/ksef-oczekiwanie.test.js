@@ -22,7 +22,7 @@ function zamowienieZFaktura(db, {
   zamowienie = {}, faktura = {}, bezFaktury = false, wyslanaZPanelu = false,
 } = {}) {
   licznik += 1;
-  const sklep = zamowienie.sklep ?? 'allegro_szkicownia';
+  const sklep = zamowienie.sklep ?? 'allegro_swietlik';
   const id = zapiszZamowienie(db, sklep, {
     zrodlo_id: `${sklep}-${licznik}`,
     numer: String(2000 + licznik),
@@ -122,7 +122,7 @@ describe('czekaNaKsef — jedna definicja dla czuwacza i dla paska spraw', () =>
 
   it('sklep, „allegrowy" i kupujący bez prośby o fakturę nie czekają', () => {
     const db = openOmsDb(':memory:');
-    expect(czeka(db, zamowienieZFaktura(db, { zamowienie: { sklep: 'szkicownia' } }))).toBe(false);
+    expect(czeka(db, zamowienieZFaktura(db, { zamowienie: { sklep: 'swietlik' } }))).toBe(false);
     expect(czeka(db, zamowienieZFaktura(db, { zamowienie: { sklep: 'allegrowy' } }))).toBe(false);
     expect(czeka(db, zamowienieZFaktura(db, { zamowienie: { chce_fakture: 0 } }))).toBe(false);
     db.close();
@@ -139,7 +139,7 @@ describe('czekaNaKsef — jedna definicja dla czuwacza i dla paska spraw', () =>
   // do KSeF, faktura SKLEPOWA też czeka — na numer, po który nikt inny nie pójdzie.
   it('faktura sklepowa, której wysyłkę do KSeF zlecił PANEL — czeka', () => {
     const db = openOmsDb(':memory:');
-    const id = zamowienieZFaktura(db, { zamowienie: { sklep: 'szkicownia' }, wyslanaZPanelu: true });
+    const id = zamowienieZFaktura(db, { zamowienie: { sklep: 'swietlik' }, wyslanaZPanelu: true });
     expect(czeka(db, id)).toBe(true);
     db.close();
   });
@@ -148,7 +148,7 @@ describe('czekaNaKsef — jedna definicja dla czuwacza i dla paska spraw', () =>
   // NIGDY — bez tej granicy pytanie objęłoby całe archiwum sprzedaży, co godzinę, na zawsze.
   it('faktura sklepowa, której panel nie wysyłał, nie czeka', () => {
     const db = openOmsDb(':memory:');
-    const id = zamowienieZFaktura(db, { zamowienie: { sklep: 'szkicownia' } });
+    const id = zamowienieZFaktura(db, { zamowienie: { sklep: 'swietlik' } });
     expect(czeka(db, id)).toBe(false);
     db.close();
   });
@@ -166,7 +166,7 @@ describe('czekaNaKsef — jedna definicja dla czuwacza i dla paska spraw', () =>
   it('wysłana z panelu, ale mająca już numer KSeF — nie czeka', () => {
     const db = openOmsDb(':memory:');
     const id = zamowienieZFaktura(db, {
-      zamowienie: { sklep: 'szkicownia' }, faktura: { ksef_numer: 'KS-9' }, wyslanaZPanelu: true,
+      zamowienie: { sklep: 'swietlik' }, faktura: { ksef_numer: 'KS-9' }, wyslanaZPanelu: true,
     });
     expect(czeka(db, id)).toBe(false);
     db.close();
@@ -243,7 +243,7 @@ describe('PRZ-126.F03 — gałąź „zlecił panel" nie pyta o żądanie faktur
 // zapytał. Zestaw niżej obchodzi KAŻDĄ granicę definicji naraz.
 //
 // ⚠️ Rozpoznanie kanału rozstrzyga PREDYKAT (`czyKanalAllegro` wewnątrz `czyWierszWZakresieKsef`),
-// nie SQL: `LIKE` w SQLite jest dla ASCII niewrażliwe na wielkość liter, więc `ALLEGRO_SZKICOWNIA`
+// nie SQL: `LIKE` w SQLite jest dla ASCII niewrażliwe na wielkość liter, więc `ALLEGRO_SWIETLIK`
 // wchodzi do zapytania i wypada dopiero na filtrze. Dokładnie tak, jak używa tego czuwacz.
 //
 // ⚠️⚠️ FILTR JEST `czyWierszWZakresieKsef`, A NIE GOŁY `czyKanalAllegro` — i to jest ta sama
@@ -255,10 +255,10 @@ describe('warunek SQL i predykat domeny odpowiadają IDENTYCZNIE', () => {
     const db = openOmsDb(':memory:');
     const przypadki = [
       {},
-      { zamowienie: { sklep: 'szkicownia' } },
+      { zamowienie: { sklep: 'swietlik' } },
       { zamowienie: { sklep: 'allegrowy' } },
-      { zamowienie: { sklep: 'ALLEGRO_SZKICOWNIA' } },
-      { zamowienie: { sklep: 'allegro_amarka' } },
+      { zamowienie: { sklep: 'ALLEGRO_SWIETLIK' } },
+      { zamowienie: { sklep: 'allegro_polcien2' } },
       { zamowienie: { chce_fakture: 0 } },
       { zamowienie: { anulowane: 1 } },
       { zamowienie: { anulowane_recznie: 1 } },
@@ -274,13 +274,13 @@ describe('warunek SQL i predykat domeny odpowiadają IDENTYCZNIE', () => {
       // `LIKE` łapie, a `czyKanalAllegro` odrzuca; do tego część wspólna, obowiązująca OBIE
       // gałęzie (numer KSeF już jest, zamówienie anulowane, kupujący faktury nie chciał,
       // dokument bez numeru).
-      { zamowienie: { sklep: 'szkicownia' }, wyslanaZPanelu: true },
+      { zamowienie: { sklep: 'swietlik' }, wyslanaZPanelu: true },
       { zamowienie: { sklep: 'allegrowy' }, wyslanaZPanelu: true },
-      { zamowienie: { sklep: 'ALLEGRO_SZKICOWNIA' }, wyslanaZPanelu: true },
-      { zamowienie: { sklep: 'szkicownia' }, faktura: { ksef_numer: 'KS-2' }, wyslanaZPanelu: true },
-      { zamowienie: { sklep: 'szkicownia', anulowane: 1 }, wyslanaZPanelu: true },
-      { zamowienie: { sklep: 'szkicownia', chce_fakture: 0 }, wyslanaZPanelu: true },
-      { zamowienie: { sklep: 'szkicownia' }, faktura: { numer: null }, wyslanaZPanelu: true },
+      { zamowienie: { sklep: 'ALLEGRO_SWIETLIK' }, wyslanaZPanelu: true },
+      { zamowienie: { sklep: 'swietlik' }, faktura: { ksef_numer: 'KS-2' }, wyslanaZPanelu: true },
+      { zamowienie: { sklep: 'swietlik', anulowane: 1 }, wyslanaZPanelu: true },
+      { zamowienie: { sklep: 'swietlik', chce_fakture: 0 }, wyslanaZPanelu: true },
+      { zamowienie: { sklep: 'swietlik' }, faktura: { numer: null }, wyslanaZPanelu: true },
       // PRZ-126.F03: bez żądania faktury — gałąź Allegro dalej go wymaga, gałąź panelu już nie.
       { zamowienie: { sklep: 'allegro_polcien', chce_fakture: 0 }, wyslanaZPanelu: true },
       { zamowienie: { sklep: 'ALLEGRO_POLCIEN', chce_fakture: 0 } },

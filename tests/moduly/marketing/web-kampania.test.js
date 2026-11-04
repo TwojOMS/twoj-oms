@@ -1,3 +1,4 @@
+import { fmtKiedy } from '../../../src/domena/format-daty.js';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
@@ -14,7 +15,7 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: '2026-08-25T12:00:00', ostatni_blad: null }) };
 
 const zmapowane = (id, nad = {}) => ({
-  zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Pęki' },
+  zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '150.72',
   status_woo: 'processing', oplacone_at: '2026-08-25T17:43:27Z', anulowane: 0,
   utworzone_at: '2026-08-25T17:42:45Z',
@@ -180,10 +181,14 @@ describe('bieżący ekran Reklamy', () => {
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('12.34 PLN');
     expect(r.body).toContain('Moja kampania');
-    expect(r.body).toContain('2026-09-23T09:00:00Z');
+    expect(r.body).toContain(`Ostatni udany pobór: ${fmtKiedy('2026-09-23T09:00:00Z')}`);
     expect(r.body).not.toContain('ukryta-referencja');
     const suma = await pobierzReklamy('/kampania?widok=podsumowanie&dzien=2026-09-23');
-    expect(suma.body).toContain('Ostatni udany pobór GA4: 2026-09-23T09:00:00Z');
+    // PRZ-141.02: data poboru w formacie panelu (fmtKiedy), nie surowy znacznik.
+    expect(suma.body).toContain(`Ostatni udany pobór GA4: ${fmtKiedy('2026-09-23T09:00:00Z')}`);
+    expect(suma.body).not.toMatch(/Ostatni udany pobór GA4: \d{4}-\d{2}-\d{2}/);
+    expect(suma.body).toContain('Ostatni udany pobór Meta: jeszcze nie było');
+    expect(`${r.body}${suma.body}`).not.toMatch(/\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}/);
     expect(suma.body).toContain('aria-label="Dzienny koszt reklam Google i Meta');
     expect(r.body).toContain('aria-label="Koszt według kampanii"');
   });

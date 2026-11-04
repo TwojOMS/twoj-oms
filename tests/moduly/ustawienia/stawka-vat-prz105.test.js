@@ -1,5 +1,5 @@
 // PRZ-105 — domyślna stawka VAT w Ustawieniach → Firma. Prośba właściciela 21.10: „pole stawka VAT z domyślną wartością
-// ustawianą w ustawieniach - u nas 23%”. Bez wpisu = 23 (Szkicownia bez zmian), zapisuje tylko administrator,
+// ustawianą w ustawieniach - u nas 23%”. Bez wpisu = 23 (Pracownia Świetlik bez zmian), zapisuje tylko administrator,
 // stawki 23/8/5/0, przy 0 ostrzeżenie „0% krajowe — sprawdź podstawę” (decyzja właściciela: dozwolone z ostrzeżeniem).
 // Prawdziwy skład (zbudujOms), sieć zabroniona. Dane zmyślone.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';

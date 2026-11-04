@@ -36,7 +36,7 @@ const przedDniami = (d) => new Date(Date.now() - d * DZIEN).toISOString();
 let licznik = 0;
 
 function zFaktura(db, {
-  sklep = 'allegro_szkicownia', invoiceId = 'INV-1', weryfikacja = 'WAITING',
+  sklep = 'allegro_swietlik', invoiceId = 'INV-1', weryfikacja = 'WAITING',
   wyslanaAt = przedGodzinami(1), ksefNumer = 'KS-1', numer = 'FV/12/2026',
 } = {}) {
   licznik += 1;
@@ -84,7 +84,7 @@ function kanal(odpowiedz = []) {
   return {
     pytania,
     klienci: {
-      allegro_szkicownia: {
+      allegro_swietlik: {
         pobierzFakturyZamowienia: async (zrodloId) => {
           pytania.push(zrodloId);
           return typeof odpowiedz === 'function' ? odpowiedz(zrodloId) : odpowiedz;
@@ -230,7 +230,7 @@ describe('czuwacz — weryfikacja pliku faktury w Allegro', () => {
 
   it('faktura z kanału, którego panel nie zna, jest pomijana — reszta idzie dalej', async () => {
     const db = openOmsDb(':memory:');
-    const obcy = zFaktura(db, { sklep: 'allegro_amarka', invoiceId: 'INV-OBCY' });
+    const obcy = zFaktura(db, { sklep: 'allegro_polcien2', invoiceId: 'INV-OBCY' });
     const nasz = zFaktura(db, { invoiceId: 'INV-1' });
     const k = kanal([wpis('INV-1', 'ACCEPTED')]);
 
@@ -248,7 +248,7 @@ describe('czuwacz — weryfikacja pliku faktury w Allegro', () => {
     const drugi = zFaktura(db, { invoiceId: 'INV-1' });
     const pada = zrodloZ(db, pierwszy);
     const klienci = {
-      allegro_szkicownia: {
+      allegro_swietlik: {
         pobierzFakturyZamowienia: async (zrodloId) => {
           if (zrodloId === pada) throw new Error('Allegro nieosiągalne: ECONNRESET');
           return [wpis('INV-1', 'ACCEPTED')];
@@ -270,7 +270,7 @@ describe('czuwacz — weryfikacja pliku faktury w Allegro', () => {
     const db = openOmsDb(':memory:');
     const id = zFaktura(db);
     const klienci = {
-      allegro_szkicownia: {
+      allegro_swietlik: {
         pobierzFakturyZamowienia: async () => { throw new Error('Allegro nieosiągalne: ECONNRESET'); },
       },
     };
@@ -405,7 +405,7 @@ describe('czuwacz — pętla weryfikacji jest OGRANICZONA', () => {
     const zdrowa = zFaktura(db, { wyslanaAt: przedDniami(4) });
     const pytania = [];
     const klienci = {
-      allegro_szkicownia: {
+      allegro_swietlik: {
         pobierzFakturyZamowienia: async (zrodloId) => {
           pytania.push(zrodloId);
           if (zrodloId === zrodloZ(db, pechowa)) throw new Error('kanał padł');
@@ -455,7 +455,7 @@ describe('czuwacz — pętla weryfikacji jest OGRANICZONA', () => {
     const brama = new Promise((r) => { zwolnij = r; });
     const pytania = [];
     const klienci = {
-      allegro_szkicownia: {
+      allegro_swietlik: {
         pobierzFakturyZamowienia: async (zrodloId) => {
           pytania.push(zrodloId);
           await brama;

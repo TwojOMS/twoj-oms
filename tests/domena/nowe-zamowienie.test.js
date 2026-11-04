@@ -89,12 +89,12 @@ describe('parsujNoweZamowienie — pola', () => {
   it('dane do faktury trafiają w blok, który czyta nabywcę', () => {
     const d = parsujNoweZamowienie({
       w_nazwa: 'Jan Nowak',
-      f_chce_fakture: 'on', f_firma: 'LUMINA', f_nip: '5492447066',
+      f_chce_fakture: 'on', f_firma: 'PRACOWNIA PÓŁCIEŃ', f_nip: '1234563218',
       f_ulica: 'Przykładowa 5', f_kod: '32-600', f_miasto: 'Oświęcim',
     });
     const nabywca = daneFaktury({ klient: d.klient, nip: d.nip });
-    expect(nabywca.firma).toBe('LUMINA');
-    expect(nabywca.nip).toBe('5492447066');
+    expect(nabywca.firma).toBe('PRACOWNIA PÓŁCIEŃ');
+    expect(nabywca.nip).toBe('1234563218');
     expect(nabywca.ulica).toBe('Przykładowa 5');
     expect(nabywca.kod).toBe('32-600');
     expect(nabywca.miasto).toBe('Oświęcim');
@@ -106,7 +106,7 @@ describe('parsujNoweZamowienie — pola', () => {
   it('adres do faktury nie podmienia adresu wysyłki', () => {
     const d = parsujNoweZamowienie({
       w_nazwa: 'Jan Nowak', w_ulica: 'Budowlana 1', w_kod: '31-000', w_miasto: 'Kraków',
-      f_firma: 'LUMINA', f_ulica: 'Przykładowa 5', f_kod: '32-600', f_miasto: 'Oświęcim',
+      f_firma: 'PRACOWNIA PÓŁCIEŃ', f_ulica: 'Przykładowa 5', f_kod: '32-600', f_miasto: 'Oświęcim',
     });
     expect(adresOdbiorcy({ dostawa: d.dostawa, klient: d.klient }).miasto).toBe('Kraków');
     expect(daneFaktury({ klient: d.klient, nip: d.nip }).miasto).toBe('Oświęcim');

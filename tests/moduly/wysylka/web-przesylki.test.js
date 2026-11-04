@@ -39,7 +39,7 @@ beforeEach(() => {
   nadana(db, id1, 'dpd', 'WDRODZE1', { status: 'Przesyłka odebrana przez Kuriera', statusAt: '2026-08-26T09:00:00.000', utworzona: '2026-08-21T10:00:00.000Z' });
   const id2 = zapiszZamowienie(db, 'pro', zmapowane(2), {});
   nadana(db, id2, 'dpd', 'DORECZONA1', { status: 'Przesyłka doręczona', statusAt: '2026-08-22T12:00:00.000', utworzona: '2026-08-22T08:00:00.000Z' });
-  const id3 = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(3), {});
+  const id3 = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(3), {});
   nadana(db, id3, 'allegro_wza', 'BEZRUCHU1', { status: 'Przesyłka odebrana przez Kuriera', statusAt: '2026-08-21T11:00:00.000', utworzona: '2026-08-25T12:00:00.000Z' });
   app = buildOmsServer({ db, config: CONFIG });
 });

@@ -149,13 +149,13 @@ describe('„Dodaj z magazynu" na ekranie zakładania', () => {
   it('po dodaniu produktu pole szukania dostaje fokus; przy zwykłym wejściu nie', async () => {
     expect((await ekran()).body).not.toMatch(/name="magazyn"[^>]*autofocus/);
     zapiszProduktSklepowy(db, {
-      kanal: 'szkicownia', produkt_id: '28040', wariant_id: '', nazwa: 'Lampa stołowa Grzybek',
+      kanal: 'swietlik', produkt_id: '28040', wariant_id: '', nazwa: 'Lampa stołowa Grzybek',
       sku_sklepu: 'LMP-GRZ-30', cena_gr: 7490, rozmiar_tekst: '', kategorie: [], zdjecia: [],
       adres: 'https://sklep.example/grzybek', odczytane_at: '2026-10-21T08:00:00',
     });
     const r = await wyslij('/zamowienia/nowe/magazyn/dodaj', {
-      magazyn: 'lampa', cennik: 'szkicownia', wybrany: '0',
-      mag_kanal: 'szkicownia', mag_produkt_id: '28040', mag_wariant_id: '', mag_ilosc: '1',
+      magazyn: 'lampa', cennik: 'swietlik', wybrany: '0',
+      mag_kanal: 'swietlik', mag_produkt_id: '28040', mag_wariant_id: '', mag_ilosc: '1',
     });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Dodano do zamówienia');

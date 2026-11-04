@@ -7,7 +7,8 @@ import { AKCJA_LOGU as AKCJA_ALLEGRO_PRZESYLKA } from '../wysylka/services/przes
 import { odswiezStatusKuriera, zapiszLubOdpusc } from '../wysylka/services/status-kuriera.js';
 import { wyliczStatus } from '../../domena/status.js';
 import { faktyDlaStatusu, powodOdmowyStatusu } from '../../domena/status-reczny.js';
-import { sprawdzZmianeMetody, metodaZeSklepu, czyKanalAllegro, pobranieZeSklepu } from '../../domena/wysylka.js';
+import { sprawdzZmianeMetody, metodaZeSklepu, pobranieZeSklepu } from '../../domena/wysylka.js';
+import { umiejetnosciZamowienia } from '../../domena/moduly-kanalow.ts';
 import { powodOdmowyPobraniaGrupy } from '../../domena/scalanie.js';
 import { wartoPytacAllegroONumery } from '../../domena/allegro-numery.js';
 import { join } from 'node:path';
@@ -98,7 +99,7 @@ app.get('/zamowienia/:id', async (req, reply) => {
     // przy zamowieniu 1207 dzielilo je DWADZIESCIA SEKUND, a na produkcji zebralo sie tak
     // 22 zamowienia Allegro bez ani jednej przesylki, mimo numerow po stronie Allegro.
     // Dlawik godzinowy zostaje bez zmian: reguly ograniczaja CZAS ZYCIA, dlawik TEMPO.
-    if (przesylkiAllegro && czyKanalAllegro(z)
+    if (przesylkiAllegro && umiejetnosciZamowienia(z).wysylkaPlatformy
       && wartoPytacAllegroONumery(z, { maPrzesylke: (z.przesylki ?? []).length > 0, teraz: new Date().toISOString() })
       && allegroWymagaOdpytania(db, z.id)) {
       // Znacznik proby PRZED wywolaniem, a nie po nim: proba ma sie liczyc TAKZE wtedy, gdy

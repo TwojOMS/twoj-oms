@@ -35,11 +35,11 @@ describe('poller wiadomosci Allegro', () => {
     const p = createPollerWiadomosci({
       db,
       klienci: {
-        allegro_szkicownia: klientAtrapa({
+        allegro_swietlik: klientAtrapa({
           strony: [strona([w('a', '2026-08-28T20:00:00Z')], 1)],
           wiadomosci: { a: [msg('pytanie', true)] },
         }),
-        allegro_amarka: klientAtrapa({
+        allegro_polcien2: klientAtrapa({
           strony: [strona([w('b', '2026-08-28T19:00:00Z')], 1)],
           wiadomosci: { b: [msg('inne', true)] },
         }),
@@ -50,13 +50,13 @@ describe('poller wiadomosci Allegro', () => {
     await p.przebieg();
 
     expect(listaWatkow(db).map((x) => `${x.kanal}:${x.thread_id}`))
-      .toEqual(['allegro_szkicownia:a', 'allegro_amarka:b']);
+      .toEqual(['allegro_swietlik:a', 'allegro_polcien2:b']);
   });
 
   it('NIE zatrzymuje sie na pierwszym znanym watku — kolejnosc nie jest zagwarantowana', async () => {
     const db = openOmsDb(':memory:');
     zapiszWatek(db, {
-      kanal: 'allegro_szkicownia', threadId: 'znany', lastMessageDateTime: '2026-08-28T20:00:00Z',
+      kanal: 'allegro_swietlik', threadId: 'znany', lastMessageDateTime: '2026-08-28T20:00:00Z',
       typ: 'COMMON', przeczytany: 0, ostatniaOdKupujacego: 1, ostatniaTresc: 'stare',
       pobranyAt: '2026-08-28T20:01:00Z',
     });
@@ -67,22 +67,22 @@ describe('poller wiadomosci Allegro', () => {
       ],
       wiadomosci: { nowy: [msg('swieze', true)] },
     });
-    const p = createPollerWiadomosci({ db, klienci: { allegro_szkicownia: klient }, teraz: TERAZ });
+    const p = createPollerWiadomosci({ db, klienci: { allegro_swietlik: klient }, teraz: TERAZ });
 
     await p.przebieg();
 
-    expect(watek(db, 'allegro_szkicownia', 'nowy')).toBeTruthy();
+    expect(watek(db, 'allegro_swietlik', 'nowy')).toBeTruthy();
   });
 
   it('nie dociaga wiadomosci watku, ktorego lastMessageDateTime sie nie zmienil', async () => {
     const db = openOmsDb(':memory:');
     zapiszWatek(db, {
-      kanal: 'allegro_szkicownia', threadId: 'a', lastMessageDateTime: '2026-08-28T20:00:00Z',
+      kanal: 'allegro_swietlik', threadId: 'a', lastMessageDateTime: '2026-08-28T20:00:00Z',
       typ: 'COMMON', przeczytany: 0, ostatniaOdKupujacego: 1, ostatniaTresc: 'stare',
       pobranyAt: '2026-08-28T20:01:00Z',
     });
     const klient = klientAtrapa({ strony: [strona([w('a', '2026-08-28T20:00:00Z')], 1)] });
-    const p = createPollerWiadomosci({ db, klienci: { allegro_szkicownia: klient }, teraz: TERAZ });
+    const p = createPollerWiadomosci({ db, klienci: { allegro_swietlik: klient }, teraz: TERAZ });
 
     await p.przebieg();
 
@@ -103,11 +103,11 @@ describe('poller wiadomosci Allegro', () => {
         ],
       },
     });
-    const p = createPollerWiadomosci({ db, klienci: { allegro_szkicownia: klient }, teraz: TERAZ });
+    const p = createPollerWiadomosci({ db, klienci: { allegro_swietlik: klient }, teraz: TERAZ });
 
     await p.przebieg();
 
-    const zapisany = watek(db, 'allegro_szkicownia', 'a');
+    const zapisany = watek(db, 'allegro_swietlik', 'a');
     expect(zapisany.ostatnia_od_kupujacego).toBe(0);
     expect(zapisany.ostatnia_tresc).toBe('nasza odpowiedz');
   });
@@ -123,11 +123,11 @@ describe('poller wiadomosci Allegro', () => {
         ],
       },
     });
-    const p = createPollerWiadomosci({ db, klienci: { allegro_szkicownia: klient }, teraz: TERAZ });
+    const p = createPollerWiadomosci({ db, klienci: { allegro_swietlik: klient }, teraz: TERAZ });
 
     await p.przebieg();
 
-    expect(wiadomosciWatku(db, 'allegro_szkicownia', 'a').map((m) => m.tresc))
+    expect(wiadomosciWatku(db, 'allegro_swietlik', 'a').map((m) => m.tresc))
       .toEqual(['pytanie', 'odpowiedz']);
   });
 
@@ -136,8 +136,8 @@ describe('poller wiadomosci Allegro', () => {
     const p = createPollerWiadomosci({
       db,
       klienci: {
-        allegro_szkicownia: { pobierzWatki: async () => { throw new Error('Allegro: HTTP 500 przy /messaging/threads'); } },
-        allegro_amarka: klientAtrapa({
+        allegro_swietlik: { pobierzWatki: async () => { throw new Error('Allegro: HTTP 500 przy /messaging/threads'); } },
+        allegro_polcien2: klientAtrapa({
           strony: [strona([w('b', '2026-08-28T19:00:00Z')], 1)],
           wiadomosci: { b: [msg('ok', true)] },
         }),
@@ -147,7 +147,7 @@ describe('poller wiadomosci Allegro', () => {
 
     const wynik = await p.przebieg();
 
-    expect(watek(db, 'allegro_amarka', 'b')).toBeTruthy();
+    expect(watek(db, 'allegro_polcien2', 'b')).toBeTruthy();
     expect(wynik.bledy).toHaveLength(1);
     expect(wynik.bledy[0]).toContain('HTTP 500');
   });
@@ -159,7 +159,7 @@ describe('poller wiadomosci Allegro', () => {
       pobierzWatki: () => new Promise((res) => { zwolnij = () => res({ watki: [], razem: 0 }); }),
       pobierzWiadomosci: async () => ({ wiadomosci: [] }),
     };
-    const p = createPollerWiadomosci({ db, klienci: { allegro_szkicownia: klient }, teraz: TERAZ });
+    const p = createPollerWiadomosci({ db, klienci: { allegro_swietlik: klient }, teraz: TERAZ });
 
     const pierwszy = p.przebieg();
     const drugi = await p.przebieg();
@@ -179,7 +179,7 @@ describe('poller wiadomosci Allegro', () => {
       },
       pobierzWiadomosci: async () => ({ wiadomosci: [msg('t', true)] }),
     };
-    const p = createPollerWiadomosci({ db, klienci: { allegro_szkicownia: klient }, teraz: TERAZ });
+    const p = createPollerWiadomosci({ db, klienci: { allegro_swietlik: klient }, teraz: TERAZ });
 
     await p.przebieg();
 

@@ -13,14 +13,14 @@ describe('brama danych osobowych przy imporcie historii sklepu', () => {
   });
 
   it('ZAMOWIENIE WLASNE POMIJAMY TU, bo raport nie bedzie mial czym go poznac', () => {
-    const w = decyzja(zam({ billing: { email: 'wlasciciel@example.com' } }));
+    const w = decyzja(zam({ billing: { email: 'anna.wzorcowa@example.test' } }));
     expect(w.akcja).toBe('pomin');
     expect(w.powod).toBe('testowe');
   });
 
   it('domena testowa i nazwa testowa tez', () => {
     expect(decyzja(zam({ billing: { email: 'x@example.com' } })).akcja).toBe('pomin');
-    expect(decyzja(zam({ billing: { email: 'a@b.pl', company: 'Lumina' } })).akcja).toBe('pomin');
+    expect(decyzja(zam({ billing: { email: 'a@b.pl', company: 'Pracownia Półcień' } })).akcja).toBe('pomin');
   });
 
   it('KLIENT WDT ZATRZYMUJE IMPORT — nie wolno zapisac go bez maila, bo ma 0% VAT', () => {

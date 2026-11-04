@@ -5,7 +5,7 @@ import { fmtDataCzas } from '../../domena/format-daty.js';
 export function registerListaMagazynu(app, { db, magazyn, sklepy, pomoc, karta }) {
   const { kartyZKanalami, kategorieDoFiltra, SORTOWANIE_KART, zliczeniaBrakow, zliczeniaNiepowiazanych, filtryZZapytania, saJakiesFiltry, parametryUkryte, wartosciPol, adresMagazynu, PACZKOMAT_DO_FILTRA, PACZKOMAT_ETYKIETY, POLA_FORMULARZA_FILTROW, NAGLOWKI_KANALOW, BEZ_SKLEPOW, opisPrzebiegu, linkiSortowania, kafleBrakow, wierszKarty, ileKart, opisZawezenia, zWroc } = pomoc;
   app.get('/magazyn', async (req, reply) => {
-    if (!magazyn) return reply.view('pusta-strona.ejs', BEZ_SKLEPOW);
+    if (!magazyn || magazyn.gotowy?.() === false) return reply.view('pusta-strona.ejs', BEZ_SKLEPOW);
 
     // ⚠️ BIALA LISTA, nie `SORTOWANIE[x] ?? domyslne`. Ta druga postac oddaje funkcje
     // z `Object.prototype` przy `?sort=constructor` i konczy sie pieciusetka na glownym

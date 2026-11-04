@@ -29,7 +29,7 @@ const surowe = (fulfillment) => ({
 describe('status realizacji z Allegro trafia do KOLUMNY, nie tylko do surowe_json', () => {
   it('zapisuje fulfillment.status i oddaje go przy odczycie', () => {
     const db = openOmsDb(':memory:');
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', mapujAllegro(surowe('PROCESSING')), surowe('PROCESSING'));
+    const id = zapiszZamowienie(db, 'allegro_swietlik', mapujAllegro(surowe('PROCESSING')), surowe('PROCESSING'));
     expect(pobierzZamowienie(db, id).status_realizacji).toBe('PROCESSING');
   });
 
@@ -38,21 +38,21 @@ describe('status realizacji z Allegro trafia do KOLUMNY, nie tylko do surowe_jso
   // a reguła z Zadania 2 czytałaby wtedy stan sprzed tygodnia i wysyłała PROCESSING na SENT.
   it('AKTUALIZUJE kolumnę przy powtórnym zapisie tego samego zamówienia', () => {
     const db = openOmsDb(':memory:');
-    zapiszZamowienie(db, 'allegro_szkicownia', mapujAllegro(surowe('NEW')), surowe('NEW'));
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', mapujAllegro(surowe('SENT')), surowe('SENT'));
+    zapiszZamowienie(db, 'allegro_swietlik', mapujAllegro(surowe('NEW')), surowe('NEW'));
+    const id = zapiszZamowienie(db, 'allegro_swietlik', mapujAllegro(surowe('SENT')), surowe('SENT'));
     expect(pobierzZamowienie(db, id).status_realizacji).toBe('SENT');
   });
 
   it('wartość SPOZA listy z dokumentacji przechodzi bez wywalenia parsera', () => {
     const db = openOmsDb(':memory:');
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', mapujAllegro(surowe('CANCELLED')), surowe('CANCELLED'));
+    const id = zapiszZamowienie(db, 'allegro_swietlik', mapujAllegro(surowe('CANCELLED')), surowe('CANCELLED'));
     expect(pobierzZamowienie(db, id).status_realizacji).toBe('CANCELLED');
   });
 
   it('brak fulfillment w ogóle daje NULL, a nie wyjątek', () => {
     const db = openOmsDb(':memory:');
     const bez = { ...surowe('PROCESSING') }; delete bez.fulfillment;
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', mapujAllegro(bez), bez);
+    const id = zapiszZamowienie(db, 'allegro_swietlik', mapujAllegro(bez), bez);
     expect(pobierzZamowienie(db, id).status_realizacji).toBeNull();
   });
 });

@@ -8,7 +8,7 @@ import { buildOmsOrderInput } from '../../../src/domena/z-panelu/oms-order.js';
 // ida przez te same funkcje, ktore licza karte i fakture (domain/suma-pozycji.js), zeby
 // klient nigdy nie dostal w paczce kartki niezgodnej z faktura.
 
-const SPRZEDAWCA = { nazwa: 'Lumina Marek Zywiecki', bdo: '000123456' };
+const SPRZEDAWCA = { nazwa: 'Pracownia Półcień Anna Wzorcowa', bdo: '000123456' };
 
 const zam = (n) => ({
   id: 1,

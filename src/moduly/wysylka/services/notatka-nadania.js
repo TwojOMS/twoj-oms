@@ -13,6 +13,7 @@
 import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
 import { pobierzPrzesylke, zapiszBladSync } from '../db/przesylki.js';
 import { bladOperatora } from '../../../domena/bledy.js';
+import { czyTylkoOdczyt, TYLKO_ODCZYT } from '../../../domena/woo-uprawnienia.js';
 
 export const PREFIKS_NOTATKI = 'notatka: ';
 export const OKNO_PONAWIANIA_NOTATKI_H = 48;
@@ -50,6 +51,12 @@ export async function ponowNotatkeNadania({ db, klienci }, przesylkaId) {
   const z = pobierzZamowienie(db, p.zamowienie_id);
   const klient = z ? klienci[z.sklep] : null;
   if (!klient) throw bladOperatora(`Panel nie ma połączenia ze sklepem „${z?.sklep ?? '?'}” — notatki nie ma dokąd wysłać.`);
+  // PRZ-149.04: sklep „Odczyt” — nie wołamy go wcale; ślad sprzed zmiany uprawnień w kreatorze zdejmujemy,
+  // żeby zegar ponowień nie liczył go przez 48 h jako błędu.
+  if (czyTylkoOdczyt(klient)) {
+    zapiszBladSync(db, p.id, null);
+    throw bladOperatora(TYLKO_ODCZYT);
+  }
   try {
     await klient.dodajNotatke(z.zrodlo_id, tekstNotatkiNadania(p.kurier, p.numer_listu));
   } catch (e) {

@@ -36,11 +36,11 @@ const katalogEtykiet = () => mkdtempSync(join(tmpdir(), 'oms-boot-'));
 const PELNE = {
   OMS_AUTH_USER: 'adam', OMS_AUTH_PASS: 'x',
   OMS_DB_PATH: ':memory:',
-  SHOP_PRO_URL: 'https://pro.szkicownia.test', SHOP_PRO_CK: 'ck', SHOP_PRO_CS: 'cs',
-  DPD_URL: 'https://dpd/api', DPD_LOGIN: '99999999', DPD_PASSWORD: 'tajne', DPD_FID: '278216',
-  DPD_NADAWCA_NAZWA: 'Lumina Marek Zywiecki', DPD_NADAWCA_ULICA: 'Fabryczna 7',
-  DPD_NADAWCA_KOD: '00-650', DPD_NADAWCA_MIASTO: 'Pęki',
-  DPD_INFO_URL: 'https://dpd/info', DPD_INFO_CHANNEL: '278216',
+  SHOP_PRO_URL: 'https://pro.swietlik.test', SHOP_PRO_CK: 'ck', SHOP_PRO_CS: 'cs',
+  DPD_URL: 'https://dpd/api', DPD_LOGIN: '99999999', DPD_PASSWORD: 'tajne', DPD_FID: '876543',
+  DPD_NADAWCA_NAZWA: 'Pracownia Półcień Anna Wzorcowa', DPD_NADAWCA_ULICA: 'Fabryczna 7',
+  DPD_NADAWCA_KOD: '00-950', DPD_NADAWCA_MIASTO: 'Warszawa',
+  DPD_INFO_URL: 'https://dpd/info', DPD_INFO_CHANNEL: '876543',
   INFAKT_API_KEY: 'SEKRET',
 };
 
@@ -345,7 +345,8 @@ describe('zbudujOms — okablowanie usługi', () => {
   it('bez DPD_URL nadanie zostaje nieskonfigurowane', () => {
     const { nadanie, dpd } = zbudujOms({ env: env({ DPD_URL: undefined }), createDpd: atrapaDpd() });
     expect(dpd).toBeNull();
-    expect(nadanie).toBeNull();
+    expect(nadanie.gotowe()).toBe(false);
+    expect(() => nadanie.nadaj(999, {})).toThrow(/nie jest skonfigurowane/);
   });
 
   // ⚠️ DOKLADNIE TA SAMA KLASA DZIURY, CO PRZY `infakt` WYZEJ (Zadanie 9). Kurierzy byli
@@ -518,7 +519,7 @@ describe('zbudujOms — katalog proform nie kładzie usługi', () => {
 // ⚠️ Data startowa musi PRZEJSC z konfiguracji do pollera. Sam config.js moze ja czytac
 // bez zarzutu, a poller ja rozumiec — i pierwszy przebieg i tak przeczyta cala historie
 // sklepu, jesli okablowanie jej nie przekaze. To dokladnie ta klasa dziury, przez ktora
-// panel wciagnal 8866 zamowien z szkicownia.pl (01.08.2026).
+// panel wciagnal 8866 zamowien z swietlik.example.test (01.08.2026).
 describe('zbudujOms — data startowa dociera do pollera', () => {
   it('poller pyta sklep od daty z konfiguracji, a nie od początku historii', async () => {
     const zapytania = [];
@@ -561,13 +562,13 @@ describe('zbudujOms — data startowa dociera do pollera', () => {
 // spokojny dzien bez nowych zamowien (niezmiennik 4.9).
 describe('zbudujOms — kanał Allegro w pollerze', () => {
   const KANAL = {
-    ALLEGRO_SZKICOWNIA_CLIENT_ID: 'id', ALLEGRO_SZKICOWNIA_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SZKICOWNIA_OD: '2026-07-01', ALLEGRO_SZKICOWNIA_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
   const DRUGI_KANAL = {
-    ALLEGRO_AMARKA_CLIENT_ID: 'id2', ALLEGRO_AMARKA_CLIENT_SECRET: 'sekret2',
-    ALLEGRO_AMARKA_OD: '2026-07-01', ALLEGRO_AMARKA_API: 'https://api2.allegro.test',
+    ALLEGRO_POLCIEN2_CLIENT_ID: 'id2', ALLEGRO_POLCIEN2_CLIENT_SECRET: 'sekret2',
+    ALLEGRO_POLCIEN2_OD: '2026-07-01', ALLEGRO_POLCIEN2_API: 'https://api2.allegro.test',
   };
 
   const zamowienieAllegro = (id, { boughtAt = '2026-08-03T09:13:41.325Z' } = {}) => ({
@@ -633,9 +634,9 @@ describe('zbudujOms — kanał Allegro w pollerze', () => {
     expect(kurierzy.allegro.bezSledzenia).toBeFalsy();
   });
 
-  it('bez kanału Allegro nie ma w mapie kuriera „allegro" — nie ma kogo pytać', () => {
+  it('bez konta klient śledzenia czeka na późniejsze podłączenie i nie odpytuje API', async () => {
     const { kurierzy } = zbudujOms({ env: env(), createDpd: atrapaDpd() });
-    expect(kurierzy.allegro).toBeUndefined();
+    expect(await kurierzy.allegro.statusPrzesylki('LIST', {carrier:'ALLEGRO',kanal:'allegro_niepodlaczone'})).toBeNull();
   });
 
   // ⚠️⚠️ NAGLOWEK ZGODNOSCI CALA DROGA: `.env` → config → klient → PRAWDZIWE zadanie pollera.
@@ -656,12 +657,12 @@ describe('zbudujOms — kanał Allegro w pollerze', () => {
     vi.stubGlobal('fetch', fetchImpl);
     try {
       const { poller, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
-      polaczKanal(db, 'allegro_szkicownia');
+      polaczKanal(db, 'allegro_swietlik');
       await poller.przebieg();
 
       const doAllegro = wywolania.filter((w) => w.url.startsWith('https://api.allegro.test'));
       expect(doAllegro).toHaveLength(1);
-      expect(doAllegro[0].opcje.headers['User-Agent']).toBe(UA);
+      expect(new Headers(doAllegro[0].opcje.headers).get('User-Agent')).toBe(UA);
     } finally { vi.unstubAllGlobals(); }
   });
 
@@ -681,11 +682,12 @@ describe('zbudujOms — kanał Allegro w pollerze', () => {
     })).toThrow(/ALLEGRO_USER_AGENT/);
   });
 
-  it('kanał Allegro dokłada się do TEJ SAMEJ listy pollerów, nie do drugiej ścieżki', () => {
-    const { poller } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
+  it('autoryzowany kanał Allegro dokłada się do wspólnej listy pollerów bez restartu', () => {
+    const { poller, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
+    polaczKanal(db, 'allegro_swietlik');
     const sklepy = poller.stany().map((s) => s.sklep);
     expect(sklepy).toContain('pro');
-    expect(sklepy).toContain('allegro_szkicownia');
+    expect(sklepy).toContain('allegro_swietlik');
   });
 
   // ⚠️ SAMA OBECNOSC W `stany()` NIC NIE DOWODZI: `stan()` oddaje wiersz zastepczy dla KAZDEJ
@@ -697,22 +699,22 @@ describe('zbudujOms — kanał Allegro w pollerze', () => {
     vi.stubGlobal('fetch', fetchImpl);
     try {
       const { poller, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
-      polaczKanal(db, 'allegro_szkicownia');
+      polaczKanal(db, 'allegro_swietlik');
       await poller.przebieg();
 
       const doAllegro = zapytania.filter((a) => a.startsWith('https://api.allegro.test'));
       expect(doAllegro).toHaveLength(1);
       expect(doAllegro[0]).toContain('/order/checkout-forms?');
-      // Podloga z `ALLEGRO_SZKICOWNIA_OD` MUSI doleciec do zapytania — bez niej pierwszy
+      // Podloga z `ALLEGRO_SWIETLIK_OD` MUSI doleciec do zapytania — bez niej pierwszy
       // przebieg czyta cale archiwum konta (775 zamowien w chwili rozpoznania).
       expect(doAllegro[0]).toContain('lineItems.boughtAt.gte=2026-07-01T00%3A00%3A00Z');
       // …i sklep dalej jest odpytywany tym samym przebiegiem.
-      expect(zapytania.some((a) => a.startsWith('https://pro.szkicownia.test'))).toBe(true);
+      expect(zapytania.some((a) => a.startsWith('https://pro.swietlik.test'))).toBe(true);
 
       const wiersz = db.prepare('SELECT sklep, numer, metoda_wysylki FROM zamowienia').get();
-      expect(wiersz).toMatchObject({ sklep: 'allegro_szkicownia', numer: 'ALG-1', metoda_wysylki: 'allegro_dpd' });
+      expect(wiersz).toMatchObject({ sklep: 'allegro_swietlik', numer: 'ALG-1', metoda_wysylki: 'allegro_dpd' });
       // Kursor kanalu idzie za `updatedAt`, czyli poller dostal adapter Allegro, a nie Woo.
-      expect(poller.stany().find((s) => s.sklep === 'allegro_szkicownia').zsynchronizowane_do)
+      expect(poller.stany().find((s) => s.sklep === 'allegro_swietlik').zsynchronizowane_do)
         .toBe('2026-08-04T07:17:35.018Z');
     } finally { vi.unstubAllGlobals(); }
   });
@@ -733,12 +735,12 @@ describe('zbudujOms — kanał Allegro w pollerze', () => {
     vi.stubGlobal('fetch', fetchImpl);
     try {
       const { poller, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
-      polaczKanal(db, 'allegro_szkicownia');
+      polaczKanal(db, 'allegro_swietlik');
       // ZAPISANY kursor = kanal ma juz za soba udany przebieg. To on przestawia klienta
       // z galezi podlogi na galaz `updatedAt.gte`.
       db.prepare(
         'INSERT INTO stan_pollera (sklep, zsynchronizowane_do, ostatni_przebieg_at, ostatni_blad)'
-        + " VALUES ('allegro_szkicownia', '2026-08-01T00:00:00.000Z', '2026-08-01T00:00:00.000Z', NULL)",
+        + " VALUES ('allegro_swietlik', '2026-08-01T00:00:00.000Z', '2026-08-01T00:00:00.000Z', NULL)",
       ).run();
 
       await poller.przebieg();
@@ -752,35 +754,33 @@ describe('zbudujOms — kanał Allegro w pollerze', () => {
       expect(doAllegro[0]).not.toContain('boughtAt.gte');
 
       // ⚠️ ISTOTA TESTU: zamowienie zlozone w 2019 i dotkniete wczoraj NIE ma wiersza.
-      expect(db.prepare("SELECT COUNT(*) c FROM zamowienia WHERE sklep = 'allegro_szkicownia'").get().c).toBe(0);
+      expect(db.prepare("SELECT COUNT(*) c FROM zamowienia WHERE sklep = 'allegro_swietlik'").get().c).toBe(0);
       // …a kursor mimo to idzie do przodu — inaczej kazdy nastepny przebieg czytalby
       // to samo archiwum w kolko i nigdy nie dogonil terazniejszosci.
-      expect(poller.stany().find((s) => s.sklep === 'allegro_szkicownia').zsynchronizowane_do)
+      expect(poller.stany().find((s) => s.sklep === 'allegro_swietlik').zsynchronizowane_do)
         .toBe('2026-08-04T07:17:35.018Z');
     } finally { vi.unstubAllGlobals(); }
   });
 
-  // ⚠️ AWARIA JEDNEGO KANALU NIE MA PRAWA ZATRZYMAC POZOSTALYCH. Kanal niepolaczony rzuca
-  // przy pierwszym zapytaniu (brak refresh tokenu) — i to jest stan NORMALNY: tak wyglada
-  // kanal przed device flow i po wygasnieciu tokenu. Gdyby kanaly jechaly wlasna petla bez
-  // zbierania bledow, drugie konto i sklep przestalyby sie synchronizowac po cichu.
+  // PRZ-128: niepołączony kanał pozostaje w diagnostyce, lecz nie jest źródłem importu.
+  // Nie wykonuje HTTP i nie zatrzymuje drugiego konta ani sklepu.
   it('niepołączony kanał nie zatrzymuje drugiego kanału ani sklepu', async () => {
     const { zapytania, fetchImpl } = atrapaSieci({ 'https://api2.allegro.test': [zamowienieAllegro('ALG-2')] });
     vi.stubGlobal('fetch', fetchImpl);
     try {
       const { poller, db } = zbudujOms({ env: env({ ...KANAL, ...DRUGI_KANAL }), createDpd: atrapaDpd() });
-      // Polaczony jest WYLACZNIE drugi kanal — pierwszy wywali sie w polowie przebiegu.
-      polaczKanal(db, 'allegro_amarka');
+      // Połączony jest wyłącznie drugi kanał; pierwszy nie może pytać o zamówienia.
+      polaczKanal(db, 'allegro_polcien2');
 
-      await expect(poller.przebieg()).rejects.toThrow(/nie jest połączony/);
+      await expect(poller.przebieg()).resolves.toBeUndefined();
 
       expect(zapytania.some((a) => a.startsWith('https://api2.allegro.test'))).toBe(true);
-      expect(zapytania.some((a) => a.startsWith('https://pro.szkicownia.test'))).toBe(true);
-      expect(db.prepare("SELECT COUNT(*) c FROM zamowienia WHERE sklep = 'allegro_amarka'").get().c).toBe(1);
-      // Blad zostaje zapisany przy TYM kanale, ktorego dotyczy — a nie przy sklepie.
+      expect(zapytania.some((a) => a.startsWith('https://pro.swietlik.test'))).toBe(true);
+      expect(db.prepare("SELECT COUNT(*) c FROM zamowienia WHERE sklep = 'allegro_polcien2'").get().c).toBe(1);
+      expect(zapytania.some((a) => a.startsWith('https://api.allegro.test'))).toBe(false);
       const stany = Object.fromEntries(poller.stany().map((s) => [s.sklep, s.ostatni_blad]));
-      expect(stany.allegro_szkicownia).toMatch(/nie jest połączony/);
-      expect(stany.allegro_amarka).toBeNull();
+      expect(stany.allegro_swietlik).toBeUndefined();
+      expect(stany.allegro_polcien2).toBeNull();
       expect(stany.pro).toBeNull();
     } finally { vi.unstubAllGlobals(); }
   });
@@ -797,8 +797,8 @@ describe('zbudujOms — kanał Allegro w pollerze', () => {
 // jak spokojny dzien. To ono zamieniało pozostale usterki kanalu w niewidzialne.
 describe('zbudujOms — stan pollera pokazuje BŁĄD, a nie zawsze pierwszy sklep', () => {
   const KANAL = {
-    ALLEGRO_SZKICOWNIA_CLIENT_ID: 'id', ALLEGRO_SZKICOWNIA_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SZKICOWNIA_OD: '2026-07-01', ALLEGRO_SZKICOWNIA_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
 
@@ -814,18 +814,20 @@ describe('zbudujOms — stan pollera pokazuje BŁĄD, a nie zawsze pierwszy skle
     } finally { vi.unstubAllGlobals(); }
   });
 
-  // Kanal bez refresh tokenu (dokladnie ten stan, w ktory wpada konto po wygasnieciu zgody)
-  // rzuca w przebiegu i zapisuje blad przy SWOIM kluczu. Sklep konczy przebieg czysto.
+  // PRZ-128: brak pary oznacza brak importu; błąd aktywnego konta nadal wypiera czysty sklep.
   it('błąd KANAŁU wypiera z paska czysty stan sklepu', async () => {
-    vi.stubGlobal('fetch', sklepPusty());
+    const sklep = sklepPusty();
+    vi.stubGlobal('fetch', vi.fn(async (url, init) => String(url).startsWith('https://api.allegro.test')
+      ? {ok:false,status:500,text:async()=> 'awaria konta Allegro'} : sklep(url,init)));
     try {
-      const { poller } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
-      await expect(poller.przebieg()).rejects.toThrow(/nie jest połączony/);
+      const { poller, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
+      zapiszTokeny(db,'allegro_swietlik',{accessToken:'ACCESS',refreshToken:'REFRESH',wygasaAt:new Date(Date.now()+3600000).toISOString(),refreshWygasaAt:new Date(Date.now()+80*86400000).toISOString()});
+      await expect(poller.przebieg()).rejects.toThrow(/500/);
 
-      expect(poller.stan().sklep).toBe('allegro_szkicownia');
-      expect(poller.stan().ostatni_blad).toMatch(/nie jest połączony/);
+      expect(poller.stan().sklep).toBe('allegro_swietlik');
+      expect(poller.stan().ostatni_blad).toMatch(/500/);
       // …a komplet dalej jest w `stany()` — pasek pokazuje jeden wiersz, nie kasuje reszty.
-      expect(poller.stany().map((s) => s.sklep)).toEqual(['pro', 'allegro_szkicownia']);
+      expect(poller.stany().map((s) => s.sklep)).toEqual(['pro', 'allegro_swietlik']);
     } finally { vi.unstubAllGlobals(); }
   });
 
@@ -850,8 +852,8 @@ describe('zbudujOms — stan pollera pokazuje BŁĄD, a nie zawsze pierwszy skle
 // `mapujZamowienieAllegro` jest jedynym mapowaniem w tym repo, ktore w ogole rzuca.
 describe('zbudujOms — jedno złe zamówienie z Allegro nie zabija kanału', () => {
   const KANAL = {
-    ALLEGRO_SZKICOWNIA_CLIENT_ID: 'id', ALLEGRO_SZKICOWNIA_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SZKICOWNIA_OD: '2026-07-01', ALLEGRO_SZKICOWNIA_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
   const dobre = (id, updatedAt) => ({
@@ -888,7 +890,7 @@ describe('zbudujOms — jedno złe zamówienie z Allegro nie zabija kanału', ()
     }));
     try {
       const { poller, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
-      zapiszTokeny(db, 'allegro_szkicownia', {
+      zapiszTokeny(db, 'allegro_swietlik', {
         accessToken: 'ACCESS',
         refreshToken: 'REFRESH',
         wygasaAt: new Date(Date.now() + 3600_000).toISOString(),
@@ -900,16 +902,16 @@ describe('zbudujOms — jedno złe zamówienie z Allegro nie zabija kanału', ()
       // zamowieniem. Kanal stal na zawsze.
       await expect(poller.przebieg()).resolves.toBeUndefined();
 
-      const numery = db.prepare("SELECT numer FROM zamowienia WHERE sklep = 'allegro_szkicownia' ORDER BY numer").all();
+      const numery = db.prepare("SELECT numer FROM zamowienia WHERE sklep = 'allegro_swietlik' ORDER BY numer").all();
       expect(numery.map((w) => w.numer)).toEqual(['ALG-1', 'ALG-2']);
 
-      const stan = poller.stany().find((s) => s.sklep === 'allegro_szkicownia');
+      const stan = poller.stany().find((s) => s.sklep === 'allegro_swietlik');
       // Kursor PONAD zlym zamowieniem — inaczej nastepny przebieg czytalby te sama strone.
       expect(stan.zsynchronizowane_do).toBe('2026-08-04T09:00:00.000Z');
       // …a powod pominiecia jest zapisany i widoczny na pasku (patrz `stan()` wyzej).
       expect(stan.ostatni_blad).toMatch(/Pominięto 1 zamówienie/);
       expect(stan.ostatni_blad).toContain('ALG-ZLE');
-      expect(poller.stan().sklep).toBe('allegro_szkicownia');
+      expect(poller.stan().sklep).toBe('allegro_swietlik');
     } finally { vi.unstubAllGlobals(); }
   });
 });
@@ -920,20 +922,20 @@ describe('zbudujOms — jedno złe zamówienie z Allegro nie zabija kanału', ()
 // w ogole powstal (I1).
 describe('zbudujOms — numery listow z Allegro', () => {
   const KANAL = {
-    ALLEGRO_SZKICOWNIA_CLIENT_ID: 'id', ALLEGRO_SZKICOWNIA_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SZKICOWNIA_OD: '2026-07-01', ALLEGRO_SZKICOWNIA_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
 
-  it('bez kanalow uslugi po prostu NIE MA — panel wstaje jak dotad', () => {
+  it('bez kont usługa numerów listów czeka na podłączenie pierwszego konta', () => {
     const { przesylkiAllegro } = zbudujOms({ env: env(), createDpd: atrapaDpd() });
-    expect(przesylkiAllegro).toBeNull();
+    expect(typeof przesylkiAllegro.odswiez).toBe('function');
   });
 
   it('z kanalem usluga jest podpieta i zna klucz kanalu', () => {
     const { przesylkiAllegro, klienciKanalow } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
     expect(przesylkiAllegro).not.toBeNull();
-    expect(Object.keys(klienciKanalow)).toEqual(['allegro_szkicownia']);
+    expect(Object.keys(klienciKanalow)).toEqual(['allegro_swietlik']);
   });
 
   // ⚠️ JEDEN klient na kanal, wspolny z pollerem. Druga instancja znaczylaby druga pare
@@ -957,15 +959,15 @@ describe('zbudujOms — numery listow z Allegro', () => {
     }));
     try {
       const { app, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
-      zapiszTokeny(db, 'allegro_szkicownia', {
+      zapiszTokeny(db, 'allegro_swietlik', {
         accessToken: 'ACCESS',
         refreshToken: 'REFRESH',
         wygasaAt: new Date(Date.now() + 3600_000).toISOString(),
         refreshWygasaAt: new Date(Date.now() + 80 * 86400_000).toISOString(),
       });
-      const id = zapiszZamowienie(db, 'allegro_szkicownia', {
+      const id = zapiszZamowienie(db, 'allegro_swietlik', {
         zrodlo_id: 'e2a1', numer: 'e2a1', klient: { first_name: 'Jan', email: 'j@k.pl' },
-        dostawa: { city: 'Pęki' }, metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, chce_fakture: 0,
+        dostawa: { city: 'Warszawa' }, metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, chce_fakture: 0,
         nip: null, kwota_brutto: '99.00', status_woo: null, oplacone_at: '2026-08-04T09:00:00',
         anulowane: 0, utworzone_at: '2026-08-04T08:00:00',
         pozycje: [{ nazwa: 'Szablon', sku: 'X', ilosc: 1, cena_brutto: '99.00', vat: null }],
@@ -993,13 +995,13 @@ describe('zbudujOms — numery listow z Allegro', () => {
     }));
     try {
       const { klienciKanalow, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
-      zapiszTokeny(db, 'allegro_szkicownia', {
+      zapiszTokeny(db, 'allegro_swietlik', {
         accessToken: 'ACCESS',
         refreshToken: 'REFRESH',
         wygasaAt: new Date(Date.now() + 3600_000).toISOString(),
         refreshWygasaAt: new Date(Date.now() + 80 * 86400_000).toISOString(),
       });
-      await klienciKanalow.allegro_szkicownia.pobierzPrzesylki('e2a1');
+      await klienciKanalow.allegro_swietlik.pobierzPrzesylki('e2a1');
       expect(zapytania).toContain('https://api.allegro.test/order/checkout-forms/e2a1/shipments');
     } finally { vi.unstubAllGlobals(); }
   });
@@ -1015,8 +1017,8 @@ describe('zbudujOms — numery listow z Allegro', () => {
 // env → zbudujOms → buildOmsServer → trasa → usluga → HTTP do Allegro → nasza baza.
 describe('zbudujOms — faktura na konto kupującego w Allegro', () => {
   const KANAL = {
-    ALLEGRO_SZKICOWNIA_CLIENT_ID: 'id', ALLEGRO_SZKICOWNIA_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SZKICOWNIA_OD: '2026-07-01', ALLEGRO_SZKICOWNIA_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
   const PDF = Buffer.concat([Buffer.from('%PDF-1.4'), Buffer.alloc(64)]);
@@ -1026,15 +1028,15 @@ describe('zbudujOms — faktura na konto kupującego w Allegro', () => {
   };
 
   const zamowienieZFaktura = (db) => {
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'ACCESS',
       refreshToken: 'REFRESH',
       wygasaAt: new Date(Date.now() + 3600_000).toISOString(),
       refreshWygasaAt: new Date(Date.now() + 80 * 86400_000).toISOString(),
     });
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', {
+    const id = zapiszZamowienie(db, 'allegro_swietlik', {
       zrodlo_id: 'CF-1', numer: 'CF-1', klient: { first_name: 'Jan', email: 'j@k.pl' },
-      dostawa: { city: 'Pęki' }, metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, chce_fakture: 1,
+      dostawa: { city: 'Warszawa' }, metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, chce_fakture: 1,
       nip: null, kwota_brutto: '99.00', status_woo: null, oplacone_at: '2026-08-05T09:00:00',
       anulowane: 0, utworzone_at: '2026-08-05T08:00:00',
       pozycje: [{ nazwa: 'Szablon', sku: 'X', ilosc: 1, cena_brutto: '99.00', vat: null }],
@@ -1044,9 +1046,9 @@ describe('zbudujOms — faktura na konto kupującego w Allegro', () => {
     return id;
   };
 
-  it('bez kanałów usługi po prostu NIE MA — panel wstaje jak dotąd', () => {
+  it('bez kont wysyłka faktury jest przygotowana, lecz niegotowa do użycia', () => {
     const { fakturaAllegro } = zbudujOms({ env: env(), createDpd: atrapaDpd() });
-    expect(fakturaAllegro).toBeNull();
+    expect(fakturaAllegro.gotowe()).toBe(false);
   });
 
   it('bez inFaktu usługi NIE MA, choć kanał jest — nie ma skąd wziąć dokumentu', () => {
@@ -1154,7 +1156,7 @@ describe('zbudujOms — adres nadawcy', () => {
       // `phone` i `email` sa PUSTE, bo DPD ich nie wymaga — a InPost owszem i dlatego
       // odmawia nadania do paczkomatu, gdy ich brak (usterka 05.08.2026, zam. 28173).
       // Ten test pilnuje KSZTALTU adresu firmy: nowe pole ma sie tu pojawic swiadomie.
-      nazwa: 'Lumina Marek Zywiecki', ulica: 'Fabryczna 7', kod: '00-650', miasto: 'Pęki', kraj: 'PL', phone: '', email: '',
+      nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'Fabryczna 7', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', phone: '', email: '',
     });
   });
 
@@ -1168,9 +1170,9 @@ describe('zbudujOms — adres nadawcy', () => {
     });
     const n = createDpd.mock.calls[0][0].nadawca;
     expect(n.ulica).toBe('Fabryczna 7');
-    expect(n.kod).toBe('00-650');
-    expect(n.miasto).toBe('Pęki');
-    expect(n.nazwa).toBe('Lumina Marek Zywiecki');
+    expect(n.kod).toBe('00-950');
+    expect(n.miasto).toBe('Warszawa');
+    expect(n.nazwa).toBe('Pracownia Półcień Anna Wzorcowa');
   });
 
   // Bez atrapy: prawdziwy createDpdClient ma odrzucic pusty adres. Gdyby okablowanie
@@ -1418,8 +1420,8 @@ describe('zbudujOms — czuwacz ostrzeżeń (lustra tabelki strony głównej)', 
 // argument glebiej. Dlatego test mierzy RUCH W SIECI, a nie ksztalt zwroconego obiektu.
 describe('zbudujOms — status jedzie do KANAŁU (nie tylko do sklepu)', () => {
   const KANAL = {
-    ALLEGRO_SZKICOWNIA_CLIENT_ID: 'id', ALLEGRO_SZKICOWNIA_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SZKICOWNIA_OD: '2026-07-01', ALLEGRO_SZKICOWNIA_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
 
@@ -1442,12 +1444,12 @@ describe('zbudujOms — status jedzie do KANAŁU (nie tylko do sklepu)', () => {
   const zamowienieZKanalu = (db) => {
     db.prepare(
       "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at, wyslane_at)"
-      + " VALUES ('allegro_szkicownia', 'CF-77', 'ALG-77', '129.00', '2026-08-05T09:00:00', '2026-08-05T12:00:00')",
+      + " VALUES ('allegro_swietlik', 'CF-77', 'ALG-77', '129.00', '2026-08-05T09:00:00', '2026-08-05T12:00:00')",
     ).run();
     return db.prepare("SELECT id FROM zamowienia WHERE zrodlo_id = 'CF-77'").get().id;
   };
 
-  const zTokenami = (db) => zapiszTokeny(db, 'allegro_szkicownia', {
+  const zTokenami = (db) => zapiszTokeny(db, 'allegro_swietlik', {
     accessToken: 'ACCESS',
     refreshToken: 'REFRESH',
     wygasaAt: new Date(Date.now() + 3600_000).toISOString(),
@@ -1499,8 +1501,8 @@ describe('zbudujOms — status jedzie do KANAŁU (nie tylko do sklepu)', () => {
 // a nie „czuwacz bez roboty": bez kanalu Allegro nie ma po co pytac, bez inFaktu nie ma czego.
 describe('zbudujOms — czuwacz KSeF', () => {
   const KANAL_KSEF = {
-    ALLEGRO_SZKICOWNIA_CLIENT_ID: 'id', ALLEGRO_SZKICOWNIA_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SZKICOWNIA_OD: '2026-07-01', ALLEGRO_SZKICOWNIA_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
 
@@ -1510,10 +1512,10 @@ describe('zbudujOms — czuwacz KSeF', () => {
     expect(typeof czuwaczKsef.przebieg).toBe('function');
   });
 
-  // Panel bez zmiennych ALLEGRO_* ma wstawac DOKLADNIE tak jak dotad — ani jednego
-  // dodatkowego zegara w tle.
-  it('bez kanału Allegro czuwacza NIE MA', () => {
-    expect(zbudujOms({ env: env(), createDpd: atrapaDpd() }).czuwaczKsef).toBeNull();
+  // PRZ-128: czuwacz jest zbudowany od startu; pierwsze konto nie wymaga nowego zegara.
+  it('bez konta Allegro czuwacz istnieje i może wykonać pusty przebieg', async () => {
+    const {czuwaczKsef}=zbudujOms({ env: env(), createDpd: atrapaDpd() });
+    expect(await czuwaczKsef.przebieg()).toMatchObject({sprawdzone:0,znalezione:0});
   });
 
   it('bez inFaktu czuwacza NIE MA', () => {
@@ -1538,14 +1540,14 @@ describe('zbudujOms — czuwacz KSeF', () => {
     } = zbudujOms({
       env: env(KANAL_KSEF), createDpd: atrapaDpd(),
     });
-    klienciKanalow.allegro_szkicownia.pobierzFakturyZamowienia = async () => [
+    klienciKanalow.allegro_swietlik.pobierzFakturyZamowienia = async () => [
       { id: 'INV-1', file: { securityVerification: { status: 'REJECTED' } } },
     ];
     // ⚠️ Krok 3 przebiegu (lustro luk KSeF, 2026-08-29) woła `listaFaktur` przy KAŻDYM
     // przebiegu — stub trzyma ten test z dala od sieci, tak samo jak stub wyżej trzyma
     // drugą pętlę z dala od Allegro.
     infakt.listaFaktur = async () => [];
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', {
+    const id = zapiszZamowienie(db, 'allegro_swietlik', {
       zrodlo_id: 'CF-WERYF', numer: '4100', klient: { first_name: 'Jan' }, dostawa: {}, pozycje: [],
       metoda_wysylki: 'dpd', kwota_pobrania: null, nip: null, koszt_dostawy_brutto: '0.00',
       status_woo: 'processing', oplacone_at: null, anulowane: 0,
@@ -1573,8 +1575,8 @@ describe('zbudujOms — czuwacz KSeF', () => {
 // przetestowany i bez ani jednego wywołania.
 describe('zbudujOms — okablowanie automatu wysyłki faktury do Allegro', () => {
   const KANAL = {
-    ALLEGRO_SZKICOWNIA_CLIENT_ID: 'id', ALLEGRO_SZKICOWNIA_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SZKICOWNIA_OD: '2026-07-01', ALLEGRO_SZKICOWNIA_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
 
@@ -1592,12 +1594,11 @@ describe('zbudujOms — okablowanie automatu wysyłki faktury do Allegro', () =>
     expect(typeof dostal.wyslij).toBe('function');
   });
 
-  // Panel bez kanału Allegro nie dostaje ani czuwacza, ani usługi — i to nie jest brak,
-  // tylko poprawna odpowiedź: faktura ze sklepu nie ma dokąd pojechać.
-  it('bez kanału Allegro nie ma ani czuwacza, ani usługi wysyłki', () => {
+  // PRZ-128: usługi istnieją także przed pierwszym kontem, wysyłka pozostaje niegotowa.
+  it('bez konta Allegro czuwacz i usługa czekają na późniejsze podłączenie', () => {
     const oms = zbudujOms({ env: env(), createDpd: atrapaDpd() });
-    expect(oms.czuwaczKsef).toBeNull();
-    expect(oms.fakturaAllegro).toBeNull();
+    expect(typeof oms.czuwaczKsef.przebieg).toBe('function');
+    expect(oms.fakturaAllegro.gotowe()).toBe(false);
   });
 });
 
@@ -1608,8 +1609,8 @@ describe('zbudujOms — okablowanie automatu wysyłki faktury do Allegro', () =>
 // tu nie dowodzą: wstrzykują go wprost.
 describe('zbudujOms — kurier Wysyłam z Allegro', () => {
   const KANAL_WZA = {
-    ALLEGRO_SZKICOWNIA_CLIENT_ID: 'id', ALLEGRO_SZKICOWNIA_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SZKICOWNIA_OD: '2026-07-01', ALLEGRO_SZKICOWNIA_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
 
@@ -1642,9 +1643,9 @@ describe('zbudujOms — kurier Wysyłam z Allegro', () => {
       createDpd: atrapaDpd(),
       createAllegroWza: () => ({ nadaj: nadajWza, sprawdzPrzesylke: vi.fn() }),
     });
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', {
+    const id = zapiszZamowienie(db, 'allegro_swietlik', {
       zrodlo_id: 'ord-1', numer: 'A-1', klient: { first_name: 'Jan', email: 'j@k.pl' },
-      dostawa: { city: 'Pęki' }, pozycje: [], metoda_wysylki: 'allegro_dpd',
+      dostawa: { city: 'Warszawa' }, pozycje: [], metoda_wysylki: 'allegro_dpd',
       kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '99.00',
       status_woo: null, oplacone_at: null, anulowane: 0, utworzone_at: '2026-08-11T08:00:00',
     }, {});
@@ -1652,16 +1653,16 @@ describe('zbudujOms — kurier Wysyłam z Allegro', () => {
     expect(nadajWza).toHaveBeenCalledTimes(1);
   });
 
-  // Bez kanału Allegro kuriera nie ma — i to jest poprawne: nie ma konta, na którym
-  // miałby cokolwiek kupić. Odmowa pada wtedy przy konkretnym zamówieniu, głośno.
-  it('bez kanału Allegro kuriera nie tworzy w ogóle', () => {
+  // PRZ-128: jeden adapter od startu, ale brak konta nadal daje jawną odmowę nadania.
+  it('bez konta Allegro adapter WzA nie pozwala wybrać klienta dla zamówienia', () => {
     const utworzone = [];
     zbudujOms({
       env: env(),
       createDpd: atrapaDpd(),
       createAllegroWza: (o) => { utworzone.push(o); return {}; },
     });
-    expect(utworzone).toHaveLength(0);
+    expect(utworzone).toHaveLength(1);
+    expect(() => utworzone[0].allegroDla({sklep:'allegro_niepodlaczone'})).toThrow(/nie jest podpięty/);
   });
 
   // ⚠️ KONTO PER KANAŁ. Kanały Allegro to osobne konta — jeden klient na całą usługę
@@ -1671,15 +1672,15 @@ describe('zbudujOms — kurier Wysyłam z Allegro', () => {
     zbudujOms({
       env: env({
         ...KANAL_WZA,
-        ALLEGRO_AMARKA_CLIENT_ID: 'id2', ALLEGRO_AMARKA_CLIENT_SECRET: 'sekret2',
-        ALLEGRO_AMARKA_OD: '2026-07-01', ALLEGRO_AMARKA_API: 'https://api2.allegro.test',
+        ALLEGRO_POLCIEN2_CLIENT_ID: 'id2', ALLEGRO_POLCIEN2_CLIENT_SECRET: 'sekret2',
+        ALLEGRO_POLCIEN2_OD: '2026-07-01', ALLEGRO_POLCIEN2_API: 'https://api2.allegro.test',
       }),
       createDpd: atrapaDpd(),
       createAllegroWza: (o) => { utworzone.push(o); return {}; },
     });
     const { allegroDla } = utworzone[0];
-    const a = allegroDla({ sklep: 'allegro_szkicownia' });
-    const b = allegroDla({ sklep: 'allegro_amarka' });
+    const a = allegroDla({ sklep: 'allegro_swietlik' });
+    const b = allegroDla({ sklep: 'allegro_polcien2' });
     expect(a).toBeTruthy();
     expect(b).toBeTruthy();
     expect(a).not.toBe(b);
@@ -2257,8 +2258,8 @@ describe('straznik czasu przebiegu czuwacza archiwum sprzedazy', () => {
 // bez ani jednego wywolania i zegar czuwacza w martwej galezi.
 describe('zbudujOms — stan kanałów dla paska ostrzeżenia', () => {
   const KANAL = {
-    ALLEGRO_SZKICOWNIA_CLIENT_ID: 'id', ALLEGRO_SZKICOWNIA_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SZKICOWNIA_OD: '2026-07-01', ALLEGRO_SZKICOWNIA_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
 
@@ -2267,17 +2268,17 @@ describe('zbudujOms — stan kanałów dla paska ostrzeżenia', () => {
     expect(stanyKanalow).toBeTypeOf('function');
     const stany = stanyKanalow();
     expect(stany).toHaveLength(1);
-    expect(stany[0]).toMatchObject({ kanal: 'allegro_szkicownia', pilne: true, wolnoWiazac: true });
+    expect(stany[0]).toMatchObject({ kanal: 'allegro_swietlik', pilne: true, wolnoWiazac: true });
   });
 
   // ⚠️ ZAPISANY BLAD MA DOJSC AZ NA EKRAN — to jest cala tresc awarii z 14.08.
   it('zapisany błąd tokenu dociera z bazy do stanu ekranu', () => {
     const { db, stanyKanalow } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'a', refreshToken: 'r',
       wygasaAt: '2026-12-01T00:00:00.000Z', refreshWygasaAt: '2026-12-01T00:00:00.000Z',
     });
-    db.prepare("UPDATE tokeny_kanalu SET ostatni_blad = ? WHERE kanal = 'allegro_szkicownia'")
+    db.prepare("UPDATE tokeny_kanalu SET ostatni_blad = ? WHERE kanal = 'allegro_swietlik'")
       .run('Odświeżenie tokenu odrzucone (HTTP 400, invalid_grant)');
     const s = stanyKanalow()[0];
     expect(s.pilne).toBe(true);
@@ -2288,7 +2289,7 @@ describe('zbudujOms — stan kanałów dla paska ostrzeżenia', () => {
   // ⚠️ NIGDY POSWIADCZEN POZA WARSTWE TOKENOW (4.10).
   it('stan kanału NIE NIESIE tokenów', () => {
     const { db, stanyKanalow } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'TAJNY-ACCESS', refreshToken: 'TAJNY-REFRESH',
       wygasaAt: '2026-12-01T00:00:00.000Z', refreshWygasaAt: '2026-12-01T00:00:00.000Z',
     });
@@ -2308,7 +2309,7 @@ describe('zbudujOms — stan kanałów dla paska ostrzeżenia', () => {
 // `allegro/tokeny.js`, więc chroni w obrębie JEDNEJ instancji. Druga instancja nad tą samą
 // bazą to druga mapa, czyli dwa równoległe odświeżenia tym samym (jednorazowym!) refresh
 // tokenem — a Allegro unieważnia wtedy całą rodzinę. Dokładnie to zabiło kanał
-// `allegro_szkicownia` w nocy 13/14.08.2026 (`HTTP 400, invalid_grant` przy 89 dniach ważności).
+// `allegro_swietlik` w nocy 13/14.08.2026 (`HTTP 400, invalid_grant` przy 89 dniach ważności).
 //
 // Test czyta ŹRÓDŁO, bo instancji nie da się porównać z zewnątrz — `createAllegroClient`
 // zamyka ją w domknięciu. Asercja jest wąska celowo: liczy wywołania fabryki.
@@ -2325,30 +2326,30 @@ describe('zbudujOms — jedna instancja tokenów na kanał', () => {
 describe('pas kanału dociera aż na stronę listy', () => {
   const naglowek = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}` };
   const KANAL = {
-    ALLEGRO_SZKICOWNIA_CLIENT_ID: 'id', ALLEGRO_SZKICOWNIA_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SZKICOWNIA_OD: '2026-07-01', ALLEGRO_SZKICOWNIA_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
 
   it('martwy kanał JEST WIDOCZNY w HTML-u listy zamówień', async () => {
     const { app, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'a', refreshToken: 'r',
       wygasaAt: '2026-12-01T00:00:00.000Z', refreshWygasaAt: '2026-12-01T00:00:00.000Z',
     });
-    db.prepare("UPDATE tokeny_kanalu SET ostatni_blad = 'invalid_grant' WHERE kanal = 'allegro_szkicownia'").run();
+    db.prepare("UPDATE tokeny_kanalu SET ostatni_blad = 'invalid_grant' WHERE kanal = 'allegro_swietlik'").run();
     await app.ready();
     const r = await app.inject({ method: 'GET', url: '/', headers: naglowek });
     expect(r.statusCode).toBe(200);
     expect(r.body).toMatch(/Kanał nie działa/);
-    expect(r.body).toContain('allegro_szkicownia');
+    expect(r.body).toContain('allegro_swietlik');
     // Wyjście musi stać przy ostrzeżeniu (4.9).
     expect(r.body).toMatch(/Naprawa:/);
   });
 
   it('kanał zdrowy NIE zostawia pasa — ostrzeżenie widziane codziennie przestaje działać', async () => {
     const { app, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'a', refreshToken: 'r',
       wygasaAt: '2026-12-01T00:00:00.000Z', refreshWygasaAt: '2026-12-01T00:00:00.000Z',
     });
@@ -2369,16 +2370,16 @@ describe('pas kanału dociera aż na stronę listy', () => {
 describe('przycisk „Połącz z Allegro" w ustawieniach', () => {
   const naglowek = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}` };
   const KANAL = {
-    ALLEGRO_SZKICOWNIA_CLIENT_ID: 'id', ALLEGRO_SZKICOWNIA_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SZKICOWNIA_OD: '2026-07-01', ALLEGRO_SZKICOWNIA_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
   const zepsuty = (db) => {
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'a', refreshToken: 'r',
       wygasaAt: '2026-12-01T00:00:00.000Z', refreshWygasaAt: '2026-12-01T00:00:00.000Z',
     });
-    db.prepare("UPDATE tokeny_kanalu SET ostatni_blad = 'invalid_grant' WHERE kanal = 'allegro_szkicownia'").run();
+    db.prepare("UPDATE tokeny_kanalu SET ostatni_blad = 'invalid_grant' WHERE kanal = 'allegro_swietlik'").run();
   };
 
   it('martwy kanał DOSTAJE przycisk na stronie ustawień', async () => {
@@ -2388,14 +2389,14 @@ describe('przycisk „Połącz z Allegro" w ustawieniach', () => {
     const r = await app.inject({ method: 'GET', url: '/ustawienia/integracje', headers: naglowek });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Połącz z Allegro');
-    expect(r.body).toContain('/ustawienia/kanaly/allegro_szkicownia/wiazanie');
+    expect(r.body).toContain('/ustawienia/kanaly/allegro_swietlik/wiazanie');
   });
 
   // ⚠️ BARIERA: ponowne wiazanie NADPISUJE dzialajaca pare i uniewaznia ja po stronie
   // Allegro. Przycisk przy zdrowym kanale zaprasza do klikniecia „na wszelki wypadek".
   it('zdrowy kanał NIE DOSTAJE przycisku', async () => {
     const { app, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'a', refreshToken: 'r',
       wygasaAt: '2026-12-01T00:00:00.000Z', refreshWygasaAt: '2026-12-01T00:00:00.000Z',
     });
@@ -2408,20 +2409,21 @@ describe('przycisk „Połącz z Allegro" w ustawieniach', () => {
   // na ktorej kanal byl jeszcze zepsuty — a wtedy klikniecie zabiloby dzialajacy kanal.
   it('POST dla kanału ZDROWEGO odbija się od domeny, nie od widoku', async () => {
     const { app, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
-    zapiszTokeny(db, 'allegro_szkicownia', {
+    zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'a', refreshToken: 'r',
       wygasaAt: '2026-12-01T00:00:00.000Z', refreshWygasaAt: '2026-12-01T00:00:00.000Z',
     });
     await app.ready();
     const r = await app.inject({
       method: 'POST',
-      url: '/ustawienia/kanaly/allegro_szkicownia/wiazanie',
+      url: '/ustawienia/kanaly/allegro_swietlik/wiazanie',
       // Niezmiennik 4.11: POST bez `origin` odbija sie od ochrony CSRF (403).
       headers: { ...naglowek, origin: 'http://localhost' },
       payload: {},
     });
-    expect(r.statusCode).toBe(400);
-    expect(r.body).toMatch(/działa/i);
+    // Adapter historyczny nie ustawia administratora na żądaniu nowego konfiguratora.
+    // Pełne Device Flow + zachowanie aktywnej pary są w allegro-http.test.ts.
+    expect(r.statusCode).toBe(403);
   });
 
   it('POST dla nieznanego kanału też odmawia', async () => {
@@ -2434,6 +2436,6 @@ describe('przycisk „Połącz z Allegro" w ustawieniach', () => {
       headers: { ...naglowek, origin: 'http://localhost' },
       payload: {},
     });
-    expect(r.statusCode).toBe(400);
+    expect(r.statusCode).toBe(404);
   });
 });

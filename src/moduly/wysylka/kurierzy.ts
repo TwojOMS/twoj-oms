@@ -1,5 +1,6 @@
 import type { Srodowisko } from '../../core/kontrakty.ts';
-import { createDpdClient, createInpostClient, createAllegroWzaClient } from '../../integracje/fabryki.ts';
+import { createDpdClient, createInpostClient, createAllegroWzaClient, FABRYKI_KURIEROW } from '../../integracje/fabryki.ts';
+import { MODULY_KURIEROW, sprawdzOpisyKurierow, type KluczKurieraNadania } from '../../domena/moduly-kurierow.ts';
 import { createAllegroSledzenieClient } from '../../oms/kurierzy/allegro.js';
 import type { KurierNadania, KurierSledzenia } from './nadanie-typy.ts';
 import { skonfigurowanyUrl } from '../../core/konfiguracja-wartosci.ts';
@@ -16,6 +17,8 @@ const wymagane = (env: Srodowisko, klucz: string): string => {
 };
 
 export function wczytajKurierow(env: Srodowisko) {
+  // PRZ-135 (D5): strażnik startu — błędny opis kuriera zatrzymuje start, zanim powstanie jakikolwiek klient.
+  sprawdzOpisyKurierow();
   skonfigurowanyUrl(env.DPD_URL, 'DPD_URL');
   skonfigurowanyUrl(env.DPD_INFO_URL, 'DPD_INFO_URL');
   skonfigurowanyUrl(env.INPOST_URL, 'INPOST_URL');
@@ -141,27 +144,39 @@ export type MapaKurierow = Partial<Record<string, KurierNadania | KurierSledzeni
   dpd?: KurierNadania; inpost?: KurierNadania; allegro_wza?: KurierNadania; allegro?: KurierSledzenia;
 };
 
-export function zbudujKurierow(config: ReturnType<typeof wczytajKurierow>, klienciAllegro: Record<string, any>, fabryki: FabrykiKurierow = {}) {
-  const kurierzy: MapaKurierow = {};
-  if (config.dpd) kurierzy.dpd = (fabryki.createDpd ?? createDpdClient)(config.dpd);
-  if (config.inpost) {
-    if (fabryki.createInpost) kurierzy.inpost = fabryki.createInpost(config.inpost);
-    else {
-      const klient = createInpostClient(config.inpost);
-      // Drugi argument ShipX jest wewnętrzną odpowiedzią POST, nie zamówieniem WzA.
-      kurierzy.inpost = { ...klient, sprawdzPrzesylke: id => klient.sprawdzPrzesylke(id) };
-    }
-  }
-  if (Object.keys(klienciAllegro).length) {
-    const allegroDla = (kanal: string) => klienciAllegro[kanal] ?? null;
-    kurierzy.allegro_wza = (fabryki.createAllegroWza ?? createAllegroWzaClient)({ allegroDla: (z: any) => {
+type Skladanie = { config: ReturnType<typeof wczytajKurierow>; klienciAllegro: Record<string, any>; fabryki: FabrykiKurierow };
+
+// PRZ-135: jak z konfiguracji powstaje adapter każdego kuriera z metodami. Typ z kluczy rejestru — nowy kurier
+// z metodami bez wpisu tutaj (i w FABRYKI_KURIEROW) to błąd tsc. `null` = kurier nieskonfigurowany w pliku.
+const SKLADANIE: { [K in KluczKurieraNadania]: (s: Skladanie) => KurierNadania | null } = {
+  dpd: ({ config, fabryki }) => config.dpd ? (fabryki.createDpd ?? FABRYKI_KURIEROW.dpd)(config.dpd) : null,
+  inpost: ({ config, fabryki }) => {
+    if (!config.inpost) return null;
+    if (fabryki.createInpost) return fabryki.createInpost(config.inpost);
+    const klient = FABRYKI_KURIEROW.inpost(config.inpost);
+    // Drugi argument ShipX jest wewnętrzną odpowiedzią POST, nie zamówieniem WzA.
+    return { ...klient, sprawdzPrzesylke: (id: string) => klient.sprawdzPrzesylke(id) };
+  },
+  allegro_wza: ({ config, klienciAllegro, fabryki }) => (fabryki.createAllegroWza ?? FABRYKI_KURIEROW.allegro_wza)({
+    allegroDla: (z: any) => {
       const klient = klienciAllegro[z?.sklep];
       if (!klient) throw new Error(`Kanał „${z?.sklep}” nie jest podpięty do Allegro — panel niczego nie nadał.`);
       return klient;
     },
-      metodaZywa: (z: any) => klienciAllegro[z?.sklep]?.pobierzMetodeDostawy(z?.zrodlo_id) ?? null,
-      pobranieNadawca: config.pobranieNadawca });
-    kurierzy.allegro = (fabryki.createAllegroSledzenie ?? createAllegroSledzenieClient)({ allegroDla });
+    metodaZywa: (z: any) => klienciAllegro[z?.sklep]?.pobierzMetodeDostawy(z?.zrodlo_id) ?? null,
+    pobranieNadawca: config.pobranieNadawca }),
+};
+
+export function zbudujKurierow(config: ReturnType<typeof wczytajKurierow>, klienciAllegro: Record<string, any>, fabryki: FabrykiKurierow = {}) {
+  const kurierzy: MapaKurierow = {};
+  // Kolejność kluczy mapy = kolejność rejestru (dpd, inpost, allegro_wza, allegro).
+  for (const klucz of Object.keys(MODULY_KURIEROW)) {
+    if (!Object.hasOwn(SKLADANIE, klucz)) continue;
+    const kurier = SKLADANIE[klucz as KluczKurieraNadania]({ config, klienciAllegro, fabryki });
+    if (kurier) kurierzy[klucz] = kurier;
   }
+  // Kurier bez metod (`allegro`) tylko śledzi paczki nadane poza OMS — klient odczytu Allegro.
+  const allegroDla = (kanal: string) => klienciAllegro[kanal] ?? null;
+  kurierzy.allegro = (fabryki.createAllegroSledzenie ?? createAllegroSledzenieClient)({ allegroDla });
   return kurierzy;
 }

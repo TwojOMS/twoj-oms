@@ -22,7 +22,7 @@ const DZIEN = 24 * 60 * 60 * 1000;
 const przedDniami = (dni) => new Date(Date.now() - dni * DZIEN).toISOString();
 
 function zFaktura(db, {
-  sklep = 'allegro_szkicownia', chceFakture = 1, uuid = null, numer = 'FV/12/2026', ksefNumer = null,
+  sklep = 'allegro_swietlik', chceFakture = 1, uuid = null, numer = 'FV/12/2026', ksefNumer = null,
   anulowane = 0, utworzonaAt = przedDniami(1),
 } = {}) {
   licznik += 1;
@@ -130,7 +130,7 @@ describe('czuwacz KSeF — zakres pytania', () => {
   // sklepow byloby setkami wywolan miesiecznie bez ani jednego odbiorcy.
   it('nie rusza faktur ze sklepów', async () => {
     const db = openOmsDb(':memory:');
-    zFaktura(db, { sklep: 'szkicownia' });
+    zFaktura(db, { sklep: 'swietlik' });
     const infakt = liczacaAtrapa();
 
     await createCzuwaczKsef({ db, infakt }).przebieg();
@@ -158,7 +158,7 @@ describe('czuwacz KSeF — zakres pytania', () => {
   // wylacznie predykatem czyKanalAllegro"), a SQL jest wylacznie zawezeniem odczytu.
   it('rozpoznanie kanału rozstrzyga predykat domeny, nie sam SQL', async () => {
     const db = openOmsDb(':memory:');
-    zFaktura(db, { sklep: 'ALLEGRO_SZKICOWNIA' });
+    zFaktura(db, { sklep: 'ALLEGRO_SWIETLIK' });
     const infakt = liczacaAtrapa();
 
     await createCzuwaczKsef({ db, infakt }).przebieg();
@@ -590,7 +590,7 @@ describe('automat: faktura do Allegro po pojawieniu się numeru KSeF', () => {
 
   it('numer KSeF się pojawił → panel sam wysyła fakturę do Allegro', async () => {
     const db = openOmsDb(':memory:');
-    const id = zFaktura(db, { sklep: 'allegro_szkicownia', chceFakture: 1 });
+    const id = zFaktura(db, { sklep: 'allegro_swietlik', chceFakture: 1 });
     const { wolania, usluga } = atrapaWysylki();
     await czuwaczZ(db, { fakturaAllegro: usluga }).przebieg();
     expect(wolania).toHaveLength(1);
@@ -601,7 +601,7 @@ describe('automat: faktura do Allegro po pojawieniu się numeru KSeF', () => {
   // numeru KSeF odbierałby właścicielowi decyzję, której nie da się cofnąć.
   it('automat NIGDY nie używa furtki „bez numeru KSeF”', async () => {
     const db = openOmsDb(':memory:');
-    zFaktura(db, { sklep: 'allegro_szkicownia', chceFakture: 1 });
+    zFaktura(db, { sklep: 'allegro_swietlik', chceFakture: 1 });
     const { wolania, usluga } = atrapaWysylki();
     await czuwaczZ(db, { fakturaAllegro: usluga }).przebieg();
     expect(wolania[0].opcje?.bezKsef).toBeFalsy();
@@ -609,7 +609,7 @@ describe('automat: faktura do Allegro po pojawieniu się numeru KSeF', () => {
 
   it('bez numeru KSeF nie wysyła nic — nie ma czego dosyłać', async () => {
     const db = openOmsDb(':memory:');
-    zFaktura(db, { sklep: 'allegro_szkicownia', chceFakture: 1 });
+    zFaktura(db, { sklep: 'allegro_swietlik', chceFakture: 1 });
     const { wolania, usluga } = atrapaWysylki();
     await czuwaczZ(db, { fakturaAllegro: usluga, ksefNumer: null }).przebieg();
     expect(wolania).toEqual([]);
@@ -619,7 +619,7 @@ describe('automat: faktura do Allegro po pojawieniu się numeru KSeF', () => {
   // dokąd jej wysyłać. Bramka to rozstrzyga, ale sprawdzamy na poziomie czuwacza.
   it('faktura ZE SKLEPU nie jedzie do Allegro', async () => {
     const db = openOmsDb(':memory:');
-    zFaktura(db, { sklep: 'szkicownia', chceFakture: 1 });
+    zFaktura(db, { sklep: 'swietlik', chceFakture: 1 });
     const { wolania, usluga } = atrapaWysylki();
     await czuwaczZ(db, { fakturaAllegro: usluga }).przebieg();
     expect(wolania).toEqual([]);
@@ -630,7 +630,7 @@ describe('automat: faktura do Allegro po pojawieniu się numeru KSeF', () => {
   // nieodwracalny jak każdy inny.
   it('kupujący nie prosił o fakturę → automat milczy', async () => {
     const db = openOmsDb(':memory:');
-    zFaktura(db, { sklep: 'allegro_szkicownia', chceFakture: 0 });
+    zFaktura(db, { sklep: 'allegro_swietlik', chceFakture: 0 });
     const { wolania, usluga } = atrapaWysylki();
     await czuwaczZ(db, { fakturaAllegro: usluga }).przebieg();
     expect(wolania).toEqual([]);
@@ -645,7 +645,7 @@ describe('automat: faktura do Allegro po pojawieniu się numeru KSeF', () => {
   // w obu wariantach — czyli nie sprawdzala niczego.
   it('awaria wysyłki nie kładzie przebiegu i NIE udaje nieudanego odczytu KSeF', async () => {
     const db = openOmsDb(':memory:');
-    const id = zFaktura(db, { sklep: 'allegro_szkicownia', chceFakture: 1 });
+    const id = zFaktura(db, { sklep: 'allegro_swietlik', chceFakture: 1 });
     const { usluga } = atrapaWysylki({ rzuca: new Error('Allegro nie odpowiedziało') });
     const wynik = await czuwaczZ(db, { fakturaAllegro: usluga }).przebieg();
     expect(wynik.znalezione).toBe(1);
@@ -661,7 +661,7 @@ describe('automat: faktura do Allegro po pojawieniu się numeru KSeF', () => {
   // odpowiedzieć, kto wysłał dokument kupującemu.
   it('wysyłka automatem zostawia ślad mówiący, że to AUTOMAT', async () => {
     const db = openOmsDb(':memory:');
-    const id = zFaktura(db, { sklep: 'allegro_szkicownia', chceFakture: 1 });
+    const id = zFaktura(db, { sklep: 'allegro_swietlik', chceFakture: 1 });
     const { usluga } = atrapaWysylki();
     await czuwaczZ(db, { fakturaAllegro: usluga }).przebieg();
     expect(logZ(db, id).some((w) => /AUTOMAT/i.test(w.wynik))).toBe(true);
@@ -678,7 +678,7 @@ describe('automat: faktura do Allegro po pojawieniu się numeru KSeF', () => {
   // siatka: gdyby zakres zapytania kiedys sie poszerzyl, to ona zatrzyma dokument.
   it('dokument wysłany wcześniej BEZ numeru KSeF nie jedzie do kupującego drugi raz', async () => {
     const db = openOmsDb(':memory:');
-    const id = zFaktura(db, { sklep: 'allegro_szkicownia', chceFakture: 1 });
+    const id = zFaktura(db, { sklep: 'allegro_swietlik', chceFakture: 1 });
     db.prepare("UPDATE faktury SET allegro_wyslana_at = '2026-08-06T20:00:00', allegro_invoice_id = 'inv-9' WHERE zamowienie_id = ?")
       .run(id);
     const { wolania, usluga } = atrapaWysylki();
@@ -702,7 +702,7 @@ describe('automat: faktura do Allegro po pojawieniu się numeru KSeF', () => {
   // Panel bez podpiętego kanału Allegro (albo bez inFaktu) ma działać jak dotąd.
   it('bez podpiętej usługi wysyłki czuwacz działa jak dotąd', async () => {
     const db = openOmsDb(':memory:');
-    const id = zFaktura(db, { sklep: 'allegro_szkicownia', chceFakture: 1 });
+    const id = zFaktura(db, { sklep: 'allegro_swietlik', chceFakture: 1 });
     const wynik = await createCzuwaczKsef({
       db, infakt: { pobierzFakture: async () => ({ numer: 'FV/12/2026', ksefNumer: 'KS-1' }) },
     }).przebieg();

@@ -10,7 +10,7 @@ import { statusDlaAllegro, stanAllegroPotwierdzaZgodnosc, STATUS_ALLEGRO_DLA } f
 // celowo nie występuje w tej fikstrurze: gdyby reguła po nią sięgnęła, testy by tego nie
 // zauważyły, a produkcja cofnęłaby status kupującemu.
 const z = (nadpisania) => ({
-  sklep: 'allegro_szkicownia', zrodlo_id: 'abc', kwota_brutto: '100.00',
+  sklep: 'allegro_swietlik', zrodlo_id: 'abc', kwota_brutto: '100.00',
   platnosci: [{ kwota: '100.00', zrodlo: 'sklep' }], przesylki: [], anulowane: 0,
   w_realizacji_at: '2026-08-05T09:00:00Z', ...nadpisania,
 });
@@ -78,7 +78,7 @@ describe('statusDlaAllegro', () => {
   });
 
   it('sklep NIE jest kanałem — ta reguła go nie dotyczy', () => {
-    expect(statusDlaAllegro(z({ sklep: 'szkicownia' }), 'NEW')).toBeNull();
+    expect(statusDlaAllegro(z({ sklep: 'swietlik' }), 'NEW')).toBeNull();
     expect(statusDlaAllegro(z({ sklep: 'reczne' }), 'NEW')).toBeNull();
   });
 
@@ -125,7 +125,7 @@ describe('stanAllegroPotwierdzaZgodnosc', () => {
   it('anulowane, zwrot i zamówienie ze sklepu → NIE (o Allegro nie wiemy nic)', () => {
     expect(stanAllegroPotwierdzaZgodnosc(z({ anulowane: 1 }), 'PROCESSING')).toBe(false);
     expect(stanAllegroPotwierdzaZgodnosc(z({ zwrot_at: '2026-08-06' }), 'PROCESSING')).toBe(false);
-    expect(stanAllegroPotwierdzaZgodnosc(z({ sklep: 'szkicownia' }), 'PROCESSING')).toBe(false);
+    expect(stanAllegroPotwierdzaZgodnosc(z({ sklep: 'swietlik' }), 'PROCESSING')).toBe(false);
   });
 
   it('nie rzuca na pustce', () => {

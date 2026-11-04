@@ -10,7 +10,7 @@ let kolejny = 0;
 const wstaw = (d = {}) => {
   kolejny += 1;
   const w = {
-    sklep: 'szkicownia', zrodlo_id: kolejny, numer: `N${kolejny}`,
+    sklep: 'swietlik', zrodlo_id: kolejny, numer: `N${kolejny}`,
     metoda_wysylki: 'dpd', metoda_wysylki_nazwa: null, pobranie: 0, b2b: 0, indywidualne: 0,
     metoda_platnosci: 'BLIK', kwota_brutto: '100.00',
     klient_json: JSON.stringify({ email: 'k@klient.pl' }), oplacone_at: '2026-08-13T06:00:00Z',
@@ -125,7 +125,7 @@ describe('ekran /statystyki', () => {
 
   it('zamówienia Allegro mają własny wiersz poza procentami płatności', async () => {
     wstaw();
-    wstaw({ sklep: 'allegro_szkicownia', metoda_platnosci: 'Allegro (płatność online)' });
+    wstaw({ sklep: 'allegro_swietlik', metoda_platnosci: 'Allegro (płatność online)' });
     const odp = await wejdz(SIERPIEN);
     expect(odp.body).toMatch(/Allegro nie mówi/);
     expect(odp.body).toContain('<td>BLIK</td>');
@@ -138,10 +138,10 @@ describe('ekran /statystyki', () => {
   // literał w widoku nie zgadzał się z danymi, ta konkretna asercja by to złapała.
   it('licznik zamówień Allegro poza procentami jest widoczny z właściwą liczbą', async () => {
     wstaw();
-    wstaw({ sklep: 'allegro_szkicownia', metoda_platnosci: 'Allegro (płatność online)' });
-    wstaw({ sklep: 'allegro_szkicownia', metoda_platnosci: 'Allegro (płatność online)' });
-    wstaw({ sklep: 'allegro_szkicownia', metoda_platnosci: 'Allegro (płatność online)' });
-    wstaw({ sklep: 'allegro_szkicownia', metoda_platnosci: 'Allegro (płatność online)' });
+    wstaw({ sklep: 'allegro_swietlik', metoda_platnosci: 'Allegro (płatność online)' });
+    wstaw({ sklep: 'allegro_swietlik', metoda_platnosci: 'Allegro (płatność online)' });
+    wstaw({ sklep: 'allegro_swietlik', metoda_platnosci: 'Allegro (płatność online)' });
+    wstaw({ sklep: 'allegro_swietlik', metoda_platnosci: 'Allegro (płatność online)' });
     const odp = await wejdz(SIERPIEN);
     expect(odp.body).toContain('<strong>4</strong> zamówień tego kanału stoi poza');
   });

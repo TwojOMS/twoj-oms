@@ -84,6 +84,13 @@ describe('wysylkaZKarty', () => {
 describe('powrotWysylkiKsef', () => {
   const lista = { miesiac: '2026-10', pole: 'invoice_date' };
 
+  it('zachowuje tylko dozwolone filtry listy, a na karcie je ignoruje', () => {
+    const filtry = { ...lista, typ: 'korekta', platnosc: 'niezaplacona' };
+    expect(powrotWysylkiKsef(undefined, filtry).adres).toBe('/faktury?miesiac=2026-10&pole=invoice_date&typ=korekta&platnosc=niezaplacona');
+    expect(powrotWysylkiKsef(undefined, { ...filtry, typ: 'zle"><x' }).adres).toBe('/faktury?miesiac=2026-10&pole=invoice_date&platnosc=niezaplacona');
+    expect(powrotWysylkiKsef('/zamowienia/42', filtry).adres).toBe('/zamowienia/42#faktura');
+  });
+
   it('karta zamówienia → powrót na sekcję faktury tej karty', () => {
     expect(powrotWysylkiKsef('/zamowienia/42', lista)).toEqual({
       adres: '/zamowienia/42#faktura', etykieta: 'Wróć do zamówienia', powrot: '/zamowienia/42',

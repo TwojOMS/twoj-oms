@@ -55,7 +55,7 @@ describe('PRZ-053 — jawne listy helperów', () => {
       expect(filtryZZapytania({ kanal: 'pro' }, []).kanal).toBeNull();
       expect(ocenZapis(null, [], {}, [])).toEqual({ zmiany: [], wstrzymane: [] });
       expect(zmianyDoWyslania(null, [], {}, [])).toEqual([]);
-      expect(() => ofertaNaProdukt(oferta, 'allegro_szkicownia', [])).toThrow(/nie jest/);
+      expect(() => ofertaNaProdukt(oferta, 'allegro_swietlik', [])).toThrow(/nie jest/);
       expect(await odswiezMagazyn({ db, sklepy: {}, allegro: {}, kanalySklepow: [], kanalyAllegro: [] })).toEqual({ kanaly: [] });
     } finally { db.close(); }
   });

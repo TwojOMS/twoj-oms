@@ -201,6 +201,10 @@
             && mozeAdres(`/zamowienia/${z.id}/zwroty/${w.id}/korekta`)) { %>
             <% if (korektaBlokada[w.id]) { %>
               <span class="pasek-blokada"><%= korektaBlokada[w.id] %></span>
+            <% } else if (locals.korektaBezDostawy?.[w.id]) { %>
+              <%# PRZ-148.03: faktura bez pozycji „Dostawa” — przycisk wyłączony ze zdaniem z domeny zamiast gołej odmowy. %>
+              <button type="button" class="btn btn--maly" disabled title="<%= korektaBezDostawy[w.id] %>">Wystaw korektę</button>
+              <span class="pasek-blokada"><%= korektaBezDostawy[w.id] %></span>
             <% } else { %>
               <form method="post" class="w-linii" action="/zamowienia/<%= z.id %>/zwroty/<%= w.id %>/korekta">
                 <input type="hidden" name="powrot" value="<%= powrot %>">
@@ -250,6 +254,8 @@
             <% } %>
           <% } else if (w.korekta_zlecona_at) { %>
             <span class="znacznik">Korekta zlecona — numer pojawi się po przetworzeniu</span>
+            <%# PRZ-147.03: przeładowanie tego ekranu odczytuje stan zlecenia (`doczytaj` w trasie GET). %>
+            <a class="btn btn--maly btn--cichy" href="<%= adresZwrotu %>">Odśwież stan</a>
           <% } %>
           <%# DRUGIE wyjscie: korekta wystawiona RECZNIE w inFakcie. Rysuje sie przy zwrocie do %>
           <%# zafakturowanego zamowienia, ktory numeru jeszcze nie ma — bo przy DRUGIEJ korekcie %>

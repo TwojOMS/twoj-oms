@@ -235,10 +235,10 @@ describe('ekran zarzadczy', () => {
 
   // ⚠️ Brak granicy kanalu ma dac ZDANIE DLA CZLOWIEKA, nie piecsetke — tak samo jak /raporty.
   it('BRAK GRANICY KANALU daje czytelna odmowe, nie piecsetke', async () => {
-    db.prepare("DELETE FROM granice_historii WHERE kanal = 'SZKICOWNIA_PL'").run();
+    db.prepare("DELETE FROM granice_historii WHERE kanal = 'SWIETLIK_PL'").run();
     const odp = await wejdz('/finanse?od=2026-06-01&do=2026-06-30');
     expect(odp.statusCode).toBe(400);
-    expect(odp.body).toContain('SZKICOWNIA_PL');
+    expect(odp.body).toContain('SWIETLIK_PL');
   });
 
   it('bez parametrow otwiera POPRZEDNI miesiac', async () => {

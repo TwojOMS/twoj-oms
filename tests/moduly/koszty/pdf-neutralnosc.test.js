@@ -33,19 +33,19 @@ const wiersz = { numer_dokumentu:'FV/FIXTURE',sprzedawca_nazwa:'Dostawca fixture
   sprzedawca_nip:'1111111111',data_wystawienia:'2026-06-05',netto:'100.00',vat:'23.00',
   brutto:'123.00',waluta:'PLN',rodzaj:'Vat',ksef_number:'K-FIXTURE' };
 describe('PRZ-025 neutralność wydruku kosztu', () => {
-  it('jedna strona zawiera neutralną stopkę bez Szkicownia', async () => {
+  it('jedna strona zawiera neutralną stopkę bez Pracownia Świetlik', async () => {
     const strony = stronyZPdf(await zbudujKosztPdf({wiersz,pozycje:[]}));
     expect(strony).toHaveLength(1);
-    expect(strony[0]).not.toContain('Szkicownia');
+    expect(strony[0]).not.toContain('Pracownia Świetlik');
     expect(strony[0]).toContain(STOPKA);
   });
-  it('każda strona, także ostatnia, zawiera neutralną stopkę bez Szkicownia', async () => {
+  it('każda strona, także ostatnia, zawiera neutralną stopkę bez Pracownia Świetlik', async () => {
     const pozycje = Array.from({length:60}, (_,i) => ({lp:String(i+1),nazwa:'Papier fixture',
       jednostka:'szt',ilosc:'2',cenaNetto:'18.50',wartoscNetto:'37.00',stawkaVat:'23%'}));
     const strony = stronyZPdf(await zbudujKosztPdf({wiersz,pozycje}));
     expect(strony.length).toBeGreaterThan(1);
     for (const strona of strony) {
-      expect(strona).not.toContain('Szkicownia');
+      expect(strona).not.toContain('Pracownia Świetlik');
       expect(strona).toContain(STOPKA);
     }
   });

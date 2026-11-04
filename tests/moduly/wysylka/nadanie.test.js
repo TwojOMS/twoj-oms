@@ -9,7 +9,7 @@ import { wyliczStatus, doZrobienia } from '../../../src/domena/status.js';
 
 const zmapowane = (nad = {}) => ({
   zrodlo_id: 1301, numer: '1301', klient: { email: 'j@k.pl', phone: '+48500600700' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
+  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
   status_woo: 'processing', oplacone_at: '2026-07-29T13:00:00', anulowane: 0,
   utworzone_at: '2026-07-29T13:19:52', pozycje: [], ...nad,
@@ -219,7 +219,7 @@ describe('nadanie', () => {
 describe('nadanie — adres odbiorcy przekazany z formularza', () => {
   const ADRES = {
     nazwa: 'Jan Kowalski-Po-Poprawce', company: 'Jan Kowalski-Po-Poprawce',
-    ulica: 'Polna 1/5', kod: '00-650', miasto: 'Pęki', kraj: 'PL',
+    ulica: 'Polna 1/5', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
     phone: '+48500600700', email: 'j@k.pl',
   };
 
@@ -409,7 +409,7 @@ describe('nadanie — awaria PO przydzieleniu numeru listu', () => {
   it('adres użyty PRZY NADANIU DO WYJAŚNIENIA też się zapisuje przy przesyłce (JSON)', async () => {
     const ADRES = {
       nazwa: 'Jan Kowalski-Po-Poprawce', company: 'Jan Kowalski-Po-Poprawce',
-      ulica: 'Polna 1/5', kod: '00-650', miasto: 'Pęki', kraj: 'PL',
+      ulica: 'Polna 1/5', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
       phone: '+48500600700', email: 'j@k.pl',
     };
     const { db, nadanie } = zestaw({ dpdNadaj: poNumerze() });

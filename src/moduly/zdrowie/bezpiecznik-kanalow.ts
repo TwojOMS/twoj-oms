@@ -14,7 +14,7 @@ export function alarmyNazwKanalow(definicje: readonly { klucz: string; typ: stri
   });
 }
 
-type Konfiguracja = { sklepy: Record<string, unknown>; kanaly: Record<string, unknown>; braki?: Record<string, string[]> };
+type Konfiguracja = { sklepy: Record<string, unknown>; kanaly: Record<string, unknown>; braki?: Record<string, string[]>;wstrzymaneKanaly?:()=>readonly string[] };
 
 /** Odczyt lokalnego stanu przy każdym /health, bez kontaktu z integracjami. */
 export function alarmyKonfiguracjiKanalow(db: DatabaseSync, config: Konfiguracja, teraz: Date, proba: boolean): string[] {
@@ -23,6 +23,7 @@ export function alarmyKonfiguracjiKanalow(db: DatabaseSync, config: Konfiguracja
     WHERE sklep <> 'reczne' AND julianday(utworzone_at) >= julianday(?, '-30 days')
       AND julianday(utworzone_at) <= julianday(?) ORDER BY sklep`).all(teraz.toISOString(), teraz.toISOString()) as { sklep: string }[];
   return kanaly.flatMap(({ sklep }) => {
+    if(config.wstrzymaneKanaly?.().includes(sklep))return [];
     if (Object.hasOwn(config.sklepy, sklep) || Object.hasOwn(config.kanaly, sklep)) return [];
     const nazwy = config.braki?.[sklep];
     const braki = nazwy?.length ? nazwy : ['OMS_KANALY'];

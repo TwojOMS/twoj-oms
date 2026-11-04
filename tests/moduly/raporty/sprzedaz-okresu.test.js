@@ -22,7 +22,7 @@ const wHistorii = (dzien, brutto = '100.00', konto = 9) => zapiszHistorie(db, {
   status: 15, paymentStatus: 2, klientEmail: 'k@example.org', pozycje: [],
 });
 
-const wOms = (utworzone, kwota = '100.00', sklep = 'szkicownia') => {
+const wOms = (utworzone, kwota = '100.00', sklep = 'swietlik') => {
   licznik += 1;
   db.prepare(
     'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at, indywidualne)'
@@ -35,7 +35,7 @@ const wOms = (utworzone, kwota = '100.00', sklep = 'szkicownia') => {
 // fikstur mial klient_json = NULL i pusta liste pozycji, wiec regula wykluczen po stronie
 // OMS-u (klient.imie/nazwisko/firma) i pozycjeOms nie mialy czego oznaczyc. wOms ZOSTAJE
 // nietkniety — istniejace testy dalej go uzywaja bez zmian.
-const wOmsZKlientem = (utworzone, { kwota = '100.00', sklep = 'szkicownia', klient = null, pozycje = [] } = {}) => {
+const wOmsZKlientem = (utworzone, { kwota = '100.00', sklep = 'swietlik', klient = null, pozycje = [] } = {}) => {
   licznik += 1;
   const info = db.prepare(
     'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at, indywidualne, klient_json)'
@@ -81,10 +81,10 @@ describe('granica historia ↔ OMS', () => {
   });
 
   it('KANAL BEZ GRANICY PRZERYWA — cicha pustka wyglada jak slaby miesiac', () => {
-    db.prepare("DELETE FROM granice_historii WHERE kanal = 'SZKICOWNIA_PL'").run();
+    db.prepare("DELETE FROM granice_historii WHERE kanal = 'SWIETLIK_PL'").run();
     wOms('2026-07-10 12:00:00');
     expect(() => sprzedazWOkresie(db, { od: '2026-07-01', do: '2026-07-31' }))
-      .toThrow(/SZKICOWNIA_PL/);
+      .toThrow(/SWIETLIK_PL/);
   });
 });
 
@@ -132,7 +132,7 @@ describe('netto i wykluczenia', () => {
     zapiszHistorie(db, {
       apiloId: 'W', platformAccountId: 9, dzien: '2026-06-02',
       utworzoneAt: '2026-06-02T10:00:00.000Z', brutto: '900.00', tagi: [],
-      klientEmail: 'wlasciciel@example.com', status: 15, paymentStatus: 2, pozycje: [],
+      klientEmail: 'anna.wzorcowa@example.test', status: 15, paymentStatus: 2, pozycje: [],
     });
     zapiszHistorie(db, {
       apiloId: 'T', platformAccountId: 9, dzien: '2026-06-02',
@@ -158,10 +158,10 @@ describe('netto i wykluczenia', () => {
   // domain/allegro-mapowanie.js (adresPanelu) i domain/nowe-zamowienie.js (rozbijNazwe +
   // company). Ponizsze testy padaly na kodzie SPRZED poprawki: sklejony napis czytal
   // klient.imie/nazwisko/firma, ktore w tym ksztalcie sa ZAWSZE undefined.
-  it('OMS: firma "Lumina…" w klient_json wypada ze sprzedazy', () => {
+  it('OMS: firma "Pracownia Półcień…" w klient_json wypada ze sprzedazy', () => {
     wOmsZKlientem('2026-07-10 12:00:00', {
       kwota: '500.00',
-      klient: { company: 'Lumina Marek Zywiecki' },
+      klient: { company: 'Pracownia Półcień Anna Wzorcowa' },
     });
     expect(suma('2026-07-10', '2026-07-10')).toBe(0);
   });
@@ -221,7 +221,7 @@ const zeSklepuZNadpisaniem = (utworzone, {
   const info = db.prepare(
     'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at, indywidualne,'
     + ' pozycje_reczne_json, koszt_dostawy_brutto) VALUES (?,?,?,?,?,0,?,?)',
-  ).run('szkicownia', licznik, `N${licznik}`, kwota, utworzone,
+  ).run('swietlik', licznik, `N${licznik}`, kwota, utworzone,
     nadpisania ? JSON.stringify(nadpisania) : null, kosztDostawy);
   const zamowienieId = Number(info.lastInsertRowid);
   if (pozycja) {

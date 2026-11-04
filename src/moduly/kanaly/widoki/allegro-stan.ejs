@@ -1,0 +1,39 @@
+<%
+  // U25–U26: problem = nieudany ostatni test albo błąd pobierania; tylko wtedy jest przycisk główny.
+  const problem = k.autoryzacja === 'polaczone' && Boolean(diagnostyka?.blad || stan?.ostatni_blad);
+  const odczyty = [stan?.ostatni_przebieg_at, diagnostyka?.ostatni_sukces_at].filter(t => t && !Number.isNaN(Date.parse(t)));
+  const ostatniOdczyt = odczyty.sort((a, b) => Date.parse(b) - Date.parse(a))[0];
+  // #6, U9: stan i czas jak w wierszu listy „Moje połączenia” (ten sam model), daty jak „dziś 08:10”.
+  const kiedy = (t) => fmtKiedy(t, locals.teraz ?? new Date());
+  const wiersz = locals.wiersz;
+  const dziala = k.autoryzacja === 'polaczone' || locals.zSerwera === true;
+  const etykieta = wiersz ? wiersz.etykietaStanu : problem ? 'Wymaga uwagi' : k.pobieranie === 'wlaczone' ? 'Działa' : 'Połączone, pobieranie wyłączone';
+  const odczyt = wiersz ? wiersz.czasOdczytu : ostatniOdczyt;
+%>
+<section class="ust-sekcja">
+  <h2>Połączenie</h2>
+  <% if (!locals.tylkoPolaczenie && dziala) { %>
+  <p class="ust-wstep"><strong data-stan-konta><%= etykieta %></strong> — Ostatni odczyt z Allegro: <%= odczyt ? kiedy(odczyt) : 'jeszcze nie było' %>.<% if (diagnostyka?.blad) { %> Ostatni test połączenia się nie udał — sprawdź je jeszcze raz.<% } %></p>
+  <% } %>
+  <p><strong><%= k.srodowisko === 'sandbox' ? 'Allegro Sandbox — środowisko testowe' : 'Allegro — środowisko sprzedażowe' %></strong></p>
+  <dl class="allegro-dane">
+    <dt>Konto</dt><dd><%= k.login ?? wiersz?.konto ?? 'Jeszcze niepotwierdzone' %><% if (k.kontoId) { %> (ID <%= k.kontoId %>)<% } %></dd>
+    <dt>Dostęp do Allegro</dt><dd><%= locals.zSerwera ? 'Ustawione przez administratora serwera' : ({brak:'Niepołączone',oczekuje_potwierdzenia:'Oczekuje na zgodę i potwierdzenie',polaczone:'Połączone',wymaga_autoryzacji:'Wymaga ponownego połączenia',odlaczone:'Odłączone'})[k.autoryzacja] %></dd>
+    <dt>Pobieranie zamówień</dt><dd><%= k.autoryzacja === 'odlaczone' ? 'Wyłączone' : ({wylaczone:'Wyłączone',wlaczone:'Włączone',zatrzymywanie:'Zatrzymywanie'})[k.pobieranie] %></dd>
+    <dt>Ostatni przebieg pobierania</dt><dd><%= stan?.ostatni_przebieg_at ? kiedy(stan.ostatni_przebieg_at) : 'Jeszcze nie wykonano' %></dd>
+    <dt>Zamówienia uzupełnione do</dt><dd><%= stan?.zsynchronizowane_do ? kiedy(stan.zsynchronizowane_do) : 'Jeszcze nie wykonano' %></dd>
+    <dt>Zamówienia w OMS</dt><dd><%= historia %></dd>
+    <dt>Ostatni udany test połączenia</dt><dd><%= diagnostyka?.ostatni_sukces_at ? kiedy(diagnostyka.ostatni_sukces_at) : 'Jeszcze nie wykonano' %></dd>
+    <dt>Ostatnia próba testu</dt><dd><%= diagnostyka?.ostatnia_proba_at ? kiedy(diagnostyka.ostatnia_proba_at) : 'Jeszcze nie wykonano' %><% if (diagnostyka?.blad) { %> — nieudana<% } %></dd>
+  </dl>
+  <% if (stan?.ostatni_blad) { %><p>Pobieranie zgłosiło błąd. Sprawdź diagnostykę połączenia.</p><% } %>
+  <% if (!locals.tylkoPolaczenie) { %><p class="allegro-kolejne">Sprzedajesz też na innym koncie Allegro? <a href="<%= root %>/nowe">Podłącz kolejne konto Allegro</a> — dostanie własną nazwę i własne zamówienia.</p><% } %>
+</section>
+<% if (!locals.tylkoPolaczenie && k.autoryzacja === 'polaczone') { %>
+<section class="ust-sekcja"><h2>Pobieranie i test połączenia</h2>
+  <p>Pauza zatrzymuje pobieranie nowych i zmienionych zamówień. Zachowuje dostęp do obsługi zamówień już zapisanych w OMS. Wznowienie uzupełnia przerwę.</p>
+  <form method="post" action="<%= adres %>/pobieranie"><input type="hidden" name="wersja" value="<%= k.wersja %>"><input type="hidden" name="wlaczone" value="<%= k.pobieranie === 'wlaczone' ? 'nie' : 'tak' %>"><button class="ust-przycisk" type="submit"><%= k.pobieranie === 'wlaczone' ? 'Wstrzymaj pobieranie' : 'Wznów pobieranie' %></button></form>
+  <form method="post" action="<%= adres %>/sprawdz"><input type="hidden" name="wersja" value="<%= k.wersja %>"><p><button class="<%= problem ? 'btn btn--glowny' : 'ust-przycisk' %>" type="submit">Sprawdź połączenie</button></p></form>
+  <p>Test odczytu konta i zamówień niczego nie importuje. Nie sprawdza nadania przesyłki ani wysłania wiadomości.</p>
+</section>
+<% } %>

@@ -29,7 +29,7 @@ const odp = (status, tekst) => ({ status, ok: status >= 200 && status < 300, tex
 const config = { auth: { user: 'adam', pass: 'x' } };
 const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'), origin: 'http://localhost' };
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
-const NADAWCA = { nazwa: 'Lumina Marek Zywiecki', ulica: 'ul. 1 Maja 5', kod: '00-650', miasto: 'Pęki', kraj: 'PL' };
+const NADAWCA = { nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL' };
 
 const ADRES = {
   nazwa: 'Julia Lis', company: '', ulica: 'Radosna 7', kod: '78-100',
@@ -52,14 +52,14 @@ function dpdKlient() {
   const fetchImpl = vi.fn()
     .mockResolvedValueOnce(odp(200, fixture('v10-ok.xml')))
     .mockResolvedValueOnce(odp(200, fixture('v4-ok.xml')));
-  const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '278216', nadawca: NADAWCA, fetchImpl });
+  const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '876543', nadawca: NADAWCA, fetchImpl });
   return { dpd, fetchImpl };
 }
 
 let db;
 beforeEach(() => { db = openOmsDb(':memory:'); });
 
-function zServerem({ nad = {}, sklep = 'allegro_szkicownia', inpost, wza } = {}) {
+function zServerem({ nad = {}, sklep = 'allegro_swietlik', inpost, wza } = {}) {
   const katalogEtykiet = mkdtempSync(join(tmpdir(), 'oms-allegro-'));
   const kurierzy = { dpd: dpdKlient().dpd };
   if (inpost) kurierzy.inpost = inpost;
@@ -121,14 +121,14 @@ describe('ekran wyboru kuriera dla zamówienia z Allegro', () => {
     expect(r.body).toContain('name="waga"');
   });
 
-  // ⚠️ PIENIĄDZE: pobranie w paczkomacie nie jest potwierdzone na naszej umowie z InPostem
-  // (44 przesyłki konta, wszystkie z pustym `cod`) — paczka pojechałaby bez inkasa.
+  // ⚠️ PIENIĄDZE: bez ustawienia „mam umowę na pobranie w InPoście” (PRZ-135 T2, domyślnie wyłączone)
+  // paczkomat za pobraniem pojechałby bez inkasa — zostaje sam DPD, a podpowiedź prowadzi do ustawienia.
   it('przy pobraniu na paczce nr 1 zostaje sam DPD, z podanym powodem', async () => {
     const { serwer, id } = zServerem({ nad: { pobranie: 1, kwota_pobrania: '220.89' } });
     const r = await get(serwer, `/zamowienia/${id}/nadaj?wybor=1`);
     expect(r.body).toContain('kurier=dpd');
     expect(r.body).not.toContain('kurier=inpost_paczkomat');
-    expect(r.body).toMatch(/bez inkasa/i);
+    expect(r.body).toContain('/ustawienia/integracje/inpost#inpost-pobranie');
   });
 });
 

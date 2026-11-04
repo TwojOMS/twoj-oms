@@ -22,6 +22,8 @@ export const METODA_ZDOLNOSCI = Object.freeze({
   oznaczZaplacona: 'oznaczZaplacona',
   wyslijDoKsef: 'wyslijDokumentDoKsef',
   numeracjaWlasna: 'iluMaNumer',
+  statusKorekty: 'statusKorekty',
+  odczytKorekty: 'pobierzKorekte',
 } as const satisfies Record<ZdolnoscProgramu, MetodaOpcjonalna>);
 
 const pelneObowiazkowe: Komplet<MetodaObowiazkowa, (typeof METODY_OBOWIAZKOWE)[number]> = true;

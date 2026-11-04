@@ -1,7 +1,12 @@
 import { bladOperatora } from '../../domena/bledy.js';
+import { kurierDlaMetody, KURIER_DOMYSLNY } from '../../domena/moduly-kurierow.ts';
 
-// Reszta modulu nie wie, ktory kurier jest podpiety. Dolozenie InPostu
-// (sklep A, Etap 2) to nowy wpis w tej mapie.
+// Reszta modulu nie wie, ktory kurier jest podpiety.
+//
+// PRZ-135.04a: mapa „metoda → kurier" (dawniej stala `DLA_METODY` w tym pliku) to teraz
+// `metody` kurierow w rejestrze `MODULY_KURIEROW` (domena/moduly-kurierow.ts), czytane przez
+// `kurierDlaMetody`. Historia nizej mowi o „wpisie w DLA_METODY" — dzis znaczy to „metoda
+// w `metody` kuriera w rejestrze"; zasada sie nie zmienila: BRAK WPISU = ODMOWA NADANIA.
 //
 // UWAGA `odbior_osobisty` CELOWO NIE MA TU WPISU. Brak wpisu to nie przeoczenie, tylko
 // mechanizm odmowy: wybierzKuriera rzuca na nieznanej metodzie, wiec sprzedaz na miejscu
@@ -36,15 +41,6 @@ import { bladOperatora } from '../../domena/bledy.js';
 //
 // ⛔ `allegro_paczkomat` TU NIE WCHODZI — nadajemy go sami (`NADAJEMY_SAMI`
 // w domain/kurier-nadania.js), bo Allegro nie sprzedaje na niego etykiety.
-/** @type {Record<string, 'dpd' | 'inpost' | 'allegro_wza'>} */
-const DLA_METODY = {
-  dpd: 'dpd',
-  inpost_paczkomat: 'inpost',
-  allegro_dpd: 'allegro_wza',
-  allegro_punkt: 'allegro_wza',
-  allegro_kurier: 'allegro_wza',
-  allegro_inne: 'allegro_wza',
-};
 
 /**
  * Kurier dla przesylki nadanej POZA panelem (wpis reczny, routes/zamowienia.js).
@@ -57,7 +53,7 @@ const DLA_METODY = {
  * ⚠️ Do 2026-08-04 trasa wpisywala `kurier: 'dpd'` NA SZTYWNO. Odkad wiersz przesylki steruje
  * linkiem do sledzenia i wyborem uslugi statusu, taki wpis znaczyl, ze paczkomat nadany
  * w Managerze Paczek InPostu linkuje na tracktrace.dpd.com.pl i pyta DPD o numer InPostu.
- * Zapasowe 'dpd' zostaje WYLACZNIE dla metody nieznanej — zeby dzisiejsze zachowanie panelu
+ * Zapasowe 'dpd' (od PRZ-135: `KURIER_DOMYSLNY` z rejestru, dzis 'dpd') zostaje WYLACZNIE dla metody nieznanej — zeby dzisiejsze zachowanie panelu
  * dla wszystkiego, czego nie umiemy nazwac, nie drgnelo.
  *
  * ⚠️ KANAL ALLEGRO MA WLASNA WARTOSC `'allegro'` (2026-08-04) — i to NIE JEST wpis
@@ -83,7 +79,7 @@ const DLA_METODY = {
  */
 export function kurierWpisuRecznego(metoda) {
   if (String(metoda ?? '').startsWith('allegro_')) return 'allegro';
-  return DLA_METODY[metoda] ?? 'dpd';
+  return kurierDlaMetody(metoda) ?? KURIER_DOMYSLNY;
 }
 
 /**
@@ -91,7 +87,7 @@ export function kurierWpisuRecznego(metoda) {
  * @param {import('../../moduly/wysylka/kurierzy.ts').MapaKurierow} kurierzy
  */
 export function wybierzKuriera(metoda, kurierzy) {
-  const nazwa = DLA_METODY[metoda];
+  const nazwa = kurierDlaMetody(metoda);
   if (!nazwa) throw bladOperatora(`Metoda „${metoda}” nie jest obsługiwana w tym panelu.`);
   const k = kurierzy?.[nazwa];
   if (!k) throw bladOperatora(`Kurier ${nazwa} nie jest skonfigurowany.`);

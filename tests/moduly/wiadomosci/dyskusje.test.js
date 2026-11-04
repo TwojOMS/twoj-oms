@@ -25,8 +25,8 @@ describe('dyskusje i reklamacje', () => {
     const o = createOdswiezanieSpraw({
       db,
       klienci: {
-        allegro_szkicownia: klient([sprawa('d1', 'DISPUTE_ONGOING')]),
-        allegro_amarka: klient([sprawa('c1', 'CLAIM_SUBMITTED', 'CLAIM')]),
+        allegro_swietlik: klient([sprawa('d1', 'DISPUTE_ONGOING')]),
+        allegro_polcien2: klient([sprawa('c1', 'CLAIM_SUBMITTED', 'CLAIM')]),
       },
       teraz,
     });
@@ -37,7 +37,7 @@ describe('dyskusje i reklamacje', () => {
   it('sprawy zamknięte NIE trafiają na listę otwartych', async () => {
     const db = openOmsDb(':memory:');
     const o = createOdswiezanieSpraw({
-      db, klienci: { allegro_szkicownia: klient([sprawa('d1', 'DISPUTE_CLOSED')]) }, teraz,
+      db, klienci: { allegro_swietlik: klient([sprawa('d1', 'DISPUTE_CLOSED')]) }, teraz,
     });
     await o.przebieg();
     expect(sprawyOtwarte(db)).toHaveLength(0);
@@ -46,9 +46,9 @@ describe('dyskusje i reklamacje', () => {
   it('zmiana statusu AKTUALIZUJE wpis, nie dubluje', async () => {
     const db = openOmsDb(':memory:');
     const kanal = { pobierzSprawy: async () => ({ sprawy: [sprawa('d1', 'DISPUTE_ONGOING')], razem: 1 }) };
-    await createOdswiezanieSpraw({ db, klienci: { allegro_szkicownia: kanal }, teraz }).przebieg();
+    await createOdswiezanieSpraw({ db, klienci: { allegro_swietlik: kanal }, teraz }).przebieg();
     kanal.pobierzSprawy = async () => ({ sprawy: [sprawa('d1', 'DISPUTE_CLOSED')], razem: 1 });
-    await createOdswiezanieSpraw({ db, klienci: { allegro_szkicownia: kanal }, teraz }).przebieg();
+    await createOdswiezanieSpraw({ db, klienci: { allegro_swietlik: kanal }, teraz }).przebieg();
 
     expect(db.prepare('SELECT COUNT(*) AS n FROM allegro_sprawy').get().n).toBe(1);
     expect(sprawyOtwarte(db)).toHaveLength(0);
@@ -61,8 +61,8 @@ describe('dyskusje i reklamacje', () => {
     await createOdswiezanieSpraw({
       db,
       klienci: {
-        allegro_szkicownia: klient([sprawa('d1', 'DISPUTE_ONGOING')]),
-        allegro_amarka: klient([sprawa('d1', 'DISPUTE_ONGOING')]),
+        allegro_swietlik: klient([sprawa('d1', 'DISPUTE_ONGOING')]),
+        allegro_polcien2: klient([sprawa('d1', 'DISPUTE_ONGOING')]),
       },
       teraz,
     }).przebieg();
@@ -74,8 +74,8 @@ describe('dyskusje i reklamacje', () => {
     const o = createOdswiezanieSpraw({
       db,
       klienci: {
-        allegro_szkicownia: { pobierzSprawy: async () => { throw new Error('Allegro: HTTP 403 przy /sale/issues'); } },
-        allegro_amarka: klient([sprawa('d2', 'DISPUTE_ONGOING')]),
+        allegro_swietlik: { pobierzSprawy: async () => { throw new Error('Allegro: HTTP 403 przy /sale/issues'); } },
+        allegro_polcien2: klient([sprawa('d2', 'DISPUTE_ONGOING')]),
       },
       teraz,
     });
@@ -90,7 +90,7 @@ describe('dyskusje i reklamacje', () => {
     const db = openOmsDb(':memory:');
     const pad = { pobierzSprawy: async () => { throw new Error('Allegro: HTTP 403 przy /sale/issues'); } };
     const wynik = await createOdswiezanieSpraw({
-      db, klienci: { allegro_szkicownia: pad, allegro_amarka: pad }, teraz,
+      db, klienci: { allegro_swietlik: pad, allegro_polcien2: pad }, teraz,
     }).przebieg();
     expect(wynik.bledy).toHaveLength(2);
     expect(wynik.zapisane).toBe(0);

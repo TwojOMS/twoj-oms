@@ -422,7 +422,7 @@ const serwer = (nad = {}) => buildOmsServer({
 
 beforeEach(() => {
   db = openOmsDb(':memory:');
-  sklepy = { pro: klientO(), szkicownia: klientO() };
+  sklepy = { pro: klientO(), swietlik: klientO() };
 });
 
 const kartaO = (nazwa, reszta = {}) => utworzKarte(db, { nazwa, ...reszta });
@@ -556,9 +556,9 @@ describe('POST /magazyn/zapisz-do-sklepow', () => {
 
   it('do Allegro nie idzie ani jedno żądanie', async () => {
     const id = kartaO('Bursztyn', { sku: 'A-1' });
-    produktO(id, { kanal: 'allegro_szkicownia', produkt_id: '1234567890' });
+    produktO(id, { kanal: 'allegro_swietlik', produkt_id: '1234567890' });
     await wyslij(serwer(), { zaznaczone: String(id) });
     expect(sklepy.pro.zapiszProdukt).not.toHaveBeenCalled();
-    expect(sklepy.szkicownia.zapiszProdukt).not.toHaveBeenCalled();
+    expect(sklepy.swietlik.zapiszProdukt).not.toHaveBeenCalled();
   });
 });

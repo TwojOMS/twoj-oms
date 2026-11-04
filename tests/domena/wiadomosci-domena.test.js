@@ -94,12 +94,12 @@ describe('termin zamówienia', () => {
 });
 
 describe('blok płatności', () => {
-  const opcje = { rachunek: '07 1090 1014 0000 0000 0000 0001', odbiorca: 'Lumina Marek Zywiecki', tytul: 'PF/3/08/2026', dzis: '2026-08-22' };
+  const opcje = { rachunek: '07 1090 1014 0000 0000 0000 0001', odbiorca: 'Pracownia Półcień Anna Wzorcowa', tytul: 'PF/3/08/2026', dzis: '2026-08-22' };
 
   it('składa komplet danych do przelewu', () => {
     expect(blokPlatnosci(zam(), opcje)).toEqual({
       doZaplaty: '990,00 zł',
-      odbiorca: 'Lumina Marek Zywiecki',
+      odbiorca: 'Pracownia Półcień Anna Wzorcowa',
       rachunek: '07 1090 1014 0000 0000 0000 0001',
       tytul: 'PF/3/08/2026',
       termin: 'termin 14 dni — do 2026-09-04',
@@ -187,7 +187,7 @@ describe('stan płatności', () => {
 });
 
 // ⚠️ E-mail w `klient`, nie w `dostawa` — patrz uwaga przy fiksturze Zadania 4.
-const pelne = (nad = {}) => zam({ klient: { email: 'sklep@betamet.pl' }, ...nad });
+const pelne = (nad = {}) => zam({ klient: { email: 'sklep@example.test' }, ...nad });
 const kontekst = (nad = {}) => ({
   proforma: { id: 7, numer: 'PF/3/08/2026', kwota_brutto: '990.00', plik_sciezka: '/dane/pf.pdf' },
   faktura: { numer: '42/08/2026', infakt_uuid: 'abc-123' },

@@ -13,7 +13,9 @@ export const modulZwroty: ModulOms = {
     role: ['administrator', 'sprzedaz', 'produkcja'] }],
   zbuduj: (ctx) => {
     const infakt = ctx.usluga<any>('faktury', 'infakt');
-    const korekta = infakt ? createKorekta({ db: ctx.db, infakt }) : null;
+    const korekta = infakt ? createKorekta({ db: ctx.db, infakt,
+      nipSprzedawcy: () => ctx.usluga<any>('faktury', 'config').nipBdoFirmy?.()?.nip,
+    }) : null;
     return { uslugi: { korekta }, trasy: (app) => {
       const definicje = ctx.usluga<any>('faktury', 'config').definicje;
       // PRZ-118.09: `infakt` (klient albo program) — nazwa programu w zdaniach ekranu zwrotu i odmów korekty.

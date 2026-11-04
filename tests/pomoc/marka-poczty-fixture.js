@@ -1,4 +1,4 @@
 // Jawna konfiguracja historycznych testów; produkcja nigdy nie importuje tego pliku.
 export const MARKA_HISTORYCZNA = Object.freeze({
-  podpis: 'Szkicownia.pl', naglowek: 'SZKICOWNIA PRO by szkicownia.pl', footer: '',
+  podpis: 'Swietlik.example.test', naglowek: 'SWIETLIK PRO by swietlik.example.test', footer: '',
 });

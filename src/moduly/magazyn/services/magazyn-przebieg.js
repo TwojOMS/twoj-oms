@@ -36,8 +36,10 @@ const STAN_POCZATKOWY = {
  */
 export function createMagazynPrzebieg({ db, sklepy = {}, allegro = {}, odswiez = odswiezMagazyn, log, kanalySklepow, kanalyAllegro } = {}) {
   let stan = { ...STAN_POCZATKOWY };
+  const gotowy = () => Object.keys(sklepy).length + Object.keys(allegro).length > 0;
 
   function start() {
+    if (!gotowy()) return { wystartowal: false };
     // ⚠️ STRAZNIK PRZED ZMIANA STANU, nie po niej. Dwa rownolegle przebiegi to dwa razy
     // setki zadan do tego samego sklepu i DWA rozne znaczniki `odczytane_at` — a ten ze
     // starszym stemplem oznaczylby jako zniknięte dokladnie to, co drugi wlasnie zapisal.
@@ -88,5 +90,5 @@ export function createMagazynPrzebieg({ db, sklepy = {}, allegro = {}, odswiez =
   // przebieg. `kanaly` kopiowane osobno, bo rozsypanie obiektu kopiuje wylacznie referencje.
   const stanKopia = () => ({ ...stan, kanaly: [...stan.kanaly] });
 
-  return { start, stan: stanKopia };
+  return { start, stan: stanKopia, gotowy };
 }

@@ -1,7 +1,8 @@
 // Wejście kontenera oms-proba (PRZ-072). Brak bazy = świeże demo: generator (scripts/demo-dane.mjs)
 // na dzisiejszy dzień i konto administratora z /konfiguracja/konto.json (login + hash scrypt; hasło
 // zna tylko C:/Users/uzytkownik/.oms/proba.json na laptopie). Potem OMS z atrapami integracji (PRZ-076, deploy/proba/atrapy).
-// `proba.ps1 reset` kasuje bazę i zapisuje deploy/proba/.przeladuj — node --watch uruchamia ten plik od nowa.
+// `proba.ps1 reset` zostawia znacznik dane/oms.sqlite.reset-proba i zapisuje deploy/proba/.przeladuj — node --watch
+// uruchamia ten plik od nowa, a wykonajZlecenieResetu zakłada świeże demo z zachowaną konfiguracją Allegro Sandbox.
 import fs from 'node:fs';
 
 const baza = process.env.OMS_DB_PATH;
@@ -32,14 +33,38 @@ async function utworzBaze() {
 }
 
 const { wykonajZlecenieResetu } = await import('../../src/oms/db/reset-demo.js');
-const reset = await wykonajZlecenieResetu({ baza, utworzBaze });
-if (reset) console.log(`piaskownica: reset z panelu (zlecił ${reset.zlecenie?.login ?? '?'}), zachowane: ${reset.zachowane.join(', ')}, numeracja: ${reset.numeracja}`);
+// PRZ-149.01: reset z panelu i `nas-proba.sh reset` zachowują aplikację i konta rzeczywistego Allegro Sandbox z panelu.
+const reset = await wykonajZlecenieResetu({ baza, utworzBaze, zachowajSandbox: true });
+if (reset) console.log(`piaskownica: reset (zlecił ${reset.zlecenie?.login ?? '?'}), zachowane: ${reset.zachowane.join(', ')}, numeracja: ${reset.numeracja}, Allegro Sandbox: ${JSON.stringify(reset.sandbox)}`);
 if (!fs.existsSync(baza)) await utworzBaze();
 
 // PRZ-076: OMS z atrapami inFaktu, VIES, Woo i Allegro (deploy/proba/atrapy) — Faktury i Magazyn mają dane demo,
 // a nic nie wychodzi z kontenera. Zamiast src/oms.js, który składa produkcyjne integracje (bez kluczy: puste zakładki).
-const { uruchomPiaskownice } = await import('./atrapy/index.mjs');
-const { zamknij } = await uruchomPiaskownice(process.env);
+// Obecność prywatnego pliku jest jawnym wyborem profilu testowego. Bez niego
+// działa dotychczasowa piaskownica z atrapami. Demo publiczne nie używa tego wejścia.
+let zamknij;
+if (fs.existsSync('/konfiguracja/allegro-sandbox.json')) {
+  let dane;
+  try { dane = JSON.parse(fs.readFileSync('/konfiguracja/allegro-sandbox.json', 'utf8')); }
+  catch { throw new Error('Nie można odczytać prywatnej konfiguracji Allegro Sandbox.'); }
+  const { przygotujUruchomienieSandbox } = await import('./sandbox-uruchomienie.ts');
+  const { openOmsDb } = await import('../../src/oms/db/db.ts');
+  const { uruchomAplikacje } = await import('../../src/core/uruchomienie.ts');
+  const { sprawdzKonfiguracjeModulow } = await import('../../src/core/aplikacja.ts');
+  const { uruchomPulsPollerow } = await import('./atrapy/pollery.mjs');
+  const { definicjeKanalow } = await import('../../src/moduly/kanaly/konfiguracja.ts');
+  const plan = przygotujUruchomienieSandbox(process.env, dane);
+  sprawdzKonfiguracjeModulow(plan.moduly, process.env);
+  const db = openOmsDb(baza, { moduly: plan.moduly });
+  const zatrzymajPuls = uruchomPulsPollerow({ db, env: process.env, zrodla: definicjeKanalow(process.env).map(d => d.klucz) });
+  const wynik = await uruchomAplikacje({ moduly: plan.moduly, env: process.env, db, host: '0.0.0.0', port: Number(process.env.OMS_PORT || 3001), nadpisania: plan.nadpisania(db) });
+  zamknij = async () => { zatrzymajPuls(); return wynik.zamknij(); };
+  dane = null;
+  console.log('Allegro: profil rzeczywistego Sandbox, pozostałe integracje: atrapy.');
+} else {
+  const { uruchomPiaskownice } = await import('./atrapy/index.mjs');
+  ({ zamknij } = await uruchomPiaskownice(process.env));
+}
 const zakoncz = () => {
   process.removeListener('SIGINT', zakoncz);
   process.removeListener('SIGTERM', zakoncz);

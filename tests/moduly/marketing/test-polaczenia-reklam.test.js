@@ -73,7 +73,7 @@ describe('test połączenia reklam', () => {
     const wynik = await testPolaczenie(args);
     expect(wynik.stan).toBe('niedostepne');
     expect(wynik.kodBledu).toBe('ADS_API_NIEDOSTEPNE');
-    expect(wynik.nastepnyKrok).toMatch(/GA4/);
+    expect(wynik.nastepnyKrok).toMatch(/Google Analytics 4/);
     expect(args.magazyn.odczytaj).not.toHaveBeenCalled();
   });
 });

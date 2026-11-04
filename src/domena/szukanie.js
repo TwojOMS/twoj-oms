@@ -10,7 +10,7 @@ import { daneFaktury } from './dane-faktury.js';
 // operator poprawilby recznie nazwisko klienta, zobaczylby poprawke na karcie — i nie
 // znalazlby po niej zamowienia. Szukalby wtedy po wartosci, ktorej panel nigdzie nie pokazuje.
 
-// Skladanie polskich znakow do ASCII: „Pęki" ma sie znalezc po wpisaniu „peki" (i odwrotnie),
+// Skladanie polskich znakow do ASCII: „Łódź" ma sie znalezc po wpisaniu „lodz" (i odwrotnie),
 // bo nikt nie przelacza ukladu klawiatury w polowie szukania. NFD rozbija litere na znak bazowy
 // i znak diakrytyczny, ktory potem kasujemy; „ł" nie ma postaci zlozonej, wiec idzie osobno.
 // Wzorzec skladany z ZAPISU KODOWEGO, a nie z wklejonych znakow lacznikowych: znaki
@@ -54,8 +54,8 @@ export function polaSzukania(z) {
 
 /**
  * Czy zamowienie pasuje do frazy. Fraza dzieli sie na slowa i KAZDE musi trafic w ktores
- * pole (a nie: wystarczy jedno) — inaczej „kowalski peki" oddawaloby wszystkich Kowalskich
- * z Polski razem ze wszystkimi mieszkancami Kęt, czyli tym wiecej wynikow, im dokladniej
+ * pole (a nie: wystarczy jedno) — inaczej „kowalski lodz" oddawaloby wszystkich Kowalskich
+ * z Polski razem ze wszystkimi mieszkancami Łodzi, czyli tym wiecej wynikow, im dokladniej
  * ktos opisze, czego szuka.
  */
 export function pasujeDoSzukania(z, fraza) {

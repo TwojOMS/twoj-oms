@@ -17,7 +17,7 @@ const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null })
 
 const zmapowane = (id, nad = {}) => ({
   zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'j@k.pl' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
+  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
   koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
   utworzone_at: '2026-07-29T13:19:52',
@@ -332,10 +332,12 @@ describe('POST /zamowienia/:id/wysylka/metoda', () => {
     expect(pobierzZamowienie(db, id).metoda_wysylki).toBe('dpd');
   });
 
-  it('pobranie z kwota zero i z przecinkiem dziesietnym → 400', async () => {
+  it('pobranie z kwota zero → 400; przecinek dziesietny przyjety i zapisany z kropka (PRZ-145.01: jeden odczyt kwoty z nadaniem)', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1623), {});
     expect((await wyslij(`/zamowienia/${id}/wysylka/metoda`, { metoda: 'dpd', pobranie: '1', kwota_pobrania: '0.00' })).statusCode).toBe(400);
-    expect((await wyslij(`/zamowienia/${id}/wysylka/metoda`, { metoda: 'dpd', pobranie: '1', kwota_pobrania: '12,50' })).statusCode).toBe(400);
+    expect(db.prepare('SELECT wysylka_reczna_json FROM zamowienia WHERE id = ?').get(id).wysylka_reczna_json).toBeNull();
+    expect((await wyslij(`/zamowienia/${id}/wysylka/metoda`, { metoda: 'dpd', pobranie: '1', kwota_pobrania: '12,50' })).statusCode).toBe(302);
+    expect(JSON.parse(db.prepare('SELECT wysylka_reczna_json FROM zamowienia WHERE id = ?').get(id).wysylka_reczna_json).kwota_pobrania).toBe('12.50');
     expect(pobierzZamowienie(db, id).metoda_wysylki).toBe('dpd');
   });
 
@@ -362,7 +364,7 @@ describe('POST /zamowienia/:id/wysylka/metoda', () => {
   // a nadanie hurtem — czytajace wartosc EFEKTYWNA — wysyla DRUGA, platna paczke do klienta,
   // ktory dostal juz swoja z Allegro.
   it('zamówienia z kanału Allegro NIE DA SIĘ przestawić na DPD → 400 i zero zmian w bazie', async () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(1698, { metoda_wysylki: 'allegro_dpd' }), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(1698, { metoda_wysylki: 'allegro_dpd' }), {});
     const r = await wyslij(`/zamowienia/${id}/wysylka/metoda`, { metoda: 'dpd' });
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/nadajesz w Allegro/);
@@ -373,7 +375,7 @@ describe('POST /zamowienia/:id/wysylka/metoda', () => {
   // ...a poprawka W OBREBIE kanalu ma dzialac: `allegro_inne` z nowej uslugi Allegro
   // poprawione na wlasciwa nazwe to jedyna reczna zmiana metody, ktora tu ma sens.
   it('poprawka metody w obrębie kanału Allegro dalej działa', async () => {
-    const id = zapiszZamowienie(db, 'allegro_szkicownia', zmapowane(1699, { metoda_wysylki: 'allegro_inne' }), {});
+    const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(1699, { metoda_wysylki: 'allegro_inne' }), {});
     const r = await wyslij(`/zamowienia/${id}/wysylka/metoda`, { metoda: 'allegro_paczkomat' });
     expect(r.statusCode).toBe(302);
     expect(pobierzZamowienie(db, id).metoda_wysylki).toBe('allegro_paczkomat');
@@ -588,9 +590,11 @@ describe('POST /zamowienia/:id/przesylki/reczna', () => {
   // Brak etykiety przy takiej przesylce nie jest sprawa do zalatwienia — jest z definicji.
   it('przesylka spoza panelu NIE trzyma zamowienia na liscie roboczej', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1655), {});
+    expect((await app.inject({method:'GET',url:'/',headers:naglowek})).body).toContain(`id="zamowienie-${id}"`);
     await wyslij(`/zamowienia/${id}/przesylki/reczna`, { numer_listu: '0000999888777A' });
     const lista = await app.inject({ method: 'GET', url: '/', headers: naglowek });
-    expect(lista.body).not.toContain('1655');
+    // Sprawdzamy wiersz zamówienia; cyfry numeru mogą wystąpić też w ramie strony.
+    expect(lista.body).not.toContain(`id="zamowienie-${id}"`);
     expect((await karta(id)).body).not.toContain('Załatwione ręcznie poza panelem');
   });
 

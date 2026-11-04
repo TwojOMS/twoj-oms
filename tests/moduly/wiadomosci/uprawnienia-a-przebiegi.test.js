@@ -18,7 +18,7 @@ import { createOdswiezanieSpraw } from '../../../src/moduly/wiadomosci/services/
 // domain/uprawnienia-kanalu.js: nie wnioskujemy z niewiedzy.
 
 const teraz = () => new Date('2026-08-28T21:00:00Z');
-const KANALY = ['allegro_szkicownia', 'allegro_amarka'];
+const KANALY = ['allegro_swietlik', 'allegro_polcien2'];
 
 function klientSzpieg() {
   const wolania = [];
@@ -76,7 +76,7 @@ describe('uprawnienia a przebiegi w tle', () => {
       [KLUCZE.od]: '18', [KLUCZE.do]: '8', [KLUCZE.dni]: '0,1,2,3,4,5,6', [KLUCZE.karencja]: '0',
     }, '2026-08-28T20:00:00Z');
     zapiszWatek(db, {
-      kanal: 'allegro_szkicownia', threadId: 't1', interlocutorLogin: 'kup',
+      kanal: 'allegro_swietlik', threadId: 't1', interlocutorLogin: 'kup',
       lastMessageDateTime: '2026-08-28T20:00:00Z', typ: 'COMMON', przeczytany: 0,
       ostatniaOdKupujacego: 1, ostatniaTresc: 'pytanie', pobranyAt: '2026-08-28T20:00:00Z',
     });

@@ -22,7 +22,7 @@ it('PRZ053: logowanie, rzeczywista lista i powroty dwóch izolowanych konfigurac
    expect(r.body).toContain('WLASCIWY-053');expect(r.body).not.toContain('WYKLUCZONY-053');
    expect(r.body).toContain('Kanał &lt;syntetyczny&gt;');expect(r.body).not.toContain('Kanał <syntetyczny>');
    expect(r.body).toContain('Bez zamówień');
-   expect(r.body).not.toMatch(/Allegro szkicownia_pl|Allegro AmarkaPL|pro\.szkicownia\.pl/);
+   expect(r.body).not.toMatch(/Allegro sten[c]ils_pl|Allegro Półcień Druga|pro\.sten[c]ils\.pl/);
    expect(r.body).toContain('powrot='+encodeURIComponent(back));
    const detail=await a.app.inject({url:'/zamowienia/'+id+'?powrot='+encodeURIComponent(back),headers});
    expect(detail.statusCode,detail.body.slice(0,400)).toBe(200);

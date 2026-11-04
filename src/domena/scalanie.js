@@ -9,7 +9,7 @@
 // i wysyłkę według decyzji (`zamowienieGrupy`); dołączone własnego dokumentu mieć nie może.
 // Stąd dwie twarde odmowy niżej: dołączane z fakturą i różny NIP (nabywca dokumentu jest jeden).
 import { bladOperatora } from './bledy.js';
-import { czyKanalAllegro } from './wysylka.js';
+import { umiejetnosciZamowienia } from './moduly-kanalow.ts';
 import { adresOdbiorcy } from './adres-odbiorcy.js';
 import { daneFaktury } from './dane-faktury.js';
 import { normalizujNip } from './klient-zbiorczy.js';
@@ -88,9 +88,8 @@ export function powodyOdmowyScalenia(zamowienia, { glowneId } = {}) {
     const glowne = z.id === Number(glowneId);
     // ⚠️ Decyzja właściciela 18.10: „Zamówień z Allegro raczej się nie scala”. Allegro ma własną fakturę
     // do checkout-formu i status SENT na każdym zamówieniu — jedna faktura grupy tego nie obsłuży.
-    // Rozpoznanie Allegro — JEDNA reguła w repo (`czyKanalAllegro`, PRZ-101.08): prefiks `allegro_`
-    // albo `typ: 'allegro'` z OMS_KANALY (rejestr ustawia moduł kanałów przy budowie aplikacji).
-    if (czyKanalAllegro(z)) powody.push(`${n} jest z Allegro — zamówień z Allegro nie scalamy (tylko sklep i ręczne).`);
+    // Możliwość scalenia określa opis modułu kanału.
+    if (!umiejetnosciZamowienia(z).scalanie) powody.push(`${n} jest z Allegro — zamówień z Allegro nie scalamy (tylko sklep i ręczne).`);
     if (z.anulowane) powody.push(`${n} jest anulowane.`);
     if (z.ma_zwrot || z.zwrot_at) powody.push(`${n} ma zwrot.`);
     if (z.wyslane_at) powody.push(`${n} jest już wysłane.`);

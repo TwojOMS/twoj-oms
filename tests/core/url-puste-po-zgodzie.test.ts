@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { Socket } from 'node:net';
 import dns from 'node:dns/promises';
+import {tmpdir} from 'node:os';
+import {openOmsDb} from '../../src/oms/db/db.ts';
 import { zbudujOms } from '../../src/oms/bootstrap.ts';
 import { konfiguracjaKanalow } from '../../src/moduly/kanaly/konfiguracja.ts';
 import { wczytajKurierow } from '../../src/moduly/wysylka/kurierzy.ts';
@@ -14,7 +16,7 @@ import * as allegro from '../../src/oms/allegro/client.js';
 import * as tokeny from '../../src/oms/allegro/tokeny.js';
 import * as fabryki from '../../src/integracje/fabryki.ts';
 
-const seller = { OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000', OMS_PROFORMY_KATALOG: '/synthetic/unused' };
+const seller = { OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000', OMS_PROFORMY_KATALOG: '/synthetic/unused',OMS_ETYKIETY_KATALOG:tmpdir() };
 const rynek = { R_CLIENT_ID: 'fixture', R_CLIENT_SECRET: 'fixture', R_USER_AGENT: 'Fixture/1.0 (+https://fixture.invalid)', R_OD: '2026-01-01' };
 const sender = { DPD_NADAWCA_NAZWA: 'Fixture', DPD_NADAWCA_ULICA: 'Testowa 1', DPD_NADAWCA_KOD: '00-001', DPD_NADAWCA_MIASTO: 'Fixture' };
 const defs = [{ klucz: 'rynek', typ: 'allegro' as const, prefiks: 'R' }];
@@ -58,15 +60,15 @@ it.each(['', '/', '///'])('Allegro API i AUTH z końcówką %j dają pojedynczy 
   const urls: string[] = [];
   const http = async (url: unknown) => { urls.push(String(url)); throw Error('Lokalna odmowa fixture'); };
   const klient = allegro.createAllegroClient({ ustawienia, http, fetchImpl: undefined, tokeny: { waznyToken: async () => 'fixture' } });
-  const oauth = tokeny.createTokeny({ ustawienia, http, fetchImpl: undefined, kanal: 'rynek', db: {
-    prepare() { throw Error('Odczyt DB poza zakresem testu'); },
-  } });
+  const db=openOmsDb();
+  const oauth = tokeny.createTokeny({ ustawienia, http, fetchImpl: undefined, kanal: 'rynek', db });
   await expect(klient.pobierzOferte('fixture')).rejects.toThrow('Lokalna odmowa fixture');
   await expect(oauth.rozpocznijPowiazanie()).rejects.toThrow('Lokalna odmowa fixture');
   expect(urls).toEqual([
     'https://allegro-fixture.invalid/sale/product-offers/fixture',
     'https://allegro-fixture.invalid/auth/oauth/device',
   ]);
+  db.close();
 });
 it('Woo pusty URL w pełnym produkcie pozostaje brakiem, a strict wymaga go', async () => {
   const woo = [{ klucz: 'sklep', typ: 'woo' as const, prefiks: 'W' }];
@@ -106,8 +108,9 @@ it('pełny bootstrap przekazuje pusty URL do rzeczywistych fabryk jako default a
   const k = vi.spyOn(ksef, 'createKsefClient').mockImplementation((o: any) => realKsef({ ...o, http }));
   vi.spyOn(allegro, 'createAllegroClient').mockImplementation((o: any) => realAllegro({ ...o, http, tokeny: { ...o.tokeny, waznyToken: async () => 'fixture' } }));
   const t = vi.spyOn(tokeny, 'createTokeny').mockImplementation((o: any) => realTokeny({ ...o, http }));
-  const ip = vi.spyOn(fabryki, 'createInpostClient').mockImplementation((o: any) => realInpost({ ...o, http }));
-  const dpd = vi.spyOn(fabryki, 'createDpdClient');
+  // PRZ-135.04b: moduł wysyłki bierze klienta z FABRYKI_KURIEROW (stała referencja), więc szpieg siedzi tam.
+  const ip = vi.spyOn(fabryki.FABRYKI_KURIEROW, 'inpost').mockImplementation((o: any) => realInpost({ ...o, http }));
+  const dpd = vi.spyOn(fabryki.FABRYKI_KURIEROW, 'dpd');
   const a = await zbudujOms({ env: { ...seller, ...sender, ...rynek, OMS_TRYB: 'produkcja', OMS_USER: 'fixture', OMS_PASS: 'fixture', OMS_KANALY: JSON.stringify(defs),
     INFAKT_API_KEY: 'fixture', INFAKT_API_URL: '', GUS_KLUCZ: 'fixture', GUS_URL: '', KSEF_TOKEN: 'fixture', KSEF_API: '',
     DPD_URL: '', DPD_INFO_URL: '', INPOST_TOKEN: 'fixture', INPOST_ORGANIZACJA: '1', INPOST_URL: '', R_API: '', R_AUTH: '' } });

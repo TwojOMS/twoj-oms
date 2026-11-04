@@ -105,7 +105,7 @@ export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, chan
   }
   if (brak.length) throw new Error(`createDpdClient: brak wymaganej konfiguracji: ${brak.join(', ')}.`);
 
-  // faultstring DPD niesie login ("Login failed for login: 27821601 ...").
+  // faultstring DPD niesie login ("Login failed for login: <login> ...").
   // Komunikat trafia do bazy i do logu, więc poświadczenia (login, hasło, FID, kanał)
   // wycinamy, powód zostawiamy. Puste/nieustawione poświadczenie pomijamy — String.split('')
   // na pustym stringu tnie tekst na pojedyncze znaki i rozsypuje cały komunikat.

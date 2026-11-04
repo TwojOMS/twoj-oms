@@ -11,7 +11,7 @@ const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null })
 
 const zmapowane = (id, nad = {}) => ({
   zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', last_name: 'Kowalski' },
-  dostawa: { city: 'Pęki' }, metoda_wysylki: 'odbior_osobisty', kwota_pobrania: null,
+  dostawa: { city: 'Warszawa' }, metoda_wysylki: 'odbior_osobisty', kwota_pobrania: null,
   chce_fakture: 0, nip: null, kwota_brutto: '100.00', koszt_dostawy_brutto: '0.00',
   status_woo: 'processing', oplacone_at: null, anulowane: 0, metoda_platnosci: 'Gotówka',
   utworzone_at: '2026-07-31T09:00:00',

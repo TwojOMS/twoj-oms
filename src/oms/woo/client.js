@@ -1,28 +1,113 @@
 import { transport } from '../../integracje/transport.js';
 // Jedyne miejsce w OMS, ktore robi HTTP do sklepu.
 import { miniaturyZeStoreApi } from '../../domena/miniatury.js';
+import { bladTylkoOdczyt, bladKluczaTylkoOdczyt, czyOdmowaZapisu } from '../../domena/woo-uprawnienia.js';
 
-export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({ fetchImpl }) }) {
+// PRZ-132.09c: `tylkoTenSamOrigin` (sklepy z panelu) — przekierowanie na inny origin (host, port,
+// https→http) przerywa żądanie PRZED wysłaniem kolejnego, więc ani odczyt nie bierze cudzej odpowiedzi,
+// ani zapis 307/308 nie idzie na obcy host. Sklepy z env (bez opcji) zachowują dawne zachowanie.
+export function bladInnegoOrigin(origin) {
+  return Object.assign(new Error(`Sklep WooCommerce przekierował na inny adres (${origin}). Popraw adres sklepu w Ustawieniach.`), { name: 'WooInnyOrigin' });
+}
+
+export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({ fetchImpl }), tylkoTenSamOrigin = false, uprawnienia = 'zapis' }) {
+  const tylkoOdczyt = uprawnienia === 'odczyt';
   const auth = 'Basic ' + Buffer.from(`${ck}:${cs}`).toString('base64');
   let zapytanListy = 0;
+
+  async function wyslij(sciezka, opcje = {}, informacje = {}) {
+    const naglowki = { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: auth, ...(opcje.headers || {}) };
+    return zaPrzekierowaniami(`${baseUrl}/wp-json/wc/v3${sciezka}`, opcje, naglowki, informacje);
+  }
+
+  // Wspólna pętla 3xx dla REST i Store API: przy `tylkoTenSamOrigin` inny origin rzuca przed wysłaniem.
+  async function zaPrzekierowaniami(adres, opcje, naglowkiStartowe, informacje = {}) {
+    let url = new URL(adres);
+    const origin = url.origin;
+    let naglowki = naglowkiStartowe;
+    let metoda = opcje.method;
+    let body = opcje.body;
+    for (let i = 0; i <= 10; i++) {
+      const res = await http(url.href, { ...opcje, method: metoda, body, headers: naglowki, redirect: 'manual' });
+      const location = res.headers?.get?.('location');
+      if (![301, 302, 303, 307, 308].includes(res.status) || !location) return res;
+      const nastepny = new URL(location, url);
+      if (!['http:', 'https:'].includes(nastepny.protocol)) throw new Error('Niepoprawne przekierowanie');
+      if (nastepny.origin !== origin) {
+        if (tylkoTenSamOrigin) throw bladInnegoOrigin(nastepny.origin);
+        informacje.innyOrigin = true;
+        naglowki = Object.fromEntries(Object.entries(naglowki).filter(([k]) => k.toLowerCase() !== 'authorization'));
+      }
+      if (res.status === 303 || ([301, 302].includes(res.status) && metoda?.toUpperCase() === 'POST')) {
+        metoda = 'GET'; body = undefined;
+      }
+      url = nastepny;
+    }
+    throw new Error('Zbyt wiele przekierowań');
+  }
 
   async function strzal(sciezka, opcje = {}) {
     let res;
     try {
-      res = await http(`${baseUrl}/wp-json/wc/v3${sciezka}`, {
-        ...opcje,
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: auth, ...(opcje.headers || {}) },
-      });
+      res = await wyslij(sciezka, opcje);
     } catch (e) {
+      // WooKluczTylkoOdczyt rzuca transport panelu (sklepy-woo-runtime) — to nie awaria sieci, nie ponawiamy.
+      if (e?.name === 'WooInnyOrigin' || e?.name === 'WooKluczTylkoOdczyt') throw e;
       throw new Error(`Sklep nieosiągalny: ${e.message}`);
     }
     let dane = null;
     try { dane = await res.json(); } catch { dane = null; }
+    if (czyOdmowaZapisu(res.status, dane, opcje.method)) throw bladKluczaTylkoOdczyt();
     const powod = dane?.message || 'brak powodu';
     // Komunikat NIE zawiera ck/cs — sekret nie ma prawa trafic do logu.
     if (res.status === 401) throw new Error(`Sklep odrzucił klucz REST: ${powod}`);
     if (!res.ok) throw new Error(`Sklep odpowiedział ${res.status}: ${powod}`);
     return { dane, res };
+  }
+
+  async function sprawdzPolaczenie() {
+    try {
+      const informacje = {};
+      const res = await wyslij('/orders?per_page=1', {}, informacje);
+      if (informacje.innyOrigin) return { ok: false, powod: 'przekierowanie', status: res.status };
+      if (res.ok) {
+        let dane;
+        try { dane = await res.json(); } catch { dane = null; }
+        return Array.isArray(dane) ? { ok: true } : { ok: false, powod: 'brak_api', status: res.status };
+      }
+      const powod = res.status === 401 || res.status === 403 ? 'klucze' : res.status === 404 ? 'brak_api' : 'siec';
+      return { ok: false, powod, status: res.status };
+    } catch (e) {
+      if (e?.name === 'WooInnyOrigin') return { ok: false, powod: 'przekierowanie', status: null };
+      const kod = e?.code || e?.cause?.code || '';
+      // WRONG_VERSION_NUMBER = https na porcie mówiącym czystym HTTP — błąd adresu, nie certyfikatu.
+      const powod = /CERT|TLS|SSL|VERIFY|SIGNATURE|ISSUER/i.test(kod) && !/WRONG_VERSION_NUMBER/i.test(kod) ? 'certyfikat'
+        : /ENOTFOUND|EAI_AGAIN|ERR_INVALID_URL|WRONG_VERSION_NUMBER/i.test(kod) || e instanceof TypeError && !kod ? 'adres' : 'siec';
+      return { ok: false, powod, status: null };
+    }
+  }
+
+  const tekst = (w) => (typeof w === 'string' ? w : '');
+  async function pobierzBramkiPlatnosci() {
+    const { dane } = await strzal('/payment_gateways?_fields=id,title,method_title,enabled');
+    if (!Array.isArray(dane)) throw new Error('Sklep zwrócił nieprawidłową listę bramek płatności');
+    // Typy wymuszone: obiekt w `title` (np. z `settings`) nie przejdzie dalej, `enabled: 'yes'` to nie włączona.
+    return dane
+      .filter((b) => b && typeof b === 'object' && !Array.isArray(b))
+      .map((b) => ({ id: String(b.id ?? ''), tytul: tekst(b.title), nazwaWoo: tekst(b.method_title), wlaczona: b.enabled === true }));
+  }
+
+  async function pobierzMetodyWysylki() {
+    const { dane: strefy } = await strzal('/shipping/zones');
+    if (!Array.isArray(strefy)) throw new Error('Sklep zwrócił nieprawidłową listę stref wysyłki');
+    const wszystkie = strefy.some((s) => Number(s.id) === 0) ? strefy : [...strefy, { id: 0, name: 'Pozostałe lokalizacje' }];
+    const wynik = [];
+    for (const strefa of wszystkie) {
+      const { dane: metody } = await strzal(`/shipping/zones/${encodeURIComponent(strefa.id)}/methods`);
+      if (!Array.isArray(metody)) throw new Error('Sklep zwrócił nieprawidłową listę metod wysyłki');
+      wynik.push(...metody.map((m) => ({ strefa: strefa.name, instanceId: m.instance_id, tytul: m.title, metodaWoo: m.method_id, wlaczona: m.enabled })));
+    }
+    return wynik;
   }
 
   async function pobierzZamowienia({ modifiedAfter = null, page = 1 } = {}) {
@@ -174,11 +259,14 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
   async function strzalStore(parametry) {
     const p = new URLSearchParams({ ...parametry });
     let res;
+    const adres = `${baseUrl}${STORE_API}?${p.toString()}`;
     try {
-      res = await http(`${baseUrl}${STORE_API}?${p.toString()}`, {
-        headers: { Accept: 'application/json' },
-      });
+      // Sklep z panelu: ta sama kontrola origin co w `wyslij`. Env: bez zmian (redirect wg transportu).
+      res = tylkoTenSamOrigin
+        ? await zaPrzekierowaniami(adres, {}, { Accept: 'application/json' })
+        : await http(adres, { headers: { Accept: 'application/json' } });
     } catch (e) {
+      if (e?.name === 'WooInnyOrigin') throw e;
       throw new Error(`Sklep nieosiągalny: ${e.message}`);
     }
     let dane = null;
@@ -334,19 +422,22 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
    *
    * ⚠️ PUT, nie POST: POST na `/products` ZALOZYLBY nowy produkt.
    */
-  const zapiszProdukt = async (sciezka, pola) =>
+  // PRZ-149.04: przy kluczu „Odczyt” trzy zapisy odmawiają tu, zanim cokolwiek wyjdzie do sklepu.
+  const zapiszProdukt = async (sciezka, pola) => tylkoOdczyt ? Promise.reject(bladTylkoOdczyt()) :
     strzal(`/${sprawdzSciezke(sciezka)}`, { method: 'PUT', body: JSON.stringify(pola ?? {}) })
       .then(({ dane }) => dane);
 
-  const dodajNotatke = (id, tresc) =>
+  const dodajNotatke = (id, tresc) => tylkoOdczyt ? Promise.reject(bladTylkoOdczyt()) :
     strzal(`/orders/${id}/notes`, { method: 'POST', body: JSON.stringify({ note: tresc, customer_note: false }) })
       .then(({ dane }) => dane);
 
-  const ustawStatus = (id, status) =>
+  const ustawStatus = (id, status) => tylkoOdczyt ? Promise.reject(bladTylkoOdczyt()) :
     strzal(`/orders/${id}`, { method: 'PUT', body: JSON.stringify({ status }) })
       .then(({ dane }) => dane);
 
   return {
+    tylkoOdczyt,
+    sprawdzPolaczenie, pobierzMetodyWysylki, pobierzBramkiPlatnosci,
     pobierzZamowienia, pobierzZamowieniaZakresu,
     pobierzWszystkieProdukty, pobierzWarianty, pobierzMiniatury, ustawienieSklepu,
     pobierzProdukt, zapiszProdukt, dodajNotatke, ustawStatus,

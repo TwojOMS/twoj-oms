@@ -13,9 +13,9 @@ const PDF = Buffer.concat([Buffer.from('%PDF-1.4'), Buffer.alloc(64)]);
 
 function baza() {
   const db = openOmsDb(':memory:');
-  const id = zapiszZamowienie(db, 'allegro_szkicownia', {
+  const id = zapiszZamowienie(db, 'allegro_swietlik', {
     zrodlo_id: 'CF-1', numer: 'CF-1', kwota_brutto: '100.00', chce_fakture: 1, pozycje: [],
-    klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Pęki' },
+    klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
     metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, nip: null, status_woo: null,
     oplacone_at: '2026-08-05T09:00:00', anulowane: 0, utworzone_at: '2026-08-05T08:00:00',
   }, {});
@@ -36,7 +36,7 @@ const klient = (log) => ({
 });
 
 const usluga = (db, log) => createFakturaAllegro({
-  db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_szkicownia: klient(log) },
+  db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_swietlik: klient(log) },
 });
 
 describe('bezpiecznik na ścieżce wystawiania faktury', () => {
@@ -52,7 +52,7 @@ describe('bezpiecznik na ścieżce wystawiania faktury', () => {
 
   it('bezpiecznik OTWARTY — NIE pyta o listę, ale fakturę wysyła normalnie', async () => {
     const { db, id } = baza();
-    zapiszStanWeryfikacji(db, 'allegro_szkicownia', {
+    zapiszStanWeryfikacji(db, 'allegro_swietlik', {
       kolejnePuste: 3, bezpiecznikOd: '2026-08-20T10:00:00Z', ostatniaProbaAt: '2026-08-28T11:00:00Z',
     });
     const log = [];

@@ -3,8 +3,8 @@
 import * as cennik from '../../src/domena/magazyn-do-zamowienia.js';
 
 export const CENNIKI_HISTORYCZNE = Object.freeze([
-  Object.freeze({ kanal: 'szkicownia', nazwa: 'szkicownia.pl' }),
-  Object.freeze({ kanal: 'pro', nazwa: 'pro.szkicownia.pl (PRO)' }),
+  Object.freeze({ kanal: 'swietlik', nazwa: 'swietlik.example.test' }),
+  Object.freeze({ kanal: 'pro', nazwa: 'pro.swietlik.example.test (PRO)' }),
 ]);
 const historyczne = cennik.cenniki({ lista: CENNIKI_HISTORYCZNE });
 

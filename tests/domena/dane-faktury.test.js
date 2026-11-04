@@ -6,7 +6,7 @@ import {
 const zamowienie = (nad = {}) => ({
   klient: {
     first_name: 'Jan', last_name: 'Kowalski', company: 'ACME sp. z o.o.', email: 'j@k.pl',
-    address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL',
+    address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL',
   },
   nip: '1200001200',
   ...nad,
@@ -21,24 +21,24 @@ describe('daneFaktury — dane podstawowe', () => {
 
   it('przenosi kod i miasto bez zmian', () => {
     const d = daneFaktury(zamowienie());
-    expect(d.kod).toBe('00-650');
-    expect(d.miasto).toBe('Pęki');
+    expect(d.kod).toBe('00-950');
+    expect(d.miasto).toBe('Warszawa');
   });
 });
 
-// Sklep na pro.szkicownia.pl rozbija adres na address_1 (ulica) i address_2 (numer budynku) —
+// Sklep na pro.swietlik.example.test rozbija adres na address_1 (ulica) i address_2 (numer budynku) —
 // dokładnie tak samo jak w bloku `shipping` (patrz adres-odbiorcy.test.js). Zamówienie 1275
-// z briefu miało billing.address_1="Lipowa", billing.address_2="91": faktura wychodziłaby
+// z briefu miało billing.address_1="Papierowa", billing.address_2="24": faktura wychodziłaby
 // bez numeru budynku nabywcy.
 describe('daneFaktury — sklejanie address_1 i address_2', () => {
-  it('zamówienie 1275: billing.address_1="Lipowa" + address_2="91" → ulica "Lipowa 91"', () => {
-    const z = zamowienie({ klient: { ...zamowienie().klient, address_1: 'Lipowa', address_2: '91' } });
-    expect(daneFaktury(z).ulica).toBe('Lipowa 91');
+  it('zamówienie 1275: billing.address_1="Papierowa" + address_2="24" → ulica "Papierowa 24"', () => {
+    const z = zamowienie({ klient: { ...zamowienie().klient, address_1: 'Papierowa', address_2: '24' } });
+    expect(daneFaktury(z).ulica).toBe('Papierowa 24');
   });
 
-  it('zamówienie 1276: billing.address_2="912" (numer inny niż w shipping) → sklejone osobno od dostawy', () => {
-    const z = zamowienie({ klient: { ...zamowienie().klient, address_1: 'Lipowa', address_2: '912' } });
-    expect(daneFaktury(z).ulica).toBe('Lipowa 912');
+  it('zamówienie 1276: billing.address_2="242" (numer inny niż w shipping) → sklejone osobno od dostawy', () => {
+    const z = zamowienie({ klient: { ...zamowienie().klient, address_1: 'Papierowa', address_2: '242' } });
+    expect(daneFaktury(z).ulica).toBe('Papierowa 242');
   });
 
   it('numer już w address_1, address_2 puste → bez zmian, bez spacji na końcu (zamówienie 1267)', () => {
@@ -53,20 +53,20 @@ describe('daneFaktury — sklejanie address_1 i address_2', () => {
   });
 
   it('daneFakturyZeSklepu (baza porównania i przywracania) też oddaje sklejoną ulicę', () => {
-    const z = zamowienie({ klient: { ...zamowienie().klient, address_1: 'Lipowa', address_2: '91' } });
-    expect(daneFakturyZeSklepu(z).ulica).toBe('Lipowa 91');
+    const z = zamowienie({ klient: { ...zamowienie().klient, address_1: 'Papierowa', address_2: '24' } });
+    expect(daneFakturyZeSklepu(z).ulica).toBe('Papierowa 24');
   });
 
   it('ręczna poprawka ulicy wygrywa nad sklejeniem ze sklepu', () => {
     const z = zamowienie({
-      klient: { ...zamowienie().klient, address_1: 'Lipowa', address_2: '91' },
+      klient: { ...zamowienie().klient, address_1: 'Papierowa', address_2: '24' },
       klient_reczny_json: JSON.stringify({ ulica: 'Inna 5' }),
     });
     expect(daneFaktury(z).ulica).toBe('Inna 5');
   });
 
   it('adres z niepustym address_2, bez ręcznej poprawki, NIE jest oznaczony jako zmieniony ręcznie', () => {
-    const z = zamowienie({ klient: { ...zamowienie().klient, address_1: 'Lipowa', address_2: '91' } });
+    const z = zamowienie({ klient: { ...zamowienie().klient, address_1: 'Papierowa', address_2: '24' } });
     expect(polaReczneFaktury(z)).toEqual([]);
   });
 });

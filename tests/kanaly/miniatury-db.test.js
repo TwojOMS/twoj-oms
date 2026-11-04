@@ -16,7 +16,7 @@ const surowe = (nad = {}) => ({
   shipping_lines: [{ instance_id: 1, method_id: 'flat_rate' }],
   line_items: [{
     id: 25, name: 'Lampa Kałamarz', sku: 'PRO-KAL', quantity: 1, total: '258.54', total_tax: '59.46',
-    image: { id: 1092, src: 'https://pro.szkicownia.pl/wp-content/uploads/2026/07/kalamarz.jpg' },
+    image: { id: 1092, src: 'https://pro.swietlik.example.test/wp-content/uploads/2026/07/kalamarz.jpg' },
   }],
   ...nad,
 });
@@ -35,7 +35,7 @@ describe('adres zdjęcia z pozycji', () => {
   it('zapisuje się razem z zamówieniem i wraca na listę', () => {
     zapiszZamowienie(db, 'pro', mapujZamowienie(surowe(), mapa), surowe());
     const [z] = listaZamowien(db);
-    expect(z.pozycje[0].zdjecie_url).toBe('https://pro.szkicownia.pl/wp-content/uploads/2026/07/kalamarz.jpg');
+    expect(z.pozycje[0].zdjecie_url).toBe('https://pro.swietlik.example.test/wp-content/uploads/2026/07/kalamarz.jpg');
   });
 
   it('pozycja bez zdjęcia dostaje NULL, a nie pusty napis', () => {
@@ -61,7 +61,7 @@ describe('adres zdjęcia z pozycji', () => {
     // Przeliczenia wykonują się przy otwarciu bazy — dokładnie jak przy starcie panelu.
     const druga = openOmsDb(plik);
     expect(listaZamowien(druga)[0].pozycje[0].zdjecie_url)
-      .toBe('https://pro.szkicownia.pl/wp-content/uploads/2026/07/kalamarz.jpg');
+      .toBe('https://pro.swietlik.example.test/wp-content/uploads/2026/07/kalamarz.jpg');
     druga.close();
   });
 

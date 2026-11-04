@@ -10,7 +10,10 @@
 // zmianą tekstu. Panel nie ma tokenów CSRF ani nonce w HTML (sprawdzone: brak w layoucie i w tych widokach).
 //
 // PRZ-126.P1: cztery karty bez własnej faktury mają nowy przycisk/powód; ich migawki zmieniono świadomie.
+// PRZ-136.12: migawki KSeF kosztów (zdanie o tokenie: „OMS”, NIP: „ustawienia na serwerze”) zmienione świadomie.
+// PRZ-141.01: wstęp o uprawnieniu KSeF kosztów dostał klasę ust-wstep (zwykła waga) — migawka zmieniona świadomie.
 // PRZ-126.P36e: lista faktur ma filtry typ/płatność i wiersz Razem; migawkę ekranu listy zmieniono świadomie.
+// PRZ-143.09: kolumna KSeF pokazuje „brak” przy niewysłanej, a stopka listy ma kwoty pod Netto i Brutto; migawki FAKTURY zmienione świadomie.
 // Pozostałe ekrany nadal sprawdzają wynik PRZ-118.09; dostępność przycisku sprawdza wystaw-fakture-zawsze-prz126.test.js.
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
@@ -349,9 +352,14 @@ describe('PRZ-118.09 nazwa programu w tekstach i widokach', () => {
       const drukDawniej = '<li class="wkrotce">\n              <a href="/ustawienia/druk"><span>Druk i etykiety</span><span class="menu-ustawien-wkrotce">wkrótce</span></a>';
       const drukTeraz = '<li>\n              <a href="/ustawienia/druk"><span>Druk i etykiety</span></a>';
       const bezPustych = (html) => html.replace(/\n[ \t]*(?=\n)/gu, '');
-      const oczekiwane = { ...migawka[k], glowna: bezPustych((migawka[k].glowna.includes(csv) ? migawka[k].glowna : migawka[k].glowna.replace(pdf, `${pdf}\n            ${csv}`)).replace(p8, '').replaceAll(drukDawniej, drukTeraz)) };
+      // PRZ-142.01 (zlecenie A 04.11): przesyłka ręczna nie zakłada DPD — „nie pyta kuriera”.
+      const dpd = (html) => html.replaceAll('o nic nie pyta DPD —', 'o nic nie pyta kuriera —');
+      const oczekiwane = { ...migawka[k], glowna: bezPustych(dpd((migawka[k].glowna.includes(csv) ? migawka[k].glowna : migawka[k].glowna.replace(pdf, `${pdf}\n            ${csv}`)).replace(p8, '').replaceAll(drukDawniej, drukTeraz))) };
+      // PRZ-147.03 (zlecenie właściciela 04.11): sekcja „Faktura” karty ma przy zwrocie bez korekty przycisk, zdanie blokady
+      // albo odnośnik do ekranu zwrotu — nowy blok, poza zakresem migawki 09.
+      const k147 = /\n[ \t]*<(p|div) class="wyjasnienie" id="korekta-zwrotu-\d+">[\s\S]*?<\/\1>/gu;
       // Kopia: oczyszczone komentarze ramy zmieniaja wyłącznie jej odcisk; status i tresc nadal porownujemy.
-      expect({ ...wynik[k], glowna: bezPustych(wynik[k].glowna) }, `ekran „${k}”`).toEqual({ ...oczekiwane, reszta: wynik[k].reszta });
+      expect({ ...wynik[k], glowna: bezPustych(wynik[k].glowna.replace(k147, '')) }, `ekran „${k}”`).toEqual({ ...oczekiwane, reszta: wynik[k].reszta });
     }
   }, 120_000);
 

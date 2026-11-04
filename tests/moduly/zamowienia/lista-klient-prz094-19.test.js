@@ -17,7 +17,7 @@ const definicje = [
 
 const zam = (id, klient, nad = {}) => ({
   zrodlo_id: id, numer: String(id), klient: { email: 'j@k.pl', ...klient },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-650', city: 'Pęki', country: 'PL' },
+  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '100.00',
   koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
   utworzone_at: '2026-10-17T13:19:52',
@@ -115,11 +115,11 @@ describe('mapowanie Allegro niesie login kupującego do bloku klienta', () => {
     buyer: { email: 'x@allegromail.pl', firstName: 'Jan', lastName: 'Kowalski', ...buyer },
   });
   it('login z buyer.login trafia do klient.login, z obciętymi spacjami', () => {
-    const adres = { street: 'Polna 1', city: 'Pęki', postCode: '00-650', countryCode: 'PL' };
+    const adres = { street: 'Polna 1', city: 'Warszawa', postCode: '00-950', countryCode: 'PL' };
     expect(mapujZamowienieAllegro(surowe({ login: '  lampy_jan77 ', address: adres }), { metodaZId }).klient.login).toBe('lampy_jan77');
   });
   it('brak loginu u Allegro to null, a anonimizowany adres dalej oddaje cały blok null (login go nie ratuje)', () => {
-    const adres = { street: 'Polna 1', city: 'Pęki', postCode: '00-650', countryCode: 'PL' };
+    const adres = { street: 'Polna 1', city: 'Warszawa', postCode: '00-950', countryCode: 'PL' };
     expect(mapujZamowienieAllegro(surowe({ address: adres }), { metodaZId }).klient.login).toBeNull();
     const pusty = { street: null, city: null, postCode: null, countryCode: null };
     expect(mapujZamowienieAllegro(surowe({ login: 'lampy_jan77', firstName: null, lastName: null, address: pusty }), { metodaZId }).klient).toBeNull();
