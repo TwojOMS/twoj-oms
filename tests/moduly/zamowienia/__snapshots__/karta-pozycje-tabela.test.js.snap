@@ -1,0 +1,233 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`odczyt bez usuniętych zachowuje HTML tabeli sprzed przebudowy 1`] = `
+"<table class="tab-pozycje tab-stala" data-tabela-odczytu>
+        <colgroup>
+          <col class="kol-mini"><col class="kol-ilosc"><col><col class="kol-sku"><col class="kol-cena"><col class="kol-vat"><col class="kol-cena"><col class="kol-suma">
+        </colgroup>
+        <thead>
+          
+          
+          
+          
+          
+          
+          <tr><th class="kol-mini"></th><th class="kol-ilosc">Ilość</th><th>Nazwa</th><th class="kol-sku">SKU</th><th class="liczba">Cena netto</th><th class="liczba kol-vat">Stawka VAT</th><th class="liczba">Cena brutto</th><th class="liczba">Suma</th></tr>
+        </thead>
+        <tbody>
+          
+            
+            
+            
+            
+            
+            <tr>
+              
+              
+              
+              
+              
+              <td class="kol-mini">
+                
+              </td>
+              <td class="kol-ilosc ilosc">2×</td>
+              <td>
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                  Lampa Półcień
+                
+                
+                
+                
+                
+                
+              </td>
+              
+              <td class="kol-sku">LP-41</td>
+              
+              <td class="liczba">49,99 zł</td>
+              
+              <td class="liczba kol-vat">23%</td>
+              <td class="liczba">
+                
+                  
+                  
+                  
+                  
+                  
+                  
+                  61,50 zł
+                
+              </td>
+              <td class="liczba">123,00 zł</td>
+            </tr>
+          
+            
+            
+            
+            
+            
+            <tr>
+              
+              
+              
+              
+              
+              <td class="kol-mini">
+                
+              </td>
+              <td class="kol-ilosc ilosc">2×</td>
+              <td>
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                  Klosz
+                
+                
+                
+                
+                
+                
+              </td>
+              
+              <td class="kol-sku">LP-41</td>
+              
+              <td class="liczba">49,99 zł</td>
+              
+              <td class="liczba kol-vat">23%</td>
+              <td class="liczba">
+                
+                  
+                  
+                  
+                  
+                  
+                  
+                  61,50 zł
+                
+              </td>
+              <td class="liczba">123,00 zł</td>
+            </tr>
+          
+            
+            
+            
+            
+            
+            <tr>
+              
+              
+              
+              
+              
+              <td class="kol-mini">
+                
+              </td>
+              <td class="kol-ilosc ilosc">1×</td>
+              <td>
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                  Wysyłka
+                
+                
+                
+                
+                
+                
+              </td>
+              
+              <td class="kol-sku"></td>
+              
+              <td class="liczba">23,00 zł</td>
+              
+              <td class="liczba kol-vat">23%</td>
+              <td class="liczba">
+                
+                  
+                  
+                  
+                  
+                  
+                  
+                  28,29 zł
+                
+              </td>
+              <td class="liczba">28,29 zł</td>
+            </tr>
+          
+            
+            
+            
+            
+            
+            <tr class="wiersz-razem">
+              
+              
+              
+              
+              
+              <td class="kol-mini">
+                
+              </td>
+              <td class="kol-ilosc ilosc"></td>
+              <td>
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                  Razem
+                
+                
+                
+                
+                
+                
+              </td>
+              
+              <td class="kol-sku"></td>
+              
+              <td class="liczba"></td>
+              
+              <td class="liczba kol-vat"></td>
+              <td class="liczba">
+                
+              </td>
+              <td class="liczba">274,29 zł</td>
+            </tr>
+          
+        </tbody>
+      </table>"
+`;

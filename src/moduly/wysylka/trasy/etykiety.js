@@ -13,7 +13,7 @@ import { bezpiecznyPowrotNaListe } from '../../../domena/filtry-listy.js';
 
 import { adresKartyZamowienia } from '../../../domena/adres-karty-zamowienia.js';
 
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 
@@ -21,6 +21,7 @@ import { bezpiecznaNazwa } from '../../../domena/pliki.js';
 
 import { ktoKlikal } from '../../zamowienia/lista.js';
 import { zplPrzyNadaniu } from '../services/nadanie.js';
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
 
 export function registerEtykietyRoutes(app, { db, nadanie, kurierzy = {}, wczytajListe, miniaturyEkranu, config }) {
 
@@ -31,17 +32,21 @@ const adresPowrotuNaKarte = (req, id, opcje = {}) => adresKartyZamowienia(id, {
 
 const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, config.definicje);
 
+// PRZ-152.G13 W1: wszystkie trasy przesyłek tutaj (poza kolejką druku czuwacza) woła karta zamówienia
+// (formularz albo link „Pobierz PDF” w nowej karcie) — odmowa wraca na tę kartę.
+const naKarte = (req) => ({ wroc: adresPowrotuNaKarte(req, req.params.id), napisWroc: 'Wróć do zamówienia' });
+
 function paczkaZadania(req, reply) {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
     if (!z) {
-      reply.code(404).send('Nie ma takiego zamówienia');
+      stronaOdmowy(reply, 404, 'Nie ma takiego zamówienia', { tytul: 'Nie znaleziono zamówienia', wroc: powrotKarty(req), napisWroc: 'Wróć do listy' });
       return null;
     }
     const przesylkaId = Number(req.params.przesylkaId);
     const p = z.przesylki.find((w) => w.id === przesylkaId);
     if (!p) {
-      reply.code(404).send('To zamówienie nie ma takiej przesyłki.');
+      stronaOdmowy(reply, 404, 'To zamówienie nie ma takiej przesyłki.', { tytul: 'Nie znaleziono przesyłki', ...naKarte(req) });
       return null;
     }
     return { id, z, p };
@@ -51,7 +56,7 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/sprawdz', async (req, reply) =>
     const cel = paczkaZadania(req, reply);
     if (!cel) return reply;
     const { id, p } = cel;
-    if (!nadanie || nadanie.gotowe?.() === false) return reply.code(503).send('Nadawanie nie jest skonfigurowane (brak danych kuriera).');
+    if (!nadanie || nadanie.gotowe?.() === false) return stronaOdmowy(reply, 503, 'Nadawanie nie jest skonfigurowane (brak danych kuriera).', { tytul: 'Nie udało się sprawdzić przesyłki', ...naKarte(req) });
     let wynik;
     try {
       wynik = await nadanie.sprawdzPonownie(p.id);
@@ -59,7 +64,7 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/sprawdz', async (req, reply) =>
       // Pełny komunikat idzie do logu, na ekran tylko to, co napisaliśmy dla człowieka —
       // ta sama zasada, co przy POST /nadaj.
       dopiszLog(db, id, { akcja: 'nadanie.sprawdzenie.http', wynik: `BŁĄD: ${e.message}` });
-      return reply.code(400).send(`Nie udało się sprawdzić przesyłki: ${komunikatDlaOperatora(e)}`);
+      return stronaOdmowy(reply, 400, `Nie udało się sprawdzić przesyłki: ${komunikatDlaOperatora(e)}`, { tytul: 'Nie udało się sprawdzić przesyłki', ...naKarte(req) });
     }
     // Numer przyszedł — gdy jest ZPL, etykieta trafia do kolejki. WzA z etykieta PDF
     // (wybrane „Nadaj") to SWIADOMY brak ZPL, nie awaria i nie zadanie drukowania.
@@ -96,7 +101,7 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/odblokuj', async (req, reply) =
       odblokujPrzesylke(db, p.id, { numerListu, opis });
     } catch (e) {
       dopiszLog(db, id, { akcja: 'przesylka.odblokowanie', wynik: `BŁĄD: ${e.message}` });
-      return reply.code(400).send(`Nie udało się odblokować nadania: ${komunikatDlaOperatora(e)}`);
+      return stronaOdmowy(reply, 400, `Nie udało się odblokować nadania: ${komunikatDlaOperatora(e)}`, { tytul: 'Nie udało się odblokować nadania', ...naKarte(req) });
     }
     dopiszLog(db, id, { akcja: 'przesylka.odblokowanie', wynik: opis });
     return reply.redirect(adresPowrotuNaKarte(req, id));
@@ -111,7 +116,7 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/domknij', async (req, reply) =>
       p = domknijPrzesylke(db, docelowa.id);
     } catch (e) {
       dopiszLog(db, id, { akcja: 'przesylka.domkniecie', wynik: `BŁĄD: ${e.message}` });
-      return reply.code(400).send(`Nie udało się domknąć przesyłki: ${komunikatDlaOperatora(e)}`);
+      return stronaOdmowy(reply, 400, `Nie udało się domknąć przesyłki: ${komunikatDlaOperatora(e)}`, { tytul: 'Nie udało się domknąć przesyłki', ...naKarte(req) });
     }
     dopiszLog(db, id, {
       akcja: 'przesylka.domkniecie',
@@ -127,12 +132,12 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/notatka', async (req, reply) =>
     const cel = paczkaZadania(req, reply);
     if (!cel) return reply;
     const { id, p } = cel;
-    if (!nadanie || nadanie.gotowe?.() === false) return reply.code(503).send('Nadawanie nie jest skonfigurowane (brak sklepu albo kuriera).');
+    if (!nadanie || nadanie.gotowe?.() === false) return stronaOdmowy(reply, 503, 'Nadawanie nie jest skonfigurowane (brak sklepu albo kuriera).', { tytul: 'Nie udało się ponowić notatki', ...naKarte(req) });
     try {
       await nadanie.ponowNotatke(p.id);
     } catch (e) {
       dopiszLog(db, id, { akcja: 'sync-woo', wynik: `BŁĄD: notatka (ponowienie): ${e.message}` });
-      return reply.code(400).send(`Nie udało się ponowić notatki: ${komunikatDlaOperatora(e)}`);
+      return stronaOdmowy(reply, 400, `Nie udało się ponowić notatki: ${komunikatDlaOperatora(e)}`, { tytul: 'Nie udało się ponowić notatki', ...naKarte(req) });
     }
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });
@@ -146,7 +151,7 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/sprawa-zalatwiona', async (req,
       wynik = zalatwPrzesylkeRecznie(db, p.id);
     } catch (e) {
       dopiszLog(db, id, { akcja: 'przesylka.sprawa-zalatwiona', wynik: `BŁĄD: ${e.message}` });
-      return reply.code(400).send(`Nie udało się zdjąć sprawy: ${komunikatDlaOperatora(e)}`);
+      return stronaOdmowy(reply, 400, `Nie udało się zdjąć sprawy: ${komunikatDlaOperatora(e)}`, { tytul: 'Nie udało się zdjąć sprawy', ...naKarte(req) });
     }
     const OPISY_SPRAW = { sync_woo_blad: 'sync ze sklepem', brak_etykiety: 'brak etykiety' };
     const zdjete = wynik.sprawy.map((s) => OPISY_SPRAW[s]).join(' i ');
@@ -164,10 +169,13 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/ukryj', async (req, reply) => {
     const { id, p } = cel;
     const z = pobierzZamowienie(db, id);
     if (!mozliweUkrycie(p, z?.przesylki)) {
-      return reply.code(400).send(
+      return stronaOdmowy(
+        reply,
+        400,
         `Paczki nr ${p.kolejnosc} nie da się ukryć: do tego zamówienia nie ma nadanej kolejnej paczki. `
         + 'Ukrywanie służy paczkom, które zastąpiła następna — a nie tej, która właśnie jedzie. '
         + 'Odśwież kartę zamówienia.',
+        { tytul: 'Nie udało się ukryć paczki', ...naKarte(req) },
       );
     }
     ukryjPrzesylke(db, p.id, ktoKlikal(req));
@@ -201,7 +209,7 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/skasuj-reczna', async (req, rep
       skasowana = skasujPrzesylkeReczna(db, p.id);
     } catch (e) {
       dopiszLog(db, id, { akcja: 'przesylka.skasowanie-reczna', wynik: `BŁĄD: ${e.message}` });
-      return reply.code(400).send(`Nie udało się skasować przesyłki: ${komunikatDlaOperatora(e)}`);
+      return stronaOdmowy(reply, 400, `Nie udało się skasować przesyłki: ${komunikatDlaOperatora(e)}`, { tytul: 'Nie udało się skasować przesyłki', ...naKarte(req) });
     }
     // Numer listu skasowanego wiersza MUSI trafic do logu — po DELETE juz go w bazie nie ma,
     // wiec bez tego zdania po miesiacu nie da sie odtworzyc, ktory numer operator uznal
@@ -220,13 +228,13 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/drukuj', async (req, reply) => 
     if (!cel) return reply;
     const { id, p } = cel;
     if (!p.etykieta_zpl_sciezka) {
-      return reply.code(400).send('Brak etykiety ZPL dla tej przesyłki — nie ma czego wysłać do druku.');
+      return stronaOdmowy(reply, 400, 'Brak etykiety ZPL dla tej przesyłki — nie ma czego wysłać do druku.', { tytul: 'Nie udało się dodać do kolejki druku', ...naKarte(req) });
     }
     try {
       dodajDoKolejki(db, p.id);
     } catch (e) {
       dopiszLog(db, id, { akcja: 'kolejka-druku.dodanie', wynik: `BŁĄD: ${e.message}` });
-      return reply.code(400).send(`Nie udało się dodać do kolejki druku: ${komunikatDlaOperatora(e)}`);
+      return stronaOdmowy(reply, 400, `Nie udało się dodać do kolejki druku: ${komunikatDlaOperatora(e)}`, { tytul: 'Nie udało się dodać do kolejki druku', ...naKarte(req) });
     }
     dopiszLog(db, id, { akcja: 'kolejka-druku.dodanie', wynik: `OK (przycisk na karcie, paczka nr ${p.kolejnosc})` });
     return reply.redirect(adresPowrotuNaKarte(req, id));
@@ -241,7 +249,7 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/drukuj/:kolejkaId/porzuc', asyn
       porzucPozycje(db, kolejkaId);
     } catch (e) {
       dopiszLog(db, id, { akcja: 'kolejka-druku.porzucenie', wynik: `BŁĄD: ${e.message}` });
-      return reply.code(400).send(`Nie udało się porzucić pozycji: ${komunikatDlaOperatora(e)}`);
+      return stronaOdmowy(reply, 400, `Nie udało się porzucić pozycji: ${komunikatDlaOperatora(e)}`, { tytul: 'Nie udało się porzucić pozycji kolejki druku', ...naKarte(req) });
     }
     dopiszLog(db, id, {
       akcja: 'kolejka-druku.porzucenie',
@@ -255,15 +263,38 @@ app.get('/zamowienia/:id/przesylki/:przesylkaId/etykieta', async (req, reply) =>
     if (!cel) return reply;
     const { z, p } = cel;
     const sciezka = p.etykieta_sciezka;
-    if (!sciezka) return reply.code(404).send('Brak etykiety dla tej przesyłki.');
+    if (!sciezka) return stronaOdmowy(reply, 404, 'Brak etykiety dla tej przesyłki.', { tytul: 'Nie udało się otworzyć etykiety', ...naKarte(req) });
     // Brak pliku to nie awaria serwera, tylko brak zasobu — 500 z pelna sciezka w JSON-ie
     // wystawialby uklad katalogow serwera na ekran operatora (i do historii przegladarki).
     if (!existsSync(sciezka)) {
-      return reply.code(404).send(`Plik etykiety nie istnieje na dysku — pobierz etykietę z ${panelKuriera(p.kurier)} po numerze listu.`);
+      return stronaOdmowy(reply, 404, `Plik etykiety nie istnieje na dysku — pobierz etykietę z ${panelKuriera(p.kurier)} po numerze listu.`, { tytul: 'Nie udało się otworzyć etykiety', ...naKarte(req) });
     }
     const nazwaPliku = `etykieta-${bezpiecznaNazwa(p.numer_listu ?? z.numer)}.pdf`;
     return reply.type('application/pdf')
       .header('Content-Disposition', `inline; filename="${nazwaPliku}"`)
+      .send(createReadStream(sciezka));
+  });
+
+// „Pobierz ZPL” (PRZ-152.G6z): gdy czuwacz albo komputer z drukarką nie działa, operator pobiera
+// plik ZPL, który już leży na serwerze, i wysyła go na Zebrę ręcznie (Zebra Setup Utilities →
+// Send File). Ścieżka WYŁĄCZNIE z bazy; plik leci strumieniem, bajt w bajt — ZPL bywa binarny
+// (grafiki ~DG), więc żadnej konwersji na tekst.
+app.get('/zamowienia/:id/przesylki/:przesylkaId/etykieta-zpl', async (req, reply) => {
+    const cel = paczkaZadania(req, reply);
+    if (!cel) return reply;
+    const { id, z, p } = cel;
+    const sciezka = p.etykieta_zpl_sciezka;
+    if (!sciezka) return stronaOdmowy(reply, 404, 'Ta przesyłka nie ma etykiety ZPL — pobierz etykietę PDF.', { tytul: 'Nie udało się pobrać pliku ZPL', ...naKarte(req) });
+    if (!existsSync(sciezka)) {
+      return stronaOdmowy(reply, 404, `Plik ZPL nie istnieje na dysku — pobierz etykietę z ${panelKuriera(p.kurier)} po numerze listu.`, { tytul: 'Nie udało się pobrać pliku ZPL', ...naKarte(req) });
+    }
+    const nazwaPliku = `${bezpiecznaNazwa(basename(sciezka).replace(/\.zpl$/i, ''), `etykieta-${bezpiecznaNazwa(p.numer_listu ?? z.numer)}`)}.zpl`;
+    dopiszLog(db, id, {
+      akcja: 'etykieta-zpl.pobranie',
+      wynik: `Ręcznie (${req.konto?.login ?? ktoKlikal(req)}): pobrany plik ZPL paczki nr ${p.kolejnosc} (list ${p.numer_listu ?? 'bez numeru'}).`,
+    });
+    return reply.type('application/octet-stream')
+      .header('Content-Disposition', `attachment; filename="${nazwaPliku}"`)
       .send(createReadStream(sciezka));
   });
 

@@ -9,6 +9,7 @@ import { sprawdzFormularzGus, EKRAN_GUS } from '../../domena/konfiguracja-gus.js
 import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji, stanDlaEkranu }
   from '../../oms/db/konfiguracja-integracji.js';
 import { nawigacjaUstawien } from '../ustawienia/nawigacja.js';
+import { stronaOdmowy } from '../../core/web/odmowa.js';
 import { tytulEkranuDlaAdresu } from '../../domena/ekrany.js';
 
 const KOMUNIKATY = { zapisano: 'Zapisano klucz GUS. Przycisk „Pobierz z GUS” działa od teraz.', odlaczono: 'Klucz GUS usunięty z OMS-u.' };
@@ -23,8 +24,9 @@ export function registerUstawieniaGusRoutes(app, { db, konfiguracjaGus }) {
       zapisano: KOMUNIKATY[req.query?.zapisano] ?? null,
     });
   }
-  const zEnv = (reply) => reply.code(409).type('text/plain; charset=utf-8')
-    .send('Klucz GUS jest ustawiony w pliku konfiguracji (oms.env, GUS_KLUCZ) — tam go zmień. Formularz niczego nie zapisał.');
+  // PRZ-152.G13: odmowa w układzie OMS, z powrotem na ekran GUS (status i tekst bez zmian).
+  const zEnv = (reply) => stronaOdmowy(reply, 409,
+    'Klucz GUS jest ustawiony w pliku konfiguracji (oms.env, GUS_KLUCZ) — tam go zmień. Formularz niczego nie zapisał.', { wroc: EKRAN_GUS });
 
   app.get(EKRAN_GUS, async (req, reply) => widok(req, reply));
 

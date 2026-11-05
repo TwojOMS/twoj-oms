@@ -18,7 +18,7 @@ beforeEach(async () => {
   await app.ready();
 });
 
-const get = () => app.inject({ method: 'GET', url: '/ustawienia/zamowienia-i-wysylka', headers: naglowek });
+const get = (zapytanie = '') => app.inject({ method: 'GET', url: '/ustawienia/zamowienia-i-wysylka' + zapytanie, headers: naglowek });
 const getDostawa = () => app.inject({ method: 'GET', url: '/ustawienia/wysylka/dostawa', headers: naglowek });
 const post = (url, payload) => app.inject({ method: 'POST', url, headers: naglowekPost, payload });
 
@@ -32,7 +32,8 @@ const sekcja = (body, id) => {
 
 describe('ekran ustawień — domyślna paczka', () => {
   it('pokazuje dzisiejsze wartości panelu na bazie bez ani jednego ustawienia', async () => {
-    const s = sekcja((await get()).body, 'ust-paczka');
+    // PRZ-152.G11a: pola domyślnego szablonu są w wierszu w trybie edycji (bez JS: ?edytuj=<id>).
+    const s = sekcja((await get('?edytuj=domyslna')).body, 'ust-paczka');
 
     expect(s, 'brak sekcji domyślnej paczki').not.toBeNull();
     expect(s).toContain('name="waga" value="1"');
@@ -48,7 +49,8 @@ describe('ekran ustawień — domyślna paczka', () => {
     expect(wczytajUstawienia(db)).toMatchObject({
       'paczka.waga': '2.5', 'paczka.dlugosc': '100', 'paczka.szerokosc': '70', 'paczka.wysokosc': '5',
     });
-    expect(sekcja((await get()).body, 'ust-paczka')).toContain('name="waga" value="2.5"');
+    expect(sekcja((await get('?edytuj=domyslna')).body, 'ust-paczka')).toContain('name="waga" value="2.5"');
+    expect(sekcja((await get()).body, 'ust-paczka')).toContain('>2,5 kg<');
   });
 
   // ⚠️ ODMOWA NIE KASUJE FORMULARZA. Człowiek ma zobaczyć, co wpisał, i co jest z tym nie tak —

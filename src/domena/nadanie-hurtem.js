@@ -1,5 +1,6 @@
 import { parsujPaczke, parsujPaczkeInpost } from './paczka.js';
 import { profilGabarytuAllegro, parsujGabarytAllegro } from './gabaryty-allegro.js';
+import { propozycjaAutomatu } from './gabaryty-automatow.js';
 
 // PRZ-070: rozmiar paczki w nadaniu HURTEM — wybór w wierszu podglądu (decyzja właściciela 14.10:
 // „w DPD wybór rozmiaru z zapisanych szablonów paczki", paczkomat A/B/C, automat S/M/L).
@@ -10,21 +11,25 @@ import { profilGabarytuAllegro, parsujGabarytAllegro } from './gabaryty-allegro.
 
 const szablonDomyslny = (szablony) => szablony.szablony.find((s) => s.id === szablony.domyslnyId);
 
-// Limit wagi automatów Allegro — ten sam, którego pilnuje `parsujGabarytAllegro`.
-const MAKS_WAGA_AUTOMATU = 20;
+// PRZ-152.G11c: gabaryt i waga paczkomatu / automatu Allegro z ustawienia „Paczkomaty i automaty”
+// — `propozycjaAutomatu`, TA SAMA funkcja, z której bierze karta nadania (trasy/nadanie.js).
+// `ustawienia` to zapis `wczytajUstawienia` — ten sam, z którego trasa czyta `szablony`;
+// domena bazy nie czyta.
 
 /** Co ekran podglądu wstawi w wiersz jako wybór wstępny. */
-export function domyslnyRozmiarWiersza({ rodzaj, deliveryMethodId = null, szablony }) {
+export function domyslnyRozmiarWiersza({ rodzaj, deliveryMethodId = null, szablony, ustawienia }) {
   const domyslny = szablonDomyslny(szablony);
-  if (rodzaj === 'paczkomat') return { pole: 'gabaryt', gabaryt: 'A', waga: domyslny.waga };
+  if (rodzaj === 'paczkomat') {
+    const { gabaryt, waga } = propozycjaAutomatu(ustawienia, { rodzaj });
+    return { pole: 'gabaryt', gabaryt, waga };
+  }
   const profil = rodzaj === 'wza' ? profilGabarytuAllegro(deliveryMethodId) : null;
-  if (profil) {
+  const propozycja = profil ? propozycjaAutomatu(ustawienia, { rodzaj, deliveryMethodId }) : null;
+  if (propozycja) {
     return {
       pole: 'gabarytAllegro',
-      gabaryt: profil.domyslnyGabaryt ?? 'S',
-      // Waga płaskiego arkusza z szablonu domyślnego bywa większa niż limit automatu —
-      // propozycja, której parser i tak by odmówił, kazałaby człowiekowi poprawiać ekran.
-      waga: profil.domyslnaWaga ?? Math.min(domyslny.waga, MAKS_WAGA_AUTOMATU),
+      gabaryt: propozycja.gabaryt,
+      waga: propozycja.waga,
       gabaryty: Object.keys(profil.gabaryty),
     };
   }
@@ -48,10 +53,11 @@ export function polaWiersza(body, id) {
  * nadawał DPD wymiarami domyślnymi. Gabarytu paczkomatu i automatu NIE zgadujemy — tamtych
  * wierszy stary formularz w ogóle nie znał, a za ciasna skrytka to odrzucona paczka.
  */
-export function paczkaWiersza({ rodzaj, deliveryMethodId = null, pola = {}, szablony }) {
-  const domyslny = szablonDomyslny(szablony);
+export function paczkaWiersza({ rodzaj, deliveryMethodId = null, pola = {}, szablony, ustawienia }) {
   if (rodzaj === 'paczkomat') {
-    return parsujPaczkeInpost({ waga: domyslny.waga, gabaryt: pola.gabaryt });
+    // Wiersz paczkomatu nie ma pola wagi (ekran pokazuje ją tekstem) — waga z ustawienia,
+    // tej samej propozycji, którą pokazał podgląd; od G11 nie z szablonu kuriera.
+    return parsujPaczkeInpost({ waga: propozycjaAutomatu(ustawienia, { rodzaj }).waga, gabaryt: pola.gabaryt });
   }
   if (rodzaj === 'wza' && profilGabarytuAllegro(deliveryMethodId)) {
     return parsujGabarytAllegro({ gabaryt: pola.gabaryt, waga: pola.waga }, deliveryMethodId);

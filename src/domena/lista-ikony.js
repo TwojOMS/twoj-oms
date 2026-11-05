@@ -8,7 +8,7 @@
 // Na dole pliku mieszka jeszcze `odznakaSyncStatusu` — nie ikona, tylko krótka odznaka
 // tekstowa wiersza. Stoi tu, bo to ta sama warstwa i ta sama zasada: co widać na liście,
 // liczy domena, a nie szablon.
-import { linkDoSledzenia } from './tracking.js';
+import { linkSledzeniaPaczki } from './przewoznik-przesylki.js';
 import { chceFakture } from './dane-faktury.js';
 import { stanFaktury } from './faktura-stan.js';
 import { fmtDataCzas } from './format-daty.js';
@@ -41,7 +41,7 @@ export function ikonaPlatnosci(z) {
 /**
  * Przesyłka. Zielona TYLKO gdy istnieje NUMER LISTU przewozowego — sam wiersz w
  * `przesylki` (np. stan 'w_trakcie' albo 'zawieszona') numeru może jeszcze nie mieć.
- * Link buduje WYŁĄCZNIE `linkDoSledzenia` (domain/tracking.js) — ta funkcja go nie
+ * Link buduje WYŁĄCZNIE `linkSledzeniaPaczki` (przewoznik-przesylki.js) — ta funkcja go nie
  * skleja, żeby adres śledzenia miał JEDNO źródło prawdy wspólne z kartą zamówienia.
  *
  * Kilka paczek naraz: z poziomu listy nie da się wybrać „której" — link prowadzi
@@ -60,7 +60,7 @@ export function ikonaPrzesylki(z) {
   }
   if (paczki.length === 1) {
     const [p] = paczki;
-    const sledzenie = linkDoSledzenia(p.kurier, p.numer_listu);
+    const sledzenie = linkSledzeniaPaczki(p, z);
     return {
       stan: 'nadana',
       opis: `Przesyłka: numer listu ${p.numer_listu}.`,

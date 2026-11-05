@@ -69,11 +69,13 @@ describe.each([
   ['bez wyboru, z kluczem', { klucz: true }],
   ['bez wyboru i bez klucza', { klucz: false }],
 ])('PRZ-121.07 %s: przyciski faktury jak dziś', (_n, ustawienie) => {
-  it('„Pobierz PDF” i „Drukuj” faktury są', async () => {
+  it('PDF faktury jest; bez podłączonej drukarki zamiast „Drukuj” jedna linia pod tabelą', async () => {
     const { html, id, proforma } = await karta(ustawienie);
     expect(html).toContain('FV/9/10/2026');
     expect(html).toContain(`href="/zamowienia/${id}/faktura/pdf"`);
-    expect(html).toContain(`action="/zamowienia/${id}/faktura/drukuj"`);
+    // PRZ-152.G10b2 (D10): bez komputera z drukarką nie ma wyszarzonego „Drukuj”, tylko zdanie pod tabelą dokumentów.
+    expect(html).not.toContain(`action="/zamowienia/${id}/faktura/drukuj"`);
+    expect(html).toContain('Drukowanie wyłączone — brak komputera z drukarką.');
     expect(html).toContain(`href="/proformy/${proforma}/pdf"`);
   });
 });

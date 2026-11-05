@@ -53,8 +53,10 @@ describe('działy i zakładki Ustawień', () => {
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('<title>Szablony paczek</title>');
     expect(tresc).toContain('<h1>Szablony paczek</h1>');
+    // PRZ-152.G11a: pola szablonu są w wierszu w trybie edycji (bez JS: ?edytuj=<id>).
+    const edycja = fragmentGlownejKolumny((await app.inject({ method: 'GET', url: '/ustawienia/zamowienia-i-wysylka?edytuj=domyslna', headers: BASIC })).body);
     for (const pole of ['waga', 'dlugosc', 'szerokosc', 'wysokosc']) {
-      expect(tresc).toContain(`name="${pole}"`);
+      expect(edycja).toContain(`name="${pole}"`);
     }
     const dostawa = await app.inject({ method: 'GET', url: '/ustawienia/wysylka/dostawa', headers: BASIC });
     for (const pole of ['dpd', 'inpost_paczkomat', 'odbior_osobisty']) expect(fragmentGlownejKolumny(dostawa.body)).toContain(`name="${pole}"`);

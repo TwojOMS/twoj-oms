@@ -1,0 +1,198 @@
+[
+  {
+    "plik": "src/core/bezpieczenstwo/csrf.js",
+    "trasa": "(poza trasa)",
+    "status": "status",
+    "poczatekTekstu": "komunikat",
+    "powod": "do-paczki"
+  },
+  {
+    "plik": "src/core/bezpieczenstwo/straznik.js",
+    "trasa": "(poza trasa)",
+    "status": "429",
+    "poczatekTekstu": "'Za dużo prób logowania, spróbuj ponownie później'",
+    "powod": "basic-auth"
+  },
+  {
+    "plik": "src/core/bezpieczenstwo/straznik.js",
+    "trasa": "(poza trasa)",
+    "status": "429",
+    "poczatekTekstu": "'Za dużo prób logowania, spróbuj ponownie później'",
+    "powod": "basic-auth"
+  },
+  {
+    "plik": "src/core/bezpieczenstwo/straznik.js",
+    "trasa": "(poza trasa)",
+    "status": "403",
+    "poczatekTekstu": "'Brak uprawnień do tego ekranu'",
+    "powod": "basic-auth"
+  },
+  {
+    "plik": "src/core/bezpieczenstwo/straznik.js",
+    "trasa": "(poza trasa)",
+    "status": "401",
+    "poczatekTekstu": "'Sesja nieważna, zaloguj się ponownie'",
+    "powod": "basic-auth"
+  },
+  {
+    "plik": "src/moduly/faktury/trasy/druk.js",
+    "trasa": "(poza trasa)",
+    "status": "409",
+    "poczatekTekstu": "zgoda.powod",
+    "powod": "czuwacz"
+  },
+  {
+    "plik": "src/moduly/faktury/trasy/druk.js",
+    "trasa": "GET /kolejka-druku-faktur/:id/pdf",
+    "status": "404",
+    "poczatekTekstu": "BRAK_POZYCJI",
+    "powod": "czuwacz"
+  },
+  {
+    "plik": "src/moduly/faktury/trasy/druk.js",
+    "trasa": "GET /kolejka-druku-faktur/:id/pdf",
+    "status": "404",
+    "poczatekTekstu": "BRAK_POZYCJI",
+    "powod": "czuwacz"
+  },
+  {
+    "plik": "src/moduly/faktury/trasy/druk.js",
+    "trasa": "GET /kolejka-druku-faktur/:id/pdf",
+    "status": "503",
+    "poczatekTekstu": "bezProgramu()",
+    "powod": "czuwacz"
+  },
+  {
+    "plik": "src/moduly/faktury/trasy/druk.js",
+    "trasa": "GET /kolejka-druku-faktur/:id/pdf",
+    "status": "409",
+    "poczatekTekstu": "komunikatDlaOperatora(e)",
+    "powod": "czuwacz"
+  },
+  {
+    "plik": "src/moduly/faktury/trasy/druk.js",
+    "trasa": "GET /kolejka-druku-faktur/:id/pdf",
+    "status": "400",
+    "poczatekTekstu": "`Nie udało się pobrać faktury: ${komunikatDlaOperatora(e)}`",
+    "powod": "czuwacz"
+  },
+  {
+    "plik": "src/moduly/faktury/trasy/druk.js",
+    "trasa": "(poza trasa)",
+    "status": "404",
+    "poczatekTekstu": "BRAK_POZYCJI",
+    "powod": "czuwacz"
+  },
+  {
+    "plik": "src/moduly/faktury/trasy/druk.js",
+    "trasa": "(poza trasa)",
+    "status": "503",
+    "poczatekTekstu": "'Proformy nie są skonfigurowane.'",
+    "powod": "czuwacz"
+  },
+  {
+    "plik": "src/moduly/faktury/trasy/druk.js",
+    "trasa": "(poza trasa)",
+    "status": "400",
+    "poczatekTekstu": "`Nie udało się pobrać proformy: ${komunikatDlaOperatora(e)}`",
+    "powod": "czuwacz"
+  },
+  {
+    "plik": "src/moduly/faktury/trasy/druk.js",
+    "trasa": "POST /kolejka-druku-faktur/:id/wydrukowano",
+    "status": "404",
+    "poczatekTekstu": "BRAK_POZYCJI",
+    "powod": "czuwacz"
+  },
+  {
+    "plik": "src/moduly/faktury/trasy/druk.js",
+    "trasa": "POST /kolejka-druku-faktur/:id/wydrukowano",
+    "status": "404",
+    "poczatekTekstu": "komunikatDlaOperatora(e)",
+    "powod": "czuwacz"
+  },
+  {
+    "plik": "src/moduly/faktury/trasy/druk.js",
+    "trasa": "POST /kolejka-druku-faktur/:id/blad",
+    "status": "404",
+    "poczatekTekstu": "BRAK_POZYCJI",
+    "powod": "czuwacz"
+  },
+  {
+    "plik": "src/moduly/faktury/trasy/druk.js",
+    "trasa": "POST /kolejka-druku-faktur/:id/blad",
+    "status": "404",
+    "poczatekTekstu": "komunikatDlaOperatora(e)",
+    "powod": "czuwacz"
+  },
+  {
+    "plik": "src/moduly/faktury/trasy/twojefaktury-faktura.js",
+    "trasa": "POST /faktury/twojefaktury/:dokumentId/korekta/przelicz",
+    "status": "status === 400 || status === 422 ? 200 : status",
+    "poczatekTekstu": "json",
+    "powod": "json-skrypt"
+  },
+  {
+    "plik": "src/moduly/faktury/trasy/twojefaktury-faktura.js",
+    "trasa": "POST /faktury/twojefaktury/:dokumentId/przelicz",
+    "status": "status === 400 || status === 422 ? 200 : status",
+    "poczatekTekstu": "json",
+    "powod": "json-skrypt"
+  },
+  {
+    "plik": "src/moduly/wysylka/trasy/etykiety.js",
+    "trasa": "GET /kolejka-druku/:id/zpl",
+    "status": "404",
+    "poczatekTekstu": "'Brak pliku ZPL dla tej pozycji kolejki.'",
+    "powod": "czuwacz"
+  },
+  {
+    "plik": "src/moduly/wysylka/trasy/etykiety.js",
+    "trasa": "GET /kolejka-druku/:id/zpl",
+    "status": "404",
+    "poczatekTekstu": "'Plik ZPL nie istnieje na dysku.'",
+    "powod": "czuwacz"
+  },
+  {
+    "plik": "src/moduly/wysylka/trasy/etykiety.js",
+    "trasa": "POST /kolejka-druku/:id/wydrukowano",
+    "status": "404",
+    "poczatekTekstu": "komunikatDlaOperatora(e)",
+    "powod": "czuwacz"
+  },
+  {
+    "plik": "src/moduly/wysylka/trasy/etykiety.js",
+    "trasa": "POST /kolejka-druku/:id/blad",
+    "status": "404",
+    "poczatekTekstu": "komunikatDlaOperatora(e)",
+    "powod": "czuwacz"
+  },
+  {
+    "plik": "src/moduly/zamowienia/karta.js",
+    "trasa": "POST /zamowienia/:id/wplata",
+    "status": "404",
+    "poczatekTekstu": "'Nie ma takiego zamówienia'",
+    "powod": "wolajacy-nieznany"
+  },
+  {
+    "plik": "src/moduly/zamowienia/karta.js",
+    "trasa": "POST /zamowienia/:id/wplata",
+    "status": "400",
+    "poczatekTekstu": "komunikatDlaOperatora(e)",
+    "powod": "wolajacy-nieznany"
+  },
+  {
+    "plik": "src/moduly/zamowienia/reczne.js",
+    "trasa": "GET /zamowienia/:id/magazyn/wyniki",
+    "status": "404",
+    "poczatekTekstu": "'Nie ma takiego zamówienia'",
+    "powod": "do-paczki"
+  },
+  {
+    "plik": "src/core/web/odmowa.js",
+    "trasa": "(poza trasa)",
+    "status": "status",
+    "poczatekTekstu": "komunikat",
+    "powod": "G13knfix: zapas dla panelu bez modułu web (brak reply.view) — tekst jak przed G13; z widokiem zawsze strona OMS."
+  }
+]

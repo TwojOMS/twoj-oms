@@ -1,6 +1,13 @@
 // Port frozen 5b9cd765: 1502–1660.
+import { stronaOdmowy } from '../../core/web/odmowa.js';
+
 export function registerZapisMagazynu(app, { db, magazyn, sklepy, pomoc, karta }) {
   const { kartyZKanalami, kartyPoIdach, produktyKart, zapiszSkuSklepu, ocenZapis, jednostkiSklepow, wyslijDoSklepow, adresKanalu, KANALY_SKLEPOW, BEZ_SKLEPOW_ODMOWA, pole, numeryZaznaczone, filtryZawezenia, zakresHurtu } = pomoc;
+  // PRZ-152.G13: odmowa „brak sklepu” w układzie OMS (status i tekst bez zmian); powrót na listę, z której przyszedł człowiek.
+  const odmowaBezSklepow = (req, reply) => stronaOdmowy(reply, 503, BEZ_SKLEPOW_ODMOWA, {
+    tytul: 'Magazyn nie ma skąd czytać katalogu', napisWroc: 'Wróć do magazynu',
+    wroc: pomoc.bezpiecznyWroc(req.query?.wroc ?? req.body?.wroc) ?? '/magazyn',
+  });
   // ——— ZAPIS SKU I WYMIAROW DO SKLEPOW ——————————————————————————————————————————
   //
   // ⚠️⚠️ TO JEST JEDYNE MIEJSCE W CALYM MODULE, KTORE PISZE DO SKLEPU, KTORY SPRZEDAJE.
@@ -106,7 +113,7 @@ export function registerZapisMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
   // ⚠️⚠️ TA TRASA NICZEGO NIE WYSYLA. Podglad jest OBOWIAZKOWY i jest osobna trasa wlasnie
   // po to, zeby zapis do zywego sklepu nie dal sie wywolac przez pomylke w polu formularza.
   app.post('/magazyn/podglad-zapisu', async (req, reply) => {
-    if (!magazyn || magazyn.gotowy?.() === false) return reply.code(503).send(BEZ_SKLEPOW_ODMOWA);
+    if (!magazyn || magazyn.gotowy?.() === false) return odmowaBezSklepow(req, reply);
     const zawezenie = pole(req.body, 'zawezenie') ?? '';
     const karty = kartyZZadania(req);
     if (!karty) return ekranZapisu(reply, { zawezenie, blad: ZAPIS_BEZ_ZAZNACZENIA, kod: 400 });
@@ -128,7 +135,7 @@ export function registerZapisMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
   // swiadectwem operacji, ktorej nie da sie cofnac klknieciem — ta sama zasada, co przy
   // nadaniu zbiorczym, gdzie numery listow zostaja na ekranie.
   app.post('/magazyn/zapisz-do-sklepow', async (req, reply) => {
-    if (!magazyn || magazyn.gotowy?.() === false) return reply.code(503).send(BEZ_SKLEPOW_ODMOWA);
+    if (!magazyn || magazyn.gotowy?.() === false) return odmowaBezSklepow(req, reply);
     const zawezenie = pole(req.body, 'zawezenie') ?? '';
     const karty = kartyZZadania(req);
     if (!karty) return ekranZapisu(reply, { zawezenie, blad: ZAPIS_BEZ_ZAZNACZENIA, kod: 400 });

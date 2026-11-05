@@ -3,6 +3,11 @@ import { createInfaktClient } from '../../src/oms/infakt/client.js';
 
 const odp = (dane, ok = true, status = 200) => async () => ({ ok, status, json: async () => dane });
 
+it.each([44900, '44900', 0, null, undefined])('pobierzFakture zachowuje gross_price %s w groszach', async (gross_price) => {
+  const k = createInfaktClient({ apiKey: 'fikcyjny', fetchImpl: odp({ gross_price }) });
+  expect((await k.pobierzFakture('test-fv')).gross_price).toBe(gross_price ?? null);
+});
+
 describe('inFakt: numer KSeF pojedynczej faktury', () => {
   it('oddaje numer KSeF, gdy dokument już tam jest', async () => {
     const k = createInfaktClient({ apiKey: 'X', fetchImpl: odp({ number: '12/08/2026', ksef_number: '1234563218-20260804-632857000005-03' }) });

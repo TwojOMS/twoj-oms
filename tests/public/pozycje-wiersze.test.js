@@ -113,7 +113,7 @@ describe('wyczyscWiersz — lista stawek wraca do domyślnej (PRZ-105)', () => {
     const pola = [{ name: 'poz_ilosc', value: '3' }, { name: 'poz_cena_netto', value: '9' }];
     const tr = {
       dataset: { zrodlo: 'netto' },
-      querySelectorAll: (s) => (s === 'input' ? pola : s === 'select[name="poz_vat"]' ? [lista] : []),
+      querySelectorAll: (s) => (s === 'input' ? pola : s === 'select[name$="vat"]' ? [lista] : []),
       querySelector: () => null,
       closest: (s) => (s === 'form' ? { dataset: { vat: '8' } } : null),
     };
@@ -122,5 +122,64 @@ describe('wyczyscWiersz — lista stawek wraca do domyślnej (PRZ-105)', () => {
     // Znacznik „ostatnio wpisane pole” (public/cena-netto.js) nie przechodzi na nowy wiersz.
     expect(tr.dataset.zrodlo).toBeUndefined();
     expect(pola.map((p) => p.value)).toEqual(['1', '']);
+  });
+});
+
+// PRZ-152.G2-03a: ta sama tabela na karcie zamówienia — pola bez przedrostka `poz_`, tabela z `data-wiersze-pozycji`,
+// a „×” istniejącej pozycji (`data-usun-pozycje`) zapisuje całą tabelę na serwerze i skrypt go nie rusza.
+describe('wyczyscWiersz — pola karty zamówienia (bez poz_)', () => {
+  it('ilość = 1, reszta pusta, lista stawek (name kończy się na „vat”) = data-vat formularza', async () => {
+    const { wyczyscWiersz } = await import('../../src/public/pozycje-wiersze.js');
+    const lista = { name: 'vat', value: '5' };
+    const pola = [{ name: 'nazwa', value: 'Lampa' }, { name: 'ilosc', value: '3' }, { name: 'cena_brutto', value: '12.30' }];
+    const tr = {
+      dataset: {},
+      querySelectorAll: (s) => (s === 'input' ? pola : s === 'select[name$="vat"]' ? [lista] : []),
+      querySelector: () => null,
+      closest: (s) => (s === 'form' ? { dataset: { vat: '23' } } : null),
+    };
+    wyczyscWiersz(tr);
+    expect(pola.map((p) => p.value)).toEqual(['', '1', '']);
+    expect(lista.value).toBe('23');
+  });
+});
+
+describe('podepnij — tabela karty (PRZ-152.G2-03a)', () => {
+  function dokumentKarty() {
+    const nazwa = { focus: vi.fn() };
+    const nowyWiersz = { querySelector: (s) => (s === 'input[name$="nazwa"]' ? nazwa : null) };
+    const tbody = { querySelectorAll: () => [] };
+    const sluchacze = {};
+    const formularz = {
+      addEventListener: (typ, f) => { sluchacze[typ] = f; },
+      dispatchEvent: vi.fn(),
+    };
+    const tabela = { closest: (s) => (s === 'form' ? formularz : null), querySelector: (s) => (s === 'tbody' ? tbody : null) };
+    const dokument = {
+      readyState: 'complete',
+      querySelector: (s) => (s.split(',').map((x) => x.trim()).includes('table[data-wiersze-pozycji]') ? tabela : null),
+    };
+    return { dokument, sluchacze, formularz, tbody, nazwa, nowyWiersz };
+  }
+  const klik = (attr) => {
+    const przycisk = { hasAttribute: (a) => a === attr };
+    return { target: { closest: (s) => (s.split(',').map((x) => x.trim()).includes(`[${attr}]`) ? przycisk : null) }, preventDefault: vi.fn() };
+  };
+
+  it('znajduje tabelę z data-wiersze-pozycji i podpina formularz', async () => {
+    const { podepnij } = await import('../../src/public/pozycje-wiersze.js');
+    const k = dokumentKarty();
+    expect(podepnij(k.dokument)).toBe(k.formularz);
+    expect(k.sluchacze.click).toBeTypeOf('function');
+  });
+
+  it('„×” istniejącej pozycji (data-usun-pozycje) nie jest przechwytywany — zapisuje serwer', async () => {
+    const { podepnij } = await import('../../src/public/pozycje-wiersze.js');
+    const k = dokumentKarty();
+    podepnij(k.dokument);
+    const z = klik('data-usun-pozycje');
+    k.sluchacze.click(z);
+    expect(z.preventDefault).not.toHaveBeenCalled();
+    expect(k.formularz.dispatchEvent).not.toHaveBeenCalled();
   });
 });

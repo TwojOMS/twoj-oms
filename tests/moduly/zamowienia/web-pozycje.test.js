@@ -70,7 +70,7 @@ describe('tabela pozycji na karcie', () => {
     // ...i po nim nie ma już ANI JEDNEGO kolejnego <tr> aż do zamknięcia tabeli.
     const zaWierszem = tabela.slice(wiersz + znacznik.length, koniecTabeli);
     expect(zaWierszem).not.toContain('<tr');
-    expect(zaWierszem).toContain('212.90');
+    expect(zaWierszem).toContain('212,90 zł');
   });
 
   // Przebudowa 2026-07-31: kolumna „Lp." znikla z tabeli (numer porzadkowy nie niesie przy
@@ -102,14 +102,14 @@ describe('tabela pozycji na karcie', () => {
 });
 
 describe('dopisywanie pozycji', () => {
-  it('formularz „Dodaj pozycję" jest w trybie edycji pozycji, z wymaganą nazwą, ilością i ceną', async () => {
+  it('formularz tabeli jest w trybie edycji pozycji, z wymaganą nazwą, ilością i ceną', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
     const r = await karta(id, '?edytuj=pozycje');
-    expect(r.body).toContain(`action="/zamowienia/${id}/pozycje"`);
-    expect(r.body).toContain('Dodaj pozycję');
-    expect(r.body).toContain('name="nazwa" required');
+    expect(r.body).toContain(`action="/zamowienia/${id}/pozycje/zapisz"`);
+    expect(r.body).toContain('+ Dodaj wiersz');
+    expect(r.body).toMatch(/name="nazwa"[^>]*required/u);
     expect(r.body).toContain('name="ilosc" value="1" required');
-    expect(r.body).toContain('name="cena_brutto" required');
+    expect(r.body).toMatch(/name="cena_brutto"[^>]*required/u);
   });
 
   it('dopisana pozycja pojawia się w tabeli, oznaczona jako ręczna, i wchodzi do sumy', async () => {
@@ -175,13 +175,16 @@ describe('dopisywanie pozycji', () => {
 describe('dopisana pozycja a saldo wpłat', () => {
   it('zamówienie opłacone w sklepie + dopisana pozycja = widoczna NIEDOPŁATA', async () => {
     const id = zamowienieZRozjechanymiLicznikami({ oplacone_at: '2026-07-29T14:00:00' });
-    expect((await karta(id)).body).not.toContain('NIEDOPŁATA');
+    // G9a2: nowa plakietka zastępuje NIEDOPŁATĘ; pasek spraw używa innego napisu.
+    expect((await karta(id)).body).not.toContain('>Nieopłacone<');
 
     await wyslij(`/zamowienia/${id}/pozycje`, { nazwa: 'Dopłata', ilosc: '1', cena_brutto: '80.00' });
 
     const r = await karta(id);
-    expect(r.body).toContain('NIEDOPŁATA');
-    expect(r.body).toContain('brakuje 80.00 zł');
+    // G9a2: dopisana pozycja zmienia plakietkę płatności na Nieopłacone.
+    expect(r.body).toContain('>Nieopłacone<');
+    // G9a2: podpisane saldo z przecinkiem zastępuje tekst „brakuje”.
+    expect(r.body).toMatch(/Saldo[\s\S]*-80,00 zł/);
   });
 
   it('kwota zamówienia w sklepie zostaje nietknięta w bazie', async () => {
@@ -285,8 +288,8 @@ describe('edycja pozycji', () => {
 
     const r = await karta(id);
     // 3 × 61,50 = 184,50 w linii; razem z wysyłką 89,90 → 274,40.
-    expect(r.body).toContain('184.50');
-    expect(r.body).toContain('274.40');
+    expect(r.body).toContain('184,50 zł');
+    expect(r.body).toContain('274,40 zł');
     expect(r.body).not.toContain('NIE ZGADZA SIĘ');
   });
 
@@ -397,28 +400,36 @@ describe('„Przywróć ze sklepu" przy pozycji', () => {
     const r = await wyslij(`/zamowienia/${id}/pozycje/${kluczReczna(id)}/przywroc`, {});
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/sklep o niej nie wie/i);
+    // PRZ-152.G2: odmowa wraca jako karta z pozycjami w edycji i paskiem w sekcji pozycji, nie goły tekst.
+    const sekcja = r.body.match(/<section class="panel panel--edycja" id="pozycje">[\s\S]*?<\/section>/)?.[0] ?? '';
+    expect(sekcja).toMatch(/<p class="pasek-blokada" id="blad-dane-pozycje">Nie udało się zapisać pozycji: [^<]*sklep o niej nie wie/i);
+    expect(sekcja).toContain('/pozycje/zapisz');
+    expect(r.body.match(/id="blad-dane-/g)).toHaveLength(1);
   });
 });
 
 describe('usunięcie pozycji ręcznej', () => {
-  it('przycisk „Usuń" jest WYŁĄCZNIE przy pozycji dopisanej ręcznie', async () => {
+  // PRZ-152.G2-03b (plan 3.3): „×” stoi przy każdej pozycji, także sklepowej, i wysyła tabelę z name="usun".
+  it('„×" jest przy pozycji sklepowej i przy dopisanej ręcznie (name="usun")', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
-    expect((await karta(id, '?edytuj=pozycje')).body).not.toContain('/usun');
+    expect((await karta(id, '?edytuj=pozycje')).body).toMatch(/name="usun" value="s[^"]*"/);
     dodajPozycjeReczna(db, id, parsujNowaPozycje({ nazwa: 'Dopłata', ilosc: '1', cena_brutto: '80.00' }));
-    expect((await karta(id, '?edytuj=pozycje')).body).toContain(`/pozycje/${kluczReczna(id)}/usun`);
+    expect((await karta(id, '?edytuj=pozycje')).body).toContain(`name="usun" value="${kluczReczna(id)}"`);
   });
 
   it('usuwa pozycję i cofa niedopłatę, którą wprowadziła', async () => {
     const id = zamowienieZRozjechanymiLicznikami({ oplacone_at: '2026-07-29T14:00:00' });
     await wyslij(`/zamowienia/${id}/pozycje`, { nazwa: 'Pomyłka', ilosc: '1', cena_brutto: '80.00' });
     const klucz = kluczReczna(id);
-    expect((await karta(id)).body).toContain('NIEDOPŁATA');
+    // G9a2: stan po dopisaniu pozycji pokazuje nowa plakietka płatności.
+    expect((await karta(id)).body).toContain('>Nieopłacone<');
 
     const r = await wyslij(`/zamowienia/${id}/pozycje/${klucz}/usun`, {});
-    expect(r.statusCode).toBe(302);
+    expect(r.statusCode).toBe(303);
 
     expect(pobierzZamowienie(db, id).pozycje).toHaveLength(1);
-    expect((await karta(id)).body).not.toContain('NIEDOPŁATA');
+    // G9a2: usunięcie dopłaty usuwa stan Nieopłacone z plakietki.
+    expect((await karta(id)).body).not.toContain('>Nieopłacone<');
   });
 
   it('usunięcie trafia do logu jako decyzja człowieka, z nazwą i kwotą', async () => {
@@ -433,12 +444,19 @@ describe('usunięcie pozycji ręcznej', () => {
     expect(wpis.wynik).toContain('80.00');
   });
 
-  it('pozycji ze sklepu usunąć się nie da — 400 z wyjaśnieniem', async () => {
+  it('pozycja ze sklepu → znacznik, karta bez niej, przywróć ją oddaje', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
+    dodajPozycjeReczna(db, id, parsujNowaPozycje({ nazwa: 'Druga', ilosc: '1', cena_brutto: '10.00' }));
     const r = await wyslij(`/zamowienia/${id}/pozycje/s4321/usun`, {});
-    expect(r.statusCode).toBe(400);
-    expect(r.body).toMatch(/nie da się usunąć/i);
+    expect(r.statusCode).toBe(303);
+    expect(r.headers.location).toBe(`/zamowienia/${id}?edytuj=pozycje#pozycje`);
     expect(pobierzZamowienie(db, id).pozycje).toHaveLength(1);
+    expect(pobierzZamowienie(db, id).pozycje_usuniete[0].klucz).toBe('s4321');
+    expect((await karta(id)).body).not.toContain('PRO-STOP-001');
+    const przywroc = await wyslij(`/zamowienia/${id}/pozycje/s4321/przywroc`, {});
+    expect(przywroc.statusCode).toBe(303);
+    expect(pobierzZamowienie(db, id).pozycje).toHaveLength(2);
+    expect(pobierzZamowienie(db, id).pozycje_reczne_json).toBeNull();
   });
 });
 
@@ -605,11 +623,11 @@ describe('karta — stawka VAT pozycji ręcznej (PRZ-105)', () => {
 describe('karta — kolumna VAT i podsumowanie (PRZ-105)', () => {
   const sekcjaPozycji = (html) => html.slice(html.indexOf('id="pozycje"'), html.indexOf('id="przesylka"'));
 
-  it('tabela ma kolumnę „VAT” między nazwą a ceną brutto; wiersze pokazują stawkę', async () => {
+  it('tabela ma kolumnę „Stawka VAT” (G13a: po SKU i cenie netto, przed ceną brutto); wiersze pokazują stawkę', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
     dodajPozycjeReczna(db, id, parsujNowaPozycje({ nazwa: 'Album', ilosc: '1', cena_brutto: '10.80', vat: '8' }));
     const s = sekcjaPozycji((await karta(id)).body);
-    expect(s).toMatch(/<th>Nazwa<\/th><th class="liczba kol-vat">VAT<\/th><th class="liczba">Cena brutto<\/th>/u);
+    expect(s).toMatch(/<th>Nazwa<\/th><th class="kol-sku">SKU<\/th><th class="liczba">Cena netto<\/th><th class="liczba kol-vat">Stawka VAT<\/th><th class="liczba">Cena brutto<\/th>/u);
     expect([...s.matchAll(/<td class="liczba kol-vat">([^<]*)<\/td>/gu)].map((m) => m[1].trim())).toEqual(['23%', '8%', '23%', '']);
   });
 
@@ -634,7 +652,7 @@ describe('karta — kolumna VAT i podsumowanie (PRZ-105)', () => {
     const id = zamowienieZRozjechanymiLicznikami();
     zapiszStawkeDomyslna(db, '8');
     const r = await karta(id, '?edytuj=pozycje');
-    const f = /<form method="post" action="\/zamowienia\/\d+\/pozycje" class="nowa-pozycja"[\s\S]*?<\/form>/u.exec(r.body)?.[0] ?? '';
+    const f = /<form method="post" action="\/zamowienia\/\d+\/pozycje\/zapisz" class="formularz-pozycji"[\s\S]*?<\/form>/u.exec(r.body)?.[0] ?? '';
     expect(f).toMatch(/name="cena_netto"[\s\S]*name="vat"[\s\S]*name="cena_brutto"/u);
     expect(f).toMatch(/<option value="8" selected>/u);
   });
@@ -643,9 +661,10 @@ describe('karta — kolumna VAT i podsumowanie (PRZ-105)', () => {
     const id = zamowienieZRozjechanymiLicznikami();
     dodajPozycjeReczna(db, id, parsujNowaPozycje({ nazwa: 'Album', ilosc: '1', cena_brutto: '10.80', vat: '8' }));
     const r = await karta(id, '?edytuj=pozycje');
-    const f = /<form method="post" action="\/zamowienia\/\d+\/pozycje\/zapisz">[\s\S]*?<\/form>/u.exec(r.body)?.[0] ?? '';
-    expect((f.match(/<select[^>]*name="vat"/gu) ?? []).length).toBe(1);
-    expect((f.match(/name="vat"/gu) ?? []).length).toBe(3);
+    const f = /<form method="post" action="\/zamowienia\/\d+\/pozycje\/zapisz"[^>]*>[\s\S]*?<\/form>/u.exec(r.body)?.[0] ?? '';
+    const istniejace = f.replace(/<tr data-wiersz-pozycji>[\s\S]*?<\/tr>/u, '');
+    expect((istniejace.match(/<select[^>]*name="vat"/gu) ?? []).length).toBe(1);
+    expect((istniejace.match(/name="vat"/gu) ?? []).length).toBe(3);
     const z = await wyslij(`/zamowienia/${id}/pozycje/zapisz`, {
       klucz: ['s4321', kluczReczna(id), 'wysylka'], nazwa: ['STOP', 'Album', 'Wysyłka'], ilosc: ['2', '1', '1'],
       cena_brutto: ['61.50', '10.80', '89.90'], vat: ['', '5', ''],
@@ -662,7 +681,7 @@ describe('edycja zbiorcza — pozycja ręczna bez stawki zostaje bez stawki (PRZ
     const id = zamowienieZRozjechanymiLicznikami();
     dodajPozycjeReczna(db, id, { nazwa: 'Stara dopłata', ilosc: 1, cena_brutto: '10.00', brutto_linii: '10.00' });
     const r = await karta(id, '?edytuj=pozycje');
-    const f = /<form method="post" action="\/zamowienia\/\d+\/pozycje\/zapisz">[\s\S]*?<\/form>/u.exec(r.body)?.[0] ?? '';
+    const f = /<form method="post" action="\/zamowienia\/\d+\/pozycje\/zapisz"[^>]*>[\s\S]*?<\/form>/u.exec(r.body)?.[0] ?? '';
     expect(f).toMatch(/<select[^>]*name="vat"[^>]*><option value="" selected>domyślna \(23%\)<\/option>/u);
     await wyslij(`/zamowienia/${id}/pozycje/zapisz`, {
       klucz: ['s4321', kluczReczna(id), 'wysylka'], nazwa: ['STOP', 'Stara dopłata', 'Wysyłka'], ilosc: ['2', '1', '1'],

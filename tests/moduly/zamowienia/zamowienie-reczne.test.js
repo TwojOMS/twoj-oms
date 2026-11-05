@@ -504,7 +504,7 @@ describe('trasy pozycji przeliczają kwotę zamówienia ręcznego (weryfikacja p
     const r = await app.inject({
       method: 'POST', url: `/zamowienia/${id}/pozycje/${klucz}/usun`, headers: naglowek,
     });
-    expect(r.statusCode).toBe(302);
+    expect(r.statusCode).toBe(303);
     expect(pobierzZamowienie(db, id).kwota_brutto).toBe('30.00');
   });
 });

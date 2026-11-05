@@ -1,0 +1,46 @@
+<%# PRZ-152.G13c1: odmowa z haków rdzenia (CSRF w core/bezpieczenstwo/csrf.js, podgląd demo w podglad-demo.js).
+    DOKUMENT SAMODZIELNY z tego samego powodu co brak-dostepu.ejs (K1): oba haki działają w onRequest, zanim
+    preHandler policzy menu, motyw i ścieżkę powrotu dla wspólnej ramy, więc ramy tu nie ma. Motyw przychodzi
+    wprost z ciasteczka (motywZNaglowka), barwy przepisane z palety ramy jak w brak-dostepu.ejs. Treść to wyłącznie
+    status, tekst odmowy (ucieczkowany — niesie obcy nagłówek Origin/Referer) i droga powrotu: zero ścieżek na dysku. %>
+<!doctype html>
+<% const ciemny = motyw === 'ciemny'; %>
+<html lang="pl" data-motyw="<%= motyw %>">
+<head>
+  <link rel="icon" type="image/png" href="<%= zasob('favicon-32.png') %>">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= tytul %></title>
+  <style>
+    :root { color-scheme: <%= ciemny ? 'dark' : 'light' %>; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: <%= ciemny ? '#191c1f' : '#f7f3ec' %>; color: <%= ciemny ? '#e7e2d9' : '#2e2a26' %>;
+    }
+    .pusto {
+      max-width: 32rem; margin: 0 1rem; padding: 1.9rem 2.1rem;
+      background: <%= ciemny ? '#23272b' : '#fff' %>; border: 1px solid <%= ciemny ? '#383e44' : '#e5ded2' %>; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 24px rgba(0, 0, 0, .06);
+    }
+    .pusto h1 { margin: 0 0 .9rem; font-size: 1.25rem; color: <%= ciemny ? '#8fb6d0' : '#3e5566' %>; }
+    .pasek-uwaga {
+      margin: 0 0 1.2rem; padding: .7rem .9rem; line-height: 1.5; white-space: pre-line; overflow-wrap: anywhere;
+      border-left: 4px solid #c9822b; border-radius: 6px;
+      background: <%= ciemny ? '#3a2f1f' : '#fbf1e1' %>;
+    }
+    .btn {
+      display: inline-block; padding: .5rem 1rem; border-radius: 8px; font-weight: 600; text-decoration: none;
+      border: 1px solid <%= ciemny ? '#383e44' : '#e5ded2' %>; color: <%= ciemny ? '#8fb6d0' : '#3e5566' %>;
+    }
+  </style>
+</head>
+<body>
+  <div class="pusto">
+    <h1><%= tytul %></h1>
+    <p class="pasek-uwaga" role="alert"><%= komunikat %></p>
+    <a class="btn" href="<%= wroc %>"><%= napisWroc %></a>
+  </div>
+</body>
+</html>

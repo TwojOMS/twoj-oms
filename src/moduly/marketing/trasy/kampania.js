@@ -14,6 +14,10 @@ import {
   stanPolaczenia, metaKampanie, potwierdzoneZamowienia,
 } from '../../../oms/db/reklamy.js';
 import { podsumujReklamy } from '../../../domena/reklamy.js';
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
+
+// PRZ-152.G13: odmowy „Odśwież” w układzie OMS (status 503 i tekst bez zmian); powrót na ekran reklam.
+const odmowaKampanii = (reply, tekst) => stronaOdmowy(reply, 503, tekst, { tytul: 'Nie udało się odświeżyć reklam', napisWroc: 'Wróć do reklam', wroc: '/kampania' });
 import { polaczeniaIntegracji } from '../../ustawienia/services/polaczenia-integracji.ts';
 
 // Zakladka /kampania (WRZESIEN30, 2026-08-25). Trasa jest CIENKA — wzorzec
@@ -111,7 +115,7 @@ function daneReklam(db, kampanie, dzis, widok, liczbaDni, proba) {
 
 export function zarejestrujTrasyKampanii(app, { db, config = {}, proba = config.proba === true, definicje, czuwaczKampanii = null, czuwaczReklam = null }) {
   app.post('/kampania/odswiez-reklamy', async (_req, reply) => {
-    if (!czuwaczReklam) return reply.code(503).send('Odczyt reklam nie jest dostępny.');
+    if (!czuwaczReklam) return odmowaKampanii(reply, 'Odczyt reklam nie jest dostępny.');
     await czuwaczReklam.przebieg();
     return reply.redirect('/kampania', 303);
   });
@@ -126,7 +130,7 @@ export function zarejestrujTrasyKampanii(app, { db, config = {}, proba = config.
   // gorsze niż jedno.
   app.post('/kampania/odswiez', async (req, reply) => {
     if (!czuwaczKampanii) {
-      return reply.code(503).send('Panel nie ma podpiętej ani Mety, ani GA4 — nie ma czego odświeżać.');
+      return odmowaKampanii(reply, 'Panel nie ma podpiętej ani Mety, ani GA4 — nie ma czego odświeżać.');
     }
     try {
       await czuwaczKampanii.przebieg();

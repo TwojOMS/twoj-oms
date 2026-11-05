@@ -82,8 +82,10 @@ it.each([true, false])('C01b: karta przekazuje program do opisu rezerwacji, wbud
   zajmijWysylkeKsef(db, 'u1', { numer: 'u1/10/2026', kiedy: '2026-10-20T18:00:00.000Z' });
   const r = await karta(app, id);
   expect(r.statusCode).toBe(200);
-  expect(r.body).toContain('Panel już zlecił wysyłkę tego dokumentu do KSeF (20.10.2026, 20:00)');
-  expect(r.body.includes('otwórz ten dokument w inFakcie')).toBe(!wbudowany);
+  // PRZ-152.G15 (właściciel: „usunąć komunikat.”): zamiast długiego zdania sama plakietka z czasem zlecenia.
+  expect(r.body).toMatch(/Zlecono do KSeF 20\.10(\.2026)? 20:00/);
+  expect(r.body).not.toContain('Panel już zlecił');
+  expect(r.body).not.toContain('otwórz ten dokument w inFakcie');
 });
 
 it('C01b: podgląd i zatwierdzenie inFaktu z numerem i rezerwacją pokazują numer', async () => {
@@ -175,15 +177,15 @@ describe('PRZ-102.23 przycisk „Wyślij do KSeF” na karcie', () => {
     expect(podglad.body).not.toContain('name="potwierdzam"');
   });
 
-  it('dokument z rezerwacją („nie wiadomo”) → bez przycisku, zdanie „panel już zlecił”', async () => {
+  // PRZ-152.G15: zamiast zdania „panel już zlecił” i „zlecona z panelu…” — plakietka „Zlecono do KSeF D.M GG:MM”.
+  it('dokument z rezerwacją („nie wiadomo”) → bez przycisku, plakietka „Zlecono do KSeF”', async () => {
     const { db, app } = panel();
     const id = zamowienieZFaktura(db);
     zajmijWysylkeKsef(db, 'u1', { numer: 'u1/10/2026', kiedy: '2026-10-20T18:00:00.000Z' });
     const r = await karta(app, id);
     expect(r.body).not.toMatch(PRZYCISK);
-    expect(r.body).toContain('Panel już zlecił wysyłkę tego dokumentu do KSeF (20.10.2026, 20:00)');
-    // Kolumna stanu mówi to samo, co lista Faktur — nie „jeszcze nie wysłana” obok „panel już zlecił”.
-    expect(r.body).toContain('zlecona z panelu — czeka na numer KSeF');
+    expect(r.body).not.toContain('Panel już zlecił');
+    expect(r.body).toMatch(/Zlecono do KSeF 20\.10(\.2026)? 20:00/);
     expect(r.body).not.toContain('jeszcze nie wysłana do KSeF');
   });
 
@@ -311,10 +313,11 @@ describe('PRZ-102.23 dwa kroki i powrót na kartę', () => {
     expect(wynik.body).toContain('Wróć do zamówienia');
     expect(wynik.body).not.toContain('href="/faktury?miesiac=');
 
-    // Po wysyłce karta stoi na rezerwacji: zdanie „panel już zlecił”, przycisku drugi raz nie ma.
+    // Po wysyłce karta stoi na rezerwacji: plakietka „Zlecono do KSeF” (PRZ-152.G15), przycisku drugi raz nie ma.
     const poWysylce = await karta(app, id);
     expect(poWysylce.body).not.toMatch(PRZYCISK);
-    expect(poWysylce.body).toContain('Panel już zlecił wysyłkę tego dokumentu do KSeF');
+    expect(poWysylce.body).toContain('Zlecono do KSeF ');
+    expect(poWysylce.body).not.toContain('Panel już zlecił');
   });
 
   it('obcy adres powrotu → domyślny powrót na listę Faktur, a obcego adresu nie ma na ekranie', async () => {

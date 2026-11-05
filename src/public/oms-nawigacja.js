@@ -45,4 +45,42 @@ export function podlaczMenu(root = document) {
   };
 }
 
-if (typeof document !== 'undefined') podlaczMenu(document);
+// PRZ-152.G8 — „kopiuj numer" na karcie paczki. W HTML przycisk ma `hidden`: bez JS numer zaznacza się
+// ręcznie. Clipboard API działa tylko w bezpiecznym kontekście (https, localhost); panel w sieci lokalnej
+// po http dostaje zapasowe `execCommand('copy')` na tymczasowym polu.
+const czasPotwierdzenia = 1500;
+
+function kopiujZapasowo(tekst) {
+  const pole = document.createElement('textarea');
+  pole.value = tekst;
+  pole.setAttribute('readonly', '');
+  pole.style.position = 'fixed';
+  pole.style.opacity = '0';
+  document.body.append(pole);
+  pole.select();
+  try { return document.execCommand('copy'); } finally { pole.remove(); }
+}
+
+export function podlaczKopiowanie(root = document) {
+  const api = typeof navigator !== 'undefined' && navigator.clipboard?.writeText;
+  const zapas = typeof document !== 'undefined' && typeof document.execCommand === 'function';
+  if (!api && !zapas) return;
+  for (const przycisk of root.querySelectorAll('[data-kopiuj-numer]')) {
+    const napis = przycisk.textContent;
+    przycisk.hidden = false;
+    przycisk.addEventListener('click', async () => {
+      const numer = przycisk.dataset.kopiujNumer;
+      let ok = false;
+      try {
+        if (api) { await navigator.clipboard.writeText(numer); ok = true; } else ok = kopiujZapasowo(numer);
+      } catch { ok = false; }
+      przycisk.textContent = ok ? 'Skopiowano' : 'Nie udało się — zaznacz numer';
+      setTimeout(() => { przycisk.textContent = napis; }, czasPotwierdzenia);
+    });
+  }
+}
+
+if (typeof document !== 'undefined') {
+  podlaczMenu(document);
+  podlaczKopiowanie(document);
+}

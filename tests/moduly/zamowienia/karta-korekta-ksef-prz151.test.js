@@ -77,12 +77,16 @@ describe('PRZ-151.C04 korekta na karcie zamówienia', () => {
   });
   it('numer KSeF korekty wygrywa także z rezerwacją', async () => {
     const { html } = await karta({ dokument: { ksef_number: '1/KOR/KSEF' }, rezerwacja: true });
-    expect(html).toMatch(/KSeF<\/span> 1\/KOR\/KSEF/);
+    expect(html).toContain('<summary class="waga waga--ok" title="1/KOR/KSEF">KSeF przyjęty</summary>');
+    expect(html).toContain('<input readonly class="ksef-numer" value="1/KOR/KSEF" size="40">');
     expect(html).not.toContain('Wyślij do KSeF');
   });
   it('rezerwacja blokuje kolejne wysłanie', async () => {
     const { html } = await karta({ rezerwacja: true });
-    expect(html).toContain('zlecona z panelu — czeka na numer KSeF');
+    // PRZ-152.G15: plakietka „Zlecono do KSeF …” zamiast „zlecona z panelu…”; przycisku dalej nie ma.
+    expect(html).toContain('Zlecono do KSeF ');
+    // PRZ-152.G15 (kierownik 05.11): klasa plakietki stanu, nie `waga` (wersaliki).
+    expect(html).toMatch(/<span class="znacznik znacznik--cichy">Zlecono do KSeF /);
     expect(html).not.toContain('Wyślij do KSeF');
   });
   it('pierwotna bez numeru KSeF blokuje korektę', async () => {
@@ -120,7 +124,8 @@ describe('PRZ-151.C04 korekta na karcie zamówienia', () => {
     expect(html).not.toContain('Wyślij do KSeF');
   });
   it('korekta ręczna ma puste komórki stanu i akcji', async () => {
-    expect((await karta({ reczna: true })).html).toMatch(/<td>\s*<\/td>\s*<td>\s*<\/td>/);
+    // PRZ-152.G10e: komórka akcji ma klasę kol-akcje (PDF do prawej), treść dalej pusta.
+    expect((await karta({ reczna: true })).html).toMatch(/<td>\s*<\/td>\s*<td class="kol-akcje">\s*<\/td>/);
   });
   it('produkcja nie ma formularza ani PDF bez prawa do Faktur', async () => {
     const { html } = await karta({ produkcja: true });

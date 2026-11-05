@@ -5,6 +5,7 @@
 // ⚠️ Token nie wraca na ekran nigdy — także po błędzie formularza (pole tokenu zawsze puste). Komunikat testu
 // połączenia buduje klient KSeF z odpowiedzi serwera (bez tokenu); błąd techniczny idzie tylko do logu, też bez tokenu.
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { sprawdzFormularzKsef, EKRAN_KSEF, ZDANIE_UPRAWNIENIA_KSEF, ZDANIE_TOKENU_KOSZTOW_TWOJEFAKTURY, ODMOWA_KSEF_BRAK_NIP } from '../../../domena/konfiguracja-ksef-kosztow.js';
 import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji, stanDlaEkranu }
   from '../../../oms/db/konfiguracja-integracji.js';
@@ -38,8 +39,10 @@ export function registerUstawieniaKsefRoutes(app, { db, zrodloKsef, nipSprzedawc
       zapisano: KOMUNIKATY[req.query?.zapisano] ?? null, nazwaProgramu,
     });
   }
-  const zEnv = (reply) => reply.code(409).type('text/plain; charset=utf-8')
-    .send('Token KSeF jest ustawiony w pliku konfiguracji (oms.env, KSEF_TOKEN) — tam go zmień. Formularz niczego nie zapisał.');
+  // PRZ-152.G13k1: odmowa w układzie OMS (status i tekst bez zmian); tekst nie niesie tokenu.
+  const zEnv = (reply) => stronaOdmowy(reply, 409,
+    'Token KSeF jest ustawiony w pliku konfiguracji (oms.env, KSEF_TOKEN) — tam go zmień. Formularz niczego nie zapisał.',
+    { tytul: 'Token KSeF jest w pliku konfiguracji', wroc: EKRAN_KSEF, napisWroc: 'Wróć do ustawień KSeF' });
 
   app.get(EKRAN_KSEF, async (req, reply) => widok(req, reply));
 

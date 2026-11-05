@@ -62,7 +62,7 @@ describe('przycisk „Drukuj" przy fakturze', () => {
     // formularz schowany atrybutem `hidden` — przycisk byłby w kodzie strony, a operator
     // nie zobaczyłby go nigdy. Weryfikacja mutacyjna złapała dokładnie ten przypadek.
     expect(html).toContain(`<form method="post" action="/zamowienia/${id}/faktura/drukuj" class="w-linii">`);
-    expect(html).toMatch(/<button class="btn btn--maly">Drukuj<\/button>/);
+    expect(html).toMatch(/<button class="btn btn--maly" aria-label="Drukuj" title="Drukuj na komputerze z drukarką">\s*<svg/);
   });
 
   // ⚠️ Wiersz w `faktury` istnieje TAKŻE jako REZERWACJA, przed powstaniem dokumentu
@@ -325,17 +325,15 @@ describe('zgłoszenia komputerów z drukarką (PRZ-126.C05a)', () => {
     expect(Object.keys(poz).sort()).toEqual(['id', 'numer', 'zamowienie', 'zamowienieId']);
   });
 
-  it('karta bez zgłoszeń: „Drukuj" wyszarzony, z dymkiem i zdaniem z odnośnikiem; po zgłoszeniu — czynny', async () => {
+  it('karta bez zgłoszeń: brak ikony druku i zdanie z odnośnikiem; po zgłoszeniu — ikona', async () => {
     zFaktura();
     const bez = await karta();
-    expect(bez).toContain('<button class="btn btn--maly" disabled title="Nie ma podłączonego komputera z drukarką">Drukuj</button>');
-    expect(bez).toContain('Nie ma podłączonego komputera z drukarką — jak go podłączyć: <a href="/ustawienia/druk#faktury">Ustawienia → Druk i etykiety</a>.');
-    // Wyłączony przycisk ma wyglądać na wyszarzony, nie jak czynny „Pobierz PDF” obok.
-    expect(bez).toMatch(/\.btn:disabled[^{]*\{[^}]*opacity:\s*\.45/);
+    expect(bez).not.toContain(`/zamowienia/${id}/faktura/drukuj`);
+    expect(bez).toContain('Drukowanie wyłączone — brak komputera z drukarką. <a href="/ustawienia/druk#faktury">Ustawienia → Druk i etykiety</a>');
 
     await zgloszenieStanowiska('BIURO-1');
     const z = await karta();
-    expect(z).toMatch(/<button class="btn btn--maly">Drukuj<\/button>/);
+    expect(z).toContain('aria-label="Drukuj" title="Drukuj na komputerze z drukarką"');
     expect(z).not.toContain('disabled title="Nie ma podłączonego komputera z drukarką"');
     expect(z).not.toContain('/ustawienia/druk#faktury');
   });
@@ -344,14 +342,14 @@ describe('zgłoszenia komputerów z drukarką (PRZ-126.C05a)', () => {
     zFaktura();
     db.prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('druk.faktury.stanowiska', ?, ?)")
       .run(JSON.stringify({ 'BIURO-1': new Date(Date.now() - 6 * 60_000).toISOString() }), new Date().toISOString());
-    expect(await karta()).toContain('disabled title="Nie ma podłączonego komputera z drukarką"');
+    expect(await karta()).not.toContain(`/zamowienia/${id}/faktura/drukuj`);
   });
 
-  it('faktura w kolejce przy braku komputera — zdanie „jak go podłączyć" także przy stanie kolejki', async () => {
+  it('faktura w kolejce przy braku komputera — jedna informacja pod tabelą', async () => {
     const f = zFaktura();
     dodajFaktureDoKolejki(db, f.id);
     const html = await karta();
-    const poKolejce = html.slice(html.indexOf('Faktura czeka w kolejce druku'));
-    expect(poKolejce).toContain('/ustawienia/druk#faktury');
+    expect(html).toContain('Faktura czeka w kolejce druku');
+    expect(html.match(/href="\/ustawienia\/druk#faktury"/gu)).toHaveLength(1);
   });
 });

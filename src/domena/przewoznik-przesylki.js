@@ -102,3 +102,25 @@ export function przewoznikWiersza(p, zamowienie) {
     metoda: zamowienie ? metodaWysylki(zamowienie) : null,
   });
 }
+
+/**
+ * Link do sledzenia paczki (PRZ-152.G7) — JEDNA droga dla zakladki Przesylki, karty zamowienia
+ * i maila „Zamowienie wyslane": prawdziwy przewoznik z `przewoznikWiersza` (kod → carrier
+ * Allegro → nazwa uslugi → metoda), potem jego adres. Sam kod drogi nadania nie wystarcza:
+ * `allegro_wza` nie mowi, kto wiezie, wiec paczka WzA jadaca DPD zostawala bez linku.
+ * `null`, gdy przewoznika nie da sie ustalic albo nie ma numeru — nigdy zgadniety adres.
+ */
+export function linkSledzeniaPaczki(p, zamowienie) {
+  return adresSledzenia(przewoznikPaczki(p, zamowienie)?.klucz, p?.numer_listu);
+}
+
+/**
+ * Przewoznik KONKRETNEJ paczki (link do sledzenia, plakietka na karcie — PRZ-152.G8) albo `null`.
+ * Nieznany kod spoza Allegro nie dziedziczy przewoznika zamowienia: zamowienie mowi, jak klient
+ * chcial dostac paczke, a nie kto ja wiezie. Kurier zamowienia uzupelnia tylko drogi Allegro (WzA).
+ */
+export function przewoznikPaczki(p, zamowienie) {
+  const kod = p?.kurier ?? null;
+  if (kod && !Object.hasOwn(Z_KODU, kod) && !String(kod).startsWith('allegro')) return null;
+  return przewoznikWiersza(p, zamowienie);
+}

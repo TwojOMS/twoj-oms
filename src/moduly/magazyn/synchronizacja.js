@@ -1,8 +1,15 @@
 // Port frozen 5b9cd765: 1080–1124.
+import { stronaOdmowy } from '../../core/web/odmowa.js';
+
 export function registerSynchronizacjaMagazynu(app, { db, magazyn, sklepy, pomoc, karta }) {
   const { produktyPominiete, utworzKartyZNiepowiazanych, grupujPominiete, BEZ_SKLEPOW, BEZ_SKLEPOW_ODMOWA, zEtykietaKanalu, bezpiecznyWroc } = pomoc;
+  // PRZ-152.G13: odmowa „brak sklepu” w układzie OMS (status i tekst bez zmian); powrót na listę, z której przyszedł człowiek.
+  const odmowaBezSklepow = (req, reply) => stronaOdmowy(reply, 503, BEZ_SKLEPOW_ODMOWA, {
+    tytul: 'Magazyn nie ma skąd czytać katalogu', napisWroc: 'Wróć do magazynu',
+    wroc: pomoc.bezpiecznyWroc(req.query?.wroc ?? req.body?.wroc) ?? '/magazyn',
+  });
   app.post('/magazyn/odswiez', async (req, reply) => {
-    if (!magazyn || magazyn.gotowy?.() === false) return reply.code(503).send(BEZ_SKLEPOW_ODMOWA);
+    if (!magazyn || magazyn.gotowy?.() === false) return odmowaBezSklepow(req, reply);
     magazyn.start();
     // 303, a nie 302: po POST-cie przegladarka ma pojsc GET-em, zeby odswiezenie strony
     // nie proponowalo powtorzenia odczytu.
@@ -28,7 +35,7 @@ export function registerSynchronizacjaMagazynu(app, { db, magazyn, sklepy, pomoc
   // miejscem, w ktorym widac, CZEGO panel nie tknal — dlatego trasa RENDERUJE wynik,
   // zamiast przekierowac na liste (ta sama zasada, co przy nadaniu zbiorczym).
   app.post('/magazyn/utworz-karty', async (req, reply) => {
-    if (!magazyn || magazyn.gotowy?.() === false) return reply.code(503).send(BEZ_SKLEPOW_ODMOWA);
+    if (!magazyn || magazyn.gotowy?.() === false) return odmowaBezSklepow(req, reply);
     const { utworzone } = utworzKartyZNiepowiazanych(db);
     return reply.view('magazyn-pominiete.ejs', {
       title: 'Magazyn — pominięte',

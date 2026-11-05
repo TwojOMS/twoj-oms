@@ -41,7 +41,8 @@ it('karta zachowuje treść okresu i klienta, a po wyłączeniu usuwa tylko odno
   const wlaczona = await get(p.app, '/zamowienia/1', BASIC);
   expect(wlaczona.statusCode).toBe(200);
   for (const fragment of ['<a href="/okresy/1">faktura za październik 2026</a>',
-    '<a href="/okresy/1">okres październik 2026</a>', '<a href="/okresy/1">okresie październik 2026</a>',
+    // PRZ-152.G9a2: pasek salda „pieniądze idą na okres …” zastąpiły cztery liczby — odnośnik do okresu niesie zdanie „…na okresie …”.
+    '<a href="/okresy/1">okresie październik 2026</a>',
     '<a href="/faktury">Faktury</a>', '<a href="/klienci/1">Pracownia Przykładowa</a>']) {
     expect(wlaczona.body).toContain(fragment);
   }

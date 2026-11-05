@@ -12,6 +12,14 @@ import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { bezpiecznaNazwa } from '../../../domena/pliki.js';
 import { uslugaKsefDostepna, powodNiedostepnosciKsef } from '../../../domena/konfiguracja-ksef-kosztow.js';
 import { createZestawienieKosztow } from '../services/zestawienie-kosztow.js';
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
+
+// PRZ-152.G13k1: odmowa trasy wołanej linkiem albo formularzem — strona w układzie OMS z paskiem uwagi
+// i powrotem na listę kosztów (status i tekst bez zmian). Miesiąc powrotu przechodzi już przez `miesiacPowrotu`.
+const NAPIS_WROC = 'Wróć do kosztów';
+const odmowaKosztow = (reply, status, komunikat, tytul, wroc = '/koszty') =>
+  stronaOdmowy(reply, status, komunikat, { tytul, wroc, napisWroc: NAPIS_WROC });
+const listaMiesiaca = (miesiac) => `/koszty?miesiac=${encodeURIComponent(miesiac)}`;
 
 // Zakladka KOSZTY. Trasa jest CIENKA: parsuje zadanie, wola domene, renderuje — dokladnie
 // jak siostrzana zakladka FAKTURY (routes/faktury.js). Reguly widoku miesiaca stoja
@@ -120,7 +128,7 @@ export function zarejestrujTrasyKosztow(app, {
       // nie ma jak zakwestionowac. Trasa zamienia to na zdanie dla czlowieka — literowka
       // w adresie nie ma prawa dac piecsetki. Blad TECHNICZNY leci dalej, do logu.
       if (!e?.dlaOperatora) throw e;
-      return reply.code(400).send(`Nie da się pokazać kosztów: ${komunikatDlaOperatora(e)}`);
+      return odmowaKosztow(reply, 400, `Nie da się pokazać kosztów: ${komunikatDlaOperatora(e)}`, 'Nie da się pokazać kosztów');
     }
   });
 
@@ -129,14 +137,14 @@ export function zarejestrujTrasyKosztow(app, {
   // niz zamowiony wyglada dokladnie tak samo jak poprawne.
   app.get('/koszty/zestawienie', async (req, reply) => {
     const miesiac = String(req.query.miesiac ?? '');
-    if (!/^\d{4}-\d{2}$/.test(miesiac)) return reply.code(400).send(`„${miesiac}" to nie jest miesiąc w formacie RRRR-MM.`);
+    if (!/^\d{4}-\d{2}$/.test(miesiac)) return odmowaKosztow(reply, 400, `„${miesiac}" to nie jest miesiąc w formacie RRRR-MM.`, 'Nie da się przygotować zestawienia');
     let wynik;
     try {
       wynik = await zestawienieKosztow.zbuduj(miesiac);
     } catch (e) {
       // Blad TECHNICZNY leci dalej, do logu — jak przy kazdej innej trasie tego pliku.
       if (!e?.dlaOperatora) throw e;
-      return reply.code(400).send(komunikatDlaOperatora(e));
+      return odmowaKosztow(reply, 400, komunikatDlaOperatora(e), 'Nie da się przygotować zestawienia');
     }
     return reply.type('application/pdf')
       .header('Content-Disposition', `attachment; filename="${wynik.nazwa}"`)
@@ -153,7 +161,7 @@ export function zarejestrujTrasyKosztow(app, {
   app.get('/koszty/:ksefNumber/pdf', async (req, reply) => {
     // PRZ-102.22: usługa z modułu odpowiada przy każdym żądaniu (token z Ustawień, bez restartu).
     if (!uslugaKsefDostepna(wizualizacjaKosztu)) {
-      return reply.code(503).send(powodNiedostepnosciKsef(wizualizacjaKosztu) ?? 'Panel nie ma podpiętego KSeF — nie ma skąd pobrać dokumentu.');
+      return odmowaKosztow(reply, 503, powodNiedostepnosciKsef(wizualizacjaKosztu) ?? 'Panel nie ma podpiętego KSeF — nie ma skąd pobrać dokumentu.', 'Nie da się pobrać dokumentu');
     }
     let wynik;
     try {
@@ -162,7 +170,7 @@ export function zarejestrujTrasyKosztow(app, {
       // Nieznany numer KSeF i awaria po stronie KSeF to oba odmowy OPISANE dla czlowieka —
       // maja wrocic zdaniem, a nie piecsetka. Blad techniczny leci dalej, do logu.
       if (!e?.dlaOperatora) throw e;
-      return reply.code(400).send(`Nie udało się przygotować dokumentu: ${komunikatDlaOperatora(e)}`);
+      return odmowaKosztow(reply, 400, `Nie udało się przygotować dokumentu: ${komunikatDlaOperatora(e)}`, 'Nie da się pobrać dokumentu');
     }
     const nazwa = `koszt-${bezpiecznaNazwa(wynik.wiersz.numer_dokumentu || req.params.ksefNumber)}.pdf`;
     return reply.type('application/pdf')
@@ -180,9 +188,9 @@ export function zarejestrujTrasyKosztow(app, {
     // kategorii; rozne jest wylacznie to, do czego decyzja sie przypina.
     const dokument = String(req.body?.ksefNumber ?? '').trim();
     if ((!nip && !dokument) || !nazwa || !TYPY.includes(typ)) {
-      return reply.code(400).send('Niepoprawne dane kategorii: potrzebny jest NIP sprzedawcy '
+      return odmowaKosztow(reply, 400, 'Niepoprawne dane kategorii: potrzebny jest NIP sprzedawcy '
         + 'albo dokument, do którego kategoria ma się przypiąć, nazwa kategorii i typ z listy: '
-        + `${TYPY.join(', ')}.`);
+        + `${TYPY.join(', ')}.`, 'Nie udało się przypiąć kategorii', listaMiesiaca(miesiac));
     }
     try {
       // Przypiecie dziala dla WSZYSTKICH faktur tego NIP-u, takze juz lezacych w bazie —
@@ -194,7 +202,7 @@ export function zarejestrujTrasyKosztow(app, {
       // NIP bez ani jednej cyfry odbija sie od `przypnijKategorie` — to odmowa opisana
       // dla czlowieka, wiec ma wrocic jako zdanie, a nie jako piecsetka.
       if (!e?.dlaOperatora) throw e;
-      return reply.code(400).send(komunikatDlaOperatora(e));
+      return odmowaKosztow(reply, 400, komunikatDlaOperatora(e), 'Nie udało się przypiąć kategorii', listaMiesiaca(miesiac));
     }
   });
 
@@ -207,7 +215,8 @@ export function zarejestrujTrasyKosztow(app, {
   app.post('/koszty/odswiez', async (req, reply) => {
     const miesiac = miesiacPowrotu(req.body?.miesiac);
     if (!uslugaKsefDostepna(czuwaczKosztow)) {
-      return reply.code(503).send(powodNiedostepnosciKsef(czuwaczKosztow) ?? 'Panel nie ma podpiętego KSeF — nie ma skąd pobrać kosztów.');
+      return odmowaKosztow(reply, 503, powodNiedostepnosciKsef(czuwaczKosztow) ?? 'Panel nie ma podpiętego KSeF — nie ma skąd pobrać kosztów.',
+        'Nie da się pobrać kosztów z KSeF', listaMiesiaca(miesiac));
     }
     let komunikat;
     try {
@@ -228,7 +237,7 @@ export function zarejestrujTrasyKosztow(app, {
       return ekran(reply, miesiac, komunikat);
     } catch (e) {
       if (!e?.dlaOperatora) throw e;
-      return reply.code(400).send(`Nie da się pokazać kosztów: ${komunikatDlaOperatora(e)}`);
+      return odmowaKosztow(reply, 400, `Nie da się pokazać kosztów: ${komunikatDlaOperatora(e)}`, 'Nie da się pokazać kosztów');
     }
   });
 
@@ -297,8 +306,8 @@ export function zarejestrujTrasyKosztow(app, {
   app.get('/koszty/reczne/:klucz', async (req, reply) => {
     const wiersz = kosztPoNumerze(db, req.params.klucz);
     if (!wiersz || wiersz.zrodlo !== 'reczne') {
-      return reply.code(404).send('Panel nie zna kosztu wpisanego ręcznie o takim numerze. '
-        + 'Dokumentu pobranego z KSeF nie da się tu poprawić — panel jest lustrem KSeF-u.');
+      return odmowaKosztow(reply, 404, 'Panel nie zna kosztu wpisanego ręcznie o takim numerze. '
+        + 'Dokumentu pobranego z KSeF nie da się tu poprawić — panel jest lustrem KSeF-u.', 'Nie ma takiego kosztu');
     }
     const firmy = wszystkieFirmyReczne(db);
     return reply.view('koszt-reczny.ejs', {

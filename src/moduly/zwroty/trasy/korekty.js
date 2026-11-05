@@ -1,3 +1,4 @@
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
 import {
   dodajZwrot, usunZwrot, oznaczPieniadzeOddane, zwrot, odblokujKorekte, zapiszRecznyNumerKorekty,
@@ -27,7 +28,7 @@ export function registerKorektyRoutes(app, { db, korekta = null, definicje, infa
     if (!z) return reply;
     // `null` (panel bez inFaktu) to tryb POPRAWNY — odmawiamy czytelnie, jak nadanie
     // bez skonfigurowanego kuriera.
-    if (!korekta) return reply.code(503).send(zdanieBrakuProgramu(wyborProgramu) ?? `Wystawianie korekt nie jest skonfigurowane (brak inFaktu). ${GDZIE_KLUCZ_INFAKTU}`);
+    if (!korekta) return stronaOdmowy(reply, 503, zdanieBrakuProgramu(wyborProgramu) ?? `Wystawianie korekt nie jest skonfigurowane (brak inFaktu). ${GDZIE_KLUCZ_INFAKTU}`, { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
     const zwrotId = Number(req.params.zwrotId);
     try {
       await korekta.wystaw(z.id, zwrotId);
@@ -36,7 +37,7 @@ export function registerKorektyRoutes(app, { db, korekta = null, definicje, infa
       // (services/korekta.js), wiec bez wpisu w logu nie da sie potem odroznic „zlecenie
       // przepadlo" od „nikt nigdy nie kliknal".
       slad(z.id, 'zwrot.korekta', `BŁĄD: ${e.message}`);
-      return reply.code(400).send(komunikatDlaOperatora(e));
+      return stronaOdmowy(reply, 400, komunikatDlaOperatora(e), { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
     }
     const po = zwrot(db, z.id, zwrotId);
     slad(z.id, 'zwrot.korekta', decyzja(
@@ -77,19 +78,19 @@ export function registerKorektyRoutes(app, { db, korekta = null, definicje, infa
     const z = zamowienieAlbo404(req, reply);
     if (!z) return reply;
     const w = zwrot(db, z.id, Number(req.params.zwrotId));
-    if (!w) return reply.code(404).send('Nie ma takiego zwrotu przy tym zamówieniu.');
+    if (!w) return stronaOdmowy(reply, 404, 'Nie ma takiego zwrotu przy tym zamówieniu.', { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
     // Regula (prog, numer, brak rezerwacji) mieszka w domenie — trasa jej nie liczy.
     const powod = powodOdmowyOdblokowaniaKorekty(w, { nazwa: nazwaProgramu });
     if (powod) {
       slad(z.id, 'zwrot.korekta.odblokowanie', `BŁĄD: ${powod}`);
-      return reply.code(400).send(powod);
+      return stronaOdmowy(reply, 400, powod, { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
     }
     let przed;
     try {
       przed = odblokujKorekte(db, z.id, w.id);
     } catch (e) {
       slad(z.id, 'zwrot.korekta.odblokowanie', `BŁĄD: ${e.message}`);
-      return reply.code(400).send(`Nie udało się odblokować korekty: ${komunikatDlaOperatora(e)}`);
+      return stronaOdmowy(reply, 400, `Nie udało się odblokować korekty: ${komunikatDlaOperatora(e)}`, { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
     }
     slad(z.id, 'zwrot.korekta.odblokowanie', decyzja(
       req,
@@ -111,17 +112,17 @@ export function registerKorektyRoutes(app, { db, korekta = null, definicje, infa
     const z = zamowienieAlbo404(req, reply);
     if (!z) return reply;
     const w = zwrot(db, z.id, Number(req.params.zwrotId));
-    if (!w) return reply.code(404).send('Nie ma takiego zwrotu przy tym zamówieniu.');
+    if (!w) return stronaOdmowy(reply, 404, 'Nie ma takiego zwrotu przy tym zamówieniu.', { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
     const { numer, blad } = parsujNumerKorekty(w, req.body?.numer, { nazwa: nazwaProgramu, gdzie: gdzieProgramu });
     if (blad) {
       slad(z.id, 'zwrot.korekta.reczna', `BŁĄD: ${blad}`);
-      return reply.code(400).send(blad);
+      return stronaOdmowy(reply, 400, blad, { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
     }
     try {
       zapiszRecznyNumerKorekty(db, z.id, w.id, numer);
     } catch (e) {
       slad(z.id, 'zwrot.korekta.reczna', `BŁĄD: ${e.message}`);
-      return reply.code(400).send(`Nie udało się zapisać numeru korekty: ${komunikatDlaOperatora(e)}`);
+      return stronaOdmowy(reply, 400, `Nie udało się zapisać numeru korekty: ${komunikatDlaOperatora(e)}`, { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
     }
     slad(z.id, 'zwrot.korekta.reczna', decyzja(
       req,

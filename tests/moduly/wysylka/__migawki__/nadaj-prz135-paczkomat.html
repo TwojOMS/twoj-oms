@@ -47,7 +47,7 @@
 
 
 
-<form method="post" action="/zamowienia/1/nadaj">
+<form method="post" action="/zamowienia/1/nadaj" class="nadanie-formularz">
   <input type="hidden" name="powrot" value="/">
   
   
@@ -85,7 +85,7 @@
             <div class="paczkomat-glowa">Paczkomat — miejsce odbioru</div>
             <div class="paczkomat-cialo">
               <label for="pole-punkt-odbioru">Kod paczkomatu</label>
-              <input id="pole-punkt-odbioru" name="punkt_odbioru" value="WAW01M">
+              <input id="pole-punkt-odbioru" name="punkt_odbioru" value="WAW01M" class="oms-pole">
               
               <p class="podpowiedz">Poprawka dotyczy tylko tej przesyłki — nie zapisuje się do zamówienia.</p>
             </div>
@@ -102,8 +102,8 @@
         
         <div class="pola">
           <div class="pola-para">
-            <label for="pole-nazwa">Imię i nazwisko <input id="pole-nazwa" name="nazwa" value="Ola Półcień"></label>
-            <label for="pole-company">Firma <input id="pole-company" name="company" value="Pracownia Półcień"></label>
+            <label for="pole-nazwa">Imię i nazwisko <input id="pole-nazwa" name="nazwa" value="Ola Półcień" class="oms-pole"></label>
+            <label for="pole-company">Firma <input id="pole-company" name="company" value="Pracownia Półcień" class="oms-pole"></label>
           </div>
 
           
@@ -114,8 +114,8 @@
           
 
           <div class="pola-para">
-            <label for="pole-phone">Telefon <input id="pole-phone" name="phone" value="+48500100200"></label>
-            <label for="pole-email">E-mail <input id="pole-email" name="email" value="ola@polcien.example"></label>
+            <label for="pole-phone">Telefon <input id="pole-phone" name="phone" value="+48500100200" class="oms-pole"></label>
+            <label for="pole-email">E-mail <input id="pole-email" name="email" value="ola@polcien.example" class="oms-pole"></label>
           </div>
         </div>
 
@@ -131,16 +131,16 @@
             <summary>Adres pocztowy z zamówienia (do paczkomatu nie jedzie)</summary>
             <div class="pola">
               <label for="pole-ulica">Ulica i numer
-                <input id="pole-ulica" name="ulica" value="Cienista 3">
+                <input id="pole-ulica" name="ulica" value="Cienista 3" class="oms-pole">
                 
               </label>
               <div class="pola-para">
                 <label for="pole-kod">Kod pocztowy
-                  <input id="pole-kod" name="kod" value="00-950">
+                  <input id="pole-kod" name="kod" value="00-950" class="oms-pole">
                   
                 </label>
                 <label for="pole-miasto">Miasto
-                  <input id="pole-miasto" name="miasto" value="Warszawa">
+                  <input id="pole-miasto" name="miasto" value="Warszawa" class="oms-pole">
                   
                 </label>
               </div>
@@ -210,7 +210,7 @@
           <h3>Waga i gabaryt</h3>
           <div class="pola">
             <div class="rzad">
-              <label>Waga (kg) <input name="waga" value="1" inputmode="decimal"></label>
+              <label>Waga (kg) <input name="waga" value="1" inputmode="decimal" class="oms-pole"></label>
             </div>
             <div class="gabaryty">
               

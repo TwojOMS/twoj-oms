@@ -31,11 +31,65 @@ import { odmowaKsefWProbie } from '../../src/moduly/koszty/ksef-ustawien.ts';
 import { modulyPiaskownicy } from '../../deploy/proba/atrapy/index.mjs';
 import { pocztaZUstawien } from '../../src/moduly/wiadomosci/poczta-ustawien.ts';
 import { createAtrapaPoczty, createModulWiadomosciAtrapy } from '../../deploy/proba/atrapy/poczta.mjs';
+import { wykonajZlecenieResetu, zlecResetDemo } from '../../src/oms/db/reset-demo.js';
+
+// Napis na stronie PDF (pdfkit bez kompresji: tekst jako <hex> w tablicach TJ), nie metadane dokumentu.
+const tekstPdf = (b) => [...b.toString('latin1').matchAll(/\[([^\]]*)\]\s*TJ/g)]
+  .map(m => [...m[1].matchAll(/<([0-9a-f]+)>/gi)].map(h => Buffer.from(h[1], 'hex').toString('latin1')).join('')).join('\n');
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
 
 const DZIS = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' });
 const metody = (o) => Object.keys(o).filter((k) => typeof o[k] === 'function').sort();
 const ciche = () => {};
+
+describe('PRZ-152.G1 — nadanie WzA atrapy', () => {
+  it('reset demo usuwa stan przesyłek atrapy', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wza-reset-'));
+    const baza = path.join(dir, 'oms.sqlite');
+    try {
+      const stare = openOmsDb(baza);
+      const a = createAtrapaAllegro({ db: stare, kanal: 'allegro', env: ENV_DEMO, log: ciche });
+      await a.utworzPrzesylke({ commandId: 'przed-resetem', input: { deliveryMethodId: 'demo' } });
+      zlecResetDemo(stare, { login: 'operator-demo' });
+      stare.close();
+      expect(await wykonajZlecenieResetu({ baza, utworzBaze: () => { openOmsDb(baza).close(); } })).toBeTruthy();
+      const nowe = openOmsDb(baza);
+      try {
+        const po = createAtrapaAllegro({ db: nowe, kanal: 'allegro', env: ENV_DEMO, log: ciche });
+        expect(nowe.prepare('SELECT count(*) AS n FROM atrapa_allegro_przesylki').get().n).toBe(0);
+        await expect(po.stanTworzeniaPrzesylki('przed-resetem')).rejects.toThrow();
+      } finally { nowe.close(); }
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  });
+  it('zachowuje commandId i przesyłkę po odtworzeniu klienta, oddaje PDF i ZPL', async () => {
+    const baza = openOmsDb(':memory:');
+    try {
+      const opcje = { db: baza, kanal: 'allegro', env: ENV_DEMO, log: ciche };
+      const a = createAtrapaAllegro(opcje);
+      const input = { deliveryMethodId: '03f26351-f683-4db2-8895-f2c599280e3c', labelFormat: 'PDF', packages: [{ weight: { value: 1, unit: 'KILOGRAMS' } }] };
+      const pierwszy = await a.utworzPrzesylke({ commandId: 'demo-command', input });
+      const drugi = await createAtrapaAllegro(opcje).utworzPrzesylke({ commandId: 'demo-command', input });
+      expect(drugi).toEqual(pierwszy);
+      expect(pierwszy).toEqual({ commandId: 'demo-command', status: 'SUCCESS', errors: null, shipmentId: expect.any(String) });
+      expect(await a.stanTworzeniaPrzesylki('demo-command')).toEqual(pierwszy);
+      const p = await a.pobierzPrzesylkeWza(pierwszy.shipmentId);
+      expect(p).toMatchObject({ id: pierwszy.shipmentId, labelFormat: 'PDF', packages: [{ waybill: expect.stringContaining('ATRAPA') }] });
+      expect(baza.prepare('SELECT count(*) AS n FROM atrapa_allegro_przesylki').get().n).toBe(1);
+      const pdf = await a.pobierzEtykieteWza([p.id]);
+      expect(Buffer.isBuffer(pdf)).toBe(true);
+      expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
+      expect(tekstPdf(pdf).split('\n')).toContain('ATRAPA');
+      const zpl = (await a.pobierzEtykieteWza([p.id], 'ZPL')).toString();
+      expect(zpl).toContain('^XA'); expect(zpl).toContain('ATRAPA'); expect(zpl).toContain('^XZ');
+      await expect(a.utworzPrzesylke({ input })).rejects.toThrow('commandId');
+      await expect(a.utworzPrzesylke({ commandId: 'brak-uslugi' })).rejects.toThrow('deliveryMethodId');
+      await expect(a.pobierzEtykieteWza([])).rejects.toThrow();
+      await expect(a.pobierzPrzesylkeWza('nieznana')).rejects.toThrow();
+      await expect(createAtrapaAllegro({ ...opcje, kanal: 'inne-konto' }).stanTworzeniaPrzesylki('demo-command')).rejects.toThrow();
+      expect(() => createAtrapaAllegro({ ...opcje, env: {} })).toThrow('OMS_TRYB=proba');
+    } finally { baza.close(); }
+  });
+});
 
 let katalog, db, infakt;
 beforeAll(async () => {

@@ -1,6 +1,13 @@
 // Port frozen 5b9cd765: 1127–1500, 1662–1765, 1910–2008.
+import { stronaOdmowy } from '../../core/web/odmowa.js';
+
 export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }) {
   const { kartyZKanalami, niepowiazaneOfertyAllegro, powiazaneOfertyAllegro, kartyDoPowiazania, powiazOfertyHurtem, odepnijOferte, kartaPoId, produktyKarty, zapiszKarte, kartyPoIdach, zastosujHurtem, zajeteSku, nadajSku, produktyKart, polecenieZFormularza, zmianyHurtem, polaDoPrzeniesienia, proponujSku, przejeciaZeSklepu, propozycje, KANALY_ALLEGRO, wartosciPol, adresKanalu, BEZ_SKLEPOW, BEZ_SKLEPOW_ODMOWA, BEZ_KART, SORTOWANIE_POWIAZAN, SORTOWANIE_POWIAZAN_DOMYSLNE, napis, kanalAllegro, paryZFormularza, wierszOferty, pozycjaListy, adresPowiazan, linkiPowiazan, ukrytePowiazan, pole, zmianyZFormularza, bezpiecznyWroc, adresKarty, numeryZaznaczone, filtryZawezenia, zakresHurtu, HURT_BEZ_ZAZNACZENIA, HURT_BEZ_ZMIANY } = pomoc;
+  // PRZ-152.G13: odmowa „brak sklepu” w układzie OMS (status i tekst bez zmian); powrót na listę, z której przyszedł człowiek.
+  const odmowaBezSklepow = (req, reply) => stronaOdmowy(reply, 503, BEZ_SKLEPOW_ODMOWA, {
+    tytul: 'Magazyn nie ma skąd czytać katalogu', napisWroc: 'Wróć do magazynu',
+    wroc: pomoc.bezpiecznyWroc(req.query?.wroc ?? req.body?.wroc) ?? '/magazyn',
+  });
   const { ekranKarty, brakKarty } = karta;
   function ekranHurtu(reply, {
     plan = [], zakres, zawezenie, polaFormularza = [], blad = null, wynik = null, kod = 200,
@@ -32,7 +39,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
    * i tak odrzucamy.
    */
   function hurtem(req, reply, { zapisz }) {
-    if (!magazyn || magazyn.gotowy?.() === false) return reply.code(503).send(BEZ_SKLEPOW_ODMOWA);
+    if (!magazyn || magazyn.gotowy?.() === false) return odmowaBezSklepow(req, reply);
 
     const zakres = zakresHurtu(pole(req.body, 'zakres'));
     const zawezenie = pole(req.body, 'zawezenie') ?? '';
@@ -149,7 +156,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
    * o tym `proponujSku`, wiec musi najpierw wiedziec, co numerujemy.
    */
   function generujSku(req, reply, { zapisz }) {
-    if (!magazyn || magazyn.gotowy?.() === false) return reply.code(503).send(BEZ_SKLEPOW_ODMOWA);
+    if (!magazyn || magazyn.gotowy?.() === false) return odmowaBezSklepow(req, reply);
 
     const zakres = zakresHurtu(pole(req.body, 'zakres'));
     const zawezenie = pole(req.body, 'zawezenie') ?? '';
@@ -310,7 +317,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
 
   /** Wspolna droga obu trns przejecia. `zapisz` rozstrzyga, czy to podglad, czy nadanie. */
   function przejmijSku(req, reply, { zapisz }) {
-    if (!magazyn || magazyn.gotowy?.() === false) return reply.code(503).send(BEZ_SKLEPOW_ODMOWA);
+    if (!magazyn || magazyn.gotowy?.() === false) return odmowaBezSklepow(req, reply);
 
     const zakres = zakresHurtu(pole(req.body, 'zakres'));
     const zawezenie = pole(req.body, 'zawezenie') ?? '';
@@ -441,7 +448,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
   // przekierowywac (ta sama zasada, co przy „Utwórz karty z niepowiązanych" i przy nadaniu
   // zbiorczym): ekran wyniku jest jedynym miejscem, w ktorym widac, czego panel NIE tknal.
   app.post('/magazyn/powiazania', async (req, reply) => {
-    if (!magazyn || magazyn.gotowy?.() === false) return reply.code(503).send(BEZ_SKLEPOW_ODMOWA);
+    if (!magazyn || magazyn.gotowy?.() === false) return odmowaBezSklepow(req, reply);
 
     const karty = kartyDoPowiazania(db);
     // ⚠️⚠️ OBIE LISTY, A NIE SAME NIEPOWIAZANE — i to jest cala droga dla stanu
@@ -473,7 +480,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
   // stoi w `odepnijOferte`: ta trasa nie ma prawa odpiac produktu SKLEPOWEGO, bo to jego
   // powiazanie ZBUDOWALO karte.
   app.post('/magazyn/powiazania/odepnij', async (req, reply) => {
-    if (!magazyn || magazyn.gotowy?.() === false) return reply.code(503).send(BEZ_SKLEPOW_ODMOWA);
+    if (!magazyn || magazyn.gotowy?.() === false) return odmowaBezSklepow(req, reply);
     const id = Number(req.body?.id);
     const odpieto = Number.isInteger(id) && odepnijOferte(db, id);
     return ekranPowiazan(req, reply, odpieto
@@ -481,7 +488,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
       : { odpiete: 0, powiazane: 0, pominiete: [{ nazwa: `oferta #${req.body?.id}`, powod: 'nie ma czego odpiąć' }] });
   });
   app.post('/magazyn/:id', async (req, reply) => {
-    if (!magazyn || magazyn.gotowy?.() === false) return reply.code(503).send(BEZ_SKLEPOW_ODMOWA);
+    if (!magazyn || magazyn.gotowy?.() === false) return odmowaBezSklepow(req, reply);
     const karta = kartaPoId(db, req.params.id);
     if (!karta) return brakKarty(reply, req.params.id);
 
@@ -515,7 +522,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
    * dwoch kart, a stan, wymiar i waga paczki liczylyby sie z niewlasciwej karty.
    */
   app.post('/magazyn/:id/powiaz', async (req, reply) => {
-    if (!magazyn || magazyn.gotowy?.() === false) return reply.code(503).send(BEZ_SKLEPOW_ODMOWA);
+    if (!magazyn || magazyn.gotowy?.() === false) return odmowaBezSklepow(req, reply);
     const karta = kartaPoId(db, req.params.id);
     if (!karta) return brakKarty(reply, req.params.id);
 
@@ -558,7 +565,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
    * oferty odpinaloby ja od CUDZEJ karty, a na tej karcie nie widac by tego bylo wcale.
    */
   app.post('/magazyn/:id/odepnij', async (req, reply) => {
-    if (!magazyn || magazyn.gotowy?.() === false) return reply.code(503).send(BEZ_SKLEPOW_ODMOWA);
+    if (!magazyn || magazyn.gotowy?.() === false) return odmowaBezSklepow(req, reply);
     const karta = kartaPoId(db, req.params.id);
     if (!karta) return brakKarty(reply, req.params.id);
 

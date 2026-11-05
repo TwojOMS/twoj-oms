@@ -84,15 +84,18 @@ describe('gabaryty Allegro na formularzu nadania', () => {
     expect(f).not.toContain('name="wysokosc"');
   });
 
+  // PRZ-152.G11c (zlecenie G11c): automat bez ustawienia „Paczkomaty i automaty” dostaje jego
+  // wartość startową S i 1 kg, jak One Box i jak nadanie hurtem — wcześniej pusta waga bez zaznaczenia.
   it.each([
     [ONE_BOX_DPD, 64], [ORLEN, 60], [DHL_BOX, 64], [DHL_POINT, 64], [DPD_AUTOMAT, 59],
-  ])('%s zachowuje pustą wagę i wybór S/M/L bez zaznaczenia', async (liveId, dlugosc) => {
+  ])('%s dostaje S i 1 kg z wartości startowej ustawienia automatów', async (liveId, dlugosc) => {
     const { serwer, id } = zServerem({ liveId });
     const f = formularz((await ekran(serwer, id)).body, id);
     for (const wysokosc of [8, 19, 41]) expect(f).toContain(`${dlugosc} × 38 × ${wysokosc} cm`);
     expect(f).toContain(`name="delivery_method_id_allegro" value="${liveId}"`);
-    expect(f).toContain('name="waga" value=""');
-    expect(f).not.toMatch(/name="gabaryt"[^>]*checked/);
+    expect(f).toContain('name="waga" value="1"');
+    expect(f).toMatch(/name="gabaryt" value="S"[^>]*checked/);
+    expect(f).not.toMatch(/name="gabaryt" value="[ML]"[^>]*checked/);
     expect(f).not.toContain('id="szablon-paczki"');
   });
 
@@ -101,7 +104,7 @@ describe('gabaryty Allegro na formularzu nadania', () => {
   it('pole wagi przy gabarycie Allegro jest wymagane — pusta waga nie wyśle formularza', async () => {
     const { serwer, id } = zServerem({ liveId: DPD_AUTOMAT });
     const f = formularz((await ekran(serwer, id)).body, id);
-    expect(f).toMatch(/<input name="waga" value=""[^>]*\srequired[\s>]/);
+    expect(f).toMatch(/<input name="waga" value="[^"]*"[^>]*\srequired[\s>]/);
   });
 
   it('One Kurier zachowuje szablon i edytowalne wymiary', async () => {

@@ -1,5 +1,8 @@
 import multipart from '@fastify/multipart';
 import {odczytajOdpowiedz,MAKS_PLIK,MAKS_PLIKOW} from '../zalaczniki.js';
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
+// Powrót z odmowy: do wątku, z którego przyszedł człowiek (adres w obrębie panelu).
+const adresWatku = (kanal, threadId) => `/wiadomosci/${encodeURIComponent(kanal)}/${encodeURIComponent(threadId)}`;
 // Trasy Centrum wiadomosci Allegro.
 //
 // ⚠️ EKRAN CZYTA WYLACZNIE LUSTRO (`allegro_watki`, `allegro_wiadomosci`, `allegro_odpowiedzi`)
@@ -75,12 +78,12 @@ function registerRoutes(app, { db, klienci = {}, podpis = PODPIS }) {
   app.post('/wiadomosci/:kanal/:threadId/odpowiedz', async (req, reply) => {
     const { kanal, threadId } = req.params;
     const w = watek(db, kanal, threadId);
-    if (!w) return reply.code(404).send('Nie ma takiego wątku.');
+    if (!w) return stronaOdmowy(reply, 404, 'Nie ma takiego wątku.', { tytul: 'Nie ma takiego wątku', napisWroc: 'Wróć do wiadomości', wroc: '/wiadomosci' });
 
     // ⚠️ TA SAMA BARIERA, CO W CZUWACZU, i celowo powtorzona: adres da sie wpisac z palca,
     // a odpowiedz w sporze wyslana stad omijalaby komplet narzedzi i dowodow w Allegro.
     if (w.typ === 'POST_PURCHASE_ISSUE') {
-      return reply.code(400).send('To problem z zakupem — odpowiedz w Allegro, nie stąd.');
+      return stronaOdmowy(reply, 400, 'To problem z zakupem — odpowiedz w Allegro, nie stąd.', { tytul: 'Odpowiedz w Allegro', napisWroc: 'Wróć do wątku', wroc: adresWatku(kanal, threadId) });
     }
     // ⚠️ WYSYLKA JEST NIEODWRACALNA — krok potwierdzenia, jak przy nadaniu paczki.
     // Sprawdzamy PRZED zapisem dowodu, zeby kliknieciе bez ptaszka nie zostawialo sladu.
@@ -88,13 +91,13 @@ function registerRoutes(app, { db, klienci = {}, podpis = PODPIS }) {
     try { odpowiedz=await odczytajOdpowiedz(req); }
     catch (error) { return reply.code(400).view('wiadomosci.ejs',kontekst(w,true,'Nie odczytano załączników. Sprawdź formaty, limit 5 plików / 5 MiB każdy / 20 MiB łącznie i wybierz pliki ponownie.',String(error.szkic??req.body?.tresc??''))); }
     if (odpowiedz.potwierdzam !== 'tak') {
-      return reply.code(400).send('Brak potwierdzenia — nic nie wysłano.');
+      return stronaOdmowy(reply, 400, 'Brak potwierdzenia — nic nie wysłano.', { tytul: 'Odpowiedź nie została wysłana', napisWroc: 'Wróć do wątku', wroc: adresWatku(kanal, threadId) });
     }
 
     const {tresc,pliki}=odpowiedz;
     if(!tresc.trim()||tresc.length>MAKS_ZNAKOW_WIADOMOSCI)return reply.code(400).view('wiadomosci.ejs',kontekst(w,true,'Wpisz treść odpowiedzi, najwyżej '+MAKS_ZNAKOW_WIADOMOSCI+' znaków.',tresc));
     const klient = klienci[kanal];
-    if (!klient) return reply.code(503).send('Kanał Allegro nie jest skonfigurowany.');
+    if (!klient) return stronaOdmowy(reply, 503, 'Kanał Allegro nie jest skonfigurowany.', { tytul: 'Kanał Allegro nie jest skonfigurowany', napisWroc: 'Wróć do wątku', wroc: adresWatku(kanal, threadId) });
 
     // ⚠️ DOWOD PRZED STRZALEM — ta sama zasada, co w czuwaczu formulki. Gdy polaczenie padnie
     // PO wyslaniu, wpis zostaje i widac, ze cos poszlo.
@@ -107,7 +110,7 @@ function registerRoutes(app, { db, klienci = {}, podpis = PODPIS }) {
         db.exec('COMMIT');
       } catch(error) { db.exec('ROLLBACK');throw error; }
     } catch (e) {
-      return reply.code(409).send(`Nie zapisano dowodu wysyłki, więc nic nie wysłano: ${e.message}`);
+      return stronaOdmowy(reply, 409, `Nie zapisano dowodu wysyłki, więc nic nie wysłano: ${e.message}`, { tytul: 'Odpowiedź nie została wysłana', napisWroc: 'Wróć do wątku', wroc: adresWatku(kanal, threadId) });
     }
 
     let wysylkaRozpoczeta=false;
@@ -143,12 +146,12 @@ function registerRoutes(app, { db, klienci = {}, podpis = PODPIS }) {
   app.post('/wiadomosci/:kanal/:threadId/zalatwione', async (req, reply) => {
     const { kanal, threadId } = req.params;
     const w = watek(db, kanal, threadId);
-    if (!w) return reply.code(404).send('Panel nie zna tego wątku.');
+    if (!w) return stronaOdmowy(reply, 404, 'Panel nie zna tego wątku.', { tytul: 'Nie ma takiego wątku', napisWroc: 'Wróć do wiadomości', wroc: '/wiadomosci' });
     // ⚠️ BEZ DATY NIE MA CZEGO ZAKOTWICZYC. Zamkniecie obejmuje stan NA CHWILE klikniecia,
     // wiec bez daty albo uciszyloby watek na zawsze, albo nie zrobilo nic. Odmowa jest
     // uczciwsza niz jedno i drugie.
     if (!w.last_message_date_time) {
-      return reply.code(409).send('Wątek nie ma daty ostatniej wiadomości — nie ma czego zamknąć.');
+      return stronaOdmowy(reply, 409, 'Wątek nie ma daty ostatniej wiadomości — nie ma czego zamknąć.', { tytul: 'Nie można oznaczyć jako załatwione', napisWroc: 'Wróć do wątku', wroc: adresWatku(kanal, threadId) });
     }
     zamknijWatek(db, kanal, threadId, w.last_message_date_time, new Date().toISOString());
     // Wracamy do kolejki: „zalatwione" klika sie po to, zeby przejsc do nastepnego.

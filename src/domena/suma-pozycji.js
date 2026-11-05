@@ -112,5 +112,14 @@ export function kwotaOczekiwanaGrosze(zamowienie) {
   // początku — czy dane ZE SKLEPU (pozycje + dostawa) sumują się do kwoty zamówienia
   // W SKLEPIE.
   const roznicaWysylki = wysylkaBruttoGrosze(zamowienie) - wysylkaBruttoSklepGrosze(zamowienie);
-  return kwotaZamowieniaGrosze(zamowienie) + roznicaGr + roznicaWysylki;
+  // PRZ-152.G2 — POZYCJA USUNIĘTA ZNACZNIKIEM (`pozycje_usuniete`, dokłada je zLinii) znika
+  // z `pozycje`, a `kwota_brutto` ze sklepu dalej ją obejmuje. Odejmujemy jej wartość SKLEPOWĄ
+  // (usunięta nie ma efektywnej). Bariera i tu NIE SŁABNIE: po dodaniu usuniętej z powrotem do
+  // obu stron sprawdza to samo — czy linie ZE SKLEPU (wszystkie, także usunięte) i dostawa
+  // sumują się do kwoty zamówienia W SKLEPIE. Zamówienie ręczne wyszło wyżej i usuniętych nie ma.
+  const usunieteGr = (zamowienie?.pozycje_usuniete ?? []).reduce(
+    (acc, p) => acc + wartoscSklepowaPozycjiGrosze(p),
+    0,
+  );
+  return kwotaZamowieniaGrosze(zamowienie) + roznicaGr + roznicaWysylki - usunieteGr;
 }

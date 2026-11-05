@@ -143,7 +143,8 @@ describe('trasa zbiorcza: POST /zamowienia/lista-produktow.pdf', () => {
     const { app } = serwer();
     const r = await app.inject({ method: 'POST', url: '/zamowienia/lista-produktow.pdf', headers: POST, payload: '' });
     expect(r.statusCode).toBe(400);
-    expect(r.body).toBe('Nie zaznaczono żadnego zamówienia.');
+    expect(r.headers['content-type']).toMatch(/^text\/html/);
+    expect(r.body).toContain('<p class="pasek-uwaga" role="alert">Nie zaznaczono żadnego zamówienia.</p>');
   });
 
   it('ponad sufit partii druku — odmowa nazywa wydruk, nic nie rysuje', async () => {

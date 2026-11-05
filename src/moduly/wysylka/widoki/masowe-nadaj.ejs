@@ -35,7 +35,7 @@
       <%# ⚠️ FORMULARZ OBEJMUJE TABELE: od PRZ-070 rozmiar paczki wybiera czlowiek W WIERSZU, %>
       <%# wiec pola wierszy sa czescia zatwierdzenia. Nazwy pol niosa identyfikator zamowienia %>
       <%# (`szablon_<id>`) — trasa czyta kazdy wiersz po jego id, nigdy po kolejnosci. %>
-      <form method="post" action="/zamowienia/masowe/nadaj">
+      <form method="post" action="/zamowienia/masowe/nadaj" class="nadanie-formularz">
         <%# Na telefonie tabela (ok. 700 px) przewija sie SAMA — panel ma `overflow: hidden` %>
         <%# i bez tego ucinalby kolumny Rozmiar i Pobranie, czyli to, co tu najwazniejsze. %>
         <div class="przewijak-tabeli">
@@ -65,14 +65,14 @@
                 </td>
                 <td>
                   <% if (w.rozmiar.pole === 'szablon') { %>
-                    <select name="szablon_<%= w.id %>" aria-label="Szablon paczki zamówienia <%= w.numer %>">
+                    <select name="szablon_<%= w.id %>" aria-label="Szablon paczki zamówienia <%= w.numer %>" class="oms-pole">
                       <% szablony.szablony.forEach(function (s) { %>
                         <option value="<%= s.id %>"<%= s.id === w.rozmiar.szablon ? ' selected' : '' %>><%= s.nazwa %> (<%= s.dlugosc %> × <%= s.szerokosc %> × <%= s.wysokosc %> cm, <%= s.waga %> kg)</option>
                       <% }); %>
                     </select>
                   <% } else if (w.rozmiar.pole === 'gabaryt') { %>
                     <%# Paczkomat nie zna wymiarow, tylko litere skrytki (domain/paczka.js). %>
-                    <select name="gabaryt_<%= w.id %>" aria-label="Gabaryt paczkomatu zamówienia <%= w.numer %>">
+                    <select name="gabaryt_<%= w.id %>" aria-label="Gabaryt paczkomatu zamówienia <%= w.numer %>" class="oms-pole">
                       <% ['A', 'B', 'C'].forEach(function (g) { %>
                         <option value="<%= g %>"<%= g === w.rozmiar.gabaryt ? ' selected' : '' %>><%= g %></option>
                       <% }); %>
@@ -80,12 +80,12 @@
                     <span class="wyjasnienie">waga <%= w.rozmiar.waga %> kg</span>
                   <% } else { %>
                     <%# Automat Allegro: gabaryt S/M/L i waga do 20 kg — parser karty (gabaryty-allegro.js). %>
-                    <select name="gabaryt_<%= w.id %>" aria-label="Gabaryt automatu zamówienia <%= w.numer %>">
+                    <select name="gabaryt_<%= w.id %>" aria-label="Gabaryt automatu zamówienia <%= w.numer %>" class="oms-pole">
                       <% w.rozmiar.gabaryty.forEach(function (g) { %>
                         <option value="<%= g %>"<%= g === w.rozmiar.gabaryt ? ' selected' : '' %>><%= g %></option>
                       <% }); %>
                     </select>
-                    <input name="waga_<%= w.id %>" value="<%= w.rozmiar.waga %>" inputmode="decimal" size="4" aria-label="Waga (kg) zamówienia <%= w.numer %>"> kg
+                    <input name="waga_<%= w.id %>" value="<%= w.rozmiar.waga %>" inputmode="decimal" size="4" aria-label="Waga (kg) zamówienia <%= w.numer %>" class="oms-pole"> kg
                   <% } %>
                 </td>
                 <td>

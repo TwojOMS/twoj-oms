@@ -354,8 +354,8 @@ describe('zmiana ustaleń na karcie', () => {
     await post(`/zamowienia/${id}/ustalenia`, { rabat_procent: '30' });
     const body = (await get(`/zamowienia/${id}`)).body;
     expect(body).toContain('cena-katalogowa');
-    expect(body).toContain('74.90');
-    expect(body).toContain('52.43');
+    expect(body).toContain('74,90');
+    expect(body).toContain('52,43');
     expect(body).toMatch(/Rabat stałego klienta/);
   });
 });

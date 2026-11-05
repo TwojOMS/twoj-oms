@@ -7723,7 +7723,7 @@
     },
     {
       "path": "src/moduly/rdzen/modul.ts",
-      "line": 15,
+      "line": 16,
       "expression": "env",
       "callee": "wczytajSprzedawce",
       "call": "wczytajSprzedawce(env)"

@@ -206,3 +206,15 @@ Get-Content C:/OMS-druk/czuwacz-faktur.log -Tail 20
 Odpytanie adresu `/kolejka-druku-faktur` w przeglądarce **zajmuje** czekające faktury dla tego
 „stanowiska” na kilka minut, więc nie otwieraj go dla podglądu. Adres `/kolejka-druku` jest
 bezpieczny do oglądania.
+
+## Gdy automat drukujący nie działa
+
+Komputer przy drukarce wyłączony, skrypt stoi, a paczki trzeba wysłać dziś: na karcie zamówienia,
+przy paczce, kliknij **Pobierz ZPL**. Panel odda plik etykiety, który już ma (ten sam, który
+wydrukowałby skrypt), i zapisze w historii zamówienia, kto go pobrał. Plik wyślij na Zebrę
+programem **Zebra Setup Utilities → Open Communication With Printer / Send File** — nie zwykłym
+drukowaniem, bo wyjdzie tekst `^XA…`.
+
+Gdy padła sama Zebra, plik ZPL nic nie da. Przy paczkach Allegro „Wysyłam z Allegro” nadawaj nowe
+paczki przyciskiem **Nadaj** zamiast **Nadaj i drukuj** — wtedy Allegro daje etykietę PDF, którą
+wydrukujesz na zwykłej drukarce.

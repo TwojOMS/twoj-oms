@@ -192,7 +192,8 @@ export function createWysylkaKsef({
         // się przy pierwszej zmianie — człowiek dostawałby dwa różne opisy w odstępie jednego
         // kliknięcia. Przy okazji znika stempel-doklejka: wariant bez `zlecona_at` (baza oddała
         // odmowę, ale wiersza nie umiała już pokazać) dokładał drugi odstęp przed myślnikiem.
-        odbite.push({ numer: d.numer, powod: powodJuzZlecona(wiersz?.zlecona_at, program) });
+        // PRZ-152.G15: znacznik dla ekranu (krótkie `zdanieJuzWyslano`); długi `powod` zostaje dla logu i automatu.
+        odbite.push({ numer: d.numer, powod: powodJuzZlecona(wiersz?.zlecona_at, program), juzZlecona: true, zleconaAt: wiersz?.zlecona_at ?? null });
       }
     } catch (e) {
       // ⚠️ TU DO inFAKTU TEZ NIE POSZLO JESZCZE NIC — zajmowanie jest krokiem PRZED

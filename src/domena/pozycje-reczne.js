@@ -149,9 +149,7 @@ export function parsujNowaPozycje(body, { stawkaDomyslna = STAWKA_VAT, wdt = fal
   const vat = parsujStawke(body?.vat, stawkaDomyslna, { zw });
   // Brutto wygrywa, gdy podane: to ono jest wartoscia PRZECHOWYWANA, a netto tylko
   // wygodniejszym sposobem jej podania (domain/vat.js: bruttoZNetto).
-  const wprost = String(body?.cena_brutto ?? '').trim();
-  const zNetto = wprost === '' ? bruttoZNetto(body?.cena_netto, wdt ? '0' : vat, { zw }) : null;
-  const cenaBrutto = parsujCeneBrutto(wprost !== '' ? wprost : zNetto);
+  const cenaBrutto = cenaBruttoZPol(body, vat, { wdt, zw });
   return {
     nazwa,
     sku: tekst(body?.sku),
@@ -160,6 +158,27 @@ export function parsujNowaPozycje(body, { stawkaDomyslna = STAWKA_VAT, wdt = fal
     brutto_linii: zl(grosze(cenaBrutto, `pozycja "${nazwa}"`) * ilosc),
     vat,
   };
+}
+
+// Wspólny krok ceny nowej i edytowanej pozycji; wynik nadal jest ceną BRUTTO.
+export function cenaBruttoZPol(body, stawka, { wdt = false, zw = false } = {}) {
+  const wprost = String(body?.cena_brutto ?? '').trim();
+  const zNetto = wprost === '' ? bruttoZNetto(body?.cena_netto, wdt ? '0' : stawka, { zw }) : null;
+  return parsujCeneBrutto(wprost !== '' ? wprost : zNetto);
+}
+
+// Bez JS pole brutto może nieść starą cenę mimo poprawienia netto. Równość w groszach
+// rozpoznaje także inne zapisy tej samej ceny (przecinek, jedno miejsce po przecinku).
+export function wybierzZrodloCeny(wiersz, { bruttoTeraz, nettoTeraz }) {
+  const pola = { cena_brutto: wiersz.cena_brutto, cena_netto: wiersz.cena_netto };
+  const niepuste = (v) => v != null && String(v).trim() !== '';
+  const cenaGrosze = (v) => grosze(String(v).trim().replace(',', '.'));
+  if (niepuste(pola.cena_netto) && niepuste(pola.cena_brutto) && niepuste(bruttoTeraz)
+      && cenaGrosze(pola.cena_brutto) === cenaGrosze(bruttoTeraz)
+      && (!niepuste(nettoTeraz) || cenaGrosze(pola.cena_netto) !== cenaGrosze(nettoTeraz))) {
+    pola.cena_brutto = '';
+  }
+  return pola;
 }
 
 /**
@@ -292,15 +311,18 @@ export function parsujHurtPozycji(body) {
   }
   // PRZ-105: `vat` jest OPCJONALNY — formularz otwarty przed wydaniem go nie niesie (wtedy stawki się nie
   // zmienia). Gdy jest, musi mieć tyle wartości, co reszta — z tego samego powodu, co pozostałe kolumny.
-  const stawki = jakoTablica(body?.vat);
-  if (stawki.length && stawki.length !== kolumny.klucz.length) {
-    throw bladOperatora(
-      'Formularz pozycji przyszedł niekompletny — każdy wiersz musi nieść tyle samo pól. Odśwież kartę i spróbuj jeszcze raz.',
-    );
+  const opcjonalne = ['vat', 'sku', 'cena_netto'].filter((p) => body?.[p] !== undefined);
+  for (const pole of opcjonalne) {
+    kolumny[pole] = jakoTablica(body[pole]);
+    if (kolumny[pole].length !== kolumny.klucz.length) {
+      throw bladOperatora(
+        'Formularz pozycji przyszedł niekompletny — każdy wiersz musi nieść tyle samo pól. Odśwież kartę i spróbuj jeszcze raz.',
+      );
+    }
   }
   return kolumny.klucz.map((_, i) => ({
     ...Object.fromEntries(POLA_HURTU.map((p) => [p, kolumny[p][i]])),
-    ...(stawki.length ? { vat: stawki[i] } : {}),
+    ...Object.fromEntries(opcjonalne.map((p) => [p, kolumny[p][i]])),
   }));
 }
 
@@ -319,10 +341,47 @@ export function parsujHurtPozycji(body) {
 // ⚠️ `obiektAlboPusty` PRZENIESIONE DO dane-reczne.js (07.08.2026) — czyta je teraz także
 // moduł nadpisań wysyłki. Ta sama ostrożność, co przy `odczytajNadpisania`, i tam też mieszka.
 
+// PRZ-152.G2 — usunięcie pozycji SKLEPOWEJ to znacznik w tej samej mapie poprawek:
+// `mapa[klucz] = { usunieta: true }` i nic więcej pod tym kluczem (plan PRZ-152-G2, rozdz. 3.1).
+// Wiersz w `pozycje` zostaje (poller i tak by go wstawił od nowa), znika dopiero w nakładce.
+// Pozycja ręczna nigdy nie jest „usunięta znacznikiem" — ją kasuje się wprost z tabeli.
+export const ZNACZNIK_USUNIECIA = 'usunieta';
+
+const usunietaZnacznikiem = (p, mapa, klucz) => p?.zrodlo !== 'reczna'
+  && obiektAlboPusty(mapa[klucz])[ZNACZNIK_USUNIECIA] === true;
+
+/**
+ * Sklepowe kopie pozycji usuniętych znacznikiem, każda z `klucz`. Wartość SKLEPOWA, bo to ją
+ * obejmuje `kwota_brutto` ze sklepu — i tyle odejmuje kwota oczekiwana (suma-pozycji.js).
+ * Klucz liczony z indeksu listy SUROWEJ, tak samo jak w nakładce.
+ */
+export function pozycjeUsuniete(pozycje, surowyJson) {
+  const mapa = odczytajNadpisania(surowyJson);
+  return (pozycje ?? []).flatMap((p, i) => {
+    const klucz = kluczPozycji(p, i);
+    return usunietaZnacznikiem(p, mapa, klucz) ? [{ ...p, klucz }] : [];
+  });
+}
+
+/**
+ * Mapa z kluczem oznaczonym jako usunięty. Wcześniejsze poprawki tej pozycji przepadają —
+ * pod kluczem zostaje SAM znacznik. Zwraca kopię, jak `ustawWMapie`.
+ */
+export function oznaczUsunieta(mapa, klucz) {
+  const k = String(klucz ?? '');
+  if (!/^s./u.test(k)) {
+    throw bladOperatora('Usunąć znacznikiem można tylko pozycję ze sklepu — ręczną usuwa się wprost.');
+  }
+  return { ...(mapa ?? {}), [k]: { [ZNACZNIK_USUNIECIA]: true } };
+}
+
 export function nalozNadpisaniaPozycji(pozycje, surowyJson) {
   const mapa = odczytajNadpisania(surowyJson);
+  // ⚠️ Klucz liczony PRZED filtrem, z indeksu listy surowej: klucz zapasowy `p<indeks>` liczony
+  // po odfiltrowaniu przesunąłby poprawki kolejnych wierszy na sąsiada.
   return (pozycje ?? []).map((p, i) => {
     const klucz = kluczPozycji(p, i);
+    if (usunietaZnacznikiem(p, mapa, klucz)) return null;
     const reczna = p.zrodlo === 'reczna';
     // Pozycja ręczna jest NASZA w całości — edytuje się ją wprost w wierszu (poller jej nie
     // tknie), więc nadpisania jej nie dotyczą i nie ma dla niej „wartości ze sklepu".
@@ -355,5 +414,5 @@ export function nalozNadpisaniaPozycji(pozycje, surowyJson) {
       efektywna.netto_linii = null;
     }
     return efektywna;
-  });
+  }).filter((p) => p !== null);
 }

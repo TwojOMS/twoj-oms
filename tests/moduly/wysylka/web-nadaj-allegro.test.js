@@ -298,7 +298,9 @@ describe('POST /nadaj — wybór formatu etykiety WzA', () => {
     expect(db.prepare('SELECT COUNT(*) c FROM kolejka_druku WHERE przesylka_id = ?').get(przesylka.id).c).toBe(1);
     const karta = await get(serwer, `/zamowienia/${id}`);
     expect(karta.body).toContain(`/przesylki/${przesylka.id}/drukuj`);
-    expect(karta.body).not.toContain(`/przesylki/${przesylka.id}/etykieta`);
+    // PRZ-152.G16b: bez PDF nie ma linku do etykiety PDF, jest „Pobierz ZPL” (właściciel 05.11).
+    expect(karta.body).not.toContain(`/przesylki/${przesylka.id}/etykieta"`);
+    expect(karta.body).toContain(`/przesylki/${przesylka.id}/etykieta-zpl">Pobierz ZPL</a>`);
   });
 
   it('„Nadaj przesyłkę” przekazuje PDF bez kolejki i bez fałszywego błędu braku ZPL', async () => {
@@ -451,6 +453,6 @@ describe('POST /nadaj — o braku kuriera panel mówi PIERWSZY', () => {
     const r = await post(serwer, `/zamowienia/${id}/nadaj`, { ...PACZKA, waga: 'osiem kilo' });
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/wskaż kuriera/i);
-    expect(r.body).not.toMatch(/wag[ęi]/i);
+    expect(r.body).not.toMatch(/\bwag[ęi]/i); // \b: układ strony ma w CSS „--uwagi-klienta-tlo” (PRZ-152 G1)
   });
 });

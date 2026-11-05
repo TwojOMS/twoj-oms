@@ -17,11 +17,11 @@ export const SELEKTOR_WIERSZA = 'tr[data-wiersz-pozycji]';
  * Ilość wraca do 1 (PRZ-106) — tak wygląda nowy wiersz; wiersz z samą ilością liczy się jako pusty.
  */
 export function wyczyscWiersz(tr) {
-  tr.querySelectorAll('input').forEach((pole) => { pole.value = pole.name === 'poz_ilosc' ? '1' : ''; });
+  tr.querySelectorAll('input').forEach((pole) => { pole.value = /(^|_)ilosc$/.test(pole.name) ? '1' : ''; });
   // PRZ-105: lista stawek nowego wiersza wraca do domyślnej z Ustawień (data-vat formularza), a nie
   // zostaje przy stawce sklonowanego wiersza.
   const domyslna = typeof tr.closest === 'function' ? tr.closest('form')?.dataset?.vat : undefined;
-  if (domyslna !== undefined) tr.querySelectorAll('select[name="poz_vat"]').forEach((l) => { l.value = domyslna; });
+  if (domyslna !== undefined) tr.querySelectorAll('select[name$="vat"]').forEach((l) => { l.value = domyslna; });
   if (tr.dataset) delete tr.dataset.zrodlo;
   const suma = tr.querySelector('[data-suma-linii]');
   if (suma) suma.textContent = '';
@@ -84,7 +84,7 @@ export function obsluzEnter(zdarzenie, { htmx } = {}) {
 }
 
 export function podepnij(dokument, srodowisko = {}) {
-  const tabela = dokument.querySelector('table[data-podglad-kwoty]');
+  const tabela = dokument.querySelector('table[data-podglad-kwoty], table[data-wiersze-pozycji]');
   const formularz = tabela ? tabela.closest('form') : null;
   if (!formularz) return null;
   const tbody = tabela.querySelector('tbody');
@@ -97,7 +97,7 @@ export function podepnij(dokument, srodowisko = {}) {
     zdarzenie.preventDefault();
     if (przycisk.hasAttribute('data-dodaj-wiersz')) {
       const nowy = dodajWiersz(tbody);
-      nowy?.querySelector('input[name="poz_nazwa"]')?.focus();
+      nowy?.querySelector('input[name$="nazwa"]')?.focus();
     } else {
       usunWiersz(przycisk.closest(SELEKTOR_WIERSZA));
     }

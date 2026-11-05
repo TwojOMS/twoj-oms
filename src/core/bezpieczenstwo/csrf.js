@@ -11,7 +11,26 @@
 // dziura, ktorej nic nie zglosi. Tu regula jest jedna i obejmuje wszystko, co przyjdzie —
 // takze trasy dopisane w przyszlosci, o ktorych autor ochrony nie wie.
 
+import { motywZNaglowka } from '../../domena/motyw.js';
+import { sciezkaWidoku } from '../web/widoki.js';
+
 export const METODY_BEZPIECZNE = ['GET', 'HEAD', 'OPTIONS'];
+
+// PRZ-152.G13c1: odmowa z haka rdzenia (CSRF tutaj, podgląd demo w podglad-demo.js). Nawigacja przeglądarki
+// (formularz, link: Accept z text/html i bez nagłówka HX-Request) dostaje stronę w barwach OMS z paskiem uwagi
+// i drogą powrotu; skrypt (fetch: Accept */* albo application/json), htmx i program — dotychczasowy text/plain.
+// Status i tekst bez zmian. Dokument samodzielny (odmowa-rdzenia.ejs), bo hak onRequest działa przed preHandlerem,
+// który liczy menu i motyw dla wspólnej ramy oraz tłumaczy krótkie nazwy widoków (K1, jak brak-dostepu.ejs).
+export function czyNawigacjaPrzegladarki(req) {
+  return String(req.headers.accept ?? '').includes('text/html') && req.headers['hx-request'] === undefined;
+}
+
+export function odmowaRdzenia(req, reply, status, komunikat, { tytul, wroc, napisWroc }) {
+  if (!czyNawigacjaPrzegladarki(req)) return reply.code(status).type('text/plain; charset=utf-8').send(komunikat);
+  return reply.code(status).type('text/html; charset=utf-8').view(sciezkaWidoku('odmowa-rdzenia.ejs'), {
+    wlasnyUklad: true, motyw: motywZNaglowka(req.headers.cookie), tytul, komunikat, wroc, napisWroc,
+  });
+}
 
 // Port domyslny bywa w jednym miejscu zapisany, a w drugim pominiety: naglowek Host
 // niesie "panel.local:80", a URL w Origin normalizuje sie do "panel.local". To ten sam
@@ -83,7 +102,8 @@ export function zarejestrujOchroneCsrf(app) {
     });
     if (!powod) return;
     req.log?.warn?.({ url: req.url, powod }, 'CSRF: odmowa');
-    return reply.code(403).type('text/plain; charset=utf-8')
-      .send(`Odmowa: ${powod}.\n\nJeśli to Twoje własne działanie w panelu, otwórz panel pod jego zwykłym adresem i spróbuj ponownie.`);
+    return odmowaRdzenia(req, reply, 403,
+      `Odmowa: ${powod}.\n\nJeśli to Twoje własne działanie w panelu, otwórz panel pod jego zwykłym adresem i spróbuj ponownie.`,
+      { tytul: 'Nie wykonano polecenia', wroc: '/', napisWroc: 'Przejdź do panelu' });
   });
 }

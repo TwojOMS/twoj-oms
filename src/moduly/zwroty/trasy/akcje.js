@@ -1,3 +1,4 @@
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
 import {
   dodajZwrot, usunZwrot, oznaczPieniadzeOddane, zwrot, odblokujKorekte, zapiszRecznyNumerKorekty,
@@ -28,7 +29,7 @@ export function registerAkcjeRoutes(app, { db, korekta = null, definicje, infakt
       oznaczPieniadzeOddane(db, z.id, zwrotId);
     } catch (e) {
       slad(z.id, 'zwrot.pieniadze', `BŁĄD: ${e.message}`);
-      return reply.code(400).send(komunikatDlaOperatora(e));
+      return stronaOdmowy(reply, 400, komunikatDlaOperatora(e), { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
     }
     slad(z.id, 'zwrot.pieniadze', decyzja(
       req,
@@ -41,11 +42,11 @@ export function registerAkcjeRoutes(app, { db, korekta = null, definicje, infakt
     const z = zamowienieAlbo404(req, reply);
     if (!z) return reply;
     const w = zwrot(db, z.id, Number(req.params.zwrotId));
-    if (!w) return reply.code(404).send('Nie ma takiego zwrotu przy tym zamówieniu.');
+    if (!w) return stronaOdmowy(reply, 404, 'Nie ma takiego zwrotu przy tym zamówieniu.', { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
     const powod = powodOdmowyUsunieciaZwrotu(w);
     if (powod) {
       slad(z.id, 'zwrot.usuniecie', `BŁĄD: ${powod}`);
-      return reply.code(400).send(powod);
+      return stronaOdmowy(reply, 400, powod, { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
     }
     // ⚠️ `powodOdmowyUsunieciaZwrotu` wyzej liczy sie POZA transakcja, wiec `usunZwrot` ma
     // WLASNY warunek w SQL-u (db/zwroty.js) i potrafi odmowic mimo zielonego sprawdzenia:
@@ -55,7 +56,7 @@ export function registerAkcjeRoutes(app, { db, korekta = null, definicje, infakt
       usunZwrot(db, z.id, w.id);
     } catch (e) {
       slad(z.id, 'zwrot.usuniecie', `BŁĄD: ${e.message}`);
-      return reply.code(400).send(komunikatDlaOperatora(e));
+      return stronaOdmowy(reply, 400, komunikatDlaOperatora(e), { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
     }
     // ⚠️ SKASOWANY ZWROT ZNIKA Z BAZY BEZ RESZTY (razem z pozycjami — kaskada). Log jest
     // wtedy JEDYNYM miejscem, z ktorego da sie odtworzyc, ze w ogole istnial i za ile byl.

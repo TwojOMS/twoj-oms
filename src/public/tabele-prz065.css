@@ -52,11 +52,14 @@
 .prz065-tabele .skroty-dat .chip { background: transparent; border: 0; color: var(--prz-muted); font-size:1rem; padding: 2px 0; text-decoration: underline; text-underline-offset: 3px; }
 
 .prz065-zakladki {
-  border-bottom: 1px solid var(--prz-border);
+  /* Linia pod paskiem jako cień wewnętrzny, a nie border + chip z margin-bottom:-1px — ten ujemny margines
+     dawał 1 px przepełnienia w pionie i przeglądarka rysowała pionowy suwak (Adam 05.11). */
+  box-shadow: inset 0 -1px 0 var(--prz-border);
   display: flex;
   gap: 0;
   margin: 19px 0 15px;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: thin;
 }
 .prz065-zakladki .chip {
@@ -70,7 +73,6 @@
   font-size:1rem;
   font-weight: 600;
   gap: 7px;
-  margin-bottom: -1px;
   padding: 9px 12px 8px;
   white-space: nowrap;
 }
@@ -179,7 +181,7 @@
   .prz065-tabele .pole-filtra { width: 100%; }
   .prz065-tabele .pole-filtra select, .prz065-tabele .pole-filtra input { width: 100%; }
   .prz065-zakladki { margin-left: -12px; margin-right: -12px; padding: 0 4px; }
-  .prz065-przesylki .chipy-filtrow { overflow-x: auto; scrollbar-width: thin; }
+  .prz065-zakladki .chipy-filtrow { flex-wrap: nowrap; }
   .prz065-zakladki .chip { padding-left: 9px; padding-right: 9px; }
   .prz065-przewijak { margin-left: -12px; margin-right: -12px; border-left: 0; border-radius: 0; border-right: 0; }
   .prz065-tabela th, .prz065-tabela td { padding: 9px 8px; }

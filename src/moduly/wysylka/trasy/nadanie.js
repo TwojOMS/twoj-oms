@@ -44,6 +44,8 @@ import { parsujPaczke, parsujPaczkeInpost, GABARYTY_PACZKOMATU } from '../../../
 
 import { profilGabarytuAllegro, parsujGabarytAllegro } from '../../../domena/gabaryty-allegro.js';
 
+import { propozycjaAutomatu } from '../../../domena/gabaryty-automatow.js';
+
 import { wolnoNadacZOms } from '../../../domena/allegro-wysylka.js';
 
 import { odczytajSzablony } from '../../../domena/szablony-paczek.js';
@@ -62,6 +64,7 @@ import { sprzedawcaZwolniony } from '../../faktury/db/zwolnienie-vat.js';
 import { opcjeZwProgramu } from '../../../domena/vat.js';
 
 import { ktoKlikal } from '../../zamowienia/lista.js';
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
 
 // PRZ-137.03: „w panelu <kurier>" przy kurierze na naszej umowie, inaczej neutralnie.
 function panelKuriera(metoda) {
@@ -80,6 +83,16 @@ const adresPowrotuNaKarte = (req, id, opcje = {}) => adresKartyZamowienia(id, {
     powrot: powrotKarty(req),
     ...opcje,
   }, config.definicje);
+
+const bladNadania = (req, reply, status, komunikat) => reply.code(status).type('text/html').view('nadanie-blad.ejs', {
+  tytul: 'Nie udało się przygotować przesyłki',
+  komunikat,
+  adresPowrotu: req.params?.id ? adresPowrotuNaKarte(req, req.params.id) : powrotKarty(req),
+  doZamowienia: Boolean(req.params?.id),
+});
+// PRZ-152.G13: zamówienia nie ma — bladNadania wracałby na kartę, której nie ma, więc powrót na listę.
+const brakZamowienia = (req, reply) => stronaOdmowy(reply, 404, 'Nie ma takiego zamówienia',
+  { tytul: 'Nie udało się przygotować przesyłki', wroc: powrotKarty(req), napisWroc: 'Wróć do listy zamówień' });
 
 // PRZ-070 (właściciel 14.10.2026): hurt nadaje wszystkie metody karty. Pętla, budżet czasu i druk
 // mieszkają w usłudze (services/nadanie-hurtem.js) — trasa parsuje, pyta Allegro i renderuje.
@@ -147,7 +160,7 @@ app.post('/zamowienia/masowe/nadaj-podglad', async (req, reply) => {
           .map((w) => ({ ilosc: w.ilosc, nazwa: w.nazwa, sku: w.skuDoPokazania })),
         droga,
         deliveryMethodId,
-        rozmiar: domyslnyRozmiarWiersza({ rodzaj: z.rodzajFormularza, deliveryMethodId, szablony }),
+        rozmiar: domyslnyRozmiarWiersza({ rodzaj: z.rodzajFormularza, deliveryMethodId, szablony, ustawienia: ustawieniaPaczek }),
         pobranie: czyPobranie(z) ? (kwotaPobrania(z) ?? '?') : null,
         pobranieAllegro: czyPobranie(z) && z.rodzajFormularza === 'wza',
       });
@@ -174,7 +187,7 @@ app.post('/zamowienia/masowe/nadaj', async (req, reply) => {
     // Moment PRZYJŚCIA żądania — budżet partii mierzy czekanie człowieka, a człowiek czeka
     // także przez sekundy odczytu listy i pytań do Allegro (services/nadanie-hurtem.js).
     const start = Date.now();
-    if (!nadanie || nadanie.gotowe?.() === false) return reply.code(503).send('Nadawanie nie jest skonfigurowane (brak danych DPD).');
+    if (!nadanie || nadanie.gotowe?.() === false) return bladNadania(req, reply, 503, 'Nadawanie nie jest skonfigurowane (brak danych DPD).');
     const wybrane = wybraneZListy(wczytajListe([].concat(req.body?.id ?? [])), req.body?.id);
     // Podzial liczony PONOWNIE, a nie przepisany z ekranu podgladu: miedzy podgladem
     // a zatwierdzeniem poller mogl przyniesc anulowanie, a formularz przyniosly identyfikatory,
@@ -187,7 +200,9 @@ app.post('/zamowienia/masowe/nadaj', async (req, reply) => {
     // ustawienia w trakcie nadawania hurtem rozdziela partie na paczki o dwoch roznych
     // gabarytach — a nadania nie da sie cofnac. Od PRZ-070 rozmiar wybiera czlowiek w wierszu
     // podgladu, ale z TEGO zestawu szablonow: szablon spoza niego odbija wiersz (paczkaWiersza).
-    const szablony = odczytajSzablony(wczytajUstawienia(db));
+    // PRZ-152.G11c: z TEGO SAMEGO odczytu waga paczkomatu (ustawienie „Paczkomaty i automaty”).
+    const ustawieniaPaczek = wczytajUstawienia(db);
+    const szablony = odczytajSzablony(ustawieniaPaczek);
     const drukowac = req.body?.zatwierdzenie === 'nadaj_i_drukuj';
 
     const doPetli = [];
@@ -209,7 +224,7 @@ app.post('/zamowienia/masowe/nadaj', async (req, reply) => {
         deliveryMethodId = u.deliveryMethodId;
       }
       const { paczka, blad } = paczkaWiersza({
-        rodzaj: z.rodzajFormularza, deliveryMethodId, pola: polaWiersza(req.body, z.id), szablony,
+        rodzaj: z.rodzajFormularza, deliveryMethodId, pola: polaWiersza(req.body, z.id), szablony, ustawienia: ustawieniaPaczek,
       });
       if (blad) {
         odpadle.push({ id: z.id, numer: z.numer, powod: blad });
@@ -246,7 +261,7 @@ app.post('/zamowienia/masowe/nadaj', async (req, reply) => {
 
 app.post('/zamowienia/:id/dosylka', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!pobierzZamowienie(db, id)) return stronaOdmowy(reply, 404, 'Nie ma takiego zamówienia', { tytul: 'Nie udało się zapisać dosyłki', wroc: powrotKarty(req), napisWroc: 'Wróć do listy zamówień' });
 
     const numer = String(req.body?.numer_zrodlowy ?? '').trim();
     let zrodloweId = null;
@@ -291,7 +306,7 @@ app.post('/zamowienia/:id/dosylka', async (req, reply) => {
       ustawZamowienieZrodlowe(db, id, zrodloweId);
     } catch (e) {
       dopiszLog(db, id, { akcja: 'dosylka', wynik: `BŁĄD: ${e.message}` });
-      return reply.code(400).send(`Nie udało się zapisać powiązania: ${komunikatDlaOperatora(e)}`);
+      return bladNadania(req, reply, 400, `Nie udało się zapisać powiązania: ${komunikatDlaOperatora(e)}`);
     }
 
     dopiszLog(db, id, {
@@ -306,15 +321,15 @@ app.post('/zamowienia/:id/dosylka', async (req, reply) => {
 app.post('/zamowienia/:id/przesylki/reczna', async (req, reply) => {
     const id = Number(req.params.id);
     const zam = pobierzZamowienie(db, id);
-    if (!zam) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!zam) return brakZamowienia(req, reply);
     // Ta trasa nie przechodzi przez wybierzKuriera (nie potrzebuje SKONFIGUROWANEGO klienta —
     // niczego nie nadaje), wiec odmowa dla odbioru osobistego musi stac WPROST — inaczej
     // sprzedaz na miejscu dorobilaby sobie przesylke, ktorej nikt nie nadal.
     // PRZ-101.04: dołączone nie ma własnej paczki — ta sama odmowa, co przy nadaniu.
-    if (zam.scalone_do) return reply.code(400).send(powodBrakuGotowosciNadania(zam));
+    if (zam.scalone_do) return bladNadania(req, reply, 400, powodBrakuGotowosciNadania(zam));
     const metoda = metodaWysylki(zam);
     if (metoda === 'odbior_osobisty') {
-      return reply.code(400).send('To zamówienie ma odbiór osobisty — nie ma do niego przesyłki.');
+      return bladNadania(req, reply, 400, 'To zamówienie ma odbiór osobisty — nie ma do niego przesyłki.');
     }
     const numerListu = String(req.body?.numer_listu ?? '').trim();
     const komentarz = String(req.body?.komentarz ?? '').trim();
@@ -328,7 +343,7 @@ app.post('/zamowienia/:id/przesylki/reczna', async (req, reply) => {
       });
     } catch (e) {
       dopiszLog(db, id, { akcja: 'przesylka.reczna', wynik: `BŁĄD: ${e.message}` });
-      return reply.code(400).send(`Nie udało się zarejestrować przesyłki: ${komunikatDlaOperatora(e)}`);
+      return bladNadania(req, reply, 400, `Nie udało się zarejestrować przesyłki: ${komunikatDlaOperatora(e)}`);
     }
     // ⚠️ TA droga oznacza zamowienie jako WYSLANE, a nadanie z panelu — NIE. Roznica nie
     // jest niekonsekwencja: tutaj czlowiek stwierdza fakt o paczce, ktora JUZ ZOSTALA
@@ -351,10 +366,10 @@ app.post('/zamowienia/:id/przesylki/reczna', async (req, reply) => {
 app.get('/zamowienia/:id/nadaj', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!z) return brakZamowienia(req, reply);
     // PRZ-101.04: dołączone nie ma ekranu nadania — paczka jedzie z głównego.
     if (z.scalone_do) return reply.redirect(`/zamowienia/${z.scalone_do}/nadaj`);
-    if (!nadanie || nadanie.gotowe?.() === false) return reply.code(503).send('Nadawanie nie jest skonfigurowane (brak danych DPD).');
+    if (!nadanie || nadanie.gotowe?.() === false) return bladNadania(req, reply, 503, 'Nadawanie nie jest skonfigurowane (brak danych DPD).');
     const powrot = powrotKarty(req);
     const wspolnyPowrot = {
       powrot,
@@ -376,7 +391,7 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
     // pokazywałby komplet danych paczki nr N i zapewniał, że zatwierdzenie ją nada, podczas
     // gdy `rozpocznijPrzesylke` i tak odmówi. Ekran nadania istnieje po to, żeby NIE kłamać.
     if (!mozliwaKolejnaPaczka(z.przesylki)) {
-      return reply.code(400).send(
+      return bladNadania(req, reply, 400,
         'Nadanie innej paczki tego zamówienia jeszcze się nie rozstrzygnęło — najpierw domknij tamtą sprawę na karcie zamówienia.',
       );
     }
@@ -454,25 +469,25 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
     }
     // Wskazanie spoza listy (stara karta, adres z reki) odbija sie TU, a nie po wypelnieniu
     // formularza — ta sama zasada, co przy braku kodu paczkomatu nizej.
-    if (bladKuriera) return reply.code(400).send(bladKuriera);
+    if (bladKuriera) return bladNadania(req, reply, 400, bladKuriera);
 
     const brakDoNadania = powodBrakuGotowosciNadania(z, metodaUzyta);
-    if (brakDoNadania) return reply.code(400).send(brakDoNadania);
+    if (brakDoNadania) return bladNadania(req, reply, 400, brakDoNadania);
     let deliveryMethodIdAllegro = null;
     if (['allegro_dpd', 'allegro_punkt', 'allegro_kurier', 'allegro_inne'].includes(metodaUzyta)) {
       if (!kurierzy.allegro_wza?.pobierzMetodeDostawy) {
-        return reply.code(503).send('Nie można sprawdzić usługi dostawy Allegro. Spróbuj ponownie później.');
+        return bladNadania(req, reply, 503, 'Nie można sprawdzić usługi dostawy Allegro. Spróbuj ponownie później.');
       }
       try {
         deliveryMethodIdAllegro = await kurierzy.allegro_wza.pobierzMetodeDostawy(z);
       } catch {
-        return reply.code(503).send('Nie można sprawdzić usługi dostawy Allegro. Spróbuj ponownie później.');
+        return bladNadania(req, reply, 503, 'Nie można sprawdzić usługi dostawy Allegro. Spróbuj ponownie później.');
       }
       if (!deliveryMethodIdAllegro) {
-        return reply.code(400).send('Allegro nie podało identyfikatora usługi dostawy.');
+        return bladNadania(req, reply, 400, 'Allegro nie podało identyfikatora usługi dostawy.');
       }
       const zgodaWza = wolnoNadacZOms(z, { deliveryMethodIdZywy: deliveryMethodIdAllegro });
-      if (!zgodaWza.wolno) return reply.code(400).send(zgodaWza.powod);
+      if (!zgodaWza.wolno) return bladNadania(req, reply, 400, zgodaWza.powod);
     }
     const adres = adresOdbiorcy(z);
     const ustawieniaPaczek = wczytajUstawienia(db);
@@ -560,6 +575,12 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
       // ktore POST nizej uzywa do walidacji.
       gabarytyPaczkomatu: GABARYTY_PACZKOMATU,
       gabarytyAllegro: profilGabarytuAllegro(deliveryMethodIdAllegro),
+      // PRZ-152.G11c: zaznaczony gabaryt i waga paczkomatu / automatu Allegro — z ustawienia
+      // „Paczkomaty i automaty”, TĄ SAMĄ funkcją co nadanie hurtem (domena/nadanie-hurtem.js).
+      // Tylko wartość startowa formularza: POST waliduje to, co człowiek wysłał.
+      propozycjaAutomatu: metodaKuriera(metodaUzyta)?.formularz === 'paczkomat'
+        ? propozycjaAutomatu(ustawieniaPaczek, { rodzaj: 'paczkomat' })
+        : propozycjaAutomatu(ustawieniaPaczek, { rodzaj: 'wza', deliveryMethodId: deliveryMethodIdAllegro }),
       deliveryMethodIdAllegro,
       // Numer paczki, ktora ten ekran nada. Formularz go NIESIE (ukryte pole), a trasa POST
       // porownuje z aktualnym stanem bazy — patrz komentarz przy POST nizej. To jest cala
@@ -596,10 +617,10 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
 app.post('/zamowienia/:id/nadaj', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!z) return brakZamowienia(req, reply);
     // PRZ-101.04: dołączone — odmowa PRZED formularzem paczki (inaczej odbijałoby się od adresu albo wymiarów).
-    if (z.scalone_do) return reply.code(400).send(powodBrakuGotowosciNadania(z));
-    if (!nadanie || nadanie.gotowe?.() === false) return reply.code(503).send('Nadawanie nie jest skonfigurowane (brak danych DPD).');
+    if (z.scalone_do) return bladNadania(req, reply, 400, powodBrakuGotowosciNadania(z));
+    if (!nadanie || nadanie.gotowe?.() === false) return bladNadania(req, reply, 503, 'Nadawanie nie jest skonfigurowane (brak danych DPD).');
     // Walidacja PRZED dotknieciem kuriera, w tym samym duchu co walidacja kraju/kwoty
     // pobrania w dpd.js: wartosc nieliczbowa albo ujemna dostaje czytelna odmowe, NIGDY
     // cichy powrot do wartosci domyslnej — kurier rozlicza po wadze i gabarycie, wiec to sa
@@ -631,24 +652,24 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
     const surowyKurier = String(req.body?.kurier ?? '').trim();
     const umowyPobrania = umowyPobraniaFirmy(db);
     const { metoda: metodaUzyta, blad: bladKuriera } = metodaNadania(z, surowyKurier, { kolejnosc: kolejnoscSpodziewana, umowyPobrania });
-    if (bladKuriera) return reply.code(400).send(bladKuriera);
+    if (bladKuriera) return bladNadania(req, reply, 400, bladKuriera);
 
     let deliveryMethodIdAllegro = null;
     if (['allegro_dpd', 'allegro_punkt', 'allegro_kurier', 'allegro_inne'].includes(metodaUzyta)) {
       if (!kurierzy.allegro_wza?.pobierzMetodeDostawy) {
-        return reply.code(503).send('Nie można sprawdzić usługi dostawy Allegro. Spróbuj ponownie później.');
+        return bladNadania(req, reply, 503, 'Nie można sprawdzić usługi dostawy Allegro. Spróbuj ponownie później.');
       }
       try {
         deliveryMethodIdAllegro = await kurierzy.allegro_wza.pobierzMetodeDostawy(z);
       } catch {
-        return reply.code(503).send('Nie można sprawdzić usługi dostawy Allegro. Spróbuj ponownie później.');
+        return bladNadania(req, reply, 503, 'Nie można sprawdzić usługi dostawy Allegro. Spróbuj ponownie później.');
       }
       if (!deliveryMethodIdAllegro
         || String(req.body?.delivery_method_id_allegro ?? '') !== deliveryMethodIdAllegro) {
-        return reply.code(400).send('Usługa dostawy Allegro zmieniła się lub nie jest dostępna. Odśwież ekran nadania.');
+        return bladNadania(req, reply, 400, 'Usługa dostawy Allegro zmieniła się lub nie jest dostępna. Odśwież ekran nadania.');
       }
       const zgodaWza = wolnoNadacZOms(z, { deliveryMethodIdZywy: deliveryMethodIdAllegro });
-      if (!zgodaWza.wolno) return reply.code(400).send(zgodaWza.powod);
+      if (!zgodaWza.wolno) return bladNadania(req, reply, 400, zgodaWza.powod);
     }
 
     // ⚠️ BARIERA „pobranie bez umowy" NIE STOI W TEJ TRASIE, tylko w USŁUDZE
@@ -666,7 +687,7 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
       : gabarytyAllegro
         ? parsujGabarytAllegro(req.body, deliveryMethodIdAllegro)
         : parsujPaczke(req.body);
-    if (blad) return reply.code(400).send(blad);
+    if (blad) return bladNadania(req, reply, 400, blad);
     if (deliveryMethodIdAllegro) paczka.oczekiwanyDeliveryMethodId = deliveryMethodIdAllegro;
 
     // Adres odbiorcy Z FORMULARZA — od Zadania „adres edytowalny" operator moze go poprawic
@@ -678,7 +699,7 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
     // (adres tylko do odczytu) to samo ostrzezenie w widoku wylacznie podswietlalo pole,
     // NIE blokujac zatwierdzenia.
     const { adres, blad: bladAdresu } = parsujAdresOdbiorcy(req.body);
-    if (bladAdresu) return reply.code(400).send(bladAdresu);
+    if (bladAdresu) return bladNadania(req, reply, 400, bladAdresu);
 
     // ⚠️ NUMER KOLEJNY MUSI PRZYJSC Z FORMULARZA i musi byc TYM, ktory panel wystawil na
     // ekranie nadania. Tu nie wolno go wyliczyc z bazy — i to jest cala ochrona przed
@@ -702,7 +723,7 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
       // tresc to i tak blad, a przepisywanie jej w calosci zamienia komunikat w sciane
       // tekstu, w ktorej nie widac zdania o tym, co zrobic.
       const wPokazie = surowaKolejnosc.slice(0, 20) || '(brak numeru)';
-      return reply.code(400).send(
+      return bladNadania(req, reply, 400,
         `Ten formularz dotyczy paczki nr ${wPokazie}, a to zamówienie czeka na paczkę `
         + `nr ${spodziewana} — panel niczego nie nadał. Odśwież kartę zamówienia i otwórz nadanie od nowa.`,
       );
@@ -746,7 +767,7 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
     const { kwotaPobrania, blad: bladPobrania } = parsujNadpisanieKwotyPobrania(req.body, {
       pobranie: Boolean(z.pobranie), kolejnosc, pobranieNaTejPaczce,
     });
-    if (bladPobrania) return reply.code(400).send(bladPobrania);
+    if (bladPobrania) return bladNadania(req, reply, 400, bladPobrania);
 
     try {
       await nadanie.nadaj(id, paczka, {
@@ -764,7 +785,7 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
       // Pelny komunikat (z ewentualna sciezka serwera albo stosem sterownika) trafia do
       // logu zamowienia. Na ekran idzie tylko to, co sami napisalismy dla czlowieka.
       dopiszLog(db, id, { akcja: 'nadanie.http', wynik: `BŁĄD: ${e.message}` });
-      return reply.code(400).send(`Nie udało się nadać przesyłki: ${komunikatDlaOperatora(e)}`);
+      return bladNadania(req, reply, 400, `Nie udało się nadać przesyłki: ${komunikatDlaOperatora(e)}`);
     }
     // „Nadaj i drukuj" znaczy „nadaj, A ETYKIETĘ WSTAW DO KOLEJKI" — awaria kolejki NIE cofa
     // nadania. Kod wspólny z nadaniem hurtem (PRZ-070): services/kolejka-po-nadaniu.js.

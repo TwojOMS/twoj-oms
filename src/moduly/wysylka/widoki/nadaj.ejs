@@ -43,7 +43,7 @@
 <%# kurierzy/dpd.js). Lista pozycji (tylko do odczytu) i stopka akcji siedza w TYM SAMYM %>
 <%# formularzu — nie maja wlasnych pol, wiec to nieszkodliwe, a przyciski zatwierdzajace %>
 <%# musza byc elementami TEGO formularza, zeby submit zadzialal. %>
-<form method="post" action="/zamowienia/<%= z.id %>/nadaj">
+<form method="post" action="/zamowienia/<%= z.id %>/nadaj" class="nadanie-formularz">
   <input type="hidden" name="powrot" value="<%= powrot %>">
   <%# ⚠️ Numer kolejny NIESIONY PRZEZ FORMULARZ — to jest ochrona przed podwojnym %>
   <%# klknieciem. Trasa POST porownuje go z tym, ktorego panel sie spodziewa, wiec dwa %>
@@ -85,7 +85,7 @@
             <div class="paczkomat-glowa">Paczkomat — miejsce odbioru</div>
             <div class="paczkomat-cialo">
               <label for="pole-punkt-odbioru">Kod paczkomatu</label>
-              <input id="pole-punkt-odbioru" name="punkt_odbioru" value="<%= z.punkt_odbioru %>">
+              <input id="pole-punkt-odbioru" name="punkt_odbioru" value="<%= z.punkt_odbioru %>" class="oms-pole">
               <% if (z.punkt_odbioru_opis) { %>
                 <p class="paczkomat-nazwa"><%= z.punkt_odbioru_opis %></p>
               <% } %>
@@ -104,8 +104,8 @@
         <%# zatwierdzenia. %>
         <div class="pola">
           <div class="pola-para">
-            <label for="pole-nazwa">Imię i nazwisko <input id="pole-nazwa" name="nazwa" value="<%= adres.nazwa %>"></label>
-            <label for="pole-company">Firma <input id="pole-company" name="company" value="<%= adres.company %>"></label>
+            <label for="pole-nazwa">Imię i nazwisko <input id="pole-nazwa" name="nazwa" value="<%= adres.nazwa %>" class="oms-pole"></label>
+            <label for="pole-company">Firma <input id="pole-company" name="company" value="<%= adres.company %>" class="oms-pole"></label>
           </div>
 
           <%# ⚠️ ADRESU PRZY PACZKOMACIE NIE WOLNO USUNAC Z FORMULARZA — parsujAdresOdbiorcy %>
@@ -115,24 +115,24 @@
           <%# DALEJ te same pola formularza, nie druga kopia. %>
           <% if (!zPunktemOdbioru) { %>
             <label for="pole-ulica">Ulica i numer
-              <input id="pole-ulica" name="ulica" value="<%= adres.ulica ?? '' %>">
+              <input id="pole-ulica" name="ulica" value="<%= adres.ulica ?? '' %>" class="oms-pole">
               <% if (brakujacePola.includes('ulica')) { %><span class="uwaga">BRAK — DPD wymaga tego pola</span><% } %>
             </label>
             <div class="pola-para">
               <label for="pole-kod">Kod pocztowy
-                <input id="pole-kod" name="kod" value="<%= adres.kod ?? '' %>">
+                <input id="pole-kod" name="kod" value="<%= adres.kod ?? '' %>" class="oms-pole">
                 <% if (brakujacePola.includes('kod')) { %><span class="uwaga">BRAK — DPD wymaga tego pola</span><% } %>
               </label>
               <label for="pole-miasto">Miasto
-                <input id="pole-miasto" name="miasto" value="<%= adres.miasto ?? '' %>">
+                <input id="pole-miasto" name="miasto" value="<%= adres.miasto ?? '' %>" class="oms-pole">
                 <% if (brakujacePola.includes('miasto')) { %><span class="uwaga">BRAK — DPD wymaga tego pola</span><% } %>
               </label>
             </div>
           <% } %>
 
           <div class="pola-para">
-            <label for="pole-phone">Telefon <input id="pole-phone" name="phone" value="<%= adres.phone ?? '' %>"></label>
-            <label for="pole-email">E-mail <input id="pole-email" name="email" value="<%= adres.email ?? '' %>"></label>
+            <label for="pole-phone">Telefon <input id="pole-phone" name="phone" value="<%= adres.phone ?? '' %>" class="oms-pole"></label>
+            <label for="pole-email">E-mail <input id="pole-email" name="email" value="<%= adres.email ?? '' %>" class="oms-pole"></label>
           </div>
         </div>
 
@@ -148,16 +148,16 @@
             <summary>Adres pocztowy z zamówienia (do paczkomatu nie jedzie)</summary>
             <div class="pola">
               <label for="pole-ulica">Ulica i numer
-                <input id="pole-ulica" name="ulica" value="<%= adres.ulica ?? '' %>">
+                <input id="pole-ulica" name="ulica" value="<%= adres.ulica ?? '' %>" class="oms-pole">
                 <% if (brakujacePola.includes('ulica')) { %><span class="uwaga">BRAK — DPD wymaga tego pola</span><% } %>
               </label>
               <div class="pola-para">
                 <label for="pole-kod">Kod pocztowy
-                  <input id="pole-kod" name="kod" value="<%= adres.kod ?? '' %>">
+                  <input id="pole-kod" name="kod" value="<%= adres.kod ?? '' %>" class="oms-pole">
                   <% if (brakujacePola.includes('kod')) { %><span class="uwaga">BRAK — DPD wymaga tego pola</span><% } %>
                 </label>
                 <label for="pole-miasto">Miasto
-                  <input id="pole-miasto" name="miasto" value="<%= adres.miasto ?? '' %>">
+                  <input id="pole-miasto" name="miasto" value="<%= adres.miasto ?? '' %>" class="oms-pole">
                   <% if (brakujacePola.includes('miasto')) { %><span class="uwaga">BRAK — DPD wymaga tego pola</span><% } %>
                 </label>
               </div>
@@ -286,7 +286,7 @@
               </p>
               <label for="pole-kwota-pobrania">Kwota pobrania do zainkasowania</label>
               <div class="pole-kwoty">
-                <input id="pole-kwota-pobrania" name="kwota_pobrania" value="<%= proponowanePobranie ?? '' %>" inputmode="decimal">
+                <input id="pole-kwota-pobrania" name="kwota_pobrania" value="<%= proponowanePobranie ?? '' %>" inputmode="decimal" class="oms-pole">
                 <span class="jednostka">zł</span>
               </div>
               <% if (niedoplataPobrania && Number(niedoplataPobrania) > 0) { %>
@@ -314,7 +314,7 @@
             <div class="pole-pieniadze">
               <label for="pole-kwota-pobrania">Kwota pobrania do zainkasowania</label>
               <div class="pole-kwoty">
-                <input id="pole-kwota-pobrania" name="kwota_pobrania" value="<%= proponowanePobranie ?? '' %>" inputmode="decimal">
+                <input id="pole-kwota-pobrania" name="kwota_pobrania" value="<%= proponowanePobranie ?? '' %>" inputmode="decimal" class="oms-pole">
                 <span class="jednostka">zł</span>
               </div>
               <% if (niedoplataPobrania && Number(niedoplataPobrania) > 0) { %>
@@ -348,19 +348,19 @@
         <%# (A/B/C, kurierzy/inpost.js: SZABLONY_GABARYTU), a domyslne wymiary panelu %>
         <%# (110×75×1 cm — plaska paczka wielkoformatowa) NIE MIESZCZA SIE w %>
         <%# zadnej skrytce automatu. Dlatego to jest WYBOR ze skonczonego zbioru, %>
-        <%# zaznaczony domyslnie na A, a nie pole tekstowe z domyslna wartoscia — patrz %>
+        <%# zaznaczony wg ustawienia (G11c: propozycjaAutomatu, bez ustawienia A), a nie pole tekstowe — patrz %>
         <%# domain/paczka.js: parsujPaczkeInpost. Dla DPD (galaz „else") ekran ma %>
         <%# ANI JEDNEJ zmiany w polach wobec tego, co bylo. %>
         <% if (formularzPaczkomatu) { %>
           <h3>Waga i gabaryt</h3>
           <div class="pola">
             <div class="rzad">
-              <label>Waga (kg) <input name="waga" value="<%= paczkaDomyslna.waga %>" inputmode="decimal"></label>
+              <label>Waga (kg) <input name="waga" value="<%= propozycjaAutomatu.waga %>" inputmode="decimal" class="oms-pole"></label>
             </div>
             <div class="gabaryty">
               <% Object.entries(gabarytyPaczkomatu).forEach(function ([litera, wymiary]) { %>
                 <label>
-                  <input type="radio" name="gabaryt" value="<%= litera %>" <%= litera === 'A' ? 'checked' : '' %>>
+                  <input type="radio" name="gabaryt" value="<%= litera %>" <%= litera === propozycjaAutomatu.gabaryt ? 'checked' : '' %>>
                   Gabaryt <%= litera %> (<%= wymiary %>)
                 </label>
               <% }); %>
@@ -371,12 +371,12 @@
           <div class="pola">
             <div class="rzad">
               <%# PRZ-125: `required` — pusta waga zatrzymuje formularz w przegladarce, zamiast odbic sie gola 400 z serwera. %>
-              <label>Waga (kg) <input name="waga" value="<%= gabarytyAllegro.domyslnaWaga ?? '' %>" inputmode="decimal" required></label>
+              <label>Waga (kg) <input name="waga" value="<%= propozycjaAutomatu?.waga ?? '' %>" inputmode="decimal" required class="oms-pole"></label>
             </div>
             <div class="gabaryty">
               <% Object.entries(gabarytyAllegro.gabaryty).forEach(function ([litera, wysokosc]) { %>
                 <label>
-                  <input type="radio" name="gabaryt" value="<%= litera %>" <%= gabarytyAllegro.domyslnyGabaryt === litera ? 'checked' : '' %>>
+                  <input type="radio" name="gabaryt" value="<%= litera %>" <%= propozycjaAutomatu?.gabaryt === litera ? 'checked' : '' %>>
                   Gabaryt <%= litera %> (<%= gabarytyAllegro.dlugosc %> × <%= gabarytyAllegro.szerokosc %> × <%= wysokosc %> cm)
                 </label>
               <% }); %>
@@ -386,7 +386,7 @@
           <h3>Waga i wymiary</h3>
           <div class="rzad">
             <label>Szablon paczki
-              <select id="szablon-paczki" aria-label="Szablon paczki">
+              <select id="szablon-paczki" aria-label="Szablon paczki" class="oms-pole">
                 <option value="">Własne wymiary</option>
                 <% szablonyPaczek.szablony.forEach(function (s) { %>
                   <option value="<%= s.id %>" data-waga="<%= s.waga %>" data-dlugosc="<%= s.dlugosc %>"
@@ -396,11 +396,11 @@
               </select>
             </label>
           </div>
-          <div class="rzad">
-            <label>Waga (kg) <input name="waga" value="<%= paczkaDomyslna.waga %>" inputmode="decimal"></label>
-            <label>Długość (cm) <input name="dlugosc" value="<%= paczkaDomyslna.dlugosc %>" inputmode="decimal"></label>
-            <label>Szerokość (cm) <input name="szerokosc" value="<%= paczkaDomyslna.szerokosc %>" inputmode="decimal"></label>
-            <label>Wysokość (cm) <input name="wysokosc" value="<%= paczkaDomyslna.wysokosc %>" inputmode="decimal"></label>
+          <div class="rzad nadanie-wymiary">
+            <label>Waga (kg) <input name="waga" value="<%= paczkaDomyslna.waga %>" inputmode="decimal" class="oms-pole"></label>
+            <label>Długość (cm) <input name="dlugosc" value="<%= paczkaDomyslna.dlugosc %>" inputmode="decimal" class="oms-pole"></label>
+            <label>Szerokość (cm) <input name="szerokosc" value="<%= paczkaDomyslna.szerokosc %>" inputmode="decimal" class="oms-pole"></label>
+            <label>Wysokość (cm) <input name="wysokosc" value="<%= paczkaDomyslna.wysokosc %>" inputmode="decimal" class="oms-pole"></label>
           </div>
           <p class="wyjasnienie">Możesz poprawić wymiary po wyborze szablonu — zmiana dotyczy tylko tej paczki.</p>
           <script>

@@ -69,7 +69,8 @@ describe('PRZ-108.10 KSeF bez NIP-u firmy — pełny skład (ekrany)', () => {
       expect(koszty.body).not.toContain('nie ma podpiętego KSeF');
       const odswiez = await post(a.app, '/koszty/odswiez', admin);
       expect(odswiez.statusCode).toBe(503);
-      expect(odswiez.body).toBe(ODMOWA_KSEF_BRAK_NIP);
+      // PRZ-152.G13k1: ta sama odmowa, ale na stronie w układzie OMS (pasek uwagi), a nie gołym tekstem.
+      expect(odswiez.body).toContain(`<p class="pasek-uwaga" role="alert">${ODMOWA_KSEF_BRAK_NIP}</p>`);
 
       zapiszNipFirmy(a.db, '2222222222');
       expect((await get(a.app, '/koszty', admin)).body).not.toContain(ent(ODMOWA_KSEF_BRAK_NIP));

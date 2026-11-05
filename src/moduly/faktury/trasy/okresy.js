@@ -25,6 +25,7 @@ import { umowaZbiorcza } from '../../../domena/klient-zbiorczy.js';
 import { klientPoKluczu } from '../../../oms/db/klienci.js';
 import { ktoKlikal } from '../../zamowienia/lista.js';
 import { nipSprzedawcyLubBrak } from '../../../domena/nip-bdo-firmy.js';
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
 
 // Trasy ROZLICZENIA ZBIORCZEGO: miesiac klienta, ktorego kilkadziesiat zamowien skalda sie
 // na JEDNA fakture. Osobny plik z tego samego powodu, co routes/panel.js — routes/zamowienia.js
@@ -144,12 +145,19 @@ function daneOkresu(db, config, okres) {
 }
 
 export function registerOkresyRoutes(app, { db, config = {}, infakt: program = null, vies = null, wyborProgramu = null }) {
+  // PRZ-152.G13f4: odmowy z formularzy karty okresu w układzie OMS (status i tekst bez zmian).
+  // Powrót na ekran okresu, z którego przyszedł formularz; okres.ejs nie ma paska z `?blad`, więc strona odmowy.
+  const odmowaOkresu = (reply, okres, status, komunikat, tytul) => stronaOdmowy(reply, status, komunikat, {
+    tytul, wroc: `/okresy/${encodeURIComponent(okres.id)}`, napisWroc: 'Wróć do okresu',
+  });
   // Zdejmuje z kazdej trasy powtarzajace sie „a jesli takiego okresu nie ma". 404 zamiast
   // wywrotki na `undefined.id` — dokladnie jak przy zamowieniu.
   const okresZadania = (req, reply) => {
     const okres = pobierzOkres(db, Number(req.params.id));
     if (!okres) {
-      reply.code(404).send('Nie ma takiego okresu rozliczeniowego.');
+      stronaOdmowy(reply, 404, 'Nie ma takiego okresu rozliczeniowego.', {
+        tytul: 'Nie ma takiego okresu', wroc: '/okresy', napisWroc: 'Wróć do listy okresów',
+      });
       return null;
     }
     return okres;
@@ -228,14 +236,16 @@ export function registerOkresyRoutes(app, { db, config = {}, infakt: program = n
   app.post('/okresy/:id/wystaw-fakture', async (req, reply) => {
     const okres = okresZadania(req, reply);
     if (!okres) return reply;
-    if (!program) return reply.code(503).send(zdanieBrakuProgramu(wyborProgramu) ?? `inFakt nie jest skonfigurowany — faktury z panelu nie wystawisz. ${GDZIE_KLUCZ_INFAKTU}`);
+    if (!program) return odmowaOkresu(reply, okres, 503, zdanieBrakuProgramu(wyborProgramu) ?? `inFakt nie jest skonfigurowany — faktury z panelu nie wystawisz. ${GDZIE_KLUCZ_INFAKTU}`, 'Nie udało się wystawić faktury za okres');
     // Nabywca bierze sie z konfiguracji po kluczu okresu — okres wie, czyj jest. Panel NIE
     // zaklada tu klienta sam (uzasadnienie w services/faktura-okresu.js).
     const klient = klientOkresu(db, okres);
     if (!klient) {
-      return reply.code(400).send(
+      return odmowaOkresu(
+        reply, okres, 400,
         `Okres należy do klienta „${okres.klient_klucz}", którego nie ma w konfiguracji `
         + '(OMS_KLIENCI_ZBIORCZY) — bez NIP-u panel nie wskaże nabywcy faktury.',
+        'Nie udało się wystawić faktury za okres',
       );
     }
     try {
@@ -257,7 +267,7 @@ export function registerOkresyRoutes(app, { db, config = {}, infakt: program = n
       for (const id of zamowieniaOkresu(db, okres.id)) {
         dopiszLog(db, id, { akcja: 'faktura-okresu', wynik: `BŁĄD (${ktoKlikal(req)}): ${e.message}` });
       }
-      return reply.code(400).send(`Nie udało się wystawić faktury za okres: ${komunikatDlaOperatora(e)}`);
+      return odmowaOkresu(reply, okres, 400, `Nie udało się wystawić faktury za okres: ${komunikatDlaOperatora(e)}`, 'Nie udało się wystawić faktury za okres');
     }
     return reply.redirect(`/okresy/${okres.id}`);
   });
@@ -273,7 +283,7 @@ export function registerOkresyRoutes(app, { db, config = {}, infakt: program = n
     try {
       odblokujFaktureOkresu(db, okres.id);
     } catch (e) {
-      return reply.code(400).send(`Nie udało się odblokować faktury okresu: ${komunikatDlaOperatora(e)}`);
+      return odmowaOkresu(reply, okres, 400, `Nie udało się odblokować faktury okresu: ${komunikatDlaOperatora(e)}`, 'Nie udało się odblokować faktury okresu');
     }
     for (const id of zamowieniaOkresu(db, okres.id)) {
       dopiszLog(db, id, {
@@ -303,8 +313,10 @@ export function registerOkresyRoutes(app, { db, config = {}, infakt: program = n
     // juz zamknietego skasowalaby sie tylko data zamkniecia, ale i to jest slad, ktorego
     // nie ma powodu kasowac.
     if (!okresPrzyjmujeZamowienia(okres.stan)) {
-      return reply.code(400).send(
+      return odmowaOkresu(
+        reply, okres, 400,
         `Ten okres nie jest otwarty (stan: ${okres.stan}) — nie ma czego zamykać.`,
+        'Nie udało się zamknąć okresu',
       );
     }
     zamknijOkres(db, okres.id);
@@ -318,7 +330,7 @@ export function registerOkresyRoutes(app, { db, config = {}, infakt: program = n
     const okres = okresZadania(req, reply);
     if (!okres) return reply;
     if (okresPrzyjmujeZamowienia(okres.stan)) {
-      return reply.code(400).send('Ten okres jest już otwarty — nie ma czego otwierać.');
+      return odmowaOkresu(reply, okres, 400, 'Ten okres jest już otwarty — nie ma czego otwierać.', 'Nie udało się otworzyć okresu');
     }
     // ⚠️ STRAZ, KTOREJ NIE MA W BAZIE, I TO JEST SWIADOME. `otworzOkresPonownie` (db/okresy.js)
     // to goly UPDATE — otwarcie okresu z WYSTAWIONA faktura wpusciloby nowe zamowienia do
@@ -328,11 +340,13 @@ export function registerOkresyRoutes(app, { db, config = {}, infakt: program = n
     // wyzej — i to ona, a nie ten przycisk, pilnuje tamtych warunkow.
     const stanF = stanFakturyOkresu(okres);
     if (stanF !== 'brak') {
-      return reply.code(400).send(
+      return odmowaOkresu(
+        reply, okres, 400,
         `Ten okres ma fakturę (stan: ${stanF})${okres.numer ? ` — ${okres.numer}` : ''}, `
         + 'więc panel go nie otworzy: nowe zamówienia wypadłyby poza dokument, który klient '
         + 'już dostał. Jeśli faktura się nie udała i wiesz, że w inFakcie jej NIE MA — użyj '
         + '„Sprawdziłem w inFakcie — faktury nie ma, odblokuj". Jeśli jest, zostaje korekta.',
+        'Nie udało się otworzyć okresu',
       );
     }
     otworzOkresPonownie(db, okres.id);
@@ -356,12 +370,12 @@ export function registerOkresyRoutes(app, { db, config = {}, infakt: program = n
       // (wplata bez daty nie ma sie jak uporzadkowac wobec pozostalych — patrz wplatyOkresu).
       wplata = parsujWplate(req.body ?? {});
     } catch (e) {
-      return reply.code(400).send(komunikatDlaOperatora(e));
+      return odmowaOkresu(reply, okres, 400, komunikatDlaOperatora(e), 'Nie udało się dopisać wpłaty');
     }
     try {
       dodajWplateOkresu(db, okres.id, wplata);
     } catch (e) {
-      return reply.code(400).send(komunikatDlaOperatora(e));
+      return odmowaOkresu(reply, okres, 400, komunikatDlaOperatora(e), 'Nie udało się dopisać wpłaty');
     }
     return reply.redirect(`/okresy/${okres.id}`);
   });
@@ -379,7 +393,7 @@ export function registerOkresyRoutes(app, { db, config = {}, infakt: program = n
     try {
       usunWplateOkresu(db, okres.id, Number(req.params.platnoscId));
     } catch (e) {
-      return reply.code(400).send(komunikatDlaOperatora(e));
+      return odmowaOkresu(reply, okres, 400, komunikatDlaOperatora(e), 'Nie udało się usunąć wpłaty');
     }
     return reply.redirect(`/okresy/${okres.id}`);
   });
@@ -395,12 +409,12 @@ export function registerOkresyRoutes(app, { db, config = {}, infakt: program = n
     const okres = okresZadania(req, reply);
     if (!okres) return reply;
     const zgoda = wolnoOdpiac({ okres });
-    if (!zgoda.wolno) return reply.code(400).send(zgoda.powod);
+    if (!zgoda.wolno) return odmowaOkresu(reply, okres, 400, zgoda.powod, 'Nie udało się odpiąć zamówienia');
     const zamId = Number(req.params.zamId);
     try {
       odepnijZamowienieOdOkresu(db, okres.id, zamId);
     } catch (e) {
-      return reply.code(400).send(komunikatDlaOperatora(e));
+      return odmowaOkresu(reply, okres, 400, komunikatDlaOperatora(e), 'Nie udało się odpiąć zamówienia');
     }
     // Slad idzie do logu ZAMOWIENIA, nie okresu: pytanie „czemu tego nie ma na fakturze
     // zbiorczej" zadaje sie patrzac na zamowienie.

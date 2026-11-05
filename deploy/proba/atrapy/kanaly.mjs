@@ -7,9 +7,11 @@
 //     zapisane z panelu (tabela atrapa_kanaly_zmiany), więc „Synchronizuj” po zapisie SKU niczego nie cofa;
 //   • ODBICIE BAZY — wątki, wiadomości, przesyłki, śledzenie, stan realizacji: atrapa oddaje to, co już jest
 //     w bazie demo, więc pollery i czuwacze widzą „bez zmian” i nie nadpisują danych demo;
-//   • ODMOWA — operacje, których demo nie ma czym udawać (pollery zamówień, nadanie WzA, podjazdy, załączniki):
+//   • ODMOWA — operacje, których demo nie ma czym udawać (pollery zamówień, podjazdy, załączniki):
 //     czytelny błąd 4xx zamiast „not a function”; 4xx, bo usługi zwalniają wtedy rezerwacje jak po odmowie API.
 import { randomUUID } from 'node:crypto';
+import PDFDocument from 'pdfkit';
+import { METODY_WZA } from '../../../src/domena/allegro-wysylka.js';
 import { stanyKanalowZKolizjami } from '../../../src/domena/kanal-stan.js';
 import { bladOperatora } from '../../../src/domena/bledy.js';
 import { KANALY } from '../../../scripts/demo-dane-firma.mjs';
@@ -22,11 +24,12 @@ const SCHEMAT = `
   CREATE TABLE IF NOT EXISTS atrapa_allegro_faktury (kanal TEXT NOT NULL, zamowienie TEXT NOT NULL, id TEXT PRIMARY KEY,
     dane_json TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS atrapa_allegro_realizacja (kanal TEXT NOT NULL, zamowienie TEXT NOT NULL, status TEXT NOT NULL,
-    PRIMARY KEY (kanal, zamowienie));`;
+    PRIMARY KEY (kanal, zamowienie));
+  CREATE TABLE IF NOT EXISTS atrapa_allegro_przesylki (kanal TEXT NOT NULL, command_id TEXT NOT NULL,
+    shipment_id TEXT NOT NULL UNIQUE, dane_json TEXT NOT NULL, PRIMARY KEY (kanal, command_id));`;
 
 export const ODMOWY_WOO = ['pobierzZamowienia', 'pobierzZamowieniaZakresu'];
-export const ODMOWY_ALLEGRO = ['pobierzZamowienia', 'pobierzOferte', 'pobierzPropozycjeWysylki', 'utworzPrzesylke',
-  'stanTworzeniaPrzesylki', 'pobierzPrzesylkeWza', 'pobierzEtykieteWza', 'pobierzPropozycjePodjazdu', 'zlecPodjazd',
+export const ODMOWY_ALLEGRO = ['pobierzZamowienia', 'pobierzOferte', 'pobierzPropozycjePodjazdu', 'zlecPodjazd',
   'stanZleceniaPodjazdu', 'pobierzPodjazd', 'deklarujZalacznikWiadomosci', 'wgrajZalacznikWiadomosci'];
 
 function odmowa(gdzie, metoda) {
@@ -103,6 +106,19 @@ export function createAtrapaAllegro({ db, kanal, log = (...t) => console.log(...
   db.exec(SCHEMAT);
   const ślad = (t) => log(`atrapa Allegro ${kanal}: ${t} (piaskownica — nic nie poszło do Allegro)`);
   const zamowienie = (zrodloId) => db.prepare('SELECT * FROM zamowienia WHERE sklep = ? AND zrodlo_id = ?').get(kanal, String(zrodloId));
+  const metodaDostawy = (id) => {
+    const z = zamowienie(id);
+    // Za pobraniem: METODY_WZA nie zna DHL z pobraniem, więc kurier DHL i DPD idą wtedy DPD pobranie.
+    const nazwa = z?.pobranie && ['allegro_dpd', 'allegro_kurier'].includes(z?.metoda_wysylki) ? 'Allegro Kurier DPD pobranie (AD)'
+      : ({ allegro_dpd: 'Allegro Kurier DPD (AD)', allegro_punkt: 'Allegro One Box, One Kurier', allegro_kurier: 'Allegro Kurier DHL (AD)' })[z?.metoda_wysylki];
+    return Object.entries(METODY_WZA).find(([, m]) => m.nazwa === nazwa)?.[0] ?? null;
+  };
+  const znajdzPrzesylke = (pole, id) => {
+    const w = db.prepare(`SELECT * FROM atrapa_allegro_przesylki WHERE kanal = ? AND ${pole} = ?`).get(kanal, String(id));
+    if (!w) throw bladOperatora('Piaskownica: nie ma takiej przesyłki Allegro.', { status: 404 });
+    return w;
+  };
+  const stanKomendy = w => ({ commandId: w.command_id, status: 'SUCCESS', errors: null, shipmentId: w.shipment_id });
   const fakturyZamowienia = (zrodloId) => db.prepare('SELECT dane_json FROM atrapa_allegro_faktury WHERE kanal = ? AND zamowienie = ?')
     .all(kanal, String(zrodloId)).map((w) => JSON.parse(w.dane_json));
   const zapiszFakture = (zrodloId, wpis) => db.prepare(`INSERT INTO atrapa_allegro_faktury (kanal, zamowienie, id, dane_json) VALUES (?,?,?,?)
@@ -113,8 +129,55 @@ export function createAtrapaAllegro({ db, kanal, log = (...t) => console.log(...
     pobierzMojeKonto: async () => ({ id: kanal === 'allegro' ? '100001' : '100002', login: `atrapa-${kanal}` }),
     sprawdzZakresZamowien: async () => Number(db.prepare('SELECT count(*) AS n FROM zamowienia WHERE sklep=?').get(kanal).n),
     pobierzOferty: async () => ofertyAllegro(kanal),
-    // Metoda dostawy nieznana (null) zamiast odmowy: kurier WzA pyta o nią przy budowie ekranu nadania.
-    pobierzMetodeDostawy: async () => null,
+    pobierzMetodeDostawy: async (id) => metodaDostawy(id),
+    async pobierzPropozycjeWysylki(id) {
+      const z = zamowienie(id);
+      if (!z || !metodaDostawy(id)) throw bladOperatora('Piaskownica: nieznana usługa dostawy Allegro.', { status: 400 });
+      const adres = JSON.parse(z.dostawa_json);
+      const klient = JSON.parse(z.klient_json);
+      return { suggestedInput: {
+        deliveryMethodId: null,
+        sender: { name: 'Pracownia Półcień', street: 'Przykładowa 1', postalCode: '00-001', city: 'Warszawa', countryCode: 'PL', email: 'nadawca@example.test', phone: '+48500100200' },
+        receiver: { name: `${adres.first_name ?? ''} ${adres.last_name ?? ''}`.trim(), street: adres.address_1,
+          postalCode: adres.postcode, city: adres.city, countryCode: adres.country ?? 'PL', email: klient.email, phone: klient.phone,
+          ...(z.punkt_odbioru ? { point: z.punkt_odbioru } : {}) },
+        cashOnDelivery: z.pobranie ? { amount: z.kwota_pobrania, currency: 'PLN' } : null,
+      }, deliveryOptions: [{ packageType: 'PACKAGE', limits: {
+        dimensions: { length: { value: 200, unit: 'CENTIMETER' }, width: { value: 200, unit: 'CENTIMETER' }, height: { value: 200, unit: 'CENTIMETER' } },
+        weight: { value: 31.5, unit: 'KILOGRAMS' }, cashOnDelivery: { amount: '6000.00', currency: 'PLN' },
+      } }] };
+    },
+    async utworzPrzesylke({ commandId, input } = {}) {
+      if (!commandId) throw new Error('Allegro: brak commandId (klucz idempotencji).');
+      if (!input?.deliveryMethodId) throw new Error('Allegro: brak deliveryMethodId.');
+      const shipmentId = `atrapa-${randomUUID()}`;
+      const p = { ...structuredClone(input), id: shipmentId, carrier: 'ALLEGRO', labelFormat: input.labelFormat === 'ZPL' ? 'ZPL' : 'PDF',
+        packages: (input.packages?.length ? input.packages : [{}]).map((p, i) => ({ ...p, waybill: `ATRAPA-${shipmentId.slice(7)}-${i + 1}` })) };
+      const wynik = db.prepare(`INSERT OR IGNORE INTO atrapa_allegro_przesylki (kanal, command_id, shipment_id, dane_json) VALUES (?,?,?,?)`)
+        .run(kanal, String(commandId), shipmentId, JSON.stringify(p));
+      const stan = stanKomendy(znajdzPrzesylke('command_id', commandId));
+      if (wynik.changes) ślad(`utworzono przesyłkę ${stan.shipmentId}`);
+      return stan;
+    },
+    stanTworzeniaPrzesylki: async (id) => stanKomendy(znajdzPrzesylke('command_id', id)),
+    pobierzPrzesylkeWza: async (id) => JSON.parse(znajdzPrzesylke('shipment_id', id).dane_json),
+    async pobierzEtykieteWza(ids, format = 'PDF') {
+      if (!Array.isArray(ids) || !ids.length) throw new Error('Allegro: brak przesyłek do etykiety.');
+      const paczki = ids.map(id => JSON.parse(znajdzPrzesylke('shipment_id', id).dane_json));
+      if (format === 'ZPL') return Buffer.from(paczki.map(p => `^XA^FO40,40^A0N,60,60^FDATRAPA^FS^FO40,120^A0N,25,25^FD${p.packages[0].waybill}^FS^XZ`).join('\n'));
+      if (format !== 'PDF') throw new Error('Allegro: nieobsługiwany format etykiety.');
+      const doc = new PDFDocument({ size: 'A4', autoFirstPage: false, compress: false, info: { Title: 'Allegro WzA - piaskownica' } });
+      const czesci = [];
+      const wynik = new Promise((resolve, reject) => { doc.on('data', c => czesci.push(c)); doc.on('end', () => resolve(Buffer.concat(czesci))); doc.on('error', reject); });
+      for (const p of paczki) {
+        doc.addPage().fillColor('#B42318').fontSize(40).text('ATRAPA');
+        doc.fillColor('#111111').fontSize(14).text('Allegro WzA - piaskownica');
+        for (const paczka of p.packages) doc.moveDown().text(paczka.waybill);
+      }
+      doc.end();
+      ślad(`pobrano etykiety ${ids.join(', ')}`);
+      return wynik;
+    },
 
     async pobierzPrzesylki(idZamowienia) {
       const z = zamowienie(idZamowienia);

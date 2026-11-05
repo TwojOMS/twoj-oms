@@ -147,3 +147,59 @@ a.pol-licznik:hover { color: var(--tekst); text-decoration: underline; }
 .ust-sekcja p.ust-uwaga, .ust-uwaga { color: var(--uwaga-tekst); background: var(--uwaga-tlo); padding: .5rem .75rem; border-radius: 5px; font-size: .88rem; }
 .ust-uwaga a { color: inherit; font-weight: 600; }
 .ust-sekcja form + form { margin-top: 1.25rem; }
+
+/* PRZ-152.G11a: „Szablony paczek” — tabela z edycją w wierszu i sekcja „Paczkomaty i automaty”. */
+.ust-sekcja.ust-sekcja-szeroka { max-width: 56rem; }
+.ust-naglowek-szablonow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; max-width: 56rem; margin: .3rem 0 22px; }
+.ust-naglowek-szablonow h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -.8px; line-height: 1.2; }
+.ust-tabela-szablonow td { padding: .45rem .5rem; border-bottom: 1px solid var(--ramka); vertical-align: middle; font-size: .9rem; }
+.ust-tabela-szablonow tbody tr:last-child td { border-bottom: 0; }
+.ust-tabela-szablonow .ust-liczba { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ust-tabela-szablonow form { display: inline; margin: 0; }
+.ust-tabela-szablonow .ust-przycisk { padding: .3rem .6rem; font-size: .84rem; white-space: nowrap; }
+.ust-akcje-wiersza { text-align: right; white-space: nowrap; }
+.ust-akcje-wiersza > * + *, .ust-akcje-wiersza form > * + * { margin-left: .3rem; }
+.ust-kosz { display: inline-flex; align-items: center; vertical-align: middle; color: var(--blad-tekst-mocny); }
+.ust-plakietka-domyslny { display: inline-block; padding: .1rem .55rem; border-radius: 999px; font-size: .8rem; font-weight: 600; background: var(--ok-tlo); color: var(--ok-tekst); }
+.ust-wiersz-edycji td { background: var(--powierzchnia-2); }
+.ust-tabela-szablonow input, .ust-automat input[name="waga"] { width: 4.2rem; padding: .3rem .4rem; font: inherit; font-size: .88rem; color: var(--tekst); background: var(--tlo); border: 1px solid var(--ramka-pola); border-radius: 5px; box-sizing: border-box; }
+.ust-tabela-szablonow input[name="nazwa"] { width: 100%; min-width: 9rem; }
+.ust-pole-jednostka { white-space: nowrap; font-size: .88rem; }
+
+.ust-automat { display: grid; grid-template-columns: minmax(10rem, 1fr) auto 8.5rem 9.5rem 11.5rem; gap: .4rem .9rem; align-items: center; padding: .6rem 0; border-top: 1px solid var(--ramka); }
+.ust-sekcja .ust-automat + .ust-automat, .ust-sekcja form.ust-automat + form { margin-top: 0; }
+.ust-automat-nazwa { display: flex; flex-direction: column; gap: .1rem; font-size: .9rem; }
+.ust-automat-wymiary { font-size: .85rem; color: var(--tekst-przygaszony); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ust-automat-akcje { display: flex; gap: .3rem; align-items: center; justify-content: flex-end; }
+.ust-automat .ust-przycisk { padding: .3rem .6rem; font-size: .84rem; }
+/* Przełącznik gabarytu: zwykłe radio pod spodem, więc działa bez JS i z klawiatury. */
+.ust-przelacznik { display: inline-flex; align-self: center; justify-self: start; align-items: stretch; gap: 0; min-height: 0; margin: 0; padding: 0; border: 1px solid var(--ramka-pola); border-radius: 6px; overflow: hidden; }
+.ust-przelacznik label { position: relative; }
+.ust-przelacznik input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.ust-przelacznik span { display: block; min-width: 2.2rem; padding: .4rem .6rem; text-align: center; font-size: .86rem; font-weight: 600; color: var(--tekst); background: var(--tlo); }
+.ust-przelacznik label + label span { border-left: 1px solid var(--ramka-pola); }
+.ust-przelacznik input:checked + span { background: var(--marka); color: var(--na-marce); }
+.ust-przelacznik input:focus-visible + span { outline: 2px solid var(--marka); outline-offset: -3px; }
+/* Wymiary tylko zaznaczonego gabarytu; przeglądarka bez :has() pokazuje wszystkie. */
+@supports selector(:has(*)) {
+  .ust-automat-wymiary > span { display: none; }
+  .ust-automat:has(input[value="A"]:checked) [data-gabaryt="A"],
+  .ust-automat:has(input[value="B"]:checked) [data-gabaryt="B"],
+  .ust-automat:has(input[value="C"]:checked) [data-gabaryt="C"],
+  .ust-automat:has(input[value="S"]:checked) [data-gabaryt="S"],
+  .ust-automat:has(input[value="M"]:checked) [data-gabaryt="M"],
+  .ust-automat:has(input[value="L"]:checked) [data-gabaryt="L"] { display: inline; }
+}
+.ust-automat-wymiary > span + span::before { content: " · "; }
+@supports selector(:has(*)) { .ust-automat-wymiary > span + span::before { content: none; } }
+.ust-wyjatki-automatow { margin-top: .6rem; border-top: 1px solid var(--ramka); padding-top: .6rem; }
+.ust-wyjatki-automatow > summary { cursor: pointer; font-size: .9rem; font-weight: 600; color: var(--tekst); }
+.ust-wyjatki-automatow[open] > summary { margin-bottom: .3rem; }
+
+@media (max-width: 700px) {
+  .ust-naglowek-szablonow h1 { font-size: 26px; }
+  .ust-automat { grid-template-columns: auto 1fr; }
+  .ust-automat-nazwa { grid-column: 1 / -1; }
+  .ust-automat-wymiary { grid-column: 1 / -1; }
+  .ust-automat-akcje { grid-column: 1 / -1; justify-content: flex-start; }
+}

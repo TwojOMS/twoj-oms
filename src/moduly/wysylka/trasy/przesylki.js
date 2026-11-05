@@ -13,10 +13,11 @@ import {
 import { dopiszLog } from '../../../oms/db/zamowienia.js';
 import { przesylkaUkryta } from '../../../domena/przesylka-stan.js';
 import { nazwaDostawy } from '../../../domena/wysylka.js';
-import { przewoznikWiersza, adresSledzenia } from '../../../domena/przewoznik-przesylki.js';
+import { przewoznikWiersza, linkSledzeniaPaczki } from '../../../domena/przewoznik-przesylki.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { podjazdPoTerminie } from '../../../domena/podjazdy.js';
 import { ktoKlikal } from '../../zamowienia/lista.js';
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import {
   etapPrzesylki, etykietaEtapu, dniKalendarzowe, bezRuchu, kategoriaPrzesylki,
 } from '../../../domena/etap-przesylki.js';
@@ -116,7 +117,7 @@ function pasujeNaFiltr(d, filtry) {
 export function registerPrzesylkiRoutes(app, { db }) {
   app.get('/przesylki', async (req, reply) => {
     const filtry = parseFiltry(req.query);
-    if (filtry.blad) return reply.code(400).send(filtry.blad);
+    if (filtry.blad) return stronaOdmowy(reply, 400, filtry.blad, { tytul: 'Zły filtr listy przesyłek', wroc: '/przesylki', napisWroc: 'Wróć do listy przesyłek' });
 
     const teraz = new Date();
     const dzisWarszawa = dzienWarszawa(teraz.toISOString());
@@ -182,7 +183,8 @@ export function registerPrzesylkiRoutes(app, { db }) {
         ...p,
         kurierEtykieta,
         usluga: zAllegro && zamowienie ? kurierEtykieta : null,
-        adresSledzenia: adresSledzenia(p.przewoznik?.klucz, p.numer_listu),
+        // PRZ-152.G7: ta sama funkcja co karta zamowienia i mail „Zamowienie wyslane".
+        adresSledzenia: linkSledzeniaPaczki(p, zamowienie),
         etap,
         kategoria: kategoriaPrzesylki(p, etap),
         etykietaEtapu: etykietaEtapu(etap ?? 'nadana', dniKalendarzowe(p.utworzona_at, teraz.toISOString())),
@@ -272,9 +274,10 @@ export function registerPrzesylkiRoutes(app, { db }) {
   // ⚠️ WPIS DO LOGU ZAMOWIENIA, a nie tylko kolumna. Ukrycie zdejmuje zamowienie z listy
   // roboczej, wiec musi zostac slad KTO i KIEDY — ta sama formulka „Ręcznie (kto): …",
   // co przy „sprawa zalatwiona recznie".
-  const akcja = (nazwa, wykonaj, opis) => app.post(`/przesylki/:id/${nazwa}`, async (req, reply) => {
+  const akcja = (nazwa, wykonaj, opis, tytulOdmowy) => app.post(`/przesylki/:id/${nazwa}`, async (req, reply) => {
     const p = pobierzPrzesylke(db, Number(req.params.id));
-    if (!p) return reply.code(404).send('Nie ma takiej przesyłki.');
+    if (!p) return stronaOdmowy(reply, 404, 'Nie ma takiej przesyłki.', { tytul: tytulOdmowy,
+      wroc: adresPrzesylki({ pokaz: POKAZ.includes(req.body?.pokaz) ? req.body.pokaz : DOMYSLNY_POKAZ }), napisWroc: 'Wróć do listy przesyłek' });
     const kto = ktoKlikal(req);
     const filtrPoAkcji = parseFiltry(req.body);
     if (filtrPoAkcji.blad) return reply.redirect(adresPrzesylki({ pokaz: POKAZ.includes(req.body?.pokaz) ? req.body.pokaz : DOMYSLNY_POKAZ }));
@@ -289,6 +292,6 @@ export function registerPrzesylkiRoutes(app, { db }) {
     return reply.redirect(adresPrzesylki({ ...filtrPoAkcji, pokaz: skad }));
   });
 
-  akcja('ukryj', (p, kto) => ukryjPrzesylke(db, p.id, kto), 'ukryta z listy przesyłek');
-  akcja('przywroc', (p) => przywrocPrzesylke(db, p.id), 'przywrócona na listę przesyłek');
+  akcja('ukryj', (p, kto) => ukryjPrzesylke(db, p.id, kto), 'ukryta z listy przesyłek', 'Nie udało się ukryć przesyłki');
+  akcja('przywroc', (p) => przywrocPrzesylke(db, p.id), 'przywrócona na listę przesyłek', 'Nie udało się przywrócić przesyłki');
 }

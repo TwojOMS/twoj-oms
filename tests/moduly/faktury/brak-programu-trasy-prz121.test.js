@@ -78,29 +78,29 @@ const zadanie = (ctx, t) => ctx.a.app.inject({ method: t.metoda, url: t.url(ctx)
 
 // Odpowiedzi tekstowe (kod, treść) — treść całej odpowiedzi to jedno zdanie.
 const TEKSTOWE = [
-  { nazwa: 'POST /faktury/archiwum/uruchom', metoda: 'POST', url: () => '/faktury/archiwum/uruchom', kod: 503,
+  { nazwa: 'POST /faktury/archiwum/uruchom', metoda: 'POST', url: () => '/faktury/archiwum/uruchom', kod: 503, odmowa: true,
     stary: 'Panel nie ma włączonego archiwum sprzedaży (brak INFAKT_ARCHIWUM).' },
-  { nazwa: 'GET /faktury/zestawienie-przychodow', metoda: 'GET', url: () => '/faktury/zestawienie-przychodow?miesiac=2026-10', kod: 503,
+  { nazwa: 'GET /faktury/zestawienie-przychodow', metoda: 'GET', url: () => '/faktury/zestawienie-przychodow?miesiac=2026-10', kod: 503, odmowa: true,
     stary: `Panel nie ma podpiętego inFaktu — nie ma z czego zbudować zestawienia przychodów. ${G}` },
-  { nazwa: 'GET /faktury/paczka', metoda: 'GET', url: () => '/faktury/paczka?miesiac=2026-10', kod: 503,
+  { nazwa: 'GET /faktury/paczka', metoda: 'GET', url: () => '/faktury/paczka?miesiac=2026-10', kod: 503, odmowa: true,
     stary: `Panel nie ma podpiętego inFaktu — nie ma z czego złożyć zestawienia faktur. ${G}` },
-  { nazwa: 'GET /faktury/:uuid/pdf', metoda: 'GET', url: () => '/faktury/u1/pdf?rodzaj=vat', kod: 503, dopisek: DOPISEK_PDF,
+  { nazwa: 'GET /faktury/:uuid/pdf', metoda: 'GET', url: () => '/faktury/u1/pdf?rodzaj=vat', kod: 503, dopisek: DOPISEK_PDF, odmowa: true,
     stary: `Panel nie ma podpiętego inFaktu. ${G}` },
-  { nazwa: 'POST /faktury/ksef/podglad', metoda: 'POST', url: () => '/faktury/ksef/podglad', kod: 503,
+  { nazwa: 'POST /faktury/ksef/podglad', metoda: 'POST', url: () => '/faktury/ksef/podglad', kod: 503, odmowa: true,
     stary: `Panel nie ma podpiętego inFaktu — nie ma czego wysłać do KSeF. ${G}` },
-  { nazwa: 'POST /faktury/ksef/wyslij', metoda: 'POST', url: () => '/faktury/ksef/wyslij', kod: 503,
+  { nazwa: 'POST /faktury/ksef/wyslij', metoda: 'POST', url: () => '/faktury/ksef/wyslij', kod: 503, odmowa: true,
     stary: `Panel nie ma podpiętego inFaktu — nie ma czego wysłać do KSeF. ${G}` },
-  { nazwa: 'GET /zamowienia/:id/faktura/pdf', metoda: 'GET', url: (c) => `/zamowienia/${c.id}/faktura/pdf`, kod: 503, dopisek: DOPISEK_PDF,
+  { nazwa: 'GET /zamowienia/:id/faktura/pdf', metoda: 'GET', url: (c) => `/zamowienia/${c.id}/faktura/pdf`, kod: 503, dopisek: DOPISEK_PDF, odmowa: true,
     stary: 'Panel nie ma podpiętego inFaktu.' },
   { nazwa: 'GET /kolejka-druku-faktur/:id/pdf', metoda: 'GET', url: (c) => `/kolejka-druku-faktur/${c.kolejkaId}/pdf`, kod: 503, dopisek: DOPISEK_PDF,
     stary: 'Panel nie ma podpiętego inFaktu.' },
-  { nazwa: 'POST /zamowienia/faktury-hurtem', metoda: 'POST', url: () => '/zamowienia/faktury-hurtem', kod: 503,
+  { nazwa: 'POST /zamowienia/faktury-hurtem', metoda: 'POST', url: () => '/zamowienia/faktury-hurtem', kod: 503, odmowa: true,
     stary: `Wystawianie faktur nie jest skonfigurowane (brak danych inFaktu). ${G}` },
-  { nazwa: 'POST /zamowienia/:id/faktura', metoda: 'POST', url: (c) => `/zamowienia/${c.id}/faktura`, kod: 503,
+  { nazwa: 'POST /zamowienia/:id/faktura', metoda: 'POST', url: (c) => `/zamowienia/${c.id}/faktura`, kod: 503, odmowa: true,
     stary: `inFakt nie jest skonfigurowany. ${G}` },
-  { nazwa: 'POST /zamowienia/:id/faktura-allegro', metoda: 'POST', url: (c) => `/zamowienia/${c.id}/faktura-allegro`, kod: 503,
+  { nazwa: 'POST /zamowienia/:id/faktura-allegro', metoda: 'POST', url: (c) => `/zamowienia/${c.id}/faktura-allegro`, kod: 503, odmowa: true,
     stary: 'Kanał Allegro nie jest skonfigurowany — faktury stąd nie wyślesz.' },
-  { nazwa: 'POST /okresy/:id/wystaw-fakture', metoda: 'POST', url: (c) => `/okresy/${c.okresId}/wystaw-fakture`, kod: 503,
+  { nazwa: 'POST /okresy/:id/wystaw-fakture', metoda: 'POST', url: (c) => `/okresy/${c.okresId}/wystaw-fakture`, kod: 503, odmowa: true,
     stary: `inFakt nie jest skonfigurowany — faktury z panelu nie wystawisz. ${G}` },
 ];
 
@@ -122,6 +122,16 @@ const wszystkie = [...TEKSTOWE, ...STRONY];
 const wyslij = (ctx, t) => ctx.a.app.inject({ method: t.metoda, url: t.url(ctx), headers,
   payload: t.metoda === 'POST' ? (typeof t.payload === 'function' ? t.payload(ctx) : (t.payload ?? {})) : undefined });
 
+// PRZ-152.G13: odmowa w układzie OMS (`odmowa: true`) — ten sam tekst, ale w pasku uwagi strony HTML.
+const tresc = (t, r) => {
+  if (!t.odmowa) return r.body;
+  expect(r.headers['content-type']).toMatch(/^text\/html/);
+  // PRZ-152.G13f1: ekran odmowy karty zamówienia (`karta-odmowa.ejs`) ma pasek `pas-uprzedzenie`.
+  const m = r.body.match(/<p class="pasek-uwaga" role="alert">([\s\S]*?)<\/p>/)
+    ?? r.body.match(/<div class="pas-uprzedzenie" role="alert"><p>([\s\S]*?)<\/p><\/div>/);
+  return m ? odescape(m[1]) : r.body;
+};
+
 const MARKERY_STAREGO = /klucz API|Klucz API|inFakt|Kanał Allegro|INFAKT_ARCHIWUM/;
 
 describe.each([
@@ -135,8 +145,8 @@ describe.each([
     const c = await zbuduj();
     const r = await wyslij(c, t);
     expect(r.statusCode, r.body).toBe(t.kod);
-    expect(r.body).toBe(t.dopisek ? `${zdanie} ${t.dopisek}` : zdanie);
-    expect(r.body).not.toMatch(MARKERY_STAREGO);
+    expect(tresc(t, r)).toBe(t.dopisek ? `${zdanie} ${t.dopisek}` : zdanie);
+    expect(tresc(t, r)).not.toMatch(MARKERY_STAREGO);
     expect(c.fetchPuste).not.toHaveBeenCalled();
   });
 
@@ -173,8 +183,8 @@ describe.each([
     const c = await zbuduj();
     const r = await wyslij(c, t);
     expect(r.statusCode, r.body).toBe(t.kod);
-    expect(r.body).toBe(t.stary);
-    expect(r.body).not.toContain('wyłączone');
+    expect(tresc(t, r)).toBe(t.stary);
+    expect(tresc(t, r)).not.toContain('wyłączone');
   });
 
   it.each(STRONY.map((t) => [t.nazwa, t]))('%s → stary akapit, bez zdania o wyłączonych fakturach', async (_t, t) => {

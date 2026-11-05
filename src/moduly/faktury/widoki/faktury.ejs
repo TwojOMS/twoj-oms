@@ -223,6 +223,10 @@
         <p class="pasek-info"><%= komunikat %></p>
       <% } %>
     <% } %>
+    <%# PRZ-152.G15: drugie zgłoszenie dokumentu, którego wysyłkę panel już zlecił — 303 z trasy wysyłki tutaj. %>
+    <% if (locals.odmowaKsef) { %>
+      <p class="pasek-uwaga" id="ksef-odmowa"><%= odmowaKsef %></p>
+    <% } %>
     <% if (!locals.programWbudowany) { %>
     <p class="wyjasnienie">
       Archiwum na serwerze: <% if (!archiwum.wlaczone) { %>wyłączone. Gdy je włączysz, OMS zapisuje kopię PDF i XML każdej faktury sprzedaży w katalogu na serwerze.<% } else { %>ostatni udany przebieg <%= archiwum.stan && archiwum.stan.ostatnie_udane_at ? fmtDataCzas(archiwum.stan.ostatnie_udane_at) : 'nigdy' %>, <%= ile(archiwum.liczniki.dokumentow, 'dokument', 'dokumenty', 'dokumentów') %><%# ⚠️ „skasowanych: 0" NIE STOI NA EKRANIE — czyta sie jak alarm, ktorego nie ma. %><% if (archiwum.liczniki.skasowanych) { %>, skasowanych: <%= archiwum.liczniki.skasowanych %><% } %><% if (archiwum.stan && archiwum.stan.ostatni_blad) { %> · ostatni błąd: <%= archiwum.stan.ostatni_blad %><% } %><% } %>
@@ -372,7 +376,9 @@
                 </td>
                 <td><% if (d.wKsef) { %><span class="znacznik znacznik--ok">KSeF</span><%
                   // „brak” tylko przy dokumencie, którego nikt nie wysłał; „czeka na numer”, błąd i odmowa zostają puste.
-                  %><% } else if (d.stanKsef === 'brak' && (!d.stanDokumentu || d.stanDokumentu.ksef === 'brak')) { %><span class="znacznik znacznik--cichy">brak</span><% } %></td>
+                  %><% } else if (d.stanKsef === 'brak' && (!d.stanDokumentu || d.stanDokumentu.ksef === 'brak')) { %><span class="znacznik znacznik--cichy">brak</span><%
+                  // PRZ-152.G15: panel zlecił wysyłkę, numeru jeszcze nie ma — plakietka z chwilą zlecenia (błąd i odmowa dalej puste).
+                  %><% } else if (d.stanKsef === 'wyslana_czeka' && d.ksefZleconaAt && (!d.stanDokumentu || ['brak', 'czeka'].includes(d.stanDokumentu.ksef))) { %><span class="znacznik znacznik--cichy">Zlecono do KSeF <%= kiedyZlecenia(d.ksefZleconaAt) %></span><% } %></td>
                 <%# ⚠️ RODZAJ I NUMER JADA W ADRESIE — dokladnie ta sama zasada, co przy pasie
                     nieoplaconych wyzej; korekta jest INNYM zasobem inFaktu niz faktura VAT
                     (routes/faktury.js), wiec trasa musi wiedziec, ktory to dokument. %>

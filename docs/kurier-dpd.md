@@ -93,6 +93,10 @@ Każdą kolejną zmianę na ekranie DPD OMS widzi od razu, bez ponownego urucham
 **Pierwsze nadanie to prawdziwa paczka i prawdziwy koszt.** Zrób je świadomie, na jednym zamówieniu.
 Sprawdź, czy etykieta się wydrukowała, a adres nadawcy i odbiorcy się zgadzają.
 
+Gdy komputer z drukarką etykiet nie działa, etykietę ZPL paczki pobierzesz z karty zamówienia
+(**Pobierz ZPL**) i wyślesz na drukarkę ręcznie — opis w `deploy/drukarka/README.md`, rozdział
+„Gdy automat drukujący nie działa”.
+
 ## Gdy DPD jest już w pliku konfiguracji
 
 Jeśli w `oms.env` są zmienne `DPD_URL`, `DPD_LOGIN` itd., OMS używa ich, a ekran tylko pokazuje

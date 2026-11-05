@@ -86,9 +86,11 @@ export function registerFormularzRoutes(app, { db, korekta = null, definicje, in
     // iloscia — czyli wada krytyczna wracalaby bocznymi drzwiami przy kazdej odmowie reguly.
     if (blad) return pokazKrok1(req, reply, z, { blad, wpisane: cialo, kod: 400 });
     return reply.view('zwrot-podglad.ejs', {
-      title: `Zwrot — zamówienie ${z.numer}`,
+      title: `Zamówienie ${z.numer} / Zwrot`,
+      okruszki: [{ tekst: `Zamówienie ${z.numer}`, href: `/zamowienia/${z.id}` }, { tekst: 'Zwrot' }],
       z,
       powrot: powrotKarty(req),
+      adresKarty: adresKarty(req, z.id),
       kandydat,
       // RAZEM liczy DOMENA z wyniku `parsujZwrot` — widok nie sumuje niczego u siebie.
       razemZl: razemZwrotuZl(kandydat),

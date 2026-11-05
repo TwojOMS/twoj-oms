@@ -81,7 +81,8 @@ describe('PRZ-148.03 karta zamówienia: zwrot z dostawą, faktura bez pozycji �
     await zAplikacja(program, async (a) => {
       const { id, zwrotId } = zamowienieZeZwrotem(a.db, { kwotaDostawy: null });
       expect(await pobierz(a, `/zamowienia/${id}`)).toContain(formularz(id, zwrotId));
-      expect(program.pobierzFakture).not.toHaveBeenCalled();
+      // PRZ-152.G10b1k (D6): karta czyta dokument raz — po kwotę faktury; pozycji „Dostawa” bez zwrotu z dostawą nie pyta drugi raz.
+      expect(program.pobierzFakture).toHaveBeenCalledTimes(1);
     });
   });
 

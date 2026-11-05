@@ -13,6 +13,7 @@
 <%# `.wyjasnienie`, `.btn` sa juz w layout-oms.ejs. %>
 
 <div class="glowa-ekranu">
+  <a class="btn" href="<%= adresKarty %>">← Zamówienie <%= z.numer %></a>
   <h1>Zwrot — zamówienie <%= z.numer %></h1>
   <span class="krok">krok 2 z 2 — sprawdź sumę</span>
 </div>
@@ -100,6 +101,7 @@
       <input type="hidden" name="powod" value="<%= kandydat.powod || '' %>">
 
       <div class="stopka-akcji">
+        <a class="btn btn--drugi" href="<%= adresKarty %>">Wróć do zamówienia</a>
         <% if (mozeAdres(`/zamowienia/${z.id}/zwrot/popraw`)) { %><button type="submit" class="btn btn--cichy" formaction="/zamowienia/<%= z.id %>/zwrot/popraw">Wstecz — popraw</button><% } %>
         <span class="rozpychacz"></span>
         <% if (mozeAdres(`/zamowienia/${z.id}/zwrot`)) { %><button type="submit" class="btn btn--glowny">Zarejestruj zwrot</button><% } %>

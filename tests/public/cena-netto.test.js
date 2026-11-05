@@ -123,3 +123,32 @@ describe('stawka „zw” = 0 (netto = brutto)', () => {
     expect(c.brutto.value).toBe('100.00');
   });
 });
+
+// PRZ-152.G2-03a: karta zamówienia — stawka pozycji sklepowej jest tekstem (bez listy), serwer podaje ją w `data-stawka` wiersza.
+describe('data-stawka wiersza (karta zamówienia)', () => {
+  it('bez listy: data-stawka wiersza wygrywa z data-vat formularza', () => {
+    const w = wiersz();
+    w.tr.dataset.stawka = '8';
+    expect(stawkaWiersza(w.tr, formularz({ vat: '23', wdt: '0' }))).toBe(8);
+  });
+  it('lista w wierszu wygrywa z data-stawka', () => {
+    const w = wiersz({ vat: '5' });
+    w.tr.dataset.stawka = '8';
+    expect(stawkaWiersza(w.tr, formularz({ vat: '23' }))).toBe(5);
+  });
+  it('netto 100 przy data-stawka=8 i data-vat=23 → brutto 108.00', () => {
+    const w = wiersz();
+    w.tr.dataset.stawka = '8';
+    w.netto.value = '100';
+    przelicz({ target: w.netto }, formularz({ vat: '23', wdt: '0' }));
+    expect(w.brutto.value).toBe('108.00');
+  });
+  it('data-wdt="1" → 0 także przy data-stawka', () => {
+    const w = wiersz();
+    w.tr.dataset.stawka = '8';
+    w.netto.value = '100';
+    expect(stawkaWiersza(w.tr, formularz({ vat: '23', wdt: '1' }))).toBe(0);
+    przelicz({ target: w.netto }, formularz({ vat: '23', wdt: '1' }));
+    expect(w.brutto.value).toBe('100.00');
+  });
+});

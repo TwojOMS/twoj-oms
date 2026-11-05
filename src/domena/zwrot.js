@@ -229,7 +229,7 @@ export function parsujZwrot(z, body, { dzis }) {
   // stringow floatowych jeszcze raz.
   let sumaPozycjiGr = 0;
   const wczesniej = juzZwrocone(z?.zwroty);
-  const kupione = new Map((z?.pozycje ?? []).map((p, i) => [kluczPozycji(p, i), Number(p.ilosc ?? 0)]));
+  const kupione = new Map((z?.pozycje ?? []).map((p, i) => [p.klucz ?? kluczPozycji(p, i), Number(p.ilosc ?? 0)]));
   for (const w of surowe) {
     if (!Number.isFinite(w.ilosc) || w.ilosc < 0) return odmowa(`Ilość przy „${w.nazwa}" nie jest liczbą.`);
     if (!Number.isInteger(w.ilosc)) return odmowa(`Ilość przy „${w.nazwa}" musi być liczbą całkowitą.`);

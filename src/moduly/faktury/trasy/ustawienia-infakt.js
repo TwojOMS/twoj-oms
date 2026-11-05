@@ -5,6 +5,7 @@
 // ⚠️ Klucz API nie wraca na ekran nigdy — także po błędzie formularza (pole klucza zawsze puste). Komunikat testu
 // połączenia buduje klient inFaktu (sprawdzPolaczenie zastępuje w nim klucz); błąd techniczny idzie tylko do logu.
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { sprawdzFormularzInfakt, ADRES_INFAKT, EKRAN_INFAKTU } from '../../../domena/konfiguracja-infakt.js';
 import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji, stanDlaEkranu }
   from '../../../oms/db/konfiguracja-integracji.js';
@@ -39,8 +40,9 @@ export function registerUstawieniaInfaktuRoutes(app, { db, konfiguracjaInfaktu, 
   // (automat-ksef-ekran.js): tylko admin, 303 na nowy ekran, błąd formularza = 400 z ekranem Automatyzacji.
   // PRZ-118.10: `infakt` (usługa modułu faktur: klient albo program) — nazwa programu w sekcji automatu przy 400.
   app.post(`${EKRAN_INFAKTU}/ksef-automat`, obsluzZapisAutomatuKsef({ db, konfiguracjaInfaktu, automatKsef, teraz, infakt }));
-  const zEnv = (reply) => reply.code(409).type('text/plain; charset=utf-8')
-    .send('inFakt jest ustawiony w pliku konfiguracji (oms.env, INFAKT_API_KEY) — tam go zmień. Formularz niczego nie zapisał.');
+  const zEnv = (reply) => stronaOdmowy(reply, 409, 'inFakt jest ustawiony w pliku konfiguracji (oms.env, INFAKT_API_KEY) — tam go zmień. Formularz niczego nie zapisał.', {
+    tytul: 'Nie zapisano ustawień inFaktu', wroc: EKRAN_INFAKTU, napisWroc: 'Wróć do ustawień inFaktu',
+  });
 
   // Prefiks /ustawienia: zapis tylko z prawem do Ustawień, również gdy klucz API pochodzi z pliku.
   // PRZ-126.J01: i tylko admin — ten sam klucz zmienia tylko admin na ekranie Wysyłka do KSeF (ustawienia-ksef-sprzedazy.js),

@@ -52,7 +52,8 @@ describe('karta zamówienia — wiersze starego obrazu (sam infakt_uuid)', () =>
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain(`href="/zamowienia/${id}/faktura/pdf"`);
     // Model karty (`ksefKarty` z `idDokumentu`): stan dokumentu jak na liście Faktur.
-    expect(r.body).toContain('zlecona z panelu — czeka na numer KSeF');
+    // PRZ-152.G15: po zleceniu kolumna stanu ma plakietkę „Zlecono do KSeF D.M GG:MM”, nie „zlecona z panelu…”.
+    expect(r.body).toMatch(/Zlecono do KSeF 20\.10(\.2026)? 20:00/);
     expect(r.body).not.toContain('jeszcze nie wysłana do KSeF');
     // JOIN rezerwacji w oms/db/zamowienia.js (`ksef_zlecona_at`): sprawa „panel zlecił, numeru nie ma od …”.
     expect(r.body).toContain('Panel zlecił wysyłkę faktury FV 7/10/2026 do KSeF, a numeru nie ma od 2026-10-20T18:00:00.000Z');

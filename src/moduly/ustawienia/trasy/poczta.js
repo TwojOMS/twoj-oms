@@ -8,6 +8,7 @@
 // blokad nie powtarzamy.
 // ⚠️ Hasło SMTP nie wraca na ekran nigdy — także po błędzie formularza (pole hasła zawsze puste) — i nie trafia do
 // logu: przy nieudanej wiadomości próbnej log dostaje wyłącznie kod błędu nodemailera.
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji, stanDlaEkranu }
   from '../../../oms/db/konfiguracja-integracji.js';
 import { EKRAN_POCZTY, PORT_DOMYSLNY, sprawdzFormularzPoczty, komunikatBleduPoczty } from '../../wiadomosci/poczta-ustawien.ts';
@@ -64,8 +65,12 @@ export function registerUstawieniaPocztyRoutes(app, { db, adresPaneluZEnv, poczt
       zapisano: req.query?.zapisano === 'podpis' ? null : KOMUNIKATY[req.query?.zapisano] ?? null,
     });
   }
-  const odmowaZPliku = (reply, co) => reply.code(409).type('text/plain; charset=utf-8')
-    .send(`${co} jest ustawiony w pliku konfiguracji (oms.env) — tam go zmień. Formularz niczego nie zapisał.`);
+  const PODPIS_EKRAN = '/ustawienia/komunikacja/podpis';
+  const WROC_POCZTA = { wroc: EKRAN_POCZTY, napisWroc: 'Wróć do ustawień poczty' };
+  const WROC_PODPIS = { tytul: 'Nie zapisano podpisu maili', wroc: `${PODPIS_EKRAN}#podpis-maili`, napisWroc: 'Wróć do podpisu maili' };
+  const odmowaZPliku = (reply, co) => stronaOdmowy(reply, 409,
+    `${co} jest ustawiony w pliku konfiguracji (oms.env) — tam go zmień. Formularz niczego nie zapisał.`,
+    { tytul: 'Nie zapisano ustawień poczty', ...WROC_POCZTA });
   const kto = (req) => (req.konto ? { id: req.konto.id ?? null, login: req.konto.login ?? null } : null);
 
   const widokGet = async (req, reply) => {
@@ -136,14 +141,14 @@ export function registerUstawieniaPocztyRoutes(app, { db, adresPaneluZEnv, poczt
   // PRZ-102.10: podpis maili do klientów. Pole ustawione w pliku (OMS_MAIL_MARKA / OMS_MAIL_STOPKA) = 409, jak reszta ekranu.
   app.post(`${EKRAN_POCZTY}/podpis`, async (req, reply) => {
     const usl = podpis();
-    if (!usl) return reply.code(404).type('text/plain; charset=utf-8').send('Podpis maili wymaga modułu wiadomości.');
+    if (!usl) return stronaOdmowy(reply, 404, 'Podpis maili wymaga modułu wiadomości.', WROC_PODPIS);
     const body = req.body ?? {};
     const pola = Object.fromEntries(['marka', 'stopka'].filter((p) => Object.hasOwn(body, p)).map((p) => [p, String(body[p] ?? '')]));
     const wynik = usl.zapisz(pola);
     if (wynik.kod === 409) {
       const nazwy = wynik.zablokowane.map((p) => (p === 'marka' ? 'Marka (OMS_MAIL_MARKA)' : 'Stopka (OMS_MAIL_STOPKA)')).join(' i ');
-      return reply.code(409).type('text/plain; charset=utf-8')
-        .send(`${nazwy}: ustawione w pliku konfiguracji (oms.env) — tam je zmień. Formularz niczego nie zapisał.`);
+      return stronaOdmowy(reply, 409,
+        `${nazwy}: ustawione w pliku konfiguracji (oms.env) — tam je zmień. Formularz niczego nie zapisał.`, WROC_PODPIS);
     }
     if (wynik.kod === 400) {
       reply.code(400);

@@ -30,6 +30,12 @@ export function stawkaWiersza(zasieg, formularz) {
   const lista = zasieg?.querySelector('select[name$="vat"]');
   const zListy = lista ? stawkaLiczbowa(lista.value) : NaN;
   if (Number.isFinite(zListy)) return zListy;
+  // PRZ-152.G2-03a: karta zamówienia — pozycja sklepowa ma stawkę tekstem (bez listy); serwer podaje ją w `data-stawka`.
+  const zWiersza = zasieg?.dataset?.stawka;
+  if (zWiersza !== undefined && String(zWiersza).trim() !== '') {
+    const n = stawkaLiczbowa(zWiersza);
+    if (Number.isFinite(n) && n >= 0) return n;
+  }
   const surowa = formularz?.dataset?.vat;
   if (surowa === undefined || String(surowa).trim() === '') return null;
   const n = stawkaLiczbowa(surowa);

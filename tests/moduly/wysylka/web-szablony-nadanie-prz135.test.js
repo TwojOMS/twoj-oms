@@ -11,11 +11,19 @@ import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 // zamiast porównań z 'inpost_paczkomat'. Zmiana BEZ zmiany zachowania — HTML ekranu ma być
 // bit w bit taki sam jak przed nią. Migawki w __migawki__/ zapisano na kodzie SPRZED zmiany
 // (2e081494); po zmianie test porównuje z nimi. Dane zmyślone („Pracownia Półcień").
+// PRZ-152.G14a: świadoma zmiana wyglądu pól — cztery migawki mają klasy OMS
+// i siatkę wymiarów. Nazwy kontrolek poniżej zachowano z HTML przy 85ed5070.
 
 const config = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] };
 const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'), origin: 'http://localhost' };
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
 const ID_USLUGI = '0d83955a-4297-4169-adef-9790d53b11ff';
+const nazwyPrzedG14a = {
+  dpd: ['powrot', 'kolejnosc', 'nazwa', 'company', 'ulica', 'kod', 'miasto', 'phone', 'email', 'kraj', 'waga', 'dlugosc', 'szerokosc', 'wysokosc', 'zatwierdzenie', 'zatwierdzenie'],
+  paczkomat: ['powrot', 'kolejnosc', 'punkt_odbioru', 'nazwa', 'company', 'phone', 'email', 'kraj', 'ulica', 'kod', 'miasto', 'waga', 'gabaryt', 'gabaryt', 'gabaryt', 'zatwierdzenie', 'zatwierdzenie'],
+  'allegro-dpd': ['powrot', 'kolejnosc', 'delivery_method_id_allegro', 'nazwa', 'company', 'ulica', 'kod', 'miasto', 'phone', 'email', 'kraj', 'waga', 'dlugosc', 'szerokosc', 'wysokosc', 'zatwierdzenie', 'zatwierdzenie'],
+  'allegro-punkt-paczkomat': ['powrot', 'kolejnosc', 'kurier', 'punkt_odbioru', 'nazwa', 'company', 'phone', 'email', 'kraj', 'ulica', 'kod', 'miasto', 'waga', 'gabaryt', 'gabaryt', 'gabaryt', 'zatwierdzenie', 'zatwierdzenie'],
+};
 
 const zamowienie = (metoda, nad = {}) => ({
   zrodlo_id: 'pc-5101', numer: 'PC-5101',
@@ -42,7 +50,7 @@ async function ekranNadania(metoda, sklep, zapytanie = '') {
   return { status: r.statusCode, body: od < 0 ? r.body : r.body.slice(od, doKonca) + '\n' };
 }
 
-describe('ekran nadania bit w bit jak przed PRZ-135.05', () => {
+describe('ekran nadania — migawki PRZ-135 po zmianie wyglądu G14a', () => {
   const przypadki = [
     ['dpd', 'dpd', 'pro', ''],
     ['paczkomat', 'inpost_paczkomat', 'pro', ''],
@@ -50,6 +58,17 @@ describe('ekran nadania bit w bit jak przed PRZ-135.05', () => {
     ['allegro-punkt-paczkomat', 'allegro_punkt', 'allegro_polcien', '?kurier=inpost_paczkomat'],
   ];
   for (const [nazwa, metoda, sklep, zapytanie] of przypadki) {
+    it(`${nazwa}: wyrenderowane pola mają klasę OMS`, async () => {
+      const { status, body } = await ekranNadania(metoda, sklep, zapytanie);
+      expect(status).toBe(200);
+      expect([...body.matchAll(/\bname="([^"]+)"/g)].map((m) => m[1])).toEqual(nazwyPrzedG14a[nazwa]);
+      const pola = body.match(/<(?:input|select)\b[^>]*>/g) ?? [];
+      expect(pola.length).toBeGreaterThan(0);
+      for (const pole of pola) {
+        if (/type="(?:hidden|checkbox|radio)"/.test(pole)) continue;
+        expect(pole).toMatch(/class="[^"]*\boms-pole\b[^"]*"/);
+      }
+    });
     it(`${nazwa}: HTML identyczny z migawką`, async () => {
       const { status, body } = await ekranNadania(metoda, sklep, zapytanie);
       expect(status).toBe(200);

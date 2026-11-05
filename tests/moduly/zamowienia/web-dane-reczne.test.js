@@ -78,7 +78,8 @@ describe('blok „Szczegóły zamówienia" na karcie', () => {
 
   it('opłacone zamówienie pokazuje datę wpłaty', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane({ oplacone_at: '2026-07-30T09:00:00' }), {});
-    expect((await karta(id)).body).toContain('2026-07-30 09:00:00');
+    // PRZ-152.G9a2: data stoi w liście ruchów płatności po ludzku (kiedyRuchu), bez sekund.
+    expect((await karta(id)).body).toMatch(/<td>30\.7 09:00<\/td>/);
   });
 
   // Zadanie D: uwagi klienta (customer_note) — TYLKO DO ODCZYTU, bo to zapis tego, co
@@ -287,8 +288,8 @@ describe('zwijanie sekcji „Dane do faktury", gdy klient nie chce faktury', () 
     db.prepare(
       "INSERT INTO faktury (zamowienie_id, ksef_status, numer, infakt_uuid, utworzona_at) VALUES (?, NULL, 'FV/1/2026', 'uuid-1', ?)",
     ).run(id, new Date().toISOString());
-    const body = (await karta(id)).body;
-    const idxUwaga = body.indexOf('JUŻ WYSTAWIONEJ');
+    const body = (await karta(id, '?edytuj=faktura')).body;
+    const idxUwaga = body.indexOf('Faktura została już wystawiona');
     const idxDetails = body.indexOf('<details', body.indexOf('<h2>Dane do faktury</h2>'));
     expect(idxUwaga).toBeGreaterThan(-1);
     expect(idxUwaga).toBeLessThan(idxDetails);
@@ -483,25 +484,26 @@ describe('panel mówi prawdę o tym, czego edycja NIE naprawia', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
     nadanaPaczka(id);
     expect((await karta(id)).body, 'karta do odczytu ma być czysta')
-      .not.toContain('paczki JUŻ NADANEJ to nie zmienia');
+      .not.toContain('Paczka została już nadana.');
     expect((await karta(id, '?edytuj=wysylka')).body, 'edycja ma ostrzegać')
-      .toContain('paczki JUŻ NADANEJ to nie zmienia');
+      .toContain('Paczka została już nadana. Poprawka danych dotyczy kolejnych przesyłek.');
   });
 
   it('bez nadanej paczki tego ostrzeżenia nie ma nawet w edycji', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    expect((await karta(id, '?edytuj=wysylka')).body).not.toContain('paczki JUŻ NADANEJ to nie zmienia');
+    expect((await karta(id, '?edytuj=wysylka')).body).not.toContain('Paczka została już nadana.');
   });
 
   it('przy wystawionej fakturze ostrzega, że treści dokumentu to nie zmienia', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
     db.prepare("INSERT INTO faktury (zamowienie_id, numer, infakt_uuid, utworzona_at) VALUES (?, 'FV/1/2026', 'u1', '2026-07-30T10:00:00')").run(id);
-    expect((await karta(id)).body).toContain('faktury JUŻ WYSTAWIONEJ to nie zmienia');
+    expect((await karta(id)).body).not.toContain('Faktura została już wystawiona');
+    expect((await karta(id, '?edytuj=faktura')).body).toContain('Faktura została już wystawiona. Dane popraw korektą.');
   });
 
   it('bez faktury tego ostrzeżenia nie ma', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    expect((await karta(id)).body).not.toContain('faktury JUŻ WYSTAWIONEJ to nie zmienia');
+    expect((await karta(id, '?edytuj=faktura')).body).not.toContain('Faktura została już wystawiona');
   });
 });
 

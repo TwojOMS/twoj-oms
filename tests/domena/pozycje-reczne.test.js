@@ -1,13 +1,36 @@
 import { describe, it, expect } from 'vitest';
 import {
-  POLA_POZYCJI, kluczPozycji, parsujNowaPozycje, parsujEdycjePozycji,
+  POLA_POZYCJI, kluczPozycji, parsujNowaPozycje, parsujEdycjePozycji, cenaBruttoZPol, wybierzZrodloCeny,
   nalozNadpisaniaPozycji, ustawNadpisaniePozycji, roznicePozycji,
+  ZNACZNIK_USUNIECIA, pozycjeUsuniete, oznaczUsunieta,
 } from '../../src/domena/pozycje-reczne.js';
 
 const zeSklepu = (nad = {}) => ({
   id: 7, zrodlo: 'sklep', zrodlo_id: 4321, nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2,
   cena_brutto: '61.50', cena_netto: '50.00', brutto_linii: '123.00', netto_linii: '100.00',
   ...nad,
+});
+
+describe('cena z pól i wybór źródła ceny', () => {
+  it('liczy netto stawką wiersza, a podane brutto ma pierwszeństwo', () => {
+    expect(cenaBruttoZPol({ cena_netto: '100' }, '8')).toBe('108.00');
+    expect(cenaBruttoZPol({ cena_brutto: '50', cena_netto: '1' }, '8')).toBe('50.00');
+    expect(cenaBruttoZPol({ cena_netto: '100' }, '8', { wdt: true })).toBe('100.00');
+    expect(cenaBruttoZPol({ cena_netto: '100' }, 'zw', { zw: true })).toBe('100.00');
+    expect(() => cenaBruttoZPol({ cena_netto: '100' }, 'zw')).toThrow();
+  });
+  it('wykrywa zmianę netto bez JS i porównuje ceny w groszach', () => {
+    const teraz = { bruttoTeraz: '61.50', nettoTeraz: '50.00' };
+    expect(wybierzZrodloCeny({ cena_brutto: '61,5', cena_netto: '60' }, teraz))
+      .toEqual({ cena_brutto: '', cena_netto: '60' });
+    expect(wybierzZrodloCeny({ cena_brutto: '70', cena_netto: '60' }, teraz))
+      .toEqual({ cena_brutto: '70', cena_netto: '60' });
+    expect(wybierzZrodloCeny({ cena_brutto: '61,5', cena_netto: '50,0' }, teraz))
+      .toEqual({ cena_brutto: '61,5', cena_netto: '50,0' });
+  });
+  it('odmawia znacznika usunięcia pod nietrwałym kluczem p', () => {
+    expect(() => oznaczUsunieta({}, 'p0')).toThrow();
+  });
 });
 
 const reczna = (nad = {}) => ({
@@ -248,5 +271,72 @@ describe('ustawNadpisaniePozycji', () => {
 
   it('skasowanie ostatniego nadpisania daje null, nie pusty obiekt', () => {
     expect(ustawNadpisaniePozycji(JSON.stringify({ s1: { ilosc: 2 } }), 's1', {})).toBeNull();
+  });
+});
+
+// PRZ-152.G2-01 — usunięcie pozycji sklepowej to ZNACZNIK w mapie poprawek (`{ usunieta: true }`),
+// a nakładka jest jedynym miejscem, które go odfiltrowuje (plan PRZ-152-G2, rozdz. 3.1).
+describe('usunięcie pozycji sklepowej znacznikiem (PRZ-152.G2)', () => {
+  const trzy = () => [
+    zeSklepu({ id: 1, zrodlo_id: 1, nazwa: 'Pierwsza' }),
+    zeSklepu({ id: 2, zrodlo_id: 2, nazwa: 'Druga' }),
+    zeSklepu({ id: 3, zrodlo_id: 3, nazwa: 'Trzecia' }),
+  ];
+
+  it('znacznik nazywa się „usunieta”', () => {
+    expect(ZNACZNIK_USUNIECIA).toBe('usunieta');
+  });
+
+  it('nakładka z {"s2":{"usunieta":true}} oddaje 2 z 3 wierszy, a trzeci dalej ma klucz s3', () => {
+    const wynik = nalozNadpisaniaPozycji(trzy(), JSON.stringify({ s2: { usunieta: true } }));
+    expect(wynik.map((p) => p.nazwa)).toEqual(['Pierwsza', 'Trzecia']);
+    expect(wynik.map((p) => p.klucz)).toEqual(['s1', 's3']);
+  });
+
+  // Klucz zapasowy `p<indeks>` liczy się z listy SUROWEJ — liczony po odfiltrowaniu przesunąłby
+  // poprawkę trzeciego wiersza na drugi (mutacja (d) planu).
+  it('klucz zapasowy liczony z indeksu listy surowej, nie wynikowej', () => {
+    const bezId = trzy().map((p) => ({ ...p, zrodlo_id: null }));
+    const mapa = JSON.stringify({ p1: { usunieta: true }, p2: { ilosc: 5 } });
+    const wynik = nalozNadpisaniaPozycji(bezId, mapa);
+    expect(wynik.map((p) => [p.klucz, p.nazwa, p.ilosc])).toEqual([['p0', 'Pierwsza', 2], ['p2', 'Trzecia', 5]]);
+  });
+
+  it('pozycja ręczna nigdy nie jest usunięta znacznikiem', () => {
+    const wynik = nalozNadpisaniaPozycji([zeSklepu(), reczna()], JSON.stringify({ r91: { usunieta: true } }));
+    expect(wynik.map((p) => p.klucz)).toEqual(['s4321', 'r91']);
+  });
+
+  it('tylko `usunieta: true` usuwa — inna wartość to zwykły wiersz', () => {
+    const wynik = nalozNadpisaniaPozycji(trzy(), JSON.stringify({ s2: { usunieta: false }, s3: { usunieta: 'tak' } }));
+    expect(wynik).toHaveLength(3);
+  });
+
+  it('pozycjeUsuniete oddaje SKLEPOWĄ kopię usuniętego wiersza z kluczem', () => {
+    const mapa = JSON.stringify({ s2: { usunieta: true, cena_brutto: '1.00' }, s3: { ilosc: 9 } });
+    const usuniete = pozycjeUsuniete(trzy(), mapa);
+    expect(usuniete).toHaveLength(1);
+    expect(usuniete[0]).toMatchObject({ klucz: 's2', nazwa: 'Druga', ilosc: 2, cena_brutto: '61.50', brutto_linii: '123.00' });
+  });
+
+  it('pozycjeUsuniete: bez mapy, z ręczną i z kluczem zapasowym', () => {
+    expect(pozycjeUsuniete(trzy(), null)).toEqual([]);
+    expect(pozycjeUsuniete([reczna()], JSON.stringify({ r91: { usunieta: true } }))).toEqual([]);
+    const bezId = trzy().map((p) => ({ ...p, zrodlo_id: null }));
+    expect(pozycjeUsuniete(bezId, JSON.stringify({ p2: { usunieta: true } })).map((p) => [p.klucz, p.nazwa]))
+      .toEqual([['p2', 'Trzecia']]);
+  });
+
+  it('oznaczUsunieta zastępuje wcześniejsze poprawki samym znacznikiem i zwraca kopię', () => {
+    const mapa = { s2: { cena_brutto: '10.00' }, wysylka: { ilosc: 2 } };
+    const nowa = oznaczUsunieta(mapa, 's2');
+    expect(nowa).toEqual({ s2: { usunieta: true }, wysylka: { ilosc: 2 } });
+    expect(mapa.s2).toEqual({ cena_brutto: '10.00' });
+    expect(oznaczUsunieta(null, 's7')).toEqual({ s7: { usunieta: true } });
+  });
+
+  it('oznaczUsunieta odmawia pozycji ręcznej i wysyłki', () => {
+    expect(() => oznaczUsunieta({}, 'r91')).toThrow();
+    expect(() => oznaczUsunieta({}, 'wysylka')).toThrow();
   });
 });

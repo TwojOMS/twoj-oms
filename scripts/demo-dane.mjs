@@ -53,8 +53,7 @@ export const ENV_DEMO = Object.freeze({
   OMS_KANALY: JSON.stringify(KANALY_DEMO),
   OMS_RAPORTY_NAZWY_KANALOW: '{}',
   OMS_RAPORTY_PODLOGA_KOSZTOW: '2026-01',
-  // PRZ-089: demo pokazuje zamówienia indywidualne (grawer) — kanał raportu i filtr listy tylko z tą zmienną.
-  OMS_KANAL_INDYWIDUALNY: '1',
+  // PRZ-152.G5 (właściciel 04.11): demo bez statusu „Indywidualne” — OMS_KANAL_INDYWIDUALNY (PRZ-089) celowo nie jest ustawione.
   // PRZ-082: adres wystawcy proformy (domena/adres-sprzedawcy.js) — bez niego „Wystaw proformę” w demo odmawiało.
   // Sam adres nie włącza kuriera: wysyłka wymaga DPD_URL albo INPOST_TOKEN (moduly/wysylka/kurierzy.ts).
   DPD_NADAWCA_NAZWA: 'Pracownia Półcień (demo)',
@@ -127,12 +126,14 @@ function loginKupujacego(osoba, n) {
 
 /** Linie koszyka z katalogu; rabat kontraktowy B2B w %, WDT = cena bez polskiego VAT-u. */
 function pozycje(koszyk, { rabat = 0, wdt = false } = {}) {
-  return koszyk.map(([sku, ilosc, nazwaWlasna]) => {
+  // PRZ-152.G2: pozycja ze sklepu ma identyfikator linii (Woo line_item.id, Allegro lineItem.id) — bez niego „×”
+  // na karcie odmawia („poczekaj na synchronizację”), a demo i piaskownica nie pokazałyby usuwania pozycji.
+  return koszyk.map(([sku, ilosc, nazwaWlasna], i) => {
     const p = PRODUKT.get(sku);
     if (!p) throw new Error(`DEMO_SKU: ${sku}`);
     let cena = Math.round(p.cena_gr * (100 - rabat) / 100);
     if (wdt) cena = nettoGr(cena);
-    return { nazwa: nazwaWlasna ?? p.nazwa, sku, ilosc, zdjecie_url: zdjecieProduktu(sku), cena_brutto: zl(cena), cena_netto: zl(wdt ? cena : nettoGr(cena)),
+    return { zrodlo_id: String(i + 1), nazwa: nazwaWlasna ?? p.nazwa, sku, ilosc, zdjecie_url: zdjecieProduktu(sku), cena_brutto: zl(cena), cena_netto: zl(wdt ? cena : nettoGr(cena)),
       brutto_linii: zl(cena * ilosc), netto_linii: zl((wdt ? cena : nettoGr(cena)) * ilosc), vat: wdt ? 0 : 23 };
   });
 }
@@ -144,9 +145,9 @@ function losujStatus(los, wiekDni) {
   if (wiekDni >= 7 && r < 0.11) return 'zwrot';
   // Limit wysyłki to 1–2 dni robocze (domena/termin-wysylki.js): niewysłane starsze zamówienia lądują
   // w „Po terminie”. Kilka takich ma być (funkcja widoczna), dwadzieścia wyglądałoby na firmę w kryzysie.
-  if (wiekDni <= 1) return r < 0.5 ? 'nowe' : r < 0.72 ? 'indywidualne' : 'w_realizacji';
-  if (wiekDni <= 3) return r < 0.09 ? 'nowe' : r < 0.2 ? 'indywidualne' : r < 0.4 ? 'w_realizacji' : 'wyslane';
-  if (wiekDni <= 6) return r < 0.1 ? 'indywidualne' : r < 0.14 ? 'w_realizacji' : 'wyslane';
+  if (wiekDni <= 1) return r < 0.5 ? 'nowe' : 'w_realizacji';
+  if (wiekDni <= 3) return r < 0.2 ? 'nowe' : r < 0.4 ? 'w_realizacji' : 'wyslane';
+  if (wiekDni <= 6) return r < 0.14 ? 'w_realizacji' : 'wyslane';
   return r < 0.98 ? 'wyslane' : 'w_realizacji';
 }
 
@@ -236,12 +237,12 @@ export function wygenerujDaneDemo(db, { ziarno = 72, dzis, env = ENV_DEMO }) {
   const zamowieniaSklepu = [], loginy = Object.fromEntries(KANALY.map((k) => [k.klucz, []]));
   for (const [i, { z, ms: utworzoneMs }] of zamowienia.entries()) {
     const wiekDni = Math.floor((koniecDnia - utworzoneMs) / DOBA);
-    // PRZ-087 (właściciel 16.10): ostatnie dni i wszystko „w toku” (nowe, indywidualne, w realizacji) składają uzupełnienia
+    // PRZ-087 (właściciel 16.10): ostatnie dni i wszystko „w toku” (nowe, w realizacji) składają uzupełnienia
     // z policzonymi liczbami — losowanie dawało przypadkową liczbę nowych i kilka zamówień po terminie. Pętla idzie
     // po czasie, więc pominięte są wyłącznie ostatnie wiersze: sekwencja `los` dla starszych się nie zmienia.
     if (wiekDni <= DNI_UZUPELNIEN_PRZ087) continue;
     const wylosowany = losujStatus(los, wiekDni);
-    const status = ['nowe', 'indywidualne', 'w_realizacji'].includes(wylosowany) ? 'wyslane' : wylosowany;
+    const status = ['nowe', 'w_realizacji'].includes(wylosowany) ? 'wyslane' : wylosowany;
     const kanal = z.kanal;
     const osobaZ = z.klient.osoba != null ? KLIENCI[z.klient.osoba] : null;
     const ue = z.klient.ue != null;
@@ -708,21 +709,23 @@ function uzupelnieniaPrz087(db, { pomocnicy }) {
     status('nowe');
   }
 
-  // INDYWIDUALNE — personalizacja w nazwie pozycji; limit 7 dni roboczych, więc żadne nie jest po terminie.
+  // Personalizacja w nazwie pozycji (grawer, nadruk) — PRZ-152.G5: zwykłe „w realizacji” z wczoraj (nie po terminie), bez statusu „Indywidualne”.
   const INDYWIDUALNE = [
     [W, 20, [['LMP-STO-005', 1, 'Lampa stołowa Dąbek, dąb olejowany — GRAWER na podstawie: „Dla Zosi na 18. urodziny”']], 'dpd', 'przelewy24', 1, 9, 30],
     [W, 21, [['LMP-NOC-003', 1, 'Lampka nocna — GRAWER imienia „Antoś” i daty urodzenia 03.09.2026']], 'inpost_paczkomat', 'blik', 1, 20, 5],
-    ['reczne', null, [['LMP-ABA-002', 12, 'Abażur lniany — NADRUK logo hotelu (projekt klienta)']], 'dpd', 'bacs', 2, 11, 40, 1],
-    [W, 22, [['LMP-WIS-002', 1, 'Lampa wisząca Kopuła 60 cm — KOLOR NA ZAMÓWIENIE RAL 6021, przewód 3 m']], 'dpd', 'karta', 2, 15, 15],
-    ['allegro', 60, [['LMP-KIN-002', 2, 'Kinkiet — GRAWER numeru mieszkania „14A” na tarczy']], 'allegro_kurier', 'allegro', 3, 13, 50, null, DHL],
-    [W, 23, [['LMP-POD-002', 1, 'Lampa podłogowa — GRAWER dedykacji na stopie „Mamie i Tacie, 40 lat razem”']], 'odbior_osobisty', 'przelewy24', 4, 10, 25],
+    ['reczne', null, [['LMP-ABA-002', 12, 'Abażur lniany — NADRUK logo hotelu (projekt klienta)']], 'dpd', 'bacs', 1, 11, 40, 1],
+    [W, 22, [['LMP-WIS-002', 1, 'Lampa wisząca Kopuła 60 cm — KOLOR NA ZAMÓWIENIE RAL 6021, przewód 3 m']], 'dpd', 'karta', 1, 15, 15],
+    ['allegro', 60, [['LMP-KIN-002', 2, 'Kinkiet — GRAWER numeru mieszkania „14A” na tarczy']], 'allegro_kurier', 'allegro', 1, 13, 50, null, DHL],
+    [W, 23, [['LMP-POD-002', 1, 'Lampa podłogowa — GRAWER dedykacji na stopie „Mamie i Tacie, 40 lat razem”']], 'dpd', 'przelewy24', 4, 10, 25],
   ];
   for (const [kanal, osoba, koszyk, wysylka, platnosc, dni, h, m, b2b, nazwaWysylki] of INDYWIDUALNE) {
     const ms = chwila(dni, h, m);
-    dodaj({ kanal, osoba: osoba ?? undefined, b2b: b2b ?? undefined, koszyk, wysylka, ...(nazwaWysylki ? { nazwaWysylki } : {}), platnosc,
-      utworzoneMs: ms, oplaconeMs: kanal === 'reczne' ? null : ms + 6 * 60000, indywidualne: true,
+    const z = dodaj({ kanal, osoba: osoba ?? undefined, b2b: b2b ?? undefined, koszyk, wysylka, ...(nazwaWysylki ? { nazwaWysylki } : {}), platnosc,
+      utworzoneMs: ms, oplaconeMs: kanal === 'reczne' ? null : ms + 6 * 60000,
       uwagi: 'Personalizacja — proszę o podgląd projektu przed wykonaniem.' });
-    status('indywidualne');
+    // Starsze (4 dni) są już wysłane — personalizowane zamówienie w realizacji byłoby po terminie wysyłki.
+    if (dni >= 4) wyslij(z, { kurier: 'dpd', wRealizacjiMs: ms + 2 * 3600000, wyslaneMs: ms + 20 * 3600000, doreczonaMs: ms + 44 * 3600000 });
+    else { zapiszFaktyStatusu(db, z.id, { w_realizacji_at: iso(ms + 2 * 3600000), wyslane_at: null }); status('w_realizacji'); }
   }
 
   // W REALIZACJI — 18 tutaj (+4 z PRZ-082 = 22): 14 z wczoraj po 12:00, 2 z dziś rano, 2 sprzed 5 dni (po terminie).

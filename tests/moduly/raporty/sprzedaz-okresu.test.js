@@ -324,4 +324,23 @@ describe('raport liczy zamówienie tak samo jak faktura', () => {
       nazwa: 'Szablon', ilosc: 1, typ: 1, bruttoGrosze: 15000,
     }]);
   });
+
+  // PRZ-152.G2-01 — usunięta pozycja ze sklepu znika z faktury, więc i z raportu: kwota
+  // spada o jej SKLEPOWĄ wartość, a ranking jej nie pokazuje.
+  it('usunieta pozycja ze sklepu obniza sprzedaz i znika z rankingu', () => {
+    const id = zeSklepuZNadpisaniem('2026-08-03 12:00:00', {
+      kwota: '145.00',
+      pozycja: {
+        zrodlo_id: 504, nazwa: 'Szablon', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00',
+      },
+      nadpisania: { s505: { usunieta: true } },
+    });
+    db.prepare(
+      'INSERT INTO pozycje (zamowienie_id, zrodlo_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)'
+      + " VALUES (?,?,?,?,?,?,'sklep')",
+    ).run(id, 505, 'Pędzel', 1, '45.00', '45.00');
+    const [w] = sprzedazWOkresie(db, { od: '2026-08-03', do: '2026-08-03' });
+    expect(w.bruttoGrosze).toBe(10000);
+    expect(w.pozycje.map((p) => p.nazwa)).toEqual(['Szablon']);
+  });
 });

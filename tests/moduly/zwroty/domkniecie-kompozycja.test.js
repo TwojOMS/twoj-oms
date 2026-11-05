@@ -94,7 +94,7 @@ describe('PRZ-024 domknięcie — rzeczywisty bootstrap i manifest', () => {
       expect(logi()).toHaveLength(0);
       const r = await a.app.inject({ method: 'POST', url: `/zamowienia/${id}/zwroty/${zwrotId}/korekta`, headers, payload: '' });
       expect(r.statusCode).toBe(400);
-      expect(r.body).toBe('Odmowa korekty fixture');
+      expect(r.body).toContain('<p class="pasek-uwaga" role="alert">Odmowa korekty fixture</p>');
       expect(infakt.wystawKorekte).toHaveBeenCalledTimes(1);
       expect(zwrot(a.db, id, zwrotId).korekta_zlecona_at).toBeNull();
       const wpisy = logi();

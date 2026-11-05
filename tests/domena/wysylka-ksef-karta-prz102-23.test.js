@@ -2,19 +2,21 @@
 // i bezpieczny adres powrotu ekranów podglądu/wyniku. Obie czyste, w domena/wysylka-ksef.js.
 import { describe, it, expect } from 'vitest';
 import {
-  wysylkaZKarty, powrotWysylkiKsef, POWOD_KONSUMENCKA, POWOD_KOREKTA, powodJuzZlecona, coWolnoWyslac, UWAGA_BEZ_NIP_NA_KARCIE,
+  wysylkaZKarty, powrotWysylkiKsef, POWOD_KONSUMENCKA, POWOD_KOREKTA, coWolnoWyslac, UWAGA_BEZ_NIP_NA_KARCIE,
 } from '../../src/domena/wysylka-ksef.js';
+import { kiedyRuchu } from '../../src/domena/stan-platnosci-karty.js';
 
 const NIP = '1234563218';
 const karta = (o = {}) => ({ uuid: 'u1', ksefNumer: null, nip: NIP, zleconaAt: null, dzienWystawienia: '2026-10-20', ...o });
 
 describe('wysylkaZKarty', () => {
-  it.each([true, false])('rezerwacja na karcie uwzględnia program wbudowany=%s', (wbudowany) => {
+  // PRZ-152.G15 (właściciel: „usunąć komunikat.”): po zleceniu karta nie pokazuje długiego zdania — tylko plakietkę
+  // „Zlecono do KSeF D.M GG:MM” (pole `zlecono`), niezależnie od programu faktur.
+  it.each([true, false])('rezerwacja na karcie: bez zdania, z czasem zlecenia do plakietki, wbudowany=%s', (wbudowany) => {
     const program = { opis: { wbudowany } };
     const w = wysylkaZKarty(karta({ program, zleconaAt: '2026-10-20T18:00:00.000Z' }));
-    expect(w.powod).toContain('(20.10.2026, 20:00)');
-    expect(w.powod.includes('inFak')).toBe(!wbudowany);
-    if (wbudowany) expect(w.powod).toBe('Panel już zlecił wysyłkę tego dokumentu do KSeF (20.10.2026, 20:00).');
+    expect(w.powod).toBeNull();
+    expect(w.zlecono).toMatch(/^20\.10(\.2026)? 20:00$/);
   });
 
   it.each([true, false])('dopisek bez NIP-u przy TF nie odsyła do inFaktu, konsumenckie=%s', (konsumenckie) => {
@@ -48,9 +50,10 @@ describe('wysylkaZKarty', () => {
     expect(wysylkaZKarty(karta()).uwaga).toBeUndefined();
   });
 
-  it('z rezerwacją („nie wiadomo”) → bez przycisku, zdanie „panel już zlecił” ze stemplem', () => {
+  // PRZ-152.G15: rezerwacja dalej blokuje przycisk; zamiast zdania „panel już zlecił” — czas do plakietki.
+  it('z rezerwacją („nie wiadomo”) → bez przycisku, bez zdania, czas zlecenia do plakietki', () => {
     const w = wysylkaZKarty(karta({ zleconaAt: '2026-10-20T18:00:00.000Z' }));
-    expect(w).toEqual({ wolno: false, powod: powodJuzZlecona('2026-10-20T18:00:00.000Z'), stan: 'wyslana_czeka' });
+    expect(w).toEqual({ wolno: false, powod: null, stan: 'wyslana_czeka', zlecono: kiedyRuchu('2026-10-20T18:00:00.000Z') });
   });
 
   it.each([true, false])('z numerem KSeF i rezerwacją → stan z numerem bez zdania o zleceniu, wbudowany=%s', (wbudowany) => {
@@ -62,7 +65,7 @@ describe('wysylkaZKarty', () => {
   it('pewne fakty panelu wygrywają z brakiem NIP-u: numer KSeF i rezerwacja dają swoje zdanie, nie przycisk', () => {
     expect(wysylkaZKarty(karta({ ksefNumer: 'K', nip: null }))).toEqual({ wolno: false, powod: null, stan: 'jest' });
     expect(wysylkaZKarty(karta({ nip: null, zleconaAt: '2026-10-20T18:00:00.000Z' })))
-      .toEqual({ wolno: false, powod: powodJuzZlecona('2026-10-20T18:00:00.000Z'), stan: 'wyslana_czeka' });
+      .toEqual({ wolno: false, powod: null, stan: 'wyslana_czeka', zlecono: kiedyRuchu('2026-10-20T18:00:00.000Z') });
   });
 
   it('bez dokumentu w inFakcie (rezerwacja wystawiania, do wyjaśnienia) → nic: karta mówi o tym swoimi paskami', () => {

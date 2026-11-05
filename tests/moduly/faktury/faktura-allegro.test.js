@@ -668,7 +668,9 @@ describe('trasa POST /zamowienia/:id/faktura-allegro', () => {
     expect(r.statusCode).toBe(200);
     // ⚠️ TO ZDANIE NIE MA PRAWA SIE POKAZAC przy REJECTED — pasek obok mowi coś dokładnie
     // odwrotnego, a operator czyta OBA na jednym ekranie.
-    expect(r.body).not.toMatch(/kupujący ma ją na swoim koncie/);
+    expect(r.body).not.toContain('Faktura jest na koncie kupującego w Allegro — błąd poprawisz tylko korektą.');
+    expect(r.body).toContain('Allegro odrzuciło plik');
+    expect(r.body).toContain('Wyślij plik faktury do Allegro jeszcze raz');
     // Wyjscie ISTNIEJE: formularz ponowienia, ten sam, o ktory prosi pasek spraw.
     expect(r.body).toContain(`/zamowienia/${id}/faktura-allegro`);
     expect(r.body).toMatch(/ODRZUCIŁO/);
@@ -684,7 +686,7 @@ describe('trasa POST /zamowienia/:id/faktura-allegro', () => {
     }));
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
 
-    expect(r.body).toMatch(/kupujący ma ją na swoim koncie/);
+    expect(r.body).toContain('Faktura jest na koncie kupującego w Allegro — błąd poprawisz tylko korektą.');
     expect(r.body).not.toMatch(/Wyślij fakturę do Allegro/);
   });
 

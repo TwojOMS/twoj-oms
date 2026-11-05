@@ -11,6 +11,7 @@
 import { stanKsef } from './lista-faktur.js';
 import { NAZWA_ZAPASOWA } from './nazwa-programu.js';
 import { fmtDataCzasKrotko } from './format-daty.js';
+import { kiedyRuchu } from './stan-platnosci-karty.js';
 
 /** Typy dokumentów, które wolno wysłać zawsze. Korekty POZA listą (06.08.2026); od C08 przy fladze `korekty` (od PRZ-151 D2: program, który wysyła do KSeF) — `rodzajDoWyslania`. */
 const WOLNO_WYSLAC = new Set(['vat']);
@@ -43,6 +44,18 @@ export function powodJuzZlecona(zleconaAt, program) {
     + ' — drugie zgłoszenie byłoby duplikatem u organu, a duplikatu nie da się skasować. '
     + 'Następny krok: otwórz ten dokument w inFakcie — tam widać, czy zlecenie doszło i czy ma '
     + 'już numer KSeF. Panel sam tego NIE ponowi.';
+}
+
+/**
+ * PRZ-152.G15 (właściciel 05.11: „usunąć komunikat.”): krótkie zdanie na EKRANIE, gdy ktoś mimo wszystko zgłasza drugi raz
+ * dokument, którego wysyłkę panel już zlecił (pasek po 303 na karcie albo liście, wiersz podglądu). Długie
+ * `powodJuzZlecona` zostaje w regule — dla logu i automatu. Data jak w decyzji właściciela 4.11 (`kiedyRuchu`).
+ */
+export function zdanieJuzWyslano(zleconaAt, program, teraz = new Date()) {
+  const kiedy = kiedyRuchu(zleconaAt, teraz);
+  const zdanie = `Ten dokument już wysłano do KSeF${kiedy ? ` ${kiedy}` : ''}`;
+  if (program?.opis?.wbudowany === true) return `${zdanie}.`;
+  return `${zdanie} — sprawdź go w ${(program?.opis?.nazwa ?? NAZWA_ZAPASOWA).miejscownik}.`;
 }
 
 /**
@@ -163,7 +176,9 @@ export function wysylkaZKarty({ uuid, ksefNumer = null, nip = null, zleconaAt = 
   if (!uuid) return null;
   const stan = stanKsef({ ksef_number: ksefNumer || null }, Boolean(zleconaAt));
   if (stan === 'jest') return { wolno: false, powod: null, stan };
-  if (stan !== 'brak') return { wolno: false, powod: powodStanuKsef(ksefNumer, zleconaAt, program), stan };
+  // PRZ-152.G15 (właściciel 05.11: „usunąć komunikat.”): po zleceniu bez zdania pod tabelą — kolumna stanu ma plakietkę
+  // „Zlecono do KSeF D.M GG:MM” (`zlecono`), przycisku nie ma. Blokada w `coWolnoWyslac` i rezerwacji bez zmian.
+  if (stan !== 'brak') return { wolno: false, powod: null, stan, zlecono: kiedyRuchu(zleconaAt) };
   // Nazwa programu z jego opisu (strażnik PRZ-118: bez nowych napisów z inFaktem); przy wbudowanym bez „w …”.
   const wProgramie = program?.opis?.wbudowany === true ? '' : ` w ${(program?.opis?.nazwa ?? NAZWA_ZAPASOWA).miejscownik}`;
   const dopisek = konsumenckie
@@ -292,7 +307,8 @@ export function coWolnoWyslac(zaznaczone, dokumenty, konsumenckie = false, nazwa
     // dokłada go services/faktury-widok.js), a nie o `stanKsef` — napis na ekranie wolno
     // przeredagować, fakt z tabeli nie.
     if (d.ksefZleconaAt) {
-      pominiete.push({ numer: d.number, powod: powodStanuKsef(d.ksef_number, d.ksefZleconaAt, program) });
+      // PRZ-152.G15: długi `powod` zostaje dla logu i automatu; ekran bierze znacznik i pokazuje `zdanieJuzWyslano`.
+      pominiete.push({ numer: d.number, powod: powodStanuKsef(d.ksef_number, d.ksefZleconaAt, program), juzZlecona: true, zleconaAt: d.ksefZleconaAt });
       continue;
     }
     doWyslania.push({ uuid: d.uuid, numer: d.number });

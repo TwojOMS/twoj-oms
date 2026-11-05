@@ -1,4 +1,5 @@
 import { tytulEkranuDlaAdresu } from '../../../domena/ekrany.js';
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
 // PRZ-093.08: Ustawienia → Firma. Sprzedawca na proformie, specyfikacji i potwierdzeniu wywozu oraz nadawca
 // paczek DPD z Ustawień. Dla instalacji bez DPD_NADAWCA_* w pliku konfiguracji (Twój OMS u obcej firmy).
 //
@@ -53,7 +54,14 @@ const TYLKO_ADMIN_STAWKA = 'Domyślną stawkę VAT zmienia tylko administrator. 
 const PUSTY = { nazwa: '', ulica: '', kod: '', miasto: '', kraj: 'PL', telefon: '', email: '' };
 const TYLKO_ADMIN = 'Rachunek firmy zmienia tylko administrator. Formularz niczego nie zapisał.';
 const W_PLIKU = 'Rachunek firmy jest ustawiony w pliku konfiguracji (OMS_RACHUNEK / OMS_BANK w oms.env) — tam go zmień. Formularz niczego nie zapisał.';
-const tekst = (reply, kod, tresc) => reply.code(kod).type('text/plain; charset=utf-8').send(tresc);
+// Powrót na zakładkę, z której przyszedł formularz (ta sama, na którą prowadzi przekierowanie po zapisie).
+const ekranOdmowy = (url = '') => {
+  if (/\/(stawka-vat|zwolnienie-vat)(\?|$)/.test(url)) return { tytul: 'Nie zapisano ustawień VAT', wroc: '/ustawienia/faktury/vat', napisWroc: 'Wróć do ustawień VAT' };
+  if (/\/(nip|bdo)(\/|\?|$)/.test(url)) return { tytul: 'Nie zapisano danych rejestrowych', wroc: '/ustawienia/firma/rejestrowe', napisWroc: 'Wróć do danych rejestrowych' };
+  if (/\/rachunek(\/|\?|$)/.test(url)) return { tytul: 'Nie zapisano rachunku firmy', wroc: '/ustawienia/firma/rachunek', napisWroc: 'Wróć do rachunku bankowego' };
+  return { tytul: 'Nie zapisano danych firmy', wroc: EKRAN_ADRESU_FIRMY, napisWroc: 'Wróć do ustawień firmy' };
+};
+const tekst = (reply, kod, tresc) => stronaOdmowy(reply, kod, tresc, ekranOdmowy(reply.request?.url?.split('?')[0]));
 
 // `wyborProgramu` (usługa faktury.wyborProgramu, PRZ-121.01) — `program` działający od startu; bez niej jak dotąd (inFakt).
 export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFirmy, nipBdoFirmy, wyborProgramu = null }) {
@@ -101,8 +109,9 @@ export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFir
 
   app.post(EKRAN_ADRESU_FIRMY, async (req, reply) => {
     if (adresFirmy.wPliku) {
-      return reply.code(409).type('text/plain; charset=utf-8')
-        .send('Adres firmy jest ustawiony w pliku konfiguracji (DPD_NADAWCA_… w oms.env) — tam go zmień. Formularz niczego nie zapisał.');
+      return stronaOdmowy(reply, 409, 'Adres firmy jest ustawiony w pliku konfiguracji (DPD_NADAWCA_… w oms.env) — tam go zmień. Formularz niczego nie zapisał.', {
+        tytul: 'Nie zapisano danych firmy', wroc: EKRAN_ADRESU_FIRMY, napisWroc: 'Wróć do ustawień firmy',
+      });
     }
     const { ustawienia, bledy } = sprawdzFormularzFirmy(req.body ?? {});
     if (bledy.length) {

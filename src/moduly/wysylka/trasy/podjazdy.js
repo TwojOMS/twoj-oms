@@ -1,5 +1,10 @@
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { ktoKlikal } from '../../zamowienia/lista.js';
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
+
+// PRZ-152.G13: odmowy tras podjazdów w układzie OMS (status i tekst bez zmian).
+const LISTA = { wroc: '/przesylki', napisWroc: 'Wróć do listy przesyłek' };
+const bezKont = (reply) => stronaOdmowy(reply, 503, 'Konta Allegro są niedostępne.', { tytul: 'Podjazdy Allegro są niedostępne', ...LISTA });
 
 const lista = (v) => (Array.isArray(v) ? v : v == null ? [] : [v]);
 const polaAdresu = ['name', 'street', 'postalCode', 'city', 'countryCode', 'email', 'phone'];
@@ -48,7 +53,7 @@ export function registerPodjazdyRoutes(app, { db, podjazdy, adresDomyslny }) {
   });
 
   app.post('/przesylki/podjazdy/zlec', async (req, reply) => {
-    if (!podjazdy) return reply.code(503).send('Konta Allegro są niedostępne.');
+    if (!podjazdy) return bezKont(reply);
     try {
       const termin = JSON.parse(req.body?.termin ?? 'null');
       const wynik = await podjazdy.zlec({ podgladId: req.body?.podgladId,
@@ -60,30 +65,31 @@ export function registerPodjazdyRoutes(app, { db, podjazdy, adresDomyslny }) {
         return reply.code(400).view('podjazdy.ejs', { title: 'Podjazdy Allegro', faza: 'podglad',
           paczki: [], ...podglad, blad: `Nie zamówiono podjazdu: ${error.message}` });
       } catch {
-        return reply.code(400).send(`Nie zamówiono podjazdu: ${error.message}`);
+        return stronaOdmowy(reply, 400, `Nie zamówiono podjazdu: ${error.message}`, { tytul: 'Nie zamówiono podjazdu', ...LISTA });
       }
     }
   });
 
   app.get('/przesylki/podjazdy/podglad/:id', async (req, reply) => {
-    if (!podjazdy) return reply.code(503).send('Konta Allegro są niedostępne.');
+    if (!podjazdy) return bezKont(reply);
     try {
       const podglad = podjazdy.pobierzPodglad({ id: req.params.id });
       return reply.view('podjazdy.ejs', { title: 'Podjazdy Allegro', faza: 'podglad',
         paczki: [], ...podglad, blad: null });
     } catch (error) {
-      return reply.code(404).send(error.message);
+      return stronaOdmowy(reply, 404, error.message, { tytul: 'Nie ma takiego podglądu podjazdu', ...LISTA });
     }
   });
 
   app.get('/przesylki/podjazdy/:id', async (req, reply) => {
-    if (!podjazdy) return reply.code(503).send('Konta Allegro są niedostępne.');
+    if (!podjazdy) return bezKont(reply);
     try {
       const wynik = await podjazdy.sprawdz({ id: Number(req.params.id) });
       return reply.view('podjazdy.ejs', { title: 'Podjazdy Allegro', faza: 'wynik', wynik,
         grupy: [], paczki: [], blad: null });
     } catch (error) {
-      return reply.code(400).send(`Nie można sprawdzić podjazdu: ${error.message}`);
+      return stronaOdmowy(reply, 400, `Nie można sprawdzić podjazdu: ${error.message}`,
+        { tytul: 'Nie można sprawdzić podjazdu', wroc: '/przesylki/podjazdy/historia', napisWroc: 'Wróć do historii podjazdów' });
     }
   });
 }

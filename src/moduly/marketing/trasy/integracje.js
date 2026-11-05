@@ -6,6 +6,10 @@ import {polaczenia,stanPolaczenia,zapiszPolaczenie,zapiszStan} from '../../../om
 import {promptReklam} from '../../../domena/prompt-reklam.js';
 import {testPolaczenie,KROKI} from '../uslugi/test-polaczenia-reklam.js';
 import {nawigacjaUstawien} from '../../ustawienia/nawigacja.js';
+import {stronaOdmowy} from '../../../core/web/odmowa.js';
+// PRZ-152.G13: odmowy zapisu i testu połączeń reklam w układzie OMS (status i tekst bez zmian; tekst nigdy
+// nie niesie wpisanego poświadczenia). Powrót na ekran połączeń reklam.
+const odmowaReklam = (reply, status, tekst, tytul) => stronaOdmowy(reply, status, tekst, { tytul, napisWroc: 'Wróć do połączeń reklam', wroc: '/ustawienia/integracje/reklamy' });
 // PRZ-138.02: nazwy źródeł reklam z katalogu integracji (jedno brzmienie na kafelku i na ekranie).
 const nazwaZKatalogu = (id) => KATALOG_INTEGRACJI.find((w) => w.id === id)?.nazwa ?? id;
 const ZRODLA = Object.freeze({ ga4: nazwaZKatalogu('ga4'), google_ads: nazwaZKatalogu('google_ads'), meta: nazwaZKatalogu('meta') });
@@ -63,13 +67,13 @@ export function createWidokReklam({db,stanyKanalow=null,wiazanieKanalow=null,rek
 }
 export function registerUstawieniaRoutes(app,{db,reklamy=null}) {
   app.post('/ustawienia/integracje/reklamy/zapisz', async (req, reply) => {
-    if (req.konto?.admin !== true) return reply.code(403).send('Tylko administrator może zmieniać połączenia reklam.');
+    if (req.konto?.admin !== true) return odmowaReklam(reply, 403, 'Tylko administrator może zmieniać połączenia reklam.', 'Brak uprawnień');
     const bezpieczneHttps = req.raw.socket.encrypted === true || reklamy?.zaufaneHttps?.(req) === true;
-    if (!bezpieczneHttps) return reply.code(403).send('Poświadczenie można przesłać wyłącznie przez HTTPS.');
-    if (!reklamy?.magazyn) return reply.code(503).send('Magazyn sekretów reklam nie jest skonfigurowany.');
+    if (!bezpieczneHttps) return odmowaReklam(reply, 403, 'Poświadczenie można przesłać wyłącznie przez HTTPS.', 'Nie udało się zapisać połączenia reklam');
+    if (!reklamy?.magazyn) return odmowaReklam(reply, 503, 'Magazyn sekretów reklam nie jest skonfigurowany.', 'Nie udało się zapisać połączenia reklam');
     const { typ, kontoId, kanal, tresc } = req.body ?? {};
     if (!['ga4', 'meta'].includes(typ) || !kontoId || !kanal || typeof tresc !== 'string' || !tresc) {
-      return reply.code(400).send('Uzupełnij źródło, konto, kanał i poświadczenie.');
+      return odmowaReklam(reply, 400, 'Uzupełnij źródło, konto, kanał i poświadczenie.', 'Nie udało się zapisać połączenia reklam');
     }
     try {
       const obecne = polaczenia(db).find((p) => p.typ === typ && p.kontoId === kontoId);
@@ -84,15 +88,15 @@ export function registerUstawieniaRoutes(app,{db,reklamy=null}) {
       }
       return reply.redirect('/ustawienia/integracje/reklamy?zapisano=reklamy');
     } catch {
-      return reply.code(400).send('Nie udało się zapisać połączenia reklam.');
+      return odmowaReklam(reply, 400, 'Nie udało się zapisać połączenia reklam.', 'Nie udało się zapisać połączenia reklam');
     }
   });
 
   app.post('/ustawienia/integracje/reklamy/test', async (req, reply) => {
-    if (req.konto?.admin !== true) return reply.code(403).send('Tylko administrator może testować połączenia reklam.');
+    if (req.konto?.admin !== true) return odmowaReklam(reply, 403, 'Tylko administrator może testować połączenia reklam.', 'Brak uprawnień');
     const id = Number(req.body?.polaczenieId);
     const polaczenie = polaczenia(db).find((p) => p.id === id);
-    if (!polaczenie) return reply.code(404).send('Nie znaleziono połączenia reklam.');
+    if (!polaczenie) return odmowaReklam(reply, 404, 'Nie znaleziono połączenia reklam.', 'Nie znaleziono połączenia reklam');
     if (!reklamy?.magazyn || !reklamy?.klienci) {
       return reply.code(303).redirect(adresWynikuTestu(id, { stan: 'blad', kodBledu: KROK_NIESKONFIGUROWANY }));
     }

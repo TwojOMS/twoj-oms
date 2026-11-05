@@ -1,5 +1,4 @@
-import { linkDoSledzenia } from './tracking.js';
-import { przewoznikWiersza } from './przewoznik-przesylki.js';
+import { przewoznikWiersza, linkSledzeniaPaczki } from './przewoznik-przesylki.js';
 import { punktOdbioru, punktOdbioruOpis } from './wysylka.js';
 
 // MAIL „ZAMÓWIENIE WYSŁANE" (PRZ-102.21, decyzja właściciela 20.10: „Tak, jako szablon. Automatyzacje wysyłki
@@ -10,7 +9,8 @@ import { punktOdbioru, punktOdbioruOpis } from './wysylka.js';
 // numer przydzielony, ale nadanie nie doszło do końca, więc paczki za nim może nie być. Mail z takim numerem
 // wysłałby klienta na stronę śledzenia, która nic nie pokaże.
 //
-// ⚠️ LINK TYLKO ZE SPRAWDZONYCH WZORCÓW (`linkDoSledzenia`, tracking.js) — ten sam, co na karcie. Nieznany wzorzec
+// ⚠️ LINK TYLKO Z `linkSledzeniaPaczki` (przewoznik-przesylki.js) — ten sam, co na karcie i w zakładce Przesyłki
+// (PRZ-152.G7: po prawdziwym przewoźniku, nie po kodzie drogi nadania). Nieznany przewoźnik
 // = sam numer, nigdy zgadnięty adres. Nazwa przewoźnika dla człowieka z `przewoznikWiersza` — tej samej reguły,
 // co zakładka Przesyłki (paczka „Wysyłam z Allegro" ma nazwę tego, kto ją wiezie, nie „allegro").
 
@@ -22,7 +22,7 @@ export function paczkiDoMaila(z) {
     .filter((p) => String(p?.numer_listu ?? '').trim() && p.status !== 'blad' && p.status !== 'do_wyjasnienia')
     .map((p) => {
       const numer = String(p.numer_listu).trim();
-      return { przewoznik: przewoznikWiersza(p, z)?.nazwa ?? 'Przesyłka', numer, link: linkDoSledzenia(p.kurier, numer) };
+      return { przewoznik: przewoznikWiersza(p, z)?.nazwa ?? 'Przesyłka', numer, link: linkSledzeniaPaczki(p, z) };
     });
 }
 

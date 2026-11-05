@@ -107,7 +107,7 @@ describe('PRZ-126.C02 — błąd przy polu przy wystawieniu faktury', () => {
     const id = await przygotuj({ program: null });
     const r = await wystaw(id);
     expect(r.statusCode).toBe(503);
-    expect(r.body).toMatch(/^inFakt nie jest skonfigurowany\./);
+    expect(r.body).toMatch(/>inFakt nie jest skonfigurowany\./); // PRZ-152.G13f1: ekran odmowy karty zamiast gołego tekstu
   });
 
   it('usługa karty niedostępna: strona zapasowa w HTML z odnośnikiem na kartę', async () => {

@@ -184,12 +184,16 @@ describe('lista, liczniki, wyszukiwanie, karta', () => {
     // pokazuje wpłaty CAŁEJ grupy, przy dołączonej dopisek „zam. S-2”; saldo liczone z grupy.
     // Do 19.10 saldo było tylko głównego („Wpłacono 115.00 zł z 115.00 zł”) + osobne zdanie z sumą.
     const platnosci = kg.body.slice(kg.body.indexOf('id="platnosci"'), kg.body.indexOf('class="wplata-szybka"'));
-    expect(platnosci).toContain('Wpłacono 235.00 zł z 235.00 zł');
-    const wiersze = [...platnosci.matchAll(/<tr>[^]*?<\/tr>/g)].map((m) => m[0]).filter((w) => w.includes('<td'));
+    // G9a2: kwota i wpłacono są osobnymi liczbami z polskim separatorem.
+    expect(platnosci).toMatch(/Kwota[\s\S]*235,00 zł[\s\S]*Wpłacono[\s\S]*235,00 zł/);
+    // G9a2: wiersze ruchów mają klasy rodzaju i tonu.
+    const wiersze = [...platnosci.matchAll(/<tr[^>]*>[^]*?<\/tr>/g)].map((m) => m[0]).filter((w) => w.includes('<td'));
     expect(wiersze).toHaveLength(2);
-    expect(wiersze[0]).toContain('115.00 zł');
+    // G9a2: wpłaty drukujemy z przecinkiem i znakiem ruchu.
+    expect(wiersze[0]).toContain('+115,00 zł');
     expect(wiersze[0]).not.toContain('zam. S-');
-    expect(wiersze[1]).toContain('120.00 zł');
+    // G9a2: wpłaty drukujemy z przecinkiem i znakiem ruchu.
+    expect(wiersze[1]).toContain('+120,00 zł');
     expect(wiersze[1]).toContain('zam. S-2');
   });
 
@@ -197,13 +201,15 @@ describe('lista, liczniki, wyszukiwanie, karta', () => {
     const a = zam(1); const b = zam(2, { koszt_dostawy_brutto: '20.00', kwota_brutto: '120.00', oplacone_at: null });
     await scal(a, b, 'suma');
     const przed = (await get(`/zamowienia/${a}`)).body;
-    expect(przed.slice(przed.indexOf('id="platnosci"'))).toContain('Wpłacono 115.00 zł z 235.00 zł');
+    // G9a2: oddzielne liczby nadal pokazują kwotę całej grupy i jej wpłaty.
+    expect(przed.slice(przed.indexOf('id="platnosci"'))).toMatch(/Kwota[\s\S]*235,00 zł[\s\S]*Wpłacono[\s\S]*115,00 zł/);
     const r = await post(`/zamowienia/${a}/platnosci`, { kwota: '120.00', metoda: 'przelew' });
     expect(r.statusCode, r.body).toBe(302);
     const wplaty = db.prepare("SELECT zamowienie_id, kwota FROM platnosci WHERE zrodlo = 'reczna'").all();
     expect(wplaty).toEqual([{ zamowienie_id: a, kwota: '120.00' }]);
     const po = (await get(`/zamowienia/${a}`)).body;
-    expect(po.slice(po.indexOf('id="platnosci"'))).toContain('Wpłacono 235.00 zł z 235.00 zł');
+    // G9a2: po dopłacie kwota i wpłaty grupy są równe w nowym układzie liczb.
+    expect(po.slice(po.indexOf('id="platnosci"'))).toMatch(/Kwota[\s\S]*235,00 zł[\s\S]*Wpłacono[\s\S]*235,00 zł/);
   });
 
   it('PRZ-101.11: ręczna wpłata dołączonego — „Usuń” na karcie głównego kasuje ją z dołączonego', async () => {

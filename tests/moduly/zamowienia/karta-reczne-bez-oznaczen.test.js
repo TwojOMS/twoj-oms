@@ -107,7 +107,7 @@ describe('zamówienie RĘCZNE — karta bez znaczników „ręcznie”', () => {
     const pozycja = wierszePozycji(pobierzZamowienie(db, id)).find((w) => !w.wysylka && !w.podsumowanie);
     expect(pozycja.reczna).toBe(true);
     expect(pozycja.oznaczReczna).toBe(false);
-    expect((await karta(id, '?edytuj=pozycje')).body).toContain(`/pozycje/${pozycja.klucz}/usun`);
+    expect((await karta(id, '?edytuj=pozycje')).body).toContain(`name="usun" value="${pozycja.klucz}"`);
   });
 });
 
@@ -141,28 +141,28 @@ describe('ostrzeżenie o nadanej paczce — dopiero po kliknięciu „Edytuj”'
   it('karta do odczytu jest czysta, edycja ostrzega', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
     nadanaPaczka(id);
-    expect((await karta(id)).body).not.toContain('paczki JUŻ NADANEJ to nie zmienia');
+    expect((await karta(id)).body).not.toContain('Paczka została już nadana.');
     // ⚠️ CAŁY OTWIERAJĄCY ZNACZNIK, nie sam tekst. Sprawdzenie po samej treści przepuszcza
     // akapit schowany atrybutem `hidden` — ostrzeżenie byłoby w kodzie strony, a operator
     // nie zobaczyłby go nigdy. Weryfikacja mutacyjna złapała dokładnie ten przypadek.
     expect((await karta(id, '?edytuj=wysylka')).body)
-      .toContain('<p class="pasek-uwaga">Poprawka dotyczy dopiero KOLEJNYCH przesyłek');
+      .toContain('<p class="pasek-uwaga">Paczka została już nadana. Poprawka danych dotyczy kolejnych przesyłek.</p>');
   });
 
   // ⚠️ Treść ZOSTAŁA BEZ ZMIAN — to nie jest zmiękczenie ostrzeżenia, tylko przeniesienie go
   // tam, gdzie coś znaczy. Kurs nadanej paczki idzie po adresie z chwili nadania i żadna
   // poprawka na karcie go nie zawróci.
-  it('ostrzeżenie dalej wskazuje panel DPD', async () => {
+  it('ostrzeżenie nie odsyła już do panelu kuriera', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
     nadanaPaczka(id);
-    expect((await karta(id, '?edytuj=wysylka')).body).toMatch(/załatw to w panelu DPD/);
+    expect((await karta(id, '?edytuj=wysylka')).body).not.toMatch(/załatw to w panelu/);
   });
 
-  // Ostrzeżenie o WYSTAWIONEJ FAKTURZE to osobna sprawa i zostaje tam, gdzie było —
-  // właściciel prosił wyłącznie o to przy danych do wysyłki.
-  it('ostrzeżenie o wystawionej fakturze zostaje na karcie do odczytu', async () => {
+  // PRZ-152.G4: napis o wystawionej fakturze stoi TYLKO w trybie edycji (po „Edytuj"), tak jak pasek przy wysyłce.
+  it('napis o wystawionej fakturze: brak na karcie do odczytu, jest w edycji', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
     db.prepare("INSERT INTO faktury (zamowienie_id, numer, infakt_uuid, utworzona_at) VALUES (?, 'FV/1/2026', 'u1', '2026-07-30T10:00:00')").run(id);
-    expect((await karta(id)).body).toContain('faktury JUŻ WYSTAWIONEJ to nie zmienia');
+    expect((await karta(id)).body).not.toContain('Faktura została już wystawiona');
+    expect((await karta(id, '?edytuj=faktura')).body).toContain('Faktura została już wystawiona. Dane popraw korektą.');
   });
 });

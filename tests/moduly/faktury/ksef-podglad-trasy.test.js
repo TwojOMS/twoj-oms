@@ -95,7 +95,9 @@ describe('POST /faktury/ksef/podglad', () => {
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Poleci do KSeF — 1');
     expect(r.body).toContain('Pominięte — 1');
-    expect(r.body).toMatch(/już zlecił|juz zlecil/i);
+    // PRZ-152.G15: na ekranie krótkie zdanie zamiast długiego „Panel już zlecił… duplikatem”.
+    expect(r.body).toContain('Ten dokument już wysłano do KSeF 6.8 16:00 — sprawdź go w inFakcie.');
+    expect(r.body).not.toContain('Panel już zlecił');
     // Przycisk obiecuje DOKLADNIE tyle, ile poleci.
     expect(r.body).toMatch(/Wyślij 1 fakturę do KSeF/);
   });

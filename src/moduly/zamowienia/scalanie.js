@@ -14,6 +14,7 @@ import { zl, kwotaOczekiwanaGrosze, wysylkaBruttoGrosze } from '../../domena/sum
 import { adresKanalu } from '../../domena/kanaly.js';
 import { komunikatDlaOperatora } from '../../domena/bledy.js';
 import { ktoKlikal } from './wspolne.js';
+import { ekranOdmowyKarty } from './odmowa-karty.js';
 
 // Rzadka funkcja na „nietypowe sytuacje” (właściciel) — sufit chroni ekran przed przypadkowym
 // „zaznacz wszystkie” na 200 zamówieniach.
@@ -22,7 +23,7 @@ const SUFIT_SCALENIA = 10;
 const bezpieczneGr = (f) => { try { return f(); } catch { return null; } };
 
 export function registerScalanieRoutes(app, kontekst) {
-  const { db, config, renderujKarte } = kontekst;
+  const { db, config, renderujKarte, adresPowrotuNaKarte } = kontekst;
   const definicje = config.definicje ?? [];
 
   function wczytaj(body) {
@@ -120,12 +121,12 @@ export function registerScalanieRoutes(app, kontekst) {
   // po wystawieniu faktury. Odświeżenie powtórzy POST i dostanie odmowę „nie ma czego odłączać”.
   app.post('/zamowienia/:id/odlacz-anulowane', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
     let wynik;
     try {
       wynik = odlaczAnulowane(db, id);
     } catch (e) {
-      return reply.code(400).send(`Nie udało się odłączyć: ${komunikatDlaOperatora(e)}`);
+      return ekranOdmowyKarty(reply, `Nie udało się odłączyć: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id), 400);
     }
     const { glowne, odlaczone, fakturaGrupy } = wynik;
     const numery = odlaczone.map((d) => d.numer).join(', ');
@@ -148,12 +149,12 @@ export function registerScalanieRoutes(app, kontekst) {
   app.post('/zamowienia/:id/rozdziel', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
     const dolaczone = dolaczoneZamowienia(db, z);
     try {
       rozdzielZamowienia(db, id);
     } catch (e) {
-      return reply.code(400).send(`Nie udało się rozdzielić: ${komunikatDlaOperatora(e)}`);
+      return ekranOdmowyKarty(reply, `Nie udało się rozdzielić: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id), 400);
     }
     const numery = dolaczone.map((d) => d.numer).join(', ');
     zalogujScalenie(db, z, dolaczone, `Ręcznie (${ktoKlikal(req)}): rozdzielono scalenie, `

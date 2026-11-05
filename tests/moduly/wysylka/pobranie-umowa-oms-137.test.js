@@ -17,6 +17,10 @@ import { zapiszUmowePobrania } from '../../../src/moduly/wysylka/db/umowy-pobran
 import { powodUmowyPobrania } from '../../../src/domena/kurier-nadania.js';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 
+// Od PRZ-152.G1 błąd nadania to strona w układzie OMS — porównujemy sam komunikat z paska uwagi.
+const komunikatNadania = (html) => (html.match(/<p class="pasek-uwaga" role="alert">([\s\S]*?)<\/p>/)?.[1] ?? html)
+  .replace(/&#34;|&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+
 const __dir = dirname(fileURLToPath(import.meta.url));
 const fixture = (n) => readFileSync(join(__dir, 'fixtures', 'dpd', n), 'utf8');
 const odp = (status, tekst) => ({ status, ok: status >= 200 && status < 300, text: async () => tekst });
@@ -106,7 +110,7 @@ describe('POST karty: pobranie OMS-owe u InPostu wymaga umowy', () => {
     const r = await t.post(FORMULARZ_PACZKOMAT);
     expect(r.statusCode).toBe(400);
     expect(r.body).toContain(ODMOWA);
-    expect(r.body).not.toMatch(/DPD/);
+    expect(komunikatNadania(r.body)).not.toMatch(/DPD/);
     expect(t.fetchInpost).not.toHaveBeenCalled();
     expect(t.przesylki()).toHaveLength(0);
   });

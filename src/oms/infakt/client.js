@@ -243,7 +243,7 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
       corrected_invoice_number: dane?.corrected_invoice_number, invoice_date: dane?.invoice_date, rodzaj: 'korekta',
       ksef_number: dane?.ksef_number ?? null, ksef_status: dane?.ksef_data?.status ?? null,
       ksef_opis: typeof dane?.ksef_data?.status_description === 'string' ? dane.ksef_data.status_description.slice(0, 300) : null,
-      status: dane?.status ?? null };
+      status: dane?.status ?? null, gross_price: dane?.gross_price ?? null };
   }
 
   /**
@@ -561,6 +561,7 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
       // a nie drugi warunek dopisany na miejscu.
       status: dane?.status ?? null,
       left_to_pay: dane?.left_to_pay ?? null,
+      gross_price: dane?.gross_price ?? null,
     };
   }
 

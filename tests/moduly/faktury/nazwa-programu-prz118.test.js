@@ -13,6 +13,8 @@
 // PRZ-136.12: migawki KSeF kosztów (zdanie o tokenie: „OMS”, NIP: „ustawienia na serwerze”) zmienione świadomie.
 // PRZ-141.01: wstęp o uprawnieniu KSeF kosztów dostał klasę ust-wstep (zwykła waga) — migawka zmieniona świadomie.
 // PRZ-126.P36e: lista faktur ma filtry typ/płatność i wiersz Razem; migawkę ekranu listy zmieniono świadomie.
+// PRZ-152.G3a: wiersze Status / Status płatności karty zmienione świadomie (poza porównaniem).
+// PRZ-152.G13a: sekcja Pozycje karty przebudowana świadomie (poza porównaniem).
 // PRZ-143.09: kolumna KSeF pokazuje „brak” przy niewysłanej, a stopka listy ma kwoty pod Netto i Brutto; migawki FAKTURY zmienione świadomie.
 // Pozostałe ekrany nadal sprawdzają wynik PRZ-118.09; dostępność przycisku sprawdza wystaw-fakture-zawsze-prz126.test.js.
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
@@ -353,6 +355,10 @@ describe('PRZ-118.09 nazwa programu w tekstach i widokach', () => {
       const drukTeraz = '<li>\n              <a href="/ustawienia/druk"><span>Druk i etykiety</span></a>';
       const bezPustych = (html) => html.replace(/\n[ \t]*(?=\n)/gu, '');
       // PRZ-142.01 (zlecenie A 04.11): przesyłka ręczna nie zakłada DPD — „nie pyta kuriera”.
+      // PRZ-152.G4 (zlecenie 04.11): napisy karty zamówienia — faktura wystawiona (tylko w edycji) i komentarz.
+      const g4 = (html) => html
+        .replace(/\n[ \t]*<p class="pasek-uwaga">Treści faktury JUŻ WYSTAWIONEJ to nie zmienia[^\n]*<\/p>/gu, '')
+        .replaceAll('\n        <span class="notatka-uwaga">Nie jedzie na fakturę, na specyfikację do paczki ani do sklepu.</span>', '');
       const dpd = (html) => html.replaceAll('o nic nie pyta DPD —', 'o nic nie pyta kuriera —');
       // PRZ-151.C01 (plan D7): korekta zwrotu z panelu jest powiązana z zamówieniem zwrotu — w kolumnie powiązania
       // listy FAKTURY stoi odnośnik do zamówienia zamiast „—”. Zmiana świadoma, tylko w wierszu tej korekty.
@@ -360,12 +366,40 @@ describe('PRZ-118.09 nazwa programu w tekstach i widokach', () => {
         /(<strong>1\/KOR\/10\/2026<\/strong>[\s\S]*?<td>\s*)<span class="wiersz-szczegoly">—<\/span>/u,
         '$1<a class="link-numer" title="PC-101" href="/zamowienia/1">PC-101</a>',
       );
-      const oczekiwane = { ...migawka[k], glowna: bezPustych(k151(dpd((migawka[k].glowna.includes(csv) ? migawka[k].glowna : migawka[k].glowna.replace(pdf, `${pdf}\n            ${csv}`)).replace(p8, '').replaceAll(drukDawniej, drukTeraz)))) };
+      const oczekiwane = { ...migawka[k], glowna: bezPustych(g4(k151(dpd((migawka[k].glowna.includes(csv) ? migawka[k].glowna : migawka[k].glowna.replace(pdf, `${pdf}\n            ${csv}`)).replace(p8, '').replaceAll(drukDawniej, drukTeraz))))) };
       // PRZ-147.03 (zlecenie właściciela 04.11): sekcja „Faktura” karty ma przy zwrocie bez korekty przycisk, zdanie blokady
       // albo odnośnik do ekranu zwrotu — nowy blok, poza zakresem migawki 09.
       const k147 = /\n[ \t]*<(p|div) class="wyjasnienie" id="korekta-zwrotu-\d+">[\s\S]*?<\/\1>/gu;
-      // Kopia: oczyszczone komentarze ramy zmieniaja wyłącznie jej odcisk; status i tresc nadal porownujemy.
-      expect({ ...wynik[k], glowna: bezPustych(wynik[k].glowna.replace(k147, '')) }, `ekran „${k}”`).toEqual({ ...oczekiwane, reszta: wynik[k].reszta });
+      // PRZ-152.G10b2 (D14): treść sekcji pilnują testy tabeli dokumentów; reszta karty nadal znak w znak.
+      const g10 = (html) => html.replace(/<section class="panel" id="faktura">[\s\S]*?<\/section>/gu, '');
+      // PRZ-152.G3a (zlecenie 04.11): wiersze Status / Status płatności panelu „Szczegóły” zmienione świadomie —
+      // stan płatności z reguł D2 pilnuje stan-platnosci-karty, tu oba wiersze są poza porównaniem.
+      const g3a = (html) => html.replace(/\n[ \t]*<div><span>Status(?: płatności)?<\/span>[^\n]*<\/div>/gu, '');
+      // PRZ-152.G8 (układ karty paczki zatwierdzony 04.11): przycisk nadania i „Paczka nadana poza panelem?” stoją
+      // w jednym rzędzie `div.paczka-dalej`, bez akapitu wokół przycisku — rama zdjęta z obu stron porównania.
+      const g8 = (html) => html
+        .replace(/\n[ \t]*<div class="paczka-dalej">/gu, '')
+        .replace(/\n[ \t]*<\/div>(?=(?:\n[ \t]*)*\n[ \t]*<\/div>(?:\n[ \t]*)*\n[ \t]*<\/section>(?:\n[ \t]*)*\n[ \t]*<section class="panel" id="platnosci">)/gu, '')
+        .replace(/<p>\s*(<a class="btn btn--glowny" href="\/zamowienia\/\d+\/nadaj">[^<]*<\/a>)\s*<\/p>/gu, '$1')
+        .replace(/\n[ \t]*(<a class="btn btn--glowny" href="\/zamowienia\/\d+\/nadaj">)\s*([^<]*?)\s*<\/a>/gu, '\n$1$2</a>');
+      // PRZ-152.G9a (plan PRZ-152-G3-G9, zlecenie 04.11): sekcja „Płatności” karty przebudowana świadomie (plakietka,
+      // cztery liczby, lista ruchów) — jej treść pilnuje web-platnosci.test.js, tu cała sekcja poza porównaniem.
+      const g9a = (html) => html.replace(/<section class="panel" id="platnosci">[\s\S]*?<\/section>/gu, '<section id="platnosci"/>');
+      // PRZ-152.G12 (właściciel 05.11): ekrany zwrotu mają przycisk „← Zamówienie N” przy tytule, a „Wróć do zamówienia”
+      // stoi po lewej jako drugorzędny; tytuł strony „Zamówienie N / Zwrot” zmienia resztę strony — jej skrót poza porównaniem.
+      const g12 = (html) => html
+        .replace(/\n[ \t]*<a class="btn" href="\/zamowienia\/\d+">← Zamówienie [^<]*<\/a>/gu, '')
+        .replace(/\n[ \t]*<a class="btn btn--(?:drugi|cichy)" href="\/zamowienia\/\d+">Wróć do zamówienia<\/a>/gu, '')
+        .replace(/\n[ \t]*<span class="rozpychacz"><\/span>/gu, '');
+      // PRZ-152.G13a (właściciel 05.11: „Tabela z pozycjami na karcie zamówienia jest rozjechana i nie ma pola netto.”):
+      // sekcja „Pozycje” przebudowana świadomie (kolumna Cena netto, przewijak) — jej treść pilnują
+      // karta-pozycje-odmowy-prz152 i web-pozycje; tu cała sekcja (do następnego panelu) poza porównaniem.
+      const g13a = (html) => html.replace(/<section class="panel[^"]*" id="pozycje">[\s\S]*?(?=<section class="panel)/gu, '<section id="pozycje"/>');
+      const zwrot = k.startsWith('zwrot');
+      const norm = (html) => bezPustych(g13a(g9a(g10(g8(g3a(zwrot ? g12(html) : html))))));
+      expect({ ...wynik[k], glowna: norm(wynik[k].glowna.replace(k147, '')), ...(zwrot ? { reszta: '' } : {}) }, `ekran „${k}”`)
+        // Kopia: oczyszczone komentarze ramy zmieniaja wyłącznie jej odcisk; status i tresc nadal porownujemy.
+        .toEqual({ ...oczekiwane, glowna: norm(oczekiwane.glowna), reszta: zwrot ? '' : wynik[k].reszta });
     }
   }, 120_000);
 

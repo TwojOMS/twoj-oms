@@ -44,7 +44,6 @@ describe('miejsce dokumentu PRZ-122', () => {
     } finally { db.close(); }
   });
   const widoki = [
-    ['zamowienia/widoki/zamowienie.ejs', 'wystawiony dokument popraw KOREKTĄ'],
     ['zamowienia/widoki/zamowienie.ejs', 'Sprawdź RĘCZNIE'],
     ['zamowienia/widoki/zamowienie.ejs', 'Najpierw sprawdź'],
     ['zwroty/widoki/zwrot.ejs', 'Sprawdź sam'],

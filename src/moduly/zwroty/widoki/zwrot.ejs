@@ -5,6 +5,7 @@
 <%# rejestracji tras w server.js). %>
 
 <div class="glowa-ekranu">
+  <a class="btn" href="<%= adresKarty %>">← Zamówienie <%= z.numer %></a>
   <h1>Zwrot — zamówienie <%= z.numer %></h1>
 </div>
 
@@ -151,9 +152,8 @@
       </p>
 
       <div class="stopka-akcji">
+        <a class="btn btn--drugi" href="<%= adresKarty %>">Wróć do zamówienia</a>
         <button type="submit" class="btn btn--glowny">Dalej — sprawdź sumę</button>
-        <span class="rozpychacz"></span>
-        <a class="btn btn--cichy" href="<%= adresKarty %>">Wróć do zamówienia</a>
       </div>
     </form>
   </div>

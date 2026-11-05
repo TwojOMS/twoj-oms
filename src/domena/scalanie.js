@@ -275,6 +275,9 @@ export function zamowienieGrupy(glowne, dolaczone) {
   return {
     ...glowne,
     pozycje,
+    // PRZ-152.G2 — usunięte członków są już odjęte w `kwotaGrupyGrosze` (przez kwotę oczekiwaną
+    // każdego członka). Przeniesione z `...glowne` odjęłyby się w kwocie grupy DRUGI RAZ.
+    pozycje_usuniete: [],
     pozycje_reczne_json: null,
     koszt_dostawy_brutto_sklep: wysylkaGr ? zl(wysylkaGr) : null,
     koszt_dostawy_netto_sklep: null,

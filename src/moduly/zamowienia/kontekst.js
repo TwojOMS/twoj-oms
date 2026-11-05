@@ -1,4 +1,5 @@
 import { gusDostepny } from '../../domena/konfiguracja-gus.js';
+import { ekranOdmowyKarty } from './odmowa-karty.js';
 import { TYLKO_ODCZYT } from '../../domena/woo-uprawnienia.js';
 import { wystawienieFaktury } from '../../domena/wystawienie-faktury.js';
 import { maDostepDoAdresu } from '../../domena/ekrany.js';
@@ -26,7 +27,6 @@ import { etykietaWysylki, czyKanalAllegro } from '../../domena/wysylka.js';
 import { bezpiecznyPowrotNaListe } from '../../domena/filtry-listy.js';
 import { adresKartyZamowienia, adresPowrotuDoWiersza } from '../../domena/adres-karty-zamowienia.js';
 import { METODY_WPLATY_RECZNEJ } from '../../domena/metody-platnosci.js';
-import { linkDoSledzenia } from '../../domena/tracking.js';
 import { powiazaniaDosylki } from '../../domena/dosylka.js';
 import { wczytajAutomatKsef } from '../faktury/db/ksef-automat.js';
 import { regulyDoOstrzezen } from '../automatyzacje/db/reguly.js';
@@ -36,12 +36,13 @@ import { odrzucenia, lukiKsef, poTerminie, zwrotyBezKorekty, pobraniaBezGotowki,
 import { wysylkaKsef as rezerwacjaKsef } from '../faktury/db/wysylki-ksef.js';
 import { createWysylkaKsef } from '../faktury/services/wysylka-ksef.js';
 import { zProgramu } from '../../integracje/program-fakturowy.ts';
-import { wysylkaZKarty, POWOD_KOREKTA, POWOD_KOREKTA_CZEKA } from '../../domena/wysylka-ksef.js';
+import { wysylkaZKarty, zdanieJuzWyslano, POWOD_KOREKTA, POWOD_KOREKTA_CZEKA } from '../../domena/wysylka-ksef.js';
 import { czyWysylacKonsumenckie } from '../faktury/db/ksef-konsumenckie.js';
 import { czyFakturaDlaKazdego } from '../faktury/db/faktury-dla-kazdego.js';
 import { listaWatkow } from '../../oms/db/allegro-watki.js';
 import { adresKanalu, rodzajKanalu } from '../../domena/kanaly.js';
-import { przewoznikWiersza } from '../../domena/przewoznik-przesylki.js';
+import { przewoznikWiersza, linkSledzeniaPaczki } from '../../domena/przewoznik-przesylki.js';
+import { kartaPaczki } from '../../domena/karta-paczki.js';
 import { klientListy } from '../../domena/klient-listy.js';
 import { ikonaPlatnosci, ikonaPrzesylki, ikonaChceFaktury, ikonaFaktury, odznakaSyncStatusu } from '../../domena/lista-ikony.js';
 import { wiekZamowienia, czyEkspres, terminNaKarcie } from '../../domena/wiek-zamowienia.js';
@@ -72,7 +73,10 @@ import { RABAT_MAX } from '../../domena/rabat.js';
 import { wszyscyKlienci, klientPoNip } from '../../oms/db/klienci.js';
 import { rabatKontraktowy } from './services/rabat.js';
 import { saldoWplat, platnoscPrzyOdbiorze, domyslnaKwotaWplaty } from '../../domena/platnosci.js';
-import { dzienWarszawa } from '../../domena/format-daty.js';
+import { stanPlatnosciKarty, ruchyPlatnosci } from '../../domena/stan-platnosci-karty.js';
+import { dzienWarszawa, fmtDzienKrotko } from '../../domena/format-daty.js';
+import { groszeZInfaktu } from '../../domena/paczka-dla-biura.js';
+import { zl, zlotowki } from '../../domena/kwoty.js';
 import { zakresDatyWysylki } from '../../domena/termin-wysylki.js';
 import { proponowanaDataSprzedazy } from '../../domena/data-sprzedazy.js';
 import { stawkiDlaProgramu, opcjeZwProgramu } from '../../domena/vat.js';
@@ -138,6 +142,8 @@ const {
   // PRZ-126.C05a: `stanDrukuFaktur()` — komputery z drukarką faktur (usługa `faktury.stanDrukuFaktur`); `null` = bez blokady „Drukuj”.
   stanDrukuFaktur = null,
 }=opcje;
+// PRZ-152.G10b1: grosze dokumentu → „449,00 zł”; brak kwoty → `null` (widok pokaże „—”).
+const kwotaDokumentu = (gr) => (gr === null || gr === undefined ? null : zlotowki(zl(gr)));
 // PRZ-126.C05a: błąd odczytu stanu drukarki nie może położyć karty ani zablokować „Drukuj” — wtedy `null`.
 const drukarkaFaktur = () => {
   if (!stanDrukuFaktur) return null;
@@ -483,7 +489,8 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
   const paczki = z.przesylki.map((p) => ({
     p,
     stan: stanPrzesylki(p),
-    link: linkDoSledzenia(p.kurier, p.numer_listu),
+    // PRZ-152.G7: ta sama funkcja co zakladka Przesylki i mail — paczka WzA jadaca DPD ma link DPD.
+    link: linkSledzeniaPaczki(p, z),
     // Przycisk „zalatwione recznie" ma sie pokazywac WYLACZNIE wtedy, gdy jest co zdjac
     // — inaczej kusilby operatora akcja, ktora i tak odbije sie od 400.
     mozliwaSprawa: sprawyDoZalatwieniaRecznie(p).length > 0,
@@ -500,6 +507,10 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // automat" stoi przy `mozliweUkrycie` (domain/przesylka-stan.js).
     mozliweUkrycie: mozliweUkrycie(p, z.przesylki),
     ukryta: przesylkaUkryta(p),
+  })).map((poz) => ({
+    ...poz,
+    // PRZ-152.G8: napisy nowego układu karty paczki (plakietka, jeden status, zdarzenie, „Do:”, stopka).
+    karta: kartaPaczki({ p: poz.p, z, stan: poz.stan, kol: poz.ostatniaPozycjaKolejki }),
   }));
 
   // Zadanie B: karta jest domyslnie TYLKO DO ODCZYTU — formularz danych klienta pojawia
@@ -531,11 +542,17 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
   const edytujPozycje = edytujParam?.startsWith('pozycja-') ? edytujParam.slice('pozycja-'.length) : null;
   // Czwarty rodzaj edycji (przebudowa karty 2026-07-31): CALY panel pozycji naraz.
   // Ten sam parametr, wiec z definicji nie otwiera sie razem z zadnym innym trybem.
-  const edytujWszystkiePozycje = edytujParam === 'pozycje';
+  const edytujWszystkiePozycje = edytujParam === 'pozycje' || bladDanych?.sekcja === 'pozycje';
   // Sekcja „Szczegoly" (status + metoda wysylki) — do tej pory oba formularze staly
   // rozwiniete na karcie; teraz chowaja sie za „Edytuj" tak samo, jak reszta.
   const edytujSzczegoly = edytujParam === 'szczegoly';
   const edytujWplata = edytujParam === 'wplata';
+  const bladWplaty = dodatki.bladWplaty ?? null;
+  const wplataOtwarta = edytujWplata || Boolean(bladWplaty);
+  // Po odmowie tylko cztery pola formularza, jako napisy; pusty wpis nie wraca do domyślnej kwoty.
+  const wartosciWplaty = bladWplaty
+    ? Object.fromEntries(['kwota', 'data', 'metoda', 'uwaga'].map((p) => [p, String(bladWplaty.wartosci?.[p] ?? '')]))
+    : null;
 
   // HISTORIA ZMIAN (PRZ-094.18) — sekcja na samym dole karty, DOMYSLNIE ZWINIETA.
   // ⚠️⚠️ ZWINIETA = ZERO ZAPYTAN DO `log`. Tabela nie ma indeksu po `zamowienie_id`, wiec
@@ -577,6 +594,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     terminZamowienia: z.termin_platnosci,
   });
   const okresZamowienia = z.okres_rozliczeniowy_id ? pobierzOkres(db, z.okres_rozliczeniowy_id) : null;
+  const stan = stanPlatnosciKarty(platnosci.doSalda, { zwroty: z.zwroty, wOkresie: Boolean(okresZamowienia) });
   // PRZ-122.B20e: wejście do ekranu faktury programu wbudowanego — stan (otwarta / co zamknęło) z ADAPTERA
   // (`stanDokumentu`), bez SQL modułu faktur tutaj. inFakt tej metody nie ma → `null`, karta jak dotąd.
   // Dokument innego programu niż bieżący → `null`. Prawo (`mozeAdres`) sprawdza widok.
@@ -597,6 +615,10 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
   // PRZ-151.C04: jeden odczyt korekty programu zewnętrznego na zwrot.
   // Numer korekty i rezerwacja mają pierwszeństwo przed blokadą pierwotnej.
   const ksefKorektKarty = {};
+  // PRZ-152.G10b1 (D6): kwota korekty z dokumentu programu zewnętrznego (`gross_price` korekty — ta sama reguła co kolumna
+  // Brutto listy FAKTURY). TwojeFaktury trzymają w `brutto_gr` korekty stan PO korekcie, a lista pokazuje różnicę
+  // (domena/twojefaktury/wiersz-listy.js), więc korekta TF zostaje bez kwoty („—”).
+  const kwotyKorekt = {};
   // Zachowujemy też rozpoznanie wbudowanego programu ze starszych, niepełnych obiektów `infakt`.
   if (programKarty?.opis?.wbudowany !== true && programFaktur?.opis?.wbudowany !== true) {
     const zdolnosci = programKarty?.opis?.zdolnosci ?? [];
@@ -606,6 +628,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
       try {
         const k = await programKarty.pobierzKorekte(w.korekta_uuid);
         if (!k) throw new Error('Brak korekty');
+        kwotyKorekt[w.id] = kwotaDokumentu(groszeZInfaktu(k.gross_price));
         const stan = wysylkaZKarty({
           rodzaj: 'korekta', program: programKarty, uuid: w.korekta_uuid,
           ksefNumer: k.ksef_number,
@@ -632,6 +655,21 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
   if (typeof programFaktur?.pobierzFakture === 'function' && czyDokumentProgramu(z.faktura, programFaktur)
     && (z.zwroty ?? []).some(zwrotWymagaPozycjiDostawy)) {
     fakturaKorekty = await podgladFakturyZTerminem(programFaktur, idDokumentu(z.faktura));
+  }
+  // PRZ-152.G10b1 (D6): kwota faktury zawsze z dokumentu, nigdy z zamówienia. Program wbudowany — `bruttoGr` ze stanu
+  // dokumentu (odczytany wyżej). Program zewnętrzny — `gross_price` przez `groszeZInfaktu` (ta sama reguła co kolumna
+  // Brutto listy FAKTURY): najwyżej JEDEN odczyt na kartę — gdy dokument czytał już podgląd korekty wyżej, bierzemy go.
+  // Odczyt przez `podgladFakturyZTerminem` (PRZ-148.03): błąd albo odpowiedź po terminie (2,5 s) → kwota `null` („—”),
+  // karta się nie wstrzymuje.
+  let kwotaFakturyGr = null;
+  if (fakturaWbudowana) kwotaFakturyGr = fakturaWbudowana.bruttoGr ?? null;
+  else if (programFaktur?.opis?.wbudowany !== true && typeof programFaktur?.pobierzFakture === 'function'
+    && czyDokumentProgramu(z.faktura, programFaktur)) {
+    let dokument = fakturaKorekty;
+    if (!(z.zwroty ?? []).some(zwrotWymagaPozycjiDostawy)) {
+      dokument = await podgladFakturyZTerminem(programFaktur, idDokumentu(z.faktura));
+    }
+    kwotaFakturyGr = groszeZInfaktu(dokument?.gross_price);
   }
   // PRZ-122.B07f: firma zwolniona z VAT — numer UE nabywcy to nie WDT (ceny, stawki i podsumowanie jak u krajowego).
   const zwolniona = zwolnionaFirma();
@@ -690,7 +728,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // Liczy sie tylko NAJNOWSZY wiersz kolejki — starsze sa historia po powtorkach.
     drukFaktury: z.faktura ? ostatniaPozycjaDlaFaktury(db, z.faktura.id) : null,
     // PRZ-126.C05a: `{ podlaczone, stanowiska }` albo `null` (brak usługi, błąd) — wtedy „Drukuj” jak dziś, bez blokady.
-    drukarkaFaktur: z.faktura ? drukarkaFaktur() : null,
+    drukarkaFaktur: z.faktura || listaProform.length ? drukarkaFaktur() : null,
     z, status: wyliczStatus(z), etykiety: etykietyStatusow(db), mozliwaFaktura: Boolean(faktura),
     wystawienieFaktury: z.faktura ? null : wystawienieFaktury(z, {
       mozliwaFaktura: Boolean(faktura), mozeAdres: maDostepDoAdresu(req.konto ?? null, `/zamowienia/${z.id}/faktura`),
@@ -735,6 +773,11 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     mozliwaProforma: Boolean(proforma),
     proformy: listaProform,
     proformaAktualnaId: proformaAktualna?.id ?? null,
+    // PRZ-152.G10b1 (D1, D6, D7): dane sekcji „Faktura” — kwoty z dokumentów (napis albo `null`), krótka data.
+    // PRZ-152.G10p: bez „rozliczona fakturą” przy proformie (właściciel 05.11: „po prostu jest proforma”).
+    kwotaFaktury: kwotaDokumentu(kwotaFakturyGr),
+    kwotyKorekt,
+    fmtDzien: fmtDzienKrotko, // `zlotowki` widok ma z defaultContext (core/web/pipeline.js)
     // `{ wolno, powod }` — gdy `wolno` jest falszywe, widok ma pokazac POWOD, nie sam
     // brak przycisku (brief zadania 7). Za pobraniem `wolno` jest PRAWDZIWE: to jest
     // OSTRZEZENIE, nie blokada, wiec siedzi osobno, nizej.
@@ -823,6 +866,15 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
         dzienWystawienia: dzienWystawieniaLuki(db, uuid) ?? (z.faktura.utworzona_at ? dzienWarszawa(z.faktura.utworzona_at) : null),
       });
     })(),
+    // PRZ-152.G15: pasek po 303 z trasy wysyłki (drugie zgłoszenie dokumentu, którego wysyłkę panel już zlecił) —
+    // tylko dla faktury albo korekty TEJ karty, która ma wiersz rezerwacji; obcy uuid w adresie = bez paska.
+    odmowaKsef: (() => {
+      const uuid = typeof req.query?.juz_w_ksef === 'string' ? req.query.juz_w_ksef : '';
+      const swoje = [idDokumentu(z.faktura), ...(z.zwroty || []).map((w) => w.korekta_uuid)].filter(Boolean);
+      if (!uuid || !swoje.includes(uuid)) return null;
+      const wiersz = rezerwacjaKsef(db, uuid);
+      return wiersz?.zlecona_at ? zdanieJuzWyslano(wiersz.zlecona_at, programFaktur) : null;
+    })(),
     powodKorektyKsef: programFaktur?.opis?.wbudowany === true ? POWOD_KOREKTA_CZEKA : POWOD_KOREKTA, // C09: TwojeFaktury wysyła korekty
     korektyBezCzekania,
     ksefKorektKarty,
@@ -853,8 +905,14 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // PRZ-105: stawka każdej pozycji i podsumowanie netto/VAT/brutto — domyślna z Ustawień, ta sama co faktura.
     pozycjeKarty: wierszePozycji(edytujWszystkiePozycje ? z : zKartyZGrupa(z), { stawkaDomyslna: czytajStawkeDomyslna(db, opcjeZw), ...opcjeZw, zwolniona }).map((w) => {
       const odnosnik = odnosnikPozycji(z, w, { baseUrl: config.sklepy?.[z.sklep]?.baseUrl ?? null });
-      return { ...w, linkProduktu: odnosnik?.adres ?? null, linkProduktuTytul: odnosnik?.tytul ?? null };
+      // cenaNetto pochodzi z nettoWiersza — formularz i plan zapisu porównują tę samą wartość.
+      return { ...w, wartoscNetto: w.cenaNetto, linkProduktu: odnosnik?.adres ?? null, linkProduktuTytul: odnosnik?.tytul ?? null };
     }),
+    pozycjeUsunieteKarty: (z.pozycje_usuniete ?? []).map((p) => ({
+      klucz: p.klucz, nazwa: p.nazwa, ilosc: p.ilosc,
+      cenaBrutto: p.cena_brutto, suma: p.brutto_linii,
+    })),
+    opcjeZw,
     podsumowaniePozycji: podsumowaniePozycji(edytujWszystkiePozycje ? z : zKartyZGrupa(z)),
     podsumowanieVat: podsumowanieVatKarty(edytujWszystkiePozycje ? z : zKartyZGrupa(z), { stawkaDomyslna: czytajStawkeDomyslna(db, opcjeZw), regula: regulaVat, ...opcjeZw, zwolniona }),
     // Sekcja „Platnosci": suma wplat wobec kwoty zamowienia. Widok NIE liczy tego sam —
@@ -862,7 +920,13 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // calkowitych w groszach, TA SAMA funkcja co bariera arytmetyczna faktury.
     // PRZ-101.11: przy zamówieniu scalonym — saldo grupy i wpłaty wszystkich jej zamówień.
     saldoWplat: saldoWplat(platnosci.doSalda),
+    // PRZ-152.G3a: plakietka „Status płatności” — stan liczy domena (pobranie do rozliczenia
+    // przez kuriera, zwroty z oddanymi pieniędzmi, okres rozliczeniowy); widok drukuje klasę i napis.
+    stanPlatnosciKarty: stan,
+    ruchyPlatnosci: ruchyPlatnosci({ wplaty: platnosci.wplaty, zwroty: z.zwroty, pominieteWplaty: stan.pominieteWplaty, teraz: new Date() }),
+    zl,
     wplatyKarty: platnosci.wplaty,
+    bladWplaty, wplataOtwarta, wartosciWplaty,
     // ⚠️ WARTOSCI DOMYSLNE FORMULARZA WPLATY liczy DOMENA, nie widok — kwota to BRAKUJACA
     // reszta (ta sama funkcja, ktora drukuje pasek salda), a „dzis" to dzien WARSZAWSKI.
     // Kontener chodzi z TZ=UTC, wiec gole `new Date()` miedzy polnoca a druga w nocy
@@ -1097,12 +1161,12 @@ function pozycjaZadania(req, reply) {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
     if (!z) {
-      reply.code(404).send('Nie ma takiego zamówienia');
+      ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id, { kotwica: 'pozycje' }), 404);
       return null;
     }
-    const p = z.pozycje.find((w) => w.klucz === req.params.klucz);
+    const p = [...z.pozycje, ...(z.pozycje_usuniete ?? [])].find((w) => w.klucz === req.params.klucz);
     if (!p) {
-      reply.code(404).send('To zamówienie nie ma takiej pozycji — odśwież kartę.');
+      ekranOdmowyKarty(reply, 'To zamówienie nie ma takiej pozycji — odśwież kartę.', adresPowrotuNaKarte(req, id, { kotwica: 'pozycje' }), 404);
       return null;
     }
     return { id, z, p };

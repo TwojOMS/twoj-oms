@@ -71,10 +71,13 @@ describe('komunikaty faktur C01', () => {
   ])('brak dokumentu do druku używa odmiany programu %j', async (nazwa, wbudowany) => {
     const db = openOmsDb(':memory:');
     const app = Fastify();
+    // PRZ-152.G13f2: odmowa druku idzie przez stronaOdmowy (reply.view); goły Fastify bez szablonów —
+    // atrapa oddaje sam komunikat, żeby sprawdzić odmianę znak w znak (strona: odmowy-g13-f2.test.js).
+    app.decorateReply('view', function (_szablon, dane) { return this.send(dane.komunikat); });
     sprzatanie.push(() => db.close(), () => app.close());
     const program = programTestowy({ nazwa });
     program.opis = { ...program.opis, wbudowany };
-    registerDrukFakturRoutes(app, { db, infakt: program });
+    registerDrukFakturRoutes(app, { db, config: { definicje: [] }, infakt: program });
     const id = zapiszZamowienie(db, 'demo', { zrodlo_id: 'c01', numer: '1', klient: {}, dostawa: {},
       metoda_wysylki: 'osobisty', kwota_pobrania: null, chce_fakture: 1, nip: null,
       kwota_brutto: '123.00', status_woo: 'processing', oplacone_at: null, anulowane: 0 }, {});

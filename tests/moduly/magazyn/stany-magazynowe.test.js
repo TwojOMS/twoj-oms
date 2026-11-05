@@ -140,6 +140,24 @@ describe('rozchód z zamówień — od razu, wyliczany', () => {
     expect(stan(karta)).toBe(7);
   });
 
+  // PRZ-152.G2-01 — usunięta pozycja sklepowa nie zdejmuje towaru; przywrócenie znów zdejmuje.
+  it('usunięta pozycja sklepowa oddaje towar, przywrócona znów zdejmuje', () => {
+    const id = zamowienie('sklep', [{ produkt_id: 10, ilosc: 2 }, { produkt_id: 10, ilosc: 1 }]);
+    expect(stan(karta)).toBe(7);
+    zapiszNadpisaniaPozycji(db, id, { s1000: { usunieta: true } });
+    expect(stan(karta)).toBe(9);
+    zapiszNadpisaniaPozycji(db, id, null);
+    expect(stan(karta)).toBe(7);
+  });
+
+  it('ponowny odczyt zamówienia ze sklepu nie wskrzesza usuniętej pozycji', () => {
+    const id = zamowienie('sklep', [{ produkt_id: 10, ilosc: 2 }]);
+    zapiszNadpisaniaPozycji(db, id, { s1000: { usunieta: true } });
+    numer -= 1;
+    expect(zamowienie('sklep', [{ produkt_id: 10, ilosc: 2 }])).toBe(id);
+    expect(stan(karta)).toBe(10);
+  });
+
   it('wariant Woo trafia w swoją kartę; produkt wariantowy bez wariantu — pozycja bez karty, stan nietknięty', () => {
     zamowienie('sklep', [{ produkt_id: 20, wariant_id: '202', ilosc: 2 }, { produkt_id: 20, wariant_id: '201', ilosc: 1 }]);
     zamowienie('sklep', [{ produkt_id: 20, ilosc: 5, nazwa: 'Kinkiet bez wariantu' }]);

@@ -17,6 +17,7 @@ import { podsumowanieHistorii } from '../../../domena/historia-klienta.js';
 import { wyliczStatus } from '../../../domena/status.js';
 import { zl } from '../../../domena/kwoty.js';
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
 
 // EKRAN STAŁYCH KLIENTÓW (21.08.2026).
 //
@@ -77,6 +78,10 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
   };
 
   // `?nowy` otwiera pusty formularz. Sam `/klienci` oddaje WYŁĄCZNIE listę.
+  // PRZ-152.G13: odmowa „nie ma takiego klienta” w układzie OMS (status i tekst bez zmian); powrót na listę klientów.
+  const brakKlienta = (reply) => stronaOdmowy(reply, 404, 'Nie ma takiego klienta', {
+    tytul: 'Nie ma takiego klienta', napisWroc: 'Wróć do klientów', wroc: '/klienci',
+  });
   app.get('/klienci', async (req, reply) => renderuj(reply, { otwarty: req.query?.nowy !== undefined }));
 
   // ——— KARTA KLIENTA (21.08.2026, prośba właściciela: „kliknięcie w nazwę klienta otwiera
@@ -87,7 +92,7 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
   // co w bazie już jest, plus historię, której formularz nie ma skąd znać.
   app.get('/klienci/:id', async (req, reply) => {
     const klient = klientPoId(db, req.params.id);
-    if (!klient) return reply.code(404).send('Nie ma takiego klienta');
+    if (!klient) return brakKlienta(reply);
     // ⚠️ HISTORIA PO NIP-IE — powód i konsekwencje stoją przy `zamowieniaPoNip`
     // (db/zamowienia.js). Klient BEZ NIP-u dostaje pustą listę i zdanie, dlaczego:
     // milcząca pustka czytałaby się jak „nic nie zamawiał".
@@ -118,7 +123,7 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
   // od razu otwierać formularz nad wszystkim.
   app.get('/klienci/:id/edytuj', async (req, reply) => {
     const klient = klientPoId(db, req.params.id);
-    if (!klient) return reply.code(404).send('Nie ma takiego klienta');
+    if (!klient) return brakKlienta(reply);
     return renderuj(reply, { edytowany: klient, formularz: polaZKlienta(klient), otwarty: true });
   });
 
@@ -199,7 +204,7 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
   app.post('/klienci', async (req, reply) => {
     const id = String(req.body?.id ?? '').trim();
     const edytowany = klientZFormularza(req.body ?? {});
-    if (id && !edytowany) return reply.code(404).send('Nie ma takiego klienta');
+    if (id && !edytowany) return brakKlienta(reply);
 
     let dane;
     try {

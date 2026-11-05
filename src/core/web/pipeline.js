@@ -27,6 +27,7 @@ import { maDostepDoAdresu, tytulEkranuDlaAdresu } from '../../domena/ekrany.js';
 import { fmtDataCzas, fmtDataCzasKrotko, fmtKiedy } from '../../domena/format-daty.js';
 import { etapPrzesylki, etykietaEtapu, dniKalendarzowe } from '../../domena/etap-przesylki.js';
 import { etykietaWysylki, nazwaDostawy } from '../../domena/wysylka.js';
+import { zlotowki } from '../../domena/kwoty.js';
 import { klasaStatusu, modyfikatorStatusu } from './klasa-statusu.js';
 // Liczniki statusów zamówień do bocznego menu na ekranach, które nie niosą własnego `panelStatusow`
 // (Przesyłki, Faktury…). Z TEGO SAMEGO indeksu co lista (PRZ-051), więc liczby się zgadzają.
@@ -165,6 +166,7 @@ options: { views: katalogiWidokow() },
       etykietaStatusu: klucz => klucz,
       etapPrzesylki, etykietaEtapu, dniKalendarzowe,
       etykietaWysylki,
+      zlotowki,
       // Pelna nazwa uslugi (Allegro) z odwrotem na etykiete kubelka — patrz domain/wysylka.js.
       nazwaDostawy,
       // ⚠️ htmx WYLACZONY DOMYSLNIE i wlaczany po jednym ekranie (`htmx: true` z trasy).

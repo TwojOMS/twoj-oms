@@ -15,11 +15,14 @@ const powody = {
   okres: 'Zamówienie rozlicza się fakturą zbiorczą — otwórz <a href="/okresy/1">okres październik 2026</a>, aby wystawić fakturę za cały okres.',
   program: 'inFakt nie jest skonfigurowany — administrator może skonfigurować program w <a href="/ustawienia/integracje/infakt">Ustawienia → Integracje → inFakt</a>.',
   rola: 'Twoje konto nie ma prawa wystawiać faktur — poproś administratora o dostęp do wystawiania faktur.',
-  prosba: 'Klient nie prosił o fakturę. Administrator może to włączyć w Ustawienia → Faktury („faktura także bez prośby klienta”).',
+  // PRZ-152.G10e: „Ustawienia → Faktury” jest odnośnikiem dla konta z prawem do ekranu ustawień (tekst bez zmian).
+  prosba: 'Klient nie prosił o fakturę. Administrator może to włączyć w <a href="/ustawienia/faktury/zasady">Ustawienia → Faktury</a> („faktura także bez prośby klienta”).',
 };
+const PROSBA_BEZ_LINKU = 'Klient nie prosił o fakturę. Administrator może to włączyć w Ustawienia → Faktury („faktura także bez prośby klienta”).';
 async function panel(o = {}) {
   const db = openOmsDb(':memory:');
   if (o.rola) zalozKonto(db, { login: 'pakowacz-test', imie: 'Pakowacz', haslo: 'fixture', rola: 'produkcja', ekrany: ['zamowienia'] });
+  if (o.sprzedaz) zalozKonto(db, { login: 'sprzedawca-test', imie: 'Sprzedawca', haslo: 'fixture', rola: 'sprzedaz' });
   const infakt = { znajdzKlientaPoNip: vi.fn().mockResolvedValue(null), zalozKlienta: vi.fn().mockResolvedValue(555),
     wystaw: vi.fn().mockResolvedValue({ uuid: 'fixture-p1', numer: 'FV/P1', ksefStatus: null }) };
   const app = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'fixture' } },
@@ -44,6 +47,7 @@ async function panel(o = {}) {
   if (o.rola) {
     h = { ...jako(db, 'pakowacz-test'), origin: headers.origin };
   }
+  if (o.sprzedaz) h = { ...jako(db, 'sprzedawca-test'), origin: headers.origin };
   const get = () => app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: h });
   const post = () => app.inject({ method: 'POST', url: `/zamowienia/${id}/faktura`, headers: h });
   return { db, app, id, infakt, get, post };
@@ -62,7 +66,8 @@ it.each([
   const r = await p.get();
   expect(r.statusCode, r.body.slice(0, 300)).toBe(200);
   expect(przycisk(r.body)).toContain('disabled');
-  expect(przycisk(r.body)).toContain('background: var(--powierzchnia-2); color: var(--tekst-przygaszony)');
+  // PRZ-152.G10e: wygląd nieaktywnego przycisku z `.btn:disabled` (layout-oms.ejs), bez stylu w linii.
+  expect(przycisk(r.body)).not.toContain('style=');
   expect(przycisk(r.body)).toContain('aria-describedby="powod-wystawienia-faktury"');
   expect(tekst(r.body)).toContain(`<p class="wyjasnienie" id="powod-wystawienia-faktury">${powody[powod]}</p>`);
   expect(tekst(r.body).split(powody[powod])).toHaveLength(2);
@@ -109,6 +114,13 @@ it('istniejąca faktura: brak przycisku i zdania', async () => {
   expect(r.statusCode).toBe(200);
   expect(przycisk(r.body)).toBeUndefined();
   expect(r.body).not.toContain('id="powod-wystawienia-faktury"');
+});
+it('PRZ-152.G10e: konto bez prawa do Ustawień widzi ten sam tekst powodu, bez odnośnika', async () => {
+  const r = await (await panel({ prosba: false, sprzedaz: true, klient: { first_name: '', last_name: '' } })).get();
+  expect(r.statusCode, r.body.slice(0, 300)).toBe(200);
+  expect(przycisk(r.body)).toContain('disabled');
+  expect(tekst(r.body)).toContain(`<p class="wyjasnienie" id="powod-wystawienia-faktury">${PROSBA_BEZ_LINKU}</p>`);
+  expect(r.body).not.toContain('href="/ustawienia/faktury/zasady"');
 });
 it('TwojeFaktury: brak prośby wyjaśnia kolejność ustawień KSeF', async () => {
   const r = await (await panel({ prosba: false, programOpis: { opis: { id: 'twojefaktury', wbudowany: true,

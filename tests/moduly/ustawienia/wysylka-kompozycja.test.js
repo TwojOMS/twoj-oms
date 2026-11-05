@@ -17,7 +17,8 @@ it('rzeczywisty ekran wysyłki czyta paczkę z DB i jego zapis zmienia tę samą
     const html=await a.app.inject({url:r.headers.location,headers});
     expect(html.statusCode,html.body).toBe(200);
     expect(html.body).toContain('Zapisano domyślną paczkę.');
-    expect(html.body).toContain('name="waga" value="2"');
+    // PRZ-152.G11a: wiersz szablonu pokazuje wagę tekstem; pola są dopiero po „Edytuj”.
+    expect(html.body).toContain('<td class="ust-liczba">2 kg</td>');
     expect(html.body).toContain('action="/wyloguj"');
     const bledna=await a.app.inject({method:'POST',url:'/ustawienia/paczka',headers,
       payload:{waga:'-1',dlugosc:'30',szerokosc:'20',wysokosc:'10'}});

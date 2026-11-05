@@ -4,7 +4,7 @@ import { anulowaneEfektywnie } from './status-reczny.js';
 import { dzienWarszawa } from './format-daty.js';
 import { grosze } from './kwoty.js';
 import { kwotaOczekiwanaGrosze } from './suma-pozycji.js';
-import { nalozNadpisaniaPozycji } from './pozycje-reczne.js';
+import { nalozNadpisaniaPozycji, pozycjeUsuniete } from './pozycje-reczne.js';
 import { porcjeZamowienWOkresie, pierwszeDniSklepow, zamowieniaSklepuDoDnia } from '../oms/db/okno-zamowien.js';
 import { setImmediate } from 'node:timers/promises';
 
@@ -134,8 +134,11 @@ function* wierszeSprzedazy(db, { od, do: doDnia }, reguly) {
       // znalezione w bazie to zamówienia WŁASNE, które i tak nie
       // wchodzą do raportu (`czyTestowe`). Ale dokładka wraca przy każdej następnej dopłacie
       // do zamówienia sklepowego, więc liczy się reguła, nie dzisiejsze 225 zł.
-      const pozycje = nalozNadpisaniaPozycji(pozycjeSurowe(db, w.id), w.pozycje_reczne_json);
-      const bruttoGrosze = kwotaOczekiwanaGrosze({ ...w, pozycje });
+      const surowe = pozycjeSurowe(db, w.id);
+      const pozycje = nalozNadpisaniaPozycji(surowe, w.pozycje_reczne_json);
+      // PRZ-152.G2 — usunięta pozycja znika z faktury, więc i z raportu (ta sama kwota oczekiwana).
+      const pozycje_usuniete = pozycjeUsuniete(surowe, w.pozycje_reczne_json);
+      const bruttoGrosze = kwotaOczekiwanaGrosze({ ...w, pozycje, pozycje_usuniete });
       yield {
         zrodlo: 'oms', id: w.id, numer: w.numer, dzien, kanal, bruttoGrosze,
         nettoGrosze: nettoZamowieniaGrosze(bruttoGrosze, klient.email, reguly.klienciWdt),

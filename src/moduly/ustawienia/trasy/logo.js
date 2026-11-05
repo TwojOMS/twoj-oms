@@ -1,9 +1,11 @@
 import multipart from '@fastify/multipart';
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { MAKS_LOGO, czyPng } from '../../../core/web/logo-instalacji.js';
 import { zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji } from '../../../oms/db/konfiguracja-integracji.js';
 
 const ADRES = '/ustawienia/firma/logo';
-const odmowa = (reply, kod, tresc) => reply.code(kod).type('text/plain; charset=utf-8').send(tresc);
+const odmowa = (reply, kod, tresc) => stronaOdmowy(reply, kod, tresc,
+  { tytul: 'Nie zapisano logo', wroc: '/ustawienia/firma#logo', napisWroc: 'Wróć do ustawień firmy' });
 function sprawdzDostep(req, reply, znak) {
   if (req.konto?.admin !== true) return odmowa(reply, 403, 'Logo zmienia tylko administrator. Formularz niczego nie zapisał.');
   if (znak.wPliku) return odmowa(reply, 409, 'Logo ustawione w pliku konfiguracji (OMS_LOGO_PLIK w oms.env) — tam je zmień. Formularz niczego nie zapisał.');

@@ -4,6 +4,7 @@
 // zatrzymuje na każdym POST-cie (core/bezpieczenstwo/podglad-demo.js) — tu tych blokad nie powtarzamy.
 // ⚠️ Token ShipX nie wraca na ekran nigdy — także po błędzie formularza (pole tokenu zawsze puste).
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { sprawdzFormularzInpost, ADRES_INPOST } from '../../../domena/konfiguracja-inpost.js';
 import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji, stanDlaEkranu }
   from '../../../oms/db/konfiguracja-integracji.js';
@@ -38,8 +39,9 @@ export function registerUstawieniaInpostRoutes(app, { db, kurierInpost }) {
       pobranie: umowaPobrania(db),
     });
   }
-  const zEnv = (reply) => reply.code(409).type('text/plain; charset=utf-8')
-    .send('Kurier InPost jest ustawiony w pliku konfiguracji (oms.env) — tam go zmień. Formularz niczego nie zapisał.');
+  // PRZ-152.G13: strona OMS z powrotem na ekran InPost; tekst stały — token z pliku konfiguracji nie trafia na stronę.
+  const zEnv = (reply) => stronaOdmowy(reply, 409, 'Kurier InPost jest ustawiony w pliku konfiguracji (oms.env) — tam go zmień. Formularz niczego nie zapisał.',
+    { tytul: 'Kurier InPost jest ustawiony w pliku konfiguracji', wroc: ADRES, napisWroc: 'Wróć do ustawień InPost' });
 
   app.get(ADRES, async (req, reply) => widok(req, reply));
 

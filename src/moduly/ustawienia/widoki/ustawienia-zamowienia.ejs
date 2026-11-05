@@ -1,53 +1,131 @@
+<% const dostawa = nawigacja?.kontekst?.aktywnaZakladka === 'dostawa'; %>
+<% if (!dostawa) { %>
+<%# PRZ-152.G11a: jeden tytuł; „+ Dodaj szablon” i „Edytuj” działają bez JS (?dodaj=1, ?edytuj=<id>). %>
+<div class="ust-naglowek-szablonow"><h1><%= title %></h1><a class="ust-przycisk" href="/ustawienia/zamowienia-i-wysylka?dodaj=1">+ Dodaj szablon</a></div>
+<% } else { %>
 <h1><%= title %></h1>
+<% } %>
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 
-<% const dostawa = nawigacja?.kontekst?.aktywnaZakladka === 'dostawa'; %>
 <% if (!dostawa) { %>
-<div class="ust-sekcja">
-  <h2>Szablony paczek</h2>
-  <p>
-    Jeden szablon jest domyślny przy nadaniu pojedynczym i masowym. Przy pojedynczym nadaniu możesz wybrać inny albo poprawić wymiary.
-    <strong>Nie dotyczą paczkomatu</strong>, dla którego InPost przyjmuje literę skrytki.
-  </p>
+<%
+  const liczba = (n) => String(n).replace('.', ',');
+  const powrot = '/ustawienia/zamowienia-i-wysylka';
+  const edytowany = edytujSzablon;
+  const nowy = dodajSzablon ? (wpisanySzablon && !wpisanySzablon.id ? wpisanySzablon : {}) : null;
+  const ikonaKosza = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
+%>
+<div class="ust-sekcja ust-sekcja-szeroka">
+  <p class="ust-opis-szablonow">Domyślny szablon podstawia się przy nadaniu pojedynczym i hurtem — przy pojedynczym możesz wybrać inny albo poprawić wymiary; paczkomaty i automaty mają własne ustawienie niżej.</p>
   <% if (bledyPaczki.length) { %>
     <div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong></p><ul><% bledyPaczki.forEach(function (blad) { %><li><%= blad %></li><% }); %></ul></div>
   <% } %>
-  <% szablonyPaczek.szablony.forEach(function (s) { const pola = wpisanySzablon?.id === s.id ? wpisanySzablon : (s.id === szablonyPaczek.domyslnyId ? { ...s, ...paczka } : s); %>
-    <div class="ust-szablon">
-      <form <% if (s.id === szablonyPaczek.domyslnyId) { %>id="ust-paczka"<% } %> method="post" action="/ustawienia/paczka/szablon">
-        <input type="hidden" name="id" value="<%= s.id %>">
-        <div class="ust-pola">
-          <label>Nazwa <input name="nazwa" value="<%= pola.nazwa %>" maxlength="60" required></label>
-          <label>Waga (kg) <input name="waga" value="<%= pola.waga %>" inputmode="decimal"></label>
-          <label>Długość (cm) <input name="dlugosc" value="<%= pola.dlugosc %>" inputmode="decimal"></label>
-          <label>Szerokość (cm) <input name="szerokosc" value="<%= pola.szerokosc %>" inputmode="decimal"></label>
-          <label>Wysokość (cm) <input name="wysokosc" value="<%= pola.wysokosc %>" inputmode="decimal"></label>
-        </div>
-        <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zapisz szablon</button>
-          <% if (s.id === szablonyPaczek.domyslnyId) { %><strong>Domyślny</strong><% } %>
-        </div>
-      </form>
-      <% if (s.id !== szablonyPaczek.domyslnyId) { %>
-        <div class="ust-szablon-dodatkowe">
-          <form method="post" action="/ustawienia/paczka/szablon/<%= encodeURIComponent(s.id) %>/domyslny"><button class="ust-przycisk" type="submit">Ustaw jako domyślny</button></form>
-          <form method="post" action="/ustawienia/paczka/szablon/<%= encodeURIComponent(s.id) %>/usun"><button class="ust-przycisk grozny" type="submit">Usuń szablon</button></form>
-        </div>
+  <div class="przewijak-tabeli">
+  <table class="tab-pozycje ust-tabela-szablonow">
+    <thead><tr><th>Nazwa</th><th>Waga</th><th>Wymiary</th><th>Przy nadaniu</th><th><span class="poza-okiem">Akcje</span></th></tr></thead>
+    <tbody>
+    <% szablonyPaczek.szablony.forEach(function (s) {
+         const domyslny = s.id === szablonyPaczek.domyslnyId;
+         const wEdycji = edytowany === s.id;
+         const pola = wpisanySzablon?.id === s.id ? wpisanySzablon : (domyslny && wpisanaPaczka ? { ...s, ...wpisanaPaczka } : s);
+         const f = 'szablon-edycja'; %>
+      <tr data-szablon="<%= s.id %>"<% if (domyslny) { %> id="ust-paczka"<% } %><% if (wEdycji) { %> class="ust-wiersz-edycji"<% } %>>
+      <% if (wEdycji) { %>
+        <td><input form="<%= f %>" name="nazwa" value="<%= pola.nazwa %>" maxlength="60" required aria-label="Nazwa szablonu"></td>
+        <td><span class="ust-pole-jednostka"><input form="<%= f %>" name="waga" value="<%= pola.waga %>" inputmode="decimal" aria-label="Waga (kg)"> kg</span></td>
+        <td><span class="ust-pole-jednostka ust-wymiary-pola">
+          <input form="<%= f %>" name="dlugosc" value="<%= pola.dlugosc %>" inputmode="decimal" aria-label="Długość (cm)"> ×
+          <input form="<%= f %>" name="szerokosc" value="<%= pola.szerokosc %>" inputmode="decimal" aria-label="Szerokość (cm)"> ×
+          <input form="<%= f %>" name="wysokosc" value="<%= pola.wysokosc %>" inputmode="decimal" aria-label="Wysokość (cm)"> cm</span></td>
+        <td><% if (domyslny) { %><span class="ust-plakietka-domyslny">domyślny</span><% } %></td>
+        <td class="ust-akcje-wiersza">
+          <form id="<%= f %>" method="post" action="/ustawienia/paczka/szablon">
+            <input type="hidden" name="id" value="<%= s.id %>">
+            <button class="ust-przycisk" type="submit">Zapisz</button>
+            <a class="ust-przycisk" href="<%= powrot %>">Anuluj</a>
+          </form>
+        </td>
+      <% } else { %>
+        <td><%= s.nazwa %></td>
+        <td class="ust-liczba"><%= liczba(s.waga) %> kg</td>
+        <td class="ust-liczba"><%= liczba(s.dlugosc) %> × <%= liczba(s.szerokosc) %> × <%= liczba(s.wysokosc) %> cm</td>
+        <td><% if (domyslny) { %><span class="ust-plakietka-domyslny">domyślny</span><% } else { %>
+          <form method="post" action="/ustawienia/paczka/szablon/<%= encodeURIComponent(s.id) %>/domyslny"><button class="ust-przycisk" type="submit">Ustaw domyślny</button></form>
+        <% } %></td>
+        <td class="ust-akcje-wiersza">
+          <a class="ust-przycisk" href="<%= powrot %>?edytuj=<%= encodeURIComponent(s.id) %>">Edytuj</a>
+          <% if (!domyslny) { %><form method="post" action="/ustawienia/paczka/szablon/<%= encodeURIComponent(s.id) %>/usun"><button class="ust-przycisk ust-kosz" type="submit" aria-label="Usuń szablon <%= s.nazwa %>" title="Usuń szablon"><%- ikonaKosza %></button></form><% } %>
+        </td>
       <% } %>
-    </div>
-  <% }); %>
-  <h3>Dodaj szablon</h3>
-  <% const nowy = wpisanySzablon && !wpisanySzablon.id ? wpisanySzablon : {}; %>
-  <form id="ust-szablon-nowy" method="post" action="/ustawienia/paczka/szablon">
-    <div class="ust-pola">
-      <label>Nazwa <input name="nazwa" value="<%= nowy.nazwa ?? '' %>" maxlength="60" required></label>
-      <label>Waga (kg) <input name="waga" value="<%= nowy.waga ?? '' %>" inputmode="decimal"></label>
-      <label>Długość (cm) <input name="dlugosc" value="<%= nowy.dlugosc ?? '' %>" inputmode="decimal"></label>
-      <label>Szerokość (cm) <input name="szerokosc" value="<%= nowy.szerokosc ?? '' %>" inputmode="decimal"></label>
-      <label>Wysokość (cm) <input name="wysokosc" value="<%= nowy.wysokosc ?? '' %>" inputmode="decimal"></label>
-    </div>
-    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Dodaj szablon</button></div>
-  </form>
+      </tr>
+    <% }); %>
+    <% if (nowy) { const f = 'ust-szablon-nowy-form'; %>
+      <tr id="ust-szablon-nowy" class="ust-wiersz-edycji">
+        <td><input form="<%= f %>" name="nazwa" value="<%= nowy.nazwa ?? '' %>" maxlength="60" required aria-label="Nazwa szablonu" placeholder="Nazwa"></td>
+        <td><span class="ust-pole-jednostka"><input form="<%= f %>" name="waga" value="<%= nowy.waga ?? '' %>" inputmode="decimal" aria-label="Waga (kg)"> kg</span></td>
+        <td><span class="ust-pole-jednostka ust-wymiary-pola">
+          <input form="<%= f %>" name="dlugosc" value="<%= nowy.dlugosc ?? '' %>" inputmode="decimal" aria-label="Długość (cm)"> ×
+          <input form="<%= f %>" name="szerokosc" value="<%= nowy.szerokosc ?? '' %>" inputmode="decimal" aria-label="Szerokość (cm)"> ×
+          <input form="<%= f %>" name="wysokosc" value="<%= nowy.wysokosc ?? '' %>" inputmode="decimal" aria-label="Wysokość (cm)"> cm</span></td>
+        <td></td>
+        <td class="ust-akcje-wiersza">
+          <form id="<%= f %>" method="post" action="/ustawienia/paczka/szablon">
+            <button class="ust-przycisk" type="submit">Zapisz</button>
+            <a class="ust-przycisk" href="<%= powrot %>">Anuluj</a>
+          </form>
+        </td>
+      </tr>
+    <% } %>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<%# PRZ-152.G11a: wartości startowe formularza nadania dla paczkomatu i automatów (domena: gabaryty-automatow.js). %>
+<%
+  const wpisany = (cel) => wpisanyAutomat?.cel === cel ? wpisanyAutomat : null;
+  const wartosc = (cel, zapisane, start) => {
+    const w = wpisany(cel);
+    return w ? { gabaryt: String(w.gabaryt ?? '').toUpperCase(), waga: w.waga ?? '' } : (zapisane ?? start);
+  };
+  const otworzWyjatki = Object.keys(automaty.wyjatki).length > 0 || (wpisanyAutomat && !['paczkomat', 'allegro'].includes(wpisanyAutomat.cel));
+  const wymiaryAllegro = (dl) => Object.entries(wysokosciAllegro).map(([g, h]) => [g, `${dl} × 38 × ${h} cm`]);
+  const dlugosciAllegro = [...new Set(uslugiAutomatow.map((u) => u.dlugosc))].sort((a, b) => a - b);
+  const zakresDlugosci = dlugosciAllegro.length > 1 ? `${dlugosciAllegro[0]}–${dlugosciAllegro[dlugosciAllegro.length - 1]}` : String(dlugosciAllegro[0]);
+  function wierszAutomatu({ cel, nazwa, opis, gabaryty, w, przyciskWszystkie }) { %>
+    <form id="automat-<%= cel %>" class="ust-automat" method="post" action="/ustawienia/paczka/automat">
+      <input type="hidden" name="cel" value="<%= cel %>">
+      <div class="ust-automat-nazwa"><strong><%= nazwa %></strong><% if (opis) { %><span class="ust-pomoc"><%= opis %></span><% } %></div>
+      <div class="ust-przelacznik" role="radiogroup" aria-label="Gabaryt — <%= nazwa %>">
+        <% gabaryty.forEach(function ([g]) { %><label><input type="radio" name="gabaryt" value="<%= g %>" <%= w.gabaryt === g ? 'checked' : '' %>><span><%= g %></span></label><% }); %>
+      </div>
+      <label class="ust-pole-jednostka">Waga <input name="waga" value="<%= w.waga %>" inputmode="decimal" required aria-label="Waga (kg) — <%= nazwa %>"> kg</label>
+      <span class="ust-automat-wymiary"><% gabaryty.forEach(function ([g, wym]) { %><span data-gabaryt="<%= g %>"><%= wym %></span><% }); %></span>
+      <span class="ust-automat-akcje"><button class="ust-przycisk" type="submit">Zapisz</button><%- przyciskWszystkie || '' %></span>
+    </form>
+<% } %>
+<div class="ust-sekcja ust-sekcja-szeroka">
+  <h2>Paczkomaty i automaty</h2>
+  <p>Gabaryt i waga, które formularz nadania zaznacza na start. Przy nadaniu możesz je zmienić.</p>
+  <% if (bledyAutomatow.length) { %>
+    <div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong></p><ul><% bledyAutomatow.forEach(function (blad) { %><li><%= blad %></li><% }); %></ul></div>
+  <% } %>
+  <% wierszAutomatu({ cel: 'paczkomat', nazwa: 'Paczkomat InPost', opis: 'Umowa z InPostem — wymiary skrytki', gabaryty: Object.entries(gabarytyPaczkomatu),
+       w: wartosc('paczkomat', automaty.inpost, automatyStart.inpost) }); %>
+  <% wierszAutomatu({ cel: 'allegro', nazwa: 'Automaty przez Allegro', opis: `Wszystkie usługi (${uslugiAutomatow.length}), najwyżej 20 kg`, gabaryty: wymiaryAllegro(zakresDlugosci),
+       w: wartosc('allegro', automaty.allegro, automatyStart.allegro) }); %>
+  <details class="ust-wyjatki-automatow"<% if (otworzWyjatki) { %> open<% } %>>
+    <summary>Wyjątki dla pojedynczych usług Allegro<% if (Object.keys(automaty.wyjatki).length) { %> (<%= Object.keys(automaty.wyjatki).length %>)<% } %></summary>
+    <% uslugiAutomatow.forEach(function (u) {
+         const wlasne = Object.hasOwn(automaty.wyjatki, u.id);
+         const jakWszystkie = wlasne
+           ? `<button class="ust-przycisk" type="submit" formaction="/ustawienia/paczka/automat/${encodeURIComponent(u.id)}/jak-wszystkie" formnovalidate>jak wszystkie</button>`
+           : '<span class="ust-pomoc">jak wszystkie</span>';
+         wierszAutomatu({ cel: u.id, nazwa: u.nazwa, opis: wlasne ? 'własne ustawienie' : null, gabaryty: wymiaryAllegro(u.dlugosc),
+           w: wartosc(u.id, automaty.wyjatki[u.id] ?? automaty.allegro, automatyStart.allegro), przyciskWszystkie: jakWszystkie });
+       }); %>
+  </details>
 </div>
 
 <% } %>

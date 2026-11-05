@@ -2,6 +2,7 @@ import { pobierzZamowienie, dopiszLog, zapiszNadpisaniaWysylki, zapiszNadpisania
 import { przeliczKwoteRecznego } from '../../oms/db/zamowienia-reczne.js';
 import { DOSTAWY, parsujNoweZamowienie, skopiujFaktureDoWysylki, wstawPozycjeDoFormularza, dodajWierszFormularza, usunWierszFormularza, wdtZFormularza } from '../../domena/nowe-zamowienie.js';
 import ejs from 'ejs';
+import { ekranOdmowyKarty } from './odmowa-karty.js';
 import { join } from 'node:path';
 import { komunikatDlaOperatora, bladOperatora } from '../../domena/bledy.js';
 import { cennikDlaZamowienia, pozycjaZProduktu } from '../../domena/magazyn-do-zamowienia.js';
@@ -9,8 +10,8 @@ import { szukajDoZamowienia, produktDoZamowienia } from '../../oms/db/magazyn.js
 import { adresZeSklepu, POLA_ADRESU_RECZNE } from '../../domena/adres-odbiorcy.js';
 import { bezEtykietyNip, daneFaktury, daneFakturyZeSklepu, POLA_FAKTURY_RECZNE } from '../../domena/dane-faktury.js';
 import { nadpisaniaPoZapisie } from '../../domena/dane-reczne.js';
-import { parsujNowaPozycje, parsujEdycjePozycji, roznicePozycji, ustawNadpisaniePozycji, parsujHurtPozycji, ustawWMapie, jakoTablica } from '../../domena/pozycje-reczne.js';
-import { KLUCZ_WYSYLKI, parsujEdycjeWysylki, rozniceWysylki, wysylkaZeSklepu } from '../../domena/wysylka-kwota.js';
+import { parsujNowaPozycje, ustawNadpisaniePozycji, oznaczUsunieta, jakoTablica } from '../../domena/pozycje-reczne.js';
+import { KLUCZ_WYSYLKI } from '../../domena/wysylka-kwota.js';
 import { odczytajNadpisania } from '../../domena/dane-reczne.js';
 import { nipDoZapytania, komunikatAwariiGus } from '../../domena/gus.js';
 import { gusDostepny, KOMUNIKAT_BRAK_GUS } from '../../domena/konfiguracja-gus.js';
@@ -21,7 +22,8 @@ import { zmienUstalenia, rabatKontraktowy } from './services/rabat.js';
 import { czyWdt, czyNipUe } from '../../domena/wdt.js';
 import { poprawnyNip } from '../../core/walidatory.ts';
 import { KODY_KRAJOW_UE } from '../../domena/klient-zbiorczy.js';
-import { czyStawkaVat } from '../../domena/vat.js';
+import { planZapisuPozycji, sprawdzUsunieciePozycji, sprawdzZmianePozycjiPoFakturze } from '../../domena/usuniecie-pozycji.js';
+import { zwrotyZamowienia } from '../../oms/db/zwroty.js';
 import { zalozZamowienieReczne } from './services/zamowienie-reczne.js';
 import { przypiszDoOkresu } from '../faktury/services/okres.js';
 import { czytajStawkeDomyslna } from '../faktury/db/stawka-vat.js';
@@ -31,6 +33,31 @@ const {db,config,poller,nadanie,faktura,proforma,kurierzy,gus,syncSklep,wiadomos
 // PRZ-122.B07c: `opcjeZw` (kontekst.js) — „zw” tylko przy TwojeFaktury. Stawka domyślna czytana z flagą wszędzie, gdzie
 // trafia do pozycji albo do netto na ekranie; bez flagi (WDT ÷ stawka w magazynie) zostaje odczyt jak dotąd.
 const stawkaDomyslnaZw = () => czytajStawkeDomyslna(db, opcjeZw);
+// Odmowy „×”, przywrócenia, dopisania z magazynu i zmiany kwoty po fakturze
+// wracają na kartę z pozycjami w edycji i paskiem nad tabelą.
+// PRZ-152.G13a: `wpisane` — to, co człowiek wpisał w tabeli (wpisanePozycje niżej); widok wstawia to w pola
+// zamiast wartości z bazy, żeby odmowa nie kasowała pracy. Nic z tego nie trafia do bazy.
+const odmowaNaKarcie = (req, reply, id, tekst, wpisane = null) => renderujKarte(req, reply.code(400), pobierzZamowienie(db, id),
+  { bladDanych: { sekcja: 'pozycje', tekst, pole: null, wartosci: {}, wpisane } });
+// Pola tabeli pozycji z formularza (kolumny równoległe; pojedyncze pola dopisania to jeden nowy wiersz).
+// Wiersze z kluczem → `istniejace[klucz]`, bez klucza → `nowe` po kolei, bez wiersza skreślonego „×” (usun_nowy).
+const POLA_WPISANE = ['ilosc', 'nazwa', 'sku', 'cena_netto', 'vat', 'cena_brutto'];
+function wpisanePozycje(body) {
+  if (!body || typeof body !== 'object') return null;
+  const kolumny = Object.fromEntries(['klucz', ...POLA_WPISANE].map((p) => [p, jakoTablica(body[p])]));
+  const n = Math.max(...Object.values(kolumny).map((k) => k.length));
+  if (!n) return null;
+  const wynik = { istniejace: {}, nowe: [] };
+  let indeksNowego = 0;
+  for (let i = 0; i < n; i += 1) {
+    const w = Object.fromEntries(POLA_WPISANE.map((p) => [p, kolumny[p][i] === undefined ? undefined : String(kolumny[p][i])]));
+    const klucz = String(kolumny.klucz[i] ?? '');
+    if (klucz) { wynik.istniejace[klucz] = w; continue; }
+    const indeks = indeksNowego++;
+    if (String(body.usun_nowy ?? '') !== String(indeks)) wynik.nowe.push(w);
+  }
+  return wynik;
+}
 app.get('/zamowienia/nowe', async (req, reply) => renderujNowe(reply));
 app.post('/zamowienia/nowe', async (req, reply) => {
     // ⚠️ CALY FORMULARZ PARSUJEMY PRZED PIERWSZYM ZAPISEM DO BAZY. Odmowa w polowie
@@ -271,7 +298,7 @@ function zapisDanych(sciezka, obsluga) {
     app.post(`/zamowienia/:id/dane/${sciezka}`, async (req, reply) => {
       const id = Number(req.params.id);
       const z = pobierzZamowienie(db, id);
-      if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+      if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
       let kotwica = '';
       try {
         kotwica = obsluga(id, z, req) ?? '';
@@ -388,96 +415,65 @@ function zapisPozycji(sciezka, obsluga) {
       const cel = pozycjaZadania(req, reply);
       if (!cel) return reply;
       try {
-        obsluga(cel, req);
+        db.exec('BEGIN IMMEDIATE');
+        try {
+          obsluga(cel, req);
+          db.exec('COMMIT');
+        } catch (e) {
+          if (db.isTransaction) db.exec('ROLLBACK');
+          throw e;
+        }
       } catch (e) {
         dopiszLog(db, cel.id, { akcja: `pozycja.${sciezka}`, wynik: `BŁĄD: ${e.message}` });
-        return reply.code(400).send(`Nie udało się zapisać pozycji: ${komunikatDlaOperatora(e)}`);
+        return odmowaNaKarcie(req, reply, cel.id, `Nie udało się zapisać pozycji: ${komunikatDlaOperatora(e)}`, wpisanePozycje(req.body));
       }
-      return reply.redirect(adresPowrotuNaKarte(req, cel.id));
+      const usunieta = (cel.z.pozycje_usuniete ?? []).some((p) => p.klucz === cel.p.klucz);
+      return reply.code(sciezka === 'usun' || usunieta ? 303 : 302).redirect(adresPowrotuNaKarte(req, cel.id, { stan: 'pozycje', kotwica: 'pozycje' }));
     });
   }
 app.post('/zamowienia/:id/pozycje/zapisz', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
 
-    let mapa = odczytajNadpisania(z.pozycje_reczne_json);
-    const reczneDoZapisu = [];
-    const zmienione = [];
-    // PRZ-122.B07f: firma zwolniona z VAT — numer UE nabywcy to nie WDT (netto stawką wiersza).
-    const zwolniona = zwolnionaFirma();
     try {
-      for (const w of parsujHurtPozycji(req.body)) {
-        // Klucz spoza tego zamowienia POMIJAMY PO CICHU. Poller przenumerowuje pozycje co
-        // dwie minuty, wiec formularz otwarty przed synchronizacja moze celowac w wiersz,
-        // ktorego juz nie ma. Odmowa calosci skasowalaby wtedy prace operatora z powodu,
-        // na ktory nie ma zadnego wplywu.
-        // ⚠️ WIERSZ WYSYLKI JEDZIE TYM SAMYM FORMULARZEM (07.08.2026, prosba wlasciciela:
-        // „wysylka powinna byc edytowalna tak samo jak produkty"). Nie ma go w `z.pozycje`
-        // — jest wierszem TABELI, nie pozycja zamowienia — wiec bez tego rozgalezienia
-        // wpadlby ponizej w „klucz spoza tego zamowienia" i zostal POMINIETY PO CICHU:
-        // operator poprawialby cene dostawy, klikal „Zapisz pozycje" i nie dostawal ani
-        // zmiany, ani bledu.
-        //
-        // Nadpisanie ladzie w TEJ SAMEJ mapie i w tym samym jednym zapisie, co pozycje
-        // (domain/wysylka-kwota.js: KLUCZ_WYSYLKI) — inaczej istnialby stan posredni,
-        // w ktorym pozycje sie zapisaly, a wysylka nie.
-        if (w.klucz === KLUCZ_WYSYLKI) {
-          // Wiersz sklepowy liczony RAZ i podany obu funkcjom: parser rozstrzyga po nim
-          // dopuszczalnosc zera (darmowa dostawa), a `rozniceWysylki` — czy cokolwiek sie
-          // zmienilo. Dwa osobne wywolania moglyby sie rozjechac.
-          const wysylkaSklepu = wysylkaZeSklepu(z);
-          const nadpisanieWysylki = rozniceWysylki(wysylkaSklepu, parsujEdycjeWysylki(w, wysylkaSklepu));
-          mapa = ustawWMapie(mapa, KLUCZ_WYSYLKI, nadpisanieWysylki);
-          if (Object.keys(nadpisanieWysylki).length) zmienione.push('Wysyłka');
-          continue;
-        }
-        const p = z.pozycje.find((x) => x.klucz === w.klucz);
-        if (!p) continue;
-        if (p.reczna) {
-          // parsujNowaPozycje, a nie parsujEdycjePozycji: wiersz wlasny potrzebuje TAKZE
-          // sumy linii. SKU zostaje nietkniete — edycja go nie obejmuje.
-          // PRZ-105: formularz bez pola `vat` (stary, otwarty przed wydaniem) NIE zmienia stawki — bez tego
-          // każda edycja przestawiałaby pozycję z 8% na domyślną. Pole jest → stawka z formularza.
-          const { vat, ...bezStawki } = parsujNowaPozycje({ ...w, sku: p.sku }, {
-            stawkaDomyslna: stawkaDomyslnaZw(), wdt: czyWdt(daneFaktury(z).nip, { zwolniona }), ...opcjeZw,
-          });
-          // Puste pole (wiersz bez listy stawek, np. przy nabywcy z UE) też znaczy „bez zmiany”.
-          const bezZmianyStawki = w.vat === undefined || String(w.vat).trim() === '';
-          // PRZ-122.B07c (recenzja): stawkę ZAPISANĄ w pozycji sprawdzamy tu, przed bazą. „zw” zostawiona przez
-          // TwojeFaktury po zmianie programu rzucałaby dopiero w zapiszPozycjeReczna — po zapisie części wierszy.
-          if (bezZmianyStawki && p.vat !== null && p.vat !== undefined && !czyStawkaVat(p.vat, opcjeZw)) {
-            throw bladOperatora(`Pozycja „${p.nazwa}” ma stawkę „${p.vat}”, której obecny program fakturowy nie obsługuje`
-              + ' — wybierz stawkę w jej wierszu.');
-          }
-          reczneDoZapisu.push({ id: p.id, pozycja: bezZmianyStawki ? bezStawki : { ...bezStawki, vat } });
-          zmienione.push(p.nazwa);
-          continue;
-        }
-        const nadpisania = roznicePozycji(p.sklep, parsujEdycjePozycji(w, p.sklep));
-        mapa = ustawWMapie(mapa, p.klucz, nadpisania);
-        if (Object.keys(nadpisania).length) zmienione.push(p.sklep.nazwa);
+      // Plan waliduje całą tabelę przed pierwszym zapisem. Transakcja chroni też przed awarią bazy.
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        const zwolniona = zwolnionaFirma();
+        const plan = planZapisuPozycji(z, req.body, {
+          stawkaDomyslna: stawkaDomyslnaZw(), ...opcjeZw, zwolniona,
+          wdt: czyWdt(daneFaktury(z).nip, { zwolniona }), zwroty: zwrotyZamowienia(db, id),
+        });
+        for (const p of plan.nowe) dodajPozycjeReczna(db, id, p, opcjeZw);
+        for (const r of plan.reczneZmiany) zapiszPozycjeReczna(db, id, r.id, r.pozycja, opcjeZw);
+        for (const idPozycji of plan.reczneUsuniete) usunPozycjeReczna(db, id, idPozycji);
+        zapiszNadpisaniaPozycji(db, id, Object.keys(plan.mapa).length ? plan.mapa : null);
+        przeliczKwoteRecznego(db, id);
+        for (const nazwa of plan.usunieteNazwy) dopiszLog(db, id, {
+          akcja: 'pozycja.usunieta', wynik: `Ręcznie (${ktoKlikal(req)}): usunięta pozycja „${nazwa}”.`,
+        });
+        dopiszLog(db, id, {
+          akcja: 'pozycje.zapisz',
+          wynik: `Ręcznie (${ktoKlikal(req)}): zapisane pozycje — `
+            + `${plan.zmienione.length ? `zmienione: ${plan.zmienione.join(', ')}` : 'bez zmian wobec sklepu'}. `
+            + 'Kwota zamówienia w sklepie NIE ZMIENIA SIĘ.',
+        });
+        db.exec('COMMIT');
+      } catch (e) {
+        if (db.isTransaction) db.exec('ROLLBACK');
+        throw e;
       }
     } catch (e) {
       dopiszLog(db, id, { akcja: 'pozycje.zapisz', wynik: `BŁĄD: ${e.message}` });
-      return reply.code(400).send(`Nie udało się zapisać pozycji: ${komunikatDlaOperatora(e)}`);
+      // PRZ-152.G13a: każda odmowa (walidacja, po fakturze, niekompletny formularz) — karta z paskiem
+      // i tabelą otwartą z wpisanymi wartościami; transakcja już wycofana, w bazie nic się nie zmieniło.
+      return odmowaNaKarcie(req, reply, id, `Nie udało się zapisać pozycji: ${komunikatDlaOperatora(e)}`, wpisanePozycje(req.body));
     }
-
-    // Dopiero TERAZ baza. Wszystko wyzej moglo jeszcze odmowic bez sladu.
-    for (const r of reczneDoZapisu) zapiszPozycjeReczna(db, id, r.id, r.pozycja, opcjeZw);
-    zapiszNadpisaniaPozycji(db, id, Object.keys(mapa).length ? mapa : null);
-    // Bariera arytmetyczna zamowienia RECZNEGO liczy sie z pozycji (kwoty nie narzuca zaden
-    // sklep) — bez przeliczenia tutaj zapis wielu wierszy naraz zostawialby kwote nieaktualna.
-    // Dla zamowien sklepowych to wywolanie jest no-op (patrz warunek w przeliczKwoteRecznego).
-    przeliczKwoteRecznego(db, id);
-    dopiszLog(db, id, {
-      akcja: 'pozycje.zapisz',
-      wynik: `Ręcznie (${ktoKlikal(req)}): zapisane pozycje — `
-        + `${zmienione.length ? `zmienione: ${zmienione.join(', ')}` : 'bez zmian wobec sklepu'}. `
-        + 'Kwota zamówienia w sklepie NIE ZMIENIA SIĘ.',
-    });
-    return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'pozycje' }));
+    const edytuj = req.body?.dodaj_wiersz !== undefined || req.body?.usun !== undefined || req.body?.usun_nowy !== undefined;
+    return reply.code(edytuj ? 303 : 302).redirect(adresPowrotuNaKarte(req, id, { stan: edytuj ? 'pozycje' : null, kotwica: 'pozycje' }));
   });
+
 app.get('/zamowienia/:id/magazyn/wyniki', async (req, reply) => {
     const z = pobierzZamowienie(db, Number(req.params.id));
     if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
@@ -488,7 +484,7 @@ app.get('/zamowienia/:id/magazyn/wyniki', async (req, reply) => {
 app.post('/zamowienia/:id/pozycje/z-magazynu', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
 
     const cennik = cennikDlaZamowienia({ sklepZamowienia: z.sklep, wybrany: req.body?.kanal }, cennikiInstalacji);
     // ⚠️ CENA CZYTA SIE Z LUSTRA, NIE Z FORMULARZA. Ekran podaje wylacznie „co i ile"
@@ -512,7 +508,7 @@ app.post('/zamowienia/:id/pozycje/z-magazynu', async (req, reply) => {
         stawkaDomyslna: czytajStawkeDomyslna(db),
       });
     } catch (e) {
-      return reply.code(400).send(komunikatDlaOperatora(e));
+      return odmowaNaKarcie(req, reply, id, komunikatDlaOperatora(e));
     }
 
     // PRZ-105: pozycja z magazynu dostaje stawkę domyślną z chwili dopisania (zachowuje ją potem).
@@ -543,7 +539,7 @@ app.post('/zamowienia/:id/pozycje/z-magazynu', async (req, reply) => {
   });
 app.post('/zamowienia/:id/pozycje', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
     let pozycja;
     try {
       // PRZ-105: stawka z pola (puste = domyślna z Ustawień); przy nabywcy z UE netto liczy się stawką 0.
@@ -552,7 +548,7 @@ app.post('/zamowienia/:id/pozycje', async (req, reply) => {
         stawkaDomyslna: stawkaDomyslnaZw(), wdt: czyWdt(daneFaktury(zam).nip, { zwolniona: zwolnionaFirma() }), ...opcjeZw,
       });
     } catch (e) {
-      return reply.code(400).send(komunikatDlaOperatora(e));
+      return odmowaNaKarcie(req, reply, id, komunikatDlaOperatora(e), wpisanePozycje(req.body));
     }
     dodajPozycjeReczna(db, id, pozycja, opcjeZw);
     // Zamowienie RECZNE nie ma kwoty narzuconej przez sklep — bez przeliczenia tutaj
@@ -570,16 +566,19 @@ zapisPozycji('przywroc', ({ id, z, p }, req) => {
     if (p.reczna) {
       throw bladOperatora('Pozycja dopisana ręcznie nie ma czego przywracać ze sklepu — sklep o niej nie wie.');
     }
+    sprawdzZmianePozycjiPoFakturze(z, p, p.sklep ?? p, {
+      przywrocenie: (z.pozycje_usuniete ?? []).some((w) => w.klucz === p.klucz),
+    });
     zapiszNadpisaniaPozycji(db, id, ustawNadpisaniePozycji(z.pozycje_reczne_json, p.klucz, {}));
     dopiszLog(db, id, {
-      akcja: 'pozycja.przywroc',
-      wynik: `Ręcznie (${ktoKlikal(req)}): ręczne poprawki pozycji „${p.sklep.nazwa}" skasowane — rządzi sklep.`,
+      akcja: (z.pozycje_usuniete ?? []).some((w) => w.klucz === p.klucz) ? 'pozycja.przywrocona' : 'pozycja.przywroc',
+      wynik: `Ręcznie (${ktoKlikal(req)}): ręczne poprawki pozycji „${(p.sklep ?? p).nazwa}" skasowane — rządzi sklep.`,
     });
   });
 app.post('/zamowienia/:id/wysylka/kwota/przywroc', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
     zapiszNadpisaniaPozycji(db, id, ustawNadpisaniePozycji(z.pozycje_reczne_json, KLUCZ_WYSYLKI, {}));
     // Zamowienie RECZNE liczy kwote z pozycji i wysylki — bez przeliczenia zostaloby
     // z kwota sprzed cofniecia poprawki (patrz przeliczKwoteRecznego; dla sklepowych no-op).
@@ -590,14 +589,16 @@ app.post('/zamowienia/:id/wysylka/kwota/przywroc', async (req, reply) => {
     });
     return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'pozycje' }));
   });
-zapisPozycji('usun', ({ id, p }, req) => {
-    const usunieta = usunPozycjeReczna(db, id, p.id);
+zapisPozycji('usun', ({ id, z, p }, req) => {
+    sprawdzUsunieciePozycji(z, p.klucz, { zwroty: zwrotyZamowienia(db, id) });
+    const usunieta = p.reczna ? usunPozycjeReczna(db, id, p.id) : p;
+    if (!p.reczna) zapiszNadpisaniaPozycji(db, id, oznaczUsunieta(odczytajNadpisania(z.pozycje_reczne_json), p.klucz));
     // Zamowienie RECZNE liczy kwote z pozycji — usuniecie musi ja zmniejszyc, inaczej
     // panel dalej pokazywalby dlug klienta za pozycje, ktorej juz na karcie nie ma.
     przeliczKwoteRecznego(db, id);
     dopiszLog(db, id, {
       akcja: 'pozycja.usunieta',
-      wynik: `Ręcznie (${ktoKlikal(req)}): usunięta pozycja dopisana ręcznie „${usunieta.nazwa}", `
+      wynik: `Ręcznie (${ktoKlikal(req)}): usunięta pozycja „${usunieta.nazwa}", `
         + `${usunieta.ilosc} szt. po ${usunieta.cena_brutto} zł = ${usunieta.brutto_linii} zł.`,
     });
   });

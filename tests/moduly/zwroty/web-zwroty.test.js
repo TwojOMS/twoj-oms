@@ -63,10 +63,11 @@ beforeEach(() => {
 // slepa — zdjecie klasy przechodzilo na zielono (zmierzone mutacja). Test sprawdza OBIE
 // warstwy, bo sama klasa bez reguly nie farbuje niczego.
 describe('karta: „Zarejestruj zwrot" jest wyróżniony kolorem', () => {
-  it('odnośnik na karcie niesie klasę btn--groza, a arkusz ją farbuje', async () => {
+  it('odnośnik na karcie jest zwykłym przyciskiem, a arkusz zachowuje btn--groza dla innych akcji', async () => {
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: AUTH });
     expect(r.statusCode).toBe(200);
-    expect(r.body).toMatch(/<a class="btn btn--maly btn--groza" href="\/zamowienia\/\d+\/zwrot">Zarejestruj zwrot<\/a>/);
+    // D7 (04.11): wejście do formularza zwrotu bez czerwieni.
+    expect(r.body).toMatch(/<a class="btn btn--maly" href="\/zamowienia\/\d+\/zwrot">Zarejestruj zwrot<\/a>/);
     // ⚠️ WSZYSTKIE reguly konczace sie na `.btn--groza {`, nie pierwsza z brzegu: arkusz ma
     // takze wariant kontekstowy (`.belka-masowa .btn--groza`, sam `color`), a on stoi wyzej.
     const reguly = [...r.body.matchAll(/\.btn--groza\s*\{([^}]*)\}/g)];
@@ -814,8 +815,9 @@ describe('karta zamowienia — trzy elementy zwrotu', () => {
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: AUTH });
     // Brak znacznika z kwota przy statusie.
     expect(r.body).not.toMatch(/znacznik znacznik--zwrot">Zwrot/);
-    // Brak wiersza „Zwrócono …” w platnosciach.
-    expect(r.body).not.toMatch(/Zwrócono/);
+    // G9a2: zero w liczbie „Zwrócono” jest stałe, ale bez zwrotu nie ma ruchu zwrotu.
+    expect(r.body).toMatch(/Zwrócono<br><strong>0,00 zł/);
+    expect(r.body).not.toMatch(/<tr class="ruch--zwrot/);
     // Brak wiersza korekty w tabeli dokumentow.
     expect(r.body).not.toContain('<td>Korekta</td>');
     // Brak jakiegokolwiek naglowka sekcji „Zwroty" (dzisiaj sekcja go celowo nie ma —
@@ -839,7 +841,8 @@ describe('karta zamowienia — trzy elementy zwrotu', () => {
     dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', kwotaDostawy: '19.00', pozycje: [] });
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: AUTH });
     expect(r.body).toContain('Zwrot 118.00 zł');
-    expect(r.body).toContain('Zwrócono 99.00 zł');
+    // G9a2: jeden ruch zwrotu obejmuje towar i dostawę (99 + 19), z minusem i przecinkiem.
+    expect(r.body).toContain('−118,00 zł');
   });
 
   // ⚠️ Trzeci element (korekta w tabeli dokumentow) jest DZIS niedostepny przez zaden POST —

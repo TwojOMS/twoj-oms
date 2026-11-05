@@ -7,6 +7,8 @@
 //    robi treść Ustawień martwą (inert) i stawia nad nią pasek podglądu;
 //  • KAŻDE żądanie inne niż GET/HEAD pod /ustawienia od gościa kończy się tu 403 — zanim dojdzie do trasy. To jest
 //    właściwa blokada („inert” w przeglądarce to tylko wygoda; ręcznie złożony POST zatrzymuje się tutaj).
+import { odmowaRdzenia } from './csrf.js';
+
 export const KOMUNIKAT_PODGLADU = 'W wersji demonstracyjnej ustawienia można tylko obejrzeć — zmiany są wyłączone.';
 
 export function wUstawieniach(url) {
@@ -19,7 +21,8 @@ export function podgladUstawienDemo({ loginGoscia }) {
     if (!req.konto || req.konto.login !== loginGoscia) return;
     req.konto = { ...req.konto, podgladDemo: true };
     if (wUstawieniach(req.url) && req.method !== 'GET' && req.method !== 'HEAD') {
-      return reply.code(403).type('text/plain; charset=utf-8').send(KOMUNIKAT_PODGLADU);
+      return odmowaRdzenia(req, reply, 403, KOMUNIKAT_PODGLADU,
+        { tytul: 'Tylko do obejrzenia', wroc: '/ustawienia', napisWroc: 'Wróć do ustawień' });
     }
   };
 }

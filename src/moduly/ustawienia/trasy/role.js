@@ -3,6 +3,10 @@ import { EKRANY } from '../../../domena/ekrany.js';
 import { wylaczoneModuly } from '../../../oms/db/moduly-opcjonalne.js';
 import { nawigacjaUstawien } from '../nawigacja.js';
 import { listaRol, zapiszMacierz, dodajRole, zmienNazweRoli, usunRole, BladRoli, KLUCZE_DODATKOWE, odciskMacierzy } from '../role.js';
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
+
+// PRZ-152.G13u1: nieznana rola — 404 w układzie OMS z powrotem na ekran ról (status i tekst bez zmian).
+const BRAK_ROLI = { tytul: 'Nie znaleziono roli', wroc: '/ustawienia/role', napisWroc: 'Wróć do ról i uprawnień' };
 
 const KOMUNIKATY = { macierz: 'Zapisano uprawnienia ról.', nowa: 'Dodano rolę.', nazwa: 'Zmieniono nazwę roli.', usunieto: 'Usunięto rolę.' };
 const lista = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
@@ -25,7 +29,7 @@ export function registerRoleRoutes(app, { db, teraz }) {
     try { fn(); return reply.redirect(`/ustawienia/role?zapisano=${cel}`); }
     catch (e) {
       if (!(e instanceof BladRoli)) throw e;
-      if (e.kod === 'nieznana') return reply.code(404).send('Nie ma takiej roli');
+      if (e.kod === 'nieznana') return stronaOdmowy(reply, 404, 'Nie ma takiej roli', BRAK_ROLI);
       // 409: macierz zmieniła się po otwarciu formularza — ekran z aktualnym stanem i nowym odciskiem, nic nie zapisane.
       return widok(req, reply.code(e.kod === 'nieaktualna' ? 409 : 400), { blad: e.message, pola: req.body ?? {} });
     }

@@ -55,25 +55,27 @@ describe('PRZ-126 C09e — karta zamówienia, znacznik D', () => {
   it('znacznik D → zdanie o poprzedniej fakturze, bez „kupujący ma ją na swoim koncie”', async () => {
     const html = await karta();
     expect(html).toContain(ZDANIE_D);
-    expect(html).not.toMatch(/kupujący ma ją na swoim koncie/);
+    expect(html).not.toMatch(/Faktura jest na koncie kupującego w Allegro — błąd poprawisz tylko korektą\./);
+    // Recenzja G10c: nowa faktura dziedziczy datę wysłania poprzedniej — plakietka w tabeli nie może mówić „Wysłana”.
+    expect(html).not.toContain('Wysłana do Allegro');
     expect(html).not.toMatch(/Wyślij fakturę do Allegro/);
   });
 
   it('zwykła wysłana (z id zgłoszenia) → dzisiejsze zdanie', async () => {
     const html = await karta({ invoiceId: 'INV-7' });
-    expect(html).toMatch(/kupujący ma ją na swoim koncie/);
+    expect(html).toMatch(/Faktura jest na koncie kupującego w Allegro — błąd poprawisz tylko korektą\./);
     expect(html).not.toContain('sprzed zamiany NIP-u');
   });
 
   it('spóźnione REJECTED po przepięciu (bez id) → bez zdania D', async () => {
     const html = await karta({ weryfikacja: 'REJECTED' });
     expect(html).not.toContain('sprzed zamiany NIP-u');
-    expect(html).not.toMatch(/kupujący ma ją na swoim koncie/);
+    expect(html).not.toMatch(/Faktura jest na koncie kupującego w Allegro — błąd poprawisz tylko korektą\./);
   });
 
   it('wiersz inFaktu bez id → dzisiejsze zdanie, nie zdanie D', async () => {
     const html = await karta({ program: 'infakt' });
-    expect(html).toMatch(/kupujący ma ją na swoim koncie/);
+    expect(html).toMatch(/Faktura jest na koncie kupującego w Allegro — błąd poprawisz tylko korektą\./);
     expect(html).not.toContain('sprzed zamiany NIP-u');
   });
 });

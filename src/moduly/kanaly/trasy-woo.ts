@@ -1,4 +1,5 @@
 import {createHash,randomUUID} from 'node:crypto';
+import {stronaOdmowy} from '../../core/web/odmowa.js';
 import type {FastifyInstance,FastifyReply,FastifyRequest} from 'fastify';
 import type {DatabaseSync} from 'node:sqlite';
 import type {PolaczenieKanalu,Aktor} from './kontrakty-allegro.ts';
@@ -76,18 +77,19 @@ export function registerTrasyWoo(app:FastifyInstance,o:{db:DatabaseSync;repozyto
  }
  const status=(w:Blad)=>({walidacja:400,konflikt:409,z_pliku:409,odlaczone:409,tymczasowy:503} as Record<string,number>)[w.kod]??503;
  const blad=(req:FastifyRequest,reply:FastifyReply,w:Blad,k?:PolaczenieKanalu)=>widok(req,reply.code(status(w)),k,{blad:w.komunikat});
+ const odmowa=(req:FastifyRequest,reply:FastifyReply,status:number,komunikat:string)=>stronaOdmowy(reply,status,komunikat,{tytul:'Nie zapisano ustawień sklepu WooCommerce',wroc:url(klucz(req)||'nowy'),napisWroc:'Wróć do ustawień połączenia'});
  function trasa(method:'GET'|'POST',path:string,fn:(r:FastifyRequest,p:FastifyReply)=>unknown){
   app.route({method,url:root+path,logLevel:'silent',preHandler:async(req,reply)=>{
    reply.header('Cache-Control','no-store').header('Referrer-Policy',POLITYKA_REFERERA_LINKU);
-   if(konto(req)?.admin!==true)return reply.code(403).send('Tylko administrator może konfigurować WooCommerce.');
-  },handler:async(req,reply)=>{try{return await fn(req,reply);}catch{return reply.code(503).send('Nie udało się wykonać operacji WooCommerce. Odśwież ekran i sprawdź stan sklepu.');}}});
+   if(konto(req)?.admin!==true)return odmowa(req,reply,403,'Tylko administrator może konfigurować WooCommerce.');
+  },handler:async(req,reply)=>{try{return await fn(req,reply);}catch{return odmowa(req,reply,503,'Nie udało się wykonać operacji WooCommerce. Odśwież ekran i sprawdź stan sklepu.');}}});
  }
  trasa('GET','/nowy',(req,reply)=>widok(req,reply));
  trasa('POST','/szkice',(req,reply)=>{
   for(const [id,s] of szkice)if(s.wygasa<=teraz().getTime())szkice.delete(id);
   const pola=polaZFormularza(konfigurator.kroki[0],body(req));
   if(!pola.nazwa||[...pola.nazwa].length>80||!normalizujAdresSklepu(pola.adres,o.tryb))return blad(req,reply,{ok:false,kod:'walidacja',komunikat:'Podaj nazwę (1–80 znaków) i poprawny adres sklepu.'});
-  if(szkice.size>=1000)return reply.code(503).send('Otwórz konfigurator ponownie za chwilę.');
+  if(szkice.size>=1000)return odmowa(req,reply,503,'Otwórz konfigurator ponownie za chwilę.');
   const id=randomUUID();szkice.set(id,{nazwa:pola.nazwa,adres:pola.adres,sesja:sesja(req),wygasa:teraz().getTime()+1200000});
   return widok(req,reply,undefined,{formularzId:id,komunikat:/^http:\/\//i.test(pola.adres.trim())?'Zmieniliśmy http:// na https://.':null});
  });
@@ -102,9 +104,9 @@ export function registerTrasyWoo(app:FastifyInstance,o:{db:DatabaseSync;repozyto
  const powrot=(reply:FastifyReply,k:string)=>reply.code(303).redirect(url(k));
  async function utworz(req:FastifyRequest,reply:FastifyReply){
   const b=body(req),id=tekst(b.formularzId),s=szkice.get(id);
-  if(!s||s.sesja!==sesja(req)||s.wygasa<=teraz().getTime()||wersja(b.wersja)!==0)return reply.code(409).send('Otwórz konfigurator ponownie.');
+  if(!s||s.sesja!==sesja(req)||s.wygasa<=teraz().getTime()||wersja(b.wersja)!==0)return odmowa(req,reply,409,'Otwórz konfigurator ponownie.');
   if(s.klucz)return powrot(reply,s.klucz);
-  if(s.praca){await s.praca;return s.klucz?powrot(reply,s.klucz):reply.code(409).send('Odśwież konfigurator.');}
+  if(s.praca){await s.praca;return s.klucz?powrot(reply,s.klucz):odmowa(req,reply,409,'Odśwież konfigurator.');}
   const pola=polaZFormularza(konfigurator.kroki[1],b),ck=pola.ck??'',cs=pola.cs??'';
   // PRZ-134.PT8: najpierw sklep musi przyjąć klucze; odmowa zostawia konfigurator na kroku kluczy i NIC w bazie.
   const proba=await (s.praca=woo.sprawdzNowe({adres:s.adres,ck,cs}));s.praca=undefined;
@@ -121,8 +123,8 @@ export function registerTrasyWoo(app:FastifyInstance,o:{db:DatabaseSync;repozyto
  for(const operacja of operacje)trasa('POST','/:kanal/'+operacja,async(req,reply)=>{
   if(operacja==='klucze'&&klucz(req)==='nowy')return utworz(req,reply);
   const k=kanal(klucz(req)),b=body(req),v=wersja(b.wersja),a=aktor(req);
-  if(!k)return reply.code(409).send('Nie znaleziono sklepu. Odśwież ekran.');
-  if(k.zrodlo==='env')return reply.code(409).send('Ten sklep jest ustawiony w pliku konfiguracji (oms.env) — tam go zmień. Formularz niczego nie zapisał.');
+  if(!k)return odmowa(req,reply,409,'Nie znaleziono sklepu. Odśwież ekran.');
+  if(k.zrodlo==='env')return odmowa(req,reply,409,'Ten sklep jest ustawiony w pliku konfiguracji (oms.env) — tam go zmień. Formularz niczego nie zapisał.');
   if(k.wersja!==v)return blad(req,reply,{ok:false,kod:'konflikt',komunikat:'Formularz jest nieaktualny. Odśwież ekran.'},k);
   let w;
   switch(operacja){

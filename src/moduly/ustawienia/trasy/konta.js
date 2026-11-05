@@ -27,6 +27,12 @@ import { POLITYKA_REFERERA_LINKU } from './haslo-link.js';
 import { adresLinkow } from '../adres-panelu.ts';
 import { malymi } from '../role.js';
 import { kontoWPodgladzieDemo, logowaniaDemo } from '../../../core/bezpieczenstwo/podglad-demo.js';
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
+
+// PRZ-152.G13u1: odmowa 404 w układzie OMS (zamiast gołego tekstu) z powrotem na listę kont —
+// konto, którego nie ma, nie ma też własnej strony. Status, tekst i kolejność sprawdzeń bez zmian.
+const BRAK_KONTA = { tytul: 'Nie znaleziono konta', wroc: '/ustawienia/konta', napisWroc: 'Wróć do kont' };
+const BRAK_ROLI = { tytul: 'Nie znaleziono roli', wroc: '/ustawienia/konta', napisWroc: 'Wróć do kont' };
 
 // ⚠️ EKRAN JEST TYLKO DLA KONTA Z FLAGA `admin` — niezaleznie od ptaszka na „Ustawieniach".
 // Rola Sprzedaz ma dostep do konfiguracji panelu (formulki, kanaly) w niektorych instalacjach,
@@ -383,7 +389,7 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
     if (odmowa) return odmowa;
     const id = Number(req.params.id);
     const cel = listaKont(db).find((k) => k.id === id);
-    if (!cel) return reply.code(404).send('Nie ma takiego konta');
+    if (!cel) return stronaOdmowy(reply, 404, 'Nie ma takiego konta', BRAK_KONTA);
 
     // Pole `ekran` z formularza: jeden ptaszek przychodzi jako napis, kilka jako tablica,
     // zero — nie przychodzi wcale. Wszystkie trzy postacie to ta sama rzecz.
@@ -434,9 +440,9 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
     if (odmowa) return odmowa;
     const id = Number(req.params.id);
     const cel = listaKont(db).find((k) => k.id === id);
-    if (!cel) return reply.code(404).send('Nie ma takiego konta');
+    if (!cel) return stronaOdmowy(reply, 404, 'Nie ma takiego konta', BRAK_KONTA);
     const rola = rolaPoKluczu(db, req.body?.rola);
-    if (!rola) return reply.code(404).send('Nie ma takiej roli');
+    if (!rola) return stronaOdmowy(reply, 404, 'Nie ma takiej roli', BRAK_ROLI);
     if (!pozostanieCzynnyAdmin(db, id, { czynne: cel.czynne, admin: rola.admin })) {
       return widok(req, reply.code(400), { blad: KOMUNIKAT_OSTATNI_ADMIN });
     }
@@ -457,7 +463,7 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
     // nie aktualizuje, bez bledu). Dwie pozostale trasy (`/uprawnienia`, `/czynne`) juz
     // sprawdzaly `cel` i oddawaly 404 — ta ma robic dokladnie to samo.
     const cel = listaKont(db).find((k) => k.id === id);
-    if (!cel) return reply.code(404).send('Nie ma takiego konta');
+    if (!cel) return stronaOdmowy(reply, 404, 'Nie ma takiego konta', BRAK_KONTA);
     if (!req.body?.haslo) {
       return widok(req, reply.code(400), { blad: 'Puste hasło — wpisz je ponownie.' });
     }
@@ -472,7 +478,7 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
     if (odmowa) return odmowa;
     const id = Number(req.params.id);
     const cel = listaKont(db).find((k) => k.id === id);
-    if (!cel) return reply.code(404).send('Nie ma takiego konta');
+    if (!cel) return stronaOdmowy(reply, 404, 'Nie ma takiego konta', BRAK_KONTA);
     const czynne = req.body?.czynne === '1';
 
     // Ta sama para bezpiecznikow, co w /uprawnienia — patrz komentarze tam. Kolejnosc ta sama
@@ -498,7 +504,7 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
     const odmowa = tylkoAdmin(req, reply);
     if (odmowa) return odmowa;
     const cel = kontoZTrasy(req);
-    if (!cel) return reply.code(404).send('Nie ma takiego konta');
+    if (!cel) return stronaOdmowy(reply, 404, 'Nie ma takiego konta', BRAK_KONTA);
     return stronaKonta(req, reply, cel.id);
   });
 
@@ -506,7 +512,7 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
     const odmowa = tylkoAdmin(req, reply);
     if (odmowa) return odmowa;
     const cel = kontoZTrasy(req);
-    if (!cel) return reply.code(404).send('Nie ma takiego konta');
+    if (!cel) return stronaOdmowy(reply, 404, 'Nie ma takiego konta', BRAK_KONTA);
     try {
       ustawEmail(db, cel.id, req.body?.email, teraz);
     } catch (e) {
@@ -520,7 +526,7 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
     const odmowa = tylkoAdmin(req, reply);
     if (odmowa) return odmowa;
     const cel = kontoZTrasy(req);
-    if (!cel) return reply.code(404).send('Nie ma takiego konta');
+    if (!cel) return stronaOdmowy(reply, 404, 'Nie ma takiego konta', BRAK_KONTA);
     if (!cel.czynne) return stronaKonta(req, reply.code(400), cel.id, { blad: 'Konto jest wyłączone — włącz je, zanim wyślesz link.' });
     const sposob = String(req.body?.sposob ?? '');
     if (!SPOSOBY_LINKU.includes(sposob)) return stronaKonta(req, reply.code(400), cel.id, { blad: 'Wybierz: mail albo link do skopiowania.' });

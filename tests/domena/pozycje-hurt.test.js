@@ -7,6 +7,15 @@ import { parsujHurtPozycji, ustawWMapie, ustawNadpisaniePozycji } from '../../sr
 // nawiasów — `pozycje[s555][nazwa]` przyszłoby jako jeden klucz tekstowy.
 
 describe('parsujHurtPozycji', () => {
+  it('zszywa opcjonalne sku i netto, odmawia każdej urwanej kolumny', () => {
+    const body = { klucz: ['s1', ''], nazwa: ['A', 'B'], ilosc: ['1', '2'], cena_brutto: ['10', ''],
+      sku: ['', 'SKU-X'], cena_netto: ['', '100'] };
+    expect(parsujHurtPozycji(body)[1]).toMatchObject({ sku: 'SKU-X', cena_netto: '100' });
+    for (const pole of ['sku', 'cena_netto', 'vat']) {
+      expect(() => parsujHurtPozycji({ ...body, [pole]: [''] })).toThrow(/tyle samo/);
+      expect(() => parsujHurtPozycji({ ...body, [pole]: [] })).toThrow(/tyle samo/);
+    }
+  });
   it('zszywa równoległe tablice po indeksie', () => {
     const wiersze = parsujHurtPozycji({
       klucz: ['s1', 'r2'],

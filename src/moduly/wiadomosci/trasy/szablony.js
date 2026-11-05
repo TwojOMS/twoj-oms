@@ -11,6 +11,7 @@ import {
 } from '../../../domena/szablony-wiadomosci.js';
 import { wczytajSzablonyWiadomosci, zmienSzablonyWiadomosci } from '../../../oms/db/szablony-wiadomosci.js';
 import { podgladSzablonu } from '../szablony.js';
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import {
   wczytajZapisaneZdania, zdaniaPlatnosciTeraz, zapiszZdaniaPlatnosci, przywrocZdanie, zdaniaDoEkranu,
 } from '../zdania-platnosci.js';
@@ -23,6 +24,8 @@ const ADRES = '/ustawienia/szablony-wiadomosci';
 // PRZ-102.17: sekcja „Zdania o płatności" na liście szablonów. Trasy statyczne — find-my-way stawia je przed `/:id`,
 // a żaden szablon nie ma id „zdania-platnosci" (wbudowane mają stałe nazwy, własne `wlasny-N`).
 const ZDANIA_ADRES = `${ADRES}/zdania-platnosci`;
+// PRZ-152.G13: odmowy w układzie OMS (status i tekst bez zmian); powrót na listę szablonów.
+const ODMOWA_SZABLONOW = { tytul: 'Nie ma takiego szablonu', napisWroc: 'Wróć do szablonów wiadomości', wroc: ADRES };
 
 const KOMUNIKATY = {
   przywrocono: 'Przywrócono treść domyślną.',
@@ -94,14 +97,14 @@ export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, config = {},
 
   app.post(`${ZDANIA_ADRES}/:klucz/przywroc`, async (req, reply) => {
     if (!przywrocZdanie(db, String(req.params.klucz), teraz().toISOString())) {
-      return reply.code(404).type('text/plain; charset=utf-8').send('Nie ma takiego zdania.');
+      return stronaOdmowy(reply, 404, 'Nie ma takiego zdania.', ODMOWA_SZABLONOW);
     }
     return reply.code(303).redirect(`${ADRES}?zapisano=zdanie-przywrocone#zdania-platnosci`);
   });
 
   app.get(`${ADRES}/:id`, async (req, reply) => {
     const s = szablonPod(String(req.params.id));
-    if (!s) return reply.code(404).type('text/plain; charset=utf-8').send('Nie ma takiego szablonu — mógł zostać usunięty.');
+    if (!s) return stronaOdmowy(reply, 404, 'Nie ma takiego szablonu — mógł zostać usunięty.', ODMOWA_SZABLONOW);
     if (req.query?.podglad === undefined) return ekranEdycji(req, reply, s);
 
     const formularz = {
@@ -117,7 +120,7 @@ export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, config = {},
   app.post(`${ADRES}/:id`, async (req, reply) => {
     const id = String(req.params.id);
     const s = szablonPod(id);
-    if (!s) return reply.code(404).type('text/plain; charset=utf-8').send('Nie ma takiego szablonu — mógł zostać usunięty.');
+    if (!s) return stronaOdmowy(reply, 404, 'Nie ma takiego szablonu — mógł zostać usunięty.', ODMOWA_SZABLONOW);
     const pola = req.body ?? {};
     const formularz = { nazwa: String(pola.nazwa ?? ''), temat: String(pola.temat ?? ''), tresc: String(pola.tresc ?? '') };
     const wynik = zmienSzablonyWiadomosci(db, (stan) => zapiszSzablon(stan, id, formularz, teraz().toISOString()));
@@ -139,7 +142,7 @@ export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, config = {},
       return ekranEdycji(req, reply, s, { blad: 'Potwierdź, że reguły przestaną wysyłać ten mail.' });
     }
     const wynik = zmienSzablonyWiadomosci(db, (stan) => usunSzablon(stan, id));
-    if (!wynik.ok) return reply.code(404).type('text/plain; charset=utf-8').send(wynik.blad);
+    if (!wynik.ok) return stronaOdmowy(reply, 404, wynik.blad, ODMOWA_SZABLONOW);
     const zaleznosci = reguly.length ? `&usunietySzablon=${encodeURIComponent(id)}` : '';
     return reply.code(303).redirect(`${ADRES}?zapisano=${rodzajSzablonu(id) === 'wlasny' ? 'usunieto' : 'przywrocono'}${zaleznosci}`);
   });

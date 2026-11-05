@@ -9,6 +9,12 @@ import {
 } from '../../../oms/db/cele.js';
 import { listaKont } from '../../../core/bezpieczenstwo/konta.js';
 import { zmierz, progCelu } from '../uslugi/cele-pomiar.js';
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
+
+// PRZ-152.G13: odmowy tras celów w układzie OMS (status i tekst bez zmian). Brak celu → lista celów,
+// zły formularz celu → karta tego celu.
+const odmowaCelu = (reply) => stronaOdmowy(reply, 404, 'Nie ma takiego celu.', { tytul: 'Nie ma takiego celu', napisWroc: 'Wróć do celów', wroc: '/cele' });
+const odmowaCel = (reply, status, tekst, id) => stronaOdmowy(reply, status, tekst, { tytul: 'Nie udało się zapisać celu', napisWroc: 'Wróć do celu', wroc: `/cele/${id}` });
 
 // Zakladka CELE (spec 2026-09-13). Trasa jest CIENKA — wzorzec routes/statystyki.js:
 // wybiera zakres, wola domene, renderuje.
@@ -148,7 +154,7 @@ export function zarejestrujTrasyCelow(app, { db }) {
 
   app.get('/cele/:id', async (req, reply) => {
     const cel = celPoId(db, req.params.id);
-    if (!cel) return reply.code(404).send('Nie ma takiego celu.');
+    if (!cel) return odmowaCelu(reply);
     return reply.view('cel.ejs', {
       // TA SAMA funkcja, co na liscie — kafel i karta nie moga pokazac czegos innego.
       pozycja: pozycjaCelu(db, cel, dzisiaj(), new Date().toISOString()),
@@ -161,22 +167,22 @@ export function zarejestrujTrasyCelow(app, { db }) {
 
   app.post('/cele/:id', async (req, reply) => {
     const cel = celPoId(db, req.params.id);
-    if (!cel) return reply.code(404).send('Nie ma takiego celu.');
+    if (!cel) return odmowaCelu(reply);
     const { blad, dane } = zCzytajCel(req.body);
-    if (blad) return reply.code(400).send(blad);
+    if (blad) return odmowaCel(reply, 400, blad, cel.id);
     zapiszCel(db, cel.id, dane);
     return reply.redirect(`/cele/${cel.id}`);
   });
 
   app.post('/cele/:id/zdarzenie', async (req, reply) => {
     const cel = celPoId(db, req.params.id);
-    if (!cel) return reply.code(404).send('Nie ma takiego celu.');
+    if (!cel) return odmowaCelu(reply);
 
     const ile = Number(String(req.body?.ile ?? '1').trim());
     // ⚠️ Zdarzenie „zero" niczego nie odnotowuje, a ujemne cicho odejmowaloby postep bez
     // sladu w historii — wygladaloby jak zwykly wpis. Cofniecie ma wlasna trase.
     if (!Number.isInteger(ile) || ile < 1) {
-      return reply.code(400).send('„Ile" musi być liczbą całkowitą co najmniej 1.');
+      return odmowaCel(reply, 400, '„Ile" musi być liczbą całkowitą co najmniej 1.', cel.id);
     }
 
     dopiszZdarzenie(db, {
@@ -198,7 +204,7 @@ export function zarejestrujTrasyCelow(app, { db }) {
 
   app.post('/cele/:id/cofnij', async (req, reply) => {
     const cel = celPoId(db, req.params.id);
-    if (!cel) return reply.code(404).send('Nie ma takiego celu.');
+    if (!cel) return odmowaCelu(reply);
     const okres = okresCelu(cel.rytm, dzisiaj(), { odDnia: cel.od_dnia, doDnia: cel.do_dnia });
     // Brak czego cofac nie jest bledem — przycisk bywa klikniety dwa razy.
     cofnijOstatnie(db, cel.id, okres);
@@ -207,7 +213,7 @@ export function zarejestrujTrasyCelow(app, { db }) {
 
   app.post('/cele/:id/czynny', async (req, reply) => {
     const cel = celPoId(db, req.params.id);
-    if (!cel) return reply.code(404).send('Nie ma takiego celu.');
+    if (!cel) return odmowaCelu(reply);
     ustawCzynny(db, cel.id, String(req.body?.czynny ?? '1') === '1');
     return reply.redirect('/cele');
   });

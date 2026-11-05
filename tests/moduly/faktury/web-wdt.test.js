@@ -55,7 +55,7 @@ describe('karta zamówienia WDT', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(2601), {});
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}?edytuj=pozycje`, headers: naglowek });
     expect(r.statusCode).toBe(200);
-    expect(r.body).toMatch(/class="nowa-pozycja" data-vat="23" data-wdt="1"/);
+    expect(r.body).toMatch(/class="formularz-pozycji" data-vat="23" data-wdt="1"/);
   });
 
   it('karta krajowa NIE ma pasa WDT ani przycisku, a data-vat zostaje 23', async () => {

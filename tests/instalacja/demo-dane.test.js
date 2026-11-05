@@ -73,10 +73,10 @@ describe('generator danych demo na świeżej bazie', () => {
     return { status: r.status, html: await r.text() };
   };
 
-  // PRZ-087: pętla pomija ostatnie 3 dni (−19), uzupełnienia PRZ-087 dokładają 40 (12 nowych, 6 indywidualnych, 18 w realizacji, 4 wysłane).
+  // PRZ-087: pętla pomija ostatnie 3 dni (−19), uzupełnienia PRZ-087 dokładają 40 (12 nowych, 24 w realizacji, 4 wysłane; PRZ-152.G5: bez „indywidualnych”).
   it('ok. 177 zamówień z 60 dni (131 z pliku firmy + 6 uzupełnień PRZ-082 + 40 PRZ-087), wszystkie statusy, faktury z WDT, zwroty, przesyłki, koszty', () => {
     expect(wynik.zamowienia).toBe(177);
-    expect(Object.keys(wynik.statusy).sort()).toEqual(['anulowane', 'indywidualne', 'nowe', 'w_realizacji', 'wyslane', 'zwrot']);
+    expect(Object.keys(wynik.statusy).sort()).toEqual(['anulowane', 'nowe', 'w_realizacji', 'wyslane', 'zwrot']);
     const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
     try {
       const n = (sql) => db.prepare(sql).get().n;
@@ -97,6 +97,28 @@ describe('generator danych demo na świeżej bazie', () => {
     } finally { db.close(); }
   });
 
+  // PRZ-152.G5 (właściciel 04.11): demo i piaskownica bez statusu „Indywidualne”; praca „w toku” zostaje (nowe + w realizacji).
+  it('PRZ-152.G5: bez zamówień indywidualnych, kanał indywidualny wyłączony, „w toku” nie spada (było 34)', () => {
+    expect(ENV_DEMO.OMS_KANAL_INDYWIDUALNY).toBeUndefined();
+    expect(wynik.statusy.indywidualne).toBeUndefined();
+    expect((wynik.statusy.nowe ?? 0) + (wynik.statusy.w_realizacji ?? 0)).toBeGreaterThanOrEqual(34);
+    const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
+    try {
+      expect(db.prepare('SELECT COUNT(*) n FROM zamowienia WHERE indywidualne = 1').get().n).toBe(0);
+    } finally { db.close(); }
+  });
+
+  // PRZ-152.G2: pozycja bez identyfikatora linii sklepu nie da się usunąć „×” na karcie — demo musi je mieć.
+  it('PRZ-152.G2: każda pozycja zamówienia ze sklepu ma identyfikator linii, różny w obrębie zamówienia', () => {
+    const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
+    try {
+      const sklepowe = "FROM pozycje p WHERE p.zrodlo = 'sklep'";
+      expect(db.prepare(`SELECT COUNT(*) n ${sklepowe}`).get().n).toBeGreaterThan(100);
+      expect(db.prepare(`SELECT COUNT(*) n ${sklepowe} AND p.zrodlo_id IS NULL`).get().n).toBe(0);
+      expect(db.prepare(`SELECT COUNT(*) n FROM (SELECT 1 ${sklepowe} GROUP BY p.zamowienie_id, p.zrodlo_id HAVING COUNT(*) > 1)`).get().n).toBe(0);
+    } finally { db.close(); }
+  });
+
   it('każda zakładka menu odpowiada 200 i pokazuje dane demo', async () => {
     const adresy = live.aplikacja.menu.map((m) => m.adres);
     expect(adresy.filter((a) => !ZNACZNIKI[a]), 'zakładka bez znacznika demo — dopisz do ZNACZNIKI').toEqual([]);
@@ -112,7 +134,7 @@ describe('generator danych demo na świeżej bazie', () => {
 
   it('licznik każdego statusu na liście zamówień jest niezerowy', async () => {
     const { html } = await strona('/');
-    for (const s of ['nowe', 'indywidualne', 'w_realizacji', 'wyslane', 'zwrot', 'anulowane']) {
+    for (const s of ['nowe', 'w_realizacji', 'wyslane', 'zwrot', 'anulowane']) {
       const m = html.match(new RegExp(`data-status="${s}">(\\d+)<`));
       expect.soft(Number(m?.[1] ?? 0), s).toBeGreaterThan(0);
     }

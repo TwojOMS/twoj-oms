@@ -83,10 +83,12 @@ it.each([
   expect(db.prepare('SELECT COUNT(*) AS n FROM klienci').get().n).toBe(0);
 });
 // Inwentarz nie znalazł B w karta.js. Nietknięta trasa C nadal ma tekstowy kontrakt.
-it('płatności poza zakresem: odmowa nadal text/plain', async () => {
+// PRZ-152.G9b (plan G3–G9, D6): zła kwota wpłaty wraca kartą z otwartym formularzem i komunikatem, nie text/plain.
+it('płatności: odmowa wpłaty wraca kartą z formularzem otwartym', async () => {
   panel();
   const r = await post('platnosci', { kwota: 'zla' });
   expect(r.statusCode).toBe(400);
-  expect(r.headers['content-type']).toContain('text/plain');
-  expect(r.body).not.toContain('<html');
+  expect(r.headers['content-type']).toContain('text/html');
+  expect(r.body).toMatch(/<details class="wplata-formularz" id="wplata" open>/);
+  expect(r.body).toContain('role="alert"');
 });

@@ -39,7 +39,7 @@ function sumaLiniiBrutto(p) {
 //    netto wolno pokazac jako wyliczone ze stawki VAT — patrz komentarz w domain/vat.js.
 //    WYLACZNIE do pokazania: do inFaktu i tak idzie brutto.
 // PRZ-105: netto naszej ceny liczone stawką TEJ pozycji (przy WDT 0 — netto = brutto), nie stałym 23.
-function cenaNetto(p, stawka, opcje) {
+export function nettoWiersza(p, stawka, opcje) {
   if (p.cena_netto != null && String(p.cena_netto).trim() !== '') return p.cena_netto;
   return naszaCena(p) ? nettoZBruttoDoPokazania(p.cena_brutto, stawka, opcje) : null;
 }
@@ -262,7 +262,7 @@ export function wierszePozycji(zamowienie, { stawkaDomyslna = STAWKA_VAT, zw = f
     // znaczy, rozstrzyga kanal — i rozstrzyga to domena, nie widok.
     ofertaId: p.oferta_id ?? null,
     ilosc: p.ilosc,
-    cenaNetto: cenaNetto(p, stawkaWiersza(p), { zw }),
+    cenaNetto: nettoWiersza(p, stawkaWiersza(p), { zw }),
     stawka: stawkaWiersza(p),
     stawkaOpis: opisStawki(stawkaWiersza(p), wdt, zw),
     // Własna stawka pozycji ręcznej albo null (stara pozycja, `vat` NULL — „domyślna w chwili faktury”):

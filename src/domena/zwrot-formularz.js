@@ -187,7 +187,7 @@ export function formularzZwrotu(z, { dzis, wpisane = null } = {}) {
   const dostawaZostalaGr = dostawaZostalaGrosze(z);
 
   const pozycje = (z?.pozycje ?? []).map((p, i) => {
-    const klucz = kluczPozycji(p, i);
+    const klucz = p.klucz ?? kluczPozycji(p, i);
     const byle = wczesniej.get(klucz) ?? { ilosc: 0, kwotaGr: 0 };
     const kupiono = Number(p?.ilosc ?? 0);
     const doZwrotu = Math.max(kupiono - byle.ilosc, 0);
@@ -379,7 +379,7 @@ function przeliczoneWiersze(z, body) {
   // drugiej i panel przeliczylby kwote, ktorej operator wlasnie bronil (ta sama zasada, co
   // przy `wierszeFormularzaZwrotu`).
   const dopasowane = propozycje.length === surowe.length ? propozycje : null;
-  const pozycje = new Map((z?.pozycje ?? []).map((p, i) => [kluczPozycji(p, i), p]));
+  const pozycje = new Map((z?.pozycje ?? []).map((p, i) => [p.klucz ?? kluczPozycji(p, i), p]));
   const wczesniej = juzZwrocone(z?.zwroty);
 
   return surowe.map((w, i) => {

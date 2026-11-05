@@ -1,4 +1,5 @@
 import type {FastifyInstance,FastifyReply,FastifyRequest} from 'fastify';
+import {stronaOdmowy} from '../../core/web/odmowa.js';
 import {createHash,randomBytes,randomUUID} from 'node:crypto';
 import type {zbudujUslugiKanalow} from './services/kompozycja-kanalow.ts';
 import type {Aktor,Wynik} from './kontrakty-allegro.ts';
@@ -101,14 +102,15 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
   const komunikat=brakUprawnien?w.komunikat+' Otwórz aplikację w Allegro (Zarządzanie aplikacjami), zaznacz brakujące uprawnienia i połącz konto jeszcze raz.':w.komunikat==='Allegro nie przyjęło zgody Device Flow.'?'Zgoda odrzucona w Allegro. Zacznij od nowa.':w.komunikat;
   return widok(req,reply.code(status(w)),klucz,{blad:komunikat,brakUprawnien});
  }
+ const odmowa=(req:FastifyRequest,reply:FastifyReply,status:number,komunikat:string,wroc=klucz(req)?urlKanalu(klucz(req)):root+'/nowe')=>stronaOdmowy(reply,status,komunikat,{tytul:'Nie zapisano ustawień Allegro',wroc,napisWroc:'Wróć do ustawień połączenia'});
  function trasa(method:'GET'|'POST',url:string,fn:(req:FastifyRequest,reply:FastifyReply)=>unknown){
   app.route({method,url,logLevel:'silent',preHandler:async(req,reply)=>{
    reply.header('Cache-Control','no-store').header('Referrer-Policy',POLITYKA_REFERERA_LINKU);
-   if(konto(req)?.admin!==true)return reply.code(403).send('Tylko administrator może konfigurować Allegro.');
+   if(konto(req)?.admin!==true)return odmowa(req,reply,403,'Tylko administrator może konfigurować Allegro.');
   },handler:async(req,reply)=>{
    try{return await fn(req,reply);}catch{
     // Odpowiedzi zewnętrznego API i wyjątki nigdy nie trafiają do widoku/logu.
-    return reply.code(503).send('Nie udało się wykonać operacji Allegro. Odśwież ekran i sprawdź stan połączenia.');
+    return odmowa(req,reply,503,'Nie udało się wykonać operacji Allegro. Odśwież ekran i sprawdź stan połączenia.');
    }
   }});
  }
@@ -131,7 +133,8 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
   if(usuniety)o.autoryzacjaAllegro.uniewaznij(klucz);
   return usuniety;
  }
- const powrot=(reply:FastifyReply,k:{klucz:string;pobieranie?:string})=>k.pobieranie==='zatrzymywanie'?reply.code(202).send('Zatrzymywanie operacji Allegro. Odśwież ekran za chwilę.'):reply.code(303).redirect(urlKanalu(k.klucz));
+ // Także przy pobieraniu w trakcie zatrzymywania: ekran kanału sam pokazuje „Pobieranie zamówień: Zatrzymywanie” (G16a).
+ const powrot=(reply:FastifyReply,k:{klucz:string;pobieranie?:string})=>reply.code(303).redirect(urlKanalu(k.klucz));
  trasa('GET',root+'/nowe',(req,reply)=>widok(req,reply));
  trasa('POST',root+'/szkice',async(req,reply)=>{
   const b=body(req),nazwa=tekst(b.nazwa).trim(),odUtc=poczatekDniaWarszawa(tekst(b.od));
@@ -189,13 +192,13 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
  trasa('GET',root+'/aplikacja',(req,reply)=>{
   // PRZ-148.06: bez parametru — środowisko, w którym aplikacja już jest (inaczej produkcja).
   const p=(req.query as Record<string,unknown>|undefined)?.srodowisko,s=p===undefined?domyslneSrodowisko():srodowiskoZ(p);
-  if(!s)return reply.code(400).send('Wybierz środowisko Allegro: produkcja albo sandbox.');
+  if(!s)return odmowa(req,reply,400,'Wybierz środowisko Allegro: produkcja albo sandbox.',root+'/aplikacja');
   const ses=sesja(req,reply),blad=ses.blad;delete ses.blad;
   return ekranAplikacji(reply,s,{blad});
  });
  trasa('POST',root+'/aplikacja-urzadzenia',async(req,reply)=>{
   const b=body(req),s=srodowiskoZ(b.srodowisko);
-  if(!s)return reply.code(400).send('Wybierz środowisko Allegro: produkcja albo sandbox.');
+  if(!s)return odmowa(req,reply,400,'Wybierz środowisko Allegro: produkcja albo sandbox.',root+'/aplikacja');
   const clientId=tekst(b.clientId).trim();
   const w=await o.aplikacjaAllegro.sprawdzIZapiszAplikacjeDevice(s,{clientId,clientSecret:tekst(b.clientSecret).trim()},aktor(req));
   if(!w.ok)return ekranAplikacji(reply.code(statusDevice[w.kod]??503),s,{blad:w.komunikat,brakujace:w.brakujace,clientId:w.kod==='z_pliku'||w.kod==='w_uzyciu'?'':clientId});
@@ -203,7 +206,7 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
  });
  trasa('POST',root+'/user-agent',(req,reply)=>{
   const b=body(req),s=srodowiskoZ(b.srodowisko);
-  if(!s)return reply.code(400).send('Wybierz środowisko Allegro: produkcja albo sandbox.');
+  if(!s)return odmowa(req,reply,400,'Wybierz środowisko Allegro: produkcja albo sandbox.',root+'/aplikacja');
   if(o.config.userAgentZEnv)return ekranAplikacji(reply.code(409),s,{uaBlad:'Ustawione przez administratora serwera.'});
   const polaUserAgent={nazwa:tekst(b.nazwa),wersja:tekst(b.wersja),adres:tekst(b.adres)};
   try{zlozUserAgentAllegro(polaUserAgent);}catch(e){return ekranAplikacji(reply.code(400),s,{uaBlad:(e as Error).message,polaUserAgent});}

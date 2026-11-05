@@ -6,6 +6,7 @@
 // powtarzamy żadnej z tych blokad.
 import { przelacznikStanow, przelaczStany } from '../../../oms/db/stany-magazynowe.js';
 import { nawigacjaUstawien } from '../nawigacja.js';
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
 
 const KOMUNIKATY = {
   wlaczono: 'Stany magazynowe są włączone. Wpisz stan otwarcia kart w zakładce Magazyn.',
@@ -29,7 +30,8 @@ export function registerUstawieniaMagazynuRoutes(app, { db }) {
   app.post('/ustawienia/magazyn/stany', async (req, reply) => {
     const wartosc = String(req.body?.wlacz ?? '');
     if (wartosc !== '1' && wartosc !== '0') {
-      return reply.code(400).type('text/plain; charset=utf-8').send('Pole „wlacz” musi mieć wartość 1 albo 0.');
+      return stronaOdmowy(reply, 400, 'Pole „wlacz” musi mieć wartość 1 albo 0.',
+        { tytul: 'Nie udało się zmienić stanów magazynowych', wroc: '/ustawienia/magazyn', napisWroc: 'Wróć do ustawień magazynu' });
     }
     const wlacz = wartosc === '1';
     const konto = req.konto ? { id: req.konto.id ?? null, login: req.konto.login ?? null } : null;

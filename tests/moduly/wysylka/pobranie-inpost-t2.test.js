@@ -9,6 +9,10 @@ import { createNadanie } from '../../../src/moduly/wysylka/services/nadanie.js';
 import { zapiszUmowePobrania } from '../../../src/moduly/wysylka/db/umowy-pobrania.js';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 
+// Od PRZ-152.G1 błąd nadania to strona w układzie OMS — porównujemy sam komunikat z paska uwagi.
+const komunikatNadania = (html) => (html.match(/<p class="pasek-uwaga" role="alert">([\s\S]*?)<\/p>/)?.[1] ?? html)
+  .replace(/&#34;|&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+
 const naglowki = { authorization: 'Basic ' + Buffer.from('operator:atrapa').toString('base64'), origin: 'http://localhost' };
 const PODPOWIEDZ = 'Paczkomat za pobraniem włączysz w <a href="/ustawienia/integracje/inpost#inpost-pobranie">Ustawienia → Integracje → Kurier InPost</a>, jeśli masz umowę na pobranie.';
 const ADRES = { nazwa: 'Ala Przykładowa', ulica: 'Przykładowa 12', kod: '00-001', miasto: 'Warszawa', kraj: 'PL', phone: '+48500100200', email: 'ala@example.test' };
@@ -83,7 +87,7 @@ describe('umowa InPost na pobranie w nadaniu', () => {
     const t = przygotuj({ umowa });
     const r = await t.post();
     expect(r.statusCode).toBe(400);
-    expect(r.body).toBe('Nie umiem nadać tej paczki jako „inpost_paczkomat" — do wyboru jest Wysyłam z Allegro — umowa Allegro (domyślnie) albo DPD — nasza umowa. Panel niczego nie nadał.');
+    expect(komunikatNadania(r.body)).toBe('Nie umiem nadać tej paczki jako „inpost_paczkomat" — do wyboru jest Wysyłam z Allegro — umowa Allegro (domyślnie) albo DPD — nasza umowa. Panel niczego nie nadał.');
     expect(t.fetchImpl).not.toHaveBeenCalled();
     const karta = await t.get();
     expect(karta.statusCode).toBe(200);

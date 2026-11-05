@@ -152,3 +152,50 @@ describe('kwotaOczekiwanaGrosze', () => {
     expect(kwotaOczekiwanaGrosze(z)).toBe(21320);
   });
 });
+
+// PRZ-152.G2-01 — usunięta pozycja sklepowa znika z `pozycje` (nakładka), ale `kwota_brutto`
+// ze sklepu dalej ją obejmuje. Kwota oczekiwana odejmuje jej SKLEPOWĄ wartość z `pozycje_usuniete`.
+describe('kwotaOczekiwanaGrosze — pozycje usunięte (PRZ-152.G2)', () => {
+  const linia = (nazwa, ilosc, cena, brutto) => ({ zrodlo: 'sklep', nazwa, ilosc, cena_brutto: cena, brutto_linii: brutto });
+  const woo = (nad = {}) => ({
+    sklep: 'sklep', kwota_brutto: '237.99', koszt_dostawy_brutto: '19.99',
+    pozycje: [linia('Szablon A', 2, '61.50', '123.00'), linia('Szablon C', 1, '50.00', '50.00')],
+    pozycje_usuniete: [{ ...linia('Szablon B', 1, '45.00', '45.00'), klucz: 's2' }],
+    ...nad,
+  });
+
+  it('Woo 237,99 z usuniętą linią 45,00 daje 192,99 — a po przywróceniu znów 237,99', () => {
+    expect(kwotaOczekiwanaGrosze(woo())).toBe(19299);
+    const przywrocone = woo({
+      pozycje: [linia('Szablon A', 2, '61.50', '123.00'), linia('Szablon B', 1, '45.00', '45.00'), linia('Szablon C', 1, '50.00', '50.00')],
+      pozycje_usuniete: [],
+    });
+    expect(kwotaOczekiwanaGrosze(przywrocone)).toBe(23799);
+  });
+
+  // Usunięta nie ma wartości efektywnej — odejmujemy sklepową, także gdy w kopii leży `sklep`.
+  it('odejmuje wartość SKLEPOWĄ usuniętej linii', () => {
+    const z = woo({ pozycje_usuniete: [{ ...linia('Szablon B', 1, '45.00', '45.00'), sklep: linia('Szablon B', 1, '45.00', '45.00') }] });
+    expect(kwotaOczekiwanaGrosze(z)).toBe(19299);
+  });
+
+  it('suma tabeli równa się kwocie oczekiwanej przy usuniętej linii i poprawionej drugiej', () => {
+    const z = woo({
+      pozycje: [
+        { ...linia('Szablon A', 3, '61.50', '184.50'), sklep: linia('Szablon A', 2, '61.50', '123.00') },
+        linia('Szablon C', 1, '50.00', '50.00'),
+      ],
+    });
+    expect(kwotaOczekiwanaGrosze(z)).toBe(19299 + 6150);
+    expect(sumaPozycjiZWysylkaGrosze(z)).toBe(kwotaOczekiwanaGrosze(z));
+  });
+
+  it('zamówienie ręczne pomija człon usuniętych', () => {
+    expect(kwotaOczekiwanaGrosze(woo({ sklep: 'reczne' }))).toBe(23799);
+  });
+
+  it('brak pola `pozycje_usuniete` (stary obiekt) — kwota bez zmian', () => {
+    const { pozycje_usuniete: _u, ...z } = woo();
+    expect(kwotaOczekiwanaGrosze(z)).toBe(23799);
+  });
+});

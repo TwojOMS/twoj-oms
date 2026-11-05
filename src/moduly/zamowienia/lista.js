@@ -58,11 +58,12 @@ async function wykonajZLimitem(elementy, limit, fn) {
   return wyniki;
 }
 
+import { stronaOdmowy } from '../../core/web/odmowa.js';
 export function registerListaRoutes(app, kontekst) {
 const {db,config,poller,nadanie,faktura,proforma,kurierzy,gus,syncSklep,wiadomosci,przesylkiAllegro,stanyKanalow,zdrowie,fakturaAllegro,fakturaHurtem,doczytanieKsef,powrotKarty,adresPowrotuNaKarte,wczytajListe,statusyDlaKarty,OKNO_OSTRZEZEN_PRZESYLEK_DNI,zbierzOstrzezenia,wyborWiadomosci,daneWiadomosci,renderujKarte,renderujNowe,magazynEkranu,niesiePolaFormularza,opisZmian,kopiujDaneFakturyDoWysylki,pozycjaZadania,zWynikami,magazynDlaKarty}=kontekst;
 app.post('/ostrzezenia/odrzuc', async (req, reply) => {
     const klucz = typeof req.body?.klucz === 'string' ? req.body.klucz : null;
-    if (!kluczDozwolony(klucz)) return reply.code(400).send('Nieznany klucz ostrzeżenia.');
+    if (!kluczDozwolony(klucz)) return stronaOdmowy(reply, 400, 'Nieznany klucz ostrzeżenia.', { tytul: 'Nie udało się ukryć ostrzeżenia', napisWroc: 'Wróć do listy zamówień' });
     odrzuc(db, klucz, { kto: req.konto?.login ?? ktoKlikal(req) });
     return reply.redirect('/');
   });
@@ -435,7 +436,7 @@ app.post('/zamowienia/masowe/status', async (req, reply) => {
 app.get('/zamowienia/:id/specyfikacja.pdf', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!z) return stronaOdmowy(reply, 404, 'Nie ma takiego zamówienia', { tytul: 'Nie udało się przygotować specyfikacji', wroc: adresPowrotuNaKarte(req, req.params.id), napisWroc: 'Wróć do zamówienia' });
     let bajty;
     try {
       const sprzedawca = sprzedawcaSpecyfikacji(config);
@@ -446,7 +447,7 @@ app.get('/zamowienia/:id/specyfikacja.pdf', async (req, reply) => {
       // awaria zapisu logu (dysk pelny, baza tylko do odczytu) nie ma prawa zamienic
       // czytelnego 400 w surowy blad sterownika bazy (HTTP 500).
       zapiszLubOdpusc(() => dopiszLog(db, id, { akcja: 'specyfikacja.pdf', wynik: `BŁĄD: ${e.message}` }));
-      return reply.code(400).send(`Nie udało się przygotować specyfikacji: ${komunikatDlaOperatora(e)}`);
+      return stronaOdmowy(reply, 400, `Nie udało się przygotować specyfikacji: ${komunikatDlaOperatora(e)}`, { tytul: 'Nie udało się przygotować specyfikacji', wroc: adresPowrotuNaKarte(req, req.params.id), napisWroc: 'Wróć do zamówienia' });
     }
     const nazwaPliku = `specyfikacja-${bezpiecznaNazwa(z.numer ?? String(id))}.pdf`;
     return reply.type('application/pdf')
@@ -485,13 +486,13 @@ for (const [nazwa, wydruk] of Object.entries(WYDRUKI)) {
   app.get(`/zamowienia/:id/${nazwa}.pdf`, async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!z) return stronaOdmowy(reply, 404, 'Nie ma takiego zamówienia', { tytul: 'Nie udało się przygotować wydruku', wroc: adresPowrotuNaKarte(req, req.params.id), napisWroc: 'Wróć do zamówienia' });
     let bajty;
     try {
       bajty = await wydruk.zbuduj([zamowienieZGrupa(db, z)]);
     } catch (e) {
       zapiszLubOdpusc(() => dopiszLog(db, id, { akcja: wydruk.akcja, wynik: `BŁĄD: ${e.message}` }));
-      return reply.code(400).send(`Nie udało się przygotować ${wydruk.co}: ${komunikatDlaOperatora(e)}`);
+      return stronaOdmowy(reply, 400, `Nie udało się przygotować ${wydruk.co}: ${komunikatDlaOperatora(e)}`, { tytul: 'Nie udało się przygotować wydruku', wroc: adresPowrotuNaKarte(req, req.params.id), napisWroc: 'Wróć do zamówienia' });
     }
     return pdfInline(reply, bajty, `${nazwa}-${bezpiecznaNazwa(z.numer ?? String(id))}.pdf`);
   });
@@ -499,9 +500,9 @@ for (const [nazwa, wydruk] of Object.entries(WYDRUKI)) {
   // sufit partii, co specyfikacje nizej (rysowanie jest synchroniczne, patrz tam).
   app.post(`/zamowienia/${nazwa}.pdf`, async (req, reply) => {
     const wybrane = wybraneZListy(wczytajListe(zaznaczone(req.body?.id)), req.body?.id);
-    if (!wybrane.length) return reply.code(400).send('Nie zaznaczono żadnego zamówienia.');
+    if (!wybrane.length) return stronaOdmowy(reply, 400, 'Nie zaznaczono żadnego zamówienia.', { tytul: 'Nie udało się przygotować wydruku', wroc: powrotKarty(req), napisWroc: 'Wróć do listy zamówień' });
     const zaDuzo = powodZaDuzegoDruku(wybrane.length, wydruk.co);
-    if (zaDuzo) return reply.code(400).send(zaDuzo);
+    if (zaDuzo) return stronaOdmowy(reply, 400, zaDuzo, { tytul: 'Nie udało się przygotować wydruku', wroc: powrotKarty(req), napisWroc: 'Wróć do listy zamówień' });
     let bajty;
     try {
       bajty = await wydruk.zbuduj(wybrane.map((z) => zamowienieZGrupa(db, z)));
@@ -509,7 +510,7 @@ for (const [nazwa, wydruk] of Object.entries(WYDRUKI)) {
       for (const z of wybrane) {
         zapiszLubOdpusc(() => dopiszLog(db, z.id, { akcja: `${wydruk.akcja}.masowa`, wynik: `BŁĄD: ${e.message}` }));
       }
-      return reply.code(400).send(`Nie udało się przygotować ${wydruk.co}: ${komunikatDlaOperatora(e)}`);
+      return stronaOdmowy(reply, 400, `Nie udało się przygotować ${wydruk.co}: ${komunikatDlaOperatora(e)}`, { tytul: 'Nie udało się przygotować wydruku', wroc: powrotKarty(req), napisWroc: 'Wróć do listy zamówień' });
     }
     const nazwaPliku = wybrane.length === 1
       ? `${nazwa}-${bezpiecznaNazwa(wybrane[0].numer ?? '')}.pdf`
@@ -524,14 +525,14 @@ app.post('/zamowienia/specyfikacje.pdf', async (req, reply) => {
     // pdf/specyfikacja-pdf.js: `zbudujSpecyfikacjeWieluPdf` odmawia identycznie na pustej
     // liscie — ale nie ma prawa polegac WYLACZNIE na tamtej odmowie, bo trasa ma dac
     // komunikat operatorski, a nie techniczny wyjatek).
-    if (!wybrane.length) return reply.code(400).send('Nie zaznaczono żadnego zamówienia.');
+    if (!wybrane.length) return stronaOdmowy(reply, 400, 'Nie zaznaczono żadnego zamówienia.', { tytul: 'Nie udało się przygotować specyfikacji', wroc: powrotKarty(req), napisWroc: 'Wróć do listy zamówień' });
     // ⚠️ SUFIT PARTII DRUKU (12.08.2026). Do tego dnia trasa nie miala go wcale, bo „rysowanie
     // jest lokalne, wiec nic nie grozi". Grozi, i to z rzeczy niewidocznych stad: lista nie ma
     // stronicowania, „zaznacz wszystkie" zaznacza KAZDY wyrenderowany wiersz, a rysowanie jest
     // SYNCHRONICZNE — czyli jedno pomylkowe klikniecie zatrzymuje panel dla wszystkich na czas
     // rysowania calej bazy. Uzasadnienie liczby stoi przy stalej w domain/masowe.js.
     const zaDuzo = powodZaDuzegoDruku(wybrane.length);
-    if (zaDuzo) return reply.code(400).send(zaDuzo);
+    if (zaDuzo) return stronaOdmowy(reply, 400, zaDuzo, { tytul: 'Nie udało się przygotować specyfikacji', wroc: powrotKarty(req), napisWroc: 'Wróć do listy zamówień' });
     let bajty;
     try {
       const sprzedawca = sprzedawcaSpecyfikacji(config);
@@ -545,7 +546,7 @@ app.post('/zamowienia/specyfikacje.pdf', async (req, reply) => {
       for (const z of wybrane) {
         zapiszLubOdpusc(() => dopiszLog(db, z.id, { akcja: 'specyfikacja.pdf.masowa', wynik: `BŁĄD: ${e.message}` }));
       }
-      return reply.code(400).send(`Nie udało się przygotować specyfikacji: ${komunikatDlaOperatora(e)}`);
+      return stronaOdmowy(reply, 400, `Nie udało się przygotować specyfikacji: ${komunikatDlaOperatora(e)}`, { tytul: 'Nie udało się przygotować specyfikacji', wroc: powrotKarty(req), napisWroc: 'Wróć do listy zamówień' });
     }
     const nazwaPliku = wybrane.length === 1
       ? `specyfikacja-${bezpiecznaNazwa(wybrane[0].numer ?? '')}.pdf`

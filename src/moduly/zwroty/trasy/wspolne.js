@@ -1,3 +1,4 @@
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
 import {
   dodajZwrot, usunZwrot, oznaczPieniadzeOddane, zwrot, odblokujKorekte, zapiszRecznyNumerKorekty,
@@ -27,7 +28,7 @@ export function createWspolne({ db, korekta = null, definicje, infakt: programFa
   const zamowienieAlbo404 = (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) { reply.code(404).send('Nie ma takiego zamówienia'); return null; }
+    if (!z) { stronaOdmowy(reply, 404, 'Nie ma takiego zamówienia', { tytul: 'Nie udało się obsłużyć zwrotu', wroc: '/', napisWroc: 'Wróć do listy zamówień' }); return null; }
     return z;
   };
 
@@ -115,7 +116,8 @@ export function createWspolne({ db, korekta = null, definicje, infakt: programFa
       bladEkranu = bladEkranu ?? komunikatDlaOperatora(e);
     }
     return reply.code(kod).view('zwrot.ejs', {
-      title: `Zwrot — zamówienie ${z.numer}`,
+      title: `Zamówienie ${z.numer} / Zwrot`,
+      okruszki: [{ tekst: `Zamówienie ${z.numer}`, href: `/zamowienia/${z.id}` }, { tekst: 'Zwrot' }],
       z,
       powrot: powrotKarty(req),
       adresKarty: adresKarty(req, z.id),

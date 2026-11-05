@@ -127,6 +127,15 @@ export const fmtDataCzasKrotko = (wartosc) => sformatuj(wartosc, false);
  */
 export const dzienWarszawa = (wartosc) => sformatuj(wartosc, false).slice(0, 10);
 
+/** DD.MM, z rokiem dla dat spoza bieżącego roku w Warszawie. */
+export function fmtDzienKrotko(iso) {
+  const dzien = dzienWarszawa(iso);
+  if (!dzien) return '';
+  const [rok, miesiac, d] = dzien.split('-');
+  const biezacyRok = dzienWarszawa(new Date().toISOString()).slice(0, 4);
+  return `${d}.${miesiac}${rok === biezacyRok ? '' : `.${rok}`}`;
+}
+
 const MIESIACE_DOPELNIACZ = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia',
   'września', 'października', 'listopada', 'grudnia'];
 

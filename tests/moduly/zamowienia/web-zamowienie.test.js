@@ -258,31 +258,33 @@ describe('sekcja „Pozycje”', () => {
   // POD cena brutto. Szesc kolumn nie miescilo sie czytelnie, a netto jest liczba pomocnicza:
   // na fakture i do bariery arytmetycznej idzie BRUTTO. Sama wartosc netto zostaje widoczna
   // (test nizej: „pokazuje netto, brutto i sumę linii pozycji").
-  it('pokazuje nagłówki kolumn: Ilość, Nazwa, Cena brutto, Suma — a SKU i netto pod nimi', async () => {
+  // ZMIANA ŚWIADOMA PRZ-152.G13a (właściciel 05.11): odczyt ma te same kolumny co edycja — SKU, „Cena netto”
+  // i „Stawka VAT” wracają jako osobne kolumny, kwoty z przecinkiem („61,50 zł”).
+  it('pokazuje nagłówki kolumn jak w edycji: Ilość, Nazwa, SKU, Cena netto, Stawka VAT, Cena brutto, Suma', async () => {
     const id = zapiszZamowienie(db, 'pro', zPozycjamiIWysylka(1501), {});
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
-    for (const naglowekKolumny of ['Ilość', 'Nazwa', 'Cena brutto', 'Suma']) {
+    for (const naglowekKolumny of ['Ilość', 'Nazwa', 'SKU', 'Cena brutto', 'Suma']) {
       expect(r.body).toContain(naglowekKolumny);
     }
-    expect(r.body).not.toContain('<th class="liczba">Cena netto</th>');
-    expect(r.body).toContain('netto</span>');
+    expect(r.body).toContain('<th class="liczba">Cena netto</th>');
+    expect(r.body).not.toContain('netto</span>');
     expect(r.body).toContain('PRO-STOP-001');
   });
 
   it('pokazuje netto, brutto i sumę linii pozycji', async () => {
     const id = zapiszZamowienie(db, 'pro', zPozycjamiIWysylka(1502), {});
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
-    expect(r.body).toContain('50.00');
-    expect(r.body).toContain('61.50');
-    expect(r.body).toContain('123.00');
+    expect(r.body).toContain('50,00 zł');
+    expect(r.body).toContain('61,50 zł');
+    expect(r.body).toContain('123,00 zł');
   });
 
   it('dokłada wysyłkę jako wiersz tabeli, z ceną netto i brutto', async () => {
     const id = zapiszZamowienie(db, 'pro', zPozycjamiIWysylka(1503), {});
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).toContain('Wysyłka');
-    expect(r.body).toContain('89.90');
-    expect(r.body).toContain('73.09');
+    expect(r.body).toContain('89,90 zł');
+    expect(r.body).toContain('73,09 zł');
   });
 
   // SEDNO ZADANIA: darmowa dostawa dostaje ZERO widoczne na ekranie, nie znika z tabeli.
@@ -292,7 +294,9 @@ describe('sekcja „Pozycje”', () => {
     }), {});
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).toContain('Wysyłka');
-    expect(r.body).toMatch(/Wysyłka[\s\S]*?0\.00 zł[\s\S]*?0\.00 zł[\s\S]*?0\.00 zł/);
+    // PRZ-152.G9a2: trzecie „0.00 zł” brał dawny pasek „Wpłacono 0.00 zł” z sekcji Płatności — wiersz Wysyłki ma dwa.
+    // PRZ-152.G13a: kwoty w tabeli z przecinkiem.
+    expect(r.body).toMatch(/Wysyłka[\s\S]*?0,00 zł[\s\S]*?0,00 zł/);
   });
 
   // Suma przestala byc akapitem POD tabela i jest jej OSTATNIM WIERSZEM (wyrozniony
@@ -352,7 +356,7 @@ describe('skrypt netto/brutto — stawka VAT z data-vat, nie wpisana w skrypcie'
 
     // 1. JEDYNE miejsce, z ktorego skrypt ma prawo wziac stawke: atrybut na formularzu,
     // ktorego wartosc serwer wypelnia z STAWKA_VAT (routes/zamowienia.js: renderujKarte).
-    const atrybut = r.body.match(/class="nowa-pozycja" data-vat="([^"]*)"/);
+    const atrybut = r.body.match(/class="formularz-pozycji" data-vat="([^"]*)"/);
     expect(atrybut).not.toBeNull();
     expect(atrybut[1]).toBe(STAWKA_VAT);
 
@@ -1513,8 +1517,10 @@ describe('status DPD odświeżany przy otwarciu karty', () => {
     const dpd = { statusPrzesylki: vi.fn().mockResolvedValue({ opis: 'Nadana', at: '2026-07-30T09:00:00.000' }) };
     const r = await zDpd(id, dpd);
     const zapisany = przesylka(id).status_kuriera_pobrany_at;
-    expect(r.body).toContain(`sprawdzone ${fmtDataCzas(zapisany)}`);
-    expect(r.body).not.toMatch(/sprawdzone[^<]*UTC/);
+    // PRZ-152.G8: stopka karty paczki pokazuje czas bez sekund („status sprawdzony 21:14”,
+    // z dniem, gdy inny niż dzień nadania) — godzina dalej polska, nie UTC.
+    expect(r.body).toMatch(new RegExp(`status sprawdzony [^<]*${fmtDataCzas(zapisany).slice(11, 16)}`));
+    expect(r.body).not.toMatch(/sprawdzony[^<]*UTC/);
   });
 
   it('brak znacznika próby → pyta DPD i zapisuje nowy status na karcie', async () => {
@@ -1631,7 +1637,7 @@ describe('status DPD odświeżany przy otwarciu karty', () => {
     const r = await zDpd(id, { statusPrzesylki: vi.fn().mockResolvedValue({ opis: 'Doręczona', at: '2026-07-30T09:00:00.000' }) });
 
     expect(przesylka(id).status_kuriera_blad).toBeNull();
-    expect(r.body).toContain('sprawdzone');
+    expect(r.body).toContain('status sprawdzony'); // PRZ-152.G8: nowy napis stopki karty paczki
     expect(r.body).not.toContain('status niedostępny');
   });
 
@@ -1823,17 +1829,18 @@ describe('karta zamówienia — „Pobierz" i „Drukuj" (kolejka druku)', () =>
     expect(r.body).toContain('Porzuć');
   });
 
-  it('pozycja wydrukowana → stan „wydrukowano <kiedy>"', async () => {
+  it('pozycja wydrukowana → stopka „etykieta wydrukowana <kiedy>"', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(2106), {});
     przesylka(id, { etykieta_zpl_sciezka: '/e/1.zpl' });
     const w = dodajDoKolejki(db, przesylkaId(id));
     oznaczWydrukowano(db, w.id);
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
-    expect(r.body).toMatch(/wydrukowano/);
+    expect(r.body).toMatch(/etykieta wydrukowana/); // PRZ-152.G8: napis stopki karty paczki
     const wiersz = db.prepare('SELECT wydrukowane_at FROM kolejka_druku WHERE id = ?').get(w.id);
     // Zadanie „strona główna", punkt C: znacznik (teraz(), UTC) jest teraz PRZELICZANY
     // na czas polski, nie pokazany surowo.
-    expect(r.body).toContain(fmtDataCzas(wiersz.wydrukowane_at));
+    // PRZ-152.G8: bez sekund (i bez daty, gdy to dzień nadania) — godzina polska.
+    expect(r.body).toMatch(new RegExp(`etykieta wydrukowana [^<]*${fmtDataCzas(wiersz.wydrukowane_at).slice(11, 16)}`));
     // Porzuć ma sens tylko przy pozycji, która jeszcze próbuje — wydrukowana go nie pokazuje.
     expect(r.body).not.toContain('Porzuć');
   });
@@ -1860,10 +1867,10 @@ describe('etykieta otwiera się w nowej karcie', () => {
   // przepuściłby drugi.
   it('KAŻDY odnośnik „Pobierz PDF" ma target="_blank" i rel="noopener"', () => {
     const zrodlo = readFileSync('src/oms/web/views/zamowienie.ejs', 'utf8');
-    const wystapienia = zrodlo.split('Pobierz PDF').length - 1;
+    const wystapienia = zrodlo.split('PDF</a>').length - 1;
     expect(wystapienia).toBeGreaterThanOrEqual(2);
     for (let i = 0, od = 0; i < wystapienia; i += 1) {
-      const gdzie = zrodlo.indexOf('Pobierz PDF', od);
+      const gdzie = zrodlo.indexOf('PDF</a>', od);
       const tag = zrodlo.slice(0, gdzie).slice(zrodlo.slice(0, gdzie).lastIndexOf('<a '));
       expect(`${i}: ${/target="_blank"/.test(tag) && /rel="noopener/.test(tag) ? 'ok' : tag.slice(0, 120)}`)
         .toBe(`${i}: ok`);

@@ -1,3 +1,4 @@
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
 import { dodajZwrot } from '../../../oms/db/zwroty.js';
 import { parsujZwrot } from '../../../domena/zwrot.js';
@@ -17,7 +18,7 @@ export function registerZwrotyRoutes(app, { db, definicje }) {
   const zamowienieAlbo404 = (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) { reply.code(404).send('Nie ma takiego zamówienia'); return null; }
+    if (!z) { stronaOdmowy(reply, 404, 'Nie ma takiego zamówienia', { tytul: 'Nie udało się obsłużyć zwrotu', wroc: '/', napisWroc: 'Wróć do listy zamówień' }); return null; }
     return z;
   };
 
@@ -35,14 +36,14 @@ export function registerZwrotyRoutes(app, { db, definicje }) {
     // stan, ktorego nikt nie chcial (ta sama zasada, co przy faktach statusu).
     if (blad) {
       slad(z.id, 'zwrot.rejestracja', `BŁĄD: ${blad}`);
-      return reply.code(400).send(blad);
+      return stronaOdmowy(reply, 400, blad, { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
     }
     let zapisany;
     try {
       zapisany = dodajZwrot(db, z.id, nowy);
     } catch (e) {
       slad(z.id, 'zwrot.rejestracja', `BŁĄD: ${e.message}`);
-      return reply.code(400).send(komunikatDlaOperatora(e));
+      return stronaOdmowy(reply, 400, komunikatDlaOperatora(e), { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
     }
     // ⚠️ Slad niesie KWOTE i DATE, a nie samo „zarejestrowano zwrot". Ta kwota schodzi
     // z przychodu w raporcie zarzadczym, wiec po miesiacu ma sie dac odpowiedziec, ile

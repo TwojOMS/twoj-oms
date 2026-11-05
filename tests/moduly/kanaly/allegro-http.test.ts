@@ -328,3 +328,11 @@ it('U24–U27: działające konto ma tytuł „Allegro: nazwa”, stan zamiast s
  const bl=await f.req('POST',root+'/'+k+'/sprawdz',{wersja:String(f.repo.pobierz(k).wersja)});expect(bl.body).toContain('nie odpowiada');
  const problem=await f.req('GET',root+'/'+k);expect(problem.body).toMatch(/class="btn btn--glowny"[^>]*>Sprawdź połączenie/);
 });
+it('G16a: zapis przy zatrzymywanym pobieraniu wraca na ekran kanału, nie gołym tekstem 202',async()=>{
+ const f=await setup(true);
+ expect(f.repo.zapiszZmiane('legacy',0,{kontoId:'123',pobieranie:'zatrzymywanie'},{id:1,login:'admin'}).ok).toBe(true);
+ const r=await f.req('POST',root+'/legacy/nazwa',{nazwa:'Pracownia Półcień',wersja:String(f.repo.pobierz('legacy').wersja)});
+ expect(r.statusCode).toBe(303);expect(r.headers.location).toBe(root+'/legacy');
+ const ekran=await f.req('GET',root+'/legacy');
+ expect(ekran.statusCode).toBe(200);expect(ekran.body).toContain('Zatrzymywanie');
+});

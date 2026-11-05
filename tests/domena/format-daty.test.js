@@ -1,5 +1,25 @@
-import { describe, it, expect } from 'vitest';
-import { fmtDataCzas, fmtDataCzasKrotko, fmtKiedy } from '../../src/domena/format-daty.js';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { fmtDataCzas, fmtDataCzasKrotko, fmtKiedy, fmtDzienKrotko } from '../../src/domena/format-daty.js';
+
+describe('fmtDzienKrotko', () => {
+  afterEach(() => vi.useRealTimers());
+  it('pomija bieżący rok i pokazuje inny rok', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-04T12:00:00Z'));
+    expect(fmtDzienKrotko('2026-10-29T12:00:00Z')).toBe('29.10');
+    expect(fmtDzienKrotko('2025-10-29T12:00:00Z')).toBe('29.10.2025');
+  });
+  it('dzień i bieżący rok ustala według Warszawy przy północy UTC', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-12-31T23:30:00Z'));
+    expect(fmtDzienKrotko('2026-12-31T23:00:00Z')).toBe('01.01');
+    expect(fmtDzienKrotko('2026-10-28T23:30:00Z')).toBe('29.10.2026');
+    expect(fmtDzienKrotko('2027-01-01T00:00:00Z')).toBe('01.01');
+  });
+  it.each([null, undefined, '', 'nie-data'])('brak czytelnej daty %s daje pusty napis', (data) => {
+    expect(fmtDzienKrotko(data)).toBe('');
+  });
+});
 
 // Zadanie „strona główna", punkt C: jeden format daty w całym module OMS, z rozróżnieniem
 // dwóch skal czasu — patrz komentarz w src/oms/domain/format-daty.js i przewodnik OMS 4.7/6.

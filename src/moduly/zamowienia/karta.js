@@ -33,7 +33,7 @@ export function registerKartaRoutes(app, kontekst) {
 const {db,config,poller,nadanie,faktura,proforma,kurierzy,gus,syncSklep,wiadomosciCzynne,przesylkiAllegro,stanyKanalow,zdrowie,fakturaAllegro,fakturaHurtem,doczytanieKsef,powrotKarty,adresPowrotuNaKarte,wczytajListe,statusyDlaKarty,OKNO_OSTRZEZEN_PRZESYLEK_DNI,zbierzOstrzezenia,wyborWiadomosci,daneWiadomosci,renderujKarte,renderujNowe,magazynEkranu,niesiePolaFormularza,opisZmian,kopiujDaneFakturyDoWysylki,pozycjaZadania,zWynikami,magazynDlaKarty}=kontekst;
 app.get('/zamowienia/:id', async (req, reply) => {
     let z = pobierzZamowienie(db, Number(req.params.id));
-    if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, Number(req.params.id)), 404);
     // PRZ-101.04: dołączone nie ma własnej karty — jest częścią głównego (pozycje pokazuje karta głównego).
     if (z.scalone_do) return reply.redirect(`/zamowienia/${z.scalone_do}`);
 
@@ -331,7 +331,7 @@ app.post('/zamowienia/:id/komentarz', async (req, reply) => {
   });
 app.post('/zamowienia/:id/ustalenia', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }), 404);
 
     let wynik;
     try {
@@ -343,7 +343,7 @@ app.post('/zamowienia/:id/ustalenia', async (req, reply) => {
       }, kontekst.opcjeZw); // PRZ-122.B07c: pozycja „zw” przeliczana rabatem zapisuje się tylko przy TwojeFaktury
     } catch (e) {
       dopiszLog(db, id, { akcja: 'ustalenia', wynik: `BŁĄD: ${e.message}` });
-      return reply.code(400).send(`Nie udało się zapisać ustaleń: ${komunikatDlaOperatora(e)}`);
+      return ekranOdmowyKarty(reply, `Nie udało się zapisać ustaleń: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }), 400);
     }
 
     const zlotowki = (gr) => (gr / 100).toFixed(2);
@@ -485,7 +485,7 @@ app.post('/zamowienia/:id/wysylka/metoda', async (req, reply) => {
     // KANAL (`z.sklep`), bo odmowa dla Allegro nie moze byc kluczowana metoda — metoda to
     // dokladnie ta wartosc, ktora ten formularz zmienia (patrz sprawdzZmianeMetody).
     const zam = pobierzZamowienie(db, id);
-    if (!zam) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!zam) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
 
     // Pole wyboru: przegladarka przysyla je WYLACZNIE gdy zaznaczone — brak klucza znaczy
     // „bez pobrania" (ta sama zasada, co przy `chce_fakture`). ⚠️ To jest miejsce, w ktorym
@@ -503,16 +503,16 @@ app.post('/zamowienia/:id/wysylka/metoda', async (req, reply) => {
       req.body?.punkt_odbioru, zam,
     );
     // Bledny formularz, a nie awaria — wiec bez wpisu w logu, tak samo jak przy parsujPaczke.
-    if (blad) return reply.code(400).send(blad);
+    if (blad) return ekranOdmowyKarty(reply, blad, adresPowrotuNaKarte(req, id), 400);
     // PRZ-101.04 (recenzja, W2): pobranie na zamówieniu scalonym — odmowa (domena/scalanie.js).
     const pobranieGrupy = nadpisanie.pobranie ? powodOdmowyPobraniaGrupy(zam) : null;
-    if (pobranieGrupy) return reply.code(400).send(pobranieGrupy);
+    if (pobranieGrupy) return ekranOdmowyKarty(reply, pobranieGrupy, adresPowrotuNaKarte(req, id), 400);
 
     try {
       zapiszNadpisanieWysylki(db, id, nadpisanie);
     } catch (e) {
       dopiszLog(db, id, { akcja: 'wysylka.metoda', wynik: `BŁĄD: ${e.message}` });
-      return reply.code(400).send(`Nie udało się zmienić metody wysyłki: ${komunikatDlaOperatora(e)}`);
+      return ekranOdmowyKarty(reply, `Nie udało się zmienić metody wysyłki: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id), 400);
     }
     dopiszLog(db, id, {
       akcja: 'wysylka.metoda',
@@ -526,16 +526,16 @@ app.post('/zamowienia/:id/wysylka/metoda', async (req, reply) => {
 app.post('/zamowienia/:id/wysylka/przywroc', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
     // PRZ-101.04 (recenzja, W2): powrót do sklepu, który ma pobranie, to włączenie pobrania tylnymi
     // drzwiami — ta sama odmowa, co przy zmianie metody.
     const pobranieGrupy = pobranieZeSklepu(z) ? powodOdmowyPobraniaGrupy(z) : null;
-    if (pobranieGrupy) return reply.code(400).send(pobranieGrupy);
+    if (pobranieGrupy) return ekranOdmowyKarty(reply, pobranieGrupy, adresPowrotuNaKarte(req, id), 400);
     try {
       przywrocMetodeWysylkiZeSklepu(db, id);
     } catch (e) {
       dopiszLog(db, id, { akcja: 'wysylka.przywroc', wynik: `BŁĄD: ${e.message}` });
-      return reply.code(400).send(`Nie udało się przywrócić metody: ${komunikatDlaOperatora(e)}`);
+      return ekranOdmowyKarty(reply, `Nie udało się przywrócić metody: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id), 400);
     }
     dopiszLog(db, id, {
       akcja: 'wysylka.przywroc',
@@ -561,12 +561,14 @@ app.post('/zamowienia/:id/wplata', async (req, reply) => {
   });
 app.post('/zamowienia/:id/platnosci', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
     let wplata;
     try {
       wplata = parsujWplate(req.body);
     } catch (e) {
-      return reply.code(400).send(komunikatDlaOperatora(e));
+      return renderujKarte(req, reply.code(400), pobierzZamowienie(db, id), {
+        bladWplaty: { tekst: komunikatDlaOperatora(e), wartosci: req.body },
+      });
     }
     dodajWplateReczna(db, id, wplata);
     dopiszLog(db, id, {
@@ -579,12 +581,12 @@ app.post('/zamowienia/:id/platnosci', async (req, reply) => {
 app.post('/zamowienia/:id/platnosci/:platnoscId/usun', async (req, reply) => {
     const id = Number(req.params.id);
     const platnoscId = Number(req.params.platnoscId);
-    if (!pobierzZamowienie(db, id)) return reply.code(404).send('Nie ma takiego zamówienia');
+    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
     let usunieta;
     try {
       usunieta = usunWplateReczna(db, id, platnoscId);
     } catch (e) {
-      return reply.code(400).send(komunikatDlaOperatora(e));
+      return ekranOdmowyKarty(reply, komunikatDlaOperatora(e), adresPowrotuNaKarte(req, id), 400);
     }
     dopiszLog(db, id, {
       akcja: 'platnosc.usunieta',

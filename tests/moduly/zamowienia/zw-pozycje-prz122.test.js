@@ -75,7 +75,7 @@ const kartaEdycji = (id) => karta(id, '?edytuj=pozycje');
 const ekranNowego = async () => (await app.inject({ method: 'GET', url: '/zamowienia/nowe', headers: naglowek })).body;
 const wyslij = (url, payload) => app.inject({ method: 'POST', url, headers: naglowek, payload });
 const sekcjaPozycji = (html) => html.slice(html.indexOf('id="pozycje"'), html.indexOf('id="przesylka"'));
-const formularzDodaj = (html) => /<form method="post" action="\/zamowienia\/\d+\/pozycje" class="nowa-pozycja"[\s\S]*?<\/form>/u.exec(html)?.[0] ?? '';
+const formularzDodaj = (html) => /<form method="post" action="\/zamowienia\/\d+\/pozycje\/zapisz" class="formularz-pozycji"[\s\S]*?<\/form>/u.exec(html)?.[0] ?? '';
 const reczne = (id) => db.prepare("SELECT nazwa, vat, cena_brutto, brutto_linii FROM pozycje WHERE zamowienie_id = ? AND zrodlo = 'reczna' ORDER BY id").all(id);
 const kolumnaVat = (html) => [...sekcjaPozycji(html).matchAll(/<td class="liczba kol-vat">([^<]*)<\/td>/gu)].map((m) => m[1].trim());
 const NOWE = { w_nazwa: 'Ewa Półcień', dostawa: 'dpd', platnosc: 'przelew', koszt_dostawy_brutto: '19,00',
@@ -124,7 +124,7 @@ describe('PRZ-122.B07c TwojeFaktury (flaga `zw`) — karta zamówienia', () => {
     zapiszStawkeDomyslna(db, 'zw', { zw: true });
     const id = zapiszZamowienie(db, 'pro', zamowienie(), {});
     const edycja = await kartaEdycji(id);
-    expect(edycja).toMatch(/class="nowa-pozycja" data-vat="zw"/u);
+    expect(edycja).toMatch(/class="formularz-pozycji" data-vat="zw"/u);
     expect(formularzDodaj(edycja)).toMatch(/<option value="zw" selected>zw<\/option>/u);
     expect(edycja).not.toContain('zw%');
     const html = await karta(id);
@@ -226,7 +226,7 @@ describe.each(BEZ_FLAGI)('PRZ-122.B07c bez flagi `zw` (%s) — jak przed zmianą
     zapiszStawkeDomyslna(db, 'zw', { zw: true });
     const id = zapiszZamowienie(db, 'pro', zamowienie(), {});
     const html = await kartaEdycji(id);
-    expect(html).toMatch(/class="nowa-pozycja" data-vat="23"/u);
+    expect(html).toMatch(/class="formularz-pozycji" data-vat="23"/u);
     expect(formularzDodaj(html)).toMatch(/<option value="23" selected>23%<\/option>/u);
     expect(html).not.toMatch(/value="zw"/u);
     await wyslij(`/zamowienia/${id}/pozycje`, { nazwa: 'Kurs lutowania', ilosc: '1', cena_netto: '100' });

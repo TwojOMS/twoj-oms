@@ -91,6 +91,14 @@ describe('ikonaPrzesylki', () => {
     expect(ikona.href).toBe('https://tracktrace.dpd.com.pl/parcelDetails?typ=1&p1=1000000000001U');
   });
 
+  // PRZ-152.G7: paczka WzA (`kurier = allegro_wza`) nie mówi kodem, kto wiezie — link z tej samej
+  // funkcji co karta i zakładka Przesyłki (metoda zamówienia → DPD), nie z samego kodu kuriera.
+  it('paczka WzA jadąca DPD → link DPD jak na karcie (linkSledzeniaPaczki)', () => {
+    const ikona = ikonaPrzesylki({ id: 1, metoda_wysylki: 'allegro_dpd', przesylki: [{ numer_listu: 'AD0001112223', kurier: 'allegro_wza' }] });
+    expect(ikona.href).toBe('https://tracktrace.dpd.com.pl/parcelDetails?typ=1&p1=AD0001112223');
+    expect(ikona.zewnetrzny).toBe(true);
+  });
+
   // Kilka paczek naraz: nie da się wybrać "której" z poziomu listy — link ma prowadzić
   // do karty zamówienia, NIE do śledzenia pierwszej z brzegu.
   it('kilka paczek z numerem → link prowadzi do karty zamówienia, nie do śledzenia', () => {

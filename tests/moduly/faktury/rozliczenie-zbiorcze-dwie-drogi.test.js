@@ -272,7 +272,8 @@ describe('W3 — zamowienie w okresie nie zglasza niedoplaty (pieniadze zyja na 
     // Blok salda jest jedynym miejscem, w ktorym karta NAZYWA te pieniadze — asercja
     // o calym ciele lapalaby placeholdery formularza wplaty (ta sama pulapka, co
     // w okresy-trasy.test.js).
-    const blok = odp.body.match(/<div class="saldo[^"]*">[\s\S]*?<\/div>/)[0];
+    // PRZ-152.G9a2: pasek `div.saldo` zastąpiły plakietka i cztery liczby — blok to sekcja Płatności do listy ruchów.
+    const blok = odp.body.match(/<section class="panel" id="platnosci">[\s\S]*?<table/)[0];
     expect(blok).not.toMatch(/NIEDOPŁATA/);
     expect(blok).toMatch(/rozliczen/i);
   });

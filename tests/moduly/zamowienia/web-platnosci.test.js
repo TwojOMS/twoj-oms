@@ -5,6 +5,7 @@ import { dodajWplateReczna, platnosciZamowienia } from '../../../src/oms/db/plat
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 import { saldoWplat } from '../../../src/domena/platnosci.js';
 import { dzienWarszawa } from '../../../src/domena/format-daty.js';
+import { dodajZwrot, oznaczPieniadzeOddane } from '../../../src/oms/db/zwroty.js';
 
 const config = { auth: { user: 'adam', pass: 'x' } };
 const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'), origin: 'http://localhost' };
@@ -37,6 +38,61 @@ function zamowienieZRozjechanymiLicznikami(nad = {}) {
 const log = (id) => db.prepare('SELECT * FROM log WHERE zamowienie_id = ? ORDER BY id').all(id);
 // Karta z opcjonalnym parametrem — formularz wplaty siedzi za `?edytuj=wplata`.
 const karta = (id, query = '') => app.inject({ method: 'GET', url: `/zamowienia/${id}${query}`, headers: naglowek });
+const sekcjaPlatnosci = (body) => body.match(/<section class="panel" id="platnosci">[\s\S]*?<\/section>/)[0];
+
+describe('PRZ-152.G9a2 — jedna lista ruchów', () => {
+  it('pokazuje plakietkę, cztery liczby i zwrot z minusem oraz przecinkiem, bez sekund', async () => {
+    const id = zamowienieZRozjechanymiLicznikami({ kwota_brutto: '51.80', pozycje: [{ nazwa: 'Próbka', sku: 'DEMO', ilosc: 1, cena_brutto: '51.80', brutto_linii: '51.80', vat: null }] });
+    dodajWplateReczna(db, id, { kwota: '51.80', data: '2026-08-01T13:38:27', metoda: 'BLIK' });
+    const zwrot = dodajZwrot(db, id, { kwota: '51.80', data: '2026-08-02' });
+    oznaczPieniadzeOddane(db, id, zwrot.id, '2026-08-02T14:39:28');
+    const r = await karta(id);
+    expect(r.statusCode).toBe(200);
+    const html = sekcjaPlatnosci(r.body);
+    expect(html).toMatch(/panel-glowa[\s\S]*znacznik--szary[^>]*>Zwrócone w całości/);
+    const liczby = html.match(/<div class="platnosci-liczby">([\s\S]*?)<\/div>/)[1];
+    expect(liczby.match(/<strong/g)).toHaveLength(4);
+    expect(liczby).toContain('51,80 zł');
+    expect(liczby).toContain('0,00 zł');
+    expect(html).toContain('−51,80 zł');
+    expect(html).not.toContain('51.80 zł');
+    expect(html).not.toMatch(/13:38:27|14:39:28/);
+  });
+
+  it('przeplata wpłaty i zwroty rosnąco po dacie, sam dzień bez godziny', async () => {
+    const id = zamowienieZRozjechanymiLicznikami();
+    dodajWplateReczna(db, id, { kwota: '30.11', data: '2026-08-03', metoda: 'BLIK' });
+    dodajZwrot(db, id, { kwota: '20.22', data: '2026-08-02' });
+    dodajWplateReczna(db, id, { kwota: '10.33', data: '2026-08-01', metoda: 'Przelew' });
+    const html = sekcjaPlatnosci((await karta(id)).body);
+    expect(html.indexOf('+10,33 zł')).toBeLessThan(html.indexOf('−20,22 zł'));
+    expect(html.indexOf('−20,22 zł')).toBeLessThan(html.indexOf('+30,11 zł'));
+    expect(html).toContain('pieniądze do oddania');
+    expect(html).toMatch(/>1\.8</);
+    expect(html).not.toContain('00:00');
+    expect(html).toMatch(/ruch--szary[\s\S]*−20,22 zł/);
+  });
+
+  it('pobranie częściowo rozliczone przez kuriera: kwota do pobrania pomniejszona, bez paska „nie jest za pobraniem”', async () => {
+    const id = zamowienieZRozjechanymiLicznikami({ pobranie: 1, metoda_platnosci: 'cod', kwota_pobrania: '212.90' });
+    dodajWplateReczna(db, id, { kwota: '60.00', data: '2026-08-01', metoda: 'pobranie' });
+    const html = sekcjaPlatnosci((await karta(id)).body);
+    expect(html).not.toContain('wysyłka nie jest za pobraniem');
+  });
+
+  it('przy pobraniu pokazuje kwotę pobrania i oczekiwanie na kuriera, pomija date_paid w sumie', async () => {
+    const id = zamowienieZRozjechanymiLicznikami({ pobranie: 1, metoda_platnosci: 'cod', kwota_pobrania: '212.90', oplacone_at: '2026-08-01T12:00:00' });
+    dodajWplateReczna(db, id, { kwota: '12.90', data: '2026-07-30', metoda: 'BLIK' });
+    const html = sekcjaPlatnosci((await karta(id)).body);
+    expect(html).toContain('Wpłata pojawi się, gdy kurier rozliczy pobranie');
+    // Sama liczba w bloku, po przedpłacie 12,90 — inna niż Kwota i |saldo| (recenzja G9a2).
+    expect(html).toMatch(/Pobranie<br><strong class="znacznik [^"]*">200,00 zł<\/strong>/);
+    expect(html).toContain('Data zapłaty ze sklepu przy pobraniu — nie jest wpłatą');
+    expect(html).toContain('ruch--szary');
+    expect(html).not.toContain('NIEOPŁACONE');
+    expect(html).toMatch(/Wpłacono[\s\S]*0,00 zł/);
+  });
+});
 
 describe('sekcja Płatności na karcie', () => {
   it('pokazuje wpłaty z datą, kwotą, metodą i uwagą', async () => {
@@ -45,36 +101,41 @@ describe('sekcja Płatności na karcie', () => {
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Płatności');
-    expect(r.body).toContain('2026-08-01');
-    expect(r.body).toContain('50.00');
+    // G9a2: lista ruchów używa daty opisowej i kwot z przecinkiem.
+    expect(sekcjaPlatnosci(r.body)).toMatch(/>1\.8</);
+    // G9a2: kwota wpłaty ma polski separator dziesiętny.
+    expect(sekcjaPlatnosci(r.body)).toContain('+50,00 zł');
     expect(r.body).toContain('BLIK');
     expect(r.body).toContain('dopłata za szablon');
   });
 
-  // ⚠️ PRZEBUDOWA 2026-08-07 (prosba wlasciciela: „zmien sposob dodawania nowych platnosci
-  // na wygodniejszy"): formularz stoi NA STALE pod tabela wplat. Do tej pory trzeba bylo
-  // kliknac „+ Dodaj wplate" i przeladowac strone przez `?edytuj=wplata` — trzy kroki do
-  // czynnosci wykonywanej codziennie.
-  it('formularz wpłaty stoi na karcie OD RAZU, bez klikania „Dodaj wpłatę”', async () => {
+  // PRZ-152.G9b: decyzja z 04.11 zastępuje formularz na stałe z 07.08.
+  // Natywne details otwiera pola bez JavaScriptu i bez przeładowania karty.
+  it('formularz wpłaty jest domyślnie zamknięty i otwiera się przez summary bez JS', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).toContain(`action="/zamowienia/${id}/platnosci"`);
     expect(r.body).toContain('Zaksięguj');
     expect(r.body).toContain('name="kwota" type="number" step="0.01" min="0.01" required');
-    expect(r.body).not.toContain('+ Dodaj wpłatę');
+    expect(r.body).toContain('<details class="wplata-formularz" id="wplata">');
+    expect(r.body).toContain('<summary class="btn">+ Dodaj wpłatę</summary>');
+    expect(r.body).toContain(`href="/zamowienia/${id}#platnosci">Anuluj</a>`);
     // ⚠️ METODA JEST WYMAGANA (audyt 22.08.2026) i stoi w GLOWNYM rzedzie jako pole wyboru —
     // `required` schowane w zamknietym <details> byloby odmowa przegladarki bez widocznego
-    // powodu. Uwaga zostaje opcjonalna, w rozwijanym (czysty HTML, bez JavaScriptu).
+    // powodu. Uwaga stoi teraz w tym samym rzędzie (D6).
     expect(r.body).toMatch(/<select name="metoda" required/);
     expect(r.body).toContain('name="uwaga"');
-    expect(r.body).toMatch(/<details class="wiecej">[\s\S]*name="uwaga"/);
+    const formularz = r.body.match(/<form[^>]*class="wplata-szybka">([\s\S]*?)<\/form>/)[1];
+    expect(formularz).not.toContain('<details');
+    expect(formularz).toMatch(/name="uwaga"[\s\S]*Zaksięguj/);
   });
 
-  // Stary adres ma dalej dzialac (zakladki, odnosniki w logu) — po prostu niczego nie przelacza.
-  it('adres ?edytuj=wplata dalej otwiera kartę, a formularz jest ten sam', async () => {
+  // Stary adres dalej otwiera pola (zakładki, odnośniki w logu).
+  it('adres ?edytuj=wplata otwiera formularz', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}?edytuj=wplata`, headers: naglowek });
     expect(r.statusCode).toBe(200);
+    expect(r.body).toContain('<details class="wplata-formularz" id="wplata" open>');
     expect(r.body).toContain(`action="/zamowienia/${id}/platnosci"`);
   });
 
@@ -83,7 +144,8 @@ describe('sekcja Płatności na karcie', () => {
     const id = zamowienieZRozjechanymiLicznikami();
     dodajWplateReczna(db, id, { kwota: '150.00', data: '2026-07-30' });
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
-    expect(r.body).toContain('NIEDOPŁATA');
+    // G9a2: plakietka zastępuje dawny napis NIEDOPŁATA w sekcji płatności.
+    expect(sekcjaPlatnosci(r.body)).toContain('Nieopłacone');
     expect(r.body).toContain('62.90');
     // I odwrotna strona tej samej monety: zamowienie NIE wyglada na oplacone.
     expect(pobierzZamowienie(db, id).oplacone_at).toBeNull();
@@ -110,7 +172,8 @@ describe('sekcja Płatności na karcie', () => {
     expect(sprawy, 'nadpłata musi być w pasku spraw').toMatch(/Nadpłata 50\.00 zł/);
 
     const platnosci = r.body.slice(r.body.indexOf('id="platnosci"'));
-    expect(platnosci, 'saldo przy wpłatach musi mówić o nadpłacie').toMatch(/nadpłata 50\.00 zł/);
+    // G9a2: stan i saldo są osobnymi elementami z kwotą po polsku.
+    expect(platnosci).toMatch(/Nadpłata[\s\S]*Saldo[\s\S]*50,00 zł/);
     // ⚠️ Zdanie „sprawdź, czy nadwyżki…" zostalo TYLKO w pasku spraw (2026-08-07) — patrz
     // asercja wyzej. Trzy kopie tego samego na jednym ekranie zamienialy je w tlo.
     expect(platnosci).not.toContain('sprawdź, czy nadwyżki nie trzeba zwrócić klientowi');
@@ -166,14 +229,30 @@ describe('POST /zamowienia/:id/platnosci', () => {
     expect(pobierzZamowienie(db, id).oplacone_at).toBeTruthy();
   });
 
-  it('brak kwoty → 400 z czytelną odmową i BEZ zapisu', async () => {
+  it('brak kwoty → 400 na karcie z otwartym formularzem, wartościami i BEZ zapisu', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/platnosci`, headers: naglowek, payload: { data: '2026-08-01' },
+      method: 'POST', url: `/zamowienia/${id}/platnosci`, headers: naglowek,
+      payload: { kwota: '', data: '2026-08-01', metoda: 'BLIK', uwaga: 'dopłata Półcień' },
     });
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/Podaj kwotę wpłaty/);
     expect(platnosciZamowienia(db, id)).toHaveLength(0);
+    const html = sekcjaPlatnosci(r.body);
+    expect(html).toContain('<details class="wplata-formularz" id="wplata" open>');
+    expect(html).toMatch(/role="alert"[^>]*>Podaj kwotę wpłaty/);
+    expect(html).toMatch(/name="kwota"[^>]*value=""/);
+    expect(html).toMatch(/name="data"[^>]*value="2026-08-01"/);
+    expect(html).toContain('<option value="BLIK" selected>');
+    expect(html).toContain('value="dopłata Półcień"');
+  });
+
+  it('wartości po odmowie są escapowane w polach formularza', async () => {
+    const id = zamowienieZRozjechanymiLicznikami();
+    const r = await app.inject({ method: 'POST', url: `/zamowienia/${id}/platnosci`, headers: naglowek,
+      payload: { kwota: '', data: '', metoda: 'BLIK', uwaga: '\"><script>alert(1)</script>' } });
+    expect(r.statusCode).toBe(400);
+    expect(sekcjaPlatnosci(r.body)).toMatch(/value="(?:&quot;|&#34;)&gt;&lt;script&gt;alert\(1\)&lt;\/script&gt;"/);
   });
 
   it('nieistniejące zamówienie → 404', async () => {
@@ -306,7 +385,8 @@ describe('formularz „Dodaj wpłatę” — pola i wartości domyślne', () => 
     });
     expect(r.statusCode).toBeLessThan(400);
     const body = (await karta(id)).body;
-    expect(body).toMatch(/NIEDOPŁATA: brakuje/);
+    // G9a2: plakietka i podpisane saldo zastępują dawny komunikat niedopłaty.
+    expect(sekcjaPlatnosci(body)).toMatch(/Nieopłacone[\s\S]*Saldo[\s\S]*-200,56 zł/);
     expect(body).toContain(saldoWplat(pobierzZamowienie(db, id)).roznicaZl);
   });
 });

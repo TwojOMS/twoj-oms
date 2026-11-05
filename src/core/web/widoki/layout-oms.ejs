@@ -705,6 +705,7 @@
       flex: 0 0 auto; font-size: .68rem; font-weight: 700; text-transform: uppercase;
       letter-spacing: .05em; padding: .1rem .45rem; border-radius: .25rem;
     }
+    .tab-dokumenty summary.waga { width: fit-content; cursor: pointer; }
     .waga--blokada { background: var(--blad-tlo); color: var(--blad-tekst); }
     .waga--uwaga { background: var(--uwaga-tlo); color: var(--uwaga-tekst); }
     /* Trzeci stopien, dolozony razem z akcjami masowymi: „poszlo" / „nada sie". Dwa dotad */
@@ -913,6 +914,8 @@
     .btn:hover { background: var(--powierzchnia-2); }
     .btn--glowny { background: var(--marka); border-color: var(--marka); color: var(--na-marce); font-weight: 600; }
     .btn--glowny:hover { background: var(--marka-ciemniej); }
+    /* PRZ-152.G10e: nieaktywny przycisk w calym OMS — przygaszony, bez akcji pod kursorem. */
+    .btn:disabled, .btn:disabled:hover { background: var(--powierzchnia-2); color: var(--tekst-przygaszony); border-color: var(--ramka); cursor: not-allowed; }
     /* Stopka akcji ekranu nadania (Zadanie 3): drugi przycisk zatwierdzajacy i „Anuluj".
        ⚠️ Zaden z dwoch przyciskow zatwierdzajacych nie jest „bezpieczniejszy" — obu sie NIE
        DA cofnac (patrz przewodnik OMS, 4.3). „Nadaj i drukuj" dostaje wage DRUGIEGO
@@ -1058,10 +1061,13 @@
     .pole-ilosc { text-align: center; font-weight: 700; }
     /* PRZ-074: pole ilosci ma strzalki — w 3,6 rem cyfra chowala sie pod nimi. */
     .panel--edycja .kol-ilosc { width: 5.2rem; }
-    .nowa-pozycja .pole-ilosc { width: 4.6rem; }
     .pole-cena { text-align: right; }
     .kol-akcje { width: 10rem; }
     /* PRZ-103: kolumna „×” przy wierszu pozycji na ekranie zakladania i przycisk „+ Dodaj wiersz”. */
+    .tab-pozycje[data-wiersze-pozycji] .kol-sku { width: 6rem; }
+    .tab-pozycje[data-wiersze-pozycji] .kol-cena { width: 6.5rem; }
+    .tab-pozycje[data-wiersze-pozycji] .kol-suma { width: 6.5rem; }
+    .tab-pozycje[data-wiersze-pozycji] .kol-vat { width: 6rem; }
     .kol-usun { width: 2.6rem; text-align: center; }
     .tab-pozycje[data-podglad-kwoty] .kol-ilosc { width: 5.2rem; }
     /* PRZ-106: „+ Dodaj wiersz” w stopce tabeli, nad „Razem” — bez tła wiersza sumy. */
@@ -1072,9 +1078,6 @@
        stoi pod skladnikami. Wlasnie to widac bylo jako „tabela sie rozjezdza" najmocniej. */
     .liczba { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
     .sku { font-size: .78rem; color: var(--tekst-przygaszony); }
-    .nowa-pozycja { display: flex; flex-wrap: wrap; gap: .5rem; align-items: flex-end; margin-top: .9rem; padding-top: .9rem; border-top: 1px dashed var(--ramka); }
-    .nowa-pozycja label { display: flex; flex-direction: column; gap: .2rem; font-size: .8rem; color: var(--tekst-przygaszony); }
-    .nowa-pozycja input, .nowa-pozycja select { font: inherit; font-size: .9rem; padding: .35rem .5rem; border: 1px solid var(--ramka-pola); border-radius: .3rem; }
 
     /* Paczka — podkarta w sekcji Przesylka. Naglowek „Paczka N" pozwala powiedziec przez */
     /* telefon, o ktora paczke chodzi. */
@@ -1118,6 +1121,7 @@
        przycisk stoi w srodku paska, nie przy prawej krawedzi jak na karcie. */
     .wydruki--masowe { margin-left: 0; }
     .wydruki-menu--lewe { left: 0; right: auto; }
+    .wydruki-menu .wyjasnienie { display: block; padding: .1rem .9rem .45rem; min-width: 18rem; font-size: .82rem; white-space: normal; }
     .wydruki-menu button { font: inherit; font-size: .9rem; text-align: left; padding: .45rem .9rem; color: var(--tekst); background: none; border: 0; cursor: pointer; white-space: nowrap; }
     .wydruki-menu button:hover { background: var(--powierzchnia-2); }
 
@@ -1219,10 +1223,23 @@
     .metadane div { display: flex; justify-content: space-between; gap: .6rem; padding: .22rem 0; border-bottom: 1px dotted var(--ramka); }
     .metadane div:last-child { border-bottom: 0; }
     .metadane span:first-child { color: var(--tekst-przygaszony); }
+    /* PRZ-152.G14b: `.metadane span:first-child` szarzył napis każdej plakietki przewoźnika na karcie zamówienia. */
+    .metadane .plakietka span:first-child { color: var(--plakietka-tekst, inherit); }
 
     .saldo { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .5rem; padding: .5rem .6rem; border-radius: .3rem; background: var(--powierzchnia-2); font-size: .95rem; margin-top: .7rem; }
     .saldo--zle { background: var(--blad-tlo); color: var(--blad-tekst); }
     .saldo--ok { background: var(--ok-tlo); color: var(--ok-tekst); }
+    .platnosci-liczby { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; }
+    /* D6: natywne details, pola i opcjonalna uwaga w jednym rzędzie. */
+    .wplata-formularz { display: inline-block; vertical-align: top; max-width: 100%; }
+    .wplata-formularz > summary { display: inline-flex; list-style: none; cursor: pointer; }
+    .wplata-formularz > summary::-webkit-details-marker { display: none; }
+    .wplata-formularz .wplata-szybka { color: var(--tekst); }
+    .wplata-formularz input[name="uwaga"] { width: 15rem; }
+    .wplata-formularz + .btn { align-self: flex-start; }
+    @media (max-width: 600px) { .platnosci-liczby { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .ruch--zwrot .kwota { color: var(--blad-tekst); }
+    .ruch--szary { color: var(--tekst-przygaszony); }
 
     .wyjasnienie { font-size: .8rem; color: var(--tekst-przygaszony); margin: .5rem 0 0; }
     .pusto-sekcja { color: var(--tekst-przygaszony); font-style: italic; font-size: .9rem; }
@@ -2208,6 +2225,9 @@
       .panel, .kafel, .slupek { break-inside: avoid; }
       .przewijak-tabeli { overflow-x: visible; }
     }
+    /* PRZ-152.G12b: odnosnik w sciezce (okruszki) — kolor tekstu sciezki, podkreslenie przy najechaniu. */
+    .oms-breadcrumb strong a.oms-breadcrumb-link{color:inherit;text-decoration:none}
+    .oms-breadcrumb strong a.oms-breadcrumb-link:hover,.oms-breadcrumb strong a.oms-breadcrumb-link:focus-visible{text-decoration:underline}
   </style>
   <%# ⚠️ htmx — JEDYNA biblioteka po stronie przegladarki w tym panelu i jest tu po JEDNA
       rzecz: zywe szukanie w magazynie (21.08.2026). Nie pisze sie w niej JavaScriptu —
@@ -2262,7 +2282,7 @@
       </div>
       <% } %>
       <header class="oms-topbar">
-        <div class="oms-breadcrumb"><span>Panel</span><span aria-hidden="true">/</span><strong><%= title %></strong></div><% if (nawigacja?.kontekst?.dzial === 'ustawienia') { %><%- include('_menu-ustawien-aplikacji.ejs', {nawigacja,statusyMenu}) %><% } %>
+        <div class="oms-breadcrumb"><span>Panel</span><span aria-hidden="true">/</span><strong><% if (typeof okruszki !== 'undefined' && Array.isArray(okruszki) && okruszki.length) { okruszki.forEach((o, i) => { if (i) { %> / <% } if (o.href) { %><a class="oms-breadcrumb-link" href="<%= o.href %>"><%= o.tekst %></a><% } else { %><%= o.tekst %><% } }); } else { %><%= title %><% } %></strong></div><% if (nawigacja?.kontekst?.dzial === 'ustawienia') { %><%- include('_menu-ustawien-aplikacji.ejs', {nawigacja,statusyMenu}) %><% } %>
         <div class="oms-top-actions">
           <%# PRZ-102.03 (wariant C): analizy poza menu bocznym — rozwijana lista na wzór menu konta. Pozycje już %>
           <%# przefiltrowane prawami i `odlozoneEkrany` (nawigacjaDla); rola bez żadnej analizy przycisku nie dostaje. %>

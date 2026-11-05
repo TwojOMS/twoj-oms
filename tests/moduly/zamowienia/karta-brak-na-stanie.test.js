@@ -1,7 +1,7 @@
 // PRZ-091: pasek „Brak na stanie” na karcie zamówienia (stany magazynowe włączone, karta produktu < 0).
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
+import { zapiszZamowienie, zapiszNadpisaniaPozycji } from '../../../src/oms/db/zamowienia.js';
 import { zapiszProduktSklepowy, utworzKarte, powiazProdukt } from '../../../src/oms/db/magazyn.js';
 import { przelaczStany, dodajRuch } from '../../../src/oms/db/stany-magazynowe.js';
 import { brakiNaStanieZamowienia } from '../../../src/oms/db/stany-zamowienia.js';
@@ -94,5 +94,15 @@ describe('PRZ-091 karta zamówienia — brak na stanie', () => {
     przyjmij(lampa, 1);
     const id = zamowienie([{ produkt_id: '10', ilosc: 1 }, { produkt_id: '10', ilosc: 2 }]);
     expect(brakiNaStanieZamowienia(db, id)).toEqual([{ karta_id: lampa, nazwa: 'Lampa stołowa Grzybek', stan: -2, ilosc: 3 }]);
+  });
+
+  // PRZ-152.G2-01 — usunięta pozycja sklepowa nie idzie do rozchodu ani do paska.
+  it('brakiNaStanieZamowienia: usunięta pozycja nie liczy się do ilości ani do stanu', () => {
+    wlacz();
+    przyjmij(lampa, 1);
+    const id = zamowienie([{ produkt_id: '10', ilosc: 1 }, { produkt_id: '10', ilosc: 2 }]);
+    expect(brakiNaStanieZamowienia(db, id)).toHaveLength(1);
+    zapiszNadpisaniaPozycji(db, id, { [`s${100 * numer + 1}`]: { usunieta: true } });
+    expect(brakiNaStanieZamowienia(db, id)).toEqual([]);
   });
 });

@@ -35,7 +35,10 @@ const karta = async (id) => {
 const metoda = (html) => {
   const od = html.indexOf('<span>Metoda wysyłki</span>');
   expect(od, 'brak wiersza „Metoda wysyłki”').toBeGreaterThan(-1);
-  return html.slice(od, html.indexOf('<div><span>Status</span>', od));
+  // PRZ-152.G3a: wiersz „Status” zniknął — koniec wycinka wyznacza „Status płatności”.
+  const do_ = html.indexOf('<div><span>Status płatności</span>', od);
+  expect(do_, 'brak wiersza „Status płatności” za „Metodą wysyłki”').toBeGreaterThan(od);
+  return html.slice(od, do_);
 };
 
 describe('plakietka przewoźnika na karcie zamówienia', () => {

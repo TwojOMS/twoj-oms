@@ -8,6 +8,7 @@
 // ⚠️ Klucz API nie trafia tu nigdy: ekran dostaje tylko informację, skąd klucz jest (plik / zapis / brak).
 // Nazwa programu fakturowego idzie przez `odmianaNazwyProgramu`/`ekranProgramu` (strażnik nazw PRZ-118.10).
 import { odmianaNazwyProgramu, ekranProgramu } from '../../../domena/nazwa-programu.js';
+import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { tytulEkranuDlaAdresu, EKRAN_KSEF_SPRZEDAZY } from '../../../domena/ekrany.js';
 import { MODULY_FAKTUR, modulDostepny, EKRAN_WYBORU_PROGRAMU, ZMIENNA_PROGRAMU, etykietaModulu, sprawdzFormularzWyboru,
   zdanieCzekaniaNaRestart } from '../../../domena/wybor-programu.js';
@@ -169,8 +170,9 @@ export function registerUstawieniaProgramuRoutes(app, { db, wyborProgramu, konfi
   app.post(EKRAN_WYBORU_PROGRAMU, async (req, reply) => {
     if (req.konto?.admin !== true) return odmowaAdmina(reply);
     if (wyborProgramu.zrodlo === 'plik') {
-      return reply.code(409).type('text/plain; charset=utf-8')
-        .send(`Moduł faktur jest ustawiony w pliku konfiguracji (${ZMIENNA_PROGRAMU}) — tam go zmień. Formularz niczego nie zapisał.`);
+      return stronaOdmowy(reply, 409, `Moduł faktur jest ustawiony w pliku konfiguracji (${ZMIENNA_PROGRAMU}) — tam go zmień. Formularz niczego nie zapisał.`, {
+        tytul: 'Nie zmieniono programu faktur', wroc: EKRAN_WYBORU_PROGRAMU, napisWroc: 'Wróć do ustawień programu faktur',
+      });
     }
     const { ustawienia, bledy } = sprawdzFormularzWyboru(req.body ?? {}, { zgoda });
     if (bledy.length) {
@@ -187,8 +189,9 @@ export function registerUstawieniaProgramuRoutes(app, { db, wyborProgramu, konfi
   app.post(ADRES_RESTARTU, async (req, reply) => {
     if (req.konto?.admin !== true) return odmowaAdmina(reply);
     if (tryb !== 'tak') {
-      return reply.code(404).type('text/plain; charset=utf-8')
-        .send(`Ponowne uruchomienie z panelu jest wyłączone (${ZMIENNA_RESTARTU}) — uruchom ponownie OMS na serwerze.`);
+      return stronaOdmowy(reply, 404, `Ponowne uruchomienie z panelu jest wyłączone (${ZMIENNA_RESTARTU}) — uruchom ponownie OMS na serwerze.`, {
+        tytul: 'Nie uruchomiono OMS ponownie', wroc: EKRAN_WYBORU_PROGRAMU, napisWroc: 'Wróć do ustawień programu faktur',
+      });
     }
     restart.log(`PRZ-121.06: ponowne uruchomienie OMS-u z panelu (Moduł faktur) — zlecił ${req.konto.login ?? 'nieznane konto'}`);
     // Sygnał dopiero po wysłaniu całej odpowiedzi (i w następnym obrocie pętli) — przeglądarka dostaje stronę z odświeżeniem.

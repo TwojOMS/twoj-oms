@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { escapeXML } from 'ejs';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zbudujOms } from '../../../src/oms/bootstrap.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
@@ -65,14 +66,14 @@ describe('PRZ-024 — rzeczywisty zapis zwrotu przez chronione HTTP', () => {
       expect(r.statusCode).toBe(400); expect(r.body).toContain('nie zgadza się z sumą');
       await otworzPonownie(); const s = stan();
       expect(s.zwroty).toEqual([]); expect(s.pozycje).toEqual([]);
-      expect(s.log).toHaveLength(1); expect(s.log[0].wynik).toBe(`BŁĄD: ${r.body}`);
+      expect(s.log).toHaveLength(1); expect(r.body).toContain(`<p class="pasek-uwaga" role="alert">${escapeXML(s.log[0].wynik.replace(/^BŁĄD: /, ''))}</p>`);
     });
   });
   it('błąd zapisu pozycji cofa nagłówek i ukrywa szczegóły SQL przed operatorem', async () => {
     await przypadek(async ({ db, wyslij, stan, otworzPonownie }) => {
       db.exec("CREATE TRIGGER odmowa_test BEFORE INSERT ON zwroty_pozycje BEGIN SELECT RAISE(ABORT, 'testowy-blad-pozycji'); END");
       const r = await wyslij();
-      expect(r.statusCode).toBe(400); expect(r.body).toBe('błąd techniczny panelu — szczegóły w logu zamówienia.');
+      expect(r.statusCode).toBe(400); expect(r.body).toContain('<p class="pasek-uwaga" role="alert">błąd techniczny panelu — szczegóły w logu zamówienia.</p>');
       await otworzPonownie(); const s = stan();
       expect(s.zwroty).toEqual([]); expect(s.pozycje).toEqual([]);
       expect(s.log).toHaveLength(1); expect(s.log[0].wynik).toContain('BŁĄD: testowy-blad-pozycji');
@@ -119,7 +120,7 @@ describe('PRZ-024 — rzeczywisty zapis zwrotu przez chronione HTTP', () => {
   it('nieistniejące zamówienie daje 404, manifest nie dodaje tabel ani zegarów', async () => {
     await przypadek(async ({ wyslij, stan, modulZwroty }) => {
       const r = await wyslij(undefined, {}, '/zamowienia/99999/zwrot');
-      expect(r.statusCode).toBe(404); expect(r.body).toBe('Nie ma takiego zamówienia');
+      expect(r.statusCode).toBe(404); expect(r.body).toContain('<p class="pasek-uwaga" role="alert">Nie ma takiego zamówienia</p>');
       expect(stan()).toEqual({ zwroty: [], pozycje: [], log: [] });
       expect(modulZwroty.migracje).toEqual([]); expect(modulZwroty.menu).toEqual([]);
       expect(modulZwroty.uprawnienia.map(u => u.klucz)).toContain('zwroty-zamowienia');

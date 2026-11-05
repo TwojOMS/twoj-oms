@@ -1,4 +1,21 @@
 /* PRZ-065: wspólna rama zaakceptowanej makiety. Palety w layout-oms.ejs. */
+/* PRZ-152.G14a: parametry pól jak w .pola nowego zamówienia.
+   Selektory obejmują tylko nadanie, także pola poza dotychczasowymi .pola. */
+.nadanie-formularz .oms-pole { box-sizing: border-box; width: 100%; min-width: 0; min-height: 2.25rem; font: inherit; font-size: .9rem; padding: .35rem .5rem; border: 1px solid var(--ramka-pola); border-radius: .3rem; background: var(--powierzchnia); color: var(--tekst); }
+.nadanie-formularz .paczkomat-cialo .oms-pole,
+.nadanie-formularz .pole-kwoty .oms-pole { font-size: 1.15rem; font-weight: 700; }
+.nadanie-formularz .pole-kwoty .oms-pole { width: 8rem; }
+.nadanie-formularz label:has(> .oms-pole) { display: flex; flex-direction: column; gap: .25rem; min-width: 0; font-size: .8rem; color: var(--tekst-przygaszony); }
+.nadanie-formularz .rzad > label:has(> .oms-pole) { flex: 1 1 0; }
+.nadanie-formularz .rzad:not(.nadanie-wymiary) > label:has(> input[name="waga"]) { flex: 0 1 auto; }
+.nadanie-formularz .rzad:not(.nadanie-wymiary) input[name="waga"].oms-pole { width: auto; max-width: 100%; }
+.nadanie-formularz .nadanie-wymiary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+.nadanie-formularz .nadanie-hurtem .oms-pole { width: auto; }
+.nadanie-formularz .nadanie-hurtem select[name^="szablon_"].oms-pole { width: auto; max-width: none; }
+@media(max-width:40rem) {
+  .nadanie-formularz .nadanie-wymiary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nadanie-formularz .oms-pole { min-height: 44px; }
+}
 body{font-family:'Segoe UI',Arial,sans-serif;font-variant-numeric:tabular-nums}
 .oms-shell,.oms-shell *{box-sizing:border-box}
 .oms-shell{display:grid;grid-template-columns:13.5rem minmax(0,1fr);min-height:100vh;background:var(--tlo)}
@@ -214,3 +231,33 @@ a.oms-theme-button,a.oms-theme-button:visited{text-decoration:none}
 }
 .pas-blad { background: var(--blad-tlo); color: var(--blad-tekst); border-color: var(--blad-ramka); }
 .pas-potwierdzenie { background: var(--ok-tlo); color: var(--ok-tekst); border-color: var(--ok-tekst); }
+
+/* PRZ-152.G8: tutaj, nie w <style> ukladu — migawka PRZ-118 trzyma skrot reszty strony. */
+/* PRZ-152.G8: uklad karty paczki — tytul · plakietka · jeden status · akcje, pod nim numer, */
+/* zdarzenie, „Do:" i szara stopka z czasami. */
+.paczka--ukryta { border-style: dashed; }
+.paczka-glowa .plakietka { margin: 0; }
+.paczka-menu { margin-left: 0; }
+.paczka-menu summary::after { content: none; }
+.paczka-menu summary { min-width: 2rem; text-align: center; letter-spacing: .05em; }
+.paczka-menu .wydruki-menu { min-width: 9rem; }
+.paczka-menu .wydruki-menu form { display: block; }
+.paczka-menu .wydruki-menu button { width: 100%; }
+.paczka-numer { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .5rem; color: var(--tekst); font-size: .95rem; }
+.paczka-numer-link, .paczka-numer-tekst { font-family: ui-monospace, Consolas, monospace; font-weight: 600; letter-spacing: .02em; user-select: all; }
+.paczka-numer .paczka-numer-link { max-width: none; }
+/* Ikona „otwiera sie w nowej karcie" — tlo w kolorze tekstu linku, ksztalt z maski (dziala w obu motywach). */
+.paczka-numer-link::after {
+  content: ''; display: inline-block; width: .8em; height: .8em; margin-left: .3em; vertical-align: -.05em;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 2.5h4.5V7M13.5 2.5 7.5 8.5M12 9.5v3.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-8a.5.5 0 0 1 .5-.5H7'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 2.5h4.5V7M13.5 2.5 7.5 8.5M12 9.5v3.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-8a.5.5 0 0 1 .5-.5H7'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.paczka-kopiuj { font-size: .75rem; padding: .15rem .5rem; }
+.paczka-zdarzenie, .paczka-do { color: var(--tekst); font-size: .88rem; margin-top: .3rem; }
+.paczka-do .znacznik { margin-left: .3rem; }
+.paczka-meta { font-size: .78rem; color: var(--tekst-przygaszony); margin: .45rem 0 0; }
+.paczka-meta-czesc { white-space: nowrap; }
+.paczka-dalej { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem 1rem; margin-top: .2rem; }
+.paczka-dalej > p, .paczka-dalej > details[open] { flex-basis: 100%; }
+.paczka-dalej > details { margin: 0; }

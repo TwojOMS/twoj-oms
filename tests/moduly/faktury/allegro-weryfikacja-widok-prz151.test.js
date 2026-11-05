@@ -13,7 +13,7 @@ async function karta(weryfikacja) {
   }, {});
   db.prepare(`INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, allegro_invoice_id,
     allegro_wyslana_at, allegro_weryfikacja, utworzona_at) VALUES (?,?,?,?,?,?,?)`)
-    .run(id, 'u-1', 'FV/1', 'INV-1', '2026-10-20T11:00:00', weryfikacja, '2026-10-20T10:00:00');
+    .run(id, 'u-1', 'FV/1', 'INV-1', '2026-10-29T11:00:00', weryfikacja, '2026-10-20T10:00:00');
   const app = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'test' } } });
   try {
     await app.ready();
@@ -32,6 +32,17 @@ describe('weryfikacja pliku Allegro na karcie zamówienia', () => {
     const html = await karta('WAITING');
     expect(html).toContain('Weryfikacja pliku: Allegro nie podaje jej wyniku — panel nie wie, czy plik przeszedł.');
     expect(html).not.toContain('Weryfikacja pliku: WAITING.');
+    expect(html).toMatch(/class="waga waga--ok" title="Weryfikacja pliku: Allegro nie podaje jej wyniku — panel nie wie, czy plik przeszedł\.">Wysłana do Allegro 29\.10<\/span>/u);
+    expect(html).toContain('Faktura jest na koncie kupującego w Allegro — błąd poprawisz tylko korektą.');
+    expect(html).not.toMatch(/WAITING|Allegro sprawdza/u);
+    expect(html).not.toContain('Tego się nie cofa');
+  });
+
+  it('REJECTED ma plakietkę odmowy i nie mówi o fakturze na koncie kupującego', async () => {
+    const html = await karta('REJECTED');
+    expect(html).toContain('<span class="waga waga--blokada">Allegro odrzuciło plik</span>');
+    expect(html).not.toContain('Faktura jest na koncie kupującego w Allegro');
+    expect(html).not.toContain('REJECTED');
   });
 
   it('ACCEPTED pokazuje bez zmian', async () => {

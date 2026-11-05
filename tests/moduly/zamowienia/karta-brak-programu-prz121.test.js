@@ -4,6 +4,7 @@
 // Cztery ustawienia jak w 03a: „plik” i „ustawienia” (jawny brak, klucz inFaktu w środowisku) dają zdanie;
 // PRZ-126.P1: na karcie bez faktury powód konfiguracji stoi pod disabled; pozostałe teksty bez zmian.
 import { afterAll, describe, it, expect, vi } from 'vitest';
+import { escapeXML } from 'ejs';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -96,7 +97,7 @@ describe.each([
     const c = await zbuduj();
     const r = await korekta(c);
     expect(r.statusCode, r.body).toBe(503);
-    expect(r.body).toBe(zdanie);
+    expect(r.body).toContain(`<p class="pasek-uwaga" role="alert">${escapeXML(zdanie)}</p>`);
     expect(r.body).not.toMatch(/klucz API|Klucz API|inFakt/);
     expect(c.fetchPuste).not.toHaveBeenCalled();
   });
@@ -128,7 +129,7 @@ describe.each([
     const c = await zbuduj();
     const r = await korekta(c);
     expect(r.statusCode, r.body).toBe(503);
-    expect(r.body).toBe(STARA_KOREKTA);
+    expect(r.body).toContain(`<p class="pasek-uwaga" role="alert">${escapeXML(STARA_KOREKTA)}</p>`);
   });
 });
 

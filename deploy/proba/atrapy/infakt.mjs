@@ -282,7 +282,7 @@ export function createAtrapaInfaktu({ db, teraz = () => new Date(), log = (...t)
     if (!dok || dok.rodzaj !== 'korekta') throw bladOperatora('inFakt odrzucił odczyt korekty (404): Zasób którego szukasz nie został znaleziony', { status: 404 });
     return { uuid: dok.uuid ?? uuid, number: dok.number,
       corrected_invoice_number: dok.corrected_invoice_number, invoice_date: dok.invoice_date, rodzaj: 'korekta',
-      ksef_number: dok.ksef_number ?? null };
+      ksef_number: dok.ksef_number ?? null, gross_price: dok.gross_price ?? null };
   }
 
   async function pobierzFakture(uuid) {
@@ -292,6 +292,7 @@ export function createAtrapaInfaktu({ db, teraz = () => new Date(), log = (...t)
     if (!dok || dok.rodzaj !== 'vat') throw bladOperatora('inFakt odrzucił odczyt faktury (404): Zasób którego szukasz nie został znaleziony', { status: 404 });
     return { numer: dok.number ?? null, ksefNumer: dok.ksef_number || null, number: dok.number ?? null, invoice_date: dok.invoice_date ?? null,
       uuid: dok.uuid ?? uuid, services: dok.services ?? [], status: dok.status ?? null, left_to_pay: dok.left_to_pay ?? null,
+      gross_price: dok.gross_price ?? null,
       ...Object.fromEntries(['client_id', 'client_company_name', 'client_first_name', 'client_last_name', 'client_street',
         'client_street_number', 'client_flat_number', 'client_city', 'client_post_code', 'client_tax_code', 'client_country']
         .map((pole) => [pole, dok[pole]])) };

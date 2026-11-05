@@ -6,7 +6,7 @@ import { anulowaneEfektywnie } from '../../domena/status-reczny.js';
 import { dataPokryciaWplat, brakujacaKwotaGrosze } from '../../domena/platnosci.js';
 import { zl, kwotaOczekiwanaGrosze, wysylkaBruttoGrosze } from '../../domena/suma-pozycji.js';
 import { wysylkaEfektywna } from '../../domena/wysylka-kwota.js';
-import { nalozNadpisaniaPozycji } from '../../domena/pozycje-reczne.js';
+import { nalozNadpisaniaPozycji, pozycjeUsuniete } from '../../domena/pozycje-reczne.js';
 import { zdjeciePozycji } from '../../domena/miniatury.js';
 import { bladOperatora } from '../../domena/bledy.js';
 import { idDokumentuSql } from '../../domena/dokument-programu.js';
@@ -633,17 +633,19 @@ export function przywrocDaneZeSklepu(db, id) {
 function zLinii(db, w, pozycjeSurowe = null, platnosciSurowe = null) {
   if (!w) return null;
   const platnosci = platnosciSurowe ?? platnosciZamowienia(db, w.id);
-  const pozycje = nalozNadpisaniaPozycji(
-    pozycjeSurowe ?? db.prepare(`${POZYCJE_ZE_ZDJECIEM} WHERE p.zamowienie_id = ? ${PORZADEK_POZYCJI}`)
-      .all(w.id).map(zZdjeciemOferty),
-    w.pozycje_reczne_json,
-  );
+  const surowe = pozycjeSurowe ?? db.prepare(`${POZYCJE_ZE_ZDJECIEM} WHERE p.zamowienie_id = ? ${PORZADEK_POZYCJI}`)
+    .all(w.id).map(zZdjeciemOferty);
+  const pozycje = nalozNadpisaniaPozycji(surowe, w.pozycje_reczne_json);
+  // PRZ-152.G2 — pozycje sklepowe usunięte znacznikiem: nakładka ich nie oddaje, a kwota
+  // oczekiwana (kwotaOczekiwanaGrosze) odejmuje stąd ich sklepową wartość. TYLKO TU.
+  const pozycje_usuniete = pozycjeUsuniete(surowe, w.pozycje_reczne_json);
   // Liczona RAZ: czyta ja piec pol obiektu ponizej, a kazde wywolanie na nowo parsuje ten
   // sam JSON z kolumny.
   const wysylka = wysylkaEfektywna(w);
   return {
     ...zStatusamiWlasnymi(db, w),
     pozycje,
+    pozycje_usuniete,
     klient: w.klient_json ? JSON.parse(w.klient_json) : null,
     dostawa: w.dostawa_json ? JSON.parse(w.dostawa_json) : null,
     anulowane_sklep: w.anulowane,
@@ -692,7 +694,7 @@ function zLinii(db, w, pozycjeSurowe = null, platnosciSurowe = null) {
     //
     // Uszkodzona/pusta kwota zamowienia nie ma prawa wywalic listy ani karty — a gdy juz
     // sie zdarzy, ma dac NIEOPLACONE (ostrzezenie), nigdy ciche „oplacone".
-    oplacone_at: bezpiecznaDataPokrycia(platnosci, { ...w, pozycje }),
+    oplacone_at: bezpiecznaDataPokrycia(platnosci, { ...w, pozycje, pozycje_usuniete }),
     // „Potwierdzone recznie" znaczy teraz dokladnie to samo, co znaczylo: przy zamowieniu
     // jest wplata, ktorej sklep nie zna. Liczone z listy, nie z kolumny.
     oplacone_recznie: platnosci.some((p) => p.zrodlo === 'reczna') ? 1 : 0,

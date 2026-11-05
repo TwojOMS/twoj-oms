@@ -36,3 +36,25 @@ describe('PRZ-065 — zwarte tabele Przesyłek i Faktur', () => {
     ]) expect(faktury).toContain(fragment);
   });
 });
+
+describe('PRZ-152.G14c — pasek zakładek bez pionowego suwaka', () => {
+  const css = odczytaj('src/public/tabele-prz065.css');
+  const regula = (selektor) => {
+    const i = css.indexOf(`\n${selektor} {`);
+    expect(i).toBeGreaterThan(-1);
+    return css.slice(i, css.indexOf('}', i));
+  };
+
+  it('pasek przewija się tylko w poziomie (overflow-y hidden), bez wystawania chipa poza ramkę', () => {
+    const pasek = regula('.prz065-zakladki');
+    expect(pasek).toMatch(/overflow-x:\s*auto/);
+    expect(pasek).toMatch(/overflow-y:\s*hidden/);
+    expect(regula('.prz065-zakladki .chip')).not.toMatch(/margin-bottom:\s*-/);
+  });
+
+  it('na telefonie jest jeden przewijak (nav), a nie drugi w środku', () => {
+    expect(css).not.toMatch(/\.prz065-przesylki \.chipy-filtrow \{[^}]*overflow/);
+    // chipy w jednej linii (przewijanie poziome), nie zawijane w 3 rzędy
+    expect(css).toMatch(/\.prz065-zakladki \.chipy-filtrow \{[^}]*flex-wrap:\s*nowrap/);
+  });
+});

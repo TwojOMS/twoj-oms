@@ -45,13 +45,12 @@ describe('demo PRZ-087: NOWE', () => {
   });
 });
 
-describe('demo PRZ-087: INDYWIDUALNE', () => {
-  it('są, a każda pozycja niesie w nazwie personalizację', () => {
-    const ids = wStatusie('indywidualne').map((z) => z.id);
-    expect(ids.length).toBeGreaterThanOrEqual(5);
-    const nazwy = db.prepare(`SELECT nazwa FROM pozycje WHERE zamowienie_id IN (${ids.join(',')})`).all().map((p) => p.nazwa);
-    expect(nazwy.filter((n) => !/GRAWER|NADRUK|KOLOR NA ZAMÓWIENIE/.test(n))).toEqual([]);
-    expect(nazwy.some((n) => n.includes('GRAWER'))).toBe(true);
+describe('demo PRZ-087 / PRZ-152.G5: personalizacja bez statusu „Indywidualne”', () => {
+  it('zamówienia z grawerem i nadrukiem są zwykłymi „w realizacji”, status indywidualne nie istnieje', () => {
+    expect(wStatusie('indywidualne')).toEqual([]);
+    const lista = db.prepare(`SELECT z.id FROM pozycje p JOIN zamowienia z ON z.id = p.zamowienie_id
+      JOIN lista_stan l ON l.zamowienie_id = z.id WHERE l.status = 'w_realizacji' AND (p.nazwa LIKE '%GRAWER%' OR p.nazwa LIKE '%NADRUK%')`).all();
+    expect(lista.length).toBeGreaterThanOrEqual(4);
   });
 });
 

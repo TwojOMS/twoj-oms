@@ -53,9 +53,9 @@ describe('PRZ-122 miejsca dokumentu w odpowiedziach tras', () => {
       const db = openOmsDb(':memory:'); const app = serwer(db, program(wbudowany));
       try {
         const id = zapiszZamowienie(db, 'pro', zamowienie(1), {}); faktura(db, id);
-        let r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: auth });
+        let r = await app.inject({ method: 'GET', url: `/zamowienia/${id}?edytuj=faktura`, headers: auth });
         expect(r.statusCode).toBe(200);
-        expect(r.body).toContain(`Treści faktury JUŻ WYSTAWIONEJ to nie zmienia — wystawiony dokument popraw KOREKTĄ ${miejsce(wbudowany)}.`);
+        expect(r.body).toContain('Faktura została już wystawiona. Dane popraw korektą.'); // PRZ-152.G4: napis nie zależy od programu
         db.prepare("UPDATE faktury SET numer = NULL, ksef_status = 'do_wyjasnienia', blad_opis = 'Błąd' WHERE zamowienie_id = ?").run(id);
         r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: auth });
         expect(r.statusCode).toBe(200);

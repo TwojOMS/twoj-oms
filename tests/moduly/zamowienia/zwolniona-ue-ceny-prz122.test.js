@@ -254,7 +254,7 @@ describe('PRZ-122.B07g firma zwolniona, nabywca z numerem UE — trasy, nadanie,
     expect(html).not.toMatch(/WDT ze stawką 0%/u);
   });
   it('formularze „Dodaj pozycję” i „Nowe zamówienie” niosą data-zwolniona="1"', async () => {
-    expect(atrybutZwolnionej(await kartaEdycji(zapiszZamowienie(db, 'pro', zamowienie(), {})), 'class="nowa-pozycja"')).toBe(true);
+    expect(atrybutZwolnionej(await kartaEdycji(zapiszZamowienie(db, 'pro', zamowienie(), {})), 'class="formularz-pozycji"')).toBe(true);
     expect(atrybutZwolnionej(await ekranNowego(), 'action="/zamowienia/nowe"')).toBe(true);
   });
 });
@@ -283,7 +283,7 @@ describe.each([
     expect(html).not.toContain('to nie jest WDT');
   });
   it('formularze bez data-zwolniona', async () => {
-    expect(atrybutZwolnionej(await kartaEdycji(zapiszZamowienie(db, 'pro', zamowienie(), {})), 'class="nowa-pozycja"')).toBe(false);
+    expect(atrybutZwolnionej(await kartaEdycji(zapiszZamowienie(db, 'pro', zamowienie(), {})), 'class="formularz-pozycji"')).toBe(false);
     expect(atrybutZwolnionej(await ekranNowego(), 'action="/zamowienia/nowe"')).toBe(false);
   });
 });
