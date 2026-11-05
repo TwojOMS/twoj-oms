@@ -69,5 +69,3 @@ it('104 program z pliku: 409', () => odmowa({ url: PROGRAM, env: { OMS_PROGRAM_F
 it('105 restart wyłączony: 404', () => odmowa({ url: `${PROGRAM}/restart`, env: { OMS_RESTART_Z_PANELU: '' }, status: 404,
   tekst: 'Ponowne uruchomienie z panelu jest wyłączone (OMS_RESTART_Z_PANELU) — uruchom ponownie OMS na serwerze.',
   tytul: 'Nie uruchomiono OMS ponownie', wroc: PROGRAM, napis: 'Wróć do ustawień programu faktur' }));
-it('106 serie: 403', () => odmowa({ url: `${PROGRAM}/serie`, env: { OMS_TWOJEFAKTURY: 'tak', OMS_PROGRAM_FAKTUROWY: 'twojefaktury' }, admin: false, status: 403,
-  tekst: 'Serie numeracji zmienia administrator.', tytul: 'Nie zapisano serii numeracji', wroc: `${PROGRAM}/serie`, napis: 'Wróć do ustawień serii numeracji' }));

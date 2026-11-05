@@ -126,20 +126,6 @@
     "powod": "czuwacz"
   },
   {
-    "plik": "src/moduly/faktury/trasy/twojefaktury-faktura.js",
-    "trasa": "POST /faktury/twojefaktury/:dokumentId/korekta/przelicz",
-    "status": "status === 400 || status === 422 ? 200 : status",
-    "poczatekTekstu": "json",
-    "powod": "json-skrypt"
-  },
-  {
-    "plik": "src/moduly/faktury/trasy/twojefaktury-faktura.js",
-    "trasa": "POST /faktury/twojefaktury/:dokumentId/przelicz",
-    "status": "status === 400 || status === 422 ? 200 : status",
-    "poczatekTekstu": "json",
-    "powod": "json-skrypt"
-  },
-  {
     "plik": "src/moduly/wysylka/trasy/etykiety.js",
     "trasa": "GET /kolejka-druku/:id/zpl",
     "status": "404",
