@@ -7289,28 +7289,28 @@
     },
     {
       "path": "src/moduly/lista.ts",
-      "line": 32,
+      "line": 33,
       "expression": "env",
       "callee": "zgodaTwojeFaktury",
       "call": "zgodaTwojeFaktury(env)"
     },
     {
       "path": "src/moduly/lista.ts",
-      "line": 40,
+      "line": 41,
       "expression": "env",
       "callee": "definicjeKanalow",
       "call": "definicjeKanalow(env)"
     },
     {
       "path": "src/moduly/lista.ts",
-      "line": 43,
+      "line": 44,
       "expression": "env",
       "callee": "zgodaInstalacji",
       "call": "zgodaInstalacji(env)"
     },
     {
       "path": "src/moduly/lista.ts",
-      "line": 45,
+      "line": 46,
       "expression": "env",
       "callee": "userAgentAllegro",
       "call": "userAgentAllegro(env)"
@@ -7360,6 +7360,13 @@
     {
       "path": "src/moduly/api-panelu/modul.ts",
       "line": 11,
+      "expression": "env",
+      "callee": "kanalIndywidualnyWlaczony",
+      "call": "kanalIndywidualnyWlaczony(env)"
+    },
+    {
+      "path": "src/moduly/api/modul.ts",
+      "line": 17,
       "expression": "env",
       "callee": "kanalIndywidualnyWlaczony",
       "call": "kanalIndywidualnyWlaczony(env)"
@@ -7723,7 +7730,7 @@
     },
     {
       "path": "src/moduly/rdzen/modul.ts",
-      "line": 16,
+      "line": 18,
       "expression": "env",
       "callee": "wczytajSprzedawce",
       "call": "wczytajSprzedawce(env)"
@@ -8209,7 +8216,7 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "2c06aac7610b102fc769cff0bd212fcf8821f8cc0a8f4b02d9276fb773e8b97f",
+      "sha256": "847e60dc4862abbf7ed842a5eaf01cde4f03457b826d3738956f27ecdb1cf619",
       "normalizacja": "LF"
     },
     {
@@ -8271,7 +8278,7 @@
     },
     {
       "path": "src/moduly/lista.ts",
-      "sha256": "c0e4975d4591a6d3a2867bd87ce9cc37168b2ffd46fb3034ecf165994ba14be6",
+      "sha256": "958e4329e1a882a685219afb662f641dafd594661cac86125f4fa88532b4a14f",
       "normalizacja": "LF"
     },
     {
@@ -8286,7 +8293,7 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "2c06aac7610b102fc769cff0bd212fcf8821f8cc0a8f4b02d9276fb773e8b97f",
+      "sha256": "847e60dc4862abbf7ed842a5eaf01cde4f03457b826d3738956f27ecdb1cf619",
       "normalizacja": "LF"
     },
     {

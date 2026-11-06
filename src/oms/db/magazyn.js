@@ -127,6 +127,9 @@ export function liczZyweProdukty(db, kanal) {
 const POLA_KARTY = [
   'sku', 'nazwa', 'szerokosc_mm', 'wysokosc_mm', 'kategoria_glowna', 'paczkomat',
   'opis', 'glebokosc_mm', 'waga_g',
+  // PRZ-153.E5.3: pola z migracji 0011 (API v1 i ekran karty). Edycja hurtem ma WLASNA, wezsza liste
+  // (`domain/magazyn-hurt.js`) — dopisanie tutaj nie wlacza tych pol do hurtu ani do przenoszenia ze sklepu.
+  'cena_gr', 'stawka_vat', 'ean', 'wycofana',
 ];
 
 // Paczkomat ma TRZY stany i pilnuje ich domain/paczkomat.js. Czwarta wartosc w kolumnie

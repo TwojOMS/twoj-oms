@@ -15,6 +15,7 @@ import { modulZwroty } from '../../src/moduly/zwroty/modul.ts';
 import { modulKoszty } from '../../src/moduly/koszty/modul.ts';
 import { modulUstawienia } from '../../src/moduly/ustawienia/modul.ts';
 import { modulZdrowie } from '../../src/moduly/zdrowie/modul.ts';
+import { modulApi } from '../../src/moduly/api/modul.ts';
 import { modulMarketing } from '../../src/moduly/marketing/modul.ts';
 import { modulRaporty } from '../../src/moduly/raporty/modul.ts';
 import { configRaportowFixture } from './raporty-parytetu.js';
@@ -75,7 +76,7 @@ export function buildOmsServer(o: Record<string, any>) {
       countryCode:n.kraj??'PL',email:n.email??'',phone:n.phone??''}};
   }};
   const obserwator:ModulOms={nazwa:'parytet-obserwator',wersja:'1.0.0',wymaga:['wysylka'],migracje:[],menu:[],uprawnienia:[],konfiguracja:()=>null,zbuduj:()=>({trasy:app=>{przechwycony=app;}})};
-  const moduly=[...(o.moduly??[modulRdzen,modulWeb,modulKanaly,modulFaktury,...(szewTwojeFaktury?[szewTwojeFaktury.modul]:[]),modulWiadomosci,createModulZamowienia({zWiadomosciami:true}),wysylkaHistoryczna,modulMagazyn,modulZwroty,modulKoszty,modulUstawienia,modulAutomatyzacje,modulRaporty,modulMarketing,modulApiPanelu,modulZdrowie]),
+  const moduly=[...(o.moduly??[modulRdzen,modulWeb,modulKanaly,modulFaktury,...(szewTwojeFaktury?[szewTwojeFaktury.modul]:[]),modulWiadomosci,createModulZamowienia({zWiadomosciami:true}),wysylkaHistoryczna,modulMagazyn,modulZwroty,modulKoszty,modulUstawienia,modulAutomatyzacje,modulRaporty,modulMarketing,modulApiPanelu,modulApi,modulZdrowie]),
     obserwator] as readonly ModulOms[];
   const gotowe=zbudujOms({moduly,db:o.db,env,nadpisania});
   // Dawna konstrukcja jest synchroniczna; wszystkie operacje asynchroniczne czekają na skład.

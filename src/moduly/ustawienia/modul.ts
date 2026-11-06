@@ -2,6 +2,7 @@ import type { ModulOms } from '../../core/kontrakty.ts';
 import { registerLogowanieRoutes } from './trasy/logowanie.js';
 import { nazwaCiasteczkaOms } from '../../core/bezpieczenstwo/sesja.js';
 import { registerKontaRoutes } from './trasy/konta.js';
+import { registerKluczeApiRoutes } from './trasy/klucze-api.js';
 import { registerUstawieniaWysylkiRoutes } from './trasy/wysylka.js';
 import { registerUstawieniaMagazynuRoutes } from './trasy/magazyn.js';
 import { registerUstawieniaModulowRoutes } from './trasy/moduly.js';
@@ -98,6 +99,7 @@ export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
     };
     return {uslugi:{widokIntegracji,lacznosc,aktualizacje},trasy:app=>{
     zarejestrujMenuKontaRol(app,{db:ctx.db});
+    registerKluczeApiRoutes(app,{db:ctx.db,teraz:ctx.teraz});
     registerLogoRoutes(app,{db:ctx.db});
     registerKopieRoutes(app,{konfiguracja:()=>opcjonalna('zdrowie','konfiguracjaKopii')?.()??{},teraz:ctx.teraz,
       nadzor:()=>ctx.usluga<()=>any>('zdrowie','kopie')()});

@@ -49,10 +49,10 @@ describe('migracja kart produktów (PRZ-090)', () => {
       expect(karty).toEqual([
         { id: 3, sku: 'LMP-STO-001', nazwa: 'Lampa stołowa Grzyb', szerokosc_mm: 300, wysokosc_mm: 450,
           glebokosc_mm: null, waga_g: null, kategoria_glowna: 'Lampy stołowe', paczkomat: 'tak', opis: 'opis A',
-          utworzony_at: AT, zmieniony_at: ZMIANA },
+          utworzony_at: AT, zmieniony_at: ZMIANA, cena_gr: null, stawka_vat: null, ean: null, wycofana: 0 },
         { id: 8, sku: null, nazwa: 'Kinkiet Ramię', szerokosc_mm: null, wysokosc_mm: null,
           glebokosc_mm: null, waga_g: null, kategoria_glowna: null, paczkomat: null, opis: null,
-          utworzony_at: AT, zmieniony_at: AT },
+          utworzony_at: AT, zmieniony_at: AT, cena_gr: null, stawka_vat: null, ean: null, wycofana: 0 },
       ]);
       const pow = db.prepare('SELECT produkt_id, karta_id FROM produkty_sklepowe ORDER BY produkt_id').all();
       expect(pow).toEqual([

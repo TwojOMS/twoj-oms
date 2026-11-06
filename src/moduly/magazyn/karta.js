@@ -8,9 +8,10 @@ import { stanKarty, historiaKarty, dodajRuch } from '../../oms/db/stany-magazyno
 import { ETYKIETY_RUCHU, ruchZFormularza } from '../../domena/stany-magazynowe.js';
 import { fmtDataCzas } from '../../domena/format-daty.js';
 import { czyPaczkomat } from '../../domena/paczkomat.js';
-import { zl } from '../../domena/kwoty.js';
+import { zl, zlotowki } from '../../domena/kwoty.js';
+import { STAWKI_VAT } from '../../domena/vat.js';
 const ADRES_HTTP = /^https?:\/\//i;
-const adresSklepu = (a) => (typeof a === 'string' && ADRES_HTTP.test(a.trim()) ? a.trim() : null);
+export const adresSklepu = (a) => (typeof a === 'string' && ADRES_HTTP.test(a.trim()) ? a.trim() : null);
 const napis = (s) => typeof s === 'string' && s.trim() ? s.trim() : null;
 function pole(body, klucz) {
   if (!body || !Object.hasOwn(body, klucz)) return null;
@@ -215,6 +216,9 @@ export function createKartaMagazynu({ db, kanalyAllegro, definicje }) {
       wysokosc_cm: centymetryZMilimetrow(karta.wysokosc_mm) ?? '',
       glebokosc_cm: centymetryZMilimetrow(karta.glebokosc_mm) ?? '',
       waga_kg: kilogramyZGramow(karta.waga_g) ?? '',
+      ean: karta.ean ?? '',
+      cena_zl: Number.isSafeInteger(karta.cena_gr) ? zl(karta.cena_gr) : '',
+      stawka_vat: karta.stawka_vat ?? '',
       kategoria_glowna: karta.kategoria_glowna ?? '',
       paczkomat: czyPaczkomat(karta) ?? '',
       opis: karta.opis ?? '',
@@ -238,7 +242,12 @@ export function createKartaMagazynu({ db, kanalyAllegro, definicje }) {
         paczkomat: czyPaczkomat(karta),
         opis: karta.opis || null,
         waga: kilogramyZGramow(karta.waga_g),
+        // PRZ-153.E5.3c: grosze w bazie → „12,34 zł" na ekranie.
+        ean: karta.ean || null,
+        cena: Number.isSafeInteger(karta.cena_gr) ? zlotowki(zl(karta.cena_gr)) : null,
+        stawkaVat: karta.stawka_vat || null,
       },
+      stawkiVat: STAWKI_VAT,
       // PRZ-091: stan magazynowy — `null`, gdy stany są wyłączone (sekcji na karcie wtedy nie ma).
       stanMagazynowy: stanMagazynowyKarty(karta.id, bladRuchu, req.body, req.query?.ruch === 'powtorzony'),
       produkty,

@@ -32,7 +32,9 @@ $ErrorActionPreference = 'Stop'
 if (-not (Test-Path $Config)) { throw "Brak pliku konfiguracji: $Config" }
 $k = Get-Content $Config -Raw | ConvertFrom-Json
 
-foreach ($wymagane in @('url', 'user', 'pass', 'drukarka', 'pdfProgram')) {
+$wymaganePola = @('url', 'drukarka', 'pdfProgram')
+if (-not $k.klucz) { $wymaganePola += @('user', 'pass') }
+foreach ($wymagane in $wymaganePola) {
   if (-not $k.$wymagane) { throw "Konfiguracja bez pola '$wymagane' - patrz config-faktury.przyklad.json" }
 }
 
@@ -51,12 +53,20 @@ function Zapisz($poziom, $tresc) {
 }
 
 $naglowki = @{
-  Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($k.user + ':' + $k.pass))
   # Panel ma ochrone przed CSRF: zadania zmieniajace stan musza podac zrodlo.
   Origin        = $k.url
 }
+if ($k.klucz) {
+  $naglowki.Authorization = 'Bearer ' + $k.klucz
+  $sposobLogowania = 'klucz API'
+} else {
+  $naglowki.Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($k.user + ':' + $k.pass))
+  $sposobLogowania = 'haslo serwisowe'
+}
 $odstep = 10
 if ($k.odstepSekund) { $odstep = [int]$k.odstepSekund }
+$odstepPoOdmowie = 300
+if ($k.odstepPoOdmowieSekund) { $odstepPoOdmowie = [int]$k.odstepPoOdmowieSekund }
 
 # STANOWISKO = NAZWA TEGO KOMPUTERA. Czuwacz WOLNO uruchomic na kilku komputerach naraz
 # (np. stacjonarny i laptop, oba ze sterownikiem tej samej drukarki WiFi). Panel zajmuje
@@ -77,7 +87,7 @@ if ($drukarki -notcontains $k.drukarka) {
   Zapisz 'UWAGA' ("Drukarka '{0}' nie jest widoczna na tym komputerze. Dostepne: {1}" -f $k.drukarka, ($drukarki -join ', '))
 }
 
-Zapisz 'INFO' ("Start. Panel {0}, stanowisko '{1}', drukarka '{2}', program '{3}', odpytywanie co {4} s." -f $k.url, $stanowisko, $k.drukarka, $k.pdfProgram, $odstep)
+Zapisz 'INFO' ("Start. Panel {0}, stanowisko '{1}', drukarka '{2}', program '{3}', odpytywanie co {4} s, logowanie: {5}." -f $k.url, $stanowisko, $k.drukarka, $k.pdfProgram, $odstep, $sposobLogowania)
 
 # --- Druk jednego PDF-u --------------------------------------------------------------
 #
@@ -183,11 +193,11 @@ if ($TestujWydruk) {
 
 $ostatniBlad = ''
 while ($true) {
+  $odstepBiezacy = $odstep
   try {
     # Odpytanie ZAJMUJE zadania dla tego stanowiska - patrz komentarz przy $stanowisko wyzej.
     $adres = "$($k.url)/kolejka-druku-faktur?stanowisko=" + [uri]::EscapeDataString($stanowisko)
     $kolejka = Invoke-RestMethod -Uri $adres -Headers $naglowki -TimeoutSec 20
-    $ostatniBlad = ''
 
     foreach ($poz in $kolejka) {
       $plik = $null
@@ -208,29 +218,40 @@ while ($true) {
         # z kolejki, a z drukarki nic by nie wyjechalo.
         Invoke-RestMethod -Uri "$($k.url)/kolejka-druku-faktur/$($poz.id)/wydrukowano" -Method Post `
           -Headers $naglowki -TimeoutSec 20 | Out-Null
-        Zapisz 'OK' ("Wydrukowano fakture {0} (zamowienie {1})" -f $poz.numer, $poz.zamowienie)
+        Zapisz 'OK' ("Wydrukowano dokument {0} (zamowienie {1})" -f $poz.numer, $poz.zamowienie)
       } catch {
+        if ($_.Exception.Response -and ($_.Exception.Response.StatusCode -eq 401 -or $_.Exception.Response.StatusCode -eq 403)) { throw }
         $tresc = $_.Exception.Message
-        Zapisz 'BLAD' ("Faktura {0}: {1}" -f $poz.numer, $tresc)
+        Zapisz 'BLAD' ("Dokument {0}: {1}" -f $poz.numer, $tresc)
         # Panel ma pokazac operatorowi, ze wydruk sie nie udal - inaczej faktura w kolko
         # wraca w kolejce, a nikt nie wie dlaczego.
         try {
           $body = @{ powod = $tresc } | ConvertTo-Json -Compress
           Invoke-RestMethod -Uri "$($k.url)/kolejka-druku-faktur/$($poz.id)/blad" -Method Post `
             -Headers $naglowki -ContentType 'application/json' -Body $body -TimeoutSec 20 | Out-Null
-        } catch { }
+        } catch {
+          if ($_.Exception.Response -and ($_.Exception.Response.StatusCode -eq 401 -or $_.Exception.Response.StatusCode -eq 403)) { throw }
+        }
       } finally {
         if ($plik -and (Test-Path $plik)) { try { Remove-Item $plik -Force } catch { } }
       }
     }
+    $ostatniBlad = ''
   } catch {
     # Panel niedostepny to stan NORMALNY (restart kontenera, wylaczony komputer). Zeby log
     # nie puchl o ten sam wpis co kilka sekund, powtorzenia sa pomijane.
-    $tresc = $_.Exception.Message
+    if ($_.Exception.Response -and ($_.Exception.Response.StatusCode -eq 401 -or $_.Exception.Response.StatusCode -eq 403)) {
+      $odstepBiezacy = $odstepPoOdmowie
+      if ($k.klucz) { $tresc = 'OMS odrzucil klucz czuwacza (401/403) - sprawdz pole klucz w konfiguracji.' }
+      else { $tresc = 'OMS odrzucil haslo czuwacza (401/403) - sprawdz user/pass w konfiguracji.' }
+      $tresc += (' ponowna proba za {0} s' -f $odstepPoOdmowie)
+    } else {
+      $tresc = "Panel nieosiagalny: $($_.Exception.Message) (kolejne takie same pomijam)"
+    }
     if ($tresc -ne $ostatniBlad) {
-      Zapisz 'UWAGA' ("Panel nieosiagalny: {0} (kolejne takie same pomijam)" -f $tresc)
+      Zapisz 'UWAGA' $tresc
       $ostatniBlad = $tresc
     }
   }
-  Start-Sleep -Seconds $odstep
+  Start-Sleep -Seconds $odstepBiezacy
 }

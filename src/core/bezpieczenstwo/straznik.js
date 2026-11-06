@@ -35,6 +35,8 @@ import { motywZNaglowka } from '../../domena/motyw.js';
 import { hamulecLogowaniaDla } from './hamulec.js';
 import { dopiszLogowanie } from './konta.js';
 import { sciezkaWidoku } from '../web/widoki.js';
+import { rozbierzNaglowek, skrotKlucza, ZAKRESY_API } from '../../domena/klucze-api.js';
+import { kluczPoSkrocie, odnotujUzycie } from './klucze-api.js';
 
 const METODY_NAWIGACJI = ['GET', 'HEAD'];
 
@@ -51,10 +53,12 @@ const METODY_NAWIGACJI = ['GET', 'HEAD'];
  *   i tak wpisuje do dziennika logowan wlasna, niezalezna stala `'oms'`. Pole klamalo, ze
  *   cos konfiguruje — usuniete z kontraktu, zamiast zostawic martwy parametr.
  */
-export function zbudujStraznika({ basicAuth, db, nazwaCiasteczka, konta = null, odlozoneEkrany = () => [] }) {
+export function zbudujStraznika({
+  basicAuth, db, nazwaCiasteczka, konta = null, klucze = null, odlozoneEkrany = () => [],
+}) {
   // Panel indywidualny nie wstrzykuje tego odczytu; blokada dotyczy tylko OMS.
   const sprawdzModul = (req, reply) => {
-    const ekran = ekranDlaAdresu(req.url);
+    const ekran = ekranDlaAdresu(sciezkaZdekodowana(req.url) ?? req.url);
     if (!odlozoneEkrany().includes(ekran)) return false;
     reply.code(404).view(sciezkaWidoku('modul-wylaczony.ejs'), {
       title: 'Moduł wyłączony', wlasnyUklad: true,
@@ -64,8 +68,27 @@ export function zbudujStraznika({ basicAuth, db, nazwaCiasteczka, konta = null, 
   };
   if (konta) konta = { ...konta, sprawdzModul };
   const hamulec = hamulecLogowaniaDla(db);
+  // PRZ-153: klucz API wstrzykuje tylko OMS (`{ db, limit }`); panel indywidualny wola bez `klucze` i /api/v1 nie zna.
+  const uzyciaKluczy = new Map();
+  // IP -> koniec okna blokady, dla ktorej 429 juz trafilo do dziennika (jeden wiersz na blokade, nie na zadanie).
+  const zapisaneBlokady = new Map();
   return async function straznik(req, reply) {
     if (czyTrasaOtwarta(req.url)) return;
+    // ⚠️ Na /api/v1 WYLACZNIE klucz: ciasteczko i Basic nie sa tu sprawdzane (plan PRZ-153, „Ograniczenia
+    // globalne”). Router Fastify DEKODUJE %XX w sciezce (`/api/v%31/ja` = /api/v1/ja), dlatego czyAdresApiV1
+    // porownuje sciezke zdekodowana. `..`, `./` i `//` router zostawia bez zmian (zmierzone 06.11), wiec nie trzeba
+    // ich zrownywac. Druga warstwa: hak onRequest pluginu /api/v1 odmawia 401 kazdemu zadaniu bez req.kluczApi.
+    if (klucze && czyAdresApiV1(req.url)) return dopuscKluczem(req, reply, klucze, uzyciaKluczy, zapisaneBlokady);
+    // PRZ-153.E4.1: kolejki druku przyjmuja TAKZE klucz z zakresem `druk` (obok Basic serwisu, ktory zostaje do E8).
+    // Sciezka zdekodowana jak przy /api/v1 (router dekoduje %XX). Wybor po samym schemacie `Bearer`: zly klucz idzie
+    // sciezka klucza (401 kod klucz, licznik limit-api), a nie do hamulca logowania wspolnego z formularzem.
+    // Klucz na kazdym innym adresie panelu nie trafia tutaj — idzie sciezka Basic i dostaje 401 jak dotad.
+    if (klucze && czyBearer(req.headers.authorization) && czyTrasaMaszynowaZdekodowana(req.url)) {
+      const odmowa = dopuscKluczem(req, reply, klucze, uzyciaKluczy, zapisaneBlokady, 'druk');
+      if (odmowa) return odmowa;
+      if (konta?.sprawdzModul(req, reply)) return reply;
+      return;
+    }
 
     // ⚠️ Sam ODCZYT, nigdy zakladanie. Straznik chodzi przy kazdym zadaniu, a zapis w tej
     // sciezce zamienialby baze chwilowo niezapisywalna (pelny dysk) w panel oddajacy 500
@@ -147,6 +170,120 @@ export function zbudujStraznika({ basicAuth, db, nazwaCiasteczka, konta = null, 
     // Basic Auth przeszlo, wiec to konto SERWISOWE z `.env` — inne tam nie istnieja.
     return dopuscSerwisowe(req, reply, konta);
   };
+}
+
+/**
+ * ⚠️ Porownujemy sciezke ZDEKODOWANA: router (find-my-way) dekoduje %XX przed dopasowaniem trasy, wiec
+ * `/api/v%31/ja` trafia do trasy /api/v1/ja. decodeURIComponent dekoduje wiecej niz router (takze %2F), czyli
+ * w razie roznicy uznaje za API wiecej adresow, nigdy mniej. Zle kodowanie (np. `%zz`) = API: wymagamy klucza
+ * (zawodzimy zamknieciem). Wielkosc liter rozrozniana jak w routerze (`/API/v1` to nie API i nie trasa API).
+ */
+export function czyAdresApiV1(url) {
+  const sciezka = sciezkaZdekodowana(url);
+  if (sciezka === null) return true;
+  return sciezka === '/api/v1' || sciezka.startsWith('/api/v1/');
+}
+
+/** Sciezka bez zapytania, zdekodowana jak w routerze; `null` = zle kodowanie (kazdy wolajacy sam wybiera strone zamkniecia). */
+function sciezkaZdekodowana(url) {
+  const surowa = String(url ?? '').split(/[?#]/)[0];
+  try {
+    return decodeURIComponent(surowa);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * PRZ-153.E4.1: czy adres to kolejka druku (`czyTrasaMaszynowa`) po zdekodowaniu — `/kolejka%2Ddruku` = `/kolejka-druku`.
+ * Zle kodowanie = nie kolejka: zadanie idzie dawna sciezka (Basic), czyli klucz go nie otwiera.
+ * ⚠️ Zdekodowany `?` (%3F) nie moze skrocic sciezki do prefiksu kolejki — sprawdzamy cala zdekodowana sciezke.
+ */
+export function czyTrasaMaszynowaZdekodowana(url) {
+  const sciezka = sciezkaZdekodowana(url);
+  if (sciezka === null || /[?#]/.test(sciezka)) return false;
+  return czyTrasaMaszynowa(sciezka);
+}
+
+const czyBearer = (naglowek) => typeof naglowek === 'string' && /^\s*Bearer(\s|$)/i.test(naglowek);
+
+const ODMOWA_KLUCZA = { kod: 'klucz', powod: 'Brak, zły albo odwołany klucz API.' };
+const ODSTEP_UZYCIA_MS = 60_000;
+
+function odmowaLimitu(reply, zostaloMs, powod) {
+  return reply.code(429).header('Retry-After', String(Math.max(1, Math.ceil(zostaloMs / 1000))))
+    .send({ kod: 'limit', powod });
+}
+
+/**
+ * PRZ-153.E1.2: wejscie kluczem `Authorization: Bearer toms_…`. W bazie jest tylko sha256 klucza; szukamy po
+ * skrocie (UNIQUE), klucza wprost nie porownujemy.
+ * ⚠️ Bez hamulca logowania (`hamulec.js`): jego licznik IP jest wspolny z formularzem i szereguje zadania —
+ * czuwacz z odwolanym kluczem zablokowalby logowanie haslem z tego komputera. Zgadywanie kluczy hamuje E1.3:
+ * wlasny `limit` (limit-api.js) — 20 nieudanych prob z IP w 60 s blokuje ten IP na wejsciu kluczem (/api/v1
+ * i Bearer na kolejkach druku; Basic i formularz bez zmian) do konca okna, a trafiony klucz ma 120 wywolan na okno.
+ * 401 bez `WWW-Authenticate` (to nie jest Basic). Wpis 401 i 429 do dziennika robi hak `onResponse` pluginu API
+ * (tylko /api/v1 — kolejki druku nie sa w tym pluginie i do dziennika API nie ida).
+ * `zakres` (E4.1, kolejki druku): wymagany zakres klucza; brak → 403 `brak_zakresu`, jak `wymagajZakresu` w module api.
+ * Zwraca `reply` przy odmowie, `undefined` przy wpuszczeniu.
+ */
+function dopuscKluczem(req, reply, { db, limit }, uzycia, zapisaneBlokady, zakres = null) {
+  const teraz = Date.now();
+  const blokadaIp = limit.zablokowanyIp(req.ip, teraz);
+  if (!blokadaIp.wolno) {
+    // Zablokowany czuwacz pyta dalej co sekunde; do dziennika idzie tylko pierwsza odmowa w tym oknie blokady.
+    const koniecBlokady = teraz + blokadaIp.zostaloMs;
+    if (zapisaneBlokady.get(req.ip) === koniecBlokady) {
+      req.bezWpisuDoDziennikaApi = true;
+    } else {
+      if (zapisaneBlokady.size >= 10_000) {
+        for (const [ip, koniec] of zapisaneBlokady) if (koniec <= teraz) zapisaneBlokady.delete(ip);
+        while (zapisaneBlokady.size >= 10_000) zapisaneBlokady.delete(zapisaneBlokady.keys().next().value);
+      }
+      zapisaneBlokady.set(req.ip, koniecBlokady);
+    }
+    return odmowaLimitu(reply, blokadaIp.zostaloMs, 'Za dużo nieudanych prób klucza z tego adresu.');
+  }
+  const klucz = rozbierzNaglowek(req.headers.authorization);
+  const wiersz = klucz ? kluczPoSkrocie(db, skrotKlucza(klucz)) : null;
+  if (!wiersz || wiersz.odwolany_at || czyWygasl(wiersz.wygasa_at, teraz)) {
+    // Kazda nieudana proba sie liczy, takze brak naglowka: program bez klucza to tez blad konfiguracji.
+    limit.odnotujZly(req.ip, teraz);
+    return reply.code(401).send(ODMOWA_KLUCZA);
+  }
+  // Ustawiane przed limitem, zeby wpis 429 w dzienniku mial klucz_id.
+  req.kluczApi = {
+    id: wiersz.id, nazwa: wiersz.nazwa, prefiks: wiersz.prefiks,
+    zakresy: new Set(ZAKRESY_API.filter((z) => wiersz.zakresy.includes(z))),
+  };
+  const wywolania = limit.sprawdz(wiersz.id, teraz);
+  if (!wywolania.wolno) return odmowaLimitu(reply, wywolania.zostaloMs, 'Za dużo wywołań tym kluczem, spróbuj za chwilę.');
+  // Opakowanie tras (pipeline.js) wpisuje `req.konto.imie` do dziennika zmian. Pusty zbior uprawnien i admin
+  // false = klucz nie otwiera zadnego ekranu, nawet gdyby kiedys trafil poza /api/v1.
+  req.konto = {
+    imie: `klucz: ${wiersz.nazwa}`, login: `klucz:${wiersz.prefiks}`, rola: 'klucz-api', admin: false,
+    serwisowe: false, kluczApi: true, uprawnienia: new Set(),
+  };
+  const ostatnio = uzycia.get(wiersz.id);
+  if (ostatnio === undefined || teraz - ostatnio >= ODSTEP_UZYCIA_MS) {
+    uzycia.set(wiersz.id, teraz);
+    // Zapis w strazniku nie moze zamienic chwilowo niezapisywalnej bazy w 500 na kazdym wywolaniu API.
+    try {
+      odnotujUzycie(db, wiersz.id, { teraz: new Date(teraz).toISOString(), ip: req.ip });
+    } catch (err) {
+      req.log?.warn?.({ err }, 'Klucz API: nie zapisano użycia');
+    }
+  }
+  if (zakres && !req.kluczApi.zakresy.has(zakres)) {
+    return reply.code(403).send({ kod: 'brak_zakresu', powod: `Klucz nie ma zakresu ${zakres}.` });
+  }
+}
+
+// Data nieczytelna = klucz wygasly (zawodzimy zamknieciem).
+function czyWygasl(wygasaAt, teraz) {
+  if (wygasaAt === null || wygasaAt === undefined) return false;
+  const wygasa = Date.parse(wygasaAt);
+  return Number.isNaN(wygasa) || wygasa <= teraz;
 }
 
 function odnowSesje(req, reply, sesja, sekret, nazwaCiasteczka) {

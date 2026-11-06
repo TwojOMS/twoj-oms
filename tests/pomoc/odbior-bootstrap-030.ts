@@ -21,6 +21,10 @@ export const OCZEKIWANE_ZEGARY = [
   ['automatyzacje', 60000],
   // PRZ-117: ponawianie statusu po błędzie przejściowym Allegro/sklepu (co 15 min).
   ['ponawianieStatusow', 900000],
+  // PRZ-153.E1.3: moduł api raz na dobę usuwa wpisy dziennika API starsze niż 90 dni.
+  ['api-dziennik', 3600000],
+  // PRZ-153.E5.1: moduł api co godzinę usuwa wpisy idempotencji starsze niż 7 dni.
+  ['api-idempotencja', 3600000],
 ] as const;
 
 function lokalneEnv(klucze = false) {

@@ -1221,8 +1221,12 @@ describe('src/oms.js pozostaje cienkim punktem wejścia', () => {
       ['automatyzacje', 60000],
       // PRZ-117: ponawianie statusu po błędzie przejściowym (co 15 min).
       ['ponawianieStatusow', 900000],
+      // PRZ-153.E1.3: sprzątanie dziennika API (raz na dobę).
+      ['api-dziennik', 3600000],
+      // PRZ-153.E5.1: sprzątanie idempotencji API (wpisy starsze niż 7 dni).
+      ['api-idempotencja', 3600000],
     ].sort());
-    expect(wynik.liczba).toBe(13);
+    expect(wynik.liczba).toBe(15);
     expect(zrodlo).not.toMatch(/setInterval/);
   });
 });

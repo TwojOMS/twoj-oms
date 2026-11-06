@@ -180,5 +180,19 @@
     "status": "status",
     "poczatekTekstu": "komunikat",
     "powod": "G13knfix: zapas dla panelu bez modułu web (brak reply.view) — tekst jak przed G13; z widokiem zawsze strona OMS."
+  },
+  {
+    "plik": "src/core/bezpieczenstwo/straznik.js",
+    "trasa": "(poza trasa)",
+    "status": "401",
+    "poczatekTekstu": "ODMOWA_KLUCZA",
+    "powod": "PRZ-153 klucz API: stała ODMOWA_KLUCZA to obiekt JSON {kod, powod} dla programu z kluczem Bearer, nie tekst dla człowieka."
+  },
+  {
+    "plik": "src/moduly/api/idempotencja.js",
+    "trasa": "(poza trasa)",
+    "status": "status",
+    "poczatekTekstu": "cialo",
+    "powod": "PRZ-153.E5.1 Idempotency-Key: `cialo` to JSON.stringify wyniku trasy /api/v1 (typ application/json), serializowany raz, żeby powtórka dostała te same bajty — nie tekst dla człowieka."
   }
 ]

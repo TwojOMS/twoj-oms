@@ -1,8 +1,10 @@
 {
-  "_opis": "Skopiuj jako config.json i uzupelnij. config.json zawiera haslo - nie wysylaj go nikomu i nie wrzucaj do repozytorium.",
+  "_opis": "Skopiuj jako config.json i uzupelnij. Klucz pobierz z Ustawienia -> Klucze API, zakres druk; gdy jest podany, user/pass nie sa potrzebne. odstepPoOdmowieSekund to czas oczekiwania po odmowie klucza lub hasla (401/403). Plik zawiera sekret - nie wysylaj go nikomu i nie wrzucaj do repozytorium.",
   "url": "http://192.168.1.20:3001",
   "user": "LOGIN-Z-PLIKU-OMS-ENV",
   "pass": "HASLO-Z-PLIKU-OMS-ENV",
+  "klucz": "",
   "drukarka": "Zebra ZD421",
-  "odstepSekund": 5
+  "odstepSekund": 5,
+  "odstepPoOdmowieSekund": 300
 }

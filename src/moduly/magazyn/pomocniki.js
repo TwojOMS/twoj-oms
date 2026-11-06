@@ -16,6 +16,9 @@ import { miniaturaZLustra } from '../../domena/miniatura-pozycji.js';
 import { opisWymiarow, centymetryZMilimetrow, milimetryZCentymetrow, gramyZKilogramow } from '../../domena/rozmiar.js';
 import { czyPaczkomat } from '../../domena/paczkomat.js';
 import { zl } from '../../domena/kwoty.js';
+import { groszeZKwoty } from '../../domena/kwota.js';
+import { czyStawkaVat } from '../../domena/vat.js';
+import { poprawnyEan } from '../../domena/ean.js';
 import { fmtDataCzas } from '../../domena/format-daty.js';
 import { listaNaZadanie } from '../kanaly/kolekcje-na-zadanie.ts';
 export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicje }) {
@@ -650,6 +653,45 @@ function zmianyZFormularza(db, karta, body) {
         + '(np. 1,25) albo zostaw pole puste, żeby skasować wagę.' };
     }
     zmiany.waga_g = waga.g;
+  }
+
+  // PRZ-153.E5.3c: EAN, cena katalogowa i stawka VAT — ta sama zasada: puste kasuje (`null`),
+  // napis niezrozumialy wstrzymuje CALY zapis. Pole formularza to `cena_zl`, nie `cena_gr`:
+  // kolumne w groszach wypelnia wylacznie przeliczenie nizej.
+  const eanSurowy = pole(body, 'ean');
+  if (eanSurowy !== null) {
+    const ean = doKolumny(eanSurowy);
+    if (ean !== null && !poprawnyEan(ean)) {
+      return { zmiany: null, blad: `„${eanSurowy}" to nie jest EAN. Wpisz 8 albo 13 cyfr kodu kreskowego `
+        + '(z cyfrą kontrolną) albo zostaw pole puste, żeby skasować EAN.' };
+    }
+    zmiany.ean = ean;
+  }
+
+  const cenaSurowa = pole(body, 'cena_zl');
+  if (cenaSurowa !== null) {
+    const tekst = cenaSurowa.trim();
+    let cena = null;
+    if (tekst) {
+      // Przecinek dziesietny czlowieka → kropka; reszte (znak, walute, drugi przecinek) odrzuca
+      // `groszeZKwoty` (domain/kwota.js) — przeliczenie po cyfrach, bez mnozenia na floacie.
+      try { cena = groszeZKwoty(tekst.replace(',', '.'), 'cena katalogowa karty'); } catch { cena = undefined; }
+    }
+    if (cena === undefined) {
+      return { zmiany: null, blad: `„${cenaSurowa}" to nie jest cena w złotych. Wpisz samą kwotę `
+        + '(np. 49,90) albo zostaw pole puste, żeby skasować cenę.' };
+    }
+    zmiany.cena_gr = cena;
+  }
+
+  const stawkaSurowa = pole(body, 'stawka_vat');
+  if (stawkaSurowa !== null) {
+    const stawka = doKolumny(stawkaSurowa);
+    if (stawka !== null && !czyStawkaVat(stawka)) {
+      return { zmiany: null, blad: `„${stawkaSurowa}" to nie jest stawka VAT z listy. Wybierz stawkę z listy `
+        + 'albo „—", żeby skasować stawkę.' };
+    }
+    zmiany.stawka_vat = stawka;
   }
 
   // ⚠️⚠️ WYMIAR POLOWICZNY NIE MA PRAWA POWSTAC. To NIE JEST nowa regula — to domkniecie

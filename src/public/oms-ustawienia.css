@@ -1,4 +1,31 @@
 .ust-okruszki{color:var(--tekst-przygaszony);font-size:.82rem;margin:.3rem 0 1rem;display:flex;gap:.6rem}
+.klucze-api .klucze-api-nowe label:first-child{flex:1;min-width:min(100%,18rem)}
+.klucze-api .klucze-api-nowe input[name=nazwa]{width:100%}
+.klucze-api-kopiowanie{display:flex;align-items:center;gap:.6rem;margin-top:.4rem}
+.klucze-api-kopiowanie input{flex:1;min-width:0;width:100%;font:.95rem/1.5 ui-monospace,Consolas,monospace;padding:.6rem;border:1px solid var(--ramka-pola);border-radius:5px;color:var(--tekst);background:var(--powierzchnia)}
+.klucze-api [hidden]{display:none!important}
+.klucze-api-zakresy{min-width:0;margin:1rem 0;padding:1rem;border:1px solid var(--ramka);border-radius:8px}
+.klucze-api-zakresy legend{padding:0 .4rem;font-weight:600}
+.klucze-api-grupy{display:grid;grid-template-columns:repeat(auto-fit,minmax(10rem,1fr));gap:1rem;margin-top:.8rem}
+.klucze-api-grupa{font-size:.95rem;margin:0 0 .5rem}
+.klucze-api .klucze-api-checkbox{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:.5rem;margin:.4rem 0}
+.klucze-api .klucze-api-checkbox input{flex:none;width:1rem;height:1rem;margin:0}
+.klucze-api .ust-akcje{margin-top:1rem}
+.klucze-api .ust-sekcja.klucze-api-karta{display:flex;align-items:center;gap:1rem;padding:.8rem 1rem}
+.klucze-api-dane{flex:1;min-width:0;overflow-wrap:anywhere}
+.klucze-api-naglowek{display:flex;align-items:baseline;gap:.4rem 1rem;flex-wrap:wrap}
+.klucze-api-naglowek h3{margin:0;font-size:1rem}
+.klucze-api .klucze-api-szczegoly{margin:.35rem 0 0;font-size:.82rem;line-height:1.5;color:var(--tekst-przygaszony)}
+.klucze-api-akcje{display:flex;align-items:center;gap:.6rem;flex:none}
+.klucze-api .klucze-api-akcje form{margin:0}
+/* PRZ-153.22: stan klucza jak plakietka OMS — czynny zielony, odwołany i wygasły szary; karta nieczynnego klucza przygaszona. */
+.klucze-api-stan{display:inline-block;padding:.05rem .55rem;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--ramka);color:var(--tekst)}
+.klucze-api-stan--czynny{background:var(--ok-tlo);color:var(--ok-tekst)}
+.klucze-api .ust-sekcja.klucze-api-karta--nieczynny{background:var(--powierzchnia-2)}
+.klucze-api-karta--nieczynny .klucze-api-naglowek h3{color:var(--tekst-przygaszony)}
+.klucze-api-prefiks{font-size:.82rem;color:var(--tekst-przygaszony)}
+.klucze-api-prefiks code{font:inherit;font-family:ui-monospace,Consolas,monospace;color:var(--tekst)}
+@media(max-width:700px){.klucze-api .ust-sekcja.klucze-api-karta{flex-direction:column;align-items:stretch}.klucze-api-akcje{justify-content:flex-end}}
 .ust-dzial-tytul{font-size:1.7rem;font-weight:600;margin:0 0 .8rem}
 .ust-zakladki{display:flex;gap:1.5rem;flex-wrap:wrap;border-bottom:1px solid var(--ramka);margin-bottom:1.5rem}
 .ust-zakladki a{padding:.8rem 0;color:var(--tekst-przygaszony);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap}

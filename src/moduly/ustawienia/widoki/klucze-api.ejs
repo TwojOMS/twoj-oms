@@ -1,0 +1,72 @@
+<div class="klucze-api">
+<h1>Klucze API</h1>
+<p>Klucze pozwalają integracjom korzystać z OMS. Nadaj tylko potrzebny dostęp.</p>
+<% if (blad) { %><div class="pas-uprzedzenie" role="alert"><p><%= blad %></p></div><% } %>
+<% if (potwierdzenie) { %>
+  <div class="ust-sekcja">
+    <h2>Na pewno <%= potwierdzenie.pytanie %> klucz „<%= potwierdzenie.klucz.nazwa %>”?</h2>
+    <div class="klucze-api-akcje">
+      <form method="post" action="/ustawienia/klucze-api/<%= potwierdzenie.klucz.id %>/<%= potwierdzenie.akcja %>">
+        <input type="hidden" name="potwierdzam" value="tak">
+        <button type="submit" class="ust-przycisk grozny">Tak, <%= potwierdzenie.przycisk %></button>
+      </form>
+      <a href="/ustawienia/klucze-api">Anuluj</a>
+    </div>
+  </div>
+<% } %>
+<% if (klucz) { %>
+  <div class="ust-sekcja">
+    <h2>Klucz gotowy</h2>
+    <p><strong>Skopiuj teraz — później nie będzie go widać.</strong></p>
+    <label for="klucz-api-wartosc">Twój klucz</label>
+    <div class="klucze-api-kopiowanie">
+      <input type="text" id="klucz-api-wartosc" readonly autocomplete="off" spellcheck="false" value="<%= klucz %>">
+      <button type="button" class="ust-przycisk" data-kopiuj-klucz aria-label="Kopiuj klucz" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h3"/></svg></button>
+    </div>
+    <p data-kopiowanie-wynik role="status" aria-live="polite"></p>
+  </div>
+<% } %>
+<div class="ust-sekcja">
+  <h2>Nowy klucz</h2>
+  <form method="post" action="/ustawienia/klucze-api">
+    <input type="hidden" name="jednorazowy" value="<%= jednorazowy %>">
+    <div class="ust-pola klucze-api-nowe">
+      <label>Nazwa <input name="nazwa" required value="<%= dane.nazwa || '' %>" placeholder="np. integracja testowa"></label>
+      <label>Wygasa (opcjonalnie) <input type="date" name="wygasa" value="<%= dane.wygasa || '' %>"></label>
+    </div>
+    <fieldset class="klucze-api-zakresy"><legend>Zakres dostępu</legend>
+      <div data-wszystkie-zakresy hidden><label class="klucze-api-checkbox"><input type="checkbox" data-zaznacz-wszystko> <span>Zaznacz wszystko</span></label></div>
+      <div class="klucze-api-grupy">
+        <% grupyZakresow.forEach(grupa => { %>
+          <div>
+            <h3 class="klucze-api-grupa"><%= grupa.nazwa %></h3>
+            <% grupa.zakresy.forEach(z => { %><label class="klucze-api-checkbox"><input type="checkbox" name="zakresy" value="<%= z %>" <%= Array.isArray(dane.zakresy) && dane.zakresy.includes(z) ? 'checked' : '' %>> <span><%= opisZakresu(z).rodzaj %></span></label><% }); %>
+          </div>
+        <% }); %>
+      </div>
+    </fieldset>
+    <div class="ust-akcje"><button type="submit" class="ust-przycisk">Utwórz klucz</button></div>
+  </form>
+</div>
+<h2>Twoje klucze</h2>
+<% if (!klucze.length) { %><p>Nie masz jeszcze kluczy API.</p><% } %>
+<% klucze.forEach(k => { %>
+  <div class="ust-sekcja klucze-api-karta<%= k.stan === 'czynny' ? '' : ' klucze-api-karta--nieczynny' %>">
+    <div class="klucze-api-dane">
+      <div class="klucze-api-naglowek"><h3><%= k.nazwa %></h3><strong class="klucze-api-stan<%= k.stan === 'czynny' ? ' klucze-api-stan--czynny' : '' %>"><%= k.stan %></strong><span class="klucze-api-prefiks">Prefiks: <code><%= k.prefiks %></code></span></div>
+      <p class="klucze-api-szczegoly">Zakresy: <%= k.zakresy.map(etykieta).join(', ') %> · Twórca: <%= k.utworzyl_login || 'konto serwisowe lub usunięte' %><% if (k.utworzyl_czynne === 0) { %> — konto wyłączone<% } %> · Utworzony: <%= fmtDataCzas(k.utworzony_at) %> · Wygasa: <%= k.wygasa_at ? k.wygasa_at.slice(0, 10) : 'bez terminu' %> · Ostatnie użycie: <%= k.ostatnio_uzyty_at ? fmtDataCzas(k.ostatnio_uzyty_at) : 'jeszcze nieużywany' %> · IP: <%= k.ostatnie_ip || '—' %></p>
+    </div>
+    <div class="klucze-api-akcje">
+    <% if (!k.odwolany_at) { %>
+      <form method="post" action="/ustawienia/klucze-api/<%= k.id %>/odwolaj" data-odwolaj-klucz>
+        <button type="submit" class="ust-przycisk">Odwołaj</button>
+      </form>
+    <% } %>
+    <form method="post" action="/ustawienia/klucze-api/<%= k.id %>/usun" data-usun-klucz>
+      <button type="submit" class="ust-przycisk grozny">Usuń</button>
+    </form>
+    </div>
+  </div>
+<% }); %>
+</div>
+<script type="module" src="<%= zasob('klucze-api.js') %>"></script>

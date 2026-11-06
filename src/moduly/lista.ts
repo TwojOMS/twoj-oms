@@ -14,6 +14,7 @@ import { modulZwroty } from './zwroty/modul.ts';
 import { modulUstawienia } from './ustawienia/modul.ts';
 import { modulKoszty } from './koszty/modul.ts';
 import { modulZdrowie } from './zdrowie/modul.ts';
+import { modulApi } from './api/modul.ts';
 import { modulMarketing } from './marketing/modul.ts';
 import { modulRaporty, createModulRaporty } from './raporty/modul.ts';
 import { modulWiadomosci } from './wiadomosci/modul.ts';
@@ -25,7 +26,7 @@ import { modulAutomatyzacje } from './automatyzacje/modul.ts';
  * modułu TwojeFaktury go nie ma. */
 export const MODULY: readonly ModulOms[] = [modulRdzen, modulWeb, modulKanaly, modulFaktury,
   ...(szewTwojeFaktury ? [szewTwojeFaktury.modul] : []), modulWiadomosci, createModulZamowienia({ zWiadomosciami: true }), modulWysylka,
-  modulMagazyn, modulZwroty, modulUstawienia, modulAutomatyzacje, modulKoszty, modulRaporty, modulMarketing, modulApiPanelu, modulZdrowie] as readonly ModulOms[];
+  modulMagazyn, modulZwroty, modulUstawienia, modulAutomatyzacje, modulKoszty, modulRaporty, modulMarketing, modulApiPanelu, modulApi, modulZdrowie] as readonly ModulOms[];
 
 /** Zgoda instalacji bez rzucania: błędną wartość i tak odrzuca konfiguracja modułu `faktury` (to samo zdanie). */
 function zgodaInstalacji(env: Srodowisko): boolean {

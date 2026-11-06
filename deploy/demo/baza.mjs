@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { randomBytes } from 'node:crypto';
+import { zalozKluczDemo } from './klucz-demo.mjs';
 
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
 
@@ -51,6 +52,8 @@ export async function zalozBazeDemo({ baza, dzis, env, kontoAdmina }) {
     for (const [login, imie, rola] of ZESPOL_DEMO) {
       zalozKonto(db, { login, imie, rola, haslo: randomBytes(24).toString('base64url') });
     }
+    // PRZ-153.E9: jawny klucz API demo, wyłącznie zakresy odczytu (opis w docs/api/README.md).
+    zalozKluczDemo(db);
   } finally { db.close(); }
   return wynik;
 }

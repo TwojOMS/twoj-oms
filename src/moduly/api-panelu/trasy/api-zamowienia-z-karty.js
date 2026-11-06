@@ -27,6 +27,283 @@ const POWOD_POWTORKI = 'Zamówienie z tej karty już istnieje.';
 // PRZ-122.B07c: `opcjeZw()` — flaga „zw” programu fakturowego z kontekstu karty (zamówienia); bez niej jak dotąd.
 export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syncSklep = null, kanalIndywidualny = true,
   opcjeZw = () => ({ zw: false }) }) {
+  app.post('/api/zamowienia-z-karty', obslugaZalozeniaZKarty({ db, kanalIndywidualny, opcjeZw }));
+
+  // Odczyt stanu zamowienia zalozonego z karty — panel odpytuje ta trase co 10 minut,
+  // zeby wykryc wplate (Zadanie 9, poza tym repo).
+  //
+  // ⚠️ ODCZYT IDZIE PRZEZ pobierzZamowienie (zLinii w db/zamowienia.js), NIE surowe kolumny
+  // `oplacone_at` / `anulowane` z tabeli `zamowienia`. Od migracji `przeniesWplatyDoListy`
+  // (db/db.js, komentarz przy niej) te dwie kolumny sa faktami SKLEPU — poller WooCommerce
+  // je odswieza co dwie minuty. Zamowienie zalozone Z TEJ KARTY ma `sklep = 'reczne'`
+  // (zalozZamowienieReczne) i ZADEN poller go nie dotyka — po utworzeniu `oplacone_at`
+  // zostaje `NULL` NA ZAWSZE. Jedyna prawdziwa droga do oznaczenia platnosci takiego
+  // zamowienia to reczna wplata operatora z ekranu karty OMS-u (`/zamowienia/:id/wplata`
+  // albo `/zamowienia/:id/platnosci`), a ta zapisuje sie WYLACZNIE do tabeli `platnosci`
+  // (zrodlo='reczna') — surowej kolumny w ogole nie dotyka (db/platnosci.js: dodajWplateReczna).
+  // Trasa czytajaca surowa kolumne wprost oddawalaby `oplacone: false` przez cale zycie
+  // takiego zamowienia, bez wzgledu na to, ile realnych wplat operator zaksieguje — a to
+  // dokladnie ta wartosc, po ktora poller panelu (Zadanie 9) siega, zeby ustawic `paid_at`
+  // karty. To samo dotyczy `anulowane`: reczne anulowanie zamowienia recznego zapisuje sie
+  // w `anulowane_recznie`, a efektywna wartosc (`anulowaneEfektywnie`) liczy sie z NIEJ,
+  // nie z kolumny sklepowej. `pobierzZamowienie` liczy oba fakty tak samo, jak reszta OMS-u
+  // (karta, lista, ekran nadania) — to JEDYNE miejsce w module, ktore ma prawo o nich mowic.
+  app.get('/api/zamowienia-z-karty/:kartaId', obslugaZamowieniaZKarty({ db }));
+
+  // ---------------------------------------------------------------------------------
+  // DANE DOSTAWY I DOKUMENTU — dla strony akceptacji projektu (20.08.2026).
+  //
+  // Klient po zaakceptowaniu projektu ma zobaczyc, DOKAD to jedzie i na co dostanie dokument,
+  // zeby zdazyl zareagowac, zanim paczka pojedzie pod zly adres. Panel tych danych NIE MA:
+  // przy torze automatycznym adres zostal w sklepie, a panel zna tylko numer zamowienia.
+  // (Zmierzone 20.08 na produkcji: 4 karty z 23 oplaconych mialy adres po stronie panelu.)
+  //
+  // ⚠️ KLUCZEM JEST ID ZAMOWIENIA, NIE `karta_id`. Trasa wyzej szuka po `karta_id`, ktore ma
+  // WYLACZNIE zamowienie zalozone Z KARTY (tor reczny). Tor automatyczny — klient placi
+  // w sklepie, OMS zaciaga zamowienie sam — takiego wiazania nie ma i nigdy nie dostanie;
+  // panel wie o nim tylko tyle, ze `card.omsId` wskazuje ten wiersz. Trasa po `karta_id`
+  // oddawalaby wiec 404 dokladnie tym zamowieniom, ktorych ta funkcja dotyczy najbardziej.
+  //
+  // ⚠️ WARTOSCI EFEKTYWNE, nie surowe kolumny sklepowe. Operator poprawia adres i metode
+  // na karcie OMS-u (`dostawa_reczna_json`, `wysylka_reczna_json`, `klient_reczny_json`)
+  // i to jego poprawka jedzie kurierem — wiec to ona ma stanac klientowi przed oczami.
+  // Pokazanie surowego adresu ze sklepu znaczyloby „potwierdz dane, ktorych i tak nie uzyjemy".
+  app.get('/api/zamowienia/:id/dostawa', obslugaDostawy({ db }));
+
+  // ---------------------------------------------------------------------------------
+  // STAN WYSYLKI — dla pollera wysylek panelu indywidualnego (26.08.2026).
+  //
+  // Karta panelu ma sama przejsc na „Wyslane", gdy zamowienie tutaj dostanie `wyslane_at`.
+  // Do tej pory ten fakt wprowadzalo sie DWA razy (raz belka statusu w OMS-ie, raz przycisk
+  // na karcie panelu), a rozjazd nie dawal o sobie znac niczym — dokladnie ta sama klasa
+  // problemu, ktora 22.08 zamknela trasa `/w-realizacji`, tylko w przeciwna strone.
+  //
+  // ⚠️ KLUCZEM JEST ID ZAMOWIENIA, NIE `karta_id` — z tego samego powodu, co w `/dostawa`:
+  // tor automatyczny zadnego `karta_id` po stronie OMS-u nie ma, a wysylka dotyczy go
+  // tak samo. Panel zna `omsId` w obu torach.
+  //
+  // ⚠️ `wyslane_at` to fakt stawiany REKA OPERATORA (belka statusu / rejestracja wysylki);
+  // nadanie przesylki go nie ustawia i to jest swiadoma decyzja tego modulu — trasa jej
+  // nie obchodzi, tylko ja przekazuje. `anulowane` jest wartoscia EFEKTYWNA z zLinii
+  // (sklepowe + reczne), jak we wszystkich odczytach dla panelu.
+  app.get('/api/zamowienia/:id/stan-wysylki', obslugaStanuWysylki({ db }));
+
+  // ---------------------------------------------------------------------------------
+  // ZAMOWIENIE PO NUMERZE SKLEPOWYM (Etap 1a planu 2026-08-18-layout-karty-i-koniec-apilo).
+  //
+  // Tor automatyczny panelu idzie: oferta → zamowienie w sklepie → NUMER tego zamowienia →
+  // ta trasa → `oplacone` → `paid_at` karty → ETAP IV. Zastepuje odczyt zaplaty z Apilo,
+  // wiec od jej poprawnosci zalezy, czy karta rusza do produkcji za WLASCIWE pieniadze.
+  //
+  // ⚠️⚠️ PARAMETR `sklep` JEST OBOWIAZKOWY I TO JEST CALY SENS TEJ TRASY. Numer zamowienia
+  // NIE JEST UNIKALNY MIEDZY SKLEPAMI: dwa skonfigurowane sklepy numeruja niezaleznie,
+  // wiec `28060` moze istniec w obu naraz — i baza tego nie zabrania (kolumna `numer` nie ma
+  // globalnego UNIQUE, czesciowy indeks pilnuje wylacznie serii recznej `R/RRRR/NNN`).
+  // Trasa bez tego parametru wiazalaby karte z CUDZYM zamowieniem: panel przeczytalby cudza
+  // zaplate, oznaczyl karte jako oplacona i uruchomil ETAP IV za pieniadze, ktorych ten
+  // klient nie przelal. To ta sama klasa bledu, ktora zlikwidowalo przejscie z dopasowania
+  // po adresie e-mail na numer oferty — i wraca tu tylnymi drzwiami, gdy numer sam ma
+  // decydowac.
+  // ---------------------------------------------------------------------------------
+  app.get('/api/zamowienia/po-numerze/:numer', obslugaZamowieniaPoNumerze({ db }));
+
+  // ---------------------------------------------------------------------------------
+  // PROFORMA DLA PANELU (Etap 1b tego samego planu).
+  //
+  // ⚠️ TRASY PRZEGLADARKOWE (POST /zamowienia/:id/proforma, GET /proformy/:id/pdf
+  // w routes/zamowienia.js) ZOSTAJA NIETKNIETE. Te tutaj sa DODATKIEM, nie zamiana, bo panel
+  // potrzebuje czego innego niz czlowiek przy karcie OMS-u:
+  //   • tamta odpowiada `302` na ekran HTML karty — klient serwerowy nie ma z tego jak
+  //     wyciagnac numeru dokumentu ani adresu pliku;
+  //   • tamta oddaje PDF z `Content-Disposition: attachment` — instrukcja dla przegladarki,
+  //     bez znaczenia dla panelu, ktory bierze bajty i wpina je do maila jako WLASNY
+  //     zalacznik.
+  // Ujednolicenie starych tras do ksztaltu API zostawiloby operatora karty z golym JSON-em
+  // zamiast powrotu na zamowienie.
+  //
+  // ⚠️ OMS NIE MA I NIE DOSTANIE MAILERA (zero `nodemailer`/`sendMail` w calym src/oms/).
+  // Proforme MAILUJE PANEL — tutaj konczy sie na oddaniu numeru i bajtow.
+  // ---------------------------------------------------------------------------------
+
+  // Kolejnosc sprawdzen JAK W TRASIE PRZEGLADARKOWEJ (routes/zamowienia.js): najpierw
+  // „czy jest takie zamowienie", potem „czy proformy sa skonfigurowane". Dwie postacie tej
+  // samej operacji nie moga odpowiadac roznie na to samo zadanie.
+  app.post('/api/zamowienia/:id/proforma', obslugaProformy({ db, proforma, opcjeZw }));
+
+  // Bajty proformy dla panelu. GET, bo to czysty odczyt — i BEZ `Content-Disposition`:
+  // panel nie zapisuje pliku na dysk przegladarki, tylko wklada go do maila.
+  app.get('/api/proformy/:id/pdf', obslugaPdfProformy({ proforma }));
+
+  /**
+   * AKCEPTACJA PROJEKTU → „W realizacji" (22.08.2026).
+   *
+   * Klient klika „Akceptuję projekt" na stronie sklepu, panel zamowien indywidualnych
+   * przesuwa swoja karte do realizacji — i tym samym wywolaniem przesuwa TU zamowienie.
+   * Do tego dnia robil to czlowiek, klikajac belke statusu w OMS-ie: ta sama informacja
+   * wprowadzana dwa razy, a rozjazd („karta w realizacji, zamowienie dalej indywidualne")
+   * nie dawal o sobie znac NICZYM.
+   *
+   * Zgodne z zasada statusu z 2026-08-07 (PRZEWODNIK 4.x): wyjscie ze statusu
+   * „Indywidualne" to `w_realizacji_at` i nic wiecej — zadnej nowej kolumny, zadnego
+   * nowego przelacznika. Zmieniamy wylacznie to, KTO go zapisuje.
+   *
+   * ⚠️ TRASA JEST WASKA Z ROZMYSLEM: ustawia WYLACZNIE „w realizacji". Ogolne
+   * „ustaw status" dalo by panelowi droge do „anulowane" i „wyslane" — a to sa rzeczy
+   * nieodwracalne, ktorych zaden automat nie powinien miec w zasiegu.
+   */
+  app.post('/api/zamowienia/:id/w-realizacji', obslugaWRealizacji({ db, syncSklep }));
+}
+
+/** Wspólna obsługa GET panelu i API v1. */
+export function obslugaZamowieniaZKarty({ db }) {
+  return async (req, reply) => {
+    const w = db.prepare('SELECT id FROM zamowienia WHERE karta_id = ?').get(req.params.kartaId);
+    if (!w) return reply.code(404).send({ powod: 'Ta karta nie ma zamówienia w OMS-ie.' });
+    const z = pobierzZamowienie(db, w.id);
+    return reply.send({
+      id: z.id,
+      numer: z.numer,
+      // Fakt, nie data: panel ma wlasny znacznik `paid_at` i to on rozstrzyga o ETAPIE IV.
+      oplacone: Boolean(z.oplacone_at),
+      anulowane: Boolean(z.anulowane),
+      kwotaBrutto: z.kwota_brutto,
+    });
+  };
+}
+
+/** Wspólna obsługa GET panelu i API v1. */
+export function obslugaDostawy({ db }) {
+  return async (req, reply) => {
+    const id = Number(req.params.id);
+    const z = Number.isFinite(id) ? pobierzZamowienie(db, id) : null;
+    if (!z) return reply.code(404).send({ powod: 'Nie ma takiego zamówienia.' });
+
+    return reply.send(dostawaZamowienia(z));
+  };
+}
+
+export function dostawaZamowienia(z) {
+    const adres = adresOdbiorcy(z);
+    const faktura = chceFakture(z) ? daneFaktury(z) : null;
+    return {
+      id: z.id,
+      numer: z.numer,
+      adres: {
+        // `firma` OSOBNO od `nazwa` — dla osoby prywatnej firmy nie ma i nie wolno jej
+        // podstawiac imieniem (patrz firmaNabywcy w domain/dane-faktury.js).
+        nazwa: adres?.nazwa || null,
+        firma: adres?.company || null,
+        ulica: adres?.ulica || null,
+        kod: adres?.kod || null,
+        miasto: adres?.miasto || null,
+        telefon: adres?.phone || null,
+      },
+      // ⚠️ „Nieznana metoda" NIE JEDZIE DO KLIENTA. Wewnątrz OMS-u to sensowna wartość
+      // („do wyjaśnienia przez operatora"), ale na stronie, na której klient sprawdza swoje
+      // dane, brzmi jak awaria u nas. Zamiast tego nie mówimy nic i strona pomija tę linię —
+      // stan spotykany w produkcji (zamówienia sprzed mapowania metod).
+      metoda: metodaWysylki(z) === 'nieznana' ? null : nazwaDostawy(z),
+      punkt: punktOdbioru(z),
+      punktOpis: punktOdbioruOpis(z),
+      dokument: faktura ? 'faktura' : 'paragon',
+      faktura: faktura
+        ? {
+          firma: firmaNabywcy(z) ?? faktura.firma ?? null,
+          nip: faktura.nip ?? null,
+          ulica: faktura.ulica ?? null,
+          kod: faktura.kod ?? null,
+          miasto: faktura.miasto ?? null,
+        }
+        : null,
+    };
+}
+
+/** Wspólna obsługa GET panelu i API v1. */
+export function obslugaStanuWysylki({ db }) {
+  return async (req, reply) => {
+    const id = Number(req.params.id);
+    const z = Number.isFinite(id) ? pobierzZamowienie(db, id) : null;
+    if (!z) return reply.code(404).send({ powod: 'Nie ma takiego zamówienia.' });
+    return reply.send({
+      id: z.id,
+      numer: z.numer,
+      wyslane: Boolean(z.wyslane_at),
+      // Data osobno od faktu: panel zapisuje na karcie dzien PRAWDZIWEJ wysylki,
+      // a nie chwile, w ktorej poller raczyl zapytac.
+      wyslaneAt: z.wyslane_at ?? null,
+      anulowane: Boolean(z.anulowane),
+    });
+  };
+}
+
+/** Wspólna obsługa GET panelu i API v1. */
+export function obslugaZamowieniaPoNumerze({ db }) {
+  return async (req, reply) => {
+    // ⚠️ PUSTY NAPIS ODRZUCAMY TAK SAMO JAK BRAK PARAMETRU, i to nie jest nadgorliwosc:
+    // panel sklada ten adres z wlasnej konfiguracji (`SHOP_SKLEP`), a brakujaca zmienna nie
+    // znika — wchodzi do adresu jako `?sklep=`. Sprawdzenie samego `undefined` przepusciloby
+    // taki adres i wrocilo do „szukaj po calej bazie", czyli dokladnie tam, przed czym ten
+    // parametr stoi. Spacja to ta sama pomylka po obcieciu.
+    const sklep = String(req.query?.sklep ?? '').trim();
+    if (!sklep) {
+      return reply.code(400).send({
+        powod: 'Brakuje parametru „sklep". Numer zamówienia nie jest unikalny między sklepami '
+          + '(sklepy numerują niezależnie), więc bez wskazania sklepu nie da się '
+          + 'powiedzieć, o które zamówienie chodzi.',
+      });
+    }
+
+    const numer = String(req.params.numer ?? '').trim();
+    // ⚠️ FUNKCJA JEST W LICZBIE MNOGIEJ Z TEGO SAMEGO POWODU, dla ktorego istnieje `sklep`
+    // wyzej (db/zamowienia.js, komentarz przy `znajdzZamowieniaPoNumerze`). Oddaje WSZYSTKIE
+    // trafienia, a zawezenie do sklepu robimy TU — bo dopiero pelny wiersz wie, z ktorego
+    // sklepu pochodzi.
+    const trafienia = znajdzZamowieniaPoNumerze(db, numer)
+      .map((id) => pobierzZamowienie(db, id))
+      // Porownanie DOKLADNE, bez zwijania wielkosci liter. Klucz sklepu jest identyfikatorem
+      // z konfiguracji (`sklep-a`, `sklep-b`), a nie tekstem dla czlowieka — „uprzejme"
+      // dopasowanie rozmyte wpuszczaloby z powrotem wieloznacznosc, ktora ta trasa ma zamykac.
+      .filter((z) => z && z.sklep === sklep);
+
+    if (trafienia.length === 0) {
+      return reply.code(404).send({
+        powod: `Sklep „${sklep}" nie ma zamówienia o numerze „${numer}".`,
+      });
+    }
+    // ⚠️ WIELOZNACZNOSC MIMO PODANEGO SKLEPU = ODMOWA, NIGDY „WEZ PIERWSZE". Do jednej bazy
+    // pisze i biezacy poller, i jednorazowy import historii (services/import-apilo.js), a
+    // kolumna `numer` nie ma UNIQUE — dwa wiersze o tym samym numerze w tym samym sklepie sa
+    // wiec osiagalne. Zgadniecie wiaze karte panelu z zamowieniem NA STALE, wiec jedyna
+    // uczciwa odpowiedz brzmi „nie wiem, ktore" — a odpowiedz NIE NIESIE zadnego `id`,
+    // bo panel, ktory je dostanie, i tak go uzyje.
+    if (trafienia.length > 1) {
+      return reply.code(409).send({
+        powod: `Numer „${numer}" pasuje w sklepie „${sklep}" do więcej niż jednego zamówienia `
+          + `(${trafienia.length}) — nie da się wskazać jednoznacznie. Zgłoś to jako usterkę.`,
+      });
+    }
+
+    const [z] = trafienia;
+    return reply.send({
+      id: z.id,
+      numer: z.numer,
+      sklep: z.sklep,
+      // ⚠️ TE DWA FAKTY LICZY `pobierzZamowienie`, A NIE SUROWE KOLUMNY — z tego samego
+      // powodu, co w trasie wyzej: `oplacone_at` zapala sie dopiero przy pokryciu CALEJ
+      // kwoty (z listy wplat), a `anulowane` sumuje anulowanie sklepu z recznym.
+      oplacone: Boolean(z.oplacone_at),
+      anulowane: Boolean(z.anulowane),
+      kwotaBrutto: z.kwota_brutto,
+      // Kolumna jest liczbowa (0/1), a NULL znaczy „jeszcze nie przeliczone" (db/db.js
+      // dolicza je przy starcie). Panel pyta o fakt, wiec dostaje fakt — a nie trzy stany,
+      // z ktorych dwa musialby traktowac tak samo.
+      indywidualne: Boolean(z.indywidualne),
+    });
+  };
+}
+
+/** Wspólna obsługa panelu i API v1. */
+export function obslugaZalozeniaZKarty({ db, kanalIndywidualny = true, opcjeZw = () => ({ zw: false }) }) {
   // `utworzone_at` wjezdza tu WYLACZNIE po to, zeby galaz `catch` mogla rozstrzygnac, KTO
   // zalozyl znaleziony wiersz (patrz komentarz nizej). Do odpowiedzi 409 nie idzie — jej
   // ksztalt to `{ id, numer, powod }` i tyle wie o niej panel.
@@ -42,7 +319,7 @@ export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syn
     return db.prepare('SELECT numer FROM zamowienia WHERE id = ?').get(id)?.numer ?? null;
   }
 
-  app.post('/api/zamowienia-z-karty', async (req, reply) => {
+  return async (req, reply) => {
     // PRZ-089: zamówienie z karty liczy się w raporcie jako INDYWIDUALNE — bez tego kanału raport odmówiłby
     // („brak granicy”), więc odmowa stoi tu, przy wejściu, a nie po zapisie.
     if (!kanalIndywidualny) return reply.code(503).send({ powod: 'Kanał zamówień indywidualnych jest wyłączony (OMS_KANAL_INDYWIDUALNY).' });
@@ -146,232 +423,12 @@ export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syn
         powod: `${komunikatDlaOperatora(e)}${slad ? ` Zamówienie zdążyło powstać (${slad}) — dokończ je w OMS-ie zamiast zakładać drugie.` : ''}`,
       });
     }
-  });
+  };
+}
 
-  // Odczyt stanu zamowienia zalozonego z karty — panel odpytuje ta trase co 10 minut,
-  // zeby wykryc wplate (Zadanie 9, poza tym repo).
-  //
-  // ⚠️ ODCZYT IDZIE PRZEZ pobierzZamowienie (zLinii w db/zamowienia.js), NIE surowe kolumny
-  // `oplacone_at` / `anulowane` z tabeli `zamowienia`. Od migracji `przeniesWplatyDoListy`
-  // (db/db.js, komentarz przy niej) te dwie kolumny sa faktami SKLEPU — poller WooCommerce
-  // je odswieza co dwie minuty. Zamowienie zalozone Z TEJ KARTY ma `sklep = 'reczne'`
-  // (zalozZamowienieReczne) i ZADEN poller go nie dotyka — po utworzeniu `oplacone_at`
-  // zostaje `NULL` NA ZAWSZE. Jedyna prawdziwa droga do oznaczenia platnosci takiego
-  // zamowienia to reczna wplata operatora z ekranu karty OMS-u (`/zamowienia/:id/wplata`
-  // albo `/zamowienia/:id/platnosci`), a ta zapisuje sie WYLACZNIE do tabeli `platnosci`
-  // (zrodlo='reczna') — surowej kolumny w ogole nie dotyka (db/platnosci.js: dodajWplateReczna).
-  // Trasa czytajaca surowa kolumne wprost oddawalaby `oplacone: false` przez cale zycie
-  // takiego zamowienia, bez wzgledu na to, ile realnych wplat operator zaksieguje — a to
-  // dokladnie ta wartosc, po ktora poller panelu (Zadanie 9) siega, zeby ustawic `paid_at`
-  // karty. To samo dotyczy `anulowane`: reczne anulowanie zamowienia recznego zapisuje sie
-  // w `anulowane_recznie`, a efektywna wartosc (`anulowaneEfektywnie`) liczy sie z NIEJ,
-  // nie z kolumny sklepowej. `pobierzZamowienie` liczy oba fakty tak samo, jak reszta OMS-u
-  // (karta, lista, ekran nadania) — to JEDYNE miejsce w module, ktore ma prawo o nich mowic.
-  app.get('/api/zamowienia-z-karty/:kartaId', async (req, reply) => {
-    const w = db.prepare('SELECT id FROM zamowienia WHERE karta_id = ?').get(req.params.kartaId);
-    if (!w) return reply.code(404).send({ powod: 'Ta karta nie ma zamówienia w OMS-ie.' });
-    const z = pobierzZamowienie(db, w.id);
-    return reply.send({
-      id: z.id,
-      numer: z.numer,
-      // Fakt, nie data: panel ma wlasny znacznik `paid_at` i to on rozstrzyga o ETAPIE IV.
-      oplacone: Boolean(z.oplacone_at),
-      anulowane: Boolean(z.anulowane),
-      kwotaBrutto: z.kwota_brutto,
-    });
-  });
-
-  // ---------------------------------------------------------------------------------
-  // DANE DOSTAWY I DOKUMENTU — dla strony akceptacji projektu (20.08.2026).
-  //
-  // Klient po zaakceptowaniu projektu ma zobaczyc, DOKAD to jedzie i na co dostanie dokument,
-  // zeby zdazyl zareagowac, zanim paczka pojedzie pod zly adres. Panel tych danych NIE MA:
-  // przy torze automatycznym adres zostal w sklepie, a panel zna tylko numer zamowienia.
-  // (Zmierzone 20.08 na produkcji: 4 karty z 23 oplaconych mialy adres po stronie panelu.)
-  //
-  // ⚠️ KLUCZEM JEST ID ZAMOWIENIA, NIE `karta_id`. Trasa wyzej szuka po `karta_id`, ktore ma
-  // WYLACZNIE zamowienie zalozone Z KARTY (tor reczny). Tor automatyczny — klient placi
-  // w sklepie, OMS zaciaga zamowienie sam — takiego wiazania nie ma i nigdy nie dostanie;
-  // panel wie o nim tylko tyle, ze `card.omsId` wskazuje ten wiersz. Trasa po `karta_id`
-  // oddawalaby wiec 404 dokladnie tym zamowieniom, ktorych ta funkcja dotyczy najbardziej.
-  //
-  // ⚠️ WARTOSCI EFEKTYWNE, nie surowe kolumny sklepowe. Operator poprawia adres i metode
-  // na karcie OMS-u (`dostawa_reczna_json`, `wysylka_reczna_json`, `klient_reczny_json`)
-  // i to jego poprawka jedzie kurierem — wiec to ona ma stanac klientowi przed oczami.
-  // Pokazanie surowego adresu ze sklepu znaczyloby „potwierdz dane, ktorych i tak nie uzyjemy".
-  app.get('/api/zamowienia/:id/dostawa', async (req, reply) => {
-    const id = Number(req.params.id);
-    const z = Number.isFinite(id) ? pobierzZamowienie(db, id) : null;
-    if (!z) return reply.code(404).send({ powod: 'Nie ma takiego zamówienia.' });
-
-    const adres = adresOdbiorcy(z);
-    const faktura = chceFakture(z) ? daneFaktury(z) : null;
-    return reply.send({
-      id: z.id,
-      numer: z.numer,
-      adres: {
-        // `firma` OSOBNO od `nazwa` — dla osoby prywatnej firmy nie ma i nie wolno jej
-        // podstawiac imieniem (patrz firmaNabywcy w domain/dane-faktury.js).
-        nazwa: adres?.nazwa || null,
-        firma: adres?.company || null,
-        ulica: adres?.ulica || null,
-        kod: adres?.kod || null,
-        miasto: adres?.miasto || null,
-        telefon: adres?.phone || null,
-      },
-      // ⚠️ „Nieznana metoda" NIE JEDZIE DO KLIENTA. Wewnątrz OMS-u to sensowna wartość
-      // („do wyjaśnienia przez operatora"), ale na stronie, na której klient sprawdza swoje
-      // dane, brzmi jak awaria u nas. Zamiast tego nie mówimy nic i strona pomija tę linię —
-      // stan spotykany w produkcji (zamówienia sprzed mapowania metod).
-      metoda: metodaWysylki(z) === 'nieznana' ? null : nazwaDostawy(z),
-      punkt: punktOdbioru(z),
-      punktOpis: punktOdbioruOpis(z),
-      dokument: faktura ? 'faktura' : 'paragon',
-      faktura: faktura
-        ? {
-          firma: firmaNabywcy(z) ?? faktura.firma ?? null,
-          nip: faktura.nip ?? null,
-          ulica: faktura.ulica ?? null,
-          kod: faktura.kod ?? null,
-          miasto: faktura.miasto ?? null,
-        }
-        : null,
-    });
-  });
-
-  // ---------------------------------------------------------------------------------
-  // STAN WYSYLKI — dla pollera wysylek panelu indywidualnego (26.08.2026).
-  //
-  // Karta panelu ma sama przejsc na „Wyslane", gdy zamowienie tutaj dostanie `wyslane_at`.
-  // Do tej pory ten fakt wprowadzalo sie DWA razy (raz belka statusu w OMS-ie, raz przycisk
-  // na karcie panelu), a rozjazd nie dawal o sobie znac niczym — dokladnie ta sama klasa
-  // problemu, ktora 22.08 zamknela trasa `/w-realizacji`, tylko w przeciwna strone.
-  //
-  // ⚠️ KLUCZEM JEST ID ZAMOWIENIA, NIE `karta_id` — z tego samego powodu, co w `/dostawa`:
-  // tor automatyczny zadnego `karta_id` po stronie OMS-u nie ma, a wysylka dotyczy go
-  // tak samo. Panel zna `omsId` w obu torach.
-  //
-  // ⚠️ `wyslane_at` to fakt stawiany REKA OPERATORA (belka statusu / rejestracja wysylki);
-  // nadanie przesylki go nie ustawia i to jest swiadoma decyzja tego modulu — trasa jej
-  // nie obchodzi, tylko ja przekazuje. `anulowane` jest wartoscia EFEKTYWNA z zLinii
-  // (sklepowe + reczne), jak we wszystkich odczytach dla panelu.
-  app.get('/api/zamowienia/:id/stan-wysylki', async (req, reply) => {
-    const id = Number(req.params.id);
-    const z = Number.isFinite(id) ? pobierzZamowienie(db, id) : null;
-    if (!z) return reply.code(404).send({ powod: 'Nie ma takiego zamówienia.' });
-    return reply.send({
-      id: z.id,
-      numer: z.numer,
-      wyslane: Boolean(z.wyslane_at),
-      // Data osobno od faktu: panel zapisuje na karcie dzien PRAWDZIWEJ wysylki,
-      // a nie chwile, w ktorej poller raczyl zapytac.
-      wyslaneAt: z.wyslane_at ?? null,
-      anulowane: Boolean(z.anulowane),
-    });
-  });
-
-  // ---------------------------------------------------------------------------------
-  // ZAMOWIENIE PO NUMERZE SKLEPOWYM (Etap 1a planu 2026-08-18-layout-karty-i-koniec-apilo).
-  //
-  // Tor automatyczny panelu idzie: oferta → zamowienie w sklepie → NUMER tego zamowienia →
-  // ta trasa → `oplacone` → `paid_at` karty → ETAP IV. Zastepuje odczyt zaplaty z Apilo,
-  // wiec od jej poprawnosci zalezy, czy karta rusza do produkcji za WLASCIWE pieniadze.
-  //
-  // ⚠️⚠️ PARAMETR `sklep` JEST OBOWIAZKOWY I TO JEST CALY SENS TEJ TRASY. Numer zamowienia
-  // NIE JEST UNIKALNY MIEDZY SKLEPAMI: dwa skonfigurowane sklepy numeruja niezaleznie,
-  // wiec `28060` moze istniec w obu naraz — i baza tego nie zabrania (kolumna `numer` nie ma
-  // globalnego UNIQUE, czesciowy indeks pilnuje wylacznie serii recznej `R/RRRR/NNN`).
-  // Trasa bez tego parametru wiazalaby karte z CUDZYM zamowieniem: panel przeczytalby cudza
-  // zaplate, oznaczyl karte jako oplacona i uruchomil ETAP IV za pieniadze, ktorych ten
-  // klient nie przelal. To ta sama klasa bledu, ktora zlikwidowalo przejscie z dopasowania
-  // po adresie e-mail na numer oferty — i wraca tu tylnymi drzwiami, gdy numer sam ma
-  // decydowac.
-  // ---------------------------------------------------------------------------------
-  app.get('/api/zamowienia/po-numerze/:numer', async (req, reply) => {
-    // ⚠️ PUSTY NAPIS ODRZUCAMY TAK SAMO JAK BRAK PARAMETRU, i to nie jest nadgorliwosc:
-    // panel sklada ten adres z wlasnej konfiguracji (`SHOP_SKLEP`), a brakujaca zmienna nie
-    // znika — wchodzi do adresu jako `?sklep=`. Sprawdzenie samego `undefined` przepusciloby
-    // taki adres i wrocilo do „szukaj po calej bazie", czyli dokladnie tam, przed czym ten
-    // parametr stoi. Spacja to ta sama pomylka po obcieciu.
-    const sklep = String(req.query?.sklep ?? '').trim();
-    if (!sklep) {
-      return reply.code(400).send({
-        powod: 'Brakuje parametru „sklep". Numer zamówienia nie jest unikalny między sklepami '
-          + '(sklepy numerują niezależnie), więc bez wskazania sklepu nie da się '
-          + 'powiedzieć, o które zamówienie chodzi.',
-      });
-    }
-
-    const numer = String(req.params.numer ?? '').trim();
-    // ⚠️ FUNKCJA JEST W LICZBIE MNOGIEJ Z TEGO SAMEGO POWODU, dla ktorego istnieje `sklep`
-    // wyzej (db/zamowienia.js, komentarz przy `znajdzZamowieniaPoNumerze`). Oddaje WSZYSTKIE
-    // trafienia, a zawezenie do sklepu robimy TU — bo dopiero pelny wiersz wie, z ktorego
-    // sklepu pochodzi.
-    const trafienia = znajdzZamowieniaPoNumerze(db, numer)
-      .map((id) => pobierzZamowienie(db, id))
-      // Porownanie DOKLADNE, bez zwijania wielkosci liter. Klucz sklepu jest identyfikatorem
-      // z konfiguracji (`sklep-a`, `sklep-b`), a nie tekstem dla czlowieka — „uprzejme"
-      // dopasowanie rozmyte wpuszczaloby z powrotem wieloznacznosc, ktora ta trasa ma zamykac.
-      .filter((z) => z && z.sklep === sklep);
-
-    if (trafienia.length === 0) {
-      return reply.code(404).send({
-        powod: `Sklep „${sklep}" nie ma zamówienia o numerze „${numer}".`,
-      });
-    }
-    // ⚠️ WIELOZNACZNOSC MIMO PODANEGO SKLEPU = ODMOWA, NIGDY „WEZ PIERWSZE". Do jednej bazy
-    // pisze i biezacy poller, i jednorazowy import historii (services/import-apilo.js), a
-    // kolumna `numer` nie ma UNIQUE — dwa wiersze o tym samym numerze w tym samym sklepie sa
-    // wiec osiagalne. Zgadniecie wiaze karte panelu z zamowieniem NA STALE, wiec jedyna
-    // uczciwa odpowiedz brzmi „nie wiem, ktore" — a odpowiedz NIE NIESIE zadnego `id`,
-    // bo panel, ktory je dostanie, i tak go uzyje.
-    if (trafienia.length > 1) {
-      return reply.code(409).send({
-        powod: `Numer „${numer}" pasuje w sklepie „${sklep}" do więcej niż jednego zamówienia `
-          + `(${trafienia.length}) — nie da się wskazać jednoznacznie. Zgłoś to jako usterkę.`,
-      });
-    }
-
-    const [z] = trafienia;
-    return reply.send({
-      id: z.id,
-      numer: z.numer,
-      sklep: z.sklep,
-      // ⚠️ TE DWA FAKTY LICZY `pobierzZamowienie`, A NIE SUROWE KOLUMNY — z tego samego
-      // powodu, co w trasie wyzej: `oplacone_at` zapala sie dopiero przy pokryciu CALEJ
-      // kwoty (z listy wplat), a `anulowane` sumuje anulowanie sklepu z recznym.
-      oplacone: Boolean(z.oplacone_at),
-      anulowane: Boolean(z.anulowane),
-      kwotaBrutto: z.kwota_brutto,
-      // Kolumna jest liczbowa (0/1), a NULL znaczy „jeszcze nie przeliczone" (db/db.js
-      // dolicza je przy starcie). Panel pyta o fakt, wiec dostaje fakt — a nie trzy stany,
-      // z ktorych dwa musialby traktowac tak samo.
-      indywidualne: Boolean(z.indywidualne),
-    });
-  });
-
-  // ---------------------------------------------------------------------------------
-  // PROFORMA DLA PANELU (Etap 1b tego samego planu).
-  //
-  // ⚠️ TRASY PRZEGLADARKOWE (POST /zamowienia/:id/proforma, GET /proformy/:id/pdf
-  // w routes/zamowienia.js) ZOSTAJA NIETKNIETE. Te tutaj sa DODATKIEM, nie zamiana, bo panel
-  // potrzebuje czego innego niz czlowiek przy karcie OMS-u:
-  //   • tamta odpowiada `302` na ekran HTML karty — klient serwerowy nie ma z tego jak
-  //     wyciagnac numeru dokumentu ani adresu pliku;
-  //   • tamta oddaje PDF z `Content-Disposition: attachment` — instrukcja dla przegladarki,
-  //     bez znaczenia dla panelu, ktory bierze bajty i wpina je do maila jako WLASNY
-  //     zalacznik.
-  // Ujednolicenie starych tras do ksztaltu API zostawiloby operatora karty z golym JSON-em
-  // zamiast powrotu na zamowienie.
-  //
-  // ⚠️ OMS NIE MA I NIE DOSTANIE MAILERA (zero `nodemailer`/`sendMail` w calym src/oms/).
-  // Proforme MAILUJE PANEL — tutaj konczy sie na oddaniu numeru i bajtow.
-  // ---------------------------------------------------------------------------------
-
-  // Kolejnosc sprawdzen JAK W TRASIE PRZEGLADARKOWEJ (routes/zamowienia.js): najpierw
-  // „czy jest takie zamowienie", potem „czy proformy sa skonfigurowane". Dwie postacie tej
-  // samej operacji nie moga odpowiadac roznie na to samo zadanie.
-  app.post('/api/zamowienia/:id/proforma', async (req, reply) => {
+/** Wspólna obsługa panelu i API v1. */
+export function obslugaProformy({ db, proforma = null, opcjeZw = () => ({ zw: false }), adresProform = '/api/proformy' }) {
+  return async (req, reply) => {
     const id = Number(req.params.id);
     if (!pobierzZamowienie(db, id)) return reply.code(404).send({ powod: 'Nie ma takiego zamówienia.' });
     if (!proforma) return reply.code(503).send({ powod: 'Proformy nie są skonfigurowane.' });
@@ -393,12 +450,13 @@ export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syn
     // wlasny, staly adres do pobrania — i to on jedzie w `pdfUrl` gotowy, zamiast byc sklejany
     // po stronie panelu z identyfikatora. Dwa miejsca wiedzace, jak wyglada ta trasa,
     // rozjechalyby sie przy pierwszej zmianie adresu.
-    return reply.code(201).send({ id: p.id, numer: p.numer, pdfUrl: `/api/proformy/${p.id}/pdf` });
-  });
+    return reply.code(201).send({ id: p.id, numer: p.numer, pdfUrl: `${adresProform}/${p.id}/pdf` });
+  };
+}
 
-  // Bajty proformy dla panelu. GET, bo to czysty odczyt — i BEZ `Content-Disposition`:
-  // panel nie zapisuje pliku na dysk przegladarki, tylko wklada go do maila.
-  app.get('/api/proformy/:id/pdf', async (req, reply) => {
+/** Wspólna obsługa panelu i API v1. */
+export function obslugaPdfProformy({ proforma = null }) {
+  return async (req, reply) => {
     if (!proforma) return reply.code(503).send({ powod: 'Proformy nie są skonfigurowane.' });
     const id = Number(req.params.id);
     let wynik;
@@ -410,26 +468,12 @@ export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syn
       return reply.code(404).send({ powod: komunikatDlaOperatora(e) });
     }
     return reply.type('application/pdf').send(wynik.bajty);
-  });
+  };
+}
 
-  /**
-   * AKCEPTACJA PROJEKTU → „W realizacji" (22.08.2026).
-   *
-   * Klient klika „Akceptuję projekt" na stronie sklepu, panel zamowien indywidualnych
-   * przesuwa swoja karte do realizacji — i tym samym wywolaniem przesuwa TU zamowienie.
-   * Do tego dnia robil to czlowiek, klikajac belke statusu w OMS-ie: ta sama informacja
-   * wprowadzana dwa razy, a rozjazd („karta w realizacji, zamowienie dalej indywidualne")
-   * nie dawal o sobie znac NICZYM.
-   *
-   * Zgodne z zasada statusu z 2026-08-07 (PRZEWODNIK 4.x): wyjscie ze statusu
-   * „Indywidualne" to `w_realizacji_at` i nic wiecej — zadnej nowej kolumny, zadnego
-   * nowego przelacznika. Zmieniamy wylacznie to, KTO go zapisuje.
-   *
-   * ⚠️ TRASA JEST WASKA Z ROZMYSLEM: ustawia WYLACZNIE „w realizacji". Ogolne
-   * „ustaw status" dalo by panelowi droge do „anulowane" i „wyslane" — a to sa rzeczy
-   * nieodwracalne, ktorych zaden automat nie powinien miec w zasiegu.
-   */
-  app.post('/api/zamowienia/:id/w-realizacji', async (req, reply) => {
+/** Wspólna obsługa panelu i API v1. */
+export function obslugaWRealizacji({ db, syncSklep = null }) {
+  return async (req, reply) => {
     const id = Number(req.params.id);
     const z = Number.isFinite(id) ? pobierzZamowienie(db, id) : null;
     if (!z) return reply.code(404).send({ powod: 'Nie ma takiego zamówienia.' });
@@ -472,5 +516,5 @@ export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syn
 
     const po = pobierzZamowienie(db, id);
     return reply.send({ id: po.id, numer: po.numer, status: wyliczStatus(po), wRealizacjiAt: po.w_realizacji_at });
-  });
+  };
 }

@@ -11,6 +11,8 @@ import { migracjaKonfiguracjiIntegracji } from './migracje/0006-konfiguracja-int
 import { migracjaTerminuWysylkiRecznego } from './migracje/0007-termin-wysylki-reczny.ts';
 import { migracjaDokumentuProgramu } from './migracje/0008-dokument-programu.ts';
 import { migracjaKolejkiDrukuProform } from './migracje/0009-kolejka-druku-proform.ts';
+import { migracjaKluczyApi } from './migracje/0010-klucze-api.ts';
+import { migracjaKartApi } from './migracje/0011-karty-api.ts';
 export const modulRdzen: ModulOms<{ sprzedawca: DaneSprzedawcy }> = {
   nazwa: 'rdzen', wersja: '1.0.0', wymaga: [],
   konfiguracja: (env) => ({ sprzedawca: wczytajSprzedawce(env) }),
@@ -24,6 +26,8 @@ export const modulRdzen: ModulOms<{ sprzedawca: DaneSprzedawcy }> = {
     migracjaTerminuWysylkiRecznego,
     migracjaDokumentuProgramu,
     migracjaKolejkiDrukuProform,
+    migracjaKluczyApi,
+    migracjaKartApi,
   ],
   uprawnienia: [], menu: [],
   // PRZ-102.20: `rachunekFirmy` — JEDNO źródło rachunku i banku dla maili, proform i WzA: plik (OMS_RACHUNEK/OMS_BANK)

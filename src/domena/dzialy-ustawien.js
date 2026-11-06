@@ -8,7 +8,7 @@ export const DZIALY_USTAWIEN = [
   { klucz: 'faktury', etykieta: 'Faktury i podatki', zakladki: [z('program', 'Program do faktur', '/ustawienia/integracje/program-fakturowy'), z('zasady', 'Zasady wystawiania', '/ustawienia/faktury/zasady'), z('vat', 'VAT i zwolnienie', '/ustawienia/faktury/vat'), z('numeracja', 'Numeracja', '/ustawienia/faktury/numeracja'), z('ksef', 'KSeF', '/ustawienia/faktury/ksef')] },
   { klucz: 'komunikacja', etykieta: 'Komunikacja', zakladki: [z('szablony', 'Szablony wiadomości', '/ustawienia/szablony-wiadomosci'), z('podpis', 'Podpis i stopka', '/ustawienia/komunikacja/podpis'), z('allegro', 'Autoodpowiedź Allegro', '/ustawienia/wiadomosci-i-automatyzacje')] },
   { klucz: 'automatyzacje', etykieta: 'Automatyzacje', zakladki: [z('reguly', 'Reguły', '/ustawienia/automatyzacje', true), z('systemowe', 'Automaty systemowe', '/ustawienia/automatyzacje/systemowe', true)] },
-  { klucz: 'zespol', etykieta: 'Zespół i dostęp', zakladki: [z('konta', 'Użytkownicy', '/ustawienia/konta', true), z('role', 'Role i uprawnienia', '/ustawienia/role', true), z('logowania', 'Historia logowań', '/ustawienia/zespol/logowania', true)] },
+  { klucz: 'zespol', etykieta: 'Zespół i dostęp', zakladki: [z('konta', 'Użytkownicy', '/ustawienia/konta', true), z('role', 'Role i uprawnienia', '/ustawienia/role', true), z('klucze-api', 'Klucze API', '/ustawienia/klucze-api', true), z('logowania', 'Historia logowań', '/ustawienia/zespol/logowania', true)] },
   { klucz: 'kopie', etykieta: 'Kopie zapasowe', zakladki: [z('stan', 'Stan i zakres', '/ustawienia/kopie'), z('historia', 'Historia', '/ustawienia/kopie/historia')] },
   { klucz: 'system', etykieta: 'System', zakladki: [z('funkcje', 'Włączone funkcje', '/ustawienia/moduly', true), z('stan', 'Stan systemu', '/ustawienia/lacznosc'), z('aktualizacje', 'Aktualizacje', '/ustawienia/aktualizacje', true)] },
 ];
@@ -29,7 +29,8 @@ export function modelNawigacjiUstawien(url = '/ustawienia', { admin = false, pod
   const adres = new URL(String(url), 'http://oms.invalid');
   const sciezka = adres.pathname;
   const maAdmina = admin || podgladDemo;
-  const dzialy = DZIALY_USTAWIEN.map(d => ({ ...d, zakladki: d.zakladki.filter(p => !p.tylkoAdmin || maAdmina) })).filter(d => d.zakladki.length);
+  const dzialy = DZIALY_USTAWIEN.map(d => ({ ...d, zakladki: d.zakladki.filter(p =>
+    p.klucz === 'klucze-api' ? admin : !p.tylkoAdmin || maAdmina) })).filter(d => d.zakladki.length);
   if (daneDemo && maAdmina) dzialy.find(d => d.klucz === 'system').zakladki.push(z('demo', 'Dane demo', '/ustawienia/dane-demo', true));
   const dokladne = dzialy.flatMap(d => d.zakladki.map(p => [p.href, d.klucz, p.klucz]));
   const pasuje = [...ALIASY, ...dokladne].filter(([href]) => sciezka === href || sciezka.startsWith(`${href}/`)).sort((a,b) => b[0].length - a[0].length)[0];

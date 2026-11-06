@@ -84,7 +84,9 @@ public class SurowyWydruk {
 if (-not (Test-Path $Config)) { throw "Brak pliku konfiguracji: $Config" }
 $k = Get-Content $Config -Raw | ConvertFrom-Json
 
-foreach ($wymagane in @('url', 'user', 'pass', 'drukarka')) {
+$wymaganePola = @('url', 'drukarka')
+if (-not $k.klucz) { $wymaganePola += @('user', 'pass') }
+foreach ($wymagane in $wymaganePola) {
   if (-not $k.$wymagane) { throw "Konfiguracja bez pola '$wymagane' - patrz config.przyklad.json" }
 }
 
@@ -103,15 +105,23 @@ function Zapisz($poziom, $tresc) {
 }
 
 $naglowki = @{
-  Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($k.user + ':' + $k.pass))
   # Panel ma ochrone przed CSRF: zadania zmieniajace stan musza podac zrodlo.
   # Klient nie-przegladarkowy ustawia je sam, wskazujac na sam panel.
   Origin        = $k.url
 }
+if ($k.klucz) {
+  $naglowki.Authorization = 'Bearer ' + $k.klucz
+  $sposobLogowania = 'klucz API'
+} else {
+  $naglowki.Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($k.user + ':' + $k.pass))
+  $sposobLogowania = 'haslo serwisowe'
+}
 $odstep = 5
 if ($k.odstepSekund) { $odstep = [int]$k.odstepSekund }
+$odstepPoOdmowie = 300
+if ($k.odstepPoOdmowieSekund) { $odstepPoOdmowie = [int]$k.odstepPoOdmowieSekund }
 
-Zapisz 'INFO' ("Start. Panel {0}, drukarka '{1}', odpytywanie co {2} s." -f $k.url, $k.drukarka, $odstep)
+Zapisz 'INFO' ("Start. Panel {0}, drukarka '{1}', odpytywanie co {2} s, logowanie: {3}." -f $k.url, $k.drukarka, $odstep, $sposobLogowania)
 
 # --- Petla ---------------------------------------------------------------------------
 #
@@ -121,9 +131,9 @@ Zapisz 'INFO' ("Start. Panel {0}, drukarka '{1}', odpytywanie co {2} s." -f $k.u
 
 $ostatniBlad = ''
 while ($true) {
+  $odstepBiezacy = $odstep
   try {
     $kolejka = Invoke-RestMethod -Uri "$($k.url)/kolejka-druku" -Headers $naglowki -TimeoutSec 20
-    $ostatniBlad = ''
 
     foreach ($poz in $kolejka) {
       try {
@@ -140,6 +150,7 @@ while ($true) {
         Invoke-RestMethod -Uri "$($k.url)/kolejka-druku/$($poz.id)/wydrukowano" -Method Post -Headers $naglowki -TimeoutSec 20 | Out-Null
         Zapisz 'OK' ("Wydrukowano list {0} (zamowienie {1})" -f $poz.numerListu, $poz.zamowienie)
       } catch {
+        if ($_.Exception.Response -and ($_.Exception.Response.StatusCode -eq 401 -or $_.Exception.Response.StatusCode -eq 403)) { throw }
         $tresc = $_.Exception.Message
         Zapisz 'BLAD' ("Etykieta {0}: {1}" -f $poz.numerListu, $tresc)
         # Panel ma pokazac operatorowi, ze wydruk sie nie udal - inaczej etykieta
@@ -148,17 +159,27 @@ while ($true) {
           $body = @{ powod = $tresc } | ConvertTo-Json -Compress
           Invoke-RestMethod -Uri "$($k.url)/kolejka-druku/$($poz.id)/blad" -Method Post -Headers $naglowki `
             -ContentType 'application/json' -Body $body -TimeoutSec 20 | Out-Null
-        } catch { }
+        } catch {
+          if ($_.Exception.Response -and ($_.Exception.Response.StatusCode -eq 401 -or $_.Exception.Response.StatusCode -eq 403)) { throw }
+        }
       }
     }
+    $ostatniBlad = ''
   } catch {
     # Panel niedostepny to stan NORMALNY (wylaczony serwer, restart kontenera). Zeby log
     # nie puchl o ten sam wpis co 5 sekund, powtorzenia sa pomijane.
-    $tresc = $_.Exception.Message
+    if ($_.Exception.Response -and ($_.Exception.Response.StatusCode -eq 401 -or $_.Exception.Response.StatusCode -eq 403)) {
+      $odstepBiezacy = $odstepPoOdmowie
+      if ($k.klucz) { $tresc = 'OMS odrzucil klucz czuwacza (401/403) - sprawdz pole klucz w konfiguracji.' }
+      else { $tresc = 'OMS odrzucil haslo czuwacza (401/403) - sprawdz user/pass w konfiguracji.' }
+      $tresc += (' ponowna proba za {0} s' -f $odstepPoOdmowie)
+    } else {
+      $tresc = "Panel nieosiagalny: $($_.Exception.Message) (kolejne takie same pomijam)"
+    }
     if ($tresc -ne $ostatniBlad) {
-      Zapisz 'UWAGA' ("Panel nieosiagalny: {0} (kolejne takie same pomijam)" -f $tresc)
+      Zapisz 'UWAGA' $tresc
       $ostatniBlad = $tresc
     }
   }
-  Start-Sleep -Seconds $odstep
+  Start-Sleep -Seconds $odstepBiezacy
 }

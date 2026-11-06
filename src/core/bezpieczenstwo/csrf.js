@@ -12,6 +12,7 @@
 // takze trasy dopisane w przyszlosci, o ktorych autor ochrony nie wie.
 
 import { motywZNaglowka } from '../../domena/motyw.js';
+import { rozbierzNaglowek } from '../../domena/klucze-api.js';
 import { sciezkaWidoku } from '../web/widoki.js';
 
 export const METODY_BEZPIECZNE = ['GET', 'HEAD', 'OPTIONS'];
@@ -86,14 +87,50 @@ export function sprawdzZrodlo({ method, host, origin, referer }) {
 }
 
 /**
+ * PRZ-153.E1.3: zadanie programu z kluczem API. Przegladarka sama nie dolozy naglowka
+ * `Authorization: Bearer` do zadania z obcej strony, wiec CSRF go nie dotyczy — ale tylko
+ * wtedy, gdy nie niesie tez ciasteczka sesji (wtedy to moze byc przegladarka zalogowanego
+ * czlowieka i obowiazuje zwykle sprawdzanie zrodla). Liczy sie sama obecnosc nazwy
+ * ciasteczka, takze z pusta wartoscia. Bez nazwy ciasteczka nie zwalnia niczego.
+ */
+export function czyZadanieKluczem({ url, authorization, cookie }, nazwaCiasteczka) {
+  if (!nazwaCiasteczka) return false;
+  const sciezka = sciezkaZdekodowana(url);
+  if (sciezka === null) return false;
+  if (sciezka !== '/api/v1' && !sciezka.startsWith('/api/v1/')) return false;
+  if (rozbierzNaglowek(authorization) === null) return false;
+  return !maCiasteczko(cookie, nazwaCiasteczka);
+}
+
+// Jak straznik wejscia: `/api/v%31/…` to dla routera `/api/v1/…`. Zle kodowanie = null, czyli bez zwolnienia.
+function sciezkaZdekodowana(url) {
+  try {
+    return decodeURIComponent(String(url ?? '').split(/[?#]/)[0]);
+  } catch {
+    return null;
+  }
+}
+
+function maCiasteczko(cookie, nazwa) {
+  if (typeof cookie !== 'string') return false;
+  return cookie.split(';').some((kawalek) => {
+    const rowna = kawalek.indexOf('=');
+    return (rowna < 0 ? kawalek : kawalek.slice(0, rowna)).trim() === nazwa;
+  });
+}
+
+/**
  * Podpina ochrone jako hook onRequest.
  *
  * KOLEJNOSC MA ZNACZENIE: rejestrowac PO haku uwierzytelniania. Inaczej zadanie
  * nieuwierzytelnione dostaje 403 zamiast 401 i przestaje byc widac, ze panel w ogole
  * pyta o haslo.
+ *
+ * `nazwaCiasteczka` — ta sama, co straznika OMS; bez niej wyjatek dla klucza API jest wylaczony.
  */
-export function zarejestrujOchroneCsrf(app) {
+export function zarejestrujOchroneCsrf(app, { nazwaCiasteczka } = {}) {
   app.addHook('onRequest', async (req, reply) => {
+    if (czyZadanieKluczem({ url: req.url, authorization: req.headers.authorization, cookie: req.headers.cookie }, nazwaCiasteczka)) return;
     const powod = sprawdzZrodlo({
       method: req.method,
       host: req.headers.host,

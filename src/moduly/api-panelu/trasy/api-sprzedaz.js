@@ -141,7 +141,12 @@ function dzienZParametru(surowa) {
 }
 
 export function trasaApiSprzedaz(app, { db }) {
-  app.get('/api/sprzedaz', async (req, odp) => {
+  app.get('/api/sprzedaz', obslugaSprzedazy({ db }));
+}
+
+/** Wspólna obsługa GET panelu i API v1. */
+export function obslugaSprzedazy({ db }) {
+  return async (req, odp) => {
     // Brak zakresu ma byc bledem, a nie cichym zwrotem calej historii: raport pobralby
     // wtedy wszystko i policzyl tydzien jako cala sprzedaz firmy.
     if (!req.query?.od || !req.query?.do) {
@@ -253,5 +258,5 @@ export function trasaApiSprzedaz(app, { db }) {
       }));
 
     return { zamowienia };
-  });
+  };
 }

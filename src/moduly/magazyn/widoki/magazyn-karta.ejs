@@ -61,6 +61,20 @@
           inputmode="decimal" placeholder="opcjonalnie"></label>
         <label>Waga (kg)<input name="waga_kg" value="<%= wartosci.waga_kg %>"
           inputmode="decimal" placeholder="opcjonalnie"></label>
+        <%# PRZ-153.E5.3c: EAN (8 albo 13 cyfr z cyfra kontrolna), cena w zl (baza trzyma grosze),
+            stawka VAT z listy faktur. Puste pole kasuje wartosc, napis niezrozumialy ODMAWIA. %>
+        <label>EAN<input name="ean" value="<%= wartosci.ean %>"
+          inputmode="numeric" placeholder="8 albo 13 cyfr"></label>
+        <label>Cena katalogowa (zł)<input name="cena_zl" value="<%= wartosci.cena_zl %>"
+          inputmode="decimal" placeholder="np. 49,90"></label>
+        <label>Stawka VAT
+          <select name="stawka_vat">
+            <option value=""<%- wartosci.stawka_vat === '' ? ' selected' : '' %>>—</option>
+            <% stawkiVat.forEach(function (s) { %>
+              <option value="<%= s %>"<%- wartosci.stawka_vat === s ? ' selected' : '' %>><%= s %>%</option>
+            <% }); %>
+          </select>
+        </label>
         <%# Pozycje z kategorii POWIAZANYCH produktow (plus ta juz ustawiona) — nie z palca:
             filtr kategorii dopasowuje CALA nazwe, a nazw jest kilkaset i nikt ich nie pamieta. %>
         <label>Kategoria główna
@@ -97,6 +111,12 @@
         <dd><% if (karta.wymiary) { %><%= karta.wymiary %><% } else { %><span class="magazyn-brak">bez wymiarów</span><% } %></dd>
         <dt>Waga</dt>
         <dd><% if (karta.waga) { %><%= karta.waga %> kg<% } else { %><span class="magazyn-brak">—</span><% } %></dd>
+        <dt>EAN</dt>
+        <dd><% if (karta.ean) { %><%= karta.ean %><% } else { %><span class="magazyn-brak">—</span><% } %></dd>
+        <dt>Cena katalogowa</dt>
+        <dd><% if (karta.cena) { %><%= karta.cena %><% } else { %><span class="magazyn-brak">—</span><% } %></dd>
+        <dt>Stawka VAT</dt>
+        <dd><% if (karta.stawkaVat) { %><%= karta.stawkaVat %>%<% } else { %><span class="magazyn-brak">—</span><% } %></dd>
         <dt>Kategoria główna</dt>
         <dd><% if (karta.kategoria) { %><%= karta.kategoria %><% } else { %><span class="magazyn-brak">niewybrana</span><% } %></dd>
         <dt>Paczkomat</dt>

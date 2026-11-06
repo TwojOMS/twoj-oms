@@ -11,7 +11,9 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { zarejestrujOchroneCsrf } from '../bezpieczenstwo/csrf.js';
-import { zbudujStraznika } from '../bezpieczenstwo/straznik.js';
+import { zbudujStraznika, czyTrasaMaszynowaZdekodowana } from '../bezpieczenstwo/straznik.js';
+import { wpisDoDziennika } from '../bezpieczenstwo/dziennik-api.js';
+import { utworzLimitApi } from '../bezpieczenstwo/limit-api.js';
 import { podgladUstawienDemo, wUstawieniach } from '../bezpieczenstwo/podglad-demo.js';
 import { nazwaCiasteczkaOms } from '../bezpieczenstwo/sesja.js';
 import { wczytajSekret } from '../bezpieczenstwo/sekret-sesji.js';
@@ -212,10 +214,21 @@ app.addHook('onRequest', zbudujStraznika({
         loginSerwisowy: config.auth.user,
         usluga: 'oms',
       },
+      // PRZ-153: /api/v1 tylko kluczem API. Panel indywidualny tego parametru nie podaje.
+      // Limit jeden na aplikację (licznik wywołań klucza i złych kluczy z IP), tworzony tutaj obok strażnika.
+      klucze: { db, limit: utworzLimitApi() },
     }));
+// Kolejki druku na Bearer mają ten sam dziennik co API; /api/v1 obsługuje wyłącznie plugin.
+const wpisDrukuDoDziennika = wpisDoDziennika({ db, teraz: () => new Date() });
+app.addHook('onResponse', async (req, reply) => {
+  if (typeof req.headers.authorization !== 'string' || !/^\s*Bearer(\s|$)/i.test(req.headers.authorization)) return;
+  if (!czyTrasaMaszynowaZdekodowana(req.url)) return;
+  await wpisDrukuDoDziennika(req, reply);
+});
 // PRZ-083: demo publiczne — gość ogląda Ustawienia, nie zapisuje (podglad-demo.js). Bez konta gościa haka nie ma.
 if (config.demo) app.addHook('onRequest', podgladUstawienDemo({ loginGoscia: config.demo.login }));
-zarejestrujOchroneCsrf(app);
+// PRZ-153.E1.3: ta sama nazwa ciasteczka co strażnikowi — żądanie z kluczem API i bez ciasteczka sesji omija CSRF.
+zarejestrujOchroneCsrf(app, { nazwaCiasteczka: nazwaCiasteczkaOms(config.proba) });
 app.addHook('preHandler', async (req, reply) => {
       const kolory = koloryStatusow(db);
       const etykiety = etykietyStatusow(db);

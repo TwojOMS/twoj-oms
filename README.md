@@ -37,6 +37,7 @@ Moduły (`src/moduly/`), każdy z własnymi trasami, widokami, migracjami bazy i
 | `wiadomosci` | wiadomości do klientów, poczta |
 | `ustawienia` | konta z rolami i uprawnieniami per zakładka, integracje |
 | `zdrowie` | `/health`, kopie zapasowe, alarmy |
+| `api` | API v1 dla programów na kluczach z zakresami: zamówienia, proformy, produkty, stany, sprzedaż ([opis](docs/api/README.md)) |
 
 Integracje w kodzie: Allegro, WooCommerce, inFakt, KSeF, DPD, InPost, GUS (REGON), Meta, GA4,
 import z Apilo. Każda jest opcjonalna i wymaga własnych kluczy — bez nich panel działa w **trybie
@@ -68,6 +69,9 @@ Linux + Docker, od czystego Debiana do panelu dostępnego w sieci lokalnej:
 [docs/konfiguracja.md](docs/konfiguracja.md). Kurierów i pocztę można wpisać w panelu (Ustawienia →
 Integracje), bez edycji pliku — krok po kroku: [DPD](docs/kurier-dpd.md), [InPost](docs/kurier-inpost.md),
 [poczta wychodząca](docs/poczta-smtp.md).
+
+**API dla programów** (sklep, arkusz, skrypt, agent AI): [docs/api/README.md](docs/api/README.md) — klucze API
+z zakresami, przykłady `curl`, opis w OpenAPI. Na demo działa jawny klucz tylko do odczytu.
 
 **Jeśli instaluje agent AI:** [docs/instalacja-przez-agenta.md](docs/instalacja-przez-agenta.md) —
 scenariusz krok po kroku z miejscami, w których agent musi się zatrzymać i zapytać człowieka.

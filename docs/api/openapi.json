@@ -1,0 +1,2909 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Twój OMS API",
+    "version": "1",
+    "description": "API zewnętrzne Twój OMS. Z nagłówkiem Idempotency-Key odpowiedzi 404, 409 i ≥ 500 nie są zapamiętywane, a cała transakcja jest wycofywana; ponowienie z tym samym kluczem wykonuje żądanie od nowa. Odpowiedzi 404 i 409 zależą od chwilowego stanu danych. Odpowiedzi 400, 422 i sukcesy 2xx są zapamiętywane. Użycie zapamiętanego klucza na innej trasie nadal zwraca 422."
+  },
+  "security": [
+    {
+      "klucz": []
+    }
+  ],
+  "paths": {
+    "/api/v1/ja": {
+      "get": {
+        "summary": "Tożsamość i zakresy bieżącego klucza API",
+        "responses": {
+          "200": {
+            "description": "Dane klucza API.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TozsamoscKlucza"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/BrakKlucza"
+          },
+          "429": {
+            "$ref": "#/components/responses/Limit"
+          }
+        }
+      }
+    },
+    "/api/v1/zamowienia": {
+      "get": {
+        "summary": "Lista zamówień",
+        "x-zakres": "zamowienia:odczyt",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kanal",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "numer",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "od",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Dzień w strefie Europe/Warsaw, włącznie."
+          },
+          {
+            "name": "do",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Dzień w strefie Europe/Warsaw, włącznie."
+          },
+          {
+            "name": "po",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "description": "Nieujemny bezpieczny identyfikator zapisany samymi cyframi; błędna lub powtórzona wartość daje 400 (stronicowanie)."
+          },
+          {
+            "name": "ile",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 100
+            },
+            "description": "Rozmiar strony zapisany samymi cyframi; błędna lub powtórzona wartość daje 400 (stronicowanie)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Poprawna odpowiedź.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StronaZamowien"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nieprawidłowe parametry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nie znaleziono danych.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Niejednoznaczny wynik.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/BrakKlucza"
+          },
+          "403": {
+            "$ref": "#/components/responses/BrakZakresu"
+          },
+          "429": {
+            "$ref": "#/components/responses/Limit"
+          }
+        }
+      }
+    },
+    "/api/v1/zamowienia/{id}": {
+      "get": {
+        "summary": "Szczegóły zamówienia",
+        "x-zakres": "zamowienia:odczyt",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Poprawna odpowiedź.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SzczegolyZamowienia"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nieprawidłowe parametry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nie znaleziono danych.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Niejednoznaczny wynik.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/BrakKlucza"
+          },
+          "403": {
+            "$ref": "#/components/responses/BrakZakresu"
+          },
+          "429": {
+            "$ref": "#/components/responses/Limit"
+          }
+        }
+      }
+    },
+    "/api/v1/zamowienia/z-karty/{kartaId}": {
+      "get": {
+        "summary": "Zamówienie dla karty",
+        "x-zakres": "zamowienia:odczyt",
+        "parameters": [
+          {
+            "name": "kartaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Poprawna odpowiedź.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZamowienieZKarty"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nieprawidłowe parametry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nie znaleziono danych.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Niejednoznaczny wynik.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/BrakKlucza"
+          },
+          "403": {
+            "$ref": "#/components/responses/BrakZakresu"
+          },
+          "429": {
+            "$ref": "#/components/responses/Limit"
+          }
+        }
+      }
+    },
+    "/api/v1/zamowienia/po-numerze/{numer}": {
+      "get": {
+        "summary": "Zamówienie po numerze i sklepie",
+        "x-zakres": "zamowienia:odczyt",
+        "parameters": [
+          {
+            "name": "numer",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sklep",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Poprawna odpowiedź.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZamowieniePoNumerze"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nieprawidłowe parametry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nie znaleziono danych.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Niejednoznaczny wynik.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/BrakKlucza"
+          },
+          "403": {
+            "$ref": "#/components/responses/BrakZakresu"
+          },
+          "429": {
+            "$ref": "#/components/responses/Limit"
+          }
+        }
+      }
+    },
+    "/api/v1/zamowienia/{id}/dostawa": {
+      "get": {
+        "summary": "Dostawa zamówienia",
+        "x-zakres": "zamowienia:odczyt",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Poprawna odpowiedź.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dostawa"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nieprawidłowe parametry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nie znaleziono danych.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Niejednoznaczny wynik.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/BrakKlucza"
+          },
+          "403": {
+            "$ref": "#/components/responses/BrakZakresu"
+          },
+          "429": {
+            "$ref": "#/components/responses/Limit"
+          }
+        }
+      }
+    },
+    "/api/v1/zamowienia/{id}/stan-wysylki": {
+      "get": {
+        "summary": "Stan wysyłki zamówienia",
+        "x-zakres": "zamowienia:odczyt",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Poprawna odpowiedź.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StanWysylki"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nieprawidłowe parametry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nie znaleziono danych.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Niejednoznaczny wynik.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/BrakKlucza"
+          },
+          "403": {
+            "$ref": "#/components/responses/BrakZakresu"
+          },
+          "429": {
+            "$ref": "#/components/responses/Limit"
+          }
+        }
+      }
+    },
+    "/api/v1/sprzedaz": {
+      "get": {
+        "summary": "Sprzedaż w przedziale dni w strefie Europe/Warsaw",
+        "x-zakres": "sprzedaz:odczyt",
+        "parameters": [
+          {
+            "name": "od",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "do",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Poprawna odpowiedź.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sprzedaz"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nieprawidłowe parametry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nie znaleziono danych.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Niejednoznaczny wynik.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/BrakKlucza"
+          },
+          "403": {
+            "$ref": "#/components/responses/BrakZakresu"
+          },
+          "429": {
+            "$ref": "#/components/responses/Limit"
+          }
+        }
+      }
+    },
+    "/api/v1/zamowienia/z-karty": {
+      "post": {
+        "summary": "Załóż zamówienie z karty",
+        "x-zakres": "zamowienia:zapis",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "kartaId"
+                ],
+                "properties": {
+                  "kartaId": {
+                    "type": "string",
+                    "description": "Niepusty identyfikator karty."
+                  },
+                  "klient": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "properties": {
+                      "first_name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "last_name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "company": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "email": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "phone": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "address_1": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "address_2": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "postcode": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "city": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "country": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    }
+                  },
+                  "dostawa": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "properties": {
+                      "first_name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "last_name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "company": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "email": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "phone": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "address_1": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "address_2": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "postcode": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "city": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "country": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    }
+                  },
+                  "nip": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "chceFakture": {
+                    "type": "boolean"
+                  },
+                  "kosztDostawyBrutto": {
+                    "type": [
+                      "string",
+                      "number",
+                      "null"
+                    ],
+                    "description": "Kwota brutto w złotych."
+                  },
+                  "uwagi": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "pozycje": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "nazwa",
+                        "ilosc",
+                        "cena_brutto"
+                      ],
+                      "properties": {
+                        "nazwa": {
+                          "type": "string"
+                        },
+                        "sku": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "ilosc": {
+                          "type": [
+                            "integer",
+                            "string"
+                          ],
+                          "description": "Dodatnia liczba całkowita."
+                        },
+                        "cena_brutto": {
+                          "type": [
+                            "number",
+                            "string"
+                          ],
+                          "description": "Dodatnia cena jednostkowa w złotych."
+                        },
+                        "vat": {
+                          "type": [
+                            "number",
+                            "string"
+                          ],
+                          "description": "Stawka VAT; po pominięciu używana jest stawka domyślna."
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "example": {
+                "kartaId": "karta-123",
+                "klient": {
+                  "first_name": "Ala",
+                  "last_name": "Testowa",
+                  "company": "Pracownia Półcień",
+                  "email": "ala@example.test"
+                },
+                "dostawa": {
+                  "first_name": "Ala",
+                  "last_name": "Testowa",
+                  "address_1": "Przykładowa 7",
+                  "postcode": "00-001",
+                  "city": "Testowo"
+                },
+                "chceFakture": false,
+                "kosztDostawyBrutto": "19.00",
+                "pozycje": [
+                  {
+                    "nazwa": "Dekoracja testowa",
+                    "sku": "TEST-1",
+                    "ilosc": 2,
+                    "cena_brutto": "61.50"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Utworzono zamówienie.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZalozoneZamowienie"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nieprawidłowe dane; odpowiedź obsługi zawiera pole powod.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/BrakKlucza"
+          },
+          "403": {
+            "$ref": "#/components/responses/BrakZakresu"
+          },
+          "429": {
+            "$ref": "#/components/responses/Limit"
+          },
+          "409": {
+            "description": "Zamówienie z tej karty już istnieje. Odpowiedź zawiera id, numer i powod.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Błąd zapisu; pole powod może wskazywać częściowo utworzone zamówienie.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Kanał zamówień indywidualnych jest wyłączony; odpowiedź zawiera pole powod.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/zamowienia/{id}/w-realizacji": {
+      "post": {
+        "summary": "Oznacz zamówienie jako w realizacji",
+        "description": "Ponowne wywołanie zachowuje wcześniejszy czas rozpoczęcia realizacji.",
+        "x-zakres": "zamowienia:zapis",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identyfikator liczbowy.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stan zamówienia po zmianie.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZamowienieWRealizacji"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/BrakKlucza"
+          },
+          "403": {
+            "$ref": "#/components/responses/BrakZakresu"
+          },
+          "429": {
+            "$ref": "#/components/responses/Limit"
+          },
+          "404": {
+            "description": "Nie ma takiego zamówienia; odpowiedź zawiera pole powod.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Wysłanego, anulowanego lub zwróconego zamówienia nie można zmienić; odpowiedź zawiera id, numer, status i powod.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/zamowienia/{id}/proforma": {
+      "post": {
+        "summary": "Wystaw proformę do zamówienia",
+        "x-zakres": "proformy:zapis",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identyfikator liczbowy.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Wystawiono proformę; id jest identyfikatorem proformy.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WystawionaProforma"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nie udało się wystawić proformy; odpowiedź zawiera pole powod.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/BrakKlucza"
+          },
+          "403": {
+            "$ref": "#/components/responses/BrakZakresu"
+          },
+          "429": {
+            "$ref": "#/components/responses/Limit"
+          },
+          "404": {
+            "description": "Nie ma takiego zamówienia; odpowiedź zawiera pole powod.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Proformy nie są skonfigurowane; odpowiedź zawiera pole powod.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/proformy/{id}/pdf": {
+      "get": {
+        "summary": "Pobierz PDF proformy",
+        "x-zakres": "proformy:zapis",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identyfikator liczbowy.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plik PDF.",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/BrakKlucza"
+          },
+          "403": {
+            "$ref": "#/components/responses/BrakZakresu"
+          },
+          "429": {
+            "$ref": "#/components/responses/Limit"
+          },
+          "404": {
+            "description": "Nie znaleziono proformy lub jej pliku; odpowiedź zawiera pole powod.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Proformy nie są skonfigurowane; odpowiedź zawiera pole powod.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/produkty": {
+      "get": {
+        "summary": "Lista kart produktów",
+        "x-zakres": "produkty:odczyt",
+        "parameters": [
+          {
+            "name": "po",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "description": "Id ostatniej pozycji poprzedniej strony: nieujemna bezpieczna liczba zapisana samymi cyframi; błędna lub powtórzona wartość daje 400 (stronicowanie)."
+          },
+          {
+            "name": "ile",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 100
+            },
+            "description": "Rozmiar strony zapisany samymi cyframi; błędna lub powtórzona wartość daje 400 (stronicowanie)."
+          },
+          {
+            "name": "sku",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Dokładne SKU po trim i zamianie na wielkie litery, jak w OMS."
+          },
+          {
+            "name": "kategoria",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Dokładna kategoria główna."
+          },
+          {
+            "name": "zmienione_od",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Dolna granica zmiany włącznie; ISO 8601 ze strefą czasową."
+          },
+          {
+            "name": "wycofane",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "tak",
+                "nie",
+                "wszystkie"
+              ],
+              "default": "nie"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Karty rosnąco po id. nastepny to id ostatniej pozycji pełnej strony lub null.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StronaProduktow"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nieprawidłowy filtr (kod filtr) lub rozmiar strony (kod stronicowanie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/BrakKlucza"
+          },
+          "403": {
+            "$ref": "#/components/responses/BrakZakresu"
+          },
+          "429": {
+            "$ref": "#/components/responses/Limit"
+          }
+        }
+      },
+      "post": {
+        "summary": "Załóż kartę produktu",
+        "description": "Z nagłówkiem Idempotency-Key powtórka zwraca zapamiętany status i ciało pierwszej odpowiedzi, ale bez nagłówków ETag i Location — aktualny ETag daje GET /api/v1/produkty/{id}. Ten sam klucz użyty z inną trasą zwraca 422 (kod idempotencja).",
+        "x-zakres": "produkty:zapis",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Klucz ponowienia (1–200 znaków). Z nagłówkiem Idempotency-Key powtórka zwraca zapamiętany status i ciało pierwszej odpowiedzi, ale bez nagłówków ETag i Location — aktualny ETag daje GET /api/v1/produkty/{id}. Ten sam klucz użyty z inną trasą zwraca 422 (kod idempotencja).",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "nazwa"
+                ],
+                "properties": {
+                  "nazwa": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300,
+                    "description": "Białe znaki z końców są obcinane."
+                  },
+                  "opis": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 20000
+                  },
+                  "sku": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "description": "Obcinane z końców; unikalne bez względu na wielkość liter. null czyści SKU."
+                  },
+                  "ean": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^(\\d{8}|\\d{13})$",
+                    "description": "EAN-8 albo EAN-13 z poprawną cyfrą kontrolną."
+                  },
+                  "cena_gr": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0
+                  },
+                  "stawka_vat": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "23",
+                      "8",
+                      "5",
+                      "0",
+                      null
+                    ]
+                  },
+                  "kategoria": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 200,
+                    "description": "Obcinana z końców; pusta po obcięciu zapisuje się jako null."
+                  },
+                  "wymiary": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Karta po zapisie musi mieć szerokość i wysokość razem (głębokość opcjonalnie, produkt płaski) albo żaden wymiar. Inny układ zwraca 400 z kodem wymiary. null lub brak pola oznacza brak wymiarów.",
+                    "properties": {
+                      "szerokosc_mm": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "minimum": 0
+                      },
+                      "wysokosc_mm": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "minimum": 0
+                      },
+                      "glebokosc_mm": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "minimum": 0
+                      }
+                    }
+                  },
+                  "waga_g": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0
+                  },
+                  "wycofana": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Utworzono kartę.",
+            "headers": {
+              "ETag": {
+                "description": "Surowe zmieniony_at karty w cudzysłowie; podaj go w If-Match przy zmianie.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Location": {
+                "description": "Adres karty: /api/v1/produkty/{id}.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Produkt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nieprawidłowe dane: kod pole (nieznane pole) albo walidacja; pole wskazuje błędne pole. Niepełny komplet wymiarów: kod wymiary i powód po polsku, bez zapisu karty.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/BrakKlucza"
+          },
+          "403": {
+            "$ref": "#/components/responses/BrakZakresu"
+          },
+          "409": {
+            "description": "SKU zajęte przez inną kartę (kod sku_zajete, id tej karty).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ten sam Idempotency-Key użyty z inną trasą (kod idempotencja).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/Limit"
+          }
+        }
+      }
+    },
+    "/api/v1/produkty/{id}": {
+      "get": {
+        "summary": "Szczegóły karty produktu",
+        "x-zakres": "produkty:odczyt",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Karta, również wycofana.",
+            "headers": {
+              "ETag": {
+                "description": "Surowe zmieniony_at karty w cudzysłowie.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Produkt"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/BrakKlucza"
+          },
+          "403": {
+            "$ref": "#/components/responses/BrakZakresu"
+          },
+          "404": {
+            "description": "Brak karty lub nieprawidłowy id (kod brak).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/Limit"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Zmień kartę produktu",
+        "description": "Zmienia tylko podane pola. Wymaga If-Match z ETag pobranej karty; pusty obiekt nic nie zapisuje. Z nagłówkiem Idempotency-Key powtórka zwraca zapamiętany status i ciało pierwszej odpowiedzi, ale bez nagłówków ETag i Location — aktualny ETag daje GET /api/v1/produkty/{id}. Ten sam klucz użyty z inną trasą zwraca 422 (kod idempotencja).",
+        "x-zakres": "produkty:zapis",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "description": "ETag z GET albo z poprzedniego zapisu.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Klucz ponowienia (1–200 znaków). Z nagłówkiem Idempotency-Key powtórka zwraca zapamiętany status i ciało pierwszej odpowiedzi, ale bez nagłówków ETag i Location — aktualny ETag daje GET /api/v1/produkty/{id}. Ten sam klucz użyty z inną trasą zwraca 422 (kod idempotencja).",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "nazwa": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300,
+                    "description": "Białe znaki z końców są obcinane."
+                  },
+                  "opis": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 20000
+                  },
+                  "sku": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "description": "Obcinane z końców; unikalne bez względu na wielkość liter. null czyści SKU."
+                  },
+                  "ean": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^(\\d{8}|\\d{13})$",
+                    "description": "EAN-8 albo EAN-13 z poprawną cyfrą kontrolną."
+                  },
+                  "cena_gr": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0
+                  },
+                  "stawka_vat": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "23",
+                      "8",
+                      "5",
+                      "0",
+                      null
+                    ]
+                  },
+                  "kategoria": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 200,
+                    "description": "Obcinana z końców; pusta po obcięciu zapisuje się jako null."
+                  },
+                  "wymiary": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Podane wymiary nadpisują tylko te pola; null czyści wszystkie trzy. Po scaleniu z istniejącą kartą muszą być szerokość i wysokość razem (głębokość opcjonalnie) albo żaden wymiar, inaczej 400 z kodem wymiary bez zapisu.",
+                    "properties": {
+                      "szerokosc_mm": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "minimum": 0
+                      },
+                      "wysokosc_mm": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "minimum": 0
+                      },
+                      "glebokosc_mm": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "minimum": 0
+                      }
+                    }
+                  },
+                  "waga_g": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0
+                  },
+                  "wycofana": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Karta po zmianie.",
+            "headers": {
+              "ETag": {
+                "description": "Surowe zmieniony_at karty w cudzysłowie; podaj go w If-Match przy zmianie.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Produkt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nieprawidłowe dane: kod pole (nieznane pole) albo walidacja; pole wskazuje błędne pole. Niepełny komplet wymiarów po scaleniu z kartą: kod wymiary i powód po polsku, bez zapisu zmian.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/BrakKlucza"
+          },
+          "403": {
+            "$ref": "#/components/responses/BrakZakresu"
+          },
+          "404": {
+            "description": "Brak karty lub nieprawidłowy id (kod brak).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Karta zmieniła się od pobrania (kod zmieniona, pole karta z aktualną kartą) albo SKU zajęte przez inną kartę (kod sku_zajete, id tej karty).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ten sam Idempotency-Key użyty z inną trasą (kod idempotencja).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Brak nagłówka If-Match (kod if_match).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/Limit"
+          }
+        }
+      }
+    },
+    "/api/v1/stany": {
+      "get": {
+        "summary": "Stany kart produktów",
+        "description": "Wymaga stany:odczyt. Stan wyliczany tak jak w OMS, z uwzględnieniem zamówień. Karty bez ruchów i zamówień mają 0. Sortowanie po karta_id rosnąco; od to granica ostatniego włączenia stanów w ISO UTC.",
+        "parameters": [
+          {
+            "name": "po",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "description": "Nieujemny bezpieczny identyfikator zapisany samymi cyframi; błędna lub powtórzona wartość daje 400 (stronicowanie)."
+          },
+          {
+            "name": "ile",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 100
+            },
+            "description": "Rozmiar strony zapisany samymi cyframi; błędna lub powtórzona wartość daje 400 (stronicowanie)."
+          },
+          {
+            "name": "sku",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Dokładne SKU po trim i zamianie na wielkie litery; powtórzony filtr daje 400."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Strona stanów.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StronaStanow"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nieprawidłowe parametry lub ciało żądania.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/BrakKlucza"
+          },
+          "403": {
+            "$ref": "#/components/responses/BrakZakresu"
+          },
+          "409": {
+            "description": "Stany magazynowe są wyłączone (kod stany_wylaczone).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/Limit"
+          }
+        }
+      }
+    },
+    "/api/v1/stany/ruchy": {
+      "post": {
+        "summary": "Dopisanie przyjęcia lub korekty",
+        "description": "Wymaga stany:zapis i Idempotency-Key. Dokładnie jedno z sku i karta_id. Przyjęcie: ilość całkowita > 0; korekta: ilość całkowita różna od 0 i powód niepusty po trim, do 500 znaków. Otwarcie niedozwolone. Powtórka klucza zwraca ten sam status i ciało. Ruch ma dodatkowy unikalny klucz api:<klucz_id>:<Idempotency-Key>.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "rodzaj",
+                  "ilosc"
+                ],
+                "properties": {
+                  "sku": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  },
+                  "karta_id": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "rodzaj": {
+                    "type": "string",
+                    "enum": [
+                      "przyjecie",
+                      "korekta"
+                    ]
+                  },
+                  "ilosc": {
+                    "type": "integer",
+                    "not": {
+                      "const": 0
+                    }
+                  },
+                  "powod": {
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                },
+                "oneOf": [
+                  {
+                    "required": [
+                      "sku"
+                    ],
+                    "not": {
+                      "required": [
+                        "karta_id"
+                      ]
+                    }
+                  },
+                  {
+                    "required": [
+                      "karta_id"
+                    ],
+                    "not": {
+                      "required": [
+                        "sku"
+                      ]
+                    }
+                  }
+                ],
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "rodzaj": {
+                          "const": "przyjecie"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "ilosc": {
+                          "minimum": 1
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "rodzaj": {
+                          "const": "korekta"
+                        }
+                      }
+                    },
+                    "then": {
+                      "required": [
+                        "powod"
+                      ],
+                      "properties": {
+                        "powod": {
+                          "minLength": 1,
+                          "pattern": "\\S"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Dopisany ruch i stan po ruchu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZapisanyRuch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nieprawidłowe parametry lub ciało żądania.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/BrakKlucza"
+          },
+          "403": {
+            "$ref": "#/components/responses/BrakZakresu"
+          },
+          "409": {
+            "description": "Stany magazynowe są wyłączone (kod stany_wylaczone) albo ruch z tym Idempotency-Key jest już zapisany (kod idempotencja).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/Limit"
+          },
+          "404": {
+            "description": "Nieznane SKU lub karta (kod brak).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Idempotency-Key użyty na innym adresie (kod idempotencja).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Brak wymaganego Idempotency-Key (kod idempotencja).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blad"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "klucz": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "Produkt": {
+        "type": "object",
+        "required": [
+          "id",
+          "sku",
+          "nazwa",
+          "opis",
+          "ean",
+          "cena_gr",
+          "stawka_vat",
+          "kategoria",
+          "wymiary",
+          "waga_g",
+          "wycofana",
+          "utworzony_at",
+          "zmieniony_at",
+          "w_sklepach"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "sku": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nazwa": {
+            "type": "string"
+          },
+          "opis": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ean": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cena_gr": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "stawka_vat": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kategoria": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "wymiary": {
+            "type": "object",
+            "required": [
+              "szerokosc_mm",
+              "wysokosc_mm",
+              "glebokosc_mm"
+            ],
+            "properties": {
+              "szerokosc_mm": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "wysokosc_mm": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "glebokosc_mm": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "waga_g": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "wycofana": {
+            "type": "boolean"
+          },
+          "utworzony_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "zmieniony_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "w_sklepach": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "kanal",
+                "id_w_sklepie",
+                "nazwa",
+                "cena_gr",
+                "dostepna_w_sklepie",
+                "zdjecia"
+              ],
+              "properties": {
+                "kanal": {
+                  "type": "string"
+                },
+                "id_w_sklepie": {
+                  "type": "string"
+                },
+                "nazwa": {
+                  "type": "string"
+                },
+                "cena_gr": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "dostepna_w_sklepie": {
+                  "type": "boolean",
+                  "description": "Czy oferta jest widoczna w ostatniej synchronizacji sklepu."
+                },
+                "zdjecia": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "description": "Oryginały zdjęć; tylko adresy HTTP(S), bez miniatur."
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "Blad": {
+        "type": "object",
+        "required": [
+          "powod"
+        ],
+        "properties": {
+          "kod": {
+            "type": "string",
+            "description": "Kod błędu w formacie snake_case. Zwracają go błędy warstwy API v1 (401, 403, 429, nieznany adres, złe żądanie); błędy wspólnych obsług zamówień i proform mają tylko powod (i ewentualnie id, numer, status)."
+          },
+          "powod": {
+            "type": "string",
+            "description": "Powód błędu w języku polskim."
+          }
+        }
+      },
+      "AdresDostawy": {
+        "type": "object",
+        "required": [
+          "nazwa",
+          "firma",
+          "ulica",
+          "kod",
+          "miasto",
+          "telefon"
+        ],
+        "properties": {
+          "nazwa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "firma": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ulica": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kod": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "miasto": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "telefon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "DaneFakturyDostawy": {
+        "type": "object",
+        "required": [
+          "firma",
+          "nip",
+          "ulica",
+          "kod",
+          "miasto"
+        ],
+        "properties": {
+          "firma": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ulica": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kod": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "miasto": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "Dostawa": {
+        "type": "object",
+        "required": [
+          "id",
+          "numer",
+          "adres",
+          "metoda",
+          "punkt",
+          "punktOpis",
+          "dokument",
+          "faktura"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "numer": {
+            "type": "string"
+          },
+          "adres": {
+            "$ref": "#/components/schemas/AdresDostawy"
+          },
+          "metoda": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "punkt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "punktOpis": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dokument": {
+            "type": "string",
+            "enum": [
+              "faktura",
+              "paragon"
+            ]
+          },
+          "faktura": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DaneFakturyDostawy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "Zamowienie": {
+        "type": "object",
+        "required": [
+          "id",
+          "numer",
+          "kanal",
+          "status",
+          "utworzone_at",
+          "klient",
+          "suma_gr",
+          "waluta"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "numer": {
+            "type": "string"
+          },
+          "kanal": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "utworzone_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "klient": {
+            "type": "object",
+            "required": [
+              "imie",
+              "nazwisko",
+              "email"
+            ],
+            "properties": {
+              "imie": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "nazwisko": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "email": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "suma_gr": {
+            "type": "integer"
+          },
+          "waluta": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SzczegolyZamowienia": {
+        "type": "object",
+        "required": [
+          "id",
+          "numer",
+          "kanal",
+          "status",
+          "utworzone_at",
+          "klient",
+          "suma_gr",
+          "waluta",
+          "pozycje",
+          "dostawa",
+          "platnosc",
+          "faktura"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "numer": {
+            "type": "string"
+          },
+          "kanal": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "utworzone_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "klient": {
+            "type": "object",
+            "required": [
+              "imie",
+              "nazwisko",
+              "email"
+            ],
+            "properties": {
+              "imie": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "nazwisko": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "email": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "suma_gr": {
+            "type": "integer"
+          },
+          "waluta": {
+            "type": "string"
+          },
+          "pozycje": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "nazwa",
+                "sku",
+                "ilosc",
+                "cena_brutto_gr",
+                "stawka_vat"
+              ],
+              "properties": {
+                "nazwa": {
+                  "type": "string"
+                },
+                "sku": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "ilosc": {
+                  "type": "number"
+                },
+                "cena_brutto_gr": {
+                  "type": "integer"
+                },
+                "stawka_vat": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "dostawa": {
+            "$ref": "#/components/schemas/Dostawa"
+          },
+          "platnosc": {
+            "type": "object",
+            "required": [
+              "metoda",
+              "oplacone"
+            ],
+            "properties": {
+              "metoda": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "oplacone": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "faktura": {
+            "type": "object",
+            "required": [
+              "chce",
+              "nip"
+            ],
+            "properties": {
+              "chce": {
+                "type": "boolean"
+              },
+              "nip": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "ZamowienieZKarty": {
+        "type": "object",
+        "required": [
+          "id",
+          "numer",
+          "oplacone",
+          "anulowane",
+          "kwotaBrutto"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "numer": {
+            "type": "string"
+          },
+          "oplacone": {
+            "type": "boolean"
+          },
+          "anulowane": {
+            "type": "boolean"
+          },
+          "kwotaBrutto": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ZamowieniePoNumerze": {
+        "type": "object",
+        "required": [
+          "id",
+          "numer",
+          "oplacone",
+          "anulowane",
+          "kwotaBrutto",
+          "sklep",
+          "indywidualne"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "numer": {
+            "type": "string"
+          },
+          "oplacone": {
+            "type": "boolean"
+          },
+          "anulowane": {
+            "type": "boolean"
+          },
+          "kwotaBrutto": {
+            "type": "string"
+          },
+          "sklep": {
+            "type": "string"
+          },
+          "indywidualne": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StanWysylki": {
+        "type": "object",
+        "required": [
+          "id",
+          "numer",
+          "wyslane",
+          "wyslaneAt",
+          "anulowane"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "numer": {
+            "type": "string"
+          },
+          "wyslane": {
+            "type": "boolean"
+          },
+          "wyslaneAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "anulowane": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Sprzedaz": {
+        "type": "object",
+        "required": [
+          "zamowienia"
+        ],
+        "properties": {
+          "zamowienia": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "numer",
+                "kanal",
+                "kwotaBrutto",
+                "dataZlozenia",
+                "dzien"
+              ],
+              "properties": {
+                "numer": {
+                  "type": "string"
+                },
+                "kanal": {
+                  "type": "string"
+                },
+                "kwotaBrutto": {
+                  "type": "string"
+                },
+                "dataZlozenia": {
+                  "type": "string"
+                },
+                "dzien": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "TozsamoscKlucza": {
+        "type": "object",
+        "required": [
+          "nazwa",
+          "prefiks",
+          "zakresy"
+        ],
+        "properties": {
+          "nazwa": {
+            "type": "string"
+          },
+          "prefiks": {
+            "type": "string"
+          },
+          "zakresy": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "zamowienia:odczyt",
+                "zamowienia:zapis",
+                "proformy:zapis",
+                "produkty:odczyt",
+                "produkty:zapis",
+                "zdjecia:zapis",
+                "stany:odczyt",
+                "stany:zapis",
+                "sprzedaz:odczyt",
+                "druk"
+              ]
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "StronaZamowien": {
+        "type": "object",
+        "required": [
+          "pozycje",
+          "nastepny"
+        ],
+        "properties": {
+          "pozycje": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Zamowienie"
+            }
+          },
+          "nastepny": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "StronaProduktow": {
+        "type": "object",
+        "required": [
+          "pozycje",
+          "nastepny"
+        ],
+        "properties": {
+          "pozycje": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Produkt"
+            }
+          },
+          "nastepny": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ZalozoneZamowienie": {
+        "type": "object",
+        "required": [
+          "id",
+          "numer"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "numer": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ZamowienieWRealizacji": {
+        "type": "object",
+        "required": [
+          "id",
+          "numer",
+          "status",
+          "wRealizacjiAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "numer": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "wRealizacjiAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "WystawionaProforma": {
+        "type": "object",
+        "required": [
+          "id",
+          "numer",
+          "pdfUrl"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "numer": {
+            "type": "string"
+          },
+          "pdfUrl": {
+            "type": "string",
+            "description": "Adres PDF wystawionej proformy w API v1.",
+            "example": "/api/v1/proformy/1/pdf"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StronaStanow": {
+        "type": "object",
+        "required": [
+          "pozycje",
+          "nastepny"
+        ],
+        "properties": {
+          "pozycje": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "karta_id",
+                "sku",
+                "stan",
+                "od"
+              ],
+              "properties": {
+                "karta_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "sku": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "stan": {
+                  "type": "integer"
+                },
+                "od": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "nastepny": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "karta_id ostatniej pozycji pełnej strony albo null."
+          }
+        },
+        "additionalProperties": false
+      },
+      "ZapisanyRuch": {
+        "type": "object",
+        "required": [
+          "karta_id",
+          "sku",
+          "rodzaj",
+          "ilosc",
+          "powod",
+          "stan"
+        ],
+        "properties": {
+          "karta_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sku": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rodzaj": {
+            "type": "string",
+            "enum": [
+              "przyjecie",
+              "korekta"
+            ]
+          },
+          "ilosc": {
+            "type": "integer"
+          },
+          "powod": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stan": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "responses": {
+      "BrakKlucza": {
+        "description": "Brak, zły, odwołany albo wygasły klucz API. Kod błędu: klucz.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Blad"
+            }
+          }
+        }
+      },
+      "BrakZakresu": {
+        "description": "Klucz nie ma wymaganego zakresu. Kod błędu: brak_zakresu.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Blad"
+            }
+          }
+        }
+      },
+      "Limit": {
+        "description": "Przekroczono limit wywołań. Kod błędu: limit.",
+        "headers": {
+          "Retry-After": {
+            "description": "Czas oczekiwania w sekundach.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Blad"
+            }
+          }
+        }
+      }
+    }
+  }
+}
