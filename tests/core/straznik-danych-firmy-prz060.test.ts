@@ -75,7 +75,9 @@ const WYJATKI_NIP: Record<string, { plik: string; powod: string }[]> = {
   ],
   '1234563218': [
     { plik: 'src/moduly/koszty/pdf/zestawienie-dla-biura-pdf.js', powod: 'Fikcyjny NIP przykładowy (ten sam co w fixture testów) w komentarzu o szerokości numeru KSeF.' },
-    { plik: 'scripts/instalacja-przygotuj.mjs', powod: 'Fikcyjny NIP instalacji próbnej (konfiguracja bez danych firmy, PRZ-050).' },
+  ],
+  '9990001002': [
+    { plik: 'scripts/instalacja-przygotuj.mjs', powod: 'Fikcyjny NIP instalacji próbnej (konfiguracja bez danych firmy, PRZ-050); przedrostek 999 = nieistniejący urząd skarbowy (06.11).' },
   ],
 };
 const WYJATKI_RACHUNEK: Record<string, { plik: string; powod: string }[]> = {

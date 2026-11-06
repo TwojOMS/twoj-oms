@@ -48,7 +48,7 @@ export { FIRMA as FIRMA_DEMO } from './demo-dane-firma.mjs';
 /** Konfiguracja demo bez sekretów. `OMS_PASS` dopisuje ten, kto zakłada instancję (losowe). */
 export const ENV_DEMO = Object.freeze({
   OMS_TRYB: 'proba',
-  OMS_SPRZEDAWCA_NIP: '1234563218',
+  OMS_SPRZEDAWCA_NIP: '9990001002', // fikcyjny: urzędu skarbowego 999 nie ma, więc NIP nie należy do żadnej firmy (właściciel 06.11)
   OMS_RACHUNEK: '34109010140000000000000000',
   OMS_KANALY: JSON.stringify(KANALY_DEMO),
   OMS_RAPORTY_NAZWY_KANALOW: '{}',

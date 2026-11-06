@@ -8,7 +8,7 @@ const SZABLON_PRODUKCJI = `# Szablon przyszłego wdrożenia; paczka próbna nie 
 function envProby(katalog, port, haslo) {
   return [
     'OMS_TRYB=proba', `OMS_DB_PATH=${path.join(katalog, PLIKI_INSTALACJI.baza)}`,
-    `OMS_PORT=${port}`, 'OMS_SPRZEDAWCA_NIP=1234563218',
+    `OMS_PORT=${port}`, 'OMS_SPRZEDAWCA_NIP=9990001002',
     'OMS_RACHUNEK=34109010140000000000000000',
     `OMS_PROFORMY_KATALOG=${path.join(katalog, 'proformy')}`,
     `OMS_ETYKIETY_KATALOG=${path.join(katalog, 'etykiety')}`,
