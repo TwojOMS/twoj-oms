@@ -598,7 +598,8 @@ describe('Zadanie 7 — karta zamówienia pokazuje punkt odbioru', () => {
   let db;
   beforeEach(() => { db = openOmsDb(':memory:'); });
 
-  it('sekcja „Szczegóły zamówienia" pokazuje kod punktu odbioru i opis lokalizacji', async () => {
+  // PRZ-154.E1.7 (właściciel 06.11): punkt odbioru przeszedł ze „Szczegółów zamówienia” do „Danych do wysyłki”.
+  it('sekcja „Dane do wysyłki" pokazuje kod punktu odbioru i opis lokalizacji', async () => {
     const inpost = { nadaj: vi.fn() };
     const katalog = mkdtempSync(join(tmpdir(), 'oms-inpost-'));
     const nadanie = createNadanie({ db, kurierzy: { inpost }, klienci: {}, katalogEtykiet: katalog });
@@ -606,9 +607,9 @@ describe('Zadanie 7 — karta zamówienia pokazuje punkt odbioru', () => {
     const app = buildOmsServer({ db, config, poller, nadanie });
 
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
-    const i = r.body.indexOf('<span>Punkt odbioru</span>');
+    const i = r.body.indexOf('<dt>Punkt odbioru</dt>');
     expect(i, 'karta musi mieć wiersz „Punkt odbioru”').toBeGreaterThan(-1);
-    const pole = r.body.slice(i, r.body.indexOf('</div>', i));
+    const pole = r.body.slice(i, r.body.indexOf('</dd>', i));
     expect(pole).toContain('SLN06M');
     expect(pole).toContain('Przy myjni bezdotykowej');
   });

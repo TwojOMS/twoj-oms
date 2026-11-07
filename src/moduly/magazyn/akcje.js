@@ -387,7 +387,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
     const karty = kartyDoPowiazania(db);
     // ⚠️ ROZSTRZYGNIECIE WLASCICIELA: przy zerze kart ekran MOWI, od czego zaczac,
     // zamiast pokazac pusta tabele albo sie wywalic. Wzorzec: `pusta-strona.ejs`.
-    if (!karty.length) return reply.view('pusta-strona.ejs', BEZ_KART);
+    if (!karty.length) return reply.view('pusta-strona.ejs', { ...BEZ_KART, szerokosc: 'tabela' });
 
     const filtry = {
       fraza: napis(req.query?.fraza),
@@ -411,7 +411,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
     // `w.id` na koncu daje kolejnosc powtarzalna miedzy odswiezeniami przy remisie.
     wiersze.sort((a, b) => (kier === 'desc' ? porzadek(b, a) : porzadek(a, b)) || (a.id - b.id));
 
-    return reply.view('magazyn-powiazania.ejs', {
+    return reply.view('magazyn-powiazania.ejs', { szerokosc: 'tabela',
       title: 'Magazyn — powiązania',
       wiersze,
       // JEDNA lista podpowiedzi na CALA strone (rozstrzygniecie 3).

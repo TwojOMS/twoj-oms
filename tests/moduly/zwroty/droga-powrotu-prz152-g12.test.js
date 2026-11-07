@@ -67,7 +67,8 @@ describe('droga powrotu z ekranów zwrotu (PRZ-152.G12)', () => {
   it('przy tytule jest zwykły przycisk „← Zamówienie N” na kartę (nie cichy)', async () => {
     const { krok1, krok2 } = await ekrany();
     for (const r of [krok1, krok2]) {
-      const glowa = r.body.slice(r.body.indexOf('class="glowa-ekranu"'), r.body.indexOf('</div>', r.body.indexOf('class="glowa-ekranu"')));
+      // PRZ-154 E2.1: akcja zachowuje klasę i adres w slocie wspólnego nagłówka.
+      const glowa = r.body.match(/<header class="naglowek-ekranu"[\s\S]*?<\/header>/)?.[0] ?? '';
       const a = przyciskiLinki(glowa).find((l) => l.includes('← Zamówienie 2474'));
       expect(a).toBeTruthy();
       expect(a).toContain(`href="${karta()}"`);

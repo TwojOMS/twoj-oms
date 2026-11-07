@@ -1,0 +1,7 @@
+<span class="krok">
+    ZUS, PIT-5, VAT-7 — wpisywane ręcznie · <strong><%= miesiac %></strong>
+    <%# Strzalki przechodza przez granice roku — miesiace liczy trasa, widok ich nie skleja. %>
+    · <a href="/finanse/dane/<%= poprzedniMiesiac %>">← <%= poprzedniMiesiac %></a>
+    · <a href="/finanse/dane/<%= nastepnyMiesiac %>"><%= nastepnyMiesiac %> →</a>
+    · <a href="/finanse?od=<%= miesiac %>-01">rachunek</a>
+  </span>

@@ -74,7 +74,7 @@ export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFir
     const zapisNipu = wczytajZapisNipuFirmy(db);
     const zapisBdo = wczytajZapisBdoFirmy(db);
     const biezace = nipBdoFirmy.biezacy();
-    return reply.view('ustawienia-firma.ejs', {
+    return reply.view('ustawienia-firma.ejs', { szerokosc: 'formularz',
       nipBdo: {
         nipWPliku: nipBdoFirmy.nipWPliku, bdoWPliku: nipBdoFirmy.bdoWPliku, zPliku: nipBdoFirmy.zPliku, biezace,
         zapisNipu, zapisBdo, mozeZmieniac: req.konto?.admin === true,

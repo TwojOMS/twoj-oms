@@ -1,0 +1,9 @@
+<span class="krok">
+    <%# Zakres wpisany recznie NIE MA nazwy kalendarzowej i `nazwaOkresu` oddaje wtedy same
+        daty — wypisanie ich drugi raz obok wygladaloby jak dwa rozne okresy. %>
+    ile z tego zostaje · <strong><%= nazwa %></strong><%
+      if (nazwa !== `${zakres.od} – ${zakres.do}`) { %> · <%= zakres.od %> – <%= zakres.do %><% } %>
+    · <a href="/raporty">sprzedaż</a>
+    · <a href="/finanse/dane/<%= zakres.od.slice(0, 7) %>">dane miesiąca</a>
+    · <a href="/finanse/pokrycie">kompletność danych</a>
+  </span>

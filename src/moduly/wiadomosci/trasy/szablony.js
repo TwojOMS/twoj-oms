@@ -48,7 +48,7 @@ export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, config = {},
   }
 
   function ekranEdycji(req, reply, s, { formularz = null, blad = null, podglad = null } = {}) {
-    return reply.view('ustawienia-szablon.ejs', {
+    return reply.view('ustawienia-szablon.ejs', { szerokosc: 'formularz',
       nawigacja: nawigacja(req, reply),
       title: s.nowy ? 'Nowy szablon wiadomości' : `Szablon: ${s.nazwa}`,
       s, f: formularz ?? { nazwa: s.nazwa ?? '', temat: s.temat, tresc: s.tresc },

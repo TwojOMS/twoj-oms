@@ -1,10 +1,11 @@
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: title}) %>
 <%# Karta MIESIECZNEGO OKRESU ROZLICZENIOWEGO klienta zbiorczego (spec 2026-08-01).
     Kolejnosc sekcji jest kalka karty zamowienia i nie zmienia sie: belka faktow →
     Zamówienia → Faktura → Wpłaty → Stan okresu.
 
     ⚠️ Widok NIE LICZY NICZEGO SAM (przewodnik OMS, sekcja 3): kwota faktury, saldo, stan
     faktury i kwota kazdego zamowienia sa policzone w trasie (web/routes/okresy.js). %>
-<p class="wroc"><a href="/okresy">← Wróć do okresów rozliczeniowych</a></p>
+<p class="wroc"><a href="/okresy">← Okresy</a></p>
 
 <%
   // ⚠️ `MIESIACE` PRZYCHODZI Z TRASY, a pochodzi z domain/okres-rozliczeniowy.js — z tej

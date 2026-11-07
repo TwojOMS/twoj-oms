@@ -226,7 +226,7 @@ export function registerPrzesylkiRoutes(app, { db }) {
       return w.kategoria === pokaz;
     });
 
-    return reply.view('przesylki-lista.ejs', {
+    return reply.view('przesylki-lista.ejs', { szerokosc: 'tabela',
       title: 'Przesyłki',
       wiersze: widoczne,
       filtry,

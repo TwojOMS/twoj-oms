@@ -25,12 +25,9 @@
   };
 %>
 
-<p class="wroc"><a href="<%= adresPowrotu %>">← Wróć do magazynu</a></p>
+<p class="wroc"><a href="<%= adresPowrotu %>">← Magazyn</a></p>
 
-<div class="glowa-ekranu">
-  <h1>Edycja hurtem</h1>
-  <span class="krok"><%= wynik ? 'wynik zapisu' : 'podgląd — nic jeszcze nie zapisano' %></span>
-</div>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Edycja hurtem", podtytul: (wynik ? 'wynik zapisu' : 'podgląd — nic jeszcze nie zapisano')}) %>
 
 <section class="panel<%= wynik ? '' : ' panel--edycja' %>" id="zmiany-hurtem">
   <div class="panel-glowa">

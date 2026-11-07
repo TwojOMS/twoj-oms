@@ -37,10 +37,7 @@
   const OPIS_TYPU = { zmienny: 'zmienny', staly: 'stały', drobne: 'drobne' };
 %>
 
-<div class="glowa-ekranu">
-  <h1>Koszty</h1>
-  <span class="krok">faktury zakupowe z KSeF — lustro w bazie panelu</span>
-</div>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Koszty", podtytul: "faktury zakupowe z KSeF — lustro w bazie panelu"}) %>
 
 <%# ——— WYBOR MIESIACA ————————————————————————————————————————————————————————
     Zwykly formularz GET, bez ani jednej linii skryptu (jak filtry nad lista zamowien).

@@ -5,11 +5,9 @@
 <% const procent = (v) => v == null ? '—' : `${(v * 100).toFixed(1)}%`; %>
 <% const budzet = (b, waluta) => { if (!waluta || !/^[A-Z]{3}$/.test(waluta)) return null; const cyfry = new Intl.NumberFormat('pl-PL', { style: 'currency', currency: waluta }).resolvedOptions().maximumFractionDigits; const kwota = Number(b.kwotaMinor) / (10 ** cyfry); return Number.isFinite(kwota) ? new Intl.NumberFormat('pl-PL', { style: 'currency', currency: waluta }).format(kwota) : null; }; %>
 <div class="reklamy">
-  <header>
-    <h1>Reklamy</h1>
-    <p class="opis">Wyniki z własnych połączeń reklamowych i akcje promocyjne. Odczyt danych nie zmienia kampanii ani budżetów.</p>
-    <% if (mozliweOdswiezenieReklam) { %><form method="post" action="/kampania/odswiez-reklamy"><button type="submit">Odśwież wyniki</button></form><% } %>
-  </header>
+  <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Reklamy',
+    podtytul: 'Wyniki z własnych połączeń reklamowych i akcje promocyjne. Odczyt danych nie zmienia kampanii ani budżetów.',
+    akcje: mozliweOdswiezenieReklam ? '<form method="post" action="/kampania/odswiez-reklamy"><button class="btn btn--glowny" type="submit">Odśwież wyniki</button></form>' : ''}) %>
 
   <nav class="reklamy-karty" aria-label="Widoki reklam">
     <% [['podsumowanie', 'Podsumowanie'], ['google', 'Google'], ['meta', 'Meta'], ['kampanie', 'Kampanie']].forEach(([klucz, nazwa]) => { %>

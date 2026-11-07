@@ -5,7 +5,7 @@ import { nawigacjaUstawien } from '../nawigacja.js';
 /** @param {any} app @param {{db:any,loginDemo?:string|null}} opcje */
 export function registerPowiadomieniaRoutes(app, { db, loginDemo = null }) {
   const zKontem = req => Number.isInteger(req.konto?.id) && req.konto.id > 0 && !req.konto.serwisowe;
-  const widok = (req, reply, extra = {}) => reply.view('ustawienia-powiadomienia.ejs', {
+  const widok = (req, reply, extra = {}) => reply.view('ustawienia-powiadomienia.ejs', { szerokosc: 'formularz',
     title: 'Powiadomienia', nawigacja: req.url.startsWith('/konto/') ? reply.locals?.nawigacja : nawigacjaUstawien(req, reply),
     // PRZ-108.08: rodzaj „tylko administrator” (automatyzacje) nie stoi na liście konta, które go i tak nie zobaczy.
     rodzaje: rodzajeDlaKonta(req.konto), ukryte: ukryteTypyKonta(db, req.konto?.id),

@@ -84,7 +84,7 @@ describe('ekranDlaAdresu', () => {
   it('trasy otwarte i trasy dla kazdego zalogowanego maja wlasne odpowiedzi', () => {
     expect(ekranDlaAdresu('/login')).toBe('otwarte');
     expect(ekranDlaAdresu('/health')).toBe('otwarte');
-    expect(ekranDlaAdresu('/public/app.css')).toBe('otwarte');
+    expect(ekranDlaAdresu('/public/oms-design.css')).toBe('otwarte');
     expect(ekranDlaAdresu('/wyloguj')).toBe('kazdy');
     expect(ekranDlaAdresu('/wyloguj-wszystkie')).toBeNull();
     expect(ekranDlaAdresu('/ustawienia/konta/wyloguj-wszystkie')).toBe('ustawienia');

@@ -3,8 +3,8 @@
     dopiero, gdy rejestr zdarzeń i akcji nie jest pusty (albo gdy w bazie są już reguły) — B wydane samo wygląda jak A.
     ⚠️ Nazwa pliku: `ustawienia-automatyzacje.ejs` należy do autorespondera (wiadomosci/widoki). %>
 <% const r = locals.reguly; const pokazReguly = Boolean(r && (r.dostepne || r.lista.length)); %>
-<%# PRZ-108.11: plakietka BETA obok <h1>, nie w nim — tytuł, okruszek i <title> zostają „Automatyzacje”. %>
-<div class="tytul-z-plakietka"><h1>Automatyzacje</h1><span class="menu-ustawien-beta">BETA</span></div>
+<%# PRZ-108.11: plakietka BETA obok tytułu h1, nie w nim — tytuł, okruszek i <title> zostają „Automatyzacje”. %>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Automatyzacje'}) %>
 <% const systemowe = nawigacja?.kontekst?.aktywnaZakladka === 'systemowe'; %>
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (!systemowe) { %>
@@ -39,7 +39,7 @@
             <% } else { %><span class="znacznik znacznik--szary">wyłączona</span><% } %>
           </td>
           <td><% if (w.wyslane || w.pominiete || w.niepewne || w.zalegle) { %><%= w.wyslane %> wykonane<p class="wyjasnienie"><%= w.pominiete %> pominięte<% if (w.niepewne) { %> · <%= w.niepewne %> błędy i niepewne<% } %><% if (w.zalegle) { %> · <%= w.zalegle %> czeka<% } %></p><% } else { %>—<% } %></td>
-          <td class="aut-akcje"><a class="ust-przycisk" href="/ustawienia/automatyzacje/<%= w.id %>/edytuj">Edytuj</a></td>
+          <td class="aut-akcje"><a class="btn btn--maly" href="/ustawienia/automatyzacje/<%= w.id %>/edytuj">Edytuj</a></td>
         </tr>
       <% } %>
       </tbody>

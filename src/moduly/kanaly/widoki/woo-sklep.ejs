@@ -1,5 +1,5 @@
 <div class="allegro-konfiguracja">
-<h1>WooCommerce — <%= k.nazwa %></h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "WooCommerce — " + (k.nazwa)}) %>
 <p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
 <% if (k.zrodlo === 'env') { %><p>Połączenie i adres sklepu ustawił administrator serwera — zmiany zgłoś jemu.</p><% } else { %><p>Adres sklepu: <%= adresSklepu %></p><% } %>
 <% const tylkoOdczyt = k.zrodlo === 'env'; %>
@@ -55,7 +55,7 @@
 <% if (!bezEdycjiMapowania) { %><input type="hidden" name="pobranie_decyzja" value="1"><% } %>
 <p>Gdy bramka płatności i metoda wysyłki mówią co innego (np. metoda „za pobraniem”, a klient zapłacił przelewem), zamówienie trafi do OMS z metodą „nieznana” — sprawdzisz je na karcie.</p>
 <% } else { %><p>Pobranie: <%= decyzjaPobrania ? 'bramki ' + (decyzjaPobrania.length ? decyzjaPobrania.join(', ') : 'żadne') : tylkoOdczyt ? 'według metod wysyłki ustawionych na serwerze' : 'decyzja jeszcze niezapisana' %></p><% } %>
-<% if (!bezEdycjiMapowania) { %><p><button class="ust-przycisk" type="submit">Zapisz mapowanie</button></p><p>Zmiana dotyczy zamówień pobranych od teraz i tych, które zmienią się w sklepie.</p></form><% } %>
+<% if (!bezEdycjiMapowania) { %><p><button class="btn btn--maly btn--glowny" type="submit">Zapisz mapowanie</button></p><p>Zmiana dotyczy zamówień pobranych od teraz i tych, które zmienią się w sklepie.</p></form><% } %>
 <p>Zamówienia z metodą bez przypisania trafią do OMS z metodą „nieznana”. Przed nadaniem ustaw metodę ręcznie na karcie zamówienia.</p>
 <% if (zwiniety(2)) { %></details><% } %>
 </section>
@@ -66,7 +66,7 @@
 <% } else { %><section class="ust-sekcja"><h2>4. <%= konfigurator.kroki[3].tytul %></h2><p>Zamówienia od dnia: <%= wartosci.od %></p><p>Zamówień sprzed tej daty OMS nie pobierze, także później.</p><% } %>
 <% if (krokowo) { %>
 <p>Sklep: <%= opisAutoryzacji[k.autoryzacja] ?? k.autoryzacja %>. Pobieranie zamówień: <%= opisPobierania[k.pobieranie] ?? k.pobieranie %>.</p>
-<form method="post" action="<%= adres %>/aktywuj"><input type="hidden" name="wersja" value="<%= k.wersja %>"><button class="ust-przycisk" type="submit">Aktywuj</button></form>
+<form method="post" action="<%= adres %>/aktywuj"><input type="hidden" name="wersja" value="<%= k.wersja %>"><button class="btn btn--maly" type="submit">Aktywuj</button></form>
 <% } %>
 </section>
 <% } %>
@@ -79,14 +79,14 @@
 <p>Uprawnienia klucza: <%= uprawnieniaKlucza === 'odczyt' ? 'Odczyt' : 'Zapis/odczyt' %>.</p>
 <% if (uprawnieniaKlucza === 'odczyt') { %><%- include('woo-mail-wyslane', { mailWyslane: locals.mailWyslane ?? null }) %><% } %>
 <p>Ostatni przebieg: <%= stan?.ostatni_przebieg_at ? fmtDataCzasKrotko(stan.ostatni_przebieg_at) : 'Brak' %>. <% if (stan?.zsynchronizowane_do) { %><%# Kursor pollera to date_modified_gmt z Woo — bez strefy, ale w UTC. %><% const sukces = String(stan.zsynchronizowane_do); %>Zamówienia uzupełnione do: <%= fmtDataCzasKrotko(/(Z|[+-]\d\d:?\d\d)$/.test(sukces) ? sukces : sukces + 'Z') %>.<% } else { %>Jeszcze nie pobrano zamówień.<% } %><% if (stan?.ostatni_blad) { %> Ostatnie pobieranie się nie udało — sprawdź połączenie ze sklepem.<% } %></p>
-<% if (!tylkoOdczyt && k.autoryzacja === 'polaczone') { %><form method="post" action="<%= adres %>/pobieranie"><input type="hidden" name="wersja" value="<%= k.wersja %>"><input type="hidden" name="wlaczone" value="<%= k.pobieranie === 'wlaczone' ? 'nie' : 'tak' %>"><button class="ust-przycisk" type="submit"><%= k.pobieranie === 'wlaczone' ? 'Wstrzymaj' : 'Wznów' %></button></form><% } %>
+<% if (!tylkoOdczyt && k.autoryzacja === 'polaczone') { %><form method="post" action="<%= adres %>/pobieranie"><input type="hidden" name="wersja" value="<%= k.wersja %>"><input type="hidden" name="wlaczone" value="<%= k.pobieranie === 'wlaczone' ? 'nie' : 'tak' %>"><button class="btn btn--maly" type="submit"><%= k.pobieranie === 'wlaczone' ? 'Wstrzymaj' : 'Wznów' %></button></form><% } %>
 </section>
 <% } %>
 <% if (!tylkoOdczyt) { %>
 <section class="ust-sekcja"><h2>Zarządzanie sklepem</h2>
-<form method="post" action="<%= adres %>/nazwa"><input type="hidden" name="wersja" value="<%= k.wersja %>"><p><label>Nazwa w OMS <input name="nazwa" value="<%= k.nazwa %>" required maxlength="80"></label></p><p><button class="ust-przycisk" type="submit">Zmień nazwę</button></p></form>
-<% if (k.autoryzacja !== 'odlaczone') { %><form method="post" action="<%= adres %>/odlacz"><input type="hidden" name="wersja" value="<%= k.wersja %>"><p><label><input type="checkbox" name="potwierdz" value="tak" required> Odłączyć sklep? OMS przestanie pobierać zamówienia i usunie klucze REST. Zamówienia już pobrane zostaną.</label></p><button class="ust-przycisk" type="submit">Odłącz</button></form><% } %>
-<% if (locals.moznaUsunac) { %><form method="post" action="<%= adres %>/usun"><input type="hidden" name="wersja" value="<%= k.wersja %>"><p><label><input type="checkbox" name="potwierdz" value="tak" required> Usunąć sklep z OMS? Znikną nazwa, adres i klucze REST. Z tego sklepu nie pobrano jeszcze żadnych zamówień.</label></p><button class="ust-przycisk" type="submit">Usuń sklep</button></form>
+<form method="post" action="<%= adres %>/nazwa"><input type="hidden" name="wersja" value="<%= k.wersja %>"><p><label>Nazwa w OMS <input name="nazwa" value="<%= k.nazwa %>" required maxlength="80"></label></p><p><button class="btn btn--maly" type="submit">Zmień nazwę</button></p></form>
+<% if (k.autoryzacja !== 'odlaczone') { %><form method="post" action="<%= adres %>/odlacz"><input type="hidden" name="wersja" value="<%= k.wersja %>"><p><label><input type="checkbox" name="potwierdz" value="tak" required> Odłączyć sklep? OMS przestanie pobierać zamówienia i usunie klucze REST. Zamówienia już pobrane zostaną.</label></p><button class="btn btn--maly btn--groza" type="submit">Odłącz</button></form><% } %>
+<% if (locals.moznaUsunac) { %><form method="post" action="<%= adres %>/usun"><input type="hidden" name="wersja" value="<%= k.wersja %>"><p><label><input type="checkbox" name="potwierdz" value="tak" required> Usunąć sklep z OMS? Znikną nazwa, adres i klucze REST. Z tego sklepu nie pobrano jeszcze żadnych zamówień.</label></p><button class="btn btn--maly btn--groza" type="submit">Usuń sklep</button></form>
 <% } else if (k.autoryzacja === 'odlaczone') { %><p>Sklep jest odłączony. Usunąć go nie można, bo pobrał już zamówienia albo produkty — zostają w OMS.</p>
 <% } else if (k.autoryzacja !== 'polaczone') { %><p>Sklep ma już pobrane zamówienia — możesz go tylko odłączyć.</p><% } %>
 </section>

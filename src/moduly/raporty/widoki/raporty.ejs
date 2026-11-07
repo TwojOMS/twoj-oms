@@ -80,14 +80,7 @@
   const dataKrotko = (d) => `${d.slice(8, 10)}.${d.slice(5, 7)}`;
 %>
 
-<div class="glowa-ekranu">
-  <h1>Raporty</h1>
-  <%# Rachunek zarzadczy i dane miesiaca maja od 17.08.2026 wlasna pozycje menu „Finanse"
-      — odnosniki z tego naglowka zniknely razem z przenosinami. %>
-  <span class="krok">
-    sprzedaż w okresie <strong><%= nazwa %></strong> · <%= zakres.od %> – <%= zakres.do %>
-  </span>
-</div>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Raporty", opisHtml: include('_naglowek-opis-raporty.ejs')}) %>
 
 <%# ——— WYBOR ZAKRESU ————————————————————————————————————————————————————————
     Zwykly formularz GET i siedem odnosnikow, bez ani jednej linii skryptu. Skroty sa

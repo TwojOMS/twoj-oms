@@ -251,7 +251,7 @@ describe('PRZ-093.10 Ustawienia → inFakt', () => {
       payload: 'wlaczony=0&wlaczony=tak' });
     expect(r.statusCode).toBe(400);
     expect(r.headers['content-type']).toMatch(/text\/html/u);
-    expect(r.body).toContain('<h1>inFakt</h1>');
+    expect(r.body).toContain('<h2 class="naglowek-formularza">inFakt</h2>');
     expect(r.body).toContain('id="ksef-konsumenckie-blad"');
     expect(r.body).toContain('Nieprawidłowa wartość przełącznika faktur konsumenckich.');
     expect(db.prepare("SELECT 1 FROM ustawienia WHERE klucz = 'ksef.konsumenckie'").get()).toBeUndefined();

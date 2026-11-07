@@ -1,4 +1,4 @@
-<h1><%= title %></h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (title)}) %>
 <% if (rodzaj === 'numeracja') { %>
 <section class="ust-sekcja"><h2>Numeracja faktur</h2>
 <p><%= program === 'brak' ? 'OMS nie wystawia faktur. Numeracja będzie dostępna po wybraniu programu do faktur.' : 'Numeracją zarządza zewnętrzny program do faktur. Numery zmieniasz w tym programie.' %></p>

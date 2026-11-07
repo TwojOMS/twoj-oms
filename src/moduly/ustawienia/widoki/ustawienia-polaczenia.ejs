@@ -1,5 +1,5 @@
-<%# PRZ-136.14 (#11): własny <h1> z tytułem zakładki jak w innych działach Ustawień — powłoka daje tylko nagłówek ARIA działu. %>
-<h1><%= title %></h1>
+<%# PRZ-136.14 (#11): własny tytułu h1 z tytułem zakładki jak w innych działach Ustawień — powłoka daje tylko nagłówek ARIA działu. %>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (title)}) %>
 <% const kategorie = { sklepy: 'Sklepy i marketplace’y', wysylka: 'Wysyłka', faktury: 'Fakturowanie i dane firm', poczta: 'Poczta', reklamy: 'Reklamy i analityka' }; %>
 <% if (blad) { %><div class="pas-uprzedzenie"><%= blad %></div><% } %>
 <% if (zapisano) { %><div class="pas-potwierdzenie"><%= zapisano %></div><% } %>
@@ -30,7 +30,7 @@
 <% } else if (!polaczenia.length) { %>
 <%- include('ustawienia-polaczenia-pusto', { wszystkieUslugi }) %>
 <% } else {
-  // PRZ-136.07: lista w grupach (U1–U4, U10–U11). Jedyny <h1> jest na początku widoku.
+  // PRZ-136.07: lista w grupach (U1–U4, U10–U11). Nagłówek formularza jest na początku widoku.
   const odmiana = (n, [jeden, kilka, wiele]) => n === 1 ? jeden : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? kilka : wiele;
   const idWiersza = (p) => 'pol-' + String(p.id).toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
   const pierwszy = (f) => { const p = polaczenia.find(f); return p ? '#' + idWiersza(p) : null; };

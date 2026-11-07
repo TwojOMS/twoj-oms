@@ -38,17 +38,9 @@
   const w = klient.wysylka ?? {};
 %>
 
-<p class="wroc"><a href="/klienci">← Wróć do stałych klientów</a></p>
+<p class="wroc"><a href="/klienci">← Stali klienci</a></p>
 
-<div class="glowa-ekranu">
-  <h1><%= klient.nazwa %></h1>
-  <span class="krok">
-    <%= klient.klucz %>
-    <% if (klient.nip) { %> · NIP <%= klient.nip %><% } else { %> · bez NIP-u<% } %>
-    <% if (!klient.aktywny) { %> · <span class="znacznik">wygaszony</span><% } %>
-    · <a href="/klienci/<%= klient.id %>/edytuj#formularz">edytuj</a>
-  </span>
-</div>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (klient.nazwa), opisHtml: include('_naglowek-opis-klient.ejs')}) %>
 
 <%# ——— DANE ——————————————————————————————————————————————————————————————————————— %>
 <div class="metryczka">

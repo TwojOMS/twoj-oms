@@ -4,7 +4,7 @@
   i zablokowana; jej ptaszki nie są wysyłane (disabled), a trasa i tak pomija rolę zablokowaną.
   Jeden formularz zapisuje całą tabelę w jednej transakcji. Wszystkie wartości wyłącznie przez znacznik escapujący.
 %>
-<h1>Role i uprawnienia</h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Role i uprawnienia"}) %>
 
 <% if (zapisano) { %>
   <div class="pas-potwierdzenie"><p><%= zapisano %></p></div>
@@ -46,7 +46,7 @@
       </tbody>
     </table>
     </div>
-    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zapisz uprawnienia</button></div>
+    <div class="ust-akcje"><button class="btn btn--glowny" type="submit">Zapisz uprawnienia</button></div>
   </form>
 </div>
 
@@ -62,7 +62,7 @@
         </select>
       </label>
     </div>
-    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Dodaj rolę</button></div>
+    <div class="ust-akcje"><button class="btn btn--glowny" type="submit">Dodaj rolę</button></div>
   </form>
 </div>
 
@@ -73,11 +73,11 @@
       <div class="ust-pola">
         <label>Nowa nazwa <input name="nazwa" required maxlength="40" value="<%= r.nazwa %>"></label>
       </div>
-      <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zmień nazwę</button></div>
+      <div class="ust-akcje"><button class="btn btn--glowny" type="submit">Zmień nazwę</button></div>
     </form>
     <form method="post" action="/ustawienia/role/<%= r.klucz %>/usun">
       <div class="ust-akcje">
-        <button class="ust-przycisk grozny" type="submit"<%= r.liczbaKont > 0 ? ' disabled' : '' %>>Usuń rolę</button>
+        <button class="btn btn--groza" type="submit"<%= r.liczbaKont > 0 ? ' disabled' : '' %>>Usuń rolę</button>
         <% if (r.liczbaKont > 0) { %><span class="wyjasnienie">Rolę z kontami (także wyłączonymi) można usunąć dopiero po przypisaniu im innej roli.</span><% } %>
       </div>
     </form>

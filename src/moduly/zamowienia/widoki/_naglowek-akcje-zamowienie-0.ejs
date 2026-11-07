@@ -1,0 +1,88 @@
+<div class="naglowek-ekranu__fakty">
+<%# ⚠️ ZMIANA STATUSU STOI TUTAJ, NA WIERZCHU, i to jest swiadome odstepstwo od zasady %>
+  <%# „wszystko pod Edytuj" (przebudowa karty 2026-07-31). Powod jest prosty: wlasciciel %>
+  <%# schowanego formularza po prostu NIE ZNALAZL („nie widze nigdzie opcji zmiany %>
+  <%# statusu"). Status jest jedyna rzecza na karcie, ktora zmienia sie w toku KAZDEGO %>
+  <%# zamowienia, wiec chowanie jej za dodatkowym kliknieciem bylo bledem. %>
+  <%# %>
+  <%# Lista zapisuje FAKTY odpowiadajace wybranemu stanowi, a nie sama etykiete — %>
+  <%# patrz POST /zamowienia/:id/status i domain/status-reczny.js. %>
+  <form class="zmiana-statusu" method="post" action="/zamowienia/<%= z.id %>/status">
+    <input type="hidden" name="powrot" value="<%= powrot %>">
+    <span class="<%= klasaStatusu(status) %> znacznik-statusu"><%= etykiety[status] %></span>
+    <%# ⚠️ ZNACZNIK ZWROTU — JEDEN Z TRZECH ELEMENTOW ZWROTU NA KARCIE (Zadanie 5). `dane.zwroty` %>
+    <%# jest `null`, gdy zwrotow nie ma, i WTEDY TEN WARUNEK NIE RYSUJE NICZEGO — wymog %>
+    <%# wlasciciela: karta ma nie urosnac ani o piksel przy 99% zamowien bez zwrotu. Kolor %>
+    <%# `znacznik--zwrot` to TA SAMA klasa, ktorej uzywa juz pastylka statusu „Zwrot" wyzej — %>
+    <%# zadnej nowej reguly w arkuszu. Szczegoly (ktore pozycje, ile sztuk) WYLACZNIE na %>
+    <%# ekranie zwrotu, za odnosnikiem w sekcji Platnosci nizej. %>
+    <% if (dane.zwroty) { %><span class="znacznik znacznik--zwrot">Zwrot <%= dane.zwroty.sumaZl %> zł</span><% } %>
+    <select name="status" aria-label="Zmień status" class="oms-pole--male">
+      <% dane.opcjeStatusu.forEach(function (o) { %>
+        <option value="<%= o.klucz %>"<%= o.klucz === status ? ' selected' : '' %>><%= o.etykieta %></option>
+      <% }); %>
+    </select>
+    <%# ⚠️ Pole „powód (przy zwrocie)" USUNIETE Z WIDOKU 2026-08-05 (Zadanie Z3a) — zwroty %>
+    <%# wracaja jako osobny etap i tego pola wtedy w tym miejscu nie bedzie. Mechanizm ZOSTAJE %>
+    <%# nietkniety: faktyDlaStatusu(z, docelowy, { powod = null }) ma domyslne `null`, a zapis %>
+    <%# `zwrot_powod: tekst(powod) ?? z?.zwrot_powod ?? null` zachowuje powod juz zapisany, %>
+    <%# gdy formularz go nie niesie (domain/status-reczny.js). %>
+    <button class="btn btn--maly oms-pole--male">Zmień</button>
+  </form>
+  <%# ⚠️ BRAK odnosnika „Zarejestruj zwrot" TUTAJ jest SWIADOMYM WYBOREM MIEJSCA, nie brakiem %>
+  <%# wejscia (poprawka po recenzji, patrz raport Zadania 5). Belka niesie tylko numer i %>
+  <%# status (zasada z naglowka pliku) — akcja zaczynajaca zwrot stoi w sekcji Platnosci %>
+  <%# nizej, obok istniejacego odnosnika „Szczegóły" do tego samego ekranu. Wymog wlasciciela %>
+  <%# byl „karta bez zwrotu nie ma pokazywac PODSUMOWANIA zwrotow" (znacznik, wiersz platnosci, %>
+  <%# wiersz korekty, naglowek sekcji) — nie „ani jednego slowa zwrot", wiec sam odnosnik %>
+  <%# akcji jest dozwolony i jest osobno potwierdzony testem (tests/oms/web-zwroty.test.js). %>
+  <%# Rozjazd ze sklepem: status zapisany w panelu, ale sklep go nie przyjal. Przycisk %>
+  <%# ponawia SAMO odeslanie — niczego w panelu nie zmienia (POST /sync-sklep). %>
+  <% if (z.sync_woo_blad) { %>
+    <form class="sync-blad" method="post" action="/zamowienia/<%= z.id %>/sync-sklep">
+      <input type="hidden" name="powrot" value="<%= powrot %>">
+      <%# Brzmienie po KANALE, nie na sztywno: „Sklep nie przyjął statusu" przy zamówieniu %>
+      <%# z Allegro wysyła operatora szukać usterki w WooCommerce, gdzie tego zamówienia nie ma. %>
+      <span class="sync-blad-tekst" title="<%= z.sync_woo_blad %>"><%= kanalAllegro ? 'Allegro nie przyjęło statusu' : 'Sklep nie przyjął statusu' %></span>
+      <button class="btn btn--maly">Wyślij ponownie</button>
+    </form>
+  <% } %>
+  <%# PRZ-149.04: sklep „Odczyt” — OMS nie zmienia tam statusu ani nie dopisuje notatki; mówimy to wprost. %>
+  <% if (typeof sklepTylkoOdczyt !== 'undefined' && sklepTylkoOdczyt) { %><p class="pasek-uwaga" id="sklep-tylko-odczyt"><%= sklepTylkoOdczyt %></p><% } %>
+  <%# ⚠️ ROZLICZENIE ZBIORCZE STOI W BELCE — jedyny wyjatek od zasady „belka niesie tylko
+      numer i status" (nizej). Powod jest inny niz przy faktach, ktore z belki zeszly:
+      TAMTE karta powtarzala w sekcjach nizej, a tego NIE MA NIGDZIE INDZIEJ. Operator,
+      ktory go nie zobaczy, siega po „Wystaw fakturę" na zamowieniu rozliczanym miesiecznie —
+      i dopiero odmowa mu powie, ze cos jest inaczej. Pole pokazuje sie WYLACZNIE dla
+      zamowien w okresie, wiec przy tysiacach pozostalych belka wyglada dokladnie tak,
+      jak wygladala. %>
+  <% if (wOkresie) { %>
+    <div class="belka-pole">
+      <span class="belka-etykieta">Rozliczenie</span>
+      <span class="belka-wartosc">
+        zbiorczo — <% if (modulWlaczony('okresy')) { %><a href="/okresy/<%= okresZamowienia.id %>"><% } %>faktura za <%= nazwaOkresu %><% if (modulWlaczony('okresy')) { %></a><% } %>
+      </span>
+    </div>
+  <% } %>
+  <%# ——— WYDRUKI (PRZ-074, 14.10.2026, prośba właściciela) ——————————————————————————————————
+      Specyfikacja do paczki zeszła tu z sekcji Faktura: kartka trafia do KAŻDEJ paczki, więc
+      szukanie jej przy fakturze było chybione. Obok — lista produktów bez danych i cen,
+      do kompletowania. Oba dokumenty otwierają się w nowej karcie, generowane na świeżo.
+      `<details>` zamiast menu w skrypcie: panel nie ma JavaScriptu. %>
+  <details class="wydruki">
+    <summary class="btn btn--maly oms-pole--male">Wydruki</summary>
+    <div class="wydruki-menu">
+      <a href="/zamowienia/<%= z.id %>/specyfikacja.pdf" target="_blank" rel="noopener noreferrer">Specyfikacja do paczki</a>
+      <%# Od PRZ-084 lista jest PDF-em (właściciel 15.10), obok zestawienie jak „order-shipping" z Apilo. %>
+      <a href="/zamowienia/<%= z.id %>/lista-produktow.pdf" target="_blank" rel="noopener noreferrer">Lista produktów</a>
+      <a href="/zamowienia/<%= z.id %>/zestawienie.pdf" target="_blank" rel="noopener noreferrer">Zestawienie zamówienia</a>
+    </div>
+  </details>
+  <%# ⚠️ BELKA NIESIE JUZ TYLKO NUMER I STATUS (prosba wlasciciela, 2026-08-01).
+      Wczesniej powtarzala szesc faktow, ktore sekcje nizej i tak pokazuja: klienta,
+      kwote do zaplaty, platnosc, metode wysylki, date zlozenia i kanal. Kwota stoi
+      nizej TRZY razy — jako „Razem" pod pozycjami, jako saldo w „Platnosciach"
+      i jako sprawa w pasku powyzej, gdy czegos brakuje — wiec jej powtorzenie tutaj
+      niczego nie dodawalo, a rozpychalo belke na dwa wiersze. Reszta zeszla do
+      „Szczegolow zamowienia", gdzie od poczatku byla. %>
+</div>

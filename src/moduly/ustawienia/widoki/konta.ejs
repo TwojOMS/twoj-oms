@@ -4,7 +4,7 @@
   kupil ten kod) z zakladaniem kont — patrz test „konto serwisowe na pustej tabeli" w
   tests/oms/web-konta.test.js.
 
-  ⚠️ UKLAD WSPOLNY Z podstronami Ustawień (`ust-sekcja`/`ust-pola`/`ust-akcje`/`ust-przycisk`) —
+  ⚠️ UKLAD WSPOLNY Z podstronami Ustawień (`ust-sekcja`/`ust-pola`/`ust-akcje`/`btn`) —
   ta sama paleta, jasna i ciemna, zero nowych kolorow wpisanych z palca.
 
   ⚠️ FORMULARZE NIE NIOSA TOKENU CSRF. Ochrona jest oparta na naglowku Origin
@@ -18,7 +18,7 @@
 %>
 <% const tylkoLogowania = nawigacja?.kontekst?.aktywnaZakladka === 'logowania'; %>
 <% if (!tylkoLogowania) { %>
-<h1>Użytkownicy i uprawnienia</h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Użytkownicy i uprawnienia"}) %>
 
 <% if (zapisano) { %>
   <div class="pas-potwierdzenie"><p><%= zapisano %></p></div>
@@ -37,7 +37,7 @@
   </p>
   <form method="post" action="/ustawienia/konta/wyloguj-wszystkie"
     onsubmit="return confirm('Wylogować wszystkie osoby na wszystkich urządzeniach?')">
-    <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Wyloguj wszystkie osoby</button></div>
+    <div class="ust-akcje"><button class="btn" type="submit">Wyloguj wszystkie osoby</button></div>
   </form>
 </div>
 
@@ -76,7 +76,7 @@
       <label>Login <input name="login" required placeholder="np. anna" value="<%= noweKonto.login %>"></label>
       <label>E-mail <input type="email" name="email" placeholder="np. anna@firma.pl" value="<%= noweKonto.email %>"></label>
       <label>Rola
-        <select name="rola" required>
+        <select name="rola" required class="oms-pole">
           <% if (noweKonto.rola && !role.some(function (r) { return r.klucz === noweKonto.rola; })) { %>
             <option value="<%= noweKonto.rola %>" selected disabled>Nieznana rola: <%= noweKonto.rola %></option>
           <% } %>
@@ -89,7 +89,7 @@
       <label class="pole-przelacznik"><input type="radio" name="sposob" value="pokaz" checked> Pokaż link do skopiowania</label>
       <label class="pole-przelacznik"><input type="radio" name="sposob" value="mail"> Wyślij zaproszenie mailem (wymaga e-maila i ustawionej poczty — <a href="/ustawienia/integracje/poczta">Ustawienia → Integracje → Poczta wychodząca</a>; bez wpisanego tam adresu panelu link prowadzi pod adres, z którego teraz korzystasz)</label>
     </div>
-    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Dodaj użytkownika</button></div>
+    <div class="ust-akcje"><button class="btn btn--glowny" type="submit">Dodaj użytkownika</button></div>
   </form>
 </div>
 
@@ -123,7 +123,7 @@
     <form method="post" action="/ustawienia/konta/<%= k.id %>/rola">
       <div class="ust-pola">
         <label>Rola
-          <select name="rola" required>
+          <select name="rola" required class="oms-pole">
             <% if (!role.some(function (r) { return r.klucz === k.rola; })) { %>
               <option value="<%= k.rola %>" selected disabled>Nieznana rola: <%= k.rola %></option>
             <% } %>
@@ -131,7 +131,7 @@
           </select>
         </label>
       </div>
-      <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zmień rolę</button></div>
+      <div class="ust-akcje"><button class="btn btn--glowny" type="submit">Zmień rolę</button></div>
     </form>
 
     <%# PRZ-068 (plan O4): formularz ptaszków per konto wraca WYŁĄCZNIE w odpowiedzi 400 starej trasy %>
@@ -164,7 +164,7 @@
         <% } %>
         Administrator — pełny dostęp, zakłada i zmienia konta
       </label>
-      <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zapisz uprawnienia</button></div>
+      <div class="ust-akcje"><button class="btn btn--glowny" type="submit">Zapisz uprawnienia</button></div>
     </form>
     <% } %>
 
@@ -175,7 +175,7 @@
       <form method="post" action="/ustawienia/konta/<%= k.id %>/czynne">
         <input type="hidden" name="czynne" value="<%= k.czynne ? '0' : '1' %>">
         <div class="ust-akcje">
-          <button class="ust-przycisk<%= k.czynne ? ' grozny' : '' %>" type="submit">
+          <button class="btn" type="submit">
             <%= k.czynne ? 'Wyłącz konto' : 'Włącz konto' %>
           </button>
         </div>
@@ -186,7 +186,7 @@
 
 <% } %>
 <% if (tylkoLogowania) { %>
-<h1>Historia logowań</h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Historia logowań"}) %>
 <%# ——— DZIENNIK LOGOWAN — NA TYM SAMYM EKRANIE (nie osobno): administrator, ktory podejrzewa %>
 <%# wlamanie, ma zobaczyc naraz, kto ma dostep (tabela wyzej) i kto probowal go zdobyc. %>
 <div class="ust-sekcja">

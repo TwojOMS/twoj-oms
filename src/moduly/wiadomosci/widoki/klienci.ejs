@@ -1,3 +1,4 @@
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: title, akcje: '<a class="btn btn--maly btn--glowny" href="/klienci?nowy#formularz">Dodaj nowego klienta</a>'}) %>
 <%#
   STALI KLIENCI (21.08.2026) — slownik podmiotow, ktorych dane wpisywalo sie dotad przy
   KAZDYM zamowieniu z osobna.
@@ -50,7 +51,6 @@
     <%# czynnosc TWORZACA na tym ekranie — reszta przyciskow prowadzi do istniejacych wpisow. %>
     <%# Barwa z palety (`--marka` / `--na-marce`), nigdy wpisana wprost: arkusz ma wariant %>
     <%# jasny i ciemny, wiec kolor z palca zadzialalby w jednym i zniknal w drugim. %>
-    <a class="btn btn--maly btn--glowny" href="/klienci?nowy#formularz">Dodaj nowego klienta</a>
   </div>
   <div class="panel-cialo">
     <% if (!klienci.length) { %>

@@ -173,6 +173,11 @@ describe('ruchyPlatnosci — D5', () => {
     expect(r).toMatchObject({ opis: 'Wpłata · Przelewy24 · ze sklepu', usuwalna: false, liczona: true });
   });
 
+  it('wpłata Allegro ze sklepu: krótki opis bez nawiasu, mieści się w 1 linii (PRZ-154.E4.3)', () => {
+    const [r] = ruchy({ wplaty: [wplata({ zrodlo: 'sklep', metoda: 'allegro' })] });
+    expect(r.opis).toBe('Wpłata · Allegro · ze sklepu');
+  });
+
   it('nieznana metoda → surowa nazwa', () => {
     const [r] = ruchy({ wplaty: [wplata({ metoda: 'Bon Półcień' })] });
     expect(r.opis).toBe('Wpłata · Bon Półcień');

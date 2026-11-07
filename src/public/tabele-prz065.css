@@ -7,20 +7,12 @@
   --prz-muted: var(--oms-muted, var(--tekst-przygaszony));
   --prz-accent: var(--oms-accent, var(--marka));
   color: var(--prz-text);
-  max-width: 1480px;
-  margin: 0 auto;
-  padding: 4px 24px 34px;
+  padding: 0 0 34px;
 }
 
 .prz065-tabele .wroc { margin: 0 0 18px; font-size:1.08rem; }
-.prz065-naglowek {
-  align-items: flex-end;
-  display: flex;
-  gap: 20px;
-  justify-content: space-between;
-  margin: 0 0 20px;
-}
-.prz065-naglowek h1 { font-size: 25px; letter-spacing: -.035em; line-height: 1.1; margin: 0; }
+
+
 .prz065-naglowek p { color: var(--prz-muted); font-size:1.08rem; margin: 7px 0 0; }
 .prz065-tabele .panel {
   background: var(--prz-surface);
@@ -42,6 +34,11 @@
 .prz065-tabele .panel-cialo { padding: 0 18px 18px; }
 .prz065-przesylki .prz065-ukryta-glowa { display: none; }
 .prz065-przesylki .panel-cialo { padding-top: 17px; }
+
+.prz065-tabele:not(.prz065-faktury) > .panel { background: transparent; border: 0; }
+@media (min-width: 761px) {
+  .prz065-tabele:not(.prz065-faktury) > .panel > .panel-cialo { padding: 0; }
+}
 
 .prz065-przesylki .filtry { background: transparent; border: 0; margin: 0; padding: 0; }
 .prz065-tabele .filtry-rzad { align-items: end; gap: 10px; }
@@ -82,7 +79,7 @@
 .prz065-przesylki .chipy-filtrow { display: flex; gap: 0; margin: 0; }
 
 .prz065-przewijak { border: 1px solid var(--prz-border); border-radius: 6px; margin: 14px 0 0; }
-.prz065-tabela { border-collapse: collapse; font-size:1rem; width: 100%; }
+.prz065-tabela { background: var(--prz-surface); border-collapse: collapse; font-size:1rem; width: 100%; }
 .prz065-tabela th {
   background: var(--prz-surface-muted);
   border-bottom: 1px solid var(--prz-border);
@@ -138,7 +135,7 @@
 .prz065-faktury .panel-glowa h2,
 .prz065-faktury .panel-glowa--groza { background: transparent; color: var(--prz-text); text-transform: none !important; }
 .prz065-faktury .panel-glowa { padding: 12px 18px 10px; }
-.prz065-faktury .panel-glowa h2 { font-size:1.17rem; font-weight: 700; letter-spacing: -.01em; }
+.prz065-faktury .panel-glowa h2 { font-size:var(--sekcja-font); font-weight: 600; letter-spacing: normal; }
 .prz065-faktury .panel--groza { border-left: 1px solid var(--prz-border); }
 .prz065-faktury .panel--groza .dopisek { color: var(--prz-muted); }
 .prz065-faktury .belka-masowa {
@@ -160,7 +157,7 @@
 /* C07c: kolumna „Zaznacz” (C07a) wypchnęła tabelę o ~23 px poza kartę przy 1280 px, PDF był ucięty.
    Węższy odstęp w komórkach i zawijany znacznik płatności („pozostało 1666.36 zł”) — mieści się bez przewijania. */
 .prz065-faktury .prz065-tabela--dokumenty th,
-.prz065-faktury .prz065-tabela--dokumenty td { padding-left: 8px; padding-right: 8px; }
+.prz065-faktury .prz065-tabela--dokumenty td { padding: var(--tabela-p); }
 .prz065-faktury .prz065-tabela--dokumenty .znacznik { white-space: normal; }
 
 /* Makieta prowadzi najpierw przez etap, potem przez zawężenie danych. */
@@ -171,8 +168,8 @@
 
 @media (max-width: 760px) {
   .prz065-tabele { padding: 2px 12px 24px; }
-  .prz065-naglowek { align-items: flex-start; flex-direction: column; gap: 12px; margin-bottom: 16px; }
-  .prz065-naglowek h1 { font-size: 22px; }
+
+
   .prz065-tabele .panel { border-radius: 6px; }
   .prz065-tabele .panel-cialo { padding: 0 12px 14px; }
   .prz065-przesylki .panel-cialo { padding-top: 12px; }

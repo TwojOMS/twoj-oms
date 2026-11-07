@@ -30,7 +30,7 @@ export function registerUstawieniaKsefRoutes(app, { db, zrodloKsef, nipSprzedawc
   const nipTeraz = () => (typeof nip === 'function' ? nip() : nip) ?? null;
   function widok(req, reply, { bledy = [], test = null } = {}) {
     const zapis = wczytajKonfiguracjeIntegracji(db, 'ksef');
-    return reply.view('ustawienia-ksef.ejs', {
+    return reply.view('ustawienia-ksef.ejs', { szerokosc: 'formularz',
       nawigacja: nawigacjaUstawien(req, reply), title: tytulEkranuDlaAdresu(EKRAN_KSEF),
       zEnv: k.zEnv, stan: stanDlaEkranu(zapis), nipZapisu: zapis?.ustawienia?.nip ?? '', nipSprzedawcy: nipTeraz(),
       nipNiezgodny: k.nipNiezgodny(), modulWylaczony: wylaczoneModuly(db).includes('koszty'),

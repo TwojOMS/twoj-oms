@@ -35,7 +35,7 @@ function sekcjaKonta(html, id) {
 }
 
 function glownaKolumna(html) {
-  const poczatek = html.indexOf('<main class="kolumna-glowna">');
+  const poczatek = html.indexOf('<main class="kolumna-glowna');
   return poczatek < 0 ? '' : html.slice(poczatek);
 }
 
@@ -109,7 +109,7 @@ describe('ekran kont', () => {
     });
 
     expect(r.statusCode).toBe(400);
-    expect(r.body).toContain('<h1>Użytkownicy i uprawnienia</h1>');
+    expect(r.body).toContain('<h2 class="naglowek-formularza">Użytkownicy i uprawnienia</h2>');
     expect(r.body).toContain('value="  nowa-osoba  "');
     expect(r.body).toContain('value="Nowa Osoba"');
     expect(r.body).toContain('value="rola-spoza-listy" selected disabled');
@@ -145,7 +145,7 @@ describe('ekran kont', () => {
     });
 
     expect(r.statusCode).toBe(400);
-    expect(r.body).toContain('<h1>Użytkownicy i uprawnienia</h1>');
+    expect(r.body).toContain('<h2 class="naglowek-formularza">Użytkownicy i uprawnienia</h2>');
     expect(r.body).toMatch(/wpisz je ponownie/i);
     expect(r.body).not.toContain('value="stare"');
   });
@@ -229,7 +229,7 @@ describe('ekran kont', () => {
     expect(r.statusCode).toBe(400);
     // Rozroznienie od D3/„ostatni admin": Kasia zostaje czynnym adminem, wiec komunikat
     // NIE ma wspominac „ostatniego" — to bezpiecznik samo-zamkniecia, inny powod odmowy.
-    expect(r.body).toContain('<h1>Użytkownicy i uprawnienia</h1>');
+    expect(r.body).toContain('<h2 class="naglowek-formularza">Użytkownicy i uprawnienia</h2>');
     expect(komunikatBledu(r.body)).not.toMatch(/ostatni/i);
     expect(kontoPoLoginie(db, 'adam').admin).toBe(true);
   });
@@ -245,7 +245,7 @@ describe('ekran kont', () => {
     });
 
     expect(r.statusCode).toBe(400);
-    expect(r.body).toContain('<h1>Użytkownicy i uprawnienia</h1>');
+    expect(r.body).toContain('<h2 class="naglowek-formularza">Użytkownicy i uprawnienia</h2>');
     expect(kontoPoLoginie(db, 'adam').czynne).toBe(true);
   });
 
@@ -594,7 +594,7 @@ describe('trzeci bezpiecznik: ostatni czynny administrator', () => {
     });
 
     expect(r.statusCode).toBe(400);
-    expect(r.body).toContain('<h1>Użytkownicy i uprawnienia</h1>');
+    expect(r.body).toContain('<h2 class="naglowek-formularza">Użytkownicy i uprawnienia</h2>');
     expect(r.body).toMatch(/ostatni/i);
     expect(kontoPoLoginie(db, 'adam').admin).toBe(true);
   });
@@ -610,7 +610,7 @@ describe('trzeci bezpiecznik: ostatni czynny administrator', () => {
     });
 
     expect(r.statusCode).toBe(400);
-    expect(r.body).toContain('<h1>Użytkownicy i uprawnienia</h1>');
+    expect(r.body).toContain('<h2 class="naglowek-formularza">Użytkownicy i uprawnienia</h2>');
     expect(r.body).toMatch(/ostatni/i);
     expect(kontoPoLoginie(db, 'adam').czynne).toBe(true);
   });
@@ -646,7 +646,7 @@ describe('trzeci bezpiecznik: ostatni czynny administrator', () => {
     });
 
     expect(r.statusCode).toBe(400);
-    expect(r.body).toContain('<h1>Użytkownicy i uprawnienia</h1>');
+    expect(r.body).toContain('<h2 class="naglowek-formularza">Użytkownicy i uprawnienia</h2>');
     expect(komunikatBledu(r.body)).not.toMatch(/ostatni/i);
     expect(kontoPoLoginie(db, 'adam').czynne).toBe(true);
   });

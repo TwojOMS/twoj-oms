@@ -1,4 +1,4 @@
-<h1>Aktualizacje</h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Aktualizacje"}) %>
 
 <section class="ust-sekcja" id="akt-instalacja">
   <h2>Ta instalacja</h2>
@@ -32,7 +32,7 @@
     <p><a href="<%= wynik.adres %>" target="_blank" rel="noopener">Opis na GitHubie</a></p>
   <% } %>
   <form id="akt-sprawdz" method="post" action="/ustawienia/aktualizacje/sprawdz">
-    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Sprawdź teraz</button></div>
+    <div class="ust-akcje"><button class="btn" type="submit">Sprawdź teraz</button></div>
   </form>
   <p><small>Panel łączy się z GitHubem tylko po kliknięciu.</small></p>
 </section>

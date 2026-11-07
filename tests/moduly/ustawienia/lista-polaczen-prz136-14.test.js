@@ -28,8 +28,10 @@ async function strona(url, { proba = true, integracje = NIEZAPISANE } = {}) {
   try {
     let dane;
     createWidokIntegracji({ db, proba, integracje: () => integracje })({ url, query: {} }, { view: (_n, d) => { dane = d; } });
-    const html = await renderFile('src/moduly/ustawienia/widoki/ustawienia-polaczenia.ejs',
+    const fragment = await renderFile('src/moduly/ustawienia/widoki/ustawienia-polaczenia.ejs',
       { ...dane, fmtDataCzas: (d) => d, fmtKiedy: (d) => fmtKiedy(d, new Date()) });
+    // PRZ-154 E2.1: h1 działu i zakładki należą do powłoki, formularz do widoku.
+    const html = await renderFile('src/core/web/widoki/_zakladki-ustawien.ejs', dane) + fragment;
     return { dane, html };
   } finally { await app.close(); db.close(); }
 }
@@ -53,10 +55,11 @@ it('U13: poza piaskownicą niezapisane DPD, InPost, KSeF i GUS nie udają połą
   for (const usluga of ['dpd', 'inpost', 'ksef', 'gus']) expect(wiersz(html, usluga), usluga).toBe('');
 });
 
-it('#11: lista ma dokładnie jeden <h1> „Moje połączenia”', async () => {
+it('#11: lista ma dokładnie jeden <h1> działu „Integracje”', async () => {
   const { html } = await strona('/ustawienia/integracje');
   expect(html.match(/<h1[\s>]/g) ?? []).toHaveLength(1);
-  expect(html).toMatch(/<h1>Moje połączenia<\/h1>/);
+  expect(html).toMatch(/<h1>Integracje<\/h1>/);
+  expect(html).not.toContain('<h2 class="naglowek-formularza">Moje połączenia</h2>');
 });
 
 it('#8: poczta ma tę samą nazwę w wierszu, w katalogu i w <h1> ekranu oraz stan jak ekran („Nieustawiona”)', async () => {

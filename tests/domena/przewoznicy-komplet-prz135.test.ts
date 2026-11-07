@@ -5,7 +5,7 @@ import type { OpisKuriera } from '../../src/core/kontrakty.ts';
 import { MODULY_KURIEROW } from '../../src/domena/moduly-kurierow.ts';
 import { OPISY_PRZEWOZNIKOW } from '../../src/domena/przewoznicy.ts';
 
-const layout = readFileSync(new URL('../../src/core/web/widoki/layout-oms.ejs', import.meta.url), 'utf8');
+const layout = readFileSync(new URL('../../src/public/oms-uklad.css', import.meta.url), 'utf8');
 
 describe('komplet opisów przewoźników PRZ-135', () => {
   for (const [klucz, opis] of Object.entries(OPISY_PRZEWOZNIKOW)) {

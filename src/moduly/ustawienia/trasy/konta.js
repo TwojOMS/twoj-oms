@@ -187,7 +187,7 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
   };
 
   function stronaKonta(req, reply, id, extra = {}) {
-    return reply.view('konto.ejs', {
+    return reply.view('konto.ejs', { szerokosc: 'formularz',
       title: 'Konto użytkownika', adminWidok: true, wlasne: id === req.konto?.id, serwisowe: false,
       // PRZ-083: gość demo w podglądzie nie widzi loginu ani imienia administratora (podglad-demo.js).
       konto: req.konto?.podgladDemo

@@ -3,7 +3,7 @@
     PRZ-108.08 (C1): warunki „status jest …”, „ma numer listu” (wymuszony szablonem „Zamówienie wysłane”), dostawa
     i pobranie — sprawdzane w chwili wykonania; „Do kogo”; w wyniku sprawdzenia paczki i podgląd maila (kadr 5). %>
 <p class="szw-powrot"><a href="<%= regula ? `/ustawienia/automatyzacje/${regula.id}` : '/ustawienia/automatyzacje' %>">← <%= regula ? regula.nazwa : 'Automatyzacje' %></a></p>
-<h1><%= regula ? `${regula.nazwa}` : 'Nowa automatyzacja' %></h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (regula ? `${regula.nazwa}` : 'Nowa automatyzacja')}) %>
 <% if (bledy.length) { %>
 <div class="pas-uprzedzenie" role="alert"><p><strong>Nie zapisano.</strong> <%= bledy.join(' ') %></p></div>
 <% } %>
@@ -172,9 +172,9 @@
       </div>
       <p class="ust-pelna ust-pomoc">Pola oznaczone <span class="ust-wymagane">*</span> są wymagane. Zapis niczego nie wysyła — <%= regula ? (regula.wlaczona ? 'reguła zostaje włączona; zmiana zdarzenia albo kanałów liczy zdarzenia od chwili zapisu.' : 'reguła zostaje wyłączona.') : 'reguła zapisuje się wyłączona. Włączasz ją osobno; od tej chwili OMS liczy zdarzenia, zamówień sprzed włączenia nie rusza.' %></p>
       <div class="ust-pelna ust-akcje">
-        <button class="ust-przycisk" type="submit" formaction="<%= SPRAWDZ %>">Sprawdź na ostatnich 30 dniach</button>
+        <button class="btn" type="submit" formaction="<%= SPRAWDZ %>">Sprawdź na ostatnich 30 dniach</button>
         <button class="btn btn--glowny" type="submit">Zapisz</button>
-        <a class="ust-przycisk" href="<%= regula ? `/ustawienia/automatyzacje/${regula.id}` : '/ustawienia/automatyzacje' %>">Anuluj</a>
+        <a class="btn" href="<%= regula ? `/ustawienia/automatyzacje/${regula.id}` : '/ustawienia/automatyzacje' %>">Anuluj</a>
       </div>
     </div>
   </section>

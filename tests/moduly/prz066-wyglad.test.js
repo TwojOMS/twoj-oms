@@ -7,7 +7,10 @@ import { resolve } from 'node:path';
 const root = resolve(import.meta.dirname, '../..');
 const czytaj = (p) => readFileSync(resolve(root, p), 'utf8').replaceAll('\r\n', '\n');
 const reguła = (css, selektor) => {
-  const i = css.indexOf(`${selektor}{`) >= 0 ? css.indexOf(`${selektor}{`) : css.indexOf(`${selektor} {`);
+  // Reguła z początku wiersza: od PRZ-154.E1.5 ten sam selektor stoi też na końcu reguł menu zwiniętego.
+  const kandydaci = [`\n${selektor}{`, `\n${selektor} {`, `${selektor}{`, `${selektor} {`].map(w => css.indexOf(w));
+  const trafiony = kandydaci.find(x => x >= 0) ?? -1;
+  const i = trafiony >= 0 && css[trafiony] === '\n' ? trafiony + 1 : trafiony;
   expect(i, `brak reguły ${selektor}`).toBeGreaterThanOrEqual(0);
   return css.slice(i, css.indexOf('}', i));
 };
@@ -43,13 +46,13 @@ describe('PRZ-066 — czcionki', () => {
 });
 
 describe('PRZ-066 — kolory', () => {
-  const layout = czytaj('src/core/web/widoki/layout-oms.ejs');
+  const layout = czytaj('src/public/oms-uklad.css');
 
   it('jasny motyw ma niebieski akcent, bez zieleni PRZ-065', () => {
     const jasny = blokMotywu(layout, 'jasny');
     expect(zmienna(jasny, '--marka')).toBe('#3e5566');
     expect(zmienna(jasny, '--link')).toBe('#3e5566');
-    for (const p of ['src/core/web/widoki/layout-oms.ejs', 'src/public/oms-design.css', 'src/public/tabele-prz065.css', 'src/public/messages-prz065.css'])
+    for (const p of ['src/public/oms-uklad.css', 'src/public/oms-design.css', 'src/public/tabele-prz065.css', 'src/public/messages-prz065.css'])
       expect(czytaj(p)).not.toMatch(/#1f6b45|#19583a|#78c99e/i);
   });
 
@@ -67,7 +70,7 @@ describe('PRZ-066 — boczna kolumna', () => {
   it('nie ma „Obszaru roboczego”, logo firmy stoi przy nazwie panelu', () => {
     expect(layout).not.toContain('Obszar roboczy');
     expect(layout).not.toContain('oms-workspace');
-    expect(layout).toMatch(/<a class="oms-brand"[^\n]*<img class="pas-logo"[^\n]*<span>Twój OMS<\/span><\/a>/);
+    expect(layout).toMatch(/<a class="oms-brand"[^\n]*<img class="pas-logo"[^\n]*<span>Twój OMS<\/span>[^\n]*<\/a>/);
   });
 
   // PRZ-067 (prośba właściciela 13.10): konto wróciło do górnego paska, więc reguła „okienko w obrębie

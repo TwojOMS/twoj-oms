@@ -24,12 +24,9 @@
   };
 %>
 
-<p class="wroc"><a href="<%= adresPowrotu %>">← Wróć do magazynu</a></p>
+<p class="wroc"><a href="<%= adresPowrotu %>">← Magazyn</a></p>
 
-<div class="glowa-ekranu">
-  <h1>Przejęcie numerów ze sklepu</h1>
-  <span class="krok"><%= wynik ? 'wynik zapisu' : 'podgląd — nic jeszcze nie przejęto' %></span>
-</div>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Przejęcie numerów ze sklepu", podtytul: (wynik ? 'wynik zapisu' : 'podgląd — nic jeszcze nie przejęto')}) %>
 
 <section class="panel<%= wynik ? '' : ' panel--edycja' %>" id="przejecie-pozycje">
   <div class="panel-glowa">

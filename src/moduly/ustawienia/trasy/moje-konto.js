@@ -28,11 +28,11 @@ export function modelKonta(db, id) {
 /** @param {any} app @param {{ db: any, teraz?: () => Date, loginDemo?: string | null, nazwaCiasteczka?: string }} opcje */
 export function registerMojeKontoRoutes(app, { db, teraz = () => new Date(), loginDemo = null, nazwaCiasteczka = NAZWA_CIASTECZKA_OMS }) {
   const hamulec = utworzHamulec();
-  const widok = (req, reply, extra = {}) => reply.view('konto.ejs', {
+  const widok = (req, reply, extra = {}) => reply.view('konto.ejs', { szerokosc: 'formularz',
     title: 'Moje konto', serwisowe: false, wlasne: true, adminWidok: false, link: null, role: [],
     konto: modelKonta(db, req.konto.id), zapisano: KOMUNIKATY[req.query?.zapisano] ?? null, blad: null, ...extra,
   });
-  const serwisowe = (req, reply, kod = 200) => reply.code(kod).view('konto.ejs', {
+  const serwisowe = (req, reply, kod = 200) => reply.code(kod).view('konto.ejs', { szerokosc: 'formularz',
     title: 'Moje konto', serwisowe: true, wlasne: false, adminWidok: false, konto: null, link: null, role: [], zapisano: null, blad: null,
   });
   const zKontem = (req) => typeof req.konto?.id === 'number' && !req.konto.serwisowe;

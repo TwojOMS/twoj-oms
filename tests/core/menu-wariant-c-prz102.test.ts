@@ -21,8 +21,11 @@ const ANALIZY = ['/raporty', '/statystyki', '/kampania', '/koszty', '/finanse', 
 const admin = { imie: 'Admin', admin: true, uprawnienia: new Set<string>() };
 const zRoli = (rola: string) => ({ imie: `Konto ${rola}`, admin: false, rola, uprawnienia: new Set(ekranyRoli(rola)) });
 const model = (sciezka: string, konto: any, odlozoneEkrany: string[] = []) => nawigacjaDla({ sciezka, konto, menu, odlozoneEkrany });
-const render = (sciezka: string, konto: any, odlozoneEkrany: string[] = []) => ejs.renderFile(szablon, {
-  title: 'Test', motyw: 'jasny', htmx: false, bezPaska: false, body: '<h1>Treść</h1>', nawigacja: model(sciezka, konto, odlozoneEkrany),
+const render = async (sciezka: string, konto: any, odlozoneEkrany: string[] = []) => ejs.renderFile(szablon, {
+  title: 'Test', motyw: 'jasny', htmx: false, bezPaska: false,
+  // PRZ-154 E2.1: zakładki są częścią nagłówka ekranu, renderowanego przed layoutem.
+  body: await ejs.renderFile(fileURLToPath(new URL('../../src/core/web/widoki/_naglowek-ekranu.ejs', import.meta.url)), {tytul: 'Treść', nawigacja: model(sciezka, konto, odlozoneEkrany)}),
+  nawigacja: model(sciezka, konto, odlozoneEkrany),
   menuKonta: menuKontaDla(konto, { powrot: sciezka }), marka: { logoAlt: 'Firma testowa' }, modyfikatorStatusu: () => null, zasob,
 }) as Promise<string>;
 const kawalki = (h: string) => {
@@ -31,7 +34,7 @@ const kawalki = (h: string) => {
     bokKomputer: bok.slice(bok.indexOf('<div class="oms-menu-desktop">'), bok.indexOf('<details class="oms-menu-mobile"')),
     bokTelefon: bok.slice(bok.indexOf('<details class="oms-menu-mobile"')),
     pasek: h.match(/<header class="oms-topbar">[\s\S]*?<\/header>/)?.[0] ?? '',
-    tresc: h.slice(h.indexOf('<main class="kolumna-glowna">')),
+    tresc: h.slice(h.indexOf('<main class="kolumna-glowna')),
   };
 };
 const hrefy = (html: string) => [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);

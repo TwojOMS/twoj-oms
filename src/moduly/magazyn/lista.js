@@ -5,7 +5,7 @@ import { fmtDataCzas } from '../../domena/format-daty.js';
 export function registerListaMagazynu(app, { db, magazyn, sklepy, pomoc, karta }) {
   const { kartyZKanalami, kategorieDoFiltra, SORTOWANIE_KART, zliczeniaBrakow, zliczeniaNiepowiazanych, filtryZZapytania, saJakiesFiltry, parametryUkryte, wartosciPol, adresMagazynu, PACZKOMAT_DO_FILTRA, PACZKOMAT_ETYKIETY, POLA_FORMULARZA_FILTROW, NAGLOWKI_KANALOW, BEZ_SKLEPOW, opisPrzebiegu, linkiSortowania, kafleBrakow, wierszKarty, ileKart, opisZawezenia, zWroc } = pomoc;
   app.get('/magazyn', async (req, reply) => {
-    if (!magazyn || magazyn.gotowy?.() === false) return reply.view('pusta-strona.ejs', BEZ_SKLEPOW);
+    if (!magazyn || magazyn.gotowy?.() === false) return reply.view('pusta-strona.ejs', { ...BEZ_SKLEPOW, szerokosc: 'tabela' });
 
     // ⚠️ BIALA LISTA, nie `SORTOWANIE[x] ?? domyslne`. Ta druga postac oddaje funkcje
     // z `Object.prototype` przy `?sort=constructor` i konczy sie pieciusetka na glownym
@@ -74,7 +74,7 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
     const naStanie = (id) => (stany.wlaczone ? (stany.stany.get(Number(id))?.stan ?? 0) : null);
     const naMinusie = stany.wlaczone ? [...stany.stany.values()].filter((s) => s.stan < 0).length : 0;
 
-    return reply.view('magazyn-lista.ejs', {
+    return reply.view('magazyn-lista.ejs', { szerokosc: 'tabela',
       title: 'Magazyn',
       // Dwa ekrany obok („pominiete" i powiazania) dostaja adres TEJ listy tak samo, jak
       // dostaje go kazdy ekran karty (4.13d) — gotowy z trasy, bo w tym module odnosniki

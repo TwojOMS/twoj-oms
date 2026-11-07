@@ -20,8 +20,8 @@ export function registerSynchronizacjaMagazynu(app, { db, magazyn, sklepy, pomoc
   // przyciskiem (`produktyPominiete` chodzi po tym samym zapytaniu i tej samej regule),
   // wiec pokazuje dokladnie to, co przycisk pominal.
   app.get('/magazyn/pominiete', async (req, reply) => {
-    if (!magazyn || magazyn.gotowy?.() === false) return reply.view('pusta-strona.ejs', BEZ_SKLEPOW);
-    return reply.view('magazyn-pominiete.ejs', {
+    if (!magazyn || magazyn.gotowy?.() === false) return reply.view('pusta-strona.ejs', { ...BEZ_SKLEPOW, szerokosc: 'tabela' });
+    return reply.view('magazyn-pominiete.ejs', { szerokosc: 'tabela',
       title: 'Magazyn — pominięte',
       utworzone: null,
       // Powrot na ZAWEZONA liste, z ktorej tu wszedl operator (4.13d). `bezpiecznyWroc`
@@ -37,7 +37,7 @@ export function registerSynchronizacjaMagazynu(app, { db, magazyn, sklepy, pomoc
   app.post('/magazyn/utworz-karty', async (req, reply) => {
     if (!magazyn || magazyn.gotowy?.() === false) return odmowaBezSklepow(req, reply);
     const { utworzone } = utworzKartyZNiepowiazanych(db);
-    return reply.view('magazyn-pominiete.ejs', {
+    return reply.view('magazyn-pominiete.ejs', { szerokosc: 'tabela',
       title: 'Magazyn — pominięte',
       utworzone,
       // ⚠️ DRUGI RENDER TEGO SAMEGO WIDOKU — z ciala formularza, nie z adresu. Ta akcja

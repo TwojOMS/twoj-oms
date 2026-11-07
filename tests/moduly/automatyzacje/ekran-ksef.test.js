@@ -46,7 +46,7 @@ describe('PRZ-108.06 ekran Ustawienia → Automatyzacje', () => {
     const r = await get(p.app, EKRAN, p.admin);
     expect(r.statusCode).toBe(200);
     // PRZ-108.11 (decyzja właściciela 22.10): przy tytule plakietka BETA.
-    expect(r.body).toContain('<div class="tytul-z-plakietka"><h1>Automatyzacje</h1><span class="menu-ustawien-beta">BETA</span></div>');
+    expect(r.body).toMatch(/<h1>Automatyzacje<\/h1>[\s\S]*?<span class="menu-ustawien-beta">BETA<\/span>/); // PRZ-154: wspólny nagłówek działu.
     expect(r.body).toContain('<title>Automatyzacje</title>');
     expect(r.body).toContain('Automaty systemowe');
     const ksef = sekcja(r.body, 'ksef-automat');
@@ -118,7 +118,7 @@ describe('PRZ-108.06 ekran Ustawienia → Automatyzacje', () => {
     const r = await post(p.app, ZAPIS, p.admin, { wlaczony, godzina });
     expect(r.statusCode).toBe(400);
     // PRZ-108.11 (decyzja właściciela 22.10): przy tytule plakietka BETA.
-    expect(r.body).toContain('<div class="tytul-z-plakietka"><h1>Automatyzacje</h1><span class="menu-ustawien-beta">BETA</span></div>');
+    expect(r.body).toMatch(/<h1>Automatyzacje<\/h1>[\s\S]*?<span class="menu-ustawien-beta">BETA<\/span>/); // PRZ-154: wspólny nagłówek działu.
     expect(sekcja(r.body, 'ksef-automat')).toContain('Nie zapisano');
     expect(wczytajAutomatKsef(p.db)).toMatchObject({ wlaczony: false, godzina: '20:00', zmienil: null });
   });
@@ -155,7 +155,7 @@ describe('PRZ-108.06 stary adres zapisu automatu KSeF', () => {
     const r = await post(p.app, STARY_ZAPIS, p.admin, { wlaczony: '1', godzina: '25:00' });
     expect(r.statusCode).toBe(400);
     // PRZ-108.11 (decyzja właściciela 22.10): przy tytule plakietka BETA.
-    expect(r.body).toContain('<div class="tytul-z-plakietka"><h1>Automatyzacje</h1><span class="menu-ustawien-beta">BETA</span></div>');
+    expect(r.body).toMatch(/<h1>Automatyzacje<\/h1>[\s\S]*?<span class="menu-ustawien-beta">BETA<\/span>/); // PRZ-154: wspólny nagłówek działu.
     expect(sekcja(r.body, 'ksef-automat')).toContain('Nie zapisano');
     expect(r.body).toMatch(/<li class="aktywna">\s*<a href="\/ustawienia\/automatyzacje"/u);
     expect(wczytajAutomatKsef(p.db).zmienil).toBeNull();

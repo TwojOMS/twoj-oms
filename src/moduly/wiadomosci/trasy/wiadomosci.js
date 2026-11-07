@@ -58,7 +58,7 @@ function registerRoutes(app, { db, klienci = {}, podpis = PODPIS }) {
     const w = wybrany === undefined ? (watki.find(t => t.typ !== 'POST_PURCHASE_ISSUE' && t.stan === 'czeka') || watki[0] || null) : wybrany;
     const lista = w ? dowody(db, w.kanal, w.thread_id).map(d=>({...d,zalaczniki:db.prepare('SELECT nazwa,mime,rozmiar,stan,blad FROM allegro_odpowiedzi_zalaczniki WHERE odpowiedz_id=? ORDER BY id').all(d.id)})) : [];
     return {
-      title: 'Wiadomości', watki, sprawy: sprawyOtwarte(db), w, lista,
+      szerokosc: 'tabela', title: 'Wiadomości', watki, sprawy: sprawyOtwarte(db), w, lista,
       korespondencja: w ? wiadomosciWatku(db, w.kanal, w.thread_id) : [],
       stan: w ? czyjRuch(w, lista) : null,
       maks: MAKS_ZNAKOW_WIADOMOSCI, blad, szkic, czytanie, brak: czytanie && !w,

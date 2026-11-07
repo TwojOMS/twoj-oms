@@ -1,9 +1,6 @@
 <%# PRZ-108.04: odmowa liczenia raportu jako ekran panelu (menu z layoutu), nie goły tekst. Powód to zdanie
     z `komunikatDlaOperatora` — numer zamówienia i klucz sklepu, bez danych klienta. Kod odpowiedzi 400 ustawia trasa. %>
-<div class="glowa-ekranu">
-  <h1><%= ekran %></h1>
-  <span class="krok"><a href="/raporty">sprzedaż</a> · <a href="/finanse">finanse</a></span>
-</div>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (ekran), opisHtml: include('_naglowek-opis-raporty-odmowa.ejs')}) %>
 
 <section class="ust-sekcja" id="raport-odmowa">
   <h2><%= naglowek %></h2>

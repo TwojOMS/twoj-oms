@@ -231,6 +231,7 @@ export function createKartaMagazynu({ db, kanalyAllegro, definicje }) {
 
     return reply.code(kod).view('magazyn-karta.ejs', {
       title: `Magazyn — ${karta.nazwa}`,
+      okruszki: [{ tekst: 'Magazyn', href: '/magazyn' }, { tekst: karta.nazwa }],
       karta: {
         id: karta.id,
         nazwa: karta.nazwa,

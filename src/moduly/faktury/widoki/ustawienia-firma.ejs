@@ -1,4 +1,4 @@
-<h1><%= title %></h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (title)}) %>
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% const sekcja = nawigacja?.kontekst?.aktywnaZakladka ?? 'dane'; %>
 <% if (sekcja === 'dane') { %>
@@ -28,7 +28,7 @@
         <div class="ust-pelna ust-akcje"><button class="btn btn--glowny" type="submit">Zapisz logo</button></div>
       </form>
       <% if (logoInstalacji.zapis) { %>
-        <form method="post" action="/ustawienia/firma/logo/usun" style="margin-top:.75rem"><div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń logo</button><span class="ust-pomoc">Przywraca znak domyślny.</span></div></form>
+        <form method="post" action="/ustawienia/firma/logo/usun" style="margin-top:.75rem"><div class="ust-akcje"><button class="btn btn--groza" type="submit">Usuń logo</button><span class="ust-pomoc">Przywraca znak domyślny.</span></div></form>
       <% } %>
     <% } else { %><p class="ust-pomoc">Logo zmienia tylko administrator.</p><% } %>
   <% } %>
@@ -54,7 +54,7 @@
   <% if (zapis) { %>
     <form method="post" action="/ustawienia/firma/usun">
       <p>W OMS-ie został też adres zapisany wcześniej na tym ekranie. Plik konfiguracji ma pierwszeństwo, więc nie jest używany.</p>
-      <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń adres zapisany na ekranie</button></div>
+      <div class="ust-akcje"><button class="btn btn--groza" type="submit">Usuń adres zapisany na ekranie</button></div>
     </form>
   <% } %>
 </section>
@@ -110,7 +110,7 @@
   <h2>Usunięcie</h2>
   <form method="post" action="/ustawienia/firma/usun" onsubmit="return confirm('Usunąć adres firmy? Bez niego OMS nie wystawi proformy ani specyfikacji.')">
     <p>Bez adresu firmy OMS nie wystawi proformy ani specyfikacji i nie nada paczki DPD. Wystawione dokumenty zostają.</p>
-    <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń adres firmy</button></div>
+    <div class="ust-akcje"><button class="btn btn--groza" type="submit">Usuń adres firmy</button></div>
   </form>
 </section>
 <% } %>
@@ -281,7 +281,7 @@
     <% if (rachunek.zapis && rachunek.mozeZmieniac) { %>
       <form method="post" action="/ustawienia/firma/rachunek/usun">
         <p>W OMS-ie został też rachunek zapisany wcześniej na tym ekranie. Plik konfiguracji ma pierwszeństwo, więc nie jest używany.</p>
-        <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń rachunek zapisany na ekranie</button></div>
+        <div class="ust-akcje"><button class="btn btn--groza" type="submit">Usuń rachunek zapisany na ekranie</button></div>
       </form>
     <% } %>
   <% } else { %>
@@ -307,7 +307,7 @@
       </form>
       <% if (rachunek.zapis) { %>
         <form method="post" action="/ustawienia/firma/rachunek/usun" onsubmit="return confirm('Usunąć rachunek firmy? Bez niego maile o płatności pójdą bez danych do przelewu, a OMS nie wystawi proformy.')">
-          <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń rachunek firmy</button></div>
+          <div class="ust-akcje"><button class="btn btn--groza" type="submit">Usuń rachunek firmy</button></div>
         </form>
       <% } %>
     <% } else { %>

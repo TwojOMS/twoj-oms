@@ -1,0 +1,1 @@
+<nav class="oms-order-statuses oms-zakladki-analiz" aria-label="<%= nawigacja.analizy.etykieta %>"><ul><% nawigacja.analizy.pozycje.forEach(function(p) { %><li><a href="<%= p.href %>"<%- p.aktywna ? ' aria-current="page"' : '' %>><%= p.etykieta %></a></li><% }); %></ul></nav>

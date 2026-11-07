@@ -1,4 +1,4 @@
-<h1><%= title %></h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (title)}) %>
 <% if (tylkoReklamy) { %><p><a href="/ustawienia/integracje">← Moje połączenia</a></p><% } %>
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
@@ -24,7 +24,7 @@
         <% if (mozeKonfigurowacReklamy) { %>
           <form method="post" action="/ustawienia/integracje/reklamy/test">
             <input type="hidden" name="polaczenieId" value="<%= polaczenie.id %>">
-            <div class="ust-akcje"><button class="ust-przycisk" type="submit">Test odczytu</button></div>
+            <div class="ust-akcje"><button class="btn" type="submit">Test odczytu</button></div>
           </form>
         <% } %>
       </div>
@@ -37,7 +37,7 @@
   <p>Potrzebne: konto źródła, kanał OMS i poświadczenie tylko do odczytu zapisane w sekretach serwera.</p>
   <textarea id="prompt-<%= zrodlo.typ %>" class="ust-prompt" readonly rows="<%= Math.min(40, Math.max(7, String(zrodlo.prompt || '').split('\n').reduce((n, l) => n + Math.max(1, Math.ceil(l.length / 80)), 0) + 1)) %>"><%= zrodlo.prompt %></textarea>
   <div class="ust-akcje">
-    <button class="ust-przycisk" type="button" onclick="this.parentElement.previousElementSibling.select(); document.execCommand('copy')">Skopiuj prompt dla agenta</button>
+    <button class="btn" type="button" onclick="this.parentElement.previousElementSibling.select(); document.execCommand('copy')">Skopiuj prompt dla agenta</button>
   </div>
 </aside>
 <% } %>
@@ -120,7 +120,7 @@
         </div>
       <% } else if (kanal.stan.wolnoWiazac) { %>
         <form method="post" action="/ustawienia/kanaly/<%= kanal.stan.kanal %>/wiazanie">
-          <button class="ust-przycisk" type="submit">Połącz z Allegro</button>
+          <button class="btn btn--glowny" type="submit">Połącz z Allegro</button>
         </form>
       <% } %>
     </div>

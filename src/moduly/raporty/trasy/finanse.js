@@ -278,6 +278,7 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
 
     return reply.view('finanse-dane.ejs', {
       title: 'Dane miesiąca',
+      okruszki: [{ tekst: 'Finanse', href: '/finanse' }, { tekst: miesiac }],
       miesiac,
       dane,
       blad,

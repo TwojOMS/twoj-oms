@@ -6,7 +6,7 @@ import { readFileSync } from './pliki-historyczne.js';
 // (2) formaction i pary zakresow NIETKNIETE wzgledem stanu sprzed przebudowy;
 // (3) belka jest przyklejona (position: sticky) — regula w arkuszu layoutu.
 const widok = readFileSync('src/oms/web/views/magazyn-lista.ejs', 'utf8');
-const layout = readFileSync('src/oms/web/views/layout-oms.ejs', 'utf8');
+const layout = readFileSync('src/public/oms-uklad.css', 'utf8');
 
 describe('belka akcji magazynu', () => {
   it('cztery akcje w details name="akcja" wewnątrz jednej belki', () => {

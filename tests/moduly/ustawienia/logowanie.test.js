@@ -294,7 +294,7 @@ describe('zasoby ekranu logowania', () => {
   // `Accept: text/html`, wiec straznik nie uznawal go za wejscie przegladarki. Efekt: ekran
   // bez jednej barwy marki, czcionka systemowa. Widac to wylacznie w przegladarce.
   it('arkusz stylów jest dostępny BEZ zalogowania', async () => {
-    const r = await app.inject({ method: 'GET', url: '/public/app.css', headers: { accept: 'text/css,*/*;q=0.1' } });
+    const r = await app.inject({ method: 'GET', url: '/public/oms-design.css', headers: { accept: 'text/css,*/*;q=0.1' } });
     expect(r.statusCode).toBe(200);
   });
 

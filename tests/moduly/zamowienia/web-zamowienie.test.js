@@ -66,7 +66,7 @@ describe('szczegóły zamówienia', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1498), {});
     const direct = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(direct.body).toContain('<title>Zamówienie 1498</title>');
-    expect(direct.body).toContain('<h1 class="belka-numer">Zamówienie 1498</h1>');
+    expect(direct.body).toContain('<h1>Zamówienie 1498</h1>');
     expect(direct.body).toContain(`href="/#zamowienie-${id}"`);
     const zly = await app.inject({
       method: 'GET', url: `/zamowienia/${id}?powrot=${encodeURIComponent('//obcy.example/')}`, headers: naglowek,

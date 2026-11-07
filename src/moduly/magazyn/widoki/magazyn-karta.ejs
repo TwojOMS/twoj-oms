@@ -25,12 +25,9 @@
 <%# Adres powrotu (Zadanie 6) — `wroc` zwalidowany w trasie (`bezpiecznyWroc`), albo goly
     „/magazyn", gdy go nie bylo albo nie przeszedl bariery adresu. Widok niczego tu nie
     rozstrzyga — dostaje juz gotowy `adresPowrotu`. %>
-<p class="wroc"><a href="<%= adresPowrotu %>">← Wróć do magazynu</a></p>
+<p class="wroc"><a href="<%= adresPowrotu %>">← Magazyn</a></p>
 
-<div class="glowa-ekranu">
-  <h1><%= karta.nazwa %></h1>
-  <span class="krok"><%= karta.sku ? karta.sku : 'bez SKU' %></span>
-</div>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (karta.nazwa), podtytul: (karta.sku ? karta.sku : 'bez SKU')}) %>
 
 <%# ——— DANE KARTY ————————————————————————————————————————————————————————————————— %>
 <section class="panel<%= edytujDane ? ' panel--edycja' : '' %>" id="dane-karty">

@@ -2,7 +2,7 @@
     reszta katalogu z planu jest przygaszona z dopiskiem „wkrótce”. Pusty rejestr: wszystko przygaszone, bez „Dalej”.
     PRZ-108.08 (C1): pod „Status zamówienia zmienił się na…” lista statusów (makieta, kadr 3). %>
 <p class="szw-powrot"><a href="/ustawienia/automatyzacje">← Automatyzacje</a></p>
-<h1>Nowa automatyzacja</h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Nowa automatyzacja"}) %>
 <% if (blad) { %><div class="pas-uprzedzenie" role="alert"><p><%= blad %></p></div><% } %>
 <section class="ust-sekcja aut-sekcja">
   <h2>Kiedy ma zadziałać?</h2>
@@ -36,7 +36,7 @@
     <% } %>
     <div class="ust-akcje" style="margin-top:1rem">
       <% if (dostepnych) { %><button class="btn btn--glowny" type="submit">Dalej</button><% } %>
-      <a class="ust-przycisk" href="/ustawienia/automatyzacje"><%= dostepnych ? 'Anuluj' : 'Wróć' %></a>
+      <a class="btn" href="/ustawienia/automatyzacje"><%= dostepnych ? 'Anuluj' : 'Wróć' %></a>
     </div>
   </form>
 </section>

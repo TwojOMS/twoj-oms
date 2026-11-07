@@ -1,6 +1,6 @@
 <%# PRZ-148.04: sklep przykładowy piaskownicy (atrapa z konfiguracji, bez wpisu w repozytorium) albo nieznany klucz. %>
 <div class="woo-przykladowe">
-<h1><%= title %></h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (title)}) %>
 <p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
 <% if (przykladowe) { %>
 <p class="ust-wstep">Sklep przykładowy piaskownicy (zamówienia demo). Nie da się go odłączyć ani usunąć.</p>

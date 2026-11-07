@@ -23,6 +23,21 @@ const konto=(p:string[],admin=false)=>({imie:'Operator <test>',admin,uprawnienia
 const model=(sciezka='/',k:any=null,m=menu)=>nawigacjaDla({sciezka,konto:k,menu:m,odlozoneEkrany:['finanse']});
 async function render(n:any,k:any=null,extra:any={}){return ejs.renderFile(file,{title:'Przesyłki',motyw:'jasny',htmx:false,bezPaska:false,body:'<h1>Przesyłki</h1>',nawigacja:n,menuKonta:menuKontaDla(k,{powrot:'/przesylki?etap=utworzone'}),marka:{logoAlt:'Firma testowa'},modyfikatorStatusu:()=>null,zasob,...extra});}
 describe('PRZ065 menu zaakceptowanej makiety',()=>{
+  it('licznik wiadomości nie ujawnia pozycji bez uprawnienia',async()=>{
+    const k=konto(['przesylki']);
+    const h=await render(model('/przesylki',k),k,{licznikWiadomosci:3});
+    expect(h).not.toContain('class="licznik oms-wiadomosci-licznik"');
+    expect(h).not.toContain('href="/wiadomosci"');
+  });
+  it('zapamiętane zwinięcie zachowuje pełne menu telefonu i nazwę marki dla telefonu',async()=>{
+    const h=await render(model('/'),null,{menuZwiniete:true});
+    expect(h).toContain('oms-shell--zwiniete');
+    expect(h).toContain('<span class="oms-brand-mobile">Twój OMS</span>');
+    const telefon=h.match(/<details class="oms-menu-mobile"[\s\S]*?<\/details>/)?.[0] ?? '';
+    expect(telefon).toContain('<h2>Obsługa zamówień</h2>');
+    expect(telefon).toContain('+ Nowe zamówienie');
+    expect(telefon).toContain('<span>Przesyłki</span>');
+  });
   it('na każdej zakładce pokazuje wszystkie dozwolone ekrany z manifestów',()=>{
     const n=model('/przesylki') as any;
     // PRZ-102.03 (wariant C): analizy (`/raporty`) nie stoją już w menu bocznym, tylko pod przyciskiem w pasku —
@@ -73,8 +88,8 @@ describe('PRZ065 odbiór regresji ramy',()=>{
     const k=konto(['ustawienia'],true);
     const n=nawigacjaUstawien({url:'/ustawienia/lacznosc',konto:k},{locals:{nawigacja:model('/ustawienia/lacznosc',k)}});
     const h=await render(n,k);
-    expect(h).toContain('<main class="kolumna-glowna">');
-    expect(h.slice(h.indexOf('<main class="kolumna-glowna">'))).toContain('<h1>Przesyłki</h1>');
+    expect(h).toContain('<main class="kolumna-glowna szer-karta">');
+    expect(h.slice(h.indexOf('<main class="kolumna-glowna szer-karta">'))).toContain('<h1>Przesyłki</h1>');
     for(const url of ['/ustawienia/firma','/ustawienia/zamowienia-i-wysylka','/ustawienia/integracje','/ustawienia/szablony-wiadomosci','/ustawienia/lacznosc','/ustawienia/konta'])expect(h).toContain('href="'+url+'"');
     expect(h.match(/<li class="aktywna">\s*<a href="\/ustawienia\/moduly" aria-current="page">/g)).toHaveLength(2);
   });

@@ -128,7 +128,7 @@ export function registerFakturyRoutes(app, {
   // (jedno źródło: program, którym usługa naprawdę wysyła), a nie ekranem wysyłki, która i tak by nie poszła.
   const odmowaWysylki = (reply) => stronaOdmowy(reply, 409, wysylkaKsef.niedostepna, { tytul: 'Nie wysłano do KSeF', wroc: '/faktury', napisWroc: 'Wróć do faktur' });
   app.get('/faktury', async (req, reply) => {
-    if (!fakturyWidok) return reply.view('pusta-strona.ejs', bezProgramu(wyborProgramu, BEZ_INFAKTU));
+    if (!fakturyWidok) return reply.view('pusta-strona.ejs', { ...bezProgramu(wyborProgramu, BEZ_INFAKTU), szerokosc: 'tabela' });
 
     const dzis = dzienWarszawa(new Date().toISOString());
     // Nieznany miesiac i nieznane pole wracaja do domyslnych zamiast odmawiac — to jest
@@ -185,7 +185,7 @@ export function registerFakturyRoutes(app, {
       bladProform = komunikatDlaOperatora(e);
     }
 
-    return reply.view('faktury.ejs', {
+    return reply.view('faktury.ejs', { szerokosc: 'tabela',
       title: 'Faktury',
       nazwaProgramu,
       programWbudowany: program?.opis?.wbudowany === true,

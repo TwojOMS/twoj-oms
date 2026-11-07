@@ -16,10 +16,7 @@
   const LICZBA = (p) => (p.postep.ile === null ? '—' : p.postep.ile);
   const CEL = (p) => (p.postep.celIle === null ? '' : ` / ${p.postep.celIle}`);
 %>
-<div class="glowa-ekranu">
-  <h1>Cele</h1>
-  <span class="krok">cele i zadania okresowe · stan na <%= dzisiaj %></span>
-</div>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Cele", podtytul: "cele i zadania okresowe · stan na " + (dzisiaj)}) %>
 
 <section class="panel bez-druku">
   <div class="panel-glowa">

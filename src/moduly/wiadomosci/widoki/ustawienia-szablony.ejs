@@ -1,5 +1,5 @@
 <%# PRZ-101.03: Ustawienia → Szablony wiadomości — lista. Edycja pod /ustawienia/szablony-wiadomosci/:id. %>
-<h1>Szablony wiadomości</h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Szablony wiadomości"}) %>
 
 <% if (komunikat) { %><div class="pas-potwierdzenie"><p><%= komunikat %></p></div><% } %>
 
@@ -17,7 +17,7 @@
             <td><%= s.nazwa %></td>
             <td class="szw-temat"><%= s.temat %></td>
             <td><%= fmtDataCzasKrotko(s.zmieniono_at) %></td>
-            <td class="szw-akcja"><a class="ust-przycisk" href="/ustawienia/szablony-wiadomosci/<%= s.id %>">Edytuj</a></td>
+            <td class="szw-akcja"><a class="btn btn--maly" href="/ustawienia/szablony-wiadomosci/<%= s.id %>">Edytuj</a></td>
           </tr>
         <% }); %>
       </tbody>
@@ -28,7 +28,7 @@
   <% } %>
   <div class="ust-akcje">
     <% if (wlasne.length < maks.wlasnych) { %>
-      <a class="ust-przycisk" href="/ustawienia/szablony-wiadomosci/nowy">Dodaj szablon</a>
+      <a class="btn" href="/ustawienia/szablony-wiadomosci/nowy">Dodaj szablon</a>
     <% } else { %>
       <span class="wyjasnienie">To już <%= maks.wlasnych %> szablonów — usuń niepotrzebny, żeby dodać następny.</span>
     <% } %>
@@ -48,7 +48,7 @@
           <td><%= s.nazwa %></td>
           <td class="szw-temat"><%= s.temat %></td>
           <td><%= s.zmieniony ? 'zmieniona ' + fmtDataCzasKrotko(s.zmieniono_at) : 'domyślna' %></td>
-          <td class="szw-akcja"><a class="ust-przycisk" href="/ustawienia/szablony-wiadomosci/<%= s.id %>">Edytuj</a></td>
+          <td class="szw-akcja"><a class="btn btn--maly" href="/ustawienia/szablony-wiadomosci/<%= s.id %>">Edytuj</a></td>
         </tr>
       <% }); %>
     </tbody>
@@ -85,7 +85,7 @@
           <div class="szw-zdanie-stan">
             <% if (z.zmienione) { %>
               <span class="szw-znacznik">zmienione</span>
-              <button class="ust-przycisk" type="submit" formaction="/ustawienia/szablony-wiadomosci/zdania-platnosci/<%= z.klucz %>/przywroc" formnovalidate>Przywróć domyślne</button>
+              <button class="btn btn--maly" type="submit" formaction="/ustawienia/szablony-wiadomosci/zdania-platnosci/<%= z.klucz %>/przywroc" formnovalidate>Przywróć domyślne</button>
               <span>Domyślnie: „<%= z.domyslne %>”</span>
             <% } else { %>
               <span class="szw-znacznik">domyślne</span>
@@ -95,7 +95,7 @@
       <% }); %>
     <% }); %>
     <div class="ust-akcje">
-      <button class="ust-przycisk szw-glowny" type="submit">Zapisz zdania i etykiety</button>
+      <button class="btn btn--glowny" type="submit">Zapisz zdania i etykiety</button>
       <span class="wyjasnienie">Zapisuje wszystkie zdania naraz. Podgląd z nowymi zdaniami zobaczysz w edytorze każdego maila i na karcie zamówienia.</span>
     </div>
   </form>
@@ -114,7 +114,7 @@
           <td><%= s.nazwa %></td>
           <td class="szw-temat"><%= s.temat %></td>
           <td><%= s.zmieniony ? 'zmieniona ' + fmtDataCzasKrotko(s.zmieniono_at) : 'domyślna' %></td>
-          <td class="szw-akcja"><a class="ust-przycisk" href="/ustawienia/szablony-wiadomosci/<%= s.id %>">Edytuj</a></td>
+          <td class="szw-akcja"><a class="btn btn--maly" href="/ustawienia/szablony-wiadomosci/<%= s.id %>">Edytuj</a></td>
         </tr>
       <% }); %>
     </tbody>

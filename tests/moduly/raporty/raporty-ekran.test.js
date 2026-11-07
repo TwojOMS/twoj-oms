@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { openOmsDb } from '../../pomoc/dane-miesieczne-parytetu.js';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 import { ustawGranice, zapiszHistorie } from '../../../src/oms/db/historia-sprzedazy.js';
@@ -466,7 +467,7 @@ describe('kanaly — delta wzgledem poprzedniego okresu', () => {
 // na zielono, a na ekranie nie byloby nic (ta sama choroba, co przy wysciolce paska filtrow
 // na /finanse i przy ukladzie karty zamowienia).
 describe('arkusz naprawdę pokazuje kartę kanału', () => {
-  const arkusz = async () => (await wejdz('/raporty?od=2026-06-01&do=2026-06-30')).body;
+  const arkusz = async () => readFileSync('src/public/oms-uklad.css', 'utf8');
 
   it('karta odsłania się na :hover wiersza', async () => {
     const regula = /\.kanal-wiersz:hover \.kanal-okienko\s*\{([^}]*)\}/.exec(await arkusz());
@@ -490,11 +491,11 @@ describe('arkusz naprawdę pokazuje kartę kanału', () => {
   // krawedzia sekcji — pod nim nie ma juz wiersza, ktory by ja pomiescil. Zdejmuje to
   // dopiero `panel--dymki`, a klasa i regula musza istniec OBIE.
   it('sekcja kanałów pozwala karcie wyjść poza panel', async () => {
-    const body = await arkusz();
+    const body = (await wejdz('/raporty?od=2026-06-01&do=2026-06-30')).body;
     const przed = body.slice(0, body.indexOf('Skąd przyszła sprzedaż'));
     // Najblizszy PRZED naglowkiem znacznik sekcji — to on ma nosic klase.
     expect(przed.slice(przed.lastIndexOf('<section'))).toMatch(/^<section class="[^"]*panel--dymki/);
-    const regula = /\.panel--dymki\s*\{([^}]*)\}/.exec(body);
+    const regula = /\.panel--dymki\s*\{([^}]*)\}/.exec(await arkusz());
     expect(regula).not.toBeNull();
     expect(regula[1]).toMatch(/overflow:\s*visible/);
   });
@@ -556,9 +557,11 @@ describe('pas ostrzezen — zwiniety', () => {
 
 // ——— SZEROKOSC UKLADU (FHD) ——————————————————————————————————————————————————————————
 describe('szerokosc ukladu', () => {
-  it('wspólna rama ma stały sufit, a bloki raportu zachowują węższy limit treści', async () => {
+  it('nie zawiera dawnej centrowanej ramy, a bloki raportu zachowują limit treści', async () => {
     const odp = await wejdz('/raporty');
-    expect(odp.body).toMatch(/\.rama-oms \{[^}]*max-width: 1900px[^}]*margin: 0 auto/);
-    expect(odp.body).toMatch(/\.kolumna-glowna > [^{]*\{[^}]*max-width: 1222px/);
+    expect(odp.statusCode).toBe(200);
+    const css = readFileSync('src/public/oms-uklad.css', 'utf8');
+    expect(css).not.toMatch(/\.rama-oms\s*\{/);
+    expect(css).toMatch(/\.szer-karta > [^{]*\{[^}]*max-width: 1222px/);
   });
 });

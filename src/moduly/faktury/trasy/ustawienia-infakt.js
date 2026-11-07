@@ -20,7 +20,7 @@ export function registerUstawieniaInfaktuRoutes(app, { db, konfiguracjaInfaktu, 
   const k = konfiguracjaInfaktu;
   function widok(req, reply, { bledy = [], test = null, bladKonsumenckich = null } = {}) {
     const stan = stanDlaEkranu(wczytajKonfiguracjeIntegracji(db, 'infakt'));
-    return reply.view('ustawienia-infakt.ejs', {
+    return reply.view('ustawienia-infakt.ejs', { szerokosc: 'formularz',
       nawigacja: nawigacjaUstawien(req, reply), title: 'inFakt',
       zEnv: k.zEnv, adresWPliku: k.adresWPliku, archiwumWPliku: k.archiwumWPliku, stan, adresApi: ADRES_INFAKT,
       bledy, test,

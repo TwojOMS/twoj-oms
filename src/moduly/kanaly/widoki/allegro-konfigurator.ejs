@@ -1,5 +1,5 @@
 <div class="allegro-konfiguracja">
-<h1>Podłącz konto Allegro</h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Podłącz konto Allegro"}) %>
 <p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
 <% if (blad) { %><div class="pas-blad" role="alert"><p><%= blad %></p></div><% } %>
 <% if (komunikat) { %><div class="pas-potwierdzenie" role="status"><p><%= komunikat %></p></div><% } %>
@@ -25,7 +25,7 @@
   <form method="post" action="<%= root %>/aplikacja">
     <p><label for="allegro-app-srodowisko">Środowisko aplikacji</label><br><select id="allegro-app-srodowisko" name="srodowisko"><option value="sandbox">Allegro Sandbox</option><option value="produkcja">Allegro</option></select></p>
     <p><label for="allegro-kod">Krótki kod z Allegro</label><br><input id="allegro-kod" name="kod" type="password" required maxlength="2048" autocomplete="off"></p>
-    <button class="ust-przycisk" type="submit">Zarejestruj aplikację</button>
+    <button class="btn btn--maly" type="submit">Zarejestruj aplikację</button>
   </form>
 </section>
 <% } %>

@@ -8,15 +8,7 @@
   // zamiast braku danych.
   const proc = (n) => (n === null || n === undefined ? '—' : `${n.toFixed(1).replace('.', ',')}%`);
 %>
-<div class="glowa-ekranu">
-  <h1>Statystyki</h1>
-  <% if (zakres) { %>
-    <span class="krok">
-      wysyłka i płatności w okresie <strong><%= nazwa %></strong>
-      · <%= zakres.od %> – <%= zakres.do %>
-    </span>
-  <% } %>
-</div>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Statystyki", opisHtml: include('_naglowek-opis-statystyki.ejs')}) %>
 
 <section class="panel bez-druku panel--zakres">
   <div class="zakres-rzad">

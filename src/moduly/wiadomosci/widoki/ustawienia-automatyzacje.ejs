@@ -1,4 +1,4 @@
-<h1><%= title %></h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (title)}) %>
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (blad) { %><div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong> <%= blad %></p></div><% } %>
@@ -26,6 +26,6 @@
     </fieldset>
     <p><label>Karencja (minuty) <input type="number" name="karencja" min="0" value="<%= formulka.karencjaMin %>"></label></p>
     <p>Ile czekać, zanim panel odezwie się sam. Gdy w tym czasie odpiszecie — milczy.</p>
-    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zapisz</button></div>
+    <div class="ust-akcje"><button class="btn btn--glowny" type="submit">Zapisz</button></div>
   </form>
 </div>

@@ -25,7 +25,7 @@ export function registerPodjazdyRoutes(app, { db, podjazdy, adresDomyslny }) {
       LEFT JOIN przesylki s ON s.id = pp.przesylka_id
       LEFT JOIN zamowienia z ON z.id = s.zamowienie_id
       GROUP BY p.id ORDER BY p.utworzony_at DESC, p.id DESC`).all();
-    return reply.view('podjazdy-historia.ejs', { title: 'Historia podjazdów Allegro', wiersze });
+    return reply.view('podjazdy-historia.ejs', { szerokosc: 'tabela', title: 'Historia podjazdów Allegro', wiersze });
   });
 
   app.get('/przesylki/podjazdy', async (req, reply) => {
@@ -86,6 +86,7 @@ export function registerPodjazdyRoutes(app, { db, podjazdy, adresDomyslny }) {
     try {
       const wynik = await podjazdy.sprawdz({ id: Number(req.params.id) });
       return reply.view('podjazdy.ejs', { title: 'Podjazdy Allegro', faza: 'wynik', wynik,
+        okruszki: [{ tekst: 'Przesyłki', href: '/przesylki' }, { tekst: `Podjazd ${req.params.id}` }],
         grupy: [], paczki: [], blad: null });
     } catch (error) {
       return stronaOdmowy(reply, 400, `Nie można sprawdzić podjazdu: ${error.message}`,

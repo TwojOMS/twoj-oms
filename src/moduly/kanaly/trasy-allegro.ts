@@ -85,6 +85,7 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
   const numerKroku=!k?(deviceGotowe.produkcja||deviceGotowe.sandbox?1:0):kandydat?s.potwierdzone.has(kandydat.probaId)?4:3:extra.device||extra.oczekujacaProba?2:k.autoryzacja==='polaczone'||zSerwera?5:2;
   const kroki=modulKanalu('allegro').konfigurator.kroki.map(krok=>({...krok,stan:krok.numer===numerKroku?'biezacy':krok.numer<numerKroku?'zrobione':'przyszly'}));
   return reply.view(k?'allegro-polaczenie.ejs':'allegro-konfigurator.ejs',{
+    szerokosc: 'formularz',
    zakresDatyStartu:zakresDatyStartu(teraz()),
    title:k?(/^allegro(\s|$)/i.test(k.nazwa)?k.nazwa:'Allegro: '+k.nazwa):'Podłącz konto Allegro',nawigacja:nawigacjaUstawien(k?req:{...req,url:'/ustawienia/integracje/katalog'} as FastifyRequest,reply),
    wiersz:k?wierszListy(k.klucz):null,zSerwera,teraz:teraz(),
@@ -178,6 +179,7 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
   const polaUserAgent={nazwa:'',wersja:'',adres:'',...zapisUserAgent?.ustawienia};
   const wUzyciu=st?.zrodlo!=='env'&&Boolean(o.db.prepare("SELECT 1 FROM kanaly_sprzedazy WHERE typ='allegro' AND srodowisko=? AND aplikacja='device' AND autoryzacja IN ('polaczone','oczekuje_potwierdzenia') LIMIT 1").get(s));
   return reply.view('allegro-aplikacja.ejs',{
+    szerokosc: 'formularz',
    userAgentZEnv:Boolean(o.config.userAgentZEnv),
    polaUserAgent:extra.polaUserAgent??polaUserAgent,
    naglowekUserAgent:o.config.userAgentZEnv||userAgentZZapisu(zapisUserAgent?.ustawienia)||userAgentAllegro({}),

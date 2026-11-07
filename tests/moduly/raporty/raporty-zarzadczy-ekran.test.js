@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { openOmsDb } from '../../pomoc/dane-miesieczne-parytetu.js';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 import { ustawGranice, zapiszHistorie } from '../../../src/oms/db/historia-sprzedazy.js';
@@ -559,7 +560,7 @@ describe('pasek filtrow rachunku zarzadczego', () => {
 // rozstrzyga o tym WYLACZNIE arkusz stylow (ta sama choroba, co przy ukladzie karty —
 // tests/oms/karta-uklad-css.test.js).
 describe('pasek filtrów ma wyściółkę, a nie zero', () => {
-  const arkusz = async () => (await wejdz('/finanse?od=2026-06-01&do=2026-06-30')).body;
+  const arkusz = async () => readFileSync('src/public/oms-uklad.css', 'utf8');
 
   it('arkusz niesie POZIOMĄ wyściółkę dla .panel--zakres', async () => {
     const regula = /\.panel--zakres\s*\{([^}]*)\}/.exec(await arkusz());
@@ -591,7 +592,8 @@ describe('pasek filtrów ma wyściółkę, a nie zero', () => {
     for (const adres of ['/raporty?od=2026-06-01&do=2026-06-30', '/finanse/dane/2026-06']) {
       const odp = await wejdz(adres);
       expect(odp.statusCode).toBe(200);
-      expect(odp.body).toMatch(/\.panel--zakres\s*\{[^}]*padding:\s*[^;0][^;]*;/);
+      expect(odp.body).toMatch(/<link rel="stylesheet" href="\/public\/oms-uklad\.css\?v=[a-f0-9]+">/);
+      expect(await arkusz()).toMatch(/\.panel--zakres\s*\{[^}]*padding:\s*[^;0][^;]*;/);
     }
   });
 });

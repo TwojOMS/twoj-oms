@@ -10,7 +10,7 @@ const odmowa = reply => reply.code(403).view('brak-dostepu.ejs', { title: 'Brak 
 export function registerResetDemoRoutes(app, { db, wyborProgramu, nipTeraz, teraz, restart, numerDemo = null }) {
   function widok(req, reply, bledy = []) {
     const numer = numerDemo ? numerDemo() : null;
-    return reply.view('ustawienia-dane-demo.ejs', { title: 'Dane demo', nawigacja: nawigacjaUstawien(req, reply), bledy,
+    return reply.view('ustawienia-dane-demo.ejs', { szerokosc: 'formularz', title: 'Dane demo', nawigacja: nawigacjaUstawien(req, reply), bledy,
       program: etykietaModulu(wyborProgramu.teraz().program), nip: nipTeraz(), numer, adres: ADRES_DANYCH_DEMO });
   }
   app.get(ADRES_DANYCH_DEMO, async (req, reply) => req.konto?.admin === true ? widok(req, reply) : odmowa(reply));

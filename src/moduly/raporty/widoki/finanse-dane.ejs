@@ -55,16 +55,7 @@
   };
 %>
 
-<div class="glowa-ekranu">
-  <h1>Dane miesiąca</h1>
-  <span class="krok">
-    ZUS, PIT-5, VAT-7 — wpisywane ręcznie · <strong><%= miesiac %></strong>
-    <%# Strzalki przechodza przez granice roku — miesiace liczy trasa, widok ich nie skleja. %>
-    · <a href="/finanse/dane/<%= poprzedniMiesiac %>">← <%= poprzedniMiesiac %></a>
-    · <a href="/finanse/dane/<%= nastepnyMiesiac %>"><%= nastepnyMiesiac %> →</a>
-    · <a href="/finanse?od=<%= miesiac %>-01">rachunek</a>
-  </span>
-</div>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Dane miesiąca", opisHtml: include('_naglowek-opis-finanse-dane.ejs')}) %>
 
 <%# ——— PASEK MIESIECY ROKU ————————————————————————————————————————————————————
     ⚠️⚠️ PO CO TO JEST: brak wpisu za JEDEN miesiac wylacza „zostaje" w CALYM rachunku

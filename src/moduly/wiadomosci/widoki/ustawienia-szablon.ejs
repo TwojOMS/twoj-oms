@@ -1,6 +1,6 @@
 <%# PRZ-101.03: edycja jednego szablonu wiadomości. Zwykły textarea, lista pól pod spodem, podgląd GET-em. %>
 <p class="szw-powrot"><a href="/ustawienia/szablony-wiadomosci">← Szablony wiadomości</a></p>
-<h1><%= s.nowy ? 'Nowy szablon' : s.nazwa %></h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (s.nowy ? 'Nowy szablon' : s.nazwa)}) %>
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (blad) { %><div class="pas-uprzedzenie" role="alert"><p><strong>Nie zapisano.</strong> <%= blad %></p></div><% } %>
@@ -27,8 +27,8 @@
       <p class="ust-pomoc">Akapity rozdziela pusta linia. Najwyżej <%= maks.tresc %> znaków.</p>
     </div>
     <div class="ust-akcje szw-akcje">
-      <button class="ust-przycisk szw-glowny" type="submit">Zapisz</button>
-      <button class="ust-przycisk" type="submit" formmethod="get" formaction="/ustawienia/szablony-wiadomosci/<%= s.id %>#szw-podglad" formnovalidate name="podglad" value="1">Podgląd</button>
+      <button class="btn btn--glowny" type="submit">Zapisz</button>
+      <button class="btn" type="submit" formmethod="get" formaction="/ustawienia/szablony-wiadomosci/<%= s.id %>#szw-podglad" formnovalidate name="podglad" value="1">Podgląd</button>
       <span class="wyjasnienie"><%= s.rodzaj === 'konto' ? 'Podgląd pokazuje mail ze zmyślonym linkiem i niczego nie zapisuje.' : 'Podgląd pokazuje mail na przykładowym zamówieniu i niczego nie zapisuje.' %></span>
     </div>
   </form>
@@ -44,7 +44,7 @@
 
   <% if (s.wbudowany && s.zmieniony) { %>
     <form method="post" action="/ustawienia/szablony-wiadomosci/<%= s.id %>/usun" class="ust-akcje szw-usun">
-      <button class="ust-przycisk" type="submit">Przywróć domyślny</button>
+      <button class="btn" type="submit">Przywróć domyślny</button>
       <span class="wyjasnienie">Wraca treść dostarczona z panelem; Twoja zmiana zniknie.</span>
     </form>
   <% } else if (!s.wbudowany && !s.nowy) { %>
@@ -57,7 +57,7 @@
       <% if (reguly.length) { %>
         <label><input type="checkbox" name="potwierdzUsuniecie" value="1" required> Rozumiem, reguły przestaną wysyłać ten mail</label>
       <% } %>
-      <button class="ust-przycisk grozny" type="submit">Usuń szablon</button>
+      <button class="btn btn--groza" type="submit">Usuń szablon</button>
       <span class="wyjasnienie">Wysłane nim wiadomości zostają w historii zamówień.</span>
     </form>
   <% } %>

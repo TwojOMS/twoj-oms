@@ -7,10 +7,7 @@
 <%# czlowiek, nie to, co robi panel. %>
 <% const wart = (v) => (v ? v : '—'); %>
 
-<div class="glowa-ekranu">
-  <h1>Nadanie paczki nr <%= kolejnosc %></h1>
-  <span class="krok">zamówienie <a class="link-numer" title="<%= z.numer %>" href="<%= adresKarty %>"><%= z.numer %></a></span>
-</div>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Nadanie paczki nr " + (kolejnosc), opisHtml: include('_naglowek-opis-nadaj.ejs')}) %>
 
 <%# ⚠️ PACZKOMAT POTRAFI NADAWAC SIE DLUGO. InPost tworzy przesylke asynchronicznie: %>
 <%# panel czeka na numer listu do 30 s, a w najgorszym razie cale nadanie zajmuje ok. %>

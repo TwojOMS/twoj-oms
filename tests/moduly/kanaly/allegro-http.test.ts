@@ -317,16 +317,16 @@ it('PRZ-146.05 (B1): bez aplikacji bieżący jest krok 0; z aplikacją w jednym 
  const widoczne=ostrzezenie(krok1.body,'sandbox')!;expect(widoczne).toBeTruthy();expect(widoczne[1]).toBeUndefined();
  expect(widoczne[2]).toContain(`href="${root}/aplikacja?srodowisko=sandbox"`);
 });
-it('U24–U27: działające konto ma tytuł „Allegro: nazwa”, stan zamiast stepera, „Odłącz” jako przycisk niebezpieczny (B9); główny przycisk tylko przy problemie',async()=>{
+it('U24–U27: działające konto ma tytuł „Allegro: nazwa”, stan zamiast stepera, „Odłącz” jako przycisk niebezpieczny (B9); główny przycisk sprawdzania tylko przy problemie; zapis nazwy ma wspólny wariant zapisu',async()=>{
  const f=await setup(),k=await f.draft('Półcień');await f.req('POST',root+'/aplikacja',{kod:'CODE-BAIT',srodowisko:'produkcja'});
  const p=await f.candidate(k);await f.req('POST',root+'/'+k+'/aktywuj',p);
  await f.req('POST',root+'/'+k+'/sprawdz',{wersja:String(f.repo.pobierz(k).wersja)});
  const ok=await f.req('GET',root+'/'+k);
- expect(ok.body).toContain('<h1>Allegro: Półcień</h1>');expect(ok.body).not.toContain('class="stepper"');
- expect(ok.body).toContain('Ostatni odczyt');expect(ok.body).toMatch(/class="ust-przycisk grozny"[^>]*>Odłącz konto/);expect(tresc(ok.body)).not.toContain('btn--glowny');
+ expect(ok.body).toContain('<h2 class="naglowek-formularza">Allegro: Półcień</h2>');expect(ok.body).not.toContain('class="stepper"');
+ expect(ok.body).toContain('Ostatni odczyt');expect(ok.body).toMatch(/class="btn btn--maly btn--groza"[^>]*>Odłącz konto/);expect(tresc(ok.body)).toMatch(/class="btn btn--maly"[^>]*>Sprawdź połączenie/);expect(tresc(ok.body)).not.toContain('btn--glowny');
  f.setCzas('2026-11-01T12:05:00Z');f.setMeStatus(503);
  const bl=await f.req('POST',root+'/'+k+'/sprawdz',{wersja:String(f.repo.pobierz(k).wersja)});expect(bl.body).toContain('nie odpowiada');
- const problem=await f.req('GET',root+'/'+k);expect(problem.body).toMatch(/class="btn btn--glowny"[^>]*>Sprawdź połączenie/);
+ const problem=await f.req('GET',root+'/'+k);expect(problem.body).toMatch(/class="btn btn--maly btn--glowny"[^>]*>Sprawdź połączenie/);
 });
 it('G16a: zapis przy zatrzymywanym pobieraniu wraca na ekran kanału, nie gołym tekstem 202',async()=>{
  const f=await setup(true);

@@ -15,7 +15,7 @@ describe('PRZ-068 ekran Role i uprawnienia', () => {
     const { app, admin } = panelZKontami();
     const r = await get(app, '/ustawienia/role', admin);
     expect(r.statusCode).toBe(200);
-    expect(r.body).toContain('<h1>Role i uprawnienia</h1>');
+    expect(r.body).not.toContain('<h2 class="naglowek-formularza">Role i uprawnienia</h2>');
     expect(r.body).toContain('zawsze pełny dostęp');
     expect(r.body).toMatch(/data-liczba-kont="sprzedaz">1</);
     expect(r.body).toMatch(/value="administrator:zamowienia" checked disabled/);

@@ -161,7 +161,7 @@ function grupyKreatora(db, zdarzenia, wybrane = null, wybranyStatus = null) {
 }
 
 function widokKroku1(req, reply, z, { status = 200, blad = null } = {}) {
-  return reply.code(status).view('automatyzacje-nowa.ejs', {
+  return reply.code(status).view('automatyzacje-nowa.ejs', { szerokosc: 'formularz',
     nawigacja: nawigacjaUstawien(req, reply), title: 'Nowa automatyzacja', blad,
     grupy: grupyKreatora(z.db, z.zdarzenia, req.query?.zdarzenie ?? null, req.query?.zdarzenie_status ?? null),
     dostepnych: z.zdarzenia.length,

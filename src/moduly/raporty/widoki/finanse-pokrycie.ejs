@@ -1,4 +1,4 @@
-<h1>Kompletność danych</h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Kompletność danych"}) %>
 <p><a href="/finanse">Wróć do Finansów</a></p>
 <p>Te daty określają, od kiedy raporty mają pełne dane. Zapis w panelu działa od razu, bez restartu OMS.</p>
 <% if (zapisano) { %><div class="pas-potwierdzenie" role="status"><p>Zapisano. Raporty korzystają już z nowej daty.</p></div><% } %>
@@ -16,7 +16,7 @@
         placeholder zostaje dla przeglądarek bez wybieraka miesiąca, w których pole jest zwykłym tekstem. %>
     <label for="<%= p.klucz %>"><%= p.typ === 'month' ? 'Miesiąc' : 'Dzień' %></label>
     <input id="<%= p.klucz %>" name="wartosc" type="<%= p.typ %>" value="<%= p.wartosc %>" placeholder="<%= p.typ === 'month' ? 'RRRR-MM' : 'RRRR-MM-DD' %>" required<%= p.zPliku ? ' disabled' : '' %>>
-    <% if (!p.zPliku) { %><button class="ust-przycisk" type="submit">Zapisz</button><% } %>
+    <% if (!p.zPliku) { %><button class="btn btn--glowny" type="submit">Zapisz</button><% } %>
   </form>
   <% if (p.zPliku) { %><p>Edycja w panelu jest zablokowana. Zmiana w pliku konfiguracji wymaga restartu OMS.</p><% } %>
   <% } else { %><p><%= p.wartosc || 'Brak daty' %></p><% } %>

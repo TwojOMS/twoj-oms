@@ -1185,14 +1185,14 @@
       },
       "post": {
         "summary": "Załóż kartę produktu",
-        "description": "Z nagłówkiem Idempotency-Key powtórka zwraca zapamiętany status i ciało pierwszej odpowiedzi, ale bez nagłówków ETag i Location — aktualny ETag daje GET /api/v1/produkty/{id}. Ten sam klucz użyty z inną trasą zwraca 422 (kod idempotencja).",
+        "description": "Z nagłówkiem Idempotency-Key powtórka zwraca zapamiętany status i ciało pierwszej odpowiedzi, ale bez nagłówków ETag i Location — aktualny ETag daje GET /api/v1/produkty/{id}. Ten sam klucz użyty z inną trasą zwraca 422 (kod idempotencja). Odpowiedzi 409 i ≥ 500 nie są zapamiętywane: ponowienie z tym samym kluczem wykonuje żądanie od nowa. Odpowiedzi 400 i 201 są zapamiętywane.",
         "x-zakres": "produkty:zapis",
         "parameters": [
           {
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
-            "description": "Klucz ponowienia (1–200 znaków). Z nagłówkiem Idempotency-Key powtórka zwraca zapamiętany status i ciało pierwszej odpowiedzi, ale bez nagłówków ETag i Location — aktualny ETag daje GET /api/v1/produkty/{id}. Ten sam klucz użyty z inną trasą zwraca 422 (kod idempotencja).",
+            "description": "Klucz ponowienia (1–200 znaków). Z nagłówkiem Idempotency-Key powtórka zwraca zapamiętany status i ciało pierwszej odpowiedzi, ale bez nagłówków ETag i Location — aktualny ETag daje GET /api/v1/produkty/{id}. Ten sam klucz użyty z inną trasą zwraca 422 (kod idempotencja). Odpowiedzi 409 i ≥ 500 nie są zapamiętywane: ponowienie z tym samym kluczem wykonuje żądanie od nowa. Odpowiedzi 400 i 201 są zapamiętywane.",
             "schema": {
               "type": "string",
               "minLength": 1,
@@ -1439,7 +1439,7 @@
       },
       "patch": {
         "summary": "Zmień kartę produktu",
-        "description": "Zmienia tylko podane pola. Wymaga If-Match z ETag pobranej karty; pusty obiekt nic nie zapisuje. Z nagłówkiem Idempotency-Key powtórka zwraca zapamiętany status i ciało pierwszej odpowiedzi, ale bez nagłówków ETag i Location — aktualny ETag daje GET /api/v1/produkty/{id}. Ten sam klucz użyty z inną trasą zwraca 422 (kod idempotencja).",
+        "description": "Zmienia tylko podane pola. Wymaga If-Match z ETag pobranej karty; pusty obiekt nic nie zapisuje. Z nagłówkiem Idempotency-Key powtórka zwraca zapamiętany status i ciało pierwszej odpowiedzi, ale bez nagłówków ETag i Location — aktualny ETag daje GET /api/v1/produkty/{id}. Ten sam klucz użyty z inną trasą zwraca 422 (kod idempotencja). Odpowiedzi 404, 409 i ≥ 500 nie są zapamiętywane: ponowienie z tym samym kluczem wykonuje żądanie od nowa. Odpowiedzi 400, 428 (brak If-Match) i 200 są zapamiętywane — po dodaniu If-Match użyj nowego klucza.",
         "x-zakres": "produkty:zapis",
         "parameters": [
           {
@@ -1464,7 +1464,7 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
-            "description": "Klucz ponowienia (1–200 znaków). Z nagłówkiem Idempotency-Key powtórka zwraca zapamiętany status i ciało pierwszej odpowiedzi, ale bez nagłówków ETag i Location — aktualny ETag daje GET /api/v1/produkty/{id}. Ten sam klucz użyty z inną trasą zwraca 422 (kod idempotencja).",
+            "description": "Klucz ponowienia (1–200 znaków). Z nagłówkiem Idempotency-Key powtórka zwraca zapamiętany status i ciało pierwszej odpowiedzi, ale bez nagłówków ETag i Location — aktualny ETag daje GET /api/v1/produkty/{id}. Ten sam klucz użyty z inną trasą zwraca 422 (kod idempotencja). Odpowiedzi 404, 409 i ≥ 500 nie są zapamiętywane: ponowienie z tym samym kluczem wykonuje żądanie od nowa. Odpowiedzi 400, 428 (brak If-Match) i 200 są zapamiętywane — po dodaniu If-Match użyj nowego klucza.",
             "schema": {
               "type": "string",
               "minLength": 1,
@@ -1752,6 +1752,7 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": true,
+            "description": "Klucz ponowienia (1–200 znaków). Odpowiedzi 404, 409 i ≥ 500 nie są zapamiętywane: ponowienie z tym samym kluczem wykonuje żądanie od nowa (np. po założeniu karty dla nieznanego SKU albo po włączeniu stanów). Odpowiedzi 400 i 201 są zapamiętywane. 428 oznacza brak klucza, więc nie ma czego zapamiętać.",
             "schema": {
               "type": "string",
               "minLength": 1,

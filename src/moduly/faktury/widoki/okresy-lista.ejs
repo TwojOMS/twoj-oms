@@ -1,3 +1,4 @@
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: title}) %>
 <%# Lista miesiecznych okresow rozliczeniowych klientow zbiorczych (spec 2026-08-01).
     Jeden wiersz = jeden miesiac jednego klienta = jedna faktura, ktora ten klient dostanie.
 
@@ -5,7 +6,6 @@
     (web/routes/okresy.js), dokladnie ta sama zasada, co przy liscie zamowien i karcie.
     W szczegolnosci ETYKIETA ROZLICZENIA IDZIE Z `stan`, nigdy ze znaku salda: dodatnie
     saldo przed faktura to ZALICZKA, a po fakturze — NADPLATA do zwrotu. %>
-<p class="wroc"><a href="/">← Wróć do listy zamówień</a></p>
 
 <%
   // ⚠️ `MIESIACE` PRZYCHODZI Z TRASY (domain/okres-rozliczeniowy.js) — ta sama tablica,

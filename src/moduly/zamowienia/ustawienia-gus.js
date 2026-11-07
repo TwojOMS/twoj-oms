@@ -18,7 +18,7 @@ export function registerUstawieniaGusRoutes(app, { db, konfiguracjaGus }) {
   const k = konfiguracjaGus;
   function widok(req, reply, { bledy = [], test = null } = {}) {
     const stan = stanDlaEkranu(wczytajKonfiguracjeIntegracji(db, 'gus'));
-    return reply.view('ustawienia-gus.ejs', {
+    return reply.view('ustawienia-gus.ejs', { szerokosc: 'formularz',
       nawigacja: nawigacjaUstawien(req, reply), title: tytulEkranuDlaAdresu(EKRAN_GUS),
       zEnv: k.zEnv, stan, bledy, test,
       zapisano: KOMUNIKATY[req.query?.zapisano] ?? null,

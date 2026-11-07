@@ -17,6 +17,22 @@ export function czyjRuch(watek, dowody = []) {
   return ostatni?.rodzaj === 'formulka' ? 'formulka' : 'zalatwione';
 }
 
+const bazyLicznika = new WeakSet();
+
+// COUNT wykonuje SQLite, a decyzję podejmuje ta sama reguła co ekran i powiadomienie.
+// Bez okna świeżości: ekran pokazuje jako czekające również stare wątki.
+export function liczbaWatkowCzekajacych(db) {
+  if (!bazyLicznika.has(db)) {
+    db.function('watek_czeka', { deterministic: true }, (kupujacy, data, zamkniete) =>
+      Number(czyjRuch({ ostatnia_od_kupujacego: kupujacy,
+        last_message_date_time: data, zamkniete_do: zamkniete }) === 'czeka'));
+    bazyLicznika.add(db);
+  }
+  return db.prepare(`SELECT COUNT(*) AS liczba FROM allegro_watki w
+    LEFT JOIN allegro_zamkniecia z ON z.kanal = w.kanal AND z.thread_id = w.thread_id
+    WHERE watek_czeka(w.ostatnia_od_kupujacego, w.last_message_date_time, z.zamkniete_do) = 1`).get().liczba;
+}
+
 /**
  * Czy RECZNE „Zalatwione" obejmuje BIEZACY stan watku.
  *

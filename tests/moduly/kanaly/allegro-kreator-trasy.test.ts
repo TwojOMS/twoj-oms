@@ -212,7 +212,7 @@ it('B9: odłączenie konta ma klasę przycisku niebezpiecznego z Ustawień, nie 
  await f.post(k,'potwierdz',{probaId});await f.post(k,'aktywuj',{probaId,potwierdz:'tak',pobieraj:'nie'});
  const html=(await f.req('GET',root+'/'+k)).body;
  const form=html.match(/<form method="post" action="[^"]*\/odlacz">[\s\S]*?<\/form>/)![0];
- expect(form).toMatch(/<button class="ust-przycisk grozny"[^>]*>Odłącz konto<\/button>/);expect(form).not.toContain('btn--cichy');
+ expect(form).toMatch(/<button class="btn btn--maly btn--groza"[^>]*>Odłącz konto<\/button>/);expect(form).not.toContain('btn--cichy');
  expect(form).toMatch(/name="potwierdz" value="tak" required/);
 });
 

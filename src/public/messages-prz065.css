@@ -3,11 +3,11 @@
 #oms-messages *{box-sizing:border-box}
 #oms-messages [hidden]{display:none!important}
 #oms-messages .m-head {margin-bottom:22px}
-#oms-messages h1 {font-size:28px;line-height:1.2;letter-spacing:-.6px;margin:0;font-weight:600;text-transform:none}
+
 #oms-messages .m-head p {margin:5px 0 0;font-size:12px;color:var(--tekst-przygaszony)}
 #oms-messages .m-surface {border:1px solid var(--ramka);border-radius:3px;overflow:hidden;background:var(--powierzchnia)}
 #oms-messages .m-filters {display:flex;flex-wrap:wrap;gap:0 20px;padding:0 16px;border-bottom:1px solid var(--ramka)}
-#oms-messages button {font:inherit;cursor:pointer}
+#oms-messages button:not(.btn) {font:inherit;cursor:pointer}
 #oms-messages .m-filter {padding:13px 0 11px;border:0;border-bottom:2px solid transparent;border-radius:0;background:none;color:var(--tekst-przygaszony);font-size:12px}
 #oms-messages .m-filter[aria-pressed="true"] {color:var(--m-green);border-bottom-color:var(--m-green);font-weight:600}
 #oms-messages .m-filter span {font-size:11px;margin-left:5px}
@@ -30,7 +30,7 @@
 #oms-messages .m-detail {display:flex;flex-direction:column;min-width:0;align-self:start}
 #oms-messages .m-filtered-out {visibility:hidden}
 #oms-messages .m-detail-head {padding:20px 21px 16px;border-bottom:1px solid var(--ramka)}
-#oms-messages h2 {font-size:18px;line-height:1.35;font-weight:600;letter-spacing:-.3px;text-transform:none;margin:0;overflow-wrap:anywhere}
+#oms-messages h2 {font-size:var(--sekcja-font);line-height:1.3;font-weight:600;letter-spacing:normal;text-transform:none;margin:0;overflow-wrap:anywhere}
 #oms-messages .m-detail-head p {font-size:11px;color:var(--tekst-przygaszony);margin:7px 0 0;overflow-wrap:anywhere}
 #oms-messages .m-history {padding:20px 21px;flex:1;min-width:0}
 #oms-messages .m-message {width:fit-content;max-width:90%;margin:0 auto 16px 0;padding:13px 15px;border:1px solid var(--ramka);border-radius:3px 7px 7px 7px;background:var(--m-incoming);color:var(--tekst);min-width:0}
@@ -47,13 +47,10 @@
 #oms-messages .m-compose>label {font-size:12px;font-weight:600}
 #oms-messages textarea {display:block;width:100%;max-width:100%;min-width:0;resize:vertical;min-height:100px;margin-top:9px;padding:11px 12px;background:var(--powierzchnia);border:1px solid var(--ramka);border-radius:3px;color:var(--tekst);font-family:inherit;font-size:12px;line-height:1.6}
 #oms-messages .m-compose-tools {display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:11px}
-#oms-messages .m-compose-tools button,#oms-messages .m-send,#oms-messages .m-complete button,#oms-messages .m-preview-dialog button {padding:7px 10px;border:1px solid var(--ramka);background:var(--powierzchnia);color:var(--tekst);border-radius:3px;font-size:12px}
-#oms-messages .m-compose-tools button:disabled {opacity:.5;cursor:default}
 #oms-messages .m-compose-tools span {font-size:11px;color:var(--tekst-przygaszony);margin-left:auto}
 #oms-messages .m-help {font-size:11px;color:var(--tekst-przygaszony);line-height:1.6;margin:10px 0}
 #oms-messages .m-confirm {display:flex;gap:8px;align-items:flex-start;font-size:11px!important;font-weight:400!important;margin:13px 0}
 #oms-messages .m-confirm input {width:auto;flex-shrink:0;margin-top:3px}
-#oms-messages .m-send {background:#3e5566;color:#fff;border-color:#3e5566}
 #oms-messages .m-complete {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:9px;padding:13px 21px;border-top:1px solid var(--ramka);margin:0;font-size:11px}
 #oms-messages .m-complete p {width:100%;margin:0;color:var(--tekst-przygaszony);font-size:11px}
 #oms-messages .m-back {display:none}
@@ -69,19 +66,17 @@
 
 #oms-messages .m-attach-tools {margin-top:10px;font-size:12px}
 #oms-messages .m-attach-tools input {max-width:100%;font-size:12px}
-#oms-messages .m-attach-tools button {background:none;border:0;padding:5px 0;color:var(--m-green);font-size:12px}
 #oms-messages .m-attachments {list-style:none;padding:0;margin:10px 0;min-width:0}
 #oms-messages .m-attachments li {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;padding:9px 0;border-top:1px solid var(--ramka);font-size:12px}
 #oms-messages .m-file-name {grid-column:1;overflow-wrap:anywhere;min-width:0}
 #oms-messages .m-file-size {grid-column:1;font-size:11px;opacity:.8}
-#oms-messages .m-attachments button {grid-column:2;grid-row:1 / 3;align-self:center;background:none;border:0;font-size:11px;color:var(--m-green);padding:7px 3px}
+#oms-messages .m-attachments button {grid-column:2;grid-row:1 / 3;align-self:center}
 #oms-messages .m-preview-dialog .m-attachments {max-height:250px;overflow-y:auto}
 #oms-messages .m-send:disabled {opacity:.6;cursor:wait}
 /* PRZ-101.03: „Wstaw szablon” nad polem odpowiedzi — jedna linia: etykieta, lista, przycisk; podpowiedź pod spodem. */
 #oms-messages .m-template {display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:12px 21px 0;border-top:1px solid var(--ramka);background:var(--tlo);margin:0}
 #oms-messages .m-template label {font-size:12px;font-weight:600}
 #oms-messages .m-template select {max-width:100%;padding:6px 8px;border:1px solid var(--ramka);background:var(--powierzchnia);color:var(--tekst);border-radius:3px;font-size:12px}
-#oms-messages .m-template button {padding:6px 10px;border:1px solid var(--ramka);background:var(--powierzchnia);color:var(--tekst);border-radius:3px;font-size:12px}
 #oms-messages .m-template .m-help {width:100%;margin:2px 0 0}
 #oms-messages .m-template + .m-compose {border-top:0}
 @media(max-width:650px){#oms-messages .m-template{padding:12px 14px 0}#oms-messages .m-template select{font-size:16px}}

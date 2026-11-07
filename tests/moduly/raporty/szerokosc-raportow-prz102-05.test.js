@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '../../..');
-const layout = readFileSync(resolve(root, 'src/core/web/widoki/layout-oms.ejs'), 'utf8').replaceAll('\r\n', '\n');
+const layout = readFileSync(resolve(root, 'src/public/oms-uklad.css'), 'utf8').replaceAll('\r\n', '\n');
 const regula = (selektor) => {
   const i = layout.indexOf(`\n    ${selektor} {`);
   expect(i, `brak reguły ${selektor}`).toBeGreaterThanOrEqual(0);

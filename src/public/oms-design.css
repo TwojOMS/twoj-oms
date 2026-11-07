@@ -1,4 +1,87 @@
 /* PRZ-065: wspólna rama zaakceptowanej makiety. Palety w layout-oms.ejs. */
+/* PRZ-154 E3.1: ukryte etykiety tabeli pozycjonują się wewnątrz przewijaka. */
+.przewijak-tabeli { position: relative; }
+@media (max-width: 650px) {
+  .magazyn-pole { min-width: 0; }
+  .magazyn-pole input, .oms-shell .aut-podlista select { min-width: 0; max-width: 100%; }
+}
+:root {
+  --pole-h: 36px;
+  --pole-h-maly: 28px;
+  --r-el: 6px;
+  --r-karta: 8px;
+  --karta-p: 16px 20px;
+  --tabela-font: 11.5px;
+  --tabela-p: 8px 12px;
+  --sekcja-font: 20px;
+}
+/* PRZ-154 E2.5: geometria sekcji i pól, wspólna dla obu palet. */
+.oms-shell main :is(input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="file"]), select, .oms-pole) {
+  box-sizing: border-box;
+  height: var(--pole-h);
+  min-height: var(--pole-h);
+  border: 1px solid var(--ramka-pola);
+  border-radius: var(--r-el);
+  padding: 6px 8px;
+  font-family: inherit;
+  background: var(--powierzchnia);
+  color: var(--tekst);
+}
+.oms-shell main .oms-pole--male {
+  height: var(--pole-h-maly);
+  min-height: var(--pole-h-maly);
+}
+/* Selektor pól z :is() ma wysoką specyficzność; mały status zachowuje token 28 px. */
+#status select.oms-pole--male {
+  height: var(--pole-h-maly);
+  min-height: var(--pole-h-maly);
+  padding-block: 3px;
+}
+/* PRZ-154 E4.2: miniatura i wcięcia mieszczą się także w tabeli o stałych kolumnach. */
+.tab-pozycje[data-tabela-odczytu] .kol-mini {
+  width: 64px;
+  min-width: 64px;
+}
+.tab-pozycje[data-tabela-odczytu] .mini {
+  width: 38px;
+  max-width: none;
+  object-fit: contain;
+}
+@media (max-width: 40rem) {
+  .tab-pozycje.tab-stala[data-tabela-odczytu] { min-width: 48rem; }
+}
+.oms-pola { display: grid; gap: 16px; }
+.oms-pola > label { display: grid; gap: 6px; min-width: 0; }
+.oms-pola > label > :is(input, select) { width: 100%; min-width: 0; }
+.oms-shell main :is(.panel, .ust-sekcja) {
+  border-radius: var(--r-karta);
+}
+.oms-shell main :is(.ostrzezenia, .klient-staly, .magazyn-szukaj, .reklamy-panel) {
+  border-radius: var(--r-karta);
+}
+.oms-shell main :is(.klient-staly, .magazyn-szukaj, .reklamy-panel) {
+  padding: var(--karta-p);
+}
+.oms-shell main :is(.panel-cialo, .ust-sekcja) {
+  padding: var(--karta-p);
+}
+/* Głowa panelu zostaje niską etykietą (h2 wersalikami z layoutu) — wcięcie poziome jak w ciele karty. */
+.oms-shell main .panel-glowa { padding-inline: 20px; }
+.oms-shell main .panel:not(:has(> .panel-cialo, > .panel-glowa)) { padding: var(--karta-p); }
+.oms-shell main table th {
+  font-size: var(--tabela-font);
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: var(--tabela-p);
+}
+.oms-shell main table td { padding: var(--tabela-p); }
+.oms-shell main h2:not(.panel-glowa h2) {
+  font-size: var(--sekcja-font);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  line-height: 1.3;
+}
 /* PRZ-152.G14a: parametry pól jak w .pola nowego zamówienia.
    Selektory obejmują tylko nadanie, także pola poza dotychczasowymi .pola. */
 .nadanie-formularz .oms-pole { box-sizing: border-box; width: 100%; min-width: 0; min-height: 2.25rem; font: inherit; font-size: .9rem; padding: .35rem .5rem; border: 1px solid var(--ramka-pola); border-radius: .3rem; background: var(--powierzchnia); color: var(--tekst); }
@@ -16,9 +99,42 @@
   .nadanie-formularz .nadanie-wymiary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .nadanie-formularz .oms-pole { min-height: 44px; }
 }
+/* PRZ-154 E2.1: jedyna typografia h1 ekranów OMS, wspólna dla obu motywów. */
+.naglowek-ekranu{width:100%;min-width:0;margin:0 0 22px}
+.naglowek-ekranu__wiersz{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px 20px}
+.naglowek-ekranu__tytul{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 12px;min-width:0}
+.naglowek-ekranu h1{font-size:28px;font-weight:600;letter-spacing:-.8px;line-height:1.2;margin:0;overflow-wrap:anywhere}
+.naglowek-ekranu__podtytul{font-size:.85rem;color:var(--tekst-przygaszony);font-weight:400}
+.naglowek-ekranu__podtytul .krok{font:inherit}
+.naglowek-ekranu__akcje{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-left:auto}
+.naglowek-ekranu__akcje form{margin:0}
+.naglowek-ekranu__fakty{display:flex;align-items:center;flex-wrap:wrap;gap:10px 20px}
+.naglowek-ekranu .oms-zakladki-analiz,.naglowek-ekranu .ust-zakladki{margin:16px 0 0}
+.naglowek-formularza{font-size:20px;line-height:1.3;margin:0 0 16px;font-weight:600}
 body{font-family:'Segoe UI',Arial,sans-serif;font-variant-numeric:tabular-nums}
 .oms-shell,.oms-shell *{box-sizing:border-box}
 .oms-shell{display:grid;grid-template-columns:13.5rem minmax(0,1fr);min-height:100vh;background:var(--tlo)}
+.oms-shell{transition:grid-template-columns .18s ease}
+.oms-menu-toggle-form,.oms-menu-local{margin:0;margin-top:auto}
+.oms-menu-toggle{display:flex;align-items:center;gap:9px;width:100%;padding:9px 10px;border:0;border-radius:6px;background:none;color:var(--tekst-przygaszony);font:inherit;font-weight:500;cursor:pointer;text-align:left;list-style:none}
+.oms-menu-toggle::-webkit-details-marker{display:none}
+.oms-menu-toggle:hover{background:var(--powierzchnia-2);color:var(--tekst)}
+.oms-menu-toggle svg{width:17px;height:17px;flex-shrink:0;transition:transform .18s ease}
+.oms-menu-local .oms-menu-collapse,.oms-menu-local[open] .oms-menu-expand{display:none}
+.oms-menu-local[open] .oms-menu-collapse{display:inline}
+.oms-settings-column{display:none}
+@media(min-width:900px){
+  .oms-shell--zwiniete{grid-template-columns:64px minmax(0,1fr)}
+  :is(.oms-shell--zwiniete,.oms-shell--ustawienia:not(:has(.oms-menu-local[open])))>.oms-sidebar{padding:24px 10px 16px;align-items:center;overflow-x:hidden}
+  :is(.oms-shell--zwiniete,.oms-shell--ustawienia:not(:has(.oms-menu-local[open]))) .oms-brand{padding:0;justify-content:center}
+  :is(.oms-shell--zwiniete,.oms-shell--ustawienia:not(:has(.oms-menu-local[open])))>.oms-sidebar :is(.oms-brand span,.oms-menu h2,.oms-menu a>span,.oms-statusy,.oms-menu-toggle>span){display:none}
+  :is(.oms-shell--zwiniete,.oms-shell--ustawienia:not(:has(.oms-menu-local[open])))>.oms-sidebar .oms-menu{gap:0}
+  :is(.oms-shell--zwiniete,.oms-shell--ustawienia:not(:has(.oms-menu-local[open])))>.oms-sidebar .oms-menu-grupa+.oms-menu-grupa{margin-top:12px;padding-top:12px;border-top:1px solid var(--ramka)}
+  :is(.oms-shell--zwiniete,.oms-shell--ustawienia:not(:has(.oms-menu-local[open])))>.oms-sidebar :is(.oms-menu a,.oms-menu-toggle){justify-content:center;width:44px;height:40px;padding:0}
+  :is(.oms-shell--zwiniete,.oms-shell--ustawienia:not(:has(.oms-menu-local[open])))>.oms-sidebar :is(.oms-menu a svg,.oms-menu-toggle svg){width:19px;height:19px}
+  :is(.oms-shell--zwiniete,.oms-shell--ustawienia:not(:has(.oms-menu-local[open]))) .oms-menu-toggle svg{transform:scaleX(-1)}
+}
+@media(max-width:899.98px){.oms-menu-toggle-form,.oms-menu-local{display:none}}
 .oms-sidebar{display:flex;flex-direction:column;gap:22px;padding:24px 12px 16px;background:var(--oms-bok);border-right:1px solid var(--ramka);position:sticky;top:0;height:100vh;overflow:auto}
 .oms-brand,.oms-brand:visited{display:flex;align-items:center;gap:9px;padding:0 8px;font-size:18px;font-weight:650;letter-spacing:-.6px;white-space:nowrap;color:var(--tekst);text-decoration:none}
 .oms-monogram{display:grid;place-items:center;background:var(--marka);color:var(--na-marce);width:27px;height:29px;border-radius:5px;font-size:15px;font-weight:600;flex-shrink:0}
@@ -45,7 +161,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-variant-numeric:tabular-nums}
 .oms-topbar .menu-uzytkownika summary:hover,.oms-topbar .menu-uzytkownika[open] summary{background:var(--powierzchnia-2);color:var(--tekst)}
 .oms-topbar .menu-uzytkownika-panel{z-index:30;top:calc(100% + 7px);color:var(--tekst);background:var(--powierzchnia);border:1px solid var(--ramka);box-shadow:0 6px 18px var(--oms-cien);border-radius:6px}
 .oms-main > .kolumna-glowna{padding:26px 25px 24px;min-width:0;width:100%}
-.oms-main > .kolumna-glowna>h1{font-size:28px;font-weight:600;letter-spacing:-.8px;line-height:1.2;margin:0 0 22px}
+
 .oms-order-statuses{display:flex;gap:12px;align-items:center;margin-bottom:18px;border-bottom:1px solid var(--ramka);padding-bottom:12px;font-size:1rem;flex-wrap:wrap}
 .oms-order-statuses ul{display:flex;gap:4px;flex-wrap:wrap;margin:0;padding:0;list-style:none}
 .oms-order-statuses li a{display:flex;align-items:center;gap:7px;padding:7px 9px;color:var(--tekst-przygaszony);text-decoration:none;border-radius:5px}
@@ -62,7 +178,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-variant-numeric:tabular-nums}
   .oms-menu-mobile>summary::-webkit-details-marker{display:none}.oms-menu-mobile[open]>summary{margin-bottom:16px}
   .oms-menu-mobile .oms-menu{gap:18px}.oms-menu-mobile .oms-menu ul{display:grid;grid-template-columns:1fr 1fr;gap:4px}.oms-menu-mobile .oms-menu a{min-height:42px}
   .oms-topbar{min-height:50px;height:auto;padding:8px 14px}.oms-breadcrumb{font-size:0.92rem}.oms-breadcrumb>span:first-child,.oms-breadcrumb>span:nth-child(2){display:none}
-  .oms-main > .kolumna-glowna{padding:20px 12px}.oms-main > .kolumna-glowna>h1{font-size:26px}.oms-topbar .menu-uzytkownika-panel{max-width:calc(100vw - 24px)}
+  .oms-main > .kolumna-glowna{padding:20px 12px}.oms-topbar .menu-uzytkownika-panel{max-width:calc(100vw - 24px)}
 }
 @media(pointer:coarse){.oms-menu a,.oms-theme-button,.oms-topbar summary{min-height:44px}.oms-theme-button{min-width:44px}}
 
@@ -86,17 +202,23 @@ a.oms-theme-button,a.oms-theme-button:visited{text-decoration:none}
 .oms-menu .oms-statusy a>span:first-child{display:flex;align-items:flex-start;gap:6px;min-width:0}
 .oms-menu .oms-statusy .oms-status-etykieta{min-width:0;white-space:normal;overflow-wrap:anywhere}
 .oms-menu .oms-statusy .kropka{flex-shrink:0;margin-right:0;margin-top:calc((1.45em - .5rem)/2)}
-.oms-menu .oms-statusy .licznik{flex-shrink:0;min-width:1.5rem;padding:0 .4rem;border-radius:.75rem;background:var(--powierzchnia-2);color:var(--tekst);font-size:.8rem;line-height:calc(1.45 * .92rem);text-align:center;font-variant-numeric:tabular-nums}
+.oms-menu .oms-statusy .licznik,.oms-menu .oms-wiadomosci-licznik{flex-shrink:0;min-width:1.5rem;padding:0 .4rem;border-radius:.75rem;background:var(--powierzchnia-2);color:var(--tekst);font-size:.8rem;line-height:calc(1.45 * .92rem);text-align:center;font-variant-numeric:tabular-nums}
+.oms-menu a:has(.oms-wiadomosci-licznik){position:relative}
+.oms-menu .oms-wiadomosci-licznik{margin-left:auto}
+@media(min-width:900px){
+  :is(.oms-shell--zwiniete,.oms-shell--ustawienia:not(:has(.oms-menu-local[open])))>.oms-sidebar .oms-menu a>.oms-wiadomosci-licznik{display:block;position:absolute;top:0;right:0;min-width:1rem;padding:0 .2rem;font-size:.65rem;line-height:1rem}
+}
 /* PRZ-083 (właściciel 15.10): „+ Nowe zamówienie” wyróżnione tłem jak przycisk główny (.btn--glowny), nie zwykły odnośnik. */
 .oms-menu .oms-statusy .oms-nowe-zamowienie a,.oms-menu .oms-statusy .oms-nowe-zamowienie a:visited{justify-content:center;margin-top:8px;padding:7px 10px;border-radius:6px;background:var(--marka);color:var(--na-marce);font-weight:600;white-space:nowrap;text-decoration:none}
 .oms-menu .oms-statusy .oms-nowe-zamowienie a:hover{background:var(--marka-ciemniej);color:var(--na-marce)}
 
 /* PRZ-101.01: menu Ustawień — kolumna z lewej strony treści, w grupach (zastępuje poziomy pasek, który przy 1280 px
    łamał się na dwa wiersze). Wygląd pozycji jak w głównym menu: to samo tło aktywnej, te same nagłówki grup. */
-.oms-settings-layout{display:grid;grid-template-columns:13rem minmax(0,1fr);gap:28px;align-items:start}
+.oms-settings-layout{display:block;min-width:0}
 .oms-settings-content{min-width:0}
-.oms-settings-content>h1{font-size:28px;font-weight:600;letter-spacing:-.8px;line-height:1.2;margin:0 0 22px}
-.oms-settings-navigation{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto;padding-right:14px;border-right:1px solid var(--ramka)}
+
+.oms-settings-navigation{min-width:0;width:100%}
+.oms-settings-navigation--mobile{display:none}
 .oms-settings-navigation .kolumna-boczna{display:block;position:static;width:auto;min-width:0;padding:0;border:0;background:transparent}
 .oms-settings-navigation .panel-statusow{padding:0;margin:0;background:transparent;border:0;border-radius:0;overflow:visible}
 .oms-settings-navigation ul{display:flex;flex-direction:column;gap:2px;list-style:none;padding:0;margin:0}
@@ -112,7 +234,7 @@ a.oms-theme-button,a.oms-theme-button:visited{text-decoration:none}
 .menu-ustawien-wkrotce{flex-shrink:0;padding:0 5px;border:1px solid var(--ramka);border-radius:4px;font-size:.72rem;font-weight:500;line-height:1.5;color:var(--tekst-przygaszony)}
 /* PRZ-108.11: plakietka BETA — ten sam kształt co „wkrótce”, w kolorze marki (pozycja działa, ale się zmienia). */
 .menu-ustawien-beta{flex-shrink:0;padding:0 5px;border:1px solid var(--link);border-radius:4px;font-size:.72rem;font-weight:600;letter-spacing:.04em;line-height:1.5;color:var(--link)}
-.tytul-z-plakietka{display:flex;align-items:center;gap:.6rem}.tytul-z-plakietka h1{margin:0}.tytul-z-plakietka .menu-ustawien-beta{font-size:.75rem}
+.tytul-z-plakietka{display:flex;align-items:center;gap:.6rem}.tytul-z-plakietka .menu-ustawien-beta{font-size:.75rem}
 .oms-settings-mobile{display:none}
 /* PRZ-108.06: Ustawienia → Automatyzacje — nagłówek grupy kafli („Automaty systemowe”) tym samym krojem co nagłówek grupy
    menu Ustawień; znacznik „wkrótce” obok tytułu kafla reguł. */
@@ -166,9 +288,9 @@ a.oms-theme-button,a.oms-theme-button:visited{text-decoration:none}
 /* Telefon i tablet: jeden wiersz „Ustawienia: <ekran>” nad treścią, rozwijany do listy z nagłówkami grup.
    Próg 900 px, nie 650: na tablecie 768 px obok menu głównego zostawało treści ~325 px (zmierzone
    19.10.2026) — tabela szablonów rozpychała stronę do 854 px, a menu łamało „Kopie zapasowe” na dwie linie. */
-@media(max-width:900px){
+@media(max-width:899.98px){
   .oms-settings-layout{display:block}
-  .oms-settings-navigation{position:static;max-height:none;overflow:visible;padding:0;border:0;margin-bottom:18px}
+  .oms-settings-navigation--mobile{display:block;padding:22px 16px 0;margin-bottom:18px}
   .oms-settings-navigation .kolumna-boczna{display:none}
   .oms-settings-mobile{display:block}
   .oms-settings-mobile>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:9px 12px;border:1px solid var(--ramka);border-radius:5px;background:var(--powierzchnia);cursor:pointer}
@@ -177,8 +299,9 @@ a.oms-theme-button,a.oms-theme-button:visited{text-decoration:none}
   .oms-settings-mobile[open]>summary{margin-bottom:10px}
   .oms-settings-mobile .nawigacja-kontekstowa--mobile{display:block;margin:0}
   .oms-settings-navigation .panel-statusow a{min-height:44px;font-size:1rem}
-  .oms-settings-content>h1{font-size:26px}
+
 }
+@media(max-width:650px){.oms-settings-navigation--mobile{padding:20px 12px 0}}
 @media print{.oms-sidebar,.oms-topbar,.oms-order-statuses,.oms-settings-navigation{display:none!important}.oms-shell,.oms-settings-layout{display:block}.oms-main > .kolumna-glowna{padding:0}}
 
 .oms-shell > .tresc{padding:0;min-width:0}

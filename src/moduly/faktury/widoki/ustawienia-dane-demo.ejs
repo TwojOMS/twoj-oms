@@ -1,4 +1,4 @@
-<h1><%= title %></h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (title)}) %>
 <% if (bledy.length) { %>
   <div class="pas-uprzedzenie"><p><strong>Nie zapisano.</strong></p><ul><% bledy.forEach(function (b) { %><li><%= b %></li><% }); %></ul></div>
 <% } %>

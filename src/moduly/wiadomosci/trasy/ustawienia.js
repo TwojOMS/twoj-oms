@@ -18,7 +18,7 @@ function formulkaZFormularza(pola = {}) {
 
 export function registerUstawieniaFormulkiRoutes(app, { db }) {
   function widokAutomatyzacji(req, reply, { formulka = null, blad = null } = {}) {
-    return reply.view('ustawienia-automatyzacje.ejs', {
+    return reply.view('ustawienia-automatyzacje.ejs', { szerokosc: 'formularz',
       nawigacja: nawigacjaUstawien(req, reply),
       zapisano: req.query?.zapisano === 'formulka' ? 'Zapisano ustawienia autorespondera.' : null,
       title: tytulEkranuDlaAdresu(req.url),

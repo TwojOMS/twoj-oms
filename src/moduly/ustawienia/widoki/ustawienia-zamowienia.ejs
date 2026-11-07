@@ -1,10 +1,5 @@
 <% const dostawa = nawigacja?.kontekst?.aktywnaZakladka === 'dostawa'; %>
-<% if (!dostawa) { %>
-<%# PRZ-152.G11a: jeden tytuł; „+ Dodaj szablon” i „Edytuj” działają bez JS (?dodaj=1, ?edytuj=<id>). %>
-<div class="ust-naglowek-szablonow"><h1><%= title %></h1><a class="ust-przycisk" href="/ustawienia/zamowienia-i-wysylka?dodaj=1">+ Dodaj szablon</a></div>
-<% } else { %>
-<h1><%= title %></h1>
-<% } %>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (title)}) %>
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 
@@ -42,8 +37,8 @@
         <td class="ust-akcje-wiersza">
           <form id="<%= f %>" method="post" action="/ustawienia/paczka/szablon">
             <input type="hidden" name="id" value="<%= s.id %>">
-            <button class="ust-przycisk" type="submit">Zapisz</button>
-            <a class="ust-przycisk" href="<%= powrot %>">Anuluj</a>
+            <button class="btn btn--maly btn--glowny" type="submit">Zapisz</button>
+            <a class="btn btn--maly" href="<%= powrot %>">Anuluj</a>
           </form>
         </td>
       <% } else { %>
@@ -51,11 +46,11 @@
         <td class="ust-liczba"><%= liczba(s.waga) %> kg</td>
         <td class="ust-liczba"><%= liczba(s.dlugosc) %> × <%= liczba(s.szerokosc) %> × <%= liczba(s.wysokosc) %> cm</td>
         <td><% if (domyslny) { %><span class="ust-plakietka-domyslny">domyślny</span><% } else { %>
-          <form method="post" action="/ustawienia/paczka/szablon/<%= encodeURIComponent(s.id) %>/domyslny"><button class="ust-przycisk" type="submit">Ustaw domyślny</button></form>
+          <form method="post" action="/ustawienia/paczka/szablon/<%= encodeURIComponent(s.id) %>/domyslny"><button class="btn btn--maly" type="submit">Ustaw domyślny</button></form>
         <% } %></td>
         <td class="ust-akcje-wiersza">
-          <a class="ust-przycisk" href="<%= powrot %>?edytuj=<%= encodeURIComponent(s.id) %>">Edytuj</a>
-          <% if (!domyslny) { %><form method="post" action="/ustawienia/paczka/szablon/<%= encodeURIComponent(s.id) %>/usun"><button class="ust-przycisk ust-kosz" type="submit" aria-label="Usuń szablon <%= s.nazwa %>" title="Usuń szablon"><%- ikonaKosza %></button></form><% } %>
+          <a class="btn btn--maly" href="<%= powrot %>?edytuj=<%= encodeURIComponent(s.id) %>">Edytuj</a>
+          <% if (!domyslny) { %><form method="post" action="/ustawienia/paczka/szablon/<%= encodeURIComponent(s.id) %>/usun"><button class="btn btn--maly btn--groza ust-kosz" type="submit" aria-label="Usuń szablon <%= s.nazwa %>" title="Usuń szablon"><%- ikonaKosza %></button></form><% } %>
         </td>
       <% } %>
       </tr>
@@ -71,8 +66,8 @@
         <td></td>
         <td class="ust-akcje-wiersza">
           <form id="<%= f %>" method="post" action="/ustawienia/paczka/szablon">
-            <button class="ust-przycisk" type="submit">Zapisz</button>
-            <a class="ust-przycisk" href="<%= powrot %>">Anuluj</a>
+            <button class="btn btn--maly btn--glowny" type="submit">Zapisz</button>
+            <a class="btn btn--maly" href="<%= powrot %>">Anuluj</a>
           </form>
         </td>
       </tr>
@@ -102,7 +97,7 @@
       </div>
       <label class="ust-pole-jednostka">Waga <input name="waga" value="<%= w.waga %>" inputmode="decimal" required aria-label="Waga (kg) — <%= nazwa %>"> kg</label>
       <span class="ust-automat-wymiary"><% gabaryty.forEach(function ([g, wym]) { %><span data-gabaryt="<%= g %>"><%= wym %></span><% }); %></span>
-      <span class="ust-automat-akcje"><button class="ust-przycisk" type="submit">Zapisz</button><%- przyciskWszystkie || '' %></span>
+      <span class="ust-automat-akcje"><button class="btn btn--maly" type="submit">Zapisz</button><%- przyciskWszystkie || '' %></span>
     </form>
 <% } %>
 <div class="ust-sekcja ust-sekcja-szeroka">
@@ -120,7 +115,7 @@
     <% uslugiAutomatow.forEach(function (u) {
          const wlasne = Object.hasOwn(automaty.wyjatki, u.id);
          const jakWszystkie = wlasne
-           ? `<button class="ust-przycisk" type="submit" formaction="/ustawienia/paczka/automat/${encodeURIComponent(u.id)}/jak-wszystkie" formnovalidate>jak wszystkie</button>`
+           ? `<button class="btn btn--maly" type="submit" formaction="/ustawienia/paczka/automat/${encodeURIComponent(u.id)}/jak-wszystkie" formnovalidate>jak wszystkie</button>`
            : '<span class="ust-pomoc">jak wszystkie</span>';
          wierszAutomatu({ cel: u.id, nazwa: u.nazwa, opis: wlasne ? 'własne ustawienie' : null, gabaryty: wymiaryAllegro(u.dlugosc),
            w: wartosc(u.id, automaty.wyjatki[u.id] ?? automaty.allegro, automatyStart.allegro), przyciskWszystkie: jakWszystkie });
@@ -144,7 +139,7 @@
         </label>
       <% }); %>
     </div>
-    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zapisz koszty</button></div>
+    <div class="ust-akcje"><button class="btn btn--glowny" type="submit">Zapisz koszty</button></div>
   </form>
   <p style="margin:.8rem 0 0;font-size:.82rem;color:var(--tekst-przygaszony)">
     Zmiana dotyczy zamówień zakładanych od teraz. Nie rusza zapisanych kwot, nadanych paczek ani faktur.

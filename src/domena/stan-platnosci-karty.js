@@ -142,7 +142,8 @@ const grosze = (f) => { try { return f(); } catch { return null; } };
 function opisWplaty(p, liczona) {
   if (!liczona) return 'Data zapłaty ze sklepu przy pobraniu — nie jest wpłatą';
   const metoda = normalizujMetode(p?.metoda);
-  const nazwa = metoda.klucz === 'nieokreslona' && p?.metoda ? String(p.metoda) : metoda.etykieta;
+  // Dopisek w nawiasie (np. „Allegro (płatność online)”) jest dla statystyk; w ruchu łamał opis na 2 linie.
+  const nazwa = metoda.klucz === 'nieokreslona' && p?.metoda ? String(p.metoda) : metoda.etykieta.replace(/\s*\(.*\)$/, '');
   return `Wpłata · ${nazwa}${p?.zrodlo === 'sklep' ? ' · ze sklepu' : ''}`;
 }
 

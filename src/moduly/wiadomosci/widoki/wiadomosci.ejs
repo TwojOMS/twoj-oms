@@ -1,6 +1,6 @@
 <link rel="stylesheet" href="<%= zasob('messages-prz065.css') %>">
 <section id="oms-messages">
-  <header class="m-head"><h1>Wiadomości</h1><p>Rozmowy z kupującymi · Allegro</p></header>
+  <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Wiadomości', podtytul: 'Rozmowy z kupującymi · Allegro'}) %>
   <% if (sprawy.length) { %>
     <section class="m-issues" aria-label="Otwarte dyskusje i reklamacje">
       <strong>Dyskusje i reklamacje: <%= sprawy.length %> — odpowiadaj w Allegro</strong>

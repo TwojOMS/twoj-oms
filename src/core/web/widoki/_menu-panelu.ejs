@@ -1,12 +1,13 @@
 <nav class="oms-menu" aria-label="<%= mobilna ? 'Główna — telefon' : 'Główna' %>">
   <% (nawigacja.boczne ?? []).forEach(function(grupa) { %>
     <section class="oms-menu-grupa" aria-label="<%= grupa.etykieta %>">
-      <h2><%= grupa.etykieta %></h2>
+      <% if (!locals.zwiniete || mobilna) { %><h2><%= grupa.etykieta %></h2><% } %>
       <ul>
         <% grupa.pozycje.forEach(function(p) { %>
           <%# PRZ-102.03: pozycja ze statusami dostaje klasę — na telefonie zajmuje cały wiersz siatki dwóch kolumn. %>
           <% const zeStatusami = p.klucz === 'zamowienia' && (statusyMenu ?? []).length > 0; %>
-          <li<%- zeStatusami ? ' class="oms-menu-ze-statusami"' : '' %>><a href="<%= p.href %>"<%- p.aktywna ? ' aria-current="page"' : '' %>><%- include('_ikona-panelu.ejs', {klucz:p.klucz}) %><span><%= p.etykieta %></span></a>
+          <%_ const liczba = p.klucz === 'wiadomosci' ? (locals.licznikWiadomosci ?? 0) : 0; _%>
+          <li<%- zeStatusami ? ' class="oms-menu-ze-statusami"' : '' %>><a href="<%= p.href %>"<%_ if ((locals.zwiniete || locals.ikony) && !mobilna) { _%> title="<%= p.etykieta + (liczba ? ` (${liczba})` : '') %>"<%_ } _%><%- p.aktywna ? ' aria-current="page"' : '' %>><%- include('_ikona-panelu.ejs', {klucz:p.klucz}) %><span><%= p.etykieta %></span><%_ if (liczba) { _%><span class="licznik oms-wiadomosci-licznik" aria-label="Czeka na odpowiedź: <%= liczba %>"><%= liczba %></span><%_ } _%></a>
             <%# PRZ-066: statusy wracają do bocznego menu, pod „Zamówienia” (prośba właściciela 13.10). %>
             <%# `data-status` tylko w wersji komputerowej — menu telefonowe stoi w tym samym HTML, %>
             <%# a licznik ma mieć w dokumencie jedno źródło (test demo liczy wystąpienia). %>

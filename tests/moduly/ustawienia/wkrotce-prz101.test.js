@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { STRONY_WKROTCE } from '../../../src/domena/ustawienia-wkrotce.js';
-import { podmenuUstawien } from '../../../src/domena/podmenu-ustawien.js';
+import { podmenuUstawien, modelNawigacjiUstawien } from '../../../src/domena/podmenu-ustawien.js';
 import { nowyPanel, jako, get, post } from '../../pomoc/konta-prz068.js';
 
 function panel(kopie, drukFaktur) {
@@ -15,7 +15,7 @@ function panel(kopie, drukFaktur) {
   ustawUprawnienia(p.db, kontoPoLoginie(p.db, 'ewa').id, ['zamowienia']);
   return { ...p, admin: jako(p.db, 'adam'), ewa: jako(p.db, 'ewa') };
 }
-const tresc = (html) => /<main class="kolumna-glowna">([\s\S]*)<\/main>/u.exec(html)?.[1] ?? '';
+const tresc = (html) => /<main class="kolumna-glowna[^"]*">([\s\S]*)<\/main>/u.exec(html)?.[1] ?? '';
 const strona = (html) => /<section class="ust-sekcja ust-wkrotce">[\s\S]*?<\/section>/u.exec(html)?.[0] ?? '';
 
 it('C05b: instrukcja faktur i brak usługi lub błąd nie psują strony', async () => {
@@ -74,7 +74,11 @@ describe('PRZ-101.01 Ustawienia — strony „wkrótce”', () => {
     expect(r.statusCode, r.body).toBe(200);
     expect(r.body).toContain(`<title>${s.tytul}</title>`);
     const t = tresc(r.body);
-    expect(t).toContain(`<h1>${s.tytul}</h1>`);
+    // PRZ-154 E2.1: w działach h1 należy do powłoki; strony bez działu mają własny h1.
+    const dzial = modelNawigacjiUstawien(href, {admin: true}).dzialy?.find(d => d.aktywna);
+    const zakladka = modelNawigacjiUstawien(href, {admin: true}).zakladki.find(z => z.aktywna);
+    if (dzial && s.tytul === zakladka?.etykieta) expect(t).not.toContain(`<h2 class="naglowek-formularza">${s.tytul}</h2>`);
+    else expect(t).toContain(dzial ? `<h2 class="naglowek-formularza">${s.tytul}</h2>` : `<h1>${s.tytul}</h1>`);
     const sekcja = strona(r.body);
     expect(sekcja).toContain(s.opis);
     for (const punkt of s.punkty) expect(sekcja).toContain(`<li>${punkt}</li>`);

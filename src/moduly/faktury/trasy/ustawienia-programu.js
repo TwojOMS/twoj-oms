@@ -129,7 +129,7 @@ export function registerUstawieniaProgramuRoutes(app, { db, wyborProgramu, konfi
   }
 
   function widok(req, reply, { bledy = [] } = {}) {
-    return reply.view('ustawienia-programu.ejs', {
+    return reply.view('ustawienia-programu.ejs', { szerokosc: 'formularz',
       nawigacja: nawigacjaUstawien(req, reply), title: tytulEkranuDlaAdresu(req.url),
       zapisano: KOMUNIKATY[req.query?.zapisano] ?? null, bledy, ekran: model(req),
     });

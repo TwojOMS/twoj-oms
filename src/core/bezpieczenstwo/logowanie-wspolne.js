@@ -16,7 +16,7 @@ export const TRASY_OTWARTE = ['/login', '/health', '/favicon.ico'];
 
 // ⚠️ ZASOBY STATYCZNE MUSZA BYC OTWARTE — inaczej EKRAN LOGOWANIA RENDERUJE SIE BEZ STYLOW.
 // Zadanie o arkusz albo font NIE MA naglowka `Accept: text/html`, wiec straznik nie uzna go
-// za wejscie przegladarki i odesle do Basic Auth: przegladarka dostaje 401 na `app.css`
+// za wejscie przegladarki i odesle do Basic Auth: przegladarka dostaje 401 na arkusz CSS
 // i pokazuje ekran logowania czcionka systemowa, bez ani jednej barwy marki.
 // Zlapane w przegladarce 2026-08-09; testy HTML tego NIE WIDZA, bo status samej strony
 // jest wtedy poprawny — 200.

@@ -1,0 +1,22 @@
+<%_ const dzialUstawien = locals.nawigacja?.kontekst?.dzialy?.find(d => d.aktywna);
+// Powłoka Ustawień nadaje h1 działowi; nazwa formularza pozostaje nagłówkiem niższego poziomu.
+if (dzialUstawien && !locals.naglowekDzialu) { _%>
+<%_ const aktywnaZakladka = locals.nawigacja.kontekst.zakladki?.find(z => z.aktywna);
+if (tytul !== dzialUstawien.etykieta && tytul !== aktywnaZakladka?.etykieta) { _%><h2 class="naglowek-formularza"><%= tytul %></h2><%_ } _%>
+<%_ } else { _%>
+<header class="naglowek-ekranu"<% if (locals.idNaglowka) { %> id="<%= idNaglowka %>"<% } %>>
+  <div class="naglowek-ekranu__wiersz">
+    <div class="naglowek-ekranu__tytul">
+      <h1><%= tytul %></h1>
+      <%_ if (locals.podtytul) { _%><span class="naglowek-ekranu__podtytul"><%= podtytul %></span><%_ } _%>
+      <%_ if (locals.licznik) { _%><span class="naglowek-ekranu__podtytul"><%= licznik %></span><%_ } _%>
+      <%_ if (locals.opisHtml) { _%><div class="naglowek-ekranu__podtytul"><%- opisHtml %></div><%_ } _%>
+    </div>
+    <%_ if (locals.akcje) { _%><div class="naglowek-ekranu__akcje"><%- akcje %></div><%_ } _%>
+  </div>
+  <%_ if (locals.zakladki) { _%><%- zakladki %><%_ }
+  else if (!dzialUstawien && locals.nawigacja?.analizy?.aktywna) { _%>
+    <%- include('_zakladki-analiz.ejs', {nawigacja}) %>
+  <%_ } _%>
+</header>
+<%_ } _%>

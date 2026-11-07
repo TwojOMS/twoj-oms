@@ -1,4 +1,4 @@
-<h1>Włączone funkcje</h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Włączone funkcje"}) %>
 <p>Import i eksport oraz API i webhooki są planowane. Nie są jeszcze dostępne w tym ekranie.</p>
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (blad) { %><div class="pas-uprzedzenie" role="alert"><p><%= blad %></p></div><% } %>

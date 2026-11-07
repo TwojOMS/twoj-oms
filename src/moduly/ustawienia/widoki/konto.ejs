@@ -4,12 +4,12 @@
   Formularze bez tokenu CSRF — ochrona po nagłówku Origin, jak cały panel. Wartości wyłącznie przez znacznik escapujący.
 %>
 <% if (serwisowe) { %>
-<h1>Moje konto</h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Moje konto"}) %>
 <div class="ust-sekcja">
   <p>Konto serwisowe nie ma własnej strony — loguje się hasłem z .env.</p>
 </div>
 <% } else { %>
-<h1><%= adminWidok ? konto.imie : 'Moje konto' %></h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (adminWidok ? konto.imie : 'Moje konto')}) %>
 <% if (wlasne) { %><p><a href="/konto/powiadomienia">Powiadomienia — wybierz widoczne ostrzeżenia</a></p><% } %>
 
 <% if (zapisano) { %>
@@ -54,7 +54,7 @@
         </select>
       </label>
     </div>
-    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zmień rolę</button></div>
+    <div class="ust-akcje"><button class="btn btn--glowny" type="submit">Zmień rolę</button></div>
   </form>
 </div>
 
@@ -64,7 +64,7 @@
     <div class="ust-pola">
       <label>E-mail <input type="email" name="email" required value="<%= konto.email || '' %>"></label>
     </div>
-    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zapisz e-mail</button></div>
+    <div class="ust-akcje"><button class="btn btn--glowny" type="submit">Zapisz e-mail</button></div>
   </form>
 </div>
 
@@ -79,7 +79,7 @@
       <label class="pole-przelacznik"><input type="radio" name="sposob" value="pokaz" checked> Pokaż link do skopiowania</label>
       <label class="pole-przelacznik"><input type="radio" name="sposob" value="mail"> Wyślij mailem</label>
     </div>
-    <div class="ust-akcje"><button class="ust-przycisk" type="submit"><%= konto.zaproszone ? 'Nowy link zaproszenia' : 'Link do resetu hasła' %></button></div>
+    <div class="ust-akcje"><button class="btn" type="submit"><%= konto.zaproszone ? 'Nowy link zaproszenia' : 'Link do resetu hasła' %></button></div>
   </form>
   <% } %>
   <p><a href="/ustawienia/konta#konto-<%= konto.id %>">Wróć do listy kont</a></p>
@@ -93,7 +93,7 @@
     <div class="ust-pola">
       <label>Imię <input name="imie" required maxlength="60" value="<%= konto.imie %>"></label>
     </div>
-    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zapisz imię</button></div>
+    <div class="ust-akcje"><button class="btn btn--glowny" type="submit">Zapisz imię</button></div>
   </form>
 </div>
 
@@ -106,7 +106,7 @@
       <label>Nowe hasło <input type="password" name="nowe" autocomplete="new-password" minlength="12" required></label>
       <label>Nowe hasło jeszcze raz <input type="password" name="nowe2" autocomplete="new-password" minlength="12" required></label>
     </div>
-    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Zmień hasło</button></div>
+    <div class="ust-akcje"><button class="btn btn--glowny" type="submit">Zmień hasło</button></div>
   </form>
 </div>
 <% } %>

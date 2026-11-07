@@ -1,5 +1,5 @@
 <%# PRZ-101.01: strona „wkrótce” — co tu będzie i co da się zrobić dziś. Treść: domena/ustawienia-wkrotce.js. %>
-<h1><%= strona.tytul %></h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (strona.tytul)}) %>
 
 <section class="ust-sekcja ust-wkrotce">
   <% if (!strona.dziala) { %><p class="ust-wkrotce-stan">Ten ekran jeszcze nie działa.</p><% } %>

@@ -32,8 +32,8 @@
 <% if (!locals.tylkoPolaczenie && k.autoryzacja === 'polaczone') { %>
 <section class="ust-sekcja"><h2>Pobieranie i test połączenia</h2>
   <p>Pauza zatrzymuje pobieranie nowych i zmienionych zamówień. Zachowuje dostęp do obsługi zamówień już zapisanych w OMS. Wznowienie uzupełnia przerwę.</p>
-  <form method="post" action="<%= adres %>/pobieranie"><input type="hidden" name="wersja" value="<%= k.wersja %>"><input type="hidden" name="wlaczone" value="<%= k.pobieranie === 'wlaczone' ? 'nie' : 'tak' %>"><button class="ust-przycisk" type="submit"><%= k.pobieranie === 'wlaczone' ? 'Wstrzymaj pobieranie' : 'Wznów pobieranie' %></button></form>
-  <form method="post" action="<%= adres %>/sprawdz"><input type="hidden" name="wersja" value="<%= k.wersja %>"><p><button class="<%= problem ? 'btn btn--glowny' : 'ust-przycisk' %>" type="submit">Sprawdź połączenie</button></p></form>
+  <form method="post" action="<%= adres %>/pobieranie"><input type="hidden" name="wersja" value="<%= k.wersja %>"><input type="hidden" name="wlaczone" value="<%= k.pobieranie === 'wlaczone' ? 'nie' : 'tak' %>"><button class="btn btn--maly" type="submit"><%= k.pobieranie === 'wlaczone' ? 'Wstrzymaj pobieranie' : 'Wznów pobieranie' %></button></form>
+  <form method="post" action="<%= adres %>/sprawdz"><input type="hidden" name="wersja" value="<%= k.wersja %>"><p><button class="<%= problem ? 'btn btn--maly btn--glowny' : 'btn btn--maly' %>" type="submit">Sprawdź połączenie</button></p></form>
   <p>Test odczytu konta i zamówień niczego nie importuje. Nie sprawdza nadania przesyłki ani wysłania wiadomości.</p>
 </section>
 <% } %>

@@ -1,11 +1,8 @@
 <%# PRZ-091 — import stanu otwarcia: tekst „SKU;ilość” → podgląd → zapis. Widok niczego nie liczy:
     plan (co wejdzie, co odrzucone i dlaczego) i wynik przychodzą z trasy. %>
-<p class="wroc"><a href="/magazyn">← Wróć do magazynu</a></p>
+<p class="wroc"><a href="/magazyn">← Magazyn</a></p>
 
-<div class="glowa-ekranu">
-  <h1>Import stanu otwarcia</h1>
-  <span class="krok">stany liczone od <%= od %></span>
-</div>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Import stanu otwarcia", podtytul: "stany liczone od " + (od)}) %>
 
 <% if (wynik) { %>
   <section class="panel" id="wynik-importu">
@@ -34,7 +31,7 @@
     <% if (plan.doZapisu.length) { %>
       <form method="post" action="/magazyn/stany/import/zapisz">
         <textarea name="tekst" hidden><%= tekst %></textarea>
-        <button type="submit">Zapisz stan otwarcia (<%= plan.doZapisu.length %>)</button>
+        <button type="submit" class="btn btn--glowny">Zapisz stan otwarcia (<%= plan.doZapisu.length %>)</button>
       </form>
     <% } %>
   </section>
@@ -47,6 +44,6 @@
     Najpierw zobaczysz podgląd; nic nie zapisze się bez drugiego kliknięcia.</p>
   <form method="post" action="/magazyn/stany/import">
     <textarea name="tekst" rows="12" cols="60" placeholder="LMP-STO-001;12&#10;LMP-WIS-002;3"><%= tekst %></textarea>
-    <p><button type="submit">Pokaż podgląd</button></p>
+    <p><button type="submit" class="btn btn--glowny">Pokaż podgląd</button></p>
   </form>
 </section>

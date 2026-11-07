@@ -28,7 +28,7 @@ function umowaPobrania(db) {
 export function registerUstawieniaInpostRoutes(app, { db, kurierInpost }) {
   function widok(req, reply, { wpisane = null, bledy = [], test = null } = {}) {
     const stan = stanDlaEkranu(wczytajKonfiguracjeIntegracji(db, KURIER));
-    return reply.view('ustawienia-inpost.ejs', {
+    return reply.view('ustawienia-inpost.ejs', { szerokosc: 'formularz',
       nawigacja: nawigacjaUstawien(req, reply), title: 'InPost',
       zEnv: kurierInpost.zEnv, adresFirmy: kurierInpost.adresFirmy(), ekranAdresu: EKRAN_ADRESU_FIRMY, stan,
       adresApi: ADRES_INPOST,

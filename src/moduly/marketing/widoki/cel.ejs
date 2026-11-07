@@ -1,10 +1,7 @@
 <%# Karta celu (spec 2026-09-13): postep biezacego okresu + PELNA historia zdarzen.
     Historia jest jedynym powodem, dla ktorego cel trzyma zdarzenia, a nie kolumne z liczba —
     bez tego ekranu wybor „tabela zdarzen zamiast licznika" nie dawalby niczego. %>
-<div class="glowa-ekranu">
-  <h1><%= pozycja.cel.nazwa %></h1>
-  <span class="krok"><%= pozycja.nazwa %> · <%= pozycja.cel.rytm %></span>
-</div>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (pozycja.cel.nazwa), podtytul: (pozycja.nazwa) + " · " + (pozycja.cel.rytm)}) %>
 
 <%# ⚠️ UKLAD SEKCJI — niezmiennik 4.88b: `section.panel` ma `padding: 0`, margines daje
     `div.panel-cialo`. Bez tej warstwy kafel, tabela i pola dotykaja ramki panelu. %>

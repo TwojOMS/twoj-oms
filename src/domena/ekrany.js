@@ -155,7 +155,7 @@ export const EKRANY = [
 // koncie bez ptaszka znaczyloby czlowieka zamknietego w panelu, ktorego nie umie opuscic;
 // przelacznik motywu nie niesie zadnej informacji.
 // PRZ-069: strona własnego konta (imię, zmiana hasła) — bez ptaszka, także dla konta bez żadnego ekranu.
-const DLA_KAZDEGO = ['/wyloguj', '/motyw', '/konto', '/konto/imie', '/konto/haslo', '/konto/powiadomienia'];
+const DLA_KAZDEGO = ['/wyloguj', '/motyw', '/menu-boczne', '/konto', '/konto/imie', '/konto/haslo', '/konto/powiadomienia'];
 
 // ⚠️⚠️ TRASY, KTORE ODPYTUJE MASZYNA, A NIE CZLOWIEK — i to jest cala ich definicja.
 //

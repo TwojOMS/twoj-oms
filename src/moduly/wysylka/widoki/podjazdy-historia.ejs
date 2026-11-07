@@ -1,14 +1,8 @@
 <%# PRZ-067: ten sam układ co Przesyłki (tabele-prz065.css) — nagłówek, powierzchnia, przewijak. %>
 <link rel="stylesheet" href="<%= zasob('tabele-prz065.css') %>">
 <section class="prz065-tabele">
-  <p class="wroc"><a href="/przesylki?pokaz=utworzone">← Wróć do przesyłek</a></p>
 
-  <header class="prz065-naglowek">
-    <div>
-      <h1>Historia podjazdów Allegro</h1>
-      <p>Zlecone odbiory kurierskie</p>
-    </div>
-  </header>
+  <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Historia podjazdów Allegro', podtytul: 'Zlecone odbiory kurierskie'}) %>
 
   <div class="panel prz065-powierzchnia">
     <div class="panel-cialo">

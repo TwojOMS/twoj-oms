@@ -147,12 +147,12 @@ it('U41: przyciski mapowania i nazwy są w akapitach karty z odstępem CSS', asy
   const r = await app.inject({url: root + '/' + klucz});
   expect(r.statusCode, r.body).toBe(200);
   const karty = r.body.match(/<section class="ust-sekcja">[\s\S]*?<\/section>/g) ?? [];
-  for (const napis of ['Zapisz mapowanie', 'Zmień nazwę']) {
+  for (const [napis, klasa] of [['Zapisz mapowanie', 'btn btn--maly btn--glowny'], ['Zmień nazwę', 'btn btn--maly']]) {
     const karta = karty.find(html => html.includes('>' + napis + '</button>'));
     expect(karta).toBeDefined();
-    expect(karta).toContain(`<p><button class="ust-przycisk" type="submit">${napis}</button></p>`);
+    expect(karta).toContain(`<p><button class="${klasa}" type="submit">${napis}</button></p>`);
   }
-  const layout = readFileSync('src/core/web/widoki/layout-oms.ejs', 'utf8');
+  const layout = readFileSync('src/public/oms-uklad.css', 'utf8');
   expect(layout).toMatch(/\.ust-sekcja p\s*\{[^}]*margin:\s*0 0 \.8rem\s*;/);
 });
 

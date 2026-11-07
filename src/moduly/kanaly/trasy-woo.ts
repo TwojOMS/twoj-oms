@@ -60,6 +60,7 @@ export function registerTrasyWoo(app:FastifyInstance,o:{db:DatabaseSync;repozyto
   const biezacy=!k?(extra.formularzId?'klucze':'nazwa'):k.autoryzacja==='polaczone'?'stan':!d?.sprawdzono_at?'klucze':Object.keys(mapowanie.instancje??{}).length&&Array.isArray(mapowanie.bramkiPobrania)?'start':'mapowanie';
   const indeks=konfigurator.kroki.findIndex(s=>s.id===biezacy);
   return reply.view(k?'woo-sklep.ejs':'woo-konfigurator.ejs',{
+    ...(!k ? { szerokosc: 'formularz' } : {}),
    zakresDatyStartu:zakresDatyStartu(teraz()),
    title:k?'WooCommerce — '+k.nazwa:'Podłącz sklep WooCommerce',nawigacja:nawigacjaUstawien(k?req:{...req,url:'/ustawienia/integracje/katalog'},reply),
    k,root,adres:k?url(k.klucz):url('nowy'),adresSklepu:e?.adres??d?.adres??'',konfigurator,adresAkcji,

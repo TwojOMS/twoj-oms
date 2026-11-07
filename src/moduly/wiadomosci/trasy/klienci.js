@@ -48,8 +48,10 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
     formularz = {}, blad = null, edytowany = null, komunikat = null, otwarty = false,
     daneZGus = null, komunikatGus = null,
   } = {}) {
-    return reply.view('klienci.ejs', {
+    return reply.view('klienci.ejs', { szerokosc: edytowany ? 'formularz' : 'tabela',
       title: 'Stali klienci',
+      okruszki: edytowany ? [{ tekst: 'Stali klienci', href: '/klienci' },
+        { tekst: edytowany.nazwa, href: `/klienci/${edytowany.id}` }, { tekst: 'Edycja' }] : undefined,
       otwarty,
       // ⚠️ RAZEM Z NIEAKTYWNYMI — to jest jedyny ekran, na którym wygaszony klient ma być
       // widoczny. Gdyby i tu go nie było, „wygaszenie" byłoby nieodwracalne przez panel.
@@ -99,6 +101,7 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
     const zamowienia = zamowieniaPoNip(db, klient.nip);
     return reply.view('klient.ejs', {
       title: `Klient: ${klient.nazwa}`,
+      okruszki: [{ tekst: 'Stali klienci', href: '/klienci' }, { tekst: klient.nazwa }],
       klient,
       opis: opisKlienta(klient, { zwolniona: zwolnionaFirma() }),
       zamowienia,

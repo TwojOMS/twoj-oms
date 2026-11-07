@@ -1,5 +1,5 @@
 <div class="klucze-api">
-<h1>Klucze API</h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Klucze API"}) %>
 <p>Klucze pozwalają integracjom korzystać z OMS. Nadaj tylko potrzebny dostęp.</p>
 <% if (blad) { %><div class="pas-uprzedzenie" role="alert"><p><%= blad %></p></div><% } %>
 <% if (potwierdzenie) { %>
@@ -8,7 +8,7 @@
     <div class="klucze-api-akcje">
       <form method="post" action="/ustawienia/klucze-api/<%= potwierdzenie.klucz.id %>/<%= potwierdzenie.akcja %>">
         <input type="hidden" name="potwierdzam" value="tak">
-        <button type="submit" class="ust-przycisk grozny">Tak, <%= potwierdzenie.przycisk %></button>
+        <button type="submit" class="btn btn--groza">Tak, <%= potwierdzenie.przycisk %></button>
       </form>
       <a href="/ustawienia/klucze-api">Anuluj</a>
     </div>
@@ -21,7 +21,7 @@
     <label for="klucz-api-wartosc">Twój klucz</label>
     <div class="klucze-api-kopiowanie">
       <input type="text" id="klucz-api-wartosc" readonly autocomplete="off" spellcheck="false" value="<%= klucz %>">
-      <button type="button" class="ust-przycisk" data-kopiuj-klucz aria-label="Kopiuj klucz" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h3"/></svg></button>
+      <button type="button" class="btn" data-kopiuj-klucz aria-label="Kopiuj klucz" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h3"/></svg></button>
     </div>
     <p data-kopiowanie-wynik role="status" aria-live="polite"></p>
   </div>
@@ -45,7 +45,7 @@
         <% }); %>
       </div>
     </fieldset>
-    <div class="ust-akcje"><button type="submit" class="ust-przycisk">Utwórz klucz</button></div>
+    <div class="ust-akcje"><button type="submit" class="btn btn--glowny">Utwórz klucz</button></div>
   </form>
 </div>
 <h2>Twoje klucze</h2>
@@ -59,11 +59,11 @@
     <div class="klucze-api-akcje">
     <% if (!k.odwolany_at) { %>
       <form method="post" action="/ustawienia/klucze-api/<%= k.id %>/odwolaj" data-odwolaj-klucz>
-        <button type="submit" class="ust-przycisk">Odwołaj</button>
+        <button type="submit" class="btn">Odwołaj</button>
       </form>
     <% } %>
     <form method="post" action="/ustawienia/klucze-api/<%= k.id %>/usun" data-usun-klucz>
-      <button type="submit" class="ust-przycisk grozny">Usuń</button>
+      <button type="submit" class="btn btn--groza">Usuń</button>
     </form>
     </div>
   </div>

@@ -170,7 +170,7 @@ export function registerOkresyRoutes(app, { db, config = {}, infakt: program = n
     // MIESIACE z domeny (nie z widoku) — ta sama lista, z ktorej `opisOdmowy` sklada
     // komunikat odmowy. Trzecia kopia w szablonie znaczylaby, ze odmowa i ekran moga
     // kiedys nazwac ten sam miesiac inaczej.
-    return reply.view('okresy-lista.ejs', { title: 'Okresy rozliczeniowe', okresy, MIESIACE });
+    return reply.view('okresy-lista.ejs', { szerokosc: 'tabela', title: 'Okresy rozliczeniowe', okresy, MIESIACE });
   });
 
   app.get('/okresy/:id', async (req, reply) => {
@@ -180,8 +180,9 @@ export function registerOkresyRoutes(app, { db, config = {}, infakt: program = n
     // Zbior id-kow z WYNIKU podzialu (`dane.anulowane`) — jedno miejsce prawdy o tym,
     // ktore zamowienie jest poza faktura, do ponownego uzycia przy znaczniku wiersza nizej.
     const anulowaneId = new Set(dane.anulowane.map((z) => z.id));
-    return reply.view('okres.ejs', {
+    return reply.view('okres.ejs', { szerokosc: 'tabela',
       title: `Okres ${okres.rok}-${String(okres.miesiac).padStart(2, '0')}`,
+      okruszki: [{ tekst: 'Okresy', href: '/okresy' }, { tekst: `Okres ${okres.rok}-${String(okres.miesiac).padStart(2, '0')}` }],
       ...dane,
       // Ta sama lista nazw miesiecy, ktorej uzywa komunikat odmowy (domain/okres-rozliczeniowy.js).
       MIESIACE,

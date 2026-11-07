@@ -28,7 +28,7 @@
         <select id="m-template" name="szablon">
           <% szablony.forEach(s => { %><option value="<%= s.id %>"><%= s.nazwa %></option><% }) %>
         </select>
-        <button type="submit">Wstaw</button>
+        <button class="btn" type="submit">Wstaw</button>
         <span class="m-help"><%= zamowienieSzablonow ? 'Pola z zamówienia nr ' + zamowienieSzablonow.numer + ' tego kupującego.' : 'Nie znaleziono zamówienia tego kupującego — pola z zamówienia zostaną puste.' %></span>
         <% szablony.forEach(s => { %><template data-szablon="<%= s.id %>"><%= s.tekst %></template><% }) %>
       </form>
@@ -36,15 +36,15 @@
     <form class="m-compose" method="post" enctype="multipart/form-data" action="<%= adres %>/odpowiedz" data-message-compose data-own-sent="<%= typeof potwierdzonyDowod!=='undefined'?potwierdzonyDowod:'' %>" data-own-text="<%= typeof potwierdzonyDowod!=='undefined'?(lista.find(d=>d.wyslany_at&&String(d.id)===potwierdzonyDowod)?.tresc||''):'' %>" data-draft-key="<%= JSON.stringify([typeof konto!=='undefined'&&konto?String(konto.id):'legacy',w.kanal,w.thread_id]) %>" data-sent-revision="<%= lista.filter(d=>d.wyslany_at).map(d=>d.id).join(',') %>" data-send-error="<%= !!blad %>">
       <label for="m-reply">Odpowiedź · <%= w.interlocutor_login || 'kupujący' %></label>
       <textarea id="m-reply" name="tresc" maxlength="<%= maks %>" rows="4" placeholder="Napisz odpowiedź…" required><%= szkic || '' %></textarea>
-      <div class="m-attach-tools"><label for="m-files">Dodaj załącznik</label><input id="m-files" type="file" name="zalaczniki" multiple accept=".pdf,.png,.gif,.bmp,.tif,.tiff,.jpg,.jpeg" aria-describedby="m-file-limits"><button type="button" data-message-attach hidden>Dodaj załącznik</button></div>
+      <div class="m-attach-tools"><label for="m-files">Dodaj załącznik</label><input id="m-files" type="file" name="zalaczniki" multiple accept=".pdf,.png,.gif,.bmp,.tif,.tiff,.jpg,.jpeg" aria-describedby="m-file-limits"><button class="btn" type="button" data-message-attach hidden>Dodaj załącznik</button></div>
       <ul class="m-attachments" id="m-attachments" aria-label="Wybrane załączniki"></ul>
       <p class="m-help" id="m-file-limits">PDF, PNG, GIF, BMP, TIFF, JPEG · do 5 MiB na plik. Limit OMS: 5 plików, 20 MiB łącznie. Po opuszczeniu strony wybierz pliki ponownie.</p>
-      <div class="m-compose-tools" hidden><button type="button" data-message-preview>Podgląd odpowiedzi</button><button type="button" data-message-save>Zapisz szkic</button><span id="m-count"></span></div>
+      <div class="m-compose-tools" hidden><button class="btn" type="button" data-message-preview>Podgląd odpowiedzi</button><button class="btn" type="button" data-message-save>Zapisz szkic</button><span id="m-count"></span></div>
       <p class="m-help" role="status" id="m-draft-status">Najwyżej <%= maks %> znaków. Tekst odpowiedzi jest wymagany.</p>
       <label class="m-confirm"><input type="checkbox" name="potwierdzam" value="tak" required> <span>Wyślij to do kupującego. Tego nie da się cofnąć.</span></label>
-      <button type="submit" class="m-send">Wyślij</button>
+      <button type="submit" class="btn btn--glowny m-send">Wyślij</button>
     </form>
-    <dialog class="m-preview-dialog" aria-labelledby="m-preview-title"><h2 id="m-preview-title">Podgląd odpowiedzi</h2><p class="m-preview-text"></p><ul class="m-attachments m-preview-files" aria-label="Załączniki w odpowiedzi"></ul><p class="m-help">To podgląd. Wiadomość nie została wysłana.</p><button type="button" data-message-close>Zamknij podgląd</button></dialog>
-    <% if(stan==='czeka'){ %><form class="m-complete" method="post" action="<%= adres %>/zalatwione"><span>Nie wymaga odpowiedzi?</span><button type="submit">Załatwione</button><p>Nie wysyła wiadomości do klienta. Wątek wróci do obsługi, gdy klient napisze ponownie.</p></form><% } %>
+    <dialog class="m-preview-dialog" aria-labelledby="m-preview-title"><h2 id="m-preview-title">Podgląd odpowiedzi</h2><p class="m-preview-text"></p><ul class="m-attachments m-preview-files" aria-label="Załączniki w odpowiedzi"></ul><p class="m-help">To podgląd. Wiadomość nie została wysłana.</p><button class="btn" type="button" data-message-close>Zamknij podgląd</button></dialog>
+    <% if(stan==='czeka'){ %><form class="m-complete" method="post" action="<%= adres %>/zalatwione"><span>Nie wymaga odpowiedzi?</span><button class="btn" type="submit">Załatwione</button><p>Nie wysyła wiadomości do klienta. Wątek wróci do obsługi, gdy klient napisze ponownie.</p></form><% } %>
   <% } %>
 <% } %>

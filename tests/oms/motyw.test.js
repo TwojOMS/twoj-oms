@@ -12,7 +12,7 @@ const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null })
 
 describe('formularz automatyzacji na telefonie', () => {
   it('do 40rem układa etykiety nad polami jak pozostałe Ustawienia', () => {
-    const layout = readFileSync(new URL('../../src/core/web/widoki/layout-oms.ejs', import.meta.url), 'utf8');
+    const layout = readFileSync(new URL('../../src/public/oms-uklad.css', import.meta.url), 'utf8');
     const css = readFileSync(new URL('../../src/public/oms-design.css', import.meta.url), 'utf8');
     expect(layout).toMatch(/@media\s*\(max-width:\s*40rem\)\s*\{\s*\.ust-formularz\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);/);
     // Bez selektora o tej samej szczegółowości dwie kolumny automatyzacji wygrywają z layoutem.
@@ -111,8 +111,9 @@ describe('przełącznik motywu w panelu', () => {
   // Sam znacznik na <html> nic nie daje, jesli arkusz nie ma czego podmienic.
   it('arkusz niesie obie palety', async () => {
     const r = await app.inject({ method: 'GET', url: '/', headers: naglowek });
-    expect(r.body).toContain('html[data-motyw="ciemny"]');
-    expect(r.body).toContain('color-scheme: dark');
+    const arkusz = readFileSync(new URL('../../src/public/oms-uklad.css', import.meta.url), 'utf8');
+    expect(arkusz).toContain('html[data-motyw="ciemny"]');
+    expect(arkusz).toContain('color-scheme: dark');
   });
 
   it('przełącznik ustawia ciasteczko i wraca tam, gdzie operator był', async () => {
@@ -171,7 +172,7 @@ describe('przełącznik motywu w panelu', () => {
   // bo nikt nie oglada obu motywow na raz.
   it('arkusz nie ma ani jednego koloru poza paletami', async () => {
     const r = await app.inject({ method: 'GET', url: '/', headers: naglowek });
-    const arkusz = r.body.slice(r.body.indexOf('<style>'), r.body.indexOf('</style>'));
+    const arkusz = readFileSync(new URL('../../src/public/oms-uklad.css', import.meta.url), 'utf8');
     // Wycinamy OBIE palety — tam kolory wprost są jedynym dopuszczalnym miejscem.
     const bezPalet = arkusz
       .replace(/:root\s*\{[\s\S]*?\}/, '')
@@ -184,7 +185,7 @@ describe('przełącznik motywu w panelu', () => {
   // przechodziloby zawsze — takze na arkuszu pelnym kolorow wprost.
   it('sprawdzanie palet nie zjada całego arkusza', async () => {
     const r = await app.inject({ method: 'GET', url: '/', headers: naglowek });
-    const arkusz = r.body.slice(r.body.indexOf('<style>'), r.body.indexOf('</style>'));
+    const arkusz = readFileSync(new URL('../../src/public/oms-uklad.css', import.meta.url), 'utf8');
     const bezPalet = arkusz
       .replace(/:root\s*\{[\s\S]*?\}/, '')
       .replace(/html\[data-motyw="ciemny"\]\s*\{[\s\S]*?\}/, '');

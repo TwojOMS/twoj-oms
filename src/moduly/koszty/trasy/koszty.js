@@ -87,7 +87,7 @@ export function zarejestrujTrasyKosztow(app, {
     // pelnej listy dawalby dwie wartosci o tym samym, ktore nie maja jak sie zgodzic lepiej
     // niz jedna — a tabela i tak pokazuje wszystkie wiersze.
     const odrzucone = odrzuconeKoszty(db);
-    return reply.view('koszty.ejs', {
+    return reply.view('koszty.ejs', { szerokosc: 'tabela',
       title: 'Koszty',
       miesiac,
       ...widok,

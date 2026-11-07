@@ -34,7 +34,7 @@ it('waliduje nazwy, paletę, limit i niezmienność systemowych kluczy', () => {
   expect(kluczNowegoStatusu('Łódź — Żółć', [{ klucz: 'w_lodz_zolc' }])).toBe('w_lodz_zolc_2');
 });
 
-const css = readFileSync(new URL('../../src/core/web/widoki/layout-oms.ejs', import.meta.url), 'utf8');
+const css = readFileSync(new URL('../../src/public/oms-uklad.css', import.meta.url), 'utf8');
 const luminancja = hex => {
   const rgb = hex.match(/[a-f0-9]{2}/gi).map(v => parseInt(v, 16) / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
   return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;

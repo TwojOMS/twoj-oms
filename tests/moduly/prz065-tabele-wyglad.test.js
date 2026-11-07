@@ -6,6 +6,14 @@ const root = resolve(import.meta.dirname, '../..');
 const odczytaj = (sciezka) => readFileSync(resolve(root, sciezka), 'utf8');
 
 describe('PRZ-065 — zwarte tabele Przesyłek i Faktur', () => {
+  it('nie centruje ani nie ogranicza szerokości ramy treści', () => {
+    const css = odczytaj('src/public/tabele-prz065.css');
+    const rama = css.match(/\.prz065-tabele\s*\{([^}]*)\}/)?.[1];
+    expect(rama).toBeDefined();
+    expect(rama).not.toMatch(/max-width\s*:/);
+    expect(rama).not.toMatch(/margin\s*:[^;]*\bauto\b/);
+  });
+
   it('ma wspólny, ograniczony do tych ekranów arkusz oraz nową hierarchię roboczą', () => {
     const przesylki = odczytaj('src/moduly/wysylka/widoki/przesylki-lista.ejs');
     const faktury = odczytaj('src/moduly/faktury/widoki/faktury.ejs');
@@ -14,7 +22,7 @@ describe('PRZ-065 — zwarte tabele Przesyłek i Faktur', () => {
     for (const widok of [przesylki, faktury]) {
       expect(widok).toContain(`href="<%= zasob('tabele-prz065.css') %>"`); // PRZ-100: adres z wersją
       expect(widok).toContain('prz065-tabele');
-      expect(widok).toContain('prz065-naglowek');
+      expect(widok).toContain('_naglowek-ekranu.ejs'); // PRZ-154 E2.1: nagłówek wspólny dla wszystkich ekranów.
     }
     expect(css).toContain('.prz065-tabele');
     expect(css).toMatch(/(^|\n)\.prz065-status \{/);

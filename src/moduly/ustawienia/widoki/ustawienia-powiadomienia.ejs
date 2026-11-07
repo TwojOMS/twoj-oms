@@ -1,4 +1,4 @@
-<h1>Powiadomienia</h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Powiadomienia"}) %>
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (blad) { %><div class="pas-uprzedzenie"><p><%= blad %></p></div><% } %>
@@ -14,6 +14,6 @@
         <label><input type="checkbox" name="widoczne" value="<%= r.typ %>" <%= ukryte.includes(r.typ) ? '' : 'checked' %> <%= moznaZapisac ? '' : 'disabled' %>> <strong><%= r.nazwa %></strong><br><span class="wyjasnienie"><%= r.opis %></span></label>
       </p>
     <% }); %>
-    <% if (moznaZapisac) { %><div class="ust-akcje"><button class="ust-przycisk" type="submit">Zapisz</button></div><% } %>
+    <% if (moznaZapisac) { %><div class="ust-akcje"><button class="btn btn--glowny" type="submit">Zapisz</button></div><% } %>
   </form>
 </section>

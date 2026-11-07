@@ -1,5 +1,5 @@
 <div class="allegro-konfiguracja">
-<h1><%= etykieta %></h1>
+<%- include('../widoki/_naglowek-ekranu.ejs', {tytul: etykieta}) %>
 <p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
 <%- include('kroki-konfiguratora', { kroki }) %>
 <%- include('krok-konfiguratora', { krok, akcja, formularzId: '', wersja: 0, wartosci: {} }) %>

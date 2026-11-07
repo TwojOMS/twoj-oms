@@ -316,7 +316,7 @@ describe('GET /magazyn — sortowanie z adresu', () => {
       const r = await get(app, `/magazyn?sort=${encodeURIComponent(zly)}`);
       expect(r.statusCode).toBe(200);
       expect(r.body.indexOf('Karta-A')).toBeLessThan(r.body.indexOf('Karta-B'));
-      const tresc = r.body.slice(r.body.indexOf('<main class="kolumna-glowna">'), r.body.indexOf('</main>'));
+      const tresc = r.body.slice(r.body.indexOf('<main class="kolumna-glowna'), r.body.indexOf('</main>'));
       expect(tresc).not.toContain(zly === 'nazwa; DROP TABLE karty_produktow' ? 'DROP TABLE' : `sort=${zly}`);
     }
   });
@@ -332,7 +332,7 @@ describe('GET /magazyn — sortowanie z adresu', () => {
     // jedna kolejnosc, a adres twierdzil drugie, i nikt by tych dwoch rzeczy nie zestawil.
     const zly = await get(app, '/magazyn?sort=constructor&kier=desc');
     expect(zly.body).toMatch(/aria-sort="descending"[^>]*>\s*<a[^>]*>Karta/);
-    const tresc = zly.body.slice(zly.body.indexOf('<main class="kolumna-glowna">'), zly.body.indexOf('</main>'));
+    const tresc = zly.body.slice(zly.body.indexOf('<main class="kolumna-glowna'), zly.body.indexOf('</main>'));
     expect(tresc).not.toContain('sort=constructor');
   });
 

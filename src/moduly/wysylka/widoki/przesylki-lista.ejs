@@ -5,15 +5,10 @@
     (domain/etap-przesylki.js). %>
 <link rel="stylesheet" href="<%= zasob('tabele-prz065.css') %>">
 <section class="prz065-tabele prz065-przesylki">
-  <p class="wroc"><a href="/">← Wróć do listy zamówień</a></p>
 
-  <header class="prz065-naglowek">
-    <div>
-      <h1>Przesyłki</h1>
-      <p>Śledzenie paczek i odbiory kurierskie</p>
-    </div>
-    <a class="btn btn--cichy" href="/przesylki/podjazdy/historia">Historia podjazdów</a>
-  </header>
+  <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Przesyłki',
+    podtytul: 'Śledzenie paczek i odbiory kurierskie',
+    akcje: '<a class="btn btn--drugi" href="/przesylki/podjazdy/historia">Historia podjazdów</a>'}) %>
 
 <div class="panel prz065-powierzchnia">
   <div class="panel-glowa prz065-ukryta-glowa"><h2>Przesyłki</h2></div>

@@ -1,4 +1,4 @@
-<h1>GUS</h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "GUS"}) %>
 <p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
@@ -17,7 +17,7 @@
   <% if (stan) { %>
     <form method="post" action="/ustawienia/integracje/gus/odlacz">
       <p>W OMS-ie został też klucz zapisany wcześniej na tym ekranie. Ustawienia na serwerze mają pierwszeństwo, więc nie jest używany.</p>
-      <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń zapisany klucz</button></div>
+      <div class="ust-akcje"><button class="btn btn--groza" type="submit">Usuń zapisany klucz</button></div>
     </form>
   <% } %>
 </section>
@@ -49,7 +49,7 @@
     <p class="ust-pelna ust-pomoc">Pola oznaczone <span class="ust-wymagane">*</span> są wymagane.</p>
     <div class="ust-pelna ust-akcje">
       <button class="btn btn--glowny" type="submit">Zapisz</button>
-      <a class="ust-przycisk" href="/ustawienia/integracje">Anuluj</a>
+      <a class="btn" href="/ustawienia/integracje">Anuluj</a>
     </div>
   </form>
 </section>
@@ -59,11 +59,11 @@
   <h2>Sprawdzenie i usunięcie</h2>
   <form method="post" action="/ustawienia/integracje/gus/sprawdz">
     <p>Sprawdzenie loguje się do usługi BIR zapisanym kluczem. Nie pyta o żadną firmę i niczego nie zmienia.</p>
-    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Sprawdź połączenie</button></div>
+    <div class="ust-akcje"><button class="btn" type="submit">Sprawdź połączenie</button></div>
   </form>
   <form method="post" action="/ustawienia/integracje/gus/odlacz" onsubmit="return confirm('Usunąć klucz GUS? Przycisk „Pobierz z GUS” zniknie.')" style="margin-top:1rem">
     <p>Usunięcie kasuje klucz z OMS-u. Dane firm wpisane wcześniej do zamówień i Stałych klientów zostają.</p>
-    <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń klucz</button></div>
+    <div class="ust-akcje"><button class="btn btn--groza" type="submit">Usuń klucz</button></div>
   </form>
 </section>
 <% } %>

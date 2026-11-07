@@ -1,11 +1,11 @@
 <p>Allegro podłączy konto, na które ta przeglądarka jest teraz zalogowana na <%= k.srodowisko === 'sandbox' ? 'allegro.pl.allegrosandbox.pl' : 'allegro.pl' %>. Jeśli to inne konto — wyloguj się z Allegro albo otwórz odnośnik w oknie prywatnym.</p>
 <% if (device) { %>
 <p>Kod do wpisania w Allegro:</p>
-<div class="allegro-kod"><code><%= device.userCode %></code><button type="button" class="ust-przycisk" data-kopiuj="<%= device.userCode %>" hidden>Kopiuj</button><span role="status" aria-live="polite"></span></div>
+<div class="allegro-kod"><code><%= device.userCode %></code><button type="button" class="btn btn--maly" data-kopiuj="<%= device.userCode %>" hidden>Kopiuj</button><span role="status" aria-live="polite"></span></div>
 <p>1. Kliknij »Otwórz stronę zgody Allegro« — otworzy się w nowej karcie.<br>2. Zaloguj się na konto, które chcesz podłączyć, wpisz kod i zatwierdź uprawnienia.<br>3. Wróć tutaj i kliknij »Sprawdź, czy zgoda dotarła«.</p>
-<p><a class="ust-przycisk" href="<%= device.adres %>" target="_blank" rel="noreferrer noopener">Otwórz stronę zgody Allegro</a></p>
+<p><a class="btn btn--maly" href="<%= device.adres %>" target="_blank" rel="noreferrer noopener">Otwórz stronę zgody Allegro</a></p>
 <p>Kod wygasa: <%= fmtKiedy(device.wygasaAt, locals.teraz ?? new Date()) %>.</p>
-<form method="post" action="<%= adres %>/zgoda"><input type="hidden" name="probaId" value="<%= device.probaId %>"><button class="ust-przycisk" type="submit">Sprawdź, czy zgoda dotarła</button></form>
+<form method="post" action="<%= adres %>/zgoda"><input type="hidden" name="probaId" value="<%= device.probaId %>"><button class="btn btn--maly" type="submit">Sprawdź, czy zgoda dotarła</button></form>
 <p class="ust-pomoc">Kliknij po zatwierdzeniu w Allegro. Jeśli zgoda jeszcze nie dotarła, poczekaj kilka sekund i kliknij ponownie.</p>
 <%# B5c: bez JS przycisk „Kopiuj” zostaje ukryty; kod da się zaznaczyć ręcznie. Panel w sieci lokalnej (http) nie ma navigator.clipboard — wtedy execCommand. %>
 <script>(function(){var b=document.querySelector('.allegro-kod [data-kopiuj]');if(!b)return;var kod=b.previousElementSibling,st=b.nextElementSibling;b.hidden=false;
@@ -13,21 +13,21 @@ function ok(){st.textContent='Skopiowano';}
 function zaznacz(){try{var r=document.createRange();r.selectNodeContents(kod);var s=window.getSelection();s.removeAllRanges();s.addRange(r);if(document.execCommand('copy'))ok();}catch(e){}}
 b.addEventListener('click',function(){var t=b.getAttribute('data-kopiuj');if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).then(ok,zaznacz);else zaznacz();});})();</script>
 <% } else if (oczekujacaProba) { %>
-<form method="post" action="<%= adres %>/zgoda"><input type="hidden" name="probaId" value="<%= oczekujacaProba %>"><button class="ust-przycisk" type="submit">Sprawdź, czy zgoda dotarła</button></form>
+<form method="post" action="<%= adres %>/zgoda"><input type="hidden" name="probaId" value="<%= oczekujacaProba %>"><button class="btn btn--maly" type="submit">Sprawdź, czy zgoda dotarła</button></form>
 <p class="ust-pomoc">Kliknij po zatwierdzeniu w Allegro. Jeśli zgoda jeszcze nie dotarła, poczekaj kilka sekund i kliknij ponownie.</p>
 <% } else if (k.zrodlo === 'env' && k.autoryzacja === 'odlaczone') { %>
 <h3>Przywracanie połączenia</h3>
 <p>Kanał jest ustawiony przez administratora serwera. Przywrócisz jego dostęp i poprzednie ustawienie pobierania, korzystając z zachowanej pary tokenów.</p>
-<form method="post" action="<%= adres %>/przywroc"><input type="hidden" name="wersja" value="<%= k.wersja %>"><button class="ust-przycisk" type="submit">Przywróć połączenie</button></form>
+<form method="post" action="<%= adres %>/przywroc"><input type="hidden" name="wersja" value="<%= k.wersja %>"><button class="btn btn--maly" type="submit">Przywróć połączenie</button></form>
 <% } else { %>
 <% if (!aplikacjaGotowa && dcrDostepne) { %>
 <h3>Przygotuj aplikację Allegro</h3>
 <p>Uzyskaj w Allegro krótki kod rejestracji tej instalacji i wpisz go tutaj. Rejestrację wykonujesz raz dla danego środowiska; kolejne konta użyją zapisanej aplikacji.</p>
 <form method="post" action="<%= root %>/aplikacja"><input type="hidden" name="kanal" value="<%= k.klucz %>"><input type="hidden" name="srodowisko" value="<%= k.srodowisko %>">
-<p><label for="allegro-kod">Krótki kod z Allegro</label><br><input id="allegro-kod" name="kod" type="password" required maxlength="2048" autocomplete="off"></p><button class="ust-przycisk" type="submit">Zarejestruj aplikację</button>
+<p><label for="allegro-kod">Krótki kod z Allegro</label><br><input id="allegro-kod" name="kod" type="password" required maxlength="2048" autocomplete="off"></p><button class="btn btn--maly" type="submit">Zarejestruj aplikację</button>
 </form>
 <% } %>
 <% if (!aplikacjaGotowa) { %><p><a href="<%= root %>/aplikacja?srodowisko=<%= k.srodowisko %>">Najpierw załóż aplikację Allegro (krok 0).</a></p><% } %>
 <p><%= k.kontoId ? 'Połączysz wyłącznie konto wcześniej przypisane do tego kanału. Pobieranie i zaległe operacje pozostaną wyłączone do osobnego zatwierdzenia.' : 'Po zgodzie pokażemy login i ID do potwierdzenia.' %></p>
-<form method="post" action="<%= adres %>/autoryzacja"><input type="hidden" name="wersja" value="<%= k.wersja %>"><button class="ust-przycisk" type="submit">Przejdź do zgody Allegro</button></form>
+<form method="post" action="<%= adres %>/autoryzacja"><input type="hidden" name="wersja" value="<%= k.wersja %>"><button class="btn btn--maly" type="submit">Przejdź do zgody Allegro</button></form>
 <% } %>

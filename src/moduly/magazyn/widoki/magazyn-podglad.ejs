@@ -23,12 +23,9 @@
   };
 %>
 
-<p class="wroc"><a href="<%= adresPowrotu %>">← Wróć do magazynu</a></p>
+<p class="wroc"><a href="<%= adresPowrotu %>">← Magazyn</a></p>
 
-<div class="glowa-ekranu">
-  <h1>Zapis do sklepów</h1>
-  <span class="krok"><%= wynik ? 'wynik wysyłki' : 'podgląd — nic jeszcze nie poszło do sklepu' %></span>
-</div>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Zapis do sklepów", podtytul: (wynik ? 'wynik wysyłki' : 'podgląd — nic jeszcze nie poszło do sklepu')}) %>
 
 <section class="panel<%= wynik ? '' : ' panel--edycja' %>" id="zapis-zmiany">
   <div class="panel-glowa">

@@ -1,4 +1,4 @@
-<h1>KSeF</h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "KSeF"}) %>
 <p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
@@ -20,7 +20,7 @@
   <% if (stan) { %>
     <form method="post" action="/ustawienia/integracje/ksef/odlacz">
       <p>W OMS-ie został też token zapisany wcześniej na tym ekranie. Ustawienia na serwerze mają pierwszeństwo, więc nie jest używany.</p>
-      <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń zapisany token</button></div>
+      <div class="ust-akcje"><button class="btn btn--groza" type="submit">Usuń zapisany token</button></div>
     </form>
   <% } %>
 </section>
@@ -64,7 +64,7 @@
     <p class="ust-pelna ust-pomoc">Pola oznaczone <span class="ust-wymagane">*</span> są wymagane.</p>
     <div class="ust-pelna ust-akcje">
       <button class="btn btn--glowny" type="submit">Zapisz</button>
-      <a class="ust-przycisk" href="/ustawienia/integracje">Anuluj</a>
+      <a class="btn" href="/ustawienia/integracje">Anuluj</a>
     </div>
   </form>
 </section>
@@ -78,11 +78,11 @@
       <%# PRZ-108.10 (recenzja): bez NIP-u firmy sprawdzenie i tak odmówi — mówimy to przed kliknięciem. %>
       <p class="pas-uprzedzenie"><%= odmowaBrakNip %></p>
     <% } %>
-    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Sprawdź połączenie</button></div>
+    <div class="ust-akcje"><button class="btn" type="submit">Sprawdź połączenie</button></div>
   </form>
   <form method="post" action="/ustawienia/integracje/ksef/odlacz" onsubmit="return confirm('Usunąć token KSeF? OMS przestanie pobierać faktury kosztowe.')" style="margin-top:1rem">
     <p>Usunięcie kasuje token z OMS-u. Koszty pobrane wcześniej i dopisane ręcznie zostają.</p>
-    <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń token</button></div>
+    <div class="ust-akcje"><button class="btn btn--groza" type="submit">Usuń token</button></div>
   </form>
 </section>
 <% } %>

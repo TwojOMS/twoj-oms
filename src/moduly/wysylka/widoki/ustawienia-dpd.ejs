@@ -1,4 +1,4 @@
-<h1>DPD</h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "DPD"}) %>
 <p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
@@ -17,7 +17,7 @@
   <% if (stan) { %>
     <form method="post" action="/ustawienia/integracje/dpd/odlacz">
       <p>W OMS-ie zostały też dane DPD zapisane wcześniej na tym ekranie. Ustawienia na serwerze mają pierwszeństwo, więc nie są używane.</p>
-      <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń zapisane dane DPD</button></div>
+      <div class="ust-akcje"><button class="btn btn--groza" type="submit">Usuń zapisane dane DPD</button></div>
     </form>
   <% } %>
 </section>
@@ -80,7 +80,7 @@
     <p class="ust-pelna ust-pomoc">Wagi i wymiary paczek ustawiasz raz dla wszystkich kurierów: <a href="/ustawienia/zamowienia-i-wysylka">Zamówienia i wysyłka → szablony paczek</a>. Pola oznaczone <span class="ust-wymagane">*</span> są wymagane.</p>
     <div class="ust-pelna ust-akcje">
       <button class="btn btn--glowny" type="submit">Zapisz</button>
-      <a class="ust-przycisk" href="/ustawienia/integracje">Anuluj</a>
+      <a class="btn" href="/ustawienia/integracje">Anuluj</a>
     </div>
   </form>
 </section>
@@ -90,11 +90,11 @@
   <h2>Sprawdzenie i odłączenie</h2>
   <form method="post" action="/ustawienia/integracje/dpd/sprawdz">
     <p>Sprawdzenie pyta DPD o kod pocztowy nadawcy Twoimi danymi logowania. Niczego nie nadaje i nic nie kosztuje.</p>
-    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Sprawdź połączenie</button></div>
+    <div class="ust-akcje"><button class="btn" type="submit">Sprawdź połączenie</button></div>
   </form>
   <form method="post" action="/ustawienia/integracje/dpd/odlacz" onsubmit="return confirm('Odłączyć kuriera DPD? OMS usunie zapisane dane logowania.')" style="margin-top:1rem">
     <p>Odłączenie usuwa dane logowania z OMS-u. Paczki już nadane i ich etykiety zostają.</p>
-    <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Odłącz DPD</button></div>
+    <div class="ust-akcje"><button class="btn btn--groza" type="submit">Odłącz DPD</button></div>
   </form>
 </section>
 <% } %>

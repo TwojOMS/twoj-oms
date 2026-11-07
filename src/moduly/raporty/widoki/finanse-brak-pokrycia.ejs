@@ -1,9 +1,6 @@
 <%# PRZ-102.09: nowa instalacja bez podłogi kosztów — zamiast „wpisz w pliku i uruchom ponownie” pytanie
     wprost na ekranie (administrator) albo prośba do administratora (reszta). Pozostałe daty: /finanse/pokrycie. %>
-<div class="glowa-ekranu">
-  <h1>Finanse</h1>
-  <span class="krok">ile z tego zostaje · <a href="/raporty">sprzedaż</a></span>
-</div>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Finanse", opisHtml: include('_naglowek-opis-finanse-brak-pokrycia.ejs')}) %>
 
 <section class="ust-sekcja" id="finanse-podloga">
   <h2>Od którego miesiąca koszty w OMS-ie są kompletne?</h2>
@@ -18,7 +15,7 @@
     <input type="hidden" name="powrot" value="<%= powrot %>">
     <label for="podlogaKosztow">Miesiąc</label>
     <input id="podlogaKosztow" name="wartosc" type="month" placeholder="RRRR-MM" required>
-    <button class="ust-przycisk" type="submit">Zapisz</button>
+    <button class="btn btn--glowny" type="submit">Zapisz</button>
   </form>
   <p>Zapis działa od razu, bez restartu OMS. Druga droga: linia <code>OMS_RAPORTY_PODLOGA_KOSZTOW=RRRR-MM</code>
     w pliku konfiguracji (<code>oms.env</code>) i restart — wartość z pliku ma pierwszeństwo.</p>

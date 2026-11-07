@@ -2,7 +2,7 @@
     filtr stanu. Włączenie z ostrzeżeniem o nieodwracalności i granicy; wstrzymana reguła ma „Wyślij zaległe (N)”
     i „Pomiń zaległe”. %>
 <p class="szw-powrot"><a href="/ustawienia/automatyzacje">← Automatyzacje</a></p>
-<h1><%= regula.nazwa %></h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (regula.nazwa)}) %>
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (blad) { %><div class="pas-uprzedzenie" role="alert"><p><strong>Nie włączono.</strong> <%= blad %></p></div><% } %>
 <section class="ust-sekcja aut-sekcja" id="regula-stan">
@@ -12,7 +12,7 @@
   <div class="pas-uprzedzenie" role="alert"><p><%= regula.wstrzymana_powod %> Nic nie wyjdzie, dopóki nie zdecydujesz, co zrobić z zaległymi.</p></div>
   <div class="ust-akcje">
     <form method="post" action="/ustawienia/automatyzacje/<%= regula.id %>/zalegle/wyslij"><button class="btn btn--glowny" type="submit">Wyślij zaległe (<%= zalegle %>)</button></form>
-    <form method="post" action="/ustawienia/automatyzacje/<%= regula.id %>/zalegle/pomin"><button class="ust-przycisk" type="submit">Pomiń zaległe</button></form>
+    <form method="post" action="/ustawienia/automatyzacje/<%= regula.id %>/zalegle/pomin"><button class="btn btn--groza" type="submit">Pomiń zaległe</button></form>
   </div>
   <% } else if (regula.wlaczona) { %>
   <p class="ust-stan ust-stan-ok"><strong>Włączona</strong></p>
@@ -32,8 +32,8 @@
   <form method="post" action="/ustawienia/automatyzacje/<%= regula.id %>/wylacz">
     <p class="pas-uprzedzenie">Wyłączenie działa od razu: zaplanowane wykonania tej reguły już nie nastąpią. Ponowne włączenie liczy od nowa — zdarzenia z przerwy zostaną pominięte.</p>
     <div class="ust-akcje">
-      <button class="ust-przycisk grozny" type="submit">Wyłącz regułę</button>
-      <a class="ust-przycisk" href="/ustawienia/automatyzacje/<%= regula.id %>/edytuj">Edytuj</a>
+      <button class="btn" type="submit">Wyłącz regułę</button>
+      <a class="btn" href="/ustawienia/automatyzacje/<%= regula.id %>/edytuj">Edytuj</a>
     </div>
   </form>
   <% } else { %>
@@ -44,11 +44,11 @@
     <% } %>
     <div class="ust-akcje">
       <% if (zdarzenieDostepne && akcjaDostepna && !klopoty.length) { %><button class="btn btn--glowny" type="submit">Włącz regułę</button><% } %>
-      <a class="ust-przycisk" href="/ustawienia/automatyzacje/<%= regula.id %>/edytuj">Edytuj</a>
+      <a class="btn" href="/ustawienia/automatyzacje/<%= regula.id %>/edytuj">Edytuj</a>
     </div>
   </form>
   <form method="post" action="/ustawienia/automatyzacje/<%= regula.id %>/usun" style="margin-top:.6rem">
-    <button class="ust-przycisk grozny" type="submit">Usuń regułę</button>
+    <button class="btn btn--groza" type="submit">Usuń regułę</button>
   </form>
   <% } %>
   <h3>Historia włączania</h3>
@@ -67,7 +67,7 @@
     <select id="aut-filtr-stan" name="stan">
       <% for (const [wartosc, etykieta] of FILTRY) { %><option value="<%= wartosc %>"<%= filtr === wartosc ? ' selected' : '' %>><%= etykieta %></option><% } %>
     </select>
-    <button class="ust-przycisk" type="submit">Pokaż</button>
+    <button class="btn" type="submit">Pokaż</button>
   </form>
   <% if (wykonania.length) { %>
   <div class="przewijak-tabeli">

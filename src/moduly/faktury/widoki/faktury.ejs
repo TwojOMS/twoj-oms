@@ -43,14 +43,7 @@
 
 <link rel="stylesheet" href="<%= zasob('tabele-prz065.css') %>">
 <section class="prz065-tabele prz065-faktury">
-<header class="glowa-ekranu prz065-naglowek">
-  <div>
-    <h1>Faktury</h1>
-    <p>dokumenty sprzedaży · dane z <%= nazwaProgramu.dopelniacz %>, odczyt na żywo</p>
-  </div>
-  <%# Przycisk „Zestawienie PDF" zdjęty z nagłówka 14.10.2026 (PRZ-074, prośba właściciela: stał
-      w dwóch miejscach). Zostaje jeden — przy filtrze miesiąca, z którego bierze miesiąc. %>
-</header>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Faktury', podtytul: `dokumenty sprzedaży · dane z ${nazwaProgramu.dopelniacz}, odczyt na żywo`}) %>
 <nav class="prz065-zakladki prz065-zakladki-faktur" aria-label="Sekcje Faktur">
   <a class="chip" href="#naleznosci">Należności</a>
   <a class="chip chip--aktywny" href="#dokumenty">Faktury</a>
@@ -467,8 +460,7 @@
       </table>
     </div>
     <p class="wyjasnienie">
-      Proformy generuje panel u siebie — <%= nazwaProgramu.mianownik %> takiego dokumentu nie zna. Unieważnione
-      zostają na liście, bo klient może mieć przed sobą starszy PDF.
+      Proformy generowane są w panelu, nie w <%= nazwaProgramu.miejscownik %>.
     </p>
   </div>
 </section>

@@ -14,10 +14,7 @@
 <%# wskazanie wyrazic. Do 07.08.2026 karta pokazywala „Nadaj paczke", ekran wypelnial       %>
 <%# komplet pol, a odmowa padala dopiero po zapakowaniu paczki.                             %>
 
-<div class="glowa-ekranu">
-  <h1>Czym nadać paczkę nr <%= kolejnosc %>?</h1>
-  <span class="krok">zamówienie <a class="link-numer" title="<%= z.numer %>" href="<%= adresKarty %>"><%= z.numer %></a></span>
-</div>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Czym nadać paczkę nr " + (kolejnosc) + "?", opisHtml: include('_naglowek-opis-nadaj-kurier.ejs')}) %>
 
 <%# ⚠️⚠️ TEKST PRZEPISANY 19.09.2026, BO KLAMAL. Poprzedni mowil, ze panel kupuje etykiete %>
 <%# „tylko wtedy, gdy swiadomie kazesz mu uzyc naszej umowy" — czyli ODRADZAL droge %>

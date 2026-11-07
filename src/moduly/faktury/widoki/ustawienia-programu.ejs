@@ -1,4 +1,4 @@
-<h1><%= title %></h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (title)}) %>
 <% const zasady = nawigacja?.kontekst?.aktywnaZakladka === 'zasady'; %>
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
@@ -41,7 +41,7 @@
     <% } else { %>
       <div class="ust-akcje">
         <button class="btn btn--glowny" type="submit">Zapisz</button>
-        <a class="ust-przycisk" href="/ustawienia/integracje">Anuluj</a>
+        <a class="btn" href="/ustawienia/integracje">Anuluj</a>
       </div>
     <% } %>
   </form>

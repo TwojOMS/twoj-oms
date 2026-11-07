@@ -49,7 +49,7 @@ export function registerUstawieniaPocztyRoutes(app, { db, adresPaneluZEnv, poczt
     const zapisAdresu = wczytajKonfiguracjeIntegracji(db, 'adres_panelu');
     const adresZapisany = adresPaneluZZapisu(zapisAdresu);
     const zapisane = stan?.ustawienia ?? {};
-    return reply.view('ustawienia-poczta.ejs', {
+    return reply.view('ustawienia-poczta.ejs', { szerokosc: 'formularz',
       nawigacja: nawigacjaUstawien(req, reply), title: nawigacjaUstawien(req, reply).kontekst.aktywnyDzial === 'komunikacja' ? 'Podpis i stopka' : 'Poczta wychodząca',
       zEnv: stanPoczty.zEnv, atrapa: stanPoczty.atrapa, stan,
       pola: { ...PUSTY, ...Object.fromEntries(Object.entries(zapisane).map(([k, v]) => [k, String(v ?? '')])), ...(wpisane ?? {}) },

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
@@ -63,14 +64,14 @@ beforeEach(() => {
 // slepa — zdjecie klasy przechodzilo na zielono (zmierzone mutacja). Test sprawdza OBIE
 // warstwy, bo sama klasa bez reguly nie farbuje niczego.
 describe('karta: „Zarejestruj zwrot" jest wyróżniony kolorem', () => {
-  it('odnośnik na karcie jest zwykłym przyciskiem, a arkusz zachowuje btn--groza dla innych akcji', async () => {
+  it('odnośnik na karcie jest czerwony (btn--groza), a arkusz zachowuje btn--groza dla innych akcji', async () => {
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: AUTH });
     expect(r.statusCode).toBe(200);
-    // D7 (04.11): wejście do formularza zwrotu bez czerwieni.
-    expect(r.body).toMatch(/<a class="btn btn--maly" href="\/zamowienia\/\d+\/zwrot">Zarejestruj zwrot<\/a>/);
+    // D7 (04.11) zdjęło czerwień; właściciel 06.11 (PRZ-154.E1.7): „Przycisk Zwrotu zrób na czerwono”.
+    expect(r.body).toMatch(/<a class="btn btn--groza" href="\/zamowienia\/\d+\/zwrot">Zarejestruj zwrot<\/a>/);
     // ⚠️ WSZYSTKIE reguly konczace sie na `.btn--groza {`, nie pierwsza z brzegu: arkusz ma
     // takze wariant kontekstowy (`.belka-masowa .btn--groza`, sam `color`), a on stoi wyzej.
-    const reguly = [...r.body.matchAll(/\.btn--groza\s*\{([^}]*)\}/g)];
+    const reguly = [...readFileSync('src/public/oms-uklad.css', 'utf8').matchAll(/\.btn--groza\s*\{([^}]*)\}/g)];
     expect(reguly.length).toBeGreaterThan(0);
     expect(reguly.some((x) => /background:\s*var\(--blad-tekst\)/.test(x[1]))).toBe(true);
   });

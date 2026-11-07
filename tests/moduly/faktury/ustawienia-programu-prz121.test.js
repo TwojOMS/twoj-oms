@@ -239,11 +239,14 @@ describe('PRZ-121.02 ekran Moduł faktur — widok', () => {
     expect(r.body).toContain('OMS sam wystawia faktury i wysyła je do KSeF, bez zewnętrznego programu');
     expect(r.body).toContain('wkrótce');
     expect(formularz(r.body)).toContain('<button class="btn btn--glowny" type="submit">Zapisz</button>');
-    // Tytuł jak w menu Ustawień: H1, <title> i okruszek.
+    // PRZ-154 E2.1: h1 działu, nazwa formularza w h2, title i okruszku.
     const h1 = /<h1[^>]*>([^<]*)<\/h1>/u.exec(r.body)?.[1];
-    expect(h1).toBe('Program do faktur');
-    expect(r.body).toContain(`<title>${h1}</title>`);
-    expect(r.body).toMatch(new RegExp(`class="oms-breadcrumb">[\\s\\S]*?<strong>${h1}</strong>`));
+    expect(h1).toBe('Faktury i podatki');
+    expect(r.body).toMatch(/aria-current="page"[^>]*>Program do faktur</); // PRZ-154.E2.3: nazwa w aktywnej zakładce, bez powtórzonego h2
+    expect(r.body).not.toContain('<h2 class="naglowek-formularza">Program do faktur</h2>');
+    expect(r.body).toContain('<title>Program do faktur</title>');
+    // PRZ-154.E2.3: w Ustawieniach jeden rząd okruszków „Ustawienia / <dział>”, ekran wskazuje aktywna zakładka.
+    expect(r.body).toMatch(/class="oms-breadcrumb"><strong><a class="oms-breadcrumb-link" href="[^"]+">Ustawienia<\/a> \/ <a class="oms-breadcrumb-link" href="[^"]+">[^<]+<\/a><\/strong>/);
   });
 
   it('bez wyboru i bez inFaktu: „Teraz działa: Brak”; z kluczem z pliku: inFakt, zaznaczony inFakt', async () => {
@@ -326,7 +329,8 @@ describe('PRZ-121.02 ekran Moduł faktur — zapis', () => {
     const r = await post(app, ADRES, admin, { program });
     expect(r.statusCode).toBe(400);
     expect(r.body).toContain('Nie zapisano');
-    expect(r.body).toContain('<h1>Program do faktur</h1>');
+    expect(r.body).toMatch(/aria-current="page"[^>]*>Program do faktur</); // PRZ-154.E2.3: nazwa w aktywnej zakładce, bez powtórzonego h2
+    expect(r.body).not.toContain('<h2 class="naglowek-formularza">Program do faktur</h2>');
     expect(wczytajWyborProgramu(db)).toBeNull();
   });
 

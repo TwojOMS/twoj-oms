@@ -18,7 +18,7 @@ export function registerStanyMagazynu(app, { db }) {
   app.get('/magazyn/stany/import', async (_req, reply) => {
     const { wlaczone, granica } = przelacznikStanow(db);
     if (!wlaczone) return wylaczone(reply);
-    return reply.view('magazyn-stany-import.ejs', { title: 'Magazyn — import stanu otwarcia', od: fmtDataCzas(granica),
+    return reply.view('magazyn-stany-import.ejs', { szerokosc: 'formularz', title: 'Magazyn — import stanu otwarcia', od: fmtDataCzas(granica),
       tekst: '', plan: null, wynik: null });
   });
 
@@ -27,7 +27,7 @@ export function registerStanyMagazynu(app, { db }) {
     const { wlaczone, granica } = przelacznikStanow(db);
     if (!wlaczone) return wylaczone(reply);
     const tekst = tekstImportu(req.body);
-    return reply.view('magazyn-stany-import.ejs', { title: 'Magazyn — import stanu otwarcia', od: fmtDataCzas(granica),
+    return reply.view('magazyn-stany-import.ejs', { szerokosc: 'formularz', title: 'Magazyn — import stanu otwarcia', od: fmtDataCzas(granica),
       tekst, plan: podgladImportuOtwarcia(db, tekst), wynik: null });
   });
 
@@ -36,14 +36,14 @@ export function registerStanyMagazynu(app, { db }) {
     if (!wlaczone) return wylaczone(reply);
     const tekst = tekstImportu(req.body);
     const wynik = zapiszImportOtwarcia(db, tekst, { konto: req.konto ?? null });
-    return reply.view('magazyn-stany-import.ejs', { title: 'Magazyn — import stanu otwarcia', od: fmtDataCzas(granica),
+    return reply.view('magazyn-stany-import.ejs', { szerokosc: 'formularz', title: 'Magazyn — import stanu otwarcia', od: fmtDataCzas(granica),
       tekst: '', plan: null, wynik });
   });
 
   app.get('/magazyn/stany/bez-karty', async (_req, reply) => {
     const { wlaczone, granica } = przelacznikStanow(db);
     if (!wlaczone) return wylaczone(reply);
-    return reply.view('magazyn-stany-bez-karty.ejs', { title: 'Magazyn — pozycje bez karty', od: fmtDataCzas(granica),
+    return reply.view('magazyn-stany-bez-karty.ejs', { szerokosc: 'tabela', title: 'Magazyn — pozycje bez karty', od: fmtDataCzas(granica),
       pozycje: pozycjeBezKarty(db).map((p) => ({ ...p, adres: `/zamowienia/${p.zamowienie_id}` })) });
   });
 }

@@ -1,4 +1,5 @@
 import { it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { nowyPanel, BASIC, get, post } from '../../pomoc/konta-prz068.js';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { dopiszKlienta } from '../../../src/oms/db/klienci.js';
@@ -20,11 +21,12 @@ it('lista, karta i historia klienta zawijają pełną nazwę statusu, a pole mas
       const ekran = await get(app, url, BASIC);
       expect(ekran.statusCode, url).toBe(200);
       expect(new RegExp(`<span class="[^"]*znacznik-statusu[^"]*">${nazwa}</span>`).test(ekran.body), url).toBe(true);
-      const stylPastylki = ekran.body.match(/\.znacznik-statusu\s*\{([^}]+)\}/)?.[1];
+      const css = readFileSync('src/public/oms-uklad.css', 'utf8');
+      const stylPastylki = css.match(/\.znacznik-statusu\s*\{([^}]+)\}/)?.[1];
       expect(stylPastylki).toMatch(/white-space:\s*normal/);
       expect(stylPastylki).toMatch(/max-width:\s*100%/);
       expect(stylPastylki).toMatch(/overflow-wrap:\s*anywhere/);
-      if (url === '/') expect(ekran.body).toMatch(/#masowy-status\s*\{[^}]*max-width:\s*10rem/);
+      if (url === '/') expect(css).toMatch(/#masowy-status\s*\{[^}]*max-width:\s*10rem/);
     }
   } finally { await app.close(); db.close(); }
 });

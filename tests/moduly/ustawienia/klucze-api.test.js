@@ -251,13 +251,13 @@ describe('Klucze API w Ustawieniach', () => {
     const karta = nazwa => karty.find(k => k.includes(`<h3>${nazwa}</h3>`));
     expect(karta('klucz czynny')).toMatch(/^">/);
     expect(karta('klucz czynny')).toContain('<strong class="klucze-api-stan klucze-api-stan--czynny">czynny</strong>');
-    expect(karta('klucz czynny')).toContain('<button type="submit" class="ust-przycisk">Odwołaj</button>');
+    expect(karta('klucz czynny')).toContain('<button type="submit" class="btn">Odwołaj</button>');
     for (const [nazwa, stan] of [['klucz odwołany', 'odwołany'], ['klucz wygasły', 'wygasły']]) {
       expect(karta(nazwa)).toMatch(/^ klucze-api-karta--nieczynny">/);
       expect(karta(nazwa)).toContain(`<strong class="klucze-api-stan">${stan}</strong>`);
     }
-    expect(body).not.toContain('class="ust-przycisk grozny">Odwołaj');
-    expect(body.split('<button type="submit" class="ust-przycisk grozny">Usuń</button>')).toHaveLength(4);
+    expect(body).not.toContain('class="btn btn--groza">Odwołaj');
+    expect(body.split('<button type="submit" class="btn btn--groza">Usuń</button>')).toHaveLength(4);
     expect(karta('klucz czynny')).toContain('<span class="klucze-api-prefiks">Prefiks: <code>');
   });
 

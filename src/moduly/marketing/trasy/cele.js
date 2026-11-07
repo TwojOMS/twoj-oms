@@ -137,14 +137,14 @@ export function zarejestrujTrasyCelow(app, { db }) {
     };
   }
 
-  app.get('/cele/nowy', async (_req, reply) => reply.view('cel-nowy.ejs', {
+  app.get('/cele/nowy', async (_req, reply) => reply.view('cel-nowy.ejs', { szerokosc: 'formularz',
     osoby: osobyDoFormularza(), mierniki: KLUCZE_MIERNIKOW, rytmy: RYTMY, blad: null,
   }));
 
   app.post('/cele', async (req, reply) => {
     const { blad, dane } = zCzytajCel(req.body);
     if (blad) {
-      return reply.code(400).view('cel-nowy.ejs', {
+      return reply.code(400).view('cel-nowy.ejs', { szerokosc: 'formularz',
         osoby: osobyDoFormularza(), mierniki: KLUCZE_MIERNIKOW, rytmy: RYTMY, blad,
       });
     }

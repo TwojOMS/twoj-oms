@@ -4,10 +4,7 @@
 <%# wlasny naglowek `.glowa-ekranu`, bez wlasnej reguly CSS w arkuszu (patrz komentarz przy %>
 <%# rejestracji tras w server.js). %>
 
-<div class="glowa-ekranu">
-  <a class="btn" href="<%= adresKarty %>">← Zamówienie <%= z.numer %></a>
-  <h1>Zwrot — zamówienie <%= z.numer %></h1>
-</div>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: `Zwrot — zamówienie ${z.numer}`, akcje: include('_naglowek-akcje-zwrot.ejs')}) %>
 
 <%# Blad reguly z domain/zwrot.js (parsujZwrot) — odmowa PRZED jakimkolwiek zapisem. %>
 <%# Uzywamy `.pasek-blokada` (istniejaca klasa bledu/blokady z layout-oms.ejs), NIE %>

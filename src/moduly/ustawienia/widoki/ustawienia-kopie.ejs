@@ -1,4 +1,4 @@
-<h1>Kopie zapasowe</h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Kopie zapasowe"}) %>
 <p>Rzeczywisty odczyt tej instalacji. Wyświetlane daty i rozmiary pochodzą z plików; nie potwierdzają poprawnego odtworzenia.</p>
 <% const stany = { nie_skonfigurowano: 'Nie skonfigurowano', nieustalono: 'Nie ustalono', brak: 'Brak kopii bazy', uwaga: 'Wymaga uwagi', odczytano: 'Odczytano metadane', blad: 'Błąd odczytu' }; %>
 <% if (!historia) { %>

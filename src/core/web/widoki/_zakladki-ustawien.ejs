@@ -1,8 +1,7 @@
 <% const k = nawigacja.kontekst; const d = k.dzialy?.find(d => d.aktywna); %>
 <% if (d) { %>
-<div class="ust-okruszki">Ustawienia <span aria-hidden="true">/</span> <% if (d.klucz === 'integracje') { %><a href="/ustawienia/integracje">Integracje</a><% } else { %><%= d.etykieta %><% } %></div>
-<% if (d.klucz !== 'integracje') { %><div class="ust-dzial-tytul" role="heading" aria-level="1"><%= d.etykieta %></div><% } %>
-<nav class="ust-zakladki" aria-label="Zakładki: <%= d.etykieta %>"><% k.zakladki.forEach(function(z) { %>
-  <a href="<%= z.href %>"<%- z.aktywna ? ' aria-current="page"' : '' %>><%= z.etykieta %></a>
-<% }); %></nav>
+<%- include('_naglowek-ekranu.ejs', {tytul: d.etykieta, naglowekDzialu: true,
+  akcje: d.klucz === 'wysylka' && k.aktywnaZakladka === 'paczki' ? '<a class="btn" href="/ustawienia/zamowienia-i-wysylka?dodaj=1">+ Dodaj szablon</a>' : '',
+  opisHtml: d.klucz === 'automatyzacje' ? '<span class="menu-ustawien-beta">BETA</span>' : '',
+  zakladki: include('_zakladki-dzialu.ejs', {k, d})}) %>
 <% } %>

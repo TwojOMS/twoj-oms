@@ -53,7 +53,7 @@ describe('wspólny konfigurator kroków kuriera', () => {
     const odp = await app.inject({ method: 'GET', url: SCIEZKA });
     expect(odp.statusCode).toBe(200);
     const html = odp.body;
-    expect(html).toContain('<h1>Półcień Ekspres</h1>');
+    expect(html).toContain('<h2 class="naglowek-formularza">Półcień Ekspres</h2>');
     expect(html).toContain('class="stepper"');
     expect(html).toMatch(/<strong>1\. Konto w Półcień Ekspres<\/strong>/);
     expect(html).toContain('2. Miejsce nadania');

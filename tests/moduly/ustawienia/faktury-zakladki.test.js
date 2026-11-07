@@ -48,18 +48,21 @@ describe('publiczne zakładki faktur bez opcjonalnego modułu', () => {
       expect(r.body).not.toContain('action="/ustawienia/integracje/program-fakturowy/ksef"');
     });
   });
-  it('podpis ma własny nagłówek i brak formularza SMTP', async () => {
+  // 07.11 (PRZ-154 E1.5/E2): oba przypadki jak w twoj-oms main — wspólny nagłówek ekranu, kolumna działów zamiast menu aplikacji.
+  it('podpis ma własny nagłówek w Komunikacji i nie pokazuje formularza SMTP', async () => {
     await wPanelu('brak', async ({ app, admin }) => {
       const r = await get(app, '/ustawienia/komunikacja/podpis', admin);
-      expect(r.body).toContain('<h1>Podpis i stopka</h1>');
+      expect(r.body).not.toContain('<h2 class="naglowek-formularza">Podpis i stopka</h2>');
       expect(r.body).not.toContain('<h2>Serwer poczty</h2>');
+      expect(r.body).not.toContain('← Integracje');
     });
   });
-  it('rama ma menu aplikacji i dostępny znacznik działu', async () => {
+  it('rama Ustawień ma kolumnę działów zamiast menu aplikacji i dostępny znacznik aktywnego działu', async () => {
     await wPanelu('brak', async ({ app, admin }) => {
       const r = await get(app, '/ustawienia/firma', admin);
       expect(r.body).toContain('class="oms-shell oms-shell--ustawienia"');
-      expect(r.body).toContain('id="ust-menu-aplikacji"');
+      expect(r.body).not.toContain('id="ust-menu-aplikacji"');
+      expect(r.body).toContain('class="oms-settings-column');
       expect(r.body).toMatch(/<li class="aktywna">\s*<a href="\/ustawienia\/firma" aria-current="page">/u);
     });
   });

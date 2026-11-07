@@ -1,4 +1,3 @@
-.ust-okruszki{color:var(--tekst-przygaszony);font-size:.82rem;margin:.3rem 0 1rem;display:flex;gap:.6rem}
 .klucze-api .klucze-api-nowe label:first-child{flex:1;min-width:min(100%,18rem)}
 .klucze-api .klucze-api-nowe input[name=nazwa]{width:100%}
 .klucze-api-kopiowanie{display:flex;align-items:center;gap:.6rem;margin-top:.4rem}
@@ -26,19 +25,19 @@
 .klucze-api-prefiks{font-size:.82rem;color:var(--tekst-przygaszony)}
 .klucze-api-prefiks code{font:inherit;font-family:ui-monospace,Consolas,monospace;color:var(--tekst)}
 @media(max-width:700px){.klucze-api .ust-sekcja.klucze-api-karta{flex-direction:column;align-items:stretch}.klucze-api-akcje{justify-content:flex-end}}
-.ust-dzial-tytul{font-size:1.7rem;font-weight:600;margin:0 0 .8rem}
+
 .ust-zakladki{display:flex;gap:1.5rem;flex-wrap:wrap;border-bottom:1px solid var(--ramka);margin-bottom:1.5rem}
 .ust-zakladki a{padding:.8rem 0;color:var(--tekst-przygaszony);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap}
 .ust-zakladki a[aria-current=page]{color:var(--link);border-color:currentColor;font-weight:600}
-.oms-settings-content{min-width:0}.oms-settings-content>h1{margin-top:.3rem}
-.oms-settings-layout .panel-statusow a{border-radius:6px;padding:.8rem .7rem}
-.oms-settings-layout .panel-statusow li.aktywna>a{border-left:0;background:color-mix(in srgb,var(--link) 14%,transparent);color:var(--link);font-weight:600}
+.oms-settings-content{min-width:0}
+.oms-settings-navigation .panel-statusow a{border-radius:6px;padding:9px 10px}
+.oms-settings-navigation .panel-statusow li.aktywna>a{border-left:0;background:var(--oms-aktywne-tlo);color:var(--link);font-weight:600}
 .oms-settings-content .ust-sekcja{border:1px solid var(--ramka);border-radius:8px;padding:1.3rem;max-width:none;box-shadow:none}
 .oms-settings-content .ust-instrukcja { max-width: none; }
 .pol-inicjal { display:flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; background:var(--powierzchnia-2); color:var(--tekst); font-size:20px; font-weight:600; }
 .ust-filtry{display:flex;align-items:end;gap:1rem;flex-wrap:wrap;margin:1.5rem 0}.ust-filtry label{display:flex;flex-direction:column;gap:.4rem}.ust-filtry .ust-checkbox{flex-direction:row;align-items:center;align-self:center}.ust-filtry input[type=search]{min-width:220px}
 .ust-filtry input[type=search],.ust-filtry select{font:inherit;min-height:38px;padding:.4rem .6rem;border:1px solid var(--ramka-pola);border-radius:5px;background:var(--powierzchnia);color:var(--tekst)}
-.ust-katalog{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1rem;margin-bottom:2rem}.ust-karta-integracji{border:1px solid var(--ramka);border-radius:8px;padding:1.3rem;display:flex;flex-direction:column;align-items:start;gap:.6rem;background:var(--powierzchnia)}.ust-karta-integracji h3,.ust-karta-integracji p{margin:0}.ust-karta-integracji p{min-height:2.5em}.ust-karta-integracji .ust-przycisk{margin-top:auto}.ust-logo-marki{width:116px;height:54px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:6px;padding:8px;box-sizing:border-box}.ust-logo-marki img{max-width:100%;max-height:100%;object-fit:contain}
+.ust-katalog{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1rem;margin-bottom:2rem}.ust-karta-integracji{border:1px solid var(--ramka);border-radius:8px;padding:1.3rem;display:flex;flex-direction:column;align-items:start;gap:.6rem;background:var(--powierzchnia)}.ust-karta-integracji h3,.ust-karta-integracji p{margin:0}.ust-karta-integracji p{min-height:2.5em}.ust-karta-integracji .btn{margin-top:auto}.ust-logo-marki{width:116px;height:54px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:6px;padding:8px;box-sizing:border-box}.ust-logo-marki img{max-width:100%;max-height:100%;object-fit:contain}
 /* PRZ-136.09: usługi planowane wyciszone, akcje karty: „Dodaj” + zwykły link „Zarządzaj”. */
 .ust-karta-integracji--planowana{background:transparent;border-style:dashed}.ust-karta-integracji--planowana .ust-logo-marki{opacity:.55}.ust-karta-integracji--planowana h3,.ust-karta-integracji--planowana p{color:var(--st-szary-tekst)}
 .ust-znacznik--wkrotce{background:var(--st-szary-tlo);color:var(--st-szary-tekst);font-weight:600;border-radius:999px;padding:.15rem .6rem}
@@ -46,13 +45,18 @@
 .ust-znacznik{display:inline-block;font-size:.76rem;padding:.22rem .5rem;border-radius:4px;background:color-mix(in srgb,currentColor 8%,transparent)}.ust-stan-dziala{color:#27855c}.ust-stan-uwaga{color:#a56a10}.ust-polaczenie{display:grid;grid-template-columns:116px 1fr;gap:1.3rem;padding:1.5rem 0;border-bottom:1px solid var(--ramka)}.ust-polaczenie h2{margin:0;font-size:1.05rem}.ust-polaczenie p{margin:.5rem 0}.ust-kopie-stany{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
 .oms-settings-content input,.oms-settings-content textarea,.oms-settings-content select{max-width:100%;box-sizing:border-box}.oms-settings-content :focus-visible{outline:3px solid var(--link);outline-offset:3px}
 @media(max-width:700px){.ust-zakladki{gap:.2rem 1rem}.ust-zakladki a{font-size:.85rem}.ust-kopie-stany{grid-template-columns:1fr}.ust-polaczenie{grid-template-columns:1fr;gap:.8rem}.ust-filtry{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.6rem;align-items:end}.ust-filtry>label:first-child{grid-column:1}.ust-filtry>button{grid-column:2;grid-row:1}.ust-filtry>label:nth-of-type(2),.ust-filtry>.ust-checkbox{grid-column:1/-1}.ust-filtry input[type=search]{min-width:0;width:100%}.ust-filtry select{width:100%}.ust-katalog{grid-template-columns:1fr}.oms-settings-content .ust-sekcja{padding:1rem}.ust-formularz{grid-template-columns:minmax(0,1fr)}}
-.oms-shell--ustawienia{grid-template-columns:minmax(0,1fr)}
-.oms-shell--ustawienia>.oms-sidebar,.oms-shell--ustawienia .oms-breadcrumb{display:none}
-.ust-menu-aplikacji{display:flex;align-items:center;gap:1.5rem;min-width:0}.ust-menu-skroty{display:flex;gap:1.3rem}.ust-menu-skroty a{color:var(--tekst);text-decoration:none;font-size:.9rem}.ust-menu-skroty a:hover{color:var(--link)}
-.ust-menu-pelne{position:relative}.ust-menu-pelne>summary{list-style:none;cursor:pointer;white-space:nowrap;padding:.6rem;border-radius:5px;font-size:.9rem}.ust-menu-pelne>summary::-webkit-details-marker{display:none}.ust-menu-pelne[open]>summary,.ust-menu-pelne>summary:hover{background:var(--powierzchnia-2)}
-.ust-menu-panel{position:absolute;z-index:40;top:calc(100% + .5rem);left:0;width:22rem;max-width:calc(100vw - 28px);max-height:75vh;overflow:auto;border:1px solid var(--ramka);border-radius:8px;padding:1rem;background:var(--powierzchnia);box-shadow:0 6px 18px var(--oms-cien)}.ust-menu-panel .oms-menu ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}.ust-menu-panel .oms-menu a{min-height:40px}
-@media(max-width:1200px){.ust-menu-skroty{display:none}}
-@media(max-width:650px){.oms-shell--ustawienia .oms-topbar{flex-wrap:wrap;gap:.3rem}.ust-menu-aplikacji{justify-content:space-between;flex:1;gap:.3rem}.ust-menu-aplikacji .oms-brand{font-size:16px}.ust-menu-dopisek{display:none}.ust-menu-panel{position:fixed;top:64px;left:14px}.oms-shell--ustawienia .oms-top-actions{gap:2px}.oms-shell--ustawienia .oms-topbar .menu-uzytkownika summary{padding-inline:3px}}
+/* PRZ-154.E1.5: osobna kolumna działów, logo pozostaje w menu głównym. */
+.oms-settings-column ul{gap:4px}
+.oms-shell--ustawienia .oms-top-actions{margin-left:auto}
+.oms-settings-heading{padding:0 10px;font-size:18px;font-weight:650;letter-spacing:-.4px;line-height:24px;color:var(--tekst)}
+.oms-settings-column .oms-menu a{padding:8px 10px}
+@media(min-width:900px){
+  .oms-shell--ustawienia{grid-template-columns:64px 13.5rem minmax(0,1fr)}
+  .oms-shell--ustawienia:has(.oms-menu-local[open]){grid-template-columns:13.5rem 13.5rem minmax(0,1fr)}
+  .oms-shell--ustawienia .oms-settings-column{display:flex;flex-direction:column;gap:22px;padding:24px 12px 16px;background:var(--powierzchnia);border-right:1px solid var(--ramka);position:sticky;top:0;height:100vh;overflow:auto}
+  .oms-shell--ustawienia .oms-main>.kolumna-glowna{padding-left:25px}
+}
+@media(max-width:899.98px){.oms-shell--ustawienia{grid-template-columns:minmax(0,1fr)}.oms-shell--ustawienia>.oms-sidebar{position:static;height:auto;overflow:visible;padding:14px;gap:12px;border-right:0;border-bottom:1px solid var(--ramka)}.oms-shell--ustawienia>.oms-sidebar :is(.oms-menu-desktop,.oms-menu-local){display:none}.oms-shell--ustawienia>.oms-sidebar .oms-menu-mobile{display:block}.oms-shell--ustawienia .oms-main>.kolumna-glowna{padding-top:0}.oms-settings-navigation .panel-statusow a{padding:.8rem .7rem}.oms-settings-navigation .panel-statusow li.aktywna>a{background:color-mix(in srgb,var(--link) 14%,transparent)}}
 .ust-przelacznik{display:inline-flex;align-items:center;gap:.7rem;min-height:44px;padding:.3rem 0;border:0;background:transparent;color:var(--tekst);font:inherit;font-weight:600;cursor:pointer}
 .ust-przelacznik-tor{display:inline-flex;align-items:center;width:48px;height:28px;padding:3px;border:1px solid var(--tekst-przygaszony);border-radius:20px;background:var(--powierzchnia-2)}
 .ust-przelacznik-tor>span{width:20px;height:20px;border-radius:50%;background:var(--tekst-przygaszony);transition:transform .15s}
@@ -62,22 +66,20 @@
 .ust-rejestrowe-pole+.ust-rejestrowe-pole{border-top:1px solid var(--ramka);margin-top:1.5rem;padding-top:1.5rem}
 .ust-rejestrowe-pole>h3{margin-top:1rem}
 @media(prefers-reduced-motion:reduce){.ust-przelacznik-tor>span{transition:none}}
-.allegro-konfiguracja>h1{font-size:1.4rem;margin-block:1.5rem .7rem}
+
 .allegro-konfiguracja .ust-sekcja p{max-width:78ch}
 .allegro-dane{display:grid;grid-template-columns:minmax(180px,1fr) minmax(0,2fr);gap:.65rem 1.2rem;margin:1.2rem 0 0}
 .allegro-dane dt{color:var(--tekst-przygaszony)}.allegro-dane dd{margin:0;overflow-wrap:anywhere}
 .allegro-konfiguracja input:not([type=hidden]):not([type=checkbox]),.allegro-konfiguracja select{font:inherit;color:var(--tekst);background:var(--powierzchnia);border:1px solid var(--ramka-pola);border-radius:5px;min-height:40px;padding:.5rem .65rem;width:30rem;max-width:100%;margin-top:.4rem}
 .allegro-konfiguracja input[type=checkbox]{accent-color:var(--marka);width:1rem;height:1rem;vertical-align:middle;margin-right:.4rem}
-.allegro-konfiguracja .ust-przycisk{min-height:40px}
 .allegro-konfiguracja details{margin-block:.6rem;overflow-wrap:anywhere}
 /* PRZ-146.03: kod Device do przepisania, przyciski kroku 3, „Przerwij podłączanie”, odłączenie nieaktywne do zaznaczenia. */
 .allegro-kod{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem 1rem;margin:.4rem 0 1.2rem}
 .allegro-kod code{font-family:ui-monospace,Consolas,monospace;font-size:1.6rem;font-weight:600;letter-spacing:.08em;padding:.3rem .7rem;border:1px solid var(--ramka-pola);border-radius:5px;background:var(--powierzchnia);user-select:all}
 .allegro-akcje-konta{margin-block:1rem;gap:.75rem}.allegro-akcje-konta form{margin:0}
 .allegro-przerwij{margin-top:2rem}.allegro-przerwij>summary{cursor:pointer;color:var(--link);text-decoration:underline;text-decoration-color:var(--link-podkreslenie);font-size:.9rem;width:max-content}
-.allegro-konfiguracja .ust-przycisk:disabled{opacity:.55;cursor:not-allowed}
-@media(max-width:700px){.allegro-akcje-konta{flex-direction:column;align-items:stretch}.allegro-kod code{font-size:1.3rem}.allegro-dane{grid-template-columns:minmax(0,1fr);gap:.25rem}.allegro-dane dt:not(:first-child){margin-top:.6rem}.allegro-konfiguracja>h1{font-size:1.2rem}}
-/* Pasek kroków konfiguratorów kanałów (kroki-kanalu.ejs); app.css nie jest ładowany w Ustawieniach. */
+@media(max-width:700px){.allegro-akcje-konta{flex-direction:column;align-items:stretch}.allegro-kod code{font-size:1.3rem}.allegro-dane{grid-template-columns:minmax(0,1fr);gap:.25rem}.allegro-dane dt:not(:first-child){margin-top:.6rem}}
+/* Pasek kroków konfiguratorów kanałów (kroki-kanalu.ejs). */
 .oms-settings-content .stepper{list-style:none;display:flex;margin:1rem 0 1.2rem;padding:0;max-width:56rem}
 .oms-settings-content .step{flex:1;display:flex;flex-direction:column;align-items:center;gap:.35rem;position:relative;text-align:center;min-width:0}
 .oms-settings-content .step::before{content:"";position:absolute;top:12px;left:calc(-50% + 17px);right:calc(50% + 17px);height:2px;background:var(--ramka)}
@@ -177,16 +179,16 @@ a.pol-licznik:hover { color: var(--tekst); text-decoration: underline; }
 
 /* PRZ-152.G11a: „Szablony paczek” — tabela z edycją w wierszu i sekcja „Paczkomaty i automaty”. */
 .ust-sekcja.ust-sekcja-szeroka { max-width: 56rem; }
-.ust-naglowek-szablonow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; max-width: 56rem; margin: .3rem 0 22px; }
-.ust-naglowek-szablonow h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -.8px; line-height: 1.2; }
+
+
 .ust-tabela-szablonow td { padding: .45rem .5rem; border-bottom: 1px solid var(--ramka); vertical-align: middle; font-size: .9rem; }
 .ust-tabela-szablonow tbody tr:last-child td { border-bottom: 0; }
 .ust-tabela-szablonow .ust-liczba { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .ust-tabela-szablonow form { display: inline; margin: 0; }
-.ust-tabela-szablonow .ust-przycisk { padding: .3rem .6rem; font-size: .84rem; white-space: nowrap; }
+.ust-tabela-szablonow .btn--maly { white-space: nowrap; }
 .ust-akcje-wiersza { text-align: right; white-space: nowrap; }
 .ust-akcje-wiersza > * + *, .ust-akcje-wiersza form > * + * { margin-left: .3rem; }
-.ust-kosz { display: inline-flex; align-items: center; vertical-align: middle; color: var(--blad-tekst-mocny); }
+.ust-kosz { display: inline-flex; align-items: center; vertical-align: middle; }
 .ust-plakietka-domyslny { display: inline-block; padding: .1rem .55rem; border-radius: 999px; font-size: .8rem; font-weight: 600; background: var(--ok-tlo); color: var(--ok-tekst); }
 .ust-wiersz-edycji td { background: var(--powierzchnia-2); }
 .ust-tabela-szablonow input, .ust-automat input[name="waga"] { width: 4.2rem; padding: .3rem .4rem; font: inherit; font-size: .88rem; color: var(--tekst); background: var(--tlo); border: 1px solid var(--ramka-pola); border-radius: 5px; box-sizing: border-box; }
@@ -198,7 +200,6 @@ a.pol-licznik:hover { color: var(--tekst); text-decoration: underline; }
 .ust-automat-nazwa { display: flex; flex-direction: column; gap: .1rem; font-size: .9rem; }
 .ust-automat-wymiary { font-size: .85rem; color: var(--tekst-przygaszony); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .ust-automat-akcje { display: flex; gap: .3rem; align-items: center; justify-content: flex-end; }
-.ust-automat .ust-przycisk { padding: .3rem .6rem; font-size: .84rem; }
 /* Przełącznik gabarytu: zwykłe radio pod spodem, więc działa bez JS i z klawiatury. */
 .ust-przelacznik { display: inline-flex; align-self: center; justify-self: start; align-items: stretch; gap: 0; min-height: 0; margin: 0; padding: 0; border: 1px solid var(--ramka-pola); border-radius: 6px; overflow: hidden; }
 .ust-przelacznik label { position: relative; }
@@ -224,7 +225,7 @@ a.pol-licznik:hover { color: var(--tekst); text-decoration: underline; }
 .ust-wyjatki-automatow[open] > summary { margin-bottom: .3rem; }
 
 @media (max-width: 700px) {
-  .ust-naglowek-szablonow h1 { font-size: 26px; }
+
   .ust-automat { grid-template-columns: auto 1fr; }
   .ust-automat-nazwa { grid-column: 1 / -1; }
   .ust-automat-wymiary { grid-column: 1 / -1; }

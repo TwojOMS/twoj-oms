@@ -1,4 +1,4 @@
-<h1>inFakt</h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "inFakt"}) %>
 <p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
 
 <% if (wybranyBrak) { %><div class="pas-uprzedzenie"><p>inFakt nie jest wybrany jako moduł faktur — klucz zostaje zapisany, OMS go nie używa. <a href="/ustawienia/integracje/program-fakturowy">Moduł faktur</a></p></div><% } %>
@@ -18,7 +18,7 @@
   <% if (stan) { %>
     <form method="post" action="/ustawienia/integracje/infakt/odlacz">
       <p>W OMS-ie został też klucz zapisany wcześniej na tym ekranie. Ustawienia na serwerze mają pierwszeństwo, więc nie jest używany.</p>
-      <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Usuń zapisany klucz</button></div>
+      <div class="ust-akcje"><button class="btn btn--groza" type="submit">Usuń zapisany klucz</button></div>
     </form>
   <% } %>
 </section>
@@ -65,7 +65,7 @@
     <p class="ust-pelna ust-pomoc">Pola oznaczone <span class="ust-wymagane">*</span> są wymagane.</p>
     <div class="ust-pelna ust-akcje">
       <button class="btn btn--glowny" type="submit">Zapisz</button>
-      <a class="ust-przycisk" href="/ustawienia/integracje">Anuluj</a>
+      <a class="btn" href="/ustawienia/integracje">Anuluj</a>
     </div>
   </form>
 </section>
@@ -75,11 +75,11 @@
   <h2>Sprawdzenie i odłączenie</h2>
   <form method="post" action="/ustawienia/integracje/infakt/sprawdz">
     <p>Sprawdzenie prosi inFakt o pierwszą stronę listy faktur, posługując się zapisanym kluczem. Niczego nie wystawia ani nie wysyła do KSeF.</p>
-    <div class="ust-akcje"><button class="ust-przycisk" type="submit">Sprawdź połączenie</button></div>
+    <div class="ust-akcje"><button class="btn" type="submit">Sprawdź połączenie</button></div>
   </form>
   <form method="post" action="/ustawienia/integracje/infakt/odlacz" onsubmit="return confirm('Odłączyć inFakt? OMS usunie zapisany klucz API.')" style="margin-top:1rem">
     <p>Odłączenie usuwa klucz z OMS-u. Faktury w inFakcie i ich numery zapisane w zamówieniach zostają.</p>
-    <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Odłącz inFakt</button></div>
+    <div class="ust-akcje"><button class="btn btn--groza" type="submit">Odłącz inFakt</button></div>
   </form>
 </section>
 <% } %>

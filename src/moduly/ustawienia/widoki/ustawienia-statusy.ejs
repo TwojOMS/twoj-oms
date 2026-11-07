@@ -1,4 +1,4 @@
-<h1>Statusy zamówień</h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Statusy zamówień"}) %>
 <p>Zmień nazwy, kolory i kolejność statusów. Statusy systemowe zachowują swoje działanie.</p>
 <p id="statusy-kolejnosc-pomoc" class="ust-pomoc">Przeciągnij status za uchwyt ⋮⋮ lub przesuń go strzałkami w górę i w dół na uchwycie. Kolejność zapisuje się automatycznie.</p>
 <p id="statusy-kolejnosc-komunikat" role="status" aria-live="polite" aria-atomic="true"></p>
@@ -17,10 +17,10 @@
         <label>Kolor <select class="ust-kolor" name="kolor" aria-label="Kolor statusu <%= s.etykieta %>">
           <% Object.entries(paleta).forEach(function([k, p]) { %><option class="znacznik--<%= p.klasa %>" value="<%= k %>" <%= s.kolor === k ? 'selected' : '' %>><%= p.etykieta %></option><% }); %>
         </select></label>
-        <button class="ust-przycisk" type="submit">Zapisz</button>
+        <button class="btn btn--maly" type="submit">Zapisz</button>
       </form></td>
       <td><% if (s.jak) { %>Jak: <%= s.jak === 'nowe' ? 'Nowe' : 'W realizacji' %>
-        <form method="post" action="/ustawienia/statusy"><input type="hidden" name="klucz" value="<%= s.klucz %>"><button class="ust-przycisk grozny" name="akcja" value="usun">Usuń</button></form>
+        <form method="post" action="/ustawienia/statusy"><input type="hidden" name="klucz" value="<%= s.klucz %>"><button class="btn btn--maly btn--groza" name="akcja" value="usun">Usuń</button></form>
       <% } else { %>Systemowy<% if (s.klucz === 'indywidualne') { %> — pokazywany tylko przy zamówieniach indywidualnych<% } %><% } %></td>
     </tr>
   <% }); %>
@@ -36,8 +36,8 @@
     <label for="status-kolor">Kolor</label><select class="ust-kolor" id="status-kolor" name="kolor"><% Object.entries(paleta).forEach(function([k,p]) { %><option class="znacznik--<%= p.klasa %>" value="<%= k %>"><%= p.etykieta %></option><% }); %></select>
     <label for="status-jak">Zachowuje się jak</label><select id="status-jak" name="jak"><option value="nowe">Nowe</option><option value="w_realizacji">W realizacji</option></select>
     <div class="ust-pelna"><p class="ust-pomoc">Wybrane zachowanie określa fakty zamówienia i status odsyłany do kanału sprzedaży. Własny etap ustawiasz ręcznie na karcie lub na liście zamówień.</p>
-    <button class="ust-przycisk" type="submit">Dodaj status</button></div>
+    <button class="btn btn--glowny" type="submit">Dodaj status</button></div>
   </form>
 </section>
 <section class="ust-sekcja"><h2>Kolory</h2><p>Podgląd palety w bieżącym motywie:</p><div class="ust-akcje"><% Object.entries(paleta).forEach(function([k,p]) { %><span class="znacznik znacznik--<%= p.klasa %>"><%= p.etykieta %></span><% }); %></div></section>
-<form method="post" action="/ustawienia/statusy"><input type="hidden" name="akcja" value="domyslne"><p>Przywraca nazwy, kolory i wzajemną kolejność statusów systemowych. Własne statusy pozostają na swoich miejscach.</p><button class="ust-przycisk" type="submit">Przywróć domyślne</button></form>
+<form method="post" action="/ustawienia/statusy"><input type="hidden" name="akcja" value="domyslne"><p>Przywraca nazwy, kolory i wzajemną kolejność statusów systemowych. Własne statusy pozostają na swoich miejscach.</p><button class="btn" type="submit">Przywróć domyślne</button></form>

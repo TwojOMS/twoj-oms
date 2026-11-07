@@ -69,7 +69,7 @@ describe('PRZ-136.02 napisy integracji', () => {
 
   it('U46: każde pole (poza ukrytym) i każda wartość w widoku inFaktu ma etykietę <label for>; checkbox B2C nie jest rozciągnięty', async () => {
     const calosc = await ekran('/ustawienia/integracje/infakt');
-    const html = calosc.slice(calosc.indexOf('<h1>inFakt</h1>')); // sama treść ekranu, bez wspólnego układu strony
+    const html = calosc.slice(calosc.indexOf('<h2 class="naglowek-formularza">inFakt</h2>')); // sama treść ekranu, bez wspólnego układu strony
     expect(html.length).toBeLessThan(calosc.length);
     const polaId = [...html.matchAll(/<(input|output)\b[^>]*>/gu)]
       .filter((m) => !/type="hidden"/u.test(m[0]))

@@ -49,7 +49,7 @@ it('N8: każdy ekran połączenia ma jeden główny nagłówek, a Integracje są
       const html = r.body.replace(/<style\b[^>]*>[\s\S]*?<\/style>|<!--[\s\S]*?-->/g, '');
       expect(html.match(/<h1(?:\s|>)/g) ?? [], trasa).toHaveLength(1);
       expect(r.body, trasa).not.toMatch(/role="heading" aria-level="1"/);
-      expect(r.body, trasa).toContain('<a href="/ustawienia/integracje">Integracje</a>');
+      expect(r.body, trasa).toContain('<a class="oms-breadcrumb-link" href="/ustawienia/integracje">Integracje</a>'); // PRZ-154.E2.3: okruszki w górnym pasku
     }
   });
   const css = readFileSync('src/public/oms-ustawienia.css', 'utf8');

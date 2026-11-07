@@ -13,14 +13,9 @@
 
 <%# Powrot na ZAWEZONA liste, z ktorej tu wszedl operator (4.13d) — `adresPowrotu` jest juz
     zwalidowany w trasie (`bezpiecznyWroc`), tak samo jak na karcie produktu i w hurcie. %>
-<p class="wroc"><a href="<%= adresPowrotu %>">← Wróć do magazynu</a></p>
+<p class="wroc"><a href="<%= adresPowrotu %>">← Magazyn</a></p>
 
-<div class="glowa-ekranu">
-  <h1>Pominięte przy tworzeniu kart</h1>
-  <% if (utworzone !== null) { %>
-    <span class="krok">właśnie powstało kart: <strong><%= utworzone %></strong></span>
-  <% } %>
-</div>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Pominięte przy tworzeniu kart", opisHtml: include('_naglowek-opis-magazyn-pominiete.ejs')}) %>
 
 <% if (!grupy.length) { %>
   <div class="pusta-strona">

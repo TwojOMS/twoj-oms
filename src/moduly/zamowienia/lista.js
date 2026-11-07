@@ -273,7 +273,7 @@ app.get('/', async (req, reply) => {
     const bazaBezZamowien = !zamowienia.length && !szukaj && !chipy.length && !db.prepare('SELECT 1 FROM zamowienia LIMIT 1').get();
     // Odnośnik do „Sklepy i usługi” tylko dla roli, której straznik wpuści na ten ekran (inaczej klik kończy się 403).
     const odnosnikDoKanalow = bazaBezZamowien && maDostepDoAdresu(req.konto, '/ustawienia/integracje');
-    return reply.view('lista.ejs', {
+    return reply.view('lista.ejs', { szerokosc: 'tabela',
       zamowienia,
       // Liczba WSZYSTKICH pasujących (nagłówek wyników frazy, licznik filtrów) — nie długość
       // strony. `stronicowanie` = null, gdy wszystko mieści się na jednej stronie.

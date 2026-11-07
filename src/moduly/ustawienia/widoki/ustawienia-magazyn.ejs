@@ -1,4 +1,4 @@
-<h1>Stany magazynowe</h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Stany magazynowe"}) %>
 
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 
@@ -19,13 +19,13 @@
     <% if (przelacznik.wlaczone) { %>
       <input type="hidden" name="wlacz" value="0">
       <p class="pas-uprzedzenie">Wyłączenie niczego nie kasuje. Ale ponowne włączenie zacznie liczyć od nowa — od chwili ponownego włączenia, a stan otwarcia kart trzeba będzie wpisać jeszcze raz.</p>
-      <div class="ust-akcje"><button class="ust-przycisk grozny" type="submit">Wyłącz stany magazynowe</button></div>
+      <div class="ust-akcje"><button class="btn" type="submit">Wyłącz stany magazynowe</button></div>
     <% } else { %>
       <input type="hidden" name="wlacz" value="1">
       <% if (bylWlaczony) { %>
         <p class="pas-uprzedzenie">Stany były już włączone. Ponowne włączenie liczy od nowa: od teraz, a stan otwarcia kart trzeba wpisać jeszcze raz. Wcześniejsze wpisy zostają w bazie, ale nie wchodzą do stanu.</p>
       <% } %>
-      <div class="ust-akcje"><button class="ust-przycisk" type="submit">Włącz stany magazynowe</button></div>
+      <div class="ust-akcje"><button class="btn btn--glowny" type="submit">Włącz stany magazynowe</button></div>
     <% } %>
   </form>
 

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const layout = readFileSync('src/core/web/widoki/layout-oms.ejs', 'utf8');
+const layout = readFileSync('src/public/oms-uklad.css', 'utf8');
 const wartosc = (nazwa) => layout.match(new RegExp(`--${nazwa}:\\s*(#[0-9a-f]{6})`, 'i'))?.[1];
 const luminancja = (kolor) => {
   const skladowe = kolor.slice(1).match(/../g).map((x) => {

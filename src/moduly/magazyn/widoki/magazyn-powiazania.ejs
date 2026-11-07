@@ -24,12 +24,9 @@
 <%# Powrot na ZAWEZONA liste magazynu (4.13d) — `adresPowrotu` jest juz zwalidowany w trasie
     (`bezpiecznyWroc`), a jedzie KAZDA droga tego ekranu: naglowkami sortujacymi, oboma
     formularzami GET i oboma POST-ami. Inaczej dzialalby do pierwszego klikniecia. %>
-<p class="wroc"><a href="<%= adresPowrotu %>">← Wróć do magazynu</a></p>
+<p class="wroc"><a href="<%= adresPowrotu %>">← Magazyn</a></p>
 
-<div class="glowa-ekranu">
-  <h1>Powiązania ofert Allegro</h1>
-  <span class="krok">oferta wiąże się z kartą ręcznie — Allegro nie niesie naszego numeru</span>
-</div>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Powiązania ofert Allegro", podtytul: "oferta wiąże się z kartą ręcznie — Allegro nie niesie naszego numeru"}) %>
 
 <% if (wynik) { %>
   <%# ⚠️ EKRAN WYNIKU JEST JEDYNYM MIEJSCEM, W KTORYM WIDAC, CZEGO PANEL NIE TKNAL

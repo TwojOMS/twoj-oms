@@ -72,7 +72,7 @@
       + `${KSZTALTY_SVG[kolumna]}</${tag}>`;
   }
 %>
-<h1>Zamówienia</h1>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Zamówienia"}) %>
 <%# PRZ-082 (prośba właściciela 14.10): w trybie próby (piaskownica, demo publiczne) informacja o demo stoi NAD pasami %>
 <%# i ostrzeżeniami, na zielono — to nie awaria. Dawniej była zdaniem w akapicie synchronizacji pod nimi. %>
 <% if (proba) { %>

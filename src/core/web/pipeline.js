@@ -19,6 +19,8 @@ import { nazwaCiasteczkaOms } from '../bezpieczenstwo/sesja.js';
 import { wczytajSekret } from '../bezpieczenstwo/sekret-sesji.js';
 import { kontoPoLoginie, czyIstniejeCzynnyAdmin } from '../bezpieczenstwo/konta.js';
 import { motywZNaglowka, bezpiecznyPowrot } from '../../domena/motyw.js';
+import { menuZwinieteZNaglowka } from '../../domena/menu-boczne.js';
+import { liczbaWatkowCzekajacych } from '../../domena/czyj-ruch-watku.js';
 import { bezpiecznyPowrotNaListe } from '../../domena/filtry-listy.js';
 import { wKontekscie } from '../../domena/kontekst-zadania.js';
 import { nawigacjaDla } from '../../domena/menu-stron.js';
@@ -31,6 +33,17 @@ import { etapPrzesylki, etykietaEtapu, dniKalendarzowe } from '../../domena/etap
 import { etykietaWysylki, nazwaDostawy } from '../../domena/wysylka.js';
 import { zlotowki } from '../../domena/kwoty.js';
 import { klasaStatusu, modyfikatorStatusu } from './klasa-statusu.js';
+// PRZ-154.E1.6: licznik przy „Wiadomości” jest dodatkiem do menu — jego awaria nie może
+// wywalić strony (jak liczniki statusów niżej), menu pokazuje się wtedy bez plakietki.
+function licznikWiadomosciDlaMenu(db, req) {
+  try {
+    return liczbaWatkowCzekajacych(db);
+  } catch (e) {
+    req.log?.error?.(e, 'menu: licznik wiadomości niepoliczony');
+    return 0;
+  }
+}
+
 // Liczniki statusów zamówień do bocznego menu na ekranach, które nie niosą własnego `panelStatusow`
 // (Przesyłki, Faktury…). Z TEGO SAMEGO indeksu co lista (PRZ-051), więc liczby się zgadzają.
 // ⚠️ Bez liczb, gdy indeksu nie ma (panel indywidualny, baza bez migracji) albo się nie odświeżył:
@@ -200,7 +213,16 @@ wczytajSekret(db);
 app.after(() => {
 app.addHook('preHandler', async (_req, reply) => {
  const view = reply.view;
- reply.view = function(page, ...args) { return view.call(this, typeof page === 'string' ? sciezkaWidoku(page) : page, ...args); };
+ reply.view = function(page, ...args) {
+   const dane = args[0];
+   const dzialy = dane?.nawigacja?.kontekst?.dzialy;
+   const dzial = dzialy?.find(d => d.aktywna);
+   if (dzial) args[0] = { ...dane, okruszki: [
+     { tekst: 'Ustawienia', href: dzialy[0].href },
+     { tekst: dzial.etykieta, href: dzial.href },
+   ] };
+   return view.call(this, typeof page === 'string' ? sciezkaWidoku(page) : page, ...args);
+ };
 });
 app.addHook('onRequest', zbudujStraznika({
       basicAuth: app.basicAuth, db, nazwaCiasteczka: nazwaCiasteczkaOms(config.proba),
@@ -242,6 +264,7 @@ app.addHook('preHandler', async (req, reply) => {
         etykietaStatusu: klucz => etykiety[klucz] ?? klucz,
         title: tytulEkranuDlaAdresu(req.url),
         motyw: motywZNaglowka(req.headers.cookie),
+        menuZwiniete: menuZwinieteZNaglowka(req.headers.cookie),
         // Adres, na ktory ma wrocic przelacznik motywu. `req.url` niesie sciezke razem
         // z zapytaniem, wiec przelaczenie nie gubi ani filtrow, ani otwartej sekcji karty.
         sciezkaPowrotu,
@@ -249,6 +272,8 @@ app.addHook('preHandler', async (req, reply) => {
         // oraz tych samych praw co strażnik. Lista i karta nadpisują wyłącznie
         // `panelStatusow`, bo jako jedyne znają rzeczywiste liczniki i aktywny filtr.
         nawigacja,
+        licznikWiadomosci: nawigacja.boczne?.some(g => g.pozycje.some(p => p.klucz === 'wiadomosci'))
+          ? licznikWiadomosciDlaMenu(db, req) : 0,
         modulWlaczony: (modul) => !odlozoneEkrany.includes(modul),
         // PRZ-085: liczby przy statusach na KAŻDEJ zakładce, nie tylko na liście i karcie.
         licznikiStatusow: await licznikiStatusowDlaMenu(db, req, nawigacja),

@@ -63,7 +63,7 @@ describe('rejestr zdarzeń pusty (B wydane samo)', () => {
     const p = panel({ rejestr: false });
     const r = await get(p.app, NOWA, p.admin);
     expect(r.statusCode).toBe(200);
-    expect(r.body).toContain('<h1>Nowa automatyzacja</h1>');
+    expect(r.body).toContain('<h2 class="naglowek-formularza">Nowa automatyzacja</h2>');
     expect(r.body).toContain('Kiedy ma zadziałać?');
     expect(r.body).toContain('Paczka nadana');
     expect(r.body).toContain('Status zamówienia zmienił się na');
@@ -210,7 +210,7 @@ describe('13. włączanie, wyłączanie, usuwanie, zaległe', () => {
     expect(wczytajRegule(p.db, id).wlaczona).toBe(0);
     const d = await get(p.app, `${EKRAN}/${id}`, p.admin);
     expect(d.statusCode).toBe(200);
-    expect(d.body).toContain('<h1>Reguła wprost</h1>');
+    expect(d.body).toContain('<h2 class="naglowek-formularza">Reguła wprost</h2>');
     expect(d.body).toContain('Historia włączania');
     expect(d.body).toContain('włączenie');
     expect(d.body).toContain('wyłączenie');

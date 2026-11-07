@@ -25,7 +25,7 @@ afterEach(async () => { await app.close(); db.close(); });
 const get = (zapytanie = '') => app.inject({ method: 'GET', url: ADRES + zapytanie, headers: naglowek });
 const post = (url, payload) => app.inject({ method: 'POST', url, headers: naglowekPost, payload });
 // Tylko główna kolumna — arkusz stylów w <style> układu zawiera nazwy wszystkich klas.
-const tresc = (body) => body.slice(body.indexOf('<h1>Szablony paczek</h1>'));
+const tresc = (body) => body.slice(body.indexOf('<main'));
 const wiersz = (body, id) => {
   const i = body.indexOf(`data-szablon="${id}"`);
   return i < 0 ? null : body.slice(i, body.indexOf('</tr>', i));
@@ -44,8 +44,10 @@ describe('tabela szablonów paczek', () => {
   it('jeden tytuł, wiersz z wagą i wymiarami, plakietka domyślnego bez kosza, bez stałego formularza', async () => {
     const t = tresc((await get()).body);
 
-    expect(t.match(/Szablony paczek/g)).toHaveLength(1);
-    expect(t).toContain('<h1>Szablony paczek</h1>');
+    // PRZ-154 E2.1: h1 działu, zakładka i h2 opisują formularz.
+    expect(t.match(/<h1\b/g)).toHaveLength(1);
+    expect(t).toContain('<h1>Wysyłka i druk</h1>');
+    expect(t).not.toContain('<h2 class="naglowek-formularza">Szablony paczek</h2>');
     const w = wiersz(t, 'domyslna');
     expect(w).toContain('Paczka domyślna');
     expect(w).toContain('1 kg');

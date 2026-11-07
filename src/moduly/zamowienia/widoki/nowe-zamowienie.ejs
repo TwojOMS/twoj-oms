@@ -30,7 +30,8 @@
 <% const fakturaBazowa = { firma: formularz.f_firma, nip: formularz.f_nip, ulica: formularz.f_ulica, kod: formularz.f_kod, miasto: formularz.f_miasto }; %>
 <% const f = daneZGus ? { ...fakturaBazowa, ...daneZGus } : fakturaBazowa; %>
 
-<p class="wroc"><a href="/">← Wróć do listy</a></p>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: title}) %>
+<p class="wroc"><a href="/">← Zamówienia</a></p>
 
 <% if (blad) { %>
   <p class="pasek-blokada">Nie udało się założyć zamówienia: <%= blad %></p>
@@ -38,7 +39,6 @@
 
 <%# ——— BELKA: rodzaj zamowienia zamiast numeru — numer prawdziwy dostanie dopiero po zapisie. %>
 <div class="belka">
-  <span class="belka-numer">Nowe zamówienie</span>
   <div class="belka-pole">
     <span class="belka-etykieta">Numer</span>
     <span class="belka-wartosc"><%= numerPodgladowy %> <span class="wyjasnienie">nadany przy zapisie</span></span>
@@ -272,6 +272,7 @@
     <span class="wyjasnienie">wpisz netto albo brutto — drugie policzy się samo według stawki VAT wiersza</span>
   </div>
   <div class="panel-cialo">
+    <div class="przewijak-tabeli">
     <table class="tab-pozycje" data-podglad-kwoty>
       <thead>
         <tr>
@@ -359,6 +360,7 @@
         </tr>
       </tfoot>
     </table>
+    </div>
     <%# PRZ-105: Razem netto · VAT · Razem brutto (właściciel 21.10: „Brak sumy netto”) — regułą faktury, na żywo. %>
     <%- include('_podsumowanie-vat.ejs', { p: { nettoZl: null, vatZl: null, bruttoZl: null, wdt: wdtFormularza, zeroKrajowe: false, blad: null } }) %>
 

@@ -12,7 +12,7 @@ const ORIGIN = { origin: 'http://localhost' };
 let db;
 let app;
 
-const fragmentGlownejKolumny = (html) => html.slice(html.indexOf('<main class="kolumna-glowna">'));
+const fragmentGlownejKolumny = (html) => html.slice(html.indexOf('<main class="kolumna-glowna'));
 const jako = (login) => ({ cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz(login, odczytajSekret(db))}` });
 
 beforeEach(async () => {
@@ -52,7 +52,7 @@ describe('działy i zakładki Ustawień', () => {
 
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('<title>Szablony paczek</title>');
-    expect(tresc).toContain('<h1>Szablony paczek</h1>');
+    expect(tresc).not.toContain('<h2 class="naglowek-formularza">Szablony paczek</h2>');
     // PRZ-152.G11a: pola szablonu są w wierszu w trybie edycji (bez JS: ?edytuj=<id>).
     const edycja = fragmentGlownejKolumny((await app.inject({ method: 'GET', url: '/ustawienia/zamowienia-i-wysylka?edytuj=domyslna', headers: BASIC })).body);
     for (const pole of ['waga', 'dlugosc', 'szerokosc', 'wysokosc']) {
@@ -71,9 +71,9 @@ describe('działy i zakładki Ustawień', () => {
     const tresc = fragmentGlownejKolumny(r.body);
 
     expect(r.statusCode).toBe(200);
-    // PRZ-136.14 (#11): jak inne działy — jeden prawdziwy <h1> z tytułem zakładki obok nagłówka ARIA działu z powłoki.
+    // PRZ-154 E2.3: jeden h1 działu, nazwę formularza pokazuje aktywna zakładka.
     expect((tresc.match(/<h1[\s>]/g) ?? [])).toHaveLength(1);
-    expect(tresc).toContain('<h1>Moje połączenia</h1>');
+    expect(tresc).not.toContain('<h2 class="naglowek-formularza">Moje połączenia</h2>');
     expect(tresc).toContain('Moje połączenia');
     expect(tresc).toContain('konto swietlik-pl');
     expect(tresc).toContain('Niesprawdzone');
@@ -86,7 +86,7 @@ describe('działy i zakładki Ustawień', () => {
     const tresc = fragmentGlownejKolumny(r.body);
 
     expect(r.statusCode).toBe(200);
-    expect(tresc).toContain('<h1>Autoodpowiedź Allegro</h1>');
+    expect(tresc).not.toContain('<h2 class="naglowek-formularza">Autoodpowiedź Allegro</h2>');
     for (const pole of ['wlaczona', 'tresc', 'od', 'do', 'dni', 'karencja']) {
       expect(tresc).toContain(`name="${pole}"`);
     }
@@ -99,7 +99,7 @@ describe('działy i zakładki Ustawień', () => {
 
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('<title>Stan systemu</title>');
-    expect(fragmentGlownejKolumny(r.body)).toContain('<h1>Stan systemu</h1>');
+    expect(fragmentGlownejKolumny(r.body)).not.toContain('<h2 class="naglowek-formularza">Stan systemu</h2>');
     const aktywne = r.body.match(/<li class="aktywna">\s*<a href="\/ustawienia\/moduly" aria-current="page">/g) ?? [];
     // Ten sam model jest renderowany raz w menu desktopowym i raz w zwijanym menu telefonu.
     expect(aktywne).toHaveLength(2);
@@ -115,7 +115,7 @@ describe('działy i zakładki Ustawień', () => {
     const tresc = fragmentGlownejKolumny(r.body);
 
     expect(r.statusCode).toBe(400);
-    expect(tresc).toContain('<h1>Autoodpowiedź Allegro</h1>');
+    expect(tresc).not.toContain('<h2 class="naglowek-formularza">Autoodpowiedź Allegro</h2>');
     expect(tresc).toMatch(/name="wlaczona"[^>]*checked/);
     expect(tresc).toContain(`>${'x'.repeat(2001)}</textarea>`);
     expect(tresc).toContain('name="od" min="0" max="23" value="19"');

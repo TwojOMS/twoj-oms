@@ -446,6 +446,8 @@ describe('PRZ-118.09 nazwa programu w tekstach i widokach', () => {
     expect(tekst('FAKTURY')).toContain('dane z Testownika, odczyt na żywo');
     expect(tekst('FAKTURY — nikt nie zalega')).toContain('Tak twierdzi Testownik.');
     expect(tekst('FAKTURY')).toContain('Faktura skasowana w Testowniku');
+    expect(tekst('FAKTURY')).toContain('Proformy generowane są w panelu, nie w Testowniku.');
+    expect(tekst('FAKTURY')).not.toContain('klient może mieć przed sobą starszy PDF');
     expect(tekst('FAKTURY — program nie odpowiada')).toContain('Nie wiadomo — Testownik nie odpowiedział.');
     expect(tekst('KSeF — podgląd')).toContain('Panel wysyła dokumenty do Testownika, a Testownik do KSeF.');
     expect(tekst('KSeF — wynik')).toContain('Panel przekazał dokumenty do Testownika, a Testownik przekazuje je organowi.');

@@ -1,0 +1,3 @@
+<nav class="ust-zakladki" aria-label="Zakładki: <%= d.etykieta %>"><% k.zakladki.forEach(function(z) { %>
+  <a href="<%= z.href %>"<%- z.aktywna ? ' aria-current="page"' : '' %>><%= z.etykieta %></a>
+<% }); %></nav>

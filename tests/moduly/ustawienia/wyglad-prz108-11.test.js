@@ -37,7 +37,7 @@ describe('PRZ-108.11 plakietka BETA przy Automatyzacjach', () => {
     const r = await get(p.app, '/ustawienia/automatyzacje', p.admin);
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('href="/ustawienia/automatyzacje"');
-    expect(r.body).toContain('<div class="tytul-z-plakietka"><h1>Automatyzacje</h1><span class="menu-ustawien-beta">BETA</span></div>');
+    expect(r.body).toMatch(/<h1>Automatyzacje<\/h1>[\s\S]*?<span class="menu-ustawien-beta">BETA<\/span>/); // PRZ-154: wspólny nagłówek działu.
     // Menu stoi w układzie dwa razy (lista na komputerze i rozwijana na telefonie) + tytuł ekranu.
     expect(r.body.match(/menu-ustawien-beta">BETA/gu)).toHaveLength(1);
   });
