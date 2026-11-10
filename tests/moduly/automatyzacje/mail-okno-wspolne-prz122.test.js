@@ -86,7 +86,9 @@ function srodowisko({ program = null, db = null, zgoda = null } = {}) {
   const regulaId = utworzRegule(baza, { nazwa: 'Faktura do klienta', zdarzenie: 'status_zmieniony', zdarzenie_json: { status: 'wyslane' },
     warunki: { kanaly: ['sklep'], kanalyZnane: ['sklep'], statusy: [], maNumerListu: false, metody: [], pobranie: 'dowolne' },
     akcja: 'mail_kupujacy', akcja_json: { szablon: 'faktura' }, opoznienie_min: 5, limit_na_godzine: 20 }, { login: 'adam' });
-  wlaczRegule(baza, regulaId, { login: 'adam' });
+  // PRZ-155: granica reguły na zegarze testu, nie systemowym — z prawdziwą datą zamówienie z 27.10 od 10.11
+  // wypadało „ponad 14 dni przed włączeniem” (przed_granica) i 12 testów padało.
+  wlaczRegule(baza, regulaId, { login: 'adam', teraz: () => o('09:00') });
   const zaplanujMail = (zamowienieId, terminAt = o('10:05')) => zaplanuj(baza, {
     regula_id: regulaId, przedmiot: `zamowienie:${zamowienieId}`, zamowienie_id: zamowienieId,
     zdarzenie_at: new Date(terminAt.getTime() - 5 * MIN).toISOString(), termin_at: terminAt.toISOString(), szablon: 'faktura',
