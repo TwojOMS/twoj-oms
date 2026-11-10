@@ -23,7 +23,7 @@
       --powierzchnia: #fff;
       --powierzchnia-2: #f1f3f5;
       --ramka: #e2e6ea;
-      --ramka-pola: #cbd2d9;
+      --ramka-pola: #848d96; /* PRZ-155 próba: było #cbd2d9 (1,53 do tła, próg 3:1) */
       --tekst-przygaszony: #66707a;
       --marka: #3e5566;
       --marka-ciemniej: #34495a;
@@ -122,7 +122,7 @@
       --powierzchnia: #23272b;
       --powierzchnia-2: #2c3136;
       --ramka: #383e44;
-      --ramka-pola: #4a5158;
+      --ramka-pola: #737c85; /* PRZ-155 próba: było #4a5158 (1,87) */
       /* Jasniejszy, niz podpowiadalby instynkt: ten sam odcien stoi TAKZE na tle naglowka
          panelu w trybie edycji (--edycja-glowa), gdzie przy #9aa2a9 kontrast spadal do 4,33
          — ponizej progu czytelnosci dla drobnego tekstu. Zmierzone, nie oszacowane. */

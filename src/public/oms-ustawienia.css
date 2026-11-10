@@ -201,13 +201,13 @@ a.pol-licznik:hover { color: var(--tekst); text-decoration: underline; }
 .ust-automat-wymiary { font-size: .85rem; color: var(--tekst-przygaszony); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .ust-automat-akcje { display: flex; gap: .3rem; align-items: center; justify-content: flex-end; }
 /* Przełącznik gabarytu: zwykłe radio pod spodem, więc działa bez JS i z klawiatury. */
-.ust-przelacznik { display: inline-flex; align-self: center; justify-self: start; align-items: stretch; gap: 0; min-height: 0; margin: 0; padding: 0; border: 1px solid var(--ramka-pola); border-radius: 6px; overflow: hidden; }
-.ust-przelacznik label { position: relative; }
-.ust-przelacznik input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
-.ust-przelacznik span { display: block; min-width: 2.2rem; padding: .4rem .6rem; text-align: center; font-size: .86rem; font-weight: 600; color: var(--tekst); background: var(--tlo); }
-.ust-przelacznik label + label span { border-left: 1px solid var(--ramka-pola); }
-.ust-przelacznik input:checked + span { background: var(--marka); color: var(--na-marce); }
-.ust-przelacznik input:focus-visible + span { outline: 2px solid var(--marka); outline-offset: -3px; }
+.ust-gabaryt { display: inline-flex; align-self: center; justify-self: start; align-items: stretch; gap: 0; min-height: 0; margin: 0; padding: 0; border: 1px solid var(--ramka-pola); border-radius: 6px; overflow: hidden; }
+.ust-gabaryt label { position: relative; }
+.ust-gabaryt input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.ust-gabaryt span { display: block; min-width: 2.2rem; padding: .4rem .6rem; text-align: center; font-size: .86rem; font-weight: 600; color: var(--tekst); background: var(--tlo); }
+.ust-gabaryt label + label span { border-left: 1px solid var(--ramka-pola); }
+.ust-gabaryt input:checked + span { background: var(--marka); color: var(--na-marce); }
+.ust-gabaryt input:focus-visible + span { outline: 2px solid currentColor; outline-offset: -4px; }
 /* Wymiary tylko zaznaczonego gabarytu; przeglądarka bez :has() pokazuje wszystkie. */
 @supports selector(:has(*)) {
   .ust-automat-wymiary > span { display: none; }

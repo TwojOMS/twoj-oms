@@ -264,10 +264,14 @@
   .prz065-tabela--dokumenty td:nth-child(3)::before { content: 'Zamówienie'; }
   .prz065-tabela--dokumenty td:nth-child(4)::before { content: 'Data'; }
   .prz065-tabela--dokumenty td:nth-child(5)::before { content: 'Nabywca'; }
-  .prz065-tabela--dokumenty td:nth-child(6)::before { content: 'Brutto'; }
-  .prz065-tabela--dokumenty td:nth-child(7)::before { content: 'KSeF'; }
+  /* ⚠️ Podpisy MUSZĄ iść w kolejności <th> z faktury.ejs. Kolumny Netto (29.10) i KSeF (03.11)
+     doszły bez nich i do 10.11 na telefonie netto miało podpis „Brutto”, brutto „KSeF” (audyt MWG,
+     PRZ-155). Pilnuje test tabela-faktur-prz155. */
+  .prz065-tabela--dokumenty td:nth-child(6)::before { content: 'Netto'; }
+  .prz065-tabela--dokumenty td:nth-child(7)::before { content: 'Brutto'; }
   .prz065-tabela--dokumenty td:nth-child(8)::before { content: 'Płatność'; }
-  .prz065-tabela--dokumenty td:nth-child(9)::before { content: 'Działania'; }
+  .prz065-tabela--dokumenty td:nth-child(9)::before { content: 'KSeF'; }
+  .prz065-tabela--dokumenty td:nth-child(10)::before { content: 'Działania'; }
   .prz065-tabela--proformy td:nth-child(1)::before { content: 'Numer'; }
   .prz065-tabela--proformy td:nth-child(2)::before { content: 'Wystawiona'; }
   .prz065-tabela--proformy td:nth-child(3)::before { content: 'Zamówienie'; }

@@ -92,7 +92,7 @@
     <form id="automat-<%= cel %>" class="ust-automat" method="post" action="/ustawienia/paczka/automat">
       <input type="hidden" name="cel" value="<%= cel %>">
       <div class="ust-automat-nazwa"><strong><%= nazwa %></strong><% if (opis) { %><span class="ust-pomoc"><%= opis %></span><% } %></div>
-      <div class="ust-przelacznik" role="radiogroup" aria-label="Gabaryt — <%= nazwa %>">
+      <div class="ust-gabaryt" role="radiogroup" aria-label="Gabaryt — <%= nazwa %>">
         <% gabaryty.forEach(function ([g]) { %><label><input type="radio" name="gabaryt" value="<%= g %>" <%= w.gabaryt === g ? 'checked' : '' %>><span><%= g %></span></label><% }); %>
       </div>
       <label class="ust-pole-jednostka">Waga <input name="waga" value="<%= w.waga %>" inputmode="decimal" required aria-label="Waga (kg) — <%= nazwa %>"> kg</label>
