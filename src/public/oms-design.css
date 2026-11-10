@@ -105,6 +105,8 @@
 .naglowek-ekranu__tytul{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 12px;min-width:0}
 .naglowek-ekranu h1{font-size:28px;font-weight:600;letter-spacing:-.8px;line-height:1.2;margin:0;overflow-wrap:anywhere}
 .naglowek-ekranu__podtytul{font-size:.85rem;color:var(--tekst-przygaszony);font-weight:400}
+/* PRZ-156 (właściciel 11.11): tylko karta zamówienia ma tytuł w pasku — jak dawna `.belka` sprzed PRZ-154.E2.1. */
+.naglowek-ekranu--pasek{box-sizing:border-box;background:var(--powierzchnia);border:1px solid var(--ramka);border-radius:.4rem;padding:.85rem 1rem}
 .naglowek-ekranu__podtytul .krok{font:inherit}
 .naglowek-ekranu__akcje{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-left:auto}
 .naglowek-ekranu__akcje form{margin:0}

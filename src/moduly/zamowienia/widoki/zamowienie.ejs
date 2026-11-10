@@ -42,7 +42,7 @@
 <%# ——— 1. BELKA FAKTOW ——————————————————————————————————————————————————————————— %>
 <%# Jedna linia zamiast dawnego tytułu h1 i dziesieciowierszowej tabeli „Szczegoly zamowienia": %>
 <%# numer, status, klient, ile klient jest nam winien, czym jedzie i skad przyszlo. %>
-<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Zamówienie " + (z.numer), idNaglowka: 'status', akcje: include('_naglowek-akcje-zamowienie-0.ejs', {wOkresie, nazwaOkresu})}) %>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Zamówienie " + (z.numer), idNaglowka: 'status', klasaNaglowka: 'naglowek-ekranu--pasek', akcje: include('_naglowek-akcje-zamowienie-0.ejs', {wOkresie, nazwaOkresu})}) %>
 
 <%# ——— BRAK NA STANIE (PRZ-091) ———————————————————————————————————————————————————— %>
 <%# WYLACZNIE gdy stany magazynowe sa wlaczone i to zamowienie zdejmuje karte na minusie. %>

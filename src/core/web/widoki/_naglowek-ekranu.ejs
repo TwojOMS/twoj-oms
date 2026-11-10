@@ -4,7 +4,7 @@ if (dzialUstawien && !locals.naglowekDzialu) { _%>
 <%_ const aktywnaZakladka = locals.nawigacja.kontekst.zakladki?.find(z => z.aktywna);
 if (tytul !== dzialUstawien.etykieta && tytul !== aktywnaZakladka?.etykieta) { _%><h2 class="naglowek-formularza"><%= tytul %></h2><%_ } _%>
 <%_ } else { _%>
-<header class="naglowek-ekranu"<% if (locals.idNaglowka) { %> id="<%= idNaglowka %>"<% } %>>
+<header class="naglowek-ekranu<% if (locals.klasaNaglowka) { %> <%= klasaNaglowka %><% } %>"<% if (locals.idNaglowka) { %> id="<%= idNaglowka %>"<% } %>>
   <div class="naglowek-ekranu__wiersz">
     <div class="naglowek-ekranu__tytul">
       <h1><%= tytul %></h1>
