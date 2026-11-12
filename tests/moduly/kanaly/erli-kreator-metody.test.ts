@@ -12,6 +12,11 @@ import type {ModulOms} from '../../../src/core/kontrakty.ts';
 import {transportErliPiaskownicy} from '../../../deploy/proba/atrapy/erli.mjs';
 import {drogaErliDlaZamowienia} from '../../../src/moduly/kanaly/services/kanal-erli.ts';
 import {createErliClient} from '../../../src/oms/erli/client.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+// Katalog roboczy w os.tmpdir(), nie na jednej maszynie (CI kopii publicznej 12.11.2026).
+const KATALOG_TESTU=fs.mkdtempSync(path.join(os.tmpdir(),'erli-kreator-metody-'));
 const root='/ustawienia/integracje/erli',produkcja='https://erli.pl/svc/shop-api',klucz='atrapa-polcien';
 const OSTRZEZENIE='zamówienia z tą metodą zatrzymają się przed nadaniem';
 let a:Aplikacja,db:ReturnType<typeof openOmsDb>;
@@ -19,7 +24,7 @@ afterEach(async()=>{await a?.app.close();db?.close();});
 // klienciKanalow: dziś mapa klientów kanałów (kompozycja) daje tylko Allegro — klienta ERLI podaje test.
 type Opcje={zPliku?:boolean;bezMetodErli?:boolean;idMetody?:string;klienciKanalow?:Record<string,unknown>};
 async function setup({zPliku=false,bezMetodErli=false,idMetody,klienciKanalow}:Opcje={}){
- const env={OMS_TRYB:'proba',OMS_KANALY:'[]',OMS_USER:'serwis',OMS_PASS:'fixture',OMS_SPRZEDAWCA_NIP:'1234563218',OMS_RACHUNEK:'34109010140000000000000000',OMS_PROFORMY_KATALOG:'/srv/praca/kierownik-petla/tmp/157-12l/proformy',OMS_ETYKIETY_KATALOG:'/srv/praca/kierownik-petla/tmp/157-12l/etykiety'};
+ const env={OMS_TRYB:'proba',OMS_KANALY:'[]',OMS_USER:'serwis',OMS_PASS:'fixture',OMS_SPRZEDAWCA_NIP:'1234563218',OMS_RACHUNEK:'34109010140000000000000000',OMS_PROFORMY_KATALOG:path.join(KATALOG_TESTU,'proformy'),OMS_ETYKIETY_KATALOG:path.join(KATALOG_TESTU,'etykiety')};
  const definicje=zPliku?[{klucz:'z-pliku',typ:'erli' as const,prefiks:'POLCIEN',etykieta:'Pracownia Półcień'}]:[];
  const zapytania:{url:string;metoda:string;body:string}[]=[];
  const atrapa=(u:any,i?:RequestInit)=>transportErliPiaskownicy({baza:()=>db,env,log:()=>{}})(u,i);

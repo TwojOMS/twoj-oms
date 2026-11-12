@@ -11,13 +11,18 @@ import {wczytajSekret} from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
 import {konfiguracjaKanalow} from '../../../src/moduly/kanaly/konfiguracja.ts';
 import type {ModulOms} from '../../../src/core/kontrakty.ts';
 import {transportErliPiaskownicy} from '../../../deploy/proba/atrapy/erli.mjs';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+// Katalog roboczy w os.tmpdir(), nie na jednej maszynie (CI kopii publicznej 12.11.2026).
+const KATALOG_TESTU=fs.mkdtempSync(path.join(os.tmpdir(),'erli-kreator-porzadek-'));
 const root='/ustawienia/integracje/erli',sandbox='https://sandbox.erli.dev/svc/shop-api',klucz='atrapa-polcien';
 const KOLEJNOSC=['dane','polaczenie','metody','nadawanie','start'];
 let a:Aplikacja,db:ReturnType<typeof openOmsDb>;
 afterEach(async()=>{await a?.app.close();db?.close();});
 type Opcje={bezMetodErli?:boolean;bezNazw?:boolean;odmowa?:boolean;zPliku?:boolean};
 async function setup({bezMetodErli=false,bezNazw=false,odmowa=false,zPliku=false}:Opcje={}){
- const env={OMS_TRYB:'proba',OMS_KANALY:'[]',OMS_USER:'serwis',OMS_PASS:'fixture',OMS_SPRZEDAWCA_NIP:'1234563218',OMS_RACHUNEK:'34109010140000000000000000',OMS_PROFORMY_KATALOG:'/srv/praca/kierownik-petla/tmp/12u/proformy',OMS_ETYKIETY_KATALOG:'/srv/praca/kierownik-petla/tmp/12u/etykiety'};
+ const env={OMS_TRYB:'proba',OMS_KANALY:'[]',OMS_USER:'serwis',OMS_PASS:'fixture',OMS_SPRZEDAWCA_NIP:'1234563218',OMS_RACHUNEK:'34109010140000000000000000',OMS_PROFORMY_KATALOG:path.join(KATALOG_TESTU,'proformy'),OMS_ETYKIETY_KATALOG:path.join(KATALOG_TESTU,'etykiety')};
  const definicje=zPliku?[{klucz:'z-pliku',typ:'erli' as const,prefiks:'POLCIEN',etykieta:'Pracownia Półcień'}]:[];
  const stan={odmowa};
  const atrapa=(u:any,i?:RequestInit)=>transportErliPiaskownicy({baza:()=>db,env,log:()=>{}})(u,i);
