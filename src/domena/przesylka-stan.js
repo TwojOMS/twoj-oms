@@ -125,7 +125,13 @@ export const numerWpisanyZReki = (p) => Boolean(p?.nadana_recznie) && !numerZAll
  */
 export function mozliweUkrycie(p, przesylki) {
   if (!p || przesylkaUkryta(p)) return false;
+  if (zwrotErli(p)) return true;
   return (przesylki ?? []).some((inna) => inna.status !== 'blad' && inna.kolejnosc > p.kolejnosc);
+}
+
+// Zwrot Przesyłki Erli wymaga człowieka (PRZ-157.09); inni kurierzy jak dotąd. „Ukryj” zamyka sprawę.
+function zwrotErli(p) {
+  return p?.kurier === 'erli_przesylki' && etapPrzesylki(p.status_kuriera, p.status_kuriera_kod) === 'zwrot';
 }
 
 export function przesylkaUkryta(p) {
@@ -159,6 +165,7 @@ export function sprawyPrzesylki(p, teraz = Date.now()) {
   if (stan === 'tworzona_u_kuriera') sprawy.push('przesyłka tworzona u kuriera');
   if (stan === 'do_wyjasnienia') sprawy.push('nadanie do wyjaśnienia');
   if (p.sync_woo_blad) sprawy.push('sklep niezsynchronizowany');
+  if (stan === 'nadana' && zwrotErli(p) && !przesylkaUkryta(p)) sprawy.push('zwrot przesyłki');
   // Brak pliku etykiety liczy sie DOPIERO przy przesylce nadanej: dopoki nadanie trwa,
   // etykiety jeszcze po prostu nie ma i nie jest to zadna sprawa do zalatwienia.
   // PDF i ZPL sa rownoprawnymi zapisanymi etykietami — WzA „Nadaj i drukuj” ma tylko ZPL.

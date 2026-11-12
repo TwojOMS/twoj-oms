@@ -95,6 +95,11 @@ function adresOferty({ ofertaId = null, reczna = false } = {}) {
 
 // Trzeci kanal = JEDEN wpis w tej tablicy. Nic poza tym plikiem nie musi o nim wiedziec.
 const WZORCE = {
+  erli: { adres: ({ slug = null, externalId = null, reczna = false } = {}) => {
+    const id = slug ?? externalId;
+    return !reczna && typeof id === 'string' && id.length > 0 && !/[^A-Za-z0-9._-]/.test(id)
+      ? `https://erli.pl/produkt/${id}` : null;
+  }, tytul: 'Otwórz produkt na ERLI' },
   sklep: { adres: adresProduktu, tytul: 'Otwórz produkt w sklepie' },
   allegro: { adres: adresOferty, tytul: 'Otwórz ofertę na Allegro' },
 };
@@ -107,7 +112,7 @@ const WZORCE = {
  * konfiguracji. Widok zostawia wtedy sama tresc, a nie martwe `<a href="">`.
  *
  * @param {{sklep?: string}|null} zamowienie zamowienie, do ktorego nalezy wiersz (dla kanalu)
- * @param {{produktId?: number|null, ofertaId?: string|null, sku?: string|null, reczna?: boolean}} wiersz
+ * @param {{produktId?: number|null, ofertaId?: string|null, sku?: string|null, slug?: string|null, externalId?: string|null, reczna?: boolean}} wiersz
  * @param {{baseUrl?: string|null}} opcje korzen sklepu (config.sklepy[<sklep>].baseUrl)
  */
 export function odnosnikPozycji(zamowienie, wiersz, { baseUrl = null } = {}) {

@@ -73,6 +73,7 @@ export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
         return (opcjonalna('kanaly','repozytoriumKanalow')?.lista()??[]).filter((p:any)=>!config.kanaly[p.klucz]?.atrapa);
       },
       sklepyWoo:()=>opcjonalna('kanaly','repozytoriumKanalow')?.listaTypu('woo')??[],
+      sklepyErli:()=>opcjonalna('kanaly','sklepyErli')?.lista()??[],
       integracje:()=>{
         const zapisane = new Set(ctx.db.prepare('SELECT integracja FROM konfiguracja_integracji').all().map((r:any)=>r.integracja));
         const kurierzy = kurierzyWlasni().flatMap((o)=>{ const k=KONFIGURACJA_KURIEROW[o.klucz]; return k?[{id:o.idKatalogu,...k}]:[]; });

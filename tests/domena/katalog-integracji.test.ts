@@ -15,6 +15,9 @@ describe('katalog integracji', () => {
     expect(allegro?.konfigurator).toEqual({ dodaj: MODUL_ALLEGRO.konfigurator.dodaj, href: `${MODUL_ALLEGRO.konfigurator.sciezka}/${MODUL_ALLEGRO.konfigurator.nowy}` });
     expect(allegro?.href).toBe(allegro?.konfigurator?.href);
   });
+  it('dostępne sklepy przed planowanymi — ERLI trzecie (PRZ-157.12h)', () => {
+    expect(KATALOG_INTEGRACJI.filter(u => u.kategoria === 'sklepy').map(u => u.id)).toEqual(['allegro', 'woocommerce', 'erli', 'shoper', 'empik', 'etsy']);
+  });
   it('obejmuje wymagane usługi bez duplikatów i bez TwojeFaktury', () => {
     expect(KATALOG_INTEGRACJI.map((usluga) => usluga.id).sort()).toEqual([
       'allegro', 'woocommerce', 'shoper', 'empik', 'erli', 'etsy',
@@ -23,10 +26,10 @@ describe('katalog integracji', () => {
     ].sort());
   });
 
-  it('oznacza osiem zapowiedzi bez odnośnika do podłączenia', () => {
+  it('oznacza siedem zapowiedzi bez odnośnika do podłączenia', () => {
     const planowane = KATALOG_INTEGRACJI.filter((usluga) => usluga.dostepnosc === 'planowana');
     expect(planowane.map((usluga) => usluga.id).sort()).toEqual(
-      ['shoper', 'empik', 'erli', 'etsy', 'gls', 'dhl', 'apaczka', 'fakturownia'].sort(),
+      ['shoper', 'empik', 'etsy', 'gls', 'dhl', 'apaczka', 'fakturownia'].sort(),
     );
     expect(planowane.every((usluga) => usluga.href === null)).toBe(true);
   });
@@ -62,7 +65,7 @@ describe('katalog integracji', () => {
 
 describe('katalog integracji — wysyłka z rejestru kurierów (PRZ-135.07a)', () => {
   it('wpis wysyłki z rejestru: każdy kurier z metodami ma wpis z polami z opisu, w kolejności rejestru', () => {
-    const kurierzy = Object.values(MODULY_KURIEROW).filter((opis) => opis.metody.length > 0);
+    const kurierzy = Object.values(MODULY_KURIEROW).filter((opis) => opis.metody.length > 0 && (opis as { wKatalogu?: false }).wKatalogu !== false);
     const dostepne = KATALOG_INTEGRACJI.filter((u) => u.kategoria === 'wysylka' && u.dostepnosc === 'dostepna');
     expect(dostepne.map((u) => u.id)).toEqual(kurierzy.map((opis) => opis.idKatalogu));
     for (const opis of kurierzy) {

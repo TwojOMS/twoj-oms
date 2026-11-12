@@ -20,6 +20,8 @@ export function utworzUslugiWiadomosci({ db, config, klienciKanalow, fabryki = {
 }: { db: DatabaseSync; config: any; klienciKanalow: Record<string, any>;
   fabryki?: FabrykiWiadomosci; tokenyKanalow?: Record<string, any>;
   brakiKanalu?: (kanal: string) => string[]; wolnoZapisywac?: (kanal: string) => boolean; proforma?: any; infakt?: any; wyborProgramu?: any; teraz?: () => Date }) {
+  // PRZ-157.12b: mapa zawiera też klientów ERLI. Odbiorcy dostają TĘ SAMĄ żywą mapę (okablowanie-wiadomosci)
+  // i sami pomijają kanały bez wiadomości (kanalZWiadomosciami w pollerze, sprawach i czuwaczu).
   const braki = brakiKanalu ?? ((kanal: string) =>
     tokenyKanalow[kanal]?.stanDlaEkranu().brakujaceUprawnienia ?? []);
   const odswiezanieSpraw = (fabryki.createOdswiezanieSpraw ?? createOdswiezanieSpraw)({

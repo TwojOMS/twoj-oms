@@ -45,7 +45,7 @@
   "statystyki": {
     "plikiKodowe": 428,
     "bledyParsera": 0,
-    "odczytyProduktu": 138,
+    "odczytyProduktu": 141,
     "dynamiczneOdczytyProduktu": 33,
     "zmienneProduktu": 76,
     "rodzinyDynamiczne": 11,
@@ -100,6 +100,74 @@
     }
   ],
   "zmienne": [
+    {
+      "nazwa": "<P>_KLUCZ_API",
+      "wlasciciel": "kanaly",
+      "sekcja": "Dynamiczne prefiksy kanałów",
+      "opis": "Klucz API konta ERLI z panelu sprzedawcy.",
+      "zakres": "produkt",
+      "wymagalnosc": "wymagana dla aktywnego ERLI",
+      "domyslna": "brak wartości domyślnej",
+      "skutekBraku": "Nie można uruchomić połączenia ERLI.",
+      "walidacja": "niepusty klucz API; sekret nie może trafić do logu ani HTML",
+      "dynamiczna": true,
+      "typyKanalow": [
+        "erli"
+      ],
+      "prefiks": "OMS_KANALY[*].prefiks, unikalny i walidowany",
+      "sekret": true,
+      "odczyty": [
+        {
+          "id": "AST-158",
+          "path": "src/moduly/kanaly/konfiguracja.ts",
+          "line": 125,
+          "expression": "env[n]",
+          "kind": "dynamiczny",
+          "via": "zamknięta mapa helpera"
+        },
+        {
+          "id": "AST-159",
+          "path": "src/moduly/kanaly/konfiguracja.ts",
+          "line": 125,
+          "expression": "env[n]",
+          "kind": "dynamiczny",
+          "via": "zamknięta mapa helpera"
+        }
+      ],
+      "sciezkaOdczytu": [
+        "src/moduly/kanaly/konfiguracja.ts:125"
+      ]
+    },
+    {
+      "nazwa": "<P>_ADRES_API",
+      "wlasciciel": "kanaly",
+      "sekcja": "Dynamiczne prefiksy kanałów",
+      "opis": "Adres API ERLI: produkcyjny albo testowy (sandbox).",
+      "zakres": "produkt",
+      "wymagalnosc": "wymagana dla aktywnego ERLI",
+      "domyslna": "brak wartości domyślnej",
+      "skutekBraku": "Nie można uruchomić połączenia ERLI.",
+      "walidacja": "Wyłącznie https://erli.pl/svc/shop-api albo https://sandbox.erli.dev/svc/shop-api; także dla konfiguracji env.",
+      "dynamiczna": true,
+      "typyKanalow": [
+        "erli"
+      ],
+      "prefiks": "OMS_KANALY[*].prefiks, unikalny i walidowany",
+      "sekret": false,
+      "odczyty": [
+        {
+          "id": "AST-160",
+          "path": "src/moduly/kanaly/konfiguracja.ts",
+          "line": 128,
+          "expression": "env[`${p}_ADRES_API`]",
+          "kind": "dynamiczny",
+          "via": "zamknięta mapa helpera"
+        }
+      ],
+      "sciezkaOdczytu": [
+        "src/moduly/kanaly/konfiguracja.ts:128"
+      ]
+    },
     {
       "nazwa": "OMS_DB_PATH",
       "wlasciciel": "rdzen / uruchomienie",
@@ -553,7 +621,7 @@
         {
           "id": "AST-022",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 106,
+          "line": 107,
           "expression": "env.OMS_KANALY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -561,7 +629,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/kanaly/konfiguracja.ts:106"
+        "src/moduly/kanaly/konfiguracja.ts:107"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -583,7 +651,7 @@
         {
           "id": "AST-035",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 156,
+          "line": 166,
           "expression": "env.OMS_POLLER_MS",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -591,7 +659,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/kanaly/konfiguracja.ts:156"
+        "src/moduly/kanaly/konfiguracja.ts:166"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -643,7 +711,7 @@
         {
           "id": "AST-023",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 123,
+          "line": 125,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -651,7 +719,7 @@
         {
           "id": "AST-024",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 123,
+          "line": 125,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -659,7 +727,7 @@
         {
           "id": "AST-028",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 145,
+          "line": 155,
           "expression": "env[`${p}_CK`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -685,8 +753,8 @@
       "sciezkaOdczytu": [
         "src/core/tryb.ts:18",
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:123",
-        "src/moduly/kanaly/konfiguracja.ts:145",
+        "src/moduly/kanaly/konfiguracja.ts:125",
+        "src/moduly/kanaly/konfiguracja.ts:155",
         "src/moduly/kanaly/scripts/import-sklep.mjs:55"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
@@ -739,7 +807,7 @@
         {
           "id": "AST-023",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 123,
+          "line": 125,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -747,7 +815,7 @@
         {
           "id": "AST-024",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 123,
+          "line": 125,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -755,7 +823,7 @@
         {
           "id": "AST-029",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 145,
+          "line": 155,
           "expression": "env[`${p}_CS`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -781,8 +849,8 @@
       "sciezkaOdczytu": [
         "src/core/tryb.ts:18",
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:123",
-        "src/moduly/kanaly/konfiguracja.ts:145",
+        "src/moduly/kanaly/konfiguracja.ts:125",
+        "src/moduly/kanaly/konfiguracja.ts:155",
         "src/moduly/kanaly/scripts/import-sklep.mjs:55"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
@@ -818,7 +886,7 @@
         {
           "id": "AST-023",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 123,
+          "line": 125,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -826,7 +894,7 @@
         {
           "id": "AST-024",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 123,
+          "line": 125,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -834,7 +902,7 @@
         {
           "id": "AST-025",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 128,
+          "line": 138,
           "expression": "env[`${p}_URL`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -859,8 +927,8 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:123",
-        "src/moduly/kanaly/konfiguracja.ts:128",
+        "src/moduly/kanaly/konfiguracja.ts:125",
+        "src/moduly/kanaly/konfiguracja.ts:138",
         "src/moduly/kanaly/scripts/import-sklep.mjs:55"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
@@ -895,7 +963,7 @@
         {
           "id": "AST-023",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 123,
+          "line": 125,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -903,7 +971,7 @@
         {
           "id": "AST-024",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 123,
+          "line": 125,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -912,7 +980,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:123"
+        "src/moduly/kanaly/konfiguracja.ts:125"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -922,9 +990,9 @@
       "nazwa": "<P>_OD",
       "wlasciciel": "kanaly",
       "sekcja": "Dynamiczne prefiksy kanałów",
-      "opis": "Data RRRR-MM-DD, od której OMS pobiera zamówienia z kanału; dla Allegro obowiązkowa, dla WooCommerce opcjonalna.",
+      "opis": "Data RRRR-MM-DD, od której OMS pobiera zamówienia z kanału; dla Allegro i ERLI obowiązkowa, dla WooCommerce opcjonalna.",
       "zakres": "produkt",
-      "wymagalnosc": "opcjonalna dla Woo; wymagana dla aktywnego Allegro",
+      "wymagalnosc": "opcjonalna dla Woo; wymagana dla aktywnego Allegro i ERLI",
       "domyslna": "Woo: null; Allegro: brak wartości domyślnej",
       "domyslnaPoLudzku": "WooCommerce: bez daty (pobierane są wszystkie zamówienia); Allegro: brak — datę trzeba podać",
       "skutekBraku": "Woo zachowuje null i nie przekazuje modified_after. Aktywne Allegro bez OD odmawia konfiguracji; pełna kompozycja zgłasza jego brak przez /health zgodnie z D01.",
@@ -933,7 +1001,8 @@
       "dynamiczna": true,
       "typyKanalow": [
         "woo",
-        "allegro"
+        "allegro",
+        "erli"
       ],
       "prefiks": "OMS_KANALY[*].prefiks, unikalny i walidowany",
       "odczyty": [
@@ -948,7 +1017,7 @@
         {
           "id": "AST-122",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 44,
+          "line": 50,
           "expression": "env[nazwa]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -956,7 +1025,7 @@
         {
           "id": "AST-123",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 136,
+          "line": 146,
           "expression": "env[`${p}_OD`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -964,7 +1033,7 @@
         {
           "id": "AST-124",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 136,
+          "line": 146,
           "expression": "env[`${p}_OD`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -981,8 +1050,8 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:44",
-        "src/moduly/kanaly/konfiguracja.ts:136",
+        "src/moduly/kanaly/konfiguracja.ts:50",
+        "src/moduly/kanaly/konfiguracja.ts:146",
         "src/moduly/raporty/konfiguracja.ts:57"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
@@ -1026,7 +1095,7 @@
         {
           "id": "AST-030",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 148,
+          "line": 158,
           "expression": "env[`${p}_HISTORIA_KONTO_APILO`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1044,7 +1113,7 @@
       "sciezkaOdczytu": [
         "src/moduly/kanaly/historia.ts:17",
         "src/moduly/kanaly/historia.ts:18",
-        "src/moduly/kanaly/konfiguracja.ts:148",
+        "src/moduly/kanaly/konfiguracja.ts:158",
         "src/moduly/kanaly/klasyfikacja.ts:70"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
@@ -1096,7 +1165,7 @@
         {
           "id": "AST-023",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 123,
+          "line": 125,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1104,7 +1173,7 @@
         {
           "id": "AST-024",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 123,
+          "line": 125,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1112,7 +1181,7 @@
         {
           "id": "AST-031",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 150,
+          "line": 160,
           "expression": "env[`${p}_CLIENT_ID`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1122,8 +1191,8 @@
       "sciezkaOdczytu": [
         "src/core/tryb.ts:18",
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:123",
-        "src/moduly/kanaly/konfiguracja.ts:150"
+        "src/moduly/kanaly/konfiguracja.ts:125",
+        "src/moduly/kanaly/konfiguracja.ts:160"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -1174,7 +1243,7 @@
         {
           "id": "AST-023",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 123,
+          "line": 125,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1182,7 +1251,7 @@
         {
           "id": "AST-024",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 123,
+          "line": 125,
           "expression": "env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1190,7 +1259,7 @@
         {
           "id": "AST-032",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 150,
+          "line": 160,
           "expression": "env[`${p}_CLIENT_SECRET`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1200,8 +1269,8 @@
       "sciezkaOdczytu": [
         "src/core/tryb.ts:18",
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:123",
-        "src/moduly/kanaly/konfiguracja.ts:150"
+        "src/moduly/kanaly/konfiguracja.ts:125",
+        "src/moduly/kanaly/konfiguracja.ts:160"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -1226,7 +1295,7 @@
         {
           "id": "AST-026",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 131,
+          "line": 141,
           "expression": "env[`${p}_API`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1234,7 +1303,7 @@
         {
           "id": "AST-033",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 152,
+          "line": 162,
           "expression": "env[`${p}_API`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1242,8 +1311,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/kanaly/konfiguracja.ts:131",
-        "src/moduly/kanaly/konfiguracja.ts:152"
+        "src/moduly/kanaly/konfiguracja.ts:141",
+        "src/moduly/kanaly/konfiguracja.ts:162"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -1268,7 +1337,7 @@
         {
           "id": "AST-027",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 132,
+          "line": 142,
           "expression": "env[`${p}_AUTH`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1276,7 +1345,7 @@
         {
           "id": "AST-034",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 152,
+          "line": 162,
           "expression": "env[`${p}_AUTH`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1284,8 +1353,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/kanaly/konfiguracja.ts:132",
-        "src/moduly/kanaly/konfiguracja.ts:152"
+        "src/moduly/kanaly/konfiguracja.ts:142",
+        "src/moduly/kanaly/konfiguracja.ts:162"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -1319,7 +1388,7 @@
         {
           "id": "AST-121",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 44,
+          "line": 45,
           "expression": "env[nazwa]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1327,7 +1396,7 @@
         {
           "id": "AST-125",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 137,
+          "line": 147,
           "expression": "env[`${p}_USER_AGENT`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1335,7 +1404,7 @@
         {
           "id": "AST-126",
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 137,
+          "line": 147,
           "expression": "env[`${p}_USER_AGENT`]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -1344,8 +1413,8 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/moduly/kanaly/kompletnosc.ts:7",
-        "src/moduly/kanaly/konfiguracja.ts:44",
-        "src/moduly/kanaly/konfiguracja.ts:137"
+        "src/moduly/kanaly/konfiguracja.ts:45",
+        "src/moduly/kanaly/konfiguracja.ts:147"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -4672,7 +4741,7 @@
         {
           "id": "AST-133",
           "path": "src/moduly/ustawienia/modul.ts",
-          "line": 50,
+          "line": 51,
           "expression": "env.OMS_ADRES_PANELU",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4680,7 +4749,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/ustawienia/modul.ts:50"
+        "src/moduly/ustawienia/modul.ts:51"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -4880,7 +4949,7 @@
       "odczyty": [
         {
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 16,
+          "line": 17,
           "expression": "env.OMS_ALLEGRO_DEVICE_CLIENT_ID",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4888,7 +4957,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/kanaly/konfiguracja.ts:16"
+        "src/moduly/kanaly/konfiguracja.ts:17"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true
@@ -4907,7 +4976,7 @@
       "odczyty": [
         {
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 16,
+          "line": 17,
           "expression": "env.OMS_ALLEGRO_DEVICE_CLIENT_SECRET",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4915,7 +4984,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/kanaly/konfiguracja.ts:16"
+        "src/moduly/kanaly/konfiguracja.ts:17"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true
@@ -4934,7 +5003,7 @@
       "odczyty": [
         {
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env.OMS_ALLEGRO_SANDBOX_DEVICE_CLIENT_ID",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4942,7 +5011,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/kanaly/konfiguracja.ts:17"
+        "src/moduly/kanaly/konfiguracja.ts:18"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true
@@ -4961,7 +5030,7 @@
       "odczyty": [
         {
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 17,
+          "line": 18,
           "expression": "env.OMS_ALLEGRO_SANDBOX_DEVICE_CLIENT_SECRET",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4969,7 +5038,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/kanaly/konfiguracja.ts:17"
+        "src/moduly/kanaly/konfiguracja.ts:18"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true
@@ -4988,14 +5057,14 @@
       "odczyty": [
         {
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 11,
+          "line": 12,
           "expression": "env.OMS_ALLEGRO_USER_AGENT",
           "kind": "statyczny",
           "via": "bezpośrednio"
         },
         {
           "path": "src/moduly/kanaly/konfiguracja.ts",
-          "line": 157,
+          "line": 167,
           "expression": "env.OMS_ALLEGRO_USER_AGENT",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -5003,8 +5072,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/kanaly/konfiguracja.ts:11",
-        "src/moduly/kanaly/konfiguracja.ts:157"
+        "src/moduly/kanaly/konfiguracja.ts:12",
+        "src/moduly/kanaly/konfiguracja.ts:167"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true
@@ -5141,7 +5210,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 44,
+      "line": 45,
       "expression": "env[nazwa]",
       "names": [
         "<P>_USER_AGENT"
@@ -5150,7 +5219,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 49,
+      "line": 50,
       "expression": "env[nazwa]",
       "names": [
         "<P>_OD"
@@ -5159,7 +5228,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 123,
+      "line": 125,
       "expression": "env[n]",
       "names": [
         "<P>_MAPOWANIE",
@@ -5167,13 +5236,14 @@
         "<P>_CK",
         "<P>_CS",
         "<P>_CLIENT_ID",
-        "<P>_CLIENT_SECRET"
+        "<P>_CLIENT_SECRET",
+        "<P>_KLUCZ_API"
       ],
       "reason": "Zamknięta mapa dynamicznego czytnika, przypięta pełnym SHA LF pliku."
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 123,
+      "line": 125,
       "expression": "env[n]",
       "names": [
         "<P>_MAPOWANIE",
@@ -5181,13 +5251,23 @@
         "<P>_CK",
         "<P>_CS",
         "<P>_CLIENT_ID",
-        "<P>_CLIENT_SECRET"
+        "<P>_CLIENT_SECRET",
+        "<P>_KLUCZ_API"
       ],
       "reason": "Zamknięta mapa dynamicznego czytnika, przypięta pełnym SHA LF pliku."
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
       "line": 128,
+      "expression": "env[`${p}_ADRES_API`]",
+      "names": [
+        "<P>_ADRES_API"
+      ],
+      "reason": "PRZ-157.11a: zamknięta rodzina adresu API ERLI."
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 138,
       "expression": "env[`${p}_URL`]",
       "names": [
         "<P>_URL"
@@ -5196,7 +5276,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 131,
+      "line": 141,
       "expression": "env[`${p}_API`]",
       "names": [
         "<P>_API"
@@ -5205,7 +5285,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 132,
+      "line": 142,
       "expression": "env[`${p}_AUTH`]",
       "names": [
         "<P>_AUTH"
@@ -5214,7 +5294,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 136,
+      "line": 146,
       "expression": "env[`${p}_OD`]",
       "names": [
         "<P>_OD"
@@ -5223,7 +5303,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 136,
+      "line": 146,
       "expression": "env[`${p}_OD`]",
       "names": [
         "<P>_OD"
@@ -5232,7 +5312,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 137,
+      "line": 147,
       "expression": "env[`${p}_USER_AGENT`]",
       "names": [
         "<P>_USER_AGENT"
@@ -5241,7 +5321,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 137,
+      "line": 147,
       "expression": "env[`${p}_USER_AGENT`]",
       "names": [
         "<P>_USER_AGENT"
@@ -5250,7 +5330,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 145,
+      "line": 155,
       "expression": "env[`${p}_CK`]",
       "names": [
         "<P>_CK"
@@ -5259,7 +5339,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 145,
+      "line": 155,
       "expression": "env[`${p}_CS`]",
       "names": [
         "<P>_CS"
@@ -5268,7 +5348,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 148,
+      "line": 158,
       "expression": "env[`${p}_HISTORIA_KONTO_APILO`]",
       "names": [
         "<P>_HISTORIA_KONTO_APILO"
@@ -5277,7 +5357,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 150,
+      "line": 160,
       "expression": "env[`${p}_CLIENT_ID`]",
       "names": [
         "<P>_CLIENT_ID"
@@ -5286,7 +5366,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 150,
+      "line": 160,
       "expression": "env[`${p}_CLIENT_SECRET`]",
       "names": [
         "<P>_CLIENT_SECRET"
@@ -5295,7 +5375,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 152,
+      "line": 162,
       "expression": "env[`${p}_API`]",
       "names": [
         "<P>_API"
@@ -5304,10 +5384,19 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 152,
+      "line": 162,
       "expression": "env[`${p}_AUTH`]",
       "names": [
         "<P>_AUTH"
+      ],
+      "reason": "Zamknięta mapa dynamicznego czytnika, przypięta pełnym SHA LF pliku."
+    },
+    {
+      "path": "src/moduly/kanaly/klasyfikacja.ts",
+      "line": 70,
+      "expression": "env[`${d.prefiks}_HISTORIA_KONTO_APILO`]",
+      "names": [
+        "<P>_HISTORIA_KONTO_APILO"
       ],
       "reason": "Zamknięta mapa dynamicznego czytnika, przypięta pełnym SHA LF pliku."
     },
@@ -5342,36 +5431,6 @@
       "reason": "Zamknięta mapa dynamicznego czytnika, przypięta pełnym SHA LF pliku."
     },
     {
-      "path": "src/moduly/wysylka/modul.ts",
-      "line": 85,
-      "expression": "env[klucz]",
-      "names": [
-        "OMS_PRZESYLKI_ODSTEP_MS",
-        "OMS_PODJAZDY_ODSTEP_MS"
-      ],
-      "reason": "Zamknięta mapa dynamicznego czytnika, przypięta pełnym SHA LF pliku."
-    },
-    {
-      "path": "src/moduly/kanaly/klasyfikacja.ts",
-      "line": 70,
-      "expression": "env[`${d.prefiks}_HISTORIA_KONTO_APILO`]",
-      "names": [
-        "<P>_HISTORIA_KONTO_APILO"
-      ],
-      "reason": "Zamknięta mapa dynamicznego czytnika, przypięta pełnym SHA LF pliku."
-    },
-    {
-      "path": "src/moduly/raporty/konfiguracja.ts",
-      "line": 9,
-      "expression": "env[klucz]",
-      "names": [
-        "OMS_RAPORTY_PODLOGA_ZWROTOW",
-        "OMS_STATYSTYKI_PIERWSZY_DZIEN",
-        "OMS_RAPORTY_DATA_IMPORTU_HISTORII"
-      ],
-      "reason": "Zamknięta mapa dynamicznego czytnika, przypięta pełnym SHA LF pliku."
-    },
-    {
       "path": "src/moduly/wiadomosci/konfiguracja.ts",
       "line": 19,
       "expression": "env[k]",
@@ -5396,24 +5455,23 @@
       "reason": "Zamknięta mapa dynamicznego czytnika, przypięta pełnym SHA LF pliku."
     },
     {
-      "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-      "line": 55,
-      "expression": "process.env[n]",
+      "path": "src/moduly/wysylka/modul.ts",
+      "line": 89,
+      "expression": "env[klucz]",
       "names": [
-        "<P>_URL",
-        "<P>_CK",
-        "<P>_CS"
+        "OMS_PRZESYLKI_ODSTEP_MS",
+        "OMS_PODJAZDY_ODSTEP_MS"
       ],
       "reason": "Zamknięta mapa dynamicznego czytnika, przypięta pełnym SHA LF pliku."
     },
     {
-      "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-      "line": 55,
-      "expression": "process.env[n]",
+      "path": "src/moduly/raporty/konfiguracja.ts",
+      "line": 9,
+      "expression": "env[klucz]",
       "names": [
-        "<P>_URL",
-        "<P>_CK",
-        "<P>_CS"
+        "OMS_RAPORTY_PODLOGA_ZWROTOW",
+        "OMS_STATYSTYKI_PIERWSZY_DZIEN",
+        "OMS_RAPORTY_DATA_IMPORTU_HISTORII"
       ],
       "reason": "Zamknięta mapa dynamicznego czytnika, przypięta pełnym SHA LF pliku."
     },
@@ -5424,6 +5482,28 @@
       "names": [
         "<P>_OD"
       ]
+    },
+    {
+      "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
+      "line": 55,
+      "expression": "process.env[n]",
+      "names": [
+        "<P>_URL",
+        "<P>_CK",
+        "<P>_CS"
+      ],
+      "reason": "Zamknięta mapa dynamicznego czytnika, przypięta pełnym SHA LF pliku."
+    },
+    {
+      "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
+      "line": 55,
+      "expression": "process.env[n]",
+      "names": [
+        "<P>_URL",
+        "<P>_CK",
+        "<P>_CS"
+      ],
+      "reason": "Zamknięta mapa dynamicznego czytnika, przypięta pełnym SHA LF pliku."
     }
   ],
   "dostepy": [
@@ -7204,116 +7284,46 @@
   ],
   "przekazaniaEnv": [
     {
-      "path": "src/moduly/kanaly/historia.ts",
-      "line": 10,
-      "expression": "env",
-      "callee": "wczytajKlientowWdt",
-      "call": "wczytajKlientowWdt(env)"
-    },
-    {
-      "path": "src/moduly/kanaly/historia.ts",
-      "line": 19,
-      "expression": "env",
-      "callee": "regulyHistorii",
-      "call": "regulyHistorii(env)"
-    },
-    {
-      "path": "src/moduly/kanaly/modul.ts",
-      "line": 22,
+      "path": "src/core/tryb.ts",
+      "line": 13,
       "expression": "env",
       "callee": "efektywnyTryb",
       "call": "efektywnyTryb(env)"
     },
     {
-      "path": "src/moduly/kanaly/modul.ts",
-      "line": 22,
+      "path": "src/core/aplikacja.ts",
+      "line": 21,
       "expression": "env",
-      "callee": "profilAllegroProby",
-      "call": "profilAllegroProby(env)"
+      "callee": "zaufaneProxy",
+      "call": "zaufaneProxy(env)"
     },
     {
-      "path": "src/moduly/kanaly/modul.ts",
-      "line": 23,
-      "expression": "env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(env)"
-    },
-    {
-      "path": "src/moduly/kanaly/modul.ts",
+      "path": "src/core/aplikacja.ts",
       "line": 24,
       "expression": "env",
-      "callee": "konfiguracjaKanalow",
-      "call": "konfiguracjaKanalow(definicje,env,niekompletneJakoAlarm)"
-    },
-    {
-      "path": "src/oms/db/klienci.js",
-      "line": 159,
-      "expression": "env",
-      "callee": "parsujKlientowZbiorczych",
-      "call": "parsujKlientowZbiorczych(env)"
-    },
-    {
-      "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-      "line": 50,
-      "expression": "process.env",
-      "callee": "definicjeKanalow",
-      "call": "definicjeKanalow(process.env)"
-    },
-    {
-      "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-      "line": 51,
-      "expression": "process.env",
       "callee": "sprawdzTrybProby",
-      "call": "sprawdzTrybProby(process.env, definicje.flatMap(d => kluczeKanalu(d.typ, d.prefiks).kluczeIntegracji))"
+      "call": "sprawdzTrybProby(env, [...new Set(kolejnosc.flatMap((m) => m.kluczeIntegracji ?? []))])"
     },
     {
-      "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-      "line": 60,
-      "expression": "process.env",
-      "callee": "konfiguracjaHistorii",
-      "call": "konfiguracjaHistorii(process.env, sklep, prefiks)"
+      "path": "src/core/aplikacja.ts",
+      "line": 31,
+      "expression": "env",
+      "callee": "m.konfiguracja",
+      "call": "m.konfiguracja(env)"
     },
     {
-      "path": "src/oms/bootstrap.ts",
-      "line": 11,
+      "path": "src/core/aplikacja.ts",
+      "line": 51,
+      "expression": "env",
+      "callee": "przygotujModuly",
+      "call": "przygotujModuly(moduly, env)"
+    },
+    {
+      "path": "src/core/aplikacja.ts",
+      "line": 64,
       "expression": "o.env",
-      "callee": "modulyDla",
-      "call": "modulyDla(o.env)"
-    },
-    {
-      "path": "src/oms/bootstrap.ts",
-      "line": 12,
-      "expression": "o.env",
-      "callee": "sprawdzKonfiguracjeModulow",
-      "call": "sprawdzKonfiguracjeModulow(moduly,o.env)"
-    },
-    {
-      "path": "src/moduly/lista.ts",
-      "line": 33,
-      "expression": "env",
-      "callee": "zgodaTwojeFaktury",
-      "call": "zgodaTwojeFaktury(env)"
-    },
-    {
-      "path": "src/moduly/lista.ts",
-      "line": 41,
-      "expression": "env",
-      "callee": "definicjeKanalow",
-      "call": "definicjeKanalow(env)"
-    },
-    {
-      "path": "src/moduly/lista.ts",
-      "line": 44,
-      "expression": "env",
-      "callee": "zgodaInstalacji",
-      "call": "zgodaInstalacji(env)"
-    },
-    {
-      "path": "src/moduly/lista.ts",
-      "line": 46,
-      "expression": "env",
-      "callee": "userAgentAllegro",
-      "call": "userAgentAllegro(env)"
+      "callee": "przygotujModuly",
+      "call": "przygotujModuly(o.moduly, o.env)"
     },
     {
       "path": "src/core/demo.ts",
@@ -7337,6 +7347,90 @@
       "call": "minutyResetuDemo(env)"
     },
     {
+      "path": "src/moduly/kanaly/historia.ts",
+      "line": 10,
+      "expression": "env",
+      "callee": "wczytajKlientowWdt",
+      "call": "wczytajKlientowWdt(env)"
+    },
+    {
+      "path": "src/moduly/kanaly/historia.ts",
+      "line": 19,
+      "expression": "env",
+      "callee": "regulyHistorii",
+      "call": "regulyHistorii(env)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 124,
+      "expression": "env",
+      "callee": "brakujaceKluczeKanalu",
+      "call": "brakujaceKluczeKanalu(d, env)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 132,
+      "expression": "env",
+      "callee": "parsujDateOd",
+      "call": "parsujDateOd(env,`${p}_OD`)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 146,
+      "expression": "env",
+      "callee": "parsujDateOd",
+      "call": "parsujDateOd(env, `${p}_OD`)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 148,
+      "expression": "env",
+      "callee": "parsujUserAgentAllegro",
+      "call": "parsujUserAgentAllegro(env, `${p}_USER_AGENT`)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 158,
+      "expression": "env",
+      "callee": "parsujDateOd",
+      "call": "parsujDateOd(env, `${p}_OD`)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 158,
+      "expression": "env",
+      "callee": "konfiguracjaHistorii",
+      "call": "konfiguracjaHistorii(env, klucz, p)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 163,
+      "expression": "env",
+      "callee": "parsujUserAgentAllegro",
+      "call": "parsujUserAgentAllegro(env, `${p}_USER_AGENT`)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 163,
+      "expression": "env",
+      "callee": "parsujDateOd",
+      "call": "parsujDateOd(env, `${p}_OD`, true)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 167,
+      "expression": "env",
+      "callee": "aplikacjeDeviceEnv",
+      "call": "aplikacjeDeviceEnv(env)"
+    },
+    {
+      "path": "src/moduly/kanaly/konfiguracja.ts",
+      "line": 167,
+      "expression": "env",
+      "callee": "userAgentAllegro",
+      "call": "userAgentAllegro(env)"
+    },
+    {
       "path": "src/core/web/modul.ts",
       "line": 15,
       "expression": "env",
@@ -7351,22 +7445,50 @@
       "call": "kontoDemo(env)"
     },
     {
+      "path": "src/oms/db/klienci.js",
+      "line": 159,
+      "expression": "env",
+      "callee": "parsujKlientowZbiorczych",
+      "call": "parsujKlientowZbiorczych(env)"
+    },
+    {
+      "path": "src/moduly/rdzen/modul.ts",
+      "line": 18,
+      "expression": "env",
+      "callee": "wczytajSprzedawce",
+      "call": "wczytajSprzedawce(env)"
+    },
+    {
+      "path": "src/moduly/kanaly/modul.ts",
+      "line": 25,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/kanaly/modul.ts",
+      "line": 25,
+      "expression": "env",
+      "callee": "profilAllegroProby",
+      "call": "profilAllegroProby(env)"
+    },
+    {
+      "path": "src/moduly/kanaly/modul.ts",
+      "line": 26,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/kanaly/modul.ts",
+      "line": 27,
+      "expression": "env",
+      "callee": "konfiguracjaKanalow",
+      "call": "konfiguracjaKanalow(definicje,env,niekompletneJakoAlarm)"
+    },
+    {
       "path": "src/moduly/kanaly/klasyfikacja.ts",
       "line": 65,
-      "expression": "env",
-      "callee": "kanalIndywidualnyWlaczony",
-      "call": "kanalIndywidualnyWlaczony(env)"
-    },
-    {
-      "path": "src/moduly/api-panelu/modul.ts",
-      "line": 11,
-      "expression": "env",
-      "callee": "kanalIndywidualnyWlaczony",
-      "call": "kanalIndywidualnyWlaczony(env)"
-    },
-    {
-      "path": "src/moduly/api/modul.ts",
-      "line": 17,
       "expression": "env",
       "callee": "kanalIndywidualnyWlaczony",
       "call": "kanalIndywidualnyWlaczony(env)"
@@ -7498,130 +7620,123 @@
       "call": "adresFirmyZEnv(env)"
     },
     {
-      "path": "src/core/tryb.ts",
-      "line": 13,
+      "path": "src/moduly/zamowienia/modul.ts",
+      "line": 32,
       "expression": "env",
       "callee": "efektywnyTryb",
       "call": "efektywnyTryb(env)"
     },
     {
-      "path": "src/core/aplikacja.ts",
-      "line": 21,
+      "path": "src/moduly/zamowienia/modul.ts",
+      "line": 33,
       "expression": "env",
-      "callee": "zaufaneProxy",
-      "call": "zaufaneProxy(env)"
+      "callee": "konfiguracjaZamowien",
+      "call": "konfiguracjaZamowien(env)"
     },
     {
-      "path": "src/core/aplikacja.ts",
-      "line": 24,
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 67,
       "expression": "env",
-      "callee": "sprawdzTrybProby",
-      "call": "sprawdzTrybProby(env, [...new Set(kolejnosc.flatMap((m) => m.kluczeIntegracji ?? []))])"
+      "callee": "zgodaTwojeFaktury",
+      "call": "zgodaTwojeFaktury(env)"
     },
     {
-      "path": "src/core/aplikacja.ts",
-      "line": 31,
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 75,
       "expression": "env",
-      "callee": "m.konfiguracja",
-      "call": "m.konfiguracja(env)"
+      "callee": "wczytajSprzedawce",
+      "call": "wczytajSprzedawce(env)"
     },
     {
-      "path": "src/core/aplikacja.ts",
-      "line": 51,
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 81,
       "expression": "env",
-      "callee": "przygotujModuly",
-      "call": "przygotujModuly(moduly, env)"
+      "callee": "adresFirmyZEnv",
+      "call": "adresFirmyZEnv(env)"
     },
     {
-      "path": "src/core/aplikacja.ts",
-      "line": 64,
-      "expression": "o.env",
-      "callee": "przygotujModuly",
-      "call": "przygotujModuly(o.moduly, o.env)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 122,
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 90,
       "expression": "env",
-      "callee": "brakujaceKluczeKanalu",
-      "call": "brakujaceKluczeKanalu(d, env)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 136,
-      "expression": "env",
-      "callee": "parsujDateOd",
-      "call": "parsujDateOd(env, `${p}_OD`)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 138,
-      "expression": "env",
-      "callee": "parsujUserAgentAllegro",
-      "call": "parsujUserAgentAllegro(env, `${p}_USER_AGENT`)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 148,
-      "expression": "env",
-      "callee": "parsujDateOd",
-      "call": "parsujDateOd(env, `${p}_OD`)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 148,
-      "expression": "env",
-      "callee": "konfiguracjaHistorii",
-      "call": "konfiguracjaHistorii(env, klucz, p)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 153,
-      "expression": "env",
-      "callee": "parsujUserAgentAllegro",
-      "call": "parsujUserAgentAllegro(env, `${p}_USER_AGENT`)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 153,
-      "expression": "env",
-      "callee": "parsujDateOd",
-      "call": "parsujDateOd(env, `${p}_OD`, true)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 157,
-      "expression": "env",
-      "callee": "aplikacjeDeviceEnv",
-      "call": "aplikacjeDeviceEnv(env)"
-    },
-    {
-      "path": "src/moduly/kanaly/konfiguracja.ts",
-      "line": 157,
-      "expression": "env",
-      "callee": "userAgentAllegro",
-      "call": "userAgentAllegro(env)"
-    },
-    {
-      "path": "src/main.ts",
-      "line": 11,
-      "expression": "env",
-      "callee": "modulyDla",
-      "call": "modulyDla(env)"
-    },
-    {
-      "path": "src/main.ts",
-      "line": 12,
-      "expression": "env",
-      "callee": "sprawdzKonfiguracjeModulow",
-      "call": "sprawdzKonfiguracjeModulow(moduly, env)"
-    },
-    {
-      "path": "src/main.ts",
-      "line": 32,
-      "expression": "process.env",
       "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(process.env)"
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 100,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 128,
+      "expression": "env",
+      "callee": "wczytajFaktury",
+      "call": "wczytajFaktury(env, szew)"
+    },
+    {
+      "path": "src/moduly/wysylka/modul.ts",
+      "line": 101,
+      "expression": "env",
+      "callee": "wczytajKurierow",
+      "call": "wczytajKurierow(env)"
+    },
+    {
+      "path": "src/moduly/wysylka/modul.ts",
+      "line": 106,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/wysylka/modul.ts",
+      "line": 107,
+      "expression": "env",
+      "callee": "odstep",
+      "call": "odstep(env, 'OMS_PRZESYLKI_ODSTEP_MS', 3600000)"
+    },
+    {
+      "path": "src/moduly/wysylka/modul.ts",
+      "line": 108,
+      "expression": "env",
+      "callee": "odstep",
+      "call": "odstep(env, 'OMS_PODJAZDY_ODSTEP_MS', 600000)"
+    },
+    {
+      "path": "src/moduly/koszty/modul.ts",
+      "line": 30,
+      "expression": "env",
+      "callee": "nipSprzedawcy",
+      "call": "nipSprzedawcy(env, Boolean(token))"
+    },
+    {
+      "path": "src/moduly/koszty/modul.ts",
+      "line": 36,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/koszty/modul.ts",
+      "line": 47,
+      "expression": "env",
+      "callee": "wczytajSprzedawce",
+      "call": "wczytajSprzedawce(env)"
+    },
+    {
+      "path": "src/moduly/koszty/modul.ts",
+      "line": 64,
+      "expression": "env",
+      "callee": "wczytajKoszty",
+      "call": "wczytajKoszty(env)"
+    },
+    {
+      "path": "src/moduly/api/modul.ts",
+      "line": 17,
+      "expression": "env",
+      "callee": "kanalIndywidualnyWlaczony",
+      "call": "kanalIndywidualnyWlaczony(env)"
     },
     {
       "path": "src/moduly/raporty/konfiguracja.ts",
@@ -7701,129 +7816,106 @@
       "call": "wczytajRaportyDlaKanalow(env, definicje)"
     },
     {
-      "path": "src/moduly/wysylka/modul.ts",
-      "line": 97,
+      "path": "src/moduly/api-panelu/modul.ts",
+      "line": 11,
       "expression": "env",
-      "callee": "wczytajKurierow",
-      "call": "wczytajKurierow(env)"
+      "callee": "kanalIndywidualnyWlaczony",
+      "call": "kanalIndywidualnyWlaczony(env)"
     },
     {
-      "path": "src/moduly/wysylka/modul.ts",
-      "line": 102,
-      "expression": "env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(env)"
-    },
-    {
-      "path": "src/moduly/wysylka/modul.ts",
-      "line": 103,
-      "expression": "env",
-      "callee": "odstep",
-      "call": "odstep(env, 'OMS_PRZESYLKI_ODSTEP_MS', 3600000)"
-    },
-    {
-      "path": "src/moduly/wysylka/modul.ts",
-      "line": 104,
-      "expression": "env",
-      "callee": "odstep",
-      "call": "odstep(env, 'OMS_PODJAZDY_ODSTEP_MS', 600000)"
-    },
-    {
-      "path": "src/moduly/rdzen/modul.ts",
-      "line": 18,
-      "expression": "env",
-      "callee": "wczytajSprzedawce",
-      "call": "wczytajSprzedawce(env)"
-    },
-    {
-      "path": "src/moduly/zamowienia/modul.ts",
-      "line": 32,
-      "expression": "env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(env)"
-    },
-    {
-      "path": "src/moduly/zamowienia/modul.ts",
+      "path": "src/moduly/lista.ts",
       "line": 33,
-      "expression": "env",
-      "callee": "konfiguracjaZamowien",
-      "call": "konfiguracjaZamowien(env)"
-    },
-    {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 65,
       "expression": "env",
       "callee": "zgodaTwojeFaktury",
       "call": "zgodaTwojeFaktury(env)"
     },
     {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 73,
+      "path": "src/moduly/lista.ts",
+      "line": 41,
       "expression": "env",
-      "callee": "wczytajSprzedawce",
-      "call": "wczytajSprzedawce(env)"
+      "callee": "definicjeKanalow",
+      "call": "definicjeKanalow(env)"
     },
     {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 79,
+      "path": "src/moduly/lista.ts",
+      "line": 44,
       "expression": "env",
-      "callee": "adresFirmyZEnv",
-      "call": "adresFirmyZEnv(env)"
+      "callee": "zgodaInstalacji",
+      "call": "zgodaInstalacji(env)"
     },
     {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 88,
+      "path": "src/moduly/lista.ts",
+      "line": 46,
       "expression": "env",
+      "callee": "userAgentAllegro",
+      "call": "userAgentAllegro(env)"
+    },
+    {
+      "path": "src/main.ts",
+      "line": 11,
+      "expression": "env",
+      "callee": "modulyDla",
+      "call": "modulyDla(env)"
+    },
+    {
+      "path": "src/main.ts",
+      "line": 12,
+      "expression": "env",
+      "callee": "sprawdzKonfiguracjeModulow",
+      "call": "sprawdzKonfiguracjeModulow(moduly, env)"
+    },
+    {
+      "path": "src/main.ts",
+      "line": 32,
+      "expression": "process.env",
       "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(env)"
+      "call": "efektywnyTryb(process.env)"
     },
     {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 98,
-      "expression": "env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(env)"
+      "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
+      "line": 50,
+      "expression": "process.env",
+      "callee": "definicjeKanalow",
+      "call": "definicjeKanalow(process.env)"
     },
     {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 126,
-      "expression": "env",
-      "callee": "wczytajFaktury",
-      "call": "wczytajFaktury(env, szew)"
+      "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
+      "line": 51,
+      "expression": "process.env",
+      "callee": "sprawdzTrybProby",
+      "call": "sprawdzTrybProby(process.env, definicje.flatMap(d => kluczeKanalu(d.typ, d.prefiks).kluczeIntegracji))"
     },
     {
-      "path": "src/moduly/koszty/modul.ts",
-      "line": 30,
-      "expression": "env",
-      "callee": "nipSprzedawcy",
-      "call": "nipSprzedawcy(env, Boolean(token))"
+      "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
+      "line": 60,
+      "expression": "process.env",
+      "callee": "konfiguracjaHistorii",
+      "call": "konfiguracjaHistorii(process.env, sklep, prefiks)"
     },
     {
-      "path": "src/moduly/koszty/modul.ts",
-      "line": 36,
-      "expression": "env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(env)"
+      "path": "src/oms/bootstrap.ts",
+      "line": 11,
+      "expression": "o.env",
+      "callee": "modulyDla",
+      "call": "modulyDla(o.env)"
     },
     {
-      "path": "src/moduly/koszty/modul.ts",
-      "line": 47,
-      "expression": "env",
-      "callee": "wczytajSprzedawce",
-      "call": "wczytajSprzedawce(env)"
-    },
-    {
-      "path": "src/moduly/koszty/modul.ts",
-      "line": 64,
-      "expression": "env",
-      "callee": "wczytajKoszty",
-      "call": "wczytajKoszty(env)"
+      "path": "src/oms/bootstrap.ts",
+      "line": 12,
+      "expression": "o.env",
+      "callee": "sprawdzKonfiguracjeModulow",
+      "call": "sprawdzKonfiguracjeModulow(moduly,o.env)"
     }
   ],
   "prefiksy": {
     "zrodlo": "OMS_KANALY[*].prefiks",
     "wzorzec": "^[A-Z][A-Z0-9_]*$",
     "zrodloAliasaP": "src/moduly/kanaly/konfiguracja.ts, for (const {klucz,typ,prefiks:p} of definicje)",
+    "erli": [
+      "KLUCZ_API",
+      "ADRES_API",
+      "OD"
+    ],
     "woo": [
       "CK",
       "CS",
@@ -8141,7 +8233,7 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "sha256": "fe7c95af5a2480db8dddce040801dcb6f639ccc863c6a07cfe5b2f0a09331452",
+      "sha256": "8237d55eb93ee6dfb6d6bf255643e03ab377a09bde940a0898f0db86a9e4e883",
       "normalizacja": "LF"
     },
     {
@@ -8151,17 +8243,17 @@
     },
     {
       "path": "src/moduly/wysylka/kurierzy.ts",
-      "sha256": "81e92603d3abbdae01882e8ff0c5e456b2061ef963afc6b6f8992d4d17417c2b",
+      "sha256": "30892eee08452d6b33a66aa9f66fbee76a4cb3f9eeaef371d8d73f9276b5222a",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "cf109cacc4a68ef7db0a903ec5a03720f0e5e1177960a258860ae3c3304b9122",
+      "sha256": "34a67c15bbaea93b5dbc5ac9752ec6c3f02798de6a29d755999c5445e8507691",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/wysylka/modul.ts",
-      "sha256": "08a81d3bf68103727e6fad47e8ecc59dae9915ef53f4146be19b4daa22279f3e",
+      "sha256": "fe19ff9fa2e1a314cae7f8dd08f5de8191a5bafe32baf201f918bdb8afec5bfa",
       "normalizacja": "LF"
     },
     {
@@ -8171,7 +8263,7 @@
     },
     {
       "path": "src/moduly/zdrowie/modul.ts",
-      "sha256": "b7017986b61d967d3a321fb09ec7a74b908b671bb8c77a03ac2ae378d2b4c098",
+      "sha256": "d4dd472dcdf0af485f381f8326b933b900f451cd4105bd9dfb029a6c531d0ba6",
       "normalizacja": "LF"
     },
     {
@@ -8216,7 +8308,7 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "847e60dc4862abbf7ed842a5eaf01cde4f03457b826d3738956f27ecdb1cf619",
+      "sha256": "e791365ba5e1510f6e593288ea8adcb914325aac37fceffd4dd5f9f6abeedf50",
       "normalizacja": "LF"
     },
     {
@@ -8238,17 +8330,17 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "sha256": "fe7c95af5a2480db8dddce040801dcb6f639ccc863c6a07cfe5b2f0a09331452",
+      "sha256": "8237d55eb93ee6dfb6d6bf255643e03ab377a09bde940a0898f0db86a9e4e883",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/kanaly/modul.ts",
-      "sha256": "1de6f38d91a466ba0a247ddc301a9c8b4c34bea4ba8437545d6eb36a5849e01d",
+      "sha256": "620aa8a0b0c8b6581ed02351fc5850851be984d91ee8c7d436aafad417c03479",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "cf109cacc4a68ef7db0a903ec5a03720f0e5e1177960a258860ae3c3304b9122",
+      "sha256": "34a67c15bbaea93b5dbc5ac9752ec6c3f02798de6a29d755999c5445e8507691",
       "normalizacja": "LF"
     },
     {
@@ -8268,7 +8360,7 @@
     },
     {
       "path": "src/moduly/zdrowie/modul.ts",
-      "sha256": "b7017986b61d967d3a321fb09ec7a74b908b671bb8c77a03ac2ae378d2b4c098",
+      "sha256": "d4dd472dcdf0af485f381f8326b933b900f451cd4105bd9dfb029a6c531d0ba6",
       "normalizacja": "LF"
     },
     {
@@ -8293,7 +8385,7 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "847e60dc4862abbf7ed842a5eaf01cde4f03457b826d3738956f27ecdb1cf619",
+      "sha256": "e791365ba5e1510f6e593288ea8adcb914325aac37fceffd4dd5f9f6abeedf50",
       "normalizacja": "LF"
     },
     {
@@ -8390,7 +8482,7 @@
       },
       {
         "path": "src/moduly/kanaly/konfiguracja.ts",
-        "sha256": "fe7c95af5a2480db8dddce040801dcb6f639ccc863c6a07cfe5b2f0a09331452",
+        "sha256": "8237d55eb93ee6dfb6d6bf255643e03ab377a09bde940a0898f0db86a9e4e883",
         "odczyty": [
           {
             "expression": "env[nazwa]",
@@ -8412,7 +8504,8 @@
               "<P>_CK",
               "<P>_CS",
               "<P>_CLIENT_ID",
-              "<P>_CLIENT_SECRET"
+              "<P>_CLIENT_SECRET",
+              "<P>_KLUCZ_API"
             ]
           },
           {
@@ -8473,6 +8566,12 @@
             "expression": "env[`${p}_CLIENT_SECRET`]",
             "names": [
               "<P>_CLIENT_SECRET"
+            ]
+          },
+          {
+            "expression": "env[`${p}_ADRES_API`]",
+            "names": [
+              "<P>_ADRES_API"
             ]
           }
         ]
@@ -8545,7 +8644,7 @@
       },
       {
         "path": "src/moduly/wysylka/kurierzy.ts",
-        "sha256": "81e92603d3abbdae01882e8ff0c5e456b2061ef963afc6b6f8992d4d17417c2b",
+        "sha256": "30892eee08452d6b33a66aa9f66fbee76a4cb3f9eeaef371d8d73f9276b5222a",
         "odczyty": [
           {
             "expression": "env[klucz]",
@@ -8575,7 +8674,7 @@
       },
       {
         "path": "src/moduly/wysylka/modul.ts",
-        "sha256": "08a81d3bf68103727e6fad47e8ecc59dae9915ef53f4146be19b4daa22279f3e",
+        "sha256": "fe19ff9fa2e1a314cae7f8dd08f5de8191a5bafe32baf201f918bdb8afec5bfa",
         "odczyty": [
           {
             "expression": "env[klucz]",
@@ -8654,7 +8753,7 @@
       },
       {
         "path": "src/moduly/faktury/modul.ts",
-        "sha256": "4a81cd3ef881e35a85764b0f590b20d4f22e7fe6553a8985b26abccc4d79edf3",
+        "sha256": "6629aeef3a53f8f526e8dd2fdd7faceed793687bf1f9cad5148eba87b9318186",
         "expression": "wczytajSprzedawce(env)"
       },
       {
@@ -8664,7 +8763,7 @@
       },
       {
         "path": "src/moduly/kanaly/konfiguracja.ts",
-        "sha256": "fe7c95af5a2480db8dddce040801dcb6f639ccc863c6a07cfe5b2f0a09331452",
+        "sha256": "8237d55eb93ee6dfb6d6bf255643e03ab377a09bde940a0898f0db86a9e4e883",
         "expression": "konfiguracjaHistorii(env, klucz, p)"
       },
       {
@@ -8699,7 +8798,7 @@
       },
       {
         "path": "src/moduly/wysylka/modul.ts",
-        "sha256": "08a81d3bf68103727e6fad47e8ecc59dae9915ef53f4146be19b4daa22279f3e",
+        "sha256": "63f0a67c1226a47be3a25f5ea3eb072bffe3760efb5519f7acbb513b651b8dab",
         "expression": "wczytajKurierow(env)"
       },
       {
@@ -10456,7 +10555,7 @@
     },
     {
       "path": "src/moduly/wysylka/modul.ts",
-      "sha256": "c18cff6edfb219ace8fb41218b06cef6044a8c7711f5123e940061e5e2669432",
+      "sha256": "09340d8be45b991a2746f73b8e075c7473d0ec8262bbf8e5399488b29a9d4bee",
       "normalizacja": "LF"
     },
     {

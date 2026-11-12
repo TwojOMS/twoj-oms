@@ -72,6 +72,40 @@
 .allegro-dane dt{color:var(--tekst-przygaszony)}.allegro-dane dd{margin:0;overflow-wrap:anywhere}
 .allegro-konfiguracja input:not([type=hidden]):not([type=checkbox]),.allegro-konfiguracja select{font:inherit;color:var(--tekst);background:var(--powierzchnia);border:1px solid var(--ramka-pola);border-radius:5px;min-height:40px;padding:.5rem .65rem;width:30rem;max-width:100%;margin-top:.4rem}
 .allegro-konfiguracja input[type=checkbox]{accent-color:var(--marka);width:1rem;height:1rem;vertical-align:middle;margin-right:.4rem}
+.erli-konfigurator fieldset{min-inline-size:0;border:0;padding:0;margin:0}
+.erli-konfigurator fieldset fieldset p{display:flex;align-items:flex-start}
+.allegro-konfiguracja.erli-konfigurator input[type=radio]{accent-color:var(--marka);width:1.1rem;min-width:1.1rem;min-height:1.1rem;padding:0;margin:.25rem .5rem 0 0;flex:0 0 1.1rem}
+.erli-konfigurator input{box-sizing:border-box}
+.erli-konfigurator label{overflow-wrap:anywhere}
+/* PRZ-157.11b: tabela metod dostawy (krok 3) — select dzieli szerokość komórki zamiast stałych 30rem. */
+.erli-metody{border-collapse:collapse;width:100%;margin-block:.6rem}
+.erli-metody :is(th,td){text-align:left;vertical-align:top;padding:.6rem .5rem;border-bottom:1px solid var(--ramka)}
+.erli-metody thead th{font-size:.85rem;font-weight:600;color:var(--tekst-przygaszony)}
+/* Nazwa metody w wierszu to zwykły tekst — bez wersalików z globalnego stylu nagłówków tabel. */
+.oms-shell main .erli-metody tbody th{font-size:inherit;font-weight:600;text-transform:none;overflow-wrap:anywhere;min-width:7rem}
+.erli-metody small{font-weight:400;color:var(--tekst-przygaszony)}
+.allegro-konfiguracja .erli-metody select{width:100%;min-width:10rem}
+/* Krok 4: cztery wymiary w siatce, etykieta nad polem (zwykły blok zamiast flex z radia). */
+.erli-konfigurator .erli-wymiary{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,10rem),1fr));gap:0 1rem;align-items:end;max-width:44rem}
+.erli-konfigurator .erli-wymiary p{display:block}
+.allegro-konfiguracja.erli-konfigurator .erli-wymiary input{width:100%}
+.erli-konfigurator input[type=radio]+label{min-height:48px}
+/* PRZ-157.12u: zrobione kroki ERLI jako jednolinijkowe karty do rozwinięcia; „Odłącz” i „Usuń sklep” jako ciche odnośniki na dole. */
+.erli-konfigurator details.erli-krok{border:1px solid var(--ramka);border-radius:8px;margin-block:0 .75rem;background:var(--powierzchnia)}
+.erli-konfigurator details.erli-krok>summary{cursor:pointer;padding:.8rem 1.3rem;min-height:48px;box-sizing:border-box;color:var(--tekst-przygaszony)}
+.erli-konfigurator details.erli-krok>summary::marker{color:var(--tekst-przygaszony)}
+.erli-konfigurator details.erli-krok[open]>summary{border-bottom:1px solid var(--ramka);color:var(--tekst)}
+.oms-settings-content .erli-konfigurator details.erli-krok>.ust-sekcja{border:0;margin:0}
+.erli-konfigurator .ust-sekcja{margin-block-end:.75rem}
+.erli-konfigurator h2[tabindex]{scroll-margin-top:5rem}
+/* Fokus po zapisie przenosi czytnik ekranu do następnego kroku; nagłówek nie jest kontrolką, więc bez obwódki. */
+.erli-konfigurator h2[tabindex="-1"]:focus{outline:0}
+.erli-konfigurator .erli-pomin{margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--ramka)}
+.erli-konfigurator .erli-stan-akcje{display:grid;justify-items:start;gap:1rem;margin-block-end:1rem}
+.erli-konfigurator .erli-stan-akcje form{margin:0}
+.erli-konfigurator :is(.erli-odlacz,.erli-usun){margin-top:1.5rem}
+.erli-konfigurator :is(.erli-odlacz,.erli-usun)>summary{cursor:pointer;color:var(--link);text-decoration:underline;text-decoration-color:var(--link-podkreslenie);font-size:.9rem;width:max-content;min-height:24px}
+.erli-konfigurator :is(.erli-odlacz,.erli-usun)>form{margin-top:.6rem;max-width:78ch}
 .allegro-konfiguracja details{margin-block:.6rem;overflow-wrap:anywhere}
 /* PRZ-146.03: kod Device do przepisania, przyciski kroku 3, „Przerwij podłączanie”, odłączenie nieaktywne do zaznaczenia. */
 .allegro-kod{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem 1rem;margin:.4rem 0 1.2rem}

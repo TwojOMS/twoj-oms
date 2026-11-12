@@ -18,6 +18,7 @@
 import { MAKS_STRON_WATKOW, LIMIT_STRONY_WATKOW } from '../../../oms/allegro/client.js';
 import { zapiszWatek, watek, zapiszWiadomosci } from '../../../oms/db/allegro-watki.js';
 import { najnowszaWiadomosc } from '../../../domena/najnowsza-wiadomosc.js';
+import { kanalZWiadomosciami } from '../../../domena/moduly-kanalow.ts';
 
 // ⚠️ `sprawy` (dyskusje i reklamacje) jedzie NA TYM SAMYM ZEGARZE, a nie na wlasnym — jeden
 // zegar, dwa zrodla. Osobny znaczylby drugiego straznika „jeden przebieg naraz" i druga rzecz
@@ -97,6 +98,8 @@ export function createPollerWiadomosci({
       const licznik = { watkow: 0, odswiezonych: 0 };
       const bledy = [];
       for (const [nazwa, klient] of Object.entries(klienci)) {
+        // PRZ-157.12b: mapa kanałów niesie też klientów ERLI — oni nie mają wątków Allegro.
+        if (!kanalZWiadomosciami(nazwa)) continue;
         // ⚠️⚠️ NIE WOLAMY ZASOBU, DO KTOREGO KANAL NIE MA UPRAWNIENIA. Bez tego panel wdrozony
         // PRZED przewiazaniem kanalow strzela 403 przy kazdym przebiegu — okolo 1150 nieudanych
         // wywolan na dobe prosto do raportu „Bledy techniczne" Allegro. Zakresy wchodza do tokenu

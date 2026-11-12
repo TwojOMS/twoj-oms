@@ -4,7 +4,7 @@ import { zapiszLubOdpusc } from '../wysylka/services/status-kuriera.js';
 import { zamowienieZGrupa } from '../../oms/db/scalenia.js';
 import { wyliczStatus, doZrobienia } from '../../domena/status.js';
 import { faktyDlaStatusu } from '../../domena/status-reczny.js';
-import { ETYKIETY_WYSYLKI } from '../../domena/wysylka.js';
+import { ETYKIETY_WYSYLKI, saNadpisanieWysylki } from '../../domena/wysylka.js';
 import { parsujFiltry, numerStrony, adresZFiltrami, bezpiecznyPowrotNaListe, METODY_DO_FILTRA, kanalyDoFiltra } from '../../domena/filtry-listy.js';
 import { adresKartyZamowienia, kluczPozycjiListy } from '../../domena/adres-karty-zamowienia.js';
 import { wybraneZListy, podzielDoStatusu, powodZaDuzegoDruku } from '../../domena/masowe.js';
@@ -23,6 +23,7 @@ import { poPolsku } from '../../domena/blad-po-polsku.js';
 import { bezpiecznaNazwa } from '../../domena/pliki.js';
 import { daneSpecyfikacji } from '../../domena/specyfikacja.js';
 import { listaProduktowZbiorcza } from '../../domena/lista-produktow.js';
+import { drogaErliDlaZamowienia } from '../kanaly/services/kanal-erli.ts';
 import { daneZestawienia } from '../../domena/zestawienie-zamowien.js';
 import { fmtDataCzasKrotko } from '../../domena/format-daty.js';
 import { zbudujSpecyfikacjePdf, zbudujSpecyfikacjeWieluPdf } from './pdf/specyfikacja-pdf.js';
@@ -154,11 +155,25 @@ app.get('/', async (req, reply) => {
     // Wiersz strony, ktorego nie da sie odczytac, a indeks o tym jeszcze nie wie (zapis spoza
     // panelu): nie znika po cichu — trafia do tej samej notki, co uszkodzone znane indeksowi.
     const pominiete = [];
-    const zamowienia = wczytajListe(wynik.ids, { teraz: new Date(terazMs), bezSurowych: true, pomijajUszkodzone: true,
-      naPominiete: (z) => pominiete.push({ id: z.id, numer: z.numer, blad: PRZYCZYNA_POMINIETEGO }) }).map((z) => ({
-      ...z,
-      adresKarty: adresKartyZamowienia(z.id, { powrot: adresListy }, config.definicje),
-    }));
+    const kanalyErli = new Set(db.prepare("SELECT klucz FROM kanaly_sprzedazy WHERE typ='erli'").all().map(k => k.klucz));
+    // Lista pomija duże surowe odpowiedzi sklepów. Tylko ERLI potrzebuje delivery do lokalnego odczytu drogi.
+    const wiersze = wczytajListe(wynik.ids, { teraz: new Date(terazMs), bezSurowych: true, pomijajUszkodzone: true,
+      naPominiete: (z) => pominiete.push({ id: z.id, numer: z.numer, blad: PRZYCZYNA_POMINIETEGO }) });
+    // Ręczna metoda wygrywa także przy nadaniu (metodaNadaniaErli) — lista nie może obiecywać drogi ERLI.
+    const zDroga = wiersze.filter((z) => kanalyErli.has(z.sklep) && !saNadpisanieWysylki(z)).map((z) => z.id);
+    // Jedno zapytanie na stronę, nie jedno na wiersz (PRZ-051: lista czyta z zamówień tylko bieżącą stronę).
+    const suroweErli = new Map(zDroga.length ? db.prepare(`SELECT id, surowe_json FROM zamowienia WHERE id IN (${zDroga.map(() => '?').join(',')})`)
+      .all(...zDroga).map((r) => [r.id, r.surowe_json]) : []);
+    const zamowienia = wiersze.map((z) => {
+      const droga = suroweErli.has(z.id)
+        ? drogaErliDlaZamowienia(db, { ...z, surowe_json: suroweErli.get(z.id) }) : undefined;
+      return {
+        ...z,
+        drogaErliListy: droga,
+        kurierErliListy: droga?.droga === 'umowa' ? ETYKIETY_WYSYLKI[droga.kurier === 'odbior' ? 'odbior_osobisty' : droga.kurier] : null,
+        adresKarty: adresKartyZamowienia(z.id, { powrot: adresListy }, config.definicje),
+      };
+    });
     const stronicowanie = stron > 1 ? {
       strona, stron,
       poprzednia: strona > 1 ? adresZFiltrami(filtry, { ...kontekst, strona: strona - 1 }) : null,

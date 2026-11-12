@@ -29,7 +29,7 @@ export const OKNO_SLEDZENIA_DNI = 14;
 
 // PRZ-118.08: rozliczenie pobrań idzie PROGRAMEM FAKTUROWYM (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
 export function createCzuwaczPrzesylek({
-  db, kurierzy = {}, program: programPodany = null, infakt = null, teraz = () => new Date(), klienci = {},
+  db, kurierzy = {}, program: programPodany = null, infakt = null, teraz = () => new Date(), klienci = {}, klienciKanalow = {},
 }) {
   const program = zProgramu({ program: programPodany, infakt });
   let trwa = false;
@@ -95,9 +95,9 @@ export function createCzuwaczPrzesylek({
       // PRZ-117: notatki z numerem listu, które nie doszły do sklepu — co przebieg (raz na godzinę) przez 48 h.
       // Własny `try` z tego samego powodu co pobrania: awaria sklepu nie jest awarią śledzenia paczek.
       let notatki = { kandydatow: 0, wyslane: 0, bledy: 0 };
-      if (Object.keys(klienci).length) {
+      if (Object.keys(klienci).length || Object.keys(klienciKanalow).length) {
         try {
-          notatki = await ponowZalegleNotatki({ db, klienci, teraz: chwila });
+          notatki = await ponowZalegleNotatki({ db, klienci, klienciKanalow, teraz: chwila });
         } catch (e) {
           notatki = { kandydatow: 0, wyslane: 0, bledy: 1, blad: e.message };
         }

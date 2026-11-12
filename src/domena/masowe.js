@@ -93,12 +93,15 @@ export function rodzajFormularzaNadania(metodaUzyta) {
  * Przepuszczone niosą `metodaUzyta` i `rodzajFormularza` — trasa nie liczy ich drugi raz.
  * PRZ-135.T2: `umowyPobrania` = `umowyPobraniaFirmy(db)`; pominięte daje `[]` (jak dotąd).
  */
-export function podzielDoNadania(zamowienia, { umowyPobrania = /** @type {readonly string[]} */ ([]) } = {}) {
+export function podzielDoNadania(zamowienia, {
+  umowyPobrania = /** @type {readonly string[]} */ ([]),
+  metodaNadaniaKanalu = /** @type {((z: any, wybor: string, opcje: any) => any) | null} */ (null),
+} = {}) {
   const doNadania = [];
   const pominiete = [];
   const uwagi = [];
   for (const z of zamowienia ?? []) {
-    const decyzja = decyzjaNadania(z, umowyPobrania);
+    const decyzja = decyzjaNadania(z, umowyPobrania, metodaNadaniaKanalu);
     if (decyzja.powod) {
       pominiete.push({ id: z.id, numer: z.numer, powod: decyzja.powod });
       continue;
@@ -131,7 +134,7 @@ export function podzielDoNadania(zamowienia, { umowyPobrania = /** @type {readon
 // Kolejność warunków = kolejność ważności: pierwszy trafiony powód jest tym, który operator
 // zobaczy. Anulowanie idzie przed wszystkim, bo to jedyny stan, w którym paczka nie powinna
 // wyjechać W OGÓLE, a nie „nie tędy".
-function decyzjaNadania(z, umowyPobrania = /** @type {readonly string[]} */ ([])) {
+function decyzjaNadania(z, umowyPobrania = /** @type {readonly string[]} */ ([]), metodaNadaniaKanalu = null) {
   if (anulowaneEfektywnie(z)) return { powod: 'zamówienie jest anulowane' };
   const metoda = String(metodaWysylki(z) ?? 'nieznana');
   const allegrowaMetoda = metoda.startsWith('allegro_');
@@ -162,7 +165,11 @@ function decyzjaNadania(z, umowyPobrania = /** @type {readonly string[]} */ ([])
   if (metoda === 'odbior_osobisty') return { powod: 'odbiór osobisty — nie ma czego nadawać' };
   // Droga domyślna karty dla paczki nr 1, bez wskazania kuriera. Furtka „naszą umową" przy
   // zamówieniu z Allegro (dosyłka, zamiennik) zostaje decyzją jednostkową z ekranu karty.
-  const { metoda: metodaUzyta, blad } = metodaNadania(z, '', { kolejnosc: 1, umowyPobrania });
+  // PRZ-157.12r: droga kanału (dziś ERLI: `metodaNadaniaErli` z bazy, wstrzyknięta przez trasę) PRZED
+  // zwykłą metodą — TEN SAM porządek co w pojedynczym nadaniu (services/nadanie.js). null = nie kanał
+  // z własną drogą albo ręcznie zmieniona metoda; wtedy zwykła metoda OMS.
+  const opcjeMetody = { kolejnosc: 1, umowyPobrania };
+  const { metoda: metodaUzyta, blad } = metodaNadaniaKanalu?.(z, '', opcjeMetody) ?? metodaNadania(z, '', opcjeMetody);
   if (blad) return { powod: blad };
   const rodzaj = rodzajFormularzaNadania(metodaUzyta);
   if (!rodzaj) return { powod: 'nieznana metoda wysyłki — ustaw ją na karcie zamówienia' };

@@ -13,6 +13,8 @@
 // Historia zasobu: `/sale/disputes` Allegro USUNELO 07.01.2026, zastapione przez `/sale/issues`
 // (od 24.06.2025). Pole `type` rozroznia `DISPUTE` od `CLAIM`.
 
+import { kanalZWiadomosciami } from '../../../domena/moduly-kanalow.ts';
+
 export const STATUSY_OTWARTE = ['DISPUTE_ONGOING', 'DISPUTE_UNRESOLVED', 'CLAIM_SUBMITTED'];
 
 export function createOdswiezanieSpraw({ db, klienci = {}, brakiKanalu = () => [], teraz = () => new Date() }) {
@@ -34,6 +36,8 @@ export function createOdswiezanieSpraw({ db, klienci = {}, brakiKanalu = () => [
     const bledy = [];
     let zapisane = 0;
     for (const [nazwa, klient] of Object.entries(klienci)) {
+      // PRZ-157.12b: mapa kanałów niesie też klientów ERLI — oni nie mają spraw Allegro.
+      if (!kanalZWiadomosciami(nazwa)) continue;
   // ⚠️⚠️ NIE WOLAMY ZASOBU, DO KTOREGO KANAL NIE MA UPRAWNIENIA. Bez tego panel wdrozony
   // PRZED przewiazaniem kanalow strzela 403 przy kazdym przebiegu — okolo 1150 nieudanych
   // wywolan na dobe prosto do raportu „Bledy techniczne" Allegro. Zakresy wchodza do tokenu

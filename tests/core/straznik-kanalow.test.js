@@ -18,6 +18,14 @@ function probka(a, b) {
 }
 
 describe('strażnik nazw kanałów', () => {
+  it('pilnuje także nowych rozgałęzień ERLI w obu kolejnościach', () => {
+    const root = probka("z.typ === 'erli';", "'erli' !== z?.typ;");
+    expect(sprawdz(root, {}).kod).toBe(1);
+    expect(sprawdz(root, {
+      'src/domena/a.js': { liczba: 1, powod: 'adapter ERLI' },
+      'src/domena/b.ts': { liczba: 1, powod: 'komunikat ERLI' },
+    }).kod).toBe(0);
+  });
   it('liczy wszystkie operatory i kolejności, także wiele trafień w wierszu', () => {
     const root = probka("czyKanalAllegro(z); x.typ === 'allegro'; 'woo' !== x.typ;\n", 'typ !== "woo"; "allegro" === typ; const czyKanalAllegro = (z) => z;');
     const wynik = sprawdz(root, { 'src/domena/a.js': { liczba: 3, powod: 'próba' }, 'src/domena/b.ts': { liczba: 3, powod: 'próba' } });

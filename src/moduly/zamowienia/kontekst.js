@@ -66,6 +66,9 @@ import { sprzedawcaZwolniony } from '../faktury/db/zwolnienie-vat.js';
 import { brakiNaStanieZamowienia } from '../../oms/db/stany-zamowienia.js';
 import { odnosnikPozycji } from '../../domena/link-pozycji.js';
 import { sprawyKarty } from '../../domena/sprawy-karty.js';
+import { nadanieErliNaKarcie } from '../kanaly/services/kanal-erli.ts';
+import { metodaNadaniaErli } from '../wysylka/services/droga-nadania-erli.js';
+import { zgloszeniaZwrotowErli } from '../../domena/erli-zwroty.js';
 import { wolnoWyslacDoAllegro, zdanieKartyPoZamianieNip } from '../../domena/allegro-faktura.js';
 import { PRZY_ODBIORZE, BEZ_TERMINU, ZAPLACONE, TERMINY_DNI, ETYKIETY_TERMINU, terminFaktury } from '../../domena/termin-platnosci.js';
 import { opisKlienta } from '../../domena/klient-staly.js';
@@ -479,6 +482,16 @@ function platnosciKarty(z) {
 }
 
 async function renderujKarte(req, reply, z, dodatki = {}) {
+  const nadanieKanalu = nadanieErliNaKarcie(db, z);
+  const drogaErli = metodaNadaniaErli(db, z);
+  let zgloszeniaZwrotowKanalu = [];
+  // nadanieKanalu istnieje wyłącznie dla typu ERLI ustalonego z rejestru, bez HTTP.
+  if (nadanieKanalu) {
+    try {
+      const surowe = JSON.parse(z.surowe_json ?? 'null');
+      zgloszeniaZwrotowKanalu = zgloszeniaZwrotowErli(surowe?.returns, surowe?.items);
+    } catch { /* brak czytelnych danych źródłowych — brak zgłoszeń */ }
+  }
   // Liczniki kolumny bocznej czekaja na indeks listy (PRZ-051) — stad funkcja asynchroniczna;
   // wszyscy wolajacy i tak oddaja jej wynik z trasy asynchronicznej.
   const panelStatusow = await statusyDlaKarty(z, req);
@@ -791,7 +804,12 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // ich sam (domain/sprawy-karty.js): kazda z nich rzadzi juz czyms innym (lista robocza,
     // bariera faktury, wyliczone `oplacone_at`), wiec druga kopia reguly rozjechalaby sie
     // przy pierwszej zmianie i pasek zaczalby klamac o tym, czy jest co robic.
-    sprawy: sprawyKarty(z, Date.now(), { nazwa: nazwaProgramu, gdzie: gdzieProgramu }),
+    sprawy: [...sprawyKarty(z, Date.now(), { nazwa: nazwaProgramu, gdzie: gdzieProgramu }),
+      // PRZ-157.07e: `drogaErli` = null przy ręcznej zmianie metody — wtedy blokada drogi ERLI już nie obowiązuje.
+      ...(nadanieKanalu?.sprawa && drogaErli ? [{ klucz: 'nadanie-kanalu', waga: 'blokada', tekst: nadanieKanalu.sprawa, kotwica: '#szczegoly' }] : [])],
+    nadanieKanalu,
+    drogaErli,
+    zgloszeniaZwrotowKanalu,
     // PRZ-118.09: nazwa i ekran programu fakturowego w zdaniach karty (bez programu — inFakt, jak dotąd).
     nazwaProgramu, gdzieProgramu, ekranProgramu: ekranProgramu(programFaktur),
     // PRZ-121.03b: zdanie „faktury wyłączone” przy jawnym „brak” (plik albo Ustawienia); w innym razie `null` i widok
@@ -840,7 +858,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // Czego zamowieniu brakuje, zeby dalo sie je nadac (dzis: kod paczkomatu). Widok NIE
     // liczy tego sam — TA SAMA funkcja odmawia w services/nadanie.js i na ekranie nadania,
     // wiec karta nie moze zaproponowac nadania, ktore panel zaraz odrzuci.
-    brakDoNadania: powodBrakuGotowosciNadania(z),
+    brakDoNadania: drogaErli?.blad ?? powodBrakuGotowosciNadania(z, drogaErli?.metoda),
     // Widok NIE liczy sam, czy rezerwacja jest osierocona — to decyzja domenowa i ma
     // brzmiec tak samo tutaj, na liscie roboczej i przy kolizji w bazie.
     stanFaktury: stanFaktury(z.faktura),

@@ -2,10 +2,10 @@ import type {DatabaseSync} from 'node:sqlite';
 import type {ModulOms,Srodowisko} from '../../src/core/kontrakty.ts';
 import {createModulKanaly} from '../../src/moduly/kanaly/modul.ts';
 import {konfiguracjaKanalow,definicjeKanalow} from '../../src/moduly/kanaly/konfiguracja.ts';
-import {listaNaZadanie,mapaNaZadanie} from '../../src/moduly/kanaly/kolekcje-na-zadanie.ts';
 import {poczatekDniaWarszawa} from '../../src/moduly/kanaly/zakres-importu-allegro.ts';
 import {modulyPiaskownicy,nadpisaniaPiaskownicy} from './atrapy/index.mjs';
-import {zbudujAtrapyKanalow,stanyKanalowAtrapy} from './atrapy/kanaly.mjs';
+import {zbudujAtrapyKanalow,scalUslugiKanalow} from './atrapy/kanaly.mjs';
+import {transportErliPiaskownicy} from './atrapy/erli.mjs';
 import {transportAllegroSandbox} from './allegro-sandbox.ts';
 import {HOSTY_ALLEGRO} from '../../src/oms/allegro/dcr.ts';
 
@@ -24,17 +24,20 @@ function sprawdz(env:Srodowisko,d:unknown):Profil{
  return {srodowisko:'sandbox',klucz:a.klucz,clientId:a.clientId,clientSecret:a.clientSecret,clientName:a.clientName,userAgent:a.userAgent,od:a.od};
 }
 
-/** Jedna prawdziwa aplikacja Device Flow. Reszta integracji nadal korzysta z
- * atrap; sekret nie trafia do env, logów ani konfiguracji publicznego demo. */
+/** Allegro Device Flow i sandbox ERLI mogą korzystać z sieci. Pozostałe integracje
+ * używają atrap; sekret nie trafia do env, logów ani konfiguracji publicznego demo. */
 export function przygotujUruchomienieSandbox(env:Srodowisko,d:unknown,fetchImpl?:typeof fetch){
  const a=sprawdz(env,d),http=transportAllegroSandbox({tryb:'proba',fetchImpl});
- const fetchSandbox:typeof fetch=(u,i)=>http(String(u),i);
+ // ERLI: oficjalny sandbox z własnym kluczem używa sieci, klucz atrapy zostaje lokalny.
+ // Produkcję i pozostałe hosty ERLI blokuje transport ERLI, Allegro ma osobną straż.
+ let baza:DatabaseSync|null=null;
+ const erli=transportErliPiaskownicy({baza:()=>baza,env,log:undefined,fetchImpl});
+ const fetchSandbox:typeof fetch=(u,i)=>/(^|\.)(polcien\.example|erli\.pl|erli\.dev)\.?$/.test(new URL(u instanceof Request?u.url:String(u)).hostname)?erli(u,i):http(String(u),i);
  const def=a.klucz?{klucz:a.klucz,typ:'allegro' as const,prefiks:a.klucz.toUpperCase(),etykieta:'Allegro Sandbox',raport:a.klucz.toUpperCase()}:null;
  // PRZ-148.07: prywatny plik profilu jest jawnym profilem Sandbox — straż próby przepuszcza allegrosandbox.pl,
  // a prawdziwe allegro.pl odrzuca, zanim żądanie dotrze do transportu.
  const bazowy=createModulKanaly(def?[def]:[],false,{fetchImpl:fetchSandbox,strazAllegro:'sandbox'});
  const demo=konfiguracjaKanalow(definicjeKanalow(env),env,true);
- let baza:DatabaseSync|null=null;
  const modul:ModulOms<ReturnType<typeof konfiguracjaKanalow>>={...bazowy,
   konfiguracja:()=>{
    sprawdz(env,d);
@@ -46,14 +49,7 @@ export function przygotujUruchomienieSandbox(env:Srodowisko,d:unknown,fetchImpl?
    const atrapy=zbudujAtrapyKanalow({db:ctx.db,config:demo,env,log:ctx.log});
    // Pollery powstały wyłącznie dla prawdziwego profilu. Mapy konsumentów
    // dokładamy dopiero teraz: fikcyjne sklepy nie zaczną importować przez sieć.
-   const config=s.config,definicje=s.config.definicje,kanaly=s.config.kanaly,klienci=s.klienciKanalow,stany=s.stanyKanalow;
-   config.definicje=listaNaZadanie(()=>[...atrapy.config.definicje,...definicje]);
-   config.sklepy=atrapy.config.sklepy;
-   config.kanaly=mapaNaZadanie(()=>[...Object.keys(atrapy.config.kanaly),...Object.keys(kanaly)],k=>kanaly[k]??atrapy.config.kanaly[k]);
-   config.braki=a.klucz?{...atrapy.config.braki,[a.klucz]:[]}:atrapy.config.braki;
-   s.klienciKanalow=mapaNaZadanie(()=>[...Object.keys(atrapy.klienciKanalow),...Object.keys(klienci)],k=>klienci[k]??atrapy.klienciKanalow[k]);
-   s.klienciSklepow=atrapy.klienciSklepow;
-   const stanyAtrapy=stanyKanalowAtrapy({config:atrapy.config,teraz:ctx.teraz});s.stanyKanalow=()=>[...stanyAtrapy(),...stany()];
+   scalUslugiKanalow(s,atrapy,ctx.teraz);
    return z;
   },
  };

@@ -83,12 +83,12 @@ it('przekazuje po aktywacji pełne połączenie Woo do raportów',async()=>{
 it('odmawia startu dla brakującej fabryki i fabryki bez modułu',()=>{
  const {u}=setup();const f=()=>({klient:{},poller:{przebieg:async()=>{},stan:()=>null}});
  expect(()=>createRejestrKanalow({repozytorium:u.repozytoriumKanalow,fabryki:{allegro:f} as any})).toThrow(/woo/);
- expect(()=>createRejestrKanalow({repozytorium:u.repozytoriumKanalow,fabryki:{allegro:f,woo:f,obcy:f} as any})).toThrow(/obcy/);
+ expect(()=>createRejestrKanalow({repozytorium:u.repozytoriumKanalow,fabryki:{allegro:f,woo:f,erli:()=>{throw Error('nieużywane');},obcy:f} as any})).toThrow(/obcy/);
 });
 it('Woo nie zakłada blokady niejednoznacznych zapisów Allegro',async()=>{
  const {u,aktywuj}=setup();const k=await aktywuj();let calls=0;
  const f=({http}:any)=>({klient:{pisz:()=>http('https://sklep.polcien.example/wp-json/wc/v3/orders/1',{method:'POST'})},poller:{przebieg:async()=>{},stan:()=>null}});
- const r=createRejestrKanalow({repozytorium:u.repozytoriumKanalow,fabryki:{woo:f,allegro:f},fetchImpl:async()=>{calls++;throw Error('awaria');}});
+ const r=createRejestrKanalow({repozytorium:u.repozytoriumKanalow,fabryki:{woo:f,allegro:f,erli:()=>{throw Error('nieużywane');}},fetchImpl:async()=>{calls++;throw Error('awaria');}});
  await expect(r.klient(k).pisz()).rejects.toThrow();await expect(r.klient(k).pisz()).rejects.toThrow();
  expect(calls).toBe(2);expect(u.repozytoriumKanalow.niejednoznaczne(k)).toEqual([]);
 });

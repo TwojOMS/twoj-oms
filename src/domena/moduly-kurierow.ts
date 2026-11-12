@@ -84,6 +84,24 @@ export const MODULY_KURIEROW = {
     konfigurator: { sciezka: '/ustawienia/integracje', etykieta: 'Allegro', zdanie: '' },
     piaskownica: { atrapa: '', komunikat: '' },
   },
+  // PRZ-157.08: przewóz kupiony przez ERLI (src/oms/kurierzy/erli.js). Pobranie bierze ERLI z zamówienia
+  // (jak WzA), etykieta PDF dopiero po `waybills[]`.
+  // PRZ-157.07e: jedna metoda `erli_przesylki` — wybiera ją wyłącznie droga nadania ERLI
+  // (wysylka/services/droga-nadania-erli.js), bo zamówienie ERLI ma metodę „nieznana” albo „odbior_osobisty”.
+  // Śledzenie „wlasne”: od 09 adapter ma `statusPrzesylki` (status paczki z API ERLI) — kontrakt PRZ-135.
+  erli_przesylki: {
+    klucz: 'erli_przesylki', nazwa: 'Przesyłki Erli', logo: '', idKatalogu: 'erli_przesylki',
+    opisKatalogu: '', umowa: 'platformy', przewoznicy: ['inpost', 'orlen', 'dhl', 'dpd'],
+    metody: [{ klucz: 'erli_przesylki', etykieta: 'Przesyłki Erli', formularz: 'dpd', punktOdbioru: false }],
+    umiejetnosci: { pobranie: 'umowa', pobranieNaDosylce: false, nadanieAsynchroniczne: true, sledzenie: 'wlasne',
+      etykieta: { zpl: false, zplPrzyNadaniu: false } },
+    pobieranieEtykiety: false,
+    kluczeEnv: [],
+    konfigurator: { sciezka: '/ustawienia/integracje', etykieta: 'Przesyłki Erli', zdanie: '' },
+    piaskownica: { atrapa: '', komunikat: '' },
+    // Działa wyłącznie dla zamówień ERLI (klient kanału), więc nie jest osobną integracją w katalogu Wysyłki.
+    wKatalogu: false,
+  },
 } as const satisfies Readonly<Record<string, OpisKuriera>>;
 
 export type KluczKuriera = keyof typeof MODULY_KURIEROW;
@@ -212,7 +230,7 @@ export function sprawdzOpisyKurierow(
       if (!kluczPoprawny(m.klucz)) bledy.push(`${k}: metody — niepoprawny klucz ${m.klucz}`);
       if (metody.has(m.klucz)) bledy.push(`${k}: metody — powtórzona metoda ${m.klucz}`);
       metody.add(m.klucz);
-      if (m.klucz.startsWith('allegro_') !== (opis.umowa === 'platformy')) {
+      if ((m.klucz.startsWith('allegro_') || m.klucz === 'erli_przesylki') !== (opis.umowa === 'platformy')) {
         bledy.push(`${k}: metody.${m.klucz} — niezgodna umowa ${opis.umowa}`);
       }
     }

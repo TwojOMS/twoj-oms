@@ -96,7 +96,8 @@ describe('pola dla zmiany 04b', () => {
   });
   it('pobieranieEtykiety: InPost tak, DPD i WzA nie (WzA mimo nadania asynchronicznego)', () => {
     expect(Object.fromEntries(Object.entries(MODULY_KURIEROW).map(([k, v]) => [k, v.pobieranieEtykiety])))
-      .toEqual({ dpd: false, inpost: true, allegro_wza: false, allegro: false });
+      // PRZ-157.08: Przesyłki Erli — etykietę dociąga „Sprawdź ponownie” (czuwacz to osobna zmiana).
+      .toEqual({ dpd: false, inpost: true, allegro_wza: false, allegro: false, erli_przesylki: false });
   });
   it('klucze env bez powtórzeń, w kolejności rejestru', () => {
     expect(kluczeEnvKurierow()).toEqual(['DPD_LOGIN', 'DPD_PASSWORD', 'INPOST_TOKEN', 'ALLEGRO_CLIENT_ID', 'ALLEGRO_CLIENT_SECRET']);

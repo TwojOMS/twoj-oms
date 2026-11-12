@@ -76,7 +76,7 @@ export const METODY_WYSYLKI = metodyWysylki();
  * brany za Allegro (strażnik PRZ-062 alarmuje o takim kluczu w instalacji klienta).
  */
 import { umiejetnosciZamowienia } from './moduly-kanalow.ts';
-import { MODULY_KURIEROW, metodyNaUmowie, metodaKuriera } from './moduly-kurierow.ts';
+import { MODULY_KURIEROW, metodyNaUmowie, metodaKuriera, metodyKurierow } from './moduly-kurierow.ts';
 import { odczytajKwotePobrania } from './pobranie-nadania.js';
 export { ustawKanalyAllegro, kanalyAllegro, czyKanalAllegro } from './moduly-kanalow.ts';
 
@@ -109,6 +109,9 @@ export function etykietyWysylki(rejestr = MODULY_KURIEROW) {
     if (!etykieta) throw new Error(`Metoda wysylki ${m} nie ma etykiety`);
     wynik[m] = etykieta;
   }
+  // PRZ-157.07e: metoda kuriera spoza METODY_WYSYLKI (Przesyłki Erli — wybiera ją droga nadania ERLI,
+  // nie operator ani filtr) też ma nazwę dla człowieka, z rejestru — ekran nadania i karta mówią jednym brzmieniem.
+  for (const m of metodyKurierow(rejestr)) wynik[m.klucz] ??= m.etykieta;
   wynik.nieznana = 'Nieznana metoda';
   return wynik;
 }
@@ -124,6 +127,8 @@ export const ETYKIETY_WYSYLKI = etykietyWysylki();
  * ze kurier ma cos zainkasowac.
  */
 export function etykietaWysylki(metoda, czyPobranie, nazwaDokladna = null) {
+  // PRZ-157.07e: metoda kuriera spoza metod zamówienia (Przesyłki Erli wybiera droga kanału, nie operator)
+  // też ma nazwę z rejestru — inaczej ekran nadania pokazywał klucz `erli_przesylki`.
   const nazwa = String(nazwaDokladna ?? '').trim() || ETYKIETY_WYSYLKI[metoda] || metoda;
   if (!czyPobranie) return nazwa;
   // ⚠️⚠️ NAZWA ALLEGRO DLA POBRANIA JUZ MOWI „pobranie" („Allegro Kurier DPD pobranie (AD)"

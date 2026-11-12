@@ -6,7 +6,8 @@
    const pastylka = { blad: ' pol-stan--blad', uwaga: ' pol-stan--uwaga', dziala: ' pol-stan--dziala', wylaczone: ' pol-stan--wstrzymane' }[p.stan] ?? '';
    const czesci = [];
    if (u && u.nazwa !== tytul) czesci.push(u.nazwa);
-   if (p.konto) czesci.push('konto ' + p.konto);
+   if (p.usluga === 'erli') czesci.push(p.opis);
+   else if (p.konto) czesci.push('konto ' + p.konto);
    if (p.wysylkaAllegro) czesci.push('Wysyłam z Allegro: ' + (p.wysylkaAllegro === 'wlaczona' ? 'włączone' : 'wyłączone'));
    const linia = czesci.join(' · ');
    const problem = p.stan === 'blad' || p.stan === 'uwaga';

@@ -16,6 +16,7 @@ import {createTokeny} from '../../../oms/allegro/tokeny.js';
 import {createWooClient} from '../../../oms/woo/client.js';
 import {createWooAdapter,createAllegroAdapter} from '../../../integracje/fabryki.ts';
 import {createPoller} from './poller.js';
+import {createFabrykaErli} from './kanal-erli.ts';
 import {createZdjeciaAllegro,zPobieraniemZdjec} from './zdjecia-allegro.js';
 import {createImportSklepu} from './import-sklep.js';
 import {listaNaZadanie,mapaNaZadanie} from '../kolekcje-na-zadanie.ts';
@@ -23,12 +24,13 @@ import * as zapytania from '../../../oms/db/zamowienia.js';
 import {stanyKanalowZKolizjami} from '../../../domena/kanal-stan.js';
 import {bladPolleraNaEkran} from '../../../domena/zdrowie.js';
 import {ustawKanalyAllegro} from '../../../domena/wysylka.js';
+import {ustawRejestrKanalow} from '../../../domena/moduly-kanalow.ts';
 import {utworzHttp} from '../../../core/http.ts';
 import {strzezAllegroProby,type ProfilAllegroProby} from '../straz-allegro-proby.ts';
 export type OpcjeKompozycji={klientWooZastepczy?:(u:{baseUrl:string;ck:string;cs:string})=>Record<string,any>|null;fetchImpl?:typeof fetch;limitCzasuMs?:number;userAgent?:string;strazAllegro?:ProfilAllegroProby;autoryzacjaAtrapy?:{http:(u:string,i?:RequestInit)=>Promise<Response>;softwareStatementId:string;redirectUri:string;userAgent:string}};
 export function zbudujUslugiKanalow(ctx:KontekstModulu<ReturnType<typeof konfiguracjaKanalow>>,definicje:readonly DefinicjaKanalu[],o:OpcjeKompozycji){
  const {db,konfiguracja:config}=ctx;const envKanaly=config.kanaly,envSklepy=config.sklepy;
- const repozytoriumKanalow=createRepozytoriumKanalow({db,definicjeEnv:definicje,konfiguracjaEnv:envKanaly,teraz:ctx.teraz});
+ const repozytoriumKanalow=createRepozytoriumKanalow({db,definicjeEnv:definicje,konfiguracjaEnv:{...envKanaly,...config.erli},teraz:ctx.teraz});
  // Atrapa autoryzacji jest wstrzykiwana wyłącznie w OMS_TRYB=proba.
  const opcje=o.autoryzacjaAtrapy;
  // PRZ-148.07: tryb próby (moduł ustawia strazAllegro) — wszystkie drogi do Allegro idą przez odmowę hosta.
@@ -47,7 +49,7 @@ export function zbudujUslugiKanalow(ctx:KontekstModulu<ReturnType<typeof konfigu
   // Rejestr buforuje klientów: getter odświeża nagłówek również w istniejącym kliencie.
   return {...HOSTY_ALLEGRO[k.srodowisko],clientId:a.clientId,clientSecret:a.clientSecret,get userAgent(){return userAgent();},od:k.odUtc};
  }
- const skonfigurowany=(k:PolaczenieKanalu)=>k.zrodlo!=='env'||Boolean(envKanaly[k.klucz]);
+ const skonfigurowany=(k:PolaczenieKanalu)=>k.zrodlo!=='env'||Boolean(envKanaly[k.klucz]||config.erli?.[k.klucz]);
  const wooRuntime=createSklepyWooRuntime({db,repozytorium:repozytoriumKanalow,klientWooZastepczy:o.klientWooZastepczy});
  const limitCzasuMs=o.limitCzasuMs??30000;
  const rejestrKanalow=createRejestrKanalow({repozytorium:repozytoriumKanalow,skonfigurowany,db,teraz:ctx.teraz,limitCzasuMs,fetchImpl:o.fetchImpl||!opcje?fetchAllegro:(u,i)=>opcje.http(String(u),i),fabryki:{woo:wooRuntime.fabryka,allegro:({polaczenie,http,httpAutoryzacji,sprawdzZapis})=>{
@@ -55,9 +57,10 @@ export function zbudujUslugiKanalow(ctx:KontekstModulu<ReturnType<typeof konfigu
   const tokeny=createTokeny({db,kanal:polaczenie.klucz,ustawienia:u,fetchImpl:undefined,http:httpAutoryzacji});
   const klient=createAllegroClient({ustawienia:u,tokeny,fetchImpl:undefined,http});
   return {tokeny,klient,poller:createPoller({db,sklep:polaczenie.klucz,od:u.od,kontrola:sprawdzZapis,kanal:createAllegroAdapter({klient})})};
- }}});
+ },
+ erli:createFabrykaErli({db,teraz:ctx.teraz,ustawieniaEnv:config.erli})}});
  const definicjeBiezace=():DefinicjaKanalu[]=>[
-  ...definicje.filter(d=>d.typ!=='allegro'),
+  ...definicje.filter(d=>!rejestrKanalow.definicje().some(r=>r.klucz===d.klucz)),
   ...rejestrKanalow.definicje().map(d=>{const env=definicje.find(e=>e.klucz===d.klucz);return env?{...env,etykieta:d.etykieta}:d;}),
  ];
  config.definicje=listaNaZadanie(definicjeBiezace);
@@ -66,9 +69,12 @@ export function zbudujUslugiKanalow(ctx:KontekstModulu<ReturnType<typeof konfigu
  // Nowe kanały mają gwarantowany prefiks allegro_; rozpoznaje go też SQL domeny.
  // Dodatkowy zbiór służy wyłącznie niezmiennym kluczom legacy z env.
  ustawKanalyAllegro(definicje.filter(d=>d.typ==='allegro').map(d=>d.klucz));
+ // PRZ-157.00 (D9): moduł zamówienia z typu połączenia (env albo kanaly_sprzedazy.typ), czytanego na żywo — panel nie musi odświeżać.
+ ustawRejestrKanalow(repozytoriumKanalow.typKanalu);
  const kluczeDostepu=()=>repozytoriumKanalow.lista().filter(k=>skonfigurowany(k)&&(k.autoryzacja==='polaczone'||(k.zrodlo==='env'&&k.autoryzacja==='brak'))&&!repozytoriumKanalow.konfliktKlucza(k.klucz)).map(k=>k.klucz);
  config.kanaly=mapaNaZadanie(kluczeDostepu,ustawienia);
- const klienciKanalow=mapaNaZadanie(kluczeDostepu,k=>rejestrKanalow.klient(k));
+ const kluczeKlientow=()=>[...kluczeDostepu(),...repozytoriumKanalow.listaTypu('erli').filter(k=>skonfigurowany(k)&&k.autoryzacja==='polaczone'&&!repozytoriumKanalow.konfliktKlucza(k.klucz)).map(k=>k.klucz)];
+ const klienciKanalow=mapaNaZadanie(kluczeKlientow,k=>rejestrKanalow.klient(k));
  const envTokeny=Object.fromEntries(Object.entries(envKanaly).map(([k,u])=>[k,createTokeny({db,kanal:k,ustawienia:u,fetchImpl:fetchAllegro})]));
  const tokenyKanalow=mapaNaZadanie(()=>repozytoriumKanalow.lista().filter(k=>skonfigurowany(k)&&(k.zrodlo==='env'||k.autoryzacja==='polaczone')).map(k=>k.klucz),k=>envTokeny[k]??rejestrKanalow.tokeny(k));
  const daty=zapytania.znormalizujDatyWoo(db,Object.keys(envSklepy));
@@ -81,7 +87,7 @@ export function zbudujUslugiKanalow(ctx:KontekstModulu<ReturnType<typeof konfigu
  const zbiorczy={przebieg:async()=>{const bledy:string[]=[];for(const p of [...polleryWoo,{przebieg:rejestrKanalow.przebiegZamowien}])try{await p.przebieg();}catch(e){bledy.push((e as Error).message);}if(bledy.length)throw new Error(bledy.join(' | '));},
   stany:()=>[...polleryWoo.map(p=>p.stan()),...rejestrKanalow.stany()],
   stan:():any=>{const stany=zbiorczy.stany();return stany.find(s=>bladPolleraNaEkran(s))??stany.find(s=>s?.ostatni_blad)??stany[0]??null;}};
- const zdjecia=createZdjeciaAllegro({db,klienci:klienciKanalow});
+ const zdjecia=createZdjeciaAllegro({db,klienci:mapaNaZadanie(kluczeDostepu,k=>klienciKanalow[k])});
  const poller=zPobieraniemZdjec(zbiorczy,zdjecia);
  const stanyKanalow=()=>stanyKanalowZKolizjami(Object.entries(tokenyKanalow).filter(([k])=>repozytoriumKanalow.pobierz(k)?.autoryzacja!=='odlaczone').map(([,t])=>t.stanDlaEkranu()));
  // Starszy renderer może odczytać stan, ale nie uruchamia już pętli zapisującej

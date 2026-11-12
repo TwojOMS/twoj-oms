@@ -194,7 +194,9 @@
           <%# ⚠️ DRUGI WIERSZ TYLKO PRZY WSKAZANIU RECZNYM. Metoda zamowienia mowi, co %>
           <%# wybral kupujacy na Allegro; ta linia mowi, czym NAPRAWDE nadajemy — i bez %>
           <%# niej ekran twierdzilby „Allegro Kurier DPD" przy paczce jadacej nasza umowa. %>
-          <% if (kurierWybrany) { %>
+          <% if (drogaErli) { %>
+            <div><span class="k">Nadajemy</span><span class="w"><%= etykietaWysylki(metodaUzyta, false) %> <a class="drobne" href="<%= adresWyboruKuriera || adresNadania(null, { wybor: true }) %>">(zmień drogę nadania)</a></span></div>
+          <% } else if (kurierWybrany) { %>
             <div><span class="k">Nadajemy</span><span class="w"><%= etykietaWysylki(metodaUzyta, false) %> — nasza umowa <a class="drobne" href="<%= adresNadania() %>">(zmień)</a></span></div>
           <% } else if (adresWyboruKuriera) { %>
             <%# ⚠️ DROGA DOMYSLNA MOWI O SOBIE WPROST. Ekran wyboru zszedl z przeplywu %>

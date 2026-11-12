@@ -1,4 +1,5 @@
 import { bladKonfiguracji } from '../../core/blad-konfiguracji.ts';
+import {adresErliOk} from './services/sklepy-erli.ts';
 import type { Srodowisko } from '../../core/kontrakty.ts'; import { czyTypKanalu, TYPY_KANALOW, sprawdzOpisyKanalow, type TypKanaluZnany } from '../../domena/moduly-kanalow.ts';
 import { METODY_WYSYLKI } from '../../domena/wysylka.js';
 import { konfiguracjaHistorii } from './historia.ts';
@@ -119,9 +120,18 @@ export function definicjeKanalow(env: Srodowisko, moduly?: Parameters<typeof spr
 }
 export function konfiguracjaKanalow(definicje: readonly DefinicjaKanalu[], env: Srodowisko, niekompletneJakoAlarm = false) {
   const sklepy: Record<string, any> = {}; const kanaly: Record<string, any> = {};
+  const erli:Record<string,any>={};
   const braki = Object.fromEntries(definicje.map(d => [d.klucz, brakujaceKluczeKanalu(d, env)]));
   const wymagane = (n: string, obowiazkowe = true) => { if (obowiazkowe && !env[n]) throw bladKonfiguracji(`Brak wymaganej zmiennej: ${n}`); return env[n] ?? ''; };
   for (const { klucz, typ, prefiks: p } of definicje) {
+    if(typ==='erli'){
+      const adres=env[`${p}_ADRES_API`];
+      if(adres&&!adresErliOk(adres))throw bladKonfiguracji(`${p}_ADRES_API: wybierz środowisko ERLI — sklep albo ERLI — sandbox.`);
+      if(niekompletneJakoAlarm&&braki[klucz].length)continue;
+      if(!adresErliOk(adres))throw bladKonfiguracji(`${p}_ADRES_API: wybierz jedno z dwóch środowisk ERLI.`);
+      erli[klucz]={adresApi:adres,kluczApi:wymagane(`${p}_KLUCZ_API`),od:parsujDateOd(env,`${p}_OD`)};
+      continue;
+    }
     // Niepusta obecna wartość podlega D07 także bez aktywnego klienta.
     // W pełnej kompozycji puste wymagane URL to brak raportowany przez D01.
     if (typ === 'woo') {
@@ -154,7 +164,7 @@ export function konfiguracjaKanalow(definicje: readonly DefinicjaKanalu[], env: 
     }
   }
   const odstepMs = interwal(env.OMS_POLLER_MS, 'OMS_POLLER_MS', 120000, 30000);
-  const wspolne={sklepy,kanaly,odstepMs,definicje:[...definicje],deviceEnv:aplikacjeDeviceEnv(env),userAgent:userAgentAllegro(env),userAgentZEnv:String(env.OMS_ALLEGRO_USER_AGENT??'').trim()};
+  const wspolne={sklepy,kanaly,...(Object.keys(erli).length?{erli}:{}),odstepMs,definicje:[...definicje],deviceEnv:aplikacjeDeviceEnv(env),userAgent:userAgentAllegro(env),userAgentZEnv:String(env.OMS_ALLEGRO_USER_AGENT??'').trim()};
   return {...wspolne,...(niekompletneJakoAlarm?{braki}:{})};
 }
 export type PolaUserAgentAllegro = {nazwa:string;wersja:string;adres:string};

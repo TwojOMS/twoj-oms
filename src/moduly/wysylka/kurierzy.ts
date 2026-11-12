@@ -141,10 +141,13 @@ export type FabrykiKurierow = Partial<{
   createAllegroSledzenie: (o: Parameters<typeof createAllegroSledzenieClient>[0]) => KurierSledzenia;
 }>;
 export type MapaKurierow = Partial<Record<string, KurierNadania | KurierSledzenia>> & {
-  dpd?: KurierNadania; inpost?: KurierNadania; allegro_wza?: KurierNadania; allegro?: KurierSledzenia;
+  dpd?: KurierNadania; inpost?: KurierNadania; allegro_wza?: KurierNadania; erli_przesylki?: KurierNadania;
+  allegro?: KurierSledzenia;
 };
 
-type Skladanie = { config: ReturnType<typeof wczytajKurierow>; klienciAllegro: Record<string, any>; fabryki: FabrykiKurierow };
+// PRZ-157.11b: punkt nadania Przesyłek Erli z konfiguratora sklepu (krok 4), czytany przy każdej paczce.
+type KonfigKurierow = ReturnType<typeof wczytajKurierow> & { punktNadaniaErliDla?: (z: any) => number | null };
+type Skladanie = { config: KonfigKurierow; klienciAllegro: Record<string, any>; fabryki: FabrykiKurierow };
 
 // PRZ-135: jak z konfiguracji powstaje adapter każdego kuriera z metodami. Typ z kluczy rejestru — nowy kurier
 // z metodami bez wpisu tutaj (i w FABRYKI_KURIEROW) to błąd tsc. `null` = kurier nieskonfigurowany w pliku.
@@ -165,9 +168,18 @@ const SKLADANIE: { [K in KluczKurieraNadania]: (s: Skladanie) => KurierNadania |
     },
     metodaZywa: (z: any) => klienciAllegro[z?.sklep]?.pobierzMetodeDostawy(z?.zrodlo_id) ?? null,
     pobranieNadawca: config.pobranieNadawca }),
+  // `klienciAllegro` = klienci WSZYSTKICH kanałów (kanaly.klienciKanalow), więc tu jest też klient ERLI.
+  erli_przesylki: ({ config, klienciAllegro }) => FABRYKI_KURIEROW.erli_przesylki({
+    erliDla: (z: any) => {
+      const klient = klienciAllegro[z?.sklep];
+      if (!klient) throw new Error(`Kanał „${z?.sklep}” nie jest podpięty do ERLI — panel niczego nie nadał.`);
+      return klient;
+    },
+    punktNadaniaDla: (z: any) => config.punktNadaniaErliDla?.(z) ?? null,
+  }),
 };
 
-export function zbudujKurierow(config: ReturnType<typeof wczytajKurierow>, klienciAllegro: Record<string, any>, fabryki: FabrykiKurierow = {}) {
+export function zbudujKurierow(config: KonfigKurierow, klienciAllegro: Record<string, any>, fabryki: FabrykiKurierow = {}) {
   const kurierzy: MapaKurierow = {};
   // Kolejność kluczy mapy = kolejność rejestru (dpd, inpost, allegro_wza, allegro).
   for (const klucz of Object.keys(MODULY_KURIEROW)) {

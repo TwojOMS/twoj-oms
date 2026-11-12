@@ -7,8 +7,10 @@ import {
   oznaczTworzonaUKuriera, pobierzPrzesylke, zapiszIdPrzesylkiKuriera,
 } from '../db/przesylki.js';
 import { wybierzKuriera } from '../../../oms/kurierzy/index.js';
+import { metodaNadaniaErli } from './droga-nadania-erli.js';
 import { bladOperatora } from '../../../domena/bledy.js';
 import { czyTylkoOdczyt, TYLKO_ODCZYT } from '../../../domena/woo-uprawnienia.js';
+import { przekazNumerKanalu } from './numer-kanalu.js';
 import { bezpiecznaNazwa } from '../../../domena/pliki.js';
 import { adresOdbiorcy } from '../../../domena/adres-odbiorcy.js';
 import { powodBrakuGotowosciNadania } from '../../../domena/gotowosc-nadania.js';
@@ -49,7 +51,7 @@ export const zplPrzyNadaniu = (kurier) => typeof kurier !== 'string' || !Object.
   || modulKuriera(kurier).umiejetnosci.etykieta.zplPrzyNadaniu;
 
 /** @param {import('../nadanie-typy.ts').OpcjeNadania} opcje */
-export function createNadanie({ db, kurierzy, klienci = {}, katalogEtykiet, paczkaDomyslna = PACZKA_DOMYSLNA, czekaj = undefined }) {
+export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {}, katalogEtykiet, paczkaDomyslna = PACZKA_DOMYSLNA, czekaj = undefined }) {
   // Katalog zakladamy przy BUDOWIE uslugi, czyli zanim ktokolwiek dotknie DPD.
   // Przy pierwszym uruchomieniu panelu tego katalogu po prostu nie ma, a odkrycie tego
   // dopiero po nadaniu paczki oznaczaloby przydzielony numer listu bez miejsca na etykiete.
@@ -133,6 +135,8 @@ export function createNadanie({ db, kurierzy, klienci = {}, katalogEtykiet, pacz
     // niczego prawdziwego — zamowienie wisialo na liscie „do zalatwienia" na zawsze.
     // Pominiecie MUSI byc widoczne w logu jako SWIADOMA decyzja, nie cichy `if`, zeby
     // odrozniala sie od awarii.
+    // Kanał z własnym API numeru kończy tutaj; pozostałe zachowują notatkę.
+    if (await przekazNumerKanalu({ db, klienci, klienciKanalow }, przesylkaId)) return;
     if (z.sklep === 'reczne') {
       dopiszLog(db, z.id, {
         akcja: 'sync-woo',
@@ -252,7 +256,8 @@ export function createNadanie({ db, kurierzy, klienci = {}, katalogEtykiet, pacz
     // ODMOWE — i to jest ta sama bariera, co dotad („metoda nie jest obslugiwana"), tylko
     // wreszcie mowiaca czlowiekowi, co ma zrobic, zamiast odsylac go z zapakowana paczka.
     const umowyPobrania = umowyPobraniaFirmy(db);
-    const { metoda: metodaUzyta, blad: bladKuriera, wskazanyRecznie } = metodaNadania(z, kurierWybrany, { kolejnosc, umowyPobrania });
+    const { metoda: metodaUzyta, blad: bladKuriera, wskazanyRecznie } = metodaNadaniaErli(db, z, kurierWybrany, { kolejnosc, umowyPobrania })
+      ?? metodaNadania(z, kurierWybrany, { kolejnosc, umowyPobrania });
     if (bladKuriera) throw bladOperatora(bladKuriera);
 
     const braki = powodBrakuGotowosciNadania(z, metodaUzyta);
@@ -352,7 +357,7 @@ export function createNadanie({ db, kurierzy, klienci = {}, katalogEtykiet, pacz
     if (wskazanyRecznie) {
       dopiszLog(db, zamowienieId, {
         akcja: 'nadanie.kurier',
-        wynik: `Ręcznie: zamówienie z Allegro (${z.metoda_wysylki}) nadane NASZĄ umową — ${metodaUzyta}.`,
+        wynik: `Ręcznie: zamówienie z kanału sprzedaży (${z.metoda_wysylki}) nadane NASZĄ umową — ${metodaUzyta}.`,
       });
     }
 
@@ -625,7 +630,8 @@ export function createNadanie({ db, kurierzy, klienci = {}, katalogEtykiet, pacz
   // paczkaDomyslna wystawiona na zewnatrz, zeby ekran nadania (GET /zamowienia/:id/nadaj)
   // mogl nia wypelnic formularz — TA SAMA stala, nie druga kopia w widoku.
   // PRZ-117: przycisk „Spróbuj ponownie” przy nieudanej notatce — tu, bo tylko nadanie ma klientów sklepów.
-  const ponowNotatke = (/** @type {number} */ przesylkaId) => ponowNotatkeNadania({ db, klienci }, przesylkaId);
+  const ponowNotatke = (/** @type {number} */ przesylkaId) => ponowNotatkeNadania({ db, klienci, klienciKanalow }, przesylkaId);
 
-  return { nadaj, sprawdzPonownie, ponowNotatke, paczkaDomyslna, gotowe: () => true };
+  const anulujNumerKanalu = (/** @type {number} */ id) => przekazNumerKanalu({ db, klienci, klienciKanalow }, id, true);
+  return { nadaj, sprawdzPonownie, ponowNotatke, anulujNumerKanalu, paczkaDomyslna, gotowe: () => true };
 }

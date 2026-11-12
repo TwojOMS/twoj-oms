@@ -8,7 +8,8 @@ import { registerSynchronizacjaMagazynu } from './synchronizacja.js';
 import { registerZapisMagazynu } from './zapis.js';
 import { registerStanyMagazynu } from './stany.js';
 import * as zapytania from '../../oms/db/magazyn.js';
-import { listaNaZadanie } from '../kanaly/kolekcje-na-zadanie.ts';
+import { listaNaZadanie, mapaNaZadanie } from '../kanaly/kolekcje-na-zadanie.ts';
+import { kanalKlientaUmie } from '../../domena/moduly-kanalow.ts';
 
 type ConfigKanalow = { definicje: readonly {klucz:string;etykieta?:string}[]; sklepy: Record<string, unknown>; kanaly: Record<string, unknown> };
 type KlienciSklepow = NonNullable<Parameters<typeof createMagazynPrzebieg>[0]>['sklepy'];
@@ -23,9 +24,11 @@ export const modulMagazyn: ModulOms<null> = {
   zbuduj: ctx => {
     const config = ctx.usluga<ConfigKanalow>('kanaly', 'config');
     const sklepy = ctx.usluga<KlienciSklepow>('kanaly', 'klienciSklepow') ?? {};
-    const allegro = ctx.usluga<KlienciAllegro>('kanaly', 'klienciKanalow') ?? {};
+    const wszyscyKlienci = ctx.usluga<KlienciAllegro>('kanaly', 'klienciKanalow') ?? {};
+    const obslugujeOferty = (sklep: string) => kanalKlientaUmie(sklep, u => u.stany === 'oferty');
+    const allegro = mapaNaZadanie(() => Object.keys(wszyscyKlienci).filter(obslugujeOferty), sklep => wszyscyKlienci[sklep]);
     const kanalySklepow = listaNaZadanie(()=>Object.keys(config.sklepy ?? {}));
-    const kanalyAllegro = listaNaZadanie(()=>Object.keys(config.kanaly ?? {}));
+    const kanalyAllegro = listaNaZadanie(()=>Object.keys(config.kanaly ?? {}).filter(obslugujeOferty));
     // Klienci są tymi samymi instancjami, które zbudował moduł kanałów.
     // Brak kanałów jest jawnym trybem bez konfiguracji, bez historycznych nazw.
     const magazyn = createMagazynPrzebieg({ db: ctx.db, sklepy, allegro, kanalySklepow, kanalyAllegro,

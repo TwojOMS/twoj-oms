@@ -49,6 +49,21 @@ export function createRepozytoriumKanalow(o: {db:DatabaseSync; definicjeEnv:read
   return Boolean(r && ((d && (r.zrodlo!=='env'||r.srodowisko!==env(d).srodowisko)) || (!d&&r.zrodlo==='env')));
  }
  const pobierz=(klucz:string)=>lista().find(k=>k.klucz===klucz)??null;
+ // PRZ-157.00 (D9): typ połączenia dla modułu zamówienia — definicja env (każdy typ), potem wiersz panelu; nigdy prefiks.
+ // Zamknięta baza (stara kompozycja w testach) = klucz nieznany, domena zostaje przy dawnym wyborze.
+ const typyEnv=new Map<string,string>(o.definicjeEnv.map(d=>[d.klucz,d.typ]));
+ // Trafienia z bazy w pamięci: typ klucza po wstawieniu się nie zmienia, a wołają nas pętle list i raportów.
+ const typyBazy=new Map<string,string>();
+ let zapytanieTypu:ReturnType<typeof db.prepare>|null=null;
+ function typKanalu(klucz:string):string|null {
+  const zEnv=typyEnv.get(klucz)??typyBazy.get(klucz);if(zEnv)return zEnv;
+  if(!db.isOpen)return null;
+  try {
+   zapytanieTypu??=db.prepare('SELECT * FROM kanaly_sprzedazy WHERE klucz=?');
+   const r=zapytanieTypu.get(klucz);if(!r)return null;
+   const typ=typWiersza(r);typyBazy.set(klucz,typ);return typ;
+  } catch {return null;} // domena („nigdy nie rzuca”) wraca wtedy do dawnego wyboru
+ }
  function audit(k:PolaczenieKanalu,aktor:Aktor,operacja:string) {
   db.prepare('INSERT INTO kanaly_audit(kanal,operacja,wersja,aktor_id,aktor_login,zmieniono_at) VALUES (?,?,?,?,?,?)').run(k.klucz,operacja,k.wersja,aktor.id,aktor.login,teraz().toISOString());
  }
@@ -102,6 +117,10 @@ export function createRepozytoriumKanalow(o: {db:DatabaseSync; definicjeEnv:read
  function listaTypu(typ:TypKanaluZnany):PolaczenieKanalu[] {
   if(!czyTypKanalu(typ))return [];
   if(typ==='allegro')return lista();
+  if(typ==='erli')return [...o.definicjeEnv.filter(d=>d.typ==='erli').map(d=>{
+   const c=o.konfiguracjaEnv[d.klucz]??{};
+   return {klucz:d.klucz,typ:'erli',aplikacja:null,nazwa:d.etykieta??d.klucz,srodowisko:String(c.adresApi).includes('sandbox.erli.dev')?'sandbox':'produkcja',zrodlo:'env',kontoId:null,login:null,raport:d.raport??d.klucz.toUpperCase(),autoryzacja:c.kluczApi?'polaczone':'brak',pobieranie:'wlaczone',odUtc:c.od??'',wersja:0,generacja:0,generacjaImportu:0} as PolaczenieKanalu;
+  }),...rows().filter(r=>typWiersza(r)===typ&&!o.definicjeEnv.some(d=>d.klucz===r.klucz)).map(dto)];
   return rows().filter(r=>typWiersza(r)===typ).map(dto);
  }
  const wierszSklepu=(klucz:string)=>db.prepare("SELECT k.*,s.adres,s.ustawienia_json FROM kanaly_sprzedazy k JOIN kanaly_sklepy s ON s.klucz=k.klucz WHERE k.klucz=? AND k.typ='woo'").get(klucz) as any;
@@ -155,6 +174,6 @@ export function createRepozytoriumKanalow(o: {db:DatabaseSync; definicjeEnv:read
  }
  const niejednoznaczne=(klucz:string)=>db.prepare("SELECT id,metoda,sciezka,stan FROM kanaly_operacje_niejednoznaczne WHERE kanal=? AND stan='do_sprawdzenia' ORDER BY id").all(klucz) as {id:string;metoda:string;sciezka:string;stan:string}[];
  const operacjaZablokowana=(klucz:string,metoda:string,sciezka:string)=>Boolean(db.prepare("SELECT 1 FROM kanaly_operacje_niejednoznaczne WHERE kanal=? AND metoda=? AND sciezka=? AND stan IN ('do_sprawdzenia','zablokowana') LIMIT 1").get(klucz,metoda,sciezka));
- return {lista,listaTypu,pobierz,utworzSzkic,utworzSzkicSklepu,zapiszSklep,zapiszZmiane,przywrocZKonfiguracji,transakcja,konfliktKlucza,zablokujZapisy,zapisyZablokowane,zapiszNiejednoznaczne,niejednoznaczne,operacjaZablokowana};
+ return {lista,listaTypu,pobierz,typKanalu,utworzSzkic,utworzSzkicSklepu,zapiszSklep,zapiszZmiane,przywrocZKonfiguracji,transakcja,konfliktKlucza,zablokujZapisy,zapisyZablokowane,zapiszNiejednoznaczne,niejednoznaczne,operacjaZablokowana};
 }
 export type RepozytoriumKanalow=ReturnType<typeof createRepozytoriumKanalow>;

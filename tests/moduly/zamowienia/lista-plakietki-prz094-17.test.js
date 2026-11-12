@@ -2,6 +2,7 @@
 // kanału (Allegro „a”, WooCommerce „W”) przy nazwie sklepu. Test sprawdza WYRENDEROWANY HTML listy, bo to on
 // składa dwie rzeczy z trzech miejsc: rozpoznanie (domena), kontekst trasy i szablon.
 import { describe, it, expect, beforeEach } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
@@ -12,6 +13,7 @@ const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null })
 const definicje = [
   { klucz: 'sklep_a', typ: 'woo', prefiks: 'SKLEP_A', etykieta: 'Allegro Sklep' },
   { klucz: 'konto_b', typ: 'allegro', prefiks: 'KONTO_B', etykieta: 'Pracownia Półcień' },
+  { klucz: 'rynek_c', typ: 'erli', prefiks: 'RYNEK_C', etykieta: 'Półcień na ERLI' },
 ];
 
 const zam = (id, nad = {}) => ({
@@ -55,6 +57,13 @@ describe('plakietka rodzaju kanału', () => {
     expect(woo).not.toContain('plakietka--allegro');
     const allegro = wiersz(html, 7002);
     expect(allegro).toContain('plakietka plakietka--kanal plakietka--allegro" role="img" aria-label="Allegro" title="Allegro">a</span>Pracownia Półcień');
+  });
+  it('ERLI — małe „e” w turkusie ERLI (PRZ-157.12h)', async () => {
+    zapiszZamowienie(db, 'rynek_c', zam(7004), {});
+    expect(wiersz(await lista(), 7004)).toContain('plakietka plakietka--kanal plakietka--erli" role="img" aria-label="ERLI" title="ERLI">e</span>Półcień na ERLI');
+    const css = readFileSync(new URL('../../../src/public/oms-uklad.css', import.meta.url), 'utf8');
+    expect(css).toMatch(/\.plakietka--erli \{ --plakietka-tlo: var\(--marka-erli-tlo\); --plakietka-tekst: var\(--marka-bialy\); \}/);
+    expect(css).toContain('--marka-erli-tlo: #07809F;');
   });
   it('kanał ręczny — bez plakietki kanału', async () => {
     zapiszZamowienie(db, 'reczne', zam(7003), {});

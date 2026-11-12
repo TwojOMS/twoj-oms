@@ -3,7 +3,7 @@ import type { OpisKanalu } from '../../src/core/kontrakty.ts';
 import { MODULY_KANALOW, TYPY_KANALOW, czyTypKanalu, modulKanalu, sprawdzOpisyKanalow } from '../../src/domena/moduly-kanalow.ts';
 
 it('rejestr zachowuje kolejność i odrzuca nieznane typy oraz klucze prototypu', () => {
-  expect(TYPY_KANALOW).toEqual(['woo', 'allegro']);
+  expect(TYPY_KANALOW).toEqual(['woo', 'allegro', 'erli']);
   expect(Object.isFrozen(MODULY_KANALOW)).toBe(true);
   for (const typ of TYPY_KANALOW) {
     expect(czyTypKanalu(typ)).toBe(true);

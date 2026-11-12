@@ -10,6 +10,8 @@ import { registerSzablonyWiadomosciRoutes } from './trasy/szablony.js';
 import { utworzPodpisMaili } from './podpis-maili.js';
 import { sprzedawcaZwolniony } from '../faktury/db/zwolnienie-vat.js';
 import { zProgramu } from '../../integracje/program-fakturowy.ts';
+import { kanalZWiadomosciami } from '../../domena/moduly-kanalow.ts';
+import { mapaNaZadanie } from '../kanaly/kolekcje-na-zadanie.ts';
 
 export { utworzUslugiWiadomosci } from './uslugi.ts';
 
@@ -52,7 +54,8 @@ export function createModulWiadomosci({ fabryki = {}, uslugi }: {
       // poniżej, liczonej przy każdym żądaniu (zmiana bez restartu; pole z pliku wygrywa).
       const podpisMaili = utworzPodpisMaili({ db: ctx.db, oprawaPoczty: ctx.konfiguracja.oprawaPoczty, teraz: ctx.teraz });
       return { uslugi: { ...u, podpisMaili }, zegary, trasy: app => {
-        const klienci = ctx.usluga<Record<string, any>>('wiadomosci', 'klienciWiadomosci');
+        const wszyscyKlienci = ctx.usluga<Record<string, any>>('wiadomosci', 'klienciWiadomosci');
+        const klienci = mapaNaZadanie(() => Object.keys(wszyscyKlienci).filter(kanalZWiadomosciami), sklep => wszyscyKlienci[sklep]);
         // PRZ-101.03: szablony wiadomości — ekran w Ustawieniach i „Wstaw szablon" w wątku Allegro. Działają także
         // bez skonfigurowanej poczty (szablon da się przygotować przed podłączeniem SMTP).
         const oprawa = () => podpisMaili.oprawa();

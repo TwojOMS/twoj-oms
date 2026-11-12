@@ -3,6 +3,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const listaDozwolonych = {
+  'src/moduly/kanaly/services/kanal-erli.ts': { liczba: 1, powod: 'lokalny odczyt drogi nadania ERLI na karcie (PRZ-157.07a), używany również przy wysyłaniu numeru (06)' },
+  'src/integracje/kanal-modul.ts': { liczba: 2, powod: 'wybór adapterów statusu i numeru ERLI po module (PRZ-157.05–06)' },
+  'src/domena/sprawy-karty.js': { liczba: 2, powod: 'ręczne anulowanie oraz konflikt numeru ERLI wymagają sprawy (PRZ-157.05–06)' },
   'src/domena/allegro-faktura.js': { liczba: 1, powod: 'kod modułu Allegro (D4)' },
   'src/domena/allegro-status.js': { liczba: 2, powod: 'kod modułu Allegro (D4)' },
   'src/domena/allegro-wysylka.js': { liczba: 1, powod: 'kod modułu Allegro (D4)' },
@@ -14,22 +17,22 @@ export const listaDozwolonych = {
   'src/domena/sync-sklep.js': { liczba: 1, powod: 'strażnik synchronizacji sklepu (D4)' },
   'src/domena/termin-wysylki.js': { liczba: 1, powod: 'termin wysyłki Allegro' },
   'src/moduly/api-panelu/trasy/api-sprzedaz.js': { liczba: 1, powod: 'etykieta API' },
-  'src/moduly/kanaly/konfiguracja.ts': { liczba: 4, powod: 'budowa z env, PRZ-133 poza zakresem' },
-  'src/moduly/kanaly/modul.ts': { liczba: 1, powod: 'konfiguracja sklepów z env' },
-  'src/moduly/kanaly/repozytorium-kanalow.ts': { liczba: 3, powod: 'rejestr kont i konfiguracja z env' },
+  'src/moduly/kanaly/konfiguracja.ts': { liczba: 5, powod: 'budowa z env, ERLI ma własne klucze i dwa adresy (PRZ-157.11a)' },
+  'src/moduly/kanaly/modul.ts': { liczba: 2, powod: 'konfiguracja sklepów Woo i ERLI z env (PRZ-157.11a)' },
+  'src/moduly/kanaly/repozytorium-kanalow.ts': { liczba: 5, powod: 'rejestr kont i konfiguracja z env, także ERLI (PRZ-157.11a)' },
   'src/moduly/kanaly/scripts/import-sklep.mjs': { liczba: 1, powod: 'import sklepu Woo' },
-  'src/moduly/kanaly/services/kompozycja-kanalow.ts': { liczba: 2, powod: 'łączenie konfiguracji kanałów' },
-  'src/moduly/kanaly/services/rejestr-kanalow.ts': { liczba: 4, powod: 'transport i rejestr kanałów' },
+  'src/moduly/kanaly/services/kompozycja-kanalow.ts': { liczba: 1, powod: 'łączenie konfiguracji kanałów bez powielania definicji env (PRZ-157.11a)' },
+  'src/moduly/kanaly/services/rejestr-kanalow.ts': { liczba: 3, powod: 'transport i rejestr kanałów, blokada zapisów ERLI (PRZ-157.11a)' },
   'src/moduly/raporty/granice-start.js': { liczba: 1, powod: 'granice raportu Woo' },
   'src/moduly/raporty/modul.ts': { liczba: 1, powod: 'etykieta raportu Allegro' },
-  'src/moduly/ustawienia/services/polaczenia-integracji.ts': { liczba: 7, powod: 'opisy połączeń integracji (Allegro/Woo: konto, szkic, WzA — PRZ-136.06)' },
+  'src/moduly/ustawienia/services/polaczenia-integracji.ts': { liczba: 6, powod: 'opisy połączeń integracji (Allegro/Woo: konto, szkic, WzA — PRZ-136.06)' },
   'src/moduly/wysylka/services/przesylki-allegro.js': { liczba: 1, powod: 'kod modułu Allegro (D4)' },
   'src/moduly/zamowienia/kontekst.js': { liczba: 1, powod: 'sekcje karty Allegro' },
   'src/moduly/zdrowie/bezpiecznik-kanalow.ts': { liczba: 1, powod: 'kontrola konfliktu kluczy kanałów' },
 };
 
 // Skan tekstowy obejmuje również szablony EJS i definicję predykatu.
-const wzorzec = /\bczyKanalAllegro\s*(?:\(|=\s*\()|\btyp\s*(?:===|!==)\s*(['"])(?:allegro|woo)\1|(['"])(?:allegro|woo)\2\s*(?:===|!==)\s*(?:[\w$]+\s*(?:\?\.|\.)\s*)*typ\b/g;
+const wzorzec = /\bczyKanalAllegro\s*(?:\(|=\s*\()|\btyp\s*(?:===|!==)\s*(['"])(?:allegro|woo|erli)\1|(['"])(?:allegro|woo|erli)\2\s*(?:===|!==)\s*(?:[\w$]+\s*(?:\?\.|\.)\s*)*typ\b/g;
 
 export function sprawdz(korzen, lista = listaDozwolonych) {
   const trafienia = {};

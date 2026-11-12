@@ -40,6 +40,7 @@ import { inicjalizujGraniceBezHistorii } from '../src/domena/sprzedaz-okresu.js'
 import { wczytajRaporty } from '../src/moduly/raporty/konfiguracja.ts';
 import { KANALY, PRODUKTY, KLIENCI, FIRMY_B2B, FIRMY_UE, ZAMOWIENIA, KAMPANIA, KOSZTY, WATKI_ALLEGRO } from './demo-dane-firma.mjs';
 import { zdjecieProduktu } from './demo-dane-katalog.mjs';
+import { zapiszKonfiguracjeIntegracji } from '../src/oms/db/konfiguracja-integracji.js';
 
 /** Kanały demo (sklep Woo, Allegro, Allegro Outlet) — etykiety widzi gość demo. */
 export const KANALY_DEMO = Object.freeze(KANALY.map((k) => Object.freeze({ ...k })));
@@ -208,6 +209,20 @@ export function wygenerujDaneDemo(db, { ziarno = 72, dzis, env = ENV_DEMO }) {
   // „Teraz” demo: 06:30 w Polsce dnia `dzis`. Reset bywa robiony o każdej porze — późniejsza
   // godzina dawałaby zamówienia i wiadomości z przyszłości dla porannego gościa.
   const koniecDnia = chwilaWarszawy(poczatekDnia(dzis), 6, 30);
+  // Kanał z panelu, poza trzema istniejącymi kanałami env. Zamówienia dopisze dopiero poller ERLI.
+  // Starsze testy generatora budują bazę bez modułu kanałów — nie ma w niej tej tabeli.
+  if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='kanaly_sprzedazy'").get()) {
+    const at = iso(koniecDnia);
+    db.prepare(`INSERT INTO kanaly_sprzedazy
+      (klucz,typ,nazwa,srodowisko,zrodlo,konto_id,login,raport,autoryzacja,pobieranie,od_utc,
+       wersja,generacja,generacja_importu,utworzono_at,zmieniono_at,aktor_id,aktor_login)
+      VALUES ('erli_polcien','erli','ERLI Półcień','produkcja','panel','1000001','pracownia-polcien',
+       'ERLI_POLCIEN','polaczone','wlaczone',?,1,1,1,?,?,0,'demo')`).run(iso(koniecDnia - 7 * DOBA), at, at);
+    zapiszKonfiguracjeIntegracji(db, 'erli:erli_polcien', {
+      ustawienia: { adresApi: 'https://sklep.polcien.example', domyslnyCzasWysylki: 2 },
+      sekrety: { kluczApi: 'atrapa-polcien' },
+    }, { teraz: new Date(koniecDnia) });
+  }
   const liczniki = { zamowienia: 0, faktury: 0, korekty: 0, zwroty: 0, przesylki: 0, wiadomosci: 0, koszty: 0, statusy: {} };
   const sklepWoo = KANALY.find((k) => k.typ === 'woo').klucz;
 

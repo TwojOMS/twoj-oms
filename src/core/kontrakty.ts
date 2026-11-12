@@ -71,6 +71,8 @@ export type KanalSprzedazy<Z = unknown> = {
   readonly kursorZ: (surowe: unknown) => string | null;
   readonly zlozoneZ: (surowe: unknown) => string | null;
   readonly mapuj: (surowe: unknown) => Z;
+  // PRZ-157.04: kanał z kolejką zdarzeń (ERLI) potwierdza odczyt dopiero po zapisie przebiegu w bazie.
+  readonly potwierdz?: () => Promise<void>;
 };
 
 // Kurier jako moduł (PRZ-135)
@@ -108,6 +110,9 @@ export type OpisKuriera = {
   kluczeEnv: readonly string[];
   konfigurator: { sciezka: string; etykieta: string; zdanie: string; kroki?: readonly KrokKonfiguratora[] };
   piaskownica: { atrapa: string; komunikat: string };
+  /** false = kurier działa tylko w ramach swojego kanału (Przesyłki Erli) i nie jest osobną integracją
+   *  w katalogu Ustawień. Brak pola = wpis w katalogu, gdy kurier ma metody. */
+  wKatalogu?: false;
 };
 export type OpisPrzewoznika = {
   klucz: string; nazwa: string; logo: string; sledzenie: string;

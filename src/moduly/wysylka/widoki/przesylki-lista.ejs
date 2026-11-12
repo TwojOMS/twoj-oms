@@ -153,6 +153,9 @@
                 Formularz BEZ ukrytego pola z tokenem: ochrona CSRF (src/security/csrf.js)
                 stoi na naglowku `Origin`, tak samo jak przy formularzach magazynu. %>
             <td class="drobne">
+              <% if (p.maProtokol) { %>
+                <a class="btn btn--cichy btn--maly" href="/przesylki/<%= p.id %>/protokol" target="_blank" rel="noopener noreferrer">Protokół odbioru</a>
+              <% } %>
               <% if (p.ukryta) { %>
                 <form method="post" action="/przesylki/<%= p.id %>/przywroc">
                   <input type="hidden" name="pokaz" value="<%= pokaz %>">

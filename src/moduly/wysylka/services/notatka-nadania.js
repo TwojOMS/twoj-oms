@@ -14,6 +14,7 @@ import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
 import { pobierzPrzesylke, zapiszBladSync } from '../db/przesylki.js';
 import { bladOperatora } from '../../../domena/bledy.js';
 import { czyTylkoOdczyt, TYLKO_ODCZYT } from '../../../domena/woo-uprawnienia.js';
+import { przekazNumerKanalu } from './numer-kanalu.js';
 
 export const PREFIKS_NOTATKI = 'notatka: ';
 export const OKNO_PONAWIANIA_NOTATKI_H = 48;
@@ -43,13 +44,15 @@ export async function dodajNotatkeZPowtorka(klient, zrodloId, tekst, { czekaj = 
  * Ponowienie notatki JEDNEJ przesyłki. Odmowa operatorska, gdy nie ma czego ponawiać; awaria sklepu nie rzuca —
  * odświeża ślad i oddaje `{ blad }`, bo wołają to także zegar i przycisk, a żadne z nich nie ma czego wycofywać.
  */
-export async function ponowNotatkeNadania({ db, klienci }, przesylkaId) {
+export async function ponowNotatkeNadania({ db, klienci, klienciKanalow = {} }, przesylkaId) {
   const p = pobierzPrzesylke(db, przesylkaId);
   if (!p || !String(p.sync_woo_blad ?? '').startsWith(PREFIKS_NOTATKI) || !p.numer_listu) {
     throw bladOperatora('Ta przesyłka nie ma nieudanej notatki do ponowienia.');
   }
   const z = pobierzZamowienie(db, p.zamowienie_id);
   const klient = z ? klienci[z.sklep] : null;
+  const numerKanalu = await przekazNumerKanalu({ db, klienci, klienciKanalow }, p.id, p.sync_woo_blad === 'notatka: numer kanału: usuwanie');
+  if (numerKanalu) return numerKanalu;
   if (!klient) throw bladOperatora(`Panel nie ma połączenia ze sklepem „${z?.sklep ?? '?'}” — notatki nie ma dokąd wysłać.`);
   // PRZ-149.04: sklep „Odczyt” — nie wołamy go wcale; ślad sprzed zmiany uprawnień w kreatorze zdejmujemy,
   // żeby zegar ponowień nie liczył go przez 48 h jako błędu.
@@ -71,9 +74,9 @@ export async function ponowNotatkeNadania({ db, klienci }, przesylkaId) {
 
 /**
  * Zegar: nadane przesyłki z nieudaną notatką, młodsze niż okno. Po kolei, jak poller po sklepach.
- * @param {{ db: import('node:sqlite').DatabaseSync, klienci: Record<string, any>, teraz?: Date }} opcje
+ * @param {{ db: import('node:sqlite').DatabaseSync, klienci: Record<string, any>, klienciKanalow?: Record<string, any>, teraz?: Date }} opcje
  */
-export async function ponowZalegleNotatki({ db, klienci, teraz = new Date() }) {
+export async function ponowZalegleNotatki({ db, klienci, klienciKanalow, teraz = new Date() }) {
   const odIso = new Date(teraz.getTime() - OKNO_PONAWIANIA_NOTATKI_H * 3600e3).toISOString();
   const ids = db.prepare(
     "SELECT id FROM przesylki WHERE status = 'nadana' AND numer_listu IS NOT NULL"
@@ -84,7 +87,7 @@ export async function ponowZalegleNotatki({ db, klienci, teraz = new Date() }) {
   for (const id of ids) {
     try {
       // eslint-disable-next-line no-await-in-loop -- po kolei, jeden sklep nie dostaje serii naraz
-      const w = await ponowNotatkeNadania({ db, klienci }, id);
+      const w = await ponowNotatkeNadania({ db, klienci, klienciKanalow }, id);
       if (w.ok) wyslane += 1; else bledy += 1;
     } catch {
       bledy += 1;

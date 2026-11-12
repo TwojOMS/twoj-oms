@@ -1,9 +1,11 @@
 import type { OpisKanalu, UmiejetnosciKanalu } from '../core/kontrakty.ts';
 import { MODUL_ALLEGRO } from './modul-allegro.ts';
 import { MODUL_WOO } from './modul-woo.ts';
+import { MODUL_ERLI } from './modul-erli.ts';
 
 /** Typy platform; rejestr połączeń przechowuje osobno konkretne konta. */
-export const MODULY_KANALOW = Object.freeze({ woo: MODUL_WOO, allegro: MODUL_ALLEGRO });
+export const MODULY_KANALOW = Object.freeze({ woo: MODUL_WOO, allegro: MODUL_ALLEGRO, erli: MODUL_ERLI });
+const TYPY_PREDYKATU: ReadonlySet<string> = new Set([MODUL_ALLEGRO.typ, MODUL_WOO.typ]);
 export type TypKanaluZnany = keyof typeof MODULY_KANALOW;
 export const TYPY_KANALOW: readonly TypKanaluZnany[] = Object.freeze(Object.keys(MODULY_KANALOW) as TypKanaluZnany[]);
 export function czyTypKanalu(x: unknown): x is TypKanaluZnany {
@@ -25,12 +27,50 @@ export const czyKanalAllegro = (z: ZrodloZamowienia, klucze: ReadonlySet<string>
   return sklep.startsWith('allegro_') || klucze.has(sklep);
 };
 
-/** Zachowuje dotychczasowe if/else: każde zamówienie spoza Allegro trafia do Woo. */
+/** Kanały OMS-u (zamówienia ręczne, indywidualne) — bez połączenia w rejestrze, więc bez ostrzeżenia. Te same co WBUDOWANE w kanaly.js. */
+export const KANALY_OMS: readonly string[] = Object.freeze(['reczne', 'indywidualne']);
+/** Typ połączenia po kluczu (`OMS_KANALY` albo `kanaly_sprzedazy.typ`); null = klucza nie ma w rejestrze. */
+export type TypPolaczeniaKanalu = (klucz: string) => string | null | undefined;
+let typPolaczenia: TypPolaczeniaKanalu | null = null;
+let modulyZamowien: Readonly<Record<string, OpisKanalu>> = MODULY_KANALOW;
+const nieznaneKanaly = new Set<string>();
+/** PRZ-157.00: kompozycja kanałów podaje raz przy starcie odczyt rejestru połączeń (domena nie otwiera bazy).
+ * `moduly` — rejestr modułów; inny niż MODULY_KANALOW tylko w testach (wpis testowy nowego typu). */
+export function ustawRejestrKanalow(typKanalu: TypPolaczeniaKanalu | null, moduly: Readonly<Record<string, OpisKanalu>> = MODULY_KANALOW) {
+  typPolaczenia = typKanalu; modulyZamowien = moduly; nieznaneKanaly.clear();
+}
+/** Klucze z zamówień, których nie ma w rejestrze (albo ich typ nie ma modułu) — do diagnostyki kanałów. */
+export const nieznaneKanalyZamowien = () => [...nieznaneKanaly];
+
+/** D9: typ kanału z rejestru połączeń (poza Allegro i Woo); bez rejestru (testy domeny, skrypty) i dla nieznanego klucza — jak dotąd
+ * (Allegro po predykacie, reszta do modułu sklepu). */
 export function modulZamowienia(z: ZrodloZamowienia): OpisKanalu {
-  return czyKanalAllegro(z) ? MODUL_ALLEGRO : MODUL_WOO;
+  const dawny = czyKanalAllegro(z) ? MODUL_ALLEGRO : MODUL_WOO;
+  const sklep = String(z?.sklep ?? '');
+  if (typPolaczenia && sklep && !KANALY_OMS.includes(sklep)) {
+    const typ = typPolaczenia(sklep);
+    // Typy wbudowane (MODULY_KANALOW) zostają przy predykacie — tym samym, którym dzieli je SQL KSeF
+    // (ksef-oczekiwanie.js); rejestr decyduje tylko o pozostałych typach (recenzja PRZ-157.00).
+    if (typeof typ === 'string' && TYPY_PREDYKATU.has(typ)) return dawny;
+    if (typeof typ === 'string' && Object.hasOwn(modulyZamowien, typ)) return modulyZamowien[typ];
+    nieznaneKanaly.add(sklep);
+  }
+  return dawny;
 }
 export function umiejetnosciZamowienia(z: ZrodloZamowienia): UmiejetnosciKanalu {
   return modulZamowienia(z).umiejetnosci;
+}
+/** PRZ-157.12b: klient z mapy `klienciKanalow` obsługuje wiadomości Allegro? Odrzuca tylko typy z rejestru, których
+ * moduł ich nie ma (ERLI). Klucz poza rejestrem albo typu wbudowanego przechodzi — predykat nazw zamieniłby
+ * nieznany klucz Allegro w Woo i odciął mu wiadomości. */
+export function kanalZWiadomosciami(klucz: string): boolean {
+  return kanalKlientaUmie(klucz, u => u.wiadomosci);
+}
+/** Ta sama reguła dla każdej umiejętności klienta z `klienciKanalow` (magazyn ofert, pliki faktur): typ wbudowany
+ * i klucz spoza rejestru przechodzą, odpada tylko typ z rejestru bez tej umiejętności. */
+export function kanalKlientaUmie(klucz: string, umie: (u: UmiejetnosciKanalu) => boolean): boolean {
+  const modul = modulZamowienia({ sklep: klucz });
+  return TYPY_PREDYKATU.has(modul.typ) || umie(modul.umiejetnosci);
 }
 
 /** Strażnik składania modułów, bez skutków ubocznych przy imporcie. */

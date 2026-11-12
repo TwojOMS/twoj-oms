@@ -26,7 +26,7 @@ describe('kanały zmieniane w procesie',()=>{
  it('mapa fabryk wybiera Allegro i zachowuje blokadę niejednoznacznego zapisu',async()=>{
   const s=setup(()=>({klient:{},poller:{przebieg:async()=>{},stan:()=>null}}));const k=s.nowe();let calls=0;
   const allegro:FabrykaKanalu=({polaczenie,http})=>({klient:{typ:()=>polaczenie.typ,pisz:()=>http('https://api.allegro.pl/order/1/invoices',{method:'POST'})},poller:{przebieg:async()=>{},stan:()=>null}});
-  const r=createRejestrKanalow({repozytorium:s.repo,fabryki:{allegro,woo:()=>{throw Error('Nie wolno użyć Woo dla Allegro');}},fetchImpl:async()=>{calls++;throw Error('awaria');}});
+  const r=createRejestrKanalow({repozytorium:s.repo,fabryki:{allegro,woo:()=>{throw Error('Nie wolno użyć Woo dla Allegro');},erli:()=>{throw Error('nieużywane');}},fetchImpl:async()=>{calls++;throw Error('awaria');}});
   expect(await r.klient(k.klucz).typ()).toBe('allegro');
   await expect(r.klient(k.klucz).pisz()).rejects.toThrow();expect(s.repo.niejednoznaczne(k.klucz)).toHaveLength(1);
   await expect(r.klient(k.klucz).pisz()).rejects.toThrow(/niejednoznaczny/);expect(calls).toBe(1);
@@ -58,6 +58,11 @@ describe('kanały zmieniane w procesie',()=>{
   zapiszTokeny(db,'allegro_test',{accessToken:'fixture',refreshToken:'fixture',wygasaAt:'2027-01-01',refreshWygasaAt:'2027-02-01'});
   let calls=0;const r=createRejestrKanalow({repozytorium:repo,skonfigurowany:()=>false,fabryki:()=>{calls++;throw Error('Fabryka nie może powstać');}});
   expect(r.stany()).toEqual([]);await r.przebiegZamowien();expect(r.wolnoZapisywac('allegro_test')).toBe(false);expect(()=>r.klient('allegro_test')).toThrow(/odłączony/);expect(calls).toBe(0);
+ });
+ it('kanał, którego fabryka rzuca, oddaje w stany() błąd zamiast wywracać pozostałe',()=>{
+  const s=setup(({polaczenie})=>{if(polaczenie.nazwa==='Zepsuty')throw Error('Kanał ERLI nie ma zapisanego klucza API.');return {klient:{},poller:{przebieg:async()=>{},stan:()=>({sklep:polaczenie.klucz})}};});
+  const dobry=s.nowe(),zly=s.zmien(s.nowe(),{nazwa:'Zepsuty'});
+  expect(s.registry.stany()).toEqual([{sklep:dobry.klucz},{sklep:zly.klucz,zsynchronizowane_do:null,ostatni_przebieg_at:null,ostatni_blad:'Kanał ERLI nie ma zapisanego klucza API.'}]);
  });
  it('definicja env bez aktywnej pary nie uruchamia fabryki ani importu',async()=>{
   const db=openOmsDb();bazy.push(db);migracjaKanalowSprzedazy.wykonaj(db);

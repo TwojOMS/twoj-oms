@@ -21,7 +21,7 @@ type Wpis = Omit<IntegracjaKatalogu, 'konfigurator'>;
 
 function zModulu(wpis: Wpis): IntegracjaKatalogu {
   const modul = Object.values(MODULY_KANALOW).find((m) => m.idKatalogu === wpis.id);
-  if (!modul) return { ...wpis, konfigurator: null };
+  if (!modul || wpis.dostepnosc === 'planowana') return { ...wpis, konfigurator: null };
   const href = `${modul.konfigurator.sciezka}/${modul.konfigurator.nowy}`;
   return { ...wpis, href, konfigurator: { dodaj: modul.konfigurator.dodaj, href } };
 }
@@ -34,15 +34,16 @@ function zKuriera(opis: OpisKuriera): Wpis {
     dostepnosc: 'dostepna', href: opis.konfigurator.sciezka === '/ustawienia/integracje' ? '/ustawienia/integracje#grupa-sprzedaz' : opis.konfigurator.sciezka };
 }
 
-/** Kurier tylko do śledzenia (bez metod nadania) nie ma wpisu w katalogu. */
-const KURIERZY: Wpis[] = Object.values(MODULY_KURIEROW).filter((opis) => opis.metody.length > 0).map(zKuriera);
+/** Kurier tylko do śledzenia (bez metod nadania) i kurier kanału (`wKatalogu: false`) nie mają wpisu w katalogu. */
+const KURIERZY: Wpis[] = Object.values(MODULY_KURIEROW as Readonly<Record<string, OpisKuriera>>)
+  .filter((opis) => opis.metody.length > 0 && opis.wKatalogu !== false).map(zKuriera);
 
 const WPISY: Wpis[] = [
   { id: 'allegro', nazwa: 'Allegro', kategoria: 'sklepy', opis: 'Pobieraj zamówienia z konta Allegro.', logo: '/integracje/allegro.svg', dostepnosc: 'dostepna', href: null },
   { id: 'woocommerce', nazwa: 'WooCommerce', kategoria: 'sklepy', opis: 'Pobieraj zamówienia ze sklepu WooCommerce.', logo: '/integracje/woocommerce.png', dostepnosc: 'dostepna', href: null },
+  { id: 'erli', nazwa: 'ERLI', kategoria: 'sklepy', opis: 'Połączenie z marketplace ERLI.', logo: '/integracje/erli.png', dostepnosc: 'dostepna', href: null },
   { id: 'shoper', nazwa: 'Shoper', kategoria: 'sklepy', opis: 'Połączenie ze sklepem Shoper.', logo: '/integracje/shoper.svg', dostepnosc: 'planowana', href: null },
   { id: 'empik', nazwa: 'Empik', kategoria: 'sklepy', opis: 'Połączenie z Empik Marketplace.', logo: '/integracje/empik.png', dostepnosc: 'planowana', href: null },
-  { id: 'erli', nazwa: 'ERLI', kategoria: 'sklepy', opis: 'Połączenie z marketplace ERLI.', logo: '/integracje/erli.png', dostepnosc: 'planowana', href: null },
   { id: 'etsy', nazwa: 'Etsy', kategoria: 'sklepy', opis: 'Połączenie z marketplace Etsy.', logo: '/integracje/etsy.svg', dostepnosc: 'planowana', href: null },
   ...KURIERZY,
   // Zapowiedzi bez modułu (T3, decyzja właściciela 03.11: GLS, DHL, Apaczka).

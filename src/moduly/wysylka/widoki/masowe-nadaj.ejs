@@ -66,6 +66,10 @@
                 <td>
                   <% if (w.rozmiar.pole === 'szablon') { %>
                     <select name="szablon_<%= w.id %>" aria-label="Szablon paczki zamówienia <%= w.numer %>" class="oms-pole">
+                      <%# PRZ-157.12r: Przesyłki Erli — wymiary z kroku 4 kreatora ERLI jako wybór wstępny. %>
+                      <% if (w.rozmiar.kanal) { %>
+                        <option value="<%= w.rozmiar.szablon %>" selected>Wymiary z ustawień ERLI (<%= w.rozmiar.kanal.dlugosc %> × <%= w.rozmiar.kanal.szerokosc %> × <%= w.rozmiar.kanal.wysokosc %> cm, <%= w.rozmiar.kanal.waga %> kg)</option>
+                      <% } %>
                       <% szablony.szablony.forEach(function (s) { %>
                         <option value="<%= s.id %>"<%= s.id === w.rozmiar.szablon ? ' selected' : '' %>><%= s.nazwa %> (<%= s.dlugosc %> × <%= s.szerokosc %> × <%= s.wysokosc %> cm, <%= s.waga %> kg)</option>
                       <% }); %>

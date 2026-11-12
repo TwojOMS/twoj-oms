@@ -1,7 +1,7 @@
-import { pobierzZamowienie, dopiszLog, zapiszBladSyncSklepu, zapiszStanRealizacji } from '../../../oms/db/zamowienia.js';
+import { pobierzZamowienie, dopiszLog, ostatniWpisLogu, zapiszBladSyncSklepu, zapiszStanRealizacji } from '../../../oms/db/zamowienia.js';
 import { statusDlaSklepu } from '../../../domena/sync-sklep.js';
 import { statusDlaAllegro, stanAllegroPotwierdzaZgodnosc } from '../../../domena/allegro-status.js';
-import { umiejetnosciZamowienia } from '../../../domena/moduly-kanalow.ts';
+import { modulZamowienia, umiejetnosciZamowienia } from '../../../domena/moduly-kanalow.ts';
 import { zwrotneZamowienia } from '../../../integracje/kanal-modul.ts';
 import { idsDolaczonych, PREFIKS_BLEDU_DOLACZONYCH as PREFIKS_DOLACZONYCH } from '../../../domena/scalanie.js';
 import { czyTylkoOdczyt, TYLKO_ODCZYT } from '../../../domena/woo-uprawnienia.js';
@@ -54,7 +54,11 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {}, czynny 
   // zamowienia z Allegro i kazda zmiana ich statusu wieszalaby „panel nie ma polaczenia",
   // czyli usterke, ktora domknal Etap 4 (04.08.2026). Kanal NIEOBECNY W NIEPUSTEJ MAPIE to
   // co innego — to prawdziwa dziura w konfiguracji jednego z dwoch kont i ma byc widoczna.
-  const znaKanaly = () => Object.keys(klienciKanalow).length > 0;
+  // PRZ-157.12b: mapa ma też klientów innych typów (ERLI) — liczą się tylko kanały typu zamówienia.
+  const znaKanaly = (z) => {
+    const typ = modulZamowienia(z).typ;
+    return Object.keys(klienciKanalow).some((k) => modulZamowienia({ sklep: k }).typ === typ);
+  };
 
   // ⚠️ GALAZ ALLEGRO JEST ASYNCHRONICZNA, A SKLEPOWA NIE — i to nie jest niekonsekwencja.
   // Stan realizacji w Allegro trzeba przeczytac NA ZYWO tuz przed decyzja, bo nasza kopia
@@ -64,13 +68,16 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {}, czynny 
   // odswieza poller, a status w WooCommerce zmienia wylacznie panel.
   async function cel(z) {
     if (umiejetnosciZamowienia(z).statusZwrotny === 'mapa') {
-      if (!znaKanaly()) return null;
+      if (!znaKanaly(z)) return null;
       // ⚠️ Bez `zrodlo_id` nie ma jak zbudowac sciezki `/order/checkout-forms/{id}/...`:
       // odczyt poszedlby pod adres z „undefined" w srodku i wrocilby bledem, ktorego
       // operator nie ma jak zalatwic. Regula (`statusDlaAllegro`) i tak by odmowila —
       // ale odczyt idzie PRZED nia, wiec straznik musi stac tutaj.
       if (!z.zrodlo_id) return null;
       const klient = klienciKanalow[z.sklep];
+      const zwrotne = zwrotneZamowienia(z, klient);
+      if (zwrotne.przygotujStatus) return zwrotne.przygotujStatus(z,
+        (akcja) => ostatniWpisLogu(db, z.id, akcja)?.wynik ?? null);
       // Bez klienta nie ma jak odczytac stanu — odmowa idzie nizej, wspolna droga.
       if (!klient) return { status: null, klient: null, gdzie: KANAL_ALLEGRO, akcja: 'sync-allegro.status' };
       // ⚠️ Wyjatek z odczytu NIE MOZE zamienic sie w `undefined` przekazane dalej jak zwykla
@@ -200,12 +207,16 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {}, czynny 
 
     try {
       await zwrotneZamowienia(z, c.klient).ustawStatus(z.zrodlo_id, c.status);
+      // Osobna akcja zawiera tylko przyjęty status; błędy i pominięcia jej nie nadpisują.
+      if (c.sladZapisu) dopiszLog(db, id, { akcja: c.sladZapisu, wynik: c.status });
     } catch (e) {
-      zapiszBladSyncSklepu(db, id, `status „${c.status}" nie dojechał ${c.gdzie.dokad}: ${e.message}`);
+      zapiszBladSyncSklepu(db, id, `status „${c.status}" nie dojechał ${c.gdzie.dokad}: ${e.message}`
+        + (c.sladZapisu ? '. Kliknij „Wyślij ponownie”.' : ''));
       dopiszLog(db, id, { akcja: c.akcja, wynik: `BŁĄD: ${e.message}` });
       return { wyslany: null, blad: e.message };
     }
 
+    // Kanał z opóźnionym odczytem pamięta przyjęty zapis osobno w logu (sladZapisu).
     // Kolumny `status_woo` i `status_realizacji` CELOWO zostają nietknięte — trzymają to, co
     // kanał OSTATNIO powiedział o sobie, a nie to, o co go poprosiliśmy. Wpisanie tu wartości
     // życzeniowej sprawiłoby, że przy nieudanym zapisie po drugiej stronie panel twierdziłby,

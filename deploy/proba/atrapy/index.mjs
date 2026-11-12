@@ -5,9 +5,12 @@
 //   • poczta — moduł wiadomości z atrapą mailera (poczta.mjs, PRZ-087);
 //   • KSeF kosztów — atrapa klienta dla tokenu z Ustawień (ksef.mjs, PRZ-102.22), fabryka modułu kosztów;
 //   • inFakt i VIES — fabryki modułu faktur (createModulFaktury({ fabryki })), jedyny punkt w kodzie produkcji;
-//   • Woo i Allegro — `nadpisania` usług kanaly.klienciSklepow / klienciKanalow / config (globalnie: decyzja właściciela
-//     14.10 — widzą je wszystkie moduły). Pollery zamówień moduł kanałów buduje u siebie z pustej konfiguracji,
+//   • Woo i Allegro — atrapy scalone z usługami modułu kanałów (widzą je wszystkie moduły).
+//     Pollery zamówień moduł kanałów buduje u siebie z pustej konfiguracji,
 //     więc nie wstają i nie nadpisują zamówień demo.
+//   • ERLI z panelu — fetchImpl modułu kanałów: host atrapy z konfiguracji → stan atrapy w tej bazie;
+//     oficjalny sandbox z własnym kluczem używa sieci, produkcja pozostaje zablokowana.
+//     Zamówienia zapisuje zwykły poller z adapterem ERLI.
 // ⛔ Każdy krok odmawia poza OMS_TRYB=proba (tryb.mjs, modul faktur, sprawdzTrybProby w rdzeniu).
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { uruchomAplikacje } from '../../../src/core/uruchomienie.ts';
@@ -15,6 +18,8 @@ import { sprawdzKonfiguracjeModulow } from '../../../src/core/aplikacja.ts';
 import { modulyDla } from '../../../src/moduly/lista.ts';
 import { createModulFaktury } from '../../../src/moduly/faktury/modul.ts';
 import { definicjeKanalow, konfiguracjaKanalow } from '../../../src/moduly/kanaly/konfiguracja.ts';
+import { createModulKanaly } from '../../../src/moduly/kanaly/modul.ts';
+import { transportErliPiaskownicy } from './erli.mjs';
 import { createModulZamowienia } from '../../../src/moduly/zamowienia/modul.ts';
 import { createAtrapaInfaktu, createAtrapaVies } from './infakt.mjs';
 import { createAtrapaGus } from './gus.mjs';
@@ -25,7 +30,7 @@ import { MODULY_KURIEROW } from '../../../src/domena/moduly-kurierow.ts';
 import { createModulWysylka } from '../../../src/moduly/wysylka/modul.ts';
 import { createModulWiadomosciAtrapy } from './poczta.mjs';
 import { createAtrapaLacznosci } from './lacznosc.mjs';
-import { zbudujAtrapyKanalow, stanyKanalowAtrapy } from './kanaly.mjs';
+import { zbudujAtrapyKanalow, scalUslugiKanalow } from './kanaly.mjs';
 import { wymagajTrybuProby } from './tryb.mjs';
 import { uruchomPulsPollerow } from './pollery.mjs';
 import { ukryjEkranyDemo } from './ekrany.mjs';
@@ -71,6 +76,15 @@ export function modulyPiaskownicy(env, { baza = () => null } = {}) {
   // PRZ-102.11: z kluczem z Ustawień (opcje { klucz, url }) — dla „Sprawdź połączenie” na ekranie GUS.
   const gus = { createGusClient: (opcje) => createAtrapaGus({ env, klucz: opcje?.klucz ?? null }) };
   return modulyDla(env).map((m) => {
+    if (m.nazwa === 'kanaly') {
+      const modul = createModulKanaly(definicjeKanalow(env), true,
+        { fetchImpl: transportErliPiaskownicy({ baza, env }) });
+      return { ...modul, zbuduj: ctx => {
+        const z = modul.zbuduj(ctx);
+        scalUslugiKanalow(z.uslugi, zbudujAtrapyKanalow({ db: ctx.db, config: ctx.konfiguracja, log: ctx.log, env }), ctx.teraz);
+        return z;
+      } };
+    }
     if (m.nazwa === 'faktury') return createModulFaktury({ fabryki });
     // PRZ-087: poczta — atrapa bez wysyłki, żeby karta zamówienia miała sekcję wiadomości (poczta.mjs).
     if (m.nazwa === 'wiadomosci') return createModulWiadomosciAtrapy(env);
@@ -86,11 +100,9 @@ export function nadpisaniaPiaskownicy({ db, env, log }) {
   wymagajTrybuProby(env, 'nadpisania piaskownicy');
   const config = konfiguracjaKanalow(definicjeKanalow(env), env, true);
   const atrapy = zbudujAtrapyKanalow({ db, config, log, env });
-  return { 'kanaly.klienciSklepow': atrapy.klienciSklepow, 'kanaly.klienciKanalow': atrapy.klienciKanalow, 'kanaly.config': atrapy.config,
+  return {
     // PRZ-083: Diagnostyka bez połączeń (lacznosc.mjs).
-    'ustawienia.lacznosc': createAtrapaLacznosci({ config: atrapy.config, env }),
-    // PRZ-083: Integracje widzą kanały Allegro demo jako połączone (kanaly.mjs).
-    'kanaly.stanyKanalow': stanyKanalowAtrapy({ config: atrapy.config }) };
+    'ustawienia.lacznosc': createAtrapaLacznosci({ config: atrapy.config, env }) };
 }
 
 /** OMS piaskownicy z atrapami. Zwraca to samo co uruchomAplikacje ({ aplikacja, zamknij }). */
@@ -103,8 +115,8 @@ export async function uruchomPiaskownice(env = process.env, { host = '0.0.0.0', 
   const nadpisania = nadpisaniaPiaskownicy({ db, env, log });
   ukryjEkranyDemo(db, env);
   // Źródła jak w zdrowiu (moduly/zdrowie/modul.ts): klucze sklepów i kanałów z konfiguracji, którą widzą moduły.
-  const config = nadpisania['kanaly.config'];
-  const zatrzymajPuls = uruchomPulsPollerow({ db, env, zrodla: [...Object.keys(config.sklepy ?? {}), ...Object.keys(config.kanaly ?? {})] });
   const wynik = await uruchomAplikacje({ moduly, env, db, host, port: Number(env.OMS_PORT || 3001), nadpisania, ...(log ? { log } : {}) });
+  const config = wynik.aplikacja.usluga('kanaly', 'config');
+  const zatrzymajPuls = uruchomPulsPollerow({ db, env, zrodla: [...Object.keys(config.sklepy ?? {}), ...Object.keys(config.kanaly ?? {})] });
   return { ...wynik, zamknij: async () => { zatrzymajPuls(); return wynik.zamknij(); } };
 }

@@ -1,6 +1,6 @@
 // PRZ-076 — atrapy klientów sklepu Woo i kont Allegro dla piaskownicy oms-proba. Te same nazwy metod co
 // src/oms/woo/client.js i src/oms/allegro/client.js (komplet pilnuje tests/instalacja/atrapy-kontrakt.test.js).
-// Wchodzą globalnie (`nadpisania` w zbudujAplikacje): widzą je magazyn, zamówienia, wysyłka, wiadomości i faktury.
+// Scalane z usługami modułu kanałów: widzą je magazyn, zamówienia, wysyłka, wiadomości i faktury.
 //
 // Trzy rodzaje metod:
 //   • KATALOG — z scripts/demo-dane-katalog.mjs (to samo, z czego generator zbudował lustro magazynu) plus zmiany
@@ -10,6 +10,7 @@
 //   • ODMOWA — operacje, których demo nie ma czym udawać (pollery zamówień, podjazdy, załączniki):
 //     czytelny błąd 4xx zamiast „not a function”; 4xx, bo usługi zwalniają wtedy rezerwacje jak po odmowie API.
 import { randomUUID } from 'node:crypto';
+import { listaNaZadanie, mapaNaZadanie } from '../../../src/moduly/kanaly/kolekcje-na-zadanie.ts';
 import PDFDocument from 'pdfkit';
 import { METODY_WZA } from '../../../src/domena/allegro-wysylka.js';
 import { stanyKanalowZKolizjami } from '../../../src/domena/kanal-stan.js';
@@ -273,6 +274,26 @@ export function zbudujAtrapyKanalow({ db, config, log, env = process.env }) {
     braki: Object.fromEntries(Object.keys(config?.braki ?? {}).map((k) => [k, []])),
   };
   return { klienciSklepow, klienciKanalow, config: configZAtrapami };
+}
+
+/** Atrapy mają pierwszeństwo dla swoich kont; pozostałe połączenia zostają z modułu.
+ * Kolekcje są odczytywane na żądanie, także po dodaniu lub odłączeniu konta w panelu.
+ */
+export function scalUslugiKanalow(s, atrapy, teraz = () => new Date()) {
+  const config = s.config, definicje = config.definicje, kanaly = config.kanaly;
+  const klienci = s.klienciKanalow, sklepy = config.sklepy, klienciSklepow = s.klienciSklepow;
+  const braki = config.braki, stany = s.stanyKanalow;
+  const klucze = (a, b) => [...new Set([...Object.keys(a ?? {}), ...Object.keys(b ?? {})])];
+  config.definicje = listaNaZadanie(() => [...new Map([...definicje, ...atrapy.config.definicje].map(d => [d.klucz, d])).values()]);
+  config.sklepy = mapaNaZadanie(() => klucze(atrapy.config.sklepy, sklepy), k => atrapy.config.sklepy[k] ?? sklepy[k]);
+  // config.kanaly = ustawienia Allegro (Integracje, łączność) — klienci innych typów (ERLI) zostają tylko w klienciKanalow (recenzja 12b).
+  config.kanaly = mapaNaZadanie(() => klucze(atrapy.config.kanaly, kanaly), k => atrapy.config.kanaly[k] ?? kanaly[k]);
+  config.braki = mapaNaZadanie(() => klucze(atrapy.config.braki, braki), k => atrapy.config.braki[k] ?? braki[k]);
+  s.klienciKanalow = mapaNaZadanie(() => klucze(atrapy.klienciKanalow, klienci), k => atrapy.klienciKanalow[k] ?? klienci[k]);
+  s.klienciSklepow = mapaNaZadanie(() => klucze(atrapy.klienciSklepow, klienciSklepow), k => atrapy.klienciSklepow[k] ?? klienciSklepow[k]);
+  const stanyAtrapy = stanyKanalowAtrapy({ config: atrapy.config, teraz });
+  s.stanyKanalow = () => [...stanyAtrapy(), ...stany().filter(stan => !Object.hasOwn(atrapy.klienciKanalow, stan.kanal))];
+  return s;
 }
 
 /**

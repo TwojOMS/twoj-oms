@@ -18,6 +18,8 @@
       --marka-dpd-tlo: #DC0032; --marka-dhl-tlo: #FFCC00; --marka-dhl-tekst: #B3010F;
       --marka-orlen-tlo: #DB3830; --marka-packeta-tlo: #BA1B02; --marka-allegro-one-tlo: #006D57;
       --marka-allegro-tlo: #FF5A00; --marka-allegro-tekst: #1D1D1B; --marka-woo-tlo: #873EFF; --marka-bialy: #FFFFFF;
+      /* ERLI: turkus z logo (#0897BB) przyciemniony, żeby biała litera miała kontrast ≥ 4,5:1. */
+      --marka-erli-tlo: #07809F;
       --tlo: #f5f6f7;
       --tekst: #202830;
       --powierzchnia: #fff;
@@ -1429,6 +1431,7 @@
     .plakietka--allegro-one { --plakietka-tlo: var(--marka-allegro-one-tlo); --plakietka-tekst: var(--marka-bialy); }
     .plakietka--allegro { --plakietka-tlo: var(--marka-allegro-tlo); --plakietka-tekst: var(--marka-allegro-tekst); }
     .plakietka--woo { --plakietka-tlo: var(--marka-woo-tlo); --plakietka-tekst: var(--marka-bialy); }
+    .plakietka--erli { --plakietka-tlo: var(--marka-erli-tlo); --plakietka-tekst: var(--marka-bialy); }
     /* Wariant kanalu: kwadrat o wysokosci linii tekstu z jedna litera; pelna nazwa w title/aria-label. */
     .plakietka--kanal {
       display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;

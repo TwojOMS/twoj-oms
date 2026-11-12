@@ -11,14 +11,25 @@ import { propozycjaAutomatu } from './gabaryty-automatow.js';
 
 const szablonDomyslny = (szablony) => szablony.szablony.find((s) => s.id === szablony.domyslnyId);
 
+// PRZ-157.12r: wartość pola szablonu „wymiary z kreatora kanału” (krok 4 ERLI). Szablony operatora mają
+// identyfikatory UUID albo 'domyslna', więc ten napis z nimi nie koliduje.
+export const SZABLON_KANALU = 'erli';
+// Wartość niesie wymiary z podglądu: zatwierdzenie porównuje je z krokiem 4 z tej chwili, więc zmiana
+// w kreatorze między podglądem a zatwierdzeniem odrzuca wiersz zamiast nadać paczkę, której nikt nie widział.
+export const wartoscSzablonuKanalu = (w) => `${SZABLON_KANALU}:${w.dlugosc}x${w.szerokosc}x${w.wysokosc}x${w.waga}`;
+
 // PRZ-152.G11c: gabaryt i waga paczkomatu / automatu Allegro z ustawienia „Paczkomaty i automaty”
 // — `propozycjaAutomatu`, TA SAMA funkcja, z której bierze karta nadania (trasy/nadanie.js).
 // `ustawienia` to zapis `wczytajUstawienia` — ten sam, z którego trasa czyta `szablony`;
 // domena bazy nie czyta.
 
 /** Co ekran podglądu wstawi w wiersz jako wybór wstępny. */
-export function domyslnyRozmiarWiersza({ rodzaj, deliveryMethodId = null, szablony, ustawienia }) {
+export function domyslnyRozmiarWiersza({ rodzaj, deliveryMethodId = null, szablony, ustawienia, wymiaryKanalu = null }) {
   const domyslny = szablonDomyslny(szablony);
+  // PRZ-157.12r: Przesyłki Erli — wybór wstępny to wymiary z kroku 4 kreatora (jak formularz karty);
+  // szablony operatora zostają na liście, więc człowiek może podać inne. Trasa podaje je tylko
+  // dla metody `erli_przesylki` (formularz kurierski), więc rodzaju tu nie sprawdzamy.
+  if (wymiaryKanalu) return { pole: 'szablon', szablon: wartoscSzablonuKanalu(wymiaryKanalu), kanal: wymiaryKanalu };
   if (rodzaj === 'paczkomat') {
     const { gabaryt, waga } = propozycjaAutomatu(ustawienia, { rodzaj });
     return { pole: 'gabaryt', gabaryt, waga };
@@ -53,7 +64,7 @@ export function polaWiersza(body, id) {
  * nadawał DPD wymiarami domyślnymi. Gabarytu paczkomatu i automatu NIE zgadujemy — tamtych
  * wierszy stary formularz w ogóle nie znał, a za ciasna skrytka to odrzucona paczka.
  */
-export function paczkaWiersza({ rodzaj, deliveryMethodId = null, pola = {}, szablony, ustawienia }) {
+export function paczkaWiersza({ rodzaj, deliveryMethodId = null, pola = {}, szablony, ustawienia, wymiaryKanalu = null }) {
   if (rodzaj === 'paczkomat') {
     // Wiersz paczkomatu nie ma pola wagi (ekran pokazuje ją tekstem) — waga z ustawienia,
     // tej samej propozycji, którą pokazał podgląd; od G11 nie z szablonu kuriera.
@@ -62,7 +73,18 @@ export function paczkaWiersza({ rodzaj, deliveryMethodId = null, pola = {}, szab
   if (rodzaj === 'wza' && profilGabarytuAllegro(deliveryMethodId)) {
     return parsujGabarytAllegro({ gabaryt: pola.gabaryt, waga: pola.waga }, deliveryMethodId);
   }
-  const id = pola.szablon == null || pola.szablon === '' ? szablony.domyslnyId : String(pola.szablon);
+  // PRZ-157.12r: wiersz Przesyłek Erli bez pola albo z „wymiarami z ERLI” = wymiary z kroku 4 kreatora.
+  const bezPola = pola.szablon == null || pola.szablon === '';
+  const zKanalu = String(pola.szablon ?? '').split(':')[0] === SZABLON_KANALU;
+  if (zKanalu || (bezPola && wymiaryKanalu)) {
+    if (!wymiaryKanalu || (zKanalu && pola.szablon !== wartoscSzablonuKanalu(wymiaryKanalu))) {
+      return { blad: 'Wymiary paczki z ustawień kanału zmieniły się — odśwież podgląd nadania.' };
+    }
+    return parsujPaczke({
+      waga: wymiaryKanalu.waga, dlugosc: wymiaryKanalu.dlugosc, szerokosc: wymiaryKanalu.szerokosc, wysokosc: wymiaryKanalu.wysokosc,
+    });
+  }
+  const id = bezPola ? szablony.domyslnyId : String(pola.szablon);
   const s = szablony.szablony.find((x) => x.id === id);
   // Szablon skasowany albo przemianowany między podglądem a zatwierdzeniem: cichy powrót do
   // domyślnego dałby paczkę o wymiarach, których człowiek na ekranie NIE wybrał.

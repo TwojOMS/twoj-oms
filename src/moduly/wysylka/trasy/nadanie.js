@@ -9,6 +9,8 @@ import { wstawEtykieteDoKolejki } from '../services/kolejka-po-nadaniu.js';
 import { mozliwaKolejnaPaczka } from '../../../domena/przesylka-stan.js';
 
 import { powodBrakuGotowosciNadania } from '../../../domena/gotowosc-nadania.js';
+import { metodaNadaniaErli } from '../services/droga-nadania-erli.js';
+import { wymiaryErli } from '../../kanaly/services/kanal-erli.ts'; // PRZ-157.11b: wymiary z konfiguratora ERLI
 
 import { wymagaWyboruKuriera, kurierzyDoWyboru, metodaNadania, nadanieDaZpl, wymagaUmowyPobrania, powodUmowyPobrania, powodOdmowyZamiennika } from '../../../domena/kurier-nadania.js';
 // PRZ-135.05: kształt formularza, punkt odbioru i napis drogi — z rejestru kurierów, nie z literału metody.
@@ -119,6 +121,12 @@ const uslugaAllegro = async (z) => {
   return { deliveryMethodId: id, usluga: zgoda.usluga };
 };
 
+// PRZ-157.12r: hurt wybiera drogę zamówienia ERLI TĄ SAMĄ funkcją co karta i pojedyncze nadanie
+// (`metodaNadaniaErli` → `drogaErliDlaZamowienia`); null = zwykła metoda OMS (także ręczna zmiana).
+const metodaNadaniaKanalu = (z, wybor, opcje) => metodaNadaniaErli(db, z, wybor, opcje);
+// Przesyłki Erli: domyślne wymiary z kroku 4 kreatora — jak `paczkaDomyslna` ekranu nadania karty.
+const wymiaryKanalu = (z) => (z.metodaUzyta === 'erli_przesylki' ? wymiaryErli(db, z.sklep) : null);
+
 // Suma pobrań liczona w groszach na całkowitych — złotówki jako ułamki zgubiłyby grosz
 // przy kilkunastu paczkach, a ta liczba ma się zgadzać z tym, co kurier odda.
 const groszeZ = (k) => Math.round(Number(String(k ?? '').replace(',', '.')) * 100);
@@ -126,7 +134,7 @@ const groszeZ = (k) => Math.round(Number(String(k ?? '').replace(',', '.')) * 10
 app.post('/zamowienia/masowe/nadaj-podglad', async (req, reply) => {
     const wybrane = wybraneZListy(wczytajListe([].concat(req.body?.id ?? [])), req.body?.id);
     const umowyPobrania = umowyPobraniaFirmy(db);
-    const { doNadania, pominiete, uwagi } = podzielDoNadania(wybrane, { umowyPobrania });
+    const { doNadania, pominiete, uwagi } = podzielDoNadania(wybrane, { umowyPobrania, metodaNadaniaKanalu });
     const ustawieniaPaczek = wczytajUstawienia(db);
     // ⚠️ Z USTAWIEN, nie ze stalej modulu (17.08.2026). Podglad musi pokazywac DOKLADNIE
     // to, co pojedzie do kuriera po zatwierdzeniu — a trasa zatwierdzajaca czyta to samo zrodlo.
@@ -140,7 +148,7 @@ app.post('/zamowienia/masowe/nadaj-podglad', async (req, reply) => {
       const metodaWiersza = metodaKuriera(z.metodaUzyta);
       let droga = metodaWiersza?.punktOdbioru
         ? `${metodaWiersza.etykietaDrogi} — ${punktOdbioru(z)}`
-        : (metodaWiersza?.etykietaDrogi ?? '');
+        : (metodaWiersza?.etykietaDrogi ?? metodaWiersza?.etykieta ?? '');
       if (z.rodzajFormularza === 'wza') {
         const u = await uslugaAllegro(z);
         if (u.blad) {
@@ -160,7 +168,7 @@ app.post('/zamowienia/masowe/nadaj-podglad', async (req, reply) => {
           .map((w) => ({ ilosc: w.ilosc, nazwa: w.nazwa, sku: w.skuDoPokazania })),
         droga,
         deliveryMethodId,
-        rozmiar: domyslnyRozmiarWiersza({ rodzaj: z.rodzajFormularza, deliveryMethodId, szablony, ustawienia: ustawieniaPaczek }),
+        rozmiar: domyslnyRozmiarWiersza({ rodzaj: z.rodzajFormularza, deliveryMethodId, szablony, ustawienia: ustawieniaPaczek, wymiaryKanalu: wymiaryKanalu(z) }),
         pobranie: czyPobranie(z) ? (kwotaPobrania(z) ?? '?') : null,
         pobranieAllegro: czyPobranie(z) && z.rodzajFormularza === 'wza',
       });
@@ -194,7 +202,7 @@ app.post('/zamowienia/masowe/nadaj', async (req, reply) => {
     // nie decyzje. Ta sama zasada, co przy numerze kolejnym paczki na ekranie pojedynczego
     // nadania — panel nie ufa temu, co wrocilo z przegladarki, w sprawach nieodwracalnych.
     const umowyPobrania = umowyPobraniaFirmy(db);
-    const { doNadania, pominiete } = podzielDoNadania(wybrane, { umowyPobrania });
+    const { doNadania, pominiete } = podzielDoNadania(wybrane, { umowyPobrania, metodaNadaniaKanalu });
 
     // ⚠️⚠️ RAZ NA CALA PACZKE ZAMOWIEN, PRZED PETLA. Odczyt w petli znaczylby, ze zmiana
     // ustawienia w trakcie nadawania hurtem rozdziela partie na paczki o dwoch roznych
@@ -225,6 +233,7 @@ app.post('/zamowienia/masowe/nadaj', async (req, reply) => {
       }
       const { paczka, blad } = paczkaWiersza({
         rodzaj: z.rodzajFormularza, deliveryMethodId, pola: polaWiersza(req.body, z.id), szablony, ustawienia: ustawieniaPaczek,
+        wymiaryKanalu: wymiaryKanalu(z),
       });
       if (blad) {
         odpadle.push({ id: z.id, numer: z.numer, powod: blad });
@@ -409,10 +418,13 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
     // Krok wyboru jest OSOBNYM RENDEREM, a nie polem przelaczajacym formularz, bo panel nie
     // ma JavaScriptu (poza cena pozycji recznych) — a od kuriera zalezy KSZTALT calego
     // formularza: DPD chce wymiarow, paczkomat gabarytu A/B/C i kodu automatu.
-    const wyborKuriera = wymagaWyboruKuriera(z) ? String(req.query?.kurier ?? '').trim() : '';
+    const drogaErli = metodaNadaniaErli(db, z);
+    if (drogaErli?.blad) return bladNadania(req, reply, 400, drogaErli.blad);
+    const wyborKuriera = (drogaErli || wymagaWyboruKuriera(z)) ? String(req.query?.kurier ?? '').trim() : '';
     const umowyPobrania = umowyPobraniaFirmy(db);
     const kolejnosc = nastepnaKolejnosc(db, id);
-    const { metoda: metodaUzyta, blad: bladKuriera } = metodaNadania(z, wyborKuriera, { kolejnosc, umowyPobrania });
+    const { metoda: metodaUzyta, blad: bladKuriera } = metodaNadaniaErli(db, z, wyborKuriera, { kolejnosc, umowyPobrania })
+      ?? metodaNadania(z, wyborKuriera, { kolejnosc, umowyPobrania });
 
     // ⚠️⚠️ EKRAN WYBORU ZSZEDL Z DROGI (decyzja właściciela 19.09.2026: „lepiej bez ekranu wyboru —
     // niech idzie od razu odpowiednia opcja"). Do 18.09 stawal przy KAZDYM zamowieniu z Allegro,
@@ -432,6 +444,17 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
     // regula bez dostepnego wejscia po prostu nie istnieje.
     const maDrogeDomyslna = wymagaWyboruKuriera(z) && !metodaNadania(z, '', { kolejnosc, umowyPobrania }).blad;
     const poproszonoOWybor = String(req.query?.wybor ?? '') === '1';
+    if (drogaErli && poproszonoOWybor && !wyborKuriera) {
+      return reply.view('nadaj-kurier.ejs', {
+        z, ...wspolnyPowrot, kanal: adresKanalu(z.sklep, config.definicje), kolejnosc,
+        drogaErli,
+        kurierzy: [
+          { klucz: drogaErli.metoda, etykieta: `${metodaKuriera(drogaErli.metoda)?.etykieta} — droga zamówienia (domyślnie)` },
+          ...kurierzyDoWyboru(z, kolejnosc, { umowyPobrania }).filter(k => k.klucz !== drogaErli.metoda),
+        ],
+        zPobraniemNaTejPaczce: null, maWza: false, paczkomatPoUmowiePobrania: false,
+      });
+    }
     if (wymagaWyboruKuriera(z) && !wyborKuriera && (!maDrogeDomyslna || poproszonoOWybor)) {
       const dostepniKurierzy = kurierzyDoWyboru(z, kolejnosc, { umowyPobrania });
       const zPobraniemNaTejPaczce = kolejnosc > 1 && czyPobranie(z)
@@ -448,6 +471,7 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
       const paczkomatPoWlaczeniu = kurierzyDoWyboru(z, kolejnosc, { umowyPobrania: [...umowyPobrania, inpost.klucz] })
         .some((k) => k.klucz === metodaPaczkomatu);
       return reply.view('nadaj-kurier.ejs', {
+        drogaErli: null,
         z,
         ...wspolnyPowrot,
         // `adresKanalu` NIE jest w defaultContext (web/server.js) — nazwa kanalu skladana
@@ -516,6 +540,7 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
     const odczytPobrania = odczytajKwotePobrania(kwotaPobrania(z));
     const kwotaPobraniaGr = odczytPobrania.groszeKwoty ?? (odczytPobrania.rodzaj === 'zero' ? 0 : null);
     return reply.view('nadaj.ejs', {
+      drogaErli,
       z,
       ...wspolnyPowrot,
       adres,
@@ -538,7 +563,7 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
       // ⚠️ WEJSCIE NA EKRAN WYBORU — jedyna droga do dosylki nasza umowa, odkad ten ekran
       // zszedl z przeplywu. `null` dla zamowien spoza Allegro i dla wskazania recznego
       // (tam widok ma juz wlasny odnosnik „zmień").
-      adresWyboruKuriera: maDrogeDomyslna && !wyborKuriera
+      adresWyboruKuriera: (drogaErli || maDrogeDomyslna) && !wyborKuriera
         ? wspolnyPowrot.adresNadania(null, { wybor: true })
         : null,
       // Ostrzezenie o brakujacych polach MUSI byc widoczne TU, zanim operator w ogole
@@ -567,7 +592,8 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
       miniatura: miniaturyEkranu(db, [z]),
       // ⚠️ Z USTAWIEN (17.08.2026). `nadanie.paczkaDomyslna` jest dzis FALLBACKIEM dla wywolan
       // spoza HTTP — trasa czyta wartosc operatora, bo to ona ma wypelnic formularz.
-      paczkaDomyslna: domyslnaPaczka(ustawieniaPaczek),
+      // PRZ-157.11b: Przesyłki Erli — domyślne wymiary z kroku 4 konfiguratora sklepu (jeśli zapisane).
+      paczkaDomyslna: (metodaUzyta === 'erli_przesylki' && wymiaryErli(db, z.sklep)) || domyslnaPaczka(ustawieniaPaczek),
       szablonyPaczek: odczytajSzablony(ustawieniaPaczek),
       // Wymiary paczkomatu NIE ISTNIEJA — jest tylko litera skrytki (A/B/C). Mapa leci
       // do widoku, zeby litery i wymiary bylo widac RAZEM (jak w formularzu Apilo), a
@@ -651,7 +677,8 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
 
     const surowyKurier = String(req.body?.kurier ?? '').trim();
     const umowyPobrania = umowyPobraniaFirmy(db);
-    const { metoda: metodaUzyta, blad: bladKuriera } = metodaNadania(z, surowyKurier, { kolejnosc: kolejnoscSpodziewana, umowyPobrania });
+    const { metoda: metodaUzyta, blad: bladKuriera } = metodaNadaniaErli(db, z, surowyKurier, { kolejnosc: kolejnoscSpodziewana, umowyPobrania })
+      ?? metodaNadania(z, surowyKurier, { kolejnosc: kolejnoscSpodziewana, umowyPobrania });
     if (bladKuriera) return bladNadania(req, reply, 400, bladKuriera);
 
     let deliveryMethodIdAllegro = null;

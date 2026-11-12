@@ -60,10 +60,12 @@ describe('dane zachowują dzisiejsze tablice (PRZ-135.01)', () => {
         inpost: { pobranie: 'adapter', pobranieNaDosylce: true, nadanieAsynchroniczne: true, sledzenie: 'wlasne', etykieta: { zpl: true, zplPrzyNadaniu: true } },
         allegro_wza: { pobranie: 'umowa', pobranieNaDosylce: false, nadanieAsynchroniczne: true, sledzenie: 'przez_przewoznika', etykieta: { zpl: true, zplPrzyNadaniu: false } },
         allegro: { pobranie: 'brak', pobranieNaDosylce: false, nadanieAsynchroniczne: false, sledzenie: 'wlasne', etykieta: { zpl: false, zplPrzyNadaniu: false } },
+        // PRZ-157.08: Przesyłki Erli — etykieta dopiero po `waybills[]`, sam PDF; 07e: śledzenie z API ERLI (statusPrzesylki).
+        erli_przesylki: { pobranie: 'umowa', pobranieNaDosylce: false, nadanieAsynchroniczne: true, sledzenie: 'wlasne', etykieta: { zpl: false, zplPrzyNadaniu: false } },
       });
   });
   it('kolejność metod, wybór i wartości domyślne', () => {
-    expect(metodyKurierow().map(m => m.klucz)).toEqual(['dpd', 'inpost_paczkomat', 'allegro_dpd', 'allegro_punkt', 'allegro_kurier', 'allegro_inne']);
+    expect(metodyKurierow().map(m => m.klucz)).toEqual(['dpd', 'inpost_paczkomat', 'allegro_dpd', 'allegro_punkt', 'allegro_kurier', 'allegro_inne', 'erli_przesylki']);
     expect(metodyKurierow().filter(m => m.etykietaWyboru).map(m => [m.klucz, m.etykietaWyboru]))
       .toEqual([['dpd', 'DPD — nasza umowa'], ['inpost_paczkomat', 'Paczkomat InPost — nasza umowa']]);
     expect(METODA_DOMYSLNA).toBe('dpd'); expect(KURIER_DOMYSLNY).toBe('dpd');

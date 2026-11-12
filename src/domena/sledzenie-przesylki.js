@@ -95,6 +95,9 @@ export function sledzeniePrzesylki(p, kurierzy = {}) {
   // Brak klienta w mapie (panel bez sekcji INPOST_*) to TRYB POPRAWNY — paczka po prostu
   // nie jest odpytywana; ta sama zasada, co przy skladaniu mapy w bootstrap.js.
   if (!klient || klient.bezSledzenia) return null;
+  // Adapter platformy może odczytywać paczkę po ID zasobu zamiast numeru przewoźnika.
+  if (klient.sledzeniePoId) return p?.id_przesylki_kuriera
+    ? { klient, numer: p.id_przesylki_kuriera, podwykonawca: null } : null;
   if (!p?.numer_listu) return null;
   return { klient, numer: p.numer_listu, podwykonawca: null };
 }

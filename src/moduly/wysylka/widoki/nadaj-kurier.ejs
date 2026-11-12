@@ -25,7 +25,9 @@
 <p class="pasek-uwaga">
   To zamówienie przyszło z <strong><%= kanal %></strong>, a kupujący wybrał
   „<%= nazwaDostawy(z) %>".
-  <% if (maWza) { %>
+  <% if (drogaErli) { %>
+    Domyślnie nadajemy drogą wybraną w ERLI. Inną umowę wybierz świadomie dla dodatkowej paczki.
+  <% } else if (maWza) { %>
     Przewóz kupujemy <strong>u Allegro</strong> — kupujący ma go już opłacony w cenie
     dostawy. <strong>Naszą umową</strong> nadaje się tylko wtedy, gdy paczka jest dodatkowa:
     dosyłka brakującego produktu albo zamiennik za zgubioną.
@@ -34,7 +36,7 @@
     etykietą kupioną w panelu Allegro albo — jeśli to paczka dodatkowa —
     <strong>naszą umową</strong>.
   <% } %>
-  <% if (kolejnosc === 1) { %>
+  <% if (!drogaErli && kolejnosc === 1) { %>
     Panel nie widzi tu jeszcze żadnej paczki — ale to <strong>nie znaczy, że żadna nie
     pojechała</strong>: numery listów z Allegro dociągają się tylko dopóki zamówienie nie
     jest oznaczone jako wysłane. Sprawdź w panelu Allegro, zanim nadasz drugą.

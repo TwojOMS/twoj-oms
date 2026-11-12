@@ -4,6 +4,7 @@ import { anulowaneWymagaUwagi } from './status.js';
 import { saldoWplat, platnoscPrzyOdbiorze } from './platnosci.js';
 import { podsumowaniePozycji } from './tabela-pozycji.js';
 import { modulZamowienia, umiejetnosciZamowienia } from './moduly-kanalow.ts';
+import { konfliktNumeruErli, KONFLIKT_NUMERU_ERLI } from './erli-numer.js';
 import { czekaNaKsef as czekaNaKsefDom, czekaNaKsefDluzejNizDobe } from './ksef-oczekiwanie.js';
 import { NAZWA_ZAPASOWA } from './nazwa-programu.js';
 // ⚠️ `weryfikacjaNierozstrzygnieta` STAL TU DO 06.08.2026 i zniknal razem z wyciszona uwaga
@@ -42,6 +43,10 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
   // PRZ-118.09: `nazwa` = odmiana nazwy programu fakturowego (domyślnie inFakt — domena/nazwa-programu.js).
   if (!zamowienie) return [];
   const sprawy = [];
+
+  if (modulZamowienia(zamowienie).typ === 'erli' && konfliktNumeruErli(zamowienie)) {
+    sprawy.push({ klucz: 'numer-kanalu', waga: UWAGA, tekst: KONFLIKT_NUMERU_ERLI, kotwica: '#przesylka' });
+  }
 
   try {
     // 1. PRZESYLKI. Tekst bierzemy gotowy z domeny przesylek — przy wielu paczkach niesie
@@ -262,6 +267,9 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
     // 3. ANULOWANIE PO NADANIU ALBO PO WYSTAWIENIU FAKTURY. Sam status „Anulowane" wyglada
     //    jak sprawa zamknieta, a paczka moze byc w drodze, a dokument czekac w inFakcie na
     //    wieczorna wysylke do KSeF.
+    if (zamowienie.anulowane && zamowienie.status_woo !== 'cancelled' && modulZamowienia(zamowienie).typ === 'erli') {
+      sprawy.push({ klucz: 'anulowanie-kanalu', waga: UWAGA, tekst: 'Zamówienie anulowane w OMS — anuluj w panelu ERLI.', kotwica: '#status' });
+    }
     if (anulowaneWymagaUwagi(zamowienie)) {
       // ⚠️⚠️ TYM SAMYM PREDYKATEM, CO `anulowaneWymagaUwagi` — poprawka po recenzji
       // 13.09.2026. Tamta funkcja liczy od 13.09 wyłącznie paczki NIEUKRYTE

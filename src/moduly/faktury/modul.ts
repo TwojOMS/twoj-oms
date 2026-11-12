@@ -1,6 +1,8 @@
 import type { ModulOms, Srodowisko, Zegar } from '../../core/kontrakty.ts';
 import { wczytajSprzedawce } from '../../core/sprzedawca.ts';
 import { createPuls } from '../../core/puls.js';
+import { kanalKlientaUmie } from '../../domena/moduly-kanalow.ts';
+import { mapaNaZadanie } from '../kanaly/kolekcje-na-zadanie.ts';
 import { ocenZdrowie } from '../../domena/zdrowie.js';
 import { integracje } from '../../integracje/klucze.js';
 import { createInfaktClient } from '../../oms/infakt/client.js';
@@ -135,7 +137,8 @@ return {
     const { db, konfiguracja: k, teraz } = ctx;
     const atrapy = FABRYKI_ATRAP.filter((n) => fabryki[n]);
     if (atrapy.length && !k.proba) throw new Error(`Fabryki ${atrapy.join(', ')} (atrapy piaskownicy) wolno podać tylko z OMS_TRYB=proba`);
-    const kanaly = ctx.usluga<Record<string, any>>('kanaly', 'klienciKanalow');
+    const wszyscyKlienci = ctx.usluga<Record<string, any>>('kanaly', 'klienciKanalow');
+    const kanaly = mapaNaZadanie(() => Object.keys(wszyscyKlienci).filter(sklep => kanalKlientaUmie(sklep, u => u.plikFaktury)), sklep => wszyscyKlienci[sklep]);
     const adresFirmy = zrodloAdresuFirmy({ db, zPliku: k.nadawca });
     // PRZ-102.20: rachunek i bank z bieżącej konfiguracji (plik → Ustawienia → Firma → brak) — proforma i maile płatnicze
     // (config kopiowany do wiadomości) czytają go przy każdym użyciu; `proforma.rachunek` zostaje wartością z pliku.
@@ -363,7 +366,7 @@ return {
       }, zegary,
       zdrowie: () => {
         const ocena = ocenZdrowie({ teraz: teraz(), startAt: puls.startAt,
-          ksefWlaczony: Boolean(czuwaczKsef) && Object.keys(kanaly).length > 0, pulsKsef: (puls.stan().czuwaczKsef ?? null) as any });
+          ksefWlaczony: Boolean(czuwaczKsef) && Object.keys(wszyscyKlienci).length > 0, pulsKsef: (puls.stan().czuwaczKsef ?? null) as any });
         // PRZ-121.01: jawny „brak” — zdanie o wyłączonych fakturach; inaczej stary tekst znak w znak. Uwagi, nie alarmy:
         // /health i jego `ok` się nie zmieniają.
         const wylaczoneZdanie = zdanieBrakuProgramu(wybor);

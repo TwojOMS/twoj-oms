@@ -10,7 +10,7 @@
 import {
   przesylkiDoSledzenia, pobierzPrzesylke, ukryjPrzesylke, przywrocPrzesylke,
 } from '../db/przesylki.js';
-import { dopiszLog } from '../../../oms/db/zamowienia.js';
+import { dopiszLog, pobierzZamowienie } from '../../../oms/db/zamowienia.js';
 import { przesylkaUkryta } from '../../../domena/przesylka-stan.js';
 import { nazwaDostawy } from '../../../domena/wysylka.js';
 import { przewoznikWiersza, linkSledzeniaPaczki } from '../../../domena/przewoznik-przesylki.js';
@@ -114,7 +114,22 @@ function pasujeNaFiltr(d, filtry) {
   return true;
 }
 
-export function registerPrzesylkiRoutes(app, { db }) {
+export function registerPrzesylkiRoutes(app, { db, kurierzy = {} }) {
+  app.get('/przesylki/:id/protokol', async (req, reply) => {
+    const p = pobierzPrzesylke(db, Number(req.params.id));
+    const klient = p && kurierzy[p.kurier];
+    if (!p?.id_przesylki_kuriera || typeof klient?.protokolOdbioru !== 'function') {
+      return stronaOdmowy(reply, 404, 'Brak protokołu odbioru dla tej przesyłki.', { wroc: '/przesylki' });
+    }
+    try {
+      const z = pobierzZamowienie(db, p.zamowienie_id);
+      if (!z) throw new Error('Brak zamówienia');
+      const dokument = await klient.protokolOdbioru(p.id_przesylki_kuriera, z);
+      return reply.redirect(dokument.url);
+    } catch {
+      return stronaOdmowy(reply, 400, 'Nie udało się pobrać protokołu odbioru. Spróbuj ponownie.', { wroc: '/przesylki' });
+    }
+  });
   app.get('/przesylki', async (req, reply) => {
     const filtry = parseFiltry(req.query);
     if (filtry.blad) return stronaOdmowy(reply, 400, filtry.blad, { tytul: 'Zły filtr listy przesyłek', wroc: '/przesylki', napisWroc: 'Wróć do listy przesyłek' });
@@ -181,6 +196,7 @@ export function registerPrzesylkiRoutes(app, { db }) {
       const kurierEtykieta = zAllegro && zamowienie ? nazwaDostawy(zamowienie) : p.kurier;
       return {
         ...p,
+        maProtokol: !!p.id_przesylki_kuriera && typeof kurierzy[p.kurier]?.protokolOdbioru === 'function',
         kurierEtykieta,
         usluga: zAllegro && zamowienie ? kurierEtykieta : null,
         // PRZ-152.G7: ta sama funkcja co karta zamowienia i mail „Zamowienie wyslane".

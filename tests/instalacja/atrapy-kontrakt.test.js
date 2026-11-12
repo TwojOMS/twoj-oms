@@ -11,6 +11,8 @@ import { createRequire } from 'node:module';
 import { createInfaktClient } from '../../src/oms/infakt/client.js';
 import { createWooClient } from '../../src/oms/woo/client.js';
 import { createAllegroClient } from '../../src/oms/allegro/client.js';
+import { createErliClient } from '../../src/oms/erli/client.js';
+import { createAtrapaErli } from '../../deploy/proba/atrapy/erli.mjs';
 import { utworzBazeDemo, ENV_DEMO } from '../../scripts/demo-dane.mjs';
 import { createAtrapaInfaktu } from '../../deploy/proba/atrapy/infakt.mjs';
 import { createDpdClient } from '../../src/oms/kurierzy/dpd.js';
@@ -102,6 +104,13 @@ beforeAll(async () => {
 afterAll(() => { db?.close(); fs.rmSync(katalog, { recursive: true, force: true }); });
 
 describe('komplet metod', () => {
+  it('atrapa ERLI ma każdą metodę createErliClient', () => {
+    const baza = new DatabaseSync(':memory:');
+    try {
+      const atrapa = createAtrapaErli({ db: baza, kanal: 'polcien', env: { OMS_TRYB: 'proba' } });
+      expect(metody(createErliClient()).filter(m => !metody(atrapa).includes(m))).toEqual([]);
+    } finally { baza.close(); }
+  });
   it('status korekty atrapy wskazuje zapisany dokument także po odtworzeniu klienta', async () => {
     const [faktura] = await infakt.listaFaktur();
     const zlecenie = await infakt.wystawKorekte({ corrected_invoice_uuid: faktura.uuid, services: [], notes: 'Zwrot towaru' });

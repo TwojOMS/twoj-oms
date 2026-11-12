@@ -188,6 +188,13 @@ export function createPoller({ db, kanal, sklep, od = null, kontrola = () => {} 
         }
         strona += 1;
       } while (strona <= stron);
+      // Kanał z potwierdzaniem odbioru (ERLI: mark-read) dowiaduje się o sukcesie DOPIERO TERAZ — po zapisie
+      // wszystkich zamówień w bazie. Awaria zapisu wyżej przerywa przebieg przed tym miejscem, więc
+      // niepotwierdzone zdarzenia przyjdą jeszcze raz (zapis jest idempotentny).
+      if (kanal.potwierdz) {
+        kontrola();
+        await kanal.potwierdz();
+      }
     } catch (e) {
       // Kursor zostaje na poprzedniej wartosci: lepiej pobrac te same zamowienia
       // drugi raz (zapis jest idempotentny) niz zgubic je na zawsze.

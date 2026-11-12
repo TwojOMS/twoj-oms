@@ -13,7 +13,7 @@ type Polaczenie = { id: string; usluga: string; nazwa: string; opis: string; sta
   grupa: GrupaPolaczen; nazwaLudzka: string; konto: string | null; komunikat: string | null; akcja: Akcja | null; wiecej: Odnosnik[];
   czasOdczytu: string | null; etykietaStanu: string; wysylkaAllegro?: 'wlaczona' | 'wylaczona' };
 type Integracja = { id: string; skonfigurowana: boolean; atrapa?: boolean; zrodlo: Zrodlo };
-type Opcje = { db: any; kanaly?: any; stanyKanalow?: any[]; integracje?: Integracja[]; proba?: boolean; polaczeniaAllegro?:PolaczenieAllegro[]; sklepyWoo?:{klucz:string;nazwa:string;zrodlo:string;autoryzacja?:string}[] };
+type Opcje = { db: any; kanaly?: any; stanyKanalow?: any[]; integracje?: Integracja[]; proba?: boolean; polaczeniaAllegro?:PolaczenieAllegro[]; sklepyErli?:any[]; sklepyWoo?:{klucz:string;nazwa:string;zrodlo:string;autoryzacja?:string}[] };
 const data = (d: unknown): string | null => typeof d === 'string' && Number.isFinite(Date.parse(d)) ? d : null;
 
 export const GRUPY_POLACZEN: Record<GrupaPolaczen, string> = {
@@ -47,7 +47,7 @@ export function podsumowanie(wiersze: { stan: Stan; podlaczone?: boolean }[]) {
 }
 
 /** Żadnej sieci, zapisów ani serializacji obiektu konfiguracji/sekretów. */
-export function polaczeniaIntegracji({ db, kanaly = {}, stanyKanalow = [], integracje = [], proba = false, polaczeniaAllegro=[], sklepyWoo=[] }: Opcje): Polaczenie[] {
+export function polaczeniaIntegracji({ db, kanaly = {}, stanyKanalow = [], integracje = [], proba = false, polaczeniaAllegro=[], sklepyWoo=[],sklepyErli=[] }: Opcje): Polaczenie[] {
   const wynik: Polaczenie[] = [];
   type Wejscie = Omit<Polaczenie, 'atrapa' | 'grupa' | 'czasOdczytu' | 'etykietaStanu' | 'wiecej' | 'komunikat' | 'akcja'> & { grupa: GrupaPolaczen; komunikat?: string | null; akcja: Akcja | null; wiecej?: Odnosnik[] };
   const dodaj = (p: Wejscie,atrapa=proba) => {
@@ -84,6 +84,16 @@ export function polaczeniaIntegracji({ db, kanaly = {}, stanyKanalow = [], integ
         komunikat: typeof konto?.powod === 'string' && konto.powod ? konto.powod : typ==='allegro' ? 'Ostatni odczyt zamówień z Allegro się nie udał. Sprawdź połączenie.' : 'Ostatni odczyt zamówień ze sklepu się nie udał. Sprawdź klucze i adres sklepu.',
         akcja, ...wza },atrapa);
     }
+  }
+  for(const k of sklepyErli){
+    const stan=db.prepare('SELECT ostatni_przebieg_at,ostatni_blad FROM stan_pollera WHERE sklep=?').get(k.klucz);
+    const u=k.ustawienia??{};
+    dodaj({id:'erli:'+k.klucz,usluga:'erli',kanal:k.klucz,nazwa:k.nazwa,nazwaLudzka:k.nazwa,
+      opis:u.sklepId?`Sklep ERLI: ${u.sklepNazwa} (id ${u.sklepId})`:'Sklep ERLI: połączenie jeszcze niesprawdzone.',
+      stan:k.autoryzacja==='odlaczone'||k.pobieranie!=='wlaczone'?'wylaczone':u.kolizja||stan?.ostatni_blad?'uwaga':u.sprawdzono?'dziala':'niesprawdzone',
+      ostatniSukcesAt:data(stan?.ostatni_przebieg_at),zrodlo:k.zrodlo==='env'?'serwer':'panel',grupa:'sprzedaz',konto:u.sklepId??null,
+      komunikat:u.kolizja?'Ten sklep ERLI jest zapisany w dwóch kanałach. Rozwiąż kolizję.':null,
+      akcja:{etykieta:'Zarządzaj',href:'/ustawienia/integracje/erli/'+encodeURIComponent(k.klucz),glowna:false}},proba);
   }
   for (const p of integracje.filter(p => p.skonfigurowana || p.atrapa)) {
     const u = katalog(p.id);

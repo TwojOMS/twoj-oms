@@ -332,7 +332,8 @@
           <%# Dopisek „(pobranie)" sklada etykietaWysylki, a NIE ten szablon: to samo zdanie %>
           <%# musi brzmiec identycznie na liscie, na karcie i na ekranie nadania. %>
           <span>
-            <% if (z.metoda_wysylki === 'nieznana') { %><span class="stan-zle"><%= etykietaWysylki('nieznana', z.pobranie) %></span>
+            <% if (nadanieKanalu && z.metoda_wysylki === 'nieznana') { %><%= nazwaDostawy(z) %>
+            <% } else if (z.metoda_wysylki === 'nieznana') { %><span class="stan-zle"><%= etykietaWysylki('nieznana', z.pobranie) %></span>
             <% } else { %>
               <%# PRZ-101.05: plakietka w kolorze przewoźnika jak w kolumnie „Dostawa” listy; klucz liczy kontekst %>
               <%# tą samą funkcją (przewoznikWiersza). Nieznany przewoźnik i odbiór osobisty — bez plakietki. %>
@@ -343,6 +344,15 @@
             <% if (dane.metodaZmienionaRecznie) { %> <span class="znacznik znacznik-reczny">zmienione ręcznie</span><% } %>
           </span>
         </div>
+        <% if (!dane.metodaZmienionaRecznie && nadanieKanalu?.linia) { %><div><span>Nadanie</span><span><%= nadanieKanalu.linia %></span></div><% } %>
+        <% if (!dane.metodaZmienionaRecznie && nadanieKanalu?.sprawa) { %><div class="pasek-blokada"><span>Nadanie</span><span><%= nadanieKanalu.sprawa %></span></div><% } %>
+        <% for (const zwrot of zgloszeniaZwrotowKanalu) { %>
+          <p><b>Zgłoszenie zwrotu z ERLI</b><% if (zwrot.data) { %> · <%= fmtDataCzas(zwrot.data) %><% } %><br>
+            <%= zwrot.powod %><% if (zwrot.komentarz) { %> · <%= zwrot.komentarz %><% } %><br>
+            <% for (const pozycja of zwrot.pozycje) { %><%= pozycja.nazwa %> — <%= pozycja.ilosc %> szt.<br><% } %>
+            <% if (mozeAdres(`/zamowienia/${z.id}/zwrot`)) { %><a href="<%= adresPodwidoku('zwrot') %>">Przejdź do ZWROTÓW</a><% } %>
+          </p>
+        <% } %>
         <%# PRZ-104: do kiedy paczka ma wyjechać. Napisy i ocena z domeny (terminNaKarcie) — ta sama %>
         <%# miara, co zegar listy, „Po terminie” i statystyki; widok niczego nie liczy. %>
         <% const tw = terminWysylkiKarty; %>
@@ -953,7 +963,7 @@
 <section class="panel" id="przesylka">
   <div class="panel-glowa"><h2>Przesyłka</h2></div>
   <div class="panel-cialo">
-    <% if (z.metoda_wysylki === 'nieznana') { %>
+    <% if (z.metoda_wysylki === 'nieznana' && !drogaErli?.metoda) { %>
       <p class="pasek-uwaga">Nieznana metoda wysyłki — tego zamówienia nie nadasz z panelu. Nadaj ręcznie u przewoźnika albo zarejestruj paczkę niżej.</p>
     <% } %>
 
@@ -1211,7 +1221,7 @@
     <%# co przy odmowie (domain/gotowosc-nadania.js). %>
     <% } else if (brakDoNadania && !z.anulowane) { %>
       <p class="pasek-blokada"><%= brakDoNadania %></p>
-    <% } else if (mozliwaKolejnaPaczka && z.metoda_wysylki !== 'nieznana' && !z.anulowane) { %>
+    <% } else if (mozliwaKolejnaPaczka && (z.metoda_wysylki !== 'nieznana' || drogaErli?.metoda) && !z.anulowane) { %>
       <%# GET, nie POST: nadanie jest NIEODWRACALNE (DPD przydziela numer listu od razu), wiec %>
       <%# klikniecie prowadzi na osobny ekran z adresem i wymiarami. Etykieta linku ZMIENIA SIE, %>
       <%# gdy paczka juz jest — dolozenie drugiej ma byc INNA, swiadomie wybrana akcja. %>

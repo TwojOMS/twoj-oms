@@ -19,7 +19,9 @@ function odczytajSandbox(db) {
   const konfiguracja = db.prepare(`SELECT * FROM konfiguracja_integracji WHERE integracja IN (${ZACHOWANE_SANDBOX_ALLEGRO.map(() => '?').join(',')})`)
     .all(...ZACHOWANE_SANDBOX_ALLEGRO);
   const kanaly = maTabele(db, 'kanaly_sprzedazy')
-    ? db.prepare("SELECT * FROM kanaly_sprzedazy WHERE zrodlo = 'panel' AND srodowisko = 'sandbox'").all() : [];
+    ? db.prepare("SELECT * FROM kanaly_sprzedazy WHERE zrodlo = 'panel' AND srodowisko = 'sandbox'").all()
+      // Tylko Allegro: konfiguracja innych kanałów (np. klucz ERLI) nie jest zachowywana — kanał bez niej wywraca start.
+      .filter(k => (k.typ ?? 'allegro') === 'allegro') : [];
   const token = maTabele(db, 'tokeny_kanalu') ? db.prepare('SELECT * FROM tokeny_kanalu WHERE kanal = ?') : null;
   const tokeny = token ? kanaly.map(k => token.get(k.klucz)).filter(Boolean) : [];
   return { konfiguracja, kanaly, tokeny };

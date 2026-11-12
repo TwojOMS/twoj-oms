@@ -27,6 +27,7 @@ const OPCJE: { [K in KluczKurieraNadania]: Parameters<typeof FABRYKI_KURIEROW[K]
   inpost: { url: 'https://inpost.invalid/v1', token: 'token', organizacja: 1, nadawca, fetchImpl: bezSieci },
   allegro_wza: { allegroDla: () => { throw new Error('test: bez Allegro'); }, metodaZywa: () => null,
     pobranieNadawca: { nazwa: 'Pracownia Półcień' } },
+  erli_przesylki: { erliDla: () => { throw new Error('test: bez ERLI'); }, punktNadaniaDla: () => null },
 };
 
 const kurierzyNadania = Object.entries(MODULY_KURIEROW)
@@ -39,7 +40,7 @@ const metody = (o: Record<string, unknown>) => Object.keys(o).filter(m => typeof
 describe('FABRYKI_KURIEROW', () => {
   it('ma fabrykę dokładnie dla każdego kuriera z metodami, w kolejności rejestru', () => {
     expect(Object.keys(FABRYKI_KURIEROW)).toEqual(kurierzyNadania);
-    expect(kurierzyNadania).toEqual(['dpd', 'inpost', 'allegro_wza']);
+    expect(kurierzyNadania).toEqual(['dpd', 'inpost', 'allegro_wza', 'erli_przesylki']);
   });
 
   describe.each(kurierzyNadania)('%s: umiejętności zgodne z metodami adaptera (Komplet)', (k) => {
@@ -100,6 +101,6 @@ describe('składanie modułu wysyłki', () => {
     const config = { ...wczytajKurierow({}), dpd: {} as never, inpost: {} as never };
     const mapa = zbudujKurierow(config, {}, { createDpd: atrapa, createInpost: atrapa, createAllegroWza: atrapa,
       createAllegroSledzenie: () => ({ statusPrzesylki: async () => null }) });
-    expect(Object.keys(mapa)).toEqual(['dpd', 'inpost', 'allegro_wza', 'allegro']);
+    expect(Object.keys(mapa)).toEqual(['dpd', 'inpost', 'allegro_wza', 'erli_przesylki', 'allegro']);
   });
 });

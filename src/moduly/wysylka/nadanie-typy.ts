@@ -18,6 +18,7 @@ export type OpcjeNadania = {
   db: Parameters<typeof pobierzZamowienie>[0];
   kurierzy: MapaKurierow;
   klienci?: Record<string, Pick<ReturnType<typeof createWooClient>, 'dodajNotatke'>>;
+  klienciKanalow?: Record<string, any>;
   katalogEtykiet: string;
   paczkaDomyslna?: PaczkaKuriera;
   /** PRZ-117: odstęp przed powtórką notatki; testy podają atrapę. */

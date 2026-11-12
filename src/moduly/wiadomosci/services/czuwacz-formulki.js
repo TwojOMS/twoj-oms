@@ -15,6 +15,7 @@
 // dostaloby formulke „jestesmy poza godzinami" o 8:05, gdy ludzie juz siedza przy komputerze.
 
 import { czyWOknie } from '../../../domena/okno-formulki.js';
+import { kanalZWiadomosciami } from '../../../domena/moduly-kanalow.ts';
 import { ustawieniaFormulki } from '../../../domena/ustawienia-formulki.js';
 import { czyjRuch } from '../../../domena/czyj-ruch-watku.js';
 import { wczytajUstawienia } from '../../../oms/db/ustawienia.js';
@@ -93,7 +94,7 @@ export function createCzuwaczFormulki({ db, klienci = {}, brakiKanalu = () => []
         if (dowody(db, w.kanal, w.thread_id).some((d) => d.rodzaj === 'formulka')) { pominiete += 1; continue; }
 
         const klient = klienci[w.kanal];
-        if (!klient) { pominiete += 1; continue; }
+        if (!klient || !kanalZWiadomosciami(w.kanal)) { pominiete += 1; continue; }
         // ⚠️⚠️ NIE WYSYLAMY PRZEZ KANAL BEZ UPRAWNIENIA `messaging` — Allegro odbije 403,
         // a `oznaczBlad` zostawi dowod, ktory przy regule „raz na watek" zablokowalby
         // formulke NA ZAWSZE: po przewiazaniu nigdy by juz nie poszla. Pomijamy PRZED

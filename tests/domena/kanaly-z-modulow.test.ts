@@ -6,10 +6,11 @@ describe('nazwy i komunikaty kanałów', () => {
   it('zachowuje katalog plakietek', () => {
     expect(RODZAJE_KANALOW).toEqual({
       allegro: { klucz: 'allegro', nazwa: 'Allegro', znak: 'a' },
+      erli: { klucz: 'erli', nazwa: 'ERLI', znak: 'e' },
       woo: { klucz: 'woo', nazwa: 'WooCommerce', znak: 'W' },
     });
     expect(Object.isFrozen(RODZAJE_KANALOW)).toBe(true);
-    expect(Object.keys(RODZAJE_KANALOW)).toEqual(['allegro', 'woo']);
+    expect(Object.keys(RODZAJE_KANALOW)).toEqual(['allegro', 'erli', 'woo']);
     expect(Object.values(RODZAJE_KANALOW).every(Object.isFrozen)).toBe(true);
   });
 

@@ -79,6 +79,8 @@ describe('METODY_WYSYLKI i ETYKIETY_WYSYLKI', () => {
       allegro_punkt: 'Allegro punkt / automat',
       allegro_kurier: 'Allegro One Kurier',
       allegro_inne: 'Allegro — inna metoda',
+      // PRZ-157.07e: metoda kuriera Przesyłki Erli — nazwa z rejestru, choć nie ma jej w METODY_WYSYLKI.
+      erli_przesylki: 'Przesyłki Erli',
       nieznana: 'Nieznana metoda',
     });
   });

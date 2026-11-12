@@ -512,7 +512,23 @@
                 z `max-width`     Produkty 349 · Klient 175 · Dostawa 141
               Wysokosc wierszy sie NIE ZMIENIA (158 px), bo nazwe przycina `.nazwa-dostawy`. %>
           <td class="komorka-dostawa">
-            <% if (z.metoda_wysylki === 'nieznana') { %>
+            <% if (z.drogaErliListy !== undefined) { %>
+              <span class="nazwa-dostawy" title="<%= z.metoda_wysylki_nazwa %>"><%= z.metoda_wysylki_nazwa %></span>
+              <% if (z.drogaErliListy?.droga === 'przesylki_erli') { %>
+                <small>Przesyłka Erli</small>
+              <% } else if (z.drogaErliListy?.droga === 'umowa' && z.drogaErliListy.kurier === 'odbior') { %>
+                <small>odbiór osobisty</small>
+              <% } else if (z.drogaErliListy?.droga === 'umowa') { %>
+                <small>kurier z umowy: <%= z.kurierErliListy %></small>
+              <% } else if (z.drogaErliListy?.droga === 'blokada') { %>
+                <% if (z.drogaErliListy.komunikat) { %>
+                  <span class="uwaga" title="<%= z.drogaErliListy.komunikat %>">Nadanie zablokowane</span>
+                  <br><small><%= z.drogaErliListy.komunikat %></small>
+                <% } else { %>
+                  <span class="uwaga" title="">Nadanie zablokowane — nadaj w panelu ERLI</span>
+                <% } %>
+              <% } %>
+            <% } else if (z.metoda_wysylki === 'nieznana') { %>
               <span class="uwaga">nieznana metoda — nadaj ręcznie u przewoźnika</span>
             <% } else { %>
               <%# Nazwa metody z JEDNEGO zrodla (domain/wysylka.js: etykietaWysylki) — tego %>

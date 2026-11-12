@@ -74,6 +74,22 @@ describe('piaskownica z atrapami — Faktury i Magazyn na danych demo', () => {
     cookie = login.headers.get('set-cookie').match(/sesja_oms_proba=[^;]+/)[0];
   });
 
+  it('PRZ-157.12a: demo zachowuje klienta ERLI obok atrap Allegro', () => {
+    const db = baza();
+    try {
+      expect(db.prepare('SELECT typ, autoryzacja FROM kanaly_sprzedazy WHERE klucz = ?').get('erli_polcien'))
+        .toMatchObject({ typ: 'erli', autoryzacja: 'polaczone' });
+    } finally { db.close(); }
+    const klienci = live.aplikacja.usluga('kanaly', 'klienciKanalow');
+    expect(Object.keys(klienci).sort()).toEqual(['allegro', 'allegro-outlet', 'erli_polcien'].sort());
+    expect(klienci.allegro.atrapa).toBe(true);
+    expect(klienci['allegro-outlet'].atrapa).toBe(true);
+    expect(typeof klienci.erli_polcien.pobierzZamowienie).toBe('function');
+    const config = live.aplikacja.usluga('kanaly', 'config');
+    expect(Object.keys(config.kanaly)).not.toContain('erli_polcien'); // config.kanaly = ustawienia Allegro (recenzja 12b)
+    expect(config.definicje.map((d) => d.klucz)).toContain('erli_polcien');
+  });
+
   it('/faktury (bieżący miesiąc) pokazuje faktury demo z bazy, nie pusty ekran „nie ma podpiętego inFaktu”', async () => {
     const db = baza();
     let numery;

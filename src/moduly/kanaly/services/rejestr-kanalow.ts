@@ -18,7 +18,7 @@ function zasobZapisu(sciezka:string,init:RequestInit):string {
 export type FabrykaKanalu = (o:{polaczenie:PolaczenieKanalu; http:(url:string,init?:RequestInit)=>Promise<Response>; httpAutoryzacji:(url:string,init?:RequestInit)=>Promise<Response>; sprawdzZapis:()=>void})=>{klient:Record<string,any>;tokeny?:any;poller:{przebieg:()=>Promise<any>;stan:()=>any}};
 export function createRejestrKanalow(o:{repozytorium:RepozytoriumKanalow;fabryki:Record<TypKanaluZnany,FabrykaKanalu>|FabrykaKanalu;skonfigurowany?:(k:PolaczenieKanalu)=>boolean;db?:unknown;teraz?:()=>Date;fetchImpl?:typeof fetch;limitCzasuMs?:number;limitZatrzymaniaMs?:number}) {
  // Zgodność z odbiorcami sprzed rejestru po typie. Kompozycja używa pełnej mapy.
- const fabryki=typeof o.fabryki==='function'?{allegro:o.fabryki,woo:o.fabryki}:o.fabryki;
+ const fabryki:Record<TypKanaluZnany,FabrykaKanalu>=typeof o.fabryki==='function'?Object.fromEntries(Object.keys(MODULY_KANALOW).map(typ=>[typ,o.fabryki])) as Record<TypKanaluZnany,FabrykaKanalu>:o.fabryki;
  for(const typ of Object.keys(MODULY_KANALOW))if(typeof fabryki[typ as TypKanaluZnany]!=='function')throw new Error(`Brak fabryki kanału: ${typ}`);
  for(const typ of Object.keys(fabryki))if(!Object.hasOwn(MODULY_KANALOW,typ))throw new Error(`Brak modułu kanału: ${typ}`);
  const lista=()=>Object.keys(MODULY_KANALOW).flatMap(t=>o.repozytorium.listaTypu(t as TypKanaluZnany));
@@ -61,6 +61,8 @@ export function createRejestrKanalow(o:{repozytorium:RepozytoriumKanalow;fabryki
   const zHttp=(osobno:boolean)=>(url:string,init:RequestInit={})=>wykonaj(klucz,'calosc',generacja,async()=>{
    const k=kontekst.getStore()!;sprawdz(k);
    const metoda=(init.method??'GET').toUpperCase(),sciezka=new URL(url).pathname;
+   const zapisErli=s.typ==='erli'&&!['GET','HEAD','OPTIONS'].includes(metoda)&&!sciezka.endsWith('/_search')&&!['/orders/changes/mark-read','/inbox/mark-read'].some(p=>sciezka.endsWith(p));
+   if(zapisErli&&o.repozytorium.zapisyZablokowane(klucz))throw Object.assign(new Error('ERLI: włączono tryb tylko odczyt.'),{code:'ERLI_TYLKO_ODCZYT'});
    const zapis=s.typ==='allegro'&&!osobno&&!['GET','HEAD','OPTIONS'].includes(metoda)&&!(metoda==='POST'&&['/shipment-management/label','/shipment-management/pickup-proposals'].includes(sciezka));
    const niejednoznaczny=zapis&&metoda!=='PUT';
    const zasob=niejednoznaczny?zasobZapisu(sciezka,init):sciezka;
@@ -109,11 +111,14 @@ export function createRejestrKanalow(o:{repozytorium:RepozytoriumKanalow;fabryki
    new Promise<'zatrzymywanie'>(r=>{timer=setTimeout(()=>r('zatrzymywanie'),o.limitZatrzymaniaMs??30000);}),
   ]);}finally{clearTimeout(timer);}
  }
- const definicje=():DefinicjaKanalu[]=>lista().filter(k=>k.zrodlo==='env'||(k.typ==='woo'?k.autoryzacja==='polaczone':k.kontoId!==null)).map(k=>({klucz:k.klucz,typ:k.typ,prefiks:k.klucz.toUpperCase(),etykieta:k.nazwa,raport:k.raport}));
+ const definicje=():DefinicjaKanalu[]=>lista().filter(k=>k.zrodlo==='env'||(['woo','erli'].includes(k.typ)?k.autoryzacja==='polaczone':k.kontoId!==null)).map(k=>({klucz:k.klucz,typ:k.typ,prefiks:k.klucz.toUpperCase(),etykieta:k.nazwa,raport:k.raport}));
  const czyTrwa=(klucz:string,zakres:'zamowienia'|'calosc')=>[...operacje].some(k=>k.klucz===klucz&&(zakres==='calosc'||k.zakres==='zamowienia'));
  const poZatrzymaniu=(klucz:string,zakres:'zamowienia'|'calosc')=>Promise.allSettled([...operacje].filter(k=>k.klucz===klucz&&(zakres==='calosc'||k.zakres==='zamowienia')).map(k=>k.koniec)).then(()=>{});
- const stany=()=>lista().filter(k=>o.skonfigurowany?.(k)!==false&&k.autoryzacja==='polaczone'&&k.pobieranie==='wlaczone').map(k=>uslugi(k.klucz).poller.stan());
- const wolnoZapisywac=(klucz:string)=>{const k=pobierz(klucz);return Boolean(k?.autoryzacja==='polaczone'&&o.skonfigurowany?.(k)!==false&&!o.repozytorium.konfliktKlucza(klucz)&&(k.typ!=='allegro'||!o.repozytorium.zapisyZablokowane(klucz)));};
+ const stany=()=>lista().filter(k=>o.skonfigurowany?.(k)!==false&&k.autoryzacja==='polaczone'&&k.pobieranie==='wlaczone').map(k=>{
+  // Jeden kanał bez kompletnej konfiguracji (np. ERLI bez klucza) nie może wywrócić /health i każdej strony — oddaje stan z błędem.
+  try{return uslugi(k.klucz).poller.stan();}catch(e){return {sklep:k.klucz,zsynchronizowane_do:null,ostatni_przebieg_at:null,ostatni_blad:e instanceof Error?e.message:String(e)};}
+ });
+ const wolnoZapisywac=(klucz:string)=>{const k=pobierz(klucz);return Boolean(k?.autoryzacja==='polaczone'&&o.skonfigurowany?.(k)!==false&&!o.repozytorium.konfliktKlucza(klucz)&&(!['allegro','erli'].includes(k.typ)||!o.repozytorium.zapisyZablokowane(klucz)));};
  return {lista:()=>o.repozytorium.lista(),definicje,klient:(k:string)=>uslugi(k).klient,tokeny:(k:string)=>uslugi(k).tokeny,przebiegZamowien,zatrzymaj,czyTrwa,poZatrzymaniu,stany,wolnoZapisywac};
 }
 export type RejestrKanalow=ReturnType<typeof createRejestrKanalow>;

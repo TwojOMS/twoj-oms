@@ -1,0 +1,161 @@
+<div class="allegro-konfiguracja erli-konfigurator">
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: title}) %>
+<p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
+<% const u=k?.ustawienia??{}, wersja=k?.wersja??0, env=k?.zrodlo==='env';
+   const metody=Array.isArray(u.metodySklepu)?u.metodySklepu:null;
+   const krokOpis=Object.fromEntries(konfigurator.kroki.map(x=>[x.id,x]));
+   // Kreator: numer przed tytułem; ekran aktywnego sklepu: same tytuły.
+   const tytul=(id)=>kreator?krokOpis[id].numer+'. '+krokOpis[id].tytul:krokOpis[id].tytul;
+   const naglowek=(id,tekst)=>'<h2 id="erli-'+id+'" tabindex="-1"'+(fokus&&id===biezacy?' autofocus':'')+'>'+tekst+'</h2>';
+   const ukryty='<input type="hidden" name="wersja" value="'+wersja+'">'; %>
+<% if (kreator) { %><%- include('../../../core/web/konfigurator/kroki-konfiguratora.ejs', {kroki}) %><% } %>
+<% if (blad) { %><div class="pas-blad" role="alert"><p><%= blad %></p></div><% } %>
+<% if (zapisano) { %><div class="pas-potwierdzenie" role="status"><p><%= zapisano %></p></div><% } else if (okPolaczenia) { %><div class="pas-potwierdzenie" role="status"><p>Połączenie z ERLI działa — sklep <%= u.sklepNazwa %> (id <%= u.sklepId %>).</p></div><% } %>
+<% if (env) { %><p>Ten sklep jest ustawiony w pliku konfiguracji — tam go zmień.</p><% } %>
+
+<% const sekcjaDane = () => { %>
+<section class="ust-sekcja">
+<%- naglowek('dane', tytul('dane')) %>
+<% if(k&&u.sklepId){ %><p>Sklep ERLI: <%= u.sklepNazwa %> (id <%= u.sklepId %>)</p><% } %>
+<form method="post" action="<%= adres %>/dane" aria-labelledby="erli-dane">
+<%- ukryty %>
+<fieldset<% if(env){ %> disabled<% } %>><legend>Dane sklepu ERLI</legend>
+<p><label for="erli-nazwa">Nazwa w OMS (wymagana)</label><br><input id="erli-nazwa" name="nazwa" value="<%= k?.nazwa??'' %>" maxlength="80" required></p>
+<fieldset><legend>Środowisko (wymagane)</legend>
+<% for (const [i,s] of srodowiska.entries()) { %>
+<p><input id="erli-srodowisko-<%= i %>" type="radio" name="adresApi" value="<%= s.adres %>"<% if((u.adresApi??srodowiska[0].adres)===s.adres){ %> checked<% } %> required><label for="erli-srodowisko-<%= i %>"><%= s.nazwa %><br><%= s.adres %></label></p>
+<% } %></fieldset>
+<p><label for="erli-klucz">Klucz API<% if(!k?.kluczZapisany){ %> (wymagany)<% } %></label><br>
+<input id="erli-klucz" name="kluczApi" type="password" autocomplete="new-password" autocorrect="off" autocapitalize="none" spellcheck="false" aria-describedby="erli-klucz-pomoc"<% if(!k?.kluczZapisany){ %> required<% } %>>
+<% if(k?.kluczZapisany){ %><span>klucz zapisany</span><% } %>
+<br><span id="erli-klucz-pomoc">Klucz skopiuj z ustawień integracji API w panelu sprzedawcy ERLI. Puste pole zachowuje zapisany klucz. Zapis sam sprawdza połączenie.</span></p>
+<p><label for="erli-czas">Domyślny czas wysyłki w dniach roboczych</label><br><input id="erli-czas" type="number" name="domyslnyCzasWysylki" min="0" max="365" step="1" value="<%= u.domyslnyCzasWysylki??'' %>" aria-describedby="erli-czas-pomoc"><br><span id="erli-czas-pomoc">Używany, gdy ERLI nie poda czasu w pozycji ani produkcie. Puste pole pozostawia termin nieustalony.</span></p>
+<button type="submit" class="btn btn--glowny">Zapisz dane sklepu</button></fieldset>
+</form>
+<% if(!kreator||u.sprawdzono){ %><form method="post" action="<%= adres %>/sprawdz" aria-label="Sprawdź połączenie ERLI"><%- ukryty %><button type="submit" class="btn"<% if(env){ %> disabled<% } %>><%= kreator ? 'Sprawdź ponownie' : 'Sprawdź połączenie' %></button></form><% } %>
+</section>
+<% } %>
+
+<% const sekcjaPolaczenie = () => { %>
+<section class="ust-sekcja">
+<%- naglowek('polaczenie', tytul('polaczenie')) %>
+<% if(u.sklepId){ %><p>Sklep ERLI: <%= u.sklepNazwa %> (id <%= u.sklepId %>)</p><% } %>
+<% if(!k.kluczZapisany){ %><p>Brak klucza API. Wpisz go w <a href="#erli-krok-dane">kroku 1</a> — zapis sam sprawdzi połączenie.</p>
+<% } else { %><p>Jeśli klucz albo środowisko są błędne, popraw je w <a href="#erli-krok-dane">kroku 1</a> — zapis sam sprawdzi połączenie.</p>
+<form method="post" action="<%= adres %>/sprawdz" aria-labelledby="erli-polaczenie"><%- ukryty %><button type="submit" class="btn btn--glowny">Sprawdź połączenie</button></form><% } %>
+</section>
+<% } %>
+
+<% const sekcjaMetody = () => { const mapa=u.mapaMetod??{};
+   const KURIERZY={dpd:'DPD',inpost_paczkomat:'Paczkomat InPost',inpost_kurier:'Kurier InPost',odbior:'Odbiór osobisty (bez paczki)'};
+   const moznaPominac=kreator&&!u.metodyZapisane&&!u.metodyPominiete; %>
+<section class="ust-sekcja"><%- naglowek('metody', tytul('metody')) %>
+<p>OMS pobiera metody z cenników dostaw sklepu w ERLI. Metody Przesyłek Erli nadajesz na umowie ERLI; dla metod Twojej umowy wybierz kuriera OMS. Zmiana działa od następnego nadania.</p>
+<% if(!u.sprawdzono){ %><p>Najpierw sprawdź połączenie, potem pobierz metody dostawy.</p><% } %>
+<form method="post" action="<%= adres %>/pobierz-metody" aria-label="Pobierz metody dostawy z ERLI"><%- ukryty %><button type="submit" class="btn<% if(!metody){ %> btn--glowny<% } %>"<% if(env||!u.sprawdzono){ %> disabled<% } %>><%= metody?'Pobierz metody ponownie':'Pobierz metody dostawy' %></button></form>
+<% if(metody&&!metody.length){ %><p>Cenniki dostaw sklepu w ERLI nie mają żadnej metody.</p><% } else if(metody) { %>
+<form method="post" action="<%= adres %>/metody" aria-labelledby="erli-metody"><%- ukryty %>
+<fieldset<% if(env){ %> disabled<% } %>><legend id="erli-metody-podpis">Jak nadajemy każdą metodę</legend>
+<div class="przewijak-tabeli" tabindex="0" role="region" aria-labelledby="erli-metody-podpis">
+<table class="erli-metody">
+<thead><tr><th scope="col">Metoda</th><th scope="col">Jak nadajemy</th></tr></thead><tbody>
+<% for (const [i,m] of metody.entries()) { const wybor=mapa[m.id]??'', efekt=wybor==='brak'?null:wybor||domyslnyKurier(m), nazwa=nazwaMetody(m); %>
+<tr id="erli-metoda-<%= i %>"><th scope="row"><%= nazwa %><% if(nazwa!==m.id){ %><br><small><%= m.id %></small><% } %></th>
+<td><% if(m.erli){ %>Przesyłki Erli (umowa ERLI)<% } else { %>
+<label for="erli-kurier-<%= i %>">Twoja umowa →</label>
+<select id="erli-kurier-<%= i %>" name="kurier:<%= m.id %>"<% if(!efekt){ %> aria-describedby="erli-kurier-<%= i %>-uwaga"<% } %>>
+<option value=""<% if(!wybor){ %> selected<% } %>>Domyślnie (<%= domyslnyKurier(m)?KURIERZY[domyslnyKurier(m)]:'brak kuriera' %>)</option>
+<% for (const [w,n] of [['dpd','DPD'],['inpost_paczkomat','Paczkomat InPost'],['odbior','Odbiór osobisty (bez paczki)'],['brak','Brak kuriera — nadam sam']]) { %><option value="<%= w %>"<% if(wybor===w){ %> selected<% } %>><%= n %></option><% } %>
+</select>
+<% if(!efekt){ %><br><span class="uwaga" id="erli-kurier-<%= i %>-uwaga">Brak kuriera — zamówienia z tą metodą zatrzymają się przed nadaniem.</span><% } %>
+<% } %></td></tr>
+<% } %></tbody></table></div>
+<button type="submit" class="btn btn--glowny">Zapisz metody dostawy</button></fieldset></form>
+<% } %>
+<% if(moznaPominac){ %>
+<div class="erli-pomin">
+<p id="erli-pomin-metody-pomoc">Bez tego kroku OMS nada Przesyłki Erli z domyślną paczką i punktem z ERLI, a pozostałe metody kurierem z Twojej umowy według dostawcy z ERLI; wrócisz tu w każdej chwili.</p>
+<form method="post" action="<%= adres %>/pomin-metody" aria-label="Pomiń metody dostawy" aria-describedby="erli-pomin-metody-pomoc"><%- ukryty %><button type="submit" class="btn"<% if(env||!u.sprawdzono){ %> disabled<% } %>>Pomiń — ustawię metody później</button></form>
+</div>
+<% } %>
+</section>
+<% } %>
+
+<% const sekcjaNadawanie = () => { const punkty=Array.isArray(u.punktyNadania)?u.punktyNadania:[], wym=u.wymiaryDomyslne??{}; %>
+<section class="ust-sekcja"><%- naglowek('nadawanie', tytul('nadawanie')) %>
+<% if(!metody){ %><p>Ten krok pojawi się po pobraniu metod dostawy, jeśli sklep ma metody Przesyłek Erli.</p><% } else { %>
+<p>Punkt nadania i wymiary podpowiadane w formularzu nadania Przesyłki Erli. Wymiary możesz zmienić przy każdej paczce.</p>
+<form method="post" action="<%= adres %>/nadawanie" aria-labelledby="erli-nadawanie"><%- ukryty %>
+<fieldset<% if(env){ %> disabled<% } %>><legend>Nadawanie Przesyłek Erli</legend>
+<fieldset><legend>Punkt nadania (wymagany)</legend>
+<% if(!punkty.length){ %><p class="uwaga">ERLI nie zwróciło punktów nadania — dodaj punkt w panelu ERLI i pobierz metody ponownie.</p><% } %>
+<% for (const x of punkty) { %>
+<p><input id="erli-punkt-<%= x.id %>" type="radio" name="punktNadania" value="<%= x.id %>"<% if(String(u.punktNadania)===x.id){ %> checked<% } %> required><label for="erli-punkt-<%= x.id %>"><%= x.nazwa %><% if(x.domyslny){ %> (domyślny w ERLI)<% } %><% if(x.adres){ %><br><%= x.adres %><% } %></label></p>
+<% } %></fieldset>
+<fieldset class="erli-wymiary"><legend>Domyślna paczka</legend>
+<% for (const [pole,napis,jedn] of [['waga','Waga','kg'],['dlugosc','Długość','cm'],['szerokosc','Szerokość','cm'],['wysokosc','Wysokość','cm']]) { %>
+<p><label for="erli-<%= pole %>"><%= napis %> (<%= jedn %>, wymagana)</label><br><input id="erli-<%= pole %>" name="<%= pole %>" inputmode="decimal" autocomplete="off" value="<%= wym[pole]??'' %>" required></p>
+<% } %></fieldset>
+<button type="submit" class="btn btn--glowny"<% if(!punkty.length){ %> disabled<% } %>>Zapisz nadawanie</button></fieldset></form>
+<% } %></section>
+<% } %>
+
+<% const notaBaseLinker = () => { %><p>Jeśli ten sam sklep ERLI jest podłączony do innego programu (np. BaseLinker), oba czytają te same zmiany — OMS dorabia zaległe raz na dobę z listy zamówień.</p><% } %>
+<% const poleOdczytu = () => { %><p><input id="erli-odczyt" type="checkbox" name="tylkoOdczyt" value="tak"<% if(u.tylkoOdczyt??u.adresApi===srodowiska[0].adres){ %> checked<% } %><% if(env){ %> disabled<% } %>><label for="erli-odczyt">Tylko odczyt — import bez statusów i numerów</label></p><% } %>
+
+<% const sekcjaStart = () => { %>
+<section class="ust-sekcja"><%- naglowek('start', tytul('start')) %>
+<form method="post" action="<%= adres %>/aktywuj" aria-labelledby="erli-start"><%- ukryty %><input type="hidden" name="decyzjaOdczytu" value="1">
+<% if(u.aktywowano){ %><p>Zamówienia od <%= dataStartu %>. Daty startu nie można zmienić po pierwszej aktywacji.</p>
+<% } else { %><p><label for="erli-od">Zamówienia od dnia (wymagane)</label><br><input id="erli-od" type="date" name="od" min="<%= zakresDatyStartu.min %>" max="<%= zakresDatyStartu.max %>" value="<%= k.od_utc?new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Warsaw'}).format(new Date(k.od_utc)):zakresDatyStartu.max %>" required aria-describedby="erli-od-pomoc"><br><span id="erli-od-pomoc">OMS pobierze zamówienia złożone od tego dnia; po aktywacji daty nie zmienisz.</span></p><% } %>
+<% poleOdczytu() %>
+<% notaBaseLinker() %>
+<button type="submit" class="btn btn--glowny">Aktywuj</button></form>
+</section>
+<% } %>
+
+<% const zwiniety = (id, opis, srodek) => { %>
+<details class="erli-krok" id="erli-krok-<%= id %>"<% if(otwarte===id||(id==='dane'&&kreator&&biezacy==='polaczenie'&&!k.kluczZapisany)){ %> open<% } %>>
+<summary><%= tytul(id) %> — <%= opis %></summary>
+<% srodek() %>
+</details>
+<% } %>
+
+<% if (kreator) {
+     // Jeden rozwinięty krok — bieżący; zrobione są zwinięte z podsumowaniem, przyszłe widać tylko w pasku.
+     const sekcje={dane:sekcjaDane,polaczenie:sekcjaPolaczenie,metody:sekcjaMetody,nadawanie:sekcjaNadawanie,start:sekcjaStart};
+     for (const krok of konfigurator.kroki) {
+       if (krok.id === biezacy) { sekcje[krok.id](); break; }
+       // Krok 2 nie ma osobnej sekcji, gdy połączenie działa — wynik widać w podsumowaniu kroku 1.
+       if (krok.id === 'polaczenie') continue;
+       zwiniety(krok.id, podsumowanie[krok.id], sekcje[krok.id]);
+     }
+   } else { %>
+<section class="ust-sekcja"><h2 id="erli-stan" tabindex="-1">Stan sklepu</h2>
+<p><strong><%= env ? 'Sklep z pliku konfiguracji' : 'Sklep aktywny' %> — <%= k.pobieranie==='wlaczone'?'pobieranie włączone':'pobieranie wstrzymane' %>, zamówienia od <%= dataStartu %></strong></p>
+<div class="erli-stan-akcje">
+<% if(u.aktywowano){ %><form method="post" action="<%= adres %>/pobieranie" aria-label="Stan pobierania ERLI"><%- ukryty %><input type="hidden" name="wlaczone" value="<%= k.pobieranie==='wlaczone'?'nie':'tak' %>"><button type="submit" class="btn"<% if(env){ %> disabled<% } %>><%= k.pobieranie==='wlaczone'?'Wstrzymaj':'Wznów' %></button></form><% } %>
+<form method="post" action="<%= adres %>/odczyt" aria-label="Tryb odczytu ERLI"><%- ukryty %><input type="hidden" name="decyzjaOdczytu" value="1">
+<% poleOdczytu() %>
+<button type="submit" class="btn"<% if(env){ %> disabled<% } %>>Zapisz tryb odczytu</button></form>
+</div>
+<% notaBaseLinker() %>
+</section>
+<% zwiniety('dane', podsumowanie.dane, sekcjaDane);
+   zwiniety('metody', podsumowanie.metody, sekcjaMetody);
+   if (!pominNadawanie) zwiniety('nadawanie', podsumowanie.nadawanie, sekcjaNadawanie); %>
+<details class="erli-odlacz"<% if(otwarte==='odlacz'){ %> open<% } %>>
+<summary>Odłącz sklep</summary>
+<form method="post" action="<%= adres %>/odlacz" aria-label="Odłączenie ERLI"><%- ukryty %><p>OMS przestanie pobierać zamówienia i usunie zapisany klucz API. Sklep wróci do kreatora.</p><p><input id="erli-odlacz" name="potwierdz" value="tak" type="checkbox" required<% if(env){ %> disabled<% } %>><label for="erli-odlacz">Potwierdzam odłączenie sklepu</label></p><button type="submit" class="btn btn--groza"<% if(env){ %> disabled<% } %>>Odłącz</button></form>
+</details>
+<% } %>
+<% if (locals.moznaUsunac) { %><details class="erli-usun"<% if(otwarte==='usun'){ %> open<% } %>>
+<summary>Usuń sklep</summary>
+<form method="post" action="<%= adres %>/usun" aria-label="Usuń sklep ERLI"><%- ukryty %><p><input id="erli-usun-potwierdz" type="checkbox" name="potwierdz" value="tak" required><label for="erli-usun-potwierdz">Usunąć sklep z OMS? Znikną nazwa, środowisko i klucz API. Z tego sklepu nie pobrano jeszcze żadnych zamówień.</label></p><button type="submit" class="btn btn--maly btn--groza">Usuń sklep</button></form>
+</details><% } %>
+<script>(function(){var r=document.querySelector('.erli-konfigurator');if(!r)return;
+// Odnośnik do zwiniętego kroku (pasek, „krok 1”) rozwija jego <details>, zanim przeglądarka do niego przewinie.
+var otworz=function(id){var c=id&&document.getElementById(id);var d=c&&c.closest('details');if(d)d.open=true;};
+r.addEventListener('click',function(e){var a=e.target.closest('a[href^="#erli-"]');if(a)otworz(a.hash.slice(1));});
+otworz(location.hash.slice(1));})();</script>
+</div>

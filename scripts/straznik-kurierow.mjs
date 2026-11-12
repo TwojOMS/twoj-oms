@@ -3,6 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const listaDozwolonych = {
+  'src/oms/erli/numer.js': { liczba: 6, powod: 'vendor i typeId protokołu shipping/external ERLI z kuriera OMS (PRZ-157.06)' },
+  'src/domena/erli-droga-nadania.js': { liczba: 6, powod: 'domyślne mapowanie vendor słownika ERLI na kuriera OMS (PRZ-157.07a), także kontrakt wyniku JSDoc' },
   'src/core/kontrakty.ts': { liczba: 1, powod: 'typ formularza nadania' },
   'src/domena/dowod-odbioru.js': { liczba: 2, powod: 'źródło dowodu odbioru' },
   'src/domena/gotowosc-nadania.js': { liczba: 1, powod: 'warunek punktu odbioru, do przepięcia na rejestr' },
@@ -30,6 +32,7 @@ export const listaDozwolonych = {
   'src/moduly/zamowienia/widoki/zamowienie.ejs': { liczba: 2, powod: 'wskazówka pobrania etykiety' },
   'src/moduly/zamowienia/wspolne.js': { liczba: 1, powod: 'komentarz historyczny' },
   'src/oms/db/uzupelnienia-zamowien.js': { liczba: 2, powod: 'historyczne uzupełnienie zamówień' },
+  'src/oms/erli/client.js': { liczba: 2, powod: 'enum vendor protokołu HTTP ERLI, nie wybór modułu kuriera (PRZ-157.02)' },
   'src/oms/kurierzy/index.js': { liczba: 4, powod: 'komentarze historyczne o metodzie domyślnej' },
 };
 

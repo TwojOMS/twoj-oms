@@ -1,5 +1,8 @@
 import type { ModulOms, OpisKuriera, Srodowisko, Zegar } from '../../core/kontrakty.ts';
 import type { FastifyInstance } from 'fastify';
+import { modulZamowienia } from '../../domena/moduly-kanalow.ts';
+import { MODUL_ALLEGRO } from '../../domena/modul-allegro.ts';
+import { mapaNaZadanie } from '../kanaly/kolekcje-na-zadanie.ts';
 import { MODULY_KURIEROW, type RejestrKurierow } from '../../domena/moduly-kurierow.ts';
 import { integracje } from '../../integracje/klucze.js';
 import { createNadanie } from './services/nadanie.js';
@@ -28,6 +31,7 @@ import { ocenZdrowie } from '../../domena/zdrowie.js';
 import { PACZKA_DOMYSLNA } from '../../domena/ustawienia-panelu.js';
 import type { DaneSprzedawcy } from '../../core/sprzedawca.ts';
 import { zrodloRachunkuFirmy } from '../../oms/db/rachunek-firmy.js';
+import { punktNadaniaErli } from '../kanaly/services/kanal-erli.ts';
 import type { MapaKurierow } from './kurierzy.ts';
 import { interwal } from '../../core/konfiguracja-wartosci.ts';
 import { opcjeKlientaDpd } from '../../domena/konfiguracja-dpd.js';
@@ -115,7 +119,8 @@ return {
   zbuduj: (ctx) => {
     const { db, konfiguracja: k, teraz } = ctx;
     const klienci = ctx.usluga<MapaKlientow>('kanaly', 'klienciSklepow');
-    const klienciAllegro = ctx.usluga<MapaKlientow>('kanaly', 'klienciKanalow');
+    const klienciKanalow = ctx.usluga<MapaKlientow>('kanaly', 'klienciKanalow');
+    const klienciAllegro = mapaNaZadanie(() => Object.keys(klienciKanalow).filter(sklep => modulZamowienia({sklep}).typ === MODUL_ALLEGRO.typ), sklep => klienciKanalow[sklep]);
     const config = ctx.usluga<any>('kanaly', 'config');
     // PRZ-102.20: źródło bez stanu (czyta bazę przy każdym wywołaniu) nad rachunkiem z pliku z rdzenia.
     const rachunekFirmy = zrodloRachunkuFirmy({ db, zPliku: ctx.usluga<DaneSprzedawcy>('rdzen', 'sprzedawca') });
@@ -126,7 +131,8 @@ return {
       get rachunek() { return rachunekFirmy.biezacy().rachunek ?? undefined; } };
     const kurierzy = zbudujKurierow({ ...k.kurierzy,
       pobranieNadawca,
-    }, klienciAllegro, fabryki);
+      punktNadaniaErliDla: (z: any) => punktNadaniaErli(db, z?.sklep),
+    }, klienciKanalow, fabryki);
     // PRZ-092: DPD z Ustawień tylko, gdy .env go nie ustawia (.env wygrywa). Piaskownica bez atrapy nie dostaje
     // prawdziwego klienta DPD: wpisane na :3005 dane nie mogą wyjść do DPD.
     const wczytajDpd = () => wczytajKonfiguracjeIntegracji(db, 'dpd');
@@ -152,7 +158,9 @@ return {
       };
     };
     const dpdPrzyStarcie=Boolean(kurierzy.dpd),inpostPrzyStarcie=Boolean(kurierzy.inpost);
-    const kurierzyDostepni=()=>Boolean((dpdPrzyStarcie&&kurierzy.dpd)||(inpostPrzyStarcie&&kurierzy.inpost)||Object.keys(klienciAllegro).length);
+    // Jawna podmiana klienta w udostępnionej mapie działa od razu; pierwszy adapter
+    // z Ustawień nadal wymaga restartu, jak wskazuje wymagaRestartu poniżej.
+    const kurierzyDostepni=()=>Boolean((kurierzy.dpd&&(dpdPrzyStarcie||kurierzy.dpd!==dpdUstawien))||(kurierzy.inpost&&(inpostPrzyStarcie||kurierzy.inpost!==inpostUstawien))||Object.keys(klienciKanalow).length);
     const bezKurierowPrzyStarcie = !kurierzyDostepni();
     const kurierDpd = {
       zEnv: Boolean(k.kurierzy.dpd), adresFirmy: adresFirmy.biezacy,
@@ -172,11 +180,11 @@ return {
     sprzatnijOsadStatusu(db, kurierzy, ctx.log);
     const infakt = ctx.usluga<any>('faktury', 'infakt');
     const puls = ctx.usluga<any>('faktury', 'puls');
-    const nadanieGotowe=()=>kurierzyDostepni()&&(Object.keys(klienci).length>0||Object.keys(klienciAllegro).length>0);
+    const nadanieGotowe=()=>kurierzyDostepni()&&(Object.keys(klienci).length>0||Object.keys(klienciKanalow).length>0);
     let implementacjaNadania:ReturnType<typeof createNadanie>|undefined;
     const nadanieBiezace=()=>{
       if(!nadanieGotowe())throw bladOperatora('Nadawanie nie jest skonfigurowane (brak sklepu lub konta Allegro i kuriera).',{status:503});
-      return implementacjaNadania??=createNadanie({db,kurierzy,klienci,katalogEtykiet:k.katalogEtykiet});
+      return implementacjaNadania??=createNadanie({db,kurierzy,klienci,klienciKanalow,katalogEtykiet:k.katalogEtykiet});
     };
     if(nadanieGotowe())nadanieBiezace(); // Walidacja katalogu przed pierwszym kontaktem z kurierem.
     const nadanie={gotowe:nadanieGotowe,paczkaDomyslna:PACZKA_DOMYSLNA,
@@ -186,7 +194,7 @@ return {
     };
     const podjazdy = createPodjazdy({ db, allegroDla: (kanal: string) => klienciAllegro[kanal] ?? null, teraz });
     const przesylkiAllegro = createPrzesylkiAllegro({ db, klienci: klienciAllegro });
-    const czuwaczPrzesylek = createCzuwaczPrzesylek({ db, kurierzy, infakt, teraz, klienci });
+    const czuwaczPrzesylek = createCzuwaczPrzesylek({ db, kurierzy, infakt, teraz, klienci, klienciKanalow });
     const czuwaczPodjazdow = podjazdy ? createCzuwaczPodjazdow({ db, podjazdy, kurierzy, teraz }) : null;
     const zegary: Zegar[] = czuwaczPrzesylek ? [zegarPrzesylek({ czuwacz: czuwaczPrzesylek,
       odstepMs: k.odstepPrzesylekMs, puls, log: ctx.log, program: infakt })] : [];
@@ -197,7 +205,7 @@ return {
         config: { ...config, ...k.kurierzy, pobranieNadawca, nadawca: k.kurierzy.dpd?.nadawca ?? null, katalogEtykiet: k.katalogEtykiet },
         przesylki: przesylki(db), zapytaniaPodjazdow: podjazdyDb(db), kolejkaDruku: kolejkaDruku(db) },
       trasy: (app) => {
-        registerPrzesylkiRoutes(app, { db });
+        registerPrzesylkiRoutes(app, { db, kurierzy: ctx.usluga<MapaKurierow>('wysylka', 'kurierzy') });
         registerPodjazdyRoutes(app, { db, podjazdy: ctx.usluga<any>('wysylka', 'podjazdy'), adresDomyslny: k.adresPodjazdu });
         const opcje = { db, nadanie: ctx.usluga<ReturnType<typeof createNadanie> | null>('wysylka', 'nadanie'), kurierzy: ctx.usluga<MapaKurierow>('wysylka', 'kurierzy'), config, programFaktur: infakt,
           syncSklep: { odeslijStatus: (...args: unknown[]) => ctx.usluga<any>('zamowienia', 'syncSklep')?.odeslijStatus(...args) },
@@ -215,7 +223,7 @@ return {
         const ocena = ocenZdrowie({ teraz: teraz(), startAt: puls.startAt,
           // PRZ-092: liczone z czuwacza zbudowanego przy starcie, nie z żywej mapy — kurier dodany w Ustawieniach do
           // panelu bez kurierów nie ma czuwacza do restartu, więc nie może dawać alarmu „brak przebiegu” ani gasić uwagi.
-          przesylkiWlaczone: kurierzyDostepni(), pulsPrzesylek: puls.stan().czuwaczPrzesylek ?? null });
+          przesylkiWlaczone: kurierzyDostepni() || Object.keys(klienciKanalow).length > 0, pulsPrzesylek: puls.stan().czuwaczPrzesylek ?? null });
         if (!kurierzyDostepni()) ocena.uwagi.push('Nadawanie nie jest skonfigurowane.');
         return ocena;
       },
