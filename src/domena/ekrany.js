@@ -247,6 +247,7 @@ export function tytulEkranuDlaAdresu(url) {
     '/ustawienia/integracje/dpd': 'DPD',
     '/ustawienia/integracje/inpost': 'InPost',
     '/ustawienia/integracje/infakt': 'inFakt',
+    '/ustawienia/integracje/fakturownia': 'Fakturownia',
     '/ustawienia/integracje/program-fakturowy': 'Moduł faktur',
     '/ustawienia/integracje/program-fakturowy/serie': 'Serie numeracji',
     '/ustawienia/integracje/program-fakturowy/ksef': 'Wysyłka faktur do KSeF',

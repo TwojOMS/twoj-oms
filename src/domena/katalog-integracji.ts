@@ -51,7 +51,7 @@ const WPISY: Wpis[] = [
   { id: 'dhl', nazwa: 'DHL', kategoria: 'wysylka', opis: 'Połączenie z kurierem DHL.', logo: '/integracje/dhl.svg', dostepnosc: 'planowana', href: null },
   { id: 'apaczka', nazwa: 'Apaczka', kategoria: 'wysylka', opis: 'Broker — wiele firm kurierskich w jednej umowie.', logo: '/integracje/paczka.svg', dostepnosc: 'planowana', href: null },
   { id: 'infakt', nazwa: 'inFakt', kategoria: 'faktury', opis: 'Połącz konto inFakt do wystawiania faktur.', logo: '/integracje/infakt.png', dostepnosc: 'dostepna', href: '/ustawienia/integracje/infakt' },
-  { id: 'fakturownia', nazwa: 'Fakturownia', kategoria: 'faktury', opis: 'Połączenie z programem Fakturownia.', logo: '/integracje/fakturownia.svg', dostepnosc: 'planowana', href: null },
+  { id: 'fakturownia', nazwa: 'Fakturownia', kategoria: 'faktury', opis: 'Połączenie z programem Fakturownia.', logo: '/integracje/fakturownia.svg', dostepnosc: 'dostepna', href: '/ustawienia/integracje/fakturownia' },
   { id: 'ksef', nazwa: 'KSeF', kategoria: 'faktury', opis: 'Skonfiguruj połączenie do pobierania faktur kosztowych.', logo: '/integracje/ksef.jpg', dostepnosc: 'dostepna', href: '/ustawienia/integracje/ksef' },
   { id: 'gus', nazwa: 'GUS', kategoria: 'faktury', opis: 'Pobieraj dane firmy po numerze NIP.', logo: '/integracje/gus.svg', dostepnosc: 'dostepna', href: '/ustawienia/integracje/gus' },
   { id: 'smtp', nazwa: 'Poczta wychodząca', kategoria: 'poczta', opis: 'Skonfiguruj wysyłanie wiadomości e-mail przez serwer SMTP.', logo: '/integracje/smtp.svg', dostepnosc: 'dostepna', href: '/ustawienia/integracje/poczta' },

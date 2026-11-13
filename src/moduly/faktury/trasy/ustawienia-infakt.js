@@ -12,11 +12,11 @@ import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfig
 import { jawnyBrak } from '../../../domena/wybor-programu.js';
 import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';
 import { czyWysylacKonsumenckie, zapiszKonsumenckie } from '../db/ksef-konsumenckie.js';
-import { stanAutomatuKsef, obsluzZapisAutomatuKsef } from './automat-ksef-ekran.js';
+import { stanAutomatuKsef, obsluzZapisAutomatuKsef, registerAdresuAutomatuKsef, AUTOMAT_KSEF_PROGRAMU } from './automat-ksef-ekran.js';
 
 const KOMUNIKATY = { zapisano: 'Zapisano klucz API inFaktu.', odlaczono: 'inFakt został odłączony. Klucz API usunięty z OMS-u.' };
 
-export function registerUstawieniaInfaktuRoutes(app, { db, konfiguracjaInfaktu, automatKsef = null, teraz = () => new Date(), infakt = null }) {
+export function registerUstawieniaInfaktuRoutes(app, { db, konfiguracjaInfaktu, konfiguracjaProgramu = konfiguracjaInfaktu, automatKsef = null, teraz = () => new Date(), infakt = null }) {
   const k = konfiguracjaInfaktu;
   function widok(req, reply, { bledy = [], test = null, bladKonsumenckich = null } = {}) {
     const stan = stanDlaEkranu(wczytajKonfiguracjeIntegracji(db, 'infakt'));
@@ -39,7 +39,12 @@ export function registerUstawieniaInfaktuRoutes(app, { db, konfiguracjaInfaktu, 
   // PRZ-102.12 → PRZ-108.06: stary adres zapisu automatu KSeF. Ta sama obsługa co na ekranie Automatyzacji
   // (automat-ksef-ekran.js): tylko admin, 303 na nowy ekran, błąd formularza = 400 z ekranem Automatyzacji.
   // PRZ-118.10: `infakt` (usługa modułu faktur: klient albo program) — nazwa programu w sekcji automatu przy 400.
-  app.post(`${EKRAN_INFAKTU}/ksef-automat`, obsluzZapisAutomatuKsef({ db, konfiguracjaInfaktu, automatKsef, teraz, infakt }));
+  // PRZ-119.07: automat czyta stan wybranego programu (`konfiguracjaProgramu`); nowy adres pod programem fakturowym,
+  // a GET starego adresu (zakładki, stare odnośniki) — 301 na nowy. POST starego adresu zostaje aliasem zapisu.
+  const automat = { db, konfiguracjaProgramu, automatKsef, teraz, infakt };
+  app.post(`${EKRAN_INFAKTU}/ksef-automat`, obsluzZapisAutomatuKsef(automat));
+  app.get(`${EKRAN_INFAKTU}/ksef-automat`, async (_req, reply) => reply.code(301).redirect(AUTOMAT_KSEF_PROGRAMU));
+  registerAdresuAutomatuKsef(app, automat);
   const zEnv = (reply) => stronaOdmowy(reply, 409, 'inFakt jest ustawiony w pliku konfiguracji (oms.env, INFAKT_API_KEY) — tam go zmień. Formularz niczego nie zapisał.', {
     tytul: 'Nie zapisano ustawień inFaktu', wroc: EKRAN_INFAKTU, napisWroc: 'Wróć do ustawień inFaktu',
   });

@@ -307,7 +307,11 @@ export async function oznaczDoreczonePobrania({
           + `${mianownik} przetwarza to zadanie w tle.`;
       } catch (e) {
         bledy += 1;
-        wynik = 'UWAGA: paczka za pobraniem została doręczona, ale nie udało się zlecić '
+        // PRZ-119.05: status „opłacona” przyjęty, padł sam zapis daty zapłaty — faktura JEST opłacona.
+        wynik = e?.zaplataOznaczona
+          ? `UWAGA: paczka za pobraniem została doręczona; faktura ${w.faktura_numer ?? '(bez numeru)'} jest już oznaczona `
+            + `jako opłacona w ${miejscownik} — popraw tylko datę zapłaty (${paidDate}). Powód: ${e.message}`
+          : 'UWAGA: paczka za pobraniem została doręczona, ale nie udało się zlecić '
           + `oznaczenia faktury ${w.faktura_numer ?? '(bez numeru)'} jako opłaconej — `
           + `w ${miejscownik} zostanie jako NIEOPŁACONA. Przestaw jej status ręcznie. Panel NIE `
           + `ponowi tego sam, bo zlecenie mogło dojść mimo błędu. Powód: ${e.message}`;

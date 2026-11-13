@@ -16,11 +16,14 @@ import { wczytajAutomatKsef, zapiszUstawieniaAutomatu, zapiszTrybAutomatu, czyDo
 import { czyWysylacKonsumenckie, KONSUMENCKIE_POZA_KSEF_TF } from '../db/ksef-konsumenckie.js';
 import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';
 import { odmianaNazwyProgramu, gdzieDokument } from '../../../domena/nazwa-programu.js';
-import { zdanieBrakuProgramu, jawnyBrak } from '../../../domena/wybor-programu.js';
+import { zdanieBrakuProgramu, jawnyBrak, EKRAN_WYBORU_PROGRAMU } from '../../../domena/wybor-programu.js';
 
 export const EKRAN_AUTOMATYZACJI = '/ustawienia/automatyzacje';
 export const ZAPIS_AUTOMATU_KSEF = `${EKRAN_AUTOMATYZACJI}/ksef`;
 const PO_ZAPISIE = `${EKRAN_AUTOMATYZACJI}/systemowe?zapisano=ksef-automat#ksef-automat`;
+// PRZ-119.07: adres automatu pod programem fakturowym (dowolny program, nie tylko inFakt). Stary adres ekranu inFaktu
+// przekierowuje tu GET-em 301; jego POST zostaje aliasem zapisu (ustawienia-infakt.js).
+export const AUTOMAT_KSEF_PROGRAMU = `${EKRAN_WYBORU_PROGRAMU}/ksef-automat`;
 // ⚠️ Nie `ustawienia-automatyzacje.ejs` — ta nazwa należy do autorespondera (wiadomosci/widoki), a widoki modułów
 // mają jedną płaską przestrzeń nazw (tests/core/widoki-unikalne.test.js).
 const WIDOK = 'automatyzacje.ejs';
@@ -34,9 +37,11 @@ function powodBezczynnosciAutomatu(k, automatKsef, nazwa) {
   const brak = zdanieBrakuProgramu(k.wyborProgramu?.teraz?.() ?? k.wyborProgramu, 'Automatyczna wysyłka do KSeF nic nie wyśle.');
   if (brak) return brak;
   if (automatKsef && !k.odlaczonyDoRestartu()) return null;
-  if (k.odlaczonyDoRestartu()) return `${nazwa.mianownik} jest odłączony — automat nic nie wyśle, dopóki go nie podłączysz i nie uruchomisz OMS-u ponownie.`;
-  if (k.wymagaRestartu()) return `${nazwa.mianownik} jest już podłączony, ale automat ruszy dopiero po ponownym uruchomieniu OMS-u.`;
-  return `${nazwa.mianownik} nie jest podłączony — automat nic nie wyśle, dopóki go nie podłączysz (potem potrzebne ponowne uruchomienie OMS-u).`;
+  // PRZ-119.07: Fakturownia — rodzaj żeński („odłączona”, „jej”); inFakt i reszta jak przed zmianą.
+  const [y, go] = k.zenska === true ? ['a', 'jej'] : ['y', 'go'];
+  if (k.odlaczonyDoRestartu()) return `${nazwa.mianownik} jest odłączon${y} — automat nic nie wyśle, dopóki ${go} nie podłączysz i nie uruchomisz OMS-u ponownie.`;
+  if (k.wymagaRestartu()) return `${nazwa.mianownik} jest już podłączon${y}, ale automat ruszy dopiero po ponownym uruchomieniu OMS-u.`;
+  return `${nazwa.mianownik} nie jest podłączon${y} — automat nic nie wyśle, dopóki ${go} nie podłączysz (potem potrzebne ponowne uruchomienie OMS-u).`;
 }
 
 /** PRZ-123 C09: tryby wysyłki tylko przy programie z własną wysyłką do KSeF (TwojeFaktury); inFakt — bez zmian. */
@@ -49,11 +54,15 @@ export function stanAutomatuKsef(db, teraz = () => new Date()) {
 }
 
 /** Model sekcji `#ksef-automat` (partial faktury/widoki/_automat-ksef.ejs). */
-export function modelAutomatuKsef({ db, konfiguracjaInfaktu, automatKsef = null, teraz = () => new Date(), infakt: program = null },
+// PRZ-119.07: `konfiguracjaProgramu` = stan wybranego programu (inFakt albo Fakturownia); `konfiguracjaInfaktu` zostaje
+// jako stara nazwa tej samej zależności (testy i wołający sprzed zmiany).
+export function modelAutomatuKsef({ db, konfiguracjaProgramu, konfiguracjaInfaktu, automatKsef = null, teraz = () => new Date(), infakt: program = null },
   { bledy = [], formularz = null } = {}) {
+  const k = konfiguracjaProgramu ?? konfiguracjaInfaktu;
   const stan = wczytajAutomatKsef(db);
   // PRZ-118.09: usługa `infakt` modułu faktur (klient albo program) — nazwa w zdaniach sekcji automatu.
-  const nazwaProgramu = odmianaNazwyProgramu(program);
+  // PRZ-119.07: bez programu (niepodłączony) nazwa z konfiguracji wybranego programu, a bez niej — inFakt jak dotąd.
+  const nazwaProgramu = program ? odmianaNazwyProgramu(program) : (k?.nazwa ?? odmianaNazwyProgramu(null));
   // PRZ-123 C09: program z własną wysyłką (TwojeFaktury) — wybór trybu i odstępu na poprawki zamiast przełącznika.
   const wyborTrybu = maWyborTrybu(program);
   return {
@@ -67,9 +76,9 @@ export function modelAutomatuKsef({ db, konfiguracjaInfaktu, automatKsef = null,
     bledy,
     najblizszy: wyborTrybu && stan.tryb === 'po_wystawieniu' ? `co ${CO_ILE_PO_WYSTAWIENIU_MIN} minut`
       : najblizszyPrzebieg(wyborTrybu ? { ...stan, wlaczony: stan.tryb === 'o_godzinie' } : stan, chwilaWarszawy(teraz())),
-    powodBezczynnosci: powodBezczynnosciAutomatu(konfiguracjaInfaktu, automatKsef, nazwaProgramu),
+    powodBezczynnosci: powodBezczynnosciAutomatu(k, automatKsef, nazwaProgramu),
     // PRZ-121.03b: jawny „brak” (też zapisany po starcie) — linia stanu nie mówi „Włączony — najbliższy przebieg”.
-    stoiPrzezBrak: jawnyBrak(konfiguracjaInfaktu?.wyborProgramu?.teraz?.() ?? konfiguracjaInfaktu?.wyborProgramu),
+    stoiPrzezBrak: jawnyBrak(k?.wyborProgramu?.teraz?.() ?? k?.wyborProgramu),
     // PRZ-122.B2C-QR: TwojeFaktury wydaje PDF konsumenckiej dopiero z numerem KSeF — przy wyłączonym przełączniku
     // „konsumenckie w KSeF” jedno zdanie ostrzeżenia (to samo, co w odmowie pobrania PDF). inFakt — bez zdania.
     // PRZ-126.J01: wersja TF — przełącznik przy TwojeFaktury stoi na ekranie Wysyłka do KSeF.
@@ -97,6 +106,7 @@ export function widokEkranuAutomatyzacji(req, reply, zaleznosci, { bledy = [], f
   const dodatki = zaleznosci.dodatki ?? dodatkiEkranu.get(db);
   return reply.view(WIDOK, {
     nawigacja: nawigacjaUstawien(req, reply), title: 'Automatyzacje',
+    tylkoAutomatKsef: zaleznosci.tylkoAutomatKsef === true,
     zapisano: KOMUNIKATY[req.query?.zapisano] ?? null,
     automat: modelAutomatuKsef(zaleznosci, { bledy, formularz }),
     konsumenckie: czyWysylacKonsumenckie(db),
@@ -105,6 +115,15 @@ export function widokEkranuAutomatyzacji(req, reply, zaleznosci, { bledy = [], f
     // zapisu na ekranie inFaktu (zgłoszenie per baza, wyżej). Skład bez modułu automatyzacji — sam opis reguł.
     ...(dodatki?.(req) ?? {}),
   });
+}
+
+/** PRZ-119.07: ekran i zapis automatu KSeF pod adresem programu fakturowego (ten sam widok i zapis co Automatyzacje). */
+export function registerAdresuAutomatuKsef(app, zaleznosciEkranu) {
+  // Ten adres nawigacja przypisuje działowi „Faktury i podatki”, nie zakładce „Automaty systemowe” — flaga każe
+  // widokowi i tak pokazać sekcję automatów (GET i odpowiedź 400).
+  const zaleznosci = { ...zaleznosciEkranu, tylkoAutomatKsef: true };
+  app.get(AUTOMAT_KSEF_PROGRAMU, async (req, reply) => tylkoAdmin(req, reply) ?? widokEkranuAutomatyzacji(req, reply, zaleznosci));
+  app.post(AUTOMAT_KSEF_PROGRAMU, obsluzZapisAutomatuKsef(zaleznosci));
 }
 
 /** Obsługa zapisu automatu — ta sama dla nowego i starego adresu. */

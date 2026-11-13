@@ -221,18 +221,18 @@ describe('PRZ-121.01 moduł faktur według wyboru modułu', () => {
   });
 
   it('(6) zła wartość w pliku → wczytajFaktury rzuca zdaniem z nazwą zmiennej', () => {
-    for (const v of ['infkat', 'fakturownia', 'twojefaktury']) {
+    for (const v of ['infkat', 'twojefaktury', 'Fakturownia2']) {
       expect(() => wczytajFaktury({ ...ENV, INFAKT_API_KEY: KLUCZ_PLIKU, OMS_PROGRAM_FAKTUROWY: v } as any), v)
         .toThrow(/^OMS_PROGRAM_FAKTUROWY: /);
     }
     expect(wczytajFaktury({ ...ENV, OMS_PROGRAM_FAKTUROWY: '' } as any)).toMatchObject({ programZPliku: null });
   });
 
-  it('(6b) zły zapis („fakturownia” po wycofaniu wydania) → „brak” + uwaga, bez programu, panel wstaje', () => {
-    const { db, sprobuj } = zbuduj(createModulFaktury(), { ...ENV, INFAKT_API_KEY: KLUCZ_PLIKU }, { wybor: 'fakturownia' });
+  it('(6b) zły zapis („twojefaktury” po wycofaniu wydania) → „brak” + uwaga, bez programu, panel wstaje', () => {
+    const { db, sprobuj } = zbuduj(createModulFaktury(), { ...ENV, INFAKT_API_KEY: KLUCZ_PLIKU }, { wybor: 'twojefaktury' });
     const z = sprobuj();
     bezProgramu(z);
-    const uwaga = 'Zapisany moduł faktur „fakturownia” nie działa w tej wersji OMS-u — faktury są wyłączone. Wybierz moduł ponownie.';
+    const uwaga = 'Zapisany moduł faktur „twojefaktury” nie działa w tej wersji OMS-u — faktury są wyłączone. Wybierz moduł ponownie.';
     expect(z.uslugi.wyborProgramu).toMatchObject({ program: 'brak', zrodlo: 'ustawienia', uwaga });
     expect(z.zdrowie().uwagi).toEqual([uwaga]);
     db.close();

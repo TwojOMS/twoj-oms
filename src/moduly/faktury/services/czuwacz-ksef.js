@@ -6,6 +6,7 @@ import { dopiszLog, ostatniWpisLogu, pobierzZamowienie } from '../../../oms/db/z
 // `wyslijDoAllegroJesliWolno` nizej.
 import { wolnoWyslacDoAllegro } from '../../../domena/allegro-faktura.js';
 import { createPoNumerzeKsef } from './po-numerze-ksef.js';
+import { wysylkaKsef } from '../db/wysylki-ksef.js';
 import {
   idDokumentu, idDokumentuSql, programDokumentuSql, czyDokumentProgramu, numerKsefDokumentu,
 } from '../../../domena/dokument-programu.js';
@@ -238,8 +239,28 @@ export function createCzuwaczKsef({
   // PRZ-123.C07b: rozstrzyganie niepewnych wysyłek TwojeFaktury (services/ksef-rozstrzygniecie.js) — WYŁĄCZNIE program
   // wbudowany. Domyślnie brak: czuwacz inFaktu zachowuje się i pyta dokładnie jak dotąd.
   rozstrzyganie = null,
+  // PRZ-119.05: warstwa 3 ochrony przed automatyczną wysyłką Fakturowni (magazyn db/alarm-auto-ksef.js) — WYŁĄCZNIE
+  // przy Fakturowni. Domyślnie brak: czuwacz inFaktu i TwojeFaktury zachowuje się dokładnie jak dotąd.
+  alarmAutoKsef = null,
 }) {
   const program = zProgramu({ program: programPodany, infakt });
+  // PRZ-119.05 warstwa 3: dokument, którego wysyłki OMS NIE zlecał (brak wiersza w `wysylki_ksef`), a program mówi,
+  // że poszedł do KSeF — konto Fakturowni wysyła samo. Dokument już jest; operator ma to zobaczyć (trwały alarm do
+  // „Sprawdziłem” + wpis w historii zamówienia). Dławione ostatnim wpisem „ksef”: jeden stan = jeden wpis i jeden
+  // dopisek alarmu, nie co godzinę. Błąd zapisu alarmu nie przerywa odczytu numeru.
+  function zglosSamowolnaWysylke(f, dok, dane) {
+    const gov = dane?.gov_status;
+    if (gov == null || gov === '' || gov === 'not_connected' || gov === 'not_applicable') return;
+    const wynik = `Fakturownia wysłała dokument do KSeF sama (stan: ${gov}) — OMS tego nie zlecał. `
+      + 'Wyłącz automatyczną wysyłkę do KSeF w ustawieniach konta Fakturowni.';
+    if (ostatniWpisLogu(db, f.zamowienie_id, 'ksef')?.wynik === wynik) return;
+    dopiszLog(db, f.zamowienie_id, { akcja: 'ksef', wynik });
+    try {
+      alarmAutoKsef.dopisz({ dokument: dok, numer: dane?.number ?? null, gov_status: gov, oid: null });
+    } catch (e) {
+      log('ksef: nie zapisano alarmu automatycznej wysyłki Fakturowni', String(e?.message ?? e));
+    }
+  }
   // Identyfikator modulu faktur do porzadku kolejki w SQL. `zProgramu` oddaje program zawsze z opisem (surowy klient
   // inFaktu dostaje adapter), wiec `opis.id` jest tym samym, co porownuje `czyDokumentProgramu` w petli. Bez programu
   // `NULL` — porownanie nigdy nie jest prawdziwe i kolejka zostaje w dawnym porzadku.
@@ -334,6 +355,9 @@ export function createCzuwaczKsef({
         // dokumentow, wiec to niespojne id: odczyt „blad" z wpisem w historii, bez blokady „skasowana" na karcie,
         // ktora zwolnilaby zamowienie do ponownego wystawienia (druga faktura na te sama sprzedaz).
         if (dane == null) throw new Error('program faktur nie zna tego dokumentu');
+        // PRZ-119.05 (recenzja): `zlecona_z_panelu` to migawka sprzed pętli — panel mógł zlecić wysyłkę w trakcie
+        // przebiegu, więc przed alarmem świeży odczyt rezerwacji z bazy.
+        if (alarmAutoKsef && !f.zlecona_z_panelu && !wysylkaKsef(db, dok)) zglosSamowolnaWysylke(f, dok, dane);
         const numer = numerKsefDokumentu(dane);
         // PRZ-126 C09f: zapis tylko do wiersza, który dalej wskazuje pytany dokument — zamiana faktury mogła go
         // w trakcie pytania przepiąć na nową. Wtedy numer starej nie trafia nigdzie, a nowa poczeka na swój przebieg.

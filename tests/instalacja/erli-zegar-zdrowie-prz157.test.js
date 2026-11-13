@@ -50,7 +50,8 @@ it.each(['demo', 'sandbox'])('%s: zegar importuje ERLI, a health widzi aktywne �
   const drogi = zamowienia.map(z => drogaErliDlaZamowienia(db, z));
   expect(drogi.some(d => d?.droga === 'przesylki_erli')).toBe(true);
   expect(drogi.some(d => d?.droga === 'umowa' && d.kurier === 'dpd')).toBe(true);
-  expect(drogi.some(d => d?.droga === 'blokada')).toBe(true);
+  // 12.11 właściciel: „w demo nie może takiego być” — kanał demo bez blokady nadania (blokada: testy na kanale własnym).
+  expect(drogi.some(d => d?.droga === 'blokada')).toBe(false);
   expect(siec).not.toHaveBeenCalled();
   expect(await zrodla()).toContain('erli_polcien');
   db.prepare("UPDATE kanaly_sprzedazy SET pobieranie='wylaczone' WHERE klucz='erli_polcien'").run();

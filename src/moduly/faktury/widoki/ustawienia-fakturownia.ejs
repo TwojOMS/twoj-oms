@@ -1,0 +1,57 @@
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Fakturownia'}) %>
+<p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
+<% if (zapisano) { %><div class="pas-potwierdzenie" role="status"><p><%= zapisano %></p></div><% } %>
+<% if (test) { %><div class="<%= test.ok ? 'pas-potwierdzenie' : 'pas-uprzedzenie' %>" id="fakturownia-test" role="status"><p><strong><%= test.ok ? 'Działa.' : 'Nie działa.' %></strong> <%= test.tekst %></p></div><% } %>
+<% if (bledy.length) { %><div class="pas-uprzedzenie" role="alert" id="fakturownia-bledy" tabindex="-1" autofocus><p><strong>Nie zapisano.</strong></p><ul><% bledy.forEach(b => { %><li><%= b %></li><% }); %></ul></div><% } %>
+
+<section class="ust-sekcja" aria-labelledby="fakturownia-ksef">
+  <h2 id="fakturownia-ksef">Automatyczna wysyłka w Fakturowni</h2>
+  <div class="pas-uprzedzenie"><p>Zanim wystawisz pierwszą fakturę: w Fakturowni, Ustawienia → KSeF → Automatyczna wysyłka = Wyłączona. Inaczej Fakturownia wyśle fakturę do KSeF sama, bez podglądu w OMS-ie, a dokumentu w KSeF nie da się skasować.</p></div>
+  <% if (alarm.length) { %>
+    <p class="ust-stan ust-stan-blad"><strong>Alarm: Fakturownia sama wysłała dokumenty do KSeF.</strong></p>
+    <ul><% alarm.forEach(w => { %><li>Dokument: <%= w.numer ?? w.dokument ?? 'nieznany' %>, stan: <%= w.gov_status %>, kiedy: <%= w.kiedy || 'nieznane' %>.</li><% }); %></ul>
+  <% } else { %><p>Brak aktywnego alarmu automatycznej wysyłki.</p><% } %>
+  <form method="post" action="/ustawienia/integracje/fakturownia/sprawdzilem" aria-labelledby="fakturownia-ksef">
+    <div class="ust-akcje"><button class="btn" type="submit">Sprawdziłem — automatyczna wysyłka wyłączona</button></div>
+  </form>
+</section>
+
+<section class="ust-sekcja">
+  <h2>Stan połączenia</h2>
+  <% if (zEnv) { %>
+    <p>Fakturownia jest ustawiona na serwerze. Token i domenę konta zmienia administrator serwera w pliku konfiguracji.</p>
+    <details class="ust-pomoc"><summary>Dla administratora serwera</summary><p>Plik <code>oms.env</code>: <code>FAKTUROWNIA_API_TOKEN</code> i <code>FAKTUROWNIA_DOMENA</code>. Ustawienia z pliku mają pierwszeństwo.</p></details>
+  <% } else if (stan) { %>
+    <p class="ust-stan ust-stan-ok"><strong>Podłączony</strong></p>
+    <p>Dane zapisał <%= stan.kontoLogin ?? '—' %>, <%= fmtDataCzas(stan.zmienionoAt) %>.</p>
+    <% if (wymagaRestartu) { %><p class="pas-uprzedzenie">Pierwsze podłączenie zacznie obsługiwać faktury po ponownym uruchomieniu OMS-u i wybraniu Fakturowni jako modułu faktur. Sprawdzenie połączenia działa już teraz.</p><% } %>
+  <% } else { %><p class="ust-stan"><strong>Niepodłączony</strong></p><% } %>
+</section>
+<% if (!zEnv) { %>
+<section class="ust-sekcja">
+  <h2 id="fakturownia-polaczenie">Połączenie</h2>
+  <form id="fakturownia-formularz" class="ust-formularz" method="post" action="/ustawienia/integracje/fakturownia" aria-labelledby="fakturownia-polaczenie">
+    <label for="fakturownia-domena">Domena konta <span class="ust-wymagane">*</span></label>
+    <div><input id="fakturownia-domena" name="domena" value="<%= domenaProby ?? stan?.ustawienia?.domena ?? '' %>" pattern="[a-z0-9][a-z0-9\-]{0,62}" maxlength="63" required<% if (domenaProby) { %> readonly<% } %> autocorrect="off" autocapitalize="none" spellcheck="false" aria-describedby="fakturownia-domena-pomoc">
+      <p class="ust-pomoc" id="fakturownia-domena-pomoc"><% if (domenaProby) { %>Piaskownica: konto próbne z pliku profilu. Domeny nie da się tu zmienić.<% } else { %>Część adresu przed .fakturownia.pl — małe litery, cyfry i myślnik.<% } %></p></div>
+    <label for="fakturownia-token">Token API <span class="ust-wymagane">*</span></label>
+    <div><input id="fakturownia-token" type="password" name="token" value="" maxlength="200" minlength="12" autocomplete="new-password" aria-describedby="fakturownia-token-pomoc"<% if (stan?.zapisaneSekrety?.token) { %> placeholder="zapisany — wpisz nowy, żeby zmienić"<% } else { %> required<% } %>>
+      <p class="ust-pomoc" id="fakturownia-token-pomoc">Token z Fakturowni: Ustawienia konta → Integracja → Kod autoryzacyjny API. Zapisany token zostaje, jeśli pole pozostawisz puste.</p></div>
+    <p class="ust-pelna ust-pomoc">Pola oznaczone * są wymagane przy pierwszym podłączeniu. Sam zapis niczego nie wystawia.</p>
+    <div class="ust-pelna ust-akcje"><button class="btn btn--glowny" type="submit">Zapisz</button><a class="btn" href="/ustawienia/integracje">Anuluj</a></div>
+  </form>
+</section>
+<% } %>
+<section class="ust-sekcja">
+  <h2 id="fakturownia-sprawdzenie">Sprawdzenie i odłączenie</h2>
+  <form method="post" action="/ustawienia/integracje/fakturownia/sprawdz" aria-labelledby="fakturownia-sprawdzenie">
+    <p>Sprawdzenie czyta pierwszą stronę listy faktur zapisanym tokenem. Niczego nie wystawia ani nie wysyła do KSeF.</p>
+    <div class="ust-akcje"><button class="btn" type="submit">Sprawdź połączenie</button></div>
+  </form>
+  <% if (stan) { %>
+  <form method="post" action="/ustawienia/integracje/fakturownia/odlacz" aria-labelledby="fakturownia-odlaczenie">
+    <p id="fakturownia-odlaczenie">Odłączenie usuwa token i domenę zapisane w OMS-ie. Faktury w Fakturowni i ich numery w zamówieniach zostają.<% if (zEnv) { %> Ustawienia z pliku nadal obowiązują.<% } %></p>
+    <div class="ust-akcje"><button class="btn btn--groza" type="submit">Odłącz Fakturownię</button></div>
+  </form>
+  <% } %>
+</section>

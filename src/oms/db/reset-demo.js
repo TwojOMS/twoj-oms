@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { KLUCZ_ZLECENIA_RESETU, ZACHOWANE_PRZY_RESECIE, ZACHOWANE_SANDBOX_ALLEGRO } from '../../domena/reset-demo.js';
+import { KLUCZ_ZLECENIA_RESETU, ZACHOWANE_PRZY_RESECIE, ZACHOWANE_SANDBOX_ALLEGRO, ZACHOWANE_PROBA_FAKTUROWNIA } from '../../domena/reset-demo.js';
 
 const maTabele = (db, nazwa) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(nazwa));
 const maNumeracje = (db) => ['tf_serie', 'tf_liczniki'].every(nazwa =>
@@ -50,7 +50,13 @@ function przywrocSandbox(db, { konfiguracja, kanaly, tokeny }) {
   return { konfiguracja: nKonf, kanaly: nKanaly };
 }
 
-export function odczytajZlecenieResetu(db, { zachowajSandbox = false } = {}) {
+// PRZ-119.11a: wiersz Fakturowni profilu próby — cały, z sekretami (jak Allegro Sandbox), tylko na żądanie startu.
+function odczytajFakturownieProby(db) {
+  return db.prepare(`SELECT * FROM konfiguracja_integracji WHERE integracja IN (${ZACHOWANE_PROBA_FAKTUROWNIA.map(() => '?').join(',')})`)
+    .all(...ZACHOWANE_PROBA_FAKTUROWNIA);
+}
+
+export function odczytajZlecenieResetu(db, { zachowajSandbox = false, zachowajFakturownie = false } = {}) {
   // Baza bez tabeli `ustawienia` (np. pusty plik) = brak zlecenia — start jak przed RESET-DEMO.
   if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ustawienia'").get()) return null;
   const wpis = db.prepare('SELECT wartosc FROM ustawienia WHERE klucz = ?').get(KLUCZ_ZLECENIA_RESETU);
@@ -63,11 +69,13 @@ export function odczytajZlecenieResetu(db, { zachowajSandbox = false } = {}) {
     serie: db.prepare('SELECT kod, rodzaj, format, reset, zmieniono_at, konto_login FROM tf_serie').all(),
     liczniki: db.prepare('SELECT s.kod, l.okres, l.ostatni FROM tf_liczniki l JOIN tf_serie s ON s.id = l.seria_id').all(),
   } : null;
-  return { zlecenie, zachowane, numeracja, sandbox: zachowajSandbox ? odczytajSandbox(db) : null };
+  return { zlecenie, zachowane, numeracja, sandbox: zachowajSandbox ? odczytajSandbox(db) : null,
+    fakturownia: zachowajFakturownie ? odczytajFakturownieProby(db) : null };
 }
 
 // `stan.sandbox` dostaje liczby przywróconych wierszy Sandbox (bez wartości) — do logu startu.
-export function przywrocPoResecie(db, { zachowane, numeracja, sandbox = null }, stan = {}) {
+// `stan.fakturownia` — nazwy przywróconych wierszy profilu próby Fakturowni (bez wartości).
+export function przywrocPoResecie(db, { zachowane, numeracja, sandbox = null, fakturownia = null }, stan = {}) {
   db.exec('BEGIN IMMEDIATE');
   try {
     const integracja = db.prepare(`INSERT INTO konfiguracja_integracji (integracja, ustawienia_json, sekrety_json, konto_id, konto_login, zmieniono_at)
@@ -86,6 +94,10 @@ export function przywrocPoResecie(db, { zachowane, numeracja, sandbox = null }, 
       for (const l of numeracja.liczniki) licznik.run(l.kod, l.okres, l.ostatni);
     }
     stan.sandbox = sandbox ? przywrocSandbox(db, sandbox) : null;
+    // Konta panelu po resecie są nowe — konto_id wskazywałby cudze konto (jak w Sandbox).
+    stan.fakturownia = (fakturownia ?? [])
+      .filter(w => wstaw(db, 'konfiguracja_integracji', { ...w, konto_id: null }, 'REPLACE'))
+      .map(w => w.integracja);
     db.exec('COMMIT');
     return dostepna ? 'zachowana' : 'brak';
   } catch (e) {
@@ -132,7 +144,7 @@ function przyjmijZnacznikProby(baza) {
   fs.rmSync(znacznik, { force: true });
 }
 
-export async function wykonajZlecenieResetu({ baza, utworzBaze, zachowajSandbox = false }) {
+export async function wykonajZlecenieResetu({ baza, utworzBaze, zachowajSandbox = false, zachowajFakturownie = false }) {
   przyjmijZnacznikProby(baza);
   const kopia = kopiaResetu(baza);
   if (!fs.existsSync(baza) && !fs.existsSync(kopia)) return null;
@@ -141,7 +153,7 @@ export async function wykonajZlecenieResetu({ baza, utworzBaze, zachowajSandbox 
     let dane = zKopii;
     if (!dane) {
       const db = new DatabaseSync(baza, { readOnly: true });
-      try { dane = odczytajZlecenieResetu(db, { zachowajSandbox }); } finally { db.close(); }
+      try { dane = odczytajZlecenieResetu(db, { zachowajSandbox, zachowajFakturownie }); } finally { db.close(); }
       if (!dane) return null;
       fs.writeFileSync(`${kopia}.tmp`, JSON.stringify(dane), { mode: 0o600 });
       fs.renameSync(`${kopia}.tmp`, kopia);
@@ -152,7 +164,8 @@ export async function wykonajZlecenieResetu({ baza, utworzBaze, zachowajSandbox 
     let numeracja; const stan = {};
     try { numeracja = przywrocPoResecie(nowa, dane, stan); } finally { nowa.close(); }
     fs.rmSync(kopia, { force: true });
-    return { zlecenie: dane.zlecenie, zachowane: dane.zachowane.map(w => w.integracja), numeracja, sandbox: stan.sandbox };
+    return { zlecenie: dane.zlecenie, zachowane: dane.zachowane.map(w => w.integracja), numeracja, sandbox: stan.sandbox,
+      fakturownia: stan.fakturownia ?? [] };
   } catch (e) {
     throw new Error('Nie udało się wykonać resetu demo', { cause: e });
   }

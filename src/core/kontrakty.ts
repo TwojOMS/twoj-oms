@@ -277,6 +277,12 @@ export type OpisProgramu = Readonly<{
   wdtWSeriiFaktur?: boolean;
   /** Wartości v3 przyjmowane przy zapisie; brak deklaracji = tylko `delivery`. */
   sposobyPlatnosci?: readonly string[];
+  /**
+   * PRZ-119.12c (pomiar F9B, Fakturownia): program przyjmuje `paid_date` w ładunku wystawienia i każdą datę zapłaty,
+   * także sprzed daty wystawienia. Brak = data zapłaty nie wcześniejsza niż data wystawienia, bez `paid_date`
+   * w ładunku (inFakt — dokumentacja `/paid.json`, niezmierzone; TwojeFaktury). Reguła: services/faktura.js.
+   */
+  dowolnaDataZaplaty?: true;
 }>;
 
 /** Pozycja dokumentu: `gross_price` = SUMA LINII brutto w groszach (domena/pozycje-faktury.js), VAT liczy program. */

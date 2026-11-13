@@ -29,7 +29,7 @@ describe('katalog integracji', () => {
   it('oznacza siedem zapowiedzi bez odnośnika do podłączenia', () => {
     const planowane = KATALOG_INTEGRACJI.filter((usluga) => usluga.dostepnosc === 'planowana');
     expect(planowane.map((usluga) => usluga.id).sort()).toEqual(
-      ['shoper', 'empik', 'etsy', 'gls', 'dhl', 'apaczka', 'fakturownia'].sort(),
+      ['shoper', 'empik', 'etsy', 'gls', 'dhl', 'apaczka'].sort(),
     );
     expect(planowane.every((usluga) => usluga.href === null)).toBe(true);
   });

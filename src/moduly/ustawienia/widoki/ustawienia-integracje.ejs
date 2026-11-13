@@ -84,6 +84,7 @@
   <p><a href="/ustawienia/integracje/program-fakturowy">Moduł faktur</a> — czy OMS wystawia faktury i w którym programie: <%= zgodaTf ? 'Brak, inFakt albo TwojeFaktury' : 'Brak albo inFakt' %>.</p>
   <% if (zgodaTf) { %><p><a href="/ustawienia/integracje/program-fakturowy/ksef">Wysyłka do KSeF</a> — wysyłka faktur sprzedaży z TwojeFaktury.</p><% } %>
   <p><a href="/ustawienia/integracje/infakt">inFakt</a> — klucz API do wystawiania faktur sprzedaży, sprawdzenie połączenia.</p>
+  <p><a href="/ustawienia/integracje/fakturownia">Fakturownia</a> — domena konta i token API do wystawiania faktur sprzedaży, sprawdzenie połączenia.</p>
   <p><a href="/ustawienia/integracje/ksef">KSeF — faktury kosztowe</a> — <% if (wbudowany) { %><%= String(zdanieTokenKosztow).replace(/\.$/, "") %> — <a href="/ustawienia/integracje/program-fakturowy/ksef">Wysyłka do KSeF</a>.<% } else { %>token tylko do przeglądania faktur zakupowych: nocne pobieranie kosztów, sprawdzenie połączenia. OMS niczego przez KSeF nie wysyła.<% } %></p>
 </div>
 <div class="ust-sekcja">

@@ -57,12 +57,15 @@ import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 import { gdzieDokument } from '../../../domena/nazwa-programu.js';
 
 /**
- * Data zapłaty do OZNACZENIA faktury w inFakcie — PÓŹNIEJSZA z dwóch dat.
+ * Data zapłaty (`paid_date`) faktury wystawionej jako „zapłacona” — JEDNO miejsce reguły (PRZ-119.12c,
+ * zlecenie właściciela 12.11): dzień opłacenia zamówienia, a gdy go nie znamy — data sprzedaży faktury
+ * (`sale_date`, a bez niej `invoice_date`, bo wtedy program przyjmuje sprzedaż = wystawienie). Nigdy „dziś”.
  *
- * ⚠️ Dokumentacja zasobu `/paid.json` stawia jeden warunek: `paid_date` „nie wcześniejsza niż
- * data wystawienia". Zamówienie opłacone w sklepie 1.08 i zafakturowane 6.08 dałoby datę
- * wcześniejszą, czyli odmowę — i status, który miał się naprawić, zostałby zły. Dlatego
- * `Math.max` z dwóch, a nie sama data wpłaty.
+ * Program z `opis.dowolnaDataZaplaty` (Fakturownia, pomiar F9B: przyjmuje każdą datę) dostaje regułę wprost.
+ * Pozostałe (inFakt, TwojeFaktury) — PRZYCIĘTĄ do daty wystawienia: dokumentacja zasobu `/paid.json` inFaktu
+ * stawia warunek `paid_date` „nie wcześniejsza niż data wystawienia". Zamówienie opłacone w sklepie 1.08
+ * i zafakturowane 6.08 dałoby datę wcześniejszą, czyli odmowę — i status, który miał się naprawić, zostałby zły.
+ * ⚠️ NIEZMIERZONE z VM (brak konta próbnego inFaktu) — pytanie do właściciela, czy inFakt naprawdę odmawia.
  *
  * Wybór ŹRÓDŁA daty wpłaty: `dataPokryciaWplat`, czyli data tej konkretnej wpłaty, która
  * PRZEKROCZYŁA kwotę zamówienia — a nie „ostatnia wpłata z listy". To jest chwila, od której
@@ -76,16 +79,23 @@ import { gdzieDokument } from '../../../domena/nazwa-programu.js';
  * na dokument jako `paid_price`. `dataPokryciaWplat` bierze próg w ZŁOTÓWKACH (taki ma
  * kontrakt), stąd `zl(...)` — identycznie jak `bezpiecznaDataPokrycia` w db/zamowienia.js.
  *
- * Brak daty wpłaty (uszkodzona wartość — `dzienWarszawa` oddaje wtedy pusty string) NIE jest
- * powodem do odmowy: to krok PO nieodwracalnym, więc spadamy na datę wystawienia, która jest
- * zawsze poprawna i zawsze spełnia warunek.
+ * Brak daty wpłaty (uszkodzona wartość — `dzienWarszawa` oddaje wtedy pusty string, a uszkodzona kwota
+ * rzuca w `dataPokryciaWplat`) NIE jest powodem do odmowy ani wyjątku: funkcja NIGDY NIE RZUCA (jej wynik
+ * idzie też do kroku po nieodwracalnym) i spada na datę sprzedaży, która przeszła już `datyFaktury`.
  *
  * Porównanie LEKSYKOGRAFICZNE na `RRRR-MM-DD`: w tym formacie porządek napisów JEST porządkiem
  * kalendarza, a `new Date('2026-10-25')` czyta napis jako UTC i potrafi cofnąć się o dobę.
  */
-function dataZaplatyDoOznaczenia(z, invoiceDate) {
-  const dzienZaplaty = dzienWarszawa(dataPokryciaWplat(z.platnosci, zl(kwotaOczekiwanaGrosze(z))));
-  return dzienZaplaty > invoiceDate ? dzienZaplaty : invoiceDate;
+function dataZaplatyFaktury(z, daty, opis) {
+  let dzienOplacenia = '';
+  try {
+    dzienOplacenia = dzienWarszawa(dataPokryciaWplat(z.platnosci, zl(kwotaOczekiwanaGrosze(z))));
+  } catch {
+    // Uszkodzona wpłata — jak brak daty: niżej data sprzedaży.
+  }
+  const data = dzienOplacenia || daty.sale_date || daty.invoice_date;
+  if (opis?.dowolnaDataZaplaty) return data;
+  return data > daty.invoice_date ? data : daty.invoice_date;
 }
 
 /**
@@ -117,7 +127,9 @@ export function createFaktura({
   // UWAGA: to pytanie ma sens WYLACZNIE dla wyjatku z `program.wystaw`. Rozstrzyganie nim
   // awarii z wczesniejszych krokow (patrz podzial faz w `wystaw`) blokowalo zamowienia
   // na stale za bledy, przy ktorych o dokument nikt jeszcze nie poprosil.
-  const jednoznacznaOdmowa = (e) => Number.isInteger(e?.status) && e.status >= 400 && e.status < 500;
+  // PRZ-119.03: odmowa „duplikat” (program ma JUŻ dokument dla tego zamówienia, np. 422 na `oid` w Fakturowni)
+  // to 4xx, ale dokument ISTNIEJE — rezerwacja zostaje, sprawa do wyjaśnienia.
+  const jednoznacznaOdmowa = (e) => Number.isInteger(e?.status) && e.status >= 400 && e.status < 500 && !e?.duplikat;
 
   function zwolnij(f, zamowienieId, e) {
     zwolnijFakture(db, f.id);
@@ -177,6 +189,9 @@ export function createFaktura({
     // funkcja, ktora chwile wyzej sprawdzila `sprawdzSumeDokumentu`; `z.kwota_brutto`
     // rozjechaloby sie z dokumentem przy kazdej pozycji dopisanej recznie.
     const daty = termin ? datyFaktury(termin, kwotaOczekiwanaGrosze(z), undefined, { nazwa }) : {};
+    // PRZ-119.12c: data zapłaty faktury „zapłacone” — liczona RAZ (nie rzuca), idzie do ładunku wystawienia
+    // (tylko program z `opis.dowolnaDataZaplaty`) i do oznaczenia zapłaty po wystawieniu.
+    const paidDate = termin && czyZaplacone(termin.termin) ? dataZaplatyFaktury(z, daty, program.opis) : null;
 
     // Dane nabywcy licza sie RAZ, przed rezerwacja (funkcja czysta) — uzywa ich faza
     // przygotowania (kartoteka) i galaz WDT. Rozpoznanie WDT idzie po TYM SAMYM numerze,
@@ -272,7 +287,11 @@ export function createFaktura({
         // rozsypania sa puste i payload zostaje bajt w bajt taki, jaki byl.
         ...(wdt ? polaWdtInfakt(d.nip, { nipSprzedawcy: nipWlasny }) : {}),
         ...(seriaWdt ? { number: seriaWdt.numer } : {}),
-      });
+        // Pomiar F9B: Fakturownia bez `paid_date` przy `status: paid` wpisuje DZIŚ. inFakt i TwojeFaktury — bez pola, jak dotąd.
+        ...(paidDate && program.opis.dowolnaDataZaplaty ? { paid_date: paidDate } : {}),
+      // PRZ-119.03: identyfikator zamówienia dla programu (Fakturownia: `oid` + `oid_unique` — drugi dokument
+      // dla tego samego zamówienia zostaje odrzucony). Programy, które go nie znają, ignorują drugi argument.
+      }, { oid: `${z.sklep}-${z.numer}` });
     } catch (e) {
       // Los numeru serii rozstrzyga wspolna galaz: 4xx zwalnia, niejednoznaczna zostawia
       // zajety z gloszym sladem w logu (dziura w serii to fakt do wyjasnienia).
@@ -321,7 +340,7 @@ export function createFaktura({
     // Rozpoznanie wariantu przez `czyZaplacone` (razem z aliasem `oplacone`), tak samo jak
     // robi to bariera o pieniądze wyżej i `datyFaktury` — nigdy przez `termin === 'zaplacone'`.
     // Że pieniądze NAPRAWDĘ są, sprawdziła już tamta bariera.
-    if (termin && czyZaplacone(termin.termin)) await zlecOznaczenieZaplaty(z, w, daty.invoice_date, zamowienieId);
+    if (paidDate) await zlecOznaczenieZaplaty(w, paidDate, zamowienieId);
 
     return w;
   }
@@ -338,10 +357,9 @@ export function createFaktura({
    * powiedzieć wszystko naraz: że faktura JEST wystawiona, że dokument dla klienta jest
    * poprawny, co dokładnie odpowiedział inFakt i co z tym zrobić ręcznie.
    */
-  async function zlecOznaczenieZaplaty(z, w, invoiceDate, zamowienieId) {
+  async function zlecOznaczenieZaplaty(w, paidDate, zamowienieId) {
     let wynik;
     try {
-      const paidDate = dataZaplatyDoOznaczenia(z, invoiceDate);
       // Zdolnosc `oznaczZaplacona`: program bez niej konczy tak jak awaria — wpis w logu, nic nie rzuca.
       if (typeof program.oznaczZaplacona !== 'function') {
         throw new Error(`${nazwa.mianownik} nie umie oznaczyć zapłaty — ten program nie ma takiej operacji.`);
@@ -350,7 +368,11 @@ export function createFaktura({
       wynik = `Zlecono w ${nazwa.miejscownik} oznaczenie faktury ${w.numer ?? '(bez numeru)'} jako opłaconej `
         + `(data zapłaty ${paidDate}). ${nazwa.mianownik} przetwarza to zadanie w tle.`;
     } catch (e) {
-      wynik = `UWAGA: faktura ${w.numer ?? '(bez numeru)'} została WYSTAWIONA i dokument dla klienta `
+      // PRZ-119.05: status „opłacona” przyjęty, padł sam zapis daty zapłaty — faktura JEST opłacona, nie oznaczać drugi raz.
+      wynik = e?.zaplataOznaczona
+        ? `UWAGA: faktura ${w.numer ?? '(bez numeru)'} jest już oznaczona jako opłacona w ${nazwa.miejscownik} — popraw tylko `
+          + `datę zapłaty. Powód: ${e.message}`
+        : `UWAGA: faktura ${w.numer ?? '(bez numeru)'} została WYSTAWIONA i dokument dla klienta `
         + 'jest poprawny („Zapłacono", pozostało 0,00), ale nie udało się zlecić oznaczenia jej '
         + (program.opis?.wbudowany
           ? `jako opłaconej — ${gdzieDokument(program)} będzie widoczna jako NIEOPŁACONA. Zapłaty nie da się w OMS-ie zapisać ręcznie — przekaż ten wpis osobie, która utrzymuje OMS.`

@@ -11,9 +11,10 @@
 //   • Zła wartość w ZAPISIE (formularz jej nie przyjmie; zostaje po wycofaniu wydania, które znało więcej modułów)
 //     = „brak” + uwaga. Odmowa startu położyłaby panel po wycofaniu, a inFakt wystawiałby faktury w programie,
 //     którego nikt nie wybrał.
-//   • Fakturownia i TwojeFaktury tylko z jawnego wyboru, nigdy domyślnie. Bez dostępności „wkrótce” —
-//     PRZ-119 odblokowuje Fakturownię; TwojeFaktury wymaga jawnej zgody instalacji.
+//   • Fakturownia i TwojeFaktury tylko z jawnego wyboru, nigdy domyślnie. Fakturownia dostępna od PRZ-119.05
+//     (skonfigurowana, ale niewybrana — nie jest składana); TwojeFaktury wymaga jawnej zgody instalacji.
 import { NAZWA_INFAKTU, EKRAN_INFAKTU } from './konfiguracja-infakt.js';
+import { EKRAN_FAKTUROWNI } from './konfiguracja-fakturownia.js';
 
 export const ZMIENNA_PROGRAMU = 'OMS_PROGRAM_FAKTUROWY';
 /** Wiersz tabeli konfiguracja_integracji z zapisanym wyborem (ustawienia_json = {"program": "…"}, bez sekretów). */
@@ -23,7 +24,7 @@ export const EKRAN_WYBORU_PROGRAMU = '/ustawienia/integracje/program-fakturowy';
 export const MODULY_FAKTUR = Object.freeze([
   Object.freeze({ id: 'brak', etykieta: 'Brak', dostepny: true }),
   Object.freeze({ id: 'infakt', etykieta: NAZWA_INFAKTU.mianownik, dostepny: true }),
-  Object.freeze({ id: 'fakturownia', etykieta: 'Fakturownia', dostepny: false }),
+  Object.freeze({ id: 'fakturownia', etykieta: 'Fakturownia', dostepny: true }),
   Object.freeze({ id: 'twojefaktury', etykieta: 'TwojeFaktury (program wbudowany)', dostepny: 'zgoda' }),
 ]);
 
@@ -52,7 +53,8 @@ export function wyborZPliku(wartosc, { zgoda = false } = {}) {
   const v = normalizuj(wartosc);
   if (!v) return null;
   if (modulDostepny(modul(v), { zgoda })) return v;
-  const lista = `${dostepne(zgoda).join(' albo ')} (${wkrotce(zgoda).join(', ')} — wkrótce)`;
+  const nieDostepne = wkrotce(zgoda);
+  const lista = `${dostepne(zgoda).join(' albo ')}${nieDostepne.length ? ` (${nieDostepne.join(', ')} — wkrótce)` : ''}`;
   if (modul(v)) {
     throw new Error(`${ZMIENNA_PROGRAMU}: moduł faktur „${v}” będzie dostępny wkrótce, ta wersja OMS-u go nie ma — wpisz ${lista} lub usuń zmienną.`);
   }
@@ -80,7 +82,7 @@ export function wybierzProgram({ zPliku = null, zUstawien = null, infaktGotowy =
 }
 
 /**
- * Formularz ekranu: przyjmuje wyłącznie dostępny moduł (dziś „brak” albo „infakt”).
+ * Formularz ekranu: przyjmuje wyłącznie dostępny moduł („brak”, „infakt”, „fakturownia”; TwojeFaktury za zgodą).
  * @returns {{ ustawienia: { program: string }, bledy: string[] }}
  */
 export function sprawdzFormularzWyboru(body = {}, { zgoda = false } = {}) {
@@ -112,12 +114,17 @@ export function zdanieBrakuProgramu(wybor, dopisek = '') {
  * Uwaga, gdy zapisany wybór różni się od działającego (zmiana działa po ponownym uruchomieniu OMS-u).
  * `null`, gdy nic nie czeka. Przy „brak” dopisek o automacie KSeF — ten staje od razu po zapisie.
  * Zapisany inFakt bez klucza (`gotowy` fałsz — ta sama gotowość co w regule) po restarcie też nie ruszy — wtedy zdanie o brakującym kluczu.
+ * Tak samo zapisana Fakturownia bez domeny i tokenu (`gotowy` = gotowość ZAPISANEGO programu — PRZ-119.05).
  */
 export function zdanieCzekaniaNaRestart(dziala, zapisany, { gotowy = true } = {}) {
   if (!dziala || !zapisany || dziala.program === zapisany.program) return null;
   if (zapisany.program === 'infakt' && !gotowy) {
     const nazwa = etykietaModulu('infakt');
     return `Zapisany moduł faktur „${nazwa}” nie ma klucza API — wpisz go w Ustawienia → Integracje → ${nazwa} (${EKRAN_INFAKTU}); faktury ruszą po ponownym uruchomieniu OMS-u.`;
+  }
+  if (zapisany.program === 'fakturownia' && !gotowy) {
+    const nazwa = etykietaModulu('fakturownia');
+    return `Zapisany moduł faktur „${nazwa}” nie ma domeny konta i tokenu API — wpisz je w Ustawienia → Integracje → ${nazwa} (${EKRAN_FAKTUROWNI}); faktury ruszą po ponownym uruchomieniu OMS-u.`;
   }
   const automat = zapisany.program === 'brak' ? ' Automatyczna wysyłka do KSeF już stoi.' : '';
   const doTegoCzasu = dziala.program === 'brak' ? 'faktury są wyłączone' : `działa „${etykietaModulu(dziala.program)}”`;

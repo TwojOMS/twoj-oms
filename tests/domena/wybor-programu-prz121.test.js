@@ -16,9 +16,10 @@ const ZDANIE_USTAWIEN = 'Faktury w OMS-ie są wyłączone — w Ustawienia → I
 const ZDANIE_PLIKU = 'Faktury w OMS-ie są wyłączone — w pliku konfiguracji jest OMS_PROGRAM_FAKTUROWY=brak.';
 
 describe('PRZ-121.01 lista modułów faktur', () => {
-  it('brak i inFakt dostępne; Fakturownia „wkrótce”, TwojeFaktury tylko za zgodą instalacji', () => {
+  // PRZ-119.05: Fakturownia odblokowana (była „wkrótce”) — nadal tylko z jawnego wyboru.
+  it('brak, inFakt i Fakturownia dostępne; TwojeFaktury tylko za zgodą instalacji', () => {
     expect(MODULY_FAKTUR.map((m) => [m.id, m.dostepny])).toEqual([
-      ['brak', true], ['infakt', true], ['fakturownia', false], ['twojefaktury', 'zgoda']]);
+      ['brak', true], ['infakt', true], ['fakturownia', true], ['twojefaktury', 'zgoda']]);
     expect(MODULY_FAKTUR.find((m) => m.id === 'twojefaktury').etykieta).toBe('TwojeFaktury (program wbudowany)');
   });
 });
@@ -39,15 +40,16 @@ it('TwojeFaktury dostępne tylko za zgodą instalacji', () => {
 });
 
 describe('PRZ-121.01 OMS_PROGRAM_FAKTUROWY z pliku', () => {
-  it.each([[undefined, null], ['', null], ['   ', null], ['brak', 'brak'], ['infakt', 'infakt'], [' InFakt ', 'infakt'], ['BRAK', 'brak']])(
+  it.each([[undefined, null], ['', null], ['   ', null], ['brak', 'brak'], ['infakt', 'infakt'], [' InFakt ', 'infakt'], ['BRAK', 'brak'],
+    ['fakturownia', 'fakturownia'], [' Fakturownia ', 'fakturownia']])(
     '%j → %j', (wartosc, wynik) => expect(wyborZPliku(wartosc)).toBe(wynik));
 
-  it.each(['infkat', 'fakturownia', 'twojefaktury', ' Fakturownia ', 'xyz'])('„%s” → wyjątek z nazwą zmiennej i listą', (wartosc) => {
-    expect(() => wyborZPliku(wartosc)).toThrow(/^OMS_PROGRAM_FAKTUROWY: .*brak albo infakt \(fakturownia, twojefaktury — wkrótce\)/);
+  it.each(['infkat', 'twojefaktury', 'xyz'])('„%s” → wyjątek z nazwą zmiennej i listą', (wartosc) => {
+    expect(() => wyborZPliku(wartosc)).toThrow(/^OMS_PROGRAM_FAKTUROWY: .*brak albo infakt albo fakturownia \(twojefaktury — wkrótce\)/);
   });
 
   it('moduł „wkrótce” ma inne zdanie niż literówka', () => {
-    expect(() => wyborZPliku('fakturownia')).toThrow('„fakturownia” będzie dostępny wkrótce');
+    expect(() => wyborZPliku('twojefaktury')).toThrow('„twojefaktury” będzie dostępny wkrótce');
     expect(() => wyborZPliku('infkat')).toThrow('nieznany moduł faktur „infkat”');
   });
 });
@@ -65,11 +67,15 @@ describe('PRZ-121.01 reguła wyboru', () => {
     [{ zPliku: null, zUstawien: null, infaktGotowy: false }, { program: 'brak', zrodlo: 'domyslny', uwaga: null }],
   ])('%j → %j', (wejscie, wynik) => expect(wybierzProgram(wejscie)).toEqual(wynik));
 
-  it.each(['fakturownia', 'xyz', ''])('zapis „%s” → „brak” + uwaga (nie wyjątek), nawet przy gotowym inFakcie', (zapis) => {
+  it.each(['twojefaktury', 'xyz', ''])('zapis „%s” → „brak” + uwaga (nie wyjątek), nawet przy gotowym inFakcie', (zapis) => {
     const w = wybierzProgram({ zPliku: null, zUstawien: zapis, infaktGotowy: true });
     expect(w.program).toBe('brak');
     expect(w.zrodlo).toBe('ustawienia');
     expect(w.uwaga).toBe(`Zapisany moduł faktur „${zapis}” nie działa w tej wersji OMS-u — faktury są wyłączone. Wybierz moduł ponownie.`);
+  });
+
+  it('zapis „fakturownia” → Fakturownia z Ustawień, także przy gotowym inFakcie', () => {
+    expect(wybierzProgram({ zUstawien: 'fakturownia', infaktGotowy: true })).toEqual({ program: 'fakturownia', zrodlo: 'ustawienia', uwaga: null });
   });
 
   it('domyślnie nigdy Fakturownia ani TwojeFaktury', () => {
@@ -80,10 +86,10 @@ describe('PRZ-121.01 reguła wyboru', () => {
 });
 
 describe('PRZ-121.01 formularz wyboru', () => {
-  it.each(['brak', 'infakt', ' INFAKT '])('przyjmuje „%s”', (program) => {
+  it.each(['brak', 'infakt', ' INFAKT ', 'fakturownia'])('przyjmuje „%s”', (program) => {
     expect(sprawdzFormularzWyboru({ program })).toEqual({ ustawienia: { program: program.trim().toLowerCase() }, bledy: [] });
   });
-  it.each(['fakturownia', 'twojefaktury', 'xyz', '', undefined])('odrzuca %j', (program) => {
+  it.each(['twojefaktury', 'xyz', '', undefined])('odrzuca %j', (program) => {
     expect(sprawdzFormularzWyboru({ program }).bledy.length).toBe(1);
   });
 });
@@ -103,8 +109,8 @@ describe('PRZ-121.01 zdanie „faktury wyłączone”', () => {
     expect(zdanieBrakuProgramu(null)).toBeNull();
   });
   it('nieznany zapis → jego uwaga', () => {
-    expect(zdanieBrakuProgramu(wybierzProgram({ zUstawien: 'fakturownia' })))
-      .toBe('Zapisany moduł faktur „fakturownia” nie działa w tej wersji OMS-u — faktury są wyłączone. Wybierz moduł ponownie.');
+    expect(zdanieBrakuProgramu(wybierzProgram({ zUstawien: 'twojefaktury' })))
+      .toBe('Zapisany moduł faktur „twojefaktury” nie działa w tej wersji OMS-u — faktury są wyłączone. Wybierz moduł ponownie.');
   });
   it('czekanie na restart: zdanie tylko przy różnicy, przy „brak” z automatem KSeF', () => {
     const infakt = { program: 'infakt' }; const brak = { program: 'brak' };
@@ -113,6 +119,15 @@ describe('PRZ-121.01 zdanie „faktury wyłączone”', () => {
     expect(zdanieCzekaniaNaRestart(brak, infakt)).toBe('Zapisany moduł faktur „inFakt” zadziała po ponownym uruchomieniu OMS-u — do tego czasu faktury są wyłączone.');
     expect(zdanieCzekaniaNaRestart(brak, infakt, { gotowy: false })).toMatch(/^Zapisany moduł faktur „inFakt” nie ma klucza API/);
     expect(zdanieCzekaniaNaRestart(infakt, brak, { gotowy: false })).toMatch(/zadziała po ponownym uruchomieniu/);
+  });
+  it('PRZ-119.05: zapisana Fakturownia bez domeny i tokenu → zdanie o konfiguracji; gotowa → zwykłe czekanie', () => {
+    const infakt = { program: 'infakt' }; const fakturownia = { program: 'fakturownia' };
+    expect(zdanieCzekaniaNaRestart(infakt, fakturownia, { gotowy: false })).toBe(
+      'Zapisany moduł faktur „Fakturownia” nie ma domeny konta i tokenu API — wpisz je w Ustawienia → Integracje → Fakturownia (/ustawienia/integracje/fakturownia); faktury ruszą po ponownym uruchomieniu OMS-u.');
+    expect(zdanieCzekaniaNaRestart(infakt, fakturownia)).toBe('Zapisany moduł faktur „Fakturownia” zadziała po ponownym uruchomieniu OMS-u — do tego czasu działa „inFakt”.');
+  });
+  it('PRZ-119.05: lista w błędzie pliku bez pustego „wkrótce”, gdy wszystko dostępne', () => {
+    expect(() => wyborZPliku('xyz', { zgoda: true })).toThrow(/wpisz brak albo infakt albo fakturownia albo twojefaktury lub usuń zmienną\.$/);
   });
 });
 
@@ -182,7 +197,7 @@ describe('PRZ-121.01 zapis wyboru w konfiguracja_integracji', () => {
     zapiszWyborProgramu(db, ' Brak ', { konto: { id: 1, login: 'pracownia' }, teraz: new Date('2026-10-27T10:00:00Z') });
     expect(wczytajWyborProgramu(db)).toEqual({ program: 'brak', kontoLogin: 'pracownia', zmienionoAt: '2026-10-27T10:00:00.000Z' });
     expect(wczytajKonfiguracjeIntegracji(db, 'program_fakturowy').sekrety).toEqual({});
-    expect(() => zapiszWyborProgramu(db, 'fakturownia')).toThrow('wkrótce');
+    expect(() => zapiszWyborProgramu(db, 'twojefaktury')).toThrow('wkrótce');
     expect(wczytajWyborProgramu(db).program).toBe('brak');
     expect(usunWyborProgramu(db)).toBe(true);
     expect(wczytajWyborProgramu(db)).toBeNull();

@@ -9,6 +9,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { createInfaktClient } from '../../src/oms/infakt/client.js';
+import { createFakturowniaClient } from '../../src/oms/fakturownia/client.js';
+import { createAtrapaFakturowni, createTransportAtrapyFakturowni } from '../../deploy/proba/atrapy/fakturownia.mjs';
 import { createWooClient } from '../../src/oms/woo/client.js';
 import { createAllegroClient } from '../../src/oms/allegro/client.js';
 import { createErliClient } from '../../src/oms/erli/client.js';
@@ -43,6 +45,162 @@ const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
 const DZIS = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' });
 const metody = (o) => Object.keys(o).filter((k) => typeof o[k] === 'function').sort();
 const ciche = () => {};
+
+describe('PRZ-119.04 — kontrakt Fakturowni bez sieci', () => {
+  const opcje = { env: { OMS_TRYB: 'proba' }, token: 'demo', log: ciche, teraz: () => new Date('2026-11-12T12:00:00Z') };
+  const bazy = [];
+  const nowaBaza = () => { const db = new DatabaseSync(':memory:'); bazy.push(db); return db; };
+  afterAll(() => bazy.forEach(db => db.close()));
+  const fixture = (plik) => JSON.parse(fs.readFileSync(new URL(`../fixtures/fakturownia/${plik}`, import.meta.url), 'utf8')).wymiany;
+  const pomiar = fixture('F04-faktura-minimalna.json').find(w => w.zadanie.metoda === 'POST');
+  const invoice = pomiar.zadanie.cialo.invoice;
+  it('dzieli stan i numerację między połączeniami tej samej bazy, chroni oid', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'baza-'));
+    const plik = path.join(dir, 'atrapa.sqlite');
+    const db1 = new DatabaseSync(plik), db2 = new DatabaseSync(plik);
+    try {
+      const a = createAtrapaFakturowni({ ...opcje, db: db1 });
+      const f = await a.wystaw({ ...invoice, oid: 'demo-wspolne', oid_unique: 'yes' });
+      const b = createAtrapaFakturowni({ ...opcje, db: db2 });
+      expect(await b.pobierzFakture(f.id)).toEqual(f);
+      const drugi = await b.wystaw(invoice);
+      expect(drugi.id).toBe(f.id + 1);
+      expect(drugi.number).toBe('2/11/2026');
+      await expect(b.wystaw({ ...invoice, oid: 'demo-wspolne', oid_unique: 'yes' })).rejects.toMatchObject({ status: 422 });
+      expect((await b.listaFaktur()).map(d => d.id)).toEqual([drugi.id, f.id]);
+      const { odpowiedzFakturowni: wyslany } = await a.wyslijDokumentDoKsef(f.id);
+      expect(wyslany).toMatchObject({ gov_status: 'ok', gov_id: `ATRAPA-20261112-${f.id}` });
+      expect(await b.pobierzFakture(f.id)).toMatchObject({ gov_status: 'ok', gov_id: wyslany.gov_id });
+    } finally { db1.close(); db2.close(); fs.rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  it('liczy netto i VAT pozycji oraz numeruje korekty niezależnie od faktur', async () => {
+    const db = nowaBaza();
+    const a = createAtrapaFakturowni({ ...opcje, db });
+    const f = await a.wystaw({ ...invoice, positions: [{ name: 'Towar demo', quantity: 2, total_price_gross: 246, tax: 23 }] });
+    expect(f.positions[0]).toMatchObject({ total_price_net: '200.0', total_price_tax: '46.0', price_net: '100.0', price_tax: '23.0' });
+    const pomiar = fixture('F15-korekta.json').find(w => w.zadanie.cialo?.invoice?.kind === 'correction' && w.odpowiedz.status === 201);
+    const dane = { ...pomiar.zadanie.cialo.invoice, from_invoice_id: f.id, number: undefined };
+    const k1 = await a.wystawKorekte(dane);
+    const b = createAtrapaFakturowni({ ...opcje, db });
+    const k2 = await b.wystawKorekte(dane);
+    expect([k1.number, k2.number]).toEqual(['K1', 'K2']);
+    expect(k1.positions[0].price_gross).toBe(pomiar.odpowiedz.cialo.positions[0].price_gross);
+    expect((await b.wystaw(invoice)).number).toBe('2/11/2026');
+  });
+
+  it('dla token null odpowiada 401 bez wyjątku', async () => {
+    const transport = createTransportAtrapyFakturowni({ ...opcje, db: nowaBaza(), token: null });
+    expect((await transport('https://demo.fakturownia.pl/invoices.json')).status).toBe(401);
+  });
+
+  it('reset próby usuwa dokumenty, klientów i numerację Fakturowni', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'reset-'));
+    const baza = path.join(dir, 'oms.sqlite');
+    try {
+      const db = openOmsDb(baza);
+      await createAtrapaFakturowni({ ...opcje, db }).wystaw(invoice);
+      zlecResetDemo(db, { login: 'operator-demo' }); db.close();
+      fs.writeFileSync(`${baza}.reset-proba`, '');
+      expect(await wykonajZlecenieResetu({ baza, utworzBaze: () => openOmsDb(baza).close() })).toBeTruthy();
+      const nowe = openOmsDb(baza);
+      try {
+        const a = createAtrapaFakturowni({ ...opcje, db: nowe });
+        expect(await a.listaFaktur()).toEqual([]);
+        expect(await a.znajdzKlientowPoNip(invoice.buyer_tax_no)).toEqual([]);
+        expect(await a.wystaw(invoice)).toMatchObject({ id: 1, number: '1/11/2026' });
+      } finally { nowe.close(); }
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  });
+  const serwerFakturowniZ = () => {
+    const transport = createTransportAtrapyFakturowni({ ...opcje, db: nowaBaza() });
+    const wywolania = [];
+    return { wywolania, fetchImpl: async (url, init) => {
+      wywolania.push(new URL(url));
+      return transport(url, init);
+    } };
+  };
+
+  it('ma każdą metodę klienta i odmawia poza próbą', () => {
+    const a = createAtrapaFakturowni({ ...opcje, db: nowaBaza() });
+    const klient = createFakturowniaClient({ token: 'demo', domena: 'demo', fetchImpl: async () => { throw Error('sieć'); } });
+    expect(metody(klient).filter(m => !metody(a).includes(m))).toEqual([]);
+    expect(() => createAtrapaFakturowni({ env: {} })).toThrow('OMS_TRYB=proba');
+    expect(() => createTransportAtrapyFakturowni({ env: {} })).toThrow('OMS_TRYB=proba');
+  });
+
+  it('prawdziwy klient na encjach atrapy oddaje te same dokumenty, płatność i KSeF', async () => {
+    const a = createAtrapaFakturowni({ ...opcje, db: nowaBaza() });
+    const serwer = serwerFakturowniZ();
+    const klient = createFakturowniaClient({ token: 'demo', domena: 'demo', fetchImpl: serwer.fetchImpl });
+    const logi = [];
+    const zLogiem = createAtrapaFakturowni({ ...opcje, db: nowaBaza(), log: t => logi.push(t) });
+    await zLogiem.wystaw(invoice);
+    expect(logi.join('\n')).toMatch(/atrapa Fakturowni:.*nic nie poszło/);
+    expect(await a.sprawdzPolaczenie()).toEqual(await klient.sprawdzPolaczenie());
+    const dokument = await a.wystaw(invoice);
+    expect(await klient.wystaw(invoice)).toEqual(dokument);
+    expect(dokument).toMatchObject({ id: expect.any(Number), number: expect.any(String), gov_status: null,
+      price_gross: pomiar.odpowiedz.cialo.price_gross, paid: pomiar.odpowiedz.cialo.paid });
+    expect(await a.pobierzFakture(dokument.id)).toEqual(await klient.pobierzFakture(dokument.id));
+    const zaplata = await a.oznaczZaplacona(dokument.id);
+    expect(await klient.oznaczZaplacona(dokument.id)).toEqual(zaplata);
+    const odpowiedzZaplaty = fixture('F09-zaplata.json').find(w => w.zadanie.url.includes('change_status')).odpowiedz.cialo;
+    expect(zaplata).toEqual({ ...odpowiedzZaplaty, id: dokument.id });
+    expect(await klient.pobierzFakture(dokument.id)).toMatchObject({ status: 'paid', paid: dokument.price_gross,
+      paid_date: '2026-11-12', gov_status: null });
+    // PRZ-119.05: data zapłaty z zamówienia (PUT paid_date po change_status) — atrapa ją zapisuje.
+    const zData = await a.oznaczZaplacona(dokument.id, { paidDate: '2026-11-10' });
+    expect(zData).toMatchObject({ id: dokument.id, paid_date: '2026-11-10' });
+    expect(await klient.oznaczZaplacona(dokument.id, { paidDate: '2026-11-10' })).toEqual(zData);
+    expect(await a.pobierzFakture(dokument.id)).toMatchObject({ status: 'paid', paid_date: '2026-11-10' });
+    const pomiarKorekty = fixture('F15-korekta.json').find(w => w.zadanie.cialo?.invoice?.kind === 'correction' && w.odpowiedz.status === 201);
+    const korekta = { ...pomiarKorekty.zadanie.cialo.invoice, from_invoice_id: dokument.id, number: 'K1' };
+    expect(await a.wystawKorekte(korekta)).toEqual(await klient.wystawKorekte(korekta));
+    expect((await a.listaFaktur()).find(d => d.number === 'K1').kind).toBe('correction');
+    expect(await a.iluMaNumer(dokument.number)).toBe(await klient.iluMaNumer(dokument.number));
+    expect(await klient.iluMaNumer(dokument.number)).toBe(1);
+    expect(await klient.iluMaNumer('nie-ma')).toBe(0);
+    expect(await a.znajdzKlientowPoNip(invoice.buyer_tax_no)).toEqual(await klient.znajdzKlientowPoNip(invoice.buyer_tax_no));
+    expect(await klient.znajdzKlientowPoNip('nie-ma')).toEqual([]);
+    expect((await klient.znajdzKlientowPoNip(invoice.buyer_tax_no))[0]).toMatchObject({ tax_no: invoice.buyer_tax_no, name: invoice.buyer_name });
+    expect(await a.wyslijDokumentDoKsef(dokument.id)).toEqual(await klient.wyslijDokumentDoKsef(dokument.id));
+    expect((await klient.pobierzFakture(dokument.id)).gov_status).toBe('ok');
+    for (const c of [a, klient]) {
+      const pdf = await c.pobierzPdf(dokument.id);
+      expect(Buffer.isBuffer(pdf)).toBe(true);
+      expect(pdf.toString('latin1')).toMatch(/^%PDF-[\s\S]*%%EOF\s*$/);
+      await expect(c.pobierzFakture('99999')).rejects.toMatchObject({ status: 404 });
+    }
+  });
+
+  it('odtwarza HTTP 201, duplikat 422 z F11, 401 z F02 i puste strony z F07', async () => {
+    const serwer = serwerFakturowniZ();
+    const klient = createFakturowniaClient({ token: 'demo', domena: 'demo', fetchImpl: serwer.fetchImpl });
+    const naglowki = { Authorization: 'Bearer demo' };
+    const res = await serwer.fetchImpl('https://demo.fakturownia.pl/invoices.json', {
+      method: 'POST', headers: naglowki, body: JSON.stringify({ invoice: { ...invoice, oid: 'zam-demo', oid_unique: 'yes' } }),
+    });
+    expect(res.status).toBe(pomiar.odpowiedz.status);
+    const duplikat = fixture('F11-podwojne-wystawienie.json').find(w => w.odpowiedz.status === 422).odpowiedz.cialo;
+    await expect(klient.wystaw({ ...invoice, oid: 'zam-demo', oid_unique: 'yes' })).rejects.toMatchObject({ status: 422, tresc: duplikat });
+    await klient.wystaw({ ...invoice, oid: 'zam-demo' });
+    for (let i = 2; i < 100; i++) await klient.wystaw({ ...invoice, number: `DEMO/${i}` });
+    serwer.wywolania.length = 0;
+    expect(await klient.listaFaktur()).toHaveLength(100);
+    expect(serwer.wywolania.map(u => u.searchParams.get('page'))).toEqual(['1', '2']);
+    const pusta = await serwer.fetchImpl('https://demo.fakturownia.pl/invoices.json?page=3&per_page=100', { headers: naglowki });
+    expect(await pusta.json()).toEqual([]);
+    await klient.wystaw(invoice);
+    expect(await klient.listaFaktur()).toHaveLength(101);
+    expect(await klient.listaFaktur({ number: 'nie-ma' })).toEqual([]);
+    for (const token of ['zle', '']) {
+      const odmowa = await serwer.fetchImpl('https://demo.fakturownia.pl/invoices.json', { headers: { Authorization: `Bearer ${token}` } });
+      expect(odmowa.status).toBe(401);
+    }
+    await expect(createFakturowniaClient({ token: 'zle', domena: 'demo', fetchImpl: serwer.fetchImpl }).sprawdzPolaczenie()).rejects.toMatchObject({ status: 401 });
+  });
+});
 
 describe('PRZ-152.G1 — nadanie WzA atrapy', () => {
   it('reset demo usuwa stan przesyłek atrapy', async () => {

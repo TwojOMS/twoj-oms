@@ -117,7 +117,8 @@ export async function zbudujAplikacje(o: {
     menu,
     zdrowie: () => {
       const stany = zbudowane.map((z) => z.zdrowie?.() ?? { alarmy: [], uwagi: [] });
-      return { alarmy: stany.flatMap((s) => s.alarmy), uwagi: stany.flatMap((s) => s.uwagi) };
+      // PRZ-119.12h: to samo zdanie z dwóch modułów (np. auto-KSeF z faktur i ze zdrowia) — raz.
+      return { alarmy: [...new Set(stany.flatMap((s) => s.alarmy))], uwagi: [...new Set(stany.flatMap((s) => s.uwagi))] };
     },
   };
 }

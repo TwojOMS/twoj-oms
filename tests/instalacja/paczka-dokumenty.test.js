@@ -25,6 +25,12 @@ describe('paczka wydania: dokumenty kurierów', () => {
     expect(fs.existsSync(new URL('../../docs/modul-faktur.md', import.meta.url))).toBe(true);
   });
 
+  it('PRZ-119.09: instrukcja Fakturowni jest w paczce i istnieje w repo', () => {
+    expect(plikiPaczki(['docs/fakturownia.md', 'docs/fakturownia.txt', 'docs/fakturownia-inna.md']))
+      .toEqual(['docs/fakturownia.md']);
+    expect(fs.existsSync(new URL('../../docs/fakturownia.md', import.meta.url))).toBe(true);
+  });
+
   it('PRZ-123.C10: dokumenty TwojeFaktury obecne w tym drzewie są w paczce', () => {
     expect(plikiPaczki(['docs/twojefaktury-ksef.md', 'docs/twojefaktury-ksef.txt'])).toEqual(['docs/twojefaktury-ksef.md']);
     // W kopii publicznej dokumenty modułu wycina ta sama lista co kod.

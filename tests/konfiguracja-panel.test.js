@@ -9,6 +9,7 @@ const manifest = JSON.parse(czytaj('docs/konfiguracja.json'));
 // Część tras używa nazw env dopiero w importowanym źródle konfiguracji.
 const ekrany = {
   'Integracje → inFakt': ['src/moduly/faktury/trasy/ustawienia-infakt.js', 'src/domena/konfiguracja-infakt.js'],
+  'Integracje → Fakturownia': ['src/moduly/faktury/trasy/ustawienia-fakturownia.js', 'src/domena/konfiguracja-fakturownia.js'],
   'Integracje → Moduł faktur': ['src/moduly/faktury/trasy/ustawienia-programu.js', 'src/domena/wybor-programu.js'],
   'Integracje → Moduł faktur → Serie numeracji': ['src/moduly/faktury/trasy/ustawienia-serii.js', 'src/domena/twojefaktury/numeracja.js'],
   'Integracje → GUS': ['src/moduly/zamowienia/ustawienia-gus.js', 'src/domena/konfiguracja-gus.js'],

@@ -55,6 +55,8 @@ const ALIASY = [
   ['/ustawienia/kanaly', 'integracje'],
   // PRZ-108.06: dawny adres zapisu automatu KSeF (ekran inFaktu) — błąd formularza renderuje ekran Automatyzacji.
   ['/ustawienia/integracje/infakt/ksef-automat', 'automatyzacje'],
+  // PRZ-119.07: adres automatu KSeF pod programem fakturowym — ten sam ekran Automatyzacji.
+  ['/ustawienia/integracje/program-fakturowy/ksef-automat', 'automatyzacje'],
 ];
 
 const podAdresem = (sciezka, href) => sciezka === href || sciezka.startsWith(`${href}/`);

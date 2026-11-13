@@ -122,8 +122,9 @@ const JEST_POPRAWNA_DATA = /^\d{4}-\d{2}-\d{2}$/;
  * ⚠️ PÓŹNIEJSZA Z DWÓCH DAT. Dokumentacja `/paid.json` stawia jeden warunek: `paid_date`
  * nie wcześniejsza niż data wystawienia. Paczka doręczona 25.08 przy fakturze wystawionej
  * 27.08 dałaby odmowę — i status, który miał się naprawić, zostałby zły. Ta sama bramka, co
- * w `dataZaplatyDoOznaczenia` (services/faktura.js), i celowo ta sama: dwie drogi do
- * oznaczenia zapłaty nie mogą liczyć daty inaczej.
+ * w `dataZaplatyFaktury` (services/faktura.js) dla programu bez `dowolnaDataZaplaty` (inFakt,
+ * TwojeFaktury). Dla Fakturowni droga faktury nie przycina daty (pomiar F9B), a ta droga nadal
+ * przycina — świadomie, poza zakresem PRZ-119.12c.
  *
  * ⚠️⚠️ `status_kuriera_at` BYŁA DO 28.08.2026 KOLUMNĄ CZYSTO PREZENTACYJNĄ (komentarz przy
  * `zapiszStatusDpd` w db/przesylki.js) i ten moduł czyni ją NOŚNĄ. Zapisywana jest jako

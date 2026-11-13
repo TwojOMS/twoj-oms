@@ -4,7 +4,8 @@ import { podsumowanieZwrotow } from '../../domena/zwrot-widok.js';
 import { OPCJE_STATUSU, anulowaneWSklepie } from '../../domena/status-reczny.js';
 import { metodaZmienionaRecznie, saNadpisanieWysylki, metodaZeSklepu, METODY_WYSYLKI } from '../../domena/wysylka.js';
 import { miniaturaPozycji } from '../../domena/miniatura-pozycji.js';
-import { miniaturyLustra, paryPozycji } from '../../oms/db/miniatury-lustra.js';
+import { miniaturyLustra, paryPozycji, miniaturySku, skuPozycji } from '../../oms/db/miniatury-lustra.js';
+import { czyPozycjaPlaceholdera } from '../../domena/indywidualne.js';
 import { kuponyZWiersza } from '../../domena/kupony.js';
 import { atrybucjaZWiersza, opisAtrybucji } from '../../domena/atrybucja.js';
 import { panelKuriera } from '../../domena/moduly-kurierow.ts';
@@ -22,7 +23,9 @@ export function allegroWymagaOdpytania(db, zamowienieId, terazMs = Date.now()) {
 }
 export function miniaturyEkranu(db, zamowienia) {
   const lustro = miniaturyLustra(db, paryPozycji(zamowienia));
-  return (kanal, produktId, zdjecie) => miniaturaPozycji(lustro, kanal, produktId, zdjecie);
+  // PRZ-159: pozycje bez zdjęcia (ERLI) — miniatura z lustra magazynu po SKU; widok podaje `sku` czwartym argumentem.
+  const lustroSku = miniaturySku(db, skuPozycji(zamowienia, czyPozycjaPlaceholdera));
+  return (kanal, produktId, zdjecie, sku = null) => miniaturaPozycji(lustro, kanal, produktId, zdjecie, sku, lustroSku);
 }
 export function ktoKlikal(req) {
   const naglowek = req.headers?.authorization ?? '';

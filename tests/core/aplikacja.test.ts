@@ -85,6 +85,12 @@ describe('zbudujAplikacje', () => {
     expect(wynik.zdrowie()).toEqual({ alarmy: ['alarm-a'], uwagi: ['uwaga-b'] });
     expect(wynik.zegary).toEqual([zegar]);
   });
+  it('to samo zdanie alarmu z dwóch modułów pokazuje raz (PRZ-119.12h: auto-KSeF z faktur i ze zdrowia)', async () => {
+    const a: ModulOms = { ...echo as ModulOms, nazwa: 'a', zbuduj: () => ({ zdrowie: () => ({ alarmy: ['auto-KSeF'], uwagi: ['uwaga'] }) }) };
+    const b: ModulOms = { ...echo as ModulOms, nazwa: 'b', zbuduj: () => ({ zdrowie: () => ({ alarmy: ['auto-KSeF', 'inny'], uwagi: ['uwaga'] }) }) };
+    const wynik = await buduj({ moduly: [rdzen, a, b], env, db: baza() });
+    expect(wynik.zdrowie()).toEqual({ alarmy: ['auto-KSeF', 'inny'], uwagi: ['uwaga'] });
+  });
   it('start z odtworzonej starej bazy zachowuje ptaszki i oznacza 17 kluczy rdzen/2', async () => {
     const db = baza();
     db.exec(readFileSync(new URL('../../src/moduly/rdzen/migracje/0001-baseline.sql', import.meta.url), 'utf8'));

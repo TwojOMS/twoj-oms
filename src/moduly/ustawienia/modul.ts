@@ -77,9 +77,9 @@ export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
       integracje:()=>{
         const zapisane = new Set(ctx.db.prepare('SELECT integracja FROM konfiguracja_integracji').all().map((r:any)=>r.integracja));
         const kurierzy = kurierzyWlasni().flatMap((o)=>{ const k=KONFIGURACJA_KURIEROW[o.klucz]; return k?[{id:o.idKatalogu,...k}]:[]; });
-        const klucze:Record<string,string>={...Object.fromEntries(kurierzy.map((k)=>[k.id,k.integracja])),infakt:'infakt',ksef:'ksef',gus:'gus',smtp:'poczta'};
+        const klucze:Record<string,string>={...Object.fromEntries(kurierzy.map((k)=>[k.id,k.integracja])),infakt:'infakt',fakturownia:'fakturownia',ksef:'ksef',gus:'gus',smtp:'poczta'};
         const uslugi:Record<string,any>={...Object.fromEntries(kurierzy.map((k)=>[k.id,opcjonalna('wysylka',k.usluga)])),
-          infakt:opcjonalna('faktury','konfiguracjaInfaktu'),ksef:opcjonalna('koszty','zrodloKsef'),gus:opcjonalna('zamowienia','konfiguracjaGus'),smtp:pocztaOpcjonalna(ctx.usluga)()};
+          infakt:opcjonalna('faktury','konfiguracjaInfaktu'),fakturownia:opcjonalna('faktury','konfiguracjaFakturowni'),ksef:opcjonalna('koszty','zrodloKsef'),gus:opcjonalna('zamowienia','konfiguracjaGus'),smtp:pocztaOpcjonalna(ctx.usluga)()};
         // B1: atrapa nie podłącza — ten sam warunek co ekran usługi (zapis albo plik konfiguracji).
         return Object.entries(klucze).map(([id,klucz])=>({id,...stanIntegracji({usluga:uslugi[id],zapisany:zapisane.has(klucz)})}));
       },

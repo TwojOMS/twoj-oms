@@ -88,10 +88,16 @@ export function miniaturaZLustra(zLustra, oryginal) {
  * ⚠️ BRAK MAPY NIE RZUCA: ekran, który jej (jeszcze) nie zbudował, ma pokazać to, co dziś,
  * a nie 500 zamiast listy zamówień.
  */
-export function miniaturaPozycji(lustro, kanal, produktId, oryginal) {
+export function miniaturaPozycji(lustro, kanal, produktId, oryginal, sku = null, lustroSku = null) {
   const klucz = kluczLustra(kanal, produktId);
   // ⚠️ `lustro` MUSI być `Map`, nie literałem obiektu — patrz komentarz przy `miniaturyLustra`
   // w db/miniatury-lustra.js. `?.get?.` przepuszcza też brak mapy w ogóle.
-  const zLustra = klucz === null ? null : lustro?.get?.(klucz);
+  let zLustra = klucz === null ? null : lustro?.get?.(klucz);
+  // PRZ-159: pozycja BEZ żadnego zdjęcia (ERLI nie przysyła go w zamówieniu) — miniatura produktu o tym samym SKU
+  // z lustra magazynu (`miniaturySku`). Tylko wtedy: zdjęcie, które pozycja ma (sklep, Allegro), wygrywa jak dotąd.
+  const bezZdjecia = typeof oryginal !== 'string' || !oryginal.trim();
+  if ((zLustra === null || zLustra === undefined) && bezZdjecia && typeof sku === 'string' && sku.trim()) {
+    zLustra = lustroSku?.get?.(sku.trim());
+  }
   return miniaturaZLustra(zLustra, oryginal);
 }

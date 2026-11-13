@@ -34,8 +34,11 @@ async function utworzBaze() {
 
 const { wykonajZlecenieResetu } = await import('../../src/oms/db/reset-demo.js');
 // PRZ-149.01: reset z panelu i `nas-proba.sh reset` zachowują aplikację i konta rzeczywistego Allegro Sandbox z panelu.
-const reset = await wykonajZlecenieResetu({ baza, utworzBaze, zachowajSandbox: true });
-if (reset) console.log(`piaskownica: reset (zlecił ${reset.zlecenie?.login ?? '?'}), zachowane: ${reset.zachowane.join(', ')}, numeracja: ${reset.numeracja}, Allegro Sandbox: ${JSON.stringify(reset.sandbox)}`);
+// PRZ-119.11a: z plikiem profilu próby Fakturowni także wiersz `fakturownia` (domena i token z ekranu) — w logu tylko nazwa.
+const { SCIEZKA_PROFILU_FAKTUROWNI } = await import('./atrapy/fakturownia-proba.ts');
+const reset = await wykonajZlecenieResetu({ baza, utworzBaze, zachowajSandbox: true,
+  zachowajFakturownie: fs.existsSync(SCIEZKA_PROFILU_FAKTUROWNI) });
+if (reset) console.log(`piaskownica: reset (zlecił ${reset.zlecenie?.login ?? '?'}), zachowane: ${reset.zachowane.join(', ')}, numeracja: ${reset.numeracja}, Allegro Sandbox: ${JSON.stringify(reset.sandbox)}, Fakturownia: ${reset.fakturownia.join(', ') || 'brak'}`);
 if (!fs.existsSync(baza)) await utworzBaze();
 
 // PRZ-076: OMS z atrapami inFaktu, VIES, Woo i Allegro (deploy/proba/atrapy) — Faktury i Magazyn mają dane demo,

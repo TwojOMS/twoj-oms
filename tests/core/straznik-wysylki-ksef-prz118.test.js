@@ -8,7 +8,8 @@
 // bo do metody prowadzą trzy drogi: sama nazwa `wyslijDokumentDoKsef`, zdolność `wyslijDoKsef` i mapa
 // `METODA_ZDOLNOSCI` (src/integracje/program-fakturowy.ts: `METODA_ZDOLNOSCI.wyslijDoKsef === 'wyslijDokumentDoKsef'`).
 //
-// WARSTWA PROGRAMU = src/integracje/ (kontrakt, adaptery), src/oms/infakt/ (klient), src/core/kontrakty.ts (typy).
+// WARSTWA PROGRAMU = src/integracje/ (kontrakt, adaptery), src/oms/infakt/ i src/oms/fakturownia/ (klienci),
+// src/core/kontrakty.ts (typy).
 // LOGIKA OMS-u = cała reszta src/.
 //
 // REGUŁA — logika OMS-u:
@@ -31,7 +32,9 @@
 //     (`wystaw: async function wyslijDokumentDoKsef() {…}` to `wystaw`).
 //  6. `gov_save_and_send` nigdzie w kodzie src/; `send_to_ksef` tylko w plikach z listy dozwolonych — w PRZ-118 lista
 //     jest PUSTA (src/oms/infakt/client.js ma tę nazwę wyłącznie w komentarzach, zmierzone 27.10.2026; inFakt wysyła
-//     osobnym zasobem `/ksef2/documents/{uuid}/send.json`). PRZ-119 dopisze klienta Fakturowni.
+//     osobnym zasobem `/ksef2/documents/{uuid}/send.json`). Od PRZ-119.02 na liście jest
+//     src/oms/fakturownia/client.js z DOKŁADNIE jednym wystąpieniem (`GET /invoices/{id}.json?send_to_ksef=yes`
+//     w `wyslijDokumentDoKsef`).
 //
 // ⚠️ CZEGO TEN STRAŻNIK STATYCZNIE NIE ZŁAPIE — zostaje przeglądowi (recenzja PRZ-118.07):
 //   • nazwy sklejonej w czasie wykonania (`'wyslij' + 'DokumentDoKsef'`, szablon z wstawką) i użytej jako indeks;
@@ -52,8 +55,9 @@ const NAZWA = 'wyslijDokumentDoKsef';
 const ZDOLNOSC = 'wyslijDoKsef';
 const MAPA = 'METODA_ZDOLNOSCI';
 const JEDYNY_WOLAJACY = 'moduly/faktury/services/wysylka-ksef.js';
-const WARSTWA_PROGRAMU = ['integracje/', 'oms/infakt/', 'core/kontrakty.ts'];
-const WOLNO_SEND_TO_KSEF = new Set([]);
+const WARSTWA_PROGRAMU = ['integracje/', 'oms/infakt/', 'oms/fakturownia/', 'core/kontrakty.ts'];
+// PRZ-119.02: Fakturownia wysyła do KSeF przez GET ...?send_to_ksef=yes — tylko w kliencie.
+const WOLNO_SEND_TO_KSEF = new Set(['oms/fakturownia/client.js']);
 const KOD = new Set(['.js', '.mjs', '.cjs', '.ts']);
 const WEZLY_TEKSTU = new Set([
   ts.SyntaxKind.Identifier, ts.SyntaxKind.PrivateIdentifier, ts.SyntaxKind.StringLiteral,
@@ -240,7 +244,7 @@ describe('strażnik wysyłki do KSeF (PRZ-118.07)', () => {
     expect(naruszenia).toEqual([]);
   });
 
-  it('gov_save_and_send nigdzie w kodzie src/; send_to_ksef tylko w plikach z listy dozwolonych (w PRZ-118 pusta)', () => {
+  it('gov_save_and_send nigdzie w kodzie src/; send_to_ksef tylko w plikach z listy dozwolonych (od PRZ-119.02: klient Fakturowni)', () => {
     const naruszenia = [];
     for (const [plik, { teksty }] of Object.entries(trafienia)) {
       for (const t of teksty) {
@@ -250,8 +254,8 @@ describe('strażnik wysyłki do KSeF (PRZ-118.07)', () => {
       }
     }
     expect(naruszenia, 'wystawienie nie wysyła do KSeF — wysyłka to osobna, świadoma decyzja człowieka').toEqual([]);
-    // Lista dozwolonych nie jest martwa: każdy wpis naprawdę niesie send_to_ksef w kodzie.
-    for (const plik of WOLNO_SEND_TO_KSEF) expect(trafienia[plik]?.teksty.length, plik).toBeGreaterThan(0);
+    // Lista dozwolonych nie jest martwa ani szeroka: każdy wpis niesie send_to_ksef w kodzie DOKŁADNIE raz.
+    for (const plik of WOLNO_SEND_TO_KSEF) expect(trafienia[plik]?.teksty.length, plik).toBe(1);
   });
 
   it('dozwolone miejsca naprawdę istnieją (strażnik nie jest ślepy na nie)', () => {

@@ -2,6 +2,7 @@ import PDFDocument from 'pdfkit';
 import { createErliClient } from '../../../src/oms/erli/client.js';
 import { wymagajTrybuProby } from './tryb.mjs';
 import { PRODUKTY, FIRMY_B2B } from '../../../scripts/demo-dane-firma.mjs';
+import { uzupelnijDemoErli } from '../../../scripts/demo-dane-erli.mjs';
 
 const BAZA = 'https://sklep.polcien.example';
 
@@ -112,25 +113,47 @@ function pdf(tytul) {
   });
 }
 
-function zamowieniaStartowe(data) {
+// `demo` = kanał demo (piaskownica i demo publiczne): bez nieznanej metody dostawy — właściciel 12.11: „w demo nie może
+// takiego być” (czerwone „Nadanie zablokowane” wygląda gościowi na usterkę). Blokadę sprawdzają testy na kanale własnym.
+function zamowieniaStartowe(data, { demo = false } = {}) {
   const adres = { firstName: 'Ada', lastName: 'Przykladowa', address: 'Zmyslona 1', street: 'Zmyslona',
     buildingNumber: '1', city: 'Warszawa', country: 'pl', zip: '00-001', phone: '500100200' };
-  return Array.from({ length: 16 }, (_, i) => ({
+  // Godziny względem chwili zasiewu: świeże przeplatają się z innymi kanałami,
+  // pozostałe pokazują ostatnie dni i tygodnie, także po kolejnym resecie demo.
+  const wiekGodziny = [0, 10, 27, 50, 77, 100, 130, 155, 185, 240, 310, 380, 450, 530, 620, 720];
+  return Array.from({ length: 16 }, (_, i) => {
+    const zakup = new Date(Date.parse(data) - wiekGodziny[i] * 3600000).toISOString();
+    const pozycja = (n, quantity = 1) => ({ id: n + 1, externalId: `PC-OF-${n + 1}`, sku: PRODUKTY[n].sku,
+      quantity, unitPrice: PRODUKTY[n].cena_gr, name: PRODUKTY[n].nazwa,
+      slug: 'dekoracja-polcien', taxRate: 'TAX_23', ...(n < 4 ? { dispatchTime: { period: 2, unit: 'day' } } : {}) });
+    const items = [pozycja(i, i % 4 === 0 ? 2 : 1), ...(i % 4 === 0 ? [pozycja((i + 1) % 16)] : [])];
+    const typeId = ['dpd', 'dpd', 'erliPaczkomat', 'dpd', 'paczkomat', 'odbiorOsobisty',
+      'erliPaczkomat', 'erliKurier24InPost10kg', 'erliPaczkomat', 'dpd', demo ? 'erliKurier24InPost10kg' : 'nieznanaMetoda',
+      'paczkomat', 'dpd', 'paczkomat', 'erliKurier24InPost10kg', 'odbiorOsobisty'][i];
+    const nazwaDostawy = { dpd: 'Kurier DPD', paczkomat: 'Paczkomat InPost',
+      erliPaczkomat: 'Paczkomat ERLI', erliKurier24InPost10kg: 'Kurier ERLI',
+      nieznanaMetoda: 'Dostawa nieznana', odbiorOsobisty: 'Odbiór osobisty' };
+    return {
     id: `PC-ERLI-${String(i + 1).padStart(4, '0')}`, status: i === 5 ? 'pending' : 'purchased',
     user: { ...(i !== 8 ? { email: `kupujacy${i + 1}@polcien.example` } : {}), deliveryAddress: { ...adres, ...(i === 9 ? { country: 'de', city: 'Berlin', zip: '10000' } : {}) },
       ...(i === 4 ? { invoiceAddress: { type: 'company', address: 'Zmyslona 1', street: 'Zmyslona', buildingNumber: '1',
         city: 'Warszawa', country: 'pl', zip: '00-001', companyName: FIRMY_B2B[0].nazwa, nip: FIRMY_B2B[0].nip } } : {}) },
-    items: [{ id: i + 1, externalId: `PC-OF-${i + 1}`, sku: PRODUKTY[i].sku, quantity: 1, unitPrice: PRODUKTY[i].cena_gr, name: PRODUKTY[i].nazwa,
-      slug: 'dekoracja-polcien', taxRate: 'TAX_23', ...(i < 4 ? { dispatchTime: { period: 2, unit: 'day' } } : {}) }],
-    delivery: { name: i === 2 ? 'Paczkomat ERLI' : i === 11 ? 'Paczkomat InPost — umowa firmy' : i === 10 ? 'Dostawa nieznana' : 'Kurier DPD — umowa firmy', typeId: i === 2 ? 'erliPaczkomat' : i === 11 ? 'paczkomat' : i === 10 ? 'nieznanaMetoda' : 'dpd', price: 1000, cod: i === 1,
-      ...([2, 11].includes(i) ? { pickupPlace: { externalId: 'PC001', provider: 'inpost', name: 'Punkt Półcień' } } : {}) },
-    totalPrice: PRODUKTY[i].cena_gr + 1000, currency: i === 9 ? 'EUR' : 'PLN', market: i === 9 ? 'de' : 'pl', sellerStatus: 'created', created: data, updated: data,
+    items,
+    delivery: { name: nazwaDostawy[typeId], typeId, price: 1000, cod: i === 1,
+      ...(['erliPaczkomat', 'paczkomat'].includes(typeId) ? { pickupPlace: { externalId: 'PC001', provider: 'inpost', name: 'Punkt Półcień' } } : {}) },
+    totalPrice: items.reduce((s, p) => s + p.unitPrice * p.quantity, 0) + 1000,
+    currency: i === 9 ? 'EUR' : 'PLN', market: i === 9 ? 'de' : 'pl',
+    sellerStatus: i === 15 ? 'canceled' : i >= 12 ? 'sent' : i === 3 || i === 4 ? 'inProgress' : 'created',
+    created: zakup, updated: zakup,
+    ...(i === 15 ? { status: 'cancelled' } : {}),
+    ...(i >= 12 && i < 15 ? { deliveryTracking: { trackingNumber: typeId === 'dpd'
+      ? '0000' + String(i + 1).padStart(9, '0') + 'U' : '0000' + String(i + 1).padStart(20, '0') } } : {}),
     ...(i !== 1 ? { payment: { id: 1000001 + i, status: i === 5 ? 'PENDING' : 'COMPLETED' } } : {}),
-    ...(i !== 5 ? { purchasedAt: data } : {}), cursor: `${Math.floor(Date.parse(data) / 1000)};${i + 1}x1000`,
+    ...(i !== 5 ? { purchasedAt: zakup } : {}), cursor: `${Math.floor(Date.parse(zakup) / 1000)};${i + 1}x1000`,
     ...(i === 7 ? { returns: [{ items: [{ index: 0, quantity: 1 }], reason: 'resign',
-      comment: 'Wybieram inny wzór', created: data,
+      comment: 'Wybieram inny wzór', created: zakup,
       bankAccount: { number: '00000000000000000000000000', name: 'Kupujący testowy' } }] } : {}),
-  }));
+  }; });
 }
 
 /** Stan wyłącznie w atrapa_erli_*; transport nigdy nie wychodzi z procesu. */
@@ -159,7 +182,7 @@ export function createAtrapaErli({ db, kanal, env = process.env, log = () => {},
   }
   function zasiej() {
     const czas = new Date(new Date(teraz()).getTime() - 2 * 3600000).toISOString();
-    for (const [i, z] of zamowieniaStartowe(czas).entries()) {
+    for (const [i, z] of zamowieniaStartowe(czas, { demo: demoZmiany }).entries()) {
       zapisz('zamowienie', z.id, z);
       const id = String(i + 1).padStart(24, '0');
       zapisz('zdarzenie', id, { id, shopId: 1000001, created: czas, read: false,
@@ -204,6 +227,12 @@ export function createAtrapaErli({ db, kanal, env = process.env, log = () => {},
       .filter(z => !z.read && (!body.types || body.types.includes(z.type)) && pasuje(z, body.filter)).slice(0, 500)
       .map(z => ({ ...z, payload: widok(z.payload) })));
     if (['/orders/changes/mark-read', '/inbox/mark-read'].includes(p)) {
+      // Poller potwierdza dopiero po zapisie zamówień i pozycji. Tylko demo,
+      // nigdy konfigurator kanału ani prawdziwe konto ERLI.
+      if (demoZmiany && !jeden('meta', 'uzupelnioneDemo')) {
+        await uzupelnijDemoErli({ db, kanal, env, teraz, log });
+        zapisz('meta', 'uzupelnioneDemo', true);
+      }
       let oznaczone = 0;
       for (const z of lista('zdarzenie')) if (!z.read && (body.ids?.includes(z.id) || (body.lastMessageId && z.id <= body.lastMessageId))) { zapisz('zdarzenie', z.id, { ...z, read: true }); oznaczone++; }
       transakcja(kolejneZmiany);

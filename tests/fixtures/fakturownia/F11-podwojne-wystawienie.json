@@ -1,0 +1,1646 @@
+{
+  "pomiar": "F11",
+  "data": "2026-11-12",
+  "odpowiedz": "bez oid: 201 id 595670939, 201 id 595670942; z oid_unique: pierwsza 201 id 595670948, druga 422 {\"oid\":[\"- zostało już zajęte\"]}",
+  "wymiany": [
+    {
+      "zadanie": {
+        "metoda": "GET",
+        "url": "https://firma-testowa.fakturownia.pl/invoices.json?period=all&page=1&per_page=100&fields%5Binvoice%5D=id%2Cnumber%2Cgov_status",
+        "naglowki": {
+          "Accept": "application/json",
+          "Authorization": "Bearer [token]"
+        },
+        "cialo": null
+      },
+      "odpowiedz": {
+        "status": 200,
+        "naglowki": {
+          "access-control-allow-headers": "X-Requested-With, Content-Type, Accept",
+          "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE",
+          "access-control-allow-origin": "*",
+          "access-control-request-method": "GET,POST,PUT,PATCH,DELETE",
+          "cache-control": "max-age=0, private, must-revalidate",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Thu, 12 Nov 2026 08:26:36 GMT",
+          "etag": "W/\"06b71acda455bbeb43d4f0cbcb2761d4\"",
+          "link": "<manifest.json>; rel=\"manifest\"",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx + Phusion Passenger(R)",
+          "status": "200 OK",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "transfer-encoding": "chunked",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-powered-by": "Phusion Passenger(R) Enterprise",
+          "x-request-id": "54309d96-0c9d-4e19-b55c-3a5da2cf1981",
+          "x-runtime": "0.031348",
+          "x-xss-protection": "0"
+        },
+        "cialo": [
+          {
+            "id": 595670934,
+            "number": "B1",
+            "gov_status": null
+          },
+          {
+            "id": 595670923,
+            "number": "20/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670914,
+            "number": "19/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670909,
+            "number": "18/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670838,
+            "number": "17/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670775,
+            "number": "16/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670771,
+            "number": "15/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670767,
+            "number": "14/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670763,
+            "number": "13/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670758,
+            "number": "12/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670756,
+            "number": "11/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670752,
+            "number": "10/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670745,
+            "number": "9/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670742,
+            "number": "8/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670739,
+            "number": "7/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670734,
+            "number": "6/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670729,
+            "number": "5/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670721,
+            "number": "4/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670719,
+            "number": "3/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670714,
+            "number": "2/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670707,
+            "number": "1/11/2026",
+            "gov_status": null
+          }
+        ],
+        "czasMs": 94
+      }
+    },
+    {
+      "zadanie": {
+        "metoda": "GET",
+        "url": "https://firma-testowa.fakturownia.pl/invoices.json?period=all&page=2&per_page=100&fields%5Binvoice%5D=id%2Cnumber%2Cgov_status",
+        "naglowki": {
+          "Accept": "application/json",
+          "Authorization": "Bearer [token]"
+        },
+        "cialo": null
+      },
+      "odpowiedz": {
+        "status": 200,
+        "naglowki": {
+          "access-control-allow-headers": "X-Requested-With, Content-Type, Accept",
+          "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE",
+          "access-control-allow-origin": "*",
+          "access-control-request-method": "GET,POST,PUT,PATCH,DELETE",
+          "cache-control": "max-age=0, private, must-revalidate",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Thu, 12 Nov 2026 08:26:36 GMT",
+          "etag": "W/\"4f53cda18c2baa0c0354bb5f9a3ecbe5\"",
+          "link": "<manifest.json>; rel=\"manifest\"",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx + Phusion Passenger(R)",
+          "status": "200 OK",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "transfer-encoding": "chunked",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-powered-by": "Phusion Passenger(R) Enterprise",
+          "x-request-id": "246fe58c-d836-43ef-aa4b-99d34f5fe74b",
+          "x-runtime": "0.022095",
+          "x-xss-protection": "0"
+        },
+        "cialo": [],
+        "czasMs": 85
+      }
+    },
+    {
+      "zadanie": {
+        "metoda": "POST",
+        "url": "https://firma-testowa.fakturownia.pl/invoices.json",
+        "naglowki": {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "Bearer [token]"
+        },
+        "cialo": {
+          "invoice": {
+            "kind": "vat",
+            "issue_date": "2026-11-12",
+            "sell_date": "2026-11-12",
+            "payment_to": "2026-11-19",
+            "payment_type": "transfer",
+            "currency": "PLN",
+            "seller_name": "[sprzedawca]",
+            "seller_tax_no": "[sprzedawca]",
+            "seller_street": "[sprzedawca]",
+            "seller_post_code": "[sprzedawca]",
+            "seller_city": "[sprzedawca]",
+            "seller_country": "[sprzedawca]",
+            "buyer_company": true,
+            "buyer_name": "Pracownia Półcień Sp. z o.o.",
+            "buyer_tax_no": "1234563218",
+            "buyer_street": "ul. Lipowa 1",
+            "buyer_post_code": "60-001",
+            "buyer_city": "[sprzedawca]",
+            "buyer_country": "PL",
+            "buyer_email": "biuro@polcien.example.test",
+            "positions": [
+              {
+                "name": "Lampa wisząca Półksiężyc (zmyślona)",
+                "quantity": 1,
+                "tax": 23,
+                "total_price_gross": "44.00"
+              }
+            ]
+          }
+        }
+      },
+      "odpowiedz": {
+        "status": 201,
+        "naglowki": {
+          "access-control-allow-headers": "X-Requested-With, Content-Type, Accept",
+          "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE",
+          "access-control-allow-origin": "*",
+          "access-control-request-method": "GET,POST,PUT,PATCH,DELETE",
+          "cache-control": "max-age=0, private, must-revalidate",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Thu, 12 Nov 2026 08:26:36 GMT",
+          "etag": "W/\"c7d7c20b9332aa84faaacde65994fc94\"",
+          "link": "<manifest.json>; rel=\"manifest\"",
+          "location": "https://firma-testowa.fakturownia.pl/invoices/595670939",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx + Phusion Passenger(R)",
+          "status": "201 Created",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "transfer-encoding": "chunked",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-powered-by": "Phusion Passenger(R) Enterprise",
+          "x-request-id": "995f2550-5e3a-4399-9af6-7b2d67497860",
+          "x-runtime": "0.089828",
+          "x-xss-protection": "0"
+        },
+        "cialo": {
+          "id": 595670939,
+          "user_id": 3429992,
+          "app": null,
+          "number": "21/11/2026",
+          "place": null,
+          "sell_date": "2026-11-12",
+          "payment_type": "transfer",
+          "price_net": "35.77",
+          "price_gross": "44.0",
+          "currency": "PLN",
+          "status": "issued",
+          "description": null,
+          "seller_name": "[sprzedawca]",
+          "seller_tax_no": "[sprzedawca]",
+          "seller_street": "[sprzedawca]",
+          "seller_post_code": "[sprzedawca]",
+          "seller_city": "[sprzedawca]",
+          "seller_country": "[sprzedawca]",
+          "seller_email": null,
+          "seller_phone": null,
+          "seller_fax": null,
+          "seller_www": null,
+          "seller_person": null,
+          "seller_bank": null,
+          "seller_bank_account": null,
+          "buyer_name": "Pracownia Półcień Sp. z o.o.",
+          "buyer_tax_no": "1234563218",
+          "buyer_post_code": "60-001",
+          "buyer_city": "[sprzedawca]",
+          "buyer_street": "ul. Lipowa 1",
+          "buyer_first_name": null,
+          "buyer_country": "PL",
+          "created_at": "2026-11-12T09:26:36.000+01:00",
+          "updated_at": "2026-11-12T09:26:36.000+01:00",
+          "token": "[token-dokumentu]",
+          "buyer_email": "biuro@polcien.example.test",
+          "buyer_www": null,
+          "buyer_fax": null,
+          "buyer_phone": null,
+          "kind": "vat",
+          "pattern": "nr-m/mm/yyyy",
+          "pattern_nr": null,
+          "pattern_nr_m": 21,
+          "pattern_nr_d": null,
+          "client_id": 288946221,
+          "payment_to": "2026-11-19",
+          "paid": "0.0",
+          "seller_bank_account_id": null,
+          "lang": "pl",
+          "issue_date": "2026-11-12",
+          "price_tax": "8.23",
+          "department_id": 2077818,
+          "correction": null,
+          "buyer_note": null,
+          "additional_info_desc": null,
+          "additional_info": false,
+          "product_cache": "Lampa wisząca Półksiężyc (zmyślona)",
+          "buyer_last_name": null,
+          "from_invoice_id": null,
+          "oid": null,
+          "discount": "0.0",
+          "show_discount": false,
+          "sent_time": null,
+          "print_time": null,
+          "recurring_id": null,
+          "tax2_visible": null,
+          "warehouse_id": null,
+          "paid_date": null,
+          "product_id": 9005825491990,
+          "issue_year": 2026,
+          "internal_note": null,
+          "invoice_id": null,
+          "invoice_template_id": 1,
+          "description_long": null,
+          "buyer_tax_no_kind": null,
+          "seller_tax_no_kind": null,
+          "description_footer": null,
+          "sell_date_kind": null,
+          "payment_to_kind": "other_date",
+          "exchange_currency": null,
+          "discount_kind": "percent_total",
+          "income": true,
+          "from_api": true,
+          "category_id": null,
+          "warehouse_document_id": null,
+          "exchange_kind": "nbp",
+          "exchange_rate": "1.0",
+          "use_delivery_address": false,
+          "delivery_address": null,
+          "accounting_kind": null,
+          "buyer_person": "",
+          "buyer_bank_account": null,
+          "buyer_bank": null,
+          "buyer_mass_payment_code": null,
+          "exchange_note": "",
+          "buyer_company": true,
+          "show_attachments": false,
+          "exchange_currency_rate": null,
+          "has_attachments": false,
+          "exchange_date": null,
+          "attachments_count": 0,
+          "delivery_date": "2026-11-12",
+          "fiscal_status": null,
+          "use_moss": false,
+          "transaction_date": "2026-11-12",
+          "email_status": null,
+          "exclude_from_stock_level": false,
+          "exclude_from_accounting": false,
+          "exchange_rate_den": "1.0",
+          "exchange_currency_rate_den": "1.0",
+          "accounting_scheme": null,
+          "exchange_difference": "0.0",
+          "not_cost": false,
+          "reverse_charge": false,
+          "issuer": null,
+          "use_issuer": false,
+          "cancelled": false,
+          "recipient_id": null,
+          "recipient_name": "",
+          "test": false,
+          "discount_net": "0.0",
+          "approval_status": null,
+          "accounting_vat_tax_date": "2026-11-12",
+          "accounting_income_tax_date": "2026-11-12",
+          "accounting_other_tax_date": null,
+          "accounting_status": null,
+          "normalized_number": null,
+          "na_tax_kind": null,
+          "issued_to_receipt": false,
+          "gov_id": null,
+          "gov_kind": null,
+          "gov_status": null,
+          "accounting_doc": true,
+          "payment_url": null,
+          "view_url": "https://firma-testowa.fakturownia.net/f/21-11-2026/[token-dokumentu]",
+          "gtu_codes": [],
+          "procedure_designations": [],
+          "bank_accounts": [],
+          "positions": [
+            {
+              "id": 1510752799,
+              "invoice_id": 595670939,
+              "name": "Lampa wisząca Półksiężyc (zmyślona)",
+              "description": null,
+              "price_net": "35.77",
+              "quantity": "1.0",
+              "total_price_gross": "44.0",
+              "total_price_net": "35.77",
+              "account_id": 2798824,
+              "created_at": "2026-11-12T09:26:36.000+01:00",
+              "updated_at": "2026-11-12T09:26:36.000+01:00",
+              "additional_info": null,
+              "quantity_unit": "szt.",
+              "tax": "23",
+              "price_gross": "44.0",
+              "price_tax": "8.23",
+              "total_price_tax": "8.23",
+              "kind": null,
+              "invoice_position_id": null,
+              "product_id": 9005825491990,
+              "deleted": false,
+              "discount": null,
+              "discount_percent": null,
+              "tax2": "0",
+              "exchange_rate": "1.0",
+              "accounting_tax_kind": null,
+              "code": null,
+              "additional_fields": {
+                "gtu_codes": []
+              },
+              "discount_net": null
+            }
+          ],
+          "recipients": [],
+          "issuers": [],
+          "descriptions": [],
+          "transaction_contracts": [],
+          "transaction_orders": [],
+          "transaction_batches": []
+        },
+        "czasMs": 155
+      }
+    },
+    {
+      "zadanie": {
+        "metoda": "GET",
+        "url": "https://firma-testowa.fakturownia.pl/invoices.json?period=all&page=1&per_page=100&fields%5Binvoice%5D=id%2Cnumber%2Cgov_status",
+        "naglowki": {
+          "Accept": "application/json",
+          "Authorization": "Bearer [token]"
+        },
+        "cialo": null
+      },
+      "odpowiedz": {
+        "status": 200,
+        "naglowki": {
+          "access-control-allow-headers": "X-Requested-With, Content-Type, Accept",
+          "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE",
+          "access-control-allow-origin": "*",
+          "access-control-request-method": "GET,POST,PUT,PATCH,DELETE",
+          "cache-control": "max-age=0, private, must-revalidate",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Thu, 12 Nov 2026 08:26:36 GMT",
+          "etag": "W/\"228bc0e5844ba7a44809dbfad8ed3d11\"",
+          "link": "<manifest.json>; rel=\"manifest\"",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx + Phusion Passenger(R)",
+          "status": "200 OK",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "transfer-encoding": "chunked",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-powered-by": "Phusion Passenger(R) Enterprise",
+          "x-request-id": "42d8a8cb-b6bc-435d-afda-9519d501c47d",
+          "x-runtime": "0.038364",
+          "x-xss-protection": "0"
+        },
+        "cialo": [
+          {
+            "id": 595670934,
+            "number": "B1",
+            "gov_status": null
+          },
+          {
+            "id": 595670939,
+            "number": "21/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670923,
+            "number": "20/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670914,
+            "number": "19/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670909,
+            "number": "18/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670838,
+            "number": "17/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670775,
+            "number": "16/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670771,
+            "number": "15/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670767,
+            "number": "14/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670763,
+            "number": "13/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670758,
+            "number": "12/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670756,
+            "number": "11/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670752,
+            "number": "10/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670745,
+            "number": "9/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670742,
+            "number": "8/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670739,
+            "number": "7/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670734,
+            "number": "6/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670729,
+            "number": "5/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670721,
+            "number": "4/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670719,
+            "number": "3/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670714,
+            "number": "2/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670707,
+            "number": "1/11/2026",
+            "gov_status": null
+          }
+        ],
+        "czasMs": 100
+      }
+    },
+    {
+      "zadanie": {
+        "metoda": "GET",
+        "url": "https://firma-testowa.fakturownia.pl/invoices.json?period=all&page=2&per_page=100&fields%5Binvoice%5D=id%2Cnumber%2Cgov_status",
+        "naglowki": {
+          "Accept": "application/json",
+          "Authorization": "Bearer [token]"
+        },
+        "cialo": null
+      },
+      "odpowiedz": {
+        "status": 200,
+        "naglowki": {
+          "access-control-allow-headers": "X-Requested-With, Content-Type, Accept",
+          "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE",
+          "access-control-allow-origin": "*",
+          "access-control-request-method": "GET,POST,PUT,PATCH,DELETE",
+          "cache-control": "max-age=0, private, must-revalidate",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Thu, 12 Nov 2026 08:26:37 GMT",
+          "etag": "W/\"4f53cda18c2baa0c0354bb5f9a3ecbe5\"",
+          "link": "<manifest.json>; rel=\"manifest\"",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx + Phusion Passenger(R)",
+          "status": "200 OK",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "transfer-encoding": "chunked",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-powered-by": "Phusion Passenger(R) Enterprise",
+          "x-request-id": "ec748918-dd38-4ba7-b850-ee774f58f9e8",
+          "x-runtime": "0.017036",
+          "x-xss-protection": "0"
+        },
+        "cialo": [],
+        "czasMs": 79
+      }
+    },
+    {
+      "zadanie": {
+        "metoda": "POST",
+        "url": "https://firma-testowa.fakturownia.pl/invoices.json",
+        "naglowki": {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "Bearer [token]"
+        },
+        "cialo": {
+          "invoice": {
+            "kind": "vat",
+            "issue_date": "2026-11-12",
+            "sell_date": "2026-11-12",
+            "payment_to": "2026-11-19",
+            "payment_type": "transfer",
+            "currency": "PLN",
+            "seller_name": "[sprzedawca]",
+            "seller_tax_no": "[sprzedawca]",
+            "seller_street": "[sprzedawca]",
+            "seller_post_code": "[sprzedawca]",
+            "seller_city": "[sprzedawca]",
+            "seller_country": "[sprzedawca]",
+            "buyer_company": true,
+            "buyer_name": "Pracownia Półcień Sp. z o.o.",
+            "buyer_tax_no": "1234563218",
+            "buyer_street": "ul. Lipowa 1",
+            "buyer_post_code": "60-001",
+            "buyer_city": "[sprzedawca]",
+            "buyer_country": "PL",
+            "buyer_email": "biuro@polcien.example.test",
+            "positions": [
+              {
+                "name": "Lampa wisząca Półksiężyc (zmyślona)",
+                "quantity": 1,
+                "tax": 23,
+                "total_price_gross": "44.00"
+              }
+            ]
+          }
+        }
+      },
+      "odpowiedz": {
+        "status": 201,
+        "naglowki": {
+          "access-control-allow-headers": "X-Requested-With, Content-Type, Accept",
+          "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE",
+          "access-control-allow-origin": "*",
+          "access-control-request-method": "GET,POST,PUT,PATCH,DELETE",
+          "cache-control": "max-age=0, private, must-revalidate",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Thu, 12 Nov 2026 08:26:37 GMT",
+          "etag": "W/\"d68201dd6e1f035d33dfb569d75fc24c\"",
+          "link": "<manifest.json>; rel=\"manifest\"",
+          "location": "https://firma-testowa.fakturownia.pl/invoices/595670942",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx + Phusion Passenger(R)",
+          "status": "201 Created",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "transfer-encoding": "chunked",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-powered-by": "Phusion Passenger(R) Enterprise",
+          "x-request-id": "86df19a5-e650-44f1-9018-839e91818846",
+          "x-runtime": "0.092183",
+          "x-xss-protection": "0"
+        },
+        "cialo": {
+          "id": 595670942,
+          "user_id": 3429992,
+          "app": null,
+          "number": "22/11/2026",
+          "place": null,
+          "sell_date": "2026-11-12",
+          "payment_type": "transfer",
+          "price_net": "35.77",
+          "price_gross": "44.0",
+          "currency": "PLN",
+          "status": "issued",
+          "description": null,
+          "seller_name": "[sprzedawca]",
+          "seller_tax_no": "[sprzedawca]",
+          "seller_street": "[sprzedawca]",
+          "seller_post_code": "[sprzedawca]",
+          "seller_city": "[sprzedawca]",
+          "seller_country": "[sprzedawca]",
+          "seller_email": null,
+          "seller_phone": null,
+          "seller_fax": null,
+          "seller_www": null,
+          "seller_person": null,
+          "seller_bank": null,
+          "seller_bank_account": null,
+          "buyer_name": "Pracownia Półcień Sp. z o.o.",
+          "buyer_tax_no": "1234563218",
+          "buyer_post_code": "60-001",
+          "buyer_city": "[sprzedawca]",
+          "buyer_street": "ul. Lipowa 1",
+          "buyer_first_name": null,
+          "buyer_country": "PL",
+          "created_at": "2026-11-12T09:26:37.000+01:00",
+          "updated_at": "2026-11-12T09:26:37.000+01:00",
+          "token": "[token-dokumentu]",
+          "buyer_email": "biuro@polcien.example.test",
+          "buyer_www": null,
+          "buyer_fax": null,
+          "buyer_phone": null,
+          "kind": "vat",
+          "pattern": "nr-m/mm/yyyy",
+          "pattern_nr": null,
+          "pattern_nr_m": 22,
+          "pattern_nr_d": null,
+          "client_id": 288946221,
+          "payment_to": "2026-11-19",
+          "paid": "0.0",
+          "seller_bank_account_id": null,
+          "lang": "pl",
+          "issue_date": "2026-11-12",
+          "price_tax": "8.23",
+          "department_id": 2077818,
+          "correction": null,
+          "buyer_note": null,
+          "additional_info_desc": null,
+          "additional_info": false,
+          "product_cache": "Lampa wisząca Półksiężyc (zmyślona)",
+          "buyer_last_name": null,
+          "from_invoice_id": null,
+          "oid": null,
+          "discount": "0.0",
+          "show_discount": false,
+          "sent_time": null,
+          "print_time": null,
+          "recurring_id": null,
+          "tax2_visible": null,
+          "warehouse_id": null,
+          "paid_date": null,
+          "product_id": 9005825491990,
+          "issue_year": 2026,
+          "internal_note": null,
+          "invoice_id": null,
+          "invoice_template_id": 1,
+          "description_long": null,
+          "buyer_tax_no_kind": null,
+          "seller_tax_no_kind": null,
+          "description_footer": null,
+          "sell_date_kind": null,
+          "payment_to_kind": "other_date",
+          "exchange_currency": null,
+          "discount_kind": "percent_total",
+          "income": true,
+          "from_api": true,
+          "category_id": null,
+          "warehouse_document_id": null,
+          "exchange_kind": "nbp",
+          "exchange_rate": "1.0",
+          "use_delivery_address": false,
+          "delivery_address": null,
+          "accounting_kind": null,
+          "buyer_person": "",
+          "buyer_bank_account": null,
+          "buyer_bank": null,
+          "buyer_mass_payment_code": null,
+          "exchange_note": "",
+          "buyer_company": true,
+          "show_attachments": false,
+          "exchange_currency_rate": null,
+          "has_attachments": false,
+          "exchange_date": null,
+          "attachments_count": 0,
+          "delivery_date": "2026-11-12",
+          "fiscal_status": null,
+          "use_moss": false,
+          "transaction_date": "2026-11-12",
+          "email_status": null,
+          "exclude_from_stock_level": false,
+          "exclude_from_accounting": false,
+          "exchange_rate_den": "1.0",
+          "exchange_currency_rate_den": "1.0",
+          "accounting_scheme": null,
+          "exchange_difference": "0.0",
+          "not_cost": false,
+          "reverse_charge": false,
+          "issuer": null,
+          "use_issuer": false,
+          "cancelled": false,
+          "recipient_id": null,
+          "recipient_name": "",
+          "test": false,
+          "discount_net": "0.0",
+          "approval_status": null,
+          "accounting_vat_tax_date": "2026-11-12",
+          "accounting_income_tax_date": "2026-11-12",
+          "accounting_other_tax_date": null,
+          "accounting_status": null,
+          "normalized_number": null,
+          "na_tax_kind": null,
+          "issued_to_receipt": false,
+          "gov_id": null,
+          "gov_kind": null,
+          "gov_status": null,
+          "accounting_doc": true,
+          "payment_url": null,
+          "view_url": "https://firma-testowa.fakturownia.net/f/22-11-2026/[token-dokumentu]",
+          "gtu_codes": [],
+          "procedure_designations": [],
+          "bank_accounts": [],
+          "positions": [
+            {
+              "id": 1510752803,
+              "invoice_id": 595670942,
+              "name": "Lampa wisząca Półksiężyc (zmyślona)",
+              "description": null,
+              "price_net": "35.77",
+              "quantity": "1.0",
+              "total_price_gross": "44.0",
+              "total_price_net": "35.77",
+              "account_id": 2798824,
+              "created_at": "2026-11-12T09:26:37.000+01:00",
+              "updated_at": "2026-11-12T09:26:37.000+01:00",
+              "additional_info": null,
+              "quantity_unit": "szt.",
+              "tax": "23",
+              "price_gross": "44.0",
+              "price_tax": "8.23",
+              "total_price_tax": "8.23",
+              "kind": null,
+              "invoice_position_id": null,
+              "product_id": 9005825491990,
+              "deleted": false,
+              "discount": null,
+              "discount_percent": null,
+              "tax2": "0",
+              "exchange_rate": "1.0",
+              "accounting_tax_kind": null,
+              "code": null,
+              "additional_fields": {
+                "gtu_codes": []
+              },
+              "discount_net": null
+            }
+          ],
+          "recipients": [],
+          "issuers": [],
+          "descriptions": [],
+          "transaction_contracts": [],
+          "transaction_orders": [],
+          "transaction_batches": []
+        },
+        "czasMs": 155
+      }
+    },
+    {
+      "zadanie": {
+        "metoda": "GET",
+        "url": "https://firma-testowa.fakturownia.pl/invoices.json?period=all&page=1&per_page=100&fields%5Binvoice%5D=id%2Cnumber%2Cgov_status",
+        "naglowki": {
+          "Accept": "application/json",
+          "Authorization": "Bearer [token]"
+        },
+        "cialo": null
+      },
+      "odpowiedz": {
+        "status": 200,
+        "naglowki": {
+          "access-control-allow-headers": "X-Requested-With, Content-Type, Accept",
+          "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE",
+          "access-control-allow-origin": "*",
+          "access-control-request-method": "GET,POST,PUT,PATCH,DELETE",
+          "cache-control": "max-age=0, private, must-revalidate",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Thu, 12 Nov 2026 08:26:37 GMT",
+          "etag": "W/\"6b9021cacf0ebddc69c551c637b83512\"",
+          "link": "<manifest.json>; rel=\"manifest\"",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx + Phusion Passenger(R)",
+          "status": "200 OK",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "transfer-encoding": "chunked",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-powered-by": "Phusion Passenger(R) Enterprise",
+          "x-request-id": "997ff74b-eb19-4eb4-be8e-bd3aad75039d",
+          "x-runtime": "0.033849",
+          "x-xss-protection": "0"
+        },
+        "cialo": [
+          {
+            "id": 595670934,
+            "number": "B1",
+            "gov_status": null
+          },
+          {
+            "id": 595670942,
+            "number": "22/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670939,
+            "number": "21/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670923,
+            "number": "20/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670914,
+            "number": "19/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670909,
+            "number": "18/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670838,
+            "number": "17/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670775,
+            "number": "16/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670771,
+            "number": "15/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670767,
+            "number": "14/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670763,
+            "number": "13/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670758,
+            "number": "12/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670756,
+            "number": "11/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670752,
+            "number": "10/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670745,
+            "number": "9/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670742,
+            "number": "8/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670739,
+            "number": "7/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670734,
+            "number": "6/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670729,
+            "number": "5/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670721,
+            "number": "4/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670719,
+            "number": "3/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670714,
+            "number": "2/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670707,
+            "number": "1/11/2026",
+            "gov_status": null
+          }
+        ],
+        "czasMs": 96
+      }
+    },
+    {
+      "zadanie": {
+        "metoda": "GET",
+        "url": "https://firma-testowa.fakturownia.pl/invoices.json?period=all&page=2&per_page=100&fields%5Binvoice%5D=id%2Cnumber%2Cgov_status",
+        "naglowki": {
+          "Accept": "application/json",
+          "Authorization": "Bearer [token]"
+        },
+        "cialo": null
+      },
+      "odpowiedz": {
+        "status": 200,
+        "naglowki": {
+          "access-control-allow-headers": "X-Requested-With, Content-Type, Accept",
+          "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE",
+          "access-control-allow-origin": "*",
+          "access-control-request-method": "GET,POST,PUT,PATCH,DELETE",
+          "cache-control": "max-age=0, private, must-revalidate",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Thu, 12 Nov 2026 08:26:37 GMT",
+          "etag": "W/\"4f53cda18c2baa0c0354bb5f9a3ecbe5\"",
+          "link": "<manifest.json>; rel=\"manifest\"",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx + Phusion Passenger(R)",
+          "status": "200 OK",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "transfer-encoding": "chunked",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-powered-by": "Phusion Passenger(R) Enterprise",
+          "x-request-id": "3ccbfdd0-b62b-4acf-9596-944a6d8683fa",
+          "x-runtime": "0.023391",
+          "x-xss-protection": "0"
+        },
+        "cialo": [],
+        "czasMs": 86
+      }
+    },
+    {
+      "zadanie": {
+        "metoda": "POST",
+        "url": "https://firma-testowa.fakturownia.pl/invoices.json",
+        "naglowki": {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "Bearer [token]"
+        },
+        "cialo": {
+          "invoice": {
+            "kind": "vat",
+            "issue_date": "2026-11-12",
+            "sell_date": "2026-11-12",
+            "payment_to": "2026-11-19",
+            "payment_type": "transfer",
+            "currency": "PLN",
+            "seller_name": "[sprzedawca]",
+            "seller_tax_no": "[sprzedawca]",
+            "seller_street": "[sprzedawca]",
+            "seller_post_code": "[sprzedawca]",
+            "seller_city": "[sprzedawca]",
+            "seller_country": "[sprzedawca]",
+            "buyer_company": true,
+            "buyer_name": "Pracownia Półcień Sp. z o.o.",
+            "buyer_tax_no": "1234563218",
+            "buyer_street": "ul. Lipowa 1",
+            "buyer_post_code": "60-001",
+            "buyer_city": "[sprzedawca]",
+            "buyer_country": "PL",
+            "buyer_email": "biuro@polcien.example.test",
+            "positions": [
+              {
+                "name": "Lampa wisząca Półksiężyc (zmyślona)",
+                "quantity": 1,
+                "tax": 23,
+                "total_price_gross": "45.00"
+              }
+            ],
+            "oid": "PRZ119-F11-1794471997237",
+            "oid_unique": "yes"
+          }
+        }
+      },
+      "odpowiedz": {
+        "status": 201,
+        "naglowki": {
+          "access-control-allow-headers": "X-Requested-With, Content-Type, Accept",
+          "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE",
+          "access-control-allow-origin": "*",
+          "access-control-request-method": "GET,POST,PUT,PATCH,DELETE",
+          "cache-control": "max-age=0, private, must-revalidate",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Thu, 12 Nov 2026 08:26:37 GMT",
+          "etag": "W/\"0bf7c06c0d582cb797eaf09cbbc41fc8\"",
+          "link": "<manifest.json>; rel=\"manifest\"",
+          "location": "https://firma-testowa.fakturownia.pl/invoices/595670948",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx + Phusion Passenger(R)",
+          "status": "201 Created",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "transfer-encoding": "chunked",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-powered-by": "Phusion Passenger(R) Enterprise",
+          "x-request-id": "98b83535-eff7-44bd-9ffa-f2f16763e942",
+          "x-runtime": "0.109400",
+          "x-xss-protection": "0"
+        },
+        "cialo": {
+          "id": 595670948,
+          "user_id": 3429992,
+          "app": null,
+          "number": "23/11/2026",
+          "place": null,
+          "sell_date": "2026-11-12",
+          "payment_type": "transfer",
+          "price_net": "36.59",
+          "price_gross": "45.0",
+          "currency": "PLN",
+          "status": "issued",
+          "description": null,
+          "seller_name": "[sprzedawca]",
+          "seller_tax_no": "[sprzedawca]",
+          "seller_street": "[sprzedawca]",
+          "seller_post_code": "[sprzedawca]",
+          "seller_city": "[sprzedawca]",
+          "seller_country": "[sprzedawca]",
+          "seller_email": null,
+          "seller_phone": null,
+          "seller_fax": null,
+          "seller_www": null,
+          "seller_person": null,
+          "seller_bank": null,
+          "seller_bank_account": null,
+          "buyer_name": "Pracownia Półcień Sp. z o.o.",
+          "buyer_tax_no": "1234563218",
+          "buyer_post_code": "60-001",
+          "buyer_city": "[sprzedawca]",
+          "buyer_street": "ul. Lipowa 1",
+          "buyer_first_name": null,
+          "buyer_country": "PL",
+          "created_at": "2026-11-12T09:26:37.000+01:00",
+          "updated_at": "2026-11-12T09:26:37.000+01:00",
+          "token": "[token-dokumentu]",
+          "buyer_email": "biuro@polcien.example.test",
+          "buyer_www": null,
+          "buyer_fax": null,
+          "buyer_phone": null,
+          "kind": "vat",
+          "pattern": "nr-m/mm/yyyy",
+          "pattern_nr": null,
+          "pattern_nr_m": 23,
+          "pattern_nr_d": null,
+          "client_id": 288946221,
+          "payment_to": "2026-11-19",
+          "paid": "0.0",
+          "seller_bank_account_id": null,
+          "lang": "pl",
+          "issue_date": "2026-11-12",
+          "price_tax": "8.41",
+          "department_id": 2077818,
+          "correction": null,
+          "buyer_note": null,
+          "additional_info_desc": null,
+          "additional_info": false,
+          "product_cache": "Lampa wisząca Półksiężyc (zmyślona)",
+          "buyer_last_name": null,
+          "from_invoice_id": null,
+          "oid": "PRZ119-F11-1794471997237",
+          "discount": "0.0",
+          "show_discount": false,
+          "sent_time": null,
+          "print_time": null,
+          "recurring_id": null,
+          "tax2_visible": null,
+          "warehouse_id": null,
+          "paid_date": null,
+          "product_id": 9005825491990,
+          "issue_year": 2026,
+          "internal_note": null,
+          "invoice_id": null,
+          "invoice_template_id": 1,
+          "description_long": null,
+          "buyer_tax_no_kind": null,
+          "seller_tax_no_kind": null,
+          "description_footer": null,
+          "sell_date_kind": null,
+          "payment_to_kind": "other_date",
+          "exchange_currency": null,
+          "discount_kind": "percent_total",
+          "income": true,
+          "from_api": true,
+          "category_id": null,
+          "warehouse_document_id": null,
+          "exchange_kind": "nbp",
+          "exchange_rate": "1.0",
+          "use_delivery_address": false,
+          "delivery_address": null,
+          "accounting_kind": null,
+          "buyer_person": "",
+          "buyer_bank_account": null,
+          "buyer_bank": null,
+          "buyer_mass_payment_code": null,
+          "exchange_note": "",
+          "buyer_company": true,
+          "show_attachments": false,
+          "exchange_currency_rate": null,
+          "has_attachments": false,
+          "exchange_date": null,
+          "attachments_count": 0,
+          "delivery_date": "2026-11-12",
+          "fiscal_status": null,
+          "use_moss": false,
+          "transaction_date": "2026-11-12",
+          "email_status": null,
+          "exclude_from_stock_level": false,
+          "exclude_from_accounting": false,
+          "exchange_rate_den": "1.0",
+          "exchange_currency_rate_den": "1.0",
+          "accounting_scheme": null,
+          "exchange_difference": "0.0",
+          "not_cost": false,
+          "reverse_charge": false,
+          "issuer": null,
+          "use_issuer": false,
+          "cancelled": false,
+          "recipient_id": null,
+          "recipient_name": "",
+          "test": false,
+          "discount_net": "0.0",
+          "approval_status": null,
+          "accounting_vat_tax_date": "2026-11-12",
+          "accounting_income_tax_date": "2026-11-12",
+          "accounting_other_tax_date": null,
+          "accounting_status": null,
+          "normalized_number": null,
+          "na_tax_kind": null,
+          "issued_to_receipt": false,
+          "gov_id": null,
+          "gov_kind": null,
+          "gov_status": null,
+          "accounting_doc": true,
+          "payment_url": null,
+          "view_url": "https://firma-testowa.fakturownia.net/f/23-11-2026/[token-dokumentu]",
+          "gtu_codes": [],
+          "procedure_designations": [],
+          "bank_accounts": [],
+          "positions": [
+            {
+              "id": 1510752818,
+              "invoice_id": 595670948,
+              "name": "Lampa wisząca Półksiężyc (zmyślona)",
+              "description": null,
+              "price_net": "36.59",
+              "quantity": "1.0",
+              "total_price_gross": "45.0",
+              "total_price_net": "36.59",
+              "account_id": 2798824,
+              "created_at": "2026-11-12T09:26:37.000+01:00",
+              "updated_at": "2026-11-12T09:26:37.000+01:00",
+              "additional_info": null,
+              "quantity_unit": "szt.",
+              "tax": "23",
+              "price_gross": "45.01",
+              "price_tax": "8.42",
+              "total_price_tax": "8.41",
+              "kind": null,
+              "invoice_position_id": null,
+              "product_id": 9005825491990,
+              "deleted": false,
+              "discount": null,
+              "discount_percent": null,
+              "tax2": "0",
+              "exchange_rate": "1.0",
+              "accounting_tax_kind": null,
+              "code": null,
+              "additional_fields": {
+                "gtu_codes": []
+              },
+              "discount_net": null
+            }
+          ],
+          "recipients": [],
+          "issuers": [],
+          "descriptions": [],
+          "transaction_contracts": [],
+          "transaction_orders": [],
+          "transaction_batches": []
+        },
+        "czasMs": 173
+      }
+    },
+    {
+      "zadanie": {
+        "metoda": "GET",
+        "url": "https://firma-testowa.fakturownia.pl/invoices.json?period=all&page=1&per_page=100&fields%5Binvoice%5D=id%2Cnumber%2Cgov_status",
+        "naglowki": {
+          "Accept": "application/json",
+          "Authorization": "Bearer [token]"
+        },
+        "cialo": null
+      },
+      "odpowiedz": {
+        "status": 200,
+        "naglowki": {
+          "access-control-allow-headers": "X-Requested-With, Content-Type, Accept",
+          "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE",
+          "access-control-allow-origin": "*",
+          "access-control-request-method": "GET,POST,PUT,PATCH,DELETE",
+          "cache-control": "max-age=0, private, must-revalidate",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Thu, 12 Nov 2026 08:26:37 GMT",
+          "etag": "W/\"c16d6f8c6177b85e906c5871255b3404\"",
+          "link": "<manifest.json>; rel=\"manifest\"",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx + Phusion Passenger(R)",
+          "status": "200 OK",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "transfer-encoding": "chunked",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-powered-by": "Phusion Passenger(R) Enterprise",
+          "x-request-id": "4a468bc9-c3e6-4fa4-8d8a-8cd6da54ccae",
+          "x-runtime": "0.031523",
+          "x-xss-protection": "0"
+        },
+        "cialo": [
+          {
+            "id": 595670934,
+            "number": "B1",
+            "gov_status": null
+          },
+          {
+            "id": 595670948,
+            "number": "23/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670942,
+            "number": "22/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670939,
+            "number": "21/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670923,
+            "number": "20/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670914,
+            "number": "19/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670909,
+            "number": "18/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670838,
+            "number": "17/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670775,
+            "number": "16/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670771,
+            "number": "15/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670767,
+            "number": "14/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670763,
+            "number": "13/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670758,
+            "number": "12/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670756,
+            "number": "11/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670752,
+            "number": "10/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670745,
+            "number": "9/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670742,
+            "number": "8/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670739,
+            "number": "7/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670734,
+            "number": "6/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670729,
+            "number": "5/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670721,
+            "number": "4/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670719,
+            "number": "3/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670714,
+            "number": "2/11/2026",
+            "gov_status": null
+          },
+          {
+            "id": 595670707,
+            "number": "1/11/2026",
+            "gov_status": null
+          }
+        ],
+        "czasMs": 93
+      }
+    },
+    {
+      "zadanie": {
+        "metoda": "GET",
+        "url": "https://firma-testowa.fakturownia.pl/invoices.json?period=all&page=2&per_page=100&fields%5Binvoice%5D=id%2Cnumber%2Cgov_status",
+        "naglowki": {
+          "Accept": "application/json",
+          "Authorization": "Bearer [token]"
+        },
+        "cialo": null
+      },
+      "odpowiedz": {
+        "status": 200,
+        "naglowki": {
+          "access-control-allow-headers": "X-Requested-With, Content-Type, Accept",
+          "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE",
+          "access-control-allow-origin": "*",
+          "access-control-request-method": "GET,POST,PUT,PATCH,DELETE",
+          "cache-control": "max-age=0, private, must-revalidate",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Thu, 12 Nov 2026 08:26:37 GMT",
+          "etag": "W/\"4f53cda18c2baa0c0354bb5f9a3ecbe5\"",
+          "link": "<manifest.json>; rel=\"manifest\"",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx + Phusion Passenger(R)",
+          "status": "200 OK",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "transfer-encoding": "chunked",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-powered-by": "Phusion Passenger(R) Enterprise",
+          "x-request-id": "2db21328-575f-4357-831f-3fa1c0184287",
+          "x-runtime": "0.019052",
+          "x-xss-protection": "0"
+        },
+        "cialo": [],
+        "czasMs": 81
+      }
+    },
+    {
+      "zadanie": {
+        "metoda": "POST",
+        "url": "https://firma-testowa.fakturownia.pl/invoices.json",
+        "naglowki": {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "Bearer [token]"
+        },
+        "cialo": {
+          "invoice": {
+            "kind": "vat",
+            "issue_date": "2026-11-12",
+            "sell_date": "2026-11-12",
+            "payment_to": "2026-11-19",
+            "payment_type": "transfer",
+            "currency": "PLN",
+            "seller_name": "[sprzedawca]",
+            "seller_tax_no": "[sprzedawca]",
+            "seller_street": "[sprzedawca]",
+            "seller_post_code": "[sprzedawca]",
+            "seller_city": "[sprzedawca]",
+            "seller_country": "[sprzedawca]",
+            "buyer_company": true,
+            "buyer_name": "Pracownia Półcień Sp. z o.o.",
+            "buyer_tax_no": "1234563218",
+            "buyer_street": "ul. Lipowa 1",
+            "buyer_post_code": "60-001",
+            "buyer_city": "[sprzedawca]",
+            "buyer_country": "PL",
+            "buyer_email": "biuro@polcien.example.test",
+            "positions": [
+              {
+                "name": "Lampa wisząca Półksiężyc (zmyślona)",
+                "quantity": 1,
+                "tax": 23,
+                "total_price_gross": "45.00"
+              }
+            ],
+            "oid": "PRZ119-F11-1794471997237",
+            "oid_unique": "yes"
+          }
+        }
+      },
+      "odpowiedz": {
+        "status": 422,
+        "naglowki": {
+          "access-control-allow-headers": "X-Requested-With, Content-Type, Accept",
+          "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE",
+          "access-control-allow-origin": "*",
+          "access-control-request-method": "GET,POST,PUT,PATCH,DELETE",
+          "cache-control": "no-cache",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Thu, 12 Nov 2026 08:26:37 GMT",
+          "link": "<manifest.json>; rel=\"manifest\"",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx + Phusion Passenger(R)",
+          "status": "422 Unprocessable Entity",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "transfer-encoding": "chunked",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-powered-by": "Phusion Passenger(R) Enterprise",
+          "x-request-id": "cc457717-986b-4857-9d6b-1f1c600902a5",
+          "x-runtime": "0.044534",
+          "x-xss-protection": "0"
+        },
+        "cialo": {
+          "code": "error",
+          "message": {
+            "oid": [
+              "- zostało już zajęte"
+            ]
+          }
+        },
+        "czasMs": 110
+      }
+    }
+  ]
+}

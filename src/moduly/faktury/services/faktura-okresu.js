@@ -195,7 +195,9 @@ export function createFakturaOkresu({
   // Wszystko inne — 5xx, zerwane polaczenie (to w ogole NIE NIESIE statusu, patrz
   // infakt/client.js), blad techniczny w trakcie wywolania — jest NIEJEDNOZNACZNE.
   // Domyslna odpowiedz na niewiedze musi byc ostrozna. Ta sama regula co w faktura.js.
-  const jednoznacznaOdmowa = (e) => Number.isInteger(e?.status) && e.status >= 400 && e.status < 500;
+  // PRZ-119.03: odmowa „duplikat” (program ma JUŻ dokument dla tego zamówienia, np. 422 na `oid` w Fakturowni)
+  // to 4xx, ale dokument ISTNIEJE — rezerwacja zostaje, sprawa do wyjaśnienia.
+  const jednoznacznaOdmowa = (e) => Number.isInteger(e?.status) && e.status >= 400 && e.status < 500 && !e?.duplikat;
 
   // Komunikat odmowy MUSI powiedziec czlowiekowi, co zrobic — inaczej okres w stanie
   // 'do_wyjasnienia' wyglada jak awaria panelu, a nie jak decyzja czekajaca na czlowieka.
@@ -416,7 +418,9 @@ export function createFakturaOkresu({
         // rozsypania sa puste i payload zostaje bajt w bajt taki, jaki byl.
         ...(wdt ? polaWdtInfakt(klient.nip, { nipSprzedawcy: nipWlasny }) : {}),
         ...(seriaWdt ? { number: seriaWdt.numer } : {}),
-      });
+      // PRZ-119.03: identyfikator dokumentu okresu dla programu (Fakturownia: `oid` + `oid_unique`) — klient i miesiąc,
+      // nie id wiersza: po resecie bazy ten sam okres nie dostaje cudzego oid (fałszywy duplikat).
+      }, { oid: `okres-${okres.klient_klucz}-${okres.rok}-${String(okres.miesiac).padStart(2, '0')}` });
     } catch (e) {
       // Los numeru serii rozstrzyga wspolna galaz: 4xx zwalnia, niejednoznaczna zostawia
       // zajety z glosnym sladem w logu zamowien okresu.

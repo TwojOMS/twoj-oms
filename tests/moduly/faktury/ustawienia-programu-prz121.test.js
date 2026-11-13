@@ -192,7 +192,7 @@ describe('PRZ-121.02 ekran Moduł faktur — widok', () => {
     const { app, db, admin } = panel({ OMS_TRYB: tryb, OMS_TWOJEFAKTURY: 'tak' });
     try {
       const r = await get(app, ADRES, admin);
-      expect(nieaktywne(r.body)).toEqual(['fakturownia']);
+      expect(nieaktywne(r.body)).toEqual([]); // PRZ-119.05: Fakturownia już nie „wkrótce”
       expect((await post(app, ADRES, admin, { program: 'twojefaktury' })).statusCode).toBe(303);
       expect(wczytajWyborProgramu(db).program).toBe('twojefaktury');
       expect(siec).not.toHaveBeenCalled();
@@ -230,12 +230,13 @@ describe('PRZ-121.02 ekran Moduł faktur — widok', () => {
     } finally { await app.close(); db.close(); }
   });
 
-  it('GET: cztery pola, nieaktywne dokładnie Fakturownia i TwojeFaktury, z opisem „wkrótce”', async () => {
+  // PRZ-119.05: Fakturownia odblokowana — bez zgody instalacji nieaktywne zostaje samo TwojeFaktury.
+  it('GET: cztery pola, nieaktywne dokładnie TwojeFaktury, z opisem „wkrótce”', async () => {
     const { app, admin } = panel();
     const r = await get(app, ADRES, admin);
     expect(r.statusCode).toBe(200);
     expect(radia(r.body).map(wartosc)).toEqual(['brak', 'infakt', 'fakturownia', 'twojefaktury']);
-    expect(nieaktywne(r.body)).toEqual(['fakturownia', 'twojefaktury']);
+    expect(nieaktywne(r.body)).toEqual(['twojefaktury']);
     expect(r.body).toContain('OMS sam wystawia faktury i wysyła je do KSeF, bez zewnętrznego programu');
     expect(r.body).toContain('wkrótce');
     expect(formularz(r.body)).toContain('<button class="btn btn--glowny" type="submit">Zapisz</button>');
@@ -274,9 +275,9 @@ describe('PRZ-121.02 ekran Moduł faktur — widok', () => {
 
   it('zła wartość w zapisie: uwaga na górze ekranu', async () => {
     const { app, admin, db } = panel();
-    zapiszKonfiguracjeIntegracji(db, 'program_fakturowy', { ustawienia: { program: 'fakturownia' }, sekrety: {} });
+    zapiszKonfiguracjeIntegracji(db, 'program_fakturowy', { ustawienia: { program: 'twojefaktury' }, sekrety: {} });
     const r = await get(app, ADRES, admin);
-    expect(r.body).toContain('Zapisany moduł faktur „fakturownia” nie działa w tej wersji OMS-u — faktury są wyłączone. Wybierz moduł ponownie.');
+    expect(r.body).toContain('Zapisany moduł faktur „twojefaktury” nie działa w tej wersji OMS-u — faktury są wyłączone. Wybierz moduł ponownie.');
   });
 
   it('lista integracji ma odnośnik do ekranu w sekcji Faktury', async () => {
@@ -324,7 +325,8 @@ describe('PRZ-121.02 ekran Moduł faktur — zapis', () => {
     expect(wczytajWyborProgramu(db)).toBeNull();
   });
 
-  it.each(['fakturownia', 'twojefaktury', 'nieistniejacy', ''])('wybór „%s”: 400, wiersz niezapisany, ekran zostaje', async (program) => {
+  // PRZ-119.05: „fakturownia” zeszła z listy odmów — Fakturownia jest dostępna (przypadek niżej).
+  it.each(['twojefaktury', 'nieistniejacy', ''])('wybór „%s”: 400, wiersz niezapisany, ekran zostaje', async (program) => {
     const { app, admin, db } = panel(ZE_ZMIENNA());
     const r = await post(app, ADRES, admin, { program });
     expect(r.statusCode).toBe(400);
@@ -332,6 +334,17 @@ describe('PRZ-121.02 ekran Moduł faktur — zapis', () => {
     expect(r.body).toMatch(/aria-current="page"[^>]*>Program do faktur</); // PRZ-154.E2.3: nazwa w aktywnej zakładce, bez powtórzonego h2
     expect(r.body).not.toContain('<h2 class="naglowek-formularza">Program do faktur</h2>');
     expect(wczytajWyborProgramu(db)).toBeNull();
+  });
+
+  it('PRZ-119.05: wybór „fakturownia” bez domeny i tokenu: 303, zapis, ekran mówi, czego brakuje; nic nie idzie do sieci', async () => {
+    const { app, admin, db } = panel(ZE_ZMIENNA());
+    const r = await post(app, ADRES, admin, { program: 'fakturownia' });
+    expect(r.statusCode, r.body).toBe(303);
+    expect(wczytajWyborProgramu(db).program).toBe('fakturownia');
+    const ekran = await get(app, r.headers.location, admin);
+    expect(ekran.body).toContain('Zapisany moduł faktur „Fakturownia” nie ma domeny konta i tokenu API — wpisz je w Ustawienia → Integracje → Fakturownia (/ustawienia/integracje/fakturownia)');
+    expect(zaznaczone(ekran.body)).toEqual(['fakturownia']);
+    expect(siec).not.toHaveBeenCalledWith(expect.stringContaining('fakturownia'), expect.anything());
   });
 
   it('wybór z pliku (OMS_PROGRAM_FAKTUROWY): pola nieaktywne, zdanie o pliku, zapis 409, wiersz niezapisany', async () => {

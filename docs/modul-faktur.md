@@ -1,7 +1,9 @@
 # Program do faktur
 
-Wybór programu jest w **Ustawienia → Faktury i podatki → Program do faktur**.
+Wybór programu jest w **Ustawienia → Integracje → Moduł faktur**.
 Dotyczy całej instalacji. Zmienia go administrator.
+
+Instrukcja podłączenia Fakturowni: [Fakturownia](fakturownia.md).
 
 ## Dostępne programy
 
@@ -9,21 +11,21 @@ Dotyczy całej instalacji. Zmienia go administrator.
 |---|---|
 | Brak | OMS nie wystawia faktur. Proformy i pobieranie kosztów z KSeF działają niezależnie. |
 | inFakt | OMS wystawia faktury przez podłączone konto inFaktu. |
-| Fakturownia — wkrótce | Zapowiedź, opcji nie można wybrać. |
+| Fakturownia | OMS wystawia faktury przez konto Fakturowni. Potrzebne są token API i domena konta: [jak podłączyć](fakturownia.md). |
 | TwojeFaktury — wkrótce | Zapowiedź. To wydanie nie zawiera kodu tego modułu i nie można go włączyć ustawieniem. |
 
 Bez jawnego wyboru OMS korzysta z inFaktu, jeśli jest podłączony; w przeciwnym razie nie wystawia faktur.
 
 ## Zmiana programu
 
-1. Otwórz **Ustawienia → Faktury i podatki → Program do faktur**.
-2. Wybierz **Brak** albo **inFakt** i zapisz.
+1. Otwórz **Ustawienia → Integracje → Moduł faktur**.
+2. Wybierz **Brak**, **inFakt** albo **Fakturownia** i zapisz.
 3. Uruchom ponownie OMS. Użyj przycisku na ekranie, jeśli instalacja go udostępnia,
    albo na serwerze w katalogu instalacji wykonaj <code>docker compose restart oms</code>.
 
 Do restartu działa poprzedni program. Automat wysyłki do KSeF zatrzymuje się od razu po zapisaniu „Brak”.
 Ekran pokazuje program działający teraz i wybór oczekujący na restart.
-Podłączanie inFaktu jest w katalogu Integracji; zasady fakturowania i VAT mają osobne zakładki w „Faktury i podatki”.
+Podłączanie inFaktu i Fakturowni jest w katalogu Integracji; zasady fakturowania i VAT mają osobne zakładki w „Faktury i podatki”.
 
 ## Faktury po wybraniu „Brak”
 
@@ -33,7 +35,9 @@ Zmiana programu nie przenosi dokumentów między programami.
 
 ## Konfiguracja w pliku
 
-<code>OMS_PROGRAM_FAKTUROWY=brak</code> albo <code>OMS_PROGRAM_FAKTUROWY=infakt</code> ma pierwszeństwo przed wyborem w panelu.
+<code>OMS_PROGRAM_FAKTUROWY=brak</code>, <code>OMS_PROGRAM_FAKTUROWY=infakt</code> albo <code>OMS_PROGRAM_FAKTUROWY=fakturownia</code>
+ma pierwszeństwo przed wyborem w panelu. Zła wartość zatrzymuje start OMS-u.
+Przed wyborem Fakturowni skonfiguruj jej połączenie według [instrukcji](fakturownia.md).
 Pozostałe programy są niedostępne. Nie ustawiaj zmiennych włączających nieobecne moduły.
 
 Przy wycofaniu do wersji bez wyboru programu zapis „Brak” może być pomijany — jeśli klucz inFaktu pozostaje

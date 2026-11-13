@@ -5,7 +5,8 @@
 <% const r = locals.reguly; const pokazReguly = Boolean(r && (r.dostepne || r.lista.length)); %>
 <%# PRZ-108.11: plakietka BETA obok tytułu h1, nie w nim — tytuł, okruszek i <title> zostają „Automatyzacje”. %>
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Automatyzacje'}) %>
-<% const systemowe = nawigacja?.kontekst?.aktywnaZakladka === 'systemowe'; %>
+<%# PRZ-119.07: adres automatu KSeF pod programem fakturowym leży w dziale „Faktury i podatki” — pokazuje automaty systemowe. %>
+<% const systemowe = locals.tylkoAutomatKsef === true || nawigacja?.kontekst?.aktywnaZakladka === 'systemowe'; %>
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (!systemowe) { %>
 <% if (pokazReguly) { %>

@@ -94,6 +94,50 @@ export function miniaturyLustra(db, pary) {
 }
 
 /**
+ * PRZ-159: mapa SKU → miniatura z lustra magazynu (wszystkie kanały), dla pozycji bez żadnego zdjęcia — dziś ERLI, które
+ * nie przysyła zdjęcia w zamówieniu. JEDNO zapytanie na ekran, jak `miniaturyLustra`.
+ *
+ * ⚠️ Ten sam SKU bywa w kilku kanałach (sklep, Allegro) i w produkcie wycofanym — wygrywa produkt obecny, potem najstarszy
+ * wiersz (stała kolejność, żeby miniatura nie skakała przy odświeżeniu). Tylko adres http(s): wartość idzie do `src`.
+ * Bez SKU do sprawdzenia baza nie jest pytana wcale.
+ */
+export function miniaturySku(db, skus) {
+  const mapa = new Map();
+  const lista = [...new Set((skus ?? []).filter((s) => typeof s === 'string' && s.trim()).map((s) => s.trim()))];
+  if (lista.length === 0) return mapa;
+  const wiersze = db.prepare(
+    'SELECT sku_sklepu, miniatura FROM produkty_sklepowe'
+    + ` WHERE sku_sklepu IN (${lista.map(() => '?').join(',')})`
+    + " AND miniatura IS NOT NULL AND TRIM(miniatura) <> ''"
+    + ' ORDER BY (zniknal_at IS NOT NULL) ASC, id ASC',
+  ).all(...lista);
+  for (const w of wiersze) {
+    const adres = String(w.miniatura).trim();
+    if (mapa.has(w.sku_sklepu) || !/^https?:\/\//i.test(adres)) continue;
+    mapa.set(w.sku_sklepu, adres);
+  }
+  return mapa;
+}
+
+/**
+ * PRZ-159: SKU pozycji, które mogą potrzebować miniatury po SKU — bez zdjęcia i bez produktu sklepu (te mają własną
+ * drogę). `pomin(sku)` odsiewa SKU techniczne (zaślepka panelu indywidualnego nie jest produktem).
+ */
+export function skuPozycji(zamowienia, pomin = () => false) {
+  const wynik = [];
+  for (const z of zamowienia ?? []) {
+    for (const p of z?.pozycje ?? []) {
+      const sku = typeof p?.sku === 'string' ? p.sku.trim() : '';
+      if (!sku || pomin(sku)) continue;
+      if (kluczLustra(z?.sklep, p?.produkt_id) !== null) continue;
+      if (typeof p?.zdjecie_url === 'string' && p.zdjecie_url.trim()) continue;
+      if (!wynik.includes(sku)) wynik.push(sku);
+    }
+  }
+  return wynik;
+}
+
+/**
  * Pary `(kanal, produktId)` wyłuskane z ZAMÓWIEŃ — materiał wejściowy `miniaturyLustra`.
  *
  * ⚠️ KANAŁ BIERZE SIĘ Z `zamowienia.sklep`, a nie z pozycji: pozycja go nie zna, a to on

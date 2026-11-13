@@ -4,6 +4,7 @@ import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { createErliAdapter, stanErliWPamieci } from '../../../src/oms/erli/adapter.js';
 import { createPoller } from '../../../src/moduly/kanaly/services/poller.js';
 import { createAtrapaErli } from '../../../deploy/proba/atrapy/erli.mjs';
+import { fmtDataCzas } from '../../../src/domena/format-daty.js';
 
 it('import dwa razy: zgłoszenie na karcie, bez duplikatu i bez numeru konta w całym wierszu bazy oraz HTML', async () => {
   const p = nowyPanel();
@@ -44,7 +45,7 @@ it('import dwa razy: zgłoszenie na karcie, bez duplikatu i bez numeru konta w c
       expect(sekcja).toContain('Kupujący zrezygnował z zakupu');
       expect(sekcja).toContain(surowe.items[0].name);
       expect(sekcja).toContain('1 szt.');
-      expect(sekcja).toContain('2026-11-11 11:00:00');
+      expect(sekcja).toContain(fmtDataCzas(surowe.returns[0].created));
       expect(sekcja).toContain('Wybieram inny wzór');
       expect(karta.body).toContain(`href="/zamowienia/${z.id}/zwrot"`);
       expect(karta.body).toContain('Przejdź do ZWROTÓW');

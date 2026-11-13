@@ -20,7 +20,9 @@ const adres = () => ({ firstName: 'Ada', lastName: 'Przykładowa', street: 'Zmy�
 
 describe('PRZ-157.03a — atrapa ERLI', () => {
   it('demo ma płatność PayU, katalog lamp, paczkomat i daty względne od resetu', async () => {
-    const o = opcje(); const a = createAtrapaErli(o); const z = await a.szukajZamowien();
+    const o = opcje(); const a = createAtrapaErli(o);
+    // PRZ-158: daty są rozłożone w czasie; scenariusze identyfikuje numer, nie pozycja w sortowaniu dat.
+    const z = (await a.szukajZamowien()).sort((a, b) => a.id.localeCompare(b.id));
     expect(z[0].payment).toMatchObject({ status: 'COMPLETED' });
     expect(z[5].payment).toMatchObject({ status: 'PENDING' });
     expect(z[1].delivery.cod).toBe(true);
@@ -30,7 +32,13 @@ describe('PRZ-157.03a — atrapa ERLI', () => {
     expect(z[0].items[0]).toMatchObject({ externalId: 'PC-OF-1', sku: PRODUKTY[0].sku, name: PRODUKTY[0].nazwa, unitPrice: PRODUKTY[0].cena_gr });
     expect(new Set(z.map(z => z.totalPrice)).size).toBeGreaterThan(5);
     expect(z[0].purchasedAt).toBe('2026-11-11T08:00:00.000Z');
-    expect((await createAtrapaErli({ ...o, kanal: 'reset', teraz: () => new Date('2026-11-12T10:00:00Z') }).szukajZamowien())[0].purchasedAt).toBe('2026-11-12T08:00:00.000Z');
+    expect((await createAtrapaErli({ ...o, kanal: 'reset', teraz: () => new Date('2026-11-12T10:00:00Z') }).pobierzZamowienie('PC-ERLI-0001')).purchasedAt).toBe('2026-11-12T08:00:00.000Z');
+  });
+  it('kanał demo (demoZmiany) nie ma nieznanej metody dostawy — Adam 12.11: „w demo nie może takiego być”', async () => {
+    const demo = await createAtrapaErli({ ...opcje(), demoZmiany: true }).szukajZamowien();
+    expect(demo).toHaveLength(16);
+    expect(demo.map(z => z.delivery.typeId)).not.toContain('nieznanaMetoda');
+    expect(demo.find(z => z.id === 'PC-ERLI-0011').delivery).toMatchObject({ typeId: 'erliKurier24InPost10kg', name: 'Kurier ERLI' });
   });
   it('ma każdą metodę klienta i wymaga trybu próby', () => {
     const o = opcje(); const a = createAtrapaErli(o);
@@ -73,7 +81,7 @@ describe('PRZ-157.03a — atrapa ERLI', () => {
     for (let i = 0; i < 8; i++) { const strona = await a.szukajZamowien({ pagination: { sortField: 'updated', after, limit: 2 } }); wynik.push(...strona); after = strona.at(-1)?.cursor; }
     expect(wynik).toEqual(wszystkie); expect(JSON.stringify(wszystkie)).not.toContain('bankAccount');
     expect(await a.szukajZamowien({ pagination: { sortField: 'updated', order: 'DESC', limit: 2 } })).toEqual(wszystkie.slice(-2).reverse());
-    expect(await a.szukajZamowien({ filter: { field: 'status', operator: '=', value: 'pending' } })).toEqual([wszystkie[5]]);
+    expect(await a.szukajZamowien({ filter: { field: 'status', operator: '=', value: 'pending' } })).toEqual([wszystkie.find(z => z.id === 'PC-ERLI-0006')]);
     await expect(a.pobierzZamowienie('brak')).rejects.toMatchObject({ status: 404 });
   });
   it('zapisuje status i paczki zewnętrzne; waliduje jak klient', async () => {

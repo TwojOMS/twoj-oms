@@ -217,7 +217,7 @@ export function wygenerujDaneDemo(db, { ziarno = 72, dzis, env = ENV_DEMO }) {
       (klucz,typ,nazwa,srodowisko,zrodlo,konto_id,login,raport,autoryzacja,pobieranie,od_utc,
        wersja,generacja,generacja_importu,utworzono_at,zmieniono_at,aktor_id,aktor_login)
       VALUES ('erli_polcien','erli','ERLI Półcień','produkcja','panel','1000001','pracownia-polcien',
-       'ERLI_POLCIEN','polaczone','wlaczone',?,1,1,1,?,?,0,'demo')`).run(iso(koniecDnia - 7 * DOBA), at, at);
+       'ERLI_POLCIEN','polaczone','wlaczone',?,1,1,1,?,?,0,'demo')`).run(iso(koniecDnia - 60 * DOBA), at, at);
     zapiszKonfiguracjeIntegracji(db, 'erli:erli_polcien', {
       ustawienia: { adresApi: 'https://sklep.polcien.example', domyslnyCzasWysylki: 2 },
       sekrety: { kluczApi: 'atrapa-polcien' },

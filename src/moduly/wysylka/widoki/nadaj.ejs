@@ -445,7 +445,7 @@
             <%# (nizej) i nazwa, ktora przejmuje odnosnik, gdy miniatury nie ma. %>
             <%# ⚠️ KANAL I NUMER PRODUKTU IDA RAZEM ZE ZDJECIEM — to po tej parze odnajduje %>
             <%# sie PRAWDZIWY adres miniatury w lustrze sklepow (domain/miniatura-pozycji.js). %>
-            <% var mini = miniatura(z.sklep, w.produktId, w.zdjecie); %>
+            <% var mini = miniatura(z.sklep, w.produktId, w.zdjecie, w.sku); %>
             <tr<%- w.podsumowanie ? ' class="wiersz-razem"' : '' %>>
               <td class="kol-mini">
                 <% if (mini) { %>

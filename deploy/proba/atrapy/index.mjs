@@ -17,11 +17,13 @@ import { uruchomAplikacje } from '../../../src/core/uruchomienie.ts';
 import { sprawdzKonfiguracjeModulow } from '../../../src/core/aplikacja.ts';
 import { modulyDla } from '../../../src/moduly/lista.ts';
 import { createModulFaktury } from '../../../src/moduly/faktury/modul.ts';
+import { SCIEZKA_PROFILU_FAKTUROWNI, wczytajProfilFakturowni, transportFakturowniProby, znacznikBazyProby } from './fakturownia-proba.ts';
 import { definicjeKanalow, konfiguracjaKanalow } from '../../../src/moduly/kanaly/konfiguracja.ts';
 import { createModulKanaly } from '../../../src/moduly/kanaly/modul.ts';
 import { transportErliPiaskownicy } from './erli.mjs';
 import { createModulZamowienia } from '../../../src/moduly/zamowienia/modul.ts';
 import { createAtrapaInfaktu, createAtrapaVies } from './infakt.mjs';
+import { createAtrapaFakturowni } from './fakturownia.mjs';
 import { createAtrapaGus } from './gus.mjs';
 import { createAtrapaKsef } from './ksef.mjs';
 import { createAtrapaKsefWysylki } from './ksef-wysylka.mjs';
@@ -49,9 +51,13 @@ export function fabrykiKurierowPiaskownicy({ env, baza = () => null }) {
 
 // PRZ-108.09: `baza` — funkcja oddająca bazę piaskownicy (otwiera się DOPIERO po złożeniu modułów, bo migracje biorą
 // listę modułów). Atrapy kurierów czytają z niej `utworzona_at` paczki, żeby oddać realistyczny przebieg statusów.
-/** @param {any} env @param {{baza?:()=>import('node:sqlite').DatabaseSync|null}} [opcje] */
-export function modulyPiaskownicy(env, { baza = () => null } = {}) {
+// PRZ-119.11a: `profilFakturowni` — ścieżka pliku profilu próby Fakturowni (domyślnie w prywatnym katalogu konfiguracji
+// kontenera). Plik jest = prawdziwe konto próbne przez osłonięty transport; brak pliku = atrapa, nawet z tokenem w bazie.
+/** @param {any} env @param {{baza?:()=>import('node:sqlite').DatabaseSync|null, profilFakturowni?:string}} [opcje] */
+export function modulyPiaskownicy(env, { baza = () => null, profilFakturowni = SCIEZKA_PROFILU_FAKTUROWNI } = {}) {
   wymagajTrybuProby(env, 'moduły piaskownicy');
+  // Publiczne demo z plikiem profilu → odmowa startu (wczytajProfilFakturowni rzuca zdaniem planu).
+  const profil = wczytajProfilFakturowni(env, { sciezka: profilFakturowni });
   // Szew składa KSeF raz. Pamiętamy instancję także przy ponownym wywołaniu fabryki: numery i awaria zostają.
   let ksefWysylki;
   const fabryki = {
@@ -61,6 +67,12 @@ export function modulyPiaskownicy(env, { baza = () => null } = {}) {
       spij: async () => {},
     }),
     createInfaktClient: ({ db, teraz }) => createAtrapaInfaktu({ db, teraz, env }),
+    ...(profil
+      // Konto próbne: klient z tokenem z ekranu, transport tylko na domenę z pliku; znacznik bazy do `oid`.
+      ? { fakturowniaProby: { domena: profil.domena, fetchImpl: transportFakturowniProby({ domena: profil.domena }),
+        znacznik: (db) => znacznikBazyProby(db) } }
+      // Stan Fakturowni jest w tabelach atrapy, więc instancja przy każdym wywołaniu — token sprawdzany za każdym razem.
+      : { createFakturowniaClient: ({ token, teraz }) => createAtrapaFakturowni({ db: baza(), token, teraz, env }) }),
     createVies: () => createAtrapaVies({ env }),
     // PRZ-121.06: „Uruchom OMS ponownie” — kontener piaskownicy startuje przez `node --watch-path`, który po wyjściu
     // dziecka czeka na zmianę pliku zamiast je podnieść. SIGTERM do rodzica (watch): zamyka dziecko i wychodzi,

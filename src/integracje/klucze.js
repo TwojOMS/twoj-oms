@@ -15,6 +15,7 @@ export const integracje = Object.freeze({
   dpd: deklaracja('DPD_LOGIN', 'DPD_PASSWORD'),
   inpost: deklaracja('INPOST_TOKEN'),
   infakt: deklaracja('INFAKT_API_KEY'),
+  fakturownia: deklaracja('FAKTUROWNIA_API_TOKEN', 'FAKTUROWNIA_DOMENA'),
   ksef: deklaracja('KSEF_TOKEN'),
   gus: deklaracja('GUS_KLUCZ'),
   meta: deklaracja('META_TOKEN'),

@@ -9,16 +9,17 @@ import {
 } from '../../faktury/trasy/automat-ksef-ekran.js';
 import { modelListyRegul, registerRegulyAutomatyzacji } from './reguly.js';
 
-/** @param {any} app @param {{ db: any, teraz: () => Date, konfiguracjaInfaktu: any, automatKsef?: any, reguly?: any, infakt?: any }} opcje */
+/** @param {any} app @param {{ db: any, teraz: () => Date, konfiguracjaProgramu: any, automatKsef?: any, reguly?: any, infakt?: any }} opcje */
 export function registerEkranAutomatyzacji(app, {
-  db, teraz, konfiguracjaInfaktu, automatKsef = null, reguly = null, infakt = null,
+  db, teraz, konfiguracjaProgramu, automatKsef = null, reguly = null, infakt = null,
 }) {
   app.get('/ustawienia/automatyzacje/systemowe', async (req, reply) => tylkoAdmin(req, reply) ?? widokEkranuAutomatyzacji(req, reply, zaleznosci));
   const dodatki = reguly ? () => ({ reguly: modelListyRegul({ db, teraz, ...reguly }) }) : undefined;
   // PRZ-108.08: ten sam model dla odpowiedzi 400 starego adresu zapisu automatu KSeF (ekran inFaktu, moduł faktur).
   if (dodatki) zglosDodatkiEkranuAutomatyzacji(db, dodatki);
   // PRZ-118.09: `infakt` (usługa modułu faktur: klient albo program) — nazwa programu w sekcji automatu KSeF.
-  const zaleznosci = { db, teraz, konfiguracjaInfaktu, automatKsef, dodatki, infakt };
+  // PRZ-119.07: `konfiguracjaProgramu` — stan wybranego programu (inFakt albo Fakturownia), nie zawsze inFaktu.
+  const zaleznosci = { db, teraz, konfiguracjaProgramu, automatKsef, dodatki, infakt };
   app.get(EKRAN_AUTOMATYZACJI, async (req, reply) => tylkoAdmin(req, reply) ?? widokEkranuAutomatyzacji(req, reply, zaleznosci));
   app.post(ZAPIS_AUTOMATU_KSEF, obsluzZapisAutomatuKsef(zaleznosci));
   if (reguly) registerRegulyAutomatyzacji(app, { db, teraz, ...reguly });

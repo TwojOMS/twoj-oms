@@ -1,0 +1,49 @@
+{
+  "pomiar": "F1",
+  "data": "2026-11-12",
+  "odpowiedz": "HTTP 200, tablica (0 el.), 237 ms",
+  "wymiany": [
+    {
+      "zadanie": {
+        "metoda": "GET",
+        "url": "https://firma-testowa.fakturownia.pl/invoices.json?page=1&per_page=1",
+        "naglowki": {
+          "Accept": "application/json",
+          "Authorization": "Bearer [token]"
+        },
+        "cialo": null
+      },
+      "odpowiedz": {
+        "status": 200,
+        "naglowki": {
+          "access-control-allow-headers": "X-Requested-With, Content-Type, Accept",
+          "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE",
+          "access-control-allow-origin": "*",
+          "access-control-request-method": "GET,POST,PUT,PATCH,DELETE",
+          "cache-control": "max-age=0, private, must-revalidate",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Thu, 12 Nov 2026 08:26:16 GMT",
+          "etag": "W/\"4f53cda18c2baa0c0354bb5f9a3ecbe5\"",
+          "link": "<manifest.json>; rel=\"manifest\"",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx + Phusion Passenger(R)",
+          "status": "200 OK",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "transfer-encoding": "chunked",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-powered-by": "Phusion Passenger(R) Enterprise",
+          "x-request-id": "d60ab9de-b7b2-4140-b422-b478d745d221",
+          "x-runtime": "0.018332",
+          "x-xss-protection": "0"
+        },
+        "cialo": [],
+        "czasMs": 237
+      }
+    }
+  ]
+}

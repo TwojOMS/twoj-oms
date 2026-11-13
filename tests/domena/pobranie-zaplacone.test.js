@@ -144,7 +144,7 @@ describe('data zapłaty pobrania', () => {
   });
 
   // ⚠️ inFakt odrzuca `paid_date` wcześniejszą niż data wystawienia — ta sama bramka,
-  // co w `dataZaplatyDoOznaczenia` (services/faktura.js).
+  // co w `dataZaplatyFaktury` (services/faktura.js) dla programu bez `dowolnaDataZaplaty`.
   it('nigdy nie schodzi poniżej daty wystawienia', () => {
     expect(dataZaplatyPobrania(doreczona, '2026-08-27')).toBe('2026-08-27');
   });

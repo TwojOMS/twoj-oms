@@ -29,6 +29,7 @@ const WZORCE = [/^docs\/kurier-(?!jako-modul\.md$)[a-z0-9-]+\.md$/,
   // PRZ-094.04: instrukcja poczty wychodzącej (Ustawienia → Integracje → Poczta wychodząca).
   /^docs\/poczta-smtp\.md$/,
   /^docs\/modul-faktur\.md$/,
+  /^docs\/fakturownia\.md$/,
   // PRZ-132.13: podłączenie Allegro w panelu (kreator, aplikacja typu urządzenie).
   /^docs\/allegro-podlaczenie\.md$/,
   /^docs\/twojefaktury(?:-ksef)?\.md$/];

@@ -17,6 +17,7 @@ describe('transport i klucze integracji', () => {
       dpd: { kluczeIntegracji: ['DPD_LOGIN', 'DPD_PASSWORD'] },
       inpost: { kluczeIntegracji: ['INPOST_TOKEN'] },
       infakt: { kluczeIntegracji: ['INFAKT_API_KEY'] },
+      fakturownia: { kluczeIntegracji: ['FAKTUROWNIA_API_TOKEN', 'FAKTUROWNIA_DOMENA'] },
       ksef: { kluczeIntegracji: ['KSEF_TOKEN'] },
       gus: { kluczeIntegracji: ['GUS_KLUCZ'] },
       meta: { kluczeIntegracji: ['META_TOKEN'] },
@@ -37,7 +38,7 @@ describe('transport i klucze integracji', () => {
     } finally { vi.unstubAllGlobals(); }
   });
   it('deklaruje wszystkie integracje i blokuje każdy klucz w próbie', () => {
-    expect(Object.keys(integracje).sort()).toEqual(['allegro','apilo','dpd','ga4','gus','infakt','inpost','ksef','meta','vies','woo'].sort());
+    expect(Object.keys(integracje).sort()).toEqual(['allegro','apilo','dpd','fakturownia','ga4','gus','infakt','inpost','ksef','meta','vies','woo'].sort());
     for (const [nazwa, deklaracja] of Object.entries(integracje)) {
       expect(deklaracja.kluczeIntegracji, nazwa).toBeDefined();
       for (const klucz of deklaracja.kluczeIntegracji) {

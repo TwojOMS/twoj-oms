@@ -45,9 +45,9 @@
   "statystyki": {
     "plikiKodowe": 428,
     "bledyParsera": 0,
-    "odczytyProduktu": 141,
-    "dynamiczneOdczytyProduktu": 33,
-    "zmienneProduktu": 76,
+    "odczytyProduktu": 142,
+    "dynamiczneOdczytyProduktu": 34,
+    "zmienneProduktu": 78,
     "rodzinyDynamiczne": 11,
     "declaracjeGuardOnly": 7,
     "zmienneNarzedziISystemu": 13,
@@ -1703,7 +1703,7 @@
         {
           "id": "AST-060",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 74,
+          "line": 82,
           "expression": "env.OMS_PROFORMY_KATALOG",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1711,7 +1711,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:74"
+        "src/moduly/faktury/modul.ts:82"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1727,6 +1727,88 @@
         }
       ],
       "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
+    },
+    {
+      "nazwa": "FAKTUROWNIA_API_TOKEN",
+      "wlasciciel": "faktury / klient Fakturowni",
+      "sekcja": "Faktury i koszty",
+      "zakres": "produkt",
+      "wymagalnosc": "opcjonalna; razem z drugą zmienną Fakturowni; działa tylko przy wyborze modułu faktur „fakturownia”",
+      "domyslna": null,
+      "decyzja": "PRZ-119",
+      "odpowiednikWPanelu": "Ustawienia → Integracje → Fakturownia (/ustawienia/integracje/fakturownia; wiersz „fakturownia” w konfiguracja_integracji: domena jawnie, token jako sekret)",
+      "odczyty": [
+        {
+          "id": "AST-161",
+          "path": "src/core/tryb.ts",
+          "line": 18,
+          "expression": "env[k]",
+          "kind": "dynamiczny",
+          "via": "zamknięta mapa helpera"
+        },
+        {
+          "id": "AST-162",
+          "path": "src/moduly/faktury/modul.ts",
+          "line": 92,
+          "expression": "env.FAKTUROWNIA_API_TOKEN",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
+        }
+      ],
+      "wywolaniaPosrednie": [],
+      "sciezkaOdczytu": [
+        "src/core/tryb.ts:18",
+        "src/moduly/faktury/modul.ts:92"
+      ],
+      "aktywacja": "włączenie właściciela w kompozycji",
+      "wlaczoneWMainNaPinie": true,
+      "opis": "Token API konta Fakturowni (Ustawienia konta → Integracja → Kod autoryzacyjny API) — nim OMS wystawia faktury w Fakturowni.",
+      "wymagalnoscPoLudzku": "opcjonalna — tylko gdy modułem faktur jest Fakturownia",
+      "skutekBraku": "PRZ-119.05: Fakturownia działa tylko, gdy moduł faktur to „fakturownia” (OMS_PROGRAM_FAKTUROWY albo Ustawienia → Integracje → Moduł faktur); sama obecność tokenu niczego nie wybiera — bez wyboru zostaje inFakt (gdy gotowy) albo „brak”. Bez pary w pliku konfiguracja pochodzi z ekranu Ustawienia → Integracje → Fakturownia (/ustawienia/integracje/fakturownia; wiersz „fakturownia” w konfiguracja_integracji: domena jawnie, token jako sekret); gdy para stoi w pliku, wygrywa nad ekranem. Wybrana Fakturownia bez domeny i tokenu: faktury wyłączone, Zdrowie podaje zdanie z adresem ekranu; po wpisaniu na ekranie faktury ruszają po ponownym uruchomieniu OMS-u. W trybie próby zmienne blokują start (klucze integracji), a ekran nie łączy się z Fakturownią (odmowa 400, chyba że piaskownica ma atrapę). Dokument wysłany do KSeF przez samą Fakturownię (bez zlecenia z panelu) = trwały alarm.",
+      "skutekBrakuPoLudzku": "Bez niej OMS bierze token zapisany w Ustawienia → Integracje → Fakturownia; para token i domena z pliku wygrywa.",
+      "walidacja": "Spacje na brzegach usuwane; pusta wartość = brak. Obie zmienne razem albo żadna: jedna bez drugiej blokuje start zdaniem z nazwą brakującej zmiennej (bez wartości tokenu).",
+      "sekret": true
+    },
+    {
+      "nazwa": "FAKTUROWNIA_DOMENA",
+      "wlasciciel": "faktury / klient Fakturowni",
+      "sekcja": "Faktury i koszty",
+      "zakres": "produkt",
+      "wymagalnosc": "opcjonalna; razem z drugą zmienną Fakturowni; działa tylko przy wyborze modułu faktur „fakturownia”",
+      "domyslna": null,
+      "decyzja": "PRZ-119",
+      "odpowiednikWPanelu": "Ustawienia → Integracje → Fakturownia (/ustawienia/integracje/fakturownia; wiersz „fakturownia” w konfiguracja_integracji: domena jawnie, token jako sekret)",
+      "odczyty": [
+        {
+          "id": "AST-161",
+          "path": "src/core/tryb.ts",
+          "line": 18,
+          "expression": "env[k]",
+          "kind": "dynamiczny",
+          "via": "zamknięta mapa helpera"
+        },
+        {
+          "id": "AST-163",
+          "path": "src/moduly/faktury/modul.ts",
+          "line": 93,
+          "expression": "env.FAKTUROWNIA_DOMENA",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
+        }
+      ],
+      "wywolaniaPosrednie": [],
+      "sciezkaOdczytu": [
+        "src/core/tryb.ts:18",
+        "src/moduly/faktury/modul.ts:93"
+      ],
+      "aktywacja": "włączenie właściciela w kompozycji",
+      "wlaczoneWMainNaPinie": true,
+      "opis": "Domena konta Fakturowni, czyli część adresu przed .fakturownia.pl (np. pracownia-polcien), wpisana bez https://.",
+      "wymagalnoscPoLudzku": "opcjonalna — tylko gdy modułem faktur jest Fakturownia",
+      "skutekBraku": "PRZ-119.05: Fakturownia działa tylko, gdy moduł faktur to „fakturownia” (OMS_PROGRAM_FAKTUROWY albo Ustawienia → Integracje → Moduł faktur); sama obecność tokenu niczego nie wybiera — bez wyboru zostaje inFakt (gdy gotowy) albo „brak”. Bez pary w pliku konfiguracja pochodzi z ekranu Ustawienia → Integracje → Fakturownia (/ustawienia/integracje/fakturownia; wiersz „fakturownia” w konfiguracja_integracji: domena jawnie, token jako sekret); gdy para stoi w pliku, wygrywa nad ekranem. Wybrana Fakturownia bez domeny i tokenu: faktury wyłączone, Zdrowie podaje zdanie z adresem ekranu; po wpisaniu na ekranie faktury ruszają po ponownym uruchomieniu OMS-u. W trybie próby zmienne blokują start (klucze integracji), a ekran nie łączy się z Fakturownią (odmowa 400, chyba że piaskownica ma atrapę). Dokument wysłany do KSeF przez samą Fakturownię (bez zlecenia z panelu) = trwały alarm.",
+      "skutekBrakuPoLudzku": "Bez niej OMS bierze domenę zapisaną w Ustawienia → Integracje → Fakturownia; para token i domena z pliku wygrywa.",
+      "walidacja": "Spacje na brzegach usuwane; pusta wartość = brak. Obie zmienne razem albo żadna: jedna bez drugiej blokuje start zdaniem z nazwą brakującej zmiennej (bez wartości tokenu). Klient Fakturowni przyjmuje tylko samą domenę konta (bez https:// i .fakturownia.pl).",
+      "sekret": false
     },
     {
       "nazwa": "INFAKT_API_KEY",
@@ -1761,7 +1843,7 @@
         {
           "id": "AST-068",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 85,
+          "line": 104,
           "expression": "env.INFAKT_API_KEY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1769,7 +1851,7 @@
         {
           "id": "AST-069",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 85,
+          "line": 104,
           "expression": "env.INFAKT_API_KEY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1778,7 +1860,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/core/tryb.ts:18",
-        "src/moduly/faktury/modul.ts:85"
+        "src/moduly/faktury/modul.ts:104"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1799,7 +1881,7 @@
         {
           "id": "AST-059",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 72,
+          "line": 80,
           "expression": "env.INFAKT_API_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1807,7 +1889,7 @@
         {
           "id": "AST-070",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 85,
+          "line": 104,
           "expression": "env.INFAKT_API_URL",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1815,8 +1897,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:72",
-        "src/moduly/faktury/modul.ts:85"
+        "src/moduly/faktury/modul.ts:80",
+        "src/moduly/faktury/modul.ts:104"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -1837,7 +1919,7 @@
         {
           "id": "AST-071",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 81,
+          "line": 89,
           "expression": "env.INFAKT_ARCHIWUM",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1861,7 +1943,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:81",
+        "src/moduly/faktury/modul.ts:89",
         "src/moduly/koszty/modul.ts:37",
         "src/moduly/koszty/modul.ts:39"
       ],
@@ -1884,7 +1966,7 @@
         {
           "id": "AST-153",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 87,
+          "line": 107,
           "expression": "env.OMS_ARCHIWUM_SPRZEDAZY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1900,7 +1982,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:87",
+        "src/moduly/faktury/modul.ts:107",
         "src/moduly/koszty/modul.ts:39"
       ],
       "aktywacja": "niedostępna w tym wydaniu",
@@ -1913,13 +1995,13 @@
       "nazwa": "OMS_PROGRAM_FAKTUROWY",
       "wlasciciel": "faktury",
       "sekcja": "Faktury i koszty",
-      "opis": "Moduł faktur OMS-u: brak (faktury wyłączone) albo infakt; Fakturownia i TwojeFaktury będą dostępne wkrótce.",
+      "opis": "Moduł faktur OMS-u: brak (faktury wyłączone), infakt albo fakturownia; TwojeFaktury będą dostępne wkrótce.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna — można w panelu (Ustawienia → Integracje → Moduł faktur); wpisana w pliku musi być poprawna",
       "wymagalnoscPoLudzku": "opcjonalna — moduł faktur możesz wybrać w panelu (Ustawienia → Faktury i podatki → Program do faktur, tylko administrator); wpisany w pliku wygrywa nad panelem",
       "domyslna": null,
       "domyslnaPoLudzku": "brak wyboru: inFakt, jeśli jest podłączony; bez niego faktury są wyłączone",
-      "skutekBraku": "PRZ-121.01: bez wartości w pliku moduł faktur pochodzi z Ustawień (wiersz „program_fakturowy” w konfiguracja_integracji, ustawienia {\"program\": \"brak\"|\"infakt\"}, bez sekretów), a bez zapisu — inFakt, gdy gotowy (INFAKT_API_KEY, klucz z Ustawień przy starcie, atrapa albo szew trybu próby), inaczej „brak” domyślny: moduł składa się jak przed zmianą, komunikaty bez zmian. Jawne „brak” (plik albo Ustawienia): nie powstaje klient inFaktu ani program fakturowy z żadnego źródła; wystawianie, lista FAKTURY, KSeF sprzedaży, czuwacze, automat KSeF, VIES i zestawienie faktur = null, klucz inFaktu zostaje w bazie i nie wychodzi z panelu; proformy i KSeF kosztów działają; /health bez zmian (zdanie o wyłączonych fakturach to uwaga modułu, nie alarm). Zmiana zapisu działa po ponownym uruchomieniu; automat KSeF staje od razu po zapisaniu „brak”. Zapis, którego wersja nie zna (np. „fakturownia” po wycofaniu wydania), = „brak” + uwaga.",
+      "skutekBraku": "PRZ-121.01: bez wartości w pliku moduł faktur pochodzi z Ustawień (wiersz „program_fakturowy” w konfiguracja_integracji, ustawienia {\"program\": \"brak\"|\"infakt\"|\"fakturownia\"}, bez sekretów), a bez zapisu — inFakt, gdy gotowy (INFAKT_API_KEY, klucz z Ustawień przy starcie, atrapa albo szew trybu próby), inaczej „brak” domyślny: moduł składa się jak przed zmianą, komunikaty bez zmian. Jawne „brak” (plik albo Ustawienia): nie powstaje klient inFaktu ani program fakturowy z żadnego źródła; wystawianie, lista FAKTURY, KSeF sprzedaży, czuwacze, automat KSeF, VIES i zestawienie faktur = null, klucz inFaktu zostaje w bazie i nie wychodzi z panelu; proformy i KSeF kosztów działają; /health bez zmian (zdanie o wyłączonych fakturach to uwaga modułu, nie alarm). Zmiana zapisu działa po ponownym uruchomieniu; automat KSeF staje od razu po zapisaniu „brak”. Zapis, którego wersja nie zna (np. „twojefaktury” bez zgody), = „brak” + uwaga. PRZ-119.05: „fakturownia” to wyłącznie jawny wybór (plik albo Ustawienia) — nigdy domyślny, także gdy FAKTUROWNIA_API_TOKEN i FAKTUROWNIA_DOMENA stoją w pliku. Przy Fakturowni nie powstaje nic z inFaktu (klient, ekran inFaktu sprawdza = 400, archiwum sprzedaży = null); domena i token z pliku albo z Ustawienia → Integracje → Fakturownia; bez nich faktury wyłączone z uwagą w Zdrowiu.",
       "skutekBrakuPoLudzku": "Bez niej moduł faktur wybierasz w panelu. Gdy nic nie wybrano, OMS wystawia faktury przez inFakt, jeśli jest podłączony, a bez niego faktur nie wystawia — tak jak dotąd.",
       "walidacja": "Dozwolone brak albo infakt. Pusta wartość pozostawia wybór w panelu; inne programy są niedostępne. Plik ma pierwszeństwo przed panelem.",
       "sekret": false,
@@ -1929,7 +2011,7 @@
         {
           "id": "AST-149",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 71,
+          "line": 79,
           "expression": "env.OMS_PROGRAM_FAKTUROWY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1937,7 +2019,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:71"
+        "src/moduly/faktury/modul.ts:79"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true
@@ -1961,7 +2043,7 @@
         {
           "id": "AST-150",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 90,
+          "line": 110,
           "expression": "env.OMS_RESTART_Z_PANELU",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1969,7 +2051,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:90"
+        "src/moduly/faktury/modul.ts:110"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true
@@ -1985,7 +2067,7 @@
         {
           "id": "AST-156",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 97,
+          "line": 117,
           "expression": "env.OMS_PROBA_KSEF_TEST_API",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1993,7 +2075,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:97"
+        "src/moduly/faktury/modul.ts:117"
       ],
       "aktywacja": "niedostępna w tym wydaniu",
       "wlaczoneWMainNaPinie": true,
@@ -2017,7 +2099,7 @@
         {
           "id": "AST-157",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 97,
+          "line": 117,
           "expression": "env.OMS_PROBA_KSEF_TEST_TOKEN",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2025,7 +2107,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/faktury/modul.ts:97"
+        "src/moduly/faktury/modul.ts:117"
       ],
       "aktywacja": "niedostępna w tym wydaniu",
       "wlaczoneWMainNaPinie": true,
@@ -2086,7 +2168,7 @@
         {
           "id": "AST-151",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 93,
+          "line": 113,
           "expression": "env.KSEF_TOKEN",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2097,7 +2179,7 @@
         "src/core/tryb.ts:18",
         "src/moduly/koszty/modul.ts:28",
         "src/moduly/koszty/modul.ts:28",
-        "src/moduly/faktury/modul.ts:93"
+        "src/moduly/faktury/modul.ts:113"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -2189,7 +2271,7 @@
         {
           "id": "AST-152",
           "path": "src/moduly/faktury/modul.ts",
-          "line": 93,
+          "line": 113,
           "expression": "env.KSEF_API",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -2200,7 +2282,7 @@
         "src/moduly/koszty/modul.ts:24",
         "src/moduly/koszty/modul.ts:28",
         "src/moduly/koszty/modul.ts:33",
-        "src/moduly/faktury/modul.ts:93"
+        "src/moduly/faktury/modul.ts:113"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -5119,6 +5201,8 @@
         "DPD_PASSWORD",
         "INPOST_TOKEN",
         "INFAKT_API_KEY",
+        "FAKTUROWNIA_API_TOKEN",
+        "FAKTUROWNIA_DOMENA",
         "KSEF_TOKEN",
         "GUS_KLUCZ",
         "SMTP_USER",
@@ -5146,6 +5230,8 @@
         "DPD_PASSWORD",
         "INPOST_TOKEN",
         "INFAKT_API_KEY",
+        "FAKTUROWNIA_API_TOKEN",
+        "FAKTUROWNIA_DOMENA",
         "KSEF_TOKEN",
         "GUS_KLUCZ",
         "SMTP_USER",
@@ -7634,48 +7720,6 @@
       "call": "konfiguracjaZamowien(env)"
     },
     {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 67,
-      "expression": "env",
-      "callee": "zgodaTwojeFaktury",
-      "call": "zgodaTwojeFaktury(env)"
-    },
-    {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 75,
-      "expression": "env",
-      "callee": "wczytajSprzedawce",
-      "call": "wczytajSprzedawce(env)"
-    },
-    {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 81,
-      "expression": "env",
-      "callee": "adresFirmyZEnv",
-      "call": "adresFirmyZEnv(env)"
-    },
-    {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 90,
-      "expression": "env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(env)"
-    },
-    {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 100,
-      "expression": "env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(env)"
-    },
-    {
-      "path": "src/moduly/faktury/modul.ts",
-      "line": 128,
-      "expression": "env",
-      "callee": "wczytajFaktury",
-      "call": "wczytajFaktury(env, szew)"
-    },
-    {
       "path": "src/moduly/wysylka/modul.ts",
       "line": 101,
       "expression": "env",
@@ -7905,6 +7949,48 @@
       "expression": "o.env",
       "callee": "sprawdzKonfiguracjeModulow",
       "call": "sprawdzKonfiguracjeModulow(moduly,o.env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 73,
+      "expression": "env",
+      "callee": "zgodaTwojeFaktury",
+      "call": "zgodaTwojeFaktury(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 81,
+      "expression": "env",
+      "callee": "wczytajSprzedawce",
+      "call": "wczytajSprzedawce(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 87,
+      "expression": "env",
+      "callee": "adresFirmyZEnv",
+      "call": "adresFirmyZEnv(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 108,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 118,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/faktury/modul.ts",
+      "line": 153,
+      "expression": "env",
+      "callee": "wczytajFaktury",
+      "call": "wczytajFaktury(env, szew)"
     }
   ],
   "prefiksy": {
@@ -7946,6 +8032,8 @@
       "DPD_PASSWORD",
       "INPOST_TOKEN",
       "INFAKT_API_KEY",
+      "FAKTUROWNIA_API_TOKEN",
+      "FAKTUROWNIA_DOMENA",
       "KSEF_TOKEN",
       "GUS_KLUCZ",
       "META_TOKEN",
@@ -8248,7 +8336,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "34a67c15bbaea93b5dbc5ac9752ec6c3f02798de6a29d755999c5445e8507691",
+      "sha256": "c4798f2f91a5ec950cb1cf6a8065e82a40950ecd5377951c2d57e5f3d3cef5bc",
       "normalizacja": "LF"
     },
     {
@@ -8263,7 +8351,7 @@
     },
     {
       "path": "src/moduly/zdrowie/modul.ts",
-      "sha256": "d4dd472dcdf0af485f381f8326b933b900f451cd4105bd9dfb029a6c531d0ba6",
+      "sha256": "29e378706358e165b21f8138eb1fbe69527138d0daf17a3483e3674ad3152d1b",
       "normalizacja": "LF"
     },
     {
@@ -8308,7 +8396,7 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "e791365ba5e1510f6e593288ea8adcb914325aac37fceffd4dd5f9f6abeedf50",
+      "sha256": "910f1da3e216779ab22d103b1227d6ee58f7e042b0d3b2768f848c2a38e3337d",
       "normalizacja": "LF"
     },
     {
@@ -8325,7 +8413,7 @@
   "dodatkoweDowody": [
     {
       "path": "src/core/aplikacja.ts",
-      "sha256": "a5743cb44cdb9f90840ab74b01cc0f2035adb8ad0e1b4785e4ec9cf4cda5529e",
+      "sha256": "506ebf0b68628387995a9ff643b9efcf524fdb2475919583e8ee009ca4334664",
       "normalizacja": "LF"
     },
     {
@@ -8340,7 +8428,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "34a67c15bbaea93b5dbc5ac9752ec6c3f02798de6a29d755999c5445e8507691",
+      "sha256": "c4798f2f91a5ec950cb1cf6a8065e82a40950ecd5377951c2d57e5f3d3cef5bc",
       "normalizacja": "LF"
     },
     {
@@ -8360,7 +8448,7 @@
     },
     {
       "path": "src/moduly/zdrowie/modul.ts",
-      "sha256": "d4dd472dcdf0af485f381f8326b933b900f451cd4105bd9dfb029a6c531d0ba6",
+      "sha256": "29e378706358e165b21f8138eb1fbe69527138d0daf17a3483e3674ad3152d1b",
       "normalizacja": "LF"
     },
     {
@@ -8385,7 +8473,7 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "e791365ba5e1510f6e593288ea8adcb914325aac37fceffd4dd5f9f6abeedf50",
+      "sha256": "910f1da3e216779ab22d103b1227d6ee58f7e042b0d3b2768f848c2a38e3337d",
       "normalizacja": "LF"
     },
     {
@@ -8436,6 +8524,8 @@
               "DPD_PASSWORD",
               "INPOST_TOKEN",
               "INFAKT_API_KEY",
+              "FAKTUROWNIA_API_TOKEN",
+              "FAKTUROWNIA_DOMENA",
               "KSEF_TOKEN",
               "GUS_KLUCZ",
               "SMTP_USER",
@@ -8743,12 +8833,12 @@
     "przekazania": [
       {
         "path": "src/core/aplikacja.ts",
-        "sha256": "a5743cb44cdb9f90840ab74b01cc0f2035adb8ad0e1b4785e4ec9cf4cda5529e",
+        "sha256": "506ebf0b68628387995a9ff643b9efcf524fdb2475919583e8ee009ca4334664",
         "expression": "sprawdzTrybProby(env, [...new Set(kolejnosc.flatMap((m) => m.kluczeIntegracji ?? []))])"
       },
       {
         "path": "src/core/aplikacja.ts",
-        "sha256": "a5743cb44cdb9f90840ab74b01cc0f2035adb8ad0e1b4785e4ec9cf4cda5529e",
+        "sha256": "506ebf0b68628387995a9ff643b9efcf524fdb2475919583e8ee009ca4334664",
         "expression": "m.konfiguracja(env)"
       },
       {
@@ -8990,7 +9080,7 @@
     },
     {
       "path": "src/core/aplikacja.ts",
-      "sha256": "a5743cb44cdb9f90840ab74b01cc0f2035adb8ad0e1b4785e4ec9cf4cda5529e",
+      "sha256": "506ebf0b68628387995a9ff643b9efcf524fdb2475919583e8ee009ca4334664",
       "normalizacja": "LF"
     },
     {

@@ -483,6 +483,24 @@ describe('oznaczanie doręczonych pobrań', () => {
     expect(logZamowienia(db, a)[0].wynik).toMatch(/awaria panelu/);
   });
 
+  // PRZ-119.05 (recenzja): Fakturownia — status „opłacona” przyjęty, padł sam zapis daty zapłaty (`zaplataOznaczona`).
+  it('padł sam zapis daty zapłaty → wpis „już oznaczona jako opłacona — popraw tylko datę zapłaty”, bez „NIEOPŁACONA”', async () => {
+    const a = zapiszZamowienie(db, 'pro', zmapowane(19), {});
+    zFaktura(db, a, 'u-put-19', { numer: 'F/19' }); paczka(db, a, { opis: 'Przesyłka doręczona' });
+    const infakt = {
+      pobierzFakture: async () => dokWystawiony('2026-08-20'),
+      oznaczZaplacona: async () => {
+        throw Object.assign(new Error('nie przyjęto daty zapłaty (zmyślony błąd)'), { status: 422, zaplataOznaczona: true });
+      },
+    };
+
+    const wynik = await oznaczDoreczonePobrania({ db, infakt });
+
+    expect(wynik).toMatchObject({ kandydatow: 1, bledy: 1 });
+    expect(logZamowienia(db, a)[0].wynik).toMatch(/jest już oznaczona jako opłacona w .+ — popraw tylko datę zapłaty/);
+    expect(logZamowienia(db, a)[0].wynik).not.toMatch(/NIEOPŁACONA/);
+  });
+
   // ⚠️ PUSTA ODPOWIEDŹ inFAKTU (2xx bez parsowalnego ciała — `zapytaj` oddaje wtedy `null`,
   // NIE rzuca) idzie od poprawki K1 przez bramkę „stan zapłaty nieznany": bez POST-a, bez
   // rezerwacji, z błędem i śladem w logu. Przebieg leci dalej.

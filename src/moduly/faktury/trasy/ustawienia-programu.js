@@ -9,6 +9,7 @@
 // Nazwa programu fakturowego idzie przez `odmianaNazwyProgramu`/`ekranProgramu` (strażnik nazw PRZ-118.10).
 import { odmianaNazwyProgramu, ekranProgramu } from '../../../domena/nazwa-programu.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
+import { EKRAN_FAKTUROWNI } from '../../../domena/konfiguracja-fakturownia.js';
 import { tytulEkranuDlaAdresu, EKRAN_KSEF_SPRZEDAZY } from '../../../domena/ekrany.js';
 import { MODULY_FAKTUR, modulDostepny, EKRAN_WYBORU_PROGRAMU, ZMIENNA_PROGRAMU, etykietaModulu, sprawdzFormularzWyboru,
   zdanieCzekaniaNaRestart } from '../../../domena/wybor-programu.js';
@@ -67,7 +68,7 @@ export function trybRestartu(wartosc) {
  * `restart` — `{ tryb: 'tak' | 'atrapa' | null, zakoncz, log }`; `zakoncz` to szew ubicia procesu (w produkcji SIGTERM
  * do siebie: main.ts zamyka łagodnie, Docker podnosi kontener).
  */
-export function registerUstawieniaProgramuRoutes(app, { db, wyborProgramu, konfiguracjaInfaktu: k, program = null, proba = false, zgoda = false, restart = /** @type {any} */ (null), kopie = /** @type {any} */ (null) }) {
+export function registerUstawieniaProgramuRoutes(app, { db, wyborProgramu, konfiguracjaInfaktu: k, konfiguracjaFakturowni: kf = /** @type {any} */ (null), program = null, proba = false, zgoda = false, restart = /** @type {any} */ (null), kopie = /** @type {any} */ (null) }) {
   const programKlucza = program?.opis?.id === k.idModulu ? program : null;
   const nazwa = odmianaNazwyProgramu(programKlucza);
   const tryb = restart?.tryb ?? null;
@@ -93,6 +94,9 @@ export function registerUstawieniaProgramuRoutes(app, { db, wyborProgramu, konfi
       ? zdanieCzekaniaNaRestart(dziala, zapisany, { gotowy: wyborProgramu.gotowy?.() ?? true }) : null;
 
     const stanKlucza = k.atrapa ? 'niepotrzebny — działa atrapa piaskownicy' : k.zEnv ? 'w pliku konfiguracji' : k.kluczZapisany?.() ? 'zapisany w Ustawieniach' : 'nie wpisany';
+    // PRZ-119.07: Fakturownia — stan tokenu jednym zdaniem (bez wartości tokenu), te same trzy warianty co klucz inFaktu.
+    const stanTokenu = !kf ? null : kf.atrapa ? 'niepotrzebny — działa atrapa piaskownicy' : kf.zEnv ? 'w pliku konfiguracji'
+      : kf.tokenZapisany?.() ? 'zapisany w Ustawieniach' : 'jeszcze nie podany';
     const liczby = dziala.program === 'brak' ? {} : liczbaDokumentowWgProgramu(db);
     const ile = liczby[dziala.program] ?? 0;
     const gdzie = dziala.program === k.idModulu ? nazwa.miejscownik : `programie „${etykietaModulu(dziala.program)}”`;
@@ -109,8 +113,10 @@ export function registerUstawieniaProgramuRoutes(app, { db, wyborProgramu, konfi
       id: m.id, etykieta: m.etykieta, wkrotce: !modulDostepny(m, { zgoda }), zaznaczone: m.id === zapisany.program,
       nieaktywne: !modulDostepny(m, { zgoda }) || !moznaZmieniac,
       opis: m.id === k.idModulu ? `Klucz API ${nazwa.dopelniacz}: ${stanKlucza}.`
+        : m.id === 'fakturownia' && kf ? `Token API ${kf.nazwa.dopelniacz}: ${stanTokenu}.`
         : m.id === 'twojefaktury' && zgoda ? 'OMS sam wystawia faktury i wysyła je do KSeF — token KSeF wpiszesz w Ustawienia → Integracje → KSeF (ten sam co do kosztów).' : (OPISY[m.id] ?? null),
       odnosnik: m.id === k.idModulu ? { adres: ekranProgramu(programKlucza), tekst: `Ustawienia ${nazwa.dopelniacz}` }
+        : m.id === 'fakturownia' && kf ? { adres: EKRAN_FAKTUROWNI, tekst: `Ustawienia ${kf.nazwa.dopelniacz}` }
         // PRZ-123.C04b: zgoda na wysyłkę do KSeF faktur TwojeFaktury (bez zgody instalacji — „wkrótce”, bez odnośnika).
         : m.id === 'twojefaktury' && zgoda ? { adres: EKRAN_KSEF_SPRZEDAZY, tekst: 'Wysyłka do KSeF' } : null,
       kopia: m.id === 'twojefaktury' ? 'Faktury są tylko w bazie tego OMS-u. Kopia bazy musi trafiać poza ten dysk — instrukcja: Kopie zapasowe.' : null,

@@ -28,9 +28,11 @@ import {
 
 /** Odstęp zegara: przebieg rusza najpóźniej minutę po ustawionej godzinie (i minutę po starcie panelu). */
 export const ODSTEP_AUTOMATU_KSEF_MS = 60 * 1000;
+/** PRZ-119.11a: profil próby Fakturowni (prywatna piaskownica) — automat nie wysyła nic i nie zapisuje przebiegów. */
+export const WYLACZONY_PIASKOWNICA = 'wyłączony — piaskownica';
 
 export function createAutomatKsef({
-  db, fakturyWidok, wysylkaKsef, teraz = () => new Date(), log = console.error, dostepny = () => true,
+  db, fakturyWidok, wysylkaKsef, teraz = () => new Date(), log = console.error, dostepny = () => true, piaskownica = false,
 }) {
   // Proces właśnie wstał — wynik „trwa” w bazie to przebieg, który padł razem z poprzednim procesem.
   // PRZ-123 C08: korekty jako kandydaci tylko, gdy usługa wysyłki je dopuszcza (PRZ-151 D2: program, który wysyła do KSeF).
@@ -45,6 +47,8 @@ export function createAutomatKsef({
   }
 
   async function przebieg() {
+    // PRZ-119.11a: przed wszystkim innym — bez odczytu ustawień, bez zajęcia dnia, bez wpisu wyniku co przebieg.
+    if (piaskownica) return { pominiety: true, powod: WYLACZONY_PIASKOWNICA };
     // PRZ-118.07: nazwa i zdolność programu z usługi wysyłki — tej samej, którą automat wysyła (jedno źródło programu).
     if (!dostepny()) return { pominiety: true, powod: `${wysylkaKsef.nazwaProgramu?.mianownik ?? 'program fakturowy'} odłączony` };
     // Program bez zdolności `wyslijDoKsef`: automat nie ma czym wysłać — pominięty tym samym zdaniem co przycisk.
@@ -130,5 +134,7 @@ export function createAutomatKsef({
     return wynik;
   }
 
-  return { przebieg, stan: () => wczytajAutomatKsef(db) };
+  return { przebieg, stan: () => (piaskownica
+    ? { ...wczytajAutomatKsef(db), wlaczony: false, wylaczony: WYLACZONY_PIASKOWNICA }
+    : wczytajAutomatKsef(db)) };
 }

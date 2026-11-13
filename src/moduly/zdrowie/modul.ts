@@ -87,6 +87,8 @@ export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewn
         const k=kopie();
         if('wymagany' in k&&k.wymagany)wynik.uwagi.push(uwagaBezNadzoruKopii(k.nazwa??''));
       }
+      // PRZ-119.12a: Fakturownia wysłała do KSeF bez zlecenia — alarm do „Sprawdziłem” w Ustawieniach.
+      wynik.alarmy.push(...(opcjonalna<()=>string[]>('faktury','alarmyAutoKsef')?.()??[]));
       wynik.ok=wynik.alarmy.length===0;
       // Na końcu odpowiedzi (umowa kolejności kluczy z czujką monitoring).
       return wersja?{...wynik,wersja}:wynik;

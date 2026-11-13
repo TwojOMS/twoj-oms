@@ -4,7 +4,9 @@ import { zapiszLubOdpusc } from '../wysylka/services/status-kuriera.js';
 import { zamowienieZGrupa } from '../../oms/db/scalenia.js';
 import { wyliczStatus, doZrobienia } from '../../domena/status.js';
 import { faktyDlaStatusu } from '../../domena/status-reczny.js';
-import { ETYKIETY_WYSYLKI, saNadpisanieWysylki } from '../../domena/wysylka.js';
+import { ETYKIETY_WYSYLKI, saNadpisanieWysylki, nazwaDostawy, etykietaWysylki, czyPobranie } from '../../domena/wysylka.js';
+import { kurierDomyslnyErli } from '../../domena/erli-droga-nadania.js';
+import { metodaKuriera } from '../../domena/moduly-kurierow.ts';
 import { parsujFiltry, numerStrony, adresZFiltrami, bezpiecznyPowrotNaListe, METODY_DO_FILTRA, kanalyDoFiltra } from '../../domena/filtry-listy.js';
 import { adresKartyZamowienia, kluczPozycjiListy } from '../../domena/adres-karty-zamowienia.js';
 import { wybraneZListy, podzielDoStatusu, powodZaDuzegoDruku } from '../../domena/masowe.js';
@@ -24,6 +26,7 @@ import { bezpiecznaNazwa } from '../../domena/pliki.js';
 import { daneSpecyfikacji } from '../../domena/specyfikacja.js';
 import { listaProduktowZbiorcza } from '../../domena/lista-produktow.js';
 import { drogaErliDlaZamowienia } from '../kanaly/services/kanal-erli.ts';
+import { PRZEWOZNICY } from '../../domena/przewoznik-przesylki.js';
 import { daneZestawienia } from '../../domena/zestawienie-zamowien.js';
 import { fmtDataCzasKrotko } from '../../domena/format-daty.js';
 import { zbudujSpecyfikacjePdf, zbudujSpecyfikacjeWieluPdf } from './pdf/specyfikacja-pdf.js';
@@ -167,10 +170,28 @@ app.get('/', async (req, reply) => {
     const zamowienia = wiersze.map((z) => {
       const droga = suroweErli.has(z.id)
         ? drogaErliDlaZamowienia(db, { ...z, surowe_json: suroweErli.get(z.id) }) : undefined;
+      const przewoznikUmowy = droga?.droga === 'umowa'
+        ? Object.values(PRZEWOZNICY).find(p => droga.kurier === p.klucz || droga.kurier.startsWith(`${p.klucz}_`)) ?? null
+        : null;
+      const kurierErliListy = droga?.droga === 'umowa'
+        ? ETYKIETY_WYSYLKI[droga.kurier === 'odbior' ? 'odbior_osobisty' : droga.kurier] : null;
+      let nazwaErliListy = droga?.droga === 'umowa' && droga.kurier !== 'odbior' ? kurierErliListy : null;
+      if (droga?.droga === 'przesylki_erli') {
+        // Słownik wskazuje operatora, zamówienie odróżnia paczkomat od kuriera.
+        const delivery = JSON.parse(suroweErli.get(z.id)).delivery ?? {};
+        const punkt = delivery.pickupPlace || /paczkomat/i.test(droga.metoda.groupId ?? droga.metoda.name ?? '');
+        const kurier = kurierDomyslnyErli(droga.metoda.operator?.toLowerCase() ?? droga.metoda.vendor, punkt);
+        const usluga = metodaKuriera(kurier)?.punktOdbioru ? ETYKIETY_WYSYLKI.allegro_paczkomat.replace(/^Allegro /, '')
+          : kurier === 'inpost_kurier' ? 'Kurier InPost' : ETYKIETY_WYSYLKI[kurier];
+        nazwaErliListy = `Erli ${usluga || z.metoda_wysylki_nazwa || droga.metoda.name || droga.metoda.id}`;
+      }
       return {
         ...z,
         drogaErliListy: droga,
-        kurierErliListy: droga?.droga === 'umowa' ? ETYKIETY_WYSYLKI[droga.kurier === 'odbior' ? 'odbior_osobisty' : droga.kurier] : null,
+        kurierErliListy,
+        nazwaDostawyListy: nazwaErliListy ? etykietaWysylki(z.metoda_wysylki, czyPobranie(z), nazwaErliListy) : nazwaDostawy(z),
+        // Nazwa metody ma pierwszeństwo; przy ogólnej nazwie przewoźnika wskazuje umowa ERLI.
+        przewoznikListy: droga?.droga === 'przesylki_erli' ? { klucz: 'erli' } : (z.przewoznikListy || przewoznikUmowy),
         adresKarty: adresKartyZamowienia(z.id, { powrot: adresListy }, config.definicje),
       };
     });
