@@ -256,3 +256,54 @@ describe('PRZ-119.11a porównanie IP zapory z DNS (stan)', () => {
     expect(z).toMatch(/DNS/);
   });
 });
+
+describe('PRZ-161 profil „dowolna domena” ("domena":"*") — próba jak inny sklep', () => {
+  const GWIAZDKA = { srodowisko: 'proba', domena: '*' };
+  it('plik z "*" jest poprawny; inne znaki spoza wzoru nadal odmowa', () => {
+    expect(wczytajProfilFakturowni({ OMS_TRYB: 'proba' }, { sciezka: profil(GWIAZDKA) })).toEqual(GWIAZDKA);
+    expect(() => wczytajProfilFakturowni({ OMS_TRYB: 'proba' }, { sciezka: profil({ srodowisko: 'proba', domena: '**' }) })).toThrow(/profil/i);
+    expect(() => wczytajProfilFakturowni({ OMS_TRYB: 'proba', OMS_DEMO_LOGIN: 'gosc' }, { sciezka: profil(GWIAZDKA) }))
+      .toThrow(/Prawdziwa Fakturownia jest dostępna tylko w prywatnej piaskownicy/);
+  });
+  it.each([
+    'https://evil.pl/invoices.json',
+    // Jedna kropka i prefiks zgodny ze wzorem po ucięciu 15 znaków — zatrzymuje go tylko sprawdzenie końcówki hosta.
+    'https://zlodziej-abcdefghij.com/invoices.json',
+    `https://${DOMENA}.fakturownia.pl.evil.pl/invoices.json`,
+    'https://a.b.fakturownia.pl/invoices.json',
+    'https://fakturownia.pl/invoices.json',
+    `http://${DOMENA}.fakturownia.pl/invoices.json`,
+    `https://${DOMENA}.fakturownia.pl:8443/invoices.json`,
+    `https://u:p@${DOMENA}.fakturownia.pl/invoices.json`,
+  ])('transport „*”: %s → wyjątek przed siecią', async (adres) => {
+    const szpieg = vi.fn(async () => json({}));
+    await expect(transportFakturowniProby({ domena: '*', fetchImpl: szpieg })(adres, { method: 'GET' })).rejects.toThrow();
+    expect(szpieg).not.toHaveBeenCalled();
+  });
+  it('transport „*”: każde konto <wzór>.fakturownia.pl przechodzi, KSeF nadal zablokowany', async () => {
+    const szpieg = vi.fn(async () => json({}));
+    const t = transportFakturowniProby({ domena: '*', fetchImpl: szpieg });
+    await t('https://inna-firma.fakturownia.pl/invoices.json?page=1', { method: 'GET' });
+    await t(`https://${DOMENA}.fakturownia.pl/invoices.json`, { method: 'GET' });
+    expect(szpieg).toHaveBeenCalledTimes(2);
+    await expect(t('https://inna-firma.fakturownia.pl/invoices/1.json?send_to_ksef=yes')).rejects.toThrow(/KSeF/);
+    await expect(t('https://inna-firma.fakturownia.pl/invoices.json', { method: 'POST', body: JSON.stringify({ invoice: { gov_save_and_send: true } }) }))
+      .rejects.toThrow(/KSeF/);
+    expect(szpieg).toHaveBeenCalledTimes(2);
+  });
+  it('moduł: domena z ekranu (nie z pliku), ekran bez blokady domeny', async () => {
+    const { zadania } = udawanaSiec();
+    const db = openOmsDb();
+    const { uslugi } = zbuduj({ sciezka: profil(GWIAZDKA), db });
+    zapiszKonfiguracjeIntegracji(db, 'fakturownia', { ustawienia: { domena: 'inna-firma' }, sekrety: { token: TOKEN } });
+    expect(uslugi.konfiguracjaFakturowni.domenaProby).toBeNull();
+    await uslugi.programFakturowy.sprawdzPolaczenie().catch(() => {});
+    await uslugi.konfiguracjaFakturowni.sprawdzPolaczenie().catch(() => {});
+    expect(zadania.length).toBeGreaterThan(1);
+    for (const z of zadania) {
+      expect(new URL(z.url).origin).toBe('https://inna-firma.fakturownia.pl');
+      expect(z.redirect).toBe('error');
+    }
+    db.close();
+  });
+});

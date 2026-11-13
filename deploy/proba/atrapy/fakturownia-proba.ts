@@ -8,6 +8,7 @@ import { randomBytes } from 'node:crypto';
 import { WZOR_DOMENY_FAKTUROWNI } from '../../../src/domena/konfiguracja-fakturownia.js';
 
 export const SCIEZKA_PROFILU_FAKTUROWNI = '/konfiguracja/fakturownia-proba.json';
+export const DOWOLNA_DOMENA = '*';
 export const ZDANIE_DEMO = 'Prawdziwa Fakturownia jest dostępna tylko w prywatnej piaskownicy (OMS_TRYB=proba, bez OMS_DEMO_LOGIN i OMS_DEMO_HASLO) — usuń plik profilu z publicznego demo.';
 const KLUCZ_ZNACZNIKA = 'proba.znacznik_bazy';
 const ZNAKI = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -27,7 +28,9 @@ export function wczytajProfilFakturowni(env: Env, o: { sciezka?: string } = {}):
   if (!dane || typeof dane !== 'object' || Array.isArray(dane)) throw zly();
   const p = dane as Record<string, unknown>;
   if (Object.keys(p).sort().join(',') !== 'domena,srodowisko') throw zly();
-  if (p.srodowisko !== 'proba' || typeof p.domena !== 'string' || !WZOR_DOMENY_FAKTUROWNI.test(p.domena)) throw zly();
+  // PRZ-161: `"domena":"*"` = DOWOLNA DOMENA — próba „jak inny sklep”: domenę wpisuje się na ekranie, transport
+  // przepuszcza każde konto https://<wzór>.fakturownia.pl. Blokada wysyłki do KSeF zostaje bez zmian.
+  if (p.srodowisko !== 'proba' || typeof p.domena !== 'string' || (p.domena !== DOWOLNA_DOMENA && !WZOR_DOMENY_FAKTUROWNI.test(p.domena))) throw zly();
   return { srodowisko: 'proba', domena: p.domena };
 }
 
@@ -46,13 +49,18 @@ function tekstAdresu(href: string): string {
 
 /** fetch dla klienta Fakturowni w profilu próby. Bez wstrzykniętego fetch używa globalnego w chwili wywołania. */
 export function transportFakturowniProby(o: { domena: string; fetchImpl?: typeof fetch }): typeof fetch {
-  if (!WZOR_DOMENY_FAKTUROWNI.test(String(o.domena ?? ''))) throw new Error('Niepoprawna domena konta próbnego Fakturowni.');
-  const dozwolony = `https://${o.domena}.fakturownia.pl`;
+  const dowolna = o.domena === DOWOLNA_DOMENA;
+  if (!dowolna && !WZOR_DOMENY_FAKTUROWNI.test(String(o.domena ?? ''))) throw new Error('Niepoprawna domena konta próbnego Fakturowni.');
+  const dozwolony = dowolna ? 'https://<domena>.fakturownia.pl' : `https://${o.domena}.fakturownia.pl`;
+  const dozwolonyHost = (url: URL) => dowolna
+    ? url.protocol === 'https:' && !url.port && url.hostname.endsWith('.fakturownia.pl')
+      && WZOR_DOMENY_FAKTUROWNI.test(url.hostname.slice(0, -'.fakturownia.pl'.length))
+    : url.origin === dozwolony;
   const fakturowniaProby = async (adres: string | URL | Request, init: RequestInit = {}): Promise<Response> => {
     let url: URL;
     try { url = new URL(adres instanceof Request ? adres.url : String(adres)); }
     catch { throw odmowa('Piaskownica: niepoprawny adres Fakturowni.'); }
-    if (url.username || url.password || url.hash || url.origin !== dozwolony) {
+    if (url.username || url.password || url.hash || !dozwolonyHost(url)) {
       throw odmowa(`Piaskownica: połączenie zablokowane — dozwolone jest wyłącznie konto próbne ${dozwolony}.`);
     }
     // Treść inna niż tekst (Blob, bajty, strumień, formularz) ominęłaby sprawdzenie KSeF niżej — klient wysyła tylko JSON.

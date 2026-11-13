@@ -17,7 +17,7 @@ import { uruchomAplikacje } from '../../../src/core/uruchomienie.ts';
 import { sprawdzKonfiguracjeModulow } from '../../../src/core/aplikacja.ts';
 import { modulyDla } from '../../../src/moduly/lista.ts';
 import { createModulFaktury } from '../../../src/moduly/faktury/modul.ts';
-import { SCIEZKA_PROFILU_FAKTUROWNI, wczytajProfilFakturowni, transportFakturowniProby, znacznikBazyProby } from './fakturownia-proba.ts';
+import { SCIEZKA_PROFILU_FAKTUROWNI, DOWOLNA_DOMENA, wczytajProfilFakturowni, transportFakturowniProby, znacznikBazyProby } from './fakturownia-proba.ts';
 import { definicjeKanalow, konfiguracjaKanalow } from '../../../src/moduly/kanaly/konfiguracja.ts';
 import { createModulKanaly } from '../../../src/moduly/kanaly/modul.ts';
 import { transportErliPiaskownicy } from './erli.mjs';
@@ -69,7 +69,7 @@ export function modulyPiaskownicy(env, { baza = () => null, profilFakturowni = S
     createInfaktClient: ({ db, teraz }) => createAtrapaInfaktu({ db, teraz, env }),
     ...(profil
       // Konto próbne: klient z tokenem z ekranu, transport tylko na domenę z pliku; znacznik bazy do `oid`.
-      ? { fakturowniaProby: { domena: profil.domena, fetchImpl: transportFakturowniProby({ domena: profil.domena }),
+      ? { fakturowniaProby: { domena: profil.domena === DOWOLNA_DOMENA ? null : profil.domena, fetchImpl: transportFakturowniProby({ domena: profil.domena }),
         znacznik: (db) => znacznikBazyProby(db) } }
       // Stan Fakturowni jest w tabelach atrapy, więc instancja przy każdym wywołaniu — token sprawdzany za każdym razem.
       : { createFakturowniaClient: ({ token, teraz }) => createAtrapaFakturowni({ db: baza(), token, teraz, env }) }),

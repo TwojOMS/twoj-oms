@@ -139,6 +139,7 @@ const zakonczProcesDomyslnie = () => {
 // PRZ-119.11a: `fakturowniaProby` — profil próby (deploy/proba/atrapy/fakturownia-proba.ts) ZAMIAST atrapy Fakturowni:
 // `{ domena, fetchImpl, znacznik(db) }` — prawdziwy klient z tokenem z ekranu, wyłącznie na domenę z pliku profilu,
 // `oid` z prefiksem bazy próby, KSeF (ręcznie i automat) wyłączony.
+// PRZ-161: `domena: null` (plik profilu z "domena":"*") = dowolna domena z ekranu — próba „jak inny sklep”.
 const FABRYKI_ATRAP = ['createInfaktClient', 'createVies', 'programFakturowy', 'atrapaKsefWysylki', 'createFakturowniaClient', 'fakturowniaProby'];
 // Atrapa bez zapisu z ekranu: demo działa od razu (token „demo”, jak klucz inFaktu atrapy).
 const ZAPIS_DEMO_FAKTUROWNI = { ustawienia: { domena: 'demo' }, sekrety: { token: 'demo' } };
@@ -226,10 +227,10 @@ return {
     const klientFakturowni = !fakturowniaWybrana ? null
       // Profil próby: zapis z ekranu czytany przy każdym wywołaniu; domena inna niż w pliku profilu = 400 przed siecią.
       : proba ? fakturowniaZUstawien({ wczytaj: zapisFakturowni, fabryka: (o) => {
-        if (o.domena !== proba.domena) {
+        if (proba.domena && o.domena !== proba.domena) {
           throw bladOperatora(`Piaskownica łączy się wyłącznie z kontem próbnym z pliku profilu (${proba.domena}.fakturownia.pl) — zapisz formularz w Ustawienia → Integracje → Fakturownia ponownie. Nic nie poszło do Fakturowni.`, { status: 400, bezProgramu: true });
         }
-        return createFakturowniaClient({ token: o.token, domena: proba.domena, fetchImpl: proba.fetchImpl });
+        return createFakturowniaClient({ token: o.token, domena: proba.domena ?? o.domena, fetchImpl: proba.fetchImpl });
       } })
       : fabryki.createFakturowniaClient ? fakturowniaZUstawien({ wczytaj: () => zapisFakturowni() ?? ZAPIS_DEMO_FAKTUROWNI,
         fabryka: (o) => fabryki.createFakturowniaClient({ db, teraz, token: o.token }) })
@@ -327,16 +328,17 @@ return {
     // profilu (PRZ-119.11b) — konto próbne przez transport profilu; nigdy klient bez transportu.
     const profilProby = fabryki.fakturowniaProby ?? null;
     const zdanieKontaProby = (domena: string) => `Piaskownica łączy się wyłącznie z kontem próbnym ${domena}.fakturownia.pl (z pliku profilu) — zapisz formularz ponownie. Nic nie poszło do Fakturowni.`;
-    const sprawdzPolaczenieFakturowni = async () => {
-      const zapis = zapisFakturowni();
-      const opcje = k.fakturownia ?? opcjeKlientaFakturowni(zapis);
+    // PRZ-161: `dane` = domena i token z formularza (sprawdzenie PRZED zapisem); bez nich — zapisane albo z pliku.
+    const sprawdzPolaczenieFakturowni = async (dane: { domena: string; token: string } | null = null) => {
+      const opcje = dane ? opcjeKlientaFakturowni({ ustawienia: { domena: dane.domena }, sekrety: { token: dane.token } })
+        : k.fakturownia ?? opcjeKlientaFakturowni(zapisFakturowni());
       try {
         if (brakTeraz()) throw bladOperatora(zdanieBrakuProgramu(regula(), 'Nic nie poszło do programu.')
           ?? 'Wybór modułu faktur czeka na ponowne uruchomienie OMS-u. Nic nie poszło do programu.', { status: 400 });
-        if (profilProby && opcje.domena !== profilProby.domena) throw bladOperatora(zdanieKontaProby(profilProby.domena), { status: 400 });
+        if (profilProby?.domena && opcje.domena !== profilProby.domena) throw bladOperatora(zdanieKontaProby(profilProby.domena), { status: 400 });
         const klient = fabryki.createFakturowniaClient
           ? fabryki.createFakturowniaClient({ db, teraz, token: opcje.token })
-          : profilProby ? createFakturowniaClient({ token: opcje.token, domena: profilProby.domena, fetchImpl: profilProby.fetchImpl })
+          : profilProby ? createFakturowniaClient({ token: opcje.token, domena: profilProby.domena ?? opcje.domena, fetchImpl: profilProby.fetchImpl })
           : k.proba ? odmowaFakturowniWProbie()
           : createFakturowniaClient({ ...opcje, fetchImpl: undefined });
         return await klient.sprawdzPolaczenie();
@@ -393,6 +395,9 @@ return {
       odlaczonyDoRestartu: () => fakturowniaZUstawienPrzyStarcie && !fakturowniaZapisana(),
       // PRZ-119.06: ekran Ustawienia → Integracje → Fakturownia.
       sprawdzPolaczenie: sprawdzPolaczenieFakturowni,
+      // PRZ-161: przy jawnym „Brak” token nie wychodzi z panelu — zapis bez sprawdzenia, ze zdaniem dlaczego.
+      sprawdzenieZablokowane: () => brakTeraz() ? (zdanieBrakuProgramu(regula(), 'Połączenia nie sprawdzono.')
+        ?? 'Wybór modułu faktur czeka na ponowne uruchomienie OMS-u. Połączenia nie sprawdzono.') : null,
       // PRZ-119.11b: profil próby — ekran przyjmuje wyłącznie domenę z pliku profilu (inna = 400 przed zapisem).
       domenaProby: profilProby?.domena ?? null,
       zdanieKontaProby,
@@ -472,7 +477,9 @@ return {
         // PRZ-119.07: automat KSeF (stary adres zapisu i adres pod programem fakturowym) — stan wybranego programu.
         registerUstawieniaInfaktuRoutes(app, { db, konfiguracjaInfaktu: usluga('konfiguracjaInfaktu'),
           konfiguracjaProgramu: usluga('konfiguracjaProgramu'), automatKsef: usluga('automatKsef'), teraz, infakt: usluga('infakt') });
-        registerUstawieniaFakturowniRoutes(app, { db, konfiguracjaFakturowni: usluga('konfiguracjaFakturowni'), teraz });
+        // PRZ-161: wybór programu i tryb restartu — ekran Fakturowni pokazuje, co jeszcze dzieli ją od wystawiania.
+        registerUstawieniaFakturowniRoutes(app, { db, konfiguracjaFakturowni: usluga('konfiguracjaFakturowni'), teraz,
+          wyborProgramu: usluga('wyborProgramu'), restart: { tryb: k.restartZPanelu } });
         // PRZ-122.ZGODA-TFc: trasy TwojeFaktury (ekran faktury, serie, Wysyłka do KSeF) rejestruje WYŁĄCZNIE szew.
         if (tf) {
           tf.zarejestrujTrasy(app, { db, teraz, edycja: edycjaTwojeFaktur ? usluga('edycjaTwojeFaktur') : null,

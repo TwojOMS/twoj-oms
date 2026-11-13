@@ -39,5 +39,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === fs.realpathSync(proces
   let domena = '';
   // Treści pliku profilu nie wypisujemy (gdyby ktoś wkleił tam token) — tylko pole `domena`.
   try { domena = JSON.parse(fs.readFileSync(process.argv[2] ?? '', 'utf8'))?.domena ?? ''; } catch { /* zdanie niżej */ }
+  // PRZ-161: profil „dowolna domena” — wszystkie konta stoją za tymi samymi adresami; porównujemy app.fakturownia.pl.
+  if (domena === '*') domena = 'app';
   console.log(await porownajIpFakturowni({ domena }));
 }

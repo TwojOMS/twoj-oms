@@ -1905,6 +1905,14 @@
     .ust-formularz .ust-wartosc-wiersz { display: flex; align-items: center; gap: .6rem; padding-top: .4rem; }
     .ust-formularz .ust-wartosc-wiersz .ust-wartosc { padding-top: 0; font-weight: 600; overflow-wrap: anywhere; }
     .ust-wymagane { color: var(--blad-tekst-mocny); }
+    /* PRZ-161: stan połączenia integracji — krótka lista „etykieta: wartość”. */
+    .ust-dane { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .25rem 1rem; margin: .5rem 0 .9rem; font-size: .9rem; }
+    .ust-dane dt { color: var(--tekst-przygaszony); }
+    .ust-dane dd { margin: 0; color: var(--tekst); overflow-wrap: anywhere; }
+    .ust-sekcja .pas-uprzedzenie form { margin: .2rem 0 0; }
+    .ust-sekcja .ust-akcje form { margin: 0; }
+    .ust-sekcja > .ust-formularz { margin: .2rem 0 1rem; padding-top: .6rem; border-top: 1px solid var(--ramka); }
+    .ust-akcje-polaczenia + .ust-pomoc { margin-top: .5rem; font-size: .8rem; }
     /* PRZ-108.03b: strefa przeciągania pliku logo (public/logo-przeciaganie.js). Obejmuje zwykłe pole pliku, więc */
     /* bez skryptu wygląda jak ramka z napisem; skrypt dokłada tylko podświetlenie, nazwę pliku i podgląd. */
     .logo-strefa { box-sizing: border-box; padding: .8rem .9rem; border: 2px dashed var(--ramka-pola); border-radius: 8px; background: var(--powierzchnia-2); }

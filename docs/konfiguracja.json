@@ -7987,7 +7987,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "line": 153,
+      "line": 154,
       "expression": "env",
       "callee": "wczytajFaktury",
       "call": "wczytajFaktury(env, szew)"
@@ -8336,7 +8336,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "c4798f2f91a5ec950cb1cf6a8065e82a40950ecd5377951c2d57e5f3d3cef5bc",
+      "sha256": "011f2ec7bc76fa5dab92e4c4f7353effb970880a21acd9f5ea4cfe31c5eeb7a0",
       "normalizacja": "LF"
     },
     {
@@ -8428,7 +8428,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "c4798f2f91a5ec950cb1cf6a8065e82a40950ecd5377951c2d57e5f3d3cef5bc",
+      "sha256": "011f2ec7bc76fa5dab92e4c4f7353effb970880a21acd9f5ea4cfe31c5eeb7a0",
       "normalizacja": "LF"
     },
     {

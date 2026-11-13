@@ -48,5 +48,13 @@ export function utworzAlarmAutoKsef(db, { teraz = () => new Date() } = {}) {
     zgas() {
       zapisz(db, [], teraz().toISOString());
     },
+    /**
+     * PRZ-161: chwila ostatniego „Sprawdziłem” (ISO) albo null. Pusty zapis powstaje WYŁĄCZNIE w `zgas` — `dopisz`
+     * zawsze zostawia co najmniej jeden wpis — więc wiersz z `[]` znaczy „operator potwierdził wyłączenie”.
+     */
+    potwierdzono() {
+      const w = db.prepare('SELECT wartosc, zmienione_at FROM ustawienia WHERE klucz = ?').get(KLUCZ_ALARMU_AUTO_KSEF);
+      return w && w.wartosc === '[]' ? (w.zmienione_at ?? null) : null;
+    },
   });
 }

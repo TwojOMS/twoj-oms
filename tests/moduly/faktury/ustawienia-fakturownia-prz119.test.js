@@ -2,6 +2,10 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-integracji.js';
 import { utworzAlarmAutoKsef } from '../../../src/moduly/faktury/db/alarm-auto-ksef.js';
+import { koncowkaTokenu, ADRES_KSEF_W_FAKTUROWNI } from '../../../src/moduly/faktury/trasy/ustawienia-fakturownia.js';
+import { ADRES_RESTARTU } from '../../../src/moduly/faktury/trasy/ustawienia-programu.js';
+import { EKRAN_WYBORU_PROGRAMU } from '../../../src/domena/wybor-programu.js';
+import { zapiszWyborProgramu } from '../../../src/oms/db/wybor-programu.js';
 import { nowyPanel, jako, get, post } from '../../pomoc/konta-prz068.js';
 import { modulRdzen } from '../../../src/moduly/rdzen/modul.ts';
 import { modulWeb } from '../../../src/core/web/modul.ts';
@@ -37,7 +41,16 @@ async function zapisz(p) {
 function bezTokenu(html) {
   expect(html).not.toContain(TOKEN);
   expect(html).not.toContain(encodeURIComponent(TOKEN));
-  expect(html).toMatch(/name="token"[^>]*value=""/u);
+  // PRZ-161: po podłączeniu pola tokenu nie ma na ekranie (otwiera je „Zmień token”); jeśli jest — zawsze puste.
+  if (html.includes('name="token"')) expect(html).toMatch(/name="token"[^>]*value=""/u);
+  expect(html).not.toMatch(/name="token"[^>]*value="[^"]/u);
+}
+/** PRZ-161: do sieci wolno wyjść wyłącznie z odczytem pierwszej strony listy faktur (sprawdzenie), nic innego. */
+function tylkoSprawdzenia(siec, domena) {
+  for (const [url, init] of siec.mock.calls) {
+    expect(String(url)).toBe(`https://${domena}.fakturownia.pl/invoices.json?page=1&per_page=1`);
+    expect(init?.method ?? 'GET').toBe('GET');
+  }
 }
 
 describe('PRZ-119.06 Ustawienia → Fakturownia', () => {
@@ -49,7 +62,7 @@ describe('PRZ-119.06 Ustawienia → Fakturownia', () => {
       bezTokenu(r.body);
       expect(r.body).toContain('autocomplete="new-password"');
       expect(r.body).toContain('type="password"');
-      expect(r.body).toContain('Automatyczna wysyłka = Wyłączona');
+      expect(r.body).toContain('Automatycznie wysyłaj tworzone dokumenty do KSeF'); // PRZ-161: ścieżka i nazwa suwaka z pomocy Fakturowni
       expect((await get(p.app, '/ustawienia/integracje/katalog', p.admin)).body).toContain(`href="${ADRES}"`);
       expect((await get(p.app, ADRES, p.sprzedaz)).statusCode).toBe(403);
       expect((await post(p.app, ADRES, p.sprzedaz, { domena: DOMENA, token: TOKEN })).statusCode).toBe(403);
@@ -59,9 +72,11 @@ describe('PRZ-119.06 Ustawienia → Fakturownia', () => {
     const p = panel();
     try {
       await zapisz(p);
-      const ekran = await get(p.app, ADRES, p.admin);
+      // PRZ-161: po podłączeniu formularz otwiera „Zmień token” (?zmien=1) — tam pole tokenu musi być puste.
+      const ekran = await get(p.app, `${ADRES}?zmien=1`, p.admin);
       bezTokenu(ekran.body);
       expect(ekran.body).toContain('zapisany — wpisz nowy, żeby zmienić');
+      expect((await get(p.app, ADRES, p.admin)).body).not.toContain(TOKEN);
       expect((await get(p.app, '/ustawienia/integracje', p.admin)).body).toContain(`href="${ADRES}"`);
       for (const domena of ['zla/domena', 'zla.domena', 'zla@domena']) {
         const r = await post(p.app, ADRES, p.admin, { domena, token: TOKEN });
@@ -71,7 +86,7 @@ describe('PRZ-119.06 Ustawienia → Fakturownia', () => {
       }
       expect((await post(p.app, ADRES, p.admin, { domena: DOMENA, token: '' })).statusCode).toBe(303);
       expect(wczytajKonfiguracjeIntegracji(p.db, 'fakturownia').sekrety.token).toBe(TOKEN);
-      expect(p.siec).not.toHaveBeenCalled();
+      tylkoSprawdzenia(p.siec, DOMENA); // PRZ-161: zapis najpierw pyta Fakturownię (jeden GET listy), nic więcej
     } finally { await p.app.close(); }
   });
   it('pierwszy błędny zapis też pozostawia puste pole tokenu', async () => {
@@ -107,9 +122,9 @@ describe('PRZ-119.06 Ustawienia → Fakturownia', () => {
       const r = await post(p.app, `${ADRES}/sprawdz`, p.admin);
       expect(r.statusCode, r.body).toBe(200);
       expect(r.body).toContain('Połączenie z Fakturownią działa');
-      expect(p.siec).toHaveBeenCalledTimes(1);
-      expect(String(p.siec.mock.calls[0][0])).toBe(`https://${DOMENA}.fakturownia.pl/invoices.json?page=1&per_page=1`);
-      expect(p.siec.mock.calls[0][1].method).toBe('GET');
+      expect(p.siec).toHaveBeenCalledTimes(2); // PRZ-161: pierwszy GET przy zapisie, drugi — przycisk
+      expect(String(p.siec.mock.calls[1][0])).toBe(`https://${DOMENA}.fakturownia.pl/invoices.json?page=1&per_page=1`);
+      expect(p.siec.mock.calls[1][1].method).toBe('GET');
       expect(p.db.prepare('SELECT count(*) AS n FROM faktury').get().n).toBe(0);
     } finally { await p.app.close(); }
   });
@@ -169,7 +184,7 @@ describe('PRZ-119.06 Ustawienia → Fakturownia', () => {
       expect(alarm.wczytaj()).toEqual([]);
       expect((await post(p.app, `${ADRES}/odlacz`, p.admin)).statusCode).toBe(303);
       expect(wczytajKonfiguracjeIntegracji(p.db, 'fakturownia')).toBeNull();
-      expect(p.siec).not.toHaveBeenCalled();
+      tylkoSprawdzenia(p.siec, DOMENA);
     } finally { await p.app.close(); }
   });
 });
@@ -207,7 +222,7 @@ describe('PRZ-119.11b ekran Fakturowni w profilu próby', () => {
       const ok = await post(p.app, ADRES, p.admin, { domena: PROBNA, token: TOKEN });
       expect(ok.statusCode, ok.body).toBe(303);
       expect(wczytajKonfiguracjeIntegracji(p.db, 'fakturownia').ustawienia.domena).toBe(PROBNA);
-      expect(p.transport).not.toHaveBeenCalled();
+      expect(p.transport).toHaveBeenCalledTimes(1); // PRZ-161: zapis z domeną profilu sprawdza ją transportem profilu
       expect(p.siec).not.toHaveBeenCalled();
     } finally { await p.app.close(); }
   });
@@ -219,9 +234,9 @@ describe('PRZ-119.11b ekran Fakturowni w profilu próby', () => {
       expect(r.statusCode, r.body).toBe(200);
       expect(r.body).toContain('Połączenie z Fakturownią działa');
       bezTokenu(r.body);
-      expect(p.transport).toHaveBeenCalledTimes(1);
-      expect(String(p.transport.mock.calls[0][0])).toBe(`https://${PROBNA}.fakturownia.pl/invoices.json?page=1&per_page=1`);
-      expect(p.transport.mock.calls[0][1].method).toBe('GET');
+      expect(p.transport).toHaveBeenCalledTimes(2);
+      expect(String(p.transport.mock.calls[1][0])).toBe(`https://${PROBNA}.fakturownia.pl/invoices.json?page=1&per_page=1`);
+      expect(p.transport.mock.calls[1][1].method).toBe('GET');
       expect(p.siec).not.toHaveBeenCalled();
     } finally { await p.app.close(); }
   });
@@ -235,6 +250,197 @@ describe('PRZ-119.11b ekran Fakturowni w profilu próby', () => {
       bezTokenu(r.body);
       expect(p.transport).not.toHaveBeenCalled();
       expect(p.siec).not.toHaveBeenCalled();
+    } finally { await p.app.close(); }
+  });
+});
+
+describe('PRZ-161 porządek ekranu Fakturowni', () => {
+  const TOKEN_BEZ_UKOSNIKA = 'fikcyjnyTokenPrz161Q7xZ';
+  const zapiszCzysty = async (p) => {
+    const r = await post(p.app, ADRES, p.admin, { domena: DOMENA, token: TOKEN_BEZ_UKOSNIKA });
+    expect(r.statusCode, r.body).toBe(303);
+  };
+  it('końcówka tokenu: 4 ostatnie znaki, przed ukośnikiem; krótki token — nic', () => {
+    expect(koncowkaTokenu('abcdefghijklQ7xZ')).toBe('Q7xZ');
+    expect(koncowkaTokenu('abcdefghijklmnop/konto')).toBe('mnop');
+    expect(koncowkaTokenu('krotki')).toBeNull();
+    expect(koncowkaTokenu('krotki/abcdefghijklmnop')).toBeNull();
+    expect(koncowkaTokenu(null)).toBeNull();
+  });
+  it('po podłączeniu: konto i końcówka tokenu w stanie, bez formularza; „Zmień token” go otwiera', async () => {
+    const p = panel();
+    try {
+      await zapiszCzysty(p);
+      const r = await get(p.app, ADRES, p.admin);
+      expect(r.statusCode, r.body).toBe(200);
+      expect(r.body).not.toContain(TOKEN_BEZ_UKOSNIKA);
+      expect(r.body).toContain('••••Q7xZ');
+      expect(r.body).toContain(`${DOMENA}.fakturownia.pl`);
+      expect(r.body).not.toContain('id="fakturownia-token"');
+      expect(r.body).toContain(`href="${ADRES}?zmien=1#fakturownia-formularz"`);
+      expect(r.body).toContain('Odłącz');
+      const z = await get(p.app, `${ADRES}?zmien=1`, p.admin);
+      expect(z.body).toContain('id="fakturownia-token"');
+      expect(z.body).not.toContain(TOKEN_BEZ_UKOSNIKA);
+    } finally { await p.app.close(); }
+  });
+  it('niepodłączona: formularz od razu, bez Odłącz i bez Sprawdź', async () => {
+    const p = panel();
+    try {
+      const r = await get(p.app, ADRES, p.admin);
+      expect(r.body).toContain('id="fakturownia-token"');
+      expect(r.body).not.toContain(`${ADRES}/odlacz`);
+      expect(r.body).not.toContain(`${ADRES}/sprawdz"`);
+    } finally { await p.app.close(); }
+  });
+  it('zapisana, niewybrana w Module faktur: link do Modułu faktur, bez przycisku restartu', async () => {
+    const p = panel({ OMS_RESTART_Z_PANELU: 'tak' });
+    try {
+      await zapiszCzysty(p);
+      const r = await get(p.app, ADRES, p.admin);
+      const pas = /id="fakturownia-uruchomienie"[\s\S]*?<\/div>/u.exec(r.body)?.[0] ?? '';
+      expect(pas).toContain(`href="${EKRAN_WYBORU_PROGRAMU}"`);
+      expect(pas).toContain('Wybierz ją');
+      expect(pas).not.toContain(ADRES_RESTARTU);
+    } finally { await p.app.close(); }
+  });
+  it('wybrana, czeka na restart: przycisk restartu (tak), nieaktywny (atrapa), polecenie (brak zmiennej)', async () => {
+    for (const [env, oczekiwane] of [
+      [{ OMS_RESTART_Z_PANELU: 'tak' }, (pas) => { expect(pas).toContain(`action="${ADRES_RESTARTU}"`); expect(pas).not.toContain('disabled'); }],
+      [{ OMS_RESTART_Z_PANELU: 'atrapa' }, (pas) => { expect(pas).toContain(`action="${ADRES_RESTARTU}"`); expect(pas).toContain('disabled'); }],
+      [{}, (pas) => { expect(pas).not.toContain(ADRES_RESTARTU); expect(pas).toContain('docker compose restart oms'); }],
+    ]) {
+      const p = panel(env);
+      try {
+        await zapiszCzysty(p);
+        zapiszWyborProgramu(p.db, 'fakturownia');
+        const r = await get(p.app, ADRES, p.admin);
+        const pas = /id="fakturownia-uruchomienie"[\s\S]*?<\/div>\s*<\/div>|id="fakturownia-uruchomienie"[\s\S]*?<\/div>/u.exec(r.body)?.[0] ?? '';
+        expect(pas).toContain('jest wybrana');
+        expect(pas).toContain(`href="${EKRAN_WYBORU_PROGRAMU}"`);
+        oczekiwane(pas);
+      } finally { await p.app.close(); }
+    }
+  });
+  it('KSeF: przed potwierdzeniem link do ustawień KSeF w Fakturowni; po „Sprawdziłem” — stan Wyłączona z datą; nowy alarm wraca', async () => {
+    const p = panel();
+    try {
+      const przed = await get(p.app, ADRES, p.admin);
+      expect(przed.body).toContain(`href="${ADRES_KSEF_W_FAKTUROWNI}"`);
+      expect(przed.body).toContain('Sprawdziłem — automatyczna wysyłka wyłączona');
+      expect((await post(p.app, `${ADRES}/sprawdzilem`, p.admin)).statusCode).toBe(303);
+      const po = await get(p.app, ADRES, p.admin);
+      expect(po.body).toContain('Potwierdzono ');
+      expect(po.body).not.toContain('Sprawdziłem — automatyczna wysyłka wyłączona');
+      expect(po.body).not.toContain(`href="${ADRES_KSEF_W_FAKTUROWNI}"`);
+      utworzAlarmAutoKsef(p.db).dopisz({ dokument: '161', numer: 'TEST/161', gov_status: 'processing' });
+      const alarm = await get(p.app, ADRES, p.admin);
+      expect(alarm.body).toContain('Alarm: Fakturownia sama wysłała');
+      expect(alarm.body).not.toContain('Potwierdzono ');
+      expect(alarm.body).toContain('Sprawdziłem — automatyczna wysyłka wyłączona');
+    } finally { await p.app.close(); }
+  });
+});
+
+describe('PRZ-161 Zapisz najpierw sprawdza w Fakturowni', () => {
+  const etykieta = (html) => /id="fakturownia-stan-etykieta"[^>]*><strong>([^<]*)</u.exec(html)?.[1] ?? null;
+  it('Fakturownia odrzuca (401) → 400, nic nie zapisane, wpisana domena wraca w polu, token nie', async () => {
+    const p = panel();
+    try {
+      p.siec.mockImplementation(async () => new Response('Musisz być zalogowany', { status: 401 }));
+      const r = await post(p.app, ADRES, p.admin, { domena: 'inne-konto-161', token: TOKEN });
+      expect(r.statusCode, r.body).toBe(400);
+      expect(r.body).toContain('Fakturownia nie przyjęła tych danych — nic nie zapisano.');
+      expect(r.body).toContain('HTTP 401');
+      expect(/<input id="fakturownia-domena"[^>]*>/u.exec(r.body)?.[0]).toContain('value="inne-konto-161"');
+      bezTokenu(r.body);
+      expect(wczytajKonfiguracjeIntegracji(p.db, 'fakturownia')).toBeNull();
+      tylkoSprawdzenia(p.siec, 'inne-konto-161');
+      expect(p.siec).toHaveBeenCalledTimes(1);
+    } finally { await p.app.close(); }
+  });
+  it('odrzucenie zmiany tokenu zostawia stary zapis i jego stan „Podłączony”', async () => {
+    const p = panel();
+    try {
+      await zapisz(p);
+      p.siec.mockImplementation(async () => new Response('', { status: 403 }));
+      expect((await post(p.app, ADRES, p.admin, { domena: DOMENA, token: 'zupelnie-inny-token-161' })).statusCode).toBe(400);
+      expect(wczytajKonfiguracjeIntegracji(p.db, 'fakturownia').sekrety.token).toBe(TOKEN);
+      expect(etykieta((await get(p.app, ADRES, p.admin)).body)).toBe('Podłączony');
+    } finally { await p.app.close(); }
+  });
+  it('Fakturownia przyjmuje → zapis, „Podłączony” z datą sprawdzenia', async () => {
+    const p = panel();
+    try {
+      const r = await post(p.app, ADRES, p.admin, { domena: DOMENA, token: TOKEN });
+      expect(r.statusCode).toBe(303);
+      expect(r.headers.location).toBe(`${ADRES}?zapisano=zapisano`);
+      const e = await get(p.app, `${ADRES}?zapisano=zapisano`, p.admin);
+      expect(etykieta(e.body)).toBe('Podłączony');
+      expect(e.body).toContain('Fakturownia przyjęła token');
+      expect(e.body).toContain('<dt>Sprawdzono</dt>');
+    } finally { await p.app.close(); }
+  });
+  for (const [opis, odpowiedz] of [
+    ['brak odpowiedzi (błąd sieci)', async () => { throw new TypeError('fetch failed'); }],
+    ['5xx', async () => new Response('', { status: 503 })],
+    ['429', async () => new Response('', { status: 429 })],
+  ]) {
+    it(`${opis} → zapis ze stanem „Zapisany, niesprawdzony” i powodem`, async () => {
+      const p = panel();
+      try {
+        p.siec.mockImplementation(odpowiedz);
+        const r = await post(p.app, ADRES, p.admin, { domena: DOMENA, token: TOKEN });
+        expect(r.statusCode).toBe(303);
+        expect(r.headers.location).toBe(`${ADRES}?zapisano=niesprawdzone`);
+        expect(wczytajKonfiguracjeIntegracji(p.db, 'fakturownia').sekrety.token).toBe(TOKEN);
+        const e = await get(p.app, ADRES, p.admin);
+        expect(etykieta(e.body)).toBe('Zapisany, niesprawdzony');
+        expect(e.body).toContain('Kliknij „Sprawdź połączenie”');
+        bezTokenu(e.body);
+        // Przycisk po powrocie Fakturowni zmienia stan na „Podłączony”.
+        p.siec.mockImplementation(async () => new Response('[]', { status: 200 }));
+        await post(p.app, `${ADRES}/sprawdz`, p.admin);
+        expect(etykieta((await get(p.app, ADRES, p.admin)).body)).toBe('Podłączony');
+      } finally { await p.app.close(); }
+    });
+  }
+  it('„Sprawdź połączenie” z odmową zmienia „Podłączony” na „Fakturownia odrzuca token”', async () => {
+    const p = panel();
+    try {
+      await zapisz(p);
+      p.siec.mockImplementation(async () => new Response('', { status: 401 }));
+      await post(p.app, `${ADRES}/sprawdz`, p.admin);
+      const e = await get(p.app, ADRES, p.admin);
+      expect(etykieta(e.body)).toBe('Fakturownia odrzuca token');
+      bezTokenu(e.body);
+    } finally { await p.app.close(); }
+  });
+  it('zmiana danych poza ekranem unieważnia stary wynik → „Zapisany, niesprawdzony”', async () => {
+    const p = panel();
+    try {
+      await zapisz(p);
+      zapiszKonfiguracjeIntegracji(p.db, 'fakturownia', { ustawienia: { domena: DOMENA }, sekrety: { token: 'podmieniony-token-161' } });
+      expect(etykieta((await get(p.app, ADRES, p.admin)).body)).toBe('Zapisany, niesprawdzony');
+    } finally { await p.app.close(); }
+  });
+  it('jawne „Brak”: zapis bez sieci, stan niesprawdzony ze zdaniem o wyłączonych fakturach', async () => {
+    const p = panel({ OMS_PROGRAM_FAKTUROWY: 'brak' });
+    try {
+      const r = await post(p.app, ADRES, p.admin, { domena: DOMENA, token: TOKEN });
+      expect(r.statusCode).toBe(303);
+      expect(p.siec).not.toHaveBeenCalled();
+      const e = await get(p.app, ADRES, p.admin);
+      expect(etykieta(e.body)).toBe('Zapisany, niesprawdzony');
+      expect(e.body).toContain('Połączenia nie sprawdzono.');
+    } finally { await p.app.close(); }
+  });
+  it('Odłącz kasuje też wynik sprawdzenia', async () => {
+    const p = panel();
+    try {
+      await zapisz(p);
+      await post(p.app, `${ADRES}/odlacz`, p.admin);
+      expect(p.db.prepare("SELECT count(*) AS n FROM ustawienia WHERE klucz = 'faktury.fakturownia.sprawdzenie'").get().n).toBe(0);
     } finally { await p.app.close(); }
   });
 });
