@@ -10,13 +10,13 @@
 **[Strona projektu](https://twojoms.pl)** · **[Demo](https://demo.twojoms.pl)** (login `demo`, hasło `demo`, dane zmyślone,
 reset co godzinę) · **[Instalacja](docs/instalacja-docker.md)** · **[Dla agenta AI](AGENTS.md)**
 
-Panel do obsługi zamówień dla małej sprzedaży internetowej w Polsce: zamówienia z Allegro i WooCommerce
+Panel do obsługi zamówień dla małej sprzedaży internetowej w Polsce: zamówienia z Allegro, ERLI i WooCommerce
 w jednym miejscu, faktury, wysyłka, zwroty, koszty i raporty. Działa na jednym małym serwerze
 (Node.js + SQLite), bez abonamentu i bez zewnętrznej bazy danych. Kod jest otwarty — możesz go
 uruchomić, zmienić pod swoją firmę i rozwijać dalej samodzielnie lub z agentem AI.
 
 > **English in short.** Twój OMS is a self-hosted order management panel for small Polish online
-> sellers (Allegro, WooCommerce, inFakt/KSeF invoicing, DPD/InPost shipping). Node.js 24, SQLite,
+> sellers (Allegro, ERLI, WooCommerce, inFakt/Fakturownia/KSeF invoicing, DPD/InPost shipping). Node.js 24, SQLite,
 > Fastify, server-rendered EJS. The UI, code comments and documentation are in Polish. MIT licence,
 > no warranty, no support. Start with [AGENTS.md](AGENTS.md) if you drive the repo with an AI agent.
 
@@ -27,9 +27,9 @@ Moduły (`src/moduly/`), każdy z własnymi trasami, widokami, migracjami bazy i
 | Moduł | Zakres |
 |---|---|
 | `zamowienia` | lista i karta zamówienia, wyszukiwanie, filtry, wydruki, ręczne zamówienia |
-| `kanaly` | kanały sprzedaży (Allegro, WooCommerce), pobieranie zamówień, mapowanie |
-| `faktury` | faktury i proformy (PDF), inFakt, KSeF, sprzedaż do UE (WDT), paczka dla biura |
-| `wysylka` | nadawanie paczek (DPD, InPost, Allegro), etykiety, śledzenie, nadanie hurtem |
+| `kanaly` | kanały sprzedaży (Allegro, ERLI, WooCommerce), pobieranie zamówień, mapowanie |
+| `faktury` | faktury i proformy (PDF), inFakt albo Fakturownia, KSeF, sprzedaż do UE (WDT), paczka dla biura |
+| `wysylka` | nadawanie paczek (DPD, InPost, Allegro, ERLI), etykiety, śledzenie, nadanie hurtem |
 | `magazyn` | produkty, wzory, powiązania ze sklepami |
 | `zwroty` | zwroty i korekty |
 | `koszty` | koszty z KSeF i ręczne, zestawienia |
@@ -39,7 +39,7 @@ Moduły (`src/moduly/`), każdy z własnymi trasami, widokami, migracjami bazy i
 | `zdrowie` | `/health`, kopie zapasowe, alarmy |
 | `api` | API v1 dla programów na kluczach z zakresami: zamówienia, proformy, produkty, stany, sprzedaż ([opis](docs/api/README.md)) |
 
-Integracje w kodzie: Allegro, WooCommerce, inFakt, KSeF, DPD, InPost, GUS (REGON), Meta, GA4,
+Integracje w kodzie: Allegro, ERLI, WooCommerce, inFakt, Fakturownia, KSeF, DPD, InPost, GUS (REGON), Meta, GA4,
 import z Apilo. Każda jest opcjonalna i wymaga własnych kluczy — bez nich panel działa w **trybie
 próby** (`OMS_TRYB=proba`), który odmawia startu, gdy wykryje jakikolwiek klucz integracji.
 
@@ -102,5 +102,5 @@ minut; w trakcie pracy uruchamiaj testy dotkniętego modułu. Zasady zmian i map
 
 ## Licencja
 
-[MIT](LICENSE). Nazwy Allegro, WooCommerce, inFakt, KSeF, DPD, InPost, Meta i inne należą do ich
+[MIT](LICENSE). Nazwy Allegro, ERLI, WooCommerce, inFakt, Fakturownia, KSeF, DPD, InPost, Meta i inne należą do ich
 właścicieli; repozytorium nie jest z nimi powiązane.
