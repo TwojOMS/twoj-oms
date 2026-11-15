@@ -35,10 +35,18 @@ Faktury wymagają podłączonego inFaktu. Jeśli drukujesz tylko etykiety, drugi
   (dla etykiet: sterownik producenta drukarki, np. Zebra);
 - adres panelu, np. `http://192.168.1.20:3001` w biurze albo `https://oms.przyklad.pl` na VPS-ie
   (ten sam, który wpisujesz w przeglądarce);
-- login i hasło **konta serwisowego** (patrz niżej);
+- klucz API z zakresem `druk` albo login i hasło **konta serwisowego** (patrz niżej);
 - dla faktur dodatkowo czytnik PDF z drukowaniem z linii poleceń: Adobe Acrobat albo SumatraPDF.
 
 ## Konto w panelu
+
+### Klucz zamiast hasła
+
+W Ustawienia → Zespół i dostęp → Klucze API utwórz klucz z zakresem `druk` i wpisz go w pole `klucz`
+w konfiguracji czuwacza etykiet lub faktur. Przy podanym kluczu pola `user` i `pass`
+nie są potrzebne. Chroń plik konfiguracji, ponieważ zawiera klucz.
+
+### Konto serwisowe
 
 Agent loguje się tym samym loginem i hasłem, które są w pliku konfiguracji serwera
 (`/opt/oms/config/oms.env`, zmienne `OMS_USER` i `OMS_PASS`; w instalacji z `docs/instalacja-docker.md`
@@ -70,12 +78,14 @@ Get-Printer | Select-Object Name
 | Pole | Co wpisać |
 |---|---|
 | `url` | adres panelu bez ukośnika na końcu, np. `http://192.168.1.20:3001` albo `https://oms.przyklad.pl` |
+| `klucz` | klucz API z zakresem `druk`; po wpisaniu zastępuje `user` i `pass` |
 | `user` | login konta serwisowego |
 | `pass` | hasło konta serwisowego |
 | `drukarka` | nazwa drukarki z kroku 3, np. `Zebra ZD421` |
 | `odstepSekund` | co ile sekund pytać panel (domyślnie 5) |
+| `odstepPoOdmowieSekund` | czas oczekiwania po odmowie klucza lub hasła (401/403), domyślnie 300 sekund |
 
-   `config.json` zawiera hasło — nie kopiuj go na pendrive'y ani do repozytorium.
+   `config.json` zawiera hasło lub klucz — nie kopiuj go na pendrive'y ani do repozytorium.
 
 5. Uruchom skrypt ręcznie i zobacz, czy wstaje:
 
@@ -90,8 +100,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File C:/OMS-druk/czuwacz-etykiet.
 
 1. Katalog skopiuj tak samo (może to być ten sam komputer i ten sam katalog albo inny komputer
    ze sterownikiem drukarki biurowej).
-2. Skopiuj `config-faktury.przyklad.json` jako `config-faktury.json` i uzupełnij `url`, `user`,
-   `pass`, `drukarka` oraz `pdfProgram` (pełna ścieżka do Acrobata albo SumatraPDF). Dla
+2. Skopiuj `config-faktury.przyklad.json` jako `config-faktury.json` i uzupełnij `url`, `klucz`
+   (albo `user` i `pass`), `drukarka` oraz `pdfProgram` (pełna ścieżka do Acrobata albo SumatraPDF). Dla
    SumatraPDF podmień też `pdfArgumenty` na wariant opisany w pliku przykładowym.
 3. Zrób druk próbny jakimkolwiek plikiem PDF. Nie dotyka kolejki, więc nikomu nie zabierze faktury:
 
@@ -118,8 +128,8 @@ komputer przy drukarce otworzy panel tak samo jak przeglądarka. Są dwie drogi:
 
 **HTTPS** (panel ma własną domenę, np. przez Caddy według `docs/instalacja-docker.md`, sekcja 7a).
 W `url` wpisz adres z `https://`, np. `https://oms.przyklad.pl`, bez portu i bez ukośnika na
-końcu. ⚠️ Nigdy nie wpisuj adresu `http://PUBLICZNY-IP:3001`: skrypt wysyła login i hasło konta
-serwisowego przy każdym zapytaniu, a po zwykłym HTTP szłyby przez internet jawnym tekstem.
+końcu. ⚠️ Nigdy nie wpisuj adresu `http://PUBLICZNY-IP:3001`: skrypt wysyła klucz albo login i hasło
+konta serwisowego przy każdym zapytaniu, a po zwykłym HTTP szłyby przez internet jawnym tekstem.
 Port 3001 na VPS-ie ma być zamknięty w zaporze dostawcy (sekcja 7a, punkt 1).
 
 **VPN** (panel widoczny tylko w sieci prywatnej, np. WireGuard albo Tailscale). W `url` wpisz
@@ -195,7 +205,7 @@ Get-Content C:/OMS-druk/czuwacz-faktur.log -Tail 20
 |---|---|
 | `Brak pliku konfiguracji` | w katalogu skryptu nie ma `config.json` (albo `config-faktury.json`) — skopiuj plik przykładowy |
 | `Panel nieosiagalny` w dzienniku | serwer wyłączony, zły `url`, zapora albo (przy VPS-ie) brak internetu lub VPN-u na tym komputerze. Otwórz adres z `url` w przeglądarce na tym komputerze. Przy restarcie serwera to stan normalny, skrypt próbuje dalej |
-| w dzienniku ciągle `401` lub `403` | zły login lub hasło w konfiguracji albo użyty login konta imiennego zamiast serwisowego |
+| w dzienniku ciągle `401` lub `403` | sprawdź klucz i jego zakres `druk` albo login i hasło konta serwisowego (nie konta imiennego) |
 | `Nie znaleziono drukarki` | nazwa w `drukarka` różni się od nazwy w Windows choćby jednym znakiem — porównaj z `Get-Printer` |
 | z drukarki wychodzi tekst z `^XA…` | drukarka dostała ZPL jako zwykły tekst; sprawdź, że drukujesz skryptem etykiet, a nie wysyłasz pliku ZPL zwykłym drukowaniem |
 | przy paczce nie ma przycisku **Drukuj** | panel nie ma pliku ZPL tej przesyłki — przy DPD wybierz w ustawieniach typ „Drukarka etykiet 10×15 cm”, przy Wysyłam z Allegro nadawaj przyciskiem **Nadaj i drukuj** (etykiety nadane wcześniej jako PDF zostają bez ZPL) |
