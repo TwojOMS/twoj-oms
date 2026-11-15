@@ -334,8 +334,7 @@ export function komunikatBrakuDrogiPotwierdzenia() {
   return '⚠️ Nie ma jak potwierdzić nadpisania: brak terminala (stdin nie jest TTY), a '
     + 'przełącznika też nie podano. NIC NIE ZOSTAŁO ZMIENIONE — para tokenów została taka, jaka była.\n'
     + 'Są dwie drogi, obie świadome — wybierz jedną:\n'
-    + '  1. z terminalem: dołóż „-it” do polecenia '
-    + '(docker exec -it panel-oms node /app/scripts/polacz-allegro.js <kanał>) i napisz „tak”;\n'
+    + '  1. w panelu: Ustawienia → Integracje → Moje połączenia → „Połącz z Allegro” przy tym koncie (docs/allegro-podlaczenie.md);\n'
     + `  2. bez terminala: dopisz do polecenia ${PRZELACZNIK_NADPISANIA} — to jest to samo `
     + 'świadome „tak”, tyle że zapisane w poleceniu.';
 }

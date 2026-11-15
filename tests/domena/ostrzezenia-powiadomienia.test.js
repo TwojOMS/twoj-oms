@@ -26,3 +26,9 @@ it('walidacja przyjmuje tylko tablicę znanych typów i usuwa duplikaty', async 
     expect(() => powiadomienia.sprawdzUkryteTypy(zle)).toThrow();
   }
 });
+
+it('opis rodzaju „Awarie integracji” ma aktualne zdanie', async () => {
+  const { RODZAJE_OSTRZEZEN } = await import('../../src/domena/powiadomienia.js');
+  const r = RODZAJE_OSTRZEZEN.find(x => x.typ === 'integracja');
+  expect(r.opis).toBe('Sklep, usługa albo zadanie w tle nie działa lub od dawna nie kończy przebiegu.');
+});

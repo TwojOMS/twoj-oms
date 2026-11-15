@@ -14,7 +14,7 @@ const komunikatNadania = (html) => (html.match(/<p class="pasek-uwaga" role="ale
   .replace(/&#34;|&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 
 const naglowki = { authorization: 'Basic ' + Buffer.from('operator:atrapa').toString('base64'), origin: 'http://localhost' };
-const PODPOWIEDZ = 'Paczkomat za pobraniem włączysz w <a href="/ustawienia/integracje/inpost#inpost-pobranie">Ustawienia → Integracje → Kurier InPost</a>, jeśli masz umowę na pobranie.';
+const PODPOWIEDZ = 'Paczkomat za pobraniem włączysz w <a href="/ustawienia/integracje/inpost#inpost-pobranie">Ustawienia → Integracje → InPost</a>, jeśli masz umowę na pobranie.';
 const ADRES = { nazwa: 'Ala Przykładowa', ulica: 'Przykładowa 12', kod: '00-001', miasto: 'Warszawa', kraj: 'PL', phone: '+48500100200', email: 'ala@example.test' };
 const FORMULARZ = { ...ADRES, waga: '1', gabaryt: 'A', kolejnosc: '1', punkt_odbioru: 'WAW01M', kurier: 'inpost_paczkomat', kwota_pobrania: '212.90' };
 let db, serwer, katalog;

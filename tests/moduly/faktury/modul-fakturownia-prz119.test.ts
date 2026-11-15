@@ -93,7 +93,7 @@ describe('PRZ-119.05 zapis z Ustawień', () => {
     try {
       const blad = await sprobuj().uslugi.konfiguracjaInfaktu.sprawdzPolaczenie().catch((e: any) => e);
       expect(blad).toMatchObject({ status: 400 });
-      expect(blad.message).toMatch(/^Moduł faktur to teraz Fakturownia/);
+      expect(blad.message).toMatch(/^Program do faktur to teraz Fakturownia/);
       expect(blad.message).not.toMatch(/infakt/i);
       expect(siec).not.toHaveBeenCalled();
     } finally { db.close(); }

@@ -329,7 +329,7 @@ describe('zgłoszenia komputerów z drukarką (PRZ-126.C05a)', () => {
     zFaktura();
     const bez = await karta();
     expect(bez).not.toContain(`/zamowienia/${id}/faktura/drukuj`);
-    expect(bez).toContain('Drukowanie wyłączone — brak komputera z drukarką. <a href="/ustawienia/druk#faktury">Ustawienia → Druk i etykiety</a>');
+    expect(bez).toContain('Drukowanie wyłączone — brak komputera z drukarką. <a href="/ustawienia/druk#faktury">Ustawienia → Wysyłka i druk → Etykiety i druk</a>');
 
     await zgloszenieStanowiska('BIURO-1');
     const z = await karta();

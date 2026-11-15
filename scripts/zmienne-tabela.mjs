@@ -28,7 +28,7 @@ export function generujTabele(manifest) {
     'Część ustawień wprowadzisz w panelu: Ustawienia → Firma (także logo), Ustawienia → Integracje oraz Analizy i finanse → Finanse → Kompletność danych.',
     '**Plik wygrywa** — ustawiona w nim sekcja integracji lub adres firmy blokuje zapis tej części w panelu.',
     'Daty kompletności danych zapisuje tylko administrator, bez restartu; data z pliku blokuje zapis swojego pola. Logo i jego opis administrator zmienia bez restartu, o ile plik nie ustala logo.',
-    'Połączenia dodawane w Ustawienia → Integracje → Reklamy są osobne: nie zmieniają plikowych META_TOKEN, META_KONTA i GA4_KLUCZ używanych przez karty kampanii. W panelu wgrywasz też obraz logo, zamiast ustawiać ścieżkę OMS_LOGO_PLIK na serwerze.',
+    'Połączenia Meta Ads, Google Analytics 4 i Google Ads dodawane w Ustawienia → Integracje są osobne: nie zmieniają plikowych META_TOKEN, META_KONTA i GA4_KLUCZ używanych przez karty kampanii. W panelu wgrywasz też obraz logo, zamiast ustawiać ścieżkę OMS_LOGO_PLIK na serwerze.',
     'Szczegóły walidacji i aktywacji znajdziesz w [manifeście konfiguracji w repozytorium](https://github.com/TwojOMS/twoj-oms/blob/main/docs/konfiguracja.md).', '',
     'Tabela jest generowana z manifestu JSON; nie edytuj jej ręcznie.',
     '„brak” oznacza brak wartości domyślnej (null); pusty tekst jest pokazany osobno.',

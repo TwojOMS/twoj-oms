@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "KANDYDAT PRZ-030 — finalny manifest po poprawkach Opus, przed niezależnym PRZYJĘTE",
+  "status": "Manifest konfiguracji OMS — źródło docs/zmienne.md i strażnika konfiguracji (scripts/straznik-konfiguracji.mjs)",
   "zadanie": "PRZ-030",
   "data": "2026-10-05",
   "repo": "C:/Users/uzytkownik/twoj-oms",
@@ -105,7 +105,7 @@
       "wlasciciel": "magazyn / publiczne zdjęcia",
       "sekcja": "Magazyn",
       "opis": "Publiczny adres bazowy zdjęć kart, bez końcowego /z. Panel OMS nie jest wystawiany.",
-      "przyklad": "https://zdjecia.przyklad.pl",
+      "przyklad": "https://zdjecia.example.pl",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "brak",
@@ -1827,7 +1827,7 @@
       "wlaczoneWMainNaPinie": true,
       "opis": "Token API konta Fakturowni (Ustawienia konta → Integracja → Kod autoryzacyjny API) — nim OMS wystawia faktury w Fakturowni.",
       "wymagalnoscPoLudzku": "opcjonalna — tylko gdy modułem faktur jest Fakturownia",
-      "skutekBraku": "PRZ-119.05: Fakturownia działa tylko, gdy moduł faktur to „fakturownia” (OMS_PROGRAM_FAKTUROWY albo Ustawienia → Integracje → Moduł faktur); sama obecność tokenu niczego nie wybiera — bez wyboru zostaje inFakt (gdy gotowy) albo „brak”. Bez pary w pliku konfiguracja pochodzi z ekranu Ustawienia → Integracje → Fakturownia (/ustawienia/integracje/fakturownia; wiersz „fakturownia” w konfiguracja_integracji: domena jawnie, token jako sekret); gdy para stoi w pliku, wygrywa nad ekranem. Wybrana Fakturownia bez domeny i tokenu: faktury wyłączone, Zdrowie podaje zdanie z adresem ekranu; po wpisaniu na ekranie faktury ruszają po ponownym uruchomieniu OMS-u. W trybie próby zmienne blokują start (klucze integracji), a ekran nie łączy się z Fakturownią (odmowa 400, chyba że piaskownica ma atrapę). Dokument wysłany do KSeF przez samą Fakturownię (bez zlecenia z panelu) = trwały alarm.",
+      "skutekBraku": "PRZ-119.05: Fakturownia działa tylko, gdy moduł faktur to „fakturownia” (OMS_PROGRAM_FAKTUROWY albo Ustawienia → Faktury i podatki → Program do faktur); sama obecność tokenu niczego nie wybiera — bez wyboru zostaje inFakt (gdy gotowy) albo „brak”. Bez pary w pliku konfiguracja pochodzi z ekranu Ustawienia → Integracje → Fakturownia (/ustawienia/integracje/fakturownia; wiersz „fakturownia” w konfiguracja_integracji: domena jawnie, token jako sekret); gdy para stoi w pliku, wygrywa nad ekranem. Wybrana Fakturownia bez domeny i tokenu: faktury wyłączone, Zdrowie podaje zdanie z adresem ekranu; po wpisaniu na ekranie faktury ruszają po ponownym uruchomieniu OMS-u. W trybie próby zmienne blokują start (klucze integracji), a ekran nie łączy się z Fakturownią (odmowa 400, chyba że piaskownica ma atrapę). Dokument wysłany do KSeF przez samą Fakturownię (bez zlecenia z panelu) = trwały alarm.",
       "skutekBrakuPoLudzku": "Bez niej OMS bierze token zapisany w Ustawienia → Integracje → Fakturownia; para token i domena z pliku wygrywa.",
       "walidacja": "Spacje na brzegach usuwane; pusta wartość = brak. Obie zmienne razem albo żadna: jedna bez drugiej blokuje start zdaniem z nazwą brakującej zmiennej (bez wartości tokenu).",
       "sekret": true
@@ -1868,7 +1868,7 @@
       "wlaczoneWMainNaPinie": true,
       "opis": "Domena konta Fakturowni, czyli część adresu przed .fakturownia.pl (np. pracownia-polcien), wpisana bez https://.",
       "wymagalnoscPoLudzku": "opcjonalna — tylko gdy modułem faktur jest Fakturownia",
-      "skutekBraku": "PRZ-119.05: Fakturownia działa tylko, gdy moduł faktur to „fakturownia” (OMS_PROGRAM_FAKTUROWY albo Ustawienia → Integracje → Moduł faktur); sama obecność tokenu niczego nie wybiera — bez wyboru zostaje inFakt (gdy gotowy) albo „brak”. Bez pary w pliku konfiguracja pochodzi z ekranu Ustawienia → Integracje → Fakturownia (/ustawienia/integracje/fakturownia; wiersz „fakturownia” w konfiguracja_integracji: domena jawnie, token jako sekret); gdy para stoi w pliku, wygrywa nad ekranem. Wybrana Fakturownia bez domeny i tokenu: faktury wyłączone, Zdrowie podaje zdanie z adresem ekranu; po wpisaniu na ekranie faktury ruszają po ponownym uruchomieniu OMS-u. W trybie próby zmienne blokują start (klucze integracji), a ekran nie łączy się z Fakturownią (odmowa 400, chyba że piaskownica ma atrapę). Dokument wysłany do KSeF przez samą Fakturownię (bez zlecenia z panelu) = trwały alarm.",
+      "skutekBraku": "PRZ-119.05: Fakturownia działa tylko, gdy moduł faktur to „fakturownia” (OMS_PROGRAM_FAKTUROWY albo Ustawienia → Faktury i podatki → Program do faktur); sama obecność tokenu niczego nie wybiera — bez wyboru zostaje inFakt (gdy gotowy) albo „brak”. Bez pary w pliku konfiguracja pochodzi z ekranu Ustawienia → Integracje → Fakturownia (/ustawienia/integracje/fakturownia; wiersz „fakturownia” w konfiguracja_integracji: domena jawnie, token jako sekret); gdy para stoi w pliku, wygrywa nad ekranem. Wybrana Fakturownia bez domeny i tokenu: faktury wyłączone, Zdrowie podaje zdanie z adresem ekranu; po wpisaniu na ekranie faktury ruszają po ponownym uruchomieniu OMS-u. W trybie próby zmienne blokują start (klucze integracji), a ekran nie łączy się z Fakturownią (odmowa 400, chyba że piaskownica ma atrapę). Dokument wysłany do KSeF przez samą Fakturownię (bez zlecenia z panelu) = trwały alarm.",
       "skutekBrakuPoLudzku": "Bez niej OMS bierze domenę zapisaną w Ustawienia → Integracje → Fakturownia; para token i domena z pliku wygrywa.",
       "walidacja": "Spacje na brzegach usuwane; pusta wartość = brak. Obie zmienne razem albo żadna: jedna bez drugiej blokuje start zdaniem z nazwą brakującej zmiennej (bez wartości tokenu). Klient Fakturowni przyjmuje tylko samą domenę konta (bez https:// i .fakturownia.pl).",
       "sekret": false
@@ -2060,7 +2060,7 @@
       "sekcja": "Faktury i koszty",
       "opis": "Moduł faktur OMS-u: brak (faktury wyłączone), infakt albo fakturownia; TwojeFaktury będą dostępne wkrótce.",
       "zakres": "produkt",
-      "wymagalnosc": "opcjonalna — można w panelu (Ustawienia → Integracje → Moduł faktur); wpisana w pliku musi być poprawna",
+      "wymagalnosc": "opcjonalna — można w panelu (Ustawienia → Faktury i podatki → Program do faktur); wpisana w pliku musi być poprawna",
       "wymagalnoscPoLudzku": "opcjonalna — moduł faktur możesz wybrać w panelu (Ustawienia → Faktury i podatki → Program do faktur, tylko administrator); wpisany w pliku wygrywa nad panelem",
       "domyslna": null,
       "domyslnaPoLudzku": "brak wyboru: inFakt, jeśli jest podłączony; bez niego faktury są wyłączone",
@@ -2097,7 +2097,7 @@
       "wymagalnoscPoLudzku": "opcjonalna — ustawiona w plikach compose instalacji z Dockerem (tak) i demo (atrapa); bez niej ekran podaje polecenie ręcznego restartu",
       "domyslna": null,
       "domyslnaPoLudzku": "brak przycisku — ekran podaje polecenie ręcznego ponownego uruchomienia OMS-u",
-      "skutekBraku": "PRZ-121.06: bez wartości (albo z inną niż tak/atrapa) ekran Ustawienia → Integracje → Moduł faktur przy zdaniu „zadziała po ponownym uruchomieniu” pokazuje „Uruchom ponownie OMS (np. docker compose restart oms).”, a POST /ustawienia/integracje/program-fakturowy/restart odpowiada 404 i nic nie robi. tak: przycisk dla administratora; POST (tylko admin, ochrona Origin jak przy każdym POST) odpowiada stroną z odświeżeniem po 10 s, zapisuje w logu procesu login zlecającego i dopiero po wysłaniu odpowiedzi wysyła SIGTERM do siebie (main.ts zamyka łagodnie, nadzorca podnosi proces; w piaskownicy z node --watch — do procesu rodzica). atrapa: przycisk nieaktywny, POST 404. Nie ustawiać tak bez nadzorcy procesu — panel by nie wstał.",
+      "skutekBraku": "PRZ-121.06: bez wartości (albo z inną niż tak/atrapa) ekran Ustawienia → Faktury i podatki → Program do faktur przy zdaniu „zadziała po ponownym uruchomieniu” pokazuje „Uruchom ponownie OMS (np. docker compose restart oms).”, a POST /ustawienia/integracje/program-fakturowy/restart odpowiada 404 i nic nie robi. tak: przycisk dla administratora; POST (tylko admin, ochrona Origin jak przy każdym POST) odpowiada stroną z odświeżeniem po 10 s, zapisuje w logu procesu login zlecającego i dopiero po wysłaniu odpowiedzi wysyła SIGTERM do siebie (main.ts zamyka łagodnie, nadzorca podnosi proces; w piaskownicy z node --watch — do procesu rodzica). atrapa: przycisk nieaktywny, POST 404. Nie ustawiać tak bez nadzorcy procesu — panel by nie wstał.",
       "skutekBrakuPoLudzku": "Bez niej po zmianie modułu faktur ekran podpowiada, jak samemu uruchomić ponownie OMS (program, nie maszynę).",
       "walidacja": "Wielkość liter i spacje bez znaczenia. tak albo atrapa; inna wartość = jak brak zmiennej (bez przycisku), nie blokuje startu.",
       "sekret": false,
@@ -3162,8 +3162,8 @@
       "wymagalnosc": "opcjonalna; bramka włączenia InPost",
       "domyslna": null,
       "wymagalnoscPoLudzku": "opcjonalna; wpisanie tokenu włącza InPost",
-      "skutekBraku": "InPost wyłączony; podane pozostałe klucze nie włączają klienta. PRZ-093.09: odpowiednik w panelu — Ustawienia → Integracje → Kurier InPost (/ustawienia/integracje/inpost; wiersz „inpost” w konfiguracja_integracji: token jako sekret, numer organizacji, paczkomat nadawczy; adres API zawsze produkcyjny, nadawca = adres firmy). Gdy INPOST_TOKEN stoi w pliku, cała konfiguracja InPost idzie z pliku, a ekran jest tylko do odczytu (zapis = 409). Instrukcja: docs/kurier-inpost.md.",
-      "skutekBrakuPoLudzku": "Bez tokenu InPost jest wyłączony, a pozostałe zmienne InPost niczego nie włączają. Token można wpisać też w panelu (Ustawienia → Integracje → Kurier InPost), ale token z pliku wygrywa i blokuje ekran.",
+      "skutekBraku": "InPost wyłączony; podane pozostałe klucze nie włączają klienta. PRZ-093.09: odpowiednik w panelu — Ustawienia → Integracje → InPost (/ustawienia/integracje/inpost; wiersz „inpost” w konfiguracja_integracji: token jako sekret, numer organizacji, paczkomat nadawczy; adres API zawsze produkcyjny, nadawca = adres firmy). Gdy INPOST_TOKEN stoi w pliku, cała konfiguracja InPost idzie z pliku, a ekran jest tylko do odczytu (zapis = 409). Instrukcja: docs/kurier-inpost.md.",
+      "skutekBrakuPoLudzku": "Bez tokenu InPost jest wyłączony, a pozostałe zmienne InPost niczego nie włączają. Token można wpisać też w panelu (Ustawienia → Integracje → InPost), ale token z pliku wygrywa i blokuje ekran.",
       "walidacja": "trim; po włączeniu wymaga organizacji oraz czterech pól adresu; proba odrzuca niepusty token.",
       "sekret": true,
       "odczyty": [
@@ -3227,8 +3227,8 @@
       "zakres": "produkt",
       "wymagalnosc": "wymagana przy niepustym INPOST_TOKEN",
       "domyslna": "brak wartości domyślnej",
-      "skutekBraku": "Aktywne InPost odmawia konfiguracji. PRZ-093.09: odpowiednik w panelu — Ustawienia → Integracje → Kurier InPost (/ustawienia/integracje/inpost; wiersz „inpost” w konfiguracja_integracji: token jako sekret, numer organizacji, paczkomat nadawczy; adres API zawsze produkcyjny, nadawca = adres firmy). Gdy INPOST_TOKEN stoi w pliku, cała konfiguracja InPost idzie z pliku, a ekran jest tylko do odczytu (zapis = 409). Instrukcja: docs/kurier-inpost.md.",
-      "skutekBrakuPoLudzku": "Przy włączonym InPost brak numeru organizacji zatrzymuje start. Numer można wpisać też w panelu (Ustawienia → Integracje → Kurier InPost), o ile token nie stoi w pliku.",
+      "skutekBraku": "Aktywne InPost odmawia konfiguracji. PRZ-093.09: odpowiednik w panelu — Ustawienia → Integracje → InPost (/ustawienia/integracje/inpost; wiersz „inpost” w konfiguracja_integracji: token jako sekret, numer organizacji, paczkomat nadawczy; adres API zawsze produkcyjny, nadawca = adres firmy). Gdy INPOST_TOKEN stoi w pliku, cała konfiguracja InPost idzie z pliku, a ekran jest tylko do odczytu (zapis = 409). Instrukcja: docs/kurier-inpost.md.",
+      "skutekBrakuPoLudzku": "Przy włączonym InPost brak numeru organizacji zatrzymuje start. Numer można wpisać też w panelu (Ustawienia → Integracje → InPost), o ile token nie stoi w pliku.",
       "walidacja": "Number, dodatni safeInteger.",
       "odczyty": [
         {
@@ -3256,7 +3256,7 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": "https://api-shipx-pl.easypack24.net/v1",
-      "skutekBraku": "Aktywny klient używa domyślnego API produkcyjnego. PRZ-093.09: odpowiednik w panelu — Ustawienia → Integracje → Kurier InPost (/ustawienia/integracje/inpost; wiersz „inpost” w konfiguracja_integracji: token jako sekret, numer organizacji, paczkomat nadawczy; adres API zawsze produkcyjny, nadawca = adres firmy). Gdy INPOST_TOKEN stoi w pliku, cała konfiguracja InPost idzie z pliku, a ekran jest tylko do odczytu (zapis = 409). Instrukcja: docs/kurier-inpost.md.",
+      "skutekBraku": "Aktywny klient używa domyślnego API produkcyjnego. PRZ-093.09: odpowiednik w panelu — Ustawienia → Integracje → InPost (/ustawienia/integracje/inpost; wiersz „inpost” w konfiguracja_integracji: token jako sekret, numer organizacji, paczkomat nadawczy; adres API zawsze produkcyjny, nadawca = adres firmy). Gdy INPOST_TOKEN stoi w pliku, cała konfiguracja InPost idzie z pliku, a ekran jest tylko do odczytu (zapis = 409). Instrukcja: docs/kurier-inpost.md.",
       "skutekBrakuPoLudzku": "Bez niej OMS łączy się z produkcyjnym API InPost. Z ekranu w panelu zawsze używany jest adres produkcyjny.",
       "walidacja": "Dosłownie pusty tekst oznacza brak ustawienia i zachowuje historyczny default albo wyłączenie. Niepusty URL musi być absolutnym HTTP(S) z hostem i bez otaczających białych znaków; błąd zawiera tylko nazwę.",
       "odczyty": [
@@ -3294,7 +3294,7 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
-      "skutekBraku": "W nadaniu nie jest dodany custom_attributes.dropoff_point; klient nie wyznacza domyślnego punktu nadawczego. PRZ-093.09: odpowiednik w panelu — Ustawienia → Integracje → Kurier InPost (/ustawienia/integracje/inpost; wiersz „inpost” w konfiguracja_integracji: token jako sekret, numer organizacji, paczkomat nadawczy; adres API zawsze produkcyjny, nadawca = adres firmy). Gdy INPOST_TOKEN stoi w pliku, cała konfiguracja InPost idzie z pliku, a ekran jest tylko do odczytu (zapis = 409). Instrukcja: docs/kurier-inpost.md.",
+      "skutekBraku": "W nadaniu nie jest dodany custom_attributes.dropoff_point; klient nie wyznacza domyślnego punktu nadawczego. PRZ-093.09: odpowiednik w panelu — Ustawienia → Integracje → InPost (/ustawienia/integracje/inpost; wiersz „inpost” w konfiguracja_integracji: token jako sekret, numer organizacji, paczkomat nadawczy; adres API zawsze produkcyjny, nadawca = adres firmy). Gdy INPOST_TOKEN stoi w pliku, cała konfiguracja InPost idzie z pliku, a ekran jest tylko do odczytu (zapis = 409). Instrukcja: docs/kurier-inpost.md.",
       "skutekBrakuPoLudzku": "Bez niej OMS nie podaje InPostowi domyślnego paczkomatu nadawczego.",
       "walidacja": "trim i uppercase; pusty tekst daje null.",
       "odczyty": [
@@ -3906,7 +3906,7 @@
       "wymagalnosc": "opcjonalna",
       "domyslna": "podpis Obsługa sklepu; nagłówek pusty",
       "skutekBraku": "Neutralny podpis oraz brak nagłówka marki; nie włącza SMTP.",
-      "walidacja": "trim; obecność marki lub stopki uruchamia oprawaMaila; marka zasila podpis i nagłówek. Niepusta wartość blokuje pole marki w Ustawieniach → Poczta (zapis = 409); bez niej marka z tabeli ustawienia (klucz poczta.podpis.marka), czytana przy każdym mailu.",
+      "walidacja": "trim; obecność marki lub stopki uruchamia oprawaMaila; marka zasila podpis i nagłówek. Niepusta wartość blokuje pole marki w Ustawieniach → Komunikacja → Podpis i stopka (zapis = 409); bez niej marka z tabeli ustawienia (klucz poczta.podpis.marka), czytana przy każdym mailu.",
       "odczyty": [
         {
           "id": "AST-091",
@@ -3942,7 +3942,7 @@
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
       "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a",
-      "skutekBrakuPoLudzku": "Maile do klientów podpisane „Obsługa sklepu”, bez nazwy w nagłówku — chyba że markę wpiszesz w panelu (Ustawienia → Integracje → Poczta wychodząca → Podpis maili). Marka z pliku wygrywa z panelem i blokuje to pole."
+      "skutekBrakuPoLudzku": "Maile do klientów podpisane „Obsługa sklepu”, bez nazwy w nagłówku — chyba że markę wpiszesz w panelu (Ustawienia → Komunikacja → Podpis i stopka). Marka z pliku wygrywa z panelem i blokuje to pole."
     },
     {
       "nazwa": "OMS_MAIL_STOPKA",
@@ -3953,7 +3953,7 @@
       "wymagalnosc": "opcjonalna",
       "domyslna": "",
       "skutekBraku": "Brak dodatkowej stopki; nie włącza SMTP.",
-      "walidacja": "Podział po rzeczywistym LF, trim każdej linii i usunięcie pustych; sposób przekazania wielowierszowej wartości zależy od zewnętrznego loadera. Niepusta wartość blokuje pole stopki w Ustawieniach → Poczta (zapis = 409); bez niej stopka z tabeli ustawienia (klucz poczta.podpis.stopka), czytana przy każdym mailu.",
+      "walidacja": "Podział po rzeczywistym LF, trim każdej linii i usunięcie pustych; sposób przekazania wielowierszowej wartości zależy od zewnętrznego loadera. Niepusta wartość blokuje pole stopki w Ustawieniach → Komunikacja → Podpis i stopka (zapis = 409); bez niej stopka z tabeli ustawienia (klucz poczta.podpis.stopka), czytana przy każdym mailu.",
       "odczyty": [
         {
           "id": "AST-092",
@@ -3980,7 +3980,7 @@
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
       "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a",
-      "skutekBrakuPoLudzku": "Maile do klientów bez stopki — chyba że stopkę wpiszesz w panelu (Ustawienia → Integracje → Poczta wychodząca → Podpis maili). Stopka z pliku wygrywa z panelem i blokuje to pole."
+      "skutekBrakuPoLudzku": "Maile do klientów bez stopki — chyba że stopkę wpiszesz w panelu (Ustawienia → Komunikacja → Podpis i stopka). Stopka z pliku wygrywa z panelem i blokuje to pole."
     },
     {
       "nazwa": "ALLEGRO_CLIENT_ID",
@@ -4206,7 +4206,7 @@
       "wymagalnosc": "opcjonalna integracja odczytu",
       "domyslna": "brak wartości domyślnej",
       "skutekBraku": "Brak historycznego klienta Meta; nowe połączenia pozostają dostępne z lokalnymi referencjami.",
-      "skutekBrakuPoLudzku": "Bez niego nie ma starszego połączenia z Meta z pliku. Nowe połączenia dodasz w panelu (Ustawienia → Integracje → Reklamy).",
+      "skutekBrakuPoLudzku": "Bez niego nie ma starszego połączenia z Meta z pliku. Nowe połączenia dodasz w panelu (Ustawienia → Integracje → Meta Ads).",
       "walidacja": "Nie traktować deklaracji jak połączenia. ALLEGRO/WOO mogą też wystąpić jako konkretna instancja <P> dla P=ALLEGRO/WOO.",
       "sekret": true,
       "odczyty": [
@@ -4270,7 +4270,7 @@
       "wymagalnosc": "opcjonalna integracja odczytu",
       "domyslna": "brak wartości domyślnej",
       "skutekBraku": "Brak historycznego klienta GA4; nowe połączenia pozostają dostępne z lokalnymi referencjami.",
-      "skutekBrakuPoLudzku": "Bez niej nie ma starszego połączenia z GA4 z pliku. Nowe połączenia dodasz w panelu (Ustawienia → Integracje → Reklamy).",
+      "skutekBrakuPoLudzku": "Bez niej nie ma starszego połączenia z GA4 z pliku. Nowe połączenia dodasz w panelu (Ustawienia → Integracje → Google Analytics 4).",
       "walidacja": "Nie traktować deklaracji jak połączenia. ALLEGRO/WOO mogą też wystąpić jako konkretna instancja <P> dla P=ALLEGRO/WOO.",
       "sekret": true,
       "odczyty": [
@@ -8521,12 +8521,12 @@
     },
     {
       "path": "src/moduly/wysylka/kurierzy.ts",
-      "sha256": "30892eee08452d6b33a66aa9f66fbee76a4cb3f9eeaef371d8d73f9276b5222a",
+      "sha256": "1dbcaa4e804b9bae4623026d9512ace04db4fc46751fec4200ee3477c455bd7a",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "d2b5cfcdbbafc935336e0f254acee74b47938bb9921d2a3f490af393b29f005a",
+      "sha256": "0f20d6d5c655c5817c2f6997a6fa4f73634c72e6f8d4b05bc2e7d1f52060be36",
       "normalizacja": "LF"
     },
     {
@@ -8618,7 +8618,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "d2b5cfcdbbafc935336e0f254acee74b47938bb9921d2a3f490af393b29f005a",
+      "sha256": "0f20d6d5c655c5817c2f6997a6fa4f73634c72e6f8d4b05bc2e7d1f52060be36",
       "normalizacja": "LF"
     },
     {
@@ -8924,7 +8924,7 @@
       },
       {
         "path": "src/moduly/wysylka/kurierzy.ts",
-        "sha256": "30892eee08452d6b33a66aa9f66fbee76a4cb3f9eeaef371d8d73f9276b5222a",
+        "sha256": "1dbcaa4e804b9bae4623026d9512ace04db4fc46751fec4200ee3477c455bd7a",
         "odczyty": [
           {
             "expression": "env[klucz]",

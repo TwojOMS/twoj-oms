@@ -41,13 +41,13 @@ zamierzona sieć bezpieczeństwa. Nie obchodź jej; zmień tryb dopiero na polec
 | `src/moduly/<nazwa>/trasy*`, `widoki/`, `services/`, `db/`, `migracje/` | warstwy modułu |
 | `src/core/` | wspólne: aplikacja Fastify, bezpieczeństwo, konta, poczta, baza, tryb próby |
 | `src/domena/` | czyste reguły biznesowe bez sieci i bazy (kwoty, VAT, statusy, mapowania) |
-| `src/oms/` | klienci integracji (Allegro, WooCommerce, inFakt, KSeF, kurierzy, GUS) i historyczne tabele |
+| `src/oms/` | klienci integracji (`ls src/oms`: m.in. Allegro, ERLI, WooCommerce, inFakt, Fakturownia, KSeF, kurierzy, GUS) i historyczne tabele |
 | `src/integracje/` | rejestr integracji i fabryki klientów (miejsce na atrapy w testach i demo) |
 | `src/public/` | CSS i skrypty przeglądarkowe |
 | `scripts/` | instalacja, kopie, strażniki, generator danych demo |
 | `deploy/klient/` | obraz i compose dla instalacji w Dockerze, skrypt aktualizacji, kopia poza dyskiem |
 | `deploy/proba/`, `deploy/demo/` | atrapy integracji i start środowiska demo/próby |
-| `tests/` | Vitest; układ lustrzany do `src/` (`tests/moduly/<moduł>`, `tests/domena`, `tests/core`) |
+| `tests/` | Vitest; głównie `tests/moduly/<moduł>`, `tests/domena`, `tests/core`; resztę znajdzie `rg -l nazwaFunkcji tests` |
 | `docs/` | instalacja, konfiguracja, aktualizacje; `docs/konfiguracja.json` to maszynowy rejestr zmiennych env |
 
 Kontrakt modułu (`ModulOms`) jest w `src/core/kontrakty.ts`. Moduł deklaruje `wymaga` (kolejność
@@ -56,13 +56,15 @@ budowania), `konfiguracja(env)` (rzuca błąd przy złej wartości — **nie pod
 
 ## 4. Twarde reguły repozytorium
 
-- **Zero danych firmy w kodzie.** NIP, numer BDO, rachunek, nazwy kanałów i adresy pochodzą z
-  środowiska (`.env`), nigdy z domyślnych wartości w kodzie. Dane w testach są fikcyjne.
-- **Sekrety nigdy do repo** (`.env*`, `*.sqlite` są w `.gitignore`).
+- **Zero danych firmy w kodzie.** NIP, numer BDO, rachunek, adres i nazwy kanałów pochodzą z
+  konfiguracji (plik `oms.env` albo Ustawienia w panelu), nigdy z domyślnych wartości w kodzie. Dane w testach są fikcyjne.
+- **Sekrety nigdy do repo** (`.env`, `.env.*`, `*.sqlite` są w `.gitignore`; pliki `*.env` instalatora — `proba.env`,
+  `administrator-proby.env` — nie, więc katalog instalacji trzymaj poza repozytorium).
 - **TypeScript tylko ze składnią usuwalną** (`erasableSyntaxOnly`): bez `enum`, `namespace` i
   parametrów-właściwości. Importy względne piszemy z rozszerzeniem `.ts` / `.js` jak w sąsiednich plikach.
-- **Migracje bazy wyłącznie addytywne** — nowe tabele, kolumny, indeksy. Bez `DROP`, `RENAME`, zmiany
-  typu kolumny. Pilnuje tego `scripts/straznik-migracji.mjs`. Numeracja `NNNN-opis` w katalogu `migracje/`
+- **Migracje bazy wyłącznie addytywne** — nowe tabele, kolumny, indeksy. Bez `DROP`, `RENAME`, transakcji w migracji,
+  zmiany typu kolumny i nowych ograniczeń na istniejących tabelach; kolumna `NOT NULL` wymaga `DEFAULT`. Pilnują tego
+  `scripts/straznik-migracji.mjs` i kontrola schematu przy starcie bazy. Numeracja `NNNN-opis` w katalogu `migracje/`
   modułu, rejestracja w tablicy `migracje` w `modul.ts`.
 - **Nowa albo zmieniona zmienna środowiskowa** → wpis w `docs/konfiguracja.json`; `scripts/straznik-konfiguracji.mjs`
   skanuje kod i musi zgłosić 0 błędów. Hashe plików w tym rejestrze trzeba odświeżyć po zmianie
@@ -89,7 +91,9 @@ npm run sprawdz -- -- --maxWorkers=2   # pełna: typy, strażniki, wszystkie tes
 Użytkownik dostaje to repo jako własną kopię (fork). Rób zmiany w gałęzi, małymi commitami. Nie
 przepisuj historii, nie wypychaj na zdalne repo bez prośby. Aktualizacja z wydania nadrzędnego:
 `git fetch` + `git merge` (konflikty w plikach, które użytkownik zmienił, rozstrzygasz razem z nim).
-Przed aktualizacją zrób kopię bazy (`scripts/backup-db.mjs` albo procedura z `docs/instalacja-docker.md`).
+Wydanie na serwer przez `deploy/klient/aktualizuj.sh` samo robi kopię bazy przed uruchomieniem nowej wersji;
+kopię na żądanie robi kontener kopii (polecenie „kopia teraz” w `docs/instalacja-docker.md`). Nie używaj
+`scripts/backup-db.mjs` — to narzędzie innego układu katalogów i bez ustawionych zmiennych kończy się błędem.
 
 ## 7. Częste pułapki
 
@@ -97,7 +101,8 @@ Przed aktualizacją zrób kopię bazy (`scripts/backup-db.mjs` albo procedura z 
 - Bez `OMS_TRUST_PROXY` panel nie ufa nagłówkom pośrednika; wpisuj tylko konkretne adresy proxy. Za pośrednikiem
   bez tej zmiennej ochrona logowania przed zgadywaniem haseł liczy próby po adresie pośrednika, wspólnym dla wszystkich
   (opis: `docs/konfiguracja.md`).
-- Integracje z Ustawienia → Integracje (DPD, InPost, inFakt, poczta, adres firmy) zapisują się w bazie, ale
+- Integracje z Ustawienia → Integracje (m.in. DPD, InPost, inFakt, Fakturownia, poczta) i dane firmy z Ustawienia →
+  Firma zapisują się w bazie, ale
   **plik konfiguracji z tą samą integracją wygrywa**: ekran jest wtedy tylko do odczytu. Zanim szukasz błędu na
   ekranie, sprawdź, czy tej integracji nie ma w `oms.env`.
 - Panel po zwykłym HTTP nie nadaje się do internetu; HTTPS i kontrola dostępu to osobny krok.

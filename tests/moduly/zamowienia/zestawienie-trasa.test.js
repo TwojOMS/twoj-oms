@@ -100,7 +100,7 @@ describe('menu „Wydruki"', () => {
     const start = html.indexOf('<details class="wydruki wydruki--masowe">');
     expect(start).toBeGreaterThan(-1);
     const menu = html.slice(start, html.indexOf('</details>', start));
-    expect(menu).toMatch(/formaction="\/zamowienia\/specyfikacje\.pdf">Specyfikacje do paczek/);
+    expect(menu).toMatch(/formaction="\/zamowienia\/specyfikacje\.pdf" formtarget="_blank">Specyfikacje do paczek/);
     expect(menu).toMatch(/formaction="\/zamowienia\/lista-produktow\.pdf" formtarget="_blank">Lista produktów/);
     expect(menu).toMatch(/formaction="\/zamowienia\/zestawienie\.pdf" formtarget="_blank">Zestawienie zamówień/);
     // Przycisk specyfikacji nie stoi juz osobno poza menu.

@@ -34,5 +34,5 @@ it.each([
 it.each([['erliWlasna', 'brak'], ['erliWlasna', 'nieznany'], ['erliWlasna', '__proto__']])('%s z mapą %s blokuje z komunikatem o mapowaniu', (typeId, kurier) => {
   const w = drogaNadaniaErli({ typeId, metodyErli, metodyDostawy, mapa: { [typeId]: kurier } });
   expect(w.droga).toBe('blokada');
-  expect(w.komunikat).toBe('ERLI: metoda Własna DPD (erliWlasna) nie ma kuriera — wybierz kuriera w Ustawieniach → ERLI → Metody dostawy albo nadaj w ERLI');
+  expect(w.komunikat).toBe('ERLI: metoda Własna DPD (erliWlasna) nie ma kuriera — wybierz kuriera w Ustawieniach → Integracje → Moje połączenia → ERLI → Metody dostawy albo nadaj w ERLI');
 });

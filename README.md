@@ -22,7 +22,7 @@ uruchomić, zmienić pod swoją firmę i rozwijać dalej samodzielnie lub z agen
 
 ## Co potrafi
 
-Moduły (`src/moduly/`), każdy z własnymi trasami, widokami, migracjami bazy i uprawnieniami:
+Moduły (`src/moduly/`); każdy opisuje się w `modul.ts` i może mieć trasy, widoki, migracje bazy, uprawnienia i menu:
 
 | Moduł | Zakres |
 |---|---|
@@ -30,14 +30,17 @@ Moduły (`src/moduly/`), każdy z własnymi trasami, widokami, migracjami bazy i
 | `kanaly` | kanały sprzedaży (Allegro, ERLI, WooCommerce), pobieranie zamówień, mapowanie |
 | `faktury` | faktury i proformy (PDF), inFakt albo Fakturownia, KSeF, sprzedaż do UE (WDT), paczka dla biura |
 | `wysylka` | nadawanie paczek (DPD, InPost, Allegro, ERLI), etykiety, śledzenie, nadanie hurtem |
-| `magazyn` | produkty, wzory, powiązania ze sklepami |
+| `magazyn` | karty produktów, powiązania z ofertami w kanałach, stany magazynowe (domyślnie wyłączone) |
 | `zwroty` | zwroty i korekty |
 | `koszty` | koszty z KSeF i ręczne, zestawienia |
-| `raporty`, `marketing` | raporty sprzedaży i finansów, cele, kampanie (Meta, GA4) |
+| `raporty`, `marketing` | Analityka: raporty sprzedaży i finansów, kampanie (Meta, GA4) |
 | `wiadomosci` | wiadomości do klientów, poczta |
 | `ustawienia` | konta z rolami i uprawnieniami per zakładka, integracje |
 | `zdrowie` | `/health`, kopie zapasowe, alarmy |
+| `automatyzacje` | reguły „gdy zdarzenie, zrób akcję” z dziennikiem wykonań |
 | `api` | API v1 dla programów na kluczach z zakresami: zamówienia, proformy, produkty, stany, sprzedaż ([opis](docs/api/README.md)) |
+| `api-panelu` | starsze API na haśle dla osobnego panelu zamówień indywidualnych, którego nie ma w tym repozytorium |
+| `rdzen` | wspólne tabele i ustawienia firmy (NIP, rachunek), z których korzystają pozostałe moduły |
 
 Integracje w kodzie: Allegro, ERLI, WooCommerce, inFakt, Fakturownia, KSeF, DPD, InPost, GUS (REGON), Meta, GA4,
 import z Apilo. Każda jest opcjonalna i wymaga własnych kluczy — bez nich panel działa w **trybie
@@ -53,20 +56,21 @@ Polecenia działają tak samo w bashu i w PowerShellu:
 git clone https://github.com/TwojOMS/twoj-oms.git twoj-oms
 cd twoj-oms
 npm ci
-node scripts/instalacja-demo.mjs --katalog "$PWD/oms-demo" --port 39151
-node scripts/instalacja-otworz.mjs --katalog "$PWD/oms-demo" --port 39151
+node scripts/instalacja-demo.mjs --katalog "$HOME/oms-demo" --port 39151
+node scripts/instalacja-otworz.mjs --katalog "$HOME/oms-demo" --port 39151
 ```
 
-Katalog musi być podany ścieżką bezwzględną (stąd `$PWD`). Ostatnia komenda uruchamia panel pod
+Katalog musi być podany ścieżką bezwzględną (stąd `$HOME`) i leżeć poza repozytorium — trafiają do niego pliki
+z hasłem (`proba.env`, `administrator-proby.env`), których `.gitignore` nie pomija. Ostatnia komenda uruchamia panel pod
 `http://127.0.0.1:39151/login` i działa, dopóki jej nie przerwiesz (Ctrl+C); login i hasło administratora
-leżą w `oms-demo/administrator-proby.env`. Zobaczysz trzy zmyślone zamówienia. Szczegóły
+leżą w `~/oms-demo/administrator-proby.env`. Zobaczysz trzy zmyślone zamówienia. Szczegóły
 i ograniczenia: [docs/instalacja-klienta.md](docs/instalacja-klienta.md).
 
 ## Instalacja na serwerze
 
 Linux + Docker, od czystego Debiana do panelu dostępnego w sieci lokalnej:
-[docs/instalacja-docker.md](docs/instalacja-docker.md). Konfiguracja (wszystkie zmienne środowiska):
-[docs/konfiguracja.md](docs/konfiguracja.md). Kurierów i pocztę można wpisać w panelu (Ustawienia →
+[docs/instalacja-docker.md](docs/instalacja-docker.md). Konfiguracja: [docs/konfiguracja.md](docs/konfiguracja.md) (opis) i
+`docs/konfiguracja.json` (pełny rejestr zmiennych, z niego powstaje [docs/zmienne.md](docs/zmienne.md)). Kurierów i pocztę można wpisać w panelu (Ustawienia →
 Integracje), bez edycji pliku — krok po kroku: [DPD](docs/kurier-dpd.md), [InPost](docs/kurier-inpost.md),
 [poczta wychodząca](docs/poczta-smtp.md).
 
@@ -79,12 +83,13 @@ scenariusz krok po kroku z miejscami, w których agent musi się zatrzymać i za
 ## Rozwój i testy
 
 ```bash
-npm run sprawdz     # typy + strażnik migracji + strażnik konfiguracji + wszystkie testy
+npm run sprawdz     # typy + strażniki (migracji, konfiguracji, kanałów, kurierów) + wszystkie testy
 npm run typy        # tylko kontrola typów
 npx vitest run tests/moduly/zwroty   # testy jednego modułu
 ```
 
-Testy PDF wymagają programu `pdftotext` (pakiet Poppler) w `PATH`. Pełna bramka trwa kilkadziesiąt
+Część testów PDF potrzebuje programu `pdftotext` (pakiet Poppler) w `PATH`: bez niego jedne się pomijają,
+inne kończą błędem. CI tego repozytorium instaluje Popplera. Pełna bramka trwa kilkadziesiąt
 minut; w trakcie pracy uruchamiaj testy dotkniętego modułu. Zasady zmian i mapa kodu dla agenta:
 [AGENTS.md](AGENTS.md), [docs/dla-agenta/](docs/dla-agenta/).
 
@@ -92,7 +97,7 @@ minut; w trakcie pracy uruchamiaj testy dotkniętego modułu. Zasady zmian i map
 
 - Powstał dla jednej polskiej firmy handlowej i tam pracuje. Reguły (VAT, KSeF, WDT, polskie kurierzy
   i bank) są polskie; interfejs i komentarze w kodzie są po polsku.
-- Kod ma ponad 80 tys. linii i kilka tysięcy testów. Część komentarzy odwołuje się do numerów zadań
+- To duży kod, a testów jest więcej niż kodu. Część komentarzy odwołuje się do numerów zadań
   (`PRZ-nnn`) z wewnętrznej tablicy — nie ma jej w tym repozytorium, a sam komentarz opisuje powód.
 - **Brak gwarancji i brak wsparcia** (licencja MIT). Wystawianie faktur, nadawanie paczek i wysyłka do
   KSeF to operacje z konsekwencjami — pierwsze uruchomienie z prawdziwymi kluczami zrób na koncie

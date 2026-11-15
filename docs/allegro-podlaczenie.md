@@ -16,7 +16,7 @@ Przykłady niżej dotyczą zmyślonej firmy „Pracownia Półcień” i jej kon
 
 ## Ścieżka w panelu
 
-Ustawienia → Integracje → Allegro → „Dodaj konto”. Kreator ma kroki od 0 do 6.
+Ustawienia → Integracje → Dodaj integrację → Allegro → „Dodaj konto”. Kreator ma kroki od 0 do 6.
 
 ### Krok 0. Aplikacja Allegro (raz na instalację i środowisko)
 
@@ -84,7 +84,7 @@ z OMS-u”.
 
 Zgoda na wystawianie ofert jest opcjonalna i obejmuje dwa dodatkowe uprawnienia Allegro: zapis ofert oraz odczyt ustawień sprzedaży. Konto bez niej pobiera zamówienia, nadaje przesyłki i obsługuje
 wiadomości jak dotąd — OMS nie uznaje go za niekompletne i nie prosi o ponowne połączenie. Na stronie konta
-(Ustawienia → Integracje → Allegro → konto, sekcja „Połączenie”) wiersz „Oferty” pokazuje „Zgoda jest” albo „Brak
+(Ustawienia → Integracje → Moje połączenia, przy koncie Allegro, sekcja „Połączenie”) wiersz „Oferty” pokazuje „Zgoda jest” albo „Brak
 zgody”. Przy braku zgody sekcja „Wystawianie ofert” prowadzi przez dwa kroki:
 
 1. „Sprawdź uprawnienia aplikacji” — OMS pyta Allegro, czy aplikacja z kroku 0 ma zaznaczone uprawnienia do ofert.

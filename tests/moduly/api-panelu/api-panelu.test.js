@@ -390,7 +390,7 @@ describe('proforma dla panelu — /api/zamowienia/:id/proforma i /api/proformy/:
     const [wystawiona] = proformyZamowienia(db, id);
     const pdf = await app.inject({ method: 'GET', url: `/proformy/${wystawiona.id}/pdf`, headers: naglowkiGet });
     expect(pdf.statusCode).toBe(200);
-    expect(pdf.headers['content-disposition']).toContain('attachment');
+    expect(pdf.headers['content-disposition']).toContain('inline');
     expect(pdf.rawPayload.subarray(0, 4).toString('latin1')).toBe('%PDF');
   });
 });

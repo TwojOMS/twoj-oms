@@ -283,7 +283,7 @@ describe('PRZ-118.06 (6)(7) faktura okresu — nabywca i komunikaty z nazwą pro
     const blad = await createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: NIP_PRACOWNI }).catch((e) => e);
     expect(blad.message).toBe('Rezerwacja faktury tego okresu wisi od 2026-09-01T00:00:00.000Z i żadne wystawianie już nie trwa '
       + '— panel najpewniej został zrestartowany w trakcie wywołania inFaktu. Sprawdź RĘCZNIE w inFakcie, czy faktura za ten okres istnieje. '
-      + 'Jeśli JEST i jeszcze nie poszła do KSeF (wysyłkę robi właściciel ręcznie, wieczorem) — '
+      + 'Jeśli JEST i jeszcze nie poszła do KSeF — '
       + 'skasuj ją tam. Panel sam z tego stanu NIE WYJDZIE i wystawienia nie ponowi: okres '
       + 'zostaje zablokowany, dopóki ktoś go świadomie nie odblokuje. Ta blokada jest po to, '
       + 'żeby drugie podejście nie dołożyło drugiej faktury za ten sam miesiąc.');

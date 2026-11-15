@@ -68,7 +68,7 @@ describe('GET /faktury', () => {
     expect(r.body.match(/type="checkbox" name="uuid"/g)).toHaveLength(5);
     expect(r.body).toContain('<form method="post" action="/faktury/ksef/podglad">');
     expect(r.body).toContain('formaction="/faktury/ksef/podglad">Wyślij do KSeF</button>');
-    expect(r.body).toMatch(/<details class="wydruki wydruki--masowe">\s*<summary class="btn btn--maly">Pobierz<\/summary>\s*<div class="wydruki-menu wydruki-menu--lewe">\s*<button type="submit" formaction="\/faktury\/zestawienie-zaznaczonych">Zestawienie PDF \(XML i UPO w załącznikach\)<\/button>\s*<button type="submit" formaction="\/faktury\/lista-zaznaczonych\.csv">Lista zaznaczonych \(CSV, Excel\)<\/button>\s*<\/div>/);
+    expect(r.body).toMatch(/<details class="wydruki wydruki--masowe">\s*<summary class="btn btn--maly">Pobierz<\/summary>\s*<div class="wydruki-menu wydruki-menu--lewe">\s*<button type="submit" formaction="\/faktury\/zestawienie-zaznaczonych" formtarget="_blank">Zestawienie PDF \(XML i UPO w załącznikach\)<\/button>\s*<button type="submit" formaction="\/faktury\/lista-zaznaczonych\.csv">Lista zaznaczonych \(CSV, Excel\)<\/button>\s*<\/div>/);
     expect(r.body).toContain('name="miesiac" value="2026-07"');
     expect(r.body).toContain('name="pole" value="sale_date"');
     expect(r.body).toContain('/faktury?miesiac=2026-07&amp;pole=sale_date');

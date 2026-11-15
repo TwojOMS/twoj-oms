@@ -40,7 +40,7 @@ it.each(['proba', 'produkcja'])('wybór z pliku wymaga zgody niezależnie od try
 const KLUCZ_PLIKU = 'zmyslony-klucz-pliku-prz121-0000000000001';
 const KLUCZ_EKRANU = 'zmyslony-klucz-ekranu-prz121-000000000001';
 const STARE_ZDANIE = 'Fakturowanie inFakt nie jest skonfigurowane.';
-const ZDANIE_USTAWIEN = 'Faktury w OMS-ie są wyłączone — w Ustawienia → Integracje → Moduł faktur wybrano „Brak”.';
+const ZDANIE_USTAWIEN = 'Faktury w OMS-ie są wyłączone — w Ustawienia → Faktury i podatki → Program do faktur wybrano „Brak”.';
 const ZDANIE_PLIKU = 'Faktury w OMS-ie są wyłączone — w pliku konfiguracji jest OMS_PROGRAM_FAKTUROWY=brak.';
 // Usługi, które bez programu fakturowego są `null` (jak dziś bez inFaktu).
 const ZALEZNE = ['infakt', 'programFakturowy', 'vies', 'faktura', 'fakturaHurtem', 'fakturyWidok', 'wysylkaKsef', 'automatKsef',
@@ -167,7 +167,7 @@ describe('PRZ-121.01 moduł faktur według wyboru modułu', () => {
     zapiszWyborProgramu(db, 'infakt');
     zapiszKonfiguracjeIntegracji(db, 'infakt', { ustawienia: {}, sekrety: { apiKey: KLUCZ_EKRANU } });
     await expect(z.uslugi.konfiguracjaInfaktu.sprawdzPolaczenie()).rejects.toThrow(
-      'Zapisany moduł faktur „inFakt” zadziała po ponownym uruchomieniu OMS-u — do tego czasu faktury są wyłączone. Nic nie poszło do programu.');
+      'Zapisany program do faktur „inFakt” zadziała po ponownym uruchomieniu OMS-u — do tego czasu faktury są wyłączone. Nic nie poszło do programu.');
     expect(siec).not.toHaveBeenCalled();
     db.close();
   });
@@ -177,10 +177,10 @@ describe('PRZ-121.01 moduł faktur według wyboru modułu', () => {
     const z = sprobuj();
     zapiszWyborProgramu(db, 'infakt');
     expect(z.zdrowie().uwagi).toEqual([STARE_ZDANIE,
-      'Zapisany moduł faktur „inFakt” nie ma klucza API — wpisz go w Ustawienia → Integracje → inFakt (/ustawienia/integracje/infakt); faktury ruszą po ponownym uruchomieniu OMS-u.']);
+      'Zapisany program do faktur „inFakt” nie ma klucza API — wpisz go w Ustawienia → Integracje → inFakt (/ustawienia/integracje/infakt); faktury ruszą po ponownym uruchomieniu OMS-u.']);
     zapiszKonfiguracjeIntegracji(db, 'infakt', { ustawienia: {}, sekrety: { apiKey: KLUCZ_EKRANU } });
     expect(z.zdrowie().uwagi).toEqual([STARE_ZDANIE,
-      'Zapisany moduł faktur „inFakt” zadziała po ponownym uruchomieniu OMS-u — do tego czasu faktury są wyłączone.']);
+      'Zapisany program do faktur „inFakt” zadziała po ponownym uruchomieniu OMS-u — do tego czasu faktury są wyłączone.']);
     db.close();
   });
 
@@ -232,7 +232,7 @@ describe('PRZ-121.01 moduł faktur według wyboru modułu', () => {
     const { db, sprobuj } = zbuduj(createModulFaktury(), { ...ENV, INFAKT_API_KEY: KLUCZ_PLIKU }, { wybor: 'twojefaktury' });
     const z = sprobuj();
     bezProgramu(z);
-    const uwaga = 'Zapisany moduł faktur „twojefaktury” nie działa w tej wersji OMS-u — faktury są wyłączone. Wybierz moduł ponownie.';
+    const uwaga = 'Zapisany program do faktur „twojefaktury” nie działa w tej wersji OMS-u — faktury są wyłączone. Wybierz program ponownie.';
     expect(z.uslugi.wyborProgramu).toMatchObject({ program: 'brak', zrodlo: 'ustawienia', uwaga });
     expect(z.zdrowie().uwagi).toEqual([uwaga]);
     db.close();
@@ -258,7 +258,7 @@ describe('PRZ-121.01 moduł faktur według wyboru modułu', () => {
     await z.uslugi.programFakturowy.listaFaktur({});
     expect(siec).toHaveBeenCalledTimes(1);
     expect(z.uslugi.celeLacznosci()).toEqual({ infakt: null });
-    expect(z.zdrowie().uwagi).toContain('Zapisany moduł faktur „Brak” zadziała po ponownym uruchomieniu OMS-u — do tego czasu działa „inFakt”. Automatyczna wysyłka do KSeF już stoi.');
+    expect(z.zdrowie().uwagi).toContain('Zapisany program do faktur „Brak” zadziała po ponownym uruchomieniu OMS-u — do tego czasu działa „inFakt”. Automatyczna wysyłka do KSeF już stoi.');
 
     zapiszWyborProgramu(db, 'infakt');
     expect(w.czekaNaRestart()).toBe(false);

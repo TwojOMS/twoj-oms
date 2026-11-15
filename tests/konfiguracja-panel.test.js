@@ -10,17 +10,17 @@ const manifest = JSON.parse(czytaj('docs/konfiguracja.json'));
 const ekrany = {
   'Integracje → inFakt': ['src/moduly/faktury/trasy/ustawienia-infakt.js', 'src/domena/konfiguracja-infakt.js'],
   'Integracje → Fakturownia': ['src/moduly/faktury/trasy/ustawienia-fakturownia.js', 'src/domena/konfiguracja-fakturownia.js'],
-  'Integracje → Moduł faktur': ['src/moduly/faktury/trasy/ustawienia-programu.js', 'src/domena/wybor-programu.js'],
-  'Integracje → Moduł faktur → Serie numeracji': ['src/moduly/faktury/trasy/ustawienia-serii.js', 'src/domena/twojefaktury/numeracja.js'],
+  'Faktury i podatki → Program do faktur': ['src/moduly/faktury/trasy/ustawienia-programu.js', 'src/domena/wybor-programu.js'],
+  'Faktury i podatki → Numeracja': ['src/moduly/faktury/trasy/ustawienia-serii.js', 'src/domena/twojefaktury/numeracja.js'],
   'Integracje → GUS': ['src/moduly/zamowienia/ustawienia-gus.js', 'src/domena/konfiguracja-gus.js'],
   'Integracje → KSeF': ['src/moduly/koszty/trasy/ustawienia-ksef.js', 'src/domena/konfiguracja-ksef-kosztow.js'],
-  'Integracje → Kurierzy → DPD': ['src/moduly/wysylka/trasy/ustawienia-dpd.js', 'src/moduly/wysylka/kurierzy.ts'],
-  'Integracje → Kurierzy → InPost': ['src/moduly/wysylka/trasy/ustawienia-inpost.js', 'src/domena/konfiguracja-inpost.js'],
+  'Integracje → DPD': ['src/moduly/wysylka/trasy/ustawienia-dpd.js', 'src/moduly/wysylka/kurierzy.ts'],
+  'Integracje → InPost': ['src/moduly/wysylka/trasy/ustawienia-inpost.js', 'src/domena/konfiguracja-inpost.js'],
   Firma: ['src/moduly/faktury/trasy/ustawienia-firma.js', 'src/core/adres-firmy.ts'],
-  'Firma → Logo': ['src/moduly/ustawienia/trasy/logo.js', 'src/core/web/modul.ts'],
+  'Firma → Dane i logo': ['src/moduly/ustawienia/trasy/logo.js', 'src/core/web/modul.ts'],
   'Integracje → Poczta wychodząca': ['src/moduly/ustawienia/trasy/poczta.js', 'src/moduly/wiadomosci/konfiguracja.ts'],
   'Integracje → Poczta wychodząca → Adres panelu': ['src/moduly/ustawienia/trasy/poczta.js'],
-  'Integracje → Poczta wychodząca → Podpis maili': ['src/moduly/ustawienia/trasy/poczta.js'],
+  'Komunikacja → Podpis i stopka': ['src/moduly/ustawienia/trasy/poczta.js'],
   'Analizy i finanse → Finanse → Kompletność danych': ['src/moduly/raporty/trasy/pokrycie.js', 'src/moduly/raporty/pokrycie.js'],
 };
 
@@ -36,8 +36,8 @@ describe('odpowiedniki zmiennych w panelu', () => {
     ['OMS_RAPORTY_PODLOGA_KOSZTOW', 'Analizy i finanse → Finanse → Kompletność danych'],
     ['OMS_RAPORTY_PODLOGA_ZWROTOW', 'Analizy i finanse → Finanse → Kompletność danych'],
     ['OMS_STATYSTYKI_PIERWSZY_DZIEN', 'Analizy i finanse → Finanse → Kompletność danych'],
-    ['OMS_LOGO_PLIK', 'Ustawienia → Firma → Logo'],
-    ['OMS_LOGO_ALT', 'Ustawienia → Firma → Logo', 'tylko administrator; plik wygrywa, gdy ustawia też OMS_LOGO_PLIK; bez restartu'],
+    ['OMS_LOGO_PLIK', 'Ustawienia → Firma → Dane i logo'],
+    ['OMS_LOGO_ALT', 'Ustawienia → Firma → Dane i logo', 'tylko administrator; plik wygrywa, gdy ustawia też OMS_LOGO_PLIK; bez restartu'],
   ])('%s wskazuje prawdziwą ścieżkę menu i ograniczenia zapisu', (nazwa, ekran, uwagi = 'tylko administrator; plik wygrywa; bez restartu') => {
     const wiersz = generujTabele(manifest).split('\n').find(w => w.startsWith(`| <code>${nazwa}</code> |`));
     expect(wiersz).toContain(`| Tak — ${ekran} (${uwagi}) |`);

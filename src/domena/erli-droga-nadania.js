@@ -23,7 +23,7 @@ export function drogaNadaniaErli({ typeId, pickupPlace, nazwa, metodyErli = [], 
   if (metoda && typeof typeId === 'string' && Object.hasOwn(mapa ?? {}, typeId)) {
     const zMapy = /** @type {any} */ (KURIERZY_MAPY_ERLI).includes(mapa[typeId]) ? mapa[typeId] : null;
     if (zMapy) return { droga: 'umowa', kurier: zMapy, metoda };
-    return { droga: 'blokada', komunikat: `ERLI: metoda ${opis} nie ma kuriera — wybierz kuriera w Ustawieniach → ERLI → Metody dostawy albo nadaj w ERLI` };
+    return { droga: 'blokada', komunikat: `ERLI: metoda ${opis} nie ma kuriera — wybierz kuriera w Ustawieniach → Integracje → Moje połączenia → ERLI → Metody dostawy albo nadaj w ERLI` };
   }
   const kurier = kurierDomyslnyErli(metoda?.vendor, pickupPlace);
   if (kurier && metoda) return { droga: 'umowa', kurier, metoda };

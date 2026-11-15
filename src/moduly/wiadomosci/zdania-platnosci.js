@@ -58,7 +58,7 @@ export function wczytajZdaniaPlatnosci(db, { log = (t) => console.error(t) } = {
   const nowy = ZALOGOWANE.get(db) !== surowy;
   ZALOGOWANE.set(db, surowy);
   for (const klucz of nowy ? Object.keys(odrzucone) : []) {
-    log(`wiadomości: zapisane zdanie o płatności „${klucz}” nie przechodzi reguł — w mailu idzie tekst domyślny (popraw w Ustawienia → Szablony wiadomości)`);
+    log(`wiadomości: zapisane zdanie o płatności „${klucz}” nie przechodzi reguł — w mailu idzie tekst domyślny (popraw w Ustawienia → Komunikacja → Szablony wiadomości)`);
   }
   return dobre;
 }

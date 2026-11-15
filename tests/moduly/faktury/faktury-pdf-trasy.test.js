@@ -47,7 +47,7 @@ describe('GET /faktury/:uuid/pdf', () => {
   it('nazwa pliku nie ma ukośników', async () => {
     const app = serwer({ pobierzPdf: async () => PDF, pobierzPdfKorekty: async () => PDF });
     const r = await app.inject({ method: 'GET', url: '/faktury/u1/pdf?rodzaj=vat&numer=1%2F08%2F2026', headers: AUTH });
-    expect(r.headers['content-disposition']).toContain('attachment');
+    expect(r.headers['content-disposition']).toContain('inline');
     expect(r.headers['content-disposition']).not.toContain('/');
   });
 

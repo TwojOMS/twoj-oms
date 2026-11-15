@@ -140,7 +140,7 @@ describe('GET /zamowienia/:id/faktura/pdf', () => {
     const r = await pobierz(id);
     expect(r.statusCode).toBe(200);
     expect(r.headers['content-type']).toContain('application/pdf');
-    expect(r.headers['content-disposition']).toContain('attachment');
+    expect(r.headers['content-disposition']).toContain('inline');
     expect(r.rawPayload.subarray(0, 4).toString()).toBe('%PDF');
   });
 

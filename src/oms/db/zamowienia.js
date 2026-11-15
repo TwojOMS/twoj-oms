@@ -321,7 +321,7 @@ export function usunPozycjeReczna(db, zamowienieId, pozycjaId) {
   const p = pozycjaZamowienia(db, zamowienieId, pozycjaId);
   if (p.zrodlo !== 'reczna') {
     throw bladOperatora(
-      'Pozycji ze sklepu nie da się usunąć z panelu — należy do sklepu i poller wstawiłby ją z powrotem'
+      'Pozycji ze sklepu nie da się usunąć z panelu — należy do sklepu i OMS wstawiłby ją z powrotem'
       + ' przy najbliższej synchronizacji. Jeśli ta pozycja jest błędna, popraw zamówienie w sklepie'
       + ' albo skoryguj ją tutaj przez edycję.',
     );

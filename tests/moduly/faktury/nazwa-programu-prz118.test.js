@@ -16,6 +16,7 @@
 // PRZ-152.G3a: wiersze Status / Status płatności karty zmienione świadomie (poza porównaniem).
 // PRZ-152.G13a: sekcja Pozycje karty przebudowana świadomie (poza porównaniem).
 // PRZ-143.09: kolumna KSeF pokazuje „brak” przy niewysłanej, a stopka listy ma kwoty pod Netto i Brutto; migawki FAKTURY zmienione świadomie.
+// PRZ-162: odnośniki do PDF-ów (faktura, proforma, zestawienia) otwierają nową kartę — migawki zmienione świadomie.
 // Pozostałe ekrany nadal sprawdzają wynik PRZ-118.09; dostępność przycisku sprawdza wystaw-fakture-zawsze-prz126.test.js.
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs';

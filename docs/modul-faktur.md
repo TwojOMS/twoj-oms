@@ -1,6 +1,6 @@
 # Program do faktur
 
-Wybór programu jest w **Ustawienia → Integracje → Moduł faktur**.
+Wybór programu jest w **Ustawienia → Faktury i podatki → Program do faktur**.
 Dotyczy całej instalacji. Zmienia go administrator.
 
 Instrukcja podłączenia Fakturowni: [Fakturownia](fakturownia.md).
@@ -18,7 +18,7 @@ Bez jawnego wyboru OMS korzysta z inFaktu, jeśli jest podłączony; w przeciwny
 
 ## Zmiana programu
 
-1. Otwórz **Ustawienia → Integracje → Moduł faktur**.
+1. Otwórz **Ustawienia → Faktury i podatki → Program do faktur**.
 2. Wybierz **Brak**, **inFakt** albo **Fakturownia** i zapisz.
 3. Uruchom ponownie OMS. Użyj przycisku na ekranie, jeśli instalacja go udostępnia,
    albo na serwerze w katalogu instalacji wykonaj <code>docker compose restart oms</code>.

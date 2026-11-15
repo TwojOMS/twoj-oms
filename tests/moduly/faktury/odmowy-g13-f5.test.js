@@ -64,7 +64,7 @@ it('103 inFakt z pliku: 409', () => odmowa({ url: INFAKT, status: 409,
   tekst: 'inFakt jest ustawiony w pliku konfiguracji (oms.env, INFAKT_API_KEY) — tam go zmień. Formularz niczego nie zapisał.',
   tytul: 'Nie zapisano ustawień inFaktu', wroc: INFAKT, napis: 'Wróć do ustawień inFaktu' }));
 it('104 program z pliku: 409', () => odmowa({ url: PROGRAM, env: { OMS_PROGRAM_FAKTUROWY: 'infakt' }, status: 409,
-  tekst: 'Moduł faktur jest ustawiony w pliku konfiguracji (OMS_PROGRAM_FAKTUROWY) — tam go zmień. Formularz niczego nie zapisał.',
+  tekst: 'Program do faktur jest ustawiony w pliku konfiguracji (OMS_PROGRAM_FAKTUROWY) — tam go zmień. Formularz niczego nie zapisał.',
   tytul: 'Nie zmieniono programu faktur', wroc: PROGRAM, napis: 'Wróć do ustawień programu faktur' }));
 it('105 restart wyłączony: 404', () => odmowa({ url: `${PROGRAM}/restart`, env: { OMS_RESTART_Z_PANELU: '' }, status: 404,
   tekst: 'Ponowne uruchomienie z panelu jest wyłączone (OMS_RESTART_Z_PANELU) — uruchom ponownie OMS na serwerze.',

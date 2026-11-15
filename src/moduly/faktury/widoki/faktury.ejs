@@ -91,7 +91,7 @@
               <%# ⚠️ RODZAJ I NUMER JADA W ADRESIE — trasa (routes/faktury.js) rozstrzyga po nich,
                   ktory zasob inFaktu odpytac i jak nazwac plik; zgadywanie po tresci numeru
                   byloby niebezpieczne (patrz komentarz przy trasie). %>
-              <td><a class="btn btn--maly" href="/faktury/<%= encodeURIComponent(d.uuid) %>/pdf?rodzaj=<%= encodeURIComponent(d.rodzaj) %>&numer=<%= encodeURIComponent(d.number) %>">PDF</a></td>
+              <td><a class="btn btn--maly" href="/faktury/<%= encodeURIComponent(d.uuid) %>/pdf?rodzaj=<%= encodeURIComponent(d.rodzaj) %>&numer=<%= encodeURIComponent(d.number) %>" target="_blank" rel="noopener noreferrer">PDF</a></td>
             </tr>
           <% }); %>
           <% if (nieoplacone.length) { %>
@@ -189,7 +189,7 @@
             PDF celowo niesie WYŁĄCZNIE zestawienie przychodów: bez dołączonych faktur i korekt.
             Dzięki temu pobranie nie czyta ich PDF-ów z inFaktu. %>
         <% if (mozliweZestawieniePrzychodow) { %>
-          <a class="btn btn--drugi prz065-drugorzedny-pdf" href="/faktury/zestawienie-przychodow?miesiac=<%= miesiac %>" title="PDF z zestawieniem przychodów: faktury i korekty wg daty sprzedaży, bez dołączonych dokumentów.">Pobierz zestawienie (PDF)</a>
+          <a class="btn btn--drugi prz065-drugorzedny-pdf" href="/faktury/zestawienie-przychodow?miesiac=<%= miesiac %>" target="_blank" rel="noopener noreferrer" title="PDF z zestawieniem przychodów: faktury i korekty wg daty sprzedaży, bez dołączonych dokumentów.">Pobierz zestawienie (PDF)</a>
         <% } %>
       </div>
     </form>
@@ -263,7 +263,7 @@
         <details class="wydruki wydruki--masowe">
           <summary class="btn btn--maly">Pobierz</summary>
           <div class="wydruki-menu wydruki-menu--lewe">
-            <button type="submit" formaction="/faktury/zestawienie-zaznaczonych">Zestawienie PDF (XML i UPO w załącznikach)</button>
+            <button type="submit" formaction="/faktury/zestawienie-zaznaczonych" formtarget="_blank">Zestawienie PDF (XML i UPO w załącznikach)</button>
             <button type="submit" formaction="/faktury/lista-zaznaczonych.csv">Lista zaznaczonych (CSV, Excel)</button>
           </div>
         </details>
@@ -324,7 +324,7 @@
                     <div class="wiersz-szczegoly">
                       Faktura VAT
                       <span class="znacznik znacznik--cichy"
-                        title="<%= konsumenckie ? 'Nabywca bez NIP-u — właściciel włączył dobrowolną wysyłkę B2C do KSeF.' : 'Nabywca bez NIP-u — KSeF jest przy takim dokumencie dobrowolny, więc panel go nie wysyła.' %>">konsumencka</span>
+                        title="<%= konsumenckie ? 'Nabywca bez NIP-u — w ustawieniach włączono dobrowolną wysyłkę faktur konsumenckich do KSeF.' : 'Nabywca bez NIP-u — KSeF jest przy takim dokumencie dobrowolny, więc panel go nie wysyła.' %>">konsumencka</span>
                     </div>
                   <% } else { %>
                     <div class="wiersz-szczegoly">Faktura VAT</div>
@@ -375,7 +375,7 @@
                 <%# ⚠️ RODZAJ I NUMER JADA W ADRESIE — dokladnie ta sama zasada, co przy pasie
                     nieoplaconych wyzej; korekta jest INNYM zasobem inFaktu niz faktura VAT
                     (routes/faktury.js), wiec trasa musi wiedziec, ktory to dokument. %>
-                <td><a class="btn btn--maly" href="/faktury/<%= encodeURIComponent(d.uuid) %>/pdf?rodzaj=<%= encodeURIComponent(d.rodzaj) %>&numer=<%= encodeURIComponent(d.number) %>">PDF</a></td>
+                <td><a class="btn btn--maly" href="/faktury/<%= encodeURIComponent(d.uuid) %>/pdf?rodzaj=<%= encodeURIComponent(d.rodzaj) %>&numer=<%= encodeURIComponent(d.number) %>" target="_blank" rel="noopener noreferrer">PDF</a></td>
               </tr>
             <% }); %>
             <% if (!dokumenty.length) { %>
@@ -446,7 +446,7 @@
                   <span class="znacznik znacznik--ok">aktualna</span>
                 <% } %>
               </td>
-              <td><% if (mozeAdres(`/proformy/${p.id}/pdf`)) { %><a class="btn btn--maly" href="/proformy/<%= p.id %>/pdf">PDF</a><% } %></td>
+              <td><% if (mozeAdres(`/proformy/${p.id}/pdf`)) { %><a class="btn btn--maly" href="/proformy/<%= p.id %>/pdf" target="_blank" rel="noopener noreferrer">PDF</a><% } %></td>
             </tr>
           <% }); %>
           <% if (!proformy.length) { %>

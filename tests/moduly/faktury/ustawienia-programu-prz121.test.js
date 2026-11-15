@@ -58,7 +58,7 @@ it.each([false, true])('B14f1: karta okresu opisuje wysyłkę tylko dla programu
     const r = await get(app, `/okresy/${okres.id}`, admin);
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Wystaw fakturę za');
-    expect(r.body.includes('Panel nie wysyła dokumentu do KSeF.')).toBe(!wbudowany);
+    expect(r.body.includes('Wystawienie nie wysyła dokumentu do KSeF.')).toBe(!wbudowany);
     if (wbudowany) {
       expect(r.body).toContain('Wysyłkę faktur sprzedaży obsługuje TwojeFaktury');
       expect(r.body).toContain(`href="${WYSYLKA}"`);
@@ -67,7 +67,9 @@ it.each([false, true])('B14f1: karta okresu opisuje wysyłkę tylko dla programu
       { program: wbudowany ? 'twojefaktury' : 'infakt' });
     const wystawiony = await get(app, `/okresy/${okres.id}`, admin);
     expect(wystawiony.statusCode).toBe(200);
-    expect(wystawiony.body.includes('BEZ wysyłki do KSeF')).toBe(!wbudowany);
+    expect(wystawiony.body.includes('bez wysyłki do KSeF\n        — wysyłasz ją osobno: przyciskiem na ekranie Faktury, '
+      + 'automatem (administrator: Ustawienia → Automatyzacje → Automaty systemowe) albo w inFakcie.')).toBe(!wbudowany);
+    expect(wystawiony.body).not.toContain('wieczorem');
     if (wbudowany) {
       expect(wystawiony.body).toContain('Wysyłkę faktur sprzedaży obsługuje TwojeFaktury');
       expect(wystawiony.body).toContain(`href="${WYSYLKA}"`);
@@ -277,7 +279,7 @@ describe('PRZ-121.02 ekran Moduł faktur — widok', () => {
     const { app, admin, db } = panel();
     zapiszKonfiguracjeIntegracji(db, 'program_fakturowy', { ustawienia: { program: 'twojefaktury' }, sekrety: {} });
     const r = await get(app, ADRES, admin);
-    expect(r.body).toContain('Zapisany moduł faktur „twojefaktury” nie działa w tej wersji OMS-u — faktury są wyłączone. Wybierz moduł ponownie.');
+    expect(r.body).toContain('Zapisany program do faktur „twojefaktury” nie działa w tej wersji OMS-u — faktury są wyłączone. Wybierz program ponownie.');
   });
 
   it('lista integracji ma odnośnik do ekranu w sekcji Faktury', async () => {
@@ -299,8 +301,8 @@ describe('PRZ-121.02 ekran Moduł faktur — zapis', () => {
     expect(zapis.sekrety).toEqual({});
     expect(zapis.kontoLogin).toBe('adam');
     const ekran = await get(app, r.headers.location, admin);
-    expect(ekran.body).toContain('Zapisano wybór modułu faktur.');
-    expect(ekran.body).toContain('Zapisany moduł faktur „Brak” zadziała po ponownym uruchomieniu OMS-u — do tego czasu działa „inFakt”.');
+    expect(ekran.body).toContain('Zapisano wybór programu do faktur.');
+    expect(ekran.body).toContain('Zapisany program do faktur „Brak” zadziała po ponownym uruchomieniu OMS-u — do tego czasu działa „inFakt”.');
     expect(zaznaczone(ekran.body)).toEqual(['brak']);
     expect(ekran.body).toMatch(/Teraz działa[\s\S]*?<strong>inFakt<\/strong>/u);
   });
@@ -342,7 +344,7 @@ describe('PRZ-121.02 ekran Moduł faktur — zapis', () => {
     expect(r.statusCode, r.body).toBe(303);
     expect(wczytajWyborProgramu(db).program).toBe('fakturownia');
     const ekran = await get(app, r.headers.location, admin);
-    expect(ekran.body).toContain('Zapisany moduł faktur „Fakturownia” nie ma domeny konta i tokenu API — wpisz je w Ustawienia → Integracje → Fakturownia (/ustawienia/integracje/fakturownia)');
+    expect(ekran.body).toContain('Zapisany program do faktur „Fakturownia” nie ma domeny konta i tokenu API — wpisz je w Ustawienia → Integracje → Fakturownia (/ustawienia/integracje/fakturownia)');
     expect(zaznaczone(ekran.body)).toEqual(['fakturownia']);
     expect(siec).not.toHaveBeenCalledWith(expect.stringContaining('fakturownia'), expect.anything());
   });
@@ -396,7 +398,7 @@ describe('PRZ-121.02 ostrzeżenie przy przełączeniu z inFaktu na „Brak”', 
 });
 
 describe('PRZ-121.02 ekran inFaktu przy wybranym „Brak”', () => {
-  const NOWE = 'inFakt nie jest wybrany jako moduł faktur — klucz zostaje zapisany, OMS go nie używa.';
+  const NOWE = 'inFakt nie jest wybrany jako program do faktur — klucz zostaje zapisany, OMS go nie używa.';
   it('nowe zdanie zamiast zdania o restarcie; bez wyboru „Brak” jego nie ma', async () => {
     const { app, admin } = panel();
     await post(app, EKRAN_KLUCZA, admin, { apiKey: KLUCZ_EKRANU });

@@ -232,7 +232,7 @@ Zaloguj się pod `https://oms.przyklad.pl/login`. W narzędziach przeglądarki (
 odpowiedź POST `/login`) ciasteczko sesji w `Set-Cookie` ma `Secure` i `HttpOnly`.
 Sam GET `/login` nie ustawia sesji. Panel dodaje HSTS i `Secure` według `X-Forwarded-Proto`
 także bez `OMS_TRUST_PROXY` — te flagi nie potwierdzają poprawnego adresu gościa.
-W Ustawienia → Integracje → Poczta wychodząca → Adres panelu zapisz `https://oms.przyklad.pl`,
+W Ustawienia → Integracje → Poczta wychodząca → Adres OMS-u w mailach zapisz `https://oms.przyklad.pl`,
 bez `/login`. To adres linków w mailach, m.in. zaproszeń i ustawiania hasła. Jeżeli pole jest
 zablokowane przez istniejące `OMS_ADRES_PANELU`, popraw jego wartość w `oms.env` i odtwórz
 kontener tym samym poleceniem co wyżej.
@@ -307,7 +307,7 @@ sudo sh /opt/oms/aktualizuj.sh zdrowie
 ```
 
 Zaloguj się nowym kontem (`http://ADRES-SERWERA:3001/login`): lista zamówień jest pusta.
-W Ustawieniach → Konta załóż konta imienne dla siebie i pracowników — konto `administrator` zostaw
+W Ustawieniach → Zespół i dostęp → Użytkownicy załóż konta imienne dla siebie i pracowników — konto `administrator` zostaw
 na awarię. `zdrowie` wypisuje `"ok": true` albo alarmy i uwagi (np. brak kopii poza dyskiem).
 Jeśli wszystko się zgadza:
 
@@ -364,14 +364,14 @@ Sprawdzenie: w `zdrowie` sekcja `czuwaczOstrzezen` ma `"wlaczony": true`, zakła
 faktury z konta. Zły klucz albo brak łączności z inFaktem: FAKTURY ładują się ok. 10 s i pokazują błąd
 sieci (zmierzone na próbie bez dostępu do API).
 
-**inFakt — też z ekranu:** Ustawienia → Integracje → Faktury → inFakt (klucz API, „Sprawdź połączenie”).
+**inFakt — też z ekranu:** Ustawienia → Integracje → inFakt (klucz API, „Sprawdź połączenie”).
 Pierwsze podłączenie z ekranu włącza zakładkę FAKTURY po ponownym uruchomieniu OMS-u
 (`sudo sh /opt/oms/aktualizuj.sh compose restart oms` — klucz leży w bazie, więc sam restart wystarcza);
 późniejsza zmiana klucza działa od razu. Wtedy linii `INFAKT_API_KEY` nie wpisuj — gdy jest w pliku, wygrywa
 nad ekranem. Adres API (`INFAKT_API_URL`) i archiwum sprzedaży (`INFAKT_ARCHIWUM`) ustawia się tylko w pliku.
 
-**Moduł faktur — wybór z ekranu:** Ustawienia → Integracje → Moduł faktur (Brak / inFakt;
-Fakturownia i TwojeFaktury — wkrótce). Bez wyboru działa inFakt, gdy ma klucz. Szczegóły:
+**Program do faktur — wybór z ekranu:** Ustawienia → Faktury i podatki → Program do faktur (Brak / inFakt /
+Fakturownia; TwojeFaktury — wkrótce). Bez wyboru działa inFakt, gdy ma klucz. Szczegóły:
 `docs/modul-faktur.md`.
 
 **Sklep WooCommerce** — klucze REST ze sklepu (WooCommerce → Ustawienia → Zaawansowane → REST API,
@@ -469,12 +469,12 @@ w konfiguracji. Do połączenia `zdrowie` pokazuje alarm „Kanał allegro_pilot
 z Allegro…” — to oczekiwane; po połączeniu znika. Granica raportu tym samym poleceniem co przy
 sklepie (`produkcja-pierwszy-start.mjs --granice`), zaraz po `compose up -d`.
 
-**Kurier DPD — najprościej z ekranu:** Ustawienia → Integracje → Kurierzy → DPD Polska (login, numer
+**Kurier DPD — najprościej z ekranu:** Ustawienia → Integracje → DPD (login, numer
 klienta i hasło od DPD, typ etykiety, przycisk „Sprawdź połączenie”). Krok po kroku, ze szkicem maila
 do DPD: `docs/kurier-dpd.md`. Wtedy linii `DPD_URL`…`DPD_INFO_CHANNEL` niżej nie wpisuj — gdy są w pliku,
 wygrywają nad ekranem.
 
-**Kurier InPost — też z ekranu:** Ustawienia → Integracje → Kurierzy → InPost (paczkomaty) (token API
+**Kurier InPost — też z ekranu:** Ustawienia → Integracje → InPost (token API
 ShipX, numer organizacji, opcjonalny paczkomat nadawczy, „Sprawdź połączenie”). Krok po kroku:
 `docs/kurier-inpost.md`. Wtedy linii `INPOST_…` niżej nie wpisuj — gdy są w pliku, wygrywają nad ekranem.
 
@@ -503,7 +503,7 @@ z panelu ShipX (API). Każdy kurier osobno, ze sprawdzeniem `zdrowie` po każdym
 nadanie to prawdziwa paczka i prawdziwy koszt** — zrób je świadomie, na jednym zamówieniu.
 
 **Poczta wychodząca (SMTP)** — zaproszenia do kont, linki do hasła, wiadomości do klientów z karty
-zamówienia — ustawia się w Ustawienia → Integracje → Poczta albo w pliku (`SMTP_…`, `MAIL_FROM`); krok po
+zamówienia — ustawia się w Ustawienia → Integracje → Poczta wychodząca albo w pliku (`SMTP_…`, `MAIL_FROM`); krok po
 kroku, z wiadomością próbną: `docs/poczta-smtp.md`. Plik wygrywa z ekranem.
 
 KSeF jest poza tą instrukcją.

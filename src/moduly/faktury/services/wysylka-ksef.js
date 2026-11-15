@@ -56,6 +56,11 @@ function bezpiecznaTrescOdpowiedzi(dane) {
 // Strażnik tests/core/straznik-wysylki-ksef-prz118.test.js: w tym pliku nazwa metody pada dokładnie raz — w wywołaniu.
 // PRZ-122.ZGODA-TFb: `wpisTf` — odczyt wersji z KSeF TwojeFaktury (db/ksef-automat-twojefaktury.js) dla uzgodnienia
 // wstrzymanych automatu; podaje go modul.ts. Bez niego (inFakt, testy) lista wstrzymanych się nie zmienia.
+// PRZ-168.01b: ta sama reguła dla usługi wysyłki i karty okresu (trasy/okresy.js) — czy program wysyła do KSeF z OMS-u.
+export function programWysylaDoKsef(program) {
+  return program?.opis?.zdolnosci?.includes('wyslijDoKsef') === true;
+}
+
 export function createWysylkaKsef({
   db, program: programPodany = null, infakt = null, fakturyWidok, log = console.error, wpisTf = null,
 }) {
@@ -63,7 +68,7 @@ export function createWysylkaKsef({
   // Bez programu (usługa złożona w teście bez `infakt`) zdania mówią ogólnie — nazwy nie ma skąd wziąć.
   const nazwa = program?.opis?.nazwa ?? BEZ_NAZWY;
   // PRZ-151 D2: jedna odpowiedź „czy program wysyła do KSeF z OMS-u” dla `niedostepna` i flagi `korekty`.
-  const wysyla = program?.opis?.zdolnosci?.includes('wyslijDoKsef') === true;
+  const wysyla = programWysylaDoKsef(program);
   const niedostepna = program && !wysyla
     ? `${nazwa.mianownik} nie wysyła do KSeF z OMS-u — panel nie ma jak zlecić mu wysyłki, `
       + `więc dokumenty wyślesz do KSeF bezpośrednio w ${nazwa.miejscownik}.`

@@ -23,8 +23,8 @@ export function zapiszKonsumenckie(db, wlaczone) {
 // Zdanie mówi, gdzie włączyć: odmowa pobrania PDF w adapterze TwojeFaktury (wersja TF), podgląd maila „Faktura”
 // (treść odmowy adaptera) i ostrzeżenie na ekranie automatu KSeF (wersja TF — PRZ-126.J01).
 export const KONSUMENCKIE_POZA_KSEF = 'faktury konsumenckie (nabywca bez NIP-u) nie idą teraz do KSeF — PDF dla nabywcy '
-  + 'będzie gotowy po włączeniu „Wysyłaj do KSeF także faktury konsumenckie” (Ustawienia → Integracje → Sklepy i usługi '
+  + 'będzie gotowy po włączeniu „Wysyłaj do KSeF także faktury konsumenckie” (Ustawienia → Integracje '
   + `→ ${NAZWA_ZAPASOWA.mianownik}, sekcja „Faktury konsumenckie w KSeF”) i przyjęciu przez KSeF`;
 export const KONSUMENCKIE_POZA_KSEF_TF = 'faktury konsumenckie (nabywca bez NIP-u) nie idą teraz do KSeF — PDF dla nabywcy '
-  + 'będzie gotowy po włączeniu „Wysyłaj do KSeF także faktury konsumenckie” (Ustawienia → Integracje → Moduł faktur '
-  + '→ Wysyłka do KSeF, sekcja „Faktury konsumenckie w KSeF”) i przyjęciu przez KSeF';
+  + 'będzie gotowy po włączeniu „Wysyłaj do KSeF także faktury konsumenckie” (Ustawienia → Faktury i podatki → KSeF, sekcja „Faktury konsumenckie w KSeF”) '
+  + 'i przyjęciu przez KSeF';

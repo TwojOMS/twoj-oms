@@ -9,9 +9,9 @@ Kod się zmienia, więc zamiast „gdzie co leży” poniżej są **sposoby znal
 |---|---|---|
 | napis na ekranie (przycisk, nagłówek, komunikat) | `rg -n "dokładny napis" src` | plik `.ejs` albo `.js` z komunikatem |
 | adres w przeglądarce (`/zamowienia/12/zwrot`) | `rg -n "'/zamowienia/:id/zwrot'" src` | rejestracja trasy: `app.get` / `app.post` w `trasy*` modułu |
-| pozycja w menu | `rg -n "etykieta: 'Nazwa'" src/moduly` | tablica `menu` w `modul.ts` (adres, uprawnienie, kolejność) |
+| pozycja w menu | `rg -n "etykieta: ?'Nazwa'" src/moduly` | tablica `menu` w `modul.ts` (adres, uprawnienie, kolejność) |
 | pytanie „kto może to zobaczyć” | `rg -n "uprawnienie\|uprawnienia" src/moduly/<moduł>/modul.ts` | klucz uprawnienia i domyślne role |
-| styl elementu | `rg -n "\.nazwa-klasy" src/public` | CSS w `app.css` albo `oms-design.css` |
+| styl elementu | `rg -n "\.nazwa-klasy" src/public` | CSS w `src/public/*.css`, najczęściej `oms-design.css` albo `oms-uklad.css` |
 
 ## Od zmiennej środowiskowej do kodu i dokumentacji
 
@@ -33,16 +33,16 @@ zgłasza zmienne czytane w kodzie, których tam brakuje.
 
 ## Od integracji do kodu
 
-- Klienci HTTP: `src/oms/<integracja>/` (`allegro`, `woo`, `infakt`, `ksef`, `kurierzy`, `gus`, `meta`, `ga4`, `apilo`).
+- Klienci HTTP: `src/oms/<integracja>/` (pełna lista: `ls src/oms`).
 - Rejestr integracji i nazw kluczy: `src/integracje/klucze.js`; fabryki klientów (miejsce na atrapy): `src/integracje/fabryki.ts`.
 - Atrapy używane w próbie i demo: `deploy/proba/atrapy/`.
-- Integracje wpisywane w panelu (Ustawienia → Integracje: DPD, InPost, inFakt, poczta, adres firmy):
+- Integracje wpisywane w panelu (Ustawienia → Integracje: m.in. DPD, InPost, inFakt, Fakturownia, poczta; dane firmy: Ustawienia → Firma):
   `rg -n "konfiguracja_integracji|wczytajKonfiguracjeIntegracji" src` — zapis w bazie i trasy ekranów (`ustawienia-*.js`
-  w `trasy/` modułu); reguła „plik konfiguracji wygrywa” jest przy budowie klienta (zwykle `modul.ts`, dla poczty `uslugi.ts` modułu).
+  w `trasy/` modułów `wysylka`, `faktury`, `koszty`; poczta w `ustawienia/trasy/poczta.js`); reguła „plik konfiguracji wygrywa” jest przy budowie klienta (zwykle `modul.ts`, dla poczty `uslugi.ts` modułu).
 
 ## Od kodu do testu
 
-Testy leżą lustrzanie: `src/moduly/zwroty/...` → `tests/moduly/zwroty/`, `src/domena/vat.js` → `tests/domena/vat*.test.js`.
+Testy leżą zwykle lustrzanie (wyjątki znajdzie `rg -l nazwaFunkcji tests`): `src/moduly/zwroty/...` → `tests/moduly/zwroty/`, `src/domena/vat.js` → `tests/domena/vat*.test.js`.
 
 ```bash
 rg -l "nazwaFunkcji" tests         # testy używające funkcji

@@ -64,7 +64,7 @@ export const POLA = Object.freeze([
   { nazwa: 'numer_zamowienia', opis: 'Numer zamówienia.', w: WSZYSTKIE },
   { nazwa: 'data_zamowienia', opis: 'Dzień złożenia zamówienia (RRRR-MM-DD).', w: WSZYSTKIE },
   { nazwa: 'imie', opis: 'Imię kupującego z adresu dostawy. Gdy go nie ma, pole znika razem z odstępem przed przecinkiem: „Dzień dobry {imie}," daje „Dzień dobry,"; w „Dzień dobry, {imie}!" znika też wykrzyknik („Dzień dobry,").',
-    opisy: { konto: 'Imię pracownika z jego konta (Ustawienia → Użytkownicy).' }, w: [...WSZYSTKIE, 'konto'] },
+    opisy: { konto: 'Imię pracownika z jego konta (Ustawienia → Zespół i dostęp → Użytkownicy).' }, w: [...WSZYSTKIE, 'konto'] },
   // PRZ-101.06: pola maili do zespołu. Link idzie tylko do pracownika — nigdy do logu ani na ekran podglądu.
   { nazwa: 'link', wymagane: ['konto'], powodWymogu: 'bez linku pracownik nie ustawi hasła i nie wejdzie do panelu',
     opis: 'Jednorazowy link do ustawienia hasła. Obowiązkowe — bez niego pracownik nie wejdzie do panelu.', w: ['konto'] },
@@ -76,7 +76,7 @@ export const POLA = Object.freeze([
   { nazwa: 'do_zaplaty', opis: 'Kwota do zapłaty brutto — po wpłatach częściowych sama reszta, ta sama co w sekcji DO ZAPŁATY. Puste, gdy nie ma czego przelewać (pobranie, opłacone, brak rachunku).', w: PLATNICZE },
   { nazwa: 'metoda_wysylki', opis: 'Sposób dostawy, np. „Kurier DPD".', w: WSZYSTKIE },
   { nazwa: 'numer_przesylki', opis: 'Numer listu przewozowego (kilka paczek — po przecinku; puste przed nadaniem).', w: WSZYSTKIE },
-  { nazwa: 'nazwa_firmy', opis: 'Marka z podpisu maili (Ustawienia → Integracje → Poczta wychodząca → Podpis maili albo OMS_MAIL_MARKA w pliku konfiguracji; bez niej „Obsługa sklepu").', w: WSZYSTKIE },
+  { nazwa: 'nazwa_firmy', opis: 'Marka z podpisu maili (Ustawienia → Komunikacja → Podpis i stopka albo OMS_MAIL_MARKA w pliku konfiguracji; bez niej „Obsługa sklepu").', w: WSZYSTKIE },
   { nazwa: 'numer_dokumentu', opis: 'Numer proformy albo faktury, której dotyczy mail.', w: PLATNICZE },
   { nazwa: 'zamkniecie', wymagane: PLATNICZE, powodWymogu: 'przy pobraniu to zdanie mówi, że należność pobierze kurier — bez niego klient może zapłacić dwa razy',
     opis: 'Zdanie zamykające liczone ze stanu płatności — przy pobraniu mówi, że płaci się kurierowi, przy opłaconym dziękuje. Obowiązkowe w mailach o płatności. Treść zdań zmienisz niżej w sekcji Zdania o płatności.', w: PLATNICZE },

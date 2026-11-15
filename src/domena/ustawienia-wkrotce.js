@@ -18,7 +18,7 @@ export const STRONY_WKROTCE = Object.freeze([
       'Skopiuj config-faktury.przyklad.json jako config-faktury.json i wpisz adres Twojego panelu, login i hasło konta serwisowego (opis w paczce) oraz nazwę drukarki dokładnie tak, jak pokazuje ją Windows.',
       'W konfiguracji wskaż program do otwierania PDF i sprawdź jego ustawienia.',
       'Uruchom próbny wydruk dowolnego pliku PDF według opisu w paczce instalacyjnej.',
-      'Uruchom czuwacz faktur i sprawdź na tej stronie, czy panel widzi komputer. Pełny opis znajdziesz w paczce instalacyjnej, w katalogu deploy/drukarka.',
+      'Uruchom skrypt czuwacz-faktur.ps1 i sprawdź na tej stronie, czy panel widzi komputer. Pełny opis znajdziesz w paczce instalacyjnej, w katalogu deploy/drukarka.',
     ],
   },
   {

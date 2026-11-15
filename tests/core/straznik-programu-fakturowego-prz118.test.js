@@ -131,7 +131,7 @@ const ZALEGLOSCI = {
   'domena/lacznosc.js': 7,
   'domena/lista-ikony.js': 2,
   'domena/masowe.js': 1,
-  'domena/ostrzezenia.js': 5,
+  'domena/ostrzezenia.js': 4,
   'domena/paczka-dla-biura.js': 2,
   'domena/powiadomienia.js': 1,
   'domena/pozycje-faktury.js': 1,
@@ -157,7 +157,8 @@ const ZALEGLOSCI = {
   'moduly/faktury/trasy/dokumenty.js': 11,
   'moduly/faktury/trasy/druk.js': 3,
   'moduly/faktury/trasy/faktury.js': 25,
-  'moduly/faktury/trasy/okresy.js': 9,
+  // PRZ-168.01b: 9 → 10 — klucz `zProgramu({ infakt: … })` dla flagi wysyłki do KSeF (owinięcie jak druk.js), nie napis.
+  'moduly/faktury/trasy/okresy.js': 10,
   'moduly/faktury/widoki/faktury.ejs': 1,
   'moduly/faktury/widoki/ksef-podglad.ejs': 1,
   'moduly/faktury/widoki/okres.ejs': 4,

@@ -998,7 +998,7 @@
           <% if (k.plakietka) { %><span class="plakietka plakietka--<%= k.plakietka.klucz %> paczka-przewoznik"><%= k.plakietka.napis %></span><% } %>
           <span class="<%= k.status.klasa %> paczka-status"><%= k.status.tekst %></span>
           <% if (poz.ukryta) { %>
-            <span class="znacznik" title="Ukryta z listy przesyłek — czuwacz dalej ją śledzi i wróci, gdy kurier ją zeskanuje.">ukryta</span>
+            <span class="znacznik" title="Ukryta z listy przesyłek — OMS dalej śledzi jej status i pokaże ją znowu, gdy kurier ją zeskanuje.">ukryta</span>
           <% } %>
           <span class="paczka-akcje">
             <% if (p.etykieta_sciezka) { %>
@@ -1749,14 +1749,12 @@
           dopiąć paragon. Panel niczego nie fiskalizuje.
         </p>
       <% } %>
-      <%# Anulowanie PO wystawieniu faktury. Panel niczego do KSeF nie wysyla — robi to %>
-      <%# wlasciciel, wieczorem, zbiorczo — wiec dopoki dokument tam nie pojedzie, wystarczy %>
-      <%# skasowac go w inFakcie. Po wysylce zostaje juz tylko korekta, a panel nie ma jak %>
-      <%# wiedziec, czy zdazyla. %>
+      <%# Anulowanie PO wystawieniu faktury. Wystawienie nie wysyła do KSeF; dopóki dokument tam nie %>
+      <%# pojedzie, wystarczy skasować go w programie. Po wysyłce zostaje tylko korekta. %>
       <% if (z.anulowane && z.faktura) { %>
         <p class="pasek-blokada">
           UWAGA: zamówienie anulowane, a faktura<%= z.faktura.numer ? ` ${z.faktura.numer}` : '' %> jest w <%= nazwaProgramu.miejscownik %> —
-          anulowanie w sklepie jej NIE kasuje. Jeśli jeszcze nie poszła wieczorem do KSeF, skasuj ją w <%= nazwaProgramu.miejscownik %>;
+          anulowanie w sklepie jej NIE kasuje. Jeśli jeszcze nie poszła do KSeF, skasuj ją w <%= nazwaProgramu.miejscownik %>;
           jeśli już poszła, wystaw KOREKTĘ.
         </p>
       <% } %>
@@ -1764,7 +1762,7 @@
         <p class="pasek-blokada">
           FAKTURA DO WYJAŚNIENIA: <%= z.faktura.blad_opis %>.
           Sprawdź RĘCZNIE <%= typeof gdzieProgramu !== 'undefined' ? gdzieProgramu : `w ${nazwaProgramu.miejscownik}` %>, czy dokument powstał — drugie kliknięcie to drugi dokument.
-          Jeśli tam jest i jeszcze nie poszedł wieczorem do KSeF, skasuj go w <%= nazwaProgramu.miejscownik %>; jeśli już poszedł, zostaje KOREKTA.
+          Jeśli tam jest i jeszcze nie poszedł do KSeF, skasuj go w <%= nazwaProgramu.miejscownik %>; jeśli już poszedł, zostaje KOREKTA.
         </p>
       <% } else if (stanFaktury === 'zawieszona') { %>
         <p class="pasek-blokada">
@@ -1993,7 +1991,7 @@
       </div>
       <% if (wystawienieFaktury && !wolnoWystawicFakture) { %>
         <%# „Ustawienia → Faktury” w powodzie (wystawienie-faktury.js) — odnośnik tylko dla konta z prawem do tego ekranu. %>
-        <% const miejsceUstawien = 'Ustawienia → Faktury'; %>
+        <% const miejsceUstawien = 'Ustawienia → Faktury i podatki → Zasady wystawiania'; %>
         <% const iUstawien = wystawienieFaktury.odnosnik ? -1 : wystawienieFaktury.powod.indexOf(`${miejsceUstawien} („`); %>
         <% if (iUstawien >= 0 && mozeAdres('/ustawienia/faktury/zasady')) { %>
           <p class="wyjasnienie" id="powod-wystawienia-faktury"><%= wystawienieFaktury.powod.slice(0, iUstawien) %><a href="/ustawienia/faktury/zasady"><%= miejsceUstawien %></a><%= wystawienieFaktury.powod.slice(iUstawien + miejsceUstawien.length) %></p>
@@ -2010,7 +2008,7 @@
       <p class="wyjasnienie">Zamówienie za pobraniem — proforma zwykle niepotrzebna.</p>
     <% } %>
     <% if (bezDrukarki) { %>
-      <p class="wyjasnienie">Drukowanie wyłączone — brak komputera z drukarką. <a href="/ustawienia/druk#faktury">Ustawienia → Druk i etykiety</a></p>
+      <p class="wyjasnienie">Drukowanie wyłączone — brak komputera z drukarką. <a href="/ustawienia/druk#faktury">Ustawienia → Wysyłka i druk → Etykiety i druk</a></p>
     <% } %>
   </div>
 </section>

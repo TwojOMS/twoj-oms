@@ -45,7 +45,7 @@ describe('POST /faktury/zestawienie-zaznaczonych (PRZ-122.B13d1)', () => {
       const r = await wyslij(app, 'uuid=u1&uuid=u3&miesiac=2026-08&pole=invoice_date');
       expect(r.statusCode).toBe(200);
       expect(r.headers['content-type']).toContain('application/pdf');
-      expect(r.headers['content-disposition']).toBe('attachment; filename="zestawienie-faktur-2026-08-zaznaczone.pdf"');
+      expect(r.headers['content-disposition']).toBe('inline; filename="zestawienie-faktur-2026-08-zaznaczone.pdf"');
       expect((await PDFDocument.load(r.rawPayload)).getTitle()).toBe('Zestawienie zaznaczonych faktur — 2026-08');
       expect(infakt.pobierzPdf.mock.calls.map(([u]) => u)).toEqual(['u1', 'u3']);
       expect(infakt.listaFaktur).toHaveBeenCalledWith({ od: '2026-08-01', do: '2026-08-31', pole: 'invoice_date' });

@@ -660,7 +660,7 @@ export function registerKartaMagazynu(app, { db, magazyn, kanalyAllegro, definic
     const karta = kartaPoId(db, req.params.id);
     if (!karta) return brakKarty(reply, req.params.id);
     if (!stanKarty(db, karta.id)) {
-      return ekranKarty(req, reply, { karta, kod: 409, bladRuchu: 'Stany magazynowe są wyłączone — włącz je w Ustawieniach → Magazyn.' });
+      return ekranKarty(req, reply, { karta, kod: 409, bladRuchu: 'Stany magazynowe są wyłączone — włącz je w Ustawieniach → Zamówienia i magazyn → Stany magazynowe.' });
     }
     const { ruch, blad } = ruchZFormularza(req.body);
     if (blad) return ekranKarty(req, reply, { karta, kod: 400, bladRuchu: blad });

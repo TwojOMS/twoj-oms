@@ -170,7 +170,7 @@ app.get('/zamowienia/:id/potwierdzenie-wywozu.pdf', async (req, reply) => {
     }
     const nazwaPliku = `potwierdzenie-wywozu-${bezpiecznaNazwa(z.numer ?? String(id))}.pdf`;
     return reply.type('application/pdf')
-      .header('Content-Disposition', `attachment; filename="${nazwaPliku}"`)
+      .header('Content-Disposition', `inline; filename="${nazwaPliku}"`)
       .send(bajty);
   });
 
@@ -235,7 +235,7 @@ app.get('/proformy/:id/pdf', async (req, reply) => {
     // na Windowsie, a ten PDF czesto jedzie prosto do drukarki.
     const nazwaPliku = `proforma-${bezpiecznaNazwa(wynik.numer ?? String(id))}.pdf`;
     return reply.type('application/pdf')
-      .header('Content-Disposition', `attachment; filename="${nazwaPliku}"`)
+      .header('Content-Disposition', `inline; filename="${nazwaPliku}"`)
       .send(wynik.bajty);
   });
 

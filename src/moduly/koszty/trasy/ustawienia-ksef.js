@@ -16,7 +16,7 @@ import { tytulEkranuDlaAdresu } from '../../../domena/ekrany.js';
 import { odmianaNazwyProgramu } from '../../../domena/nazwa-programu.js';
 
 const KOMUNIKATY = {
-  zapisano: 'Zapisano token KSeF. Czuwacz kosztów pobierze nim faktury zakupowe przy następnym przebiegu (o 3 w nocy albo „Odśwież teraz” na ekranie Koszty).',
+  zapisano: 'Zapisano token KSeF. OMS pobierze nim faktury zakupowe przy następnym przebiegu (o 3 w nocy albo „Odśwież teraz” na ekranie Koszty).',
   odlaczono: 'Token KSeF usunięty z OMS-u. Panel nie pobiera już faktur kosztowych; koszty zapisane wcześniej zostają.',
 };
 

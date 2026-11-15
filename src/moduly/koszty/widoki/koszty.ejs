@@ -56,7 +56,7 @@
         PDF powstaje z samej bazy, wiec panel bez sekcji KSEF_* tez go ma.
         Dwie czesci: faktury z KSeF i faktury dopisane recznie. Same listy, bez dolaczonych
         dokumentow (jak zestawienie przychodow na FAKTURACH). %>
-    <a class="btn btn--drugi" href="/koszty/zestawienie?miesiac=<%= miesiac %>" title="PDF z zestawieniem kosztów miesiąca wg daty otrzymania, w dwóch osobnych częściach: faktury kosztowe z KSeF i faktury dopisane ręcznie. Same listy, bez dołączonych dokumentów.">Pobierz zestawienie (PDF)</a>
+    <a class="btn btn--drugi" href="/koszty/zestawienie?miesiac=<%= miesiac %>" target="_blank" rel="noopener noreferrer" title="PDF z zestawieniem kosztów miesiąca wg daty otrzymania, w dwóch osobnych częściach: faktury kosztowe z KSeF i faktury dopisane ręcznie. Same listy, bez dołączonych dokumentów.">Pobierz zestawienie (PDF)</a>
   </div>
 </form>
 
@@ -199,7 +199,7 @@
                     (usługa odmawia tego wprost — services/wizualizacja-kosztu.js). %>
                 <% if (mozliwyPdf && w.zrodlo !== 'reczne') { %>
                   <div class="wiersz-szczegoly">
-                    <a href="/koszty/<%= encodeURIComponent(w.ksef_number) %>/pdf"
+                    <a href="/koszty/<%= encodeURIComponent(w.ksef_number) %>/pdf" target="_blank" rel="noopener noreferrer"
                        title="Wizualizacja dokumentu z KSeF — oryginałem jest plik XML">PDF</a>
                   </div>
                 <% } %>

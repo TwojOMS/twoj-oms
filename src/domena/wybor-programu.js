@@ -56,14 +56,14 @@ export function wyborZPliku(wartosc, { zgoda = false } = {}) {
   const nieDostepne = wkrotce(zgoda);
   const lista = `${dostepne(zgoda).join(' albo ')}${nieDostepne.length ? ` (${nieDostepne.join(', ')} — wkrótce)` : ''}`;
   if (modul(v)) {
-    throw new Error(`${ZMIENNA_PROGRAMU}: moduł faktur „${v}” będzie dostępny wkrótce, ta wersja OMS-u go nie ma — wpisz ${lista} lub usuń zmienną.`);
+    throw new Error(`${ZMIENNA_PROGRAMU}: program do faktur „${v}” będzie dostępny wkrótce, ta wersja OMS-u go nie ma — wpisz ${lista} lub usuń zmienną.`);
   }
-  throw new Error(`${ZMIENNA_PROGRAMU}: nieznany moduł faktur „${String(wartosc).trim()}” — wpisz ${lista} lub usuń zmienną.`);
+  throw new Error(`${ZMIENNA_PROGRAMU}: nieznany program do faktur „${String(wartosc).trim()}” — wpisz ${lista} lub usuń zmienną.`);
 }
 
 /** Uwaga dla zapisu, którego ta wersja nie obsługuje (ekran i Zdrowie). */
 export const uwagaZlegoZapisu = (wartosc) =>
-  `Zapisany moduł faktur „${String(wartosc ?? '').trim()}” nie działa w tej wersji OMS-u — faktury są wyłączone. Wybierz moduł ponownie.`;
+  `Zapisany program do faktur „${String(wartosc ?? '').trim()}” nie działa w tej wersji OMS-u — faktury są wyłączone. Wybierz program ponownie.`;
 
 /**
  * Reguła wyboru. `zPliku` — wynik `wyborZPliku` (już sprawdzony); `zUstawien` — surowa wartość z zapisu albo `null`,
@@ -89,7 +89,7 @@ export function sprawdzFormularzWyboru(body = {}, { zgoda = false } = {}) {
   const v = normalizuj(body?.program);
   if (modulDostepny(modul(v), { zgoda })) return { ustawienia: { program: v }, bledy: [] };
   if (modul(v)) return { ustawienia: { program: v }, bledy: [`Moduł „${etykietaModulu(v)}” będzie dostępny wkrótce — wybierz inny.`] };
-  return { ustawienia: { program: v }, bledy: ['Wybierz moduł faktur z listy.'] };
+  return { ustawienia: { program: v }, bledy: ['Wybierz program do faktur z listy.'] };
 }
 
 /** Czy faktury są wyłączone z wyboru człowieka (plik albo Ustawienia), a nie dlatego, że nic nie skonfigurowano. */
@@ -106,7 +106,7 @@ export function zdanieBrakuProgramu(wybor, dopisek = '') {
   const zdanie = wybor.uwaga ? wybor.uwaga
     : wybor.zrodlo === 'plik'
       ? `Faktury w OMS-ie są wyłączone — w pliku konfiguracji jest ${ZMIENNA_PROGRAMU}=brak.`
-      : 'Faktury w OMS-ie są wyłączone — w Ustawienia → Integracje → Moduł faktur wybrano „Brak”.';
+      : 'Faktury w OMS-ie są wyłączone — w Ustawienia → Faktury i podatki → Program do faktur wybrano „Brak”.';
   return dopisek ? `${zdanie} ${dopisek}` : zdanie;
 }
 
@@ -120,13 +120,13 @@ export function zdanieCzekaniaNaRestart(dziala, zapisany, { gotowy = true } = {}
   if (!dziala || !zapisany || dziala.program === zapisany.program) return null;
   if (zapisany.program === 'infakt' && !gotowy) {
     const nazwa = etykietaModulu('infakt');
-    return `Zapisany moduł faktur „${nazwa}” nie ma klucza API — wpisz go w Ustawienia → Integracje → ${nazwa} (${EKRAN_INFAKTU}); faktury ruszą po ponownym uruchomieniu OMS-u.`;
+    return `Zapisany program do faktur „${nazwa}” nie ma klucza API — wpisz go w Ustawienia → Integracje → ${nazwa} (${EKRAN_INFAKTU}); faktury ruszą po ponownym uruchomieniu OMS-u.`;
   }
   if (zapisany.program === 'fakturownia' && !gotowy) {
     const nazwa = etykietaModulu('fakturownia');
-    return `Zapisany moduł faktur „${nazwa}” nie ma domeny konta i tokenu API — wpisz je w Ustawienia → Integracje → ${nazwa} (${EKRAN_FAKTUROWNI}); faktury ruszą po ponownym uruchomieniu OMS-u.`;
+    return `Zapisany program do faktur „${nazwa}” nie ma domeny konta i tokenu API — wpisz je w Ustawienia → Integracje → ${nazwa} (${EKRAN_FAKTUROWNI}); faktury ruszą po ponownym uruchomieniu OMS-u.`;
   }
   const automat = zapisany.program === 'brak' ? ' Automatyczna wysyłka do KSeF już stoi.' : '';
   const doTegoCzasu = dziala.program === 'brak' ? 'faktury są wyłączone' : `działa „${etykietaModulu(dziala.program)}”`;
-  return `Zapisany moduł faktur „${etykietaModulu(zapisany.program)}” zadziała po ponownym uruchomieniu OMS-u — do tego czasu ${doTegoCzasu}.${automat}`;
+  return `Zapisany program do faktur „${etykietaModulu(zapisany.program)}” zadziała po ponownym uruchomieniu OMS-u — do tego czasu ${doTegoCzasu}.${automat}`;
 }

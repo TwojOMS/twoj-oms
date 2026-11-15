@@ -8,7 +8,7 @@ import { registerStanyKanalow } from './stany-kanalow.js';
 const WYLACZONE = {
   title: 'Magazyn — stany wyłączone',
   naglowek: 'Stany magazynowe są wyłączone',
-  opis: 'Włącz je w Ustawieniach → Magazyn. Do tego czasu OMS nie liczy ilości na stanie.',
+  opis: 'Włącz je w Ustawieniach → Zamówienia i magazyn → Stany magazynowe. Do tego czasu OMS nie liczy ilości na stanie.',
 };
 
 const tekstImportu = (body) => (typeof body?.tekst === 'string' ? body.tekst.slice(0, 200_000) : '');

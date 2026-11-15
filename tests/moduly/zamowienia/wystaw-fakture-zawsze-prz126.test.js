@@ -16,9 +16,9 @@ const powody = {
   program: 'inFakt nie jest skonfigurowany — administrator może skonfigurować program w <a href="/ustawienia/integracje/infakt">Ustawienia → Integracje → inFakt</a>.',
   rola: 'Twoje konto nie ma prawa wystawiać faktur — poproś administratora o dostęp do wystawiania faktur.',
   // PRZ-152.G10e: „Ustawienia → Faktury” jest odnośnikiem dla konta z prawem do ekranu ustawień (tekst bez zmian).
-  prosba: 'Klient nie prosił o fakturę. Administrator może to włączyć w <a href="/ustawienia/faktury/zasady">Ustawienia → Faktury</a> („faktura także bez prośby klienta”).',
+  prosba: 'Klient nie prosił o fakturę. Administrator może to włączyć w <a href="/ustawienia/faktury/zasady">Ustawienia → Faktury i podatki → Zasady wystawiania</a> („faktura także bez prośby klienta”).',
 };
-const PROSBA_BEZ_LINKU = 'Klient nie prosił o fakturę. Administrator może to włączyć w Ustawienia → Faktury („faktura także bez prośby klienta”).';
+const PROSBA_BEZ_LINKU = 'Klient nie prosił o fakturę. Administrator może to włączyć w Ustawienia → Faktury i podatki → Zasady wystawiania („faktura także bez prośby klienta”).';
 async function panel(o = {}) {
   const db = openOmsDb(':memory:');
   if (o.rola) zalozKonto(db, { login: 'pakowacz-test', imie: 'Pakowacz', haslo: 'fixture', rola: 'produkcja', ekrany: ['zamowienia'] });

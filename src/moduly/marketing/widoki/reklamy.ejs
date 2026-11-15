@@ -42,7 +42,7 @@
       <section class="reklamy-panel reklamy-brak"><h2>Podłącz wybrane źródła</h2>
         <p>GA4: <strong><%= polaczenia.ga4.length ? (polaczenia.ga4[0].etykietaStanu || etykieta(polaczenia.ga4[0].stan)) : 'Niepodłączone' %></strong> · Google Ads API: <strong><%= polaczenia.google_ads.length ? (polaczenia.google_ads[0].etykietaStanu || etykieta(polaczenia.google_ads[0].stan)) : 'Niepodłączone' %></strong> · Meta: <strong><%= polaczenia.meta.length ? (polaczenia.meta[0].etykietaStanu || etykieta(polaczenia.meta[0].stan)) : 'Niepodłączone' %></strong></p>
         <p>Każde połączenie działa osobno. Brak konta reklamowego nie zatrzymuje OMS ani zakładki Kampanie.</p>
-        <a href="/ustawienia/integracje/reklamy">Otwórz Integracje → Reklamy</a>
+        <a href="/ustawienia/integracje/reklamy">Otwórz połączenia reklamowe (Meta Ads, Google Analytics 4, Google Ads)</a>
       </section>
     <% } %>
     <section class="reklamy-panel"><h2>Dzień po dniu</h2>

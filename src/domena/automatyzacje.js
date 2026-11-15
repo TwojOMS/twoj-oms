@@ -148,7 +148,7 @@ function parametrZdarzenia(formularz, wpis, bledy) {
   const status = tekst(formularz.zdarzenie_status);
   if (!status) bledy.push('Wybierz status, na który ma się zmienić zamówienie.');
   else if (!wpis.opcje.includes(status)) {
-    bledy.push('Tego statusu nie da się (jeszcze) rozpoznać jako zdarzenia albo nie ma go już w Ustawieniach → Statusy zamówień — wybierz inny.');
+    bledy.push('Tego statusu nie da się (jeszcze) rozpoznać jako zdarzenia albo nie ma go już w Ustawieniach → Zamówienia i magazyn → Statusy zamówień — wybierz inny.');
   }
   return { status };
 }
@@ -166,7 +166,7 @@ function warunkiZFormularza(formularz, { statusy, szablon, bledy }) {
   if (tryb !== 'dowolny') {
     wybraneStatusy = [...new Set(lista(formularz.statusy).filter(Boolean))];
     if (tryb === 'jeden_z' && !wybraneStatusy.length) bledy.push('Zaznacz co najmniej jeden status albo wybierz „dowolny”.');
-    for (const s of wybraneStatusy) if (!statusy.includes(s)) bledy.push(`Statusu „${s}” nie ma w Ustawieniach → Statusy zamówień.`);
+    for (const s of wybraneStatusy) if (!statusy.includes(s)) bledy.push(`Statusu „${s}” nie ma w Ustawieniach → Zamówienia i magazyn → Statusy zamówień.`);
   }
 
   const pole = formularz.ma_numer_listu;

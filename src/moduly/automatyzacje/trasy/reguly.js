@@ -101,7 +101,7 @@ function klopotyReguly(db, r, k, zdarzenia) {
   if (blad) klopoty.push({ krotko: 'status nie istnieje', zdanie: blad });
   const szablon = r.akcja_param?.szablon;
   if (szablon && !nazwaSzablonu(szablon, k.wlasne)) {
-    klopoty.push({ krotko: 'szablon usunięty', zdanie: 'Szablonu maila tej reguły już nie ma (usunięty w Ustawienia → Szablony wiadomości) — wybierz inny w edycji reguły.' });
+    klopoty.push({ krotko: 'szablon usunięty', zdanie: 'Szablonu maila tej reguły już nie ma (usunięty w Ustawienia → Komunikacja → Szablony wiadomości) — wybierz inny w edycji reguły.' });
   }
   return klopoty;
 }

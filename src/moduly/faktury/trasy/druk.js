@@ -72,7 +72,7 @@ app.get('/zamowienia/:id/faktura/pdf', { exposeHeadRoute: false }, async (req, r
     // a to na Windows ten plik jedzie prosto do drukarki.
     const nazwaPliku = `faktura-${bezpiecznaNazwa(wynik.numer ?? String(id))}.pdf`;
     return reply.type('application/pdf')
-      .header('Content-Disposition', `attachment; filename="${nazwaPliku}"`)
+      .header('Content-Disposition', `inline; filename="${nazwaPliku}"`)
       .send(wynik.bajty);
   });
 

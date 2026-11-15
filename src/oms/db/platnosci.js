@@ -98,7 +98,7 @@ export function usunWplateReczna(db, zamowienieId, platnoscId) {
   if (!w) throw bladOperatora('Nie ma takiej wpłaty przy tym zamówieniu.');
   if (w.zrodlo !== 'reczna') {
     throw bladOperatora(
-      'Wpłaty ze sklepu nie da się usunąć z panelu — należy do sklepu i poller dopisałby ją'
+      'Wpłaty ze sklepu nie da się usunąć z panelu — należy do sklepu i OMS dopisałby ją'
       + ' z powrotem przy najbliższej synchronizacji. Jeśli ta wpłata jest błędna, popraw ją w sklepie.',
     );
   }

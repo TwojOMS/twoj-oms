@@ -61,7 +61,7 @@ const BEZ_INFAKTU = {
 // PRZ-121.03a: przy JAWNYM „brak” zakładka mówi, że faktury są wyłączone (i gdzie obejrzeć stare), a nie prosi o klucz.
 const bezProgramu = (wybor, strona) => {
   const zdanie = zdanieBrakuProgramu(wybor, 'Wcześniejsze faktury obejrzysz w programie, w którym je wystawiono.');
-  return zdanie ? { ...strona, opis: zdanie, odnosnik: { href: EKRAN_WYBORU_PROGRAMU, etykieta: 'Ustawienia → Integracje → Moduł faktur' } } : strona;
+  return zdanie ? { ...strona, opis: zdanie, odnosnik: { href: EKRAN_WYBORU_PROGRAMU, etykieta: 'Ustawienia → Faktury i podatki → Program do faktur' } } : strona;
 };
 const DOPISEK_PDF = 'PDF wcześniejszej faktury pobierzesz w programie, w którym ją wystawiono.';
 
@@ -333,7 +333,7 @@ export function registerFakturyRoutes(app, {
     try {
       const wynik = await paczkaDlaBiura.zbudujZestawieniePrzychodow(miesiac);
       return reply.type('application/pdf')
-        .header('Content-Disposition', `attachment; filename="${wynik.nazwa}"`)
+        .header('Content-Disposition', `inline; filename="${wynik.nazwa}"`)
         .send(wynik.bajty);
     } catch (e) {
       if (!e?.dlaOperatora) throw e;
@@ -396,7 +396,7 @@ export function registerFakturyRoutes(app, {
     // PRZ-102.22: wyłączony moduł Koszty (Ustawienia → Moduły) — część kosztowa odmawia ZANIM cokolwiek sięgnie do KSeF;
     // część sprzedażowa (inFakt) działa bez zmian.
     if (czesc === 'koszty' && db && wylaczoneModuly(db).includes('koszty')) {
-      return stronaOdmowy(reply, 409, 'Moduł Koszty jest wyłączony — zestawienie faktur kosztowych niedostępne. Włączysz go w Ustawienia → Moduły; zestawienie faktur sprzedaży działa bez zmian.', { tytul: 'Nie złożono zestawienia faktur', wroc: '/faktury', napisWroc: 'Wróć do faktur' });
+      return stronaOdmowy(reply, 409, 'Moduł Koszty jest wyłączony — zestawienie faktur kosztowych niedostępne. Włączysz go w Ustawienia → System → Włączone funkcje; zestawienie faktur sprzedaży działa bez zmian.', { tytul: 'Nie złożono zestawienia faktur', wroc: '/faktury', napisWroc: 'Wróć do faktur' });
     }
     let wynik;
     // ⚠️ ZATRZASK PODNOSI SIE W `finally` — blokada zostawiona po bledzie wyciszylaby przycisk
@@ -414,7 +414,7 @@ export function registerFakturyRoutes(app, {
       paczkaTrwa = false;
     }
     return reply.type('application/pdf')
-      .header('Content-Disposition', `attachment; filename="${wynik.nazwa}"`)
+      .header('Content-Disposition', `inline; filename="${wynik.nazwa}"`)
       .send(wynik.bajty);
   });
 
@@ -489,7 +489,7 @@ export function registerFakturyRoutes(app, {
       paczkaTrwa = false;
     }
     return reply.type('application/pdf')
-      .header('Content-Disposition', `attachment; filename="${wynik.nazwa}"`)
+      .header('Content-Disposition', `inline; filename="${wynik.nazwa}"`)
       .send(wynik.bajty);
   });
 
@@ -517,7 +517,7 @@ export function registerFakturyRoutes(app, {
     }
     const nazwa = `${korekta ? 'korekta' : 'faktura'}-${bezpiecznaNazwa(req.query.numer || uuid)}.pdf`;
     return reply.type('application/pdf')
-      .header('Content-Disposition', `attachment; filename="${nazwa}"`)
+      .header('Content-Disposition', `inline; filename="${nazwa}"`)
       .send(bajty);
   });
 

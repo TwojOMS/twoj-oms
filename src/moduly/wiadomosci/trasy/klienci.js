@@ -225,7 +225,7 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
     if (dane.rozliczenie_zbiorcze === 1 && wylaczoneModuly(db).includes('okresy')) {
       return renderuj(reply.code(409), {
         formularz: req.body ?? {}, edytowany, otwarty: true,
-        blad: 'Włącz Rozliczenia w Ustawieniach → Moduły przed zapisaniem umowy zbiorczej.',
+        blad: 'Włącz Rozliczenia w Ustawieniach → System → Włączone funkcje przed zapisaniem umowy zbiorczej.',
       });
     }
     // Klucz do dziennika bierzemy Z BAZY: `dane.klucz` jest wyliczony z nazwy, a baza dokłada „-2”,

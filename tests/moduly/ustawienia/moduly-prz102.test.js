@@ -132,7 +132,7 @@ describe('PRZ-102.02 wyłączanie modułów', () => {
       prog_darmowej_dostawy: '100', oplata_obslugi: '10', oplata_kurierska: '20',
     });
     expect(r.statusCode).toBe(409);
-    expect(r.body).toContain('Włącz Rozliczenia w Ustawieniach → Moduły');
+    expect(r.body).toContain('Włącz Rozliczenia w Ustawieniach → System → Włączone funkcje');
     expect(p.db.prepare('SELECT COUNT(*) AS n FROM klienci').get().n).toBe(0);
   });
   it.each([null, '', '{zepsute', '{}', '["zamowienia"]', '["klienci",5]'])('pusty/uszkodzony zapis %s niczego nie wyłącza', async wartosc => {

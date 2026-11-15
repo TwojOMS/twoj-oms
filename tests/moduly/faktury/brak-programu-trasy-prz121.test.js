@@ -24,7 +24,7 @@ import { dopiszKlientaZbiorczego } from './_klient-zbiorczy-pomocniki.js';
 
 const KLUCZ = 'zmyslony-klucz-trasy-prz121-00000000001';
 const ZDANIE_PLIKU = 'Faktury w OMS-ie są wyłączone — w pliku konfiguracji jest OMS_PROGRAM_FAKTUROWY=brak.';
-const ZDANIE_USTAWIEN = 'Faktury w OMS-ie są wyłączone — w Ustawienia → Integracje → Moduł faktur wybrano „Brak”.';
+const ZDANIE_USTAWIEN = 'Faktury w OMS-ie są wyłączone — w Ustawienia → Faktury i podatki → Program do faktur wybrano „Brak”.';
 const G = 'Klucz API inFaktu wpiszesz w Ustawienia → Integracje → inFakt (/ustawienia/integracje/infakt).';
 const DOPISEK_PDF = 'PDF wcześniejszej faktury pobierzesz w programie, w którym ją wystawiono.';
 const DOPISEK_AUTOMATU = 'Automatyczna wysyłka do KSeF nic nie wyśle.';
@@ -159,6 +159,7 @@ describe.each([
     expect(html).not.toContain(t.stary);
     if (t.odnosnikBrak) {
       expect(html).toContain(`href="${t.odnosnikBrak}"`);
+      expect(html).toContain('Ustawienia → Faktury i podatki → Program do faktur');
       expect(html).not.toContain(`href="${t.odnosnikStary}"`);
     }
     expect(c.fetchPuste).not.toHaveBeenCalled();

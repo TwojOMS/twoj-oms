@@ -29,7 +29,7 @@ describe('PRZ-122 B2C-QR — (d) ostrzeżenie na ekranie automatu KSeF', () => {
     expect(html).toContain(ZDANIE);
     expect(html.split(ZDANIE)).toHaveLength(2);
     // PRZ-126.J01: przy TwojeFaktury przełącznik stoi na ekranie Wysyłka do KSeF, nie na ekranie inFaktu.
-    expect(html).toContain('Ustawienia → Integracje → Moduł faktur → Wysyłka do KSeF, sekcja „Faktury konsumenckie w KSeF”');
+    expect(html).toContain('Ustawienia → Faktury i podatki → KSeF, sekcja „Faktury konsumenckie w KSeF”');
     expect(html).not.toContain('Sklepy i usługi');
   });
 

@@ -27,7 +27,7 @@ Jeśli dostawca podaje oba porty, wybierz 465.
 ## 2. Wpisz dane w OMS-ie
 
 1. Zaloguj się kontem z dostępem do **Ustawień** (administrator).
-2. Wejdź w **Ustawienia → Integracje → Poczta → Poczta wychodząca (SMTP)**.
+2. Wejdź w **Ustawienia → Integracje → Poczta wychodząca**.
 3. Wypełnij **Serwer poczty**: serwer, port, login i hasło. Pole **Nadawca** jest opcjonalne — wpisz je,
    jeśli maile mają mieć nazwę firmy, np. `Twoja Firma <sklep@twoja-firma.pl>`. Puste = maile idą
    z adresu z loginu.
@@ -78,7 +78,7 @@ i wpisz dane w formularzu.
 
 ## Usunięcie
 
-**Ustawienia → Integracje → Poczta wychodząca → Usuń ustawienia poczty** usuwa z OMS-u serwer, login
+**Ustawienia → Integracje → Poczta wychodząca → Usunięcie** usuwa z OMS-u serwer, login
 i hasło. Wysłane maile i historia wiadomości na zamówieniach zostają.
 
 ## W środowisku demo

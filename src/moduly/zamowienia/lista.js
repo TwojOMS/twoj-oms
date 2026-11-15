@@ -487,7 +487,7 @@ app.get('/zamowienia/:id/specyfikacja.pdf', async (req, reply) => {
     }
     const nazwaPliku = `specyfikacja-${bezpiecznaNazwa(z.numer ?? String(id))}.pdf`;
     return reply.type('application/pdf')
-      .header('Content-Disposition', `attachment; filename="${nazwaPliku}"`)
+      .header('Content-Disposition', `inline; filename="${nazwaPliku}"`)
       .send(bajty);
   });
 // Wydruki wewnetrzne z menu „Wydruki" (PRZ-084): „Lista produktów" (same produkty z iloscia,
@@ -495,8 +495,10 @@ app.get('/zamowienia/:id/specyfikacja.pdf', async (req, reply) => {
 // (jak „order-shipping" z Apilo — domain/zestawienie-zamowien.js). Do PRZ-084 lista byla
 // strona HTML; właściciel 15.10: „lista powinna otwierać się jako PDF do druku".
 //
-// ⚠️ `inline`, nie `attachment` jak specyfikacja: menu otwiera je w nowej karcie, a kartka
-// ma od razu stac w podgladzie przegladarki z przyciskiem druku — nie w Pobranych.
+// ⚠️ `inline`, nie `attachment`: menu otwiera je w nowej karcie, a kartka ma od razu stac
+// w podgladzie przegladarki z przyciskiem druku — nie w Pobranych. Od PRZ-162 tak samo
+// specyfikacja i wszystkie PDF-y dla czlowieka: pobranie po `http://` z LAN Chrome blokuje
+// ostrzezeniem „niebezpieczny plik” (tests/moduly/zamowienia/pdf-w-przegladarce-prz162.test.js).
 // Ekran w straznik trafia przez prefiks `/zamowienia` (domain/ekrany.js), tak samo jak
 // specyfikacja — to kartki do pakowania.
 const wydrukowano = () => fmtDataCzasKrotko(new Date().toISOString());
@@ -588,7 +590,7 @@ app.post('/zamowienia/specyfikacje.pdf', async (req, reply) => {
       ? `specyfikacja-${bezpiecznaNazwa(wybrane[0].numer ?? '')}.pdf`
       : `specyfikacje-${wybrane.length}-zamowien.pdf`;
     return reply.type('application/pdf')
-      .header('Content-Disposition', `attachment; filename="${nazwaPliku}"`)
+      .header('Content-Disposition', `inline; filename="${nazwaPliku}"`)
       .send(bajty);
   });
 }

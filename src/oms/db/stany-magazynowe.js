@@ -208,7 +208,7 @@ export function zuzycieProduktuOdGranicy(db, produktId, przelacznik = przelaczni
  */
 export function dodajRuch(db, { kartaId, rodzaj, ilosc, powod = null, klucz, konto = null, at = teraz() }) {
   if (!RODZAJE_RUCHU.includes(rodzaj)) throw new Error(`dodajRuch: nieznany rodzaj „${rodzaj}”`);
-  if (!przelacznikStanow(db).wlaczone) throw new Error('Stany magazynowe są wyłączone — włącz je w Ustawieniach → Magazyn.');
+  if (!przelacznikStanow(db).wlaczone) throw new Error('Stany magazynowe są wyłączone — włącz je w Ustawieniach → Zamówienia i magazyn → Stany magazynowe.');
   if (!db.prepare('SELECT 1 FROM karty_produktow WHERE id = ?').get(kartaId)) throw new Error(`Nie ma karty produktu ${kartaId}.`);
   const r = db.prepare(`INSERT INTO ruchy_magazynowe (karta_id, ilosc, rodzaj, powod, konto_id, konto_login, utworzono_at, klucz)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (klucz) DO NOTHING`)
@@ -219,7 +219,7 @@ export function dodajRuch(db, { kartaId, rodzaj, ilosc, powod = null, klucz, kon
 /** Podgląd importu stanu otwarcia (bez zapisu). */
 export function podgladImportuOtwarcia(db, tekst) {
   const { wlaczone, granica } = przelacznikStanow(db);
-  if (!wlaczone) throw new Error('Stany magazynowe są wyłączone — włącz je w Ustawieniach → Magazyn.');
+  if (!wlaczone) throw new Error('Stany magazynowe są wyłączone — włącz je w Ustawieniach → Zamówienia i magazyn → Stany magazynowe.');
   const poSku = db.prepare("SELECT id, nazwa FROM karty_produktow WHERE UPPER(TRIM(sku)) = UPPER(TRIM(?)) AND TRIM(COALESCE(sku, '')) <> ''");
   const maOtwarcie = new Set(db.prepare(`SELECT DISTINCT karta_id FROM ruchy_magazynowe
     WHERE rodzaj = 'otwarcie' AND julianday(utworzono_at) >= julianday(?)`).all(granica).map((w) => Number(w.karta_id)));

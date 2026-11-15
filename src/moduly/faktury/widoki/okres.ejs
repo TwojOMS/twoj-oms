@@ -185,7 +185,7 @@
       <p class="pasek-blokada">
         FAKTURA DO WYJAŚNIENIA: <%= wart(okres.blad_opis) %>.
         Sprawdź RĘCZNIE <%= typeof gdzieProgramu !== 'undefined' ? gdzieProgramu : `w ${nazwaProgramu.miejscownik}` %>, czy dokument za ten miesiąc powstał — drugie kliknięcie to drugi dokument.
-        Jeśli tam jest i nie poszedł jeszcze wieczorem do KSeF, skasuj go <%= typeof gdzieProgramu !== 'undefined' ? gdzieProgramu : `w ${nazwaProgramu.miejscownik}` %>; jeśli poszedł, zostaje KOREKTA.
+        Jeśli tam jest i nie poszedł jeszcze do KSeF, skasuj go <%= typeof gdzieProgramu !== 'undefined' ? gdzieProgramu : `w ${nazwaProgramu.miejscownik}` %>; jeśli poszedł, zostaje KOREKTA.
       </p>
     <% } else if (stanFaktury === 'zawieszona') { %>
       <p class="pasek-blokada">
@@ -198,8 +198,9 @@
       <p>
         <strong><%= okres.numer || 'faktura wystawiona (bez numeru w odpowiedzi)' %></strong> —
         jedna faktura za cały miesiąc, wystawiona w <%= nazwaProgramu.miejscownik %> z panelu<% if (wbudowany) { %>.
-        Wysyłkę faktur sprzedaży obsługuje TwojeFaktury — <a href="/ustawienia/integracje/program-fakturowy/ksef">Wysyłka do KSeF</a>.<% } else { %>, BEZ wysyłki do KSeF
-        (tym zajmuje się właściciel ręcznie, wieczorem).<% } %>
+        Wysyłkę faktur sprzedaży obsługuje TwojeFaktury — <a href="/ustawienia/integracje/program-fakturowy/ksef">Wysyłka do KSeF</a>.<% } else if (typeof wysylaZOms !== 'undefined' && wysylaZOms) { %>, bez wysyłki do KSeF
+        — wysyłasz ją osobno: przyciskiem na ekranie Faktury, automatem (administrator: Ustawienia → Automatyzacje → Automaty systemowe) albo w <%= nazwaProgramu.miejscownik %>.<% } else { %>, bez wysyłki do KSeF
+        — wyślij ją do KSeF bezpośrednio w <%= nazwaProgramu.miejscownik %>.<% } %>
         KSeF: <%= okres.ksef_status || 'jeszcze nie wysłana' %>
       </p>
     <% } else if (mozliwaFaktura && zamowienia.length > 0) { %>
@@ -214,7 +215,7 @@
             zdanie ma opisywac DOKUMENT, ktory powstanie, a nie ekran. %>
         Jedna faktura na <%= zamowienia.length %> zamówień, na kwotę <%= wart(rozliczenie.kwotaFakturyZl) %> zł.
         Wystawienie ZAMYKA okres — od tej chwili zamówienie z datą złożenia z tego miesiąca
-        nie dopisze się do niego samo. <% if (wbudowany) { %>Wysyłkę faktur sprzedaży obsługuje TwojeFaktury — <a href="/ustawienia/integracje/program-fakturowy/ksef">Wysyłka do KSeF</a>.<% } else { %>Panel nie wysyła dokumentu do KSeF.<% } %>
+        nie dopisze się do niego samo. <% if (wbudowany) { %>Wysyłkę faktur sprzedaży obsługuje TwojeFaktury — <a href="/ustawienia/integracje/program-fakturowy/ksef">Wysyłka do KSeF</a>.<% } else { %>Wystawienie nie wysyła dokumentu do KSeF.<% } %>
       </p>
     <% } else if (mozliwaFaktura) { %>
       <%# ⚠️ DOMKNIECIE 3 (recenzja Zadania 9, runda 2). Przycisk „Wystaw fakturę" na

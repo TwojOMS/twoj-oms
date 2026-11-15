@@ -90,7 +90,7 @@ export function idDokumentuDla(f, program) {
   if (id == null) return null;
   if (czyDokumentProgramu(f, program)) return id;
   const gdzie = wProgramie(programDokumentu(f));
-  throw bladOperatora(`Ta faktura jest w ${gdzie}, a moduł faktur OMS-u to teraz „${etykietaModulu(idProgramu(program))}” — otworzysz ją w ${gdzie}. Nic nie poszło do programu.`,
+  throw bladOperatora(`Ta faktura jest w ${gdzie}, a program do faktur OMS-u to teraz „${etykietaModulu(idProgramu(program))}” — otworzysz ją w ${gdzie}. Nic nie poszło do programu.`,
     { status: 409, bezProgramu: true });
 }
 

@@ -17,7 +17,7 @@ import { zapiszUstawieniaAutomatu } from '../../../src/moduly/faktury/db/ksef-au
 
 const KLUCZ = 'zmyslony-klucz-karty-prz121-0000000001';
 const ZDANIE_PLIKU = 'Faktury w OMS-ie są wyłączone — w pliku konfiguracji jest OMS_PROGRAM_FAKTUROWY=brak.';
-const ZDANIE_USTAWIEN = 'Faktury w OMS-ie są wyłączone — w Ustawienia → Integracje → Moduł faktur wybrano „Brak”.';
+const ZDANIE_USTAWIEN = 'Faktury w OMS-ie są wyłączone — w Ustawienia → Faktury i podatki → Program do faktur wybrano „Brak”.';
 const STARA_FAKTURA = 'inFakt nie jest skonfigurowany — faktury z panelu nie wystawisz. Klucz API wpiszesz w';
 const STARE_ALLEGRO = 'Kanał Allegro albo inFakt nie jest skonfigurowany — faktury stąd nie wyślesz. Klucz API inFaktu wpiszesz w';
 const STARA_KOREKTA = 'Wystawianie korekt nie jest skonfigurowane (brak inFaktu). Klucz API inFaktu wpiszesz w Ustawienia → Integracje → inFakt (/ustawienia/integracje/infakt).';
@@ -78,7 +78,7 @@ describe.each([
   it('karta bez faktury: zdanie zamiast „nie jest skonfigurowany”, bez linku do ekranu inFaktu', async () => {
     const c = await zbuduj();
     const html = await karta(c, c.bez);
-    const powod = ustawienie.plik ? zdanie : `${zdanie} Administrator może włączyć program w Ustawienia → Integracje → Moduł faktur.`;
+    const powod = ustawienie.plik ? zdanie : `${zdanie} Administrator może włączyć program w Ustawienia → Faktury i podatki → Program do faktur.`;
     expect(html).toContain(`<p class="wyjasnienie" id="powod-wystawienia-faktury">${powod}</p>`);
     if (ustawienie.plik) expect(html).not.toContain('Administrator może włączyć program');
     expect(html).not.toContain(STARA_FAKTURA);

@@ -334,7 +334,7 @@ return {
         : k.fakturownia ?? opcjeKlientaFakturowni(zapisFakturowni());
       try {
         if (brakTeraz()) throw bladOperatora(zdanieBrakuProgramu(regula(), 'Nic nie poszło do programu.')
-          ?? 'Wybór modułu faktur czeka na ponowne uruchomienie OMS-u. Nic nie poszło do programu.', { status: 400 });
+          ?? 'Wybór programu do faktur czeka na ponowne uruchomienie OMS-u. Nic nie poszło do programu.', { status: 400 });
         if (profilProby?.domena && opcje.domena !== profilProby.domena) throw bladOperatora(zdanieKontaProby(profilProby.domena), { status: 400 });
         const klient = fabryki.createFakturowniaClient
           ? fabryki.createFakturowniaClient({ db, teraz, token: opcje.token })
@@ -375,7 +375,7 @@ return {
             : zdanieBrakuProgramu(jawnyBrak(obecny) ? obecny : wybor, 'Nic nie poszło do programu.'), { status: 400 });
         }
         // PRZ-119.05: ekran inFaktu przy Fakturowni nie sprawdza Fakturowni (ani atrapy piaskownicy) pod nazwą inFaktu.
-        if (fakturowniaWybrana) throw bladOperatora('Moduł faktur to teraz Fakturownia — ten ekran nie sprawdza jej połączenia. Nic nie zostało wysłane.', { status: 400 });
+        if (fakturowniaWybrana) throw bladOperatora('Program do faktur to teraz Fakturownia — ten ekran nie sprawdza jej połączenia. Nic nie zostało wysłane.', { status: 400 });
         if (fabryki.createInfaktClient) return infakt.sprawdzPolaczenie();
         if (!infaktUstawien) throw bladOperatora('inFakt jest ustawiony w pliku konfiguracji — ten ekran go nie sprawdza.');
         return infaktUstawien.sprawdzPolaczenie();
@@ -397,7 +397,7 @@ return {
       sprawdzPolaczenie: sprawdzPolaczenieFakturowni,
       // PRZ-161: przy jawnym „Brak” token nie wychodzi z panelu — zapis bez sprawdzenia, ze zdaniem dlaczego.
       sprawdzenieZablokowane: () => brakTeraz() ? (zdanieBrakuProgramu(regula(), 'Połączenia nie sprawdzono.')
-        ?? 'Wybór modułu faktur czeka na ponowne uruchomienie OMS-u. Połączenia nie sprawdzono.') : null,
+        ?? 'Wybór programu do faktur czeka na ponowne uruchomienie OMS-u. Połączenia nie sprawdzono.') : null,
       // PRZ-119.11b: profil próby — ekran przyjmuje wyłącznie domenę z pliku profilu (inna = 400 przed zapisem).
       domenaProby: profilProby?.domena ?? null,
       zdanieKontaProby,

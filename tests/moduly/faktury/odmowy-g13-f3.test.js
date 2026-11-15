@@ -56,7 +56,7 @@ it('66: odmowa usługi przychodów', async () => {
 for (const [nr, query, tekst, koszty] of [
   [69, 'miesiac=' + encodeURIComponent('<zły>&') + '&czesc=sprzedaz', MIESIAC],
   [70, 'miesiac=2026-10&czesc=' + encodeURIComponent('<zły>&'), '„<zły>&" to nie jest część zestawienia faktur — panel składa dwa pliki: sprzedaz, koszty.'],
-  [71, 'miesiac=2026-10&czesc=koszty', 'Moduł Koszty jest wyłączony — zestawienie faktur kosztowych niedostępne. Włączysz go w Ustawienia → Moduły; zestawienie faktur sprzedaży działa bez zmian.', true],
+  [71, 'miesiac=2026-10&czesc=koszty', 'Moduł Koszty jest wyłączony — zestawienie faktur kosztowych niedostępne. Włączysz go w Ustawienia → System → Włączone funkcje; zestawienie faktur sprzedaży działa bez zmian.', true],
 ]) it(`${nr}: walidacja paczki`, async () => {
   const zbuduj = vi.fn(); panel({ paczkaDlaBiura: { zbuduj } });
   if (koszty) przelaczModul(p.db, { modul: 'koszty', wlacz: false });

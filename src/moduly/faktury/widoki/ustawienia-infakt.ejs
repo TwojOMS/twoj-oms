@@ -1,7 +1,7 @@
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "inFakt"}) %>
 <p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
 
-<% if (wybranyBrak) { %><div class="pas-uprzedzenie"><p>inFakt nie jest wybrany jako moduł faktur — klucz zostaje zapisany, OMS go nie używa. <a href="/ustawienia/integracje/program-fakturowy">Moduł faktur</a></p></div><% } %>
+<% if (wybranyBrak) { %><div class="pas-uprzedzenie"><p>inFakt nie jest wybrany jako program do faktur — klucz zostaje zapisany, OMS go nie używa. <a href="/ustawienia/integracje/program-fakturowy">Program do faktur</a></p></div><% } %>
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (test) { %>
   <div class="<%= test.ok ? 'pas-potwierdzenie' : 'pas-uprzedzenie' %>" id="infakt-test"><p><strong><%= test.ok ? 'Działa.' : 'Nie działa.' %></strong> <%= test.tekst %></p></div>
@@ -110,8 +110,8 @@
   <h2>Automatyczna wysyłka do KSeF</h2>
   <p><% if (automatStan.wlaczony) { %><strong>Włączona</strong> — najbliższy przebieg: <strong><%= automatStan.najblizszy %></strong>.<% } else { %><strong>Wyłączona.</strong><% } %></p>
   <% if (admin) { %>
-  <p>Godzinę i przełącznik ustawisz w <a href="/ustawienia/automatyzacje/systemowe#ksef-automat">Ustawienia → Automatyzacje</a>.</p>
+  <p>Godzinę i przełącznik ustawisz w <a href="/ustawienia/automatyzacje/systemowe#ksef-automat">Ustawienia → Automatyzacje → Automaty systemowe</a>.</p>
   <% } else { %>
-  <p>Godzinę i przełącznik ustawia administrator w Ustawienia → Automatyzacje.</p>
+  <p>Godzinę i przełącznik ustawia administrator w Ustawienia → Automatyzacje → Automaty systemowe.</p>
   <% } %>
 </section>

@@ -195,6 +195,6 @@ describe('tabelka ostrzeżeń na stronie głównej', () => {
     } });
     const r = await get(p.app, '/', jako(p.db, 'admin-test'));
     expect(r.statusCode).toBe(200);
-    expect(r.body).toContain('Poller woo_polcien nie działa: fetch failed');
+    expect(r.body).toContain('Pobieranie zamówień z kanału woo_polcien nie działa: fetch failed');
   });
 });

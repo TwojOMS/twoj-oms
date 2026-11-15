@@ -28,7 +28,7 @@ Token API i numer organizacji bierzesz z panelu ShipX (API):
 ## 2. Wpisz dane w OMS-ie
 
 1. Zaloguj się kontem z dostępem do **Ustawień**.
-2. Wejdź w **Ustawienia → Integracje → Kurierzy → InPost (paczkomaty)**.
+2. Wejdź w **Ustawienia → Integracje → InPost**.
 3. Wypełnij formularz:
    - **Nazwa** — dowolna, np. „InPost”;
    - **Numer organizacji** i **Token API** — dane z InPostu;

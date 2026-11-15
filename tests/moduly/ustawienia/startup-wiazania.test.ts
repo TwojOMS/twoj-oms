@@ -31,7 +31,7 @@ it('pełny produkt przekazuje prawdziwe zdrowie do ostrzeżeń GET strony głów
     expect((await a.app.inject('/health')).json().poller.zrodla[0].zdrowy).toBe(false);
     const r=await a.app.inject({url:'/',headers:{authorization:'Basic '+Buffer.from('operator:atrapa').toString('base64')}});
     expect(r.statusCode,r.body).toBe(200);
-    expect(r.body).toContain('Poller sklep nie działa: fixture-awaria');
+    expect(r.body).toContain('Pobieranie zamówień z kanału sklep nie działa: fixture-awaria');
     expect(r.body).toContain('/ustawienia/lacznosc');
   }finally{await a.app.close();a.db.close();zakoncz();}
 });

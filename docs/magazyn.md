@@ -59,7 +59,7 @@ Import nie nadpisuje wartości zastanych ani poprawionych ręcznie.
 Również ręczne wyczyszczenie pola chroni je przed kolejnym importem.
 
 Wartość wcześniej pobrana może zostać odświeżona przez to samo źródło.
-Przy kilku połączeniach decyduje lista źródeł w Ustawienia → Magazyn:
+Przy kilku połączeniach decyduje lista źródeł w Ustawienia → Zamówienia i magazyn → Stany magazynowe:
 wyższe połączenie może zastąpić wartość z niższego. Domyślnie sklepy Woo
 są przed kontami Allegro. Kolejność dotyczy konkretnych połączeń;
 możesz ją zmienić dla swojej firmy.
@@ -120,7 +120,7 @@ sprawdzeniu: Nie”).
 Stan: 14.11.2026 (PRZ-160, etap 4). Przykłady są zmyślone: „Pracownia Półcień”, konto `polcien-allegro`,
 sklep `sklep.polcien.example`.
 
-Gdy włączysz stany magazynowe (Ustawienia → Magazyn), OMS zna ilość każdej karty. Ta funkcja idzie krok dalej:
+Gdy włączysz stany magazynowe (Ustawienia → Zamówienia i magazyn → Stany magazynowe), OMS zna ilość każdej karty. Ta funkcja idzie krok dalej:
 **OMS wysyła tę ilość na oferty w ERLI, Allegro i w sklepie WooCommerce**. Sprzedasz sztukę w jednym miejscu,
 a po chwili w pozostałych kanałach ilość spada. Bez tej funkcji każdy kanał liczy sztuki osobno i łatwo sprzedać
 ten sam egzemplarz dwa razy.
@@ -170,7 +170,7 @@ ustawisz „Oferty czynne”. Konto w trybie tylko do odczytu (klucz bez zapisu)
 
 ### Stan otwarcia
 
-Zanim OMS wyśle ilości, musi wiedzieć, ile masz sztuk **teraz**. Ustawienia → Magazyn, po włączeniu stanów:
+Zanim OMS wyśle ilości, musi wiedzieć, ile masz sztuk **teraz**. Ustawienia → Zamówienia i magazyn → Stany magazynowe, po włączeniu stanów:
 „Stan otwarcia z kanałów”.
 
 - OMS czyta na świeżo ilości z kanałów, z którymi karta jest powiązana: Allegro i ERLI zawsze, Woo tylko wtedy, gdy
@@ -233,7 +233,7 @@ sklepu; OMS sam nie przełącza `manage_stock`.
 
 ### Wyłączenie stanów
 
-Ustawienia → Magazyn → „Wyłącz stany”. Wyłączenie działa od razu i nic nie kasuje:
+Ustawienia → Zamówienia i magazyn → Stany magazynowe → „Wyłącz stany”. Wyłączenie działa od razu i nic nie kasuje:
 
 - oferty wystawione z OMS-u wracają do **stałej liczby sztuk** z ustawień konta,
 - przejęte oferty przestają dostawać ilość i zostają tak, jak ostatnio ustawił je OMS.

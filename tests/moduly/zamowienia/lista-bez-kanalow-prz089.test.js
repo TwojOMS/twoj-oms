@@ -52,7 +52,7 @@ describe('PRZ-089 lista zamówień bez podłączonych kanałów', () => {
   });
   it('z kanałami i bez przebiegu pollera nadal ostrzega jak dotąd', async () => {
     const html = await lista({ ...ENV_DEMO, OMS_TRYB: 'produkcja', OMS_USER: 'operator', OMS_PASS: 'atrapa', OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir() });
-    expect(html).toContain('Brak synchronizacji — poller nie wykonał jeszcze przebiegu.');
+    expect(html).toContain('Brak synchronizacji — co najmniej jeden kanał jeszcze ani razu nie pobrał zamówień.');
     expect(html).not.toContain('Żaden kanał sprzedaży nie jest podłączony');
   });
 });

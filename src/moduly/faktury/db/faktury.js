@@ -23,8 +23,8 @@ function opisKolizji(f, nazwa = NAZWA_ZAPASOWA, program) {
     return 'Poprzednia próba wystawienia faktury zerwała się w miejscu, w którym dokument mógł już powstać'
       + `${f.blad_opis ? ` (${f.blad_opis})` : ''}. `
       + `Sprawdź RĘCZNIE ${gdzie}, czy faktura do tego zamówienia istnieje. Jeśli jej tam nie ma — `
-      + 'odblokuj zamówienie przyciskiem na karcie. Jeśli JEST i jeszcze nie poszła do KSeF '
-      + '(wysyłkę robi właściciel ręcznie, wieczorem), po prostu ją tam skasuj, dopiero potem odblokuj — '
+      + 'odblokuj zamówienie przyciskiem na karcie. Jeśli JEST i jeszcze nie poszła do KSeF, '
+      + 'po prostu ją tam skasuj, dopiero potem odblokuj — '
       + 'panel jej sam nie ponowi, żeby drugie kliknięcie nie dołożyło drugiego dokumentu. '
       + 'Jeśli już poszła do KSeF, została po niej tylko KOREKTA, nie kasowanie.';
   }

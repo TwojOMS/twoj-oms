@@ -15,7 +15,7 @@ w Fakturowni, a OMS pozwala pobrać PDF, oznaczyć zapłatę i obsługiwać wysy
 ## 1. Wyłącz Automatyczną wysyłkę KSeF w Fakturowni
 
 **Zrób to przed wystawieniem pierwszej faktury z OMS-u.** W Fakturowni otwórz
-**Ustawienia → KSeF** i ustaw **Automatyczna wysyłka = Wyłączona**.
+**Ustawienia**, zakładkę **KSeF**, i ustaw **Automatyczna wysyłka = Wyłączona**.
 Inaczej Fakturownia może sama wysłać fakturę do KSeF, zanim obejrzysz ją w OMS-ie.
 Dokumentu wysłanego do KSeF nie da się skasować.
 
@@ -69,7 +69,7 @@ Przycisk **Sprawdź połączenie** nadal pozwala sprawdzić dostęp.
 
 ## 4. Wybierz Fakturownię jako moduł faktur
 
-1. Otwórz **Ustawienia → Integracje → Moduł faktur**.
+1. Otwórz **Ustawienia → Faktury i podatki → Program do faktur**.
 2. Wybierz **Fakturownia** i kliknij **Zapisz**.
 3. Uruchom ponownie OMS, aby wybór zaczął działać. Jeśli ekran udostępnia przycisk
    **Uruchom OMS ponownie**, możesz go użyć; w innym przypadku poproś administratora serwera.

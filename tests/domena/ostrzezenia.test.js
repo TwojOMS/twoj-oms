@@ -49,6 +49,12 @@ describe('ostrzezeniaFaktur — dokument do wysłania do KSeF', () => {
     expect(w.title).toContain('2026-08-29T07:00:00.000Z');
   });
 
+  it('PRZ-168: title mówi, skąd i kiedy wiersz zniknie — odczyt z programu fakturowego, gdy jest podłączony', () => {
+    const [w] = ostrzezeniaFaktur({ luki: [luka(51)], dzis: DZIS });
+    expect(w.title).toBe('Stan z odczytu 2026-08-29T07:00:00.000Z. Wysłana ręcznie w programie fakturowym zniknie stąd'
+      + ' przy następnym odczycie z programu fakturowego (co godzinę, gdy program jest podłączony).');
+  });
+
   it('bez luk nie ma wierszy', () => {
     expect(ostrzezeniaFaktur({ luki: [], dzis: DZIS })).toHaveLength(0);
   });
@@ -252,7 +258,7 @@ describe('ostrzezeniaIntegracji — z wyniku ocenZdrowie', () => {
     // pisze Node. Wiersz tabelki czyta czlowiek, wiec caly jest po polsku.
     expect(w.tekst).toContain('połączenie nie doszło do skutku');
     expect(w.tekst).not.toContain('fetch failed');
-    expect(w.przycisk).toEqual({ href: '/ustawienia/lacznosc', etykieta: 'Łączność' });
+    expect(w.przycisk).toEqual({ href: '/ustawienia/lacznosc', etykieta: 'Stan systemu' });
     expect(w.etykietaOdrzucenia).toBe('Wycisz na 24 h');
   });
 
@@ -272,7 +278,7 @@ describe('ostrzezeniaIntegracji — z wyniku ocenZdrowie', () => {
       }],
     });
     const [w] = ostrzezeniaIntegracji({ zdrowie });
-    expect(w.tekst).toBe('Poller allegro_polcien2 nie działa: przekroczony czas oczekiwania na odpowiedź');
+    expect(w.tekst).toBe('Pobieranie zamówień z kanału allegro_polcien2 nie działa: przekroczony czas oczekiwania na odpowiedź');
   });
 
   it('⚠️ CZKNIECIE SIECI NIE MALUJE WIERSZA — usterki, ktora juz przeszla, nie pokazujemy', () => {
@@ -331,6 +337,25 @@ describe('ostrzezeniaIntegracji — z wyniku ocenZdrowie', () => {
     const [w] = ostrzezeniaIntegracji({ zdrowie });
     expect(w.klucz).toBe('integracja:poller:woo_pro');
     expect(w.tekst).toMatch(/ostatni przebieg .* temu/);
+  });
+
+  // PRZ-168 T1: zdanie każdego zegara zaczyna się nazwą na ekran, nie nazwą techniczną ("Czuwacz ...").
+  it.each([
+    ['czuwaczKsef', 'integracja:czuwacz-ksef', /^Odczyt numerów KSeF/],
+    ['czuwaczPrzesylek', 'integracja:czuwacz-przesylek', /^Śledzenie przesyłek/],
+    ['czuwaczOstrzezen', 'integracja:czuwacz-ostrzezen', /^Odczyt faktur z programu/],
+    ['czuwaczKosztow', 'integracja:czuwacz-kosztow', /^Pobieranie kosztów z KSeF/],
+  ])('zegar %s zaczyna zdanie od nazwy na ekran', (pole, klucz, wzor) => {
+    const zdrowie = { poller: { zrodla: [] }, [pole]: { wlaczony: true, zdrowy: false, blad: null, wiekS: 7200 } };
+    const [w] = ostrzezeniaIntegracji({ zdrowie });
+    expect(w.klucz).toBe(klucz);
+    expect(w.tekst).toMatch(wzor);
+  });
+
+  it('poller w postoju zaczyna zdanie od „Pobieranie zamówień z kanału <nazwa> stoi”', () => {
+    const zdrowie = { poller: { zrodla: [{ zrodlo: 'woo_pro', zdrowy: false, blad: null, wiekS: 7200 }] } };
+    const [w] = ostrzezeniaIntegracji({ zdrowie });
+    expect(w.tekst).toMatch(/^Pobieranie zamówień z kanału \S+ stoi/);
   });
 
   it('niezdrowy czuwacz KSeF alarmuje własnym kluczem', () => {

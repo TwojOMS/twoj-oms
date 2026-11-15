@@ -240,13 +240,13 @@ export function tytulEkranuDlaAdresu(url) {
     '/ustawienia/integracje/inpost': 'InPost',
     '/ustawienia/integracje/infakt': 'inFakt',
     '/ustawienia/integracje/fakturownia': 'Fakturownia',
-    '/ustawienia/integracje/program-fakturowy': 'Moduł faktur',
+    '/ustawienia/integracje/program-fakturowy': 'Program do faktur',
     '/ustawienia/integracje/program-fakturowy/serie': 'Serie numeracji',
     '/ustawienia/integracje/program-fakturowy/ksef': 'Wysyłka faktur do KSeF',
     '/ustawienia/integracje/gus': 'GUS',
     '/ustawienia/integracje/ksef': 'KSeF',
     '/ustawienia/integracje/poczta': 'Poczta wychodząca',
-    '/ustawienia/integracje/reklamy': 'Integracje reklam',
+    '/ustawienia/integracje/reklamy': 'Reklamy (Meta Ads, Google Analytics 4, Google Ads)',
   };
   if (integracje[sciezka]) return integracje[sciezka];
   const pozycja = POZYCJE_USTAWIEN.find((p) => p.href === sciezka);

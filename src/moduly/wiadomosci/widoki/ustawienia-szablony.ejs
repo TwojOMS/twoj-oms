@@ -67,7 +67,7 @@
         /* PRZ-102.19: druga część sekcji — krótkie napisy przy danych, które liczy panel. */
         ['przelew', 'Etykiety danych do przelewu — {dane_platnosci}', 'Napisy przy kwocie i w tabeli przelewu. Kwotę, odbiorcę, numer rachunku, tytuł i termin wstawia panel — tu ich nie zmienisz.', 'Etykiety i stałe teksty'],
         ['zamowienie', 'Bloki zamówienia — {pozycje}, {sposob_platnosci}, {wysylka}, {dane_do_faktury}', 'Nagłówki, kolumny tabeli i stałe zwroty w potwierdzeniu przyjęcia i w szablonach własnych. Pozycje, kwoty, adres i dane nabywcy wstawia panel.'],
-        ['podpis', 'Podpis — {podpis}', 'Linia nad marką na końcu każdego maila do klienta. Markę ustawisz w Ustawienia → Poczta.']].forEach(function (g) { %>
+        ['podpis', 'Podpis — {podpis}', 'Linia nad marką na końcu każdego maila do klienta. Markę ustawisz w Ustawienia → Komunikacja → Podpis i stopka.']].forEach(function (g) { %>
       <% if (g[3]) { %><h3 class="szw-czesc"><%= g[3] %></h3><p class="ust-pomoc">Krótkie napisy (do <%= maksZdan.etykieta %> znaków): litery łacińskie z polskimi, cyfry, spacje i zwykła interpunkcja — bez klamer i bez ciągów sześciu cyfr. Puste pole wraca do tekstu domyślnego.</p><% } %>
       <h3 class="szw-naglowek"><%= g[1] %></h3>
       <p class="ust-pomoc"><%= g[2] %></p>
@@ -104,7 +104,7 @@
 <%# PRZ-101.06: maile do pracowników — osobno od maili do klientów. %>
 <section class="ust-sekcja szw-sekcja" id="szablony-zespol">
   <h2>Maile do zespołu</h2>
-  <p>Do pracowników, nie do klientów: zaproszenie do panelu i link do ustawienia nowego hasła (Ustawienia → Użytkownicy). Link wstawia panel — pole <code>{link}</code> musi zostać w treści.</p>
+  <p>Do pracowników, nie do klientów: zaproszenie do panelu i link do ustawienia nowego hasła (Ustawienia → Zespół i dostęp → Użytkownicy). Link wstawia panel — pole <code>{link}</code> musi zostać w treści.</p>
   <div class="przewijak-tabeli">
   <table class="tab-pozycje szw-tabela">
     <thead><tr><th>Mail</th><th>Temat</th><th>Treść</th><th></th></tr></thead>

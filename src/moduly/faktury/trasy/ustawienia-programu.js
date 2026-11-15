@@ -26,7 +26,7 @@ const UWAGI_NOSNIKA = {
   'stara-na-nosniku': 'Na nośniku kopii brak kopii z ostatnich 48 h — sprawdź Kopie zapasowe.',
 };
 
-const KOMUNIKATY = { zapisano: 'Zapisano wybór modułu faktur.', dlaKazdego: 'Zapisano ustawienie wystawiania faktur.' };
+const KOMUNIKATY = { zapisano: 'Zapisano wybór programu do faktur.', dlaKazdego: 'Zapisano ustawienie wystawiania faktur.' };
 const ADRES_DLA_KAZDEGO = `${EKRAN_WYBORU_PROGRAMU}/dla-kazdego`;
 export const BLAD_WLACZENIA_BEZ_KSEF = 'Nie można włączyć: przy TwojeFaktury faktury dla osób bez NIP-u idą do klienta dopiero z numerem KSeF. Najpierw włącz wysyłkę faktur konsumenckich do KSeF.';
 
@@ -176,7 +176,7 @@ export function registerUstawieniaProgramuRoutes(app, { db, wyborProgramu, konfi
   app.post(EKRAN_WYBORU_PROGRAMU, async (req, reply) => {
     if (req.konto?.admin !== true) return odmowaAdmina(reply);
     if (wyborProgramu.zrodlo === 'plik') {
-      return stronaOdmowy(reply, 409, `Moduł faktur jest ustawiony w pliku konfiguracji (${ZMIENNA_PROGRAMU}) — tam go zmień. Formularz niczego nie zapisał.`, {
+      return stronaOdmowy(reply, 409, `Program do faktur jest ustawiony w pliku konfiguracji (${ZMIENNA_PROGRAMU}) — tam go zmień. Formularz niczego nie zapisał.`, {
         tytul: 'Nie zmieniono programu faktur', wroc: EKRAN_WYBORU_PROGRAMU, napisWroc: 'Wróć do ustawień programu faktur',
       });
     }

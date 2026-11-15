@@ -79,7 +79,7 @@ export const zdarzenieStatusZmieniony = Object.freeze({
   bladParametru(db, parametr) {
     const klucz = parametr?.status;
     if (!klucz) return 'Reguła nie ma wybranego statusu.';
-    return zapytanie(db, klucz) ? null : `Wybrany status („${klucz}”) nie istnieje w Ustawieniach → Statusy zamówień — reguła nic nie zrobi.`;
+    return zapytanie(db, klucz) ? null : `Wybrany status („${klucz}”) nie istnieje w Ustawieniach → Zamówienia i magazyn → Statusy zamówień — reguła nic nie zrobi.`;
   },
 
   /** Kandydaci przebiegu: fakt statusu nie starszy niż `od` (a więc i granica), tylko z zaznaczonych kanałów. */

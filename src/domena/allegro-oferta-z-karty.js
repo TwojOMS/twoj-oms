@@ -335,7 +335,7 @@ export function ofertaAllegroZKarty(wejscie) {
   } else if (droga === 'katalog-id') {
     // Bez przypisania pole pomijamy — Allegro bierze dane GPSR z produktu (A2).
   } else if (!marka) producentKonta();
-  else blad('producent', `Przypisz producenta marki ${marka} na koncie ${nazwaKonta} (Ustawienia → Integracje → Allegro → konto → krok Oferty).`);
+  else blad('producent', `Przypisz producenta marki ${marka} na koncie ${nazwaKonta} (Ustawienia → Integracje → Moje połączenia, przy koncie Allegro → krok Oferty).`);
 
   const informacja = json(karta.informacja_bezpieczenstwa);
   if (informacja === undefined) blad('bezpieczenstwo', 'Informacja o bezpieczeństwie na karcie jest uszkodzona — wpisz ją ponownie.');

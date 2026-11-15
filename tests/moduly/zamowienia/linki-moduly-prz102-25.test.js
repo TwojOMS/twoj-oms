@@ -34,7 +34,7 @@ it('okres bez faktury: powód pod przyciskiem zawiera odnośnik do okresu tylko 
   const bezModulu = await get(p.app, '/zamowienia/1', BASIC);
   expect(bezModulu.statusCode).toBe(200);
   expect(bezModulu.body).not.toContain('href="/okresy/');
-  expect(bezModulu.body).toContain('administrator może włączyć Rozliczenia w Ustawienia → Moduły');
+  expect(bezModulu.body).toContain('administrator może włączyć Rozliczenia w Ustawienia → System → Włączone funkcje');
 });
 it('karta zachowuje treść okresu i klienta, a po wyłączeniu usuwa tylko odnośniki', async () => {
   const p = panel();
@@ -78,9 +78,9 @@ it('odmowa faktury starego zamówienia pozostaje osiągalna: usługa i podgląd 
   const p = panel();
   wylacz(p, ['okresy']);
   const faktura = createFaktura({ db: p.db, infakt: {} });
-  await expect(faktura.wystaw(1)).rejects.toThrow('Włącz Rozliczenia w Ustawienia → Moduły, żeby wystawić fakturę za okres.');
+  await expect(faktura.wystaw(1)).rejects.toThrow('Włącz Rozliczenia w Ustawienia → System → Włączone funkcje, żeby wystawić fakturę za okres.');
   const r = await post(p.app, '/zamowienia/faktury-hurtem/podglad', BASIC, { id: '1' });
   expect(r.statusCode).toBe(200);
-  expect(r.body).toContain('Włącz Rozliczenia w Ustawienia → Moduły, żeby wystawić fakturę za okres.');
+  expect(r.body).toContain('Włącz Rozliczenia w Ustawienia → System → Włączone funkcje, żeby wystawić fakturę za okres.');
   expect(r.body).not.toContain('/okresy/1');
 });

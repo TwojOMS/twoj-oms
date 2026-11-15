@@ -22,9 +22,9 @@ import { createAtrapaVies } from '../../../deploy/proba/atrapy/infakt.mjs';
 import { programTestowy } from '../../pomoc/program-testowy.js';
 
 const ZDANIE_PLIKU = 'Faktury w OMS-ie są wyłączone — w pliku konfiguracji jest OMS_PROGRAM_FAKTUROWY=brak.';
-const ZDANIE_USTAWIEN = 'Faktury w OMS-ie są wyłączone — w Ustawienia → Integracje → Moduł faktur wybrano „Brak”.';
+const ZDANIE_USTAWIEN = 'Faktury w OMS-ie są wyłączone — w Ustawienia → Faktury i podatki → Program do faktur wybrano „Brak”.';
 const STARY_MAIL = 'Panel nie ma połączenia z inFaktem — PDF-u faktury nie ma skąd pobrać.';
-const ODMOWA_INFAKTU = 'Ta faktura jest w inFakcie, a moduł faktur OMS-u to teraz „test” — otworzysz ją w inFakcie. Nic nie poszło do programu.';
+const ODMOWA_INFAKTU = 'Ta faktura jest w inFakcie, a program do faktur OMS-u to teraz „test” — otworzysz ją w inFakcie. Nic nie poszło do programu.';
 
 const katalogi = [];
 const aplikacje = [];

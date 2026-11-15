@@ -48,7 +48,7 @@ export function akcjaMailKupujacy({ wiadomosci }) {
     const szablon = regula.akcja_param?.szablon ?? regula.akcja_json?.szablon ?? null;
     const nazwa = nazwaSzablonu(db, szablon);
     if (!szablon || !nazwa) {
-      return odmowa('szablon_usuniety', 'Szablonu maila tej reguły już nie ma (usunięty w Ustawienia → Szablony wiadomości) — wybierz inny w edycji reguły.');
+      return odmowa('szablon_usuniety', 'Szablonu maila tej reguły już nie ma (usunięty w Ustawienia → Komunikacja → Szablony wiadomości) — wybierz inny w edycji reguły.');
     }
     const juz = ostatniaWiadomosc(db, wykonanie.zamowienie_id, szablon);
     if (juz) {

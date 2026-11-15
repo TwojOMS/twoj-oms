@@ -19,7 +19,7 @@ Są dwa niezależne programy:
 
 Etykiety w ZPL panel dostaje przy nadaniu paczki:
 
-- od DPD, gdy w **Ustawienia → Integracje → Kurierzy → DPD Polska** wybrany jest typ etykiety
+- od DPD, gdy w **Ustawienia → Integracje → DPD** wybrany jest typ etykiety
   „Drukarka etykiet 10×15 cm” (patrz `docs/kurier-dpd.md`);
 - od InPostu przy każdym nadaniu;
 - od Wysyłam z Allegro, gdy nadajesz przyciskiem **Nadaj i drukuj** (format etykiety Allegro

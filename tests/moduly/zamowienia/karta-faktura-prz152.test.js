@@ -84,7 +84,7 @@ const infaktKarty = () => programInfakt({ pobierzFakture: vi.fn(async () => doku
 // PRZ-152.G10e (właściciel 05.11: „to pole jeszcze do uporządkowania”): tabela → wiersz akcji → podpowiedzi.
 const bezSpacji = (s) => s.replace(/\s+/gu, ' ');
 const OPIS_PROFORMY = 'Proforma: data dzisiejsza, bez terminu płatności. Numer z serii PF/ trafia klientowi do tytułu przelewu, a poprzednia proforma zostanie unieważniona.';
-const DRUK_WYLACZONY = 'Drukowanie wyłączone — brak komputera z drukarką. <a href="/ustawienia/druk#faktury">Ustawienia → Druk i etykiety</a>';
+const DRUK_WYLACZONY = 'Drukowanie wyłączone — brak komputera z drukarką. <a href="/ustawienia/druk#faktury">Ustawienia → Wysyłka i druk → Etykiety i druk</a>';
 const wierszAkcji = (html) => html.match(/<div class="stopka-edycji[^"]*">[\s\S]*?<\/div>/u)?.[0];
 
 describe('PRZ-152.G10e układ sekcji Faktura', () => {

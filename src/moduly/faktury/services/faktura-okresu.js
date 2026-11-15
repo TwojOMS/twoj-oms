@@ -215,7 +215,7 @@ export function createFakturaOkresu({
       // w db/okresy.js), ale trasy i przycisku jeszcze nie ma — powstana w Zadaniu 9. Do tego
       // czasu komunikat ma mowic prawde: blokada zostaje, dopoki ktos jej swiadomie nie zdejmie.
       return `${powod} Sprawdź RĘCZNIE ${gdzieDokument(program)}, czy faktura za ten okres istnieje. `
-        + 'Jeśli JEST i jeszcze nie poszła do KSeF (wysyłkę robi właściciel ręcznie, wieczorem) — '
+        + 'Jeśli JEST i jeszcze nie poszła do KSeF — '
         + 'skasuj ją tam. Panel sam z tego stanu NIE WYJDZIE i wystawienia nie ponowi: okres '
         + 'zostaje zablokowany, dopóki ktoś go świadomie nie odblokuje. Ta blokada jest po to, '
         + 'żeby drugie podejście nie dołożyło drugiej faktury za ten sam miesiąc.';
@@ -282,7 +282,7 @@ export function createFakturaOkresu({
         + `${zFaktura.faktura.numer ? ` (${zFaktura.faktura.numer})` : ' (wystawianie w toku albo do wyjaśnienia)'}`
         + ', więc faktura zbiorcza obciążyłaby klienta za ten sam towar drugi raz. '
         + 'Faktura za okres NIE została wystawiona — rozstrzygnij najpierw tamten dokument '
-        + `${gdzieDokument(program)} (skasuj go, dopóki nie poszedł wieczorem do KSeF; potem zostaje korekta).`,
+        + `${gdzieDokument(program)} (skasuj go, dopóki nie poszedł do KSeF; potem zostaje korekta).`,
       );
     }
 
@@ -458,7 +458,7 @@ export function createFakturaOkresu({
       oznaczOkresDoWyjasnienia(db, okresId, opis);
       throw bladOperatora(
         `${opis} Sprawdź RĘCZNIE ${gdzieDokument(program)}, czy faktura za ten okres istnieje. Jeśli JEST `
-        + 'i jeszcze nie poszła do KSeF (wysyłkę robi właściciel ręcznie, wieczorem) — skasuj ją tam. '
+        + 'i jeszcze nie poszła do KSeF — skasuj ją tam. '
         + 'Panel sam z tego stanu NIE WYJDZIE i wystawienia nie ponowi: okres zostaje zablokowany, '
         + 'dopóki ktoś go świadomie nie odblokuje.',
       );

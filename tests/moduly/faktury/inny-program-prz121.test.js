@@ -26,7 +26,7 @@ import { createCzuwaczKsef } from '../../../src/moduly/faktury/services/czuwacz-
 const PDF = Buffer.concat([Buffer.from('%PDF-1.4'), Buffer.alloc(64)]);
 const NIP_PRACOWNI = '5250000009'; // zmyślony, z poprawną sumą kontrolną
 const SKLEP = 'allegro_polcien';
-const ODMOWA = 'Ta faktura jest w inFakcie, a moduł faktur OMS-u to teraz „test”';
+const ODMOWA = 'Ta faktura jest w inFakcie, a program do faktur OMS-u to teraz „test”';
 
 const INFAKT_NOWA = 'inf-nowa-0001';
 const INFAKT_STARA = 'inf-stara-0002';

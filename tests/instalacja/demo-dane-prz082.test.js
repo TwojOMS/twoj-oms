@@ -193,7 +193,7 @@ describe('demo po poprawkach PRZ-082', () => {
       expect(w.ostatni_blad).toBeNull();
       expect(Date.now() - Date.parse(w.ostatni_przebieg_at)).toBeLessThan(120000);
     }
-    expect((await strona('/', gosc)).html).not.toMatch(/Poller [\w-]+ (stoi|nie działa)/);
+    expect((await strona('/', gosc)).html).not.toMatch(/Pobieranie zamówień z kanału [\w-]+ (stoi|nie działa)/);
   });
 
   it('12. PRZ-167: informacja o generatorze stoi w pasku demo nad pasami i ostrzeżeniami, zielonego pasa na liście nie ma', async () => {

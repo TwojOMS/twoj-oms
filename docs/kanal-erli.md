@@ -49,7 +49,7 @@ z umowy Twojej firmy są skonfigurowani w OMS.
 
 ## Dodaj sklep ERLI
 
-W OMS otwórz **Ustawienia → Integracje → karta ERLI → Dodaj konto**
+W OMS otwórz **Ustawienia → Integracje → ERLI → Dodaj konto**
 (otworzy się „Dodaj sklep ERLI”).
 Obecny konfigurator ma cztery kroki opisane poniżej.
 

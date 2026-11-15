@@ -701,6 +701,7 @@ describe('komunikat odmowy mówi PRAWDĘ o tym, co człowiek ma zrobić', () => 
     const opis = t.stan().ostatni_blad;
     expect(opis).toMatch(/invalid_grant/);
     expect(opis).toMatch(/Kanał sam z tego nie wyjdzie/i);
+    expect(opis).toMatch(/Ustawienia → Integracje → Moje połączenia/);
     expect(opis).toMatch(/Połącz z Allegro/);
     expect(opis).not.toMatch(/nie wiadomo/i);
   });

@@ -38,16 +38,16 @@
   <% if (uruchomienie) { %>
     <div class="pas-uprzedzenie" id="fakturownia-uruchomienie">
       <% if (!uruchomienie.wybrana) { %>
-        <p>Fakturownia jeszcze nie wystawia faktur. Wybierz ją w <a href="<%= uruchomienie.adresModulu %>">Moduł faktur</a> — tam uruchomisz też OMS ponownie.</p>
+        <p>Fakturownia jeszcze nie wystawia faktur. Wybierz ją na ekranie <a href="<%= uruchomienie.adresModulu %>">Program do faktur</a> — tam uruchomisz też OMS ponownie.</p>
       <% } else if (uruchomienie.przycisk) { %>
-        <p>Fakturownia jest wybrana w <a href="<%= uruchomienie.adresModulu %>">Module faktur</a>. Zacznie wystawiać faktury po ponownym uruchomieniu OMS-u.</p>
+        <p>Fakturownia jest wybrana jako <a href="<%= uruchomienie.adresModulu %>">program do faktur</a>. Zacznie wystawiać faktury po ponownym uruchomieniu OMS-u.</p>
         <form method="post" action="<%= uruchomienie.przycisk.adres %>">
           <div class="ust-akcje"><button class="btn" type="submit"<% if (uruchomienie.przycisk.nieaktywny) { %> disabled<% } %>>Uruchom OMS ponownie</button><span class="ust-pomoc">Panel będzie niedostępny przez kilka sekund.</span></div>
         </form>
       <% } else if (uruchomienie.recznie) { %>
-        <p>Fakturownia jest wybrana w <a href="<%= uruchomienie.adresModulu %>">Module faktur</a>. Zacznie wystawiać faktury po ponownym uruchomieniu OMS-u na serwerze (np. <code>docker compose restart oms</code>).</p>
+        <p>Fakturownia jest wybrana jako <a href="<%= uruchomienie.adresModulu %>">program do faktur</a>. Zacznie wystawiać faktury po ponownym uruchomieniu OMS-u na serwerze (np. <code>docker compose restart oms</code>).</p>
       <% } else { %>
-        <p>Fakturownia jest wybrana w <a href="<%= uruchomienie.adresModulu %>">Module faktur</a>. Zacznie wystawiać faktury po ponownym uruchomieniu OMS-u — uruchamia administrator.</p>
+        <p>Fakturownia jest wybrana jako <a href="<%= uruchomienie.adresModulu %>">program do faktur</a>. Zacznie wystawiać faktury po ponownym uruchomieniu OMS-u — uruchamia administrator.</p>
       <% } %>
     </div>
   <% } %>

@@ -107,6 +107,7 @@ describe('PRZ-093.10 Ustawienia → inFakt', () => {
     expect(r.body).toContain('Niepodłączony');
     expect(r.body).toContain('https://api.infakt.pl/api');
     expect(r.body).toContain('INFAKT_ARCHIWUM');
+    expect(r.body).toContain('Godzinę i przełącznik ustawisz w <a href="/ustawienia/automatyzacje/systemowe#ksef-automat">Ustawienia → Automatyzacje → Automaty systemowe</a>.');
     expect(podglad.infakt).toBeNull();
     expect((await get(app, '/ustawienia/integracje/katalog', admin)).body).toContain(`href="${ADRES}"`);
   });

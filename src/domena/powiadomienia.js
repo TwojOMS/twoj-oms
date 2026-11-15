@@ -1,6 +1,6 @@
 // Kolejność tabelki i lista osobistych ustawień mają jedno źródło.
 export const RODZAJE_OSTRZEZEN = Object.freeze([
-  { typ: 'integracja', nazwa: 'Awarie integracji', opis: 'Sklep, usługa lub czuwacz nie działa albo od dawna nie kończy przebiegu.' },
+  { typ: 'integracja', nazwa: 'Awarie integracji', opis: 'Sklep, usługa albo zadanie w tle nie działa lub od dawna nie kończy przebiegu.' },
   // PRZ-108.08: widzi tylko administrator (reguły edytuje wyłącznie on).
   { typ: 'automatyzacja', nazwa: 'Automatyzacje wstrzymane lub niepewne', opis: 'Reguła wstrzymana bezpiecznikiem albo mail do kupującego, o którym nie wiadomo, czy wyszedł (tylko administrator).', tylkoAdmin: true },
   { typ: 'faktura-ksef', nazwa: 'Faktury niewysłane do KSeF', opis: 'Dokument wystawiony przed dziś nie ma numeru KSeF.' },

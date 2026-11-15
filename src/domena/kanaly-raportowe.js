@@ -108,7 +108,7 @@ export function kanalOms(w, klasyfikacja) {
   // PRZ-108.04: numer zamówienia (nie dane klienta) + wskazówka, co sprawdzić — komunikat trafia na ekran panelu.
   if (!zeSklepu) {
     const numer = w.numer ? ` ${w.numer}` : '';
-    throw odmowa(`Raport nie zna tego zamówienia${numer}: nieznany sklep OMS: ${w.sklep}. Tego klucza sklepu nie ma w konfiguracji kanałów — sprawdź OMS_KANALY (Ustawienia → Sklepy i usługi).`);
+    throw odmowa(`Raport nie zna tego zamówienia${numer}: nieznany sklep OMS: ${w.sklep}. Tego klucza sklepu nie ma w konfiguracji kanałów — sprawdź OMS_KANALY (Ustawienia → Integracje → Moje połączenia).`);
   }
   return zeSklepu;
 }

@@ -85,7 +85,7 @@ Zapisz `operacja` — `accept` i `recover` przyjmują wyłącznie ją.
 2. `/health` w przeglądarce (`http://adres:3001/health`): `alarmy` — te same co przed aktualizacją
    (alarm kopii lub kanału, który był wcześniej, nie jest winą wydania); nowy alarm = STOP.
 3. Logowanie własnym kontem; lista zamówień — ta sama liczba co przed (plus nowe z pollerów);
-   karta jednego zamówienia; podgląd istniejącej proformy i etykiety; Ustawienia → Konta.
+   karta jednego zamówienia; podgląd istniejącej proformy i etykiety; Ustawienia → Zespół i dostęp → Użytkownicy.
 4. `sudo sh /opt/oms/aktualizuj.sh compose logs --since 15m oms` — brak nowych błędów.
 5. Gdy coś budzi wątpliwość: `cd ~ && sudo sh /opt/oms/releases/oms-<12>/deploy/klient/diagnostyka.sh`
    i zachowaj plik (hasła i klucze są w nim zamaskowane).

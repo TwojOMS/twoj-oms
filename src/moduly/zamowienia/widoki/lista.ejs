@@ -108,7 +108,7 @@
   <% } else if (typeof bezKanalow !== 'undefined' && bezKanalow) { %>
     Żaden kanał sprzedaży nie jest podłączony — zamówienia dodajesz ręcznie, a synchronizacja ruszy po podłączeniu sklepu albo Allegro. Kanały dopisuje się w zmiennej <code>OMS_KANALY</code> w pliku konfiguracji OMS (instrukcja: <code>docs/instalacja-docker.md</code>, sekcja 9).
   <% } else { %>
-    <span class="uwaga">Brak synchronizacji — poller nie wykonał jeszcze przebiegu.</span>
+    <span class="uwaga">Brak synchronizacji — co najmniej jeden kanał jeszcze ani razu nie pobrał zamówień.</span>
   <% } %>
   <%# ⚠️ NAZWA KANALU PRZY BLEDZIE JEST OBOWIAZKOWA, a nie ozdobna. Od poprawki z recenzji %>
   <%# calej galezi `stan()` oddaje pollera Z BLEDEM (bootstrap.js), a nie zawsze pierwszy %>
@@ -315,12 +315,12 @@
         <%# przycisku „Specyfikacje do paczek". BEZ „…" — w odroznieniu od dwoch akcji wyzej %>
         <%# wydruk jest odwracalny (Zadanie 8): nie zostawia sladu w bazie, wiec nie ma czego %>
         <%# przedtem pokazywac. Klikniecie od razu oddaje gotowy PDF dla WSZYSTKICH zaznaczonych. %>
-        <%# Specyfikacja zostaje pobieraniem pliku jak dotad; lista i zestawienie otwieraja sie %>
-        <%# w nowej karcie (`formtarget`) do druku. `<details>` — panel dziala bez skryptu. %>
+        <%# Od PRZ-162 wszystkie trzy otwieraja PDF w nowej karcie (`formtarget`) — pobranie po http Chrome blokuje. %>
+        <%# `<details>` — panel dziala bez skryptu. %>
         <details class="wydruki wydruki--masowe">
           <summary class="btn btn--maly">Wydruki</summary>
           <div class="wydruki-menu wydruki-menu--lewe">
-            <button type="submit" formaction="/zamowienia/specyfikacje.pdf">Specyfikacje do paczek</button>
+            <button type="submit" formaction="/zamowienia/specyfikacje.pdf" formtarget="_blank">Specyfikacje do paczek</button>
             <button type="submit" formaction="/zamowienia/lista-produktow.pdf" formtarget="_blank">Lista produktów (zbiorcza)</button>
             <button type="submit" formaction="/zamowienia/zestawienie.pdf" formtarget="_blank">Zestawienie zamówień</button>
           </div>
@@ -590,7 +590,7 @@
           <% if (szukaj) { %>Brak zamówień pasujących do wyszukiwania.
           <% } else if (chipy.length) { %>Żadne zamówienie nie mieści się w ustawionych filtrach.
           <%# PRZ-109.02: baza bez ani jednego zamowienia (nowa instalacja) — „nic do zrobienia" bylo tam nieprawda. %>
-          <% } else if (typeof bazaBezZamowien !== 'undefined' && bazaBezZamowien) { %>Nie ma jeszcze żadnych zamówień. Pojawią się tu, gdy podłączysz kanał sprzedaży — sklep WooCommerce albo konto Allegro — albo gdy dodasz zamówienie ręcznie przyciskiem „+ Nowe zamówienie”.<% if (typeof odnosnikDoKanalow !== 'undefined' && odnosnikDoKanalow) { %> Stan kanałów: <a href="/ustawienia/integracje">Ustawienia → Sklepy i usługi</a>.<% } %>
+          <% } else if (typeof bazaBezZamowien !== 'undefined' && bazaBezZamowien) { %>Nie ma jeszcze żadnych zamówień. Pojawią się tu, gdy podłączysz kanał sprzedaży — sklep WooCommerce albo konto Allegro — albo gdy dodasz zamówienie ręcznie przyciskiem „+ Nowe zamówienie”.<% if (typeof odnosnikDoKanalow !== 'undefined' && odnosnikDoKanalow) { %> Stan kanałów: <a href="/ustawienia/integracje">Ustawienia → Integracje → Moje połączenia</a>.<% } %>
           <% } else { %>Nie ma tu nic do zrobienia.<% } %>
         </td></tr>
       <% } %>

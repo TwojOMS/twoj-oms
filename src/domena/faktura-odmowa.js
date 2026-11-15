@@ -51,7 +51,7 @@ export function powodOdmowyFaktury(z, { okresyWlaczone = true, dlaKazdego = fals
       + 'JEDNĄ fakturą zbiorczą za cały miesiąc — pojedynczej faktury panel do niego nie '
       + 'wystawi. ' + (okresyWlaczone
         ? `Fakturę za ten miesiąc wystawisz na ekranie okresu: /okresy/${z.okres_rozliczeniowy_id}.`
-        : 'Włącz Rozliczenia w Ustawienia → Moduły, żeby wystawić fakturę za okres.');
+        : 'Włącz Rozliczenia w Ustawienia → System → Włączone funkcje, żeby wystawić fakturę za okres.');
   }
 
   // TWARDA odmowa, nie samo ukrycie sekcji w widoku: karta w przegladarce pokazuje stan

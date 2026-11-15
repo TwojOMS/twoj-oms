@@ -19,7 +19,7 @@ i nadaje przesyłki jak dotąd.
 
 ## Przygotowanie
 
-1. **Zgoda na oferty.** Ustawienia → Integracje → Allegro → konto: „Sprawdź uprawnienia aplikacji”, potem „Chcę
+1. **Zgoda na oferty.** Ustawienia → Integracje → Moje połączenia, przy koncie Allegro: „Sprawdź uprawnienia aplikacji”, potem „Chcę
    wystawiać oferty” i nowa zgoda w Allegro. Szczegóły i trzy ścieżki (plik konfiguracji, panel, DCR) są w
    „Allegro — podłączenie konta w panelu”, rozdział „Wystawianie ofert”. Pierwszy dowód na sandboxie, potem
    konta produkcyjne ze ścieżką pliku konfiguracji.

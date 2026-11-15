@@ -16,14 +16,15 @@ Receptury dla najczęstszych próśb użytkownika. Najpierw znajdź wzór w istn
 ## Zmiana wyglądu lub tekstu
 
 Widoki to szablony EJS: `src/moduly/<moduł>/widoki/*.ejs`, wspólny szkielet w `src/core/web/`. Style:
-`src/public/app.css`, `src/public/oms-design.css`. Zmieniaj tekst tam, gdzie go znalazłeś przez `rg`;
+pliki `src/public/*.css` (podstawa w `oms-design.css` i `oms-uklad.css`). Zmieniaj tekst tam, gdzie go znalazłeś przez `rg`;
 sprawdź, czy test nie asertuje starego napisu (`rg -n "stary napis" tests`) i zmień go razem z kodem.
 
 ## Nowe pole lub kolumna w tabeli
 
-1. Dodaj **addytywną** migrację: plik `NNNN-opis.ts` (lub `.sql`) w `src/moduly/<moduł>/migracje/` z kolejnym
-   numerem i dopisz ją do tablicy `migracje` w `modul.ts`. `node scripts/straznik-migracji.mjs` odrzuci `DROP`,
-   `RENAME` i zmianę typu.
+1. Dodaj **addytywną** migrację: plik `NNNN-opis.ts` w `src/moduly/<moduł>/migracje/` eksportujący obiekt
+   `Migracja` (`numer` — kolejny, `nazwa`, `wykonaj(db)`; typ w `src/core/kontrakty.ts`) i dopisz go do tablicy
+   `migracje` w `modul.ts`. `node scripts/straznik-migracji.mjs` odrzuci m.in. `DROP`, `RENAME` i `NOT NULL` bez
+   `DEFAULT`; zmianę typu i nowe ograniczenia łapie kontrola schematu przy starcie bazy.
 2. Odczyt i zapis: warstwa `db/` modułu albo `src/oms/db/`.
 3. Pokaż pole w widoku i dopisz test na zapis oraz odczyt. Istniejące wiersze mają wartość domyślną —
    zdecyduj z użytkownikiem, jaką.

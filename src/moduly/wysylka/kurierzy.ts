@@ -66,7 +66,7 @@ export function kurierDpdZUstawien({ wczytaj, nadawca, fabryka }: {
   let klient: KlientDpd | null = null;
   const biezacy = (): KlientDpd => {
     const zapis = wczytaj();
-    if (!zapis) throw bladOperatora('Kurier DPD nie jest skonfigurowany — Ustawienia → Integracje → Kurier DPD. Panel niczego nie nadał.');
+    if (!zapis) throw bladOperatora('Kurier DPD nie jest skonfigurowany — Ustawienia → Integracje → DPD. Panel niczego nie nadał.');
     const adres = nadawca();
     // Bez adresu nadawcy createDpdClient rzuca zwykły Error — człowiek zobaczyłby „błąd techniczny” zamiast powodu.
     if (!adresKompletny(adres)) throw bladOperatora('Brak adresu nadawcy — wpisz adres firmy w Ustawienia → Firma (/ustawienia/firma) albo DPD_NADAWCA_… w pliku konfiguracji. Bez niego DPD nie nada paczki. Panel niczego nie nadał.');
@@ -106,7 +106,7 @@ export function kurierInpostZUstawien({ wczytaj, nadawca, fabryka }: {
   let klient: KlientInpost | null = null;
   const biezacy = (): { klient: KlientInpost; adres: AdresFirmy } => {
     const zapis = wczytaj();
-    if (!zapis) throw bladOperatora('Kurier InPost nie jest skonfigurowany — Ustawienia → Integracje → Kurier InPost. Panel niczego nie nadał.');
+    if (!zapis) throw bladOperatora('Kurier InPost nie jest skonfigurowany — Ustawienia → Integracje → InPost. Panel niczego nie nadał.');
     const adres = nadawca();
     if (!adresKompletny(adres)) throw bladOperatora('Brak adresu nadawcy — wpisz adres firmy w Ustawienia → Firma (/ustawienia/firma) albo DPD_NADAWCA_… w pliku konfiguracji. Bez niego InPost nie nada paczki. Panel niczego nie nadał.');
     if (String(adres.phone ?? '').trim()) {

@@ -115,7 +115,7 @@ export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syn
   // potrzebuje czego innego niz czlowiek przy karcie OMS-u:
   //   • tamta odpowiada `302` na ekran HTML karty — klient serwerowy nie ma z tego jak
   //     wyciagnac numeru dokumentu ani adresu pliku;
-  //   • tamta oddaje PDF z `Content-Disposition: attachment` — instrukcja dla przegladarki,
+  //   • tamta oddaje PDF z `Content-Disposition: inline` (od PRZ-162) — instrukcja dla przegladarki,
   //     bez znaczenia dla panelu, ktory bierze bajty i wpina je do maila jako WLASNY
   //     zalacznik.
   // Ujednolicenie starych tras do ksztaltu API zostawiloby operatora karty z golym JSON-em

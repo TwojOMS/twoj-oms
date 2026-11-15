@@ -97,6 +97,7 @@ describe('PRZ-102.12 wynik ostatniego przebiegu', () => {
     const r = await get(p.app, '/faktury/ksef/automat', p.admin);
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Automat jeszcze ani razu nie wysyłał');
+    expect(r.body).toContain('Włącza go administrator w Ustawienia → Automatyzacje → Automaty systemowe.');
   });
 
   it('wstrzymana faktura: ekran wyniku mówi, co zrobić, a „Zwolnij” (konto z „faktury”) zdejmuje wstrzymanie', async () => {

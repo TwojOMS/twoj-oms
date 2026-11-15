@@ -147,7 +147,7 @@ export function zarejestrujTrasyKosztow(app, {
       return odmowaKosztow(reply, 400, komunikatDlaOperatora(e), 'Nie da się przygotować zestawienia');
     }
     return reply.type('application/pdf')
-      .header('Content-Disposition', `attachment; filename="${wynik.nazwa}"`)
+      .header('Content-Disposition', `inline; filename="${wynik.nazwa}"`)
       .send(wynik.bajty);
   });
 
@@ -174,7 +174,7 @@ export function zarejestrujTrasyKosztow(app, {
     }
     const nazwa = `koszt-${bezpiecznaNazwa(wynik.wiersz.numer_dokumentu || req.params.ksefNumber)}.pdf`;
     return reply.type('application/pdf')
-      .header('Content-Disposition', `attachment; filename="${nazwa}"`)
+      .header('Content-Disposition', `inline; filename="${nazwa}"`)
       .send(wynik.bajty);
   });
 

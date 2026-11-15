@@ -26,6 +26,8 @@ import { klientPoKluczu } from '../../../oms/db/klienci.js';
 import { ktoKlikal } from '../../zamowienia/lista.js';
 import { nipSprzedawcyLubBrak } from '../../../domena/nip-bdo-firmy.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
+import { programWysylaDoKsef } from '../services/wysylka-ksef.js';
+import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 // Trasy ROZLICZENIA ZBIORCZEGO: miesiac klienta, ktorego kilkadziesiat zamowien skalda sie
 // na JEDNA fakture. Osobny plik z tego samego powodu, co routes/panel.js — routes/zamowienia.js
@@ -217,6 +219,9 @@ export function registerOkresyRoutes(app, { db, config = {}, proba = false, infa
       // co `mozliwaFaktura` na karcie zamowienia).
       mozliwaFaktura: Boolean(program),
       wbudowany: program?.opis?.wbudowany === true,
+      // PRZ-168.01b: zdanie o wysyłce do KSeF po wystawieniu — przycisk i automat tylko, gdy program wysyła z OMS-u.
+      // Usługa `infakt` bywa surowym klientem inFaktu (bez `opis`) — owinięta tak samo jak w services/wysylka-ksef.js.
+      wysylaZOms: programWysylaDoKsef(zProgramu({ infakt: program })),
       // PRZ-118.09: nazwa i ekran programu fakturowego w zdaniach karty okresu (bez programu — inFakt, jak dotąd).
       nazwaProgramu: odmianaNazwyProgramu(program), ekranProgramu: ekranProgramu(program), gdzieProgramu: gdzieDokument(program),
       // PRZ-121.03a: zdanie „faktury wyłączone” (tylko przy jawnym „brak”); `null` = stary akapit z widoku.

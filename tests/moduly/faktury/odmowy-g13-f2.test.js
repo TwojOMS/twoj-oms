@@ -79,7 +79,7 @@ it('GET faktura/pdf: gdy plik jest — odpowiedź binarna PDF bez zmian', async 
   const r = await pdf(id);
   expect(r.statusCode).toBe(200);
   expect(r.headers['content-type']).toContain('application/pdf');
-  expect(r.headers['content-disposition']).toBe('attachment; filename="faktura-7_10_2026.pdf"');
+  expect(r.headers['content-disposition']).toBe('inline; filename="faktura-7_10_2026.pdf"');
   expect(Buffer.compare(r.rawPayload, PDF)).toBe(0);
 });
 

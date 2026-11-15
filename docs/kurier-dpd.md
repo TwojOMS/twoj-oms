@@ -57,7 +57,7 @@ Uzupełnij pola w nawiasach i wyślij ze swojej skrzynki firmowej.
 ## 2. Wpisz dane w OMS-ie
 
 1. Zaloguj się kontem z dostępem do **Ustawień**.
-2. Wejdź w **Ustawienia → Integracje → Kurierzy → DPD Polska**.
+2. Wejdź w **Ustawienia → Integracje → DPD**.
 3. Wypełnij formularz:
    - **Nazwa** — dowolna, np. „DPD”;
    - **Login**, **Główny numer klienta DPD (Master FID)**, **Hasło** — dane od DPD;
@@ -73,8 +73,8 @@ Uzupełnij pola w nawiasach i wyślij ze swojej skrzynki firmowej.
 
 Hasło nie wraca na ekran. Gdy zmieniasz inne pole, zostaw hasło puste: OMS zachowa zapisane.
 
-**Wagi i wymiary paczek** ustawiasz w jednym miejscu dla wszystkich kurierów: **Ustawienia → Zamówienia
-i wysyłka → szablony paczek**.
+**Wagi i wymiary paczek** ustawiasz w jednym miejscu dla wszystkich kurierów: **Ustawienia → Wysyłka i druk
+→ Szablony paczek**.
 
 ## 3. Jeśli to Twój pierwszy kurier
 
@@ -106,7 +106,7 @@ Jeśli w `oms.env` są zmienne `DPD_URL`, `DPD_LOGIN` itd., OMS używa ich, a ek
 
 ## Odłączenie
 
-**Ustawienia → Integracje → DPD Polska → Odłącz DPD** usuwa z OMS-u dane logowania. Paczki już nadane
+**Ustawienia → Integracje → DPD → Odłącz DPD** usuwa z OMS-u dane logowania. Paczki już nadane
 i ich etykiety zostają.
 
 ## Czego ten ekran jeszcze nie ma

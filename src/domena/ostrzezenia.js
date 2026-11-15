@@ -70,7 +70,7 @@ export function ostrzezeniaFaktur({ luki = [], dzis } = {}) {
         klucz: `faktura-ksef:${l.uuid}`,
         typ: 'faktura-ksef',
         tekst: `Faktura ${l.numer ?? '(bez numeru)'} (${l.invoice_date ?? 'bez daty wystawienia'}) nie została wysłana do KSeF.`,
-        title: `Stan z odczytu ${l.sprawdzona_at}. Wysłana ręcznie w inFakcie zniknie stąd przy następnym przebiegu czuwacza.`,
+        title: `Stan z odczytu ${l.sprawdzona_at}. Wysłana ręcznie w programie fakturowym zniknie stąd przy następnym odczycie z programu fakturowego (co godzinę, gdy program jest podłączony).`,
         przycisk: {
           href: l.invoice_date ? `/faktury?miesiac=${String(l.invoice_date).slice(0, 7)}` : '/faktury',
           etykieta: 'Faktury',
@@ -501,10 +501,10 @@ export function ostrzezeniaPobran({ pobrania = [] } = {}) {
 
 // Nazwy zegarów na ekran — pola wyniku ocenZdrowie → (klucz odrzucenia, nazwa).
 const ZEGARY = [
-  ['czuwaczKsef', 'czuwacz-ksef', 'Czuwacz KSeF'],
-  ['czuwaczPrzesylek', 'czuwacz-przesylek', 'Czuwacz przesyłek'],
-  ['czuwaczOstrzezen', 'czuwacz-ostrzezen', 'Czuwacz ostrzeżeń'],
-  ['czuwaczKosztow', 'czuwacz-kosztow', 'Czuwacz kosztów'],
+  ['czuwaczKsef', 'czuwacz-ksef', 'Odczyt numerów KSeF'],
+  ['czuwaczPrzesylek', 'czuwacz-przesylek', 'Śledzenie przesyłek'],
+  ['czuwaczOstrzezen', 'czuwacz-ostrzezen', 'Odczyt faktur z programu'],
+  ['czuwaczKosztow', 'czuwacz-kosztow', 'Pobieranie kosztów z KSeF'],
 ];
 
 // ⚠️ BLAD NIEAKTUALNY NIE MA PRAWA TLUMACZYC POSTOJU (zgloszenie wlasciciela 10.09.2026).
@@ -531,7 +531,7 @@ const zdanieZegara = (nazwa, z) => (bladAktualny(z)
 export function ostrzezeniaIntegracji({ zdrowie } = {}) {
   if (!zdrowie) return [];
   const wiersze = [];
-  const przycisk = { href: '/ustawienia/lacznosc', etykieta: 'Łączność' };
+  const przycisk = { href: '/ustawienia/lacznosc', etykieta: 'Stan systemu' };
   for (const z of zdrowie.poller?.zrodla ?? []) {
     try {
       if (z.zdrowy) continue;
@@ -539,8 +539,8 @@ export function ostrzezeniaIntegracji({ zdrowie } = {}) {
         klucz: `integracja:poller:${z.zrodlo}`,
         typ: 'integracja',
         tekst: z.blad
-          ? `Poller ${z.zrodlo} nie działa: ${z.blad}`
-          : `Poller ${z.zrodlo} stoi — ostatni przebieg ${z.wiekS != null ? `${fmtWiek(z.wiekS)} temu` : 'nieznany'}.`,
+          ? `Pobieranie zamówień z kanału ${z.zrodlo} nie działa: ${z.blad}`
+          : `Pobieranie zamówień z kanału ${z.zrodlo} stoi — ostatni przebieg ${z.wiekS != null ? `${fmtWiek(z.wiekS)} temu` : 'nieznany'}.`,
         przycisk,
         etykietaOdrzucenia: 'Wycisz na 24 h',
       });

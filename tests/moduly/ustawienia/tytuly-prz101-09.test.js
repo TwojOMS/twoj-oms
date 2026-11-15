@@ -19,7 +19,7 @@ const integracje = [
   ['/ustawienia/integracje/inpost', 'InPost'],
   ['/ustawienia/integracje/infakt', 'inFakt'],
   ['/ustawienia/integracje/poczta', 'Poczta wychodząca'],
-  ['/ustawienia/integracje/reklamy', 'Integracje reklam'],
+  ['/ustawienia/integracje/reklamy', 'Reklamy (Meta Ads, Google Analytics 4, Google Ads)'],
 ];
 function sprawdz(html, etykieta, href) {
   // PRZ-154 E2.3: okruszki nazywają dział, aktywna zakładka zastępuje h2 formularza.

@@ -104,7 +104,7 @@ export function zapiszPolePodpisu(db, pole, wartosc, teraz = new Date().toISOStr
 }
 
 // Akapit tuż nad {podpis} dostaje w mailu styl zdania zamykającego — jak w prawdziwych wiadomościach.
-const PRZYKLAD = ['Dzień dobry,', '', 'tu stoi treść wiadomości — zależy od szablonu (Ustawienia → Szablony wiadomości).', '',
+const PRZYKLAD = ['Dzień dobry,', '', 'tu stoi treść wiadomości — zależy od szablonu (Ustawienia → Komunikacja → Szablony wiadomości).', '',
   'W razie pytań wystarczy odpowiedzieć na tę wiadomość.', '', '{podpis}'].join('\n');
 
 /**

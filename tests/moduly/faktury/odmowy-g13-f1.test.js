@@ -123,7 +123,7 @@ it('udany PDF proformy zachowuje bajty i nagłówki', async () => {
   const r = await get(p.app, '/proformy/777/pdf', BASIC);
   expect(r.statusCode).toBe(200);
   expect(r.headers['content-type']).toBe('application/pdf');
-  expect(r.headers['content-disposition']).toBe('attachment; filename="proforma-PF_7.pdf"');
+  expect(r.headers['content-disposition']).toBe('inline; filename="proforma-PF_7.pdf"');
   expect(r.rawPayload).toEqual(bajty);
   expect(globalThis.fetch).not.toHaveBeenCalled();
 });
