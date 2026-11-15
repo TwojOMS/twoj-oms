@@ -1,0 +1,24 @@
+{
+ "_pomiar": "P13 sandbox 14.11: POST /auth/oauth/device — zakres nieistniejący albo billing:read → 400 invalid_scope; sale:settings:write → 200 (kod nieużyty, pola wycięte)",
+ "nieistniejacy": {
+  "status": 400,
+  "ms": 34,
+  "naglowki": {},
+  "body": {
+   "error": "invalid_scope",
+   "error_description": "OAuth 2.0 Parameter: scope"
+  }
+ },
+ "billing_read": {
+  "status": 400,
+  "ms": 77,
+  "body": {
+   "error": "invalid_scope",
+   "error_description": "OAuth 2.0 Parameter: scope"
+  }
+ },
+ "settings_write": {
+  "status": 200,
+  "liczba_pol_odpowiedzi": 6
+ }
+}

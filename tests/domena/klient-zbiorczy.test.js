@@ -7,6 +7,8 @@ const KLIENT = {
   oplataObslugiGr: 400, oplataKurierskaGr: 1900,
 };
 
+const OKRES = { klucz: KLIENT.klucz, nazwa: KLIENT.nazwa, nip: KLIENT.nip, rabatProcent: KLIENT.rabatProcent };
+
 describe('umowaZbiorcza', () => {
   const WIERSZ = {
     klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa sp. z o.o.', nip: '1234500011', rabat_procent: 30,
@@ -15,11 +17,11 @@ describe('umowaZbiorcza', () => {
   };
 
   it('sklada warunki umowy z wiersza karty klienta', () => {
-    expect(umowaZbiorcza(WIERSZ)).toEqual(KLIENT);
+    expect(umowaZbiorcza(WIERSZ)).toEqual(OKRES);
   });
 
   it('normalizuje NIP zapisany z myslnikami', () => {
-    expect(umowaZbiorcza({ ...WIERSZ, nip: '123-450-00-11' })).toEqual(KLIENT);
+    expect(umowaZbiorcza({ ...WIERSZ, nip: '123-450-00-11' })).toEqual(OKRES);
   });
 
   it('oddaje null, gdy klienta nie ma', () => {
@@ -27,31 +29,24 @@ describe('umowaZbiorcza', () => {
   });
 
   // ⚠️ To jest granica calego mechanizmu: klient JEST w bazie, ale nie ma umowy zbiorczej.
-  // Bez tego warunku kazdy staly klient dostawalby oplate za obsluge.
+  // Bez tego warunku każdy stały klient dostawałby miesięczny okres rozliczeniowy.
   it('oddaje null, gdy klient nie jest rozliczany zbiorczo', () => {
     expect(umowaZbiorcza({ ...WIERSZ, rozliczenie_zbiorcze: 0 })).toBeNull();
   });
 
-  // ⚠️ ODMOWA, NIGDY ZERO. Zero przy progu znaczyloby „kazda wysylka za darmo", a przy
-  // oplacie „nie pobieramy" — oba wygladaja w bazie poprawnie i oba kosztuja pieniadze.
-  it.each([
-    ['prog_darmowej_dostawy_gr', /próg darmowej dostawy/],
-    ['oplata_obslugi_gr', /opłata za obsługę/],
-    ['oplata_kurierska_gr', /opłata kurierska/],
-  ])('rzuca, gdy brakuje kwoty %s', (kolumna, opis) => {
-    expect(() => umowaZbiorcza({ ...WIERSZ, [kolumna]: null })).toThrow(opis);
+  it.each(['prog_darmowej_dostawy_gr', 'oplata_obslugi_gr', 'oplata_kurierska_gr'])(
+    'brak %s nie blokuje okresu miesięcznego', (kolumna) => {
+      expect(umowaZbiorcza({ ...WIERSZ, [kolumna]: null })).toEqual(OKRES);
+    },
+  );
+  it('okres nie zawiera kwot, także zerowych', () => {
+    expect(umowaZbiorcza({ ...WIERSZ, prog_darmowej_dostawy_gr: 0 })).toEqual(OKRES);
+  });
+  it('brak wszystkich kwot nie wymaga poprawiania karty klienta dla okresu', () => {
+    expect(() => umowaZbiorcza({ ...WIERSZ, prog_darmowej_dostawy_gr: null,
+      oplata_obslugi_gr: null, oplata_kurierska_gr: null })).not.toThrow();
   });
 
-  it('komunikat odmowy nazywa klienta i odsyla na karte', () => {
-    expect(() => umowaZbiorcza({ ...WIERSZ, oplata_obslugi_gr: null }))
-      .toThrow(/Pracownia Przykładowa sp\. z o\.o\.[\s\S]*karcie klienta/);
-  });
-
-  // Zero WPISANE jest poprawnym ustaleniem („wysylka gratis od zera") — odrzucamy BRAK,
-  // nie wartosc zerowa. Rozroznienie NULL vs 0 jest tu cala rzecza.
-  it('zero wpisane recznie przechodzi — odrzucamy brak, nie zero', () => {
-    expect(umowaZbiorcza({ ...WIERSZ, prog_darmowej_dostawy_gr: 0 }).progDarmowejDostawyGr).toBe(0);
-  });
 });
 
 describe('parsujKlientowZbiorczych', () => {

@@ -47,6 +47,14 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
   // ⚠️ Wiersz idzie wprost do `zapiszProduktSklepowy` (db/magazyn.js), ktore rozdziela dane
   // po KANALE — a upsert leci po `(kanal, produkt_id, wariant_id)`. Kanal wziety skadinad
   // rozjechalby sie z tym, co mapowanie uwaza za zrodlo wiersza.
+  // PRZ-160 E3.10 (D19): karta oferty z OMS-u przychodzi z rejestru `oferty_kanalow` przy zapisie lustra
+  // (services/magazyn-sync.js), nigdy z treści oferty — `external.id` to tylko SKU, a ręczne przypięcie ma przetrwać.
+  it('wiersz lustra nie niesie karty, nawet gdy external.id wygląda jak znak instalacji', () => {
+    const p = ofertaNaProdukt(oferta({ external: { id: 'POL-K17' } }), KANAL, KANALY_ALLEGRO);
+    expect(p).not.toHaveProperty('karta_id');
+    expect(p.sku_sklepu).toBe('POL-K17');
+  });
+
   it('wiersz niesie kanał i pusty wariant — Allegro nie ma wariantów', () => {
     const p = ofertaNaProdukt(oferta(), 'allegro_polcien2', ['allegro_swietlik', 'allegro_polcien2']);
     expect(p.kanal).toBe('allegro_polcien2');
@@ -321,14 +329,15 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
     expect(p.rozmiar_tekst).toBe(p.nazwa);
   });
 
-  // ⚠️ NIEZMIENNIK 8: magazyn NIE PROWADZI STANOW MAGAZYNOWYCH. `stock.available` jest
+  // ⚠️ NIEZMIENNIK 8 (PRZ-160 E4 D60: lustro niesie ilosc kanalu z chwili odczytu; stan magazynu
+  // liczy wylacznie `stanyKart`): magazyn NIE PROWADZI STANOW MAGAZYNOWYCH. `stock.available` jest
   // w odpowiedzi (zmierzone: 490, 15) i jest kuszacy — a raz zapisany stan zaczyna byc
   // czytany jako prawda, mimo ze odswieza sie wylacznie przyciskiem.
   it('oddaje DOKŁADNIE kolumny lustra i ani jednej więcej — bez stanów magazynowych', () => {
     const p = ofertaNaProdukt(oferta({ stock: { available: 490, sold: 12 }, stats: { watchersCount: 3 } }), KANAL, ['allegro_swietlik', 'allegro_polcien2']);
     expect(Object.keys(p).sort()).toEqual([
-      'adres', 'cena_gr', 'kanal', 'miniatura', 'nazwa', 'produkt_id', 'rozmiar_tekst',
-      'sku_sklepu', 'status_publikacji', 'wariant_id', 'zdjecia_json',
+      'adres', 'cena_gr', 'ilosc_kanalu', 'kanal', 'miniatura', 'nazwa', 'produkt_id', 'rozmiar_tekst',
+      'sku_sklepu', 'stan_prowadzony', 'status_publikacji', 'wariant_id', 'zdjecia_json',
     ]);
   });
 
@@ -459,8 +468,8 @@ describe('pobierzOferty — stronicowanie', () => {
   });
 
   it('limit strony mieści się w tym, co Allegro przyjmuje', () => {
-    expect(LIMIT_STRONY_OFERT).toBeGreaterThan(0);
-    expect(LIMIT_STRONY_OFERT).toBeLessThanOrEqual(100);
+    // PRZ-160 E3.30 (P19, produkcja 14.11): 1000 przyjęte, 1001 → 400.
+    expect(LIMIT_STRONY_OFERT).toBe(1000);
   });
 
   it('surowe oferty oddaje bez tknięcia — mapowanie to nie jest robota klienta', async () => {
@@ -602,10 +611,10 @@ describe('pobierzOferty — kontrola kompletności po totalCount', () => {
   it('oczekiwaną liczbę bierze z pierwszej odpowiedzi, nie z ostatniej', async () => {
     const pelna = Array.from({ length: LIMIT_STRONY_OFERT }, (_, i) => ({ id: String(i + 1) }));
     const fetchImpl = vi.fn()
-      .mockResolvedValueOnce(odpowiedz({ count: pelna.length, offers: pelna, totalCount: 250 }))
+      .mockResolvedValueOnce(odpowiedz({ count: pelna.length, offers: pelna, totalCount: LIMIT_STRONY_OFERT + 250 }))
       .mockResolvedValueOnce(odpowiedz({ count: 0, offers: [] }));
 
-    await expect(klient(fetchImpl).pobierzOferty()).rejects.toThrow(/250/);
+    await expect(klient(fetchImpl).pobierzOferty()).rejects.toThrow(new RegExp(String(LIMIT_STRONY_OFERT + 250)));
   });
 
   // Pusta strona konczy odczyt, cokolwiek mowi `totalCount` — inaczej Allegro z zawyzona
@@ -614,10 +623,10 @@ describe('pobierzOferty — kontrola kompletności po totalCount', () => {
   it('pusta strona przerywa pętlę, a niekompletność wychodzi błędem', async () => {
     const pelna = Array.from({ length: LIMIT_STRONY_OFERT }, (_, i) => ({ id: String(i + 1) }));
     const fetchImpl = vi.fn()
-      .mockResolvedValueOnce(odpowiedz({ count: pelna.length, offers: pelna, totalCount: 447 }))
-      .mockResolvedValue(odpowiedz({ count: 0, offers: [], totalCount: 447 }));
+      .mockResolvedValueOnce(odpowiedz({ count: pelna.length, offers: pelna, totalCount: LIMIT_STRONY_OFERT + 447 }))
+      .mockResolvedValue(odpowiedz({ count: 0, offers: [], totalCount: LIMIT_STRONY_OFERT + 447 }));
 
-    await expect(klient(fetchImpl).pobierzOferty()).rejects.toThrow(/447/);
+    await expect(klient(fetchImpl).pobierzOferty()).rejects.toThrow(new RegExp(String(LIMIT_STRONY_OFERT + 447)));
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 });
@@ -655,7 +664,7 @@ describe('pobierzOferty — nagłówki, metoda i limit czasu', () => {
 
   // Odczyt magazynu NIE MA PRAWA niczego zmienic na koncie sprzedazowym.
   it('każda strona jest GET-em i nie niesie ciała', async () => {
-    const fetchImpl = kontoZOfertami(45);
+    const fetchImpl = kontoZOfertami(LIMIT_STRONY_OFERT + 45);
     await klient(fetchImpl).pobierzOferty();
 
     expect(fetchImpl.mock.calls.length).toBeGreaterThan(1);

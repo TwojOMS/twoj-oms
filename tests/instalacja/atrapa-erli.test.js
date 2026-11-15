@@ -36,7 +36,11 @@ describe('PRZ-157.03a — atrapa ERLI', () => {
   });
   it('kanał demo (demoZmiany) nie ma nieznanej metody dostawy — Adam 12.11: „w demo nie może takiego być”', async () => {
     const demo = await createAtrapaErli({ ...opcje(), demoZmiany: true }).szukajZamowien();
-    expect(demo).toHaveLength(16);
+    expect(demo).toHaveLength(31);
+    // PRZ-160.demo (właściciel 14.11): świeży koszyk z 5 różnymi produktami u góry listy.
+    const duzy = demo.find(z => z.id === 'PC-ERLI-0017');
+    expect(new Set(duzy.items.map(p => p.sku)).size).toBe(5);
+    expect(Date.parse(demo[0].purchasedAt) - Date.parse(duzy.purchasedAt)).toBeLessThanOrEqual(6 * 3600000);
     expect(demo.map(z => z.delivery.typeId)).not.toContain('nieznanaMetoda');
     expect(demo.find(z => z.id === 'PC-ERLI-0011').delivery).toMatchObject({ typeId: 'erliKurier24InPost10kg', name: 'Kurier ERLI' });
   });
@@ -44,6 +48,15 @@ describe('PRZ-157.03a — atrapa ERLI', () => {
     const o = opcje(); const a = createAtrapaErli(o);
     expect(metody(createErliClient()).filter(m => !metody(a).includes(m))).toEqual([]);
     expect(() => createAtrapaErli({ ...o, env: {} })).toThrow('OMS_TRYB=proba');
+  });
+  it('PRZ-160.E2.03: produkty z OMS-u — 409 na powtórny POST, batch po externalId, nieznany jako błąd pozycji', async () => {
+    const a = createAtrapaErli(opcje());
+    await a.utworzProdukt('PC-LAMPA-1', { name: 'Lampa Półcień', price: 6638, stock: 3 });
+    await expect(a.utworzProdukt('PC-LAMPA-1', { name: 'Lampa Półcień' })).rejects.toMatchObject({ status: 409 });
+    const wynik = await a.zmienProdukty([{ externalId: 'PC-LAMPA-1', stock: 1 }, { externalId: 'PC-BRAK', stock: 1 }]);
+    expect(wynik.map(w => [w.externalId, w.blad?.status ?? null])).toEqual([['PC-LAMPA-1', null], ['PC-BRAK', 400]]);
+    expect(await a.pobierzProdukt('PC-LAMPA-1')).toMatchObject({ name: 'Lampa Półcień', stock: 1 });
+    expect((await a.szukajProduktow()).map(p => p.externalId)).toEqual(['PC-LAMPA-1']);
   });
   it('surowe odpowiedzi zamówienia, paczek i metod są zgodne z klientem', async () => {
     const a = createAtrapaErli(opcje());
@@ -73,12 +86,12 @@ describe('PRZ-157.03a — atrapa ERLI', () => {
     expect(await a.pobierzProdukt('nieznany')).toBeNull();
     expect(await a.pobierzProdukt('PC-OF-6')).not.toHaveProperty('dispatchTime');
   });
-  it('paginacja nie gubi remisów, ma szesnaście scenariuszy i nie zwraca kont bankowych', async () => {
+  it('paginacja nie gubi remisów, ma 31 zamówień (16 scenariuszy + starsze wysłane) i nie zwraca kont bankowych', async () => {
     const a = createAtrapaErli(opcje()); const wszystkie = await a.szukajZamowien();
-    expect(wszystkie).toHaveLength(16); expect(wszystkie.some(z => z.status === 'pending')).toBe(true);
+    expect(wszystkie).toHaveLength(31); expect(wszystkie.some(z => z.status === 'pending')).toBe(true);
     expect(wszystkie.some(z => z.delivery.cod)).toBe(true); expect(wszystkie.some(z => z.user.invoiceAddress?.nip)).toBe(true);
     const wynik = []; let after;
-    for (let i = 0; i < 8; i++) { const strona = await a.szukajZamowien({ pagination: { sortField: 'updated', after, limit: 2 } }); wynik.push(...strona); after = strona.at(-1)?.cursor; }
+    for (let i = 0; i < 16; i++) { const strona = await a.szukajZamowien({ pagination: { sortField: 'updated', after, limit: 2 } }); wynik.push(...strona); after = strona.at(-1)?.cursor; }
     expect(wynik).toEqual(wszystkie); expect(JSON.stringify(wszystkie)).not.toContain('bankAccount');
     expect(await a.szukajZamowien({ pagination: { sortField: 'updated', order: 'DESC', limit: 2 } })).toEqual(wszystkie.slice(-2).reverse());
     expect(await a.szukajZamowien({ filter: { field: 'status', operator: '=', value: 'pending' } })).toEqual([wszystkie.find(z => z.id === 'PC-ERLI-0006')]);

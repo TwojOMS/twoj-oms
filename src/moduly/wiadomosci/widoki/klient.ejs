@@ -38,7 +38,7 @@
   const w = klient.wysylka ?? {};
 %>
 
-<p class="wroc"><a href="/klienci">← Stali klienci</a></p>
+<p class="wroc"><a href="/klienci">← Klienci B2B</a></p>
 
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (klient.nazwa), opisHtml: include('_naglowek-opis-klient.ejs')}) %>
 
@@ -48,7 +48,7 @@
   <section class="panel">
     <div class="panel-glowa">
       <h2>Kim jest</h2>
-      <a class="link-edytuj" href="/klienci/<%= klient.id %>/edytuj#formularz">Edytuj</a>
+      <a class="link-edytuj" href="/klienci/<%= klient.id %>">Edytuj</a>
     </div>
     <div class="panel-cialo">
       <dl class="dane">
@@ -69,9 +69,12 @@
             (wczesniej: `.env` na NAS-ie, poza zasiegiem ekranu). %>
         <% if (klient.rozliczenie_zbiorcze) { %>
           <dt>Rozliczenie</dt><dd><b>zbiorcze</b> — jedna faktura na koniec miesiąca</dd>
+        <% } %>
+        <% if (klient.prog_darmowej_dostawy_gr != null) { %>
           <dt>Darmowa dostawa</dt><dd>od <%= zl(klient.prog_darmowej_dostawy_gr) %> zł (towar po rabacie)</dd>
-          <dt>Opłaty</dt><dd>obsługa <%= zl(klient.oplata_obslugi_gr) %> zł ·
-            usługa kurierska <%= zl(klient.oplata_kurierska_gr) %> zł</dd>
+        <% } %>
+        <% if (klient.oplata_obslugi_gr != null) { %>
+          <dt>Opłaty</dt><dd>obsługa <%= zl(klient.oplata_obslugi_gr) %> zł przy własnej etykiecie</dd>
         <% } %>
         <dt>Notatka</dt><dd><%= wart(klient.komentarz) %></dd>
         <dt>Wpis</dt><dd><%= fmtDataCzasKrotko(klient.utworzone_at) %>

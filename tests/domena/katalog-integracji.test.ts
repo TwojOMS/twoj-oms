@@ -16,20 +16,20 @@ describe('katalog integracji', () => {
     expect(allegro?.href).toBe(allegro?.konfigurator?.href);
   });
   it('dostępne sklepy przed planowanymi — ERLI trzecie (PRZ-157.12h)', () => {
-    expect(KATALOG_INTEGRACJI.filter(u => u.kategoria === 'sklepy').map(u => u.id)).toEqual(['allegro', 'woocommerce', 'erli', 'shoper', 'empik', 'etsy']);
+    expect(KATALOG_INTEGRACJI.filter(u => u.kategoria === 'sklepy').map(u => u.id)).toEqual(['allegro', 'woocommerce', 'erli', 'shoper', 'empik', 'etsy', 'tiktok-shop']);
   });
   it('obejmuje wymagane usługi bez duplikatów i bez TwojeFaktury', () => {
     expect(KATALOG_INTEGRACJI.map((usluga) => usluga.id).sort()).toEqual([
-      'allegro', 'woocommerce', 'shoper', 'empik', 'erli', 'etsy',
+      'allegro', 'woocommerce', 'shoper', 'empik', 'erli', 'etsy', 'tiktok-shop',
       'dpd', 'inpost', 'wza', 'gls', 'dhl', 'apaczka', 'infakt', 'fakturownia',
       'ksef', 'gus', 'smtp', 'meta', 'ga4', 'google_ads',
     ].sort());
   });
 
-  it('oznacza siedem zapowiedzi bez odnośnika do podłączenia', () => {
+  it('oznacza siedem zapowiedzi (PRZ-167: z TikTok Shop) bez odnośnika do podłączenia', () => {
     const planowane = KATALOG_INTEGRACJI.filter((usluga) => usluga.dostepnosc === 'planowana');
     expect(planowane.map((usluga) => usluga.id).sort()).toEqual(
-      ['shoper', 'empik', 'etsy', 'gls', 'dhl', 'apaczka'].sort(),
+      ['shoper', 'empik', 'etsy', 'tiktok-shop', 'gls', 'dhl', 'apaczka'].sort(),
     );
     expect(planowane.every((usluga) => usluga.href === null)).toBe(true);
   });

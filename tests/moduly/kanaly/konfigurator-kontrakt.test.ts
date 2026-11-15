@@ -21,17 +21,17 @@ it('strażnik odrzuca niespójne kroki i pola, akceptuje oba kompletne opisy', (
     expect(() => sprawdzOpisyKanalow({ woo: opis }), JSON.stringify(kroki)).toThrow();
   }
   expect(MODUL_ALLEGRO.konfigurator.kroki.map(k => [k.numer, k.id])).toEqual([
-    [0, 'aplikacja'], [1, 'nazwa'], [2, 'zgoda'], [3, 'konto'], [4, 'start'], [5, 'stan'],
+    [0, 'aplikacja'], [1, 'nazwa'], [2, 'zgoda'], [3, 'konto'], [4, 'start'], [5, 'stan'], [6, 'oferty'],
   ]);
   expect(MODUL_WOO.konfigurator.kroki.map(k => [k.numer, k.id])).toEqual([
-    [1, 'nazwa'], [2, 'klucze'], [3, 'mapowanie'], [4, 'start'], [5, 'stan'],
+    [1, 'nazwa'], [2, 'klucze'], [3, 'mapowanie'], [4, 'start'], [5, 'stan'], [6, 'stany'],
   ]);
 });
 
 it('stanKrokow oznacza wykonane, bieżący i przyszłe kroki', async () => {
   const { stanKrokow } = await import('../../../src/core/web/konfigurator/konfigurator.ts');
   expect(stanKrokow(MODUL_WOO.konfigurator, { biezacy: 'klucze', zrobione: ['nazwa'] })).toEqual(
-    MODUL_WOO.konfigurator.kroki.map((k, i) => ({ numer: k.numer, tytul: k.tytul, stan: ['zrobione', 'biezacy', 'przed', 'przed', 'przed'][i] })),
+    MODUL_WOO.konfigurator.kroki.map((k, i) => ({ numer: k.numer, tytul: k.tytul, stan: ['zrobione', 'biezacy', 'przed', 'przed', 'przed', 'przed'][i] })),
   );
 });
 
@@ -61,6 +61,7 @@ it('kroki Allegro i Woo mają widoki, akcje, przyciski i pola z tabeli 3.3', () 
     [3, 'konto', 'Potwierdź konto', 'allegro-konto'],
     [4, 'start', 'Data startu', ':kanal/data-startu → Zapisz datę startu', ['od', 'data', true, null, null]],
     [5, 'stan', 'Stan', 'allegro-stan'],
+    [6, 'oferty', 'Oferty', 'allegro-oferty'],
   ]);
   expect(szkielet(MODUL_WOO)).toEqual([
     [1, 'nazwa', 'Nazwa i adres', 'szkice → Dalej', ['nazwa', 'tekst', true, null, null], ['adres', 'adres', true, null, null]],
@@ -68,5 +69,6 @@ it('kroki Allegro i Woo mają widoki, akcje, przyciski i pola z tabeli 3.3', () 
     [3, 'mapowanie', 'Metody wysyłki', 'woo-mapowanie'],
     [4, 'start', 'Data startu i „Aktywuj”', ':kanal/data-startu → Zapisz datę startu', ['od', 'data', true, null, null]],
     [5, 'stan', 'Stan', 'woo-stan'],
+    [6, 'stany', 'Stany', 'woo-stany'],
   ]);
 });

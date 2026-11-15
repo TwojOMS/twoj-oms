@@ -1,0 +1,123 @@
+{
+ "_pomiar": "P16 sandbox 14.11: PUT …-change-commands/{id} dwa razy z tym samym UUID i treścią → 201 z tym samym createdAt; inna treść → 409",
+ "00 PUT quantity 1": {
+  "status": 201,
+  "body": {
+   "id": "00000000-0000-4000-8000-000000000003",
+   "createdAt": "2026-11-13T23:47:32.271Z",
+   "completedAt": null,
+   "taskCount": {
+    "total": 0,
+    "success": 0,
+    "failed": 0
+   }
+  }
+ },
+ "01 PUT quantity 2 (ten sam UUID)": {
+  "status": 201,
+  "body": {
+   "id": "00000000-0000-4000-8000-000000000003",
+   "createdAt": "2026-11-13T23:47:32.271Z",
+   "completedAt": null,
+   "taskCount": {
+    "total": 0,
+    "success": 0,
+    "failed": 0
+   }
+  }
+ },
+ "02 PUT quantity 3 (ten sam UUID, inna wartość)": {
+  "status": 409,
+  "body": {
+   "errors": [
+    {
+     "code": "COMMAND_ALREADY_REGISTERED_WITH_DIFFERENT_CONTENT",
+     "message": "Command with the given id but with different content is already registered.",
+     "details": null,
+     "path": "",
+     "userMessage": "Command with the given id but with different content is already registered.",
+     "metadata": {}
+    }
+   ]
+  }
+ },
+ "03 GET komenda": {
+  "status": 200,
+  "body": {
+   "id": "00000000-0000-4000-8000-000000000003",
+   "createdAt": "2026-11-13T23:47:32.271Z",
+   "completedAt": "2026-11-13T23:47:34.253Z",
+   "taskCount": {
+    "total": 1,
+    "success": 0,
+    "failed": 1
+   }
+  }
+ },
+ "04 GET tasks": {
+  "status": 200,
+  "body": {
+   "tasks": [
+    {
+     "offer": {
+      "id": "9900000001"
+     },
+     "message": "EXCEPTION_DURING_OFFER_QUANTITY_UPDATE",
+     "status": "FAIL",
+     "field": "quantity",
+     "errors": [
+      {
+       "code": "AvailableStockCannotBeChanged",
+       "message": "The stock level of the fulfillment offer may not be changed.",
+       "details": null,
+       "path": null,
+       "userMessage": "The quantity listed in an offer cannot change."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "05 PUT price 1": {
+  "status": 201,
+  "body": {
+   "id": "00000000-0000-4000-8000-000000000004",
+   "createdAt": "2026-11-13T23:47:37.429Z",
+   "completedAt": null,
+   "taskCount": {
+    "total": 0,
+    "success": 0,
+    "failed": 0
+   }
+  }
+ },
+ "06 PUT price 2 (ten sam UUID)": {
+  "status": 201,
+  "body": {
+   "id": "00000000-0000-4000-8000-000000000004",
+   "createdAt": "2026-11-13T23:47:37.429Z",
+   "completedAt": null,
+   "taskCount": {
+    "total": 0,
+    "success": 0,
+    "failed": 0
+   }
+  }
+ },
+ "07 GET price tasks": {
+  "status": 200,
+  "body": {
+   "tasks": [
+    {
+     "offer": {
+      "id": "9900000001"
+     },
+     "message": null,
+     "status": "SUCCESS",
+     "field": "price",
+     "errors": []
+    }
+   ]
+  }
+ }
+}

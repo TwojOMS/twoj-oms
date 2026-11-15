@@ -1,0 +1,91 @@
+<% const al = allegroKarty; %>
+<section class="panel" id="allegro-karty" aria-labelledby="allegro-tytul">
+  <div class="panel-glowa"><h2 id="allegro-tytul">Allegro</h2></div>
+  <div class="panel-cialo">
+    <% if (al.bledy.length) { %>
+      <p class="pasek-uwaga" id="allegro-braki-tytul">Przed wystawieniem uzupełnij (<%= al.bledy.length %>):</p>
+      <ul class="tresc-lista" aria-labelledby="allegro-braki-tytul">
+        <% al.bledy.forEach(b => { %><li><%= b.tekst %><% if (b.adres) { %> — <a href="<%= b.adres %>">przejdź</a><% } %></li><% }); %>
+      </ul>
+    <% } else { %>
+      <p><span class="znacznik znacznik--ok">Gotowa do wystawienia</span></p>
+    <% } %>
+    <% if (al.ostrzezenia.length) { %>
+      <p class="podpowiedz" id="allegro-uwagi-tytul">Uwagi (nie blokują wystawienia):</p>
+      <ul class="tresc-lista" aria-labelledby="allegro-uwagi-tytul"><% al.ostrzezenia.forEach(o => { %><li><%= o.tekst || o %></li><% }); %></ul>
+    <% } %>
+    <p class="podpowiedz">Sprawdzone bez łączenia z Allegro<%= al.droga ? ` (droga: ${al.droga})` : '' %>, środowisko: <%= al.srodowisko %>.</p>
+
+    <% al.problemy.forEach(p => { %>
+      <% const zdanieProblemu = `Oferta${p.konto ? ` na koncie ${p.konto}` : ''} czeka na wybór produktu${p.kod === 'parameter-mismatch' ? ` — parametr ${p.parametr || ''} nie zgadza się z produktem w katalogu Allegro` : ' — Allegro znalazło kilka pasujących produktów'}.`; %>
+      <% if (!mozeEdytowacOferty) { %>
+        <p class="pasek-blokada" id="allegro-problem-<%= p.ofertaId %>"><%= zdanieProblemu %> Produkt wybiera administrator.</p>
+      <% } else { %>
+      <form method="post" action="/magazyn/<%= karta.id %>/allegro/produkt">
+        <input type="hidden" name="ofertaId" value="<%= p.ofertaId %>">
+        <p class="pasek-blokada" id="allegro-problem-<%= p.ofertaId %>"><%= zdanieProblemu %></p>
+        <fieldset aria-describedby="allegro-problem-<%= p.ofertaId %>">
+          <legend>Produkt z katalogu Allegro</legend>
+          <% p.kandydaci.forEach((k, i) => { %>
+            <label class="w-linii"><input type="radio" name="produktId" value="<%= k.id %>"<%= i === 0 ? ' required' : '' %>> <%= k.nazwa %><%= k.ean ? ` — EAN ${k.ean}` : '' %></label><br>
+          <% }); %>
+          <div class="przyciski"><button class="btn btn--glowny btn--maly" type="submit">Użyj tego produktu</button></div>
+        </fieldset>
+      </form>
+      <% } %>
+    <% }); %>
+
+    <dl class="dane">
+      <dt>Kategoria</dt>
+      <dd><% if (al.kategoria) { %><%= al.nazwaKategorii ? `${al.nazwaKategorii} (${al.kategoria})` : al.kategoria %> <span class="znacznik znacznik--cichy"><%= al.skadKategorii %></span><% } else { %>brak — ustaw mapę kategorii albo wpisz wyjątek poniżej<% } %></dd>
+      <dt>Produkt w katalogu Allegro</dt>
+      <dd><%= al.produktId || 'wybierany przez Allegro przy wystawieniu' %></dd>
+    </dl>
+
+    <% if (al.parametry.length) { %>
+      <div class="przewijak-tabeli" tabindex="0" role="region" aria-label="Parametry kategorii Allegro">
+        <table class="tab-pozycje">
+          <caption>Parametry kategorii</caption>
+          <thead><tr><th scope="col">Parametr</th><th scope="col">Wartość</th><th scope="col">Skąd</th></tr></thead>
+          <tbody>
+            <% al.parametry.forEach(pr => { %>
+              <tr><th scope="row"><%= pr.nazwa %><%= pr.wymagany ? ' *' : '' %></th><td><%= !pr.wartosc ? '—' : (pr.slownik?.find(o => String(o.id) === pr.wartosc)?.wartosc ?? pr.wartosc) %></td><td><%= pr.skad %></td></tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+      <p class="podpowiedz">* parametr wymagany przez Allegro.</p>
+    <% } else if (al.kategoria && !al.opisPobrany) { %>
+      <p class="magazyn-brak">Brak pobranego opisu kategorii <%= al.kategoria %> — pobierz go w ustawieniach Allegro, wtedy pojawią się parametry.</p>
+    <% } %>
+
+    <% if (!mozeEdytowacOferty) { %>
+      <p class="podpowiedz">Dane Allegro tej karty zmienia administrator.</p>
+    <% } else { %>
+    <form method="post" action="/magazyn/<%= karta.id %>/allegro" aria-labelledby="allegro-tytul">
+      <div class="pola pola--siatka">
+        <label>Nazwa dla Allegro (pusta = nazwa karty)
+          <input name="nazwa" value="<%= al.nazwa !== al.nazwaKarty ? al.nazwa : '' %>" placeholder="<%= al.nazwaKarty %>" aria-describedby="allegro-nazwa-licznik">
+          <span class="podpowiedz" id="allegro-nazwa-licznik"><%= al.dlugosc %> / <%= al.limit %> znaków (znak &amp; liczy się jak 5)</span>
+        </label>
+        <label>Wyjątek kategorii (numer, pusty = z importu albo mapy)
+          <input name="kategoria" value="<%= al.wyjatek || '' %>" inputmode="numeric" autocomplete="off">
+        </label>
+        <% al.parametry.filter(pr => pr.edytowalny).forEach(pr => { %>
+          <label><%= pr.nazwa %>
+          <% if (pr.slownik) { %>
+            <select name="parametr:<%= pr.id %>">
+              <option value="">— bez nadpisania —</option>
+              <% pr.slownik.forEach(o => { %><option value="<%= o.id %>"<%= pr.wartosc === String(o.id) ? ' selected' : '' %>><%= o.wartosc %></option><% }); %>
+            </select>
+          <% } else { %>
+            <input name="parametr:<%= pr.id %>" value="<%= pr.skad === 'nadpisane na karcie' ? (pr.wartosc ?? '') : '' %>">
+          <% } %>
+          </label>
+        <% }); %>
+      </div>
+      <div class="przyciski"><button class="btn btn--glowny" type="submit">Zapisz dane Allegro</button></div>
+    </form>
+    <% } %>
+  </div>
+</section>

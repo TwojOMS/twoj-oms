@@ -36,7 +36,7 @@ it('karta z atrapy: ustalane bez HTTP, potem drogi i sprawa blokady; typ z rejes
     expect(karta.body).not.toContain('<p>Nadanie:');
     expect(http).not.toHaveBeenCalled();
     const zamowienia = p.db.prepare('SELECT id, surowe_json FROM zamowienia WHERE sklep=?').all('nietypowy');
-    expect(zamowienia).toHaveLength(15);
+    expect(zamowienia).toHaveLength(30);
     for (const [typeId, napis] of [['dpd', 'Nadanie: Twoja umowa — DPD'], ['paczkomat', 'Nadanie: Twoja umowa — Paczkomat InPost'], ['nieznanaMetoda', 'ERLI: nie wiem, jak nadać metodę Dostawa nieznana (nieznanaMetoda)']]) {
       const z = zamowienia.find(z => JSON.parse(z.surowe_json).delivery.typeId === typeId);
       const r = await get(p.app, `/zamowienia/${z.id}`, admin);

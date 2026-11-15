@@ -144,7 +144,7 @@ function daneOkresu(db, config, okres) {
   };
 }
 
-export function registerOkresyRoutes(app, { db, config = {}, infakt: program = null, vies = null, wyborProgramu = null }) {
+export function registerOkresyRoutes(app, { db, config = {}, proba = false, infakt: program = null, vies = null, wyborProgramu = null }) {
   // PRZ-152.G13f4: odmowy z formularzy karty okresu w układzie OMS (status i tekst bez zmian).
   // Powrót na ekran okresu, z którego przyszedł formularz; okres.ejs nie ma paska z `?blad`, więc strona odmowy.
   const odmowaOkresu = (reply, okres, status, komunikat, tytul) => stronaOdmowy(reply, status, komunikat, {
@@ -170,7 +170,7 @@ export function registerOkresyRoutes(app, { db, config = {}, infakt: program = n
     // MIESIACE z domeny (nie z widoku) — ta sama lista, z ktorej `opisOdmowy` sklada
     // komunikat odmowy. Trzecia kopia w szablonie znaczylaby, ze odmowa i ekran moga
     // kiedys nazwac ten sam miesiac inaczej.
-    return reply.view('okresy-lista.ejs', { szerokosc: 'tabela', title: 'Okresy rozliczeniowe', okresy, MIESIACE });
+    return reply.view('okresy-lista.ejs', { szerokosc: 'tabela', title: 'Okresy rozliczeniowe', okresy, MIESIACE, proba });
   });
 
   app.get('/okresy/:id', async (req, reply) => {

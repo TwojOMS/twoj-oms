@@ -31,11 +31,11 @@ import { zl } from './kwoty.js';
 // zeby go policzyc, trzeba pytac o NIEOBECNOSC w kanale (`NOT EXISTS`), a takiego warunku
 // warstwa zapytan nie zna. Dopisanie go jest zmiana w db/, nie w tym slowniku.
 //
-// ⚠️ CZTERY PIERWSZE TO BRAKI, PIATA JEST KAFLEM POSTEPU: `komplet` oddaje karty, ktorym
+// ⚠️ OSTATNI JEST KAFLEM POSTEPU: `komplet` oddaje karty, ktorym
 // NICZEGO nie brakuje — druga strona tej samej monety, liczona tym samym wyrazeniem
 // (`LICZBA_BRAKOW_SQL` w db/magazyn.js). Stoi w tej samej liscie, bo jedzie tym samym polem
 // adresu (`?brak=…`) i tym samym polem wyboru.
-export const BRAKI_MAGAZYNU = Object.freeze(['sku', 'wymiary', 'kategoria', 'paczkomat', 'komplet']);
+export const BRAKI_MAGAZYNU = Object.freeze(['sku', 'wymiary', 'kategoria', 'paczkomat', 'zdjecie', 'opis', 'komplet']);
 
 // Trzy stany paczkomatu (domain/paczkomat.js) plus nazwa trzeciego, jakiej uzywa zapytanie.
 // ⚠️ Plan proponowal `tak|nie|brak`; baza zna `nieoznaczone`, a `brak` leci u niej w `1 = 0`.
@@ -48,8 +48,10 @@ export const BRAKI_ETYKIETY = Object.freeze({
   wymiary: 'bez wymiarów',
   kategoria: 'bez kategorii głównej',
   paczkomat: 'bez oznaczenia paczkomatu',
+  zdjecie: 'bez zdjęcia',
+  opis: 'bez opisu',
   // Nie „kompletne" — pole wyboru czyta sie jako „pokaz karty: …", a ta pozycja jako jedyna
-  // nie opisuje braku. Dopowiedzenie odroznia ja od czterech powyzej jednym spojrzeniem.
+  // nie opisuje braku. Dopowiedzenie odroznia ja od brakow powyzej jednym spojrzeniem.
   komplet: 'komplet — nic nie brakuje',
 });
 
@@ -62,7 +64,7 @@ export const PACZKOMAT_ETYKIETY = Object.freeze({
 // KOLEJNOSC PARAMETROW W ADRESIE. Stala, zeby ten sam widok mial zawsze ten sam adres
 // (historia przegladarki, zakladki, porownanie w tescie) — ta sama zasada, co przy
 // `adresZFiltrami` na liscie zamowien.
-const POLA = Object.freeze(['fraza', 'kanal', 'kategoria', 'brak', 'paczkomat', 'cenaOd', 'cenaDo']);
+const POLA = Object.freeze(['fraza', 'kanal', 'kategoria', 'marka', 'brak', 'paczkomat', 'cenaOd', 'cenaDo', 'oferty']);
 const POLA_CENY = Object.freeze(['cenaOd', 'cenaDo']);
 
 /**
@@ -113,7 +115,7 @@ function cena(surowa) {
  * Filtry z adresu. Wartosc nieznana albo w zlym formacie spada do `null` (czyli „bez
  * filtra"), nigdy nie leci dalej — ta sama zasada, co przy `parsujFiltry` listy zamowien.
  *
- * @returns {{fraza: string|null, kanal: string|null, kategoria: string|null,
+ * @returns {{fraza: string|null, kanal: string|null, kategoria: string|null, marka: string|null,
  *            brak: string|null, paczkomat: string|null, cenaOd: number|null, cenaDo: number|null}}
  */
 export function filtryZZapytania(query = {}, kanaly) {
@@ -126,10 +128,13 @@ export function filtryZZapytania(query = {}, kanaly) {
     // liscie zamowien: kanaly dokladamy MY, bramki platnosci sklep). Nazwa nietrafiona po
     // prostu nie trafi w zadna karte, i to jest co innego niz wartosc spoza slownika.
     kategoria: napis(query?.kategoria),
+    // PRZ-160.P3b.02: marka jak kategoria — lista otwarta, nazwa nietrafiona nie trafi w kartę.
+    marka: napis(query?.marka),
     brak: zeSlownika(query?.brak, BRAKI_MAGAZYNU),
     paczkomat: zeSlownika(query?.paczkomat, PACZKOMAT_DO_FILTRA),
     cenaOd: cena(query?.cenaOd),
     cenaDo: cena(query?.cenaDo),
+    ...(query?.oferty ? { oferty: zeSlownika(query.oferty, ['bez', 'z', 'problem']) } : {}),
   };
 }
 

@@ -41,8 +41,8 @@ it('produkt, klient, edycja klienta i okres mają nadrzędne linki', async () =>
     const okres = zapewnijOkres(db, { klientKlucz: 'testowy', rok: 2026, miesiac: 11 });
     for (const [url, linki, koniec] of [
       [`/magazyn/${produkt}`, [['/magazyn', 'Magazyn']], 'Produkt testowy'],
-      [`/klienci/${klient}`, [['/klienci', 'Stali klienci']], 'Klient testowy'],
-      [`/klienci/${klient}/edytuj`, [['/klienci', 'Stali klienci'], [`/klienci/${klient}`, 'Klient testowy']], 'Edycja'],
+      [`/klienci/${klient}/karta`, [['/klienci', 'Klienci B2B']], 'Klient testowy'],
+      [`/klienci/${klient}`, [['/klienci', 'Klienci B2B'], [`/klienci/${klient}/karta`, 'Klient testowy']], 'Edycja'],
       [`/okresy/${okres.id}`, [['/okresy', 'Okresy']], '2026-11'],
     ]) {
       const r = await get(app, url, BASIC);

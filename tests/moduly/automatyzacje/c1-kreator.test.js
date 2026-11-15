@@ -136,6 +136,9 @@ describe('9. kreator z prawdziwym rejestrem', () => {
     zamowienieWyslane(p.db, { email: '', numer: '0000000000120U' });
     zamowienieWyslane(p.db); // bez paczki
     zamowienieWyslane(p.db, { sklep: 'allegro_swietlik', numer: '0000000000121U' });
+    // Liczniki menu Ustawień odświeżają indeks listy także po POST (PRZ-160 P2.02c) — to pamięć podręczna,
+    // nie dane. Odświeżamy go wcześniej, żeby „zero zapisów” mierzyło tylko samo sprawdzenie reguły.
+    await get(p.app, EKRAN, p.admin);
     const przed = p.db.prepare('SELECT total_changes() AS n').get().n;
     const r = await post(p.app, `${EKRAN}/sprawdz`, p.admin, FORM);
     expect(p.db.prepare('SELECT total_changes() AS n').get().n).toBe(przed);

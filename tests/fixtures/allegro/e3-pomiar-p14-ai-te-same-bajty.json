@@ -1,0 +1,65 @@
+{
+ "_pomiar": "P14 sandbox 14.11: te same bajty wgrane 3× (ai false/true/false) dają 3 różne adresy; w ofercie Allegro scala je w jedno zdjęcie i zostawia oznaczenie zdjęcia już obecnego/pierwszego",
+ "kroki": [
+  {
+   "co": "true-pierwsze",
+   "wyslane": 3,
+   "patch": 200,
+   "zapisane": [
+    "https://a.allegroimg.allegrosandbox.pl/original/1100aa/0000000000000000000000000003"
+   ],
+   "ai": {
+    "images": [
+     {
+      "url": "https://a.allegroimg.allegrosandbox.pl/original/1100aa/0000000000000000000000000003"
+     }
+    ]
+   },
+   "produktAi": true
+  },
+  {
+   "co": "tylko-false-3",
+   "wyslane": 1,
+   "patch": 200,
+   "zapisane": [
+    "https://a.allegroimg.allegrosandbox.pl/original/1100aa/0000000000000000000000000003"
+   ],
+   "ai": {
+    "images": [
+     {
+      "url": "https://a.allegroimg.allegrosandbox.pl/original/1100aa/0000000000000000000000000003"
+     }
+    ]
+   },
+   "produktAi": true
+  },
+  {
+   "co": "tylko-true-2",
+   "wyslane": 1,
+   "patch": 200,
+   "zapisane": [
+    "https://a.allegroimg.allegrosandbox.pl/original/1100aa/0000000000000000000000000003"
+   ],
+   "ai": {
+    "images": [
+     {
+      "url": "https://a.allegroimg.allegrosandbox.pl/original/1100aa/0000000000000000000000000003"
+     }
+    ]
+   },
+   "produktAi": true
+  },
+  {
+   "co": "dwa-razy-bez-flagi",
+   "wyslane": 2,
+   "patch": 200,
+   "zapisane": [
+    "https://a.allegroimg.allegrosandbox.pl/original/1100aa/0000000000000000000000000004"
+   ],
+   "ai": {
+    "images": []
+   },
+   "produktAi": true
+  }
+ ]
+}

@@ -829,6 +829,13 @@
     .wiecej .rzad input { box-sizing: border-box; flex: 1 1 0; font: inherit; font-size: .9rem; padding: .3rem .45rem;
       border: 1px solid var(--ramka-pola); border-radius: .3rem; background: var(--powierzchnia); color: inherit; }
     .pozycja-tekst { min-width: 0; font-size: .88rem; line-height: 1.35; }
+    /* PRZ-163: pozycje od szóstej zwinięte na liście zamówień. `--link`, nie `--marka` (kontrast w ciemnym
+       motywie, patrz `.wiecej`). Napis zmienia się na „Zwiń”, gdy reszta jest rozwinięta. */
+    .pozycje-reszta { margin-top: .3rem; }
+    .pozycje-reszta > summary { cursor: pointer; color: var(--link); font-size: .84rem; width: fit-content; }
+    .pozycje-reszta > summary + .pozycja { margin-top: .3rem; }
+    .pozycje-reszta[open] .pozycje-reszta-pokaz,
+    .pozycje-reszta:not([open]) .pozycje-reszta-zwin { display: none; }
 
     /* Ekrany akcji masowych (masowe-nadaj.ejs, masowe-wynik.ejs). */
     .panel--groza { border-color: var(--blad-ramka); }
@@ -1438,6 +1445,13 @@
       width: 1.15rem; height: 1.15rem; padding: 0; margin: -.15rem .35rem -.15rem 0; vertical-align: middle;
       border-radius: .3rem; font-size: .75rem; font-weight: 700; line-height: 1;
     }
+    /* PRZ-160.P3a.02: kanal, w ktorym oferta nie jest aktywna (np. ERLI w bledzie) — bez koloru marki,
+       przerywana ramka; stan w title/aria-label. Kontrast tekstu (WCAG, skrypt): jasny 4,53 · ciemny 5,84;
+       ramka do tla 3,37 / 3,54. */
+    .plakietka--nieaktywna {
+      --plakietka-tlo: var(--powierzchnia-2); --plakietka-tekst: var(--tekst-przygaszony);
+      border: 1px dashed var(--ramka-pola);
+    }
     .komorka-ikony { white-space: nowrap; }
     .ikona {
       display: inline-flex; align-items: center; justify-content: center;
@@ -1622,25 +1636,17 @@
     .pasek-zawezania { background: var(--powierzchnia); border: 1px solid var(--ramka);
       border-radius: .4rem; padding: .1rem .75rem .55rem; margin: 0 0 .8rem; }
     .pasek-zawezania .filtry, .pasek-zawezania .szukajka { border: 0; padding: .45rem 0 0; margin: 0; background: transparent; }
-    /* Pasek odczytu zwiniety do linii (przebudowa 2026-08-25, Zadanie 3). `open` NIE JEST  */
-    /* OZDOBA — trasa (`opisPrzebiegu`) go ustawia REGULA: trwanie i kazdy blad renderuja    */
-    /* details otwarty, bo cichy zly odczyt ma wygladac identycznie jak spokoj WYLACZNIE,    */
-    /* gdy naprawde nic sie nie stalo (przewodnik, sekcja 9). Tlo/ramka/promien jak `.panel` */
-    /* wyzej — ten sam jezyk wizualny, jedna linia zamiast calej sekcji.                     */
-    .odczyt-szczegoly { background: var(--powierzchnia); border: 1px solid var(--ramka);
-      border-radius: .4rem; margin: 0 0 .8rem; }
-    .odczyt-szczegoly summary {
-      padding: .45rem .75rem; cursor: pointer; color: var(--tekst-przygaszony);
-      display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; list-style: none;
-    }
-    /* Wlasna strzalka `::before`, wiec znacznik przegladarki gasimy w OBU silnikach:        */
-    /* `-webkit-details-marker` u Chrome/Safari, `list-style: none` wyzej u Firefoksa —      */
-    /* bez drugiego dwie strzalki stalyby obok siebie.                                       */
-    .odczyt-szczegoly summary::-webkit-details-marker { display: none; }
-    .odczyt-szczegoly summary::before { content: "▸"; font-size: .75rem; color: var(--tekst-przygaszony); }
-    .odczyt-szczegoly[open] summary::before { content: "▾"; }
-    .odczyt-szczegoly summary b { color: var(--tekst); font-weight: 600; }
-    .odczyt-cialo { border-top: 1px solid var(--ramka); padding: .6rem .75rem .75rem; }
+    /* Pasek odczytu (PRZ-160 P3b.03b): na liscie WYLACZNIE przy trwaniu albo bledzie —      */
+    /* trasa (`opisPrzebiegu`) rozstrzyga REGULA, bo cichy zly odczyt ma wygladac jak spokoj */
+    /* WYLACZNIE, gdy naprawde nic sie nie stalo (przewodnik, sekcja 9). Jedna linia, tlo/    */
+    /* ramka/promien jak `.panel`; przyciski odczytu sa na ekranie importu.                   */
+    .pasek-odczytu { background: var(--powierzchnia); border: 1px solid var(--ramka); border-radius: .4rem;
+      margin: 0 0 .8rem; padding: .45rem .75rem; color: var(--tekst-przygaszony);
+      display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem 1rem; }
+    .pasek-odczytu p { margin: 0; }
+    .pasek-odczytu b { color: var(--tekst); font-weight: 600; }
+    .pasek-odczytu__kanal { color: var(--tekst); }
+    .pasek-odczytu > a { margin-left: auto; white-space: nowrap; }
 
     /* Belka akcji magazynu (przebudowa 2026-08-25). Kalka wizualna paska akcji masowych     */
     /* z listy zamowien (te same tokeny), ale akcje maja POLA, wiec kazda otwiera sie         */
@@ -1679,6 +1685,8 @@
     .akcja-cialo { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: .6rem 1rem;
       align-items: flex-end; background: var(--powierzchnia); color: var(--tekst);
       border-radius: .35rem; padding: .6rem .75rem; }
+    /* PRZ-160.E3.14: opcja konta bez zgody niesie powod — dluga; na telefonie lista nie moze rozpychac belki. */
+    .akcja-cialo select { width: min(100%, 36rem); }
     .akcja-przyciski { display: flex; gap: .5rem; flex-wrap: wrap; margin-left: auto; }
     /* Jedno zdanie zasady akcji — wlasny wiersz pod przyciskami, ciszej niz one.              */
     .akcja-zasada { flex-basis: 100%; margin: 0; font-size: .8rem; color: var(--tekst-przygaszony); }
@@ -1913,17 +1921,27 @@
     .ust-sekcja .ust-akcje form { margin: 0; }
     .ust-sekcja > .ust-formularz { margin: .2rem 0 1rem; padding-top: .6rem; border-top: 1px solid var(--ramka); }
     .ust-akcje-polaczenia + .ust-pomoc { margin-top: .5rem; font-size: .8rem; }
-    /* PRZ-108.03b: strefa przeciągania pliku logo (public/logo-przeciaganie.js). Obejmuje zwykłe pole pliku, więc */
-    /* bez skryptu wygląda jak ramka z napisem; skrypt dokłada tylko podświetlenie, nazwę pliku i podgląd. */
-    .logo-strefa { box-sizing: border-box; padding: .8rem .9rem; border: 2px dashed var(--ramka-pola); border-radius: 8px; background: var(--powierzchnia-2); }
-    .logo-strefa .logo-strefa-opis { margin: 0 0 .5rem; font-size: .9rem; font-weight: 600; color: var(--tekst); }
-    .logo-strefa--nad { border-color: var(--link); background: var(--tlo); }
+    /* PRZ-108.03b + PRZ-160 P3a.04b: strefa przeciągania plików (public/strefa-pliku.js; logo przez */
+    /* public/logo-przeciaganie.js zostaje przy klasach .logo-strefa*). Obejmuje zwykłe pole pliku, więc bez skryptu */
+    /* wygląda jak ramka z napisem; skrypt dokłada tylko podświetlenie, nazwy plików i podgląd. */
+    .strefa-pliku, .logo-strefa { box-sizing: border-box; padding: .8rem .9rem; border: 2px dashed var(--ramka-pola); border-radius: 8px; background: var(--powierzchnia-2); }
+    .strefa-pliku .strefa-pliku-opis, .logo-strefa .logo-strefa-opis { display: block; margin: 0 0 .5rem; font-size: .9rem; font-weight: 600; color: var(--tekst); }
+    .strefa-pliku--nad, .logo-strefa--nad { border-color: var(--link); background: var(--tlo); }
     .logo-strefa-wybor { display: flex; align-items: center; gap: .7rem; }
     .logo-strefa-podglad { flex: 0 0 auto; width: 4rem; height: 4rem; margin-top: .6rem; object-fit: contain; background: var(--powierzchnia); border: 1px solid var(--ramka); border-radius: 4px; }
-    .logo-strefa .logo-strefa-stan { margin: 0; font-size: .85rem; color: var(--tekst); }
-    .logo-strefa .logo-strefa-stan:not(:empty) { margin-top: .6rem; }
-    .logo-strefa[data-stan="blad"] { border-color: var(--blad-tekst); }
-    .logo-strefa[data-stan="blad"] .logo-strefa-stan { color: var(--blad-tekst); font-weight: 600; }
+    .strefa-pliku .strefa-pliku-stan, .logo-strefa .logo-strefa-stan { margin: 0; font-size: .85rem; color: var(--tekst); }
+    .strefa-pliku .strefa-pliku-stan:not(:empty), .logo-strefa .logo-strefa-stan:not(:empty) { margin-top: .6rem; }
+    .strefa-pliku[data-stan="blad"], .logo-strefa[data-stan="blad"] { border-color: var(--blad-tekst); }
+    .strefa-pliku[data-stan="blad"] .strefa-pliku-stan, .logo-strefa[data-stan="blad"] .logo-strefa-stan { color: var(--blad-tekst); font-weight: 600; }
+    .strefa-pliku[data-stan="pelna"] { border-style: solid; opacity: .75; }
+    .strefa-pliku > p.podpowiedz { margin: 0 0 .6rem; }
+    .strefa-pliku input[type="file"] { max-width: 100%; }
+    .karta-galeria-wgrywanie > .strefa-pliku { flex-basis: 100%; min-width: 0; }
+    .strefa-pliku-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr)); gap: .5rem; margin: .6rem 0 0; padding: 0; list-style: none; }
+    .strefa-pliku-lista li { display: flex; align-items: center; gap: .6rem; min-width: 0; padding: .35rem; background: var(--powierzchnia); border: 1px solid var(--ramka); border-radius: 6px; }
+    .strefa-pliku-miniatura { flex: 0 0 auto; width: 3rem; height: 3rem; object-fit: cover; border-radius: 4px; background: var(--powierzchnia-2); }
+    .strefa-pliku-nazwa { flex: 1 1 auto; min-width: 0; font-size: .85rem; color: var(--tekst); overflow-wrap: anywhere; }
+    .strefa-pliku-rozmiar { flex: 0 0 auto; font-size: .8rem; color: var(--tekst-przygaszony); }
     @media (max-width: 40rem) {
       .ust-formularz { grid-template-columns: minmax(0, 1fr); gap: .3rem; }
       .ust-formularz > label { text-align: left; padding-top: .5rem; }
@@ -1947,12 +1965,7 @@
     .kafel-delta--wzrost { color: var(--ok-tekst); }
     .kafel-delta--spadek { color: var(--blad-tekst); }
 
-    /* ── Zakladka CELE (spec 2026-09-13) ─────────────────────────────────────────────── */
-    /* Kafle celow uzywaja GOTOWYCH `.kafelki/.kafel/.kafel-etykieta/-wartosc/-dopisek`     */
-    /* wyzej. Ponizej WYLACZNIE to, czego tamte nie maja: pasek postepu i trzy stany.      */
-    .cele-pasek { height: .35rem; border-radius: .18rem; background: var(--ramka);
-                  margin-top: .35rem; overflow: hidden; }
-    .cele-pasek span { display: block; height: 100%; background: var(--marka); }
+    /* Stany kafli „nieznany/nieświeży” (wspólne kafle, w tym dawne Cele — usunięte w PRZ-167). */
     /* ⚠️⚠️ TRZY STANY MUSZA SIE ROZNIC NA EKRANIE, nie tylko w danych. „0 / 5" i „— / 5"  */
     /* wygladajace tak samo znacza, ze zepsuty miernik jest nieodrozialny od czlowieka,    */
     /* ktory nic nie zrobil — a na tej podstawie zapada rozmowa z czlowiekiem. Stan        */
@@ -2209,3 +2222,84 @@
     /* PRZ-152.G12b: odnosnik w sciezce (okruszki) — kolor tekstu sciezki, podkreslenie przy najechaniu. */
     .oms-breadcrumb strong a.oms-breadcrumb-link{color:inherit;text-decoration:none}
     .oms-breadcrumb strong a.oms-breadcrumb-link:hover,.oms-breadcrumb strong a.oms-breadcrumb-link:focus-visible{text-decoration:underline}
+
+/* PRZ-160.07d */
+#stan-karty .ruchy-przewijanie { overflow-x: auto; max-inline-size: 100%; }
+#stan-karty .ruchy-przewijanie table { min-inline-size: 38rem; }
+#stan-karty .ruchy-przewijanie td:last-child { white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; }
+#dane-karty .zrodlo-pola { display: inline-block; font-weight: normal; color: var(--tekst-przygaszony); margin-inline-start: .35rem; }
+#produkty-karty .magazyn-brak { overflow-wrap: anywhere; }
+/* PRZ-160 07a */
+#opis-karty fieldset { min-inline-size: 0; margin-block: 1rem; padding: 1rem; border: 1px solid var(--ramka-pola); border-radius: .3rem; }
+#opis-karty .pola { margin-block-end: 1rem; }
+#opis-karty .pola p { margin-block: 0 .5rem; color: var(--tekst-przygaszony); font-size: .85rem; }
+#opis-karty .pola :is(textarea, select) { min-inline-size: 0; max-inline-size: 100%; font-size: 1rem; }
+#opis-karty .przyciski { display: flex; flex-wrap: wrap; gap: .5rem; margin-block: .5rem; }
+#opis-karty button { min-block-size: 3rem; }
+#opis-karty .opis-sekcja { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 1rem; margin-block: 1rem; }
+#opis-karty .opis-element { min-inline-size: 0; overflow-wrap: anywhere; }
+#opis-karty .opis-element img { max-inline-size: 100%; block-size: auto; }
+/* PRZ-160 07b */
+.karta-galeria { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 1rem; list-style: none; padding: 0; }
+.karta-galeria > li { min-width: 0; }
+.karta-galeria img, .karta-galeria > li > .magazyn-brak { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; }
+.karta-galeria-akcje, .karta-galeria-akcje form { display: flex; flex-wrap: wrap; gap: .4rem; }
+.karta-galeria-akcje button { min-block-size: 2rem; min-inline-size: 2rem; }
+.karta-galeria-wgrywanie { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.karta-galeria-wgrywanie label, .karta-galeria-wgrywanie .podpowiedz { flex-basis: 100%; margin: 0; }
+.karta-galeria-wgrywanie input { max-width: 100%; min-width: 0; }
+.karta-galeria-ai { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-block: .5rem; }
+.karta-galeria-wybor { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+.karta-galeria-wgrywanie .karta-galeria-wybor { flex-basis: 100%; }
+.karta-galeria-wybor label { display: inline-flex; align-items: center; min-block-size: 3rem; cursor: pointer; }
+.karta-galeria-wybor input[type="checkbox"] { flex: 0 0 auto; inline-size: 1.25rem; block-size: 1.25rem; }
+.karta-galeria-wybor input:disabled + label { cursor: not-allowed; opacity: .65; }
+.karta-galeria-ai button { min-block-size: 3rem; }
+/* PRZ-160 P3b.01 — słowniki Magazynu (Kategorie, Marki) */
+.slownik-narzedzia { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem 2rem; margin-block: 1rem; }
+.slownik-dodaj, .slownik-zmien { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.slownik-dodaj label { flex-basis: 100%; font-weight: 600; }
+.slownik-dodaj input, .slownik-zmien input { min-inline-size: 0; inline-size: min(100%, 16rem); }
+.slownik-woo { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.slownik-woo .podpowiedz { flex-basis: 100%; margin: 0; }
+.slownik-tabela td { vertical-align: middle; }
+.slownik-tabela tbody th[scope="row"] {
+  overflow-wrap: break-word; background: none; color: inherit; font-size: inherit; font-weight: 600;
+  text-transform: none; letter-spacing: normal; padding: .7rem .85rem; text-align: start;
+}
+.slownik-plakietka { display: inline-block; margin-inline-start: .35rem; font-size: .8rem; }
+.slownik-tabela .slownik-bez th[scope="row"] { font-weight: normal; font-style: italic; }
+
+/* PRZ-160 P3b.03 — ekran importu (`/magazyn/import`, magazyn-import.ejs). Kafle liczb pożycza z `.kafelki/.kafel`;
+   tu tylko wybór (radio z etykietą obok), uwaga D3 i odnośniki. Kolory wyłącznie z palety obu motywów. */
+.import-wybor { border: 1px solid var(--ramka); border-radius: .4rem; padding: .6rem .9rem .8rem; margin: 0 0 1rem; }
+.import-wybor legend { font-weight: 600; padding: 0 .3rem; }
+.import-opcja { display: flex; align-items: flex-start; gap: .55rem; padding: .35rem 0; }
+.import-opcja input[type="radio"] { flex: 0 0 auto; inline-size: 1.1rem; block-size: 1.1rem; margin: .15rem 0 0; accent-color: var(--marka); }
+.import-opcja label { cursor: pointer; }
+.import-opcja label .wyjasnienie { display: block; margin-top: .15rem; }
+.import-uwaga { margin: 0 0 1rem; padding: .55rem .8rem; border-inline-start: 3px solid var(--uwaga-tekst); background: var(--uwaga-tlo); color: var(--uwaga-tekst); font-size: .9rem; }
+.import-uwaga a { color: inherit; }
+.import-ekran .blad { margin: 0 0 1rem; padding: .55rem .8rem; border: 1px solid var(--blad-ramka); background: var(--blad-tlo); color: var(--blad-tekst); }
+.import-ekran progress { inline-size: min(100%, 20rem); vertical-align: middle; margin-inline-start: .5rem; accent-color: var(--marka); }
+.import-powody { margin: .8rem 0 0; padding-inline-start: 1.2rem; font-size: .9rem; }
+.import-akcje { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; margin-top: 1rem; }
+.import-odnosniki { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; margin-top: 1rem; }
+.import-erli { margin: 0 0 1rem; }
+/* PRZ-167 — ANALITYKA: „Więcej analiz” jako kafle-odnośniki z ikoną (ekran /analityka). */
+.analityka-sekcja { margin: 1.6rem 0 .7rem; font-size: .8rem; font-weight: 600; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--tekst-przygaszony); }
+.analityka-podstrony { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); gap: .75rem; }
+.analityka-podstrona { display: flex; align-items: center; gap: .85rem; padding: .9rem 1rem; text-decoration: none;
+  color: var(--tekst); background: var(--powierzchnia); border: 1px solid var(--ramka); border-radius: .5rem;
+  transition: background-color .15s, border-color .15s; }
+.analityka-podstrona:hover { background: var(--hover-wiersza); border-color: var(--link); }
+.analityka-podstrona:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.analityka-podstrona__ikona { flex-shrink: 0; display: grid; place-items: center; inline-size: 2.5rem; block-size: 2.5rem;
+  border-radius: .5rem; background: var(--powierzchnia-2); color: var(--link); }
+.analityka-podstrona__ikona svg { inline-size: 1.35rem; block-size: 1.35rem; }
+.analityka-podstrona__tekst { display: flex; flex-direction: column; gap: .15rem; min-inline-size: 0; }
+.analityka-podstrona__tekst strong { font-size: .98rem; }
+.analityka-podstrona__tekst span { font-size: .82rem; line-height: 1.35; color: var(--tekst-przygaszony); }
+.analityka-podstrona__strzalka { margin-inline-start: auto; color: var(--tekst-przygaszony); transition: transform .15s; }
+.analityka-podstrona:hover .analityka-podstrona__strzalka { transform: translateX(3px); color: var(--link); }

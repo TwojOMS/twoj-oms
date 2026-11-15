@@ -25,6 +25,12 @@ export const OCZEKIWANE_ZEGARY = [
   ['api-dziennik', 3600000],
   // PRZ-153.E5.1: moduł api co godzinę usuwa wpisy idempotencji starsze niż 7 dni.
   ['api-idempotencja', 3600000],
+  // PRZ-160.E2.05: moduł magazyn co 5 min prowadzi pętlę ofert ERLI (bez czynnego konta zero zapisów).
+  ['petlaOfert', 300000],
+  ['petlaOfertAllegro', 300000],
+  // PRZ-160.E4.15: pętla stanów Woo (co 5 min) i strażnik stanów (co 30 s; przy wyłączonych stanach nic nie robi).
+  ['petlaStanowWoo', 300000],
+  ['straznikStanow', 30000],
 ] as const;
 
 function lokalneEnv(klucze = false) {

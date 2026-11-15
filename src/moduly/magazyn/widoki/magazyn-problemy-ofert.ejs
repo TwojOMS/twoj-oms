@@ -1,0 +1,54 @@
+<%# PRZ-160 E3.28-03 — oferty ERLI i Allegro czekające na decyzję. Akcje zapisują tylko zamiar; wysyła pętla.
+    E4.13 — filtr „Ilość” i przyciski alarmów ilości (stany magazynowe). %>
+<p class="wroc"><a href="/magazyn">← Magazyn</a></p>
+
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Problemy ofert",
+  podtytul: wszystkich > wiersze.length ? "pokazano " + wiersze.length + " z " + wszystkich : (wszystkich ? "ofert: " + wszystkich : "")}) %>
+
+<% if (etap4) { %>
+<nav aria-label="Filtr problemów ofert">
+  <p class="chipy-filtrow">
+    <a class="chip<%= filtr ? '' : ' chip--aktywny' %>" href="<%= adres %>"<% if (!filtr) { %> aria-current="page"<% } %>>Wszystkie (<%= liczby.wszystkich %>)</a>
+    <a class="chip<%= filtr === 'ilosc' ? ' chip--aktywny' : '' %>" href="<%= adres %>?filtr=ilosc"<% if (filtr === 'ilosc') { %> aria-current="page"<% } %>>Ilość (<%= liczby.ilosci %>)</a>
+  </p>
+</nav>
+<% } %>
+
+<% if (zera.length) { %>
+  <section aria-labelledby="zera-naglowek">
+    <h2 id="zera-naglowek">Wiele ofert konta naraz do zera</h2>
+    <p class="podpowiedz">Pętla wstrzymała zera, bo dotyczą dużej części konta naraz. Sprawdź stany i potwierdź jednym kliknięciem na konto.</p>
+    <div><% zera.forEach(function (z) { %><form class="w-linii" method="post" action="<%= adres %>/konto/<%= z.konto %>/wyslij-zera"><input type="hidden" name="oferty" value="<%= z.oferty %>"><button class="btn btn--maly" type="submit"><%= z.napis %></button></form> <% }); %></div>
+  </section>
+<% } %>
+
+<% if (!wiersze.length) { %>
+  <div class="pusta-strona">
+    <h2>Żadna oferta nie czeka na decyzję</h2>
+    <p>Pętla ofert sama ponawia zwykłe błędy. Tu trafiają tylko oferty, które potrzebują Twojej decyzji.</p>
+  </div>
+<% } else { %>
+  <p class="podpowiedz">Przyciski zapisują decyzję w OMS-ie — do kanału wyśle ją pętla ofert przy następnym przebiegu.
+    Wznowienie oferty Allegro może kosztować opłatę za wystawienie.</p>
+  <div class="przewijak-tabeli" tabindex="0" role="region" aria-labelledby="problemy-ofert-podpis">
+  <table class="tresc-lista" id="problemy-ofert">
+    <caption id="problemy-ofert-podpis" class="poza-okiem">Oferty czekające na decyzję, najstarsze najpierw</caption>
+    <thead><tr><th scope="col">Kanał</th><th scope="col">Konto</th><th scope="col">Produkt</th><th scope="col">Powód</th>
+      <th scope="col">Od</th><th scope="col">Akcja</th></tr></thead>
+    <tbody><% wiersze.forEach(function (w) { %>
+      <tr id="oferta-<%= w.id %>"><td><%= w.kanal %></td><td><%= w.konto %></td>
+        <td><a href="/magazyn/<%= w.kartaId %>#produkty-karty"><%= w.nazwa %></a></td>
+        <td><% w.powody.forEach(function (p, i) { %><%= i ? '; ' : '' %><%= p %><% }); %><% if (w.ilosc) { %><%= w.powody.length ? '; ' : '' %><%= w.ilosc.tekst %><% if (w.ilosc.szczegoly.length) { %><br><small><%= w.ilosc.szczegoly.join(' · ') %></small><% } %><% } %></td>
+        <td><%= w.od %></td>
+        <td><% if (w.ponow) { %><form class="w-linii" method="post" action="<%= adres %>/<%= w.id %>/ponow"><button class="btn btn--maly" type="submit" aria-label="Ponów ofertę <%= w.nazwa %>">Ponów</button></form><% } %>
+          <% if (w.duplikat) { %>Wybierz jedną z ofert w Allegro albo w „Przeglądzie zapisów do Allegro” (Ustawienia → Integracje) — ponowienie założyłoby kolejną.<% } %>
+          <% if (w.brakWAllegro) { %><%= w.brakWAllegro %><% } %>
+          <% if (w.wznow) { %><form class="w-linii" method="post" action="<%= adres %>/<%= w.id %>/wznow"><button class="btn btn--maly" type="submit" aria-label="Wznów ofertę <%= w.nazwa %>">Wznów</button></form><% } %>
+          <% if (w.ilosc) { %><% w.ilosc.akcje.forEach(function (a) { %><form class="w-linii" method="post" action="<%= adres %>/<%= w.id %>/ilosc/<%= a.akcja %>"><button class="btn btn--maly" type="submit" aria-label="<%= a.napis %> — <%= w.nazwa %>"><%= a.napis %></button></form><% }); %>
+            <% if (w.ilosc.tez.length) { %><small>Przyjęcie stanu kanału zmieni się też w: <%= w.ilosc.tez.join(', ') %></small><% } %>
+            <% if (w.ilosc.otwarcie) { %><a href="/magazyn/stany/otwarcie">Uzupełnij stan otwarcia</a><% } %><% } %>
+          <% if (w.cena) { %><form class="w-linii" method="post" action="<%= adres %>/<%= w.id %>/potwierdz-cene"><input type="hidden" name="cenaGr" value="<%= w.cena.nowaGr %>"><button class="btn btn--maly" type="submit" aria-label="Potwierdź cenę <%= w.cena.nowa %> dla <%= w.nazwa %>">Potwierdź cenę <%= w.cena.nowa %></button></form><% } %></td></tr>
+    <% }); %></tbody>
+  </table>
+  </div>
+<% } %>

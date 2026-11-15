@@ -35,7 +35,7 @@ describe('migracja warunków umowy z OMS_KLIENCI_ZBIORCZY', () => {
   let db;
   beforeEach(() => { db = openOmsDb(':memory:'); });
 
-  it('przenosi próg i obie opłaty na kartę klienta dopasowanego po NIP-ie', () => {
+  it('przenosi próg i obsługę bez osobnej kurierskiej na kartę klienta dopasowanego po NIP-ie', () => {
     dopiszZwyklego(db);
     const wynik = wgrajUmowyZbiorczeZKonfiguracji(db, WPIS_ENV);
 
@@ -44,7 +44,7 @@ describe('migracja warunków umowy z OMS_KLIENCI_ZBIORCZY', () => {
     expect(k.rozliczenie_zbiorcze).toBe(1);
     expect(k.prog_darmowej_dostawy_gr).toBe(50000);
     expect(k.oplata_obslugi_gr).toBe(400);
-    expect(k.oplata_kurierska_gr).toBe(1900);
+    expect(k.koszt_dostawy_brutto).toBe('19.00');
   });
 
   // ⚠️ NIP z myslnikami w `.env` ma trafic w tego samego klienta — w tabeli lezy
@@ -64,12 +64,12 @@ describe('migracja warunków umowy z OMS_KLIENCI_ZBIORCZY', () => {
   it('drugi przebieg NIE cofa kwoty poprawionej ręcznie na karcie', () => {
     dopiszZwyklego(db);
     wgrajUmowyZbiorczeZKonfiguracji(db, WPIS_ENV);
-    db.prepare('UPDATE klienci SET oplata_kurierska_gr = 2500 WHERE nip = ?').run(NIP);
+    db.prepare("UPDATE klienci SET koszt_dostawy_brutto = '25.00' WHERE nip = ?").run(NIP);
 
     const drugi = wgrajUmowyZbiorczeZKonfiguracji(db, WPIS_ENV);
 
     expect(drugi.pominieta).toBe(true);
-    expect(klientPoNip(db, NIP).oplata_kurierska_gr).toBe(2500);
+    expect(klientPoNip(db, NIP).koszt_dostawy_brutto).toBe('25.00');
   });
 
   // ⚠️ Siedmiopolowy ciag nie niesie ani adresu, ani danych do faktury — klient zalozony
@@ -109,18 +109,18 @@ describe('migracja warunków umowy z OMS_KLIENCI_ZBIORCZY', () => {
 
     expect(drugi.pominieta).toBe(false);
     expect(drugi.wgranych).toBe(1);
-    expect(klientPoNip(db, NIP).oplata_kurierska_gr).toBe(1900);
+    expect(klientPoNip(db, NIP).koszt_dostawy_brutto).toBe('19.00');
   });
 
   // ⚠️ Straz na WIERSZU, niezalezna od znacznika: karta juz ustawiona jest nietykalna takze
   // w przebiegu, ktory z innego powodu nie postawil jeszcze znacznika.
   it('karty już ustawionej nie rusza nawet przy nieodhaczonej migracji', () => {
-    dopiszKlientaZbiorczego(db, { oplata_kurierska_gr: 2500 });
+    dopiszKlientaZbiorczego(db, { koszt_dostawy_brutto: '25.00' });
     const wynik = wgrajUmowyZbiorczeZKonfiguracji(db, {
       OMS_KLIENCI_ZBIORCZY: `przykladowa:PHU:${NIP}:40:500:4:19,obcy:Obcy:5252248481:0:0:0:0`,
     });
     expect(wynik.nietkniete).toEqual(['przykladowa']);
-    expect(klientPoNip(db, NIP).oplata_kurierska_gr).toBe(2500);
+    expect(klientPoNip(db, NIP).koszt_dostawy_brutto).toBe('25.00');
   });
 });
 
@@ -132,7 +132,7 @@ describe('formularz karty klienta — warunki umowy', () => {
   it('przełącznik z kompletem kwot zapisuje je w groszach', () => {
     const d = znormalizujKlienta({
       ...pola,
-      rozliczenie_zbiorcze: 'on',
+      rozliczenie_zbiorcze: 'on', prog_darmowej_dostawy_wlaczony: 'on', oplata_obslugi_wlaczony: 'on',
       prog_darmowej_dostawy: '500',
       oplata_obslugi: '4,00',
       oplata_kurierska: '19,00',
@@ -141,7 +141,6 @@ describe('formularz karty klienta — warunki umowy', () => {
       rozliczenie_zbiorcze: 1,
       prog_darmowej_dostawy_gr: 50000,
       oplata_obslugi_gr: 400,
-      oplata_kurierska_gr: 1900,
     });
   });
 
@@ -149,14 +148,14 @@ describe('formularz karty klienta — warunki umowy', () => {
   it('kwota z groszami przelicza się co do grosza', () => {
     const d = znormalizujKlienta({
       ...pola,
-      rozliczenie_zbiorcze: 'on',
+      rozliczenie_zbiorcze: 'on', prog_darmowej_dostawy_wlaczony: 'on', oplata_obslugi_wlaczony: 'on',
       prog_darmowej_dostawy: '499,99',
       oplata_obslugi: '4,05',
       oplata_kurierska: '19',
     });
     expect(d.prog_darmowej_dostawy_gr).toBe(49999);
     expect(d.oplata_obslugi_gr).toBe(405);
-    expect(d.oplata_kurierska_gr).toBe(1900);
+    expect(d).not.toHaveProperty('oplata_kurierska_gr');
   });
 
   // ⚠️⚠️ PUSTE POLE TO NIE „ZERO ZLOTYCH". `Number('')` oddaje 0, wiec bez odrzucenia pustki
@@ -171,13 +170,12 @@ describe('formularz karty klienta — warunki umowy', () => {
   // zdanie mowi o fakturze, ktorej na karcie klienta nie ma, i zostawia operatora bez
   // wskazowki, co ma zrobic.
   it.each([
-    ['prog_darmowej_dostawy', /rozliczany zbiorczo musi mieć ustalony próg darmowej dostawy — bez niego/],
-    ['oplata_obslugi', /rozliczany zbiorczo musi mieć ustaloną opłatę za obsługę — bez niej/],
-    ['oplata_kurierska', /rozliczany zbiorczo musi mieć ustaloną opłatę kurierską — bez niej/],
+    ['prog_darmowej_dostawy', /musi mieć ustalony próg darmowej dostawy — uzupełnij/],
+    ['oplata_obslugi', /musi mieć ustaloną opłatę za obsługę — uzupełnij/],
   ])('pusta kwota %s przy włączonym przełączniku to ODMOWA', (puste, opis) => {
     const body = {
       ...pola,
-      rozliczenie_zbiorcze: 'on',
+      rozliczenie_zbiorcze: 'on', prog_darmowej_dostawy_wlaczony: 'on', oplata_obslugi_wlaczony: 'on',
       prog_darmowej_dostawy: '500',
       oplata_obslugi: '4',
       oplata_kurierska: '19',
@@ -189,11 +187,16 @@ describe('formularz karty klienta — warunki umowy', () => {
   it('literówka w kwocie to odmowa, a nie ciche zero', () => {
     expect(() => znormalizujKlienta({
       ...pola,
-      rozliczenie_zbiorcze: 'on',
+      rozliczenie_zbiorcze: 'on', prog_darmowej_dostawy_wlaczony: 'on', oplata_obslugi_wlaczony: 'on',
       prog_darmowej_dostawy: 'piecset',
       oplata_obslugi: '4',
       oplata_kurierska: '19',
     })).toThrow(/Nie umiem odczytać kwoty/);
+  });
+  it('dawna kwota kurierska nie jest wymagana ani używana przy zapisie', () => {
+    const d = znormalizujKlienta({ ...pola, rozliczenie_zbiorcze: 'on', oplata_kurierska: '   ' });
+    expect(d.rozliczenie_zbiorcze).toBe(1);
+    expect(d).not.toHaveProperty('oplata_kurierska_gr');
   });
 
   // ⚠️ Wylaczony przelacznik kasuje kwoty do NULL, a nie do zer. Zero znaczyloby „ustalone
@@ -204,7 +207,6 @@ describe('formularz karty klienta — warunki umowy', () => {
       rozliczenie_zbiorcze: 0,
       prog_darmowej_dostawy_gr: null,
       oplata_obslugi_gr: null,
-      oplata_kurierska_gr: null,
     });
   });
 });
@@ -218,30 +220,31 @@ describe('ekrany karty klienta', () => {
     await app.ready();
   });
 
-  it('formularz ma sekcję rozliczenia zbiorczego z trzema kwotami', async () => {
-    const r = await app.inject({ method: 'GET', url: '/klienci?nowy', headers: naglowek });
+  it('formularz ma sekcję z dwoma niezależnymi kwotami', async () => {
+    const r = await app.inject({ method: 'GET', url: '/klienci/nowy', headers: naglowek });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('name="rozliczenie_zbiorcze"');
     expect(r.body).toContain('name="prog_darmowej_dostawy"');
     expect(r.body).toContain('name="oplata_obslugi"');
-    expect(r.body).toContain('name="oplata_kurierska"');
+    expect(r.body).not.toContain('name="oplata_kurierska"');
+    expect(r.body).toContain('name="oplata_obslugi_wlaczony"');
   });
 
   // ⚠️ Od 24.08 to JEDYNE miejsce, w ktorym w ogole widac warunki umowy — wczesniej lezaly
   // w pliku `.env` na NAS-ie, poza zasiegiem kogokolwiek przy ekranie.
-  it('karta klienta zbiorczego wymienia próg i obie opłaty', async () => {
+  it('karta klienta zbiorczego wymienia próg i obsługę bez osobnej kurierskiej', async () => {
     const id = dopiszKlientaZbiorczego(db);
-    const r = await app.inject({ method: 'GET', url: `/klienci/${id}`, headers: naglowek });
+    const r = await app.inject({ method: 'GET', url: `/klienci/${id}/karta`, headers: naglowek });
     expect(r.statusCode).toBe(200);
     expect(r.body).toMatch(/od 500\.00 zł/);
     expect(r.body).toMatch(/obsługa 4\.00 zł/);
-    expect(r.body).toMatch(/usługa kurierska 19\.00 zł/);
+    expect(r.body).not.toMatch(/usługa kurierska/);
   });
 
   // Trzy puste kwoty u zwyklego klienta bylyby pytaniem, na ktore nie ma odpowiedzi.
   it('karta zwykłego klienta nie pokazuje warunków, których nie ma', async () => {
     const id = dopiszZwyklego(db);
-    const r = await app.inject({ method: 'GET', url: `/klienci/${id}`, headers: naglowek });
+    const r = await app.inject({ method: 'GET', url: `/klienci/${id}/karta`, headers: naglowek });
     expect(r.body).not.toMatch(/Darmowa dostawa/);
   });
 
@@ -257,7 +260,7 @@ describe('ekrany karty klienta', () => {
         nip: NIP,
         metoda_wysylki: 'dpd',
         platnosc: 'przelew',
-        rozliczenie_zbiorcze: 'on',
+        rozliczenie_zbiorcze: 'on', prog_darmowej_dostawy_wlaczony: 'on', oplata_obslugi_wlaczony: 'on',
         prog_darmowej_dostawy: '500,00',
         oplata_obslugi: '4,00',
         oplata_kurierska: '19,00',
@@ -266,7 +269,8 @@ describe('ekrany karty klienta', () => {
     expect(r.statusCode).toBe(302);
     const k = klientPoNip(db, NIP);
     expect(k.rozliczenie_zbiorcze).toBe(1);
-    expect(k.oplata_kurierska_gr).toBe(1900);
+    expect(k.oplata_obslugi_gr).toBe(400);
+    expect(k.oplata_kurierska_gr).toBeNull();
   });
 
   it('odmowa przy braku kwoty zostawia formularz otwarty z komunikatem', async () => {
@@ -279,7 +283,7 @@ describe('ekrany karty klienta', () => {
         nip: NIP,
         metoda_wysylki: 'dpd',
         platnosc: 'przelew',
-        rozliczenie_zbiorcze: 'on',
+        rozliczenie_zbiorcze: 'on', prog_darmowej_dostawy_wlaczony: 'on', oplata_obslugi_wlaczony: 'on',
         prog_darmowej_dostawy: '500,00',
         oplata_obslugi: '',
         oplata_kurierska: '19,00',

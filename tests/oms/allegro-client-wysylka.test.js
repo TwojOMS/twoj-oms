@@ -142,9 +142,11 @@ describe('biała lista rośnie o cztery metody — świadomie', () => {
     const { klient } = klientZeSzpiegiem();
     expect(Object.keys(klient).sort()).toEqual([
       'deklarujZalacznikWiadomosci',
-      'pobierzEtykieteWza', 'pobierzFakturyZamowienia', 'pobierzMetodeDostawy', 'pobierzMojeKonto', 'pobierzOferte',
+      'pobierzEtykieteWza', 'pobierzFakturyZamowienia',
+      // PRZ-160.04a: kategoria i jej parametry — wyłącznie odczyt (`GET /sale/categories/{id}[/parameters]`).
+      'pobierzKategorie', 'pobierzMetodeDostawy', 'pobierzMojeKonto', 'pobierzOferte',
       // Podjazdy (22.09): trzy odczyty i jedno zlecenie; kontrakt w osobnym teście.
-      'pobierzOferty', 'pobierzPodjazd', 'pobierzPropozycjePodjazdu', 'pobierzPropozycjeWysylki',
+      'pobierzOferty', 'pobierzParametryKategorii', 'pobierzPodjazd', 'pobierzPropozycjePodjazdu', 'pobierzPropozycjeWysylki',
       // ⚠️ `pobierzWatki` i `pobierzWiadomosci` — Centrum wiadomości (spec 2026-08-28),
       // wyłącznie odczyt (`GET /messaging/threads…`).
       // `pobierzSprawy` (28.08.2026) tylko CZYTA `GET /sale/issues` — bariera zapisu bez zmian.
@@ -157,7 +159,12 @@ describe('biała lista rośnie o cztery metody — świadomie', () => {
       // ktory dostaje powiadomienie. Bariera zapisu nizej rosnie razem z nia.
       'ustawStatusRealizacji', 'utworzPrzesylke', 'wgrajZalacznikWiadomosci', 'wyslijPlikFaktury',
       'wyslijWiadomosc', 'zglosFakture', 'zlecPodjazd',
-    ]);
+      // PRZ-160.E3.03: wystawianie ofert — zapisy wylicza tests/oms/allegro-client-zapis.test.js.
+      'dopasujKategorie', 'edytujOferte', 'komendaCeny', 'komendaIlosci', 'komendaPublikacji', 'ofertyKonta', 'ofertyPoSygnaturze',
+      'oplatyOferty', 'pobierzCenniki', 'pobierzGwarancje', 'pobierzOsobyOdpowiedzialne', 'pobierzProducentow',
+      'pobierzReklamacje', 'pobierzZwroty', 'podgladOplat', 'stanOperacji', 'szukajProduktow', 'ustawieniaPodatku',
+      'utworzOferte', 'wgrajZdjecie', 'wynikKomendy',
+    ].sort());
   });
 
   // ⚠️ TEN ZAKAZ ZOSTAJE W MOCY. `POST /order/checkout-forms/{id}/shipments` to INNA droga:

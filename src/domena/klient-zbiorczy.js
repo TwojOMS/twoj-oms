@@ -131,52 +131,30 @@ export function parsujKlientowZbiorczych(env) {
   });
 }
 
-/** Kwoty umowy — trzy pola, jedna nazwa dla komunikatu i dla mapowania. */
-const KWOTY_UMOWY = [
-  ['progDarmowejDostawyGr', 'prog_darmowej_dostawy_gr', 'próg darmowej dostawy'],
-  ['oplataObslugiGr', 'oplata_obslugi_gr', 'opłata za obsługę'],
-  ['oplataKurierskaGr', 'oplata_kurierska_gr', 'opłata kurierska'],
-];
-
-/**
- * Warunki umowy zbiorczej z wiersza tabeli `klienci` — albo `null`, gdy ten klient
- * rozliczany zbiorczo nie jest.
- *
- * ⚠️ KSZTALT OBIEKTU JEST TEN SAM, co oddawal `parsujKlientowZbiorczych` z `.env` (do
- * 2026-08-24 jedyne zrodlo tych warunkow). Dzieki temu `oplataDlaZamowienia`,
- * `przypiszDoOkresu`, `stawkaKontraktowa` i nabywca faktury okresowej nie zmieniaja ANI
- * JEDNEJ reguly — zmienia im sie wylacznie to, skad obiekt przychodzi.
- *
- * ⚠️⚠️ BRAKUJACA KWOTA TO ODMOWA, NIGDY ZERO — i to jest cala tresc tej funkcji.
- * Ta trasa konczy sie doklejeniem oplaty do zamowienia. Zamowienie zalozone bez naleznej
- * oplaty wyglada poprawnie na ekranie i wychodzi na jaw dopiero na fakturze zbiorczej na
- * koniec miesiaca — czyli wtedy, gdy poprawka wymaga KOREKTY DOKUMENTU. Podstawione zero
- * znaczyloby przy progu „kazda wysylka za darmo", a przy oplacie „nie pobieramy": oba
- * wygladaja w bazie poprawnie i oba kosztuja pieniadze. Glosna odmowa kosztuje trzydziesci
- * sekund na karcie klienta.
- *
- * ⚠️ `rabatProcent` czytamy z tej samej tabeli, bo baza jest zrodlem stawki rabatu
- * od 2026-08-23 (przewodnik 4.52) — nie ma tu drugiego zrodla do uzgadniania.
- */
+/** Dane okresu miesięcznego; dostawa jest niezależnym ustaleniem klienta. */
 export function umowaZbiorcza(wiersz) {
   if (!wiersz || Number(wiersz.rozliczenie_zbiorcze) !== 1) return null;
-
-  const brakujace = KWOTY_UMOWY
-    .filter(([, kolumna]) => !Number.isInteger(wiersz[kolumna]))
-    .map(([, , opis]) => opis);
-  if (brakujace.length) {
-    throw bladOperatora(
-      `Klient „${wiersz.nazwa}" jest oznaczony jako rozliczany zbiorczo, ale nie ma`
-      + ` ustalonych warunków: ${brakujace.join(', ')}. Uzupełnij je na karcie klienta —`
-      + ' bez nich panel nie wie, czy i ile doliczyć do zamówienia.',
-    );
-  }
-
   return {
     klucz: wiersz.klucz,
     nazwa: wiersz.nazwa,
     nip: normalizujNip(wiersz.nip),
     rabatProcent: Number(wiersz.rabat_procent ?? 0),
-    ...Object.fromEntries(KWOTY_UMOWY.map(([pole, kolumna]) => [pole, wiersz[kolumna]])),
+  };
+}
+
+/** NULL wyłącza usługę; wpisane zero pozostaje włączonym ustaleniem. */
+export function warunkiDostawy(wiersz) {
+  if (!wiersz) return null;
+  const kwota = (kolumna) => {
+    const wartosc = wiersz[kolumna] ?? null;
+    if (wartosc !== null && (!Number.isInteger(wartosc) || wartosc < 0)) {
+      throw bladOperatora(`Niepoprawne warunki dostawy klienta „${wiersz.nazwa}”: ${kolumna}. Uzupełnij je na karcie klienta.`);
+    }
+    return wartosc;
+  };
+  return {
+    progGr: kwota('prog_darmowej_dostawy_gr'),
+    obslugaGr: kwota('oplata_obslugi_gr'),
+    kosztDostawy: wiersz.koszt_dostawy_brutto,
   };
 }

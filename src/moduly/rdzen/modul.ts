@@ -13,6 +13,12 @@ import { migracjaDokumentuProgramu } from './migracje/0008-dokument-programu.ts'
 import { migracjaKolejkiDrukuProform } from './migracje/0009-kolejka-druku-proform.ts';
 import { migracjaKluczyApi } from './migracje/0010-klucze-api.ts';
 import { migracjaKartApi } from './migracje/0011-karty-api.ts';
+import { migracjaTresciKart } from './migracje/0012-tresc-kart.ts';
+import { migracjaBleduTresci } from './migracje/0013-blad-tresci.ts';
+import { migracjaAiZdjec } from './migracje/0014-ai-zdjec.ts';
+import { migracjaKurierska } from './migracje/0015-kurierska.ts';
+import { migracjaSlownikowKart } from './migracje/0016-slowniki-kart.ts';
+import { migracjaStanowOtwarciaLustra } from './migracje/0017-stany-otwarcia-lustro.ts';
 export const modulRdzen: ModulOms<{ sprzedawca: DaneSprzedawcy }> = {
   nazwa: 'rdzen', wersja: '1.0.0', wymaga: [],
   konfiguracja: (env) => ({ sprzedawca: wczytajSprzedawce(env) }),
@@ -28,6 +34,12 @@ export const modulRdzen: ModulOms<{ sprzedawca: DaneSprzedawcy }> = {
     migracjaKolejkiDrukuProform,
     migracjaKluczyApi,
     migracjaKartApi,
+    migracjaTresciKart,
+    migracjaBleduTresci,
+    migracjaAiZdjec,
+    migracjaKurierska,
+    migracjaSlownikowKart,
+    migracjaStanowOtwarciaLustra,
   ],
   uprawnienia: [], menu: [],
   // PRZ-102.20: `rachunekFirmy` — JEDNO źródło rachunku i banku dla maili, proform i WzA: plik (OMS_RACHUNEK/OMS_BANK)

@@ -264,10 +264,10 @@ describe('trasa zakładania przypisuje okres', () => {
 
   // Opłata (Zadanie 4B) i okres sa niezalezne — ale obie musza zadzialac na tym samym
   // zamowieniu, a nie jedna zamiast drugiej.
-  it('drop dostaje i okres, i opłatę', async () => {
+  it('drop dostaje okres bez osobnej pozycji kurierskiej', async () => {
     const { z } = await zaloz({ f_nip: '1234500011', ...towar('100,00') });
     expect(z.okres_rozliczeniowy_id).not.toBe(null);
-    expect(z.pozycje.map((p) => p.nazwa)).toContain('Usługa kurierska');
+    expect(z.pozycje.map((p) => p.nazwa)).not.toContain('Usługa kurierska');
   });
 
   it('okres nie psuje zwyklego zamowienia bez NIP-u', async () => {

@@ -1,0 +1,18 @@
+{
+ "_pomiar": "P14 sandbox 14.11: PATCH images z 17 adresami → 422 GallerySizeException (16 przechodzi)",
+ "status": 422,
+ "body": {
+  "errors": [
+   {
+    "code": "GallerySizeException",
+    "message": "Unprocessable Entity",
+    "details": null,
+    "path": "images",
+    "userMessage": "You can add up to 16 images.",
+    "metadata": {
+     "gallerySizeLimit": "16"
+    }
+   }
+  ]
+ }
+}

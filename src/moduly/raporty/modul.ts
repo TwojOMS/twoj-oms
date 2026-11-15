@@ -4,12 +4,14 @@ import { wczytajRaportyDlaKanalow, type KonfiguracjaRaportow } from './konfigura
 import { zarejestrujTrasyRaportow } from './trasy/raporty.js';
 import { zarejestrujTrasyStatystyk } from './trasy/statystyki.js';
 import { zarejestrujTrasyFinansow } from './trasy/finanse.js';
+import { zarejestrujTrasyAnalityki } from './trasy/analityka.js';
 import { konfiguracjaZPokryciem } from './pokrycie.js';
 import { zarejestrujTrasyPokrycia } from './trasy/pokrycie.js';
 import { zalozGraniceDlaRaportow } from './granice-start.js';
 import {listaNaZadanie,mapaNaZadanie} from '../kanaly/kolekcje-na-zadanie.ts';
 import {granice} from '../../oms/db/historia-sprzedazy.js';
 import type {PolaczenieKanalu} from '../kanaly/kontrakty-allegro.ts';
+import {bladOperatora} from '../../domena/bledy.js';
 
 /** Raporty i Finanse używają istniejących danych oraz ręcznego zapisu miesiąca. Moduł nie buduje klientów integracji. */
 export function createModulRaporty(definicje: readonly DefinicjaKanalu[]): ModulOms<KonfiguracjaRaportow> { return {
@@ -21,6 +23,8 @@ export function createModulRaporty(definicje: readonly DefinicjaKanalu[]): Modul
     { klucz: 'finanse', etykieta: 'Finanse', role: ['administrator'] },
   ],
   menu: [
+    // PRZ-167: ekran wejściowy Analityki pod prawem Raportów — konta z ptaszkiem Raporty widzą go bez nowego ptaszka.
+    { dzial: 'analizy-cele', grupa: 'analizy-cele', etykieta: 'Podsumowanie', adres: '/analityka', uprawnienie: 'raporty', kolejnosc: 5 },
     { dzial: 'analizy-cele', grupa: 'analizy-cele', etykieta: 'Raporty', adres: '/raporty', uprawnienie: 'raporty', kolejnosc: 10 },
     { dzial: 'analizy-cele', grupa: 'analizy-cele', etykieta: 'Statystyki', adres: '/statystyki', uprawnienie: 'statystyki', kolejnosc: 20 },
     { dzial: 'analizy-cele', grupa: 'analizy-cele', etykieta: 'Finanse', adres: '/finanse', uprawnienie: 'finanse', kolejnosc: 50 },
@@ -63,12 +67,12 @@ export function createModulRaporty(definicje: readonly DefinicjaKanalu[]): Modul
         if(granice(ctx.db).has(k.raport))return;
         // Nowy raport UUID nie ma powiązanej historii. Zapis jest częścią istniejącej
         // transakcji aktywacji, więc nie uruchamia drugiego BEGIN IMMEDIATE.
-        if([...ctx.konfiguracja.regulySprzedazy.klasyfikacja.konta.values()].includes(k.raport))throw new Error('Nowy kanał nie może przejąć raportu historii.');
+        if([...ctx.konfiguracja.regulySprzedazy.klasyfikacja.konta.values()].includes(k.raport))throw bladOperatora('Nowy kanał nie może przejąć raportu historii.',{kod:'konflikt',status:409});
         const od=new Date(k.odUtc).toLocaleDateString('sv-SE',{timeZone:'Europe/Warsaw'});
         const doDnia=new Date(Date.parse(od+'T00:00:00Z')-86400000).toISOString().slice(0,10);
         const stare=ctx.db.prepare('SELECT utworzone_at FROM zamowienia WHERE sklep=?').all(k.klucz) as {utworzone_at:string}[];
-        if(stare.some(z=>!Number.isFinite(Date.parse(z.utworzone_at))||new Date(z.utworzone_at).toLocaleDateString('sv-SE',{timeZone:'Europe/Warsaw'})<=doDnia))throw new Error('Granica nie może wyciąć zamówień istniejącego kanału.');
-        ctx.db.prepare('INSERT INTO granice_historii(kanal,do_dnia,zrodlo,uwaga) VALUES (?,?,?,?)').run(k.raport,doDnia,'oms-bez-historii','Aktywacja nowego konta Allegro');
+        if(stare.some(z=>!Number.isFinite(Date.parse(z.utworzone_at))||new Date(z.utworzone_at).toLocaleDateString('sv-SE',{timeZone:'Europe/Warsaw'})<=doDnia))throw bladOperatora('Granica nie może wyciąć zamówień istniejącego kanału.',{kod:'konflikt',status:409});
+        ctx.db.prepare('INSERT INTO granice_historii(kanal,do_dnia,zrodlo,uwaga) VALUES (?,?,?,?)').run(k.raport,doDnia,'oms-bez-historii','Aktywacja nowego kanału');
       } },
       trasy: app => {
         const opcje = { ...ctx.usluga<{ db: typeof ctx.db; config: KonfiguracjaRaportow }>('raporty', 'opcjeTras'),
@@ -78,6 +82,7 @@ export function createModulRaporty(definicje: readonly DefinicjaKanalu[]): Modul
         zarejestrujTrasyRaportow(app, naZadanie);
         zarejestrujTrasyStatystyk(app, naZadanie);
         zarejestrujTrasyFinansow(app, naZadanie);
+        zarejestrujTrasyAnalityki(app, naZadanie);
       },
     };
   },

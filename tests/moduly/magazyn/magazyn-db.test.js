@@ -663,7 +663,7 @@ describe('kartyZKanalami — koszt renderu listy', () => {
     expect(kartyZKanalami(duzy)).toHaveLength(203);
 
     expect(licznikDuzy.zapytania).toBe(licznikMaly.zapytania);
-    expect(licznikDuzy.zapytania).toBeLessThanOrEqual(2);
+    expect(licznikDuzy.zapytania).toBeLessThanOrEqual(3); // E2.06: + jedno zapytanie o oferty_kanalow (kolumna „Oferty”), stałe
   });
 
   it('tysiąc kart z produktem schodzi poniżej 200 ms', () => {
@@ -700,20 +700,35 @@ describe('kartyZKanalami — koszt renderu listy', () => {
 // jak zgadnąć, która liczba kłamie. Dlatego wszystkie cztery zastosowania są tu pytane
 // o TĘ SAMĄ fiksturę, a nie każde o swoją.
 describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
+  const opis = JSON.stringify({ sekcje: [{ elementy: [{ typ: 'tekst', html: '<p>Opis karty</p>' }] }] });
+  function uzupelnijTresc(db, id, brak = null) {
+    if (brak !== 'opis') {
+      db.prepare('UPDATE karty_produktow SET opis_sekcje_json = ? WHERE id = ?').run(opis, id);
+    }
+    if (brak !== 'zdjecie') {
+      db.prepare(`INSERT INTO zdjecia_kart
+        (karta_id, kolejnosc, zrodlo, adres_zrodlowy, utworzono_at)
+        VALUES (?, 0, 'reczne', 'https://example.org/karta.png', '2026-11-13')`).run(id);
+    }
+  }
+
   // ⚠️ FIKSTURA Z WŁASNYM STRAŻNIKIEM. „Kompletny ma 0 braków" jest zdaniem o karcie, który
   // NAPRAWDĘ ma komplet — a `utworzKarte` przepuszcza `paczkomat` przez `czyPaczkomat`, więc
   // literówka w wartości zostawiłaby po cichu NULL i test mierzyłby co innego, niż mówi jego
   // nazwa. Odczyt wiersza po utworzeniu zamyka tę drogę z obu stron: kompletny ma wszystkie
-  // pięć kolumn wypełnionych, dziurawy ani jednej.
+  // sześć rodzajów danych wypełnionych, dziurawy ani jednego.
   function paraKart(db) {
     const kompletny = utworzKarte(db, {
       nazwa: 'Kompletny', sku: 'PLC-X-001', szerokosc_mm: 700, wysokosc_mm: 1000,
       kategoria_glowna: 'Na ściany', paczkomat: 'nie',
     });
     const dziurawy = utworzKarte(db, { nazwa: 'Dziurawy' });
+    uzupelnijTresc(db, kompletny);
 
     const stan = (id) => db.prepare(
-      'SELECT sku, szerokosc_mm, wysokosc_mm, kategoria_glowna, paczkomat FROM karty_produktow WHERE id = ?',
+      `SELECT sku, szerokosc_mm, wysokosc_mm, kategoria_glowna, paczkomat, opis_sekcje_json,
+        (SELECT COUNT(*) FROM zdjecia_kart z WHERE z.karta_id = k.id) AS zdjecia
+        FROM karty_produktow k WHERE id = ?`,
     ).get(id);
     expect(stan(kompletny), 'kompletny ma NAPRAWDĘ komplet pól').toEqual({
       sku: 'PLC-X-001',
@@ -721,29 +736,33 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
       wysokosc_mm: 1000,
       kategoria_glowna: 'Na ściany',
       paczkomat: 'nie',
+      opis_sekcje_json: opis,
+      zdjecia: 1,
     });
-    expect(stan(dziurawy), 'dziurawy NAPRAWDĘ nie ma żadnego z czterech').toEqual({
+    expect(stan(dziurawy), 'dziurawy NAPRAWDĘ nie ma żadnego z sześciu').toEqual({
       sku: null, szerokosc_mm: null, wysokosc_mm: null, kategoria_glowna: null, paczkomat: null,
+      opis_sekcje_json: null, zdjecia: 0,
     });
     return { kompletny, dziurawy };
   }
 
-  it('liczba_brakow: 0 dla kompletnego, 4 dla pustego', () => {
+  it('liczba_brakow: 0 dla kompletnego, 6 dla pustego', () => {
     const db = openOmsDb(':memory:');
     paraKart(db);
     const wiersze = kartyZKanalami(db, {});
     const poNazwie = Object.fromEntries(wiersze.map((w) => [w.nazwa, w.liczba_brakow]));
     expect(poNazwie.Kompletny).toBe(0);
-    expect(poNazwie.Dziurawy).toBe(4);
+    expect(poNazwie.Dziurawy).toBe(6);
   });
 
   // Ta sama reguła co w filtrze „bez wymiarów" (4.23): do wysyłki i gabarytu potrzebne są OBA wymiary,
   // więc sama szerokość nie jest połową braku, tylko brakiem.
   it('połowiczny wymiar to nadal brak wymiaru', () => {
     const db = openOmsDb(':memory:');
-    utworzKarte(db, {
+    const id = utworzKarte(db, {
       nazwa: 'Połowa', sku: 'S', szerokosc_mm: 700, kategoria_glowna: 'X', paczkomat: 'tak',
     });
+    uzupelnijTresc(db, id);
     expect(kartyZKanalami(db, {})[0].liczba_brakow).toBe(1);
   });
 
@@ -753,10 +772,11 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
   // samo pytanie o tej samej karcie.
   it('SKU z samych spacji to nadal brak, nie komplet', () => {
     const db = openOmsDb(':memory:');
-    utworzKarte(db, {
+    const id = utworzKarte(db, {
       nazwa: 'SamaSpacja', sku: '   ', szerokosc_mm: 700, wysokosc_mm: 1000,
       kategoria_glowna: 'X', paczkomat: 'tak',
     });
+    uzupelnijTresc(db, id);
 
     expect(kartyZKanalami(db, {})[0].liczba_brakow).toBe(1);
     expect(kartyZKanalami(db, { filtry: { brak: 'sku' } }).map((w) => w.nazwa))
@@ -789,7 +809,7 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
   // liczniki wychodziły po jednym; przestawienie aliasów `bezSku` ↔ `bezWymiarow`
   // w zapytaniu PRZESZŁO NA ZIELONO, czyli kafle mogłyby pokazywać swoje liczby nawzajem,
   // a każdy prowadzić do cudzej listy. Przy różnych wartościach każda taka zamiana pada.
-  const ILE = Object.freeze({ sku: 4, wymiary: 3, kategoria: 5, paczkomat: 6 });
+  const ILE = Object.freeze({ sku: 4, wymiary: 3, kategoria: 5, paczkomat: 6, zdjecie: 7, opis: 8 });
   const DO_PRZEJECIA = 2;
 
   function katalogZliczen(db) {
@@ -803,13 +823,16 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
       wymiary: { wysokosc_mm: null },
       kategoria: { kategoria_glowna: null },
       paczkomat: { paczkomat: null },
+      zdjecie: {},
+      opis: {},
     };
 
-    utworzKarte(db, pelny('Komplet'));
+    uzupelnijTresc(db, utworzKarte(db, pelny('Komplet')));
     const bezSku = [];
     for (const [czego, ile] of Object.entries(ILE)) {
       for (let i = 0; i < ile; i += 1) {
         const id = utworzKarte(db, { ...pelny(`${czego}-${i}`), ...dziura[czego] });
+        uzupelnijTresc(db, id, czego);
         if (czego === 'sku') bezSku.push(id);
       }
     }
@@ -833,11 +856,14 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
       bezWymiarow: licz('szerokosc_mm IS NULL OR wysokosc_mm IS NULL'),
       bezKategorii: licz("kategoria_glowna IS NULL OR kategoria_glowna = ''"),
       bezPaczkomatu: licz('paczkomat IS NULL'),
+      bezZdjecia: licz('id NOT IN (SELECT karta_id FROM zdjecia_kart)'),
+      bezOpisu: licz('opis_sekcje_json IS NULL'),
       zZrodlemNumeru: db.prepare(
         "SELECT COUNT(*) AS c FROM produkty_sklepowe WHERE sku_sklepu != '' AND karta_id IS NOT NULL",
       ).get().c,
     }, 'katalog NAPRAWDĘ zawiera to, co test o nim mówi').toEqual({
-      razem: 19, bezSku: 4, bezWymiarow: 3, bezKategorii: 5, bezPaczkomatu: 6, zZrodlemNumeru: 2,
+      razem: 34, bezSku: 4, bezWymiarow: 3, bezKategorii: 5, bezPaczkomatu: 6,
+      bezZdjecia: 7, bezOpisu: 8, zZrodlemNumeru: 2,
     });
   }
 
@@ -849,6 +875,7 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
     const db = openOmsDb(':memory:');
     expect(zliczeniaBrakow(db)).toEqual({
       razem: 0, bezSku: 0, doPrzejecia: 0, bezWymiarow: 0, bezKategorii: 0, bezPaczkomatu: 0, komplet: 0,
+      bezZdjecia: 0, bezOpisu: 0,
     });
   });
 
@@ -856,12 +883,14 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
     const db = openOmsDb(':memory:');
     katalogZliczen(db);
     expect(zliczeniaBrakow(db)).toEqual({
-      razem: 19,
+      razem: 34,
       bezSku: 4,
       doPrzejecia: 2,
       bezWymiarow: 3,
       bezKategorii: 5,
       bezPaczkomatu: 6,
+      bezZdjecia: 7,
+      bezOpisu: 8,
       komplet: 1,
     });
   });

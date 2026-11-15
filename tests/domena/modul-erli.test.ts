@@ -13,29 +13,31 @@ it('ERLI z rejestru otrzymuje prawdziwy moduł bez ostrzeżenia, niezależnie od
   expect(nieznaneKanalyZamowien()).toEqual([]);
 });
 
-it('umiejętności ERLI odpowiadają D4', async () => {
+it('umiejętności ERLI odpowiadają D4 i katalogowi D20 (PRZ-160.E2.02)', async () => {
   const { MODUL_ERLI } = await import('../../src/domena/modul-erli.ts');
   expect(MODUL_ERLI.umiejetnosci).toEqual({
     zdarzenia: 'skrzynka', wymagaAkceptacji: false, statusZwrotny: 'mapa', numerListu: 'przesylki',
-    plikFaktury: false, wiadomosci: false, wysylkaPlatformy: false, terminWysylki: true, scalanie: false, stany: 'brak',
+    plikFaktury: false, wiadomosci: false, wysylkaPlatformy: false, terminWysylki: true, scalanie: false, stany: 'produkty',
+    odczytOfert: true, wystawOferte: true, zmienOferte: true, zmienIloscCene: true, stanOferty: true,
   });
 });
 
-it('opis ERLI ma unikalną literę i katalog, wymagane klucze oraz sześć kroków (3 i 4 od PRZ-157.11b)', async () => {
+it('opis ERLI ma unikalną literę i katalog, wymagane klucze oraz sześć kroków z Ofertami przed Startem', async () => {
   const { MODUL_ERLI } = await import('../../src/domena/modul-erli.ts');
   expect(MODULY_KANALOW).toHaveProperty('erli', MODUL_ERLI);
   expect(sprawdzOpisyKanalow).not.toThrow();
   expect(MODUL_ERLI).toMatchObject({ typ: 'erli', nazwa: 'ERLI', litera: 'e', idKatalogu: 'erli', wzorzecLinku: 'erli',
     kluczeEnv: { sekrety: ['KLUCZ_API'], wymagane: ['KLUCZ_API', 'ADRES_API', 'OD'] } });
   expect(MODUL_ERLI.konfigurator.sciezka).toBe('/ustawienia/integracje/erli');
-  expect(MODUL_ERLI.konfigurator.kroki.map(k => [k.id, k.numer])).toEqual([['dane', 1], ['polaczenie', 2], ['metody', 3], ['nadawanie', 4], ['start', 5]]);
+  expect(MODUL_ERLI.konfigurator.kroki).toHaveLength(6);
+  expect(MODUL_ERLI.konfigurator.kroki.map(k => [k.id, k.numer])).toEqual([['dane', 1], ['polaczenie', 2], ['metody', 3], ['nadawanie', 4], ['oferty', 5], ['start', 6]]);
   expect(MODUL_ERLI.konfigurator.kroki.at(-1)).toMatchObject({ id: 'start', tytul: 'Start' });
 });
 
 it('katalog ma jeden planowany wpis ERLI bez linku i konfiguratora', () => {
   const wpisy = KATALOG_INTEGRACJI.filter(w => w.id === 'erli');
   expect(wpisy).toHaveLength(1);
-  expect(wpisy[0]).toMatchObject({ dostepnosc: 'dostepna', href: '/ustawienia/integracje/erli/nowe', konfigurator: {href:'/ustawienia/integracje/erli/nowe',dodaj:'Dodaj konto'}, logo: '/integracje/erli.png' });
+  expect(wpisy[0]).toMatchObject({ dostepnosc: 'dostepna', href: '/ustawienia/integracje/erli/nowe', konfigurator: {href:'/ustawienia/integracje/erli/nowe',dodaj:'Dodaj konto'}, logo: '/integracje/erli.svg' });
 });
 
 it.each(['produkt-PC_001.2', '1000001'])('bezpieczny slug/externalId %s daje link do produktu ERLI', slug => {

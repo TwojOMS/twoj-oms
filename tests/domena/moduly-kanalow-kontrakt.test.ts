@@ -25,7 +25,8 @@ it.each([
   ['allegro', 'Allegro', 'a', 'allegro', 'allegro',
     { mianownik: 'Allegro', dopelniacz: 'Allegro', miejscownik: 'Allegro', narzednik: 'Allegro' },
     ['CLIENT_ID', 'CLIENT_SECRET'], ['CLIENT_ID', 'CLIENT_SECRET', 'USER_AGENT', 'OD'],
-    { zdarzenia: 'odpytywanie', wymagaAkceptacji: false, statusZwrotny: 'mapa', numerListu: 'przesylki', plikFaktury: true, wiadomosci: true, wysylkaPlatformy: true, terminWysylki: true, scalanie: false, stany: 'oferty' },
+    { zdarzenia: 'odpytywanie', wymagaAkceptacji: false, statusZwrotny: 'mapa', numerListu: 'przesylki', plikFaktury: true, wiadomosci: true, wysylkaPlatformy: true, terminWysylki: true, scalanie: false, stany: 'oferty',
+      odczytOfert: true, wystawOferte: true, zmienOferte: true, zmienIloscCene: true, stanOferty: true },
     { sciezka: '/ustawienia/integracje/allegro', nowy: 'nowe', dodaj: 'Dodaj konto', kroki: [] }],
 ] as const)('opis i tabela umiejętności %s', (typ, nazwa, litera, idKatalogu, wzorzecLinku, komunikaty, sekrety, wymagane, umiejetnosci, konfigurator) => {
   // Kroki konfiguratora (od K04) sprawdza tests/moduly/kanaly/konfigurator-kontrakt.test.ts.

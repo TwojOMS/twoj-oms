@@ -6,7 +6,7 @@
   <<%= mobilna ? 'div' : 'aside' %> class="<%= klasyKontekstu %>">
     <nav class="panel-statusow" aria-label="Kontekst">
       <ul>
-        <% (statusyMenu ?? []).forEach(function (p) { %>
+        <% (kontekst.dzial === 'sprzedaz' ? (statusyMenu ?? []) : []).forEach(function (p) { %>
           <% const klasyPozycji = [p.aktywna ? 'aktywna' : '', p.klasa || ''].filter(Boolean).join(' '); %>
           <li<%- klasyPozycji ? ` class="${klasyPozycji}"` : '' %>>
             <a href="<%= p.href %>">
@@ -27,7 +27,7 @@
         <% }); %>
       </ul>
     </nav>
-    <% if ((statusyMenu ?? []).length) { %>
+    <% if (kontekst.dzial === 'sprzedaz' && (statusyMenu ?? []).length) { %>
       <p class="nowe-zamowienie"><a class="btn btn--glowny" href="/zamowienia/nowe">+ Nowe zamówienie</a></p>
     <% } %>
   </<%= mobilna ? 'div' : 'aside' %>>

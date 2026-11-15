@@ -1,0 +1,110 @@
+{
+ "_pomiar": "P13 sandbox 14.11: słowniki konta sandbox (konto firmowe) — cenniki tylko One Fulfillment (1 z 11 pokazany), warunki i producenci puste",
+ "shipping-rates": {
+  "status": 200,
+  "ms": 110,
+  "naglowki": {
+   "content-type": "application/vnd.allegro.public.v1+json"
+  },
+  "body": {
+   "shippingRates": [
+    {
+     "id": "00000000-0000-4000-8000-000000000002",
+     "name": "One Fulfillment PL",
+     "marketplaces": [
+      {
+       "id": "allegro-pl"
+      },
+      {
+       "id": "allegro-business-pl"
+      }
+     ],
+     "features": {
+      "managedByAllegro": true,
+      "isFulfillment": true
+     }
+    }
+   ]
+  }
+ },
+ "return-policies": {
+  "status": 200,
+  "ms": 83,
+  "naglowki": {
+   "content-type": "application/vnd.allegro.public.v1+json"
+  },
+  "body": {
+   "count": 0,
+   "returnPolicies": []
+  }
+ },
+ "implied-warranties": {
+  "status": 200,
+  "ms": 76,
+  "naglowki": {
+   "content-type": "application/vnd.allegro.public.v1+json;charset=UTF-8",
+   "expires": "0"
+  },
+  "body": {
+   "count": 0,
+   "impliedWarranties": []
+  }
+ },
+ "warranties": {
+  "status": 200,
+  "ms": 72,
+  "naglowki": {
+   "content-type": "application/vnd.allegro.public.v1+json;charset=UTF-8",
+   "expires": "0"
+  },
+  "body": {
+   "count": 0,
+   "warranties": []
+  }
+ },
+ "responsible-producers": {
+  "status": 200,
+  "ms": 74,
+  "naglowki": {
+   "content-type": "application/vnd.allegro.public.v1+json"
+  },
+  "body": {
+   "responsibleProducers": [],
+   "count": 0,
+   "totalCount": 0
+  }
+ },
+ "responsible-persons": {
+  "status": 200,
+  "ms": 91,
+  "naglowki": {
+   "content-type": "application/vnd.allegro.public.v1+json"
+  },
+  "body": {
+   "responsiblePersons": [],
+   "count": 0,
+   "totalCount": 0
+  }
+ },
+ "tax-settings?category.id": {
+  "q": "?category.id=49855",
+  "acc": "application/vnd.allegro.public.v1+json",
+  "status": 400,
+  "ms": 214,
+  "naglowki": {
+   "content-type": "application/json"
+  },
+  "body": {
+   "errors": [
+    {
+     "code": "ERROR",
+     "message": "An error has occurred",
+     "details": null,
+     "path": null,
+     "userMessage": "400 BAD_REQUEST \"Type mismatch.\"",
+     "metadata": {}
+    }
+   ]
+  }
+ }
+}

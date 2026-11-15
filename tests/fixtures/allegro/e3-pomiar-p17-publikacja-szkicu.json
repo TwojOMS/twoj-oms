@@ -1,0 +1,107 @@
+{
+ "_pomiar": "P17 sandbox 14.11: PATCH ACTIVE szkicu bez warunków → 422 synchronicznie; PATCH ENDED szkicu → 202 retry-after 120, operacja po 120 s → 422 IllegalChangeInactiveOffer",
+ "active": {
+  "status": 422,
+  "body": {
+   "errors": [
+    {
+     "code": "ConstraintViolationException.RequiredModulesEnabled",
+     "message": "The offer does not contain the required data: stock.",
+     "details": "ConstraintViolationException.RequiredModulesEnabled",
+     "path": "modules.stock",
+     "userMessage": "Oferta nie zawiera wymaganych danych: stock.",
+     "metadata": {}
+    },
+    {
+     "code": "ConstraintViolationException.AfterSalesServiceConditionsRequiredByCompany",
+     "message": "Offer Terms (for returns and complaints) are required for Business Accounts.",
+     "details": "ConstraintViolationException.AfterSalesServiceConditionsRequiredByCompany",
+     "path": "null",
+     "userMessage": "Warunki oferty (zwroty, reklamacje) są wymagane dla kont firma.",
+     "metadata": {}
+    },
+    {
+     "code": "RESPONSIBLE_PRODUCER_NOT_SPECIFIED",
+     "message": "Responsible producer is required for every product in the offer",
+     "details": null,
+     "path": "productSet[0].responsibleProducer",
+     "userMessage": "Producent odpowiedzialny jest obowiązkowy dla każdego produktu w ofercie",
+     "metadata": {}
+    },
+    {
+     "code": "SAFETY_INFO_NOT_DEFINED",
+     "message": "Safety information was not defined for product",
+     "details": null,
+     "path": "productSet[0].safetyInformation",
+     "userMessage": "Informacja o bezpieczeństwie nie została zdefiniowana dla produktu",
+     "metadata": {}
+    },
+    {
+     "code": "VALIDATION_ERROR",
+     "message": "Fulfilment offer validation error",
+     "details": null,
+     "path": "offer.parameters",
+     "userMessage": "W One Fulfillment możesz sprzedawać tylko produkty, które są podpięte do Katalogu produktów i mają nr GTIN (np. EAN lub ISBN).",
+     "metadata": {}
+    },
+    {
+     "code": "VALIDATION_ERROR",
+     "message": "Fulfilment offer validation error",
+     "details": null,
+     "path": "product.parameters",
+     "userMessage": "Produkty, które chcesz sprzedawać w One Fulfillment, muszą posiadać nr GTIN (np. EAN). Znajdziesz go na opakowaniu produktu, często jako kod kreskowy. Jeśli chcesz sprzedawać ten produkt przez One Fulfillment, uzupełnij GTIN w produkcie.",
+     "metadata": {}
+    },
+    {
+     "code": "VALIDATION_ERROR",
+     "message": "Fulfilment offer validation error",
+     "details": null,
+     "path": "seller",
+     "userMessage": "W One Fulfillment musisz ustawić adres do wycofania",
+     "metadata": {}
+    },
+    {
+     "code": "VALIDATION_ERROR",
+     "message": "Fulfilment offer validation error",
+     "details": null,
+     "path": "seller",
+     "userMessage": "Aby sprzedawać z Magazynu Allegro musisz mieć aktywną usługę One Fulfillment.",
+     "metadata": {}
+    },
+    {
+     "code": "VALIDATION_ERROR",
+     "message": "Fulfilment offer validation error",
+     "details": null,
+     "path": "tax.rate",
+     "userMessage": "W One Fulfillment musisz ustawić stawkę VAT.",
+     "metadata": {}
+    }
+   ]
+  }
+ },
+ "ended": {
+  "status": 202,
+  "naglowki": {
+   "location": "https://api.allegro.pl.allegrosandbox.pl/sale/product-offers/9900000001/operations/00000000-0000-4000-8000-000000000005",
+   "retry-after": "120",
+   "content-type": "application/vnd.allegro.public.v1+json; charset=UTF-8",
+   "expires": "0"
+  }
+ },
+ "ended_operacja": {
+  "status": 422,
+  "body": {
+   "errors": [
+    {
+     "code": "PublicationValidationException.IllegalChangeInactiveOffer",
+     "message": "You cannot end an inactive offer. Inactive offers can be removed.",
+     "details": null,
+     "path": "publication.status",
+     "userMessage": "You cannot end an inactive offer. Inactive offers can be removed.",
+     "metadata": {}
+    }
+   ]
+  },
+  "po_s": 120
+ }
+}

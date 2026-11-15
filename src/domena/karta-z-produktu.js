@@ -15,6 +15,7 @@ import { wymiaryZTekstu, nazwaBezRozmiaru, wymiaryZeSklepu, wagaZeSklepu } from 
 import { atrybutyWariantu, osiePodzialu, nazwaZOsiami } from './atrybuty-wariantu.js';
 import { wymagajListyKanalow } from './lista-kanalow.js';
 import { czyPozycjaPlaceholdera } from './indywidualne.js';
+import { dekodujEncje } from './slowniki-kart.js';
 
 const napis = (x) => (typeof x === 'string' ? x.trim() : '');
 
@@ -52,8 +53,9 @@ function kategorieProduktu(produkt) {
 function kategoriaGlowna(produkt) {
   const lista = kategorieProduktu(produkt);
   const zrodlowa = napis(produkt?.kategoria_glowna_zrodla);
-  if (zrodlowa && lista.includes(zrodlowa)) return zrodlowa;
-  if (lista.length === 1) return lista[0];
+  // PRZ-160.P3b.01: na karte (i do slownika kategorii) idzie nazwa bez encji, jak po migracji 0016.
+  if (zrodlowa && lista.includes(zrodlowa)) return dekodujEncje(zrodlowa).trim() || null;
+  if (lista.length === 1) return dekodujEncje(lista[0]).trim() || null;
   return null;
 }
 

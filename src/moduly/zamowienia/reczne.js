@@ -177,7 +177,7 @@ app.post('/zamowienia/nowe/klient', async (req, reply) => {
     // a slad ma zostac — to on tlumaczy pozniej, skad na fakturze wzial sie ten adres.
     dopiszLog(db, null, {
       akcja: 'klient.wstaw',
-      wynik: `Ręcznie (${ktoKlikal(req)}): wstawiono dane stałego klienta `
+      wynik: `Ręcznie (${ktoKlikal(req)}): wstawiono dane klienta B2B `
         + `„${klient.nazwa}" (${klient.klucz}) do formularza nowego zamówienia — nic jeszcze nie zapisano.`,
     });
     return renderujNowe(reply, {

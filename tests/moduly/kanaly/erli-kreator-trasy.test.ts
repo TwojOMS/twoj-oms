@@ -92,21 +92,21 @@ it('nowy sklep pokazuje zrobione kroki i bieżący, a pasek wymienia wszystkie k
   const r=await f.req('GET',p);expect(r.statusCode).toBe(200);
   expect([...r.body.matchAll(/<h2 id="erli-([^"]+)"/g)].map(m=>m[1])).toEqual(widoczne);
   const pasek=r.body.match(/<ol class="stepper"[\s\S]*?<\/ol>/)?.[0];
-  for(const tytul of ['Nazwa, środowisko, klucz','Sprawdź połączenie','Metody dostawy','Nadawanie Przesyłek Erli','Start'])expect(pasek).toContain(tytul);
+  for(const tytul of ['Nazwa, środowisko, klucz','Sprawdź połączenie','Metody dostawy','Nadawanie Przesyłek Erli','Oferty','Start'])expect(pasek).toContain(tytul);
  };
  await sprawdzSekcje(['dane','metody']);
  await f.post(p,'sprawdz');await sprawdzSekcje(['dane','metody']);
  await f.post(p,'pobierz-metody');await sprawdzSekcje(['dane','metody']);
  await f.post(p,'metody');await sprawdzSekcje(['dane','metody','nadawanie']);
  await f.post(p,'nadawanie',{punktNadania:'1',waga:'1',dlugosc:'30',szerokosc:'20',wysokosc:'10'});
- await sprawdzSekcje(['dane','metody','nadawanie','start']);
+ await sprawdzSekcje(['dane','metody','nadawanie','oferty','start']);
  expect((await f.req('GET',p)).body).toMatch(/<button[^>]*>Aktywuj<\/button>/);
 });
 it.each([false,true])('aktywny sklep lub konfiguracja env (%s) pokazuje stan i zwinięte sekcje bez kroków',async zPliku=>{
  const f=await setup(zPliku);let p='/z-pliku';
  if(!zPliku){p=await f.szkic();await f.post(p,'sprawdz');expect((await f.post(p,'aktywuj')).statusCode).toBe(303);expect(f.row().autoryzacja).toBe('polaczone');}
  const r=await f.req('GET',p);expect(r.statusCode).toBe(200);
- expect([...r.body.matchAll(/<h2 id="erli-([^"]+)"/g)].map(m=>m[1])).toEqual(['stan','dane','metody','nadawanie']);
+ expect([...r.body.matchAll(/<h2 id="erli-([^"]+)"/g)].map(m=>m[1])).toEqual(['stan','dane','metody','nadawanie','oferty']);
  expect(r.body).not.toContain('class="stepper"');
 });
 it.each(['GET','POST'] as const)('konto bez admin dostaje 403 na %s konfiguratora bez zapisu w bazie',async method=>{
@@ -134,11 +134,11 @@ it('katalog i Moje połączenia pokazują logo ERLI (Adam 11.11: „tak, wstaw l
  const f=await setup(),p=await f.szkic();await f.post(p,'sprawdz');
  const katalog=await f.panel('GET','/ustawienia/integracje/katalog');
  expect(katalog.statusCode).toBe(200);expect(katalog.body).toContain(root+'/nowe');
- expect(katalog.body).toContain('/integracje/erli.png');
+ expect(katalog.body).toContain('/integracje/erli.svg');
  const lista=await f.panel('GET','/ustawienia/integracje');
  expect(lista.statusCode).toBe(200);expect(lista.body).toContain(root+p);
  expect(lista.body).toContain('Pracownia Półcień');expect(lista.body).toContain('id 1000001');
- expect(lista.body).toContain('/integracje/erli.png');
+ expect(lista.body).toContain('/integracje/erli.svg');
  expect(lista.body+katalog.body).not.toContain(sekret);
 });
 it('zapisuje sekret wyłącznie w sekrety_json; HTML i nagłówki nie zawierają klucza',async()=>{

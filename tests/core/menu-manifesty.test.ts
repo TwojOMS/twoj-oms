@@ -64,11 +64,11 @@ const env = { OMS_USER:'operator', OMS_PASS:'fixture', OMS_SPRZEDAWCA_NIP:'12345
 const headers = { authorization:`Basic ${Buffer.from('operator:fixture').toString('base64')}` };
 it('PRZ065 rzeczywisty bootstrap zachowuje etykietę, adres i kolejność z manifestu', async () => {
   const siec = vi.spyOn(globalThis,'fetch').mockRejectedValue(new Error('Sieć zabroniona')); let a: Awaited<ReturnType<typeof zbudujOms>> | undefined;
-  const moduly = MODULY.map(m => m.nazwa==='raporty' ? {...m, menu:m.menu.map(p=>p.uprawnienie==='raporty'?{...p,etykieta:'Raporty <z manifestu>',adres:'/raporty?widok=manifest',kolejnosc:25}:p)}:m);
-  // PRZ-102.03 (wariant C): analizy stoją w górnym pasku (przycisk „Analizy i finanse”), nie w menu bocznym.
+  const moduly = MODULY.map(m => m.nazwa==='raporty' ? {...m, menu:m.menu.map(p=>p.adres==='/raporty'?{...p,etykieta:'Raporty <z manifestu>',adres:'/raporty?widok=manifest',kolejnosc:25}:p)}:m);
+  // PRZ-167: analizy są w menu bocznym, w podmenu „Analityka” (wcześniej PRZ-102.03: przycisk w górnym pasku).
   try { a=await zbudujOms({env,moduly}); const odp=await a.app.inject({method:'GET',url:'/raporty',headers}); expect(odp.statusCode).toBe(200); const f=wytnij(odp.body);
-    expect(f.header).toContain('href="/raporty?widok=manifest"'); expect(f.header).toContain('Raporty &lt;z manifestu&gt;');
-    expect(f.header.indexOf('href="/statystyki"')).toBeLessThan(f.header.indexOf('href="/raporty?widok=manifest"')); expect((a.app as any).menuOms).toBe(a.menu); expect(siec).not.toHaveBeenCalled();
+    expect(f.aside).toContain('href="/raporty?widok=manifest"'); expect(f.aside).toContain('Raporty &lt;z manifestu&gt;');
+    expect(f.aside.indexOf('href="/statystyki"')).toBeLessThan(f.aside.indexOf('href="/raporty?widok=manifest"')); expect((a.app as any).menuOms).toBe(a.menu); expect(siec).not.toHaveBeenCalled();
   } finally { try { await a?.app.close(); } finally { a?.db.close(); siec.mockRestore(); } }
 });
 it('PRZ065 jawna pusta lista manifestów nie przywraca statycznych pozycji',()=>{ const n=nawigacjaDla({sciezka:'/',menu:[]} as any); expect({boczne:n.boczne,ustawienia:n.ustawienia,statusy:n.kontekst?.statusy??[]}).toEqual({boczne:[],ustawienia:null,statusy:[]}); });

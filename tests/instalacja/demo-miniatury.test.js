@@ -13,6 +13,8 @@ import { miniaturaZLustra } from '../../src/domena/miniatura-pozycji.js';
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
 
 const KATALOG_ZDJEC = path.resolve(import.meta.dirname, '../../src/public/demo-produkty');
+// PRZ-160.08 — celowe braki galerii; zdjęcia pozycji zamówień pozostają dostępne.
+const BEZ_GALERII = new Set(['LMP-KIN-001', 'LMP-KIN-002']);
 /** Adres demo → plik w src/public; adres spoza puli zdjęć demo = null. */
 function plikZAdresu(adres) {
   if (typeof adres !== 'string' || !adres.startsWith(`${ADRES_ZDJEC_DEMO}/`)) return null;
@@ -59,6 +61,11 @@ describe('zdjęcia katalogu demo', () => {
       expect(k.miniatury.size).toBe(k.produkty.length);
       for (const p of k.produkty) {
         const m = k.miniatury.get(String(p.id));
+        if (BEZ_GALERII.has(p.sku)) {
+          expect(m).toBeNull();
+          expect(p.images).toEqual([]);
+          continue;
+        }
         expect(zdjecieIstnieje(m), `${p.name} → ${m}`).toBe(true);
         expect(p.images[0]?.src).toBe(m);
       }
@@ -90,8 +97,10 @@ describe('baza demo: pozycje zamówień niosą zdjęcie', () => {
   });
 
   it('lustro magazynu ma miniatury demo', () => {
-    const wiersze = db.prepare('SELECT miniatura FROM produkty_sklepowe').all();
+    const wiersze = db.prepare('SELECT kanal, sku_sklepu, miniatura FROM produkty_sklepowe').all();
     expect(wiersze.length).toBeGreaterThan(30);
-    expect(wiersze.filter((w) => !zdjecieIstnieje(w.miniatura)).length).toBe(0);
+    const bez = wiersze.filter((w) => !zdjecieIstnieje(w.miniatura));
+    expect(bez.map(w => w.sku_sklepu).sort()).toEqual([...BEZ_GALERII].sort());
+    expect(bez.every(w => w.kanal === 'polcien')).toBe(true);
   });
 });

@@ -16,9 +16,9 @@ describe('PRZ-154.E1.3 menu Ustawień w kolumnie bocznej', () => {
       expect(main).not.toContain('nawigacja-kontekstowa');
       const bok = r.body.match(/<aside class="oms-settings-column[^"]*"[^>]*>[\s\S]*?<\/aside>/u)?.[0];
       expect(bok).toContain('oms-settings-navigation');
-      expect(bok).toMatch(/<li class="aktywna">\s*<a href="\/ustawienia\/firma" aria-current="page">/u);
+      expect(bok).toMatch(/<li class="aktywna">\s*<a href="\/ustawienia\/firma" aria-current="true">/u); // PRZ-167: Firma ma podmenu — bieżąca jest podstrona
       expect(r.body).toContain('<summary><span>Ustawienia: <strong>Firma</strong></span></summary>');
-      expect(bok.match(/<a /g)).toHaveLength(10);
+      expect(bok.match(/<a /g)).toHaveLength(13); // PRZ-167: 10 działów + 3 podstrony Firmy
       expect(bok.match(/<aside/g)).toHaveLength(1);
       expect(r.body).not.toContain('id="ust-menu-aplikacji"');
       expect(r.body).not.toContain('Menu aplikacji');

@@ -75,7 +75,7 @@ describe('PRZ-083: „Pobierz z GUS” w demo — przycisk stoi, kliknięcie mó
 
   it('stali klienci: przycisk widoczny, komunikat demo', async () => {
     // Formularz nowego klienta otwiera „+ Nowy klient” (?nowy).
-    expect(await get('/klienci?nowy', admin)).toContain('formaction="/klienci/gus');
+    expect(await get('/klienci/nowy', admin)).toContain('formaction="/klienci/gus');
     const r = await post('/klienci/gus', { f_nip: NIP }, admin);
     expect(r.status).toBe(200);
     expect(r.html).toContain(W_DEMO);
@@ -92,12 +92,15 @@ describe('PRZ-083: „Pobierz z GUS” w demo — przycisk stoi, kliknięcie mó
   });
 });
 
-describe('PRZ-083: strona główna demo — jedno powiadomienie o wiadomości z Allegro, nie trzy', () => {
+// PRZ-167 (właściciel 15.11: „wyłącz w demo powiadomienia o nowych wiadomościach”): dane nadal mają jeden czekający wątek
+// (reklamacja), ale demo nie pokazuje o nim ani wiersza na liście, ani plakietki przy „Wiadomości” w menu.
+describe('PRZ-083/PRZ-167: strona główna demo — bez powiadomień o wiadomościach z Allegro', () => {
   it('trzy wątki bez odpowiedzi w danych, dwa „Załatwione” — na liście jedno powiadomienie, o reklamacji', async () => {
     expect(WATKI_ALLEGRO.filter((w) => !w.odpowiedz)).toHaveLength(3);
     const html = await get('/', admin);
     const powiadomienia = html.match(/Nowa wiadomość z Allegro od/g) ?? [];
-    expect(powiadomienia).toHaveLength(1);
+    expect(powiadomienia).toHaveLength(0);
+    expect(html).not.toContain('oms-wiadomosci-licznik');
     const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
     try {
       const czeka = db.prepare(`SELECT w.ostatnia_tresc FROM allegro_watki w

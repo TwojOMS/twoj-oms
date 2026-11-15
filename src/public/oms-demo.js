@@ -42,7 +42,8 @@ function uruchom() {
       dopisek.textContent = `Po restarcie zaloguj się ponownie: ${login} / ${haslo}.`;
     } else {
       tekst.innerHTML = `Wersja DEMO — restart danych za <strong>${stan.licznik}</strong>`;
-      dopisek.textContent = 'Zmiany gości znikają przy każdym restarcie.';
+      // PRZ-167: dopisek zawiera też informację o generatorze (tak jak wersja bez JS w layout-oms.ejs).
+      dopisek.textContent = 'Dane z generatora, połączenia ze sklepami, Allegro i kurierami są wyłączone. Zmiany gości znikają przy każdym restarcie.';
     }
   };
 

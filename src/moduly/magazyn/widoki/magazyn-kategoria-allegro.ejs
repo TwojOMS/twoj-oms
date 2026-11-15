@@ -1,0 +1,133 @@
+<%# PRZ-160.E3.11 — kategoria karty → kategoria Allegro (liść) i reguły wymaganych parametrów, osobno na środowisko (D33).
+    Podpowiedzi z dopasowania Allegro (nazwa kategorii + do 3 nazw kart), numer ręcznie, „Zatwierdź” zapisuje mapę. %>
+<p class="wroc"><a href="/magazyn/kategorie">← Kategorie</a></p>
+
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Kategoria „' + nazwa + '” w Allegro', podtytul: 'Środowisko: ' + srodowisko}) %>
+
+<% if (blad) { %><p class="pasek-uwaga" role="alert"><%= blad %></p><% } %>
+<% if (brakKonta) { %><p class="pasek-uwaga"><%= brakKonta %></p><% } %>
+
+<% if (srodowiska.length > 1) { %>
+  <nav class="slownik-narzedzia" aria-label="Środowisko Allegro">
+    <% srodowiska.forEach(function (s) { %>
+      <a class="btn btn--maly<%= s === srodowisko ? ' btn--glowny' : '' %>" href="<%= adres %>?srodowisko=<%= s %>"<% if (s === srodowisko) { %> aria-current="page"<% } %>><%= s === 'produkcja' ? 'Produkcja' : 'Sandbox' %></a>
+    <% }); %>
+  </nav>
+<% } %>
+
+<section class="panel" aria-labelledby="mapa-tytul">
+  <div class="panel-glowa"><h2 id="mapa-tytul">Kategoria Allegro</h2></div>
+  <div class="panel-cialo">
+    <% if (mapa) { %>
+      <p><strong><%= sciezka || ('kategoria ' + mapa.kategoria_allegro_id) %></strong> <small class="podpowiedz">(nr <%= mapa.kategoria_allegro_id %>)</small></p>
+      <p class="podpowiedz">Zatwierdził: <%= mapa.potwierdzil || '—' %>, <%= mapa.potwierdzono_at ? new Date(mapa.potwierdzono_at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw' }) : '—' %>.
+        <% if (!podpowiedzi.length && !brakKonta) { %><a href="<%= adres %>?srodowisko=<%= srodowisko %>&amp;podpowiedzi=1">Pokaż podpowiedzi Allegro</a><% } %></p>
+    <% } else { %>
+      <p class="magazyn-brak">Kategoria nieprzypisana w środowisku <%= srodowisko %>.</p>
+    <% } %>
+    <% if (bladPodpowiedzi) { %><p class="pasek-uwaga"><%= bladPodpowiedzi %></p><% } %>
+    <% if (!brakKonta && !mozeZatwierdzic) { %>
+      <p class="podpowiedz">Kategorię Allegro zatwierdza administrator.</p>
+    <% } else if (!brakKonta) { %>
+      <form method="post" action="<%= adres %>" class="pola">
+        <input type="hidden" name="srodowisko" value="<%= srodowisko %>">
+        <% if (podpowiedzi.length) { %>
+          <fieldset class="import-wybor">
+            <legend>Podpowiedzi Allegro (tylko kategorie najniższego poziomu)</legend>
+            <% podpowiedzi.forEach(function (k, i) { %>
+              <div class="import-opcja"><input type="radio" name="kategoria_id" value="<%= k.id %>" id="kategoria-<%= k.id %>"<% if (mapa && mapa.kategoria_allegro_id === k.id) { %> checked<% } %>>
+                <label for="kategoria-<%= k.id %>"><%= k.rodzic ? k.rodzic + ' › ' : '' %><%= k.nazwa %> <small class="podpowiedz">(nr <%= k.id %>)</small></label></div>
+            <% }); %>
+          </fieldset>
+        <% } %>
+        <label for="kategoria-reczna">Albo numer kategorii Allegro</label>
+        <div class="pole-z-przyciskiem">
+          <input id="kategoria-reczna" name="kategoria_reczna" inputmode="numeric" pattern="[0-9]{1,12}" maxlength="12"
+            autocomplete="off" spellcheck="false" autocapitalize="none" aria-describedby="kategoria-reczna-opis">
+          <button type="submit" class="btn btn--glowny">Zatwierdź kategorię</button>
+        </div>
+        <p class="podpowiedz" id="kategoria-reczna-opis">Numer ręczny wygrywa z podpowiedzią. Zatwierdzenie pobiera opis kategorii i sprawdza słownik każdej przypisanej marki.</p>
+      </form>
+    <% } %>
+  </div>
+</section>
+
+<% if (mapa && bladOpisu) { %><p class="pasek-uwaga" role="alert"><%= bladOpisu %></p><% } %>
+
+<% if (mapa && opis) { %>
+<section class="panel" aria-labelledby="parametry-tytul">
+  <div class="panel-glowa"><h2 id="parametry-tytul">Wymagane parametry</h2></div>
+  <div class="panel-cialo">
+    <% if (komplet) { %>
+      <p class="<%= komplet.karty && komplet.pelne === komplet.karty ? 'pasek-info' : 'pasek-uwaga' %>" role="status">
+        <%= komplet.pelne %> z <%= komplet.karty %> kart ma komplet<% if (komplet.braki.length) { %> — brakuje: <%= komplet.braki.map(function (b) { return b.parametr + ' (' + b.ile + ')'; }).join(', ') %><% } %>.
+      </p>
+    <% } %>
+    <% if (!wymagane.length) { %><p class="podpowiedz">Ta kategoria nie ma wymaganych parametrów.</p><% } %>
+    <% if (wymagane.length && !mozeZatwierdzic) { %><p class="podpowiedz">Reguły parametrów ustala administrator.</p><% } %>
+    <% wymagane.forEach(function (p) {
+         var r = reguly.get(String(p.id));
+         var wartosci = (wyszukane && wyszukane.parametrId === String(p.id)) ? wyszukane.wartosci : (p.slownik || []);
+         var nazwaWartosci = function (id) { var w = (p.slownik || []).concat(wyszukane ? wyszukane.wartosci : []).find(function (x) { return x.id === id; }); return w ? w.wartosc : id; };
+         var opisReguly = 'brak reguły';
+         if (r && r.rodzaj === 'stala') { var j = {}; try { j = JSON.parse(r.wartosc_json || '{}'); } catch (e) {} opisReguly = 'stała: ' + (j.valuesIds ? j.valuesIds.map(nazwaWartosci) : (j.values || [])).join(', '); }
+         else if (r && r.rodzaj === 'pole') { opisReguly = 'pole karty: ' + (pola[r.pole] || r.pole) + (r.przelicznik ? ', ' + przeliczniki[r.przelicznik] : ''); }
+         else if (r && r.rodzaj === 'na_karcie') { opisReguly = 'wartość na karcie'; }
+    %>
+      <% if (!mozeZatwierdzic) { /* E3c (N6): nie-admin widzi regułę bez formularza zmiany */ %>
+      <div class="import-wybor" id="parametr-<%= p.id %>">
+        <h3><%= p.nazwa %> <small class="podpowiedz">(nr <%= p.id %>)</small></h3>
+        <p><% if (r) { %><%= opisReguly %><% } else { %><span class="magazyn-brak">brak reguły</span><% } %></p>
+      </div>
+      <% return; } %>
+      <form method="post" action="<%= adres %>/regula" class="import-wybor" id="parametr-<%= p.id %>" aria-labelledby="parametr-<%= p.id %>-nazwa">
+        <h3 id="parametr-<%= p.id %>-nazwa"><%= p.nazwa %> <small class="podpowiedz">(nr <%= p.id %>)</small></h3>
+        <p><% if (r) { %><%= opisReguly %><% } else { %><span class="magazyn-brak">brak reguły</span><% } %></p>
+        <input type="hidden" name="srodowisko" value="<%= srodowisko %>">
+        <input type="hidden" name="parametr_id" value="<%= p.id %>">
+        <div class="pola pola--siatka">
+          <label>Skąd wartość
+            <select name="rodzaj">
+              <option value="stala"<% if (!r || r.rodzaj === 'stala') { %> selected<% } %>>stała</option>
+              <option value="pole"<% if (r && r.rodzaj === 'pole') { %> selected<% } %>>pole karty</option>
+              <option value="na_karcie"<% if (r && r.rodzaj === 'na_karcie') { %> selected<% } %>>wpisywana na karcie</option>
+            </select>
+          </label>
+          <% if (p.typ === 'dictionary' && wartosci.length) { %>
+            <label>Wartość stała
+              <select name="wartosc">
+                <option value="">— wybierz —</option>
+                <% wartosci.forEach(function (w) { %><option value="<%= w.id %>"<% if (r && r.wartosc_json && r.wartosc_json.indexOf('"' + w.id + '"') >= 0) { %> selected<% } %>><%= w.wartosc %></option><% }); %>
+              </select>
+            </label>
+          <% } else if (p.typ !== 'dictionary') { %>
+            <label>Wartość stała <input name="wartosc" maxlength="200" autocomplete="off"></label>
+          <% } %>
+          <label>Pole karty
+            <select name="pole">
+              <% Object.keys(pola).forEach(function (k) { %><option value="<%= k %>"<% if (r && r.pole === k) { %> selected<% } %>><%= pola[k] %></option><% }); %>
+            </select>
+          </label>
+          <label>Przelicznik
+            <select name="przelicznik">
+              <% Object.keys(przeliczniki).forEach(function (k) { %><option value="<%= k %>"<% if (r && (r.przelicznik || '') === k) { %> selected<% } %>><%= przeliczniki[k] %></option><% }); %>
+            </select>
+          </label>
+        </div>
+        <p><button type="submit" class="btn btn--drugi">Zapisz regułę „<%= p.nazwa %>”</button></p>
+      </form>
+      <% if (p.typ === 'dictionary' && p.slownikWyciety) { %>
+        <search>
+          <form method="get" action="<%= adres %>#parametr-<%= p.id %>" class="slownik-zmien">
+            <input type="hidden" name="srodowisko" value="<%= srodowisko %>">
+            <input type="hidden" name="parametr" value="<%= p.id %>">
+            <label for="szukaj-<%= p.id %>">Szukaj w słowniku „<%= p.nazwa %>” (ponad 200 wartości)</label>
+            <input id="szukaj-<%= p.id %>" type="search" name="szukaj" maxlength="100" autocomplete="off" value="<%= wyszukane && wyszukane.parametrId === String(p.id) ? wyszukane.tekst : '' %>">
+            <button type="submit" class="btn btn--maly">Szukaj wartości</button>
+          </form>
+        </search>
+      <% } %>
+    <% }); %>
+  </div>
+</section>
+<% } %>

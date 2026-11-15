@@ -1,0 +1,29 @@
+<p class="wroc"><a href="/magazyn/stany/otwarcie">← Stan otwarcia</a> · <a href="/ustawienia/magazyn">Ustawienia magazynu</a></p>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Podgląd stanów w kanałach'}) %>
+<% if (zatwierdzono) { %><p class="pas-potwierdzenie">Zatwierdzono ilości dla bieżącego włączenia. Pętle mogą synchronizować ilości objętych ofert.</p><% } %>
+<section class="panel">
+  <h2 id="podglad-tytul">3. Sprawdź skutki i zatwierdź</h2>
+  <p>Podgląd jest ważny 30 minut. Nowy ruch, zmiana ofert lub buforów wymaga ponownego podglądu. Nowe zamówienia zostaną uwzględnione przez pętle. Zatwierdzić można dopiero, gdy każda karta z objętą ofertą ma stan otwarcia. Każda oferta karty dostaje pełną ilość po odjęciu bufora konta — konta nie dzielą sztuk.</p>
+  <% if (!konta.length) { %><p>Brak ofert z ilością z OMS.</p><% } %>
+  <% konta.forEach(k => { %>
+    <h3><%= k.konto %></h3>
+    <dl>
+      <dt>Obniżki</dt><dd><%= k.obnizki %></dd>
+      <dt>Podwyżki</dt><dd><%= k.podwyzki %></dd>
+      <dt>Bez zmian</dt><dd><%= k.bezZmian %></dd>
+      <dt>Do zera</dt><dd><%= k.doZera %></dd>
+      <dt>Blokady</dt><dd><%= k.blokady %></dd>
+    </dl>
+  <% }); %>
+  <p><a href="/magazyn/stany/bez-karty">Pozycje bez karty: <%= bezKarty %></a></p>
+  <% if (!zatwierdzono && bezStanu) { %>
+  <p class="pas-uprzedzenie"><span id="bez-stanu-opis">Oferty bez stanu otwarcia: <%= bezStanu %>. Zatwierdzenie jest nieaktywne, dopóki ich karty nie mają stanu otwarcia.</span> <a href="/magazyn/stany/otwarcie">Ustal stan otwarcia (krok 1)</a></p>
+  <% } %>
+  <% if (!zatwierdzono) { %>
+  <form method="post" action="/magazyn/stany/kanaly/zatwierdz" aria-labelledby="podglad-tytul">
+    <input type="hidden" name="podglad" value="<%= podglad %>">
+    <% if (bezStanu) { %><button type="submit" class="btn btn--glowny" disabled aria-describedby="bez-stanu-opis">Zatwierdź</button>
+    <% } else { %><button type="submit" class="btn btn--glowny">Zatwierdź</button><% } %>
+  </form>
+  <% } %>
+</section>

@@ -16,7 +16,7 @@ Przykłady niżej dotyczą zmyślonej firmy „Pracownia Półcień” i jej kon
 
 ## Ścieżka w panelu
 
-Ustawienia → Integracje → Allegro → „Dodaj konto”. Kreator ma kroki od 0 do 5.
+Ustawienia → Integracje → Allegro → „Dodaj konto”. Kreator ma kroki od 0 do 6.
 
 ### Krok 0. Aplikacja Allegro (raz na instalację i środowisko)
 
@@ -31,7 +31,9 @@ Allegro. Panel pokazuje te same kroki, które są tutaj:
    Typu nie da się później zmienić. Adresu przekierowania nie podajesz.
 5. Zaakceptuj regulamin REST API i zatwierdź formularz.
 6. Uprawnienia — w „Zarządzanie aplikacjami” otwórz aplikację i zaznacz wszystkie z listy pokazanej w panelu
-   (zamówienia, oferty, przesyłki, wiadomości, dyskusje i reklamacje oraz profil konta — login i numer konta).
+   (zamówienia, oferty — odczyt, przesyłki, wiadomości, dyskusje i reklamacje oraz profil konta — login i numer
+   konta). Dwa ostatnie na liście — „oferty — wystawianie i zmiana” i „ustawienia sprzedaży — odczyt” — są
+   oznaczone „opcjonalne”: zaznacz je tylko, jeśli chcesz wystawiać oferty z OMS (rozdział „Wystawianie ofert”).
 7. Skopiuj Client ID i Client Secret z karty aplikacji i wklej w panelu, w kroku 0. Przycisk „Zapisz i sprawdź”.
 
 OMS sprawdza obie wartości w Allegro. Po zapisaniu sekret nie wraca już na ekran — panel pokazuje tylko końcówkę
@@ -68,6 +70,45 @@ Ostatni przebieg, ostatni sukces i ostatni błąd pobierania. Na stronie konta m
 - „Sprawdź połączenie” — test odczytu konta i zamówień; niczego nie importuje i nie sprawdza nadania przesyłki.
 - „Zmień nazwę” — klucz kanału i powiązania zamówień się nie zmieniają.
 - „Odłącz” — dostęp do Allegro ustaje, tokeny znikają, historia zamówień zostaje.
+
+### Krok 6. Oferty (opcjonalny)
+
+Krok pojawia się, gdy konto ma zgodę na oferty (patrz niżej). Sekcja „Listy konta z Allegro” z przyciskiem
+„Pobierz z Allegro” tylko odczytuje cenniki dostaw, warunki zwrotów i reklamacji, gwarancje, producentów i osoby
+odpowiedzialne. „Ustawienia ofert konta” (oferty wstrzymane/czynne, narzut, próg potwierdzenia ceny, stała liczba
+sztuk, czas wysyłki, stawka VAT, „Aktywuj po sprawdzeniu”, domyślna informacja o bezpieczeństwie, tabela „Producent
+marki”) zapisuje „Zapisz ustawienia ofert”. Opis tych pól i samego wystawiania: instrukcja „Allegro — wystawianie ofert
+z OMS-u”.
+
+### Wystawianie ofert (opcjonalne)
+
+Zgoda na wystawianie ofert jest opcjonalna i obejmuje dwa dodatkowe uprawnienia Allegro: zapis ofert oraz odczyt ustawień sprzedaży. Konto bez niej pobiera zamówienia, nadaje przesyłki i obsługuje
+wiadomości jak dotąd — OMS nie uznaje go za niekompletne i nie prosi o ponowne połączenie. Na stronie konta
+(Ustawienia → Integracje → Allegro → konto, sekcja „Połączenie”) wiersz „Oferty” pokazuje „Zgoda jest” albo „Brak
+zgody”. Przy braku zgody sekcja „Wystawianie ofert” prowadzi przez dwa kroki:
+
+1. „Sprawdź uprawnienia aplikacji” — OMS pyta Allegro, czy aplikacja z kroku 0 ma zaznaczone uprawnienia do ofert.
+   Zapisuje tylko wynik dla aplikacji; połączenia konta nie zmienia. Jeśli ich nie ma — zaznacz je w „Zarządzanie
+   aplikacjami” → edycja, zapisz i sprawdź ponownie.
+2. „Chcę wystawiać oferty” — potwierdzenie dla tego jednego konta. Bez tego kliknięcia OMS nie prosi o nową zgodę,
+   nawet gdy aplikacja ma uprawnienia do ofert. Po kliknięciu strona przewija się do następnego kroku i tam
+   pokazuje potwierdzenie.
+
+Potem potrzebna jest nowa zgoda w Allegro. Dla konta z pliku i konta połączonego w panelu droga jest jedna: przycisk
+„Połącz ponownie z Allegro” i zgoda na stronie Allegro, tym razem także na oferty.
+
+- **Konto z pliku konfiguracji** (`oms.env`) — przycisk „Połącz ponownie z Allegro” i zgoda na stronie Allegro, tym
+  razem także na oferty. Do czasu zatwierdzenia dotychczasowe połączenie przestaje działać, więc zrób to od razu do
+  końca.
+- **Konto połączone w panelu** — przycisk „Połącz ponownie z Allegro” (kod Device Flow, potem „To moje konto — dalej”
+  i „Zapisz nową zgodę”). Połączenie w OMS działa na dotychczasowych danych dostępu aż do zapisu nowej zgody. Nowe
+  dane dostępu OMS zapisuje tylko wtedy, gdy Allegro zwróci to samo konto co podłączone — wtedy bez przeglądu operacji;
+  zamówienia, przesyłki, oferty, pobieranie i ustawienia zostają bez zmian. Inne konto: „To inne konto Allegro niż
+  podłączone — zgoda odrzucona”, połączenie zostaje bez zmian. Przerwanie albo wygaśnięcie kodu niczego nie zmienia —
+  zacznij od nowa. Zmiana konta Allegro dalej wymaga odłączenia i nowego połączenia (z przeglądem operacji).
+- **Konto połączone przez DCR** — oferty niedostępne w tej instalacji; pobieranie zamówień działa bez zmian.
+
+Z obu przycisków może korzystać tylko administrator.
 
 ### Drugie i kolejne konto
 

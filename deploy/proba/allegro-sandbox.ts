@@ -4,6 +4,8 @@ import type {HttpAllegro} from '../../src/oms/allegro/dcr.ts';
 
 const API='https://api.allegro.pl.allegrosandbox.pl';
 const AUTH='https://allegro.pl.allegrosandbox.pl';
+const UPLOAD='https://upload.allegro.pl.allegrosandbox.pl';
+const ODCZYT_OPERACJI_OFERTY=/^\/sale\/product-offers\/[^/]+\/operations\/[^/]+$/;
 
 /** Transport rzeczywistych serwerów testowych. Osłona nie zastępuje zapory VM.
  * Nigdy nie używać do kanałów demo ani z poświadczeniami produkcyjnymi. */
@@ -12,11 +14,15 @@ export function transportAllegroSandbox(o:{tryb:string;fetchImpl?:typeof fetch})
  const http=utworzHttp({fetchImpl:o.fetchImpl,ponowien:0});
  return async(adres,init={})=>{
   let url:URL;try{url=new URL(adres);}catch{throw new Error('Niepoprawny adres Allegro Sandbox.');}
-  if(url.username||url.password||url.hash||!([API,AUTH] as string[]).includes(url.origin)
-    ||(url.origin===AUTH&&!['/auth/oauth/device','/auth/oauth/token','/api/register'].includes(url.pathname))){
+  if(url.username||url.password||url.hash||!([API,AUTH,UPLOAD] as string[]).includes(url.origin)
+    ||(url.origin===AUTH&&!['/auth/oauth/device','/auth/oauth/token','/api/register'].includes(url.pathname))
+    ||(url.origin===UPLOAD&&url.pathname!=='/sale/images')){
    throw new Error('Cel nie jest dozwolonym zasobem Allegro Sandbox.');
   }
-  return http(url.href,{...init,redirect:'error'});
+  // PRZ-160.E3.04 (D39): tylko odczyt operacji oferty może oddać 303 (tryb 'manual' z wywołania). Nigdy 'follow' —
+  // podążanie za Location ominęłoby listę hostów powyżej.
+  const odczytOperacji=url.origin===API&&(init.method??'GET').toUpperCase()==='GET'&&ODCZYT_OPERACJI_OFERTY.test(url.pathname);
+  return http(url.href,{...init,redirect:odczytOperacji&&init.redirect==='manual'?'manual':'error'});
  };
 }
 

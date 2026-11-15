@@ -54,7 +54,7 @@ it('demo: lista po pollerze pokazuje nazwy dostaw ERLI, obie drogi i żadnej blo
   zegary = uruchomZegary(aplikacja.zegary.filter(z => z.nazwa === 'poller'));
   await vi.advanceTimersByTimeAsync(120_000);
   const zamowienia = db.prepare("SELECT * FROM zamowienia WHERE sklep='erli_polcien' ORDER BY numer").all();
-  expect(zamowienia).toHaveLength(15);
+  expect(zamowienia).toHaveLength(30);
   // PRZ-159: ta baza nie ma lustra sklepu (demo je ma z generatora) — zakładamy je dla SKU pozycji ERLI.
   const dodajDoLustra = db.prepare("INSERT INTO produkty_sklepowe (kanal, produkt_id, nazwa, sku_sklepu, miniatura, odczytane_at) VALUES ('polcien', ?, ?, ?, ?, '2026-11-11T12:00:00Z')");
   for (const p of db.prepare("SELECT DISTINCT p.sku, p.nazwa FROM pozycje p JOIN zamowienia z ON z.id = p.zamowienie_id WHERE z.sklep = 'erli_polcien'").all()) {

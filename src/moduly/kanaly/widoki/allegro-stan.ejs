@@ -9,6 +9,8 @@
   const dziala = k.autoryzacja === 'polaczone' || locals.zSerwera === true;
   const etykieta = wiersz ? wiersz.etykietaStanu : problem ? 'Wymaga uwagi' : k.pobieranie === 'wlaczone' ? 'Działa' : 'Połączone, pobieranie wyłączone';
   const odczyt = wiersz ? wiersz.czasOdczytu : ostatniOdczyt;
+  // PRZ-160 E3.02 (D42): zgoda na oferty — opcjonalna, na żądanie.
+  const oferty = locals.oferty ?? null;
 %>
 <section class="ust-sekcja">
   <h2>Połączenie</h2>
@@ -25,6 +27,7 @@
     <dt>Zamówienia w OMS</dt><dd><%= historia %></dd>
     <dt>Ostatni udany test połączenia</dt><dd><%= diagnostyka?.ostatni_sukces_at ? kiedy(diagnostyka.ostatni_sukces_at) : 'Jeszcze nie wykonano' %></dd>
     <dt>Ostatnia próba testu</dt><dd><%= diagnostyka?.ostatnia_proba_at ? kiedy(diagnostyka.ostatnia_proba_at) : 'Jeszcze nie wykonano' %><% if (diagnostyka?.blad) { %> — nieudana<% } %></dd>
+    <% if (oferty && dziala) { %><dt>Oferty</dt><dd><%= oferty.zgoda === true ? 'Zgoda jest' : oferty.zgoda === false ? 'Brak zgody — konto pobiera zamówienia jak dotąd' : 'Nie wiadomo' %></dd><% } %>
   </dl>
   <% if (stan?.ostatni_blad) { %><p>Pobieranie zgłosiło błąd. Sprawdź diagnostykę połączenia.</p><% } %>
   <% if (!locals.tylkoPolaczenie) { %><p class="allegro-kolejne">Sprzedajesz też na innym koncie Allegro? <a href="<%= root %>/nowe">Podłącz kolejne konto Allegro</a> — dostanie własną nazwę i własne zamówienia.</p><% } %>
@@ -35,5 +38,31 @@
   <form method="post" action="<%= adres %>/pobieranie"><input type="hidden" name="wersja" value="<%= k.wersja %>"><input type="hidden" name="wlaczone" value="<%= k.pobieranie === 'wlaczone' ? 'nie' : 'tak' %>"><button class="btn btn--maly" type="submit"><%= k.pobieranie === 'wlaczone' ? 'Wstrzymaj pobieranie' : 'Wznów pobieranie' %></button></form>
   <form method="post" action="<%= adres %>/sprawdz"><input type="hidden" name="wersja" value="<%= k.wersja %>"><p><button class="<%= problem ? 'btn btn--maly btn--glowny' : 'btn btn--maly' %>" type="submit">Sprawdź połączenie</button></p></form>
   <p>Test odczytu konta i zamówień niczego nie importuje. Nie sprawdza nadania przesyłki ani wysłania wiadomości.</p>
+</section>
+<% } %>
+<% if (!locals.tylkoPolaczenie && dziala && oferty && oferty.zgoda === false) { %>
+<section class="ust-sekcja"><h2>Wystawianie ofert</h2>
+  <% if (oferty.sciezka === 'dcr') { %>
+  <p>Oferty niedostępne w tej instalacji. To konto połączono logowaniem w przeglądarce, a ta droga nie daje zgody na wystawianie ofert. Pobieranie zamówień działa bez zmian.</p>
+  <% } else { %>
+  <p class="ust-wstep">To konto nie ma zgody Allegro na wystawianie ofert. Zgoda jest opcjonalna — bez niej pobieranie zamówień, przesyłki i wiadomości działają jak dotąd.</p>
+  <ol>
+    <li>Sprawdź, czy aplikacja Allegro<% if (oferty.koncowka) { %> (Client ID kończy się na <%= oferty.koncowka %>)<% } %> ma zaznaczone uprawnienia do ofert. Sprawdzenie nie zmienia połączenia konta.
+      <% if (oferty.aplikacja === false) { %><p class="uwaga">Aplikacja nie ma uprawnień do ofert. W Zarządzanie aplikacjami → edycja zaznacz „Zarządzanie ofertami” i „Ustawienia sprzedaży”, zapisz i sprawdź ponownie.</p><% } %>
+      <form method="post" action="<%= adres %>/oferty-aplikacja"><p><button class="btn btn--maly" type="submit">Sprawdź uprawnienia aplikacji</button></p></form>
+    </li>
+    <% if (oferty.aplikacja === true) { %>
+    <%# PRZ-160 E3d.01: „Chcę wystawiać oferty” wraca tu (#oferty-polacz) z potwierdzeniem w tym kroku (tylko raz). %>
+    <li id="oferty-polacz"><% if (locals.ofertyZapisano) { %><p class="pas-potwierdzenie" role="status">Zapisano: chcesz wystawiać oferty z tego konta. Następny krok poniżej.</p><% } %><% if (!oferty.chce) { %>Aplikacja ma uprawnienia do ofert. Potwierdź, że chcesz wystawiać oferty z tego konta.
+      <form method="post" action="<%= adres %>/oferty-chce"><p><button class="btn btn--maly btn--glowny" type="submit">Chcę wystawiać oferty</button></p></form>
+      <% } else if (oferty.sciezka === 'env') { %>Połącz konto ponownie i na stronie Allegro zatwierdź zgodę — tym razem także na oferty. Do czasu zatwierdzenia dotychczasowe połączenie przestaje działać, więc zrób to od razu do końca.
+      <% if (oferty.wolnoWiazac) { %><form method="post" action="/ustawienia/kanaly/<%= encodeURIComponent(k.klucz) %>/wiazanie"><p><button class="btn btn--maly btn--glowny" type="submit">Połącz ponownie z Allegro</button></p></form><% } %>
+      <% } else if (oferty.wolnoWiazac) { %>Połącz konto ponownie i na stronie Allegro zatwierdź zgodę — tym razem także na oferty. Połączenie w OMS zostaje bez zmian do Twojej zgody; nowe dane dostępu zapiszą się tylko dla tego samego konta Allegro.
+      <form method="post" action="/ustawienia/kanaly/<%= encodeURIComponent(k.klucz) %>/wiazanie"><p><button class="btn btn--maly btn--glowny" type="submit">Połącz ponownie z Allegro</button></p></form>
+      <% } else { %>Odłącz konto i połącz je ponownie — Allegro poprosi o zgodę także na oferty. Po ponownym połączeniu zatwierdź przegląd operacji — do tego czasu Allegro nie przyjmie faktur, przesyłek ani ofert.
+      <% } %></li>
+    <% } %>
+  </ol>
+  <% } %>
 </section>
 <% } %>

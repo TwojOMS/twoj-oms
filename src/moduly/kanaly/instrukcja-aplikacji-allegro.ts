@@ -1,4 +1,5 @@
 import {UPRAWNIENIA_NOWEGO_POLACZENIA} from '../../oms/allegro/oauth-code.ts';
+import {UPRAWNIENIA_OFERT} from '../../domena/uprawnienia-kanalu.js';
 
 export type SrodowiskoInstrukcji='produkcja'|'sandbox';
 
@@ -18,7 +19,11 @@ export const OPISY_UPRAWNIEN:Readonly<Record<string,string>>=Object.freeze({
  'allegro:api:messaging':'wiadomości od kupujących',
  'allegro:api:disputes':'dyskusje i reklamacje — odczyt',
  'allegro:api:profile:read':'profil konta — login i numer konta',
+ // PRZ-160 E3.02: opcjonalne — tylko do wystawiania ofert.
+ 'allegro:api:sale:offers:write':'oferty — wystawianie i zmiana',
+ 'allegro:api:sale:settings:read':'ustawienia sprzedaży — odczyt',
 });
+const DOPISEK_OPCJONALNE=' (opcjonalne — tylko jeśli chcesz wystawiać oferty z Twojego OMS)';
 
 export const CEL_APLIKACJI='Twój OMS łączy się z Allegro przez aplikację Twojej firmy. Zakładasz ją raz; potem podłączysz nią jedno albo kilka kont Allegro.';
 export const TYP_APLIKACJI='Aplikacja będzie działać w środowisku bez dostępu do przeglądarki albo klawiatury';
@@ -26,7 +31,10 @@ export const TYP_APLIKACJI='Aplikacja będzie działać w środowisku bez dostę
 
 /** Uprawnienia do wyświetlenia — zawsze z tej samej stałej, którą prosi o nie Device Flow. */
 export function uprawnieniaDoZaznaczenia(){
- return UPRAWNIENIA_NOWEGO_POLACZENIA.map(nazwa=>({nazwa,opis:OPISY_UPRAWNIEN[nazwa]??''}));
+ return [
+  ...UPRAWNIENIA_NOWEGO_POLACZENIA.map(nazwa=>({nazwa,opis:OPISY_UPRAWNIEN[nazwa]??''})),
+  ...UPRAWNIENIA_OFERT.map(nazwa=>({nazwa,opis:(OPISY_UPRAWNIEN[nazwa]??'')+DOPISEK_OPCJONALNE})),
+ ];
 }
 
 /** Kroki instrukcji jako zwykłe teksty; kod w widoku wstawia nazwy techniczne w <code>. */
@@ -37,7 +45,7 @@ export function krokiInstrukcji(s:SrodowiskoInstrukcji){
   {tekst:'Dodaj nową aplikację.'},
   {tekst:'Nazwa — Allegro pokaże ją przy wyrażaniu zgody, np. „OMS Pracownia Półcień”. Opis jest nieobowiązkowy.'},
   {tekst:'Typ aplikacji — zaznacz:',cytat:TYP_APLIKACJI,po:'. Typu nie da się później zmienić. Adresu przekierowania nie podajesz.'},
-  {tekst:'W sekcji Uprawnienia zaznacz wszystkie z listy poniżej.',lista:true,po:'W istniejącej aplikacji uprawnienia zmienisz w Zarządzanie aplikacjami → edycja.'},
+  {tekst:'W sekcji Uprawnienia zaznacz wszystkie z listy poniżej.',lista:true,po:'Oznaczone „opcjonalne” zaznacz tylko, jeśli chcesz wystawiać oferty. W istniejącej aplikacji uprawnienia zmienisz w Zarządzanie aplikacjami → edycja.'},
   {tekst:'Zaakceptuj regulamin REST API i zatwierdź formularz.'},
   {tekst:'Skopiuj Client ID i Client Secret z karty aplikacji i wklej poniżej.'},
  ];

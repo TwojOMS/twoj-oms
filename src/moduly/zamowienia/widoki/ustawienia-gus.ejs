@@ -26,7 +26,7 @@
   <h2>Stan połączenia</h2>
   <% if (stan) { %>
     <p class="ust-stan ust-stan-ok"><strong>Podłączony</strong></p>
-    <p>Klucz zapisał <%= stan.kontoLogin ?? '—' %>, <%= fmtDataCzas(stan.zmienionoAt) %>. Przycisk „Pobierz z GUS” na karcie zamówienia, w nowym zamówieniu i w Stałych klientach wpisuje nazwę i adres firmy z rejestru REGON.</p>
+    <p>Klucz zapisał <%= stan.kontoLogin ?? '—' %>, <%= fmtDataCzas(stan.zmienionoAt) %>. Przycisk „Pobierz z GUS” na karcie zamówienia, w nowym zamówieniu i w Klientach B2B wpisuje nazwę i adres firmy z rejestru REGON.</p>
   <% } else { %>
     <p class="ust-stan"><strong>Niepodłączony</strong></p>
     <p>Bez klucza przycisku „Pobierz z GUS” nie ma — dane firmy wpisuje się ręcznie.</p>
@@ -62,7 +62,7 @@
     <div class="ust-akcje"><button class="btn" type="submit">Sprawdź połączenie</button></div>
   </form>
   <form method="post" action="/ustawienia/integracje/gus/odlacz" onsubmit="return confirm('Usunąć klucz GUS? Przycisk „Pobierz z GUS” zniknie.')" style="margin-top:1rem">
-    <p>Usunięcie kasuje klucz z OMS-u. Dane firm wpisane wcześniej do zamówień i Stałych klientów zostają.</p>
+    <p>Usunięcie kasuje klucz z OMS-u. Dane firm wpisane wcześniej do zamówień i Klientów B2B zostają.</p>
     <div class="ust-akcje"><button class="btn btn--groza" type="submit">Usuń klucz</button></div>
   </form>
 </section>

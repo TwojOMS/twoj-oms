@@ -23,8 +23,8 @@ const env = { OMS_USER: 'operator', OMS_PASS: 'fixture',
   SMTP_HOST: 'smtp.fikcja.test', SMTP_USER: 'nadawca@fikcja.test', SMTP_PASS: 'fikcyjne' };
 const headers = { authorization: `Basic ${Buffer.from('operator:fixture').toString('base64')}` };
 const ODLOZONE: string[] = [];
-const HISTORYCZNIE_ODLOZONE = ['kampania', 'cele', 'finanse'];
-const ODNOSNIK_ODLOZONY = /href=["']\/(kampania|cele|finanse)(?=["'?#/])/g;
+const HISTORYCZNIE_ODLOZONE = ['kampania', 'finanse'];
+const ODNOSNIK_ODLOZONY = /href=["']\/(kampania|finanse)(?=["'?#/])/g;
 // Rama renderuje menu w wariancie desktopowym i mobilnym — liczymy unikalne adresy.
 const odnosnikiOdlozone = (html: string) => [...new Set([...html.matchAll(ODNOSNIK_ODLOZONY)].map(m => m[1]))];
 const maOdnosnik = (html: string, adres: string) => new RegExp(`href=["']${adres}["']`).test(html);
@@ -83,16 +83,20 @@ describe('PRZ-027/029 zakres — domyślny bootstrap bez odłożonych ekranów',
 });
 
 describe('PRZ-027/029 zakres — nawigacjaDla z listą i bez listy odłożonych', () => {
-  it('z odlozoneEkrany w sekcji Analiz zostają Raporty, Statystyki, Koszty', () => {
+  it('z odlozoneEkrany w sekcji Analiz zostają Raporty i Statystyki, a Koszty są pod Fakturami', () => {
     const hrefy = hrefyNawigacji(nawigacjaDla({ sciezka: '/raporty', konto: null, odlozoneEkrany: ODLOZONE } as any));
     expect({ odlozone: hrefy.filter(h => ODLOZONE.some(k => h === `/${k}`)),
-      zostaja: ['/raporty', '/statystyki', '/koszty'].every(h => hrefy.includes(h)) })
+      zostaja: ['/raporty', '/statystyki'].every(h => hrefy.includes(h)) })
       .toEqual({ odlozone: [], zostaja: true });
+    expect(hrefy).not.toContain('/koszty');
+    const faktury = nawigacjaDla({ konto: null, odlozoneEkrany: ODLOZONE }).boczne
+      .flatMap(g => g.pozycje).find(p => p.klucz === 'faktury');
+    expect(faktury?.podmenu?.map(p => p.href)).toContain('/koszty');
   });
 
   it('kontrola: bez listy nawigacja zachowuje frozen pełne menu (zielona przed i po)', () => {
     const hrefy = hrefyNawigacji(nawigacjaDla({ sciezka: '/raporty', konto: null }));
-    expect(HISTORYCZNIE_ODLOZONE.map(k => hrefy.includes(`/${k}`))).toEqual([true, true, true]);
+    expect(HISTORYCZNIE_ODLOZONE.map(k => hrefy.includes(`/${k}`))).toEqual([true, true]);
   });
 
   it('kontrola: historyczny helper z jawnym web config bez listy renderuje pełne menu', async () => {
@@ -101,7 +105,7 @@ describe('PRZ-027/029 zakres — nawigacjaDla z listą i bez listy odłożonych'
     try {
       const odp = await s.inject({ method: 'GET', url: '/raporty', headers });
       expect({ status: odp.statusCode, odlozone: odnosnikiOdlozone(odp.body).toSorted() })
-        .toEqual({ status: 200, odlozone: ['cele', 'finanse', 'kampania'] });
+        .toEqual({ status: 200, odlozone: ['finanse', 'kampania'] });
     } finally { try { await s.close(); } finally { db.close(); } }
   });
 });

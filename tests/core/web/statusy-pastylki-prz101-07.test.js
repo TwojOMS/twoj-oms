@@ -17,7 +17,7 @@ it('lista, karta i historia klienta zawijają pełną nazwę statusu, a pole mas
       pozycje: [], utworzone_at: '2026-10-18T12:00:00Z',
     }, {});
     const klientId = dopiszKlienta(db, znormalizujKlienta({ klucz: 'lampy-test', nazwa: 'Pracownia Przykładowa', nip: '5234567891' }));
-    for (const url of ['/', `/zamowienia/${id}`, `/klienci/${klientId}`]) {
+    for (const url of ['/', `/zamowienia/${id}`, `/klienci/${klientId}/karta`]) {
       const ekran = await get(app, url, BASIC);
       expect(ekran.statusCode, url).toBe(200);
       expect(new RegExp(`<span class="[^"]*znacznik-statusu[^"]*">${nazwa}</span>`).test(ekran.body), url).toBe(true);

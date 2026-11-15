@@ -33,9 +33,9 @@ beforeAll(async () => {
 afterAll(() => { db?.close(); fs.rmSync(katalog, { recursive: true, force: true }); });
 
 describe('demo PRZ-087: NOWE', () => {
-  it('dokładnie 12, wszystkie z dziś', () => {
+  it('dokładnie 14 (12 + 2 duże z PRZ-164), wszystkie z dziś', () => {
     const nowe = wStatusie('nowe');
-    expect(liczniki.statusy.nowe).toBe(12);
+    expect(liczniki.statusy.nowe).toBe(14);
     expect(nowe.map((z) => dzienPl(z.utworzone_at)).filter((d) => d !== DZIS)).toEqual([]);
   });
 

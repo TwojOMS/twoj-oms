@@ -27,6 +27,9 @@ export function createWiazanieKanalow({
   // o przyczynie, bo `log` tez byl pusty. Suita byla zielona, bo testy uslugi
   // wstrzykuja atrape `przeprowadz` i prawdziwej petli nie dotykaja.
   spij = (ms) => new Promise((koniec) => { setTimeout(koniec, ms); }),
+  // PRZ-160 E3.02 (D42): `{aplikacjaMaOferty, chceOfert}` dla kanału — ta sama reguła ponownej
+  // zgody na oferty co na ekranie. Domyślnie nic: zdrowy kanał zostaje zamknięty.
+  flagiOfert = () => ({}),
 }) {
   const wToku = new Map();
 
@@ -57,7 +60,10 @@ export function createWiazanieKanalow({
     // UWAGA: ocena WSZYSTKICH kanalow, nie tego jednego — inaczej usluga nie zobaczy
     // kolizji kont i odmowi przewiazania kanalu, ktory ekran wlasnie pokazal jako pilny.
     const wszystkie = stanyKanalowZKolizjami(
-      Object.values(tokenyKanalow).map((t) => t.stanDlaEkranu()),
+      Object.values(tokenyKanalow).map((t) => {
+        const s = t.stanDlaEkranu();
+        return { ...s, ...flagiOfert(s.kanal) };
+      }),
     );
     const s = wszystkie.find((x) => x.kanal === kanal);
     if (!s) return { ok: false, powod: `Panel nie zna stanu kanału „${kanal}".` };

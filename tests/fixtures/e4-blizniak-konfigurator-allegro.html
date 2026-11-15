@@ -1,0 +1,166 @@
+<form method="post" action="/ustawienia/integracje/allegro/legacy/oferty" aria-labelledby="allegro-oferty-ustawienia">
+    <fieldset><legend>Oferty: wstrzymane / czynne</legend>
+      <p id="allegro-oferty-tryb-pomoc" class="ust-pomoc">Przy wstrzymanych ofertach OMS nie wysyła zmian ofert do Allegro.</p>
+      <p><input id="allegro-oferty-wstrzymane" type="radio" name="czynne" value="wstrzymane" checked aria-describedby="allegro-oferty-tryb-pomoc"> <label for="allegro-oferty-wstrzymane">Wstrzymane</label></p><p><input id="allegro-oferty-czynne" type="radio" name="czynne" value="czynne" aria-describedby="allegro-oferty-tryb-pomoc"> <label for="allegro-oferty-czynne">Czynne</label></p>
+    </fieldset>
+
+    
+    <p><label for="allegro-oferty-narzutProcent">Narzut %</label><br>
+      <input id="allegro-oferty-narzutProcent" type="text" name="narzutProcent" inputmode="decimal" value="0">
+      </p>
+    
+    <p><label for="allegro-oferty-progPotwierdzeniaProcent">Próg potwierdzenia zmiany ceny %</label><br>
+      <input id="allegro-oferty-progPotwierdzeniaProcent" type="text" name="progPotwierdzeniaProcent" inputmode="decimal" value="20">
+      </p>
+    
+    <p><label for="allegro-oferty-stalaIlosc">Stała liczba sztuk (wymagana)</label><br>
+      <input id="allegro-oferty-stalaIlosc" type="number" name="stalaIlosc" inputmode="numeric" value="" required min="1" max="1000000" step="1">
+      </p>
+    
+    <p><label for="allegro-oferty-czasWysylkiDni">Czas wysyłki w dniach</label><br>
+      <input id="allegro-oferty-czasWysylkiDni" type="number" name="czasWysylkiDni" inputmode="numeric" value="" min="0" max="365" step="1">
+      </p>
+    
+
+    <p><label for="allegro-oferty-stawkaVat">Stawka VAT domyślna</label><br>
+      <select id="allegro-oferty-stawkaVat" name="stawkaVat">
+        <option value="" selected>Wybierz stawkę</option><option value="23">23%</option><option value="8">8%</option><option value="5">5%</option><option value="0">0%</option><option value="zw">zw</option>
+      </select>
+      </p>
+
+    
+    
+<fieldset class="ust-cenniki" aria-describedby="allegro-oferty-cenniki-pomoc">
+  <legend>Cennik dostaw według rozmiaru</legend>
+  <p id="allegro-oferty-cenniki-pomoc" class="ust-pomoc">OMS sprawdza wiersze od góry i bierze pierwszy, w którym produkt się mieści — wymiary w dowolnym ułożeniu i waga. Większy od wszystkich dostaje cennik „dla większych”. Bez wierszy rozmiaru „dla większych” to jeden cennik dla wszystkich ofert. Pusty wiersz jest pomijany; kolejne wiersze dopiszesz po zapisie.</p>
+  <p id="allegro-oferty-cenniki-inpost" class="ust-pomoc">Podpowiedź — gabaryty paczkomatu InPost: A 8×38×64, B 19×38×64, C 41×38×64 cm, do 25 kg. OMS ich nie pilnuje; limity wpisujesz sam, tak jak ma je Twój cennik.</p>
+  <p class="ust-pomoc">Lista cenników jest pusta — najpierw pobierz listy z Allegro (sekcja wyżej).</p>
+  <div class="przewijak-tabeli">
+    <table class="erli-metody ust-cenniki-tabela">
+      <thead><tr><th scope="col">#</th><th scope="col">Do wymiarów (cm)</th><th scope="col">Do wagi (kg)</th><th scope="col">Cennik</th></tr></thead>
+      <tbody>
+      
+        <tr>
+          <th scope="row">1</th>
+          <td><span class="ust-cenniki-wymiary">
+            
+            <span class="ust-cenniki-pole"><label for="allegro-oferty-cenniki-0-a" class="ust-cenniki-etykieta"><span class="ust-cenniki-nr">Reguła 1: </span>wymiar 1 (cm)</label><input id="allegro-oferty-cenniki-0-a" name="regulaA" inputmode="decimal" autocomplete="off" value=""></span>
+            <span aria-hidden="true">×</span>
+            <span class="ust-cenniki-pole"><label for="allegro-oferty-cenniki-0-b" class="ust-cenniki-etykieta"><span class="ust-cenniki-nr">Reguła 1: </span>wymiar 2 (cm)</label><input id="allegro-oferty-cenniki-0-b" name="regulaB" inputmode="decimal" autocomplete="off" value=""></span>
+            <span aria-hidden="true">×</span>
+            <span class="ust-cenniki-pole"><label for="allegro-oferty-cenniki-0-c" class="ust-cenniki-etykieta"><span class="ust-cenniki-nr">Reguła 1: </span>wymiar 3 (cm)</label><input id="allegro-oferty-cenniki-0-c" name="regulaC" inputmode="decimal" autocomplete="off" value=""></span>
+            
+          </span></td>
+          <td><span class="ust-cenniki-pole"><label for="allegro-oferty-cenniki-0-waga" class="ust-cenniki-etykieta"><span class="ust-cenniki-nr">Reguła 1: </span>waga do (kg)</label><input id="allegro-oferty-cenniki-0-waga" name="regulaWaga" inputmode="decimal" autocomplete="off" value=""></span></td>
+          <td><span class="ust-cenniki-pole"><label for="allegro-oferty-cenniki-0-cennik" class="ust-cenniki-etykieta"><span class="ust-cenniki-nr">Reguła 1: </span>cennik</label>
+            <select id="allegro-oferty-cenniki-0-cennik" name="regulaCennik">
+              <option value="">Wybierz z listy</option>
+              
+              
+            </select>
+            </span>
+            </td>
+        </tr>
+      
+        <tr>
+          <th scope="row">2</th>
+          <td><span class="ust-cenniki-wymiary">
+            
+            <span class="ust-cenniki-pole"><label for="allegro-oferty-cenniki-1-a" class="ust-cenniki-etykieta"><span class="ust-cenniki-nr">Reguła 2: </span>wymiar 1 (cm)</label><input id="allegro-oferty-cenniki-1-a" name="regulaA" inputmode="decimal" autocomplete="off" value=""></span>
+            <span aria-hidden="true">×</span>
+            <span class="ust-cenniki-pole"><label for="allegro-oferty-cenniki-1-b" class="ust-cenniki-etykieta"><span class="ust-cenniki-nr">Reguła 2: </span>wymiar 2 (cm)</label><input id="allegro-oferty-cenniki-1-b" name="regulaB" inputmode="decimal" autocomplete="off" value=""></span>
+            <span aria-hidden="true">×</span>
+            <span class="ust-cenniki-pole"><label for="allegro-oferty-cenniki-1-c" class="ust-cenniki-etykieta"><span class="ust-cenniki-nr">Reguła 2: </span>wymiar 3 (cm)</label><input id="allegro-oferty-cenniki-1-c" name="regulaC" inputmode="decimal" autocomplete="off" value=""></span>
+            
+          </span></td>
+          <td><span class="ust-cenniki-pole"><label for="allegro-oferty-cenniki-1-waga" class="ust-cenniki-etykieta"><span class="ust-cenniki-nr">Reguła 2: </span>waga do (kg)</label><input id="allegro-oferty-cenniki-1-waga" name="regulaWaga" inputmode="decimal" autocomplete="off" value=""></span></td>
+          <td><span class="ust-cenniki-pole"><label for="allegro-oferty-cenniki-1-cennik" class="ust-cenniki-etykieta"><span class="ust-cenniki-nr">Reguła 2: </span>cennik</label>
+            <select id="allegro-oferty-cenniki-1-cennik" name="regulaCennik">
+              <option value="">Wybierz z listy</option>
+              
+              
+            </select>
+            </span>
+            </td>
+        </tr>
+      
+        <tr class="ust-cenniki-wieksze">
+          <th scope="row">—</th>
+          <td colspan="2">dla większych</td>
+          <td><span class="ust-cenniki-pole"><label for="allegro-oferty-cenniki-wieksze" class="ust-cenniki-etykieta">Cennik dla większych (wymagany)</label>
+            <select id="allegro-oferty-cenniki-wieksze" name="cennikWiekszych">
+              <option value="">Wybierz z listy</option>
+              
+              
+            </select>
+            </span>
+            </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</fieldset>
+
+
+    <fieldset><legend>Warunki i dane z konta Allegro</legend>
+      <p class="ust-pomoc">Listy są puste — najpierw pobierz je z Allegro (sekcja wyżej).</p>
+      
+      <p><label for="allegro-oferty-zwrotyId">Warunki zwrotów</label><br>
+        <select id="allegro-oferty-zwrotyId" name="zwrotyId">
+          <option value="">Wybierz z listy</option>
+          
+          
+        </select>
+        </p>
+      
+      <p><label for="allegro-oferty-reklamacjeId">Warunki reklamacji</label><br>
+        <select id="allegro-oferty-reklamacjeId" name="reklamacjeId">
+          <option value="">Wybierz z listy</option>
+          
+          
+        </select>
+        </p>
+      
+      <p><label for="allegro-oferty-gwarancjaId">Gwarancja (opcjonalna)</label><br>
+        <select id="allegro-oferty-gwarancjaId" name="gwarancjaId">
+          <option value="">Brak</option>
+          
+          
+        </select>
+        </p>
+      
+      <p><label for="allegro-oferty-producentId">Producent konta</label><br>
+        <select id="allegro-oferty-producentId" name="producentId">
+          <option value="">Brak</option>
+          
+          
+        </select>
+        </p>
+      
+      <p><label for="allegro-oferty-osobaOdpowiedzialnaId">Osoba odpowiedzialna (opcjonalna)</label><br>
+        <select id="allegro-oferty-osobaOdpowiedzialnaId" name="osobaOdpowiedzialnaId">
+          <option value="">Brak</option>
+          
+          
+        </select>
+        </p>
+      
+    </fieldset>
+
+    <fieldset><legend>Aktywuj po sprawdzeniu</legend>
+      <p id="allegro-oferty-aktywuj-pomoc" class="ust-pomoc">„Tak” — oferta staje się aktywna, gdy Allegro ją sprawdzi. „Nie” — zostaje nieaktywna do Twojej decyzji.</p>
+      <p><input id="allegro-oferty-aktywuj-nie" type="radio" name="aktywujPoSprawdzeniu" value="nie" checked aria-describedby="allegro-oferty-aktywuj-pomoc"> <label for="allegro-oferty-aktywuj-nie">Nie</label></p><p><input id="allegro-oferty-aktywuj-tak" type="radio" name="aktywujPoSprawdzeniu" value="tak" aria-describedby="allegro-oferty-aktywuj-pomoc"> <label for="allegro-oferty-aktywuj-tak">Tak</label></p>
+    </fieldset>
+
+    <p><label for="allegro-oferty-bezpieczenstwo">Informacja o bezpieczeństwie produktu (domyślna)</label><br>
+      <textarea id="allegro-oferty-bezpieczenstwo" class="ust-prompt" name="bezpieczenstwoDomyslne" rows="4" maxlength="5000"></textarea>
+      
+      <br><span class="ust-pomoc">Najwyżej 5000 znaków. Puste — oferta bez domyślnej informacji.</span></p>
+
+    <h3 id="allegro-oferty-marki">Producent marki</h3>
+    <p class="ust-pomoc" id="allegro-oferty-marki-pomoc">Marka bez wyboru zostaje nieprzypisana — nie dostaje producenta konta.</p>
+    
+    <p>Brak marek w słowniku OMS.</p>
+
+    <button type="submit" class="btn btn--glowny">Zapisz ustawienia ofert</button>
+  </form>

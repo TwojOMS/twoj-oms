@@ -28,7 +28,7 @@ describe('miejsce dokumentu w komunikatach usług', () => {
     it(`brak klienta okresu, wbudowany=${wbudowany}`, async () => {
       const { db, okres } = baza(); const p = program(wbudowany, { przygotujNabywce: async () => null });
       const zdanie = wbudowany
-        ? 'W OMS-ie nie ma klienta o NIP 1234500011 — dodaj go z danymi do faktury na ekranie Stali klienci i ponów wystawienie.'
+        ? 'W OMS-ie nie ma klienta o NIP 1234500011 — dodaj go z danymi do faktury na ekranie Klienci B2B i ponów wystawienie.'
         : 'W Testowniku nie ma klienta o NIP 1234500011 — załóż go tam raz, ręcznie, i ponów wystawienie.';
       try {
         await expect(createFakturaOkresu({ db, program: p }).wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow(zdanie);

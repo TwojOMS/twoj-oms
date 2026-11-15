@@ -71,12 +71,12 @@ it('N11: lista używa czytelnych inicjałów KSeF, GUS i Meta zamiast pomniejszo
 it('PRZ-157.12j: ERLI w Moje połączenia i katalogu ma plik logo (Adam 11.11: „tak, wstaw logo erli”), lekki', async () => {
   const html = await renderFile('src/moduly/ustawienia/widoki/ustawienia-polaczenia-wiersz.ejs', {
     p: { usluga: 'erli', nazwa: 'erli', stan: 'niesprawdzone' }, idWiersza: 'erli', kanaly: [],
-    wszystkieUslugi: [{ id: 'erli', nazwa: 'ERLI', logo: '/integracje/erli.png' }], fmtKiedy: () => '',
+    wszystkieUslugi: [{ id: 'erli', nazwa: 'ERLI', logo: '/integracje/erli.svg' }], fmtKiedy: () => '',
   });
   const logo = html.match(/<span class="pol-logo"[\s\S]*?<\/span>/)?.[0];
-  expect(logo).toContain('<img src="/public/integracje/erli.png"');
+  expect(logo).toContain('<img src="/public/integracje/erli.svg"');
   expect(logo).not.toContain('pol-inicjal');
   expect(readFileSync('src/moduly/ustawienia/widoki/ustawienia-polaczenia.ejs', 'utf8')).not.toContain("u.id==='erli'");
   // Oryginał miał 4267×4267 px i 400 KB; ikonka 40 px nie potrzebuje więcej niż kilku KB.
-  expect(readFileSync('src/public/integracje/erli.png').length).toBeLessThan(20000);
+  expect(readFileSync('src/public/integracje/erli.svg').length).toBeLessThan(20000);
 });

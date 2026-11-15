@@ -36,25 +36,19 @@ describe('PRZ-154 E2.5 — wspólne klocki', () => {
     expect(blok(layout, '.ust-pola .pole-przelacznik input')).toContain('width: auto');
   });
 
-  it.each(['/cele/nowy', '/ustawienia/konta'])('%s renderuje pola ze wspólnymi klasami', async url => {
+  it.each(['/ustawienia/konta'])('%s renderuje pola ze wspólnymi klasami', async url => {
     const { app, db } = nowyPanel();
     try {
       const r = await get(app, url, BASIC);
       expect(r.statusCode).toBe(200);
       const main = r.body.slice(r.body.indexOf('<main'));
-      if (url === '/cele/nowy') {
-        expect(main).toMatch(/<form[^>]*class="oms-pola"[^>]*>/);
-        const form = main.match(/<form[^>]*class="oms-pola"[^>]*>([\s\S]*?)<\/form>/)?.[1] ?? '';
-        expect(form.match(/<(?:input|select)\b/g)).toHaveLength(7);
-      } else {
-        const role = main.match(/<select\b[^>]*name="rola"[^>]*>/g) ?? [];
-        expect(role.length).toBeGreaterThan(0);
-        for (const pole of role) expect(pole).toMatch(/class="oms-pole"/);
-      }
+      const role = main.match(/<select\b[^>]*name="rola"[^>]*>/g) ?? [];
+      expect(role.length).toBeGreaterThan(0);
+      for (const pole of role) expect(pole).toMatch(/class="oms-pole"/);
     } finally { await app.close(); db.close(); }
   });
 
-  it.each(['/koszty', '/cele'])('%s ma nagłówki tabel objęte wspólną regułą', async url => {
+  it.each(['/koszty'])('%s ma nagłówki tabel objęte wspólną regułą', async url => {
     const { app, db } = nowyPanel();
     try {
       const r = await get(app, url, BASIC);

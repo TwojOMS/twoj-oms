@@ -1,0 +1,18 @@
+{
+ "_pomiar": "P14 sandbox 14.11: PNG 26 152 784 B → 201, 26 232 125 B → 413 (granica ≈ 25 MiB)",
+ "bajtow": 26232125,
+ "status": 413,
+ "ms": 193,
+ "body": {
+  "errors": [
+   {
+    "code": "PayloadTooLarge",
+    "message": "Payload Too Large",
+    "details": null,
+    "path": null,
+    "userMessage": "Payload too large.",
+    "metadata": {}
+   }
+  ]
+ }
+}

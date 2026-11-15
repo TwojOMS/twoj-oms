@@ -1,5 +1,6 @@
 import { bladOperatora } from '../../domena/bledy.js';
 import { normalizujNip, parsujKlientowZbiorczych } from '../../domena/klient-zbiorczy.js';
+import { kluczZNazwy } from '../../domena/klient-staly.js';
 
 // BAZA STAŁYCH KLIENTÓW — warstwa bazy. Reguły (co wpis znaczy, jak zamienia się w pola
 // formularza) mieszkają w domain/klient-staly.js; tutaj jest wyłącznie SQL.
@@ -76,41 +77,40 @@ const POLA = [
 // i miec nie moga — tam `null` znaczy „nie ustalono", a `0` znaczylo by „ustalono na zero".
 const ZASTEPCZE = { rozliczenie_zbiorcze: 0 };
 
-const wartosci = (dane) => [
-  ...POLA.map((p) => dane[p] ?? ZASTEPCZE[p] ?? null),
+const wartosci = (dane, pola = POLA) => [
+  ...pola.map((p) => dane[p] ?? ZASTEPCZE[p] ?? null),
   JSON.stringify(dane.faktura ?? {}),
   JSON.stringify(dane.wysylka ?? {}),
 ];
 
 /**
  * Nowy klient.
- *
- * ⚠️ KOLIZJE ROZSTRZYGA BAZA, a nie sprawdzenie przed zapisem — ta sama zasada, co przy
- * numerze zamówienia ręcznego. Dwa równoczesne „Zapamiętaj tego klienta" (podwójny klik,
- * dwie karty) policzyłyby to samo i oba przeszłyby przez `SELECT ... WHERE nip = ?`;
- * przepuści tylko pierwszy INSERT. Komunikat tłumaczymy tutaj, żeby operator nie zobaczył
- * surowego „UNIQUE constraint failed".
+ * Klucz wyprowadzamy z nazwy i wybieramy wolny przyrostek pod blokadą zapisu.
+ * Kolizję NIP-u nadal rozstrzyga indeks bazy; komunikat tłumaczymy tutaj,
+ * żeby operator nie zobaczył surowego „UNIQUE constraint failed".
  */
 export function dopiszKlienta(db, dane, kiedy = teraz()) {
-  const kolumny = [...POLA, 'faktura_json', 'wysylka_json'];
+  const zewnetrzna = db.isTransaction;
+  db.exec(zewnetrzna ? 'SAVEPOINT dopisz_klienta' : 'BEGIN IMMEDIATE');
   try {
-    const info = db.prepare(
-      `INSERT INTO klienci (${kolumny.join(', ')}, utworzone_at, zmienione_at)`
-      + ` VALUES (${kolumny.map(() => '?').join(',')},?,?)`,
-    ).run(...wartosci(dane), kiedy, kiedy);
-    return Number(info.lastInsertRowid);
+    const id = wstawKlientaZKluczem(db, dane, kiedy);
+    db.exec(zewnetrzna ? 'RELEASE dopisz_klienta' : 'COMMIT');
+    return id;
   } catch (e) {
+    db.exec(zewnetrzna ? 'ROLLBACK TO dopisz_klienta' : 'ROLLBACK');
+    if (zewnetrzna) db.exec('RELEASE dopisz_klienta');
     throw kolizja(db, e, dane, null);
   }
 }
 
-/** Poprawka istniejącego wpisu. `id`, nie klucz — klucz też da się poprawić. */
+/** Poprawka po `id`. Klucz z bazy jest niezmienny: wiąże klienta z okresami zbiorczymi. */
 export function zapiszKlienta(db, id, dane, kiedy = teraz()) {
-  const kolumny = [...POLA, 'faktura_json', 'wysylka_json'];
+  const pola = POLA.filter(p => p !== 'klucz');
+  const kolumny = [...pola, 'faktura_json', 'wysylka_json'];
   try {
     const info = db.prepare(
       `UPDATE klienci SET ${kolumny.map((k) => `${k} = ?`).join(', ')}, zmienione_at = ? WHERE id = ?`,
-    ).run(...wartosci(dane), kiedy, Number(id));
+    ).run(...wartosci(dane, pola), kiedy, Number(id));
     if (info.changes === 0) throw bladOperatora('Nie ma takiego klienta w bazie.');
     return Number(id);
   } catch (e) {
@@ -170,8 +170,8 @@ export function wgrajUmowyZbiorczeZKonfiguracji(db, env = process.env, log = () 
     if (Number(klient.rozliczenie_zbiorcze) === 1) { nietkniete.push(wpis.klucz); continue; }
     db.prepare(
       'UPDATE klienci SET rozliczenie_zbiorcze = 1, prog_darmowej_dostawy_gr = ?,'
-      + ' oplata_obslugi_gr = ?, oplata_kurierska_gr = ?, zmienione_at = ? WHERE id = ?',
-    ).run(wpis.progDarmowejDostawyGr, wpis.oplataObslugiGr, wpis.oplataKurierskaGr, teraz(), klient.id);
+      + ' oplata_obslugi_gr = ?, koszt_dostawy_brutto = ?, zmienione_at = ? WHERE id = ?',
+    ).run(wpis.progDarmowejDostawyGr, wpis.oplataObslugiGr, (wpis.oplataKurierskaGr / 100).toFixed(2), teraz(), klient.id);
     wgranych += 1;
   }
   if (bezKlienta.length) {
@@ -197,6 +197,33 @@ export function wgrajUmowyZbiorczeZKonfiguracji(db, env = process.env, log = () 
   return {
     pominieta: false, wgranych, nietkniete, bezKlienta,
   };
+}
+
+// Wywoływane pod blokadą zapisu dopiszKlienta; SAVEPOINT obsługuje transakcję zamówienia.
+function wstawKlientaZKluczem(db, dane, kiedy) {
+  const kolumny = [...POLA, 'faktura_json', 'wysylka_json'];
+  const zNazwy = kluczZNazwy(null, dane.nazwa);
+  const klucz = wolnyKlucz(db, zNazwy || 'klient');
+  const info = db.prepare(
+    `INSERT INTO klienci (${kolumny.join(', ')}, utworzone_at, zmienione_at)`
+    + ` VALUES (${kolumny.map(() => '?').join(',')},?,?)`,
+  ).run(...wartosci({ ...dane, klucz }), kiedy, kiedy);
+  const id = Number(info.lastInsertRowid);
+  if (!zNazwy) {
+    const docelowy = wolnyKlucz(db, `klient-${id}`);
+    db.prepare('UPDATE klienci SET klucz = ? WHERE id = ?').run(docelowy, id);
+  }
+  return id;
+}
+
+function wolnyKlucz(db, baza) {
+  const zajety = db.prepare('SELECT 1 FROM klienci WHERE klucz = ?');
+  let klucz = baza;
+  for (let numer = 2; zajety.get(klucz); numer += 1) {
+    const przyrostek = `-${numer}`;
+    klucz = `${baza.slice(0, 32 - przyrostek.length).replace(/-+$/, '')}${przyrostek}`;
+  }
+  return klucz;
 }
 
 function kolizja(db, e, dane, pomijajacId) {

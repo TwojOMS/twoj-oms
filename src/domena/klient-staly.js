@@ -39,8 +39,6 @@ export const POLA_WYSYLKI = Object.freeze(['nazwa', 'firma', 'ulica', 'kod', 'mi
  */
 export const POLA_FAKTURY = Object.freeze(['firma', 'nip', 'ulica', 'kod', 'miasto', 'email']);
 
-const KLUCZ_WZORZEC = /^[a-z0-9][a-z0-9-]{1,31}$/;
-
 /**
  * Klucz klienta — krótka, stabilna nazwa własna („przyklad", „hurt-a").
  *
@@ -49,16 +47,7 @@ const KLUCZ_WZORZEC = /^[a-z0-9][a-z0-9-]{1,31}$/;
  * znaczyłyby, że nikt nie umie ich zestawić.
  */
 export function kluczZNazwy(surowy, nazwa) {
-  const wprost = String(surowy ?? '').trim().toLowerCase();
-  if (wprost) {
-    if (!KLUCZ_WZORZEC.test(wprost)) {
-      throw bladOperatora(
-        `Klucz „${surowy}" nie nadaje się na nazwę własną klienta — użyj małych liter, cyfr `
-        + 'i myślników (np. „przyklad"), od 2 do 32 znaków.',
-      );
-    }
-    return wprost;
-  }
+  // Pierwszy argument zostaje dla zgodności wywołań; klucz żądania jest ignorowany.
   // Klucz wyprowadzony z nazwy, żeby formularz miał JEDNO pole obowiązkowe zamiast dwóch.
   // Znaki spoza ASCII lecą przez rozkład kanoniczny: „Łąkowe Drogi" → „lakowe-drogi",
   // „Żabka" → „zabka". Bez tego klucz z polskimi znakami wyglądałby w adresie jak śmieć.
@@ -70,11 +59,7 @@ export function kluczZNazwy(surowy, nazwa) {
     .replace(/ł/gi, 'l')
     .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
     .slice(0, 32).replace(/-+$/, '');
-  if (!KLUCZ_WZORZEC.test(zNazwy)) {
-    throw bladOperatora(
-      'Nie umiem wyprowadzić klucza z tej nazwy — wpisz go sam (małe litery, cyfry, myślniki).',
-    );
-  }
+  // Pusty wynik uzupełni warstwa bazy jako klient-<id> w transakcji INSERT-u.
   return zNazwy;
 }
 
@@ -209,70 +194,21 @@ export function daneNabywcyNaKarcie(istniejacy, dane) {
   };
 }
 
-/**
- * Trzy kwoty umowy zbiorczej: pole formularza, kolumna, opis do komunikatu.
- *
- * ⚠️ OPIS NIESIE ODMIANĘ, bo wchodzi w środek zdania („musi mieć ustalony próg" /
- * „ustaloną opłatę"). Jedna wspólna forma dawała komunikat po polskiemu-nie-po-polsku,
- * a operator ma go czytać, nie odcyfrowywać.
- */
-const KWOTY_UMOWY = [
-  ['prog_darmowej_dostawy', 'prog_darmowej_dostawy_gr', 'ustalony próg darmowej dostawy', 'niego', 'próg darmowej dostawy'],
-  ['oplata_obslugi', 'oplata_obslugi_gr', 'ustaloną opłatę za obsługę', 'niej', 'opłatę za obsługę'],
-  ['oplata_kurierska', 'oplata_kurierska_gr', 'ustaloną opłatę kurierską', 'niej', 'opłatę kurierską'],
-];
-
-/**
- * Warunki umowy zbiorczej z formularza (2026-08-24) — przełącznik i trzy kwoty w GROSZACH.
- *
- * ⚠️⚠️ PRZEŁĄCZNIK WŁĄCZONY ⇒ WSZYSTKIE TRZY KWOTY WYMAGANE. To nie jest formalizm: bez
- * którejś z nich panel nie wie, czy doliczyć do zamówienia, ile i od jakiej wartości
- * przestać. Zamówienie założone bez należnej opłaty wygląda poprawnie na ekranie i wychodzi
- * na jaw dopiero na fakturze zbiorczej na koniec miesiąca — czyli wtedy, gdy poprawka
- * wymaga korekty dokumentu.
- *
- * ⚠️ Dzięki tej walidacji stan, na który rzuca `umowaZbiorcza` (domain/klient-zbiorczy.js),
- * jest z ekranu NIEOSIĄGALNY — tamten wyjątek zostaje strażnikiem bazy tkniętej ręcznie.
- *
- * ⚠️ PRZEŁĄCZNIK WYŁĄCZONY ⇒ KWOTY IDĄ DO BAZY JAKO `null`, a nie jako zera. Zero znaczyłoby
- * „ustalone na 0 zł" i po ponownym włączeniu przełącznika klient dostałby darmową wysyłkę
- * od zera złotych, w ciszy. `null` znaczy „nikt tego nie ustawił" i tak ma zostać.
- */
+/** Niezależne przełączniki usług. Odznaczony ignoruje kwotę żądania. */
 function warunkiUmowyZbiorczej(body) {
-  const wlaczone = body.rozliczenie_zbiorcze !== undefined
-    && body.rozliczenie_zbiorcze !== '' && body.rozliczenie_zbiorcze !== '0';
-  if (!wlaczone) {
-    return {
-      rozliczenie_zbiorcze: 0,
-      ...Object.fromEntries(KWOTY_UMOWY.map(([, kolumna]) => [kolumna, null])),
-    };
-  }
-
-  const wynik = { rozliczenie_zbiorcze: 1 };
-  for (const [pole, kolumna, wymaganie, zaimek, nazwa] of KWOTY_UMOWY) {
+  const wlaczony = (pole) => body[pole] !== undefined && body[pole] !== '' && body[pole] !== '0';
+  const wynik = { rozliczenie_zbiorcze: wlaczony('rozliczenie_zbiorcze') ? 1 : 0 };
+  for (const [pole, kolumna, opis] of [
+    ['prog_darmowej_dostawy', 'prog_darmowej_dostawy_gr', 'ustalony próg darmowej dostawy'],
+    ['oplata_obslugi', 'oplata_obslugi_gr', 'ustaloną opłatę za obsługę'],
+  ]) {
+    if (!wlaczony(`${pole}_wlaczony`)) { wynik[kolumna] = null; continue; }
     const surowa = String(body[pole] ?? '').trim().replace(',', '.');
-    // ⚠️ PUSTKĘ ODRZUCAMY PRZED KONWERSJĄ, bo `Number('')` oddaje 0 — dokładnie ta sama
-    // pułapka, którą opisuje `parsujKlientowZbiorczych`. Sam warunek na skończoność
-    // przepuściłby puste pole jako „zero złotych".
-    //
-    // ⚠️ WŁASNE ZDANIE, mimo że `grosze()` niżej też odrzuca pustkę. Tamto mówi „Faktury
-    // nie da się wystawić bez ceny" — zdanie prawdziwe przy pozycji zamówienia i bez sensu
-    // na karcie klienta, gdzie żadnej faktury się nie wystawia. Komunikat ma powiedzieć,
-    // CO ZROBIĆ, a nie tylko że coś jest nie tak. (Mutacja 24.08 pokazała, że test celujący
-    // w samą nazwę pola nie odróżniał tych dwóch dróg — patrz testy.)
-    if (surowa === '') {
-      throw bladOperatora(
-        `Klient rozliczany zbiorczo musi mieć ${wymaganie} — bez ${zaimek} panel nie wie,`
-        + ' czy i ile doliczyć do zamówienia.',
-      );
+    if (surowa === '') throw bladOperatora(`Klient musi mieć ${opis} — uzupełnij kwotę albo wyłącz przełącznik.`);
+    if (!Number.isFinite(Number(surowa)) || Number(surowa) < 0) {
+      throw bladOperatora(`Nie umiem odczytać kwoty „${body[pole]}” — podaj ${opis} w złotych.`);
     }
-    const liczba = Number(surowa);
-    if (!Number.isFinite(liczba) || liczba < 0) {
-      throw bladOperatora(`Nie umiem odczytać kwoty „${body[pole]}" — podaj ${nazwa} w złotych.`);
-    }
-    // TA SAMA para `grosze()/zl()`, co reszta arytmetyki panelu — własne `* 100` rozjechałoby
-    // się o grosz przy 4,005 i różnicę widać by było dopiero na fakturze.
-    wynik[kolumna] = grosze(surowa, nazwa);
+    wynik[kolumna] = grosze(surowa, opis);
   }
   return wynik;
 }
@@ -352,6 +288,8 @@ export function opisKlienta(klient, { zwolniona = false } = {}) {
   if (klient.rabat_procent) czesci.push(`rabat ${klient.rabat_procent}%`);
   const koszt = String(klient.koszt_dostawy_brutto ?? '').trim();
   if (koszt === '0.00') czesci.push('wysyłka gratis');
+  if (klient.prog_darmowej_dostawy_gr != null) czesci.push(`darmowa dostawa od ${(klient.prog_darmowej_dostawy_gr / 100).toFixed(2)} zł`);
+  if (klient.oplata_obslugi_gr != null) czesci.push(`obsługa ${(klient.oplata_obslugi_gr / 100).toFixed(2)} zł przy własnej etykiecie`);
   const platnosc = PLATNOSCI[klient.platnosc] ?? null;
   const termin = ETYKIETY_TERMINU[klient.termin_platnosci] ?? null;
   if (platnosc) czesci.push(termin ? `${platnosc}, ${termin}` : platnosc);

@@ -22,8 +22,9 @@ function nowyPlik() {
   return join(k, 'oms.sqlite');
 }
 
-// Rdzeń w stanie sprzed tej zmiany: te same migracje, bez numeru 11.
-const rdzenBez11 = { ...modulRdzen, migracje: modulRdzen.migracje.filter((m) => m.numer !== 11) };
+// Rdzeń w stanie sprzed tej zmiany: migracje do 10. Po otwarciu — do 11 (późniejsze, np. 0012 PRZ-160, mają własne testy).
+const rdzenBez11 = { ...modulRdzen, migracje: modulRdzen.migracje.filter((m) => m.numer < 11) };
+const rdzenDo11 = { ...modulRdzen, migracje: modulRdzen.migracje.filter((m) => m.numer <= 11) };
 const kolumny = (db, t) => db.prepare(`PRAGMA table_info(${t})`).all();
 const karty = (db) => db.prepare('SELECT * FROM karty_produktow ORDER BY id').all();
 
@@ -44,7 +45,7 @@ function staraBaza() {
 describe('migracja rdzen/0011 — pola karty i idempotencja API', () => {
   it('stara baza: kolumny dochodzą, stare karty mają wycofana = 0 i puste nowe pola, dotychczasowe dane bez zmian', () => {
     const { plik, przed } = staraBaza();
-    const db = openOmsDb(plik);
+    const db = openOmsDb(plik, { moduly: [rdzenDo11] });
     try {
       const k = Object.fromEntries(kolumny(db, 'karty_produktow').map((x) => [x.name, x]));
       expect(k.cena_gr).toMatchObject({ type: 'INTEGER', notnull: 0, dflt_value: null });
@@ -76,7 +77,7 @@ describe('migracja rdzen/0011 — pola karty i idempotencja API', () => {
 
   it('ponowne wykonanie migracji niczego nie psuje ani nie zmienia', () => {
     const { plik } = staraBaza();
-    const db = openOmsDb(plik);
+    const db = openOmsDb(plik, { moduly: [rdzenDo11] });
     try {
       db.prepare('UPDATE karty_produktow SET cena_gr = 12999, ean = ?, wycofana = 1 WHERE id = 1').run('5901234123457');
       db.prepare("INSERT INTO api_idempotencja VALUES (1, 'k', 'POST /x', 201, '{}', '2026-11-06T10:00:00.000Z')").run();

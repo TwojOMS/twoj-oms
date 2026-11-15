@@ -1,0 +1,76 @@
+<%# PRZ-160.P3b.01 — słownik Magazynu (Kategorie albo Marki): lista płaska, liczba kart prowadzi do filtra listy
+    Magazynu, dodanie, zmiana nazwy (przepisuje karty), usunięcie tylko bez kart; przy kategoriach pobranie
+    z połączenia WooCommerce (tylko odczyt sklepu). PRZ-160.E3.11: kolumna „Allegro” → ekran mapowania. %>
+<p class="wroc"><a href="/magazyn">← Magazyn</a></p>
+
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: strona.tytul, podtytul: strona.podtytul}) %>
+
+<div class="slownik" id="slownik-<%= strona.typ %>">
+  <% if (blad) { %><p class="pasek-uwaga" role="alert"><%= blad %></p><% } %>
+  <% if (komunikat) { %><p class="pasek-info" role="status"><%= komunikat %></p><% } %>
+
+  <div class="slownik-narzedzia">
+    <form method="post" action="<%= strona.adres %>/dodaj" class="slownik-dodaj">
+      <label for="slownik-nowa-nazwa">Nowa <%= strona.typ === 'kategorie' ? 'kategoria' : 'marka' %></label>
+      <input id="slownik-nowa-nazwa" name="nazwa" required maxlength="200" autocomplete="off">
+      <button type="submit" class="btn btn--glowny">Dodaj <%= strona.jedna %></button>
+    </form>
+    <% if (woo.length) { %>
+      <div class="slownik-woo">
+        <p class="podpowiedz">Kategorie ze sklepu: dopisuje te, które mają produkty; istniejących nie zmienia i niczego nie usuwa.</p>
+        <% woo.forEach(function (p) { %>
+          <form method="post" action="/magazyn/kategorie/pobierz-woo">
+            <input type="hidden" name="kanal" value="<%= p.klucz %>">
+            <button type="submit" class="btn">Pobierz z WooCommerce — <%= p.etykieta %></button>
+          </form>
+        <% }); %>
+      </div>
+    <% } %>
+  </div>
+
+  <% if (!pozycje.length) { %>
+    <p class="podpowiedz"><%= strona.pusto %> Dodaj pierwszą powyżej albo wybierz ją na karcie produktu.</p>
+  <% } %>
+  <div class="przewijak-tabeli">
+  <table class="tresc-lista slownik-tabela">
+    <thead><tr><th scope="col">Nazwa</th><th scope="col" class="liczba">Karty</th><% if (allegro) { %><th scope="col">Allegro</th><% } %><th scope="col">Zmień nazwę</th><th scope="col">Usuń</th></tr></thead>
+    <tbody>
+      <% pozycje.forEach(function (p, i) { %>
+        <tr>
+          <th scope="row" id="slownik-poz-<%= i %>"><%= p.nazwa %><% if (p.kanaly.length) { %> <span class="slownik-plakietka plakietka plakietka--woo" title="Pobrana z WooCommerce: <%= p.kanaly.join(', ') %>">W</span><% } %><% if (!p.wSlowniku) { %> <small class="magazyn-brak">tylko na kartach</small><% } %></th>
+          <td class="liczba"><% if (p.karty > 0) { %><a href="<%= adresFiltra(p.nazwa) %>"><%= p.karty %></a><% } else { %>0<% } %></td>
+          <% if (allegro) { %>
+            <td>
+              <% const przypisania = allegro.przypisania(p.nazwa); %>
+              <% if (przypisania.length) { przypisania.forEach(function (a) { %>
+                <span><%= a.tekst %><% if (allegro.wieleSrodowisk) { %> <small class="podpowiedz">(<%= a.srodowisko %>)</small><% } %></span><br>
+              <% }); } else { %><small class="magazyn-brak">nieprzypisana</small><br><% } %>
+              <a href="<%= allegro.adres(p.nazwa) %>" aria-labelledby="slownik-allegro-<%= i %> slownik-poz-<%= i %>" id="slownik-allegro-<%= i %>"><%= przypisania.length ? 'Zmień' : 'Przypisz' %></a>
+            </td>
+          <% } %>
+          <td>
+            <form method="post" action="<%= strona.adres %>/zmien" class="slownik-zmien">
+              <input type="hidden" name="stara" value="<%= p.nazwa %>">
+              <input name="nowa" value="<%= p.nazwa %>" required maxlength="200" autocomplete="off" aria-labelledby="slownik-poz-<%= i %> slownik-zmien-<%= i %>">
+              <button type="submit" class="btn" id="slownik-zmien-<%= i %>">Zmień nazwę</button>
+            </form>
+          </td>
+          <td>
+            <% if (p.karty === 0) { %>
+              <form method="post" action="<%= strona.adres %>/usun">
+                <input type="hidden" name="nazwa" value="<%= p.nazwa %>">
+                <button type="submit" class="btn" id="slownik-usun-<%= i %>" aria-labelledby="slownik-usun-<%= i %> slownik-poz-<%= i %>">Usuń</button>
+              </form>
+            <% } %>
+          </td>
+        </tr>
+      <% }); %>
+      <tr class="slownik-bez">
+        <th scope="row"><%= strona.bez %></th>
+        <td class="liczba"><% if (bez > 0) { %><a href="<%= adresBez %>"><%= bez %></a><% } else { %>0<% } %></td>
+        <td colspan="<%= allegro ? 3 : 2 %>"></td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</div>

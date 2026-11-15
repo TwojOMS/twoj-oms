@@ -1,0 +1,48 @@
+<% const naAllegro = typeof rodzaj !== 'undefined' && rodzaj === 'allegro'; %>
+<p class="wroc"><a href="/magazyn">← Magazyn</a></p>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: naAllegro ? 'Oferty Allegro' : 'Oferty ERLI', podtytul: aktywacja ? 'Aktywacja szkiców' : wynik ? 'Wynik zatwierdzenia' : 'Podgląd przed zatwierdzeniem'}) %>
+<section class="panel">
+  <div class="panel-glowa"><h2><%= typeof etykieta !== 'undefined' ? etykieta : konto %></h2></div>
+  <div class="panel-cialo">
+    <% if (aktywacja) { %>
+      <p role="status">Do aktywacji: <%= aktywacja.oznaczono %>. Pominięto (bez szkicu na tym koncie): <%= aktywacja.pominieto %>.</p>
+      <p>Aktywację wyśle pętla ofert przy najbliższym przebiegu; stan zobaczysz na karcie produktu.</p>
+    <% } else { %>
+    <% if (!ustawienia.czynne) { %><p class="pasek-uwaga"><strong>Oferty: wstrzymane.</strong> Nic nie wyjdzie do kanału, dopóki konto jest wstrzymane. Zatwierdzone oferty pozostaną w kolejce do wysłania.</p><% } %>
+    <% if (braki.length) { %>
+      <p class="pasek-blokada">Uzupełnij ustawienia: <%= braki.join(', ') %>. <a href="<%= konfigurator %>">Konfigurator — Oferty</a></p>
+    <% } else { %>
+      <% if (typeof zrodloIlosci !== 'undefined' && zrodloIlosci) { %><p>Ilość w ofertach: <%= zrodloIlosci %></p><% } else { %><p>Wysyłamy stałą liczbę sztuk; synchronizacja ze stanem magazynu wejdzie w etapie 4.</p><% } %>
+      <% if (naAllegro) { %><p>Prowizja to wycena Allegro dla kategorii i ceny — informacja, nie warunek zatwierdzenia.</p><% } %>
+      <% if (wynik) { %><p role="status">W kolejce: <%= wynik.poszlo %>. Odmówiono: <%= wynik.odmowiono %>.</p><% } %>
+      <% wiersze.forEach(w => { %>
+        <section class="panel">
+          <div class="panel-glowa"><h3><a href="/magazyn/<%= w.id %>"><%= w.nazwa %></a></h3></div>
+          <div class="panel-cialo">
+            <% w.bledy.forEach(b => { %><p class="pasek-blokada">Odmowa: <%= b %></p><% }); %>
+            <% w.ostrzezenia.forEach(b => { %><p class="pasek-uwaga"><%= b %></p><% }); %>
+            <% if (w.dostawa) { %><p>Cennik: <%= w.dostawa.nazwa %> — <%= w.dostawa.powod %></p><% } %>
+            <% if (naAllegro && w.zadanie) { %>
+              <p>Droga: <%= w.allegro.droga %> · Kategoria Allegro: <%= w.allegro.kategoria %> · Cena: <%= zlotowki(w.allegro.cena) %> · Ilość: <%= w.allegro.ilosc %></p>
+              <% if (w.allegro.prowizja) { %><p>Prowizja: <%= w.allegro.prowizja %></p><% } %>
+              <details><summary>Dokładna treść wysyłki</summary><pre class="przewijak-tabeli" tabindex="0" role="region" aria-label="Treść wysyłki"><code><%= JSON.stringify(w.zadanie, null, 2) %></code></pre></details>
+            <% } else if (w.cialo) { %>
+              <p>Nazwa: <%= w.cialo.name %> · Cena z narzutem: <%= (w.cialo.price / 100).toFixed(2).replace('.', ',') %> zł · Ilość: <%= w.iloscNapis ?? w.cialo.stock %></p>
+              <p>Czas wysyłki: <%= w.cialo.dispatchTime.period %> dni · VAT: <%= w.cialo.taxRate %> · Zdjęcia: <%= w.cialo.images.length %></p>
+              <details><summary>Dokładna treść wysyłki</summary><pre class="przewijak-tabeli" tabindex="0" role="region" aria-label="Treść wysyłki"><code><%= JSON.stringify(w.cialo, null, 2) %></code></pre></details>
+            <% } %>
+          </div>
+        </section>
+      <% }); %>
+      <% if (!wynik) { %>
+        <form method="post" action="/magazyn/oferty/zatwierdz" aria-label="Zatwierdzenie ofert <%= naAllegro ? 'Allegro' : 'ERLI' %>">
+          <input type="hidden" name="konto" value="<%= konto %>">
+          <input type="hidden" name="podglad" value="<%= token %>">
+          <% ids.forEach(id => { %><input type="hidden" name="zaznaczone" value="<%= id %>"><% }); %>
+          <button class="btn btn--glowny" type="submit">Zatwierdź karty bez błędów</button>
+        </form>
+      <% } %>
+    <% } %>
+    <% } %>
+  </div>
+</section>

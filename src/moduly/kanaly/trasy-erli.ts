@@ -6,15 +6,17 @@ import {MODUL_ERLI} from '../../domena/modul-erli.ts';
 import {stanKrokow} from '../../core/web/konfigurator/konfigurator.ts';
 import {nawigacjaUstawien} from '../ustawienia/nawigacja.js';
 import {zakresDatyStartu} from './zakres-importu-allegro.ts';
+import {STAWKI_Z_ZW} from '../../domena/vat.js';
 
 /** Komunikat paska „zapisano” po przekierowaniu z operacji (PRZ-157.12u). */
 const ZAPISANO:Record<string,string>={
+ oferty:'Ustawienia ofert zapisane.',
  'pobierz-metody':'Pobrano metody dostawy z ERLI.',metody:'Metody dostawy zapisane.','pomin-metody':'Metody dostawy pominięte — ustawisz je później.',
  nadawanie:'Nadawanie zapisane.','data-startu':'Data startu zapisana.',aktywuj:'Sklep aktywowany.',odczyt:'Tryb odczytu zapisany.',
  pobieranie:'Stan pobierania zapisany.',odlacz:'Sklep odłączony — wpisz klucz i sprawdź połączenie, aby podłączyć go ponownie.',
 };
 /** Sekcja ekranu, którą rozwijamy po błędzie danej operacji. */
-const SEKCJA_OPERACJI:Record<string,string>={dane:'dane',sprawdz:'dane','pobierz-metody':'metody','pomin-metody':'metody',metody:'metody',nadawanie:'nadawanie',odlacz:'odlacz',usun:'usun'};
+const SEKCJA_OPERACJI:Record<string,string>={oferty:'oferty',dane:'dane',sprawdz:'dane','pobierz-metody':'metody','pomin-metody':'metody',metody:'metody',nadawanie:'nadawanie',odlacz:'odlacz',usun:'usun'};
 /** Kurier OMS wynikający z dostawcy w słowniku ERLI, gdy sprzedawca nic nie wybrał. */
 export const domyslnyKurierErli=(m:{vendor?:string|null})=>m.vendor==='dpd'?'dpd':m.vendor==='inpost'?'inpost_paczkomat':m.vendor==='selfPickup'?'odbior':null;
 /** Czytelna nazwa metody: nazwa z ERLI, a gdy jej brak — identyfikator rozbity na słowa („odbiorOsobisty” → „Odbior osobisty”). */
@@ -52,16 +54,18 @@ export function registerTrasyErli(app:FastifyInstance,sklepy:ReturnType<typeof c
   if(konto(r)?.admin!==true)return stronaOdmowy(p,403,'Tylko administrator może konfigurować ERLI.',{wroc:'/ustawienia/integracje',napisWroc:'Wróć do integracji'});
  },handler:async(r,p)=>{
   const params=r.params as {kanal:string;operacja?:string};
-  const widok=(blad:string|null=null)=>{
+  const widok=(blad:string|null=null,bledyOfert:Record<string,string>={})=>{
    const k=sklepy.pobierz(params.kanal);
    if(!k&&params.kanal!=='nowe')return stronaOdmowy(p,404,'Nie znaleziono sklepu ERLI.',{wroc:'/ustawienia/integracje',napisWroc:'Wróć do integracji'});
    const u:Record<string,any>=k?.ustawienia??{},metody=Array.isArray(u.metodySklepu)?u.metodySklepu as MetodaSklepu[]:null;
+   const oferty=sklepy.ustawieniaOfert(params.kanal);
+   const wartosciOfert=Object.keys(bledyOfert).length?r.body:{...oferty,narzutProcent:liczba(oferty.narzutProcent),progPotwierdzeniaProcent:liczba(oferty.progPotwierdzeniaProcent),czynne:oferty.czynne?'czynne':'wstrzymane'};
    // Krok 4 dotyczy tylko sklepów z metodą Przesyłek Erli; bez niej znika, a dalsze kroki przesuwają numery.
    const pominietoMetody=Boolean(u.metodyPominiete&&!u.metodyZapisane);
    const maErli=metody?.some(m=>m.erli)===true,pominNadawanie=pominietoMetody||metody!==null&&!maErli;
    // Kreator dla sklepu, który jeszcze nie działa; aktywny sklep i sklep z pliku mają ekran zarządzania bez kroków.
    const kreator=k?.zrodlo!=='env'&&k?.autoryzacja!=='polaczone';
-   const biezacy=!k?'dane':!u.sprawdzono?'polaczenie':pominietoMetody?'start':!metody||!u.metodyZapisane?'metody':maErli&&!u.wymiaryDomyslne?'nadawanie':'start';
+   const biezacy=Object.keys(bledyOfert).length?'oferty':!k?'dane':!u.sprawdzono?'polaczenie':pominietoMetody?'start':!metody||!u.metodyZapisane?'metody':maErli&&!u.wymiaryDomyslne?'nadawanie':'start';
    const q=(r.query??{}) as Record<string,unknown>,polaczenie=q.polaczenie;
    // Kolizja oznacza oba kanały (także ten, który już działał), więc pokazujemy ją bez względu na adres.
    if(!blad&&u.kolizja)blad=KOMUNIKAT_KOLIZJI_ERLI;
@@ -79,13 +83,13 @@ export function registerTrasyErli(app:FastifyInstance,sklepy:ReturnType<typeof c
    // Fokus i przewinięcie do następnego kroku tylko po zapisie, nie przy zwykłym wejściu na ekran.
    const fokus=kreator&&!blad&&(zapisano!==null||polaczenie==='ok'||params.operacja==='sprawdz');
    return p.view('erli-konfigurator.ejs',{title:k?'ERLI — '+k.nazwa:'Dodaj sklep ERLI',szerokosc:'formularz',nawigacja:nawigacjaUstawien(r,p),k,moznaUsunac:Boolean(k&&sklepy.blokadaUsuniecia(params.kanal)===null),adres:url(params.kanal),srodowiska:SRODOWISKA_ERLI,zakresDatyStartu:zakresDatyStartu(teraz()),konfigurator:opis,kroki,numer,biezacy,kreator,pominNadawanie,maErli,blad,zapisano,okPolaczenia,otwarte,fokus,
-    podsumowanie:k?podsumowania(k,u,metody):null,dataStartu:k?.od_utc?dataPl(k.od_utc):'',domyslnyKurier:domyslnyKurierErli,nazwaMetody:nazwaMetodyErli});
+    wartosciOfert,bledyOfert,stanyKiedys:sklepy.stanyKiedys(),stawkiVat:STAWKI_Z_ZW,podsumowanie:k?{...podsumowania(k,u,metody),oferty:oferty.czynne?'czynne':'wstrzymane'}:null,dataStartu:k?.od_utc?dataPl(k.od_utc):'',domyslnyKurier:domyslnyKurierErli,nazwaMetody:nazwaMetodyErli});
   };
   if(method==='GET')return widok();
   try{
    const b=r.body&&typeof r.body==='object'&&!Array.isArray(r.body)?r.body as Record<string,unknown>:{};
    const w=await sklepy.operacja(params.kanal,params.operacja!,b,{id:konto(r)?.id??0,login:konto(r)!.login});
-   if(!w.ok){p.code(w.status);return widok(w.komunikat);}
+   if(!w.ok){p.code(w.status);return widok(w.komunikat,w.bledyPol);}
    if(params.operacja==='usun')return p.code(303).redirect('/ustawienia/integracje?zapisano=usunieto_sklep');
    if(params.operacja==='dane'){
     const k=sklepy.pobierz(w.klucz);
@@ -97,6 +101,9 @@ export function registerTrasyErli(app:FastifyInstance,sklepy:ReturnType<typeof c
    }
    if(params.operacja==='sprawdz')return widok();
    return p.code(303).redirect(url(w.klucz)+(Object.hasOwn(ZAPISANO,params.operacja!)?'?zapisano='+params.operacja:''));
-  }catch{p.code(503);return widok('Nie udało się wykonać operacji ERLI. Odśwież ekran i spróbuj ponownie.');}
+  }catch(e){
+   if(e instanceof Error&&'dlaOperatora' in e&&e.dlaOperatora===true&&'kod' in e&&e.kod==='konflikt'){p.code(409);return widok(e.message);}
+   p.code(503);return widok('Nie udało się wykonać operacji ERLI. Odśwież ekran i spróbuj ponownie.');
+  }
  }});
 }

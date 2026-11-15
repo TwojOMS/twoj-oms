@@ -8,8 +8,9 @@
 // `docs/superpowers/notatki/2026-08-06-magazyn-rozpoznanie.md`, 40 ofert z obu kont):
 //   { id, name, sellingMode: { price: { amount, currency } }, primaryImage: { url },
 //     publication: { status }, external, stock, stats, … }
-// Z tego bierzemy PIEC pol. Reszta — w szczegolnosci `stock.available` — jest swiadomie
-// pomijana (niezmiennik 8: magazyn nie prowadzi stanow magazynowych).
+// Z tego bierzemy PIEC pol, a do tego `stock.available` jako LUSTRO ilosci kanalu
+// (PRZ-160 E4 D60): lustro niesie ilosc kanalu z chwili odczytu; stan magazynu liczy
+// wylacznie `stanyKart` (niezmiennik 8). Reszta pol jest swiadomie pomijana.
 
 import { groszeZKwoty } from './kwota.js';
 import { wymagajListyKanalow } from './lista-kanalow.js';
@@ -55,7 +56,7 @@ const WALUTA_LUSTRA = 'PLN';
  * ⚠️ TRZY STANY, NIE DWA. Brak kwoty (`undefined`/`null`, brak `sellingMode`) to `null` —
  * stan normalny. Kwota, ktorej NIE UMIEMY przeliczyc, RZUCA (patrz `domain/kwota.js`).
  */
-function groszeZCeny(cena, opisOferty) {
+export function groszeZCeny(cena, opisOferty) {
   const kwota = cena?.amount;
   if (kwota === undefined || kwota === null) return null;
 
@@ -169,5 +170,8 @@ export function ofertaNaProdukt(oferta, kanal, dozwoloneKanaly) {
     // ⚠️ Bez tego oferta zakonczona udaje zywa: wchodzi na liste „do powiazania" i do
     // generatora SKU na rowni ze sprzedawana.
     status_publikacji: oferta?.publication?.status ?? null,
+    // E4.05 (D60): tylko informacja o ilosci kanalu; bez ograniczen, moze byc < 0.
+    ilosc_kanalu: Number.isInteger(oferta?.stock?.available) ? oferta.stock.available : null,
+    stan_prowadzony: 'tak',
   };
 }

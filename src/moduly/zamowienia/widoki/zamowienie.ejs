@@ -303,10 +303,10 @@
           <input type="hidden" name="powrot" value="<%= powrot %>">
           <button class="btn btn--maly"
             title="<%= klientZBazy ? 'Nadpisze dane teleadresowe zapamiętanego klienta danymi z tego zamówienia; pola puste w zamówieniu zostają takie, jak na karcie klienta, a nazwa klienta z listy się nie zmienia. Ustaleń handlowych (B2B, rabat, termin, umowa zbiorcza, koszt dostawy) nie zmienia.' : 'Zapamięta dane tego klienta, żeby przy następnym zamówieniu wstawić je jednym kliknięciem.' %>">
-            <%= klientZBazy ? 'Uaktualnij dane stałego klienta' : 'Zapamiętaj tego klienta' %>
+            <%= klientZBazy ? 'Uaktualnij dane klienta B2B' : 'Zapamiętaj tego klienta' %>
           </button>
           <% if (klientZBazy) { %>
-            <span class="wyjasnienie">w bazie jako <% if (modulWlaczony('klienci')) { %><a href="/klienci/<%= klientZBazy.id %>"><% } %><%= klientZBazy.nazwa %><% if (modulWlaczony('klienci')) { %></a><% } %>
+            <span class="wyjasnienie">w bazie jako <% if (modulWlaczony('klienci')) { %><a href="/klienci/<%= klientZBazy.id %>/karta"><% } %><%= klientZBazy.nazwa %><% if (modulWlaczony('klienci')) { %></a><% } %>
               — ustalenia handlowe (B2B, rabat, termin, umowa zbiorcza) zostają takie, jak tam</span>
           <% } %>
         </form>
@@ -418,7 +418,7 @@
           <div><span>Termin płatności</span><span><%= etykietyTerminu[z.termin_platnosci] || z.termin_platnosci %> <span class="wyjasnienie">uzgodniony</span></span></div>
         <% } %>
         <% if (z.rabat_procent) { %>
-          <div><span>Rabat stałego klienta</span><span><%= z.rabat_procent %>% <span class="wyjasnienie">w cenach pozycji; klient go nie widzi</span></span></div>
+          <div><span>Rabat klienta B2B</span><span><%= z.rabat_procent %>% <span class="wyjasnienie">w cenach pozycji; klient go nie widzi</span></span></div>
         <% } %>
         <%# ⚠️ PAS ROZJAZDU STAWEK (23.08.2026) — widoczny TYLKO wtedy, gdy jest co pokazac. %>
         <%# Ostrzezenie wyjace przy dobrych danych przestaje znaczyc cokolwiek, wiec decyzje %>
@@ -510,7 +510,7 @@
           <input type="hidden" name="powrot" value="<%= powrot %>">
           <label class="pole-przelacznik">
             <input type="checkbox" name="b2b" <%= z.b2b ? 'checked' : '' %>>
-            B2B — sprzedaż hurtowa (osobny kanał w raportach)
+            Liczony w raportach jako kanał B2B (hurt)
           </label>
           <label>Termin płatności uzgodniony z klientem
             <select name="termin_platnosci">
@@ -522,7 +522,7 @@
               <option value="<%= terminy.bezTerminu %>"<%= z.termin_platnosci === terminy.bezTerminu ? ' selected' : '' %>>płatne od razu</option>
             </select>
           </label>
-          <label>Rabat stałego klienta (%)
+          <label>Rabat klienta B2B (%)
             <input name="rabat_procent" value="<%= z.rabat_procent || 0 %>" inputmode="numeric">
           </label>
           <p class="wyjasnienie">Zapis <b>przeliczy ceny</b> pozycji dodanych z magazynu (0–<%= rabatMax %>%).

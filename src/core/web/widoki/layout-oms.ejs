@@ -29,6 +29,7 @@
   <% if (htmx) { %><script src="<%= zasob('htmx.min.js') %>"></script><% } %>
   <link rel="stylesheet" href="<%= zasob('oms-design.css') %>"><% if (typeof nawigacja !== 'undefined' && nawigacja?.kontekst?.dzial === 'ustawienia') { %>
   <link rel="stylesheet" href="<%= zasob('oms-ustawienia.css') %>"><% } %>
+  <script src="<%= zasob('oms-podmenu.js') %>"></script>
 </head>
 <body>
   <%# PRZ-085: ekran bez własnego `panelStatusow` bierze liczby z pipeline'u (`licznikiStatusow`); `locals.`, bo
@@ -65,11 +66,7 @@
     <%_ if (menuUstawien) { _%>
     <aside class="oms-settings-column oms-settings-navigation" aria-label="Ustawienia">
       <div class="oms-settings-heading">Ustawienia</div>
-      <nav class="oms-menu" aria-label="Działy Ustawień"><ul>
-        <% nawigacja.kontekst.grupy.flatMap(g => g.pozycje).forEach(p => { %>
-        <li<%- p.aktywna ? ' class="aktywna"' : '' %>><a href="<%= p.href %>"<%- p.aktywna ? ' aria-current="page"' : '' %>><span><%= p.etykieta %></span><% if (p.wkrotce) { %><span class="menu-ustawien-wkrotce">wkrótce</span><% } %><% if (p.beta) { %><span class="menu-ustawien-beta">BETA</span><% } %></a></li>
-        <% }); %>
-      </ul></nav>
+      <%- include('_menu-ustawien.ejs', {pozycje: nawigacja.kontekst.grupy.flatMap(g => g.pozycje)}) %>
     </aside>
     <%_ } _%>
     <div class="tresc">
@@ -82,17 +79,13 @@
       <% if (demo) { %>
       <div class="pasek-demo"<% if (demo.resetPlanowy) { %> data-demo-reset="<%= demo.resetPlanowy %>" data-demo-teraz="<%= Date.now() %>" data-demo-login="<%= demo.login %>" data-demo-haslo="<%= demo.haslo %>"<% } %>>
         <span class="pasek-demo-tekst">Wersja DEMO — <% if (demo.resetPlanowy) { %>restart danych o <%= demo.resetGodzina %><% } else { %>dane wracają do stanu początkowego <%= demo.reset %><% } %></span>
-        <span class="pasek-demo-dopisek">Zmiany gości znikają przy każdym restarcie.</span>
+        <span class="pasek-demo-dopisek">Dane z generatora, połączenia ze sklepami, Allegro i kurierami są wyłączone. Zmiany gości znikają przy każdym restarcie.</span>
       </div>
       <% } %>
       <header class="oms-topbar">
         <div class="oms-breadcrumb"><% if (!menuUstawien) { %><span>Panel</span><span aria-hidden="true">/</span><% } %><strong><% if (typeof okruszki !== 'undefined' && Array.isArray(okruszki) && okruszki.length) { okruszki.forEach((o, i) => { if (i) { %> / <% } if (o.href) { %><a class="oms-breadcrumb-link" href="<%= o.href %>"><%= o.tekst %></a><% } else { %><%= o.tekst %><% } }); } else { %><%= title %><% } %></strong></div>
         <div class="oms-top-actions">
-          <%# PRZ-102.03 (wariant C): analizy poza menu bocznym — rozwijana lista na wzór menu konta. Pozycje już %>
-          <%# przefiltrowane prawami i `odlozoneEkrany` (nawigacjaDla); rola bez żadnej analizy przycisku nie dostaje. %>
-          <% if (nawigacja.analizy) { %><details class="oms-menu-analiz" data-menu="analizy"><summary class="oms-menu-analiz-przycisk" data-menu-trigger="analizy"<%- nawigacja.analizy.aktywna ? ' aria-current="true"' : '' %> title="<%= nawigacja.analizy.etykieta %>"><%- include('_ikona-panelu.ejs', {klucz:'raporty'}) %><span><%= nawigacja.analizy.etykieta %></span></summary>
-            <div class="oms-menu-analiz-panel" data-menu-panel="analizy"><ul><% nawigacja.analizy.pozycje.forEach(function(p) { %><li><a href="<%= p.href %>"<%- p.aktywna ? ' aria-current="page"' : '' %>><%- include('_ikona-panelu.ejs', {klucz:p.klucz}) %><span><%= p.etykieta %></span></a></li><% }); %></ul></div>
-          </details><% } %>
+          <%# PRZ-167: analizy przeniesione z górnego paska do menu bocznego (pozycja „Analityka”). %>
           <% if (nawigacja.ustawienia) { %><a class="oms-theme-button oms-settings-button" href="<%= nawigacja.ustawienia.href %>"<%- nawigacja.ustawienia.aktywna ? ' aria-current="page"' : '' %> aria-label="Ustawienia" title="Ustawienia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></a><% } %>
           <form method="post" action="/motyw" class="oms-theme-form">
             <input type="hidden" name="powrot" value="<%= menuKonta?.powrot ?? (typeof sciezkaPowrotu !== 'undefined' ? sciezkaPowrotu : '/') %>">

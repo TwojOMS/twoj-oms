@@ -1,0 +1,13 @@
+{
+ "_pomiar": "P14 sandbox 14.11: POST upload…/sale/images binarnie (image/jpeg 322 kB) → 201, location w nagłówku i treści, expiresAt = +6 h",
+ "status": 201,
+ "naglowki": {
+  "location": "https://a.allegroimg.allegrosandbox.pl/original/1100aa/0000000000000000000000000001",
+  "content-type": "application/vnd.allegro.public.v1+json"
+ },
+ "body": {
+  "expiresAt": "2026-11-14T05:33:56.683727Z",
+  "location": "https://a.allegroimg.allegrosandbox.pl/original/1100aa/0000000000000000000000000001"
+ },
+ "czas_ms": 843
+}

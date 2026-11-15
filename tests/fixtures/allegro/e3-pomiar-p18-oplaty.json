@@ -1,0 +1,36 @@
+{
+ "_pomiar": "P18 sandbox 14.11: POST /pricing/offer-fee-preview (lampa 199 zł, kat. 49855) → 200, quotes puste; GET /pricing/offer-quotes → 403 przy zakresach offers:read/write + settings:read",
+ "fee_preview": {
+  "status": 200,
+  "body": {
+   "commissions": [
+    {
+     "name": "Prowizja od sprzedaży",
+     "type": "commissionFee",
+     "fee": {
+      "amount": "24.48",
+      "currency": "PLN",
+      "tax": "GROSS"
+     }
+    }
+   ],
+   "quotes": []
+  },
+  "ms": 233
+ },
+ "offer_quotes": {
+  "status": 403,
+  "body": {
+   "errors": [
+    {
+     "code": "AccessDenied",
+     "message": "Access is denied",
+     "details": null,
+     "path": null,
+     "userMessage": "No access to the specified resource.",
+     "metadata": {}
+    }
+   ]
+  }
+ }
+}

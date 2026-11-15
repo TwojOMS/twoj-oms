@@ -5,6 +5,9 @@ import {createErliClient} from '../../../oms/erli/client.js';
 import {wczytajKonfiguracjeIntegracji,zapiszKonfiguracjeIntegracji,usunKonfiguracjeIntegracji,stanDlaEkranu} from '../../../oms/db/konfiguracja-integracji.js';
 import {poczatekDniaWarszawa,poprawnaDataStartu} from '../zakres-importu-allegro.ts';
 import {KURIERZY_MAPY_ERLI} from '../../../domena/erli-droga-nadania.js';
+import {DOMYSLNE_USTAWIENIA_OFERT,STALA_ILOSC_ZERO,ustawieniaOfertKonta,zapiszUstawieniaOfertKonta} from '../../../oms/db/oferty-kanalow.ts';
+import {stanyKiedysWlaczone} from '../stany-kont.ts';
+import {regulyZKroku,formularzNieaktualny,FORMULARZ_NIEAKTUALNY} from './oferty-allegro-ustawienia.ts';
 
 export const SRODOWISKA_ERLI=[
  {adres:'https://erli.pl/svc/shop-api',nazwa:'ERLI — sklep'},
@@ -14,7 +17,7 @@ export const adresErliOk=(adres:unknown):adres is string=>SRODOWISKA_ERLI.some(s
 // Zamknięty znacznik lokalnego transportu próby; nigdy nie pokazujemy dowolnej treści błędu ani klucza.
 const odmowaProby=(e:unknown)=>(e as any)?.status===403&&(e as any)?.message==='ERLI: OMS_PROBA_ERLI_PRODUKCJA (HTTP 403)'
  ?'Piaskownica nie łączy się z prawdziwym ERLI — wybierz środowisko sandbox albo klucz atrapy atrapa-polcien.':null;
-type Wynik={ok:true;klucz:string}|{ok:false;status:number;komunikat:string};
+type Wynik={ok:true;klucz:string}|{ok:false;status:number;komunikat:string;bledyPol?:Record<string,string>};
 const blad=(status:number,komunikat:string):Wynik=>({ok:false,status,komunikat});
 export type MetodaSklepu={id:string;nazwa:string;erli:boolean;vendor:string|null};
 export type PunktNadania={id:string;nazwa:string;adres:string;domyslny:boolean};
@@ -39,7 +42,7 @@ async function pobierzSlownikiNadania(klient:any):Promise<{metodySklepu:MetodaSk
  return {metodySklepu,punktyNadania};
 }
 export const KOMUNIKAT_KOLIZJI_ERLI='Ten sklep ERLI jest już zapisany w innym kanale. Oba kanały wstrzymano — odłącz albo usuń duplikat i ponownie sprawdź połączenie.';
-export function createSklepyErli(o:{db:DatabaseSync;teraz:()=>Date;ustawieniaEnv:Record<string,any>;definicje:readonly {klucz:string;etykieta?:string}[];fetchImpl?:typeof fetch}){
+export function createSklepyErli(o:{db:DatabaseSync;teraz:()=>Date;ustawieniaEnv:Record<string,any>;definicje:readonly {klucz:string;etykieta?:string}[];fetchImpl?:typeof fetch;poAktywacji?:(klucz:string)=>void}){
  const {db}=o;
  const zapis=(k:string)=>o.ustawieniaEnv[k]?{ustawienia:{adresApi:o.ustawieniaEnv[k].adresApi,od:o.ustawieniaEnv[k].od},sekrety:{kluczApi:o.ustawieniaEnv[k].kluczApi}}:wczytajKonfiguracjeIntegracji(db,'erli:'+k);
  const rows=()=>db.prepare("SELECT * FROM kanaly_sprzedazy WHERE typ='erli' ORDER BY utworzono_at,klucz").all() as any[];
@@ -106,6 +109,42 @@ export function createSklepyErli(o:{db:DatabaseSync;teraz:()=>Date;ustawieniaEnv
    });
   }
   if(nowy)return blad(400,'Najpierw zapisz dane sklepu.');
+  if(op==='oferty'){
+   const liczba=(v:unknown)=>typeof v==='string'&&/^-?\d+([.,]\d+)?$/.test(v.trim())?Number(v.trim().replace(',','.')):NaN;
+   const zmiany:Record<string,unknown>={
+    narzutProcent:liczba(b.narzutProcent),progPotwierdzeniaProcent:liczba(b.progPotwierdzeniaProcent),
+    stalaIlosc:liczba(b.stalaIlosc),
+    czasWysylkiDni:b.czasWysylkiDni===''?null:liczba(b.czasWysylkiDni),
+    stawkaVat:b.stawkaVat===''?null:b.stawkaVat,
+    czynne:b.czynne==='czynne',
+   };
+   // PRZ-160 E4.10 (D48): bufor i próg skoku tylko z formularza, który je pokazuje (stany choć raz włączone).
+   if(stanyKiedysWlaczone(db))for(const p of ['buforSzt','progSkokuSzt'])if(b[p]!==undefined)zmiany[p]=liczba(b[p]);
+   let pole='stalaIlosc';
+   try{
+    if(b.stalaIlosc===''||b.stalaIlosc==null)throw new Error('Podaj stałą liczbę sztuk');
+    // E3d.02-02: tabela reguł zamiast pola cennikDostaw (cennik ERLI to tekst dowolny); błąd przy wierszu = nic
+    // nie zapisane. Ciało bez tabeli (stary formularz) zostawia reguły konta bez zmian.
+    if(formularzNieaktualny(b,ustawieniaOfertKonta(db,k).cenniki))return {ok:false,status:409,komunikat:FORMULARZ_NIEAKTUALNY};
+    const tabela=regulyZKroku(b);
+    const bledyTabeli=tabela?Object.values(tabela.bledyPol):[];
+    if(bledyTabeli.length)return {ok:false,status:400,komunikat:bledyTabeli[0],bledyPol:tabela!.bledyPol};
+    if(tabela)zmiany.cenniki=tabela.reguly;
+    return transakcja(()=>{
+     // Walidacja E2.01 przy każdym polu; błąd cofa całość, także przy pierwszym zapisie.
+     for(const [nazwa,wartosc] of Object.entries(zmiany)){
+      pole=nazwa;zapiszUstawieniaOfertKonta(db,k,{[nazwa]:wartosc},{aktor:a.login,teraz:o.teraz().toISOString()});
+     }
+     zmienWersje(k,a,op);return {ok:true,klucz:k};
+    });
+   }catch(e){
+    const komunikat=pole==='stalaIlosc'&&e instanceof Error&&e.message===STALA_ILOSC_ZERO?STALA_ILOSC_ZERO
+     :pole==='stalaIlosc'&&b.stalaIlosc!==''&&b.stalaIlosc!=null
+     ?'Stała ilość musi być liczbą całkowitą od 1 do 1000000'
+     :e instanceof Error?e.message:'Niepoprawne ustawienie oferty.';
+    return {ok:false,status:400,komunikat,bledyPol:{[pole]:komunikat}};
+   }
+  }
   if(op==='usun'){
    if(b.potwierdz!=='tak')return blad(400,'Potwierdź usunięcie sklepu.');
    return usun(k,Number(b.wersja),a);
@@ -181,6 +220,8 @@ export function createSklepyErli(o:{db:DatabaseSync;teraz:()=>Date;ustawieniaEnv
     const tylkoOdczyt=b.decyzjaOdczytu==='1'?b.tylkoOdczyt==='tak':u.tylkoOdczyt??u.adresApi===SRODOWISKA_ERLI[0].adres;
     zapisz(k,{...u,aktywowano:true,tylkoOdczyt},s,a);blokada(k,tylkoOdczyt,a);
     db.prepare("UPDATE kanaly_sprzedazy SET autoryzacja='polaczone',pobieranie='wlaczone' WHERE klucz=?").run(k);
+    // Odmowa granicy wycofuje całą aktywację w tym samym SAVEPOINT.
+    o.poAktywacji?.(k);
    }else if(op==='odczyt'){
     const tylkoOdczyt=b.tylkoOdczyt==='tak';zapisz(k,{...u,tylkoOdczyt},s,a);blokada(k,tylkoOdczyt||Boolean(u.kolizja),a);
    }else if(op==='pobieranie'){
@@ -195,5 +236,11 @@ export function createSklepyErli(o:{db:DatabaseSync;teraz:()=>Date;ustawieniaEnv
    zmien(k,a,op);return {ok:true,klucz:k};
   });
  }
- return {lista,pobierz,operacja,blokadaUsuniecia,usun};
+ function ustawieniaOfert(k:string){
+  // Kanały działają także bez modułu magazynu i jego migracji tabeli ustawień ofert.
+  if(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='oferty_ustawienia_kont'").get())return ustawieniaOfertKonta(db,k);
+  const d=DOMYSLNE_USTAWIENIA_OFERT;
+  return {...d,klucz:k,zapisane:false,narzutProcent:d.narzutBp/100,progPotwierdzeniaProcent:d.progPotwierdzeniaBp/100,zmienionoAt:null,aktorLogin:null};
+ }
+ return {lista,pobierz,operacja,blokadaUsuniecia,usun,ustawieniaOfert,stanyKiedys:()=>stanyKiedysWlaczone(db)};
 }

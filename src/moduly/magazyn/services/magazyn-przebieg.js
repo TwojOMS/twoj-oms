@@ -21,6 +21,8 @@ const opisBledu = (e) => (typeof e?.message === 'string' && e.message ? e.messag
 
 const STAN_POCZATKOWY = {
   trwa: false, zaczety_at: null, skonczony_at: null, postep: null, kanaly: [], blad: null,
+  // PRZ-160 P3b.03: klucz kanalu, gdy przebieg czytal TYLKO jeden kanal (ekran importu); `null` = wszystkie.
+  zakres: null,
 };
 
 /**
@@ -38,8 +40,15 @@ export function createMagazynPrzebieg({ db, sklepy = {}, allegro = {}, odswiez =
   let stan = { ...STAN_POCZATKOWY };
   const gotowy = () => Object.keys(sklepy).length + Object.keys(allegro).length > 0;
 
-  function start() {
+  // PRZ-160 P3b.03: `{kanal}` zaweza odczyt do jednego kanalu (ekran importu), `trescKart: false`
+  // zostawia tresc Woo w wyniku zamiast w kartach (podglad „Sprawdz"). Bez argumentow — jak dotad:
+  // wszystkie kanaly, tresc do kart (`POST /magazyn/odswiez`).
+  function start({ kanal, trescKart } = {}) {
     if (!gotowy()) return { wystartowal: false };
+    const zawez = (mapa) => (kanal && Object.keys(mapa).includes(kanal) ? { [kanal]: mapa[kanal] } : (kanal ? {} : mapa));
+    const sklepyPrzebiegu = zawez(sklepy);
+    const allegroPrzebiegu = zawez(allegro);
+    if (kanal && !Object.keys(sklepyPrzebiegu).length && !Object.keys(allegroPrzebiegu).length) return { wystartowal: false };
     // ⚠️ STRAZNIK PRZED ZMIANA STANU, nie po niej. Dwa rownolegle przebiegi to dwa razy
     // setki zadan do tego samego sklepu i DWA rozne znaczniki `odczytane_at` — a ten ze
     // starszym stemplem oznaczylby jako zniknięte dokladnie to, co drugi wlasnie zapisal.
@@ -55,15 +64,16 @@ export function createMagazynPrzebieg({ db, sklepy = {}, allegro = {}, odswiez =
 
     // Caly stan zaklada sie OD NOWA, a nie doklada do poprzedniego: blad i liczby kanalow
     // z przebiegu sprzed godziny opisywalyby przebieg, ktory wlasnie ruszyl.
-    stan = { ...STAN_POCZATKOWY, trwa: true, zaczety_at: chwila() };
+    stan = { ...STAN_POCZATKOWY, trwa: true, zaczety_at: chwila(), zakres: kanal ?? null };
 
     odswiez({
       db,
-      sklepy,
-      allegro,
+      sklepy: sklepyPrzebiegu,
+      allegro: allegroPrzebiegu,
       log,
       kanalySklepow,
       kanalyAllegro,
+      ...(trescKart === undefined ? {} : { trescKart }),
       // Postep jest OZDOBA i tak jest traktowany takze po tamtej stronie (magazyn-sync.js
       // lapie wyjatek z tej funkcji): usterka paska postepu nie ma prawa przerwac odczytu.
       postep: (info) => { stan.postep = info; },
@@ -90,5 +100,8 @@ export function createMagazynPrzebieg({ db, sklepy = {}, allegro = {}, odswiez =
   // przebieg. `kanaly` kopiowane osobno, bo rozsypanie obiektu kopiuje wylacznie referencje.
   const stanKopia = () => ({ ...stan, kanaly: [...stan.kanaly] });
 
-  return { start, stan: stanKopia, gotowy };
+  // Klucze kanalow, ktore da sie przeczytac (sklepy, potem konta Allegro) — lista wyboru na ekranie importu.
+  const kanaly = () => [...Object.keys(sklepy), ...Object.keys(allegro)];
+
+  return { start, stan: stanKopia, gotowy, kanaly };
 }

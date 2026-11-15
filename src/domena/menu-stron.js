@@ -64,6 +64,20 @@ export function nawigacjaDla({ sciezka = '/', konto = null, menu, odlozoneEkrany
   })).sort((a,b) => a.kolejnosc-b.kolejnosc);
   const odlozone = new Set(odlozoneEkrany);
   const pozycje = kandydaci.filter(p => !odlozone.has(p.klucz) && maPrawoNawigacji(konto,p.klucz));
+  const biezaca = p => p.klucz === ekranKlucz ? (sciezka.split('?')[0] === p.href ? 'page' : 'true') : null;
+  const dzieciFaktur = ['faktury', 'okresy', 'koszty'].flatMap(klucz => pozycje
+    .filter(p => p.klucz === klucz && (klucz === 'faktury' || p.grupa === 'faktury'))
+    .map(p => ({ ...p, etykieta: klucz === 'faktury' ? 'Wystawione' : p.etykieta, biezaca: biezaca(p) })));
+  const maFaktury = pozycje.some(p => p.klucz === 'faktury');
+  // PRZ-160.P3b.01: podmenu Magazynu — Produkty, Kategorie, Marki. Strona słownika jest „page” tylko pod własnym
+  // adresem; Produkty zostają bieżące na liście i kartach, ale nie na stronach słowników.
+  const adres = sciezka.split('?')[0];
+  const podstronyMagazynu = p => {
+    const slowniki = [{ href: '/magazyn/kategorie', etykieta: 'Kategorie' }, { href: '/magazyn/marki', etykieta: 'Marki' }]
+      // PRZ-160.E3.11: podstrona słownika (np. …/kategorie/<nazwa>/allegro) — słownik bieżący jako „true”.
+      .map(s => ({ ...s, biezaca: adres === s.href ? 'page' : adres.startsWith(`${s.href}/`) ? 'true' : null }));
+    return [{ href: '/magazyn', etykieta: 'Produkty', biezaca: slowniki.some(s => s.biezaca) ? null : biezaca(p) }, ...slowniki];
+  };
   // Dokumenty zamówienia nie mają własnego linku, ale nadal należą do Sprzedaży.
   const aktywnyDzial = kandydaci.find(p => p.klucz === ekranKlucz && p.dzial !== 'ustawienia')?.dzial
     ?? (ekran?.href === null ? ekran.nawigacja?.dzial : null) ?? null;
@@ -88,7 +102,15 @@ export function nawigacjaDla({ sciezka = '/', konto = null, menu, odlozoneEkrany
   // PRZ-102.03 (wariant C, właściciel 20.10): przy zamówieniach menu boczne niesie tylko pracę przy zamówieniach
   // i klientach; analizy (dział `analizy-cele`) idą do górnego paska jako `analizy`. Pozycje filtruje to samo
   // `pozycje` co wyżej (prawa i `odlozoneEkrany`), więc pusta grupa i pusty przycisk po prostu znikają.
-  const analizy = pozycje.filter(p => p.dzial === 'analizy-cele').map(p => ({ ...p, aktywna: p.klucz === ekranKlucz }));
+  // PRZ-167 (właściciel 15.11): analizy wracają z górnego paska do menu bocznego jako JEDNA pozycja „Analityka” z podmenu.
+  // Bieżąca podstrona po ADRESIE, nie po kluczu prawa: Podsumowanie (`/analityka`) i Raporty dzielą prawo `raporty`.
+  const podAdresem = p => adres === p.href || adres.startsWith(`${p.href}/`);
+  const analizy = pozycje.filter(p => p.dzial === 'analizy-cele').map(p => ({ ...p, aktywna: podAdresem(p) }));
+  const analityka = analizy.length ? {
+    klucz: 'analityka', etykieta: 'Analityka', href: analizy[0].href,
+    aktywna: analizy.some(p => p.aktywna), biezaca: analizy.some(p => p.aktywna) ? (adres === analizy[0].href ? 'page' : 'true') : null,
+    podmenu: analizy.map(p => ({ href: p.href, etykieta: p.etykieta, biezaca: adres === p.href ? 'page' : podAdresem(p) ? 'true' : null })),
+  } : null;
 
   return {
     // Kolejność w grupie: kolejność działów niżej, w dziale — `kolejnosc` z manifestu. Grupę „Klienci” wyznacza
@@ -97,15 +119,25 @@ export function nawigacjaDla({ sciezka = '/', konto = null, menu, odlozoneEkrany
       { klucz: 'obsluga', etykieta: 'Obsługa zamówień', klienci: false },
       { klucz: 'klienci', etykieta: 'Klienci', klienci: true },
     ].flatMap(grupa => {
-      const lista = ['sprzedaz', 'magazyn'].flatMap(dzial => pozycje.filter(p => p.dzial === dzial && (p.grupa === 'klienci') === grupa.klienci));
+      const lista = ['sprzedaz', 'magazyn'].flatMap(dzial => pozycje.filter(p => p.dzial === dzial && (p.grupa === 'klienci') === grupa.klienci && !(maFaktury && p.grupa === 'faktury')));
       return lista.length ? [{ klucz: grupa.klucz, etykieta: grupa.etykieta,
-        pozycje: lista.map(p => ({ ...p, aktywna: p.klucz === ekranKlucz })) }] : [];
-    }),
-    analizy: analizy.length ? { etykieta: 'Analizy i finanse', aktywna: analizy.some(p => p.aktywna), pozycje: analizy } : null,
+        pozycje: lista.map(p => ({ ...p, biezaca: biezaca(p) || (p.klucz === 'faktury' && dzieciFaktur.some(d => d.biezaca) ? 'true' : null),
+          aktywna: p.klucz === ekranKlucz || p.klucz === 'faktury' && dzieciFaktur.some(d => d.biezaca),
+          ...(p.klucz === 'faktury' && dzieciFaktur.length > 1 ? { podmenu: dzieciFaktur } : {}),
+          ...(p.klucz === 'magazyn' ? { podstrony: podstronyMagazynu(p) } : {}),
+        })) }] : [];
+    }).concat(analityka ? [{ klucz: 'wyniki', etykieta: 'Wyniki', pozycje: [analityka] }] : []),
+    // Lista podstron analiz zostaje w modelu (ekran Analityka i testy z niej korzystają); układ nie rysuje jej już
+    // ani w górnym pasku, ani jako zakładek nad treścią (PRZ-167).
+    analizy: analizy.length ? { etykieta: 'Analityka', aktywna: analizy.some(p => p.aktywna), pozycje: analizy } : null,
     dzialy,
+    // Sam adres nie włącza układu Ustawień: odmowy i 404 nie używają ich nawigacji.
+    kontekstUstawien: /^\/ustawienia(?:[/?]|$)/.test(sciezka) ? {
+      statusy: pozycje.some(p => p.klucz === 'zamowienia') ? statusyMenu(etykietyStatusow) : [],
+    } : null,
     kontekst: aktywnyDzial ? {
       dzial: aktywnyDzial,
-      statusy: aktywnyDzial === 'sprzedaz' && pozycje.some(p => p.klucz === 'zamowienia')
+      statusy: pozycje.some(p => p.klucz === 'zamowienia')
         ? statusyMenu(etykietyStatusow).map((status) => ({ ...status, aktywna: false }))
         : [],
       grupy,

@@ -132,6 +132,12 @@ export function utworzZamowienieReczne(db, dane = {}, okresRozliczeniowyId = nul
   }
 }
 
+/** Bazowy koszt ręcznego zamówienia po zastosowaniu warunków dostawy klienta. */
+export function zapiszKosztDostawyRecznego(db, id, koszt) {
+  db.prepare("UPDATE zamowienia SET koszt_dostawy_brutto = ? WHERE id = ? AND sklep = 'reczne'")
+    .run(koszt, id);
+}
+
 /**
  * Kwota zamowienia recznego IDZIE ZA POZYCJAMI — nie ma sklepu, ktory by ja narzucil.
  * Wolac po KAZDEJ zmianie pozycji albo kosztu dostawy, inaczej bariera arytmetyczna

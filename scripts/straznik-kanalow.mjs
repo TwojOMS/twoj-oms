@@ -3,6 +3,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const listaDozwolonych = {
+  'src/moduly/magazyn/services/przejecie-stanow.js': { liczba: 9, powod: 'przejęcie z lustra Allegro/Woo lub ręcznych ofert ERLI, odczyt ostrzeżeń i kontrola prowadzenia stanów Woo (PRZ-160.E4.11, D49; skutek objęcia Allegro i różnica stanu ERLI)' },
+  'src/moduly/magazyn/stany-kanalow.js': { liczba: 3, powod: 'podgląd przejęcia: ręczne oferty ERLI zamiast odczytu ostrzeżeń Allegro/Woo (PRZ-160.E4.11)' },
+  'src/moduly/magazyn/widoki/magazyn-stany-kanaly.ejs': { liczba: 2, powod: 'ostrzeżenia przejęcia swoiste dla Woo (prowadzenie stanów, backorders) i Allegro (ENDED, fulfillment), PRZ-160.E4.11' },
+  'src/moduly/magazyn/widoki/magazyn-stany-objecie.ejs': { liczba: 2, powod: 'ostrzeżenia objęcia swoiste dla Woo (prowadzenie stanów, backorders) i Allegro (ENDED, fulfillment), PRZ-160.E4.11' },
   'src/moduly/kanaly/services/kanal-erli.ts': { liczba: 1, powod: 'lokalny odczyt drogi nadania ERLI na karcie (PRZ-157.07a), używany również przy wysyłaniu numeru (06)' },
   'src/integracje/kanal-modul.ts': { liczba: 2, powod: 'wybór adapterów statusu i numeru ERLI po module (PRZ-157.05–06)' },
   'src/domena/sprawy-karty.js': { liczba: 2, powod: 'ręczne anulowanie oraz konflikt numeru ERLI wymagają sprawy (PRZ-157.05–06)' },

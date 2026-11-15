@@ -1,0 +1,61 @@
+<p class="wroc"><a href="/magazyn">← Magazyn</a></p>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', { tytul: 'Stany w kanałach', podtytul: 'Przejmij istniejące oferty i obejmij je ilością z OMS' }) %>
+<section class="panel">
+  <h2>Przejmij oferty</h2>
+  <p>Przejęcie zapisuje powiązania w OMS. Objęcie stanami w następnym kroku włącza synchronizację ilości.</p>
+  <form method="post" action="/magazyn/stany/kanaly/przejecie">
+    <label for="konto-stanow">Konto kanału</label>
+    <select id="konto-stanow" name="konto" required>
+      <% konta.forEach(function(k) { %><option value="<%= k.klucz %>" <%= dane?.konto.klucz === k.klucz ? 'selected' : '' %>><%= k.etykieta || k.klucz %></option><% }); %>
+    </select>
+    <button class="btn" type="submit">Pokaż podgląd przejęcia</button>
+  </form>
+</section>
+<% if (dane) { %>
+<section class="panel">
+  <h2>Podgląd przejęcia — <%= dane.konto.etykieta || dane.konto.klucz %></h2>
+  <% if (!dane.ustawienia.czynne) { %><p class="blad">Oferty wstrzymane — stany nie pójdą, dopóki nie włączysz Oferty czynne.</p><% } %>
+  <% if (!dane.zatwierdzone) { %><p>Stany niezatwierdzone: możesz objąć oferty, ale wysyłka poczeka na zatwierdzenie podglądu stanów.</p><% } %>
+  <% if (dane.plan.stare) { %><p class="blad">Lustro jest starsze niż 30 minut lub puste. <a href="/magazyn/import">Odczytaj katalogi</a>.</p><% } %>
+  <% if (dane.konto.typ === 'woo') { %>
+    <p>Sklep nie prowadzi własnych stanów dla <%= dane.plan.bezStanow %> produktów — OMS ich nie obejmie (w tym stany rodzica).</p>
+    <p>Backorders ≠ no: <%= dane.ostrzezeniaKanalu.backorders ?? 'brak odczytu' %> — sklep może przyjmować zamówienia ponad stan.</p>
+  <% } %>
+  <% if (dane.konto.typ === 'allegro') { %><p>Oferty ENDED: <%= dane.plan.zakonczone %>. Fulfillment: <%= dane.ostrzezeniaKanalu.fulfillment ?? 'brak odczytu' %> — Allegro może odmówić zmiany ilości.</p><% } %>
+  <p>Bez jednoznacznej karty: <%= dane.plan.bezKarty %>. Karty bez znanego stanu: <%= dane.nieznane %>.
+    <a href="/magazyn/stany/bez-karty">Pozycje bez karty (<%= dane.bezKarty %>)</a></p>
+  <% if (dane.roznice.length) { %><p>Po przejęciu zamówienia ERLI od granicy zaczną zdejmować stan kart:</p>
+  <ul><% dane.roznice.forEach(function(r) { %><li>Karta <%= r.kartaId %>: stan <%= r.przed %> → <%= r.po %></li><% }); %></ul><% } %>
+  <% if (dane.ostrzezenia.length) { %><ul><% dane.ostrzezenia.forEach(function(t) { %><li><%= t %></li><% }); %></ul><% } %>
+  <div class="tabela-scroll" tabindex="0" role="region" aria-label="Oferty do przejęcia" style="overflow:auto">
+    <table class="tresc-lista">
+      <caption>Oferty z katalogu kanału</caption>
+      <thead><tr><th scope="col">Oferta</th><th scope="col">Karta</th><th scope="col">Ilość w kanale</th><th scope="col">Status</th></tr></thead>
+      <tbody><% dane.plan.wiersze.forEach(function(w) { %><tr>
+        <th scope="row"><%= w.nazwa %> (<%= w.idZewnetrzne %>)</th>
+        <td><% if (w.kartaId) { %><a href="/magazyn/<%= w.kartaId %>">Karta <%= w.kartaId %></a><% } else { %>Brak jednoznacznej karty<% } %></td>
+        <td><%= w.ilosc ?? 'brak odczytu' %></td><td><%= w.stan ?? 'brak odczytu' %></td>
+      </tr><% }); %></tbody>
+    </table>
+  </div>
+  <form method="post" action="/magazyn/stany/kanaly/przejecie">
+    <input type="hidden" name="konto" value="<%= dane.konto.klucz %>">
+    <input type="hidden" name="podglad" value="<%= podglad %>">
+    <button class="btn btn--glowny" type="submit" name="zatwierdz" value="1">Przejmij oferty z jednoznaczną kartą</button>
+  </form>
+  <p>Podgląd jest ważny 30 minut. Przejęcie nie zmienia treści ani ilości w kanale.</p>
+</section>
+<section class="panel">
+  <h2>Obejmij stany</h2>
+  <form method="post" action="/magazyn/stany/kanaly/objecie">
+    <input type="hidden" name="konto" value="<%= dane.konto.klucz %>">
+    <fieldset><legend>Wybierz przejęte oferty</legend>
+    <% dane.oferty.forEach(function(o) { %><p>
+      <input id="oferta-<%= o.id %>" type="checkbox" name="zaznaczone" value="<%= o.id %>">
+      <label for="oferta-<%= o.id %>"><%= o.idZewnetrzne %> · karta <%= o.kartaId %><%= o.iloscZOms ? ' · już objęta' : '' %></label>
+    </p><% }); %>
+    </fieldset>
+    <button class="btn" type="submit">Pokaż podgląd objęcia</button>
+  </form>
+</section>
+<% } %>

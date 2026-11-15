@@ -34,6 +34,17 @@ export const WYMAGANE_UPRAWNIENIA = [
 ];
 
 /**
+ * PRZ-160 E3.02 (D42): zakresy do wystawiania ofert. ⚠️⚠️ OPCJONALNE, NIE WYMAGANE — i to
+ * jest decyzja. Dopisanie ich do `WYMAGANE_UPRAWNIENIA` uznałoby KAŻDE działające konto za
+ * niekompletne: pas na ekranie, otwarta bariera wiązania, a wiązanie NADPISUJE działającą
+ * parę tokenów. Konto bez nich ma działać dokładnie jak dziś; zgodę dostaje na żądanie.
+ */
+export const UPRAWNIENIA_OFERT = Object.freeze([
+  'allegro:api:sale:offers:write',
+  'allegro:api:sale:settings:read',
+]);
+
+/**
  * Zakresy z tokenu. NIGDY nie rzuca: wola to ekran stanu kanalu i pasek spraw, a wyjatek
  * tutaj wywalilby liste zamowien z powodu tokenu o nieznanym ksztalcie.
  */
@@ -59,4 +70,18 @@ export function brakujaceUprawnienia(accessToken) {
   if (ma.length === 0) return [];
   const zbior = new Set(ma);
   return WYMAGANE_UPRAWNIENIA.filter((u) => !zbior.has(u));
+}
+
+/** Czy token niesie OBA zakresy ofert. Nieczytelny token = brak zgody (nigdy nie rzuca). */
+export function maZgodeNaOferty(accessToken) {
+  const zbior = new Set(uprawnieniaZTokenu(accessToken));
+  return UPRAWNIENIA_OFERT.every((u) => zbior.has(u));
+}
+
+/**
+ * Czy WIADOMO, że token nie ma zgody na oferty. ⚠️ Nieczytelny token to „nie wiem", a nie
+ * „brak" — z tego samego powodu co w `brakujaceUprawnienia`: ta flaga otwiera wiązanie.
+ */
+export function brakZgodyNaOferty(accessToken) {
+  return uprawnieniaZTokenu(accessToken).length > 0 && !maZgodeNaOferty(accessToken);
 }

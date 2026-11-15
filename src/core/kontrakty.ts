@@ -199,6 +199,22 @@ export type ZapisZwrotnyKanalu = Readonly<{
   ustawStatus?: (idZrodla: string, status: string) => Promise<unknown>;
 }>;
 
+export type WynikKataloguKanalu =
+  | Readonly<{ ok: true; dane: unknown }>
+  | Readonly<{ ok: false; powod: string }>;
+
+/** D20: osobny kontrakt ofert. Ładunek przygotowuje adapter kanału, nie zapis statusu zamówienia. */
+export type KatalogKanalu = Readonly<{
+  odczytOfert: (filtry: Readonly<Record<string, unknown>>) => Promise<WynikKataloguKanalu>;
+  wystawOferte: (idZewnetrzne: string, dane: Readonly<Record<string, unknown>>) => Promise<WynikKataloguKanalu>;
+  zmienOferte: (idZewnetrzne: string, zmiany: Readonly<Record<string, unknown>>) => Promise<WynikKataloguKanalu>;
+  // `externalId` = identyfikator oferty w kanale (nie sygnatura OMS-u), `price` w groszach (całkowita).
+  // Allegro (PRZ-160.E3.07, D38) wymaga w każdej pozycji `commandIdIlosci`/`commandIdCeny` (UUID zapisany przez
+  // pętlę przed wywołaniem); bez nich łącznik zwraca `{ok:false}`. Pola są poza typem, by nie poszerzać kontraktu.
+  zmienIloscCene: (zmiany: readonly Readonly<{ externalId: string; stock?: number; price?: number }>[]) => Promise<WynikKataloguKanalu>;
+  stanOferty: (idZewnetrzne: string) => Promise<WynikKataloguKanalu>;
+}>;
+
 export type UmiejetnosciKanalu = Readonly<{
   zdarzenia: 'odpytywanie' | 'skrzynka';
   wymagaAkceptacji: boolean;
@@ -210,6 +226,12 @@ export type UmiejetnosciKanalu = Readonly<{
   terminWysylki: boolean;
   scalanie: boolean;
   stany: 'brak' | 'produkty' | 'oferty';
+  /** Brak deklaracji = brak umiejętności; stany opisuje tylko rodzaj katalogu. */
+  odczytOfert?: boolean;
+  wystawOferte?: boolean;
+  zmienOferte?: boolean;
+  zmienIloscCene?: boolean;
+  stanOferty?: boolean;
 }>;
 
 export type RodzajPola = 'tekst' | 'adres' | 'sekret' | 'data' | 'wybor';

@@ -39,6 +39,10 @@ export function modelNawigacjiUstawien(url = '/ustawienia', { admin = false, pod
   if (sciezka === '/ustawienia/integracje/poczta' && adres.searchParams.has('podglad')) [aktywnyDzial, aktywnaZakladka] = ['komunikacja', 'podpis'];
   const aktywny = dzialy.find(d => d.klucz === aktywnyDzial);
   const zakladki = (aktywny?.zakladki ?? []).map(p => ({ ...p, aktywna: p.klucz === aktywnaZakladka, dostepna: true }));
-  return { dzialy: dzialy.map(d => ({ klucz: d.klucz, etykieta: d.etykieta, href: d.zakladki[0].href, aktywna: d.klucz === aktywnyDzial, dostepna: true })),
+  // PRZ-167 (właściciel 15.11): aktywny dział z więcej niż jedną zakładką niesie `podstrony` — podmenu w lewym menu Ustawień.
+  // `page` tylko pod własnym adresem; formularz pod aliasem (np. /ustawienia/paczka) zaznacza podstronę jako `true`.
+  const podstrony = d => d.klucz === aktywnyDzial && d.zakladki.length > 1 ? { podstrony: d.zakladki.map(p => ({ etykieta: p.etykieta, href: p.href,
+    biezaca: p.klucz !== aktywnaZakladka ? null : sciezka === p.href ? 'page' : 'true' })) } : {};
+  return { dzialy: dzialy.map(d => ({ klucz: d.klucz, etykieta: d.etykieta, href: d.zakladki[0].href, aktywna: d.klucz === aktywnyDzial, dostepna: true, ...podstrony(d) })),
     zakladki, aktywnyDzial: aktywny ? aktywnyDzial : null, aktywnaZakladka: aktywny ? aktywnaZakladka : null };
 }

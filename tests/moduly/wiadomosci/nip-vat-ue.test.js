@@ -98,14 +98,14 @@ describe('dopasowanie klienta z numerem VAT-UE', () => {
     // karta pokazuje historię (db/zamowienia.js) — bez niej „zamówienie okresowe" nie ma
     // do czego przylgnąć.
     dopiszKlienta(db, {
-      klucz: 'alfatrend', nazwa: 'Alfatrend s.r.o.', nip: ALFATREND, b2b: 1,
+      klucz: 'testowy', nazwa: 'Pracownia Testowa s.r.o.', nip: ALFATREND, b2b: 1,
       rabat_procent: 0, chce_fakture: 1, metoda_wysylki: 'dpd', aktywny: 1,
       koszt_dostawy_brutto: '0.00', platnosc: 'przelew', termin_platnosci: null,
       komentarz: null,
     });
 
-    expect(klientPoNip(db, 'SK1000000001')?.klucz).toBe('alfatrend');
-    expect(klientPoNip(db, 'sk 1000000001')?.klucz).toBe('alfatrend');
+    expect(klientPoNip(db, 'SK1000000001')?.klucz).toBe('pracownia-testowa-s-r-o');
+    expect(klientPoNip(db, 'sk 1000000001')?.klucz).toBe('pracownia-testowa-s-r-o');
     // ⚠️ Same cyfry NIE MAJĄ dopasować się do numeru słowackiego: „1000000001" to zupełnie
     // inny podmiot (albo polski NIP kogoś trzeciego), a ciche zlanie obu w jedno
     // podstawiłoby na fakturę nabywcę, którego nikt nie wskazał.

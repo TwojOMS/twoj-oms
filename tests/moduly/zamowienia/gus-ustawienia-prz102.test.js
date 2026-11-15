@@ -78,12 +78,12 @@ function panel({ env = {}, zapisPrzedStartem = null } = {}) {
 }
 const formularz = (html) => /<form id="gus-formularz"[\s\S]*?<\/form>/u.exec(html)?.[0] ?? '';
 /** Wszystkie ekrany, na których klucz mógłby wyciec. */
-const ekrany = (id) => [ADRES, '/ustawienia/integracje', `/zamowienia/${id}?edytuj=faktura`, '/zamowienia/nowe', '/klienci?nowy=1'];
+const ekrany = (id) => [ADRES, '/ustawienia/integracje', `/zamowienia/${id}?edytuj=faktura`, '/zamowienia/nowe', '/klienci/nowy'];
 
 describe('PRZ-102.11 Ustawienia → Integracje → GUS', () => {
   it('bez pliku i bez zapisu: przycisk ukryty na karcie, nowym zamówieniu i Stałych klientach; trasy GUS odmawiają nowym komunikatem', async () => {
     const { app, admin, id } = panel();
-    for (const adres of [`/zamowienia/${id}?edytuj=faktura`, '/zamowienia/nowe', '/klienci?nowy=1']) {
+    for (const adres of [`/zamowienia/${id}?edytuj=faktura`, '/zamowienia/nowe', '/klienci/nowy']) {
       const r = await get(app, adres, admin);
       expect(r.statusCode, adres).toBe(200);
       // Pole NIP stoi — inaczej brak przycisku byłby fałszywą zielenią (przycisk siedzi obok pola NIP).
@@ -123,7 +123,7 @@ describe('PRZ-102.11 Ustawienia → Integracje → GUS', () => {
     expect(zapis.sekrety).toEqual({ klucz: KLUCZ });
     expect(zapis.kontoLogin).toBe('adam');
 
-    for (const adres of [`/zamowienia/${id}?edytuj=faktura`, '/zamowienia/nowe', '/klienci?nowy=1']) {
+    for (const adres of [`/zamowienia/${id}?edytuj=faktura`, '/zamowienia/nowe', '/klienci/nowy']) {
       expect((await get(app, adres, admin)).body, adres).toContain(PRZYCISK);
     }
     const karta = await post(app, `/zamowienia/${id}/dane/gus`, admin, { nip: NIP });

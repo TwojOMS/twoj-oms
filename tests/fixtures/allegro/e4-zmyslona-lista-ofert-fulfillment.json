@@ -1,0 +1,9 @@
+{
+ "_opis": "Zmyślone elementy listy GET /sale/offers w kształcie zmierzonym 14.11 (P20d): isFulfillment boolean na najwyższym poziomie elementu, w każdej ofercie; brak features. Oferta z true to ZAŁOŻENIE z dokumentacji Allegro (pomiar miał same false — brak ofert Allegro One Fulfillment).",
+ "offers": [
+  { "id": "9000000011", "name": "Lampa Półcień", "isFulfillment": true, "stock": { "available": 4, "unit": "UNIT" }, "publication": { "status": "ACTIVE" } },
+  { "id": "9000000012", "name": "Kinkiet Półcień", "isFulfillment": false, "stock": { "available": 2, "unit": "UNIT" }, "publication": { "status": "ACTIVE" } },
+  { "id": "9000000013", "name": "Abażur Półcień", "isFulfillment": false, "stock": { "available": 0, "unit": "UNIT" }, "publication": { "status": "ENDED" } },
+  { "id": "9000000014", "name": "Żarówka Półcień", "isFulfillment": false, "stock": { "available": 9, "unit": "UNIT" }, "publication": { "status": "ACTIVE" } }
+ ]
+}

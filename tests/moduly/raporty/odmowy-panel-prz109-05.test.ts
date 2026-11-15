@@ -16,7 +16,7 @@ const biezacy = () => dzienWarszawa(new Date().toISOString()).slice(0, 7);
 function ekran(odp: any, kod: number, zdanie: string) {
   expect(odp.statusCode).toBe(kod);
   expect(odp.headers['content-type']).toContain('text/html');
-  expect(odp.body).toContain('aria-label="Analizy i finanse"');
+  expect(odp.body).toContain('data-podmenu-lista="analityka"');
   expect(odp.body).toContain(zdanie);
 }
 

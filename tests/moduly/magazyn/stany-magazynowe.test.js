@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszProduktSklepowy, utworzKarte, powiazProdukt } from '../../../src/oms/db/magazyn.js';
 import { zapiszZamowienie, zapiszFaktyStatusu, zapiszNadpisaniaPozycji, dodajPozycjeReczna } from '../../../src/oms/db/zamowienia.js';
+import { planImportuOtwarcia } from '../../../src/domena/stany-magazynowe.js';
 import {
   przelacznikStanow, przelaczStany, stanyKart, stanKarty, historiaKarty, dodajRuch, pozycjeBezKarty,
   podgladImportuOtwarcia, zapiszImportOtwarcia,
@@ -194,6 +195,11 @@ describe('rozchód z zamówień — od razu, wyliczany', () => {
 });
 
 describe('ruchy ręczne i import otwarcia', () => {
+  it('E4 D52 — zero jest stanem znanym: plan zachowuje je bez ruchu', () => {
+    const plan = planImportuOtwarcia('PP-LAMPA-1;0', () => ({ id: 1, nazwa: 'Lampa Półcień' }));
+    expect(plan.doZapisu).toEqual([{ karta_id: 1, nazwa: 'Lampa Półcień', sku: 'PP-LAMPA-1', ilosc: 0, tylkoOtwarcie: true }]);
+    expect(plan.odrzucone).toEqual([]);
+  });
   beforeEach(() => wlacz());
 
   it('ten sam klucz drugi raz (podwójne kliknięcie) — jeden ruch', () => {

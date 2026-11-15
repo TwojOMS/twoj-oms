@@ -121,9 +121,40 @@
 </details>
 <% } %>
 
+<% const sekcjaOferty = () => { %>
+<section class="ust-sekcja">
+<%- naglowek('oferty',tytul('oferty')) %>
+<p>Zapis ofert wymaga zakresu <code>product</code> klucza ERLI. Dla klucza prawdziwego konta to niesprawdzone — sprawdź w panelu ERLI, czy klucz ma zakres product.</p>
+<form method="post" action="<%= adres %>/oferty" aria-labelledby="erli-oferty">
+<%- ukryty %>
+<fieldset<% if(env){ %> disabled<% } %>><legend>Domyślne dane ofert konta</legend>
+<% const pola=[['narzutProcent','Narzut %','text','decimal'],['progPotwierdzeniaProcent','Próg potwierdzenia zmiany ceny %','text','decimal'],['stalaIlosc','Stała liczba sztuk (wymagana)','number','numeric'],['czasWysylkiDni','Czas wysyłki w dniach','number','numeric'],['stawkaVat','Stawka VAT','select','']];
+// PRZ-160 E4.10 (D47, D48): po pierwszym włączeniu stanów — bufor, próg skoku i etykieta stałej; wcześniej formularz bez zmian.
+const pomocStanow={buforSzt:'Tyle sztuk OMS zostawi poza kanałem: wyśle stan karty pomniejszony o bufor.',progSkokuSzt:'Niewyjaśniona zmiana stanu karty większa niż próg wstrzymuje ofertę do sprawdzenia.'};
+if(locals.stanyKiedys){pola[2]=['stalaIlosc','Stała liczba sztuk (gdy stany magazynowe są wyłączone)','number','numeric'];pola.splice(3,0,['buforSzt','Bufor (szt.)','number','numeric'],['progSkokuSzt','Próg skoku stanu (szt.)','number','numeric']);}
+for(const [pole,etykieta,typ,tryb] of pola){ const id='erli-oferty-'+pole,bladPola=bledyOfert[pole]; %>
+<p><label for="<%= id %>"><%= etykieta %></label><br>
+<% if(typ==='select'){ %>
+<select id="<%= id %>" name="<%= pole %>"<% if(bladPola){ %> aria-invalid="true" aria-describedby="<%= id %>-blad"<% } %>>
+<% const wartosc=wartosciOfert[pole]??''; const opcje=['',...stawkiVat]; if(!opcje.includes(wartosc))opcje.push(wartosc); for(const v of opcje){ %><option value="<%= v %>"<% if(v===wartosc){ %> selected<% } %>><%= v===''?'Wybierz stawkę':v==='zw'?'zw':v+'%' %></option><% } %>
+</select>
+<% }else{ %>
+<input id="<%= id %>" type="<%= typ %>" name="<%= pole %>" inputmode="<%= tryb %>" value="<%= wartosciOfert[pole]??'' %>"<% if(pole==='stalaIlosc'){ %> required min="1" max="1000000" step="1"<% } if(pole==='czasWysylkiDni'){ %> min="0" max="365" step="1"<% } if(pomocStanow[pole]){ %> min="<%= pole==='buforSzt'?0:1 %>" max="1000000" step="1" aria-describedby="<%= id %>-pomoc<%= bladPola?' '+id+'-blad':'' %>"<% } if(bladPola){ %> aria-invalid="true"<% if(!pomocStanow[pole]){ %> aria-describedby="<%= id %>-blad"<% } %> autofocus<% } %>><% if(pomocStanow[pole]){ %><br><span id="<%= id %>-pomoc" class="ust-pomoc"><%= pomocStanow[pole] %></span><% } %>
+<% } if(bladPola){ %><br><span id="<%= id %>-blad"><%= bladPola %></span><% } %></p>
+<% } %>
+<%# PRZ-160 E3d.02-02: cennik dostaw jako reguły rozmiaru (identyfikator cennika ERLI wpisany tekstem); bez pola cennikDostaw. %>
+<%- include('_cenniki-reguly.ejs', {prefiks: 'erli-oferty-cenniki', zapisane: wartosciOfert?.cenniki, wyslane: Object.keys(bledyOfert).length ? wartosciOfert : null, bledy: bledyOfert, opcje: null}) %>
+<fieldset><legend>Oferty: wstrzymane / czynne</legend>
+<p id="erli-oferty-tryb-pomoc">Przy wstrzymanych ofertach działa podgląd i odczyt, ale OMS nie wysyła zmian ofert do ERLI.</p>
+<% for(const v of ['wstrzymane','czynne']){ %><p><input id="erli-oferty-<%= v %>" type="radio" name="czynne" value="<%= v %>"<% if((wartosciOfert.czynne??'wstrzymane')===v){ %> checked<% } %> aria-describedby="erli-oferty-tryb-pomoc"><label for="erli-oferty-<%= v %>"><%= v %></label></p><% } %>
+</fieldset>
+<button type="submit" class="btn btn--glowny">Zapisz ustawienia ofert</button>
+</fieldset></form></section>
+<% } %>
+
 <% if (kreator) {
      // Jeden rozwinięty krok — bieżący; zrobione są zwinięte z podsumowaniem, przyszłe widać tylko w pasku.
-     const sekcje={dane:sekcjaDane,polaczenie:sekcjaPolaczenie,metody:sekcjaMetody,nadawanie:sekcjaNadawanie,start:sekcjaStart};
+     const sekcje={dane:sekcjaDane,polaczenie:sekcjaPolaczenie,metody:sekcjaMetody,nadawanie:sekcjaNadawanie,oferty:sekcjaOferty,start:sekcjaStart};
      for (const krok of konfigurator.kroki) {
        if (krok.id === biezacy) { sekcje[krok.id](); break; }
        // Krok 2 nie ma osobnej sekcji, gdy połączenie działa — wynik widać w podsumowaniu kroku 1.
@@ -143,7 +174,8 @@
 </section>
 <% zwiniety('dane', podsumowanie.dane, sekcjaDane);
    zwiniety('metody', podsumowanie.metody, sekcjaMetody);
-   if (!pominNadawanie) zwiniety('nadawanie', podsumowanie.nadawanie, sekcjaNadawanie); %>
+   if (!pominNadawanie) zwiniety('nadawanie', podsumowanie.nadawanie, sekcjaNadawanie);
+   zwiniety('oferty',podsumowanie.oferty,sekcjaOferty); %>
 <details class="erli-odlacz"<% if(otwarte==='odlacz'){ %> open<% } %>>
 <summary>Odłącz sklep</summary>
 <form method="post" action="<%= adres %>/odlacz" aria-label="Odłączenie ERLI"><%- ukryty %><p>OMS przestanie pobierać zamówienia i usunie zapisany klucz API. Sklep wróci do kreatora.</p><p><input id="erli-odlacz" name="potwierdz" value="tak" type="checkbox" required<% if(env){ %> disabled<% } %>><label for="erli-odlacz">Potwierdzam odłączenie sklepu</label></p><button type="submit" class="btn btn--groza"<% if(env){ %> disabled<% } %>>Odłącz</button></form>

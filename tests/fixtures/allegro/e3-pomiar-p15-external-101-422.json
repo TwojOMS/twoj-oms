@@ -1,0 +1,16 @@
+{
+ "_pomiar": "P15 sandbox 14.11: external.id 100 znaków → 200, 101 → 422; znaki ASCII, spacja, / # + @ i polskie przyjęte",
+ "status": 422,
+ "body": {
+  "errors": [
+   {
+    "code": "ConstraintViolationException.MaxLength",
+    "message": "The reference number can contain up to 100 characters.",
+    "details": "ConstraintViolationException.MaxLength",
+    "path": "external",
+    "userMessage": "Sygnatura nie może mieć więcej niż 100 znaków.",
+    "metadata": {}
+   }
+  ]
+ }
+}

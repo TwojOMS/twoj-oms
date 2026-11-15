@@ -41,6 +41,14 @@ export function grosze(kwota, opis) {
 /** Grosze z powrotem na złotówki, do wyświetlenia w komunikatach/na karcie. */
 export const zl = (gr) => (gr / 100).toFixed(2);
 
+/** Liczba do prezentacji; wartości formularzy i obliczeń pozostają liczbami. */
+export const liczbaPolska = (wartosc, opcje = {}) => new Intl.NumberFormat('pl-PL', {
+  maximumFractionDigits: 3, ...opcje,
+}).format(Number(wartosc));
+
+/** Cena na karcie magazynu: „12 345,67 zł”. `zlotowki` niżej zostaje dla maili (bez odstępu tysięcy). */
+export const cenaPolska = (napis) => `${liczbaPolska(napis, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
+
 /**
  * Kwota po polsku: przecinek dziesiętny, spacja przed „zł" — do maili i komunikatów
  * operatora (napis z kropką, jak oddaje go `zl` wyżej, na napis, jaki czyta klient).
@@ -55,5 +63,7 @@ export const zl = (gr) => (gr / 100).toFixed(2);
 export function zlotowki(napis) {
   const tekst = String(napis ?? '').trim();
   if (tekst === '') return '—';
+  // Przecinek dziesiętny („12,50”) był pokazywany przed PRZ-160.09 — zostaje, odpada tylko nie-liczba.
+  if (!Number.isFinite(Number(tekst.replace(',', '.')))) return '';
   return `${tekst.replace('.', ',')} zł`;
 }

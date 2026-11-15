@@ -211,7 +211,7 @@ for (const nazwa of ['favicon-192.png', 'favicon-32.png']) {
 app.get('/favicon.ico', async (_req, reply) => reply.redirect(zasob('favicon-32.png'), 301));
 wczytajSekret(db);
 app.after(() => {
-app.addHook('preHandler', async (_req, reply) => {
+app.addHook('preHandler', async (req, reply) => {
  const view = reply.view;
  reply.view = function(page, ...args) {
    const dane = args[0];
@@ -221,7 +221,16 @@ app.addHook('preHandler', async (_req, reply) => {
      { tekst: 'Ustawienia', href: dzialy[0].href },
      { tekst: dzial.etykieta, href: dzial.href },
    ] };
-   return view.call(this, typeof page === 'string' ? sciezkaWidoku(page) : page, ...args);
+   const render = () => view.call(this, typeof page === 'string' ? sciezkaWidoku(page) : page, ...args);
+   // Dopiero trasa z nawigacją Ustawień prosi o liczniki. Odmowa/404 nie odświeża indeksu.
+   // Wspólny render GET i formularza z błędem po POST korzysta z tego samego indeksu.
+   if (dane?.nawigacja?.kontekst?.dzial === 'ustawienia') {
+     return licznikiStatusowDlaMenu(db, req, dane.nawigacja, { naZadanie: true }).then(licznikiStatusow => {
+       args[0] = { ...args[0], licznikiStatusow };
+       return render();
+     });
+   }
+   return render();
  };
 });
 app.addHook('onRequest', zbudujStraznika({
@@ -273,7 +282,8 @@ app.addHook('preHandler', async (req, reply) => {
         // `panelStatusow`, bo jako jedyne znają rzeczywiste liczniki i aktywny filtr.
         nawigacja,
         licznikWiadomosci: nawigacja.boczne?.some(g => g.pozycje.some(p => p.klucz === 'wiadomosci'))
-          ? licznikWiadomosciDlaMenu(db, req) : 0,
+          // PRZ-167: w trybie próby (piaskownica, demo) wątki są z atrapy — plakietka „czeka na odpowiedź” byłaby szumem.
+          ? (config.proba === true ? 0 : licznikWiadomosciDlaMenu(db, req)) : 0,
         modulWlaczony: (modul) => !odlozoneEkrany.includes(modul),
         // PRZ-085: liczby przy statusach na KAŻDEJ zakładce, nie tylko na liście i karcie.
         licznikiStatusow: await licznikiStatusowDlaMenu(db, req, nawigacja),

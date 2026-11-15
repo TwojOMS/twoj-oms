@@ -15,6 +15,8 @@ import {POLITYKA_REFERERA_LINKU} from '../ustawienia/trasy/haslo-link.js';
 import {UPRAWNIENIA,uprawnieniaSklepu} from '../../domena/woo-uprawnienia.js';
 import {wlaczoneReguly} from '../automatyzacje/db/reguly.js';
 import {czyPasujeKanalom} from '../../domena/automatyzacje.js';
+import {ustawieniaOfertKonta,zapiszUstawieniaOfertKonta} from '../../oms/db/oferty-kanalow.ts';
+import {stanyKiedysWlaczone} from './stany-kont.ts';
 
 const konfigurator=MODUL_WOO.konfigurator,root=konfigurator.sciezka;
 const tekst=(v:unknown)=>typeof v==='string'?v:'';
@@ -68,6 +70,10 @@ export function registerTrasyWoo(app:FastifyInstance,o:{db:DatabaseSync;repozyto
    wartosci:{ck:Boolean(d&&k?.autoryzacja!=='odlaczone'),cs:Boolean(d&&k?.autoryzacja!=='odlaczone'),od:k?.odUtc?new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Warsaw'}).format(new Date(k.odUtc)):dzis(),
     uprawnienia:d?uprawnieniaSklepu(JSON.parse(String(d.ustawienia_json))):k?'zapis':uprawnieniaZFormularza(extra.uprawnienia)??'zapis'},
    mailWyslane:mailWyslane(k?.klucz),
+   // PRZ-160 E4.10 (D48, D61): krok 6 „Stany” — ustawienia stanów sklepu (domyślnie wstrzymane) i bufor/próg konta.
+   // Ustawienia czytamy tylko przy włączonych kiedyś stanach — bez nich krok niczego nie pokazuje.
+   ...(()=>{const s=stanyKiedysWlaczone(db);return {stanyKiedys:s,ustawieniaStanow:k&&s?ustawieniaOfertKonta(db,k.klucz):null};})(),
+   bladStanow:null,wartosciStanow:null,
    formularzId:'',metody,mapowanie,metodyOms:METODY_WYSYLKI.filter(m=>!m.startsWith('allegro_')),etykiety:ETYKIETY_WYSYLKI,
    stan:k?db.prepare('SELECT ostatni_przebieg_at,zsynchronizowane_do,ostatni_blad FROM stan_pollera WHERE sklep=?').get(k.klucz):null,
    moznaUsunac:Boolean(k&&k.zrodlo==='panel'&&woo.blokadaUsuniecia(k.klucz)===null),
@@ -83,7 +89,10 @@ export function registerTrasyWoo(app:FastifyInstance,o:{db:DatabaseSync;repozyto
   app.route({method,url:root+path,logLevel:'silent',preHandler:async(req,reply)=>{
    reply.header('Cache-Control','no-store').header('Referrer-Policy',POLITYKA_REFERERA_LINKU);
    if(konto(req)?.admin!==true)return odmowa(req,reply,403,'Tylko administrator może konfigurować WooCommerce.');
-  },handler:async(req,reply)=>{try{return await fn(req,reply);}catch{return odmowa(req,reply,503,'Nie udało się wykonać operacji WooCommerce. Odśwież ekran i sprawdź stan sklepu.');}}});
+  },handler:async(req,reply)=>{try{return await fn(req,reply);}catch(e){
+   if(e instanceof Error&&'dlaOperatora' in e&&e.dlaOperatora===true&&'kod' in e&&e.kod==='konflikt')return blad(req,reply,{ok:false,kod:'konflikt',komunikat:e.message},repo.pobierz(klucz(req))??undefined);
+   return odmowa(req,reply,503,'Nie udało się wykonać operacji WooCommerce. Odśwież ekran i sprawdź stan sklepu.');
+  }}});
  }
  trasa('GET','/nowy',(req,reply)=>widok(req,reply));
  trasa('POST','/szkice',(req,reply)=>{
@@ -120,13 +129,31 @@ export function registerTrasyWoo(app:FastifyInstance,o:{db:DatabaseSync;repozyto
   const sprawdzenie=await (s.praca=woo.sprawdz(s.klucz));
   return sprawdzenie.ok?powrot(reply,s.klucz):blad(req,reply,sprawdzenie,kanal(s.klucz)!);
  }
- const operacje=['klucze','sprawdz','mapowanie','data-startu','aktywuj','pobieranie','nazwa','odlacz','usun'] as const;
+ // PRZ-160 E4.10: zapis kroku 6 „Stany”. Nie zmienia wersji sklepu (to ustawienia konta w kanaly_oferty_ustawienia).
+ const STANY_WYLACZONE='Stany magazynowe są wyłączone — ten krok nic nie robi.';
+ const TYLKO_ODCZYT_STANOW='Klucz tylko do odczytu — stanów nie zapiszemy.';
+ const liczbaStanow=(v:unknown)=>typeof v==='string'&&/^-?\d+$/.test(v.trim())?Number(v.trim()):NaN;
+ function zapiszStany(req:FastifyRequest,reply:FastifyReply,k:PolaczenieKanalu,b:Record<string,unknown>){
+  const odmowStanow=(komunikat:string,pole:string|null)=>widok(req,reply.code(400),k,{blad:komunikat,bladStanow:pole?{pole,komunikat}:null,wartosciStanow:b});
+  if(!stanyKiedysWlaczone(db))return odmowStanow(STANY_WYLACZONE,null);
+  const d=db.prepare('SELECT ustawienia_json FROM kanaly_sklepy WHERE klucz=?').get(k.klucz) as {ustawienia_json?:string}|undefined;
+  const czynne=b.czynne==='czynne';
+  if(czynne&&uprawnieniaSklepu(JSON.parse(String(d?.ustawienia_json??'{}')))==='odczyt')return odmowStanow(TYLKO_ODCZYT_STANOW,null);
+  try{zapiszUstawieniaOfertKonta(db,k.klucz,{czynne,buforSzt:liczbaStanow(b.buforSzt),progSkokuSzt:liczbaStanow(b.progSkokuSzt)},{aktor:aktor(req).login,teraz:teraz().toISOString()});}
+  catch(e){
+   const komunikat=e instanceof Error?e.message:'Niepoprawne ustawienie stanów.';
+   return odmowStanow(komunikat,komunikat.startsWith('Bufor')?'buforSzt':komunikat.startsWith('Próg')?'progSkokuSzt':null);
+  }
+  return powrot(reply,k.klucz);
+ }
+ const operacje=['klucze','sprawdz','mapowanie','data-startu','aktywuj','pobieranie','nazwa','odlacz','usun','stany'] as const;
  for(const operacja of operacje)trasa('POST','/:kanal/'+operacja,async(req,reply)=>{
   if(operacja==='klucze'&&klucz(req)==='nowy')return utworz(req,reply);
   const k=kanal(klucz(req)),b=body(req),v=wersja(b.wersja),a=aktor(req);
   if(!k)return odmowa(req,reply,409,'Nie znaleziono sklepu. Odśwież ekran.');
   if(k.zrodlo==='env')return odmowa(req,reply,409,'Ten sklep jest ustawiony w pliku konfiguracji (oms.env) — tam go zmień. Formularz niczego nie zapisał.');
   if(k.wersja!==v)return blad(req,reply,{ok:false,kod:'konflikt',komunikat:'Formularz jest nieaktualny. Odśwież ekran.'},k);
+  if(operacja==='stany')return zapiszStany(req,reply,k,b);
   let w;
   switch(operacja){
    case 'klucze':{const p=polaZFormularza(konfigurator.kroki[1],b);let v2=v;

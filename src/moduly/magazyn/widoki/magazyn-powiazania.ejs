@@ -26,7 +26,58 @@
     formularzami GET i oboma POST-ami. Inaczej dzialalby do pierwszego klikniecia. %>
 <p class="wroc"><a href="<%= adresPowrotu %>">← Magazyn</a></p>
 
+<% if (typeof kontaErli !== 'undefined' && kontaErli.length) { %>
+<section class="panel">
+  <div class="panel-glowa"><h2>Oferty ręczne ERLI</h2></div>
+  <div class="panel-cialo">
+    <p>Pobierz propozycje po EAN lub SKU. Przejęta oferta będzie tylko obserwowana.</p>
+    <% kontaErli.forEach(konto => { %>
+      <form method="post" action="/magazyn/powiazania/erli/pobierz" class="w-linii" aria-label="Pobranie ofert <%= konto %>">
+        <input type="hidden" name="konto" value="<%= konto %>">
+        <button class="btn" type="submit">Pobierz oferty z ERLI · <%= konto %></button>
+      </form>
+    <% }); %>
+  </div>
+</section>
+<% } %>
+
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Powiązania ofert Allegro", podtytul: "oferta wiąże się z kartą ręcznie — Allegro nie niesie naszego numeru"}) %>
+
+<% if (locals.podgladPrzepiecia) { %>
+  <%# E4.14 / D59: przy włączonych stanach przepięcie zmienia stan kart — zamówienia od włączenia stanów
+      przechodzą z ofertą. Nic jeszcze nie zapisano; zapis dopiero przyciskiem niżej (to samo ciało + potwierdz=1). %>
+  <section class="panel" id="podglad-przepiecia" aria-labelledby="podglad-przepiecia-tytul">
+    <div class="panel-glowa">
+      <h2 id="podglad-przepiecia-tytul">Sprawdź przed zapisem: zmiana stanu kart</h2>
+    </div>
+    <div class="panel-cialo">
+      <p role="status">Nic jeszcze nie zapisano. Zamówienia z tej oferty złożone od włączenia stanów
+        (<%= podgladPrzepiecia.granicaTekst %>) przejdą razem z nią, więc stan kart zmieni się tak:</p>
+      <table class="tab-pozycje">
+        <thead><tr><th>Karta</th><th>Stan teraz</th><th>Po zapisie</th></tr></thead>
+        <tbody>
+          <% podgladPrzepiecia.karty.forEach(function (k) { %>
+            <tr>
+              <td><a href="/magazyn/<%= k.kartaId %>"><%= k.nazwa %></a></td>
+              <td><%= k.przed %></td>
+              <td><%= k.przed %> → <strong><%= k.po %></strong></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+      <div class="stopka-edycji">
+        <form method="post" action="<%= podgladPrzepiecia.akcja %>">
+          <% podgladPrzepiecia.pola.forEach(function (p) { %>
+            <input type="hidden" name="<%= p.nazwa %>" value="<%= p.wartosc %>">
+          <% }); %>
+          <input type="hidden" name="potwierdz" value="1">
+          <button class="btn btn--glowny" type="submit"><%= podgladPrzepiecia.odpiecie ? 'Odepnij i przenieś stan' : 'Zapisz powiązania i przenieś stan' %></button>
+        </form>
+        <a class="btn" href="<%= adresBezFiltrow %>">Nie zapisuj</a>
+      </div>
+    </div>
+  </section>
+<% } %>
 
 <% if (wynik) { %>
   <%# ⚠️ EKRAN WYNIKU JEST JEDYNYM MIEJSCEM, W KTORYM WIDAC, CZEGO PANEL NIE TKNAL

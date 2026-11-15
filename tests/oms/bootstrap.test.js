@@ -147,7 +147,9 @@ describe('zbudujOms — okablowanie usługi', () => {
     expect(r.statusCode).toBe(200);
     // Znacznik ZYWEGO ekranu (web/views/magazyn-lista.ejs), a nie tresci strony „pusta
     // celowo" (routes/magazyn.js: stala BEZ_SKLEPOW).
-    expect(r.body).toContain('Odczyt katalogów');
+    // PRZ-160 P3b.03b: pasek „Odczyt katalogów" pojawia się już tylko przy trwaniu albo błędzie — znacznikiem
+    // żywego ekranu jest tabela kart.
+    expect(r.body).toContain('<table class="tresc-lista magazyn-tabela">');
     expect(r.body).not.toContain('nie ma podpiętego żadnego sklepu');
   });
 
@@ -1225,8 +1227,15 @@ describe('src/oms.js pozostaje cienkim punktem wejścia', () => {
       ['api-dziennik', 3600000],
       // PRZ-153.E5.1: sprzątanie idempotencji API (wpisy starsze niż 7 dni).
       ['api-idempotencja', 3600000],
+      // PRZ-160.E2.05: pętla ofert ERLI (co 5 min; bez czynnego konta ERLI zero zapisów).
+      ['petlaOfert', 300000],
+      // PRZ-160.E3.09b: pętla ofert Allegro (co 5 min; bez konta z zgodą na oferty zero zapytań).
+      ['petlaOfertAllegro', 300000],
+      // PRZ-160.E4.15: pętla stanów Woo (co 5 min) i strażnik stanów (co 30 s; przy wyłączonych stanach nic nie robi).
+      ['petlaStanowWoo', 300000],
+      ['straznikStanow', 30000],
     ].sort());
-    expect(wynik.liczba).toBe(15);
+    expect(wynik.liczba).toBe(19);
     expect(zrodlo).not.toMatch(/setInterval/);
   });
 });

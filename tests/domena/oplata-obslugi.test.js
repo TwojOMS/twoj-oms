@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
-  oplataDlaZamowienia, NAZWA_OBSLUGI, NAZWA_KURIERA,
+  oplataDlaZamowienia, NAZWA_OBSLUGI,
 } from '../../src/domena/oplata-obslugi.js';
 
 const KLIENT = {
-  klucz: 'przykladowa', rabatProcent: 30, progDarmowejDostawyGr: 50000,
-  oplataObslugiGr: 400, oplataKurierskaGr: 1900,
+  klucz: 'przykladowa', rabatProcent: 30, progGr: 50000,
+  obslugaGr: 400, kosztDostawy: '19.00',
 };
 
 describe('oplataDlaZamowienia', () => {
@@ -14,9 +14,9 @@ describe('oplataDlaZamowienia', () => {
       .toEqual({ nazwa: NAZWA_OBSLUGI, kwotaGr: 400 });
   });
 
-  it('nasza wysylka to oplata kurierska', () => {
+  it('nasza wysylka nie tworzy osobnej pozycji kurierskiej', () => {
     expect(oplataDlaZamowienia({ etykietaKlienta: false, wartoscTowaruGr: 10000, klient: KLIENT }))
-      .toEqual({ nazwa: NAZWA_KURIERA, kwotaGr: 1900 });
+      .toBeNull();
   });
 
   it('powyzej progu nasza wysylka jest darmowa', () => {
@@ -29,9 +29,9 @@ describe('oplataDlaZamowienia', () => {
       .toBeNull();
   });
 
-  it('grosz pod progiem jeszcze platna', () => {
+  it('grosz pod progiem dostawa pozostaje osobną kwotą zamówienia', () => {
     expect(oplataDlaZamowienia({ etykietaKlienta: false, wartoscTowaruGr: 49999, klient: KLIENT }))
-      .toEqual({ nazwa: NAZWA_KURIERA, kwotaGr: 1900 });
+      .toBeNull();
   });
 
   it('prog NIE dotyczy etykiety klienta — tam nie ma czego zwalniac', () => {

@@ -1,8 +1,11 @@
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { ktoKlikal } from '../../zamowienia/lista.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
+import { nazwaKuriera, opisTerminu } from '../../../domena/podjazdy.js';
 
 // PRZ-152.G13: odmowy tras podjazdów w układzie OMS (status i tekst bez zmian).
+// PRZ-160 P4.02: nazwa kuriera (ALLEGRO_ONE_KURIER → „Allegro One Kurier”) i termin bez godzin w widokach.
+const POMOCNICY = { nazwaKuriera, opisTerminu };
 const LISTA = { wroc: '/przesylki', napisWroc: 'Wróć do listy przesyłek' };
 const bezKont = (reply) => stronaOdmowy(reply, 503, 'Konta Allegro są niedostępne.', { tytul: 'Podjazdy Allegro są niedostępne', ...LISTA });
 
@@ -25,13 +28,13 @@ export function registerPodjazdyRoutes(app, { db, podjazdy, adresDomyslny }) {
       LEFT JOIN przesylki s ON s.id = pp.przesylka_id
       LEFT JOIN zamowienia z ON z.id = s.zamowienie_id
       GROUP BY p.id ORDER BY p.utworzony_at DESC, p.id DESC`).all();
-    return reply.view('podjazdy-historia.ejs', { szerokosc: 'tabela', title: 'Historia podjazdów Allegro', wiersze });
+    return reply.view('podjazdy-historia.ejs', { ...POMOCNICY, szerokosc: 'tabela', title: 'Historia podjazdów Allegro', wiersze });
   });
 
   app.get('/przesylki/podjazdy', async (req, reply) => {
     const paczki = wybrane(db, req.query?.ids);
     if (!paczki.length) return reply.redirect('/przesylki?pokaz=utworzone');
-    return reply.view('podjazdy.ejs', { title: 'Podjazdy Allegro', faza: 'wybor', paczki,
+    return reply.view('podjazdy.ejs', { ...POMOCNICY, title: 'Podjazdy Allegro', faza: 'wybor', paczki,
       data: dzienWarszawa(new Date().toISOString()), adres: adresDomyslny,
       grupy: [], blad: null });
   });
@@ -44,10 +47,10 @@ export function registerPodjazdyRoutes(app, { db, podjazdy, adresDomyslny }) {
       if (!podjazdy) throw new Error('Konta Allegro są niedostępne.');
       const podglad = await podjazdy.przygotuj({ ids: lista(req.body?.ids).map(Number),
         data, adres, kto: ktoKlikal(req) });
-      return reply.view('podjazdy.ejs', { title: 'Podjazdy Allegro', faza: 'podglad',
+      return reply.view('podjazdy.ejs', { ...POMOCNICY, title: 'Podjazdy Allegro', faza: 'podglad',
         paczki, ...podglad, blad: null });
     } catch (error) {
-      return reply.code(400).view('podjazdy.ejs', { title: 'Podjazdy Allegro', faza: 'wybor',
+      return reply.code(400).view('podjazdy.ejs', { ...POMOCNICY, title: 'Podjazdy Allegro', faza: 'wybor',
         paczki, data, adres, grupy: [], blad: error.message });
     }
   });
@@ -62,7 +65,7 @@ export function registerPodjazdyRoutes(app, { db, podjazdy, adresDomyslny }) {
     } catch (error) {
       try {
         const podglad = podjazdy.pobierzPodglad({ id: req.body?.podgladId });
-        return reply.code(400).view('podjazdy.ejs', { title: 'Podjazdy Allegro', faza: 'podglad',
+        return reply.code(400).view('podjazdy.ejs', { ...POMOCNICY, title: 'Podjazdy Allegro', faza: 'podglad',
           paczki: [], ...podglad, blad: `Nie zamówiono podjazdu: ${error.message}` });
       } catch {
         return stronaOdmowy(reply, 400, `Nie zamówiono podjazdu: ${error.message}`, { tytul: 'Nie zamówiono podjazdu', ...LISTA });
@@ -74,7 +77,7 @@ export function registerPodjazdyRoutes(app, { db, podjazdy, adresDomyslny }) {
     if (!podjazdy) return bezKont(reply);
     try {
       const podglad = podjazdy.pobierzPodglad({ id: req.params.id });
-      return reply.view('podjazdy.ejs', { title: 'Podjazdy Allegro', faza: 'podglad',
+      return reply.view('podjazdy.ejs', { ...POMOCNICY, title: 'Podjazdy Allegro', faza: 'podglad',
         paczki: [], ...podglad, blad: null });
     } catch (error) {
       return stronaOdmowy(reply, 404, error.message, { tytul: 'Nie ma takiego podglądu podjazdu', ...LISTA });
@@ -85,7 +88,7 @@ export function registerPodjazdyRoutes(app, { db, podjazdy, adresDomyslny }) {
     if (!podjazdy) return bezKont(reply);
     try {
       const wynik = await podjazdy.sprawdz({ id: Number(req.params.id) });
-      return reply.view('podjazdy.ejs', { title: 'Podjazdy Allegro', faza: 'wynik', wynik,
+      return reply.view('podjazdy.ejs', { ...POMOCNICY, title: 'Podjazdy Allegro', faza: 'wynik', wynik,
         okruszki: [{ tekst: 'Przesyłki', href: '/przesylki' }, { tekst: `Podjazd ${req.params.id}` }],
         grupy: [], paczki: [], blad: null });
     } catch (error) {

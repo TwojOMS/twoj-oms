@@ -84,7 +84,7 @@
 <% if (klienci.length) { %>
   <section class="klient-staly" id="klient">
     <div class="magazyn-pasek">
-      <label class="magazyn-pole">Stały klient
+      <label class="magazyn-pole">Klient B2B
         <select name="klient_klucz">
           <option value="">— wybierz z bazy —</option>
           <% klienci.forEach(function (k) { %>
@@ -97,11 +97,11 @@
       <% if (opisWybranego) { %><span class="klient-opis"><%= opisWybranego %></span><% } %>
     </div>
     <p class="wyjasnienie">Wstawienie <b>nadpisze</b> dane klienta i ustalenia poniżej. Pozycji nie dotyka.
-      Klientów dopisujesz na ekranie <% if (modulWlaczony('klienci')) { %><a href="/klienci"><% } %>Stali klienci<% if (modulWlaczony('klienci')) { %></a><% } else { %> (moduł wyłączony)<% } %> albo przyciskiem na karcie zamówienia.</p>
+      Klientów dopisujesz na ekranie <% if (modulWlaczony('klienci')) { %><a href="/klienci"><% } %>Klienci B2B<% if (modulWlaczony('klienci')) { %></a><% } else { %> (moduł wyłączony)<% } %> albo przyciskiem na karcie zamówienia.</p>
   </section>
 <% } else { %>
-  <p class="wyjasnienie">Baza stałych klientów jest pusta — dopiszesz do niej klienta przyciskiem
-    „Zapamiętaj tego klienta" na karcie zamówienia albo na ekranie <% if (modulWlaczony('klienci')) { %><a href="/klienci"><% } %>Stali klienci<% if (modulWlaczony('klienci')) { %></a><% } else { %> (moduł wyłączony)<% } %>.</p>
+  <p class="wyjasnienie">Baza klientów B2B jest pusta — dopiszesz do niej klienta przyciskiem
+    „Zapamiętaj tego klienta" na karcie zamówienia albo na ekranie <% if (modulWlaczony('klienci')) { %><a href="/klienci"><% } %>Klienci B2B<% if (modulWlaczony('klienci')) { %></a><% } else { %> (moduł wyłączony)<% } %>.</p>
 <% } %>
 
 <div class="metryczka">
@@ -208,9 +208,8 @@
             <% }); %>
           </select>
         </label>
-        <%# Dotyczy WYLACZNIE klientow rozliczanych zbiorczo (OMS_KLIENCI_ZBIORCZY): przy
-            wlasnej etykiecie klient placi za obsluge, a nie za transport. Przy pozostalych
-            zamowieniach zaznaczenie nie zmienia niczego — patrz services/oplata.js. %>
+        <%# Każdy stały klient: własna etykieta zeruje dostawę, a włączona obsługa
+            dodaje pozycję opłaty. Odbiór osobisty ma pierwszeństwo — services/oplata.js. %>
         <label class="pole-przelacznik">
           <input type="checkbox" name="etykieta_klienta" <%= formularz.etykieta_klienta ? 'checked' : '' %>>
           Klient nadaje na swojej etykiecie
@@ -228,7 +227,7 @@
         <%# (domain/kanaly-raportowe.js). Da sie to poprawic pozniej na karcie. %>
         <label class="pole-przelacznik">
           <input type="checkbox" name="b2b" <%= formularz.b2b ? 'checked' : '' %>>
-          B2B — sprzedaż hurtowa (osobny kanał w raportach)
+          Liczony w raportach jako kanał B2B (hurt)
         </label>
         <%# ⚠️ TERMIN UZGODNIONY Z KLIENTEM, nie wybor na fakturze. Wchodzi do maila %>
         <%# z potwierdzeniem i podstawia sie w formularzu faktury — ale NIGDY nie wygrywa %>
@@ -246,7 +245,7 @@
         <%# ⚠️ RABAT DZIALA NA POZYCJE DODAWANE Z MAGAZYNU I TYLKO NA NIE — pozycja wpisana %>
         <%# z reki niesie juz cene uzgodniona. Ceny licza sie przy DODAWANIU, wiec rabat %>
         <%# wpisz PRZED szukaniem w magazynie; na karcie da sie go zmienic i przeliczyc. %>
-        <label>Rabat stałego klienta (%)
+        <label>Rabat klienta B2B (%)
           <input name="rabat_procent" value="<%= wart(formularz.rabat_procent) %>" inputmode="numeric" placeholder="0">
         </label>
         <p class="wyjasnienie">Rabat wchodzi w ceny pozycji dodawanych z magazynu (0–<%= rabatMax %>%).

@@ -215,12 +215,14 @@ describe('klient Allegro — faktura', () => {
   // w jednym pliku zostawiłoby drugi z listą, która milczy o połowie metod.
   // Podjazdy (22.09): trzy odczyty i jedno nieodwracalne zlecenie, z osobnym
   // kontraktem i blokadą w tests/oms/allegro-podjazdy-klient.test.js.
-  it('biała lista metod obejmuje teraz DOKŁADNIE dwadzieścia osiem (PRZ-128: dwa odczyty)', () => {
+  it('biała lista metod obejmuje teraz DOKŁADNIE pięćdziesiąt (PRZ-160.E3.03: dwadzieścia metod ofert)', () => {
     const { k } = klient();
     expect(Object.keys(k).sort()).toEqual([
       'deklarujZalacznikWiadomosci',
-      'pobierzEtykieteWza', 'pobierzFakturyZamowienia', 'pobierzMetodeDostawy', 'pobierzMojeKonto', 'pobierzOferte',
-      'pobierzOferty', 'pobierzPodjazd', 'pobierzPropozycjePodjazdu', 'pobierzPropozycjeWysylki',
+      'pobierzEtykieteWza', 'pobierzFakturyZamowienia',
+      // PRZ-160.04a: kategoria i jej parametry — wyłącznie odczyt (`GET /sale/categories/{id}[/parameters]`).
+      'pobierzKategorie', 'pobierzMetodeDostawy', 'pobierzMojeKonto', 'pobierzOferte',
+      'pobierzOferty', 'pobierzParametryKategorii', 'pobierzPodjazd', 'pobierzPropozycjePodjazdu', 'pobierzPropozycjeWysylki',
       // ⚠️ `pobierzWatki` i `pobierzWiadomosci` — Centrum wiadomości (spec 2026-08-28),
       // wyłącznie odczyt (`GET /messaging/threads…`).
       // `pobierzSprawy` (28.08.2026) tylko CZYTA `GET /sale/issues` — bariera zapisu bez zmian.
@@ -233,6 +235,11 @@ describe('klient Allegro — faktura', () => {
       // ktory dostaje powiadomienie. Bariera zapisu nizej rosnie razem z nia.
       'ustawStatusRealizacji', 'utworzPrzesylke', 'wgrajZalacznikWiadomosci', 'wyslijPlikFaktury',
       'wyslijWiadomosc', 'zglosFakture', 'zlecPodjazd',
-    ]);
+      // PRZ-160.E3.03: wystawianie ofert — zapisy wylicza tests/oms/allegro-client-zapis.test.js.
+      'dopasujKategorie', 'edytujOferte', 'komendaCeny', 'komendaIlosci', 'komendaPublikacji', 'ofertyKonta', 'ofertyPoSygnaturze',
+      'oplatyOferty', 'pobierzCenniki', 'pobierzGwarancje', 'pobierzOsobyOdpowiedzialne', 'pobierzProducentow',
+      'pobierzReklamacje', 'pobierzZwroty', 'podgladOplat', 'stanOperacji', 'szukajProduktow', 'ustawieniaPodatku',
+      'utworzOferte', 'wgrajZdjecie', 'wynikKomendy',
+    ].sort());
   });
 });

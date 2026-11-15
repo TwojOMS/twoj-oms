@@ -36,7 +36,8 @@ const zamowienieAllegro = (ilosc, at = '2026-10-17T09:00:00.000Z') => zapiszZamo
 describe('stany wyłączone (domyślnie) — ekrany jak przed PRZ-091', () => {
   it('lista bez kolumny „Na stanie” i bez paska stanów, karta bez sekcji stanu', async () => {
     const lista = (await get('/magazyn')).body;
-    expect(naglowekTabeli(lista)).toContain('Paczkomat');
+    expect(naglowekTabeli(lista)).toContain('Kategoria');
+    expect(naglowekTabeli(lista)).not.toContain('Paczkomat');
     expect(naglowekTabeli(lista)).not.toContain('Na stanie');
     expect(lista).not.toContain('class="magazyn-stany"');
     const k = (await get(`/magazyn/${karta}`)).body;
@@ -57,7 +58,7 @@ describe('stany włączone', () => {
   it('lista: kolumna „Na stanie” z liczbą, minus oznaczony, pasek z odnośnikami', async () => {
     zamowienieAllegro(2);
     const html = (await get('/magazyn')).body;
-    expect(naglowekTabeli(html)).toContain('Na stanie');
+    expect(naglowekTabeli(html)).toContain('Na stanie (szt.)');
     expect(/<td class="liczba kol-na-stanie stan-minus">-2<\/td>/u.test(html)).toBe(true);
     const pasek = /<p class="magazyn-stany">[\s\S]*?<\/p>/u.exec(html)?.[0] ?? '';
     expect(pasek).toContain('1 na minusie');

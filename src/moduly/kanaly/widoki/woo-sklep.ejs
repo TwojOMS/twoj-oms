@@ -81,6 +81,7 @@
 <p>Ostatni przebieg: <%= stan?.ostatni_przebieg_at ? fmtDataCzasKrotko(stan.ostatni_przebieg_at) : 'Brak' %>. <% if (stan?.zsynchronizowane_do) { %><%# Kursor pollera to date_modified_gmt z Woo — bez strefy, ale w UTC. %><% const sukces = String(stan.zsynchronizowane_do); %>Zamówienia uzupełnione do: <%= fmtDataCzasKrotko(/(Z|[+-]\d\d:?\d\d)$/.test(sukces) ? sukces : sukces + 'Z') %>.<% } else { %>Jeszcze nie pobrano zamówień.<% } %><% if (stan?.ostatni_blad) { %> Ostatnie pobieranie się nie udało — sprawdź połączenie ze sklepem.<% } %></p>
 <% if (!tylkoOdczyt && k.autoryzacja === 'polaczone') { %><form method="post" action="<%= adres %>/pobieranie"><input type="hidden" name="wersja" value="<%= k.wersja %>"><input type="hidden" name="wlaczone" value="<%= k.pobieranie === 'wlaczone' ? 'nie' : 'tak' %>"><button class="btn btn--maly" type="submit"><%= k.pobieranie === 'wlaczone' ? 'Wstrzymaj' : 'Wznów' %></button></form><% } %>
 </section>
+<%- include('woo-stany', { tytul: konfigurator.kroki[5].tytul, uprawnieniaKlucza, tylkoOdczyt, stanyKiedys: locals.stanyKiedys === true, ustawieniaStanow: locals.ustawieniaStanow, bladStanow: locals.bladStanow ?? null, wartosciStanow: locals.wartosciStanow ?? null }) %>
 <% } %>
 <% if (!tylkoOdczyt) { %>
 <section class="ust-sekcja"><h2>Zarządzanie sklepem</h2>

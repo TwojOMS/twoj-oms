@@ -156,7 +156,9 @@
     archiwum nie wie o calej epoce sprzed pazdziernika 2024: liczby sa wtedy wylacznie ze
     sklepu A, bez Allegro, hurtu i telefonu. Schowane za klikniecie przestaje
     chronic przed jedynym bledem, ktory tu grozi — przeczytaniem ich jako calej sprzedazy. %>
-<% if (zastrzezeniaHistorii.length) { %>
+<%# PRZ-167 (właściciel 15.11: „usuń to z demo”): w trybie próby (piaskownica, demo) dane są z generatora — bez historii Apilo %>
+<%# i bez granic, więc zastrzeżenia o historii i pas „Zanim uwierzysz” mówiłyby o konfiguracji, której demo nie ma. %>
+<% if (zastrzezeniaHistorii.length && !locals.proba) { %>
   <div class="pasek-uwaga pasek-uwaga--epoka">
     <% zastrzezeniaHistorii.forEach(function (z) { %>
       <p><%= z %></p>
@@ -169,7 +171,7 @@
     znaczyc. Lista jest zamknieta (domain/ostrzezenia-raportu.js) i widok jej nie rozszerza.
     Od 17.08.2026 tresc jest zwinieta w <details> — naglowek mowi, ILE zastrzezen czeka,
     a cztery dlugie punkty nie stoja przed liczbami, po ktore operator przyszedl. %>
-<% if (ostrzezenia.length) { %>
+<% if (ostrzezenia.length && !locals.proba) { %>
   <details class="ostrzezenia-zwijane">
     <summary><strong>Zanim uwierzysz w te liczby</strong> —
       <%= ile(ostrzezenia.length, 'zastrzeżenie', 'zastrzeżenia', 'zastrzeżeń') %> do tego okresu</summary>

@@ -17,7 +17,7 @@ describe('PRZ-154 E2.2 — tytuł na sześciu ekranach bez h1', () => {
   it.each([
     ['nowe zamówienie', () => '/zamowienia/nowe'],
     ['klienci', () => '/klienci'],
-    ['edycja klienta', () => `/klienci/${klientId}/edytuj`],
+    ['edycja klienta', () => `/klienci/${klientId}`],
     ['okresy', () => '/okresy'],
     ['karta okresu', () => `/okresy/${okresId}`],
     ['karta podjazdu', () => '/przesylki/podjazdy/1'],

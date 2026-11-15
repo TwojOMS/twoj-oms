@@ -110,7 +110,9 @@ describe('PRZ-075 demo publiczne — ekrany', () => {
     const a = await panel(envDemo);
     const r = await a.app.inject({ url: '/', headers: { cookie: await zaloguj(a, LOGIN, HASLO) } });
     expect(r.statusCode, r.body).toBe(200);
-    expect(r.body).toContain('Wersja demonstracyjna');
+    // PRZ-167: demo publiczne ma pasek z odliczaniem — informacja o generatorze stoi w jego dopisku, bez zielonego pasa listy.
+    expect(r.body).toContain('Dane z generatora, połączenia ze sklepami, Allegro i kurierami są wyłączone.');
+    expect(r.body).not.toContain('class="pas-demo"');
     expect(r.body).not.toContain('Brak synchronizacji');
     const p = await panel(envProdukcja);
     const rp = await p.app.inject({ url: '/', headers: { cookie: await zaloguj(p, 'adam', 'admin-haslo-123') } });

@@ -45,7 +45,7 @@ it.each(['demo', 'sandbox'])('%s: zegar importuje ERLI, a health widzi aktywne Å
   await vi.advanceTimersByTimeAsync(30_000);
   expect(liczba()).toBe(0);
   await vi.advanceTimersByTimeAsync(90_000);
-  expect(liczba()).toBe(15);
+  expect(liczba()).toBe(30);
   const zamowienia = db.prepare("SELECT * FROM zamowienia WHERE sklep='erli_polcien'").all();
   const drogi = zamowienia.map(z => drogaErliDlaZamowienia(db, z));
   expect(drogi.some(d => d?.droga === 'przesylki_erli')).toBe(true);

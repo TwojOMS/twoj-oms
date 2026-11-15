@@ -42,7 +42,7 @@ describe('PRZ065 menu zaakceptowanej makiety',()=>{
     const n=model('/przesylki') as any;
     // PRZ-102.03 (wariant C): analizy (`/raporty`) nie stoją już w menu bocznym, tylko pod przyciskiem w pasku —
     // „wszystkie dozwolone ekrany na każdej zakładce” to teraz boczne + analizy.
-    expect(n.boczne.flatMap((g:any)=>g.pozycje).map((p:any)=>p.href)).toEqual(['/','/przesylki','/faktury','/wiadomosci','/magazyn']);
+    expect(n.boczne.flatMap((g:any)=>g.pozycje).map((p:any)=>p.href)).toEqual(['/','/przesylki','/faktury','/wiadomosci','/magazyn','/raporty']); // PRZ-167: + Analityka (pierwsza podstrona)
     expect(n.analizy.pozycje.map((p:any)=>p.href)).toEqual(['/raporty']);
     expect(n.boczne.flatMap((g:any)=>g.pozycje).filter((p:any)=>p.aktywna).map((p:any)=>p.href)).toEqual(['/przesylki']);
   });
@@ -91,7 +91,7 @@ describe('PRZ065 odbiór regresji ramy',()=>{
     expect(h).toContain('<main class="kolumna-glowna szer-karta">');
     expect(h.slice(h.indexOf('<main class="kolumna-glowna szer-karta">'))).toContain('<h1>Przesyłki</h1>');
     for(const url of ['/ustawienia/firma','/ustawienia/zamowienia-i-wysylka','/ustawienia/integracje','/ustawienia/szablony-wiadomosci','/ustawienia/lacznosc','/ustawienia/konta'])expect(h).toContain('href="'+url+'"');
-    expect(h.match(/<li class="aktywna">\s*<a href="\/ustawienia\/moduly" aria-current="page">/g)).toHaveLength(2);
+    expect(h.match(/<li class="aktywna">\s*<a href="\/ustawienia\/moduly" aria-current="(?:page|true)">/g)).toHaveLength(2); // PRZ-167: dział z podmenu ma w menu komputera „true”
   });
   it('statusy runtime zachowują wartości, nowe stany, adresy i escapowanie poza wycinkiem snapshotu menu',async()=>{
     const h=await render(model('/'),null,{panelStatusow:[{klucz:'do_zrobienia',etykieta:'Pilne <test>',href:'/?status=do_zrobienia&kanal=demo',liczba:37,aktywna:true},{klucz:'nowy_stan',etykieta:'Dodatkowy',href:'/?status=nowy_stan',liczba:0}]});

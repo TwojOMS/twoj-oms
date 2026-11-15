@@ -1,0 +1,56 @@
+<section class="panel" id="opis-karty" aria-labelledby="opis-tytul">
+  <div class="panel-glowa"><h2 id="opis-tytul">Opis</h2></div>
+  <div class="panel-cialo">
+    <% if (opisKarty.blad) { %><p class="pasek-uwaga" role="alert"><%= opisKarty.blad %></p><% } %>
+    <form method="post" action="/magazyn/<%= karta.id %>/opis#opis-karty" aria-labelledby="opis-tytul">
+      <input type="hidden" name="opis_liczba" value="<%= opisKarty.sekcje.length %>">
+      <% if (!opisKarty.sekcje.length) { %><p class="magazyn-brak">Brak sekcji opisu. Dodaj pierwszą sekcję albo zapisz pusty opis.</p><% } %>
+      <% opisKarty.sekcje.forEach((s, i) => { %>
+        <fieldset>
+          <legend>Sekcja <%= i + 1 %></legend>
+          <input type="hidden" name="s<%= i %>_liczba" value="<%= s.elementy.length %>">
+          <% s.elementy.forEach((e, j) => { const klucz = i + '_' + j; %>
+            <div class="pola">
+              <label for="opis-typ-<%= klucz %>">Element <%= j + 1 %></label>
+              <select id="opis-typ-<%= klucz %>" name="t<%= klucz %>">
+                <option value="tekst"<%= e.typ === 'tekst' ? ' selected' : '' %>>Tekst</option>
+                <option value="zdjecie"<%- !opisKarty.zdjecia.length ? ' disabled' : '' %><%= e.typ === 'zdjecie' ? ' selected' : '' %>>Zdjęcie<%= !opisKarty.zdjecia.length ? ' — brak zdjęć karty' : '' %></option>
+              </select>
+              <label for="opis-tekst-<%= klucz %>">Tekst (HTML)</label>
+              <textarea id="opis-tekst-<%= klucz %>" name="h<%= klucz %>" rows="5" aria-describedby="opis-pomoc-<%= klucz %>"><%= e.html %></textarea>
+              <p id="opis-pomoc-<%= klucz %>">Dozwolone znaczniki: &lt;h1&gt;, &lt;h2&gt;, &lt;p&gt;, &lt;b&gt;, &lt;ul&gt;, &lt;ol&gt;, &lt;li&gt;. Atrybuty są usuwane.</p>
+              <label for="opis-zdjecie-<%= klucz %>">Zdjęcie karty (używane po wybraniu typu „Zdjęcie”)</label>
+              <select id="opis-zdjecie-<%= klucz %>" name="a<%= klucz %>"<%- !opisKarty.zdjecia.length ? ' disabled' : '' %>>
+                <% if (!opisKarty.zdjecia.length) { %><option>Brak zdjęć karty</option><% } %>
+                <% if (e.adres && !opisKarty.zdjecia.some(z => z.adres === e.adres)) { %><option value="<%= e.adres %>" selected>Niedostępne zdjęcie — wybierz z listy</option><% } %>
+                <% opisKarty.zdjecia.forEach((z, n) => { %><option value="<%= z.adres %>"<%= z.adres === e.adres ? ' selected' : '' %>>Zdjęcie <%= n + 1 %></option><% }); %>
+              </select>
+            </div>
+          <% }); %>
+          <div class="przyciski">
+            <button class="btn btn--maly" type="submit" name="akcja" value="gora:<%= i %>"<%- i === 0 ? ' disabled' : '' %>>W górę</button>
+            <button class="btn btn--maly" type="submit" name="akcja" value="dol:<%= i %>"<%- i === opisKarty.sekcje.length - 1 ? ' disabled' : '' %>>W dół</button>
+            <% if (s.elementy.length === 1) { %><button class="btn btn--maly" type="submit" name="akcja" value="dodaj-element:<%= i %>">Dodaj drugi element</button><% } %>
+            <% if (s.elementy.length === 2) { %><button class="btn btn--maly" type="submit" name="akcja" value="usun-element:<%= i %>">Usuń drugi element</button><% } %>
+            <button class="btn btn--maly btn--groza" type="submit" name="akcja" value="usun:<%= i %>">Usuń sekcję</button>
+          </div>
+        </fieldset>
+      <% }); %>
+      <div class="przyciski">
+        <button class="btn" type="submit" name="akcja" value="dodaj">Dodaj sekcję</button>
+        <button class="btn" type="submit" name="akcja" value="podglad">Podgląd</button>
+        <button class="btn btn--glowny" type="submit" name="akcja" value="zapisz">Zapisz opis</button>
+      </div>
+    </form>
+    <h3>Podgląd opisu</h3>
+    <div id="opis-podglad" aria-label="Podgląd opisu">
+      <% opisKarty.podglad.forEach(s => { %><div class="opis-sekcja">
+        <% s.elementy.forEach(e => { %><div class="opis-element">
+          <% if (e.typ === 'tekst') { %><%- e.html %><% } else { const z = opisKarty.zdjecia.find(z => z.adres === e.adres); %>
+            <img src="<%= z.podglad %>" alt="Zdjęcie karty" loading="lazy" referrerpolicy="no-referrer">
+          <% } %>
+        </div><% }); %>
+      </div><% }); %>
+    <!-- koniec podgladu --></div>
+  </div>
+</section>

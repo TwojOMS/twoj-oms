@@ -43,7 +43,7 @@ const KLIENT_Z_UMOWA = {
   b2b: 'on', rabat_procent: '30', chce_fakture: 'on',
   metoda_wysylki: 'dpd', koszt_dostawy_brutto: '0', platnosc: 'przelew', termin_platnosci: '14',
   komentarz: 'Umowa ramowa z 01.09, faktura zbiorcza na koniec miesiąca.',
-  rozliczenie_zbiorcze: 'on', prog_darmowej_dostawy: '500', oplata_obslugi: '4', oplata_kurierska: '19',
+  rozliczenie_zbiorcze: 'on', prog_darmowej_dostawy_wlaczony: 'on', oplata_obslugi_wlaczony: 'on', prog_darmowej_dostawy: '500', oplata_obslugi: '4', oplata_kurierska: '19',
 };
 
 // Zamówienie tego samego podmiotu z NOWYM adresem — i z ustaleniami innymi niż na karcie
@@ -72,7 +72,7 @@ const zalozZamowienie = ({ nip = NIP, firma = 'Pracownia Przykładowa sp. z o.o.
   },
 });
 
-describe('„Uaktualnij dane stałego klienta” u klienta z umową zbiorczą', () => {
+describe('„Uaktualnij dane klienta B2B” u klienta z umową zbiorczą', () => {
   it('aktualizuje adres, a umowy zbiorczej i jej kwot nie rusza', async () => {
     expect((await post('/klienci', KLIENT_Z_UMOWA)).statusCode).toBe(302);
     const przed = klientPoNip(db, NIP);
@@ -91,7 +91,7 @@ describe('„Uaktualnij dane stałego klienta” u klienta z umową zbiorczą', 
     expect(po.rozliczenie_zbiorcze).toBe(1);
     expect(po.prog_darmowej_dostawy_gr).toBe(50000);
     expect(po.oplata_obslugi_gr).toBe(400);
-    expect(po.oplata_kurierska_gr).toBe(1900);
+    expect(po.oplata_kurierska_gr).toBeNull();
   });
 
   it('nie rusza też pozostałych ustaleń handlowych ani notatki', async () => {

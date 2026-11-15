@@ -1,25 +1,4 @@
-<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: title, akcje: '<a class="btn btn--maly btn--glowny" href="/klienci?nowy#formularz">Dodaj nowego klienta</a>'}) %>
-<%#
-  STALI KLIENCI (21.08.2026) — slownik podmiotow, ktorych dane wpisywalo sie dotad przy
-  KAZDYM zamowieniu z osobna.
-
-  ⚠️ LISTA NA GORZE, FORMULARZ NA ZADANIE (prosba wlasciciela: „na gorze strony lista klientow
-  + przycisk Dodaj nowego klienta"). Pierwsza wersja trzymala formularz rozwiniety na stale nad
-  lista — czyli ekran, na ktory wchodzi sie ZOBACZYC baze, zaczynal od pietnastu pustych pol,
-  a to, po co sie przyszlo, bylo pod nimi.
-
-  ⚠️ JEDEN EKRAN NA LISTE I NA FORMULARZ. Osobny ekran edycji bylby druga kopia pietnastu pol
-  i rozjechalby sie z ta przy pierwszym nowym ustawieniu — a wtedy „edytuj klienta" i „dopisz
-  klienta" zaczelyby zapisywac rozne rzeczy. Formularz sie CHOWA, a nie przenosi.
-
-  ⚠️ KARTA KLIENTA (`klient.ejs`, od 21.08.2026) TEGO NIE LAMIE: ona wylacznie CZYTA — dane
-  wpisu i historie zamowien, ktorej formularz nie ma skad znac. Ani jednego pola formularza
-  tam nie ma; „Edytuj" prowadzi z powrotem TUTAJ, pod `/klienci/:id/edytuj`.
-
-  ⚠️ NIE MA TU KASOWANIA i miec nie bedzie — jest WYGASZANIE. Zamowienia zalozone z danych
-  klienta sa MIGAWKA i zostaja, wiec skasowanie wpisu niczego nie naprawia, a odbiera
-  mozliwosc sprawdzenia, skad wziely sie dane na fakturze sprzed pol roku.
-%>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: title, akcje: otwarty ? '' : '<a class="btn btn--maly btn--glowny" href="/klienci/nowy">Dodaj nowego klienta</a>'}) %>
 <% const wart = (v) => (v ? v : ''); %>
 <%# Dane z GUS-u NADPISUJA pola faktury, ale TYLKO W POLACH — dokladnie jak na karcie
     zamowienia i na ekranie zakladania: operator ma zobaczyc nazwe urzedowa, zanim stanie sie
@@ -42,11 +21,10 @@
 <% if (komunikat) { %><p class="pasek-gus"><%= komunikat %></p><% } %>
 
 <%# ——— LISTA ————————————————————————————————————————————————————————————————————————— %>
+<% if (!otwarty) { %>
 <section class="panel">
   <div class="panel-glowa">
-    <h2>Stali klienci <span class="dopisek"><%= klienci.length %> w bazie</span></h2>
-    <%# ⚠️ ADRES NIESIE `#formularz`, bo formularz wychodzi POD lista — bez kotwicy klikniecie %>
-    <%# przy dluzszej bazie nie zmienia nic widocznego i wyglada na martwy przycisk. %>
+    <h2>Klienci B2B <span class="dopisek"><%= klienci.length %> w bazie</span></h2>
     <%# ⚠️ `btn--glowny` (21.08.2026, prosba wlasciciela: „niech sie jakos wyroznia"). To jedyna %>
     <%# czynnosc TWORZACA na tym ekranie — reszta przyciskow prowadzi do istniejacych wpisow. %>
     <%# Barwa z palety (`--marka` / `--na-marce`), nigdy wpisana wprost: arkusz ma wariant %>
@@ -68,7 +46,7 @@
                     „klikniecie w nazwe klienta otwiera strone z jego danymi oraz historia
                     zamowien"). Karta CZYTA — formularz zapisu otwiera osobny przycisk obok,
                     zeby klikniecie w nazwe nie rozwijalo pietnastu pol nad reszta listy. %>
-                <a href="/klienci/<%= k.id %>"><%= k.nazwa %></a>
+                <a href="/klienci/<%= k.id %>/karta"><%= k.nazwa %></a>
                 <% if (!k.aktywny) { %> <span class="znacznik">wygaszony</span><% } %>
                 <div class="sku"><%= k.klucz %></div>
               </td>
@@ -79,7 +57,7 @@
               <%# Zdanie sklada DOMENA (`opisKlienta`) — to samo, ktore stoi pod paskiem %>
               <%# wyboru przy zakladaniu zamowienia. Druga kopia rozjechalaby sie z tamta. %>
               <td><span class="wyjasnienie"><%= k.opis %></span></td>
-              <td class="kol-akcje"><a class="btn btn--maly" href="/klienci/<%= k.id %>/edytuj#formularz">Edytuj</a></td>
+              <td class="kol-akcje"><a class="btn btn--maly" href="/klienci/<%= k.id %>">Edytuj</a></td>
             </tr>
           <% }); %>
         </tbody>
@@ -88,11 +66,12 @@
   </div>
 </section>
 
+<% } %>
 <%# ——— FORMULARZ — WYLACZNIE NA ZADANIE ——————————————————————————————————————————————— %>
 <% if (otwarty) { %>
 <section class="panel panel--edycja" id="formularz">
   <div class="panel-glowa">
-    <h2><%= edytowany ? `Klient: ${edytowany.nazwa}` : 'Nowy stały klient' %></h2>
+    <h2><%= edytowany ? `Klient: ${edytowany.nazwa}` : 'Nowy klient B2B' %></h2>
     <a class="link-edytuj" href="/klienci">Zamknij</a>
   </div>
   <div class="panel-cialo">
@@ -110,13 +89,8 @@
           <div class="panel-glowa"><h2>Kim jest</h2></div>
           <div class="panel-cialo">
             <div class="pola">
-              <label>Nazwa <span class="wyjasnienie">na listę wyboru</span>
+              <label>Nazwa klienta
                 <input name="nazwa" value="<%= wart(f.nazwa) %>" placeholder="np. Przykład sp. z o.o." required>
-              </label>
-              <%# Klucz wyprowadza sie z nazwy, gdy pole zostanie puste (domain/klient-staly.js) — %>
-              <%# formularz ma miec JEDNO pole obowiazkowe, nie dwa. %>
-              <label>Klucz <span class="wyjasnienie">puste = wyprowadzimy z nazwy</span>
-                <input name="klucz" value="<%= wart(f.klucz) %>" placeholder="np. przyklad">
               </label>
               <label>NIP <span class="wyjasnienie">po nim panel rozpoznaje klienta</span>
                 <input name="nip" value="<%= wart(f.nip) %>">
@@ -212,7 +186,11 @@
             <%# kanalami i nie ma tego robic (domain/kanaly-raportowe.js). %>
             <label class="pole-przelacznik">
               <input type="checkbox" name="b2b" <%= f.b2b ? 'checked' : '' %>>
-              B2B — sprzedaż hurtowa (osobny kanał w raportach)
+              Liczony w raportach jako kanał B2B (hurt)
+            </label>
+            <label class="pole-przelacznik">
+              <input type="checkbox" name="rozliczenie_zbiorcze" <%= f.rozliczenie_zbiorcze ? 'checked' : '' %>>
+              Rozliczany zbiorczo — zamówienia wpadają do miesięcznego okresu zamiast dostawać własną fakturę
             </label>
             <label>Rabat (%)
               <input name="rabat_procent" value="<%= wart(f.rabat_procent) %>" inputmode="numeric" placeholder="0">
@@ -231,8 +209,22 @@
             <%# NIE WIDAC w wypelnionym polu — zero wyglada jak pole niewypelnione — wiec %>
             <%# `opisKlienta` wymienia je wprost pod paskiem wyboru na ekranie zakladania. %>
             <label>Koszt dostawy (brutto)
+              <span class="wyjasnienie" id="opis-kosztu">puste = kwota domyślna z Ustawień, 0 = wysyłka gratis</span>
               <input name="koszt_dostawy_brutto" value="<%= wart(f.koszt_dostawy_brutto) %>" inputmode="decimal" placeholder="0,00">
             </label>
+            <div>
+              <label class="pole-przelacznik"><input type="checkbox" name="prog_darmowej_dostawy_wlaczony" aria-controls="prog-dostawy" <%= f.prog_darmowej_dostawy_wlaczony ? 'checked' : '' %>> Darmowa dostawa od kwoty</label>
+              <label>Próg darmowej dostawy (zł)
+                <input id="prog-dostawy" name="prog_darmowej_dostawy" value="<%= wart(f.prog_darmowej_dostawy) %>" inputmode="decimal">
+              </label>
+            </div>
+            <div>
+              <label class="pole-przelacznik"><input type="checkbox" name="oplata_obslugi_wlaczony" aria-controls="oplata-obslugi" <%= f.oplata_obslugi_wlaczony ? 'checked' : '' %>> Opłata za obsługę zamówienia</label>
+              <p class="wyjasnienie" id="opis-obslugi">doliczana jako osobna pozycja „Obsługa zamówienia”, gdy paczkę nadaje klient na swojej etykiecie</p>
+              <label>Opłata za obsługę (zł)
+                <input id="oplata-obslugi" aria-describedby="opis-obslugi" name="oplata_obslugi" value="<%= wart(f.oplata_obslugi) %>" inputmode="decimal">
+              </label>
+            </div>
             <label>Rodzaj płatności
               <select name="platnosc">
                 <% Object.keys(platnosci).forEach(function (k) { %>
@@ -258,47 +250,6 @@
         </div>
       </section>
 
-      <%# ⚠️ WARUNKI UMOWY ZBIORCZEJ (24.08.2026) — do tego dnia mieszkaly w jednym ciagu %>
-      <%# `OMS_KLIENCI_ZBIORCZY` w pliku `.env` na NAS-ie, wiec podniesienie oplaty o zlotowke %>
-      <%# wymagalo wdrozenia. Stoja tutaj, bo sa warunkami umowy TEGO podmiotu — obok rabatu %>
-      <%# i kanalu B2B, a nie w Ustawieniach panelu (tam mieszkaja parametry panelu, jak %>
-      <%# wymiary paczki). %>
-      <section class="panel">
-        <div class="panel-glowa">
-          <h2>Rozliczenie zbiorcze</h2>
-          <span class="wyjasnienie">jedna faktura na koniec miesiąca</span>
-        </div>
-        <div class="panel-cialo">
-          <label class="pole-przelacznik">
-            <input type="checkbox" name="rozliczenie_zbiorcze" <%= f.rozliczenie_zbiorcze ? 'checked' : '' %>>
-            Rozliczany zbiorczo — zamówienia wpadają do miesięcznego okresu zamiast dostawać
-            własną fakturę
-          </label>
-          <div class="pola">
-            <label>Próg darmowej dostawy (zł)
-              <input name="prog_darmowej_dostawy" value="<%= wart(f.prog_darmowej_dostawy) %>" inputmode="decimal" placeholder="500,00">
-            </label>
-            <label>Opłata za obsługę (zł)
-              <input name="oplata_obslugi" value="<%= wart(f.oplata_obslugi) %>" inputmode="decimal" placeholder="4,00">
-            </label>
-            <label>Opłata kurierska (zł)
-              <input name="oplata_kurierska" value="<%= wart(f.oplata_kurierska) %>" inputmode="decimal" placeholder="4,00">
-            </label>
-          </div>
-          <p class="wyjasnienie">
-            Opłata odpowiada na jedno pytanie: <b>kto nadaje paczkę</b>. Klient na swojej
-            etykiecie płaci za <b>obsługę</b>, my na swojej umowie — za <b>usługę kurierską</b>,
-            a przy odbiorze osobistym nie ma ani jednego, ani drugiego. Próg liczy się od
-            wartości <b>towaru po rabacie</b>, bez kosztu dostawy i bez samych opłat.
-          </p>
-          <p class="wyjasnienie">
-            ⚠️ Po włączeniu przełącznika wszystkie trzy kwoty są wymagane. Pole zostawione
-            puste to nie „zero złotych", tylko brak ustalenia — a panel nie ma wtedy jak
-            policzyć, co doliczyć do zamówienia.
-          </p>
-        </div>
-      </section>
-
       <div class="stopka-edycji">
         <button class="btn btn--glowny"><%= edytowany ? 'Zapisz zmiany' : 'Dopisz klienta' %></button>
         <a class="btn" href="/klienci">Anuluj</a>
@@ -306,4 +257,12 @@
     </form>
   </div>
 </section>
+<script id="przelaczniki-kwot-klienta">
+  document.querySelectorAll('#formularz input[type="checkbox"][aria-controls]').forEach((przelacznik) => {
+    const pole = document.getElementById(przelacznik.getAttribute('aria-controls'));
+    const aktualizuj = () => { pole.disabled = !przelacznik.checked; };
+    przelacznik.addEventListener('change', aktualizuj);
+    aktualizuj();
+  });
+</script>
 <% } %>

@@ -7,6 +7,7 @@ export const MODUL_ALLEGRO = {
   umiejetnosci: {
     zdarzenia: 'odpytywanie', wymagaAkceptacji: false, statusZwrotny: 'mapa', numerListu: 'przesylki',
     plikFaktury: true, wiadomosci: true, wysylkaPlatformy: true, terminWysylki: true, scalanie: false, stany: 'oferty',
+    odczytOfert: true, wystawOferte: true, zmienOferte: true, zmienIloscCene: true, stanOferty: true,
   },
   kluczeEnv: { sekrety: ['CLIENT_ID', 'CLIENT_SECRET'], wymagane: ['CLIENT_ID', 'CLIENT_SECRET', 'USER_AGENT', 'OD'] },
   konfigurator: { sciezka: '/ustawienia/integracje/allegro', nowy: 'nowe', dodaj: 'Dodaj konto', kroki: [
@@ -30,5 +31,6 @@ export const MODUL_ALLEGRO = {
       ],
     } },
     { id: 'stan', numer: 5, tytul: 'Stan', widok: 'allegro-stan' },
+    { id: 'oferty', numer: 6, tytul: 'Oferty', widok: 'allegro-oferty' },
   ] },
 } as const satisfies OpisKanalu;

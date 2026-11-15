@@ -32,6 +32,8 @@ const WZORCE = [/^docs\/kurier-(?!jako-modul\.md$)[a-z0-9-]+\.md$/,
   /^docs\/fakturownia\.md$/,
   // PRZ-132.13: podłączenie Allegro w panelu (kreator, aplikacja typu urządzenie).
   /^docs\/allegro-podlaczenie\.md$/,
+  // PRZ-160.E3.29: wystawianie ofert Allegro z karty (zgoda, podgląd, hamulce).
+  /^docs\/kanal-allegro-oferty\.md$/,
   /^docs\/twojefaktury(?:-ksef)?\.md$/];
 
 /** Lista plików paczki z listy plików commita: dokładne nazwy, wzorce dokumentów kurierów + całe src/ i deploy/klient/. */

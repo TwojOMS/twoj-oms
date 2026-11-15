@@ -3,6 +3,7 @@
 // Wszystko tutaj działa WYŁĄCZNIE przy włączonych stanach (Ustawienia → Magazyn); wyłączone = 409 z wyjaśnieniem.
 import { przelacznikStanow, pozycjeBezKarty, podgladImportuOtwarcia, zapiszImportOtwarcia } from '../../oms/db/stany-magazynowe.js';
 import { fmtDataCzas } from '../../domena/format-daty.js';
+import { registerStanyKanalow } from './stany-kanalow.js';
 
 const WYLACZONE = {
   title: 'Magazyn — stany wyłączone',
@@ -12,7 +13,9 @@ const WYLACZONE = {
 
 const tekstImportu = (body) => (typeof body?.tekst === 'string' ? body.tekst.slice(0, 200_000) : '');
 
-export function registerStanyMagazynu(app, { db }) {
+export function registerStanyMagazynu(app, opcje) {
+  const { db } = opcje;
+  registerStanyKanalow(app, opcje);
   const wylaczone = (reply) => reply.code(409).view('pusta-strona.ejs', WYLACZONE);
 
   app.get('/magazyn/stany/import', async (_req, reply) => {

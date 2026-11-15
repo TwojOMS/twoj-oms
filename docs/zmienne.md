@@ -12,6 +12,14 @@ Tabela jest generowana z manifestu JSON; nie edytuj jej ręcznie.
 Nazwy z `<P>` to rodziny zmiennych: prefiks pochodzi z definicji kanału w OMS_KANALY.
 Sekcja środowiska narzędzi i testów nie jest listą wymaganych ustawień instalacji.
 
+## Magazyn
+
+| Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
+|---|---|---|---|---|---|
+| <code>OMS_KATALOG_ZDJEC</code> | opcjonalna | magazyn: zdjecia/ obok pliku bazy (domyślnie /data-oms/zdjecia); publiczne zdjęcia: ./zdjecia (compose: /zdjecia) | Katalog lokalnych zdjęć kart magazynowych; można wskazać osobny dysk. | Magazyn: brak lub pusty tekst wybiera zdjecia obok OMS_DB_PATH. Osobny proces publicznych zdjęć: ./zdjecia względem katalogu roboczego; compose ustawia /zdjecia. | Nie |
+| <code>OMS_PUBLICZNY_ADRES_ZDJEC</code> | opcjonalna | brak | Publiczny adres bazowy zdjęć kart, bez końcowego /z. Panel OMS nie jest wystawiany. | Zdjęcia wyłącznie lokalne wymagają ustawienia publicznego adresu przed wystawieniem oferty. | Nie |
+| <code>OMS_ZDJECIA_PORT</code> | opcjonalna | 3002 | Port osobnego procesu publicznych zdjęć; bez dostępu do panelu i bazy OMS. | Proces zdjęć nasłuchuje na porcie 3002. | Nie |
+
 ## Dynamiczne prefiksy kanałów
 
 | Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
@@ -170,6 +178,8 @@ Sekcja środowiska narzędzi i testów nie jest listą wymaganych ustawień inst
 | Zmienna | Wymagana? | Domyślnie | Do czego | Co się stanie bez niej | Można w panelu? |
 |---|---|---|---|---|---|
 | <code>ALLEGRO_USER_AGENT</code> | nie dotyczy instalacji — używają jej tylko testy automatyczne | brak wartości domyślnej | Dawna nazwa nagłówka identyfikującego OMS w Allegro; używana tylko w testach — w instalacji ustaw &lt;P&gt;_USER_AGENT. | Panel jej nie czyta — testy używają jej jako zapasu dla &lt;P&gt;_USER_AGENT. | Nie |
+| <code>ATRAPA_ALLEGRO_KONCZY</code> | nie dotyczy instalacji — czyta ją tylko atrapa Allegro w piaskownicy | tak | Atrapa Allegro w piaskownicy: czy zakup z symulatora, który zdejmie ostatnią sztukę, kończy ofertę (ENDED). | Atrapa zachowuje się jak Allegro: domyślne zachowanie bez ustawiania czegokolwiek. | Nie |
+| <code>ATRAPA_ALLEGRO_ODDAJE</code> | nie dotyczy instalacji — czyta ją tylko atrapa Allegro w piaskownicy | tak | Atrapa Allegro w piaskownicy: czy anulowanie zamówienia z symulatora oddaje sztuki do oferty. | Atrapa zachowuje się jak Allegro: domyślne zachowanie bez ustawiania czegokolwiek. | Nie |
 | <code>LOCALAPPDATA</code> | opcjonalna | brak | Katalog danych użytkownika Windows; testy PDF szukają w nim lokalnej kopii narzędzia Poppler do odczytu PDF-ów. | Testy PDF próbują najpierw PATH, potem lokalny Poppler; bez obu część kontroli tekstu PDF zostaje pominięta. | Nie |
 | <code>OMS_AUTH_PASS</code> | nie dotyczy instalacji — używają jej tylko testy automatyczne | sekret — nie wklejaj do czatu ani do repo | Dawna nazwa OMS_PASS, rozumiana tylko przez testy automatyczne; w prawdziwej instalacji nic nie znaczy. | Panel jej nie czyta — to alias używany wyłącznie w testach automatycznych. | Nie |
 | <code>OMS_AUTH_USER</code> | nie dotyczy instalacji — używają jej tylko testy automatyczne | OMS_USER, jeśli obecne | Dawna nazwa OMS_USER, rozumiana tylko przez testy automatyczne; w prawdziwej instalacji nic nie znaczy. | Panel jej nie czyta — to alias używany wyłącznie w testach automatycznych. | Nie |

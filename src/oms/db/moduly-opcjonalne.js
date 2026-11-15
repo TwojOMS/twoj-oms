@@ -51,7 +51,7 @@ export function przelaczModul(db, { modul, wlacz }) {
     // Bezpiecznik rozliczeń dotyczy Stałych klientów i Rozliczeń. Koszty to widok i pobieranie — wyłączenie nie
     // rusza danych (PRZ-102.22), więc nie blokuje go nic.
     const chroniony = modul === 'klienci' || modul === 'okresy';
-    if (chroniony && !wlacz && zaleznosci.zbiorczy > 0) powody.push(`${zaleznosci.zbiorczy} stałych klientów z rozliczeniem zbiorczym — wymagają edycji warunków na karcie klienta i fakturowania w Rozliczeniach`);
+    if (chroniony && !wlacz && zaleznosci.zbiorczy > 0) powody.push(`${zaleznosci.zbiorczy} klientów B2B z rozliczeniem zbiorczym — wymagają edycji warunków na karcie klienta i fakturowania w Rozliczeniach`);
     if (chroniony && !wlacz && zaleznosci.okresy > 0) powody.push(`${zaleznosci.okresy} okresów z zamówieniami bez zakończonej faktury — potrzebne są Rozliczenia oraz karta klienta do uzupełnienia nabywcy i warunków umowy`);
     if (chroniony && !wlacz && zaleznosci.nierozliczoneOkresy > 0) powody.push(`${zaleznosci.nierozliczoneOkresy} okresów z nierozliczonymi wpłatami albo niedopłatą — rozlicz je w Rozliczeniach`);
     if (chroniony && !wlacz && zaleznosci.bledneKwotyOkresow > 0) powody.push(`${zaleznosci.bledneKwotyOkresow} okresów: nie można odczytać kwoty zamówienia lub wpłaty — sprawdź i popraw dane w Rozliczeniach`);

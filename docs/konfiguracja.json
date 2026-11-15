@@ -101,6 +101,60 @@
   ],
   "zmienne": [
     {
+      "nazwa": "OMS_PUBLICZNY_ADRES_ZDJEC",
+      "wlasciciel": "magazyn / publiczne zdjęcia",
+      "sekcja": "Magazyn",
+      "opis": "Publiczny adres bazowy zdjęć kart, bez końcowego /z. Panel OMS nie jest wystawiany.",
+      "przyklad": "https://zdjecia.przyklad.pl",
+      "zakres": "produkt",
+      "wymagalnosc": "opcjonalna",
+      "domyslna": "brak",
+      "skutekBraku": "Zdjęcia wyłącznie lokalne wymagają ustawienia publicznego adresu przed wystawieniem oferty.",
+      "walidacja": "Adres HTTPS własnego proxy albo tunelu zdjęć.",
+      "odczyty": [
+        {
+          "id": "PRZ160-OMS_PUBLICZNY_ADRES_ZDJEC",
+          "path": "src/moduly/magazyn/services/zdjecia-pliki.js",
+          "line": 19,
+          "expression": "env.OMS_PUBLICZNY_ADRES_ZDJEC",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
+        }
+      ],
+      "wywolaniaPosrednie": [],
+      "sciezkaOdczytu": [
+        "src/moduly/magazyn/services/zdjecia-pliki.js:19"
+      ],
+      "aktywacja": "Konfiguracja publicznego proxy zdjęć; konfiguracja modułu magazynu przekazuje adres do pętli ofert ERLI (E2.05).",
+      "wlaczoneWMainNaPinie": true
+    },
+    {
+      "nazwa": "OMS_ZDJECIA_PORT",
+      "wlasciciel": "publiczne zdjęcia",
+      "sekcja": "Magazyn",
+      "opis": "Port osobnego procesu publicznych zdjęć; bez dostępu do panelu i bazy OMS.",
+      "zakres": "produkt",
+      "wymagalnosc": "opcjonalna",
+      "domyslna": 3002,
+      "skutekBraku": "Proces zdjęć nasłuchuje na porcie 3002.",
+      "walidacja": "Liczba całkowita od 1 do 65535; niepoprawna wartość blokuje start.",
+      "odczyty": [
+        {
+          "path": "src/zdjecia-publiczne/serwer.js",
+          "line": 50,
+          "expression": "process.env.OMS_ZDJECIA_PORT",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
+        }
+      ],
+      "wywolaniaPosrednie": [],
+      "sciezkaOdczytu": [
+        "src/zdjecia-publiczne/serwer.js:50"
+      ],
+      "aktywacja": "Bezpośrednie uruchomienie src/zdjecia-publiczne/serwer.js.",
+      "wlaczoneWMainNaPinie": false
+    },
+    {
       "nazwa": "<P>_KLUCZ_API",
       "wlasciciel": "kanaly",
       "sekcja": "Dynamiczne prefiksy kanałów",
@@ -234,6 +288,14 @@
           "expression": "process.env.OMS_DB_PATH",
           "kind": "statyczny",
           "via": "bezpośrednio"
+        },
+        {
+          "id": "PRZ160-OMS_DB_PATH",
+          "path": "src/moduly/magazyn/services/zdjecia-pliki.js",
+          "line": 14,
+          "expression": "env.OMS_DB_PATH",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
         }
       ],
       "wywolaniaPosrednie": [],
@@ -242,7 +304,8 @@
         "src/moduly/kanaly/scripts/import-sklep.mjs:61",
         "src/oms/bootstrap.ts:13",
         "scripts/oms-import-istniejacy-podjazd-dpd.mjs:14",
-        "scripts/oms-import-istniejacy-podjazd-dpd.mjs:29"
+        "scripts/oms-import-istniejacy-podjazd-dpd.mjs:29",
+        "src/moduly/magazyn/services/zdjecia-pliki.js:14"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -4279,6 +4342,50 @@
       "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
     },
     {
+      "nazwa": "ATRAPA_ALLEGRO_KONCZY",
+      "wlasciciel": "piaskownica / atrapy kanałów",
+      "sekcja": "Środowisko narzędzi i testów",
+      "opis": "Atrapa Allegro w piaskownicy: czy zakup z symulatora, który zdejmie ostatnią sztukę, kończy ofertę (ENDED).",
+      "zakres": "tooling",
+      "wymagalnosc": "opcjonalna wyłącznie w piaskownicy (OMS_TRYB=proba)",
+      "domyslna": "tak",
+      "wymagalnoscPoLudzku": "nie dotyczy instalacji — czyta ją tylko atrapa Allegro w piaskownicy",
+      "skutekBraku": "Domyślnie tak — oferta bez sztuk przechodzi w ENDED jak w Allegro.",
+      "skutekBrakuPoLudzku": "Atrapa zachowuje się jak Allegro: domyślne zachowanie bez ustawiania czegokolwiek.",
+      "walidacja": "Wartość „nie” (bez względu na wielkość liter) wyłącza; każda inna włącza.",
+      "sekret": false,
+      "odczyty": [],
+      "wywolaniaPosrednie": [],
+      "sciezkaOdczytu": [
+        "deploy/proba/atrapy/allegro-oferty.mjs:322"
+      ],
+      "aktywacja": "tooling",
+      "wlaczoneWMainNaPinie": false,
+      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
+    },
+    {
+      "nazwa": "ATRAPA_ALLEGRO_ODDAJE",
+      "wlasciciel": "piaskownica / atrapy kanałów",
+      "sekcja": "Środowisko narzędzi i testów",
+      "opis": "Atrapa Allegro w piaskownicy: czy anulowanie zamówienia z symulatora oddaje sztuki do oferty.",
+      "zakres": "tooling",
+      "wymagalnosc": "opcjonalna wyłącznie w piaskownicy (OMS_TRYB=proba)",
+      "domyslna": "tak",
+      "wymagalnoscPoLudzku": "nie dotyczy instalacji — czyta ją tylko atrapa Allegro w piaskownicy",
+      "skutekBraku": "Domyślnie tak — anulowanie oddaje sztuki.",
+      "skutekBrakuPoLudzku": "Atrapa zachowuje się jak Allegro: domyślne zachowanie bez ustawiania czegokolwiek.",
+      "walidacja": "Wartość „nie” (bez względu na wielkość liter) wyłącza; każda inna włącza.",
+      "sekret": false,
+      "odczyty": [],
+      "wywolaniaPosrednie": [],
+      "sciezkaOdczytu": [
+        "deploy/proba/atrapy/allegro-oferty.mjs:322"
+      ],
+      "aktywacja": "tooling",
+      "wlaczoneWMainNaPinie": false,
+      "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
+    },
+    {
       "nazwa": "OMS_AUTH_PASS",
       "wlasciciel": "testy / zgodność historyczna",
       "sekcja": "Środowisko narzędzi i testów",
@@ -5186,6 +5293,51 @@
         "src/moduly/kanaly/straz-allegro-proby.ts:7"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
+      "wlaczoneWMainNaPinie": true
+    },
+    {
+      "nazwa": "OMS_KATALOG_ZDJEC",
+      "wlasciciel": "magazyn",
+      "sekcja": "Magazyn",
+      "dynamiczna": false,
+      "wymagalnosc": "opcjonalna",
+      "domyslna": [
+        {
+          "kontekst": "magazyn",
+          "wartosc": "zdjecia/ obok pliku bazy (domyślnie /data-oms/zdjecia)"
+        },
+        {
+          "kontekst": "publiczne zdjęcia",
+          "wartosc": "./zdjecia (compose: /zdjecia)"
+        }
+      ],
+      "skutekBraku": "Magazyn: brak lub pusty tekst wybiera zdjecia obok OMS_DB_PATH. Osobny proces publicznych zdjęć: ./zdjecia względem katalogu roboczego; compose ustawia /zdjecia.",
+      "walidacja": "Ścieżka wyłącznie z konfiguracji administratora. Magazyn tworzy katalog przy pierwszym zapisie; proces publiczny wyłącznie odczytuje istniejące pliki.",
+      "odczyty": [
+        {
+          "id": "PRZ160-OMS_KATALOG_ZDJEC",
+          "path": "src/moduly/magazyn/services/zdjecia-pliki.js",
+          "line": 14,
+          "expression": "env.OMS_KATALOG_ZDJEC",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
+        },
+        {
+          "path": "src/zdjecia-publiczne/serwer.js",
+          "line": 52,
+          "expression": "process.env.OMS_KATALOG_ZDJEC",
+          "kind": "statyczny",
+          "via": "bezpośrednio"
+        }
+      ],
+      "wywolaniaPosrednie": [],
+      "sciezkaOdczytu": [
+        "src/moduly/magazyn/services/zdjecia-pliki.js:14",
+        "src/zdjecia-publiczne/serwer.js:52"
+      ],
+      "zakres": "produkt",
+      "opis": "Katalog lokalnych zdjęć kart magazynowych; można wskazać osobny dysk.",
+      "aktywacja": "włączenie modułu magazyn",
       "wlaczoneWMainNaPinie": true
     }
   ],
@@ -7539,7 +7691,7 @@
     },
     {
       "path": "src/moduly/rdzen/modul.ts",
-      "line": 18,
+      "line": 24,
       "expression": "env",
       "callee": "wczytajSprzedawce",
       "call": "wczytajSprzedawce(env)"
@@ -7854,7 +8006,7 @@
     },
     {
       "path": "src/moduly/raporty/modul.ts",
-      "line": 17,
+      "line": 19,
       "expression": "env",
       "callee": "wczytajRaportyDlaKanalow",
       "call": "wczytajRaportyDlaKanalow(env, definicje)"
@@ -7991,6 +8143,20 @@
       "expression": "env",
       "callee": "wczytajFaktury",
       "call": "wczytajFaktury(env, szew)"
+    },
+    {
+      "path": "src/moduly/magazyn/modul.ts",
+      "line": 80,
+      "expression": "env",
+      "callee": "katalogZdjec",
+      "call": "katalogZdjec(env)"
+    },
+    {
+      "path": "src/moduly/magazyn/modul.ts",
+      "line": 80,
+      "expression": "env",
+      "callee": "adresPublicznyZdjec",
+      "call": "adresPublicznyZdjec(env)"
     }
   ],
   "prefiksy": {
@@ -8157,6 +8323,30 @@
         "uwaga": "Fabryka zegara/wywołanie w module; bez starego numeru linii"
       },
       "wlaczoneWMainNaPinie": true
+    },
+    {
+      "nazwa": "petlaOfert",
+      "wlasciciel": "magazyn",
+      "zmienna": null,
+      "odstepMs": 300000,
+      "warunek": "Bieżące konto ERLI z klientem w module kanałów; zapisy tylko przy oferty_ustawienia_kont.czynne=1, bez blokady zapisów kanału, dla ofert zarządzanych",
+      "source": {
+        "path": "src/moduly/magazyn/modul.ts",
+        "uwaga": "Fabryka zegara/wywołanie w module; bez starego numeru linii"
+      },
+      "wlaczoneWMainNaPinie": true
+    },
+    {
+      "nazwa": "petlaOfertAllegro",
+      "wlasciciel": "magazyn",
+      "zmienna": null,
+      "odstepMs": 300000,
+      "warunek": "Połączone konto Allegro z klientem w module kanałów i zgodą na oferty (token z zakresem ofert; bez niego zero wywołań); zapisy tylko przy oferty_ustawienia_kont.czynne=1, bez blokady zapisów kanału, dla ofert zarządzanych; jeden przebieg naraz",
+      "source": {
+        "path": "src/moduly/magazyn/modul.ts",
+        "uwaga": "Fabryka zegara/wywołanie w module; bez starego numeru linii"
+      },
+      "wlaczoneWMainNaPinie": true
     }
   ],
   "decyzje": [
@@ -8306,7 +8496,7 @@
     },
     {
       "path": "src/domena/klient-zbiorczy.js",
-      "sha256": "cf697edf4c2dc278d08b45af92e81741f1e1a43ce914fa4c5b1b4c4f717adacf",
+      "sha256": "f48c28c4ec5f4935306a414d15e1ea02c40701c948108bde1b9ae415f93fb638",
       "normalizacja": "LF"
     },
     {
@@ -8336,7 +8526,7 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "011f2ec7bc76fa5dab92e4c4f7353effb970880a21acd9f5ea4cfe31c5eeb7a0",
+      "sha256": "d2b5cfcdbbafc935336e0f254acee74b47938bb9921d2a3f490af393b29f005a",
       "normalizacja": "LF"
     },
     {
@@ -8346,7 +8536,7 @@
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "sha256": "d0f0d8b13dd4732e33907cc92e9ed5ea567aa2efe558667705c676de16f01068",
+      "sha256": "73476d8d772d2acaac8f8c84d979b0a33232e9ccf1d703de2106fca3c8de7978",
       "normalizacja": "LF"
     },
     {
@@ -8423,17 +8613,17 @@
     },
     {
       "path": "src/moduly/kanaly/modul.ts",
-      "sha256": "620aa8a0b0c8b6581ed02351fc5850851be984d91ee8c7d436aafad417c03479",
+      "sha256": "b7e4aed69c5bc872b3cf827cd9da550c21448a7e33392a577082902cd51ac15a",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "011f2ec7bc76fa5dab92e4c4f7353effb970880a21acd9f5ea4cfe31c5eeb7a0",
+      "sha256": "d2b5cfcdbbafc935336e0f254acee74b47938bb9921d2a3f490af393b29f005a",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "sha256": "d0f0d8b13dd4732e33907cc92e9ed5ea567aa2efe558667705c676de16f01068",
+      "sha256": "73476d8d772d2acaac8f8c84d979b0a33232e9ccf1d703de2106fca3c8de7978",
       "normalizacja": "LF"
     },
     {
@@ -8843,7 +9033,7 @@
       },
       {
         "path": "src/moduly/faktury/modul.ts",
-        "sha256": "6629aeef3a53f8f526e8dd2fdd7faceed793687bf1f9cad5148eba87b9318186",
+        "sha256": "30f448e97039ca3fd5c378013c5b627b309f4ffdd2f1b500ce83c28d8df4b15e",
         "expression": "wczytajSprzedawce(env)"
       },
       {
@@ -8883,7 +9073,7 @@
       },
       {
         "path": "src/moduly/rdzen/modul.ts",
-        "sha256": "bbf97549e0e9ddee1db124ae36f57857755523513a217e7c1287cc27c1094c40",
+        "sha256": "7177bba909d8c7d9a51ecf9e5813cf8868f6ac12de3b6cd5e353e5b17cc8b718",
         "expression": "wczytajSprzedawce(env)"
       },
       {
@@ -9585,7 +9775,7 @@
     },
     {
       "path": "src/domena/magazyn-filtry.js",
-      "sha256": "4ea979c6ad6b39e8563bf0a87d9e3625519890e1eeff3b906e4bbd081cca871f",
+      "sha256": "e1713dca22fad67079e73ba04ca64aeeb47b5c772e6827f8c5136a19fdb506a0",
       "normalizacja": "LF"
     },
     {
@@ -10325,7 +10515,7 @@
     },
     {
       "path": "src/moduly/kanaly/modul.ts",
-      "sha256": "969cba52cd46fc1691fc0826e4a88effe224960c8e7665647c401bb0da51b37f",
+      "sha256": "b7e4aed69c5bc872b3cf827cd9da550c21448a7e33392a577082902cd51ac15a",
       "normalizacja": "LF"
     },
     {
@@ -10420,22 +10610,22 @@
     },
     {
       "path": "src/moduly/magazyn/karta.js",
-      "sha256": "fa46bd593af9f35389b33d7c409539353f5b5fccf80481fc9862380bc1d24d0e",
+      "sha256": "0cd82ccbf008e003eb286d1cc96878bbe2b78536882180040cef631fe70e5949",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/magazyn/lista.js",
-      "sha256": "298513424ea744a5f651c55bc4bb8cc2fc08faf4d16198d011cfb2e1dcefc236",
+      "sha256": "5e85bce0fa397702ce5e65d5779b5d27b9e7cb34743efd538a33fcf109be24b1",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/magazyn/modul.ts",
-      "sha256": "b0d0223d1b421a6bce84a6dda659af1e3c902f8b1786723699649311b1366c16",
+      "sha256": "a994a3e990364370d4aae04a90e9f34cdcdac528420e27f4888d3068a324580b",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/magazyn/pomocniki.js",
-      "sha256": "5753e48c5c59e55d49a5fcf7b0ceffb30707d99592a24d26e17ba887c5456263",
+      "sha256": "f4da1ea042328fec4b17922c57223670397c0829cf2ad3efff4a6f8442e21e65",
       "normalizacja": "LF"
     },
     {
@@ -10470,7 +10660,7 @@
     },
     {
       "path": "src/moduly/raporty/modul.ts",
-      "sha256": "d65cee554435e54483fa23f848f9fbfcbb471c2fc868ebd56de34329e5f2557a",
+      "sha256": "11ffb25095c29f1fbc7574a92c32a838fd019967d65e4ae57355511fef23ba41",
       "normalizacja": "LF"
     },
     {
@@ -10500,7 +10690,7 @@
     },
     {
       "path": "src/moduly/rdzen/modul.ts",
-      "sha256": "bbf97549e0e9ddee1db124ae36f57857755523513a217e7c1287cc27c1094c40",
+      "sha256": "7177bba909d8c7d9a51ecf9e5813cf8868f6ac12de3b6cd5e353e5b17cc8b718",
       "normalizacja": "LF"
     },
     {
@@ -10920,7 +11110,7 @@
     },
     {
       "path": "src/oms/db/magazyn.js",
-      "sha256": "b6d2dba89407badb7a3f4f864d82e324500465bb21f42dd8247a6d36ae880d57",
+      "sha256": "1d5d7998d606b4323c9d9fab033fae68cf92762b1b13b70767503c9aaa3498dd",
       "normalizacja": "LF"
     },
     {

@@ -2,5 +2,5 @@
     <%= klient.klucz %>
     <% if (klient.nip) { %> · NIP <%= klient.nip %><% } else { %> · bez NIP-u<% } %>
     <% if (!klient.aktywny) { %> · <span class="znacznik">wygaszony</span><% } %>
-    · <a href="/klienci/<%= klient.id %>/edytuj#formularz">edytuj</a>
+    · <a href="/klienci/<%= klient.id %>">edytuj</a>
   </span>

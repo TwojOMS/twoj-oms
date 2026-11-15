@@ -108,27 +108,26 @@ describe('baza stałych klientów', () => {
     const body = (await get('/klienci')).body;
     expect(body).toContain('Wzorowy Kontrahent');
     expect(body).toContain('Dodaj nowego klienta');
-    // Pole `klucz` istnieje WYLACZNIE w formularzu — jego brak jest dowodem, ze formularz
-    // sie nie rozwinal. Sam napis „Nowy stały klient" byłby slabszym sprawdzianem: mogłby
-    // zostac w naglowku ukrytej sekcji.
+    // Lista nie renderuje pól formularza; klucz jest wyliczany na serwerze.
+    expect(body).not.toContain('name="nazwa"');
     expect(body).not.toContain('name="klucz"');
   });
 
-  it('„Dodaj nowego klienta" rozwija pusty formularz', async () => {
-    const body = (await get('/klienci?nowy')).body;
-    expect(body).toContain('name="klucz"');
-    expect(body).toContain('Nowy stały klient');
+  it('„Dodaj nowego klienta" otwiera osobny pusty formularz', async () => {
+    const body = (await get('/klienci/nowy')).body;
+    expect(body).toContain('name="nazwa"');
+    expect(body).not.toContain('name="klucz"');
+    expect(body).toContain('Nowy klient B2B');
     expect(body).toContain('Dopisz klienta');
   });
 
-  // ⚠️ ADRES ZMIENIONY 21.08.2026: goly `/klienci/:id` nalezy teraz do KARTY klienta,
-  // a formularz stoi pod `/klienci/:id/edytuj` (przycisk mowi „Edytuj", nie „Popraw").
-  it('„Edytuj" rozwija formularz wypełniony danymi klienta', async () => {
+  it('„Edytuj" otwiera osobny formularz wypełniony danymi klienta', async () => {
     await dopisz();
     const { id } = wszyscyKlienci(db)[0];
-    const body = (await get(`/klienci/${id}/edytuj`)).body;
-    expect(body).toContain('name="klucz"');
-    expect(body).toContain('value="kontrahent"');
+    const body = (await get(`/klienci/${id}`)).body;
+    expect(body).toContain('name="nazwa"');
+    expect(body).not.toContain('name="klucz"');
+    expect(body).toContain('value="Wzorowy Kontrahent"');
     expect(body).toContain('Zapisz zmiany');
   });
 
@@ -136,8 +135,9 @@ describe('baza stałych klientów', () => {
   it('odmowa zostawia formularz otwarty razem z tym, co wpisano', async () => {
     const odp = await dopisz({ rabat_procent: '150' });
     expect(odp.statusCode).toBe(400);
-    expect(odp.body).toContain('name="klucz"');
-    expect(odp.body).toContain('value="kontrahent"');
+    expect(odp.body).toContain('name="nazwa"');
+    expect(odp.body).not.toContain('name="klucz"');
+    expect(odp.body).toContain('value="Wzorowy Kontrahent"');
   });
 
   it('wygaszony klient znika z podpowiedzi, ale zostaje na ekranie klientów', async () => {
@@ -154,7 +154,7 @@ describe('wstawienie danych do nowego zamówienia', () => {
   beforeEach(() => dopisz());
 
   it('wypełnia oba komplety pól i ustalenia handlowe', async () => {
-    const odp = await post('/zamowienia/nowe/klient', { klient_klucz: 'kontrahent' });
+    const odp = await post('/zamowienia/nowe/klient', { klient_klucz: 'wzorowy-kontrahent' });
     expect(odp.statusCode).toBe(200);
     expect(odp.body).toContain('ul. Testowa 7');
     expect(odp.body).toContain('faktury@example.test');
@@ -168,7 +168,7 @@ describe('wstawienie danych do nowego zamówienia', () => {
   // ⚠️⚠️ NIC NIE ZAPISUJE. Zamowienie powstaje wylacznie przyciskiem „Zaloz zamowienie" —
   // szukanie klienta nie ma prawa nadac numeru, ktorego nie da sie zwolnic.
   it('NIE zakłada żadnego zamówienia', async () => {
-    await post('/zamowienia/nowe/klient', { klient_klucz: 'kontrahent' });
+    await post('/zamowienia/nowe/klient', { klient_klucz: 'wzorowy-kontrahent' });
     expect(db.prepare('SELECT COUNT(*) AS ile FROM zamowienia').get().ile).toBe(0);
   });
 
@@ -178,7 +178,7 @@ describe('wstawienie danych do nowego zamówienia', () => {
   // reka trafiala tam ZANIM zacznie wpisywac.
   it('nadpisuje to, co operator zdążył wpisać — i nie dotyka pozycji', async () => {
     const odp = await post('/zamowienia/nowe/klient', {
-      klient_klucz: 'kontrahent',
+      klient_klucz: 'wzorowy-kontrahent',
       w_ulica: 'Zupełnie inna 1', f_firma: 'Wpisane wcześniej sp. z o.o.',
       poz_nazwa: 'Szablon dodany wcześniej', poz_ilosc: '3', poz_cena_brutto: '74.90',
     });
@@ -197,7 +197,7 @@ describe('wstawienie danych do nowego zamówienia', () => {
   });
 
   it('założone zamówienie niesie B2B, termin i rabat', async () => {
-    const wstawione = await post('/zamowienia/nowe/klient', { klient_klucz: 'kontrahent' });
+    const wstawione = await post('/zamowienia/nowe/klient', { klient_klucz: 'wzorowy-kontrahent' });
     expect(wstawione.statusCode).toBe(200);
     await post('/zamowienia/nowe', {
       w_nazwa: 'Jan Kowalski', f_firma: 'Wzorowy Kontrahent', f_nip: '1234500028',
@@ -356,7 +356,7 @@ describe('zmiana ustaleń na karcie', () => {
     expect(body).toContain('cena-katalogowa');
     expect(body).toContain('74,90');
     expect(body).toContain('52,43');
-    expect(body).toMatch(/Rabat stałego klienta/);
+    expect(body).toMatch(/Rabat klienta B2B/);
   });
 });
 
@@ -380,7 +380,8 @@ describe('pobierz z GUS na ekranie klientów', () => {
     expect(odp.body).toContain('ul. Testowa 7');
     expect(odp.body).toContain('00-950');
     expect(odp.body).toContain('REGON 123456789');
-    expect(odp.body).toContain('name="klucz"');
+    expect(odp.body).toContain('name="nazwa"');
+    expect(odp.body).not.toContain('name="klucz"');
     // NIP idzie do zapytania ZNORMALIZOWANY — z myślnikami REGON nie znajdzie niczego.
     expect(gus.pytania).toEqual(['1234500028']);
   });
@@ -407,7 +408,8 @@ describe('pobierz z GUS na ekranie klientów', () => {
     await zbuduj({ gusKlient: atrapaGus({ firma: null }) });
     const odp = await post('/klienci/gus', { f_nip: '1111111111', nazwa: '' });
     expect(odp.body).toMatch(/GUS nie zna firmy/);
-    expect(odp.body).toContain('name="klucz"');
+    expect(odp.body).toContain('name="nazwa"');
+    expect(odp.body).not.toContain('name="klucz"');
   });
 
   // Awaria GUS-u nie ma prawa wywalić ekranu razem z tym, co operator zdążył wpisać.
@@ -422,7 +424,7 @@ describe('pobierz z GUS na ekranie klientów', () => {
   // czytelnie. Ta sama zasada, co przy poczcie i przy fakturach.
   it('bez skonfigurowanego GUS-u przycisku nie ma, a trasa tłumaczy dlaczego', async () => {
     await zbuduj({ gusKlient: null });
-    expect((await get('/klienci?nowy')).body).not.toContain('Pobierz z GUS');
+    expect((await get('/klienci/nowy')).body).not.toContain('Pobierz z GUS');
     expect((await post('/klienci/gus', { f_nip: '1234500028' })).body).toMatch(/GUS nie jest skonfigurowany/);
   });
 });
@@ -469,9 +471,9 @@ describe('karta stałego klienta', () => {
   it('nazwa na liście jest ODNOŚNIKIEM do karty, a przycisk obok mówi „Edytuj"', async () => {
     const k = await dopiszIWez();
     const body = (await get('/klienci')).body;
+    expect(body).toContain(`href="/klienci/${k.id}/karta"`);
     expect(body).toContain(`href="/klienci/${k.id}"`);
-    expect(body).toContain(`href="/klienci/${k.id}/edytuj#formularz"`);
-    expect(body).toMatch(/<a class="btn btn--maly" href="\/klienci\/\d+\/edytuj#formularz">Edytuj<\/a>/);
+    expect(body).toMatch(/<a class="btn btn--maly" href="\/klienci\/\d+">Edytuj<\/a>/);
     expect(body).not.toMatch(/>Popraw</);
   });
 
@@ -479,7 +481,7 @@ describe('karta stałego klienta', () => {
   // jasny i ciemny, wiec wartosc z palca zadzialalaby w jednym i po cichu zniknela w drugim.
   it('„Dodaj nowego klienta" jest przyciskiem GŁÓWNYM, bez koloru wpisanego wprost', async () => {
     const body = (await get('/klienci')).body;
-    expect(body).toMatch(/<a class="btn btn--maly btn--glowny" href="\/klienci\?nowy#formularz">Dodaj nowego klienta<\/a>/);
+    expect(body).toMatch(/<a class="btn btn--maly btn--glowny" href="\/klienci\/nowy">Dodaj nowego klienta<\/a>/);
     const tresc = body.slice(body.indexOf('<div class="tresc">'));
     expect(tresc).not.toMatch(/style="[^"]*(color|background)/i);
   });
@@ -490,12 +492,12 @@ describe('karta stałego klienta', () => {
   it('lista NIE niesie już zdania o kopii danych, karta klienta — owszem', async () => {
     const k = await dopiszIWez();
     expect((await get('/klienci')).body).not.toContain('wstawia się jednym kliknięciem');
-    expect((await get(`/klienci/${k.id}`)).body).toContain('własną kopię');
+    expect((await get(`/klienci/${k.id}/karta`)).body).toContain('własną kopię');
   });
 
   it('karta pokazuje dane klienta i ustalenia', async () => {
     const k = await dopiszIWez();
-    const body = (await get(`/klienci/${k.id}`)).body;
+    const body = (await get(`/klienci/${k.id}/karta`)).body;
     expect(body).toContain('Wzorowy Kontrahent');
     expect(body).toContain('1234500028');
     expect(body).toContain('ul. Testowa 7');
@@ -506,7 +508,7 @@ describe('karta stałego klienta', () => {
     expect(body).toContain('B2B');
     // ⚠️ KARTA NIE MA FORMULARZA — pole `klucz` istnieje WYLACZNIE w nim.
     expect(body).not.toContain('name="klucz"');
-    expect(body).toContain(`/klienci/${k.id}/edytuj`);
+    expect(body).toContain(`href="/klienci/${k.id}"`);
   });
 
   it('nieznany klient daje 404 na obu adresach', async () => {
@@ -514,13 +516,11 @@ describe('karta stałego klienta', () => {
     expect((await get('/klienci/9999/edytuj')).statusCode).toBe(404);
   });
 
-  // ⚠️ Poprawka wraca NA KARTE tego klienta — czlowiek wchodzi w edycje z karty, wiec
-  // odeslanie go na liste kazaloby szukac wpisu, przy ktorym przed chwila stal.
-  it('zapis poprawki wraca na kartę, a dopisanie nowego — na listę', async () => {
+  it('zapis poprawki i dopisanie nowego wracają na listę', async () => {
     const k = await dopiszIWez();
     const poprawka = await post('/klienci', { ...Kontrahent, id: String(k.id), rabat_procent: '20' });
     expect(poprawka.statusCode).toBe(302);
-    expect(poprawka.headers.location).toBe(`/klienci/${k.id}`);
+    expect(poprawka.headers.location).toBe('/klienci');
     const nowy = await dopisz({ nazwa: 'INNA sp. z o.o.', klucz: 'inna', nip: '5252674798' });
     expect(nowy.headers.location).toBe('/klienci');
   });
@@ -554,7 +554,7 @@ describe('historia zamówień na karcie klienta', () => {
     const k = wszyscyKlienci(db).at(-1);
     const nasze = zamowienie({ nip: '1234500028', cena: '123.00' });
     const obce = zamowienie({ nip: '5252674798', cena: '999.00' });
-    const body = (await get(`/klienci/${k.id}`)).body;
+    const body = (await get(`/klienci/${k.id}/karta`)).body;
     expect(body).toContain(`/zamowienia/${nasze}"`);
     expect(body).not.toContain(`/zamowienia/${obce}"`);
     expect(body).toContain('123,00');
@@ -568,7 +568,7 @@ describe('historia zamówień na karcie klienta', () => {
     await dopisz();
     const k = wszyscyKlienci(db).at(-1);
     const a = zamowienie({ nip: 'PL 123-45-00-028', cena: '10.00' });
-    expect((await get(`/klienci/${k.id}`)).body).toContain(`/zamowienia/${a}"`);
+    expect((await get(`/klienci/${k.id}/karta`)).body).toContain(`/zamowienia/${a}"`);
   });
 
   // ⚠️⚠️ NIP POPRAWIONY RECZNIE lezy w `klient_reczny_json`, a nie w kolumnie `nip` — i to
@@ -581,21 +581,21 @@ describe('historia zamówień na karcie klienta', () => {
     expect((await post(`/zamowienia/${id}/dane/faktura`, {
       firma: 'Wzorowy Kontrahent', nip: '1234500028', ulica: 'ul. Testowa 7', kod: '00-950', miasto: 'Warszawa', email: '',
     })).statusCode).toBe(302);
-    expect((await get(`/klienci/${k.id}`)).body).toContain(`/zamowienia/${id}"`);
+    expect((await get(`/klienci/${k.id}/karta`)).body).toContain(`/zamowienia/${id}"`);
   });
 
   // ⚠️ Klient bez NIP-u to normalny wpis (osoba prywatna zamawiajaca regularnie) — ekran ma
   // powiedziec, DLACZEGO historii nie ma. Milczaca pustka czyta sie jak „nic nie zamawial".
   it('klient BEZ NIP-u dostaje zdanie, dlaczego historii nie ma', async () => {
     await dopisz({ nazwa: 'Osoba prywatna', klucz: 'osoba', nip: '' });
-    const k = wszyscyKlienci(db).find((x) => x.klucz === 'osoba');
-    expect((await get(`/klienci/${k.id}`)).body).toMatch(/wyłącznie po NIP-ie/);
+    const k = wszyscyKlienci(db).find((x) => x.klucz === 'osoba-prywatna');
+    expect((await get(`/klienci/${k.id}/karta`)).body).toMatch(/wyłącznie po NIP-ie/);
   });
 
   it('klient z NIP-em i bez zamówień mówi to wprost', async () => {
     await dopisz();
     const k = wszyscyKlienci(db).at(-1);
-    expect((await get(`/klienci/${k.id}`)).body).toMatch(/ani jednego zamówienia/);
+    expect((await get(`/klienci/${k.id}/karta`)).body).toMatch(/ani jednego zamówienia/);
   });
 
   // ⚠️⚠️ ANULOWANE NIE WCHODZI DO SUMY, ale WCHODZI DO LICZNIKA. „Klient zamowil dwa razy"
@@ -607,7 +607,7 @@ describe('historia zamówień na karcie klienta', () => {
     zamowienie({ nip: '1234500028', cena: '100.00' });
     const drugie = zamowienie({ nip: '1234500028', cena: '900.00' });
     zapiszFaktyStatusu(db, drugie, { anulowane_recznie: 1 });
-    const body = (await get(`/klienci/${k.id}`)).body;
+    const body = (await get(`/klienci/${k.id}/karta`)).body;
     expect(body).toContain('2 zamówienia');
     expect(body).toContain('w tym 1 anulowanych');
     expect(body).toContain('100,00');

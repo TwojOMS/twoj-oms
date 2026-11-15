@@ -16,3 +16,17 @@ Przycięte do kwadratu 240×240 (ffmpeg, `scale=…:force_original_aspect_ratio=
 | nocna-sypialnia.jpg | File:Bedside (Unsplash).jpg | CC0 | Rhema Kallianpur |
 | abazur-emalia.jpg | File:Geëmailleerde ronde lampenkap van het merk Reluma - INDUS V09434-001.jpg | CC0 | — |
 | zarowka-filament.jpg | File:Close up picture of a filament bulb.jpg | CC0 | BhavyaTarun1708 |
+
+## Rysunki sylwetek lamp (PRZ-160.08)
+
+Pliki `rys-<sku-małymi>-1.png` i `rys-<sku-małymi>-2.png` narysowano kodem
+skryptem generatora rysunków demo z repozytorium źródłowego (poza paczką klienta). To własne, umowne sylwetki,
+bez zdjęć z internetu i bez obrazów AI. Nie są wiernym odwzorowaniem produktu.
+Kształt, wysokość i kolory wynikają deterministycznie z SKU; numer zmienia ujęcie.
+Format: PNG RGB, 240 × 240 px, kompresja `node:zlib`, CRC32 liczone w skrypcie.
+
+Odtworzenie wszystkich plików: uruchomienie generatora rysunków demo w repozytorium źródłowym.
+Opcjonalny argument wskazuje inny katalog wynikowy (np. do porównania bajtów).
+Każda galeria zaczyna się istniejącym zdjęciem CC0, potem ma 1–2 rysunki.
+Generator zapisuje po dwa rysunki dla każdego SKU, także dla celowych braków
+treści; ich lista jest w komentarzu `BEZ_TRESCI` w danych katalogu demo.

@@ -174,6 +174,12 @@ export function createRepozytoriumKanalow(o: {db:DatabaseSync; definicjeEnv:read
  }
  const niejednoznaczne=(klucz:string)=>db.prepare("SELECT id,metoda,sciezka,stan FROM kanaly_operacje_niejednoznaczne WHERE kanal=? AND stan='do_sprawdzenia' ORDER BY id").all(klucz) as {id:string;metoda:string;sciezka:string;stan:string}[];
  const operacjaZablokowana=(klucz:string,metoda:string,sciezka:string)=>Boolean(db.prepare("SELECT 1 FROM kanaly_operacje_niejednoznaczne WHERE kanal=? AND metoda=? AND sciezka=? AND stan IN ('do_sprawdzenia','zablokowana') LIMIT 1").get(klucz,metoda,sciezka));
- return {lista,listaTypu,pobierz,typKanalu,utworzSzkic,utworzSzkicSklepu,zapiszSklep,zapiszZmiane,przywrocZKonfiguracji,transakcja,konfliktKlucza,zablokujZapisy,zapisyZablokowane,zapiszNiejednoznaczne,niejednoznaczne,operacjaZablokowana};
+ /** PRZ-160.E3.04 (D39): pętla ofert ustaliła wynik odczytem (po `external.id` albo odczycie oferty) — operacja
+  * „do sprawdzenia” tego zasobu przestaje blokować. Blokady zostawionej przez operatora w przeglądzie nie zdejmuje.
+  * Zwraca liczbę zwolnionych wierszy. Wzór stanu: przeglad-zapisow-allegro.ts (`zwolniona`). */
+ function zwolnijOperacje(klucz:string,metoda:string,zasob:string):number{
+  return Number(db.prepare("UPDATE kanaly_operacje_niejednoznaczne SET stan='zwolniona',zmieniono_at=? WHERE kanal=? AND metoda=? AND sciezka=? AND stan='do_sprawdzenia'").run(teraz().toISOString(),klucz,metoda,zasob).changes);
+ }
+ return {lista,listaTypu,pobierz,typKanalu,utworzSzkic,utworzSzkicSklepu,zapiszSklep,zapiszZmiane,przywrocZKonfiguracji,transakcja,konfliktKlucza,zablokujZapisy,zapisyZablokowane,zapiszNiejednoznaczne,niejednoznaczne,operacjaZablokowana,zwolnijOperacje};
 }
 export type RepozytoriumKanalow=ReturnType<typeof createRepozytoriumKanalow>;

@@ -67,7 +67,7 @@ export function createModulKoszty(o: { createKlient?: typeof createKsefClient; a
     },
     migracje: [],
     uprawnienia: [{ klucz: 'koszty', etykieta: 'Koszty', role: ['admin', 'operator'] }],
-    menu: [{ dzial: 'analizy-cele', grupa: 'analizy-cele', etykieta: 'Koszty', adres: '/koszty', uprawnienie: 'koszty', kolejnosc: 40 }],
+    menu: [{ dzial: 'sprzedaz', grupa: 'faktury', etykieta: 'Koszty', adres: '/koszty', uprawnienie: 'koszty', kolejnosc: 40 }],
     zbuduj: ctx => {
       const { db, konfiguracja: k, teraz, log } = ctx;
       const infakt = ctx.usluga<any>('faktury', 'infakt');

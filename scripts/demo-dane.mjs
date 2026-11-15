@@ -7,6 +7,12 @@
 // z wieku zamówienia: statusy, paczki z numerami, faktury (w tym WDT i pobranie), zwroty, wiadomości,
 // a obok koszty, dane miesięczne, stałych klientów z okresem zbiorczym, kampanię i reklamy. PRZ-082 dokłada 6 zamówień
 // i to, czego właściciel chciał w demo: proformy, podjazdy, etykiety DHL/ORLEN/Allegro One, paczkę bez ruchu, firmy spoza KSeF.
+// PRZ-160.demo (właściciel 13.11) dokłada duże koszyki, więcej faktur (też dla osób prywatnych i z Allegro), cztery firmy
+// rozliczane zbiorczo z okresami w każdym stanie (faktury okresów i wpłaty prawdziwą usługą modułu faktur na atrapie
+// inFaktu), korektę z usługi zwrotów oraz paczki utworzone i w drodze u wszystkich przewoźników i we wszystkich kanałach.
+//
+// „Teraz” demo: domyślnie 06:30 w Polsce dnia `dzis`; `teraz` (HH:MM) przesuwa je — reset tuż po północy nie może pokazać
+// zamówień z przyszłości, więc dzisiejszych jest wtedy mniej. Status „nowe” mają wyłącznie zamówienia z dziś.
 //
 // ⚠️ DANE WYŁĄCZNIE ZMYŚLONE: adresy e-mail w domenie `.invalid` (RFC 2606 — nie istnieje i nie
 // zaistnieje), NIP-y z prefiksem 999 (żaden urząd skarbowy go nie wydaje) z poprawną sumą kontrolną,
@@ -15,11 +21,14 @@
 // ⚠️ DETERMINISTYCZNY: te same `ziarno` i `dzis` dają te same dane (daty liczone od `dzis`, więc
 // demo resetowane co godzinę ma zawsze świeże 60 dni). Tylko na pustej bazie — niepusta to odmowa.
 //
-// Użycie: node scripts/demo-dane.mjs --baza ŚCIEŻKA_BEZWZGLĘDNA [--ziarno N] [--dzis RRRR-MM-DD]
+// Użycie: node scripts/demo-dane.mjs --baza ŚCIEŻKA_BEZWZGLĘDNA [--ziarno N] [--dzis RRRR-MM-DD] [--teraz HH:MM]
 // (plik bazy nie może istnieć; środowisko demo: ENV_DEMO niżej, kanały: KANALY_DEMO).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PROBLEMY_ILOSCI, skrotZatwierdzenia } from '../src/domena/ilosc-kanalu.js';
+import { wstawOferte, zmienOferte, zapiszZatwierdzenieStanow } from '../src/oms/db/oferty-kanalow.ts';
+import { migawkaStanow } from '../src/oms/db/stany-magazynowe.js';
 import { zapiszZamowienie, zapiszFaktyStatusu, dodajPozycjeReczna } from '../src/oms/db/zamowienia.js';
 import { utworzZamowienieReczne } from '../src/oms/db/zamowienia-reczne.js';
 import { dodajZwrot, oznaczPieniadzeOddane, zarezerwujKorekte, zapiszKorekte } from '../src/oms/db/zwroty.js';
@@ -32,13 +41,23 @@ import { dopiszKlienta } from '../src/oms/db/klienci.js';
 import { zapiszMetaDzien, zapiszGa4Dzien } from '../src/oms/db/kampanie.js';
 import { zapiszPolaczenie, zapiszDni, zapiszTransakcje, zapiszMetaKampanie, zapiszStan } from '../src/oms/db/reklamy.js';
 import { przypiszDoOkresu } from '../src/moduly/faktury/services/okres.js';
+import { createFakturaOkresu, podzialZamowienOkresu, sumaOczekiwanaOkresuGrosze } from '../src/moduly/faktury/services/faktura-okresu.js';
+import { createKorekta } from '../src/moduly/zwroty/services/korekta.js';
+import { zalozZamowienieReczne } from '../src/moduly/zamowienia/services/zamowienie-reczne.js';
+import { zamknijOkres, zamowieniaOkresu } from '../src/oms/db/okresy.js';
+import { dodajWplateOkresu } from '../src/oms/db/platnosci.js';
+import { klientPoKluczu, klientPoNip } from '../src/oms/db/klienci.js';
+import { pobierzZamowienie } from '../src/oms/db/zamowienia.js';
+import { umowaZbiorcza, warunkiDostawy } from '../src/domena/klient-zbiorczy.js';
+import { darmowaDostawa } from '../src/domena/oplata-obslugi.js';
 import { zapiszProforme } from '../src/moduly/faktury/db/proformy.js';
 import { createProforma } from '../src/moduly/faktury/services/proforma.js';
 import { wczytajFaktury } from '../src/moduly/faktury/modul.ts';
 import { numerRecznego } from '../src/domena/koszt-reczny.js';
 import { inicjalizujGraniceBezHistorii } from '../src/domena/sprzedaz-okresu.js';
 import { wczytajRaporty } from '../src/moduly/raporty/konfiguracja.ts';
-import { KANALY, PRODUKTY, KLIENCI, FIRMY_B2B, FIRMY_UE, ZAMOWIENIA, KAMPANIA, KOSZTY, WATKI_ALLEGRO } from './demo-dane-firma.mjs';
+import { KANALY, PRODUKTY, KLIENCI, FIRMY_B2B, FIRMY_UE, ZAMOWIENIA, KAMPANIA, KOSZTY, WATKI_ALLEGRO,
+  ZAMOWIENIA_ZBIORCZE, ZAMOWIENIA_PACZEK } from './demo-dane-firma.mjs';
 import { zdjecieProduktu } from './demo-dane-katalog.mjs';
 import { zapiszKonfiguracjeIntegracji } from '../src/oms/db/konfiguracja-integracji.js';
 
@@ -111,6 +130,21 @@ function chwilaWarszawy(dzienMs, godzina, minuta) {
   return naiwna - Number(/GMT([+-]\d+)/.exec(strefa)?.[1] ?? 0) * 3600000;
 }
 
+const dzienWarszawy = (ms) => new Date(ms).toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' });
+
+/**
+ * „Teraz” demo w ms: domyślnie 06:30 w Polsce dnia `dzis` (gość otwierający demo rano nie widzi niczego z przyszłości),
+ * `teraz` = 'HH:MM' zegara w Polsce tego dnia albo chwila ISO z tego dnia — reset o 00:00 podaje prawdziwą godzinę.
+ */
+export function terazDemo(dzis, teraz) {
+  const dzienMs = poczatekDnia(dzis);
+  if (teraz == null) return chwilaWarszawy(dzienMs, 6, 30);
+  const hhmm = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(String(teraz));
+  const ms = hhmm ? chwilaWarszawy(dzienMs, Number(hhmm[1]), Number(hhmm[2])) : Date.parse(String(teraz));
+  if (!Number.isFinite(ms) || dzienWarszawy(ms) !== dzis) throw new Error('DEMO_TERAZ: oczekiwano HH:MM albo chwili ISO z dnia `dzis`');
+  return ms;
+}
+
 const PRODUKT = new Map(PRODUKTY.map((p) => [p.sku, p]));
 const NAZWY_WYSYLKI = { dpd: 'Kurier DPD', inpost_paczkomat: 'Paczkomat InPost', odbior_osobisty: 'Odbiór osobisty w pracowni',
   allegro_paczkomat: 'Allegro Paczkomaty InPost', allegro_dpd: 'Allegro Kurier DPD', allegro_punkt: 'Allegro One Punkt',
@@ -139,15 +173,19 @@ function pozycje(koszyk, { rabat = 0, wdt = false } = {}) {
   });
 }
 
-/** Status docelowy z wieku zamówienia: stare są wysłane, świeże nowe albo w realizacji. */
-function losujStatus(los, wiekDni) {
+/**
+ * Status docelowy z wieku zamówienia: stare są wysłane, świeże w realizacji. PRZ-160.demo (właściciel 13.11): „nowe” WYŁĄCZNIE
+ * zamówienie złożone dziś (`zDzis`, dzień w Polsce) — wczorajsze „nowe” wyglądało na zaniedbaną skrzynkę. Jedno losowanie
+ * na wywołanie jak dotąd, więc sekwencja `los` (a z nią całe demo) się nie przesuwa.
+ */
+function losujStatus(los, wiekDni, zDzis) {
   const r = los.liczba();
   if (r < 0.04) return 'anulowane';
   if (wiekDni >= 7 && r < 0.11) return 'zwrot';
   // Limit wysyłki to 1–2 dni robocze (domena/termin-wysylki.js): niewysłane starsze zamówienia lądują
   // w „Po terminie”. Kilka takich ma być (funkcja widoczna), dwadzieścia wyglądałoby na firmę w kryzysie.
-  if (wiekDni <= 1) return r < 0.5 ? 'nowe' : 'w_realizacji';
-  if (wiekDni <= 3) return r < 0.2 ? 'nowe' : r < 0.4 ? 'w_realizacji' : 'wyslane';
+  if (wiekDni <= 1) return r < 0.5 && zDzis ? 'nowe' : 'w_realizacji';
+  if (wiekDni <= 3) return r < 0.4 ? 'w_realizacji' : 'wyslane';
   if (wiekDni <= 6) return r < 0.14 ? 'w_realizacji' : 'wyslane';
   return r < 0.98 ? 'wyslane' : 'w_realizacji';
 }
@@ -167,7 +205,8 @@ function przesylka(db, zamowienieId, { kurier, numer, nadanaMs, doreczonaMs, ter
     VALUES (?,?, 'nadana', ?, 1, 1, ?, ?, ?, ?, 1, 'demo')`).run(
     zamowienieId, kurier, numer,
     !odebrana ? null : doreczona ? 'Przesyłka doręczona do odbiorcy' : 'Przesyłka w drodze',
-    !odebrana ? null : iso(doreczona ? doreczonaMs : nadanaMs + 6 * 3600000), odebrana ? iso(terazMs) : null, iso(nadanaMs),
+    // Pierwszy skan 6 h po nadaniu, ale nie później niż „teraz” (paczka nadana w nocy przed resetem o 00:20).
+    !odebrana ? null : iso(doreczona ? doreczonaMs : Math.min(nadanaMs + 6 * 3600000, terazMs - 60000)), odebrana ? iso(terazMs) : null, iso(nadanaMs),
   );
 }
 
@@ -190,7 +229,7 @@ function wiadomosc(db, zamowienieId, temat_id, adresat, temat, atMs) {
 }
 
 function pusta(db) {
-  for (const tabela of ['zamowienia', 'koszty', 'klienci', 'cele', 'kampanie']) {
+  for (const tabela of ['zamowienia', 'koszty', 'klienci', 'kampanie']) {
     if (db.prepare(`SELECT COUNT(*) AS n FROM ${tabela}`).get().n > 0) throw new Error('DEMO_BAZA_NIEPUSTA');
   }
 }
@@ -198,17 +237,18 @@ function pusta(db) {
 /**
  * Wypełnia PUSTĄ bazę (po migracjach) danymi demo. Zwraca liczniki — test i skrypt je pokazują.
  * @param {import('node:sqlite').DatabaseSync} db
- * @param {{ ziarno?: number, dzis: string, env?: Record<string, string> }} o  dzis = RRRR-MM-DD, ostatni dzień
- *   danych; env = konfiguracja instancji (z niej klasyfikacja kanałów raportu do granic historii)
+ * @param {{ ziarno?: number, dzis: string, teraz?: string, env?: Record<string, string> }} o  dzis = RRRR-MM-DD, ostatni
+ *   dzień danych; teraz = 'HH:MM' w Polsce (domyślnie 06:30, patrz terazDemo); env = konfiguracja instancji (z niej
+ *   klasyfikacja kanałów raportu do granic historii)
  */
-export function wygenerujDaneDemo(db, { ziarno = 72, dzis, env = ENV_DEMO }) {
+export function wygenerujDaneDemo(db, { ziarno = 72, dzis, teraz, env = ENV_DEMO }) {
   pusta(db);
   const los = losowanie(ziarno);
   licznikFaktur = 0;
   licznikKorekt = 0;
   // „Teraz” demo: 06:30 w Polsce dnia `dzis`. Reset bywa robiony o każdej porze — późniejsza
   // godzina dawałaby zamówienia i wiadomości z przyszłości dla porannego gościa.
-  const koniecDnia = chwilaWarszawy(poczatekDnia(dzis), 6, 30);
+  const koniecDnia = terazDemo(dzis, teraz);
   // Kanał z panelu, poza trzema istniejącymi kanałami env. Zamówienia dopisze dopiero poller ERLI.
   // Starsze testy generatora budują bazę bez modułu kanałów — nie ma w niej tej tabeli.
   if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='kanaly_sprzedazy'").get()) {
@@ -226,15 +266,17 @@ export function wygenerujDaneDemo(db, { ziarno = 72, dzis, env = ENV_DEMO }) {
   const liczniki = { zamowienia: 0, faktury: 0, korekty: 0, zwroty: 0, przesylki: 0, wiadomosci: 0, koszty: 0, statusy: {} };
   const sklepWoo = KANALY.find((k) => k.typ === 'woo').klucz;
 
-  // Stali klienci: firmy B2B (jedna z rozliczeniem zbiorczym) i z UE (WDT).
+  // Stali klienci: firmy B2B (cztery z rozliczeniem zbiorczym, każda z innymi ustaleniami) i z UE (WDT).
   const firmy = [...FIRMY_B2B.map((f) => ({ ...f, kraj: 'PL' })), ...FIRMY_UE.map((f) => ({ ...f, rozliczenie_zbiorcze: false, rabat_procent: 0 }))];
   for (const [i, k] of firmy.entries()) {
     dopiszKlienta(db, {
-      klucz: `demo-${i + 1}`, nazwa: k.nazwa, nip: k.nip, b2b: 1, rabat_procent: k.rabat_procent ?? 0,
-      chce_fakture: 1, metoda_wysylki: 'dpd', koszt_dostawy_brutto: zl(KOSZT_WYSYLKI_GR.dpd), platnosc: 'przelew',
-      termin_platnosci: '14', komentarz: 'Klient demonstracyjny — dane zmyślone.', aktywny: 1,
+      nazwa: k.nazwa, nip: k.nip, b2b: 1, rabat_procent: k.rabat_procent ?? 0,
+      chce_fakture: 1, metoda_wysylki: 'dpd', koszt_dostawy_brutto: zl(k.koszt_dostawy_gr ?? KOSZT_WYSYLKI_GR.dpd), platnosc: 'przelew',
+      termin_platnosci: k.termin_platnosci ?? '14',
+      komentarz: k.etykietaKlienta ? 'Klient demonstracyjny — dane zmyślone. Sklep internetowy: wysyłamy do jego klientów na jego etykiecie.'
+        : 'Klient demonstracyjny — dane zmyślone.', aktywny: 1,
       rozliczenie_zbiorcze: k.rozliczenie_zbiorcze ? 1 : 0,
-      ...(k.rozliczenie_zbiorcze ? { prog_darmowej_dostawy_gr: 50000, oplata_obslugi_gr: 0, oplata_kurierska_gr: KOSZT_WYSYLKI_GR.dpd } : {}),
+      prog_darmowej_dostawy_gr: k.prog_darmowej_dostawy_gr ?? null, oplata_obslugi_gr: k.oplata_obslugi_gr ?? null,
       faktura_json: JSON.stringify({ company: k.nazwa, address_1: k.ulica, city: k.miasto, postcode: k.kod, country: k.kraj }),
       wysylka_json: JSON.stringify({ company: k.nazwa, address_1: k.ulica, city: k.miasto, postcode: k.kod, country: k.kraj }),
     }, iso(koniecDnia - 70 * DOBA));
@@ -245,7 +287,10 @@ export function wygenerujDaneDemo(db, { ziarno = 72, dzis, env = ENV_DEMO }) {
     .map((z) => ({ z, ms: chwilaWarszawy(poczatekDnia(dzis) - z.dzienWstecz * DOBA, z.godzina, z.minuta) }))
     .sort((a, b) => a.ms - b.ms);
   const momenty = zamowienia.map((w) => w.ms);
-  if (momenty.at(-1) >= koniecDnia) throw new Error('DEMO_PRZYSZLOSC: zamówienie po „teraz” demo');
+  // Pętla wstawia tylko zamówienia starsze niż DNI_UZUPELNIEN_PRZ087 — świeższe z pliku firmy (także z dziś po „teraz”) pomija.
+  if (zamowienia.some((w) => Math.floor((koniecDnia - w.ms) / DOBA) > DNI_UZUPELNIEN_PRZ087 && w.ms >= koniecDnia)) {
+    throw new Error('DEMO_PRZYSZLOSC: zamówienie po „teraz” demo');
+  }
 
   const numery = Object.fromEntries(KANALY.map((k, n) => [k.klucz, k.typ === 'woo' ? 2400 : 0 + n * 100000]));
   let nrListu = 0, kandydaciZaleglosci = 0;
@@ -256,7 +301,7 @@ export function wygenerujDaneDemo(db, { ziarno = 72, dzis, env = ENV_DEMO }) {
     // z policzonymi liczbami — losowanie dawało przypadkową liczbę nowych i kilka zamówień po terminie. Pętla idzie
     // po czasie, więc pominięte są wyłącznie ostatnie wiersze: sekwencja `los` dla starszych się nie zmienia.
     if (wiekDni <= DNI_UZUPELNIEN_PRZ087) continue;
-    const wylosowany = losujStatus(los, wiekDni);
+    const wylosowany = losujStatus(los, wiekDni, dzienWarszawy(utworzoneMs) === dzis);
     const status = ['nowe', 'w_realizacji'].includes(wylosowany) ? 'wyslane' : wylosowany;
     const kanal = z.kanal;
     const osobaZ = z.klient.osoba != null ? KLIENCI[z.klient.osoba] : null;
@@ -269,25 +314,34 @@ export function wygenerujDaneDemo(db, { ziarno = 72, dzis, env = ENV_DEMO }) {
       : { first_name: '', last_name: '', company: firma.nazwa, address_1: firma.ulica, city: firma.miasto, postcode: firma.kod, country: firma.kraj };
     // PRZ-126.PT4: adres nabywcy = adres z dostawy (karta i faktura się zgadzają); bez niego faktura nie ma pełnych danych.
     Object.assign(klient, { address_1: dostawa.address_1, postcode: dostawa.postcode, city: dostawa.city, country: dostawa.country });
-    const metoda = z.wysylka, nazwaMetody = NAZWY_WYSYLKI[metoda], kosztDostawyGr = KOSZT_WYSYLKI_GR[metoda];
+    const metoda = z.wysylka, nazwaMetody = NAZWY_WYSYLKI[metoda];
     const pobranie = ['cod', 'allegro_pobranie'].includes(z.platnosc);
     const poz = pozycje(z.pozycje, { rabat: firma && !ue ? firma.rabat_procent : 0, wdt: ue });
     const rabatKuponuGr = z.kupon ? KAMPANIA.rabat_gr : 0;
-    const sumaGr = poz.reduce((s, p) => s + Math.round(Number(p.brutto_linii) * 100), 0) + kosztDostawyGr - rabatKuponuGr;
-    const chceFakture = Boolean(firma) || los.szansa(0.15);
-    const nip = firma ? firma.nip : chceFakture ? nipFikcyjny(5000 + i * 11) : null;
+    const towarGr = poz.reduce((s, p) => s + Math.round(Number(p.brutto_linii) * 100), 0);
+    // PRZ-160.demo: próg darmowej dostawy z karty klienta (P2.03) — ta sama reguła domeny co formularz zamówienia ręcznego.
+    const kosztDostawyGr = kanal === 'reczne' && firma && !ue && darmowaDostawa({ bezWysylki: metoda === 'odbior_osobisty',
+      etykietaKlienta: false, wartoscTowaruGr: towarGr, klient: warunkiDostawy(klientPoNip(db, firma.nip)) }) ? 0 : KOSZT_WYSYLKI_GR[metoda];
+    const sumaGr = towarGr + kosztDostawyGr - rabatKuponuGr;
+    // PRZ-160.demo: fakturę chce ~40% klientów detalicznych (było 15%) — co trzeci z nich to osoba prywatna bez NIP-u.
+    // Jedno losowanie jak dotąd (zmienia się tylko próg), więc sekwencja `los` się nie przesuwa.
+    const chceFakture = Boolean(firma) || los.szansa(0.4);
+    const prywatna = !firma && chceFakture && i % 3 === 0;
+    const nip = firma ? firma.nip : chceFakture && !prywatna ? nipFikcyjny(5000 + i * 11) : null;
     const wplata = status !== 'nowe' && status !== 'anulowane' && !pobranie
       ? iso(Math.min(utworzoneMs + los.calk(1, 40) * 60000, koniecDnia - 60000))
       : status === 'nowe' && los.szansa(0.5) && !pobranie ? iso(Math.min(utworzoneMs + 5 * 60000, koniecDnia - 60000)) : null;
+    // Okres rozliczeniowy (klient zbiorczy) — null dla rozliczanych pojedynczo.
+    const okres = kanal === 'reczne' && firma && !ue ? przypiszDoOkresu({ db, nip, dataZlozenia: iso(utworzoneMs), hurt: false }) : null;
     // PRZ-076: co druga faktura krajowego B2B przelewem starsza niż 18 dni czeka na przelew — termin 14 dni minął,
     // więc Faktury pokazują „nieopłacone po terminie”. Wpłata wyżej i tak jest losowana: sekwencja `los` bez zmian.
-    const kandydatZaleglosci = Boolean(firma) && !ue && ['przelew', 'bacs'].includes(z.platnosc) && wiekDni >= 18;
+    // PRZ-160.demo: bez zamówień z okresu — te nie mają własnej faktury (zaległość pokazuje faktura okresu).
+    const kandydatZaleglosci = Boolean(firma) && !ue && !okres && ['przelew', 'bacs'].includes(z.platnosc) && wiekDni >= 18;
     const zalega = kandydatZaleglosci && (++kandydaciZaleglosci % 2 === 1);
     const oplacone = zalega ? null : wplata;
 
     let id;
     if (kanal === 'reczne') {
-      const okres = firma && !ue ? przypiszDoOkresu({ db, nip, dataZlozenia: iso(utworzoneMs), hurt: false }) : null;
       id = utworzZamowienieReczne(db, {
         utworzone_at: iso(utworzoneMs), rok: new Date(utworzoneMs).getUTCFullYear(), klient, dostawa,
         metoda_wysylki: metoda, koszt_dostawy_brutto: zl(kosztDostawyGr), chce_fakture: chceFakture, nip,
@@ -298,7 +352,9 @@ export function wygenerujDaneDemo(db, { ziarno = 72, dzis, env = ENV_DEMO }) {
         dodajPozycjeReczna(db, id, { nazwa: p.nazwa, sku: p.sku, ilosc: p.ilosc, cena_brutto: p.cena_brutto, brutto_linii: p.brutto_linii });
       }
       db.prepare('UPDATE zamowienia SET kwota_brutto = ? WHERE id = ?').run(zl(sumaGr), id);
-      if (oplacone) dodajWplateReczna(db, id, { kwota: zl(sumaGr), data: oplacone.slice(0, 10), metoda: PLATNOSC[z.platnosc] ?? z.platnosc });
+      // PRZ-160.demo: klient zbiorczy płaci za MIESIĄC (wpłata okresu), nie za zamówienie — i nie dostaje faktury
+      // pojedynczej: faktura okresu odmówiłaby zamówieniu z własną fakturą (services/faktura-okresu.js).
+      if (oplacone && !okres) dodajWplateReczna(db, id, { kwota: zl(sumaGr), data: oplacone.slice(0, 10), metoda: PLATNOSC[z.platnosc] ?? z.platnosc });
     } else {
       const woo = kanal === sklepWoo;
       const zrodloId = ++numery[kanal];
@@ -347,7 +403,7 @@ export function wygenerujDaneDemo(db, { ziarno = 72, dzis, env = ENV_DEMO }) {
         doreczonaMs: null, terazMs: koniecDnia });
       liczniki.przesylki += 1;
     }
-    const zafakturowane = chceFakture && (wyslane || status === 'w_realizacji') && status !== 'anulowane';
+    const zafakturowane = chceFakture && !okres && (wyslane || status === 'w_realizacji') && status !== 'anulowane';
     if (zafakturowane) {
       // PRZ-082: nie później niż 5 min przed „teraz” demo — „w realizacji” bywa liczone na jutro rano, a faktura z
       // przyszłości wyprzedzała na liście najnowszą (niewysłaną do KSeF) z uzupełnień.
@@ -389,6 +445,8 @@ export function wygenerujDaneDemo(db, { ziarno = 72, dzis, env = ENV_DEMO }) {
   const pomocnicy = pomocnicyUzupelnien(db, { dzis, koniecDnia, numery, kolejnyList: () => ++nrListu, liczniki });
   uzupelnieniaPrz082(db, { env, koniecDnia, pomocnicy });
   uzupelnieniaPrz087(db, { pomocnicy });
+  uzupelnieniaPrz160(db, { dzis, pomocnicy });
+  uzupelnieniaPrz163(db, { pomocnicy });
 
   // Koszty (ręczne, bez KSeF) i dane miesięczne — trzy miesiące wstecz od `dzis`.
   const miesiace = [];
@@ -424,7 +482,7 @@ export function wygenerujDaneDemo(db, { ziarno = 72, dzis, env = ENV_DEMO }) {
     }
   }
 
-  // PRZ-082 (właściciel 14.10): Cele bez danych — gość ich nie widzi (deploy/proba/atrapy/ekrany.mjs). Losowania, które tu
+  // PRZ-082 (właściciel 14.10): funkcja Cele usunięta z OMS-u (PRZ-167). Losowania, które tu
   // stały (11 × los.calk), zostają: bez nich kampania i reklamy niżej dostałyby inne liczby.
   for (let d = 20; d >= 0; d -= 2) los.calk(2, 6);
 
@@ -531,8 +589,9 @@ function pomocnicyUzupelnien(db, { dzis, koniecDnia, numery, kolejnyList, liczni
   const chwila = (dniWstecz, h, m) => chwilaWarszawy(poczatekDnia(dzis) - dniWstecz * DOBA, h, m);
   const sklepWoo = KANALY.find((k) => k.typ === 'woo').klucz;
   let nrMaila = 0;
+  // `chceFakture` (PRZ-160.demo) — faktura bez NIP-u, na osobę prywatną; bez parametru: fakturę chce ten, kto podał NIP.
   const dodaj = ({ kanal, osoba, b2b, koszyk, wysylka, nazwaWysylki = NAZWY_WYSYLKI[wysylka], platnosc, nip = null, utworzoneMs, oplaconeMs = null,
-    indywidualne = false, uwagi = null }) => {
+    indywidualne = false, uwagi = null, chceFakture = null }) => {
     const osobaZ = osoba != null ? KLIENCI[osoba] : null;
     const firma = b2b != null ? FIRMY_B2B[b2b] : null;
     const klient = osobaZ ? { first_name: osobaZ.imie, last_name: osobaZ.nazwisko, email: osobaZ.email, phone: '' }
@@ -567,7 +626,7 @@ function pomocnicyUzupelnien(db, { dzis, koniecDnia, numery, kolejnyList, liczni
         metoda_wysylki: wysylka, metoda_wysylki_nazwa: nazwaWysylki, pobranie, kwota_pobrania: pobranie ? zl(sumaGr) : null,
         punkt_odbioru: punkt ? `GLI9${String(zrodloId % 100).padStart(2, '0')}M` : null,
         punkt_odbioru_opis: punkt ? 'Punkt odbioru (demo), Ulica Przykładowa 5' : null,
-        chce_fakture: nipZamowienia ? 1 : 0, nip: nipZamowienia, kwota_brutto: zl(sumaGr),
+        chce_fakture: (chceFakture ?? Boolean(nipZamowienia)) ? 1 : 0, nip: nipZamowienia, kwota_brutto: zl(sumaGr),
         koszt_dostawy_brutto: zl(kosztGr), koszt_dostawy_netto: zl(nettoGr(kosztGr)), status_woo: 'processing',
         metoda_platnosci: metodaPlatnosci, indywidualne, oplacone_at: oplaconeMs ? iso(oplaconeMs) : null, anulowane: 0,
         utworzone_at: iso(utworzoneMs), uwagi, kupony: [],
@@ -585,7 +644,9 @@ function pomocnicyUzupelnien(db, { dzis, koniecDnia, numery, kolejnyList, liczni
     wiadomosc(db, z.id, 'faktura', z.klient.email, 'Zamówienie wysłane', wyslaneMs + 600000);
     liczniki.przesylki += 1; liczniki.wiadomosci += 1; status('wyslane');
   };
-  return { chwila, sklepWoo, dodaj, status, wyslij, kolejnyList, liczniki };
+  // Chwila nie później niż `zapasMin` minut przed „teraz” demo (reset tuż po północy).
+  const doTeraz = (ms, zapasMin = 10) => Math.min(ms, koniecDnia - zapasMin * 60000);
+  return { chwila, sklepWoo, dodaj, status, wyslij, kolejnyList, liczniki, koniecDnia, doTeraz };
 }
 
 /**
@@ -617,15 +678,31 @@ function uzupelnieniaPrz082(db, { env, koniecDnia, pomocnicy }) {
     const z = dodaj({ kanal: 'allegro', osoba, koszyk: [[sku, 1]], wysylka, nazwaWysylki, platnosc: 'allegro',
       utworzoneMs: chwila(1, 16 + i, 10), oplaconeMs: chwila(1, 16 + i, 12) });
     zapiszFaktyStatusu(db, z.id, { w_realizacji_at: iso(chwila(1, 18 + i, 0)), wyslane_at: null });
+    if (nazwaWysylki.startsWith('Allegro One')) {
+      // PRZ-160 P4.02: dwie paczki One nadane przez WzA — grupa „Allegro One Kurier” na ekranie podjazdów
+      // (atrapa Allegro odbija je z bazy, terminów nie podaje → zlecenie na samą datę).
+      for (const k of [1, 2]) {
+        db.prepare(`INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, id_przesylki_kuriera, etykieta_sciezka,
+            etykieta_reczna, nadana_recznie, utworzona_at, kolejnosc, zrodlo_numeru)
+          VALUES (?, 'allegro_wza', 'nadana', ?, ?, ?, 0, 0, ?, ?, 'demo')`).run(z.id,
+          numerListu({ calk: () => 20000000 + z.id }, 'allegro', kolejnyList()), `demo-one-${z.id}-${k}`,
+          `demo-one-${z.id}-${k}.pdf`, iso(chwila(1, 18 + i, 30)), k);
+      }
+      liczniki.przesylki += 2; status('w_realizacji');
+      continue;
+    }
     przesylka(db, z.id, { kurier: 'allegro', numer: numerListu({ calk: () => 20000000 + z.id }, 'allegro', kolejnyList()),
       nadanaMs: chwila(1, 18 + i, 30), doreczonaMs: null, terazMs: koniecDnia });
     liczniki.przesylki += 1; status('w_realizacji');
   }
+  // Zlecanie podjazdów One włączone w demo (w piaskownicy idzie do atrapy; DPD zostaje wyłączone, fail-closed).
+  db.prepare('INSERT OR REPLACE INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)')
+    .run('podjazdy.allegro.one.aktywne', '1', iso(koniecDnia));
 
   // Najnowsza faktura — wystawiona dziś rano, jeszcze nie w KSeF.
   const swieza = dodaj({ kanal: sklepWoo, osoba: 5, nip: nipFikcyjny(9100), koszyk: [['LMP-KIN-001', 2]],
     wysylka: 'dpd', platnosc: 'bacs', utworzoneMs: chwila(1, 21, 40), oplaconeMs: chwila(1, 21, 52) });
-  zapiszFaktyStatusu(db, swieza.id, { w_realizacji_at: iso(chwila(0, 5, 50)), wyslane_at: null });
+  zapiszFaktyStatusu(db, swieza.id, { w_realizacji_at: iso(Math.min(chwila(0, 5, 50), koniecDnia - 10 * 60000)), wyslane_at: null });
   faktura(db, swieza.id, koniecDnia - 2 * 60000, { ksef: false });
   liczniki.faktury += 1; status('w_realizacji');
 
@@ -696,13 +773,13 @@ const DNI_UZUPELNIEN_PRZ087 = 3;
  * w dzień roboczy ma limit 0 dni i byłoby po terminie — dlatego wczorajsze zamówienia stoją po południu.
  */
 function uzupelnieniaPrz087(db, { pomocnicy }) {
-  const { chwila, sklepWoo, dodaj, status, wyslij } = pomocnicy;
+  const { chwila, sklepWoo, dodaj, status, wyslij, koniecDnia } = pomocnicy;
   const W = sklepWoo;
   // B2B tylko firmy BEZ rozliczenia zbiorczego (FIRMY_B2B[0] ma okres miesięczny — pojedynczej faktury się mu nie wystawia).
   const ONE = 'Allegro One Punkt', ONE_KURIER = 'Allegro One Kurier', DHL = 'Allegro Kurier DHL';
   const oplacone = (ms, platnosc) => (['cod', 'allegro_pobranie', 'bacs', 'przelew'].includes(platnosc) ? null : ms + 4 * 60000);
 
-  // NOWE — 12 z dziś, część jeszcze nieopłacona (przelew, pobranie).
+  // NOWE — 14 z dziś (12 + 2 duże z PRZ-164), część jeszcze nieopłacona (przelew, pobranie).
   const NOWE = [
     [W, 14, [['LMP-STO-006', 1]], 'dpd', null, 'przelewy24', 0, 12],
     ['allegro', 55, [['LMP-NOC-001', 1]], 'allegro_punkt', ONE, 'allegro', 0, 41],
@@ -716,9 +793,16 @@ function uzupelnieniaPrz087(db, { pomocnicy }) {
     ['reczne', null, [['LMP-KIN-001', 4], ['LMP-AKC-001', 4]], 'dpd', null, 'bacs', 5, 2, 2],
     [W, 18, [['LMP-NOC-002', 1]], 'inpost_paczkomat', null, 'karta', 5, 40],
     [W, 19, [['LMP-STO-004', 1]], 'odbior_osobisty', null, 'blik', 6, 14],
+    // PRZ-164 (właściciel 14.11): dwa duże „nowe” do zwijania na liście (PRZ-163, widać 5) — Allegro 7 produktów, sklep 12.
+    ['allegro', 61, ['LMP-STO-003', 'LMP-WIS-003', 'LMP-POD-003', 'LMP-KIN-003', 'LMP-NOC-002', 'LMP-ABA-003', 'LMP-AKC-003']
+      .map((sku, i) => [sku, i === 0 ? 2 : 1]), 'allegro_kurier', ONE_KURIER, 'allegro', 4, 47],
+    [W, 24, ['LMP-STO-001', 'LMP-STO-002', 'LMP-WIS-001', 'LMP-WIS-005', 'LMP-POD-001', 'LMP-POD-004', 'LMP-KIN-001', 'LMP-KIN-004',
+      'LMP-NOC-003', 'LMP-ABA-001', 'LMP-ABA-002', 'LMP-AKC-001'].map((sku, i) => [sku, i % 4 === 0 ? 2 : 1]), 'dpd', null, 'przelewy24', 5, 18],
   ];
   for (const [kanal, osoba, koszyk, wysylka, nazwaWysylki, platnosc, h, m, b2b] of NOWE) {
     const ms = chwila(0, h, m);
+    // PRZ-160.demo: nic po „teraz” — reset o 00:20 ma mniej dzisiejszych nowych, nigdy zamówienie z przyszłości.
+    if (ms > koniecDnia - 60000) continue;
     dodaj({ kanal, osoba: osoba ?? undefined, b2b, koszyk, wysylka, ...(nazwaWysylki ? { nazwaWysylki } : {}), platnosc,
       utworzoneMs: ms, oplaconeMs: oplacone(ms, platnosc) });
     status('nowe');
@@ -767,6 +851,7 @@ function uzupelnieniaPrz087(db, { pomocnicy }) {
   ];
   for (const [kanal, osoba, koszyk, wysylka, nazwaWysylki, platnosc, dni, h, m, b2b] of W_REALIZACJI) {
     const ms = chwila(dni, h, m);
+    if (dni === 0 && ms + 30 * 60000 > koniecDnia - 60000) continue; // PRZ-160.demo: nic po „teraz”
     // `bacs` (przelew) przy w realizacji jest już zapłacony — pracownia nie rusza przedpłaty bez wpłaty.
     const wplata = ['cod', 'allegro_pobranie'].includes(platnosc) || kanal === 'reczne' ? null : ms + 7 * 60000;
     const z = dodaj({ kanal, osoba: osoba ?? undefined, b2b, koszyk, wysylka, ...(nazwaWysylki ? { nazwaWysylki } : {}), platnosc,
@@ -789,11 +874,201 @@ function uzupelnieniaPrz087(db, { pomocnicy }) {
   }
 }
 
+// PRZ-160.demo: zwrot części dużego koszyka, do którego korektę wystawia usługa zwrotów (rozliczeniaPrz160).
+const POWOD_ZWROTU_PRZ160 = 'Kinkiet nie pasuje do wnęki — klient zatrzymuje resztę zamówienia';
+
+/**
+ * PRZ-160.demo (właściciel 13.11) — część synchroniczna: duże koszyki, faktury dla osób prywatnych i z Allegro, paczki utworzone
+ * i w drodze we wszystkich kanałach (ZAMOWIENIA_PACZEK) oraz zamówienia czterech firm rozliczanych zbiorczo
+ * (ZAMOWIENIA_ZBIORCZE) — te PRAWDZIWĄ usługą zamówienia ręcznego (rabat z karty, próg darmowej dostawy, opłata za
+ * obsługę własnej etykiety), z okresem z `przypiszDoOkresu`. Faktury okresów, wpłaty i korekta — rozliczeniaPrz160
+ * (asynchronicznie, na atrapie inFaktu). Bez `los`: sekwencja losowań reszty demo się nie zmienia.
+ */
+/**
+ * PRZ-163 (właściciel 14.11): jedno zamówienie ze sklepu z 15 różnymi produktami — lista zamówień pokazuje 5 pozycji
+ * i zwija resztę pod „Pokaż jeszcze 10”. Wczoraj wieczorem, opłacone, w realizacji: blisko góry listy przez cały dzień.
+ * Bez `los` — sekwencja losowania reszty demo się nie przesuwa.
+ */
+export const SKU_DUZEGO_KOSZYKA_PRZ163 = PRODUKTY.filter((p) => p.kanaly?.includes('polcien')).slice(0, 15).map((p) => p.sku);
+function uzupelnieniaPrz163(db, { pomocnicy }) {
+  const { chwila, sklepWoo, dodaj, status, doTeraz } = pomocnicy;
+  const z = dodaj({ kanal: sklepWoo, osoba: 3, koszyk: SKU_DUZEGO_KOSZYKA_PRZ163.map((sku, i) => [sku, i % 5 === 0 ? 2 : 1]),
+    wysylka: 'dpd', platnosc: 'bacs', utworzoneMs: chwila(1, 20, 25), oplaconeMs: chwila(1, 20, 40) });
+  zapiszFaktyStatusu(db, z.id, { w_realizacji_at: iso(doTeraz(chwila(0, 7, 30))), wyslane_at: null });
+  status('w_realizacji');
+}
+
+function uzupelnieniaPrz160(db, { dzis, pomocnicy }) {
+  const { chwila, dodaj, status, wyslij, kolejnyList, liczniki, koniecDnia, doTeraz } = pomocnicy;
+  const fakturuj = (z, ms) => { faktura(db, z.id, doTeraz(ms, 10)); liczniki.faktury += 1; };
+  // Kolejność: najpierw firmy zbiorcze, potem paczki — najnowsze zamówienie „czeka na fakturę” (fv 'czeka') jest wtedy
+  // zwykłym zamówieniem ze sklepu, na którym „Wystaw fakturę” działa (zamówieniu z okresu panel faktury pojedynczej odmawia).
+  zamowieniaZbiorcze();
+  zamowieniaPaczek();
+
+  // Okres istnieje od pierwszego zamówienia miesiąca — data założenia z niego, nie z zegara generatora.
+  db.prepare(`UPDATE okresy_rozliczeniowe SET utworzony_at = (SELECT MIN(z.utworzone_at) FROM zamowienia z
+    WHERE z.okres_rozliczeniowy_id = okresy_rozliczeniowe.id) WHERE EXISTS (SELECT 1 FROM zamowienia z WHERE z.okres_rozliczeniowy_id = okresy_rozliczeniowe.id)`).run();
+
+  // Duże koszyki i paczki.
+  function zamowieniaPaczek() {
+    for (const [n, [kanal, kto, koszyk, wysylka, nazwaWysylki, platnosc, dni, h, m, kurier, stan, fv]] of ZAMOWIENIA_PACZEK.entries()) {
+      const ms = chwila(dni, h, m);
+      const b2b = typeof kto === 'object' ? kto.b2b : undefined;
+      const z = dodaj({ kanal, osoba: b2b == null ? kto : undefined, b2b, koszyk, wysylka, ...(nazwaWysylki ? { nazwaWysylki } : {}), platnosc,
+        // Przelew B2B czeka na termin faktury; reszta zapłacona przy zakupie.
+        utworzoneMs: ms, oplaconeMs: kanal === 'reczne' ? null : ms + 6 * 60000,
+        ...(['nip', 'czeka'].includes(fv) ? { nip: nipFikcyjny(9200 + n * 7) } : fv === 'prywatna' ? { chceFakture: true } : {}) });
+      const wystawic = fv && fv !== 'czeka';
+      const wRealizacjiMs = doTeraz(ms + 2 * 3600000, 40);
+      if (stan === 'utworzona') {
+        zapiszFaktyStatusu(db, z.id, { w_realizacji_at: iso(wRealizacjiMs), wyslane_at: null });
+        przesylka(db, z.id, { kurier, numer: numerListu({ calk: () => 30000000 + z.id }, kurier, kolejnyList()),
+          nadanaMs: doTeraz(wRealizacjiMs + 3600000, 20), doreczonaMs: null, terazMs: koniecDnia });
+        liczniki.przesylki += 1; status('w_realizacji');
+        if (wystawic) fakturuj(z, wRealizacjiMs + 30 * 60000);
+        continue;
+      }
+      const wyslaneMs = doTeraz(ms + 20 * 3600000, 30);
+      wyslij(z, { kurier, wRealizacjiMs, wyslaneMs, doreczonaMs: stan === 'w_drodze' ? koniecDnia + 2 * DOBA : wyslaneMs + 30 * 3600000 });
+      if (wystawic) fakturuj(z, wyslaneMs + 30 * 60000);
+      if (n === 0) {
+        // Klient odsyła jeden z dwóch kinkietów — korektę do tej części wystawi usługa zwrotów (rozliczeniaPrz160).
+        const p = pobierzZamowienie(db, z.id).pozycje.find((x) => x.sku === 'LMP-KIN-001');
+        dodajZwrot(db, z.id, { data: dzienWarszawy(doTeraz(koniecDnia - 2 * DOBA)), kwota: p.cena_brutto, powod: POWOD_ZWROTU_PRZ160,
+          pozycje: [{ klucz_pozycji: p.sku, nazwa: p.nazwa, ilosc: 1, kwota: p.cena_brutto }] });
+        liczniki.zwroty += 1; liczniki.statusy.wyslane -= 1; status('zwrot');
+      }
+    }
+  }
+
+  // Firmy rozliczane zbiorczo — zamówienia w miesiącach okresów (bieżący, poprzedni, sprzed dwóch).
+  function zamowieniaZbiorcze() {
+    const [rok, miesiac, dzienMies] = dzis.split('-').map(Number);
+    const oknoOd = poczatekDnia(dzis) - 58 * DOBA;
+    for (const [n, [indeks, wstecz, dzien, h, m, koszyk, wysylka, osobaOdbiorcy]] of ZAMOWIENIA_ZBIORCZE.entries()) {
+      const firma = FIRMY_B2B[indeks];
+      let ms;
+      if (wstecz === 0) {
+        const k = Math.min(dzien, dzienMies - 1);
+        // 1. dnia miesiąca bieżący okres ma tylko dzisiejsze zamówienia — złożone przed „teraz”.
+        ms = k > 0 ? chwila(k, h, m) : Math.min(chwila(0, h, m), koniecDnia - (15 + 3 * n) * 60000);
+        if (k === 0 && ms < chwila(0, 0, 0)) continue;
+      } else {
+        const d = new Date(Date.UTC(rok, miesiac - 1 - wstecz, dzien)).toISOString().slice(0, 10);
+        ms = chwilaWarszawy(poczatekDnia(d), h, m);
+      }
+      if (ms < oknoOd || ms > koniecDnia - 10 * 60000) continue;
+      const klient = { first_name: '', last_name: '', company: firma.nazwa, email: `zamowienia.zb${indeks}@example.invalid`, phone: '',
+        address_1: firma.ulica, postcode: firma.kod, city: firma.miasto, country: 'PL' };
+      // Dropshipping: paczka jedzie do klienta firmy, fakturę dostaje firma.
+      const o = osobaOdbiorcy != null ? KLIENCI[osobaOdbiorcy] : null;
+      const dostawa = o ? { first_name: o.imie, last_name: o.nazwisko, address_1: o.ulica, city: o.miasto, postcode: o.kod, country: 'PL' }
+        : { first_name: '', last_name: '', company: firma.nazwa, address_1: firma.ulica, city: firma.miasto, postcode: firma.kod, country: 'PL' };
+      const okres = przypiszDoOkresu({ db, nip: firma.nip, dataZlozenia: iso(ms), hurt: false });
+      const { id } = zalozZamowienieReczne({ db, znacznik: iso(ms), okresId: okres, dane: {
+        rok: new Date(ms).getUTCFullYear(), klient, dostawa, metoda_wysylki: wysylka,
+        koszt_dostawy_brutto: zl(wysylka === 'odbior_osobisty' ? 0 : firma.koszt_dostawy_gr ?? KOSZT_WYSYLKI_GR[wysylka]),
+        chce_fakture: true, nip: firma.nip, metoda_platnosci: 'przelew', b2b: true, termin_platnosci: firma.termin_platnosci,
+        rabat_procent: 0, etykietaKlienta: Boolean(firma.etykietaKlienta), uwagi: o ? 'Wysyłka na etykiecie klienta (dropshipping).' : null,
+        pozycje: koszyk.map(([sku, ilosc]) => {
+          const p = PRODUKT.get(sku);
+          return { nazwa: p.nazwa, sku, ilosc, cena_brutto: zl(p.cena_gr), brutto_linii: zl(p.cena_gr * ilosc), cena_katalogowa: zl(p.cena_gr) };
+        }),
+      } });
+      const z = { id, klient: { email: klient.email } };
+      wiadomosc(db, id, 'potwierdzenie', klient.email, 'Potwierdzenie zamówienia', Math.min(ms + 600000, koniecDnia - 60000));
+      liczniki.zamowienia += 1; liczniki.wiadomosci += 1;
+      if (koniecDnia - ms < DOBA) {
+        zapiszFaktyStatusu(db, id, { w_realizacji_at: iso(doTeraz(ms + 3600000, 5)), wyslane_at: null });
+        status('w_realizacji');
+        continue;
+      }
+      const wyslaneMs = doTeraz(ms + 24 * 3600000, 30);
+      if (wysylka === 'odbior_osobisty' || firma.etykietaKlienta) {
+        // Odbiór osobisty i paczka na etykiecie klienta — bez przesyłki w panelu.
+        zapiszFaktyStatusu(db, id, { w_realizacji_at: iso(ms + 3 * 3600000), wyslane_at: iso(wyslaneMs) });
+        wiadomosc(db, id, 'faktura', klient.email, 'Zamówienie wysłane', Math.min(wyslaneMs + 600000, koniecDnia - 60000));
+        liczniki.wiadomosci += 1; status('wyslane');
+      } else {
+        wyslij(z, { kurier: 'dpd', wRealizacjiMs: ms + 3 * 3600000, wyslaneMs, doreczonaMs: wyslaneMs + 26 * 3600000 });
+      }
+    }
+  }
+}
+
+/**
+ * PRZ-160.demo — część asynchroniczna (po magazynie, na atrapie inFaktu jak w piaskownicy): okresy poprzednich miesięcy
+ * zamknięte albo zafakturowane PRAWDZIWĄ usługą faktury okresu (createFakturaOkresu), część opłacona wpłatą okresu
+ * (dodajWplateOkresu) i w atrapie („Oznacz zapłaconą”), oraz korekta częściowego zwrotu usługą zwrotów (createKorekta).
+ * Zegar atrapy stoi na chwili zdarzenia demo; znaczniki, które warstwa bazy bierze z zegara systemowego (zamknięcie,
+ * rezerwacja faktury, wpłata, zlecenie korekty), przestawiamy na tę samą chwilę — inaczej demo z `dzis` w przeszłości
+ * miałoby faktury „z jutra”. Poza trybem próby (bez atrapy) okresy zostają otwarte.
+ */
+async function rozliczeniaPrz160(db, { dzis, koniecDnia, env }) {
+  if (env?.OMS_TRYB !== 'proba') return null;
+  const { createAtrapaInfaktu } = await import('../deploy/proba/atrapy/infakt.mjs');
+  let zegar = koniecDnia;
+  const infakt = createAtrapaInfaktu({ db, env, teraz: () => new Date(zegar), log: () => {} });
+  const nipSprzedawcy = () => env.OMS_SPRZEDAWCA_NIP ?? null;
+  const fakturaOkresu = createFakturaOkresu({ db, infakt, nipSprzedawcy, teraz: () => new Date(zegar).toISOString() });
+  const wynik = { zafakturowane: 0, oplacone: 0, zamkniete: 0, korekty: 0 };
+  const chwilaDnia = (dzien, h, m, zapasMin) => Math.min(chwilaWarszawy(poczatekDnia(dzien), h, m), koniecDnia - zapasMin * 60000);
+
+  // Nabywca faktury okresu jest w kartotece programu — klienta zbiorczego zakłada się tam raz, ręcznie (faktura-okresu.js).
+  for (const f of FIRMY_B2B.filter((x) => x.rozliczenie_zbiorcze)) {
+    if (!(await infakt.znajdzKlientaPoNip(f.nip))) {
+      await infakt.zalozKlienta({ company_name: f.nazwa, nip: f.nip, street: f.ulica, city: f.miasto, postal_code: f.kod, country: 'PL' });
+    }
+  }
+  const [rokD, miesiacD] = dzis.split('-').map(Number);
+  for (const o of db.prepare('SELECT * FROM okresy_rozliczeniowe ORDER BY rok, miesiac, id').all()) {
+    const wstecz = rokD * 12 + miesiacD - (o.rok * 12 + o.miesiac);
+    if (wstecz <= 0) continue;
+    const klient = umowaZbiorcza(klientPoKluczu(db, o.klient_klucz));
+    const firma = FIRMY_B2B.find((f) => f.nip === klient?.nip);
+    const rola = wstecz === 1 ? firma?.okresy?.poprzedni : firma?.okresy?.starsze;
+    if (!rola) continue;
+    const dzienFaktury = new Date(Date.UTC(o.rok, o.miesiac, 1)).toISOString().slice(0, 10);
+    zegar = chwilaDnia(dzienFaktury, 8, 0, 15);
+    if (rola === 'zamkniety') {
+      zamknijOkres(db, o.id);
+      db.prepare('UPDATE okresy_rozliczeniowe SET zamkniety_at = ? WHERE id = ?').run(iso(zegar), o.id);
+      wynik.zamkniete += 1;
+      continue;
+    }
+    const okres = await fakturaOkresu.wystaw(o.id, klient, { dataWystawienia: dzienFaktury, termin: firma.termin_platnosci });
+    db.prepare('UPDATE okresy_rozliczeniowe SET zamkniety_at = ?, utworzona_at = ? WHERE id = ?').run(iso(zegar), iso(zegar), o.id);
+    wynik.zafakturowane += 1;
+    if (rola !== 'oplacony') continue;
+    const dzienWplaty = [new Date(Date.parse(`${dzienFaktury}T12:00:00Z`) + 6 * DOBA).toISOString().slice(0, 10), dzis].sort()[0];
+    zegar = chwilaDnia(dzienWplaty, 10, 0, 10);
+    const { zamowienia } = podzialZamowienOkresu(zamowieniaOkresu(db, o.id).map((id) => pobierzZamowienie(db, id)));
+    const wplata = dodajWplateOkresu(db, o.id, { kwota: zl(sumaOczekiwanaOkresuGrosze(zamowienia)), data: dzienWplaty,
+      metoda: 'przelew', uwaga: `Przelew za fakturę ${okres.numer} (demo)` });
+    db.prepare('UPDATE platnosci_okresu SET utworzona_at = ? WHERE id = ?').run(iso(zegar), wplata.id);
+    await infakt.oznaczZaplacona(okres.infakt_uuid ?? okres.dokument_id, { paidDate: dzienWplaty });
+    wynik.oplacone += 1;
+  }
+
+  // Korekta do zwrotu części koszyka — tą samą usługą, co przycisk „Wystaw korektę” na ekranie zwrotu.
+  const zwrot = db.prepare('SELECT id, zamowienie_id, data FROM zwroty WHERE powod = ? AND korekta_zlecona_at IS NULL').get(POWOD_ZWROTU_PRZ160);
+  if (zwrot) {
+    zegar = chwilaDnia(zwrot.data, 13, 0, 20);
+    const korekta = createKorekta({ db, infakt, nipSprzedawcy });
+    await korekta.wystaw(zwrot.zamowienie_id, zwrot.id);
+    await korekta.doczytaj(zwrot.zamowienie_id, zwrot.id);
+    db.prepare('UPDATE zwroty SET korekta_zlecona_at = ? WHERE id = ?').run(iso(zegar), zwrot.id);
+    wynik.korekty += 1;
+  }
+  return wynik;
+}
+
 function opcjeCli(argv) {
   const o = {};
   for (let i = 0; i < argv.length; i += 2) {
-    if (!['--baza', '--ziarno', '--dzis'].includes(argv[i]) || argv[i + 1] === undefined) {
-      throw new Error('Użycie: --baza ŚCIEŻKA_BEZWZGLĘDNA [--ziarno N] [--dzis RRRR-MM-DD]');
+    if (!['--baza', '--ziarno', '--dzis', '--teraz'].includes(argv[i]) || argv[i + 1] === undefined) {
+      throw new Error('Użycie: --baza ŚCIEŻKA_BEZWZGLĘDNA [--ziarno N] [--dzis RRRR-MM-DD] [--teraz HH:MM]');
     }
     o[argv[i].slice(2)] = argv[i + 1];
   }
@@ -801,8 +1076,8 @@ function opcjeCli(argv) {
   const ziarno = o.ziarno === undefined ? 72 : Number(o.ziarno);
   if (!Number.isInteger(ziarno) || ziarno < 0) throw new Error('DEMO_ZIARNO: liczba całkowita ≥ 0');
   const dzis = o.dzis ?? new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' });
-  poczatekDnia(dzis);
-  return { baza: path.resolve(o.baza), ziarno, dzis };
+  terazDemo(dzis, o.teraz);
+  return { baza: path.resolve(o.baza), ziarno, dzis, ...(o.teraz ? { teraz: o.teraz } : {}) };
 }
 
 /** Tworzy NOWY plik bazy z demo. Istniejący plik (albo jego -wal/-shm) = odmowa, bajty nietknięte. */
@@ -814,15 +1089,50 @@ const PACZKOMAT_KATEGORII = { 'Lampy stołowe': 'tak', 'Lampy wiszące': 'nie', 
 const OUTLET_NIEPOWIAZANY = new Set(['LMP-NOC-002-OUT', 'LMP-ABA-004-OUT']);
 
 /**
+ * PRZ-160.E4.20: demo po zatwierdzeniu stanów w kanałach (D51). Sześć ofert z ilością z OMS (istniejąca oferta Allegro
+ * i pięć przejętych z lustra), po jednym problemie ilości `skok` i `rozjazd-dol`, jedno zatwierdzenie ostatniego
+ * włączenia ze skrótem liczonym tą samą funkcją domeny co aplikacja. Przy każdym resecie wychodzi to samo.
+ */
+function stanyKanalowDemo(db, { synchronizacja }) {
+  const opcje = { teraz: synchronizacja };
+  const wlaczone = db.prepare('SELECT id FROM magazyn_przelaczenia WHERE wlaczone = 1 ORDER BY id DESC LIMIT 1').get();
+  if (!wlaczone) throw new Error('DEMO_STANY: stany magazynowe nie są włączone');
+  const ofertyDemo = db.prepare(`SELECT id FROM oferty_kanalow WHERE kanal = 'allegro' AND stan = 'aktywna'
+    AND pochodzenie = 'oms' ORDER BY id`).all().map((w) => Number(w.id));
+  const lustro = db.prepare(`SELECT produkt_id, karta_id FROM produkty_sklepowe WHERE kanal = 'allegro' AND karta_id IS NOT NULL
+    AND COALESCE(wariant_id, '') = '' AND karta_id IN (SELECT karta_id FROM stany_otwarcia) ORDER BY karta_id LIMIT 5`).all();
+  for (const w of lustro) {
+    ofertyDemo.push(wstawOferte(db, { kartaId: Number(w.karta_id), kanal: 'allegro', idZewnetrzne: String(w.produkt_id),
+      pochodzenie: 'przejeta', tryb: 'zarzadzana', stan: 'aktywna' }, opcje).id);
+  }
+  if (ofertyDemo.length !== 6) throw new Error(`DEMO_STANY: oczekiwano 6 ofert z ilością z OMS, jest ${ofertyDemo.length}`);
+  const problemyDemo = new Map([
+    [1, { ...PROBLEMY_ILOSCI.skok, od: synchronizacja, cel: 4, odczyt: 18 }],
+    [2, { ...PROBLEMY_ILOSCI['rozjazd-dol'], od: synchronizacja, cel: 12, odczyt: 3, zakres: { min: 9, max: 12 } }],
+  ]);
+  for (const [i, id] of ofertyDemo.entries()) {
+    zmienOferte(db, id, { iloscZOms: true, iloscWyslanaAt: synchronizacja,
+      ...(problemyDemo.has(i) ? { iloscProblem: problemyDemo.get(i) } : {}) }, opcje);
+  }
+  const wiersze = db.prepare('SELECT * FROM oferty_kanalow').all();
+  const skrot = skrotZatwierdzenia({ oferty: wiersze, migawka: migawkaStanow(db),
+    maxRuchId: db.prepare('SELECT MAX(id) m FROM ruchy_magazynowe').get().m,
+    bufory: db.prepare('SELECT * FROM oferty_ustawienia_kont').all() });
+  zapiszZatwierdzenieStanow(db, { przelaczenieId: Number(wlaczone.id), zatwierdzil: 'demo', ofert: ofertyDemo.length, skrot }, opcje);
+}
+
+/**
  * PRZ-076: lustro magazynu z katalogu demo (scripts/demo-dane-katalog.mjs). Idzie PRAWDZIWYM odswiezMagazyn —
  * tą samą drogą co „Synchronizuj” — potem karty z produktów sklepu i oferty Allegro przypięte po SKU (-OUT → bazowe).
  */
-async function wypelnijMagazyn(db, { dzis }) {
+async function wypelnijMagazyn(db, { dzis, koniecDnia }) {
   const { odswiezMagazyn } = await import('../src/moduly/magazyn/services/magazyn-sync.js');
   const { utworzKartyZNiepowiazanych, niepowiazaneOfertyAllegro, powiazOfertyHurtem, zapiszKarte } = await import('../src/oms/db/magazyn.js');
   const { klienciKataloguDemo } = await import('./demo-dane-katalog.mjs');
   const { sklepy, allegro, kanalySklepow, kanalyAllegro } = klienciKataloguDemo();
-  const teraz = () => `${dzis}T04:00:00.000Z`;
+  // Synchronizacja o 04:00 UTC, chyba że „teraz” demo jest wcześniej (reset tuż po północy, PRZ-160.demo).
+  const synchronizacja = new Date(Math.min(Date.parse(`${dzis}T04:00:00.000Z`), koniecDnia - 30 * 60000)).toISOString();
+  const teraz = () => synchronizacja;
   const przebieg = await odswiezMagazyn({ db, sklepy, allegro, teraz, kanalySklepow, kanalyAllegro, log: () => {} });
   const bledy = przebieg.kanaly.filter((k) => k.blad);
   if (bledy.length) throw new Error(`DEMO_MAGAZYN: ${bledy.map((k) => `${k.kanal}: ${k.blad}`).join('; ')}`);
@@ -844,6 +1154,7 @@ async function wypelnijMagazyn(db, { dzis }) {
     .map((o) => ({ produktId: o.id, kartaId: poSku.get(String(o.sku_sklepu).replace(/-OUT$/, '')) }))
     .filter((p) => p.kartaId);
   const oferty = powiazOfertyHurtem(db, pary, kanalyAllegro);
+  (await import('./demo-dane-katalog.mjs')).zasiejOfertyAllegroDemo(db, { teraz }); // PRZ-160.E3.15
   // PRZ-091: pozycje zamówień demo powstały przed lustrem i niosą samo SKU — prawdziwe zamówienia z Woo mają
   // produkt_id/variation_id, z Allegro oferta_id. Uzupełniamy je z lustra po SKU w kanale zamówienia (tylko demo).
   const naLustro = db.prepare("SELECT produkt_id, wariant_id FROM produkty_sklepowe WHERE kanal = ? AND sku_sklepu = ? LIMIT 1");
@@ -858,19 +1169,20 @@ async function wypelnijMagazyn(db, { dzis }) {
   }
   // PRZ-091: stany magazynowe WŁĄCZONE w demo (u klienta domyślnie wyłączone) — 30 dni temu, ze stanem otwarcia
   // dla kart z SKU; zamówienia demo z ostatnich 30 dni zdejmują towar, kilka kart schodzi na minus.
-  const { przelaczStany, dodajRuch } = await import('../src/oms/db/stany-magazynowe.js');
-  const granica = new Date(Date.parse(`${dzis}T04:00:00.000Z`) - 30 * 86400000).toISOString();
+  const { przelaczStany, zapiszOtwarcie } = await import('../src/oms/db/stany-magazynowe.js');
+  const granica = new Date(Date.parse(synchronizacja) - 30 * 86400000).toISOString();
   przelaczStany(db, { wlacz: true, konto: { id: null, login: 'demo' }, at: granica });
   const zSku = db.prepare("SELECT id FROM karty_produktow WHERE TRIM(COALESCE(sku, '')) <> '' ORDER BY id").all();
   for (const [i, k] of zSku.entries()) {
     if (i % 9 === 4) continue; // kilka kart bez stanu otwarcia — zejdą na minus po pierwszym zamówieniu
-    dodajRuch(db, { kartaId: k.id, rodzaj: 'otwarcie', ilosc: 9 + (i * 5) % 17, powod: 'stan otwarcia (demo)',
-      klucz: `otwarcie:${k.id}:${granica}`, konto: { id: null, login: 'demo' }, at: granica });
+    zapiszOtwarcie(db, { kartaId: k.id, ilosc: 9 + (i * 5) % 17, zrodlo: 'demo', konto: { id: null, login: 'demo' }, at: granica });
   }
+  stanyKanalowDemo(db, { synchronizacja });
   return { produkty: przebieg.kanaly.reduce((s, k) => s + k.zapisane, 0), karty: karty.utworzone, powiazaneOferty: oferty.powiazane.length };
 }
 
-export async function utworzBazeDemo({ baza, ziarno = 72, dzis, env = ENV_DEMO }) {
+export async function utworzBazeDemo({ baza, ziarno = 72, dzis, teraz, env = ENV_DEMO }) {
+  const koniecDnia = terazDemo(dzis, teraz);
   if ([baza, `${baza}-wal`, `${baza}-shm`].some((p) => fs.existsSync(p))) throw new Error('DEMO_ODMOWA_NADPISANIA');
   const { openOmsDb } = await import('../src/oms/db/db.ts');
   const { modulyDla } = await import('../src/moduly/lista.ts');
@@ -880,8 +1192,9 @@ export async function utworzBazeDemo({ baza, ziarno = 72, dzis, env = ENV_DEMO }
   // Baza demo jest jednorazowa — przy awarii w połowie i tak jest kasowana niżej.
   db.exec('PRAGMA synchronous = OFF');
   try {
-    const wynik = wygenerujDaneDemo(db, { ziarno, dzis, env });
-    wynik.magazyn = await wypelnijMagazyn(db, { dzis });
+    const wynik = wygenerujDaneDemo(db, { ziarno, dzis, teraz, env });
+    wynik.magazyn = await wypelnijMagazyn(db, { dzis, koniecDnia });
+    wynik.rozliczenia = await rozliczeniaPrz160(db, { dzis, koniecDnia, env });
     if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw new Error('DEMO_INTEGRITY');
     return wynik;
   } catch (e) {

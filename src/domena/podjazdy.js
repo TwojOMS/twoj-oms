@@ -80,9 +80,27 @@ function ocenOdpowiedz(odpowiedz, shipmentIds, adres) {
   return { przyczyna: null, propozycje };
 }
 
-export function ofertyPodjazdu(odpowiedz, shipmentIds, adres) {
+// PRZ-160 P4.02: przewoźnik może nie podawać godzin (pomiar One — niezmierzony; ogólnie dla każdej usługi).
+// Gdy poprawna odpowiedź ma puste `pickupTimes` dla WSZYSTKICH paczek zestawu, jedyną ofertą jest sama data
+// gotowości — zlecenie idzie z `pickupTime: { date }`, godzinę ustala przewoźnik. Puste tylko dla części
+// paczek to nadal brak wspólnego terminu (diagnoza „paczka-bez-terminu”).
+const bezGodzin = (propozycje) => propozycje.every((p) => !Array.isArray(p?.pickupTimes) || !p.pickupTimes.length);
+const dzienGotowosci = /^\d{4}-\d{2}-\d{2}$/;
+
+export function ofertyPodjazdu(odpowiedz, shipmentIds, adres, dataGotowosci = null) {
   const ocena = ocenOdpowiedz(odpowiedz, shipmentIds, adres);
-  return ocena.przyczyna ? [] : wspolneTerminy(ocena.propozycje);
+  if (ocena.przyczyna) return [];
+  if (bezGodzin(ocena.propozycje)) return dzienGotowosci.test(dataGotowosci ?? '') ? [{ date: dataGotowosci }] : [];
+  return wspolneTerminy(ocena.propozycje);
+}
+
+const NAZWY_KURIEROW = { DPD: 'DPD', ALLEGRO_ONE_KURIER: 'Allegro One Kurier' };
+export const nazwaKuriera = (kod) => NAZWY_KURIEROW[kod] ?? kod;
+
+// Termin podjazdu dla ludzi: z oknem godzin albo sama data (godzinę ustala przewoźnik).
+export function opisTerminu(t) {
+  if (!t?.date) return '';
+  return t.minTime && t.maxTime ? `${t.date}, ${t.minTime}–${t.maxTime}` : `${t.date} — godzinę ustali przewoźnik`;
 }
 
 // Gdy wspólnego terminu nie ma, operator musi zobaczyć, CO zwróciło Allegro:
@@ -104,7 +122,7 @@ export function diagnozaTerminow(odpowiedz, shipmentIds, adres) {
 }
 
 export function podjazdPoTerminie(termin, terazIso = new Date().toISOString()) {
-  if (!termin?.date || !termin?.maxTime) return false;
+  if (!termin?.date) return false;
   const d = new Date(terazIso);
   if (!Number.isFinite(d.getTime())) return false;
   const czesci = new Intl.DateTimeFormat('en-GB', {
@@ -113,5 +131,6 @@ export function podjazdPoTerminie(termin, terazIso = new Date().toISOString()) {
   }).formatToParts(d);
   const w = Object.fromEntries(czesci.map((p) => [p.type, p.value]));
   const lokalnie = `${w.year}-${w.month}-${w.day}T${w.hour}:${w.minute}`;
-  return lokalnie > `${termin.date}T${termin.maxTime}`;
+  // Sama data (godzinę ustala przewoźnik) — termin mija z końcem dnia.
+  return lokalnie > `${termin.date}T${termin.maxTime ?? '23:59'}`;
 }

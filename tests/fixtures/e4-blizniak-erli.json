@@ -1,0 +1,116 @@
+[
+ {
+  "przebieg": 1,
+  "metoda": "POST",
+  "sciezka": "/api/products/_search",
+  "tresc": "{\"pagination\":{\"sortField\":\"externalId\",\"order\":\"ASC\",\"limit\":100}}"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "POST",
+  "sciezka": "/api/products/_search",
+  "tresc": "{\"pagination\":{\"sortField\":\"externalId\",\"order\":\"ASC\",\"limit\":100,\"after\":\"pc7k2q-K100\"}}"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "PATCH",
+  "sciezka": "/api/products/pc7k2q-K021",
+  "tresc": "{\"name\":\"Lampa Półcień LMP-021 — klosz mleczny\",\"images\":[{\"url\":\"https://polcien.example/z/LMP-021.png\"}],\"dispatchTime\":{\"period\":2,\"unit\":\"day\"},\"deliveryPriceList\":\"Cennik Półcień\",\"taxRate\":\"TAX_23\",\"externalCategories\":[],\"externalAttributes\":[{\"id\":\"11323\",\"source\":\"allegro\",\"values\":[{\"id\":\"11323_1\"}]}],\"sku\":\"LMP-021\"}"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "PATCH",
+  "sciezka": "/api/products/pc7k2q-K022",
+  "tresc": "{\"name\":\"Lampa Półcień LMP-022 — klosz mleczny\",\"images\":[{\"url\":\"https://polcien.example/z/LMP-022.png\"}],\"dispatchTime\":{\"period\":2,\"unit\":\"day\"},\"deliveryPriceList\":\"Cennik Półcień\",\"taxRate\":\"TAX_23\",\"externalCategories\":[],\"externalAttributes\":[{\"id\":\"11323\",\"source\":\"allegro\",\"values\":[{\"id\":\"11323_1\"}]}],\"sku\":\"LMP-022\"}"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "PATCH",
+  "sciezka": "/api/products/pc7k2q-K023",
+  "tresc": "{\"name\":\"Lampa Półcień LMP-023 — klosz mleczny\",\"images\":[{\"url\":\"https://polcien.example/z/LMP-023.png\"}],\"dispatchTime\":{\"period\":2,\"unit\":\"day\"},\"deliveryPriceList\":\"Cennik Półcień\",\"taxRate\":\"TAX_23\",\"externalCategories\":[],\"externalAttributes\":[{\"id\":\"11323\",\"source\":\"allegro\",\"values\":[{\"id\":\"11323_1\"}]}],\"sku\":\"LMP-023\"}"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "POST",
+  "sciezka": "/api/products/pc7k2q-K121",
+  "tresc": "{\"name\":\"Lampa Półcień LMP-121\",\"images\":[{\"url\":\"https://polcien.example/z/LMP-121.png\"}],\"price\":11210,\"stock\":8,\"dispatchTime\":{\"period\":2,\"unit\":\"day\"},\"deliveryPriceList\":\"Cennik Półcień\",\"taxRate\":\"TAX_23\",\"status\":\"inactive\",\"externalCategories\":[],\"externalAttributes\":[{\"id\":\"11323\",\"source\":\"allegro\",\"values\":[{\"id\":\"11323_1\"}]}],\"sku\":\"LMP-121\"}"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "POST",
+  "sciezka": "/api/products/pc7k2q-K122",
+  "tresc": "{\"name\":\"Lampa Półcień LMP-122\",\"images\":[{\"url\":\"https://polcien.example/z/LMP-122.png\"}],\"price\":11220,\"stock\":8,\"dispatchTime\":{\"period\":2,\"unit\":\"day\"},\"deliveryPriceList\":\"Cennik Półcień\",\"taxRate\":\"TAX_23\",\"status\":\"inactive\",\"externalCategories\":[],\"externalAttributes\":[{\"id\":\"11323\",\"source\":\"allegro\",\"values\":[{\"id\":\"11323_1\"}]}],\"sku\":\"LMP-122\"}"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "POST",
+  "sciezka": "/api/products/pc7k2q-K123",
+  "tresc": "{\"name\":\"Lampa Półcień LMP-123\",\"images\":[{\"url\":\"https://polcien.example/z/LMP-123.png\"}],\"price\":11230,\"stock\":8,\"dispatchTime\":{\"period\":2,\"unit\":\"day\"},\"deliveryPriceList\":\"Cennik Półcień\",\"taxRate\":\"TAX_23\",\"status\":\"inactive\",\"externalCategories\":[],\"externalAttributes\":[{\"id\":\"11323\",\"source\":\"allegro\",\"values\":[{\"id\":\"11323_1\"}]}],\"sku\":\"LMP-123\"}"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "POST",
+  "sciezka": "/api/products/pc7k2q-K124",
+  "tresc": "{\"name\":\"Lampa Półcień LMP-124\",\"images\":[{\"url\":\"https://polcien.example/z/LMP-124.png\"}],\"price\":11240,\"stock\":8,\"dispatchTime\":{\"period\":2,\"unit\":\"day\"},\"deliveryPriceList\":\"Cennik Półcień\",\"taxRate\":\"TAX_23\",\"status\":\"inactive\",\"externalCategories\":[],\"externalAttributes\":[{\"id\":\"11323\",\"source\":\"allegro\",\"values\":[{\"id\":\"11323_1\"}]}],\"sku\":\"LMP-124\"}"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "POST",
+  "sciezka": "/api/products/pc7k2q-K125",
+  "tresc": "{\"name\":\"Lampa Półcień LMP-125\",\"images\":[{\"url\":\"https://polcien.example/z/LMP-125.png\"}],\"price\":11250,\"stock\":8,\"dispatchTime\":{\"period\":2,\"unit\":\"day\"},\"deliveryPriceList\":\"Cennik Półcień\",\"taxRate\":\"TAX_23\",\"status\":\"inactive\",\"externalCategories\":[],\"externalAttributes\":[{\"id\":\"11323\",\"source\":\"allegro\",\"values\":[{\"id\":\"11323_1\"}]}],\"sku\":\"LMP-125\"}"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "PATCH",
+  "sciezka": "/api/products/batch-update",
+  "tresc": "[{\"externalId\":\"pc7k2q-K001\",\"stock\":8,\"price\":10510},{\"externalId\":\"pc7k2q-K002\",\"stock\":8,\"price\":10520},{\"externalId\":\"pc7k2q-K003\",\"stock\":8,\"price\":10530},{\"externalId\":\"pc7k2q-K004\",\"stock\":8,\"price\":10540},{\"externalId\":\"pc7k2q-K005\",\"stock\":8,\"price\":10550},{\"externalId\":\"pc7k2q-K006\",\"stock\":8,\"price\":10560},{\"externalId\":\"pc7k2q-K007\",\"stock\":8,\"price\":10570},{\"externalId\":\"pc7k2q-K008\",\"stock\":8,\"price\":10580},{\"externalId\":\"pc7k2q-K009\",\"stock\":8,\"price\":10590},{\"externalId\":\"pc7k2q-K010\",\"stock\":8,\"price\":10600},{\"externalId\":\"pc7k2q-K011\",\"stock\":8},{\"externalId\":\"pc7k2q-K012\",\"stock\":8},{\"externalId\":\"pc7k2q-K013\",\"stock\":8},{\"externalId\":\"pc7k2q-K014\",\"stock\":8},{\"externalId\":\"pc7k2q-K015\",\"stock\":8},{\"externalId\":\"pc7k2q-K016\",\"stock\":8},{\"externalId\":\"pc7k2q-K017\",\"stock\":8},{\"externalId\":\"pc7k2q-K018\",\"stock\":8},{\"externalId\":\"pc7k2q-K019\",\"stock\":8},{\"externalId\":\"pc7k2q-K020\",\"stock\":8},{\"externalId\":\"pc7k2q-K021\",\"stock\":8},{\"externalId\":\"pc7k2q-K022\",\"stock\":8},{\"externalId\":\"pc7k2q-K023\",\"stock\":8},{\"externalId\":\"pc7k2q-K024\",\"stock\":8},{\"externalId\":\"pc7k2q-K025\",\"stock\":8},{\"externalId\":\"pc7k2q-K026\",\"stock\":8},{\"externalId\":\"pc7k2q-K027\",\"stock\":8},{\"externalId\":\"pc7k2q-K028\",\"stock\":8},{\"externalId\":\"pc7k2q-K029\",\"stock\":8},{\"externalId\":\"pc7k2q-K030\",\"stock\":8},{\"externalId\":\"pc7k2q-K031\",\"stock\":8},{\"externalId\":\"pc7k2q-K032\",\"stock\":8},{\"externalId\":\"pc7k2q-K033\",\"stock\":8},{\"externalId\":\"pc7k2q-K034\",\"stock\":8},{\"externalId\":\"pc7k2q-K035\",\"stock\":8},{\"externalId\":\"pc7k2q-K036\",\"stock\":8},{\"externalId\":\"pc7k2q-K037\",\"stock\":8},{\"externalId\":\"pc7k2q-K038\",\"stock\":8},{\"externalId\":\"pc7k2q-K039\",\"stock\":8},{\"externalId\":\"pc7k2q-K040\",\"stock\":8},{\"externalId\":\"pc7k2q-K041\",\"stock\":8},{\"externalId\":\"pc7k2q-K042\",\"stock\":8},{\"externalId\":\"pc7k2q-K043\",\"stock\":8},{\"externalId\":\"pc7k2q-K044\",\"stock\":8},{\"externalId\":\"pc7k2q-K045\",\"stock\":8},{\"externalId\":\"pc7k2q-K046\",\"stock\":8},{\"externalId\":\"pc7k2q-K047\",\"stock\":8},{\"externalId\":\"pc7k2q-K048\",\"stock\":8},{\"externalId\":\"pc7k2q-K049\",\"stock\":8},{\"externalId\":\"pc7k2q-K050\",\"stock\":8},{\"externalId\":\"pc7k2q-K051\",\"stock\":8},{\"externalId\":\"pc7k2q-K052\",\"stock\":8},{\"externalId\":\"pc7k2q-K053\",\"stock\":8},{\"externalId\":\"pc7k2q-K054\",\"stock\":8},{\"externalId\":\"pc7k2q-K055\",\"stock\":8},{\"externalId\":\"pc7k2q-K056\",\"stock\":8},{\"externalId\":\"pc7k2q-K057\",\"stock\":8},{\"externalId\":\"pc7k2q-K058\",\"stock\":8},{\"externalId\":\"pc7k2q-K059\",\"stock\":8},{\"externalId\":\"pc7k2q-K060\",\"stock\":8},{\"externalId\":\"pc7k2q-K061\",\"stock\":8},{\"externalId\":\"pc7k2q-K062\",\"stock\":8},{\"externalId\":\"pc7k2q-K063\",\"stock\":8},{\"externalId\":\"pc7k2q-K064\",\"stock\":8},{\"externalId\":\"pc7k2q-K065\",\"stock\":8},{\"externalId\":\"pc7k2q-K066\",\"stock\":8},{\"externalId\":\"pc7k2q-K067\",\"stock\":8},{\"externalId\":\"pc7k2q-K068\",\"stock\":8},{\"externalId\":\"pc7k2q-K069\",\"stock\":8},{\"externalId\":\"pc7k2q-K070\",\"stock\":8},{\"externalId\":\"pc7k2q-K071\",\"stock\":8},{\"externalId\":\"pc7k2q-K072\",\"stock\":8},{\"externalId\":\"pc7k2q-K073\",\"stock\":8},{\"externalId\":\"pc7k2q-K074\",\"stock\":8},{\"externalId\":\"pc7k2q-K075\",\"stock\":8},{\"externalId\":\"pc7k2q-K076\",\"stock\":8},{\"externalId\":\"pc7k2q-K077\",\"stock\":8},{\"externalId\":\"pc7k2q-K078\",\"stock\":8},{\"externalId\":\"pc7k2q-K079\",\"stock\":8},{\"externalId\":\"pc7k2q-K080\",\"stock\":8},{\"externalId\":\"pc7k2q-K081\",\"stock\":8},{\"externalId\":\"pc7k2q-K082\",\"stock\":8},{\"externalId\":\"pc7k2q-K083\",\"stock\":8},{\"externalId\":\"pc7k2q-K084\",\"stock\":8},{\"externalId\":\"pc7k2q-K085\",\"stock\":8},{\"externalId\":\"pc7k2q-K086\",\"stock\":8},{\"externalId\":\"pc7k2q-K087\",\"stock\":8},{\"externalId\":\"pc7k2q-K088\",\"stock\":8},{\"externalId\":\"pc7k2q-K089\",\"stock\":8},{\"externalId\":\"pc7k2q-K090\",\"stock\":8},{\"externalId\":\"pc7k2q-K091\",\"stock\":8},{\"externalId\":\"pc7k2q-K092\",\"stock\":8},{\"externalId\":\"pc7k2q-K093\",\"stock\":8},{\"externalId\":\"pc7k2q-K094\",\"stock\":8},{\"externalId\":\"pc7k2q-K095\",\"stock\":8},{\"externalId\":\"pc7k2q-K096\",\"stock\":8},{\"externalId\":\"pc7k2q-K097\",\"stock\":8},{\"externalId\":\"pc7k2q-K098\",\"stock\":8},{\"externalId\":\"pc7k2q-K099\",\"stock\":8},{\"externalId\":\"pc7k2q-K100\",\"stock\":8},{\"externalId\":\"pc7k2q-K101\",\"stock\":8},{\"externalId\":\"pc7k2q-K102\",\"stock\":8},{\"externalId\":\"pc7k2q-K103\",\"stock\":8},{\"externalId\":\"pc7k2q-K104\",\"stock\":8},{\"externalId\":\"pc7k2q-K105\",\"stock\":8},{\"externalId\":\"pc7k2q-K106\",\"stock\":8},{\"externalId\":\"pc7k2q-K107\",\"stock\":8},{\"externalId\":\"pc7k2q-K108\",\"stock\":8},{\"externalId\":\"pc7k2q-K109\",\"stock\":8},{\"externalId\":\"pc7k2q-K110\",\"stock\":8},{\"externalId\":\"pc7k2q-K111\",\"stock\":8},{\"externalId\":\"pc7k2q-K112\",\"stock\":8},{\"externalId\":\"pc7k2q-K113\",\"stock\":8},{\"externalId\":\"pc7k2q-K114\",\"stock\":8},{\"externalId\":\"pc7k2q-K115\",\"stock\":8},{\"externalId\":\"pc7k2q-K116\",\"stock\":8},{\"externalId\":\"pc7k2q-K117\",\"stock\":8},{\"externalId\":\"pc7k2q-K118\",\"stock\":8},{\"externalId\":\"pc7k2q-K119\",\"stock\":8},{\"externalId\":\"pc7k2q-K120\",\"stock\":8}]"
+ },
+ {
+  "przebieg": 2,
+  "metoda": "POST",
+  "sciezka": "/api/products/_search",
+  "tresc": "{\"pagination\":{\"sortField\":\"externalId\",\"order\":\"ASC\",\"limit\":100}}"
+ },
+ {
+  "przebieg": 2,
+  "metoda": "POST",
+  "sciezka": "/api/products/_search",
+  "tresc": "{\"pagination\":{\"sortField\":\"externalId\",\"order\":\"ASC\",\"limit\":100,\"after\":\"pc7k2q-K100\"}}"
+ },
+ {
+  "przebieg": 2,
+  "metoda": "PATCH",
+  "sciezka": "/api/products/pc7k2q-K071",
+  "tresc": "{\"status\":\"inactive\"}"
+ },
+ {
+  "przebieg": 2,
+  "metoda": "PATCH",
+  "sciezka": "/api/products/pc7k2q-K072",
+  "tresc": "{\"status\":\"inactive\"}"
+ },
+ {
+  "przebieg": 2,
+  "metoda": "PATCH",
+  "sciezka": "/api/products/batch-update",
+  "tresc": "[{\"externalId\":\"pc7k2q-K031\",\"stock\":8},{\"externalId\":\"pc7k2q-K032\",\"stock\":8},{\"externalId\":\"pc7k2q-K033\",\"stock\":8},{\"externalId\":\"pc7k2q-K034\",\"stock\":8},{\"externalId\":\"pc7k2q-K035\",\"stock\":8},{\"externalId\":\"pc7k2q-K036\",\"stock\":8},{\"externalId\":\"pc7k2q-K037\",\"stock\":8},{\"externalId\":\"pc7k2q-K038\",\"stock\":8},{\"externalId\":\"pc7k2q-K039\",\"stock\":8},{\"externalId\":\"pc7k2q-K040\",\"stock\":8},{\"externalId\":\"pc7k2q-K041\",\"stock\":8},{\"externalId\":\"pc7k2q-K042\",\"stock\":8},{\"externalId\":\"pc7k2q-K043\",\"stock\":8},{\"externalId\":\"pc7k2q-K044\",\"stock\":8},{\"externalId\":\"pc7k2q-K045\",\"stock\":8},{\"externalId\":\"pc7k2q-K046\",\"stock\":8},{\"externalId\":\"pc7k2q-K047\",\"stock\":8},{\"externalId\":\"pc7k2q-K048\",\"stock\":8},{\"externalId\":\"pc7k2q-K049\",\"stock\":8},{\"externalId\":\"pc7k2q-K050\",\"stock\":8},{\"externalId\":\"pc7k2q-K081\",\"price\":10900}]"
+ },
+ {
+  "przebieg": 3,
+  "metoda": "POST",
+  "sciezka": "/api/products/_search",
+  "tresc": "{\"pagination\":{\"sortField\":\"externalId\",\"order\":\"ASC\",\"limit\":100}}"
+ },
+ {
+  "przebieg": 3,
+  "metoda": "POST",
+  "sciezka": "/api/products/_search",
+  "tresc": "{\"pagination\":{\"sortField\":\"externalId\",\"order\":\"ASC\",\"limit\":100,\"after\":\"pc7k2q-K100\"}}"
+ },
+ {
+  "przebieg": 3,
+  "metoda": "PATCH",
+  "sciezka": "/api/products/batch-update",
+  "tresc": "[{\"externalId\":\"pc7k2q-K091\",\"price\":10910},{\"externalId\":\"pc7k2q-K092\",\"price\":10920},{\"externalId\":\"pc7k2q-K093\",\"price\":10930},{\"externalId\":\"pc7k2q-K094\",\"price\":10940},{\"externalId\":\"pc7k2q-K095\",\"price\":10950}]"
+ }
+]

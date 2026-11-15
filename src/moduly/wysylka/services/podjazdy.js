@@ -13,7 +13,7 @@ const TRZYDZIESCI_MINUT = 30 * 60 * 1000;
 // oraz narzut sieci/SQLite; spóźniony właściciel i tak nie zapisze bez tokenu.
 const LEASE_SPRAWDZENIA_MS = 120 * 1000;
 const dzien = /^\d{4}-\d{2}-\d{2}$/;
-const kluczTerminu = (t) => `${t?.date}|${t?.minTime}|${t?.maxTime}`;
+const kluczTerminu = (t) => `${t?.date ?? ''}|${t?.minTime ?? ''}|${t?.maxTime ?? ''}`;
 // Potwierdzone rzeczywistym podjazdem 23.09.2026: zasób WzA tej usługi
 // podaje transport DPD, a szczegóły przyjętego podjazdu pickupCarrier=DPD.
 // Pozostałe metody wymagają osobnego pomiaru przed odblokowaniem POST.
@@ -26,6 +26,20 @@ const KURIER_ODBIERAJACY = new Map([
   ['03f26351-f683-4db2-8895-f2c599280e3c', 'DPD'],
   ['09bcdcdb-c62a-41c4-ba42-f2c599280e3c', 'DPD'],
   ['13f26351-26fb-48d4-b5dd-f2c599280e3c', 'DPD'],
+  // PRZ-160 P4.02 (pomiar 13.11.2026, tylko GET zasobu przesyłki): obie usługi One podają transport
+  // ['ALLEGRO_ONE_KURIER'] i pickupAvailable: true. Propozycji terminów ani `pickupCarrier` przyjętego
+  // podjazdu One nie mierzono — `sprawdz` porównuje go z tą mapą, więc inny przewoźnik da stan „nieznany”.
+  ['0d83955a-4297-4169-adef-9790d53b11ff', 'ALLEGRO_ONE_KURIER'], // Allegro One Kurier
+  ['0b9bed2c-0bc1-4e1f-9694-29bb39ebb483', 'ALLEGRO_ONE_KURIER'], // Allegro One Box, One Kurier
+]);
+
+// Oferta samej daty (godzinę ustala przewoźnik) tylko dla One. DPD podaje okna (pomiar 23.09); puste okna DPD
+// zostają diagnozą — zlecenie u przewoźnika jest nieodwracalne, a samej daty dla DPD nikt nie mierzył.
+const dataBezGodzin = (kurier, data) => (kurier === 'ALLEGRO_ONE_KURIER' ? data : null);
+// Każdy kurier odbierający ma OSOBNY przełącznik: włączenie One nie odblokowuje DPD i odwrotnie.
+const USTAWIENIE_ZLECANIA = new Map([
+  ['DPD', 'podjazdy.allegro.dpd.aktywne'],
+  ['ALLEGRO_ONE_KURIER', 'podjazdy.allegro.one.aktywne'],
 ]);
 
 function walidujAdres(adres) {
@@ -62,9 +76,11 @@ export function createPodjazdy({ db, allegroDla, teraz = () => new Date(), uuid 
   moznaZlecac = null }) {
   // Fail closed during rollout: before enabling this setting we first record
   // the already ordered pickup so it cannot be requested a second time in OMS.
-  const zlecanieAktywne = () => moznaZlecac === null
-    ? db.prepare("SELECT wartosc FROM ustawienia WHERE klucz='podjazdy.allegro.dpd.aktywne'").get()?.wartosc === '1'
-    : moznaZlecac;
+  const zlecanieAktywne = (kurier) => {
+    if (moznaZlecac !== null) return moznaZlecac;
+    const klucz = USTAWIENIE_ZLECANIA.get(kurier);
+    return Boolean(klucz) && db.prepare('SELECT wartosc FROM ustawienia WHERE klucz=?').get(klucz)?.wartosc === '1';
+  };
   const nastepnaProba = (sekundy = 600) => new Date(teraz().getTime()
     + (Number.isFinite(Number(sekundy)) && Number(sekundy) > 0 ? Number(sekundy) : 600) * 1000).toISOString();
   async function sprawdzPaczki(ids) {
@@ -114,7 +130,9 @@ export function createPodjazdy({ db, allegroDla, teraz = () => new Date(), uuid 
       const propozycje = await klient.pobierzPropozycjePodjazdu({
         shipmentIds: paczki.map((p) => p.shipmentId), readyDate: data, address: poprawnyAdres,
       });
-      const terminy = ofertyPodjazdu(propozycje, paczki.map((p) => p.shipmentId), poprawnyAdres);
+      const kurier = paczki.every((p) => p.kurierOdbierajacy === paczki[0].kurierOdbierajacy)
+        ? paczki[0].kurierOdbierajacy : null;
+      const terminy = ofertyPodjazdu(propozycje, paczki.map((p) => p.shipmentId), poprawnyAdres, dataBezGodzin(kurier, data));
       const diagnoza = terminy.length ? null : diagnozaTerminow(propozycje, paczki.map((p) => p.shipmentId), poprawnyAdres);
       if (diagnoza) {
         diagnoza.paczki = diagnoza.paczki.map((d, i) => ({ shipmentId: d.shipmentId,
@@ -122,11 +140,10 @@ export function createPodjazdy({ db, allegroDla, teraz = () => new Date(), uuid 
       }
       grupy.push({ id, kanal: paczki[0].kanal, metoda: paczki[0].metoda,
         etykieta: paczki[0].nazwa || `Usługa ${paczki[0].metoda}`,
-        kurierOdbierajacy: paczki.every((p) => p.kurierOdbierajacy === paczki[0].kurierOdbierajacy)
-          ? paczki[0].kurierOdbierajacy : null,
+        kurierOdbierajacy: kurier,
         przesylki: paczki, terminy, diagnoza });
     }
-    for (const grupa of grupy) grupa.moznaZlecac = zlecanieAktywne()
+    for (const grupa of grupy) grupa.moznaZlecac = zlecanieAktywne(grupa.kurierOdbierajacy)
       && (moznaZlecac === null ? Boolean(grupa.kurierOdbierajacy) : true);
     const id = uuid();
     const wygasaAt = new Date(teraz().getTime() + TRZYDZIESCI_MINUT).toISOString();
@@ -145,7 +162,7 @@ export function createPodjazdy({ db, allegroDla, teraz = () => new Date(), uuid 
         const wynik = db.prepare('SELECT * FROM podjazdy WHERE podglad_id=? AND grupa_id=?')
           .get(zapis.id, g.id) ?? null;
         return { ...g, wynik,
-          moznaZlecac: !wynik && !wygasl && g.moznaZlecac && zlecanieAktywne() };
+          moznaZlecac: !wynik && !wygasl && g.moznaZlecac && zlecanieAktywne(g.kurierOdbierajacy) };
       }) };
   }
 
@@ -160,14 +177,16 @@ export function createPodjazdy({ db, allegroDla, teraz = () => new Date(), uuid 
     const snapshot = JSON.parse(podglad.snapshot_json);
     const grupa = snapshot.grupy.find((g) => g.id === grupaId);
     if (!grupa) throw new Error('Nieznana grupa podjazdu.');
-    if (!grupa.moznaZlecac || !zlecanieAktywne()) {
+    if (!grupa.moznaZlecac || !zlecanieAktywne(grupa.kurierOdbierajacy)) {
       throw new Error('Zlecanie podjazdów jest wstrzymane: nie potwierdzono przewoźnika odbierającego albo aktywacji usługi.');
     }
     const oferta = grupa.terminy.find((t) => kluczTerminu(t) === kluczTerminu(termin));
     if (!oferta) {
       throw new Error('Termin nie pochodzi z aktualnego podglądu.');
     }
-    const wybranyTermin = { date: oferta.date, minTime: oferta.minTime, maxTime: oferta.maxTime };
+    // Oferta samej daty idzie bez kluczy minTime/maxTime (nie jako null) — Allegro dostaje dokładnie { date }.
+    const wybranyTermin = { date: oferta.date,
+      ...(oferta.minTime ? { minTime: oferta.minTime, maxTime: oferta.maxTime } : {}) };
     const odswiezone = await sprawdzPaczki(grupa.przesylki.map((p) => p.przesylkaId));
     if (odswiezone.some((p, i) => p.shipmentId !== grupa.przesylki[i].shipmentId
       || p.kanal !== grupa.kanal || p.metoda !== grupa.metoda
@@ -179,7 +198,7 @@ export function createPodjazdy({ db, allegroDla, teraz = () => new Date(), uuid 
       shipmentIds: grupa.przesylki.map((p) => p.shipmentId),
       readyDate: snapshot.data, address: snapshot.adres,
     });
-    if (!ofertyPodjazdu(propozycje, grupa.przesylki.map((p) => p.shipmentId), snapshot.adres)
+    if (!ofertyPodjazdu(propozycje, grupa.przesylki.map((p) => p.shipmentId), snapshot.adres, dataBezGodzin(grupa.kurierOdbierajacy, snapshot.data))
       .some((t) => kluczTerminu(t) === kluczTerminu(wybranyTermin))) {
       throw new Error('Wybrany termin zniknął z aktualnych propozycji. Pobierz nowy podgląd.');
     }
@@ -194,7 +213,9 @@ export function createPodjazdy({ db, allegroDla, teraz = () => new Date(), uuid 
       for (const zamowienieId of zamowienia) {
         if (zamowienieId) dopiszLog(db, zamowienieId, { akcja: 'podjazd.zlecenie',
           wynik: `Ręcznie (${kto ?? 'operator'}): konto ${grupa.kanal}, usługa ${grupa.metoda}, `
-            + `${grupa.przesylki.length} paczek, termin ${wybranyTermin.date} ${wybranyTermin.minTime}–${wybranyTermin.maxTime}, `
+            + `${grupa.przesylki.length} paczek, termin ${wybranyTermin.minTime
+              ? `${wybranyTermin.date} ${wybranyTermin.minTime}–${wybranyTermin.maxTime}`
+              : `${wybranyTermin.date} — godzinę ustali przewoźnik`}, `
             + `komenda ${rezerwacja.command_id}` });
       }
       await klient.zlecPodjazd({ commandId: rezerwacja.command_id,

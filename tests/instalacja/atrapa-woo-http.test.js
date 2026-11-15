@@ -12,6 +12,12 @@ async function start(opcje = {}) {
   return `http://127.0.0.1:${serwer.address().port}/wp-json/wc/v3`;
 }
 describe('atrapa HTTP Woo', () => {
+  it('Półcień udostępnia ustawienia sklepu bez naliczania podatków', async () => {
+    const url = await start();
+    const client = createWooClient({ baseUrl: url.replace('/wp-json/wc/v3', ''), ck: 'ck_test_polcien', cs: 'cs_test_polcien' });
+    expect(await client.ustawienieSklepu('woocommerce_calc_taxes', 'general')).toBe('no');
+    expect(await client.ustawienieSklepu('woocommerce_prices_include_tax', 'tax')).toBe('no');
+  });
   it('wymaga kluczy i udostępnia zamówienia oraz strefy i metody', async () => {
     const url = await start();
     expect((await fetch(`${url}/orders`)).status).toBe(401);

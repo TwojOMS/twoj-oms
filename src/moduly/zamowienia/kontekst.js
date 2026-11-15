@@ -331,7 +331,8 @@ function zbierzOstrzezenia(req) {
         ...ostrzezeniaZwrotow({ zwroty: zwrotyBezKorekty(db), dzis }),
         ...ostrzezeniaPobran({ pobrania: pobraniaBezGotowki(db) }),
         ...ostrzezeniaPrzesylek({ przesylki, zamowienia: numery, teraz }),
-        ...ostrzezeniaWiadomosci({ watki: listaWatkow(db), teraz }),
+        // PRZ-167: w trybie próby (piaskownica, demo publiczne) wątki są z atrapy — „nowa wiadomość” byłaby szumem.
+        ...(config.proba === true ? [] : ostrzezeniaWiadomosci({ watki: listaWatkow(db), teraz })),
       ];
       // PRZ-102.04: najpierw prawa konta (wiersz bez prawa do ekranu przycisku = 403 po kliku).
       return zlozOstrzezenia({ wiersze: ostrzezeniaDlaKonta({ wiersze, konto: req?.konto ?? null }), odrzucone: odrzucenia(db), teraz, ukryteTypy: ukryteTypyKonta(db, req?.konto?.id) });

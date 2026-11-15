@@ -23,12 +23,12 @@ export function createModulWiadomosci({ fabryki = {}, uslugi }: {
     konfiguracja: konfiguracjaWiadomosci, kluczeIntegracji: ['SMTP_USER', 'SMTP_PASS'],
     uprawnienia: [
       { klucz: 'wiadomosci', etykieta: 'Wiadomości', role: ['administrator', 'sprzedaz'] },
-      { klucz: 'klienci', etykieta: 'Stali klienci', role: ['administrator', 'sprzedaz'] },
+      { klucz: 'klienci', etykieta: 'Klienci B2B', role: ['administrator', 'sprzedaz'] },
     ],
     menu: [
       // PRZ-102.03: grupa „Klienci” w menu bocznym (zgodnie z EKRANY.nawigacja).
       { dzial: 'sprzedaz', grupa: 'klienci', etykieta: 'Wiadomości', adres: '/wiadomosci', uprawnienie: 'wiadomosci', kolejnosc: 40 },
-      { dzial: 'sprzedaz', grupa: 'klienci', etykieta: 'Stali klienci', adres: '/klienci', uprawnienie: 'klienci', kolejnosc: 50 },
+      { dzial: 'sprzedaz', grupa: 'klienci', etykieta: 'Klienci B2B', adres: '/klienci', uprawnienie: 'klienci', kolejnosc: 50 },
     ],
     zbuduj: ctx => {
       // Faktury posiadają dane dokumentów; jawny sprzedawca pochodzi z rdzenia.

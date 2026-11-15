@@ -66,7 +66,8 @@ const METODY = ['mojSklep', 'zmianyZamowien', 'oznaczPrzeczytane', 'inboxSzukaj'
   'pobierzProdukt', 'szukajZamowien', 'pobierzZamowienie', 'ustawStatusSprzedawcy',
   'utworzPaczkiZewnetrzne', 'edytujPaczkeZewnetrzna', 'usunPaczkeZewnetrzna', 'metodyDostawy',
   'metodyErli', 'cennikiDostaw', 'cennikiDostawSzczegoly', 'punktyNadania', 'utworzPaczki',
-  'szukajPaczek', 'anulujPaczke', 'protokolyOdbioru', 'pobierzEtykiete'];
+  'szukajPaczek', 'anulujPaczke', 'protokolyOdbioru', 'pobierzEtykiete',
+  'utworzProdukt', 'zmienProdukt', 'szukajProduktow', 'zmienProdukty'];
 
 const METODY_ERLI = [
   { id: 'erliPaczkomat', groupId: 'erliPaczkomat', name: 'Paczkomat ERLI', operator: 'INPOST', cod: false },
@@ -120,16 +121,23 @@ function zamowieniaStartowe(data, { demo = false } = {}) {
     buildingNumber: '1', city: 'Warszawa', country: 'pl', zip: '00-001', phone: '500100200' };
   // Godziny względem chwili zasiewu: świeże przeplatają się z innymi kanałami,
   // pozostałe pokazują ostatnie dni i tygodnie, także po kolejnym resecie demo.
-  const wiekGodziny = [0, 10, 27, 50, 77, 100, 130, 155, 185, 240, 310, 380, 450, 530, 620, 720];
-  return Array.from({ length: 16 }, (_, i) => {
+  // PRZ-160.demo (właściciel 14.11: „zwiększ Erli do 30 zamówień, czyli ok. połowę Allegro”): 16 scenariuszy (0–15) bez zmian,
+  // 16 (PC-ERLI-0017) świeży duży koszyk z 5 różnymi produktami u góry listy (właściciel 14.11), od 17 starsze wysłane
+  // zamówienia z 31–56 dni — 30 importowanych (pending 0006 poller pomija), jak 60 dni innych kanałów.
+  const wiekGodziny = [0, 10, 27, 50, 77, 100, 130, 155, 185, 240, 310, 380, 450, 530, 620, 720,
+    5, 760, 805, 850, 895, 940, 985, 1030, 1075, 1120, 1165, 1210, 1255, 1300, 1345];
+  const DUZY_KOSZYK = 16;
+  const dostawyStarsze = ['dpd', 'erliPaczkomat', 'paczkomat', 'erliKurier24InPost10kg', 'dpd'];
+  return Array.from({ length: wiekGodziny.length }, (_, i) => {
     const zakup = new Date(Date.parse(data) - wiekGodziny[i] * 3600000).toISOString();
     const pozycja = (n, quantity = 1) => ({ id: n + 1, externalId: `PC-OF-${n + 1}`, sku: PRODUKTY[n].sku,
       quantity, unitPrice: PRODUKTY[n].cena_gr, name: PRODUKTY[n].nazwa,
       slug: 'dekoracja-polcien', taxRate: 'TAX_23', ...(n < 4 ? { dispatchTime: { period: 2, unit: 'day' } } : {}) });
-    const items = [pozycja(i, i % 4 === 0 ? 2 : 1), ...(i % 4 === 0 ? [pozycja((i + 1) % 16)] : [])];
+    const items = i === DUZY_KOSZYK ? [pozycja(16, 2), pozycja(17), pozycja(18), pozycja(19), pozycja(20)]
+      : [pozycja(i, i % 4 === 0 ? 2 : 1), ...(i % 4 === 0 ? [pozycja((i + 1) % 16)] : [])];
     const typeId = ['dpd', 'dpd', 'erliPaczkomat', 'dpd', 'paczkomat', 'odbiorOsobisty',
       'erliPaczkomat', 'erliKurier24InPost10kg', 'erliPaczkomat', 'dpd', demo ? 'erliKurier24InPost10kg' : 'nieznanaMetoda',
-      'paczkomat', 'dpd', 'paczkomat', 'erliKurier24InPost10kg', 'odbiorOsobisty'][i];
+      'paczkomat', 'dpd', 'paczkomat', 'erliKurier24InPost10kg', 'odbiorOsobisty'][i] ?? dostawyStarsze[i % dostawyStarsze.length];
     const nazwaDostawy = { dpd: 'Kurier DPD', paczkomat: 'Paczkomat InPost',
       erliPaczkomat: 'Paczkomat ERLI', erliKurier24InPost10kg: 'Kurier ERLI',
       nieznanaMetoda: 'Dostawa nieznana', odbiorOsobisty: 'Odbiór osobisty' };
@@ -143,10 +151,10 @@ function zamowieniaStartowe(data, { demo = false } = {}) {
       ...(['erliPaczkomat', 'paczkomat'].includes(typeId) ? { pickupPlace: { externalId: 'PC001', provider: 'inpost', name: 'Punkt Półcień' } } : {}) },
     totalPrice: items.reduce((s, p) => s + p.unitPrice * p.quantity, 0) + 1000,
     currency: i === 9 ? 'EUR' : 'PLN', market: i === 9 ? 'de' : 'pl',
-    sellerStatus: i === 15 ? 'canceled' : i >= 12 ? 'sent' : i === 3 || i === 4 ? 'inProgress' : 'created',
+    sellerStatus: i === 15 ? 'canceled' : i === DUZY_KOSZYK ? 'created' : i >= 12 ? 'sent' : i === 3 || i === 4 ? 'inProgress' : 'created',
     created: zakup, updated: zakup,
     ...(i === 15 ? { status: 'cancelled' } : {}),
-    ...(i >= 12 && i < 15 ? { deliveryTracking: { trackingNumber: typeId === 'dpd'
+    ...(i >= 12 && i !== 15 && i !== DUZY_KOSZYK ? { deliveryTracking: { trackingNumber: typeId === 'dpd'
       ? '0000' + String(i + 1).padStart(9, '0') + 'U' : '0000' + String(i + 1).padStart(20, '0') } } : {}),
     ...(i !== 1 ? { payment: { id: 1000001 + i, status: i === 5 ? 'PENDING' : 'COMPLETED' } } : {}),
     ...(i !== 5 ? { purchasedAt: zakup } : {}), cursor: `${Math.floor(Date.parse(zakup) / 1000)};${i + 1}x1000`,
@@ -157,8 +165,10 @@ function zamowieniaStartowe(data, { demo = false } = {}) {
 }
 
 /** Stan wyłącznie w atrapa_erli_*; transport nigdy nie wychodzi z procesu. */
-export function createAtrapaErli({ db, kanal, env = process.env, log = () => {}, teraz = () => new Date(), tryb = 'produkcja', demoZmiany = false }) {
+export function createAtrapaErli({ db, kanal, env = process.env, log = () => {}, teraz = () => new Date(), tryb = 'produkcja', demoZmiany = false,
+  opoznienieProduktuOdczyty = 2, frozenProduktow = {} }) {
   wymagajTrybuProby(env, 'atrapa ERLI');
+  if (!Number.isInteger(opoznienieProduktuOdczyty) || opoznienieProduktuOdczyty < 0) throw new Error('Atrapa ERLI: niepoprawne opóźnienie produktu.');
   if (!['produkcja', 'sandbox'].includes(tryb)) throw new Error('Atrapa ERLI: nieznany tryb.');
   db.exec(`CREATE TABLE IF NOT EXISTS atrapa_erli_stan (
     kanal TEXT NOT NULL, rodzaj TEXT NOT NULL, id TEXT NOT NULL, dane_json TEXT NOT NULL,
@@ -174,6 +184,28 @@ export function createAtrapaErli({ db, kanal, env = process.env, log = () => {},
     return w ? JSON.parse(w.dane_json) : null;
   };
   const usun = (rodzaj, id) => db.prepare('DELETE FROM atrapa_erli_stan WHERE kanal=? AND rodzaj=? AND id=?').run(kanal, rodzaj, String(id));
+  function zapiszProdukt(id, pr, zmiany) {
+    const frozen = frozenProduktow[id] ?? pr?.frozen ?? {};
+    const blokuje = pole => frozen === true || (Array.isArray(frozen) ? frozen.includes(pole) : Boolean(frozen[pole]));
+    // P6: stock i name zamrożone przez API są pomijane; price nie jest blokowane.
+    const dozwolone = Object.fromEntries(Object.entries(zmiany).filter(([pole]) => !pr || pole === 'price' || !blokuje(pole)));
+    const produkt = { ...pr, ...dozwolone, externalId: id, frozen };
+    zapisz('produkt', id, produkt);
+    zapisz('wynik-produktu', id, { pozostalo: opoznienieProduktuOdczyty });
+    return Object.keys(dozwolone).filter(p => p !== 'externalId');
+  }
+  function odczytajProdukt(pr) {
+    const wynik = jeden('wynik-produktu', pr.externalId) ?? { pozostalo: 0 };
+    const wToku = wynik.pozostalo > 0;
+    if (wToku) zapisz('wynik-produktu', pr.externalId, { pozostalo: wynik.pozostalo - 1 });
+    const kategorie = (pr.externalCategories ?? []).flatMap(k => k.breadcrumb ?? []);
+    const nieznana = !kategorie.length || kategorie.some(k => String(k.id).startsWith('999'));
+    // P1/P2: produkt istnieje od razu, ale pusta lista problemów nie potwierdza zakończenia przetwarzania.
+    // Kod category jest scenariuszem atrapy D12; P2 na sandboxie pozostał nierozstrzygnięty.
+    return { ...pr, buyableProblems: wToku || !nieznana ? [] : ['category'],
+      categories: wToku || nieznana ? [] : kategorie,
+      images: wToku ? [] : (pr.images ?? []).map(i => ({ ...(typeof i === 'string' ? { url: i } : i), internalUrl: typeof i === 'string' ? i : i.url })) };
+  }
   if (!jeden('meta', 'start')) transakcja(zasiej);
   function transakcja(fn) {
     db.exec('SAVEPOINT atrapa_erli_seed');
@@ -200,7 +232,8 @@ export function createAtrapaErli({ db, kanal, env = process.env, log = () => {},
       else z.status = numer === 7 ? 'cancelled' : 'returned';
       if (numer === 8) z.returns = [{ items: [{ index: 0, quantity: 1 }], reason: 'resign', created: czas }];
       zapisz('zamowienie', z.id, z);
-      const id = String(17 + i).padStart(24, '0');
+      // Po zdarzeniach zasiewu (1…liczba zamówień startowych) — przy 31 zamówieniach stałe 17–19 nadpisałyby zasiew.
+      const id = String(1001 + i).padStart(24, '0');
       zapisz('zdarzenie', id, { id, shopId: 1000001, created: czas, read: false,
         type: 'orderStatusChanged', payload: z });
     }
@@ -252,6 +285,32 @@ export function createAtrapaErli({ db, kanal, env = process.env, log = () => {},
       log('Atrapa ERLI: zapisano status sprzedawcy.'); return ok(undefined, 204);
     }
     if (p.startsWith('/orders/')) { const z = jeden('zamowienie', p.slice(8)); return z ? ok(widok(z)) : brak(); }
+    // PRZ-160.E2.03: produkty z OMS-u; powtórny POST = 409, batch zwraca pozycje w innej kolejności, nieznany = 400 (pomiary).
+    if (p === '/products/_search' && metoda === 'POST') {
+      const { sortField = 'externalId', order = 'ASC', limit = 100, after } = body.pagination ?? {};
+      const kierunek = order === 'DESC' ? -1 : 1;
+      const porownaj = (a, b) => typeof a === 'number' && typeof b === 'number' ? a - b : String(a).localeCompare(String(b));
+      const produkty = lista('produkt').filter(pr => pasuje(pr, body.filter))
+        .sort((a, b) => kierunek * (porownaj(a[sortField], b[sortField]) || porownaj(a.externalId, b.externalId)));
+      const indeks = after === undefined ? -1 : produkty.findIndex(pr => pr.externalId === after);
+      const strona = after === undefined ? produkty : indeks >= 0 ? produkty.slice(indeks + 1)
+        : produkty.filter(pr => kierunek * porownaj(pr[sortField], after) > 0);
+      return ok(strona.slice(0, Math.min(limit, 200)).map(odczytajProdukt));
+    }
+    if (p === '/products/batch-update' && metoda === 'PATCH') return ok(body.map(z => {
+      const pr = jeden('produkt', z.externalId);
+      if (!pr) return { externalId: z.externalId, status: 400, message: 'Product not found' };
+      if (z.externalId.endsWith('-BLAD')) return { externalId: z.externalId, status: 400, polishMessage: 'Nie można zapisać produktu w ERLI.' };
+      return { externalId: z.externalId, status: 202, updatedFields: zapiszProdukt(z.externalId, pr, z) };
+    }).reverse());
+    if (p.startsWith('/products/') && ['POST', 'PATCH'].includes(metoda)) {
+      const id = decodeURIComponent(p.slice(10)); const pr = jeden('produkt', id);
+      if (metoda === 'POST' && pr) return ok([{ errorCode: '409', errorMessage: 'Product already exists' }], 409);
+      if (metoda === 'PATCH' && !pr) return brak();
+      if (id.endsWith('-BLAD')) return ok({ polishMessage: 'Nie można zapisać produktu w ERLI.' }, 400);
+      return ok({ externalId: id, updatedFields: zapiszProdukt(id, pr, body) }, 202);
+    }
+    if (p.startsWith('/products/') && jeden('produkt', decodeURIComponent(p.slice(10)))) return ok(odczytajProdukt(jeden('produkt', decodeURIComponent(p.slice(10)))));
     if (p.startsWith('/products/')) {
       const item = lista('zamowienie').flatMap(z => z.items).find(i => i.externalId === p.slice(10));
       if (!item) return brak();
@@ -310,7 +369,23 @@ export function createAtrapaErli({ db, kanal, env = process.env, log = () => {},
     return brak();
   }
   const klient = createErliClient({ adresApi: BAZA, kluczApi: 'atrapa-polcien', fetchImpl });
+  // PRZ-160.E4.16: symulacja zakupu (deploy/proba/zakup.mjs). ERLI sprzedaje także ponad stan (wynik < 0), a anulowanie
+  // niczego nie oddaje — stan po anulowaniu ustawia dopiero OMS. Zakup idzie obok zamrożenia pól (to sprzedaż, nie zapis API).
+  function kup(id, n) {
+    if (!Number.isSafeInteger(n) || n <= 0) throw new Error('Atrapa ERLI: niepoprawna ilość zakupu.');
+    const pr = jeden('produkt', id);
+    if (!pr) throw new Error(`Atrapa ERLI: nie ma produktu ${id}.`);
+    const po = { ...pr, stock: Number(pr.stock ?? 0) - n };
+    zapisz('produkt', id, po);
+    return structuredClone(po);
+  }
+  function oddaj(id, n) {
+    if (!Number.isSafeInteger(n) || n <= 0) throw new Error('Atrapa ERLI: niepoprawna ilość zwrotu.');
+    const pr = jeden('produkt', id);
+    if (!pr) throw new Error(`Atrapa ERLI: nie ma produktu ${id}.`);
+    return structuredClone(pr);
+  }
   return { ...Object.fromEntries(METODY.map(m => [m, klient[m]])), atrapa: true,
-    fetchImpl,
+    fetchImpl, kup, oddaj,
     wymus429(n = 1) { if (!Number.isInteger(n) || n < 0) throw new Error('Podaj liczbę odpowiedzi 429.'); ile429 = n; } };
 }

@@ -1,0 +1,20 @@
+name: oms-zdjecia
+services:
+  zdjecia:
+    build:
+      context: ../..
+      dockerfile: deploy/zdjecia/Dockerfile
+    restart: unless-stopped
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      OMS_ZDJECIA_PORT: "3002"
+      OMS_KATALOG_ZDJEC: /zdjecia
+    volumes:
+      - ${OMS_KATALOG_ZDJEC:?Ustaw katalog zdjęć na hoście}:/zdjecia:ro
+    # Dostęp dla lokalnego proxy; brak portu panelu OMS.
+    ports:
+      - "127.0.0.1:3002:3002"

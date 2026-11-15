@@ -13,6 +13,7 @@ export function odczytajPare(body:unknown,teraz=()=>new Date(),legacy=false):Wyn
  const d=body as Record<string,unknown>;
  if(typeof d.access_token!=='string'||!d.access_token||typeof d.refresh_token!=='string'||!d.refresh_token)return bladAllegro('ponow_autoryzacje','Allegro nie zwróciło kompletnej zgody.');
  const scopes=typeof d.scope==='string'?d.scope.split(/\s+/).filter(Boolean):uprawnieniaZTokenu(d.access_token);
+ // PRZ-160 E3.02 (D42): zakresy ofert (UPRAWNIENIA_OFERT) są opcjonalne — ich brak nie jest błędem, obecność przechodzi do `uprawnienia`.
  const wymagane=legacy?WYMAGANE_UPRAWNIENIA:UPRAWNIENIA_NOWEGO_POLACZENIA;
  const brak=wymagane.filter(s=>!scopes.includes(s));if(brak.length)return bladAllegro('ponow_autoryzacje','Brakuje uprawnień Allegro: '+brak.join(', '));
  const sekundy=Number(d.expires_in);const zycie=Number.isFinite(sekundy)&&sekundy>0?sekundy:600;

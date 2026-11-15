@@ -24,6 +24,7 @@ describe('filtryZZapytania — czytanie adresu', () => {
       fraza: 'szpulka',
       kanal: 'pro',
       kategoria: 'Aplikacje',
+      marka: 'Półcień', // PRZ-160.P3b.02
       brak: 'sku',
       paczkomat: 'nieoznaczone',
       cenaOd: '10',
@@ -32,6 +33,7 @@ describe('filtryZZapytania — czytanie adresu', () => {
       fraza: 'szpulka',
       kanal: 'pro',
       kategoria: 'Aplikacje',
+      marka: 'Półcień', // PRZ-160.P3b.02
       brak: 'sku',
       paczkomat: 'nieoznaczone',
       // Ceny w GROSZACH — kolumna `produkty_sklepowe.cena_gr` jest INTEGER-em w groszach,
@@ -106,8 +108,8 @@ describe('filtryZZapytania — czytanie adresu', () => {
   });
 });
 
-// ⚠️⚠️ MINA Z ZADANIA 4. Warstwa zapytan zna DOKLADNIE cztery braki: sku, wymiary,
-// kategoria, paczkomat. Plan Zadania 10 proponowal `brak ∈ sku|wymiary|allegro` — wartosci
+// ⚠️⚠️ MINA Z ZADANIA 4. Warstwa zapytan zna sześć braków: sku, wymiary,
+// kategoria, paczkomat, zdjecie, opis. Plan Zadania 10 proponowal `brak ∈ sku|wymiary|allegro` — wartosci
 // `allegro` w `db/magazyn.js` NIE MA i nieznana wartosc leci tam w `1 = 0`. Pozycja
 // „bez oferty na Allegro" wystawiona w interfejsie oddawalaby wiec PUSTA LISTE przy kazdym
 // klknieciu, co wyglada jak „nie ma takich kart", a nie jak funkcja, ktorej nie napisano.
@@ -123,14 +125,16 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
   // GWARANTOWANA USTAWIENIEM ATRAPY, a nie sprawdzana — ta sama rodzina, co produkt
   // zawsze powiazany z kartą.
   //
-  // ⚠️ PIATA POZYCJA (`komplet`) NIE JEST BRAKIEM, tylko druga strona tej samej monety:
+  // ⚠️ SIODMA POZYCJA (`komplet`) NIE JEST BRAKIEM, tylko druga strona tej samej monety:
   // karty, ktorym NICZEGO nie brakuje. W tym katalogu jest to dokladnie jeden wiersz, wiec
-  // rozjechanie sie jej z warstwa zapytan pada tak samo jak przy czterech pozostalych.
+  // rozjechanie sie jej z warstwa zapytan pada tak samo jak przy sześciu pozostalych.
   const KARTA_POZYCJI = Object.freeze({
     sku: 'BezSku',
     wymiary: 'BezWymiarow',
     kategoria: 'BezKategorii',
     paczkomat: 'BezPaczkomatu',
+    zdjecie: 'BezZdjecia',
+    opis: 'BezOpisu',
     komplet: 'Komplet',
   });
 
@@ -147,11 +151,21 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
       wymiary: { wysokosc_mm: null },
       kategoria: { kategoria_glowna: null },
       paczkomat: { paczkomat: null },
+      zdjecie: {},
+      opis: {},
+    };
+    const uzupelnijTresc = (id, brak) => {
+      if (brak !== 'opis') db.prepare('UPDATE karty_produktow SET opis_sekcje_json = ? WHERE id = ?')
+        .run(JSON.stringify({ sekcje: [{ elementy: [{ typ: 'tekst', html: '<p>Opis karty</p>' }] }] }), id);
+      if (brak !== 'zdjecie') db.prepare(`INSERT INTO zdjecia_kart
+        (karta_id, kolejnosc, zrodlo, adres_zrodlowy, utworzono_at)
+        VALUES (?, 0, 'reczne', 'https://example.org/karta.png', '2026-11-13')`).run(id);
     };
     // ⚠️ `komplet` z KARTA_POZYCJI wlasna karta nie jest — to TA karta, ktora ma komplet.
     const komplet = utworzKarte(db, pelny(KARTA_POZYCJI.komplet));
+    uzupelnijTresc(komplet);
     for (const [brak, dziura] of Object.entries(bez)) {
-      utworzKarte(db, { ...pelny(KARTA_POZYCJI[brak]), ...dziura });
+      uzupelnijTresc(utworzKarte(db, { ...pelny(KARTA_POZYCJI[brak]), ...dziura }), brak);
     }
     // Dwa produkty w lustrze, w roznych kanalach — zeby „filtr zawezil" znaczylo cos wiecej
     // niz „filtr czegos nie wywalil".
@@ -166,7 +180,7 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
 
   it('KAZDA pozycja z BRAKI_MAGAZYNU zaweza do SWOJEJ karty, a nie do „byle niepelnej"', () => {
     katalog();
-    expect(kartyZKanalami(db, {})).toHaveLength(5);
+    expect(kartyZKanalami(db, {})).toHaveLength(7);
 
     for (const brak of BRAKI_MAGAZYNU) {
       const wynik = kartyZKanalami(db, { filtry: { brak } });
@@ -176,7 +190,7 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
     }
   });
 
-  // ⚠️ PIATA POZYCJA JEST KAFLEM POSTEPU, a kafel PROWADZI do listy. Gdyby `komplet` zostalo
+  // ⚠️ SIODMA POZYCJA JEST KAFLEM POSTEPU, a kafel PROWADZI do listy. Gdyby `komplet` zostalo
   // dopisane do slownika, a warstwa zapytan go nie znala, kafel „gotowe: 214" prowadzilby
   // do PUSTEJ tabeli — czyli do obrazu „nie ma takich kart" przy 214 kartach, ktore sa.
   it('komplet jest pozycja slownika, ma etykiete i baza go rozumie', () => {
@@ -184,7 +198,7 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
     expect(BRAKI_MAGAZYNU).toContain('komplet');
     expect(BRAKI_ETYKIETY.komplet).toBe('komplet — nic nie brakuje');
     expect(filtryZZapytania({ brak: 'komplet' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).brak).toBe('komplet');
-    // Cztery niepelne karty z `katalog()` maja tu NIE BYC — inaczej „komplet" znaczyloby
+    // Sześć niepelnych kart z `katalog()` ma tu NIE BYC — inaczej „komplet" znaczyloby
     // „cokolwiek", a hurt puszczony po tym zawezeniu ruszylby caly katalog.
     expect(kartyZKanalami(db, { filtry: { brak: 'komplet' } }).map((w) => w.nazwa))
       .toEqual(['Komplet']);

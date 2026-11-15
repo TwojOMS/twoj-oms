@@ -567,7 +567,7 @@ describe('GET /magazyn/:id — powiazane produkty i oferty', () => {
     powiazProdukt(db, p, id);
 
     const w = wierszProduktu((await get(serwer(), `/magazyn/${id}`)).body, 'Kandelabr srebrny – 70x100cm');
-    expect(w).toContain('74.90');
+    expect(w).toContain('74,90');
     expect(w).toContain('href="https://pro.sklep-polcien.example.invalid/produkt/kandelabr"');
     // Nowa karta i `rel="noopener"` — odnosnik prowadzi poza panel.
     expect(w).toContain('target="_blank"');
@@ -592,7 +592,7 @@ describe('GET /magazyn/:id — powiazane produkty i oferty', () => {
       const w = wierszProduktu((await get(app, `/magazyn/${id}`)).body, `Kandelabr adres ${i}`);
       expect(w, zly).not.toMatch(/href="\s*(javascript|data):/i);
       // Adres, ktoremu odmawiamy, gasi WYLACZNIE odnosnik — wiersz dalej mowi o cenie.
-      expect(w, zly).toContain('74.90');
+      expect(w, zly).toContain('74,90');
     }
   });
 

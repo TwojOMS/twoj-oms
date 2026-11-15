@@ -16,8 +16,8 @@
 // (zmierzone: rodzic „Grzybek" ma SKU puste, warianty `PC-GRZ-117` / `PC-GRZ-118`).
 //
 // ⚠️⚠️ (2) PANEL WYSYLA WYLACZNIE `sku` I `dimensions`. Nigdy ceny, nazwy, kategorii, zdjec,
-// opisu ani stanu magazynowego — to niezmiennik CALEGO modulu, nie ostroznosc tego pliku.
-// Magazyn nie prowadzi stanow magazynowych i nie czyta `stock_quantity`.
+// opisu ani stanu magazynowego — to niezmiennik tej ścieżki zapisu.
+// Stan wysyła wyłącznie `zapiszStanyHurtem` pętli D61, po świeżym odczycie tych samych pozycji.
 //
 // ⚠️⚠️ (3) JEDNOSTKA PRZELICZANA NA GRANICY. Kolumny sa w MILIMETRACH, sklep ma wlasna
 // (`woocommerce_dimension_unit`). Zalozenie „to na pewno centymetry" daje produkt 70 MILIMETROW

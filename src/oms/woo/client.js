@@ -239,6 +239,10 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
   const pobierzWarianty = (produktId) =>
     pobierzWszystkieStrony(`/products/${produktId}/variations`, { orderby: 'id', order: 'asc' }, 'wariantów');
 
+  // PRZ-160.P3b.01: drzewo kategorii produktów sklepu (tylko odczyt; po 100 na stronę, wszystkie strony).
+  const pobierzKategorieProduktow = () =>
+    pobierzWszystkieStrony('/products/categories', { orderby: 'id', order: 'asc' }, 'kategorii');
+
   // ——— STORE API: ADRESY MINIATUR ———————————————————————————————————————————
   //
   // ⚠️⚠️ INNY ZASÓB NIŻ CAŁA RESZTA TEGO PLIKU. REST v3 (`/wp-json/wc/v3`) NIE ODDAJE adresu
@@ -427,6 +431,61 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
     strzal(`/${sprawdzSciezke(sciezka)}`, { method: 'PUT', body: JSON.stringify(pola ?? {}) })
       .then(({ dane }) => dane);
 
+  // E4.04: osobna, zawężona ścieżka. Świeży odczyt przed zapisem zapewnia pętla D61.
+  const ROZMIAR_PACZKI_STANOW = 100;
+  const idStanu = id => {
+    if (!/^\d+$/.test(String(id)) || !Number.isSafeInteger(Number(id)) || Number(id) <= 0) {
+      throw new Error('Niepoprawny identyfikator stanu Woo');
+    }
+    return String(id);
+  };
+  const sciezkaStanow = rodzicId => rodzicId === null ? '/products' : `/products/${idStanu(rodzicId)}/variations`;
+  async function odczytajStany(rodzicId, ids) {
+    const sciezka = sciezkaStanow(rodzicId);
+    const identyfikatory = ids.map(idStanu);
+    const wynik = [];
+    for (let i = 0; i < identyfikatory.length; i += ROZMIAR_PACZKI_STANOW) {
+      const p = new URLSearchParams({ include: identyfikatory.slice(i, i + ROZMIAR_PACZKI_STANOW).join(','), per_page: '100' });
+      const { dane } = await strzal(`${sciezka}?${p}`);
+      if (!Array.isArray(dane)) throw new Error('Sklep zwrócił nieprawidłową listę stanów');
+      wynik.push(...dane);
+    }
+    return wynik;
+  }
+  const pobierzStany = ids => odczytajStany(null, ids);
+  const pobierzStanyWariantow = (rodzicId, ids) => odczytajStany(rodzicId, ids);
+  async function zapiszStanyHurtem(rodzicId, pozycje) {
+    if (tylkoOdczyt) throw bladTylkoOdczyt();
+    const sciezka = sciezkaStanow(rodzicId);
+    // Sprawdź CAŁĄ listę przed pierwszym żądaniem, także pola w dalszych paczkach.
+    const update = pozycje.map(p => {
+      if (!p || Object.keys(p).some(k => !['id', 'stock_quantity'].includes(k))) throw new Error('Niedozwolone pole zapisu stanu Woo');
+      idStanu(p.id);
+      if (!Number.isSafeInteger(p.stock_quantity) || p.stock_quantity < 0) throw new Error('Niepoprawna ilość stanu Woo');
+      return { id: p.id, stock_quantity: p.stock_quantity };
+    });
+    const wynik = [];
+    for (let i = 0; i < update.length; i += ROZMIAR_PACZKI_STANOW) {
+      const paczka = update.slice(i, i + ROZMIAR_PACZKI_STANOW);
+      let dane;
+      try {
+        ({ dane } = await strzal(`${sciezka}/batch`, { method: 'POST', body: JSON.stringify({ update: paczka }) }));
+      } catch (e) {
+        if (['WooInnyOrigin', 'WooKluczTylkoOdczyt', 'WooTylkoOdczyt'].includes(e?.name)) throw e;
+        // Błąd jednej paczki nie gubi wyników paczek już zapisanych w sklepie.
+        for (const p of paczka) wynik.push({ id: p.id, ok: false, blad: e.message });
+        continue;
+      }
+      for (const p of paczka) {
+        // Woo może umieścić id odrzuconej pozycji w error.data.id.
+        const odpowiedz = dane?.update?.find(w => String(w.id || w.error?.data?.id) === String(p.id));
+        wynik.push(odpowiedz && !odpowiedz.error ? { id: p.id, ok: true }
+          : { id: p.id, ok: false, blad: odpowiedz?.error?.message || 'Brak wyniku zapisu stanu Woo' });
+      }
+    }
+    return wynik;
+  }
+
   const dodajNotatke = (id, tresc) => tylkoOdczyt ? Promise.reject(bladTylkoOdczyt()) :
     strzal(`/orders/${id}/notes`, { method: 'POST', body: JSON.stringify({ note: tresc, customer_note: false }) })
       .then(({ dane }) => dane);
@@ -439,7 +498,8 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
     tylkoOdczyt,
     sprawdzPolaczenie, pobierzMetodyWysylki, pobierzBramkiPlatnosci,
     pobierzZamowienia, pobierzZamowieniaZakresu,
-    pobierzWszystkieProdukty, pobierzWarianty, pobierzMiniatury, ustawienieSklepu,
+    pobierzWszystkieProdukty, pobierzWarianty, pobierzKategorieProduktow, pobierzMiniatury, ustawienieSklepu,
     pobierzProdukt, zapiszProdukt, dodajNotatke, ustawStatus,
+    pobierzStany, pobierzStanyWariantow, zapiszStanyHurtem,
   };
 }

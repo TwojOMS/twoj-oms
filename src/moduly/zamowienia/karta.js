@@ -24,7 +24,7 @@ import { gusDostepny, KOMUNIKAT_BRAK_GUS } from '../../domena/konfiguracja-gus.j
 import { ETYKIETY_TERMINU, parsujTerminZamowienia } from '../../domena/termin-platnosci.js';
 import { znormalizujKlienta, daneNabywcyNaKarcie } from '../../domena/klient-staly.js';
 import { DOSTAWY } from '../../domena/nowe-zamowienie.js';
-import { klientPoNip, dopiszKlienta, zapiszKlienta } from '../../oms/db/klienci.js';
+import { klientPoNip, klientPoId, dopiszKlienta, zapiszKlienta } from '../../oms/db/klienci.js';
 import { zmienUstalenia } from './services/rabat.js';
 import { parsujWplate } from '../../domena/platnosci.js';
 import { dodajWplateReczna, usunWplateReczna } from '../../oms/db/platnosci.js';
@@ -450,6 +450,7 @@ app.post('/zamowienia/:id/klient/zapamietaj', async (req, reply) => {
       return ekranOdmowyKarty(reply, `Nie udało się zapamiętać klienta: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }));
     }
 
+    let kluczWBazie; // do dziennika: klucz z bazy, nie wyliczony z nazwy (baza dokłada „-2” przy kolizji)
     try {
       // ⚠️⚠️ U ISTNIEJACEGO KLIENTA TYLKO NIEPUSTE DANE NABYWCY. `zapiszKlienta` pisze komplet
       // kolumn; bez tego jeden klik zerowal umowe zbiorcza i jej kwoty, a zamowienie bez adresu
@@ -457,8 +458,9 @@ app.post('/zamowienia/:id/klient/zapamietaj', async (req, reply) => {
       if (istniejacy) {
         dane = daneNabywcyNaKarcie(istniejacy, dane);
         zapiszKlienta(db, istniejacy.id, dane);
+        kluczWBazie = istniejacy.klucz;
       } else {
-        dopiszKlienta(db, dane);
+        kluczWBazie = klientPoId(db, dopiszKlienta(db, dane)).klucz;
       }
     } catch (e) {
       dopiszLog(db, id, { akcja: 'klient.zapamietaj', wynik: `BŁĄD: ${e.message}` });
@@ -468,7 +470,7 @@ app.post('/zamowienia/:id/klient/zapamietaj', async (req, reply) => {
     dopiszLog(db, id, {
       akcja: 'klient.zapamietaj',
       wynik: `Ręcznie (${ktoKlikal(req)}): ${istniejacy ? 'uaktualniono' : 'dopisano'} `
-        + `stałego klienta „${dane.nazwa}" (${dane.klucz}${dane.nip ? `, NIP ${dane.nip}` : ', bez NIP-u'}) `
+        + `klienta B2B „${dane.nazwa}" (${kluczWBazie}${dane.nip ? `, NIP ${dane.nip}` : ', bez NIP-u'}) `
         + 'z danych tego zamówienia.',
     });
     return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }));

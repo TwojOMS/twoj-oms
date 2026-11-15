@@ -1,0 +1,111 @@
+<%# MAGAZYN — „Importuj produkty" (PRZ-160 P3b.03, punkt 19). Jeden ekran, cztery kroki (`krok`):
+    wybor   — połączenie + typ, przycisk „Sprawdź";
+    trwa    — odczyt katalogu wybranego kanału w tle (odśwież stronę);
+    podglad — liczby z planu (nic jeszcze nie zapisane do kart), przycisk „Importuj";
+    wynik   — te same liczby po wykonaniu.
+    Liczby liczy services/import-kanalu.js; widok tylko rysuje. Formularze bez ukrytego pola z tokenem:
+    ochrona CSRF (src/core/bezpieczenstwo/csrf.js) stoi na nagłówku Origin. %>
+<%_ const ZDANIE_D3 = 'Allegro zabrania używania treści pobranych z ofert w innych serwisach sprzedażowych — decyzja należy do Ciebie'; _%>
+<%_ const plakietka = (k) => k.rodzaj ? `<span class="plakietka plakietka--kanal plakietka--${k.rodzaj.klucz}" role="img" aria-label="${k.rodzaj.nazwa}" title="${k.rodzaj.nazwa}">${k.rodzaj.znak}</span> ` : ''; _%>
+<%_ const NAPISY = {
+  podglad: { powiaze: 'Powiąże z kartami', utworzy: 'Utworzy nowe karty', zaktualizuje: 'Zaktualizuje treść kart', pominie: 'Pominie' },
+  wynik: { powiaze: 'Powiązano z kartami', utworzy: 'Utworzono kart', zaktualizuje: 'Zaktualizowano kart', pominie: 'Pominięto' },
+}; _%>
+<p class="wroc"><a href="/magazyn">← Magazyn</a></p>
+
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Importuj produkty', podtytul: 'z jednego sklepu albo konta sprzedaży'}) %>
+
+<% if (!kanaly.length && krok === 'wybor') { %>
+  <section class="panel import-ekran">
+    <p>Nie ma z czego importować. <a href="/ustawienia/integracje">Połącz sklep albo konto w Ustawieniach</a>, potem wróć tutaj.</p>
+  </section>
+<% } else if (krok === 'wybor') { %>
+  <section class="panel import-ekran" data-krok="wybor">
+    <% if (locals.blad) { %><p class="blad" role="alert">Odczyt się nie udał: <%= blad %>. Spróbuj „Sprawdź” jeszcze raz.</p><% } %>
+    <% if (locals.trwaInny) { %><p class="wyjasnienie" role="status">Trwa odczyt katalogów — „Sprawdź” ruszy, gdy się skończy.</p><% } %>
+    <form method="post" action="/magazyn/import/sprawdz" class="import-formularz">
+      <fieldset class="import-wybor">
+        <legend>Skąd importować</legend>
+        <% kanaly.forEach(function (k) { const zaznacz = wybrany && wybrany.klucz === k.klucz; %>
+          <div class="import-opcja"><input type="radio" name="kanal" value="<%= k.klucz %>" id="kanal-<%= k.klucz %>" required<%= zaznacz ? ' checked' : '' %>><label for="kanal-<%= k.klucz %>"><%- plakietka(k) %><%= k.etykieta %></label></div>
+        <% }) %>
+      </fieldset>
+      <% if (kanaly.some(function (k) { return k.allegro; })) { %>
+        <p class="import-uwaga" id="import-d3">Przy koncie Allegro: <%= ZDANIE_D3 %>. <a href="https://help.allegro.com" target="_blank" rel="noopener noreferrer">Zasady Allegro (FAQ)</a></p>
+      <% } %>
+      <% if (erli) { %>
+        <p class="wyjasnienie import-erli">Konta ERLI nie mają tu odczytu katalogu — ich oferty powiążesz ręcznie.</p>
+      <% } %>
+      <fieldset class="import-wybor">
+        <legend>Co zrobić z produktami</legend>
+        <% typy.forEach(function (t) { const zaznacz = typ && typ.klucz === t.klucz; %>
+          <div class="import-opcja"><input type="radio" name="typ" value="<%= t.klucz %>" id="typ-<%= t.klucz %>" required aria-describedby="typ-<%= t.klucz %>-opis"<%= zaznacz ? ' checked' : '' %>><label for="typ-<%= t.klucz %>"><%= t.nazwa %><span class="wyjasnienie" id="typ-<%= t.klucz %>-opis"><%= t.opis %></span></label></div>
+        <% }) %>
+      </fieldset>
+      <p class="wyjasnienie">„Sprawdź” tylko czyta katalog wybranego kanału i pokazuje, co się stanie. Karty zmienia dopiero „Importuj”.</p>
+      <p><button type="submit" class="btn btn--glowny">Sprawdź</button></p>
+    </form>
+  </section>
+<% } else if (krok === 'trwa') { %>
+  <section class="panel import-ekran" data-krok="trwa">
+    <p><%- plakietka(wybrany) %><strong><%= wybrany.etykieta %></strong> · <%= typ.nazwa %></p>
+    <p class="wyjasnienie" role="status">
+      <% if (locals.postep && postep.zTego) { %>
+        <label for="import-postep">Czytam katalog — <%= postep.zrobione %> z <%= postep.zTego %></label>
+        <progress id="import-postep" max="<%= postep.zTego %>" value="<%= postep.zrobione %>"></progress>
+      <% } else { %>
+        Czytam katalog…
+      <% } %>
+    </p>
+    <p><a class="btn" href="<%= odswiez %>">Odśwież</a></p>
+  </section>
+<% } else { %>
+  <section class="panel import-ekran" data-krok="<%= krok %>">
+    <p><%- plakietka(wybrany) %><strong><%= wybrany.etykieta %></strong> · <%= typ.nazwa %></p>
+    <% if (wybrany.allegro) { %>
+      <p class="import-uwaga"><%= ZDANIE_D3 %>. <a href="https://help.allegro.com" target="_blank" rel="noopener noreferrer">Zasady Allegro (FAQ)</a></p>
+    <% } %>
+    <% if (krok === 'podglad') { %>
+      <p class="wyjasnienie">Odczytano <%= odczytane %> pozycji katalogu. Nic jeszcze nie zapisano do kart — tak wyglądałby import:</p>
+    <% } else { %>
+      <p role="status"><strong>Import zakończony.</strong></p>
+    <% } %>
+    <div class="kafelki kafelki--cztery">
+      <% ['powiaze', 'utworzy', 'zaktualizuje', 'pominie'].forEach(function (klucz) { %>
+        <div class="kafel">
+          <div class="kafel-etykieta"><%= NAPISY[krok][klucz] %></div>
+          <div class="kafel-wartosc" data-liczba="<%= klucz %>"><%= liczby[klucz] %></div>
+        </div>
+      <% }) %>
+    </div>
+    <% if (juzPowiazane) { %><p class="wyjasnienie">Już powiązanych z kartami: <%= juzPowiazane %>.</p><% } %>
+    <% if (powody.length) { %>
+      <ul class="import-powody">
+        <% powody.forEach(function (p) { %><li><%= p.ile %> — <%= p.powod %></li><% }) %>
+      </ul>
+    <% } %>
+    <p><a href="<%= dlaczego %>">Dlaczego pomija? Pominięte z tego kanału →</a></p>
+    <% if (krok === 'wynik' && locals.trescAllegro === 'ruszyla') { %>
+      <p class="wyjasnienie" role="status">Treść i zdjęcia ofert pobierają się w tle — postęp zobaczysz na liście magazynu.</p>
+    <% } else if (krok === 'wynik' && locals.trescAllegro === 'zajeta') { %>
+      <p class="wyjasnienie" role="status">Pobieranie treści ofert już trwa — nowe karty dostaną treść przy następnym „Importuj”.</p>
+    <% } else if (krok === 'wynik' && locals.trescAllegro === 'niedostepna') { %>
+      <p class="wyjasnienie" role="status">Treści ofert nie pobrano — to połączenie Allegro nie ma teraz odczytu ofert. Sprawdź je w Ustawieniach → Integracje.</p>
+    <% } %>
+    <% if (krok === 'podglad') { %>
+      <form method="post" action="/magazyn/import/importuj" class="import-akcje">
+        <input type="hidden" name="kanal" value="<%= wybrany.klucz %>">
+        <input type="hidden" name="typ" value="<%= typ.klucz %>">
+        <button type="submit" class="btn btn--glowny">Importuj</button>
+        <a href="/magazyn/import?kanal=<%= encodeURIComponent(wybrany.klucz) %>">Zmień wybór</a>
+      </form>
+    <% } else { %>
+      <p class="import-akcje"><a class="btn btn--glowny" href="/magazyn">Przejdź do magazynu</a> <a href="/magazyn/import">Importuj z innego kanału</a></p>
+    <% } %>
+  </section>
+<% } %>
+
+<p class="import-odnosniki">
+  <a href="/magazyn/powiazania">Powiąż ręcznie oferty z kartami →</a>
+  <% if (stanyWlaczone) { %><a href="/magazyn/stany/import">Stany magazynowe z pliku →</a><% } %>
+</p>

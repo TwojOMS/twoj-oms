@@ -1,0 +1,21 @@
+<p class="wroc"><a href="/magazyn/<%= oferta.kartaId %>#produkty-karty">← Karta</a></p>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Objęcie zarządzaniem', podtytul: oferta.idZewnetrzne}) %>
+<section class="panel">
+  <div class="panel-glowa"><h2>Co się zmieni w kanale</h2></div>
+  <div class="panel-cialo">
+    <p>Cena dziś (ostatni odczyt): <%= oferta.odczytCenaGr === null ? 'brak odczytu' : (oferta.odczytCenaGr / 100).toFixed(2).replace('.', ',') + ' zł' %> · Ilość dziś: <%= oferta.odczytIlosc ?? 'brak odczytu' %></p>
+    <% if (cialo) { %>
+      <p>Cena po objęciu: <%= (cialo.price / 100).toFixed(2).replace('.', ',') %> zł · Ilość po objęciu: <%= typeof iloscNapis !== 'undefined' ? iloscNapis : cialo.stock %></p>
+      <details><summary>Treść oferty po objęciu</summary><pre class="przewijak-tabeli" tabindex="0" role="region" aria-label="Treść oferty"><code><%= JSON.stringify(cialo, null, 2) %></code></pre></details>
+    <% } %>
+    <% bledy.forEach(b => { %><p class="pasek-blokada"><%= b %></p><% }); %>
+    <% ostrzezenia.forEach(b => { %><p class="pasek-uwaga"><%= b %></p><% }); %>
+    <p>Po zatwierdzeniu OMS będzie zarządzać ceną, ilością i treścią tej oferty. Wysyłka rozpocznie się, gdy oferty konta będą czynne.</p>
+    <% if (!bledy.length) { %>
+    <form method="post" action="/magazyn/<%= oferta.kartaId %>/oferty/<%= oferta.id %>/objecie/zatwierdz" aria-label="Zatwierdzenie objęcia zarządzaniem">
+      <input type="hidden" name="podglad" value="<%= token %>">
+      <button class="btn btn--glowny" type="submit">Zatwierdź objęcie zarządzaniem</button>
+    </form>
+    <% } %>
+  </div>
+</section>

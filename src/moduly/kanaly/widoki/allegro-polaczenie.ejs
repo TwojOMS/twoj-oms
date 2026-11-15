@@ -20,9 +20,16 @@
     <input type="hidden" name="probaId" value="<%= kandydat.probaId %>"><input type="hidden" name="wersja" value="<%= kandydat.wersja %>">
     <input type="hidden" name="potwierdz" value="tak">
     <p>Podłączasz konto Allegro <strong><%= kandydat.login %></strong> (ID <%= kandydat.kontoId %>), środowisko <%= k.srodowisko === 'sandbox' ? 'Sandbox' : 'sprzedażowe' %>.</p>
+    <% if (k.zrodlo === 'panel' && k.autoryzacja === 'polaczone') { %>
+    <%# PRZ-160 E3d.01: ponowna zgoda tego samego konta wymienia tylko dane dostępu. %>
+    <input type="hidden" name="pobieraj" value="nie">
+    <p>To samo konto co dotychczas — OMS zapisze tylko nowe dane dostępu. Pobieranie zamówień, data startu i ustawienia zostają bez zmian.</p>
+    <button class="btn btn--glowny" type="submit">Zapisz nową zgodę</button>
+    <% } else { %>
     <p><label for="allegro-import">Pobieranie po zapisaniu</label><br><select id="allegro-import" name="pobieraj"><option value="nie">Pozostaw wyłączone</option><% if (!k.kontoId) { %><option value="tak">Włącz pobieranie zamówień</option><% } %></select><br>
     <span class="ust-pomoc"><% if (!k.kontoId) { %>Włącz — OMS zacznie pobierać zamówienia od <%= String(wartosci.od).split('-').reverse().join('.') %> zaraz po zapisaniu. <% } %>Pozostaw wyłączone — konto zostanie podłączone, pobieranie włączysz później na ekranie konta.</span></p>
     <button class="btn btn--glowny" type="submit">Podłącz konto</button>
+    <% } %>
   </form>
 <%# PRZ-148.06 (5): formularz /aktywuj w karcie kroku 4. %>
 </section>

@@ -142,12 +142,74 @@ export const KLIENCI = [
   { imie: 'Tymon', nazwisko: 'Uchmanowicz', email: 'tymon.u.090@example.invalid', telefon: '', ulica: 'Ulica Przykładowa 59', miasto: 'Kielce', kod: '25-000' },
 ];
 
+// PRZ-160.demo (właściciel 13.11): cztery firmy rozliczane zbiorczo (indeksy 0, 5, 6, 7), każda z innymi ustaleniami —
+// termin płatności faktury okresu, próg darmowej dostawy, opłata za obsługę własnej etykiety klienta. `null` = „nie ustalono”
+// (próg wyłączony), 0 = ustalone na zero (P2.03, domena/klient-zbiorczy.js: warunkiDostawy). `etykietaKlienta` — firma
+// wysyła na własnej etykiecie (dropshipping): dostawa 0 zł, za to opłata za obsługę (domena/oplata-obslugi.js).
+// Indeksy 1–4 rozliczane pojedynczo — zamówienia ręczne PRZ-082/087 dostają własne faktury, więc nie mogą wejść do okresu.
+// `okresy` — co generator robi z okresem: `poprzedni` = miesiąc przed bieżącym, `starsze` = wcześniejsze; bieżący zostaje
+// otwarty. 'zamkniety' = zamknięty, faktura jeszcze niewystawiona; 'nieoplacony' / 'oplacony' = faktura okresu wystawiona
+// pierwszego dnia następnego miesiąca z terminem z karty (bez wpłaty albo z wpłatą okresu).
 export const FIRMY_B2B = [
-  { nazwa: 'Kawiarnie Dzbanuszek sp. z o.o.', nip: '9994027180', ulica: 'Ulica Przykładowa 7', miasto: 'Katowice', kod: '40-000', rozliczenie_zbiorcze: true, rabat_procent: 10 },
+  { nazwa: 'Kawiarnie Dzbanuszek sp. z o.o.', nip: '9994027180', ulica: 'Ulica Przykładowa 7', miasto: 'Katowice', kod: '40-000', rozliczenie_zbiorcze: true, rabat_procent: 10,
+    termin_platnosci: '14', prog_darmowej_dostawy_gr: 50000, oplata_obslugi_gr: 0, okresy: { poprzedni: 'zamkniety', starsze: 'oplacony' } },
   { nazwa: 'Hotel Zaciszny Brzeg sp. z o.o.', nip: '9991183548', ulica: 'Ulica Przykładowa 21', miasto: 'Bielsko-Biała', kod: '43-000', rozliczenie_zbiorcze: false, rabat_procent: 12 },
   { nazwa: 'Studio Wnętrz Pokoik Bis', nip: '9996702912', ulica: 'Ulica Przykładowa 3', miasto: 'Gliwice', kod: '44-000', rozliczenie_zbiorcze: false, rabat_procent: 15 },
   { nazwa: 'Biuro Projektowe Kątowo s.c.', nip: '9992359067', ulica: 'Ulica Przykładowa 15', miasto: 'Zabrze', kod: '41-000', rozliczenie_zbiorcze: false, rabat_procent: 15 },
   { nazwa: 'Restauracja Oberża Kominek', nip: '9998495133', ulica: 'Ulica Przykładowa 44', miasto: 'Rybnik', kod: '44-000', rozliczenie_zbiorcze: false, rabat_procent: 8 },
+  { nazwa: 'Pensjonat Trzy Lipki (demo)', nip: '9994123452', ulica: 'Ulica Przykładowa 12', miasto: 'Wisła', kod: '43-000', rozliczenie_zbiorcze: true, rabat_procent: 5,
+    termin_platnosci: '30', prog_darmowej_dostawy_gr: 30000, oplata_obslugi_gr: null, okresy: { poprzedni: 'nieoplacony', starsze: 'oplacony' } },
+  { nazwa: 'Sklep Internetowy Jasna Strona (demo)', nip: '9995234610', ulica: 'Ulica Przykładowa 88', miasto: 'Opole', kod: '45-000', rozliczenie_zbiorcze: true, rabat_procent: 20,
+    termin_platnosci: '7', prog_darmowej_dostawy_gr: null, oplata_obslugi_gr: 1500, etykietaKlienta: true, okresy: { poprzedni: 'nieoplacony', starsze: 'nieoplacony' } },
+  { nazwa: 'Coworking Strych Twórczy (demo)', nip: '9996341727', ulica: 'Ulica Przykładowa 4', miasto: 'Gliwice', kod: '44-000', rozliczenie_zbiorcze: true, rabat_procent: 8,
+    termin_platnosci: '14', prog_darmowej_dostawy_gr: null, oplata_obslugi_gr: null, koszt_dostawy_gr: 2500, okresy: { poprzedni: 'oplacony', starsze: 'oplacony' } },
+];
+
+// PRZ-160.demo — zamówienia firm rozliczanych zbiorczo: [indeks FIRMY_B2B, miesiąc wstecz (0 = bieżący), dzień miesiąca —
+// dla bieżącego: dni wstecz od `dzis` (najwyżej do 1. dnia), godzina, minuta, koszyk, wysyłka, odbiorca dropshippingu (osoba)].
+// Zamówienie spoza okna 58 dni demo albo po „teraz” generator pomija (miesiąc sprzed dwóch bywa poza oknem).
+export const ZAMOWIENIA_ZBIORCZE = [
+  [0, 1, 20, 10, 15, [['LMP-STO-006', 4], ['LMP-NOC-001', 4], ['LMP-AKC-001', 8], ['LMP-ABA-003', 4]], 'dpd'],
+  [0, 0, 3, 9, 40, [['LMP-KIN-001', 3], ['LMP-AKC-001', 3], ['LMP-ABA-001', 2], ['LMP-NOC-002', 2]], 'dpd'],
+  [5, 1, 17, 11, 0, [['LMP-NOC-003', 6], ['LMP-KIN-002', 6], ['LMP-AKC-002', 12], ['LMP-ABA-002', 6], ['LMP-STO-005', 2]], 'dpd'],
+  [5, 1, 26, 9, 30, [['LMP-AKC-002', 6]], 'dpd'],
+  [5, 0, 2, 12, 20, [['LMP-WIS-006', 2], ['LMP-ABA-001', 2], ['LMP-AKC-001', 4], ['LMP-KIN-004', 2]], 'dpd'],
+  [6, 2, 24, 14, 0, [['LMP-NOC-001', 2], ['LMP-AKC-001', 2]], 'dpd', 43],
+  [6, 2, 27, 16, 5, [['LMP-STO-001', 1]], 'dpd', 44],
+  [6, 1, 16, 10, 0, [['LMP-KIN-003', 1], ['LMP-NOC-002', 1], ['LMP-ABA-004', 1], ['LMP-AKC-003', 1]], 'dpd', 45],
+  [6, 1, 23, 15, 30, [['LMP-STO-004', 1]], 'dpd', 46],
+  [6, 0, 1, 13, 45, [['LMP-NOC-001', 1], ['LMP-AKC-002', 2]], 'dpd', 47],
+  [7, 2, 26, 10, 10, [['LMP-STO-004', 4], ['LMP-KIN-004', 4], ['LMP-AKC-003', 4], ['LMP-AKC-001', 8]], 'dpd'],
+  [7, 1, 19, 12, 0, [['LMP-POD-003', 1], ['LMP-WIS-006', 3], ['LMP-AKC-001', 3], ['LMP-ABA-001', 3], ['LMP-NOC-001', 2]], 'dpd'],
+  [7, 0, 4, 11, 30, [['LMP-NOC-003', 2], ['LMP-AKC-002', 2]], 'odbior_osobisty'],
+];
+
+// PRZ-160.demo — duże koszyki i paczki: [kanał, osoba albo { b2b }, koszyk, wysyłka, nazwa usługi przewoźnika (null =
+// słownikowa), płatność, dni wstecz, godzina, minuta, kurier paczki, stan paczki, faktura]. Stan: 'utworzona' (etykieta
+// gotowa, kurier nie odebrał — w realizacji), 'w_drodze' (nadana, niedoręczona), 'doreczona'. Faktura: 'nip' (firma
+// jednoosobowa z NIP-em), 'prywatna' (osoba bez NIP-u), 'b2b' (NIP firmy), 'czeka' (chce fakturę z NIP-em, jeszcze
+// niewystawiona — „Wystaw fakturę” do kliknięcia), null — bez faktury.
+// ⚠️ Utworzone i w drodze tylko z 1–2 ostatnich dni: starsza paczka bez ruchu zapala alarm (jedna celowa jest w PRZ-082).
+export const ZAMOWIENIA_PACZEK = [
+  ['polcien', 35, [['LMP-WIS-003', 1], ['LMP-AKC-001', 3], ['LMP-ABA-002', 2], ['LMP-KIN-001', 2], ['LMP-AKC-003', 1]], 'dpd', null, 'przelewy24', 6, 18, 20, 'dpd', 'doreczona', 'prywatna'],
+  ['polcien', 36, [['LMP-STO-002', 1], ['LMP-STO-006', 1], ['LMP-NOC-003', 2], ['LMP-AKC-002', 4]], 'inpost_paczkomat', null, 'blik', 1, 9, 5, 'inpost', 'w_drodze', null],
+  ['polcien', 37, [['LMP-POD-001', 1], ['LMP-ABA-001', 2], ['LMP-AKC-001', 2], ['LMP-KIN-002', 1], ['LMP-NOC-001', 1], ['LMP-AKC-003', 2]], 'dpd', null, 'bacs', 1, 13, 25, 'dpd', 'utworzona', 'nip'],
+  ['allegro', 71, [['LMP-STO-001', 1], ['LMP-ABA-003', 2], ['LMP-AKC-001', 2], ['LMP-NOC-002', 1]], 'allegro_kurier', 'Allegro Kurier DHL', 'allegro', 1, 14, 10, 'allegro', 'utworzona', 'nip'],
+  ['allegro', 72, [['LMP-KIN-003', 2], ['LMP-AKC-002', 2], ['LMP-ABA-004', 1], ['LMP-STO-005', 1], ['LMP-NOC-001', 3]], 'allegro_punkt', 'Allegro One Punkt', 'allegro', 2, 11, 40, 'allegro', 'w_drodze', 'prywatna'],
+  ['allegro-outlet', 73, [['LMP-STO-002-OUT', 1], ['LMP-KIN-002-OUT', 2], ['LMP-NOC-002-OUT', 1], ['LMP-ABA-004-OUT', 2]], 'allegro_punkt', 'Allegro Automat ORLEN Paczka', 'allegro', 2, 13, 15, 'allegro', 'w_drodze', 'nip'],
+  ['allegro-outlet', 74, [['LMP-WIS-004-OUT', 1], ['LMP-STO-005-OUT', 1], ['LMP-POD-001-OUT', 1], ['LMP-WIS-002-OUT', 1]], 'allegro_dpd', null, 'allegro', 1, 15, 50, 'dpd', 'utworzona', null],
+  ['polcien', 38, [['LMP-WIS-006', 2], ['LMP-AKC-001', 2], ['LMP-ABA-001', 1], ['LMP-KIN-004', 2], ['LMP-NOC-003', 1], ['LMP-AKC-003', 1], ['LMP-STO-004', 1]], 'dpd', null, 'karta', 9, 20, 5, 'dpd', 'doreczona', 'prywatna'],
+  ['allegro', 75, [['LMP-WIS-001', 1], ['LMP-AKC-001', 4], ['LMP-ABA-001', 1], ['LMP-KIN-001', 1]], 'allegro_paczkomat', null, 'allegro', 4, 19, 30, 'inpost', 'doreczona', 'prywatna'],
+  ['polcien', 39, [['LMP-STO-003', 1]], 'dpd', null, 'przelewy24', 1, 15, 5, 'dpd', 'utworzona', 'czeka'],
+  ['polcien', 40, [['LMP-NOC-002', 1], ['LMP-AKC-002', 1]], 'inpost_paczkomat', null, 'blik', 1, 16, 30, 'inpost', 'utworzona', 'prywatna'],
+  ['allegro', 76, [['LMP-ABA-001', 2]], 'allegro_paczkomat', null, 'allegro', 1, 17, 15, 'inpost', 'utworzona', null],
+  ['allegro-outlet', 77, [['LMP-NOC-002-OUT', 1]], 'allegro_punkt', 'Allegro One Box, One Kurier', 'allegro', 1, 18, 0, 'allegro', 'utworzona', null],
+  ['reczne', { b2b: 3 }, [['LMP-KIN-002', 4], ['LMP-AKC-001', 4]], 'dpd', null, 'bacs', 1, 12, 40, 'dpd', 'utworzona', 'b2b'],
+  ['polcien', 41, [['LMP-KIN-001', 1]], 'dpd', null, 'przelewy24', 2, 10, 15, 'dpd', 'w_drodze', 'nip'],
+  ['polcien', 42, [['LMP-ABA-003', 1], ['LMP-AKC-001', 1]], 'inpost_paczkomat', null, 'blik', 1, 8, 45, 'inpost', 'w_drodze', null],
+  ['allegro', 78, [['LMP-STO-004', 1]], 'allegro_kurier', 'Allegro Kurier DHL', 'allegro', 2, 9, 20, 'allegro', 'w_drodze', 'nip'],
+  ['allegro-outlet', 79, [['LMP-WIS-004-OUT', 1]], 'allegro_paczkomat', null, 'allegro', 1, 7, 55, 'inpost', 'w_drodze', null],
+  ['reczne', { b2b: 4 }, [['LMP-WIS-001', 2], ['LMP-ABA-001', 2], ['LMP-KIN-003', 2], ['LMP-AKC-001', 4]], 'dpd', null, 'bacs', 2, 11, 5, 'dpd', 'w_drodze', 'b2b'],
 ];
 
 export const FIRMY_UE = [

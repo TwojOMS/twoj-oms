@@ -20,6 +20,11 @@ describe('paczka wydania: dokumenty kurierów', () => {
     expect(fs.existsSync(new URL('../../docs/allegro-podlaczenie.md', import.meta.url))).toBe(true);
   });
 
+  it('PRZ-160.E3.29: docs/kanal-allegro-oferty.md jest w paczce i istnieje w repo', () => {
+    expect(plikiPaczki(['docs/kanal-allegro-oferty.md', 'docs/kanal-allegro-oferty.txt'])).toEqual(['docs/kanal-allegro-oferty.md']);
+    expect(fs.existsSync(new URL('../../docs/kanal-allegro-oferty.md', import.meta.url))).toBe(true);
+  });
+
   it('PRZ-121.05a: docs/modul-faktur.md jest w paczce i istnieje w repo', () => {
     expect(plikiPaczki(['docs/modul-faktur.md', 'docs/modul-faktur.txt'])).toEqual(['docs/modul-faktur.md']);
     expect(fs.existsSync(new URL('../../docs/modul-faktur.md', import.meta.url))).toBe(true);

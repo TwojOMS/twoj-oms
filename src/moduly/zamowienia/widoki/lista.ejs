@@ -75,7 +75,8 @@
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Zamówienia"}) %>
 <%# PRZ-082 (prośba właściciela 14.10): w trybie próby (piaskownica, demo publiczne) informacja o demo stoi NAD pasami %>
 <%# i ostrzeżeniami, na zielono — to nie awaria. Dawniej była zdaniem w akapicie synchronizacji pod nimi. %>
-<% if (proba) { %>
+<%# PRZ-167: gdy układ pokazuje pasek demo (demo publiczne), ta informacja stoi w jego dopisku — bez dubla. %>
+<% if (proba && !locals.demo) { %>
   <p class="pas-demo">Wersja demonstracyjna — dane z generatora, połączenia ze sklepami, Allegro i kurierami są wyłączone.</p>
 <% } %>
 <%# ⚠️⚠️ KANAŁY WOŁAJĄCE O POMOC — PAS, NIE PRZYPIS (14.08.2026). %>
@@ -482,7 +483,15 @@
             <%# `p.ilosc` jest juz EFEKTYWNA (po recznych nadpisaniach) — z.pozycje idzie %>
             <%# przez zLinii/nalozNadpisaniaPozycji w listaZamowien (db/zamowienia.js), %>
             <%# WIDOK NICZEGO tu nie liczy sam. %>
-            <% (z.pozycje || []).forEach(function (p) { %>
+            <%# PRZ-163 (właściciel 14.11, wzór Apilo): widać 5 pozycji, reszta w `<details>` — przy 100 pozycjach %>
+            <%# wiersz miał ~4300 px. `<details>`, nie `display: none`: zwinięte pozycje zostają w HTML-u, więc %>
+            <%# „Znajdź na stronie” je odnajduje i sam rozwija; bez skryptu (lista ma tylko skrypt pozycji przewinięcia). %>
+            <% var pozycjeListy = z.pozycje || []; var POZYCJI_WIDOCZNYCH = 5; %>
+            <% pozycjeListy.forEach(function (p, i) { %>
+              <% if (i === POZYCJI_WIDOCZNYCH) { %>
+              <details class="pozycje-reszta">
+                <summary><span class="pozycje-reszta-pokaz">Pokaż jeszcze <%= pozycjeListy.length - POZYCJI_WIDOCZNYCH %></span><span class="pozycje-reszta-zwin">Zwiń</span></summary>
+              <% } %>
               <div class="pozycja">
                 <%# Miniatura: adres liczy DOMENA (domain/miniatura-pozycji.js), widok go nie %>
                 <%# sklada. `loading="lazy"` bo przy pelnej liscie takich obrazkow jest %>
@@ -500,6 +509,7 @@
                 <span class="pozycja-tekst"><b><%= p.ilosc %>×</b> <%= p.nazwa %></span>
               </div>
             <% }); %>
+            <% if (pozycjeListy.length > POZYCJI_WIDOCZNYCH) { %></details><% } %>
           </td>
           <%# ⚠️ KLASA NA KOMORCE JEST TU PO TO, ZEBY DLUGA NAZWA USLUGI NIE KRADLA
               SZEROKOSCI POZOSTALYM KOLUMNOM. Odkad kolumna pokazuje pelne nazwy Allegro

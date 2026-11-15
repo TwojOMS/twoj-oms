@@ -100,7 +100,7 @@ describe('działy i zakładki Ustawień', () => {
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('<title>Stan systemu</title>');
     expect(fragmentGlownejKolumny(r.body)).not.toContain('<h2 class="naglowek-formularza">Stan systemu</h2>');
-    const aktywne = r.body.match(/<li class="aktywna">\s*<a href="\/ustawienia\/moduly" aria-current="page">/g) ?? [];
+    const aktywne = r.body.match(/<li class="aktywna">\s*<a href="\/ustawienia\/moduly" aria-current="(?:page|true)">/g) ?? [];
     // Ten sam model jest renderowany raz w menu desktopowym i raz w zwijanym menu telefonu.
     expect(aktywne).toHaveLength(2);
   });

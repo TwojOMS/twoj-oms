@@ -35,7 +35,6 @@ import { createAtrapaLacznosci } from './lacznosc.mjs';
 import { zbudujAtrapyKanalow, scalUslugiKanalow } from './kanaly.mjs';
 import { wymagajTrybuProby } from './tryb.mjs';
 import { uruchomPulsPollerow } from './pollery.mjs';
-import { ukryjEkranyDemo } from './ekrany.mjs';
 
 // Ścieżki w rejestrze są względem korzenia repozytorium; import wykonujemy raz, bez uruchamiania serwera.
 const atrapyKurierow = await Promise.all(Object.values(MODULY_KURIEROW)
@@ -125,7 +124,6 @@ export async function uruchomPiaskownice(env = process.env, { host = '0.0.0.0', 
   sprawdzKonfiguracjeModulow(moduly, env);
   db = openOmsDb(env.OMS_DB_PATH, { moduly });
   const nadpisania = nadpisaniaPiaskownicy({ db, env, log });
-  ukryjEkranyDemo(db, env);
   // Źródła jak w zdrowiu (moduly/zdrowie/modul.ts): klucze sklepów i kanałów z konfiguracji, którą widzą moduły.
   const wynik = await uruchomAplikacje({ moduly, env, db, host, port: Number(env.OMS_PORT || 3001), nadpisania, ...(log ? { log } : {}) });
   const config = wynik.aplikacja.usluga('kanaly', 'config');

@@ -38,7 +38,8 @@ describe('PRZ-154 E2.1 — wspólny nagłówek ekranu', () => {
   });
   it.each([
     ['/', 'Zamówienia', null],
-    ['/raporty', 'Raporty', 'oms-zakladki-analiz'],
+    // PRZ-167: Raporty bez zakładek analiz nad treścią — podstrony są w podmenu „Analityka” w menu bocznym.
+    ['/raporty', 'Raporty', null],
     ['/ustawienia/firma', 'Firma', 'ust-zakladki'],
   ])('%s: jeden h1 w nagłówku, zakładki pod tytułem', async (url, tytul, zakladki) => {
     const { app, db } = nowyPanel();

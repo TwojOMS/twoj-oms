@@ -30,7 +30,7 @@ it('odmowa raportu przez nieznany sklep to ekran panelu (menu, tytuł, wskazówk
       expect(odp.statusCode, url).toBe(400);
       expect(odp.headers['content-type'], url).toContain('text/html');
       // Menu panelu: nawigacja zakładek analiz z linkiem do Raportów, tytuł strony.
-      expect(odp.body, url).toContain('aria-label="Analizy i finanse"');
+      expect(odp.body, url).toContain('data-podmenu-lista="analityka"');
       expect(odp.body, url).toContain('<title>Raporty</title>');
       // Co się stało i co sprawdzić: numer zamówienia, klucz sklepu, OMS_KANALY / Ustawienia.
       expect(odp.body, url).toContain('XYZ-0001');
@@ -50,7 +50,7 @@ it('odmowa Finansów przez nieznany sklep też jest ekranem panelu', async () =>
     const odp = await z.app.inject({ url: "/finanse?skrot=ten-miesiac", headers });
     expect(odp.statusCode).toBe(400);
     expect(odp.headers['content-type']).toContain('text/html');
-    expect(odp.body).toContain('aria-label="Analizy i finanse"');
+    expect(odp.body).toContain('data-podmenu-lista="analityka"');
     expect(odp.body).toContain('OMS_KANALY');
     expect(odp.body).not.toContain('janina.testowa');
   } finally { await z.app.close(); z.db.close(); }

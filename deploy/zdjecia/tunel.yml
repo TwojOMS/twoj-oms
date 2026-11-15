@@ -1,0 +1,8 @@
+# Przykład dla tunelu podłączonego do sieci kontenera zdjęć.
+credentials-file: /konfiguracja/tunel.json
+no-autoupdate: true
+ingress:
+  - hostname: zdjecia.przyklad.pl
+    path: ^/z/.*$
+    service: http://zdjecia:3002
+  - service: http_status:404

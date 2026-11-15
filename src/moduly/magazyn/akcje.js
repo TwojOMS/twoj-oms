@@ -1,8 +1,9 @@
 // Port frozen 5b9cd765: 1127–1500, 1662–1765, 1910–2008.
 import { stronaOdmowy } from '../../core/web/odmowa.js';
+import { polaSlownikowZFormularza, dopiszDoSlownikow, wTransakcji } from './services/slowniki-kart.js';
 
-export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }) {
-  const { kartyZKanalami, niepowiazaneOfertyAllegro, powiazaneOfertyAllegro, kartyDoPowiazania, powiazOfertyHurtem, odepnijOferte, kartaPoId, produktyKarty, zapiszKarte, kartyPoIdach, zastosujHurtem, zajeteSku, nadajSku, produktyKart, polecenieZFormularza, zmianyHurtem, polaDoPrzeniesienia, proponujSku, przejeciaZeSklepu, propozycje, KANALY_ALLEGRO, wartosciPol, adresKanalu, BEZ_SKLEPOW, BEZ_SKLEPOW_ODMOWA, BEZ_KART, SORTOWANIE_POWIAZAN, SORTOWANIE_POWIAZAN_DOMYSLNE, napis, kanalAllegro, paryZFormularza, wierszOferty, pozycjaListy, adresPowiazan, linkiPowiazan, ukrytePowiazan, pole, zmianyZFormularza, bezpiecznyWroc, adresKarty, numeryZaznaczone, filtryZawezenia, zakresHurtu, HURT_BEZ_ZAZNACZENIA, HURT_BEZ_ZMIANY } = pomoc;
+export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, kontaErli = /** @returns {{ klucz: string }[]} */ () => [] }) {
+  const { kartyZKanalami, niepowiazaneOfertyAllegro, powiazaneOfertyAllegro, kartyDoPowiazania, powiazOfertyHurtem, odepnijOferte, podgladPrzepiec, kartaPoId, produktyKarty, zapiszKarte, kartyPoIdach, zastosujHurtem, zajeteSku, nadajSku, produktyKart, polecenieZFormularza, zmianyHurtem, polaDoPrzeniesienia, proponujSku, przejeciaZeSklepu, propozycje, KANALY_ALLEGRO, wartosciPol, adresKanalu, BEZ_SKLEPOW, BEZ_SKLEPOW_ODMOWA, BEZ_KART, SORTOWANIE_POWIAZAN, SORTOWANIE_POWIAZAN_DOMYSLNE, napis, kanalAllegro, paryZFormularza, wierszOferty, pozycjaListy, adresPowiazan, linkiPowiazan, ukrytePowiazan, pole, zmianyZFormularza, bezpiecznyWroc, adresKarty, numeryZaznaczone, filtryZawezenia, zakresHurtu, HURT_BEZ_ZAZNACZENIA, HURT_BEZ_ZMIANY } = pomoc;
   // PRZ-152.G13: odmowa „brak sklepu” w układzie OMS (status i tekst bez zmian); powrót na listę, z której przyszedł człowiek.
   const odmowaBezSklepow = (req, reply) => stronaOdmowy(reply, 503, BEZ_SKLEPOW_ODMOWA, {
     tytul: 'Magazyn nie ma skąd czytać katalogu', napisWroc: 'Wróć do magazynu',
@@ -383,7 +384,20 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
   // zamiast przekierowywac: ekran wyniku jest jedynym miejscem, w ktorym widac komplet
   // przejetych numerow i to, czego panel nie tknal.
   app.post('/magazyn/przejmij-zapisz', async (req, reply) => przejmijSku(req, reply, { zapisz: true }));
-  function ekranPowiazan(req, reply, wynik = null) {
+  // E4.14 / D59: przy włączonych stanach przepięcie przenosi sprzedaż od granicy z ofertą, więc najpierw podgląd
+  // („stan karty X: 7 → 4”), a zapis dopiero po potwierdzeniu. Formularz podglądu odsyła to samo ciało plus
+  // `potwierdz=1`. Stany wyłączone albo przepięcie bez wpływu na stan — zapis od razu, jak dotąd.
+  function podgladPrzedZapisem(req, reply, akcja, zmiany) {
+    if (String(req.body?.potwierdz ?? '') === '1' || !zmiany.length) return null;
+    const podglad = podgladPrzepiec(db, zmiany);
+    if (!podglad?.karty.length) return null;
+    const pola = Object.entries(req.body ?? {})
+      .filter(([nazwa, wartosc]) => nazwa !== 'potwierdz' && typeof wartosc === 'string')
+      .map(([nazwa, wartosc]) => ({ nazwa, wartosc }));
+    return ekranPowiazan(req, reply, null, { ...podglad, granicaTekst: pomoc.fmtDataCzas(podglad.granica), akcja, pola, odpiecie: akcja.endsWith('/odepnij') });
+  }
+
+  function ekranPowiazan(req, reply, wynik = null, podgladPrzepiecia = null) {
     const karty = kartyDoPowiazania(db);
     // ⚠️ ROZSTRZYGNIECIE WLASCICIELA: przy zerze kart ekran MOWI, od czego zaczac,
     // zamiast pokazac pusta tabele albo sie wywalic. Wzorzec: `pusta-strona.ejs`.
@@ -412,6 +426,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
     wiersze.sort((a, b) => (kier === 'desc' ? porzadek(b, a) : porzadek(a, b)) || (a.id - b.id));
 
     return reply.view('magazyn-powiazania.ejs', { szerokosc: 'tabela',
+      kontaErli: req.konto?.admin === true ? kontaErli().map(k => k.klucz) : [],
       title: 'Magazyn — powiązania',
       wiersze,
       // JEDNA lista podpowiedzi na CALA strone (rozstrzygniecie 3).
@@ -419,6 +434,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
       juzPowiazane: powiazaneOfertyAllegro(db)
         .map((p) => ({ ...p, etykietaKanalu: adresKanalu(p.kanal) })),
       wynik,
+      podgladPrzepiecia,
       // Adres, stan aktywnosci i strzalka KAZDEGO naglowka sortujacego — policzone tutaj,
       // bo widok w tym module niczego nie rozstrzyga.
       sortowanie: linkiPowiazan(sort, kier, filtry, wroc),
@@ -459,7 +475,12 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
     // zapisu, tam odbija sie od warunku `karta_id IS NULL` i wraca z wlasnym powodem.
     const oferty = [...niepowiazaneOfertyAllegro(db), ...powiazaneOfertyAllegro(db)];
     const { pary, pominiete } = paryZFormularza(req.body, oferty, karty);
-    const { powiazane, nieaktualne } = powiazOfertyHurtem(db, pary);
+    // Podgląd tylko dla ofert, które zapis faktycznie ruszy (niepowiązane) — reszta i tak odbije się od `karta_id IS NULL`.
+    const wolne = new Set(niepowiazaneOfertyAllegro(db).map((o) => o.id));
+    const podglad = podgladPrzedZapisem(req, reply, '/magazyn/powiazania', pary
+      .filter((p) => wolne.has(p.produktId)).map((p) => ({ produktSklepowyId: p.produktId, naKarte: p.kartaId })));
+    if (podglad) return podglad;
+    const { powiazane, nieaktualne } = powiazOfertyHurtem(db, pary, { konto: req.konto ?? null });
 
     // ⚠️ NIEAKTUALNE MAJA WLASNY POWOD, a nie wspolny worek „nie udało się". Oferta, ktorej
     // nie ruszylismy, bo ktos ja powiazal w drugiej karcie, to CO INNEGO niz oferta,
@@ -482,7 +503,10 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
   app.post('/magazyn/powiazania/odepnij', async (req, reply) => {
     if (!magazyn || magazyn.gotowy?.() === false) return odmowaBezSklepow(req, reply);
     const id = Number(req.body?.id);
-    const odpieto = Number.isInteger(id) && odepnijOferte(db, id);
+    const powiazana = Number.isInteger(id) && powiazaneOfertyAllegro(db).some((o) => o.id === id);
+    const podglad = powiazana && podgladPrzedZapisem(req, reply, '/magazyn/powiazania/odepnij', [{ produktSklepowyId: id, naKarte: null }]);
+    if (podglad) return podglad;
+    const odpieto = Number.isInteger(id) && odepnijOferte(db, id, { konto: req.konto ?? null });
     return ekranPowiazan(req, reply, odpieto
       ? { odpiete: 1, powiazane: 0, pominiete: [] }
       : { odpiete: 0, powiazane: 0, pominiete: [{ nazwa: `oferta #${req.body?.id}`, powod: 'nie ma czego odpiąć' }] });
@@ -498,7 +522,13 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
     // ze wszystko poszlo dobrze.
     if (blad) return ekranKarty(req, reply, { karta, blad, kod: 400 });
 
-    zapiszKarte(db, karta.id, zmiany);
+    // PRZ-160.P3b.01: kategoria i marka ze słownika albo „dodaj nową” — nowa nazwa trafia do słownika
+    // w tej samej transakcji co zapis karty.
+    Object.assign(zmiany, polaSlownikowZFormularza(req.body));
+    wTransakcji(db, () => {
+      zapiszKarte(db, karta.id, zmiany);
+      dopiszDoSlownikow(db, zmiany);
+    });
     // 303, a nie 302: po POST-cie przegladarka ma pojsc GET-em, zeby odswiezenie strony
     // nie proponowalo powtorzenia zapisu.
     // ⚠️ `wroc` Z ADRESU TEGO ZADANIA (Zadanie 6) — formularz karty POSTuje pod adres akcji,
@@ -533,7 +563,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
       });
     }
 
-    const { powiazane } = powiazOfertyHurtem(db, [{ produktId, kartaId: karta.id }]);
+    const { powiazane } = powiazOfertyHurtem(db, [{ produktId, kartaId: karta.id }], { konto: req.konto ?? null });
     if (!powiazane.length) {
       // ⚠️ ODMOWA MOWI, CO SIE STALO. „Nie udało się" zostawiloby czlowieka z pytaniem,
       // czy to jego pomylka, czy usterka panelu — a to sa trzy rozne stany i kazdy ma
@@ -543,7 +573,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
         kod: 409,
         blad: 'Nie przypiąłem tej pozycji: albo należy już do innej karty produktu, albo zniknęła '
           + 'z Allegro, albo jest produktem sklepowym — a produkty sklepowe wiąże '
-          + '„Utwórz karty z niepowiązanych", nie karta produktu.',
+          + 'import (Magazyn → Importuj), nie karta produktu.',
       });
     }
     // ⚠️ `wroc` z adresu TEGO zadania — formularz „Przypnij" POSTuje pod `adresPowiaz`,
@@ -571,7 +601,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
 
     const produktId = Number(req.body?.produktSklepowyId);
     const nasz = produktyKarty(db, karta.id).some((p) => p.id === produktId);
-    const odpieto = nasz && odepnijOferte(db, produktId);
+    const odpieto = nasz && odepnijOferte(db, produktId, { konto: req.konto ?? null });
     if (!odpieto) {
       return ekranKarty(req, reply, {
         karta,

@@ -24,6 +24,12 @@ export function createAtrapaWooHttp({ tryb, przekierowanie } = {}) {
     const url = new URL(req.url, 'http://127.0.0.1');
     if (req.method !== 'GET') return odpowiedz(405, { message: 'Niedozwolona metoda' });
     const prefix = '/wp-json/wc/v3';
+    if (url.pathname === `${prefix}/settings/general/woocommerce_calc_taxes`) {
+      return odpowiedz(200, { id: 'woocommerce_calc_taxes', value: 'no' });
+    }
+    if (url.pathname === `${prefix}/settings/tax/woocommerce_prices_include_tax`) {
+      return odpowiedz(200, { id: 'woocommerce_prices_include_tax', value: 'no' });
+    }
     if (url.pathname === `${prefix}/payment_gateways`) {
       return tryb === 'bramki403' ? odpowiedz(403, { message: 'Brak dostępu' }) : odpowiedz(200, bramki);
     }

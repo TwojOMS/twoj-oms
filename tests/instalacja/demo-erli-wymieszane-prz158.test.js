@@ -43,7 +43,7 @@ it('demo po imporcie ERLI miesza kanały, koszyki, dostawy i FV, zachowując prz
   expect.soft(miejscaErli.length).toBeLessThanOrEqual(6);
   expect.soft(miejscaErli.some((p, i) => i > 0 && p > miejscaErli[i - 1] + 1)).toBe(true);
   const erli = db.prepare("SELECT * FROM zamowienia WHERE sklep='erli_polcien' ORDER BY numer").all();
-  expect(erli).toHaveLength(15);
+  expect(erli).toHaveLength(30);
   const surowe = erli.map(z => JSON.parse(z.surowe_json));
   const metody = new Set(surowe.map(z => z.delivery.typeId));
   expect.soft(metody.size).toBeGreaterThanOrEqual(4);
@@ -102,11 +102,25 @@ it('demo po imporcie ERLI miesza kanały, koszyki, dostawy i FV, zachowując prz
   expect(z(11).delivery.typeId).toBe('erliKurier24InPost10kg');
   expect(surowe.map(z => z.delivery.typeId)).not.toContain('nieznanaMetoda');
   expect(z(2).delivery.cod).toBe(true);
+  // PRZ-160.demo (właściciel 13.11): „nowe” tylko z dziś — opłacone ERLI sprzed dziś są w realizacji albo wysłane,
+  // nieopłacone (pending) zostaje; paczki ERLI są też utworzone i w drodze, nie tylko doręczone.
+  const dzienPl = (t) => new Date(t).toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' });
+  const noweErli = db.prepare(`SELECT numer, utworzone_at FROM zamowienia WHERE sklep='erli_polcien' AND anulowane=0
+    AND w_realizacji_at IS NULL AND wyslane_at IS NULL`).all().filter(w => w.numer !== 'PC-ERLI-0006');
+  expect(noweErli.filter(w => dzienPl(w.utworzone_at) !== '2026-11-11')).toEqual([]);
+  const stanyPaczek = db.prepare(`SELECT p.status_kuriera s FROM przesylki p JOIN zamowienia z ON z.id=p.zamowienie_id
+    WHERE z.sklep='erli_polcien'`).all().map(w => w.s);
+  expect.soft(stanyPaczek.filter(s => s === null).length).toBeGreaterThanOrEqual(1);
+  expect.soft(stanyPaczek.filter(s => s === 'Przesyłka w drodze').length).toBeGreaterThanOrEqual(1);
+  expect.soft(fv.length).toBeGreaterThanOrEqual(4);
+  const paczekErli = stanyPaczek.length;
   await poller.przebiegZamowien();
   await poller.przebiegZamowien();
   expect(db.prepare("SELECT COUNT(*) n FROM faktury f JOIN zamowienia z ON z.id=f.zamowienie_id WHERE z.sklep='erli_polcien'").get().n).toBe(fv.length);
   expect(db.prepare("SELECT anulowane FROM zamowienia WHERE numer='PC-ERLI-0007'").get().anulowane).toBe(1);
-  expect(db.prepare("SELECT COUNT(*) n FROM przesylki p JOIN zamowienia z ON z.id=p.zamowienie_id WHERE z.sklep='erli_polcien'").get().n).toBe(wyslane.length);
+  // Kolejne przebiegi niczego nie dokładają (PRZ-160.demo: paczki to wysłane ze statusem ERLI `sent` i te ruszone przez demo).
+  expect(db.prepare("SELECT COUNT(*) n FROM przesylki p JOIN zamowienia z ON z.id=p.zamowienie_id WHERE z.sklep='erli_polcien'").get().n).toBe(paczekErli);
+  expect(paczekErli).toBeGreaterThan(wyslane.length);
   // Inny kanał ERLI, nawet założony przez demo, nie dostaje uzupełnień.
   db.prepare("UPDATE kanaly_sprzedazy SET klucz='erli_inny',aktor_login='demo' WHERE klucz='erli_polcien'").run();
   db.prepare("UPDATE zamowienia SET sklep='erli_inny' WHERE sklep='erli_polcien'").run();

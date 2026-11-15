@@ -15,111 +15,60 @@
     Karta bez SKU pokazuje w tym miejscu przygaszone „bez SKU", a nie pustke: brak numeru
     jest informacja, nie brakiem danych. Sortowanie po SKU zyje w naglowku „Karta". %>
 
-<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Magazyn", podtytul: "karty produktów i ich obecność w kanałach sprzedaży"}) %>
-
-<%# ——— KAFLE BRAKOW: postep porzadkow i nawigacja naraz —————————————————————————
-    Liczby po CALYM katalogu (nie po zawezeniu) — kafel mowi „ile roboty zostalo".
-    Kafel to zwykly odnosnik GET na filtr brak=…; aktywny linkuje na zdjecie filtra.
-    Wszystko policzone w trasie (kafleBrakow) — widok tylko wypisuje. %>
-<nav class="kafle" aria-label="Braki katalogu">
-  <% kafle.forEach(function (k) { %>
-    <a class="kafel<%= k.aktywny ? ' kafel--aktywny' : '' %><%= k.klucz === 'komplet' ? ' kafel--komplet' : '' %>"
-       href="<%= k.adres %>"<%- k.aktywny ? ' aria-current="true"' : '' %>>
-      <span class="kafel-ile"><%= k.ile %><% if (k.klucz === 'komplet') { %> / <%= k.razem %><% } %></span>
-      <span class="kafel-co"><%= k.etykieta %><% if (k.aktywny) { %> · filtr włączony<% } %><% if (k.dopisek) { %> · <%= k.dopisek %><% } %></span>
-      <% if (k.klucz === 'komplet') { %><span class="kafel-postep"><i style="width: <%= k.procent %>%"></i></span><% } %>
-    </a>
-  <% }); %>
-</nav>
+<%# PRZ-160 P3b.03b: „Dodaj produkt" i „Importuj" w nagłówku. Każdy odnośnik pyta o SWÓJ adres
+    (`mozeAdres` = ta sama mapa praw co strażnik), więc konto bez edycji Magazynu ich nie widzi. %>
+<%_ const akcjeMagazynu = [
+  stany && adminStanowKanalow && mozeAdres('/magazyn/stany/kanaly') ? '<a class="btn btn--maly" href="/magazyn/stany/kanaly">Stany w kanałach</a>' : '',
+  mozeAdres('/magazyn/nowa-karta') ? '<a class="btn btn--maly btn--glowny" href="/magazyn/nowa-karta">Dodaj produkt</a>' : '',
+  mozeAdres('/magazyn/import') ? '<a class="btn btn--maly" href="/magazyn/import">Importuj</a>' : '',
+  liczbaProblemowOfert > 0 ? `<a class="btn btn--maly" href="/magazyn/problemy-ofert">Problemy ofert (${liczbaProblemowOfert})</a>` : '',
+].join(''); _%>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Magazyn", opisHtml: '<span class="menu-ustawien-beta">BETA</span>', akcje: akcjeMagazynu}) %>
 
 <%# ——— PASEK ODCZYTU ————————————————————————————————————————————————————————
     ⚠️ Wynik odczytu MUSI byc widoczny na ekranie. Cichy blad kanalu i cichy pusty odczyt
     daja bowiem dokladnie ten sam obraz, co sklep, w ktorym nic sie nie zmienilo — a hamulec
     z Zadania 7 zamienia cicha katastrofe w blad TYLKO wtedy, gdy ktos ten blad pokaze.
 
-    ⚠️⚠️ ZWINIETE DO LINII (przebudowa 2026-08-25, Zadanie 3), ale `open` NIE JEST OZDOBA —
-    to regula z `opisPrzebiegu` (routes/magazyn.js, sekcja 9 przewodnika): trwanie i KAZDY
-    blad (przebiegu jako calosci albo pojedynczego kanalu) renderuja `<details>` OTWARTY,
-    bo cichy zly odczyt ma wygladac identycznie jak spokoj WYLACZNIE, gdy naprawde nic sie
-    nie stalo. Decyzja stoi w trasie (`przebieg.otworz`) — widok tylko ja wypisuje. %>
-<details class="odczyt-szczegoly"<%- przebieg.otworz ? ' open' : '' %>>
-  <summary>
-    <b>Odczyt katalogów:</b> <%= przebieg.streszczenie %>
-    <% if (przebieg.otworz && !przebieg.trwa) { %><span class="znacznik znacznik--blad">błąd odczytu</span>
-    <% } else if (przebieg.kanaly.length && !przebieg.trwa) { %><span class="znacznik znacznik--ok"><%= przebieg.kanalyOk %></span>
-    <% } %>
-    · pominięte: <%= niepowiazane.pominiete %> · powiązania Allegro: <%= niepowiazane.ofertyAllegro %> ofert czeka
-  </summary>
-  <div class="odczyt-cialo">
-    <% if (przebieg.blad) { %>
-      <p class="pasek-blokada">Odczyt przerwany, zanim ruszył: <%= przebieg.blad %></p>
-    <% } %>
-
-    <% if (przebieg.trwa && przebieg.postep) { %>
-      <p class="wyjasnienie">
-        Czytam <strong><%= przebieg.postep.etykieta %></strong> —
-        <%= przebieg.postep.zrobione %> z <%= przebieg.postep.zTego %>.
-        Odśwież tę stronę, żeby zobaczyć, gdzie jest.
-      </p>
-    <% } %>
-
-    <% if (przebieg.kanaly.length) { %>
-      <table class="tab-pozycje">
-        <thead>
-          <tr><th>Kanał</th><th class="liczba">Zapisane</th><th class="liczba">Zniknęły</th><th>Wynik</th></tr>
-        </thead>
-        <tbody>
-          <% przebieg.kanaly.forEach(function (k) { %>
-            <tr>
-              <td><%= k.etykieta %></td>
-              <td class="liczba"><%= k.zapisane %></td>
-              <%# ⚠️ LICZBA ZNIKNIETYCH JEST JEDYNYM SYGNALEM ODCZYTU CZESCIOWEGO — sklep,
-                  ktory oddal jedna pozycje z 668, przechodzi przez hamulec (ten lapie
-                  WYLACZNIE zero) i celowo ma przechodzic: prog na ubytku uniemozliwilby
-                  wycofanie czegokolwiek ze sprzedazy. %>
-              <td class="liczba"><%= k.znikniete %></td>
-              <td>
-                <% if (k.blad) { %>
-                  <%# ⚠️ CALY KOMUNIKAT, NIE SKROT. Ten napis jest pisany dla czlowieka
-                      i mowi, CO ZROBIC („oznacz jego wiersze ręcznie") — skrocony do
-                      „błąd odczytu" zostawia tyle samo wiedzy, co brak komunikatu. %>
-                  <span class="znacznik znacznik--blad">Odczyt przerwany</span>
-                  <div class="wiersz-szczegoly"><%= k.blad %></div>
-                <% } else { %>
-                  <span class="znacznik znacznik--ok">ok</span>
-                <% } %>
-              </td>
-            </tr>
-          <% }); %>
-        </tbody>
-      </table>
-    <% } %>
-
-    <div class="pola-w-rzedzie">
-      <%# Formularze bez ukrytego pola z tokenem: ochrona CSRF (src/security/csrf.js) stoi
-          na naglowkach Origin/Referer i jest hakiem globalnym. %>
-      <form method="post" action="/magazyn/odswiez">
-        <%# ⚠️ Przycisk STARTUJE przebieg i strona wraca NATYCHMIAST. Pelny odczyt to setki
-            zadan HTTP i w limicie czasu zadania sie nie miesci — patrz routes/magazyn.js. %>
-        <button class="btn btn--glowny" type="submit" <%= przebieg.trwa ? 'disabled' : '' %>>
-          Odczytaj katalogi ze sklepów
-        </button>
-      </form>
-      <form method="post" action="/magazyn/utworz-karty">
-        <%# Adres TEJ listy jedzie razem z akcja — jej wynik pokazuje sie na ekranie %>
-        <%# „pominiete", z ktorego operator wraca odnosnikiem (4.13d). %>
-        <input type="hidden" name="wroc" value="<%= adresPowrotuListy %>">
-        <button class="btn" type="submit">Utwórz karty z niepowiązanych</button>
-      </form>
-      <a class="link-edytuj" href="<%= adresPominietych %>">Co panel pomija i dlaczego →</a>
-      <%# ⚠️ JEDYNE WEJSCIE na ekran powiazan — bez tego odnosnika trasa istnieje wylacznie
-          dla kogos, kto zna adres. Stoi WLASNIE TU, obok „pominietych": to tam widac 447
-          ofert Allegro odrzuconych z zalozenia, i to jest jedyne miejsce w panelu, w ktorym
-          czlowiek dowiaduje sie, ze te oferty w ogole czekaja na reczna robote. %>
-      <a class="link-edytuj" href="<%= adresEkranuPowiazan %>">Powiąż oferty Allegro z kartami →</a>
-    </div>
-  </div>
-</details>
+    ⚠️⚠️ PRZ-160 P3b.03b: przyciski odczytu, treści ofert i tworzenia kart są na ekranie importu
+    (`/magazyn/import`). Na liście pasek zostaje WYŁĄCZNIE przy trwaniu albo błędzie — o tym
+    rozstrzyga `otworz` z trasy (`opisPrzebiegu`, `opisPrzebieguTresci`: trwanie i KAŻDY błąd
+    przebiegu albo kanału). Spokój = brak paska. Błąd idzie CAŁYM komunikatem, nie skrótem —
+    napis jest pisany dla człowieka i mówi, co zrobić. %>
+<% if (przebieg.otworz || (trescAllegro && trescAllegro.otworz)) { %>
+<div class="pasek-odczytu"<% if (przebieg.trwa || (trescAllegro && trescAllegro.trwa)) { %> role="status"<% } %>>
+  <% if (przebieg.otworz) { %>
+    <p><b>Odczyt katalogów:</b>
+      <% if (przebieg.trwa) { %>
+        <%= przebieg.streszczenie %><% if (przebieg.postep) { %> · <%= przebieg.postep.etykieta %>: <%= przebieg.postep.zrobione %> z <%= przebieg.postep.zTego %><% } %>
+      <% } else { %>
+        <span class="znacznik znacznik--blad">błąd odczytu</span>
+        <% if (przebieg.blad) { %><%= przebieg.blad %><% } %>
+        <% przebieg.kanaly.filter(function (k) { return k.blad; }).forEach(function (k) { %>
+          <span class="pasek-odczytu__kanal"><%= k.etykieta %>: <%= k.blad %></span>
+        <% }); %>
+      <% } %>
+    </p>
+  <% } %>
+  <% if (trescAllegro && trescAllegro.otworz) { %>
+    <p><b>Treść ofert:</b>
+      <% if (trescAllegro.trwa) { %>
+        <%= trescAllegro.streszczenie %><% if (trescAllegro.postep) { %> · <%= trescAllegro.postep.zrobione %> z <%= trescAllegro.postep.zTego %><% } %>
+      <% } else { %>
+        <span class="znacznik znacznik--blad">błędy pobierania</span>
+        <%= trescAllegro.streszczenie %>
+        <% if (trescAllegro.blad) { %>· <%= trescAllegro.blad %><% } %>
+        <% if (trescAllegro.bledy.length) { %>· ofert z błędem: <%= trescAllegro.bledy.length + trescAllegro.bledyPoza %><% } %>
+        <% trescAllegro.bledy.forEach(function (b) { %>
+          <span class="pasek-odczytu__kanal"><%= b.etykieta %> · <%= b.oferta_id %>: <%= b.blad %></span>
+        <% }); %>
+        <% if (trescAllegro.bledyPoza) { %><span class="pasek-odczytu__kanal">…i jeszcze <%= trescAllegro.bledyPoza %></span><% } %>
+      <% } %>
+    </p>
+  <% } %>
+  <% if (mozeAdres('/magazyn/import')) { %><a href="/magazyn/import">Importuj →</a><% } %>
+</div>
+<% } %>
 
 <%# ——— WYSZUKIWARKA I FILTRY ——————————————————————————————————————————————————
     ⚠️ FILTRY LACZA SIE Z FRAZA, A NIE KASUJA JEJ (niezmiennik 4.13b przewodnika). Formularz
@@ -144,6 +93,14 @@
     <input type="hidden" name="<%= p.name %>" value="<%= p.value %>">
   <% }); %>
   <div class="filtry-rzad">
+    <label class="pole-filtra" for="filtr-oferty"><span>Oferty</span>
+      <select id="filtr-oferty" name="oferty">
+        <option value="">Wszystkie</option>
+        <% for (const [v, tekst] of [['bez', 'Bez oferty'], ['z', 'Z ofertą'], ['problem', 'Z problemem lub błędem']]) { %>
+          <option value="<%= v %>"<%= filtry.oferty === v ? ' selected' : '' %>><%= tekst %></option>
+        <% } %>
+      </select>
+    </label>
     <label class="pole-filtra">
       <span>Kanał sprzedaży</span>
       <%# Lista ZAMKNIETA i TA SAMA, ktora rysuje kolumny cen (KANALY_MAGAZYNU). Kanal
@@ -173,6 +130,15 @@
         <% }); %>
       </select>
     </label>
+    <label class="pole-filtra" for="filtr-marka">
+      <span>Marka</span>
+      <select name="marka" id="filtr-marka">
+        <option value="">Wszystkie</option>
+        <% markiDoFiltra.forEach(function (m) { %>
+          <option value="<%= m %>"<%- filtry.marka === m ? ' selected' : '' %>><%= m %></option>
+        <% }); %>
+      </select>
+    </label>
     <label class="pole-filtra">
       <span>Paczkomat</span>
       <%# TRZY STANY, NIE DWA: „nieoznaczone" to robota do wykonania, „nie" to decyzja
@@ -181,6 +147,15 @@
         <option value="">Bez znaczenia</option>
         <% paczkomatDoFiltra.forEach(function (p) { %>
           <option value="<%= p.klucz %>"<%- filtry.paczkomat === p.klucz ? ' selected' : '' %>><%= p.etykieta %></option>
+        <% }); %>
+      </select>
+    </label>
+    <label class="pole-filtra" for="filtr-brak">
+      <span>Braki danych</span>
+      <select id="filtr-brak" name="brak">
+        <option value="">wszystkie</option>
+        <% brakiDoFiltra.forEach(function (p) { %>
+          <option value="<%= p.klucz %>"<%- filtry.brak === p.klucz ? ' selected' : '' %>><%= p.etykieta %></option>
         <% }); %>
       </select>
     </label>
@@ -289,6 +264,23 @@
 <form method="post" action="/magazyn/hurt">
   <div class="belka-akcji">
     <span class="belka-akcji-etykieta">Zaznaczone karty:</span>
+    <% if (kontaOfert.length) { %>
+      <details class="akcja" name="akcja">
+        <summary>Wystaw na…</summary>
+        <div class="akcja-cialo">
+          <%# PRZ-160.E3.14: konta ERLI i Allegro; konto Allegro bez zgody na oferty (D21) wyszarzone z powodem. %>
+          <label for="konto-ofert">Konto</label>
+          <% const bezZgody = kontaOfert.some(k => !k.zgoda); %>
+          <select id="konto-ofert" name="konto"<% if (bezZgody) { %> aria-describedby="konto-ofert-zgoda"<% } %>>
+            <% kontaOfert.forEach(k => { %><% if (k.zgoda) { %><option value="<%= k.klucz %>"><%= k.etykieta %></option><% } else { %><option value="<%= k.klucz %>" disabled><%= k.etykieta %> — <%= brakZgodyOfert %></option><% } %><% }); %>
+          </select>
+          <% if (bezZgody) { %><p class="akcja-zasada" id="konto-ofert-zgoda">Konto wyszarzone nie ma zgody na zapis ofert — połącz je ponownie w Ustawieniach → Integracje.</p><% } %>
+          <button class="btn btn--drugi" type="submit" formaction="/magazyn/oferty/podglad" name="zakres" value="zaznaczone">Pokaż podgląd — dla zaznaczonych</button>
+          <button class="btn btn--drugi" type="submit" formaction="/magazyn/oferty/podglad" name="zakres" value="pasujace">Pokaż podgląd — dla wszystkich pasujących (<%= ilePasujacych %>)</button>
+          <% if (kontaOfert.some(k => k.allegro && k.zgoda)) { %><button class="btn btn--drugi" type="submit" formaction="/magazyn/oferty/aktywuj">Aktywuj w Allegro — szkice zaznaczonych</button><% } %>
+        </div>
+      </details>
+    <% } %>
 
 <%# ——— USTAW POLA (edycja hurtem) —————————————————————————————————————————————— %>
     <details class="akcja" name="akcja" id="hurt-pasek">
@@ -480,9 +472,8 @@
   </div>
 
 <%# ——— PASEK NAD TABELA: CO ZAWEZA / PRZELACZNIK TRYBU KOLUMN ————————————————————
-    ⚠️⚠️ DWA TRYBY JEDNEJ TABELI (przebudowa 2026-08-25). Domyslny to PORZADKI: cztery
-    kolumny cen ustepuja jednej kolumnie „Stan", ktora mowi, ILE brakuje przy karcie — i
-    dzieki temu tabela miesci sie bez przewijania w bok. Ceny wracaja o jedno klikniecie
+    ⚠️⚠️ DWA TRYBY JEDNEJ TABELI (przebudowa 2026-08-25). Domyslny to PORZADKI bez
+    kolumn cen, dzieki czemu tabela miesci sie bez przewijania w bok. Ceny wracaja o jedno klikniecie
     (`?widok=katalog`).
 
     ⚠️ PRZELACZNIK JEST ZWYKLYM ODNOSNIKIEM ze skladanym w trasie adresem (`adresPrzelacznika`)
@@ -556,6 +547,9 @@
         <th <% if (sortowanie.kategoria.aria) { %>aria-sort="<%= sortowanie.kategoria.aria %>"<% } %>>
           <a class="zaznacz-wszystkie" href="<%= sortowanie.kategoria.adres %>">Kategoria główna <%= sortowanie.kategoria.strzalka %></a>
         </th>
+        <th scope="col" <% if (sortowanie.marka.aria) { %>aria-sort="<%= sortowanie.marka.aria %>"<% } %>>
+          <a class="zaznacz-wszystkie" href="<%= sortowanie.marka.adres %>">Marka <span aria-hidden="true"><%= sortowanie.marka.strzalka %></span></a>
+        </th>
         <%# KOLUMNY CEN WYLACZNIE W TRYBIE KATALOGOWYM — w porzadkach ich miejsce zajmuje
             kolumna „Stan" na koncu wiersza. Zestaw i kolejnosc kolumn katalogu zostaja
             DZISIEJSZE (`KANALY_MAGAZYNU`), bo ten tryb JEST dzisiejsza tabela. %>
@@ -564,20 +558,8 @@
             <th class="magazyn-kanal"><%= k.etykieta %></th>
           <% }); %>
         <% } %>
-        <th <% if (sortowanie.paczkomat.aria) { %>aria-sort="<%= sortowanie.paczkomat.aria %>"<% } %>>
-          <a class="zaznacz-wszystkie" href="<%= sortowanie.paczkomat.adres %>">Paczkomat <%= sortowanie.paczkomat.strzalka %></a>
-        </th>
-        <%# ⚠️ „STAN" SORTUJE PO LICZBIE BRAKOW (klucz `braki`) i to jest cala tresc tej
-            kolumny. Pierwsze klikniecie uklada ROSNACO — `linkiSortowania` robi tak KAZDEJ
-            kolumnie nieaktywnej i ta jednolitosc ma zostac; kolejke roboty („najwiecej
-            brakow na wierzch") daje klikniecie DRUGIE, czyli kolejnosc malejaca.
-            Odnosnik sklada `linkiSortowania` z tego samego klucza, ktory zna warstwa zapytan. %>
-        <% if (stany) { %><th class="liczba">Na stanie</th><% } %>
-        <% if (widok === 'porzadki') { %>
-          <th <% if (sortowanie.braki.aria) { %>aria-sort="<%= sortowanie.braki.aria %>"<% } %>>
-            <a class="zaznacz-wszystkie" href="<%= sortowanie.braki.adres %>">Stan <%= sortowanie.braki.strzalka %></a>
-          </th>
-        <% } %>
+        <% if (pokazOferty) { %><th>Kanały</th><% } %>
+        <% if (stany) { %><th class="liczba">Na stanie (szt.)</th><% } %>
       </tr>
     </thead>
     <tbody>
@@ -615,6 +597,7 @@
               na kazdym wierszu jak usterka (zlapane ogledzinami na kopii produkcyjnej bazy). %>
           <td class="kol-wymiary"><% if (w.wymiary) { %><%= w.wymiary %><% } else { %><span class="magazyn-brak">—</span><% } %></td>
           <td><% if (w.kategoria) { %><%= w.kategoria %><% } else { %><span class="magazyn-brak">—</span><% } %></td>
+          <td><% if (w.marka) { %><%= w.marka %><% } else { %><span class="magazyn-brak">—</span><% } %></td>
           <% if (widok === 'katalog') { %>
             <% w.kanaly.forEach(function (k) { %>
               <td class="magazyn-kanal">
@@ -630,26 +613,10 @@
               </td>
             <% }); %>
           <% } %>
-          <td>
-            <%# TRZY STANY, NIE DWA (domain/paczkomat.js): „nieoznaczone" to robota do
-                wykonania, „nie" to decyzja czlowieka — i te dwie rzeczy nie moga wygladac
-                tak samo. Kolor sam nie niesie znaczenia: obok zawsze stoi slowo. %>
-            <% if (w.paczkomat === 'tak') { %><span class="znacznik znacznik--ok">tak</span>
-            <% } else if (w.paczkomat === 'nie') { %><span class="znacznik znacznik--cichy">nie</span>
-            <% } else { %><span class="magazyn-brak">nieoznaczone</span><% } %>
-          </td>
+          <%# PRZ-160.P3a.02: plakietki kanalow jak na liscie zamowien (litera marki; nazwa polaczenia w title i aria-label). %>
+          <% if (pokazOferty) { %><td><% if (!w.plakietkiKanalow.length) { %>—<% } %><% for (const k of w.plakietkiKanalow) { %><span class="plakietka plakietka--kanal plakietka--<%= k.klucz %><%= k.aktywna ? '' : ' plakietka--nieaktywna' %>" role="img" aria-label="<%= k.opis %>" title="<%= k.opis %>"><%= k.znak %></span><% } %></td><% } %>
           <% if (stany) { %>
             <td class="liczba kol-na-stanie<%= w.naStanie < 0 ? ' stan-minus' : '' %>"><%= w.naStanie %></td>
-          <% } %>
-          <%# KOLUMNA „STAN" — ile brakuje przy tym karcie. Liczba i jej odmiana przychodza
-              POLICZONE z trasy (`w.stan`), bo widok w tym module niczego nie liczy. Komplet
-              dostaje ten sam znacznik, co „paczkomat: tak" — to jest ta sama wiadomosc
-              („nic tu do zrobienia"), wiec nie ma prawa wygladac inaczej. %>
-          <% if (widok === 'porzadki') { %>
-            <td>
-              <% if (w.stan.komplet) { %><span class="znacznik znacznik--ok">komplet</span>
-              <% } else { %><span class="stan-braki"><%= w.stan.tekst %></span><% } %>
-            </td>
           <% } %>
         </tr>
       <% }); %>
@@ -662,16 +629,15 @@
             ~1000 pozycji. Czlowiek czyta to jako utrate danych i idzie szukac awarii odczytu
             — zamiast poszerzyc zawezenie, ktore sam przed chwila ustawil. Rozstrzygniecie
             (`filtrowane`) przychodzi z trasy; widok niczego tu nie liczy. %>
-        <%# ⚠️ SZEROKOSC LICZY TRASA (`kolumnPustej`), bo zalezy od TRYBU kolumn: siedem
-            w porzadkach, dziesiec w katalogu. Wyrazenie w widoku rozjechaloby sie po cichu
+        <%# ⚠️ SZEROKOSC LICZY TRASA (`kolumnPustej`), bo zalezy od TRYBU kolumn i wlaczonych kanalow oraz stanow. Wyrazenie w widoku rozjechaloby sie po cichu
             przy pierwszej zmianie zestawu kolumn i komunikat przestalby siegac konca tabeli. %>
         <tr><td colspan="<%= kolumnPustej %>" class="pusto">
           <% if (filtrowane) { %>
             Żadna karta nie pasuje do tego zawężenia — katalog nie jest pusty, tylko zapytanie nic nie trafiło.
             <a href="<%= adresBezFiltrow %>">Wyczyść zawężenie</a>.
           <% } else { %>
-            Nie ma tu jeszcze ani jednej karty produktu. Zacznij od „Odczytaj katalogi ze sklepów",
-            a potem od „Utwórz karty z niepowiązanych".
+            Nie ma tu jeszcze ani jednej karty produktu.
+            <% if (mozeAdres('/magazyn/import')) { %>Dodaj produkt ręcznie albo pobierz katalog sklepu: <a href="/magazyn/import">Importuj</a>.<% } %>
           <% } %>
         </td></tr>
       <% } %>

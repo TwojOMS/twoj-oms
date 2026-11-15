@@ -1,13 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
-import { zalozCel } from '../../../src/oms/db/cele.js';
-import { KLUCZE_MIERNIKOW } from '../../../src/domena/mierniki-celow.js';
 import { zalozKonto, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/sesja.js';
 import { odczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
 
-// PRZ-152.G13 paczka M2: odmowy marketingu (cele, reklamy w Ustawieniach, kampania) w układzie OMS.
+// PRZ-152.G13 paczka M2: odmowy marketingu (reklamy w Ustawieniach, kampania) w układzie OMS.
 const CONFIG = { auth: { user: 'serwis', pass: 'haslo-env' }, klienciZbiorczy: [] };
 const BASIC = { authorization: `Basic ${Buffer.from('serwis:haslo-env').toString('base64')}`, origin: 'http://localhost' };
 const FORM = { ...BASIC, 'content-type': 'application/x-www-form-urlencoded' };
@@ -24,26 +22,6 @@ const sprawdz = (r, status, tekst, href, napis) => {
   expect(r.body).toContain(`<a class="btn" href="${href}">${napis}</a>`);
 };
 const wyslij = (method, url, payload = '', headers = FORM) => app.inject({ method, url, headers, payload });
-
-describe('cele', () => {
-  const NIE_MA = 'Nie ma takiego celu.';
-  it('GET /cele/:id bez celu', async () => {
-    start();
-    sprawdz(await wyslij('GET', '/cele/999', undefined, BASIC), 404, NIE_MA, '/cele', 'Wróć do celów');
-  });
-  for (const url of ['/cele/999', '/cele/999/zdarzenie', '/cele/999/cofnij', '/cele/999/czynny']) {
-    it(`POST ${url} bez celu`, async () => {
-      start();
-      sprawdz(await wyslij('POST', url), 404, NIE_MA, '/cele', 'Wróć do celów');
-    });
-  }
-  it('POST /cele/:id ze złymi danymi i POST /cele/:id/zdarzenie z błędnym „ile”', async () => {
-    start();
-    const id = zalozCel(db, { nazwa: 'Cel testowy', rytm: 'tydzien', celIle: 5, miernik: KLUCZE_MIERNIKOW[0] });
-    sprawdz(await wyslij('POST', `/cele/${id}`, 'nazwa='), 400, 'Cel musi mieć nazwę.', `/cele/${id}`, 'Wróć do celu');
-    sprawdz(await wyslij('POST', `/cele/${id}/zdarzenie`, 'ile=0'), 400, '„Ile&#34; musi być liczbą całkowitą co najmniej 1.', `/cele/${id}`, 'Wróć do celu');
-  });
-});
 
 describe('reklamy w Ustawieniach', () => {
   const SEKRET = 'tajny-klucz-reklam-12345';

@@ -54,6 +54,14 @@ function kartaZProduktem(karta, produkty = []) {
 
 const get = (app, url) => app.inject({ method: 'GET', url, headers: auth });
 
+function uzupelnijTresc(db, id) {
+  db.prepare('UPDATE karty_produktow SET opis_sekcje_json = ? WHERE id = ?')
+    .run(JSON.stringify({ sekcje: [{ elementy: [{ typ: 'tekst', html: '<p>Opis karty</p>' }] }] }), id);
+  db.prepare(`INSERT INTO zdjecia_kart
+    (karta_id, kolejnosc, zrodlo, adres_zrodlowy, utworzono_at)
+    VALUES (?, 0, 'reczne', 'https://example.org/karta.png', '2026-11-13')`).run(id);
+}
+
 /**
  * WIERSZ TABELY KART o tej nazwie — sam wiersz, bez reszty strony.
  *
@@ -105,7 +113,7 @@ describe('GET /magazyn — tabela kart', () => {
     );
     const app = serwer();
     // ⚠️ KOLUMNY CEN ZYJA W TRYBIE KATALOGOWYM (przebudowa 2026-08-25, Zadanie 5) — ekran
-    // domyslny pokazuje kolumne „Stan" zamiast czterech kanalow. Zmienil sie ADRES, nie
+    // domyslny pomija kolumny cen kanalow. Zmienil sie ADRES, nie
     // asercja: wszystko ponizej pilnuje dokladnie tego samego, co przed przebudowa.
     const r = await get(app, '/magazyn?widok=katalog');
 
@@ -191,27 +199,19 @@ describe('GET /magazyn — tabela kart', () => {
     expect(r.body).not.toMatch(/× (null|undefined|—) cm/);
   });
 
-  it('paczkomat ma TRZY odrozialne stany, a nieoznaczony to nie to samo co „nie"', async () => {
+  it('filtr paczkomatu zachowuje trzy odróżnialne stany po usunięciu kolumny', async () => {
     kartaZProduktem({ nazwa: 'Akarta', paczkomat: 'tak' }, []);
     kartaZProduktem({ nazwa: 'Bkarta', paczkomat: 'nie' }, []);
     kartaZProduktem({ nazwa: 'Ckarta' }, []);
-    const r = await get(serwer(), '/magazyn');
-
-    // ⚠️⚠️ ASERCJE NA WIERSZU SWOJEJ KARTY, nie na stronie. Poprzednia wersja pilnowala
-    // napisow `>tak<`, `>nie<`, `nieoznaczone` i ich KOLEJNOSCI przez `indexOf` — a pasek
-    // filtrow z Zadania 10 renderuje te trzy napisy w dokladnie tej samej kolejnosci jako
-    // pozycje listy wyboru. Zmierzone: skasowanie CALEJ tresci komorki paczkomatu oraz
-    // zamiana galezi 'tak' ↔ 'nie' przechodzily obie, 4413/4413 na zielono.
-    //
-    // Stawka: pole jest WYLACZNIE RECZNE (regula progu 640 mm wypadla decyzja wlasciciela),
-    // wiec nie ma drugiego zrodla prawdy — a to ono rozstrzyga o sposobie wysylki.
-    expect(wierszKarty(r.body, 'Akarta')).toMatch(/<td[^>]*>\s*<span class="znacznik znacznik--ok">tak<\/span>\s*<\/td>/);
-    expect(wierszKarty(r.body, 'Bkarta')).toMatch(/<td[^>]*>\s*<span class="znacznik znacznik--cichy">nie<\/span>\s*<\/td>/);
-    // Trzeci stan MA sie roznic od „nie": pierwszy to robota do wykonania, drugi decyzja.
-    expect(wierszKarty(r.body, 'Ckarta')).toMatch(/<td[^>]*>\s*<span class="magazyn-brak">nieoznaczone<\/span>\s*<\/td>/);
-    // ...i zaden wiersz nie niesie CUDZEGO stanu (mutacja zamieniajaca galezie).
-    expect(wierszKarty(r.body, 'Akarta')).not.toContain('>nie<');
-    expect(wierszKarty(r.body, 'Bkarta')).not.toContain('>tak<');
+    const app = serwer();
+    for (const [stan, nazwa] of [['tak', 'Akarta'], ['nie', 'Bkarta'], ['nieoznaczone', 'Ckarta']]) {
+      const r = await get(app, `/magazyn?paczkomat=${stan}`);
+      expect(r.statusCode).toBe(200);
+      expect(wierszKarty(r.body, nazwa)).toContain(`>${nazwa}</a>`);
+      for (const inna of ['Akarta', 'Bkarta', 'Ckarta'].filter(n => n !== nazwa)) {
+        expect(r.body).not.toContain(`>${inna}</a>`);
+      }
+    }
   });
 
   // ⚠️⚠️ SEDNO POPRAWKI Z 2026-08-12, PRZYPIETE WPROST: adres miniatury na liscie POCHODZI
@@ -287,9 +287,11 @@ describe('GET /magazyn — tabela kart', () => {
     // ⚠️ `colspan` liczy sie z liczby kolumn kanalow (`6 + naglowkiKanalow.length`), wiec
     // rozjezdza sie CICHO przy kazdej zmianie zestawu kolumn — komunikat pustej listy
     // przestaje wtedy siegac konca tabeli i wyglada jak polamany render. Cztery kanaly
-    // plus zaznaczenie, miniatura, karta, wymiary, kategoria i paczkomat = dziesiec.
+    // plus zaznaczenie, miniatura, karta, wymiary i kategoria = dziewiec.
     // (Bylo dziewiec do 2026-08-12; kolumne zaznaczenia dolozyla edycja hurtem.)
-    expect(r.body).toContain('colspan="10"');
+    // PRZ-160.P3a.02: plus kolumna „Kanały”, widoczna zawsze, gdy firma ma kanal = dziesiec.
+    // PRZ-160.P3b.02: + kolumna Marka
+    expect(r.body).toContain('colspan="11"');
   });
 });
 
@@ -354,6 +356,11 @@ describe('GET /magazyn — sortowanie z adresu', () => {
   });
 });
 
+// PRZ-160 P3b.03b: tabela kanałów i przyciski odczytu zeszły z listy na ekran importu. Na liście
+// zostaje pasek `.pasek-odczytu` WYŁĄCZNIE przy trwaniu albo błędzie — te testy pilnują, że błąd
+// i postęp nadal są widoczne, a spokój nie zostawia żadnego śladu.
+const pasekOdczytu = (html) => /<div class="pasek-odczytu"[\s\S]*?<\/div>/.exec(html)?.[0] ?? '';
+
 describe('GET /magazyn — stan ostatniego odczytu', () => {
   it('blad kanalu widac PRZY KANALE, w pelnej tresci hamulca', async () => {
     const komunikat = 'Kanał pro: odczyt oddał 0 pozycji, a lustro trzyma 668 żywych. To wygląda na '
@@ -370,16 +377,14 @@ describe('GET /magazyn — stan ostatniego odczytu', () => {
     // ⚠️ CALY komunikat, nie „błąd odczytu". Ten napis mowi, co zrobic — skrocony
     // zostawia czlowieka z ta sama niewiedza, co brak komunikatu.
     //
-    // ⚠️ I STOI W TYM SAMYM WIERSZU, CO NAZWA KANALU. Osobna asercja na nazwe kanalu PRO
-    // byla nienosna: ta nazwa stoi TAKZE w naglowku kolumny cen, wiec „blad przy kanale"
-    // przechodzilby nawet wtedy, gdyby komunikat wyladowal na dole strony bez zadnego
-    // zwiazku z kanalem, ktorego dotyczy.
-    expect(r.body).toMatch(
-      /<td>pro\.swietlik\.example\.test<\/td>[\s\S]{0,600}Jeśli kanał naprawdę został wygaszony, oznacz jego wiersze ręcznie\./,
+    // ⚠️ I STOI W TYM SAMYM ELEMENCIE, CO NAZWA KANALU (nazwa kanalu PRO stoi takze w naglowku
+    // kolumny cen, wiec osobna asercja na nazwe bylaby nienosna).
+    expect(pasekOdczytu(r.body)).toMatch(
+      /<span class="pasek-odczytu__kanal">pro\.swietlik\.example\.test: Kanał pro: odczyt oddał 0 pozycji[^<]*Jeśli kanał naprawdę został wygaszony, oznacz jego wiersze ręcznie\.<\/span>/,
     );
   });
 
-  it('kanal bez bledu NIE pokazuje ostrzezenia, tylko liczby przebiegu', async () => {
+  it('kanal bez bledu NIE pokazuje ostrzezenia ani paska (spokój)', async () => {
     const app = serwer(atrapaMagazynu({
       ...STAN_PUSTY,
       skonczony_at: '2026-08-11T07:00:00.000Z',
@@ -387,19 +392,8 @@ describe('GET /magazyn — stan ostatniego odczytu', () => {
     }));
     const r = await get(app, '/magazyn');
 
-    // ⚠️⚠️ OBIE LICZBY PRZYPIETE DO SWOJEGO KANALU I DO SWOJEJ KOLUMNY, jednym wzorcem.
-    // Wczesniej stalo tu `toContain('znikn')` — a slowo „znikn" wystepuje PIEC RAZY
-    // w komentarzach arkusza ukladu, ktory jedzie w kazdej stronie panelu, wiec asercja
-    // byla spelniona zawsze: recenzent skasowal `<%= k.znikniete %>` z komorki i suita
-    // dalej swiecila na zielono.
-    //
-    // Liczba znikniętych jest JEDYNYM sygnalem odczytu CZESCIOWEGO — sklepu, ktory oddal
-    // jedna pozycje z 668 i PRZESZEDL przez hamulec, bo hamulec celowo lapie wylacznie zero
-    // (prog na ubytku uniemozliwilby wycofanie czegokolwiek ze sprzedazy). Zgubiona kolumna
-    // znaczy, ze tego sklepu nie zauwazy juz nikt.
-    expect(r.body).toMatch(
-      /<td>pro\.swietlik\.example\.test<\/td>\s*<td class="liczba">104<\/td>\s*<td class="liczba">3<\/td>/,
-    );
+    expect(pasekOdczytu(r.body)).toBe('');
+    expect(r.body).not.toContain('błąd odczytu');
     expect(r.body).not.toContain('Odczyt przerwany');
   });
 
@@ -409,10 +403,8 @@ describe('GET /magazyn — stan ostatniego odczytu', () => {
       postep: { kanal: 'swietlik', zrobione: 120, zTego: 668 },
     }));
     const r = await get(wTrakcie, '/magazyn');
-    // Obie liczby w JEDNYM napisie i przy nazwie czytanego kanalu — osobne `toContain`
-    // przechodzilyby takze wtedy, gdyby na ekran trafila jedna z nich albo obie w oderwaniu
-    // od siebie („120" i „668" to dwie liczby, „120 z 668" to zdanie o postepie).
-    expect(r.body).toMatch(/swietlik\.example\.test<\/strong>\s*—\s*120 z 668\./);
+    // Obie liczby w JEDNYM napisie i przy nazwie czytanego kanalu („120 z 668" to zdanie o postepie).
+    expect(pasekOdczytu(r.body)).toMatch(/swietlik\.example\.test: 120 z 668/);
 
     const po = await get(serwer(), '/magazyn');
     expect(po.body).not.toContain('668');
@@ -420,11 +412,11 @@ describe('GET /magazyn — stan ostatniego odczytu', () => {
 });
 
 // ⚠️⚠️ NIEZMIENNIK Z PRZEWODNIKA (sekcja 9): wynik odczytu MUSI BYC WIDOCZNY — cichy zly
-// odczyt wyglada identycznie jak sklep, w ktorym nic sie nie zmienilo. `<details>` wolno
-// zwinac WYLACZNIE przy spokoju; trwanie i KAZDY blad (przebiegu albo kanalu) maja
-// renderowac sekcje OTWARTA. Regula liczy sie w trasie (`opisPrzebiegu`), nigdy w widoku.
-describe('GET /magazyn — odczyt katalogów zwinięty do linii', () => {
-  it('spokój = details zamknięty', async () => {
+// odczyt wyglada identycznie jak sklep, w ktorym nic sie nie zmienilo. Pasek wolno schowac
+// WYLACZNIE przy spokoju; trwanie i KAZDY blad (przebiegu albo kanalu) maja go pokazac.
+// Regula liczy sie w trasie (`opisPrzebiegu().otworz`), nigdy w widoku.
+describe('GET /magazyn — pasek odczytu tylko przy trwaniu albo błędzie', () => {
+  it('spokój = brak paska', async () => {
     const stan = {
       ...STAN_PUSTY,
       skonczony_at: '2026-08-24T19:14:00Z',
@@ -432,13 +424,10 @@ describe('GET /magazyn — odczyt katalogów zwinięty do linii', () => {
     };
     const r = await get(serwer(atrapaMagazynu(stan)), '/magazyn');
 
-    // ⚠️ CALY znacznik otwierajacy, bez `open` — asercja na atrybucie ma obejmowac cale
-    // otwarcie tagu, nie sama tresc (inaczej mutacja dodajaca `open` zawsze przechodzi).
-    expect(r.body).toMatch(/<details class="odczyt-szczegoly">/);
-    expect(r.body).not.toMatch(/<details class="odczyt-szczegoly" open>/);
+    expect(r.body).not.toContain('class="pasek-odczytu"');
   });
 
-  it('błąd kanału = details OTWARTY (cichy zły odczyt nie może wyglądać jak spokój)', async () => {
+  it('błąd kanału = pasek (cichy zły odczyt nie może wyglądać jak spokój)', async () => {
     const stan = {
       ...STAN_PUSTY,
       skonczony_at: '2026-08-24T19:14:00Z',
@@ -446,26 +435,26 @@ describe('GET /magazyn — odczyt katalogów zwinięty do linii', () => {
     };
     const r = await get(serwer(atrapaMagazynu(stan)), '/magazyn');
 
-    expect(r.body).toMatch(/<details class="odczyt-szczegoly" open>/);
+    expect(pasekOdczytu(r.body)).toContain('odmowa 500');
   });
 
-  it('przebieg w trakcie = details OTWARTY', async () => {
+  it('przebieg w trakcie = pasek', async () => {
     const stan = {
       ...STAN_PUSTY, trwa: true, postep: { kanal: 'swietlik', zrobione: 3, zTego: 828 },
     };
     const r = await get(serwer(atrapaMagazynu(stan)), '/magazyn');
 
-    expect(r.body).toMatch(/<details class="odczyt-szczegoly" open>/);
+    expect(pasekOdczytu(r.body)).toContain('3 z 828');
   });
 
-  it('błąd CAŁEGO przebiegu (blad na poziomie top, bez awarii kanału) też otwiera', async () => {
+  it('błąd CAŁEGO przebiegu (blad na poziomie top, bez awarii kanału) też pokazuje pasek', async () => {
     // Sekcja 9 przewodnika mowi wprost o DWOCH zrodlach bledu: przebiegu i kanalu. Ten
     // test pilnuje tego pierwszego — bez niego mutacja `stan.trwa || kanaly.some(...)`
     // (bez `Boolean(stan.blad)`) przeszlaby cala reszte suity na zielono.
     const stan = { ...STAN_PUSTY, blad: 'Odczyt przerwany, zanim ruszył: brak konfiguracji' };
     const r = await get(serwer(atrapaMagazynu(stan)), '/magazyn');
 
-    expect(r.body).toMatch(/<details class="odczyt-szczegoly" open>/);
+    expect(pasekOdczytu(r.body)).toContain('Odczyt przerwany, zanim ruszył: brak konfiguracji');
   });
 });
 
@@ -606,8 +595,7 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
     const adresy = [...r.body.matchAll(/<a class="zaznacz-wszystkie" href="(\/magazyn\?[^"]+)"/g)]
       .map((m) => m[1]);
 
-    // Szesc odnosnikow sortujacych: nazwa, SKU, wymiary, kategoria, paczkomat (i wariant
-    // klucza) — zero znaczyloby, ze petla nie sprawdzila NICZEGO.
+    // Naglowki nazwy, SKU, dwoch wymiarow i kategorii — petla ma sprawdzic wszystkie.
     expect(adresy.length).toBeGreaterThanOrEqual(5);
     for (const adres of adresy) {
       const q = new URLSearchParams(adres.replace(/&amp;/g, '&').slice(adres.indexOf('?') + 1));
@@ -793,41 +781,33 @@ describe('pasek gorny', () => {
   });
 });
 
-describe('kafle braków', () => {
-  it('pięć kafli z liczbami z całego katalogu, niezależnymi od zawężenia', async () => {
-    const db = openOmsDb(':memory:');
-    // fikstura ze strażnikiem: jeden komplet, jeden bez wszystkiego
-    utworzKarte(db, { nazwa: 'Kompletny', sku: 'S1', szerokosc_mm: 1, wysokosc_mm: 1, kategoria_glowna: 'K', paczkomat: 'tak' });
+describe('filtr braków zamiast kafli', () => {
+  it('filtr braków zastępuje kafle i zachowuje wybór', async () => {
+    uzupelnijTresc(db, utworzKarte(db, { nazwa: 'Kompletny', sku: 'S1', szerokosc_mm: 1, wysokosc_mm: 1, kategoria_glowna: 'K', paczkomat: 'tak' }));
     utworzKarte(db, { nazwa: 'Dziurawy' });
-    const app = buildOmsServer({ db, config, magazyn: atrapaMagazynu() });
-    const res = await app.inject({ method: 'GET', url: '/magazyn?brak=wymiary', headers: auth });
-    const html = res.body;
-    // liczby po CAŁYM katalogu, mimo aktywnego zawężenia
-    expect(html).toMatch(/class="kafel-ile">1</); // bezSku=1 itd. — po jednym dziurawym
-    expect(html).toContain('class="kafel kafel--aktywny"'); // kafel wymiarów podświetlony
-    expect(html).toContain('1 / 2'); // komplet / razem
-    // kafel aktywny linkuje na ZDJĘCIE filtra (adres bez brak=), nieaktywny na swój brak
-    // ⚠️ adres kafla niesie dalej TAKZE sort/kier (adresMagazynu, niezmiennik 4.13b) — stad
-    // `(&|")` zamiast wymagania natychmiastowego konca atrybutu.
-    expect(html).toMatch(/href="\/magazyn\?brak=sku(&|")/);
+    const res = await get(serwer(), '/magazyn?brak=wymiary');
+    expect(res.body).not.toContain('class="kafle"');
+    expect(res.body).toContain('<option value="wymiary" selected>bez wymiarów</option>');
+    expect(res.body).toContain('>Dziurawy</a>');
+    expect(res.body).not.toContain('>Kompletny</a>');
   });
 
-  it('select „Braki" zniknął z formularza filtrów, a filtr kafla przeżywa „Filtruj"', async () => {
-    const db = openOmsDb(':memory:');
-    const app = buildOmsServer({ db, config, magazyn: atrapaMagazynu() });
-    const res = await app.inject({ method: 'GET', url: '/magazyn?brak=sku', headers: auth });
-    expect(res.body).not.toContain('<select name="brak">');
-    // brak wędruje ukrytym polem formularza filtrów (inaczej „Filtruj" kasuje kafel)
+  it('select „Braki danych” i szukajka przenoszą aktywny filtr', async () => {
+    const res = await get(serwer(), '/magazyn?brak=sku');
+    expect(res.body).toContain('name="brak"');
+    expect(res.body).toContain('<option value="sku" selected>bez SKU</option>');
+    const filtr = /<form class="filtry"[\s\S]*?<\/form>/.exec(res.body)[0];
+    expect(filtr).not.toMatch(/<input[^>]*name="brak"/);
     expect(res.body).toMatch(/<input type="hidden" name="brak" value="sku">/);
   });
 });
 
 // ⚠️⚠️ DWA TRYBY TABELI (przebudowa 2026-08-25, Zadanie 5). Ekran DOMYSLNY to TRYB
-// PORZADKOW: cztery kolumny cen ustepuja jednej kolumnie „Stan", ktora mowi, ILE brakuje
+// PORZADKOW: bez kolumn cen oraz usunietych kolumn Stan i Paczkomat; dane brakow
 // przy karcie (kolejka roboty). Ceny wracaja o jedno klikniecie — `?widok=katalog`.
 //
 // CO JEST TU PRZYPIETE:
-//   (1) domyslny ekran ma „Stan" i ZERO kolumn kanalow, a katalogowy odwrotnie — para,
+//   (1) domyslny ekran ma ZERO kolumn kanalow, a katalogowy je pokazuje — para,
 //       nie polowa (bez drugiej strony mutacja renderujaca OBA zestawy naraz przechodzi);
 //   (2) tryb spoza pary WRACA DO DOMYSLNEGO i nie zawęża listy (inaczej niz filtr);
 //   (3) tryb jedzie KAZDYM odnosnikiem ekranu i OBOMA formularzami GET (niezmiennik 4.13b)
@@ -835,13 +815,12 @@ describe('kafle braków', () => {
 //   (4) przelacznik jest JEDYNYM odnosnikiem, ktory tryb zmienia, i robi to ZACHOWUJAC
 //       zawezenie oraz kolejnosc.
 describe('dwa tryby tabeli — porządki i katalog', () => {
-  // Fikstura ze straznikiem: jedna karta kompletna i jedna bez wszystkiego, zeby OBIE
-  // postacie kolumny „Stan" (komplet / N brakow) mialy na czym wystapic.
+  // Fikstura ze straznikiem: jedna karta kompletna i jedna bez wszystkiego.
   function dwaKarty() {
-    utworzKarte(db, {
+    uzupelnijTresc(db, utworzKarte(db, {
       nazwa: 'Kompletny', sku: 'S1', szerokosc_mm: 1, wysokosc_mm: 1,
       kategoria_glowna: 'K', paczkomat: 'tak',
-    });
+    }));
     utworzKarte(db, { nazwa: 'Dziurawy' });
   }
 
@@ -901,21 +880,13 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
     ...body.matchAll(/<input\b([^>]*\bname="zaznaczone"[^>]*)>/g),
   ].filter((m) => /\bchecked\b/.test(m[1])).map((m) => /\bvalue="([^"]*)"/.exec(m[1])[1]);
 
-  it('domyślnie porządki: kolumna Stan, ZERO kolumn kanałów', async () => {
+  it('domyślnie porządki: bez kolumn Stan i kanałów', async () => {
     dwaKarty();
     const r = await get(serwer(), '/magazyn');
-
-    expect(r.body).toMatch(NAGLOWEK_STANU);
-    // ⚠️ KLASA W POSTACI ATRYBUTU (`class="…"`). Gola nazwa `magazyn-kanal` stoi w arkuszu
-    // ukladu, ktory jedzie w KAZDEJ stronie panelu, wiec `not.toContain('magazyn-kanal')`
-    // bylo by czerwone zawsze i o niczym by nie mowilo.
+    expect(r.body).not.toMatch(NAGLOWEK_STANU);
     expect(r.body).not.toContain('class="magazyn-kanal"');
-    // Stan liczy TRASA (odmiana razem z liczba) — widok niczego nie liczy.
-    expect(wierszKarty(r.body, 'Kompletny')).toContain('<span class="znacznik znacznik--ok">komplet</span>');
-    expect(wierszKarty(r.body, 'Dziurawy')).toContain('<span class="stan-braki">4 braki</span>');
-    // ...i zaden wiersz nie niesie CUDZEGO stanu (mutacja zamieniajaca galezie).
-    expect(wierszKarty(r.body, 'Kompletny')).not.toContain('class="stan-braki"');
-    expect(wierszKarty(r.body, 'Dziurawy')).not.toContain('>komplet<');
+    expect(wierszKarty(r.body, 'Kompletny')).not.toContain('>komplet<');
+    expect(wierszKarty(r.body, 'Dziurawy')).not.toContain('class="stan-braki"');
   });
 
   it('widok=katalog: kolumny kanałów wracają, kolumna Stan znika', async () => {
@@ -929,7 +900,7 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
     // ktory jedzie w KAZDEJ stronie panelu — asercja na niej byla czerwona zawsze
     // (zlapane przy pierwszym uruchomieniu tej suity).
     expect(r.body).not.toContain('class="stan-braki"');
-    // Kolejnosc kolumn katalogu ZOSTAJE DZISIEJSZA — ceny miedzy kategoria a paczkomatem.
+    // Kolejnosc kolumn cen kanalow pozostaje bez zmian.
     const naglowki = [...r.body.matchAll(/<th class="magazyn-kanal">([^<]*)<\/th>/g)].map((m) => m[1].trim());
     expect(naglowki).toEqual([
       'pro.swietlik.example.test', 'swietlik.example.test', 'Allegro swietlik_pl', 'Allegro Półcień Druga',
@@ -945,7 +916,7 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
     for (const zly of ['constructor', 'toString', 'katalogi', 'porzadki; DROP TABLE karty_produktow']) {
       const r = await get(app, `/magazyn?widok=${encodeURIComponent(zly)}`);
       expect(r.statusCode, zly).toBe(200);
-      expect(r.body, zly).toMatch(NAGLOWEK_STANU);
+      expect(r.body, zly).not.toMatch(NAGLOWEK_STANU);
       expect(r.body, zly).not.toContain('class="magazyn-kanal"');
       // ⚠️ TRYB NIE JEST FILTREM: literowka ma pokazac liste w domyslnym ukladzie, a nie
       // pusty ekran (nierozpoznany FILTR oddaje pusto — te dwie decyzje sa rozne celowo).
@@ -965,11 +936,11 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
     // NIE stoi w adresie — stad jego brak w oczekiwanym obiekcie.
     expect(pola(doPorzadkow.adres)).toEqual({ brak: 'sku', sort: 'nazwa', kier: 'asc' });
 
-    const wPorzadkach = await get(app, '/magazyn?brak=sku&sort=braki&kier=desc');
+    const wPorzadkach = await get(app, '/magazyn?brak=sku&sort=nazwa&kier=desc');
     const doKatalogu = przelacznik(wPorzadkach.body);
     expect(doKatalogu.napis).toMatch(/kanał/);
     expect(pola(doKatalogu.adres)).toEqual({
-      brak: 'sku', sort: 'braki', kier: 'desc', widok: 'katalog',
+      brak: 'sku', sort: 'nazwa', kier: 'desc', widok: 'katalog',
     });
   });
 
@@ -1020,9 +991,9 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
     const adresy = [...bezPrzelacznika.matchAll(/href="(\/magazyn\?[^"]+)"/g)]
       .map((m) => m[1].replace(/&amp;/g, '&'));
 
-    // Piec kafli, piec naglowkow sortujacych, „zaznacz" i „Wyczyść zawężenie" — zero albo
+    // Naglowki sortujace, „zaznacz” i „Wyczyść zawężenie” — zero albo
     // garstka znaczylyby, ze petla nizej nie sprawdzila niczego.
-    expect(adresy.length).toBeGreaterThanOrEqual(10);
+    expect(adresy.length).toBeGreaterThanOrEqual(6);
     for (const adres of adresy) {
       expect(pola(adres).widok, adres).toBe('katalog');
     }
@@ -1031,16 +1002,17 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
   it('pusta tabela sięga końca w OBU trybach', async () => {
     // ⚠️ `colspan` liczy sie z zestawu kolumn, wiec rozjezdza sie CICHO przy zmianie trybu:
     // komunikat pustej listy przestaje wtedy siegac konca tabeli i wyglada jak polamany
-    // render. Siedem kolumn porzadkow (zaznaczenie, miniatura, karta, wymiary, kategoria,
-    // paczkomat, stan) i dziesiec katalogu (te same bez stanu, plus cztery kanaly).
+    // render. Piec kolumn porzadkow i dziewiec katalogu (plus cztery kanaly).
+    // PRZ-160.P3a.02: w obu trybach +1 — kolumna „Kanały” (firma testu ma kanaly).
     const app = serwer();
+    // PRZ-160.P3b.02: + kolumna Marka
     expect((await get(app, '/magazyn')).body).toContain('colspan="7"');
-    expect((await get(app, '/magazyn?widok=katalog')).body).toContain('colspan="10"');
+    expect((await get(app, '/magazyn?widok=katalog')).body).toContain('colspan="11"');
   });
 
   // ⚠️⚠️ STRAZNIK DRYFU: `colspan` jest LITERALEM w trasie (`kolumnPustej`), a liczba kolumn
   // bierze sie z gałęzi `<% if %>` w szablonie — dwa miejsca, ktore rozjezdzaja sie CICHO
-  // przy dolozeniu albo zdjeciu kolumny. Asercja na samej liczbie (7/10) utrwalilaby wtedy
+  // przy dolozeniu albo zdjeciu kolumny. Asercja na samej liczbie utrwalilaby wtedy
   // ZLA wartosc, bo pilnowalaby literalu, a nie tabeli. Tutaj porownujemy jedno z drugim.
   it('⚠️ colspan pustej tabeli ZGADZA SIĘ z liczbą nagłówków — w obu trybach', async () => {
     const app = serwer(); // pusta baza: komunikat pustej listy sie renderuje
@@ -1067,16 +1039,14 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
     }
   });
 
-  it('odmiana liczby braków: 1 brak / 2 braki', async () => {
-    // Odmiane liczy TRASA, nie widok — a „brakow" (12–14) jest przy 1–4 nieosiagalne.
-    utworzKarte(db, {
+  it('liczba braków nie wraca w komórkach tabeli', async () => {
+    uzupelnijTresc(db, utworzKarte(db, {
       nazwa: 'JedenBrak', sku: 'S1', szerokosc_mm: 1, wysokosc_mm: 1, kategoria_glowna: 'K',
-    });
-    utworzKarte(db, { nazwa: 'DwaBraki', szerokosc_mm: 1, wysokosc_mm: 1, kategoria_glowna: 'K' });
+    }));
+    uzupelnijTresc(db, utworzKarte(db, { nazwa: 'DwaBraki', szerokosc_mm: 1, wysokosc_mm: 1, kategoria_glowna: 'K' }));
     const r = await get(serwer(), '/magazyn');
-
-    expect(wierszKarty(r.body, 'JedenBrak')).toContain('<span class="stan-braki">1 brak</span>');
-    expect(wierszKarty(r.body, 'DwaBraki')).toContain('<span class="stan-braki">2 braki</span>');
+    expect(wierszKarty(r.body, 'JedenBrak')).not.toContain('class="stan-braki"');
+    expect(wierszKarty(r.body, 'DwaBraki')).not.toContain('class="stan-braki"');
   });
 
   it('pasek nad tabelą mówi, co zawęża listę — i nie powtarza liczby z paska filtrów', async () => {

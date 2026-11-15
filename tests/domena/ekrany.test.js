@@ -4,26 +4,9 @@ import {
 } from '../../src/domena/ekrany.js';
 
 describe('EKRANY', () => {
-  it('ma 17 ekranow o unikalnych kluczach', () => {
-    expect(EKRANY).toHaveLength(17);
-    expect(new Set(EKRANY.map((e) => e.klucz)).size).toBe(17);
-  });
-});
-
-describe('ekran CELE (spec 2026-09-13)', () => {
-  it('lapie wlasny prefiks', () => {
-    expect(ekranDlaAdresu('/cele')).toBe('cele');
-    expect(ekranDlaAdresu('/cele/12')).toBe('cele');
-    expect(ekranDlaAdresu('/cele/12/zdarzenie')).toBe('cele');
-    expect(ekranDlaAdresu('/cele/:id/cofnij')).toBe('cele');
-  });
-
-  it('administrator i sprzedaz maja, produkcja NIE', () => {
-    // Ewa pracuje na roli Sprzedaz i ma dostac ekran bez zadnej dodatkowej zmiany.
-    // Pakowacz nie oglada celow sprzedazowych wlascicieli firmy.
-    expect(ekranyRoli('administrator')).toContain('cele');
-    expect(ekranyRoli('sprzedaz')).toContain('cele');
-    expect(ekranyRoli('produkcja')).not.toContain('cele');
+  it('ma 16 ekranow o unikalnych kluczach', () => {
+    expect(EKRANY).toHaveLength(16);
+    expect(new Set(EKRANY.map((e) => e.klucz)).size).toBe(16);
   });
 });
 
@@ -145,8 +128,8 @@ describe('wspolne sprawdzenie uprawnienia', () => {
 });
 
 describe('ROLE jako presety', () => {
-  it('administrator dostaje wszystkie 17 ekranow', () => {
-    expect(ekranyRoli('administrator')).toHaveLength(17);
+  it('administrator dostaje wszystkie 16 ekranow', () => {
+    expect(ekranyRoli('administrator')).toHaveLength(16);
   });
 
   it('sprzedaz widzi raporty i koszty, NIE widzi finansow ani ustawien', () => {
@@ -159,7 +142,7 @@ describe('ROLE jako presety', () => {
     expect(e).toContain('zwroty-zamowienia');
     expect(e).toContain('pozostale-dokumenty-zamowienia');
     expect(e).not.toContain('dokumenty-zamowienia');
-    expect(e).toHaveLength(15);
+    expect(e).toHaveLength(14);
   });
 
   it('produkcja ma zamowienia, przesylki, faktury i zwroty bez pozostalych dokumentow', () => {

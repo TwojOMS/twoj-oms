@@ -1,0 +1,9 @@
+{
+  "produkt": {"name":"Lampa Półcień LMP-01","sku":"LMP-01","images":[{"url":"https://polcien.example/LMP-01.png"}],"price":5900,"stock":4,"dispatchTime":2,"status":"inactive","attributes":[{"id":"11323","values":[{"id":"11323_1"}]}]},
+  "przyjeto": {"externalId":"LMP-01","updatedFields":["stock","price","status"]},
+  "zamrozone": {"externalId":"LMP-01","updatedFields":[]},
+  "odczyt": [{"externalId":"LMP-01","stock":4,"price":5900,"status":"inactive","buyableProblems":["shop-activity","shopKyc"]}],
+  "batch": [{"externalId":"LMP-02","status":400,"polishMessage":"Produkt nie istnieje"},{"externalId":"LMP-01","status":202,"updatedFields":["stock"]}],
+  "konflikt": {"message":"Product already exists","polishMessage":"Produkt już istnieje"},
+  "walidacja": [{"errorCode":400,"errorMessage":"Niepoprawny format atrybutu"}]
+}

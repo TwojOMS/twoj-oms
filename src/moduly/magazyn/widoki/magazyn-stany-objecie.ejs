@@ -1,0 +1,29 @@
+<p class="wroc"><a href="/magazyn/stany/kanaly">← Stany w kanałach</a></p>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', { tytul: 'Obejmij stany', podtytul: dane.konto.etykieta || dane.konto.klucz }) %>
+<section class="panel">
+  <h2>Podgląd objęcia ilością z OMS</h2>
+  <p>Zmieni się tylko ilość. Treść i cena przejętych ofert pozostają w kanale.</p>
+  <% if (!dane.ustawienia.czynne) { %><p class="blad">Oferty wstrzymane — stany nie pójdą, dopóki nie włączysz Oferty czynne.</p><% } %>
+  <% if (!dane.zatwierdzone) { %><p>Stany niezatwierdzone — wysyłka poczeka na zatwierdzenie podglądu stanów.</p><% } %>
+  <% if (dane.plan.stare) { %><p class="blad">Lustro jest starsze niż 30 minut lub puste. <a href="/magazyn/import">Odczytaj katalogi</a>.</p><% } %>
+  <% if (dane.konto.typ === 'woo') { %><p>Sklep nie prowadzi własnych stanów dla <%= dane.plan.bezStanow %> produktów — OMS ich nie obejmie. Backorders ≠ no: <%= dane.ostrzezeniaKanalu.backorders ?? 'brak odczytu' %>.</p><% } %>
+  <% if (dane.konto.typ === 'allegro') { %><p>Oferty ENDED: <%= dane.plan.zakonczone %>. Fulfillment: <%= dane.ostrzezeniaKanalu.fulfillment ?? 'brak odczytu' %>.</p><% } %>
+  <% if (dane.ostrzezenia.length) { %><ul><% dane.ostrzezenia.forEach(function(t) { %><li><%= t %></li><% }); %></ul><% } %>
+  <div class="tabela-scroll" tabindex="0" role="region" aria-label="Wybrane oferty" style="overflow:auto">
+  <table class="tresc-lista">
+    <caption>Zmiana ilości dla wybranych ofert</caption>
+    <thead><tr><th scope="col">Oferta</th><th scope="col">Status w kanale</th><th scope="col">W kanale</th><th scope="col">Cel OMS po buforze</th><th scope="col">Skutek</th></tr></thead>
+    <tbody><% dane.oferty.filter(function(o) { return ids.includes(String(o.id)); }).forEach(function(o) { %><tr>
+      <th scope="row"><%= o.idZewnetrzne %></th><td><%= o.odczytStatus ?? 'brak odczytu' %></td><td><%= o.odczytIloscKanalu ?? 'brak odczytu' %></td>
+      <td><%= o.celNapis %></td><td><%= o.skutek || '—' %></td>
+    </tr><% }); %></tbody>
+  </table>
+  </div>
+  <form method="post" action="/magazyn/stany/kanaly/objecie">
+    <input type="hidden" name="konto" value="<%= dane.konto.klucz %>">
+    <input type="hidden" name="podglad" value="<%= podglad %>">
+    <% ids.forEach(function(id) { %><input type="hidden" name="zaznaczone" value="<%= id %>"><% }); %>
+    <button class="btn btn--glowny" type="submit" name="zatwierdz" value="1">Obejmij stany (<%= ids.length %>)</button>
+  </form>
+  <p>Podgląd jest ważny 30 minut. Ilość wyśle następny przebieg synchronizacji po zatwierdzeniu stanów.</p>
+</section>

@@ -70,7 +70,7 @@ it.each(['demo', 'profil Sandbox'])('%s: sandbox z własnym kluczem idzie do sie
   expect(wstrzyknietyFetch).not.toHaveBeenCalled();
 });
 
-it('reset demo tworzy kanał panelu; poller importuje 15 zamówień i kolejne zmiany bez duplikatów', async () => {
+it('reset demo tworzy kanał panelu; poller importuje 30 zamówień i kolejne zmiany bez duplikatów', async () => {
   const siec = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Test: sieć zabroniona'));
   const env = { ...ENV_DEMO };
   db = openOmsDb(':memory:', { moduly: modulyPiaskownicy(env, { baza: () => db }) });
@@ -84,20 +84,20 @@ it('reset demo tworzy kanał panelu; poller importuje 15 zamówień i kolejne zm
   const rejestr = aplikacja.usluga('kanaly', 'rejestrKanalow');
   await rejestr.przebiegZamowien();
   const zam = () => db.prepare('SELECT * FROM zamowienia WHERE sklep=? ORDER BY zrodlo_id').all(k.klucz);
-  expect(zam()).toHaveLength(15);
+  expect(zam()).toHaveLength(30);
   expect(zam().map(z => z.zrodlo_id)).not.toContain('PC-ERLI-0006');
   expect(zam().find(z => z.zrodlo_id === 'PC-ERLI-0005')).toMatchObject({ nip: '9994027180', chce_fakture: 1 });
   const de = JSON.parse(zam().find(z => z.zrodlo_id === 'PC-ERLI-0010').surowe_json);
   expect(de._oms.sprawy[0].tekst).toMatch(/rynku DE.*EUR/);
   expect(JSON.parse(zam().find(z => z.zrodlo_id === 'PC-ERLI-0009').klient_json).email).toBeFalsy();
   await rejestr.przebiegZamowien();
-  expect(zam()).toHaveLength(15);
+  expect(zam()).toHaveLength(30);
   expect(zam().find(z => z.zrodlo_id === 'PC-ERLI-0007').anulowane).toBe(1);
   expect(JSON.parse(zam().find(z => z.zrodlo_id === 'PC-ERLI-0008').surowe_json).status).toBe('returned');
   expect(JSON.parse(zam().find(z => z.zrodlo_id === 'PC-ERLI-0008').surowe_json).returns[0]).toMatchObject({ reason: 'resign', items: [{ index: 0, quantity: 1 }] });
   expect(JSON.parse(zam().find(z => z.zrodlo_id === 'PC-ERLI-0009').klient_json).email).toBe('kupujacy9@polcien.example');
   await rejestr.przebiegZamowien();
-  expect(zam()).toHaveLength(15);
+  expect(zam()).toHaveLength(30);
   db.prepare("UPDATE konfiguracja_integracji SET ustawienia_json=? WHERE integracja=?").run(JSON.stringify({ adresApi: ADRES_ERLI_POZA_KONFIGURATOREM }), `erli:${k.klucz}`);
   db.prepare('UPDATE kanaly_sprzedazy SET generacja=generacja+1 WHERE klucz=?').run(k.klucz);
   await expect(rejestr.klient(k.klucz).mojSklep()).rejects.toMatchObject({ name: 'OdmowaHosta' });
@@ -116,7 +116,7 @@ it('profil Allegro Sandbox: kanał ERLI z panelu też importuje z atrapy (bez si
   aplikacja = await zbudujAplikacje({ db, env, moduly: plan.moduly.filter(m => ['rdzen', 'kanaly'].includes(m.nazwa)), nadpisania: plan.nadpisania(db), log: () => {} });
   ustawRejestrKanalow(klucz => klucz === k.klucz ? 'erli' : null, MODULY_KANALOW);
   await aplikacja.usluga('kanaly', 'rejestrKanalow').przebiegZamowien();
-  expect(db.prepare('SELECT count(*) n FROM zamowienia WHERE sklep=?').get(k.klucz).n).toBe(15);
+  expect(db.prepare('SELECT count(*) n FROM zamowienia WHERE sklep=?').get(k.klucz).n).toBe(30);
   db.prepare("UPDATE konfiguracja_integracji SET ustawienia_json=? WHERE integracja=?").run(JSON.stringify({ adresApi: ADRES_ERLI_POZA_KONFIGURATOREM }), `erli:${k.klucz}`);
   db.prepare('UPDATE kanaly_sprzedazy SET generacja=generacja+1 WHERE klucz=?').run(k.klucz);
   await expect(aplikacja.usluga('kanaly', 'rejestrKanalow').klient(k.klucz).mojSklep()).rejects.toMatchObject({ name: 'OdmowaHosta' });

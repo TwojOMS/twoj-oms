@@ -1,0 +1,32 @@
+<%
+  // PRZ-160 E4.10 (D47, D48, D61): krok 6 „Stany” sklepu Woo. Zawsze w szkielecie; bez stanów magazynowych nic nie
+  // robi. Domyślnie wstrzymane — OMS nie wysyła stanów do sklepu, dopóki ktoś świadomie nie wybierze „czynne”.
+  const u = ustawieniaStanow ?? { zapisane: false, czynne: false, buforSzt: 0, progSkokuSzt: 5 };
+  const czynne = wartosciStanow ? wartosciStanow.czynne === 'czynne' : (u.zapisane && u.czynne === true);
+  const odczytKlucza = uprawnieniaKlucza === 'odczyt';
+  const ws = wartosciStanow;
+  const wartosc = (pole) => ws ? (typeof ws[pole] === 'string' ? ws[pole] : '') : String(u[pole] ?? '');
+  const pola = [['buforSzt', 'Bufor (szt.)', 0, 'Tyle sztuk OMS zostawi poza sklepem: wyśle stan karty pomniejszony o bufor.'], ['progSkokuSzt', 'Próg skoku stanu (szt.)', 1, 'Niewyjaśniona zmiana stanu karty większa niż próg wstrzymuje wysyłkę stanu do sprawdzenia.']];
+%>
+<section class="ust-sekcja"><h2>6. <%= tytul %></h2>
+<% if (!stanyKiedys) { %>
+<p>Stany magazynowe są wyłączone — ten krok nic nie robi.</p>
+<% } else if (tylkoOdczyt) { %>
+<p>Stany do sklepu: <%= czynne ? 'czynne' : 'wstrzymane' %>. Bufor: <%= u.buforSzt %> szt., próg skoku: <%= u.progSkokuSzt %> szt.</p>
+<% } else { %>
+<form method="post" action="<%= adres %>/stany">
+  <input type="hidden" name="wersja" value="<%= k.wersja %>">
+  <fieldset class="aut-wybor woo-stany"><legend>Stany do sklepu: wstrzymane / czynne</legend>
+    <p id="woo-stany-tryb-pomoc" class="ust-pomoc">Przy wstrzymanych stanach OMS nie wysyła liczby sztuk do sklepu.</p>
+    <% if (odczytKlucza) { %><p id="woo-stany-odczyt" class="ust-pomoc">Klucz tylko do odczytu — stanów nie zapiszemy.</p><% } %>
+    <% for (const [v, napis] of [['wstrzymane', 'Wstrzymane'], ['czynne', 'Czynne']]) { const zaznaczone = v === 'czynne' ? czynne : !czynne; %><p><label><input id="woo-stany-<%= v %>" type="radio" name="czynne" value="<%= v %>"<% if (zaznaczone) { %> checked<% } %><% if (v === 'czynne' && odczytKlucza) { %> disabled<% } %> aria-describedby="woo-stany-tryb-pomoc<%= odczytKlucza ? ' woo-stany-odczyt' : '' %>"><span><%= napis %></span></label></p><% } %>
+  </fieldset>
+  <% for (const [pole, etykieta, min, pomoc] of pola) { const id = 'woo-stany-' + pole, blad = bladStanow && bladStanow.pole === pole ? bladStanow.komunikat : null; %>
+  <p><label for="<%= id %>"><%= etykieta %></label><br>
+    <input id="<%= id %>" type="number" name="<%= pole %>" inputmode="numeric" value="<%= wartosc(pole) %>" required min="<%= min %>" max="1000000" step="1" aria-describedby="<%= id %>-pomoc<%= blad ? ' ' + id + '-blad' : '' %>"<% if (blad) { %> aria-invalid="true" autofocus<% } %>><br>
+    <span id="<%= id %>-pomoc" class="ust-pomoc"><%= pomoc %></span><% if (blad) { %><br><span id="<%= id %>-blad"><%= blad %></span><% } %></p>
+  <% } %>
+  <p><button class="btn btn--maly btn--glowny" type="submit">Zapisz ustawienia stanów</button></p>
+</form>
+<% } %>
+</section>

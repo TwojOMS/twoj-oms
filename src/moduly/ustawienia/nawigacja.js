@@ -9,6 +9,6 @@ export function nawigacjaUstawien(req, reply) {
   const model = modelNawigacjiUstawien(req.url, { admin, podgladDemo, daneDemo });
   return {
     ...(reply.locals?.nawigacja ?? {}),
-    kontekst: { dzial: 'ustawienia', statusy: [], grupy: [{ klucz: 'dzialy', etykieta: 'Ustawienia', pozycje: model.dzialy }], ...model },
+    kontekst: { dzial: 'ustawienia', statusy: reply.locals?.nawigacja?.kontekstUstawien?.statusy ?? [], grupy: [{ klucz: 'dzialy', etykieta: 'Ustawienia', pozycje: model.dzialy }], ...model },
   };
 }

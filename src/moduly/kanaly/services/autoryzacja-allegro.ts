@@ -7,16 +7,23 @@ import {createHash,randomBytes,randomUUID} from 'node:crypto';
 import {bladAllegro} from '../kontrakty-allegro.ts';
 import {createAllegroClient} from '../../../oms/allegro/client.js';
 import {kontoZTokenu} from '../../../domena/tozsamosc-kanalu.js';
+import {UPRAWNIENIA_OFERT} from '../../../domena/uprawnienia-kanalu.js';
 type Tozsamosc={probaId:string;kontoId:string;login:string;wersja:number};
 type WynikDevice=Wynik<({gotowe:true}&Tozsamosc)|{gotowe:false;odstepMs:number}>;
 type KodDevice={deviceCode:string;userCode:string;adres:string;odstepMs:number;nastepna:number;polling?:Promise<WynikDevice>};
-type Proba={id:string;klucz:string;sesjaId:string;aktor:Aktor;wersja:number;generacja:number;wygasa:number;state:string;verifier:string;app:AplikacjaWewnetrzna;adres:string;userAgent?:string;legacy?:boolean;device?:KodDevice};
-export type KandydatAllegro={probaId:string;klucz:string;sesjaId:string;aktor:Aktor;wersja:number;generacja:number;kontoId:string;login:string;tokeny:ParaTokenow;wygasa:number;sprawdzZakres:(odUtc:string)=>Promise<number>};
-export function createAutoryzacjaAllegro(o:{repozytorium:RepozytoriumKanalow;aplikacjaDlaInstalacji:(s:SrodowiskoAllegro)=>AplikacjaWewnetrzna|null;aplikacjaDevice?:(s:SrodowiskoAllegro)=>{clientId:string;clientSecret:string}|null;http:HttpAllegro;userAgent:string|(()=>string);teraz?:()=>Date;legacyDlaKanalu?:(klucz:string)=>{app:AplikacjaWewnetrzna;wolnoWiazac:boolean;userAgent?:string}|null}){
+type Proba={id:string;klucz:string;sesjaId:string;aktor:Aktor;wersja:number;generacja:number;wygasa:number;state:string;verifier:string;app:AplikacjaWewnetrzna;adres:string;userAgent?:string;legacy?:boolean;device?:KodDevice;ponowna?:boolean};
+export type KandydatAllegro={probaId:string;klucz:string;sesjaId:string;aktor:Aktor;wersja:number;generacja:number;kontoId:string;login:string;tokeny:ParaTokenow;wygasa:number;sprawdzZakres:(odUtc:string)=>Promise<number>;ponowna?:boolean};
+export function createAutoryzacjaAllegro(o:{repozytorium:RepozytoriumKanalow;aplikacjaDlaInstalacji:(s:SrodowiskoAllegro)=>AplikacjaWewnetrzna|null;aplikacjaDevice?:(s:SrodowiskoAllegro)=>{clientId:string;clientSecret:string}|null;http:HttpAllegro;userAgent:string|(()=>string);teraz?:()=>Date;legacyDlaKanalu?:(klucz:string)=>{app:AplikacjaWewnetrzna;wolnoWiazac:boolean;userAgent?:string}|null;
+ // PRZ-160 E3.02 (D42): czy aplikacja Device (panel) ma sprawdzone zakresy ofert. Tylko wtedy zapytanie
+ // /device prosi także o nie; bez znacznika prośba o nie skończyłaby się `invalid_scope` i zablokowała łączenie.
+ zakresyOfert?:(s:SrodowiskoAllegro,clientId:string)=>boolean;
+ // PRZ-160 E3d.01: czy połączone konto z panelu może przejść ponowną zgodę („Połącz ponownie z Allegro”)
+ // bez zrywania połączenia. Próba i kandydat żyją wtedy tylko w pamięci, jak dla env.
+ ponownieDlaPanelu?:(klucz:string)=>boolean}){
  const userAgent=()=>typeof o.userAgent==='function'?o.userAgent():o.userAgent;
  const teraz=o.teraz??(()=>new Date());const proby=new Map<string,Proba>();const kandydaci=new Map<string,KandydatAllegro>();
  function sprzataj(){for(const [s,p]of proby)if(p.wygasa<=teraz().getTime())proby.delete(s);for(const [id,k]of kandydaci)if(k.wygasa<=teraz().getTime())kandydaci.delete(id);}
- function aktualna(p:{klucz:string;wersja:number;generacja:number}){const k=o.repozytorium.pobierz(p.klucz);return Boolean(k&&k.wersja===p.wersja&&k.generacja===p.generacja&&(k.zrodlo==='env'||k.autoryzacja==='oczekuje_potwierdzenia')&&!o.repozytorium.konfliktKlucza(p.klucz));}
+ function aktualna(p:{klucz:string;wersja:number;generacja:number;ponowna?:boolean}){const k=o.repozytorium.pobierz(p.klucz);return Boolean(k&&k.wersja===p.wersja&&k.generacja===p.generacja&&(k.zrodlo==='env'||k.autoryzacja==='oczekuje_potwierdzenia'||(p.ponowna===true&&k.zrodlo==='panel'&&k.autoryzacja==='polaczone'))&&!o.repozytorium.konfliktKlucza(p.klucz));}
  const niewazna=()=>bladAllegro('ponow_autoryzacje','Zgoda wygasła lub połączenie zostało zmienione. Rozpocznij autoryzację ponownie.');
  const http:HttpAllegro=(u,i={})=>{const headers=new Headers(i.headers);if(!headers.has('User-Agent'))headers.set('User-Agent',userAgent());return o.http(u,{...i,headers,redirect:'error'});};
  async function rozpocznijAutoryzacje(klucz:string,aktor:Aktor,sesjaId:string):Promise<Wynik<{probaId:string;adres:string}>>{
@@ -57,10 +64,14 @@ export function createAutoryzacjaAllegro(o:{repozytorium:RepozytoriumKanalow;apl
     konto={id,login:'Konto '+id};
    }
    if(!aktualna(p))return niewazna();
-   const zapis=o.repozytorium.pobierz(p.klucz)!;if(zapis.kontoId&&zapis.kontoId!==konto.id)return bladAllegro('konflikt','To inne konto Allegro. Połącz konto wcześniej przypisane do tego kanału.');
+   const zapis=o.repozytorium.pobierz(p.klucz)!;
+   // Ponowna zgoda: nowa para tylko dla tego samego konta Allegro; inne konto nie rusza połączenia.
+   if(p.ponowna&&(!zapis.kontoId||zapis.kontoId!==konto.id))return bladAllegro('konflikt','To inne konto Allegro niż podłączone — zgoda odrzucona');
+   if(zapis.kontoId&&zapis.kontoId!==konto.id)return bladAllegro('konflikt','To inne konto Allegro. Połącz konto wcześniej przypisane do tego kanału.');
    const ile=await klient.sprawdzZakresZamowien({odUtc:zapis.odUtc});if(!aktualna(p)||p.wygasa<=teraz().getTime())return niewazna();
-   if(ile>10000)return bladAllegro('walidacja','Zakres zawiera ponad 10 000 zamówień. Wybierz późniejszą datę.');
-   kandydaci.set(p.id,{probaId:p.id,klucz:p.klucz,sesjaId:p.sesjaId,aktor:p.aktor,wersja:p.wersja,generacja:p.generacja,kontoId:konto.id,login:konto.login,tokeny:para,wygasa:p.wygasa,sprawdzZakres:(odUtc:string)=>klient.sprawdzZakresZamowien({odUtc})});
+   // Ponowna zgoda nie zaczyna importu od nowa — limit zakresu dotyczy tylko nowego połączenia.
+   if(!p.ponowna&&ile>10000)return bladAllegro('walidacja','Zakres zawiera ponad 10 000 zamówień. Wybierz późniejszą datę.');
+   kandydaci.set(p.id,{probaId:p.id,klucz:p.klucz,sesjaId:p.sesjaId,aktor:p.aktor,wersja:p.wersja,generacja:p.generacja,kontoId:konto.id,login:konto.login,tokeny:para,wygasa:p.wygasa,sprawdzZakres:(odUtc:string)=>klient.sprawdzZakresZamowien({odUtc}),ponowna:p.ponowna});
    return {ok:true,dane:{probaId:p.id,kontoId:konto.id,login:konto.login,wersja:p.wersja}};
   }catch{return bladAllegro('tymczasowy','Nie udało się sprawdzić konta i odczytu zamówień Allegro. Spróbuj autoryzacji ponownie.');}
  }
@@ -74,7 +85,8 @@ export function createAutoryzacjaAllegro(o:{repozytorium:RepozytoriumKanalow;apl
  async function startLegacy(klucz:string,aktor:Aktor,sesjaId:string):Promise<StartDevice>{
   sprzataj();const k=o.repozytorium.pobierz(klucz);
   if(!k||!sesjaId||o.repozytorium.konfliktKlucza(klucz))return niewazna();
-  if(k.zrodlo==='panel'&&k.autoryzacja==='polaczone')return bladAllegro('konflikt','Konto jest połączone. Ponowna zgoda wymaga utraty dostępu.');
+  const ponowna=k.zrodlo==='panel'&&k.autoryzacja==='polaczone';
+  if(ponowna&&(k.aplikacja!=='device'||!k.kontoId||o.ponownieDlaPanelu?.(klucz)!==true))return bladAllegro('konflikt','Konto jest połączone. Ponowna zgoda wymaga utraty dostępu.');
   const istniejaca=[...proby.values()].find(p=>p.klucz===klucz&&aktualna(p));
   if(istniejaca){
    if(istniejaca.device&&istniejaca.sesjaId===sesjaId&&istniejaca.aktor.id===aktor.id)return {ok:true,dane:publicznyDevice(istniejaca)};
@@ -86,12 +98,12 @@ export function createAutoryzacjaAllegro(o:{repozytorium:RepozytoriumKanalow;apl
   if(k.zrodlo==='env'&&(!legacy||!legacy.wolnoWiazac||legacy.app.srodowisko!==k.srodowisko))return bladAllegro('brak_dostepu','Kanał działa albo brakuje przygotowanej aplikacji Device Flow.');
   if(k.zrodlo==='panel'&&!device)return bladAllegro('brak_dostepu','Aplikacja Allegro tego konta nie jest skonfigurowana.');
   if(proby.size+kandydaci.size>=1000)return bladAllegro('tymczasowy','Zbyt wiele rozpoczętych autoryzacji.');
-  // Próba env żyje tylko w pamięci. Dotychczasowa para i import pracują do aktywacji.
+  // Próba env i ponowna zgoda panelu żyją tylko w pamięci. Dotychczasowa para i import pracują do aktywacji.
   const app=legacy?.app??{...device!,clientName:'Device',softwareStatementId:'',redirectUri:'',srodowisko:k.srodowisko};
-  const p:Proba={id:randomUUID(),klucz,sesjaId,aktor:{...aktor},wersja:k.wersja,generacja:k.generacja,wygasa:teraz().getTime()+600000,state:randomBytes(32).toString('base64url'),verifier:'',app,adres:'',userAgent:legacy?.userAgent,legacy:k.zrodlo==='env'};
+  const p:Proba={id:randomUUID(),klucz,sesjaId,aktor:{...aktor},wersja:k.wersja,generacja:k.generacja,wygasa:teraz().getTime()+600000,state:randomBytes(32).toString('base64url'),verifier:'',app,adres:'',userAgent:legacy?.userAgent,legacy:k.zrodlo==='env',ponowna};
   proby.set(p.state,p);
   try{
-   const r=await http(HOSTY_ALLEGRO[k.srodowisko].auth+'/device',{method:'POST',signal:AbortSignal.timeout(30000),headers:{Authorization:'Basic '+Buffer.from(p.app.clientId+':'+p.app.clientSecret).toString('base64'),'Content-Type':'application/x-www-form-urlencoded',Accept:'application/json','User-Agent':p.userAgent??userAgent()},body:new URLSearchParams({client_id:p.app.clientId,...(p.legacy?{}:{scope:UPRAWNIENIA_NOWEGO_POLACZENIA.join(' ')})})});
+   const r=await http(HOSTY_ALLEGRO[k.srodowisko].auth+'/device',{method:'POST',signal:AbortSignal.timeout(30000),headers:{Authorization:'Basic '+Buffer.from(p.app.clientId+':'+p.app.clientSecret).toString('base64'),'Content-Type':'application/x-www-form-urlencoded',Accept:'application/json','User-Agent':p.userAgent??userAgent()},body:new URLSearchParams({client_id:p.app.clientId,...(p.legacy?{}:{scope:[...UPRAWNIENIA_NOWEGO_POLACZENIA,...(o.zakresyOfert?.(k.srodowisko,p.app.clientId)?UPRAWNIENIA_OFERT:[])].join(' ')})})});
    if(!r.ok)throw Error('odmowa');const d=await r.json();
    const adres=new URL(d.verification_uri);
    if(typeof d.device_code!=='string'||!d.device_code||d.device_code.length>4096||typeof d.user_code!=='string'||!d.user_code||d.user_code.length>128||adres.origin!==new URL(HOSTY_ALLEGRO[k.srodowisko].auth).origin||adres.username||adres.password)throw Error('ksztalt');
@@ -100,8 +112,10 @@ export function createAutoryzacjaAllegro(o:{repozytorium:RepozytoriumKanalow;apl
     // Aplikację zmieniono w trakcie /device: kod wydano starej parze, więc próba jest nieważna.
     const obecnaApp=o.aplikacjaDevice?.(k.srodowisko);
     if(!obecnaApp||obecnaApp.clientId!==p.app.clientId||obecnaApp.clientSecret!==p.app.clientSecret){proby.delete(p.state);return bladAllegro('konflikt','Aplikacja Allegro zmieniła się w trakcie autoryzacji. Zacznij od nowa.');}
-    const z=o.repozytorium.zapiszZmiane(klucz,p.wersja,{aplikacja:'device',autoryzacja:'oczekuje_potwierdzenia',pobieranie:'wylaczone'},aktor);
-    if(!z.ok){proby.delete(p.state);return z;}p.wersja=z.dane.wersja;p.generacja=z.dane.generacja;
+    if(!ponowna){
+     const z=o.repozytorium.zapiszZmiane(klucz,p.wersja,{aplikacja:'device',autoryzacja:'oczekuje_potwierdzenia',pobieranie:'wylaczone'},aktor);
+     if(!z.ok){proby.delete(p.state);return z;}p.wersja=z.dane.wersja;p.generacja=z.dane.generacja;
+    }
    }
    if(!aktualna(p)||p.wygasa<=teraz().getTime())return niewazna();
    const czas=Number(d.expires_in),interval=Number(d.interval);

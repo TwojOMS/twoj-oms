@@ -9,6 +9,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { odswiezMagazyn } from '../../../src/moduly/magazyn/services/magazyn-sync.js';
+import { migracjaOfertKanalow } from '../../../src/moduly/magazyn/migracje/0001-oferty-kanalow.ts';
+import { wstawOferte } from '../../../src/oms/db/oferty-kanalow.ts';
+import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
+import { zapiszProduktSklepowy, powiazProdukt } from '../../../src/oms/db/magazyn.js';
+import { przelaczStany, stanKarty, pozycjeBezKarty } from '../../../src/oms/db/stany-magazynowe.js';
 
 const TERAZ = '2026-08-06T10:00:00Z';
 const teraz = (wartosc = TERAZ) => () => wartosc;
@@ -1151,5 +1156,91 @@ describe('odswiezMagazyn — atrybuty wariantu', () => {
     await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
 
     expect(jeden(db).atrybuty_json).toBe(null);
+  });
+});
+
+// ============================================================================
+// PRZ-160 E3.10 (D19): OFERTA Z OMS-U PO „ODCZYTAJ KATALOGI"
+// ============================================================================
+
+describe('odswiezMagazyn — oferta Allegro z rejestru OMS (E3.10)', () => {
+  const KANAL_A = 'allegro_polcien2';
+  const NUMER = '7700000017';
+  const T0 = '2026-08-06T08:00:00.000Z';
+
+  function bazaZRejestrem() {
+    const db = openOmsDb(':memory:');
+    migracjaOfertKanalow.wykonaj(db);
+    for (const id of [17, 18]) db.prepare(`INSERT INTO karty_produktow
+      (id, sku, nazwa, utworzony_at, zmieniony_at) VALUES (?, ?, ?, ?, ?)`)
+      .run(id, `LMP-${id}`, `Lampa Półcień ${id}`, T0, T0);
+    return db;
+  }
+  const odczyt = (db, oferty = [oferta(NUMER, 'Lampa Półcień Kropla')]) => odswiezMagazyn({
+    kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', KANAL_A],
+    db, sklepy: null, allegro: { [KANAL_A]: allegroAtrapa(oferty) }, teraz: teraz(),
+  });
+  const zamowienie = (db, sklep = KANAL_A) => zapiszZamowienie(db, sklep, {
+    zrodlo_id: 'z-1', numer: 'A-1', klient: {}, dostawa: {},
+    utworzone_at: '2026-08-06T11:00:00.000Z', kwota_brutto: '178.00', metoda_wysylki: 'dpd',
+    kwota_pobrania: null, chce_fakture: 0, nip: null, status_woo: null, oplacone_at: null, anulowane: 0,
+    pozycje: [{ zrodlo_id: 'p1', oferta_id: NUMER, produkt_id: null, wariant_id: null,
+      nazwa: 'Lampa Półcień Kropla', sku: null, zdjecie_url: null, ilosc: 2, cena_brutto: '89.00', vat: '23' }],
+  }, {});
+
+  it('oferta OMS na karcie 17, odczyt lustra, zamówienie z tej oferty → karta 17', async () => {
+    const db = bazaZRejestrem();
+    wstawOferte(db, { kanal: KANAL_A, kartaId: 17, idZewnetrzne: NUMER, pochodzenie: 'oms' }, { teraz: T0 });
+    przelaczStany(db, { wlacz: true, at: T0 });
+    const w = await odczyt(db);
+    expect(kanal(w, KANAL_A).blad).toBe(null);
+    expect(jeden(db)).toMatchObject({ kanal: KANAL_A, produkt_id: NUMER, karta_id: 17 });
+    zamowienie(db);
+    expect(stanKarty(db, 17)).toMatchObject({ zuzycie: 2, stan: -2 });
+    expect(pozycjeBezKarty(db)).toEqual([]);
+    // Drugi odczyt niczego nie psuje.
+    await odczyt(db);
+    expect(jeden(db).karta_id).toBe(17);
+  });
+
+  it('wiersz lustra z ręcznie przypiętą inną kartą nie jest nadpisywany', async () => {
+    const db = bazaZRejestrem();
+    const id = zapiszProduktSklepowy(db, { kanal: KANAL_A, produkt_id: NUMER, wariant_id: '', nazwa: 'Lampa', odczytane_at: T0 });
+    powiazProdukt(db, id, 18);
+    wstawOferte(db, { kanal: KANAL_A, kartaId: 17, idZewnetrzne: NUMER, pochodzenie: 'oms' }, { teraz: T0 });
+    await odczyt(db);
+    expect(jeden(db).karta_id).toBe(18);
+  });
+
+  it('ten sam numer w rejestrze innego konta nie daje karty', async () => {
+    const db = bazaZRejestrem();
+    wstawOferte(db, { kanal: 'allegro_swietlik', kartaId: 17, idZewnetrzne: NUMER, pochodzenie: 'oms' }, { teraz: T0 });
+    await odczyt(db);
+    expect(jeden(db).karta_id).toBe(null);
+  });
+
+  it('sklep Woo nie bierze karty z rejestru, nawet przy tym samym kluczu (tylko lustro Allegro)', async () => {
+    const db = bazaZRejestrem();
+    wstawOferte(db, { kanal: 'pro', kartaId: 17, idZewnetrzne: '900', pochodzenie: 'oms' }, { teraz: T0 });
+    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', KANAL_A],
+      db, sklepy: { pro: sklepAtrapa([prosty()]) }, allegro: null, teraz: teraz() });
+    expect(jeden(db)).toMatchObject({ kanal: 'pro', produkt_id: '900', karta_id: null });
+  });
+
+  it('wpis rejestru przed nadaniem numeru (ext:…) nie pasuje do oferty z lustra', async () => {
+    const db = bazaZRejestrem();
+    wstawOferte(db, { kanal: KANAL_A, kartaId: 17, idZewnetrzne: `ext:POL-K17`, pochodzenie: 'oms' }, { teraz: T0 });
+    await odczyt(db, [oferta('POL-K17')]);
+    expect(jeden(db).karta_id).toBe(null);
+  });
+
+  it('oferta spoza rejestru zostaje bez karty; baza bez rejestru działa jak dotąd', async () => {
+    const db = bazaZRejestrem();
+    await odczyt(db);
+    expect(jeden(db).karta_id).toBe(null);
+    const goła = openOmsDb(':memory:');
+    const w = await odczyt(goła);
+    expect(kanal(w, KANAL_A).blad).toBe(null);
+    expect(jeden(goła).karta_id).toBe(null);
   });
 });

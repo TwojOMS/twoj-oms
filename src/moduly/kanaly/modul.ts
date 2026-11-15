@@ -45,7 +45,8 @@ export function createModulKanaly(definicje:readonly DefinicjaKanalu[],niekomple
      try{odbiorca=ctx.usluga('raporty','poAktywacjiKanalu');}catch(e){if(!(e instanceof Error)||!e.message.includes('raporty.poAktywacjiKanalu')||!e.message.includes('nie istnieje'))throw e;}
      odbiorca?.(k);
     }});
-   const sklepyErli=createSklepyErli({db:ctx.db,teraz:ctx.teraz,ustawieniaEnv:uslugi.config.erli??{},definicje:definicje.filter(d=>d.typ==='erli'),fetchImpl:o.fetchImpl});
+   const sklepyErli=createSklepyErli({db:ctx.db,teraz:ctx.teraz,ustawieniaEnv:uslugi.config.erli??{},definicje:definicje.filter(d=>d.typ==='erli'),fetchImpl:o.fetchImpl,
+    poAktywacji:k=>uslugi.poAktywacji(uslugi.repozytoriumKanalow.listaTypu('erli').find(p=>p.klucz===k)!)});
    return {uslugi:{...uslugi,sklepyWoo,sklepyErli},
     zegary:[{nazwa:'poller',odstepMs:uslugi.config.odstepMs,przebieg:async()=>{try{await uslugi.poller.przebieg();}catch(e){ctx.log('poller:',e instanceof Error?e.message:String(e));}}}],
     zdrowie:()=>{

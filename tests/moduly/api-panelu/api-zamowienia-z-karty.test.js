@@ -70,7 +70,8 @@ describe('POST /api/zamowienia-z-karty', () => {
   // `oplacone` wymaga pokrycia CALEJ kwoty, wiec poller panelu nigdy nie ustawilby
   // `paid_at` i ETAP IV nie odpalilby sie NIGDY, po cichu.
   it('zamowienie z karty NIE dostaje oplaty za obsluge, choc NIP jest klientem zbiorczym', async () => {
-    dopiszKlientaZbiorczego(db, KLIENT_ZBIORCZY);
+    // Próg pod wartością oferty: automat OMS zerowałby dostawę, karta ma zachować ofertę.
+    dopiszKlientaZbiorczego(db, { ...KLIENT_ZBIORCZY, prog_darmowej_dostawy_gr: 20000 });
     const zApp = buildOmsServer({ db, config: configZbiorczy });
     await zApp.ready();
     const res = await zApp.inject({
@@ -83,11 +84,8 @@ describe('POST /api/zamowienia-z-karty', () => {
     expect(z.pozycje).toHaveLength(1);
     expect(z.kwota_brutto).toBe('269.00');
 
-    // ⚠️ POLOWA KONTROLNA — bez niej nie wiadomo, czy oplaty nie ma DLATEGO, ze trasa jej
-    // nie nalicza, czy DLATEGO, ze i tak by sie nie naliczyla. Te same dane i ta sama
-    // konfiguracja, ale DOMYSLNYM wejsciem uslugi (tak wola trasa formularza): oplata
-    // sie doklej a i kwota rosnie do 288,00. Roznica miedzy polowkami to dokladnie
-    // `naliczajOplate`.
+    // Kontrola naliczajOplate: domyślne wejście OMS stosuje próg i zeruje dostawę.
+    // API karty wyżej zachowuje 19 zł dostawy z zaakceptowanej oferty.
     const kontrolne = zalozZamowienieReczne({
       db,
       dane: parsujZamowienieZKarty({ ...cialo, kartaId: 'karta-kontrolna', nip: KLIENT_ZBIORCZY.nip, chceFakture: true }),
@@ -95,8 +93,9 @@ describe('POST /api/zamowienia-z-karty', () => {
       okresId: null,
     });
     const k = pobierzZamowienie(db, kontrolne.id);
-    expect(k.pozycje.map((p) => p.nazwa)).toContain(NAZWA_KURIERA);
-    expect(k.kwota_brutto).toBe('288.00');
+    expect(k.pozycje.map((p) => p.nazwa)).not.toContain(NAZWA_KURIERA);
+    expect(k.koszt_dostawy_brutto).toBe('0.00');
+    expect(k.kwota_brutto).toBe('250.00');
   });
 
   it('drugie zadanie z ta sama karta oddaje 409 z numerem PIERWSZEGO zamowienia', async () => {

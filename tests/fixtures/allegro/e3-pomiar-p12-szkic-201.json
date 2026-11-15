@@ -1,0 +1,339 @@
+{
+ "_pomiar": "P12 sandbox 14.11: POST /sale/product-offers szkic z nowym produktem (kat. 49855, bez EAN) → 201 synchronicznie, location = adres oferty; treść = odczyt GET zaraz po POST (validation.errors)",
+ "post": {
+  "status": 201,
+  "naglowki": {
+   "location": "https://api.allegro.pl.allegrosandbox.pl/sale/product-offers/9900000001"
+  }
+ },
+ "odczyt": {
+  "name": "Klosz szklany mleczny do lampy wiszącej 20 cm Półcień",
+  "productSet": [
+   {
+    "product": {
+     "id": "00000000-0000-4000-8000-000000000001",
+     "publication": {
+      "status": "PROPOSED"
+     },
+     "parameters": [
+      {
+       "id": "248811",
+       "name": "Marka",
+       "values": [
+        "bez marki"
+       ],
+       "valuesIds": [
+        "248811_958954"
+       ],
+       "rangeValue": null
+      },
+      {
+       "id": "24228",
+       "name": "Gwint żarówki",
+       "values": [
+        "E27"
+       ],
+       "valuesIds": [
+        "24228_4"
+       ],
+       "rangeValue": null
+      },
+      {
+       "id": "24210",
+       "name": "Średnica/szerokość klosza",
+       "values": [
+        "20"
+       ],
+       "valuesIds": null,
+       "rangeValue": null
+      },
+      {
+       "id": "224017",
+       "name": "Kod producenta",
+       "values": [
+        "PP-KL-020-x0000001"
+       ],
+       "valuesIds": null,
+       "rangeValue": null
+      },
+      {
+       "id": "248301",
+       "name": "Rodzaj",
+       "values": [
+        "klosz"
+       ],
+       "valuesIds": [
+        "248301_894734"
+       ],
+       "rangeValue": null
+      },
+      {
+       "id": "11484",
+       "name": "Kolor",
+       "values": [
+        "biały"
+       ],
+       "valuesIds": [
+        "11484_2"
+       ],
+       "rangeValue": null
+      },
+      {
+       "id": "223329",
+       "name": "Wysokość produktu",
+       "values": [
+        "15.5"
+       ],
+       "valuesIds": null,
+       "rangeValue": null
+      }
+     ],
+     "isAiCoCreated": true
+    },
+    "quantity": {
+     "value": 1
+    },
+    "responsiblePerson": null,
+    "responsibleProducer": null,
+    "safetyInformation": null,
+    "marketedBeforeGPSRObligation": null,
+    "deposits": [],
+    "composition": null
+   }
+  ],
+  "parameters": [
+   {
+    "id": "11323",
+    "name": "Stan",
+    "values": [
+     "Nowy"
+    ],
+    "valuesIds": [
+     "11323_1"
+    ],
+    "rangeValue": null
+   }
+  ],
+  "images": [
+   "https://a.allegroimg.allegrosandbox.pl/original/1100aa/0000000000000000000000000001",
+   "https://a.allegroimg.allegrosandbox.pl/original/1100aa/0000000000000000000000000002"
+  ],
+  "afterSalesServices": {
+   "impliedWarranty": null,
+   "returnPolicy": null,
+   "warranty": null
+  },
+  "payments": {
+   "invoice": "VAT"
+  },
+  "sellingMode": {
+   "format": "BUY_NOW",
+   "price": {
+    "amount": "199.00",
+    "currency": "PLN"
+   },
+   "startingPrice": null,
+   "minimalPrice": null
+  },
+  "stock": {
+   "available": null,
+   "unit": "UNIT"
+  },
+  "location": {
+   "countryCode": "PL",
+   "province": "MAZOWIECKIE",
+   "city": "Półcieniowo",
+   "postCode": "00-001"
+  },
+  "delivery": {
+   "shippingRates": {
+    "id": "00000000-0000-4000-8000-000000000002"
+   },
+   "handlingTime": "PT24H",
+   "additionalInfo": null,
+   "shipmentDate": null
+  },
+  "description": {
+   "sections": [
+    {
+     "items": [
+      {
+       "type": "TEXT",
+       "content": "<p>Klosz ze szkła mlecznego do lampy wiszącej. Przedmiot testowy pomiaru w sandboxie, Pracownia Półcień.</p>"
+      }
+     ]
+    }
+   ]
+  },
+  "external": {
+   "id": "PRZ160-E3-P12-A-x0000001"
+  },
+  "category": {
+   "id": "49855"
+  },
+  "taxSettings": null,
+  "sizeTable": null,
+  "discounts": {
+   "wholesalePriceList": null
+  },
+  "contact": null,
+  "fundraisingCampaign": null,
+  "messageToSellerSettings": {
+   "mode": "HIDDEN"
+  },
+  "attachments": [],
+  "b2b": null,
+  "additionalServices": null,
+  "compatibilityList": null,
+  "additionalMarketplaces": {
+   "allegro-business-pl": {
+    "sellingMode": {
+     "price": {
+      "amount": "199.00",
+      "currency": "PLN"
+     }
+    },
+    "publication": {
+     "state": "PENDING",
+     "refusalReasons": []
+    }
+   },
+   "allegro-sk": {
+    "sellingMode": null,
+    "publication": {
+     "state": "NOT_REQUESTED",
+     "refusalReasons": []
+    }
+   },
+   "allegro-cz": {
+    "sellingMode": null,
+    "publication": {
+     "state": "NOT_REQUESTED",
+     "refusalReasons": []
+    }
+   },
+   "allegro-hu": {
+    "sellingMode": null,
+    "publication": {
+     "state": "NOT_REQUESTED",
+     "refusalReasons": []
+    }
+   },
+   "allegro-business-cz": {
+    "sellingMode": null,
+    "publication": {
+     "state": "NOT_REQUESTED",
+     "refusalReasons": []
+    }
+   }
+  },
+  "warnings": [],
+  "aiCoCreatedContent": {
+   "images": [
+    {
+     "url": "https://a.allegroimg.allegrosandbox.pl/original/1100aa/0000000000000000000000000002"
+    }
+   ]
+  },
+  "id": "9900000001",
+  "language": "pl-PL",
+  "publication": {
+   "status": "INACTIVE",
+   "duration": null,
+   "endedBy": null,
+   "endingAt": null,
+   "startingAt": null,
+   "republish": false,
+   "marketplaces": {
+    "base": {
+     "id": "allegro-pl"
+    },
+    "additional": [
+     {
+      "id": "allegro-business-pl"
+     }
+    ]
+   }
+  },
+  "validation": {
+   "errors": [
+    {
+     "code": "ConstraintViolationException.AfterSalesServiceConditionsRequiredByCompany",
+     "message": "Offer Terms (for returns and complaints) are required for Business Accounts.",
+     "details": "ConstraintViolationException.AfterSalesServiceConditionsRequiredByCompany",
+     "path": "null",
+     "userMessage": "Warunki oferty (zwroty, reklamacje) są wymagane dla kont firma.",
+     "metadata": {}
+    },
+    {
+     "code": "RESPONSIBLE_PRODUCER_NOT_SPECIFIED",
+     "message": "Responsible producer is required for every product in the offer",
+     "details": null,
+     "path": "productSet[0].responsibleProducer",
+     "userMessage": "Producent odpowiedzialny jest obowiązkowy dla każdego produktu w ofercie",
+     "metadata": {}
+    },
+    {
+     "code": "NO_SAFETY_INFORMATION_OPTION_NOT_ALLOWED",
+     "message": "Usage of \"Product does not require safety information\" option is not allowed",
+     "details": null,
+     "path": "productSet[0].safetyInformation",
+     "userMessage": "Użycie opcji \"Produkt nie zawiera informacji o bezpieczeństwie\" jest niedozwolone",
+     "metadata": {}
+    },
+    {
+     "code": "VALIDATION_ERROR",
+     "message": "Fulfilment offer validation error",
+     "details": null,
+     "path": "offer.parameters",
+     "userMessage": "W One Fulfillment możesz sprzedawać tylko produkty, które są podpięte do Katalogu produktów i mają nr GTIN (np. EAN lub ISBN).",
+     "metadata": {}
+    },
+    {
+     "code": "VALIDATION_ERROR",
+     "message": "Fulfilment offer validation error",
+     "details": null,
+     "path": "product.parameters",
+     "userMessage": "Produkty, które chcesz sprzedawać w One Fulfillment, muszą posiadać nr GTIN (np. EAN). Znajdziesz go na opakowaniu produktu, często jako kod kreskowy. Jeśli chcesz sprzedawać ten produkt przez One Fulfillment, uzupełnij GTIN w produkcie.",
+     "metadata": {}
+    },
+    {
+     "code": "VALIDATION_ERROR",
+     "message": "Fulfilment offer validation error",
+     "details": null,
+     "path": "seller",
+     "userMessage": "W One Fulfillment musisz ustawić adres do wycofania",
+     "metadata": {}
+    },
+    {
+     "code": "VALIDATION_ERROR",
+     "message": "Fulfilment offer validation error",
+     "details": null,
+     "path": "seller",
+     "userMessage": "Aby sprzedawać z Magazynu Allegro musisz mieć aktywną usługę One Fulfillment.",
+     "metadata": {}
+    },
+    {
+     "code": "AvailableStockMustEqualToZero",
+     "message": "The quantity listed in an offer must be equal to 0.",
+     "details": "AvailableStockMustEqualToZero",
+     "path": "stock.available",
+     "userMessage": "Wystawiana liczba sztuk w ofercie musi być równa 0.",
+     "metadata": {}
+    },
+    {
+     "code": "VALIDATION_ERROR",
+     "message": "Fulfilment offer validation error",
+     "details": null,
+     "path": "tax.rate",
+     "userMessage": "W One Fulfillment musisz ustawić stawkę VAT.",
+     "metadata": {}
+    }
+   ],
+   "warnings": [],
+   "validatedAt": "2026-11-13T23:35:53.543Z"
+  },
+  "createdAt": "2026-11-13T23:35:53.000Z",
+  "updatedAt": "2026-11-13T23:35:59.668Z"
+ }
+}

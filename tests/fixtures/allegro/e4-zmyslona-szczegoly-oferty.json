@@ -1,0 +1,8 @@
+{
+ "_opis": "Zmyślone szczegóły GET /sale/product-offers/{id} w kształcie zmierzonym 14.11 (P20d): brak jakiegokolwiek pola fulfillment; delivery.shippingRates tylko z id.",
+ "id": "9000000012", "name": "Kinkiet Półcień",
+ "publication": { "status": "ACTIVE" },
+ "stock": { "available": 2, "unit": "UNIT" },
+ "delivery": { "shippingRates": { "id": "cennik-zmyslony-1" }, "handlingTime": "PT24H" },
+ "sellingMode": { "format": "BUY_NOW", "price": { "amount": "49.00", "currency": "PLN" } }
+}

@@ -1,0 +1,224 @@
+[
+ {
+  "przebieg": 1,
+  "metoda": "GET",
+  "sciezka": "/sale/products?phrase=2000000000015&mode=GTIN",
+  "tresc": null
+ },
+ {
+  "przebieg": 1,
+  "metoda": "POST",
+  "sciezka": "/sale/images",
+  "tresc": "<bajty 071501>"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "POST",
+  "sciezka": "/sale/images",
+  "tresc": "<bajty 071602>"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "POST",
+  "sciezka": "/sale/product-offers",
+  "tresc": "{\"name\":\"Lampa stołowa Gliwka 11 z kloszem\",\"category\":{\"id\":\"257\"},\"productSet\":[{\"product\":{\"id\":\"<uuid-1>\"},\"responsibleProducer\":{\"type\":\"ID\",\"id\":\"prod-konta\"},\"safetyInformation\":{\"type\":\"TEXT\",\"description\":\"Nie zostawiaj włączonej lampy bez nadzoru.\"}}],\"parameters\":[{\"id\":\"11323\",\"valuesIds\":[\"11323_1\"]}],\"sellingMode\":{\"format\":\"BUY_NOW\",\"price\":{\"amount\":\"70.00\",\"currency\":\"PLN\"}},\"stock\":{\"available\":5,\"unit\":\"UNIT\"},\"delivery\":{\"handlingTime\":\"P2D\",\"shippingRates\":{\"id\":\"cennik-1\"}},\"afterSalesServices\":{\"returnPolicy\":{\"id\":\"zwrot-1\"},\"impliedWarranty\":{\"id\":\"rekl-1\"}},\"taxSettings\":{\"subject\":\"GOODS\",\"rates\":[{\"rate\":\"23.00\",\"countryCode\":\"PL\"}]},\"images\":[\"https://atrapa.invalid/z/4ba1f0ae92eebbadfefab11fcc5699f0e503d1c9217873fe4d981a5524107b8f\",\"https://atrapa.invalid/z/3ee6aa351ea43644da82a9beb19a017a6182aee71a32e4de1d631f93e7f5c5a8\"],\"description\":{\"sections\":[{\"items\":[{\"type\":\"TEXT\",\"content\":\"<p>Lampa z mlecznym kloszem.</p>\"}]}]},\"external\":{\"id\":\"aaaaaa-K11\"},\"publication\":{\"status\":\"INACTIVE\"},\"language\":\"pl-PL\"}"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "GET",
+  "sciezka": "/sale/product-offers/18000000011",
+  "tresc": null
+ },
+ {
+  "przebieg": 1,
+  "metoda": "PATCH",
+  "sciezka": "/sale/product-offers/18000000011",
+  "tresc": "{\"publication\":{\"status\":\"ACTIVE\"}}"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "GET",
+  "sciezka": "/sale/products?phrase=2000000000015&mode=GTIN",
+  "tresc": null
+ },
+ {
+  "przebieg": 1,
+  "metoda": "POST",
+  "sciezka": "/sale/images",
+  "tresc": "<bajty 071701>"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "POST",
+  "sciezka": "/sale/images",
+  "tresc": "<bajty 071802>"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "POST",
+  "sciezka": "/sale/product-offers",
+  "tresc": "{\"name\":\"Lampa stołowa Gliwka 12 z kloszem\",\"category\":{\"id\":\"257\"},\"productSet\":[{\"product\":{\"id\":\"<uuid-1>\"},\"responsibleProducer\":{\"type\":\"ID\",\"id\":\"prod-konta\"},\"safetyInformation\":{\"type\":\"TEXT\",\"description\":\"Nie zostawiaj włączonej lampy bez nadzoru.\"}}],\"parameters\":[{\"id\":\"11323\",\"valuesIds\":[\"11323_1\"]}],\"sellingMode\":{\"format\":\"BUY_NOW\",\"price\":{\"amount\":\"71.00\",\"currency\":\"PLN\"}},\"stock\":{\"available\":5,\"unit\":\"UNIT\"},\"delivery\":{\"handlingTime\":\"P2D\",\"shippingRates\":{\"id\":\"cennik-1\"}},\"afterSalesServices\":{\"returnPolicy\":{\"id\":\"zwrot-1\"},\"impliedWarranty\":{\"id\":\"rekl-1\"}},\"taxSettings\":{\"subject\":\"GOODS\",\"rates\":[{\"rate\":\"23.00\",\"countryCode\":\"PL\"}]},\"images\":[\"https://atrapa.invalid/z/5a3974d2e71acd2b6fe7a69f15b852ab6c6f2c7532baf7ce2c357cc74fd7bc2f\",\"https://atrapa.invalid/z/4f6398e89897413ad576f57e0c4e37c6c6a6607ad2faa46e32f59e69cecc4359\"],\"description\":{\"sections\":[{\"items\":[{\"type\":\"TEXT\",\"content\":\"<p>Lampa z mlecznym kloszem.</p>\"}]}]},\"external\":{\"id\":\"aaaaaa-K12\"},\"publication\":{\"status\":\"INACTIVE\"},\"language\":\"pl-PL\"}"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "GET",
+  "sciezka": "/sale/product-offers/18000000012",
+  "tresc": null
+ },
+ {
+  "przebieg": 1,
+  "metoda": "PATCH",
+  "sciezka": "/sale/product-offers/18000000012",
+  "tresc": "{\"publication\":{\"status\":\"ACTIVE\"}}"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "GET",
+  "sciezka": "/sale/offers?limit=1000&offset=0",
+  "tresc": null
+ },
+ {
+  "przebieg": 1,
+  "metoda": "PATCH",
+  "sciezka": "/sale/product-offers/18000000004",
+  "tresc": "{\"stock\":{\"available\":5},\"publication\":{\"status\":\"ACTIVE\"}}"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "PUT",
+  "sciezka": "/sale/offer-price-change-commands/<uuid-2>",
+  "tresc": "{\"modification\":{\"type\":\"FIXED_PRICE\",\"price\":{\"amount\":\"57.00\",\"currency\":\"PLN\"}},\"offerCriteria\":[{\"offers\":[{\"id\":\"18000000001\"}],\"type\":\"CONTAINS_OFFERS\"}]}"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "GET",
+  "sciezka": "/sale/offer-price-change-commands/<uuid-2>/tasks?limit=1000&offset=0",
+  "tresc": null
+ },
+ {
+  "przebieg": 1,
+  "metoda": "PUT",
+  "sciezka": "/sale/offer-price-change-commands/<uuid-3>",
+  "tresc": "{\"modification\":{\"type\":\"FIXED_PRICE\",\"price\":{\"amount\":\"57.95\",\"currency\":\"PLN\"}},\"offerCriteria\":[{\"offers\":[{\"id\":\"18000000002\"}],\"type\":\"CONTAINS_OFFERS\"}]}"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "GET",
+  "sciezka": "/sale/offer-price-change-commands/<uuid-3>/tasks?limit=1000&offset=0",
+  "tresc": null
+ },
+ {
+  "przebieg": 1,
+  "metoda": "PUT",
+  "sciezka": "/sale/offer-quantity-change-commands/<uuid-4>",
+  "tresc": "{\"modification\":{\"changeType\":\"FIXED\",\"value\":5},\"offerCriteria\":[{\"offers\":[{\"id\":\"18000000006\"}],\"type\":\"CONTAINS_OFFERS\"}]}"
+ },
+ {
+  "przebieg": 1,
+  "metoda": "GET",
+  "sciezka": "/sale/offer-quantity-change-commands/<uuid-4>/tasks?limit=1000&offset=0",
+  "tresc": null
+ },
+ {
+  "przebieg": 2,
+  "metoda": "GET",
+  "sciezka": "/sale/product-offers/18000000004/operations/<uuid-5>",
+  "tresc": null
+ },
+ {
+  "przebieg": 2,
+  "metoda": "GET",
+  "sciezka": "/sale/product-offers/18000000011/operations/<uuid-6>",
+  "tresc": null
+ },
+ {
+  "przebieg": 2,
+  "metoda": "GET",
+  "sciezka": "/sale/product-offers/18000000012/operations/<uuid-7>",
+  "tresc": null
+ },
+ {
+  "przebieg": 2,
+  "metoda": "GET",
+  "sciezka": "/sale/offers?limit=1000&offset=0",
+  "tresc": null
+ },
+ {
+  "przebieg": 2,
+  "metoda": "PATCH",
+  "sciezka": "/sale/product-offers/18000000007",
+  "tresc": "{\"publication\":{\"status\":\"ENDED\"}}"
+ },
+ {
+  "przebieg": 2,
+  "metoda": "PUT",
+  "sciezka": "/sale/offer-quantity-change-commands/<uuid-8>",
+  "tresc": "{\"modification\":{\"changeType\":\"FIXED\",\"value\":7},\"offerCriteria\":[{\"offers\":[{\"id\":\"18000000001\"},{\"id\":\"18000000002\"},{\"id\":\"18000000003\"},{\"id\":\"18000000006\"},{\"id\":\"18000000008\"},{\"id\":\"18000000009\"},{\"id\":\"18000000010\"}],\"type\":\"CONTAINS_OFFERS\"}]}"
+ },
+ {
+  "przebieg": 2,
+  "metoda": "GET",
+  "sciezka": "/sale/offer-quantity-change-commands/<uuid-8>/tasks?limit=1000&offset=0",
+  "tresc": null
+ },
+ {
+  "przebieg": 3,
+  "metoda": "GET",
+  "sciezka": "/sale/product-offers/18000000004/operations/<uuid-5>",
+  "tresc": null
+ },
+ {
+  "przebieg": 3,
+  "metoda": "GET",
+  "sciezka": "/sale/product-offers/18000000004",
+  "tresc": null
+ },
+ {
+  "przebieg": 3,
+  "metoda": "GET",
+  "sciezka": "/sale/product-offers/18000000007/operations/<uuid-9>",
+  "tresc": null
+ },
+ {
+  "przebieg": 3,
+  "metoda": "GET",
+  "sciezka": "/sale/product-offers/18000000011/operations/<uuid-6>",
+  "tresc": null
+ },
+ {
+  "przebieg": 3,
+  "metoda": "GET",
+  "sciezka": "/sale/product-offers/18000000011",
+  "tresc": null
+ },
+ {
+  "przebieg": 3,
+  "metoda": "GET",
+  "sciezka": "/sale/product-offers/18000000012/operations/<uuid-7>",
+  "tresc": null
+ },
+ {
+  "przebieg": 3,
+  "metoda": "GET",
+  "sciezka": "/sale/product-offers/18000000012",
+  "tresc": null
+ },
+ {
+  "przebieg": 3,
+  "metoda": "GET",
+  "sciezka": "/sale/offers?limit=1000&offset=0",
+  "tresc": null
+ },
+ {
+  "przebieg": 3,
+  "metoda": "PUT",
+  "sciezka": "/sale/offer-quantity-change-commands/<uuid-10>",
+  "tresc": "{\"modification\":{\"changeType\":\"FIXED\",\"value\":7},\"offerCriteria\":[{\"offers\":[{\"id\":\"18000000004\"},{\"id\":\"18000000011\"},{\"id\":\"18000000012\"}],\"type\":\"CONTAINS_OFFERS\"}]}"
+ },
+ {
+  "przebieg": 3,
+  "metoda": "GET",
+  "sciezka": "/sale/offer-quantity-change-commands/<uuid-10>/tasks?limit=1000&offset=0",
+  "tresc": null
+ }
+]

@@ -1,0 +1,5 @@
+{
+  "opis": "Syntetyczny katalog lamp o kształcie pomiaru P22; wszystkie identyfikatory i nazwy zmyślone.",
+  "produkt": { "id": 7000, "type": "variable", "name": "Lampa Półcień Mała", "sku": "PP-LAMPA-01", "permalink": "https://sklep.polcien.invalid/lampa", "manage_stock": false, "stock_quantity": null, "stock_status": "instock", "backorders": "no" },
+  "wariant": { "id": 7100, "sku": "PP-LAMPA-01-JASNA", "manage_stock": false, "stock_quantity": null, "stock_status": "instock", "backorders": "no" }
+}

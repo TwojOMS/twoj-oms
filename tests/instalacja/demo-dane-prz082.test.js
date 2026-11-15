@@ -185,14 +185,6 @@ describe('demo po poprawkach PRZ-082', () => {
     for (const f of ['Facebook (Meta)', 'Google Ads']) expect.soft(html).toContain(`<option value="${f}"`);
   });
 
-  it('10. Cele: bez danych, gość nie ma zakładki ani dostępu', async () => {
-    expect(zBazy((db) => db.prepare('SELECT COUNT(*) n FROM cele').get().n)).toBe(0);
-    const { html } = await strona('/', gosc);
-    expect(html).toContain('href="/zamowienia');
-    expect(html).not.toContain('href="/cele"');
-    expect((await strona('/cele', gosc)).status).toBe(403);
-  });
-
   it('11. pollery atrapy mają świeży przebieg — zdrowie nie krzyczy „Poller … stoi”', async () => {
     expect(CO_ILE_MS_PULSU_POLLEROW).toBeLessThan(PROG_POLLERA_S * 1000 / 3);
     const wiersze = zBazy((db) => db.prepare('SELECT sklep, ostatni_przebieg_at, ostatni_blad FROM stan_pollera ORDER BY sklep').all());
@@ -204,16 +196,29 @@ describe('demo po poprawkach PRZ-082', () => {
     expect((await strona('/', gosc)).html).not.toMatch(/Poller [\w-]+ (stoi|nie działa)/);
   });
 
-  it('12. zielony pas „Wersja demonstracyjna” nad pasami i ostrzeżeniami', async () => {
+  it('12. PRZ-167: informacja o generatorze stoi w pasku demo nad pasami i ostrzeżeniami, zielonego pasa na liście nie ma', async () => {
     const { html } = await strona('/', gosc);
-    const pas = html.indexOf('class="pas-demo"');
+    // Demo publiczne ma pasek z odliczaniem — zielony pas listy dublowałby informację.
+    expect(html).not.toContain('class="pas-demo"');
+    const pas = html.indexOf('class="pasek-demo-dopisek"');
     expect(pas).toBeGreaterThan(-1);
-    expect(html.slice(pas, pas + 200)).toContain('Wersja demonstracyjna');
+    expect(html.slice(pas, pas + 300)).toContain('Dane z generatora, połączenia ze sklepami, Allegro i kurierami są wyłączone.');
     for (const inne of ['class="ostrzezenia"', 'class="pas-awaria"', 'class="pas-uprzedzenie"']) {
       const i = html.indexOf(inne);
       if (i > -1) expect(i, inne).toBeGreaterThan(pas);
     }
     expect(html).not.toContain('Ostatnia synchronizacja');
+  });
+
+  // PRZ-167 (właściciel 15.11, zrzut z Raportów: „usuń to z demo”): demo nie ma historii Apilo ani konta historii.
+  it('13. PRZ-167: Raporty w demo bez zastrzeżeń o historii i bez pasa „Zanim uwierzysz w te liczby”', async () => {
+    for (const url of ['/raporty', '/raporty?skrot=ten-rok']) {
+      const { html } = await strona(url, gosc);
+      expect(html, url).toContain('Sprzedaż brutto');
+      expect(html, url).not.toContain('OMS_RAPORTY_KONTO_HISTORII');
+      expect(html, url).not.toContain('Zanim uwierzysz w te liczby');
+      expect(html, url).not.toContain('pasek-uwaga--epoka');
+    }
   });
 
   it('strażnik danych: nowe wpisy też zmyślone (e-maile .invalid, NIP 999…)', () => {

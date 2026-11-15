@@ -425,9 +425,8 @@ export function parsujNoweZamowienie(body = {}, {
       ? (tekst(body?.punkt_odbioru)?.toUpperCase() ?? null)
       : null,
     // ⚠️ TO NIE JEST SPOSOB DOSTAWY, tylko odpowiedz na pytanie „kto placi za transport".
-    // Klient rozliczany zbiorczo nadaje czesc paczek na WLASNYM koncie kurierskim — wtedy
-    // doklejamy mu sama oplate za obsluge zamiast uslugi kurierskiej (services/oplata.js).
-    // Zamowienia spoza rozliczenia zbiorczego to pole po prostu nie dotyczy.
+    // Każdy stały klient może nadawać na własnej etykiecie: dostawa jest wtedy zerowana,
+    // a włączona obsługa trafia jako pozycja opłaty (services/oplata.js).
     // Pole wyboru: przegladarka przysyla je WYLACZNIE gdy zaznaczone.
     etykietaKlienta: body?.etykieta_klienta !== undefined,
     // ⚠️ TO NIE JEST WIELKOSC ZAMOWIENIA, tylko odpowiedz na pytanie „dokad to jedzie".

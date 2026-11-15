@@ -1,7 +1,7 @@
 import { transport } from '../../integracje/transport.js';
 import { wczytajTokeny, zapiszTokeny, zapiszBladTokenu, generacjaDostepu, sprawdzGeneracjeDostepu } from '../db/tokeny.js';
 import { powodSieci } from '../../domena/wiazanie-kanalu.js';
-import { brakujaceUprawnienia } from '../../domena/uprawnienia-kanalu.js';
+import { brakujaceUprawnienia, brakZgodyNaOferty, maZgodeNaOferty } from '../../domena/uprawnienia-kanalu.js';
 import { kontoZTokenu } from '../../domena/tozsamosc-kanalu.js';
 
 // Refresh token Allegro zyje 3 miesiace. Ostrzegamy 7 dni wczesniej, bo wygasniecie jest
@@ -171,6 +171,9 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
       // zamowieniach i jednoczesnie nie ma zakresu do Centrum wiadomosci. Odswiezenie tokenu
       // zakresow NIE DOPISUJE — wchodza wylacznie przy nowej autoryzacji.
       brakujaceUprawnienia: brakujaceUprawnienia(s.access_token),
+      // PRZ-160 E3.02 (D42): zgoda na oferty — same flagi z zakresow tokenu, nigdy token.
+      brakOfert: brakZgodyNaOferty(s.access_token),
+      zgodaOfert: maZgodeNaOferty(s.access_token),
       // UWAGA UWAGA: Z JAKIM KONTEM ALLEGRO TEN KANAL JEST NAPRAWDE ZWIAZANY. Identyfikator
       // konta nie jest poswiadczeniem (niezmiennik 4.10 dotyczy tokenow i hasel), a jest
       // JEDYNA rzecza, po ktorej czlowiek pozna, ze przewiazal kanal na zle konto —

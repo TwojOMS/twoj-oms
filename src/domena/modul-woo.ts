@@ -48,5 +48,7 @@ export const MODUL_WOO = {
       ],
     } },
     { id: 'stan', numer: 5, tytul: 'Stan', widok: 'woo-stan' },
+    // PRZ-160 E4.10 (D61): krok 6 „Stany” zawsze w szkielecie; bez stanów magazynowych nic nie robi.
+    { id: 'stany', numer: 6, tytul: 'Stany', widok: 'woo-stany' },
   ] },
 } as const satisfies OpisKanalu;

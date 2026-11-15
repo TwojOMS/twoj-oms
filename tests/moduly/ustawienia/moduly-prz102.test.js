@@ -25,11 +25,11 @@ describe('PRZ-102.02 wyłączanie modułów', () => {
     const p = panel();
     const ekran = await get(p.app, '/ustawienia/moduly', p.admin);
     expect(ekran.statusCode).toBe(200);
-    expect(ekran.body).toContain('role="switch" aria-checked="true" aria-label="Stali klienci"');
+    expect(ekran.body).toContain('role="switch" aria-checked="true" aria-label="Klienci B2B"');
     expect(ekran.body).toContain('role="switch" aria-checked="true" aria-label="Rozliczenia"');
     expect((await przelacz(p, 'klienci')).statusCode).toBe(303);
     expect(JSON.parse(p.db.prepare("SELECT wartosc FROM ustawienia WHERE klucz='moduly.wylaczone'").get().wartosc)).toEqual(['klienci']);
-    expect((await get(p.app, '/ustawienia/moduly', p.admin)).body).toContain('role="switch" aria-checked="false" aria-label="Stali klienci"');
+    expect((await get(p.app, '/ustawienia/moduly', p.admin)).body).toContain('role="switch" aria-checked="false" aria-label="Klienci B2B"');
     const menu = await get(p.app, '/', p.admin);
     expect(menu.body).not.toContain('href="/klienci"');
     const odmowa = await get(p.app, '/klienci?nowy', p.admin);
@@ -56,7 +56,7 @@ describe('PRZ-102.02 wyłączanie modułów', () => {
     for (const modul of ['klienci', 'okresy']) {
       const r = await przelacz(p, modul);
       expect(r.statusCode).toBe(409);
-      expect(r.body).toContain('1 stałych klientów z rozliczeniem zbiorczym');
+      expect(r.body).toContain('1 klientów B2B z rozliczeniem zbiorczym');
     }
     expect(p.db.prepare("SELECT * FROM ustawienia WHERE klucz='moduly.wylaczone'").get()).toBeUndefined();
   });
@@ -120,9 +120,9 @@ describe('PRZ-102.02 wyłączanie modułów', () => {
   it('rabaty zostają, a ekran ról objaśnia wyłączony moduł', async () => {
     const p = panel(); klient(p.db, 0);
     expect((await przelacz(p, 'klienci')).statusCode).toBe(303);
-    expect((await get(p.app, '/ustawienia/moduly', p.admin)).body).toContain('1 stałych klientów z rabatem — rabaty nadal działają, edycja po włączeniu modułu');
+    expect((await get(p.app, '/ustawienia/moduly', p.admin)).body).toContain('1 klientów B2B z rabatem — rabaty nadal działają, edycja po włączeniu modułu');
     expect(p.db.prepare('SELECT rabat_procent FROM klienci').get().rabat_procent).toBe(10);
-    expect((await get(p.app, '/ustawienia/role', p.admin)).body).toContain('Stali klienci (moduł wyłączony)');
+    expect((await get(p.app, '/ustawienia/role', p.admin)).body).toContain('Klienci B2B (moduł wyłączony)');
   });
   it('po wyłączeniu Rozliczeń nowa umowa zbiorcza wymaga ponownego włączenia modułu', async () => {
     const p = panel();

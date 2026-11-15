@@ -2,7 +2,8 @@ import type {DatabaseSync} from 'node:sqlite';
 import type {SrodowiskoAllegro,Wynik,Aktor} from '../kontrakty-allegro.ts';
 import type {AplikacjaWewnetrzna,HttpAllegro} from '../../../oms/allegro/dcr.ts';
 import {zarejestrujInstalacje} from '../../../oms/allegro/dcr.ts';
-import {randomUUID} from 'node:crypto';
+import {createHash,randomUUID} from 'node:crypto';
+import {UPRAWNIENIA_OFERT} from '../../../domena/uprawnienia-kanalu.js';
 import {wczytajKonfiguracjeIntegracji,zapiszKonfiguracjeIntegracji} from '../../../oms/db/konfiguracja-integracji.js';
 import {bladAllegro} from '../kontrakty-allegro.ts';
 import {HOSTY_ALLEGRO} from '../../../oms/allegro/dcr.ts';
@@ -19,13 +20,16 @@ const SEKCJE_UPRAWNIEN:Readonly<Record<string,string>>={
  'allegro:api:messaging':'Zarządzanie wiadomościami',
  'allegro:api:disputes':'Zamówienia i obsługa posprzedażowa',
  'allegro:api:profile:read':'Dane osobowe',
+ // PRZ-160 E3.02: opcjonalne, tylko do wystawiania ofert.
+ 'allegro:api:sale:offers:write':'Zarządzanie ofertami',
+ 'allegro:api:sale:settings:read':'Ustawienia sprzedaży',
 };
 const BRAK_UPRAWNIEN='Aplikacja nie ma wszystkich uprawnień. W Zarządzanie aplikacjami zaznacz wszystkie z listy w kroku 0 i zapisz.';
 type ParaDevice={clientId:string;clientSecret:string};
 type KodDevice='walidacja'|'dane_aplikacji'|'typ_aplikacji'|'z_pliku'|'w_uzyciu'|'tymczasowy';
 type WynikDevice={ok:true;dane:{gotowa:boolean}}|{ok:false;kod:KodDevice;komunikat:string;brakujace?:BrakujaceUprawnienie[]};
 const trwajace=new WeakMap<DatabaseSync,Map<string,Promise<Wynik<{gotowa:boolean}>>>>();
-export function createAplikacjaAllegro(o:{db:DatabaseSync;softwareStatementId:string;redirectUri:string;http:HttpAllegro;deviceEnv?:AplikacjeDeviceEnv;userAgent?:string|(()=>string);limitSprawdzaniaMs?:number}){
+export function createAplikacjaAllegro(o:{db:DatabaseSync;softwareStatementId:string;redirectUri:string;http:HttpAllegro;deviceEnv?:AplikacjeDeviceEnv;userAgent?:string|(()=>string);limitSprawdzaniaMs?:number;teraz?:()=>Date}){
  const deviceKey=(s:SrodowiskoAllegro)=>'allegro_aplikacja_device:'+s;
  function aplikacjaDevice(s:SrodowiskoAllegro):(ParaDevice&{zrodlo:'env'|'panel'})|null{
   const zPliku=o.deviceEnv?.[s];
@@ -115,5 +119,37 @@ export function createAplikacjaAllegro(o:{db:DatabaseSync;softwareStatementId:st
   });
   const p=praca.finally(()=>{if(m.get(s)===p)m.delete(s);});m.set(s,p);return p;
  }
- return {aplikacjaDlaInstalacji,zarejestruj,aplikacjaDevice,sprawdzIZapiszAplikacjeDevice,stanAplikacji};
+ // PRZ-160 E3.02 (D42): czy aplikacja Allegro ma zakresy ofert. ⚠️ Znacznik per Client ID (odcisk
+ // sha256, nie sam identyfikator): nowa aplikacja albo zmieniony Client ID nie dziedziczy wyniku.
+ // Zapisuje go WYŁĄCZNIE przycisk „Sprawdź uprawnienia aplikacji” — konto, wersja i tokeny bez zmian.
+ const ofertyKey=(s:SrodowiskoAllegro)=>'allegro_oferty_aplikacja:'+s;
+ const odcisk=(clientId:string)=>createHash('sha256').update(clientId).digest('hex').slice(0,16);
+ const mapaOfert=(s:SrodowiskoAllegro):Record<string,{oferty:boolean;koncowka:string;sprawdzono:string}>=>{
+  const m=wczytajKonfiguracjeIntegracji(o.db,ofertyKey(s))?.ustawienia?.aplikacje;
+  return m&&typeof m==='object'&&!Array.isArray(m)?m:{};
+ };
+ /** true/false = sprawdzone dla tego Client ID; null = nie sprawdzano (albo Client ID się zmienił). */
+ function aplikacjaMaOferty(s:SrodowiskoAllegro,clientId:string):boolean|null{
+  if(!['produkcja','sandbox'].includes(s)||!clientId)return null;
+  const w=mapaOfert(s)[odcisk(clientId)];
+  return typeof w?.oferty==='boolean'?w.oferty:null;
+ }
+ /** Próbne /device z samymi zakresami ofert. Kodu urządzenia nie czytamy ani nie używamy; nic poza
+  * znacznikiem nie jest zapisywane. Bez `blokadaDevice` — sprawdza aplikację w użyciu (panel, plik, legacy). */
+ async function sprawdzOferty(s:SrodowiskoAllegro,para:ParaDevice&{userAgent?:string},aktor:Aktor):Promise<Wynik<{oferty:boolean}>>{
+  if(!['produkcja','sandbox'].includes(s)||![para?.clientId,para?.clientSecret].every(v=>typeof v==='string'&&v.length>0))return bladAllegro('walidacja','Aplikacja Allegro tego konta nie jest skonfigurowana.');
+  const ua=para.userAgent??(o.userAgent?typeof o.userAgent==='function'?o.userAgent():o.userAgent:undefined);
+  let oferty:boolean;
+  try{
+   const r=await o.http(HOSTY_ALLEGRO[s].auth+'/device',{method:'POST',redirect:'error',signal:AbortSignal.timeout(30000),headers:{Accept:'application/json','Content-Type':'application/x-www-form-urlencoded',Authorization:'Basic '+Buffer.from(para.clientId+':'+para.clientSecret).toString('base64'),...(ua?{'User-Agent':ua}:{})},body:new URLSearchParams({client_id:para.clientId,scope:UPRAWNIENIA_OFERT.join(' ')}).toString()});
+   const d=await r.json().catch(()=>null);
+   if(r.ok&&typeof d?.device_code==='string'&&d.device_code)oferty=true;
+   else if(r.status===400&&d?.error==='invalid_scope')oferty=false;
+   else return bladAllegro('tymczasowy','Nie udało się sprawdzić uprawnień aplikacji Allegro. Spróbuj ponownie.');
+  }catch{return bladAllegro('tymczasowy','Nie udało się sprawdzić uprawnień aplikacji Allegro. Spróbuj ponownie.');}
+  const teraz=(o.teraz??(()=>new Date()))();
+  zapiszKonfiguracjeIntegracji(o.db,ofertyKey(s),{ustawienia:{aplikacje:{...mapaOfert(s),[odcisk(para.clientId)]:{oferty,koncowka:para.clientId.slice(-4),sprawdzono:teraz.toISOString()}}},sekrety:{}},{konto:aktor as any,teraz});
+  return {ok:true,dane:{oferty}};
+ }
+ return {aplikacjaDlaInstalacji,zarejestruj,aplikacjaDevice,sprawdzIZapiszAplikacjeDevice,stanAplikacji,aplikacjaMaOferty,sprawdzOferty};
 }

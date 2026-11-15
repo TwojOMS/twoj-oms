@@ -31,7 +31,7 @@ it('import dwa razy: zgłoszenie na karcie, bez duplikatu i bez numeru konta w c
     for (let i = 0; i < 2; i++) {
       await poller.przebieg();
       const wiersze = p.db.prepare('SELECT * FROM zamowienia WHERE sklep=?').all('nietypowy');
-      expect(wiersze).toHaveLength(15);
+      expect(wiersze).toHaveLength(30);
       expect(JSON.stringify(wiersze)).not.toContain(numerKonta);
       expect(JSON.stringify(wiersze)).not.toContain('bankAccount');
       const z = wiersze.find(w => w.zrodlo_id === surowe.id);

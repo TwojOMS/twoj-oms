@@ -61,9 +61,12 @@ describe('PRZ-067 górny pasek: ustawienia, motyw, konto', () => {
     const zwykly = await render(konto({}));
     expect(zwykly.header).not.toContain('Użytkownicy i uprawnienia');
   });
-  it('boczne menu nie ma ustawień ani bloku konta', async () => {
+  it('boczne menu ma Ustawienia tylko jako grupę na dole i nie ma bloku konta', async () => {
     const { aside } = await render(konto({admin:true,rola:'administrator'}));
-    expect(aside).not.toContain('href="/ustawienia"');
+    // PRZ-167 (właściciel 15.11): Ustawienia także na dole menu bocznego — jako osobna grupa, ikona w pasku zostaje.
+    // Dwa trafienia: menu komputera i menu telefonu w tej samej kolumnie.
+    expect(aside.match(/href="\/ustawienia"/g)).toHaveLength(2);
+    expect(aside).toContain('oms-menu-ustawienia');
     expect(aside).not.toContain('oms-account');
     expect(aside).not.toContain('menu-uzytkownika');
     expect(aside).not.toContain('Wyloguj');

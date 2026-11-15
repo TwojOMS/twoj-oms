@@ -22,7 +22,7 @@ describe('PRZ-154 — szerokość deklarowana przez ekran', () => {
     ['/magazyn', 'tabela'], ['/magazyn/pominiete', 'tabela'],
     ['/koszty', 'tabela'], ['/klienci', 'tabela'], ['/okresy', 'tabela'],
     ['/wiadomosci', 'tabela'], ['/przesylki/podjazdy/historia', 'tabela'],
-    ['/zamowienia/nowe', 'formularz'], ['/cele/nowy', 'formularz'],
+    ['/zamowienia/nowe', 'formularz'],
     ['/konto', 'formularz'], ['/konto/powiadomienia', 'formularz'],
     ['/ustawienia/firma', 'formularz'], ['/ustawienia/statusy', 'karta'],
     ['/ustawienia/zamowienia-i-wysylka', 'karta'],

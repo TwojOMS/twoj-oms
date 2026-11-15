@@ -17,7 +17,7 @@
                 <td><%= fmtDataCzasKrotko(p.utworzony_at) %></td>
                 <td><%= p.kanal %><br><%= p.nazwa_uslugi || p.przewoznik %></td>
                 <td><%= p.numery_listow || '—' %></td>
-                <td><%= termin.date %>, <%= termin.minTime %>–<%= termin.maxTime %></td>
+                <td><%= opisTerminu(termin) %></td>
                 <td><%= p.stan %></td>
                 <td><a href="/przesylki/podjazdy/<%= p.id %>"><%= p.command_id %></a><% if (p.pickup_id) { %><br><%= p.pickup_id %><% } %><% if (p.carrier_pickup_id) { %><br><%= p.carrier_pickup_id %><% } %></td>
               </tr>

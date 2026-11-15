@@ -101,4 +101,24 @@ describe('klient Allegro — podjazdy Wysyłam z Allegro', () => {
     await expect(klient.stanZleceniaPodjazdu('cmd-1'))
       .resolves.toMatchObject({ id: 'cmd-1', status: 'IN_PROGRESS', retryAfterS: 1800 });
   });
+  // PRZ-160 P4.02: przewoźnik bez godzin (np. Allegro One) — zlecenie z samą datą, bez pustych kluczy.
+  it('zleca podjazd z samą datą: pickupTime = { date } bez minTime/maxTime', async () => {
+    const { klient, wolania } = klientZeSzpiegiem([{ ok: true, status: 201, json: async () => ({ status: 'IN_PROGRESS' }) }]);
+    await klient.zlecPodjazd({ commandId: 'cmd-data', input: { shipmentIds: ['shipment-1'], pickupTime: { date: '2026-09-23' }, address: adres } });
+    expect(wolania).toHaveLength(1);
+    const body = JSON.parse(wolania[0].opcje.body);
+    expect(body.input.pickupTime).toEqual({ date: '2026-09-23' });
+    expect(Object.keys(body.input.pickupTime)).toEqual(['date']);
+  });
+
+  it.each([
+    ['bez daty', { minTime: '09:00', maxTime: '13:00' }],
+    ['tylko minTime', { date: '2026-09-23', minTime: '09:00' }],
+    ['tylko maxTime', { date: '2026-09-23', maxTime: '13:00' }],
+  ])('odrzuca pickupTime %s przed wysłaniem', async (_n, zly) => {
+    const { klient, wolania } = klientZeSzpiegiem();
+    await expect(klient.zlecPodjazd({ commandId: 'cmd-zly', input: { shipmentIds: ['shipment-1'], pickupTime: zly, address: adres } }))
+      .rejects.toThrow(/pickupTime/);
+    expect(wolania).toHaveLength(0);
+  });
 });

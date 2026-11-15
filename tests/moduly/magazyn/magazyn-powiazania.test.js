@@ -231,7 +231,8 @@ describe('GET /magazyn/powiazania — gdy nie ma z czym wiazac', () => {
     expect(r.body).toContain('Rejestr kart jest pusty');
     // ⚠️ ASERCJA NA DRODZE WYJSCIA, nie na samym slowie „pusty": bez wskazania przycisku
     // komunikat zostawia czlowieka z ta sama niewiedza, co pusta tabela.
-    expect(r.body).toContain('Utwórz karty z niepowiązanych');
+    expect(r.body).toContain('Magazyn → Importuj');
+    expect(r.body).not.toContain('Utwórz karty z niepowiązanych');
     // I ANI JEDNEGO wiersza oferty — bo nie ma czego przy nim postawic.
     expect(nazwyOfert(r.body)).toEqual([]);
   });
@@ -502,13 +503,13 @@ describe('GET /magazyn/powiazania — szukanie i kolejnosc z adresu', () => {
 });
 
 describe('wejscie na ekran powiazan', () => {
-  it('ekran magazynu prowadzi na powiazania odnosnikiem', async () => {
+  it('ekran importu prowadzi na powiazania odnosnikiem', async () => {
     // Bez tego odnosnika trasa istnieje wylacznie dla kogos, kto zna adres.
-    // ⚠️ Od 10.09.2026 odnosnik niesie `?wroc=…` (adres powrotu na TE liste, 4.13d) — ten
-    // test pilnuje WEJSCIA na ekran, a nie ksztaltu adresu, wiec dopuszcza oba warianty.
-    // Sam adres powrotu ma wlasne asercje nizej.
-    const r = await get(serwer(), '/magazyn');
-    expect(r.body).toMatch(/<a class="link-edytuj" href="\/magazyn\/powiazania(\?[^"]*)?">/);
+    // ⚠️ PRZ-160 P3b.03b: odnośnik zszedł z listy magazynu na ekran importu (`/magazyn/import`),
+    // do którego lista prowadzi przyciskiem „Importuj" w nagłówku.
+    const r = await get(serwer(), '/magazyn/import');
+    expect(r.body).toMatch(/<a href="\/magazyn\/powiazania">Powiąż ręcznie oferty z kartami →<\/a>/);
+    expect((await get(serwer(), '/magazyn')).body).toContain('href="/magazyn/import"');
   });
 
   // ---------------------------------------------------------------------------------
@@ -521,9 +522,6 @@ describe('wejscie na ekran powiazan', () => {
   // ---------------------------------------------------------------------------------
   describe('powrót na zawężony magazyn', () => {
     const ZAWEZENIE = '/magazyn?fraza=kandelabr&brak=sku';
-    // Adres, ktory lista SKLADA jako swoj wlasny (adresPowrotuListy) — z kolejnoscia,
-    // bo powrot ma odtworzyc ekran, a nie samo zawezenie.
-    const ZAWEZENIE_Z_LISTY = ZAWEZENIE + '&sort=nazwa&kier=asc';
     const ESC = ZAWEZENIE.replace(/&/g, '&amp;');
     const odnosnikPowrotu = (body) => {
       const m = body.match(/<p class="wroc">[\s\S]*?<\/p>/);
@@ -531,11 +529,13 @@ describe('wejscie na ekran powiazan', () => {
       return m[0];
     };
 
-    it('odnośnik z listy magazynu niesie zawężenie, na którym stoi operator', async () => {
+    // PRZ-160 P3b.03b: lista nie prowadzi już na powiązania wprost (wejście jest z ekranu importu);
+    // sam ekran powiązań nadal przyjmuje `wroc` — testy niżej.
+    it('lista magazynu nie ma już odnośnika do powiązań', async () => {
       kartaO('Kandelabr 70x100');
       const app = serwer();
       const r = await get(app, ZAWEZENIE);
-      expect(r.body).toContain(`href="/magazyn/powiazania?wroc=${encodeURIComponent(ZAWEZENIE_Z_LISTY)}"`);
+      expect(r.body).not.toContain('href="/magazyn/powiazania');
     });
 
     it('ekran powiązań odsyła tam, skąd kliknięto', async () => {

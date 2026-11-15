@@ -43,7 +43,7 @@ it('karta zachowuje treść okresu i klienta, a po wyłączeniu usuwa tylko odno
   for (const fragment of ['<a href="/okresy/1">faktura za październik 2026</a>',
     // PRZ-152.G9a2: pasek salda „pieniądze idą na okres …” zastąpiły cztery liczby — odnośnik do okresu niesie zdanie „…na okresie …”.
     '<a href="/okresy/1">okresie październik 2026</a>',
-    '<a href="/faktury">Faktury</a>', '<a href="/klienci/1">Pracownia Przykładowa</a>']) {
+    '<a href="/faktury">Faktury</a>', '<a href="/klienci/1/karta">Pracownia Przykładowa</a>']) {
     expect(wlaczona.body).toContain(fragment);
   }
   // Taki rozliczony okres faktycznie pozwala wyłączyć oba moduły przez ekran Ustawień.
@@ -58,11 +58,11 @@ it('karta zachowuje treść okresu i klienta, a po wyłączeniu usuwa tylko odno
 });
 it.each([true, false])('nowe zamówienie: odnośnik do klientów z bazą=%s', async zKlientem => {
   const p = panel(zKlientem);
-  expect((await get(p.app, '/zamowienia/nowe', BASIC)).body).toContain('<a href="/klienci">Stali klienci</a>');
+  expect((await get(p.app, '/zamowienia/nowe', BASIC)).body).toContain('<a href="/klienci">Klienci B2B</a>');
   wylacz(p, ['klienci']);
   const r = await get(p.app, '/zamowienia/nowe', BASIC);
   expect(r.statusCode).toBe(200);
-  expect(r.body).toContain('Stali klienci (moduł wyłączony)');
+  expect(r.body).toContain('Klienci B2B (moduł wyłączony)');
   expect(r.body).not.toContain('href="/klienci');
 });
 it('faktury: obie tabele zachowują nazwę okresu bez linku po wyłączeniu', async () => {

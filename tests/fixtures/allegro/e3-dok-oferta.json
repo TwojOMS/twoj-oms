@@ -1,0 +1,55 @@
+{
+  "_zrodlo": "Kształty z dokumentacji Allegro (A1: POST /sale/product-offers, A2: lista ofert, A4: operacje). Dane zmyślone — katalog lamp „Pracownia Półcień”.",
+  "zadanie": {
+    "name": "Lampa wisząca Kopuła, stal malowana, 40 cm",
+    "productSet": [
+      {
+        "product": {
+          "id": "5909990000014",
+          "idType": "GTIN"
+        },
+        "responsibleProducer": { "type": "ID", "id": "producent-przyklad-1" },
+        "safetyInformation": { "type": "TEXT", "description": "Przykładowa informacja o bezpieczeństwie." }
+      }
+    ],
+    "parameters": [
+      { "id": "11323", "valuesIds": ["11323_1"] }
+    ],
+    "sellingMode": { "price": { "amount": "189.90", "currency": "PLN" } },
+    "stock": { "available": 4 },
+    "external": { "id": "oms-LMP-WIS-001" },
+    "publication": { "status": "INACTIVE" },
+    "language": "pl-PL"
+  },
+  "odpowiedz201": {
+    "id": "17000000000101",
+    "name": "Lampa wisząca Kopuła, stal malowana, 40 cm",
+    "publication": { "status": "INACTIVE" },
+    "validation": { "errors": [], "warnings": [] },
+    "external": { "id": "oms-LMP-WIS-001" }
+  },
+  "odpowiedz202": {
+    "naglowki": {
+      "location": "/sale/product-offers/17000000000102/operations/0b1c2d3e-0000-4000-8000-000000000001",
+      "retry-after": "5"
+    },
+    "cialo": {
+      "id": "17000000000102",
+      "name": "Lampa wisząca Kopuła, stal malowana, 40 cm",
+      "publication": { "status": "INACTIVE" }
+    }
+  },
+  "operacja303": {
+    "naglowki": { "location": "/sale/product-offers/17000000000102" }
+  },
+  "listaFiltrZignorowany": {
+    "offers": [
+      { "id": "17000000000101", "name": "Lampa wisząca Kopuła, 40 cm", "external": { "id": "oms-LMP-WIS-001" } },
+      { "id": "17000000000103", "name": "Klosz szklany mleczny, 20 cm", "external": { "id": "oms-LMP-ABA-003" } },
+      { "id": "17000000000104", "name": "Żarówka LED E27 filament", "external": null },
+      { "id": "17000000000105", "name": "Lampa wisząca Kopuła, 60 cm", "external": { "id": "oms-LMP-WIS-001-x" } }
+    ],
+    "count": 4,
+    "totalCount": 4
+  }
+}

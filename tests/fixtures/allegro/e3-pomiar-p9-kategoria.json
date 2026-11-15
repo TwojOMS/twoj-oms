@@ -1,0 +1,1537 @@
+{
+ "_opis": "P9 (pomiar 12.11), zanonimizowane: kształt odpowiedzi Allegro, nazwy marek i kategorii zmyślone; słownik marek skrócony z ok. 12 tys. do 262 wartości.",
+ "sciezka": [
+  {
+   "id": "5",
+   "name": "Dom i Ogród",
+   "parent": null,
+   "leaf": false,
+   "options": {
+    "productCreationEnabled": false
+   }
+  },
+  {
+   "id": "256",
+   "name": "Oświetlenie",
+   "parent": {
+    "id": "5"
+   },
+   "leaf": false,
+   "options": {
+    "productCreationEnabled": false
+   }
+  },
+  {
+   "id": "257",
+   "name": "Lampy stołowe",
+   "parent": {
+    "id": "256"
+   },
+   "leaf": true,
+   "options": {
+    "advertisement": false,
+    "offersWithProductPublicationEnabled": true,
+    "productCreationEnabled": true,
+    "productEANRequired": false,
+    "customParametersEnabled": true
+   }
+  }
+ ],
+ "parametry": {
+  "parameters": [
+   {
+    "id": "11323",
+    "name": "Stan",
+    "type": "dictionary",
+    "required": true,
+    "requiredForProduct": false,
+    "requiredIf": null,
+    "displayedIf": null,
+    "unit": null,
+    "options": {
+     "variantsAllowed": false,
+     "variantsEqual": false,
+     "ambiguousValueId": null,
+     "dependsOnParameterId": null,
+     "describesProduct": false,
+     "customValuesEnabled": false
+    },
+    "dictionary": [
+     {
+      "id": "11323_1",
+      "value": "Nowy",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "11323_2",
+      "value": "Używany",
+      "dependsOnValueIds": []
+     }
+    ],
+    "restrictions": {
+     "multipleChoices": false
+    }
+   },
+   {
+    "id": "248811",
+    "name": "Marka",
+    "type": "dictionary",
+    "required": true,
+    "requiredForProduct": true,
+    "requiredIf": null,
+    "displayedIf": null,
+    "unit": null,
+    "options": {
+     "variantsAllowed": true,
+     "variantsEqual": false,
+     "ambiguousValueId": null,
+     "dependsOnParameterId": null,
+     "describesProduct": true,
+     "customValuesEnabled": false
+    },
+    "dictionary": [
+     {
+      "id": "248811_100001",
+      "value": "Pracownia 001",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100002",
+      "value": "Pracownia 002",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100003",
+      "value": "Pracownia 003",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100004",
+      "value": "Pracownia 004",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100005",
+      "value": "Pracownia 005",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100006",
+      "value": "Pracownia 006",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100007",
+      "value": "Pracownia 007",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_777001",
+      "value": "Półcień",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100008",
+      "value": "Pracownia 008",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100009",
+      "value": "Pracownia 009",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100010",
+      "value": "Pracownia 010",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100011",
+      "value": "Pracownia 011",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100012",
+      "value": "Pracownia 012",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100013",
+      "value": "Pracownia 013",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100014",
+      "value": "Pracownia 014",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100015",
+      "value": "Pracownia 015",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100016",
+      "value": "Pracownia 016",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100017",
+      "value": "Pracownia 017",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100018",
+      "value": "Pracownia 018",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100019",
+      "value": "Pracownia 019",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100020",
+      "value": "Pracownia 020",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100021",
+      "value": "Pracownia 021",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100022",
+      "value": "Pracownia 022",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100023",
+      "value": "Pracownia 023",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100024",
+      "value": "Pracownia 024",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100025",
+      "value": "Pracownia 025",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100026",
+      "value": "Pracownia 026",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100027",
+      "value": "Pracownia 027",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100028",
+      "value": "Pracownia 028",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100029",
+      "value": "Pracownia 029",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100030",
+      "value": "Pracownia 030",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100031",
+      "value": "Pracownia 031",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100032",
+      "value": "Pracownia 032",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100033",
+      "value": "Pracownia 033",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100034",
+      "value": "Pracownia 034",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100035",
+      "value": "Pracownia 035",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100036",
+      "value": "Pracownia 036",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100037",
+      "value": "Pracownia 037",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100038",
+      "value": "Pracownia 038",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100039",
+      "value": "Pracownia 039",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100040",
+      "value": "Pracownia 040",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100041",
+      "value": "Pracownia 041",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100042",
+      "value": "Pracownia 042",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100043",
+      "value": "Pracownia 043",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100044",
+      "value": "Pracownia 044",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100045",
+      "value": "Pracownia 045",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100046",
+      "value": "Pracownia 046",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100047",
+      "value": "Pracownia 047",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100048",
+      "value": "Pracownia 048",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100049",
+      "value": "Pracownia 049",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100050",
+      "value": "Pracownia 050",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100051",
+      "value": "Pracownia 051",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100052",
+      "value": "Pracownia 052",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100053",
+      "value": "Pracownia 053",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100054",
+      "value": "Pracownia 054",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100055",
+      "value": "Pracownia 055",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100056",
+      "value": "Pracownia 056",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100057",
+      "value": "Pracownia 057",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100058",
+      "value": "Pracownia 058",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100059",
+      "value": "Pracownia 059",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100060",
+      "value": "Pracownia 060",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100061",
+      "value": "Pracownia 061",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100062",
+      "value": "Pracownia 062",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100063",
+      "value": "Pracownia 063",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100064",
+      "value": "Pracownia 064",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100065",
+      "value": "Pracownia 065",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100066",
+      "value": "Pracownia 066",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100067",
+      "value": "Pracownia 067",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100068",
+      "value": "Pracownia 068",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100069",
+      "value": "Pracownia 069",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100070",
+      "value": "Pracownia 070",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100071",
+      "value": "Pracownia 071",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100072",
+      "value": "Pracownia 072",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100073",
+      "value": "Pracownia 073",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100074",
+      "value": "Pracownia 074",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100075",
+      "value": "Pracownia 075",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100076",
+      "value": "Pracownia 076",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100077",
+      "value": "Pracownia 077",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100078",
+      "value": "Pracownia 078",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100079",
+      "value": "Pracownia 079",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100080",
+      "value": "Pracownia 080",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100081",
+      "value": "Pracownia 081",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100082",
+      "value": "Pracownia 082",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100083",
+      "value": "Pracownia 083",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100084",
+      "value": "Pracownia 084",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100085",
+      "value": "Pracownia 085",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100086",
+      "value": "Pracownia 086",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100087",
+      "value": "Pracownia 087",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100088",
+      "value": "Pracownia 088",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100089",
+      "value": "Pracownia 089",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100090",
+      "value": "Pracownia 090",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100091",
+      "value": "Pracownia 091",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100092",
+      "value": "Pracownia 092",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100093",
+      "value": "Pracownia 093",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100094",
+      "value": "Pracownia 094",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100095",
+      "value": "Pracownia 095",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100096",
+      "value": "Pracownia 096",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100097",
+      "value": "Pracownia 097",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100098",
+      "value": "Pracownia 098",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100099",
+      "value": "Pracownia 099",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100100",
+      "value": "Pracownia 100",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100101",
+      "value": "Pracownia 101",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100102",
+      "value": "Pracownia 102",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100103",
+      "value": "Pracownia 103",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100104",
+      "value": "Pracownia 104",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100105",
+      "value": "Pracownia 105",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100106",
+      "value": "Pracownia 106",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100107",
+      "value": "Pracownia 107",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100108",
+      "value": "Pracownia 108",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100109",
+      "value": "Pracownia 109",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100110",
+      "value": "Pracownia 110",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100111",
+      "value": "Pracownia 111",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100112",
+      "value": "Pracownia 112",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100113",
+      "value": "Pracownia 113",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100114",
+      "value": "Pracownia 114",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100115",
+      "value": "Pracownia 115",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100116",
+      "value": "Pracownia 116",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100117",
+      "value": "Pracownia 117",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100118",
+      "value": "Pracownia 118",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100119",
+      "value": "Pracownia 119",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100120",
+      "value": "Pracownia 120",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100121",
+      "value": "Pracownia 121",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100122",
+      "value": "Pracownia 122",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100123",
+      "value": "Pracownia 123",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100124",
+      "value": "Pracownia 124",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100125",
+      "value": "Pracownia 125",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100126",
+      "value": "Pracownia 126",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100127",
+      "value": "Pracownia 127",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100128",
+      "value": "Pracownia 128",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100129",
+      "value": "Pracownia 129",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100130",
+      "value": "Pracownia 130",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_958954",
+      "value": "bez marki",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100131",
+      "value": "Pracownia 131",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100132",
+      "value": "Pracownia 132",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100133",
+      "value": "Pracownia 133",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100134",
+      "value": "Pracownia 134",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100135",
+      "value": "Pracownia 135",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100136",
+      "value": "Pracownia 136",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100137",
+      "value": "Pracownia 137",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100138",
+      "value": "Pracownia 138",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100139",
+      "value": "Pracownia 139",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100140",
+      "value": "Pracownia 140",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100141",
+      "value": "Pracownia 141",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100142",
+      "value": "Pracownia 142",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100143",
+      "value": "Pracownia 143",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100144",
+      "value": "Pracownia 144",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100145",
+      "value": "Pracownia 145",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100146",
+      "value": "Pracownia 146",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100147",
+      "value": "Pracownia 147",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100148",
+      "value": "Pracownia 148",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100149",
+      "value": "Pracownia 149",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100150",
+      "value": "Pracownia 150",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100151",
+      "value": "Pracownia 151",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100152",
+      "value": "Pracownia 152",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100153",
+      "value": "Pracownia 153",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100154",
+      "value": "Pracownia 154",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100155",
+      "value": "Pracownia 155",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100156",
+      "value": "Pracownia 156",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100157",
+      "value": "Pracownia 157",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100158",
+      "value": "Pracownia 158",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100159",
+      "value": "Pracownia 159",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100160",
+      "value": "Pracownia 160",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100161",
+      "value": "Pracownia 161",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100162",
+      "value": "Pracownia 162",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100163",
+      "value": "Pracownia 163",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100164",
+      "value": "Pracownia 164",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100165",
+      "value": "Pracownia 165",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100166",
+      "value": "Pracownia 166",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100167",
+      "value": "Pracownia 167",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100168",
+      "value": "Pracownia 168",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100169",
+      "value": "Pracownia 169",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100170",
+      "value": "Pracownia 170",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100171",
+      "value": "Pracownia 171",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100172",
+      "value": "Pracownia 172",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100173",
+      "value": "Pracownia 173",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100174",
+      "value": "Pracownia 174",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100175",
+      "value": "Pracownia 175",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100176",
+      "value": "Pracownia 176",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100177",
+      "value": "Pracownia 177",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100178",
+      "value": "Pracownia 178",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100179",
+      "value": "Pracownia 179",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100180",
+      "value": "Pracownia 180",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100181",
+      "value": "Pracownia 181",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100182",
+      "value": "Pracownia 182",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100183",
+      "value": "Pracownia 183",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100184",
+      "value": "Pracownia 184",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100185",
+      "value": "Pracownia 185",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100186",
+      "value": "Pracownia 186",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100187",
+      "value": "Pracownia 187",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100188",
+      "value": "Pracownia 188",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100189",
+      "value": "Pracownia 189",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100190",
+      "value": "Pracownia 190",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100191",
+      "value": "Pracownia 191",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100192",
+      "value": "Pracownia 192",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100193",
+      "value": "Pracownia 193",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100194",
+      "value": "Pracownia 194",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100195",
+      "value": "Pracownia 195",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100196",
+      "value": "Pracownia 196",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100197",
+      "value": "Pracownia 197",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100198",
+      "value": "Pracownia 198",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100199",
+      "value": "Pracownia 199",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100200",
+      "value": "Pracownia 200",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100201",
+      "value": "Pracownia 201",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100202",
+      "value": "Pracownia 202",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100203",
+      "value": "Pracownia 203",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100204",
+      "value": "Pracownia 204",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100205",
+      "value": "Pracownia 205",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100206",
+      "value": "Pracownia 206",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100207",
+      "value": "Pracownia 207",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100208",
+      "value": "Pracownia 208",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100209",
+      "value": "Pracownia 209",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100210",
+      "value": "Pracownia 210",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100211",
+      "value": "Pracownia 211",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100212",
+      "value": "Pracownia 212",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100213",
+      "value": "Pracownia 213",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100214",
+      "value": "Pracownia 214",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100215",
+      "value": "Pracownia 215",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100216",
+      "value": "Pracownia 216",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100217",
+      "value": "Pracownia 217",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100218",
+      "value": "Pracownia 218",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100219",
+      "value": "Pracownia 219",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100220",
+      "value": "Pracownia 220",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100221",
+      "value": "Pracownia 221",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100222",
+      "value": "Pracownia 222",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100223",
+      "value": "Pracownia 223",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100224",
+      "value": "Pracownia 224",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100225",
+      "value": "Pracownia 225",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100226",
+      "value": "Pracownia 226",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100227",
+      "value": "Pracownia 227",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100228",
+      "value": "Pracownia 228",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100229",
+      "value": "Pracownia 229",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100230",
+      "value": "Pracownia 230",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100231",
+      "value": "Pracownia 231",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100232",
+      "value": "Pracownia 232",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100233",
+      "value": "Pracownia 233",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100234",
+      "value": "Pracownia 234",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100235",
+      "value": "Pracownia 235",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100236",
+      "value": "Pracownia 236",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100237",
+      "value": "Pracownia 237",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100238",
+      "value": "Pracownia 238",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100239",
+      "value": "Pracownia 239",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100240",
+      "value": "Pracownia 240",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100241",
+      "value": "Pracownia 241",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100242",
+      "value": "Pracownia 242",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100243",
+      "value": "Pracownia 243",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100244",
+      "value": "Pracownia 244",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100245",
+      "value": "Pracownia 245",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100246",
+      "value": "Pracownia 246",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100247",
+      "value": "Pracownia 247",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100248",
+      "value": "Pracownia 248",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100249",
+      "value": "Pracownia 249",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100250",
+      "value": "Pracownia 250",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100251",
+      "value": "Pracownia 251",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100252",
+      "value": "Pracownia 252",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100253",
+      "value": "Pracownia 253",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100254",
+      "value": "Pracownia 254",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100255",
+      "value": "Pracownia 255",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100256",
+      "value": "Pracownia 256",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100257",
+      "value": "Pracownia 257",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100258",
+      "value": "Pracownia 258",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100259",
+      "value": "Pracownia 259",
+      "dependsOnValueIds": []
+     },
+     {
+      "id": "248811_100260",
+      "value": "Pracownia 260",
+      "dependsOnValueIds": []
+     }
+    ],
+    "restrictions": {
+     "multipleChoices": false
+    }
+   },
+   {
+    "id": "224017",
+    "name": "Kod producenta",
+    "type": "string",
+    "required": true,
+    "requiredForProduct": false,
+    "requiredIf": null,
+    "displayedIf": null,
+    "unit": null,
+    "options": {
+     "variantsAllowed": false,
+     "variantsEqual": false,
+     "ambiguousValueId": null,
+     "dependsOnParameterId": null,
+     "describesProduct": true,
+     "customValuesEnabled": false
+    },
+    "restrictions": {
+     "minLength": 1,
+     "maxLength": 45,
+     "allowedNumberOfValues": 1
+    }
+   },
+   {
+    "id": "225693",
+    "name": "EAN (GTIN)",
+    "type": "string",
+    "required": false,
+    "requiredForProduct": false,
+    "requiredIf": null,
+    "displayedIf": null,
+    "unit": null,
+    "options": {
+     "variantsAllowed": false,
+     "variantsEqual": false,
+     "ambiguousValueId": null,
+     "dependsOnParameterId": null,
+     "describesProduct": true,
+     "customValuesEnabled": false
+    },
+    "restrictions": {
+     "minLength": 1,
+     "maxLength": 50,
+     "allowedNumberOfValues": 10
+    }
+   },
+   {
+    "id": "201",
+    "name": "Szerokość produktu",
+    "type": "float",
+    "required": false,
+    "requiredForProduct": false,
+    "requiredIf": null,
+    "displayedIf": null,
+    "unit": "cm",
+    "options": {
+     "variantsAllowed": false,
+     "variantsEqual": false,
+     "ambiguousValueId": null,
+     "dependsOnParameterId": null,
+     "describesProduct": true,
+     "customValuesEnabled": false
+    },
+    "restrictions": {
+     "min": 0,
+     "max": 1000,
+     "range": false,
+     "precision": 2
+    }
+   },
+   {
+    "id": "4388",
+    "name": "Rodzaj gwintu",
+    "type": "dictionary",
+    "required": false,
+    "requiredForProduct": false,
+    "unit": null,
+    "requiredIf": {
+     "parametersWithValue": [
+      {
+       "id": "4387",
+       "oneOfValueIds": [
+        "4387_1"
+       ]
+      }
+     ],
+     "parametersWithoutValue": []
+    },
+    "displayedIf": {
+     "parametersWithValue": [
+      {
+       "id": "4387",
+       "oneOfValueIds": [
+        "4387_1"
+       ]
+      }
+     ],
+     "parametersWithoutValue": []
+    },
+    "options": {
+     "variantsAllowed": false,
+     "variantsEqual": false,
+     "ambiguousValueId": null,
+     "dependsOnParameterId": "4387",
+     "describesProduct": true,
+     "customValuesEnabled": false
+    },
+    "dictionary": [
+     {
+      "id": "4388_1",
+      "value": "E14",
+      "dependsOnValueIds": [
+       "4387_1"
+      ]
+     },
+     {
+      "id": "4388_2",
+      "value": "E27",
+      "dependsOnValueIds": [
+       "4387_1"
+      ]
+     }
+    ],
+    "restrictions": {
+     "multipleChoices": false
+    }
+   }
+  ]
+ }
+}

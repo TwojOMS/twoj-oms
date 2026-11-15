@@ -19,13 +19,13 @@ export const PRZYKLADOWA = {
 };
 
 /**
- * Wstawia klienta rozliczanego zbiorczo i oddaje jego `id`.
+ * Odtwarza istniejącego klienta zbiorczego sprzed P2.04 i oddaje jego `id`.
  *
  * ⚠️ Przez `dopiszKlienta`, a nie własnym INSERT-em: własny SQL rozjechałby się z listą
  * kolumn przy pierwszej zmianie tabeli, a testy przestałyby sprawdzać to, co robi panel.
  */
 export function dopiszKlientaZbiorczego(db, nadpisania = {}) {
-  return dopiszKlienta(db, {
+  const id = dopiszKlienta(db, {
     ...PRZYKLADOWA,
     rozliczenie_zbiorcze: 1,
     b2b: 0,
@@ -40,4 +40,9 @@ export function dopiszKlientaZbiorczego(db, nadpisania = {}) {
     wysylka: {},
     ...nadpisania,
   });
+  // P2.04 nie migruje starych kluczy. Te testy okresów muszą nadal obejmować
+  // historyczne klucze niezależne od nazwy; nowe klucze sprawdza klucz-klienta-prz160p2.
+  db.prepare('UPDATE klienci SET klucz = ? WHERE id = ?')
+    .run(nadpisania.klucz ?? PRZYKLADOWA.klucz, id);
+  return id;
 }

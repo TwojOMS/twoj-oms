@@ -8,10 +8,12 @@ import {
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 import { createKorekta } from '../../../src/moduly/zwroty/services/korekta.js';
 import { fileURLToPath } from 'node:url';
-import { wersjaZasobow } from '../../../src/core/web/wersja-zasobow.js';
+import { adresZasobu } from '../../../src/core/web/wersja-zasobow.js';
 
-// PRZ-100: jedyny dopuszczony skrypt ekranu zwrotu — adres z wersją bieżących plików publicznych.
-const SKRYPT_NAWIGACJI = `<script type="module" src="/public/oms-nawigacja.js?v=${wersjaZasobow(fileURLToPath(new URL('../../../src/public', import.meta.url)))}"></script>`;
+// PRZ-160.P1.02: wspólne skrypty układu — adresy z wersją bieżących plików publicznych.
+const zasob = adresZasobu(fileURLToPath(new URL('../../../src/public', import.meta.url)));
+const SKRYPT_PODMENU = `<script src="${zasob('oms-podmenu.js')}"></script>`;
+const SKRYPT_NAWIGACJI = `<script type="module" src="${zasob('oms-nawigacja.js')}"></script>`;
 
 // Ksztalt wziety z tests/oms/api-sprzedaz.test.js — `buildOmsServer` NIE jest asynchroniczne,
 // a config ma `auth: { user, pass }` (nie `authUser`/`authPass`).
@@ -227,12 +229,12 @@ describe('ekran zwrotu — KROK 1: podsumowanie zamowienia i wypelnione kwoty', 
     expect(r.body).toContain('Dalej — sprawdź sumę');
   });
 
-  // ⚠️ Jedynym dopuszczonym skryptem jest wspólna OBSŁUGA MENU. Ekran nadal nie może
+  // ⚠️ Dopuszczone skrypty to wspólna OBSŁUGA MENU. Ekran nadal nie może
   // dostać skryptu przeliczającego sumę na żywo, bo wtedy drugi krok stałby się ozdobą.
-  it('ekran zwrotu ma tylko wspólny skrypt nawigacji, bez logiki przeliczania', async () => {
+  it('ekran zwrotu ma tylko wspólne skrypty układu, bez logiki przeliczania', async () => {
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}/zwrot`, headers: AUTH });
     expect(r.body.match(/<script\b[^>]*>[\s\S]*?<\/script>/gi) ?? []).toEqual([
-      SKRYPT_NAWIGACJI,
+      SKRYPT_PODMENU, SKRYPT_NAWIGACJI,
     ]);
   });
 });
@@ -630,9 +632,9 @@ describe('ekran zwrotu — kwota PODAZA ZA ILOSCIA (pozycja z RABATEM)', () => {
     expect(r.body).toContain('name="ilosc" min="0" max="1" step="1" value="5"');
   });
 
-  // Krok 2 ma tę samą granicę: skrypt menu jest wspólnym sterowaniem, a suma nadal
+  // Krok 2 ma tę samą granicę: skrypty menu są wspólnym sterowaniem, a suma nadal
   // przychodzi wyłącznie z serwera i nie dostaje kodu przeliczającego w przeglądarce.
-  it('krok 2 ma tylko wspólny skrypt nawigacji, bez logiki przeliczania', async () => {
+  it('krok 2 ma tylko wspólne skrypty układu, bez logiki przeliczania', async () => {
     const r = await app.inject({
       method: 'POST',
       url: `/zamowienia/${idRabat}/zwrot/podglad`,
@@ -645,7 +647,7 @@ describe('ekran zwrotu — kwota PODAZA ZA ILOSCIA (pozycja z RABATEM)', () => {
     });
     expect(r.statusCode).toBe(200);
     expect(r.body.match(/<script\b[^>]*>[\s\S]*?<\/script>/gi) ?? []).toEqual([
-      SKRYPT_NAWIGACJI,
+      SKRYPT_PODMENU, SKRYPT_NAWIGACJI,
     ]);
   });
 });

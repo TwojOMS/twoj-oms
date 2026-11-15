@@ -16,6 +16,7 @@ import { createAllegroClient } from '../../src/oms/allegro/client.js';
 import { createErliClient } from '../../src/oms/erli/client.js';
 import { createAtrapaErli } from '../../deploy/proba/atrapy/erli.mjs';
 import { utworzBazeDemo, ENV_DEMO } from '../../scripts/demo-dane.mjs';
+import { katalogWoo, eanDemo, kategoriaAllegroDemo, ofertyAllegro } from '../../scripts/demo-dane-katalog.mjs';
 import { createAtrapaInfaktu } from '../../deploy/proba/atrapy/infakt.mjs';
 import { createDpdClient } from '../../src/oms/kurierzy/dpd.js';
 import { createAtrapaDpd, ODMOWY_DPD, zdarzeniaAtrapyDpd, surowaOdpowiedzDpd } from '../../deploy/proba/atrapy/dpd.mjs';
@@ -25,6 +26,8 @@ import {
 } from '../../deploy/proba/atrapy/inpost.mjs';
 import { openOmsDb } from '../../src/oms/db/db.ts';
 import { dowodOdbioru } from '../../src/domena/dowod-odbioru.js';
+import { opisKategorii, trescOfertyAllegro } from '../../src/domena/tresc-oferty-allegro.js';
+import { poprawnyEan } from '../../src/domena/ean.js';
 import { createAtrapaWoo, createAtrapaAllegro, ODMOWY_WOO, ODMOWY_ALLEGRO } from '../../deploy/proba/atrapy/kanaly.mjs';
 import { createMailer } from '../../src/core/poczta/smtp.js';
 import { createGusClient, METODY_GUS } from '../../src/oms/gus/client.js';
@@ -36,6 +39,8 @@ import { modulyPiaskownicy } from '../../deploy/proba/atrapy/index.mjs';
 import { pocztaZUstawien } from '../../src/moduly/wiadomosci/poczta-ustawien.ts';
 import { createAtrapaPoczty, createModulWiadomosciAtrapy } from '../../deploy/proba/atrapy/poczta.mjs';
 import { wykonajZlecenieResetu, zlecResetDemo } from '../../src/oms/db/reset-demo.js';
+import { createHash } from 'node:crypto';
+import { API_ATRAPY_ALLEGRO, METODY_OFERT_ALLEGRO, createSerwerOfertAllegro } from '../../deploy/proba/atrapy/allegro-oferty.mjs';
 
 // Napis na stronie PDF (pdfkit bez kompresji: tekst jako <hex> w tablicach TJ), nie metadane dokumentu.
 const tekstPdf = (b) => [...b.toString('latin1').matchAll(/\[([^\]]*)\]\s*TJ/g)]
@@ -302,6 +307,45 @@ describe('komplet metod', () => {
     expect(ODMOWY_WOO.filter((m) => !prawdziwy.includes(m))).toEqual([]);
   });
 
+  // PRZ-160.P3b.01: kategorie produktów sklepu — kształt `GET /products/categories` (nazwa z encjami HTML, count).
+  it('atrapa Woo oddaje kategorie produktów: te z katalogu z liczbą produktów, nazwę z encją i pustą', async () => {
+    const lista = await createAtrapaWoo({ db, kanal: 'polcien', env: ENV_DEMO, log: ciche }).pobierzKategorieProduktow();
+    const zKatalogu = new Set(katalogWoo('polcien').produkty.flatMap((p) => p.categories.map((k) => k.id)));
+    expect(lista.length).toBeGreaterThan(zKatalogu.size);
+    for (const k of lista) expect(k).toEqual({ id: expect.any(Number), name: expect.any(String), slug: expect.any(String), parent: expect.any(Number), count: expect.any(Number) });
+    expect(lista.filter((k) => zKatalogu.has(k.id)).every((k) => k.count > 0)).toBe(true);
+    expect(lista.some((k) => k.name.includes('&amp;'))).toBe(true);
+    expect(lista.some((k) => k.count === 0)).toBe(true);
+  });
+
+  // PRZ-160.E3.15: wystawianie ofert działa w piaskownicy na atrapie — żadna metoda E3 nie jest już odmową.
+  it('E3.15: ODMOWY_ALLEGRO nie zawiera metod E3; atrapa ma je wszystkie, demo ma mapę, marki i 4 oferty', async () => {
+    const prawdziwy = metody(createAllegroClient({ ustawienia: { api: 'https://x.invalid', userAgent: 'a/1 (+https://x.invalid)' },
+      tokeny: { waznyToken: async () => 't' }, fetchImpl: async () => { throw new Error('sieć'); } }));
+    expect(METODY_OFERT_ALLEGRO).toHaveLength(21); // E4.19: +komendaPublikacji
+    expect(METODY_OFERT_ALLEGRO.filter((m) => !prawdziwy.includes(m))).toEqual([]);
+    expect(ODMOWY_ALLEGRO.filter((m) => METODY_OFERT_ALLEGRO.includes(m))).toEqual([]);
+    const allegro = createAtrapaAllegro({ db, kanal: 'allegro', env: ENV_DEMO, log: ciche });
+    expect((await allegro.pobierzCenniki()).map((c) => c.name)).toEqual(['Standard']);
+    expect(db.prepare('SELECT kategoria_karty, srodowisko, kategoria_allegro_id FROM allegro_mapa_kategorii').all())
+      .toEqual([{ kategoria_karty: 'Lampy wiszące', srodowisko: 'produkcja', kategoria_allegro_id: '257' }]);
+    const marki = db.prepare('SELECT marka, parametr_id, wartosc_id, kategorie_sprawdzone_json FROM allegro_marki ORDER BY marka').all();
+    expect(marki).toHaveLength(2);
+    const slownik = (await allegro.pobierzParametryKategorii('257')).parameters.find((p) => p.id === '248811').dictionary;
+    for (const m of marki) {
+      expect(m).toMatchObject({ parametr_id: '248811', kategorie_sprawdzone_json: '["257"]' });
+      expect(slownik.find((v) => v.id === m.wartosc_id)?.value, m.marka).toBe(m.marka);
+    }
+    const oferty = db.prepare(`SELECT o.stan, o.id_zewnetrzne, o.problemy_json FROM oferty_kanalow o
+      WHERE o.kanal = 'allegro' AND o.pochodzenie = 'oms' ORDER BY o.id`).all();
+    expect(oferty.map((o) => o.stan).sort()).toEqual(['aktywna', 'nieaktywna', 'problem', 'szkic']);
+    expect(JSON.parse(oferty.find((o) => o.stan === 'problem').problemy_json).length).toBeGreaterThan(0);
+    expect(oferty.find((o) => o.stan === 'szkic').id_zewnetrzne).toMatch(/^ext:/);
+    const status = async (stan) => (await allegro.pobierzOferte(oferty.find((o) => o.stan === stan).id_zewnetrzne)).publication.status;
+    expect(await status('aktywna')).toBe('ACTIVE');
+    expect(await status('nieaktywna')).toBe('INACTIVE');
+  });
+
   it('atrapa Allegro ma każdą metodę createAllegroClient; odmowy to podzbiór metod klienta', () => {
     const prawdziwy = metody(createAllegroClient({ ustawienia: { api: 'https://x.invalid', userAgent: 'a/1 (+https://x.invalid)' },
       tokeny: { waznyToken: async () => 't' }, fetchImpl: async () => { throw new Error('sieć'); } }));
@@ -309,6 +353,32 @@ describe('komplet metod', () => {
     expect(prawdziwy.length).toBeGreaterThanOrEqual(26);
     expect(prawdziwy.filter((m) => !atrapa.includes(m))).toEqual([]);
     expect(ODMOWY_ALLEGRO.filter((m) => !prawdziwy.includes(m))).toEqual([]);
+  });
+
+  // PRZ-160.04a: pełny odczyt oferty i kategorii w piaskownicy — kształt jak `GET /sale/product-offers/{id}` (P8).
+  it('atrapa Allegro oddaje ofertę, kategorię i parametry w pełnym kształcie; obce id = 404', async () => {
+    const allegro = createAtrapaAllegro({ db, kanal: 'allegro', env: ENV_DEMO, log: ciche });
+    const [pierwsza] = await allegro.pobierzOferty();
+    const oferta = await allegro.pobierzOferte(pierwsza.id);
+    const sciezka = [];
+    for (let id = oferta.category.id; id; id = sciezka[0].parent?.id) sciezka.unshift(await allegro.pobierzKategorie(id));
+    const kategoria = opisKategorii(sciezka, await allegro.pobierzParametryKategorii(oferta.category.id));
+    const w = trescOfertyAllegro(oferta, kategoria);
+    expect(w.pola).toEqual({ nazwa: pierwsza.name, ean: expect.stringMatching(/^\d{13}$/), cena_gr: expect.any(Number), stawka_vat: '23' });
+    expect(poprawnyEan(w.pola.ean)).toBe(true);
+    // PRZ-160.08: demo ma 2–3 zdjęcia na ofertę; pierwsze = zdjęcie główne.
+    expect(w.zdjecia[0]).toBe(pierwsza.primaryImage.url);
+    expect(w.zdjecia.length).toBeGreaterThanOrEqual(2);
+    expect(w.zdjecia.length).toBeLessThanOrEqual(3);
+    expect(w.opisSekcje.sekcje[0].elementy.map((e) => e.typ)).toEqual(['zdjecie', 'tekst']);
+    expect(w.daneKanalu).toMatchObject({ kategoria_id: '257', oferta_id: pierwsza.id, ai_wspoltworzone: 0 });
+    expect(w.daneKanalu.sciezka.map((k) => k.nazwa)).toEqual(['Dom i Ogród', 'Oświetlenie', 'Lampy']);
+    expect(w.daneKanalu.parametry.produkt.map((p) => p.id)).toContain('225693');
+    expect(w.daneKanalu.parametry.oferta.map((p) => p.id)).toContain('11323');
+    for (const p of [...w.daneKanalu.parametry.produkt, ...w.daneKanalu.parametry.oferta]) expect(p.typ, p.id).not.toBeNull();
+    for (const zle of [() => allegro.pobierzOferte('1'), () => allegro.pobierzKategorie('1'), () => allegro.pobierzParametryKategorii('1')]) {
+      expect((await zle().catch((e) => e))?.status).toBe(404);
+    }
   });
 
   // PRZ-092: kurier DPD z Ustawień w piaskownicy.
@@ -556,5 +626,199 @@ describe('przebieg przesyłki w atrapach DPD i InPost (PRZ-108.09)', () => {
       expect(await prawdziwy.statusPrzesylki('000000000000000000000001'), `${minut} min`)
         .toEqual(await inpost(teraz).statusPrzesylki('000000000000000000000001'));
     }
+  });
+});
+
+// PRZ-160.E3.15 — atrapa ofert Allegro: surowy serwer HTTP w kształtach z pomiaru, za nim PRAWDZIWY klient Allegro.
+describe('PRZ-160.E3.15 — atrapa ofert Allegro', () => {
+  const T0 = new Date('2026-11-14T10:00:00.000Z');
+  const bazy = [];
+  afterAll(() => bazy.forEach((b) => b.close()));
+  const nowaBaza = () => { const b = new DatabaseSync(':memory:'); bazy.push(b); return b; };
+  const atrapa = (baza = nowaBaza()) => createAtrapaAllegro({ db: baza, kanal: 'allegro', env: ENV_DEMO, log: ciche, teraz: () => T0 });
+  const ofertaNowa = (nazwa, dodatki = {}) => ({
+    name: nazwa, category: { id: '257' }, external: { id: 'LMP-TEST-001' },
+    productSet: [{ product: { name: nazwa, category: { id: '257' }, parameters: [
+      { id: '248811', valuesIds: ['248811_9001'] }, { id: '225693', values: ['2000000000015'] }] } }],
+    sellingMode: { format: 'BUY_NOW', price: { amount: '199.00', currency: 'PLN' } },
+    stock: { available: 3 }, images: ['https://atrapa.invalid/z/abc'], ...dodatki,
+  });
+  const surowy = (baza) => {
+    const { fetchImpl, api } = createSerwerOfertAllegro({ db: baza, kanal: 'allegro', env: ENV_DEMO, teraz: () => T0 });
+    return (metoda, sciezka, cialo, auth = { Authorization: 'Bearer x' }) => fetchImpl(`${api}${sciezka}`, {
+      method: metoda, headers: { ...auth, 'Content-Type': 'application/vnd.allegro.public.v1+json' },
+      ...(cialo ? { body: JSON.stringify(cialo) } : {}) });
+  };
+  const wiersze = (baza, tabela) => baza.prepare(`SELECT count(*) AS n FROM ${tabela}`).get().n;
+
+  it('ta sama sygnatura dwa razy = dwie oferty (POST nie jest idempotentny); aktywacja 202 → 202 → 303', async () => {
+    const a = atrapa();
+    const p1 = await a.utworzOferte(ofertaNowa('Lampa testowa'));
+    const p2 = await a.utworzOferte(ofertaNowa('Lampa testowa'));
+    expect(p1).toMatchObject({ status: 201, operacja: null, dane: { publication: { status: 'INACTIVE' }, validation: { errors: [] } } });
+    expect(p1.ofertaId).toMatch(/^\d{11}$/);
+    expect(p2.ofertaId).not.toBe(p1.ofertaId);
+    expect((await a.ofertyPoSygnaturze('LMP-TEST-001')).map((o) => o.id).sort()).toEqual([p1.ofertaId, p2.ofertaId].sort());
+    const e = await a.edytujOferte(p1.ofertaId, { publication: { status: 'ACTIVE' } });
+    expect(e).toMatchObject({ status: 202, ofertaId: p1.ofertaId, retryAfterS: 1 });
+    expect(e.operacja.startsWith(`${API_ATRAPY_ALLEGRO}/sale/product-offers/${p1.ofertaId}/operations/`)).toBe(true);
+    expect(await a.stanOperacji(e.operacja)).toMatchObject({ status: 202, wToku: true, gotowe: false, retryAfterS: 1 });
+    expect((await a.pobierzOferte(p1.ofertaId)).publication.status).toBe('INACTIVE');
+    expect(await a.stanOperacji(e.operacja)).toMatchObject({ status: 303, gotowe: true,
+      location: `${API_ATRAPY_ALLEGRO}/sale/product-offers/${p1.ofertaId}` });
+    expect((await a.pobierzOferte(p1.ofertaId)).publication.status).toBe('ACTIVE');
+    expect((await a.stanOperacji(e.operacja)).status).toBe(303);
+    // Stan 0 na aktywnej ofercie kończy ją (bez operacji: zmiana bez publikacji jest synchroniczna).
+    expect(await a.edytujOferte(p1.ofertaId, { stock: { available: 0 } })).toMatchObject({ status: 200, operacja: null });
+    expect((await a.pobierzOferte(p1.ofertaId)).publication.status).toBe('ENDED');
+    // ENDED na nieaktywnym szkicu: 202, a operacja kończy się 422.
+    const k = await a.edytujOferte(p2.ofertaId, { publication: { status: 'ENDED' } });
+    expect(k.status).toBe(202);
+    await a.stanOperacji(k.operacja);
+    await expect(a.stanOperacji(k.operacja)).rejects.toMatchObject({ status: 422 });
+    await expect(a.stanOperacji(`${API_ATRAPY_ALLEGRO}/sale/product-offers/${p2.ofertaId}/operations/nie-ma`)).rejects.toMatchObject({ status: 404 });
+    // Od razu ACTIVE przy poprawnej ofercie = 202 z operacją.
+    const n = await a.utworzOferte(ofertaNowa('Lampa od razu', { publication: { status: 'ACTIVE' } }));
+    expect(n.status).toBe(202);
+    expect(n.operacja).toContain(`/sale/product-offers/${n.ofertaId}/operations/`);
+  });
+
+  it('„[błąd]” daje szkic z błędem walidacji, „[duplikat]” — szkic, którego nie da się aktywować', async () => {
+    const baza = nowaBaza();
+    const a = atrapa(baza);
+    const b = await a.utworzOferte(ofertaNowa('Lampa [błąd]'));
+    expect(b.status).toBe(201);
+    expect(b.dane.validation.errors).toEqual([expect.objectContaining({
+      code: 'ConstraintViolationException.AfterSalesServiceConditionsRequiredByCompany' })]);
+    await expect(a.edytujOferte(b.ofertaId, { publication: { status: 'ACTIVE' } })).rejects.toMatchObject({ status: 422 });
+    const d = await a.utworzOferte(ofertaNowa('Lampa [duplikat]'));
+    expect(d.status).toBe(201);
+    await expect(a.edytujOferte(d.ofertaId, { publication: { status: 'ACTIVE' } })).rejects.toThrow(/duplikat/);
+    const przed = wiersze(baza, 'atrapa_allegro_oferty');
+    await expect(a.utworzOferte(ofertaNowa('Lampa [duplikat]', { publication: { status: 'ACTIVE' } }))).rejects.toThrow(/duplikat/);
+    expect(wiersze(baza, 'atrapa_allegro_oferty')).toBe(przed);
+  });
+
+  it('surowy serwer: brak parametrów produktu 422 bez zapisu, PARAMETER_MISMATCH, 401 bez Bearer, 404 obcej ścieżki', async () => {
+    const baza = nowaBaza();
+    const http = surowy(baza);
+    const bez = ofertaNowa('Bez parametrów');
+    bez.productSet[0].product.parameters = [];
+    const r = await http('POST', '/sale/product-offers', bez);
+    expect(r.status).toBe(422);
+    expect((await r.json()).errors[0]).toMatchObject({ code: 'ProductValidationException', path: 'productSet[0].product.parameters',
+      metadata: { missingParameterNames: 'Marka, EAN (GTIN)', missingParameterIds: '248811, 225693', categoryId: '257' } });
+    expect(wiersze(baza, 'atrapa_allegro_oferty')).toBe(0);
+    const produkt = (ean) => ({ ...ofertaNowa('Z katalogu'), productSet: [{ product: { id: '00000000-0000-4000-8000-000000000001',
+      parameters: [{ id: '225693', values: [ean] }] } }] });
+    const zly = await http('POST', '/sale/product-offers', produkt(eanDemo(2)));
+    expect(zly.status).toBe(422);
+    expect((await zly.json()).errors[0]).toMatchObject({ code: 'PARAMETER_MISMATCH',
+      metadata: { productId: '00000000-0000-4000-8000-000000000001', parameterId: '225693' } });
+    const dobry = await http('POST', '/sale/product-offers', produkt(eanDemo(1)));
+    expect(dobry.status).toBe(201);
+    expect(dobry.headers.get('Location')).toBe(`${API_ATRAPY_ALLEGRO}/sale/product-offers/${(await dobry.json()).id}`);
+    expect((await http('GET', '/sale/shipping-rates', null, {})).status).toBe(401);
+    expect((await http('GET', '/sale/nie-ma-takiej')).status).toBe(404);
+  });
+
+  it('produkty po EAN: 1 trafienie z katalogu demo, 2 dla prefiksu 2009, 0 dla obcego', async () => {
+    const a = atrapa();
+    expect(await a.szukajProduktow(eanDemo(1))).toEqual([expect.objectContaining({ id: '00000000-0000-4000-8000-000000000001' })]);
+    expect(await a.szukajProduktow('2009000000001')).toHaveLength(2);
+    expect(await a.szukajProduktow('5901234123457')).toEqual([]);
+  });
+
+  it('komendy ilości i ceny: taskCount, idempotencja, 409, zadania SUCCESS/FAIL, skutek na ofercie', async () => {
+    const a = atrapa();
+    const { oferty, razem } = await a.ofertyKonta();
+    expect(razem).toBe(oferty.length);
+    expect(oferty.length).toBe(ofertyAllegro('allegro').length + 2);
+    const [x, y] = oferty;
+    const pozycje = [{ ofertaId: x.id, ilosc: 0 }, { ofertaId: '99999999999', ilosc: 0 }];
+    const k1 = await a.komendaIlosci('kom-1', pozycje);
+    expect(k1).toMatchObject({ id: 'kom-1', taskCount: { total: 2, success: 1, failed: 1 } });
+    expect(await a.komendaIlosci('kom-1', pozycje)).toEqual(k1);
+    await expect(a.komendaIlosci('kom-1', [{ ofertaId: x.id, ilosc: 5 }])).rejects.toMatchObject({ status: 409 });
+    expect(await a.wynikKomendy('ilosc', 'kom-1')).toEqual([
+      expect.objectContaining({ offer: { id: x.id }, status: 'SUCCESS' }),
+      expect.objectContaining({ offer: { id: '99999999999' }, status: 'FAIL', message: expect.any(String) })]);
+    const po = await a.pobierzOferte(x.id);
+    expect([po.stock.available, po.publication.status]).toEqual([0, 'ENDED']);
+    await a.komendaCeny('kom-2', [{ ofertaId: y.id, cena: '149.90' }]);
+    expect((await a.pobierzOferte(y.id)).sellingMode.price.amount).toBe('149.90');
+    expect((await a.ofertyKonta()).oferty.find((o) => o.id === y.id).sellingMode.price.amount).toBe('149.90');
+    await expect(a.wynikKomendy('cena', 'nie-ma')).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('zdjęcia: adres z sha, ważność 6 h, 413 ponad 25 MiB; 17 zdjęć i sygnatura ponad 100 znaków = 422', async () => {
+    const baza = nowaBaza();
+    const a = atrapa(baza);
+    const bajty = new Uint8Array([1, 2, 3]);
+    const sha = createHash('sha256').update(bajty).digest('hex');
+    const z = await a.wgrajZdjecie(bajty, 'image/png');
+    expect(z).toEqual({ location: `https://atrapa.invalid/z/${sha}`, expiresAt: '2026-11-14T16:00:00.000Z' });
+    expect(baza.prepare('SELECT sha, adres, wygasa_at FROM atrapa_allegro_zdjecia').all())
+      .toEqual([{ sha, adres: z.location, wygasa_at: z.expiresAt }]);
+    await expect(a.wgrajZdjecie(new Uint8Array(26214401), 'image/jpeg')).rejects.toMatchObject({ status: 413 });
+    const zdjecia = (n) => Array.from({ length: n }, (_, i) => `https://atrapa.invalid/z/${i}`);
+    expect((await a.utworzOferte(ofertaNowa('Szesnaście', { images: zdjecia(16) }))).status).toBe(201);
+    await expect(a.utworzOferte(ofertaNowa('Siedemnaście', { images: zdjecia(17) }))).rejects.toThrow(/16/);
+    await expect(a.utworzOferte(ofertaNowa('Długa', { external: { id: 'x'.repeat(101) } }))).rejects.toThrow(/100 znaków/);
+  });
+
+  it('słowniki konta, dopasowanie kategorii, podatek, opłaty i słownik marek', async () => {
+    const a = atrapa();
+    expect((await a.pobierzCenniki())[0]).toMatchObject({ id: 'atrapa-cennik-standard', name: 'Standard' });
+    expect(await a.pobierzZwroty()).toHaveLength(1);
+    expect(await a.pobierzReklamacje()).toHaveLength(1);
+    expect(await a.pobierzGwarancje()).toEqual([]);
+    expect((await a.pobierzProducentow())[0].name).toContain('Półcień');
+    expect(await a.pobierzOsobyOdpowiedzialne()).toHaveLength(1);
+    const kat = await a.dopasujKategorie('Lampa wisząca');
+    expect(kat.map((k) => k.id)).toEqual(['257', '256']);
+    expect(kat.map((k) => kategoriaAllegroDemo(k.id).leaf)).toEqual([true, false]);
+    expect((await a.ustawieniaPodatku('257')).rates[0].values.map((v) => v.value)).toEqual(['23.00', '8.00', '5.00']);
+    const pod = await a.podgladOplat({ sellingMode: { price: { amount: '199.00', currency: 'PLN' } } });
+    expect(pod.commissions[0].fee).toEqual({ amount: '19.90', currency: 'PLN', tax: 'GROSS' });
+    expect(pod.quotes[0].fee.amount).toBe('0.00');
+    expect((await a.oplatyOferty('123')).quotes[0]).toMatchObject({ fee: { amount: '0.00' }, offer: { id: '123' } });
+    const marki = (await a.pobierzParametryKategorii('257')).parameters.find((p) => p.id === '248811').dictionary;
+    expect(marki.length).toBeGreaterThan(200);
+    expect(marki.slice(0, 2).map((m) => [m.id, m.value])).toEqual([['248811_9001', 'Pracownia Półcień'], ['248811_9002', 'bez marki']]);
+    expect(new Set(marki.map((m) => m.id)).size).toBe(marki.length);
+  });
+
+  it('niezależny prawdziwy klient na surowym serwerze oddaje to samo co atrapa', async () => {
+    const baza = nowaBaza();
+    const a = atrapa(baza);
+    const { fetchImpl, api } = createSerwerOfertAllegro({ db: baza, kanal: 'allegro', env: ENV_DEMO, teraz: () => T0 });
+    const prawdziwy = createAllegroClient({ ustawienia: { api, userAgent: 'test/1 (+https://x.invalid)' },
+      tokeny: { waznyToken: async () => 'inny' }, fetchImpl });
+    await a.utworzOferte(ofertaNowa('Wspólna'));
+    expect(await prawdziwy.pobierzCenniki()).toEqual(await a.pobierzCenniki());
+    expect(await prawdziwy.ofertyKonta()).toEqual(await a.ofertyKonta());
+    expect(await prawdziwy.ofertyPoSygnaturze('LMP-TEST-001')).toEqual(await a.ofertyPoSygnaturze('LMP-TEST-001'));
+    expect(() => createSerwerOfertAllegro({ db: baza, kanal: 'allegro', env: {} })).toThrow('OMS_TRYB=proba');
+  });
+
+  it('reset demo czyści stan atrapy ofert', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'oferty-reset-'));
+    const baza = path.join(dir, 'oms.sqlite');
+    try {
+      const stare = openOmsDb(baza);
+      const a = createAtrapaAllegro({ db: stare, kanal: 'allegro', env: ENV_DEMO, log: ciche });
+      await a.utworzOferte(ofertaNowa('Przed resetem'));
+      await a.wgrajZdjecie(new Uint8Array([9]), 'image/png');
+      await a.komendaIlosci('przed-resetem', [{ ofertaId: '99999999999', ilosc: 1 }]);
+      zlecResetDemo(stare, { login: 'operator-demo' });
+      stare.close();
+      expect(await wykonajZlecenieResetu({ baza, utworzBaze: () => { openOmsDb(baza).close(); } })).toBeTruthy();
+      const nowe = openOmsDb(baza);
+      try {
+        createAtrapaAllegro({ db: nowe, kanal: 'allegro', env: ENV_DEMO, log: ciche });
+        for (const t of ['atrapa_allegro_oferty', 'atrapa_allegro_operacje', 'atrapa_allegro_zdjecia']) expect(wiersze(nowe, t), t).toBe(0);
+      } finally { nowe.close(); }
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
   });
 });

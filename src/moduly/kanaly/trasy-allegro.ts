@@ -12,12 +12,14 @@ import {wczytajKonfiguracjeIntegracji,zapiszKonfiguracjeIntegracji} from '../../
 
 import {modulKanalu} from '../../domena/moduly-kanalow.ts';
 import {polaczeniaIntegracji} from '../ustawienia/services/polaczenia-integracji.ts';
+import {BRAK_ZGODY_OFERT,createOfertyAllegroUstawienia} from './services/oferty-allegro-ustawienia.ts';
+import {STAWKI_Z_ZW} from '../../domena/vat.js';
 
 const root='/ustawienia/integracje/allegro';
 const cookieName='oms_allegro_flow';
 type Uslugi=ReturnType<typeof zbudujUslugiKanalow>;
 type Formularz={skrot?:string;praca?:Promise<Wynik<{klucz:string}>>};
-type Sesja={id:string;autoryzacja:string;wygasa:number;formularze:Map<string,Formularz>;proby:Map<string,string>;przeglady:Map<string,string>;potwierdzone:Set<string>;blad?:string;komunikat?:string};
+type Sesja={id:string;autoryzacja:string;wygasa:number;formularze:Map<string,Formularz>;proby:Map<string,string>;przeglady:Map<string,string>;potwierdzone:Set<string>;blad?:string;komunikat?:string;ofertyZapisano?:boolean};
 type Konto={id?:number;login:string;admin:boolean};
 const tekst=(v:unknown)=>typeof v==='string'?v:'';
 const wersja=(v:unknown)=>typeof v==='number'&&Number.isSafeInteger(v)&&v>=0?v:typeof v==='string'&&/^\d{1,10}$/.test(v)?Number(v):-1;
@@ -74,7 +76,7 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
   const kandydat=c&&c.aktor.id===aktor(req).id?{probaId:c.probaId,kontoId:c.kontoId,login:c.login,wersja:c.wersja}:null;
   const stan=k?o.db.prepare('SELECT ostatni_przebieg_at,zsynchronizowane_do,ostatni_blad FROM stan_pollera WHERE sklep=?').get(k.klucz):null;
   const historia=k?Number(o.db.prepare('SELECT count(*) AS n FROM zamowienia WHERE sklep=?').get(k.klucz)?.n):0;
-  const blad=s.blad??null;delete s.blad;const komunikat=s.komunikat??null;delete s.komunikat;
+  const blad=s.blad??null;delete s.blad;const komunikat=s.komunikat??null;delete s.komunikat;const ofertyZapisano=s.ofertyZapisano===true;delete s.ofertyZapisano;
   const dzis=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Warsaw',year:'numeric',month:'2-digit',day:'2-digit'}).format(teraz());
   let formularzId:string|null=null;
   if(!k){if(s.formularze.size>=50)s.formularze.delete(s.formularze.keys().next().value!);formularzId=randomUUID();s.formularze.set(formularzId,{});}
@@ -95,7 +97,9 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
    aplikacjaGotowa:k?k.zrodlo==='env'||Boolean(o.aplikacjaAllegro.stanAplikacji(k.srodowisko).device)||Boolean(o.aplikacjaAllegro.aplikacjaDlaInstalacji(k.srodowisko)):false,
    diagnostyka:k?o.db.prepare('SELECT ostatnia_proba_at,ostatni_sukces_at,blad FROM kanaly_diagnostyka WHERE kanal=?').get(k.klucz)??null:null,
    deviceGotowe,
-   blad,brakUprawnien:Boolean(blad?.startsWith('Brakuje uprawnień Allegro:')),dcrDostepne:o.aplikacjaAllegro.stanAplikacji('produkcja').dcrGotowe,komunikat,device:null,przeglad:null,oczekujacaProba:null,...extra,
+   // PRZ-160 E3.02 (D42): stan zgody na oferty (same flagi; bez tokenów i bez Client ID).
+   oferty:k?(()=>{try{return o.ofertyAllegro.stan(k.klucz);}catch{return null;}})():null,
+   blad,brakUprawnien:Boolean(blad?.startsWith('Brakuje uprawnień Allegro:')),dcrDostepne:o.aplikacjaAllegro.stanAplikacji('produkcja').dcrGotowe,komunikat,ofertyZapisano,device:null,przeglad:null,oczekujacaProba:null,...extra,
   });
  }
  function blad(req:FastifyRequest,reply:FastifyReply,w:Extract<Wynik<unknown>,{ok:false}>,klucz?:string){
@@ -109,7 +113,8 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
    reply.header('Cache-Control','no-store').header('Referrer-Policy',POLITYKA_REFERERA_LINKU);
    if(konto(req)?.admin!==true)return odmowa(req,reply,403,'Tylko administrator może konfigurować Allegro.');
   },handler:async(req,reply)=>{
-   try{return await fn(req,reply);}catch{
+   try{return await fn(req,reply);}catch(e){
+    if(e instanceof Error&&'dlaOperatora' in e&&e.dlaOperatora===true&&'kod' in e&&e.kod==='konflikt')return blad(req,reply,{ok:false,kod:'konflikt',komunikat:e.message},klucz(req));
     // Odpowiedzi zewnętrznego API i wyjątki nigdy nie trafiają do widoku/logu.
     return odmowa(req,reply,503,'Nie udało się wykonać operacji Allegro. Odśwież ekran i sprawdź stan połączenia.');
    }
@@ -306,6 +311,19 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
   const w=await o.zarzadzanieAllegro.sprawdzPolaczenie(klucz(req),wersja(body(req).wersja));
   return w.ok?widok(req,reply,klucz(req),{komunikat:w.dane.uwaga??'Odczyt konta i zamówień działa. Test nie sprawdza nadania przesyłki ani wysyłania wiadomości.'}):blad(req,reply,w,klucz(req));
  });
+ // PRZ-160 E3.02 (D42): zgoda na oferty na żądanie. Sprawdzenie aplikacji zapisuje wyłącznie znacznik
+ // aplikacji; konto, jego wersja i tokeny zostają bez zmian.
+ trasa('POST',root+'/:kanal/oferty-aplikacja',async(req,reply)=>{
+  const w=await o.ofertyAllegro.sprawdzAplikacje(klucz(req),aktor(req));
+  return w.ok?widok(req,reply,klucz(req),{komunikat:w.dane.oferty?'Aplikacja ma uprawnienia do wystawiania ofert.':'Aplikacja nie ma uprawnień do ofert — zaznacz je w Zarządzanie aplikacjami (edycja aplikacji) i sprawdź ponownie.'}):blad(req,reply,w,klucz(req));
+ });
+ trasa('POST',root+'/:kanal/oferty-chce',(req,reply)=>{
+  const w=o.ofertyAllegro.chce(klucz(req),aktor(req));if(!w.ok)return blad(req,reply,w,klucz(req));
+  // PRZ-160 E3d.01: przewinięcie do następnego kroku i potwierdzenie w nim (allegro-stan.ejs, #oferty-polacz) —
+  // baner na górze strony byłby po przewinięciu poza ekranem.
+  sesja(req,reply).ofertyZapisano=true;
+  return reply.code(303).redirect(urlKanalu(klucz(req))+'#oferty-polacz');
+ });
  trasa('POST',root+'/:kanal/przeglad',(req,reply)=>{
   const s=sesja(req,reply),w=o.przegladZapisowAllegro.przygotuj(klucz(req),wersja(body(req).wersja),aktor(req),s.id);
   if(!w.ok)return blad(req,reply,w,klucz(req));s.przeglady.set(w.dane.przegladId,klucz(req));return widok(req,reply,klucz(req),{przeglad:w.dane});
@@ -317,5 +335,32 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
   const c=o.repozytoriumKanalow.pobierz(klucz(req));if(!c||s.przeglady.get(tekst(b.przegladId))!==c.klucz)return konflikt(req,reply);
   const ids=Array.isArray(b.pozostaw)?b.pozostaw.map(tekst):b.pozostaw===undefined?[]:[tekst(b.pozostaw)];
   const w=o.przegladZapisowAllegro.zatwierdz(tekst(b.przegladId),ids,aktor(req),s.id);if(w.ok)s.przeglady.delete(tekst(b.przegladId));return w.ok?powrot(reply,w.dane):blad(req,reply,w,c.klucz);
+ });
+ // PRZ-160 E3.13 (D15, D24, D35, D42): krok 6 „Oferty” — ustawienia ofert konta, listy z Allegro, producent marki.
+ const ustawieniaOfert=()=>createOfertyAllegroUstawienia({db:o.db,teraz,
+  klient:k=>{try{return o.klienciKanalow[k];}catch{return undefined;}},
+  zgoda:k=>{try{return o.ofertyAllegro.stan(k)?.zgoda??null;}catch{return null;}}});
+ const KOMUNIKATY_OFERT:Record<string,string>={zapisano:'Ustawienia ofert zapisane.',pobrano:'Listy konta pobrane z Allegro.'};
+ function krokOfert(req:FastifyRequest,reply:FastifyReply,extra:{blad?:string;bledyPol?:Record<string,string>;wartosci?:Record<string,unknown>}={}){
+  const k=o.repozytoriumKanalow.pobierz(klucz(req));
+  if(!k)return widok(req,reply,klucz(req));
+  const adres=urlKanalu(k.klucz),dane=ustawieniaOfert().widok(k.klucz);
+  const kroki=modulKanalu('allegro').konfigurator.kroki.map(krok=>({...krok,stan:krok.numer===6?'biezacy':'zrobione',...(krok.numer===5?{href:adres}:{})}));
+  const wynik=tekst((req.query as Record<string,unknown>|undefined)?.wynik);
+  return reply.view('allegro-oferty.ejs',{szerokosc:'formularz',
+   title:(/^allegro(\s|$)/i.test(k.nazwa)?k.nazwa:'Allegro: '+k.nazwa)+' — oferty',nawigacja:nawigacjaUstawien(req,reply),
+   k,adres,kroki,...dane,blad:extra.blad??null,bledyPol:extra.bledyPol??{},wartosci:extra.wartosci??null,
+   komunikat:extra.blad?null:KOMUNIKATY_OFERT[wynik]??null,brakZgody:BRAK_ZGODY_OFERT,stawkiVat:STAWKI_Z_ZW});
+ }
+ trasa('GET',root+'/:kanal/oferty',(req,reply)=>krokOfert(req,reply));
+ trasa('POST',root+'/:kanal/oferty',(req,reply)=>{
+  const k=o.repozytoriumKanalow.pobierz(klucz(req));if(!k)return widok(req,reply,klucz(req));
+  const w=ustawieniaOfert().zapisz(k.klucz,body(req),aktor(req));
+  return w.ok?reply.code(303).redirect(urlKanalu(k.klucz)+'/oferty?wynik=zapisano'):krokOfert(req,reply.code(w.status),{blad:w.komunikat,bledyPol:w.bledyPol,wartosci:body(req)});
+ });
+ trasa('POST',root+'/:kanal/oferty/pobierz',async(req,reply)=>{
+  const k=o.repozytoriumKanalow.pobierz(klucz(req));if(!k)return widok(req,reply,klucz(req));
+  const w=await ustawieniaOfert().pobierzSlowniki(k.klucz,aktor(req));
+  return w.ok?reply.code(303).redirect(urlKanalu(k.klucz)+'/oferty?wynik=pobrano'):krokOfert(req,reply.code(w.status),{blad:w.komunikat});
  });
 }

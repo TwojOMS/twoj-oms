@@ -1,0 +1,64 @@
+<%# PRZ-167 (właściciel 15.11): ANALITYKA — podsumowanie dzisiejszej sprzedaży i wejście do podstron.
+    Kafle (prośba właściciela po piaskownicy 15.11): Przychód · Nowe zamówienia · W realizacji · Wysłane — bez „dziś” w tytułach,
+    dzień stoi pod tytułem ekranu i w dopiskach.
+    ⚠️ WIDOK NICZEGO NIE LICZY — liczby przychodzą z trasy (trasy/analityka.js), która bierze je z tych samych
+    źródeł co Raporty („Dzisiaj”) i lista zamówień (licznik statusu „W realizacji”). Tutaj zostaje zapis po polsku. %>
+<%
+  const kwota = (napis) => {
+    const [calosc, ulamek = ''] = String(napis).split('.');
+    return `${calosc.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')},${ulamek.padEnd(2, '0')}`;
+  };
+  const dzien = `${Number(dzis.slice(8, 10))}.${dzis.slice(5, 7)}.${dzis.slice(0, 4)}`;
+%>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Analityka", opisHtml: `<span class="krok">dziś · ${dzien}</span>`}) %>
+
+<% if (bladSprzedazy) { %>
+  <div class="pasek-uwaga"><%= bladSprzedazy %></div>
+<% } %>
+
+<div class="kafelki kafelki--cztery">
+  <div class="kafel">
+    <div class="kafel-etykieta">Przychód</div>
+    <div class="kafel-wartosc"><%= sprzedaz ? `${kwota(sprzedaz.brutto)} zł` : '—' %></div>
+    <div class="kafel-dopisek">brutto, dziś · <a href="/raporty?skrot=dzisiaj">raport dnia</a></div>
+  </div>
+  <div class="kafel">
+    <div class="kafel-etykieta">Nowe zamówienia</div>
+    <div class="kafel-wartosc"><%= sprzedaz ? sprzedaz.zamowien : '—' %></div>
+    <div class="kafel-dopisek">złożone dziś, bez anulowanych i testowych</div>
+  </div>
+  <div class="kafel">
+    <div class="kafel-etykieta">W realizacji</div>
+    <div class="kafel-wartosc"><%= wRealizacji ?? '—' %></div>
+    <div class="kafel-dopisek">wszystkie w tym statusie · <a href="/?status=w_realizacji">lista</a></div>
+  </div>
+  <div class="kafel">
+    <div class="kafel-etykieta">Wysłane</div>
+    <div class="kafel-wartosc"><%= wyslane %></div>
+    <div class="kafel-dopisek">oznaczone dziś jako wysłane · <a href="/?status=wyslane">lista</a></div>
+  </div>
+</div>
+
+<%# Podstrony — te, do których konto ma prawo (nawigacja przefiltrowana przez nawigacjaDla). %>
+<% const podstrony = (locals.nawigacja?.boczne ?? []).flatMap(g => g.pozycje).find(p => p.klucz === 'analityka')?.podmenu?.filter(d => d.href !== '/analityka') ?? []; %>
+<% const opisy = {
+  '/raporty': { ikona: 'raporty', opis: 'Sprzedaż w okresie, kanały i produkty, eksport CSV' },
+  '/statystyki': { ikona: 'statystyki', opis: 'Przewoźnicy, terminowość wysyłki, metody płatności' },
+  '/kampania': { ikona: 'kampania', opis: 'Wydatki i wynik kampanii reklamowych' },
+  '/finanse': { ikona: 'finanse', opis: 'Rachunek zarządczy: ile z przychodu zostaje' },
+}; %>
+<% if (podstrony.length) { %>
+<h2 class="analityka-sekcja">Więcej analiz</h2>
+<nav class="analityka-podstrony" aria-label="Więcej analiz">
+  <% podstrony.forEach(function (d) { const o = opisy[d.href] ?? { ikona: 'default', opis: '' }; %>
+    <a class="analityka-podstrona" href="<%= d.href %>">
+      <span class="analityka-podstrona__ikona"><%- include('../../../core/web/widoki/_ikona-panelu.ejs', {klucz: o.ikona}) %></span>
+      <span class="analityka-podstrona__tekst">
+        <strong><%= d.etykieta %></strong>
+        <% if (o.opis) { %><span><%= o.opis %></span><% } %>
+      </span>
+      <span class="analityka-podstrona__strzalka" aria-hidden="true">→</span>
+    </a>
+  <% }); %>
+</nav>
+<% } %>

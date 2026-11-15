@@ -1,0 +1,77 @@
+{
+  "id": "17000000000042",
+  "name": "Lampa stołowa Grzyb, ceramika szkliwiona, 35 cm",
+  "productSet": [
+    {
+      "quantity": { "value": 1 },
+      "product": {
+        "id": "a1b2c3d4-0000-4000-8000-000000000042",
+        "publication": { "status": "LISTED" },
+        "parameters": [
+          { "id": "224017", "name": "Kod producenta", "values": ["5909990000014"], "valuesIds": null, "rangeValue": null },
+          { "id": "248811", "name": "Marka", "values": ["Pracownia Półcień"], "valuesIds": ["248811_9001"], "rangeValue": null },
+          { "id": "225693", "name": "EAN (GTIN)", "values": [" 5901234123457 "], "valuesIds": null, "rangeValue": null },
+          { "id": "17448", "name": "Waga produktu z opakowaniem jednostkowym", "values": ["1.8"], "valuesIds": null, "rangeValue": null }
+        ],
+        "isAiCoCreated": true
+      },
+      "responsiblePerson": { "id": "osoba-przyklad-1", "name": "Osoba Przykładowa" },
+      "responsibleProducer": { "id": "producent-przyklad-1", "type": "ID" },
+      "safetyInformation": { "type": "TEXT", "description": "Przykładowa informacja o bezpieczeństwie." },
+      "marketedBeforeGPSRObligation": null
+    }
+  ],
+  "parameters": [
+    { "id": "11323", "name": "Stan", "values": ["Nowy"], "valuesIds": ["11323_1"], "rangeValue": null },
+    { "id": "2977", "name": "Wysokość", "values": ["35"], "valuesIds": null, "rangeValue": null },
+    { "id": "211830", "name": "Liczba sztuk", "values": ["1"], "valuesIds": null, "rangeValue": null },
+    { "id": "229205", "name": "Stan opakowania", "values": ["oryginalne"], "valuesIds": ["229205_1"], "rangeValue": null }
+  ],
+  "aiCoCreatedContent": { "images": [] },
+  "images": [
+    "https://zdjecia.przyklad.invalid/original/lampa-grzyb-1.jpg",
+    "https://zdjecia.przyklad.invalid/original/lampa-grzyb-2.jpg",
+    "https://zdjecia.przyklad.invalid/original/lampa-grzyb-3.jpg"
+  ],
+  "afterSalesServices": { "impliedWarranty": { "id": "gwarancja-przyklad" } },
+  "sizeTable": null,
+  "contact": null,
+  "discounts": null,
+  "stock": { "available": 4, "unit": "UNIT" },
+  "delivery": { "handlingTime": "PT24H", "shippingRates": { "id": "cennik-przyklad" } },
+  "publication": { "status": "ACTIVE", "startingAt": "2026-03-02T09:00:00.000Z" },
+  "additionalMarketplaces": {},
+  "compatibilityList": null,
+  "language": "pl-PL",
+  "category": { "id": "257" },
+  "tax": null,
+  "taxSettings": {
+    "subject": "GOODS",
+    "exemption": null,
+    "rates": [ { "rate": "23.00", "countryCode": "PL" }, { "rate": "21.00", "countryCode": "CZ" } ]
+  },
+  "messageToSellerSettings": null,
+  "sellingMode": { "format": "BUY_NOW", "price": { "amount": "249.90", "currency": "PLN" }, "startingPrice": null, "minimalPrice": null },
+  "location": { "city": "Przykładowo", "countryCode": "PL", "postCode": "00-001", "province": "MAZOWIECKIE" },
+  "external": null,
+  "description": {
+    "sections": [
+      {
+        "items": [
+          { "type": "IMAGE", "url": "https://zdjecia.przyklad.invalid/original/lampa-grzyb-1.jpg?w=800&amp;h=600" },
+          { "type": "TEXT", "content": "<p>Ręcznie szkliwiona ceramika, abażur z lnu.</p>" }
+        ]
+      },
+      {
+        "items": [
+          { "type": "TEXT", "content": "<p>Wysokość 35 cm, gwint E27, przewód 1,8 m z wyłącznikiem.</p>" }
+        ]
+      }
+    ]
+  },
+  "b2b": null,
+  "attachments": [],
+  "fundraisingCampaign": null,
+  "createdAt": "2026-03-02T08:55:00.000Z",
+  "updatedAt": "2026-10-28T14:12:33.000Z"
+}

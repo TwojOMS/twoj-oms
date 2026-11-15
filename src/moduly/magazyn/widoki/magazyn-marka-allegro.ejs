@@ -1,0 +1,66 @@
+<%# PRZ-160.E3.11 — marka karty → wartość słownika marek Allegro, osobno na środowisko (D33, D36).
+    Podpowiedź: dokładne trafienie nazwy; „Zatwierdź” sprawdza wartość w słowniku każdej przypisanej kategorii środowiska.
+    Producent (GPSR) — nie tutaj (E3.13). %>
+<p class="wroc"><a href="/magazyn/marki">← Marki</a></p>
+
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Marka „' + marka + '” w Allegro', podtytul: 'Środowisko: ' + srodowisko}) %>
+
+<% if (blad) { %><p class="pasek-uwaga" role="alert"><%= blad %></p><% } %>
+<% if (brakKonta) { %><p class="pasek-uwaga"><%= brakKonta %></p><% } %>
+
+<% if (srodowiska.length > 1) { %>
+  <nav class="slownik-narzedzia" aria-label="Środowisko Allegro">
+    <% srodowiska.forEach(function (s) { %>
+      <a class="btn btn--maly<%= s === srodowisko ? ' btn--glowny' : '' %>" href="<%= adres %>?srodowisko=<%= s %>"<% if (s === srodowisko) { %> aria-current="page"<% } %>><%= s === 'produkcja' ? 'Produkcja' : 'Sandbox' %></a>
+    <% }); %>
+  </nav>
+<% } %>
+
+<section class="panel" aria-labelledby="marka-tytul">
+  <div class="panel-glowa"><h2 id="marka-tytul">Wartość w słowniku marek Allegro</h2></div>
+  <div class="panel-cialo">
+    <% if (wiersz && wiersz.wartosc_id) { %>
+      <p><strong><%= wiersz.wartosc_tekst || wiersz.wartosc_id %></strong> <small class="podpowiedz">(nr <%= wiersz.wartosc_id %>)</small></p>
+      <p class="podpowiedz">Zatwierdził: <%= wiersz.potwierdzil || '—' %>, <%= wiersz.zmieniono_at ? new Date(wiersz.zmieniono_at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw' }) : '—' %>.</p>
+    <% } else { %>
+      <p class="magazyn-brak">Marka nieprzypisana w środowisku <%= srodowisko %>.</p>
+    <% } %>
+    <% if (bezWartosci.length) { %>
+      <div class="pasek-uwaga" role="status">
+        <p>W tych kategoriach Allegro słownik marek nie ma tej wartości — oferty kart tej marki w nich nie przejdą:</p>
+        <ul><% bezWartosci.forEach(function (k) { %><li><%= k.nazwa %> <small>(nr <%= k.id %>; karty: <%= k.karty %>)</small></li><% }); %></ul>
+      </div>
+    <% } %>
+    <% if (!brakKonta && !kategorie.length) { %>
+      <p class="podpowiedz">Najpierw przypisz kategorię Allegro w środowisku <%= srodowisko %> (<a href="/magazyn/kategorie">Magazyn → Kategorie</a>) — słownik marek zależy od kategorii.</p>
+    <% } %>
+    <% if (bladSlownika) { %><p class="pasek-uwaga"><%= bladSlownika %></p><% } %>
+
+    <% if (parametrId && !mozeZatwierdzic) { %>
+      <p class="podpowiedz">Markę w Allegro zatwierdza administrator.</p>
+    <% } else if (parametrId) { %>
+      <search>
+        <form method="get" action="<%= adres %>" class="slownik-zmien">
+          <input type="hidden" name="srodowisko" value="<%= srodowisko %>">
+          <label for="szukaj-marki">Szukaj w słowniku marek</label>
+          <input id="szukaj-marki" type="search" name="szukaj" maxlength="100" autocomplete="off" value="<%= szukaj %>">
+          <button type="submit" class="btn btn--maly">Szukaj</button>
+        </form>
+      </search>
+
+      <form method="post" action="<%= adres %>">
+        <input type="hidden" name="srodowisko" value="<%= srodowisko %>">
+        <input type="hidden" name="parametr_id" value="<%= parametrId %>">
+        <fieldset class="import-wybor">
+          <legend>Wybierz wartość<%= szukaj ? ' (wyniki dla „' + szukaj + '”)' : '' %></legend>
+          <% if (!propozycje.length && !bezMarki.length) { %><p class="podpowiedz">Brak trafień — spróbuj innej nazwy.</p><% } %>
+          <% propozycje.concat(bezMarki.filter(function (b) { return !propozycje.some(function (p) { return p.id === b.id; }); })).forEach(function (w) { %>
+            <div class="import-opcja"><input type="radio" name="wartosc_id" value="<%= w.id %>" id="marka-<%= w.id %>" required<% if ((wiersz && wiersz.wartosc_id === w.id) || (!wiersz && w.dokladna)) { %> checked<% } %>>
+              <label for="marka-<%= w.id %>"><%= w.wartosc %><% if (w.dokladna) { %> <span class="plakietka plakietka--allegro">podpowiedź</span><% } %></label></div>
+          <% }); %>
+        </fieldset>
+        <p><button type="submit" class="btn btn--glowny">Zatwierdź markę</button></p>
+      </form>
+    <% } %>
+  </div>
+</section>

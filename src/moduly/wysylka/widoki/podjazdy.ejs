@@ -46,7 +46,7 @@
                   } else { %>Allegro nie zwróciło żadnych propozycji odbioru na ten dzień.<% } %></p>
                 <ul>
                   <% d.paczki.forEach(function(p) { %>
-                      <li><strong><%= p.numerListu %></strong> · <%= p.grupaAllegro ? 'element odpowiedzi Allegro ' + p.grupaAllegro : 'brak w odpowiedzi Allegro' %>: <%= p.terminy.length ? p.terminy.map(function(t) { return t.date + ' ' + t.minTime + '–' + t.maxTime; }).join(', ') : 'brak terminu' %></li>
+                      <li><strong><%= p.numerListu %></strong> · <%= p.grupaAllegro ? 'element odpowiedzi Allegro ' + p.grupaAllegro : 'brak w odpowiedzi Allegro' %>: <%= p.terminy.length ? p.terminy.map(function(t) { return t.minTime ? t.date + ' ' + t.minTime + '–' + t.maxTime : opisTerminu(t); }).join(', ') : 'brak terminu' %></li>
                   <% }); %>
                 </ul>
               <% } %>
@@ -54,19 +54,19 @@
               <p>Termin podglądu wygasł — pobierz aktualne terminy przed zleceniem.</p>
             <% } else if (!g.moznaZlecac) { %>
               <% if (g.kurierOdbierajacy) { %>
-                <p>Przesyłki odbierze <strong><%= g.kurierOdbierajacy %></strong>. Zlecanie podjazdów z OMS jest jeszcze wyłączone.</p>
+                <p>Przesyłki odbierze <strong><%= nazwaKuriera(g.kurierOdbierajacy) %></strong>. Zlecanie podjazdów z OMS jest jeszcze wyłączone.</p>
               <% } else { %>
                 <p>OMS jeszcze nie zamawia podjazdu dla tej usługi — zamów go w Allegro, w „Wysyłam z Allegro”.</p>
               <% } %>
             <% } else { %>
-              <p>Przesyłki odbierze: <strong><%= g.kurierOdbierajacy %></strong>.</p>
+              <p>Przesyłki odbierze: <strong><%= nazwaKuriera(g.kurierOdbierajacy) %></strong>.</p>
               <form method="post" action="/przesylki/podjazdy/zlec">
                 <input type="hidden" name="podgladId" value="<%= id %>">
                 <input type="hidden" name="grupaId" value="<%= g.id %>">
                 <label>Termin oferowany przez Allegro
                   <select name="termin">
                     <% g.terminy.forEach(function(t) { %>
-                      <option value="<%= JSON.stringify(t) %>"><%= t.date %>, <%= t.minTime %>–<%= t.maxTime %></option>
+                      <option value="<%= JSON.stringify(t) %>"><%= opisTerminu(t) %></option>
                     <% }); %>
                   </select>
                 </label>
@@ -82,7 +82,7 @@
       <p>Komenda Allegro: <%= wynik.command_id %></p>
       <% if (wynik.pickup_id) { %><p>ID podjazdu: <%= wynik.pickup_id %></p><% } %>
       <% if (wynik.carrier_pickup_id) { %><p>ID u przewoźnika: <%= wynik.carrier_pickup_id %></p><% } %>
-      <% if (wynik.pickup_carrier) { %><p>Przewoźnik odbierający: <%= wynik.pickup_carrier %></p><% } %>
+      <% if (wynik.pickup_carrier) { %><p>Przewoźnik odbierający: <%= nazwaKuriera(wynik.pickup_carrier) %></p><% } %>
       <% if (wynik.blad_opis) { %><p class="stan-zle"><%= wynik.blad_opis %></p><% } %>
       <p>Potwierdzenie podjazdu nie jest jeszcze potwierdzeniem odebrania paczki. Odbiór pokaże śledzenie po skanie przewoźnika.</p>
       <p><a class="btn btn--cichy" href="/przesylki/podjazdy/<%= wynik.id %>">Sprawdź ponownie</a></p>

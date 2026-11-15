@@ -101,7 +101,7 @@ export const EKRANY = [
     klucz: 'okresy', etykieta: 'Okresy rozliczeniowe', href: '/okresy', prefiksy: ['/okresy'],
     // PRZ-102.03 (wariant C, właściciel 20.10): Rozliczenia, Stali klienci i Wiadomości to grupa „Klienci” pod
     // „Obsługą zamówień”; analizy (`analizy-cele`) wyszły z menu bocznego do górnego paska.
-    nawigacja: { dzial: 'sprzedaz', grupa: 'klienci', kolejnosc: 60, etykieta: 'Rozliczenia' },
+    nawigacja: { dzial: 'sprzedaz', grupa: 'faktury', kolejnosc: 60, etykieta: 'Rozliczenia okresowe' },
   },
   {
     klucz: 'faktury', etykieta: 'Faktury', href: '/faktury', prefiksy: ['/faktury'],
@@ -109,10 +109,11 @@ export const EKRANY = [
   },
   {
     klucz: 'koszty', etykieta: 'Koszty', href: '/koszty', prefiksy: ['/koszty'],
-    nawigacja: { dzial: 'analizy-cele', grupa: 'analizy-cele', kolejnosc: 40 },
+    nawigacja: { dzial: 'sprzedaz', grupa: 'faktury', kolejnosc: 40 },
   },
   {
-    klucz: 'raporty', etykieta: 'Raporty', href: '/raporty', prefiksy: ['/raporty'],
+    // PRZ-167: `/analityka` (podsumowanie dnia) należy do Raportów — ten sam ptaszek, bez nowego ekranu na liście praw.
+    klucz: 'raporty', etykieta: 'Raporty', href: '/raporty', prefiksy: ['/raporty', '/analityka'],
     nawigacja: { dzial: 'analizy-cele', grupa: 'analizy-cele', kolejnosc: 10 },
   },
   {
@@ -123,15 +124,6 @@ export const EKRANY = [
     klucz: 'kampania', etykieta: 'Reklamy', href: '/kampania', prefiksy: ['/kampania'],
     nawigacja: { dzial: 'analizy-cele', grupa: 'analizy-cele', kolejnosc: 30 },
   },
-  // Cele i zadania okresowe (spec 2026-09-13). Trafia AUTOMATYCZNIE do rol `administrator`
-  // (lista '*') i `sprzedaz` (filtr odrzuca tylko `finanse` i `ustawienia`), a NIE trafia
-  // do `produkcja`, ktora ma jawna liste zakresow operacyjnych. To jest wlasciwy rozklad: grafik
-  // pracuje na roli Sprzedaz i dostaje ekran bez zadnej dodatkowej zmiany, a pakowacz
-  // nie oglada celow sprzedazowych wlascicieli firmy.
-  {
-    klucz: 'cele', etykieta: 'Cele', href: '/cele', prefiksy: ['/cele'],
-    nawigacja: { dzial: 'analizy-cele', grupa: 'analizy-cele', kolejnosc: 60 },
-  },
   {
     klucz: 'finanse', etykieta: 'Finanse', href: '/finanse', prefiksy: ['/finanse'],
     nawigacja: { dzial: 'analizy-cele', grupa: 'analizy-cele', kolejnosc: 50 },
@@ -141,7 +133,7 @@ export const EKRANY = [
     nawigacja: { dzial: 'magazyn', grupa: 'magazyn', kolejnosc: 10 },
   },
   {
-    klucz: 'klienci', etykieta: 'Stali klienci', href: '/klienci', prefiksy: ['/klienci'],
+    klucz: 'klienci', etykieta: 'Klienci B2B', href: '/klienci', prefiksy: ['/klienci'],
     nawigacja: { dzial: 'sprzedaz', grupa: 'klienci', kolejnosc: 50 },
   },
   {

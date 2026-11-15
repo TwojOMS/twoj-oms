@@ -1,0 +1,4 @@
+[
+  { "id": 8000, "name": "Lampa Półcień Mała", "manage_stock": true, "stock_quantity": 4, "stock_status": "instock", "backorders": "no" },
+  { "id": 8001, "name": "Lampa Półcień Duża", "manage_stock": false, "stock_quantity": null, "stock_status": "instock", "backorders": "no" }
+]

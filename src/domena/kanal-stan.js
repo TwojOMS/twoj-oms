@@ -46,6 +46,9 @@ export function stanKanalu(wejscie) {
     // Czy inny kanal wisi na TYM SAMYM koncie. Liczone poza ta funkcja, bo wymaga
     // spojrzenia na WSZYSTKIE kanaly naraz, a ta ocenia jeden.
     kolizjaKonta = false,
+    // PRZ-160 E3.02 (D42): token bez zakresów ofert, aplikacja je ma, ktoś kliknął
+    // „Chcę wystawiać oferty". Same flagi, żadnych poświadczeń.
+    brakOfert = false, aplikacjaMaOferty = false, chceOfert = false,
   } = wejscie;
 
   const nazwa = kanal ? `Kanał ${kanal}` : 'Kanał Allegro';
@@ -115,6 +118,11 @@ export function stanKanalu(wejscie) {
   // a odswiezenie ich NIE DOPISUJE. Bez tego warunku jedyna droga do nowego uprawnienia
   // wiodlaby przez zepsucie kanalu albo przez czekanie do terminu waznosci.
   const niekompletny = Array.isArray(brakujaceUprawnienia) && brakujaceUprawnienia.length > 0;
+  // ⚠️⚠️ ZGODA NA OFERTY OTWIERA WIĄZANIE TYLKO NA ŻĄDANIE (D42). Wszystkie trzy warunki:
+  // token wiadomo że bez zakresów ofert, aplikacja je ma (inaczej nowa zgoda niczego nie
+  // doda, a zużyje działającą parę), i człowiek kliknął „Chcę wystawiać oferty". Samo
+  // „aplikacja może" nie wystarcza — zdrowe konto nie zaprasza do przewiązania.
+  const zgodaOfertOtwarta = Boolean(brakOfert && aplikacjaMaOferty && chceOfert);
 
   return {
     kanal,
@@ -128,7 +136,8 @@ export function stanKanalu(wejscie) {
     // z tego nie da. Przycisk stojacy obok innych przyciskow zaprasza do klikniecia
     // „na wszelki wypadek" i zabija dzialajacy kanal. Przewodnik mowil o tym wprost
     // („«Połącz z Allegro» NIE JEST PRZYCISKIEM") — tu zdanie jest ZAWEZONE, nie zdjete.
-    wolnoWiazac: uprzedzenie || niekompletny,
+    wolnoWiazac: uprzedzenie || niekompletny || zgodaOfertOtwarta,
+    zgodaOfertOtwarta,
     brakujaceUprawnienia,
     zostaloDni,
     refreshWygasaAt,
@@ -144,7 +153,7 @@ export function stanKanalu(wejscie) {
         ? `${nazwa} działa, ale token nie ma uprawnień: ${brakujaceUprawnienia.join(', ')}. `
           + 'Odświeżenie tokenu ich NIE doda — najpierw nadaj je w aplikacji na '
           + 'apps.developer.allegro.pl, potem przewiąż kanał.'
-        : null),
+        : (zgodaOfertOtwarta ? `${nazwa}: konto działa — ponowna zgoda doda wystawianie ofert.` : null)),
   };
 }
 

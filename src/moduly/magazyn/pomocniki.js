@@ -31,15 +31,15 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
   const filtryZZapytania = q => filtryDomeny(q, KANALY_MAGAZYNU);
   const ocenZapis = (w,p,j) => ocenZapisDomeny(w,p,j,kanalySklepow);
   const grupujPominiete = p => grupujDomeny(p,KANALY_ZRODLOWE);
-  const { kartyZKanalami, produktyPominiete, utworzKartyZNiepowiazanych, kategorieDoFiltra, SORTOWANIE_KART, niepowiazaneOfertyAllegro, powiazaneOfertyAllegro, kartyDoPowiazania, powiazOfertyHurtem, odepnijOferte, kartaPoId, produktyKarty, kartaZeSku, zapiszKarte, kartyPoIdach, zastosujHurtem, zajeteSku, nadajSku, produktyKart, zapiszSkuSklepu, zliczeniaBrakow, zliczeniaNiepowiazanych } = {
+  const { kartyZKanalami, produktyPominiete, utworzKartyZNiepowiazanych, kategorieDoFiltra, markiDoFiltra, SORTOWANIE_KART, niepowiazaneOfertyAllegro, powiazaneOfertyAllegro, kartyDoPowiazania, powiazOfertyHurtem, odepnijOferte, podgladPrzepiec, kartaPoId, produktyKarty, kartaZeSku, zapiszKarte, kartyPoIdach, zastosujHurtem, zajeteSku, nadajSku, produktyKart, zapiszSkuSklepu, zliczeniaBrakow, zliczeniaNiepowiazanych } = {
     ...dbMagazynu,
     produktyPominiete: db => dbMagazynu.produktyPominiete(db, KANALY_ZRODLOWE),
     utworzKartyZNiepowiazanych: db => dbMagazynu.utworzKartyZNiepowiazanych(db, { kanalySklepow: KANALY_ZRODLOWE }),
     zliczeniaNiepowiazanych: db => dbMagazynu.zliczeniaNiepowiazanych(db, kanalyAllegro),
     niepowiazaneOfertyAllegro: db => dbMagazynu.niepowiazaneOfertyAllegro(db, kanalyAllegro),
     powiazaneOfertyAllegro: db => dbMagazynu.powiazaneOfertyAllegro(db, kanalyAllegro),
-    powiazOfertyHurtem: (db,pary) => dbMagazynu.powiazOfertyHurtem(db,pary,kanalyAllegro),
-    odepnijOferte: (db,id) => dbMagazynu.odepnijOferte(db,id,kanalyAllegro),
+    powiazOfertyHurtem: (db,pary,opcje) => dbMagazynu.powiazOfertyHurtem(db,pary,kanalyAllegro,opcje),
+    odepnijOferte: (db,id,opcje) => dbMagazynu.odepnijOferte(db,id,kanalyAllegro,opcje),
   };
 
 
@@ -70,13 +70,8 @@ const KOLUMNY_KANALOW = KANALY_MAGAZYNU;
 // wyslane dwa razy wracaja z Fastify jako TABLICA, ktora parser slusznie odrzuca do `null`,
 // czyli filtr znikalby dokladnie w tym formularzu, ktory sluzy do jego ustawiania.
 //
-// ⚠️ 'brak' NIE JEST TU JUZ WLASNYM POLEM (przebudowa 2026-08-25): formularz filtrow nie ma
-// wlasnego selecta „Braki" — filtr brak=… ustawia sie kaflem nad tabela (`kafleBrakow`).
-// Zdjecie 'brak' z tej listy jest wiec TYM, co sprawia, ze wartosc jedzie dalej UKRYTYM
-// polem (`parametryUkryte` robi to samo z siebie po zdjeciu z listy `pomin`) — inaczej
-// klikniecie „Filtruj" kasowaloby filtr wlasnie ustawiony kaflem.
 const POLA_FORMULARZA_FILTROW = Object.freeze(
-  ['kanal', 'kategoria', 'paczkomat', 'cenaOd', 'cenaDo'],
+  ['kanal', 'kategoria', 'marka', 'paczkomat', 'brak', 'cenaOd', 'cenaDo', 'oferty'],
 );
 
 // Nazwy kanalow bierzemy z `domain/kanaly.js` — TEJ SAMEJ mapy, ktora opisuje kolumne
@@ -206,6 +201,25 @@ function opisPrzebiegu(stan) {
   };
 }
 
+// PRZ-160.04b: stan przebiegu „Pobierz treść i zdjęcia ofert" dla widoku. `null` = brak połączonego konta
+// Allegro (przycisku nie ma). Tabela błędów ucięta do 50 wierszy — reszta jako liczba.
+const BLEDY_TRESCI_NA_EKRANIE = 50;
+function opisPrzebieguTresci(stan) {
+  if (!stan) return null;
+  const bledy = (stan.bledy ?? []).map((b) => ({ ...b, etykieta: adresKanalu(b.kanal) }));
+  return {
+    ...stan,
+    bledy: bledy.slice(0, BLEDY_TRESCI_NA_EKRANIE),
+    bledyPoza: Math.max(0, bledy.length - BLEDY_TRESCI_NA_EKRANIE),
+    otworz: stan.trwa || Boolean(stan.blad) || bledy.length > 0,
+    streszczenie: stan.trwa
+      ? 'trwa — nie zamykaj panelu'
+      : (stan.skonczony_at
+        ? `ostatni przebieg ${fmtDataCzas(stan.skonczony_at)}: pobrane ${stan.pobrane} z ${stan.razem}`
+        : 'w tym uruchomieniu panelu jeszcze niepobierane'),
+  };
+}
+
 /**
  * Odnosniki sortujace naglowka tabeli, RAZEM ze stanem „po tej kolumnie wlasnie sortujemy".
  *
@@ -228,7 +242,7 @@ function opisPrzebiegu(stan) {
 function linkiSortowania(sort, kier, filtry, zaznacz = false, widok = 'porzadki') {
   const przeciwny = kier === 'desc' ? 'asc' : 'desc';
   const linki = Object.create(null);
-  for (const klucz of SORTOWANIE_KART) {
+  for (const klucz of SORTOWANIE_KART.filter(klucz => !['paczkomat', 'braki'].includes(klucz))) {
     const aktywna = klucz === sort;
     linki[klucz] = {
       // Klikniecie w AKTYWNA kolumne obraca kolejnosc; w kazda inna — ustawia rosnaca.
@@ -250,38 +264,6 @@ function linkiSortowania(sort, kier, filtry, zaznacz = false, widok = 'porzadki'
   return linki;
 }
 
-// Kafle brakow: liczby po CALYM katalogu (zliczeniaBrakow — patrz db), adres kazdego
-// kafla przez adresMagazynu z PELNYM stanem. Aktywny kafel linkuje na zdjecie filtra
-// (toggle), pozostale na swoj brak. Procent liczony TU — widok niczego nie liczy.
-//
-// ⚠️ KOLEJNOSC JEST CZESCIA UKLADU EKRANU (sku, wymiary, paczkomat, kategoria, komplet) —
-// makieta i kolejne zadania licza na TA WLASNIE kolejnosc kafli, wiec nie jest przypadkowa
-// kolejnoscia iteracji po obiekcie `zliczenia`.
-function kafleBrakow(zliczenia, filtry, stanAdresu = {}) {
-  const braki = [
-    { klucz: 'sku', ile: zliczenia.bezSku, dopisek: `${zliczenia.doPrzejecia} przejmie ze sklepu` },
-    { klucz: 'wymiary', ile: zliczenia.bezWymiarow, dopisek: null },
-    { klucz: 'paczkomat', ile: zliczenia.bezPaczkomatu, dopisek: null },
-    { klucz: 'kategoria', ile: zliczenia.bezKategorii, dopisek: null },
-  ].map((k) => ({
-    ...k,
-    etykieta: BRAKI_ETYKIETY[k.klucz],
-    aktywny: filtry.brak === k.klucz,
-    adres: adresMagazynu({ ...filtry, brak: filtry.brak === k.klucz ? null : k.klucz }, stanAdresu),
-  }));
-  braki.push({
-    klucz: 'komplet',
-    etykieta: 'kompletnych kart',
-    ile: zliczenia.komplet,
-    razem: zliczenia.razem,
-    procent: zliczenia.razem ? Math.round((zliczenia.komplet / zliczenia.razem) * 100) : 0,
-    aktywny: filtry.brak === 'komplet',
-    adres: adresMagazynu({ ...filtry, brak: filtry.brak === 'komplet' ? null : 'komplet' }, stanAdresu),
-    dopisek: null,
-  });
-  return braki;
-}
-
 // ⚠️ `adresPowrotuListy` to WLASNY adres TEJ listy (`adresMagazynu(filtry, {sort, kier,
 // widok})` od wywolujacego, Zadanie 6) — kazdy wiersz linkuje karte z NIM jako `wroc`, zeby
 // powrot z karty trafil TU, a nie na goly „/magazyn". Koder liczy sie TUTAJ, przez
@@ -294,6 +276,7 @@ function wierszKarty(w, adresPowrotuListy) {
     // Milimetry → „70 × 100 cm" liczy domena, nie widok (domain/rozmiar.js).
     wymiary: opisWymiarow(w),
     kategoria: w.kategoria_glowna || null,
+    marka: w.marka || null,
     // Trzy stany paczkomatu; `null` znaczy „jeszcze nieoznaczone" i to CO INNEGO niz 'nie'.
     paczkomat: czyPaczkomat(w),
     miniatura: zapisanaMiniatura(w.kanaly),
@@ -302,12 +285,10 @@ function wierszKarty(w, adresPowrotuListy) {
     // zapytanie (`liczba_brakow`, TO SAMO wyrazenie, co filtr braków i kafle nad tabela),
     // wiec wiersz nie ma prawa twierdzic czego innego niz zawezenie, ktore go tu wpuscilo.
     //
-    // ⚠️ LICZEBNIK POLICZONY TUTAJ, nie w widoku (widok niczego nie liczy). Braki sa 1–4,
-    // wiec forma „brakow" (12–14) jest nieosiagalna — ale ta galaz i tak liczy poprawnie
-    // to, co dostanie, zeby nie byla cicha pulapka przy dolozeniu piatego braku.
+    // Liczebnik policzony tutaj, nie w widoku. Po dodaniu zdjęcia i opisu braki są 1–6.
     stan: w.liczba_brakow === 0
       ? { komplet: true, tekst: 'komplet' }
-      : { komplet: false, tekst: `${w.liczba_brakow} ${w.liczba_brakow === 1 ? 'brak' : 'braki'}` },
+      : { komplet: false, tekst: `${w.liczba_brakow} ${w.liczba_brakow === 1 ? 'brak' : w.liczba_brakow <= 4 ? 'braki' : 'braków'}` },
     adresKarty: adresKarty(w.id, { wroc: adresPowrotuListy }),
   };
 }
@@ -360,8 +341,8 @@ const BEZ_KART = {
   // Allegro i ZERO kart, bo zakladanie kart to OSOBNY przycisk. Tabela z 447 wierszami
   // bez ani jednego kandydata wygladalaby jak zepsute dopasowanie — a to tylko brak katalogu.
   opis: 'Rejestr kart jest pusty, więc nie ma do czego przypinać ofert. Karta powstaje '
-    + 'z katalogu sklepu: wejdź w Magazyn i kliknij „Odczytaj katalogi ze sklepów", a potem '
-    + '„Utwórz karty z niepowiązanych". Dopiero wtedy ten ekran ma co proponować.',
+    + 'z katalogu sklepu: wejdź w Magazyn → Importuj, wybierz sklep i zaimportuj jego produkty. '
+    + 'Dopiero wtedy ten ekran ma co proponować.',
 };
 
 // ⚠️ BIALA LISTA KOLEJNOSCI. Klucz z adresu HTTP → PORZADEK ROSNACY; `kier` odwraca.
@@ -868,5 +849,5 @@ const HURT_BEZ_ZAZNACZENIA = 'Nie zaznaczono ani jednej karty, więc nic nie zmi
 const HURT_BEZ_ZMIANY = 'Nie wybrałeś, co zmienić — wszystkie pola formularza są puste. '
   + 'Puste pole hurtem znaczy „nie ruszaj tej kolumny", więc nie było czego zapisać.';
 
-  return { kartyZKanalami, produktyPominiete, utworzKartyZNiepowiazanych, kategorieDoFiltra, SORTOWANIE_KART, niepowiazaneOfertyAllegro, powiazaneOfertyAllegro, kartyDoPowiazania, powiazOfertyHurtem, odepnijOferte, kartaPoId, produktyKarty, kartaZeSku, zapiszKarte, kartyPoIdach, zastosujHurtem, zajeteSku, nadajSku, produktyKart, zapiszSkuSklepu, zliczeniaBrakow, zliczeniaNiepowiazanych, polecenieZFormularza, zmianyHurtem, polaDoPrzeniesienia, proponujSku, przejeciaZeSklepu, ocenZapis, jednostkiSklepow, wyslijDoSklepow, propozycje, propozycjeOfert, KANALY_ALLEGRO, grupujPominiete, filtryZZapytania, saJakiesFiltry, parametryUkryte, wartosciPol, adresMagazynu, KANALY_MAGAZYNU, PACZKOMAT_DO_FILTRA, BRAKI_ETYKIETY, PACZKOMAT_ETYKIETY, adresKanalu, KANALY_SKLEPOW, miniaturaZLustra, opisWymiarow, centymetryZMilimetrow, milimetryZCentymetrow, czyPaczkomat, zl, fmtDataCzas, KOLUMNY_KANALOW, POLA_FORMULARZA_FILTROW, NAGLOWKI_KANALOW, BEZ_SKLEPOW, BEZ_SKLEPOW_ODMOWA, ADRES_HTTP, adresSklepu, zapisanaMiniatura, komorkaKanalu, zEtykietaKanalu, opisLiczbyKanalow, opisPrzebiegu, linkiSortowania, kafleBrakow, wierszKarty, ileKart, opisZawezenia, BEZ_KART, SORTOWANIE_POWIAZAN, SORTOWANIE_POWIAZAN_DOMYSLNE, napis, kanalAllegro, numerKarty, paryZFormularza, wierszOferty, pozycjaListy, adresPowiazan, linkiPowiazan, ukrytePowiazan, POLA_KARTY, POLA_WYMIAROW, pole, doKolumny, zmianyZFormularza, bezpiecznyWroc, adresKarty, zWroc, numeryZaznaczone, filtryZawezenia, zakresHurtu, HURT_BEZ_ZAZNACZENIA, HURT_BEZ_ZMIANY };
+  return { kartyZKanalami, produktyPominiete, utworzKartyZNiepowiazanych, kategorieDoFiltra, markiDoFiltra, SORTOWANIE_KART, niepowiazaneOfertyAllegro, powiazaneOfertyAllegro, kartyDoPowiazania, powiazOfertyHurtem, odepnijOferte, podgladPrzepiec, kartaPoId, produktyKarty, kartaZeSku, zapiszKarte, kartyPoIdach, zastosujHurtem, zajeteSku, nadajSku, produktyKart, zapiszSkuSklepu, zliczeniaBrakow, zliczeniaNiepowiazanych, polecenieZFormularza, zmianyHurtem, polaDoPrzeniesienia, proponujSku, przejeciaZeSklepu, ocenZapis, jednostkiSklepow, wyslijDoSklepow, propozycje, propozycjeOfert, KANALY_ALLEGRO, grupujPominiete, filtryZZapytania, saJakiesFiltry, parametryUkryte, wartosciPol, adresMagazynu, KANALY_MAGAZYNU, PACZKOMAT_DO_FILTRA, BRAKI_ETYKIETY, PACZKOMAT_ETYKIETY, adresKanalu, KANALY_SKLEPOW, miniaturaZLustra, opisWymiarow, centymetryZMilimetrow, milimetryZCentymetrow, czyPaczkomat, zl, fmtDataCzas, KOLUMNY_KANALOW, POLA_FORMULARZA_FILTROW, NAGLOWKI_KANALOW, BEZ_SKLEPOW, BEZ_SKLEPOW_ODMOWA, ADRES_HTTP, adresSklepu, zapisanaMiniatura, komorkaKanalu, zEtykietaKanalu, opisLiczbyKanalow, opisPrzebiegu, opisPrzebieguTresci, linkiSortowania, wierszKarty, ileKart, opisZawezenia, BEZ_KART, SORTOWANIE_POWIAZAN, SORTOWANIE_POWIAZAN_DOMYSLNE, napis, kanalAllegro, numerKarty, paryZFormularza, wierszOferty, pozycjaListy, adresPowiazan, linkiPowiazan, ukrytePowiazan, POLA_KARTY, POLA_WYMIAROW, pole, doKolumny, zmianyZFormularza, bezpiecznyWroc, adresKarty, zWroc, numeryZaznaczone, filtryZawezenia, zakresHurtu, HURT_BEZ_ZAZNACZENIA, HURT_BEZ_ZMIANY };
 }

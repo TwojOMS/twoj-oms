@@ -345,7 +345,7 @@ export function createFakturaOkresu({
     if (!nabywca) {
       throw bladOperatora(
         program.opis?.wbudowany
-          ? `W OMS-ie nie ma klienta o NIP ${klient.nip} — dodaj go z danymi do faktury na ekranie Stali klienci i ponów wystawienie.`
+          ? `W OMS-ie nie ma klienta o NIP ${klient.nip} — dodaj go z danymi do faktury na ekranie Klienci B2B i ponów wystawienie.`
           : `W ${nazwa.miejscownik} nie ma klienta o NIP ${klient.nip} — załóż go tam raz, ręcznie, i ponów wystawienie.`,
       );
     }

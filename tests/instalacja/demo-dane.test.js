@@ -12,6 +12,10 @@ import { createRequire } from 'node:module';
 import { uruchomPiaskownice } from '../../deploy/proba/atrapy/index.mjs';
 import { zalozKonto } from '../../src/core/bezpieczenstwo/konta.js';
 import { utworzBazeDemo, wygenerujDaneDemo, ENV_DEMO, nipFikcyjny } from '../../scripts/demo-dane.mjs';
+import { FIRMY_B2B } from '../../scripts/demo-dane-firma.mjs';
+import { etapPrzesylki, kategoriaPrzesylki, bezRuchu } from '../../src/domena/etap-przesylki.js';
+import { przewoznikWiersza } from '../../src/domena/przewoznik-przesylki.js';
+import { pobierzZamowienie } from '../../src/oms/db/zamowienia.js';
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
 
 const DZIS = '2026-10-14';
@@ -36,13 +40,12 @@ const ZNACZNIKI = {
   '/klienci': ['Hotel Zaciszny Brzeg', 'Wohnlicht Nordstrand GmbH (demo)'],
   '/wiadomosci': ['demo-watek-1', 'oprawka jest E27'],
   '/magazyn': ['Lampa stołowa Gliwka', 'LMP-STO-001', 'Lampa wisząca Kopuła'],
+  '/analityka': ['Nowe zamówienia', 'W realizacji'], // PRZ-167
   '/raporty': ['Sprzedaż brutto', 'Lampa'],
   '/statystyki': ['Paczkomat'],
   '/kampania': ['Google · GA4', 'Meta · insights'],
   '/koszty': ['Huta Szkła Brzeziny (demo)', 'Spółdzielnia Warsztatowa Cegielnia (demo)'],
   '/finanse': ['Czynsz pracowni', 'Szkło i klosze'],
-  // PRZ-082 (właściciel 14.10): Cele bez danych demo, gość nie ma zakładki (deploy/proba/atrapy/ekrany.mjs); administrator widzi pustą.
-  '/cele': ['Cele'],
   '/ustawienia': ['Ustawienia'],
 };
 const PUSTE = ['W tym okresie nie ma ani jednego zamówienia', 'W tym zakresie nie ma zamówień.',
@@ -73,9 +76,35 @@ describe('generator danych demo na świeżej bazie', () => {
     return { status: r.status, html: await r.text() };
   };
 
+  // PRZ-163 (właściciel 14.11): zamówienie z 15 różnymi produktami — lista pokazuje 5, resztę zwija.
+  it('jest zamówienie z 15 różnymi produktami, a lista zamówień zwija je pod „Pokaż jeszcze 10”', async () => {
+    const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
+    let id;
+    try {
+      const w = db.prepare('SELECT zamowienie_id id, COUNT(DISTINCT sku) n FROM pozycje GROUP BY zamowienie_id ORDER BY n DESC LIMIT 1').get();
+      expect(w.n).toBe(15); id = w.id;
+    } finally { db.close(); }
+    const { status, html } = await strona('/');
+    expect(status).toBe(200);
+    const wiersz = html.match(new RegExp(`<tr id="zamowienie-${id}"[\\s\\S]*?</tr>`));
+    expect(wiersz, 'zamówienie z 15 pozycjami na pierwszej stronie listy').toBeTruthy();
+    expect(wiersz[0]).toContain('Pokaż jeszcze 10');
+  });
+
+  // PRZ-164 (właściciel 14.11): w „Nowych” jedno zamówienie z 7 i jedno z 12 pozycjami — oba zwinięte (widać 5).
+  it('lista „Nowe” ma zamówienie z 7 i z 12 różnymi produktami, zwinięte pod „Pokaż jeszcze 2” i „Pokaż jeszcze 7”', async () => {
+    const { status, html } = await strona('/?status=nowe');
+    expect(status).toBe(200);
+    const pokaz = [...html.matchAll(/Pokaż jeszcze (\d+)/g)].map((m) => Number(m[1])).sort((a, b) => a - b);
+    expect(pokaz).toEqual([2, 7]);
+  });
+
   // PRZ-087: pętla pomija ostatnie 3 dni (−19), uzupełnienia PRZ-087 dokładają 40 (12 nowych, 24 w realizacji, 4 wysłane; PRZ-152.G5: bez „indywidualnych”).
-  it('ok. 177 zamówień z 60 dni (131 z pliku firmy + 6 uzupełnień PRZ-082 + 40 PRZ-087), wszystkie statusy, faktury z WDT, zwroty, przesyłki, koszty', () => {
-    expect(wynik.zamowienia).toBe(177);
+  // PRZ-160.demo: +19 dużych koszyków i paczek, +10–13 zamówień firm zbiorczych (3 z miesiąca sprzed dwóch wypadają
+  // z okna 58 dni pod koniec miesiąca) — 206–209 zależnie od dnia. PRZ-163: +1 koszyk z 15 produktami — 207–210. PRZ-164: +2 duże „nowe” — 209–212.
+  it('ok. 212 zamówień z 60 dni (131 z pliku firmy + 6 PRZ-082 + 40 PRZ-087 + 29–32 PRZ-160 + 1 PRZ-163 + 2 PRZ-164), wszystkie statusy, faktury z WDT, zwroty, przesyłki, koszty', () => {
+    expect(wynik.zamowienia).toBeGreaterThanOrEqual(209);
+    expect(wynik.zamowienia).toBeLessThanOrEqual(212);
     expect(Object.keys(wynik.statusy).sort()).toEqual(['anulowane', 'nowe', 'w_realizacji', 'wyslane', 'zwrot']);
     const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
     try {
@@ -128,7 +157,7 @@ describe('generator danych demo na świeżej bazie', () => {
       const z = ZNACZNIKI[adres];
 
       for (const tekst of z) expect.soft(html, `${adres}: brak „${tekst}”`).toContain(tekst);
-      for (const tekst of PUSTE) if (adres !== '/cele') expect.soft(html, `${adres}: pusty stan „${tekst}”`).not.toContain(tekst);
+      for (const tekst of PUSTE) expect.soft(html, `${adres}: pusty stan „${tekst}”`).not.toContain(tekst);
     }
   }, 60000);
 
@@ -218,10 +247,144 @@ describe('generator danych demo — determinizm i odmowy', () => {
   }, 30000);
 
   it('NIP fikcyjny ma poprawną sumę kontrolną i prefiks 999', () => {
-    for (const n of [0, 1, 1000, 5011, 7013].map(nipFikcyjny)) {
+    for (const n of [0, 1, 1000, 5011, 7013, ...FIRMY_B2B.map((f) => f.nip)].map((x) => (typeof x === 'number' ? nipFikcyjny(x) : x))) {
       const c = n.split('').map(Number);
       expect(n).toMatch(/^999\d{7}$/);
       expect([6, 5, 7, 2, 3, 4, 5, 6, 7].reduce((s, w, i) => s + w * c[i], 0) % 11).toBe(c[9]);
+    }
+  });
+});
+
+// PRZ-160.demo (właściciel 13.11) — nowe dane demo i piaskownicy: duże koszyki, więcej faktur, „nowe” tylko z dziś,
+// okresy rozliczeniowe w różnych stanach, korekty, przesyłki utworzone i w drodze u różnych przewoźników i w kanałach.
+describe('PRZ-160.demo: dane demo do pokazania', () => {
+  const dzienW = (t) => new Date(t).toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' });
+  /** Godzina zegara w Polsce danego dnia → ISO UTC (strefa z Intl, także w dniu zmiany czasu). */
+  const chwilaWarszawy = (dzis, hhmm) => {
+    const [h, m] = hhmm.split(':').map(Number);
+    const naiwna = Date.parse(`${dzis}T00:00:00Z`) + h * 3600000 + m * 60000;
+    const strefa = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Warsaw', timeZoneName: 'shortOffset' })
+      .formatToParts(new Date(naiwna)).find((p) => p.type === 'timeZoneName').value;
+    return new Date(naiwna - Number(/GMT([+-]\d+)/.exec(strefa)?.[1] ?? 0) * 3600000).toISOString();
+  };
+  const bazy = new Map();
+  /** Baza demo na dzień (i opcjonalnie „teraz” HH:MM czasu Warszawy) — jedna na przebieg, otwarta do odczytu. */
+  const baza = async (dzis, teraz) => {
+    const klucz = `${dzis} ${teraz ?? ''}`;
+    if (!bazy.has(klucz)) {
+      const env = envDla(katalog());
+      const wynik = await utworzBazeDemo({ baza: env.OMS_DB_PATH, dzis, env, ...(teraz ? { teraz } : {}) });
+      bazy.set(klucz, { db: new DatabaseSync(env.OMS_DB_PATH), wynik });
+    }
+    return bazy.get(klucz);
+  };
+  afterAll(() => { for (const { db } of bazy.values()) db.close(); });
+  const tylko = (db, sql, ...a) => db.prepare(sql).all(...a);
+  const nowe = (db) => tylko(db, `SELECT id, sklep, utworzone_at FROM zamowienia z WHERE anulowane = 0 AND indywidualne = 0
+    AND w_realizacji_at IS NULL AND wyslane_at IS NULL AND zwrot_at IS NULL AND NOT EXISTS (SELECT 1 FROM zwroty w WHERE w.zamowienie_id = z.id)`);
+
+  it('1. co najmniej 8 zamówień z 4–7 różnymi produktami, w sklepie, na obu kontach Allegro i w B2B; część z ilością > 1', async () => {
+    const { db } = await baza('2026-11-13');
+    const duze = tylko(db, `SELECT z.id, z.sklep, COUNT(DISTINCT p.sku) rodzajow, MAX(p.ilosc) maks FROM zamowienia z JOIN pozycje p ON p.zamowienie_id = z.id
+      WHERE p.sku IS NOT NULL GROUP BY z.id HAVING COUNT(DISTINCT p.sku) >= 4`);
+    expect(duze.length).toBeGreaterThanOrEqual(8);
+    // PRZ-163 (właściciel 14.11): wyjątki: koszyk z 15 produktami (PRZ-163) i „nowe” z 12 (PRZ-164) do zwijania na liście zamówień.
+    expect(duze.filter((z) => z.rodzajow > 7).map((z) => z.rodzajow).sort((a, b) => a - b)).toEqual([12, 15]);
+    expect(new Set(duze.map((z) => z.sklep))).toEqual(new Set(['polcien', 'allegro', 'allegro-outlet', 'reczne']));
+    expect(duze.filter((z) => z.maks > 1).length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('2. faktura przy co najmniej 30% zamówień (było 34/177 = 19%), także osoby prywatne bez NIP-u i Allegro', async () => {
+    const { db } = await baza('2026-11-13');
+    const razem = tylko(db, 'SELECT COUNT(*) n FROM zamowienia')[0].n;
+    const zFaktura = tylko(db, `SELECT COUNT(*) n FROM zamowienia z WHERE EXISTS (SELECT 1 FROM faktury f WHERE f.zamowienie_id = z.id)
+      OR (z.anulowane = 0 AND EXISTS (SELECT 1 FROM okresy_rozliczeniowe o WHERE o.id = z.okres_rozliczeniowy_id AND o.numer IS NOT NULL))`)[0].n;
+    expect(zFaktura / razem).toBeGreaterThanOrEqual(0.3);
+    const wgKanalu = Object.fromEntries(tylko(db, 'SELECT z.sklep k, COUNT(*) n FROM faktury f JOIN zamowienia z ON z.id = f.zamowienie_id GROUP BY z.sklep').map((w) => [w.k, w.n]));
+    expect(wgKanalu.allegro).toBeGreaterThanOrEqual(8);
+    expect(wgKanalu['allegro-outlet']).toBeGreaterThanOrEqual(3);
+    expect(wgKanalu.polcien).toBeGreaterThanOrEqual(15);
+    expect(tylko(db, `SELECT COUNT(*) n FROM faktury f JOIN zamowienia z ON z.id = f.zamowienie_id WHERE z.nip IS NULL
+      AND COALESCE(json_extract(z.klient_json, '$.company'), '') = ''`)[0].n).toBeGreaterThanOrEqual(3);
+  });
+
+  it.each([['2026-11-13', undefined, '06:30'], ['2026-11-13', '00:20', '00:20'], ['2026-11-01', '00:20', '00:20'], ['2026-03-29', '09:00', '09:00']])(
+    '3. status „nowe” tylko z dziś i nie z przyszłości (%s, teraz %s)', async (dzis, teraz, godzina) => {
+      const { db } = await baza(dzis, teraz);
+      const terazIso = chwilaWarszawy(dzis, godzina);
+      const lista = nowe(db);
+      for (const z of lista) {
+        expect.soft(dzienW(z.utworzone_at), `#${z.id} ${z.sklep}`).toBe(dzis);
+        expect.soft(z.utworzone_at <= terazIso, `#${z.id} ${z.utworzone_at} > ${terazIso}`).toBe(true);
+      }
+      if (!teraz) expect(lista.length).toBeGreaterThanOrEqual(10);
+      // Nic z przyszłości: zamówienia, fakty statusu, wpłaty, faktury, paczki.
+      const najpozniej = tylko(db, `SELECT MAX(t) t FROM (SELECT MAX(utworzone_at) t FROM zamowienia UNION ALL SELECT MAX(w_realizacji_at) FROM zamowienia
+        UNION ALL SELECT MAX(wyslane_at) FROM zamowienia UNION ALL SELECT MAX(oplacone_at) FROM zamowienia UNION ALL SELECT MAX(utworzona_at) FROM faktury
+        UNION ALL SELECT MAX(utworzona_at) FROM przesylki UNION ALL SELECT MAX(status_kuriera_at) FROM przesylki
+        UNION ALL SELECT MAX(utworzona_at) FROM okresy_rozliczeniowe UNION ALL SELECT MAX(zamkniety_at) FROM okresy_rozliczeniowe
+        UNION ALL SELECT MAX(utworzona_at) FROM platnosci_okresu UNION ALL SELECT MAX(korekta_zlecona_at) FROM zwroty)`)[0].t;
+      expect(najpozniej <= terazIso, `${najpozniej} > ${terazIso}`).toBe(true);
+    });
+
+  it.each(['2026-11-13', '2026-11-02', '2026-11-30', '2026-03-01'])('4. okresy rozliczeniowe (%s): ≥ 4 firmy, ≥ 8 okresów, wszystkie stany, różne ustalenia', async (dzis) => {
+    const { db } = await baza(dzis);
+    const firmy = tylko(db, 'SELECT klucz, termin_platnosci, prog_darmowej_dostawy_gr, oplata_obslugi_gr, rabat_procent FROM klienci WHERE rozliczenie_zbiorcze = 1');
+    expect(firmy.length).toBeGreaterThanOrEqual(4);
+    expect(new Set(firmy.map((f) => JSON.stringify([f.termin_platnosci, f.prog_darmowej_dostawy_gr, f.oplata_obslugi_gr]))).size).toBeGreaterThanOrEqual(4);
+    const okresy = tylko(db, `SELECT o.*, (SELECT COALESCE(SUM(CAST(kwota AS REAL)), 0) FROM platnosci_okresu p WHERE p.okres_rozliczeniowy_id = o.id) wplacono,
+      (SELECT dane_json FROM atrapa_infakt_dokumenty a WHERE a.uuid = o.infakt_uuid) dok FROM okresy_rozliczeniowe o`);
+    expect(okresy.length).toBeGreaterThanOrEqual(8);
+    expect(new Set(okresy.map((o) => o.klient_klucz)).size).toBeGreaterThanOrEqual(4);
+    const miesiacDzis = `${dzis.slice(0, 4)}-${dzis.slice(5, 7)}`;
+    const biezace = okresy.filter((o) => `${o.rok}-${String(o.miesiac).padStart(2, '0')}` === miesiacDzis);
+    expect(biezace.length).toBeGreaterThanOrEqual(1);
+    expect(biezace.every((o) => o.stan === 'otwarty')).toBe(true);
+    // Każdy okres ma zamówienia; otwarte są tylko w bieżącym miesiącu.
+    for (const o of okresy) expect.soft(tylko(db, 'SELECT COUNT(*) n FROM zamowienia WHERE okres_rozliczeniowy_id = ?', o.id)[0].n, `okres ${o.id}`).toBeGreaterThan(0);
+    expect(okresy.filter((o) => o.stan === 'otwarty').every((o) => biezace.includes(o))).toBe(true);
+    expect(okresy.filter((o) => o.stan === 'zamkniety' && !o.numer).length).toBeGreaterThanOrEqual(1);
+    const zafakturowane = okresy.filter((o) => o.stan === 'zafakturowany');
+    for (const o of zafakturowane) expect.soft(o.numer && o.dok, `okres ${o.id} bez dokumentu w atrapie`).toBeTruthy();
+    const dok = (o) => JSON.parse(o.dok);
+    const oplacony = (o) => o.wplacono * 100 >= dok(o).gross_price && dok(o).status === 'paid';
+    expect(zafakturowane.filter(oplacony).length).toBeGreaterThanOrEqual(1);
+    const nieoplacone = zafakturowane.filter((o) => !oplacony(o) && dok(o).status !== 'paid');
+    expect(nieoplacone.filter((o) => dok(o).payment_date >= dzis).length, 'nieopłacony w terminie').toBeGreaterThanOrEqual(1);
+    expect(nieoplacone.filter((o) => dok(o).payment_date < dzis).length, 'nieopłacony po terminie').toBeGreaterThanOrEqual(1);
+    // Firma z własną etykietą płaci za obsługę zamiast dostawy (P2.03).
+    expect(tylko(db, "SELECT COUNT(*) n FROM pozycje WHERE nazwa LIKE 'Obsługa%' AND zrodlo = 'reczna'")[0].n).toBeGreaterThanOrEqual(1);
+  });
+
+  it('5. co najmniej 3 korekty na liście faktur (atrapa inFaktu), jedna wystawiona usługą korekty do zwrotu części koszyka', async () => {
+    const { db } = await baza('2026-11-13');
+    const zwroty = tylko(db, 'SELECT * FROM zwroty WHERE korekta_numer IS NOT NULL');
+    expect(zwroty.length).toBeGreaterThanOrEqual(3);
+    const korekty = tylko(db, "SELECT dane_json FROM atrapa_infakt_dokumenty WHERE rodzaj = 'korekta'").map((w) => JSON.parse(w.dane_json));
+    expect(korekty.length).toBeGreaterThanOrEqual(3);
+    for (const z of zwroty) expect.soft(korekty.some((k) => k.number === z.korekta_numer), z.korekta_numer).toBe(true);
+    // Korekta części koszyka: dokument koryguje jedną pozycję faktury z kilkoma pozycjami.
+    const czesciowa = korekty.find((k) => k.correction_reason === 'zwrot towaru');
+    expect(czesciowa).toBeTruthy();
+  });
+
+  it('6. przesyłki: utworzone i w drodze u różnych przewoźników i w różnych kanałach, jedna stoi bez ruchu', async () => {
+    const { db } = await baza('2026-11-13');
+    const kubly = { utworzone: [], w_drodze: [] };
+    const terazIso = new Date(Date.parse('2026-11-13T05:30:00Z')).toISOString();
+    let stoi = 0;
+    for (const p of tylko(db, 'SELECT p.*, z.sklep FROM przesylki p JOIN zamowienia z ON z.id = p.zamowienie_id')) {
+      const etap = etapPrzesylki(p.status_kuriera);
+      if (bezRuchu({ etap, statusKurieraAt: p.status_kuriera_at, nadanaAt: p.utworzona_at, teraz: terazIso })) stoi += 1;
+      const kat = kategoriaPrzesylki(p, etap);
+      if (!kubly[kat]) continue;
+      kubly[kat].push({ sklep: p.sklep, przewoznik: przewoznikWiersza(p, pobierzZamowienie(db, p.zamowienie_id))?.nazwa });
+    }
+    expect(stoi).toBe(1);
+    for (const [kat, lista] of Object.entries(kubly)) {
+      expect.soft(lista.length, kat).toBeGreaterThanOrEqual(9);
+      expect.soft(new Set(lista.map((x) => x.przewoznik)).size, `${kat}: przewoźnicy`).toBeGreaterThanOrEqual(4);
+      expect.soft(new Set(lista.map((x) => x.sklep)), `${kat}: kanały`).toEqual(new Set(['polcien', 'allegro', 'allegro-outlet', 'reczne']));
     }
   });
 });

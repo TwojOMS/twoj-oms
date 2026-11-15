@@ -157,8 +157,8 @@ return {
     { klucz: 'pozostale-dokumenty-zamowienia', etykieta: 'Pozostałe dokumenty zamówień', role: ['admin', 'operator'] },
     { klucz: 'okresy', etykieta: 'Okresy rozliczeniowe', role: ['admin', 'operator'] }],
   menu: [{ dzial: 'sprzedaz', grupa: 'obsluga', etykieta: 'Faktury', adres: '/faktury', uprawnienie: 'faktury', kolejnosc: 30 },
-    // PRZ-102.03: grupa „Klienci” w menu bocznym (zgodnie z EKRANY.nawigacja).
-    { dzial: 'sprzedaz', grupa: 'klienci', etykieta: 'Rozliczenia', adres: '/okresy', uprawnienie: 'okresy', kolejnosc: 60 }],
+    // Podmenu Faktur (zgodnie z EKRANY.nawigacja).
+    { dzial: 'sprzedaz', grupa: 'faktury', etykieta: 'Rozliczenia okresowe', adres: '/okresy', uprawnienie: 'okresy', kolejnosc: 60 }],
   zbuduj: (ctx) => {
     const { db, konfiguracja: k, teraz } = ctx;
     const atrapy = FABRYKI_ATRAP.filter((n) => fabryki[n]);
@@ -463,7 +463,7 @@ return {
         registerFakturyRoutes(app, { ...zWyborem, db: db as any, infakt: usluga('infakt'), fakturyWidok: usluga('fakturyWidok'),
           wysylkaKsef: usluga('wysylkaKsef'), czuwaczArchiwumSprzedazy: usluga('czuwaczArchiwumSprzedazy'),
           paczkaDlaBiura: usluga('paczkaDlaBiura') });
-        registerOkresyRoutes(app, { ...zWyborem, db, config: usluga('config'), infakt: usluga('infakt'), vies: usluga('vies') });
+        registerOkresyRoutes(app, { ...zWyborem, db, config: usluga('config'), proba: k.proba, infakt: usluga('infakt'), vies: usluga('vies') });
         const opcje = { ...zWyborem, db, teraz, config: usluga('config'), faktura: usluga('faktura'), fakturaHurtem: usluga('fakturaHurtem'),
           proforma: usluga('proforma'), infakt: usluga('infakt'), fakturaAllegro: usluga('fakturaAllegro'),
           ksefDoczytanie: usluga('doczytanieKsef'), kartaZamowienia: () => { try { return ctx.usluga<(...a: unknown[]) => unknown>('zamowienia', 'renderujKarte'); } catch { return null; } },

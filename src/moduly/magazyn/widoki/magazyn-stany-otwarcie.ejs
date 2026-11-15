@@ -1,0 +1,43 @@
+<p class="wroc"><a href="/ustawienia/magazyn">← Ustawienia magazynu</a> · <a href="/magazyn">Magazyn</a></p>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Stan otwarcia z kanałów'}) %>
+<% if (wynik && zapisano > 0) { %><p class="pas-potwierdzenie">Zapisano stan otwarcia (karty: <%= zapisano %><%= pominieto ? ', pominięte, bo już mają otwarcie: ' + pominieto : '' %>). <a href="/magazyn/stany/kanaly/podglad">Przejdź do podglądu i zatwierdzenia</a>.</p>
+<% } else if (wynik) { %><p class="pas-uprzedzenie">Nic nie zapisano — wszystkie wybrane karty mają już otwarcie (<%= pominieto %>). Popraw je korektą na karcie.</p><% } %>
+<section class="panel">
+  <h2 id="odczytaj-tytul">1. Ustal stan otwarcia</h2>
+  <p>Propozycja to minimum z kanałów prowadzących stan, powiększone o sprzedaż tego konta od włączenia. Odczyt jest ważny 30 minut. Każdą wartość możesz zmienić przed zapisem. Ceny i treść synchronizują się jak dotąd, ilość czeka na zatwierdzenie podglądu.</p>
+  <form method="post" action="/magazyn/stany/otwarcie/odczytaj" aria-labelledby="odczytaj-tytul">
+    <button type="submit" class="btn btn--glowny">Odczytaj ilości z kanałów</button>
+  </form>
+  <% if (kontynuacja) { %>
+    <h3 id="kontynuuj-tytul">Kontynuacja po ponownym włączeniu</h3>
+    <p>Stan z chwili wyłączenia minus zamówienia z przerwy. Wartości obejmują także karty z zerem.</p>
+    <form method="post" action="/magazyn/stany/otwarcie/kontynuuj" aria-labelledby="kontynuuj-tytul">
+      <button type="submit" class="btn">Kontynuuj od stanu z wyłączenia</button>
+    </form>
+  <% } %>
+  <p><a href="/magazyn/stany/import">Import tekstem</a> · <a href="/magazyn/stany/kanaly/podglad">Podgląd stanów w kanałach</a></p>
+</section>
+<% if (bledy.length) { %><div class="pas-uprzedzenie"><ul><% bledy.forEach(b => { %><li><%= b %></li><% }); %></ul></div><% } %>
+<% if (podglad) { %>
+<section class="panel">
+  <h2 id="otwarcie-tytul">2. Zatwierdź wartości otwarcia</h2>
+  <p id="otwarcie-pomoc">Ilość całkowita, co najmniej 0. Puste pole pomija kartę. Brak odczytu nie oznacza zera — możesz wpisać ilość ręcznie. Istniejące otwarcie pozostaje bez zmian; popraw je korektą na karcie.</p>
+  <form method="post" action="/magazyn/stany/otwarcie/zapisz" aria-labelledby="otwarcie-tytul" aria-describedby="otwarcie-pomoc">
+    <input type="hidden" name="podglad" value="<%= podglad %>">
+    <% wiersze.forEach(w => { %>
+      <fieldset>
+        <legend><a href="/magazyn/<%= w.id %>"><%= w.nazwa %></a> (<%= w.sku || 'bez SKU' %>)</legend>
+        <% w.kanaly.forEach(k => { %>
+          <% if (k.powod) { %><p class="podpowiedz"><%= k.konto %>: nie jest źródłem (<%= k.powod %>)</p>
+          <% } else { %><p><%= k.konto %>: <%= k.odczyt %> + <%= k.sprzedane %> sprzedane od włączenia = <%= k.wartosc %><%= k.roznica ? ' — różnica' : '' %></p><% } %>
+        <% }); %>
+        <% if (w.ruchy) { %><p class="pas-uprzedzenie">ruchy po włączeniu: <%= w.ruchy > 0 ? '+' : '' %><%= w.ruchy %> — ręczne ruchy magazynowe nie są wliczone w odczyt z kanałów; sprawdź wartość.</p><% } %>
+        <% if (w.ilosc === null) { %><p class="podpowiedz">Brak pełnego odczytu z kanałów prowadzących stan. Sprawdź stan i wpisz ilość ręcznie albo odczytaj ponownie.</p><% } %>
+        <label for="ilosc_<%= w.id %>">Stan otwarcia (szt.)</label>
+        <input id="ilosc_<%= w.id %>" type="number" min="0" step="1" inputmode="numeric" name="ilosc_<%= w.id %>" value="<%= w.ilosc ?? '' %>">
+      </fieldset>
+    <% }); %>
+    <p><button type="submit" class="btn btn--glowny">Zapisz stan otwarcia</button></p>
+  </form>
+</section>
+<% } %>

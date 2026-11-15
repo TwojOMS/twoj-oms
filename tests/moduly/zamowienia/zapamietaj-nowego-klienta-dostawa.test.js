@@ -109,7 +109,7 @@ describe('„Zapamiętaj klienta” — nowy klient z nierozpoznaną dostawą', 
       await post(`/zamowienia/${id}/klient/zapamietaj`);
       const k = klientPoNip(db, NIP);
       expect([k.metoda_wysylki, k.koszt_dostawy_brutto]).toEqual(['dpd', '']);
-      expect((await get(`/klienci/${k.id}`)).body).not.toContain('wysyłka gratis');
+      expect((await get(`/klienci/${k.id}/karta`)).body).not.toContain('wysyłka gratis');
     });
   }
 
@@ -119,14 +119,14 @@ describe('„Zapamiętaj klienta” — nowy klient z nierozpoznaną dostawą', 
     const k = klientPoNip(db, NIP);
     expect(k.metoda_wysylki).toBe('');
 
-    const karta = await get(`/klienci/${k.id}`);
+    const karta = await get(`/klienci/${k.id}/karta`);
     expect(karta.statusCode).toBe(200);
     expect(karta.body).toContain('Dostawa');
     expect(karta.body).toContain('nie ustalono');
     // Pusty koszt to „nie ustalono”, a nie „wysyłka gratis” (to znaczy 0,00).
     expect(karta.body).not.toContain('wysyłka gratis');
 
-    const formularz = await get(`/klienci/${k.id}/edytuj`);
+    const formularz = await get(`/klienci/${k.id}`);
     expect(formularz.statusCode).toBe(200);
     expect(formularz.body).toContain('name="metoda_wysylki"');
     expect(formularz.body).toContain('value="dpd"');
@@ -156,7 +156,7 @@ describe('„Zapamiętaj klienta” — nowy klient z nierozpoznaną dostawą', 
     await post(`/zamowienia/${id}/klient/zapamietaj`);
     // Koszt z zamówienia na kartę nie przechodzi — ustalamy go tak, jak zrobiłby to operator.
     db.prepare("UPDATE klienci SET koszt_dostawy_brutto = '19.99' WHERE nip = ?").run(NIP);
-    const karta = await get(`/klienci/${klientPoNip(db, NIP).id}`);
+    const karta = await get(`/klienci/${klientPoNip(db, NIP).id}/karta`);
     expect(karta.statusCode).toBe(200);
     expect(karta.body).toContain('DPD — kurier');
     expect(karta.body).toContain('19.99');
@@ -196,7 +196,7 @@ function formularzZEkranu(html) {
 // Koszt z karty klienta wchodzi potem do nowych zamówień: to są pieniądze.
 describe('Formularz Stałych klientów — dostawa nieustalona', () => {
   const zapiszFormularzemZNowymAdresem = async (klientId) => {
-    const ekran = await get(`/klienci/${klientId}/edytuj`);
+    const ekran = await get(`/klienci/${klientId}`);
     expect(ekran.statusCode).toBe(200);
     const pola = formularzZEkranu(ekran.body);
     expect(pola.id).toBe(String(klientId));
@@ -211,7 +211,7 @@ describe('Formularz Stałych klientów — dostawa nieustalona', () => {
     const k = klientPoNip(db, NIP);
     expect(k.metoda_wysylki).toBe('');
 
-    const ekran = await get(`/klienci/${k.id}/edytuj`);
+    const ekran = await get(`/klienci/${k.id}`);
     expect(ekran.body).toMatch(/<option value="" selected>nie ustalono<\/option>/);
 
     const { pola } = await zapiszFormularzemZNowymAdresem(k.id);
@@ -221,14 +221,14 @@ describe('Formularz Stałych klientów — dostawa nieustalona', () => {
     expect(po.faktura.ulica).toBe('Nowa 11');
     expect(po.metoda_wysylki).toBe('');
     expect(po.koszt_dostawy_brutto).toBe('');
-    expect((await get(`/klienci/${k.id}`)).body).not.toContain('wysyłka gratis');
+    expect((await get(`/klienci/${k.id}/karta`)).body).not.toContain('wysyłka gratis');
   });
 
   it('pusta dostawa wymusza pusty koszt, nawet gdy w polu kosztu coś wpisano', async () => {
     const id = zalozZamowienie('nieznana');
     await post(`/zamowienia/${id}/klient/zapamietaj`);
     const k = klientPoNip(db, NIP);
-    const pola = formularzZEkranu((await get(`/klienci/${k.id}/edytuj`)).body);
+    const pola = formularzZEkranu((await get(`/klienci/${k.id}`)).body);
     expect((await post('/klienci', { ...pola, koszt_dostawy_brutto: '0' })).statusCode).toBe(302);
     expect(klientPoNip(db, NIP).koszt_dostawy_brutto).toBe('');
   });
@@ -257,11 +257,11 @@ describe('Formularz Stałych klientów — dostawa nieustalona', () => {
     const id = zalozZamowienie('nieznana');
     await post(`/zamowienia/${id}/klient/zapamietaj`);
     const k = klientPoNip(db, NIP);
-    const pola = formularzZEkranu((await get(`/klienci/${k.id}/edytuj`)).body);
+    const pola = formularzZEkranu((await get(`/klienci/${k.id}`)).body);
     await post('/klienci', { ...pola, metoda_wysylki: 'inpost_paczkomat', koszt_dostawy_brutto: '' });
     const po = klientPoNip(db, NIP);
     expect([po.metoda_wysylki, po.koszt_dostawy_brutto]).toEqual(['inpost_paczkomat', '']);
-    expect((await get(`/klienci/${k.id}`)).body).not.toContain('wysyłka gratis');
+    expect((await get(`/klienci/${k.id}/karta`)).body).not.toContain('wysyłka gratis');
   });
 
   it('klient z dpd i pustym kosztem z zamówienia: poprawka adresu formularzem zostawia koszt pusty', async () => {
@@ -273,7 +273,7 @@ describe('Formularz Stałych klientów — dostawa nieustalona', () => {
     const po = klientPoNip(db, NIP);
     expect(po.faktura.ulica).toBe('Nowa 11');
     expect([po.metoda_wysylki, po.koszt_dostawy_brutto]).toEqual(['dpd', '']);
-    expect((await get(`/klienci/${k.id}`)).body).not.toContain('wysyłka gratis');
+    expect((await get(`/klienci/${k.id}/karta`)).body).not.toContain('wysyłka gratis');
   });
 
   for (const wpisane of ['0', '0,00']) {
@@ -281,10 +281,10 @@ describe('Formularz Stałych klientów — dostawa nieustalona', () => {
       const id = zalozZamowienie('dpd');
       await post(`/zamowienia/${id}/klient/zapamietaj`);
       const k = klientPoNip(db, NIP);
-      const pola = formularzZEkranu((await get(`/klienci/${k.id}/edytuj`)).body);
+      const pola = formularzZEkranu((await get(`/klienci/${k.id}`)).body);
       await post('/klienci', { ...pola, koszt_dostawy_brutto: wpisane });
       expect(klientPoNip(db, NIP).koszt_dostawy_brutto).toBe('0.00');
-      expect((await get(`/klienci/${k.id}`)).body).toContain('wysyłka gratis');
+      expect((await get(`/klienci/${k.id}/karta`)).body).toContain('wysyłka gratis');
     });
   }
 });

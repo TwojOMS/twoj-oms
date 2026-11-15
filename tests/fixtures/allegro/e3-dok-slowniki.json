@@ -1,0 +1,45 @@
+{
+  "_zrodlo": "Kształty z dokumentacji Allegro (A1, A4, A6, A10–A12). Dane zmyślone — konto „Pracownia Półcień”.",
+  "produkty": {
+    "products": [
+      { "id": "a1b2c3d4-0000-4000-8000-000000000042", "name": "Lampa wisząca Kopuła 40 cm", "category": { "id": "257689" } }
+    ]
+  },
+  "zdjecie": {
+    "location": "https://a.allegroimg.example.test/original/11/aa/bb/przyklad-lampa",
+    "expiresAt": "2026-11-15T10:00:00.000Z"
+  },
+  "komendaIlosci": {
+    "modification": { "changeType": "FIXED", "value": 4 },
+    "offerCriteria": [{ "offers": [{ "id": "17000000000101" }, { "id": "17000000000103" }], "type": "CONTAINS_OFFERS" }]
+  },
+  "komendaCeny": {
+    "modification": { "type": "FIXED_PRICE", "price": { "amount": "189.90", "currency": "PLN" } },
+    "offerCriteria": [{ "offers": [{ "id": "17000000000101" }], "type": "CONTAINS_OFFERS" }]
+  },
+  "zadaniaKomendy": {
+    "tasks": [
+      { "offer": { "id": "17000000000101" }, "status": "SUCCESS", "message": "" },
+      { "offer": { "id": "17000000000103" }, "status": "FAIL", "message": "Przykładowy błąd" }
+    ]
+  },
+  "cenniki": { "shippingRates": [{ "id": "cennik-przyklad-1", "name": "Lampy — kurier" }] },
+  "zwroty": { "returnPolicies": [{ "id": "zwrot-przyklad-1", "name": "14 dni" }], "count": 1 },
+  "reklamacje": { "impliedWarranties": [{ "id": "reklamacja-przyklad-1", "name": "Rękojmia" }], "count": 1 },
+  "gwarancje": { "warranties": [{ "id": "gwarancja-przyklad-1", "name": "24 miesiące" }], "count": 1 },
+  "producenci": { "responsibleProducers": [{ "id": "producent-przyklad-1", "name": "Pracownia Półcień" }] },
+  "osoby": { "responsiblePersons": [{ "id": "osoba-przyklad-1", "name": "Osoba Przykładowa" }] },
+  "podatek": { "subjects": ["GOODS"], "rates": [{ "countryCode": "PL", "values": [{ "value": "23.00" }] }], "exemptions": [] },
+  "kategorie": {
+    "matchingCategories": [
+      { "id": "257689", "name": "Lampy wiszące", "parentCategory": { "id": "257680", "name": "Oświetlenie" } }
+    ]
+  },
+  "podgladOplat": {
+    "commissions": [{ "name": "Prowizja od sprzedaży", "type": "commissionFee", "fee": { "amount": "19.00", "currency": "PLN" } }],
+    "quotes": [{ "name": "Opłata za wystawienie", "type": "listingFee", "fee": { "amount": "0.00", "currency": "PLN" } }]
+  },
+  "oplatyOferty": {
+    "quotes": [{ "name": "Opłata za wystawienie", "type": "LISTING", "fee": { "amount": "0.00", "currency": "PLN" }, "offer": { "id": "17000000000101" } }]
+  }
+}

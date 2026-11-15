@@ -1,0 +1,23 @@
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', { tytul: 'Nowy produkt', podtytul: 'Dane produktu w magazynie' }) %>
+<p class="wroc"><a href="/magazyn">← Wróć do magazynu</a></p>
+<section class="panel" aria-labelledby="nowa-karta-tytul">
+  <h2 id="nowa-karta-tytul">Utwórz kartę produktu</h2>
+  <% if (blad) { %><p class="pasek-blokada" id="nowa-karta-blad" role="alert" tabindex="-1" autofocus><%= blad %></p><% } %>
+  <form class="pola" method="post" action="/magazyn/nowa-karta" aria-labelledby="nowa-karta-tytul"<%- blad ? ' aria-describedby="nowa-karta-blad"' : '' %>>
+    <p><label for="nowa-nazwa">Nazwa (wymagana)</label><br>
+      <input id="nowa-nazwa" name="nazwa" type="text" required<%- blad && !wpisane.nazwa?.trim() ? ' aria-invalid="true" aria-describedby="nowa-karta-blad"' : '' %> value="<%= wpisane.nazwa ?? '' %>"></p>
+    <p><label for="nowa-sku">SKU</label><br>
+      <input id="nowa-sku" name="sku" type="text" autocorrect="off" autocapitalize="none" spellcheck="false" value="<%= wpisane.sku ?? '' %>"></p>
+    <p><label for="nowa-ean">EAN (8 lub 13 cyfr z cyfrą kontrolną)</label><br>
+      <input id="nowa-ean" name="ean" type="text" inputmode="numeric" value="<%= wpisane.ean ?? '' %>"></p>
+    <p><label for="nowa-cena">Cena brutto (zł, np. 28,90)</label><br>
+      <input id="nowa-cena" name="cena_zl" type="text" inputmode="decimal" value="<%= wpisane.cena_zl ?? '' %>"></p>
+    <p><label for="nowa-vat">Stawka VAT</label><br>
+      <select id="nowa-vat" name="stawka_vat">
+        <option value="">—</option>
+        <% stawkiVat.forEach(function (stawka) { %><option value="<%= stawka %>"<%- wpisane.stawka_vat === stawka ? ' selected' : '' %>><%= stawka %>%</option><% }); %>
+      </select></p>
+    <p class="wyjasnienie">Nowa karta ma stan magazynowy 0. Zdjęcia i opis dodasz na karcie.</p>
+    <button class="btn btn--glowny" type="submit">Utwórz kartę</button>
+  </form>
+</section>

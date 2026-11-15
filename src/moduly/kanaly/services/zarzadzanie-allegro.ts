@@ -17,9 +17,13 @@ export function createZarzadzanieAllegro(o:{db:DatabaseSync;repozytorium:Repozyt
   if(!kandydat||kandydat.klucz!==klucz||kandydat.aktor.id!==aktor.id||kandydat.wersja!==wersja)return bladAllegro('konflikt','Zgoda lub formularz są nieaktualne. Odśwież ekran.');
   const k=o.repozytorium.pobierz(klucz);
   if(!k||k.wersja!==wersja||k.generacja!==kandydat.generacja||typeof pobieraj!=='boolean')return bladAllegro('konflikt','Połączenie zostało zmienione.');
-  if(k.zrodlo!=='env'&&!poprawnaDataStartu(k.odUtc,teraz()))return bladAllegro('walidacja','Wybierz dzień z ostatnich 12 miesięcy, nie późniejszy niż dzisiaj.');
+  // PRZ-160 E3d.01: ponowna zgoda połączonego konta z panelu (to samo konto Allegro, sprawdzone przy
+  // odbiorze pary) wymienia tylko tokeny: bez przeglądu operacji, bez zmiany generacji, importu i ustawień.
+  const ponowna=kandydat.ponowna===true&&k.zrodlo==='panel'&&k.autoryzacja==='polaczone'&&k.kontoId===kandydat.kontoId;
+  if(kandydat.ponowna===true&&!ponowna)return bladAllegro('konflikt','Połączenie zostało zmienione.');
+  if(k.zrodlo!=='env'&&!ponowna&&!poprawnaDataStartu(k.odUtc,teraz()))return bladAllegro('walidacja','Wybierz dzień z ostatnich 12 miesięcy, nie późniejszy niż dzisiaj.');
   try{
-   const ile=await kandydat.sprawdzZakres(k.odUtc);if(ile>10000)return bladAllegro('walidacja','Zakres zawiera ponad 10 000 zamówień. Wybierz późniejszą datę.');
+   const ile=ponowna?0:await kandydat.sprawdzZakres(k.odUtc);if(ile>10000)return bladAllegro('walidacja','Zakres zawiera ponad 10 000 zamówień. Wybierz późniejszą datę.');
    // Nowe kanały panelu potwierdzają istniejące konta przez API. Legacy zachowuje
    // znane ID także przy historycznej zgodzie bez prawa odczytu profilu.
    const envSprawdzone:{klucz:string;wersja:number;generacja:number}[]=[];
@@ -31,12 +35,15 @@ export function createZarzadzanieAllegro(o:{db:DatabaseSync;repozytorium:Repozyt
    const wynik=o.repozytorium.transakcja(():Wynik<PolaczenieAllegro>=>{
     const p=o.autoryzacja.pobierzKandydata(probaId,sesjaId);if(!p||p.wersja!==wersja||p.aktor.id!==aktor.id)return bladAllegro('konflikt','Zgoda została unieważniona.');
     if(envSprawdzone.some(e=>{const n=o.repozytorium.pobierz(e.klucz);return !n||n.wersja!==e.wersja||n.generacja!==e.generacja;}))return bladAllegro('konflikt','Inne połączenie Allegro zostało zmienione. Spróbuj ponownie.');
-    const z=o.repozytorium.zapiszZmiane(klucz,wersja,{kontoId:p.kontoId,login:p.login,autoryzacja:'polaczone',pobieranie:k.zrodlo==='env'?k.pobieranie:k.kontoId?'wylaczone':pobieraj?'wlaczone':'wylaczone'},aktor);if(!z.ok)return z;
-    zapiszTokeny(o.db,klucz,p.tokeny,z.dane.generacja);o.poAktywacji?.(z.dane);return z;
+    const z=o.repozytorium.zapiszZmiane(klucz,wersja,{kontoId:p.kontoId,login:p.login,autoryzacja:'polaczone',pobieranie:k.zrodlo==='env'||ponowna?k.pobieranie:k.kontoId?'wylaczone':pobieraj?'wlaczone':'wylaczone'},aktor);if(!z.ok)return z;
+    zapiszTokeny(o.db,klucz,p.tokeny,z.dane.generacja);if(!ponowna)o.poAktywacji?.(z.dane);return z;
    });
    if(wynik.ok){o.autoryzacja.zuzyjKandydata(probaId);zakonczone.set(probaId,{sesjaId,aktorId:aktor.id,wersja,dane:wynik.dane,wygasa:teraz().getTime()+600000});}
    return wynik;
-  }catch{return bladAllegro('tymczasowy','Nie udało się zapisać i sprawdzić połączenia. Dane aktywnego konta nie zostały zmienione.');}
+  }catch(e){
+   if(e instanceof Error&&'dlaOperatora' in e&&e.dlaOperatora===true&&'kod' in e&&e.kod==='konflikt')throw e;
+   return bladAllegro('tymczasowy','Nie udało się zapisać i sprawdzić połączenia. Dane aktywnego konta nie zostały zmienione.');
+  }
  }
  const konflikt=()=>bladAllegro('konflikt','Połączenie zostało zmienione. Odśwież ekran.');
  async function zakonczZatrzymanie(k:PolaczenieAllegro,zakres:'zamowienia'|'calosc',aktor:Aktor):Promise<Wynik<PolaczenieAllegro>>{

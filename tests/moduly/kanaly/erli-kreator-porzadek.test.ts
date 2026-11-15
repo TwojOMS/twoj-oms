@@ -17,7 +17,7 @@ import path from 'node:path';
 // Katalog roboczy w os.tmpdir(), nie na jednej maszynie (CI kopii publicznej 12.11.2026).
 const KATALOG_TESTU=fs.mkdtempSync(path.join(os.tmpdir(),'erli-kreator-porzadek-'));
 const root='/ustawienia/integracje/erli',sandbox='https://sandbox.erli.dev/svc/shop-api',klucz='atrapa-polcien';
-const KOLEJNOSC=['dane','polaczenie','metody','nadawanie','start'];
+const KOLEJNOSC=['dane','polaczenie','metody','nadawanie','oferty','start'];
 let a:Aplikacja,db:ReturnType<typeof openOmsDb>;
 afterEach(async()=>{await a?.app.close();db?.close();});
 type Opcje={bezMetodErli?:boolean;bezNazw?:boolean;odmowa?:boolean;zPliku?:boolean};
@@ -59,11 +59,11 @@ function jedenKrok(html:string,biezacy:string){
  for(const id of wszystkieKroki(html))expect(KOLEJNOSC.indexOf(id)).toBeLessThanOrEqual(KOLEJNOSC.indexOf(biezacy));
 }
 
-it('nowy sklep: tylko krok 1, pasek 5 kroków ze „Start” na końcu',async()=>{
+it('nowy sklep: tylko krok 1, pasek 6 kroków z „Ofertami” przed „Start”',async()=>{
  const f=await setup(),html=await f.get('/nowe');
  jedenKrok(html,'dane');
- expect([...pasek(html).matchAll(/class="step-dot"[^>]*>(\d)</g)].map(m=>m[1])).toEqual(['1','2','3','4','5']);
- expect(pasek(html)).toContain('5. Start');expect(pasek(html)).not.toContain('Data startu');
+ expect([...pasek(html).matchAll(/class="step-dot"[^>]*>(\d)</g)].map(m=>m[1])).toEqual(['1','2','3','4','5','6']);
+ expect(pasek(html)).toContain('5. Oferty');expect(pasek(html)).toContain('6. Start');expect(pasek(html)).not.toContain('Data startu');
  expect(html).not.toContain('<details class="erli-krok"');
 });
 it('po zapisie kroku 1: krok 1 zwinięty z podsumowaniem, bieżące metody, bez napisu o sprawdzaniu połączenia',async()=>{
@@ -124,13 +124,14 @@ it('metody pominięte: od razu „Start”, bez kroku nadawania, podsumowanie �
  jedenKrok(html,'start');
  expect(html).toContain('<summary>3. Metody dostawy — pominięte, ustawisz później</summary>');
  expect(html).not.toContain('Nadawanie Przesyłek Erli');
- expect(biezacyWPasku(html)).toContain('4. Start');
+ expect(pasek(html)).toContain('4. Oferty');expect(biezacyWPasku(html)).toContain('5. Start');
 });
-it('sklep bez Przesyłek Erli: 4 kroki, po metodach od razu „Start”',async()=>{
+it('sklep bez Przesyłek Erli: 5 kroków z Ofertami przed Startem',async()=>{
  const f=await setup({bezMetodErli:true}),{p}=await f.szkic();await f.post(p,'pobierz-metody');await f.post(p,'metody');
  const html=await f.get(p);
  jedenKrok(html,'start');
- expect([...pasek(html).matchAll(/class="step-dot"/g)]).toHaveLength(4);
+ expect([...pasek(html).matchAll(/class="step-dot"/g)]).toHaveLength(5);
+ expect(pasek(html)).toContain('4. Oferty');expect(biezacyWPasku(html)).toContain('5. Start');
  expect(html).not.toContain('Nadawanie Przesyłek Erli');
  expect(html).toContain('<summary>3. Metody dostawy — 3 metody: 2 Twoja umowa, 1 bez kuriera ⚠</summary>');
 });

@@ -41,10 +41,12 @@ const KURIERZY: Wpis[] = Object.values(MODULY_KURIEROW as Readonly<Record<string
 const WPISY: Wpis[] = [
   { id: 'allegro', nazwa: 'Allegro', kategoria: 'sklepy', opis: 'Pobieraj zamówienia z konta Allegro.', logo: '/integracje/allegro.svg', dostepnosc: 'dostepna', href: null },
   { id: 'woocommerce', nazwa: 'WooCommerce', kategoria: 'sklepy', opis: 'Pobieraj zamówienia ze sklepu WooCommerce.', logo: '/integracje/woocommerce.png', dostepnosc: 'dostepna', href: null },
-  { id: 'erli', nazwa: 'ERLI', kategoria: 'sklepy', opis: 'Połączenie z marketplace ERLI.', logo: '/integracje/erli.png', dostepnosc: 'dostepna', href: null },
+  { id: 'erli', nazwa: 'ERLI', kategoria: 'sklepy', opis: 'Połączenie z marketplace ERLI.', logo: '/integracje/erli.svg', dostepnosc: 'dostepna', href: null },
   { id: 'shoper', nazwa: 'Shoper', kategoria: 'sklepy', opis: 'Połączenie ze sklepem Shoper.', logo: '/integracje/shoper.svg', dostepnosc: 'planowana', href: null },
   { id: 'empik', nazwa: 'Empik', kategoria: 'sklepy', opis: 'Połączenie z Empik Marketplace.', logo: '/integracje/empik.png', dostepnosc: 'planowana', href: null },
   { id: 'etsy', nazwa: 'Etsy', kategoria: 'sklepy', opis: 'Połączenie z marketplace Etsy.', logo: '/integracje/etsy.svg', dostepnosc: 'planowana', href: null },
+  // PRZ-167: zapowiedź kanału sprzedaży bez modułu — tak jak Shoper, Empik i Etsy.
+  { id: 'tiktok-shop', nazwa: 'TikTok Shop', kategoria: 'sklepy', opis: 'Połączenie z TikTok Shop.', logo: '/integracje/tiktok-shop.png', dostepnosc: 'planowana', href: null },
   ...KURIERZY,
   // Zapowiedzi bez modułu (T3, decyzja właściciela 03.11: GLS, DHL, Apaczka).
   { id: 'gls', nazwa: 'GLS', kategoria: 'wysylka', opis: 'Połączenie z kurierem GLS.', logo: '/integracje/gls.png', dostepnosc: 'planowana', href: null },

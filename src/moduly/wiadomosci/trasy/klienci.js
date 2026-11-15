@@ -35,23 +35,15 @@ import { stronaOdmowy } from '../../../core/web/odmowa.js';
 export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = () => false }) {
   const ktoKlikal = (req) => req.uzytkownik ?? 'panel';
 
-  // ⚠️ `otwarty` ROZSTRZYGA, CZY FORMULARZ W OGÓLE WYCHODZI (prośba właściciela: „na górze
-  // strony lista klientów + przycisk Dodaj nowego klienta"). Ekran istnieje po to, żeby
-  // ZOBACZYĆ bazę; formularz jest tu czynnością rzadką — klient dopisuje się zwykle
-  // przyciskiem na karcie zamówienia. Rozwinięty na stałe kazał przewijać piętnaście pustych
-  // pól do tego, po co się przyszło.
-  //
-  // Ten sam idiom, co `?edytuj=szczegoly` na karcie zamówienia: stan ekranu siedzi w ADRESIE,
-  // więc „wróć" w przeglądarce i odświeżenie robią to, czego człowiek oczekuje, a panel dalej
-  // nie potrzebuje ani grama JavaScriptu.
+  // Lista i formularz mają osobne adresy, ale współdzielą szablon pól.
   function renderuj(reply, {
     formularz = {}, blad = null, edytowany = null, komunikat = null, otwarty = false,
     daneZGus = null, komunikatGus = null,
   } = {}) {
-    return reply.view('klienci.ejs', { szerokosc: edytowany ? 'formularz' : 'tabela',
-      title: 'Stali klienci',
-      okruszki: edytowany ? [{ tekst: 'Stali klienci', href: '/klienci' },
-        { tekst: edytowany.nazwa, href: `/klienci/${edytowany.id}` }, { tekst: 'Edycja' }] : undefined,
+    return reply.view('klienci.ejs', { szerokosc: edytowany ? 'karta' : otwarty ? 'karta' : 'tabela',
+      title: otwarty ? (edytowany ? `Klient: ${edytowany.nazwa}` : 'Nowy klient B2B') : 'Klienci B2B',
+      okruszki: edytowany ? [{ tekst: 'Klienci B2B', href: '/klienci' },
+        { tekst: edytowany.nazwa, href: `/klienci/${edytowany.id}/karta` }, { tekst: 'Edycja' }] : otwarty ? [{ tekst: 'Klienci B2B', href: '/klienci' }, { tekst: 'Nowy klient B2B' }] : undefined,
       otwarty,
       // ⚠️ RAZEM Z NIEAKTYWNYMI — to jest jedyny ekran, na którym wygaszony klient ma być
       // widoczny. Gdyby i tu go nie było, „wygaszenie" byłoby nieodwracalne przez panel.
@@ -79,12 +71,26 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
     return id ? klientPoId(db, id) : null;
   };
 
-  // `?nowy` otwiera pusty formularz. Sam `/klienci` oddaje WYŁĄCZNIE listę.
+  // Stare odnośniki przekierowują na osobny formularz. Sam `/klienci` oddaje listę.
   // PRZ-152.G13: odmowa „nie ma takiego klienta” w układzie OMS (status i tekst bez zmian); powrót na listę klientów.
   const brakKlienta = (reply) => stronaOdmowy(reply, 404, 'Nie ma takiego klienta', {
     tytul: 'Nie ma takiego klienta', napisWroc: 'Wróć do klientów', wroc: '/klienci',
   });
-  app.get('/klienci', async (req, reply) => renderuj(reply, { otwarty: req.query?.nowy !== undefined }));
+  app.get('/klienci', async (req, reply) => {
+    if (req.query?.nowy !== undefined) return reply.redirect('/klienci/nowy', 303);
+    if (req.query?.edytuj !== undefined) {
+      const klient = klientPoId(db, req.query.edytuj);
+      if (!klient) return brakKlienta(reply);
+      return reply.redirect(`/klienci/${klient.id}`, 303);
+    }
+    return renderuj(reply);
+  });
+  app.get('/klienci/nowy', async (req, reply) => renderuj(reply, { otwarty: true }));
+  app.get('/klienci/:id', async (req, reply) => {
+    const klient = klientPoId(db, req.params.id);
+    if (!klient) return brakKlienta(reply);
+    return renderuj(reply, { edytowany: klient, formularz: polaZKlienta(klient), otwarty: true });
+  });
 
   // ——— KARTA KLIENTA (21.08.2026, prośba właściciela: „kliknięcie w nazwę klienta otwiera
   // stronę z jego danymi oraz historią zamówień") ————————————————————————————————————
@@ -92,7 +98,7 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
   // ⚠️ TO NIE JEST DRUGA KOPIA FORMULARZA — karta CZYTA, formularz ZAPISUJE. Piętnaście pól
   // dalej istnieje w jednym szablonie (`klienci.ejs`), a ten ekran pokazuje wyłącznie to,
   // co w bazie już jest, plus historię, której formularz nie ma skąd znać.
-  app.get('/klienci/:id', async (req, reply) => {
+  app.get('/klienci/:id/karta', async (req, reply) => {
     const klient = klientPoId(db, req.params.id);
     if (!klient) return brakKlienta(reply);
     // ⚠️ HISTORIA PO NIP-IE — powód i konsekwencje stoją przy `zamowieniaPoNip`
@@ -101,7 +107,7 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
     const zamowienia = zamowieniaPoNip(db, klient.nip);
     return reply.view('klient.ejs', {
       title: `Klient: ${klient.nazwa}`,
-      okruszki: [{ tekst: 'Stali klienci', href: '/klienci' }, { tekst: klient.nazwa }],
+      okruszki: [{ tekst: 'Klienci B2B', href: '/klienci' }, { tekst: klient.nazwa }],
       klient,
       opis: opisKlienta(klient, { zwolniona: zwolnionaFirma() }),
       zamowienia,
@@ -117,17 +123,11 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
     });
   });
 
-  // Edycja otwiera TEN SAM ekran listy z wypełnionym formularzem — jedna droga, jeden
-  // szablon. Osobny ekran edycji byłby drugą kopią piętnastu pól, rozjeżdżającą się przy
-  // pierwszym nowym ustawieniu.
-  //
-  // ⚠️ ADRES ZMIENIŁ SIĘ 21.08.2026 z `/klienci/:id` na `/klienci/:id/edytuj`, bo goły
-  // `/klienci/:id` należy teraz do KARTY klienta. Kliknięcie w nazwę ma pokazywać, a nie
-  // od razu otwierać formularz nad wszystkim.
+  // Zgodność zapisanych wcześniej adresów edycji.
   app.get('/klienci/:id/edytuj', async (req, reply) => {
     const klient = klientPoId(db, req.params.id);
     if (!klient) return brakKlienta(reply);
-    return renderuj(reply, { edytowany: klient, formularz: polaZKlienta(klient), otwarty: true });
+    return reply.redirect(`/klienci/${klient.id}`, 303);
   });
 
   // ---------------------------------------------------------------------------------
@@ -179,7 +179,7 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
     dopiszLog(db, null, {
       akcja: 'klient.gus',
       wynik: `GUS (${ktoKlikal(req)}): pobrano „${firma.firma}" (NIP ${firma.nip ?? nip}, `
-        + `REGON ${firma.regon ?? '—'}) — dane WSTAWIONE DO FORMULARZA stałego klienta, `
+        + `REGON ${firma.regon ?? '—'}) — dane WSTAWIONE DO FORMULARZA klienta B2B, `
         + 'nic jeszcze nie zapisano.',
     });
     return renderuj(reply, {
@@ -228,9 +228,12 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
         blad: 'Włącz Rozliczenia w Ustawieniach → Moduły przed zapisaniem umowy zbiorczej.',
       });
     }
+    // Klucz do dziennika bierzemy Z BAZY: `dane.klucz` jest wyliczony z nazwy, a baza dokłada „-2”,
+    // „klient-3” przy kolizji i nie zmienia klucza przy edycji.
+    let kluczWBazie;
     try {
-      if (edytowany) zapiszKlienta(db, edytowany.id, dane);
-      else dopiszKlienta(db, dane);
+      if (edytowany) { zapiszKlienta(db, edytowany.id, dane); kluczWBazie = edytowany.klucz; }
+      else kluczWBazie = klientPoId(db, dopiszKlienta(db, dane)).klucz;
     } catch (e) {
       return renderuj(reply.code(400), {
         formularz: req.body ?? {}, edytowany, blad: komunikatDlaOperatora(e), otwarty: true,
@@ -243,13 +246,9 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
     dopiszLog(db, null, {
       akcja: 'klient.zapis',
       wynik: `Ręcznie (${ktoKlikal(req)}): ${edytowany ? 'poprawiono' : 'dopisano'} `
-        + `stałego klienta „${dane.nazwa}" (${dane.klucz}) — ${opisKlienta(dane, { zwolniona: zwolnionaFirma() })}.`,
+        + `klienta B2B „${dane.nazwa}" (${kluczWBazie}) — ${opisKlienta(dane, { zwolniona: zwolnionaFirma() })}.`,
     });
-    // ⚠️ POPRAWKA WRACA NA KARTĘ TEGO KLIENTA, dopisanie — na listę. Człowiek wchodzi
-    // w edycję z karty (przycisk „Edytuj" stoi tam i na liście), więc odesłanie go na
-    // listę kazałoby szukać wpisu, przy którym przed chwilą stał. Nowy klient karty
-    // jeszcze nie miał, więc tam wracać nie ma dokąd.
-    return reply.redirect(edytowany ? `/klienci/${edytowany.id}` : '/klienci');
+    return reply.redirect('/klienci');
   });
 }
 
@@ -274,7 +273,8 @@ function polaZKlienta(k) {
     rozliczenie_zbiorcze: k.rozliczenie_zbiorcze ? 'on' : '',
     prog_darmowej_dostawy: wZlotych(k.prog_darmowej_dostawy_gr),
     oplata_obslugi: wZlotych(k.oplata_obslugi_gr),
-    oplata_kurierska: wZlotych(k.oplata_kurierska_gr),
+    prog_darmowej_dostawy_wlaczony: k.prog_darmowej_dostawy_gr != null ? 'on' : '',
+    oplata_obslugi_wlaczony: k.oplata_obslugi_gr != null ? 'on' : '',
   };
 }
 

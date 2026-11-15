@@ -10,6 +10,11 @@
 import { PACZKOMAT_WARTOSCI, czyPaczkomat } from '../../domena/paczkomat.js';
 import { wymagajListyKanalow } from '../../domena/lista-kanalow.js';
 import { kartaZProduktu, powodPominiecia } from '../../domena/karta-z-produktu.js';
+import { POLA_ZASTANE } from '../../domena/zrodla-pol.js';
+import { dekodujEncje } from '../../domena/slowniki-kart.js';
+import { PROBLEMY_ILOSCI } from '../../domena/ilosc-kanalu.js';
+import { przelacznikStanow, stanyKart, zuzycieProduktuOdGranicy } from './stany-magazynowe.js';
+import { zapiszPrzepiecie } from './oferty-kanalow.ts';
 
 const teraz = () => new Date().toISOString();
 
@@ -125,11 +130,14 @@ export function liczZyweProdukty(db, kanal) {
 // (parametrem byc nie moze), wiec to jedyna ochrona przed wstrzyknieciem — i jedyna
 // ochrona przed edycja hurtem, ktora „ustawia" pole, o ktorym baza nic nie wie.
 const POLA_KARTY = [
+  'opis_sekcje_json',
   'sku', 'nazwa', 'szerokosc_mm', 'wysokosc_mm', 'kategoria_glowna', 'paczkomat',
   'opis', 'glebokosc_mm', 'waga_g',
   // PRZ-153.E5.3: pola z migracji 0011 (API v1 i ekran karty). Edycja hurtem ma WLASNA, wezsza liste
   // (`domain/magazyn-hurt.js`) — dopisanie tutaj nie wlacza tych pol do hurtu ani do przenoszenia ze sklepu.
   'cena_gr', 'stawka_vat', 'ean', 'wycofana',
+  // PRZ-160.P3b.01: marka ze słownika marek (migracja 0016); poza hurtem, jak pola wyżej.
+  'marka',
 ];
 
 // Paczkomat ma TRZY stany i pilnuje ich domain/paczkomat.js. Czwarta wartosc w kolumnie
@@ -139,7 +147,25 @@ const wartoscPola = (pole, wartosc) => (
   pole === 'paczkomat' ? czyPaczkomat({ paczkomat: wartosc }) : (wartosc ?? null)
 );
 
-export function utworzKarte(db, karta, { at = teraz() } = {}) {
+// Porównanie zgodne z typem kolumny SQLite, bez parsowania tekstowych JSON-ów.
+const POLA_LICZBOWE = ['szerokosc_mm', 'wysokosc_mm', 'glebokosc_mm', 'waga_g', 'cena_gr', 'wycofana'];
+const doPorownania = (pole, wartosc) => {
+  const w = wartoscPola(pole, wartosc);
+  return w === null ? null : POLA_LICZBOWE.includes(pole) ? Number(w) : String(w);
+};
+const zmienionePola = (db, id, zmiany) => {
+  const karta = db.prepare('SELECT * FROM karty_produktow WHERE id = ?').get(id);
+  return karta ? Object.keys(zmiany).filter(pole => doPorownania(pole, zmiany[pole]) !== karta[pole]) : [];
+};
+function oznaczReczne(db, id, pola, zrodlo, at) {
+  for (const pole of pola.filter(p => POLA_ZASTANE.includes(p) || p === 'opis_sekcje_json' || p === 'marka')) {
+    db.prepare(`INSERT INTO karty_zrodla_pol (karta_id, pole, zrodlo, reczne, zmieniono_at)
+      VALUES (?, ?, ?, 1, ?) ON CONFLICT (karta_id, pole) DO UPDATE SET
+      zrodlo = excluded.zrodlo, reczne = 1, zmieniono_at = excluded.zmieniono_at`).run(id, pole, zrodlo, at);
+  }
+}
+
+export function utworzKarte(db, karta, { at = teraz(), zrodlo = null } = {}) {
   if (!karta?.nazwa) throw new Error('utworzKarte: karta bez nazwy');
 
   const pola = POLA_KARTY.filter((k) => karta[k] !== undefined);
@@ -149,7 +175,9 @@ export function utworzKarte(db, karta, { at = teraz() } = {}) {
   const r = db.prepare(
     `INSERT INTO karty_produktow (${kolumny.join(', ')}) VALUES (${kolumny.map(() => '?').join(', ')})`,
   ).run(...wartosci);
-  return liczba(r.lastInsertRowid);
+  const id = liczba(r.lastInsertRowid);
+  if (zrodlo === 'reczne') oznaczReczne(db, id, pola, zrodlo, at);
+  return id;
 }
 
 /**
@@ -159,7 +187,7 @@ export function utworzKarte(db, karta, { at = teraz() } = {}) {
  * pominiecie przy edycji hurtem znaczyloby „zaznaczylem 600 kart, ustawilem kategorie
  * i nic sie nie stalo" — bez jednego komunikatu.
  */
-export function zapiszKarte(db, id, zmiany, { at = teraz() } = {}) {
+export function zapiszKarte(db, id, zmiany, { at = teraz(), zrodlo = 'reczne' } = {}) {
   const pola = Object.keys(zmiany ?? {});
   for (const pole of pola) {
     if (!POLA_KARTY.includes(pole)) throw new Error(`zapiszKarte: nieznane pole „${pole}"`);
@@ -168,9 +196,22 @@ export function zapiszKarte(db, id, zmiany, { at = teraz() } = {}) {
   // bo nic sie nie zmienilo.
   if (!pola.length) return;
 
-  db.prepare(
-    `UPDATE karty_produktow SET ${pola.map((k) => `${k} = ?`).join(', ')}, zmieniony_at = ? WHERE id = ?`,
-  ).run(...pola.map((k) => wartoscPola(k, zmiany[k])), at, id);
+  // SAVEPOINT działa także wewnątrz transakcji trasy API.
+  db.exec('SAVEPOINT zapis_karty');
+  try {
+    const zmienione = zmienionePola(db, id, zmiany);
+    if (zmienione.length) {
+      db.prepare(
+        `UPDATE karty_produktow SET ${zmienione.map((k) => `${k} = ?`).join(', ')}, zmieniony_at = ? WHERE id = ?`,
+      ).run(...zmienione.map((k) => wartoscPola(k, zmiany[k])), at, id);
+      oznaczReczne(db, id, zmienione, zrodlo, at);
+    }
+    db.exec('RELEASE zapis_karty');
+  } catch (e) {
+    db.exec('ROLLBACK TO zapis_karty');
+    db.exec('RELEASE zapis_karty');
+    throw e;
+  }
 }
 
 /**
@@ -230,7 +271,7 @@ export function kartyPoIdach(db, ids) {
  * po nim i tylko po nim da sie potem powiedziec „to sa te z tamtego przycisku" i cofnac
  * pomylke masowa.
  */
-export function zastosujHurtem(db, plan, { at = teraz() } = {}) {
+export function zastosujHurtem(db, plan, { at = teraz(), zrodlo = 'reczne' } = {}) {
   const kroki = (plan ?? []).filter((k) => k && Object.keys(k.zmiany ?? {}).length);
   for (const { zmiany } of kroki) {
     for (const pole of Object.keys(zmiany)) {
@@ -257,8 +298,10 @@ export function zastosujHurtem(db, plan, { at = teraz() } = {}) {
   try {
     let zmienione = 0;
     for (const { id, zmiany } of kroki) {
-      const pola = Object.keys(zmiany);
+      const pola = zmienionePola(db, id, zmiany);
+      if (!pola.length) continue;
       const r = zapytanie(pola).run(...pola.map((k) => wartoscPola(k, zmiany[k])), at, id);
+      oznaczReczne(db, id, pola, zrodlo, at);
       zmienione += liczba(r.changes);
     }
     db.exec('COMMIT');
@@ -400,10 +443,137 @@ export function nadajSku(db, plan, { at = teraz() } = {}) {
  * ⚠️ KARTY, KTOREJ NIE MA, PILNUJE `wymagajKarty`, A NIE KLUCZ OBCY. Kolumna `karta_id` doszla migracja
  * addytywna (PRZ-090), a nowego klucza obcego na istniejacej tabeli kontrola migracji nie przepuszcza.
  */
-export function powiazProdukt(db, produktSklepowyId, kartaId) {
+export function powiazProdukt(db, produktSklepowyId, kartaId, { konto = null } = {}) {
   if (kartaId !== null && kartaId !== undefined) wymagajKarty(db, kartaId);
-  db.prepare('UPDATE produkty_sklepowe SET karta_id = ? WHERE id = ?')
-    .run(kartaId ?? null, produktSklepowyId);
+  const stara = db.prepare('SELECT karta_id FROM produkty_sklepowe WHERE id = ?').get(produktSklepowyId)?.karta_id ?? null;
+  // E4.14: pierwsze wiązanie (stara = null) nie mierzy zużycia — import i „Utwórz karty” wiążą setki produktów.
+  // Ślad i tak powstaje, gdy oferta miała sprzedaż, bo mierzymy tylko przy przepięciu albo odpięciu.
+  wSavepoincie(db, 'powiaz_produkt', () => przeniesPowiazanie(db, produktSklepowyId, kartaId ?? null, () => {
+    db.prepare('UPDATE produkty_sklepowe SET karta_id = ? WHERE id = ?')
+      .run(kartaId ?? null, produktSklepowyId);
+    // PRZ-160: przepięcie z karty na inną (albo odpięcie) zeruje `tresc_pobrana_at` — oferta wraca do kolejki
+    // „Pobierz treść i zdjęcia ofert". Tylko wtedy, bo pierwsze wiązanie (stara = null) działa też na bazie sprzed 0012.
+    if (stara !== null && String(stara) !== String(kartaId ?? '')) {
+      db.prepare('UPDATE produkty_sklepowe SET tresc_pobrana_at = NULL WHERE id = ?').run(produktSklepowyId);
+    }
+    return true;
+  }, { konto, mierz: stara !== null }));
+}
+
+// ================================================================================
+// E4.14 / D59: PRZEPIĘCIE OFERTY — rejestr, podgląd, ślad
+//
+// Lustro (`produkty_sklepowe.karta_id`) i rejestr (`oferty_kanalow.karta_id`) mówią o tej samej ofercie.
+// Przepięcie zmienia OBA w jednej transakcji (rejestr ma pierwszeństwo przy liczeniu stanu — `kartyLustraZ`),
+// inaczej stan nadal zdejmowałby się ze starej karty. Odpięcie nie może wyzerować `karta_id` rejestru
+// (NOT NULL), więc wyłącza wysyłkę ilości (`ilosc_z_oms = 0`) i zapisuje problem `brak-karty`.
+// Przy włączonych stanach sprzedaż od granicy przechodzi z ofertą; ile — zapisuje ślad `stany_przepiecia`.
+
+const maTabeleM = (db, nazwa) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(nazwa));
+const maKolumne = (db, tabela, kolumna) => Boolean(db.prepare('SELECT 1 FROM pragma_table_info(?) WHERE name = ?').get(tabela, kolumna));
+
+/** Przełącznik stanów, gdy stany są włączone; `null` przy wyłączonych albo bazie bez tabeli przełącznika. */
+function stanyWlaczone(db) {
+  if (!maTabeleM(db, 'magazyn_przelaczenia')) return null;
+  const przelacznik = przelacznikStanow(db);
+  return przelacznik.wlaczone ? przelacznik : null;
+}
+
+/** SAVEPOINT działa w transakcji i poza nią — `powiazProdukt` woła się z obu miejsc. */
+function wSavepoincie(db, nazwa, fn) {
+  db.exec(`SAVEPOINT ${nazwa}`);
+  try {
+    const wynik = fn();
+    db.exec(`RELEASE ${nazwa}`);
+    return wynik;
+  } catch (e) {
+    db.exec(`ROLLBACK TO ${nazwa}`);
+    db.exec(`RELEASE ${nazwa}`);
+    throw e;
+  }
+}
+
+/**
+ * Rejestr idzie za lustrem: tylko wiersze przejęte (`pochodzenie = 'przejeta'`) — oferta wystawiona z OMS-u
+ * (`'oms'`) należy do karty, z której powstała. Identyfikator wariantu Woo to `produkt/wariant`; dopasowanie
+ * dokładne, więc przepięcie wariantu nie rusza rodzica ani innych wariantów.
+ */
+function przeniesWRejestrze(db, produkt, naKarte, at) {
+  if (!maTabeleM(db, 'oferty_kanalow')) return;
+  const idZewnetrzne = produkt.wariant_id ? `${produkt.produkt_id}/${produkt.wariant_id}` : String(produkt.produkt_id);
+  if (naKarte !== null) {
+    db.prepare(`UPDATE oferty_kanalow SET karta_id = ?, zmieniono_at = ?
+      WHERE kanal = ? AND id_zewnetrzne = ? AND pochodzenie = 'przejeta' AND karta_id <> ?`)
+      .run(naKarte, at, produkt.kanal, idZewnetrzne, naKarte);
+    // Ponowne powiązanie po odpięciu: `brak-karty` stawiamy tylko przy fladze 1, więc wracamy do wysyłki z OMS-u;
+    // pierwszą wysyłkę i tak pilnuje skok D53.
+    if (maKolumne(db, 'oferty_kanalow', 'ilosc_z_oms')) {
+      db.prepare(`UPDATE oferty_kanalow SET ilosc_z_oms = 1, ilosc_problem_json = NULL, zmieniono_at = ?
+        WHERE kanal = ? AND id_zewnetrzne = ? AND pochodzenie = 'przejeta' AND ilosc_z_oms = 0
+          AND json_extract(ilosc_problem_json, '$.kod') = 'brak-karty'`)
+        .run(at, produkt.kanal, idZewnetrzne);
+    }
+    return;
+  }
+  if (!maKolumne(db, 'oferty_kanalow', 'ilosc_z_oms')) return;
+  db.prepare(`UPDATE oferty_kanalow SET ilosc_z_oms = 0, ilosc_problem_json = ?, zmieniono_at = ?
+    WHERE kanal = ? AND id_zewnetrzne = ? AND pochodzenie = 'przejeta' AND ilosc_z_oms = 1`)
+    .run(JSON.stringify({ ...PROBLEMY_ILOSCI['brak-karty'], od: at }), at, produkt.kanal, idZewnetrzne);
+}
+
+/**
+ * Wspólny tok przepięcia: `zmienLustro()` robi właściwą zmianę lustra i oddaje, czy coś zmieniło.
+ * Dopiero potem rejestr i ślad — w tej samej transakcji, co wołający.
+ */
+function przeniesPowiazanie(db, produktSklepowyId, naKarte, zmienLustro, { konto = null, mierz = true } = {}) {
+  const produkt = db.prepare('SELECT id, kanal, produkt_id, wariant_id, karta_id FROM produkty_sklepowe WHERE id = ?')
+    .get(produktSklepowyId);
+  const przelacznik = produkt ? stanyWlaczone(db) : null;
+  const przed = przelacznik && mierz ? zuzycieProduktuOdGranicy(db, produkt.produkt_id, przelacznik) : null;
+  const zmieniono = zmienLustro();
+  if (!zmieniono || !produkt) return zmieniono;
+  const zKarty = produkt.karta_id === null ? null : liczba(produkt.karta_id);
+  if (zKarty === naKarte) return zmieniono;
+  const at = teraz();
+  przeniesWRejestrze(db, produkt, naKarte, at);
+  if (!przed || !maTabeleM(db, 'stany_przepiecia')) return zmieniono;
+  const po = zuzycieProduktuOdGranicy(db, produkt.produkt_id, przelacznik);
+  const roznica = (id) => (id === null ? 0 : Math.abs((po.get(id) ?? 0) - (przed.get(id) ?? 0)));
+  const iloscWstecz = Math.max(roznica(zKarty), roznica(naKarte));
+  if (zKarty === null && iloscWstecz === 0) return zmieniono;
+  zapiszPrzepiecie(db, {
+    kanal: produkt.kanal, produktId: String(produkt.produkt_id), wariantId: produkt.wariant_id ? String(produkt.wariant_id) : null,
+    zKarty, naKarte, iloscWstecz, kontoLogin: konto?.login ?? null,
+  }, { teraz: at });
+  return zmieniono;
+}
+
+/**
+ * Podgląd przepięć przy włączonych stanach (D59): jak zmieni się stan kart, gdy zamówienia od granicy przejdą
+ * z ofertą. Nic nie zapisuje — zmiana lustra żyje tylko w SAVEPOINT, który cofamy. `null` przy wyłączonych stanach.
+ * `zmiany`: `[{ produktSklepowyId, naKarte }]` (`naKarte = null` — odpięcie).
+ */
+export function podgladPrzepiec(db, zmiany) {
+  const przelacznik = stanyWlaczone(db);
+  if (!przelacznik) return null;
+  const przed = stanyKart(db, przelacznik).stany;
+  db.exec('SAVEPOINT podglad_przepiecia');
+  let po;
+  try {
+    const zmien = db.prepare('UPDATE produkty_sklepowe SET karta_id = ? WHERE id = ?');
+    for (const { produktSklepowyId, naKarte } of zmiany ?? []) zmien.run(naKarte ?? null, produktSklepowyId);
+    po = stanyKart(db, przelacznik).stany;
+  } finally {
+    db.exec('ROLLBACK TO podglad_przepiecia');
+    db.exec('RELEASE podglad_przepiecia');
+  }
+  const stan = (mapa, id) => mapa.get(id)?.stan ?? 0;
+  const ids = [...new Set([...przed.keys(), ...po.keys()])].filter((id) => stan(przed, id) !== stan(po, id)).sort((a, b) => a - b);
+  const nazwa = db.prepare('SELECT nazwa FROM karty_produktow WHERE id = ?');
+  return {
+    granica: przelacznik.granica,
+    karty: ids.map((kartaId) => ({ kartaId, nazwa: nazwa.get(kartaId)?.nazwa ?? `#${kartaId}`, przed: stan(przed, kartaId), po: stan(po, kartaId) })),
+  };
 }
 
 /** Odmowa powiazania z karta, ktorej nie ma — zamiast cichego wiersza wskazujacego w proznie. */
@@ -413,7 +583,7 @@ function wymagajKarty(db, kartaId) {
   }
 }
 
-// ⚠️⚠️ CZTERY BRAKI JAKO WYRAZENIA SQL — JEDNA DEFINICJA KAZDEGO, uzywana w CZTERECH
+// ⚠️⚠️ BRAKI JAKO WYRAZENIA SQL — JEDNA DEFINICJA KAZDEGO, uzywana w CZTERECH
 // miejscach naraz: filtr `brak=…`, kolumna `liczba_brakow` wiersza listy, sortowanie 'braki'
 // i zliczenia kafli nad tabela. Kafel PROWADZI do listy, wiec druga kopia ktoregokolwiek
 // wyrazenia znaczylaby „kafel mowi 217, lista pokazuje 214" — bez jednego bledu i bez
@@ -427,7 +597,23 @@ function wymagajKarty(db, kartaId) {
 const BRAK_SKU_SQL = "(w.sku IS NULL OR TRIM(w.sku) = '')";
 // Polowiczny wymiar to nadal brak: do ciecia potrzebne sa OBA (niezmiennik 4.23).
 const BRAK_WYMIAROW_SQL = '(w.szerokosc_mm IS NULL OR w.wysokosc_mm IS NULL)';
-const BRAK_KATEGORII_SQL = "(w.kategoria_glowna IS NULL OR w.kategoria_glowna = '')";
+// PRZ-160.P4.04: kategorie z encjami HTML (lustro sklepu: „DIY &amp;amp; Craft") porownujemy
+// po zdekodowaniu — ta sama `dekodujEncje` co przy zapisie kart (P3b.01), zarejestrowana raz
+// na polaczenie jako deterministyczna funkcja SQL (lista pozycji filtru i sam filtr).
+const DEKODUJ_SQL = 'oms_dekoduj_encje';
+const zDekodowaniem = new WeakSet();
+function zarejestrujDekodowanie(db) {
+  // Opakowanie polaczenia bez `function` (np. licznik zapytan w testach): funkcja zyje na
+  // polaczeniu pod spodem, wiec rejestrujemy tylko tam, gdzie sie da.
+  if (zDekodowaniem.has(db) || typeof db.function !== 'function') return;
+  db.function(DEKODUJ_SQL, { deterministic: true }, (napis) => (napis == null ? null : dekodujEncje(napis)));
+  zDekodowaniem.add(db);
+}
+
+const BRAK_KATEGORII_SQL ="(w.kategoria_glowna IS NULL OR w.kategoria_glowna = '')";
+const BRAK_ZDJECIA_SQL = 'NOT EXISTS (SELECT 1 FROM zdjecia_kart z WHERE z.karta_id = w.id)';
+// json_valid w CASE: json_array_length na popsutym napisie RZUCA i wywraca całą listę (jak przy 4.23 niżej).
+const BRAK_OPISU_SQL = "(w.opis_sekcje_json IS NULL OR COALESCE(CASE WHEN json_valid(w.opis_sekcje_json) THEN json_array_length(w.opis_sekcje_json, '$.sekcje') END, 0) = 0)";
 // ⚠️ Wartosci stanow z domain/paczkomat.js interpolowane RAZ przy starcie procesu. To stale
 // APLIKACJI, a nie dane z zadania HTTP — i inaczej niz przy dawnym `nieoznaczony()` to
 // wyrazenie idzie takze do SELECT-a i do ORDER BY, gdzie parametry zapytania nie siegaja.
@@ -437,7 +623,9 @@ const BRAK_PACZKOMATU_SQL = `(w.paczkomat IS NULL OR w.paczkomat NOT IN (${
 const LICZBA_BRAKOW_SQL = `((CASE WHEN ${BRAK_SKU_SQL} THEN 1 ELSE 0 END)`
   + ` + (CASE WHEN ${BRAK_WYMIAROW_SQL} THEN 1 ELSE 0 END)`
   + ` + (CASE WHEN ${BRAK_KATEGORII_SQL} THEN 1 ELSE 0 END)`
-  + ` + (CASE WHEN ${BRAK_PACZKOMATU_SQL} THEN 1 ELSE 0 END))`;
+  + ` + (CASE WHEN ${BRAK_PACZKOMATU_SQL} THEN 1 ELSE 0 END)`
+  + ` + (CASE WHEN ${BRAK_ZDJECIA_SQL} THEN 1 ELSE 0 END)`
+  + ` + (CASE WHEN ${BRAK_OPISU_SQL} THEN 1 ELSE 0 END))`;
 
 // Biala lista sortowania: klucz z adresu → WYRAZENIE SQL. Klucze sa dwojakie, bo widok
 // mowi „wysokosc", a schemat „wysokosc_mm" — obie postacie maja dzialac, zeby odnosnik
@@ -454,9 +642,10 @@ const SORTOWANIE = {
   wysokosc_mm: 'w.wysokosc_mm',
   kategoria: "NULLIF(w.kategoria_glowna, '') COLLATE NOCASE",
   kategoria_glowna: "NULLIF(w.kategoria_glowna, '') COLLATE NOCASE",
+  marka: "NULLIF(w.marka, '') COLLATE NOCASE",
   paczkomat: 'w.paczkomat',
   // KOLEJKA ROBOTY: malejaco daje na czele karty, przy ktorych jest najwiecej do zrobienia.
-  // Wyrazenie NIGDY nie jest NULL-em (suma czterech CASE-ow), wiec `NULLS LAST` nizej jest
+  // Wyrazenie NIGDY nie jest NULL-em (suma CASE-ow), wiec `NULLS LAST` nizej jest
   // przy nim martwe, a nie szkodliwe.
   braki: LICZBA_BRAKOW_SQL,
 };
@@ -484,6 +673,13 @@ const uciekniecieLike = (s) => s.replace(/[\\%_]/gu, (z) => `\\${z}`);
 function warunkiKart({ fraza, filtry = {} }) {
   const czesci = ['1 = 1'];
   const params = [];
+  if (filtry.oferty != null) {
+    const istnieje = 'EXISTS (SELECT 1 FROM oferty_kanalow ok WHERE ok.karta_id = w.id';
+    if (filtry.oferty === 'bez') czesci.push(`NOT ${istnieje})`);
+    else if (filtry.oferty === 'z') czesci.push(`${istnieje})`);
+    else if (filtry.oferty === 'problem') czesci.push(`${istnieje} AND (ok.stan IN ('problem', 'blad') OR ok.blad IS NOT NULL OR ok.problemy_json <> '[]'))`);
+    else czesci.push('1 = 0');
+  }
 
   const f = String(fraza ?? '').trim();
   if (f) {
@@ -510,7 +706,8 @@ function warunkiKart({ fraza, filtry = {} }) {
   // (najglebszy zakres wygrywa), wiec dzis dziala — ale to mina: kolejny warunek dopisany
   // tutaj z mysla o „zewnetrznym" `p`, albo usuniety alias z podzapytania, zaczalby po cichu
   // znaczyc co innego, bez bledu skladni i bez czerwonego testu na malych danych.
-  const { kanal, cenaOd, cenaDo, kategoria, paczkomat, brak } = filtry;
+  const { kanal, cenaOd, cenaDo, kategoria, marka, paczkomat, brak } = filtry;
+  if (marka) { czesci.push('w.marka = ?'); params.push(marka); }
   if (kanal || cenaOd != null || cenaDo != null) {
     const pod = ['pf.karta_id = w.id', 'pf.zniknal_at IS NULL'];
     if (kanal) { pod.push('pf.kanal = ?'); params.push(kanal); }
@@ -536,15 +733,20 @@ function warunkiKart({ fraza, filtry = {} }) {
   // ⚠️ `json_valid` z CASE, a nie warunkiem obok: `json_each` na popsutym napisie RZUCA
   // bledem, ktory polozylby CALA liste. Lustro bierze sie z cudzego API, wiec jedna
   // popsuta wartosc jest kwestia czasu, a nie hipoteza.
+  //
+  // ⚠️ PRZ-160.P4.04: porownanie PO ZDEKODOWANIU encji HTML po obu stronach (`DEKODUJ_SQL`,
+  // ta sama funkcja co `kategorieDoFiltra`) — „DIY & Craft" trafia w karte z ta kategoria
+  // i w produkt lustra z „DIY &amp;amp; Craft". Funkcje SQL rejestruje `kartyZKanalami`.
   if (kategoria) {
     czesci.push(
-      '(w.kategoria_glowna = ?'
+      `(${DEKODUJ_SQL}(w.kategoria_glowna) = ?`
       + ' OR EXISTS (SELECT 1 FROM produkty_sklepowe pk WHERE pk.karta_id = w.id'
       + ' AND pk.zniknal_at IS NULL AND EXISTS (SELECT 1 FROM json_each('
       + "CASE WHEN json_valid(pk.kategorie_json) THEN pk.kategorie_json ELSE '[]' END"
-      + ') jk WHERE jk.value = ?)))',
+      + `) jk WHERE ${DEKODUJ_SQL}(jk.value) = ?)))`,
     );
-    params.push(kategoria, kategoria);
+    const szukana = dekodujEncje(kategoria);
+    params.push(szukana, szukana);
   }
 
   // Trzy stany paczkomatu. Lista wartosci idzie z domain/paczkomat.js — dodanie czwartego
@@ -561,7 +763,9 @@ function warunkiKart({ fraza, filtry = {} }) {
     else if (brak === 'wymiary') czesci.push(BRAK_WYMIAROW_SQL);
     else if (brak === 'kategoria') czesci.push(BRAK_KATEGORII_SQL);
     else if (brak === 'paczkomat') czesci.push(BRAK_PACZKOMATU_SQL);
-    // ⚠️ PIATA POZYCJA NIE JEST BRAKIEM, tylko druga strona tej samej monety: karty,
+    else if (brak === 'zdjecie') czesci.push(BRAK_ZDJECIA_SQL);
+    else if (brak === 'opis') czesci.push(BRAK_OPISU_SQL);
+    // ⚠️ KOMPLET NIE JEST BRAKIEM, tylko druga strona tej samej monety: karty,
     // ktorym NICZEGO nie brakuje. Kafel postepu prowadzi wlasnie tutaj, wiec liczba
     // w kaflu i dlugosc tej listy MUSZA wychodzic z tego samego wyrazenia.
     else if (brak === 'komplet') czesci.push(`${LICZBA_BRAKOW_SQL} = 0`);
@@ -585,6 +789,7 @@ function warunkiKart({ fraza, filtry = {} }) {
  * nie moga.
  */
 export function kartyZKanalami(db, { fraza, filtry, sort, kier } = {}) {
+  if (filtry?.kategoria) zarejestrujDekodowanie(db);
   const { gdzie, params } = warunkiKart({ fraza, filtry });
 
   // Nierozpoznane sortowanie WRACA DO DOMYSLNEGO, a nie oddaje pusto — w odroznieniu od
@@ -626,14 +831,38 @@ export function kartyZKanalami(db, { fraza, filtry, sort, kier } = {}) {
   // API) — kanal o nazwie 'constructor' albo 'toString' na literale `{}` nie ustawilby
   // wlasnej wlasnosci, tylko po cichu odczytal/nadpisal metode z `Object.prototype`,
   // dokladnie ten sam wzorzec co przy bialej liscie sortowania wyzej.
-  const wiersze = karty.map((w) => ({ ...w, kanaly: Object.create(null) }));
+  const oferty = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'oferty_kanalow'").get()
+    ? db.prepare(`SELECT karta_id, kanal, stan, blad FROM oferty_kanalow WHERE karta_id IN (SELECT w.id FROM karty_produktow w WHERE ${gdzie}) ORDER BY kanal, id`).all(...params) : [];
+  const wiersze = karty.map((w) => ({ ...w, kanaly: Object.create(null), oferty: [] }));
   const poId = new Map(wiersze.map((w) => [w.id, w]));
+  for (const o of oferty) poId.get(o.karta_id)?.oferty.push(o);
   for (const p of produkty) {
     const wiersz = poId.get(p.karta_id);
     if (!wiersz) continue;
     if (!wiersz.kanaly[p.kanal]) wiersz.kanaly[p.kanal] = { ...p };
   }
   return wiersze;
+}
+
+/**
+ * PRZ-160.P3a.02: w ktorych kanalach (lustro sklepow) karty sa DOSTEPNE — material kolumny
+ * „Kanały” listy magazynu. JEDNO zapytanie dla calej strony (numery kart jada jednym
+ * parametrem JSON, bez limitu zmiennych SQLite i bez N+1). Dostepny = wiersz lustra z ta
+ * karta i pustym `zniknal_at`; dla kanalow z `kanalyZeStatusem` (Allegro — rozpoznaje wolajacy
+ * po typie z definicji kanalow) dodatkowo `status_publikacji = 'ACTIVE'` (INACTIVE, ENDED
+ * odpadaja). Woo nie zapisuje statusu, wiec tam obecnosc = dostepnosc.
+ * @param {import('node:sqlite').DatabaseSync} db
+ * @param {readonly (number|string)[]} kartaIds
+ * @param {{ kanalyZeStatusem?: readonly string[] }} [opcje]
+ * @returns {{ karta_id: number, kanal: string }[]}
+ */
+export function kanalyDostepnosciKart(db, kartaIds, { kanalyZeStatusem = [] } = {}) {
+  if (!kartaIds.length) return [];
+  return /** @type {any[]} */ (db.prepare(
+    'SELECT DISTINCT karta_id, kanal FROM produkty_sklepowe'
+    + ' WHERE zniknal_at IS NULL AND karta_id IN (SELECT value FROM json_each(?))'
+    + " AND (kanal NOT IN (SELECT value FROM json_each(?)) OR status_publikacji = 'ACTIVE')",
+  ).all(JSON.stringify(kartaIds.map(Number)), JSON.stringify([...kanalyZeStatusem])));
 }
 
 /**
@@ -667,6 +896,8 @@ export function zliczeniaBrakow(db) {
     + `, COALESCE(SUM(CASE WHEN ${BRAK_WYMIAROW_SQL} THEN 1 ELSE 0 END), 0) AS bezWymiarow`
     + `, COALESCE(SUM(CASE WHEN ${BRAK_KATEGORII_SQL} THEN 1 ELSE 0 END), 0) AS bezKategorii`
     + `, COALESCE(SUM(CASE WHEN ${BRAK_PACZKOMATU_SQL} THEN 1 ELSE 0 END), 0) AS bezPaczkomatu`
+    + `, COALESCE(SUM(CASE WHEN ${BRAK_ZDJECIA_SQL} THEN 1 ELSE 0 END), 0) AS bezZdjecia`
+    + `, COALESCE(SUM(CASE WHEN ${BRAK_OPISU_SQL} THEN 1 ELSE 0 END), 0) AS bezOpisu`
     + `, COALESCE(SUM(CASE WHEN ${LICZBA_BRAKOW_SQL} = 0 THEN 1 ELSE 0 END), 0) AS komplet`
     + ' FROM karty_produktow w',
   ).get();
@@ -736,17 +967,32 @@ export function zliczeniaNiepowiazanych(db, kanalyAllegro) {
  * ⚠️ `json_valid` z CASE i `jk.type = 'text'`: `json_each` na popsutym napisie RZUCA bledem,
  * ktory polozylby caly ekran, a liczba w tablicy kategorii weszlaby do pola wyboru jako
  * wartosc, ktorej porownanie z kolumna TEXT nigdy nie bedzie prawdziwe.
+ *
+ * ⚠️ PRZ-160.P4.04: obie strony zlaczenia ida przez `dekodujEncje` (funkcja SQL `DEKODUJ_SQL`)
+ * PRZED `DISTINCT` — inaczej „DIY & Craft" z karty i „DIY &amp;amp; Craft" z lustra staly
+ * w polu wyboru obok siebie. Dekodowanie w SQL, a nie w JS po zapytaniu, bo filtr
+ * (`warunkiKart`) musi porownywac TA SAMA funkcja, a tam wartosci z `json_each` sa tylko
+ * w SQL; jedno wywolanie na kategorie (tysiace kart × kilka kategorii) to milisekundy.
  */
 export function kategorieDoFiltra(db) {
+  zarejestrujDekodowanie(db);
   return db.prepare(
     'SELECT DISTINCT k FROM ('
-    + "  SELECT NULLIF(TRIM(w.kategoria_glowna), '') AS k FROM karty_produktow w"
+    + `  SELECT NULLIF(TRIM(${DEKODUJ_SQL}(w.kategoria_glowna)), '') AS k FROM karty_produktow w`
     + '  UNION'
-    + "  SELECT NULLIF(TRIM(jk.value), '') AS k FROM produkty_sklepowe pk, json_each("
+    + `  SELECT NULLIF(TRIM(${DEKODUJ_SQL}(jk.value)), '') AS k FROM produkty_sklepowe pk, json_each(`
     + "    CASE WHEN json_valid(pk.kategorie_json) THEN pk.kategorie_json ELSE '[]' END"
     + "  ) jk WHERE pk.zniknal_at IS NULL AND pk.karta_id IS NOT NULL AND jk.type = 'text'"
     + ') WHERE k IS NOT NULL ORDER BY k COLLATE NOCASE',
   ).all().map((w) => w.k);
+}
+
+/** Marki występujące na kartach — dokładnie wartości osiągalne przez filtr marki. */
+export function markiDoFiltra(db) {
+  return db.prepare(
+    "SELECT DISTINCT marka FROM karty_produktow WHERE marka IS NOT NULL AND marka != ''"
+    + ' ORDER BY marka COLLATE NOCASE',
+  ).all().map(w => w.marka);
 }
 
 /**
@@ -906,7 +1152,7 @@ export function kartyDoPowiazania(db) {
  * funkcja jest SYNCHRONICZNA (zadnego `await`), wiec poller zamowien chodzacy po tym samym
  * polaczeniu nie wejdzie w srodek.
  */
-export function powiazOfertyHurtem(db, pary, kanaly) {
+export function powiazOfertyHurtem(db, pary, kanaly, { konto = null } = {}) {
   wymagajListyKanalow(kanaly);
   const powiazane = [];
   const nieaktualne = [];
@@ -920,8 +1166,9 @@ export function powiazOfertyHurtem(db, pary, kanaly) {
     );
     for (const { produktId, kartaId } of pary ?? []) {
       wymagajKarty(db, kartaId);
-      const r = zapytanie.run(kartaId, produktId, ...kanaly);
-      (liczba(r.changes) ? powiazane : nieaktualne).push(produktId);
+      const ok = przeniesPowiazanie(db, produktId, liczba(kartaId),
+        () => liczba(zapytanie.run(kartaId, produktId, ...kanaly).changes) > 0, { konto });
+      (ok ? powiazane : nieaktualne).push(produktId);
     }
     db.exec('COMMIT');
     return { powiazane, nieaktualne };
@@ -944,13 +1191,12 @@ export function powiazOfertyHurtem(db, pary, kanaly) {
  * COFANIEM pomylki, a pomylke trzeba dac sie cofnac takze wtedy, gdy oferty juz nie ma
  * w sprzedazy; blokada zostawialaby karte przypieta do czegos, czego nikt juz nie widzi.
  */
-export function odepnijOferte(db, produktSklepowyId, kanaly) {
+export function odepnijOferte(db, produktSklepowyId, kanaly, { konto = null } = {}) {
   wymagajListyKanalow(kanaly);
   const warunekKanalu = kanaly.length ? `kanal IN (${kanaly.map(() => '?').join(', ')})` : '0 = 1';
-  const r = db.prepare(
-    `UPDATE produkty_sklepowe SET karta_id = NULL WHERE id = ? AND ${warunekKanalu}`,
-  ).run(produktSklepowyId, ...kanaly);
-  return liczba(r.changes) > 0;
+  return wSavepoincie(db, 'odepnij_oferte', () => przeniesPowiazanie(db, produktSklepowyId, null, () => liczba(db.prepare(
+    `UPDATE produkty_sklepowe SET karta_id = NULL, tresc_pobrana_at = NULL WHERE id = ? AND ${warunekKanalu}`,
+  ).run(produktSklepowyId, ...kanaly).changes) > 0, { konto }));
 }
 
 // ================================================================================
@@ -1063,6 +1309,36 @@ export function kartaZeSku(db, sku) {
   const s = String(sku ?? '').trim();
   if (!s) return null;
   return db.prepare('SELECT id, nazwa FROM karty_produktow WHERE sku = ?').get(s) ?? null;
+}
+
+/**
+ * PRZ-160 P4.03 (punkt 24) — szukajka karty dla SKU wiersza importu kanału. Najpierw `karty_produktow.sku`
+ * (`kartaZeSku`); brak → karta POWIĄZANYCH wierszy lustra o tym samym `sku_sklepu` (po JS `trim()`, jak
+ * w imporcie), bo karta założona dawniej z produktu kanału SKU nie ma. Liczą się najpierw wiersze żywe;
+ * dopiero gdy żywych nie ma — zniknięte. Różne karty → `{ kilka: true }` (nie zgadujemy).
+ * Lustro czytane RAZ na plan (mapa w pamięci) — zapytanie na wiersz dawało koszt kwadratowy.
+ * Szukajka oddaje `{ karta: { id } }`, `{ kilka: true }` albo `null`.
+ */
+export function szukajkaKartDoImportu(db) {
+  const poSku = new Map();
+  for (const w of db.prepare('SELECT p.sku_sklepu, p.karta_id, p.zniknal_at FROM produkty_sklepowe p JOIN karty_produktow k ON k.id = p.karta_id').iterate()) {
+    const s = String(w.sku_sklepu ?? '').trim();
+    if (!s) continue;
+    let wpis = poSku.get(s);
+    if (!wpis) { wpis = { zywe: new Set(), znikniete: new Set() }; poSku.set(s, wpis); }
+    (w.zniknal_at === null || w.zniknal_at === undefined ? wpis.zywe : wpis.znikniete).add(Number(w.karta_id));
+  }
+  return (sku) => {
+    const s = String(sku ?? '').trim();
+    if (!s) return null;
+    const zSku = kartaZeSku(db, s);
+    if (zSku) return { karta: zSku };
+    const wpis = poSku.get(s);
+    if (!wpis) return null;
+    const karty = wpis.zywe.size ? wpis.zywe : wpis.znikniete;
+    if (karty.size > 1) return { kilka: true };
+    return { karta: { id: [...karty][0] } };
+  };
 }
 
 /**

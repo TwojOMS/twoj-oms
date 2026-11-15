@@ -99,8 +99,8 @@ describe('kartoteka klienta na ekranach (prawdziwy skład modułów)', () => {
     await app.ready();
     const get = async (url) => (await app.inject({ method: 'GET', url, headers: naglowek })).body;
     const nowe = (await app.inject({ method: 'POST', url: '/zamowienia/nowe/klient', headers: naglowek,
-      payload: { klient_klucz: 'muster-de' } })).body;
-    return { lista: await get('/klienci'), karta: await get(`/klienci/${id}`), nowe };
+      payload: { klient_klucz: 'leuchten-muster-gmbh' } })).body;
+    return { lista: await get('/klienci'), karta: await get(`/klienci/${id}/karta`), nowe };
   }
 
   it('firma zwolniona — lista, karta i pasek wyboru bez dopisku WDT', async () => {

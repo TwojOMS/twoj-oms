@@ -1,4 +1,7 @@
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: title}) %>
+<% if (proba) { %>
+  <p class="pasek-info"><%= 'Rozliczenie okresowe jest dla klientów B2B, którzy zamawiają regularnie. Zamiast faktury do każdego zamówienia dostają jedną fakturę za cały miesiąc. Zamówienia klienta z zaznaczonym „Rozliczany zbiorczo” trafiają tu same, a na koniec miesiąca zamykasz okres i wystawiasz jedną fakturę.' %></p>
+<% } %>
 <%# Lista miesiecznych okresow rozliczeniowych klientow zbiorczych (spec 2026-08-01).
     Jeden wiersz = jeden miesiac jednego klienta = jedna faktura, ktora ten klient dostanie.
 

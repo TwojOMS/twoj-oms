@@ -85,7 +85,7 @@ export function trasyProduktyZapis(app, { db, teraz }) {
       if (Object.keys(zmiany).length) {
         const inna = kartaZTymSamymSku(db, zmiany.sku, w.id);
         if (inna) return skuZajete(inna);
-        zapiszKarte(db, w.id, zmiany, { at: teraz().toISOString() });
+        zapiszKarte(db, w.id, zmiany, { at: teraz().toISOString(), zrodlo: 'api' });
       }
       const po = wiersz(db, w.id);
       const cialo = kartaDoApi(db, po);

@@ -1,0 +1,125 @@
+<%
+  // PRZ-160 E3.13 (D15, D24, D35, D42): krok 6 „Oferty”. Wartości z odrzuconego formularza (`wartosci`) mają
+  // pierwszeństwo przed zapisanymi; identyfikatory list tylko z „Pobierz z Allegro”. E3d.02-02: formularz nie ma
+  // pola cennikDostaw — cenniki są w tabeli reguł (`_cenniki-reguly.ejs`).
+  const u = ustawienia;
+  const liczbaPl = (v) => v === null || v === undefined ? '' : String(v).replace('.', ',');
+  const zapisane = {
+    czynne: u.czynne ? 'czynne' : 'wstrzymane', narzutProcent: liczbaPl(u.narzutProcent),
+    progPotwierdzeniaProcent: liczbaPl(u.progPotwierdzeniaProcent), stalaIlosc: liczbaPl(u.stalaIlosc),
+    czasWysylkiDni: liczbaPl(u.czasWysylkiDni), stawkaVat: u.stawkaVat ?? '', aktywujPoSprawdzeniu: u.aktywujPoSprawdzeniu ? 'tak' : 'nie',
+    bezpieczenstwoDomyslne: u.bezpieczenstwoDomyslne ?? '',
+    zwrotyId: u.zwrotyId ?? '', reklamacjeId: u.reklamacjeId ?? '', gwarancjaId: u.gwarancjaId ?? '',
+    producentId: u.producentId ?? '', osobaOdpowiedzialnaId: u.osobaOdpowiedzialnaId ?? '',
+    buforSzt: liczbaPl(u.buforSzt), progSkokuSzt: liczbaPl(u.progSkokuSzt),
+  };
+  // PRZ-160 E4.10 (D47, D48): bufor i próg skoku tylko, gdy stany magazynowe kiedykolwiek włączono.
+  const polaLiczb = [['narzutProcent', 'Narzut %', 'text', 'decimal'], ['progPotwierdzeniaProcent', 'Próg potwierdzenia zmiany ceny %', 'text', 'decimal'], ['stalaIlosc', 'Stała liczba sztuk (wymagana)', 'number', 'numeric'], ['czasWysylkiDni', 'Czas wysyłki w dniach', 'number', 'numeric']];
+  const pomocStanow = {buforSzt: 'Tyle sztuk OMS zostawi poza kanałem: wyśle stan karty pomniejszony o bufor.', progSkokuSzt: 'Niewyjaśniona zmiana stanu karty większa niż próg wstrzymuje ofertę do sprawdzenia.'};
+  if (locals.stanyKiedys) { polaLiczb[2] = ['stalaIlosc', 'Stała liczba sztuk (gdy stany magazynowe są wyłączone)', 'number', 'numeric']; polaLiczb.splice(3, 0, ['buforSzt', 'Bufor (szt.)', 'number', 'numeric'], ['progSkokuSzt', 'Próg skoku stanu (szt.)', 'number', 'numeric']); }
+  const w = (pole) => wartosci ? (typeof wartosci[pole] === 'string' ? wartosci[pole] : '') : zapisane[pole];
+  const pierwszyBlad = Object.keys(bledyPol)[0];
+  const atrybutyBledu = (pole, id) => bledyPol[pole] ? ` aria-invalid="true" aria-describedby="${id}-blad"${pole === pierwszyBlad ? ' autofocus' : ''}` : '';
+  // Wybór producenta marki: z odrzuconego formularza albo zapisany.
+  const wybraneMarki = (() => {
+    if (!wartosci) return Object.fromEntries(marki.map(m => [m.marka, m.wybor]));
+    const n = [].concat(wartosci.marka ?? []), p = [].concat(wartosci.producentMarki ?? []);
+    return Object.fromEntries(n.map((m, i) => [String(m), String(p[i] ?? '')]));
+  })();
+  const producenci = slowniki?.producenci ?? [];
+%>
+<div class="allegro-konfiguracja erli-konfigurator">
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (/^allegro(\s|$)/i.test(k.nazwa) ? k.nazwa : 'Allegro: ' + k.nazwa)}) %>
+<p><a href="<%= adres %>">← Stan konta</a></p>
+<% if (blad) { %><div class="pas-blad" role="alert"><p><%= blad %></p></div><% } %>
+<% if (komunikat) { %><div class="pas-potwierdzenie" role="status"><p><%= komunikat %></p></div><% } %>
+<%- include('../../../core/web/konfigurator/kroki-konfiguratora.ejs', {kroki}) %>
+
+<section class="ust-sekcja">
+  <h2 id="allegro-oferty-listy">Listy konta z Allegro</h2>
+  <% if (!zgoda) { %>
+  <p><strong><%= brakZgody %></strong></p>
+  <p class="ust-pomoc">Bez zgody OMS nie pobiera cenników, warunków ani producentów konta. Zgodę dasz na <a href="<%= adres %>">ekranie konta</a> („Chcę wystawiać oferty”).</p>
+  <% } else { %>
+  <p>Cenniki dostaw, warunki zwrotów i reklamacji, gwarancje, producenci i osoby odpowiedzialne tego konta.
+    <%= slowniki?.pobranoAt ? 'Pobrane ' + new Intl.DateTimeFormat('pl-PL', {timeZone: 'Europe/Warsaw', dateStyle: 'short', timeStyle: 'short'}).format(new Date(slowniki.pobranoAt)) + '.' : 'Jeszcze nie pobrane.' %></p>
+  <form method="post" action="<%= adres %>/oferty/pobierz">
+    <button class="btn btn--maly" type="submit">Pobierz z Allegro</button>
+  </form>
+  <p class="ust-pomoc">Pobranie tylko odczytuje listy — niczego nie zmienia na koncie Allegro.</p>
+  <% } %>
+</section>
+
+<section class="ust-sekcja">
+  <h2 id="allegro-oferty-ustawienia">Ustawienia ofert konta</h2>
+  <% if (braki.length) { %><p>Do wystawiania ofert brakuje: <%= braki.join(', ') %>.</p><% } %>
+  <form method="post" action="<%= adres %>/oferty" aria-labelledby="allegro-oferty-ustawienia">
+    <fieldset><legend>Oferty: wstrzymane / czynne</legend>
+      <p id="allegro-oferty-tryb-pomoc" class="ust-pomoc">Przy wstrzymanych ofertach OMS nie wysyła zmian ofert do Allegro.</p>
+      <% for (const [v, napis] of [['wstrzymane', 'Wstrzymane'], ['czynne', 'Czynne']]) { %><p><input id="allegro-oferty-<%= v %>" type="radio" name="czynne" value="<%= v %>"<% if (w('czynne') === v || (v === 'wstrzymane' && w('czynne') !== 'czynne')) { %> checked<% } %> aria-describedby="allegro-oferty-tryb-pomoc"> <label for="allegro-oferty-<%= v %>"><%= napis %></label></p><% } %>
+    </fieldset>
+
+    <% for (const [pole, etykieta, typ, tryb] of polaLiczb) { const id = 'allegro-oferty-' + pole; %>
+    <p><label for="<%= id %>"><%= etykieta %></label><br>
+      <input id="<%= id %>" type="<%= typ %>" name="<%= pole %>" inputmode="<%= tryb %>" value="<%= w(pole) %>"<% if (pole === 'stalaIlosc') { %> required min="1" max="1000000" step="1"<% } if (pole === 'czasWysylkiDni') { %> min="0" max="365" step="1"<% } if (pomocStanow[pole]) { %> min="<%= pole === 'buforSzt' ? 0 : 1 %>" max="1000000" step="1"<% } %><%- pomocStanow[pole] ? (bledyPol[pole] ? ` aria-invalid="true" aria-describedby="${id}-pomoc ${id}-blad"${pole === pierwszyBlad ? ' autofocus' : ''}` : ` aria-describedby="${id}-pomoc"`) : atrybutyBledu(pole, id) %>>
+      <% if (pomocStanow[pole]) { %><br><span id="<%= id %>-pomoc" class="ust-pomoc"><%= pomocStanow[pole] %></span><% } %><% if (bledyPol[pole]) { %><br><span id="<%= id %>-blad"><%= bledyPol[pole] %></span><% } %></p>
+    <% } %>
+
+    <p><label for="allegro-oferty-stawkaVat">Stawka VAT domyślna</label><br>
+      <select id="allegro-oferty-stawkaVat" name="stawkaVat"<%- atrybutyBledu('stawkaVat', 'allegro-oferty-stawkaVat') %>>
+        <% const vat = w('stawkaVat'); const opcjeVat = ['', ...stawkiVat]; if (!opcjeVat.includes(vat)) opcjeVat.push(vat); for (const v of opcjeVat) { %><option value="<%= v %>"<% if (v === vat) { %> selected<% } %>><%= v === '' ? 'Wybierz stawkę' : v === 'zw' ? 'zw' : v + '%' %></option><% } %>
+      </select>
+      <% if (bledyPol.stawkaVat) { %><br><span id="allegro-oferty-stawkaVat-blad"><%= bledyPol.stawkaVat %></span><% } %></p>
+
+    <%# PRZ-160 E3d.02-02: cennik dostaw jako reguły rozmiaru; cennik tylko z listy „Pobierz z Allegro”. %>
+    <%- include('_cenniki-reguly.ejs', {prefiks: 'allegro-oferty-cenniki', zapisane: u.cenniki, wyslane: wartosci, bledy: bledyPol, opcje: slowniki?.cenniki ?? []}) %>
+
+    <fieldset><legend>Warunki i dane z konta Allegro</legend>
+      <% if (!slowniki) { %><p class="ust-pomoc">Listy są puste — najpierw pobierz je z Allegro (sekcja wyżej).</p><% } %>
+      <% for (const p of polaList) { const id = 'allegro-oferty-' + p.pole, wybrany = w(p.pole), pozycje = slowniki?.[p.lista] ?? []; %>
+      <p><label for="<%= id %>"><%= p.etykieta %></label><br>
+        <select id="<%= id %>" name="<%= p.pole %>"<%- atrybutyBledu(p.pole, id) %>>
+          <option value=""><%= p.wymagane ? 'Wybierz z listy' : 'Brak' %></option>
+          <% for (const x of pozycje) { %><option value="<%= x.id %>"<% if (x.id === wybrany) { %> selected<% } %>><%= x.nazwa %></option><% } %>
+          <% if (wybrany && !pozycje.some(x => x.id === wybrany)) { %><option value="<%= wybrany %>" selected><%= wybrany %> (nie ma na pobranej liście)</option><% } %>
+        </select>
+        <% if (bledyPol[p.pole]) { %><br><span id="<%= id %>-blad"><%= bledyPol[p.pole] %></span><% } %></p>
+      <% } %>
+    </fieldset>
+
+    <fieldset><legend>Aktywuj po sprawdzeniu</legend>
+      <p id="allegro-oferty-aktywuj-pomoc" class="ust-pomoc">„Tak” — oferta staje się aktywna, gdy Allegro ją sprawdzi. „Nie” — zostaje nieaktywna do Twojej decyzji.</p>
+      <% for (const [v, napis] of [['nie', 'Nie'], ['tak', 'Tak']]) { %><p><input id="allegro-oferty-aktywuj-<%= v %>" type="radio" name="aktywujPoSprawdzeniu" value="<%= v %>"<% if (w('aktywujPoSprawdzeniu') === v || (v === 'nie' && w('aktywujPoSprawdzeniu') !== 'tak')) { %> checked<% } %> aria-describedby="allegro-oferty-aktywuj-pomoc"> <label for="allegro-oferty-aktywuj-<%= v %>"><%= napis %></label></p><% } %>
+    </fieldset>
+
+    <p><label for="allegro-oferty-bezpieczenstwo">Informacja o bezpieczeństwie produktu (domyślna)</label><br>
+      <textarea id="allegro-oferty-bezpieczenstwo" class="ust-prompt" name="bezpieczenstwoDomyslne" rows="4" maxlength="5000"<%- atrybutyBledu('bezpieczenstwoDomyslne', 'allegro-oferty-bezpieczenstwo') %>><%= w('bezpieczenstwoDomyslne') %></textarea>
+      <% if (bledyPol.bezpieczenstwoDomyslne) { %><br><span id="allegro-oferty-bezpieczenstwo-blad"><%= bledyPol.bezpieczenstwoDomyslne %></span><% } %>
+      <br><span class="ust-pomoc">Najwyżej 5000 znaków. Puste — oferta bez domyślnej informacji.</span></p>
+
+    <h3 id="allegro-oferty-marki">Producent marki</h3>
+    <p class="ust-pomoc" id="allegro-oferty-marki-pomoc">Marka bez wyboru zostaje nieprzypisana — nie dostaje producenta konta.</p>
+    <% if (bledyPol.marki) { %><p id="allegro-oferty-marki-blad"><%= bledyPol.marki %></p><% } %>
+    <% if (!marki.length) { %><p>Brak marek w słowniku OMS.</p><% } else { %>
+    <div class="przewijak-tabeli">
+      <table class="erli-metody" aria-labelledby="allegro-oferty-marki">
+        <thead><tr><th scope="col">Marka</th><th scope="col">Producent na tym koncie</th></tr></thead>
+        <tbody>
+        <% marki.forEach((m, i) => { const id = 'allegro-oferty-marka-' + i, wybor = wybraneMarki[m.marka] ?? ''; %>
+          <tr><th scope="row"><label for="<%= id %>"><%= m.marka %></label><input type="hidden" name="marka" value="<%= m.marka %>"></th>
+            <td><select id="<%= id %>" name="producentMarki" aria-describedby="allegro-oferty-marki-pomoc<%= bledyPol.marki ? ' allegro-oferty-marki-blad' : '' %>"<% if (bledyPol.marki) { %> aria-invalid="true"<% } %>>
+              <option value="">Nieprzypisana</option>
+              <option value="konto"<% if (wybor === 'konto') { %> selected<% } %>>Producent konta (marka własna)</option>
+              <% for (const x of producenci) { %><option value="<%= x.id %>"<% if (x.id === wybor) { %> selected<% } %>><%= x.nazwa %></option><% } %>
+              <% if (wybor && wybor !== 'konto' && !producenci.some(x => x.id === wybor)) { %><option value="<%= wybor %>" selected><%= wybor %> (nie ma na pobranej liście)</option><% } %>
+            </select></td></tr>
+        <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+
+    <button type="submit" class="btn btn--glowny">Zapisz ustawienia ofert</button>
+  </form>
+</section>
+</div>

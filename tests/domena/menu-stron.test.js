@@ -14,11 +14,8 @@ describe('menuStron', () => {
     // „Stali klienci" bez „Wiadomosci", pasek odwrotnie.
     // ⚠️ „Statystyki" dolaczyla 13.09.2026 (Zadanie 8, zakladka wysylki i platnosci) —
     // zaraz po „Raporty", tak samo jak w EKRANY.
-    // ⚠️ „Cele" dolaczyly 13.09.2026 (spec 2026-09-13, cele i zadania okresowe) — zaraz po
-    // „Kampania", tak samo jak w EKRANY. Ten test jest dowodem, ze menu boczne, pasek ikon
-    // i straznik dalej czytaja JEDNA liste: zakladka dopisana tylko do paska nie przeszlaby tedy.
     expect(menuStron('/koszty').map((p) => p.etykieta)).toEqual([
-      'Zamówienia', 'Przesyłki', 'Okresy rozliczeniowe', 'Faktury', 'Koszty', 'Raporty', 'Statystyki', 'Reklamy', 'Cele', 'Finanse', 'Magazyn', 'Stali klienci', 'Wiadomości', 'Ustawienia',
+      'Zamówienia', 'Przesyłki', 'Okresy rozliczeniowe', 'Faktury', 'Koszty', 'Raporty', 'Statystyki', 'Reklamy', 'Finanse', 'Magazyn', 'Klienci B2B', 'Wiadomości', 'Ustawienia',
     ]);
   });
 
@@ -106,12 +103,12 @@ describe('nawigacjaDla', () => {
   });
 
   it('prowadzi dział do pierwszej dozwolonej trasy i nie pokazuje pustych działów', () => {
-    const model = nawigacjaDla({ sciezka: '/cele', konto: konto(['cele']) });
+    const model = nawigacjaDla({ sciezka: '/statystyki', konto: konto(['statystyki']) });
     expect(model.dzialy).toEqual([
-      { klucz: 'analizy-cele', etykieta: 'Analizy i cele', href: '/cele', aktywny: true },
+      { klucz: 'analizy-cele', etykieta: 'Analizy i cele', href: '/statystyki', aktywny: true },
     ]);
     expect(model.ustawienia).toBeNull();
-    expect(model.kontekst.grupy.flatMap((g) => g.pozycje).map((p) => p.href)).toEqual(['/cele']);
+    expect(model.kontekst.grupy.flatMap((g) => g.pozycje).map((p) => p.href)).toEqual(['/statystyki']);
   });
 
   it('nie ujawnia statusów zamówień osobie mającej tylko Przesyłki', () => {

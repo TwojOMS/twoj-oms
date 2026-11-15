@@ -33,6 +33,17 @@ import { transport } from '../../integracje/transport.js';
 // `allegro:api:shipments:write`, wiec Allegro nam tego NIE ODMOWI — biala lista
 // w tests/oms/allegro-client-zapis.test.js jest JEDYNA istniejaca bariera i pilnuje,
 // zeby to zdanie nie zostalo samym komentarzem.
+//
+// ⚠️ OD PRZ-160.E3.03 (wystawianie ofert) WOLNO TAKZE:
+//   POST  /sale/product-offers                                 (NOWA OFERTA — publiczna, gdy ACTIVE)
+//   PATCH /sale/product-offers/{id}                            (zmiana oferty)
+//   POST  upload.<host API>/sale/images                        (zdjecie; isAiCoCreated tylko przy AI)
+//   PUT   /sale/offer-quantity-change-commands/{commandId}     (ilosc wielu ofert)
+//   PUT   /sale/offer-price-change-commands/{commandId}        (cena wielu ofert)
+//   PUT   /sale/offer-publication-commands/{commandId}         (zakończenie lub wznowienie ofert)
+//   POST  /pricing/offer-fee-preview                           (prognoza prowizji, bez skutku)
+// ⛔ METODY DELETE NIE MA I NIE BEDZIE (D38): oferte sie konczy (publication ENDED), nie kasuje.
+// Test wywoluje KAZDA metode klienta i porownuje zbior zapisow z ta lista.
 
 // ⚠️ Limit dlugosci wiadomosci bierzemy Z DOMENY, a nie z wlasnej stalej — ta sama liczba
 // pilnuje formularza w /ustawienia i wyjscia do sieci. Dwie kopie rozjechalyby sie przy
@@ -113,20 +124,31 @@ export const LIMIT_ZAPYTANIA_ZAMOWIEN_MS = 30 * 1000;
 export const LIMIT_ZAPYTANIA_PRZESYLEK_MS = 5000;
 export const LIMIT_ZAPYTANIA_OFERTY_MS = 5000;
 export const LIMIT_ZAPYTANIA_OFERT_MS = 10 * 1000;
+// PRZ-160.04a — odczyt kategorii i jej parametrów (raz na kategorię; słownik parametrów waży do ok. 1 MB).
+export const LIMIT_ZAPYTANIA_KATEGORII_MS = 10 * 1000;
 
-// ⚠️ WARTOSC ZMIERZONA, NIE WZIETA Z DOKUMENTACJI. Rozpoznanie (2026-08-06) potwierdzilo
-// HTTP 200 na `GET /sale/offers?limit=20&offset=0` — i to jest JEDYNY limit, o ktorym wiemy,
-// ze to konto go przyjmuje. Dokumentacja obiecuje wiecej, ale ten sam zasob juz raz zachowal
-// sie inaczej, niz obiecywala (`GET /sale/offers/{id}` oddaje dzis 403), a podniesienie
-// limitu bez pomiaru konczy sie 400 na KAZDE zapytanie, czyli odczytem magazynu, ktory
-// milczy w calosci. 447 ofert to przy tej wartosci 23 zadania — odczyt idzie z przycisku,
-// raz na jakis czas, wiec cena jest zadna.
-export const LIMIT_STRONY_OFERT = 20;
+// ⚠️ WARTOSC ZMIERZONA, NIE WZIETA Z DOKUMENTACJI. Rozpoznanie (2026-08-06) potwierdzilo tylko
+// `limit=20`; PRZ-160 P19 (14.11.2026) zmierzyl `GET /sale/offers?limit=1000&offset=0` → 200 w sandboxie
+// i na dwoch kontach produkcyjnych (417 ofert w jednej odpowiedzi, ok. 650 KB, 510 ms), `limit=1001` → 400.
+// Przy 20 katalog 417 ofert to 21 zapytan na przebieg petli, przy 1000 — jedno. Sufit stron nadal z `totalCount`.
+export const LIMIT_STRONY_OFERT = 1000;
 
 // Twarda granica przebiegow: konto zglaszajace absurdalny `totalCount` (albo oddajace
 // w kolko pelna strone) zapetliloby odczyt na godziny — przycisk „Odswiez", ktory nigdy nie
 // wraca. 200 stron to 4000 ofert, czyli prawie dziewieciokrotnosc dzisiejszych 447.
 export const MAKS_STRON_OFERT = 200;
+
+// PRZ-160.E3.03 — limity wywołań etapu 3 (wystawianie ofert). Zapis oferty i zdjęcia dostają
+// 30 s jak faktura: Allegro waliduje ofertę synchronicznie i bywa wolne, a timeout zapisu
+// to wynik NIEPEWNY (D39 — dalej rozstrzyga odczyt po sygnaturze, nie drugi POST).
+export const LIMIT_ZAPISU_OFERTY_MS = 30 * 1000;
+export const LIMIT_OPERACJI_MS = 10 * 1000;
+export const LIMIT_ZDJECIA_MS = 30 * 1000;
+export const LIMIT_KOMENDY_MS = 30 * 1000;
+export const LIMIT_SLOWNIKOW_MS = 10 * 1000;
+// Komenda zmiany ilości/ceny obejmuje najwyżej tyle ofert (dokumentacja Allegro).
+export const MAKS_OFERT_KOMENDY = 1000;
+const TYPY_ZDJEC = ['image/jpeg', 'image/png', 'image/webp'];
 
 // Centrum wiadomosci (2026-08-28). Allegro pozwala na max 20 watkow na strone — to nie jest
 // nasz wybor, tylko sufit zasobu.
@@ -211,6 +233,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
     // `Bearer …` — PRZED ucięciem do 300 znaków, inaczej zostałby początek tokenu.
     const ukryj = (s) => (token ? s.split(token).join('[ukryto]') : s).replace(/Bearer\s+\S+/gi, '[ukryto]');
     let dopisek = '';
+    let bledy = [];
     try {
       const body = await r.json();
       if (Array.isArray(body?.errors)) {
@@ -221,10 +244,19 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
           return opis ? opis + (path ? ` (${path})` : '') : '';
         }).filter(Boolean).join('; '));
         if (opisy) dopisek = ': ' + opisy.slice(0, 298);
+        // Kody i `metadata` (np. PARAMETER_MISMATCH → productId, parameterId) dla pętli ofert (D34 krok 4).
+        // Tylko proste wartości metadata, każda maskowana i ucięta — jak opis.
+        const prosta = (w) => (typeof w === 'string' || typeof w === 'number' ? ukryj(String(w)).slice(0, 100) : null);
+        bledy = body.errors.slice(0, 3).map((error) => ({
+          kod: typeof error?.code === 'string' ? ukryj(error.code).slice(0, 100) : null,
+          metadata: Object.fromEntries(Object.entries(error?.metadata && typeof error.metadata === 'object' ? error.metadata : {})
+            .slice(0, 10).map(([k, w]) => [k.slice(0, 50), prosta(w)]).filter(([, w]) => w !== null)),
+        }));
       }
     } catch { /* Brak JSON lub błąd odczytu zostawia dawny komunikat. */ }
     const blad = new Error(`Allegro: HTTP ${r.status} przy ${sciezka.split('?')[0]}${dopisek}`);
     blad.status = r.status;
+    blad.bledy = bledy;
     // Nie śpimy ani nie ponawiamy tutaj. `Retry-After` jest wskazówką dla usługi
     // wznawiającej odczyt istniejącej komendy, nigdy poleceniem do drugiego POST-u.
     const retryAfter = r.headers?.get?.('Retry-After');
@@ -238,7 +270,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
   // glosno i przy pierwszym uruchomieniu, a nie dopiero przy milczacym Allegro.
   // ⚠️ `akceptuj` Z WARTOSCIA DOMYSLNA — dopisanie parametru nie ma prawa cicho zmienic
   // naglowka na kilkunastu istniejacych wywolaniach. Podaje go WYLACZNIE ten, kto musi.
-  async function get(sciezka, limitMs, akceptuj = AKCEPTUJEMY, { zRetryAfter = false } = {}) {
+  async function get(sciezka, limitMs, akceptuj = AKCEPTUJEMY, { zRetryAfter = false, jezyk = null } = {}) {
     // Token bierzemy PRZY KAZDYM ZADANIU, nie raz na zycie klienta: przebieg pollera chodzi
     // po wielu stronach i potrafi przekroczyc waznosc tokenu w polowie. `waznyToken()` samo
     // pilnuje terminu i odswieza.
@@ -255,7 +287,10 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
       // Wartosc idzie Z KONFIGURACJI (`ALLEGRO_USER_AGENT`, walidowana przy starcie
       // w src/oms/config.js), bo Allegro trzyma ja na bialej liscie i pozwala zmieniac
       // wylacznie numer wersji — a wersja bedzie rosla bez wydawania panelu.
-      headers: { Authorization: `Bearer ${token}`, Accept: akceptuj, 'User-Agent': ustawienia.userAgent },
+      headers: {
+        Authorization: `Bearer ${token}`, Accept: akceptuj, 'User-Agent': ustawienia.userAgent,
+        ...(jezyk ? { 'Accept-Language': jezyk } : {}),
+      },
       // Nowy sygnal na KAZDE zadanie (ta sama zasada, co w dpd.js): wspolny starzalby sie
       // razem z procesem i po pierwszych 30 s zycia panelu przerywal kazde zapytanie
       // natychmiast. Sygnal jest NARZUCONY przez `get`, a nie brany z opcji wolajacego —
@@ -296,6 +331,35 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
     // 204 i puste cialo sa przy PUT normalne — `json()` rzucilby na nich SyntaxError,
     // czyli udana zmiana statusu wygladalaby jak awaria kanalu.
     return r.json().catch(() => null);
+  }
+
+  // PRZ-160.E3.03: zapis, po którym liczy się NIE TYLKO ciało — `202` niesie adres operacji
+  // w `Location` i `Retry-After`, a `303` (przy `redirect: 'manual'`) znaczy „gotowe".
+  // `wyslijJson` zostaje bez zmian: kilkanaście wywołań czeka tam wyłącznie na ciało.
+  // `cialo === undefined` = bez ciała i bez Content-Type (odczyt stanu operacji).
+  async function wyslijJsonPelne(sciezka, metoda, cialo, limitMs, { redirect } = {}) {
+    const token = await tokeny.waznyToken();
+    const headers = { Authorization: `Bearer ${token}`, Accept: AKCEPTUJEMY, 'User-Agent': ustawienia.userAgent };
+    if (cialo !== undefined) headers['Content-Type'] = AKCEPTUJEMY;
+    const r = await http(`${ustawienia.api}${sciezka}`, {
+      method: metoda,
+      headers,
+      ...(cialo !== undefined ? { body: JSON.stringify(cialo) } : {}),
+      ...(redirect ? { redirect } : {}),
+      signal: AbortSignal.timeout(limitMs),
+    });
+    // Przy `redirect: 'manual'` 3xx jest ODPOWIEDZIĄ, nie awarią (303 = operacja zakończona).
+    const przekierowanie = redirect === 'manual' && r.status >= 300 && r.status < 400;
+    if (!r.ok && !przekierowanie) throw await bladHttp(r, sciezka, token);
+    const retryAfter = r.headers?.get?.('Retry-After');
+    let dane = null;
+    try { dane = await r.json(); } catch { /* 202/303 bywają bez ciała */ }
+    return {
+      status: r.status,
+      location: r.headers?.get?.('Location') ?? null,
+      retryAfterS: /^[1-9]\d*$/.test(String(retryAfter ?? '')) ? Number(retryAfter) : null,
+      dane,
+    };
   }
 
   async function pobierzMojeKonto() {
@@ -393,6 +457,24 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
   }
 
   /**
+   * PRZ-160.04a — kategoria Allegro: `{ id, name, parent: { id } | null, leaf, options }` (pomiar P8).
+   * Ścieżkę od korzenia składa wołający, idąc po `parent.id`. Tylko odczyt; odmowę (401/403)
+   * wołający pomija po `blad.status` — bez nowego wpisu w WYMAGANE_UPRAWNIENIA.
+   */
+  async function pobierzKategorie(kategoriaId) {
+    return get(`/sale/categories/${encodeURIComponent(kategoriaId)}`, LIMIT_ZAPYTANIA_KATEGORII_MS);
+  }
+
+  /**
+   * PRZ-160.04a — opisy parametrów kategorii: `{ parameters: [{ id, name, type, unit, options: { describesProduct },
+   * dictionary, restrictions }] }`. Słownik marek potrafi ważyć ok. 1 MB — przycina go `opisKategorii`
+   * (domena/tresc-oferty-allegro.js), zanim cokolwiek trafi do bazy.
+   */
+  async function pobierzParametryKategorii(kategoriaId) {
+    return get(`/sale/categories/${encodeURIComponent(kategoriaId)}/parameters`, LIMIT_ZAPYTANIA_KATEGORII_MS);
+  }
+
+  /**
    * WSZYSTKIE oferty tego konta — do lustra magazynu (`produkty_sklepowe`).
    *
    * ⚠️ BEZ ARGUMENTU KANALU, mimo ze plan zapowiadal `pobierzOferty(kanal)`. Klient JEST juz
@@ -463,6 +545,249 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
       throw new Error(`Odczyt ofert urwał się: Allegro zapowiedziało ${zapowiedziano} ofert, a zebraliśmy ${wszystkie.length}. Nie oddaję niepełnej listy, bo brakujące oferty wyglądałyby jak wycofane ze sprzedaży.`);
     }
     return wszystkie;
+  }
+
+  // ===== PRZ-160.E3.03 — wystawianie ofert: zapis, odczyt, słowniki konta =====
+
+  const wymagaj = (warunek, komunikat) => { if (!warunek) throw new Error(`Allegro: ${komunikat}`); };
+  const tekstNiepusty = (w) => typeof w === 'string' && w.trim() !== '';
+  const obiekt = (w) => w !== null && typeof w === 'object' && !Array.isArray(w);
+
+  // Wynik zapisu oferty. Przy 202 Allegro oddaje id w ciele, ale ciało bywa puste — wtedy
+  // id jest w adresie operacji (`/sale/product-offers/{id}/operations/{op}`).
+  function wynikZapisuOferty(w) {
+    const sciezka = w.location ? new URL(w.location, ustawienia.api).pathname : '';
+    const zAdresu = /^\/sale\/product-offers\/([^/?#]+)\/operations\//.exec(sciezka);
+    const ofertaId = w.dane?.id != null ? String(w.dane.id) : (zAdresu ? decodeURIComponent(zAdresu[1]) : null);
+    return { status: w.status, ofertaId, operacja: w.status === 202 ? w.location : null, retryAfterS: w.retryAfterS, dane: w.dane };
+  }
+
+  /** `POST /sale/product-offers` — nowa oferta (201 gotowa, 202 w toku: patrz `stanOperacji`). */
+  async function utworzOferte(cialo) {
+    wymagaj(obiekt(cialo), 'oferty nie da się wystawić bez ciała-obiektu.');
+    return wynikZapisuOferty(await wyslijJsonPelne('/sale/product-offers', 'POST', cialo, LIMIT_ZAPISU_OFERTY_MS));
+  }
+
+  /** `PATCH /sale/product-offers/{id}` — zmiana istniejącej oferty. */
+  async function edytujOferte(ofertaId, zmiany) {
+    wymagaj(tekstNiepusty(ofertaId), 'edycja oferty wymaga jej identyfikatora.');
+    wymagaj(obiekt(zmiany), 'edycja oferty wymaga zmian jako obiektu.');
+    return wynikZapisuOferty(await wyslijJsonPelne(
+      `/sale/product-offers/${encodeURIComponent(ofertaId)}`, 'PATCH', zmiany, LIMIT_ZAPISU_OFERTY_MS,
+    ));
+  }
+
+  /**
+   * Stan operacji z `Location` po 202. `202` = w toku, `303` = gotowe (`location` wskazuje ofertę).
+   * ⚠️ Adres przychodzi z odpowiedzi — idziemy tam wyłącznie na host API i wyłącznie na
+   * ścieżkę operacji oferty, inaczej token poleciałby tam, gdzie wskaże nagłówek.
+   */
+  async function stanOperacji(adres) {
+    wymagaj(tekstNiepusty(adres), 'brak adresu operacji.');
+    const api = new URL(ustawienia.api);
+    const u = new URL(adres, api);
+    wymagaj(u.origin === api.origin, 'adres operacji spoza hosta API — nie wysyłam tam tokenu.');
+    wymagaj(/^\/sale\/product-offers\/[^/?#]+\/operations\/[^/?#]+$/.test(u.pathname), 'to nie jest adres operacji oferty.');
+    const w = await wyslijJsonPelne(u.pathname, 'GET', undefined, LIMIT_OPERACJI_MS, { redirect: 'manual' });
+    return { ...w, wToku: w.status === 202, gotowe: w.status === 303 };
+  }
+
+  /**
+   * Wszystkie oferty konta od `offset`, stroną `LIMIT_STRONY_OFERT`. Sufit stron liczony
+   * z `totalCount` pierwszej odpowiedzi (+1), nie stały — 4500 ofert to 225 stron, a stałe
+   * 200 ucięłoby katalog. Strona krótsza niż limit kończy odczyt zawsze (absurdalny
+   * `totalCount` nie trzyma pętli), a niepełny odczyt wobec zapowiedzi jest GŁOŚNY — tak
+   * samo jak w `pobierzOferty`.
+   */
+  async function ofertyKonta({ offset = 0 } = {}) {
+    wymagaj(Number.isSafeInteger(offset) && offset >= 0, 'offset ofert musi być liczbą całkowitą ≥ 0.');
+    const oferty = [];
+    let zapowiedziano = null;
+    let sufit = MAKS_STRON_OFERT;
+    let strona = 0;
+    let partia;
+    do {
+      if (strona >= sufit) throw new Error(`Allegro: odczyt ofert przekroczył ${sufit} stron — przerywam, żeby się nie zapętlić.`);
+      const p = new URLSearchParams({ limit: String(LIMIT_STRONY_OFERT), offset: String(offset + strona * LIMIT_STRONY_OFERT) });
+      const d = await get(`/sale/offers?${p}`, LIMIT_ZAPYTANIA_OFERT_MS);
+      if (!Array.isArray(d?.offers)) throw new Error('Allegro nie oddało listy ofert (offers nie jest tablicą)');
+      partia = d.offers;
+      oferty.push(...partia);
+      if (strona === 0) {
+        const total = Number(d.totalCount);
+        if (Number.isFinite(total) && total >= 0) {
+          zapowiedziano = total;
+          sufit = Math.ceil(Math.max(0, total - offset) / LIMIT_STRONY_OFERT) + 1;
+        }
+      }
+      strona += 1;
+    } while (partia.length === LIMIT_STRONY_OFERT && (zapowiedziano === null || offset + oferty.length < zapowiedziano));
+    if (zapowiedziano !== null && offset + oferty.length < zapowiedziano) {
+      throw new Error(`Odczyt ofert urwał się: Allegro zapowiedziało ${zapowiedziano} ofert, a zebraliśmy ${offset + oferty.length}. Nie oddaję niepełnej listy.`);
+    }
+    return { oferty, razem: zapowiedziano };
+  }
+
+  /**
+   * Oferty o danej sygnaturze (`external.id`). ⚠️ Filtr po stronie Allegro bywa ignorowany
+   * (wtedy wraca cała lista) — odfiltrowujemy sami, inaczej obca oferta wyglądałaby jak
+   * „już wystawiona" i D39 uznałby zapis za udany.
+   */
+  async function ofertyPoSygnaturze(sygnatura) {
+    wymagaj(tekstNiepusty(sygnatura), 'pusta sygnatura oferty.');
+    const p = new URLSearchParams({ 'external.id': sygnatura, limit: String(LIMIT_STRONY_OFERT) });
+    const d = await get(`/sale/offers?${p}`, LIMIT_ZAPYTANIA_OFERT_MS);
+    if (!Array.isArray(d?.offers)) throw new Error('Allegro nie oddało listy ofert (offers nie jest tablicą)');
+    // D31: wynik służy do decyzji „ponów POST albo nie”. Lista, która wygląda na niefiltrowaną (obca sygnatura)
+    // albo ma więcej niż jedną stronę, nie dowodzi, że naszej oferty nie ma — to „nie wiadomo”, nie zero.
+    if (d.offers.some((o) => o?.external?.id !== sygnatura)) {
+      throw new Error('Allegro zignorowało filtr external.id — nie wiadomo, czy oferta z tą sygnaturą istnieje.');
+    }
+    if (Number(d.totalCount ?? d.offers.length) > d.offers.length) {
+      throw new Error('Allegro oddało więcej niż jedną stronę ofert z tą sygnaturą — nie wiadomo, która jest nasza.');
+    }
+    return d.offers;
+  }
+
+  /**
+   * Produkty katalogu Allegro po EAN (D34: `phrase=<EAN>&mode=GTIN`).
+   * ⚠️ `Accept-Language: pl-PL` jest warunkiem działania: bez niego fetch wysyła „*”, a Allegro odpowiada 422
+   * `UnsupportedLanguageInAcceptLanguageHeader` (dowód 2a na sandboxie, 14.11.2026) — każda karta z EAN kończyła jako błąd.
+   */
+  async function szukajProduktow(ean) {
+    wymagaj(typeof ean === 'string' && /^\d{8,14}$/.test(ean), 'EAN musi mieć 8–14 cyfr.');
+    const d = await get(`/sale/products?${new URLSearchParams({ phrase: ean, mode: 'GTIN' })}`, LIMIT_SLOWNIKOW_MS,
+      AKCEPTUJEMY, { jezyk: 'pl-PL' });
+    if (!Array.isArray(d?.products)) throw new Error('Allegro nie oddało listy produktów (products nie jest tablicą)');
+    return d.products;
+  }
+
+  // Host uploadu z hosta API (`api.` → `upload.`), bez osobnej zmiennej env. Nie zgadujemy:
+  // host bez `api.` to odmowa, a nie upload w nieznane miejsce.
+  function originUploadu() {
+    const u = new URL(ustawienia.api);
+    wymagaj(u.hostname.startsWith('api.'), 'nie umiem wyliczyć hosta uploadu (host API nie zaczyna się od „api.").');
+    u.hostname = `upload.${u.hostname.slice('api.'.length)}`;
+    return u.origin;
+  }
+
+  /** `POST upload.<host>/sale/images` — bajty zdjęcia; `isAiCoCreated=true` WYŁĄCZNIE przy `ai`. */
+  async function wgrajZdjecie(bajty, typ, { ai = false } = {}) {
+    wymagaj(bajty instanceof Uint8Array && bajty.length > 0, 'puste zdjęcie — nie wysyłam.');
+    wymagaj(TYPY_ZDJEC.includes(typ), `typ zdjęcia „${typ}" spoza listy (${TYPY_ZDJEC.join(', ')}).`);
+    const sciezka = '/sale/images';
+    const zapytanie = ai ? '?isAiCoCreated=true' : '';
+    const token = await tokeny.waznyToken();
+    const r = await http(`${originUploadu()}${sciezka}${zapytanie}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, Accept: AKCEPTUJEMY, 'Content-Type': typ, 'User-Agent': ustawienia.userAgent },
+      body: bajty,
+      signal: AbortSignal.timeout(LIMIT_ZDJECIA_MS),
+    });
+    if (!r.ok) throw await bladHttp(r, sciezka, token);
+    const d = await r.json().catch(() => null);
+    if (!tekstNiepusty(d?.location)) throw new Error('Allegro nie oddało adresu wgranego zdjęcia');
+    return { location: d.location, expiresAt: d.expiresAt ?? null };
+  }
+
+  // Komenda ilości/ceny: commandId z rezerwacji (klucz idempotencji), 1–1000 ofert, JEDNA
+  // wartość dla wszystkich (Allegro przyjmuje jedną modyfikację na komendę).
+  function sprawdzKomende(commandId, pozycje, pole, poprawna) {
+    wymagaj(tekstNiepusty(commandId), 'komendy nie wolno wysyłać bez commandId (klucz idempotencji).');
+    wymagaj(Array.isArray(pozycje) && pozycje.length >= 1 && pozycje.length <= MAKS_OFERT_KOMENDY,
+      `komenda obejmuje od 1 do ${MAKS_OFERT_KOMENDY} ofert.`);
+    for (const p of pozycje) {
+      wymagaj(tekstNiepusty(p?.ofertaId), 'pozycja komendy bez identyfikatora oferty.');
+      wymagaj(poprawna(p[pole]), `niepoprawna wartość „${pole}" w komendzie.`);
+    }
+    wymagaj(new Set(pozycje.map((p) => p.ofertaId)).size === pozycje.length, 'oferta powtórzona w komendzie.');
+    wymagaj(new Set(pozycje.map((p) => p[pole])).size === 1, 'jedna komenda = jedna wartość dla wszystkich ofert.');
+    return [{ offers: pozycje.map((p) => ({ id: p.ofertaId })), type: 'CONTAINS_OFFERS' }];
+  }
+
+  /** `PUT /sale/offer-quantity-change-commands/{commandId}` — stała ilość dla ofert. */
+  async function komendaIlosci(commandId, pozycje) {
+    const offerCriteria = sprawdzKomende(commandId, pozycje, 'ilosc', (v) => Number.isSafeInteger(v) && v >= 0);
+    return wyslijJson(`/sale/offer-quantity-change-commands/${encodeURIComponent(commandId)}`, 'PUT',
+      { modification: { changeType: 'FIXED', value: pozycje[0].ilosc }, offerCriteria }, LIMIT_KOMENDY_MS);
+  }
+
+  /** `PUT /sale/offer-price-change-commands/{commandId}` — stała cena „zł.gr" PLN. */
+  async function komendaCeny(commandId, pozycje) {
+    const offerCriteria = sprawdzKomende(commandId, pozycje, 'cena', (v) => typeof v === 'string' && /^\d+\.\d{2}$/.test(v) && Number(v) > 0);
+    return wyslijJson(`/sale/offer-price-change-commands/${encodeURIComponent(commandId)}`, 'PUT',
+      { modification: { type: 'FIXED_PRICE', price: { amount: pozycje[0].cena, currency: 'PLN' } }, offerCriteria }, LIMIT_KOMENDY_MS);
+  }
+
+  /** Zakończenie lub wznowienie ofert z kluczem idempotencji. */
+  async function komendaPublikacji(commandId, ofertyIds, akcja) {
+    wymagaj(Array.isArray(ofertyIds), 'wymagana lista ofert.');
+    wymagaj(tekstNiepusty(commandId), 'komendy nie wolno wysyłać bez commandId (klucz idempotencji).');
+    wymagaj(ofertyIds.length >= 1 && ofertyIds.length <= MAKS_OFERT_KOMENDY, `komenda obejmuje od 1 do ${MAKS_OFERT_KOMENDY} ofert.`);
+    wymagaj(akcja === 'END' || akcja === 'ACTIVATE', 'niepoprawna akcja publikacji.');
+    wymagaj(ofertyIds.every(tekstNiepusty), 'pozycja komendy bez identyfikatora oferty.');
+    wymagaj(new Set(ofertyIds).size === ofertyIds.length, 'oferta powtórzona w komendzie.');
+    const offerCriteria = [{ offers: ofertyIds.map((id) => ({ id })), type: 'CONTAINS_OFFERS' }];
+    return wyslijJson(`/sale/offer-publication-commands/${encodeURIComponent(commandId)}`, 'PUT',
+      { publication: { action: akcja }, offerCriteria }, LIMIT_KOMENDY_MS);
+  }
+
+  const ZASOB_KOMENDY = { ilosc: 'offer-quantity-change-commands', cena: 'offer-price-change-commands', publikacja: 'offer-publication-commands' };
+  /** Wynik komendy per oferta: `GET /sale/<komenda>/{commandId}/tasks`. */
+  async function wynikKomendy(rodzaj, commandId) {
+    wymagaj(Object.hasOwn(ZASOB_KOMENDY, rodzaj), `nieznany rodzaj komendy „${rodzaj}" (ilosc|cena|publikacja).`);
+    wymagaj(tekstNiepusty(commandId), 'brak commandId komendy do odczytu.');
+    const p = new URLSearchParams({ limit: String(MAKS_OFERT_KOMENDY), offset: '0' });
+    const d = await get(`/sale/${ZASOB_KOMENDY[rodzaj]}/${encodeURIComponent(commandId)}/tasks?${p}`, LIMIT_OPERACJI_MS);
+    if (!Array.isArray(d?.tasks)) throw new Error('Allegro nie oddało wyniku komendy (tasks nie jest tablicą)');
+    return d.tasks;
+  }
+
+  // Słowniki konta: 200 bez oczekiwanej listy to błąd, nie „konto nie ma cenników" —
+  // pusty formularz wystawiania wyglądałby jak prawdziwy stan konta.
+  async function slownik(sciezka, pole) {
+    const d = await get(sciezka, LIMIT_SLOWNIKOW_MS);
+    if (!Array.isArray(d?.[pole])) throw new Error(`Allegro nie oddało listy ${pole} (${sciezka.split('?')[0]})`);
+    return d[pole];
+  }
+  const pobierzCenniki = () => slownik('/sale/shipping-rates', 'shippingRates');
+  const pobierzZwroty = () => slownik('/after-sales-service-conditions/return-policies', 'returnPolicies');
+  const pobierzReklamacje = () => slownik('/after-sales-service-conditions/implied-warranties', 'impliedWarranties');
+  const pobierzGwarancje = () => slownik('/after-sales-service-conditions/warranties', 'warranties');
+  const pobierzProducentow = () => slownik('/sale/responsible-producers', 'responsibleProducers');
+  const pobierzOsobyOdpowiedzialne = () => slownik('/sale/responsible-persons', 'responsiblePersons');
+
+  async function dopasujKategorie(nazwa) {
+    wymagaj(tekstNiepusty(nazwa), 'dopasowanie kategorii wymaga nazwy.');
+    return slownik(`/sale/matching-categories?${new URLSearchParams({ name: nazwa })}`, 'matchingCategories');
+  }
+
+  async function ustawieniaPodatku(kategoriaId) {
+    wymagaj(tekstNiepusty(kategoriaId), 'ustawienia podatku wymagają kategorii.');
+    const d = await get(`/sale/tax-settings?${new URLSearchParams({ 'category.id': kategoriaId })}`, LIMIT_SLOWNIKOW_MS);
+    if (!obiekt(d)) throw new Error('Allegro nie oddało ustawień podatku');
+    return d;
+  }
+
+  /**
+   * Prognoza prowizji: `POST /pricing/offer-fee-preview` — POST bez skutku po stronie Allegro.
+   * Dowód r4 (sandbox 14.11): bez `publication` i `parameters` Allegro odpowiada 422 „Can't parse value of:
+   * offer.publication”; z pustymi wartościami 200. Pola podane przez wołającego mają pierwszeństwo.
+   */
+  async function podgladOplat(oferta) {
+    wymagaj(obiekt(oferta), 'podgląd opłat wymaga oferty jako obiektu.');
+    const offer = { publication: {}, parameters: [], ...oferta };
+    const d = await wyslijJson('/pricing/offer-fee-preview', 'POST', { offer }, LIMIT_SLOWNIKOW_MS);
+    if (!obiekt(d)) throw new Error('Allegro nie oddało podglądu opłat');
+    return d;
+  }
+
+  /** Opłaty wystawionej oferty: `GET /pricing/offer-quotes?offer.id=`. */
+  async function oplatyOferty(ofertaId) {
+    wymagaj(tekstNiepusty(ofertaId), 'opłaty oferty wymagają jej identyfikatora.');
+    const d = await get(`/pricing/offer-quotes?${new URLSearchParams({ 'offer.id': ofertaId })}`, LIMIT_SLOWNIKOW_MS);
+    if (!obiekt(d)) throw new Error('Allegro nie oddało opłat oferty');
+    return d;
   }
 
   /**
@@ -660,7 +985,11 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
   async function zlecPodjazd({ commandId, input } = {}) {
     if (!commandId) throw new Error('Allegro: podjazdu nie wolno zlecać bez commandId.');
     sprawdzPrzesylkiPodjazdu(input?.shipmentIds);
-    if (!input?.pickupTime) throw new Error('Allegro: podjazd wymaga pickupTime.');
+    if (!input?.pickupTime?.date) throw new Error('Allegro: podjazd wymaga pickupTime z datą.');
+    // Sama data (godzinę ustala przewoźnik) albo pełne okno — nigdy połowa okna.
+    if ((input.pickupTime.minTime != null) !== (input.pickupTime.maxTime != null)) {
+      throw new Error('Allegro: pickupTime wymaga obu godzin (minTime i maxTime) albo żadnej.');
+    }
     if (!input?.address) throw new Error('Allegro: podjazd wymaga address.');
     for (const pole of ['pickupDateProposalId', 'proposalItems']) {
       if (Object.hasOwn(input, pole)) throw new Error(`Allegro: wycofane pole podjazdu ${pole} nie może zostać wysłane.`);
@@ -917,11 +1246,17 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
     // i `pobierzOferty` (CALA lista, `/sale/offers`, lustro magazynu) roznia sie jedna
     // litera i strzelaja w DWA ROZNE zasoby. Stoja obok siebie celowo — para widoczna
     // w jednym miejscu jest mniej grozna niz dwie nazwy rozrzucone po module.
-    pobierzMojeKonto, sprawdzZakresZamowien, pobierzZamowienia, pobierzPrzesylki, pobierzOferte, pobierzOferty, pobierzStanRealizacji,
+    pobierzMojeKonto, sprawdzZakresZamowien, pobierzZamowienia, pobierzPrzesylki, pobierzOferte, pobierzOferty,
+    pobierzKategorie, pobierzParametryKategorii, pobierzStanRealizacji,
     ustawStatusRealizacji, pobierzFakturyZamowienia, zglosFakture, wyslijPlikFaktury,
     pobierzPropozycjeWysylki, pobierzMetodeDostawy, utworzPrzesylke, stanTworzeniaPrzesylki,
     pobierzPrzesylkeWza, pobierzEtykieteWza, pobierzSledzenie,
     pobierzPropozycjePodjazdu, zlecPodjazd, stanZleceniaPodjazdu, pobierzPodjazd,
     pobierzWatki, pobierzWiadomosci, wyslijWiadomosc, deklarujZalacznikWiadomosci, wgrajZalacznikWiadomosci, pobierzSprawy,
+    // PRZ-160.E3.03 — wystawianie ofert (zapisy w nagłówku pliku; bez kasowania: D38).
+    utworzOferte, edytujOferte, stanOperacji, ofertyKonta, ofertyPoSygnaturze,
+    szukajProduktow, wgrajZdjecie, komendaIlosci, komendaCeny, komendaPublikacji, wynikKomendy,
+    pobierzCenniki, pobierzZwroty, pobierzReklamacje, pobierzGwarancje, pobierzProducentow,
+    pobierzOsobyOdpowiedzialne, ustawieniaPodatku, dopasujKategorie, podgladOplat, oplatyOferty,
   };
 }

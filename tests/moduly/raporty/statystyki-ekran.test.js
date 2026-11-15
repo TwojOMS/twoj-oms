@@ -230,16 +230,16 @@ describe('ekran /statystyki', () => {
   // dokładnie tak samo, jak sprawdza ustalona konwencja w `kolumna-boczna.test.js`
   // (`class="aktywna"[\s\S]{0,120}<etykieta>`). Wzorzec z briefu nie znalazłby dopasowania
   // na ŻADNYM ekranie panelu, nie tylko na tym.
-  // PRZ-102.03 (wariant C): analizy wyszły z menu bocznego do górnego paska („Analizy i finanse ▾”) i do rzędu
-  // zakładek nad treścią — tam, nie w bocznym menu, ma się świecić „Statystyki”.
-  it('menu analiz w pasku i zakładki nad treścią zaznaczają STATYSTYKI na tym ekranie', async () => {
+  // PRZ-167 (właściciel 15.11): analizy wróciły z górnego paska do menu bocznego jako pozycja „Analityka” z podmenu —
+  // tam ma się świecić „Statystyki”; paska „Analizy i finanse” ani zakładek nad treścią już nie ma.
+  it('podmenu „Analityka” w menu bocznym zaznacza STATYSTYKI na tym ekranie', async () => {
     const odp = await wejdz(SIERPIEN);
-    const pasek = odp.body.match(/<details class="oms-menu-analiz"[\s\S]*?<\/details>/)?.[0];
-    expect(pasek).toBeDefined();
-    expect(pasek).toMatch(/<a href="\/statystyki" aria-current="page">[\s\S]*?<span>Statystyki<\/span><\/a>/);
-    const zakladki = odp.body.match(/<nav class="oms-order-statuses oms-zakladki-analiz"[\s\S]*?<\/nav>/)?.[0];
-    expect(zakladki).toContain('<a href="/statystyki" aria-current="page">Statystyki</a>');
+    expect(odp.body).not.toContain('oms-menu-analiz');
+    expect(odp.body).not.toContain('oms-zakladki-analiz');
     const boczne = odp.body.match(/<nav class="oms-menu" aria-label="Główna">[\s\S]*?<\/nav>/)?.[0];
-    expect(boczne).not.toContain('href="/statystyki"');
+    const podmenu = boczne?.match(/<ul class="oms-podmenu-lista"[^>]*data-podmenu-lista="analityka"[\s\S]*?<\/ul>/)?.[0];
+    expect(podmenu).toBeDefined();
+    expect(podmenu).toContain('<a href="/statystyki" aria-current="page">Statystyki</a>');
+    expect(podmenu).toContain('<a href="/raporty">Raporty</a>');
   });
 });

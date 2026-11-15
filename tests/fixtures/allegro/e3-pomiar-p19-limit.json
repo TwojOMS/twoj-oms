@@ -1,0 +1,31 @@
+{
+ "_pomiar": "P19 sandbox 14.11: GET /sale/offers limit=1000 i 100 → 200; limit=1001 → 400",
+ "limit-1000": {
+  "status": 200,
+  "body": {
+   "count": 1,
+   "totalCount": 1,
+   "offers": [
+    "…"
+   ]
+  }
+ },
+ "limit-100": {
+  "status": 200
+ },
+ "limit-1001": {
+  "status": 400,
+  "body": {
+   "errors": [
+    {
+     "code": "BadRequestException",
+     "message": "searchV1Public.searchCriteria.limit: musi być mniejsza lub równa 1000",
+     "details": null,
+     "path": null,
+     "userMessage": "searchV1Public.searchCriteria.limit: musi być mniejsza lub równa 1000",
+     "metadata": {}
+    }
+   ]
+  }
+ }
+}

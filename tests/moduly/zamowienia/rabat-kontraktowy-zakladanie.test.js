@@ -18,7 +18,7 @@ beforeEach(() => {
   dopiszKlienta(db, {
     klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa', nip: NIP, b2b: 1, rabat_procent: 40,
     chce_fakture: 1, metoda_wysylki: 'dpd', aktywny: 1,
-    koszt_dostawy_brutto: '0.00', platnosc: 'Przelew', termin_platnosci: null, komentarz: null,
+    koszt_dostawy_brutto: '19.00', platnosc: 'Przelew', termin_platnosci: null, komentarz: null,
     // ⚠️ WARUNKI UMOWY MIESZKAJA OD 24.08.2026 NA KARCIE KLIENTA — do tego dnia szly
     // z `OMS_KLIENCI_ZBIORCZY`, wiec ten sam test budowal je w `config`.
     rozliczenie_zbiorcze: 1, prog_darmowej_dostawy_gr: 50000,
@@ -35,7 +35,7 @@ const daneZ = ({ nip = NIP, rabat = 0, cena = '100.00', ilosc = 1 } = {}) => ({
   metoda_wysylki: 'dpd',
   pobranie: 0,
   metoda_platnosci: 'Przelew',
-  koszt_dostawy_brutto: '0.00',
+  koszt_dostawy_brutto: '19.00',
   b2b: 1,
   termin_platnosci: null,
   rabat_procent: rabat,
@@ -58,8 +58,8 @@ describe('rabat kontraktowy przy zakładaniu zamówienia', () => {
 
   // ⚠️ TEN TEST PILNUJE KOLEJNOSCI W `dokoncz`, a nie samej opłaty. Próg darmowej dostawy
   // (500 zł) liczy się od wartości towaru PO rabacie: 520 zł katalogowo to po 40% jedyne
-  // 312 zł, czyli PONIŻEJ progu — należy się „Usługa kurierska". Rabat naliczony PO opłacie
-  // policzyłby próg od 520 zł i opłata by nie weszła. Test padnie, gdy ktoś przestawi
+  // 312 zł, czyli PONIŻEJ progu — pozostaje 19 zł dostawy. Rabat naliczony PO regule
+  // policzyłby próg od 520 zł i wyzerował dostawę. Test padnie, gdy ktoś przestawi
   // kolejność kroków.
   it('próg darmowej dostawy liczy się od ceny PO rabacie', () => {
     const { id } = zalozZamowienieReczne({
@@ -67,7 +67,9 @@ describe('rabat kontraktowy przy zakładaniu zamówienia', () => {
     });
     const z = pobierzZamowienie(db, id);
     expect(pozycjeTowaru(z)[0].cena_brutto).toBe('312.00');
-    expect(z.pozycje.map((p) => p.nazwa)).toContain(NAZWA_KURIERA);
+    expect(z.pozycje.map((p) => p.nazwa)).not.toContain(NAZWA_KURIERA);
+    expect(z.koszt_dostawy_brutto).toBe('19.00');
+    expect(z.kwota_brutto).toBe('331.00');
   });
 
   it('rabat uzgodniony ręcznie (25%) NIE jest nadpisywany stawką z umowy', () => {

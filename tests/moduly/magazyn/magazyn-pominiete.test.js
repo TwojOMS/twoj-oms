@@ -175,9 +175,6 @@ describe('GET /magazyn/pominiete', () => {
 // ---------------------------------------------------------------------------------
 describe('powrót na zawężony magazyn z ekranu „pominięte"', () => {
   const ZAWEZENIE = '/magazyn?fraza=kandelabr&brak=sku';
-    // Adres, ktory lista SKLADA jako swoj wlasny (adresPowrotuListy) — z kolejnoscia,
-    // bo powrot ma odtworzyc ekran, a nie samo zawezenie.
-    const ZAWEZENIE_Z_LISTY = ZAWEZENIE + '&sort=nazwa&kier=asc';
   const ESC = ZAWEZENIE.replace(/&/g, '&amp;');
   // Asercja na FRAGMENCIE: adres magazynu stoi na tym ekranie takze w pasie zakladek layoutu.
   const odnosnikPowrotu = (body) => {
@@ -186,11 +183,14 @@ describe('powrót na zawężony magazyn z ekranu „pominięte"', () => {
     return m[0];
   };
 
-  it('odnośnik z listy magazynu niesie zawężenie, na którym stoi operator', async () => {
+  // PRZ-160 P3b.03b: odnośnik „Co panel pomija i dlaczego →" zszedł z listy (pominięte pokazuje
+  // ekran importu przy podglądzie kanału). Sam ekran nadal przyjmuje `wroc` — testy niżej.
+  it('lista magazynu nie prowadzi już na pominięte', async () => {
     lustro();
     const app = buildOmsServer({ db, config, magazyn: magazyn() });
     const r = await app.inject({ method: 'GET', url: ZAWEZENIE, headers: auth });
-    expect(r.body).toContain(`href="/magazyn/pominiete?wroc=${encodeURIComponent(ZAWEZENIE_Z_LISTY)}"`);
+    expect(r.statusCode).toBe(200);
+    expect(r.body).not.toContain('href="/magazyn/pominiete');
   });
 
   it('ekran pominiętych odsyła tam, skąd kliknięto', async () => {
@@ -202,16 +202,11 @@ describe('powrót na zawężony magazyn z ekranu „pominięte"', () => {
     expect(odnosnikPowrotu(r.body)).toContain(`href="${ESC}"`);
   });
 
-  // ⚠️ DRUGI RENDER TEGO SAMEGO WIDOKU: „Utwórz karty z niepowiązanych" zakłada ~980 kart
-  // i pokazuje wynik na tym ekranie. Formularz stoi na zawężonej liście obok odnośnika,
-  // więc gubienie adresu tutaj bolałoby dokładnie po najdłuższej operacji tej zakładki.
+  // „Utwórz karty z niepowiązanych" zakłada karty i pokazuje wynik na tym ekranie; od P3b.03b
+  // przycisku nie ma na liście, ale trasa POST zostaje i dalej odsyła tam, skąd przyszło `wroc`.
   it('ekran wyniku po utworzeniu kart też odsyła na zawężony magazyn', async () => {
     lustro();
     const app = buildOmsServer({ db, config, magazyn: magazyn() });
-    const lista = await app.inject({ method: 'GET', url: ZAWEZENIE, headers: auth });
-    expect(lista.body).toContain(
-      `<input type="hidden" name="wroc" value="${ZAWEZENIE_Z_LISTY.replace(/&/g, '&amp;')}">`,
-    );
     const r = await app.inject({
       method: 'POST', url: '/magazyn/utworz-karty', headers: auth, payload: { wroc: ZAWEZENIE },
     });

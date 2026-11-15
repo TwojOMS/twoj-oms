@@ -6,8 +6,22 @@ import {utworzHttp} from '../../../core/http.ts';
 import type {DefinicjaKanalu} from '../konfiguracja.ts';
 import {createHash,randomUUID} from 'node:crypto';
 /** W istniejącej kolumnie ścieżki przechowujemy również skrót zasobu.
- * Treść i nazwy plików nie trafiają do rejestru ani widoku przeglądu. */
-function zasobZapisu(sciezka:string,init:RequestInit):string {
+ * Treść i nazwy plików nie trafiają do rejestru ani widoku przeglądu.
+ * PRZ-160.E3.04 (D39): wystawienie oferty — skrót `external.id`, wgranie zdjęcia — sha256 bajtów, żeby jeden
+ * timeout nie wstrzymywał wszystkich ofert konta. Eksport: pętla ofert wylicza ten sam zasób do `zwolnijOperacje`. */
+export function zasobZapisu(sciezka:string,init:RequestInit):string {
+ const brak=()=>new Error('Brak identyfikatora zasobu operacji Allegro.');
+ if(sciezka==='/sale/images'){
+  const b=init.body;
+  const bajty=typeof b==='string'?Buffer.from(b):b instanceof ArrayBuffer?new Uint8Array(b):ArrayBuffer.isView(b)?new Uint8Array(b.buffer,b.byteOffset,b.byteLength):null;
+  if(!bajty?.byteLength)throw brak();
+  return sciezka+'#'+createHash('sha256').update(bajty).digest('hex');
+ }
+ if(sciezka==='/sale/product-offers'){
+  let body:any;try{body=JSON.parse(String(init.body));}catch{throw brak();}
+  const id=body?.external?.id;if(typeof id!=='string'||!id.trim())throw brak();
+  return sciezka+'#'+createHash('sha256').update(JSON.stringify(id)).digest('hex');
+ }
  const wiadomosc=/^\/messaging\/threads\/[^/]+\/messages$/.test(sciezka);
  if(!/^\/shipment-management\/(shipments|pickups)\/create-commands$/.test(sciezka)&&sciezka!=='/messaging/message-attachments'&&!wiadomosc)return sciezka;
  let body:any;try{body=JSON.parse(String(init.body));}catch{throw new Error('Brak identyfikatora zasobu operacji Allegro.');}
@@ -15,7 +29,8 @@ function zasobZapisu(sciezka:string,init:RequestInit):string {
  if(zasob==null||zasob==='')throw new Error('Brak identyfikatora zasobu operacji Allegro.');
  return sciezka+'#'+createHash('sha256').update(JSON.stringify(zasob)).digest('hex');
 }
-export type FabrykaKanalu = (o:{polaczenie:PolaczenieKanalu; http:(url:string,init?:RequestInit)=>Promise<Response>; httpAutoryzacji:(url:string,init?:RequestInit)=>Promise<Response>; sprawdzZapis:()=>void})=>{klient:Record<string,any>;tokeny?:any;poller:{przebieg:()=>Promise<any>;stan:()=>any}};
+const ODCZYT_OPERACJI_OFERTY=/^\/sale\/product-offers\/[^/]+\/operations\/[^/]+$/;
+export type FabrykaKanalu =(o:{polaczenie:PolaczenieKanalu; http:(url:string,init?:RequestInit)=>Promise<Response>; httpAutoryzacji:(url:string,init?:RequestInit)=>Promise<Response>; sprawdzZapis:()=>void})=>{klient:Record<string,any>;tokeny?:any;poller:{przebieg:()=>Promise<any>;stan:()=>any}};
 export function createRejestrKanalow(o:{repozytorium:RepozytoriumKanalow;fabryki:Record<TypKanaluZnany,FabrykaKanalu>|FabrykaKanalu;skonfigurowany?:(k:PolaczenieKanalu)=>boolean;db?:unknown;teraz?:()=>Date;fetchImpl?:typeof fetch;limitCzasuMs?:number;limitZatrzymaniaMs?:number}) {
  // Zgodność z odbiorcami sprzed rejestru po typie. Kompozycja używa pełnej mapy.
  const fabryki:Record<TypKanaluZnany,FabrykaKanalu>=typeof o.fabryki==='function'?Object.fromEntries(Object.keys(MODULY_KANALOW).map(typ=>[typ,o.fabryki])) as Record<TypKanaluZnany,FabrykaKanalu>:o.fabryki;
@@ -63,14 +78,18 @@ export function createRejestrKanalow(o:{repozytorium:RepozytoriumKanalow;fabryki
    const metoda=(init.method??'GET').toUpperCase(),sciezka=new URL(url).pathname;
    const zapisErli=s.typ==='erli'&&!['GET','HEAD','OPTIONS'].includes(metoda)&&!sciezka.endsWith('/_search')&&!['/orders/changes/mark-read','/inbox/mark-read'].some(p=>sciezka.endsWith(p));
    if(zapisErli&&o.repozytorium.zapisyZablokowane(klucz))throw Object.assign(new Error('ERLI: włączono tryb tylko odczyt.'),{code:'ERLI_TYLKO_ODCZYT'});
-   const zapis=s.typ==='allegro'&&!osobno&&!['GET','HEAD','OPTIONS'].includes(metoda)&&!(metoda==='POST'&&['/shipment-management/label','/shipment-management/pickup-proposals'].includes(sciezka));
+   // Prognoza opłat (D39/D40) to odczyt wysyłany POST-em: bez przeglądu i bez wstrzymania przy zablokowanych zapisach.
+   const allegro=s.typ==='allegro';
+   const zapis=allegro&&!osobno&&!['GET','HEAD','OPTIONS'].includes(metoda)&&!(metoda==='POST'&&['/shipment-management/label','/shipment-management/pickup-proposals','/pricing/offer-fee-preview'].includes(sciezka));
    const niejednoznaczny=zapis&&metoda!=='PUT';
    const zasob=niejednoznaczny?zasobZapisu(sciezka,init):sciezka;
    if(zapis&&o.repozytorium.zapisyZablokowane(klucz))throw new Error('Operacje zapisu Allegro są wstrzymane. Przejrzyj i zatwierdź je po ponownym połączeniu konta.');
    if(niejednoznaczny&&o.repozytorium.operacjaZablokowana(klucz,metoda,zasob))throw new Error('Wynik poprzedniej operacji Allegro jest niejednoznaczny. Sprawdź go przed ponowieniem.');
    const operacja=niejednoznaczny?{id:randomUUID(),metoda,sciezka:zasob}:null;if(operacja)k.zapisy.push(operacja);
    const sygnaly=[k.abort.signal,...(init.signal?[init.signal]:[])];
-   const r=await transport(url,{...init,redirect:s.typ==='woo'?init.redirect:'error',signal:AbortSignal.any(sygnaly)});
+   // D39: odczyt operacji oferty odpowiada 303 z Location — oddajemy odpowiedź; każdy inny przekierowany zapis/odczyt odmawia.
+   const odczytOperacji=allegro&&metoda==='GET'&&ODCZYT_OPERACJI_OFERTY.test(sciezka);
+   const r=await transport(url,{...init,redirect:s.typ==='woo'?init.redirect:odczytOperacji?'manual':'error',signal:AbortSignal.any(sygnaly)});
    if(operacja&&r.status>=400&&r.status<500)k.zapisy=k.zapisy.filter(p=>p.id!==operacja.id);
    if(zapis&&r.status>=500){
     const blad:Error&{status:number;retryAfterS?:number}=Object.assign(new Error(`Allegro: HTTP ${r.status}. Nie potwierdzono wyniku operacji.`),{status:r.status});

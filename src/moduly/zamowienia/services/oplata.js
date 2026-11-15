@@ -1,4 +1,4 @@
-import { umowaZbiorcza } from '../../../domena/klient-zbiorczy.js';
+import { warunkiDostawy } from '../../../domena/klient-zbiorczy.js';
 import { klientPoNip } from '../../../oms/db/klienci.js';
 import { oplataDlaZamowienia, NAZWA_OBSLUGI, NAZWA_KURIERA } from '../../../domena/oplata-obslugi.js';
 import { zl } from '../../../domena/suma-pozycji.js';
@@ -28,16 +28,11 @@ export function doklejOplate({
 }) {
   // PRZ-122.B07c: `zw` (program wbudowany) — domyślna „zw” firmy zwolnionej trafia też na opłatę; bez flagi jak dotąd.
   const opcjeZw = { zw };
-  const klient = umowaZbiorcza(klientPoNip(db, nip));
-  // Zaden klient zbiorczy — nie ma czego liczyc i nie ma po co pilnowac wartosci towaru
-  // (zamowienia spoza rozliczenia zbiorczego ida ta trasa tysiacami).
+  const klient = warunkiDostawy(klientPoNip(db, nip));
+  // Warunki każdego stałego klienta, niezależnie od rozliczenia miesięcznego.
   if (!klient) return null;
 
-  // ⚠️ STRAZ NA WARTOSCI TOWARU. Prog sprawdza sie porownaniem `>=`, a `undefined >= 50000`
-  // to po prostu `false` — zgubiona albo nieprzeliczona wartosc NIE wywalilaby niczego,
-  // tylko po cichu doklejala 19 zl do kazdego zamowienia, takze do tych, przy ktorych
-  // dostawa mala byc darmowa. Kwoty sa w GROSZACH i sa calkowite: ulamek znaczy, ze ktos
-  // po drodze policzyl je na zlotowkach.
+  // Wartość towaru musi być jawnie policzona w całkowitych groszach.
   if (!Number.isInteger(wartoscTowaruGr) || wartoscTowaruGr < 0) {
     throw new Error(
       `doklejOplate: wartość towaru musi być nieujemną liczbą groszy, dostałem "${wartoscTowaruGr}"`,
@@ -51,15 +46,6 @@ export function doklejOplate({
   const oplata = oplataDlaZamowienia({ etykietaKlienta, bezWysylki, wartoscTowaruGr, klient });
   if (!oplata) return null;
 
-  // ⚠️ STRAZ NA KWOCIE OPLATY STALA TU DO 2026-08-24 i zostala USUNIETA, a nie zgubiona.
-  // Sprawdzala, czy kwota jest calkowita liczba groszy — bo NaN zapisalby sie w kolumnie
-  // jako napis "NaN", a ulamek grosza jako "4.005", i jedno i drugie wywrocilo by sie
-  // dopiero przy wystawianiu dokumentu. Odkad kwoty przyszly z `.env` na karte klienta,
-  // JEDYNYM producentem obiektu `klient` jest `umowaZbiorcza` (domain/klient-zbiorczy.js),
-  // ktora odmawia PRZED oddaniem obiektu i robi to precyzyjniej — nazywa brakujace pole
-  // po imieniu. Ten warunek byl wiec od tej chwili nieosiagalny, a nieosiagalna straz
-  // na sciezce pieniedzy jest gorsza niz jej brak: wyglada jak ochrona i nie chroni.
-  // Test „kwota spoza liczb calkowitych RZUCA" celuje dzis w tamta straz.
   const juzJest = db.prepare(
     `SELECT 1 FROM pozycje WHERE zamowienie_id = ? AND zrodlo = 'reczna'`
     + ` AND nazwa IN (${NAZWY_OPLAT.map(() => '?').join(', ')})`,

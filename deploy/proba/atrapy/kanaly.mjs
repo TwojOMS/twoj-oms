@@ -7,7 +7,9 @@
 //     zapisane z panelu (tabela atrapa_kanaly_zmiany), więc „Synchronizuj” po zapisie SKU niczego nie cofa;
 //   • ODBICIE BAZY — wątki, wiadomości, przesyłki, śledzenie, stan realizacji: atrapa oddaje to, co już jest
 //     w bazie demo, więc pollery i czuwacze widzą „bez zmian” i nie nadpisują danych demo;
-//   • ODMOWA — operacje, których demo nie ma czym udawać (pollery zamówień, podjazdy, załączniki):
+//     podjazdy (PRZ-160 P4.02): propozycje, zlecenie i jego stan w tabeli atrapa_allegro_podjazdy;
+//   • OFERTY E3 (PRZ-160.E3.15) — wystawianie ofert: prawdziwy klient Allegro na surowym serwerze ./allegro-oferty.mjs;
+//   • ODMOWA — operacje, których demo nie ma czym udawać (pollery zamówień, załączniki):
 //     czytelny błąd 4xx zamiast „not a function”; 4xx, bo usługi zwalniają wtedy rezerwacje jak po odmowie API.
 import { randomUUID } from 'node:crypto';
 import { listaNaZadanie, mapaNaZadanie } from '../../../src/moduly/kanaly/kolekcje-na-zadanie.ts';
@@ -16,8 +18,12 @@ import { METODY_WZA } from '../../../src/domena/allegro-wysylka.js';
 import { stanyKanalowZKolizjami } from '../../../src/domena/kanal-stan.js';
 import { bladOperatora } from '../../../src/domena/bledy.js';
 import { KANALY } from '../../../scripts/demo-dane-firma.mjs';
-import { katalogWoo, ofertyAllegro } from '../../../scripts/demo-dane-katalog.mjs';
+import { katalogWoo, ofertyAllegro, kategoriaAllegroDemo, parametryKategoriiAllegroDemo }
+  from '../../../scripts/demo-dane-katalog.mjs';
 import { wymagajTrybuProby } from './tryb.mjs';
+import { createSerwerOfertAllegro, createOfertyAllegro } from './allegro-oferty.mjs';
+import { WYMAGANE_UPRAWNIENIA, UPRAWNIENIA_OFERT } from '../../../src/domena/uprawnienia-kanalu.js';
+import { wczytajTokeny, zapiszTokeny } from '../../../src/oms/db/tokeny.js';
 
 const SCHEMAT = `
   CREATE TABLE IF NOT EXISTS atrapa_kanaly_zmiany (kanal TEXT NOT NULL, sciezka TEXT NOT NULL, pola_json TEXT NOT NULL,
@@ -27,11 +33,23 @@ const SCHEMAT = `
   CREATE TABLE IF NOT EXISTS atrapa_allegro_realizacja (kanal TEXT NOT NULL, zamowienie TEXT NOT NULL, status TEXT NOT NULL,
     PRIMARY KEY (kanal, zamowienie));
   CREATE TABLE IF NOT EXISTS atrapa_allegro_przesylki (kanal TEXT NOT NULL, command_id TEXT NOT NULL,
-    shipment_id TEXT NOT NULL UNIQUE, dane_json TEXT NOT NULL, PRIMARY KEY (kanal, command_id));`;
+    shipment_id TEXT NOT NULL UNIQUE, dane_json TEXT NOT NULL, PRIMARY KEY (kanal, command_id));
+  CREATE TABLE IF NOT EXISTS atrapa_allegro_podjazdy (kanal TEXT NOT NULL, command_id TEXT NOT NULL,
+    pickup_id TEXT NOT NULL UNIQUE, dane_json TEXT NOT NULL, PRIMARY KEY (kanal, command_id));`;
 
 export const ODMOWY_WOO = ['pobierzZamowienia', 'pobierzZamowieniaZakresu'];
-export const ODMOWY_ALLEGRO = ['pobierzZamowienia', 'pobierzOferte', 'pobierzPropozycjePodjazdu', 'zlecPodjazd',
-  'stanZleceniaPodjazdu', 'pobierzPodjazd', 'deklarujZalacznikWiadomosci', 'wgrajZalacznikWiadomosci'];
+// PRZ-160.E3.15: metody wystawiania ofert (E3.03) nie są już odmowami — obsługuje je ./allegro-oferty.mjs.
+export const ODMOWY_ALLEGRO = ['pobierzZamowienia', 'deklarujZalacznikWiadomosci', 'wgrajZalacznikWiadomosci'];
+
+// Transport zasobu WzA jak w Allegro (pomiar 13.11.2026 dla One; DPD — pomiar 23.09.2026). Usługi spoza
+// mapy nie mają podjazdu w piaskownicy (pickupAvailable: false).
+const TRANSPORT_WZA = {
+  '03f26351-f683-4db2-8895-f2c599280e3c': 'DPD',
+  '0d83955a-4297-4169-adef-9790d53b11ff': 'ALLEGRO_ONE_KURIER',
+  '0b9bed2c-0bc1-4e1f-9694-29bb39ebb483': 'ALLEGRO_ONE_KURIER',
+};
+const zTransportem = (p) => (TRANSPORT_WZA[p.deliveryMethodId]
+  ? { ...p, transport: [TRANSPORT_WZA[p.deliveryMethodId]], pickupAvailable: true } : { ...p, pickupAvailable: false });
 
 function odmowa(gdzie, metoda) {
   return async () => {
@@ -44,6 +62,26 @@ function sciezkaProduktu(sciezka) {
   const m = /^products\/(\d+)(?:\/variations\/(\d+))?$/.exec(String(sciezka ?? ''));
   if (!m) throw bladOperatora(`Sklep: niepoprawna ścieżka produktu „${sciezka}”`, { status: 400 });
   return { produkt: m[1], wariant: m[2] ?? null };
+}
+
+// PRZ-160.P3b.01: kategorie sklepu poza katalogiem produktów — nazwa z encją HTML (tak oddaje ją WooCommerce)
+// i kategoria bez produktów (OMS jej nie dopisuje). Zmyślone.
+const KATEGORIE_WOO_DODATKOWE = Object.freeze([
+  { id: 9801, name: 'Klosze &amp; abażury', slug: 'klosze-abazury', parent: 0, count: 2 },
+  { id: 9802, name: 'Wyprzedaż sezonowa', slug: 'wyprzedaz-sezonowa', parent: 0, count: 0 },
+]);
+
+/** Kategorie `GET /products/categories`: te z produktów katalogu (count = liczba produktów) i dodatkowe. */
+function kategorieWoo(produkty) {
+  const wg = new Map();
+  for (const p of produkty) {
+    for (const k of p.categories ?? []) {
+      const obecna = wg.get(k.id) ?? { id: k.id, name: k.name, slug: k.slug, parent: 0, count: 0 };
+      obecna.count += 1;
+      wg.set(k.id, obecna);
+    }
+  }
+  return [...wg.values(), ...KATEGORIE_WOO_DODATKOWE.map((k) => ({ ...k }))].sort((a, b) => a.id - b.id);
 }
 
 /** Atrapa klienta Woo (createWooClient) jednego sklepu. */
@@ -68,6 +106,36 @@ export function createAtrapaWoo({ db, kanal, log = (...t) => console.log(...t), 
     if (!p || !w) throw bladOperatora(`Sklep odrzucił zapytanie (404): nie ma ${sciezka}`, { status: 404 });
     return w;
   };
+  const zapisz = (sciezka, pola) => {
+    const obecny = znajdz(sciezka);
+    const poprzednie = zmiany().get(String(sciezka)) ?? {};
+    db.prepare(`INSERT INTO atrapa_kanaly_zmiany (kanal, sciezka, pola_json) VALUES (?,?,?)
+      ON CONFLICT(kanal, sciezka) DO UPDATE SET pola_json = excluded.pola_json`).run(kanal, String(sciezka), JSON.stringify({ ...poprzednie, ...pola }));
+    ślad(`zapisano ${sciezka}: ${Object.keys(pola).join(', ')}`);
+    return { ...obecny, ...pola };
+  };
+  const zapiszStan = (sciezka, stock_quantity) => {
+    const wynik = zapisz(sciezka, { stock_quantity });
+    const liczba = (zmiany().get('stany/licznik')?.liczba ?? 0) + 1;
+    db.prepare(`INSERT INTO atrapa_kanaly_zmiany (kanal, sciezka, pola_json) VALUES (?, 'stany/licznik', ?)
+      ON CONFLICT(kanal, sciezka) DO UPDATE SET pola_json = excluded.pola_json`).run(kanal, JSON.stringify({ liczba }));
+    return wynik;
+  };
+  // W3: pomocnicza symulacja zdjęcia/zwrotu stanu. Id wariantu jest globalnie unikalne w Woo.
+  const zmienPoZakupie = async (id, n, znak) => {
+    if (!Number.isSafeInteger(n) || n <= 0) throw new Error('Niepoprawna ilość zakupu Woo');
+    const k = katalog();
+    let sciezka = `products/${id}`;
+    for (const [rodzic, warianty] of k.warianty) {
+      const wariant = warianty.find(w => String(w.id) === String(id));
+      if (wariant) {
+        sciezka = wariant.manage_stock === 'parent' ? `products/${rodzic}` : `products/${rodzic}/variations/${id}`;
+        break;
+      }
+    }
+    const p = znajdz(sciezka);
+    return p.manage_stock === true ? zapiszStan(sciezka, p.stock_quantity + znak * n) : structuredClone(p);
+  };
   return {
     ...Object.fromEntries(ODMOWY_WOO.map((m) => [m, odmowa(`sklepu ${kanal}`, m)])),
     sprawdzPolaczenie: async () => ({ ok: true }),
@@ -78,16 +146,32 @@ export function createAtrapaWoo({ db, kanal, log = (...t) => console.log(...t), 
     ],
     pobierzWszystkieProdukty: async () => structuredClone(katalog().produkty),
     pobierzWarianty: async (id) => structuredClone(katalog().warianty.get(String(id)) ?? []),
+    pobierzKategorieProduktow: async () => kategorieWoo(katalog().produkty),
     pobierzMiniatury: async () => new Map(katalog().miniatury),
-    ustawienieSklepu: async (id) => ({ woocommerce_dimension_unit: 'cm', woocommerce_weight_unit: 'kg' })[id] ?? '',
+    ustawienieSklepu: async (id) => ({ woocommerce_dimension_unit: 'cm', woocommerce_weight_unit: 'kg',
+      woocommerce_calc_taxes: 'no', woocommerce_prices_include_tax: 'no' })[id] ?? '',
     pobierzProdukt: async (sciezka) => structuredClone(znajdz(sciezka)),
+    pobierzStany: async ids => structuredClone(katalog().produkty.filter(p => ids.map(String).includes(String(p.id)))),
+    pobierzStanyWariantow: async (rodzicId, ids) => structuredClone((katalog().warianty.get(String(rodzicId)) ?? []).filter(p => ids.map(String).includes(String(p.id)))),
+    async zapiszStanyHurtem(rodzicId, pozycje) {
+      // Cała lista przed pierwszym zapisem, identyczna granica pól jak w kliencie.
+      for (const p of pozycje) {
+        if (!p || Object.keys(p).some(k => !['id', 'stock_quantity'].includes(k))) throw new Error('Niedozwolone pole zapisu stanu Woo');
+        if (!Number.isSafeInteger(p.stock_quantity) || p.stock_quantity < 0) throw new Error('Niepoprawna ilość stanu Woo');
+      }
+      return pozycje.map(p => {
+        try {
+          const sciezka = rodzicId === null ? `products/${p.id}` : `products/${rodzicId}/variations/${p.id}`;
+          // Jak Woo: gdy cel nie liczy stanu (false/parent), ilość jest pomijana, a zapis i tak „udany”.
+          if (znajdz(sciezka).manage_stock === true) zapiszStan(sciezka, p.stock_quantity);
+          return { id: p.id, ok: true };
+        } catch (e) { return { id: p.id, ok: false, blad: e.message }; }
+      });
+    },
+    kup: (id, n) => zmienPoZakupie(id, n, -1),
+    oddaj: (id, n) => zmienPoZakupie(id, n, 1),
     async zapiszProdukt(sciezka, pola) {
-      const obecny = znajdz(sciezka);
-      const poprzednie = zmiany().get(String(sciezka)) ?? {};
-      db.prepare(`INSERT INTO atrapa_kanaly_zmiany (kanal, sciezka, pola_json) VALUES (?,?,?)
-        ON CONFLICT(kanal, sciezka) DO UPDATE SET pola_json = excluded.pola_json`).run(kanal, String(sciezka), JSON.stringify({ ...poprzednie, ...(pola ?? {}) }));
-      ślad(`zapisano ${sciezka}: ${Object.keys(pola ?? {}).join(', ')}`);
-      return { ...obecny, ...(pola ?? {}) };
+      return zapisz(sciezka, pola ?? {});
     },
     async dodajNotatke(id, tresc) {
       ślad(`notatka do zamówienia ${id}: ${String(tresc).slice(0, 80)}`);
@@ -102,9 +186,10 @@ export function createAtrapaWoo({ db, kanal, log = (...t) => console.log(...t), 
 }
 
 /** Atrapa klienta Allegro (createAllegroClient) jednego konta. */
-export function createAtrapaAllegro({ db, kanal, log = (...t) => console.log(...t), env = process.env }) {
+export function createAtrapaAllegro({ db, kanal, log = (...t) => console.log(...t), env = process.env, teraz = () => new Date() }) {
   wymagajTrybuProby(env, 'atrapa Allegro');
   db.exec(SCHEMAT);
+  const serwerOfert = createSerwerOfertAllegro({ db, kanal, env, teraz });
   const ślad = (t) => log(`atrapa Allegro ${kanal}: ${t} (piaskownica — nic nie poszło do Allegro)`);
   const zamowienie = (zrodloId) => db.prepare('SELECT * FROM zamowienia WHERE sklep = ? AND zrodlo_id = ?').get(kanal, String(zrodloId));
   const metodaDostawy = (id) => {
@@ -120,16 +205,38 @@ export function createAtrapaAllegro({ db, kanal, log = (...t) => console.log(...
     return w;
   };
   const stanKomendy = w => ({ commandId: w.command_id, status: 'SUCCESS', errors: null, shipmentId: w.shipment_id });
+  // Zasób WzA: przesyłka nadana w piaskownicy albo paczka WzA zapisana w bazie demo (odbicie bazy).
+  const przesylkaWza = (id) => {
+    const w = db.prepare('SELECT dane_json FROM atrapa_allegro_przesylki WHERE kanal = ? AND shipment_id = ?').get(kanal, String(id));
+    if (w) return zTransportem(JSON.parse(w.dane_json));
+    const p = db.prepare(`SELECT p.numer_listu, z.zrodlo_id FROM przesylki p JOIN zamowienia z ON z.id = p.zamowienie_id
+      WHERE z.sklep = ? AND p.kurier = 'allegro_wza' AND p.id_przesylki_kuriera = ?`).get(kanal, String(id));
+    if (!p) throw bladOperatora('Piaskownica: nie ma takiej przesyłki Allegro.', { status: 404 });
+    return zTransportem({ id: String(id), carrier: 'ALLEGRO', deliveryMethodId: metodaDostawy(p.zrodlo_id),
+      labelFormat: 'PDF', packages: [{ waybill: p.numer_listu }] });
+  };
+  const podjazd = (pole, id) => {
+    const w = db.prepare(`SELECT * FROM atrapa_allegro_podjazdy WHERE kanal = ? AND ${pole} = ?`).get(kanal, String(id));
+    if (!w) throw bladOperatora('Piaskownica: nie ma takiego podjazdu Allegro.', { status: 404 });
+    return { ...w, dane: JSON.parse(w.dane_json) };
+  };
   const fakturyZamowienia = (zrodloId) => db.prepare('SELECT dane_json FROM atrapa_allegro_faktury WHERE kanal = ? AND zamowienie = ?')
     .all(kanal, String(zrodloId)).map((w) => JSON.parse(w.dane_json));
   const zapiszFakture = (zrodloId, wpis) => db.prepare(`INSERT INTO atrapa_allegro_faktury (kanal, zamowienie, id, dane_json) VALUES (?,?,?,?)
     ON CONFLICT(id) DO UPDATE SET dane_json = excluded.dane_json`).run(kanal, String(zrodloId), wpis.id, JSON.stringify(wpis));
 
+  const nieMa = (co, id) => { throw bladOperatora(`Piaskownica: Allegro ${kanal} nie ma ${co} ${id}.`, { status: 404 }); };
   return {
     ...Object.fromEntries(ODMOWY_ALLEGRO.map((m) => [m, odmowa(`Allegro ${kanal}`, m)])),
+    ...createOfertyAllegro({ serwer: serwerOfert }),
     pobierzMojeKonto: async () => ({ id: kanal === 'allegro' ? '100001' : '100002', login: `atrapa-${kanal}` }),
     sprawdzZakresZamowien: async () => Number(db.prepare('SELECT count(*) AS n FROM zamowienia WHERE sklep=?').get(kanal).n),
     pobierzOferty: async () => ofertyAllegro(kanal),
+    // PRZ-160.04a — odczyt treści oferty i opisu kategorii (tylko GET); obce id = 404 jak w Allegro.
+    // PRZ-160.E3.15: najpierw oferta zapisana w atrapie ofert (wystawiona lub zmieniona z panelu), potem katalog.
+    pobierzOferte: async (id) => serwerOfert.oferta(id) ?? nieMa('oferty', id),
+    pobierzKategorie: async (id) => kategoriaAllegroDemo(id) ?? nieMa('kategorii', id),
+    pobierzParametryKategorii: async (id) => parametryKategoriiAllegroDemo(id) ?? nieMa('kategorii', id),
     pobierzMetodeDostawy: async (id) => metodaDostawy(id),
     async pobierzPropozycjeWysylki(id) {
       const z = zamowienie(id);
@@ -161,10 +268,10 @@ export function createAtrapaAllegro({ db, kanal, log = (...t) => console.log(...
       return stan;
     },
     stanTworzeniaPrzesylki: async (id) => stanKomendy(znajdzPrzesylke('command_id', id)),
-    pobierzPrzesylkeWza: async (id) => JSON.parse(znajdzPrzesylke('shipment_id', id).dane_json),
+    pobierzPrzesylkeWza: async (id) => przesylkaWza(id),
     async pobierzEtykieteWza(ids, format = 'PDF') {
       if (!Array.isArray(ids) || !ids.length) throw new Error('Allegro: brak przesyłek do etykiety.');
-      const paczki = ids.map(id => JSON.parse(znajdzPrzesylke('shipment_id', id).dane_json));
+      const paczki = ids.map(przesylkaWza);
       if (format === 'ZPL') return Buffer.from(paczki.map(p => `^XA^FO40,40^A0N,60,60^FDATRAPA^FS^FO40,120^A0N,25,25^FD${p.packages[0].waybill}^FS^XZ`).join('\n'));
       if (format !== 'PDF') throw new Error('Allegro: nieobsługiwany format etykiety.');
       const doc = new PDFDocument({ size: 'A4', autoFirstPage: false, compress: false, info: { Title: 'Allegro WzA - piaskownica' } });
@@ -178,6 +285,36 @@ export function createAtrapaAllegro({ db, kanal, log = (...t) => console.log(...
       doc.end();
       ślad(`pobrano etykiety ${ids.join(', ')}`);
       return wynik;
+    },
+
+    // PRZ-160 P4.02 — podjazdy w piaskownicy. DPD podaje okno godzin, One puste `pickupTimes` (OMS zleca wtedy samą
+    // datę). Adres wraca bez zmian, jak w Allegro przy poprawnym zapytaniu. Nic nie wychodzi poza bazę piaskownicy.
+    async pobierzPropozycjePodjazdu({ shipmentIds, readyDate, address } = {}) {
+      if (!Array.isArray(shipmentIds) || !shipmentIds.length) throw bladOperatora('Piaskownica: brak przesyłek podjazdu.', { status: 400 });
+      const proposals = shipmentIds.map((shipmentId) => {
+        const p = przesylkaWza(shipmentId);
+        return { shipmentId, pickupTimes: p.transport?.[0] === 'DPD' ? [{ date: readyDate, minTime: '13:00', maxTime: '17:00' }] : [] };
+      });
+      return [{ address: structuredClone(address), proposals }];
+    },
+    async zlecPodjazd({ commandId, input } = {}) {
+      if (!commandId) throw new Error('Allegro: podjazdu nie wolno zlecać bez commandId.');
+      if (!input?.shipmentIds?.length || !input?.pickupTime?.date) throw bladOperatora('Piaskownica: niepełne zlecenie podjazdu.', { status: 400 });
+      const paczki = input.shipmentIds.map(przesylkaWza);
+      const pickupId = `atrapa-podjazd-${randomUUID()}`;
+      const wynik = db.prepare('INSERT OR IGNORE INTO atrapa_allegro_podjazdy (kanal, command_id, pickup_id, dane_json) VALUES (?,?,?,?)')
+        .run(kanal, String(commandId), pickupId, JSON.stringify({ ...structuredClone(input), pickupCarrier: paczki[0].transport?.[0] ?? null }));
+      if (wynik.changes) ślad(`przyjęto podjazd ${pickupId} (${input.shipmentIds.length} paczek, ${input.pickupTime.date})`);
+      return { commandId, status: 'IN_PROGRESS' };
+    },
+    async stanZleceniaPodjazdu(commandId) {
+      const w = podjazd('command_id', commandId);
+      return { commandId: w.command_id, status: 'SUCCESS', pickupId: w.pickup_id, errors: [] };
+    },
+    async pobierzPodjazd(pickupId) {
+      const w = podjazd('pickup_id', pickupId);
+      return { id: w.pickup_id, shipmentIds: w.dane.shipmentIds, pickupTime: w.dane.pickupTime, address: w.dane.address,
+        pickupCarrier: w.dane.pickupCarrier, carrierPickupId: `ATRAPA-${w.pickup_id.slice(-8)}` };
     },
 
     async pobierzPrzesylki(idZamowienia) {
@@ -264,6 +401,14 @@ export function zbudujAtrapyKanalow({ db, config, log, env = process.env }) {
   wymagajTrybuProby(env, 'atrapy kanałów');
   const sklepy = KANALY.filter((k) => k.typ === 'woo').map((k) => k.klucz);
   const konta = KANALY.filter((k) => k.typ === 'allegro').map((k) => k.klucz);
+  // E3.25: główne konto ma zgodę, Outlet pozwala obejrzeć ekran ponownej zgody.
+  // Nie nadpisujemy istniejącego tokenu: zmiana zakresów w bazie jest widoczna od razu w obu ekranach.
+  for (const kanal of konta) if (!wczytajTokeny(db, kanal)) {
+    const scope = [...WYMAGANE_UPRAWNIENIA, ...(kanal === 'allegro-outlet' ? [] : UPRAWNIENIA_OFERT)];
+    const payload = Buffer.from(JSON.stringify({user_name:kanal, scope})).toString('base64url');
+    zapiszTokeny(db, kanal, {accessToken:`atrapa.${payload}.atrapa`, refreshToken:'ATRAPA-REFRESH',
+      wygasaAt:'2099-01-01T00:00:00Z', refreshWygasaAt:'2099-02-01T00:00:00Z'});
+  }
   const klienciSklepow = Object.fromEntries(sklepy.map((kanal) => [kanal, createAtrapaWoo({ db, kanal, log, env })]));
   const klienciKanalow = Object.fromEntries(konta.map((kanal) => [kanal, createAtrapaAllegro({ db, kanal, log, env })]));
   const adres = 'https://atrapa.example.invalid';

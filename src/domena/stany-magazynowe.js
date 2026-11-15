@@ -160,7 +160,7 @@ export function ruchZFormularza(body) {
  * ⚠️ PONOWNY IMPORT NIE PODWAJA ZAPASU: karta z otwarciem od tej granicy jest odrzucana z powodem
  * (zmianę robi się korektą), a ten sam SKU dwa razy w jednym pliku — odrzucony w obu wierszach.
  */
-export function planImportuOtwarcia(tekst, kartaPoSku, maOtwarcie = new Set()) {
+export function planImportuOtwarcia(tekst, kartaPoSku, maOtwarcie = new Set(), { zeroDozwolone = true } = {}) {
   const wiersze = String(tekst ?? '').split(/\r?\n/u).map((w, i) => ({ nr: i + 1, tekst: w.trim() }))
     .filter((w) => w.tekst && !/^sku[;,\t]/iu.test(w.tekst));
   const odrzucone = [];
@@ -180,8 +180,10 @@ export function planImportuOtwarcia(tekst, kartaPoSku, maOtwarcie = new Set()) {
   for (const k of kandydaci) {
     if (liczba.get(k.karta_id) > 1) { odrzucone.push({ wiersz: k.wiersz, tekst: k.tekst, powod: 'ta sama karta występuje w pliku więcej niż raz' }); continue; }
     if (maOtwarcie.has(k.karta_id)) { odrzucone.push({ wiersz: k.wiersz, tekst: k.tekst, powod: 'karta ma już stan otwarcia — zmień go korektą na karcie' }); continue; }
-    if (k.ilosc === 0) continue; // zero sztuk to stan domyślny, nie ruch
-    doZapisu.push({ karta_id: k.karta_id, nazwa: k.nazwa, sku: k.sku, ilosc: k.ilosc });
+    if (k.ilosc === 0 && !zeroDozwolone) { odrzucone.push({ wiersz: k.wiersz, tekst: k.tekst, powod: 'zero wymaga uaktualnienia bazy (brak tabeli stany_otwarcia)' }); continue; }
+    // E4 D52 — zero jest stanem znanym, choć nie tworzy ruchu.
+    doZapisu.push({ karta_id: k.karta_id, nazwa: k.nazwa, sku: k.sku, ilosc: k.ilosc,
+      ...(k.ilosc === 0 ? { tylkoOtwarcie: true } : {}) });
   }
   odrzucone.sort((a, b) => a.wiersz - b.wiersz);
   return { doZapisu, odrzucone };

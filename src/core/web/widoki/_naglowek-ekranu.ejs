@@ -14,9 +14,6 @@ if (tytul !== dzialUstawien.etykieta && tytul !== aktywnaZakladka?.etykieta) { _
     </div>
     <%_ if (locals.akcje) { _%><div class="naglowek-ekranu__akcje"><%- akcje %></div><%_ } _%>
   </div>
-  <%_ if (locals.zakladki) { _%><%- zakladki %><%_ }
-  else if (!dzialUstawien && locals.nawigacja?.analizy?.aktywna) { _%>
-    <%- include('_zakladki-analiz.ejs', {nawigacja}) %>
-  <%_ } _%>
+  <%_ if (locals.zakladki) { _%><%- zakladki %><%_ } _%>
 </header>
 <%_ } _%>

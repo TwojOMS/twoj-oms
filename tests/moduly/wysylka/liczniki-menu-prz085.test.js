@@ -58,13 +58,25 @@ describe('liczniki statusów w menu poza listą zamówień', () => {
     expect(tel).toMatch(/<span class="licznik">4<\/span>/);
   });
 
-  it('strona bez statusów w menu (Ustawienia) nie liczy indeksu wcale', async () => {
+  it('zwykła strona Ustawień liczy indeks i pokazuje statusy (PRZ-160 P2.02, 12b)', async () => {
     const zapytania = [];
     const prepare = db.prepare.bind(db);
     db.prepare = (sql) => { zapytania.push(String(sql)); return prepare(sql); };
     const r = await app.inject({ method: 'GET', url: '/ustawienia/lacznosc', headers: AUTH });
     expect(r.statusCode).toBe(200);
-    expect(zapytania.filter((s) => s.includes('lista_stan'))).toEqual([]);
+    expect(zapytania.some((s) => s.includes('lista_stan'))).toBe(true);
+    expect(liczniki(r.body).wszystkie).toBe('4');
+  });
+
+  it('odmowa pod Ustawieniami nie liczy indeksu ani nie zmienia lista_meta', async () => {
+    const przed = db.prepare('SELECT * FROM lista_meta').all();
+    const zapytania = [];
+    const prepare = db.prepare.bind(db);
+    db.prepare = (sql) => { zapytania.push(String(sql)); return prepare(sql); };
+    const r = await app.inject({ method: 'GET', url: '/ustawienia/konta/999', headers: AUTH });
+    expect(r.statusCode).toBe(404);
+    expect(zapytania.filter((s) => /lista_stan|(?:INSERT|UPDATE).*lista_meta/i.test(s))).toEqual([]);
+    expect(db.prepare('SELECT * FROM lista_meta').all()).toEqual(przed);
     expect(liczniki(r.body)).toEqual({});
   });
 

@@ -1,0 +1,20 @@
+{
+ "_pomiar": "P12 sandbox 14.11: POST szkicu z nowym produktem bez parametrów requiredForProduct (w tym EAN w kat. 259808) → 422 synchronicznie, szkic nie powstaje",
+ "status": 422,
+ "body": {
+  "errors": [
+   {
+    "code": "ProductValidationException",
+    "message": "Unable to create product without proper values in all required parameters: [11484, 24231, 129259, 24232, 209566, 220853, 225693] in category: 259808",
+    "details": null,
+    "path": "productSet[0].product.parameters",
+    "userMessage": "Nie można stworzyć produktu bez podania poprawnych wartości wszystkich parametrów wymaganych: [Kolor, Długość/wysokość, Liczba punktów światła, Rodzaj gwintu, Zasilanie, Kolekcja, EAN (GTIN)]",
+    "metadata": {
+     "missingParameterNames": "Kolor, Długość/wysokość, Liczba punktów światła, Rodzaj gwintu, Zasilanie, Kolekcja, EAN (GTIN)",
+     "missingParameterIds": "11484, 24231, 129259, 24232, 209566, 220853, 225693",
+     "categoryId": "259808"
+    }
+   }
+  ]
+ }
+}
