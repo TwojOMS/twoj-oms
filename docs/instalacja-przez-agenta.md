@@ -103,7 +103,7 @@ dawaj na zewnątrz cudzysłów, a w środku tylko apostrofy. PowerShell zdejmuje
   Nie wypisuj ich na ekran ani do logów.
 - Poczta, inFakt, DPD, InPost, token KSeF (faktury kosztowe), klucz GUS: człowiek wpisuje je w panelu, w
   Ustawieniach → Integracje → Moje połączenia (`/ustawienia/integracje`). NIP, BDO, rachunek i adres firmy wpisuje w Ustawieniach
-  → Dane firmy. Ty prowadzisz go po ekranie (`docs/kurier-dpd.md`, `docs/kurier-inpost.md`, `docs/poczta-smtp.md`).
+  → Firma. Ty prowadzisz go po ekranie (`docs/kurier-dpd.md`, `docs/kurier-inpost.md`, `docs/poczta-smtp.md`).
 - Allegro i WooCommerce ustawia się tylko w pliku `/opt/oms/config/oms.env`. Linie bez tajemnic wpisujesz sam
   (`OMS_KANALY`, adres sklepu, `…_OD`, `…_MAPOWANIE`, `…_USER_AGENT`), a tajne zostawiasz puste (`…_CK=`, `…_CS=`,
   `…_CLIENT_ID=`, `…_CLIENT_SECRET=`). Człowiekowi dajesz jedno polecenie do jego terminala:

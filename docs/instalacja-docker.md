@@ -232,7 +232,7 @@ Zaloguj się pod `https://oms.przyklad.pl/login`. W narzędziach przeglądarki (
 odpowiedź POST `/login`) ciasteczko sesji w `Set-Cookie` ma `Secure` i `HttpOnly`.
 Sam GET `/login` nie ustawia sesji. Panel dodaje HSTS i `Secure` według `X-Forwarded-Proto`
 także bez `OMS_TRUST_PROXY` — te flagi nie potwierdzają poprawnego adresu gościa.
-W Ustawienia → Integracje → Poczta wychodząca → Adres OMS-u w mailach zapisz `https://oms.przyklad.pl`,
+W Ustawienia → Integracje → Poczta wychodząca, w sekcji „Adres OMS-u w mailach” (Adres panelu), zapisz `https://oms.przyklad.pl`,
 bez `/login`. To adres linków w mailach, m.in. zaproszeń i ustawiania hasła. Jeżeli pole jest
 zablokowane przez istniejące `OMS_ADRES_PANELU`, popraw jego wartość w `oms.env` i odtwórz
 kontener tym samym poleceniem co wyżej.
@@ -463,7 +463,7 @@ ALLEGRO_PILOT_OD=RRRR-MM-DD
 **Klucz kanału Allegro musi zaczynać się od `allegro_`** — po nim panel rozpoznaje zamówienia
 Allegro (wysyłka, faktury, terminy, statystyki); przy innym kluczu `zdrowie` pokazuje alarm.
 `USER_AGENT` ma postać `nazwa/wersja (+https://adres)`. Po `compose up -d`: Ustawienia →
-Integracje → kanał → połącz; OMS pokazuje kod i adres. Otwórz go w przeglądarce **zalogowanej
+Integracje → Moje połączenia, przy koncie Allegro tego kanału → „Połącz z Allegro”; OMS pokazuje kod i adres. Otwórz go w przeglądarce **zalogowanej
 na konto Allegro tego kanału** — wiązanie dotyczy konta zalogowanego w przeglądarce, nie wpisanego
 w konfiguracji. Do połączenia `zdrowie` pokazuje alarm „Kanał allegro_pilot nie jest połączony
 z Allegro…” — to oczekiwane; po połączeniu znika. Granica raportu tym samym poleceniem co przy

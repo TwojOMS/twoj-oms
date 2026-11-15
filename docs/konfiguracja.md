@@ -11,7 +11,7 @@ konfiguracji); hasła i klucze zapisane z ekranu nie wracają na ekran ani do dz
 mówi tylko, że jest ona „ustawiona w pliku konfiguracji”; zapis z formularza kończy się odpowiedzią 409 i
 niczego nie zmienia. Dane zapisane wcześniej z ekranu można wtedy tylko usunąć (nie są używane).
 
-| Ekran (Ustawienia →) | Wyłącza go plik, gdy stoi w nim | Tylko w pliku | Instrukcja |
+| Ekran w Ustawieniach | Wyłącza go plik, gdy stoi w nim | Tylko w pliku | Instrukcja |
 |---|---|---|---|
 | Firma (adres firmy: sprzedawca na proformie, specyfikacji i potwierdzeniu wywozu; nadawca paczek) | którekolwiek z `DPD_NADAWCA_NAZWA`, `_ULICA`, `_KOD`, `_MIASTO` — wtedy plik wygrywa w całości, także niepełny | — | `docs/instalacja-docker.md`, sekcja 8 |
 | Integracje → inFakt | `INFAKT_API_KEY` | `INFAKT_API_URL` (razem z kluczem w pliku), `INFAKT_ARCHIWUM` | `docs/instalacja-docker.md`, sekcja 9 |
