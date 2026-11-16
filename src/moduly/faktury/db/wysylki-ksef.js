@@ -70,11 +70,3 @@ export function zajmijWysylkeKsef(db, uuid, { numer = null, kiedy = teraz() } = 
 export function zwolnijWysylkeKsef(db, uuid) {
   db.prepare('DELETE FROM wysylki_ksef WHERE uuid = ?').run(uuid);
 }
-
-export function createZapytania(db) {
-  return {
-    wysylkaKsef: (...args) => wysylkaKsef(db, ...args),
-    zajmijWysylkeKsef: (...args) => zajmijWysylkeKsef(db, ...args),
-    zwolnijWysylkeKsef: (...args) => zwolnijWysylkeKsef(db, ...args),
-  };
-}

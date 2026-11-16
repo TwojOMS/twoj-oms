@@ -9,6 +9,7 @@ import { odczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js
 import { zalozKluczApi, odwolajKluczApi } from '../../../src/core/bezpieczenstwo/klucze-api.js';
 import { MODULY } from '../../../src/moduly/lista.ts';
 import { czyAdresApiV1 } from '../../../src/core/bezpieczenstwo/straznik.js';
+import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 
 const CONFIG = { auth: { user: 'serwis', pass: 'haslo-env' }, klienciZbiorczy: [] };
 const BASIC = `Basic ${Buffer.from('serwis:haslo-env').toString('base64')}`;
@@ -120,8 +121,15 @@ describe('strażnik: klucz API na /api/v1', () => {
   // Kolejki druku (/kolejka-druku*) otwiera od E4.1 klucz z zakresem `druk` — pilnuje tego straznik-druk-klucz.test.js.
   it('ważny klucz nie otwiera ekranów OMS ani starego /api bez v1', async () => {
     const { klucz: k } = klucz({ zakresy: ['zamowienia:odczyt', 'zamowienia:zapis', 'druk', 'produkty:odczyt'] });
-    for (const url of ['/zamowienia', '/ustawienia', '/ustawienia/klucze-api', '/api/sprzedaz',
-      '/api/zamowienia/1/dostawa', '/api/v1x', '/api/v1/../zamowienia', '/api/v1%2fja']) {
+    // Istniejące zamówienie: stary adres panelu odpowiedziałby 200, gdyby strażnik wpuścił klucz poza /api/v1.
+    const id = zapiszZamowienie(db, 'sklep-testowy', {
+    zrodlo_id: 7101, numer: '7101', kwota_brutto: '123.00', kwota_pobrania: null, pozycje: [],
+    klient: {}, dostawa: {}, metoda_wysylki: 'dpd', chce_fakture: 0, nip: null,
+    status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-11-01T10:00:00.000Z',
+  }, {});
+    for (const url of ['/zamowienia', '/ustawienia', '/ustawienia/klucze-api', `/api/zamowienia/${id}/stan-wysylki`,
+      `/api/zamowienia/${id}/dostawa`,
+      '/api/v1x', '/api/v1/../zamowienia', '/api/v1%2fja']) {
       for (const accept of ['application/json', 'text/html']) {
         const r = await app.inject({ url, headers: { ...bearer(k), accept } });
         expect(r.statusCode, `${url} ${accept}`).not.toBe(200);

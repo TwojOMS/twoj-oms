@@ -75,7 +75,6 @@ const WOLNO_CALY_PLIK = {
   'domena/ekrany.js': 'plan 10.1: adres ekranu inFaktu w Ustawieniach.',
   'domena/podmenu-ustawien.js': 'plan 10.1: pozycja menu Ustawienia → Integracje → inFakt.',
   'domena/katalog-integracji.ts': 'PRZ-127: katalog wymienia marki integracji, w tym usługę inFakt i jej logo.',
-  'moduly/ustawienia/widoki/ustawienia-integracje.ejs': 'plan 10.1: kafelek inFaktu na liście integracji.',
   'integracje/program-fakturowy.ts': 'dopisek 02: podkładka `zProgramu` przyjmuje starą nazwę parametru `infakt` i owija ją adapterem (Decyzje techniczne, wiersz „testy”).',
   'domena/nazwa-programu.js':'dopisek 09: zapasowa odmiana i ekran inFaktu, gdy wołający nie podał programu (jedyny program w PRZ-118).',
   'moduly/rdzen/migracje/0008-dokument-programu.ts': 'dopisek 03: migracja przepisuje infakt_uuid do program/dokument_id — kolumna i wartość, nie tekst dla człowieka.',

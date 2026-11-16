@@ -70,9 +70,10 @@
     <p>Jeśli strona się nie odświeży, <a href="<%= odswiez.adres %>">otwórz ekran Program do faktur</a>.</p>
     <% } else if (locals.modulWylaczony) { %>
     <h1>Moduł wyłączony</h1>
-    <p>Moduł wyłączony — włączysz go w Ustawieniach → System → Włączone funkcje.</p>
-    <% if (admin) { %><p><a href="/ustawienia/moduly">Ustawienia → System → Włączone funkcje</a></p>
-    <% } else { %><p>Poproś administratora o włączenie modułu.</p><% } %>
+    <% if (admin) { %><p>Moduł wyłączony — włączysz go w Ustawieniach → System → Włączone funkcje.</p>
+    <p><a href="/ustawienia/moduly">Ustawienia → System → Włączone funkcje</a></p>
+    <% } else { %><p>Moduł wyłączony.</p>
+    <p>Poproś administratora o włączenie modułu.</p><% } %>
     <p>Dane pozostają w bazie. Włączenie modułu przywróci dostęp.</p>
     <% } else { %>
     <h1>Brak dostępu</h1>

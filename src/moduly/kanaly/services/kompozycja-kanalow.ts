@@ -118,9 +118,6 @@ export function zbudujUslugiKanalow(ctx:KontekstModulu<ReturnType<typeof konfigu
   return {aplikacjaMaOferty:Boolean(a&&aplikacjaAllegro.aplikacjaMaOferty(k.srodowisko,a.clientId)===true),chceOfert:chceOfert(klucz)};
  };
  const stanyKanalow=()=>stanyKanalowZKolizjami(Object.entries(tokenyKanalow).filter(([k])=>repozytoriumKanalow.pobierz(k)?.autoryzacja!=='odlaczone').map(([k,t])=>({...t.stanDlaEkranu(),...flagiOfert(k)})));
- // Starszy renderer może odczytać stan, ale nie uruchamia już pętli zapisującej
- // parę bez potwierdzenia. Wszystkie wejścia HTTP obsługuje nowy konfigurator.
- const wiazanieKanalow={stan:(_klucz:string)=>null,stanyWszystkich:()=>[]};
  const importySklepow=Object.fromEntries(Object.entries(klienciSklepow).filter(([k])=>config.sklepy[k].historia).map(([k,klient])=>[k,createImportSklepu({db,sklep:k,klient,konfiguracja:config.sklepy[k].historia,log:ctx.log})]));
  const autoryzacjaAllegro=createAutoryzacjaAllegro({repozytorium:repozytoriumKanalow,aplikacjaDlaInstalacji:aplikacjaAllegro.aplikacjaDlaInstalacji,aplikacjaDevice:aplikacjaAllegro.aplikacjaDevice,http:httpAutoryzacji,userAgent,teraz:ctx.teraz,zakresyOfert:(s,clientId)=>aplikacjaAllegro.aplikacjaMaOferty(s,clientId)===true,ponownieDlaPanelu:klucz=>ponownaZgodaPanelu(klucz),legacyDlaKanalu:klucz=>{
   const k=repozytoriumKanalow.pobierz(klucz),u=envKanaly[klucz];if(!k||k.zrodlo!=='env'||!u)return null;
@@ -171,5 +168,5 @@ export function zbudujUslugiKanalow(ctx:KontekstModulu<ReturnType<typeof konfigu
    return {ok:true,dane:{chce:true}};
   },
  };
- return {config,db,zapytania,klienciSklepow,klienciKanalow,tokenyKanalow,poller,stanyKanalow,wiazanieKanalow,importySklepow,repozytoriumKanalow,rejestrKanalow,aplikacjaAllegro,autoryzacjaAllegro,zarzadzanieAllegro,przegladZapisowAllegro,ofertyAllegro,poAktywacji,limitCzasuMs,callbackAllegro:opcje?.redirectUri??''};
+ return {config,db,zapytania,klienciSklepow,klienciKanalow,tokenyKanalow,poller,stanyKanalow,importySklepow,repozytoriumKanalow,rejestrKanalow,aplikacjaAllegro,autoryzacjaAllegro,zarzadzanieAllegro,przegladZapisowAllegro,ofertyAllegro,poAktywacji,limitCzasuMs,callbackAllegro:opcje?.redirectUri??''};
 }

@@ -61,7 +61,7 @@ export function zbudujOms(o:any) {
     for(const nazwa of ['czuwaczKosztow','wizualizacjaKosztu','paczkaDlaBiura'])wynik[nazwa]=ctx.usluga('koszty',nazwa);
     for(const nazwa of ['zdrowie','czuwaczOstrzezen'])wynik[nazwa]=ctx.usluga('zdrowie',nazwa);
     for(const nazwa of ['czuwaczPrzesylek','czuwaczPodjazdow','podjazdy','przesylkiAllegro'])wynik[nazwa]=ctx.usluga('wysylka',nazwa);
-    for(const nazwa of ['stanyKanalow','wiazanieKanalow','klienciKanalow','tokenyKanalow'])wynik[nazwa]=ctx.usluga('kanaly',nazwa);
+    for(const nazwa of ['stanyKanalow','klienciKanalow','tokenyKanalow'])wynik[nazwa]=ctx.usluga('kanaly',nazwa);
     wynik.syncSklep=ctx.usluga('zamowienia','syncSklep');
     wynik.korekta=ctx.usluga('zwroty','korekta');
     for (const nazwa of ['config','klienciWiadomosci','mailer','potwierdzenie','wiadomosci','pollerWiadomosci','czuwaczFormulki','odswiezanieSpraw']) {

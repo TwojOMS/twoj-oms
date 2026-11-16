@@ -70,6 +70,9 @@ export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, config = {},
     return reply.view('ustawienia-szablony.ejs', {
       nawigacja: nawigacja(req, reply),
       title: 'Szablony wiadomości',
+      // PRZ-174 B4a: ekran Użytkownicy jest tylko dla administratora, a szablony widzi każde konto z prawem „ustawienia".
+      // Gość demo widzi Użytkowników w menu (modelNawigacjiUstawien: admin || podgladDemo), więc też dostaje ścieżkę.
+      admin: Boolean(req.konto?.admin || req.konto?.podgladDemo),
       wbudowane: WBUDOWANE.map((id) => szablonDoEdycji(stan, id)),
       // PRZ-101.06: maile do pracowników — osobna sekcja, żeby nikt nie pomylił ich z mailami do klientów.
       zespol: KONTA.map((id) => szablonDoEdycji(stan, id)),

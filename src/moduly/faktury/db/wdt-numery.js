@@ -27,10 +27,3 @@ export function cofnijRezerwacjeWdt(db, { rok, miesiac, kolejny }) {
   ).run(rok, miesiac, kolejny);
   return wynik.changes > 0;
 }
-
-export function createZapytania(db) {
-  return {
-    zarezerwujNumerWdt: (...args) => zarezerwujNumerWdt(db, ...args),
-    cofnijRezerwacjeWdt: (...args) => cofnijRezerwacjeWdt(db, ...args),
-  };
-}

@@ -55,7 +55,7 @@ export function wyliczStatus(z) {
   //
   // ⚠️ `z.indywidualne` TO ZNACZNIK KANALU, NIE STAN — liczy go poller z pozycji zamowienia
   // (domain/indywidualne.js) i przepisuje przy KAZDEJ synchronizacji. Zostaje na zamowieniu
-  // takze po przejsciu dalej i ma zostac: czyta go `/api/sprzedaz` (kanal
+  // takze po przejsciu dalej i ma zostac: czyta go `/api/v1/sprzedaz` (kanal
   // SKLEP_INDYWIDUALNE), filtr kanalu i odznaka na liscie. Ta linia go NIE KONSUMUJE —
   // tylko czyta. Dlatego „indywidualne" nie ma i nie moze miec wpisu w STATUSY_RECZNE:
   // nie ma czego ustawiac, skoro nie ma wlasnego faktu.

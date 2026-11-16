@@ -66,13 +66,3 @@ export const licznikiArchiwum = (db) => {
   ).get();
   return { dokumentow: Number(r?.dokumentow ?? 0), skasowanych: Number(r?.skasowanych ?? 0) };
 };
-
-export function createZapytania(db) {
-  return {
-    wierszeMiesiaca: (...args) => wierszeMiesiaca(db, ...args),
-    zapiszWiersz: (...args) => zapiszWiersz(db, ...args),
-    oznaczSkasowana: (...args) => oznaczSkasowana(db, ...args),
-    odnotujUdanyPrzebiegArchiwum: (...args) => odnotujUdanyPrzebiegArchiwum(db, ...args),
-    zapiszBladArchiwum: (...args) => zapiszBladArchiwum(db, ...args),
-  };
-}

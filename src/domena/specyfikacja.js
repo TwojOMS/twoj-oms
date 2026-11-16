@@ -55,11 +55,10 @@ function platnoscZeStanem(z) {
 /**
  * Uwagi, ktore NAPRAWDE napisal klient — albo `null`.
  *
- * ⚠️ Rozpoznanie idzie po WSPOLNEJ STALEJ z modulu, ktory ten znacznik tworzy
- * (`UWAGA_Z_KARTY`), a nie po skopiowanym tutaj napisie. Kopia rozjechalaby sie przy
- * pierwszej poprawce brzmienia — i to po cichu, bo objawem byloby wydrukowanie klientowi
- * wewnetrznego identyfikatora karty, czego zaden test na tym module by nie zauwazyl,
- * gdyby oba napisy zyly osobno.
+ * ⚠️ Rozpoznanie idzie po stalej `UWAGA_Z_KARTY` (z-panelu/oms-order.js), ktora jest KOPIA
+ * formatu z panelu indywidualnego (osobne repo panelu, src/domain/oms-order.js).
+ * Zmiana brzmienia w panelu bez zmiany stalej = po cichu wydrukowany klientowi wewnetrzny
+ * identyfikator karty; pilnuje tego test z dosłownym tekstem panelu w specyfikacja.test.js.
  */
 function uwagiOdKlienta(surowe) {
   const tekst = String(surowe ?? '').trim();

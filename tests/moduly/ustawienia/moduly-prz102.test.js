@@ -39,6 +39,10 @@ describe('PRZ-102.02 wyłączanie modułów', () => {
     const inny = await get(p.app, '/klienci/1/edytuj', p.pracownik);
     expect(inny.statusCode).toBe(404);
     expect(inny.body).not.toContain('href="/ustawienia/moduly"');
+    // PRZ-174 A8: zdanie, gdzie włączyć moduł, tylko dla administratora; reszta dostaje prośbę do administratora.
+    expect(odmowa.body).toContain('włączysz go w Ustawieniach → System → Włączone funkcje');
+    expect(inny.body).not.toContain('włączysz go w Ustawieniach');
+    expect(inny.body).toContain('Poproś administratora o włączenie modułu.');
     expect((await przelacz(p, 'klienci', '1')).statusCode).toBe(303);
     expect((await get(p.app, '/klienci', p.admin)).statusCode).toBe(200);
     expect((await get(p.app, '/', p.admin)).body).toContain('href="/klienci"');

@@ -16,7 +16,7 @@ export function createWidokIntegracji(opcje) {
     if (dane.tylkoReklamy) return stare(req, reply, dane);
     const katalog = req.url.split('?')[0] === '/ustawienia/integracje/katalog';
     const filtry = { szukaj: String(req.query?.szukaj ?? '').slice(0, 100), kategoria: String(req.query?.kategoria ?? ''), planowane: req.query?.planowane !== 'nie' };
-    const kanaly = (opcje.stanyKanalow?.() ?? []).map(stan => ({ stan, wiazanie: opcje.wiazanieKanalow?.stan?.(stan.kanal) ?? null }));
+    const kanaly = (opcje.stanyKanalow?.() ?? []).map(stan => ({ stan }));
     const integracje = wPiaskownicy(opcje.integracje?.() ?? [], opcje.proba === true);
     const polaczenia = polaczeniaIntegracji({ db: opcje.db, kanaly: opcje.kanaly?.() ?? {}, stanyKanalow: kanaly.map(k => k.stan), integracje, proba: opcje.proba === true, polaczeniaAllegro:opcje.polaczeniaAllegro?.()??[], sklepyWoo:opcje.sklepyWoo?.()??[],sklepyErli:opcje.sklepyErli?.()??[] });
     return reply.view('ustawienia-polaczenia.ejs', { title: katalog ? 'Dodaj integrację' : 'Moje połączenia', nawigacja: nawigacjaUstawien(req, reply),

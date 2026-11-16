@@ -85,7 +85,7 @@ describe('ikonaPrzesylki', () => {
     expect(ikona.stan).toBe('brak');
   });
 
-  it('jedna paczka z numerem → stan "nadana", link ze WSPÓLNEJ funkcji linkDoSledzenia', () => {
+  it('jedna paczka z numerem → stan "nadana", link ze WSPÓLNEJ funkcji linkSledzeniaPaczki', () => {
     const ikona = ikonaPrzesylki({ id: 1, przesylki: [{ numer_listu: '1000000000001U', kurier: 'dpd' }] });
     expect(ikona.stan).toBe('nadana');
     expect(ikona.href).toBe('https://tracktrace.dpd.com.pl/parcelDetails?typ=1&p1=1000000000001U');
@@ -139,7 +139,7 @@ describe('ikonaPrzesylki', () => {
     expect(ikona.zewnetrzny).toBe(true);
   });
 
-  // Kurier, dla ktorego nie znamy wzorca sledzenia (linkDoSledzenia oddaje null), spada
+  // Kurier, dla ktorego nie znamy wzorca sledzenia (linkSledzeniaPaczki oddaje null), spada
   // na karte zamowienia — i wtedy nowa karta byłaby błędem, mimo ze paczka jest jedna.
   // ⚠️ Przykladem byl tu 'inpost', dopoki nie dostal wlasnego wzorca (Zadanie 9). Regula
   // sie nie zmienila, zmienil sie kurier, na ktorym ja sprawdzamy.
@@ -155,7 +155,7 @@ describe('ikonaPrzesylki', () => {
   // nie jest zmierzony w przegladarce, a sciezka `moje-allegro/zakupy/…` jest po stronie
   // KUPUJACEGO, nie sprzedajacego — zamienilby go na adres niesprawdzony, otwierany w NOWEJ
   // zakladce, czyli na regres: operator traci pewny link i traci liste spod reki.
-  // Dopisanie wzorca zaczerwieni ten test razem z bramka w tests/oms/tracking.test.js.
+  // Dopisanie wzorca zaczerwieni ten test razem z bramka w tests/domena/przewoznik-przesylki-prz067.test.js.
   it('paczka z Allegro → link do karty zamówienia, bez nowej karty (adres śledzenia niezmierzony)', () => {
     const ikona = ikonaPrzesylki({ id: 91, przesylki: [{ numer_listu: 'AD0LK57DLG0756H4H', kurier: 'allegro' }] });
     expect(ikona.stan).toBe('nadana');

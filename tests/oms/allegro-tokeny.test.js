@@ -52,6 +52,10 @@ describe('tokeny kanału Allegro', () => {
     zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
     });
+    // PRZ-171 C: poprzedni błąd ma zgasnąć po zapisie nowej pary (dawniej pilnował tego test
+    // usuniętego dokończenia wiązania; `zapiszTokeny` woła też żywa aktywacja kanału).
+    zapiszBladTokenu(db, 'allegro_swietlik', 'Odświeżenie tokenu odrzucone (HTTP 400).');
+    expect(wczytajTokeny(db, 'allegro_swietlik').ostatni_blad).toMatch(/400/);
     const fetchImpl = async () => ({
       ok: true,
       json: async () => ({ access_token: 'NOWY', refresh_token: 'NOWY_R', expires_in: 43199 }),
@@ -68,6 +72,8 @@ describe('tokeny kanału Allegro', () => {
     // sie posluzyc przy nastepnym przebiegu; jesli w bazie lezy smiec, kanal zamilknie,
     // a `stan()` bedzie do konca twierdzil, ze wszystko jest w porzadku.
     expect(t.stan().access_token).toBe('NOWY');
+    expect(t.stan().ostatni_blad).toBe(null);
+    expect(t.stan().wymagaPowiazania).toBe(false);
   });
 
   it('bliskie wygaśnięcie refresh tokena jest SPRAWĄ, zanim stanie się awarią', () => {
@@ -253,82 +259,6 @@ describe('tokeny kanału Allegro', () => {
   });
 });
 
-describe('device flow kanału Allegro', () => {
-  it('rozpoczęcie wiązania woła /device z client_id i oddaje kod dla człowieka', async () => {
-    const db = baza();
-    const wywolania = [];
-    const fetchImpl = async (url, opcje) => {
-      wywolania.push({ url, opcje });
-      return odpowiedz({
-        device_code: 'DC', user_code: 'ABCD', interval: 5, expires_in: 600,
-        verification_uri_complete: 'https://allegro.pl/device?user_code=ABCD',
-      });
-    };
-    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
-
-    const dane = await t.rozpocznijPowiazanie();
-
-    expect(dane.user_code).toBe('ABCD');
-    expect(dane.device_code).toBe('DC');
-    expect(wywolania[0].url).toBe('https://przyklad/auth/oauth/device');
-    expect(wywolania[0].opcje.method).toBe('POST');
-    expect(new URLSearchParams(String(wywolania[0].opcje.body)).get('client_id')).toBe('id');
-  });
-
-  // Czlowiek jeszcze nie klilknal w przegladarce — to NORMALNY etap wiazania, a nie awaria.
-  // Rzucenie tutaj kazaloby ekranowi pokazac blad przy kazdym odpytaniu, co drugie sekunde.
-  it('kod jeszcze niepotwierdzony nie jest awarią i NICZEGO nie zapisuje do bazy', async () => {
-    const db = baza();
-    const fetchImpl = async () => odpowiedz({ error: 'authorization_pending' }, { ok: false, status: 400 });
-    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
-
-    expect(await t.dokonczPowiazanie('DC')).toEqual({ gotowe: false, powod: 'authorization_pending' });
-    expect(wczytajTokeny(db, 'allegro_swietlik')).toBe(null);
-    expect(t.stan().wymagaPowiazania).toBe(true);
-  });
-
-  // ⚠️ WYJSCIE ZE STANU, Z KTOREGO PANEL SAM NIE WYCHODZI (niezmiennik 4.9): wygasly refresh
-  // token naprawia WYLACZNIE czlowiek przy przegladarce. Udane wiazanie musi wiec nie tylko
-  // zapisac pare, ale i ZGASIC slad po poprzedniej awarii — inaczej kanal swiezo polaczony
-  // dalej wygladalby na zepsuty.
-  it('potwierdzone wiązanie zapisuje parę, gasi ostrzeżenie i czyści poprzedni błąd', async () => {
-    const db = baza();
-    zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(1),
-    });
-    zapiszBladTokenu(db, 'allegro_swietlik', 'Odświeżenie tokenu odrzucone (HTTP 400).');
-    expect(wczytajTokeny(db, 'allegro_swietlik').ostatni_blad).toMatch(/400/);
-
-    const fetchImpl = async () => odpowiedz({ access_token: 'A', refresh_token: 'R', expires_in: 43199 });
-    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
-
-    expect(await t.dokonczPowiazanie('DC')).toEqual({ gotowe: true });
-
-    const s = t.stan();
-    expect(s.access_token).toBe('A');
-    expect(s.refresh_token).toBe('R');
-    expect(s.ostatni_blad).toBe(null);
-    expect(s.wymagaPowiazania).toBe(false);
-  });
-
-  it('dokończenie wiązania leci grant_type device_code z podanym kodem', async () => {
-    const db = baza();
-    const wywolania = [];
-    const fetchImpl = async (url, opcje) => {
-      wywolania.push({ url, opcje });
-      return odpowiedz({ access_token: 'A', refresh_token: 'R', expires_in: 43199 });
-    };
-    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
-
-    await t.dokonczPowiazanie('DC-123');
-
-    expect(wywolania[0].url).toBe('https://przyklad/auth/oauth/token');
-    const pola = new URLSearchParams(String(wywolania[0].opcje.body));
-    expect(pola.get('grant_type')).toBe('urn:ietf:params:oauth:grant-type:device_code');
-    expect(pola.get('device_code')).toBe('DC-123');
-  });
-});
-
 // ⚠️⚠️ NAGLOWEK ZGODNOSCI NA SCIEZCE OAUTH. Kusi, zeby liczyc `User-Agent` wylacznie przy
 // API zamowien — ale `/auth/oauth/device` i `/auth/oauth/token` ida na TE SAMA aplikacje
 // i na TEN SAM klucz, ktory Allegro grozi zablokowac („wywolania API bez prawidlowego
@@ -365,52 +295,23 @@ describe('nagłówek User-Agent — WSZYSTKIE trzy żądania OAuth do Allegro', 
     expect(naglowkiZ(wywolania)['User-Agent']).toBe(UA);
   });
 
-  it('DEVICE FLOW (/device) niesie User-Agent z konfiguracji', async () => {
-    const db = baza();
-    const wywolania = [];
-    const fetchImpl = async (url, opcje) => {
-      wywolania.push({ url, opcje });
-      return odpowiedz({ device_code: 'DC', user_code: 'ABCD', interval: 5, expires_in: 600 });
-    };
-    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
-
-    await t.rozpocznijPowiazanie();
-
-    expect(wywolania[0].url).toBe('https://przyklad/auth/oauth/device');
-    expect(naglowkiZ(wywolania)['User-Agent']).toBe(UA);
-  });
-
-  it('DOKOŃCZENIE WIĄZANIA (/token, grant_type device_code) niesie User-Agent z konfiguracji', async () => {
-    const db = baza();
-    const wywolania = [];
-    const fetchImpl = async (url, opcje) => {
-      wywolania.push({ url, opcje });
-      return odpowiedz({ access_token: 'A', refresh_token: 'R', expires_in: 43199 });
-    };
-    const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
-
-    expect(await t.dokonczPowiazanie('DC-123')).toEqual({ gotowe: true });
-
-    expect(wywolania[0].url).toBe('https://przyklad/auth/oauth/token');
-    expect(new URLSearchParams(String(wywolania[0].opcje.body)).get('grant_type'))
-      .toBe('urn:ietf:params:oauth:grant-type:device_code');
-    expect(naglowkiZ(wywolania)['User-Agent']).toBe(UA);
-  });
-
   // ⚠️ TO JEST TEST NA „STALA W KODZIE". Testy wyzej przeszlyby tak samo, gdyby ktos wpisal
   // naglowek na sztywno w tokeny.js — a wtedy podniesienie numeru wersji (jedyna zmiana,
   // na ktora Allegro pozwala) wymagaloby wydania panelu zamiast linii w `.env.oms`.
   it('wartość pochodzi z ustawień kanału, a nie ze stałej w module', async () => {
     const db = baza();
+    zapiszTokeny(db, 'allegro_swietlik', {
+      accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
+    });
     const inny = { ...ustawienia, userAgent: 'InnaNazwa/9.9.9 (+https://inny.invalid/dok)' };
     const wywolania = [];
     const fetchImpl = async (url, opcje) => {
       wywolania.push({ url, opcje });
-      return odpowiedz({ device_code: 'DC', user_code: 'ABCD', interval: 5, expires_in: 600 });
+      return odpowiedz({ access_token: 'NOWY', refresh_token: 'NOWY_R', expires_in: 43199 });
     };
     const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia: inny, fetchImpl });
 
-    await t.rozpocznijPowiazanie();
+    expect(await t.waznyToken()).toBe('NOWY');
 
     expect(naglowkiZ(wywolania)['User-Agent']).toBe('InnaNazwa/9.9.9 (+https://inny.invalid/dok)');
     expect(naglowkiZ(wywolania)['User-Agent']).not.toBe(UA);
@@ -420,14 +321,17 @@ describe('nagłówek User-Agent — WSZYSTKIE trzy żądania OAuth do Allegro', 
   // Basic` i `Content-Type` sa warunkiem przyjecia zadania OAuth przez Allegro.
   it('dokłada się do nagłówków, których żądanie OAuth już wymagało', async () => {
     const db = baza();
+    zapiszTokeny(db, 'allegro_swietlik', {
+      accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
+    });
     const wywolania = [];
     const fetchImpl = async (url, opcje) => {
       wywolania.push({ url, opcje });
-      return odpowiedz({ device_code: 'DC', user_code: 'ABCD', interval: 5, expires_in: 600 });
+      return odpowiedz({ access_token: 'NOWY', refresh_token: 'NOWY_R', expires_in: 43199 });
     };
     const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
-    await t.rozpocznijPowiazanie();
+    expect(await t.waznyToken()).toBe('NOWY');
 
     const h = naglowkiZ(wywolania);
     expect(h.Authorization).toMatch(/^Basic /);
@@ -516,40 +420,6 @@ describe('odpowiedź o nieoczekiwanym kształcie nie ma prawa spalić pary bez �
     expect(t.stan().ostatni_blad).toMatch(/502/);
   });
 
-  it('device flow: 200 bez expires_in zapisuje parę, 200 bez refresh tokena NICZEGO nie zapisuje', async () => {
-    const db = baza();
-    const t = createTokeny({
-      db, kanal: 'allegro_swietlik', ustawienia,
-      fetchImpl: async () => odpowiedz({ access_token: 'A', refresh_token: 'R' }),
-    });
-    expect(await t.dokonczPowiazanie('DC')).toEqual({ gotowe: true });
-    expect(t.stan().refresh_token).toBe('R');
-    expect(Date.parse(t.stan().wygasa_at) - Date.now()).toBeGreaterThan(0);
-
-    const db2 = baza();
-    const t2 = createTokeny({
-      db: db2, kanal: 'allegro_swietlik', ustawienia,
-      fetchImpl: async () => odpowiedz({ access_token: 'A' }),
-    });
-    // Sam access token bez refresh tokena to kanal, ktory umrze za 12 godzin i nikt nie
-    // bedzie wiedzial dlaczego. Lepiej powiedziec „jeszcze nie gotowe".
-    expect(await t2.dokonczPowiazanie('DC')).toEqual({ gotowe: false, powod: 'odpowiedź bez pary tokenów' });
-    expect(wczytajTokeny(db2, 'allegro_swietlik')).toBe(null);
-  });
-
-  // Ta sciezka jest ODPYTYWANA CO KILKA SEKUND, dopoki czlowiek nie kliknie w przegladarce —
-  // wiec akurat tutaj proxy albo strona bledu Allegro trafi sie predzej czy pozniej.
-  // SyntaxError z `.json()` wywalilby ekran wiazania zamiast powiedziec „jeszcze nie".
-  it('device flow: ciało, które NIE JEST JSON-em, to „jeszcze nie gotowe", a nie awaria', async () => {
-    const db = baza();
-    const t = createTokeny({
-      db, kanal: 'allegro_swietlik', ustawienia,
-      fetchImpl: async () => cialoNieJson({ ok: false, status: 502 }),
-    });
-
-    expect(await t.dokonczPowiazanie('DC')).toEqual({ gotowe: false, powod: 'HTTP 502' });
-    expect(wczytajTokeny(db, 'allegro_swietlik')).toBe(null);
-  });
 });
 
 // ⚠️ REFRESH TOKEN JEST JEDNORAZOWY. Dwa rownolegle `waznyToken()` na wygaslym tokenie

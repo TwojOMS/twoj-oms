@@ -1,6 +1,5 @@
 import { transport } from '../../integracje/transport.js';
 import { wczytajTokeny, zapiszTokeny, zapiszBladTokenu, generacjaDostepu, sprawdzGeneracjeDostepu } from '../db/tokeny.js';
-import { powodSieci } from '../../domena/wiazanie-kanalu.js';
 import { brakujaceUprawnienia, brakZgodyNaOferty, maZgodeNaOferty } from '../../domena/uprawnienia-kanalu.js';
 import { kontoZTokenu } from '../../domena/tozsamosc-kanalu.js';
 
@@ -63,19 +62,6 @@ function mapaTrwajacych(db) {
 // poswiadczen.
 function kodOauth(d) {
   return typeof d?.error === 'string' && /^[a-z_]{1,64}$/.test(d.error) ? d.error : null;
-}
-
-// Kod przyczyny bledu POLACZENIOWEGO (`ECONNRESET`, `ENOTFOUND`, `UND_ERR_CONNECT_TIMEOUT`).
-// `fetch` w Node rzuca wtedy `TypeError: fetch failed` i chowa prawdziwa przyczyne w `cause`.
-//
-// ⚠️ NIEZMIENNIK 4.10 — BIERZEMY WYLACZNIE `code`, nigdy `e.message`, `e.stack` ani samo
-// `e.cause`. Wiadomosc bywa sklejona z adresem zadania, `cause` bywa obiektem niosacym
-// naglowki — a naglowkiem tego zadania jest `Authorization: Basic <clientId:clientSecret>`,
-// w ciele zas leci `device_code` albo `refresh_token`. Filtr ksztaltu jak przy `kodOauth`:
-// serwer ani biblioteka nie maja jak przemycic tedy niczego dluzszego niz kod bledu.
-function kodSieci(e) {
-  const kod = e?.cause?.code ?? e?.code;
-  return typeof kod === 'string' && /^[A-Za-z0-9_]{1,64}$/.test(kod) ? kod : null;
 }
 
 // ⚠️ „Trzeba polaczyc kanal ponownie" jest PRAWDA WYLACZNIE przy `invalid_grant`. Przy 5xx
@@ -202,9 +188,7 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
     // ⚠️ TUTAJ OSLONY NA `fetch` NIE MA I MIEC NIE MOZE — i to jest decyzja, a nie
     // przeoczenie (sprawdzone przy naprawie wiazania, 2026-08-05).
     //
-    // W device flow (`dokonczPowiazanie`) blad polaczeniowy zamieniamy w powod ponawialny,
-    // bo tam ponowienie NIC NIE KOSZTUJE: `device_code` jest wielokrotnego uzytku az do
-    // wygasniecia. Tu jest odwrotnie: REFRESH TOKEN ALLEGRO JEST JEDNORAZOWY. Wyjatek
+    // REFRESH TOKEN ALLEGRO JEST JEDNORAZOWY. Wyjatek
     // z `fetch` jest przy tym NIEROZSTRZYGALNY — zadanie moglo nie wyjsc wcale, ale rownie
     // dobrze moglo dojsc i zrotowac pare, a urwac sie dopiero na odpowiedzi. Ponowienie
     // tym samym tokenem byloby wtedy REUZYCIEM, a Allegro po wykryciu reuzycia potrafi
@@ -300,55 +284,5 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
     return zywy(w) ? w.access_token : odswiezRaz();
   }
 
-  // Device flow: krok 1. Oddaje `user_code` i adres, ktore czlowiek przepisuje w przegladarce.
-  async function rozpocznijPowiazanie() {
-    sprawdzGeneracjeDostepu(db, kanal);
-    const r = await http(`${ustawienia.auth}/device`, {
-      method: 'POST',
-      headers: naglowki(),
-      body: new URLSearchParams({ client_id: ustawienia.clientId }),
-    });
-    if (!r.ok) throw new Error(`Allegro ${kanal}: nie udało się rozpocząć wiązania (HTTP ${r.status})`);
-    return r.json();
-  }
-
-  // Device flow: krok 2, odpytywany co kilka sekund az czlowiek potwierdzi w przegladarce.
-  // ⚠️ NIE RZUCA przy `authorization_pending` — to normalny etap wiazania, a nie awaria.
-  // Wyjatek kazalby ekranowi migac bledem przy kazdym odpytaniu.
-  async function dokonczPowiazanie(deviceCode) {
-    const generacja = generacjaDostepu(db, kanal);
-    sprawdzGeneracjeDostepu(db, kanal, generacja);
-    // ⚠️ OSLONA NA SAM `fetch`, NIE TYLKO NA `.json()`. Ciało odpowiedzi bylo tu chronione
-    // od poczatku, ale wyjatek POLACZENIOWY (zadanie w ogole nie wyszlo) leciał w gore,
-    // omijal `ocenPowod` i wypadal ze skryptu jako awaria krytyczna: „Wiązanie przerwane:
-    // fetch failed". Jedno mrugniecie sieci w trakcie czekania na czlowieka zabijalo cale
-    // wiazanie i kazalo zaczynac od nowa, z nowym kodem (produkcja, 2026-08-04).
-    //
-    // Ponowienia NIE robimy tutaj — to nie jest miejsce, ktore wie, ile razy juz sie
-    // potknelismy. Oddajemy POWOD, a decyzje „pytac dalej czy sie poddac" podejmuje
-    // `ocenPowod` (domain/wiazanie-kanalu.js), tak samo jak dla kodow OAuth.
-    let r;
-    try {
-      r = await http(`${ustawienia.auth}/token`, {
-        method: 'POST',
-        headers: naglowki(),
-        body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:device_code', device_code: deviceCode }),
-      });
-    } catch (e) {
-      return { gotowe: false, powod: powodSieci(kodSieci(e)) };
-    }
-    const d = (await r.json().catch(() => null)) ?? {};
-    // ⚠️ KSZTALT SPRAWDZANY PRZED LICZENIEM DAT — inaczej odpowiedz 200 bez `expires_in`
-    // rzuca RangeError zamiast zapisac pare (patrz `zapiszPare`).
-    //
-    // `d.error` to kod OAuth (`authorization_pending`, `slow_down`, `access_denied`) — nie
-    // niesie poswiadczen. Reszty odpowiedzi nie ogladamy (niezmiennik 4.10).
-    if (!r.ok || !d.access_token || !d.refresh_token) {
-      return { gotowe: false, powod: kodOauth(d) ?? (r.ok ? 'odpowiedź bez pary tokenów' : `HTTP ${r.status}`) };
-    }
-    zapiszPare(d, generacja);
-    return { gotowe: true };
-  }
-
-  return { waznyToken, rozpocznijPowiazanie, dokonczPowiazanie, stan, stanDlaEkranu };
+  return { waznyToken, stan, stanDlaEkranu };
 }

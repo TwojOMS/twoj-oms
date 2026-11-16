@@ -12,15 +12,15 @@ import { bladOperatora } from '../../../domena/bledy.js';
 // ⚠️ TEN MODUL TYLKO RYSUJE. Wiersze listy sklada domain/lista-produktow.js, dane zestawienia
 // domain/zestawienie-zamowien.js — kwoty przychodza juz policzone przez funkcje specyfikacji.
 //
-// ⚠️ Fonty: TE SAME pliki DejaVu, co specyfikacja (pdf/fonty). Wbudowana Helvetica nie ma
+// ⚠️ Fonty: TE SAME pliki DejaVu, co specyfikacja (faktury/pdf/fonty). Wbudowana Helvetica nie ma
 // polskich znakow i pdfkit gubi je PO CICHU — kazdy napis idzie przez zwykly()/gruby().
 
 const KATALOG = path.dirname(fileURLToPath(import.meta.url));
 const FONT = 'DejaVu';
 const FONT_GRUBY = 'DejaVu-Bold';
 const PLIKI_FONTOW = {
-  [FONT]: path.join(KATALOG, 'fonty', 'DejaVuSans.ttf'),
-  [FONT_GRUBY]: path.join(KATALOG, 'fonty', 'DejaVuSans-Bold.ttf'),
+  [FONT]: path.join(KATALOG, '../../faktury/pdf/fonty', 'DejaVuSans.ttf'),
+  [FONT_GRUBY]: path.join(KATALOG, '../../faktury/pdf/fonty', 'DejaVuSans-Bold.ttf'),
 };
 
 const MARGINES = 36;

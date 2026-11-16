@@ -1,9 +1,8 @@
 import type { ModulOms } from '../../core/kontrakty.ts';
 import { trasaApiZamowieniaZKarty } from './trasy/api-zamowienia-z-karty.js';
-import { trasaApiSprzedaz } from './trasy/api-sprzedaz.js';
 import { kanalIndywidualnyWlaczony } from '../kanaly/klasyfikacja.ts';
 
-/** API panelu indywidualnego i raportów; te same usługi co interfejs OMS. */
+/** API panelu indywidualnego (zamówienia z karty); te same usługi co interfejs OMS. */
 export const modulApiPanelu: ModulOms<{ kanalIndywidualny: boolean }> = {
   nazwa: 'api-panelu', wersja: '1.0.0',
   wymaga: ['rdzen', 'web', 'kanaly', 'faktury', 'zamowienia'],
@@ -21,7 +20,6 @@ export const modulApiPanelu: ModulOms<{ kanalIndywidualny: boolean }> = {
         opcjeZw: ctx.usluga<any>('zamowienia', 'opcjeZw'),
         kanalIndywidualny: ctx.konfiguracja.kanalIndywidualny,
       });
-      trasaApiSprzedaz(app, { db: ctx.db });
     },
   }),
 };

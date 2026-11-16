@@ -1,6 +1,5 @@
 import { KATALOG_INTEGRACJI } from '../../../domena/katalog-integracji.ts';
 import { tytulEkranuDlaAdresu } from '../../../domena/ekrany.js';
-import { ZDANIE_TOKENU_KOSZTOW_TWOJEFAKTURY } from '../../../domena/konfiguracja-ksef-kosztow.js';
 import {randomUUID} from 'node:crypto';
 import {polaczenia,stanPolaczenia,zapiszPolaczenie,zapiszStan} from '../../../oms/db/reklamy.js';
 import {promptReklam} from '../../../domena/prompt-reklam.js';
@@ -37,10 +36,9 @@ function komunikatTestu(query, polaczenia) {
   return { ok: false, tekst: `Test odczytu nie powiódł się — ${gdzie}. ${krok}` };
 }
 
-export function createWidokReklam({db,stanyKanalow=null,wiazanieKanalow=null,reklamy=null,zgodaTf=()=>false,programFakturowy=null}) {
+export function createWidokReklam({db,reklamy=null}) {
  const wspolnyKontekst=(req,reply)=>({nawigacja:nawigacjaUstawien(req,reply),zapisano:req.query?.zapisano==='reklamy'?'Zapisano połączenie reklam.':req.query?.zapisano==='kanal'?'Rozpoczęto wiązanie kanału Allegro.':null});
   function widokIntegracji(req, reply, { blad = null, tylkoReklamy = false } = {}) {
-    const zgoda = zgodaTf();
     const nazwy = ZRODLA;
     const wszystkie = polaczenia(db);
     const zrodlaReklam = Object.entries(nazwy).map(([typ, etykieta]) => {
@@ -55,10 +53,7 @@ export function createWidokReklam({db,stanyKanalow=null,wiazanieKanalow=null,rek
       ...wspolnyKontekst(req, reply), title: tytulEkranuDlaAdresu(req.url), blad,
       testOdczytu: tylkoReklamy ? komunikatTestu(req.query, wszystkie) : null,
       tylkoReklamy, zrodlaReklam, mozeKonfigurowacReklamy: req.konto?.admin === true,
-      zgodaTf: zgoda, wbudowany: zgoda && programFakturowy?.()?.opis?.wbudowany === true,
-      zdanieTokenKosztow: ZDANIE_TOKENU_KOSZTOW_TWOJEFAKTURY,
       formularzSekretu: bezpieczneHttps && !!reklamy?.magazyn,
-      kanaly: (stanyKanalow?.() ?? []).map((stan) => ({ stan, wiazanie: wiazanieKanalow?.stan?.(stan.kanal) ?? null })),
     });
   }
 

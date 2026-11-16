@@ -281,4 +281,17 @@ describe('PRZ-102.22 Ustawienia → Integracje → KSeF (faktury kosztowe)', () 
       expect(o.atrapa.fabryka).not.toHaveBeenCalled();
     } finally { await o.zamknij(); }
   });
+
+  it('PRZ-174 B2: zapisany token — zdanie o nocnym pobieraniu mówi „OMS pobiera”, bez wewnętrznej nazwy czuwacza', async () => {
+    const o = await oms();
+    try {
+      await o.post(ADRES, { token: TOKEN });
+      const r = await o.get(ADRES);
+      expect(r.statusCode, r.body).toBe(200);
+      const widoczny = r.body.replace(/<script[\s\S]*?<\/script>/gu, ' ').replace(/<[^>]+>/gu, ' ').replace(/\s+/gu, ' ');
+      expect(widoczny).toContain('Podłączony');
+      expect(widoczny).toContain('OMS pobiera nim co noc (o 3) faktury, na których firma jest nabywcą');
+      expect(widoczny).not.toMatch(/czuwacz/iu);
+    } finally { await o.zamknij(); }
+  });
 });

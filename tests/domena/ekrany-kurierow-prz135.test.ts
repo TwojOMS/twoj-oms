@@ -1,13 +1,9 @@
 // PRZ-135.07a — ekrany konfiguracji kurierów z rejestru: tytuł, trasa i bez martwej sekcji „Kurierzy”.
-import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { MODULY_KURIEROW } from '../../src/domena/moduly-kurierow.ts';
 import { tytulEkranuDlaAdresu } from '../../src/domena/ekrany.js';
 import { zbudujOms } from '../../src/oms/bootstrap.ts';
-
-// ejs nie ma deklaracji typów w repo — ładowany przez require z jawnym typem.
-const ejs = createRequire(import.meta.url)('ejs') as { renderFile: (plik: string, dane: object) => Promise<string> };
 
 const env = { OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000',
   OMS_USER: 'operator', OMS_PASS: 'test', OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir() };
@@ -40,11 +36,12 @@ describe('ekrany kurierów z rejestru', () => {
 // Widok służy już tylko ekranowi reklam; kurierzy są w „Moje połączenia” i katalogu.
 describe('szablon ustawienia-integracje — bez martwej sekcji „Kurierzy”', () => {
   it('ekran reklam renderuje się bez nagłówka „Kurierzy”', async () => {
-    const html = await ejs.renderFile('src/moduly/ustawienia/widoki/ustawienia-integracje.ejs', {
-      title: 'Integracje', tylkoReklamy: false, zapisano: null, testOdczytu: null, blad: null, zgodaTf: false,
-      wbudowany: false, zdanieTokenKosztow: '', mozeKonfigurowacReklamy: false, kanaly: [], zrodlaReklam: [],
-    });
-    expect(html).not.toContain('<h2>Kurierzy</h2>');
-    expect(html).toContain('<h2>Reklamy</h2>');
+    const a = await zbudujOms({ env });
+    try {
+      const r = await a.app.inject({ method: 'GET', url: '/ustawienia/integracje/reklamy', headers });
+      expect(r.statusCode).toBe(200);
+      expect(r.body).toContain('<section class="ust-sekcja" id="reklamy-ga4">');
+      expect(r.body).not.toContain('<h2>Kurierzy</h2>');
+    } finally { await a.app.close(); a.db.close(); }
   });
 });

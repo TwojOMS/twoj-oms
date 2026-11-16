@@ -21,7 +21,7 @@ export const TRASY_OTWARTE = ['/login', '/health', '/favicon.ico'];
 // Zlapane w przegladarce 2026-08-09; testy HTML tego NIE WIDZA, bo status samej strony
 // jest wtedy poprawny — 200.
 //
-// Bezpieczenstwo: pod tym prefiksem leza wylacznie arkusz, htmx, fonty i ikony. Zero danych
+// Bezpieczenstwo: pod tym prefiksem leza wylacznie arkusze, htmx, skrypty ekranow i obrazki (ikony, logotypy). Zero danych
 // klienta, zero konfiguracji. Sciezki spoza katalogu odcina @fastify/static, nie my.
 //
 // PRZ-069: jedyny nowy adres bez logowania — formularz hasła z jednorazowego linku; własny hamulec,

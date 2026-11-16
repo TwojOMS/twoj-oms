@@ -181,6 +181,19 @@ describe('karta paczki: nowy układ (PRZ-152.G8)', () => {
     expect(glowa(czesci[1])).not.toContain('paczka-menu');
   });
 
+  // PRZ-174 B2 (M10a): podpowiedź przy znaczniku „ukryta” mówi właścicielowi, że OMS dalej śledzi paczkę.
+  it('znacznik „ukryta” ma podpowiedź: ukryta z listy, OMS dalej śledzi status i pokaże paczkę po skanie kuriera', async () => {
+    const id = zamowienie({ metoda: 'dpd' });
+    const p1 = nadaj(id, { numer: '0000000000003U' });
+    db.prepare("UPDATE przesylki SET ukryta_at = '2026-10-21T13:00:00.000Z', ukryta_przez = 'adam' WHERE id = ?").run(p1);
+    const { czesci } = await karty(id);
+    const znacznik = /<span class="znacznik"([^>]*)>ukryta<\/span>/.exec(glowa(czesci[0]));
+    expect(znacznik, 'znacznik „ukryta” na karcie').not.toBeNull();
+    const podpowiedz = /title="([^"]*)"/.exec(znacznik[1])?.[1] ?? '';
+    // Całe zdanie, nie fragmenty: zaprzeczenie („już nie śledzi”) też musi czerwienić.
+    expect(podpowiedz).toBe('Ukryta z listy przesyłek — OMS dalej śledzi jej status i pokaże ją znowu, gdy kurier ją zeskanuje.');
+  });
+
   it('kraj w „Do:” tylko, gdy inny niż PL; adres użyty przy nadaniu różny od zamówienia ma znacznik', async () => {
     const id = zamowienie({ metoda: 'dpd' });
     nadaj(id, {

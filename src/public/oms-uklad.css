@@ -1324,16 +1324,7 @@
     /* na telefonie ma byc czytelnie, a nie ladnie. */
     @media (max-width: 900px) {
       .pas { flex-wrap: wrap; }
-      .nawigacja-glowna, .ustawienia-glowne { display: none; }
       .menu-uzytkownika { margin-left: auto; }
-      .menu-glowne-mobile { display: block; order: 3; width: 100%; }
-      .menu-glowne-mobile > summary { display: inline-block; }
-      .menu-glowne-mobile-panel { position: static; width: 100%; margin-top: .4rem; box-sizing: border-box; }
-      .menu-glowne-mobile-panel nav > ul { list-style: none; margin: 0; padding: 0; }
-      .menu-glowne-mobile-panel nav > ul > li > a {
-        display: block; padding: .5rem .7rem; color: inherit; text-decoration: none;
-      }
-      .menu-glowne-mobile-panel nav > ul > li.aktywna > a { background: var(--powierzchnia-2); font-weight: 700; }
       .nawigacja-kontekstowa--mobile { display: block; margin-top: .6rem; }
       /* ⚠️ TRESC PIERWSZA, KOLUMNA POD NIA (17.08.2026). Kolumna stoi w DOM PRZED trescia */
       /* — tak ma byc na szerokim ekranie i dla czytnika ekranu — wiec po zlozeniu do */
@@ -1464,32 +1455,17 @@
     .ikona--szara { background: var(--powierzchnia-2); color: var(--ikona-szara-tekst); }
 
     /* ——— GŁÓWNA NAWIGACJA I MENU KONTA ——————————————————————————————————————— */
-    .nawigacja-glowna { margin-left: 1rem; }
-    .nawigacja-glowna ul { display: flex; gap: .2rem; margin: 0; padding: 0; list-style: none; }
-    .nawigacja-glowna a {
-      display: block; padding: .45rem .7rem; border-radius: .35rem;
-      color: var(--na-marce); text-decoration: none; font-size: .9rem;
-    }
-    .nawigacja-glowna li.aktywna a, .nawigacja-glowna a:hover { background: rgba(255, 255, 255, .14); }
-    .ustawienia-glowne {
-      margin-left: auto; color: var(--na-marce); text-decoration: none; padding: .45rem .7rem;
-      border-radius: .35rem; font-size: .9rem;
-    }
-    .ustawienia-glowne:hover, .ustawienia-glowne.aktywna { background: rgba(255, 255, 255, .14); }
-    .menu-glowne-mobile { display: none; }
     .menu-uzytkownika { position: relative; margin-left: .25rem; }
-    .menu-uzytkownika summary, .menu-glowne-mobile summary {
+    .menu-uzytkownika summary {
       cursor: pointer; list-style: none; padding: .45rem .7rem; border-radius: .35rem;
       color: var(--na-marce); font-size: .9rem;
     }
-    .menu-uzytkownika summary::-webkit-details-marker,
-    .menu-glowne-mobile summary::-webkit-details-marker { display: none; }
+    .menu-uzytkownika summary::-webkit-details-marker { display: none; }
     .menu-uzytkownika summary::after { content: " ▾"; }
-    .menu-uzytkownika[open] summary, .menu-uzytkownika summary:hover,
-    .menu-glowne-mobile[open] > summary, .menu-glowne-mobile > summary:hover {
+    .menu-uzytkownika[open] summary, .menu-uzytkownika summary:hover {
       background: rgba(255, 255, 255, .14);
     }
-    .menu-uzytkownika-panel, .menu-glowne-mobile-panel {
+    .menu-uzytkownika-panel {
       position: absolute; z-index: 70; top: calc(100% + .45rem); right: 0; min-width: 14rem;
       padding: .7rem; border: 1px solid var(--ramka); border-radius: .45rem;
       background: var(--powierzchnia); color: var(--tekst); box-shadow: 0 .6rem 1.5rem rgba(0, 0, 0, .2);
@@ -1509,8 +1485,6 @@
        szczegółowością tylko z powodu kolejności w arkuszu. */
     @media (max-width: 900px) {
       .menu-uzytkownika { margin-left: auto; }
-      .menu-glowne-mobile { display: block; }
-      .menu-glowne-mobile-panel { position: static; }
       .nawigacja-kontekstowa--mobile { display: block; }
     }
 

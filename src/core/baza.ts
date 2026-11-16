@@ -206,7 +206,14 @@ function deklaracjeKolumn(tokeny: TokenSql[]): Map<string, TokenSql[]> {
 // tekstu: testy budują tę samą bazę tysiące razy, a odcisk był ~połową czasu budowy. Wołający dostają kopie.
 // W kluczu jest też schema_version (recenzja): tekst podmieniony przez writable_schema nie zmienia schematu wczytanego
 // w połączeniu, który czytają PRAGMA-y odcisku, ale każdy DDL podbija licznik — taki rozjazd nie trafi w pamięć.
-const ODCISKOW_W_PAMIECI = 32;
+// PRZ-173: budowa bazy zapisuje 1 klucz na migrację (37 kluczy na 37 migracji), a pojemność MUSI być ≥ liczbie migracji
+// wszystkich modułów — inaczej usuwanie najstarszego daje przy cyklicznym odczycie 0% trafień (37 migracji przy 32: pełna
+// bramka 473 → 955 s). To warunek konieczny, nie wystarczający: w jednym procesie testów są też inne stany schematu
+// (baza.test.ts wstawia 103 klucze), więc limit trzyma zapas. Pilnuje tego test »druga budowa bazy…«
+// w tests/core/baza.test.ts. Koszt: wpis pełnego schematu to ok. 250 KB w JSON (schemat 153 + kolumny 100 KB), więc
+// 256 wpisów ≈ 63 MB na proces w najgorszym razie (wczesne stany są mniejsze, a w praktyce zapełnia się tyle wpisów,
+// ile jest stanów schematu).
+const ODCISKOW_W_PAMIECI = 256;
 const odciski = new Map<string, { schemat?: string[]; kolumny?: Map<string, Kolumna[]> }>();
 
 /** Klucz i odcisk z jednego stanu bazy: poza transakcją wołającego — we własnej transakcji odczytu (inny proces

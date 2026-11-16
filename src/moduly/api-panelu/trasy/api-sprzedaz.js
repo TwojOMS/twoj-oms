@@ -140,11 +140,7 @@ function dzienZParametru(surowa) {
   return s;
 }
 
-export function trasaApiSprzedaz(app, { db }) {
-  app.get('/api/sprzedaz', obslugaSprzedazy({ db }));
-}
-
-/** Wspólna obsługa GET panelu i API v1. */
+/** Obsługa GET /api/v1/sprzedaz (klucz API, zakres sprzedaz:odczyt). */
 export function obslugaSprzedazy({ db }) {
   return async (req, odp) => {
     // Brak zakresu ma byc bledem, a nie cichym zwrotem calej historii: raport pobralby

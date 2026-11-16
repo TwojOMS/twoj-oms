@@ -294,7 +294,7 @@ Status: przyjęta polityka.
 
 Konto i daty pokrycia raportów podaje właściciel instalacji. Niepotwierdzone pokrycie daje istniejącą uwagę, bez wymyślania dat i bez alarmu niedziałającej integracji.
 
-Stan kodu/skutek: Ustawienia raportów nie zmieniają /api/sprzedaz; odbiór PRZ-042 sprawdza dane instalacji.
+Stan kodu/skutek: Ustawienia raportów nie zmieniają /api/v1/sprzedaz; odbiór PRZ-042 sprawdza dane instalacji.
 
 ### D09 — Nieznane nazwy konfiguracji
 

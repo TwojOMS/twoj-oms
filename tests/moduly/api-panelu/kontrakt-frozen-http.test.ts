@@ -15,6 +15,7 @@ import * as zamowienieReczne from '../../../src/moduly/zamowienia/services/zamow
 import * as zKarty from '../../../src/domena/zamowienie-z-karty.js';
 import * as statusReczny from '../../../src/domena/status-reczny.js';
 import * as konta from '../../../src/core/bezpieczenstwo/konta.js';
+import * as kluczeApi from '../../../src/core/bezpieczenstwo/klucze-api.js';
 import * as sekretSesji from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
 import * as sesja from '../../../src/core/bezpieczenstwo/sesja.js';
 
@@ -29,7 +30,7 @@ const any = (m: unknown) => m as any;
 const { createOmsClient } = any(klientFrozen);
 const Z = any(zamowieniaDb); const P = any(platnosciDb); const O = any(okresyDb); const PF = any(proformyDb);
 const ZR = any(zamowienieReczne); const ZK = any(zKarty); const SR = any(statusReczny);
-const K = any(konta); const SS = any(sekretSesji); const S = any(sesja);
+const K = any(konta); const KA = any(kluczeApi); const SS = any(sekretSesji); const S = any(sesja);
 
 const SHA_KLIENTA_FROZEN = '94024644483c9429b09df18dc56b738b1899b8cb6358815b6c0d473c04945209';
 const METODY = ['createFromCard', 'getForCard', 'getByShopOrder', 'getDostawa', 'wystawProforme',
@@ -425,7 +426,7 @@ describe('PRZ-031 autoryzacja, CSRF i uprawnienie api', () => {
     const { db, baseUrl, klient, oms } = await uruchom();
     const { id } = zalozZKarty(db);
     for (const [m, s] of [['GET', `/api/zamowienia/${id}/stan-wysylki`], ['GET', '/api/zamowienia-z-karty/karta-031'],
-      ['GET', '/api/sprzedaz?od=2026-08-01&do=2026-08-31'], ['GET', `/api/zamowienia/${id}/dostawa`]] as const) {
+      ['GET', `/api/zamowienia/${id}/dostawa`]] as const) {
       expect((await surowe(baseUrl, m, s, { accept: 'application/json' })).status, s).toBe(401);
     }
     const zly = klient('zle-haslo');
@@ -485,8 +486,22 @@ describe('PRZ-031 autoryzacja, CSRF i uprawnienie api', () => {
   });
 });
 
-describe('PRZ-031 /api/sprzedaz — nowy kontrakt na prawdziwej bazie', () => {
-  const sprzedaz = (s: Srodowisko, q: string) => surowe(s.baseUrl, 'GET', `/api/sprzedaz${q}`, { authorization: basic() });
+// `/api/v1/sprzedaz` wymaga klucza API z zakresem `sprzedaz:odczyt`; konto i klucz zakładamy
+// raz na środowisko (jedno `uruchom()` na przypadek), bo login konta ma UNIQUE.
+const klucze = new WeakMap<object, string>();
+const bearer = (s: Srodowisko) => {
+  if (!klucze.has(s)) {
+    const kontoId = K.zalozKonto(s.db, { login: 'tester-api-sprzedaz', imie: 'Tester', haslo: 'h', admin: true, rola: 'administrator' });
+    const { klucz } = KA.zalozKluczApi(s.db, {
+      nazwa: 'Pracownia Półcień', zakresy: ['sprzedaz:odczyt'], kontoId, teraz: new Date().toISOString(),
+    });
+    klucze.set(s, `Bearer ${klucz}`);
+  }
+  return klucze.get(s) as string;
+};
+const sprzedaz = (s: Srodowisko, q: string) => surowe(s.baseUrl, 'GET', `/api/v1/sprzedaz${q}`, { authorization: bearer(s) });
+
+describe('PRZ-031 /api/v1/sprzedaz — nowy kontrakt na prawdziwej bazie', () => {
   const reczne = (db: any, numer: string, utworzone: string, okresId: number | null = null) => db.prepare(
     "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id, anulowane, utworzone_at, indywidualne) VALUES ('reczne', ?, ?, '100.00', ?, 0, ?, 0)",
   ).run(Math.floor(Math.random() * 1e9), numer, okresId, utworzone);
@@ -585,11 +600,11 @@ describe('PRZ-031 uzupełnienia po mutacjach', () => {
     }
   });
 
-  it('/api/sprzedaz: priorytet klasyfikacji — indywidualne przed Allegro', async () => {
+  it('/api/v1/sprzedaz: priorytet klasyfikacji — indywidualne przed Allegro', async () => {
     const s = await uruchom();
     s.db.prepare("INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, anulowane, utworzone_at, indywidualne) VALUES ('allegro_konto-testowe', 9401, 'AL-IND', '70.00', 0, '2026-07-15T12:00:00', 1)").run();
     s.db.prepare("INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, anulowane, utworzone_at, indywidualne) VALUES ('allegro_konto-testowe', 9402, 'AL-ZW', '80.00', 0, '2026-07-15T13:00:00', 0)").run();
-    const r = await surowe(s.baseUrl, 'GET', '/api/sprzedaz?od=2026-07-15&do=2026-07-15', { authorization: basic() });
+    const r = await sprzedaz(s, '?od=2026-07-15&do=2026-07-15');
     expect(r.status).toBe(200);
     expect(r.json().zamowienia.map((z: any) => [z.numer, z.kanal])).toEqual([['AL-IND', 'SKLEP_INDYWIDUALNE'], ['AL-ZW', 'ALLEGRO']]);
   });

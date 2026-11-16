@@ -1,5 +1,5 @@
 {
-  "_opis": "Skopiuj jako config-faktury.json i uzupelnij. Klucz pobierz z Ustawienia -> Klucze API, zakres druk; gdy jest podany, user/pass nie sa potrzebne. odstepPoOdmowieSekund to czas oczekiwania po odmowie klucza lub hasla (401/403). Plik zawiera sekret - nie wysylaj go nikomu i nie wrzucaj do repozytorium.",
+  "_opis": "Skopiuj jako config-faktury.json i uzupelnij. Klucz pobierz z Ustawienia -> Zespol i dostep -> Klucze API, zakres druk; gdy jest podany, user/pass nie sa potrzebne. odstepPoOdmowieSekund to czas oczekiwania po odmowie klucza lub hasla (401/403). Plik zawiera sekret - nie wysylaj go nikomu i nie wrzucaj do repozytorium.",
 
   "url": "http://192.168.1.20:3001",
   "user": "LOGIN-Z-PLIKU-OMS-ENV",

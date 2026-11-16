@@ -6,18 +6,19 @@ import {migracjaTypuKanaluISklepow} from '../../../src/moduly/kanaly/migracje/00
 const fixtures:ReturnType<typeof fixtureAllegro>[]=[];
 afterEach(()=>{for(const f of fixtures.splice(0))f.db.close();});
 function setup(){
- const f=fixtureAllegro();fixtures.push(f);let wolno=true,pending=false;
+ const f=fixtureAllegro();fixtures.push(f);let wolno=true,pending=false,awarieTokenu=0;
  const repo=createRepozytoriumKanalow({db:f.db,definicjeEnv:[{klucz:'legacy',typ:'allegro',prefiks:'LEGACY',etykieta:'Stare konto',raport:'ALLEGRO_STARE'}],konfiguracjaEnv:{legacy:{api:'https://api.allegro.pl',od:'2026-10-31T23:00:00Z'}},teraz:f.teraz});
  const calls:string[]=[];
  const http=async(u:string,i:RequestInit={})=>{
   calls.push(u);
   if(u.endsWith('/device'))return Response.json({device_code:'TAJNY-DEVICE',user_code:'ABC-123',verification_uri:'https://allegro.pl/skojarz',expires_in:600,interval:5});
+  if(u.endsWith('/token')&&awarieTokenu>0){awarieTokenu--;throw new TypeError('fetch failed');}
   if(u.endsWith('/token')&&pending)return Response.json({error:'authorization_pending'},{status:400});
   return f.http(u,i);
  };
  const auth=createAutoryzacjaAllegro({repozytorium:repo,aplikacjaDlaInstalacji:()=>null,http,userAgent:'fixture',teraz:f.teraz,
   legacyDlaKanalu:(k:string)=>k==='legacy'?{app:f.app,wolnoWiazac:wolno}:null});
- return {...f,repo,auth,calls,setWolno:(v:boolean)=>{wolno=v;},setPending:(v:boolean)=>{pending=v;}};
+ return {...f,repo,auth,calls,setWolno:(v:boolean)=>{wolno=v;},setPending:(v:boolean)=>{pending=v;},setAwarieTokenu:(n:number)=>{awarieTokenu=n;}};
 }
 describe('legacy Device Flow jako kandydat',()=>{
  it('panel wymaga profile:read i nie korzysta z legacy fallback po 403',async()=>{
@@ -63,5 +64,20 @@ describe('legacy Device Flow jako kandydat',()=>{
   f.setScopes(scopesAllegro.slice(1));f.setCzas('2026-11-01T12:00:06Z');expect((await f.auth.sprawdzLegacy(p.probaId,aktorAllegro,'A')).ok).toBe(false);
   expect(f.auth.pobierzKandydata(p.probaId,'A')).toBeNull();
   f.setCzas('2026-11-01T12:11:00Z');expect((await f.auth.sprawdzLegacy(p.probaId,aktorAllegro,'A')).ok).toBe(false);
+ });
+ it('po wygaśnięciu kodu wolno zacząć od nowa, także z innej karty',async()=>{
+  const f=setup();const a=daneAllegro(await f.auth.rozpocznijLegacy('legacy',aktorAllegro,'A'));
+  f.setCzas('2026-11-01T12:10:01Z');
+  const b=daneAllegro(await f.auth.rozpocznijLegacy('legacy',aktorAllegro,'B'));
+  expect(b.probaId).not.toBe(a.probaId);
+  expect(f.calls.filter(u=>u.endsWith('/device'))).toHaveLength(2);
+ });
+ it('błąd sieci przy sprawdzaniu zgody daje odmowę tymczasową; próba żyje i po odstępie zgoda przechodzi',async()=>{
+  const f=setup();const p=daneAllegro(await f.auth.rozpocznijLegacy('legacy',aktorAllegro,'A'));
+  f.setAwarieTokenu(1);f.setCzas('2026-11-01T12:00:06Z');
+  expect(await f.auth.sprawdzLegacy(p.probaId,aktorAllegro,'A')).toMatchObject({ok:false,kod:'tymczasowy'});
+  f.setCzas('2026-11-01T12:00:12Z');
+  expect(daneAllegro(await f.auth.sprawdzLegacy(p.probaId,aktorAllegro,'A'))).toMatchObject({gotowe:true,kontoId:'123'});
+  expect(f.calls.filter(u=>u.endsWith('/token'))).toHaveLength(2);
  });
 });

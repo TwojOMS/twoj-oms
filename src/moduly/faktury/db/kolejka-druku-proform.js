@@ -178,18 +178,3 @@ export function ostatniePozycjeDlaProform(db, proformaIds) {
   for (const w of wiersze) mapa.set(w.proforma_id, w);
   return mapa;
 }
-
-export function createZapytania(db) {
-  return {
-    dodajProformeDoKolejki: (...args) => dodajProformeDoKolejki(db, ...args),
-    proformyDoWziecia: (...args) => proformyDoWziecia(db, ...args),
-    pozycjeDrukuDoWziecia: (...args) => pozycjeDrukuDoWziecia(db, ...args),
-    proformaDlaPozycji: (...args) => proformaDlaPozycji(db, ...args),
-    porzucUniewaznionaPozycje: (...args) => porzucUniewaznionaPozycje(db, ...args),
-    oznaczProformeWydrukowana: (...args) => oznaczProformeWydrukowana(db, ...args),
-    oznaczBladDrukuProformy: (...args) => oznaczBladDrukuProformy(db, ...args),
-    porzucProforme: (...args) => porzucProforme(db, ...args),
-    ostatniaPozycjaDlaProformy: (...args) => ostatniaPozycjaDlaProformy(db, ...args),
-    ostatniePozycjeDlaProform: (...args) => ostatniePozycjeDlaProform(db, ...args),
-  };
-}

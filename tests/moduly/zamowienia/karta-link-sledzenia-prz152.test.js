@@ -1,7 +1,7 @@
 // PRZ-152.G7: numer paczki Allegro „Wysyłam z Allegro” (WzA) wiezionej przez DPD ma być linkiem do śledzenia DPD
 // na KARCIE zamówienia i w mailu „Zamówienie wysłane” — tym samym, co w zakładce Przesyłki. Wszystkie trzy miejsca
 // liczą link jedną funkcją domeny (`linkSledzeniaPaczki`, domena/przewoznik-przesylki.js). Do 04.11 karta i mail
-// brały go po samym kodzie drogi nadania (`linkDoSledzenia(p.kurier)`), a `allegro_wza` nie mówi, kto wiezie.
+// brały go po samym kodzie drogi nadania (dawne `linkDoSledzenia(p.kurier)`), a `allegro_wza` nie mówi, kto wiezie.
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';

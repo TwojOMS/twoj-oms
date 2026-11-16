@@ -7,7 +7,6 @@ import {
 import { METODY_DO_FILTRA, parsujFiltry, filtrujFiltrami } from '../../src/domena/filtry-listy.js';
 import { wybierzKuriera, kurierWpisuRecznego } from '../../src/oms/kurierzy/index.js';
 import { mapujZamowienieAllegro } from '../../src/domena/allegro-mapowanie.js';
-import { linkDoSledzenia } from '../../src/domena/tracking.js';
 
 describe('metody dostawy Allegro', () => {
   it('rozpoznaje po delivery.method.id, nie po nazwie', () => {
@@ -292,22 +291,6 @@ describe('sprawdzZmianeMetody — kanał Allegro nie da się przestawić na dost
 describe('kurier wpisu ręcznego dla kanału Allegro', () => {
   it('każda metoda allegrowa daje kuriera „allegro”, a nie zapasowe „dpd”', () => {
     for (const m of METODY_ALLEGRO) expect(kurierWpisuRecznego(m)).toBe('allegro');
-  });
-
-  // ⚠️ HISTORIA TEGO TESTU, zeby nikt nie „naprawial" go w kolko: Zadanie 9 przestawilo go
-  // na `toMatch(/allegro\.pl/)`, bo dopisalo wzorzec `allegro` do domain/tracking.js — a
-  // recenzja ten wzorzec ZDJELA, bo adresu nikt nie otworzyl w przegladarce. Pilnowana regula
-  // przez caly czas byla TA SAMA i zostaje: numer „AD…" nie ma prawa trafic do DPD.
-  //
-  // Dzis `linkDoSledzenia('allegro', …)` oddaje `null` i to jest odpowiedz POPRAWNA — ikona
-  // przesylki spada wtedy na karte zamowienia (lista-ikony.js), czyli na link, ktory na pewno
-  // dziala. Gdy adres Allegro zostanie ZMIERZONY, ta asercja zmieni sie swiadomie.
-  it('numer z Allegro NIE prowadzi do śledzenia DPD', () => {
-    const kurier = kurierWpisuRecznego('allegro_dpd');
-    expect(linkDoSledzenia(kurier, 'AD123456789')).toBeNull();
-    // Kontrola sensu: ten sam numer podany jako 'dpd' MUSI trafiac do DPD — inaczej asercja
-    // wyzej przechodzilaby dlatego, ze funkcja nie dziala w ogole.
-    expect(linkDoSledzenia('dpd', 'AD123456789')).toMatch(/tracktrace\.dpd\.com\.pl/);
   });
 
   // ⚠️ TO NIE JEST WPIS W `DLA_METODY` i nie wolno, zeby sie nim stalo: tamta mapa steruje

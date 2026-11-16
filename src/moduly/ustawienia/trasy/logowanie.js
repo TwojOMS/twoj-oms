@@ -3,10 +3,8 @@ import {
 } from '../../../core/bezpieczenstwo/sesja.js';
 import { hamulecLogowaniaDla } from '../../../core/bezpieczenstwo/hamulec.js';
 import {
-  czyTrasaOtwarta, rowneStaloCzasowo, polaczenieBezpieczne,
+  rowneStaloCzasowo, polaczenieBezpieczne,
 } from '../../../core/bezpieczenstwo/logowanie-wspolne.js';
-// Re-eksport: straznik i testy siegaly po nie tutaj, zanim staly sie wspolne.
-export { czyTrasaOtwarta, polaczenieBezpieczne };
 import { wczytajSekret } from '../../../core/bezpieczenstwo/sekret-sesji.js';
 // ⚠️ `bezpiecznyPowrot` mieszka w domain/motyw.js, bo tam powstal — ale jest OGOLNA bramka
 // na przekierowanie, nie czescia przelacznika motywu. Kopiowanie go tutaj dalo by dwie

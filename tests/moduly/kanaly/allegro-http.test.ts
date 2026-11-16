@@ -128,6 +128,7 @@ it('zdrowy kanał env odmawia Device Flow bez wywołania HTTP',async()=>{
  expect(a.usluga<any>('kanaly','stanyKanalow')().find((s:any)=>s.kanal==='legacy').wolnoWiazac).toBe(false);
  const r=await f.req('POST','/ustawienia/kanaly/legacy/wiazanie');
  expect(r.statusCode).toBe(403);expect(f.calls).toHaveLength(przed);
+ expect(r.body).toContain('Kanał działa albo brakuje przygotowanej aplikacji Device Flow.');
  expect(db.prepare('SELECT * FROM kanaly_sprzedazy').all()).toEqual([]);
 });
 it.each(['wlaczone','wylaczone'])('env: odłącz i przywróć zachowuje parę i pobieranie %s bez Device Flow',async pobieranie=>{

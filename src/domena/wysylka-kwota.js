@@ -94,9 +94,6 @@ export function wysylkaEfektywna(zamowienie) {
   return efektywna;
 }
 
-/** Czy wysyłka ma ręczną poprawkę — steruje oznaczeniem na karcie i przyciskiem przywrócenia. */
-export const wysylkaZmienionaRecznie = (z) => wysylkaEfektywna(z).polaZmienione.length > 0;
-
 /**
  * Wiersz wysyłki z formularza „Edytuj pozycje" — DOKŁADNIE te same walidatory, co przy
  * pozycjach (`parsujIlosc`, `parsujCeneBrutto` w domain/pozycje-reczne.js).

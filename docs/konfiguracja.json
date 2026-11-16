@@ -450,7 +450,7 @@
           "through": "faktury.proforma",
           "source": {
             "path": "src/moduly/api-panelu/modul.ts",
-            "line": 17
+            "line": 16
           },
           "directEnvRead": false
         }
@@ -500,7 +500,7 @@
           "through": "faktury.proforma",
           "source": {
             "path": "src/moduly/api-panelu/modul.ts",
-            "line": 17
+            "line": 16
           },
           "directEnvRead": false
         }
@@ -540,7 +540,7 @@
           "through": "faktury.proforma",
           "source": {
             "path": "src/moduly/api-panelu/modul.ts",
-            "line": 17
+            "line": 16
           },
           "directEnvRead": false
         }
@@ -580,7 +580,7 @@
           "through": "faktury.proforma",
           "source": {
             "path": "src/moduly/api-panelu/modul.ts",
-            "line": 17
+            "line": 16
           },
           "directEnvRead": false
         }
@@ -1784,7 +1784,7 @@
           "through": "faktury.proforma",
           "source": {
             "path": "src/moduly/api-panelu/modul.ts",
-            "line": 17
+            "line": 16
           },
           "directEnvRead": false
         }
@@ -2192,7 +2192,7 @@
       "wymagalnosc": "wymagana po rozpoczęciu niepustej sekcji KSeF",
       "domyslna": null,
       "wymagalnoscPoLudzku": "opcjonalna; wymagana, jeśli wpisujesz którekolwiek ustawienie KSeF",
-      "skutekBraku": "Bez całej sekcji klient KSeF/koszty z pliku nie powstaje. Niepuste KSEF_NIP/API/ARCHIWUM bez tokenu odmawia konfiguracji. PRZ-102.22: odpowiednik w panelu — Ustawienia → Integracje → KSeF (/ustawienia/integracje/ksef; wiersz „ksef” w konfiguracja_integracji, token jako sekret, NIP opcjonalny = NIP sprzedawcy). Klient KSeF kosztów rozstrzyga przy każdym przebiegu czuwacza, PDF-ie kosztu i zestawieniu faktur kosztowych: plik → panel → brak; nowy token z panelu działa od następnego przebiegu bez restartu, zmiana tokenu kasuje sesję KSeF (tokeny_ksef), ten sam token ją zostawia. Gdy KSEF_TOKEN stoi w pliku, ekran jest tylko do odczytu (zapis = 409). Bez tokenu w pliku i w panelu czuwacz kosztów stoi (zegar tyka, przebieg pominięty), /health: czuwaczKosztow.wlaczony=false. Moduł „Koszty” wyłączony w Ustawienia → Moduły: czuwacz nic nie pobiera także z tokenem (/health: stan „koszty wyłączone”).",
+      "skutekBraku": "Bez całej sekcji klient KSeF/koszty z pliku nie powstaje. Niepuste KSEF_NIP/API/ARCHIWUM bez tokenu odmawia konfiguracji. PRZ-102.22: odpowiednik w panelu — Ustawienia → Integracje → KSeF (/ustawienia/integracje/ksef; wiersz „ksef” w konfiguracja_integracji, token jako sekret, NIP opcjonalny = NIP sprzedawcy). Klient KSeF kosztów rozstrzyga przy każdym przebiegu czuwacza, PDF-ie kosztu i zestawieniu faktur kosztowych: plik → panel → brak; nowy token z panelu działa od następnego przebiegu bez restartu, zmiana tokenu kasuje sesję KSeF (tokeny_ksef), ten sam token ją zostawia. Gdy KSEF_TOKEN stoi w pliku, ekran jest tylko do odczytu (zapis = 409). Bez tokenu w pliku i w panelu czuwacz kosztów stoi (zegar tyka, przebieg pominięty), /health: czuwaczKosztow.wlaczony=false. Moduł „Koszty” wyłączony w Ustawienia → System → Włączone funkcje: czuwacz nic nie pobiera także z tokenem (/health: stan „koszty wyłączone”).",
       "walidacja": "trim; proba odrzuca niepusty token.",
       "sekret": true,
       "odczyty": [
@@ -2794,7 +2794,7 @@
           "through": "faktury.proforma",
           "source": {
             "path": "src/moduly/api-panelu/modul.ts",
-            "line": 17
+            "line": 16
           },
           "directEnvRead": false
         }
@@ -2863,7 +2863,7 @@
           "through": "faktury.proforma",
           "source": {
             "path": "src/moduly/api-panelu/modul.ts",
-            "line": 17
+            "line": 16
           },
           "directEnvRead": false
         }
@@ -2932,7 +2932,7 @@
           "through": "faktury.proforma",
           "source": {
             "path": "src/moduly/api-panelu/modul.ts",
-            "line": 17
+            "line": 16
           },
           "directEnvRead": false
         }
@@ -3001,7 +3001,7 @@
           "through": "faktury.proforma",
           "source": {
             "path": "src/moduly/api-panelu/modul.ts",
-            "line": 17
+            "line": 16
           },
           "directEnvRead": false
         }
@@ -3050,7 +3050,7 @@
           "through": "faktury.proforma",
           "source": {
             "path": "src/moduly/api-panelu/modul.ts",
-            "line": 17
+            "line": 16
           },
           "directEnvRead": false
         }
@@ -8013,7 +8013,7 @@
     },
     {
       "path": "src/moduly/api-panelu/modul.ts",
-      "line": 11,
+      "line": 10,
       "expression": "env",
       "callee": "kanalIndywidualnyWlaczony",
       "call": "kanalIndywidualnyWlaczony(env)"
@@ -8446,7 +8446,7 @@
       "wlasciciel": "Adam / właściciel danych historycznych",
       "temat": "Pokrycie raportów",
       "decyzja": "Konto i daty pokrycia raportów podaje właściciel instalacji. Niepotwierdzone pokrycie daje istniejącą uwagę, bez wymyślania dat i bez alarmu niedziałającej integracji.",
-      "skutek": "Ustawienia raportów nie zmieniają /api/sprzedaz; odbiór PRZ-042 sprawdza dane instalacji.",
+      "skutek": "Ustawienia raportów nie zmieniają /api/v1/sprzedaz; odbiór PRZ-042 sprawdza dane instalacji.",
       "status": "ZATWIERDZONA POLITYKA WŁAŚCICIELA 02.10.2026 — implementacja nadal oczekuje niezależnego PRZYJĘTE",
       "zweryfikowanoNa": "6104211102b53e5115d49f507fde3a03f209bf44",
       "weryfikacja": {
@@ -8586,7 +8586,7 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "910f1da3e216779ab22d103b1227d6ee58f7e042b0d3b2768f848c2a38e3337d",
+      "sha256": "19a105ae7cbf93f1b20530768a34c59dc05ed75e331ddf83be424272325ec7c1",
       "normalizacja": "LF"
     },
     {
@@ -8663,7 +8663,7 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "910f1da3e216779ab22d103b1227d6ee58f7e042b0d3b2768f848c2a38e3337d",
+      "sha256": "19a105ae7cbf93f1b20530768a34c59dc05ed75e331ddf83be424272325ec7c1",
       "normalizacja": "LF"
     },
     {
@@ -9261,7 +9261,7 @@
       "straznikBezZmian": true
     }
   },
-  "zrodla": 407,
+  "zrodla": 396,
   "odciskiZrodel": [
     {
       "path": "scripts/oms-import-istniejacy-podjazd-dpd.mjs",
@@ -10149,11 +10149,6 @@
       "normalizacja": "LF"
     },
     {
-      "path": "src/domena/tracking.js",
-      "sha256": "636ed987712eb4a79b21a7cb63f0fec2630e31f0b4b0c42fac9b905eb0f9edf1",
-      "normalizacja": "LF"
-    },
-    {
       "path": "src/domena/typy-kosztow.js",
       "sha256": "d9be6ff7822b55d39516e0233dd668ae5daa002567b804ae8a54a7e467d137f7",
       "normalizacja": "LF"
@@ -10199,11 +10194,6 @@
       "normalizacja": "LF"
     },
     {
-      "path": "src/domena/wiazanie-kanalu.js",
-      "sha256": "3dcdbf066575868e45d615205b8dbd3a7602ce8a22625ef4f45e98b94e06961c",
-      "normalizacja": "LF"
-    },
-    {
       "path": "src/domena/wiek-zamowienia.js",
       "sha256": "5c602b3123d49fbd8cd63f6fd090fa88bcf9c5a75c1786e814b6d29eaf3ff1ed",
       "normalizacja": "LF"
@@ -10234,16 +10224,6 @@
       "normalizacja": "LF"
     },
     {
-      "path": "src/domena/z-panelu/dates.js",
-      "sha256": "5e60deee00eb1581f3b067a0a07f558e4999fc8d6ad17d89cf6f3550ac8cd998",
-      "normalizacja": "LF"
-    },
-    {
-      "path": "src/domena/z-panelu/ekspres-kwota.js",
-      "sha256": "c1253a56e8c1c919b1c35b8c4a1d5bb77e486c33092b2e66b814fc5afc54d5fc",
-      "normalizacja": "LF"
-    },
-    {
       "path": "src/domena/z-panelu/nazwa-osoby.js",
       "sha256": "209e6578c5173cd13fd7c4fb214a8dc87aba268cb107770b8dd1e0b7da66400c",
       "normalizacja": "LF"
@@ -10251,16 +10231,6 @@
     {
       "path": "src/domena/z-panelu/oms-order.js",
       "sha256": "f9f7d813b69e5d8f42ce39fc370e02465f74b2b9a892a4301d01825b43a6398d",
-      "normalizacja": "LF"
-    },
-    {
-      "path": "src/domena/z-panelu/quote-text.js",
-      "sha256": "d316e430f476901d7d8841c9104558c5cab7f3175256437f71317d8b3c55e7e6",
-      "normalizacja": "LF"
-    },
-    {
-      "path": "src/domena/z-panelu/quote-validity.js",
-      "sha256": "0caa8adf961692fc1b89f8ec4f8586b88ca2994721be015e9e7f4aa93703e0c8",
       "normalizacja": "LF"
     },
     {
@@ -10534,18 +10504,8 @@
       "normalizacja": "LF"
     },
     {
-      "path": "src/moduly/kanaly/services/wiazanie-kanalow.js",
-      "sha256": "55b1669f1c43a5dee73cf399d88e5af572fdeb06a0b078e62665e7ff491654d5",
-      "normalizacja": "LF"
-    },
-    {
       "path": "src/moduly/kanaly/services/zdjecia-allegro.js",
       "sha256": "e36eb72941d47df8f23d6275dd0b0113bd5d945bc16816f67a17b37eca782dfc",
-      "normalizacja": "LF"
-    },
-    {
-      "path": "src/moduly/kanaly/trasy.ts",
-      "sha256": "446c8a29072e0e7ed95fd6e59eabac5e33c3a87d72cae7fe1c37c06d85e1aa23",
       "normalizacja": "LF"
     },
     {
@@ -10576,11 +10536,6 @@
     {
       "path": "src/moduly/koszty/services/paczka-dla-biura.js",
       "sha256": "3fda1eef6d502cd24f236a9d11a0beb490edc5ec47b04c6e9b615d1f7d7e825a",
-      "normalizacja": "LF"
-    },
-    {
-      "path": "src/moduly/koszty/services/przerysowanie-kosztow.js",
-      "sha256": "df65fdb171389d6cad047deede8d286685dccf12aa3a5efcd159c2d1bdbca21d",
       "normalizacja": "LF"
     },
     {
@@ -11045,17 +11000,7 @@
     },
     {
       "path": "src/oms/allegro/tokeny.js",
-      "sha256": "874003f879c9eb1cc1b378f13f472444cc2194f1f1ed769498bf7b39eaecc815",
-      "normalizacja": "LF"
-    },
-    {
-      "path": "src/oms/allegro/wiazanie.js",
-      "sha256": "1ed7d8646b51b4874de9cbefe375115c0605e54204f0f447ce668f1f2ec65b6b",
-      "normalizacja": "LF"
-    },
-    {
-      "path": "src/oms/apilo/client.js",
-      "sha256": "39a29880236b9680fe74d4fad778a801f0cc14cfd2b838e208689e31d42a356f",
+      "sha256": "ad476dba000b326c8fcf5b08b0f8da5a301c31ef3e41e53a78fd116a352ddd76",
       "normalizacja": "LF"
     },
     {

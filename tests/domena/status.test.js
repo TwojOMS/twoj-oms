@@ -290,7 +290,7 @@ describe('anulowane z żywą przesyłką albo fakturą', () => {
 // pokazywało „Nowe" i było „Indywidualne" na zawsze, równolegle. Liczniki w panelu bocznym
 // się przez to nie sumowały.
 //
-// ⚠️ ZNACZNIK KANAŁU ZOSTAJE NIETKNIĘTY W BAZIE — czyta go `/api/sprzedaz` (kanał
+// ⚠️ ZNACZNIK KANAŁU ZOSTAJE NIETKNIĘTY W BAZIE — czyta go `/api/v1/sprzedaz` (kanał
 // SKLEP_INDYWIDUALNE) i filtr kanału. Zmienia się WYŁĄCZNIE drabinka statusu.
 describe('status „indywidualne”', () => {
   it('zamówienie z panelu indywidualnego, bez żadnych faktów → indywidualne, nie nowe', () => {

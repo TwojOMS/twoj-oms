@@ -3,15 +3,20 @@
 //
 // Test przechodzi src/**/*.{js,ts,mjs,ejs} (bez komentarzy — to samo wycinanie co odsylacze-src.test.js)
 // i docs/**/*.md (bez docs/plany, docs/archiwum, plików prz* i rejestru docs/zadania.md), a także deploy/**/*.md
-// oraz wiersze „#” w .env.example i deploy/klient/*.yaml. Każde
-// „Ustawienia → A” / „Ustawieniach → A” (opcjonalnie „→ B”) musi wskazywać:
+// oraz wiersze „#” w .env.example i deploy/klient/*.yaml. PRZ-174 B1: także docs/konfiguracja.json (opisy zmiennych
+// trafiają do panelu i docs/konfiguracja.md), scripts/ (napisy na ekran; bez jednorazowych prz*/mutacje-*)
+// i deploy/**/*.{json,sh,mjs} (np. deploy/klient/aktualizuj.sh, deploy/drukarka/config*.przyklad.json). Każde
+// „Ustawienia → A” / „Ustawieniach → A” / „z Ustawień → A” / „Ustawieniami → A” (opcjonalnie „→ B”, „→ C”) musi wskazywać:
 // - A = etykieta działu z DZIALY_USTAWIEN (src/domena/dzialy-ustawien.js),
-// - B = etykieta zakładki tego działu; dla działu Integracje także `nazwa` z katalogu integracji.
-// Sam dział bez „Ustawienia” („Otwórz Integracje → Reklamy”) też musi mieć poprawne B.
-// Import z odsylacze-src.test.js uruchamia tu także jego dwa testy (jedno źródło wycinania komentarzy).
+// - B = etykieta zakładki tego działu; dla działu Integracje także `nazwa` z katalogu integracji,
+// - C (trzeci poziom) tylko tam, gdzie menu go ma: Integracje → Moje połączenia / Dodaj integrację → nazwa integracji;
+//   dalej tylko element ekranu z ELEMENTY_EKRANU („→ ERLI → Metody dostawy”) albo polecenie małą literą („→ połącz kanał”).
+// Strzałka: „→”, „->”, „»” albo „ > ” (ze spacjami). Sam dział bez „Ustawienia” („Otwórz Integracje → Reklamy”) też
+// musi mieć poprawne B. Import z odsylacze-src.test.js uruchamia tu także jego dwa testy (jedno źródło wycinania komentarzy).
 // Etykiety dopasowujemy najdłuższą znaną (dział „Faktury i podatki”, nie „Faktury”), z dowolnym białym znakiem
-// między słowami (akapit w .md bywa złamany w środku etykiety). Ścieżka z wstawką `${…}`/`<%…%>` w miejscu etykiety
-// nie jest sprawdzana (nazwa przychodzi z kodu). Fałszywą zieleń łapie asercja liczby znalezionych ścieżek.
+// między słowami (akapit w .md bywa złamany w środku etykiety) i z literą bez ogonka zamiast polskiej (pliki drukarki
+// są w ASCII: „Zespol i dostep”). Wstawka `${…}`/`<%…%>` w miejscu etykiety nie jest sprawdzana (nazwa przychodzi
+// z kodu), ale to, co stoi po niej („${dzial} → Magazyn”), już tak. Fałszywą zieleń łapią progi liczby ścieżek.
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -36,10 +41,6 @@ const WYJATKI = [
   ['Drukarki i skanery', 'Windows: lista drukarek w ustawieniach systemu (deploy/drukarka)'],
 ];
 
-// Etykiety sprzed przebudowy menu (PRZ-168): na trzecim poziomie („Integracje → Poczta wychodząca → Podpis maili”)
-// nie wolno ich używać — tych pozycji już nie ma.
-const STARE_ETYKIETY = ['Podpis maili', 'Kurierzy', 'Moduł faktur', 'Sklepy i usługi'];
-
 const zamaz = (s) => s.replace(/[^\n]/g, ' ');
 const bezWierszyGwiazdki = (t) => t.split('\n').map((w) => (/^\s*\*/.test(w) ? zamaz(w) : w)).join('\n');
 
@@ -48,9 +49,13 @@ const bezWierszyGwiazdki = (t) => t.split('\n').map((w) => (/^\s*\*/.test(w) ? z
 const tylkoWierszeHash = (t) => t.split('\n')
   .map((w) => (/^\s*#/.test(w) ? w.replace(/^\s*#/, zamaz) : zamaz(w))).join('\n');
 
-/** Tekst do skanu: dla kodu bez komentarzy (numery linii bez zmian), dla .md bez zmian, dla .env/.yaml same „#”. */
+// .json: ucieczki w napisie („\n”, „\"”) zamieniamy na białe znaki tej samej długości, żeby nie kleiły się z etykietą.
+const bezUcieczekJson = (t) => t.replace(/\\[nrt]/g, '  ').replace(/\\"/g, ' "');
+
+/** Tekst do skanu: dla kodu bez komentarzy (numery linii bez zmian), dla .md i .sh bez zmian, dla .env/.yaml same „#”. */
 export function tekstDoSkanu(plik, zrodlo) {
-  if (plik.endsWith('.md')) return zrodlo;
+  if (plik.endsWith('.md') || plik.endsWith('.sh')) return zrodlo;
+  if (plik.endsWith('.json')) return bezUcieczekJson(zrodlo);
   if (/(?:^|[\\/])\.env\.example$|\.ya?ml$/.test(plik)) return tylkoWierszeHash(zrodlo);
   return bezWierszyGwiazdki(plik.endsWith('.ejs') ? bezKomentarzyEjs(zrodlo) : bezKomentarzyJs(zrodlo));
 }
@@ -58,24 +63,30 @@ export function tekstDoSkanu(plik, zrodlo) {
 // Etykiety zakładek z modelu nawigacji (admin + dane demo = komplet, także „System → Dane demo”).
 const ZAKLADKI = new Map(DZIALY_USTAWIEN.map((d) => [d.etykieta,
   modelNawigacjiUstawien(d.zakladki[0].href, { admin: true, daneDemo: true }).zakladki.map((z) => z.etykieta)]));
-const DZIAL_INTEGRACJE = DZIALY_USTAWIEN.find((d) => d.klucz === 'integracje').etykieta;
+const DZIAL_INTEGRACJE = DZIALY_USTAWIEN.find((d) => d.klucz === 'integracje');
 // Integracja planowana nie ma ekranu (karta „wkrótce”), więc nie jest celem ścieżki.
-ZAKLADKI.get(DZIAL_INTEGRACJE).push(...KATALOG_INTEGRACJI.filter((i) => i.dostepnosc !== 'planowana').map((i) => i.nazwa));
+const INTEGRACJE = KATALOG_INTEGRACJI.filter((i) => i.dostepnosc !== 'planowana').map((i) => i.nazwa);
+ZAKLADKI.get(DZIAL_INTEGRACJE.etykieta).push(...INTEGRACJE);
+// Trzeci poziom w menu istnieje tylko pod zakładkami-listami integracji (karta konta na „Moje połączenia”,
+// karta w „Dodaj integrację”) — tam C to nazwa integracji. Etykiety z kodu, nie z ręcznej listy.
+const ZAKLADKI_Z_INTEGRACJAMI = DZIAL_INTEGRACJE.zakladki.map((z) => z.etykieta);
 
 const ucieknij = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const wzorEtykiety = (e) => ucieknij(e).replace(/ /g, '\\s+');
+const OGONKI = { ą: 'a', ć: 'c', ę: 'e', ł: 'l', ń: 'n', ó: 'o', ś: 's', ź: 'z', ż: 'z', Ą: 'A', Ć: 'C', Ę: 'E', Ł: 'L', Ń: 'N', Ó: 'O', Ś: 'S', Ź: 'Z', Ż: 'Z' };
+const wzorEtykiety = (e) => [...e].map((c) => (c === ' ' ? '\\s+' : OGONKI[c] ? `[${c}${OGONKI[c]}]` : ucieknij(c))).join('');
 const wzorListy = (etykiety) => [...new Set(etykiety)].sort((a, b) => b.length - a.length).map(wzorEtykiety).join('|');
 // Ozdoby przed etykietą: markdown (**, _, `), cudzysłów, znacznik HTML (<a …>, <strong>).
 const OZDOBY = String.raw`(?:\*\*?|_|\x60|„|"|“|<[^<>\n]*>|\s)*`;
 const OZDOBY_PO = String.raw`(?:\*\*?|_|\x60|”|"|<\/[a-z]+>)*`;
-const STRZALKA = String.raw`\s*→`;
-const WSTAWKA = String.raw`(?:\$\{|<%)`;
-const POCZATEK = new RegExp(String.raw`Ustawienia(?:ch)?(?![\p{L}\p{N}])${OZDOBY_PO}${STRZALKA}`, 'gu');
+// „>” tylko ze spacjami po obu stronach (inaczej to koniec znacznika HTML albo „=>”/„->” w kodzie).
+const STRZALKA = String.raw`(?:\s*(?:→|->|»)|[ \t]+>(?=[ \t]))`;
+const STRZALKA_PRZED = String.raw`(?:→|->|»|[ \t]>)`;
+const WSTAWKA = String.raw`(?:\$\{[^}\n]*\}|<%[^%]*%>)`;
+const POCZATEK = new RegExp(String.raw`(?<![\p{L}\p{N}])Ustawie(?:nia(?:ch)?|niami|[ńn])(?![\p{L}\p{N}])${OZDOBY_PO}${STRZALKA}`, 'gu');
 const dopasowanie = (wzor) => new RegExp(String.raw`${OZDOBY}(?:(${WSTAWKA})|(${wzor})(?![\p{L}\p{N}]))`, 'uy');
 const DZIAL = dopasowanie(wzorListy([...ZAKLADKI.keys()]));
 const ZAKLADKA = new Map([...ZAKLADKI].map(([dzial, etykiety]) => [dzial, dopasowanie(wzorListy(etykiety))]));
 const DALEJ = new RegExp(String.raw`${OZDOBY_PO}${STRZALKA}`, 'uy');
-const STARA = dopasowanie(wzorListy(STARE_ETYKIETY));
 // Po ostatniej etykiecie ścieżki (dział albo zakładka, bez „→”) zdanie się kończy albo toczy dalej: koniec tekstu
 // lub wiersza, interpunkcja, nawias, cudzysłów, znacznik, a po białych znakach wszystko poza wielką literą
 // i spójnikiem „i”/„oraz” (słowo zdania, nawias, myślnik, „' +” sklejanego napisu, „|” tabeli). Dopisek do etykiety
@@ -88,15 +99,49 @@ const STARA = dopasowanie(wzorListy(STARE_ETYKIETY));
 const SPOJNIK = String.raw`(?:i|oraz)\s(?!${OZDOBY}(?:${wzorListy([...ZAKLADKI.keys(), 'Analizy i finanse'])})${OZDOBY_PO}\s*→)`;
 const KONIEC_ETYKIETY = new RegExp(String.raw`(?:${OZDOBY_PO.replace(/\*$/, '+')}|${OZDOBY_PO}(?:$|[ \t]*\n(?![\s#*]*${SPOJNIK})`
   + String.raw`|[.,;:!?…)\]”"'<]|\s+(?!\s)(?!${SPOJNIK})(?!\p{Lu})))`, 'uy');
+// PRZ-174 B1 (M14): dopisek małą literą sklejony z etykietą w nieistniejącą nazwę — JEDNO słowo (albo „i”/„oraz”
+// + jedno słowo) w tym samym wierszu, zaraz po nim koniec zdania, wiersza, napisu albo znacznika:
+// „→ Włączone funkcje sklepu.”, „**Ustawienia → Firma** i logo”. Zdanie, które toczy się dalej, przechodzi:
+// „→ Allegro tego kanału.” (dwa słowa), „→ Firma uzupełnij NIP” (dalej słowo), „→ KSeF sprawdź, czy…” (po słowie
+// przecinek, „;” albo „:” — zdanie biegnie dalej), „→ Fakturownia ponownie.” (słowo zdania, nie nazwy: krótka lista
+// przysłówków z tekstów repo). Ozdoba zamykająca („**”, „</a>”) nie zwalnia z tego sprawdzenia.
+const SLOWA_ZDANIA = ['ponownie', 'jeszcze', 'też', 'także', 'teraz', 'potem', 'najpierw', 'wcześniej', 'ręcznie'];
+const DOPISEK = new RegExp(String.raw`${OZDOBY_PO}[ \t]+(?:(?:i|oraz)[ \t]+)?(?!(?:${SLOWA_ZDANIA.join('|')})(?![\p{L}\p{N}]))`
+  + String.raw`\p{Ll}[\p{L}\p{N}-]*${OZDOBY_PO}(?:$|[ \t]*\n|[.!?…)\]”"'\x60<])`, 'uy');
 // Wszystkie etykiety menu: zakładka, po której stoi dalszy ciąg innej etykiety („Kopie zapasowe → Historia logowań”
 // — „Historia logowań” jest w Zespół i dostęp), to pomyłka działu, choć dopisek jest z małej litery.
+const KAZDA_ZAKLADKA = dopasowanie(wzorListy([...ZAKLADKI.values()].flat()));
 const KAZDA_ETYKIETA = dopasowanie(wzorListy([...ZAKLADKI.keys(), ...[...ZAKLADKI.values()].flat()]));
-// Dział bez przedrostka („Otwórz Integracje → Reklamy”): ten sam wymóg dla B. Pomijamy dział, przed którym stoi „→”
-// — to część ścieżki „Ustawienia → …”, sprawdzanej wyżej.
-const GOLY_DZIAL = new RegExp(String.raw`(?<!→${OZDOBY})(?<![\p{L}\p{N}])(${wzorListy([...ZAKLADKI.keys()])})${OZDOBY_PO}${STRZALKA}`, 'gu');
+// Elementy ekranu (sekcja, przycisk), do których prowadzi dalszy ciąg ścieżki: menu ich nie ma, ale ekran tak
+// („Integracje → ERLI → Metody dostawy”, „Integracje → Poczta wychodząca → Usuń ustawienia poczty”). Klucz = etykieta
+// poprzedniego poziomu (zakładka albo nazwa integracji), wartość = napisy z tego ekranu. Każdy napis musi stać
+// w src/ (osobny test niżej), więc przemianowany przycisk wyrzuci go z listy, a nie zostawi martwego wyjątku.
+export const ELEMENTY_EKRANU = {
+  ERLI: ['Metody dostawy', 'Dodaj konto'],
+  Allegro: ['Dodaj konto'],
+  WooCommerce: ['Dodaj sklep'],
+  DPD: ['Odłącz DPD'],
+  InPost: ['Pobranie przy paczkomatach', 'Odłącz InPost'],
+  'Pobranie przy paczkomatach': ['Mam umowę z InPostem na przesyłki za pobraniem'],
+  'Poczta wychodząca': ['Adres panelu', 'Usuń ustawienia poczty'],
+  'Stany magazynowe': ['Wyłącz stany'],
+  'Automaty systemowe': ['Automatyczna wysyłka do KSeF'],
+};
+const WSZYSTKIE_ELEMENTY = Object.values(ELEMENTY_EKRANU).flat();
+const WSZYSTKIE_ETYKIETY = [...ZAKLADKI.keys(), ...[...ZAKLADKI.values()].flat(), ...WSZYSTKIE_ELEMENTY];
+const ELEMENTY = new Map(Object.entries(ELEMENTY_EKRANU).map(([e, lista]) => [e, dopasowanie(wzorListy(lista))]));
+const TRZECI_POZIOM = dopasowanie(wzorListy(INTEGRACJE));
+const TRZECI_POZIOM_I_ELEMENTY = dopasowanie(wzorListy([...INTEGRACJE, ...WSZYSTKIE_ELEMENTY]));
+const KAZDY_ELEMENT = dopasowanie(wzorListy(WSZYSTKIE_ELEMENTY));
+// Na poziomie ≥ 3 słowo małą literą („→ połącz kanał”, „→ kliknij”) to polecenie, nie pozycja — kończy ścieżkę.
+const POLECENIE = new RegExp(String.raw`${OZDOBY}\p{Ll}`, 'uy');
+// Dział bez przedrostka („Otwórz Integracje → Reklamy”): ten sam wymóg dla B. Pomijamy dział, przed którym stoi
+// strzałka — to część ścieżki „Ustawienia → …”, sprawdzanej wyżej.
+const GOLY_DZIAL = new RegExp(String.raw`(?<!${STRZALKA_PRZED}${OZDOBY})(?<![\p{L}\p{N}])(${wzorListy([...ZAKLADKI.keys()])})${OZDOBY_PO}${STRZALKA}`, 'gu');
 
 const sciezkaDoRaportu = (tekst, od) => `Ustawienia → ${tekst.slice(od, od + 70).replace(/\s+/g, ' ').trim()}`;
-const normalizuj = (dziala) => DZIALY_USTAWIEN.find((d) => new RegExp(`^${wzorEtykiety(d.etykieta)}$`, 'u').test(dziala)).etykieta;
+const kanoniczna = (lista, etykieta) => lista.find((e) => new RegExp(`^${wzorEtykiety(e)}$`, 'u').test(etykieta));
+const NIEZNANA = Symbol('wstawka');
 
 function dopasuj(wzor, tekst, od) {
   wzor.lastIndex = od;
@@ -105,29 +150,55 @@ function dopasuj(wzor, tekst, od) {
   return { wstawka: Boolean(m[1]), etykieta: m[2]?.replace(/\s+/g, ' '), koniec: wzor.lastIndex };
 }
 
-/** „… → B → C”, gdzie C to etykieta sprzed przebudowy menu. */
-function staryTrzeciPoziom(tekst, b) {
-  if (b.wstawka) return false;
-  DALEJ.lastIndex = b.koniec;
-  if (!DALEJ.exec(tekst)) return false;
-  const c = dopasuj(STARA, tekst, DALEJ.lastIndex);
-  return Boolean(c && !c.wstawka);
-}
-
 function dobryKoniec(tekst, od) {
+  DOPISEK.lastIndex = od;
+  if (DOPISEK.test(tekst)) return false;
   KONIEC_ETYKIETY.lastIndex = od;
   return KONIEC_ETYKIETY.test(tekst);
 }
 
-/** Zakładka B (dopasowana od `od`) nie istnieje, wskazuje starą pozycję albo ma dopisek po sobie. */
-function zlaZakladka(tekst, b, od) {
-  if (!b) return true;
-  if (b.wstawka) return false;
-  DALEJ.lastIndex = b.koniec;
-  if (DALEJ.exec(tekst)) return staryTrzeciPoziom(tekst, b);
-  const dluzsza = dopasuj(KAZDA_ETYKIETA, tekst, od);
-  if (dluzsza && dluzsza.koniec > b.koniec) return true;
-  return !dobryKoniec(tekst, b.koniec);
+/**
+ * Wzór etykiet dozwolonych na danym poziomie ścieżki albo null, gdy menu ani ekran takiego poziomu nie mają.
+ * `poprzednia` = kanoniczna etykieta poprzedniego poziomu (NIEZNANA po wstawce).
+ */
+function kandydaci(poziom, dzial, poprzednia) {
+  if (poziom === 1) return DZIAL;
+  if (poziom === 2) return dzial === NIEZNANA ? KAZDA_ZAKLADKA : ZAKLADKA.get(dzial);
+  if (poprzednia === NIEZNANA) return poziom === 3 ? TRZECI_POZIOM_I_ELEMENTY : KAZDY_ELEMENT;
+  if (poziom === 3 && (dzial === NIEZNANA || dzial === DZIAL_INTEGRACJE.etykieta)
+    && ZAKLADKI_Z_INTEGRACJAMI.includes(poprzednia)) return TRZECI_POZIOM;
+  return ELEMENTY.get(poprzednia) ?? null;
+}
+
+/**
+ * Ścieżka od pozycji `od` (poziom 1 = dział; dla gołego działu poziom 2 ze znanym działem) wskazuje pozycje z menu.
+ * Każdy kolejny poziom po „→” jest sprawdzany, także po wstawce; po ostatniej etykiecie — koniec bez dopisku.
+ */
+function sciezkaDobra(tekst, od, poziomStart, dzialStart) {
+  let poziom = poziomStart;
+  let dzial = dzialStart;
+  let poprzednia = dzialStart;
+  let poz = od;
+  for (;;) {
+    if (poziom >= 3) {
+      POLECENIE.lastIndex = poz;
+      if (POLECENIE.test(tekst)) return true;
+    }
+    const wzor = kandydaci(poziom, dzial, poprzednia);
+    if (!wzor) return false;
+    const e = dopasuj(wzor, tekst, poz);
+    if (!e) return false;
+    if (!e.wstawka && poziom > 1) {
+      const dluzsza = dopasuj(KAZDA_ETYKIETA, tekst, poz);
+      if (dluzsza && !dluzsza.wstawka && dluzsza.koniec > e.koniec) return false;
+    }
+    poprzednia = e.wstawka ? NIEZNANA : kanoniczna(WSZYSTKIE_ETYKIETY, e.etykieta);
+    if (poziom === 1) dzial = poprzednia;
+    DALEJ.lastIndex = e.koniec;
+    if (!DALEJ.exec(tekst)) return e.wstawka || dobryKoniec(tekst, e.koniec);
+    poz = DALEJ.lastIndex;
+    poziom += 1;
+  }
 }
 
 /**
@@ -142,24 +213,14 @@ export function sprawdzSciezki(tekst) {
     const dalej = tekst.slice(od, od + 80).replace(/\s+/g, ' ').trim().replace(/^(\*\*?|„|")/, '');
     if (WYJATKI.some(([poczatek]) => dalej.startsWith(poczatek))) { wynik.wyjatki += 1; continue; }
     wynik.sprawdzone += 1;
-    const blad = () => wynik.naruszenia.push({ linia, sciezka: sciezkaDoRaportu(tekst, od) });
-    const a = dopasuj(DZIAL, tekst, od);
-    if (!a) { blad(); continue; }
-    if (a.wstawka) continue;
-    DALEJ.lastIndex = a.koniec;
-    if (!DALEJ.exec(tekst)) {
-      if (!dobryKoniec(tekst, a.koniec)) blad();
-      continue;
-    }
-    const b = dopasuj(ZAKLADKA.get(normalizuj(a.etykieta)), tekst, DALEJ.lastIndex);
-    if (zlaZakladka(tekst, b, DALEJ.lastIndex)) blad();
+    if (!sciezkaDobra(tekst, od, 1, null)) wynik.naruszenia.push({ linia, sciezka: sciezkaDoRaportu(tekst, od) });
   }
   for (const m of tekst.matchAll(GOLY_DZIAL)) {
     wynik.sprawdzone += 1;
-    const b = dopasuj(ZAKLADKA.get(normalizuj(m[1])), tekst, m.index + m[0].length);
-    if (zlaZakladka(tekst, b, m.index + m[0].length)) {
+    const od = m.index + m[0].length;
+    if (!sciezkaDobra(tekst, od, 2, kanoniczna([...ZAKLADKI.keys()], m[1].replace(/\s+/g, ' ')))) {
       wynik.naruszenia.push({ linia: tekst.slice(0, m.index).split('\n').length,
-        sciezka: `${m[1].replace(/\s+/g, ' ')} → ${tekst.slice(m.index + m[0].length, m.index + m[0].length + 60).replace(/\s+/g, ' ').trim()}` });
+        sciezka: `${m[1].replace(/\s+/g, ' ')} → ${tekst.slice(od, od + 60).replace(/\s+/g, ' ').trim()}` });
     }
   }
   wynik.naruszenia.sort((x, y) => x.linia - y.linia);
@@ -176,25 +237,39 @@ function pliki(katalog, czyBrac) {
   return wynik;
 }
 
-// Dziś (PRZ-168 A1d) docs/ daje 128 ścieżek; próg z zapasem na skracanie dokumentów.
-const DOCS_MIN = 80;
-// PRZ-168 A1e: .env.example (2 ścieżki) i deploy/ (3) mają własne progi — zepsute wycinanie wierszy „#” albo zgubiony
-// blok deploy w plikiDoSkanu nie może przejść po cichu, bo reszta repo i tak przekracza próg ogólny.
-const ENV_MIN = 2;
-const DEPLOY_MIN = 3;
 const wzgledna = (p) => path.relative(KORZEN, p).split(path.sep).join('/');
+const KONFIGURACJA = 'docs/konfiguracja.json';
+
+// Grupy plików z własnym progiem: zgubiony skan jednej grupy (zła ścieżka katalogu, zepsute wycinanie) nie może
+// przejść po cichu, bo reszta repo i tak przekracza próg ogólny. Progi z zapasem w dół (ok. połowa stanu z dnia
+// PRZ-174 B1: ogółem 391 — src 132, docs 133, konfiguracja.json 80, scripts 31, deploy 12, .env.example 3; z wiersza
+// „stan skanu” w teście niżej), ale każdy > 0: skaner, który w grupie nic nie widzi, pada.
+const PROGI = { src: 65, docs: 65, konfiguracja: 40, scripts: 15, deploy: 6, env: 1 };
+const OGOLEM_MIN = 195;
+
+function grupa(p) {
+  const w = wzgledna(p);
+  if (w === KONFIGURACJA) return 'konfiguracja';
+  if (w === '.env.example') return 'env';
+  return w.split('/')[0];
+}
 
 function plikiDoSkanu() {
   const src = pliki(path.join(KORZEN, 'src'), (p) => KOD.has(path.extname(p)));
   const docs = pliki(path.join(KORZEN, 'docs'), (p, nazwa) => nazwa.endsWith('.md') && !nazwa.startsWith('prz')
     && !POMIJANE_DOKUMENTY.has(wzgledna(p)) && !/^docs\/(plany|archiwum)\//.test(wzgledna(p)));
-  // PRZ-168 D5: instrukcje instalacji czyta obcy sprzedawca tak samo jak docs/.
+  // PRZ-174 B1: scripts/ — napisy wypisywane na ekran i wpisywane do dokumentów (zmienne-tabela.mjs → docs/zmienne.md).
+  // Pomijamy jednorazowe skrypty zadań (prz*, mutacje-*): cytują stare teksty i celowo zepsute wersje.
+  const scripts = pliki(path.join(KORZEN, 'scripts'), (p, nazwa) => /\.(?:m?js|ts|sh)$/.test(nazwa)
+    && !/^(?:prz|mutacje-)/.test(nazwa) && !wzgledna(p).startsWith('scripts/testy/'));
+  // PRZ-168 D5: instrukcje instalacji czyta obcy sprzedawca tak samo jak docs/; PRZ-174 B1: także skrypty
+  // i przykładowe pliki konfiguracji w deploy/ (echo na ekran, zdania wpisywane do produkcja.env).
   const deploy = [
-    ...pliki(path.join(KORZEN, 'deploy'), (p, nazwa) => nazwa.endsWith('.md')),
+    ...pliki(path.join(KORZEN, 'deploy'), (p, nazwa) => /\.(?:md|json|sh|mjs)$/.test(nazwa)),
     ...pliki(path.join(KORZEN, 'deploy/klient'), (p, nazwa) => /\.ya?ml$/.test(nazwa) && path.dirname(p) === path.join(KORZEN, 'deploy/klient')),
     path.join(KORZEN, '.env.example'),
   ];
-  return [...src, ...docs, ...deploy];
+  return [...src, ...docs, path.join(KORZEN, KONFIGURACJA), ...scripts, ...deploy];
 }
 
 describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z menu Ustawień', () => {
@@ -220,6 +295,31 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
       'Otwórz Integracje → Moje połączenia albo Faktury i podatki → KSeF.',
       'W Ustawienia → Firma uzupełnij NIP, a w Ustawieniach → System (Stan systemu) sprawdź połączenia',
       '**Ustawienia → Kopie zapasowe** — tu kopie.',
+      // PRZ-174 B1 — nowe formy, po jednym dobrym przypadku na każdą
+      'Dane wpiszesz z Ustawień → Firma.', // „z Ustawień →”
+      'Zarządzasz Ustawieniami → Zespół i dostęp → Użytkownicy.', // „Ustawieniami →”
+      'Rachunek w Ustawienia -> Firma -> Rachunek bankowy.', // „->”
+      'KSeF w Ustawienia > Faktury i podatki > KSeF.', // „ > ”
+      'Konto w Ustawienia » Integracje » Moje połączenia » Allegro.', // „»”
+      'Klucz z Ustawienia -> Zespol i dostep -> Klucze API, zakres druk.', // ASCII bez ogonków (deploy/drukarka)
+      'Dodaj w Ustawienia → Integracje → Dodaj integrację → GUS.', // trzeci poziom z menu
+      'Otwórz Integracje -> Moje połączenia, a potem kartę konta.', // goły dział ze strzałką ASCII
+      'Moduł włączysz w Ustawieniach → System → Włączone funkcje, sekcja Koszty.', // zdanie toczy się dalej
+      'W Ustawieniach → System → Włączone funkcje włączysz moduł kosztów.', // więcej niż jedno słowo po etykiecie
+      'Otwórz **Ustawienia → Integracje → Fakturownia** i kliknij **Sprawdziłem**.', // „**” + zdanie dalej
+      '**Ustawienia → Firma** — dane i logo.', // „**” + myślnik
+      'Wróć do Ustawienia → ${dzial} → Stany magazynowe.', // po wstawce dobra zakładka
+      'Wróć do Ustawienia → <%= dzial %> → Klucze API.', // po wstawce EJS dobra zakładka
+      'Wróć do Ustawienia → Integracje → ${zakladka} → inFakt.', // po wstawce dobra integracja
+      'if (Ustawienia => 1) x();', // „=>” w kodzie to nie strzałka
+      'Połącz ponownie w Ustawieniach → Integracje → Fakturownia ponownie.', // słowo zdania, nie dopisek
+      'W Ustawieniach → Faktury i podatki → KSeF sprawdź, czy token działa.', // po słowie przecinek — zdanie dalej
+      'Ustawienia → Integracje → ERLI → Metody dostawy.', // element ekranu integracji
+      'Ustawienia → Integracje → Dodaj integrację → Allegro → „Dodaj konto”.', // element na czwartym poziomie
+      'Ustawienia → Integracje → InPost → Pobranie przy paczkomatach → Mam umowę z InPostem na przesyłki za pobraniem.', // element w elemencie
+      'Ustawienia → Integracje → Poczta wychodząca → Usuń ustawienia poczty.', // element ekranu zakładki
+      'Ustawienia → Integracje → Allegro → połącz kanał z kontem.', // mała litera na poziomie ≥ 3 = polecenie
+      'Wróć do Ustawienia → ${dzial} → ${zakladka} → Wyłącz stany.', // po wstawce znany element
     ];
     const zle = [
       'Włącz w Ustawienia → Moduły.',
@@ -250,6 +350,26 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
       'Ustawienia → Integracje i Kurierzy → DPD.',
       'Ustawienia → Integracje → DPD i Kurierzy → InPost.',
       'Ustawienia → Firma oraz Rachunek → Rachunek bankowy.',
+      // PRZ-174 B1 — nowe formy, po jednym złym przypadku na każdą
+      'włącz je z Ustawień → Magazyn.', // M05a
+      'Zarządzasz Ustawieniami → Konta.', // „Ustawieniami →”
+      'włącz je w Ustawieniach -> Magazyn.', // M05b
+      'włącz je w Ustawieniach > Magazyn.', // M05e
+      'włącz je w Ustawieniach » Magazyn.', // „»”
+      'w Ustawieniach → Zamówienia i magazyn → Stany magazynowe → Progi alarmowe.', // M05c — trzeci poziom spoza menu
+      'Ustawienia → Integracje → Moje połączenia → Sklep.', // trzeci poziom: nie nazwa integracji
+      'Ustawienia → Integracje → Moje połączenia → ERLI → Klucz.', // czwarty poziom
+      'z Ustawień → Zamówienia i magazyn → Magazyn.', // M05d — dobry dział, zła zakładka
+      'Otwórz Integracje -> Reklamy.', // goły dział ze strzałką ASCII
+      'włączysz go w Ustawieniach → System → Włączone funkcje sklepu.', // M14
+      '<a href="/ustawienia/moduly">Ustawienia → System → Włączone funkcje sklepu</a>', // M14 przed znacznikiem
+      '**Ustawienia → Firma** i logo', // „**” nie zwalnia z dopisku
+      'Wróć do Ustawienia → ${dzial} → Magazyn.', // po wstawce zła zakładka
+      'Wróć do Ustawienia → <%= dzial %> → Magazyn.', // po wstawce EJS zła zakładka
+      'Wróć do Ustawienia → Integracje → ${zakladka} → Klucz.', // po wstawce trzeci poziom spoza menu
+      'Ustawienia → Faktury i podatki → Program do faktur → Wysyłka do KSeF.', // B4b — zakładka bez takiego elementu
+      'Ustawienia → Integracje → DPD → Dodaj konto.', // element z innego ekranu
+      'Ustawienia → Integracje → ERLI → Metody dostawy → Kurier.', // poziom dalej niż ekran
     ];
     const zgloszone = (zdanie) => sprawdzSciezki(zdanie).naruszenia.map((n) => n.sciezka);
     for (const zdanie of dobre) expect(zgloszone(zdanie), zdanie).toEqual([]);
@@ -261,6 +381,24 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
     expect(sprawdzSciezki(tekstDoSkanu('.env.example', '# Ustawienia → System\n# i moduły.')).naruszenia).toHaveLength(1);
   });
 
+  it('PRZ-174 B1: pliki .json i .sh — ucieczki w napisie JSON, cały skrypt powłoki', () => {
+    const json = '{\n  "skutekBraku": "Wysyłkę włączysz w Ustawienia → Program do faktur → Wysyłka do KSeF."\n}';
+    expect(sprawdzSciezki(tekstDoSkanu('docs/konfiguracja.json', json)).naruszenia.map((n) => n.linia)).toEqual([2]);
+    const jsonDobry = '{ "opis": "Wpisz w \\"Ustawienia → Firma\\"\\nDane z panelu wygrywają." }';
+    const wynik = sprawdzSciezki(tekstDoSkanu('x.json', jsonDobry));
+    expect(wynik.naruszenia).toEqual([]);
+    expect(wynik.sprawdzone).toBe(1);
+    const sh = '# wpisz w panelu (Ustawienia → Firma)\necho "albo w panelu (Ustawienia → Magazyn)"';
+    expect(sprawdzSciezki(tekstDoSkanu('deploy/klient/x.sh', sh)).naruszenia.map((n) => n.linia)).toEqual([2]);
+  });
+
+  it('PRZ-174 B1: elementy ekranu z ELEMENTY_EKRANU istnieją w src/ (lista nie butwieje)', () => {
+    const zrodla = pliki(path.join(KORZEN, 'src'), (p) => KOD.has(path.extname(p)))
+      .map((p) => fs.readFileSync(p, 'utf8')).join('\n');
+    const brak = Object.values(ELEMENTY_EKRANU).flat().filter((e) => !zrodla.includes(e));
+    expect(brak, 'element ekranu, którego nie ma w żadnym pliku src/ — usuń go z ELEMENTY_EKRANU').toEqual([]);
+  });
+
   it('w komentarzu kodu ścieżka nie jest sprawdzana, w napisie jest', () => {
     const js = "// Ustawienia → Moduły\nconst t = 'Ustawienia → Moduły';";
     expect(sprawdzSciezki(tekstDoSkanu('x.js', js)).naruszenia.map((n) => n.linia)).toEqual([2]);
@@ -270,24 +408,18 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
 
   it('każda ścieżka wskazuje dział i zakładkę z menu', () => {
     const naruszenia = [];
+    const liczby = { src: 0, docs: 0, konfiguracja: 0, scripts: 0, deploy: 0, env: 0 };
     let sprawdzone = 0;
-    let zDocs = 0;
-    let zEnv = 0;
-    let zDeploy = 0;
     for (const plik of plikiDoSkanu()) {
       const wynik = sprawdzSciezki(tekstDoSkanu(plik, fs.readFileSync(plik, 'utf8')));
       sprawdzone += wynik.sprawdzone;
-      if (wzgledna(plik).startsWith('docs/')) zDocs += wynik.sprawdzone;
-      if (wzgledna(plik) === '.env.example') zEnv += wynik.sprawdzone;
-      if (wzgledna(plik).startsWith('deploy/')) zDeploy += wynik.sprawdzone;
-      for (const n of wynik.naruszenia) naruszenia.push(`${path.relative(KORZEN, plik)}:${n.linia}: ${n.sciezka}`);
+      liczby[grupa(plik)] += wynik.sprawdzone;
+      for (const n of wynik.naruszenia) naruszenia.push(`${wzgledna(plik)}:${n.linia}: ${n.sciezka}`);
     }
     expect(naruszenia, `ścieżki do pozycji, których nie ma w menu Ustawień:\n${naruszenia.join('\n')}`).toEqual([]);
-    // kontrola skanera: inaczej pusty skan dałby zieleń
-    expect(sprawdzone).toBeGreaterThan(50);
-    // osobno docs/: bez tego progu zgubiony skan docs/ przeszedłby, bo src/ sam ma ponad 50 ścieżek
-    expect(zDocs).toBeGreaterThan(DOCS_MIN);
-    expect(zEnv, '.env.example').toBeGreaterThanOrEqual(ENV_MIN);
-    expect(zDeploy, 'deploy/').toBeGreaterThanOrEqual(DEPLOY_MIN);
+    // kontrola skanera: inaczej pusty skan dałby zieleń; osobno każda grupa (stan skanu w komunikacie)
+    const stan = `stan skanu: ogółem ${sprawdzone}, ${JSON.stringify(liczby)}`;
+    expect(sprawdzone, stan).toBeGreaterThanOrEqual(OGOLEM_MIN);
+    for (const [g, min] of Object.entries(PROGI)) expect(liczby[g], `${g} — ${stan}`).toBeGreaterThanOrEqual(min);
   });
 });

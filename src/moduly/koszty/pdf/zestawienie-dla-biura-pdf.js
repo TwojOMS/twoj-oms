@@ -200,12 +200,6 @@ function kolumnyZ(czesc) {
  */
 export const UKLAD_KOLUMN = { sprzedaz: kolumnyZ('sprzedaz'), koszty: kolumnyZ('koszty') };
 
-/** Rozmiar czcionki tabeli — eksportowany razem z ukladem, bo bez niego szerokosci nic nie znacza. */
-export const ROZMIAR_TABELI = ROZMIAR;
-
-/** Prawa krawedz tresci — granica, ktorej zadna kolumna nie ma prawa przekroczyc. */
-export const PRAWA_KRAWEDZ = R;
-
 const zwykly = (doc, rozmiar = ROZMIAR, kolor = CZARNY) => doc.font(FONT).fontSize(rozmiar).fillColor(kolor);
 const gruby = (doc, rozmiar = ROZMIAR, kolor = CZARNY) => doc.font(FONT_GRUBY).fontSize(rozmiar).fillColor(kolor);
 

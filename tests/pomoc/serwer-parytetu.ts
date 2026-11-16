@@ -49,7 +49,7 @@ export function buildOmsServer(o: Record<string, any>) {
     'raporty.config': {...configRaportowFixture, ...config.raporty},
     'marketing.config':config,
   });
-  for(const key of ['poller','stanyKanalow','wiazanieKanalow'])if(Object.hasOwn(o,key))nadpisania[`kanaly.${key}`]=o[key];
+  for(const key of ['poller','stanyKanalow'])if(Object.hasOwn(o,key))nadpisania[`kanaly.${key}`]=o[key];
   for(const key of ['czuwaczKampanii','czuwaczReklam','reklamy'])if(Object.hasOwn(o,key))nadpisania[`marketing.${key}`]=o[key];
   if(Object.hasOwn(o,'lacznosc'))nadpisania['ustawienia.lacznosc']=o.lacznosc;
   for(const key of ['wiadomosci','klienciWiadomosci','pollerWiadomosci','czuwaczFormulki','odswiezanieSpraw'])if(Object.hasOwn(o,key))nadpisania[`wiadomosci.${key}`]=o[key];

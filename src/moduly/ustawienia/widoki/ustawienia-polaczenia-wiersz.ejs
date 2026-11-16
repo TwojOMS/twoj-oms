@@ -11,8 +11,7 @@
    if (p.wysylkaAllegro) czesci.push('Wysyłam z Allegro: ' + (p.wysylkaAllegro === 'wlaczona' ? 'włączone' : 'wyłączone'));
    const linia = czesci.join(' · ');
    const problem = p.stan === 'blad' || p.stan === 'uwaga';
-   const wiazanie = p.usluga === 'allegro' ? kanal?.wiazanie : null;
-   const polacz = p.usluga === 'allegro' && !wiazanie && kanal?.stan.wolnoWiazac;
+   const polacz = p.usluga === 'allegro' && kanal?.stan.wolnoWiazac;
    const kiedy = p.czasOdczytu ? fmtKiedy(p.czasOdczytu) : ''; %>
 <li class="pol-wiersz<%= modyfikator %>" id="<%= idWiersza %>" data-usluga="<%= p.usluga %>">
 <span class="pol-logo"><% const inicjal = { ksef: 'K', gus: 'G', meta: 'M' }[p.usluga]; if (inicjal) { %><span class="pol-inicjal" aria-hidden="true"><%= inicjal %></span><% } else if (u) { %><img src="/public<%= u.logo %>" alt="" width="40" height="40"><% } %></span>
@@ -20,7 +19,6 @@
 <p class="pol-nazwa"><% if (p.akcja) { %><a href="<%= p.akcja.href %>"><%= tytul %></a><% } else { %><%= tytul %><% } %></p>
 <% if (linia) { %><p class="pol-konto"><%= linia.charAt(0).toUpperCase() + linia.slice(1) %></p><% } %>
 <% if (problem && p.komunikat) { %><p class="pol-komunikat pol-komunikat--<%= p.stan %>"><%= p.komunikat %></p><% } %>
-<% if (wiazanie) { %><p class="pol-komunikat pol-komunikat--uwaga">Wiązanie w toku. Zaloguj się na właściwe konto Allegro: <a href="<%= wiazanie.adres %>" target="_blank" rel="noopener noreferrer">Otwórz stronę Allegro</a>. Kod: <strong><%= wiazanie.userCode %></strong></p><% } %>
 </div>
 <div class="pol-stan-kol"><span class="pol-stan<%= pastylka %>"><span class="pol-kropka" aria-hidden="true"></span><%= p.etykietaStanu %></span><% if (kiedy) { %>
 <span class="pol-czas">Ostatni udany odczyt: <time datetime="<%= p.czasOdczytu %>"><%= kiedy %></time></span><% } %></div>

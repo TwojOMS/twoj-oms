@@ -55,9 +55,19 @@ async function porownaj(stara, nowa, status, headers = odczyt) {
 describe('Przeniesione odczyty: Basic /api i klucz /api/v1', () => {
   for (const [nazwa, stara, nowa, zakres] of trasy) {
     it(`${nazwa}: identyczny status i pełne ciało`, async () => {
-      const wynik = await porownaj(stara(), nowa?.(), 200, zakres === 'sprzedaz:odczyt' ? sprzedaz : odczyt);
-      if (nazwa === 'sprzedaż') expect(wynik.zamowienia).toHaveLength(2);
-      else expect(wynik.id).toBe(id);
+      if (nazwa === 'sprzedaż') {
+        // Stara trasa `/api/sprzedaz` zniknęła (PRZ-171 poz. 12) — porównanie stary=nowy
+        // byłoby tautologią (ten sam handler), więc v1 sprawdzamy dosłownym ciałem.
+        const r = await app.inject({ url: `/api/v1${stara()}`, headers: sprzedaz });
+        expect(r.statusCode).toBe(200);
+        expect(r.json()).toEqual({ zamowienia: [
+          { numer: '701', kanal: 'SKLEP', kwotaBrutto: '123.00', dataZlozenia: '2026-11-01T10:00:00.000Z', dzien: '2026-11-01' },
+          { numer: '701', kanal: 'SKLEP', kwotaBrutto: '99.00', dataZlozenia: '2026-11-01T11:00:00.000Z', dzien: '2026-11-01' },
+        ] });
+        return;
+      }
+      const wynik = await porownaj(stara(), nowa?.(), 200, odczyt);
+      expect(wynik.id).toBe(id);
     });
     it(`${nazwa}: inny zakres daje 403 brak_zakresu`, async () => {
       for (const headers of [druk, zakres === 'sprzedaz:odczyt' ? odczyt : sprzedaz]) {
@@ -87,9 +97,21 @@ describe('Przeniesione odczyty: Basic /api i klucz /api/v1', () => {
   ])('%s: zachowuje błędy starej trasy', async (stara, nowa, status) => {
     await porownaj(stara, nowa, status);
   });
+  it('stary GET /api/sprzedaz zniknął: poprawny Basic dostaje 404 z routera', async () => {
+    // Ten sam Basic przechodzi straznika na zywym odczycie — 404 nizej jest wiec z routera, nie z logowania.
+    const zywy = await app.inject({ url: `/api/zamowienia/${id}/dostawa`, headers: BASIC });
+    expect(zywy.statusCode).toBe(200);
+    const r = await app.inject({ url: '/api/sprzedaz?od=2026-11-01&do=2026-11-03', headers: BASIC });
+    expect(r.statusCode).toBe(404);
+  });
   it.each([
-    '', '?od=2026-11-01', '?od=2026-02-30&do=2026-11-03', '?od=2026-11-03&do=2026-11-01',
-  ])('sprzedaż %s: zachowuje 400 i treść błędu', async query => {
-    await porownaj(`/sprzedaz${query}`, null, 400, sprzedaz);
+    ['', 'Wymagane parametry: od, do (RRRR-MM-DD).'],
+    ['?od=2026-11-01', 'Wymagane parametry: od, do (RRRR-MM-DD).'],
+    ['?od=2026-02-30&do=2026-11-03', 'Niepoprawna data: parametry od, do muszą być istniejącymi dniami (RRRR-MM-DD).'],
+    ['?od=2026-11-03&do=2026-11-01', 'Niepoprawny zakres: parametr od nie może być późniejszy niż do.'],
+  ])('sprzedaż %s: zachowuje 400 i treść błędu', async (query, blad) => {
+    const r = await app.inject({ url: `/api/v1/sprzedaz${query}`, headers: sprzedaz });
+    expect(r.statusCode).toBe(400);
+    expect(r.json()).toEqual({ blad });
   });
 });

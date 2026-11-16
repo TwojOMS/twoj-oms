@@ -15,27 +15,6 @@ import { typKategorii } from './kategorie-kosztow.js';
 // pozycje na kwartal, nie potrzebuje sprzataczki. Zle wpisana firma kosztuje jedna pozycje
 // na liscie wyboru; zle wpisany koszt poprawia sie na ekranie poprawki.
 
-// Trzy firmy, od ktorych faktury przychodza CO MIESIAC — czyli caly powod tej funkcji.
-// Pelne nazwy sa takie, jak na fakturach; kategorie to rozstrzygniecie wlasciciela
-// (13.08.2026), a nie domysl.
-const STARTOWE = [
-];
-
-// ⚠️ `INSERT OR IGNORE`, nigdy `REPLACE` — ta sama granica, co przy kategoriach startowych
-// (db/kategorie-kosztow.js): wgranie chodzi przy KAZDYM starcie kontenera, wiec `REPLACE`
-// cofalby wlascicielowi kazda poprawke nazwy albo kategorii przy najblizszym wdrozeniu,
-// po cichu i bez sladu.
-export function wgrajFirmyStartowe(db) {
-  const wstaw = db.prepare(
-    'INSERT OR IGNORE INTO firmy_reczne (nazwa, sprzedawca, kategoria, typ, dodana_at)'
-    + ' VALUES (?,?,?,?,?)',
-  );
-  const kiedy = new Date().toISOString();
-  for (const [nazwa, sprzedawca, kategoria, typ] of STARTOWE) {
-    wstaw.run(nazwa, sprzedawca, kategoria, typ, kiedy);
-  }
-}
-
 export const wszystkieFirmyReczne = (db) => db.prepare(
   'SELECT nazwa, sprzedawca, kategoria, typ FROM firmy_reczne ORDER BY nazwa',
 ).all();

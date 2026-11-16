@@ -7,7 +7,6 @@ import { METODY_WYSYLKI, ETYKIETY_WYSYLKI } from '../../src/domena/wysylka.js';
 import { kurierzyDoWyboru, metodaNadania, METODY_Z_ZPL, nadanieDaZpl } from '../../src/domena/kurier-nadania.js';
 import { rodzajFormularzaNadania } from '../../src/domena/masowe.js';
 import { PRZEWOZNICY, przewoznikPrzesylki, adresSledzenia } from '../../src/domena/przewoznik-przesylki.js';
-import { linkDoSledzenia } from '../../src/domena/tracking.js';
 import { sledzeniePrzesylki } from '../../src/domena/sledzenie-przesylki.js';
 
 const PELNA: any = { dpd: {}, inpost: {}, allegro_wza: {} };
@@ -200,11 +199,9 @@ describe('przewoźnik przesyłki i linki śledzenia', () => {
   ])('adresSledzenia(%s)', (klucz, adres) => {
     expect(adresSledzenia(klucz, 'X1')).toBe(adres);
   });
-  it('linkDoSledzenia — DPD z typ=1 (ten sam co adresSledzenia, decyzja właściciela T1), InPost, WzA i Allegro bez linku', () => {
-    expect(linkDoSledzenia('dpd', 'X1')).toBe('https://tracktrace.dpd.com.pl/parcelDetails?typ=1&p1=X1');
-    expect(linkDoSledzenia('inpost', 'X1')).toBe('https://inpost.pl/sledzenie-przesylek?number=X1');
-    expect(linkDoSledzenia('allegro_wza', 'X1')).toBeNull();
-    expect(linkDoSledzenia('allegro', 'X1')).toBeNull();
+  it('adresSledzenia — kody dróg nadania (allegro_wza, allegro) nie są przewoźnikami → null', () => {
+    expect(adresSledzenia('allegro_wza', 'X1')).toBeNull();
+    expect(adresSledzenia('allegro', 'X1')).toBeNull();
   });
 });
 

@@ -47,6 +47,12 @@ it('autoryzacja bez opcji userAgent wysyła domyślny TwojOMS na każdym żądan
  expect(f.calls.length).toBeGreaterThanOrEqual(4);
  for(const c of f.calls)expect(new Headers(c.init.headers).get('User-Agent')).toMatch(/^TwojOMS\//);
 });
+it('dwa równoległe kliknięcia w tej samej sesji: jedno /device i ten sam kod',async()=>{
+ const f=setup(),auth=f.autoryzacjaAllegro;
+ const [a,b]=await Promise.all([auth.rozpocznijDevice(f.k.klucz,aktorAllegro,'A'),auth.rozpocznijDevice(f.k.klucz,aktorAllegro,'A')]);
+ expect(daneAllegro(b)).toEqual(daneAllegro(a));
+ expect(f.calls.filter(c=>c.url.endsWith('/device'))).toHaveLength(1);
+});
 it('zapiszZmiane odmawia zmiany aplikacji połączonego konta i pozostawia cały wiersz',()=>{
  const f=setup(),r=f.repozytoriumKanalow;
  const k=daneAllegro(r.zapiszZmiane(f.k.klucz,f.k.wersja,{aplikacja:'device',autoryzacja:'polaczone',kontoId:'1000001'},aktorAllegro));

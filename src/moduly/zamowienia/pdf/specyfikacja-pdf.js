@@ -24,8 +24,8 @@ const KATALOG = path.dirname(fileURLToPath(import.meta.url));
 const FONT = 'DejaVu';
 const FONT_GRUBY = 'DejaVu-Bold';
 const PLIKI_FONTOW = {
-  [FONT]: path.join(KATALOG, 'fonty', 'DejaVuSans.ttf'),
-  [FONT_GRUBY]: path.join(KATALOG, 'fonty', 'DejaVuSans-Bold.ttf'),
+  [FONT]: path.join(KATALOG, '../../faktury/pdf/fonty', 'DejaVuSans.ttf'),
+  [FONT_GRUBY]: path.join(KATALOG, '../../faktury/pdf/fonty', 'DejaVuSans-Bold.ttf'),
 };
 
 const A4_SZER = 595.28;

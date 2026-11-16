@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { daneSpecyfikacji } from '../../pomoc/specyfikacja-parytetu.js';
 import { zl, kwotaOczekiwanaGrosze } from '../../../src/domena/suma-pozycji.js';
-import { buildOmsOrderInput } from '../../../src/domena/z-panelu/oms-order.js';
 
 // Dane „Specyfikacji zamowienia" — kartki wkladanej do kazdej paczki. Ten modul TYLKO
 // sklada dane (zadnego rysowania PDF-a, to Zadanie 7) i NIE LICZY WLASNYCH KWOT — wszystkie
@@ -331,19 +330,9 @@ describe('uwagi klienta', () => {
 // ten znacznik. Bez filtra kazda taka paczka wyjechalaby z kartka „Uwagi klienta:
 // Zamówienie indywidualne — karta e218b78e-… https://…".
 describe('znacznik techniczny panelu nie jest uwagami klienta', () => {
-  // ⚠️ NAPIS BUDUJE TEN SAM KOD, KTORY ROBI TO NA PRODUKCJI — nie kopia literalu w tescie.
-  // Gdyby ktos zmienil brzmienie znacznika w panelu, a filtr w OMS-ie zostal przy starym,
-  // TEN test spadnie na czerwono. Kopia napisu przechodzilaby dalej, a wyciek pokazalby sie
-  // dopiero na wydrukowanej kartce w paczce.
-  const zPanelu = buildOmsOrderInput(
-    {
-      id: 'e218b78e-f3ab-43d4-a8a9-bd89aaaa1111',
-      klientNazwa: 'Jan Kowalski',
-      klientEmail: 'jan@example.pl',
-      quote: { items: [], total: '100.00' },
-    },
-    { publicBaseUrl: 'https://panel.example.pl' },
-  );
+  // Format znacznika DOSLOWNIE jak w panelu indywidualnym (przedrostek + id karty + \n + adres karty),
+  // celowo bez stalej z OMS-u: zmiana UWAGA_Z_KARTY bez zmiany panelu ma tu zaczerwienic test.
+  const zPanelu = { uwagi: `Zamówienie indywidualne — karta e218b78e-f3ab-43d4-a8a9-bd89aaaa1111\nhttps://panel.example.pl/cards/e218b78e-f3ab-43d4-a8a9-bd89aaaa1111` };
 
   it('uwagi zbudowane przez panel są rozpoznane jako techniczne i NIE wychodzą na dokument', () => {
     expect(zPanelu.uwagi).toContain('Zamówienie indywidualne');

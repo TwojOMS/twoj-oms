@@ -30,11 +30,3 @@ export function zajmijOznaczenieZaplaty(db, uuid, { powod, dataZaplaty = null, k
   if (Number(info.changes) === 1) return { zajete: true, wiersz: null };
   return { zajete: false, wiersz: oznaczenieZaplaty(db, uuid) ?? null };
 }
-
-// Zapytania wiązane przez moduł do jego kontekstu bazy; istniejące eksporty zachowują parytet testów.
-export function createZapytania(db) {
-  return {
-    oznaczenieZaplaty: (...args) => oznaczenieZaplaty(db, ...args),
-    zajmijOznaczenieZaplaty: (...args) => zajmijOznaczenieZaplaty(db, ...args),
-  };
-}

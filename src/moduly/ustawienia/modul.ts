@@ -63,10 +63,7 @@ export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
     if (opisRol) ctx.log(opisRol);
     const widokIntegracji=createWidokIntegracji({
       db:ctx.db,reklamy:ctx.usluga('marketing','reklamy'),
-      zgodaTf: () => { try { return ctx.usluga<{ zgoda?: boolean }>('faktury', 'wyborProgramu')?.zgoda === true; } catch { return false; } },
-      programFakturowy: () => { try { return ctx.usluga<any>('faktury', 'programFakturowy'); } catch { return null; } },
       stanyKanalow:()=>ctx.usluga<()=>any[]>('kanaly','stanyKanalow')(),
-      wiazanieKanalow:ctx.usluga('kanaly','wiazanieKanalow'),
       kanaly:()=>ctx.usluga('kanaly','config'), proba:ctx.usluga<{proba?:boolean}>('web','config')?.proba===true,
       polaczeniaAllegro:()=>{
         const config=ctx.usluga<any>('kanaly','config');
@@ -98,7 +95,7 @@ export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
       wydanie: () => odczytajWydanie(new URL('../../../wydanie.json', import.meta.url)),
       sprawdz: () => sprawdzNajnowsze({ http: transport({ limitCzasuMs: 10_000 }) }),
     };
-    return {uslugi:{widokIntegracji,lacznosc,aktualizacje},trasy:app=>{
+    return {uslugi:{lacznosc,aktualizacje},trasy:app=>{
     zarejestrujMenuKontaRol(app,{db:ctx.db});
     registerKluczeApiRoutes(app,{db:ctx.db,teraz:ctx.teraz});
     registerLogoRoutes(app,{db:ctx.db});

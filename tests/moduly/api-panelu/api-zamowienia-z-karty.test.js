@@ -7,6 +7,8 @@ import { zalozZamowienieReczne } from '../../../src/moduly/zamowienia/services/z
 import { parsujZamowienieZKarty } from '../../../src/domena/zamowienie-z-karty.js';
 import { NAZWA_KURIERA } from '../../../src/domena/oplata-obslugi.js';
 import { dzienWarszawa } from '../../../src/domena/format-daty.js';
+import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
+import { zalozKluczApi } from '../../../src/core/bezpieczenstwo/klucze-api.js';
 import { dopiszKlientaZbiorczego } from '../faktury/_klient-zbiorczy-pomocniki.js';
 
 const config = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] };
@@ -135,17 +137,22 @@ describe('POST /api/zamowienia-z-karty', () => {
   // ⚠️ Kryterium akceptacji nr 6 ze specu. Kanal MUSI byc znany konsumentowi raportu
   // (KANALY_OMS w repo raporty), inaczej pierwszy tygodniowy raport po wdrozeniu
   // PRZERWIE SIE na nieznanej nazwie. `SKLEP_INDYWIDUALNE` jest tam od 2026-08-04.
-  it('zamowienie z karty wychodzi z /api/sprzedaz jako SKLEP_INDYWIDUALNE', async () => {
+  it('zamowienie z karty wychodzi z /api/v1/sprzedaz jako SKLEP_INDYWIDUALNE', async () => {
     await app.inject({ method: 'POST', url: '/api/zamowienia-z-karty', headers: naglowki, payload: cialo });
     // ⚠️ „DZISIAJ" PO WARSZAWSKU, TA SAMA FUNKCJA CO W APLIKACJI — patrz bliźniaczy
     // komentarz w tests/oms/web-platnosci.test.js. `toISOString()` daje dzien w UTC,
-    // a `/api/sprzedaz` filtruje po dacie warszawskiej: miedzy polnoca a druga w nocy
+    // a `/api/v1/sprzedaz` filtruje po dacie warszawskiej: miedzy polnoca a druga w nocy
     // okno `od`/`do` wskazywalo DZIEN POPRZEDNI i zamowienie z niego wypadalo.
     const dzis = dzienWarszawa(new Date().toISOString());
+    // `/api/v1/sprzedaz` wymaga klucza API z zakresem `sprzedaz:odczyt`.
+    const kontoId = zalozKonto(db, { login: 'tester-api', imie: 'Tester', haslo: 'h', admin: true, rola: 'administrator' });
+    const { klucz } = zalozKluczApi(db, {
+      nazwa: 'Pracownia Półcień', zakresy: ['sprzedaz:odczyt'], kontoId, teraz: new Date().toISOString(),
+    });
     const res = await app.inject({
       method: 'GET',
-      url: `/api/sprzedaz?od=${dzis}&do=${dzis}`,
-      headers: { authorization: naglowki.authorization, host: 'localhost' },
+      url: `/api/v1/sprzedaz?od=${dzis}&do=${dzis}`,
+      headers: { authorization: `Bearer ${klucz}`, host: 'localhost' },
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().zamowienia.map((z) => z.kanal)).toEqual(['SKLEP_INDYWIDUALNE']);
@@ -219,7 +226,7 @@ describe('POST /api/zamowienia-z-karty', () => {
 describe('GET /api/zamowienia-z-karty/:kartaId', () => {
   // ⚠️ Basic Auth WYSTARCZY. GET jest metoda bezpieczna, wiec ochrona CSRF
   // (src/security/csrf.js) jej nie dotyczy — inaczej niz przy POST wyzej, tu NIE podajemy
-  // `origin` (tak samo, jak istniejace testy /api/sprzedaz).
+  // `origin` (tak samo, jak istniejace testy GET).
   const naglowkiGet = { authorization: naglowki.authorization, host: 'localhost' };
 
   // ⚠️ WPLATA IDZIE PRZEZ dodajWplateReczna (tabela `platnosci`), NIE przez UPDATE surowej

@@ -33,6 +33,8 @@ function panel(env = {}, kopie) {
   ustawUprawnienia(p.db, kontoPoLoginie(p.db, 'ewa').id, ['zamowienia', 'faktury', 'ustawienia']);
   return { ...p, admin: jako(p.db, 'adam'), ewa: jako(p.db, 'ewa') };
 }
+// porównanie niezależne od wcięć i złamań linii w widoku
+const spacje = (tekst) => tekst.replace(/\s+/gu, ' ');
 const radia = (html) => [...html.matchAll(/<input type="radio"[^>]*>/gu)].map((m) => m[0]);
 const formularz = (html) => /<form id="modul-faktur-formularz"[\s\S]*?<\/form>/u.exec(html)?.[0] ?? '';
 const wartosc = (tag) => /value="([^"]*)"/u.exec(tag)?.[1];
@@ -67,7 +69,7 @@ it.each([false, true])('B14f1: karta okresu opisuje wysyłkę tylko dla programu
       { program: wbudowany ? 'twojefaktury' : 'infakt' });
     const wystawiony = await get(app, `/okresy/${okres.id}`, admin);
     expect(wystawiony.statusCode).toBe(200);
-    expect(wystawiony.body.includes('bez wysyłki do KSeF\n        — wysyłasz ją osobno: przyciskiem na ekranie Faktury, '
+    expect(spacje(wystawiony.body).includes('bez wysyłki do KSeF — wysyłasz ją osobno: przyciskiem na ekranie Faktury, '
       + 'automatem (administrator: Ustawienia → Automatyzacje → Automaty systemowe) albo w inFakcie.')).toBe(!wbudowany);
     expect(wystawiony.body).not.toContain('wieczorem');
     if (wbudowany) {

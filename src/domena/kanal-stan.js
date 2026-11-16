@@ -162,7 +162,7 @@ export function stanKanalu(wejscie) {
  *
  * ⚠️⚠️ FUNKCJA ISTNIEJE PO TO, ZEBY EKRAN I USLUGA LICZYLY TO SAMO. `stanKanalu()` ocenia
  * JEDEN kanal, a kolizja kont jest widoczna dopiero przy spojrzeniu na wszystkie. Gdyby
- * ekran liczyl ja u siebie, a `services/wiazanie-kanalow.js` u siebie, pierwsza rozbieznosc
+ * ekran liczyl ja u siebie, a usluga wiazania (dawne `services/wiazanie-kanalow.js`, usuniete) u siebie, pierwsza rozbieznosc
  * dalaby PRZYCISK PROWADZACY PROSTO W ODMOWE: kanal pokazany jako do przewiazania, a POST
  * odrzucony przez bariere „kanal dziala". Przed tym ostrzega naglowek tego pliku.
  *

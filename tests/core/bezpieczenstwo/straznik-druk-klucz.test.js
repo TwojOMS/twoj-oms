@@ -29,6 +29,7 @@ let katalog;
 let adminId;
 let pozycjaEtykiety;
 let pozycjaProformy;
+let zamowienieId;
 const teraz = () => new Date().toISOString();
 const klucz = (zakresy = ['druk']) => zalozKluczApi(db, {
   nazwa: 'czuwacz testowy', zakresy, kontoId: adminId, teraz: teraz(),
@@ -49,7 +50,7 @@ beforeEach(async () => {
   // Czynny admin w tabeli = konto serwisowe zdegradowane (stan produkcji, w którym czuwacze chodzą dziś na Basic).
   adminId = zalozKonto(db, { login: 'ala', imie: 'Ala Testowa', haslo: 'h', rola: 'admin', admin: true });
 
-  const zamowienieId = zapiszZamowienie(db, 'pro', {
+  zamowienieId = zapiszZamowienie(db, 'pro', {
     zrodlo_id: 7001, numer: 'PC-7001', klient: { first_name: 'Anna', company: 'Pracownia Półcień' },
     dostawa: { city: 'Warszawa' }, metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: null,
     kwota_brutto: '249.00', koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null,
@@ -128,7 +129,7 @@ describe('strażnik: klucz `druk` na kolejkach druku', () => {
   it('klucz `druk` nie otwiera innych adresów panelu → 401 (albo 429 hamulca, jak dziś)', async () => {
     const { klucz: k } = klucz();
     expect((await pobierz('/zamowienia', bearer(k))).statusCode).toBe(401);
-    for (const url of ['/zamowienia', '/ustawienia', '/ustawienia/klucze-api', '/przesylki', '/api/sprzedaz',
+    for (const url of ['/zamowienia', '/ustawienia', '/ustawienia/klucze-api', '/przesylki', `/api/zamowienia/${zamowienieId}/stan-wysylki`,
       '/kolejka-drukux', '/kolejka-druku-fakturx', '/']) {
       for (const accept of ['application/json', 'text/html']) {
         const r = await pobierz(url, { ...bearer(k), accept });

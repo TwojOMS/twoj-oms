@@ -157,15 +157,13 @@ it('lista bez problemów nie ma żadnego przycisku głównego poza „Dodaj inte
   expect(html).not.toContain('pol-wstrzymane');
   expect(html).not.toMatch(/błąd<\/a>/);
 });
-it('martwe konto Allegro z serwera: „Połącz z Allegro” jest jedyną akcją główną, wiązanie w toku pokazuje kod', async () => {
+it('martwe konto Allegro z serwera: „Połącz z Allegro” jest jedyną akcją główną, bez komunikatu „Wiązanie w toku”', async () => {
   const martwe = wiersz({ stan: 'uwaga', etykietaStanu: 'Wymaga uwagi', komunikat: 'Allegro odrzuciło token.', akcja: { etykieta: 'Zarządzaj', href: '/ustawienia/integracje/allegro/allegro_polcien', glowna: true } });
-  const html = await renderuj([martwe], false, [{ stan: { kanal: 'allegro_polcien', wolnoWiazac: true }, wiazanie: null }]);
+  const html = await renderuj([martwe], false, [{ stan: { kanal: 'allegro_polcien', wolnoWiazac: true } }]);
   expect(html).toContain('action="/ustawienia/kanaly/allegro_polcien/wiazanie"');
   expect(html).toContain('Połącz z Allegro</button>');
   expect(wiersze(html)[0]?.match(/btn--glowny/g)).toHaveLength(1);
-  const wToku = await renderuj([martwe], false, [{ stan: { kanal: 'allegro_polcien', wolnoWiazac: true }, wiazanie: { adres: 'https://allegro.example/urzadzenie', userCode: 'ABC-123' } }]);
-  expect(wToku).toContain('<strong>ABC-123</strong>');
-  expect(wToku).not.toContain('Połącz z Allegro</button>');
+  expect(wiersze(html)[0]).not.toContain('Wiązanie w toku');
 });
 
 const odczyt = (o: any) => (service as any).polaczeniaIntegracji?.(o);

@@ -24,11 +24,6 @@ import { dzienWarszawa } from '../../../domena/format-daty.js';
 // liczby obu zrodel; potem kampania jest zamknieta i jej wiersze sa juz historia.
 export const DNI_DOJRZEWANIA = 2;
 
-// Najgorszy przebieg: dwa zrodla, kilka zapytan kazde, przy zerwanej sieci wchodzi limit
-// czasu `fetch`. Trzymamy to jawnie, bo bootstrap sprawdza, czy przebieg mieści się
-// w odstepie zegara (ta sama bariera, co przy czuwaczu KSeF i kosztow).
-export const NAJDLUZSZY_PRZEBIEG_KAMPANII_MS = 5 * 60 * 1000;
-
 const dzienPo = (dzien, ile) => new Date(Date.parse(`${dzien}T00:00:00Z`) + ile * 86_400_000)
   .toISOString().slice(0, 10);
 

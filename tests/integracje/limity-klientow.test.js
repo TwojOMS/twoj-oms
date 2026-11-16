@@ -6,12 +6,14 @@ import { join } from 'node:path';
 import { createWooClient } from '../../src/oms/woo/client.js';
 import { createMetaClient } from '../../src/oms/meta/client.js';
 import { createGa4Client } from '../../src/oms/ga4/client.js';
-import { createApiloClient } from '../../src/oms/apilo/client.js';
 import { createTokeny } from '../../src/oms/allegro/tokeny.js';
 import {openOmsDb} from '../../src/oms/db/db.ts';
+import { zapiszTokeny } from '../../src/oms/db/tokeny.js';
 
 const katalog = mkdtempSync(join(tmpdir(), 'prz012-'));
 const db=openOmsDb();
+// Wygasły access token: `waznyToken()` musi wyjść do sieci po odświeżenie (jedyne żywe żądanie modułu tokenów).
+zapiszTokeny(db, 'test', { accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: new Date(Date.now() - 86400000).toISOString(), refreshWygasaAt: new Date(Date.now() + 80 * 86400000).toISOString() });
 const sciezkaKlucza = join(katalog, 'test.json');
 const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
 writeFileSync(sciezkaKlucza, JSON.stringify({ client_email: 'test@przyklad.invalid', private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }) }));
@@ -21,8 +23,7 @@ const przypadki = [
   ['Woo', (o) => () => createWooClient({ baseUrl: 'https://przyklad.invalid', ck: 'x', cs: 'y', ...o }).pobierzZamowienia()],
   ['Meta', (o) => () => createMetaClient({ token: 'x', konta: ['act_1'], baseUrl: 'https://przyklad.invalid', ...o }).dzienneStatystyki({ od: '2026-01-01', do: '2026-01-02' })],
   ['GA4', (o) => () => createGa4Client({ sciezkaKlucza, authUrl: 'https://przyklad.invalid/token', baseUrl: 'https://przyklad.invalid', ...o }).dzienneStatystyki({ wlasciwosc: '1', od: '2026-01-01', do: '2026-01-02' })],
-  ['Apilo', (o) => () => createApiloClient({ host: 'https://przyklad.invalid', credentialsPath: 'nieczytany', readFile: () => JSON.stringify({ accessToken: 'x', accessTokenExpireAt: '2099-01-01' }), ...o }).request('GET', '/rest/order/')],
-  ['Allegro tokeny', (o) => () => createTokeny({ db, kanal: 'test', ustawienia: { auth: 'https://przyklad.invalid', clientId: 'x', clientSecret: 'y', userAgent: 'Test/1 (+https://przyklad.invalid)' }, ...o }).rozpocznijPowiazanie()],
+  ['Allegro tokeny', (o) => () => createTokeny({ db, kanal: 'test', ustawienia: { auth: 'https://przyklad.invalid', clientId: 'x', clientSecret: 'y', userAgent: 'Test/1 (+https://przyklad.invalid)' }, ...o }).waznyToken()],
 ];
 
 describe.each(przypadki)('%s — wspólny transport', (nazwa, buduj) => {

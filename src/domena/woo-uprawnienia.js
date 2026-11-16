@@ -4,7 +4,6 @@
 // sklep bez zapisanego wyboru (sprzed tej zmiany, z env) pracuje jak dotąd — „Zapis/odczyt”.
 
 export const UPRAWNIENIA = Object.freeze(['odczyt', 'zapis']);
-export const ETYKIETY_UPRAWNIEN = Object.freeze({ odczyt: 'Odczyt', zapis: 'Zapis/odczyt' });
 
 export const TYLKO_ODCZYT = 'Sklep podłączony tylko do odczytu — status/notatkę zmień w sklepie';
 export const KLUCZ_TYLKO_ODCZYT = 'Klucz ma tylko odczyt. Zmień w kreatorze na »Odczyt« albo wygeneruj klucz Zapis/odczyt';

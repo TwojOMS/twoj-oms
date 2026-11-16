@@ -104,7 +104,7 @@
 <%# PRZ-101.06: maile do pracowników — osobno od maili do klientów. %>
 <section class="ust-sekcja szw-sekcja" id="szablony-zespol">
   <h2>Maile do zespołu</h2>
-  <p>Do pracowników, nie do klientów: zaproszenie do panelu i link do ustawienia nowego hasła (Ustawienia → Zespół i dostęp → Użytkownicy). Link wstawia panel — pole <code>{link}</code> musi zostać w treści.</p>
+  <p>Do pracowników, nie do klientów: zaproszenie do panelu i link do ustawienia nowego hasła<% if (admin) { %> (Ustawienia → Zespół i dostęp → Użytkownicy).<% } else { %>. Poproś administratora o dodanie pracownika.<% } %> Link wstawia panel — pole <code>{link}</code> musi zostać w treści.</p>
   <div class="przewijak-tabeli">
   <table class="tab-pozycje szw-tabela">
     <thead><tr><th>Mail</th><th>Temat</th><th>Treść</th><th></th></tr></thead>

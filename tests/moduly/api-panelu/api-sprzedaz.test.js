@@ -2,11 +2,13 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 import { zapewnijOkres } from '../../../src/oms/db/okresy.js';
+import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
+import { zalozKluczApi } from '../../../src/core/bezpieczenstwo/klucze-api.js';
 
-// Endpoint jest ZA Basic Authem panelu (hook onRequest w server.js), więc każdy test musi
-// podać nagłówek — tak samo jak pozostałe testy tras (okresy-trasy.test.js). CSRF nie
-// dotyczy GET-a, więc `origin` nie jest tu potrzebny.
-const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64') };
+// Endpoint `/api/v1/sprzedaz` wymaga klucza API z zakresem `sprzedaz:odczyt`, więc każdy
+// test podaje nagłówek Bearer z kluczem założonym w beforeEach. CSRF nie dotyczy GET-a,
+// więc `origin` nie jest tu potrzebny.
+let naglowek;
 const config = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] };
 
 let db;
@@ -46,16 +48,21 @@ async function numery(url) {
 
 beforeEach(() => {
   db = openOmsDb();
+  const kontoId = zalozKonto(db, { login: 'tester-api', imie: 'Tester', haslo: 'h', admin: true, rola: 'administrator' });
+  const { klucz } = zalozKluczApi(db, {
+    nazwa: 'Pracownia Półcień', zakresy: ['sprzedaz:odczyt'], kontoId, teraz: new Date().toISOString(),
+  });
+  naglowek = { authorization: `Bearer ${klucz}` };
 });
 
-describe('GET /api/sprzedaz', () => {
+describe('GET /api/v1/sprzedaz', () => {
   it('zamowienie w okresie to DROPSHIPPING, poza okresem to B2B', async () => {
     const o = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     dodaj({ numer: 'R/2026/001', kwota: '104.00', utworzone: '2026-07-10T10:00:00.000Z', okresId: o.id });
     dodaj({ numer: 'R/2026/002', kwota: '900.00', utworzone: '2026-07-11T10:00:00.000Z' });
 
     const odp = await serwer().inject({
-      method: 'GET', url: '/api/sprzedaz?od=2026-07-01&do=2026-07-31', headers: naglowek,
+      method: 'GET', url: '/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31', headers: naglowek,
     });
     expect(odp.statusCode).toBe(200);
     const { zamowienia } = odp.json();
@@ -71,7 +78,7 @@ describe('GET /api/sprzedaz', () => {
 
   it('zakres dat odcina zamowienia spoza okna', async () => {
     dodaj({ numer: 'R/2026/001', utworzone: '2026-07-10T10:00:00.000Z' });
-    expect(await numery('/api/sprzedaz?od=2026-08-01&do=2026-08-31')).toEqual([]);
+    expect(await numery('/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31')).toEqual([]);
   });
 
   // ── Usterka 1: anulowanie RĘCZNE ──────────────────────────────────────────────────────
@@ -83,14 +90,14 @@ describe('GET /api/sprzedaz', () => {
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-10T10:00:00.000Z' });
       dodaj({ numer: 'R/2026/002', utworzone: '2026-07-11T10:00:00.000Z', anulowaneRecznie: 1 });
 
-      expect(await numery('/api/sprzedaz?od=2026-07-01&do=2026-07-31')).toEqual(['R/2026/001']);
+      expect(await numery('/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31')).toEqual(['R/2026/001']);
     });
 
     it('zamowienie anulowane W SKLEPIE nie liczy sie do sprzedazy', async () => {
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-10T10:00:00.000Z' });
       dodaj({ numer: 'R/2026/002', utworzone: '2026-07-11T10:00:00.000Z', anulowane: 1 });
 
-      expect(await numery('/api/sprzedaz?od=2026-07-01&do=2026-07-31')).toEqual(['R/2026/001']);
+      expect(await numery('/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31')).toEqual(['R/2026/001']);
     });
 
     it('anulowane_recznie = 0 NIE odanulowuje zamowienia anulowanego w sklepie', async () => {
@@ -98,7 +105,7 @@ describe('GET /api/sprzedaz', () => {
         numer: 'R/2026/001', utworzone: '2026-07-10T10:00:00.000Z',
         anulowane: 1, anulowaneRecznie: 0,
       });
-      expect(await numery('/api/sprzedaz?od=2026-07-01&do=2026-07-31')).toEqual([]);
+      expect(await numery('/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31')).toEqual([]);
     });
   });
 
@@ -109,16 +116,16 @@ describe('GET /api/sprzedaz', () => {
       // z lipca (i z tygodnia, o który pytał raport) do czerwca.
       dodaj({ numer: 'R/2026/001', utworzone: '2026-06-30T23:30:00.000Z' });
 
-      expect(await numery('/api/sprzedaz?od=2026-07-01&do=2026-07-31')).toEqual(['R/2026/001']);
-      expect(await numery('/api/sprzedaz?od=2026-06-01&do=2026-06-30')).toEqual([]);
+      expect(await numery('/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31')).toEqual(['R/2026/001']);
+      expect(await numery('/api/v1/sprzedaz?od=2026-06-01&do=2026-06-30')).toEqual([]);
     });
 
     it('zamowienie zlozone 1 sierpnia o 01:30 czasu polskiego NIE jest w lipcu', async () => {
       // Druga strona tej samej pomyłki: 2026-07-31T23:30Z to już 1 sierpnia w Polsce.
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-31T23:30:00.000Z' });
 
-      expect(await numery('/api/sprzedaz?od=2026-07-01&do=2026-07-31')).toEqual([]);
-      expect(await numery('/api/sprzedaz?od=2026-08-01&do=2026-08-31')).toEqual(['R/2026/001']);
+      expect(await numery('/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31')).toEqual([]);
+      expect(await numery('/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31')).toEqual(['R/2026/001']);
     });
 
     it('obie granice okna sa DOMKNIETE — polnoc dnia `od` i ostatnia milisekunda dnia `do`', async () => {
@@ -130,14 +137,14 @@ describe('GET /api/sprzedaz', () => {
       // Ostatnia milisekunda dnia PRZED oknem — po drugiej stronie domknięcia.
       dodaj({ numer: 'W/0', utworzone: '2026-06-30T23:59:59', sklep: 'swietlik' });
 
-      expect(await numery('/api/sprzedaz?od=2026-07-01&do=2026-07-31')).toEqual(['W/1', 'R/2026/002']);
+      expect(await numery('/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31')).toEqual(['W/1', 'R/2026/002']);
     });
 
     it('zamowienie ZE SKLEPU liczy sie w czasie sklepu, bez przeliczania drugi raz', async () => {
       // `date_created` z Woo jest JUŻ w czasie Warszawy — doklejenie mu strefy przesunęłoby
       // je o dwie godziny (latem) i zamówienie z 1 lipca 01:30 wypadłoby z lipca.
       dodaj({ numer: 'W/2', utworzone: '2026-07-01T01:30:00', sklep: 'swietlik' });
-      expect(await numery('/api/sprzedaz?od=2026-07-01&do=2026-07-01')).toEqual(['W/2']);
+      expect(await numery('/api/v1/sprzedaz?od=2026-07-01&do=2026-07-01')).toEqual(['W/2']);
     });
   });
 
@@ -147,28 +154,28 @@ describe('GET /api/sprzedaz', () => {
 
     it('brak parametrow to 400, a nie caly zbior', async () => {
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-10T10:00:00.000Z' });
-      expect(await zle('/api/sprzedaz')).toBe(400);
-      expect(await zle('/api/sprzedaz?od=2026-07-01')).toBe(400);
-      expect(await zle('/api/sprzedaz?do=2026-07-31')).toBe(400);
+      expect(await zle('/api/v1/sprzedaz')).toBe(400);
+      expect(await zle('/api/v1/sprzedaz?od=2026-07-01')).toBe(400);
+      expect(await zle('/api/v1/sprzedaz?do=2026-07-31')).toBe(400);
     });
 
     it('niepoprawny format daty to 400, a nie pusty tydzien', async () => {
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-10T10:00:00.000Z' });
-      expect(await zle('/api/sprzedaz?od=abc&do=2026-07-31')).toBe(400);
-      expect(await zle('/api/sprzedaz?od=2026-07-01&do=01.07.2026')).toBe(400);
-      expect(await zle('/api/sprzedaz?od=2026-7-1&do=2026-07-31')).toBe(400);
+      expect(await zle('/api/v1/sprzedaz?od=abc&do=2026-07-31')).toBe(400);
+      expect(await zle('/api/v1/sprzedaz?od=2026-07-01&do=01.07.2026')).toBe(400);
+      expect(await zle('/api/v1/sprzedaz?od=2026-7-1&do=2026-07-31')).toBe(400);
     });
 
     it('data kalendarzowo nieistniejaca to 400 — V8 przewija ja po cichu na kolejny dzien', async () => {
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-10T10:00:00.000Z' });
       // new Date('2026-02-30') to 2 marca, a nie Invalid Date — samo parsowanie niczego
       // nie wyłapie (ta sama pułapka co w domain/okres-rozliczeniowy.js).
-      expect(await zle('/api/sprzedaz?od=2026-02-30&do=2026-03-31')).toBe(400);
-      expect(await zle('/api/sprzedaz?od=2026-01-01&do=2026-13-01')).toBe(400);
+      expect(await zle('/api/v1/sprzedaz?od=2026-02-30&do=2026-03-31')).toBe(400);
+      expect(await zle('/api/v1/sprzedaz?od=2026-01-01&do=2026-13-01')).toBe(400);
     });
 
     it('komunikat bledu mowi, czego brakuje', async () => {
-      const odp = await serwer().inject({ method: 'GET', url: '/api/sprzedaz', headers: naglowek });
+      const odp = await serwer().inject({ method: 'GET', url: '/api/v1/sprzedaz', headers: naglowek });
       expect(odp.json().blad).toMatch(/od.*do|do.*od/i);
     });
 
@@ -179,17 +186,17 @@ describe('GET /api/sprzedaz', () => {
     // po stronie konsumenta nie mają prawa przejść po cichu.
     it('od pozniejsze niz do to 400, a nie pusty tydzien', async () => {
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-10T10:00:00.000Z' });
-      expect(await zle('/api/sprzedaz?od=2026-07-31&do=2026-07-01')).toBe(400);
+      expect(await zle('/api/v1/sprzedaz?od=2026-07-31&do=2026-07-01')).toBe(400);
     });
 
     it('od rowne do jest POPRAWNE — jednodniowe okno to legalne pytanie', async () => {
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-10T10:00:00.000Z' });
-      expect(await numery('/api/sprzedaz?od=2026-07-10&do=2026-07-10')).toEqual(['R/2026/001']);
+      expect(await numery('/api/v1/sprzedaz?od=2026-07-10&do=2026-07-10')).toEqual(['R/2026/001']);
     });
 
     it('komunikat o odwroconym zakresie mowi, ktore granice sa zle', async () => {
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/sprzedaz?od=2026-07-31&do=2026-07-01', headers: naglowek,
+        method: 'GET', url: '/api/v1/sprzedaz?od=2026-07-31&do=2026-07-01', headers: naglowek,
       });
       expect(odp.json().blad).toMatch(/od.*do|do.*od/i);
     });
@@ -200,9 +207,9 @@ describe('GET /api/sprzedaz', () => {
     // czyli okno cicho gubi CAŁY pierwszy dzień. Sam dzień kalendarzowy albo 400.
     it('znacznik czasu w parametrze to 400 — inaczej okno gubi caly pierwszy dzien', async () => {
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-01T10:00:00.000Z' });
-      expect(await zle('/api/sprzedaz?od=2026-07-01T05:00&do=2026-07-31')).toBe(400);
-      expect(await zle('/api/sprzedaz?od=2026-07-01&do=2026-07-31T23:59')).toBe(400);
-      expect(await zle('/api/sprzedaz?od=2026-07-01T00:00:00.000Z&do=2026-07-31')).toBe(400);
+      expect(await zle('/api/v1/sprzedaz?od=2026-07-01T05:00&do=2026-07-31')).toBe(400);
+      expect(await zle('/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31T23:59')).toBe(400);
+      expect(await zle('/api/v1/sprzedaz?od=2026-07-01T00:00:00.000Z&do=2026-07-31')).toBe(400);
     });
   });
 
@@ -217,7 +224,7 @@ describe('GET /api/sprzedaz', () => {
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-05T22:30:00.000Z' });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/sprzedaz?od=2026-07-01&do=2026-07-31', headers: naglowek,
+        method: 'GET', url: '/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31', headers: naglowek,
       });
       const [z] = odp.json().zamowienia;
       expect(z.dzien).toBe('2026-07-06');
@@ -229,7 +236,7 @@ describe('GET /api/sprzedaz', () => {
       dodaj({ numer: 'W/1', utworzone: '2026-07-06T00:30:00', sklep: 'swietlik' });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/sprzedaz?od=2026-07-01&do=2026-07-31', headers: naglowek,
+        method: 'GET', url: '/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31', headers: naglowek,
       });
       expect(odp.json().zamowienia[0].dzien).toBe('2026-07-06');
     });
@@ -240,7 +247,7 @@ describe('GET /api/sprzedaz', () => {
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-31T23:30:00.000Z' });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
+        method: 'GET', url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
       });
       expect(odp.json().zamowienia[0].dzien).toBe('2026-08-01');
     });
@@ -256,7 +263,7 @@ describe('GET /api/sprzedaz', () => {
       dodaj({ numer: 'W/2', utworzone: '2026-07-11T10:00:00', sklep: 'pro' });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/sprzedaz?od=2026-07-01&do=2026-07-31', headers: naglowek,
+        method: 'GET', url: '/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31', headers: naglowek,
       });
       const kanaly = odp.json().zamowienia.map((z) => z.kanal);
       expect(kanaly).not.toContain('B2B');
@@ -271,7 +278,7 @@ describe('GET /api/sprzedaz', () => {
       dodaj({ numer: 'W/1', utworzone: '2026-07-10T10:00:00', sklep: 'swietlik', okresId: o.id });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/sprzedaz?od=2026-07-01&do=2026-07-31', headers: naglowek,
+        method: 'GET', url: '/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31', headers: naglowek,
       });
       expect(odp.json().zamowienia[0].kanal).toBe('SKLEP');
     });
@@ -280,7 +287,7 @@ describe('GET /api/sprzedaz', () => {
       dodaj({ numer: 'W/1', utworzone: '2026-07-10T10:00:00', sklep: 'swietlik' });
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-11T10:00:00.000Z' });
 
-      expect(await numery('/api/sprzedaz?od=2026-07-01&do=2026-07-31'))
+      expect(await numery('/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31'))
         .toEqual(['W/1', 'R/2026/001']);
     });
 
@@ -296,7 +303,7 @@ describe('GET /api/sprzedaz', () => {
       dodaj({ numer: 'ALG-2', utworzone: '2026-08-10T11:00:00', sklep: 'allegro_polcien2' });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
+        method: 'GET', url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
       });
       const kanaly = odp.json().zamowienia.map((z) => z.kanal);
       expect(kanaly).toEqual(['ALLEGRO', 'ALLEGRO']);
@@ -312,7 +319,7 @@ describe('GET /api/sprzedaz', () => {
       dodaj({ numer: 'ALG-1', utworzone: '2026-08-10T10:00:00', sklep: 'allegro_swietlik' });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
+        method: 'GET', url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
       });
       const kanaly = odp.json().zamowienia.map((z) => z.kanal);
       // Po TABLICY, nie po tresci odpowiedzi: 'ALLEGRO_SWIETLIK' zawiera w sobie 'ALLEGRO',
@@ -330,7 +337,7 @@ describe('GET /api/sprzedaz', () => {
       dodaj({ numer: 'ALG-1', utworzone: '2026-08-10T10:00:00', sklep: 'allegro_swietlik' });
       dodaj({ numer: 'R/2026/001', utworzone: '2026-08-11T10:00:00.000Z' });
 
-      expect(await numery('/api/sprzedaz?od=2026-08-01&do=2026-08-31'))
+      expect(await numery('/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31'))
         .toEqual(['ALG-1', 'R/2026/001']);
     });
 
@@ -341,7 +348,7 @@ describe('GET /api/sprzedaz', () => {
       dodaj({ numer: 'W/1', utworzone: '2026-08-10T10:00:00', sklep: 'allegrowy' });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
+        method: 'GET', url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
       });
       expect(odp.json().zamowienia[0].kanal).toBe('SKLEP');
     });
@@ -357,7 +364,7 @@ describe('GET /api/sprzedaz', () => {
       dodaj({ numer: 'W/I1', utworzone: '2026-08-10T10:00:00', sklep: 'swietlik', indywidualne: 1 });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
+        method: 'GET', url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
       });
       const kanaly = odp.json().zamowienia.map((z) => z.kanal);
       // ⚠️ ASERCJE MUSZA ISC PO TABLICY WARTOSCI KANALOW, nie po napisie calej odpowiedzi:
@@ -377,7 +384,7 @@ describe('GET /api/sprzedaz', () => {
       dodaj({ numer: 'W/I1', utworzone: '2026-08-11T10:00:00', sklep: 'swietlik', indywidualne: 1 });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
+        method: 'GET', url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
       });
       const kanal = (n) => odp.json().zamowienia.find((z) => z.numer === n).kanal;
       expect(kanal('W/1')).toBe('SKLEP');
@@ -391,7 +398,7 @@ describe('GET /api/sprzedaz', () => {
       dodaj({ numer: 'W/I1', utworzone: '2026-08-10T10:00:00', sklep: 'swietlik', indywidualne: 1 });
       dodaj({ numer: 'R/2026/001', utworzone: '2026-08-11T10:00:00.000Z' });
 
-      expect(await numery('/api/sprzedaz?od=2026-08-01&do=2026-08-31'))
+      expect(await numery('/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31'))
         .toEqual(['W/I1', 'R/2026/001']);
     });
 
@@ -405,7 +412,7 @@ describe('GET /api/sprzedaz', () => {
       dodaj({ numer: 'W/I1', utworzone: '2026-08-13T10:00:00', sklep: 'swietlik', indywidualne: 1 });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
+        method: 'GET', url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
       });
       const kanal = (n) => odp.json().zamowienia.find((z) => z.numer === n).kanal;
       expect(kanal('R/2026/001')).toBe('DROPSHIPPING');
@@ -420,7 +427,7 @@ describe('GET /api/sprzedaz', () => {
       dodaj({ numer: 'R/2026/002', utworzone: '2026-07-11T10:00:00.000Z' });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/sprzedaz?od=2026-07-01&do=2026-07-31', headers: naglowek,
+        method: 'GET', url: '/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31', headers: naglowek,
       });
       const kanal = (n) => odp.json().zamowienia.find((z) => z.numer === n).kanal;
       expect(kanal('R/2026/001')).toBe('DROPSHIPPING');
@@ -438,7 +445,7 @@ describe('GET /api/sprzedaz', () => {
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-09T23:00:00.000Z' });
       dodaj({ numer: 'W/1', utworzone: '2026-07-10T00:30:00', sklep: 'swietlik' });
 
-      expect(await numery('/api/sprzedaz?od=2026-07-09&do=2026-07-10'))
+      expect(await numery('/api/v1/sprzedaz?od=2026-07-09&do=2026-07-10'))
         .toEqual(['W/1', 'R/2026/001']);
     });
 
@@ -446,7 +453,7 @@ describe('GET /api/sprzedaz', () => {
       dodaj({ numer: 'R/2026/002', utworzone: '2026-07-10T10:00:00.000Z' });
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-10T10:00:00.000Z' });
 
-      expect(await numery('/api/sprzedaz?od=2026-07-10&do=2026-07-10'))
+      expect(await numery('/api/v1/sprzedaz?od=2026-07-10&do=2026-07-10'))
         .toEqual(['R/2026/002', 'R/2026/001']);
     });
 
@@ -455,9 +462,9 @@ describe('GET /api/sprzedaz', () => {
       dodaj({ numer: 'X/1', utworzone: 'brak-daty' });
       dodaj({ numer: 'X/2', utworzone: '' });
 
-      expect(await numery('/api/sprzedaz?od=2026-07-01&do=2026-07-31')).toEqual(['R/2026/001']);
+      expect(await numery('/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31')).toEqual(['R/2026/001']);
       // ...i nie udaje, że mieści się w oknie liczonym od początku czasu.
-      expect(await numery('/api/sprzedaz?od=1970-01-01&do=2099-12-31')).toEqual(['R/2026/001']);
+      expect(await numery('/api/v1/sprzedaz?od=1970-01-01&do=2099-12-31')).toEqual(['R/2026/001']);
     });
   });
 });

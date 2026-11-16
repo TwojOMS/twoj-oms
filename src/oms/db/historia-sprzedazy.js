@@ -168,13 +168,3 @@ export function zapiszKursorImportu(db, { ostatniDzien, ostatniId }) {
   db.prepare('UPDATE stan_importu SET ostatni_dzien = ?, ostatni_id = ?, blad = NULL WHERE id = 1')
     .run(ostatniDzien, ostatniId);
 }
-
-export function odnotujKoniecImportu(db) {
-  db.prepare('UPDATE stan_importu SET zakonczony_at = ?, blad = NULL WHERE id = 1').run(teraz());
-}
-
-export function zapiszBladImportu(db, tresc) {
-  db.prepare('UPDATE stan_importu SET blad = ? WHERE id = 1').run(String(tresc).slice(0, 500));
-}
-
-export const stanImportu = (db) => db.prepare('SELECT * FROM stan_importu WHERE id = 1').get() ?? null;

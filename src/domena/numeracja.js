@@ -10,11 +10,6 @@ export function formatujNumer(rok, kolejny) {
   return `R/${rok}/${String(kolejny).padStart(3, '0')}`;
 }
 
-export function rokZNumeru(numer) {
-  const m = WZORZEC.exec(String(numer ?? ''));
-  return m ? Number(m[1]) : null;
-}
-
 export function kolejnyZNumeru(numer) {
   const m = WZORZEC.exec(String(numer ?? ''));
   return m ? Number(m[2]) : null;

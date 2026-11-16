@@ -4,6 +4,7 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszWiersz, odnotujUdanyPrzebiegArchiwum } from '../../../src/moduly/faktury/db/archiwum-sprzedazy.js';
 import { PREFIKS_BLEDU_ARCHIWUM } from '../../../src/moduly/faktury/trasy/faktury.js';
 import { bladOperatora } from '../../../src/domena/bledy.js';
+import { zapiszKonsumenckie } from '../../../src/moduly/faktury/db/ksef-konsumenckie.js';
 
 // ⚠️ Ta sama para naglowkow, co w pozostalych testach tras (okresy-trasy.test.js): Basic Auth
 // panelu, a przy POST takze `origin`, bez ktorego ochrona CSRF slusznie odbija zadanie.
@@ -155,6 +156,31 @@ describe('GET /faktury', () => {
     expect(r.body).toContain('value="konsument"');
     // Oznaczenie konsumenta zostaje niezależne od pola wyboru.
     expect(r.body).toContain('>konsumencka</span>');
+  });
+
+  // PRZ-174 B2 (M10b): podpowiedź przy znaczniku „konsumencka” mówi, czy panel wysyła taki dokument do KSeF.
+  describe('podpowiedź przy znaczniku „konsumencka”', () => {
+    const konsument = { uuid: 'konsument', number: '30/06/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null, client_tax_code: null, client_first_name: 'Jan', client_last_name: 'Kowalski', kwotaZl: '138.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' };
+    const podpowiedz = async (wlaczone) => {
+      const { app, db } = serwerZBaza({ dokumenty: [konsument] });
+      zapiszKonsumenckie(db, wlaczone);
+      const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
+      const znacznik = /<span class="znacznik znacznik--cichy"\s+title="([^"]*)">konsumencka<\/span>/.exec(r.body);
+      expect(znacznik, 'znacznik „konsumencka” przy fakturze bez NIP-u').not.toBeNull();
+      return znacznik[1];
+    };
+
+    it('przy włączonej wysyłce konsumenckich mówi, że w ustawieniach włączono dobrowolną wysyłkę do KSeF', async () => {
+      const tekst = await podpowiedz(true);
+      expect(tekst).toMatch(/Nabywca bez NIP-u/);
+      expect(tekst).toMatch(/włączono dobrowolną wysyłkę faktur konsumenckich do KSeF/);
+    });
+
+    it('przy wyłączonej mówi, że KSeF jest przy takim dokumencie dobrowolny, więc panel go nie wysyła', async () => {
+      const tekst = await podpowiedz(false);
+      expect(tekst).toMatch(/Nabywca bez NIP-u/);
+      expect(tekst).toMatch(/dobrowolny, więc panel go nie wysyła/);
+    });
   });
 
   // ⚠️⚠️ NAJDROZSZA POMYLKA MOZLIWA W TEJ REGULE. Klient zagraniczny (WDT) ma w polu NIP-u

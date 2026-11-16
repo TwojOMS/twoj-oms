@@ -212,7 +212,7 @@ export const MAKS_ROZMIAR_FAKTURY_B = 2 * 1024 * 1024;
 if (LIMIT_ZAPYTANIA_PRZESYLEK_MS > LIMIT_ZAPYTANIA_ZAMOWIEN_MS) {
   throw new Error(
     'Limit zapytania o przesyłki (ścieżka karty, człowiek czeka) nie może być dłuższy niż limit '
-    + 'pobierania zamówień (poller, w tle).',
+    + 'pobierania zamówień w tle.',
   );
 }
 

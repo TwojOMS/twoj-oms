@@ -14,6 +14,7 @@ import * as gus from '../../src/oms/gus/client.js';
 import * as ksef from '../../src/oms/ksef/client.js';
 import * as allegro from '../../src/oms/allegro/client.js';
 import * as tokeny from '../../src/oms/allegro/tokeny.js';
+import { zapiszTokeny } from '../../src/oms/db/tokeny.js';
 import * as fabryki from '../../src/integracje/fabryki.ts';
 
 const seller = { OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000', OMS_PROFORMY_KATALOG: '/synthetic/unused',OMS_ETYKIETY_KATALOG:tmpdir() };
@@ -61,12 +62,14 @@ it.each(['', '/', '///'])('Allegro API i AUTH z końcówką %j dają pojedynczy 
   const http = async (url: unknown) => { urls.push(String(url)); throw Error('Lokalna odmowa fixture'); };
   const klient = allegro.createAllegroClient({ ustawienia, http, fetchImpl: undefined, tokeny: { waznyToken: async () => 'fixture' } });
   const db=openOmsDb();
+  // Wygasły access token: `waznyToken()` idzie po odświeżenie na AUTH/token.
+  zapiszTokeny(db, 'rynek', { accessToken: 'fixture', refreshToken: 'fixture-r', wygasaAt: new Date(Date.now() - 86400000).toISOString(), refreshWygasaAt: new Date(Date.now() + 80 * 86400000).toISOString() });
   const oauth = tokeny.createTokeny({ ustawienia, http, fetchImpl: undefined, kanal: 'rynek', db });
   await expect(klient.pobierzOferte('fixture')).rejects.toThrow('Lokalna odmowa fixture');
-  await expect(oauth.rozpocznijPowiazanie()).rejects.toThrow('Lokalna odmowa fixture');
+  await expect(oauth.waznyToken()).rejects.toThrow('Lokalna odmowa fixture');
   expect(urls).toEqual([
     'https://allegro-fixture.invalid/sale/product-offers/fixture',
-    'https://allegro-fixture.invalid/auth/oauth/device',
+    'https://allegro-fixture.invalid/auth/oauth/token',
   ]);
   db.close();
 });
@@ -125,7 +128,8 @@ it('pełny bootstrap przekazuje pusty URL do rzeczywistych fabryk jako default a
     await probe(() => a.usluga<any>('zamowienia', 'gus').zaloguj());
     await probe(() => k.mock.results[0].value.zaloguj());
     await probe(() => a.usluga<any>('kanaly', 'klienciKanalow').rynek.pobierzOferte('fixture'));
-    await probe(() => a.usluga<any>('kanaly', 'tokenyKanalow').rynek.rozpocznijPowiazanie());
+    zapiszTokeny(a.db, 'rynek', { accessToken: 'fixture', refreshToken: 'fixture-r', wygasaAt: new Date(Date.now() - 86400000).toISOString(), refreshWygasaAt: new Date(Date.now() + 80 * 86400000).toISOString() });
+    await probe(() => a.usluga<any>('kanaly', 'tokenyKanalow').rynek.waznyToken());
     await probe(() => a.usluga<any>('wysylka', 'kurierzy').inpost.sprawdzPrzesylke('1'));
     for (const prefix of ['https://api.infakt.pl/api/', 'https://wyszukiwarkaregon.stat.gov.pl/', 'https://api.ksef.mf.gov.pl/v2/', 'https://api.allegro.pl/', 'https://allegro.pl/auth/oauth/', 'https://api-shipx-pl.easypack24.net/v1/']) expect(urls.some(u => u.startsWith(prefix)), prefix).toBe(true);
   } finally { await a.app.close(); a.db.close(); }

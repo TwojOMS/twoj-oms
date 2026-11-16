@@ -106,7 +106,6 @@ export type OpisKuriera = {
    *  WzA mimo `sprawdzPrzesylke`. Czyta odmowaWProbie w modul.ts wysyłki; zgodność z adapterami DPD i InPost sprawdza
    *  tests/moduly/wysylka/kurierzy-kontrakt-prz135.test.ts. */
   pobieranieEtykiety: boolean;
-  sledzenieAdres?: (numer: string) => string;
   kluczeEnv: readonly string[];
   konfigurator: { sciezka: string; etykieta: string; zdanie: string; kroki?: readonly KrokKonfiguratora[] };
   piaskownica: { atrapa: string; komunikat: string };

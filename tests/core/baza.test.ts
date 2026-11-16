@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { otworzBaze, wykonajMigracje, schematBazy } from '../../src/core/baza.ts';
 import { migracjaBaseline } from '../../src/moduly/rdzen/migracje/baseline.ts';
 import type { ModulOms } from '../../src/core/kontrakty.ts';
+import { MODULY } from '../../src/moduly/lista.ts';
 
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite');
 
@@ -425,6 +426,23 @@ describe('migracje', () => {
 // PRZ-131: odcisk jest zapamiętywany po tekście schematu — na tym samym połączeniu każda zmiana schematu musi dać
 // nowy odcisk, a powrót do poprzedniego schematu — poprzedni.
 describe('pamięć odcisku schematu', () => {
+  // PRZ-173: pojemność pamięci odcisków musi objąć wszystkie stany pełnej budowy — inaczej 0% trafień i bramka ×2.
+  // `PRAGMA table_list` woła tylko liczenie odcisku (src/core/baza.ts), żadna migracja.
+  it('druga budowa bazy ze wszystkimi modułami bierze odciski schematu z pamięci', () => {
+    const zbuduj = (licznik: { n: number }) => {
+      const db = otworzBaze(':memory:');
+      const prepare = db.prepare;
+      db.prepare = ((sql: string) => { if (/PRAGMA table_list/.test(sql)) licznik.n++; return prepare.call(db, sql); }) as typeof db.prepare;
+      try { return wykonajMigracje(db, MODULY).length; } finally { db.close(); }
+    };
+    const pierwsza = { n: 0 };
+    const migracji = zbuduj(pierwsza);
+    expect(pierwsza.n, 'pierwsza budowa powinna liczyć odciski — inaczej test niczego nie mierzy').toBeGreaterThan(0);
+    const druga = { n: 0 };
+    zbuduj(druga);
+    expect(druga.n, `odciski liczone od nowa przy ${migracji} migracjach — podnieś ODCISKOW_W_PAMIECI w src/core/baza.ts`).toBe(0);
+  });
+
   it('każda zmiana schematu na tym samym połączeniu zmienia odcisk', () => {
     const db = new DatabaseSync(':memory:');
     try {
